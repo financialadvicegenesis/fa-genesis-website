@@ -1,0 +1,579 @@
+/**
+ * FA GENESIS - Service d'envoi d'emails
+ * Gère l'envoi d'emails automatiques via Nodemailer
+ */
+
+const nodemailer = require('nodemailer');
+
+// ============================================================
+// CONFIGURATION DU TRANSPORTEUR SMTP
+// ============================================================
+
+let transporter = null;
+
+function initializeTransporter() {
+    if (transporter) return transporter;
+
+    const smtpConfig = {
+        host: process.env.SMTP_HOST,
+        port: parseInt(process.env.SMTP_PORT) || 587,
+        secure: process.env.SMTP_SECURE === 'true',
+        auth: {
+            user: process.env.SMTP_USER,
+            pass: process.env.SMTP_PASSWORD
+        }
+    };
+
+    // Vérifier que la configuration est présente
+    if (!smtpConfig.host || !smtpConfig.auth.user || !smtpConfig.auth.pass) {
+        console.warn('[EMAIL] Configuration SMTP incomplète - Les emails ne seront pas envoyés');
+        return null;
+    }
+
+    transporter = nodemailer.createTransport(smtpConfig);
+
+    // Vérifier la connexion au démarrage
+    transporter.verify((error, success) => {
+        if (error) {
+            console.error('[EMAIL] Erreur connexion SMTP:', error.message);
+        } else {
+            console.log('[EMAIL] Connexion SMTP établie avec succès');
+        }
+    });
+
+    return transporter;
+}
+
+// ============================================================
+// TEMPLATES D'EMAILS
+// ============================================================
+
+/**
+ * Template HTML pour les emails FA GENESIS
+ */
+function getEmailTemplate(content, title = 'FA GENESIS') {
+    return `
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${title}</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f5f5f5;">
+    <table role="presentation" style="width: 100%; border-collapse: collapse;">
+        <tr>
+            <td style="padding: 40px 0;">
+                <table role="presentation" style="width: 100%; max-width: 600px; margin: 0 auto; background-color: #000000; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.15);">
+                    <!-- Header -->
+                    <tr>
+                        <td style="padding: 30px 40px; background-color: #000000; border-bottom: 4px solid #FFD700;">
+                            <h1 style="margin: 0; font-size: 28px; font-weight: 900; color: #FFD700; letter-spacing: 2px;">
+                                FA GENESIS
+                            </h1>
+                            <p style="margin: 5px 0 0 0; font-size: 12px; color: #888888; text-transform: uppercase; letter-spacing: 1px;">
+                                Groupe FA Industries
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- Content -->
+                    <tr>
+                        <td style="padding: 40px; background-color: #ffffff;">
+                            ${content}
+                        </td>
+                    </tr>
+
+                    <!-- Footer -->
+                    <tr>
+                        <td style="padding: 30px 40px; background-color: #f8f8f8; border-top: 1px solid #e0e0e0;">
+                            <p style="margin: 0 0 10px 0; font-size: 14px; color: #666666; text-align: center;">
+                                <strong>FA GENESIS</strong> - Conseil en image et communication
+                            </p>
+                            <p style="margin: 0; font-size: 12px; color: #999999; text-align: center;">
+                                Email : <a href="mailto:Financialadvicegenesis@gmail.com" style="color: #FFD700;">Financialadvicegenesis@gmail.com</a>
+                            </p>
+                            <p style="margin: 15px 0 0 0; font-size: 11px; color: #cccccc; text-align: center;">
+                                Cet email a été envoyé automatiquement. Merci de ne pas y répondre directement.
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
+    `;
+}
+
+// ============================================================
+// FONCTIONS D'ENVOI D'EMAILS
+// ============================================================
+
+/**
+ * Envoyer un email de confirmation de contact au client
+ */
+async function sendContactConfirmation(clientEmail, clientName, subject) {
+    const transport = initializeTransporter();
+    if (!transport) {
+        console.log('[EMAIL] Transport non configuré - Email de confirmation non envoyé');
+        return { success: false, reason: 'SMTP non configuré' };
+    }
+
+    const content = `
+        <h2 style="margin: 0 0 20px 0; font-size: 24px; color: #000000; font-weight: 700;">
+            Bonjour ${clientName},
+        </h2>
+
+        <p style="margin: 0 0 20px 0; font-size: 16px; color: #333333; line-height: 1.6;">
+            Nous avons bien reçu votre message et nous vous remercions de votre intérêt pour <strong>FA GENESIS</strong>.
+        </p>
+
+        <div style="background-color: #FFF9E6; border-left: 4px solid #FFD700; padding: 20px; margin: 25px 0;">
+            <p style="margin: 0; font-size: 15px; color: #333333;">
+                <strong>Votre demande concernant :</strong><br>
+                "${subject}"
+            </p>
+        </div>
+
+        <p style="margin: 0 0 15px 0; font-size: 16px; color: #333333; line-height: 1.6;">
+            Notre équipe prendra connaissance de votre demande dans les plus brefs délais.
+        </p>
+
+        <div style="background-color: #000000; color: #ffffff; padding: 20px; border-radius: 4px; margin: 25px 0;">
+            <p style="margin: 0; font-size: 16px; font-weight: 700; color: #FFD700;">
+                Délai de réponse estimé : 24 à 48h ouvrées
+            </p>
+        </div>
+
+        <p style="margin: 0 0 10px 0; font-size: 16px; color: #333333; line-height: 1.6;">
+            En attendant, n'hésitez pas à consulter nos offres sur notre site web.
+        </p>
+
+        <p style="margin: 30px 0 0 0; font-size: 16px; color: #333333;">
+            Cordialement,<br>
+            <strong style="color: #000000;">L'équipe FA GENESIS</strong>
+        </p>
+    `;
+
+    try {
+        const result = await transport.sendMail({
+            from: `"${process.env.EMAIL_FROM_NAME}" <${process.env.EMAIL_FROM_ADDRESS}>`,
+            to: clientEmail,
+            subject: `[FA GENESIS] Confirmation de réception de votre message`,
+            html: getEmailTemplate(content, 'Confirmation de réception')
+        });
+
+        console.log(`[EMAIL] Confirmation envoyée à ${clientEmail} - ID: ${result.messageId}`);
+        return { success: true, messageId: result.messageId };
+
+    } catch (error) {
+        console.error('[EMAIL] Erreur envoi confirmation:', error.message);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * Envoyer une notification interne à l'admin (Gmail)
+ */
+async function sendAdminNotification(messageData) {
+    const transport = initializeTransporter();
+    if (!transport) {
+        console.log('[EMAIL] Transport non configuré - Notification admin non envoyée');
+        return { success: false, reason: 'SMTP non configuré' };
+    }
+
+    const content = `
+        <h2 style="margin: 0 0 20px 0; font-size: 24px; color: #000000; font-weight: 700;">
+            Nouveau message reçu
+        </h2>
+
+        <div style="background-color: #f5f5f5; padding: 25px; border-radius: 4px; margin: 20px 0;">
+            <table style="width: 100%; border-collapse: collapse;">
+                <tr>
+                    <td style="padding: 10px 0; border-bottom: 1px solid #e0e0e0; font-weight: 700; color: #666;">Nom</td>
+                    <td style="padding: 10px 0; border-bottom: 1px solid #e0e0e0; color: #000;">${messageData.name}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 10px 0; border-bottom: 1px solid #e0e0e0; font-weight: 700; color: #666;">Email</td>
+                    <td style="padding: 10px 0; border-bottom: 1px solid #e0e0e0;">
+                        <a href="mailto:${messageData.email}" style="color: #FFD700;">${messageData.email}</a>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding: 10px 0; border-bottom: 1px solid #e0e0e0; font-weight: 700; color: #666;">Téléphone</td>
+                    <td style="padding: 10px 0; border-bottom: 1px solid #e0e0e0; color: #000;">${messageData.phone || 'Non renseigné'}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 10px 0; border-bottom: 1px solid #e0e0e0; font-weight: 700; color: #666;">Sujet</td>
+                    <td style="padding: 10px 0; border-bottom: 1px solid #e0e0e0; color: #000;">${messageData.subject}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 10px 0; font-weight: 700; color: #666;">Date</td>
+                    <td style="padding: 10px 0; color: #000;">${new Date().toLocaleString('fr-FR')}</td>
+                </tr>
+            </table>
+        </div>
+
+        <div style="background-color: #FFF9E6; border: 1px solid #FFD700; padding: 20px; border-radius: 4px; margin: 20px 0;">
+            <p style="margin: 0 0 10px 0; font-weight: 700; color: #000;">Message :</p>
+            <p style="margin: 0; color: #333; white-space: pre-line; line-height: 1.6;">${messageData.message}</p>
+        </div>
+
+        <p style="margin: 20px 0 0 0; font-size: 14px; color: #666;">
+            <a href="mailto:${messageData.email}?subject=Re: ${encodeURIComponent(messageData.subject)}"
+               style="display: inline-block; background-color: #FFD700; color: #000; padding: 12px 25px; text-decoration: none; font-weight: 700; border-radius: 4px;">
+                Répondre au client
+            </a>
+        </p>
+    `;
+
+    try {
+        const result = await transport.sendMail({
+            from: `"${process.env.EMAIL_FROM_NAME}" <${process.env.EMAIL_FROM_ADDRESS}>`,
+            to: process.env.EMAIL_ADMIN_ADDRESS,
+            subject: `[FA GENESIS] Nouveau message de ${messageData.name}`,
+            html: getEmailTemplate(content, 'Nouveau message'),
+            replyTo: messageData.email
+        });
+
+        console.log(`[EMAIL] Notification admin envoyée - ID: ${result.messageId}`);
+        return { success: true, messageId: result.messageId };
+
+    } catch (error) {
+        console.error('[EMAIL] Erreur envoi notification admin:', error.message);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * Envoyer un email de confirmation d'inscription
+ * Contenu dynamique selon le type d'offre (accompagnement ou prestation individuelle)
+ *
+ * @param {string} clientEmail - Email du client
+ * @param {string} prenom - Prénom du client
+ * @param {Object} offerData - Données de l'offre { name, category, product_type, total_price, duration, deposit_amount, balance_amount }
+ */
+async function sendRegistrationConfirmation(clientEmail, prenom, offerData = null) {
+    const transport = initializeTransporter();
+    if (!transport) {
+        console.log('[EMAIL] Transport non configuré - Email d\'inscription non envoyé');
+        return { success: false, reason: 'SMTP non configuré' };
+    }
+
+    // Déterminer le type de contenu selon l'offre
+    const isAccompagnement = offerData && offerData.product_type === 'accompagnement';
+    const isPrestation = offerData && offerData.product_type === 'prestation_individuelle';
+    const hasOffer = offerData && offerData.name;
+
+    // Générer le contenu dynamique selon le type d'offre
+    let offerSection = '';
+    let nextStepsSection = '';
+
+    if (hasOffer) {
+        // Section de l'offre sélectionnée
+        offerSection = `
+        <div style="background-color: #000000; color: #ffffff; padding: 25px; border-radius: 4px; margin: 25px 0; text-align: center;">
+            <p style="margin: 0 0 10px 0; font-size: 14px; color: #888888; text-transform: uppercase;">
+                ${isAccompagnement ? 'Accompagnement sélectionné' : 'Prestation sélectionnée'}
+            </p>
+            <p style="margin: 0; font-size: 22px; font-weight: 700; color: #FFD700;">
+                ${offerData.name}
+            </p>
+            ${offerData.duration ? `<p style="margin: 10px 0 0 0; font-size: 14px; color: #cccccc;">Durée : ${offerData.duration}</p>` : ''}
+        </div>
+
+        <div style="background-color: #f5f5f5; padding: 20px; border-radius: 4px; margin: 25px 0;">
+            <table style="width: 100%; border-collapse: collapse;">
+                <tr>
+                    <td style="padding: 8px 0; font-weight: 700; color: #666;">Prix total</td>
+                    <td style="padding: 8px 0; color: #000; text-align: right; font-weight: 700;">${offerData.total_price ? offerData.total_price.toFixed(2) + ' €' : 'Sur devis'}</td>
+                </tr>
+                ${offerData.deposit_amount ? `
+                <tr>
+                    <td style="padding: 8px 0; font-weight: 700; color: #666;">Acompte (30%)</td>
+                    <td style="padding: 8px 0; color: #000; text-align: right;">${offerData.deposit_amount.toFixed(2)} €</td>
+                </tr>
+                <tr>
+                    <td style="padding: 8px 0; font-weight: 700; color: #666;">Solde (70%)</td>
+                    <td style="padding: 8px 0; color: #000; text-align: right;">${offerData.balance_amount.toFixed(2)} €</td>
+                </tr>
+                ` : ''}
+            </table>
+        </div>
+        `;
+
+        // Section des prochaines étapes selon le type d'offre
+        if (isAccompagnement) {
+            nextStepsSection = `
+            <div style="background-color: #FFF9E6; border-left: 4px solid #FFD700; padding: 20px; margin: 25px 0;">
+                <p style="margin: 0 0 15px 0; font-weight: 700; color: #000; font-size: 16px;">
+                    Prochaines étapes de votre accompagnement :
+                </p>
+                <ol style="margin: 0; padding-left: 20px; color: #333; line-height: 2;">
+                    <li><strong>Connexion à votre espace client</strong> – Accédez à votre tableau de bord personnalisé</li>
+                    <li><strong>Règlement de l'acompte (30%)</strong> – Pour démarrer votre accompagnement</li>
+                    <li><strong>Prise de contact sous 24-48h</strong> – Un conseiller FA Genesis vous contactera</li>
+                    <li><strong>Lancement de votre parcours</strong> – Début de votre accompagnement sur ${offerData.duration || 'la période définie'}</li>
+                </ol>
+            </div>
+            `;
+        } else if (isPrestation) {
+            nextStepsSection = `
+            <div style="background-color: #FFF9E6; border-left: 4px solid #FFD700; padding: 20px; margin: 25px 0;">
+                <p style="margin: 0 0 15px 0; font-weight: 700; color: #000; font-size: 16px;">
+                    Prochaines étapes de votre prestation :
+                </p>
+                <ol style="margin: 0; padding-left: 20px; color: #333; line-height: 2;">
+                    <li><strong>Règlement de l'acompte (30%)</strong> – Pour confirmer votre commande</li>
+                    <li><strong>Planification de la prestation</strong> – Nous vous contacterons sous 24-48h pour fixer une date</li>
+                    <li><strong>Réalisation de la prestation</strong> – Notre équipe s'occupe de tout</li>
+                    <li><strong>Livraison des fichiers</strong> – Vous recevrez un aperçu dans votre espace client</li>
+                    <li><strong>Règlement du solde (70%)</strong> – Pour télécharger vos fichiers originaux en haute qualité</li>
+                </ol>
+            </div>
+            `;
+        }
+    } else {
+        // Pas d'offre spécifique
+        nextStepsSection = `
+        <div style="background-color: #FFF9E6; border-left: 4px solid #FFD700; padding: 20px; margin: 25px 0;">
+            <p style="margin: 0 0 15px 0; font-weight: 700; color: #000; font-size: 16px;">
+                Prochaines étapes :
+            </p>
+            <ol style="margin: 0; padding-left: 20px; color: #333; line-height: 2;">
+                <li><strong>Découvrez nos offres</strong> – Consultez notre catalogue d'accompagnements et prestations</li>
+                <li><strong>Choisissez votre formule</strong> – Sélectionnez l'offre adaptée à vos besoins</li>
+                <li><strong>Contactez-nous</strong> – Notre équipe est disponible pour vous conseiller</li>
+            </ol>
+        </div>
+        `;
+    }
+
+    const content = `
+        <h2 style="margin: 0 0 20px 0; font-size: 24px; color: #000000; font-weight: 700;">
+            Bienvenue ${prenom} !
+        </h2>
+
+        <p style="margin: 0 0 20px 0; font-size: 16px; color: #333333; line-height: 1.6;">
+            Nous sommes ravis de vous accueillir chez <strong>FA GENESIS</strong>. Votre compte a été créé avec succès et votre inscription a bien été prise en compte.
+        </p>
+
+        <div style="background-color: #e8f5e9; border: 1px solid #4caf50; padding: 15px 20px; border-radius: 4px; margin: 20px 0;">
+            <p style="margin: 0; font-size: 15px; color: #2e7d32;">
+                <strong>Votre compte est actif</strong> – Vous pouvez dès maintenant vous connecter à votre espace client.
+            </p>
+        </div>
+
+        ${offerSection}
+
+        ${nextStepsSection}
+
+        <div style="background-color: #000000; color: #ffffff; padding: 20px; border-radius: 4px; margin: 25px 0; text-align: center;">
+            <p style="margin: 0 0 15px 0; font-size: 14px; color: #cccccc;">
+                Accédez à votre espace client pour suivre votre commande
+            </p>
+            <a href="${process.env.FRONT_URL || 'http://127.0.0.1:5500'}/fa-genesis-landing/login.html"
+               style="display: inline-block; background-color: #FFD700; color: #000; padding: 15px 30px; text-decoration: none; font-weight: 700; border-radius: 4px; font-size: 16px;">
+                Se connecter
+            </a>
+        </div>
+
+        <p style="margin: 25px 0 15px 0; font-size: 16px; color: #333333; line-height: 1.6;">
+            <strong>Une question ?</strong> Notre équipe est à votre disposition pour vous accompagner. N'hésitez pas à nous contacter par email ou via le formulaire de contact de notre site.
+        </p>
+
+        <p style="margin: 30px 0 0 0; font-size: 16px; color: #333333;">
+            À très bientôt,<br>
+            <strong style="color: #000000;">L'équipe FA GENESIS</strong>
+        </p>
+    `;
+
+    try {
+        const subjectLine = hasOffer
+            ? `Bienvenue ${prenom} ! Votre ${isAccompagnement ? 'accompagnement' : 'prestation'} ${offerData.name} est confirmé(e)`
+            : `Bienvenue ${prenom} ! Votre compte FA GENESIS est créé`;
+
+        const result = await transport.sendMail({
+            from: `"${process.env.EMAIL_FROM_NAME}" <${process.env.EMAIL_FROM_ADDRESS}>`,
+            to: clientEmail,
+            subject: `[FA GENESIS] ${subjectLine}`,
+            html: getEmailTemplate(content, 'Confirmation d\'inscription')
+        });
+
+        console.log(`[EMAIL] Confirmation inscription envoyée à ${clientEmail} - ID: ${result.messageId}`);
+        return { success: true, messageId: result.messageId };
+
+    } catch (error) {
+        console.error('[EMAIL] Erreur envoi confirmation inscription:', error.message);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * Envoyer une notification d'inscription à l'admin
+ */
+async function sendAdminRegistrationNotification(registrationData) {
+    const transport = initializeTransporter();
+    if (!transport) {
+        console.log('[EMAIL] Transport non configuré - Notification inscription non envoyée');
+        return { success: false, reason: 'SMTP non configuré' };
+    }
+
+    const content = `
+        <h2 style="margin: 0 0 20px 0; font-size: 24px; color: #000000; font-weight: 700;">
+            Nouvelle inscription client
+        </h2>
+
+        <div style="background-color: #000000; color: #ffffff; padding: 20px; border-radius: 4px; margin: 20px 0; text-align: center;">
+            <p style="margin: 0 0 5px 0; font-size: 14px; color: #888888;">Offre choisie</p>
+            <p style="margin: 0; font-size: 20px; font-weight: 700; color: #FFD700;">${registrationData.offerName || 'Aucune offre sélectionnée'}</p>
+        </div>
+
+        <div style="background-color: #f5f5f5; padding: 25px; border-radius: 4px; margin: 20px 0;">
+            <table style="width: 100%; border-collapse: collapse;">
+                <tr>
+                    <td style="padding: 10px 0; border-bottom: 1px solid #e0e0e0; font-weight: 700; color: #666;">Nom complet</td>
+                    <td style="padding: 10px 0; border-bottom: 1px solid #e0e0e0; color: #000;">${registrationData.firstName} ${registrationData.lastName}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 10px 0; border-bottom: 1px solid #e0e0e0; font-weight: 700; color: #666;">Email</td>
+                    <td style="padding: 10px 0; border-bottom: 1px solid #e0e0e0;">
+                        <a href="mailto:${registrationData.email}" style="color: #FFD700;">${registrationData.email}</a>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding: 10px 0; border-bottom: 1px solid #e0e0e0; font-weight: 700; color: #666;">Téléphone</td>
+                    <td style="padding: 10px 0; border-bottom: 1px solid #e0e0e0; color: #000;">${registrationData.phone || 'Non renseigné'}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 10px 0; font-weight: 700; color: #666;">Date d'inscription</td>
+                    <td style="padding: 10px 0; color: #000;">${new Date().toLocaleString('fr-FR')}</td>
+                </tr>
+            </table>
+        </div>
+
+        <p style="margin: 20px 0 0 0; font-size: 14px; color: #666;">
+            <a href="mailto:${registrationData.email}?subject=FA GENESIS - Votre inscription"
+               style="display: inline-block; background-color: #FFD700; color: #000; padding: 12px 25px; text-decoration: none; font-weight: 700; border-radius: 4px;">
+                Contacter le client
+            </a>
+        </p>
+    `;
+
+    try {
+        const result = await transport.sendMail({
+            from: `"${process.env.EMAIL_FROM_NAME}" <${process.env.EMAIL_FROM_ADDRESS}>`,
+            to: process.env.EMAIL_ADMIN_ADDRESS,
+            subject: `[FA GENESIS] Nouvelle inscription - ${registrationData.firstName} ${registrationData.lastName}`,
+            html: getEmailTemplate(content, 'Nouvelle inscription'),
+            replyTo: registrationData.email
+        });
+
+        console.log(`[EMAIL] Notification inscription admin envoyée - ID: ${result.messageId}`);
+        return { success: true, messageId: result.messageId };
+
+    } catch (error) {
+        console.error('[EMAIL] Erreur envoi notification inscription:', error.message);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * Envoyer un email de confirmation de paiement
+ */
+async function sendPaymentConfirmation(clientEmail, clientName, orderData) {
+    const transport = initializeTransporter();
+    if (!transport) {
+        console.log('[EMAIL] Transport non configuré - Email paiement non envoyé');
+        return { success: false, reason: 'SMTP non configuré' };
+    }
+
+    const isDeposit = !orderData.balance_paid;
+    const paymentType = isDeposit ? 'Acompte (30%)' : 'Solde (70%)';
+    const amountPaid = isDeposit ? orderData.deposit_amount : orderData.balance_amount;
+
+    const content = `
+        <h2 style="margin: 0 0 20px 0; font-size: 24px; color: #000000; font-weight: 700;">
+            Paiement confirmé, ${clientName} !
+        </h2>
+
+        <p style="margin: 0 0 20px 0; font-size: 16px; color: #333333; line-height: 1.6;">
+            Nous vous confirmons la bonne réception de votre paiement.
+        </p>
+
+        <div style="background-color: #e8f5e9; border: 1px solid #4caf50; padding: 20px; border-radius: 4px; margin: 25px 0; text-align: center;">
+            <p style="margin: 0 0 5px 0; font-size: 14px; color: #666;">Montant reçu</p>
+            <p style="margin: 0; font-size: 28px; font-weight: 700; color: #4caf50;">
+                ${amountPaid.toFixed(2)} €
+            </p>
+            <p style="margin: 10px 0 0 0; font-size: 14px; color: #666;">${paymentType}</p>
+        </div>
+
+        <div style="background-color: #f5f5f5; padding: 20px; border-radius: 4px; margin: 25px 0;">
+            <table style="width: 100%; border-collapse: collapse;">
+                <tr>
+                    <td style="padding: 8px 0; font-weight: 700; color: #666;">Commande</td>
+                    <td style="padding: 8px 0; color: #000; text-align: right;">${orderData.id}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 8px 0; font-weight: 700; color: #666;">Offre</td>
+                    <td style="padding: 8px 0; color: #000; text-align: right;">${orderData.product_name}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 8px 0; font-weight: 700; color: #666;">Total de l'offre</td>
+                    <td style="padding: 8px 0; color: #000; text-align: right;">${orderData.total_amount.toFixed(2)} €</td>
+                </tr>
+            </table>
+        </div>
+
+        ${isDeposit ? `
+        <div style="background-color: #FFF9E6; border-left: 4px solid #FFD700; padding: 20px; margin: 25px 0;">
+            <p style="margin: 0; color: #333; line-height: 1.6;">
+                <strong>Prochaine étape :</strong> Vous pouvez maintenant accéder à votre espace client pour suivre votre ${orderData.product_type === 'accompagnement' ? 'accompagnement' : 'prestation'}.
+            </p>
+        </div>
+        ` : `
+        <div style="background-color: #e8f5e9; border-left: 4px solid #4caf50; padding: 20px; margin: 25px 0;">
+            <p style="margin: 0; color: #333; line-height: 1.6;">
+                <strong>Paiement complet !</strong> Vous avez maintenant accès à tous vos contenus et livrables.
+            </p>
+        </div>
+        `}
+
+        <p style="margin: 30px 0 0 0; font-size: 16px; color: #333333;">
+            Merci pour votre confiance,<br>
+            <strong style="color: #000000;">L'équipe FA GENESIS</strong>
+        </p>
+    `;
+
+    try {
+        const result = await transport.sendMail({
+            from: `"${process.env.EMAIL_FROM_NAME}" <${process.env.EMAIL_FROM_ADDRESS}>`,
+            to: clientEmail,
+            subject: `[FA GENESIS] Confirmation de paiement - ${paymentType}`,
+            html: getEmailTemplate(content, 'Confirmation de paiement')
+        });
+
+        console.log(`[EMAIL] Confirmation paiement envoyée à ${clientEmail} - ID: ${result.messageId}`);
+        return { success: true, messageId: result.messageId };
+
+    } catch (error) {
+        console.error('[EMAIL] Erreur envoi confirmation paiement:', error.message);
+        return { success: false, error: error.message };
+    }
+}
+
+// ============================================================
+// EXPORTS
+// ============================================================
+
+module.exports = {
+    initializeTransporter,
+    sendContactConfirmation,
+    sendAdminNotification,
+    sendRegistrationConfirmation,
+    sendAdminRegistrationNotification,
+    sendPaymentConfirmation
+};

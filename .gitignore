@@ -1,0 +1,34 @@
+# Fichiers sensibles
+.env
+*.env
+credentials.json
+
+# Dossiers de documents (gérés séparément sur le serveur)
+DOCUMENTS COMMUNS*/
+DOCUMENTS SPÉCIFIQUES*/
+documents-communs/
+
+# Fichiers Word (templates gérés séparément)
+*.docx
+*.doc
+
+# Fichiers temporaires Windows
+nul
+
+# Fichiers système
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Dossiers de développement
+node_modules/
+.vscode/
+.idea/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Fichiers temporaires
+*.tmp
+*.temp

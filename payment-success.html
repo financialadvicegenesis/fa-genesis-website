@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paiement réussi - FA GENESIS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Unbounded:wght@400;900&family=Space+Grotesk:wght@300;700&display=swap');
+
+        :root {
+            --genesis-yellow: #FFD700;
+            --genesis-black: #000000;
+            --genesis-white: #FFFFFF;
+        }
+
+        body {
+            background-color: var(--genesis-black);
+            color: var(--genesis-white);
+            font-family: 'Space Grotesk', sans-serif;
+        }
+
+        h1, h2, h3, h4, h5 { font-family: 'Unbounded', cursive; }
+
+        .neo-border { border: 4px solid var(--genesis-black); }
+        .neo-shadow { box-shadow: 10px 10px 0px 0px var(--genesis-yellow); }
+
+        .neo-btn-yellow {
+            background: var(--genesis-yellow);
+            color: black;
+            border: 4px solid black;
+            box-shadow: 6px 6px 0px black;
+            font-weight: 900;
+            transition: 0.1s;
+        }
+        .neo-btn-yellow:active {
+            transform: translate(4px, 4px);
+            box-shadow: 0px 0px 0px black;
+        }
+
+        .success-icon {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .confetti {
+            position: fixed;
+            width: 10px;
+            height: 10px;
+            background: var(--genesis-yellow);
+            animation: fall 3s linear forwards;
+        }
+
+        @keyframes fall {
+            to {
+                transform: translateY(100vh) rotate(720deg);
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="fixed top-0 w-full z-50 bg-black/95 backdrop-blur-md border-b-4 border-[var(--genesis-yellow)] px-6 py-4">
+        <div class="container mx-auto flex justify-between items-center">
+            <a href="index.html" class="text-2xl font-black tracking-wider text-[var(--genesis-yellow)]" style="font-family: 'Unbounded', cursive;">FA GENESIS</a>
+            <div class="flex gap-4 items-center">
+                <span class="text-white font-bold text-sm uppercase">Paiement confirmé</span>
+                <i class="fas fa-check-circle text-green-500"></i>
+            </div>
+        </div>
+    </nav>
+
+    <section class="min-h-screen pt-32 pb-20 px-6 flex items-center justify-center">
+        <div class="container mx-auto max-w-3xl text-center">
+            <!-- Icône de succès -->
+            <div class="success-icon mb-8">
+                <div class="inline-flex items-center justify-center w-32 h-32 bg-green-500 rounded-full border-4 border-black">
+                    <i class="fas fa-check text-6xl text-black"></i>
+                </div>
+            </div>
+
+            <h1 class="text-4xl md:text-6xl font-black italic uppercase mb-4 text-[var(--genesis-yellow)]">
+                PAIEMENT RÉUSSI !
+            </h1>
+
+            <p class="text-xl font-bold mb-8">
+                Merci pour votre confiance. Votre acompte a été enregistré avec succès.
+            </p>
+
+            <!-- Détails de la commande -->
+            <div class="bg-white text-black p-8 neo-border neo-shadow mb-8">
+                <h2 class="text-2xl font-black italic uppercase mb-6">Détails de votre commande</h2>
+
+                <div id="orderDetails" class="space-y-4 text-left">
+                    <!-- Rempli dynamiquement -->
+                </div>
+
+                <div class="border-t-4 border-black mt-6 pt-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <span class="font-bold uppercase">Numéro de commande</span>
+                        <span class="font-black text-lg" id="orderId">-</span>
+                    </div>
+                    <div class="flex justify-between items-center mb-4">
+                        <span class="font-bold uppercase">Montant payé</span>
+                        <span class="font-black text-2xl text-green-600" id="amountPaid">-</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="font-bold uppercase opacity-70">Reste à payer</span>
+                        <span class="font-bold" id="remainingAmount">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Prochaines étapes -->
+            <div class="bg-[var(--genesis-yellow)] text-black p-8 border-4 border-black mb-8">
+                <h3 class="text-2xl font-black italic uppercase mb-4">Prochaines étapes</h3>
+                <div class="space-y-4 text-left">
+                    <div class="flex items-start gap-4">
+                        <div class="w-8 h-8 bg-black text-white flex items-center justify-center font-black flex-shrink-0">1</div>
+                        <div>
+                            <p class="font-black">Confirmation par email</p>
+                            <p class="text-sm font-bold opacity-70">Vous recevrez un email de confirmation avec tous les détails</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-4">
+                        <div class="w-8 h-8 bg-black text-white flex items-center justify-center font-black flex-shrink-0">2</div>
+                        <div>
+                            <p class="font-black">Démarrage de l'accompagnement</p>
+                            <p class="text-sm font-bold opacity-70">Notre équipe vous contactera sous 24h pour planifier votre première séance</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-4">
+                        <div class="w-8 h-8 bg-black text-white flex items-center justify-center font-black flex-shrink-0">3</div>
+                        <div>
+                            <p class="font-black">Accès à votre espace client</p>
+                            <p class="text-sm font-bold opacity-70">Connectez-vous pour suivre votre parcours et accéder à vos documents</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Redirection automatique -->
+            <div id="redirectNotice" class="bg-green-500 text-black p-4 border-4 border-black mb-8" style="display: none;">
+                <p class="font-black text-lg">
+                    <i class="fas fa-spinner fa-spin mr-2"></i>
+                    Redirection vers votre espace client dans <span id="countdown">5</span> secondes...
+                </p>
+            </div>
+
+            <!-- Boutons d'action -->
+            <div class="flex flex-col md:flex-row gap-4 justify-center">
+                <a id="espaceClientBtn" href="espace-client.html" class="neo-btn-yellow px-8 py-4 text-lg font-black uppercase inline-flex items-center justify-center gap-3">
+                    <i class="fas fa-user"></i>
+                    Accéder à mon espace client
+                </a>
+                <a href="index.html" class="bg-white text-black border-4 border-black px-8 py-4 text-lg font-black uppercase inline-flex items-center justify-center gap-3 hover:bg-gray-100 transition">
+                    <i class="fas fa-home"></i>
+                    Retour à l'accueil
+                </a>
+            </div>
+
+            <!-- Info contact -->
+            <div class="mt-12 text-sm font-bold opacity-70">
+                <p>Une question ? Contactez-nous à <a href="mailto:Financialadvicegenesis@gmail.com" class="text-[var(--genesis-yellow)] underline">Financialadvicegenesis@gmail.com</a></p>
+            </div>
+        </div>
+    </section>
+
+    <script>
+        // ============================================================
+        // CONFIGURATION - URL DU BACKEND
+        // ============================================================
+        const API_BASE_URL = 'http://localhost:3001';
+
+        // Récupérer les paramètres de l'URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const orderId = urlParams.get('order') || sessionStorage.getItem('pendingOrderId');
+        const stage = urlParams.get('stage') || 'deposit';
+
+        window.addEventListener('DOMContentLoaded', async function() {
+            if (!orderId) {
+                document.getElementById('orderDetails').innerHTML = `
+                    <p class="text-center font-bold text-red-500">Aucune commande trouvée</p>
+                `;
+                return;
+            }
+
+            try {
+                // Vérifier le paiement auprès du backend
+                console.log('[SUCCESS] Vérification du paiement pour:', orderId);
+
+                const verifyResponse = await fetch(`${API_BASE_URL}/api/payments/verify`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ orderId, stage })
+                });
+
+                if (!verifyResponse.ok) {
+                    throw new Error('Erreur vérification');
+                }
+
+                const verifyData = await verifyResponse.json();
+                console.log('[SUCCESS] Résultat vérification:', verifyData);
+
+                // Récupérer les détails de la commande
+                const orderResponse = await fetch(`${API_BASE_URL}/api/orders/${orderId}`);
+
+                if (!orderResponse.ok) {
+                    throw new Error('Commande introuvable');
+                }
+
+                const order = await orderResponse.json();
+                console.log('[SUCCESS] Commande:', order);
+
+                // Afficher les details
+                displayOrderDetails(order, verifyData);
+
+                // Nettoyer la session
+                sessionStorage.removeItem('pendingOrderId');
+
+                // Mettre a jour le lien vers l'espace client
+                const espaceClientUrl = `espace-client.html?order=${orderId}`;
+                document.getElementById('espaceClientBtn').href = espaceClientUrl;
+
+                // Ajouter des confettis si le paiement est confirmé
+                if (verifyData.paid || order.deposit_paid) {
+                    createConfetti();
+                    // Démarrer le compte à rebours pour la redirection
+                    startRedirectCountdown(espaceClientUrl);
+                }
+
+                // Adapter les prochaines étapes selon le type de produit
+                updateNextSteps(order.product_type);
+
+            } catch (error) {
+                console.error('[SUCCESS] Erreur:', error);
+                document.getElementById('orderDetails').innerHTML = `
+                    <p class="text-center font-bold text-orange-500">
+                        Votre commande est en cours de traitement.<br>
+                        Vous recevrez une confirmation par email.
+                    </p>
+                    <p class="text-center font-bold mt-4">
+                        Numero de commande: <span class="font-black">${orderId}</span>
+                    </p>
+                `;
+                document.getElementById('orderId').textContent = orderId;
+            }
+        });
+
+        function displayOrderDetails(order, verifyData) {
+            document.getElementById('orderId').textContent = order.id;
+
+            // Determiner le montant paye
+            let amountPaid = 0;
+            if (order.deposit_paid && order.balance_paid) {
+                amountPaid = order.total_amount;
+            } else if (order.deposit_paid) {
+                amountPaid = order.deposit_amount;
+            }
+
+            const remainingAmount = order.total_amount - amountPaid;
+
+            document.getElementById('amountPaid').textContent = formatPrice(amountPaid);
+            document.getElementById('remainingAmount').textContent = formatPrice(remainingAmount);
+
+            // Details de la commande
+            document.getElementById('orderDetails').innerHTML = `
+                <div class="flex justify-between items-center py-3 border-b-2 border-gray-200">
+                    <span class="font-bold uppercase text-sm">Offre</span>
+                    <span class="font-black">${order.product_name || 'N/A'}</span>
+                </div>
+                <div class="flex justify-between items-center py-3 border-b-2 border-gray-200">
+                    <span class="font-bold uppercase text-sm">Statut</span>
+                    <span class="font-bold ${order.deposit_paid ? 'text-green-600' : 'text-orange-500'}">
+                        ${getStatusLabel(order.status)}
+                    </span>
+                </div>
+                <div class="flex justify-between items-center py-3 border-b-2 border-gray-200">
+                    <span class="font-bold uppercase text-sm">Client</span>
+                    <span class="font-bold">${order.client_info.first_name} ${order.client_info.last_name}</span>
+                </div>
+                <div class="flex justify-between items-center py-3 border-b-2 border-gray-200">
+                    <span class="font-bold uppercase text-sm">Email</span>
+                    <span class="font-bold">${order.client_info.email}</span>
+                </div>
+                <div class="flex justify-between items-center py-3">
+                    <span class="font-bold uppercase text-sm">Date</span>
+                    <span class="font-bold">${new Date(order.created_at).toLocaleDateString('fr-FR')}</span>
+                </div>
+            `;
+        }
+
+        function getStatusLabel(status) {
+            const labels = {
+                'pending_deposit': 'En attente de l\'acompte',
+                'active': 'Acompte payé - Accompagnement actif',
+                'pending_balance': 'En attente du solde',
+                'paid_in_full': 'Paiement complet',
+                'cancelled': 'Annulée'
+            };
+            return labels[status] || status;
+        }
+
+        function formatPrice(amount) {
+            return new Intl.NumberFormat('fr-FR', {
+                style: 'currency',
+                currency: 'EUR'
+            }).format(amount);
+        }
+
+        function createConfetti() {
+            const colors = ['#FFD700', '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4'];
+
+            for (let i = 0; i < 50; i++) {
+                setTimeout(() => {
+                    const confetti = document.createElement('div');
+                    confetti.className = 'confetti';
+                    confetti.style.left = Math.random() * 100 + 'vw';
+                    confetti.style.background = colors[Math.floor(Math.random() * colors.length)];
+                    confetti.style.animationDuration = (Math.random() * 2 + 2) + 's';
+                    document.body.appendChild(confetti);
+
+                    setTimeout(() => confetti.remove(), 4000);
+                }, i * 50);
+            }
+        }
+
+        function startRedirectCountdown(url) {
+            // Afficher la notice de redirection
+            document.getElementById('redirectNotice').style.display = 'block';
+
+            let countdown = 5;
+            const countdownEl = document.getElementById('countdown');
+
+            const interval = setInterval(() => {
+                countdown--;
+                countdownEl.textContent = countdown;
+
+                if (countdown <= 0) {
+                    clearInterval(interval);
+                    window.location.href = url;
+                }
+            }, 1000);
+        }
+
+        function updateNextSteps(productType) {
+            const stepsContainer = document.querySelector('.bg-\\[var\\(--genesis-yellow\\)\\] .space-y-4');
+            if (!stepsContainer) return;
+
+            if (productType === 'prestation_individuelle') {
+                stepsContainer.innerHTML = `
+                    <div class="flex items-start gap-4">
+                        <div class="w-8 h-8 bg-black text-white flex items-center justify-center font-black flex-shrink-0">1</div>
+                        <div>
+                            <p class="font-black">Confirmation par email</p>
+                            <p class="text-sm font-bold opacity-70">Vous recevrez un email de confirmation avec tous les détails</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-4">
+                        <div class="w-8 h-8 bg-black text-white flex items-center justify-center font-black flex-shrink-0">2</div>
+                        <div>
+                            <p class="font-black">Réalisation de votre prestation</p>
+                            <p class="text-sm font-bold opacity-70">Notre équipe travaille sur votre projet. Vous serez notifié dès que c'est prêt.</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-4">
+                        <div class="w-8 h-8 bg-black text-white flex items-center justify-center font-black flex-shrink-0">3</div>
+                        <div>
+                            <p class="font-black">Livraison et téléchargement</p>
+                            <p class="text-sm font-bold opacity-70">Une fois la prestation terminée, réglez le solde pour télécharger vos livrables</p>
+                        </div>
+                    </div>
+                `;
+            }
+            // Pour les accompagnements, on garde le contenu par défaut
+        }
+    </script>
+</body>
+</html>

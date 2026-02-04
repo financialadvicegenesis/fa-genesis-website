@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="fr" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paiement - FA GENESIS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Unbounded:wght@400;900&family=Space+Grotesk:wght@300;700&display=swap');
+
+        :root {
+            --genesis-yellow: #FFD700;
+            --genesis-black: #000000;
+            --genesis-white: #FFFFFF;
+        }
+
+        body {
+            background-color: var(--genesis-black);
+            color: var(--genesis-white);
+            font-family: 'Space Grotesk', sans-serif;
+        }
+
+        h1, h2, h3, h4, h5 { font-family: 'Unbounded', cursive; }
+
+        .neo-border { border: 4px solid var(--genesis-black); }
+        .neo-shadow { box-shadow: 10px 10px 0px 0px var(--genesis-yellow); }
+
+        .neo-btn-yellow {
+            background: var(--genesis-yellow);
+            color: black;
+            border: 4px solid black;
+            box-shadow: 6px 6px 0px black;
+            font-weight: 900;
+            transition: 0.1s;
+        }
+        .neo-btn-yellow:active {
+            transform: translate(4px, 4px);
+            box-shadow: 0px 0px 0px black;
+        }
+
+        .payment-card {
+            background: white;
+            color: black;
+            border: 4px solid black;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            border: 3px solid black;
+            font-weight: 900;
+            text-transform: uppercase;
+            font-size: 0.875rem;
+        }
+
+        .status-registered { background: #ff6b6b; }
+        .status-deposit { background: #51cf66; }
+        .status-pending { background: #ffd43b; }
+        .status-fully { background: #4dabf7; }
+    </style>
+</head>
+<body>
+    <nav class="fixed top-0 w-full z-50 bg-black/95 backdrop-blur-md border-b-4 border-[var(--genesis-yellow)] px-6 py-4 flex justify-between items-center">
+        <a href="dashboard.html" class="text-2xl font-black tracking-wider text-[var(--genesis-yellow)]">FA GENESIS</a>
+        <a href="dashboard.html" class="text-white font-black hover:text-[var(--genesis-yellow)]">
+            <i class="fas fa-arrow-left mr-2"></i>Retour au Dashboard
+        </a>
+    </nav>
+
+    <section class="min-h-screen pt-32 pb-20 px-6">
+        <div class="container mx-auto max-w-4xl">
+            <h1 class="text-5xl md:text-6xl font-black italic uppercase text-center mb-4 text-[var(--genesis-yellow)]">
+                PAIEMENT
+            </h1>
+            <p class="text-center text-xl font-bold mb-12 uppercase" id="statusMessage"></p>
+
+            <!-- Résumé du statut -->
+            <div id="statusSummary" class="payment-card neo-shadow mb-8"></div>
+
+            <!-- Section Acompte -->
+            <div id="depositSection" class="payment-card neo-shadow" style="display: none;">
+                <h2 class="text-3xl font-black italic uppercase mb-4">
+                    <i class="fas fa-hand-holding-usd text-[var(--genesis-yellow)] mr-3"></i>
+                    ACOMPTE - 30%
+                </h2>
+                <p id="depositIntroMessage" class="font-bold mb-6"></p>
+                <div id="depositDetails" class="mb-6"></div>
+                <button onclick="payDeposit()" class="neo-btn-yellow px-8 py-4 text-xl font-black uppercase">
+                    <i class="fas fa-credit-card mr-2"></i>Payer l'acompte
+                </button>
+            </div>
+
+            <!-- Section Solde -->
+            <div id="balanceSection" class="payment-card neo-shadow" style="display: none;">
+                <h2 class="text-3xl font-black italic uppercase mb-4">
+                    <i class="fas fa-check-circle text-[var(--genesis-yellow)] mr-3"></i>
+                    SOLDE - 70%
+                </h2>
+                <p class="font-bold mb-6">Votre accompagnement est terminé. Choisissez votre mode de paiement du solde.</p>
+                <div id="balanceDetails" class="mb-6"></div>
+
+                <!-- Options de paiement -->
+                <div class="grid md:grid-cols-2 gap-6 mb-6" id="paymentOptions">
+                    <!-- Options générées dynamiquement -->
+                </div>
+
+                <!-- Section paiement échelonné -->
+                <div id="installmentSection" style="display: none;">
+                    <h3 class="text-2xl font-black italic uppercase mb-4">
+                        <i class="fas fa-calendar-alt mr-2"></i>VOS MENSUALITÉS
+                    </h3>
+                    <div id="installmentsList"></div>
+                </div>
+            </div>
+
+            <!-- Historique des paiements -->
+            <div class="payment-card neo-shadow">
+                <h2 class="text-3xl font-black italic uppercase mb-6">
+                    <i class="fas fa-history text-[var(--genesis-yellow)] mr-3"></i>
+                    HISTORIQUE DES PAIEMENTS
+                </h2>
+                <div id="paymentHistory"></div>
+            </div>
+        </div>
+    </section>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>
+    <script src="auth.js"></script>
+    <script src="offers-config.js"></script>
+    <script src="payment-system.js"></script>
+    <script>
+        AOS.init({ duration: 1000 });
+
+        // Protection de la page
+        requireAuth();
+
+        const user = getCurrentUser();
+        if (!user) {
+            window.location.href = 'login.html';
+        }
+
+        // Charger et afficher le statut de paiement
+        function loadPaymentStatus() {
+            const summary = getPaymentSummary(user.email);
+
+            if (!summary) {
+                document.getElementById('statusMessage').textContent = 'Erreur de chargement';
+                return;
+            }
+
+            // Afficher le message de statut
+            document.getElementById('statusMessage').textContent = summary.accessRights.message;
+
+            // Afficher le résumé du statut
+            displayStatusSummary(summary);
+
+            // Afficher les sections appropriées
+            if (summary.status === 'registered' && summary.activeOffer) {
+                document.getElementById('depositSection').style.display = 'block';
+                displayDepositDetails(summary.activeOffer);
+            }
+
+            if (summary.status === 'delivery_pending_payment' && summary.activeOffer) {
+                document.getElementById('balanceSection').style.display = 'block';
+                displayBalanceDetails(summary.activeOffer);
+            }
+
+            // Afficher l'historique des paiements
+            displayPaymentHistory(summary.payments);
+        }
+
+        function displayStatusSummary(summary) {
+            const statusClass = {
+                'registered': 'status-registered',
+                'deposit_paid': 'status-deposit',
+                'delivery_pending_payment': 'status-pending',
+                'fully_paid': 'status-fully'
+            }[summary.status] || 'status-registered';
+
+            let html = `
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+                    <div>
+                        <h3 class="text-2xl font-black italic uppercase mb-2">VOTRE STATUT</h3>
+                        <span class="status-badge ${statusClass}">${summary.statusLabel}</span>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-sm font-bold opacity-70 uppercase">Total payé</p>
+                        <p class="text-3xl font-black text-[var(--genesis-yellow)]">${summary.totalPaid}€</p>
+                    </div>
+                </div>
+            `;
+
+            if (summary.activeOffer) {
+                html += `
+                    <div class="border-t-4 border-black pt-6">
+                        <h4 class="text-xl font-black uppercase mb-3">OFFRE ACTIVE</h4>
+                        <div class="grid md:grid-cols-3 gap-4">
+                            <div>
+                                <p class="text-sm font-bold opacity-70 uppercase">Formule</p>
+                                <p class="font-black text-lg">${summary.activeOffer.nom}</p>
+                            </div>
+                            <div>
+                                <p class="text-sm font-bold opacity-70 uppercase">Prix total</p>
+                                <p class="font-black text-lg">${summary.activeOffer.prixTotal}€</p>
+                            </div>
+                            <div>
+                                <p class="text-sm font-bold opacity-70 uppercase">Durée</p>
+                                <p class="font-black text-lg">${summary.activeOffer.duree}</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            document.getElementById('statusSummary').innerHTML = html;
+        }
+
+        function displayDepositDetails(offer) {
+            // Adapter le message selon le type de produit
+            const productType = offer.productType || 'accompagnement';
+
+            let introMessage = '';
+            let balanceMessage = '';
+
+            if (productType === 'accompagnement') {
+                introMessage = 'Pour démarrer votre accompagnement, un acompte de 30% est requis.';
+                balanceMessage = `Le solde de ${offer.solde}€ sera à régler à la fin de votre accompagnement.`;
+            } else {
+                introMessage = 'Pour confirmer votre commande et lancer votre prestation, un acompte de 30% est requis.';
+                balanceMessage = `Le solde de ${offer.solde}€ sera à régler une fois votre prestation terminée.`;
+            }
+
+            // Afficher le message d'intro
+            document.getElementById('depositIntroMessage').textContent = introMessage;
+
+            const html = `
+                <div class="bg-[var(--genesis-yellow)] p-6 border-4 border-black mb-6">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <p class="text-2xl font-black uppercase">${offer.nom}</p>
+                            <p class="font-bold opacity-70">Acompte requis (30%)</p>
+                        </div>
+                        <p class="text-4xl font-black">${offer.acompte}€</p>
+                    </div>
+                </div>
+                <p class="text-sm font-bold opacity-70">
+                    <i class="fas fa-info-circle mr-2"></i>
+                    ${balanceMessage}
+                </p>
+            `;
+            document.getElementById('depositDetails').innerHTML = html;
+        }
+
+        function displayBalanceDetails(offer) {
+            const html = `
+                <div class="bg-[var(--genesis-yellow)] p-6 border-4 border-black mb-6">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <p class="text-2xl font-black uppercase">${offer.nom}</p>
+                            <p class="font-bold opacity-70">Solde restant (70%)</p>
+                        </div>
+                        <p class="text-4xl font-black">${offer.solde}€</p>
+                    </div>
+                </div>
+                <p class="text-sm font-bold opacity-70 mb-6">
+                    <i class="fas fa-info-circle mr-2"></i>
+                    Une fois le solde réglé, vous aurez accès immédiat à tous vos livrables finaux.
+                </p>
+            `;
+            document.getElementById('balanceDetails').innerHTML = html;
+
+            // Afficher les options de paiement
+            displayPaymentOptions(offer);
+        }
+
+        function displayPaymentOptions(offer) {
+            const plan = calculateInstallmentPlan(user.activeOfferId);
+
+            let optionsHTML = `
+                <!-- Option 1: Paiement comptant -->
+                <div class="border-4 border-black p-6 hover:shadow-lg transition cursor-pointer" onclick="selectPaymentOption('full')">
+                    <div class="text-center">
+                        <i class="fas fa-money-bill-wave text-4xl text-[var(--genesis-yellow)] mb-4"></i>
+                        <h3 class="text-xl font-black uppercase mb-2">Paiement comptant</h3>
+                        <p class="text-3xl font-black mb-2">${offer.solde}€</p>
+                        <p class="text-sm font-bold opacity-70">En une seule fois</p>
+                        <button class="mt-4 neo-btn-yellow px-6 py-3 text-sm w-full">
+                            Payer maintenant
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Option 2: Paiement échelonné -->
+                <div class="border-4 border-black p-6 hover:shadow-lg transition cursor-pointer" style="background: #e8f5e9;" onclick="selectPaymentOption('installments')">
+                    <div class="text-center">
+                        <i class="fas fa-calendar-alt text-4xl text-[#51cf66] mb-4"></i>
+                        <h3 class="text-xl font-black uppercase mb-2">Paiement échelonné</h3>
+                        <p class="text-3xl font-black mb-2">${plan.monthlyAmount}€<span class="text-base">/mois</span></p>
+                        <p class="text-sm font-bold opacity-70">Sur ${plan.numberOfInstallments} mois</p>
+                        <button class="mt-4 bg-[#51cf66] text-black border-4 border-black px-6 py-3 text-sm font-black uppercase w-full">
+                            Choisir ce mode
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('paymentOptions').innerHTML = optionsHTML;
+
+            // Vérifier si un plan existe déjà
+            const existingPlan = getInstallmentPlan(user.email);
+            if (existingPlan) {
+                displayInstallments(existingPlan);
+            }
+        }
+
+        function selectPaymentOption(option) {
+            if (option === 'full') {
+                payBalance();
+            } else if (option === 'installments') {
+                initializePaymentPlan();
+            }
+        }
+
+        function initializePaymentPlan() {
+            if (confirm(`Confirmer le paiement échelonné ?\n\nVous allez payer le solde en plusieurs mensualités selon la durée de votre accompagnement.\n\nCela vous permettra de mieux gérer votre budget.`)) {
+                const success = initializeInstallmentPlan(user.email);
+
+                if (success) {
+                    alert('✅ Plan de paiement échelonné activé !\n\nVous pouvez maintenant payer vos mensualités.');
+
+                    // Recharger l'utilisateur
+                    const users = JSON.parse(localStorage.getItem('users') || '[]');
+                    const updatedUser = users.find(u => u.email === user.email);
+                    localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+
+                    // Afficher les mensualités
+                    const plan = getInstallmentPlan(user.email);
+                    displayInstallments(plan);
+                } else {
+                    alert('❌ Erreur lors de l\'activation du plan de paiement');
+                }
+            }
+        }
+
+        function displayInstallments(plan) {
+            document.getElementById('installmentSection').style.display = 'block';
+
+            let html = '';
+            plan.installments.forEach(installment => {
+                const isPaid = installment.status === 'paid';
+                const isCurrent = !isPaid && !plan.installments.slice(0, installment.number - 1).some(i => i.status === 'pending');
+
+                html += `
+                    <div class="border-4 border-black p-4 mb-4 ${isPaid ? 'bg-[#e8f5e9]' : isCurrent ? 'bg-[#fff9c4]' : 'bg-white'}">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <p class="font-black text-lg uppercase">
+                                    <i class="fas ${isPaid ? 'fa-check-circle text-[#51cf66]' : 'fa-circle'} mr-2"></i>
+                                    Mensualité ${installment.number} / ${plan.numberOfInstallments}
+                                </p>
+                                <p class="text-sm font-bold opacity-70">${installment.dueDate}</p>
+                                ${isPaid ? `<p class="text-xs font-bold text-[#51cf66] mt-1">Payée le ${new Date(installment.paidDate).toLocaleDateString('fr-FR')}</p>` : ''}
+                            </div>
+                            <div class="text-right">
+                                <p class="text-2xl font-black">${installment.amount}€</p>
+                                ${!isPaid && isCurrent ?
+                                    `<button onclick="payInstallment(${installment.number})" class="mt-2 bg-black text-white px-4 py-2 text-sm font-black uppercase border-2 border-black hover:bg-[var(--genesis-yellow)] hover:text-black transition">
+                                        Payer maintenant
+                                    </button>` :
+                                    isPaid ? '<span class="text-[#51cf66] font-black text-sm">✓ PAYÉE</span>' :
+                                    '<span class="opacity-50 font-black text-sm">EN ATTENTE</span>'
+                                }
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            document.getElementById('installmentsList').innerHTML = html;
+        }
+
+        function payInstallment(installmentNumber) {
+            if (confirm(`Confirmer le paiement de la mensualité ${installmentNumber} ?`)) {
+                const payment = recordInstallmentPayment(user.email, installmentNumber);
+
+                if (payment) {
+                    // Mettre à jour l'utilisateur connecté
+                    const users = JSON.parse(localStorage.getItem('users') || '[]');
+                    const updatedUser = users.find(u => u.email === user.email);
+                    localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+
+                    const plan = getInstallmentPlan(user.email);
+                    const allPaid = plan.installments.every(i => i.status === 'paid');
+
+                    if (allPaid) {
+                        alert(`✅ Mensualité ${installmentNumber} payée : ${payment.amount}€\n\n🎉 Toutes les mensualités sont payées !\nVous avez maintenant accès à tous vos livrables finaux !\n\nRedirection vers vos livrables...`);
+                        setTimeout(() => {
+                            window.location.href = 'livrables.html';
+                        }, 500);
+                    } else {
+                        alert(`✅ Mensualité ${installmentNumber} payée : ${payment.amount}€\n\nIl vous reste ${plan.installments.filter(i => i.status === 'pending').length} mensualité(s) à payer.`);
+                        location.reload();
+                    }
+                } else {
+                    alert('❌ Erreur lors du paiement');
+                }
+            }
+        }
+
+        function displayPaymentHistory(payments) {
+            if (!payments || payments.length === 0) {
+                document.getElementById('paymentHistory').innerHTML = `
+                    <p class="font-bold opacity-50 text-center py-8">Aucun paiement enregistré</p>
+                `;
+                return;
+            }
+
+            let html = '<div class="space-y-4">';
+            payments.forEach(payment => {
+                const date = new Date(payment.date).toLocaleDateString('fr-FR');
+                const typeLabel = payment.type === 'acompte' ? 'ACOMPTE' : 'SOLDE';
+                const typeIcon = payment.type === 'acompte' ? 'fa-hand-holding-usd' : 'fa-check-circle';
+
+                html += `
+                    <div class="border-4 border-black p-4 bg-[var(--genesis-yellow)]">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <p class="font-black text-lg uppercase">
+                                    <i class="fas ${typeIcon} mr-2"></i>${typeLabel}
+                                </p>
+                                <p class="text-sm font-bold opacity-70">${date}</p>
+                            </div>
+                            <p class="text-2xl font-black">${payment.amount}€</p>
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+
+            document.getElementById('paymentHistory').innerHTML = html;
+        }
+
+        function payDeposit() {
+            const users = JSON.parse(localStorage.getItem('users') || '[]');
+            const currentUser = users.find(u => u.email === user.email);
+
+            if (!currentUser || !currentUser.activeOfferId) {
+                alert('Erreur: Aucune offre active trouvée');
+                return;
+            }
+
+            if (confirm('Confirmer le paiement de l\'acompte (30%) ?\n\nAprès paiement, vous serez redirigé vers votre espace client.')) {
+                const payment = simulateDepositPayment(user.email, currentUser.activeOfferId);
+
+                if (payment) {
+                    // Mettre à jour l'utilisateur connecté
+                    const updatedUser = users.find(u => u.email === user.email);
+                    localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+
+                    alert(`✅ Paiement de l'acompte confirmé : ${payment.amount}€\n\n🎉 Votre accompagnement peut maintenant démarrer !\n\nRedirection vers votre espace client...`);
+
+                    // Redirection vers le dashboard
+                    setTimeout(() => {
+                        window.location.href = 'dashboard.html';
+                    }, 500);
+                } else {
+                    alert('❌ Erreur lors du paiement');
+                }
+            }
+        }
+
+        function payBalance() {
+            const users = JSON.parse(localStorage.getItem('users') || '[]');
+            const currentUser = users.find(u => u.email === user.email);
+
+            if (!currentUser || !currentUser.activeOfferId) {
+                alert('Erreur: Aucune offre active trouvée');
+                return;
+            }
+
+            if (confirm('Confirmer le paiement du solde (70%) ?\n\nVos livrables seront immédiatement accessibles.')) {
+                const payment = simulateBalancePayment(user.email, currentUser.activeOfferId);
+
+                if (payment) {
+                    // Mettre à jour l'utilisateur connecté
+                    const updatedUser = users.find(u => u.email === user.email);
+                    localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+
+                    alert(`✅ Paiement du solde confirmé : ${payment.amount}€\n\n🎉 Vous avez maintenant accès à tous vos livrables !\n\nRedirection vers vos livrables...`);
+
+                    // Redirection vers les livrables
+                    setTimeout(() => {
+                        window.location.href = 'livrables.html';
+                    }, 500);
+                } else {
+                    alert('❌ Erreur lors du paiement');
+                }
+            }
+        }
+
+        // Charger le statut au chargement de la page
+        loadPaymentStatus();
+    </script>
+</body>
+</html>

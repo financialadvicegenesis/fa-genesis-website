@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="fr" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contact - FA GENESIS | Lancez Votre Projet</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Unbounded:wght@400;900&family=Space+Grotesk:wght@300;700&display=swap');
+
+        :root {
+            --genesis-yellow: #FFD700;
+            --genesis-black: #000000;
+            --genesis-white: #FFFFFF;
+        }
+
+        body {
+            background-color: var(--genesis-black);
+            color: var(--genesis-white);
+            font-family: 'Space Grotesk', sans-serif;
+            overflow-x: hidden;
+        }
+
+        h1, h2, h3, h4, h5, .nav-link { font-family: 'Unbounded', cursive; }
+
+        /* Styles Néo-Brutalistes */
+        .neo-border { border: 4px solid var(--genesis-black); }
+        .neo-shadow { box-shadow: 10px 10px 0px 0px var(--genesis-yellow); }
+        .neo-shadow-black { box-shadow: 8px 8px 0px 0px var(--genesis-black); }
+        .neo-shadow-white { box-shadow: 6px 6px 0px 0px var(--genesis-black); }
+
+        .neo-btn-yellow {
+            background: var(--genesis-yellow);
+            color: black;
+            border: 4px solid black;
+            box-shadow: 6px 6px 0px black;
+            font-weight: 900;
+            transition: 0.1s;
+        }
+        .neo-btn-yellow:active {
+            transform: translate(4px, 4px);
+            box-shadow: 0px 0px 0px black;
+        }
+
+        .section-header {
+            font-size: clamp(3rem, 10vw, 7rem);
+            line-height: 0.9;
+            text-transform: uppercase;
+            font-style: italic;
+            letter-spacing: -0.05em;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- NAVIGATION -->
+    <nav class="fixed top-0 w-full z-50 bg-black/95 backdrop-blur-md border-b-4 border-[var(--genesis-yellow)] px-6 py-4 flex justify-between items-center text-white text-xs font-black uppercase">
+        <div class="flex items-center">
+            <a href="index.html" class="text-2xl font-black tracking-wider text-[var(--genesis-yellow)]" style="font-family: 'Unbounded', cursive;">FA GENESIS</a>
+        </div>
+        <div class="hidden md:flex gap-12 text-white font-black">
+            <a href="index.html#accueil" class="nav-link hover:text-[var(--genesis-yellow)] transition">Accueil</a>
+            <a href="a-propos.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">À Propos</a>
+            <a href="offres.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">Offres</a>
+            <a href="contact.html" class="nav-link text-[var(--genesis-yellow)]">Contact</a>
+        </div>
+        <div class="flex gap-4 items-center">
+            <a href="login.html" class="border-4 border-white text-white px-6 py-3 text-[12px] tracking-widest font-black hover:bg-white hover:text-black transition">Espace client</a>
+            <a href="contact.html" class="neo-btn-yellow px-6 py-3 text-[12px] tracking-widest text-black font-black">Lancer un projet</a>
+        </div>
+    </nav>
+
+    <!-- CONTACT HERO -->
+    <section class="min-h-screen flex flex-col items-center justify-center p-6 bg-black pt-32 text-center relative overflow-hidden text-white font-black uppercase">
+        <div class="absolute top-20 left-[-10%] w-96 h-96 bg-[var(--genesis-yellow)] rounded-full blur-[120px] opacity-20 z-0"></div>
+        <div class="w-full max-w-7xl z-10" data-aos="zoom-in">
+            <h1 class="section-header text-[var(--genesis-yellow)] mb-12 italic">CONTACT</h1>
+            <p class="text-3xl font-black italic uppercase mb-20 max-w-4xl mx-auto">Commence ton aventure maintenant</p>
+        </div>
+    </section>
+
+    <!-- CONTACT FORM -->
+    <section class="py-40 bg-black text-white px-6 overflow-hidden text-center uppercase font-black">
+        <div class="container mx-auto max-w-5xl relative text-center font-black">
+            <div class="absolute bottom-[-10%] left-[-10%] w-96 h-96 bg-[var(--genesis-yellow)] rounded-full blur-[120px] opacity-10 z-0"></div>
+            <div data-aos="fade-up" class="z-10 relative font-black">
+                <form class="space-y-10 text-left font-black">
+                    <div class="grid md:grid-cols-2 gap-10 font-black">
+                        <input type="text" placeholder="NOM COMPLET" class="bg-white text-black p-6 neo-border neo-shadow-white font-bold outline-none focus:translate-x-1 focus:translate-y-1 focus:shadow-none transition-all font-black uppercase">
+                        <input type="email" placeholder="EMAIL PROFESSIONNEL" class="bg-white text-black p-6 neo-border neo-shadow-white font-bold outline-none focus:translate-x-1 focus:translate-y-1 focus:shadow-none transition-all text-black font-black uppercase">
+                    </div>
+                    <div class="grid md:grid-cols-2 gap-10 font-black">
+                        <select class="bg-white text-black p-6 neo-border neo-shadow-white font-bold outline-none focus:translate-x-1 focus:translate-y-1 focus:shadow-none transition-all font-black uppercase">
+                            <option value="" disabled selected>QUEL PROFIL</option>
+                            <option value="etudiant">ÉTUDIANT</option>
+                            <option value="particulier">PARTICULIER</option>
+                            <option value="entreprise">ENTREPRISE</option>
+                        </select>
+                        <select name="objet" class="bg-white text-black p-6 neo-border neo-shadow-white font-bold outline-none focus:translate-x-1 focus:translate-y-1 focus:shadow-none transition-all font-black uppercase">
+                            <option value="" disabled selected>OBJET DE LA DEMANDE</option>
+                            <option value="information">DEMANDE D'INFORMATION</option>
+                            <option value="devis">DEVIS PERSONNALISÉ</option>
+                            <option value="offre">QUESTION SUR UNE OFFRE</option>
+                            <option value="technique">QUESTION TECHNIQUE</option>
+                            <option value="support">SUPPORT CLIENT</option>
+                            <option value="partenariat">PARTENARIAT</option>
+                            <option value="autre">AUTRE</option>
+                        </select>
+                    </div>
+                    <textarea placeholder="ÉCRIVEZ VOTRE DEMANDE" rows="5" class="w-full bg-white text-black p-6 neo-border neo-shadow-white font-bold outline-none focus:translate-x-1 focus:translate-y-1 focus:shadow-none transition-all font-black uppercase"></textarea>
+                    <button type="submit" class="w-full py-8 neo-btn-yellow text-4xl font-black italic uppercase tracking-tighter text-center flex items-center justify-center font-black">Envoyer</button>
+                </form>
+
+                <!-- Informations supplémentaires -->
+                <div class="mt-32 grid md:grid-cols-3 gap-10">
+                    <div class="bg-white text-black p-8 neo-border neo-shadow" data-aos="fade-up">
+                        <h3 class="text-2xl font-black mb-4 italic uppercase">EMAIL</h3>
+                        <p class="font-bold text-sm">financialadvicegenesis@gmail.com</p>
+                    </div>
+                    <div class="bg-white text-black p-8 neo-border neo-shadow" data-aos="fade-up" data-aos-delay="100">
+                        <h3 class="text-2xl font-black mb-4 italic uppercase">TÉLÉPHONE</h3>
+                        <p class="font-bold">+33 7 64 16 36 09</p>
+                    </div>
+                    <div class="bg-white text-black p-8 neo-border neo-shadow" data-aos="fade-up" data-aos-delay="200">
+                        <h3 class="text-2xl font-black mb-4 italic uppercase">HORAIRES</h3>
+                        <p class="font-bold">Lun - Ven : 9h - 18h</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="bg-white text-black py-24 border-t-8 border-[var(--genesis-yellow)] px-6 font-black uppercase">
+        <div class="container mx-auto font-black uppercase">
+            <div class="flex flex-col md:flex-row justify-between items-center gap-20 text-center md:text-left">
+                <div>
+                    <h2 class="text-4xl font-black italic tracking-tighter uppercase font-black">FA GENESIS</h2>
+                    <p class="text-[11px] text-black uppercase tracking-[10px] mt-2 italic">BUILD. LAUNCH. IMPACT. • GROUPE FA INDUSTRIES</p>
+                </div>
+                <div class="flex flex-col items-center md:items-end gap-10 font-black">
+                    <div class="flex gap-8 items-center">
+                        <a href="https://www.linkedin.com/in/financial-advice-genesis-772b653aa/" target="_blank" class="text-3xl hover:text-[var(--genesis-yellow)] transition" title="LinkedIn">
+                            <i class="fab fa-linkedin"></i>
+                        </a>
+                        <a href="https://www.instagram.com/financial_advice_genesis/?hl=en" target="_blank" class="text-3xl hover:text-[var(--genesis-yellow)] transition" title="Instagram">
+                            <i class="fab fa-instagram"></i>
+                        </a>
+                        <a href="https://www.tiktok.com/@financial.advice.genesis" target="_blank" class="text-3xl hover:text-[var(--genesis-yellow)] transition" title="TikTok">
+                            <i class="fab fa-tiktok"></i>
+                        </a>
+                    </div>
+                    <p class="text-[11px] uppercase text-black text-center md:text-right font-bold italic font-black">
+                        © 2024 FINANCIAL ADVICE GENESIS • GROUPE FA INDUSTRIES • DÉVELOPPÉ PAR L'ÉLITE WEB
+                    </p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>
+    <script>
+        AOS.init({ duration: 1000, once: false, mirror: true, offset: 120 });
+
+        // Pré-remplir le formulaire avec la formule choisie
+        document.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const formule = urlParams.get('formule');
+
+            if (formule) {
+                const formuleSelect = document.querySelector('select[name="formule"]');
+                if (!formuleSelect) {
+                    // Si le select n'a pas de name, chercher par position (2ème select)
+                    const selects = document.querySelectorAll('select');
+                    if (selects.length >= 2) {
+                        selects[1].value = formule;
+                    }
+                } else {
+                    formuleSelect.value = formule;
+                }
+            }
+        });
+    </script>
+</body>
+</html>

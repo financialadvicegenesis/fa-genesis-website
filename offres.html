@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="fr" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Offres & Tarifs - FA GENESIS | Nos Solutions</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Unbounded:wght@400;900&family=Space+Grotesk:wght@300;700&display=swap');
+
+        :root {
+            --genesis-yellow: #FFD700;
+            --genesis-black: #000000;
+            --genesis-white: #FFFFFF;
+            --genesis-solution-bg: #c89116;
+        }
+
+        body {
+            background-color: var(--genesis-black);
+            color: var(--genesis-white);
+            font-family: 'Space Grotesk', sans-serif;
+            overflow-x: hidden;
+        }
+
+        h1, h2, h3, h4, h5, .nav-link { font-family: 'Unbounded', cursive; }
+
+        /* Styles Néo-Brutalistes */
+        .neo-border { border: 4px solid var(--genesis-black); }
+        .neo-shadow { box-shadow: 10px 10px 0px 0px var(--genesis-yellow); }
+        .neo-shadow-black { box-shadow: 8px 8px 0px 0px var(--genesis-black); }
+
+        .neo-card {
+            background: var(--genesis-white);
+            color: var(--genesis-black);
+            border: 4px solid var(--genesis-black);
+            transition: all 0.2s ease;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        .neo-card:hover {
+            transform: translate(-4px, -4px);
+            box-shadow: 14px 14px 0px 0px var(--genesis-yellow);
+        }
+
+        .neo-btn-yellow {
+            background: var(--genesis-yellow);
+            color: black;
+            border: 4px solid black;
+            box-shadow: 6px 6px 0px black;
+            font-weight: 900;
+            transition: 0.1s;
+        }
+        .neo-btn-yellow:active {
+            transform: translate(4px, 4px);
+            box-shadow: 0px 0px 0px black;
+        }
+
+        .section-header {
+            font-size: clamp(3rem, 10vw, 7rem);
+            line-height: 0.9;
+            text-transform: uppercase;
+            font-style: italic;
+            letter-spacing: -0.05em;
+        }
+
+        .installment-info {
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            color: black !important;
+            opacity: 1 !important;
+            margin-top: -8px;
+            margin-bottom: 15px;
+            display: inline-block;
+        }
+
+        .price-display {
+            font-size: 2.25rem;
+            font-weight: 900;
+            font-family: 'Unbounded', cursive;
+            line-height: 1;
+        }
+
+        .elite-badge-white {
+            background-color: black !important;
+            color: white !important;
+            border: 2px solid white !important;
+            border-radius: 9999px;
+            padding: 4px 16px;
+            font-size: 11px;
+            font-weight: 900;
+            text-transform: uppercase;
+            display: inline-block;
+        }
+
+        .card-high-visibility * { color: white !important; border-color: rgba(255,255,255,0.3) !important; }
+        .card-high-visibility .price-display { color: white !important; }
+        .card-high-visibility .installment-info { color: black !important; }
+        .card-high-visibility ul { border-top-color: white !important; }
+
+        .btn-elite-black {
+            width: 100%;
+            padding: 1.25rem 0;
+            background-color: black !important;
+            color: white !important;
+            border: 4px solid white !important;
+            font-weight: 900;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            font-style: italic;
+            transition: 0.2s;
+        }
+        .btn-elite-black:hover {
+            transform: scale(1.02);
+            box-shadow: 0px 0px 15px rgba(255,255,255,0.3);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- NAVIGATION -->
+    <nav class="fixed top-0 w-full z-50 bg-black/95 backdrop-blur-md border-b-4 border-[var(--genesis-yellow)] px-6 py-4 flex justify-between items-center text-white text-xs font-black uppercase">
+        <div class="flex items-center">
+            <a href="index.html" class="text-2xl font-black tracking-wider text-[var(--genesis-yellow)]" style="font-family: 'Unbounded', cursive;">FA GENESIS</a>
+        </div>
+        <div class="hidden md:flex gap-12 text-white font-black">
+            <a href="index.html#accueil" class="nav-link hover:text-[var(--genesis-yellow)] transition">Accueil</a>
+            <a href="a-propos.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">À Propos</a>
+            <a href="offres.html" class="nav-link text-[var(--genesis-yellow)]">Offres</a>
+            <a href="contact.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">Contact</a>
+        </div>
+        <div class="flex gap-4 items-center">
+            <a href="login.html" class="border-4 border-white text-white px-6 py-3 text-[12px] tracking-widest font-black hover:bg-white hover:text-black transition">Espace client</a>
+            <a href="contact.html" class="neo-btn-yellow px-6 py-3 text-[12px] tracking-widest text-black font-black">Lancer un projet</a>
+        </div>
+    </nav>
+
+    <!-- OFFRES HERO -->
+    <section class="min-h-screen flex flex-col items-center justify-center p-6 bg-black pt-32 text-center relative overflow-hidden text-white font-black uppercase">
+        <div class="absolute top-20 left-[-10%] w-96 h-96 bg-[var(--genesis-yellow)] rounded-full blur-[120px] opacity-20 z-0"></div>
+        <div class="w-full max-w-7xl z-10" data-aos="zoom-in">
+            <h1 class="section-header text-[var(--genesis-yellow)] mb-12 italic">NOS OFFRES</h1>
+            <p class="text-3xl font-black italic uppercase mb-20 max-w-4xl mx-auto">Découvrez nos solutions sur mesure pour transformer votre projet</p>
+        </div>
+    </section>
+
+    <!-- SECTION SOLUTIONS -->
+    <section id="offres" class="py-32 px-6 font-black uppercase" style="background-color: var(--genesis-solution-bg);">
+        <div class="container mx-auto">
+            <h2 class="section-header mb-24 underline decoration-black decoration-8 text-white text-center italic" data-aos="fade-down">SOLUTIONS</h2>
+
+            <!-- 01. OFFRES ÉTUDIANTS -->
+            <div class="mb-40 text-center font-black uppercase">
+                <h3 class="text-5xl font-black mb-16 bg-black text-white inline-block px-10 py-5 italic transform -rotate-2 tracking-tighter uppercase font-black">ÉTUDIANTS</h3>
+                <div class="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-8 text-left text-white font-black">
+                    <div class="neo-card p-8 flex flex-col justify-between card-high-visibility font-black" style="background: linear-gradient(135deg, #000000, #26ff22);" data-aos="flip-up">
+                        <div><div class="elite-badge-white mb-6">2 Jours</div><h4 class="text-2xl uppercase italic mb-2 text-white text-left">IDEA</h4></div>
+                        <div class="mt-12 flex-grow flex flex-col justify-end text-white text-left font-black">
+                            <div class="price-display mb-1 text-3xl">50 €</div>
+                            <p class="installment-info font-black">paiement possible en 2x soit (24,50 €/mois)</p>
+                            <ul class="text-[10px] space-y-3 uppercase border-t-4 pt-6 mb-10 font-black">
+                                <li>✔ 1 Mini séance stratégique (45 min)</li>
+                                <li>✔ Structuration claire du projet</li>
+                                <li>✔ Mini plan d'action (7 jours)</li>
+                            </ul><a href="register.html?offre=etudiant-idea" class="btn-elite-black text-center">Sélectionner</a></div>
+                    </div>
+                    <div class="neo-card p-8 flex flex-col justify-between card-high-visibility font-black" style="background: linear-gradient(135deg, #000000, #05ffff);" data-aos="flip-up" data-aos-delay="100">
+                        <div><div class="elite-badge-white mb-6 text-black font-black text-left">7 Jours</div><h4 class="text-2xl uppercase italic mb-2 text-white text-left">STARTER</h4></div>
+                        <div class="mt-12 flex-grow flex flex-col justify-end text-white text-left font-black">
+                            <div class="price-display mb-1 text-3xl font-black">100 €</div>
+                            <p class="installment-info font-black">paiement possible en 4x soit (25€/mois)</p>
+                            <ul class="text-[10px] space-y-3 uppercase border-t-4 pt-6 mb-10 font-black">
+                                <li>✔ 1 Séance stratégique (1h30)</li>
+                                <li>✔ Structuration claire du projet</li>
+                                <li>✔ Conseils visibilité gratuits (sans tournage)</li>
+                                <li>✔ Plan d'action (14 jours)</li>
+                            </ul><a href="register.html?offre=etudiant-starter" class="btn-elite-black text-center">Démarrer</a></div>
+                    </div>
+                    <div class="neo-card p-8 flex flex-col justify-between card-high-visibility font-black" style="background: linear-gradient(135deg, #191418, #c400ff);" data-aos="flip-up" data-aos-delay="200">
+                        <div><div class="elite-badge-white mb-6 text-black font-black text-left">14 Jours</div><h4 class="text-2xl uppercase italic mb-2 text-white text-left">LAUNCH</h4></div>
+                        <div class="mt-12 flex-grow flex flex-col justify-end text-white text-left font-black">
+                            <div class="price-display mb-1 text-3xl font-black">189 €</div>
+                            <p class="installment-info font-black text-white">paiement possible en 6x soit (31,50€/mois)</p>
+                            <ul class="text-[10px] space-y-3 uppercase border-t-4 pt-6 mb-10 font-black text-left">
+                                <li>✔ 1 Séance stratégique (1h30)</li>
+                                <li>✔ Structuration claire & storytelling simple du projet</li>
+                                <li>✔ 1 Mini tournage vidéo (45 min)</li>
+                                <li>✔ 1 vidéo courte (1 min)</li>
+                                <li>✔ Accès à 1 Média crédible (1 Post et/ou 1 Story)</li>
+                                <li>✔ Plan de diffusion (30 jours)</li>
+                            </ul><a href="register.html?offre=etudiant-launch" class="btn-elite-black text-center">Lancer</a></div>
+                    </div>
+                    <div class="neo-card p-8 flex flex-col justify-between card-high-visibility font-black" style="background: linear-gradient(135deg, #ff0000, #ff00b8);" data-aos="flip-up" data-aos-delay="300">
+                        <div><div class="elite-badge-white mb-6 text-black font-black text-left font-black">1 Mois</div><h4 class="text-2xl mt-6 uppercase italic text-white">IMPACT</h4></div>
+                        <div class="mt-12 flex-grow flex flex-col justify-end text-white text-left font-black">
+                            <div class="price-display mb-1 text-3xl font-black text-left">290 €</div>
+                            <p class="installment-info font-black">paiement possible en 8x soit (36,25€/mois)</p>
+                            <ul class="text-[10px] space-y-3 border-t-4 pt-6 mb-10 uppercase font-black text-left">
+                                <li>✔ 1 Séance stratégique (1h30)</li>
+                                <li>✔ Structuration claire du projet</li>
+                                <li>✔ 1 Shooting photo (5 photos retouchées)</li>
+                                <li>✔ 1 Tournage vidéo (1h00)</li>
+                                <li>✔ 1 vidéo longue (2 min)</li>
+                                <li>✔ Accès à 1 Média crédible (1 Post et/ou 1 Story)</li>
+                                <li>✔ Plan de communication (30 jours)</li>
+                            </ul><a href="register.html?offre=etudiant-impact" class="btn-elite-black text-center">Maximiser</a></div>
+                    </div>
+                    <div class="neo-card p-8 flex flex-col justify-between card-high-visibility font-black" style="background: linear-gradient(135deg, #000000, #dd9a08);" data-aos="flip-up" data-aos-delay="400">
+                        <div><div class="elite-badge-white mb-6 text-black font-black text-left font-black font-black">Sur Mesure</div><h4 class="text-2xl italic uppercase mb-2 text-white text-left">CUSTOM</h4></div>
+                        <div class="mt-12 flex-grow flex flex-col justify-end text-white text-left uppercase font-black">
+                            <div class="price-display mb-1 text-4xl font-black text-white font-black text-left text-left font-black text-left">SUR DEVIS</div>
+                            <p class="installment-info">paiement possible en plusieurs fois selon le projet</p>
+                            <ul class="text-[10px] space-y-3 border-t-4 pt-6 mb-8 uppercase font-black text-left text-left font-black">
+                                <li>✔ Diagnostic stratégique personnalisé</li>
+                                <li>✔ Séances stratégiques sur mesure</li>
+                                <li>✔ Structuration & storytelling du projet</li>
+                                <li>✔ Image, visibilité & posture professionnelle</li>
+                                <li>✔ Plan d'action concret & réaliste</li>
+                            </ul><a href="register.html?offre=etudiant-custom" class="btn-elite-black text-center">Contacter</a></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 02. OFFRES PARTICULIERS -->
+            <div class="mb-40 text-center font-black uppercase font-black">
+                <h3 class="text-5xl font-black mb-16 bg-black text-white inline-block px-10 py-5 italic transform rotate-1 tracking-tighter text-center uppercase font-black font-black">PARTICULIERS</h3>
+                <div class="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-8 text-left text-white font-black font-black">
+                    <div class="neo-card p-8 flex flex-col justify-between card-high-visibility font-black" style="background: linear-gradient(135deg, #000000, #00ff66);" data-aos="zoom-in">
+                        <div><div class="elite-badge-white mb-6">2 Jours</div><h4 class="text-2xl font-black italic uppercase mb-2 text-white text-left font-black font-black">IDEA</h4></div>
+                        <div class="mt-12 flex-grow flex flex-col justify-end text-white text-left font-black">
+                            <div class="price-display mb-1 text-3xl text-left text-white font-black">149 €</div>
+                            <ul class="text-[10px] space-y-3 uppercase border-t-4 pt-6 mb-8 font-black text-left font-black">
+                                <li>✔ 1 Séance stratégique (1h30)</li>
+                                <li>✔ Structuration claire du projet</li>
+                                <li>✔ Plan d'action (7 jours)</li>
+                            </ul><a href="register.html?offre=particulier-idea" class="btn-elite-black text-center font-black">Sélectionner</a></div>
+                    </div>
+                    <!-- STARTER INDIV -->
+                    <div class="neo-card p-8 flex flex-col justify-between card-high-visibility font-black" style="background: linear-gradient(135deg, #000000, #006d67);" data-aos="zoom-in" data-aos-delay="100">
+                        <div><div class="elite-badge-white mb-6 text-black font-black text-left font-black font-black">7 Jours</div><h4 class="text-2xl font-black italic uppercase mb-2 text-white text-left font-black font-black">STARTER</h4></div>
+                        <div class="mt-12 flex-grow flex flex-col justify-end text-white text-left font-black">
+                            <div class="price-display mb-1 text-3xl font-black text-left text-left font-black text-left font-black">490 €</div>
+                            <p class="installment-info font-black text-black">paiement possible en 2x soit (245€/mois)</p>
+                            <ul class="text-[10px] space-y-3 border-t-2 pt-6 mb-8 uppercase font-black text-left font-black font-black">
+                                <li>✔ 1 Séance stratégique (1h30)</li>
+                                <li>✔ Structuration claire du projet</li>
+                                <li>✔ Conseils visibilité gratuits (sans tournage)</li>
+                                <li>✔ Plan d'action (14 jours)</li>
+                            </ul><a href="register.html?offre=particulier-starter" class="btn-elite-black text-center font-black font-black">Démarrer</a></div>
+                    </div>
+                    <!-- LAUNCH INDIV -->
+                    <div class="neo-card p-8 flex flex-col justify-between card-high-visibility font-black" style="background: linear-gradient(135deg, #191418, #8300ab);" data-aos="zoom-in" data-aos-delay="200">
+                        <div><div class="elite-badge-white mb-6 text-black font-black text-left font-black text-left font-black text-left font-black">14 Jours</div><h4 class="text-2xl font-black italic uppercase mb-2 text-white font-black text-left font-black uppercase text-left font-black">LAUNCH</h4></div>
+                        <div class="mt-12 flex-grow flex flex-col justify-end text-white text-left font-black">
+                            <div class="price-display mb-1 text-3xl font-black text-left text-left font-black">790 €</div>
+                            <p class="installment-info font-black">Paiement possible en 2x dont 1x/mois (395 €/mois)</p>
+                            <ul class="text-[10px] space-y-3 border-t-4 pt-6 mb-8 uppercase font-black text-left text-left font-black">
+                                <li>✔ 1 Séance stratégique (1h30)</li>
+                                <li>✔ Structuration claire & storytelling simple du projet</li>
+                                <li>✔ 1 Mini tournage vidéo (45 min)</li>
+                                <li>✔ 1 vidéo courte (1 min)</li>
+                                <li>✔ Accès à 1 Média crédible (2 Post et/ou 2 Story)</li>
+                                <li>✔ Plan de diffusion (30 jours)</li>
+                            </ul><a href="register.html?offre=particulier-launch" class="btn-elite-black text-center font-black">Lancer</a></div>
+                    </div>
+                    <!-- IMPACT INDIV -->
+                    <div class="neo-card p-8 flex flex-col justify-between card-high-visibility font-black" style="background: linear-gradient(135deg, #ff0000, #ff00b8);" data-aos="zoom-in" data-aos-delay="300">
+                        <div><div class="elite-badge-white mb-6 text-black font-black text-left font-black font-black">1 mois</div><h4 class="text-2xl font-black italic uppercase mb-2 text-white font-black text-left">IMPACT</h4></div>
+                        <div class="mt-12 flex-grow flex flex-col justify-end text-white text-left font-black font-black text-left font-black">
+                            <div class="price-display mb-1 text-3xl font-black text-left text-left font-black text-left">1490 €</div>
+                            <p class="installment-info font-black">Paiement possible en 2x dont 1x/mois (745 €/mois)</p>
+                            <ul class="text-[10px] space-y-3 border-t-4 pt-6 mb-8 uppercase font-black text-left text-left font-black">
+                                <li>✔ 1 Séance stratégique (1h30)</li>
+                                <li>✔ Structuration claire du projet</li>
+                                <li>✔ 1 Shooting photo (9 photos retouchées)</li>
+                                <li>✔ 1 Tournage vidéo (1h00)</li>
+                                <li>✔ 1 vidéo longue (2 min)</li>
+                                <li>✔ Accès à 1 Média crédible (4 Post et/ou 4 Story)</li>
+                                <li>✔ Plan de communication (30 jours)</li>
+                            </ul><a href="register.html?offre=particulier-impact" class="btn-elite-black text-center font-black">Maximiser</a></div>
+                    </div>
+                    <!-- CUSTOM INDIV -->
+                    <div class="neo-card p-8 flex flex-col justify-between card-high-visibility font-black" style="background: linear-gradient(135deg, #000000, #dd9a08);" data-aos="zoom-in" data-aos-delay="400">
+                        <div><div class="elite-badge-white mb-6 text-black font-black text-left font-black font-black font-black">Sur Mesure</div><h4 class="text-2xl font-black italic uppercase mb-2 text-white text-left font-black text-left font-black text-left font-black">CUSTOM</h4></div>
+                        <div class="mt-12 flex-grow flex flex-col justify-end text-white text-left uppercase font-black">
+                            <div class="price-display mb-1 text-4xl font-black text-white text-left uppercase text-left font-black">SUR DEVIS</div>
+                            <p class="installment-info">paiement possible en plusieurs fois selon le projet</p>
+                            <ul class="text-[10px] space-y-3 border-t-4 pt-6 mb-8 uppercase font-black text-left">
+                                <li>✔ Diagnostic stratégique personnalisé</li>
+                                <li>✔ Séances stratégiques sur mesure</li>
+                                <li>✔ Structuration & storytelling du projet</li>
+                                <li>✔ Image, visibilité & posture professionnelle</li>
+                                <li>✔ Plan d'action concret & réaliste</li>
+                            </ul><a href="register.html?offre=particulier-custom" class="btn-elite-black text-center">Contacter</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 03. OFFRES ENTREPRISES -->
+            <div class="mb-40 text-center font-black uppercase text-black font-black uppercase text-black font-black font-black">
+                <h3 class="text-5xl font-black mb-16 bg-black text-white inline-block px-10 py-5 italic transform -rotate-1 tracking-tighter text-center font-black uppercase">ENTREPRISES</h3>
+                <div class="grid lg:grid-cols-4 gap-8 text-left text-white font-black font-black font-black">
+                    <div class="neo-card p-10 card-high-visibility flex flex-col justify-between text-left font-black" style="background: linear-gradient(135deg, #202020, #ff5c00);" data-aos="fade-up">
+                        <div>
+                            <div class="elite-badge-white mb-6 font-black font-black font-black">7 jours</div>
+                            <h4 class="text-3xl font-black italic mb-2 uppercase text-white text-left font-black">START</h4>
+                            <p class="font-bold mb-8 text-[11px] uppercase tracking-widest text-left text-white font-black uppercase">structurer</p>
+                            <div class="price-display mb-1 text-white text-3xl font-black italic text-left font-black">1490 €</div>
+                        </div>
+                        <ul class="space-y-3 font-black text-[10px] uppercase border-t pt-8 mb-10 mt-6">
+                            <li>✔ 1 Séance stratégique (1h30)</li>
+                            <li>✔ Clarification du positionnement</li>
+                            <li>✔ Message central & discours clair</li>
+                            <li>✔ Conseils visibilité (sans tournage)</li>
+                            <li>✔ Mini plan d'action (30 jours)</li>
+                        </ul><a href="register.html?offre=entreprise-start" class="btn-elite-black text-center font-black">Démarrer</a>
+                    </div>
+                    <div class="neo-card p-10 card-high-visibility flex flex-col justify-between text-left font-black font-black font-black" style="background: linear-gradient(135deg, #202020, #ff0000);" data-aos="fade-up" data-aos-delay="200">
+                        <div>
+                            <div class="elite-badge-white mb-6 text-black font-black font-black text-left">14 jours</div>
+                            <h4 class="text-3xl font-black italic mb-2 uppercase text-white text-left font-black">VISIBILITY</h4>
+                            <p class="text-white font-bold mb-8 text-[11px] uppercase tracking-widest text-left font-black uppercase">crédibilité</p>
+                            <div class="price-display mb-1 text-white font-black text-3xl text-left italic font-black">2990 €</div>
+                        </div>
+                        <ul class="space-y-3 font-black text-[10px] uppercase border-t pt-8 mb-10 mt-6">
+                            <li>✔ 1 Séance stratégique (1h30)</li>
+                            <li>✔ Structuration du storytelling de l'entreprise</li>
+                            <li>✔ 1 shooting photo professionnel (24 photos retouchées)</li>
+                            <li>✔ 1 tournage vidéo (1h30)</li>
+                            <li>✔ 1 Vidéo longue (2 min)</li>
+                            <li>✔ Format réseaux sociaux</li>
+                            <li>✔ Accès à 1 Média crédible (6 Post et/ou 6 Story)</li>
+                            <li>✔ Plan de diffusion (30 jours)</li>
+                        </ul><a href="register.html?offre=entreprise-visibility" class="btn-elite-black text-center font-black">Propulser</a>
+                    </div>
+                    <div class="neo-card p-10 card-high-visibility flex flex-col justify-between text-left text-white font-black uppercase font-black" style="background: linear-gradient(135deg, #202020, #ffbc0f);" data-aos="fade-up" data-aos-delay="400">
+                        <div>
+                            <div class="elite-badge-white mb-6 text-black font-black text-left">30 jours</div>
+                            <h4 class="text-3xl font-black italic mb-2 uppercase font-black text-white text-left font-black">IMPACT</h4>
+                            <p class="text-white font-bold mb-8 text-[11px] uppercase tracking-widest text-left font-black">autorité</p>
+                            <div class="price-display mb-1 text-white font-black text-3xl text-left italic font-black">4900 €</div>
+                        </div>
+                        <ul class="space-y-3 font-black text-[10px] uppercase border-t pt-8 mb-10 mt-6">
+                            <li>✔ 1 Séance stratégique (1h30)</li>
+                            <li>✔ Structuration du positionnement & discours</li>
+                            <li>✔ 1 Shooting photo professionnel (40 photos retouchées)</li>
+                            <li>✔ 2 tournages vidéos (1h30 chacun)</li>
+                            <li>✔ 2 vidéos longues (2 min chacune) + Direction narrative</li>
+                            <li>✔ Format réseaux sociaux</li>
+                            <li>✔ Accès à 1 Média crédible (9 Post et/ou 9 Story)</li>
+                            <li>✔ Plan de communication (60 jours)</li>
+                        </ul><a href="register.html?offre=entreprise-impact" class="btn-elite-black text-center font-black">Dominer</a>
+                    </div>
+                    <div class="neo-card p-10 card-high-visibility flex flex-col justify-between text-left font-black font-black" style="background: linear-gradient(135deg, #202020, #f2ff00);" data-aos="fade-up" data-aos-delay="600">
+                        <div>
+                            <div class="elite-badge-white mb-6 text-black font-black text-left font-black font-black">Sur Mesure</div>
+                            <h4 class="text-3xl font-black italic mb-2 uppercase text-white text-2xl font-black text-left font-black">CUSTOM</h4>
+                        </div>
+                        <div class="mt-12 flex-grow flex flex-col justify-end text-white text-left uppercase font-black">
+                            <div class="price-display mb-1 text-white font-black text-3xl uppercase font-black text-left italic font-black">SUR DEVIS</div>
+                            <ul class="space-y-3 font-black text-[10px] uppercase border-t pt-8 mb-10 mt-6">
+                                <li>✔ Diagnostic stratégique personnalisé</li>
+                                <li>✔ Séances stratégiques personnalisées</li>
+                                <li>✔ Image, visibilité & posture dirigeante</li>
+                                <li>✔ Storytelling & communication globale</li>
+                                <li>✔ Production de contenus personnalisée</li>
+                                <li>✔ Plan d'action réaliste & mesurable</li>
+                            </ul><a href="register.html?offre=entreprise-custom" class="btn-elite-black text-center font-black">Contacter</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- SECTION TARIFS INDIVIDUELS -->
+    <section id="tarifs" class="py-20 bg-black text-white px-6 font-black uppercase">
+        <div class="container mx-auto font-black">
+            <h3 class="text-5xl font-black mb-20 bg-white text-black inline-block px-10 py-5 italic transform rotate-1 tracking-tighter w-full text-center uppercase font-black">TARIFS INDIVIDUELS</h3>
+
+            <!-- PHOTO -->
+            <h4 class="text-3xl font-black mb-10 text-left italic border-b-4 border-white inline-block uppercase font-black">Photo</h4>
+            <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-8 mb-24 text-left font-black">
+                <div class="neo-card p-8 border-white font-black" style="background: linear-gradient(135deg, #8b5a00, #b5cd63); color: white;" data-aos="fade-up">
+                    <h5 class="text-xl font-black mb-4 uppercase text-white font-black">ESSENTIEL</h5>
+                    <div class="text-3xl font-black mb-2 italic text-white text-left font-black">180 €</div>
+                    <p class="installment-info">Paiement 2x possible (90 €/mois)</p>
+                    <ul class="text-xs space-y-2 border-t border-white/30 pt-4 text-white font-black uppercase mb-6">
+                        <li>✔ 1 Séance Photo</li>
+                        <li>✔ 8 Photos retouchées</li>
+                        <li>✔ Formats réseaux sociaux</li>
+                    </ul>
+                    <a href="register.html?offre=photo-essentiel" class="btn-elite-black text-center w-full">Choisir</a>
+                </div>
+                <div class="neo-card p-8 border-white font-black" style="background: linear-gradient(135deg, #8b5a00, #b5cd63); color: white;" data-aos="fade-up" data-aos-delay="100">
+                    <h5 class="text-xl font-black mb-4 uppercase text-white text-left font-black">PRO</h5>
+                    <div class="text-3xl font-black mb-2 italic text-white text-left font-black">400 €</div>
+                    <p class="installment-info">Paiement 2x possible (200 €/mois)</p>
+                    <ul class="text-xs space-y-2 border-t border-white/30 pt-4 text-white font-black uppercase text-left font-black mb-6">
+                        <li>✔ 1 Séance photo</li>
+                        <li>✔ 22 Photos retouchées</li>
+                        <li>✔ Orientation posture & image pro</li>
+                        <li>✔ Format réseaux sociaux</li>
+                        <li>✔ Conseils d'utilisation des images</li>
+                    </ul>
+                    <a href="register.html?offre=photo-pro" class="btn-elite-black text-center w-full">Professionnaliser</a>
+                </div>
+                <div class="neo-card p-8 border-white font-black" style="background: linear-gradient(135deg, #8b5a00, #b5cd63); color: white;" data-aos="fade-up" data-aos-delay="200">
+                    <h5 class="text-xl font-black mb-4 uppercase text-white text-left font-black">EVENT</h5>
+                    <div class="text-3xl font-black mb-2 italic text-white text-left font-black text-left">900 €</div>
+                    <p class="installment-info">Paiement 2x possible (450 €/mois)</p>
+                    <ul class="text-xs space-y-2 border-t border-white/30 pt-4 text-white font-black uppercase text-left font-black text-left font-black mb-6">
+                        <li>✔ Présence du photographe (6 heures Max)</li>
+                        <li>✔ 50 photos retouchées</li>
+                        <li>✔ Captation des moments clés</li>
+                        <li>✔ Format réseaux sociaux</li>
+                        <li>✔ Conseils de sélection et d'utilisation des images</li>
+                    </ul>
+                    <a href="register.html?offre=photo-event" class="btn-elite-black text-center w-full">Immortaliser</a>
+                </div>
+                <div class="neo-card p-8 border-white font-black" style="background: linear-gradient(135deg, #8b5a00, #b5cd63); color: white;" data-aos="fade-up" data-aos-delay="300">
+                    <h5 class="text-xl font-black mb-4 uppercase text-white text-left font-black text-white font-black">CUSTOM</h5>
+                    <div class="text-3xl font-black mb-2 italic text-white text-left font-black text-white font-black text-left font-black">DEVIS</div>
+                    <p class="installment-info text-white font-black text-left font-black">paiement possible en plusieurs fois selon le projet</p>
+                    <ul class="text-xs space-y-2 border-t border-white/30 pt-4 text-white font-black uppercase text-left font-black mb-6">
+                        <li>✔ Séance photo personnalisée</li>
+                        <li>✔ Nombre de photos retouchées adapté</li>
+                        <li>✔ Orientation posture & image professionnelle</li>
+                        <li>✔ Format réseaux sociaux</li>
+                        <li>✔ Conseils de sélection et/ou d'utilisation des images</li>
+                    </ul>
+                    <a href="register.html?offre=photo-custom" class="btn-elite-black text-center w-full">Contacter</a>
+                </div>
+            </div>
+
+            <!-- VIDÉO -->
+            <h4 class="text-3xl font-black mb-10 text-left italic border-b-4 border-white inline-block uppercase font-black">Vidéo</h4>
+            <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-8 mb-24 text-left font-black">
+                <div class="neo-card p-8 border-white font-black" style="background: linear-gradient(135deg, #0e6c9b, #5d0069, #e300ff); color: white;" data-aos="fade-up">
+                    <h5 class="text-xl font-black mb-4 uppercase text-white font-black">PRO</h5>
+                    <div class="text-3xl font-black mb-2 italic text-white font-black text-left">120 €</div>
+                    <p class="installment-info">Paiement 2x possible (60 €/mois)</p>
+                    <ul class="text-xs space-y-2 border-t border-white/30 pt-4 text-white font-black uppercase mb-6">
+                        <li>✔ 1 Mini tournage vidéo (45 min)</li>
+                        <li>✔ 1 Vidéo courte (1 min)</li>
+                        <li>✔ Son + cadrage pro</li>
+                        <li>✔ Format réseaux sociaux</li>
+                    </ul>
+                    <a href="register.html?offre=video-pro" class="btn-elite-black text-center w-full">Démarrer</a>
+                </div>
+                <div class="neo-card p-8 border-white font-black" style="background: linear-gradient(135deg, #0e6c9b, #5d0069, #e300ff); color: white;" data-aos="fade-up" data-aos-delay="100">
+                    <h5 class="text-xl font-black mb-4 uppercase text-white font-black">STORYTELLING</h5>
+                    <div class="text-3xl font-black mb-2 italic text-white font-black text-left">390 €</div>
+                    <p class="installment-info">Paiement 2x possible (195 €/mois)</p>
+                    <ul class="text-xs space-y-2 border-t border-white/30 pt-4 text-white font-black uppercase mb-6">
+                        <li>✔ 1 Tournage vidéo (1h00)</li>
+                        <li>✔ 1 Vidéo longue (2 min)</li>
+                        <li>✔ Son + cadrage pro</li>
+                        <li>✔ Format réseaux sociaux</li>
+                        <li>✔ Orientation posture & discours</li>
+                    </ul>
+                    <a href="register.html?offre=video-storytelling" class="btn-elite-black text-center w-full">Raconter</a>
+                </div>
+                <div class="neo-card p-8 border-white font-black" style="background: linear-gradient(135deg, #0e6c9b, #5d0069, #e300ff); color: white;" data-aos="fade-up" data-aos-delay="200">
+                    <h5 class="text-xl font-black mb-4 uppercase text-white font-black">VISIBILITY</h5>
+                    <div class="text-3xl font-black mb-2 italic text-white font-black text-left">530 €</div>
+                    <p class="installment-info">Paiement 2x possible (265 €/mois)</p>
+                    <ul class="text-xs space-y-2 border-t border-white/30 pt-4 text-white font-black uppercase mb-6">
+                        <li>✔ 1 Tournage vidéo (1h30)</li>
+                        <li>✔ 1 Vidéo longue (2 min) + Direction narrative + storytelling</li>
+                        <li>✔ Son + cadrage pro</li>
+                        <li>✔ Format réseaux sociaux</li>
+                        <li>✔ Orientation posture & discours</li>
+                        <li>✔ Conseils de diffusion</li>
+                    </ul>
+                    <a href="register.html?offre=video-visibility" class="btn-elite-black text-center w-full">Briller</a>
+                </div>
+                <div class="neo-card p-8 border-white font-black" style="background: linear-gradient(135deg, #0e6c9b, #5d0069, #e300ff); color: white;" data-aos="fade-up" data-aos-delay="300">
+                    <h5 class="text-xl font-black mb-4 uppercase text-white font-black">CUSTOM</h5>
+                    <div class="text-3xl font-black mb-2 italic text-white font-black text-left">DEVIS</div>
+                    <p class="installment-info text-white font-black text-left font-black">paiement possible en plusieurs fois selon le projet</p>
+                    <ul class="text-xs space-y-2 border-t border-white/30 pt-4 text-white font-black uppercase mb-6">
+                        <li>✔ Tournage vidéo personnalisé</li>
+                        <li>✔ Nombre de vidéos adapté</li>
+                        <li>✔ Direction narrative & storytelling</li>
+                        <li>✔ Son & cadrage professionnels</li>
+                        <li>✔ Format réseaux sociaux</li>
+                        <li>✔ Orientation posture & discours</li>
+                        <li>✔ Conseils de diffusion</li>
+                    </ul>
+                    <a href="register.html?offre=video-custom" class="btn-elite-black text-center w-full">Contacter</a>
+                </div>
+            </div>
+
+            <!-- MARKETING -->
+            <h4 class="text-3xl font-black mb-10 text-left italic border-b-4 border-white inline-block uppercase font-black">Marketing</h4>
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8 mb-24 text-left font-black">
+                <div class="neo-card p-8 border-white" style="background: linear-gradient(135deg, #4b0505, #fa2a2a, #ff2323); color: white;" data-aos="fade-up">
+                    <h5 class="text-xl font-black mb-4 uppercase text-white font-black">EXPRESS</h5>
+                    <div class="text-3xl font-black mb-2 italic text-white font-black text-left">120 €</div>
+                    <p class="installment-info">Paiement possible en 2x dont 1x/mois (60 €/mois)</p>
+                    <ul class="text-xs space-y-2 border-t border-white/30 pt-4 text-white font-black uppercase text-left font-black mb-6">
+                        <li>✔ Analyse du projet</li>
+                        <li>✔ Clarification cible & message</li>
+                        <li>✔ Recommandations concrètes</li>
+                    </ul>
+                    <a href="register.html?offre=marketing-express" class="btn-elite-black text-center w-full">Analyser</a>
+                </div>
+                <div class="neo-card p-8 border-white" style="background: linear-gradient(135deg, #4b0505, #fa2a2a, #ff2323); color: white;" data-aos="fade-up" data-aos-delay="100">
+                    <h5 class="text-xl font-black mb-4 uppercase text-white font-black">STRATEGY</h5>
+                    <div class="text-3xl font-black mb-2 italic text-white font-black text-left">150 €</div>
+                    <p class="installment-info">Paiement possible en 2x dont 1x/mois (75 €/mois)</p>
+                    <ul class="text-xs space-y-2 border-t border-white/30 pt-4 text-white font-black uppercase text-left font-black mb-4">
+                        <li>✔ Positionnement</li>
+                        <li>✔ Message central</li>
+                        <li>✔ Branding</li>
+                    </ul>
+                    <div class="bg-white text-black p-2 my-4 text-center neo-border font-black">
+                        <span class="text-[10px] font-black uppercase">Option Digitales</span><br>
+                        <span class="text-xl font-black">70 €</span>
+                    </div>
+                    <ul class="text-xs space-y-2 border-t border-white/30 pt-4 text-white font-black uppercase text-left font-black mb-6">
+                        <li>✔ Choix des plateformes</li>
+                        <li>✔ Conseils contenus</li>
+                    </ul>
+                    <a href="register.html?offre=marketing-strategy" class="btn-elite-black text-center w-full">Planifier</a>
+                </div>
+                <div class="neo-card p-8 border-white" style="background: linear-gradient(135deg, #4b0505, #fa2a2a, #ff2323); color: white;" data-aos="fade-up" data-aos-delay="200">
+                    <h5 class="text-xl font-black mb-4 uppercase text-white font-black">IMPACT</h5>
+                    <div class="text-3xl font-black mb-2 italic text-white font-black text-left">350 €</div>
+                    <p class="installment-info">Paiement possible en 2x dont 1x/mois (175 €/mois)</p>
+                    <ul class="text-xs space-y-2 border-t border-white/30 pt-4 text-white font-black uppercase text-left font-black mb-6">
+                        <li>✔ Diagnostic approfondi</li>
+                        <li>✔ Priorités claires</li>
+                        <li>✔ Storytelling du projet</li>
+                        <li>✔ Plan de publication (30 jours)</li>
+                    </ul>
+                    <a href="register.html?offre=marketing-impact" class="btn-elite-black text-center w-full">Transformer</a>
+                </div>
+            </div>
+
+            <!-- MÉDIA -->
+            <h4 class="text-3xl font-black mb-10 text-left italic border-b-4 border-white inline-block uppercase font-black">Média</h4>
+            <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-8 text-left font-black">
+                <div class="neo-card p-8 border-white font-black" style="background: linear-gradient(135deg, #003274, #2212a2, #2217f4); color: white;" data-aos="fade-up">
+                    <h5 class="text-xl font-black mb-4 uppercase text-white font-black">VISIBILITY</h5>
+                    <div class="text-3xl font-black mb-2 italic text-white text-left font-black">223 €</div>
+                    <p class="installment-info">Paiement possible en 2x dont 1x/mois (111,50 €/mois)</p>
+                    <ul class="text-xs space-y-2 border-t border-white/30 pt-4 text-white font-black uppercase text-left font-black mb-6">
+                        <li>✔ Accès à 1 média crédible</li>
+                        <li>✔ Publication (4 Post et/ou 4 Story)</li>
+                        <li>✔ Brief en amont pour cadrer le message</li>
+                    </ul>
+                    <a href="register.html?offre=media-visibility" class="btn-elite-black text-center w-full">Médiatiser</a>
+                </div>
+                <div class="neo-card p-8 border-white font-black" style="background: linear-gradient(135deg, #003274, #2212a2, #2217f4); color: white;" data-aos="fade-up" data-aos-delay="100">
+                    <h5 class="text-xl font-black mb-4 uppercase text-white font-black">IMPACT</h5>
+                    <div class="text-3xl font-black mb-2 italic text-white text-left font-black">420 €</div>
+                    <p class="installment-info">Paiement possible en 2x dont 1x/mois (210 €/mois)</p>
+                    <ul class="text-xs space-y-2 border-t border-white/30 pt-4 text-white font-black uppercase text-left font-black mb-6">
+                        <li>✔ Accès à 1 média crédible</li>
+                        <li>✔ Publication (6 Post et/ou 6 Story)</li>
+                        <li>✔ Brief en amont pour cadrer le message</li>
+                        <li>✔ Conseils pour réutiliser la publication sur les réseaux sociaux</li>
+                    </ul>
+                    <a href="register.html?offre=media-impact" class="btn-elite-black text-center w-full">Amplifier</a>
+                </div>
+                <div class="neo-card p-8 border-white font-black" style="background: linear-gradient(135deg, #003274, #2212a2, #2217f4); color: white;" data-aos="fade-up" data-aos-delay="200">
+                    <h5 class="text-xl font-black mb-4 uppercase text-white font-black">PREMIUM</h5>
+                    <div class="text-3xl font-black mb-2 italic text-white text-left font-black">590 €</div>
+                    <p class="installment-info">Paiement possible en 2x dont 1x/mois (295 €/mois)</p>
+                    <ul class="text-xs space-y-2 border-t border-white/30 pt-4 text-white font-black uppercase text-left font-black mb-6">
+                        <li>✔ Accès à 1 média crédible</li>
+                        <li>✔ Publication (8 Post et/ou 8 Story)</li>
+                        <li>✔ Brief en amont pour cadrer le message</li>
+                        <li>✔ Stratégie de visibilité pour avoir une crédibilité sur du long terme</li>
+                    </ul>
+                    <a href="register.html?offre=media-premium" class="btn-elite-black text-center w-full">Rayonner</a>
+                </div>
+                <div class="neo-card p-8 border-black font-black" style="background-color: #00ffff; color: black;" data-aos="fade-up" data-aos-delay="300">
+                    <h5 class="text-xl font-black mb-4 uppercase text-black font-black">PROMOTION</h5>
+                    <div class="text-3xl font-black mb-2 italic text-black text-left font-black">679 €</div>
+                    <p class="installment-info">Paiement possible en 2x dont 1x/mois (339,50 €/mois)</p>
+                    <ul class="text-xs space-y-2 border-t border-black/30 pt-4 text-black font-black uppercase text-left font-black mb-6">
+                        <li>✔ Accès à 1 média crédible</li>
+                        <li>✔ Publication (12 Post et/ou 12 Story)</li>
+                        <li>✔ Visibilité auprès d'une audience ciblée et engagée</li>
+                        <li>✔ Mise en avant de votre contenus (Artiste, marque ou évènement)</li>
+                        <li>✔ Gain de notoriété et de crédibilité grâce à un relais média</li>
+                    </ul>
+                    <a href="register.html?offre=media-promotion" class="btn-elite-black text-center w-full">Promouvoir</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="bg-white text-black py-24 border-t-8 border-[var(--genesis-yellow)] px-6 font-black uppercase">
+        <div class="container mx-auto font-black uppercase">
+            <div class="flex flex-col md:flex-row justify-between items-center gap-20 text-center md:text-left">
+                <div>
+                    <h2 class="text-4xl font-black italic tracking-tighter uppercase font-black">FA GENESIS</h2>
+                    <p class="text-[11px] text-black uppercase tracking-[10px] mt-2 italic">BUILD. LAUNCH. IMPACT. • GROUPE FA INDUSTRIES</p>
+                </div>
+                <div class="flex flex-col items-center md:items-end gap-10 font-black">
+                    <div class="flex gap-8 items-center">
+                        <a href="https://www.linkedin.com/in/financial-advice-genesis-772b653aa/" target="_blank" class="text-3xl hover:text-[var(--genesis-yellow)] transition" title="LinkedIn">
+                            <i class="fab fa-linkedin"></i>
+                        </a>
+                        <a href="https://www.instagram.com/financial_advice_genesis/?hl=en" target="_blank" class="text-3xl hover:text-[var(--genesis-yellow)] transition" title="Instagram">
+                            <i class="fab fa-instagram"></i>
+                        </a>
+                        <a href="https://www.tiktok.com/@financial.advice.genesis" target="_blank" class="text-3xl hover:text-[var(--genesis-yellow)] transition" title="TikTok">
+                            <i class="fab fa-tiktok"></i>
+                        </a>
+                    </div>
+                    <p class="text-[11px] uppercase text-black text-center md:text-right font-bold italic font-black">
+                        © 2024 FINANCIAL ADVICE GENESIS • GROUPE FA INDUSTRIES • DÉVELOPPÉ PAR L'ÉLITE WEB
+                    </p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>
+    <script>
+        AOS.init({ duration: 1000, once: false, mirror: true, offset: 120 });
+    </script>
+</body>
+</html>

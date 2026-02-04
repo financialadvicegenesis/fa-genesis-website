@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="fr" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Administration - FA GENESIS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Unbounded:wght@400;900&family=Space+Grotesk:wght@300;700&display=swap');
+
+        :root {
+            --genesis-yellow: #FFD700;
+            --genesis-black: #000000;
+            --genesis-white: #FFFFFF;
+        }
+
+        body {
+            background-color: var(--genesis-black);
+            color: var(--genesis-white);
+            font-family: 'Space Grotesk', sans-serif;
+        }
+
+        h1, h2, h3, h4, h5 { font-family: 'Unbounded', cursive; }
+
+        .neo-border { border: 4px solid var(--genesis-black); }
+        .neo-shadow { box-shadow: 10px 10px 0px 0px var(--genesis-yellow); }
+
+        .neo-btn-yellow {
+            background: var(--genesis-yellow);
+            color: black;
+            border: 4px solid black;
+            box-shadow: 6px 6px 0px black;
+            font-weight: 900;
+            transition: 0.1s;
+        }
+        .neo-btn-yellow:active {
+            transform: translate(4px, 4px);
+            box-shadow: 0px 0px 0px black;
+        }
+
+        .admin-card {
+            background: white;
+            color: black;
+            border: 4px solid black;
+            padding: 2rem;
+        }
+
+        .stat-card {
+            background: white;
+            color: black;
+            border: 4px solid black;
+            padding: 1.5rem;
+            transition: all 0.2s;
+        }
+
+        .stat-card:hover {
+            transform: translate(-4px, -4px);
+            box-shadow: 8px 8px 0px var(--genesis-yellow);
+        }
+
+        .client-row {
+            background: white;
+            border: 3px solid black;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .client-row:hover {
+            transform: translate(-2px, -2px);
+            box-shadow: 6px 6px 0px var(--genesis-yellow);
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border: 2px solid black;
+            font-weight: 900;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+        }
+
+        .status-registered { background: #ff6b6b; color: white; }
+        .status-deposit { background: #51cf66; color: white; }
+        .status-pending { background: #ffd43b; color: black; }
+        .status-fully { background: #4dabf7; color: white; }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.8);
+            overflow-y: auto;
+        }
+
+        .modal-content {
+            background: white;
+            color: black;
+            margin: 2% auto;
+            padding: 2rem;
+            border: 4px solid black;
+            width: 90%;
+            max-width: 900px;
+        }
+
+        .close-modal {
+            float: right;
+            font-size: 2rem;
+            font-weight: bold;
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        .day-badge {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            background: var(--genesis-yellow);
+            border: 3px solid black;
+            font-weight: 900;
+            font-size: 1.25rem;
+            margin-right: 1rem;
+        }
+
+        .document-item {
+            background: #f8f9fa;
+            border: 2px solid black;
+            padding: 1rem;
+            margin-bottom: 0.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .login-page {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        .admin-panel {
+            display: none;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 3px solid black;
+            font-weight: bold;
+            font-family: 'Space Grotesk', sans-serif;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--genesis-yellow);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- PAGE DE CONNEXION ADMIN -->
+    <div id="loginPage" class="login-page">
+        <div class="w-full max-width: 500px">
+            <div class="admin-card neo-shadow" style="max-width: 500px; margin: 0 auto;">
+                <h1 class="text-4xl font-black italic uppercase text-center mb-2 text-[var(--genesis-yellow)]">
+                    <i class="fas fa-shield-alt mr-3"></i>ADMINISTRATION
+                </h1>
+                <p class="text-center font-bold mb-8 uppercase text-sm">FA GENESIS - Espace Administrateur</p>
+
+                <div id="loginError" class="bg-red-500 text-white p-4 mb-4 border-4 border-black font-bold" style="display: none;"></div>
+
+                <form id="loginForm">
+                    <div class="mb-4">
+                        <label class="block font-black mb-2 uppercase">Email</label>
+                        <input type="email" id="adminEmail" required placeholder="admin@fagenesis.com">
+                    </div>
+
+                    <div class="mb-6">
+                        <label class="block font-black mb-2 uppercase">Mot de passe</label>
+                        <input type="password" id="adminPassword" required placeholder="••••••••">
+                    </div>
+
+                    <button type="submit" class="w-full neo-btn-yellow py-4 text-xl font-black italic uppercase">
+                        <i class="fas fa-sign-in-alt mr-2"></i>Connexion
+                    </button>
+                </form>
+
+                <div class="mt-8 text-center text-sm font-bold opacity-70">
+                    <i class="fas fa-lock mr-2"></i>Accès réservé aux administrateurs FA GENESIS
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PANEL ADMINISTRATEUR -->
+    <div id="adminPanel" class="admin-panel">
+
+        <!-- NAVIGATION -->
+        <nav class="fixed top-0 w-full z-50 bg-black/95 backdrop-blur-md border-b-4 border-[var(--genesis-yellow)] px-6 py-4">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center gap-8">
+                    <h1 class="text-2xl font-black text-[var(--genesis-yellow)]">
+                        <i class="fas fa-shield-alt mr-2"></i>ADMIN FA GENESIS
+                    </h1>
+                    <div class="hidden md:flex gap-6 text-sm font-black">
+                        <button onclick="showSection('dashboard')" class="nav-btn text-white hover:text-[var(--genesis-yellow)]">
+                            <i class="fas fa-chart-line mr-2"></i>Dashboard
+                        </button>
+                        <button onclick="showSection('clients')" class="nav-btn text-white hover:text-[var(--genesis-yellow)]">
+                            <i class="fas fa-users mr-2"></i>Clients
+                        </button>
+                    </div>
+                </div>
+                <button onclick="handleLogout()" class="border-4 border-white text-white px-4 py-2 text-xs font-black hover:bg-white hover:text-black transition">
+                    <i class="fas fa-sign-out-alt mr-2"></i>DÉCONNEXION
+                </button>
+            </div>
+        </nav>
+
+        <div class="pt-28 pb-20 px-6">
+            <!-- SECTION DASHBOARD -->
+            <div id="dashboardSection" class="container mx-auto max-w-7xl">
+                <h2 class="text-5xl font-black italic uppercase mb-12 text-[var(--genesis-yellow)]">
+                    <i class="fas fa-chart-line mr-4"></i>TABLEAU DE BORD
+                </h2>
+
+                <!-- Statistiques -->
+                <div class="grid md:grid-cols-4 gap-6 mb-12" id="statsContainer">
+                    <!-- Les statistiques seront générées ici -->
+                </div>
+
+                <!-- Aperçu récent -->
+                <div class="admin-card neo-shadow">
+                    <h3 class="text-2xl font-black italic uppercase mb-6">
+                        <i class="fas fa-clock mr-2"></i>Derniers clients inscrits
+                    </h3>
+                    <div id="recentClients"></div>
+                </div>
+            </div>
+
+            <!-- SECTION CLIENTS -->
+            <div id="clientsSection" class="container mx-auto max-w-7xl" style="display: none;">
+                <div class="flex justify-between items-center mb-12">
+                    <h2 class="text-5xl font-black italic uppercase text-[var(--genesis-yellow)]">
+                        <i class="fas fa-users mr-4"></i>GESTION CLIENTS
+                    </h2>
+                </div>
+
+                <!-- Recherche -->
+                <div class="admin-card neo-shadow mb-8">
+                    <div class="flex gap-4">
+                        <input type="text" id="searchInput" placeholder="Rechercher un client (nom, email, offre)..." class="flex-1">
+                        <button onclick="searchClients()" class="neo-btn-yellow px-8">
+                            <i class="fas fa-search mr-2"></i>Rechercher
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Liste des clients -->
+                <div id="clientsList"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL GESTION CLIENT -->
+    <div id="clientModal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeClientModal()">&times;</span>
+            <div id="clientModalContent"></div>
+        </div>
+    </div>
+
+    <script src="auth.js"></script>
+    <script src="offers-config.js"></script>
+    <script src="payment-system.js"></script>
+    <script src="admin-system.js"></script>
+    <script>
+        // Configuration API
+        const API_BASE_URL = 'http://localhost:3001';
+    </script>
+    <script>
+        // Vérifier si admin est déjà connecté
+        if (isAdminAuthenticated()) {
+            showAdminPanel();
+        }
+
+        // Gestion de la connexion
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const email = document.getElementById('adminEmail').value;
+            const password = document.getElementById('adminPassword').value;
+            const result = adminLogin(email, password);
+
+            if (result.success) {
+                showAdminPanel();
+            } else {
+                const errorDiv = document.getElementById('loginError');
+                errorDiv.textContent = result.message;
+                errorDiv.style.display = 'block';
+            }
+        });
+
+        function showAdminPanel() {
+            document.getElementById('loginPage').style.display = 'none';
+            document.getElementById('adminPanel').style.display = 'block';
+            loadDashboard();
+        }
+
+        function handleLogout() {
+            if (confirm('Voulez-vous vraiment vous déconnecter ?')) {
+                adminLogout();
+                location.reload();
+            }
+        }
+
+        function showSection(section) {
+            document.getElementById('dashboardSection').style.display = 'none';
+            document.getElementById('clientsSection').style.display = 'none';
+
+            if (section === 'dashboard') {
+                document.getElementById('dashboardSection').style.display = 'block';
+                loadDashboard();
+            } else if (section === 'clients') {
+                document.getElementById('clientsSection').style.display = 'block';
+                loadClientsList();
+            }
+        }
+
+        function loadDashboard() {
+            const stats = getAdminStats();
+
+            const statsHTML = `
+                <div class="stat-card">
+                    <div class="text-4xl font-black text-[var(--genesis-yellow)] mb-2">${stats.totalClients}</div>
+                    <div class="text-sm font-bold uppercase">Total Clients</div>
+                </div>
+                <div class="stat-card">
+                    <div class="text-4xl font-black text-[#51cf66] mb-2">${stats.depositPaid}</div>
+                    <div class="text-sm font-bold uppercase">Acompte Payé</div>
+                </div>
+                <div class="stat-card">
+                    <div class="text-4xl font-black text-[#4dabf7] mb-2">${stats.fullyPaid}</div>
+                    <div class="text-sm font-bold uppercase">Payé Complet</div>
+                </div>
+                <div class="stat-card">
+                    <div class="text-4xl font-black text-[var(--genesis-yellow)] mb-2">${stats.totalRevenue}€</div>
+                    <div class="text-sm font-bold uppercase">Revenu Total</div>
+                </div>
+            `;
+
+            document.getElementById('statsContainer').innerHTML = statsHTML;
+
+            // Derniers clients
+            const clients = getAllClients().slice(-5).reverse();
+            let recentHTML = '';
+
+            clients.forEach(client => {
+                const statusClass = {
+                    'registered': 'status-registered',
+                    'deposit_paid': 'status-deposit',
+                    'delivery_pending_payment': 'status-pending',
+                    'fully_paid': 'status-fully'
+                }[client.paymentStatus] || 'status-registered';
+
+                recentHTML += `
+                    <div class="client-row" onclick="openClientModal('${client.email}')">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <div class="font-black text-lg">${client.prenom} ${client.nom}</div>
+                                <div class="text-sm font-bold opacity-70">${client.email}</div>
+                            </div>
+                            <div class="text-right">
+                                <div class="status-badge ${statusClass} mb-2">${getStatusLabel(client.paymentStatus)}</div>
+                                <div class="text-sm font-bold">${client.offerDetails ? client.offerDetails.nom : ''}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            document.getElementById('recentClients').innerHTML = recentHTML || '<p class="text-center py-8 opacity-50 font-bold">Aucun client inscrit</p>';
+        }
+
+        function loadClientsList() {
+            const clients = getAllClients();
+            let html = '';
+
+            clients.forEach(client => {
+                const statusClass = {
+                    'registered': 'status-registered',
+                    'deposit_paid': 'status-deposit',
+                    'delivery_pending_payment': 'status-pending',
+                    'fully_paid': 'status-fully'
+                }[client.paymentStatus] || 'status-registered';
+
+                html += `
+                    <div class="client-row" onclick="openClientModal('${client.email}')">
+                        <div class="flex justify-between items-center flex-wrap gap-4">
+                            <div class="flex-1 min-w-[250px]">
+                                <div class="font-black text-lg">${client.prenom} ${client.nom}</div>
+                                <div class="text-sm font-bold opacity-70">${client.email}</div>
+                            </div>
+                            <div>
+                                <div class="status-badge ${statusClass}">${getStatusLabel(client.paymentStatus)}</div>
+                            </div>
+                            <div class="text-right min-w-[200px]">
+                                <div class="font-black">${client.offerDetails ? client.offerDetails.nom : 'N/A'}</div>
+                                <div class="text-sm font-bold opacity-70">${client.documentsCount} documents</div>
+                            </div>
+                            <div class="text-right">
+                                <button class="neo-btn-yellow px-4 py-2 text-sm">
+                                    <i class="fas fa-folder-open mr-2"></i>Gérer
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            document.getElementById('clientsList').innerHTML = html || '<p class="text-center py-8 opacity-50 font-bold">Aucun client</p>';
+        }
+
+        function searchClients() {
+            const query = document.getElementById('searchInput').value;
+            if (!query) {
+                loadClientsList();
+                return;
+            }
+
+            const results = searchClients(query);
+            // Afficher les résultats (même logique que loadClientsList mais avec results)
+            // Code similaire...
+        }
+
+        function openClientModal(clientEmail) {
+            const client = getClientByEmail(clientEmail);
+            if (!client) return;
+
+            const offer = client.offerDetails || getOfferById(client.offre);
+            const documents = getClientDocumentsByDay(clientEmail);
+            const currentDay = client.currentDay || 0;
+
+            let modalHTML = `
+                <h2 class="text-3xl font-black italic uppercase mb-6 text-[var(--genesis-yellow)]">
+                    <i class="fas fa-user-circle mr-3"></i>${client.prenom} ${client.nom}
+                </h2>
+
+                <div class="grid md:grid-cols-2 gap-6 mb-8">
+                    <div>
+                        <p class="text-sm font-bold uppercase opacity-70 mb-1">Email</p>
+                        <p class="font-black">${client.email}</p>
+                    </div>
+                    <div>
+                        <p class="text-sm font-bold uppercase opacity-70 mb-1">Téléphone</p>
+                        <p class="font-black">${client.telephone || 'N/A'}</p>
+                    </div>
+                    <div>
+                        <p class="text-sm font-bold uppercase opacity-70 mb-1">Offre</p>
+                        <p class="font-black">${offer ? offer.nom : 'N/A'}</p>
+                    </div>
+                    <div>
+                        <p class="text-sm font-bold uppercase opacity-70 mb-1">Statut paiement</p>
+                        <p class="font-black">${getStatusLabel(client.paymentStatus)}</p>
+                    </div>
+                    <div>
+                        <p class="text-sm font-bold uppercase opacity-70 mb-1">Jour actuel</p>
+                        <p class="font-black">Jour ${currentDay}</p>
+                    </div>
+                    <div>
+                        <p class="text-sm font-bold uppercase opacity-70 mb-1">Documents ajoutés</p>
+                        <p class="font-black">${client.documentsCount || 0} documents</p>
+                    </div>
+                </div>
+
+                <hr class="border-2 border-black my-8">
+
+                <h3 class="text-2xl font-black italic uppercase mb-6">
+                    <i class="fas fa-file-upload mr-3"></i>AJOUTER UN DOCUMENT
+                </h3>
+
+                <form id="uploadDocumentForm" class="mb-8">
+                    <input type="hidden" id="currentClientEmail" value="${clientEmail}">
+
+                    <div class="grid md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block font-black mb-2 uppercase text-sm">Jour</label>
+                            <input type="number" id="docDay" min="1" value="${currentDay + 1}" required>
+                        </div>
+                        <div>
+                            <label class="block font-black mb-2 uppercase text-sm">Titre du document</label>
+                            <input type="text" id="docTitle" placeholder="Ex: Plan d'action Jour 5" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="block font-black mb-2 uppercase text-sm">Description (optionnelle)</label>
+                        <textarea id="docDescription" rows="2" placeholder="Description du document..."></textarea>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="block font-black mb-2 uppercase text-sm">Fichier</label>
+                        <input type="file" id="docFile" required class="text-sm">
+                        <p class="text-xs font-bold opacity-50 mt-2">Formats acceptés: PDF, DOCX, XLSX, PNG, JPG, ZIP</p>
+                    </div>
+
+                    <button type="submit" class="neo-btn-yellow px-8 py-3 text-lg">
+                        <i class="fas fa-upload mr-2"></i>Ajouter le document
+                    </button>
+                </form>
+
+                <hr class="border-2 border-black my-8">
+
+                <h3 class="text-2xl font-black italic uppercase mb-6">
+                    <i class="fas fa-folder-open mr-3"></i>DOCUMENTS DU CLIENT
+                </h3>
+
+                <div id="clientDocumentsList">
+                    ${renderClientDocuments(documents, clientEmail)}
+                </div>
+
+                <hr class="border-2 border-black my-8">
+
+                <h3 class="text-2xl font-black italic uppercase mb-6">
+                    <i class="fas fa-video mr-3"></i>GESTION DES SÉANCES
+                </h3>
+
+                <form id="addSessionForm" class="mb-8">
+                    <input type="hidden" id="sessionClientEmail" value="${clientEmail}">
+
+                    <div class="grid md:grid-cols-3 gap-4 mb-4">
+                        <div>
+                            <label class="block font-black mb-2 uppercase text-sm">Date</label>
+                            <input type="date" id="sessionDate" required>
+                        </div>
+                        <div>
+                            <label class="block font-black mb-2 uppercase text-sm">Heure</label>
+                            <input type="time" id="sessionHeure" required>
+                        </div>
+                        <div>
+                            <label class="block font-black mb-2 uppercase text-sm">Durée</label>
+                            <input type="text" id="sessionDuree" placeholder="Ex: 1h00" required>
+                        </div>
+                    </div>
+
+                    <div class="grid md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block font-black mb-2 uppercase text-sm">Type de séance</label>
+                            <select id="sessionType" required>
+                                <option value="">Sélectionner...</option>
+                                <option value="Séance stratégique">Séance stratégique</option>
+                                <option value="Point de suivi">Point de suivi</option>
+                                <option value="Briefing tournage">Briefing tournage</option>
+                                <option value="Shooting photo">Shooting photo</option>
+                                <option value="Tournage vidéo">Tournage vidéo</option>
+                                <option value="Bilan final">Bilan final</option>
+                                <option value="Consultation">Consultation</option>
+                                <option value="Formation">Formation</option>
+                                <option value="Autre">Autre</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block font-black mb-2 uppercase text-sm">Icône</label>
+                            <select id="sessionIcon">
+                                <option value="fa-video">📹 Visio</option>
+                                <option value="fa-comments">💬 Discussion</option>
+                                <option value="fa-lightbulb">💡 Stratégie</option>
+                                <option value="fa-camera">📷 Photo</option>
+                                <option value="fa-film">🎬 Vidéo</option>
+                                <option value="fa-rocket">🚀 Lancement</option>
+                                <option value="fa-check-circle">✅ Bilan</option>
+                                <option value="fa-calendar">📅 Rendez-vous</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="block font-black mb-2 uppercase text-sm">Description</label>
+                        <textarea id="sessionDescription" rows="2" placeholder="Description de la séance..."></textarea>
+                    </div>
+
+                    <div class="grid md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block font-black mb-2 uppercase text-sm">
+                                <i class="fas fa-link mr-1"></i>Lien visio (Google Meet, Zoom...)
+                            </label>
+                            <input type="url" id="sessionVisioLink" placeholder="https://meet.google.com/xxx-xxxx-xxx">
+                        </div>
+                        <div>
+                            <label class="block font-black mb-2 uppercase text-sm">
+                                <i class="fas fa-map-marker-alt mr-1"></i>Ou lieu physique
+                            </label>
+                            <input type="text" id="sessionLieu" placeholder="Ex: Studio FA Genesis, Paris">
+                        </div>
+                    </div>
+
+                    <button type="submit" class="neo-btn-yellow px-8 py-3 text-lg">
+                        <i class="fas fa-plus mr-2"></i>Ajouter la séance
+                    </button>
+                </form>
+
+                <h4 class="text-xl font-black italic uppercase mb-4">
+                    <i class="fas fa-calendar-alt mr-2"></i>Séances planifiées
+                </h4>
+                <div id="clientSessionsList">
+                    <p class="text-center py-4 opacity-50 font-bold">Chargement...</p>
+                </div>
+            `;
+
+            document.getElementById('clientModalContent').innerHTML = modalHTML;
+            document.getElementById('clientModal').style.display = 'block';
+
+            // Gestionnaire du formulaire d'upload de documents
+            document.getElementById('uploadDocumentForm').addEventListener('submit', handleDocumentUpload);
+
+            // Gestionnaire du formulaire d'ajout de séance
+            document.getElementById('addSessionForm').addEventListener('submit', handleAddSession);
+
+            // Charger les séances du client
+            loadClientSessions(clientEmail);
+        }
+
+        function renderClientDocuments(documentsByDay, clientEmail) {
+            if (Object.keys(documentsByDay).length === 0) {
+                return '<p class="text-center py-8 opacity-50 font-bold">Aucun document ajouté</p>';
+            }
+
+            let html = '';
+            const days = Object.keys(documentsByDay).sort((a, b) => Number(b) - Number(a));
+
+            days.forEach(day => {
+                html += `
+                    <div class="mb-6">
+                        <div class="day-badge">JOUR ${day}</div>
+                        <div class="mt-4">
+                `;
+
+                documentsByDay[day].forEach(doc => {
+                    html += `
+                        <div class="document-item">
+                            <div>
+                                <div class="font-black">${doc.title}</div>
+                                ${doc.description ? `<div class="text-sm opacity-70">${doc.description}</div>` : ''}
+                                <div class="text-xs font-bold opacity-50 mt-1">
+                                    ${doc.fileName} • ${new Date(doc.uploadedAt).toLocaleDateString('fr-FR')}
+                                </div>
+                            </div>
+                            <button onclick="deleteDocument('${clientEmail}', '${doc.id}')" class="text-red-600 font-black hover:opacity-70">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    `;
+                });
+
+                html += `
+                        </div>
+                    </div>
+                `;
+            });
+
+            return html;
+        }
+
+        async function handleDocumentUpload(e) {
+            e.preventDefault();
+
+            const clientEmail = document.getElementById('currentClientEmail').value;
+            const day = parseInt(document.getElementById('docDay').value);
+            const title = document.getElementById('docTitle').value;
+            const description = document.getElementById('docDescription').value;
+            const fileInput = document.getElementById('docFile');
+
+            if (!fileInput.files[0]) {
+                alert('Veuillez sélectionner un fichier');
+                return;
+            }
+
+            try {
+                // Upload du fichier (simulation avec base64)
+                const fileData = await uploadFile(fileInput.files[0]);
+
+                const document = {
+                    title: title,
+                    description: description,
+                    day: day,
+                    fileUrl: fileData.fileUrl,
+                    fileName: fileData.fileName,
+                    fileType: fileData.fileType,
+                    fileSize: fileData.fileSize
+                };
+
+                const success = addDailyDocumentToClient(clientEmail, document);
+
+                if (success) {
+                    alert('✅ Document ajouté avec succès !');
+                    openClientModal(clientEmail); // Recharger le modal
+                } else {
+                    alert('❌ Erreur lors de l\'ajout du document');
+                }
+            } catch (error) {
+                console.error(error);
+                alert('❌ Erreur lors du traitement du fichier');
+            }
+        }
+
+        function deleteDocument(clientEmail, documentId) {
+            if (confirm('Voulez-vous vraiment supprimer ce document ?')) {
+                const success = deleteDailyDocument(clientEmail, documentId);
+                if (success) {
+                    alert('✅ Document supprimé');
+                    openClientModal(clientEmail);
+                } else {
+                    alert('❌ Erreur lors de la suppression');
+                }
+            }
+        }
+
+        function closeClientModal() {
+            document.getElementById('clientModal').style.display = 'none';
+        }
+
+        // ============================================
+        // GESTION DES SÉANCES
+        // ============================================
+
+        async function loadClientSessions(clientEmail) {
+            const container = document.getElementById('clientSessionsList');
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/admin/sessions/user/${encodeURIComponent(clientEmail)}`);
+                const sessions = await response.json();
+
+                if (sessions.length === 0) {
+                    container.innerHTML = '<p class="text-center py-4 opacity-50 font-bold">Aucune séance planifiée</p>';
+                    return;
+                }
+
+                // Trier par date (plus récentes en premier)
+                sessions.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+                container.innerHTML = sessions.map(session => {
+                    const sessionDate = new Date(session.date);
+                    const formattedDate = sessionDate.toLocaleDateString('fr-FR', {
+                        weekday: 'short',
+                        day: '2-digit',
+                        month: 'short',
+                        year: 'numeric'
+                    });
+
+                    const isPast = sessionDate < new Date();
+                    const statusClass = isPast ? 'bg-gray-100' : 'bg-yellow-50';
+                    const statusBadge = isPast
+                        ? '<span class="px-2 py-1 bg-gray-400 text-white text-xs font-black uppercase">Passée</span>'
+                        : '<span class="px-2 py-1 bg-green-500 text-white text-xs font-black uppercase">À venir</span>';
+
+                    return `
+                        <div class="document-item ${statusClass}">
+                            <div class="flex-1">
+                                <div class="flex items-center gap-3 mb-2">
+                                    <i class="fas ${session.icon} text-xl"></i>
+                                    <span class="font-black text-lg">${session.type}</span>
+                                    ${statusBadge}
+                                </div>
+                                <div class="text-sm font-bold">
+                                    <i class="fas fa-calendar mr-1"></i>${formattedDate} à ${session.heure}
+                                    <span class="ml-3"><i class="fas fa-clock mr-1"></i>${session.duree}</span>
+                                </div>
+                                ${session.description ? `<p class="text-sm opacity-70 mt-1">${session.description}</p>` : ''}
+                                ${session.visioLink ? `
+                                    <a href="${session.visioLink}" target="_blank" class="inline-block mt-2 px-3 py-1 bg-blue-500 text-white text-xs font-black uppercase hover:bg-blue-600">
+                                        <i class="fas fa-video mr-1"></i>Lien visio
+                                    </a>
+                                ` : ''}
+                                ${session.lieu ? `
+                                    <p class="text-sm mt-2"><i class="fas fa-map-marker-alt mr-1"></i>${session.lieu}</p>
+                                ` : ''}
+                            </div>
+                            <div class="flex gap-2">
+                                <button onclick="editSession('${session.id}')" class="text-blue-600 font-black hover:opacity-70" title="Modifier">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button onclick="deleteSession('${session.id}', '${clientEmail}')" class="text-red-600 font-black hover:opacity-70" title="Supprimer">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+            } catch (error) {
+                console.error('Erreur chargement séances:', error);
+                container.innerHTML = '<p class="text-center py-4 text-red-500 font-bold">Erreur de chargement</p>';
+            }
+        }
+
+        async function handleAddSession(e) {
+            e.preventDefault();
+
+            const clientEmail = document.getElementById('sessionClientEmail').value;
+            const sessionData = {
+                userEmail: clientEmail,
+                date: document.getElementById('sessionDate').value,
+                heure: document.getElementById('sessionHeure').value,
+                type: document.getElementById('sessionType').value,
+                duree: document.getElementById('sessionDuree').value,
+                description: document.getElementById('sessionDescription').value,
+                visioLink: document.getElementById('sessionVisioLink').value || null,
+                lieu: document.getElementById('sessionLieu').value || null,
+                icon: document.getElementById('sessionIcon').value
+            };
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/admin/sessions`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(sessionData)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alert('✅ Séance ajoutée avec succès !');
+                    // Réinitialiser le formulaire
+                    document.getElementById('addSessionForm').reset();
+                    // Recharger la liste des séances
+                    loadClientSessions(clientEmail);
+                } else {
+                    alert('❌ Erreur: ' + (result.error || 'Erreur inconnue'));
+                }
+            } catch (error) {
+                console.error('Erreur ajout séance:', error);
+                alert('❌ Erreur lors de l\'ajout de la séance');
+            }
+        }
+
+        async function deleteSession(sessionId, clientEmail) {
+            if (!confirm('Voulez-vous vraiment supprimer cette séance ?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/admin/sessions/${sessionId}`, {
+                    method: 'DELETE'
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alert('✅ Séance supprimée');
+                    loadClientSessions(clientEmail);
+                } else {
+                    alert('❌ Erreur: ' + (result.error || 'Erreur inconnue'));
+                }
+            } catch (error) {
+                console.error('Erreur suppression séance:', error);
+                alert('❌ Erreur lors de la suppression');
+            }
+        }
+
+        function editSession(sessionId) {
+            // Pour une version simple, on redirige vers la modification
+            alert('Fonctionnalité de modification à venir. Pour modifier, supprimez et recréez la séance.');
+        }
+
+        // Fermer le modal en cliquant en dehors
+        window.onclick = function(event) {
+            const modal = document.getElementById('clientModal');
+            if (event.target === modal) {
+                closeClientModal();
+            }
+        }
+    </script>
+</body>
+</html>

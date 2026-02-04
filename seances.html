@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="fr" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mes Séances - FA GENESIS | Espace Client</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Unbounded:wght@400;900&family=Space+Grotesk:wght@300;700&display=swap');
+
+        :root {
+            --genesis-yellow: #FFD700;
+            --genesis-black: #000000;
+            --genesis-white: #FFFFFF;
+        }
+
+        body {
+            background-color: var(--genesis-black);
+            color: var(--genesis-white);
+            font-family: 'Space Grotesk', sans-serif;
+            overflow-x: hidden;
+        }
+
+        h1, h2, h3, h4, h5, .nav-link { font-family: 'Unbounded', cursive; }
+
+        .neo-border { border: 4px solid var(--genesis-black); }
+        .neo-shadow { box-shadow: 10px 10px 0px 0px var(--genesis-yellow); }
+
+        .neo-btn-yellow {
+            background: var(--genesis-yellow);
+            color: black;
+            border: 4px solid black;
+            box-shadow: 6px 6px 0px black;
+            font-weight: 900;
+            transition: 0.1s;
+        }
+
+        .seance-card {
+            background: white;
+            color: black;
+            border: 4px solid black;
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+            transition: all 0.2s ease;
+        }
+
+        .seance-card:hover {
+            transform: translate(-4px, -4px);
+            box-shadow: 14px 14px 0px 0px var(--genesis-yellow);
+        }
+
+        .seance-card.upcoming {
+            border-color: black;
+        }
+
+        .seance-card.past {
+            opacity: 0.6;
+            background: #f5f5f5;
+        }
+
+        .seance-status {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            border: 3px solid black;
+            font-weight: 900;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            margin-bottom: 1rem;
+        }
+
+        .seance-status.upcoming {
+            background: var(--genesis-yellow);
+            color: black;
+        }
+
+        .seance-status.past {
+            background: #e0e0e0;
+            color: black;
+        }
+
+        .visio-btn {
+            display: inline-block;
+            background: black;
+            color: white;
+            padding: 1rem 2rem;
+            border: 3px solid black;
+            font-weight: 900;
+            text-transform: uppercase;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .visio-btn:hover {
+            background: var(--genesis-yellow);
+            color: black;
+        }
+
+        .seance-icon {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .empty-state {
+            background: white;
+            color: black;
+            border: 4px dashed black;
+            padding: 3rem;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- NAVIGATION PRIVÉE -->
+    <nav class="fixed top-0 w-full z-50 bg-black/95 backdrop-blur-md border-b-4 border-[var(--genesis-yellow)] px-6 py-4 flex justify-between items-center text-white text-xs font-black uppercase">
+        <div class="flex items-center">
+            <a href="dashboard.html" class="text-2xl font-black tracking-wider text-[var(--genesis-yellow)]" style="font-family: 'Unbounded', cursive;">FA GENESIS</a>
+        </div>
+        <div id="mainNavigation" class="hidden md:flex gap-8 text-white font-black">
+            <!-- Navigation dynamique générée par JavaScript -->
+        </div>
+        <div class="flex gap-4 items-center">
+            <span id="userGreeting" class="hidden md:block text-white font-bold"></span>
+            <button onclick="logout()" class="border-4 border-white text-white px-4 py-2 text-[10px] tracking-widest font-black hover:bg-white hover:text-black transition">
+                <i class="fas fa-sign-out-alt mr-2"></i>Déconnexion
+            </button>
+        </div>
+    </nav>
+
+    <!-- SÉANCES CONTENT -->
+    <section class="min-h-screen pt-32 pb-20 px-6 bg-black">
+        <div class="container mx-auto max-w-5xl">
+
+            <!-- En-tête -->
+            <div class="mb-16" data-aos="fade-up">
+                <h1 class="text-5xl md:text-6xl font-black italic uppercase mb-4 text-[var(--genesis-yellow)]">Mes Séances</h1>
+                <p class="text-xl font-bold uppercase text-white">Votre planning de rendez-vous et visioconférences</p>
+            </div>
+
+            <!-- Filtres -->
+            <div class="mb-12 flex flex-wrap gap-4" data-aos="fade-up">
+                <button class="filter-btn active px-6 py-3 bg-white text-black border-4 border-black font-black uppercase text-sm" data-filter="all">
+                    Toutes
+                </button>
+                <button class="filter-btn px-6 py-3 bg-white text-black border-4 border-black font-black uppercase text-sm" data-filter="upcoming">
+                    À venir
+                </button>
+                <button class="filter-btn px-6 py-3 bg-white text-black border-4 border-black font-black uppercase text-sm" data-filter="past">
+                    Passées
+                </button>
+            </div>
+
+            <!-- Liste des séances -->
+            <div id="seancesContainer">
+                <!-- Les séances seront générées dynamiquement ici -->
+            </div>
+
+            <!-- État vide -->
+            <div id="emptyState" class="empty-state" style="display: none;">
+                <i class="fas fa-calendar-times text-6xl mb-6 opacity-30"></i>
+                <h3 class="text-2xl font-black italic uppercase mb-4">Aucune séance planifiée</h3>
+                <p class="font-bold">Vos prochaines séances apparaîtront ici</p>
+            </div>
+
+        </div>
+    </section>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>
+    <script src="auth.js"></script>
+    <script>
+        AOS.init({ duration: 1000, once: false, mirror: true, offset: 120 });
+
+        // Configuration API
+        const API_BASE_URL = 'http://localhost:3001';
+
+        // Protection de la page
+        requireAuth();
+
+        // Chargement des données utilisateur
+        const user = getCurrentUser();
+
+        if (user) {
+            // Vérifier que l'utilisateur a bien un accompagnement (pas une prestation individuelle)
+            if (user.productType === 'prestation_individuelle') {
+                alert('Cette section est réservée aux accompagnements. Vous avez souscrit à une prestation individuelle.');
+                window.location.href = 'dashboard.html';
+                return;
+            }
+
+            // Rendre la navigation selon productType
+            renderNavigation(user.productType || 'accompagnement', 'seances');
+
+            document.getElementById('userGreeting').textContent = user.prenom;
+            loadSeances(user);
+        }
+
+        // Fonction pour rendre la navigation selon le type de produit
+        function renderNavigation(productType, currentPage) {
+            const nav = document.getElementById('mainNavigation');
+
+            nav.innerHTML = `
+                <a href="dashboard.html" class="nav-link ${currentPage === 'dashboard' ? 'text-[var(--genesis-yellow)]' : 'hover:text-[var(--genesis-yellow)] transition'}">Dashboard</a>
+                <a href="livrables.html" class="nav-link ${currentPage === 'livrables' ? 'text-[var(--genesis-yellow)]' : 'hover:text-[var(--genesis-yellow)] transition'}">Livrables</a>
+                <a href="seances.html" class="nav-link ${currentPage === 'seances' ? 'text-[var(--genesis-yellow)]' : 'hover:text-[var(--genesis-yellow)] transition'}">Séances</a>
+                <a href="mon-compte.html" class="nav-link ${currentPage === 'mon-compte' ? 'text-[var(--genesis-yellow)]' : 'hover:text-[var(--genesis-yellow)] transition'}">Mon compte</a>
+            `;
+        }
+
+        let currentFilter = 'all';
+
+        // Charger les séances depuis l'API
+        async function loadSeances(user) {
+            const container = document.getElementById('seancesContainer');
+            const emptyState = document.getElementById('emptyState');
+
+            // Afficher un loader
+            container.innerHTML = '<div class="text-center py-8"><i class="fas fa-spinner fa-spin text-4xl text-[var(--genesis-yellow)]"></i><p class="mt-4 font-bold">Chargement de vos séances...</p></div>';
+
+            try {
+                // Récupérer le token d'authentification
+                const token = localStorage.getItem('fa_genesis_token');
+
+                if (!token) {
+                    throw new Error('Non authentifié');
+                }
+
+                const response = await fetch(`${API_BASE_URL}/api/sessions/me`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Erreur lors de la récupération des séances');
+                }
+
+                const seances = await response.json();
+
+                if (seances.length === 0) {
+                    container.style.display = 'none';
+                    emptyState.style.display = 'block';
+                    return;
+                }
+
+                container.innerHTML = '';
+                container.style.display = 'block';
+                emptyState.style.display = 'none';
+
+                const now = new Date();
+
+                seances.forEach((seance, index) => {
+                    const seanceDate = new Date(seance.date + 'T' + seance.heure);
+                    const isPast = seanceDate < now;
+                    const card = createSeanceCard(seance, isPast, index);
+                    container.appendChild(card);
+                });
+
+            } catch (error) {
+                console.error('Erreur chargement séances:', error);
+                container.innerHTML = '';
+                container.style.display = 'none';
+                emptyState.style.display = 'block';
+            }
+        }
+
+        function createSeanceCard(seance, isPast, index) {
+            const card = document.createElement('div');
+            card.className = `seance-card ${isPast ? 'past' : 'upcoming'}`;
+            card.setAttribute('data-aos', 'fade-up');
+            card.setAttribute('data-aos-delay', index * 100);
+            card.setAttribute('data-status', isPast ? 'past' : 'upcoming');
+
+            const date = new Date(seance.date);
+            const formattedDate = date.toLocaleDateString('fr-FR', {
+                weekday: 'long',
+                day: '2-digit',
+                month: 'long',
+                year: 'numeric'
+            });
+
+            let locationHTML = '';
+            if (seance.visioLink) {
+                locationHTML = `
+                    <div class="mt-6">
+                        <a href="${seance.visioLink}" target="_blank" class="visio-btn">
+                            <i class="fas fa-video mr-2"></i>Rejoindre la visio
+                        </a>
+                    </div>
+                `;
+            } else if (seance.lieu) {
+                locationHTML = `
+                    <div class="mt-4 p-4 bg-yellow-100 border-3 border-black">
+                        <p class="font-black uppercase text-sm mb-1"><i class="fas fa-map-marker-alt mr-2"></i>Lieu</p>
+                        <p class="font-bold">${seance.lieu}</p>
+                    </div>
+                `;
+            }
+
+            card.innerHTML = `
+                <div class="flex items-start justify-between mb-4 flex-wrap gap-4">
+                    <div class="flex-1">
+                        <div class="seance-icon">
+                            <i class="fas ${seance.icon}"></i>
+                        </div>
+                        <div class="seance-status ${isPast ? 'past' : 'upcoming'}">${isPast ? 'Passée' : 'À venir'}</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-sm font-black uppercase opacity-70 mb-1">Date & heure</div>
+                        <div class="text-2xl font-black italic capitalize">${formattedDate}</div>
+                        <div class="text-xl font-bold">${seance.heure}</div>
+                    </div>
+                </div>
+                <h3 class="text-2xl font-black italic uppercase mb-2">${seance.type}</h3>
+                <div class="flex items-center gap-2 mb-4">
+                    <span class="px-3 py-1 bg-black text-white font-black text-xs uppercase">
+                        <i class="fas fa-clock mr-1"></i>${seance.duree}
+                    </span>
+                </div>
+                <p class="font-bold text-base leading-relaxed mb-4">${seance.description}</p>
+                ${locationHTML}
+            `;
+
+            return card;
+        }
+
+        // Gestion des filtres
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+
+                const filter = this.getAttribute('data-filter');
+                currentFilter = filter;
+
+                const cards = document.querySelectorAll('.seance-card');
+                cards.forEach(card => {
+                    if (filter === 'all' || card.getAttribute('data-status') === filter) {
+                        card.style.display = 'block';
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+            });
+        });
+
+        // Style pour le bouton actif
+        const style = document.createElement('style');
+        style.textContent = `
+            .filter-btn.active {
+                background: var(--genesis-yellow) !important;
+                box-shadow: 6px 6px 0px black;
+            }
+            .filter-btn:hover {
+                transform: translate(-2px, -2px);
+                box-shadow: 6px 6px 0px var(--genesis-yellow);
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>

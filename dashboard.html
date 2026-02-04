@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="fr" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - FA GENESIS | Espace Client</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Unbounded:wght@400;900&family=Space+Grotesk:wght@300;700&display=swap');
+
+        :root {
+            --genesis-yellow: #FFD700;
+            --genesis-black: #000000;
+            --genesis-white: #FFFFFF;
+        }
+
+        body {
+            background-color: var(--genesis-black);
+            color: var(--genesis-white);
+            font-family: 'Space Grotesk', sans-serif;
+            overflow-x: hidden;
+        }
+
+        h1, h2, h3, h4, h5, .nav-link { font-family: 'Unbounded', cursive; }
+
+        .neo-border { border: 4px solid var(--genesis-black); }
+        .neo-shadow { box-shadow: 10px 10px 0px 0px var(--genesis-yellow); }
+
+        .neo-btn-yellow {
+            background: var(--genesis-yellow);
+            color: black;
+            border: 4px solid black;
+            box-shadow: 6px 6px 0px black;
+            font-weight: 900;
+            transition: 0.1s;
+        }
+        .neo-btn-yellow:active {
+            transform: translate(4px, 4px);
+            box-shadow: 0px 0px 0px black;
+        }
+
+        .neo-btn-white {
+            background: white;
+            color: black;
+            border: 4px solid black;
+            box-shadow: 6px 6px 0px var(--genesis-yellow);
+            font-weight: 900;
+            transition: 0.1s;
+        }
+        .neo-btn-white:hover {
+            transform: translate(-2px, -2px);
+            box-shadow: 8px 8px 0px var(--genesis-yellow);
+        }
+
+        .progress-bar {
+            background: white;
+            height: 40px;
+            border: 4px solid black;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            background: var(--genesis-yellow);
+            height: 100%;
+            transition: width 0.5s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 900;
+            color: black;
+            border-right: 4px solid black;
+        }
+
+        .stat-card {
+            background: white;
+            color: black;
+            border: 4px solid black;
+            padding: 2rem;
+            transition: all 0.2s ease;
+        }
+
+        .stat-card:hover {
+            transform: translate(-4px, -4px);
+            box-shadow: 14px 14px 0px 0px var(--genesis-yellow);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- NAVIGATION PRIVÉE -->
+    <nav class="fixed top-0 w-full z-50 bg-black/95 backdrop-blur-md border-b-4 border-[var(--genesis-yellow)] px-6 py-4 flex justify-between items-center text-white text-xs font-black uppercase">
+        <div class="flex items-center">
+            <a href="dashboard.html" class="text-2xl font-black tracking-wider text-[var(--genesis-yellow)]" style="font-family: 'Unbounded', cursive;">FA GENESIS</a>
+        </div>
+        <div id="mainNavigation" class="hidden md:flex gap-8 text-white font-black">
+            <!-- Navigation dynamique générée par JavaScript -->
+        </div>
+        <div class="flex gap-4 items-center">
+            <span id="userGreeting" class="hidden md:block text-white font-bold"></span>
+            <button onclick="logout()" class="border-4 border-white text-white px-4 py-2 text-[10px] tracking-widest font-black hover:bg-white hover:text-black transition">
+                <i class="fas fa-sign-out-alt mr-2"></i>Déconnexion
+            </button>
+        </div>
+    </nav>
+
+    <!-- DASHBOARD CONTENT -->
+    <section class="min-h-screen pt-32 pb-20 px-6 bg-black">
+        <div class="container mx-auto max-w-6xl">
+
+            <!-- En-tête de bienvenue -->
+            <div class="mb-16" data-aos="fade-up">
+                <h1 class="text-5xl md:text-7xl font-black italic uppercase mb-4 text-[var(--genesis-yellow)]" id="welcomeTitle">Bienvenue</h1>
+                <p class="text-xl font-bold uppercase text-white">Voici un aperçu de votre progression</p>
+            </div>
+
+            <!-- Statut de paiement -->
+            <div id="paymentStatusSection" class="mb-16" data-aos="fade-up" style="display: none;">
+                <!-- Le contenu sera inséré par JavaScript -->
+            </div>
+
+            <!-- Statistiques principales -->
+            <div class="grid md:grid-cols-3 gap-8 mb-16">
+                <div class="stat-card" data-aos="zoom-in">
+                    <div class="text-sm font-black uppercase mb-2 opacity-70">Votre offre</div>
+                    <div class="text-3xl font-black italic" id="offreName">-</div>
+                    <div class="text-xs font-bold uppercase mt-1" id="offreType">-</div>
+                </div>
+
+                <div class="stat-card" data-aos="zoom-in" data-aos-delay="100" id="progressCard">
+                    <!-- Contenu dynamique selon productType -->
+                </div>
+
+                <div class="stat-card" data-aos="zoom-in" data-aos-delay="200">
+                    <div class="text-sm font-black uppercase mb-2 opacity-70">Progression</div>
+                    <div class="text-3xl font-black italic" id="progressPercent">0%</div>
+                    <div class="text-xs font-bold uppercase mt-1">En bonne voie 🚀</div>
+                </div>
+            </div>
+
+            <!-- Barre de progression -->
+            <div class="mb-16" data-aos="fade-up">
+                <h2 class="text-2xl font-black italic uppercase mb-6 text-white">Votre avancement</h2>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressBar" style="width: 0%;">
+                        <span id="progressBarText">0%</span>
+                    </div>
+                </div>
+                <p class="text-sm font-bold mt-4 text-white" id="progressMessage">Continuez comme ça !</p>
+            </div>
+
+            <!-- Section workflow de livraison (prestation_individuelle uniquement) -->
+            <div id="deliveryWorkflowSection" class="mb-16" data-aos="fade-up" style="display: none;">
+                <h2 class="text-3xl font-black italic uppercase mb-8 text-white">
+                    <i class="fas fa-shipping-fast mr-4"></i>Suivi de votre prestation
+                </h2>
+                <div class="space-y-6" id="deliveryStepsContainer">
+                    <!-- Workflow généré dynamiquement par JavaScript -->
+                </div>
+            </div>
+
+            <!-- Actions rapides -->
+            <div class="mb-16" data-aos="fade-up">
+                <h2 class="text-2xl font-black italic uppercase mb-8 text-white">Actions rapides</h2>
+                <div id="quickActionsContainer" class="grid md:grid-cols-2 gap-6">
+                    <!-- Actions dynamiques générées par JavaScript -->
+                </div>
+            </div>
+
+            <!-- Message d'encouragement -->
+            <div class="bg-[var(--genesis-yellow)] text-black p-8 neo-border text-center" data-aos="zoom-in">
+                <h3 class="text-2xl font-black italic uppercase mb-4">Besoin d'aide ?</h3>
+                <p class="font-bold mb-6">Notre équipe est là pour vous accompagner à chaque étape</p>
+                <a href="contact.html" class="inline-block bg-black text-white px-8 py-4 border-4 border-black font-black uppercase text-sm hover:opacity-80 transition">
+                    Contactez-nous
+                </a>
+            </div>
+
+        </div>
+    </section>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>
+    <script src="auth.js"></script>
+    <script src="offers-config.js"></script>
+    <script src="payment-system.js"></script>
+    <script>
+        AOS.init({ duration: 1000, once: false, mirror: true, offset: 120 });
+
+        // Protection de la page
+        requireAuth();
+
+        // Chargement des données utilisateur
+        const user = getCurrentUser();
+
+        if (user) {
+            // Mise à jour de l'en-tête
+            document.getElementById('welcomeTitle').textContent = `Bienvenue ${user.prenom}`;
+            document.getElementById('userGreeting').textContent = user.prenom;
+
+            // Afficher le statut de paiement
+            displayPaymentStatus(user.email);
+
+            // Mise à jour des statistiques
+            document.getElementById('offreName').textContent = user.offreName;
+            document.getElementById('offreType').textContent = user.offreType;
+
+            // Rendu conditionnel selon productType
+            const productType = user.productType || 'accompagnement';
+
+            // 1. Rendre la navigation
+            renderNavigation(productType);
+
+            // 2. Rendre la carte de progression
+            renderProgressCard(user, productType);
+
+            // 3. Rendre les actions rapides
+            renderQuickActions(productType);
+
+            // 4. Calculer et afficher la progression
+            renderProgressBar(user, productType);
+
+            // 5. Afficher le workflow de livraison si prestation individuelle
+            if (productType === 'prestation_individuelle') {
+                renderDeliveryWorkflow(user);
+            }
+        }
+
+        // Fonction pour rendre la navigation selon le type de produit
+        function renderNavigation(productType) {
+            const nav = document.getElementById('mainNavigation');
+
+            nav.innerHTML = `
+                <a href="dashboard.html" class="nav-link text-[var(--genesis-yellow)]">Dashboard</a>
+                <a href="livrables.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">Livrables</a>
+                <a href="seances.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">Séances</a>
+                <a href="mon-compte.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">Mon compte</a>
+            `;
+        }
+
+        // Fonction pour rendre la carte de progression
+        function renderProgressCard(user, productType) {
+            const card = document.getElementById('progressCard');
+
+            if (productType === 'accompagnement') {
+                const daysRemaining = getDaysRemaining();
+                card.innerHTML = `
+                    <div class="text-sm font-black uppercase mb-2 opacity-70">Étape actuelle</div>
+                    <div class="text-3xl font-black italic">Jour ${user.jourActuel}/${user.duree}</div>
+                    <div class="text-xs font-bold uppercase mt-1">${daysRemaining} jour${daysRemaining > 1 ? 's' : ''} restant${daysRemaining > 1 ? 's' : ''}</div>
+                `;
+            } else {
+                const deliveryStatus = getDeliveryStatus(user.email);
+                const deliverySteps = getDeliverySteps('prestation_individuelle');
+                const currentStep = deliverySteps.find(s => s.id === deliveryStatus);
+                const stepIndex = getDeliveryStepIndex(user.email);
+
+                card.innerHTML = `
+                    <div class="text-sm font-black uppercase mb-2 opacity-70">Statut de livraison</div>
+                    <div class="text-3xl font-black italic">${currentStep ? currentStep.label : 'En cours'}</div>
+                    <div class="text-xs font-bold uppercase mt-1">Étape ${stepIndex + 1}/4</div>
+                `;
+            }
+        }
+
+        // Fonction pour rendre les actions rapides
+        function renderQuickActions(productType) {
+            const container = document.getElementById('quickActionsContainer');
+
+            if (productType === 'accompagnement') {
+                container.innerHTML = `
+                    <a href="livrables.html" class="neo-btn-white p-8 block text-center">
+                        <i class="fas fa-file-download text-4xl mb-4"></i>
+                        <div class="text-xl font-black italic uppercase">Mes livrables</div>
+                        <div class="text-sm font-bold mt-2 opacity-70">Téléchargez vos documents</div>
+                    </a>
+
+                    <a href="seances.html" class="neo-btn-white p-8 block text-center">
+                        <i class="fas fa-calendar-alt text-4xl mb-4"></i>
+                        <div class="text-xl font-black italic uppercase">Mes séances</div>
+                        <div class="text-sm font-bold mt-2 opacity-70">Consultez votre planning</div>
+                    </a>
+
+                    <a href="mon-compte.html" class="neo-btn-white p-8 block text-center">
+                        <i class="fas fa-user-circle text-4xl mb-4"></i>
+                        <div class="text-xl font-black italic uppercase">Mon compte</div>
+                        <div class="text-sm font-bold mt-2 opacity-70">Gérez vos informations</div>
+                    </a>
+                `;
+            } else {
+                container.innerHTML = `
+                    <a href="#deliveryWorkflowSection" class="neo-btn-white p-8 block text-center">
+                        <i class="fas fa-receipt text-4xl mb-4"></i>
+                        <div class="text-xl font-black italic uppercase">Voir ma commande</div>
+                        <div class="text-sm font-bold mt-2 opacity-70">Détails de votre prestation</div>
+                    </a>
+
+                    <a href="#deliveryWorkflowSection" class="neo-btn-white p-8 block text-center">
+                        <i class="fas fa-tasks text-4xl mb-4"></i>
+                        <div class="text-xl font-black italic uppercase">Suivre l'avancement</div>
+                        <div class="text-sm font-bold mt-2 opacity-70">Où en est votre projet</div>
+                    </a>
+
+                    <a href="livrables.html" class="neo-btn-white p-8 block text-center">
+                        <i class="fas fa-download text-4xl mb-4"></i>
+                        <div class="text-xl font-black italic uppercase">Mes livrables</div>
+                        <div class="text-sm font-bold mt-2 opacity-70">Téléchargez vos fichiers</div>
+                    </a>
+
+                    <a href="mon-compte.html" class="neo-btn-white p-8 block text-center">
+                        <i class="fas fa-user-circle text-4xl mb-4"></i>
+                        <div class="text-xl font-black italic uppercase">Mon compte</div>
+                        <div class="text-sm font-bold mt-2 opacity-70">Gérez vos informations</div>
+                    </a>
+                `;
+            }
+        }
+
+        // Fonction pour rendre la barre de progression
+        function renderProgressBar(user, productType) {
+            let progress = 0;
+            let progressMessage = '';
+
+            if (productType === 'accompagnement') {
+                // Calcul basé sur les jours
+                progress = getProgressPercentage();
+
+                if (progress < 25) {
+                    progressMessage = 'Vous venez de commencer, continuez sur cette lancée !';
+                } else if (progress < 50) {
+                    progressMessage = 'Excellent début ! Vous êtes sur la bonne voie.';
+                } else if (progress < 75) {
+                    progressMessage = 'Vous avez déjà parcouru plus de la moitié du chemin !';
+                } else {
+                    progressMessage = 'Bravo ! Vous approchez de la fin de votre parcours.';
+                }
+            } else {
+                // Calcul basé sur les étapes de livraison
+                const stepIndex = getDeliveryStepIndex(user.email);
+                progress = Math.round(((stepIndex + 1) / 4) * 100);
+
+                if (progress === 25) {
+                    progressMessage = 'Votre commande est confirmée ! Nous commençons bientôt.';
+                } else if (progress === 50) {
+                    progressMessage = 'Notre équipe travaille sur votre prestation.';
+                } else if (progress === 75) {
+                    progressMessage = 'Votre prestation est prête ! Consultez vos livrables.';
+                } else if (progress === 100) {
+                    progressMessage = 'Prestation livrée ! Téléchargez vos fichiers.';
+                }
+            }
+
+            document.getElementById('progressPercent').textContent = `${progress}%`;
+            document.getElementById('progressBar').style.width = `${progress}%`;
+            document.getElementById('progressBarText').textContent = `${progress}%`;
+            document.getElementById('progressMessage').textContent = progressMessage;
+        }
+
+        // Fonction pour rendre le workflow de livraison
+        function renderDeliveryWorkflow(user) {
+            const section = document.getElementById('deliveryWorkflowSection');
+            const container = document.getElementById('deliveryStepsContainer');
+
+            section.style.display = 'block';
+
+            const currentStatus = getDeliveryStatus(user.email);
+            const steps = getDeliverySteps('prestation_individuelle');
+            const currentStepIndex = steps.findIndex(s => s.id === currentStatus);
+
+            container.innerHTML = steps.map((step, index) => {
+                const isActive = step.id === currentStatus;
+                const isPast = currentStepIndex > index;
+                const isFuture = !isActive && !isPast;
+
+                const statusClass = isActive ? 'bg-[var(--genesis-yellow)] text-black border-black' :
+                                   isPast ? 'bg-green-500 text-white border-black' :
+                                   'bg-gray-300 text-gray-600 border-gray-600';
+
+                const cardClass = isActive ? 'neo-shadow' : '';
+                const opacityClass = isFuture ? 'opacity-50' : '';
+
+                return `
+                    <div class="flex items-start gap-6 ${opacityClass}">
+                        <div class="${statusClass} w-16 h-16 rounded-full flex items-center justify-center text-2xl font-black border-4 flex-shrink-0">
+                            ${isPast ? '<i class="fas fa-check"></i>' : `${index + 1}`}
+                        </div>
+                        <div class="flex-1 bg-white text-black p-6 border-4 border-black ${cardClass}">
+                            <h3 class="text-xl font-black uppercase mb-2">
+                                ${step.label}
+                                ${isActive ? '<span class="ml-2 text-[var(--genesis-yellow)]">● EN COURS</span>' : ''}
+                            </h3>
+                            <p class="font-bold">${step.description}</p>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Fonction pour afficher le statut de paiement
+        function displayPaymentStatus(email) {
+            const summary = getPaymentSummary(email);
+            if (!summary) return;
+
+            const section = document.getElementById('paymentStatusSection');
+            section.style.display = 'block';
+
+            // Définir les couleurs selon le statut
+            const statusConfig = {
+                'registered': {
+                    bg: '#ff6b6b',
+                    icon: 'fa-exclamation-circle',
+                    btnText: 'Payer l\'acompte (30%)',
+                    showBtn: true
+                },
+                'deposit_paid': {
+                    bg: '#51cf66',
+                    icon: 'fa-check-circle',
+                    btnText: 'Voir mes paiements',
+                    showBtn: false
+                },
+                'delivery_pending_payment': {
+                    bg: '#ffd43b',
+                    icon: 'fa-clock',
+                    btnText: 'Payer le solde (70%)',
+                    showBtn: true
+                },
+                'fully_paid': {
+                    bg: '#4dabf7',
+                    icon: 'fa-star',
+                    btnText: 'Voir mes paiements',
+                    showBtn: false
+                }
+            };
+
+            const config = statusConfig[summary.status] || statusConfig['registered'];
+
+            let html = `
+                <div class="p-8 neo-border" style="background: ${config.bg}; color: #000;">
+                    <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                        <div class="flex-1">
+                            <div class="flex items-center gap-4 mb-4">
+                                <i class="fas ${config.icon} text-4xl"></i>
+                                <div>
+                                    <h3 class="text-2xl font-black italic uppercase">STATUT DE PAIEMENT</h3>
+                                    <p class="font-bold text-lg">${summary.statusLabel}</p>
+                                </div>
+                            </div>
+                            <p class="font-bold text-base mb-4">${summary.accessRights.message}</p>
+            `;
+
+            if (summary.activeOffer && summary.activeOffer.prixTotal > 0) {
+                html += `
+                    <div class="grid md:grid-cols-3 gap-4 mt-4 p-4 bg-black/10 border-4 border-black">
+                        <div>
+                            <p class="text-xs font-bold opacity-70 uppercase">Offre</p>
+                            <p class="font-black">${summary.activeOffer.nom}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs font-bold opacity-70 uppercase">Total payé</p>
+                            <p class="font-black text-xl">${summary.totalPaid}€</p>
+                        </div>
+                        <div>
+                            <p class="text-xs font-bold opacity-70 uppercase">Prix total</p>
+                            <p class="font-black text-xl">${summary.activeOffer.prixTotal}€</p>
+                        </div>
+                    </div>
+                `;
+            }
+
+            html += `
+                        </div>
+                        ${config.showBtn ? `
+                        <a href="payment.html" class="bg-black text-white px-8 py-4 border-4 border-black font-black uppercase text-sm hover:opacity-80 transition whitespace-nowrap">
+                            ${config.btnText} <i class="fas fa-arrow-right ml-2"></i>
+                        </a>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+
+            section.innerHTML = html;
+        }
+    </script>
+</body>
+</html>

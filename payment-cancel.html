@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paiement annulé - FA GENESIS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Unbounded:wght@400;900&family=Space+Grotesk:wght@300;700&display=swap');
+
+        :root {
+            --genesis-yellow: #FFD700;
+            --genesis-black: #000000;
+            --genesis-white: #FFFFFF;
+        }
+
+        body {
+            background-color: var(--genesis-black);
+            color: var(--genesis-white);
+            font-family: 'Space Grotesk', sans-serif;
+        }
+
+        h1, h2, h3, h4, h5 { font-family: 'Unbounded', cursive; }
+
+        .neo-border { border: 4px solid var(--genesis-black); }
+        .neo-shadow { box-shadow: 10px 10px 0px 0px var(--genesis-yellow); }
+
+        .neo-btn-yellow {
+            background: var(--genesis-yellow);
+            color: black;
+            border: 4px solid black;
+            box-shadow: 6px 6px 0px black;
+            font-weight: 900;
+            transition: 0.1s;
+        }
+        .neo-btn-yellow:active {
+            transform: translate(4px, 4px);
+            box-shadow: 0px 0px 0px black;
+        }
+
+        .neo-btn-white {
+            background: white;
+            color: black;
+            border: 4px solid black;
+            box-shadow: 6px 6px 0px black;
+            font-weight: 900;
+            transition: 0.1s;
+        }
+        .neo-btn-white:active {
+            transform: translate(4px, 4px);
+            box-shadow: 0px 0px 0px black;
+        }
+    </style>
+</head>
+<body>
+    <nav class="fixed top-0 w-full z-50 bg-black/95 backdrop-blur-md border-b-4 border-[var(--genesis-yellow)] px-6 py-4">
+        <div class="container mx-auto flex justify-between items-center">
+            <a href="index.html" class="text-2xl font-black tracking-wider text-[var(--genesis-yellow)]" style="font-family: 'Unbounded', cursive;">FA GENESIS</a>
+            <div class="flex gap-4 items-center">
+                <a href="contact.html" class="text-white font-bold text-sm uppercase hover:text-[var(--genesis-yellow)] transition">
+                    <i class="fas fa-headset mr-2"></i>Besoin d'aide ?
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <section class="min-h-screen pt-32 pb-20 px-6 flex items-center justify-center">
+        <div class="container mx-auto max-w-3xl text-center">
+            <!-- Icône d'annulation -->
+            <div class="mb-8">
+                <div class="inline-flex items-center justify-center w-32 h-32 bg-orange-500 rounded-full border-4 border-black">
+                    <i class="fas fa-times text-6xl text-black"></i>
+                </div>
+            </div>
+
+            <h1 class="text-4xl md:text-6xl font-black italic uppercase mb-4 text-[var(--genesis-yellow)]">
+                PAIEMENT ANNULÉ
+            </h1>
+
+            <p class="text-xl font-bold mb-8">
+                Votre paiement n'a pas été finalisé. Pas d'inquiétude, aucun montant n'a été débité.
+            </p>
+
+            <!-- Message d'explication -->
+            <div class="bg-white text-black p-8 neo-border neo-shadow mb-8">
+                <h2 class="text-2xl font-black italic uppercase mb-6">Que s'est-il passé ?</h2>
+
+                <div class="space-y-4 text-left">
+                    <p class="font-bold">
+                        Le paiement peut être annulé pour plusieurs raisons :
+                    </p>
+                    <ul class="space-y-3">
+                        <li class="flex items-start gap-3">
+                            <i class="fas fa-chevron-right text-[var(--genesis-yellow)] mt-1"></i>
+                            <span>Vous avez cliqué sur "Annuler" ou fermé la fenêtre de paiement</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <i class="fas fa-chevron-right text-[var(--genesis-yellow)] mt-1"></i>
+                            <span>La session de paiement a expiré</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <i class="fas fa-chevron-right text-[var(--genesis-yellow)] mt-1"></i>
+                            <span>Un problème technique est survenu</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Options -->
+            <div class="bg-[var(--genesis-yellow)] text-black p-8 border-4 border-black mb-8">
+                <h3 class="text-2xl font-black italic uppercase mb-4">Vous souhaitez réessayer ?</h3>
+                <p class="font-bold mb-6">
+                    Votre sélection est toujours disponible. Cliquez ci-dessous pour reprendre le processus de paiement.
+                </p>
+
+                <div class="flex flex-col md:flex-row gap-4 justify-center">
+                    <a href="#" id="retryButton" class="neo-btn-white px-8 py-4 text-lg uppercase inline-flex items-center justify-center gap-3">
+                        <i class="fas fa-redo"></i>
+                        Réessayer le paiement
+                    </a>
+                    <a href="offres.html" class="bg-black text-white border-4 border-black px-8 py-4 text-lg font-black uppercase inline-flex items-center justify-center gap-3 hover:bg-gray-900 transition">
+                        <i class="fas fa-list"></i>
+                        Voir les offres
+                    </a>
+                </div>
+            </div>
+
+            <!-- Aide supplémentaire -->
+            <div class="bg-white text-black p-8 neo-border mb-8">
+                <h3 class="text-xl font-black italic uppercase mb-4">Besoin d'aide ?</h3>
+                <p class="font-bold mb-4">
+                    Notre équipe est disponible pour répondre à vos questions et vous accompagner dans votre paiement.
+                </p>
+                <div class="flex flex-col md:flex-row gap-6 justify-center">
+                    <div class="flex items-center gap-3">
+                        <i class="fas fa-envelope text-2xl text-[var(--genesis-yellow)]"></i>
+                        <a href="mailto:Financialadvicegenesis@gmail.com" class="font-black underline">Financialadvicegenesis@gmail.com</a>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <i class="fas fa-phone text-2xl text-[var(--genesis-yellow)]"></i>
+                        <span class="font-black">+33 7 64 16 36 09</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Retour accueil -->
+            <a href="index.html" class="inline-flex items-center gap-2 text-[var(--genesis-yellow)] font-bold uppercase hover:underline">
+                <i class="fas fa-arrow-left"></i>
+                Retour à l'accueil
+            </a>
+        </div>
+    </section>
+
+    <script src="offers-config.js"></script>
+    <script src="orders-system.js"></script>
+    <script>
+        // Recuperer l'ID de commande depuis l'URL ou la session
+        const urlParams = new URLSearchParams(window.location.search);
+        const orderId = urlParams.get('order') || sessionStorage.getItem('pendingOrderId');
+
+        window.addEventListener('DOMContentLoaded', function() {
+            // Configurer le bouton de reessai
+            const retryButton = document.getElementById('retryButton');
+
+            if (orderId) {
+                const order = OrdersManager.getById(orderId);
+
+                if (order && order.offerId) {
+                    retryButton.href = 'checkout.html?offer=' + order.offerId;
+                } else {
+                    retryButton.href = 'offres.html';
+                }
+
+                // Marquer la commande comme annulée
+                OrdersManager.cancel(orderId, 'Paiement annulé par le client');
+            } else {
+                // Pas de commande, rediriger vers les offres
+                retryButton.href = 'offres.html';
+            }
+
+            // Nettoyer la session
+            sessionStorage.removeItem('pendingOrderId');
+        });
+    </script>
+</body>
+</html>

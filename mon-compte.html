@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="fr" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mon Compte - FA GENESIS | Espace Client</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Unbounded:wght@400;900&family=Space+Grotesk:wght@300;700&display=swap');
+
+        :root {
+            --genesis-yellow: #FFD700;
+            --genesis-black: #000000;
+            --genesis-white: #FFFFFF;
+        }
+
+        body {
+            background-color: var(--genesis-black);
+            color: var(--genesis-white);
+            font-family: 'Space Grotesk', sans-serif;
+            overflow-x: hidden;
+        }
+
+        h1, h2, h3, h4, h5, .nav-link { font-family: 'Unbounded', cursive; }
+
+        .neo-border { border: 4px solid var(--genesis-black); }
+        .neo-shadow { box-shadow: 10px 10px 0px 0px var(--genesis-yellow); }
+
+        .neo-btn-yellow {
+            background: var(--genesis-yellow);
+            color: black;
+            border: 4px solid black;
+            box-shadow: 6px 6px 0px black;
+            font-weight: 900;
+            transition: 0.1s;
+        }
+        .neo-btn-yellow:active {
+            transform: translate(4px, 4px);
+            box-shadow: 0px 0px 0px black;
+        }
+
+        .info-card {
+            background: white;
+            color: black;
+            border: 4px solid black;
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 1rem 0;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .info-row:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            font-weight: 900;
+            text-transform: uppercase;
+            font-size: 0.875rem;
+            opacity: 0.7;
+        }
+
+        .info-value {
+            font-weight: 700;
+            font-size: 1.125rem;
+        }
+
+        .message {
+            padding: 1rem;
+            border: 3px solid black;
+            margin-bottom: 1rem;
+            font-weight: 700;
+            display: none;
+        }
+
+        .message.success {
+            background: #00ff00;
+            color: black;
+            display: block;
+        }
+
+        .message.error {
+            background: #ff0000;
+            color: white;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- NAVIGATION PRIVÉE -->
+    <nav class="fixed top-0 w-full z-50 bg-black/95 backdrop-blur-md border-b-4 border-[var(--genesis-yellow)] px-6 py-4 flex justify-between items-center text-white text-xs font-black uppercase">
+        <div class="flex items-center">
+            <a href="dashboard.html" class="text-2xl font-black tracking-wider text-[var(--genesis-yellow)]" style="font-family: 'Unbounded', cursive;">FA GENESIS</a>
+        </div>
+        <div id="mainNavigation" class="hidden md:flex gap-8 text-white font-black">
+            <!-- Navigation dynamique générée par JavaScript -->
+        </div>
+        <div class="flex gap-4 items-center">
+            <span id="userGreeting" class="hidden md:block text-white font-bold"></span>
+            <button onclick="logout()" class="border-4 border-white text-white px-4 py-2 text-[10px] tracking-widest font-black hover:bg-white hover:text-black transition">
+                <i class="fas fa-sign-out-alt mr-2"></i>Déconnexion
+            </button>
+        </div>
+    </nav>
+
+    <!-- MON COMPTE CONTENT -->
+    <section class="min-h-screen pt-32 pb-20 px-6 bg-black">
+        <div class="container mx-auto max-w-5xl">
+
+            <!-- En-tête -->
+            <div class="mb-16" data-aos="fade-up">
+                <h1 class="text-5xl md:text-6xl font-black italic uppercase mb-4 text-[var(--genesis-yellow)]">Mon Compte</h1>
+                <p class="text-xl font-bold uppercase text-white">Gérez vos informations personnelles et vos paramètres</p>
+            </div>
+
+            <div class="grid lg:grid-cols-2 gap-8">
+
+                <!-- Informations personnelles -->
+                <div data-aos="fade-up">
+                    <h2 class="text-3xl font-black italic uppercase mb-6 text-white">Informations personnelles</h2>
+                    <div class="info-card">
+                        <div class="info-row">
+                            <span class="info-label">Prénom</span>
+                            <span class="info-value" id="prenom">-</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Nom</span>
+                            <span class="info-value" id="nom">-</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Email</span>
+                            <span class="info-value" id="email">-</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Téléphone</span>
+                            <span class="info-value" id="telephone">-</span>
+                        </div>
+                        <div class="info-row" id="entrepriseRow" style="display: none;">
+                            <span class="info-label">Entreprise</span>
+                            <span class="info-value" id="entreprise">-</span>
+                        </div>
+                    </div>
+
+                    <div class="bg-[var(--genesis-yellow)] text-black p-6 neo-border mt-6">
+                        <p class="font-bold text-sm"><i class="fas fa-info-circle mr-2"></i>Pour modifier vos informations personnelles, veuillez <a href="contact.html" class="underline font-black">nous contacter</a>.</p>
+                    </div>
+                </div>
+
+                <!-- Offre active -->
+                <div data-aos="fade-up" data-aos-delay="100">
+                    <h2 class="text-3xl font-black italic uppercase mb-6 text-white">Offre active</h2>
+                    <div class="info-card">
+                        <div class="info-row">
+                            <span class="info-label">Type</span>
+                            <span class="info-value" id="offreType">-</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Formule</span>
+                            <span class="info-value" id="offreName">-</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Date de début</span>
+                            <span class="info-value" id="dateDebut">-</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Durée totale</span>
+                            <span class="info-value" id="duree">-</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Progression</span>
+                            <span class="info-value" id="progression">-</span>
+                        </div>
+                    </div>
+
+                    <a href="dashboard.html" class="block mt-6 bg-white text-black p-4 neo-border text-center font-black uppercase hover:opacity-80 transition">
+                        <i class="fas fa-chart-line mr-2"></i>Voir mon tableau de bord
+                    </a>
+                </div>
+
+            </div>
+
+            <!-- Changement de mot de passe -->
+            <div class="mt-16" data-aos="fade-up">
+                <h2 class="text-3xl font-black italic uppercase mb-6 text-white">Changer mon mot de passe</h2>
+
+                <div class="bg-white text-black p-8 neo-border">
+                    <div id="passwordMessage" class="message"></div>
+
+                    <form id="passwordForm" class="space-y-6">
+                        <div>
+                            <label for="currentPassword" class="block text-sm font-black mb-2 uppercase">Mot de passe actuel</label>
+                            <input
+                                type="password"
+                                id="currentPassword"
+                                name="currentPassword"
+                                required
+                                class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none"
+                                placeholder="••••••••"
+                            >
+                        </div>
+
+                        <div>
+                            <label for="newPassword" class="block text-sm font-black mb-2 uppercase">Nouveau mot de passe</label>
+                            <input
+                                type="password"
+                                id="newPassword"
+                                name="newPassword"
+                                required
+                                minlength="6"
+                                class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none"
+                                placeholder="••••••••"
+                            >
+                            <p class="text-xs font-bold mt-2 opacity-70">Minimum 6 caractères</p>
+                        </div>
+
+                        <div>
+                            <label for="confirmPassword" class="block text-sm font-black mb-2 uppercase">Confirmer le nouveau mot de passe</label>
+                            <input
+                                type="password"
+                                id="confirmPassword"
+                                name="confirmPassword"
+                                required
+                                minlength="6"
+                                class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none"
+                                placeholder="••••••••"
+                            >
+                        </div>
+
+                        <button
+                            type="submit"
+                            class="w-full py-4 neo-btn-yellow text-xl font-black italic uppercase tracking-tighter"
+                        >
+                            Mettre à jour le mot de passe
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Aide -->
+            <div class="mt-16 bg-white text-black p-8 neo-border text-center" data-aos="zoom-in">
+                <h3 class="text-2xl font-black italic uppercase mb-4">Besoin d'aide ?</h3>
+                <p class="font-bold mb-6">Notre équipe est disponible pour répondre à toutes vos questions</p>
+                <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                    <a href="contact.html" class="bg-black text-white px-8 py-4 border-4 border-black font-black uppercase text-sm hover:bg-gray-900 transition">
+                        <i class="fas fa-envelope mr-2"></i>Nous contacter
+                    </a>
+                    <a href="dashboard.html" class="bg-[var(--genesis-yellow)] text-black px-8 py-4 border-4 border-black font-black uppercase text-sm hover:opacity-80 transition">
+                        <i class="fas fa-home mr-2"></i>Retour au dashboard
+                    </a>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>
+    <script src="auth.js"></script>
+    <script>
+        AOS.init({ duration: 1000, once: false, mirror: true, offset: 120 });
+
+        // Protection de la page
+        requireAuth();
+
+        // Chargement des données utilisateur
+        const user = getCurrentUser();
+
+        if (user) {
+            // Rendre la navigation selon productType
+            renderNavigation(user.productType || 'accompagnement', 'mon-compte');
+
+            document.getElementById('userGreeting').textContent = user.prenom;
+
+            // Informations personnelles
+            document.getElementById('prenom').textContent = user.prenom;
+            document.getElementById('nom').textContent = user.nom;
+            document.getElementById('email').textContent = user.email;
+            document.getElementById('telephone').textContent = user.telephone;
+
+            if (user.entreprise) {
+                document.getElementById('entrepriseRow').style.display = 'flex';
+                document.getElementById('entreprise').textContent = user.entreprise;
+            }
+
+            // Offre active
+            document.getElementById('offreType').textContent = user.offreType;
+            document.getElementById('offreName').textContent = user.offreName;
+
+            const dateDebut = new Date(user.dateDebut);
+            document.getElementById('dateDebut').textContent = dateDebut.toLocaleDateString('fr-FR', {
+                day: '2-digit',
+                month: 'long',
+                year: 'numeric'
+            });
+
+            document.getElementById('duree').textContent = `${user.duree} jours`;
+
+            const progress = getProgressPercentage();
+            document.getElementById('progression').textContent = `${progress}% (Jour ${user.jourActuel}/${user.duree})`;
+        }
+
+        // Fonction pour rendre la navigation selon le type de produit
+        function renderNavigation(productType, currentPage) {
+            const nav = document.getElementById('mainNavigation');
+
+            nav.innerHTML = `
+                <a href="dashboard.html" class="nav-link ${currentPage === 'dashboard' ? 'text-[var(--genesis-yellow)]' : 'hover:text-[var(--genesis-yellow)] transition'}">Dashboard</a>
+                <a href="livrables.html" class="nav-link ${currentPage === 'livrables' ? 'text-[var(--genesis-yellow)]' : 'hover:text-[var(--genesis-yellow)] transition'}">Livrables</a>
+                <a href="seances.html" class="nav-link ${currentPage === 'seances' ? 'text-[var(--genesis-yellow)]' : 'hover:text-[var(--genesis-yellow)] transition'}">Séances</a>
+                <a href="mon-compte.html" class="nav-link ${currentPage === 'mon-compte' ? 'text-[var(--genesis-yellow)]' : 'hover:text-[var(--genesis-yellow)] transition'}">Mon compte</a>
+            `;
+        }
+
+        // Gestion du formulaire de changement de mot de passe
+        document.getElementById('passwordForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const currentPassword = document.getElementById('currentPassword').value;
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            const messageDiv = document.getElementById('passwordMessage');
+
+            // Vérification que les mots de passe correspondent
+            if (newPassword !== confirmPassword) {
+                messageDiv.textContent = 'Les nouveaux mots de passe ne correspondent pas';
+                messageDiv.className = 'message error';
+                setTimeout(() => {
+                    messageDiv.className = 'message';
+                }, 5000);
+                return;
+            }
+
+            // Tentative de changement de mot de passe
+            const result = changePassword(currentPassword, newPassword);
+
+            if (result.success) {
+                messageDiv.textContent = result.message;
+                messageDiv.className = 'message success';
+
+                // Réinitialiser le formulaire
+                document.getElementById('passwordForm').reset();
+
+                setTimeout(() => {
+                    messageDiv.className = 'message';
+                }, 5000);
+            } else {
+                messageDiv.textContent = result.message;
+                messageDiv.className = 'message error';
+
+                setTimeout(() => {
+                    messageDiv.className = 'message';
+                }, 5000);
+            }
+        });
+    </script>
+</body>
+</html>

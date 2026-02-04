@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="fr" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paiement - FA GENESIS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Unbounded:wght@400;900&family=Space+Grotesk:wght@300;700&display=swap');
+
+        :root {
+            --genesis-yellow: #FFD700;
+            --genesis-black: #000000;
+            --genesis-white: #FFFFFF;
+        }
+
+        body {
+            background-color: var(--genesis-black);
+            color: var(--genesis-white);
+            font-family: 'Space Grotesk', sans-serif;
+        }
+
+        h1, h2, h3, h4, h5 { font-family: 'Unbounded', cursive; }
+
+        .neo-border { border: 4px solid var(--genesis-black); }
+        .neo-shadow { box-shadow: 10px 10px 0px 0px var(--genesis-yellow); }
+
+        .neo-btn-yellow {
+            background: var(--genesis-yellow);
+            color: black;
+            border: 4px solid black;
+            box-shadow: 6px 6px 0px black;
+            font-weight: 900;
+            transition: 0.1s;
+        }
+        .neo-btn-yellow:active {
+            transform: translate(4px, 4px);
+            box-shadow: 0px 0px 0px black;
+        }
+
+        .form-input {
+            background: white;
+            color: black;
+            border: 4px solid black;
+            padding: 1rem;
+            font-weight: 700;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        .form-input:focus {
+            transform: translate(-2px, -2px);
+            box-shadow: 6px 6px 0px var(--genesis-yellow);
+        }
+
+        .checkbox-custom {
+            width: 24px;
+            height: 24px;
+            border: 3px solid black;
+            background: white;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .checkbox-custom:checked {
+            background: var(--genesis-yellow);
+        }
+
+        .error-message {
+            background: #ff6b6b;
+            color: white;
+            padding: 1rem;
+            border: 3px solid black;
+            margin-bottom: 1rem;
+            font-weight: 700;
+            display: none;
+        }
+
+        .success-message {
+            background: #51cf66;
+            color: black;
+            padding: 1rem;
+            border: 3px solid black;
+            margin-bottom: 1rem;
+            font-weight: 700;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <nav class="fixed top-0 w-full z-50 bg-black/95 backdrop-blur-md border-b-4 border-[var(--genesis-yellow)] px-6 py-4">
+        <div class="container mx-auto flex justify-between items-center">
+            <a href="index.html" class="text-2xl font-black tracking-wider text-[var(--genesis-yellow)]" style="font-family: 'Unbounded', cursive;">FA GENESIS</a>
+            <div class="flex gap-4 items-center">
+                <span class="text-white font-bold text-sm uppercase">Paiement sécurisé</span>
+                <i class="fas fa-lock text-[var(--genesis-yellow)]"></i>
+            </div>
+        </div>
+    </nav>
+
+    <section class="min-h-screen pt-32 pb-20 px-6">
+        <div class="container mx-auto max-w-5xl">
+            <h1 class="text-4xl md:text-6xl font-black italic uppercase text-center mb-4 text-[var(--genesis-yellow)]">
+                FINALISER VOTRE COMMANDE
+            </h1>
+            <p class="text-center text-xl font-bold mb-12 uppercase">Paiement en 2 étapes : acompte 30% + solde 70%</p>
+
+            <!-- Messages d'erreur/succès -->
+            <div id="errorMessage" class="error-message"></div>
+            <div id="successMessage" class="success-message"></div>
+
+            <!-- Section erreur : Aucun produit sélectionné -->
+            <div id="noProductSection" class="hidden">
+                <div class="max-w-2xl mx-auto text-center">
+                    <div class="bg-white text-black p-12 neo-border neo-shadow">
+                        <div class="mb-8">
+                            <div class="inline-flex items-center justify-center w-24 h-24 bg-orange-500 rounded-full border-4 border-black">
+                                <i class="fas fa-exclamation text-5xl text-black"></i>
+                            </div>
+                        </div>
+
+                        <h2 class="text-3xl font-black italic uppercase mb-6">Aucun produit sélectionné</h2>
+
+                        <p class="text-lg font-bold mb-8">
+                            Veuillez retourner à la page Offres pour sélectionner une offre ou un tarif.
+                        </p>
+
+                        <div class="flex flex-col md:flex-row gap-4 justify-center">
+                            <a href="offres.html" class="neo-btn-yellow px-8 py-4 text-lg font-black uppercase inline-flex items-center justify-center gap-3">
+                                <i class="fas fa-list"></i>
+                                Retour aux offres
+                            </a>
+                            <button id="resumeSelectionBtn" class="bg-white text-black border-4 border-black px-8 py-4 text-lg font-black uppercase inline-flex items-center justify-center gap-3 hover:bg-gray-100 transition hidden">
+                                <i class="fas fa-redo"></i>
+                                Reprendre ma sélection
+                            </button>
+                        </div>
+
+                        <div class="mt-8 text-sm font-bold opacity-70">
+                            <p><i class="fas fa-info-circle mr-2"></i>Si vous avez été redirigé ici par erreur, vérifiez que vous avez bien cliqué sur une offre.</p>
+                        </div>
+                    </div>
+
+                    <a href="index.html" class="inline-flex items-center gap-2 text-[var(--genesis-yellow)] font-bold uppercase hover:underline mt-8">
+                        <i class="fas fa-arrow-left"></i>
+                        Retour à l'accueil
+                    </a>
+                </div>
+            </div>
+
+            <!-- Section principale du checkout -->
+            <div id="checkoutContent" class="grid lg:grid-cols-3 gap-8 hidden">
+                <!-- COLONNE GAUCHE : Récapitulatif de la commande -->
+                <div class="lg:col-span-1">
+                    <div class="bg-white text-black p-6 neo-border neo-shadow sticky top-32">
+                        <h2 class="text-2xl font-black italic uppercase mb-6">Récapitulatif</h2>
+
+                        <div id="orderSummary">
+                            <!-- Généré dynamiquement -->
+                        </div>
+
+                        <div class="border-t-4 border-black mt-6 pt-6">
+                            <div class="flex justify-between items-center mb-4">
+                                <span class="font-bold uppercase text-sm">Montant total</span>
+                                <span class="text-2xl font-black" id="totalAmount">0€</span>
+                            </div>
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="font-bold uppercase text-sm">Acompte (30%)</span>
+                                <span class="text-xl font-black text-[var(--genesis-yellow)]" id="depositAmount">0€</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="font-bold uppercase text-sm opacity-70">Solde (70%)</span>
+                                <span class="font-bold" id="balanceAmount">0€</span>
+                            </div>
+                        </div>
+
+                        <div class="bg-[var(--genesis-yellow)] p-4 border-4 border-black mt-6">
+                            <p class="text-xs font-black uppercase text-center">
+                                <i class="fas fa-info-circle mr-2"></i>
+                                À payer aujourd'hui
+                            </p>
+                            <p class="text-3xl font-black text-center mt-2" id="amountToPay">0€</p>
+                        </div>
+
+                        <div class="mt-6 text-xs font-bold opacity-70">
+                            <p><i class="fas fa-shield-alt mr-2"></i>Paiement 100% sécurisé avec SumUp</p>
+                            <p class="mt-2"><i class="fas fa-lock mr-2"></i>Vos données sont cryptées</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- COLONNE DROITE : Formulaire -->
+                <div class="lg:col-span-2">
+                    <form id="checkoutForm" class="space-y-8">
+                        <!-- Section 1: Informations personnelles -->
+                        <div class="bg-white text-black p-8 neo-border">
+                            <h3 class="text-2xl font-black italic uppercase mb-6">
+                                <i class="fas fa-user text-[var(--genesis-yellow)] mr-3"></i>
+                                Vos informations
+                            </h3>
+
+                            <div class="grid md:grid-cols-2 gap-6">
+                                <div>
+                                    <label class="block font-black uppercase text-sm mb-2">Prénom *</label>
+                                    <input type="text" id="prenom" required class="form-input w-full uppercase" placeholder="JEAN">
+                                </div>
+                                <div>
+                                    <label class="block font-black uppercase text-sm mb-2">Nom *</label>
+                                    <input type="text" id="nom" required class="form-input w-full uppercase" placeholder="DUPONT">
+                                </div>
+                            </div>
+
+                            <div class="mt-6">
+                                <label class="block font-black uppercase text-sm mb-2">Email *</label>
+                                <input type="email" id="email" required class="form-input w-full" placeholder="jean.dupont@email.com">
+                            </div>
+
+                            <div class="mt-6">
+                                <label class="block font-black uppercase text-sm mb-2">Téléphone</label>
+                                <input type="tel" id="telephone" class="form-input w-full" placeholder="+33 6 12 34 56 78">
+                            </div>
+
+                            <div class="mt-6">
+                                <label class="block font-black uppercase text-sm mb-2">Adresse *</label>
+                                <input type="text" id="adresse" required class="form-input w-full" placeholder="123 rue de la République">
+                            </div>
+
+                            <div class="grid md:grid-cols-3 gap-4 mt-6">
+                                <div>
+                                    <label class="block font-black uppercase text-sm mb-2">Pays / Région *</label>
+                                    <input type="text" id="pays_client" required class="form-input w-full uppercase" placeholder="FRANCE" value="FRANCE">
+                                </div>
+                                <div>
+                                    <label class="block font-black uppercase text-sm mb-2">Ville *</label>
+                                    <input type="text" id="ville_client" required class="form-input w-full uppercase" placeholder="PARIS">
+                                </div>
+                                <div>
+                                    <label class="block font-black uppercase text-sm mb-2">Code postal *</label>
+                                    <input type="text" id="code_postal_client" required class="form-input w-full" placeholder="75001">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Section 2: Type de client -->
+                        <div class="bg-white text-black p-8 neo-border">
+                            <h3 class="text-2xl font-black italic uppercase mb-6">
+                                <i class="fas fa-briefcase text-[var(--genesis-yellow)] mr-3"></i>
+                                Type de client
+                            </h3>
+
+                            <div class="grid md:grid-cols-2 gap-4">
+                                <label class="flex items-center gap-4 p-6 border-4 border-black cursor-pointer hover:bg-yellow-50 transition">
+                                    <input type="radio" name="client_type" value="particulier" checked class="w-6 h-6">
+                                    <div>
+                                        <div class="font-black uppercase">Particulier</div>
+                                        <div class="text-sm font-bold opacity-70">Personne physique</div>
+                                    </div>
+                                </label>
+
+                                <label class="flex items-center gap-4 p-6 border-4 border-black cursor-pointer hover:bg-yellow-50 transition">
+                                    <input type="radio" name="client_type" value="entreprise" class="w-6 h-6">
+                                    <div>
+                                        <div class="font-black uppercase">Entreprise</div>
+                                        <div class="text-sm font-bold opacity-70">Personne morale</div>
+                                    </div>
+                                </label>
+                            </div>
+
+                            <!-- Section entreprise (masquée par défaut) -->
+                            <div id="entrepriseSection" class="mt-6 space-y-6" style="display: none;">
+                                <div>
+                                    <label class="block font-black uppercase text-sm mb-2">Nom de la société *</label>
+                                    <input type="text" id="nom_societe" class="form-input w-full uppercase" placeholder="MA SOCIÉTÉ SAS">
+                                </div>
+
+                                <div class="grid md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label class="block font-black uppercase text-sm mb-2">SIRET</label>
+                                        <input type="text" id="siret" class="form-input w-full" placeholder="12345678901234">
+                                    </div>
+                                    <div>
+                                        <label class="block font-black uppercase text-sm mb-2">TVA Intracommunautaire</label>
+                                        <input type="text" id="tva_intra" class="form-input w-full" placeholder="FR12345678901">
+                                    </div>
+                                </div>
+
+                                <h4 class="font-black uppercase text-lg mt-6">Adresse de facturation</h4>
+
+                                <div>
+                                    <label class="block font-black uppercase text-sm mb-2">Adresse complète *</label>
+                                    <input type="text" id="adresse_complete" class="form-input w-full" placeholder="123 rue de la République">
+                                </div>
+
+                                <div class="grid md:grid-cols-3 gap-4">
+                                    <div>
+                                        <label class="block font-black uppercase text-sm mb-2">Pays *</label>
+                                        <input type="text" id="pays" class="form-input w-full uppercase" placeholder="FRANCE" value="FRANCE">
+                                    </div>
+                                    <div>
+                                        <label class="block font-black uppercase text-sm mb-2">Ville *</label>
+                                        <input type="text" id="ville" class="form-input w-full uppercase" placeholder="PARIS">
+                                    </div>
+                                    <div>
+                                        <label class="block font-black uppercase text-sm mb-2">Code postal *</label>
+                                        <input type="text" id="code_postal" class="form-input w-full" placeholder="75001">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Section 3: Consentements -->
+                        <div class="bg-white text-black p-8 neo-border">
+                            <h3 class="text-2xl font-black italic uppercase mb-6">
+                                <i class="fas fa-check-circle text-[var(--genesis-yellow)] mr-3"></i>
+                                Consentements
+                            </h3>
+
+                            <div class="space-y-4">
+                                <label class="flex items-start gap-4 cursor-pointer">
+                                    <input type="checkbox" id="cgv_accepted" required class="checkbox-custom mt-1">
+                                    <span class="font-bold text-sm">
+                                        J'accepte les <a href="#" class="underline">Conditions Générales de Vente</a>
+                                        et la <a href="#" class="underline">Politique de confidentialité</a> *
+                                    </span>
+                                </label>
+
+                                <label class="flex items-start gap-4 cursor-pointer">
+                                    <input type="checkbox" id="payment_terms_accepted" required class="checkbox-custom mt-1">
+                                    <span class="font-bold text-sm">
+                                        Je comprends que le paiement s'effectue en 2 étapes :
+                                        30% d'acompte maintenant, puis 70% de solde après livraison/fin d'offre *
+                                    </span>
+                                </label>
+                            </div>
+
+                            <div class="bg-yellow-50 p-4 border-4 border-black mt-6">
+                                <p class="text-xs font-bold">
+                                    <i class="fas fa-info-circle mr-2"></i>
+                                    Les champs marqués d'un astérisque (*) sont obligatoires
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Bouton de soumission -->
+                        <div class="text-center">
+                            <button type="submit" class="neo-btn-yellow px-12 py-6 text-2xl font-black uppercase inline-flex items-center gap-4">
+                                <i class="fas fa-credit-card"></i>
+                                PAYER
+                                <i class="fas fa-arrow-right"></i>
+                            </button>
+
+                            <p class="text-sm font-bold opacity-70 mt-4">
+                                <i class="fas fa-lock mr-2"></i>Paiement 100% sécurisé via SumUp
+                            </p>
+
+                            <div class="flex justify-center gap-4 mt-4">
+                                <i class="fab fa-cc-visa text-3xl opacity-70"></i>
+                                <i class="fab fa-cc-mastercard text-3xl opacity-70"></i>
+                                <i class="fab fa-cc-amex text-3xl opacity-70"></i>
+                                <i class="fab fa-apple-pay text-3xl opacity-70"></i>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div><!-- Fin de checkoutContent -->
+        </div>
+    </section>
+
+    <script>
+        // ============================================================
+        // CONFIGURATION - URL DU BACKEND
+        // ============================================================
+        const API_BASE_URL = 'http://localhost:3001';
+
+        // Récupérer les paramètres de l'URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const productId = urlParams.get('productId') || urlParams.get('offer');
+        const stage = urlParams.get('stage') || 'deposit';
+
+        let currentOrderId = null;
+        let selectedProduct = null;
+
+        // ============================================================
+        // INITIALISATION
+        // ============================================================
+        window.addEventListener('DOMContentLoaded', async function() {
+            // Vérifier s'il y a une sélection sauvegardée dans localStorage
+            const savedProductId = localStorage.getItem('selectedProductId');
+            const savedOfferName = localStorage.getItem('selectedOfferName');
+
+            if (!productId) {
+                // Aucun produit dans l'URL - afficher la section d'erreur
+                showNoProductSection(savedProductId, savedOfferName);
+                return;
+            }
+
+            // Produit trouvé - sauvegarder dans localStorage pour reprendre plus tard si besoin
+            localStorage.setItem('selectedProductId', productId);
+
+            // Afficher le contenu du checkout
+            document.getElementById('checkoutContent').classList.remove('hidden');
+
+            // Charger les détails du produit depuis le backend
+            await loadProductFromBackend(productId);
+
+            // Gérer l'affichage de la section entreprise
+            document.querySelectorAll('input[name="client_type"]').forEach(radio => {
+                radio.addEventListener('change', function() {
+                    const entrepriseSection = document.getElementById('entrepriseSection');
+                    entrepriseSection.style.display = this.value === 'entreprise' ? 'block' : 'none';
+                });
+            });
+
+            // Gérer la soumission du formulaire
+            document.getElementById('checkoutForm').addEventListener('submit', handleCheckoutSubmit);
+        });
+
+        // ============================================================
+        // CHARGEMENT DU PRODUIT DEPUIS LE BACKEND
+        // ============================================================
+        async function loadProductFromBackend(productId) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/products/${productId}`);
+
+                if (!response.ok) {
+                    throw new Error('Produit non trouvé');
+                }
+
+                selectedProduct = await response.json();
+
+                // Sauvegarder le nom de l'offre pour la reprise
+                localStorage.setItem('selectedOfferName', selectedProduct.name);
+
+                // Afficher le récapitulatif
+                document.getElementById('orderSummary').innerHTML = `
+                    <div class="mb-4">
+                        <div class="text-xs font-bold opacity-70 uppercase">Produit</div>
+                        <div class="text-lg font-black italic">${selectedProduct.name}</div>
+                    </div>
+                    <div class="mb-4">
+                        <div class="text-xs font-bold opacity-70 uppercase">Catégorie</div>
+                        <div class="font-bold">${selectedProduct.category}</div>
+                    </div>
+                    <div class="mb-4">
+                        <div class="text-xs font-bold opacity-70 uppercase">Durée</div>
+                        <div class="font-bold">${selectedProduct.duration}</div>
+                    </div>
+                `;
+
+                document.getElementById('totalAmount').textContent = formatPrice(selectedProduct.total_amount);
+                document.getElementById('depositAmount').textContent = formatPrice(selectedProduct.deposit_amount);
+                document.getElementById('balanceAmount').textContent = formatPrice(selectedProduct.balance_amount);
+                document.getElementById('amountToPay').textContent = formatPrice(selectedProduct.deposit_amount);
+
+            } catch (error) {
+                console.error('Erreur chargement produit:', error);
+
+                // En cas d'erreur backend, afficher un message mais garder la page
+                const orderSummary = document.getElementById('orderSummary');
+                orderSummary.innerHTML = `
+                    <div class="bg-orange-100 border-4 border-orange-500 p-4 text-center">
+                        <i class="fas fa-exclamation-triangle text-orange-500 text-2xl mb-2"></i>
+                        <p class="font-bold text-sm">Impossible de charger le produit</p>
+                        <p class="text-xs mt-2">Vérifiez que le backend est démarré (npm start dans /server)</p>
+                    </div>
+                `;
+
+                // Désactiver le bouton de paiement
+                const submitBtn = document.querySelector('button[type="submit"]');
+                if (submitBtn) {
+                    submitBtn.disabled = true;
+                    submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                }
+            }
+        }
+
+        // ============================================================
+        // SOUMISSION DU FORMULAIRE
+        // ============================================================
+        async function handleCheckoutSubmit(e) {
+            e.preventDefault();
+
+            if (!selectedProduct) {
+                showError('Aucun produit sélectionné');
+                return;
+            }
+
+            // Récupérer les données du formulaire
+            const clientInfo = {
+                firstName: document.getElementById('prenom').value.trim(),
+                lastName: document.getElementById('nom').value.trim(),
+                email: document.getElementById('email').value.trim(),
+                phone: document.getElementById('telephone').value.trim(),
+                address: document.getElementById('adresse').value.trim(),
+                country: document.getElementById('pays_client').value.trim(),
+                city: document.getElementById('ville_client').value.trim(),
+                postalCode: document.getElementById('code_postal_client').value.trim(),
+                clientType: document.querySelector('input[name="client_type"]:checked').value
+            };
+
+            // Validation basique
+            if (!clientInfo.firstName || !clientInfo.lastName || !clientInfo.email || !clientInfo.address || !clientInfo.city || !clientInfo.postalCode) {
+                showError('Veuillez remplir tous les champs obligatoires (Prénom, Nom, Email, Adresse, Ville, Code postal)');
+                return;
+            }
+
+            // Si entreprise, ajouter les infos entreprise
+            if (clientInfo.clientType === 'entreprise') {
+                clientInfo.company = document.getElementById('nom_societe').value.trim();
+                clientInfo.siret = document.getElementById('siret').value.trim();
+                clientInfo.tvaIntra = document.getElementById('tva_intra').value.trim();
+                clientInfo.billingAddress = {
+                    address: document.getElementById('adresse_complete').value.trim(),
+                    country: document.getElementById('pays').value.trim(),
+                    city: document.getElementById('ville').value.trim(),
+                    postalCode: document.getElementById('code_postal').value.trim()
+                };
+            }
+
+            // Vérifier les consentements
+            if (!document.getElementById('cgv_accepted').checked) {
+                showError('Veuillez accepter les Conditions Générales de Vente');
+                return;
+            }
+
+            if (!document.getElementById('payment_terms_accepted').checked) {
+                showError('Veuillez accepter les conditions de paiement');
+                return;
+            }
+
+            // Désactiver le bouton pendant le traitement
+            const submitBtn = document.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Traitement en cours...';
+
+            try {
+                // ÉTAPE 1: Créer la commande sur le backend
+                console.log('[CHECKOUT] Création de la commande...');
+                const orderResponse = await fetch(`${API_BASE_URL}/api/orders/create`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        productId: selectedProduct.id,
+                        clientInfo: clientInfo
+                    })
+                });
+
+                if (!orderResponse.ok) {
+                    const errorData = await orderResponse.json();
+                    throw new Error(errorData.error || 'Erreur création commande');
+                }
+
+                const orderData = await orderResponse.json();
+                currentOrderId = orderData.orderId;
+                console.log('[CHECKOUT] Commande créée:', currentOrderId);
+
+                // Stocker l'ID pour la page de succès
+                sessionStorage.setItem('pendingOrderId', currentOrderId);
+
+                showSuccess('Commande créée ! Redirection vers SumUp...');
+
+                // ÉTAPE 2: Créer le checkout SumUp
+                console.log('[CHECKOUT] Création du checkout SumUp...');
+                const checkoutResponse = await fetch(`${API_BASE_URL}/api/payments/sumup/create-checkout`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        orderId: currentOrderId,
+                        stage: 'deposit'
+                    })
+                });
+
+                if (!checkoutResponse.ok) {
+                    const errorData = await checkoutResponse.json();
+                    throw new Error(errorData.error || errorData.details || 'Erreur création checkout');
+                }
+
+                const checkoutData = await checkoutResponse.json();
+                console.log('[CHECKOUT] Checkout SumUp créé:', checkoutData);
+
+                // ÉTAPE 3: Rediriger vers SumUp
+                if (checkoutData.checkout_url) {
+                    console.log('[CHECKOUT] Redirection vers:', checkoutData.checkout_url);
+                    window.location.href = checkoutData.checkout_url;
+                } else {
+                    throw new Error('URL de checkout non reçue');
+                }
+
+            } catch (error) {
+                console.error('[CHECKOUT] Erreur:', error);
+
+                // Réactiver le bouton
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-credit-card"></i> PAYER <i class="fas fa-arrow-right"></i>';
+
+                // Message d'erreur spécifique
+                if (error.message.includes('Configuration SumUp') || error.message.includes('non configuree')) {
+                    showError('Le système de paiement n\'est pas encore configuré. Vérifiez le fichier server/.env');
+                } else if (error.message.includes('fetch')) {
+                    showError('Impossible de contacter le serveur. Vérifiez que le backend est démarré (cd server && npm start)');
+                } else {
+                    showError(error.message || 'Une erreur est survenue lors du paiement');
+                }
+            }
+        }
+
+        // ============================================================
+        // AFFICHAGE SECTION ERREUR
+        // ============================================================
+        function showNoProductSection(savedProductId, savedOfferName) {
+            // Afficher la section d'erreur
+            document.getElementById('noProductSection').classList.remove('hidden');
+
+            // Masquer le contenu du checkout
+            document.getElementById('checkoutContent').classList.add('hidden');
+
+            // Si une sélection existe dans localStorage, afficher le bouton de reprise
+            if (savedProductId) {
+                const resumeBtn = document.getElementById('resumeSelectionBtn');
+                resumeBtn.classList.remove('hidden');
+
+                // Personnaliser le texte si on a le nom de l'offre
+                if (savedOfferName) {
+                    resumeBtn.innerHTML = `
+                        <i class="fas fa-redo"></i>
+                        Reprendre : ${savedOfferName}
+                    `;
+                }
+
+                // Ajouter l'événement de clic pour reprendre la sélection
+                resumeBtn.addEventListener('click', function() {
+                    window.location.href = `checkout.html?productId=${savedProductId}`;
+                });
+            }
+        }
+
+        // ============================================================
+        // UTILITAIRES
+        // ============================================================
+        function formatPrice(amount) {
+            return new Intl.NumberFormat('fr-FR', {
+                style: 'currency',
+                currency: 'EUR'
+            }).format(amount);
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.innerHTML = `<i class="fas fa-exclamation-triangle mr-2"></i>${message}`;
+            errorDiv.style.display = 'block';
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+
+            setTimeout(() => {
+                errorDiv.style.display = 'none';
+            }, 8000);
+        }
+
+        function showSuccess(message) {
+            const successDiv = document.getElementById('successMessage');
+            successDiv.innerHTML = `<i class="fas fa-check-circle mr-2"></i>${message}`;
+            successDiv.style.display = 'block';
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    </script>
+</body>
+</html>
