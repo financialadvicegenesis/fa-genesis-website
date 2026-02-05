@@ -489,6 +489,23 @@
                 width: 50px;
                 height: 50px;
             }
+            /* Tech Cube Mobile */
+            .tech-cube-container {
+                width: 250px;
+                height: 250px;
+            }
+            .tech-cube-face {
+                width: 180px;
+                height: 180px;
+                font-size: 24px;
+                border: 4px solid var(--genesis-yellow);
+            }
+            .tech-cube-face.front  { transform: rotateY(0deg) translateZ(90px); }
+            .tech-cube-face.back   { transform: rotateY(180deg) translateZ(90px); }
+            .tech-cube-face.right  { transform: rotateY(90deg) translateZ(90px); }
+            .tech-cube-face.left   { transform: rotateY(-90deg) translateZ(90px); }
+            .tech-cube-face.top    { transform: rotateX(90deg) translateZ(90px); }
+            .tech-cube-face.bottom { transform: rotateX(-90deg) translateZ(90px); }
         }
     </style>
 </head>
