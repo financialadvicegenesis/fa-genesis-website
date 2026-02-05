@@ -97,23 +97,71 @@ function getUserPaymentStatus(email) {
 }
 
 /**
+ * Mettre à jour l'utilisateur dans le storage (compatible backend et ancien système)
+ * @param {string} email - Email de l'utilisateur
+ * @param {Object} updates - Champs à mettre à jour
+ * @returns {boolean}
+ */
+function updateUserInStorage(email, updates) {
+    let updated = false;
+
+    // 1. Mettre à jour la session backend (fa_genesis_session)
+    const session = localStorage.getItem('fa_genesis_session');
+    if (session) {
+        try {
+            const sessionUser = JSON.parse(session);
+            if (sessionUser && sessionUser.email === email) {
+                Object.assign(sessionUser, updates);
+                localStorage.setItem('fa_genesis_session', JSON.stringify(sessionUser));
+                console.log('✅ Session backend mise à jour');
+                updated = true;
+            }
+        } catch (e) {
+            console.error('Erreur mise à jour session:', e);
+        }
+    }
+
+    // 2. Mettre à jour aussi dans users array (ancien système / fallback)
+    const users = JSON.parse(localStorage.getItem('users') || '[]');
+    const userIndex = users.findIndex(u => u.email === email);
+    if (userIndex !== -1) {
+        Object.assign(users[userIndex], updates);
+        localStorage.setItem('users', JSON.stringify(users));
+        console.log('✅ Users array mis à jour');
+        updated = true;
+    }
+
+    // 3. Si aucun stockage trouvé, créer dans users array
+    if (!updated) {
+        const user = getUserFromStorage(email);
+        if (user) {
+            Object.assign(user, updates);
+            users.push(user);
+            localStorage.setItem('users', JSON.stringify(users));
+            console.log('✅ Utilisateur ajouté au users array');
+            updated = true;
+        }
+    }
+
+    return updated;
+}
+
+/**
  * Mettre à jour le statut de paiement d'un utilisateur
  * @param {string} email - Email de l'utilisateur
  * @param {string} newStatus - Nouveau statut
  * @returns {boolean}
  */
 function updateUserPaymentStatus(email, newStatus) {
-    const users = JSON.parse(localStorage.getItem('users') || '[]');
-    const userIndex = users.findIndex(u => u.email === email);
+    const result = updateUserInStorage(email, {
+        paymentStatus: newStatus,
+        lastPaymentUpdate: new Date().toISOString()
+    });
 
-    if (userIndex === -1) return false;
-
-    users[userIndex].paymentStatus = newStatus;
-    users[userIndex].lastPaymentUpdate = new Date().toISOString();
-
-    localStorage.setItem('users', JSON.stringify(users));
-    console.log(`✅ Statut de paiement mis à jour: ${email} → ${newStatus}`);
-    return true;
+    if (result) {
+        console.log(`✅ Statut de paiement mis à jour: ${email} → ${newStatus}`);
+    }
+    return result;
 }
 
 /**
@@ -125,38 +173,41 @@ function updateUserPaymentStatus(email, newStatus) {
  * @returns {Payment|null}
  */
 function recordPayment(email, offerId, amount, type) {
-    const users = JSON.parse(localStorage.getItem('users') || '[]');
-    const userIndex = users.findIndex(u => u.email === email);
+    // Récupérer l'utilisateur depuis le storage
+    const user = getUserFromStorage(email);
 
-    if (userIndex === -1) {
-        console.error('❌ Utilisateur non trouvé');
+    if (!user) {
+        console.error('❌ Utilisateur non trouvé pour:', email);
         return null;
     }
 
     // Créer le paiement
-    const payment = new Payment(users[userIndex].email, offerId, amount, type);
+    const payment = new Payment(email, offerId, amount, type);
 
-    // Initialiser le tableau des paiements si nécessaire
-    if (!users[userIndex].payments) {
-        users[userIndex].payments = [];
-    }
+    // Préparer les mises à jour
+    const currentPayments = user.payments || [];
+    currentPayments.push(payment);
 
-    // Ajouter le paiement
-    users[userIndex].payments.push(payment);
+    const updates = {
+        payments: currentPayments,
+        lastPaymentUpdate: new Date().toISOString()
+    };
 
     // Mettre à jour le statut selon le type de paiement
     if (type === PAYMENT_TYPE.DEPOSIT) {
-        users[userIndex].paymentStatus = PAYMENT_STATUS.DEPOSIT_PAID;
+        updates.paymentStatus = PAYMENT_STATUS.DEPOSIT_PAID;
+        updates.activeOfferId = offerId;
     } else if (type === PAYMENT_TYPE.BALANCE) {
-        users[userIndex].paymentStatus = PAYMENT_STATUS.FULLY_PAID;
+        updates.paymentStatus = PAYMENT_STATUS.FULLY_PAID;
     }
 
-    // Enregistrer l'offre active si c'est l'acompte
-    if (type === PAYMENT_TYPE.DEPOSIT) {
-        users[userIndex].activeOfferId = offerId;
-    }
+    // Appliquer les mises à jour
+    const success = updateUserInStorage(email, updates);
 
-    localStorage.setItem('users', JSON.stringify(users));
+    if (!success) {
+        console.error('❌ Échec de la mise à jour du paiement');
+        return null;
+    }
 
     console.log(`✅ Paiement enregistré:`, payment);
     console.log(`💰 ${type} de ${amount}€ pour l'offre ${offerId}`);
