@@ -445,22 +445,21 @@
         }
 
         function payDeposit() {
-            const users = JSON.parse(localStorage.getItem('users') || '[]');
-            const currentUser = users.find(u => u.email === user.email);
+            // Utiliser la session backend ou l'ancien système
+            const currentUser = getUserFromStorage(user.email);
 
-            if (!currentUser || !currentUser.activeOfferId) {
+            // Chercher l'offre active - compatible avec différents formats
+            const offerId = currentUser ? (currentUser.activeOfferId || currentUser.active_offer_id || currentUser.offre) : null;
+
+            if (!currentUser || !offerId) {
                 alert('Erreur: Aucune offre active trouvée');
                 return;
             }
 
             if (confirm('Confirmer le paiement de l\'acompte (30%) ?\n\nAprès paiement, vous serez redirigé vers votre espace client.')) {
-                const payment = simulateDepositPayment(user.email, currentUser.activeOfferId);
+                const payment = simulateDepositPayment(user.email, offerId);
 
                 if (payment) {
-                    // Mettre à jour l'utilisateur connecté
-                    const updatedUser = users.find(u => u.email === user.email);
-                    localStorage.setItem('currentUser', JSON.stringify(updatedUser));
-
                     alert(`✅ Paiement de l'acompte confirmé : ${payment.amount}€\n\n🎉 Votre accompagnement peut maintenant démarrer !\n\nRedirection vers votre espace client...`);
 
                     // Redirection vers le dashboard
@@ -474,22 +473,21 @@
         }
 
         function payBalance() {
-            const users = JSON.parse(localStorage.getItem('users') || '[]');
-            const currentUser = users.find(u => u.email === user.email);
+            // Utiliser la session backend ou l'ancien système
+            const currentUser = getUserFromStorage(user.email);
 
-            if (!currentUser || !currentUser.activeOfferId) {
+            // Chercher l'offre active - compatible avec différents formats
+            const offerId = currentUser ? (currentUser.activeOfferId || currentUser.active_offer_id || currentUser.offre) : null;
+
+            if (!currentUser || !offerId) {
                 alert('Erreur: Aucune offre active trouvée');
                 return;
             }
 
             if (confirm('Confirmer le paiement du solde (70%) ?\n\nVos livrables seront immédiatement accessibles.')) {
-                const payment = simulateBalancePayment(user.email, currentUser.activeOfferId);
+                const payment = simulateBalancePayment(user.email, offerId);
 
                 if (payment) {
-                    // Mettre à jour l'utilisateur connecté
-                    const updatedUser = users.find(u => u.email === user.email);
-                    localStorage.setItem('currentUser', JSON.stringify(updatedUser));
-
                     alert(`✅ Paiement du solde confirmé : ${payment.amount}€\n\n🎉 Vous avez maintenant accès à tous vos livrables !\n\nRedirection vers vos livrables...`);
 
                     // Redirection vers les livrables
