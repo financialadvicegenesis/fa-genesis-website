@@ -46,14 +46,54 @@ class Payment {
 }
 
 /**
+ * Obtenir l'utilisateur depuis localStorage (compatible avec auth.js backend)
+ * @param {string} email - Email de l'utilisateur
+ * @returns {Object|null}
+ */
+function getUserFromStorage(email) {
+    // D'abord vérifier la session backend (fa_genesis_session)
+    const session = localStorage.getItem('fa_genesis_session');
+    if (session) {
+        try {
+            const sessionUser = JSON.parse(session);
+            if (sessionUser && sessionUser.email === email) {
+                return sessionUser;
+            }
+        } catch (e) {
+            console.error('Erreur lecture session:', e);
+        }
+    }
+
+    // Fallback: vérifier l'ancien système localStorage (users array)
+    const users = JSON.parse(localStorage.getItem('users') || '[]');
+    const user = users.find(u => u.email === email);
+    if (user) return user;
+
+    // Fallback: currentUser (ancien système)
+    const currentUser = localStorage.getItem('currentUser');
+    if (currentUser) {
+        try {
+            const parsed = JSON.parse(currentUser);
+            if (parsed && parsed.email === email) {
+                return parsed;
+            }
+        } catch (e) {
+            console.error('Erreur lecture currentUser:', e);
+        }
+    }
+
+    return null;
+}
+
+/**
  * Récupérer le statut de paiement d'un utilisateur
  * @param {string} email - Email de l'utilisateur
  * @returns {string}
  */
 function getUserPaymentStatus(email) {
-    const users = JSON.parse(localStorage.getItem('users') || '[]');
-    const user = users.find(u => u.email === email);
-    return user ? user.paymentStatus : PAYMENT_STATUS.REGISTERED;
+    const user = getUserFromStorage(email);
+    if (!user) return PAYMENT_STATUS.REGISTERED;
+    return user.paymentStatus || user.payment_status || PAYMENT_STATUS.REGISTERED;
 }
 
 /**
@@ -130,8 +170,7 @@ function recordPayment(email, offerId, amount, type) {
  * @returns {Array}
  */
 function getUserPayments(email) {
-    const users = JSON.parse(localStorage.getItem('users') || '[]');
-    const user = users.find(u => u.email === email);
+    const user = getUserFromStorage(email);
     return user && user.payments ? user.payments : [];
 }
 
@@ -269,16 +308,21 @@ function simulateBalancePayment(email, offerId) {
  * @returns {Object}
  */
 function getPaymentSummary(email) {
-    const users = JSON.parse(localStorage.getItem('users') || '[]');
-    const user = users.find(u => u.email === email);
+    const user = getUserFromStorage(email);
 
-    if (!user) return null;
+    if (!user) {
+        console.error('❌ Utilisateur non trouvé pour:', email);
+        return null;
+    }
 
-    const status = user.paymentStatus || PAYMENT_STATUS.REGISTERED;
+    const status = user.paymentStatus || user.payment_status || PAYMENT_STATUS.REGISTERED;
     const payments = user.payments || [];
-    const activeOffer = user.activeOfferId ? getOfferById(user.activeOfferId) : null;
 
-    const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
+    // Chercher l'offre active - compatible avec différents formats
+    const offerId = user.activeOfferId || user.active_offer_id || user.offre;
+    const activeOffer = offerId ? getOfferById(offerId) : null;
+
+    const totalPaid = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
 
     return {
         status: status,
@@ -423,9 +467,7 @@ function recordInstallmentPayment(email, installmentNumber) {
  * @returns {Object|null}
  */
 function getInstallmentPlan(email) {
-    const users = JSON.parse(localStorage.getItem('users') || '[]');
-    const user = users.find(u => u.email === email);
-
+    const user = getUserFromStorage(email);
     return user && user.installmentPlan ? user.installmentPlan : null;
 }
 
@@ -447,15 +489,15 @@ function getNextInstallment(email) {
  * @returns {string|null} - Statut de livraison ou null
  */
 function getDeliveryStatus(email) {
-    const users = JSON.parse(localStorage.getItem('users') || '[]');
-    const user = users.find(u => u.email === email);
+    const user = getUserFromStorage(email);
 
     if (!user) return null;
 
     // Vérifier que c'est une prestation individuelle
-    if (user.productType !== 'prestation_individuelle') return null;
+    const productType = user.productType || user.product_type;
+    if (productType !== 'prestation_individuelle') return null;
 
-    const paymentStatus = user.paymentStatus;
+    const paymentStatus = user.paymentStatus || user.payment_status;
 
     // Mapper les statuts de paiement aux statuts de livraison
     if (paymentStatus === 'registered') return DELIVERY_STATUS.CONFIRMED;
