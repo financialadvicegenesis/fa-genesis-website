@@ -46,14 +46,104 @@ class Payment {
 }
 
 /**
+ * Obtenir l'utilisateur depuis localStorage (compatible avec auth.js backend)
+ * @param {string} email - Email de l'utilisateur
+ * @returns {Object|null}
+ */
+function getUserFromStorage(email) {
+    // D'abord vérifier la session backend (fa_genesis_session)
+    const session = localStorage.getItem('fa_genesis_session');
+    if (session) {
+        try {
+            const sessionUser = JSON.parse(session);
+            if (sessionUser && sessionUser.email === email) {
+                return sessionUser;
+            }
+        } catch (e) {
+            console.error('Erreur lecture session:', e);
+        }
+    }
+
+    // Fallback: vérifier l'ancien système localStorage (users array)
+    const users = JSON.parse(localStorage.getItem('users') || '[]');
+    const user = users.find(u => u.email === email);
+    if (user) return user;
+
+    // Fallback: currentUser (ancien système)
+    const currentUser = localStorage.getItem('currentUser');
+    if (currentUser) {
+        try {
+            const parsed = JSON.parse(currentUser);
+            if (parsed && parsed.email === email) {
+                return parsed;
+            }
+        } catch (e) {
+            console.error('Erreur lecture currentUser:', e);
+        }
+    }
+
+    return null;
+}
+
+/**
  * Récupérer le statut de paiement d'un utilisateur
  * @param {string} email - Email de l'utilisateur
  * @returns {string}
  */
 function getUserPaymentStatus(email) {
+    const user = getUserFromStorage(email);
+    if (!user) return PAYMENT_STATUS.REGISTERED;
+    return user.paymentStatus || user.payment_status || PAYMENT_STATUS.REGISTERED;
+}
+
+/**
+ * Mettre à jour l'utilisateur dans le storage (compatible backend et ancien système)
+ * @param {string} email - Email de l'utilisateur
+ * @param {Object} updates - Champs à mettre à jour
+ * @returns {boolean}
+ */
+function updateUserInStorage(email, updates) {
+    let updated = false;
+
+    // 1. Mettre à jour la session backend (fa_genesis_session)
+    const session = localStorage.getItem('fa_genesis_session');
+    if (session) {
+        try {
+            const sessionUser = JSON.parse(session);
+            if (sessionUser && sessionUser.email === email) {
+                Object.assign(sessionUser, updates);
+                localStorage.setItem('fa_genesis_session', JSON.stringify(sessionUser));
+                console.log('✅ Session backend mise à jour');
+                updated = true;
+            }
+        } catch (e) {
+            console.error('Erreur mise à jour session:', e);
+        }
+    }
+
+    // 2. Mettre à jour aussi dans users array (ancien système / fallback)
     const users = JSON.parse(localStorage.getItem('users') || '[]');
-    const user = users.find(u => u.email === email);
-    return user ? user.paymentStatus : PAYMENT_STATUS.REGISTERED;
+    const userIndex = users.findIndex(u => u.email === email);
+    if (userIndex !== -1) {
+        Object.assign(users[userIndex], updates);
+        localStorage.setItem('users', JSON.stringify(users));
+        console.log('✅ Users array mis à jour');
+        updated = true;
+    }
+
+    // 3. Si aucun stockage trouvé, créer dans users array
+    if (!updated) {
+        const user = getUserFromStorage(email);
+        if (user) {
+            Object.assign(user, updates);
+            users.push(user);
+            localStorage.setItem('users', JSON.stringify(users));
+            console.log('✅ Utilisateur ajouté au users array');
+            updated = true;
+        }
+    }
+
+    return updated;
 }
 
 /**
@@ -63,17 +153,15 @@ function getUserPaymentStatus(email) {
  * @returns {boolean}
  */
 function updateUserPaymentStatus(email, newStatus) {
-    const users = JSON.parse(localStorage.getItem('users') || '[]');
-    const userIndex = users.findIndex(u => u.email === email);
+    const result = updateUserInStorage(email, {
+        paymentStatus: newStatus,
+        lastPaymentUpdate: new Date().toISOString()
+    });
 
-    if (userIndex === -1) return false;
-
-    users[userIndex].paymentStatus = newStatus;
-    users[userIndex].lastPaymentUpdate = new Date().toISOString();
-
-    localStorage.setItem('users', JSON.stringify(users));
-    console.log(`✅ Statut de paiement mis à jour: ${email} → ${newStatus}`);
-    return true;
+    if (result) {
+        console.log(`✅ Statut de paiement mis à jour: ${email} → ${newStatus}`);
+    }
+    return result;
 }
 
 /**
@@ -85,38 +173,41 @@ function updateUserPaymentStatus(email, newStatus) {
  * @returns {Payment|null}
  */
 function recordPayment(email, offerId, amount, type) {
-    const users = JSON.parse(localStorage.getItem('users') || '[]');
-    const userIndex = users.findIndex(u => u.email === email);
+    // Récupérer l'utilisateur depuis le storage
+    const user = getUserFromStorage(email);
 
-    if (userIndex === -1) {
-        console.error('❌ Utilisateur non trouvé');
+    if (!user) {
+        console.error('❌ Utilisateur non trouvé pour:', email);
         return null;
     }
 
     // Créer le paiement
-    const payment = new Payment(users[userIndex].email, offerId, amount, type);
+    const payment = new Payment(email, offerId, amount, type);
 
-    // Initialiser le tableau des paiements si nécessaire
-    if (!users[userIndex].payments) {
-        users[userIndex].payments = [];
-    }
+    // Préparer les mises à jour
+    const currentPayments = user.payments || [];
+    currentPayments.push(payment);
 
-    // Ajouter le paiement
-    users[userIndex].payments.push(payment);
+    const updates = {
+        payments: currentPayments,
+        lastPaymentUpdate: new Date().toISOString()
+    };
 
     // Mettre à jour le statut selon le type de paiement
     if (type === PAYMENT_TYPE.DEPOSIT) {
-        users[userIndex].paymentStatus = PAYMENT_STATUS.DEPOSIT_PAID;
+        updates.paymentStatus = PAYMENT_STATUS.DEPOSIT_PAID;
+        updates.activeOfferId = offerId;
     } else if (type === PAYMENT_TYPE.BALANCE) {
-        users[userIndex].paymentStatus = PAYMENT_STATUS.FULLY_PAID;
+        updates.paymentStatus = PAYMENT_STATUS.FULLY_PAID;
     }
 
-    // Enregistrer l'offre active si c'est l'acompte
-    if (type === PAYMENT_TYPE.DEPOSIT) {
-        users[userIndex].activeOfferId = offerId;
-    }
+    // Appliquer les mises à jour
+    const success = updateUserInStorage(email, updates);
 
-    localStorage.setItem('users', JSON.stringify(users));
+    if (!success) {
+        console.error('❌ Échec de la mise à jour du paiement');
+        return null;
+    }
 
     console.log(`✅ Paiement enregistré:`, payment);
     console.log(`💰 ${type} de ${amount}€ pour l'offre ${offerId}`);
@@ -130,8 +221,7 @@ function recordPayment(email, offerId, amount, type) {
  * @returns {Array}
  */
 function getUserPayments(email) {
-    const users = JSON.parse(localStorage.getItem('users') || '[]');
-    const user = users.find(u => u.email === email);
+    const user = getUserFromStorage(email);
     return user && user.payments ? user.payments : [];
 }
 
@@ -269,16 +359,21 @@ function simulateBalancePayment(email, offerId) {
  * @returns {Object}
  */
 function getPaymentSummary(email) {
-    const users = JSON.parse(localStorage.getItem('users') || '[]');
-    const user = users.find(u => u.email === email);
+    const user = getUserFromStorage(email);
 
-    if (!user) return null;
+    if (!user) {
+        console.error('❌ Utilisateur non trouvé pour:', email);
+        return null;
+    }
 
-    const status = user.paymentStatus || PAYMENT_STATUS.REGISTERED;
+    const status = user.paymentStatus || user.payment_status || PAYMENT_STATUS.REGISTERED;
     const payments = user.payments || [];
-    const activeOffer = user.activeOfferId ? getOfferById(user.activeOfferId) : null;
 
-    const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
+    // Chercher l'offre active - compatible avec différents formats
+    const offerId = user.activeOfferId || user.active_offer_id || user.offre;
+    const activeOffer = offerId ? getOfferById(offerId) : null;
+
+    const totalPaid = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
 
     return {
         status: status,
@@ -423,9 +518,7 @@ function recordInstallmentPayment(email, installmentNumber) {
  * @returns {Object|null}
  */
 function getInstallmentPlan(email) {
-    const users = JSON.parse(localStorage.getItem('users') || '[]');
-    const user = users.find(u => u.email === email);
-
+    const user = getUserFromStorage(email);
     return user && user.installmentPlan ? user.installmentPlan : null;
 }
 
@@ -447,15 +540,15 @@ function getNextInstallment(email) {
  * @returns {string|null} - Statut de livraison ou null
  */
 function getDeliveryStatus(email) {
-    const users = JSON.parse(localStorage.getItem('users') || '[]');
-    const user = users.find(u => u.email === email);
+    const user = getUserFromStorage(email);
 
     if (!user) return null;
 
     // Vérifier que c'est une prestation individuelle
-    if (user.productType !== 'prestation_individuelle') return null;
+    const productType = user.productType || user.product_type;
+    if (productType !== 'prestation_individuelle') return null;
 
-    const paymentStatus = user.paymentStatus;
+    const paymentStatus = user.paymentStatus || user.payment_status;
 
     // Mapper les statuts de paiement aux statuts de livraison
     if (paymentStatus === 'registered') return DELIVERY_STATUS.CONFIRMED;

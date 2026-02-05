@@ -135,6 +135,11 @@
     <script>
         AOS.init({ duration: 1000 });
 
+        // ============================================================
+        // CONFIGURATION - URL DU BACKEND POUR PAIEMENT REEL SUMUP
+        // ============================================================
+        const API_BASE_URL = 'https://fa-genesis-website.onrender.com';
+
         // Protection de la page
         requireAuth();
 
@@ -317,9 +322,9 @@
             }
         }
 
-        function selectPaymentOption(option) {
+        async function selectPaymentOption(option) {
             if (option === 'full') {
-                payBalance();
+                await payBalance();
             } else if (option === 'installments') {
                 initializePaymentPlan();
             }
@@ -383,30 +388,108 @@
             document.getElementById('installmentsList').innerHTML = html;
         }
 
-        function payInstallment(installmentNumber) {
-            if (confirm(`Confirmer le paiement de la mensualité ${installmentNumber} ?`)) {
-                const payment = recordInstallmentPayment(user.email, installmentNumber);
+        async function payInstallment(installmentNumber) {
+            // Utiliser la session backend ou l'ancien système
+            const currentUser = getUserFromStorage(user.email);
 
-                if (payment) {
-                    // Mettre à jour l'utilisateur connecté
-                    const users = JSON.parse(localStorage.getItem('users') || '[]');
-                    const updatedUser = users.find(u => u.email === user.email);
-                    localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+            // Chercher l'offre active
+            const offerId = currentUser ? (currentUser.activeOfferId || currentUser.active_offer_id || currentUser.offre) : null;
 
-                    const plan = getInstallmentPlan(user.email);
-                    const allPaid = plan.installments.every(i => i.status === 'paid');
+            if (!currentUser || !offerId) {
+                alert('Erreur: Aucune offre active trouvée');
+                return;
+            }
 
-                    if (allPaid) {
-                        alert(`✅ Mensualité ${installmentNumber} payée : ${payment.amount}€\n\n🎉 Toutes les mensualités sont payées !\nVous avez maintenant accès à tous vos livrables finaux !\n\nRedirection vers vos livrables...`);
-                        setTimeout(() => {
-                            window.location.href = 'livrables.html';
-                        }, 500);
-                    } else {
-                        alert(`✅ Mensualité ${installmentNumber} payée : ${payment.amount}€\n\nIl vous reste ${plan.installments.filter(i => i.status === 'pending').length} mensualité(s) à payer.`);
-                        location.reload();
-                    }
+            // Récupérer le plan de paiement pour obtenir le montant de la mensualité
+            const plan = getInstallmentPlan(user.email);
+            if (!plan) {
+                alert('Erreur: Plan de paiement non trouvé');
+                return;
+            }
+
+            const installment = plan.installments.find(i => i.number === installmentNumber);
+            if (!installment) {
+                alert('Erreur: Mensualité non trouvée');
+                return;
+            }
+
+            try {
+                // Créer une commande pour cette mensualité
+                console.log(`[PAYMENT] Création du checkout SumUp pour mensualité ${installmentNumber}...`);
+
+                const clientInfo = {
+                    firstName: currentUser.prenom || currentUser.firstName || '',
+                    lastName: currentUser.nom || currentUser.lastName || '',
+                    email: currentUser.email,
+                    phone: currentUser.telephone || currentUser.phone || '',
+                    address: currentUser.adresse || currentUser.address || 'Non renseigné',
+                    country: 'FRANCE',
+                    city: currentUser.ville || currentUser.city || 'Non renseigné',
+                    postalCode: currentUser.codePostal || currentUser.postalCode || '00000',
+                    clientType: 'particulier'
+                };
+
+                // Créer une commande pour la mensualité
+                const orderResponse = await fetch(`${API_BASE_URL}/api/orders/create`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        productId: offerId,
+                        clientInfo: clientInfo,
+                        customAmount: installment.amount,
+                        description: `Mensualité ${installmentNumber}/${plan.numberOfInstallments}`
+                    })
+                });
+
+                if (!orderResponse.ok) {
+                    const errorData = await orderResponse.json();
+                    throw new Error(errorData.error || 'Erreur création commande');
+                }
+
+                const orderData = await orderResponse.json();
+                const orderId = orderData.orderId;
+
+                // Stocker pour le suivi
+                sessionStorage.setItem('pendingOrderId', orderId);
+                sessionStorage.setItem('pendingPaymentType', 'installment');
+                sessionStorage.setItem('pendingInstallmentNumber', installmentNumber.toString());
+
+                // Créer le checkout SumUp pour cette mensualité
+                const checkoutResponse = await fetch(`${API_BASE_URL}/api/payments/sumup/create-checkout`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        orderId: orderId,
+                        stage: 'installment',
+                        installmentNumber: installmentNumber
+                    })
+                });
+
+                if (!checkoutResponse.ok) {
+                    const errorData = await checkoutResponse.json();
+                    throw new Error(errorData.error || errorData.details || 'Erreur création checkout SumUp');
+                }
+
+                const checkoutData = await checkoutResponse.json();
+                console.log('[PAYMENT] Checkout SumUp créé pour mensualité:', checkoutData);
+
+                // Rediriger vers SumUp pour le paiement par carte
+                if (checkoutData.checkout_url) {
+                    alert(`✅ Vous allez être redirigé vers la page de paiement sécurisé SumUp pour régler la mensualité ${installmentNumber}.`);
+                    window.location.href = checkoutData.checkout_url;
                 } else {
-                    alert('❌ Erreur lors du paiement');
+                    throw new Error('URL de checkout non reçue');
+                }
+
+            } catch (error) {
+                console.error('[PAYMENT] Erreur:', error);
+
+                if (error.message.includes('Configuration SumUp') || error.message.includes('non configuree')) {
+                    alert('❌ Le système de paiement n\'est pas encore configuré.\n\nVeuillez contacter l\'administrateur.');
+                } else if (error.message.includes('fetch') || error.message.includes('Failed')) {
+                    alert('❌ Impossible de contacter le serveur de paiement.\n\nVérifiez votre connexion internet et réessayez.');
+                } else {
+                    alert('❌ Erreur lors de la préparation du paiement:\n\n' + error.message);
                 }
             }
         }
@@ -444,60 +527,219 @@
             document.getElementById('paymentHistory').innerHTML = html;
         }
 
-        function payDeposit() {
-            const users = JSON.parse(localStorage.getItem('users') || '[]');
-            const currentUser = users.find(u => u.email === user.email);
+        async function payDeposit() {
+            // Utiliser la session backend ou l'ancien système
+            const currentUser = getUserFromStorage(user.email);
 
-            if (!currentUser || !currentUser.activeOfferId) {
+            // Chercher l'offre active - compatible avec différents formats
+            const offerId = currentUser ? (currentUser.activeOfferId || currentUser.active_offer_id || currentUser.offre) : null;
+
+            if (!currentUser || !offerId) {
                 alert('Erreur: Aucune offre active trouvée');
                 return;
             }
 
-            if (confirm('Confirmer le paiement de l\'acompte (30%) ?\n\nAprès paiement, vous serez redirigé vers votre espace client.')) {
-                const payment = simulateDepositPayment(user.email, currentUser.activeOfferId);
+            // Récupérer les détails de l'offre
+            const offer = getOfferById(offerId);
+            if (!offer) {
+                alert('Erreur: Offre non trouvée');
+                return;
+            }
 
-                if (payment) {
-                    // Mettre à jour l'utilisateur connecté
-                    const updatedUser = users.find(u => u.email === user.email);
-                    localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+            // Désactiver le bouton pendant le traitement
+            const depositBtn = document.querySelector('#depositSection button');
+            if (depositBtn) {
+                depositBtn.disabled = true;
+                depositBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Traitement en cours...';
+            }
 
-                    alert(`✅ Paiement de l'acompte confirmé : ${payment.amount}€\n\n🎉 Votre accompagnement peut maintenant démarrer !\n\nRedirection vers votre espace client...`);
+            try {
+                // ÉTAPE 1: Créer la commande sur le backend
+                console.log('[PAYMENT] Création de la commande pour acompte...');
 
-                    // Redirection vers le dashboard
-                    setTimeout(() => {
-                        window.location.href = 'dashboard.html';
-                    }, 500);
+                const clientInfo = {
+                    firstName: currentUser.prenom || currentUser.firstName || '',
+                    lastName: currentUser.nom || currentUser.lastName || '',
+                    email: currentUser.email,
+                    phone: currentUser.telephone || currentUser.phone || '',
+                    address: currentUser.adresse || currentUser.address || 'Non renseigné',
+                    country: 'FRANCE',
+                    city: currentUser.ville || currentUser.city || 'Non renseigné',
+                    postalCode: currentUser.codePostal || currentUser.postalCode || '00000',
+                    clientType: 'particulier'
+                };
+
+                const orderResponse = await fetch(`${API_BASE_URL}/api/orders/create`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        productId: offerId,
+                        clientInfo: clientInfo
+                    })
+                });
+
+                if (!orderResponse.ok) {
+                    const errorData = await orderResponse.json();
+                    throw new Error(errorData.error || 'Erreur création commande');
+                }
+
+                const orderData = await orderResponse.json();
+                const orderId = orderData.orderId;
+                console.log('[PAYMENT] Commande créée:', orderId);
+
+                // Stocker l'ID pour le suivi
+                sessionStorage.setItem('pendingOrderId', orderId);
+                sessionStorage.setItem('pendingPaymentType', 'deposit');
+
+                // ÉTAPE 2: Créer le checkout SumUp pour l'acompte
+                console.log('[PAYMENT] Création du checkout SumUp...');
+                const checkoutResponse = await fetch(`${API_BASE_URL}/api/payments/sumup/create-checkout`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        orderId: orderId,
+                        stage: 'deposit'
+                    })
+                });
+
+                if (!checkoutResponse.ok) {
+                    const errorData = await checkoutResponse.json();
+                    throw new Error(errorData.error || errorData.details || 'Erreur création checkout SumUp');
+                }
+
+                const checkoutData = await checkoutResponse.json();
+                console.log('[PAYMENT] Checkout SumUp créé:', checkoutData);
+
+                // ÉTAPE 3: Rediriger vers SumUp pour le paiement par carte
+                if (checkoutData.checkout_url) {
+                    alert('✅ Vous allez être redirigé vers la page de paiement sécurisé SumUp pour entrer vos coordonnées bancaires.');
+                    console.log('[PAYMENT] Redirection vers SumUp:', checkoutData.checkout_url);
+                    window.location.href = checkoutData.checkout_url;
                 } else {
-                    alert('❌ Erreur lors du paiement');
+                    throw new Error('URL de checkout non reçue');
+                }
+
+            } catch (error) {
+                console.error('[PAYMENT] Erreur:', error);
+
+                // Réactiver le bouton
+                if (depositBtn) {
+                    depositBtn.disabled = false;
+                    depositBtn.innerHTML = '<i class="fas fa-credit-card mr-2"></i>Payer l\'acompte';
+                }
+
+                // Message d'erreur spécifique
+                if (error.message.includes('Configuration SumUp') || error.message.includes('non configuree')) {
+                    alert('❌ Le système de paiement n\'est pas encore configuré.\n\nVeuillez contacter l\'administrateur.');
+                } else if (error.message.includes('fetch') || error.message.includes('Failed')) {
+                    alert('❌ Impossible de contacter le serveur de paiement.\n\nVérifiez votre connexion internet et réessayez.');
+                } else {
+                    alert('❌ Erreur lors de la préparation du paiement:\n\n' + error.message);
                 }
             }
         }
 
-        function payBalance() {
-            const users = JSON.parse(localStorage.getItem('users') || '[]');
-            const currentUser = users.find(u => u.email === user.email);
+        async function payBalance() {
+            // Utiliser la session backend ou l'ancien système
+            const currentUser = getUserFromStorage(user.email);
 
-            if (!currentUser || !currentUser.activeOfferId) {
+            // Chercher l'offre active - compatible avec différents formats
+            const offerId = currentUser ? (currentUser.activeOfferId || currentUser.active_offer_id || currentUser.offre) : null;
+
+            if (!currentUser || !offerId) {
                 alert('Erreur: Aucune offre active trouvée');
                 return;
             }
 
-            if (confirm('Confirmer le paiement du solde (70%) ?\n\nVos livrables seront immédiatement accessibles.')) {
-                const payment = simulateBalancePayment(user.email, currentUser.activeOfferId);
+            // Récupérer les détails de l'offre
+            const offer = getOfferById(offerId);
+            if (!offer) {
+                alert('Erreur: Offre non trouvée');
+                return;
+            }
 
-                if (payment) {
-                    // Mettre à jour l'utilisateur connecté
-                    const updatedUser = users.find(u => u.email === user.email);
-                    localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+            // Récupérer l'ID de commande existant (créé lors du paiement de l'acompte)
+            // ou créer une nouvelle commande si nécessaire
+            let orderId = sessionStorage.getItem('pendingOrderId');
 
-                    alert(`✅ Paiement du solde confirmé : ${payment.amount}€\n\n🎉 Vous avez maintenant accès à tous vos livrables !\n\nRedirection vers vos livrables...`);
+            try {
+                // Si pas d'orderId, on doit d'abord créer une commande
+                if (!orderId) {
+                    console.log('[PAYMENT] Pas d\'orderId trouvé, création d\'une nouvelle commande...');
 
-                    // Redirection vers les livrables
-                    setTimeout(() => {
-                        window.location.href = 'livrables.html';
-                    }, 500);
+                    const clientInfo = {
+                        firstName: currentUser.prenom || currentUser.firstName || '',
+                        lastName: currentUser.nom || currentUser.lastName || '',
+                        email: currentUser.email,
+                        phone: currentUser.telephone || currentUser.phone || '',
+                        address: currentUser.adresse || currentUser.address || 'Non renseigné',
+                        country: 'FRANCE',
+                        city: currentUser.ville || currentUser.city || 'Non renseigné',
+                        postalCode: currentUser.codePostal || currentUser.postalCode || '00000',
+                        clientType: 'particulier'
+                    };
+
+                    const orderResponse = await fetch(`${API_BASE_URL}/api/orders/create`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            productId: offerId,
+                            clientInfo: clientInfo
+                        })
+                    });
+
+                    if (!orderResponse.ok) {
+                        const errorData = await orderResponse.json();
+                        throw new Error(errorData.error || 'Erreur création commande');
+                    }
+
+                    const orderData = await orderResponse.json();
+                    orderId = orderData.orderId;
+                    console.log('[PAYMENT] Commande créée pour solde:', orderId);
+                }
+
+                // Stocker pour le suivi
+                sessionStorage.setItem('pendingOrderId', orderId);
+                sessionStorage.setItem('pendingPaymentType', 'balance');
+
+                // Créer le checkout SumUp pour le solde (70%)
+                console.log('[PAYMENT] Création du checkout SumUp pour le solde...');
+                const checkoutResponse = await fetch(`${API_BASE_URL}/api/payments/sumup/create-checkout`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        orderId: orderId,
+                        stage: 'balance'
+                    })
+                });
+
+                if (!checkoutResponse.ok) {
+                    const errorData = await checkoutResponse.json();
+                    throw new Error(errorData.error || errorData.details || 'Erreur création checkout SumUp');
+                }
+
+                const checkoutData = await checkoutResponse.json();
+                console.log('[PAYMENT] Checkout SumUp créé pour solde:', checkoutData);
+
+                // Rediriger vers SumUp pour le paiement par carte
+                if (checkoutData.checkout_url) {
+                    alert('✅ Vous allez être redirigé vers la page de paiement sécurisé SumUp pour régler le solde.');
+                    console.log('[PAYMENT] Redirection vers SumUp:', checkoutData.checkout_url);
+                    window.location.href = checkoutData.checkout_url;
                 } else {
-                    alert('❌ Erreur lors du paiement');
+                    throw new Error('URL de checkout non reçue');
+                }
+
+            } catch (error) {
+                console.error('[PAYMENT] Erreur:', error);
+
+                // Message d'erreur spécifique
+                if (error.message.includes('Configuration SumUp') || error.message.includes('non configuree')) {
+                    alert('❌ Le système de paiement n\'est pas encore configuré.\n\nVeuillez contacter l\'administrateur.');
+                } else if (error.message.includes('fetch') || error.message.includes('Failed')) {
+                    alert('❌ Impossible de contacter le serveur de paiement.\n\nVérifiez votre connexion internet et réessayez.');
+                } else {
+                    alert('❌ Erreur lors de la préparation du paiement:\n\n' + error.message);
                 }
             }
         }
