@@ -456,14 +456,48 @@
                 box-shadow: 0 0 30px var(--genesis-yellow), 0 0 60px var(--genesis-yellow), 0 0 80px rgba(255, 215, 0, 0.5);
             }
         }
+
+        /* Styles Mobile */
+        @media (max-width: 768px) {
+            .section-header {
+                font-size: clamp(2rem, 8vw, 4rem);
+            }
+            .marquee-text {
+                font-size: 1.2rem;
+            }
+            .scene-3d {
+                height: 400px;
+            }
+            .cube-container {
+                width: 200px;
+                height: 200px;
+            }
+            .cube, .cube-face {
+                width: 120px;
+                height: 120px;
+            }
+            .cube-face {
+                font-size: 20px;
+            }
+            .cube-face.front  { transform: rotateY(0deg) translateZ(60px); }
+            .cube-face.back   { transform: rotateY(180deg) translateZ(60px); }
+            .cube-face.right  { transform: rotateY(90deg) translateZ(60px); }
+            .cube-face.left   { transform: rotateY(-90deg) translateZ(60px); }
+            .cube-face.top    { transform: rotateX(90deg) translateZ(60px); }
+            .cube-face.bottom { transform: rotateX(-90deg) translateZ(60px); }
+            .shape.circle {
+                width: 50px;
+                height: 50px;
+            }
+        }
     </style>
 </head>
 <body>
 
     <!-- NAVIGATION -->
-    <nav class="fixed top-0 w-full z-50 bg-black/95 backdrop-blur-md border-b-4 border-[var(--genesis-yellow)] px-6 py-4 flex justify-between items-center text-white text-xs font-black uppercase">
+    <nav class="fixed top-0 w-full z-50 bg-black/95 backdrop-blur-md border-b-4 border-[var(--genesis-yellow)] px-4 md:px-6 py-3 md:py-4 flex justify-between items-center text-white text-xs font-black uppercase">
         <div class="flex items-center">
-            <a href="index.html" class="text-2xl font-black tracking-wider text-[var(--genesis-yellow)]" style="font-family: 'Unbounded', cursive;">FA GENESIS</a>
+            <a href="index.html" class="text-lg md:text-2xl font-black tracking-wider text-[var(--genesis-yellow)]" style="font-family: 'Unbounded', cursive;">FA GENESIS</a>
         </div>
         <div class="hidden md:flex gap-12 text-white font-black">
             <a href="#accueil" class="nav-link hover:text-[var(--genesis-yellow)] transition">Accueil</a>
@@ -471,11 +505,29 @@
             <a href="offres.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">Offres</a>
             <a href="contact.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">Contact</a>
         </div>
-        <div class="flex gap-4 items-center">
+        <div class="hidden md:flex gap-4 items-center">
             <a href="login.html" class="border-4 border-white text-white px-6 py-3 text-[12px] tracking-widest font-black hover:bg-white hover:text-black transition">Espace client</a>
             <a href="contact.html" class="neo-btn-yellow px-6 py-3 text-[12px] tracking-widest text-black font-black">Lancer un projet</a>
         </div>
+        <!-- Bouton Menu Mobile -->
+        <button id="mobileMenuBtn" class="md:hidden flex flex-col gap-1.5 p-2" aria-label="Menu">
+            <span class="block w-6 h-0.5 bg-[var(--genesis-yellow)] transition-all" id="menuLine1"></span>
+            <span class="block w-6 h-0.5 bg-[var(--genesis-yellow)] transition-all" id="menuLine2"></span>
+            <span class="block w-6 h-0.5 bg-[var(--genesis-yellow)] transition-all" id="menuLine3"></span>
+        </button>
     </nav>
+
+    <!-- Menu Mobile Overlay -->
+    <div id="mobileMenu" class="fixed inset-0 z-40 bg-black/98 backdrop-blur-lg hidden flex-col items-center justify-center gap-8 text-white font-black uppercase">
+        <a href="#accueil" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition" onclick="closeMobileMenu()">Accueil</a>
+        <a href="a-propos.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition">À Propos</a>
+        <a href="offres.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition">Offres</a>
+        <a href="contact.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition">Contact</a>
+        <div class="flex flex-col gap-4 mt-8">
+            <a href="login.html" class="border-4 border-white text-white px-8 py-4 text-sm tracking-widest font-black hover:bg-white hover:text-black transition text-center">Espace client</a>
+            <a href="contact.html" class="neo-btn-yellow px-8 py-4 text-sm tracking-widest text-black font-black text-center">Lancer un projet</a>
+        </div>
+    </div>
 
     <!-- HERO SECTION -->
     <header class="py-20 bg-black text-center relative overflow-hidden">
@@ -663,6 +715,40 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>
     <script>
         AOS.init({ duration: 1000, once: false, mirror: true, offset: 120 });
+
+        // Menu Mobile Toggle
+        const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+        const mobileMenu = document.getElementById('mobileMenu');
+        const menuLine1 = document.getElementById('menuLine1');
+        const menuLine2 = document.getElementById('menuLine2');
+        const menuLine3 = document.getElementById('menuLine3');
+        let isMenuOpen = false;
+
+        function toggleMobileMenu() {
+            isMenuOpen = !isMenuOpen;
+            if (isMenuOpen) {
+                mobileMenu.classList.remove('hidden');
+                mobileMenu.classList.add('flex');
+                menuLine1.style.transform = 'rotate(45deg) translate(5px, 5px)';
+                menuLine2.style.opacity = '0';
+                menuLine3.style.transform = 'rotate(-45deg) translate(5px, -5px)';
+                document.body.style.overflow = 'hidden';
+            } else {
+                closeMobileMenu();
+            }
+        }
+
+        function closeMobileMenu() {
+            isMenuOpen = false;
+            mobileMenu.classList.add('hidden');
+            mobileMenu.classList.remove('flex');
+            menuLine1.style.transform = '';
+            menuLine2.style.opacity = '1';
+            menuLine3.style.transform = '';
+            document.body.style.overflow = '';
+        }
+
+        mobileMenuBtn.addEventListener('click', toggleMobileMenu);
     </script>
 </body>
 </html>
