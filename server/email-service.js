@@ -416,7 +416,7 @@ async function sendRegistrationConfirmation(clientEmail, prenom, offerData = nul
             <p style="margin: 0 0 15px 0; font-size: 14px; color: #cccccc;">
                 Accédez à votre espace client pour suivre votre commande
             </p>
-            <a href="${process.env.FRONT_URL || 'http://127.0.0.1:5500'}/fa-genesis-landing/login.html"
+            <a href="${process.env.FRONT_URL || 'http://127.0.0.1:5500'}/login.html"
                style="display: inline-block; background-color: #FFD700; color: #000; padding: 15px 30px; text-decoration: none; font-weight: 700; border-radius: 4px; font-size: 16px;">
                 Se connecter
             </a>
