@@ -216,6 +216,13 @@
                         <button onclick="showSection('clients')" class="nav-btn text-white hover:text-[var(--genesis-yellow)]">
                             <i class="fas fa-users mr-2"></i>Clients
                         </button>
+                        <button onclick="showSection('messages')" class="nav-btn text-white hover:text-[var(--genesis-yellow)]" style="position:relative;">
+                            <i class="fas fa-envelope mr-2"></i>Messages
+                            <span id="unreadBadge" style="display:none;position:absolute;top:-8px;right:-8px;background:#ff6b6b;color:white;border-radius:50%;width:20px;height:20px;font-size:11px;line-height:20px;text-align:center;"></span>
+                        </button>
+                        <button onclick="showSection('commandes')" class="nav-btn text-white hover:text-[var(--genesis-yellow)]">
+                            <i class="fas fa-receipt mr-2"></i>Commandes
+                        </button>
                     </div>
                 </div>
                 <button onclick="handleLogout()" class="border-4 border-white text-white px-4 py-2 text-xs font-black hover:bg-white hover:text-black transition">
@@ -243,6 +250,38 @@
                     </h3>
                     <div id="recentClients"></div>
                 </div>
+            </div>
+
+            <!-- SECTION MESSAGES -->
+            <div id="messagesSection" class="container mx-auto max-w-7xl" style="display: none;">
+                <div class="flex justify-between items-center mb-12 flex-wrap gap-4">
+                    <h2 class="text-5xl font-black italic uppercase text-[var(--genesis-yellow)]">
+                        <i class="fas fa-envelope mr-4"></i>MESSAGES
+                    </h2>
+                    <div id="messagesStats" class="text-right"></div>
+                </div>
+
+                <!-- Filtres -->
+                <div class="admin-card neo-shadow mb-8">
+                    <div class="flex gap-3 flex-wrap">
+                        <button onclick="filterMessages('all')" class="neo-btn-yellow px-4 py-2 text-xs">TOUS</button>
+                        <button onclick="filterMessages('unread')" class="border-4 border-[#ff6b6b] bg-[#ff6b6b] text-black px-4 py-2 text-xs font-black">NON LUS</button>
+                        <button onclick="filterMessages('read')" class="border-4 border-[#4dabf7] bg-[#4dabf7] text-black px-4 py-2 text-xs font-black">LUS</button>
+                        <button onclick="filterMessages('replied')" class="border-4 border-[#51cf66] bg-[#51cf66] text-black px-4 py-2 text-xs font-black">RÉPONDUS</button>
+                        <button onclick="filterMessages('archived')" class="border-4 border-gray-400 bg-gray-400 text-black px-4 py-2 text-xs font-black">ARCHIVÉS</button>
+                    </div>
+                </div>
+
+                <!-- Liste des messages -->
+                <div id="messagesList"></div>
+            </div>
+
+            <!-- SECTION COMMANDES -->
+            <div id="commandesSection" class="container mx-auto max-w-7xl" style="display: none;">
+                <h2 class="text-5xl font-black italic uppercase mb-12 text-[var(--genesis-yellow)]">
+                    <i class="fas fa-receipt mr-4"></i>COMMANDES
+                </h2>
+                <div id="ordersList"></div>
             </div>
 
             <!-- SECTION CLIENTS -->
@@ -323,6 +362,8 @@
         function showSection(section) {
             document.getElementById('dashboardSection').style.display = 'none';
             document.getElementById('clientsSection').style.display = 'none';
+            document.getElementById('messagesSection').style.display = 'none';
+            document.getElementById('commandesSection').style.display = 'none';
 
             if (section === 'dashboard') {
                 document.getElementById('dashboardSection').style.display = 'block';
@@ -330,6 +371,12 @@
             } else if (section === 'clients') {
                 document.getElementById('clientsSection').style.display = 'block';
                 loadClientsList();
+            } else if (section === 'messages') {
+                document.getElementById('messagesSection').style.display = 'block';
+                loadMessages();
+            } else if (section === 'commandes') {
+                document.getElementById('commandesSection').style.display = 'block';
+                loadOrders();
             }
         }
 
@@ -867,6 +914,253 @@
             // Pour une version simple, on redirige vers la modification
             alert('Fonctionnalité de modification à venir. Pour modifier, supprimez et recréez la séance.');
         }
+
+        // ============================================================
+        // SECTION MESSAGES
+        // ============================================================
+
+        let allMessages = [];
+        let currentFilter = 'all';
+
+        async function loadMessages(filter) {
+            if (filter) currentFilter = filter;
+
+            try {
+                const response = await fetch(API_BASE_URL + '/api/admin/messages');
+                if (!response.ok) throw new Error('Erreur chargement messages');
+                allMessages = await response.json();
+            } catch (error) {
+                console.error('[ADMIN] Erreur chargement messages:', error);
+                document.getElementById('messagesList').innerHTML = '<p class="text-center py-8 opacity-50 font-bold">Erreur de chargement des messages</p>';
+                return;
+            }
+
+            // Stats
+            const unread = allMessages.filter(function(m) { return m.status === 'unread'; }).length;
+            const total = allMessages.length;
+            document.getElementById('messagesStats').innerHTML =
+                '<span class="text-[#ff6b6b] font-black text-2xl">' + unread + '</span>' +
+                '<span class="text-sm font-bold opacity-70"> non lu' + (unread > 1 ? 's' : '') + ' / ' + total + ' total</span>';
+
+            // Badge navbar
+            var badge = document.getElementById('unreadBadge');
+            if (unread > 0) {
+                badge.style.display = 'block';
+                badge.textContent = unread;
+            } else {
+                badge.style.display = 'none';
+            }
+
+            renderMessages();
+        }
+
+        function filterMessages(filter) {
+            currentFilter = filter;
+            renderMessages();
+        }
+
+        function renderMessages() {
+            var filtered = allMessages;
+            if (currentFilter !== 'all') {
+                filtered = allMessages.filter(function(m) { return m.status === currentFilter; });
+            }
+
+            if (filtered.length === 0) {
+                document.getElementById('messagesList').innerHTML = '<p class="text-center py-8 opacity-50 font-bold">Aucun message</p>';
+                return;
+            }
+
+            var html = '';
+            filtered.forEach(function(msg) {
+                var date = new Date(msg.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+                var isUnread = msg.status === 'unread';
+                var statusColors = { unread: '#ff6b6b', read: '#4dabf7', replied: '#51cf66', archived: '#999' };
+                var statusLabels = { unread: 'NON LU', read: 'LU', replied: 'RÉPONDU', archived: 'ARCHIVÉ' };
+                var subjectLabels = {
+                    information: "DEMANDE D'INFO",
+                    devis: 'DEVIS',
+                    offre: 'QUESTION OFFRE',
+                    technique: 'TECHNIQUE',
+                    support: 'SUPPORT',
+                    partenariat: 'PARTENARIAT',
+                    autre: 'AUTRE'
+                };
+                var subjectLabel = subjectLabels[msg.subject] || msg.subject;
+
+                html += '<div class="admin-card neo-shadow mb-4" style="cursor:pointer;' + (isUnread ? 'border-left:6px solid #ff6b6b;' : '') + '" onclick="openMessage(\'' + msg.id + '\')">' +
+                    '<div class="flex justify-between items-start flex-wrap gap-4">' +
+                        '<div class="flex-1 min-w-[250px]">' +
+                            '<div class="font-black text-lg' + (isUnread ? ' text-[var(--genesis-yellow)]' : '') + '">' + msg.name + '</div>' +
+                            '<div class="text-sm font-bold opacity-70">' + msg.email + '</div>' +
+                            '<div class="mt-2"><span style="background:#FFD700;color:black;padding:2px 8px;border:2px solid black;font-size:11px;font-weight:900;">' + subjectLabel + '</span></div>' +
+                        '</div>' +
+                        '<div class="flex-1 min-w-[200px]">' +
+                            '<p class="text-sm font-bold opacity-80" style="max-height:40px;overflow:hidden;">' + msg.message.substring(0, 100) + (msg.message.length > 100 ? '...' : '') + '</p>' +
+                        '</div>' +
+                        '<div class="text-right">' +
+                            '<div style="background:' + (statusColors[msg.status] || '#999') + ';color:black;padding:4px 10px;border:2px solid black;font-size:11px;font-weight:900;display:inline-block;">' + (statusLabels[msg.status] || msg.status) + '</div>' +
+                            '<div class="text-xs font-bold opacity-60 mt-2">' + date + '</div>' +
+                        '</div>' +
+                    '</div>' +
+                '</div>';
+            });
+
+            document.getElementById('messagesList').innerHTML = html;
+        }
+
+        async function openMessage(messageId) {
+            // Marquer comme lu
+            try {
+                await fetch(API_BASE_URL + '/api/admin/messages/' + messageId);
+            } catch (e) {}
+
+            var msg = allMessages.find(function(m) { return m.id === messageId; });
+            if (!msg) return;
+
+            var date = new Date(msg.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+            var modalHTML =
+                '<h2 class="text-2xl font-black italic uppercase mb-6 text-[var(--genesis-yellow)]">' +
+                    '<i class="fas fa-envelope-open mr-2"></i>MESSAGE' +
+                '</h2>' +
+                '<div class="grid md:grid-cols-2 gap-4 mb-6">' +
+                    '<div><span class="text-sm font-bold opacity-60">DE :</span><br><span class="font-black text-lg">' + msg.name + '</span></div>' +
+                    '<div><span class="text-sm font-bold opacity-60">EMAIL :</span><br><span class="font-black">' + msg.email + '</span></div>' +
+                    '<div><span class="text-sm font-bold opacity-60">OBJET :</span><br><span class="font-black">' + msg.subject + '</span></div>' +
+                    '<div><span class="text-sm font-bold opacity-60">DATE :</span><br><span class="font-black">' + date + '</span></div>' +
+                '</div>' +
+                '<div style="background:#FFF9E6;border-left:4px solid #FFD700;padding:20px;margin:20px 0;">' +
+                    '<p style="white-space:pre-wrap;font-size:15px;line-height:1.6;">' + msg.message + '</p>' +
+                '</div>' +
+                '<div class="flex gap-3 flex-wrap mt-6">' +
+                    '<a href="mailto:' + msg.email + '?subject=Re: ' + encodeURIComponent(msg.subject) + '" class="neo-btn-yellow px-6 py-3 text-sm" onclick="updateMessageStatus(\'' + msg.id + '\', \'replied\')">' +
+                        '<i class="fas fa-reply mr-2"></i>RÉPONDRE PAR EMAIL' +
+                    '</a>' +
+                    '<button onclick="updateMessageStatus(\'' + msg.id + '\', \'archived\');closeClientModal()" class="border-4 border-black bg-gray-300 text-black px-6 py-3 text-sm font-black">' +
+                        '<i class="fas fa-archive mr-2"></i>ARCHIVER' +
+                    '</button>' +
+                    '<button onclick="deleteMessage(\'' + msg.id + '\')" class="border-4 border-black bg-[#ff6b6b] text-black px-6 py-3 text-sm font-black">' +
+                        '<i class="fas fa-trash mr-2"></i>SUPPRIMER' +
+                    '</button>' +
+                '</div>';
+
+            document.getElementById('clientModalContent').innerHTML = modalHTML;
+            document.getElementById('clientModal').style.display = 'flex';
+
+            // Mettre a jour le statut local
+            msg.status = 'read';
+            renderMessages();
+            var unread = allMessages.filter(function(m) { return m.status === 'unread'; }).length;
+            var badge = document.getElementById('unreadBadge');
+            if (unread > 0) { badge.style.display = 'block'; badge.textContent = unread; } else { badge.style.display = 'none'; }
+        }
+
+        async function updateMessageStatus(messageId, status) {
+            try {
+                await fetch(API_BASE_URL + '/api/admin/messages/' + messageId + '/status', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: status })
+                });
+                var msg = allMessages.find(function(m) { return m.id === messageId; });
+                if (msg) msg.status = status;
+                renderMessages();
+            } catch (e) {
+                console.error('[ADMIN] Erreur maj statut:', e);
+            }
+        }
+
+        async function deleteMessage(messageId) {
+            if (!confirm('Supprimer ce message ?')) return;
+            try {
+                await fetch(API_BASE_URL + '/api/admin/messages/' + messageId, { method: 'DELETE' });
+                allMessages = allMessages.filter(function(m) { return m.id !== messageId; });
+                closeClientModal();
+                renderMessages();
+            } catch (e) {
+                console.error('[ADMIN] Erreur suppression:', e);
+            }
+        }
+
+        // ============================================================
+        // SECTION COMMANDES
+        // ============================================================
+
+        async function loadOrders() {
+            try {
+                var response = await fetch(API_BASE_URL + '/api/orders/all');
+                if (!response.ok) throw new Error('Erreur chargement commandes');
+                var orders = await response.json();
+
+                if (!orders || orders.length === 0) {
+                    document.getElementById('ordersList').innerHTML = '<p class="text-center py-8 opacity-50 font-bold">Aucune commande</p>';
+                    return;
+                }
+
+                var html = '';
+                orders.forEach(function(order) {
+                    var date = new Date(order.created_at).toLocaleDateString('fr-FR');
+                    var statusColors = {
+                        pending_deposit: '#ff6b6b', active: '#51cf66', in_progress: '#ffd43b',
+                        delivered: '#4dabf7', completed: '#51cf66', pending_balance: '#ffd43b',
+                        paid_in_full: '#4dabf7', cancelled: '#999'
+                    };
+                    var statusLabels = {
+                        pending_deposit: 'ACOMPTE EN ATTENTE', active: 'ACTIF', in_progress: 'EN COURS',
+                        delivered: 'LIVRÉ', completed: 'TERMINÉ', pending_balance: 'SOLDE EN ATTENTE',
+                        paid_in_full: 'PAYÉ COMPLET', cancelled: 'ANNULÉ'
+                    };
+                    var bgColor = statusColors[order.status] || '#999';
+                    var label = statusLabels[order.status] || order.status;
+                    var clientName = order.client_info ? (order.client_info.firstName + ' ' + order.client_info.lastName) : 'N/A';
+                    var clientEmail = order.client_info ? order.client_info.email : '';
+
+                    html += '<div class="admin-card neo-shadow mb-4">' +
+                        '<div class="flex justify-between items-start flex-wrap gap-4">' +
+                            '<div class="flex-1 min-w-[200px]">' +
+                                '<div class="text-xs font-bold opacity-50">' + order.id + '</div>' +
+                                '<div class="font-black text-lg">' + clientName + '</div>' +
+                                '<div class="text-sm font-bold opacity-70">' + clientEmail + '</div>' +
+                            '</div>' +
+                            '<div class="flex-1 min-w-[200px]">' +
+                                '<div class="font-black">' + (order.product_name || 'N/A') + '</div>' +
+                                '<div class="text-sm font-bold opacity-70">' + date + '</div>' +
+                            '</div>' +
+                            '<div class="text-center">' +
+                                '<div class="text-2xl font-black text-[var(--genesis-yellow)]">' + (order.total_amount || 0) + '\u20ac</div>' +
+                                '<div class="text-xs font-bold opacity-60">Acompte: ' + (order.deposit_amount || 0) + '\u20ac | Solde: ' + (order.balance_amount || 0) + '\u20ac</div>' +
+                                '<div class="text-xs mt-1">' +
+                                    (order.deposit_paid ? '<span style="color:#51cf66;">Acompte \u2713</span>' : '<span style="color:#ff6b6b;">Acompte \u2717</span>') + ' | ' +
+                                    (order.balance_paid ? '<span style="color:#51cf66;">Solde \u2713</span>' : '<span style="color:#ff6b6b;">Solde \u2717</span>') +
+                                '</div>' +
+                            '</div>' +
+                            '<div class="text-right">' +
+                                '<div style="background:' + bgColor + ';color:black;padding:4px 10px;border:2px solid black;font-size:11px;font-weight:900;display:inline-block;">' + label + '</div>' +
+                            '</div>' +
+                        '</div>' +
+                    '</div>';
+                });
+
+                document.getElementById('ordersList').innerHTML = html;
+
+            } catch (error) {
+                console.error('[ADMIN] Erreur chargement commandes:', error);
+                document.getElementById('ordersList').innerHTML = '<p class="text-center py-8 opacity-50 font-bold">Erreur de chargement des commandes</p>';
+            }
+        }
+
+        // Charger le badge messages non lus au demarrage
+        (async function() {
+            try {
+                var response = await fetch(API_BASE_URL + '/api/admin/messages');
+                if (response.ok) {
+                    var msgs = await response.json();
+                    var unread = msgs.filter(function(m) { return m.status === 'unread'; }).length;
+                    var badge = document.getElementById('unreadBadge');
+                    if (badge && unread > 0) { badge.style.display = 'block'; badge.textContent = unread; }
+                }
+            } catch (e) {}
+        })();
 
         // Fermer le modal en cliquant en dehors
         window.onclick = function(event) {
