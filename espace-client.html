@@ -471,11 +471,12 @@
         </div>
     </div>
 
+    <script src="config.js"></script>
     <script>
         // ============================================================
         // CONFIGURATION
         // ============================================================
-        const API_BASE_URL = 'https://fa-genesis-website.onrender.com';
+        const API_BASE_URL = window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com';
 
         // Récupérer l'ID de commande depuis l'URL
         const urlParams = new URLSearchParams(window.location.search);

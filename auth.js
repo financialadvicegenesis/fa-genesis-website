@@ -1,8 +1,8 @@
 // Systeme d'authentification FA GENESIS
 // Version backend - Utilise l'API REST du serveur Node.js
 
-// URL du backend
-const API_BASE_URL = 'https://fa-genesis-website.onrender.com';
+// URL du backend (centralisee dans config.js)
+const API_BASE_URL = window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com';
 
 // Cle de stockage local
 const SESSION_KEY = 'fa_genesis_session';

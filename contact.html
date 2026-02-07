@@ -180,6 +180,7 @@
     </footer>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>
+    <script src="config.js"></script>
     <script>
         AOS.init({ duration: 1000, once: false, mirror: true, offset: 120 });
 
@@ -236,7 +237,7 @@
         });
 
         // Soumission du formulaire de contact
-        const API_BASE_URL = 'https://fa-genesis-website.onrender.com';
+        const API_BASE_URL = window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com';
 
         document.getElementById('contactForm').addEventListener('submit', async function(e) {
             e.preventDefault();
