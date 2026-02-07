@@ -229,8 +229,8 @@ function getProductById(productId) {
  * @returns {Object}
  */
 function calculatePaymentAmounts(totalPrice) {
-    const depositAmount = Math.round(totalPrice * 0.30 * 100) / 100; // 30%
-    const balanceAmount = Math.round((totalPrice - depositAmount) * 100) / 100; // 70%
+    const depositAmount = Math.round(totalPrice * 0.30); // 30% arrondi a l'euro
+    const balanceAmount = totalPrice - depositAmount; // 70% = reste exact
 
     return {
         total_amount: totalPrice,
