@@ -369,9 +369,9 @@ app.post('/api/payments/sumup/create-checkout', async (req, res) => {
         const stageLabel = stage === 'deposit' ? 'Acompte 30%' : 'Solde 70%';
 
         // Construire les URLs de retour
-        const frontUrl = process.env.FRONT_URL || 'http://127.0.0.1:5500';
-        const returnUrl = `${frontUrl}/fa-genesis-landing/payment-success.html?order=${orderId}&stage=${stage}`;
-        const cancelUrl = `${frontUrl}/fa-genesis-landing/payment-cancel.html?order=${orderId}&stage=${stage}`;
+        const successUrl = process.env.SUMUP_SUCCESS_URL || 'https://fagenesis.netlify.app/payment-success.html';
+        const failureUrl = process.env.SUMUP_FAILURE_URL || 'https://fagenesis.netlify.app/payment-failure.html';
+        const returnUrl = `${successUrl}?order=${orderId}&stage=${stage}`;
 
         // Creer le checkout SumUp
         const checkoutData = {
