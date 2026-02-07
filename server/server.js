@@ -1417,6 +1417,15 @@ app.post('/api/auth/login', async (req, res) => {
             return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
         }
 
+        // Verifier si le compte est desactive
+        if (user.accountStatus === 'deactivated') {
+            return res.status(403).json({
+                error: 'Compte desactive',
+                deactivated: true,
+                message: 'Votre compte est temporairement desactive. Vous pouvez le reactiver depuis la page de connexion.'
+            });
+        }
+
         // Generer un nouveau token de session
         const sessionToken = generateSessionToken();
 
@@ -1573,6 +1582,134 @@ app.put('/api/auth/update-profile', async (req, res) => {
     } catch (error) {
         console.error('Erreur mise a jour profil:', error);
         res.status(500).json({ error: 'Erreur lors de la mise a jour' });
+    }
+});
+
+// ============================================================
+// ROUTES - GESTION DU COMPTE (Desactivation / Suppression)
+// ============================================================
+
+/**
+ * PUT /api/auth/deactivate-account
+ * Desactiver temporairement son compte (auth requise)
+ */
+app.put('/api/auth/deactivate-account', async (req, res) => {
+    try {
+        const authHeader = req.headers.authorization;
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return res.status(401).json({ error: 'Token requis' });
+        }
+
+        const token = authHeader.split(' ')[1];
+        const users = loadUsers();
+        const userIndex = users.findIndex(u => u.sessionToken === token);
+
+        if (userIndex === -1) {
+            return res.status(401).json({ error: 'Session invalide' });
+        }
+
+        users[userIndex].accountStatus = 'deactivated';
+        users[userIndex].deactivatedAt = new Date().toISOString();
+        users[userIndex].sessionToken = null;
+        users[userIndex].updatedAt = new Date().toISOString();
+        saveUsers(users);
+
+        console.log(`[AUTH] Compte desactive: ${users[userIndex].email}`);
+
+        res.json({ success: true, message: 'Compte desactive avec succes' });
+
+    } catch (error) {
+        console.error('Erreur desactivation compte:', error);
+        res.status(500).json({ error: 'Erreur lors de la desactivation' });
+    }
+});
+
+/**
+ * PUT /api/auth/reactivate-account
+ * Reactiver un compte desactive (pas de token, utilise email+password)
+ */
+app.put('/api/auth/reactivate-account', async (req, res) => {
+    try {
+        const { email, password } = req.body;
+
+        if (!email || !password) {
+            return res.status(400).json({ error: 'Email et mot de passe requis' });
+        }
+
+        const users = loadUsers();
+        const userIndex = users.findIndex(u => u.email.toLowerCase() === email.toLowerCase());
+
+        if (userIndex === -1) {
+            return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
+        }
+
+        const user = users[userIndex];
+
+        const isValidPassword = await bcrypt.compare(password, user.password);
+        if (!isValidPassword) {
+            return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
+        }
+
+        if (user.accountStatus !== 'deactivated') {
+            return res.status(400).json({ error: 'Ce compte n\'est pas desactive' });
+        }
+
+        users[userIndex].accountStatus = 'active';
+        delete users[userIndex].deactivatedAt;
+        users[userIndex].updatedAt = new Date().toISOString();
+        saveUsers(users);
+
+        console.log(`[AUTH] Compte reactive: ${email}`);
+
+        res.json({ success: true, message: 'Compte reactive avec succes. Vous pouvez maintenant vous connecter.' });
+
+    } catch (error) {
+        console.error('Erreur reactivation compte:', error);
+        res.status(500).json({ error: 'Erreur lors de la reactivation' });
+    }
+});
+
+/**
+ * DELETE /api/auth/delete-account
+ * Supprimer definitivement son compte (auth requise + confirmation mot de passe)
+ */
+app.delete('/api/auth/delete-account', async (req, res) => {
+    try {
+        const authHeader = req.headers.authorization;
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return res.status(401).json({ error: 'Token requis' });
+        }
+
+        const token = authHeader.split(' ')[1];
+        const users = loadUsers();
+        const userIndex = users.findIndex(u => u.sessionToken === token);
+
+        if (userIndex === -1) {
+            return res.status(401).json({ error: 'Session invalide' });
+        }
+
+        const { password } = req.body;
+        if (!password) {
+            return res.status(400).json({ error: 'Mot de passe requis pour confirmer la suppression' });
+        }
+
+        const user = users[userIndex];
+        const isValidPassword = await bcrypt.compare(password, user.password);
+        if (!isValidPassword) {
+            return res.status(401).json({ error: 'Mot de passe incorrect' });
+        }
+
+        const deletedEmail = user.email;
+        users.splice(userIndex, 1);
+        saveUsers(users);
+
+        console.log(`[AUTH] Compte supprime definitivement: ${deletedEmail}`);
+
+        res.json({ success: true, message: 'Compte supprime definitivement' });
+
+    } catch (error) {
+        console.error('Erreur suppression compte:', error);
+        res.status(500).json({ error: 'Erreur lors de la suppression' });
     }
 });
 

@@ -158,6 +158,17 @@
                 <i class="fas fa-info-circle mr-2"></i>
                 <span id="offreText"></span>
             </div>
+
+            <!-- Bloc reactivation compte desactive -->
+            <div id="reactivateBlock" class="mt-6 p-6 bg-white text-black border-4 border-black text-center" style="display: none;">
+                <i class="fas fa-pause-circle text-3xl text-[#ffd43b] mb-3"></i>
+                <h3 class="text-lg font-black uppercase mb-2">Compte desactive</h3>
+                <p class="font-bold text-sm mb-4 opacity-70">Votre compte est temporairement suspendu. Vos donnees sont conservees.</p>
+                <div id="reactivateMessage" style="display:none; padding:8px; margin-bottom:12px; font-weight:700; font-size:13px;"></div>
+                <button onclick="reactivateAccount()" id="reactivateBtn" class="w-full py-3 bg-[var(--genesis-yellow)] text-black border-4 border-black font-black uppercase text-sm" style="box-shadow:4px 4px 0px black;">
+                    <i class="fas fa-play-circle mr-2"></i>Reactiver mon compte
+                </button>
+            </div>
         </div>
     </section>
 
@@ -251,10 +262,19 @@
             if (result.success) {
                 // Redirection vers le dashboard
                 window.location.href = 'dashboard.html';
+            } else if (result.deactivated) {
+                // Compte desactive - afficher le bloc de reactivation
+                errorMessage.textContent = '';
+                errorMessage.classList.remove('show');
+                document.getElementById('reactivateBlock').style.display = 'block';
+                // Sauvegarder les identifiants pour la reactivation
+                window._reactivateEmail = email;
+                window._reactivatePassword = password;
             } else {
                 // Affichage de l'erreur
                 errorMessage.textContent = result.message;
                 errorMessage.classList.add('show');
+                document.getElementById('reactivateBlock').style.display = 'none';
 
                 // Masquer l'erreur après 5 secondes
                 setTimeout(() => {
@@ -262,6 +282,68 @@
                 }, 5000);
             }
         });
+
+        // Fonction de reactivation de compte
+        async function reactivateAccount() {
+            var btn = document.getElementById('reactivateBtn');
+            var msgDiv = document.getElementById('reactivateMessage');
+            var email = window._reactivateEmail;
+            var password = window._reactivatePassword;
+
+            if (!email || !password) {
+                msgDiv.style.display = 'block';
+                msgDiv.style.background = '#fff5f5';
+                msgDiv.style.color = '#c92a2a';
+                msgDiv.textContent = 'Veuillez d\'abord saisir vos identifiants et cliquer sur Se connecter';
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = 'Reactivation...';
+
+            try {
+                var response = await fetch(API_BASE_URL + '/api/auth/reactivate-account', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: email, password: password })
+                });
+
+                var data = await response.json();
+
+                if (response.ok) {
+                    msgDiv.style.display = 'block';
+                    msgDiv.style.background = '#d3f9d8';
+                    msgDiv.style.color = '#2b8a3e';
+                    msgDiv.textContent = 'Compte reactive ! Connexion en cours...';
+
+                    // Re-tenter le login automatiquement
+                    setTimeout(async function() {
+                        var loginResult = await login(email, password);
+                        if (loginResult.success) {
+                            window.location.href = 'dashboard.html';
+                        } else {
+                            msgDiv.textContent = 'Compte reactive. Veuillez vous reconnecter.';
+                            btn.disabled = false;
+                            btn.textContent = 'Reactiver mon compte';
+                        }
+                    }, 1000);
+                } else {
+                    msgDiv.style.display = 'block';
+                    msgDiv.style.background = '#fff5f5';
+                    msgDiv.style.color = '#c92a2a';
+                    msgDiv.textContent = data.error || 'Erreur lors de la reactivation';
+                    btn.disabled = false;
+                    btn.textContent = 'Reactiver mon compte';
+                }
+            } catch (error) {
+                msgDiv.style.display = 'block';
+                msgDiv.style.background = '#fff5f5';
+                msgDiv.style.color = '#c92a2a';
+                msgDiv.textContent = 'Erreur de connexion au serveur';
+                btn.disabled = false;
+                btn.textContent = 'Reactiver mon compte';
+            }
+        }
 
         // Vérifier si déjà connecté
         if (isAuthenticated()) {

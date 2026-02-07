@@ -29,7 +29,8 @@ async function login(email, password) {
         if (!response.ok) {
             return {
                 success: false,
-                message: data.error || 'Erreur de connexion'
+                message: data.error || 'Erreur de connexion',
+                deactivated: data.deactivated || false
             };
         }
 

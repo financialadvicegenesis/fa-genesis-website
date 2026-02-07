@@ -258,8 +258,94 @@
                 </div>
             </div>
 
+            <!-- Gestion du compte -->
+            <div class="mt-16" data-aos="fade-up">
+                <h2 class="text-3xl font-black italic uppercase mb-6 text-white">Gestion du compte</h2>
+
+                <div class="bg-white text-black p-8 neo-border" style="border-left: 6px solid #ff6b6b;">
+                    <p class="font-bold mb-6 opacity-70">
+                        <i class="fas fa-exclamation-triangle mr-2 text-[#ff6b6b]"></i>
+                        Ces actions affectent votre compte. Veuillez les utiliser avec precaution.
+                    </p>
+
+                    <div class="flex flex-col sm:flex-row gap-4">
+                        <button onclick="openDeactivateModal()" class="flex-1 py-4 px-6 border-4 border-black font-black italic uppercase text-sm tracking-tighter bg-[#ffd43b] text-black hover:bg-[#fab005] transition" style="box-shadow: 4px 4px 0px black;">
+                            <i class="fas fa-pause-circle mr-2"></i>Desactiver temporairement
+                        </button>
+                        <button onclick="openDeleteModal()" class="flex-1 py-4 px-6 border-4 border-black font-black italic uppercase text-sm tracking-tighter bg-[#ff6b6b] text-black hover:bg-[#fa5252] transition" style="box-shadow: 4px 4px 0px black;">
+                            <i class="fas fa-trash-alt mr-2"></i>Supprimer definitivement
+                        </button>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </section>
+
+    <!-- Modal Desactivation -->
+    <div id="deactivateModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:9999; align-items:center; justify-content:center;">
+        <div style="background:white; color:black; max-width:500px; width:90%; padding:40px; border:4px solid black; box-shadow:10px 10px 0px #ffd43b; position:relative;">
+            <button onclick="closeDeactivateModal()" style="position:absolute; top:15px; right:20px; background:none; border:none; font-size:24px; cursor:pointer; font-weight:900;">&times;</button>
+
+            <h3 style="font-size:22px; font-weight:900; text-transform:uppercase; font-style:italic; margin-bottom:20px;">
+                <i class="fas fa-pause-circle" style="color:#ffd43b; margin-right:10px;"></i>Desactiver mon compte
+            </h3>
+
+            <div style="background:#FFF9E6; border-left:4px solid #ffd43b; padding:15px; margin-bottom:20px;">
+                <p style="font-weight:700; font-size:14px; line-height:1.6; margin:0;">
+                    Votre compte sera temporairement suspendu. Vos donnees sont conservees.
+                    Vous pourrez le reactiver a tout moment depuis la page de connexion.
+                </p>
+            </div>
+
+            <div id="deactivateMessage" style="display:none; padding:10px; margin-bottom:15px; font-weight:700; font-size:14px;"></div>
+
+            <div style="display:flex; gap:12px;">
+                <button onclick="confirmDeactivate()" id="deactivateBtn" style="flex:1; padding:14px; background:#ffd43b; color:black; border:4px solid black; font-weight:900; font-size:14px; cursor:pointer; text-transform:uppercase;">
+                    Confirmer la desactivation
+                </button>
+                <button onclick="closeDeactivateModal()" style="flex:1; padding:14px; background:#f1f1f1; color:black; border:4px solid black; font-weight:900; font-size:14px; cursor:pointer; text-transform:uppercase;">
+                    Annuler
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Suppression -->
+    <div id="deleteModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:9999; align-items:center; justify-content:center;">
+        <div style="background:white; color:black; max-width:500px; width:90%; padding:40px; border:4px solid black; box-shadow:10px 10px 0px #ff6b6b; position:relative;">
+            <button onclick="closeDeleteModal()" style="position:absolute; top:15px; right:20px; background:none; border:none; font-size:24px; cursor:pointer; font-weight:900;">&times;</button>
+
+            <h3 style="font-size:22px; font-weight:900; text-transform:uppercase; font-style:italic; margin-bottom:20px;">
+                <i class="fas fa-trash-alt" style="color:#ff6b6b; margin-right:10px;"></i>Supprimer mon compte
+            </h3>
+
+            <div style="background:#fff5f5; border-left:4px solid #ff6b6b; padding:15px; margin-bottom:20px;">
+                <p style="font-weight:700; font-size:14px; line-height:1.6; margin:0; color:#c92a2a;">
+                    Cette action est irreversible. Toutes vos donnees seront definitivement supprimees
+                    et ne pourront pas etre recuperees.
+                </p>
+            </div>
+
+            <div style="margin-bottom:20px;">
+                <label style="display:block; font-weight:900; font-size:12px; text-transform:uppercase; margin-bottom:8px;">
+                    Confirmez votre mot de passe
+                </label>
+                <input type="password" id="deletePassword" placeholder="Votre mot de passe actuel" style="width:100%; padding:12px; border:4px solid black; font-weight:700; font-size:14px; box-sizing:border-box;">
+            </div>
+
+            <div id="deleteMessage" style="display:none; padding:10px; margin-bottom:15px; font-weight:700; font-size:14px;"></div>
+
+            <div style="display:flex; gap:12px;">
+                <button onclick="confirmDelete()" id="deleteBtn" style="flex:1; padding:14px; background:#ff6b6b; color:black; border:4px solid black; font-weight:900; font-size:14px; cursor:pointer; text-transform:uppercase;">
+                    Supprimer definitivement
+                </button>
+                <button onclick="closeDeleteModal()" style="flex:1; padding:14px; background:#f1f1f1; color:black; border:4px solid black; font-weight:900; font-size:14px; cursor:pointer; text-transform:uppercase;">
+                    Annuler
+                </button>
+            </div>
+        </div>
+    </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>
     <script src="config.js"></script>
@@ -359,6 +445,135 @@
                     messageDiv.className = 'message';
                 }, 5000);
             }
+        });
+
+        // ============================================================
+        // GESTION DU COMPTE - Desactivation / Suppression
+        // ============================================================
+
+        function openDeactivateModal() {
+            document.getElementById('deactivateModal').style.display = 'flex';
+            document.getElementById('deactivateMessage').style.display = 'none';
+        }
+
+        function closeDeactivateModal() {
+            document.getElementById('deactivateModal').style.display = 'none';
+        }
+
+        function openDeleteModal() {
+            document.getElementById('deleteModal').style.display = 'flex';
+            document.getElementById('deleteMessage').style.display = 'none';
+            document.getElementById('deletePassword').value = '';
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('deleteModal').style.display = 'none';
+        }
+
+        async function confirmDeactivate() {
+            const btn = document.getElementById('deactivateBtn');
+            const msgDiv = document.getElementById('deactivateMessage');
+            btn.disabled = true;
+            btn.textContent = 'Desactivation...';
+
+            try {
+                const token = getAuthToken();
+                const response = await fetch(API_BASE_URL + '/api/auth/deactivate-account', {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': 'Bearer ' + token
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    msgDiv.style.display = 'block';
+                    msgDiv.style.background = '#d3f9d8';
+                    msgDiv.style.color = '#2b8a3e';
+                    msgDiv.textContent = 'Compte desactive. Redirection...';
+                    localStorage.removeItem(SESSION_KEY);
+                    localStorage.removeItem(TOKEN_KEY);
+                    setTimeout(function() { window.location.href = 'index.html'; }, 1500);
+                } else {
+                    msgDiv.style.display = 'block';
+                    msgDiv.style.background = '#fff5f5';
+                    msgDiv.style.color = '#c92a2a';
+                    msgDiv.textContent = data.error || 'Erreur lors de la desactivation';
+                    btn.disabled = false;
+                    btn.textContent = 'Confirmer la desactivation';
+                }
+            } catch (error) {
+                msgDiv.style.display = 'block';
+                msgDiv.style.background = '#fff5f5';
+                msgDiv.style.color = '#c92a2a';
+                msgDiv.textContent = 'Erreur de connexion au serveur';
+                btn.disabled = false;
+                btn.textContent = 'Confirmer la desactivation';
+            }
+        }
+
+        async function confirmDelete() {
+            const btn = document.getElementById('deleteBtn');
+            const msgDiv = document.getElementById('deleteMessage');
+            const password = document.getElementById('deletePassword').value;
+
+            if (!password) {
+                msgDiv.style.display = 'block';
+                msgDiv.style.background = '#fff5f5';
+                msgDiv.style.color = '#c92a2a';
+                msgDiv.textContent = 'Veuillez saisir votre mot de passe';
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = 'Suppression...';
+
+            try {
+                const token = getAuthToken();
+                const response = await fetch(API_BASE_URL + '/api/auth/delete-account', {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({ password: password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    msgDiv.style.display = 'block';
+                    msgDiv.style.background = '#d3f9d8';
+                    msgDiv.style.color = '#2b8a3e';
+                    msgDiv.textContent = 'Compte supprime. Redirection...';
+                    localStorage.removeItem(SESSION_KEY);
+                    localStorage.removeItem(TOKEN_KEY);
+                    setTimeout(function() { window.location.href = 'index.html'; }, 1500);
+                } else {
+                    msgDiv.style.display = 'block';
+                    msgDiv.style.background = '#fff5f5';
+                    msgDiv.style.color = '#c92a2a';
+                    msgDiv.textContent = data.error || 'Erreur lors de la suppression';
+                    btn.disabled = false;
+                    btn.textContent = 'Supprimer definitivement';
+                }
+            } catch (error) {
+                msgDiv.style.display = 'block';
+                msgDiv.style.background = '#fff5f5';
+                msgDiv.style.color = '#c92a2a';
+                msgDiv.textContent = 'Erreur de connexion au serveur';
+                btn.disabled = false;
+                btn.textContent = 'Supprimer definitivement';
+            }
+        }
+
+        // Fermer les modals en cliquant en dehors
+        document.getElementById('deactivateModal').addEventListener('click', function(e) {
+            if (e.target === this) closeDeactivateModal();
+        });
+        document.getElementById('deleteModal').addEventListener('click', function(e) {
+            if (e.target === this) closeDeleteModal();
         });
     </script>
 </body>
