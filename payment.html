@@ -61,6 +61,56 @@
         .status-deposit { background: #51cf66; }
         .status-pending { background: #ffd43b; }
         .status-fully { background: #4dabf7; }
+
+        /* SumUp Payment Modal */
+        .sumup-modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+        }
+        .sumup-modal-overlay.active {
+            display: flex;
+        }
+        .sumup-modal-content {
+            background: white;
+            color: black;
+            border: 4px solid black;
+            box-shadow: 10px 10px 0px var(--genesis-yellow);
+            max-width: 500px;
+            width: 90%;
+            padding: 2rem;
+            position: relative;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .sumup-modal-close {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 28px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-weight: 900;
+            color: black;
+        }
+        .sumup-modal-close:hover {
+            color: #ff6b6b;
+        }
+        .sumup-modal-amount {
+            background: var(--genesis-yellow);
+            border: 3px solid black;
+            padding: 1rem;
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
     </style>
 </head>
 <body>
@@ -128,7 +178,26 @@
         </div>
     </section>
 
+    <!-- SumUp Payment Modal -->
+    <div id="sumupModal" class="sumup-modal-overlay">
+        <div class="sumup-modal-content">
+            <button onclick="closeSumUpModal()" class="sumup-modal-close">&times;</button>
+            <h3 style="font-family: 'Unbounded', cursive; font-size: 1.25rem; font-weight: 900; text-transform: uppercase; margin-bottom: 1rem;">
+                <i class="fas fa-lock" style="color: var(--genesis-yellow); margin-right: 8px;"></i>Paiement Sécurisé
+            </h3>
+            <div class="sumup-modal-amount">
+                <p style="font-size: 0.875rem; font-weight: 700; opacity: 0.7; text-transform: uppercase;">Montant à payer</p>
+                <p id="sumupModalAmount" style="font-size: 2rem; font-weight: 900;"></p>
+            </div>
+            <div id="sumup-card"></div>
+            <p style="text-align: center; font-size: 0.75rem; margin-top: 1rem; opacity: 0.6;">
+                <i class="fas fa-shield-alt"></i> Paiement sécurisé par SumUp
+            </p>
+        </div>
+    </div>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>
+    <script src="https://gateway.sumup.com/gateway/ecom/card/v2/sdk.js"></script>
     <script src="auth.js"></script>
     <script src="offers-config.js"></script>
     <script src="payment-system.js"></script>
@@ -136,6 +205,45 @@
         AOS.init({ duration: 1000 });
 
         // API_BASE_URL est défini dans auth.js (chargé avant ce script)
+
+        // === SumUp Card Widget ===
+        function showSumUpWidget(checkoutId, amount, orderId, stage, installmentNumber) {
+            const modal = document.getElementById('sumupModal');
+            modal.classList.add('active');
+            document.getElementById('sumupModalAmount').textContent = amount + '€';
+
+            // Vider le container précédent
+            document.getElementById('sumup-card').innerHTML = '';
+
+            // Monter le widget SumUp
+            SumUpCard.mount({
+                id: 'sumup-card',
+                checkoutId: checkoutId,
+                locale: 'fr-FR',
+                onResponse: function(type, body) {
+                    console.log('[SUMUP WIDGET] Response:', type, body);
+
+                    if (type === 'success') {
+                        closeSumUpModal();
+                        let successUrl = 'payment-success.html?order=' + orderId + '&stage=' + stage;
+                        if (installmentNumber) {
+                            successUrl += '&installment=' + installmentNumber;
+                        }
+                        window.location.href = successUrl;
+                    } else if (type === 'error') {
+                        console.error('[SUMUP WIDGET] Erreur:', body);
+                        closeSumUpModal();
+                        alert('Le paiement a échoué.\n\nRaison: ' + (body.message || body.error_message || 'Erreur inconnue') + '\n\nVeuillez réessayer.');
+                    }
+                }
+            });
+        }
+
+        function closeSumUpModal() {
+            const modal = document.getElementById('sumupModal');
+            modal.classList.remove('active');
+            document.getElementById('sumup-card').innerHTML = '';
+        }
 
         // Protection de la page
         requireAuth();
@@ -510,12 +618,12 @@
                 const checkoutData = await checkoutResponse.json();
                 console.log('[PAYMENT] Checkout SumUp créé pour mensualité:', checkoutData);
 
-                // Rediriger vers SumUp pour le paiement par carte
-                if (checkoutData.checkout_url) {
-                    alert(`✅ Vous allez être redirigé vers la page de paiement sécurisé SumUp pour régler la mensualité ${installmentNumber}.`);
-                    window.location.href = checkoutData.checkout_url;
+                // Afficher le widget SumUp pour le paiement par carte
+                if (checkoutData.checkout_id) {
+                    console.log('[PAYMENT] Ouverture du widget SumUp pour mensualité', installmentNumber);
+                    showSumUpWidget(checkoutData.checkout_id, checkoutData.amount, orderId, 'installment', installmentNumber);
                 } else {
-                    throw new Error('URL de checkout non reçue');
+                    throw new Error('ID de checkout non reçu');
                 }
 
             } catch (error) {
@@ -647,13 +755,17 @@
                 const checkoutData = await checkoutResponse.json();
                 console.log('[PAYMENT] Checkout SumUp créé:', checkoutData);
 
-                // ÉTAPE 3: Rediriger vers SumUp pour le paiement par carte
-                if (checkoutData.checkout_url) {
-                    alert('✅ Vous allez être redirigé vers la page de paiement sécurisé SumUp pour entrer vos coordonnées bancaires.');
-                    console.log('[PAYMENT] Redirection vers SumUp:', checkoutData.checkout_url);
-                    window.location.href = checkoutData.checkout_url;
+                // ÉTAPE 3: Afficher le widget SumUp pour le paiement par carte
+                if (checkoutData.checkout_id) {
+                    // Réactiver le bouton
+                    if (depositBtn) {
+                        depositBtn.disabled = false;
+                        depositBtn.innerHTML = '<i class="fas fa-credit-card mr-2"></i>Payer l\'acompte';
+                    }
+                    console.log('[PAYMENT] Ouverture du widget SumUp, checkout_id:', checkoutData.checkout_id);
+                    showSumUpWidget(checkoutData.checkout_id, checkoutData.amount, orderId, 'deposit');
                 } else {
-                    throw new Error('URL de checkout non reçue');
+                    throw new Error('ID de checkout non reçu');
                 }
 
             } catch (error) {
@@ -758,13 +870,12 @@
                 const checkoutData = await checkoutResponse.json();
                 console.log('[PAYMENT] Checkout SumUp créé pour solde:', checkoutData);
 
-                // Rediriger vers SumUp pour le paiement par carte
-                if (checkoutData.checkout_url) {
-                    alert('✅ Vous allez être redirigé vers la page de paiement sécurisé SumUp pour régler le solde.');
-                    console.log('[PAYMENT] Redirection vers SumUp:', checkoutData.checkout_url);
-                    window.location.href = checkoutData.checkout_url;
+                // Afficher le widget SumUp pour le paiement par carte
+                if (checkoutData.checkout_id) {
+                    console.log('[PAYMENT] Ouverture du widget SumUp pour solde, checkout_id:', checkoutData.checkout_id);
+                    showSumUpWidget(checkoutData.checkout_id, checkoutData.amount, orderId, 'balance');
                 } else {
-                    throw new Error('URL de checkout non reçue');
+                    throw new Error('ID de checkout non reçu');
                 }
 
             } catch (error) {
