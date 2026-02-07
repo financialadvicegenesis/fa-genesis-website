@@ -976,6 +976,66 @@ app.get('/api/download/:orderId/:livrableId', (req, res) => {
 });
 
 // ============================================================
+// ROUTES - ADMIN (UTILISATEURS & STATISTIQUES)
+// ============================================================
+
+/**
+ * GET /api/admin/users
+ * Recuperer tous les utilisateurs inscrits (Admin)
+ */
+app.get('/api/admin/users', (req, res) => {
+    const users = loadUsers();
+    const safeUsers = users.map(u => {
+        const { password, ...rest } = u;
+        return rest;
+    });
+    // Trier par date d'inscription decroissante
+    safeUsers.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+    res.json(safeUsers);
+});
+
+/**
+ * GET /api/admin/users/:email
+ * Recuperer un utilisateur specifique (Admin)
+ */
+app.get('/api/admin/users/:email', (req, res) => {
+    const user = getUserByEmail(decodeURIComponent(req.params.email));
+    if (!user) {
+        return res.status(404).json({ error: 'Utilisateur non trouve' });
+    }
+    const { password, ...userWithoutPassword } = user;
+    res.json(userWithoutPassword);
+});
+
+/**
+ * GET /api/admin/stats
+ * Statistiques globales du dashboard admin
+ */
+app.get('/api/admin/stats', (req, res) => {
+    const users = loadUsers();
+    const orders = loadOrders();
+    const messages = loadMessages();
+
+    const totalRevenue = orders.reduce((sum, o) => {
+        let revenue = 0;
+        if (o.deposit_paid) revenue += (o.deposit_amount || 0);
+        if (o.balance_paid) revenue += (o.balance_amount || 0);
+        return sum + revenue;
+    }, 0);
+
+    res.json({
+        totalClients: users.length,
+        registered: users.filter(u => u.paymentStatus === 'registered').length,
+        depositPaid: users.filter(u => u.paymentStatus === 'deposit_paid').length,
+        fullyPaid: users.filter(u => u.paymentStatus === 'fully_paid').length,
+        totalOrders: orders.length,
+        totalRevenue: totalRevenue,
+        unreadMessages: messages.filter(m => m.status === 'unread').length,
+        totalMessages: messages.length
+    });
+});
+
+// ============================================================
 // ROUTES - MESSAGES DE CONTACT
 // ============================================================
 
@@ -1010,7 +1070,7 @@ function saveMessages(messages) {
  */
 app.post('/api/contact', async (req, res) => {
     try {
-        const { name, email, phone, subject, message } = req.body;
+        const { name, email, phone, profil, subject, message } = req.body;
 
         // Validation
         if (!name || !email || !subject || !message) {
@@ -1032,6 +1092,7 @@ app.post('/api/contact', async (req, res) => {
             name: name.trim(),
             email: email.trim().toLowerCase(),
             phone: phone ? phone.trim() : null,
+            profil: profil ? profil.trim() : null,
             subject: subject.trim(),
             message: message.trim(),
             status: 'unread', // 'unread', 'read', 'replied', 'archived'
@@ -1068,6 +1129,7 @@ app.post('/api/contact', async (req, res) => {
                 name: name,
                 email: email,
                 phone: phone,
+                profil: profil,
                 subject: subject,
                 message: message
             })
@@ -1105,6 +1167,29 @@ app.get('/api/admin/messages', (req, res) => {
     // Trier par date decroissante (plus recents en premier)
     messages.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
     res.json(messages);
+});
+
+/**
+ * GET /api/admin/messages/stats (Admin)
+ * Statistiques des messages
+ * IMPORTANT: Cette route doit etre AVANT /:messageId pour eviter le conflit
+ */
+app.get('/api/admin/messages/stats', (req, res) => {
+    const messages = loadMessages();
+
+    const stats = {
+        total: messages.length,
+        unread: messages.filter(m => m.status === 'unread').length,
+        read: messages.filter(m => m.status === 'read').length,
+        replied: messages.filter(m => m.status === 'replied').length,
+        archived: messages.filter(m => m.status === 'archived').length,
+        today: messages.filter(m => {
+            const today = new Date().toDateString();
+            return new Date(m.created_at).toDateString() === today;
+        }).length
+    };
+
+    res.json(stats);
 });
 
 /**
@@ -1173,28 +1258,6 @@ app.delete('/api/admin/messages/:messageId', (req, res) => {
     console.log(`[CONTACT] Message supprime: ${deleted.id}`);
 
     res.json({ success: true, deleted: deleted });
-});
-
-/**
- * GET /api/admin/messages/stats (Admin)
- * Statistiques des messages
- */
-app.get('/api/admin/messages/stats', (req, res) => {
-    const messages = loadMessages();
-
-    const stats = {
-        total: messages.length,
-        unread: messages.filter(m => m.status === 'unread').length,
-        read: messages.filter(m => m.status === 'read').length,
-        replied: messages.filter(m => m.status === 'replied').length,
-        archived: messages.filter(m => m.status === 'archived').length,
-        today: messages.filter(m => {
-            const today = new Date().toDateString();
-            return new Date(m.created_at).toDateString() === today;
-        }).length
-    };
-
-    res.json(stats);
 });
 
 // ============================================================
@@ -1850,6 +1913,8 @@ app.listen(PORT, () => {
     console.log('   - POST /api/payments/sumup/webhook');
     console.log('   - POST /api/payments/verify');
     console.log('   - POST /api/contact (emails automatiques)');
+    console.log('   - GET  /api/admin/users');
+    console.log('   - GET  /api/admin/stats');
     console.log('   - GET  /api/admin/messages');
     console.log('   - POST /api/auth/register');
     console.log('   - POST /api/auth/login');

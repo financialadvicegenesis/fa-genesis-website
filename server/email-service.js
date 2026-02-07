@@ -244,6 +244,10 @@ async function sendAdminNotification(messageData) {
                     <td style="padding: 10px 0; border-bottom: 1px solid #e0e0e0; color: #000;">${messageData.phone || 'Non renseigné'}</td>
                 </tr>
                 <tr>
+                    <td style="padding: 10px 0; border-bottom: 1px solid #e0e0e0; font-weight: 700; color: #666;">Profil</td>
+                    <td style="padding: 10px 0; border-bottom: 1px solid #e0e0e0; color: #000;">${messageData.profil ? messageData.profil.charAt(0).toUpperCase() + messageData.profil.slice(1) : 'Non renseigné'}</td>
+                </tr>
+                <tr>
                     <td style="padding: 10px 0; border-bottom: 1px solid #e0e0e0; font-weight: 700; color: #666;">Sujet</td>
                     <td style="padding: 10px 0; border-bottom: 1px solid #e0e0e0; color: #000;">${messageData.subject}</td>
                 </tr>

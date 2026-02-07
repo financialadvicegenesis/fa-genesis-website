@@ -296,7 +296,7 @@
                 <div class="admin-card neo-shadow mb-8">
                     <div class="flex gap-4">
                         <input type="text" id="searchInput" placeholder="Rechercher un client (nom, email, offre)..." class="flex-1">
-                        <button onclick="searchClients()" class="neo-btn-yellow px-8">
+                        <button onclick="handleSearchClients()" class="neo-btn-yellow px-8">
                             <i class="fas fa-search mr-2"></i>Rechercher
                         </button>
                     </div>
@@ -380,119 +380,175 @@
             }
         }
 
-        function loadDashboard() {
-            const stats = getAdminStats();
+        async function loadDashboard() {
+            try {
+                const [statsResponse, usersResponse] = await Promise.all([
+                    fetch(API_BASE_URL + '/api/admin/stats'),
+                    fetch(API_BASE_URL + '/api/admin/users')
+                ]);
 
-            const statsHTML = `
-                <div class="stat-card">
-                    <div class="text-4xl font-black text-[var(--genesis-yellow)] mb-2">${stats.totalClients}</div>
-                    <div class="text-sm font-bold uppercase">Total Clients</div>
-                </div>
-                <div class="stat-card">
-                    <div class="text-4xl font-black text-[#51cf66] mb-2">${stats.depositPaid}</div>
-                    <div class="text-sm font-bold uppercase">Acompte Payé</div>
-                </div>
-                <div class="stat-card">
-                    <div class="text-4xl font-black text-[#4dabf7] mb-2">${stats.fullyPaid}</div>
-                    <div class="text-sm font-bold uppercase">Payé Complet</div>
-                </div>
-                <div class="stat-card">
-                    <div class="text-4xl font-black text-[var(--genesis-yellow)] mb-2">${stats.totalRevenue}€</div>
-                    <div class="text-sm font-bold uppercase">Revenu Total</div>
-                </div>
-            `;
+                if (!statsResponse.ok || !usersResponse.ok) throw new Error('Erreur chargement');
 
-            document.getElementById('statsContainer').innerHTML = statsHTML;
+                const stats = await statsResponse.json();
+                const users = await usersResponse.json();
 
-            // Derniers clients
-            const clients = getAllClients().slice(-5).reverse();
-            let recentHTML = '';
-
-            clients.forEach(client => {
-                const statusClass = {
-                    'registered': 'status-registered',
-                    'deposit_paid': 'status-deposit',
-                    'delivery_pending_payment': 'status-pending',
-                    'fully_paid': 'status-fully'
-                }[client.paymentStatus] || 'status-registered';
-
-                recentHTML += `
-                    <div class="client-row" onclick="openClientModal('${client.email}')">
-                        <div class="flex justify-between items-center">
-                            <div>
-                                <div class="font-black text-lg">${client.prenom} ${client.nom}</div>
-                                <div class="text-sm font-bold opacity-70">${client.email}</div>
-                            </div>
-                            <div class="text-right">
-                                <div class="status-badge ${statusClass} mb-2">${getStatusLabel(client.paymentStatus)}</div>
-                                <div class="text-sm font-bold">${client.offerDetails ? client.offerDetails.nom : ''}</div>
-                            </div>
-                        </div>
+                const statsHTML = `
+                    <div class="stat-card">
+                        <div class="text-4xl font-black text-[var(--genesis-yellow)] mb-2">${stats.totalClients}</div>
+                        <div class="text-sm font-bold uppercase">Total Clients</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="text-4xl font-black text-[#51cf66] mb-2">${stats.depositPaid}</div>
+                        <div class="text-sm font-bold uppercase">Acompte Payé</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="text-4xl font-black text-[#4dabf7] mb-2">${stats.fullyPaid}</div>
+                        <div class="text-sm font-bold uppercase">Payé Complet</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="text-4xl font-black text-[var(--genesis-yellow)] mb-2">${stats.totalRevenue}€</div>
+                        <div class="text-sm font-bold uppercase">Revenu Total</div>
                     </div>
                 `;
-            });
 
-            document.getElementById('recentClients').innerHTML = recentHTML || '<p class="text-center py-8 opacity-50 font-bold">Aucun client inscrit</p>';
+                document.getElementById('statsContainer').innerHTML = statsHTML;
+
+                // Derniers clients (5 plus recents)
+                const recentUsers = users.slice(0, 5);
+                let recentHTML = '';
+
+                recentUsers.forEach(function(client) {
+                    var statusClass = {
+                        'registered': 'status-registered',
+                        'deposit_paid': 'status-deposit',
+                        'delivery_pending_payment': 'status-pending',
+                        'fully_paid': 'status-fully'
+                    }[client.paymentStatus] || 'status-registered';
+
+                    var offerName = client.offre || '';
+                    var offer = typeof getOfferById === 'function' ? getOfferById(client.offre) : null;
+                    if (offer) offerName = offer.nom;
+
+                    recentHTML += '<div class="client-row" onclick="openClientModal(\'' + client.email + '\')">' +
+                        '<div class="flex justify-between items-center">' +
+                            '<div>' +
+                                '<div class="font-black text-lg">' + client.prenom + ' ' + client.nom + '</div>' +
+                                '<div class="text-sm font-bold opacity-70">' + client.email + '</div>' +
+                            '</div>' +
+                            '<div class="text-right">' +
+                                '<div class="status-badge ' + statusClass + ' mb-2">' + getStatusLabel(client.paymentStatus) + '</div>' +
+                                '<div class="text-sm font-bold">' + offerName + '</div>' +
+                            '</div>' +
+                        '</div>' +
+                    '</div>';
+                });
+
+                document.getElementById('recentClients').innerHTML = recentHTML || '<p class="text-center py-8 opacity-50 font-bold">Aucun client inscrit</p>';
+
+            } catch (error) {
+                console.error('[ADMIN] Erreur chargement dashboard:', error);
+                document.getElementById('statsContainer').innerHTML = '<p class="col-span-4 text-center py-8 opacity-50 font-bold">Chargement... (le serveur demarre)</p>';
+                document.getElementById('recentClients').innerHTML = '<p class="text-center py-8 opacity-50 font-bold">Chargement...</p>';
+                // Reessayer apres 5 secondes (cold start Render)
+                setTimeout(function() { loadDashboard(); }, 5000);
+            }
         }
 
-        function loadClientsList() {
-            const clients = getAllClients();
-            let html = '';
+        let allBackendClients = [];
 
-            clients.forEach(client => {
-                const statusClass = {
+        async function loadClientsList(searchQuery) {
+            try {
+                var response = await fetch(API_BASE_URL + '/api/admin/users');
+                if (!response.ok) throw new Error('Erreur chargement');
+                allBackendClients = await response.json();
+            } catch (error) {
+                console.error('[ADMIN] Erreur chargement clients:', error);
+                document.getElementById('clientsList').innerHTML = '<p class="text-center py-8 opacity-50 font-bold">Chargement... (le serveur demarre)</p>';
+                setTimeout(function() { loadClientsList(); }, 5000);
+                return;
+            }
+
+            var clients = allBackendClients;
+
+            // Filtrer si recherche
+            if (searchQuery) {
+                var q = searchQuery.toLowerCase();
+                clients = clients.filter(function(c) {
+                    return (c.prenom && c.prenom.toLowerCase().includes(q)) ||
+                           (c.nom && c.nom.toLowerCase().includes(q)) ||
+                           (c.email && c.email.toLowerCase().includes(q)) ||
+                           (c.offre && c.offre.toLowerCase().includes(q));
+                });
+            }
+
+            var html = '';
+            clients.forEach(function(client) {
+                var statusClass = {
                     'registered': 'status-registered',
                     'deposit_paid': 'status-deposit',
                     'delivery_pending_payment': 'status-pending',
                     'fully_paid': 'status-fully'
                 }[client.paymentStatus] || 'status-registered';
 
-                html += `
-                    <div class="client-row" onclick="openClientModal('${client.email}')">
-                        <div class="flex justify-between items-center flex-wrap gap-4">
-                            <div class="flex-1 min-w-[250px]">
-                                <div class="font-black text-lg">${client.prenom} ${client.nom}</div>
-                                <div class="text-sm font-bold opacity-70">${client.email}</div>
-                            </div>
-                            <div>
-                                <div class="status-badge ${statusClass}">${getStatusLabel(client.paymentStatus)}</div>
-                            </div>
-                            <div class="text-right min-w-[200px]">
-                                <div class="font-black">${client.offerDetails ? client.offerDetails.nom : 'N/A'}</div>
-                                <div class="text-sm font-bold opacity-70">${client.documentsCount} documents</div>
-                            </div>
-                            <div class="text-right">
-                                <button class="neo-btn-yellow px-4 py-2 text-sm">
-                                    <i class="fas fa-folder-open mr-2"></i>Gérer
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                `;
+                var offerName = client.offre || 'N/A';
+                var offer = typeof getOfferById === 'function' ? getOfferById(client.offre) : null;
+                if (offer) offerName = offer.nom;
+
+                html += '<div class="client-row" onclick="openClientModal(\'' + client.email + '\')">' +
+                    '<div class="flex justify-between items-center flex-wrap gap-4">' +
+                        '<div class="flex-1 min-w-[250px]">' +
+                            '<div class="font-black text-lg">' + (client.prenom || '') + ' ' + (client.nom || '') + '</div>' +
+                            '<div class="text-sm font-bold opacity-70">' + client.email + '</div>' +
+                            '<div class="text-xs font-bold opacity-50 mt-1">Inscrit le ' + new Date(client.createdAt || Date.now()).toLocaleDateString('fr-FR') + '</div>' +
+                        '</div>' +
+                        '<div>' +
+                            '<div class="status-badge ' + statusClass + '">' + getStatusLabel(client.paymentStatus) + '</div>' +
+                        '</div>' +
+                        '<div class="text-right min-w-[200px]">' +
+                            '<div class="font-black">' + offerName + '</div>' +
+                        '</div>' +
+                        '<div class="text-right">' +
+                            '<button class="neo-btn-yellow px-4 py-2 text-sm">' +
+                                '<i class="fas fa-folder-open mr-2"></i>Gérer' +
+                            '</button>' +
+                        '</div>' +
+                    '</div>' +
+                '</div>';
             });
 
             document.getElementById('clientsList').innerHTML = html || '<p class="text-center py-8 opacity-50 font-bold">Aucun client</p>';
         }
 
-        function searchClients() {
-            const query = document.getElementById('searchInput').value;
+        function handleSearchClients() {
+            var query = document.getElementById('searchInput').value;
             if (!query) {
                 loadClientsList();
                 return;
             }
-
-            const results = searchClients(query);
-            // Afficher les résultats (même logique que loadClientsList mais avec results)
-            // Code similaire...
+            loadClientsList(query);
         }
 
-        function openClientModal(clientEmail) {
-            const client = getClientByEmail(clientEmail);
-            if (!client) return;
+        async function openClientModal(clientEmail) {
+            // Chercher d'abord dans les donnees deja chargees, sinon appeler le backend
+            var client = allBackendClients.find(function(c) { return c.email === clientEmail; });
 
-            const offer = client.offerDetails || getOfferById(client.offre);
-            const documents = getClientDocumentsByDay(clientEmail);
-            const currentDay = client.currentDay || 0;
+            if (!client) {
+                try {
+                    var resp = await fetch(API_BASE_URL + '/api/admin/users/' + encodeURIComponent(clientEmail));
+                    if (resp.ok) client = await resp.json();
+                } catch (e) {
+                    console.error('[ADMIN] Erreur chargement client:', e);
+                }
+            }
+
+            if (!client) {
+                alert('Client non trouve');
+                return;
+            }
+
+            var offer = typeof getOfferById === 'function' ? getOfferById(client.offre) : null;
+            var documents = typeof getClientDocumentsByDay === 'function' ? getClientDocumentsByDay(clientEmail) : {};
+            var currentDay = client.currentDay || 0;
 
             let modalHTML = `
                 <h2 class="text-3xl font-black italic uppercase mb-6 text-[var(--genesis-yellow)]">
@@ -931,7 +987,8 @@
                 allMessages = await response.json();
             } catch (error) {
                 console.error('[ADMIN] Erreur chargement messages:', error);
-                document.getElementById('messagesList').innerHTML = '<p class="text-center py-8 opacity-50 font-bold">Erreur de chargement des messages</p>';
+                document.getElementById('messagesList').innerHTML = '<p class="text-center py-8 opacity-50 font-bold">Chargement... (le serveur demarre)</p>';
+                setTimeout(function() { loadMessages(); }, 5000);
                 return;
             }
 
@@ -992,6 +1049,7 @@
                         '<div class="flex-1 min-w-[250px]">' +
                             '<div class="font-black text-lg' + (isUnread ? ' text-[var(--genesis-yellow)]' : '') + '">' + msg.name + '</div>' +
                             '<div class="text-sm font-bold opacity-70">' + msg.email + '</div>' +
+                            (msg.profil ? '<div class="text-xs font-bold opacity-50 mt-1">Profil: ' + msg.profil.toUpperCase() + '</div>' : '') +
                             '<div class="mt-2"><span style="background:#FFD700;color:black;padding:2px 8px;border:2px solid black;font-size:11px;font-weight:900;">' + subjectLabel + '</span></div>' +
                         '</div>' +
                         '<div class="flex-1 min-w-[200px]">' +
@@ -1023,9 +1081,10 @@
                 '<h2 class="text-2xl font-black italic uppercase mb-6 text-[var(--genesis-yellow)]">' +
                     '<i class="fas fa-envelope-open mr-2"></i>MESSAGE' +
                 '</h2>' +
-                '<div class="grid md:grid-cols-2 gap-4 mb-6">' +
+                '<div class="grid md:grid-cols-3 gap-4 mb-6">' +
                     '<div><span class="text-sm font-bold opacity-60">DE :</span><br><span class="font-black text-lg">' + msg.name + '</span></div>' +
                     '<div><span class="text-sm font-bold opacity-60">EMAIL :</span><br><span class="font-black">' + msg.email + '</span></div>' +
+                    '<div><span class="text-sm font-bold opacity-60">PROFIL :</span><br><span class="font-black">' + (msg.profil ? msg.profil.charAt(0).toUpperCase() + msg.profil.slice(1) : 'Non renseigné') + '</span></div>' +
                     '<div><span class="text-sm font-bold opacity-60">OBJET :</span><br><span class="font-black">' + msg.subject + '</span></div>' +
                     '<div><span class="text-sm font-bold opacity-60">DATE :</span><br><span class="font-black">' + date + '</span></div>' +
                 '</div>' +
@@ -1112,7 +1171,7 @@
                     };
                     var bgColor = statusColors[order.status] || '#999';
                     var label = statusLabels[order.status] || order.status;
-                    var clientName = order.client_info ? (order.client_info.firstName + ' ' + order.client_info.lastName) : 'N/A';
+                    var clientName = order.client_info ? ((order.client_info.first_name || order.client_info.firstName || '') + ' ' + (order.client_info.last_name || order.client_info.lastName || '')) : 'N/A';
                     var clientEmail = order.client_info ? order.client_info.email : '';
 
                     html += '<div class="admin-card neo-shadow mb-4">' +
@@ -1145,7 +1204,8 @@
 
             } catch (error) {
                 console.error('[ADMIN] Erreur chargement commandes:', error);
-                document.getElementById('ordersList').innerHTML = '<p class="text-center py-8 opacity-50 font-bold">Erreur de chargement des commandes</p>';
+                document.getElementById('ordersList').innerHTML = '<p class="text-center py-8 opacity-50 font-bold">Chargement... (le serveur demarre)</p>';
+                setTimeout(function() { loadOrders(); }, 5000);
             }
         }
 
