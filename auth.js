@@ -2,7 +2,7 @@
 // Version backend - Utilise l'API REST du serveur Node.js
 
 // URL du backend
-const API_BASE_URL = 'https://fa-genesis-website.onrender.com/api';
+const API_BASE_URL = 'https://fa-genesis-website.onrender.com';
 
 // Cle de stockage local
 const SESSION_KEY = 'fa_genesis_session';
@@ -16,7 +16,7 @@ const TOKEN_KEY = 'fa_genesis_token';
  */
 async function login(email, password) {
     try {
-        const response = await fetch(`${API_BASE_URL}/auth/login`, {
+        const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -59,7 +59,7 @@ async function login(email, password) {
  */
 async function register(userData) {
     try {
-        const response = await fetch(`${API_BASE_URL}/auth/register`, {
+        const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -103,7 +103,7 @@ async function logout() {
         const token = localStorage.getItem(TOKEN_KEY);
 
         if (token) {
-            await fetch(`${API_BASE_URL}/auth/logout`, {
+            await fetch(`${API_BASE_URL}/api/auth/logout`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`
@@ -170,7 +170,7 @@ async function verifySession() {
     }
 
     try {
-        const response = await fetch(`${API_BASE_URL}/auth/me`, {
+        const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
             headers: {
                 'Authorization': `Bearer ${token}`
             }
@@ -276,7 +276,7 @@ async function changePassword(currentPassword, newPassword) {
     }
 
     try {
-        const response = await fetch(`${API_BASE_URL}/auth/update-profile`, {
+        const response = await fetch(`${API_BASE_URL}/api/auth/update-profile`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
@@ -330,7 +330,7 @@ async function updateProfile(profileData) {
     }
 
     try {
-        const response = await fetch(`${API_BASE_URL}/auth/update-profile`, {
+        const response = await fetch(`${API_BASE_URL}/api/auth/update-profile`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
