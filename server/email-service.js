@@ -157,41 +157,50 @@ async function sendContactConfirmation(clientEmail, clientName, subject) {
         return { success: false, reason: 'SMTP non configuré' };
     }
 
-    const specificContent = getSubjectSpecificContent(subject);
+    const frontUrl = process.env.FRONT_URL || 'https://financialadvicegenesis.github.io/fa-genesis-website';
 
     const content = `
-        <h2 style="margin: 0 0 20px 0; font-size: 24px; color: #000000; font-weight: 700;">
-            Bonjour ${clientName},
-        </h2>
-
         <p style="margin: 0 0 20px 0; font-size: 16px; color: #333333; line-height: 1.6;">
-            Nous avons bien reçu votre message et nous vous remercions de votre intérêt pour <strong>FA GENESIS</strong>.
+            Bonjour,
         </p>
 
-        <div style="background-color: #FFF9E6; border-left: 4px solid #FFD700; padding: 20px; margin: 25px 0;">
-            <p style="margin: 0; font-size: 15px; color: #333333;">
-                <strong>Votre demande concernant :</strong><br>
-                "${subject}"
-            </p>
-        </div>
+        <p style="margin: 0 0 20px 0; font-size: 16px; color: #333333; line-height: 1.6;">
+            Nous vous remercions pour votre message et l'intérêt que vous portez à <strong>Financial Advice Genesis</strong>.
+        </p>
 
         <p style="margin: 0 0 20px 0; font-size: 16px; color: #333333; line-height: 1.6;">
-            ${specificContent}
+            Votre demande a bien été reçue par notre équipe. Nous l'analysons avec attention afin de vous apporter une réponse claire, personnalisée et adaptée à votre situation.
         </p>
 
         <div style="background-color: #000000; color: #ffffff; padding: 20px; border-radius: 4px; margin: 25px 0;">
             <p style="margin: 0; font-size: 16px; font-weight: 700; color: #FFD700;">
-                Délai de réponse estimé : 24 à 48h ouvrées
+                ⏳ Délai de réponse
+            </p>
+            <p style="margin: 10px 0 0 0; font-size: 15px; color: #ffffff;">
+                Nous nous engageons à revenir vers vous dans un délai maximum de <strong>48 heures ouvrées</strong>.
             </p>
         </div>
 
-        <p style="margin: 0 0 10px 0; font-size: 16px; color: #333333; line-height: 1.6;">
-            En attendant, n'hésitez pas à consulter nos offres sur notre site web.
+        <p style="margin: 0 0 20px 0; font-size: 16px; color: #333333; line-height: 1.6;">
+            En attendant, nous vous invitons à consulter notre <a href="${frontUrl}/offres.html" style="color: #B8860B; font-weight: 700; text-decoration: underline;">page Offres</a> ou notre espace d'information, où vous trouverez des éléments utiles concernant nos accompagnements.
         </p>
 
-        <p style="margin: 30px 0 0 0; font-size: 16px; color: #333333;">
-            Cordialement,<br>
-            <strong style="color: #000000;">L'équipe FA GENESIS</strong>
+        <p style="margin: 0 0 30px 0; font-size: 14px; color: #999999; font-style: italic;">
+            Ce message est automatique. Il n'est pas nécessaire d'y répondre.
+        </p>
+
+        <p style="margin: 0 0 5px 0; font-size: 16px; color: #333333;">
+            À très bientôt,
+        </p>
+
+        <p style="margin: 0 0 5px 0; font-size: 16px; color: #000000; font-weight: 700;">
+            L'équipe Financial Advice Genesis
+        </p>
+        <p style="margin: 0 0 10px 0; font-size: 14px; color: #B8860B; font-weight: 700; font-style: italic;">
+            Build. Launch. Impact.
+        </p>
+        <p style="margin: 0; font-size: 14px; color: #666666;">
+            Contact : <a href="mailto:financialadvicegenesis@gmail.com" style="color: #B8860B;">financialadvicegenesis@gmail.com</a>
         </p>
     `;
 
