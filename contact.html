@@ -104,19 +104,19 @@
         <div class="container mx-auto max-w-5xl relative text-center font-black">
             <div class="absolute bottom-[-10%] left-[-10%] w-96 h-96 bg-[var(--genesis-yellow)] rounded-full blur-[120px] opacity-10 z-0"></div>
             <div data-aos="fade-up" class="z-10 relative font-black">
-                <form class="space-y-10 text-left font-black">
+                <form id="contactForm" class="space-y-10 text-left font-black">
                     <div class="grid md:grid-cols-2 gap-10 font-black">
-                        <input type="text" placeholder="NOM COMPLET" class="bg-white text-black p-6 neo-border neo-shadow-white font-bold outline-none focus:translate-x-1 focus:translate-y-1 focus:shadow-none transition-all font-black uppercase">
-                        <input type="email" placeholder="EMAIL PROFESSIONNEL" class="bg-white text-black p-6 neo-border neo-shadow-white font-bold outline-none focus:translate-x-1 focus:translate-y-1 focus:shadow-none transition-all text-black font-black uppercase">
+                        <input id="contactName" type="text" placeholder="NOM COMPLET" required class="bg-white text-black p-6 neo-border neo-shadow-white font-bold outline-none focus:translate-x-1 focus:translate-y-1 focus:shadow-none transition-all font-black uppercase">
+                        <input id="contactEmail" type="email" placeholder="EMAIL PROFESSIONNEL" required class="bg-white text-black p-6 neo-border neo-shadow-white font-bold outline-none focus:translate-x-1 focus:translate-y-1 focus:shadow-none transition-all text-black font-black uppercase">
                     </div>
                     <div class="grid md:grid-cols-2 gap-10 font-black">
-                        <select class="bg-white text-black p-6 neo-border neo-shadow-white font-bold outline-none focus:translate-x-1 focus:translate-y-1 focus:shadow-none transition-all font-black uppercase">
+                        <select id="contactProfil" required class="bg-white text-black p-6 neo-border neo-shadow-white font-bold outline-none focus:translate-x-1 focus:translate-y-1 focus:shadow-none transition-all font-black uppercase">
                             <option value="" disabled selected>QUEL PROFIL</option>
                             <option value="etudiant">ÉTUDIANT</option>
                             <option value="particulier">PARTICULIER</option>
                             <option value="entreprise">ENTREPRISE</option>
                         </select>
-                        <select name="objet" class="bg-white text-black p-6 neo-border neo-shadow-white font-bold outline-none focus:translate-x-1 focus:translate-y-1 focus:shadow-none transition-all font-black uppercase">
+                        <select id="contactObjet" name="objet" required class="bg-white text-black p-6 neo-border neo-shadow-white font-bold outline-none focus:translate-x-1 focus:translate-y-1 focus:shadow-none transition-all font-black uppercase">
                             <option value="" disabled selected>OBJET DE LA DEMANDE</option>
                             <option value="information">DEMANDE D'INFORMATION</option>
                             <option value="devis">DEVIS PERSONNALISÉ</option>
@@ -127,8 +127,9 @@
                             <option value="autre">AUTRE</option>
                         </select>
                     </div>
-                    <textarea placeholder="ÉCRIVEZ VOTRE DEMANDE" rows="5" class="w-full bg-white text-black p-6 neo-border neo-shadow-white font-bold outline-none focus:translate-x-1 focus:translate-y-1 focus:shadow-none transition-all font-black uppercase"></textarea>
-                    <button type="submit" class="w-full py-8 neo-btn-yellow text-4xl font-black italic uppercase tracking-tighter text-center flex items-center justify-center font-black">Envoyer</button>
+                    <textarea id="contactMessage" placeholder="ÉCRIVEZ VOTRE DEMANDE" rows="5" required class="w-full bg-white text-black p-6 neo-border neo-shadow-white font-bold outline-none focus:translate-x-1 focus:translate-y-1 focus:shadow-none transition-all font-black uppercase"></textarea>
+                    <div id="contactFeedback" style="display: none;" class="p-6 neo-border font-bold text-lg text-center"></div>
+                    <button id="contactSubmitBtn" type="submit" class="w-full py-8 neo-btn-yellow text-4xl font-black italic uppercase tracking-tighter text-center flex items-center justify-center font-black">Envoyer</button>
                 </form>
 
                 <!-- Informations supplémentaires -->
@@ -224,7 +225,6 @@
             if (formule) {
                 const formuleSelect = document.querySelector('select[name="formule"]');
                 if (!formuleSelect) {
-                    // Si le select n'a pas de name, chercher par position (2ème select)
                     const selects = document.querySelectorAll('select');
                     if (selects.length >= 2) {
                         selects[1].value = formule;
@@ -233,6 +233,72 @@
                     formuleSelect.value = formule;
                 }
             }
+        });
+
+        // Soumission du formulaire de contact
+        const API_BASE_URL = 'https://fa-genesis-website.onrender.com';
+
+        document.getElementById('contactForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const feedback = document.getElementById('contactFeedback');
+            const submitBtn = document.getElementById('contactSubmitBtn');
+
+            const name = document.getElementById('contactName').value.trim();
+            const email = document.getElementById('contactEmail').value.trim();
+            const profil = document.getElementById('contactProfil').value;
+            const subject = document.getElementById('contactObjet').value;
+            const message = document.getElementById('contactMessage').value.trim();
+
+            // Validation
+            if (!name || !email || !profil || !subject || !message) {
+                feedback.style.display = 'block';
+                feedback.style.background = '#ff6b6b';
+                feedback.style.color = 'white';
+                feedback.textContent = 'Veuillez remplir tous les champs du formulaire.';
+                return;
+            }
+
+            // Desactiver le bouton
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-4"></i>ENVOI EN COURS...';
+
+            try {
+                const response = await fetch(API_BASE_URL + '/api/contact', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: name,
+                        email: email,
+                        phone: profil,
+                        subject: subject,
+                        message: message
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    feedback.style.display = 'block';
+                    feedback.style.background = '#51cf66';
+                    feedback.style.color = 'black';
+                    feedback.innerHTML = '<i class="fas fa-check-circle mr-2"></i>MESSAGE ENVOY\u00c9 AVEC SUCC\u00c8S ! Un email de confirmation vous a \u00e9t\u00e9 envoy\u00e9.';
+                    this.reset();
+                } else {
+                    throw new Error(data.error || 'Erreur lors de l\'envoi');
+                }
+
+            } catch (error) {
+                console.error('[CONTACT] Erreur:', error);
+                feedback.style.display = 'block';
+                feedback.style.background = '#ff6b6b';
+                feedback.style.color = 'white';
+                feedback.innerHTML = '<i class="fas fa-exclamation-triangle mr-2"></i>ERREUR : ' + error.message;
+            }
+
+            // Reactiver le bouton
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = 'Envoyer';
         });
     </script>
 </body>

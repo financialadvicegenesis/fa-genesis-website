@@ -112,6 +112,42 @@ function getEmailTemplate(content, title = 'FA GENESIS') {
 // ============================================================
 
 /**
+ * Retourne un paragraphe specifique selon l'objet de la demande
+ * @param {string} subject - L'objet de la demande
+ * @returns {string} HTML du paragraphe adapte
+ */
+function getSubjectSpecificContent(subject) {
+    const s = (subject || '').toLowerCase();
+
+    if (s.includes('information')) {
+        return `Pour mieux vous orienter, nous vous invitons à consulter notre <strong>page Offres</strong> qui détaille l'ensemble de nos accompagnements et prestations. Notre équipe reviendra vers vous avec les informations complémentaires adaptées à votre situation.`;
+    }
+
+    if (s.includes('devis')) {
+        return `Votre demande de <strong>devis personnalisé</strong> a bien été enregistrée. Un conseiller FA GENESIS étudiera votre projet en détail afin de vous proposer une solution sur mesure, adaptée à vos objectifs et à votre budget.`;
+    }
+
+    if (s.includes('offre')) {
+        return `Nous avons bien noté votre question concernant nos offres. Chaque accompagnement est conçu pour répondre à des besoins spécifiques — notre équipe vous apportera une <strong>réponse claire et détaillée</strong>.`;
+    }
+
+    if (s.includes('technique')) {
+        return `Votre question technique a été transmise à notre équipe compétente. Si votre demande concerne un accès ou un problème sur votre espace client, vérifiez vos identifiants de connexion en attendant notre retour.`;
+    }
+
+    if (s.includes('support')) {
+        return `Votre demande de support a bien été prise en compte. Si vous êtes déjà client, vous pouvez accéder à votre <strong>espace client</strong> pour consulter vos documents et suivre l'avancement de votre accompagnement.`;
+    }
+
+    if (s.includes('partenariat')) {
+        return `Nous avons bien reçu votre proposition de partenariat. L'équipe FA GENESIS évalue attentivement chaque opportunité de collaboration. Si votre projet correspond à notre vision, nous vous recontacterons pour en discuter.`;
+    }
+
+    // Defaut (autre ou non reconnu)
+    return `Votre message a bien été transmis à l'équipe concernée. Nous vous répondrons dans les meilleurs délais.`;
+}
+
+/**
  * Envoyer un email de confirmation de contact au client
  */
 async function sendContactConfirmation(clientEmail, clientName, subject) {
@@ -120,6 +156,8 @@ async function sendContactConfirmation(clientEmail, clientName, subject) {
         console.log('[EMAIL] Transport non configuré - Email de confirmation non envoyé');
         return { success: false, reason: 'SMTP non configuré' };
     }
+
+    const specificContent = getSubjectSpecificContent(subject);
 
     const content = `
         <h2 style="margin: 0 0 20px 0; font-size: 24px; color: #000000; font-weight: 700;">
@@ -137,8 +175,8 @@ async function sendContactConfirmation(clientEmail, clientName, subject) {
             </p>
         </div>
 
-        <p style="margin: 0 0 15px 0; font-size: 16px; color: #333333; line-height: 1.6;">
-            Notre équipe prendra connaissance de votre demande dans les plus brefs délais.
+        <p style="margin: 0 0 20px 0; font-size: 16px; color: #333333; line-height: 1.6;">
+            ${specificContent}
         </p>
 
         <div style="background-color: #000000; color: #ffffff; padding: 20px; border-radius: 4px; margin: 25px 0;">
