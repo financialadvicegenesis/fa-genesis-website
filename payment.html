@@ -150,7 +150,36 @@
 
         // Charger et afficher le statut de paiement
         function loadPaymentStatus() {
-            const summary = getPaymentSummary(user.email);
+            console.log('[PAYMENT PAGE] Chargement du statut de paiement...');
+            console.log('[PAYMENT PAGE] User object:', JSON.stringify(user));
+
+            let summary = null;
+
+            try {
+                summary = getPaymentSummary(user.email);
+                console.log('[PAYMENT PAGE] Summary from getPaymentSummary:', summary);
+            } catch (e) {
+                console.error('[PAYMENT PAGE] Erreur getPaymentSummary:', e);
+            }
+
+            // Fallback: construire le summary directement depuis l'objet user
+            if (!summary) {
+                console.log('[PAYMENT PAGE] Fallback: construction du summary depuis user object');
+                const offerId = user.activeOfferId || user.active_offer_id || user.offre;
+                console.log('[PAYMENT PAGE] offerId trouvé:', offerId);
+                const activeOffer = offerId ? getOfferById(offerId) : null;
+                console.log('[PAYMENT PAGE] activeOffer:', activeOffer);
+                const status = user.paymentStatus || user.payment_status || 'registered';
+
+                summary = {
+                    status: status,
+                    statusLabel: getStatusLabel(status),
+                    activeOffer: activeOffer,
+                    totalPaid: (user.payments || []).reduce(function(sum, p) { return sum + (p.amount || 0); }, 0),
+                    payments: user.payments || [],
+                    accessRights: { message: status === 'registered' ? 'Un acompte de 30% est requis pour démarrer.' : 'Bienvenue dans votre espace paiement.' }
+                };
+            }
 
             if (!summary) {
                 document.getElementById('statusMessage').textContent = 'Erreur de chargement';
@@ -172,6 +201,17 @@
             if (summary.status === 'delivery_pending_payment' && summary.activeOffer) {
                 document.getElementById('balanceSection').style.display = 'block';
                 displayBalanceDetails(summary.activeOffer);
+            }
+
+            // Si registered mais pas d'offre active, afficher un message
+            if (summary.status === 'registered' && !summary.activeOffer) {
+                const offerId = user.activeOfferId || user.active_offer_id || user.offre;
+                if (offerId) {
+                    // L'offre existe dans la session mais n'est pas trouvée dans offers-config
+                    document.getElementById('statusMessage').textContent = 'Offre non reconnue. Veuillez vous réinscrire ou contacter le support.';
+                } else {
+                    document.getElementById('statusMessage').textContent = 'Aucune offre sélectionnée. Veuillez choisir une offre.';
+                }
             }
 
             // Afficher l'historique des paiements

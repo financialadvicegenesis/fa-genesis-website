@@ -436,6 +436,17 @@
 
             console.log('Nouvel utilisateur créé:', result.user);
 
+            // S'assurer que la session locale contient bien l'offre sélectionnée
+            const sessionData = JSON.parse(localStorage.getItem('fa_genesis_session') || 'null');
+            if (sessionData) {
+                if (!sessionData.offre) sessionData.offre = offre;
+                if (!sessionData.activeOfferId) sessionData.activeOfferId = offre;
+                if (!sessionData.paymentStatus) sessionData.paymentStatus = 'registered';
+                if (!sessionData.payments) sessionData.payments = [];
+                localStorage.setItem('fa_genesis_session', JSON.stringify(sessionData));
+                console.log('Session mise à jour avec offre:', offre);
+            }
+
             // Afficher le message de succès
             if (selectedOffer && selectedOffer.prixTotal > 0) {
                 successMessage.innerHTML = `
