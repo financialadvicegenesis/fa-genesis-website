@@ -1241,6 +1241,56 @@ app.put('/api/admin/messages/:messageId/status', (req, res) => {
 });
 
 /**
+ * POST /api/admin/messages/:messageId/reply (Admin)
+ * Repondre a un message par email
+ */
+app.post('/api/admin/messages/:messageId/reply', async (req, res) => {
+    try {
+        const { replyMessage } = req.body;
+
+        if (!replyMessage || !replyMessage.trim()) {
+            return res.status(400).json({ error: 'Le message de reponse est requis' });
+        }
+
+        const messages = loadMessages();
+        const index = messages.findIndex(m => m.id === req.params.messageId);
+
+        if (index === -1) {
+            return res.status(404).json({ error: 'Message non trouve' });
+        }
+
+        const msg = messages[index];
+
+        // Envoyer l'email de reponse
+        const emailResult = await emailService.sendAdminReply(
+            msg.email,
+            msg.name,
+            msg.subject,
+            replyMessage.trim()
+        );
+
+        if (!emailResult.success) {
+            return res.status(500).json({ error: 'Erreur lors de l\'envoi de l\'email', details: emailResult.error || emailResult.reason });
+        }
+
+        // Mettre a jour le statut du message
+        messages[index].status = 'replied';
+        messages[index].replied_at = new Date().toISOString();
+        messages[index].reply_message = replyMessage.trim();
+        messages[index].updated_at = new Date().toISOString();
+        saveMessages(messages);
+
+        console.log(`[CONTACT] Reponse envoyee au message ${msg.id} (${msg.email})`);
+
+        res.json({ success: true, message: 'Reponse envoyee avec succes' });
+
+    } catch (error) {
+        console.error('Erreur reponse message:', error);
+        res.status(500).json({ error: 'Erreur lors de l\'envoi de la reponse' });
+    }
+});
+
+/**
  * DELETE /api/admin/messages/:messageId (Admin)
  * Supprimer un message
  */

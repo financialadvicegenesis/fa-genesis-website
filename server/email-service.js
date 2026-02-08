@@ -616,6 +616,62 @@ async function sendPaymentConfirmation(clientEmail, clientName, orderData) {
     }
 }
 
+/**
+ * Envoyer une reponse admin a un message client
+ */
+async function sendAdminReply(clientEmail, clientName, originalSubject, replyMessage) {
+    const transport = initializeTransporter();
+    if (!transport) {
+        console.log('[EMAIL] Transport non configure - Reponse admin non envoyee');
+        return { success: false, reason: 'SMTP non configure' };
+    }
+
+    const content = `
+        <h2 style="margin: 0 0 20px 0; font-size: 24px; color: #000000; font-weight: 700;">
+            Bonjour ${clientName},
+        </h2>
+
+        <p style="margin: 0 0 10px 0; font-size: 14px; color: #888888;">
+            En reponse a votre message : <strong>${originalSubject}</strong>
+        </p>
+
+        <div style="background-color: #FFF9E6; border-left: 4px solid #FFD700; padding: 20px; margin: 25px 0;">
+            <p style="margin: 0; font-size: 15px; color: #333333; white-space: pre-wrap; line-height: 1.6;">${replyMessage}</p>
+        </div>
+
+        <p style="margin: 25px 0 5px 0; font-size: 16px; color: #333333;">
+            Cordialement,
+        </p>
+
+        <p style="margin: 0 0 5px 0; font-size: 16px; color: #000000; font-weight: 700;">
+            L'equipe Financial Advice Genesis
+        </p>
+        <p style="margin: 0 0 10px 0; font-size: 14px; color: #B8860B; font-weight: 700; font-style: italic;">
+            Build. Launch. Impact.
+        </p>
+        <p style="margin: 0; font-size: 14px; color: #666666;">
+            Contact : <a href="mailto:financialadvicegenesis@gmail.com" style="color: #B8860B;">financialadvicegenesis@gmail.com</a>
+        </p>
+    `;
+
+    try {
+        const result = await transport.sendMail({
+            from: `"${process.env.EMAIL_FROM_NAME}" <${process.env.EMAIL_FROM_ADDRESS}>`,
+            to: clientEmail,
+            subject: `[FA GENESIS] Re: ${originalSubject}`,
+            html: getEmailTemplate(content, 'Reponse FA GENESIS'),
+            replyTo: process.env.EMAIL_FROM_ADDRESS
+        });
+
+        console.log(`[EMAIL] Reponse admin envoyee a ${clientEmail} - ID: ${result.messageId}`);
+        return { success: true, messageId: result.messageId };
+
+    } catch (error) {
+        console.error('[EMAIL] Erreur envoi reponse admin:', error.message);
+        return { success: false, error: error.message };
+    }
+}
+
 // ============================================================
 // EXPORTS
 // ============================================================
@@ -626,5 +682,6 @@ module.exports = {
     sendAdminNotification,
     sendRegistrationConfirmation,
     sendAdminRegistrationNotification,
-    sendPaymentConfirmation
+    sendPaymentConfirmation,
+    sendAdminReply
 };
