@@ -1,19 +1,76 @@
 /**
  * FA GENESIS - Service d'envoi d'emails
- * Gère l'envoi d'emails automatiques via Nodemailer
+ * Supporte 2 modes : Brevo HTTP API (production) et SMTP direct (local)
  */
 
 const nodemailer = require('nodemailer');
+const fetch = require('node-fetch');
 
 // ============================================================
-// CONFIGURATION DU TRANSPORTEUR SMTP
+// CONFIGURATION DU TRANSPORTEUR EMAIL
 // ============================================================
 
 let transporter = null;
 
+/**
+ * Envoyer un email via Brevo HTTP API
+ */
+async function sendViaBrevo(mailOptions) {
+    const apiKey = process.env.BREVO_API_KEY;
+
+    // Parser le champ "from"
+    const fromMatch = mailOptions.from ? mailOptions.from.match(/"(.+)"\s*<(.+)>/) : null;
+    const senderName = fromMatch ? fromMatch[1] : (process.env.EMAIL_FROM_NAME || 'FA GENESIS');
+    const senderEmail = fromMatch ? fromMatch[2] : (process.env.EMAIL_FROM_ADDRESS || process.env.SMTP_USER);
+
+    const body = {
+        sender: { name: senderName, email: senderEmail },
+        to: [{ email: typeof mailOptions.to === 'string' ? mailOptions.to : mailOptions.to[0] }],
+        subject: mailOptions.subject,
+        htmlContent: mailOptions.html
+    };
+
+    if (mailOptions.replyTo) {
+        const replyEmail = typeof mailOptions.replyTo === 'string' ? mailOptions.replyTo : mailOptions.replyTo.address;
+        body.replyTo = { email: replyEmail };
+    }
+
+    console.log(`[EMAIL] Brevo API -> ${body.to[0].email} | Sujet: ${body.subject}`);
+
+    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: {
+            'api-key': apiKey,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        },
+        body: JSON.stringify(body)
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+        throw new Error(data.message || 'Erreur Brevo API: ' + response.status);
+    }
+
+    console.log(`[EMAIL] Brevo OK - messageId: ${data.messageId || 'N/A'}`);
+    return { messageId: data.messageId || ('brevo-' + Date.now()) };
+}
+
 function initializeTransporter() {
     if (transporter) return transporter;
 
+    // Mode 1 : Brevo HTTP API (pour production / cloud hosting)
+    if (process.env.BREVO_API_KEY) {
+        console.log('[EMAIL] Mode Brevo HTTP API active');
+        transporter = {
+            sendMail: sendViaBrevo,
+            verify: (cb) => cb(null, true)
+        };
+        return transporter;
+    }
+
+    // Mode 2 : SMTP direct (pour developpement local)
     const port = parseInt(process.env.SMTP_PORT) || 465;
     const secure = process.env.SMTP_SECURE === 'false' ? false : (port === 465);
 
@@ -30,9 +87,8 @@ function initializeTransporter() {
         socketTimeout: 30000
     };
 
-    console.log(`[EMAIL] Config SMTP: host=${smtpConfig.host}, port=${smtpConfig.port}, secure=${smtpConfig.secure}`);
+    console.log(`[EMAIL] Mode SMTP: host=${smtpConfig.host}, port=${smtpConfig.port}, secure=${smtpConfig.secure}`);
 
-    // Vérifier que la configuration est présente
     if (!smtpConfig.host || !smtpConfig.auth.user || !smtpConfig.auth.pass) {
         console.warn('[EMAIL] Configuration SMTP incomplete - Les emails ne seront pas envoyes');
         return null;
@@ -40,11 +96,9 @@ function initializeTransporter() {
 
     transporter = nodemailer.createTransport(smtpConfig);
 
-    // Vérifier la connexion au démarrage
     transporter.verify((error, success) => {
         if (error) {
             console.error('[EMAIL] Erreur connexion SMTP:', error.message);
-            // Reset transporter si la connexion echoue pour reessayer
             transporter = null;
         } else {
             console.log('[EMAIL] Connexion SMTP etablie avec succes');
