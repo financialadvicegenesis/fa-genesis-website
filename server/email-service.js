@@ -14,19 +14,27 @@ let transporter = null;
 function initializeTransporter() {
     if (transporter) return transporter;
 
+    const port = parseInt(process.env.SMTP_PORT) || 465;
+    const secure = process.env.SMTP_SECURE === 'false' ? false : (port === 465);
+
     const smtpConfig = {
         host: process.env.SMTP_HOST,
-        port: parseInt(process.env.SMTP_PORT) || 587,
-        secure: process.env.SMTP_SECURE === 'true',
+        port: port,
+        secure: secure,
         auth: {
             user: process.env.SMTP_USER,
             pass: process.env.SMTP_PASSWORD
-        }
+        },
+        connectionTimeout: 30000,
+        greetingTimeout: 30000,
+        socketTimeout: 30000
     };
+
+    console.log(`[EMAIL] Config SMTP: host=${smtpConfig.host}, port=${smtpConfig.port}, secure=${smtpConfig.secure}`);
 
     // Vérifier que la configuration est présente
     if (!smtpConfig.host || !smtpConfig.auth.user || !smtpConfig.auth.pass) {
-        console.warn('[EMAIL] Configuration SMTP incomplète - Les emails ne seront pas envoyés');
+        console.warn('[EMAIL] Configuration SMTP incomplete - Les emails ne seront pas envoyes');
         return null;
     }
 
@@ -36,8 +44,10 @@ function initializeTransporter() {
     transporter.verify((error, success) => {
         if (error) {
             console.error('[EMAIL] Erreur connexion SMTP:', error.message);
+            // Reset transporter si la connexion echoue pour reessayer
+            transporter = null;
         } else {
-            console.log('[EMAIL] Connexion SMTP établie avec succès');
+            console.log('[EMAIL] Connexion SMTP etablie avec succes');
         }
     });
 
