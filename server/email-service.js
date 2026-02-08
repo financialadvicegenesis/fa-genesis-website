@@ -617,26 +617,44 @@ async function sendPaymentConfirmation(clientEmail, clientName, orderData) {
 }
 
 /**
+ * Echapper les caracteres speciaux HTML
+ */
+function escapeHtml(text) {
+    if (!text) return '';
+    return String(text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
+/**
  * Envoyer une reponse admin a un message client
  */
 async function sendAdminReply(clientEmail, clientName, originalSubject, replyMessage) {
+    console.log(`[EMAIL] sendAdminReply appele pour ${clientEmail}`);
+
     const transport = initializeTransporter();
     if (!transport) {
         console.log('[EMAIL] Transport non configure - Reponse admin non envoyee');
         return { success: false, reason: 'SMTP non configure' };
     }
 
+    const safeName = escapeHtml(clientName);
+    const safeSubject = escapeHtml(originalSubject);
+    const safeReply = escapeHtml(replyMessage);
+
     const content = `
         <h2 style="margin: 0 0 20px 0; font-size: 24px; color: #000000; font-weight: 700;">
-            Bonjour ${clientName},
+            Bonjour ${safeName},
         </h2>
 
         <p style="margin: 0 0 10px 0; font-size: 14px; color: #888888;">
-            En reponse a votre message : <strong>${originalSubject}</strong>
+            En r\u00e9ponse \u00e0 votre message : <strong>${safeSubject}</strong>
         </p>
 
         <div style="background-color: #FFF9E6; border-left: 4px solid #FFD700; padding: 20px; margin: 25px 0;">
-            <p style="margin: 0; font-size: 15px; color: #333333; white-space: pre-wrap; line-height: 1.6;">${replyMessage}</p>
+            <p style="margin: 0; font-size: 15px; color: #333333; white-space: pre-wrap; line-height: 1.6;">${safeReply}</p>
         </div>
 
         <p style="margin: 25px 0 5px 0; font-size: 16px; color: #333333;">
@@ -644,7 +662,7 @@ async function sendAdminReply(clientEmail, clientName, originalSubject, replyMes
         </p>
 
         <p style="margin: 0 0 5px 0; font-size: 16px; color: #000000; font-weight: 700;">
-            L'equipe Financial Advice Genesis
+            L'\u00e9quipe Financial Advice Genesis
         </p>
         <p style="margin: 0 0 10px 0; font-size: 14px; color: #B8860B; font-weight: 700; font-style: italic;">
             Build. Launch. Impact.
@@ -654,20 +672,23 @@ async function sendAdminReply(clientEmail, clientName, originalSubject, replyMes
         </p>
     `;
 
+    const fromAddress = process.env.EMAIL_FROM_ADDRESS || process.env.SMTP_USER;
+    const fromName = process.env.EMAIL_FROM_NAME || 'FA GENESIS';
+
     try {
         const result = await transport.sendMail({
-            from: `"${process.env.EMAIL_FROM_NAME}" <${process.env.EMAIL_FROM_ADDRESS}>`,
+            from: `"${fromName}" <${fromAddress}>`,
             to: clientEmail,
             subject: `[FA GENESIS] Re: ${originalSubject}`,
             html: getEmailTemplate(content, 'Reponse FA GENESIS'),
-            replyTo: process.env.EMAIL_FROM_ADDRESS
+            replyTo: fromAddress
         });
 
         console.log(`[EMAIL] Reponse admin envoyee a ${clientEmail} - ID: ${result.messageId}`);
         return { success: true, messageId: result.messageId };
 
     } catch (error) {
-        console.error('[EMAIL] Erreur envoi reponse admin:', error.message);
+        console.error('[EMAIL] Erreur envoi reponse admin:', error.message, error.stack);
         return { success: false, error: error.message };
     }
 }

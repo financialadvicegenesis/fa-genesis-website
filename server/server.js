@@ -1252,6 +1252,12 @@ app.post('/api/admin/messages/:messageId/reply', async (req, res) => {
             return res.status(400).json({ error: 'Le message de reponse est requis' });
         }
 
+        // Verifier que la fonction sendAdminReply existe
+        if (typeof emailService.sendAdminReply !== 'function') {
+            console.error('[CONTACT] sendAdminReply non disponible dans emailService');
+            return res.status(500).json({ error: 'Service email non disponible. Veuillez reessayer dans quelques minutes.' });
+        }
+
         const messages = loadMessages();
         const index = messages.findIndex(m => m.id === req.params.messageId);
 
@@ -1261,6 +1267,8 @@ app.post('/api/admin/messages/:messageId/reply', async (req, res) => {
 
         const msg = messages[index];
 
+        console.log(`[CONTACT] Envoi reponse a ${msg.email} pour message ${msg.id}...`);
+
         // Envoyer l'email de reponse
         const emailResult = await emailService.sendAdminReply(
             msg.email,
@@ -1269,8 +1277,12 @@ app.post('/api/admin/messages/:messageId/reply', async (req, res) => {
             replyMessage.trim()
         );
 
+        console.log(`[CONTACT] Resultat envoi:`, JSON.stringify(emailResult));
+
         if (!emailResult.success) {
-            return res.status(500).json({ error: 'Erreur lors de l\'envoi de l\'email', details: emailResult.error || emailResult.reason });
+            const details = emailResult.error || emailResult.reason || 'Erreur inconnue';
+            console.error(`[CONTACT] Echec envoi email: ${details}`);
+            return res.status(500).json({ error: 'Erreur lors de l\'envoi de l\'email: ' + details });
         }
 
         // Mettre a jour le statut du message
@@ -1280,13 +1292,13 @@ app.post('/api/admin/messages/:messageId/reply', async (req, res) => {
         messages[index].updated_at = new Date().toISOString();
         saveMessages(messages);
 
-        console.log(`[CONTACT] Reponse envoyee au message ${msg.id} (${msg.email})`);
+        console.log(`[CONTACT] Reponse envoyee avec succes au message ${msg.id} (${msg.email})`);
 
         res.json({ success: true, message: 'Reponse envoyee avec succes' });
 
     } catch (error) {
-        console.error('Erreur reponse message:', error);
-        res.status(500).json({ error: 'Erreur lors de l\'envoi de la reponse' });
+        console.error('[CONTACT] Erreur reponse message:', error.message, error.stack);
+        res.status(500).json({ error: 'Erreur serveur: ' + error.message });
     }
 });
 

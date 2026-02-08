@@ -1175,7 +1175,17 @@
                     body: JSON.stringify({ replyMessage: replyMessage })
                 });
 
-                var data = await response.json();
+                var responseText = await response.text();
+                var data;
+                try {
+                    data = JSON.parse(responseText);
+                } catch (parseErr) {
+                    console.error('[ADMIN] Reponse non-JSON du serveur:', responseText.substring(0, 500));
+                    alert('Le serveur est en cours de redemarrage. Veuillez patienter 30 secondes et reessayer.');
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-paper-plane mr-2"></i>ENVOYER';
+                    return;
+                }
 
                 if (response.ok && data.success) {
                     // Mettre a jour le statut local
@@ -1190,6 +1200,7 @@
                             '<p class="font-black mt-2" style="color:#2e7d32;">Reponse envoyee avec succes !</p>' +
                         '</div>';
                 } else {
+                    console.error('[ADMIN] Erreur reponse:', data);
                     alert('Erreur : ' + (data.error || 'Impossible d\'envoyer la reponse'));
                     btn.disabled = false;
                     btn.innerHTML = '<i class="fas fa-paper-plane mr-2"></i>ENVOYER';
