@@ -152,7 +152,7 @@ function getEmailTemplate(content, title = 'FA GENESIS') {
                     <tr>
                         <td style="padding: 30px 40px; background-color: #f8f8f8; border-top: 1px solid #e0e0e0;">
                             <p style="margin: 0 0 10px 0; font-size: 14px; color: #666666; text-align: center;">
-                                <strong>FA GENESIS</strong> - Conseil en image et communication
+                                <strong>FA GENESIS</strong> - Structurez votre id\u00e9e. Lancez avec clart\u00e9
                             </p>
                             <p style="margin: 0; font-size: 12px; color: #999999; text-align: center;">
                                 Email : <a href="mailto:Financialadvicegenesis@gmail.com" style="color: #FFD700;">Financialadvicegenesis@gmail.com</a>
