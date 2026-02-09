@@ -48,7 +48,7 @@ async function login(email, password) {
         console.error('Erreur login:', error);
         return {
             success: false,
-            message: 'Erreur de connexion au serveur. Verifiez que le backend est lance.'
+            message: 'Le serveur est temporairement indisponible. Veuillez r\u00e9essayer dans quelques instants.'
         };
     }
 }
@@ -91,7 +91,7 @@ async function register(userData) {
         console.error('Erreur register:', error);
         return {
             success: false,
-            message: 'Erreur de connexion au serveur. Verifiez que le backend est lance.'
+            message: 'Le serveur est temporairement indisponible. Veuillez r\u00e9essayer dans quelques instants.'
         };
     }
 }

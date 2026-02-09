@@ -221,7 +221,7 @@ async function sendContactConfirmation(clientEmail, clientName, subject) {
         return { success: false, reason: 'SMTP non configuré' };
     }
 
-    const frontUrl = process.env.FRONT_URL || 'https://financialadvicegenesis.github.io/fa-genesis-website';
+    const frontUrl = process.env.FRONT_URL || 'https://fagenesis.com';
 
     const content = `
         <p style="margin: 0 0 20px 0; font-size: 16px; color: #333333; line-height: 1.6;">
@@ -489,7 +489,7 @@ async function sendRegistrationConfirmation(clientEmail, prenom, offerData = nul
             <p style="margin: 0 0 15px 0; font-size: 14px; color: #cccccc;">
                 Accédez à votre espace client pour suivre votre commande
             </p>
-            <a href="${process.env.FRONT_URL || 'http://127.0.0.1:5500'}/login.html"
+            <a href="${process.env.FRONT_URL || 'https://fagenesis.com'}/login.html"
                style="display: inline-block; background-color: #FFD700; color: #000; padding: 15px 30px; text-decoration: none; font-weight: 700; border-radius: 4px; font-size: 16px;">
                 Se connecter
             </a>

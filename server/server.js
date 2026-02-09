@@ -72,16 +72,19 @@ function generateSessionToken() {
 // MIDDLEWARE
 // ============================================================
 
-// CORS - Autoriser le frontend (Live Server et GitHub Pages)
+// CORS - Autoriser le frontend
 app.use(cors({
     origin: [
         'http://127.0.0.1:5500',
         'http://localhost:5500',
+        'https://fagenesis.com',
+        'https://www.fagenesis.com',
         'https://financialadvicegenesis.github.io',
         process.env.FRONT_URL
     ].filter(Boolean),
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    credentials: true
+    credentials: true,
+    allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 // Parser JSON
@@ -369,8 +372,8 @@ app.post('/api/payments/sumup/create-checkout', async (req, res) => {
         const stageLabel = stage === 'deposit' ? 'Acompte 30%' : 'Solde 70%';
 
         // Construire les URLs de retour
-        const successUrl = process.env.SUMUP_SUCCESS_URL || 'https://financialadvicegenesis.github.io/fa-genesis-website/payment-success.html';
-        const failureUrl = process.env.SUMUP_FAILURE_URL || 'https://financialadvicegenesis.github.io/fa-genesis-website/payment-failure.html';
+        const successUrl = process.env.SUMUP_SUCCESS_URL || 'https://fagenesis.com/payment-success.html';
+        const failureUrl = process.env.SUMUP_FAILURE_URL || 'https://fagenesis.com/payment-failure.html';
         const returnUrl = `${successUrl}?order=${orderId}&stage=${stage}`;
 
         // Creer le checkout SumUp
