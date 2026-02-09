@@ -62,7 +62,7 @@ function initializeTransporter() {
 
     // Mode 1 : Brevo HTTP API (pour production / cloud hosting)
     if (process.env.BREVO_API_KEY) {
-        console.log('[EMAIL] Mode Brevo HTTP API active');
+        console.log('[EMAIL] Mode Brevo HTTP API activé');
         transporter = {
             sendMail: sendViaBrevo,
             verify: (cb) => cb(null, true)
@@ -90,7 +90,7 @@ function initializeTransporter() {
     console.log(`[EMAIL] Mode SMTP: host=${smtpConfig.host}, port=${smtpConfig.port}, secure=${smtpConfig.secure}`);
 
     if (!smtpConfig.host || !smtpConfig.auth.user || !smtpConfig.auth.pass) {
-        console.warn('[EMAIL] Configuration SMTP incomplete - Les emails ne seront pas envoyes');
+        console.warn('[EMAIL] Configuration SMTP incomplète - Les emails ne seront pas envoyés');
         return null;
     }
 
@@ -101,7 +101,7 @@ function initializeTransporter() {
             console.error('[EMAIL] Erreur connexion SMTP:', error.message);
             transporter = null;
         } else {
-            console.log('[EMAIL] Connexion SMTP etablie avec succes');
+            console.log('[EMAIL] Connexion SMTP établie avec succès');
         }
     });
 
@@ -152,7 +152,7 @@ function getEmailTemplate(content, title = 'FA GENESIS') {
                     <tr>
                         <td style="padding: 30px 40px; background-color: #f8f8f8; border-top: 1px solid #e0e0e0;">
                             <p style="margin: 0 0 10px 0; font-size: 14px; color: #666666; text-align: center;">
-                                <strong>FA GENESIS</strong> - Structurez votre id\u00e9e. Lancez avec clart\u00e9
+                                <strong>FA GENESIS</strong> - Structurez votre idée. Lancez avec clarté
                             </p>
                             <p style="margin: 0; font-size: 12px; color: #999999; text-align: center;">
                                 Email : <a href="mailto:Financialadvicegenesis@gmail.com" style="color: #FFD700;">Financialadvicegenesis@gmail.com</a>
@@ -697,12 +697,12 @@ function escapeHtml(text) {
  * Envoyer une reponse admin a un message client
  */
 async function sendAdminReply(clientEmail, clientName, originalSubject, replyMessage) {
-    console.log(`[EMAIL] sendAdminReply appele pour ${clientEmail}`);
+    console.log(`[EMAIL] sendAdminReply appelé pour ${clientEmail}`);
 
     const transport = initializeTransporter();
     if (!transport) {
-        console.log('[EMAIL] Transport non configure - Reponse admin non envoyee');
-        return { success: false, reason: 'SMTP non configure' };
+        console.log('[EMAIL] Transport non configuré - Réponse admin non envoyée');
+        return { success: false, reason: 'SMTP non configuré' };
     }
 
     const safeName = escapeHtml(clientName);
@@ -715,7 +715,7 @@ async function sendAdminReply(clientEmail, clientName, originalSubject, replyMes
         </h2>
 
         <p style="margin: 0 0 10px 0; font-size: 14px; color: #888888;">
-            En r\u00e9ponse \u00e0 votre message : <strong>${safeSubject}</strong>
+            En réponse à votre message : <strong>${safeSubject}</strong>
         </p>
 
         <div style="background-color: #FFF9E6; border-left: 4px solid #FFD700; padding: 20px; margin: 25px 0;">
@@ -727,7 +727,7 @@ async function sendAdminReply(clientEmail, clientName, originalSubject, replyMes
         </p>
 
         <p style="margin: 0 0 5px 0; font-size: 16px; color: #000000; font-weight: 700;">
-            L'\u00e9quipe Financial Advice Genesis
+            L'équipe Financial Advice Genesis
         </p>
         <p style="margin: 0 0 10px 0; font-size: 14px; color: #B8860B; font-weight: 700; font-style: italic;">
             Build. Launch. Impact.
@@ -745,11 +745,11 @@ async function sendAdminReply(clientEmail, clientName, originalSubject, replyMes
             from: `"${fromName}" <${fromAddress}>`,
             to: clientEmail,
             subject: `[FA GENESIS] Re: ${originalSubject}`,
-            html: getEmailTemplate(content, 'Reponse FA GENESIS'),
+            html: getEmailTemplate(content, 'Réponse FA GENESIS'),
             replyTo: fromAddress
         });
 
-        console.log(`[EMAIL] Reponse admin envoyee a ${clientEmail} - ID: ${result.messageId}`);
+        console.log(`[EMAIL] Réponse admin envoyée à ${clientEmail} - ID: ${result.messageId}`);
         return { success: true, messageId: result.messageId };
 
     } catch (error) {
