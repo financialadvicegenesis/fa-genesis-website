@@ -507,6 +507,68 @@
             .tech-cube-face.top    { transform: rotateX(90deg) translateZ(90px); }
             .tech-cube-face.bottom { transform: rotateX(-90deg) translateZ(90px); }
         }
+
+        /* FAQ Section */
+        .faq-item {
+            background: white;
+            color: black;
+            border: 4px solid black;
+            margin-bottom: 12px;
+            transition: all 0.2s ease;
+        }
+        .faq-item:hover {
+            transform: translate(-2px, -2px);
+            box-shadow: 6px 6px 0px var(--genesis-yellow);
+        }
+        .faq-question {
+            padding: 1.25rem 1.5rem;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 900;
+            font-size: 0.95rem;
+            text-transform: uppercase;
+            font-family: 'Space Grotesk', sans-serif;
+            user-select: none;
+        }
+        .faq-question .faq-icon {
+            font-size: 1.5rem;
+            color: var(--genesis-yellow);
+            transition: transform 0.3s ease;
+            flex-shrink: 0;
+            margin-left: 1rem;
+        }
+        .faq-item.active .faq-icon {
+            transform: rotate(45deg);
+        }
+        .faq-answer {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s ease, padding 0.3s ease;
+            padding: 0 1.5rem;
+            font-size: 0.95rem;
+            line-height: 1.7;
+            font-weight: 500;
+            color: #333;
+        }
+        .faq-item.active .faq-answer {
+            max-height: 300px;
+            padding: 0 1.5rem 1.25rem 1.5rem;
+        }
+        .faq-number {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            background: var(--genesis-yellow);
+            border: 3px solid black;
+            font-weight: 900;
+            font-size: 0.8rem;
+            margin-right: 1rem;
+            flex-shrink: 0;
+        }
     </style>
 </head>
 <body>
@@ -520,6 +582,7 @@
             <a href="#accueil" class="nav-link hover:text-[var(--genesis-yellow)] transition">Accueil</a>
             <a href="a-propos.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">À Propos</a>
             <a href="offres.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">Offres</a>
+            <a href="#faq" class="nav-link hover:text-[var(--genesis-yellow)] transition">FAQ</a>
             <a href="contact.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">Contact</a>
         </div>
         <div class="hidden md:flex gap-4 items-center">
@@ -539,6 +602,7 @@
         <a href="#accueil" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition" onclick="closeMobileMenu()">Accueil</a>
         <a href="a-propos.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition">À Propos</a>
         <a href="offres.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition">Offres</a>
+        <a href="#faq" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition" onclick="closeMobileMenu()">FAQ</a>
         <a href="contact.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition">Contact</a>
         <div class="flex flex-col gap-4 mt-8">
             <a href="login.html" class="border-4 border-white text-white px-8 py-4 text-sm tracking-widest font-black hover:bg-white hover:text-black transition text-center">Espace client</a>
@@ -686,6 +750,138 @@
                 </div>
             </div>
 
+            <!-- SECTION FAQ -->
+            <div id="faq" class="mb-16 md:mb-32" data-aos="fade-up">
+                <h2 class="text-3xl md:text-5xl lg:text-6xl font-black italic uppercase text-center mb-4 text-[var(--genesis-yellow)]">
+                    Questions Fr&#233;quentes
+                </h2>
+                <p class="text-center text-sm md:text-base font-bold uppercase opacity-70 mb-10 md:mb-16">
+                    Tout ce que vous devez savoir sur FA Genesis
+                </p>
+
+                <div class="max-w-3xl mx-auto">
+                    <div class="faq-item" data-aos="fade-up" data-aos-delay="0">
+                        <div class="faq-question" onclick="toggleFaq(this)">
+                            <div class="flex items-center"><span class="faq-number">1</span>C'est quoi Financial Advice Genesis ?</div>
+                            <span class="faq-icon">+</span>
+                        </div>
+                        <div class="faq-answer">
+                            Financial Advice Genesis accompagne les &#233;tudiants et entrepreneurs d&#233;butants &#224; transformer une id&#233;e en un projet structur&#233;, cr&#233;dible et visible, &#224; un co&#251;t accessible.
+                        </div>
+                    </div>
+
+                    <div class="faq-item" data-aos="fade-up" data-aos-delay="50">
+                        <div class="faq-question" onclick="toggleFaq(this)">
+                            <div class="flex items-center"><span class="faq-number">2</span>&#192; qui s'adressent vos accompagnements ?</div>
+                            <span class="faq-icon">+</span>
+                        </div>
+                        <div class="faq-answer">
+                            Nos offres s'adressent principalement aux &#233;tudiants, aux porteurs de projets, aux jeunes entrepreneurs et aux personnes qui ont une id&#233;e mais ne savent pas par o&#249; commencer.
+                        </div>
+                    </div>
+
+                    <div class="faq-item" data-aos="fade-up" data-aos-delay="100">
+                        <div class="faq-question" onclick="toggleFaq(this)">
+                            <div class="flex items-center"><span class="faq-number">3</span>Est-ce que je dois d&#233;j&#224; avoir un projet ?</div>
+                            <span class="faq-icon">+</span>
+                        </div>
+                        <div class="faq-answer">
+                            Non. Vous pouvez venir avec une id&#233;e, un d&#233;but de projet ou m&#234;me juste une envie. On vous aidera &#224; clarifier et structurer votre projet.
+                        </div>
+                    </div>
+
+                    <div class="faq-item" data-aos="fade-up" data-aos-delay="150">
+                        <div class="faq-question" onclick="toggleFaq(this)">
+                            <div class="flex items-center"><span class="faq-number">4</span>Vos services sont-ils adapt&#233;s aux &#233;tudiants ?</div>
+                            <span class="faq-icon">+</span>
+                        </div>
+                        <div class="faq-answer">
+                            Oui. Nos offres ont &#233;t&#233; pens&#233;es en tenant compte de la r&#233;alit&#233; financi&#232;re des &#233;tudiants en France.
+                        </div>
+                    </div>
+
+                    <div class="faq-item" data-aos="fade-up" data-aos-delay="200">
+                        <div class="faq-question" onclick="toggleFaq(this)">
+                            <div class="flex items-center"><span class="faq-number">5</span>Comment se d&#233;roule l'accompagnement ?</div>
+                            <span class="faq-icon">+</span>
+                        </div>
+                        <div class="faq-answer">
+                            L'accompagnement se fait en plusieurs &#233;tapes : clarification de l'id&#233;e, structuration du projet, visibilit&#233; (photo, vid&#233;o, m&#233;dia) et plan d'action concret. Chaque accompagnement est simple, progressif et sans pression.
+                        </div>
+                    </div>
+
+                    <div class="faq-item" data-aos="fade-up" data-aos-delay="250">
+                        <div class="faq-question" onclick="toggleFaq(this)">
+                            <div class="flex items-center"><span class="faq-number">6</span>Combien co&#251;tent vos accompagnements ?</div>
+                            <span class="faq-icon">+</span>
+                        </div>
+                        <div class="faq-answer">
+                            Nos prix sont affich&#233;s directement sur notre page Instagram. Nous proposons aussi des facilit&#233;s de paiement.
+                        </div>
+                    </div>
+
+                    <div class="faq-item" data-aos="fade-up" data-aos-delay="300">
+                        <div class="faq-question" onclick="toggleFaq(this)">
+                            <div class="flex items-center"><span class="faq-number">7</span>Est-ce que je peux payer en plusieurs fois ?</div>
+                            <span class="faq-icon">+</span>
+                        </div>
+                        <div class="faq-answer">
+                            Oui. Certains accompagnements peuvent &#234;tre pay&#233;s en plusieurs fois, surtout pour les &#233;tudiants.
+                        </div>
+                    </div>
+
+                    <div class="faq-item" data-aos="fade-up" data-aos-delay="350">
+                        <div class="faq-question" onclick="toggleFaq(this)">
+                            <div class="flex items-center"><span class="faq-number">8</span>Est-ce que vous garantissez la r&#233;ussite du projet ?</div>
+                            <span class="faq-icon">+</span>
+                        </div>
+                        <div class="faq-answer">
+                            Nous ne garantissons pas le succ&#232;s d'un projet, mais nous garantissons un accompagnement s&#233;rieux, structur&#233; et adapt&#233; &#224; votre situation. La r&#233;ussite de votre projet d&#233;pendra &#233;norm&#233;ment de votre volont&#233; &#224; l'accomplir.
+                        </div>
+                    </div>
+
+                    <div class="faq-item" data-aos="fade-up" data-aos-delay="400">
+                        <div class="faq-question" onclick="toggleFaq(this)">
+                            <div class="flex items-center"><span class="faq-number">9</span>Est-ce que vous faites des offres sur mesure ?</div>
+                            <span class="faq-icon">+</span>
+                        </div>
+                        <div class="faq-answer">
+                            Oui. Si votre besoin est sp&#233;cifique (podcast, projet particulier, entreprise, etc.), nous pouvons cr&#233;er une offre personnalis&#233;e.
+                        </div>
+                    </div>
+
+                    <div class="faq-item" data-aos="fade-up" data-aos-delay="450">
+                        <div class="faq-question" onclick="toggleFaq(this)">
+                            <div class="flex items-center"><span class="faq-number">10</span>Comment vous contacter ?</div>
+                            <span class="faq-icon">+</span>
+                        </div>
+                        <div class="faq-answer">
+                            Vous pouvez nous &#233;crire directement en message priv&#233; sur nos r&#233;seaux sociaux ou par e-mail : <a href="mailto:Financialadvicegenesis@gmail.com" class="text-[var(--genesis-yellow)] font-black underline">Financialadvicegenesis@gmail.com</a>
+                        </div>
+                    </div>
+
+                    <div class="faq-item" data-aos="fade-up" data-aos-delay="500">
+                        <div class="faq-question" onclick="toggleFaq(this)">
+                            <div class="flex items-center"><span class="faq-number">11</span>Combien de temps dure un accompagnement ?</div>
+                            <span class="faq-icon">+</span>
+                        </div>
+                        <div class="faq-answer">
+                            Cela d&#233;pend de l'offre choisie : 2 jours, 7 jours, 14 jours, 1 mois ou plus selon votre projet.
+                        </div>
+                    </div>
+
+                    <div class="faq-item" data-aos="fade-up" data-aos-delay="550">
+                        <div class="faq-question" onclick="toggleFaq(this)">
+                            <div class="flex items-center"><span class="faq-number">12</span>Est-ce que vous travaillez avec des partenaires ?</div>
+                            <span class="faq-icon">+</span>
+                        </div>
+                        <div class="faq-answer">
+                            Oui. Nous travaillons avec des photographes, vid&#233;astes et m&#233;dias partenaires pour offrir une exp&#233;rience compl&#232;te.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Call to Action Final -->
             <div class="text-center" data-aos="zoom-in">
                 <div class="bg-white neo-border neo-shadow inline-block p-6 md:p-12 max-w-3xl mx-4 md:mx-auto">
@@ -767,6 +963,20 @@
         }
 
         mobileMenuBtn.addEventListener('click', toggleMobileMenu);
+
+        // FAQ Accordion Toggle
+        function toggleFaq(questionEl) {
+            var item = questionEl.parentElement;
+            var isActive = item.classList.contains('active');
+            // Fermer tous les autres
+            document.querySelectorAll('.faq-item.active').forEach(function(el) {
+                el.classList.remove('active');
+            });
+            // Ouvrir celui-ci si pas deja ouvert
+            if (!isActive) {
+                item.classList.add('active');
+            }
+        }
     </script>
 </body>
 </html>
