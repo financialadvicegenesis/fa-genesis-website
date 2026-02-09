@@ -87,8 +87,8 @@ app.use(cors({
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// Parser JSON
-app.use(express.json());
+// Parser JSON (limite augmentee pour supporter les fichiers base64)
+app.use(express.json({ limit: '50mb' }));
 
 // Logger les requetes
 app.use((req, res, next) => {
@@ -133,6 +133,51 @@ function updateOrder(orderId, updates) {
     orders[index] = { ...orders[index], ...updates, updated_at: new Date().toISOString() };
     saveOrders(orders);
     return orders[index];
+}
+
+// ============================================================
+// HELPERS - CALCUL JOUR COURANT (ACCOMPAGNEMENT)
+// ============================================================
+
+/**
+ * Parse une chaine de duree en nombre de jours
+ * @param {string} duration - Ex: "2 jours", "7 jours", "1 mois", "30 jours"
+ * @returns {number}
+ */
+function parseDurationToDays(duration) {
+    if (!duration) return 0;
+    const str = duration.toLowerCase().trim();
+    const match = str.match(/^(\d+)\s*(jour|jours|mois)$/);
+    if (!match) return 0;
+    const num = parseInt(match[1]);
+    const unit = match[2];
+    if (unit === 'mois') return num * 30;
+    return num;
+}
+
+/**
+ * Calcule le jour courant d'un accompagnement
+ * @param {Object} order - La commande
+ * @returns {{ currentDay: number, totalDays: number, isComplete: boolean }}
+ */
+function calculateCurrentDay(order) {
+    if (!order.start_date) {
+        return { currentDay: 0, totalDays: order.duration_days || 0, isComplete: false };
+    }
+
+    const totalDays = order.duration_days || 0;
+    if (totalDays === 0) {
+        return { currentDay: 0, totalDays: 0, isComplete: false };
+    }
+
+    const startDate = new Date(order.start_date);
+    const now = new Date();
+    const diffMs = now.getTime() - startDate.getTime();
+    const rawDay = Math.floor(diffMs / 86400000) + 1; // Jour 1 = jour du debut
+    const currentDay = Math.max(1, Math.min(rawDay, totalDays));
+    const isComplete = rawDay > totalDays;
+
+    return { currentDay, totalDays, isComplete };
 }
 
 // ============================================================
@@ -282,6 +327,8 @@ app.post('/api/orders/create', (req, res) => {
             balance_amount: amounts.balance_amount,
             deposit_paid: false,
             balance_paid: false,
+            duration_days: product.duration_days || parseDurationToDays(product.duration),
+            start_date: null,
             status: 'pending_deposit', // pending_deposit, active, pending_balance, paid_in_full, cancelled
             checkout_id: null,
             transaction_id: null,
@@ -480,7 +527,8 @@ app.post('/api/payments/sumup/webhook', async (req, res) => {
             if (stage === 'deposit') {
                 updates.deposit_paid = true;
                 updates.status = 'active';
-                console.log(`[WEBHOOK] Acompte payé - Commande active`);
+                updates.start_date = new Date().toISOString();
+                console.log(`[WEBHOOK] Acompte payé - Commande active - Accompagnement démarré`);
             } else if (stage === 'balance') {
                 updates.balance_paid = true;
                 updates.status = 'paid_in_full';
@@ -588,6 +636,7 @@ app.post('/api/payments/verify', async (req, res) => {
                 if (stage === 'deposit' && !order.deposit_paid) {
                     updates.deposit_paid = true;
                     updates.status = 'active';
+                    updates.start_date = new Date().toISOString();
                     isNewPayment = true;
                     paymentStage = 'deposit';
                 } else if (stage === 'balance' && !order.balance_paid) {
@@ -715,10 +764,16 @@ app.get('/api/client/dashboard/:orderId', (req, res) => {
     // Determiner les droits d'acces
     const accessRights = getAccessRights(order);
 
+    // Calculer le jour courant pour les accompagnements
+    const dayInfo = calculateCurrentDay(order);
+
     res.json({
         order: order,
         access: accessRights,
-        product_type: order.product_type
+        product_type: order.product_type,
+        currentDay: dayInfo.currentDay,
+        totalDays: dayInfo.totalDays,
+        isComplete: dayInfo.isComplete
     });
 });
 
@@ -860,7 +915,7 @@ app.get('/api/livrables/:orderId', (req, res) => {
  */
 app.post('/api/livrables/add', (req, res) => {
     try {
-        const { orderId, name, type, preview_url, download_url, description } = req.body;
+        const { orderId, name, type, preview_url, download_url, description, day_number, client_email } = req.body;
 
         if (!orderId || !name || !type) {
             return res.status(400).json({ error: 'orderId, name et type requis' });
@@ -874,10 +929,12 @@ app.post('/api/livrables/add', (req, res) => {
         const livrable = {
             id: `LIV-${uuidv4().split('-')[0].toUpperCase()}`,
             order_id: orderId,
+            client_email: client_email || (order.client_info ? order.client_info.email : null),
             name: name,
             type: type, // 'photo', 'video', 'document', 'audio'
-            preview_url: preview_url || null, // URL pour preview (streaming, thumbnail)
-            download_url: download_url || null, // URL pour telechargement (protegee)
+            day_number: day_number || null, // Numero de jour pour les accompagnements
+            preview_url: preview_url || null,
+            download_url: download_url || null,
             description: description || null,
             status: 'ready', // 'pending', 'ready', 'delivered'
             created_at: new Date().toISOString()
@@ -975,6 +1032,167 @@ app.get('/api/download/:orderId/:livrableId', (req, res) => {
     } catch (error) {
         console.error('Erreur telechargement:', error);
         res.status(500).json({ error: 'Erreur lors du telechargement' });
+    }
+});
+
+// ============================================================
+// ROUTES - LIVRABLES ADMIN (JOUR PAR JOUR)
+// ============================================================
+
+/**
+ * GET /api/livrables/by-email/:email
+ * Recuperer tous les livrables d'un client par email
+ */
+app.get('/api/livrables/by-email/:email', (req, res) => {
+    try {
+        const email = decodeURIComponent(req.params.email).toLowerCase();
+        const orders = loadOrders();
+        const clientOrders = orders.filter(o =>
+            o.client_info && o.client_info.email.toLowerCase() === email
+        );
+
+        if (clientOrders.length === 0) {
+            return res.json({ livrables: [], byDay: {} });
+        }
+
+        const allLivrables = loadLivrables();
+        const orderIds = clientOrders.map(o => o.id);
+        const clientLivrables = allLivrables.filter(l =>
+            orderIds.includes(l.order_id) || (l.client_email && l.client_email.toLowerCase() === email)
+        );
+
+        // Grouper par jour
+        const byDay = {};
+        clientLivrables.forEach(l => {
+            const day = l.day_number || 0;
+            if (!byDay[day]) byDay[day] = [];
+            byDay[day].push(l);
+        });
+
+        res.json({ livrables: clientLivrables, byDay: byDay });
+    } catch (error) {
+        console.error('Erreur livrables by email:', error);
+        res.status(500).json({ error: 'Erreur lors de la recuperation des livrables' });
+    }
+});
+
+/**
+ * POST /api/admin/livrables/upload
+ * Ajouter un livrable depuis l'admin (avec numero de jour)
+ */
+app.post('/api/admin/livrables/upload', (req, res) => {
+    try {
+        const { orderId, clientEmail, dayNumber, name, type, description, download_url } = req.body;
+
+        if (!clientEmail || !name) {
+            return res.status(400).json({ error: 'clientEmail et name requis' });
+        }
+
+        // Trouver la commande du client si orderId non fourni
+        let resolvedOrderId = orderId;
+        if (!resolvedOrderId) {
+            const orders = loadOrders();
+            const clientOrder = orders.find(o =>
+                o.client_info && o.client_info.email.toLowerCase() === clientEmail.toLowerCase() && o.deposit_paid
+            );
+            if (clientOrder) {
+                resolvedOrderId = clientOrder.id;
+            }
+        }
+
+        const livrable = {
+            id: `LIV-${uuidv4().split('-')[0].toUpperCase()}`,
+            order_id: resolvedOrderId || null,
+            client_email: clientEmail.toLowerCase(),
+            name: name,
+            type: type || 'document',
+            day_number: dayNumber ? parseInt(dayNumber) : null,
+            download_url: download_url || null,
+            description: description || null,
+            status: 'ready',
+            created_at: new Date().toISOString()
+        };
+
+        const livrables = loadLivrables();
+        livrables.push(livrable);
+        saveLivrables(livrables);
+
+        console.log(`[LIVRABLE-ADMIN] Ajouté: ${livrable.id} pour ${clientEmail} - Jour ${dayNumber || 'N/A'}`);
+
+        // Envoyer une notification email au client
+        if (resolvedOrderId) {
+            const order = getOrderById(resolvedOrderId);
+            if (order && order.client_info) {
+                const clientName = order.client_info.first_name || '';
+                const offerName = order.product_name || '';
+                emailService.sendNewDocumentNotification(
+                    clientEmail,
+                    clientName,
+                    name,
+                    dayNumber,
+                    offerName
+                ).then(result => {
+                    if (result.success) {
+                        console.log(`[LIVRABLE-ADMIN] Email de notification envoyé à ${clientEmail}`);
+                    }
+                }).catch(err => console.error('[LIVRABLE-ADMIN] Erreur envoi notification:', err));
+            }
+        }
+
+        res.json({ success: true, livrable: livrable });
+
+    } catch (error) {
+        console.error('Erreur upload livrable admin:', error);
+        res.status(500).json({ error: 'Erreur lors de l\'ajout du livrable' });
+    }
+});
+
+/**
+ * DELETE /api/admin/livrables/:livrableId
+ * Supprimer un livrable
+ */
+app.delete('/api/admin/livrables/:livrableId', (req, res) => {
+    try {
+        const { livrableId } = req.params;
+        const livrables = loadLivrables();
+        const index = livrables.findIndex(l => l.id === livrableId);
+
+        if (index === -1) {
+            return res.status(404).json({ error: 'Livrable non trouvé' });
+        }
+
+        livrables.splice(index, 1);
+        saveLivrables(livrables);
+
+        console.log(`[LIVRABLE-ADMIN] Supprimé: ${livrableId}`);
+        res.json({ success: true });
+
+    } catch (error) {
+        console.error('Erreur suppression livrable:', error);
+        res.status(500).json({ error: 'Erreur lors de la suppression' });
+    }
+});
+
+/**
+ * POST /api/admin/start-accompaniment/:orderId
+ * Définir manuellement la date de début d'un accompagnement
+ */
+app.post('/api/admin/start-accompaniment/:orderId', (req, res) => {
+    try {
+        const order = getOrderById(req.params.orderId);
+        if (!order) {
+            return res.status(404).json({ error: 'Commande non trouvée' });
+        }
+
+        const startDate = req.body.startDate || new Date().toISOString();
+        const updatedOrder = updateOrder(req.params.orderId, { start_date: startDate });
+
+        console.log(`[ADMIN] Date de début définie pour ${req.params.orderId}: ${startDate}`);
+        res.json({ success: true, order: updatedOrder });
+
+    } catch (error) {
+        console.error('Erreur start-accompaniment:', error);
+        res.status(500).json({ error: 'Erreur lors de la mise à jour' });
     }
 });
 

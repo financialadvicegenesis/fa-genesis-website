@@ -14,7 +14,8 @@ const PRODUCTS = [
         category: 'ETUDIANTS',
         product_type: 'accompagnement',
         total_price: 50,
-        duration: '2 jours'
+        duration: '2 jours',
+        duration_days: 2
     },
     {
         id: 'etudiant-starter',
@@ -22,7 +23,8 @@ const PRODUCTS = [
         category: 'ETUDIANTS',
         product_type: 'accompagnement',
         total_price: 100,
-        duration: '7 jours'
+        duration: '7 jours',
+        duration_days: 7
     },
     {
         id: 'etudiant-launch',
@@ -30,7 +32,8 @@ const PRODUCTS = [
         category: 'ETUDIANTS',
         product_type: 'accompagnement',
         total_price: 189,
-        duration: '14 jours'
+        duration: '14 jours',
+        duration_days: 14
     },
     {
         id: 'etudiant-impact',
@@ -38,7 +41,8 @@ const PRODUCTS = [
         category: 'ETUDIANTS',
         product_type: 'accompagnement',
         total_price: 290,
-        duration: '1 mois'
+        duration: '1 mois',
+        duration_days: 30
     },
 
     // ========== OFFRES PARTICULIERS ==========
@@ -48,7 +52,8 @@ const PRODUCTS = [
         category: 'PARTICULIERS',
         product_type: 'accompagnement',
         total_price: 149,
-        duration: '2 jours'
+        duration: '2 jours',
+        duration_days: 2
     },
     {
         id: 'particulier-starter',
@@ -56,7 +61,8 @@ const PRODUCTS = [
         category: 'PARTICULIERS',
         product_type: 'accompagnement',
         total_price: 490,
-        duration: '7 jours'
+        duration: '7 jours',
+        duration_days: 7
     },
     {
         id: 'particulier-launch',
@@ -64,7 +70,8 @@ const PRODUCTS = [
         category: 'PARTICULIERS',
         product_type: 'accompagnement',
         total_price: 790,
-        duration: '14 jours'
+        duration: '14 jours',
+        duration_days: 14
     },
     {
         id: 'particulier-impact',
@@ -72,7 +79,8 @@ const PRODUCTS = [
         category: 'PARTICULIERS',
         product_type: 'accompagnement',
         total_price: 1490,
-        duration: '1 mois'
+        duration: '1 mois',
+        duration_days: 30
     },
 
     // ========== OFFRES ENTREPRISES ==========
@@ -82,7 +90,8 @@ const PRODUCTS = [
         category: 'ENTREPRISES',
         product_type: 'accompagnement',
         total_price: 1490,
-        duration: '7 jours'
+        duration: '7 jours',
+        duration_days: 7
     },
     {
         id: 'entreprise-visibility',
@@ -90,7 +99,8 @@ const PRODUCTS = [
         category: 'ENTREPRISES',
         product_type: 'accompagnement',
         total_price: 2990,
-        duration: '14 jours'
+        duration: '14 jours',
+        duration_days: 14
     },
     {
         id: 'entreprise-impact',
@@ -98,7 +108,8 @@ const PRODUCTS = [
         category: 'ENTREPRISES',
         product_type: 'accompagnement',
         total_price: 4900,
-        duration: '30 jours'
+        duration: '30 jours',
+        duration_days: 30
     },
 
     // ========== TARIFS INDIVIDUELS - PHOTO ==========
@@ -108,7 +119,8 @@ const PRODUCTS = [
         category: 'TARIFS INDIVIDUELS - PHOTO',
         product_type: 'prestation_individuelle',
         total_price: 180,
-        duration: '1 seance'
+        duration: '1 seance',
+        duration_days: 0
     },
     {
         id: 'photo-pro',
@@ -116,7 +128,8 @@ const PRODUCTS = [
         category: 'TARIFS INDIVIDUELS - PHOTO',
         product_type: 'prestation_individuelle',
         total_price: 400,
-        duration: '1 seance'
+        duration: '1 seance',
+        duration_days: 0
     },
     {
         id: 'photo-event',
@@ -124,7 +137,8 @@ const PRODUCTS = [
         category: 'TARIFS INDIVIDUELS - PHOTO',
         product_type: 'prestation_individuelle',
         total_price: 900,
-        duration: '1 evenement'
+        duration: '1 evenement',
+        duration_days: 0
     },
 
     // ========== TARIFS INDIVIDUELS - VIDEO ==========
@@ -134,7 +148,8 @@ const PRODUCTS = [
         category: 'TARIFS INDIVIDUELS - VIDEO',
         product_type: 'prestation_individuelle',
         total_price: 120,
-        duration: '1 projet'
+        duration: '1 projet',
+        duration_days: 0
     },
     {
         id: 'video-storytelling',
@@ -142,7 +157,8 @@ const PRODUCTS = [
         category: 'TARIFS INDIVIDUELS - VIDEO',
         product_type: 'prestation_individuelle',
         total_price: 390,
-        duration: '1 projet'
+        duration: '1 projet',
+        duration_days: 0
     },
     {
         id: 'video-visibility',
@@ -150,7 +166,8 @@ const PRODUCTS = [
         category: 'TARIFS INDIVIDUELS - VIDEO',
         product_type: 'prestation_individuelle',
         total_price: 530,
-        duration: '1 campagne'
+        duration: '1 campagne',
+        duration_days: 0
     },
 
     // ========== TARIFS INDIVIDUELS - MARKETING ==========
@@ -160,7 +177,8 @@ const PRODUCTS = [
         category: 'TARIFS INDIVIDUELS - MARKETING',
         product_type: 'prestation_individuelle',
         total_price: 120,
-        duration: '1 semaine'
+        duration: '1 semaine',
+        duration_days: 0
     },
     {
         id: 'marketing-strategy',
@@ -168,7 +186,8 @@ const PRODUCTS = [
         category: 'TARIFS INDIVIDUELS - MARKETING',
         product_type: 'prestation_individuelle',
         total_price: 150,
-        duration: '1 mois'
+        duration: '1 mois',
+        duration_days: 0
     },
     {
         id: 'marketing-impact',
@@ -176,7 +195,8 @@ const PRODUCTS = [
         category: 'TARIFS INDIVIDUELS - MARKETING',
         product_type: 'prestation_individuelle',
         total_price: 350,
-        duration: '3 mois'
+        duration: '3 mois',
+        duration_days: 0
     },
 
     // ========== TARIFS INDIVIDUELS - MEDIA ==========
@@ -186,7 +206,8 @@ const PRODUCTS = [
         category: 'TARIFS INDIVIDUELS - MEDIA',
         product_type: 'prestation_individuelle',
         total_price: 223,
-        duration: '1 mois'
+        duration: '1 mois',
+        duration_days: 0
     },
     {
         id: 'media-impact',
@@ -194,7 +215,8 @@ const PRODUCTS = [
         category: 'TARIFS INDIVIDUELS - MEDIA',
         product_type: 'prestation_individuelle',
         total_price: 420,
-        duration: '2 mois'
+        duration: '2 mois',
+        duration_days: 0
     },
     {
         id: 'media-premium',
@@ -202,7 +224,8 @@ const PRODUCTS = [
         category: 'TARIFS INDIVIDUELS - MEDIA',
         product_type: 'prestation_individuelle',
         total_price: 590,
-        duration: '3 mois'
+        duration: '3 mois',
+        duration_days: 0
     },
     {
         id: 'media-promotion',
@@ -210,7 +233,8 @@ const PRODUCTS = [
         category: 'TARIFS INDIVIDUELS - MEDIA',
         product_type: 'prestation_individuelle',
         total_price: 679,
-        duration: '1 mois'
+        duration: '1 mois',
+        duration_days: 0
     }
 ];
 

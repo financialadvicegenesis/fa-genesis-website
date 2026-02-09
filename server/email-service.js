@@ -759,6 +759,74 @@ async function sendAdminReply(clientEmail, clientName, originalSubject, replyMes
 }
 
 // ============================================================
+// NOTIFICATION NOUVEAU DOCUMENT
+// ============================================================
+
+/**
+ * Envoie une notification au client quand un nouveau document est ajouté
+ * @param {string} clientEmail - Email du client
+ * @param {string} clientName - Prénom du client
+ * @param {string} documentName - Nom du document
+ * @param {number} dayNumber - Numéro du jour
+ * @param {string} offerName - Nom de l'offre
+ */
+async function sendNewDocumentNotification(clientEmail, clientName, documentName, dayNumber, offerName) {
+    const transport = initializeTransporter();
+    if (!transport) {
+        console.warn('[EMAIL] Transport non configuré - notification ignorée');
+        return { success: false, error: 'Transport non configuré' };
+    }
+
+    const frontUrl = process.env.FRONT_URL || 'https://fagenesis.com';
+    const fromAddress = process.env.EMAIL_FROM_ADDRESS || process.env.SMTP_USER;
+    const fromName = process.env.EMAIL_FROM_NAME || 'FA GENESIS';
+
+    const dayLabel = dayNumber ? `Jour ${dayNumber}` : '';
+    const subject = dayNumber
+        ? `Nouveau document disponible — Jour ${dayNumber}`
+        : `Nouveau document disponible`;
+
+    const content = `
+        <h2 style="color: #000000; font-size: 22px; font-weight: 700; margin: 0 0 20px 0;">
+            ${clientName ? `Bonjour ${clientName},` : 'Bonjour,'}
+        </h2>
+        <p style="color: #333333; font-size: 16px; line-height: 1.6; margin: 0 0 15px 0;">
+            Un nouveau document a été ajouté à votre espace client${dayNumber ? ` pour le <strong>Jour ${dayNumber}</strong>` : ''} de votre accompagnement${offerName ? ` <strong>${offerName}</strong>` : ''}.
+        </p>
+        <div style="background: #f8f8f8; border-left: 4px solid #FFD700; padding: 15px 20px; margin: 20px 0;">
+            <p style="margin: 0; font-weight: 700; color: #000000;">
+                📄 ${documentName}
+            </p>
+            ${dayNumber ? `<p style="margin: 5px 0 0 0; font-size: 14px; color: #666666;">${dayLabel}</p>` : ''}
+        </div>
+        <p style="color: #333333; font-size: 16px; line-height: 1.6; margin: 20px 0;">
+            Connectez-vous à votre espace client pour le consulter :
+        </p>
+        <div style="text-align: center; margin: 30px 0;">
+            <a href="${frontUrl}/livrables.html" style="display: inline-block; padding: 14px 32px; background-color: #FFD700; color: #000000; text-decoration: none; font-weight: 900; font-size: 16px; text-transform: uppercase; border: 3px solid #000000;">
+                Voir mes livrables
+            </a>
+        </div>
+    `;
+
+    try {
+        const result = await transport.sendMail({
+            from: `"${fromName}" <${fromAddress}>`,
+            to: clientEmail,
+            subject: `[FA GENESIS] ${subject}`,
+            html: getEmailTemplate(content, subject)
+        });
+
+        console.log(`[EMAIL] Notification nouveau document envoyée à ${clientEmail} - ID: ${result.messageId}`);
+        return { success: true, messageId: result.messageId };
+
+    } catch (error) {
+        console.error('[EMAIL] Erreur envoi notification document:', error.message);
+        return { success: false, error: error.message };
+    }
+}
+
+// ============================================================
 // EXPORTS
 // ============================================================
 
@@ -769,5 +837,6 @@ module.exports = {
     sendRegistrationConfirmation,
     sendAdminRegistrationNotification,
     sendPaymentConfirmation,
-    sendAdminReply
+    sendAdminReply,
+    sendNewDocumentNotification
 };

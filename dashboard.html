@@ -189,6 +189,8 @@
     <script>
         AOS.init({ duration: 1000, once: false, mirror: true, offset: 120 });
 
+        const API_BASE_URL = window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com';
+
         // Protection de la page
         requireAuth();
 
@@ -213,19 +215,46 @@
             // 1. Rendre la navigation
             renderNavigation(productType);
 
-            // 2. Rendre la carte de progression
-            renderProgressCard(user, productType);
-
-            // 3. Rendre les actions rapides
+            // 2. Rendre les actions rapides
             renderQuickActions(productType);
 
-            // 4. Calculer et afficher la progression
-            renderProgressBar(user, productType);
-
-            // 5. Afficher le workflow de livraison si prestation individuelle
-            if (productType === 'prestation_individuelle') {
+            // 3. Charger les données depuis le backend pour les accompagnements
+            if (productType === 'accompagnement') {
+                loadDashboardFromBackend(user, productType);
+            } else {
+                // Prestation individuelle : garder l'ancien comportement
+                renderProgressCard(user, productType, 0, 0);
+                renderProgressBar(user, productType, 0, 0);
                 renderDeliveryWorkflow(user);
             }
+        }
+
+        // Charger le jour courant depuis le backend
+        async function loadDashboardFromBackend(user, productType) {
+            let currentDay = 0;
+            let totalDays = 0;
+
+            try {
+                // Récupérer la commande active
+                const ordersResp = await fetch(API_BASE_URL + '/api/client/orders?email=' + encodeURIComponent(user.email));
+                if (ordersResp.ok) {
+                    const orders = await ordersResp.json();
+                    const activeOrder = orders.find(function(o) { return o.deposit_paid; });
+                    if (activeOrder) {
+                        const dashResp = await fetch(API_BASE_URL + '/api/client/dashboard/' + activeOrder.id);
+                        if (dashResp.ok) {
+                            const dashData = await dashResp.json();
+                            currentDay = dashData.currentDay || 0;
+                            totalDays = dashData.totalDays || 0;
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Erreur chargement dashboard backend:', error);
+            }
+
+            renderProgressCard(user, productType, currentDay, totalDays);
+            renderProgressBar(user, productType, currentDay, totalDays);
         }
 
         // Fonction pour rendre la navigation selon le type de produit
@@ -241,26 +270,37 @@
         }
 
         // Fonction pour rendre la carte de progression
-        function renderProgressCard(user, productType) {
+        function renderProgressCard(user, productType, currentDay, totalDays) {
             const card = document.getElementById('progressCard');
 
             if (productType === 'accompagnement') {
-                const daysRemaining = getDaysRemaining();
-                card.innerHTML = `
-                    <div class="text-sm font-black uppercase mb-2 opacity-70">Étape actuelle</div>
-                    <div class="text-3xl font-black italic">Jour ${user.jourActuel}/${user.duree}</div>
-                    <div class="text-xs font-bold uppercase mt-1">${daysRemaining} jour${daysRemaining > 1 ? 's' : ''} restant${daysRemaining > 1 ? 's' : ''}</div>
-                `;
+                const day = currentDay || 0;
+                const total = totalDays || 0;
+                const daysRemaining = Math.max(0, total - day);
+
+                if (day > 0 && total > 0) {
+                    card.innerHTML = `
+                        <div class="text-sm font-black uppercase mb-2 opacity-70">\u00c9tape actuelle</div>
+                        <div class="text-3xl font-black italic">Jour ${day}/${total}</div>
+                        <div class="text-xs font-bold uppercase mt-1">${daysRemaining} jour${daysRemaining > 1 ? 's' : ''} restant${daysRemaining > 1 ? 's' : ''}</div>
+                    `;
+                } else {
+                    card.innerHTML = `
+                        <div class="text-sm font-black uppercase mb-2 opacity-70">\u00c9tape actuelle</div>
+                        <div class="text-3xl font-black italic">En attente</div>
+                        <div class="text-xs font-bold uppercase mt-1">D\u00e9marrage apr\u00e8s paiement</div>
+                    `;
+                }
             } else {
-                const deliveryStatus = getDeliveryStatus(user.email);
-                const deliverySteps = getDeliverySteps('prestation_individuelle');
+                const deliveryStatus = typeof getDeliveryStatus === 'function' ? getDeliveryStatus(user.email) : 'confirmed';
+                const deliverySteps = typeof getDeliverySteps === 'function' ? getDeliverySteps('prestation_individuelle') : [];
                 const currentStep = deliverySteps.find(s => s.id === deliveryStatus);
-                const stepIndex = getDeliveryStepIndex(user.email);
+                const stepIndex = typeof getDeliveryStepIndex === 'function' ? getDeliveryStepIndex(user.email) : 0;
 
                 card.innerHTML = `
                     <div class="text-sm font-black uppercase mb-2 opacity-70">Statut de livraison</div>
                     <div class="text-3xl font-black italic">${currentStep ? currentStep.label : 'En cours'}</div>
-                    <div class="text-xs font-bold uppercase mt-1">Étape ${stepIndex + 1}/4</div>
+                    <div class="text-xs font-bold uppercase mt-1">\u00c9tape ${stepIndex + 1}/4</div>
                 `;
             }
         }
@@ -319,42 +359,48 @@
         }
 
         // Fonction pour rendre la barre de progression
-        function renderProgressBar(user, productType) {
+        function renderProgressBar(user, productType, currentDay, totalDays) {
             let progress = 0;
             let progressMessage = '';
 
             if (productType === 'accompagnement') {
-                // Calcul basé sur les jours
-                progress = getProgressPercentage();
+                // Calcul basé sur les jours du backend
+                if (currentDay > 0 && totalDays > 0) {
+                    progress = Math.round((currentDay / totalDays) * 100);
+                }
 
-                if (progress < 25) {
-                    progressMessage = 'Vous venez de commencer, continuez sur cette lancée !';
+                if (progress === 0) {
+                    progressMessage = 'Votre accompagnement n\'a pas encore d\u00e9marr\u00e9.';
+                } else if (progress < 25) {
+                    progressMessage = 'Vous venez de commencer, continuez sur cette lanc\u00e9e !';
                 } else if (progress < 50) {
-                    progressMessage = 'Excellent début ! Vous êtes sur la bonne voie.';
+                    progressMessage = 'Excellent d\u00e9but ! Vous \u00eates sur la bonne voie.';
                 } else if (progress < 75) {
-                    progressMessage = 'Vous avez déjà parcouru plus de la moitié du chemin !';
-                } else {
+                    progressMessage = 'Vous avez d\u00e9j\u00e0 parcouru plus de la moiti\u00e9 du chemin !';
+                } else if (progress < 100) {
                     progressMessage = 'Bravo ! Vous approchez de la fin de votre parcours.';
+                } else {
+                    progressMessage = 'F\u00e9licitations ! Votre accompagnement est termin\u00e9.';
                 }
             } else {
                 // Calcul basé sur les étapes de livraison
-                const stepIndex = getDeliveryStepIndex(user.email);
+                const stepIndex = typeof getDeliveryStepIndex === 'function' ? getDeliveryStepIndex(user.email) : 0;
                 progress = Math.round(((stepIndex + 1) / 4) * 100);
 
                 if (progress === 25) {
-                    progressMessage = 'Votre commande est confirmée ! Nous commençons bientôt.';
+                    progressMessage = 'Votre commande est confirm\u00e9e ! Nous commen\u00e7ons bient\u00f4t.';
                 } else if (progress === 50) {
-                    progressMessage = 'Notre équipe travaille sur votre prestation.';
+                    progressMessage = 'Notre \u00e9quipe travaille sur votre prestation.';
                 } else if (progress === 75) {
-                    progressMessage = 'Votre prestation est prête ! Consultez vos livrables.';
+                    progressMessage = 'Votre prestation est pr\u00eate ! Consultez vos livrables.';
                 } else if (progress === 100) {
-                    progressMessage = 'Prestation livrée ! Téléchargez vos fichiers.';
+                    progressMessage = 'Prestation livr\u00e9e ! T\u00e9l\u00e9chargez vos fichiers.';
                 }
             }
 
-            document.getElementById('progressPercent').textContent = `${progress}%`;
-            document.getElementById('progressBar').style.width = `${progress}%`;
-            document.getElementById('progressBarText').textContent = `${progress}%`;
+            document.getElementById('progressPercent').textContent = progress + '%';
+            document.getElementById('progressBar').style.width = progress + '%';
+            document.getElementById('progressBarText').textContent = progress + '%';
             document.getElementById('progressMessage').textContent = progressMessage;
         }
 

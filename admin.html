@@ -543,13 +543,44 @@
             }
 
             if (!client) {
-                alert('Client non trouve');
+                alert('Client non trouvé');
                 return;
             }
 
             var offer = typeof getOfferById === 'function' ? getOfferById(client.offre) : null;
-            var documents = typeof getClientDocumentsByDay === 'function' ? getClientDocumentsByDay(clientEmail) : {};
-            var currentDay = client.currentDay || 0;
+
+            // Charger les documents depuis le backend API
+            var documents = {};
+            var clientOrderId = null;
+            var currentDay = 0;
+            var totalDays = 0;
+
+            try {
+                // Récupérer la commande du client
+                var ordersResp = await fetch(API_BASE_URL + '/api/client/orders?email=' + encodeURIComponent(clientEmail));
+                if (ordersResp.ok) {
+                    var clientOrders = await ordersResp.json();
+                    var activeOrder = clientOrders.find(function(o) { return o.deposit_paid; }) || clientOrders[0];
+                    if (activeOrder) {
+                        clientOrderId = activeOrder.id;
+                        // Récupérer le jour courant
+                        var dashResp = await fetch(API_BASE_URL + '/api/client/dashboard/' + activeOrder.id);
+                        if (dashResp.ok) {
+                            var dashData = await dashResp.json();
+                            currentDay = dashData.currentDay || 0;
+                            totalDays = dashData.totalDays || 0;
+                        }
+                    }
+                }
+                // Récupérer les livrables depuis le backend
+                var livResp = await fetch(API_BASE_URL + '/api/livrables/by-email/' + encodeURIComponent(clientEmail));
+                if (livResp.ok) {
+                    var livData = await livResp.json();
+                    documents = livData.byDay || {};
+                }
+            } catch (e) {
+                console.error('[ADMIN] Erreur chargement données client:', e);
+            }
 
             let modalHTML = `
                 <h2 class="text-3xl font-black italic uppercase mb-6 text-[var(--genesis-yellow)]">
@@ -575,11 +606,11 @@
                     </div>
                     <div>
                         <p class="text-sm font-bold uppercase opacity-70 mb-1">Jour actuel</p>
-                        <p class="font-black">Jour ${currentDay}</p>
+                        <p class="font-black">Jour ${currentDay}${totalDays ? ' / ' + totalDays : ''}</p>
                     </div>
                     <div>
                         <p class="text-sm font-bold uppercase opacity-70 mb-1">Documents ajoutés</p>
-                        <p class="font-black">${client.documentsCount || 0} documents</p>
+                        <p class="font-black" id="docsCount">0 documents</p>
                     </div>
                 </div>
 
@@ -591,11 +622,12 @@
 
                 <form id="uploadDocumentForm" class="mb-8">
                     <input type="hidden" id="currentClientEmail" value="${clientEmail}">
+                    <input type="hidden" id="currentClientOrderId" value="${clientOrderId || ''}">
 
                     <div class="grid md:grid-cols-2 gap-4 mb-4">
                         <div>
                             <label class="block font-black mb-2 uppercase text-sm">Jour</label>
-                            <input type="number" id="docDay" min="1" value="${currentDay + 1}" required>
+                            <input type="number" id="docDay" min="1" value="${currentDay > 0 ? currentDay : 1}" required>
                         </div>
                         <div>
                             <label class="block font-black mb-2 uppercase text-sm">Titre du document</label>
@@ -720,6 +752,11 @@
             document.getElementById('clientModalContent').innerHTML = modalHTML;
             document.getElementById('clientModal').style.display = 'block';
 
+            // Mettre à jour le compteur de documents
+            var totalDocs = Object.values(documents).reduce(function(sum, arr) { return sum + arr.length; }, 0);
+            var docsCountEl = document.getElementById('docsCount');
+            if (docsCountEl) docsCountEl.textContent = totalDocs + ' document' + (totalDocs > 1 ? 's' : '');
+
             // Gestionnaire du formulaire d'upload de documents
             document.getElementById('uploadDocumentForm').addEventListener('submit', handleDocumentUpload);
 
@@ -739,23 +776,29 @@
             const days = Object.keys(documentsByDay).sort((a, b) => Number(b) - Number(a));
 
             days.forEach(day => {
+                const dayLabel = day === '0' || day === 'null' ? 'Sans jour' : 'JOUR ' + day;
                 html += `
                     <div class="mb-6">
-                        <div class="day-badge">JOUR ${day}</div>
+                        <div class="day-badge">${dayLabel}</div>
                         <div class="mt-4">
                 `;
 
                 documentsByDay[day].forEach(doc => {
+                    const docName = doc.name || doc.title || 'Document';
+                    const docDesc = doc.description || '';
+                    const docDate = doc.created_at || doc.uploadedAt || '';
+                    const docId = doc.id || '';
+
                     html += `
                         <div class="document-item">
                             <div>
-                                <div class="font-black">${doc.title}</div>
-                                ${doc.description ? `<div class="text-sm opacity-70">${doc.description}</div>` : ''}
+                                <div class="font-black">${docName}</div>
+                                ${docDesc ? '<div class="text-sm opacity-70">' + docDesc + '</div>' : ''}
                                 <div class="text-xs font-bold opacity-50 mt-1">
-                                    ${doc.fileName} • ${new Date(doc.uploadedAt).toLocaleDateString('fr-FR')}
+                                    ${doc.type || 'document'} \u2022 ${docDate ? new Date(docDate).toLocaleDateString('fr-FR') : ''}
                                 </div>
                             </div>
-                            <button onclick="deleteDocument('${clientEmail}', '${doc.id}')" class="text-red-600 font-black hover:opacity-70">
+                            <button onclick="deleteDocument('${clientEmail}', '${docId}')" class="text-red-600 font-black hover:opacity-70">
                                 <i class="fas fa-trash"></i>
                             </button>
                         </div>
@@ -775,6 +818,7 @@
             e.preventDefault();
 
             const clientEmail = document.getElementById('currentClientEmail').value;
+            const clientOrderId = document.getElementById('currentClientOrderId').value;
             const day = parseInt(document.getElementById('docDay').value);
             const title = document.getElementById('docTitle').value;
             const description = document.getElementById('docDescription').value;
@@ -786,42 +830,57 @@
             }
 
             try {
-                // Upload du fichier (simulation avec base64)
+                // Upload du fichier (conversion en base64)
                 const fileData = await uploadFile(fileInput.files[0]);
 
-                const document = {
-                    title: title,
-                    description: description,
-                    day: day,
-                    fileUrl: fileData.fileUrl,
-                    fileName: fileData.fileName,
-                    fileType: fileData.fileType,
-                    fileSize: fileData.fileSize
+                // Envoyer au backend API
+                const response = await fetch(API_BASE_URL + '/api/admin/livrables/upload', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        orderId: clientOrderId || null,
+                        clientEmail: clientEmail,
+                        dayNumber: day,
+                        name: title,
+                        type: fileData.fileType && fileData.fileType.startsWith('image/') ? 'photo' :
+                              fileData.fileType && fileData.fileType.startsWith('video/') ? 'video' : 'document',
+                        description: description,
+                        download_url: fileData.fileUrl
+                    })
+                });
+
+                const result = await response.json();
                 };
 
-                const success = addDailyDocumentToClient(clientEmail, document);
-
-                if (success) {
-                    alert('✅ Document ajouté avec succès !');
+                if (result.success) {
+                    alert('\u2705 Document ajout\u00e9 avec succ\u00e8s !');
                     openClientModal(clientEmail); // Recharger le modal
                 } else {
-                    alert('❌ Erreur lors de l\'ajout du document');
+                    alert('\u274c Erreur : ' + (result.error || 'Erreur inconnue'));
                 }
             } catch (error) {
                 console.error(error);
-                alert('❌ Erreur lors du traitement du fichier');
+                alert('\u274c Erreur lors de l\'envoi du fichier au serveur');
             }
         }
 
-        function deleteDocument(clientEmail, documentId) {
-            if (confirm('Voulez-vous vraiment supprimer ce document ?')) {
-                const success = deleteDailyDocument(clientEmail, documentId);
-                if (success) {
-                    alert('✅ Document supprimé');
+        async function deleteDocument(clientEmail, documentId) {
+            if (!confirm('Voulez-vous vraiment supprimer ce document ?')) return;
+
+            try {
+                const response = await fetch(API_BASE_URL + '/api/admin/livrables/' + documentId, {
+                    method: 'DELETE'
+                });
+                const result = await response.json();
+                if (result.success) {
+                    alert('\u2705 Document supprim\u00e9');
                     openClientModal(clientEmail);
                 } else {
-                    alert('❌ Erreur lors de la suppression');
+                    alert('\u274c Erreur : ' + (result.error || 'Erreur inconnue'));
                 }
+            } catch (error) {
+                console.error(error);
+                alert('\u274c Erreur lors de la suppression');
             }
         }
 
