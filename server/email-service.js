@@ -273,7 +273,8 @@ async function sendContactConfirmation(clientEmail, clientName, subject) {
             from: `"${process.env.EMAIL_FROM_NAME}" <${process.env.EMAIL_FROM_ADDRESS}>`,
             to: clientEmail,
             subject: `[FA GENESIS] Confirmation de réception de votre message`,
-            html: getEmailTemplate(content, 'Confirmation de réception')
+            html: getEmailTemplate(content, 'Confirmation de réception'),
+            replyTo: process.env.EMAIL_ADMIN_ADDRESS || process.env.EMAIL_FROM_ADDRESS
         });
 
         console.log(`[EMAIL] Confirmation envoyée à ${clientEmail} - ID: ${result.messageId}`);
