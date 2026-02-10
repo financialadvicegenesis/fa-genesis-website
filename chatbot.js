@@ -98,24 +98,24 @@
             category: 'offres',
             keywords: ['offre etudiant', 'etudiant idea', 'etudiant starter', 'etudiant launch', 'etudiant impact', 'tarif etudiant', 'prix etudiant', 'offres etudiants', 'etudiant offre', 'etudiant prix'],
             response: 'Voici nos offres pour les \u00e9tudiants :\n\n\u2022 IDEA : 50 \u20ac / 2 jours \u2014 1 mini s\u00e9ance strat\u00e9gique (45 min) + structuration + mini plan d\u2019action\n\u2022 STARTER : 100 \u20ac / 7 jours \u2014 1 s\u00e9ance (1h30) + structuration + conseils visibilit\u00e9 + plan d\u2019action (14 jours)\n\u2022 LAUNCH : 189 \u20ac / 14 jours \u2014 strat\u00e9gie + storytelling + 1 vid\u00e9o courte + acc\u00e8s 1 m\u00e9dia + plan de diffusion (30 jours)\n\u2022 IMPACT : 290 \u20ac / 1 mois \u2014 accompagnement complet : strat\u00e9gie + photo (5 photos) + vid\u00e9o (1h) + m\u00e9dia + plan de communication (30 jours)\n\u2022 CUSTOM : sur mesure\n\nPaiement en plusieurs fois possible (jusqu\u2019\u00e0 8x). Tous les d\u00e9tails sur la page offres.',
-            quickReplies: [],
-            link: { url: 'offres.html', label: 'Voir les offres \u00e9tudiants' }
+            quickReplies: ['Voir les offres \u00e9tudiants'],
+            link: { url: 'offres.html#offres-etudiants', label: 'Voir les offres \u00e9tudiants' }
         },
         {
             id: 'particulier_offers',
             category: 'offres',
             keywords: ['offre particulier', 'particulier idea', 'particulier starter', 'particulier launch', 'particulier impact', 'tarif particulier', 'prix particulier', 'offres particuliers', 'particulier offre', 'particulier prix'],
             response: 'Voici nos offres pour les particuliers :\n\n\u2022 IDEA : 149 \u20ac / 2 jours \u2014 s\u00e9ance strat\u00e9gique + structuration + plan d\u2019action\n\u2022 STARTER : 490 \u20ac / 7 jours \u2014 s\u00e9ance compl\u00e8te + structuration + conseils visibilit\u00e9 (paiement en 2x)\n\u2022 LAUNCH : 790 \u20ac / 14 jours \u2014 strat\u00e9gie + vid\u00e9o + m\u00e9dia + plan de diffusion (paiement en 2x)\n\u2022 IMPACT : 1 490 \u20ac / 1 mois \u2014 accompagnement complet avec photo, vid\u00e9o, m\u00e9dia (paiement en 2x)\n\u2022 CUSTOM : sur mesure\n\nConsultez la page offres pour le d\u00e9tail complet.',
-            quickReplies: [],
-            link: { url: 'offres.html', label: 'Voir les offres particuliers' }
+            quickReplies: ['Voir les offres particuliers'],
+            link: { url: 'offres.html#offres-particuliers', label: 'Voir les offres particuliers' }
         },
         {
             id: 'enterprise_offers',
             category: 'offres',
             keywords: ['offre entreprise', 'entreprise start', 'entreprise visibility', 'entreprise impact', 'tarif entreprise', 'prix entreprise', 'b2b', 'offres entreprises', 'entreprise offre', 'professionnel', 'societe'],
             response: 'Voici nos offres pour les entreprises :\n\n\u2022 START : 1 490 \u20ac / 7 jours \u2014 positionnement strat\u00e9gique + message central + conseils visibilit\u00e9 + mini plan d\u2019action (30 jours)\n\u2022 VISIBILITY : 2 990 \u20ac / 14 jours \u2014 storytelling + shooting photo (24 photos) + vid\u00e9o + m\u00e9dias (6 posts/stories) + plan de diffusion\n\u2022 IMPACT : 4 900 \u20ac / 30 jours \u2014 positionnement + photo (40 photos) + 2 vid\u00e9os + m\u00e9dias (9 posts/stories) + plan de communication (60 jours)\n\u2022 CUSTOM : sur mesure\n\nPour un devis personnalis\u00e9, n\u2019h\u00e9sitez pas \u00e0 contacter l\u2019\u00e9quipe.',
-            quickReplies: ['Contacter l\u2019\u00e9quipe'],
-            link: { url: 'offres.html', label: 'Voir les offres entreprises' }
+            quickReplies: ['Voir les offres entreprises', 'Contacter l\u2019\u00e9quipe'],
+            link: { url: 'offres.html#offres-entreprises', label: 'Voir les offres entreprises' }
         },
         {
             id: 'individual_services',
@@ -554,6 +554,9 @@
         'Offres \u00c9tudiants': 'Quelles sont les offres \u00e9tudiants ?',
         'Offres Particuliers': 'Quelles sont les offres particuliers ?',
         'Offres Entreprises': 'Quelles sont les offres entreprises ?',
+        'Voir les offres \u00e9tudiants': 'Quelles sont les offres \u00e9tudiants ?',
+        'Voir les offres particuliers': 'Quelles sont les offres particuliers ?',
+        'Voir les offres entreprises': 'Quelles sont les offres entreprises ?',
         'Tarifs individuels': 'Quels sont vos tarifs individuels ?',
         'Voir les tarifs individuels': 'Quels sont vos tarifs individuels ?',
         'Payer en plusieurs fois ?': 'Est-ce que je peux payer en plusieurs fois ?',
