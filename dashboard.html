@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - FA GENESIS | Espace Client</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.css" rel="stylesheet">
+    <!-- AOS retire pour fiabilite -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Unbounded:wght@400;900&family=Space+Grotesk:wght@300;700&display=swap');
@@ -137,31 +137,31 @@
             </div>
 
             <!-- En-tete de bienvenue -->
-            <div class="mb-16" data-aos="fade-up">
+            <div class="mb-16">
                 <h1 class="text-5xl md:text-7xl font-black italic uppercase mb-4 text-[var(--genesis-yellow)]" id="welcomeTitle">Bienvenue</h1>
                 <p class="text-xl font-bold uppercase text-white" id="welcomeSubtitle">Voici un apercu de votre espace client</p>
             </div>
 
             <!-- Statut de paiement -->
-            <div id="paymentStatusSection" class="mb-16" data-aos="fade-up" style="display: none;">
+            <div id="paymentStatusSection" class="mb-16" style="display: none;">
                 <!-- Le contenu sera insere par JavaScript -->
             </div>
 
             <!-- Statistiques principales -->
             <div class="grid md:grid-cols-3 gap-8 mb-16">
-                <div class="stat-card" data-aos="zoom-in">
+                <div class="stat-card">
                     <div class="text-sm font-black uppercase mb-2 opacity-70">Votre offre</div>
                     <div class="text-3xl font-black italic" id="offreName">Chargement...</div>
                     <div class="text-xs font-bold uppercase mt-1" id="offreType">-</div>
                 </div>
 
-                <div class="stat-card" data-aos="zoom-in" data-aos-delay="100" id="progressCard">
+                <div class="stat-card" id="progressCard">
                     <div class="text-sm font-black uppercase mb-2 opacity-70">Etape actuelle</div>
                     <div class="text-3xl font-black italic">En attente</div>
                     <div class="text-xs font-bold uppercase mt-1">Demarrage apres paiement</div>
                 </div>
 
-                <div class="stat-card" data-aos="zoom-in" data-aos-delay="200">
+                <div class="stat-card">
                     <div class="text-sm font-black uppercase mb-2 opacity-70">Progression</div>
                     <div class="text-3xl font-black italic" id="progressPercent">0%</div>
                     <div class="text-xs font-bold uppercase mt-1">Votre parcours</div>
@@ -169,7 +169,7 @@
             </div>
 
             <!-- Barre de progression -->
-            <div class="mb-16" data-aos="fade-up">
+            <div class="mb-16">
                 <h2 class="text-2xl font-black italic uppercase mb-6 text-white">Votre avancement</h2>
                 <div class="progress-bar">
                     <div class="progress-fill" id="progressBar" style="width: 0%;">
@@ -180,7 +180,7 @@
             </div>
 
             <!-- Section workflow de livraison (prestation_individuelle uniquement) -->
-            <div id="deliveryWorkflowSection" class="mb-16" data-aos="fade-up" style="display: none;">
+            <div id="deliveryWorkflowSection" class="mb-16" style="display: none;">
                 <h2 class="text-3xl font-black italic uppercase mb-8 text-white">
                     <i class="fas fa-shipping-fast mr-4"></i>Suivi de votre prestation
                 </h2>
@@ -189,7 +189,7 @@
             </div>
 
             <!-- Actions rapides (contenu par defaut en HTML, mis a jour par JS) -->
-            <div class="mb-16" data-aos="fade-up">
+            <div class="mb-16">
                 <h2 class="text-2xl font-black italic uppercase mb-8 text-white">Actions rapides</h2>
                 <div id="quickActionsContainer" class="grid md:grid-cols-2 gap-6">
                     <a href="livrables.html" class="neo-btn-white p-8 block text-center">
@@ -219,7 +219,7 @@
             </div>
 
             <!-- Message d'encouragement -->
-            <div class="bg-[var(--genesis-yellow)] text-black p-8 neo-border text-center" data-aos="zoom-in">
+            <div class="bg-[var(--genesis-yellow)] text-black p-8 neo-border text-center">
                 <h3 class="text-2xl font-black italic uppercase mb-4">Besoin d'aide ?</h3>
                 <p class="font-bold mb-6">Notre equipe est la pour vous accompagner a chaque etape</p>
                 <a href="contact.html" class="inline-block bg-black text-white px-8 py-4 border-4 border-black font-black uppercase text-sm hover:opacity-80 transition">
@@ -230,7 +230,6 @@
         </div>
     </section>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>
     <script src="config.js"></script>
     <script src="auth.js"></script>
     <script src="offers-config.js"></script>
@@ -238,8 +237,6 @@
     <script>
         // v3 - Dashboard FA GENESIS
         console.log('[DASHBOARD] v3 - Demarrage');
-
-        AOS.init({ duration: 1000, once: false, mirror: true, offset: 120 });
 
         var API_BASE_URL = window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com';
 
