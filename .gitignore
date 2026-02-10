@@ -7,7 +7,7 @@ credentials.json
 DOCUMENTS COMMUNS*/
 DOCUMENTS SPÉCIFIQUES*/
 
-# Fichiers Word (templates gérés séparément)
+# Fichiers Word
 *.docx
 *.doc
 
