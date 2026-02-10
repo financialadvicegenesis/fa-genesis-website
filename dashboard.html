@@ -91,20 +91,39 @@
 <body>
 
     <!-- NAVIGATION PRIVÉE -->
-    <nav class="fixed top-0 w-full z-50 bg-black/95 backdrop-blur-md border-b-4 border-[var(--genesis-yellow)] px-6 py-4 flex justify-between items-center text-white text-xs font-black uppercase">
+    <nav class="fixed top-0 w-full z-50 bg-black/95 backdrop-blur-md border-b-4 border-[var(--genesis-yellow)] px-4 md:px-6 py-3 md:py-4 flex justify-between items-center text-white text-xs font-black uppercase">
         <div class="flex items-center">
-            <a href="dashboard.html" class="text-2xl font-black tracking-wider text-[var(--genesis-yellow)]" style="font-family: 'Unbounded', cursive;">FA GENESIS</a>
+            <a href="dashboard.html" class="text-lg md:text-2xl font-black tracking-wider text-[var(--genesis-yellow)]" style="font-family: 'Unbounded', cursive;">FA GENESIS</a>
         </div>
         <div id="mainNavigation" class="hidden md:flex gap-8 text-white font-black">
             <!-- Navigation dynamique générée par JavaScript -->
         </div>
         <div class="flex gap-4 items-center">
             <span id="userGreeting" class="hidden md:block text-white font-bold"></span>
-            <button onclick="logout()" class="border-4 border-white text-white px-4 py-2 text-[10px] tracking-widest font-black hover:bg-white hover:text-black transition">
-                <i class="fas fa-sign-out-alt mr-2"></i>Déconnexion
+            <button onclick="logout()" class="border-4 border-white text-white px-3 py-2 text-[10px] tracking-widest font-black hover:bg-white hover:text-black transition">
+                <i class="fas fa-sign-out-alt mr-1"></i><span class="hidden md:inline">Déconnexion</span>
+            </button>
+            <!-- Bouton Menu Mobile -->
+            <button id="mobileMenuBtn" class="md:hidden flex flex-col gap-1.5 p-2" aria-label="Menu">
+                <span class="block w-6 h-0.5 bg-[var(--genesis-yellow)] transition-all" id="menuLine1"></span>
+                <span class="block w-6 h-0.5 bg-[var(--genesis-yellow)] transition-all" id="menuLine2"></span>
+                <span class="block w-6 h-0.5 bg-[var(--genesis-yellow)] transition-all" id="menuLine3"></span>
             </button>
         </div>
     </nav>
+
+    <!-- Menu Mobile Overlay -->
+    <div id="mobileMenu" class="fixed inset-0 z-40 bg-black/98 backdrop-blur-lg hidden flex-col items-center justify-center gap-8 text-white font-black uppercase">
+        <a href="dashboard.html" class="text-2xl nav-link text-[var(--genesis-yellow)]" onclick="closeMobileMenu()">Dashboard</a>
+        <a href="livrables.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition" onclick="closeMobileMenu()">Livrables</a>
+        <a href="seances.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition" onclick="closeMobileMenu()">Séances</a>
+        <a href="mon-compte.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition" onclick="closeMobileMenu()">Mon compte</a>
+        <div class="mt-8">
+            <button onclick="logout(); closeMobileMenu();" class="neo-btn-yellow px-8 py-4 text-sm tracking-widest text-black font-black text-center">
+                <i class="fas fa-sign-out-alt mr-2"></i>Déconnexion
+            </button>
+        </div>
+    </div>
 
     <!-- DASHBOARD CONTENT -->
     <section class="min-h-screen pt-32 pb-20 px-6 bg-black">
@@ -130,7 +149,9 @@
                 </div>
 
                 <div class="stat-card" data-aos="zoom-in" data-aos-delay="100" id="progressCard">
-                    <!-- Contenu dynamique selon productType -->
+                    <div class="text-sm font-black uppercase mb-2 opacity-70">Étape actuelle</div>
+                    <div class="text-3xl font-black italic">En attente</div>
+                    <div class="text-xs font-bold uppercase mt-1">Démarrage après paiement</div>
                 </div>
 
                 <div class="stat-card" data-aos="zoom-in" data-aos-delay="200">
@@ -222,13 +243,15 @@
             // 2. Rendre les actions rapides
             renderQuickActions(productType);
 
-            // 3. Charger les données depuis le backend pour les accompagnements
+            // 3. Afficher immédiatement les valeurs par défaut, puis mettre à jour depuis le backend
+            renderProgressCard(user, productType, 0, 0);
+            renderProgressBar(user, productType, 0, 0);
+
             if (productType === 'accompagnement') {
+                // Charger les données réelles depuis le backend (mise à jour asynchrone)
                 loadDashboardFromBackend(user, productType);
             } else {
-                // Prestation individuelle : garder l'ancien comportement
-                renderProgressCard(user, productType, 0, 0);
-                renderProgressBar(user, productType, 0, 0);
+                // Prestation individuelle : afficher le workflow de livraison
                 renderDeliveryWorkflow(user);
             }
         }
@@ -555,6 +578,42 @@
             `;
 
             section.innerHTML = html;
+        }
+
+        // Menu Mobile Toggle
+        var mobileMenuBtn = document.getElementById('mobileMenuBtn');
+        var mobileMenu = document.getElementById('mobileMenu');
+        var menuLine1 = document.getElementById('menuLine1');
+        var menuLine2 = document.getElementById('menuLine2');
+        var menuLine3 = document.getElementById('menuLine3');
+        var isMenuOpen = false;
+
+        function toggleMobileMenu() {
+            isMenuOpen = !isMenuOpen;
+            if (isMenuOpen) {
+                mobileMenu.classList.remove('hidden');
+                mobileMenu.classList.add('flex');
+                menuLine1.style.transform = 'rotate(45deg) translate(5px, 5px)';
+                menuLine2.style.opacity = '0';
+                menuLine3.style.transform = 'rotate(-45deg) translate(5px, -5px)';
+                document.body.style.overflow = 'hidden';
+            } else {
+                closeMobileMenu();
+            }
+        }
+
+        function closeMobileMenu() {
+            isMenuOpen = false;
+            mobileMenu.classList.add('hidden');
+            mobileMenu.classList.remove('flex');
+            menuLine1.style.transform = 'none';
+            menuLine2.style.opacity = '1';
+            menuLine3.style.transform = 'none';
+            document.body.style.overflow = 'auto';
+        }
+
+        if (mobileMenuBtn) {
+            mobileMenuBtn.addEventListener('click', toggleMobileMenu);
         }
     </script>
 </body>
