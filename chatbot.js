@@ -720,9 +720,43 @@
                 + '#fa-chatbot-esc-cancel { width: 100%; background: transparent; color: #999; border: none; padding: 8px; font-size: 12px; cursor: pointer; margin-top: 4px; font-family: "Space Grotesk", sans-serif; }'
                 + '#fa-chatbot-esc-cancel:hover { color: #fff; }'
                 + '@media (max-width: 768px) {'
-                + '  #fa-chatbot-window { top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; border: none; box-shadow: none; }'
-                + '  #fa-chatbot-container { bottom: 16px; right: 16px; }'
-                + '  #fa-chatbot-trigger { width: 54px; height: 54px; }'
+                // Bouton trigger mobile : plus petit, bien positionn\u00e9
+                + '  #fa-chatbot-container { bottom: 16px; right: 16px; z-index: 9999; }'
+                + '  #fa-chatbot-trigger { width: 52px; height: 52px; box-shadow: 4px 4px 0px #000; }'
+                + '  #fa-chatbot-trigger svg { width: 28px; height: 28px; }'
+                // Fen\u00eatre plein \u00e9cran sur mobile
+                + '  #fa-chatbot-window { top: 0; left: 0; right: 0; bottom: 0; width: 100% !important; height: 100% !important; max-height: 100vh; max-height: 100dvh; border: none; box-shadow: none; border-radius: 0; z-index: 99999; }'
+                // Header mobile : safe area pour iPhone notch
+                + '  #fa-chatbot-header { padding: 12px 16px; padding-top: max(12px, env(safe-area-inset-top, 12px)); }'
+                + '  #fa-chatbot-header-title { font-size: 12px; letter-spacing: 0.5px; }'
+                + '  #fa-chatbot-header-icon svg { width: 20px; height: 20px; }'
+                // Bouton fermer : zone tactile agrandie
+                + '  #fa-chatbot-close { font-size: 28px; padding: 4px 8px; min-width: 44px; min-height: 44px; display: flex; align-items: center; justify-content: center; }'
+                // Messages mobile : scroll fluide iOS
+                + '  #fa-chatbot-messages { padding: 12px; gap: 10px; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }'
+                + '  .fa-chatbot-msg { max-width: 90%; padding: 10px 14px; font-size: 14px; line-height: 1.5; }'
+                + '  .fa-chatbot-msg-link { padding: 10px 16px; font-size: 12px; min-height: 44px; display: inline-flex; align-items: center; }'
+                // Quick replies mobile : boutons plus gros pour le tactile
+                + '  #fa-chatbot-quick-replies { padding: 10px 12px; gap: 6px; overflow-x: auto; flex-wrap: wrap; -webkit-overflow-scrolling: touch; max-height: 120px; overflow-y: auto; }'
+                + '  .fa-chatbot-quick-btn { padding: 8px 12px; font-size: 11px; min-height: 36px; white-space: nowrap; }'
+                // Input mobile : font-size 16px pour emp\u00eacher le zoom auto iOS
+                + '  #fa-chatbot-input-area { border-top: 3px solid #000; padding-bottom: env(safe-area-inset-bottom, 0px); background: #fff; }'
+                + '  #fa-chatbot-input { padding: 12px 14px; font-size: 16px; }'
+                + '  #fa-chatbot-input::placeholder { font-size: 12px; }'
+                + '  #fa-chatbot-send { padding: 12px 16px; font-size: 18px; min-width: 50px; min-height: 48px; }'
+                // Formulaire escalade mobile
+                + '  #fa-chatbot-escalation { padding: 14px 12px; padding-bottom: max(14px, env(safe-area-inset-bottom, 14px)); }'
+                + '  #fa-chatbot-escalation h4 { font-size: 12px; margin-bottom: 10px; }'
+                + '  #fa-chatbot-escalation input, #fa-chatbot-escalation textarea { font-size: 16px; padding: 10px; }'
+                + '  #fa-chatbot-esc-submit { padding: 12px; font-size: 13px; min-height: 44px; }'
+                + '  #fa-chatbot-esc-cancel { min-height: 44px; font-size: 13px; }'
+                + '}'
+                // Petits \u00e9crans (iPhone SE, etc.)
+                + '@media (max-width: 380px) {'
+                + '  #fa-chatbot-header-title { font-size: 11px; }'
+                + '  .fa-chatbot-msg { font-size: 13px; padding: 9px 12px; }'
+                + '  .fa-chatbot-quick-btn { padding: 7px 10px; font-size: 10px; }'
+                + '  #fa-chatbot-escalation input, #fa-chatbot-escalation textarea { font-size: 16px; }'
                 + '}';
             document.head.appendChild(style);
         } catch (e) {
@@ -922,6 +956,30 @@
     // HANDLERS
     // ============================================================
 
+    function isMobile() {
+        return window.innerWidth <= 768;
+    }
+
+    function lockBodyScroll() {
+        if (isMobile()) {
+            document.body.style.overflow = 'hidden';
+            document.body.style.position = 'fixed';
+            document.body.style.width = '100%';
+            document.body.style.top = '-' + window.scrollY + 'px';
+        }
+    }
+
+    function unlockBodyScroll() {
+        if (document.body.style.position === 'fixed') {
+            var scrollY = document.body.style.top;
+            document.body.style.overflow = '';
+            document.body.style.position = '';
+            document.body.style.width = '';
+            document.body.style.top = '';
+            window.scrollTo(0, parseInt(scrollY || '0') * -1);
+        }
+    }
+
     function toggleChatbot() {
         try {
             var chatWindow = document.getElementById('fa-chatbot-window');
@@ -931,6 +989,7 @@
                 chatWindow.style.display = 'flex';
                 trigger.style.display = 'none';
                 isOpen = true;
+                lockBodyScroll();
 
                 if (!chatInitialized) {
                     addBotMessage(
@@ -942,7 +1001,8 @@
                 }
 
                 var input = document.getElementById('fa-chatbot-input');
-                if (input) input.focus();
+                if (input && !isMobile()) input.focus();
+                scrollToBottom();
             } else {
                 closeChatbot();
             }
@@ -959,6 +1019,10 @@
             chatWindow.style.display = 'none';
             trigger.style.display = 'flex';
             isOpen = false;
+            unlockBodyScroll();
+
+            var input = document.getElementById('fa-chatbot-input');
+            if (input) input.blur();
         } catch (e) {}
     }
 
@@ -1224,6 +1288,31 @@
                         ['Offres et tarifs', 'Comment \u00e7a marche ?', 'Contacter l\u2019\u00e9quipe'],
                         null
                     );
+                });
+            }
+
+            // Gestion du clavier mobile (visualViewport API)
+            if (typeof window.visualViewport !== 'undefined') {
+                window.visualViewport.addEventListener('resize', function() {
+                    if (!isOpen || !isMobile()) return;
+                    try {
+                        var chatWindow = document.getElementById('fa-chatbot-window');
+                        if (!chatWindow) return;
+                        var viewportHeight = window.visualViewport.height;
+                        chatWindow.style.height = viewportHeight + 'px';
+                        chatWindow.style.maxHeight = viewportHeight + 'px';
+                        scrollToBottom();
+                    } catch (e) {}
+                });
+            }
+
+            // Scroll vers le bas quand l\u2019input re\u00e7oit le focus sur mobile
+            var chatInput = document.getElementById('fa-chatbot-input');
+            if (chatInput) {
+                chatInput.addEventListener('focus', function() {
+                    if (isMobile()) {
+                        setTimeout(function() { scrollToBottom(); }, 300);
+                    }
                 });
             }
 
