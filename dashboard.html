@@ -205,12 +205,16 @@
             // Afficher le statut de paiement
             displayPaymentStatus(user.email);
 
+            // Récupérer les détails de l'offre depuis offers-config.js
+            const offerId = user.activeOfferId || user.offre;
+            const offerDetails = offerId ? getOfferById(offerId) : null;
+
             // Mise à jour des statistiques
-            document.getElementById('offreName').textContent = user.offreName;
-            document.getElementById('offreType').textContent = user.offreType;
+            document.getElementById('offreName').textContent = offerDetails ? offerDetails.nom : (user.offreName || 'Aucune offre');
+            document.getElementById('offreType').textContent = offerDetails ? offerDetails.categorie : (user.offreType || '-');
 
             // Rendu conditionnel selon productType
-            const productType = user.productType || 'accompagnement';
+            const productType = user.productType || (offerDetails ? offerDetails.productType : null) || 'accompagnement';
 
             // 1. Rendre la navigation
             renderNavigation(productType);
@@ -447,7 +451,31 @@
         // Fonction pour afficher le statut de paiement
         function displayPaymentStatus(email) {
             const summary = getPaymentSummary(email);
-            if (!summary) return;
+            if (!summary) {
+                // Fallback: afficher quand même un statut pour les utilisateurs enregistrés
+                const section = document.getElementById('paymentStatusSection');
+                section.style.display = 'block';
+                section.innerHTML = `
+                    <div class="p-8 neo-border" style="background: #ff6b6b; color: #000;">
+                        <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                            <div class="flex-1">
+                                <div class="flex items-center gap-4 mb-4">
+                                    <i class="fas fa-exclamation-circle text-4xl"></i>
+                                    <div>
+                                        <h3 class="text-2xl font-black italic uppercase">STATUT DE PAIEMENT</h3>
+                                        <p class="font-bold text-lg">Compte cr\u00e9\u00e9 - En attente de paiement</p>
+                                    </div>
+                                </div>
+                                <p class="font-bold text-base mb-4">Un acompte de 30% est requis pour d\u00e9marrer l'accompagnement.</p>
+                            </div>
+                            <a href="payment.html" class="bg-black text-white px-8 py-4 border-4 border-black font-black uppercase text-sm hover:opacity-80 transition whitespace-nowrap">
+                                Payer l'acompte (30%) <i class="fas fa-arrow-right ml-2"></i>
+                            </a>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
 
             const section = document.getElementById('paymentStatusSection');
             section.style.display = 'block';
