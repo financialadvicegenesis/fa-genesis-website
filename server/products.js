@@ -112,61 +112,25 @@ const PRODUCTS = [
         duration_days: 30
     },
 
-    // ========== TARIFS INDIVIDUELS - PHOTO ==========
+    // ========== TARIFS INDIVIDUELS - PHOTO (sur devis) ==========
     {
-        id: 'photo-essentiel',
-        name: 'Photo ESSENTIEL',
+        id: 'photo-devis',
+        name: 'Photo - Sur Devis',
         category: 'TARIFS INDIVIDUELS - PHOTO',
         product_type: 'prestation_individuelle',
-        total_price: 180,
-        duration: '1 seance',
-        duration_days: 0
-    },
-    {
-        id: 'photo-pro',
-        name: 'Photo PRO',
-        category: 'TARIFS INDIVIDUELS - PHOTO',
-        product_type: 'prestation_individuelle',
-        total_price: 400,
-        duration: '1 seance',
-        duration_days: 0
-    },
-    {
-        id: 'photo-event',
-        name: 'Photo EVENT',
-        category: 'TARIFS INDIVIDUELS - PHOTO',
-        product_type: 'prestation_individuelle',
-        total_price: 900,
-        duration: '1 evenement',
+        total_price: 0,
+        duration: 'Variable',
         duration_days: 0
     },
 
-    // ========== TARIFS INDIVIDUELS - VIDEO ==========
+    // ========== TARIFS INDIVIDUELS - VIDEO (sur devis) ==========
     {
-        id: 'video-pro',
-        name: 'Video PRO',
+        id: 'video-devis',
+        name: 'Video - Sur Devis',
         category: 'TARIFS INDIVIDUELS - VIDEO',
         product_type: 'prestation_individuelle',
-        total_price: 120,
-        duration: '1 projet',
-        duration_days: 0
-    },
-    {
-        id: 'video-storytelling',
-        name: 'Video STORYTELLING',
-        category: 'TARIFS INDIVIDUELS - VIDEO',
-        product_type: 'prestation_individuelle',
-        total_price: 390,
-        duration: '1 projet',
-        duration_days: 0
-    },
-    {
-        id: 'video-visibility',
-        name: 'Video VISIBILITY',
-        category: 'TARIFS INDIVIDUELS - VIDEO',
-        product_type: 'prestation_individuelle',
-        total_price: 530,
-        duration: '1 campagne',
+        total_price: 0,
+        duration: 'Variable',
         duration_days: 0
     },
 

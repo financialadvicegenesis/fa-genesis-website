@@ -121,9 +121,9 @@
             id: 'individual_services',
             category: 'offres',
             keywords: ['prestation individuelle', 'service individuel', 'a la carte', 'prestation seule', 'juste photo', 'juste video', 'juste marketing', 'tarif prestation', 'prix prestation'],
-            response: 'Nous proposons aussi des prestations individuelles :\n\n\u2022 PHOTO : \u00e0 partir de 180 \u20ac (8 photos retouch\u00e9es)\n\u2022 VID\u00c9O : \u00e0 partir de 120 \u20ac (1 vid\u00e9o courte)\n\u2022 MARKETING : \u00e0 partir de 120 \u20ac (analyse + recommandations)\n\u2022 M\u00c9DIA : \u00e0 partir de 223 \u20ac (publication sur m\u00e9dia cr\u00e9dible)\n\nTous les d\u00e9tails sont sur la page offres.',
-            quickReplies: [],
-            link: { url: 'offres.html', label: 'Voir les prestations individuelles' }
+            response: 'Nous proposons aussi des prestations individuelles :\n\n\u2022 PHOTO : sur devis (photographes professionnels ind\u00e9pendants)\n\u2022 VID\u00c9O : sur devis (vid\u00e9astes professionnels partenaires)\n\u2022 MARKETING : \u00e0 partir de 120 \u20ac (analyse + recommandations)\n\u2022 M\u00c9DIA : \u00e0 partir de 223 \u20ac (publication sur m\u00e9dia cr\u00e9dible)\n\nPour la photo et la vid\u00e9o, le tarif d\u00e9pend du projet. Demandez un devis personnalis\u00e9 via le formulaire de contact.',
+            quickReplies: ['Demander un devis'],
+            link: { url: 'contact.html?formule=devis', label: 'Demander un devis' }
         },
         {
             id: 'custom_offer',
@@ -373,17 +373,17 @@
             id: 'photo_detail',
             category: 'services',
             keywords: ['photo', 'photo essentiel', 'photo pro', 'photo event', 'shooting photo', 'seance photo', 'combien photo', 'retouchee', 'portrait', 'nombre photo', 'tarif photo', 'shooting', 'photographe'],
-            response: 'Nos prestations photo :\n\n\u2022 ESSENTIEL : 180 \u20ac \u2014 1 s\u00e9ance, 8 photos retouch\u00e9es\n\u2022 PRO : 400 \u20ac \u2014 22 photos retouch\u00e9es + accompagnement posture\n\u2022 EVENT : 900 \u20ac \u2014 couverture \u00e9v\u00e9nementielle (6h max), 50 photos retouch\u00e9es\n\u2022 CUSTOM : sur devis\n\nToutes les photos sont livr\u00e9es en haute qualit\u00e9, retouch\u00e9es professionnellement.',
-            quickReplies: ['Voir les offres', 'Contacter l\u2019\u00e9quipe'],
-            link: { url: 'offres.html', label: 'Voir les prestations photo' }
+            response: 'FA Genesis collabore avec plusieurs photographes professionnels ind\u00e9pendants.\n\nLe tarif d\u00e9pend du projet, du format, de la dur\u00e9e et du prestataire s\u00e9lectionn\u00e9.\n\nPrestations possibles :\n\u2022 S\u00e9ance portrait / image professionnelle\n\u2022 Couverture \u00e9v\u00e9nementielle\n\u2022 Shooting corporate / entreprise\n\u2022 Photos pour r\u00e9seaux sociaux\n\u2022 Retouche professionnelle incluse\n\nPaiement possible en plusieurs fois selon le projet.\nDemandez un devis personnalis\u00e9 pour conna\u00eetre le tarif adapt\u00e9 \u00e0 votre besoin.',
+            quickReplies: ['Demander un devis', 'Voir les offres'],
+            link: { url: 'contact.html?formule=devis', label: 'Demander un devis photo' }
         },
         {
             id: 'video_detail',
             category: 'services',
             keywords: ['video', 'video pro', 'video storytelling', 'video visibility', 'tournage video', 'montage video', 'format video', 'duree video', 'reels', 'clip', 'tarif video', 'tournage', 'videaste', 'filmer'],
-            response: 'Nos prestations vid\u00e9o :\n\n\u2022 PRO : 120 \u20ac \u2014 tournage 45 min + 1 vid\u00e9o courte mont\u00e9e\n\u2022 STORYTELLING : 390 \u20ac \u2014 tournage 1h + 1 vid\u00e9o longue (2 min)\n\u2022 VISIBILITY : 530 \u20ac \u2014 tournage 1h30 + direction narrative professionnelle\n\u2022 CUSTOM : sur devis\n\nLes vid\u00e9os sont mont\u00e9es et optimis\u00e9es pour les r\u00e9seaux sociaux.',
-            quickReplies: ['Voir les offres', 'Contacter l\u2019\u00e9quipe'],
-            link: { url: 'offres.html', label: 'Voir les prestations vid\u00e9o' }
+            response: 'Les tarifs vid\u00e9o sont d\u00e9finis en fonction du format, des objectifs du projet et du vid\u00e9aste partenaire.\n\nPrestations possibles :\n\u2022 Clip court / Reels / Format r\u00e9seaux sociaux\n\u2022 Vid\u00e9o storytelling / narrative\n\u2022 Couverture \u00e9v\u00e9nementielle\n\u2022 Vid\u00e9o corporate / entreprise\n\u2022 Son & cadrage professionnels\n\u2022 Direction narrative & montage\n\nPaiement possible en plusieurs fois selon le projet.\nDemandez un devis personnalis\u00e9 pour conna\u00eetre le tarif adapt\u00e9 \u00e0 votre besoin.',
+            quickReplies: ['Demander un devis', 'Voir les offres'],
+            link: { url: 'contact.html?formule=devis', label: 'Demander un devis vid\u00e9o' }
         },
         {
             id: 'marketing_detail',

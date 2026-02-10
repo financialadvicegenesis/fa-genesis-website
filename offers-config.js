@@ -196,106 +196,34 @@ const FA_GENESIS_OFFERS = [
         inclus: ['Programme dédié', 'Flexibilité totale', 'Services exclusifs']
     },
 
-    // ========== TARIFS INDIVIDUELS - PHOTO ==========
+    // ========== TARIFS INDIVIDUELS - PHOTO (sur devis) ==========
     {
-        id: 'photo-essentiel',
-        nom: 'Photo ESSENTIEL',
-        categorie: 'TARIFS INDIVIDUELS - PHOTO',
-        productType: 'prestation_individuelle',
-        prixTotal: 180,
-        ...calculatePaymentSplit(180),
-        duree: '1 séance',
-        echelonsPaiement: 2, // Paiement 2x possible
-        description: 'Séance photo essentielle pour vos besoins',
-        inclus: ['1 Séance Photo', '8 Photos retouchées', 'Formats réseaux sociaux']
-    },
-    {
-        id: 'photo-pro',
-        nom: 'Photo PRO',
-        categorie: 'TARIFS INDIVIDUELS - PHOTO',
-        productType: 'prestation_individuelle',
-        prixTotal: 400,
-        ...calculatePaymentSplit(400),
-        duree: '1 séance',
-        echelonsPaiement: 2, // Paiement 2x possible
-        description: 'Shooting professionnel complet',
-        inclus: ['1 Séance photo', '22 Photos retouchées', 'Orientation posture & image pro', 'Format réseaux sociaux', 'Conseils d\'utilisation des images']
-    },
-    {
-        id: 'photo-event',
-        nom: 'Photo EVENT',
-        categorie: 'TARIFS INDIVIDUELS - PHOTO',
-        productType: 'prestation_individuelle',
-        prixTotal: 900,
-        ...calculatePaymentSplit(900),
-        duree: '1 événement',
-        echelonsPaiement: 2, // Paiement 2x possible
-        description: 'Couverture photo complète d\'événement',
-        inclus: ['Présence du photographe (6 heures Max)', '50 photos retouchées', 'Captation des moments clés', 'Format réseaux sociaux', 'Conseils de sélection et d\'utilisation des images']
-    },
-    {
-        id: 'photo-custom',
-        nom: 'Photo CUSTOM',
+        id: 'photo-devis',
+        nom: 'Photo - Sur Devis',
         categorie: 'TARIFS INDIVIDUELS - PHOTO',
         productType: 'prestation_individuelle',
         prixTotal: 0,
         acompte: 0,
         solde: 0,
         duree: 'Variable',
-        echelonsPaiement: 1, // Sur devis
-        description: 'Prestation photo sur mesure',
-        inclus: ['Durée adaptée', 'Photos illimitées', 'Services modulables']
+        echelonsPaiement: 1,
+        description: 'Prestation photo sur devis - photographes professionnels ind\u00e9pendants partenaires',
+        inclus: ['Photographe professionnel ind\u00e9pendant', 'Tarif selon projet, format et dur\u00e9e', 'Devis personnalis\u00e9']
     },
 
-    // ========== TARIFS INDIVIDUELS - VIDÉO ==========
+    // ========== TARIFS INDIVIDUELS - VIDÉO (sur devis) ==========
     {
-        id: 'video-pro',
-        nom: 'Vidéo PRO',
-        categorie: 'TARIFS INDIVIDUELS - VIDÉO',
-        productType: 'prestation_individuelle',
-        prixTotal: 120,
-        ...calculatePaymentSplit(120),
-        duree: '1 projet',
-        echelonsPaiement: 2, // Paiement 2x possible
-        description: 'Vidéo professionnelle de qualité',
-        inclus: ['1 Mini tournage vidéo (45 min)', '1 Vidéo courte (1 min)', 'Son + cadrage pro', 'Format réseaux sociaux']
-    },
-    {
-        id: 'video-storytelling',
-        nom: 'Vidéo STORYTELLING',
-        categorie: 'TARIFS INDIVIDUELS - VIDÉO',
-        productType: 'prestation_individuelle',
-        prixTotal: 390,
-        ...calculatePaymentSplit(390),
-        duree: '1 projet',
-        echelonsPaiement: 2, // Paiement 2x possible
-        description: 'Vidéo narrative pour raconter votre histoire',
-        inclus: ['1 Tournage vidéo (1h00)', '1 Vidéo longue (2 min)', 'Son + cadrage pro', 'Format réseaux sociaux', 'Orientation posture & discours']
-    },
-    {
-        id: 'video-visibility',
-        nom: 'Vidéo VISIBILITY',
-        categorie: 'TARIFS INDIVIDUELS - VIDÉO',
-        productType: 'prestation_individuelle',
-        prixTotal: 530,
-        ...calculatePaymentSplit(530),
-        duree: '1 campagne',
-        echelonsPaiement: 2, // Paiement 2x possible
-        description: 'Campagne vidéo complète pour votre visibilité',
-        inclus: ['1 Tournage vidéo (1h30)', '1 Vidéo longue (2 min) + Direction narrative + storytelling', 'Son + cadrage pro', 'Format réseaux sociaux', 'Orientation posture & discours', 'Conseils de diffusion']
-    },
-    {
-        id: 'video-custom',
-        nom: 'Vidéo CUSTOM',
-        categorie: 'TARIFS INDIVIDUELS - VIDÉO',
+        id: 'video-devis',
+        nom: 'Vid\u00e9o - Sur Devis',
+        categorie: 'TARIFS INDIVIDUELS - VID\u00c9O',
         productType: 'prestation_individuelle',
         prixTotal: 0,
         acompte: 0,
         solde: 0,
         duree: 'Variable',
-        echelonsPaiement: 1, // Sur devis
-        description: 'Production vidéo sur mesure',
-        inclus: ['Projet personnalisé', 'Durée flexible', 'Services modulables']
+        echelonsPaiement: 1,
+        description: 'Prestation vid\u00e9o sur devis - vid\u00e9astes professionnels partenaires',
+        inclus: ['Vid\u00e9aste professionnel partenaire', 'Tarif selon format et objectifs', 'Devis personnalis\u00e9']
     },
 
     // ========== TARIFS INDIVIDUELS - MARKETING ==========
