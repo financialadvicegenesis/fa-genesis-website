@@ -373,7 +373,7 @@
             id: 'photo_detail',
             category: 'services',
             keywords: ['photo', 'photo essentiel', 'photo pro', 'photo event', 'shooting photo', 'seance photo', 'combien photo', 'retouchee', 'portrait', 'nombre photo', 'tarif photo', 'shooting', 'photographe'],
-            response: 'FA Genesis collabore avec plusieurs photographes professionnels ind\u00e9pendants.\n\nLe tarif d\u00e9pend du projet, du format, de la dur\u00e9e et du prestataire s\u00e9lectionn\u00e9.\n\nPrestations possibles :\n\u2022 S\u00e9ance portrait / image professionnelle\n\u2022 Couverture \u00e9v\u00e9nementielle\n\u2022 Shooting corporate / entreprise\n\u2022 Photos pour r\u00e9seaux sociaux\n\u2022 Retouche professionnelle incluse\n\nPaiement possible en plusieurs fois selon le projet.\nDemandez un devis personnalis\u00e9 pour conna\u00eetre le tarif adapt\u00e9 \u00e0 votre besoin.',
+            response: 'FA Genesis collabore avec plusieurs photographes professionnels ind\u00e9pendants.\n\nLe tarif d\u00e9pend du projet, du format, de la dur\u00e9e et du prestataire s\u00e9lectionn\u00e9.\n\nPrestations incluses :\n\u2022 S\u00e9ance photo personnalis\u00e9e\n\u2022 Orientation posture & image professionnelle\n\u2022 Format r\u00e9seaux sociaux\n\u2022 Nombre de photos retouch\u00e9es adapt\u00e9\n\nPaiement possible en plusieurs fois selon le projet.\nDemandez un devis personnalis\u00e9 pour conna\u00eetre le tarif adapt\u00e9 \u00e0 votre besoin.',
             quickReplies: ['Demander un devis', 'Voir les offres'],
             link: { url: 'contact.html?formule=devis', label: 'Demander un devis photo' }
         },
@@ -381,7 +381,7 @@
             id: 'video_detail',
             category: 'services',
             keywords: ['video', 'video pro', 'video storytelling', 'video visibility', 'tournage video', 'montage video', 'format video', 'duree video', 'reels', 'clip', 'tarif video', 'tournage', 'videaste', 'filmer'],
-            response: 'Les tarifs vid\u00e9o sont d\u00e9finis en fonction du format, des objectifs du projet et du vid\u00e9aste partenaire.\n\nPrestations possibles :\n\u2022 Clip court / Reels / Format r\u00e9seaux sociaux\n\u2022 Vid\u00e9o storytelling / narrative\n\u2022 Couverture \u00e9v\u00e9nementielle\n\u2022 Vid\u00e9o corporate / entreprise\n\u2022 Son & cadrage professionnels\n\u2022 Direction narrative & montage\n\nPaiement possible en plusieurs fois selon le projet.\nDemandez un devis personnalis\u00e9 pour conna\u00eetre le tarif adapt\u00e9 \u00e0 votre besoin.',
+            response: 'Les tarifs vid\u00e9o sont d\u00e9finis en fonction du format, des objectifs du projet et du vid\u00e9aste partenaire.\n\nPrestations incluses :\n\u2022 Tournage vid\u00e9o personnalis\u00e9\n\u2022 Nombre de vid\u00e9os adapt\u00e9\n\u2022 Direction narrative & storytelling\n\u2022 Conseils de diffusion\n\u2022 Son & cadrage professionnels\n\u2022 Orientation posture & discours\n\u2022 Format r\u00e9seaux sociaux\n\nPaiement possible en plusieurs fois selon le projet.\nDemandez un devis personnalis\u00e9 pour conna\u00eetre le tarif adapt\u00e9 \u00e0 votre besoin.',
             quickReplies: ['Demander un devis', 'Voir les offres'],
             link: { url: 'contact.html?formule=devis', label: 'Demander un devis vid\u00e9o' }
         },
