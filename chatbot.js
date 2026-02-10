@@ -90,7 +90,7 @@
             category: 'offres',
             keywords: ['offre', 'formule', 'forfait', 'pack', 'programme', 'quelles offres', 'vos services', 'proposez', 'tarif', 'prix', 'offres et tarifs', 'combien coute', 'catalogue', 'grille tarifaire', 'liste offres'],
             response: 'Nous proposons plusieurs cat\u00e9gories d\u2019offres :\n\n\u2022 \u00c9TUDIANTS : de 50 \u20ac (2 jours) \u00e0 290 \u20ac (1 mois)\n\u2022 PARTICULIERS : de 149 \u20ac (2 jours) \u00e0 1 490 \u20ac (1 mois)\n\u2022 ENTREPRISES : de 1 490 \u20ac (7 jours) \u00e0 4 900 \u20ac (30 jours)\n\u2022 Prestations individuelles : Photo, Vid\u00e9o, Marketing, M\u00e9dia\n\nChaque cat\u00e9gorie propose aussi des offres sur mesure. Retrouvez tous les d\u00e9tails sur notre page offres.',
-            quickReplies: ['Offres \u00c9tudiants', 'Offres Particuliers', 'Offres Entreprises', 'Services individuels'],
+            quickReplies: ['Offres \u00c9tudiants', 'Offres Particuliers', 'Offres Entreprises', 'Tarifs individuels'],
             link: { url: 'offres.html', label: 'Voir toutes les offres' }
         },
         {
@@ -120,10 +120,10 @@
         {
             id: 'individual_services',
             category: 'offres',
-            keywords: ['prestation individuelle', 'service individuel', 'a la carte', 'prestation seule', 'juste photo', 'juste video', 'juste marketing', 'tarif prestation', 'prix prestation'],
-            response: 'Nous proposons aussi des prestations individuelles :\n\n\u2022 PHOTO : sur devis (photographes professionnels ind\u00e9pendants)\n\u2022 VID\u00c9O : sur devis (vid\u00e9astes professionnels partenaires)\n\u2022 MARKETING : \u00e0 partir de 120 \u20ac (analyse + recommandations)\n\u2022 M\u00c9DIA : \u00e0 partir de 223 \u20ac (publication sur m\u00e9dia cr\u00e9dible)\n\nPour la photo et la vid\u00e9o, le tarif d\u00e9pend du projet. Demandez un devis personnalis\u00e9 via le formulaire de contact.',
-            quickReplies: ['Demander un devis'],
-            link: { url: 'contact.html?formule=devis', label: 'Demander un devis' }
+            keywords: ['prestation individuelle', 'service individuel', 'tarif individuel', 'tarifs individuels', 'a la carte', 'prestation seule', 'juste photo', 'juste video', 'juste marketing', 'tarif prestation', 'prix prestation'],
+            response: 'Voici nos tarifs individuels :\n\n\u2022 PHOTO : sur devis (photographes professionnels ind\u00e9pendants)\n\u2022 VID\u00c9O : sur devis (vid\u00e9astes professionnels partenaires)\n\u2022 MARKETING : \u00e0 partir de 120 \u20ac (analyse + recommandations)\n\u2022 M\u00c9DIA : \u00e0 partir de 223 \u20ac (publication sur m\u00e9dia cr\u00e9dible)\n\nPour la photo et la vid\u00e9o, le tarif d\u00e9pend du projet. Demandez un devis personnalis\u00e9 via le formulaire de contact.',
+            quickReplies: ['Voir les tarifs individuels', 'Demander un devis'],
+            link: { url: 'offres.html#tarifs', label: 'Voir les tarifs individuels' }
         },
         {
             id: 'custom_offer',
@@ -456,7 +456,7 @@
             category: 'accompagnement',
             keywords: ['media credible', 'c\'est quoi media', 'quel media', 'acces media', 'parution', 'quoi media', 'media inclus'],
             response: 'L\u2019acc\u00e8s m\u00e9dia inclus dans certaines offres vous permet d\u2019\u00eatre publi\u00e9(e) sur un ou plusieurs m\u00e9dias en ligne reconnus et cr\u00e9dibles. Cela renforce votre visibilit\u00e9 et votre cr\u00e9dibilit\u00e9 aupr\u00e8s de votre audience. Le nombre de publications (posts/stories) d\u00e9pend de l\u2019offre choisie.',
-            quickReplies: ['Voir les offres', 'Services individuels'],
+            quickReplies: ['Voir les offres', 'Tarifs individuels'],
             link: null
         },
 
@@ -554,7 +554,8 @@
         'Offres \u00c9tudiants': 'Quelles sont les offres \u00e9tudiants ?',
         'Offres Particuliers': 'Quelles sont les offres particuliers ?',
         'Offres Entreprises': 'Quelles sont les offres entreprises ?',
-        'Services individuels': 'Quels sont vos services individuels ?',
+        'Tarifs individuels': 'Quels sont vos tarifs individuels ?',
+        'Voir les tarifs individuels': 'Quels sont vos tarifs individuels ?',
         'Payer en plusieurs fois ?': 'Est-ce que je peux payer en plusieurs fois ?',
         'Combien de temps ?': 'Combien de temps dure un accompagnement ?',
         'Offres et tarifs': 'Quelles sont vos offres et tarifs ?',
