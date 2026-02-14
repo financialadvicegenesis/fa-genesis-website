@@ -264,8 +264,33 @@
                 return;
             }
 
-            currentQuote = await response.json();
-            renderQuote(currentQuote);
+            var data = await response.json();
+            console.log('[QUOTE-ACCEPT] Reponse API:', data);
+
+            // Gerer les statuts speciaux retournes par le backend
+            if (data.status === 'ALREADY_ACCEPTED') {
+                showError('DEVIS DÉJÀ ACCEPTÉ', data.message || 'Ce devis a deja ete accepte. Connectez-vous a votre espace client.');
+                return;
+            }
+            if (data.status === 'CANCELLED') {
+                showError('DEVIS ANNULÉ', data.message || 'Ce devis a ete annule.');
+                return;
+            }
+            if (data.status === 'NOT_READY') {
+                showError('DEVIS NON DISPONIBLE', data.message || 'Ce devis n\'est pas encore disponible.');
+                return;
+            }
+            if (data.status === 'EXPIRED') {
+                showError('DEVIS EXPIRÉ', data.message || 'Ce devis n\'est plus valide. Veuillez nous contacter pour en obtenir un nouveau.');
+                return;
+            }
+            if (!data.quote) {
+                showError('ERREUR', 'Donnees du devis introuvables.');
+                return;
+            }
+
+            currentQuote = data.quote;
+            renderQuote(data.quote);
 
         } catch (error) {
             console.error('[QUOTE-ACCEPT] Erreur chargement:', error);

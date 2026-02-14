@@ -3636,11 +3636,15 @@ app.get('/api/quotes/view/:token', function(req, res) {
         var publicView = {
             quote_number: quote.quote_number,
             client_name: quote.client_name,
+            client_email: quote.client_email,
             service_type: quote.service_type,
-            items: quote.admin_final ? quote.admin_final.items : [],
-            notes: quote.admin_final ? quote.admin_final.notes : '',
+            admin_final: {
+                items: quote.admin_final ? quote.admin_final.items : [],
+                notes: quote.admin_final ? quote.admin_final.notes : ''
+            },
             pricing: quote.pricing,
             validity_days: quote.validity_days,
+            created_at: quote.sent_at || quote.created_at,
             sent_at: quote.sent_at,
             expiry_date: expiryDate.toISOString()
         };
