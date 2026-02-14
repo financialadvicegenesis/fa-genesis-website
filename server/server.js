@@ -3314,7 +3314,9 @@ app.get('/api/admin/quotes/:id', function(req, res) {
             }
         }
 
-        res.json({ quote: quote, partner: partnerInfo });
+        // Integrer partner_info dans l'objet quote pour le frontend
+        quote.partner_info = partnerInfo;
+        res.json(quote);
     } catch (error) {
         console.error('[QUOTE] Erreur detail quote:', error);
         res.status(500).json({ error: 'Erreur chargement devis' });

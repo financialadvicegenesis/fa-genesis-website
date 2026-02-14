@@ -2024,6 +2024,7 @@
 
         var allAdminQuotes = [];
         var currentQuoteFilter = 'all';
+        var currentAdminQuote = null;
 
         var QUOTE_STATUS_LABELS = {
             DRAFT_REQUESTED: 'EN ATTENTE',
@@ -2153,10 +2154,12 @@
         }
 
         async function openQuoteDetail(quoteId) {
+            var quote = null;
             try {
                 var response = await fetch(API_BASE_URL + '/api/admin/quotes/' + quoteId);
                 if (!response.ok) throw new Error('Erreur chargement devis');
-                var quote = await response.json();
+                quote = await response.json();
+                currentAdminQuote = quote;
             } catch (error) {
                 console.error('[ADMIN] Erreur chargement detail devis:', error);
                 alert('Erreur de chargement du devis');
@@ -2547,8 +2550,8 @@
         }
 
         function prepareQuoteFromProposal(quoteId) {
-            // Trouver le devis dans la liste
-            var quote = allAdminQuotes.find(function(q) { return q.id === quoteId; });
+            // Utiliser le devis actuellement affiche (frais) ou chercher dans la liste
+            var quote = (currentAdminQuote && currentAdminQuote.id === quoteId) ? currentAdminQuote : allAdminQuotes.find(function(q) { return q.id === quoteId; });
             if (!quote || !quote.partner_proposal || !quote.partner_proposal.items) {
                 alert('Aucune proposition partenaire trouvée');
                 return;
