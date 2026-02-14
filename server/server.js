@@ -193,7 +193,7 @@ function authenticatePartner(req, res, next) {
 // Validation des types de fichiers par type de partenaire
 const ALLOWED_FILE_TYPES = {
     photographer: ['jpg', 'jpeg', 'png'],
-    videographer: ['mp4', 'mov'],
+    videographer: ['mp4', 'mov', '4k'],
     marketer: ['pdf', 'docx'],
     media: ['jpg', 'jpeg', 'png', 'pdf']
 };
