@@ -3120,10 +3120,57 @@ app.get('/api/admin/partner-comments/:orderId', (req, res) => {
 });
 
 // ============================================================
+// INITIALISATION DES COMPTES PARTENAIRES PAR DEFAUT
+// ============================================================
+
+async function seedPartnerAccounts() {
+    const defaultPartners = [
+        { prenom: 'Photo', nom: 'Graphe', email: 'photographe@fagenesis.com', password: 'FAphoto2024', partner_type: 'photographer' },
+        { prenom: 'Video', nom: 'Aste', email: 'videaste@fagenesis.com', password: 'FAvideo2024', partner_type: 'videographer' },
+        { prenom: 'Market', nom: 'Eur', email: 'marketeur@fagenesis.com', password: 'FAmarket2024', partner_type: 'marketer' },
+        { prenom: 'Media', nom: 'Press', email: 'media@fagenesis.com', password: 'FAmedia2024', partner_type: 'media' }
+    ];
+
+    const partners = loadPartners();
+    let created = 0;
+
+    for (const def of defaultPartners) {
+        const exists = partners.find(p => p.email.toLowerCase() === def.email.toLowerCase());
+        if (!exists) {
+            const hashedPassword = await bcrypt.hash(def.password, 10);
+            partners.push({
+                id: 'PTR-' + uuidv4().split('-')[0],
+                prenom: def.prenom,
+                nom: def.nom,
+                email: def.email,
+                telephone: '',
+                password: hashedPassword,
+                partner_type: def.partner_type,
+                company: '',
+                sessionToken: null,
+                accountStatus: 'active',
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                lastLogin: null,
+                createdBy: 'system-seed'
+            });
+            created++;
+        }
+    }
+
+    if (created > 0) {
+        savePartners(partners);
+        console.log('   [SEED] ' + created + ' compte(s) partenaire(s) cree(s) automatiquement');
+    } else {
+        console.log('   [SEED] Comptes partenaires deja presents (' + partners.length + ')');
+    }
+}
+
+// ============================================================
 // DEMARRAGE DU SERVEUR
 // ============================================================
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
     console.log('');
     console.log('=================================================');
     console.log('   FA GENESIS - Backend SumUp');
@@ -3176,4 +3223,7 @@ app.listen(PORT, () => {
 
     console.log('=================================================');
     console.log('');
+
+    // Initialiser les comptes partenaires par defaut
+    await seedPartnerAccounts();
 });
