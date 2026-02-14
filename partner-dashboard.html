@@ -124,9 +124,6 @@
                     <button onclick="showSection('projects')" class="nav-tab text-white hover:text-[var(--genesis-yellow)] transition">
                         <i class="fas fa-briefcase mr-1"></i>Projets
                     </button>
-                    <button onclick="showSection('faq')" class="nav-tab text-white hover:text-[var(--genesis-yellow)] transition">
-                        <i class="fas fa-question-circle mr-1"></i>FAQ
-                    </button>
                     <button onclick="showSection('profile')" class="nav-tab text-white hover:text-[var(--genesis-yellow)] transition">
                         <i class="fas fa-user mr-1"></i>Profil
                     </button>
@@ -144,9 +141,6 @@
         <div class="flex md:hidden gap-2 mt-2">
             <button onclick="showSection('projects')" class="nav-tab text-white hover:text-[var(--genesis-yellow)] text-xs font-black">
                 <i class="fas fa-briefcase mr-1"></i>Projets
-            </button>
-            <button onclick="showSection('faq')" class="nav-tab text-white hover:text-[var(--genesis-yellow)] text-xs font-black">
-                <i class="fas fa-question-circle mr-1"></i>FAQ
             </button>
             <button onclick="showSection('profile')" class="nav-tab text-white hover:text-[var(--genesis-yellow)] text-xs font-black">
                 <i class="fas fa-user mr-1"></i>Profil
@@ -279,150 +273,6 @@
             </div>
         </div>
 
-        <!-- SECTION FAQ -->
-        <div id="faqSection" class="container mx-auto max-w-4xl" style="display:none;">
-            <h2 class="text-3xl md:text-5xl font-black italic uppercase mb-8 text-[var(--genesis-yellow)]">
-                <i class="fas fa-question-circle mr-3"></i>FAQ
-            </h2>
-
-            <!-- General -->
-            <div class="mb-6">
-                <h3 class="text-lg font-black uppercase mb-3 text-[var(--genesis-yellow)]"><i class="fas fa-info-circle mr-2"></i>Informations Générales</h3>
-                <div class="faq-item section-card mb-2" onclick="toggleFaq(this)">
-                    <div class="faq-question flex justify-between items-center cursor-pointer">
-                        <span class="font-black text-sm">Qu'est-ce que FA Genesis ?</span>
-                        <i class="fas fa-chevron-down text-xs transition-transform"></i>
-                    </div>
-                    <div class="faq-answer" style="display:none; margin-top:0.75rem; padding-top:0.75rem; border-top:2px solid #eee;">
-                        <p class="text-sm">Financial Advice Genesis accompagne les étudiants et les entrepreneurs débutants à transformer une idée en un projet structuré, crédible et visible. Nous aidons à clarifier la vision, structurer le projet et gagner en visibilité, le tout à un coût accessible.</p>
-                    </div>
-                </div>
-                <div class="faq-item section-card mb-2" onclick="toggleFaq(this)">
-                    <div class="faq-question flex justify-between items-center cursor-pointer">
-                        <span class="font-black text-sm">Comment fonctionne l'accompagnement ?</span>
-                        <i class="fas fa-chevron-down text-xs transition-transform"></i>
-                    </div>
-                    <div class="faq-answer" style="display:none; margin-top:0.75rem; padding-top:0.75rem; border-top:2px solid #eee;">
-                        <p class="text-sm">L'accompagnement se déroule en plusieurs étapes : 1) Clarification de l'idée, 2) Structuration du projet, 3) Visibilité (photo, vidéo, média selon l'offre), 4) Plan d'action concret. Chaque accompagnement est simple, progressif et sans pression.</p>
-                    </div>
-                </div>
-                <div class="faq-item section-card mb-2" onclick="toggleFaq(this)">
-                    <div class="faq-question flex justify-between items-center cursor-pointer">
-                        <span class="font-black text-sm">Comment contacter l'équipe FA Genesis ?</span>
-                        <i class="fas fa-chevron-down text-xs transition-transform"></i>
-                    </div>
-                    <div class="faq-answer" style="display:none; margin-top:0.75rem; padding-top:0.75rem; border-top:2px solid #eee;">
-                        <p class="text-sm">Vous pouvez nous contacter par e-mail à financialadvicegenesis@gmail.com, par téléphone au +33 7 64 16 36 09, ou via le formulaire de contact sur notre site. Horaires : du lundi au vendredi, de 9h à 18h.</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Espace Partenaire -->
-            <div class="mb-6">
-                <h3 class="text-lg font-black uppercase mb-3 text-[var(--genesis-yellow)]"><i class="fas fa-handshake mr-2"></i>Espace Partenaire</h3>
-                <div class="faq-item section-card mb-2" onclick="toggleFaq(this)">
-                    <div class="faq-question flex justify-between items-center cursor-pointer">
-                        <span class="font-black text-sm">Comment fonctionne l'espace partenaire ?</span>
-                        <i class="fas fa-chevron-down text-xs transition-transform"></i>
-                    </div>
-                    <div class="faq-answer" style="display:none; margin-top:0.75rem; padding-top:0.75rem; border-top:2px solid #eee;">
-                        <p class="text-sm">L'espace partenaire vous permet de voir les projets qui vous sont assignés par l'administrateur FA Genesis. Vous pouvez consulter les détails de chaque projet, soumettre vos livrables (photos, vidéos, documents) et échanger avec l'équipe via les commentaires internes.</p>
-                    </div>
-                </div>
-                <div class="faq-item section-card mb-2" onclick="toggleFaq(this)">
-                    <div class="faq-question flex justify-between items-center cursor-pointer">
-                        <span class="font-black text-sm">Comment soumettre un livrable ?</span>
-                        <i class="fas fa-chevron-down text-xs transition-transform"></i>
-                    </div>
-                    <div class="faq-answer" style="display:none; margin-top:0.75rem; padding-top:0.75rem; border-top:2px solid #eee;">
-                        <p class="text-sm">Ouvrez un projet assigné, allez dans l'onglet "Uploads", remplissez le nom du fichier, sélectionnez votre fichier et cliquez sur "Soumettre". Le livrable sera envoyé en attente de validation par l'administrateur. Seuls les formats autorisés pour votre type de partenariat sont acceptés.</p>
-                    </div>
-                </div>
-                <div class="faq-item section-card mb-2" onclick="toggleFaq(this)">
-                    <div class="faq-question flex justify-between items-center cursor-pointer">
-                        <span class="font-black text-sm">Quels formats de fichiers sont acceptés ?</span>
-                        <i class="fas fa-chevron-down text-xs transition-transform"></i>
-                    </div>
-                    <div class="faq-answer" style="display:none; margin-top:0.75rem; padding-top:0.75rem; border-top:2px solid #eee;">
-                        <p class="text-sm">Les formats dépendent de votre type de partenariat :<br>
-                        <strong>Photographe :</strong> JPG, JPEG, PNG<br>
-                        <strong>Vidéaste :</strong> MP4, MOV, 4K<br>
-                        <strong>Marketeur :</strong> PDF, DOCX<br>
-                        <strong>Média :</strong> JPG, JPEG, PNG, PDF</p>
-                    </div>
-                </div>
-                <div class="faq-item section-card mb-2" onclick="toggleFaq(this)">
-                    <div class="faq-question flex justify-between items-center cursor-pointer">
-                        <span class="font-black text-sm">Comment fonctionne la validation des livrables ?</span>
-                        <i class="fas fa-chevron-down text-xs transition-transform"></i>
-                    </div>
-                    <div class="faq-answer" style="display:none; margin-top:0.75rem; padding-top:0.75rem; border-top:2px solid #eee;">
-                        <p class="text-sm">Une fois votre livrable soumis, il est en statut "En attente". L'administrateur FA Genesis examine le fichier et peut l'approuver ou le refuser. Si approuvé, le livrable devient visible pour le client dans son espace. Si refusé, vous verrez la raison du refus dans l'historique et pourrez soumettre une nouvelle version.</p>
-                    </div>
-                </div>
-                <div class="faq-item section-card mb-2" onclick="toggleFaq(this)">
-                    <div class="faq-question flex justify-between items-center cursor-pointer">
-                        <span class="font-black text-sm">Les commentaires sont-ils visibles par les clients ?</span>
-                        <i class="fas fa-chevron-down text-xs transition-transform"></i>
-                    </div>
-                    <div class="faq-answer" style="display:none; margin-top:0.75rem; padding-top:0.75rem; border-top:2px solid #eee;">
-                        <p class="text-sm">Non. Les commentaires dans l'espace partenaire sont strictement internes entre vous et l'équipe FA Genesis. Les clients n'y ont pas accès. C'est un espace d'échange professionnel pour coordonner le travail sur les projets.</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Offres & Services -->
-            <div class="mb-6">
-                <h3 class="text-lg font-black uppercase mb-3 text-[var(--genesis-yellow)]"><i class="fas fa-tags mr-2"></i>Offres & Services</h3>
-                <div class="faq-item section-card mb-2" onclick="toggleFaq(this)">
-                    <div class="faq-question flex justify-between items-center cursor-pointer">
-                        <span class="font-black text-sm">Quelles sont les offres proposées par FA Genesis ?</span>
-                        <i class="fas fa-chevron-down text-xs transition-transform"></i>
-                    </div>
-                    <div class="faq-answer" style="display:none; margin-top:0.75rem; padding-top:0.75rem; border-top:2px solid #eee;">
-                        <p class="text-sm">FA Genesis propose plusieurs catégories d'offres :<br>
-                        <strong>Étudiants :</strong> de 50 € (2 jours) à 290 € (1 mois)<br>
-                        <strong>Particuliers :</strong> de 149 € (2 jours) à 1 490 € (1 mois)<br>
-                        <strong>Entreprises :</strong> de 1 490 € (7 jours) à 4 900 € (30 jours)<br>
-                        <strong>Prestations individuelles :</strong> Photo, Vidéo, Marketing, Média<br>
-                        Chaque catégorie propose aussi des offres sur mesure.</p>
-                    </div>
-                </div>
-                <div class="faq-item section-card mb-2" onclick="toggleFaq(this)">
-                    <div class="faq-question flex justify-between items-center cursor-pointer">
-                        <span class="font-black text-sm">Comment fonctionne le paiement ?</span>
-                        <i class="fas fa-chevron-down text-xs transition-transform"></i>
-                    </div>
-                    <div class="faq-answer" style="display:none; margin-top:0.75rem; padding-top:0.75rem; border-top:2px solid #eee;">
-                        <p class="text-sm">Le paiement fonctionne en deux étapes : un acompte de 30% pour démarrer l'accompagnement, puis le solde de 70% à la fin. Le paiement s'effectue par carte bancaire de manière sécurisée via SumUp. Des facilités de paiement sont disponibles.</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Aide technique -->
-            <div class="mb-6">
-                <h3 class="text-lg font-black uppercase mb-3 text-[var(--genesis-yellow)]"><i class="fas fa-tools mr-2"></i>Aide Technique</h3>
-                <div class="faq-item section-card mb-2" onclick="toggleFaq(this)">
-                    <div class="faq-question flex justify-between items-center cursor-pointer">
-                        <span class="font-black text-sm">Le site ou mon espace ne fonctionne pas, que faire ?</span>
-                        <i class="fas fa-chevron-down text-xs transition-transform"></i>
-                    </div>
-                    <div class="faq-answer" style="display:none; margin-top:0.75rem; padding-top:0.75rem; border-top:2px solid #eee;">
-                        <p class="text-sm">Essayez de rafraîchir la page avec Ctrl+Maj+R (ou Cmd+Maj+R sur Mac). Le serveur peut mettre jusqu'à 60 secondes pour démarrer (hébergement gratuit). Si le problème persiste, contactez l'équipe à financialadvicegenesis@gmail.com.</p>
-                    </div>
-                </div>
-                <div class="faq-item section-card mb-2" onclick="toggleFaq(this)">
-                    <div class="faq-question flex justify-between items-center cursor-pointer">
-                        <span class="font-black text-sm">Comment changer mon mot de passe ?</span>
-                        <i class="fas fa-chevron-down text-xs transition-transform"></i>
-                    </div>
-                    <div class="faq-answer" style="display:none; margin-top:0.75rem; padding-top:0.75rem; border-top:2px solid #eee;">
-                        <p class="text-sm">Rendez-vous dans la section "Profil" de votre espace partenaire. Vous y trouverez un formulaire "Changer mon mot de passe" où vous pouvez saisir et confirmer votre nouveau mot de passe (minimum 6 caractères).</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
         <!-- SECTION PROFIL -->
         <div id="profileSection" class="container mx-auto max-w-3xl" style="display:none;">
             <h2 class="text-3xl md:text-5xl font-black italic uppercase mb-8 text-[var(--genesis-yellow)]">
@@ -518,35 +368,18 @@
         var projects = document.getElementById('projectsSection');
         var detail = document.getElementById('projectDetailSection');
         var profile = document.getElementById('profileSection');
-        var faq = document.getElementById('faqSection');
 
         if (loading) loading.style.display = 'none';
         if (projects) projects.style.display = 'none';
         if (detail) detail.style.display = 'none';
         if (profile) profile.style.display = 'none';
-        if (faq) faq.style.display = 'none';
 
         if (section === 'projects') {
             if (projects) projects.style.display = 'block';
             loadProjects();
-        } else if (section === 'faq') {
-            if (faq) faq.style.display = 'block';
         } else if (section === 'profile') {
             if (profile) profile.style.display = 'block';
             renderProfileSection();
-        }
-    }
-
-    function toggleFaq(item) {
-        var answer = item.querySelector('.faq-answer');
-        var icon = item.querySelector('.fa-chevron-down');
-        if (!answer) return;
-        if (answer.style.display === 'none') {
-            answer.style.display = 'block';
-            if (icon) icon.style.transform = 'rotate(180deg)';
-        } else {
-            answer.style.display = 'none';
-            if (icon) icon.style.transform = 'rotate(0deg)';
         }
     }
 
