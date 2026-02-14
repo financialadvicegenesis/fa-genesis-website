@@ -396,7 +396,20 @@ async function callSumUpAPI(endpoint, method, body = null) {
         throw new Error(data.message || data.error_message || 'Erreur SumUp API');
     }
 
+    console.log('[SUMUP] API response keys:', Object.keys(data), 'id:', data.id, 'hosted_checkout_url:', data.hosted_checkout_url || 'N/A');
     return data;
+}
+
+/**
+ * Extraire l'URL de paiement depuis la reponse SumUp checkout.
+ * Priorite : hosted_checkout_url > fallback checkout.sumup.com/pay/{id}
+ */
+function getSumUpCheckoutUrl(checkoutResponse) {
+    if (checkoutResponse.hosted_checkout_url) {
+        return checkoutResponse.hosted_checkout_url;
+    }
+    // Fallback : nouveau format checkout.sumup.com
+    return 'https://checkout.sumup.com/pay/' + checkoutResponse.id;
 }
 
 // ============================================================
@@ -634,7 +647,7 @@ app.post('/api/payments/sumup/create-checkout', async (req, res) => {
         res.json({
             success: true,
             checkout_id: checkoutResponse.id,
-            checkout_url: `https://pay.sumup.com/b/${checkoutResponse.id}`,
+            checkout_url: getSumUpCheckoutUrl(checkoutResponse),
             amount: amount,
             stage: stage
         });
@@ -3710,7 +3723,7 @@ app.post('/api/quotes/accept', async function(req, res) {
                         merchant_code: process.env.SUMUP_MERCHANT_CODE
                     };
                     var ckResp = await callSumUpAPI('/checkouts', 'POST', checkoutData);
-                    existingCheckoutUrl = 'https://pay.sumup.com/b/' + ckResp.id;
+                    existingCheckoutUrl = getSumUpCheckoutUrl(ckResp);
                     updateOrder(existingOrder.id, { checkout_id: ckResp.id, current_stage: 'deposit' });
                 } catch (e) {
                     console.error('[QUOTE] Erreur recreation checkout:', e);
@@ -3842,7 +3855,7 @@ app.post('/api/quotes/accept', async function(req, res) {
             };
 
             var checkoutResponse = await callSumUpAPI('/checkouts', 'POST', checkoutData);
-            checkoutUrl = 'https://pay.sumup.com/b/' + checkoutResponse.id;
+            checkoutUrl = getSumUpCheckoutUrl(checkoutResponse);
 
             updateOrder(newOrder.id, {
                 checkout_id: checkoutResponse.id,
