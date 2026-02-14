@@ -210,34 +210,54 @@
     <script>
         AOS.init({ duration: 1000, once: false, mirror: true, offset: 120 });
 
-        // Récupérer le paramètre "offre" de l'URL
-        let selectedOffreId = null;
+        // Recuperer les parametres de l'URL
+        var selectedOffreId = null;
+        var quoteTokenParam = null;
+
         window.addEventListener('DOMContentLoaded', function() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const offreParam = urlParams.get('offre');
+            try {
+                var urlParams = new URLSearchParams(window.location.search);
+                var offreParam = urlParams.get('offre');
+                quoteTokenParam = urlParams.get('quote_token');
 
-            if (offreParam) {
-                selectedOffreId = offreParam;
-                const selectedOffer = getOfferById(offreParam);
-
-                if (selectedOffer) {
-                    // Afficher le message d'information
-                    const offreMessage = document.getElementById('offreMessage');
-                    const offreText = document.getElementById('offreText');
-
-                    if (selectedOffer.prixTotal > 0) {
-                        offreText.innerHTML = `Offre sélectionnée: <strong>${selectedOffer.nom}</strong> (${selectedOffer.prixTotal}€)`;
-                    } else {
-                        offreText.innerHTML = `Offre sélectionnée: <strong>${selectedOffer.nom}</strong> (Sur mesure)`;
+                // --- Mode DEVIS : afficher bandeau + adapter liens ---
+                if (quoteTokenParam) {
+                    var offreMessage = document.getElementById('offreMessage');
+                    var offreText = document.getElementById('offreText');
+                    if (offreMessage && offreText) {
+                        offreText.innerHTML = '<i class="fas fa-file-invoice mr-2"></i>Pour accepter votre devis, veuillez vous connecter ou creer votre compte. Vous pourrez ensuite payer l\'acompte de 30%.';
+                        offreMessage.style.display = 'block';
                     }
-                    offreMessage.style.display = 'block';
-
-                    // Mettre à jour le lien d'inscription pour inclure l'offre
-                    const registerLink = document.getElementById('registerLink');
-                    registerLink.href = `register.html?offre=${offreParam}`;
-
-                    console.log('✅ Offre détectée dans URL:', selectedOffer.nom);
+                    // Mettre a jour le lien d'inscription
+                    var registerLink = document.getElementById('registerLink');
+                    if (registerLink) {
+                        registerLink.href = 'register.html?quote_token=' + encodeURIComponent(quoteTokenParam);
+                    }
+                    console.log('[LOGIN] Mode devis detecte, token:', quoteTokenParam.substring(0, 8) + '...');
                 }
+
+                // --- Mode OFFRE standard ---
+                if (offreParam && !quoteTokenParam) {
+                    selectedOffreId = offreParam;
+                    var selectedOffer = typeof getOfferById === 'function' ? getOfferById(offreParam) : null;
+
+                    if (selectedOffer) {
+                        var offreMessage2 = document.getElementById('offreMessage');
+                        var offreText2 = document.getElementById('offreText');
+
+                        if (selectedOffer.prixTotal > 0) {
+                            offreText2.innerHTML = 'Offre selectionnee: <strong>' + selectedOffer.nom + '</strong> (' + selectedOffer.prixTotal + '\u20ac)';
+                        } else {
+                            offreText2.innerHTML = 'Offre selectionnee: <strong>' + selectedOffer.nom + '</strong> (Sur mesure)';
+                        }
+                        if (offreMessage2) offreMessage2.style.display = 'block';
+
+                        var registerLink2 = document.getElementById('registerLink');
+                        if (registerLink2) registerLink2.href = 'register.html?offre=' + offreParam;
+                    }
+                }
+            } catch (err) {
+                console.error('[LOGIN] Erreur init params:', err);
             }
         });
 
@@ -262,7 +282,12 @@
             submitBtn.textContent = 'Se connecter';
 
             if (result.success) {
-                // Redirection vers le dashboard
+                // Si mode devis : accepter le devis puis rediriger vers SumUp
+                if (quoteTokenParam) {
+                    await handleQuoteAcceptAfterAuth(quoteTokenParam);
+                    return;
+                }
+                // Sinon redirection vers le dashboard
                 window.location.href = 'dashboard.html';
             } else if (result.deactivated) {
                 // Compte desactive - afficher le bloc de reactivation
@@ -347,9 +372,73 @@
             }
         }
 
-        // Vérifier si déjà connecté
-        if (isAuthenticated()) {
-            window.location.href = 'dashboard.html';
+        // Fonction pour accepter un devis apres authentification
+        async function handleQuoteAcceptAfterAuth(token) {
+            try {
+                var submitBtn = document.querySelector('button[type="submit"]');
+                if (submitBtn) {
+                    submitBtn.disabled = true;
+                    submitBtn.textContent = 'Acceptation du devis...';
+                }
+
+                var authToken = typeof getAuthToken === 'function' ? getAuthToken() : localStorage.getItem('fa_genesis_token');
+                var apiUrl = window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com';
+
+                var response = await fetch(apiUrl + '/api/quotes/accept', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + authToken
+                    },
+                    body: JSON.stringify({ token: token })
+                });
+
+                var result = await response.json();
+
+                if (result.success && result.checkout_url) {
+                    // Rediriger vers SumUp pour le paiement de l'acompte
+                    window.location.href = result.checkout_url;
+                } else if (result.success && result.deposit_paid) {
+                    // Acompte deja paye, aller au dashboard
+                    window.location.href = 'dashboard.html';
+                } else if (result.success) {
+                    // Devis accepte mais pas de checkout SumUp (erreur SumUp)
+                    // Rediriger vers la page devis pour payer plus tard
+                    window.location.href = 'quote-accept.html?token=' + encodeURIComponent(token);
+                } else {
+                    var errorMessage = document.getElementById('errorMessage');
+                    if (errorMessage) {
+                        errorMessage.textContent = result.error || 'Erreur lors de l\'acceptation du devis';
+                        errorMessage.classList.add('show');
+                    }
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = 'Se connecter';
+                    }
+                }
+            } catch (err) {
+                console.error('[LOGIN] Erreur acceptation devis:', err);
+                var errorMessage = document.getElementById('errorMessage');
+                if (errorMessage) {
+                    errorMessage.textContent = 'Erreur de connexion au serveur. Veuillez reessayer.';
+                    errorMessage.classList.add('show');
+                }
+                var submitBtn = document.querySelector('button[type="submit"]');
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Se connecter';
+                }
+            }
+        }
+
+        // Verifier si deja connecte
+        if (typeof isAuthenticated === 'function' && isAuthenticated()) {
+            // Si mode devis et deja connecte, accepter directement
+            if (quoteTokenParam) {
+                handleQuoteAcceptAfterAuth(quoteTokenParam);
+            } else {
+                window.location.href = 'dashboard.html';
+            }
         }
 
         // Menu Mobile Toggle

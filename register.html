@@ -319,38 +319,84 @@
     <script>
         AOS.init({ duration: 1000, once: false, mirror: true, offset: 120 });
 
-        // Récupérer le paramètre "offre" de l'URL et pré-sélectionner l'offre
+        // Recuperer les parametres de l'URL
+        var quoteTokenParam = null;
+
         window.addEventListener('DOMContentLoaded', function() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const offreParam = urlParams.get('offre');
+            try {
+                var urlParams = new URLSearchParams(window.location.search);
+                var offreParam = urlParams.get('offre');
+                quoteTokenParam = urlParams.get('quote_token');
 
-            if (offreParam) {
-                const offreSelect = document.getElementById('offre');
-                const option = offreSelect.querySelector(`option[value="${offreParam}"]`);
+                // --- Mode DEVIS : cacher l'offre, afficher bandeau ---
+                if (quoteTokenParam) {
+                    // Cacher le champ offre (pas necessaire pour un devis)
+                    var offreField = document.getElementById('offre');
+                    if (offreField) {
+                        offreField.closest('div').style.display = 'none';
+                        offreField.removeAttribute('required');
+                    }
 
-                if (option) {
-                    offreSelect.value = offreParam;
-
-                    // Récupérer les détails de l'offre
-                    const selectedOffer = getOfferById(offreParam);
-                    if (selectedOffer) {
-                        // Afficher un message d'information sur l'offre sélectionnée
-                        const successMessage = document.getElementById('successMessage');
-                        if (selectedOffer.prixTotal > 0) {
-                            successMessage.innerHTML = `
-                                <strong><i class="fas fa-check-circle mr-2"></i>Offre sélectionnée :</strong> ${selectedOffer.nom}<br>
-                                <strong>Prix :</strong> ${selectedOffer.prixTotal}€ (Acompte: ${selectedOffer.acompte}€)
-                            `;
-                        } else {
-                            successMessage.innerHTML = `
-                                <strong><i class="fas fa-check-circle mr-2"></i>Offre sélectionnée :</strong> ${selectedOffer.nom}<br>
-                                Offre sur mesure - Devis personnalisé
-                            `;
-                        }
+                    // Afficher bandeau d'information
+                    var successMessage = document.getElementById('successMessage');
+                    if (successMessage) {
+                        successMessage.innerHTML = '<i class="fas fa-file-invoice mr-2"></i><strong>Acceptation de devis</strong><br>Creez votre compte pour accepter votre devis personnalise et payer l\'acompte de 30%.';
                         successMessage.classList.add('show');
-                        console.log('✅ Offre pré-sélectionnée:', selectedOffer.nom);
+                    }
+
+                    // Mettre a jour le lien "Deja un compte"
+                    var loginLink = document.querySelector('a[href="login.html"]');
+                    if (loginLink) {
+                        loginLink.href = 'login.html?quote_token=' + encodeURIComponent(quoteTokenParam);
+                    }
+
+                    // Pre-remplir l'email depuis les donnees du devis
+                    var apiUrl = window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com';
+                    fetch(apiUrl + '/api/quotes/view/' + encodeURIComponent(quoteTokenParam))
+                        .then(function(r) { return r.json(); })
+                        .then(function(data) {
+                            if (data.quote && data.quote.client_email) {
+                                var emailField = document.getElementById('email');
+                                if (emailField && !emailField.value) {
+                                    emailField.value = data.quote.client_email;
+                                }
+                                // Pre-remplir le nom si disponible
+                                if (data.quote.client_name) {
+                                    var parts = data.quote.client_name.split(' ');
+                                    var prenomField = document.getElementById('prenom');
+                                    var nomField = document.getElementById('nom');
+                                    if (prenomField && !prenomField.value && parts[0]) prenomField.value = parts[0];
+                                    if (nomField && !nomField.value && parts.slice(1).join(' ')) nomField.value = parts.slice(1).join(' ');
+                                }
+                            }
+                        })
+                        .catch(function(err) { console.error('[REGISTER] Erreur pre-remplissage:', err); });
+
+                    console.log('[REGISTER] Mode devis detecte');
+                }
+
+                // --- Mode OFFRE standard ---
+                if (offreParam && !quoteTokenParam) {
+                    var offreSelect = document.getElementById('offre');
+                    var option = offreSelect ? offreSelect.querySelector('option[value="' + offreParam + '"]') : null;
+
+                    if (option) {
+                        offreSelect.value = offreParam;
+
+                        var selectedOffer = typeof getOfferById === 'function' ? getOfferById(offreParam) : null;
+                        if (selectedOffer) {
+                            var successMessage2 = document.getElementById('successMessage');
+                            if (selectedOffer.prixTotal > 0) {
+                                successMessage2.innerHTML = '<strong><i class="fas fa-check-circle mr-2"></i>Offre selectionnee :</strong> ' + selectedOffer.nom + '<br><strong>Prix :</strong> ' + selectedOffer.prixTotal + '\u20ac (Acompte: ' + selectedOffer.acompte + '\u20ac)';
+                            } else {
+                                successMessage2.innerHTML = '<strong><i class="fas fa-check-circle mr-2"></i>Offre selectionnee :</strong> ' + selectedOffer.nom + '<br>Offre sur mesure - Devis personnalise';
+                            }
+                            successMessage2.classList.add('show');
+                        }
                     }
                 }
+            } catch (err) {
+                console.error('[REGISTER] Erreur init params:', err);
             }
         });
 
@@ -375,8 +421,12 @@
             errorMessage.classList.remove('show');
             successMessage.classList.remove('show');
 
-            // Validation
-            if (!prenom || !nom || !email || !telephone || !offre || !password || !confirmPassword) {
+            // Validation - offre pas obligatoire en mode devis
+            var requiredFields = !quoteTokenParam
+                ? (!prenom || !nom || !email || !telephone || !offre || !password || !confirmPassword)
+                : (!prenom || !nom || !email || !telephone || !password || !confirmPassword);
+
+            if (requiredFields) {
                 errorMessage.textContent = 'Veuillez remplir tous les champs obligatoires.';
                 errorMessage.classList.add('show');
                 return;
@@ -435,53 +485,82 @@
                 return;
             }
 
-            console.log('Nouvel utilisateur créé:', result.user);
+            console.log('Nouvel utilisateur cree:', result.user);
 
-            // S'assurer que la session locale contient bien l'offre sélectionnée
-            const sessionData = JSON.parse(localStorage.getItem('fa_genesis_session') || 'null');
+            // Mettre a jour la session locale
+            var sessionData = null;
+            try { sessionData = JSON.parse(localStorage.getItem('fa_genesis_session') || 'null'); } catch(e) {}
             if (sessionData) {
-                if (!sessionData.offre) sessionData.offre = offre;
-                if (!sessionData.activeOfferId) sessionData.activeOfferId = offre;
+                if (offre && !sessionData.offre) sessionData.offre = offre;
+                if (offre && !sessionData.activeOfferId) sessionData.activeOfferId = offre;
                 if (!sessionData.paymentStatus) sessionData.paymentStatus = 'registered';
                 if (!sessionData.payments) sessionData.payments = [];
                 localStorage.setItem('fa_genesis_session', JSON.stringify(sessionData));
-                console.log('Session mise à jour avec offre:', offre);
             }
 
-            // Afficher le message de succès
+            // --- Mode DEVIS : accepter le devis apres inscription ---
+            if (quoteTokenParam) {
+                successMessage.innerHTML = '<strong>Compte cree avec succes !</strong><br><br>Acceptation de votre devis en cours...';
+                successMessage.classList.add('show');
+                document.getElementById('registerForm').reset();
+
+                // Appeler l'acceptation du devis
+                try {
+                    var authToken = typeof getAuthToken === 'function' ? getAuthToken() : localStorage.getItem('fa_genesis_token');
+                    var apiUrl = window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com';
+
+                    var acceptResponse = await fetch(apiUrl + '/api/quotes/accept', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': 'Bearer ' + authToken
+                        },
+                        body: JSON.stringify({ token: quoteTokenParam })
+                    });
+
+                    var acceptResult = await acceptResponse.json();
+
+                    if (acceptResult.success && acceptResult.checkout_url) {
+                        successMessage.innerHTML = '<strong>Compte cree et devis accepte !</strong><br><br>Redirection vers le paiement de l\'acompte...';
+                        setTimeout(function() {
+                            window.location.href = acceptResult.checkout_url;
+                        }, 2000);
+                    } else if (acceptResult.success) {
+                        successMessage.innerHTML = '<strong>Compte cree et devis accepte !</strong><br><br>Redirection vers votre espace client...';
+                        setTimeout(function() {
+                            window.location.href = 'quote-accept.html?token=' + encodeURIComponent(quoteTokenParam);
+                        }, 2000);
+                    } else {
+                        errorMessage.textContent = acceptResult.error || 'Erreur lors de l\'acceptation du devis';
+                        errorMessage.classList.add('show');
+                    }
+                } catch (acceptErr) {
+                    console.error('[REGISTER] Erreur acceptation devis:', acceptErr);
+                    errorMessage.textContent = 'Compte cree mais erreur lors de l\'acceptation du devis. Vous pouvez reessayer depuis votre espace client.';
+                    errorMessage.classList.add('show');
+                    setTimeout(function() { window.location.href = 'dashboard.html'; }, 3000);
+                }
+                return;
+            }
+
+            // --- Mode OFFRE standard ---
             if (selectedOffer && selectedOffer.prixTotal > 0) {
-                successMessage.innerHTML = `
-                    <strong>Compte créé avec succès !</strong><br><br>
-                    <strong>Offre sélectionnée :</strong> ${selectedOffer.nom}<br>
-                    <strong>Prix total :</strong> ${selectedOffer.prixTotal} €<br>
-                    <strong>Acompte (30%) :</strong> ${selectedOffer.acompte} €<br><br>
-                    <strong>Étape suivante :</strong> Règlement de l'acompte pour confirmer votre inscription.<br>
-                    Redirection vers la page de paiement...
-                `;
+                successMessage.innerHTML = '<strong>Compte cree avec succes !</strong><br><br>' +
+                    '<strong>Offre selectionnee :</strong> ' + selectedOffer.nom + '<br>' +
+                    '<strong>Prix total :</strong> ' + selectedOffer.prixTotal + ' \u20ac<br>' +
+                    '<strong>Acompte (30%) :</strong> ' + selectedOffer.acompte + ' \u20ac<br><br>' +
+                    '<strong>Etape suivante :</strong> Reglement de l\'acompte pour confirmer votre inscription.<br>' +
+                    'Redirection vers la page de paiement...';
                 successMessage.classList.add('show');
-
-                // Réinitialiser le formulaire
                 document.getElementById('registerForm').reset();
-
-                // Redirection vers la page de paiement
-                setTimeout(() => {
-                    window.location.href = 'payment.html';
-                }, 3000);
+                setTimeout(function() { window.location.href = 'payment.html'; }, 3000);
             } else {
-                successMessage.innerHTML = `
-                    <strong>Compte créé avec succès !</strong><br><br>
-                    Vous avez sélectionné une offre sur mesure. Nous vous contacterons pour établir un devis personnalisé.<br><br>
-                    Redirection vers votre espace client...
-                `;
+                successMessage.innerHTML = '<strong>Compte cree avec succes !</strong><br><br>' +
+                    'Vous avez selectionne une offre sur mesure. Nous vous contacterons pour etablir un devis personnalise.<br><br>' +
+                    'Redirection vers votre espace client...';
                 successMessage.classList.add('show');
-
-                // Réinitialiser le formulaire
                 document.getElementById('registerForm').reset();
-
-                // Redirection vers le dashboard pour les offres custom
-                setTimeout(() => {
-                    window.location.href = 'dashboard.html';
-                }, 3000);
+                setTimeout(function() { window.location.href = 'dashboard.html'; }, 3000);
             }
         });
 

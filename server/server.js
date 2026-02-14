@@ -15,6 +15,7 @@ const { v4: uuidv4 } = require('uuid');
 const fs = require('fs');
 const path = require('path');
 const bcrypt = require('bcryptjs');
+const PDFDocument = require('pdfkit');
 
 const { getProductById, calculatePaymentAmounts, getAmountForStage } = require('./products');
 const emailService = require('./email-service');
@@ -3658,27 +3659,75 @@ app.get('/api/quotes/view/:token', function(req, res) {
 
 /**
  * POST /api/quotes/accept
- * Accepter un devis : cree le compte client + l'order + redirige vers SumUp
+ * Accepter un devis (authentification requise)
+ * Le client doit etre connecte. Le devis est lie a son compte.
+ * Cree une order + checkout SumUp + livrable PDF du devis.
  */
 app.post('/api/quotes/accept', async function(req, res) {
     try {
-        var token = req.body.token;
-        if (!token) {
-            return res.status(400).json({ error: 'Token requis' });
+        // Authentification requise
+        var authHeader = req.headers.authorization;
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return res.status(401).json({ error: 'Authentification requise. Veuillez vous connecter.' });
+        }
+        var authToken = authHeader.split(' ')[1];
+        var users = loadUsers();
+        var authUser = users.find(function(u) { return u.sessionToken === authToken; });
+        if (!authUser) {
+            return res.status(401).json({ error: 'Session invalide ou expiree' });
+        }
+
+        var quoteToken = req.body.token;
+        if (!quoteToken) {
+            return res.status(400).json({ error: 'Token de devis requis' });
         }
 
         var quotes = loadQuotes();
-        var idx = quotes.findIndex(function(q) { return q.acceptance_token === token; });
+        var idx = quotes.findIndex(function(q) { return q.acceptance_token === quoteToken; });
         if (idx === -1) {
             return res.status(404).json({ error: 'Devis non trouve' });
         }
 
         var quote = quotes[idx];
 
-        // Verifier le statut
-        if (quote.status === 'ACCEPTED') {
-            return res.status(400).json({ error: 'Ce devis a deja ete accepte' });
+        // Si deja accepte, retourner les infos existantes (idempotent)
+        if (quote.status === 'ACCEPTED' || quote.status === 'DEPOSIT_PAID') {
+            var existingOrder = quote.order_id ? getOrderById(quote.order_id) : null;
+            var existingCheckoutUrl = null;
+
+            // Si l'acompte n'est pas encore paye, recreer un checkout
+            if (existingOrder && !existingOrder.deposit_paid) {
+                try {
+                    var successUrl = process.env.SUMUP_SUCCESS_URL || 'https://fagenesis.com/payment-success.html';
+                    var returnUrl = successUrl + '?order=' + existingOrder.id + '&stage=deposit';
+                    var checkoutData = {
+                        checkout_reference: existingOrder.id + '-deposit-' + Date.now(),
+                        amount: existingOrder.deposit_amount,
+                        currency: 'EUR',
+                        pay_to_email: process.env.SUMUP_PAY_TO_EMAIL,
+                        description: 'FA GENESIS - Acompte devis ' + quote.quote_number,
+                        return_url: returnUrl,
+                        merchant_code: process.env.SUMUP_MERCHANT_CODE
+                    };
+                    var ckResp = await callSumUpAPI('/checkouts', 'POST', checkoutData);
+                    existingCheckoutUrl = 'https://pay.sumup.com/b/' + ckResp.id;
+                    updateOrder(existingOrder.id, { checkout_id: ckResp.id, current_stage: 'deposit' });
+                } catch (e) {
+                    console.error('[QUOTE] Erreur recreation checkout:', e);
+                }
+            }
+
+            return res.json({
+                success: true,
+                already_accepted: true,
+                order_id: quote.order_id,
+                checkout_url: existingCheckoutUrl,
+                deposit_paid: existingOrder ? existingOrder.deposit_paid : false,
+                deposit_amount: quote.pricing.deposit_amount,
+                total_amount: quote.pricing.total
+            });
         }
+
         if (quote.status !== 'SENT_TO_CLIENT') {
             return res.status(400).json({ error: 'Ce devis ne peut pas etre accepte (statut: ' + quote.status + ')' });
         }
@@ -3697,53 +3746,11 @@ app.post('/api/quotes/accept', async function(req, res) {
             return res.status(400).json({ error: 'Devis invalide (pas de pricing)' });
         }
 
-        // 1. Chercher ou creer le compte client
-        var userCreated = false;
-        var generatedPassword = null;
-        var existingUser = getUserByEmail(quote.client_email);
-
-        if (!existingUser) {
-            // Generer un mot de passe aleatoire
-            generatedPassword = uuidv4().split('-').slice(0, 2).join('').substring(0, 12);
-            var hashedPassword = await bcrypt.hash(generatedPassword, 10);
-            var sessionToken = generateSessionToken();
-
-            // Extraire prenom/nom du client_name
-            var nameParts = quote.client_name.split(' ');
-            var prenom = nameParts[0] || 'Client';
-            var nom = nameParts.slice(1).join(' ') || 'Devis';
-
-            var newUser = {
-                id: 'USR-' + uuidv4().split('-')[0].toUpperCase(),
-                prenom: prenom,
-                nom: nom,
-                email: quote.client_email,
-                telephone: '',
-                password: hashedPassword,
-                offre: null,
-                activeOfferId: null,
-                productType: 'prestation_individuelle',
-                paymentStatus: 'registered',
-                payments: [],
-                accountStatus: 'active',
-                sessionToken: sessionToken,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-                lastLogin: null,
-                createdBy: 'quote-accept'
-            };
-
-            var users = loadUsers();
-            users.push(newUser);
-            saveUsers(users);
-            existingUser = newUser;
-            userCreated = true;
-
-            console.log('[QUOTE] Compte client cree pour ' + quote.client_email);
-        }
+        // 1. Lier le devis au compte client connecte
+        quotes[idx].client_user_id = authUser.id;
+        quotes[idx].client_email = authUser.email;
 
         // 2. Creer la commande (order)
-        var nameParts2 = quote.client_name.split(' ');
         var serviceLabels = { photo: 'Photo', video: 'Video', media: 'Media', marketing: 'Marketing', other: 'Prestation' };
         var productName = 'Devis ' + (serviceLabels[quote.service_type] || 'Personnalise') + ' - ' + quote.quote_number;
 
@@ -3753,13 +3760,14 @@ app.post('/api/quotes/accept', async function(req, res) {
             product_name: productName,
             product_type: 'prestation_individuelle',
             client_info: {
-                email: quote.client_email,
-                first_name: nameParts2[0] || '',
-                last_name: nameParts2.slice(1).join(' ') || '',
-                phone: null,
+                email: authUser.email,
+                first_name: authUser.prenom || '',
+                last_name: authUser.nom || '',
+                phone: authUser.telephone || null,
                 company: null,
                 client_type: quote.client_profil || 'particulier'
             },
+            user_id: authUser.id,
             total_amount: quote.pricing.total,
             deposit_amount: quote.pricing.deposit_amount,
             balance_amount: quote.pricing.balance_amount,
@@ -3788,9 +3796,36 @@ app.post('/api/quotes/accept', async function(req, res) {
         quotes[idx].updated_at = new Date().toISOString();
         saveQuotes(quotes);
 
-        console.log('[QUOTE] Devis ' + quote.quote_number + ' accepte - Commande ' + newOrder.id + ' creee');
+        console.log('[QUOTE] Devis ' + quote.quote_number + ' accepte par ' + authUser.email + ' - Commande ' + newOrder.id + ' creee');
 
-        // 4. Creer le checkout SumUp pour l'acompte
+        // 4. Creer le livrable PDF du devis
+        try {
+            var frontUrl = process.env.FRONT_URL || 'https://fagenesis.com';
+            var pdfDownloadUrl = (process.env.API_URL || 'https://fa-genesis-website.onrender.com') + '/api/quotes/' + quote.id + '/pdf';
+
+            var livrable = {
+                id: 'LIV-' + uuidv4().split('-')[0].toUpperCase(),
+                order_id: newOrder.id,
+                client_email: authUser.email,
+                name: 'Devis ' + quote.quote_number,
+                type: 'document',
+                day_number: null,
+                preview_url: null,
+                download_url: pdfDownloadUrl,
+                description: 'Devis personnalise ' + quote.quote_number + ' - Document contractuel',
+                status: 'ready',
+                created_at: new Date().toISOString()
+            };
+
+            var livrables = loadLivrables();
+            livrables.push(livrable);
+            saveLivrables(livrables);
+            console.log('[QUOTE] Livrable PDF cree: ' + livrable.id + ' pour commande ' + newOrder.id);
+        } catch (livrableError) {
+            console.error('[QUOTE] Erreur creation livrable PDF:', livrableError);
+        }
+
+        // 5. Creer le checkout SumUp pour l'acompte
         var checkoutUrl = null;
         try {
             var successUrl = process.env.SUMUP_SUCCESS_URL || 'https://fagenesis.com/payment-success.html';
@@ -3809,7 +3844,6 @@ app.post('/api/quotes/accept', async function(req, res) {
             var checkoutResponse = await callSumUpAPI('/checkouts', 'POST', checkoutData);
             checkoutUrl = 'https://pay.sumup.com/b/' + checkoutResponse.id;
 
-            // Mettre a jour l'order avec le checkout_id
             updateOrder(newOrder.id, {
                 checkout_id: checkoutResponse.id,
                 current_stage: 'deposit'
@@ -3818,34 +3852,22 @@ app.post('/api/quotes/accept', async function(req, res) {
             console.log('[QUOTE] Checkout SumUp cree: ' + checkoutResponse.id);
         } catch (sumupError) {
             console.error('[QUOTE] Erreur SumUp checkout:', sumupError);
-            // Pas bloquant : le devis est accepte, le paiement pourra se faire plus tard
         }
 
-        // 5. Envoyer les notifications
-        // Notification admin
+        // 6. Notification admin
         if (typeof emailService.sendAdminNotification === 'function') {
             emailService.sendAdminNotification({
-                name: quote.client_name,
-                email: quote.client_email,
+                name: authUser.prenom + ' ' + authUser.nom,
+                email: authUser.email,
                 subject: 'Devis accepte',
-                message: 'Le client ' + quote.client_name + ' a accepte le devis ' + quote.quote_number + ' (' + quote.pricing.total + ' EUR). Commande ' + newOrder.id + ' creee.'
-            }).catch(function(err) { console.error('[QUOTE] Erreur notif admin acceptation:', err); });
-        }
-
-        // Email bienvenue + identifiants si nouveau compte
-        if (userCreated && generatedPassword) {
-            if (typeof emailService.sendRegistrationConfirmation === 'function') {
-                emailService.sendRegistrationConfirmation(quote.client_email, quote.client_name, generatedPassword)
-                    .catch(function(err) { console.error('[QUOTE] Erreur email bienvenue:', err); });
-            }
+                message: 'Le client ' + authUser.prenom + ' ' + authUser.nom + ' (' + authUser.email + ') a accepte le devis ' + quote.quote_number + ' (' + quote.pricing.total + ' EUR). Commande ' + newOrder.id + ' creee.'
+            }).catch(function(err) { console.error('[QUOTE] Erreur notif admin:', err); });
         }
 
         res.json({
             success: true,
             order_id: newOrder.id,
             checkout_url: checkoutUrl,
-            user_created: userCreated,
-            credentials: userCreated ? { email: quote.client_email, password: generatedPassword } : null,
             deposit_amount: quote.pricing.deposit_amount,
             total_amount: quote.pricing.total
         });
@@ -3853,6 +3875,199 @@ app.post('/api/quotes/accept', async function(req, res) {
     } catch (error) {
         console.error('[QUOTE] Erreur acceptation devis:', error);
         res.status(500).json({ error: 'Erreur lors de l\'acceptation du devis' });
+    }
+});
+
+/**
+ * GET /api/quotes/:quoteId/pdf
+ * Generer et telecharger le PDF du devis
+ */
+app.get('/api/quotes/:quoteId/pdf', function(req, res) {
+    try {
+        var quotes = loadQuotes();
+        var quote = quotes.find(function(q) { return q.id === req.params.quoteId; });
+        if (!quote) {
+            return res.status(404).json({ error: 'Devis non trouve' });
+        }
+
+        // Verifier que le devis a ete accepte (ou au moins envoye)
+        if (!['SENT_TO_CLIENT', 'ACCEPTED', 'DEPOSIT_PAID'].includes(quote.status)) {
+            return res.status(403).json({ error: 'Ce devis n\'est pas encore disponible en PDF' });
+        }
+
+        var serviceLabels = { photo: 'Photo', video: 'Video', media: 'Media', marketing: 'Marketing', other: 'Prestation sur mesure' };
+        var serviceLabel = serviceLabels[quote.service_type] || 'Prestation sur mesure';
+
+        // Creer le PDF
+        var doc = new PDFDocument({ margin: 50, size: 'A4' });
+
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', 'attachment; filename=Devis_' + quote.quote_number + '.pdf');
+
+        doc.pipe(res);
+
+        // === EN-TETE ===
+        doc.fontSize(24).font('Helvetica-Bold').text('FA GENESIS', { align: 'center' });
+        doc.fontSize(10).font('Helvetica').text('BUILD. LAUNCH. IMPACT.', { align: 'center' });
+        doc.moveDown(0.5);
+        doc.moveTo(50, doc.y).lineTo(545, doc.y).stroke('#FFD700');
+        doc.moveDown(1);
+
+        // === INFOS DEVIS ===
+        doc.fontSize(18).font('Helvetica-Bold').text('DEVIS ' + quote.quote_number, { align: 'left' });
+        doc.moveDown(0.5);
+        doc.fontSize(11).font('Helvetica');
+        doc.text('Service : ' + serviceLabel);
+        doc.text('Date : ' + new Date(quote.sent_at || quote.created_at).toLocaleDateString('fr-FR'));
+        var sentDate = new Date(quote.sent_at || quote.created_at);
+        var expiryDate = new Date(sentDate.getTime() + ((quote.validity_days || 30) * 24 * 60 * 60 * 1000));
+        doc.text('Valable jusqu\'au : ' + expiryDate.toLocaleDateString('fr-FR'));
+        doc.moveDown(1);
+
+        // === CLIENT ===
+        doc.fontSize(13).font('Helvetica-Bold').text('CLIENT');
+        doc.fontSize(11).font('Helvetica');
+        doc.text(quote.client_name || '');
+        doc.text(quote.client_email || '');
+        doc.moveDown(1);
+
+        // === TABLEAU DES PRESTATIONS ===
+        doc.fontSize(13).font('Helvetica-Bold').text('PRESTATIONS');
+        doc.moveDown(0.5);
+
+        var items = (quote.admin_final && quote.admin_final.items) ? quote.admin_final.items : [];
+        var tableTop = doc.y;
+        var colX = [50, 300, 370, 440, 510];
+
+        // Header
+        doc.fontSize(9).font('Helvetica-Bold');
+        doc.rect(50, tableTop, 495, 20).fill('#000');
+        doc.fillColor('#FFD700');
+        doc.text('PRESTATION', colX[0] + 5, tableTop + 5, { width: 245 });
+        doc.text('QTE', colX[1] + 5, tableTop + 5, { width: 60, align: 'center' });
+        doc.text('P.U.', colX[2] + 5, tableTop + 5, { width: 60, align: 'right' });
+        doc.text('TOTAL', colX[3] + 5, tableTop + 5, { width: 95, align: 'right' });
+        doc.fillColor('#000');
+
+        var rowY = tableTop + 22;
+        doc.font('Helvetica').fontSize(10);
+
+        for (var i = 0; i < items.length; i++) {
+            var item = items[i];
+            var qty = Number(item.qty) || 1;
+            var unitPrice = Number(item.unit_price) || 0;
+            var lineTotal = qty * unitPrice;
+
+            if (i % 2 === 0) {
+                doc.rect(50, rowY - 2, 495, 18).fill('#f9f9f9');
+                doc.fillColor('#000');
+            }
+
+            doc.text(item.label || '', colX[0] + 5, rowY, { width: 245 });
+            doc.text(String(qty), colX[1] + 5, rowY, { width: 60, align: 'center' });
+            doc.text(unitPrice.toFixed(2) + ' EUR', colX[2] + 5, rowY, { width: 60, align: 'right' });
+            doc.font('Helvetica-Bold').text(lineTotal.toFixed(2) + ' EUR', colX[3] + 5, rowY, { width: 95, align: 'right' });
+            doc.font('Helvetica');
+
+            rowY += 20;
+        }
+
+        // Ligne separatrice
+        doc.moveTo(50, rowY + 2).lineTo(545, rowY + 2).stroke('#000');
+
+        // === TOTAUX ===
+        rowY += 15;
+        if (quote.pricing) {
+            doc.fontSize(12).font('Helvetica-Bold');
+            doc.text('TOTAL HT :', 350, rowY, { width: 100, align: 'right' });
+            doc.text(quote.pricing.total.toFixed(2) + ' EUR', 455, rowY, { width: 90, align: 'right' });
+            rowY += 20;
+
+            doc.fontSize(11).font('Helvetica');
+            doc.text('Acompte (30%) :', 350, rowY, { width: 100, align: 'right' });
+            doc.font('Helvetica-Bold').text(quote.pricing.deposit_amount.toFixed(2) + ' EUR', 455, rowY, { width: 90, align: 'right' });
+            rowY += 18;
+
+            doc.font('Helvetica');
+            doc.text('Solde (70%) :', 350, rowY, { width: 100, align: 'right' });
+            doc.text(quote.pricing.balance_amount.toFixed(2) + ' EUR', 455, rowY, { width: 90, align: 'right' });
+        }
+
+        // === NOTES ===
+        if (quote.admin_final && quote.admin_final.notes) {
+            doc.moveDown(2);
+            doc.fontSize(11).font('Helvetica-Bold').text('CONDITIONS :');
+            doc.fontSize(10).font('Helvetica').text(quote.admin_final.notes);
+        }
+
+        // === PIED DE PAGE ===
+        doc.moveDown(3);
+        doc.fontSize(8).font('Helvetica').fillColor('#888');
+        doc.text('FA GENESIS - Groupe FA Industries', 50, doc.page.height - 80, { align: 'center', width: 495 });
+        doc.text('Document genere automatiquement - Ce devis fait office de document contractuel', { align: 'center', width: 495 });
+
+        doc.end();
+
+    } catch (error) {
+        console.error('[QUOTE] Erreur generation PDF:', error);
+        res.status(500).json({ error: 'Erreur generation PDF' });
+    }
+});
+
+/**
+ * GET /api/quotes/my-quote/:token
+ * Consulter un devis lie a son compte (authentification requise)
+ */
+app.get('/api/quotes/my-quote/:token', function(req, res) {
+    try {
+        // Authentification requise
+        var authHeader = req.headers.authorization;
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return res.status(401).json({ error: 'Authentification requise' });
+        }
+        var authToken = authHeader.split(' ')[1];
+        var users = loadUsers();
+        var authUser = users.find(function(u) { return u.sessionToken === authToken; });
+        if (!authUser) {
+            return res.status(401).json({ error: 'Session invalide' });
+        }
+
+        var quotes = loadQuotes();
+        var quote = quotes.find(function(q) { return q.acceptance_token === req.params.token; });
+        if (!quote) {
+            return res.status(404).json({ error: 'Devis non trouve' });
+        }
+
+        // Recuperer l'order liee si elle existe
+        var order = quote.order_id ? getOrderById(quote.order_id) : null;
+
+        var sentDate = new Date(quote.sent_at || quote.created_at);
+        var expiryDate = new Date(sentDate.getTime() + ((quote.validity_days || 30) * 24 * 60 * 60 * 1000));
+
+        res.json({
+            quote_number: quote.quote_number,
+            client_name: quote.client_name,
+            client_email: quote.client_email,
+            service_type: quote.service_type,
+            status: quote.status,
+            admin_final: {
+                items: quote.admin_final ? quote.admin_final.items : [],
+                notes: quote.admin_final ? quote.admin_final.notes : ''
+            },
+            pricing: quote.pricing,
+            validity_days: quote.validity_days,
+            created_at: quote.sent_at || quote.created_at,
+            expiry_date: expiryDate.toISOString(),
+            accepted_at: quote.accepted_at || null,
+            order_id: quote.order_id || null,
+            deposit_paid: order ? order.deposit_paid : false,
+            order_status: order ? order.status : null,
+            pdf_url: (process.env.API_URL || 'https://fa-genesis-website.onrender.com') + '/api/quotes/' + quote.id + '/pdf'
+        });
+
+    } catch (error) {
+        console.error('[QUOTE] Erreur consultation devis authentifie:', error);
+        res.status(500).json({ error: 'Erreur consultation devis' });
     }
 });
 

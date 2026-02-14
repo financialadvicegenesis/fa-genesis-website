@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Accepter le devis - FA GENESIS</title>
+    <title>Mon Devis - FA GENESIS</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
@@ -39,6 +39,19 @@
             opacity: 0.5;
             cursor: not-allowed;
         }
+        .neo-btn-white {
+            background: white;
+            color: black;
+            border: 4px solid black;
+            box-shadow: 6px 6px 0px black;
+            font-weight: 900;
+            transition: 0.1s;
+            cursor: pointer;
+        }
+        .neo-btn-white:active {
+            transform: translate(4px, 4px);
+            box-shadow: 0px 0px 0px black;
+        }
         .quote-table {
             width: 100%;
             border-collapse: collapse;
@@ -61,6 +74,17 @@
         }
         .quote-table .text-right { text-align: right; }
         .quote-table .text-center { text-align: center; }
+        .status-badge {
+            display: inline-block;
+            padding: 6px 16px;
+            border: 3px solid black;
+            font-weight: 900;
+            text-transform: uppercase;
+            font-size: 12px;
+        }
+        .status-accepted { background: #FFF3CD; color: #856404; }
+        .status-deposit-paid { background: #d3f9d8; color: #2b8a3e; }
+        .status-pending { background: #ffe8cc; color: #e8590c; }
     </style>
 </head>
 <body>
@@ -71,12 +95,11 @@
             <a href="index.html" class="text-lg md:text-2xl font-black tracking-wider text-[var(--genesis-yellow)]" style="font-family: 'Unbounded', cursive;">FA GENESIS</a>
         </div>
         <div class="hidden md:flex gap-12 text-white font-black">
-            <a href="index.html#accueil" class="nav-link hover:text-[var(--genesis-yellow)] transition">Accueil</a>
-            <a href="offres.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">Offres</a>
-            <a href="faq.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">FAQ</a>
+            <a href="dashboard.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">Espace Client</a>
+            <a href="livrables.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">Livrables</a>
             <a href="contact.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">Contact</a>
         </div>
-        <a href="contact.html" class="hidden md:block neo-btn-yellow px-6 py-3 text-[12px] tracking-widest text-black font-black">Contact</a>
+        <a href="dashboard.html" class="hidden md:block neo-btn-yellow px-6 py-3 text-[12px] tracking-widest text-black font-black">Mon Espace</a>
     </nav>
 
     <!-- CONTENU PRINCIPAL -->
@@ -94,10 +117,15 @@
             <div class="bg-white text-black p-10 neo-border neo-shadow text-center">
                 <i class="fas fa-exclamation-triangle text-5xl text-[#ff6b6b] mb-4"></i>
                 <h2 id="errorTitle" class="text-3xl font-black italic uppercase mb-4">ERREUR</h2>
-                <p id="errorMessage" class="font-bold text-lg opacity-70 mb-8"></p>
-                <a href="contact.html" class="neo-btn-yellow px-8 py-4 text-sm tracking-widest inline-block">
-                    <i class="fas fa-envelope mr-2"></i>CONTACTEZ-NOUS
-                </a>
+                <p id="errorMsg" class="font-bold text-lg opacity-70 mb-8"></p>
+                <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                    <a href="dashboard.html" class="neo-btn-yellow px-8 py-4 text-sm tracking-widest inline-block">
+                        <i class="fas fa-home mr-2"></i>ESPACE CLIENT
+                    </a>
+                    <a href="contact.html" class="neo-btn-white px-8 py-4 text-sm tracking-widest inline-block">
+                        <i class="fas fa-envelope mr-2"></i>CONTACTEZ-NOUS
+                    </a>
+                </div>
             </div>
         </div>
 
@@ -108,6 +136,7 @@
             <div class="text-center mb-8">
                 <h1 class="text-4xl md:text-6xl font-black italic uppercase text-[var(--genesis-yellow)] mb-2">VOTRE DEVIS</h1>
                 <p id="quoteNumber" class="text-lg font-bold opacity-70"></p>
+                <div id="statusBadgeContainer" class="mt-4"></div>
             </div>
 
             <div class="bg-white text-black p-6 md:p-10 neo-border neo-shadow">
@@ -163,40 +192,17 @@
                     </p>
                 </div>
 
-                <!-- Bouton accepter -->
-                <div class="text-center">
-                    <button id="acceptBtn" onclick="acceptQuote()" class="neo-btn-yellow px-8 md:px-12 py-4 md:py-6 text-lg md:text-2xl font-black italic uppercase tracking-tighter w-full">
-                        <i class="fas fa-check-circle mr-2"></i>ACCEPTER ET PAYER L'ACOMPTE
-                    </button>
-                    <p class="text-xs font-bold opacity-50 mt-4">
-                        En acceptant, vous serez redirige vers notre plateforme de paiement securise SumUp pour regler l'acompte de 30%.
-                    </p>
+                <!-- Actions dynamiques -->
+                <div id="actionsContainer" class="text-center">
+                    <!-- Rempli dynamiquement par JS -->
                 </div>
             </div>
-        </div>
 
-        <!-- ACCEPTED STATE -->
-        <div id="acceptedState" class="w-full max-w-3xl z-10" style="display:none;">
-            <div class="bg-white text-black p-10 neo-border neo-shadow text-center">
-                <i class="fas fa-check-circle text-5xl text-[#51cf66] mb-4"></i>
-                <h2 class="text-3xl font-black italic uppercase mb-4 text-[#51cf66]">DEVIS ACCEPTE !</h2>
-                <p class="font-bold text-lg mb-6">Merci pour votre confiance.</p>
-
-                <div id="credentialsSection" style="display:none;" class="mb-8 p-6 bg-yellow-50 border-4 border-[var(--genesis-yellow)] text-left">
-                    <h3 class="font-black text-lg mb-3"><i class="fas fa-key mr-2"></i>VOS IDENTIFIANTS</h3>
-                    <p class="text-sm font-bold mb-2">Un compte client a ete cree pour vous :</p>
-                    <div class="bg-white p-4 border-2 border-black mb-2">
-                        <p class="text-sm"><strong>Email :</strong> <span id="credEmail"></span></p>
-                        <p class="text-sm"><strong>Mot de passe :</strong> <span id="credPassword" class="text-[#ff6b6b]"></span></p>
-                    </div>
-                    <p class="text-xs font-bold opacity-60">Conservez ces identifiants. Vous pourrez vous connecter a votre espace client sur <a href="login.html" class="text-[var(--genesis-yellow)] underline">login.html</a></p>
-                </div>
-
-                <div id="redirectSection">
-                    <p class="font-bold mb-4">Redirection vers le paiement de l'acompte...</p>
-                    <div class="text-3xl text-[var(--genesis-yellow)] mb-4"><i class="fas fa-spinner fa-spin"></i></div>
-                    <p class="text-sm opacity-60">Si la redirection ne fonctionne pas, <a id="checkoutLink" href="#" class="text-[var(--genesis-yellow)] underline font-black">cliquez ici</a></p>
-                </div>
+            <!-- Telecharger PDF -->
+            <div id="pdfSection" class="mt-6 text-center" style="display:none;">
+                <a id="pdfLink" href="#" target="_blank" class="neo-btn-white px-8 py-4 text-sm tracking-widest inline-block">
+                    <i class="fas fa-file-pdf mr-2"></i>TELECHARGER LE DEVIS (PDF)
+                </a>
             </div>
         </div>
 
@@ -216,90 +222,85 @@
     </footer>
 
     <script src="config.js"></script>
+    <script src="auth.js"></script>
     <script>
     // ==============================================
-    // PAGE ACCEPTATION DEVIS - FA GENESIS
-    // Pas de AOS, pas d'auth requise
+    // PAGE MON DEVIS - FA GENESIS (Authentifiee)
     // ==============================================
 
     var API_URL = window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com';
     var currentToken = null;
     var currentQuote = null;
 
-    // Recuperer le token depuis l'URL
+    // Verifier l'authentification
     (function init() {
         try {
+            // Verifier l'auth
+            var isAuth = (typeof isAuthenticated === 'function') ? isAuthenticated() : false;
+            if (!isAuth) {
+                // Recuperer le token pour le passer a la page de login
+                var params = new URLSearchParams(window.location.search);
+                var token = params.get('token');
+                if (token) {
+                    window.location.href = 'login.html?quote_token=' + encodeURIComponent(token);
+                } else {
+                    window.location.href = 'login.html';
+                }
+                return;
+            }
+
             var params = new URLSearchParams(window.location.search);
             currentToken = params.get('token');
 
             if (!currentToken) {
-                showError('LIEN INVALIDE', 'Ce lien ne contient pas de token de devis valide. Veuillez utiliser le lien recu par email.');
+                showError('LIEN INVALIDE', 'Ce lien ne contient pas de token de devis valide.');
                 return;
             }
 
             loadQuote(currentToken);
         } catch (error) {
-            console.error('[QUOTE-ACCEPT] Erreur init:', error);
+            console.error('[QUOTE-VIEW] Erreur init:', error);
             showError('ERREUR', 'Une erreur est survenue. Veuillez recharger la page.');
         }
     })();
 
     async function loadQuote(token) {
         try {
-            var response = await fetch(API_URL + '/api/quotes/view/' + encodeURIComponent(token));
+            var authToken = (typeof getAuthToken === 'function') ? getAuthToken() : localStorage.getItem('fa_genesis_token');
+
+            var response = await fetch(API_URL + '/api/quotes/my-quote/' + encodeURIComponent(token), {
+                headers: {
+                    'Authorization': 'Bearer ' + authToken
+                }
+            });
 
             if (!response.ok) {
                 var errorData = {};
                 try { errorData = await response.json(); } catch (e) {}
 
+                if (response.status === 401) {
+                    window.location.href = 'login.html?quote_token=' + encodeURIComponent(token);
+                    return;
+                }
                 if (response.status === 404) {
                     showError('DEVIS INTROUVABLE', 'Ce devis n\'existe pas ou le lien est invalide.');
-                } else if (response.status === 410) {
-                    showError('DEVIS EXPIRÉ', errorData.error || 'Ce devis n\'est plus valide. Veuillez nous contacter pour en obtenir un nouveau.');
-                } else if (response.status === 409) {
-                    showError('DEVIS DÉJÀ ACCEPTÉ', errorData.error || 'Ce devis a deja ete accepte. Connectez-vous a votre espace client.');
                 } else {
                     showError('ERREUR', errorData.error || 'Impossible de charger le devis.');
                 }
                 return;
             }
 
-            var data = await response.json();
-            console.log('[QUOTE-ACCEPT] Reponse API:', data);
-
-            // Gerer les statuts speciaux retournes par le backend
-            if (data.status === 'ALREADY_ACCEPTED') {
-                showError('DEVIS DÉJÀ ACCEPTÉ', data.message || 'Ce devis a deja ete accepte. Connectez-vous a votre espace client.');
-                return;
-            }
-            if (data.status === 'CANCELLED') {
-                showError('DEVIS ANNULÉ', data.message || 'Ce devis a ete annule.');
-                return;
-            }
-            if (data.status === 'NOT_READY') {
-                showError('DEVIS NON DISPONIBLE', data.message || 'Ce devis n\'est pas encore disponible.');
-                return;
-            }
-            if (data.status === 'EXPIRED') {
-                showError('DEVIS EXPIRÉ', data.message || 'Ce devis n\'est plus valide. Veuillez nous contacter pour en obtenir un nouveau.');
-                return;
-            }
-            if (!data.quote) {
-                showError('ERREUR', 'Donnees du devis introuvables.');
-                return;
-            }
-
-            currentQuote = data.quote;
-            renderQuote(data.quote);
+            currentQuote = await response.json();
+            console.log('[QUOTE-VIEW] Devis charge:', currentQuote);
+            renderQuote(currentQuote);
 
         } catch (error) {
-            console.error('[QUOTE-ACCEPT] Erreur chargement:', error);
+            console.error('[QUOTE-VIEW] Erreur chargement:', error);
             showError('ERREUR DE CONNEXION', 'Le serveur est temporairement indisponible. Veuillez reessayer dans quelques instants.');
         }
     }
 
     function renderQuote(quote) {
-        // Cacher loading, afficher le devis
         var loading = document.getElementById('loadingState');
         var display = document.getElementById('quoteDisplay');
         if (loading) loading.style.display = 'none';
@@ -308,6 +309,27 @@
         // Numero
         var numEl = document.getElementById('quoteNumber');
         if (numEl) numEl.textContent = quote.quote_number || '';
+
+        // Badge statut
+        var badgeContainer = document.getElementById('statusBadgeContainer');
+        if (badgeContainer) {
+            var statusLabel = '';
+            var statusClass = '';
+            if (quote.deposit_paid) {
+                statusLabel = 'ACOMPTE PAYE';
+                statusClass = 'status-deposit-paid';
+            } else if (quote.status === 'ACCEPTED') {
+                statusLabel = 'ACCEPTE - ACOMPTE EN ATTENTE';
+                statusClass = 'status-pending';
+            } else if (quote.status === 'SENT_TO_CLIENT') {
+                statusLabel = 'EN ATTENTE D\'ACCEPTATION';
+                statusClass = 'status-accepted';
+            } else {
+                statusLabel = quote.status;
+                statusClass = 'status-accepted';
+            }
+            badgeContainer.innerHTML = '<span class="status-badge ' + statusClass + '">' + statusLabel + '</span>';
+        }
 
         // Client
         var nameEl = document.getElementById('clientName');
@@ -341,12 +363,6 @@
             if (totalEl) totalEl.textContent = quote.pricing.total + ' \u20ac';
             if (depositEl) depositEl.textContent = quote.pricing.deposit_amount + ' \u20ac';
             if (balanceEl) balanceEl.textContent = quote.pricing.balance_amount + ' \u20ac';
-
-            // Mettre a jour le bouton
-            var btn = document.getElementById('acceptBtn');
-            if (btn) {
-                btn.innerHTML = '<i class="fas fa-check-circle mr-2"></i>ACCEPTER ET PAYER L\'ACOMPTE (' + quote.pricing.deposit_amount + '\u20ac)';
-            }
         }
 
         // Notes
@@ -359,10 +375,8 @@
 
         // Validite
         var validityEl = document.getElementById('quoteValidity');
-        if (validityEl) {
-            var createdDate = new Date(quote.created_at);
-            var validDays = quote.validity_days || 30;
-            var expiryDate = new Date(createdDate.getTime() + validDays * 24 * 60 * 60 * 1000);
+        if (validityEl && quote.expiry_date) {
+            var expiryDate = new Date(quote.expiry_date);
             var now = new Date();
             var daysLeft = Math.ceil((expiryDate - now) / (24 * 60 * 60 * 1000));
 
@@ -370,19 +384,46 @@
                 validityEl.textContent = 'Ce devis est valable jusqu\'au ' + expiryDate.toLocaleDateString('fr-FR') + ' (' + daysLeft + ' jour' + (daysLeft > 1 ? 's' : '') + ' restant' + (daysLeft > 1 ? 's' : '') + ')';
             } else {
                 validityEl.textContent = 'Ce devis a expire le ' + expiryDate.toLocaleDateString('fr-FR');
-                // Desactiver le bouton
-                var btn = document.getElementById('acceptBtn');
-                if (btn) {
-                    btn.disabled = true;
-                    btn.innerHTML = '<i class="fas fa-times-circle mr-2"></i>DEVIS EXPIRÉ';
-                }
             }
+        }
+
+        // Actions dynamiques
+        var actionsContainer = document.getElementById('actionsContainer');
+        if (actionsContainer) {
+            if (quote.deposit_paid) {
+                // Acompte deja paye
+                actionsContainer.innerHTML = '<div class="p-6 bg-[#d3f9d8] border-4 border-[#2b8a3e]">' +
+                    '<i class="fas fa-check-circle text-3xl text-[#2b8a3e] mb-2"></i>' +
+                    '<p class="font-black text-lg text-[#2b8a3e] uppercase">ACOMPTE REGLE</p>' +
+                    '<p class="font-bold text-sm opacity-70 mt-2">Votre prestation est en cours de preparation.</p>' +
+                    '</div>' +
+                    '<div class="mt-6">' +
+                    '<a href="dashboard.html" class="neo-btn-yellow px-8 py-4 text-lg uppercase inline-block">' +
+                    '<i class="fas fa-home mr-2"></i>MON ESPACE CLIENT</a></div>';
+            } else if (quote.status === 'ACCEPTED') {
+                // Accepte mais acompte pas encore paye
+                actionsContainer.innerHTML = '<button id="payBtn" onclick="payDeposit()" class="neo-btn-yellow px-8 md:px-12 py-4 md:py-6 text-lg md:text-2xl font-black italic uppercase tracking-tighter w-full">' +
+                    '<i class="fas fa-credit-card mr-2"></i>PAYER L\'ACOMPTE (' + (quote.pricing ? quote.pricing.deposit_amount : '') + '\u20ac)</button>' +
+                    '<p class="text-xs font-bold opacity-50 mt-4">Vous serez redirige vers notre plateforme de paiement securise SumUp.</p>';
+            } else if (quote.status === 'SENT_TO_CLIENT') {
+                // Pas encore accepte
+                actionsContainer.innerHTML = '<button id="acceptBtn" onclick="acceptAndPay()" class="neo-btn-yellow px-8 md:px-12 py-4 md:py-6 text-lg md:text-2xl font-black italic uppercase tracking-tighter w-full">' +
+                    '<i class="fas fa-check-circle mr-2"></i>ACCEPTER ET PAYER L\'ACOMPTE (' + (quote.pricing ? quote.pricing.deposit_amount : '') + '\u20ac)</button>' +
+                    '<p class="text-xs font-bold opacity-50 mt-4">En acceptant, vous serez redirige vers notre plateforme de paiement securise SumUp.</p>';
+            }
+        }
+
+        // PDF
+        if (quote.pdf_url) {
+            var pdfSection = document.getElementById('pdfSection');
+            var pdfLink = document.getElementById('pdfLink');
+            if (pdfSection) pdfSection.style.display = 'block';
+            if (pdfLink) pdfLink.href = quote.pdf_url;
         }
     }
 
-    async function acceptQuote() {
+    async function acceptAndPay() {
         if (!currentToken) return;
-
         var btn = document.getElementById('acceptBtn');
         if (btn) {
             btn.disabled = true;
@@ -390,56 +431,33 @@
         }
 
         try {
+            var authToken = (typeof getAuthToken === 'function') ? getAuthToken() : localStorage.getItem('fa_genesis_token');
+
             var response = await fetch(API_URL + '/api/quotes/accept', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + authToken
+                },
                 body: JSON.stringify({ token: currentToken })
             });
 
             var result = await response.json();
 
-            if (!response.ok || !result.success) {
+            if (result.success && result.checkout_url) {
+                window.location.href = result.checkout_url;
+            } else if (result.success) {
+                // Recharger la page pour afficher le nouveau statut
+                window.location.reload();
+            } else {
                 alert('Erreur : ' + (result.error || 'Impossible d\'accepter le devis'));
                 if (btn) {
                     btn.disabled = false;
                     btn.innerHTML = '<i class="fas fa-check-circle mr-2"></i>ACCEPTER ET PAYER L\'ACOMPTE';
                 }
-                return;
             }
-
-            // Succes - afficher l'etat accepte
-            var display = document.getElementById('quoteDisplay');
-            var accepted = document.getElementById('acceptedState');
-            if (display) display.style.display = 'none';
-            if (accepted) accepted.style.display = 'block';
-
-            // Afficher les credentials si nouveau compte
-            if (result.user_created && result.credentials) {
-                var credSection = document.getElementById('credentialsSection');
-                var credEmailEl = document.getElementById('credEmail');
-                var credPwdEl = document.getElementById('credPassword');
-                if (credSection) credSection.style.display = 'block';
-                if (credEmailEl) credEmailEl.textContent = result.credentials.email || '';
-                if (credPwdEl) credPwdEl.textContent = result.credentials.password || '';
-            }
-
-            // Rediriger vers SumUp checkout
-            if (result.checkout_url) {
-                var linkEl = document.getElementById('checkoutLink');
-                if (linkEl) linkEl.href = result.checkout_url;
-
-                setTimeout(function() {
-                    window.location.href = result.checkout_url;
-                }, 3000);
-            } else {
-                var redirectSection = document.getElementById('redirectSection');
-                if (redirectSection) {
-                    redirectSection.innerHTML = '<p class="font-bold text-[#51cf66]"><i class="fas fa-check mr-2"></i>Devis accepte ! Connectez-vous a votre <a href="login.html" class="text-[var(--genesis-yellow)] underline">espace client</a> pour suivre votre projet.</p>';
-                }
-            }
-
         } catch (error) {
-            console.error('[QUOTE-ACCEPT] Erreur acceptation:', error);
+            console.error('[QUOTE-VIEW] Erreur acceptation:', error);
             alert('Erreur de connexion au serveur. Veuillez reessayer.');
             if (btn) {
                 btn.disabled = false;
@@ -448,11 +466,54 @@
         }
     }
 
+    async function payDeposit() {
+        var btn = document.getElementById('payBtn');
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>CREATION DU PAIEMENT...';
+        }
+
+        try {
+            var authToken = (typeof getAuthToken === 'function') ? getAuthToken() : localStorage.getItem('fa_genesis_token');
+
+            // Re-appeler accept (idempotent) pour obtenir un nouveau checkout URL
+            var response = await fetch(API_URL + '/api/quotes/accept', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + authToken
+                },
+                body: JSON.stringify({ token: currentToken })
+            });
+
+            var result = await response.json();
+
+            if (result.success && result.checkout_url) {
+                window.location.href = result.checkout_url;
+            } else if (result.success && result.deposit_paid) {
+                window.location.reload();
+            } else {
+                alert('Erreur : ' + (result.error || 'Impossible de creer le paiement'));
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-credit-card mr-2"></i>PAYER L\'ACOMPTE';
+                }
+            }
+        } catch (error) {
+            console.error('[QUOTE-VIEW] Erreur paiement:', error);
+            alert('Erreur de connexion. Veuillez reessayer.');
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-credit-card mr-2"></i>PAYER L\'ACOMPTE';
+            }
+        }
+    }
+
     function showError(title, message) {
         var loading = document.getElementById('loadingState');
         var errorState = document.getElementById('errorState');
         var titleEl = document.getElementById('errorTitle');
-        var msgEl = document.getElementById('errorMessage');
+        var msgEl = document.getElementById('errorMsg');
 
         if (loading) loading.style.display = 'none';
         if (errorState) errorState.style.display = 'block';

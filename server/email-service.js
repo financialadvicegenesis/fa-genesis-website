@@ -969,7 +969,7 @@ async function sendQuoteToClient(quote) {
         }
 
         var frontUrl = process.env.FRONT_URL || 'https://fagenesis.com';
-        var acceptUrl = frontUrl + '/quote-accept.html?token=' + quote.acceptance_token;
+        var acceptUrl = frontUrl + '/login.html?quote_token=' + quote.acceptance_token;
 
         var serviceLabels = { photo: 'Photo', video: 'Vidéo', media: 'Média', marketing: 'Marketing', other: 'Prestation sur mesure' };
         var serviceLabel = serviceLabels[quote.service_type] || 'Prestation sur mesure';
@@ -1057,8 +1057,9 @@ async function sendQuoteToClient(quote) {
             </div>
 
             <p style="color: #999; font-size: 12px; text-align: center;">
-                En acceptant ce devis, un acompte de ${quote.pricing.deposit_amount.toFixed(2)} € (30%) sera requis pour démarrer la prestation.<br>
-                Le solde de ${quote.pricing.balance_amount.toFixed(2)} € (70%) sera dû à la livraison.
+                En cliquant sur le bouton, vous serez invite a creer votre compte ou vous connecter.<br>
+                Un acompte de ${quote.pricing.deposit_amount.toFixed(2)} € (30%) sera ensuite requis pour demarrer la prestation.<br>
+                Le solde de ${quote.pricing.balance_amount.toFixed(2)} € (70%) sera du a la livraison.
             </p>
         `;
 
