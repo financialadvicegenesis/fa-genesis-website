@@ -161,6 +161,10 @@
                     <i class="fas fa-user w-5"></i>
                     <span>Mon Compte</span>
                 </a>
+                <a href="#faq" class="sidebar-link" data-section="faq">
+                    <i class="fas fa-question-circle w-5"></i>
+                    <span>FAQ</span>
+                </a>
             </nav>
 
             <div class="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-800">
@@ -421,6 +425,210 @@
                         </button>
                     </div>
                 </section>
+
+                <!-- Section: FAQ -->
+                <section id="sectionFaq" class="section-content hidden">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-3xl font-black uppercase">
+                            <i class="fas fa-question-circle mr-3 text-[var(--genesis-yellow)]"></i>
+                            FAQ
+                        </h2>
+                        <button onclick="showSection('dashboard')" class="text-gray-600 hover:text-black font-bold">
+                            <i class="fas fa-arrow-left mr-2"></i> Retour
+                        </button>
+                    </div>
+
+                    <!-- General -->
+                    <div class="mb-6">
+                        <h3 class="text-lg font-black uppercase mb-3"><i class="fas fa-info-circle mr-2 text-[var(--genesis-yellow)]"></i>Informations Générales</h3>
+                        <div class="card p-4 mb-2 cursor-pointer" onclick="toggleFaqClient(this)">
+                            <div class="flex justify-between items-center">
+                                <span class="font-black text-sm">Qu'est-ce que FA Genesis ?</span>
+                                <i class="fas fa-chevron-down text-xs transition-transform"></i>
+                            </div>
+                            <div class="faq-answer-client" style="display:none; margin-top:0.75rem; padding-top:0.75rem; border-top:2px solid #eee;">
+                                <p class="text-sm text-gray-700">Financial Advice Genesis accompagne les étudiants et les entrepreneurs débutants à transformer une idée en un projet structuré, crédible et visible. Nous aidons à clarifier la vision, structurer le projet et gagner en visibilité, le tout à un coût accessible.</p>
+                            </div>
+                        </div>
+                        <div class="card p-4 mb-2 cursor-pointer" onclick="toggleFaqClient(this)">
+                            <div class="flex justify-between items-center">
+                                <span class="font-black text-sm">À qui s'adressent les accompagnements ?</span>
+                                <i class="fas fa-chevron-down text-xs transition-transform"></i>
+                            </div>
+                            <div class="faq-answer-client" style="display:none; margin-top:0.75rem; padding-top:0.75rem; border-top:2px solid #eee;">
+                                <p class="text-sm text-gray-700">Nos accompagnements s'adressent aux étudiants, aux porteurs de projets, aux jeunes entrepreneurs, aux particuliers et aux entreprises. Que vous ayez déjà un projet ou juste une idée, nous pouvons vous aider.</p>
+                            </div>
+                        </div>
+                        <div class="card p-4 mb-2 cursor-pointer" onclick="toggleFaqClient(this)">
+                            <div class="flex justify-between items-center">
+                                <span class="font-black text-sm">Comment fonctionne l'accompagnement ?</span>
+                                <i class="fas fa-chevron-down text-xs transition-transform"></i>
+                            </div>
+                            <div class="faq-answer-client" style="display:none; margin-top:0.75rem; padding-top:0.75rem; border-top:2px solid #eee;">
+                                <p class="text-sm text-gray-700">L'accompagnement se déroule en plusieurs étapes : 1) Clarification de l'idée, 2) Structuration du projet, 3) Visibilité (photo, vidéo, média selon l'offre), 4) Plan d'action concret. Chaque accompagnement est simple, progressif et sans pression.</p>
+                            </div>
+                        </div>
+                        <div class="card p-4 mb-2 cursor-pointer" onclick="toggleFaqClient(this)">
+                            <div class="flex justify-between items-center">
+                                <span class="font-black text-sm">Comment contacter l'équipe ?</span>
+                                <i class="fas fa-chevron-down text-xs transition-transform"></i>
+                            </div>
+                            <div class="faq-answer-client" style="display:none; margin-top:0.75rem; padding-top:0.75rem; border-top:2px solid #eee;">
+                                <p class="text-sm text-gray-700">Par e-mail : financialadvicegenesis@gmail.com, par téléphone : +33 7 64 16 36 09, ou via le formulaire de contact. Horaires : du lundi au vendredi, de 9h à 18h.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Offres & Tarifs -->
+                    <div class="mb-6">
+                        <h3 class="text-lg font-black uppercase mb-3"><i class="fas fa-tags mr-2 text-[var(--genesis-yellow)]"></i>Offres & Tarifs</h3>
+                        <div class="card p-4 mb-2 cursor-pointer" onclick="toggleFaqClient(this)">
+                            <div class="flex justify-between items-center">
+                                <span class="font-black text-sm">Quelles sont les offres proposées ?</span>
+                                <i class="fas fa-chevron-down text-xs transition-transform"></i>
+                            </div>
+                            <div class="faq-answer-client" style="display:none; margin-top:0.75rem; padding-top:0.75rem; border-top:2px solid #eee;">
+                                <p class="text-sm text-gray-700">
+                                    <strong>Étudiants :</strong> de 50 € (IDEA, 2 jours) à 290 € (IMPACT, 1 mois)<br>
+                                    <strong>Particuliers :</strong> de 149 € (IDEA, 2 jours) à 1 490 € (IMPACT, 1 mois)<br>
+                                    <strong>Entreprises :</strong> de 1 490 € (START, 7 jours) à 4 900 € (IMPACT, 30 jours)<br>
+                                    <strong>Prestations individuelles :</strong> Photo et Vidéo sur devis, Marketing à partir de 120 €, Média à partir de 223 €<br>
+                                    Chaque catégorie propose aussi des offres sur mesure (CUSTOM).
+                                </p>
+                            </div>
+                        </div>
+                        <div class="card p-4 mb-2 cursor-pointer" onclick="toggleFaqClient(this)">
+                            <div class="flex justify-between items-center">
+                                <span class="font-black text-sm">Quelle offre choisir ?</span>
+                                <i class="fas fa-chevron-down text-xs transition-transform"></i>
+                            </div>
+                            <div class="faq-answer-client" style="display:none; margin-top:0.75rem; padding-top:0.75rem; border-top:2px solid #eee;">
+                                <p class="text-sm text-gray-700">Le choix dépend de vos besoins :<br>
+                                    - Vous avez une idée à clarifier ? <strong>IDEA</strong> (2 jours)<br>
+                                    - Vous voulez structurer un projet ? <strong>STARTER</strong> (7 jours)<br>
+                                    - Vous souhaitez aussi de la visibilité ? <strong>LAUNCH</strong> (14 jours)<br>
+                                    - Vous voulez un accompagnement complet ? <strong>IMPACT</strong> (1 mois)<br>
+                                    Si vous hésitez, contactez notre équipe pour être orienté.
+                                </p>
+                            </div>
+                        </div>
+                        <div class="card p-4 mb-2 cursor-pointer" onclick="toggleFaqClient(this)">
+                            <div class="flex justify-between items-center">
+                                <span class="font-black text-sm">Qu'est-ce qui est inclus dans chaque offre ?</span>
+                                <i class="fas fa-chevron-down text-xs transition-transform"></i>
+                            </div>
+                            <div class="faq-answer-client" style="display:none; margin-top:0.75rem; padding-top:0.75rem; border-top:2px solid #eee;">
+                                <p class="text-sm text-gray-700">En général :<br>
+                                    <strong>IDEA :</strong> 1 séance stratégique + structuration + plan d'action<br>
+                                    <strong>STARTER :</strong> séance complète + structuration + conseils visibilité<br>
+                                    <strong>LAUNCH :</strong> stratégie + tournage vidéo + accès média + plan de diffusion<br>
+                                    <strong>IMPACT :</strong> tout ce qui précède + shooting photo + accompagnement complet<br>
+                                    Consultez la page offres pour le détail précis.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Paiement -->
+                    <div class="mb-6">
+                        <h3 class="text-lg font-black uppercase mb-3"><i class="fas fa-credit-card mr-2 text-[var(--genesis-yellow)]"></i>Paiement</h3>
+                        <div class="card p-4 mb-2 cursor-pointer" onclick="toggleFaqClient(this)">
+                            <div class="flex justify-between items-center">
+                                <span class="font-black text-sm">Comment fonctionne le paiement ?</span>
+                                <i class="fas fa-chevron-down text-xs transition-transform"></i>
+                            </div>
+                            <div class="faq-answer-client" style="display:none; margin-top:0.75rem; padding-top:0.75rem; border-top:2px solid #eee;">
+                                <p class="text-sm text-gray-700">Le paiement se fait en deux étapes : un acompte de 30% au démarrage, puis le solde de 70% à la fin de l'accompagnement. Le paiement s'effectue par carte bancaire via SumUp, de manière sécurisée.</p>
+                            </div>
+                        </div>
+                        <div class="card p-4 mb-2 cursor-pointer" onclick="toggleFaqClient(this)">
+                            <div class="flex justify-between items-center">
+                                <span class="font-black text-sm">Peut-on payer en plusieurs fois ?</span>
+                                <i class="fas fa-chevron-down text-xs transition-transform"></i>
+                            </div>
+                            <div class="faq-answer-client" style="display:none; margin-top:0.75rem; padding-top:0.75rem; border-top:2px solid #eee;">
+                                <p class="text-sm text-gray-700">Oui ! Le paiement en plusieurs fois est possible :<br>
+                                    <strong>Étudiants :</strong> jusqu'à 2x (IDEA), 4x (STARTER), 6x (LAUNCH) ou 8x (IMPACT)<br>
+                                    <strong>Particuliers :</strong> jusqu'à 2x (STARTER, LAUNCH, IMPACT)<br>
+                                    <strong>Entreprises et Custom :</strong> facilités de paiement négociables
+                                </p>
+                            </div>
+                        </div>
+                        <div class="card p-4 mb-2 cursor-pointer" onclick="toggleFaqClient(this)">
+                            <div class="flex justify-between items-center">
+                                <span class="font-black text-sm">Le paiement est-il sécurisé ?</span>
+                                <i class="fas fa-chevron-down text-xs transition-transform"></i>
+                            </div>
+                            <div class="faq-answer-client" style="display:none; margin-top:0.75rem; padding-top:0.75rem; border-top:2px solid #eee;">
+                                <p class="text-sm text-gray-700">Oui, les paiements sont traités via SumUp, une plateforme certifiée et sécurisée. Vos données bancaires ne sont jamais stockées sur nos serveurs. FA Genesis est une entreprise enregistrée et légitime.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Espace Client -->
+                    <div class="mb-6">
+                        <h3 class="text-lg font-black uppercase mb-3"><i class="fas fa-laptop mr-2 text-[var(--genesis-yellow)]"></i>Espace Client</h3>
+                        <div class="card p-4 mb-2 cursor-pointer" onclick="toggleFaqClient(this)">
+                            <div class="flex justify-between items-center">
+                                <span class="font-black text-sm">Comment accéder à mes livrables ?</span>
+                                <i class="fas fa-chevron-down text-xs transition-transform"></i>
+                            </div>
+                            <div class="faq-answer-client" style="display:none; margin-top:0.75rem; padding-top:0.75rem; border-top:2px solid #eee;">
+                                <p class="text-sm text-gray-700">Vos livrables sont accessibles depuis la section "Mes Livrables" de votre espace client. Les documents d'accueil sont disponibles dès le paiement de l'acompte. Les livrables finaux (photos, vidéos, etc.) sont disponibles au téléchargement une fois le solde réglé.</p>
+                            </div>
+                        </div>
+                        <div class="card p-4 mb-2 cursor-pointer" onclick="toggleFaqClient(this)">
+                            <div class="flex justify-between items-center">
+                                <span class="font-black text-sm">Que se passe-t-il après l'accompagnement ?</span>
+                                <i class="fas fa-chevron-down text-xs transition-transform"></i>
+                            </div>
+                            <div class="faq-answer-client" style="display:none; margin-top:0.75rem; padding-top:0.75rem; border-top:2px solid #eee;">
+                                <p class="text-sm text-gray-700">Vous conservez tous vos livrables (photos, vidéos, documents, plan d'action). Vous pouvez également souscrire à une nouvelle offre si vous souhaitez continuer à être accompagné. Notre équipe reste disponible pour répondre à vos questions.</p>
+                            </div>
+                        </div>
+                        <div class="card p-4 mb-2 cursor-pointer" onclick="toggleFaqClient(this)">
+                            <div class="flex justify-between items-center">
+                                <span class="font-black text-sm">J'ai un problème technique, que faire ?</span>
+                                <i class="fas fa-chevron-down text-xs transition-transform"></i>
+                            </div>
+                            <div class="faq-answer-client" style="display:none; margin-top:0.75rem; padding-top:0.75rem; border-top:2px solid #eee;">
+                                <p class="text-sm text-gray-700">Essayez de rafraîchir la page avec Ctrl+Maj+R (ou Cmd+Maj+R sur Mac). Le serveur peut mettre jusqu'à 60 secondes pour démarrer. Si le problème persiste, contactez notre équipe à financialadvicegenesis@gmail.com en décrivant le souci rencontré.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Accompagnement -->
+                    <div class="mb-6">
+                        <h3 class="text-lg font-black uppercase mb-3"><i class="fas fa-rocket mr-2 text-[var(--genesis-yellow)]"></i>Accompagnement</h3>
+                        <div class="card p-4 mb-2 cursor-pointer" onclick="toggleFaqClient(this)">
+                            <div class="flex justify-between items-center">
+                                <span class="font-black text-sm">Que dois-je préparer avant la séance ?</span>
+                                <i class="fas fa-chevron-down text-xs transition-transform"></i>
+                            </div>
+                            <div class="faq-answer-client" style="display:none; margin-top:0.75rem; padding-top:0.75rem; border-top:2px solid #eee;">
+                                <p class="text-sm text-gray-700">Préparez une description de votre idée ou projet (même brève), vos objectifs principaux, votre cible / public visé (si vous le savez), et vos questions. Pas de panique si vous n'avez pas tout : la séance stratégique sert justement à clarifier tout cela ensemble.</p>
+                            </div>
+                        </div>
+                        <div class="card p-4 mb-2 cursor-pointer" onclick="toggleFaqClient(this)">
+                            <div class="flex justify-between items-center">
+                                <span class="font-black text-sm">Combien de temps dure l'accompagnement ?</span>
+                                <i class="fas fa-chevron-down text-xs transition-transform"></i>
+                            </div>
+                            <div class="faq-answer-client" style="display:none; margin-top:0.75rem; padding-top:0.75rem; border-top:2px solid #eee;">
+                                <p class="text-sm text-gray-700">La durée dépend de l'offre : IDEA (2 jours), STARTER (7 jours), LAUNCH (14 jours), IMPACT (1 mois), CUSTOM (variable). Chaque offre est conçue pour aller à l'essentiel dans le temps imparti.</p>
+                            </div>
+                        </div>
+                        <div class="card p-4 mb-2 cursor-pointer" onclick="toggleFaqClient(this)">
+                            <div class="flex justify-between items-center">
+                                <span class="font-black text-sm">Les séances se font en visioconférence ?</span>
+                                <i class="fas fa-chevron-down text-xs transition-transform"></i>
+                            </div>
+                            <div class="faq-answer-client" style="display:none; margin-top:0.75rem; padding-top:0.75rem; border-top:2px solid #eee;">
+                                <p class="text-sm text-gray-700">Oui, toutes nos séances stratégiques et consultations se font en visioconférence. Cela vous permet d'en bénéficier où que vous soyez. Le lien de connexion vous est envoyé avant chaque séance.</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
             </div>
         </main>
     </div>
@@ -624,6 +832,19 @@
                     link.classList.add('active');
                 }
             });
+        }
+
+        function toggleFaqClient(item) {
+            var answer = item.querySelector('.faq-answer-client');
+            var icon = item.querySelector('.fa-chevron-down');
+            if (!answer) return;
+            if (answer.style.display === 'none') {
+                answer.style.display = 'block';
+                if (icon) icon.style.transform = 'rotate(180deg)';
+            } else {
+                answer.style.display = 'none';
+                if (icon) icon.style.transform = 'rotate(0deg)';
+            }
         }
 
         // ============================================================
