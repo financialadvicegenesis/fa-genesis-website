@@ -164,11 +164,11 @@
             <!-- Bloc reactivation compte desactive -->
             <div id="reactivateBlock" class="mt-6 p-6 bg-white text-black border-4 border-black text-center" style="display: none;">
                 <i class="fas fa-pause-circle text-3xl text-[#ffd43b] mb-3"></i>
-                <h3 class="text-lg font-black uppercase mb-2">Compte desactive</h3>
-                <p class="font-bold text-sm mb-4 opacity-70">Votre compte est temporairement suspendu. Vos donnees sont conservees.</p>
+                <h3 class="text-lg font-black uppercase mb-2">Compte désactivé</h3>
+                <p class="font-bold text-sm mb-4 opacity-70">Votre compte est temporairement suspendu. Vos données sont conservées.</p>
                 <div id="reactivateMessage" style="display:none; padding:8px; margin-bottom:12px; font-weight:700; font-size:13px;"></div>
                 <button onclick="reactivateAccount()" id="reactivateBtn" class="w-full py-3 bg-[var(--genesis-yellow)] text-black border-4 border-black font-black uppercase text-sm" style="box-shadow:4px 4px 0px black;">
-                    <i class="fas fa-play-circle mr-2"></i>Reactiver mon compte
+                    <i class="fas fa-play-circle mr-2"></i>Réactiver mon compte
                 </button>
             </div>
         </div>
@@ -225,7 +225,7 @@
                     var offreMessage = document.getElementById('offreMessage');
                     var offreText = document.getElementById('offreText');
                     if (offreMessage && offreText) {
-                        offreText.innerHTML = '<i class="fas fa-file-invoice mr-2"></i>Pour accepter votre devis, veuillez vous connecter ou creer votre compte. Vous pourrez ensuite payer l\'acompte de 30%.';
+                        offreText.innerHTML = '<i class="fas fa-file-invoice mr-2"></i>Pour accepter votre devis, veuillez vous connecter ou créer votre compte. Vous pourrez ensuite payer l\'acompte de 30%.';
                         offreMessage.style.display = 'block';
                     }
                     // Mettre a jour le lien d'inscription
@@ -246,9 +246,9 @@
                         var offreText2 = document.getElementById('offreText');
 
                         if (selectedOffer.prixTotal > 0) {
-                            offreText2.innerHTML = 'Offre selectionnee: <strong>' + selectedOffer.nom + '</strong> (' + selectedOffer.prixTotal + '\u20ac)';
+                            offreText2.innerHTML = 'Offre sélectionnée : <strong>' + selectedOffer.nom + '</strong> (' + selectedOffer.prixTotal + '\u20ac)';
                         } else {
-                            offreText2.innerHTML = 'Offre selectionnee: <strong>' + selectedOffer.nom + '</strong> (Sur mesure)';
+                            offreText2.innerHTML = 'Offre sélectionnée : <strong>' + selectedOffer.nom + '</strong> (Sur mesure)';
                         }
                         if (offreMessage2) offreMessage2.style.display = 'block';
 
@@ -326,7 +326,7 @@
             }
 
             btn.disabled = true;
-            btn.textContent = 'Reactivation...';
+            btn.textContent = 'Réactivation...';
 
             try {
                 var response = await fetch(API_BASE_URL + '/api/auth/reactivate-account', {
@@ -341,7 +341,7 @@
                     msgDiv.style.display = 'block';
                     msgDiv.style.background = '#d3f9d8';
                     msgDiv.style.color = '#2b8a3e';
-                    msgDiv.textContent = 'Compte reactive ! Connexion en cours...';
+                    msgDiv.textContent = 'Compte réactivé ! Connexion en cours...';
 
                     // Re-tenter le login automatiquement
                     setTimeout(async function() {
@@ -349,18 +349,18 @@
                         if (loginResult.success) {
                             window.location.href = 'dashboard.html';
                         } else {
-                            msgDiv.textContent = 'Compte reactive. Veuillez vous reconnecter.';
+                            msgDiv.textContent = 'Compte réactivé. Veuillez vous reconnecter.';
                             btn.disabled = false;
-                            btn.textContent = 'Reactiver mon compte';
+                            btn.textContent = 'Réactiver mon compte';
                         }
                     }, 1000);
                 } else {
                     msgDiv.style.display = 'block';
                     msgDiv.style.background = '#fff5f5';
                     msgDiv.style.color = '#c92a2a';
-                    msgDiv.textContent = data.error || 'Erreur lors de la reactivation';
+                    msgDiv.textContent = data.error || 'Erreur lors de la réactivation';
                     btn.disabled = false;
-                    btn.textContent = 'Reactiver mon compte';
+                    btn.textContent = 'Réactiver mon compte';
                 }
             } catch (error) {
                 msgDiv.style.display = 'block';
@@ -368,7 +368,7 @@
                 msgDiv.style.color = '#c92a2a';
                 msgDiv.textContent = 'Erreur de connexion au serveur';
                 btn.disabled = false;
-                btn.textContent = 'Reactiver mon compte';
+                btn.textContent = 'Réactiver mon compte';
             }
         }
 
@@ -420,7 +420,7 @@
                 console.error('[LOGIN] Erreur acceptation devis:', err);
                 var errorMessage = document.getElementById('errorMessage');
                 if (errorMessage) {
-                    errorMessage.textContent = 'Erreur de connexion au serveur. Veuillez reessayer.';
+                    errorMessage.textContent = 'Erreur de connexion au serveur. Veuillez réessayer.';
                     errorMessage.classList.add('show');
                 }
                 var submitBtn = document.querySelector('button[type="submit"]');

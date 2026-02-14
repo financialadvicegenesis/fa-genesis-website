@@ -340,7 +340,7 @@
                     // Afficher bandeau d'information
                     var successMessage = document.getElementById('successMessage');
                     if (successMessage) {
-                        successMessage.innerHTML = '<i class="fas fa-file-invoice mr-2"></i><strong>Acceptation de devis</strong><br>Creez votre compte pour accepter votre devis personnalise et payer l\'acompte de 30%.';
+                        successMessage.innerHTML = '<i class="fas fa-file-invoice mr-2"></i><strong>Acceptation de devis</strong><br>Créez votre compte pour accepter votre devis personnalisé et payer l\'acompte de 30%.';
                         successMessage.classList.add('show');
                     }
 
@@ -387,9 +387,9 @@
                         if (selectedOffer) {
                             var successMessage2 = document.getElementById('successMessage');
                             if (selectedOffer.prixTotal > 0) {
-                                successMessage2.innerHTML = '<strong><i class="fas fa-check-circle mr-2"></i>Offre selectionnee :</strong> ' + selectedOffer.nom + '<br><strong>Prix :</strong> ' + selectedOffer.prixTotal + '\u20ac (Acompte: ' + selectedOffer.acompte + '\u20ac)';
+                                successMessage2.innerHTML = '<strong><i class="fas fa-check-circle mr-2"></i>Offre sélectionnée :</strong> ' + selectedOffer.nom + '<br><strong>Prix :</strong> ' + selectedOffer.prixTotal + '\u20ac (Acompte: ' + selectedOffer.acompte + '\u20ac)';
                             } else {
-                                successMessage2.innerHTML = '<strong><i class="fas fa-check-circle mr-2"></i>Offre selectionnee :</strong> ' + selectedOffer.nom + '<br>Offre sur mesure - Devis personnalise';
+                                successMessage2.innerHTML = '<strong><i class="fas fa-check-circle mr-2"></i>Offre sélectionnée :</strong> ' + selectedOffer.nom + '<br>Offre sur mesure - Devis personnalisé';
                             }
                             successMessage2.classList.add('show');
                         }
@@ -485,7 +485,7 @@
                 return;
             }
 
-            console.log('Nouvel utilisateur cree:', result.user);
+            console.log('Nouvel utilisateur créé:', result.user);
 
             // Mettre a jour la session locale
             var sessionData = null;
@@ -500,7 +500,7 @@
 
             // --- Mode DEVIS : accepter le devis apres inscription ---
             if (quoteTokenParam) {
-                successMessage.innerHTML = '<strong>Compte cree avec succes !</strong><br><br>Acceptation de votre devis en cours...';
+                successMessage.innerHTML = '<strong>Compte créé avec succès !</strong><br><br>Acceptation de votre devis en cours...';
                 successMessage.classList.add('show');
                 document.getElementById('registerForm').reset();
 
@@ -521,12 +521,12 @@
                     var acceptResult = await acceptResponse.json();
 
                     if (acceptResult.success && acceptResult.checkout_url) {
-                        successMessage.innerHTML = '<strong>Compte cree et devis accepte !</strong><br><br>Redirection vers le paiement de l\'acompte...';
+                        successMessage.innerHTML = '<strong>Compte créé et devis accepté !</strong><br><br>Redirection vers le paiement de l\'acompte...';
                         setTimeout(function() {
                             window.location.href = acceptResult.checkout_url;
                         }, 2000);
                     } else if (acceptResult.success) {
-                        successMessage.innerHTML = '<strong>Compte cree et devis accepte !</strong><br><br>Redirection vers votre espace client...';
+                        successMessage.innerHTML = '<strong>Compte créé et devis accepté !</strong><br><br>Redirection vers votre espace client...';
                         setTimeout(function() {
                             window.location.href = 'quote-accept.html?token=' + encodeURIComponent(quoteTokenParam);
                         }, 2000);
@@ -536,7 +536,7 @@
                     }
                 } catch (acceptErr) {
                     console.error('[REGISTER] Erreur acceptation devis:', acceptErr);
-                    errorMessage.textContent = 'Compte cree mais erreur lors de l\'acceptation du devis. Vous pouvez reessayer depuis votre espace client.';
+                    errorMessage.textContent = 'Compte créé mais erreur lors de l\'acceptation du devis. Vous pouvez réessayer depuis votre espace client.';
                     errorMessage.classList.add('show');
                     setTimeout(function() { window.location.href = 'dashboard.html'; }, 3000);
                 }
@@ -545,18 +545,18 @@
 
             // --- Mode OFFRE standard ---
             if (selectedOffer && selectedOffer.prixTotal > 0) {
-                successMessage.innerHTML = '<strong>Compte cree avec succes !</strong><br><br>' +
-                    '<strong>Offre selectionnee :</strong> ' + selectedOffer.nom + '<br>' +
+                successMessage.innerHTML = '<strong>Compte créé avec succès !</strong><br><br>' +
+                    '<strong>Offre sélectionnée :</strong> ' + selectedOffer.nom + '<br>' +
                     '<strong>Prix total :</strong> ' + selectedOffer.prixTotal + ' \u20ac<br>' +
                     '<strong>Acompte (30%) :</strong> ' + selectedOffer.acompte + ' \u20ac<br><br>' +
-                    '<strong>Etape suivante :</strong> Reglement de l\'acompte pour confirmer votre inscription.<br>' +
+                    '<strong>Étape suivante :</strong> Règlement de l\'acompte pour confirmer votre inscription.<br>' +
                     'Redirection vers la page de paiement...';
                 successMessage.classList.add('show');
                 document.getElementById('registerForm').reset();
                 setTimeout(function() { window.location.href = 'payment.html'; }, 3000);
             } else {
-                successMessage.innerHTML = '<strong>Compte cree avec succes !</strong><br><br>' +
-                    'Vous avez selectionne une offre sur mesure. Nous vous contacterons pour etablir un devis personnalise.<br><br>' +
+                successMessage.innerHTML = '<strong>Compte créé avec succès !</strong><br><br>' +
+                    'Vous avez sélectionné une offre sur mesure. Nous vous contacterons pour établir un devis personnalisé.<br><br>' +
                     'Redirection vers votre espace client...';
                 successMessage.classList.add('show');
                 document.getElementById('registerForm').reset();

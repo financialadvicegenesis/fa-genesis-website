@@ -1057,9 +1057,9 @@ async function sendQuoteToClient(quote) {
             </div>
 
             <p style="color: #999; font-size: 12px; text-align: center;">
-                En cliquant sur le bouton, vous serez invite a creer votre compte ou vous connecter.<br>
-                Un acompte de ${quote.pricing.deposit_amount.toFixed(2)} € (30%) sera ensuite requis pour demarrer la prestation.<br>
-                Le solde de ${quote.pricing.balance_amount.toFixed(2)} € (70%) sera du a la livraison.
+                En cliquant sur le bouton, vous serez invité à créer votre compte ou vous connecter.<br>
+                Un acompte de ${quote.pricing.deposit_amount.toFixed(2)} € (30%) sera ensuite requis pour démarrer la prestation.<br>
+                Le solde de ${quote.pricing.balance_amount.toFixed(2)} € (70%) sera dû à la livraison.
             </p>
         `;
 

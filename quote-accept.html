@@ -143,7 +143,7 @@
 
                 <!-- Infos client -->
                 <div class="mb-8">
-                    <p class="text-sm font-bold uppercase opacity-60 mb-1">Devis etabli pour :</p>
+                    <p class="text-sm font-bold uppercase opacity-60 mb-1">Devis établi pour :</p>
                     <p id="clientName" class="font-black text-xl"></p>
                     <p id="clientEmail" class="font-bold opacity-70"></p>
                 </div>
@@ -153,7 +153,7 @@
                     <thead>
                         <tr>
                             <th>Prestation</th>
-                            <th class="text-center">Qte</th>
+                            <th class="text-center">Qté</th>
                             <th class="text-right">Prix unit.</th>
                             <th class="text-right">Total</th>
                         </tr>
@@ -173,7 +173,7 @@
                         <span id="quoteDeposit" class="font-black text-lg text-[#51cf66]"></span>
                     </div>
                     <div class="flex justify-between items-center">
-                        <span class="font-bold opacity-70">Solde 70% (a la livraison)</span>
+                        <span class="font-bold opacity-70">Solde 70% (à la livraison)</span>
                         <span id="quoteBalance" class="font-black text-lg"></span>
                     </div>
                 </div>
@@ -201,7 +201,7 @@
             <!-- Telecharger PDF -->
             <div id="pdfSection" class="mt-6 text-center" style="display:none;">
                 <a id="pdfLink" href="#" target="_blank" class="neo-btn-white px-8 py-4 text-sm tracking-widest inline-block">
-                    <i class="fas fa-file-pdf mr-2"></i>TELECHARGER LE DEVIS (PDF)
+                    <i class="fas fa-file-pdf mr-2"></i>TÉLÉCHARGER LE DEVIS (PDF)
                 </a>
             </div>
         </div>
@@ -296,7 +296,7 @@
 
         } catch (error) {
             console.error('[QUOTE-VIEW] Erreur chargement:', error);
-            showError('ERREUR DE CONNEXION', 'Le serveur est temporairement indisponible. Veuillez reessayer dans quelques instants.');
+            showError('ERREUR DE CONNEXION', 'Le serveur est temporairement indisponible. Veuillez réessayer dans quelques instants.');
         }
     }
 
@@ -316,10 +316,10 @@
             var statusLabel = '';
             var statusClass = '';
             if (quote.deposit_paid) {
-                statusLabel = 'ACOMPTE PAYE';
+                statusLabel = 'ACOMPTE PAYÉ';
                 statusClass = 'status-deposit-paid';
             } else if (quote.status === 'ACCEPTED') {
-                statusLabel = 'ACCEPTE - ACOMPTE EN ATTENTE';
+                statusLabel = 'ACCEPTÉ - ACOMPTE EN ATTENTE';
                 statusClass = 'status-pending';
             } else if (quote.status === 'SENT_TO_CLIENT') {
                 statusLabel = 'EN ATTENTE D\'ACCEPTATION';
@@ -383,7 +383,7 @@
             if (daysLeft > 0) {
                 validityEl.textContent = 'Ce devis est valable jusqu\'au ' + expiryDate.toLocaleDateString('fr-FR') + ' (' + daysLeft + ' jour' + (daysLeft > 1 ? 's' : '') + ' restant' + (daysLeft > 1 ? 's' : '') + ')';
             } else {
-                validityEl.textContent = 'Ce devis a expire le ' + expiryDate.toLocaleDateString('fr-FR');
+                validityEl.textContent = 'Ce devis a expiré le ' + expiryDate.toLocaleDateString('fr-FR');
             }
         }
 
@@ -394,8 +394,8 @@
                 // Acompte deja paye
                 actionsContainer.innerHTML = '<div class="p-6 bg-[#d3f9d8] border-4 border-[#2b8a3e]">' +
                     '<i class="fas fa-check-circle text-3xl text-[#2b8a3e] mb-2"></i>' +
-                    '<p class="font-black text-lg text-[#2b8a3e] uppercase">ACOMPTE REGLE</p>' +
-                    '<p class="font-bold text-sm opacity-70 mt-2">Votre prestation est en cours de preparation.</p>' +
+                    '<p class="font-black text-lg text-[#2b8a3e] uppercase">ACOMPTE RÉGLÉ</p>' +
+                    '<p class="font-bold text-sm opacity-70 mt-2">Votre prestation est en cours de préparation.</p>' +
                     '</div>' +
                     '<div class="mt-6">' +
                     '<a href="dashboard.html" class="neo-btn-yellow px-8 py-4 text-lg uppercase inline-block">' +
@@ -404,12 +404,12 @@
                 // Accepte mais acompte pas encore paye
                 actionsContainer.innerHTML = '<button id="payBtn" onclick="payDeposit()" class="neo-btn-yellow px-8 md:px-12 py-4 md:py-6 text-lg md:text-2xl font-black italic uppercase tracking-tighter w-full">' +
                     '<i class="fas fa-credit-card mr-2"></i>PAYER L\'ACOMPTE (' + (quote.pricing ? quote.pricing.deposit_amount : '') + '\u20ac)</button>' +
-                    '<p class="text-xs font-bold opacity-50 mt-4">Vous serez redirige vers notre plateforme de paiement securise SumUp.</p>';
+                    '<p class="text-xs font-bold opacity-50 mt-4">Vous serez redirigé vers notre plateforme de paiement sécurisée SumUp.</p>';
             } else if (quote.status === 'SENT_TO_CLIENT') {
                 // Pas encore accepte
                 actionsContainer.innerHTML = '<button id="acceptBtn" onclick="acceptAndPay()" class="neo-btn-yellow px-8 md:px-12 py-4 md:py-6 text-lg md:text-2xl font-black italic uppercase tracking-tighter w-full">' +
                     '<i class="fas fa-check-circle mr-2"></i>ACCEPTER ET PAYER L\'ACOMPTE (' + (quote.pricing ? quote.pricing.deposit_amount : '') + '\u20ac)</button>' +
-                    '<p class="text-xs font-bold opacity-50 mt-4">En acceptant, vous serez redirige vers notre plateforme de paiement securise SumUp.</p>';
+                    '<p class="text-xs font-bold opacity-50 mt-4">En acceptant, vous serez redirigé vers notre plateforme de paiement sécurisée SumUp.</p>';
             }
         }
 
@@ -458,7 +458,7 @@
             }
         } catch (error) {
             console.error('[QUOTE-VIEW] Erreur acceptation:', error);
-            alert('Erreur de connexion au serveur. Veuillez reessayer.');
+            alert('Erreur de connexion au serveur. Veuillez réessayer.');
             if (btn) {
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fas fa-check-circle mr-2"></i>ACCEPTER ET PAYER L\'ACOMPTE';
@@ -470,7 +470,7 @@
         var btn = document.getElementById('payBtn');
         if (btn) {
             btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>CREATION DU PAIEMENT...';
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>CRÉATION DU PAIEMENT...';
         }
 
         try {
@@ -493,7 +493,7 @@
             } else if (result.success && result.deposit_paid) {
                 window.location.reload();
             } else {
-                alert('Erreur : ' + (result.error || 'Impossible de creer le paiement'));
+                alert('Erreur : ' + (result.error || 'Impossible de créer le paiement'));
                 if (btn) {
                     btn.disabled = false;
                     btn.innerHTML = '<i class="fas fa-credit-card mr-2"></i>PAYER L\'ACOMPTE';
@@ -501,7 +501,7 @@
             }
         } catch (error) {
             console.error('[QUOTE-VIEW] Erreur paiement:', error);
-            alert('Erreur de connexion. Veuillez reessayer.');
+            alert('Erreur de connexion. Veuillez réessayer.');
             if (btn) {
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fas fa-credit-card mr-2"></i>PAYER L\'ACOMPTE';

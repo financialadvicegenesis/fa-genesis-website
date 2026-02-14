@@ -1020,7 +1020,7 @@ function getAccessRights(order) {
         // Si livrables prets mais solde non paye
         if (order.status === 'delivered' && !order.balance_paid) {
             rights.balance_required = true;
-            rights.balance_message = 'Vos livrables sont prets ! Payez le solde de 70% pour telecharger les fichiers originaux.';
+            rights.balance_message = 'Vos livrables sont prêts ! Payez le solde de 70% pour télécharger les fichiers originaux.';
         }
 
         // Si tout est paye
@@ -1189,7 +1189,7 @@ app.get('/api/download/:orderId/:livrableId', (req, res) => {
         if (order.product_type === 'prestation_individuelle' && !order.balance_paid) {
             return res.status(403).json({
                 error: 'Paiement du solde requis',
-                message: 'Veuillez payer le solde de 70% pour telecharger vos fichiers.'
+                message: 'Veuillez payer le solde de 70% pour télécharger vos fichiers.'
             });
         }
 
@@ -3751,8 +3751,8 @@ app.post('/api/quotes/accept', async function(req, res) {
         quotes[idx].client_email = authUser.email;
 
         // 2. Creer la commande (order)
-        var serviceLabels = { photo: 'Photo', video: 'Video', media: 'Media', marketing: 'Marketing', other: 'Prestation' };
-        var productName = 'Devis ' + (serviceLabels[quote.service_type] || 'Personnalise') + ' - ' + quote.quote_number;
+        var serviceLabels = { photo: 'Photo', video: 'Vidéo', media: 'Média', marketing: 'Marketing', other: 'Prestation' };
+        var productName = 'Devis ' + (serviceLabels[quote.service_type] || 'Personnalisé') + ' - ' + quote.quote_number;
 
         var newOrder = {
             id: 'ORD-' + uuidv4().split('-')[0].toUpperCase(),
@@ -3812,7 +3812,7 @@ app.post('/api/quotes/accept', async function(req, res) {
                 day_number: null,
                 preview_url: null,
                 download_url: pdfDownloadUrl,
-                description: 'Devis personnalise ' + quote.quote_number + ' - Document contractuel',
+                description: 'Devis personnalisé ' + quote.quote_number + ' - Document contractuel',
                 status: 'ready',
                 created_at: new Date().toISOString()
             };
@@ -3895,7 +3895,7 @@ app.get('/api/quotes/:quoteId/pdf', function(req, res) {
             return res.status(403).json({ error: 'Ce devis n\'est pas encore disponible en PDF' });
         }
 
-        var serviceLabels = { photo: 'Photo', video: 'Video', media: 'Media', marketing: 'Marketing', other: 'Prestation sur mesure' };
+        var serviceLabels = { photo: 'Photo', video: 'Vidéo', media: 'Média', marketing: 'Marketing', other: 'Prestation sur mesure' };
         var serviceLabel = serviceLabels[quote.service_type] || 'Prestation sur mesure';
 
         // Creer le PDF
@@ -4004,7 +4004,7 @@ app.get('/api/quotes/:quoteId/pdf', function(req, res) {
         doc.moveDown(3);
         doc.fontSize(8).font('Helvetica').fillColor('#888');
         doc.text('FA GENESIS - Groupe FA Industries', 50, doc.page.height - 80, { align: 'center', width: 495 });
-        doc.text('Document genere automatiquement - Ce devis fait office de document contractuel', { align: 'center', width: 495 });
+        doc.text('Document généré automatiquement - Ce devis fait office de document contractuel', { align: 'center', width: 495 });
 
         doc.end();
 
