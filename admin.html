@@ -1782,7 +1782,7 @@
                                 (upload.file_url && upload.file_url.indexOf('data:image') === 0 ? '<div class="mt-2"><img src="' + upload.file_url + '" style="max-width:200px;max-height:150px;border:2px solid black;" alt="Preview"></div>' : '') +
                             '</div>' +
                             '<div class="flex gap-2">' +
-                                '<button onclick="validateUpload(\'' + upload.id + '\', \'approved\')" class="border-4 border-[#51cf66] bg-[#51cf66] text-black px-4 py-2 text-xs font-black">' +
+                                '<button onclick="validateUpload(\'' + upload.id + '\', \'approve\')" class="border-4 border-[#51cf66] bg-[#51cf66] text-black px-4 py-2 text-xs font-black">' +
                                     '<i class="fas fa-check mr-1"></i>APPROUVER' +
                                 '</button>' +
                                 '<button onclick="rejectUpload(\'' + upload.id + '\')" class="border-4 border-[#ff6b6b] bg-[#ff6b6b] text-black px-4 py-2 text-xs font-black">' +
@@ -1831,7 +1831,7 @@
                 var response = await fetch(API_BASE_URL + '/api/admin/partner-uploads/' + uploadId + '/validate', {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'rejected', rejection_reason: reason || '' })
+                    body: JSON.stringify({ action: 'reject', rejection_reason: reason || '' })
                 });
 
                 var result = await response.json();

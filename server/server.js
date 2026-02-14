@@ -3049,10 +3049,13 @@ app.put('/api/admin/partner-uploads/:uploadId/validate', (req, res) => {
                 name: upload.name,
                 type: upload.file_type,
                 day_number: null,
-                preview_url: null,
+                preview_url: upload.file_type === 'photo' ? upload.file_url : null,
                 download_url: upload.file_url,
-                description: upload.description,
-                status: 'pending',
+                description: upload.description || '',
+                status: 'ready',
+                source: 'partner',
+                partner_id: upload.partner_id,
+                partner_type: upload.partner_type,
                 created_at: new Date().toISOString()
             };
             const order = getOrderById(upload.order_id);
