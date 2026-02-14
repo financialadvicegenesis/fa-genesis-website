@@ -37,7 +37,7 @@ async function partnerLogin(email, password) {
 
         return {
             success: true,
-            message: 'Connexion reussie',
+            message: 'Connexion réussie',
             partner: data.partner
         };
 
@@ -45,7 +45,7 @@ async function partnerLogin(email, password) {
         console.error('[PARTNER] Erreur login:', error);
         return {
             success: false,
-            message: 'Le serveur est temporairement indisponible. Veuillez reessayer dans quelques instants.'
+            message: 'Le serveur est temporairement indisponible. Veuillez réessayer dans quelques instants.'
         };
     }
 }
@@ -189,7 +189,7 @@ async function updatePartnerProfile(profileData) {
     if (!token) {
         return {
             success: false,
-            message: 'Partenaire non connecte'
+            message: 'Partenaire non connecté'
         };
     }
 
@@ -208,7 +208,7 @@ async function updatePartnerProfile(profileData) {
         if (!response.ok) {
             return {
                 success: false,
-                message: data.error || 'Erreur lors de la mise a jour du profil'
+                message: data.error || 'Erreur lors de la mise à jour du profil'
             };
         }
 
@@ -217,7 +217,7 @@ async function updatePartnerProfile(profileData) {
 
         return {
             success: true,
-            message: 'Profil mis a jour avec succes',
+            message: 'Profil mis à jour avec succès',
             partner: data.partner
         };
 

@@ -170,7 +170,7 @@
                 <i class="fas fa-briefcase mr-3"></i>MES PROJETS
             </h2>
             <div id="projectsList">
-                <p class="text-center py-8 opacity-50 font-bold">Aucun projet assigne</p>
+                <p class="text-center py-8 opacity-50 font-bold">Aucun projet assigné</p>
             </div>
         </div>
 
@@ -214,7 +214,7 @@
                     </div>
                     <div>
                         <label class="block font-black mb-1 uppercase text-sm">Description (optionnelle)</label>
-                        <textarea id="uploadDescription" rows="2" placeholder="Details sur le fichier..."></textarea>
+                        <textarea id="uploadDescription" rows="2" placeholder="Détails sur le fichier..."></textarea>
                     </div>
                     <!-- Champs speciaux MEDIA -->
                     <div id="mediaFields" style="display:none;">
@@ -233,7 +233,7 @@
                             <div>
                                 <label class="block font-black mb-1 uppercase text-sm">Type diffusion</label>
                                 <select id="uploadDiffusionType">
-                                    <option value="">Selectionner...</option>
+                                    <option value="">Sélectionner...</option>
                                     <option value="post">Post</option>
                                     <option value="story">Story</option>
                                 </select>
@@ -265,7 +265,7 @@
                     <p class="text-center py-4 opacity-50 font-bold">Aucun commentaire</p>
                 </div>
                 <form id="commentForm" class="flex gap-3">
-                    <textarea id="commentContent" rows="2" placeholder="Ecrire un commentaire..." class="flex-1"></textarea>
+                    <textarea id="commentContent" rows="2" placeholder="Écrire un commentaire..." class="flex-1"></textarea>
                     <button type="submit" class="neo-btn-yellow px-6 self-end">
                         <i class="fas fa-paper-plane"></i>
                     </button>
@@ -287,14 +287,14 @@
                 <form id="passwordForm" class="space-y-4">
                     <div>
                         <label class="block font-black mb-1 uppercase text-sm">Nouveau mot de passe</label>
-                        <input type="password" id="newPassword" placeholder="Minimum 6 caracteres" required minlength="6">
+                        <input type="password" id="newPassword" placeholder="Minimum 6 caractères" required minlength="6">
                     </div>
                     <div>
                         <label class="block font-black mb-1 uppercase text-sm">Confirmer</label>
                         <input type="password" id="confirmPassword" placeholder="Confirmer le mot de passe" required>
                     </div>
                     <button type="submit" class="neo-btn-yellow px-6 py-3 text-sm">
-                        <i class="fas fa-save mr-2"></i>METTRE A JOUR
+                        <i class="fas fa-save mr-2"></i>METTRE À JOUR
                     </button>
                 </form>
                 <div id="profileMessage" class="mt-4" style="display:none;"></div>
@@ -325,9 +325,9 @@
     // Labels des types de partenaire
     var PARTNER_TYPE_LABELS = {
         photographer: 'Photographe',
-        videographer: 'Videographe',
+        videographer: 'Vidéographe',
         marketer: 'Marketeur',
-        media: 'Media'
+        media: 'Média'
     };
 
     // ==============================================
@@ -355,7 +355,7 @@
 
         } catch (error) {
             console.error('[PARTNER-DASH] Erreur init:', error);
-            showError('Erreur de chargement. Le serveur est peut-etre en cours de demarrage. Rechargez la page dans quelques instants.');
+            showError('Erreur de chargement. Le serveur est peut-être en cours de démarrage. Rechargez la page dans quelques instants.');
         }
     })();
 
@@ -443,7 +443,7 @@
             fileInput.setAttribute('accept', typeConfig.accept);
         }
         if (typeConfig && hintEl) {
-            hintEl.textContent = 'Formats acceptes : ' + typeConfig.label;
+            hintEl.textContent = 'Formats acceptés :' + typeConfig.label;
         }
 
         // Afficher les champs media si partenaire media
@@ -479,8 +479,8 @@
             if (!projects || projects.length === 0) {
                 container.innerHTML = '<div class="section-card text-center py-12">' +
                     '<i class="fas fa-inbox text-4xl opacity-30 mb-4"></i>' +
-                    '<p class="font-bold opacity-50">Aucun projet assigne pour le moment</p>' +
-                    '<p class="text-sm opacity-40 mt-2">Les projets vous seront assignes par l\'administrateur</p>' +
+                    '<p class="font-bold opacity-50">Aucun projet assigné pour le moment</p>' +
+                    '<p class="text-sm opacity-40 mt-2">Les projets vous seront assignés par l\'administrateur</p>' +
                 '</div>';
                 return;
             }
@@ -492,9 +492,9 @@
                 var assignment = proj.assignment || {};
 
                 var statusLabel = {
-                    active: 'Actif', in_progress: 'En cours', delivered: 'Livre',
-                    completed: 'Termine', pending_deposit: 'Acompte en attente',
-                    pending_balance: 'Solde en attente', paid_in_full: 'Paye'
+                    active: 'Actif', in_progress: 'En cours', delivered: 'Livré',
+                    completed: 'Terminé', pending_deposit: 'Acompte en attente',
+                    pending_balance: 'Solde en attente', paid_in_full: 'Payé'
                 }[order.status] || order.status || 'N/A';
 
                 var date = order.created_at ? new Date(order.created_at).toLocaleDateString('fr-FR') : '';
@@ -523,8 +523,8 @@
             console.error('[PARTNER-DASH] Erreur chargement projets:', error);
             container.innerHTML = '<div class="section-card text-center py-8">' +
                 '<p class="font-bold text-red-600">Erreur de chargement</p>' +
-                '<p class="text-sm opacity-50 mt-2">Le serveur est peut-etre en cours de demarrage</p>' +
-                '<button onclick="loadProjects()" class="neo-btn-yellow px-6 py-2 mt-4 text-sm">Reessayer</button>' +
+                '<p class="text-sm opacity-50 mt-2">Le serveur est peut-être en cours de démarrage</p>' +
+                '<button onclick="loadProjects()" class="neo-btn-yellow px-6 py-2 mt-4 text-sm">Réessayer</button>' +
             '</div>';
         }
     }
@@ -566,7 +566,7 @@
             console.error('[PARTNER-DASH] Erreur detail projet:', error);
             if (header) {
                 header.innerHTML = '<p class="text-center py-4 font-bold text-red-600">Erreur de chargement du projet</p>' +
-                    '<button onclick="openProject(\'' + orderId + '\')" class="neo-btn-yellow px-6 py-2 mt-2 text-sm">Reessayer</button>';
+                    '<button onclick="openProject(\'' + orderId + '\')" class="neo-btn-yellow px-6 py-2 mt-2 text-sm">Réessayer</button>';
             }
         }
     }
@@ -628,8 +628,8 @@
             var u = uploads[i];
             var statusClass = 'status-pending';
             var statusText = 'En attente';
-            if (u.validation_status === 'approved') { statusClass = 'status-approved'; statusText = 'Approuve'; }
-            else if (u.validation_status === 'rejected') { statusClass = 'status-rejected'; statusText = 'Refuse'; }
+            if (u.validation_status === 'approved') { statusClass = 'status-approved'; statusText = 'Approuvé'; }
+            else if (u.validation_status === 'rejected') { statusClass = 'status-rejected'; statusText = 'Refusé'; }
 
             var date = u.created_at ? new Date(u.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
 
@@ -694,7 +694,7 @@
             e.preventDefault();
 
             if (!currentProjectOrderId || !currentPartner) {
-                alert('Erreur: aucun projet selectionne');
+                alert('Erreur : aucun projet sélectionné');
                 return;
             }
 
@@ -704,7 +704,7 @@
             var submitBtn = document.getElementById('uploadSubmitBtn');
 
             if (!fileInput || !fileInput.files[0]) {
-                alert('Veuillez selectionner un fichier');
+                alert('Veuillez sélectionner un fichier');
                 return;
             }
 
@@ -714,7 +714,7 @@
             // Verifier le type de fichier cote client
             var typeConfig = PARTNER_ALLOWED_TYPES[currentPartner.partner_type];
             if (typeConfig && typeConfig.extensions.indexOf(ext) === -1) {
-                alert('Type de fichier non autorise. Formats acceptes : ' + typeConfig.label);
+                alert('Type de fichier non autorisé. Formats acceptés : ' + typeConfig.label);
                 return;
             }
 
@@ -729,7 +729,7 @@
                 diffusionType = document.getElementById('uploadDiffusionType').value;
 
                 if (!publicationLink || !publicationDate || !diffusionType) {
-                    alert('Les champs de publication sont obligatoires pour les partenaires media');
+                    alert('Les champs de publication sont obligatoires pour les partenaires média');
                     return;
                 }
             }
@@ -766,7 +766,7 @@
                 var data = await response.json();
 
                 if (response.ok && data.success) {
-                    alert('Upload soumis avec succes ! Il sera valide par l\'administrateur.');
+                    alert('Upload soumis avec succès ! Il sera validé par l\'administrateur.');
                     // Reset le formulaire
                     uploadFormEl.reset();
                     // Recharger le detail du projet
@@ -804,7 +804,7 @@
             var content = contentInput ? contentInput.value.trim() : '';
 
             if (!content) {
-                alert('Veuillez ecrire un commentaire');
+                alert('Veuillez écrire un commentaire');
                 return;
             }
 
@@ -877,11 +877,11 @@
                 '</div>' +
                 '<div>' +
                     '<p class="text-sm font-bold uppercase opacity-60 mb-1">Telephone</p>' +
-                    '<p class="font-black">' + (currentPartner.telephone || 'Non renseigne') + '</p>' +
+                    '<p class="font-black">' + (currentPartner.telephone || 'Non renseigné') + '</p>' +
                 '</div>' +
                 '<div>' +
-                    '<p class="text-sm font-bold uppercase opacity-60 mb-1">Specialite</p>' +
-                    '<p class="font-black">' + (currentPartner.specialite || 'Non renseignee') + '</p>' +
+                    '<p class="text-sm font-bold uppercase opacity-60 mb-1">Spécialité</p>' +
+                    '<p class="font-black">' + (currentPartner.specialite || 'Non renseignée') + '</p>' +
                 '</div>' +
                 '<div>' +
                     '<p class="text-sm font-bold uppercase opacity-60 mb-1">Statut</p>' +
@@ -910,7 +910,7 @@
             if (newPwd.length < 6) {
                 if (msgEl) {
                     msgEl.style.display = 'block';
-                    msgEl.innerHTML = '<div class="bg-red-100 border-2 border-red-500 p-3 font-bold text-red-700">Le mot de passe doit contenir au moins 6 caracteres</div>';
+                    msgEl.innerHTML = '<div class="bg-red-100 border-2 border-red-500 p-3 font-bold text-red-700">Le mot de passe doit contenir au moins 6 caractères</div>';
                 }
                 return;
             }
@@ -921,7 +921,7 @@
                 if (msgEl) {
                     msgEl.style.display = 'block';
                     if (result.success) {
-                        msgEl.innerHTML = '<div class="bg-green-100 border-2 border-green-500 p-3 font-bold text-green-700"><i class="fas fa-check-circle mr-2"></i>Mot de passe mis a jour</div>';
+                        msgEl.innerHTML = '<div class="bg-green-100 border-2 border-green-500 p-3 font-bold text-green-700"><i class="fas fa-check-circle mr-2"></i>Mot de passe mis à jour</div>';
                         passwordFormEl.reset();
                     } else {
                         msgEl.innerHTML = '<div class="bg-red-100 border-2 border-red-500 p-3 font-bold text-red-700">' + (result.message || 'Erreur') + '</div>';
@@ -942,7 +942,7 @@
     // ==============================================
 
     function handlePartnerLogout() {
-        if (confirm('Voulez-vous vraiment vous deconnecter ?')) {
+        if (confirm('Voulez-vous vraiment vous déconnecter ?')) {
             partnerLogout();
         }
     }
