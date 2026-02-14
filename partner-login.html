@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connexion Partenaire - FA GENESIS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Unbounded:wght@400;900&family=Space+Grotesk:wght@300;700&display=swap');
+
+        :root {
+            --genesis-yellow: #FFD700;
+            --genesis-black: #000000;
+            --genesis-white: #FFFFFF;
+        }
+
+        body {
+            background-color: var(--genesis-black);
+            color: var(--genesis-white);
+            font-family: 'Space Grotesk', sans-serif;
+            overflow-x: hidden;
+        }
+
+        h1, h2, h3, h4, h5, .nav-link { font-family: 'Unbounded', cursive; }
+
+        .neo-border { border: 4px solid var(--genesis-black); }
+        .neo-shadow { box-shadow: 10px 10px 0px 0px var(--genesis-yellow); }
+
+        .neo-btn-yellow {
+            background: var(--genesis-yellow);
+            color: black;
+            border: 4px solid black;
+            box-shadow: 6px 6px 0px black;
+            font-weight: 900;
+            transition: 0.1s;
+        }
+        .neo-btn-yellow:active {
+            transform: translate(4px, 4px);
+            box-shadow: 0px 0px 0px black;
+        }
+
+        .error-message {
+            display: none;
+            background: #ff0000;
+            color: white;
+            padding: 1rem;
+            border: 4px solid black;
+            margin-bottom: 1.5rem;
+            font-weight: bold;
+        }
+        .error-message.show { display: block; }
+    </style>
+</head>
+<body>
+
+    <!-- NAVIGATION -->
+    <nav class="fixed top-0 w-full z-50 bg-black/95 backdrop-blur-md border-b-4 border-[var(--genesis-yellow)] px-4 md:px-6 py-3 md:py-4 flex justify-between items-center text-white text-xs font-black uppercase">
+        <div class="flex items-center">
+            <a href="index.html" class="text-lg md:text-2xl font-black tracking-wider text-[var(--genesis-yellow)]" style="font-family: 'Unbounded', cursive;">FA GENESIS</a>
+        </div>
+        <div class="hidden md:flex gap-12 text-white font-black">
+            <a href="index.html#accueil" class="nav-link hover:text-[var(--genesis-yellow)] transition">Accueil</a>
+            <a href="a-propos.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">A Propos</a>
+            <a href="offres.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">Offres</a>
+            <a href="contact.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">Contact</a>
+        </div>
+        <a href="contact.html" class="hidden md:block neo-btn-yellow px-6 py-3 text-[12px] tracking-widest text-black font-black">Lancer un projet</a>
+        <!-- Bouton Menu Mobile -->
+        <button id="mobileMenuBtn" class="md:hidden flex flex-col gap-1.5 p-2" aria-label="Menu">
+            <span class="block w-6 h-0.5 bg-[var(--genesis-yellow)] transition-all" id="menuLine1"></span>
+            <span class="block w-6 h-0.5 bg-[var(--genesis-yellow)] transition-all" id="menuLine2"></span>
+            <span class="block w-6 h-0.5 bg-[var(--genesis-yellow)] transition-all" id="menuLine3"></span>
+        </button>
+    </nav>
+
+    <!-- Menu Mobile Overlay -->
+    <div id="mobileMenu" class="fixed inset-0 z-40 bg-black/98 backdrop-blur-lg hidden flex-col items-center justify-center gap-8 text-white font-black uppercase">
+        <a href="index.html#accueil" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition" onclick="closeMobileMenu()">Accueil</a>
+        <a href="a-propos.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition" onclick="closeMobileMenu()">A Propos</a>
+        <a href="offres.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition" onclick="closeMobileMenu()">Offres</a>
+        <a href="contact.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition" onclick="closeMobileMenu()">Contact</a>
+        <div class="flex flex-col gap-4 mt-8">
+            <a href="contact.html" class="neo-btn-yellow px-8 py-4 text-sm tracking-widest text-black font-black text-center" onclick="closeMobileMenu()">Lancer un projet</a>
+        </div>
+    </div>
+
+    <!-- LOGIN SECTION - PAS DE AOS -->
+    <section class="min-h-screen flex flex-col items-center justify-center p-6 bg-black pt-32 relative overflow-hidden">
+        <div class="absolute top-20 left-[-10%] w-96 h-96 bg-[var(--genesis-yellow)] rounded-full blur-[120px] opacity-20 z-0"></div>
+
+        <div class="w-full max-w-xl z-10">
+            <h1 class="text-5xl md:text-7xl font-black italic uppercase text-center mb-4 text-[var(--genesis-yellow)]">ESPACE PARTENAIRE</h1>
+            <p class="text-center text-lg font-bold mb-12 uppercase opacity-80">Connectez-vous pour acceder a vos projets</p>
+
+            <div class="bg-white text-black p-10 neo-border neo-shadow">
+                <div id="errorMessage" class="error-message"></div>
+
+                <form id="partnerLoginForm" class="space-y-6">
+                    <div>
+                        <label for="email" class="block text-sm font-black mb-2 uppercase">Email</label>
+                        <input
+                            type="email"
+                            id="email"
+                            name="email"
+                            required
+                            class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none focus:border-[var(--genesis-yellow)] transition-all"
+                            placeholder="votre.email@exemple.com"
+                        >
+                    </div>
+
+                    <div>
+                        <label for="password" class="block text-sm font-black mb-2 uppercase">Mot de passe</label>
+                        <input
+                            type="password"
+                            id="password"
+                            name="password"
+                            required
+                            class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none focus:border-[var(--genesis-yellow)] transition-all"
+                            placeholder="••••••••"
+                        >
+                    </div>
+
+                    <button
+                        type="submit"
+                        id="submitBtn"
+                        class="w-full py-4 neo-btn-yellow text-2xl font-black italic uppercase tracking-tighter"
+                    >
+                        Se connecter
+                    </button>
+                </form>
+
+                <div class="mt-8 text-center">
+                    <p class="text-sm font-bold opacity-60">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        Votre compte est cree par l'administrateur FA Genesis.
+                    </p>
+                </div>
+            </div>
+
+            <div class="mt-8 text-center">
+                <p class="text-white font-bold">Mot de passe oublie ? <a href="contact.html" class="text-[var(--genesis-yellow)] underline font-black">Contactez-nous</a></p>
+                <p class="text-white font-bold mt-4 opacity-60 text-sm">
+                    <a href="login.html" class="text-white underline hover:text-[var(--genesis-yellow)]">Espace Client</a>
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="bg-white text-black py-24 border-t-8 border-[var(--genesis-yellow)] px-6 font-black uppercase">
+        <div class="container mx-auto font-black uppercase">
+            <div class="flex flex-col md:flex-row justify-between items-center gap-20 text-center md:text-left">
+                <div>
+                    <h2 class="text-4xl font-black italic tracking-tighter uppercase">FA GENESIS</h2>
+                    <p class="text-[11px] text-black uppercase tracking-[10px] mt-2 italic">BUILD. LAUNCH. IMPACT. &bull; GROUPE FA INDUSTRIES</p>
+                </div>
+                <div class="flex flex-col items-center md:items-end gap-10 font-black">
+                    <div class="flex gap-8 items-center">
+                        <a href="https://www.linkedin.com/in/financial-advice-genesis-772b653aa/" target="_blank" class="text-3xl hover:text-[var(--genesis-yellow)] transition" title="LinkedIn">
+                            <i class="fab fa-linkedin"></i>
+                        </a>
+                        <a href="https://www.instagram.com/financial_advice_genesis/?hl=en" target="_blank" class="text-3xl hover:text-[var(--genesis-yellow)] transition" title="Instagram">
+                            <i class="fab fa-instagram"></i>
+                        </a>
+                        <a href="https://www.tiktok.com/@financial.advice.genesis" target="_blank" class="text-3xl hover:text-[var(--genesis-yellow)] transition" title="TikTok">
+                            <i class="fab fa-tiktok"></i>
+                        </a>
+                    </div>
+                    <p class="text-[11px] uppercase text-black text-center md:text-right font-bold italic font-black">
+                        &copy; 2024 FINANCIAL ADVICE GENESIS &bull; GROUPE FA INDUSTRIES
+                    </p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="config.js"></script>
+    <script src="partner-auth.js"></script>
+    <script>
+        // Verifier si deja connecte
+        if (isPartnerAuthenticated()) {
+            window.location.href = 'partner-dashboard.html';
+        }
+
+        // Gestion de la soumission du formulaire
+        var partnerLoginFormEl = document.getElementById('partnerLoginForm');
+        if (partnerLoginFormEl) {
+            partnerLoginFormEl.addEventListener('submit', async function(e) {
+                e.preventDefault();
+
+                var email = document.getElementById('email').value;
+                var password = document.getElementById('password').value;
+                var errorMessage = document.getElementById('errorMessage');
+                var submitBtn = document.getElementById('submitBtn');
+
+                // Desactiver le bouton
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Connexion en cours...';
+
+                // Tentative de connexion
+                var result = await partnerLogin(email, password);
+
+                // Reactiver le bouton
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Se connecter';
+
+                if (result.success) {
+                    window.location.href = 'partner-dashboard.html';
+                } else {
+                    errorMessage.textContent = result.message;
+                    errorMessage.classList.add('show');
+
+                    setTimeout(function() {
+                        errorMessage.classList.remove('show');
+                    }, 5000);
+                }
+            });
+        }
+
+        // Menu Mobile Toggle
+        var mobileMenuBtn = document.getElementById('mobileMenuBtn');
+        var mobileMenu = document.getElementById('mobileMenu');
+        var menuLine1 = document.getElementById('menuLine1');
+        var menuLine2 = document.getElementById('menuLine2');
+        var menuLine3 = document.getElementById('menuLine3');
+        var isMenuOpen = false;
+
+        function toggleMobileMenu() {
+            isMenuOpen = !isMenuOpen;
+            if (isMenuOpen) {
+                mobileMenu.classList.remove('hidden');
+                mobileMenu.classList.add('flex');
+                menuLine1.style.transform = 'rotate(45deg) translate(5px, 5px)';
+                menuLine2.style.opacity = '0';
+                menuLine3.style.transform = 'rotate(-45deg) translate(5px, -5px)';
+                document.body.style.overflow = 'hidden';
+            } else {
+                closeMobileMenu();
+            }
+        }
+
+        function closeMobileMenu() {
+            isMenuOpen = false;
+            mobileMenu.classList.add('hidden');
+            mobileMenu.classList.remove('flex');
+            menuLine1.style.transform = 'none';
+            menuLine2.style.opacity = '1';
+            menuLine3.style.transform = 'none';
+            document.body.style.overflow = 'auto';
+        }
+
+        if (mobileMenuBtn) mobileMenuBtn.addEventListener('click', toggleMobileMenu);
+    </script>
+    <script src="chatbot.js"></script>
+</body>
+</html>

@@ -1,0 +1,979 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Espace Partenaire - FA GENESIS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Unbounded:wght@400;900&family=Space+Grotesk:wght@300;700&display=swap');
+        :root {
+            --genesis-yellow: #FFD700;
+            --genesis-black: #000000;
+            --genesis-white: #FFFFFF;
+        }
+        body {
+            background-color: var(--genesis-black);
+            color: var(--genesis-white);
+            font-family: 'Space Grotesk', sans-serif;
+        }
+        h1, h2, h3, h4, h5 { font-family: 'Unbounded', cursive; }
+        .neo-border { border: 4px solid var(--genesis-black); }
+        .neo-shadow { box-shadow: 10px 10px 0px 0px var(--genesis-yellow); }
+        .neo-btn-yellow {
+            background: var(--genesis-yellow);
+            color: black;
+            border: 4px solid black;
+            box-shadow: 6px 6px 0px black;
+            font-weight: 900;
+            transition: 0.1s;
+            cursor: pointer;
+        }
+        .neo-btn-yellow:active {
+            transform: translate(4px, 4px);
+            box-shadow: 0px 0px 0px black;
+        }
+        .neo-btn-yellow:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .partner-card {
+            background: white;
+            color: black;
+            border: 4px solid black;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .partner-card:hover {
+            transform: translate(-2px, -2px);
+            box-shadow: 6px 6px 0px var(--genesis-yellow);
+        }
+        .section-card {
+            background: white;
+            color: black;
+            border: 4px solid black;
+            padding: 2rem;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border: 2px solid black;
+            font-weight: 900;
+            text-transform: uppercase;
+            font-size: 0.7rem;
+        }
+        .status-pending { background: #ffd43b; color: black; }
+        .status-approved { background: #51cf66; color: white; }
+        .status-rejected { background: #ff6b6b; color: white; }
+        .status-active { background: #4dabf7; color: white; }
+        .comment-bubble {
+            padding: 1rem;
+            border: 3px solid black;
+            margin-bottom: 0.75rem;
+        }
+        .comment-partner { background: #FFF9E6; border-left: 6px solid var(--genesis-yellow); }
+        .comment-admin { background: #E8F5E9; border-left: 6px solid #51cf66; }
+        input, select, textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 3px solid black;
+            font-weight: bold;
+            font-family: 'Space Grotesk', sans-serif;
+            background: white;
+            color: black;
+        }
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--genesis-yellow);
+        }
+        .upload-item {
+            background: #f8f9fa;
+            border: 2px solid black;
+            padding: 1rem;
+            margin-bottom: 0.5rem;
+        }
+        .tab-btn {
+            padding: 0.5rem 1.5rem;
+            border: 3px solid black;
+            font-weight: 900;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            cursor: pointer;
+            background: white;
+            color: black;
+        }
+        .tab-btn.active {
+            background: var(--genesis-yellow);
+            box-shadow: 4px 4px 0px black;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- NAVIGATION PARTENAIRE -->
+    <nav class="fixed top-0 w-full z-50 bg-black/95 backdrop-blur-md border-b-4 border-[var(--genesis-yellow)] px-4 md:px-6 py-3 md:py-4">
+        <div class="flex justify-between items-center">
+            <div class="flex items-center gap-4 md:gap-8">
+                <h1 class="text-lg md:text-2xl font-black text-[var(--genesis-yellow)]">
+                    <i class="fas fa-handshake mr-2"></i>PARTENAIRE
+                </h1>
+                <div class="hidden md:flex gap-4 text-sm font-black">
+                    <button onclick="showSection('projects')" class="nav-tab text-white hover:text-[var(--genesis-yellow)] transition">
+                        <i class="fas fa-briefcase mr-1"></i>Projets
+                    </button>
+                    <button onclick="showSection('profile')" class="nav-tab text-white hover:text-[var(--genesis-yellow)] transition">
+                        <i class="fas fa-user mr-1"></i>Profil
+                    </button>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <span id="partnerName" class="text-white text-xs font-bold hidden md:inline"></span>
+                <span id="partnerTypeBadge" class="text-xs px-2 py-1 bg-[var(--genesis-yellow)] text-black font-black border-2 border-black"></span>
+                <button onclick="handlePartnerLogout()" class="border-3 border-white text-white px-3 py-1.5 text-xs font-black hover:bg-white hover:text-black transition">
+                    <i class="fas fa-sign-out-alt mr-1"></i>
+                </button>
+            </div>
+        </div>
+        <!-- Mobile nav -->
+        <div class="flex md:hidden gap-2 mt-2">
+            <button onclick="showSection('projects')" class="nav-tab text-white hover:text-[var(--genesis-yellow)] text-xs font-black">
+                <i class="fas fa-briefcase mr-1"></i>Projets
+            </button>
+            <button onclick="showSection('profile')" class="nav-tab text-white hover:text-[var(--genesis-yellow)] text-xs font-black">
+                <i class="fas fa-user mr-1"></i>Profil
+            </button>
+        </div>
+    </nav>
+
+    <div class="pt-28 md:pt-24 pb-20 px-4 md:px-6">
+
+        <!-- LOADING -->
+        <div id="loadingState" class="container mx-auto max-w-5xl text-center py-20">
+            <div class="text-4xl text-[var(--genesis-yellow)] mb-4"><i class="fas fa-spinner fa-spin"></i></div>
+            <p class="font-bold opacity-70">Chargement de votre espace...</p>
+        </div>
+
+        <!-- ERROR BANNER -->
+        <div id="errorBanner" class="container mx-auto max-w-5xl mb-6" style="display:none;">
+            <div class="bg-red-500 text-white p-4 border-4 border-black font-bold">
+                <i class="fas fa-exclamation-triangle mr-2"></i>
+                <span id="errorBannerText"></span>
+            </div>
+        </div>
+
+        <!-- SECTION PROJETS -->
+        <div id="projectsSection" class="container mx-auto max-w-5xl" style="display:none;">
+            <h2 class="text-3xl md:text-5xl font-black italic uppercase mb-8 text-[var(--genesis-yellow)]">
+                <i class="fas fa-briefcase mr-3"></i>MES PROJETS
+            </h2>
+            <div id="projectsList">
+                <p class="text-center py-8 opacity-50 font-bold">Aucun projet assigne</p>
+            </div>
+        </div>
+
+        <!-- SECTION DETAIL PROJET -->
+        <div id="projectDetailSection" class="container mx-auto max-w-5xl" style="display:none;">
+            <button onclick="backToProjects()" class="text-white font-black mb-6 hover:text-[var(--genesis-yellow)] transition">
+                <i class="fas fa-arrow-left mr-2"></i>Retour aux projets
+            </button>
+
+            <div id="projectHeader" class="section-card neo-shadow mb-8"></div>
+
+            <!-- Onglets -->
+            <div class="flex gap-2 mb-6 flex-wrap">
+                <button onclick="showProjectTab('uploads')" class="tab-btn active" id="tabUploads">
+                    <i class="fas fa-upload mr-1"></i>Uploads
+                </button>
+                <button onclick="showProjectTab('history')" class="tab-btn" id="tabHistory">
+                    <i class="fas fa-history mr-1"></i>Historique
+                </button>
+                <button onclick="showProjectTab('comments')" class="tab-btn" id="tabComments">
+                    <i class="fas fa-comments mr-1"></i>Commentaires
+                </button>
+            </div>
+
+            <!-- Tab: Upload -->
+            <div id="panelUploads" class="section-card mb-8">
+                <h3 class="text-xl font-black italic uppercase mb-6">
+                    <i class="fas fa-cloud-upload-alt mr-2"></i>SOUMETTRE UN LIVRABLE
+                </h3>
+                <form id="uploadForm" class="space-y-4">
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block font-black mb-1 uppercase text-sm">Nom du fichier</label>
+                            <input type="text" id="uploadName" placeholder="Ex: Photo portrait client" required>
+                        </div>
+                        <div>
+                            <label class="block font-black mb-1 uppercase text-sm">Fichier</label>
+                            <input type="file" id="uploadFile" required class="text-sm">
+                            <p class="text-xs font-bold opacity-50 mt-1" id="allowedTypesHint"></p>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block font-black mb-1 uppercase text-sm">Description (optionnelle)</label>
+                        <textarea id="uploadDescription" rows="2" placeholder="Details sur le fichier..."></textarea>
+                    </div>
+                    <!-- Champs speciaux MEDIA -->
+                    <div id="mediaFields" style="display:none;">
+                        <h4 class="font-black uppercase text-sm mb-3 mt-4 text-[var(--genesis-yellow)]">
+                            <i class="fas fa-bullhorn mr-1"></i>Informations de publication (obligatoires)
+                        </h4>
+                        <div class="grid md:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block font-black mb-1 uppercase text-sm">Lien publication</label>
+                                <input type="url" id="uploadPublicationLink" placeholder="https://instagram.com/p/...">
+                            </div>
+                            <div>
+                                <label class="block font-black mb-1 uppercase text-sm">Date publication</label>
+                                <input type="date" id="uploadPublicationDate">
+                            </div>
+                            <div>
+                                <label class="block font-black mb-1 uppercase text-sm">Type diffusion</label>
+                                <select id="uploadDiffusionType">
+                                    <option value="">Selectionner...</option>
+                                    <option value="post">Post</option>
+                                    <option value="story">Story</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <button type="submit" id="uploadSubmitBtn" class="neo-btn-yellow px-8 py-3 text-sm">
+                        <i class="fas fa-paper-plane mr-2"></i>SOUMETTRE
+                    </button>
+                </form>
+            </div>
+
+            <!-- Tab: Historique -->
+            <div id="panelHistory" class="section-card mb-8" style="display:none;">
+                <h3 class="text-xl font-black italic uppercase mb-6">
+                    <i class="fas fa-history mr-2"></i>MES UPLOADS
+                </h3>
+                <div id="uploadsHistoryList">
+                    <p class="text-center py-4 opacity-50 font-bold">Aucun upload</p>
+                </div>
+            </div>
+
+            <!-- Tab: Commentaires -->
+            <div id="panelComments" class="section-card mb-8" style="display:none;">
+                <h3 class="text-xl font-black italic uppercase mb-6">
+                    <i class="fas fa-comments mr-2"></i>COMMENTAIRES
+                </h3>
+                <div id="commentsList" class="mb-6">
+                    <p class="text-center py-4 opacity-50 font-bold">Aucun commentaire</p>
+                </div>
+                <form id="commentForm" class="flex gap-3">
+                    <textarea id="commentContent" rows="2" placeholder="Ecrire un commentaire..." class="flex-1"></textarea>
+                    <button type="submit" class="neo-btn-yellow px-6 self-end">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- SECTION PROFIL -->
+        <div id="profileSection" class="container mx-auto max-w-3xl" style="display:none;">
+            <h2 class="text-3xl md:text-5xl font-black italic uppercase mb-8 text-[var(--genesis-yellow)]">
+                <i class="fas fa-user-circle mr-3"></i>MON PROFIL
+            </h2>
+            <div class="section-card neo-shadow">
+                <div id="profileInfo" class="mb-8"></div>
+                <hr class="border-2 border-black my-6">
+                <h3 class="text-lg font-black italic uppercase mb-4">
+                    <i class="fas fa-lock mr-2"></i>CHANGER MON MOT DE PASSE
+                </h3>
+                <form id="passwordForm" class="space-y-4">
+                    <div>
+                        <label class="block font-black mb-1 uppercase text-sm">Nouveau mot de passe</label>
+                        <input type="password" id="newPassword" placeholder="Minimum 6 caracteres" required minlength="6">
+                    </div>
+                    <div>
+                        <label class="block font-black mb-1 uppercase text-sm">Confirmer</label>
+                        <input type="password" id="confirmPassword" placeholder="Confirmer le mot de passe" required>
+                    </div>
+                    <button type="submit" class="neo-btn-yellow px-6 py-3 text-sm">
+                        <i class="fas fa-save mr-2"></i>METTRE A JOUR
+                    </button>
+                </form>
+                <div id="profileMessage" class="mt-4" style="display:none;"></div>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="config.js"></script>
+    <script src="partner-auth.js"></script>
+    <script>
+    // ==============================================
+    // PARTENAIRE DASHBOARD - FA GENESIS
+    // ==============================================
+
+    var currentPartner = null;
+    var currentProjectOrderId = null;
+    var currentProjectData = null;
+
+    // Types de fichiers autorises par type de partenaire
+    var PARTNER_ALLOWED_TYPES = {
+        photographer: { extensions: ['jpg', 'jpeg', 'png'], accept: '.jpg,.jpeg,.png', label: 'JPG, JPEG, PNG' },
+        videographer: { extensions: ['mp4', 'mov'], accept: '.mp4,.mov', label: 'MP4, MOV' },
+        marketer: { extensions: ['pdf', 'docx'], accept: '.pdf,.docx', label: 'PDF, DOCX' },
+        media: { extensions: ['jpg', 'jpeg', 'png', 'pdf'], accept: '.jpg,.jpeg,.png,.pdf', label: 'JPG, JPEG, PNG, PDF' }
+    };
+
+    // Labels des types de partenaire
+    var PARTNER_TYPE_LABELS = {
+        photographer: 'Photographe',
+        videographer: 'Videographe',
+        marketer: 'Marketeur',
+        media: 'Media'
+    };
+
+    // ==============================================
+    // INITIALISATION
+    // ==============================================
+
+    (async function init() {
+        try {
+            // Verifier l'authentification
+            if (!isPartnerAuthenticated()) {
+                window.location.href = 'partner-login.html';
+                return;
+            }
+
+            // Verifier la session serveur
+            var partner = await verifyPartnerSession();
+            if (!partner) {
+                window.location.href = 'partner-login.html';
+                return;
+            }
+
+            currentPartner = partner;
+            renderPartnerInfo();
+            showSection('projects');
+
+        } catch (error) {
+            console.error('[PARTNER-DASH] Erreur init:', error);
+            showError('Erreur de chargement. Le serveur est peut-etre en cours de demarrage. Rechargez la page dans quelques instants.');
+        }
+    })();
+
+    // ==============================================
+    // NAVIGATION
+    // ==============================================
+
+    function showSection(section) {
+        var loading = document.getElementById('loadingState');
+        var projects = document.getElementById('projectsSection');
+        var detail = document.getElementById('projectDetailSection');
+        var profile = document.getElementById('profileSection');
+
+        if (loading) loading.style.display = 'none';
+        if (projects) projects.style.display = 'none';
+        if (detail) detail.style.display = 'none';
+        if (profile) profile.style.display = 'none';
+
+        if (section === 'projects') {
+            if (projects) projects.style.display = 'block';
+            loadProjects();
+        } else if (section === 'profile') {
+            if (profile) profile.style.display = 'block';
+            renderProfileSection();
+        }
+    }
+
+    function showProjectTab(tab) {
+        // Masquer tous les panels
+        var panels = ['panelUploads', 'panelHistory', 'panelComments'];
+        for (var i = 0; i < panels.length; i++) {
+            var p = document.getElementById(panels[i]);
+            if (p) p.style.display = 'none';
+        }
+        // Desactiver tous les onglets
+        var tabs = ['tabUploads', 'tabHistory', 'tabComments'];
+        for (var j = 0; j < tabs.length; j++) {
+            var t = document.getElementById(tabs[j]);
+            if (t) t.classList.remove('active');
+        }
+        // Activer l'onglet et le panel selectionne
+        if (tab === 'uploads') {
+            var pu = document.getElementById('panelUploads');
+            var tu = document.getElementById('tabUploads');
+            if (pu) pu.style.display = 'block';
+            if (tu) tu.classList.add('active');
+        } else if (tab === 'history') {
+            var ph = document.getElementById('panelHistory');
+            var th = document.getElementById('tabHistory');
+            if (ph) ph.style.display = 'block';
+            if (th) th.classList.add('active');
+        } else if (tab === 'comments') {
+            var pc = document.getElementById('panelComments');
+            var tc = document.getElementById('tabComments');
+            if (pc) pc.style.display = 'block';
+            if (tc) tc.classList.add('active');
+        }
+    }
+
+    function backToProjects() {
+        currentProjectOrderId = null;
+        currentProjectData = null;
+        showSection('projects');
+    }
+
+    // ==============================================
+    // PARTNER INFO HEADER
+    // ==============================================
+
+    function renderPartnerInfo() {
+        if (!currentPartner) return;
+
+        var nameEl = document.getElementById('partnerName');
+        var badgeEl = document.getElementById('partnerTypeBadge');
+
+        if (nameEl) nameEl.textContent = currentPartner.prenom + ' ' + currentPartner.nom;
+        if (badgeEl) badgeEl.textContent = (PARTNER_TYPE_LABELS[currentPartner.partner_type] || currentPartner.partner_type).toUpperCase();
+
+        // Configurer le type de fichier accepte
+        var typeConfig = PARTNER_ALLOWED_TYPES[currentPartner.partner_type];
+        var fileInput = document.getElementById('uploadFile');
+        var hintEl = document.getElementById('allowedTypesHint');
+
+        if (typeConfig && fileInput) {
+            fileInput.setAttribute('accept', typeConfig.accept);
+        }
+        if (typeConfig && hintEl) {
+            hintEl.textContent = 'Formats acceptes : ' + typeConfig.label;
+        }
+
+        // Afficher les champs media si partenaire media
+        var mediaFields = document.getElementById('mediaFields');
+        if (mediaFields) {
+            mediaFields.style.display = currentPartner.partner_type === 'media' ? 'block' : 'none';
+        }
+    }
+
+    // ==============================================
+    // PROJETS
+    // ==============================================
+
+    async function loadProjects() {
+        var container = document.getElementById('projectsList');
+        if (!container) return;
+
+        container.innerHTML = '<p class="text-center py-4 opacity-50 font-bold"><i class="fas fa-spinner fa-spin mr-2"></i>Chargement...</p>';
+
+        try {
+            var response = await partnerAuthenticatedFetch(PARTNER_API_BASE_URL + '/api/partner/projects');
+
+            if (!response.ok) {
+                if (response.status === 401) {
+                    window.location.href = 'partner-login.html';
+                    return;
+                }
+                throw new Error('Erreur ' + response.status);
+            }
+
+            var projects = await response.json();
+
+            if (!projects || projects.length === 0) {
+                container.innerHTML = '<div class="section-card text-center py-12">' +
+                    '<i class="fas fa-inbox text-4xl opacity-30 mb-4"></i>' +
+                    '<p class="font-bold opacity-50">Aucun projet assigne pour le moment</p>' +
+                    '<p class="text-sm opacity-40 mt-2">Les projets vous seront assignes par l\'administrateur</p>' +
+                '</div>';
+                return;
+            }
+
+            var html = '';
+            for (var i = 0; i < projects.length; i++) {
+                var proj = projects[i];
+                var order = proj.order || {};
+                var assignment = proj.assignment || {};
+
+                var statusLabel = {
+                    active: 'Actif', in_progress: 'En cours', delivered: 'Livre',
+                    completed: 'Termine', pending_deposit: 'Acompte en attente',
+                    pending_balance: 'Solde en attente', paid_in_full: 'Paye'
+                }[order.status] || order.status || 'N/A';
+
+                var date = order.created_at ? new Date(order.created_at).toLocaleDateString('fr-FR') : '';
+
+                html += '<div class="partner-card" onclick="openProject(\'' + order.id + '\')">' +
+                    '<div class="flex justify-between items-center flex-wrap gap-3">' +
+                        '<div class="flex-1 min-w-[200px]">' +
+                            '<div class="font-black text-lg">' + (order.product_name || 'Projet') + '</div>' +
+                            '<div class="text-sm font-bold opacity-60">' +
+                                '<i class="fas fa-user mr-1"></i>' + (order.client_name || 'Client') +
+                                (date ? ' <span class="ml-3"><i class="fas fa-calendar mr-1"></i>' + date + '</span>' : '') +
+                            '</div>' +
+                            (assignment.notes ? '<div class="text-xs opacity-50 mt-1"><i class="fas fa-sticky-note mr-1"></i>' + assignment.notes + '</div>' : '') +
+                        '</div>' +
+                        '<div class="flex items-center gap-3">' +
+                            '<span class="status-badge status-active">' + statusLabel + '</span>' +
+                            '<i class="fas fa-chevron-right opacity-30"></i>' +
+                        '</div>' +
+                    '</div>' +
+                '</div>';
+            }
+
+            container.innerHTML = html;
+
+        } catch (error) {
+            console.error('[PARTNER-DASH] Erreur chargement projets:', error);
+            container.innerHTML = '<div class="section-card text-center py-8">' +
+                '<p class="font-bold text-red-600">Erreur de chargement</p>' +
+                '<p class="text-sm opacity-50 mt-2">Le serveur est peut-etre en cours de demarrage</p>' +
+                '<button onclick="loadProjects()" class="neo-btn-yellow px-6 py-2 mt-4 text-sm">Reessayer</button>' +
+            '</div>';
+        }
+    }
+
+    // ==============================================
+    // DETAIL PROJET
+    // ==============================================
+
+    async function openProject(orderId) {
+        currentProjectOrderId = orderId;
+
+        // Masquer les projets, afficher le detail
+        var projects = document.getElementById('projectsSection');
+        var detail = document.getElementById('projectDetailSection');
+        if (projects) projects.style.display = 'none';
+        if (detail) detail.style.display = 'block';
+
+        // Reset aux onglets uploads
+        showProjectTab('uploads');
+
+        var header = document.getElementById('projectHeader');
+        if (header) header.innerHTML = '<p class="text-center py-4"><i class="fas fa-spinner fa-spin mr-2"></i>Chargement...</p>';
+
+        try {
+            var response = await partnerAuthenticatedFetch(PARTNER_API_BASE_URL + '/api/partner/projects/' + orderId);
+
+            if (!response.ok) {
+                if (response.status === 401) {
+                    window.location.href = 'partner-login.html';
+                    return;
+                }
+                throw new Error('Erreur ' + response.status);
+            }
+
+            currentProjectData = await response.json();
+            renderProjectDetail();
+
+        } catch (error) {
+            console.error('[PARTNER-DASH] Erreur detail projet:', error);
+            if (header) {
+                header.innerHTML = '<p class="text-center py-4 font-bold text-red-600">Erreur de chargement du projet</p>' +
+                    '<button onclick="openProject(\'' + orderId + '\')" class="neo-btn-yellow px-6 py-2 mt-2 text-sm">Reessayer</button>';
+            }
+        }
+    }
+
+    function renderProjectDetail() {
+        if (!currentProjectData) return;
+
+        var order = currentProjectData.order || {};
+        var assignment = currentProjectData.assignment || {};
+        var uploads = currentProjectData.uploads || [];
+        var comments = currentProjectData.comments || [];
+
+        // Header du projet
+        var header = document.getElementById('projectHeader');
+        if (header) {
+            var statusLabel = {
+                active: 'Actif', in_progress: 'En cours', delivered: 'Livre',
+                completed: 'Termine', pending_deposit: 'Acompte en attente',
+                pending_balance: 'Solde en attente', paid_in_full: 'Paye'
+            }[order.status] || order.status || 'N/A';
+
+            header.innerHTML =
+                '<div class="flex justify-between items-start flex-wrap gap-4">' +
+                    '<div>' +
+                        '<h2 class="text-2xl font-black italic uppercase">' + (order.product_name || 'Projet') + '</h2>' +
+                        '<p class="font-bold opacity-60 mt-1"><i class="fas fa-user mr-1"></i>' + (order.client_name || 'Client') + '</p>' +
+                        (assignment.notes ? '<p class="text-sm opacity-50 mt-2"><i class="fas fa-sticky-note mr-1"></i>' + assignment.notes + '</p>' : '') +
+                    '</div>' +
+                    '<div class="text-right">' +
+                        '<span class="status-badge status-active">' + statusLabel + '</span>' +
+                        '<div class="text-sm font-bold opacity-50 mt-2">' +
+                            '<i class="fas fa-upload mr-1"></i>' + uploads.length + ' upload(s)' +
+                        '</div>' +
+                    '</div>' +
+                '</div>';
+        }
+
+        // Historique des uploads
+        renderUploadsHistory(uploads);
+
+        // Commentaires
+        renderComments(comments);
+    }
+
+    function renderUploadsHistory(uploads) {
+        var container = document.getElementById('uploadsHistoryList');
+        if (!container) return;
+
+        if (!uploads || uploads.length === 0) {
+            container.innerHTML = '<p class="text-center py-4 opacity-50 font-bold">Aucun upload pour le moment</p>';
+            return;
+        }
+
+        // Trier par date (plus recent en premier)
+        uploads.sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); });
+
+        var html = '';
+        for (var i = 0; i < uploads.length; i++) {
+            var u = uploads[i];
+            var statusClass = 'status-pending';
+            var statusText = 'En attente';
+            if (u.validation_status === 'approved') { statusClass = 'status-approved'; statusText = 'Approuve'; }
+            else if (u.validation_status === 'rejected') { statusClass = 'status-rejected'; statusText = 'Refuse'; }
+
+            var date = u.created_at ? new Date(u.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+
+            html += '<div class="upload-item">' +
+                '<div class="flex justify-between items-start flex-wrap gap-3">' +
+                    '<div class="flex-1">' +
+                        '<div class="font-black">' + (u.name || 'Fichier') + '</div>' +
+                        '<div class="text-xs font-bold opacity-50">' + (u.file_extension || '').toUpperCase() + ' - ' + date + '</div>' +
+                        (u.description ? '<div class="text-sm opacity-70 mt-1">' + u.description + '</div>' : '') +
+                        (u.rejection_reason ? '<div class="text-sm text-red-600 font-bold mt-1"><i class="fas fa-exclamation-circle mr-1"></i>' + u.rejection_reason + '</div>' : '') +
+                        (u.publication_link ? '<div class="text-xs mt-1"><i class="fas fa-link mr-1"></i><a href="' + u.publication_link + '" target="_blank" class="text-blue-600 underline">Voir la publication</a></div>' : '') +
+                    '</div>' +
+                    '<span class="status-badge ' + statusClass + '">' + statusText + '</span>' +
+                '</div>' +
+            '</div>';
+        }
+
+        container.innerHTML = html;
+    }
+
+    function renderComments(comments) {
+        var container = document.getElementById('commentsList');
+        if (!container) return;
+
+        if (!comments || comments.length === 0) {
+            container.innerHTML = '<p class="text-center py-4 opacity-50 font-bold">Aucun commentaire</p>';
+            return;
+        }
+
+        // Trier par date (plus ancien en premier)
+        comments.sort(function(a, b) { return new Date(a.created_at) - new Date(b.created_at); });
+
+        var html = '';
+        for (var i = 0; i < comments.length; i++) {
+            var c = comments[i];
+            var isPartner = c.author_type === 'partner';
+            var bubbleClass = isPartner ? 'comment-partner' : 'comment-admin';
+            var date = c.created_at ? new Date(c.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+
+            html += '<div class="comment-bubble ' + bubbleClass + '">' +
+                '<div class="flex justify-between items-center mb-2">' +
+                    '<span class="font-black text-sm">' +
+                        (isPartner ? '<i class="fas fa-user mr-1"></i>' : '<i class="fas fa-shield-alt mr-1"></i>') +
+                        (c.author_name || 'Utilisateur') +
+                    '</span>' +
+                    '<span class="text-xs opacity-50">' + date + '</span>' +
+                '</div>' +
+                '<p class="text-sm" style="white-space:pre-wrap;">' + escapeHtml(c.content) + '</p>' +
+            '</div>';
+        }
+
+        container.innerHTML = html;
+    }
+
+    // ==============================================
+    // UPLOAD
+    // ==============================================
+
+    var uploadFormEl = document.getElementById('uploadForm');
+    if (uploadFormEl) {
+        uploadFormEl.addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            if (!currentProjectOrderId || !currentPartner) {
+                alert('Erreur: aucun projet selectionne');
+                return;
+            }
+
+            var nameInput = document.getElementById('uploadName');
+            var fileInput = document.getElementById('uploadFile');
+            var descInput = document.getElementById('uploadDescription');
+            var submitBtn = document.getElementById('uploadSubmitBtn');
+
+            if (!fileInput || !fileInput.files[0]) {
+                alert('Veuillez selectionner un fichier');
+                return;
+            }
+
+            var file = fileInput.files[0];
+            var ext = file.name.split('.').pop().toLowerCase();
+
+            // Verifier le type de fichier cote client
+            var typeConfig = PARTNER_ALLOWED_TYPES[currentPartner.partner_type];
+            if (typeConfig && typeConfig.extensions.indexOf(ext) === -1) {
+                alert('Type de fichier non autorise. Formats acceptes : ' + typeConfig.label);
+                return;
+            }
+
+            // Champs media obligatoires
+            var publicationLink = null;
+            var publicationDate = null;
+            var diffusionType = null;
+
+            if (currentPartner.partner_type === 'media') {
+                publicationLink = document.getElementById('uploadPublicationLink').value;
+                publicationDate = document.getElementById('uploadPublicationDate').value;
+                diffusionType = document.getElementById('uploadDiffusionType').value;
+
+                if (!publicationLink || !publicationDate || !diffusionType) {
+                    alert('Les champs de publication sont obligatoires pour les partenaires media');
+                    return;
+                }
+            }
+
+            // Desactiver le bouton
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Envoi en cours...';
+            }
+
+            try {
+                // Convertir en base64 pour l'envoi
+                var fileUrl = await fileToBase64(file);
+
+                var body = {
+                    order_id: currentProjectOrderId,
+                    name: nameInput ? nameInput.value : 'Fichier',
+                    description: descInput ? descInput.value : '',
+                    file_url: fileUrl,
+                    file_extension: ext,
+                    file_size: file.size
+                };
+
+                if (publicationLink) body.publication_link = publicationLink;
+                if (publicationDate) body.publication_date = publicationDate;
+                if (diffusionType) body.diffusion_type = diffusionType;
+
+                var response = await partnerAuthenticatedFetch(PARTNER_API_BASE_URL + '/api/partner/upload', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+
+                var data = await response.json();
+
+                if (response.ok && data.success) {
+                    alert('Upload soumis avec succes ! Il sera valide par l\'administrateur.');
+                    // Reset le formulaire
+                    uploadFormEl.reset();
+                    // Recharger le detail du projet
+                    openProject(currentProjectOrderId);
+                    showProjectTab('history');
+                } else {
+                    alert('Erreur: ' + (data.error || 'Erreur inconnue'));
+                }
+
+            } catch (error) {
+                console.error('[PARTNER-DASH] Erreur upload:', error);
+                alert('Erreur de connexion au serveur');
+            }
+
+            // Reactiver le bouton
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-paper-plane mr-2"></i>SOUMETTRE';
+            }
+        });
+    }
+
+    // ==============================================
+    // COMMENTAIRES
+    // ==============================================
+
+    var commentFormEl = document.getElementById('commentForm');
+    if (commentFormEl) {
+        commentFormEl.addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            if (!currentProjectOrderId) return;
+
+            var contentInput = document.getElementById('commentContent');
+            var content = contentInput ? contentInput.value.trim() : '';
+
+            if (!content) {
+                alert('Veuillez ecrire un commentaire');
+                return;
+            }
+
+            try {
+                var response = await partnerAuthenticatedFetch(PARTNER_API_BASE_URL + '/api/partner/comments', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        order_id: currentProjectOrderId,
+                        content: content
+                    })
+                });
+
+                var data = await response.json();
+
+                if (response.ok && data.success) {
+                    if (contentInput) contentInput.value = '';
+                    // Recharger les commentaires
+                    loadCommentsOnly();
+                } else {
+                    alert('Erreur: ' + (data.error || 'Erreur inconnue'));
+                }
+
+            } catch (error) {
+                console.error('[PARTNER-DASH] Erreur commentaire:', error);
+                alert('Erreur de connexion');
+            }
+        });
+    }
+
+    async function loadCommentsOnly() {
+        if (!currentProjectOrderId) return;
+
+        try {
+            var response = await partnerAuthenticatedFetch(PARTNER_API_BASE_URL + '/api/partner/comments/' + currentProjectOrderId);
+            if (response.ok) {
+                var comments = await response.json();
+                renderComments(comments);
+            }
+        } catch (error) {
+            console.error('[PARTNER-DASH] Erreur reload commentaires:', error);
+        }
+    }
+
+    // ==============================================
+    // PROFIL
+    // ==============================================
+
+    function renderProfileSection() {
+        if (!currentPartner) return;
+
+        var container = document.getElementById('profileInfo');
+        if (!container) return;
+
+        var typeLabel = PARTNER_TYPE_LABELS[currentPartner.partner_type] || currentPartner.partner_type;
+
+        container.innerHTML =
+            '<div class="grid md:grid-cols-2 gap-6">' +
+                '<div>' +
+                    '<p class="text-sm font-bold uppercase opacity-60 mb-1">Nom</p>' +
+                    '<p class="font-black text-lg">' + (currentPartner.prenom || '') + ' ' + (currentPartner.nom || '') + '</p>' +
+                '</div>' +
+                '<div>' +
+                    '<p class="text-sm font-bold uppercase opacity-60 mb-1">Email</p>' +
+                    '<p class="font-black">' + (currentPartner.email || '') + '</p>' +
+                '</div>' +
+                '<div>' +
+                    '<p class="text-sm font-bold uppercase opacity-60 mb-1">Type de partenaire</p>' +
+                    '<p class="font-black">' + typeLabel + '</p>' +
+                '</div>' +
+                '<div>' +
+                    '<p class="text-sm font-bold uppercase opacity-60 mb-1">Telephone</p>' +
+                    '<p class="font-black">' + (currentPartner.telephone || 'Non renseigne') + '</p>' +
+                '</div>' +
+                '<div>' +
+                    '<p class="text-sm font-bold uppercase opacity-60 mb-1">Specialite</p>' +
+                    '<p class="font-black">' + (currentPartner.specialite || 'Non renseignee') + '</p>' +
+                '</div>' +
+                '<div>' +
+                    '<p class="text-sm font-bold uppercase opacity-60 mb-1">Statut</p>' +
+                    '<span class="status-badge status-active">' + (currentPartner.accountStatus || 'actif').toUpperCase() + '</span>' +
+                '</div>' +
+            '</div>';
+    }
+
+    var passwordFormEl = document.getElementById('passwordForm');
+    if (passwordFormEl) {
+        passwordFormEl.addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            var newPwd = document.getElementById('newPassword').value;
+            var confirmPwd = document.getElementById('confirmPassword').value;
+            var msgEl = document.getElementById('profileMessage');
+
+            if (newPwd !== confirmPwd) {
+                if (msgEl) {
+                    msgEl.style.display = 'block';
+                    msgEl.innerHTML = '<div class="bg-red-100 border-2 border-red-500 p-3 font-bold text-red-700">Les mots de passe ne correspondent pas</div>';
+                }
+                return;
+            }
+
+            if (newPwd.length < 6) {
+                if (msgEl) {
+                    msgEl.style.display = 'block';
+                    msgEl.innerHTML = '<div class="bg-red-100 border-2 border-red-500 p-3 font-bold text-red-700">Le mot de passe doit contenir au moins 6 caracteres</div>';
+                }
+                return;
+            }
+
+            try {
+                var result = await updatePartnerProfile({ password: newPwd });
+
+                if (msgEl) {
+                    msgEl.style.display = 'block';
+                    if (result.success) {
+                        msgEl.innerHTML = '<div class="bg-green-100 border-2 border-green-500 p-3 font-bold text-green-700"><i class="fas fa-check-circle mr-2"></i>Mot de passe mis a jour</div>';
+                        passwordFormEl.reset();
+                    } else {
+                        msgEl.innerHTML = '<div class="bg-red-100 border-2 border-red-500 p-3 font-bold text-red-700">' + (result.message || 'Erreur') + '</div>';
+                    }
+                }
+            } catch (error) {
+                console.error('[PARTNER-DASH] Erreur profil:', error);
+                if (msgEl) {
+                    msgEl.style.display = 'block';
+                    msgEl.innerHTML = '<div class="bg-red-100 border-2 border-red-500 p-3 font-bold text-red-700">Erreur de connexion au serveur</div>';
+                }
+            }
+        });
+    }
+
+    // ==============================================
+    // UTILITAIRES
+    // ==============================================
+
+    function handlePartnerLogout() {
+        if (confirm('Voulez-vous vraiment vous deconnecter ?')) {
+            partnerLogout();
+        }
+    }
+
+    function showError(message) {
+        var banner = document.getElementById('errorBanner');
+        var text = document.getElementById('errorBannerText');
+        var loading = document.getElementById('loadingState');
+
+        if (loading) loading.style.display = 'none';
+        if (banner) banner.style.display = 'block';
+        if (text) text.textContent = message;
+    }
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        var div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function fileToBase64(file) {
+        return new Promise(function(resolve, reject) {
+            var reader = new FileReader();
+            reader.onload = function() { resolve(reader.result); };
+            reader.onerror = function(error) { reject(error); };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    </script>
+    <script src="chatbot.js"></script>
+</body>
+</html>

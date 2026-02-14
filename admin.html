@@ -223,6 +223,9 @@
                         <button onclick="showSection('commandes')" class="nav-btn text-white hover:text-[var(--genesis-yellow)]">
                             <i class="fas fa-receipt mr-2"></i>Commandes
                         </button>
+                        <button onclick="showSection('partenaires')" class="nav-btn text-white hover:text-[var(--genesis-yellow)]">
+                            <i class="fas fa-handshake mr-2"></i>Partenaires
+                        </button>
                     </div>
                 </div>
                 <button onclick="handleLogout()" class="border-4 border-white text-white px-4 py-2 text-xs font-black hover:bg-white hover:text-black transition">
@@ -305,6 +308,108 @@
                 <!-- Liste des clients -->
                 <div id="clientsList"></div>
             </div>
+            <!-- SECTION PARTENAIRES -->
+            <div id="partenairesSection" class="container mx-auto max-w-7xl" style="display: none;">
+                <div class="flex justify-between items-center mb-12 flex-wrap gap-4">
+                    <h2 class="text-5xl font-black italic uppercase text-[var(--genesis-yellow)]">
+                        <i class="fas fa-handshake mr-4"></i>PARTENAIRES
+                    </h2>
+                    <button onclick="showCreatePartnerForm()" class="neo-btn-yellow px-6 py-3 text-sm">
+                        <i class="fas fa-user-plus mr-2"></i>CREER UN PARTENAIRE
+                    </button>
+                </div>
+
+                <!-- Formulaire creation partenaire (cache par defaut) -->
+                <div id="createPartnerFormContainer" class="admin-card neo-shadow mb-8" style="display: none;">
+                    <h3 class="text-2xl font-black italic uppercase mb-6">
+                        <i class="fas fa-user-plus mr-2"></i>NOUVEAU PARTENAIRE
+                    </h3>
+                    <form id="createPartnerForm">
+                        <div class="grid md:grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <label class="block font-black mb-2 uppercase text-sm">Prenom</label>
+                                <input type="text" id="partnerPrenom" required placeholder="Prenom">
+                            </div>
+                            <div>
+                                <label class="block font-black mb-2 uppercase text-sm">Nom</label>
+                                <input type="text" id="partnerNom" required placeholder="Nom">
+                            </div>
+                        </div>
+                        <div class="grid md:grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <label class="block font-black mb-2 uppercase text-sm">Email</label>
+                                <input type="email" id="partnerEmail" required placeholder="email@partenaire.com">
+                            </div>
+                            <div>
+                                <label class="block font-black mb-2 uppercase text-sm">Telephone</label>
+                                <input type="tel" id="partnerTelephone" placeholder="06 12 34 56 78">
+                            </div>
+                        </div>
+                        <div class="grid md:grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <label class="block font-black mb-2 uppercase text-sm">Type de partenaire</label>
+                                <select id="partnerType" required>
+                                    <option value="">Selectionner...</option>
+                                    <option value="photographer">Photographe</option>
+                                    <option value="videographer">Videographe</option>
+                                    <option value="marketer">Marketeur</option>
+                                    <option value="media">Media</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block font-black mb-2 uppercase text-sm">Specialite</label>
+                                <input type="text" id="partnerSpecialite" placeholder="Ex: Portrait, Corporate...">
+                            </div>
+                        </div>
+                        <div class="mb-4">
+                            <label class="block font-black mb-2 uppercase text-sm">Mot de passe temporaire</label>
+                            <input type="text" id="partnerPassword" required placeholder="Mot de passe initial" value="">
+                        </div>
+                        <div class="flex gap-3">
+                            <button type="submit" class="neo-btn-yellow px-8 py-3 text-sm">
+                                <i class="fas fa-check mr-2"></i>CREER
+                            </button>
+                            <button type="button" onclick="document.getElementById('createPartnerFormContainer').style.display='none'" class="border-4 border-black bg-gray-300 text-black px-6 py-3 text-sm font-black">
+                                ANNULER
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Onglets -->
+                <div class="flex gap-3 mb-6 flex-wrap">
+                    <button onclick="showPartnerTab('list')" id="partnerTabList" class="neo-btn-yellow px-4 py-2 text-xs">
+                        <i class="fas fa-list mr-1"></i>LISTE
+                    </button>
+                    <button onclick="showPartnerTab('uploads')" id="partnerTabUploads" class="border-4 border-[#ffd43b] bg-[#ffd43b] text-black px-4 py-2 text-xs font-black">
+                        <i class="fas fa-cloud-upload-alt mr-1"></i>UPLOADS EN ATTENTE
+                        <span id="pendingUploadsBadge" class="ml-1 bg-red-500 text-white rounded-full px-2 py-0.5 text-xs" style="display:none;">0</span>
+                    </button>
+                </div>
+
+                <!-- Liste des partenaires -->
+                <div id="partnersListContainer">
+                    <div id="partnersList">
+                        <p class="text-center py-8 opacity-50 font-bold">Chargement...</p>
+                    </div>
+                </div>
+
+                <!-- Uploads en attente -->
+                <div id="partnerUploadsContainer" style="display: none;">
+                    <div id="pendingUploadsList">
+                        <p class="text-center py-8 opacity-50 font-bold">Chargement...</p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- MODAL PARTENAIRE DETAIL -->
+    <div id="partnerModal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closePartnerModal()">&times;</span>
+            <div id="partnerModalContent"></div>
         </div>
     </div>
 
@@ -365,6 +470,7 @@
             document.getElementById('clientsSection').style.display = 'none';
             document.getElementById('messagesSection').style.display = 'none';
             document.getElementById('commandesSection').style.display = 'none';
+            document.getElementById('partenairesSection').style.display = 'none';
 
             if (section === 'dashboard') {
                 document.getElementById('dashboardSection').style.display = 'block';
@@ -378,6 +484,10 @@
             } else if (section === 'commandes') {
                 document.getElementById('commandesSection').style.display = 'block';
                 loadOrders();
+            } else if (section === 'partenaires') {
+                document.getElementById('partenairesSection').style.display = 'block';
+                loadPartnersList();
+                loadPendingUploads();
             }
         }
 
@@ -747,6 +857,12 @@
                 <div id="clientSessionsList">
                     <p class="text-center py-4 opacity-50 font-bold">Chargement...</p>
                 </div>
+
+                <hr class="border-2 border-black my-8">
+
+                <div id="partnerAssignmentSection">
+                    <p class="text-center py-4 opacity-50 font-bold">Chargement partenaires...</p>
+                </div>
             `;
 
             document.getElementById('clientModalContent').innerHTML = modalHTML;
@@ -765,6 +881,14 @@
 
             // Charger les séances du client
             loadClientSessions(clientEmail);
+
+            // Charger les partenaires assignes si commande existante
+            if (clientOrderId) {
+                loadPartnerAssignment(clientOrderId, 'partnerAssignmentSection');
+            } else {
+                var pas = document.getElementById('partnerAssignmentSection');
+                if (pas) pas.innerHTML = '<p class="text-sm opacity-50 font-bold">Pas de commande active - impossible d\'assigner des partenaires</p>';
+            }
         }
 
         function renderClientDocuments(documentsByDay, clientEmail) {
@@ -1354,9 +1478,499 @@
 
         // Fermer le modal en cliquant en dehors
         window.onclick = function(event) {
-            const modal = document.getElementById('clientModal');
-            if (event.target === modal) {
+            var clientModal = document.getElementById('clientModal');
+            var partnerModal = document.getElementById('partnerModal');
+            if (event.target === clientModal) {
                 closeClientModal();
+            }
+            if (event.target === partnerModal) {
+                closePartnerModal();
+            }
+        }
+
+        // ============================================================
+        // SECTION PARTENAIRES
+        // ============================================================
+
+        var PARTNER_TYPE_LABELS = {
+            photographer: 'Photographe',
+            videographer: 'Videographe',
+            marketer: 'Marketeur',
+            media: 'Media'
+        };
+
+        var allPartners = [];
+
+        function showCreatePartnerForm() {
+            document.getElementById('createPartnerFormContainer').style.display = 'block';
+            // Generer un mot de passe temporaire
+            var tempPass = 'FA' + Math.random().toString(36).substring(2, 8).toUpperCase();
+            document.getElementById('partnerPassword').value = tempPass;
+        }
+
+        function showPartnerTab(tab) {
+            var listC = document.getElementById('partnersListContainer');
+            var uploadsC = document.getElementById('partnerUploadsContainer');
+            if (tab === 'list') {
+                if (listC) listC.style.display = 'block';
+                if (uploadsC) uploadsC.style.display = 'none';
+            } else if (tab === 'uploads') {
+                if (listC) listC.style.display = 'none';
+                if (uploadsC) uploadsC.style.display = 'block';
+                loadPendingUploads();
+            }
+        }
+
+        // Creer un partenaire
+        var createPartnerFormEl = document.getElementById('createPartnerForm');
+        if (createPartnerFormEl) {
+            createPartnerFormEl.addEventListener('submit', async function(e) {
+                e.preventDefault();
+
+                var data = {
+                    prenom: document.getElementById('partnerPrenom').value,
+                    nom: document.getElementById('partnerNom').value,
+                    email: document.getElementById('partnerEmail').value,
+                    telephone: document.getElementById('partnerTelephone').value,
+                    partner_type: document.getElementById('partnerType').value,
+                    specialite: document.getElementById('partnerSpecialite').value,
+                    password: document.getElementById('partnerPassword').value
+                };
+
+                try {
+                    var response = await fetch(API_BASE_URL + '/api/admin/partners/create', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(data)
+                    });
+
+                    var result = await response.json();
+
+                    if (result.success) {
+                        alert('Partenaire cree avec succes !\n\nEmail: ' + data.email + '\nMot de passe: ' + data.password + '\n\nCommuniquez ces identifiants au partenaire.');
+                        createPartnerFormEl.reset();
+                        document.getElementById('createPartnerFormContainer').style.display = 'none';
+                        loadPartnersList();
+                    } else {
+                        alert('Erreur: ' + (result.error || 'Erreur inconnue'));
+                    }
+                } catch (error) {
+                    console.error('[ADMIN] Erreur creation partenaire:', error);
+                    alert('Erreur de connexion au serveur');
+                }
+            });
+        }
+
+        // Charger la liste des partenaires
+        async function loadPartnersList() {
+            var container = document.getElementById('partnersList');
+            if (!container) return;
+
+            try {
+                var response = await fetch(API_BASE_URL + '/api/admin/partners');
+                if (!response.ok) throw new Error('Erreur chargement');
+                allPartners = await response.json();
+            } catch (error) {
+                console.error('[ADMIN] Erreur chargement partenaires:', error);
+                container.innerHTML = '<p class="text-center py-8 opacity-50 font-bold">Chargement... (le serveur demarre)</p>';
+                setTimeout(function() { loadPartnersList(); }, 5000);
+                return;
+            }
+
+            if (allPartners.length === 0) {
+                container.innerHTML = '<p class="text-center py-8 opacity-50 font-bold">Aucun partenaire</p>';
+                return;
+            }
+
+            var html = '';
+            allPartners.forEach(function(partner) {
+                var typeLabel = PARTNER_TYPE_LABELS[partner.partner_type] || partner.partner_type;
+                var statusColor = partner.accountStatus === 'deactivated' ? '#999' : '#51cf66';
+                var statusLabel = partner.accountStatus === 'deactivated' ? 'DESACTIVE' : 'ACTIF';
+
+                html += '<div class="client-row" onclick="openPartnerModal(\'' + partner.id + '\')">' +
+                    '<div class="flex justify-between items-center flex-wrap gap-4">' +
+                        '<div class="flex-1 min-w-[200px]">' +
+                            '<div class="font-black text-lg">' + (partner.prenom || '') + ' ' + (partner.nom || '') + '</div>' +
+                            '<div class="text-sm font-bold opacity-70">' + partner.email + '</div>' +
+                        '</div>' +
+                        '<div>' +
+                            '<span style="background:var(--genesis-yellow);color:black;padding:4px 10px;border:2px solid black;font-size:11px;font-weight:900;">' + typeLabel.toUpperCase() + '</span>' +
+                        '</div>' +
+                        '<div>' +
+                            '<span style="background:' + statusColor + ';color:white;padding:4px 10px;border:2px solid black;font-size:11px;font-weight:900;">' + statusLabel + '</span>' +
+                        '</div>' +
+                        '<div>' +
+                            '<button class="neo-btn-yellow px-4 py-2 text-sm"><i class="fas fa-folder-open mr-1"></i>Gerer</button>' +
+                        '</div>' +
+                    '</div>' +
+                '</div>';
+            });
+
+            container.innerHTML = html;
+        }
+
+        // Modal detail partenaire
+        async function openPartnerModal(partnerId) {
+            var partner = allPartners.find(function(p) { return p.id === partnerId; });
+            if (!partner) {
+                try {
+                    var resp = await fetch(API_BASE_URL + '/api/admin/partners/' + partnerId);
+                    if (resp.ok) partner = await resp.json();
+                } catch (e) {}
+            }
+
+            if (!partner) {
+                alert('Partenaire non trouve');
+                return;
+            }
+
+            var typeLabel = PARTNER_TYPE_LABELS[partner.partner_type] || partner.partner_type;
+
+            var modalHTML =
+                '<h2 class="text-3xl font-black italic uppercase mb-6 text-[var(--genesis-yellow)]">' +
+                    '<i class="fas fa-handshake mr-3"></i>' + (partner.prenom || '') + ' ' + (partner.nom || '') +
+                '</h2>' +
+                '<div class="grid md:grid-cols-2 gap-6 mb-8">' +
+                    '<div>' +
+                        '<p class="text-sm font-bold uppercase opacity-70 mb-1">Email</p>' +
+                        '<p class="font-black">' + partner.email + '</p>' +
+                    '</div>' +
+                    '<div>' +
+                        '<p class="text-sm font-bold uppercase opacity-70 mb-1">Telephone</p>' +
+                        '<p class="font-black">' + (partner.telephone || 'N/A') + '</p>' +
+                    '</div>' +
+                    '<div>' +
+                        '<p class="text-sm font-bold uppercase opacity-70 mb-1">Type</p>' +
+                        '<p class="font-black">' + typeLabel + '</p>' +
+                    '</div>' +
+                    '<div>' +
+                        '<p class="text-sm font-bold uppercase opacity-70 mb-1">Specialite</p>' +
+                        '<p class="font-black">' + (partner.specialite || 'N/A') + '</p>' +
+                    '</div>' +
+                    '<div>' +
+                        '<p class="text-sm font-bold uppercase opacity-70 mb-1">Statut</p>' +
+                        '<p class="font-black">' + (partner.accountStatus === 'deactivated' ? 'Desactive' : 'Actif') + '</p>' +
+                    '</div>' +
+                    '<div>' +
+                        '<p class="text-sm font-bold uppercase opacity-70 mb-1">Cree le</p>' +
+                        '<p class="font-black">' + (partner.created_at ? new Date(partner.created_at).toLocaleDateString('fr-FR') : 'N/A') + '</p>' +
+                    '</div>' +
+                '</div>' +
+                '<hr class="border-2 border-black my-6">' +
+                '<h3 class="text-xl font-black italic uppercase mb-4"><i class="fas fa-cog mr-2"></i>ACTIONS</h3>' +
+                '<div class="flex gap-3 flex-wrap">';
+
+            if (partner.accountStatus === 'deactivated') {
+                modalHTML += '<button onclick="togglePartnerStatus(\'' + partner.id + '\', \'active\')" class="neo-btn-yellow px-6 py-3 text-sm">' +
+                    '<i class="fas fa-check mr-2"></i>REACTIVER' +
+                '</button>';
+            } else {
+                modalHTML += '<button onclick="togglePartnerStatus(\'' + partner.id + '\', \'deactivated\')" class="border-4 border-[#ff6b6b] bg-[#ff6b6b] text-black px-6 py-3 text-sm font-black">' +
+                    '<i class="fas fa-ban mr-2"></i>DESACTIVER' +
+                '</button>';
+            }
+
+            modalHTML += '<button onclick="deletePartner(\'' + partner.id + '\')" class="border-4 border-black bg-gray-300 text-black px-6 py-3 text-sm font-black">' +
+                '<i class="fas fa-trash mr-2"></i>SUPPRIMER' +
+            '</button>' +
+            '</div>';
+
+            document.getElementById('partnerModalContent').innerHTML = modalHTML;
+            document.getElementById('partnerModal').style.display = 'block';
+        }
+
+        function closePartnerModal() {
+            document.getElementById('partnerModal').style.display = 'none';
+        }
+
+        async function togglePartnerStatus(partnerId, newStatus) {
+            try {
+                var response = await fetch(API_BASE_URL + '/api/admin/partners/' + partnerId, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ accountStatus: newStatus })
+                });
+
+                var result = await response.json();
+                if (result.success) {
+                    alert('Statut mis a jour');
+                    closePartnerModal();
+                    loadPartnersList();
+                } else {
+                    alert('Erreur: ' + (result.error || 'Erreur inconnue'));
+                }
+            } catch (error) {
+                console.error('[ADMIN] Erreur toggle status:', error);
+                alert('Erreur de connexion');
+            }
+        }
+
+        async function deletePartner(partnerId) {
+            if (!confirm('Voulez-vous vraiment supprimer ce partenaire ? Cette action est irreversible.')) return;
+
+            try {
+                var response = await fetch(API_BASE_URL + '/api/admin/partners/' + partnerId, {
+                    method: 'DELETE'
+                });
+
+                var result = await response.json();
+                if (result.success) {
+                    alert('Partenaire supprime');
+                    closePartnerModal();
+                    loadPartnersList();
+                } else {
+                    alert('Erreur: ' + (result.error || 'Erreur inconnue'));
+                }
+            } catch (error) {
+                console.error('[ADMIN] Erreur suppression:', error);
+                alert('Erreur de connexion');
+            }
+        }
+
+        // ============================================================
+        // UPLOADS EN ATTENTE (VALIDATION)
+        // ============================================================
+
+        async function loadPendingUploads() {
+            var container = document.getElementById('pendingUploadsList');
+            if (!container) return;
+
+            try {
+                var response = await fetch(API_BASE_URL + '/api/admin/partner-uploads');
+                if (!response.ok) throw new Error('Erreur chargement');
+                var uploads = await response.json();
+
+                // Filtrer seulement les pending
+                var pending = uploads.filter(function(u) { return u.validation_status === 'pending'; });
+
+                // Badge
+                var badge = document.getElementById('pendingUploadsBadge');
+                if (badge) {
+                    if (pending.length > 0) {
+                        badge.style.display = 'inline';
+                        badge.textContent = pending.length;
+                    } else {
+                        badge.style.display = 'none';
+                    }
+                }
+
+                if (pending.length === 0) {
+                    container.innerHTML = '<p class="text-center py-8 opacity-50 font-bold">Aucun upload en attente de validation</p>';
+                    return;
+                }
+
+                var html = '';
+                pending.forEach(function(upload) {
+                    var date = upload.created_at ? new Date(upload.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+                    var typeLabel = PARTNER_TYPE_LABELS[upload.partner_type] || upload.partner_type;
+
+                    html += '<div class="admin-card mb-4" style="border-left:6px solid #ffd43b;">' +
+                        '<div class="flex justify-between items-start flex-wrap gap-4">' +
+                            '<div class="flex-1 min-w-[250px]">' +
+                                '<div class="font-black text-lg">' + (upload.name || 'Fichier') + '</div>' +
+                                '<div class="text-sm font-bold opacity-60">' +
+                                    '<i class="fas fa-user mr-1"></i>' + (upload.partner_email || '') +
+                                    ' <span style="background:var(--genesis-yellow);color:black;padding:1px 6px;border:1px solid black;font-size:10px;font-weight:900;margin-left:4px;">' + typeLabel.toUpperCase() + '</span>' +
+                                '</div>' +
+                                '<div class="text-xs opacity-50 mt-1">' +
+                                    (upload.file_extension || '').toUpperCase() + ' - ' + date +
+                                    ' - Commande: ' + (upload.order_id || 'N/A') +
+                                '</div>' +
+                                (upload.description ? '<div class="text-sm mt-2 opacity-70">' + upload.description + '</div>' : '') +
+                                (upload.publication_link ? '<div class="text-xs mt-1"><i class="fas fa-link mr-1"></i><a href="' + upload.publication_link + '" target="_blank" class="text-blue-600 underline">Voir publication</a></div>' : '') +
+                                (upload.file_url && upload.file_url.indexOf('data:image') === 0 ? '<div class="mt-2"><img src="' + upload.file_url + '" style="max-width:200px;max-height:150px;border:2px solid black;" alt="Preview"></div>' : '') +
+                            '</div>' +
+                            '<div class="flex gap-2">' +
+                                '<button onclick="validateUpload(\'' + upload.id + '\', \'approved\')" class="border-4 border-[#51cf66] bg-[#51cf66] text-black px-4 py-2 text-xs font-black">' +
+                                    '<i class="fas fa-check mr-1"></i>APPROUVER' +
+                                '</button>' +
+                                '<button onclick="rejectUpload(\'' + upload.id + '\')" class="border-4 border-[#ff6b6b] bg-[#ff6b6b] text-black px-4 py-2 text-xs font-black">' +
+                                    '<i class="fas fa-times mr-1"></i>REFUSER' +
+                                '</button>' +
+                            '</div>' +
+                        '</div>' +
+                    '</div>';
+                });
+
+                container.innerHTML = html;
+
+            } catch (error) {
+                console.error('[ADMIN] Erreur chargement uploads:', error);
+                container.innerHTML = '<p class="text-center py-8 opacity-50 font-bold">Chargement...</p>';
+                setTimeout(function() { loadPendingUploads(); }, 5000);
+            }
+        }
+
+        async function validateUpload(uploadId, action) {
+            try {
+                var response = await fetch(API_BASE_URL + '/api/admin/partner-uploads/' + uploadId + '/validate', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: action })
+                });
+
+                var result = await response.json();
+                if (result.success) {
+                    alert('Upload approuve et ajoute aux livrables du client !');
+                    loadPendingUploads();
+                } else {
+                    alert('Erreur: ' + (result.error || 'Erreur inconnue'));
+                }
+            } catch (error) {
+                console.error('[ADMIN] Erreur validation:', error);
+                alert('Erreur de connexion');
+            }
+        }
+
+        async function rejectUpload(uploadId) {
+            var reason = prompt('Raison du refus (optionnelle):');
+            if (reason === null) return; // Annule
+
+            try {
+                var response = await fetch(API_BASE_URL + '/api/admin/partner-uploads/' + uploadId + '/validate', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'rejected', rejection_reason: reason || '' })
+                });
+
+                var result = await response.json();
+                if (result.success) {
+                    alert('Upload refuse');
+                    loadPendingUploads();
+                } else {
+                    alert('Erreur: ' + (result.error || 'Erreur inconnue'));
+                }
+            } catch (error) {
+                console.error('[ADMIN] Erreur rejet:', error);
+                alert('Erreur de connexion');
+            }
+        }
+
+        // ============================================================
+        // ASSIGNATION PARTENAIRE DANS LE MODAL CLIENT
+        // ============================================================
+
+        async function loadPartnerAssignment(orderId, containerElId) {
+            var container = document.getElementById(containerElId);
+            if (!container) return;
+
+            try {
+                // Charger les partenaires disponibles et les assignations existantes
+                var [partnersResp, assignResp] = await Promise.all([
+                    fetch(API_BASE_URL + '/api/admin/partners'),
+                    fetch(API_BASE_URL + '/api/admin/partners/assignments/' + orderId)
+                ]);
+
+                var partners = partnersResp.ok ? await partnersResp.json() : [];
+                var assignments = assignResp.ok ? await assignResp.json() : [];
+
+                // Filtrer les partenaires actifs
+                var activePartners = partners.filter(function(p) { return p.accountStatus !== 'deactivated'; });
+
+                var html = '<h4 class="text-lg font-black italic uppercase mb-4"><i class="fas fa-handshake mr-2"></i>PARTENAIRES ASSIGNES</h4>';
+
+                // Afficher les assignations existantes
+                if (assignments.length > 0) {
+                    assignments.forEach(function(a) {
+                        var partnerInfo = partners.find(function(p) { return p.id === a.partner_id; });
+                        var partnerName = partnerInfo ? (partnerInfo.prenom + ' ' + partnerInfo.nom) : a.partner_email;
+                        var typeLabel = partnerInfo ? (PARTNER_TYPE_LABELS[partnerInfo.partner_type] || partnerInfo.partner_type) : '';
+
+                        html += '<div class="document-item">' +
+                            '<div>' +
+                                '<span class="font-black">' + partnerName + '</span>' +
+                                (typeLabel ? ' <span style="background:var(--genesis-yellow);color:black;padding:1px 6px;border:1px solid black;font-size:10px;font-weight:900;">' + typeLabel.toUpperCase() + '</span>' : '') +
+                                (a.notes ? '<div class="text-xs opacity-50 mt-1">' + a.notes + '</div>' : '') +
+                            '</div>' +
+                            '<button onclick="removeAssignment(\'' + a.id + '\', \'' + orderId + '\', \'' + containerElId + '\')" class="text-red-600 font-black hover:opacity-70">' +
+                                '<i class="fas fa-times"></i>' +
+                            '</button>' +
+                        '</div>';
+                    });
+                } else {
+                    html += '<p class="text-sm opacity-50 mb-4">Aucun partenaire assigne</p>';
+                }
+
+                // Formulaire d'assignation
+                if (activePartners.length > 0) {
+                    html += '<div class="mt-4 p-4 bg-gray-100 border-2 border-black">' +
+                        '<label class="block font-black mb-2 uppercase text-sm">Assigner un partenaire</label>' +
+                        '<div class="flex gap-2 flex-wrap">' +
+                            '<select id="assignPartnerSelect_' + orderId + '" class="flex-1 min-w-[200px]">' +
+                                '<option value="">Selectionner...</option>';
+
+                    activePartners.forEach(function(p) {
+                        var label = p.prenom + ' ' + p.nom + ' (' + (PARTNER_TYPE_LABELS[p.partner_type] || p.partner_type) + ')';
+                        html += '<option value="' + p.id + '">' + label + '</option>';
+                    });
+
+                    html += '</select>' +
+                            '<input type="text" id="assignNotes_' + orderId + '" placeholder="Notes (optionnel)" class="flex-1 min-w-[150px]">' +
+                            '<button onclick="assignPartner(\'' + orderId + '\', \'' + containerElId + '\')" class="neo-btn-yellow px-4 py-2 text-xs">' +
+                                '<i class="fas fa-plus mr-1"></i>ASSIGNER' +
+                            '</button>' +
+                        '</div>' +
+                    '</div>';
+                }
+
+                container.innerHTML = html;
+
+            } catch (error) {
+                console.error('[ADMIN] Erreur chargement assignations:', error);
+                container.innerHTML = '<p class="text-sm text-red-600 font-bold">Erreur de chargement des partenaires</p>';
+            }
+        }
+
+        async function assignPartner(orderId, containerElId) {
+            var select = document.getElementById('assignPartnerSelect_' + orderId);
+            var notesInput = document.getElementById('assignNotes_' + orderId);
+
+            if (!select || !select.value) {
+                alert('Selectionnez un partenaire');
+                return;
+            }
+
+            try {
+                var response = await fetch(API_BASE_URL + '/api/admin/partners/assign', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        partner_id: select.value,
+                        order_id: orderId,
+                        notes: notesInput ? notesInput.value : ''
+                    })
+                });
+
+                var result = await response.json();
+                if (result.success) {
+                    loadPartnerAssignment(orderId, containerElId);
+                } else {
+                    alert('Erreur: ' + (result.error || 'Erreur inconnue'));
+                }
+            } catch (error) {
+                console.error('[ADMIN] Erreur assignation:', error);
+                alert('Erreur de connexion');
+            }
+        }
+
+        async function removeAssignment(assignmentId, orderId, containerElId) {
+            if (!confirm('Retirer ce partenaire du projet ?')) return;
+
+            try {
+                var response = await fetch(API_BASE_URL + '/api/admin/partners/assign/' + assignmentId, {
+                    method: 'DELETE'
+                });
+
+                var result = await response.json();
+                if (result.success) {
+                    loadPartnerAssignment(orderId, containerElId);
+                } else {
+                    alert('Erreur: ' + (result.error || 'Erreur inconnue'));
+                }
+            } catch (error) {
+                console.error('[ADMIN] Erreur retrait assignation:', error);
+                alert('Erreur de connexion');
             }
         }
     </script>

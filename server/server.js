@@ -29,6 +29,10 @@ const PORT = process.env.PORT || 3001;
 const SUMUP_API_BASE = 'https://api.sumup.com/v0.1';
 const ORDERS_FILE = path.join(__dirname, 'data', 'orders.json');
 const USERS_FILE = path.join(__dirname, 'data', 'users.json');
+const PARTNERS_FILE = path.join(__dirname, 'data', 'partners.json');
+const PARTNER_ASSIGNMENTS_FILE = path.join(__dirname, 'data', 'partner-assignments.json');
+const PARTNER_UPLOADS_FILE = path.join(__dirname, 'data', 'partner-uploads.json');
+const PARTNER_COMMENTS_FILE = path.join(__dirname, 'data', 'partner-comments.json');
 
 // Creer le dossier data s'il n'existe pas
 if (!fs.existsSync(path.join(__dirname, 'data'))) {
@@ -66,6 +70,139 @@ function getUserByEmail(email) {
 
 function generateSessionToken() {
     return uuidv4() + '-' + Date.now();
+}
+
+// ============================================================
+// HELPERS - STOCKAGE DES PARTENAIRES
+// ============================================================
+
+function loadPartners() {
+    try {
+        if (fs.existsSync(PARTNERS_FILE)) {
+            const data = fs.readFileSync(PARTNERS_FILE, 'utf8');
+            return JSON.parse(data);
+        }
+    } catch (error) {
+        console.error('[PARTNER] Erreur lecture partners:', error);
+    }
+    return [];
+}
+
+function savePartners(partners) {
+    try {
+        fs.writeFileSync(PARTNERS_FILE, JSON.stringify(partners, null, 2), 'utf8');
+    } catch (error) {
+        console.error('[PARTNER] Erreur sauvegarde partners:', error);
+    }
+}
+
+function getPartnerByEmail(email) {
+    const partners = loadPartners();
+    return partners.find(p => p.email.toLowerCase() === email.toLowerCase()) || null;
+}
+
+function getPartnerById(partnerId) {
+    const partners = loadPartners();
+    return partners.find(p => p.id === partnerId) || null;
+}
+
+function loadPartnerAssignments() {
+    try {
+        if (fs.existsSync(PARTNER_ASSIGNMENTS_FILE)) {
+            const data = fs.readFileSync(PARTNER_ASSIGNMENTS_FILE, 'utf8');
+            return JSON.parse(data);
+        }
+    } catch (error) {
+        console.error('[PARTNER] Erreur lecture assignments:', error);
+    }
+    return [];
+}
+
+function savePartnerAssignments(assignments) {
+    try {
+        fs.writeFileSync(PARTNER_ASSIGNMENTS_FILE, JSON.stringify(assignments, null, 2), 'utf8');
+    } catch (error) {
+        console.error('[PARTNER] Erreur sauvegarde assignments:', error);
+    }
+}
+
+function loadPartnerUploads() {
+    try {
+        if (fs.existsSync(PARTNER_UPLOADS_FILE)) {
+            const data = fs.readFileSync(PARTNER_UPLOADS_FILE, 'utf8');
+            return JSON.parse(data);
+        }
+    } catch (error) {
+        console.error('[PARTNER] Erreur lecture uploads:', error);
+    }
+    return [];
+}
+
+function savePartnerUploads(uploads) {
+    try {
+        fs.writeFileSync(PARTNER_UPLOADS_FILE, JSON.stringify(uploads, null, 2), 'utf8');
+    } catch (error) {
+        console.error('[PARTNER] Erreur sauvegarde uploads:', error);
+    }
+}
+
+function loadPartnerComments() {
+    try {
+        if (fs.existsSync(PARTNER_COMMENTS_FILE)) {
+            const data = fs.readFileSync(PARTNER_COMMENTS_FILE, 'utf8');
+            return JSON.parse(data);
+        }
+    } catch (error) {
+        console.error('[PARTNER] Erreur lecture comments:', error);
+    }
+    return [];
+}
+
+function savePartnerComments(comments) {
+    try {
+        fs.writeFileSync(PARTNER_COMMENTS_FILE, JSON.stringify(comments, null, 2), 'utf8');
+    } catch (error) {
+        console.error('[PARTNER] Erreur sauvegarde comments:', error);
+    }
+}
+
+// Middleware d'authentification partenaire
+function authenticatePartner(req, res, next) {
+    try {
+        const authHeader = req.headers.authorization;
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return res.status(401).json({ error: 'Token d\'authentification requis' });
+        }
+        const token = authHeader.split(' ')[1];
+        const partners = loadPartners();
+        const partner = partners.find(p => p.sessionToken === token);
+        if (!partner) {
+            return res.status(401).json({ error: 'Session partenaire invalide ou expiree' });
+        }
+        if (partner.accountStatus === 'deactivated') {
+            return res.status(403).json({ error: 'Compte partenaire desactive' });
+        }
+        req.partner = partner;
+        next();
+    } catch (error) {
+        console.error('[PARTNER] Erreur auth:', error);
+        return res.status(500).json({ error: 'Erreur d\'authentification' });
+    }
+}
+
+// Validation des types de fichiers par type de partenaire
+const ALLOWED_FILE_TYPES = {
+    photographer: ['jpg', 'jpeg', 'png'],
+    videographer: ['mp4', 'mov'],
+    marketer: ['pdf', 'docx'],
+    media: ['jpg', 'jpeg', 'png', 'pdf']
+};
+
+function validateFileType(partnerType, fileName) {
+    const allowed = ALLOWED_FILE_TYPES[partnerType];
+    if (!allowed) return false;
+    const ext = fileName.split('.').pop().toLowerCase();
+    return allowed.indexOf(ext) !== -1;
 }
 
 // ============================================================
@@ -2310,6 +2447,672 @@ app.delete('/api/admin/sessions/:sessionId', (req, res) => {
     } catch (error) {
         console.error('Erreur suppression seance:', error);
         res.status(500).json({ error: 'Erreur lors de la suppression de la seance' });
+    }
+});
+
+// ============================================================
+// ENDPOINTS PARTENAIRES - AUTHENTIFICATION
+// ============================================================
+
+// Connexion partenaire
+app.post('/api/partner/auth/login', async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        if (!email || !password) {
+            return res.status(400).json({ error: 'Email et mot de passe requis' });
+        }
+        const partner = getPartnerByEmail(email);
+        if (!partner) {
+            return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
+        }
+        if (partner.accountStatus === 'deactivated') {
+            return res.status(403).json({ error: 'Compte partenaire desactive' });
+        }
+        const validPassword = await bcrypt.compare(password, partner.password);
+        if (!validPassword) {
+            return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
+        }
+        const sessionToken = generateSessionToken();
+        const partners = loadPartners();
+        const index = partners.findIndex(p => p.id === partner.id);
+        if (index !== -1) {
+            partners[index].sessionToken = sessionToken;
+            partners[index].lastLogin = new Date().toISOString();
+            partners[index].updatedAt = new Date().toISOString();
+            savePartners(partners);
+        }
+        const { password: _, ...partnerSafe } = partner;
+        partnerSafe.sessionToken = sessionToken;
+        console.log('[PARTNER] Connexion:', email);
+        res.json({ success: true, partner: partnerSafe, token: sessionToken });
+    } catch (error) {
+        console.error('[PARTNER] Erreur login:', error);
+        res.status(500).json({ error: 'Erreur lors de la connexion' });
+    }
+});
+
+// Infos partenaire connecte
+app.get('/api/partner/auth/me', authenticatePartner, (req, res) => {
+    try {
+        const { password, ...partnerSafe } = req.partner;
+        res.json({ success: true, partner: partnerSafe });
+    } catch (error) {
+        console.error('[PARTNER] Erreur me:', error);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// Deconnexion partenaire
+app.post('/api/partner/auth/logout', authenticatePartner, (req, res) => {
+    try {
+        const partners = loadPartners();
+        const index = partners.findIndex(p => p.id === req.partner.id);
+        if (index !== -1) {
+            partners[index].sessionToken = null;
+            savePartners(partners);
+        }
+        console.log('[PARTNER] Deconnexion:', req.partner.email);
+        res.json({ success: true, message: 'Deconnexion reussie' });
+    } catch (error) {
+        console.error('[PARTNER] Erreur logout:', error);
+        res.status(500).json({ error: 'Erreur lors de la deconnexion' });
+    }
+});
+
+// Modifier profil partenaire
+app.put('/api/partner/auth/update-profile', authenticatePartner, async (req, res) => {
+    try {
+        const { prenom, nom, telephone, currentPassword, newPassword } = req.body;
+        const partners = loadPartners();
+        const index = partners.findIndex(p => p.id === req.partner.id);
+        if (index === -1) {
+            return res.status(404).json({ error: 'Partenaire non trouve' });
+        }
+        if (prenom) partners[index].prenom = prenom;
+        if (nom) partners[index].nom = nom;
+        if (telephone) partners[index].telephone = telephone;
+        if (currentPassword && newPassword) {
+            const validPassword = await bcrypt.compare(currentPassword, partners[index].password);
+            if (!validPassword) {
+                return res.status(400).json({ error: 'Mot de passe actuel incorrect' });
+            }
+            if (newPassword.length < 6) {
+                return res.status(400).json({ error: 'Le nouveau mot de passe doit faire au moins 6 caracteres' });
+            }
+            partners[index].password = await bcrypt.hash(newPassword, 10);
+        }
+        partners[index].updatedAt = new Date().toISOString();
+        savePartners(partners);
+        const { password, ...partnerSafe } = partners[index];
+        res.json({ success: true, partner: partnerSafe });
+    } catch (error) {
+        console.error('[PARTNER] Erreur update-profile:', error);
+        res.status(500).json({ error: 'Erreur lors de la mise a jour' });
+    }
+});
+
+// ============================================================
+// ENDPOINTS PARTENAIRES - PROJETS
+// ============================================================
+
+// Liste des projets assignes au partenaire
+app.get('/api/partner/projects', authenticatePartner, (req, res) => {
+    try {
+        const assignments = loadPartnerAssignments().filter(
+            a => a.partner_id === req.partner.id && a.status === 'active'
+        );
+        const orders = loadOrders();
+        const projects = assignments.map(a => {
+            const order = orders.find(o => o.id === a.order_id);
+            if (!order) return null;
+            return {
+                assignment: a,
+                order: {
+                    id: order.id,
+                    product_name: order.product_name,
+                    product_type: order.product_type,
+                    status: order.status,
+                    created_at: order.created_at,
+                    client_name: order.client_info
+                        ? (order.client_info.first_name + ' ' + (order.client_info.last_name || '').charAt(0) + '.')
+                        : 'Client'
+                }
+            };
+        }).filter(Boolean);
+        res.json(projects);
+    } catch (error) {
+        console.error('[PARTNER] Erreur projects:', error);
+        res.status(500).json({ error: 'Erreur chargement projets' });
+    }
+});
+
+// Detail d'un projet assigne
+app.get('/api/partner/projects/:orderId', authenticatePartner, (req, res) => {
+    try {
+        const orderId = req.params.orderId;
+        const assignments = loadPartnerAssignments();
+        const assignment = assignments.find(
+            a => a.partner_id === req.partner.id && a.order_id === orderId && a.status === 'active'
+        );
+        if (!assignment) {
+            return res.status(403).json({ error: 'Acces non autorise a ce projet' });
+        }
+        const order = getOrderById(orderId);
+        if (!order) {
+            return res.status(404).json({ error: 'Projet non trouve' });
+        }
+        const partnerType = req.partner.partner_type;
+        const allUploads = loadPartnerUploads().filter(
+            u => u.order_id === orderId && u.partner_id === req.partner.id
+        );
+        const comments = loadPartnerComments().filter(
+            c => c.order_id === orderId && (c.author_id === req.partner.id || c.author_type === 'admin')
+        );
+        let livrables = [];
+        const LIVRABLES_FILE = path.join(__dirname, 'data', 'livrables.json');
+        try {
+            if (fs.existsSync(LIVRABLES_FILE)) {
+                const allLivrables = JSON.parse(fs.readFileSync(LIVRABLES_FILE, 'utf8'));
+                if (partnerType === 'marketer') {
+                    livrables = allLivrables.filter(l => l.order_id === orderId && l.type === 'document');
+                } else if (partnerType === 'media') {
+                    livrables = allLivrables.filter(l => l.order_id === orderId && (l.status === 'ready' || l.status === 'delivered'));
+                } else {
+                    livrables = allLivrables.filter(l => l.order_id === orderId && (l.type === 'photo' || l.type === 'video'));
+                }
+            }
+        } catch (e) {
+            console.error('[PARTNER] Erreur lecture livrables:', e);
+        }
+        res.json({
+            order: {
+                id: order.id,
+                product_name: order.product_name,
+                product_type: order.product_type,
+                status: order.status,
+                created_at: order.created_at,
+                client_name: order.client_info
+                    ? (order.client_info.first_name + ' ' + (order.client_info.last_name || '').charAt(0) + '.')
+                    : 'Client'
+            },
+            assignment: assignment,
+            uploads: allUploads,
+            comments: comments,
+            livrables: livrables
+        });
+    } catch (error) {
+        console.error('[PARTNER] Erreur project detail:', error);
+        res.status(500).json({ error: 'Erreur chargement projet' });
+    }
+});
+
+// Upload livrable par partenaire
+app.post('/api/partner/upload', authenticatePartner, (req, res) => {
+    try {
+        const { order_id, name, description, file_url, file_extension, file_size,
+                publication_link, publication_date, diffusion_type } = req.body;
+        if (!order_id || !name || !file_url || !file_extension) {
+            return res.status(400).json({ error: 'Champs obligatoires manquants (order_id, name, file_url, file_extension)' });
+        }
+        const assignments = loadPartnerAssignments();
+        const assignment = assignments.find(
+            a => a.partner_id === req.partner.id && a.order_id === order_id && a.status === 'active'
+        );
+        if (!assignment) {
+            return res.status(403).json({ error: 'Vous n\'etes pas assigne a ce projet' });
+        }
+        const allowed = ALLOWED_FILE_TYPES[req.partner.partner_type];
+        if (!allowed || allowed.indexOf(file_extension.toLowerCase()) === -1) {
+            return res.status(400).json({
+                error: 'Type de fichier non autorise pour votre profil. Extensions acceptees: ' + (allowed || []).join(', ')
+            });
+        }
+        if (req.partner.partner_type === 'media') {
+            if (!publication_link || !publication_date || !diffusion_type) {
+                return res.status(400).json({
+                    error: 'Les champs publication_link, publication_date et diffusion_type sont obligatoires pour les partenaires media'
+                });
+            }
+        }
+        let fileType = 'document';
+        const ext = file_extension.toLowerCase();
+        if (['jpg', 'jpeg', 'png'].indexOf(ext) !== -1) fileType = 'photo';
+        else if (['mp4', 'mov'].indexOf(ext) !== -1) fileType = 'video';
+        const upload = {
+            id: 'PUP-' + uuidv4().split('-')[0],
+            partner_id: req.partner.id,
+            partner_email: req.partner.email,
+            partner_type: req.partner.partner_type,
+            order_id: order_id,
+            name: name,
+            file_type: fileType,
+            file_extension: ext,
+            file_url: file_url,
+            file_size: file_size || 0,
+            description: description || '',
+            validation_status: 'pending',
+            validated_at: null,
+            validated_by: null,
+            rejection_reason: null,
+            livrable_id: null,
+            publication_link: publication_link || null,
+            publication_date: publication_date || null,
+            diffusion_type: diffusion_type || null,
+            created_at: new Date().toISOString()
+        };
+        const uploads = loadPartnerUploads();
+        uploads.push(upload);
+        savePartnerUploads(uploads);
+        console.log('[PARTNER] Upload:', req.partner.email, '->', order_id, ':', name);
+        res.json({ success: true, upload: upload });
+    } catch (error) {
+        console.error('[PARTNER] Erreur upload:', error);
+        res.status(500).json({ error: 'Erreur lors de l\'upload' });
+    }
+});
+
+// Commentaires d'un projet
+app.get('/api/partner/comments/:orderId', authenticatePartner, (req, res) => {
+    try {
+        const orderId = req.params.orderId;
+        const assignments = loadPartnerAssignments();
+        const assignment = assignments.find(
+            a => a.partner_id === req.partner.id && a.order_id === orderId && a.status === 'active'
+        );
+        if (!assignment) {
+            return res.status(403).json({ error: 'Acces non autorise' });
+        }
+        const comments = loadPartnerComments().filter(
+            c => c.order_id === orderId && (c.author_id === req.partner.id || c.author_type === 'admin')
+        );
+        res.json(comments);
+    } catch (error) {
+        console.error('[PARTNER] Erreur comments:', error);
+        res.status(500).json({ error: 'Erreur chargement commentaires' });
+    }
+});
+
+// Poster un commentaire
+app.post('/api/partner/comments', authenticatePartner, (req, res) => {
+    try {
+        const { order_id, content } = req.body;
+        if (!order_id || !content || !content.trim()) {
+            return res.status(400).json({ error: 'order_id et content requis' });
+        }
+        const assignments = loadPartnerAssignments();
+        const assignment = assignments.find(
+            a => a.partner_id === req.partner.id && a.order_id === order_id && a.status === 'active'
+        );
+        if (!assignment) {
+            return res.status(403).json({ error: 'Acces non autorise a ce projet' });
+        }
+        const comment = {
+            id: 'CMT-' + uuidv4().split('-')[0],
+            order_id: order_id,
+            author_type: 'partner',
+            author_id: req.partner.id,
+            author_name: req.partner.prenom + ' ' + req.partner.nom,
+            author_email: req.partner.email,
+            content: content.trim(),
+            created_at: new Date().toISOString()
+        };
+        const comments = loadPartnerComments();
+        comments.push(comment);
+        savePartnerComments(comments);
+        console.log('[PARTNER] Commentaire:', req.partner.email, '->', order_id);
+        res.json({ success: true, comment: comment });
+    } catch (error) {
+        console.error('[PARTNER] Erreur post comment:', error);
+        res.status(500).json({ error: 'Erreur envoi commentaire' });
+    }
+});
+
+// ============================================================
+// ENDPOINTS ADMIN - GESTION DES PARTENAIRES
+// ============================================================
+
+// Creer un partenaire
+app.post('/api/admin/partners/create', async (req, res) => {
+    try {
+        const { prenom, nom, email, telephone, password, partner_type, company } = req.body;
+        if (!prenom || !nom || !email || !password || !partner_type) {
+            return res.status(400).json({ error: 'Champs obligatoires: prenom, nom, email, password, partner_type' });
+        }
+        const validTypes = ['photographer', 'videographer', 'marketer', 'media'];
+        if (validTypes.indexOf(partner_type) === -1) {
+            return res.status(400).json({ error: 'partner_type invalide. Valeurs acceptees: ' + validTypes.join(', ') });
+        }
+        const existing = getPartnerByEmail(email);
+        if (existing) {
+            return res.status(409).json({ error: 'Un partenaire avec cet email existe deja' });
+        }
+        if (password.length < 6) {
+            return res.status(400).json({ error: 'Le mot de passe doit faire au moins 6 caracteres' });
+        }
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const now = new Date().toISOString();
+        const partner = {
+            id: 'PTR-' + uuidv4().split('-')[0],
+            prenom: prenom,
+            nom: nom,
+            email: email.toLowerCase(),
+            telephone: telephone || '',
+            password: hashedPassword,
+            partner_type: partner_type,
+            company: company || '',
+            sessionToken: null,
+            accountStatus: 'active',
+            createdAt: now,
+            updatedAt: now,
+            lastLogin: null,
+            createdBy: 'admin@fagenesis.com'
+        };
+        const partners = loadPartners();
+        partners.push(partner);
+        savePartners(partners);
+        const { password: _, ...partnerSafe } = partner;
+        console.log('[ADMIN] Partenaire cree:', email, '(' + partner_type + ')');
+        res.json({ success: true, partner: partnerSafe });
+    } catch (error) {
+        console.error('[ADMIN] Erreur creation partenaire:', error);
+        res.status(500).json({ error: 'Erreur lors de la creation du partenaire' });
+    }
+});
+
+// Lister tous les partenaires
+app.get('/api/admin/partners', (req, res) => {
+    try {
+        const partners = loadPartners().map(p => {
+            const { password, ...safe } = p;
+            return safe;
+        });
+        const assignments = loadPartnerAssignments();
+        const result = partners.map(p => {
+            const assignedCount = assignments.filter(a => a.partner_id === p.id && a.status === 'active').length;
+            return { ...p, assigned_projects: assignedCount };
+        });
+        res.json(result);
+    } catch (error) {
+        console.error('[ADMIN] Erreur liste partenaires:', error);
+        res.status(500).json({ error: 'Erreur chargement partenaires' });
+    }
+});
+
+// Detail d'un partenaire
+app.get('/api/admin/partners/:partnerId', (req, res) => {
+    try {
+        const partner = getPartnerById(req.params.partnerId);
+        if (!partner) {
+            return res.status(404).json({ error: 'Partenaire non trouve' });
+        }
+        const { password, ...partnerSafe } = partner;
+        const assignments = loadPartnerAssignments().filter(a => a.partner_id === partner.id);
+        res.json({ partner: partnerSafe, assignments: assignments });
+    } catch (error) {
+        console.error('[ADMIN] Erreur detail partenaire:', error);
+        res.status(500).json({ error: 'Erreur chargement partenaire' });
+    }
+});
+
+// Modifier un partenaire
+app.put('/api/admin/partners/:partnerId', (req, res) => {
+    try {
+        const partners = loadPartners();
+        const index = partners.findIndex(p => p.id === req.params.partnerId);
+        if (index === -1) {
+            return res.status(404).json({ error: 'Partenaire non trouve' });
+        }
+        const { prenom, nom, telephone, partner_type, company, accountStatus } = req.body;
+        if (prenom) partners[index].prenom = prenom;
+        if (nom) partners[index].nom = nom;
+        if (telephone !== undefined) partners[index].telephone = telephone;
+        if (partner_type) {
+            const validTypes = ['photographer', 'videographer', 'marketer', 'media'];
+            if (validTypes.indexOf(partner_type) !== -1) {
+                partners[index].partner_type = partner_type;
+            }
+        }
+        if (company !== undefined) partners[index].company = company;
+        if (accountStatus) partners[index].accountStatus = accountStatus;
+        partners[index].updatedAt = new Date().toISOString();
+        savePartners(partners);
+        const { password, ...partnerSafe } = partners[index];
+        res.json({ success: true, partner: partnerSafe });
+    } catch (error) {
+        console.error('[ADMIN] Erreur modif partenaire:', error);
+        res.status(500).json({ error: 'Erreur modification partenaire' });
+    }
+});
+
+// Supprimer un partenaire
+app.delete('/api/admin/partners/:partnerId', (req, res) => {
+    try {
+        const partners = loadPartners();
+        const index = partners.findIndex(p => p.id === req.params.partnerId);
+        if (index === -1) {
+            return res.status(404).json({ error: 'Partenaire non trouve' });
+        }
+        const removed = partners.splice(index, 1)[0];
+        savePartners(partners);
+        const assignments = loadPartnerAssignments();
+        let modified = false;
+        assignments.forEach(a => {
+            if (a.partner_id === req.params.partnerId && a.status === 'active') {
+                a.status = 'removed';
+                modified = true;
+            }
+        });
+        if (modified) savePartnerAssignments(assignments);
+        console.log('[ADMIN] Partenaire supprime:', removed.email);
+        res.json({ success: true, message: 'Partenaire supprime' });
+    } catch (error) {
+        console.error('[ADMIN] Erreur suppression partenaire:', error);
+        res.status(500).json({ error: 'Erreur suppression partenaire' });
+    }
+});
+
+// Assigner un partenaire a un projet
+app.post('/api/admin/partners/assign', (req, res) => {
+    try {
+        const { partner_id, order_id, notes } = req.body;
+        if (!partner_id || !order_id) {
+            return res.status(400).json({ error: 'partner_id et order_id requis' });
+        }
+        const partner = getPartnerById(partner_id);
+        if (!partner) {
+            return res.status(404).json({ error: 'Partenaire non trouve' });
+        }
+        const order = getOrderById(order_id);
+        if (!order) {
+            return res.status(404).json({ error: 'Commande non trouvee' });
+        }
+        const assignments = loadPartnerAssignments();
+        const existing = assignments.find(
+            a => a.partner_id === partner_id && a.order_id === order_id && a.status === 'active'
+        );
+        if (existing) {
+            return res.status(409).json({ error: 'Ce partenaire est deja assigne a ce projet' });
+        }
+        const assignment = {
+            id: 'ASG-' + uuidv4().split('-')[0],
+            partner_id: partner_id,
+            partner_email: partner.email,
+            partner_type: partner.partner_type,
+            order_id: order_id,
+            assigned_at: new Date().toISOString(),
+            assigned_by: 'admin@fagenesis.com',
+            status: 'active',
+            notes: notes || ''
+        };
+        assignments.push(assignment);
+        savePartnerAssignments(assignments);
+        console.log('[ADMIN] Partenaire assigne:', partner.email, '->', order_id);
+        res.json({ success: true, assignment: assignment });
+    } catch (error) {
+        console.error('[ADMIN] Erreur assignation:', error);
+        res.status(500).json({ error: 'Erreur lors de l\'assignation' });
+    }
+});
+
+// Retirer une assignation
+app.delete('/api/admin/partners/assign/:assignmentId', (req, res) => {
+    try {
+        const assignments = loadPartnerAssignments();
+        const index = assignments.findIndex(a => a.id === req.params.assignmentId);
+        if (index === -1) {
+            return res.status(404).json({ error: 'Assignation non trouvee' });
+        }
+        assignments[index].status = 'removed';
+        savePartnerAssignments(assignments);
+        res.json({ success: true, message: 'Assignation retiree' });
+    } catch (error) {
+        console.error('[ADMIN] Erreur retrait assignation:', error);
+        res.status(500).json({ error: 'Erreur retrait assignation' });
+    }
+});
+
+// Partenaires assignes a un projet
+app.get('/api/admin/partners/assignments/:orderId', (req, res) => {
+    try {
+        const assignments = loadPartnerAssignments().filter(
+            a => a.order_id === req.params.orderId && a.status === 'active'
+        );
+        const partners = loadPartners();
+        const result = assignments.map(a => {
+            const partner = partners.find(p => p.id === a.partner_id);
+            return {
+                assignment: a,
+                partner: partner ? {
+                    id: partner.id,
+                    prenom: partner.prenom,
+                    nom: partner.nom,
+                    email: partner.email,
+                    partner_type: partner.partner_type,
+                    company: partner.company
+                } : null
+            };
+        });
+        res.json(result);
+    } catch (error) {
+        console.error('[ADMIN] Erreur assignments:', error);
+        res.status(500).json({ error: 'Erreur chargement assignations' });
+    }
+});
+
+// Uploads en attente (ou tous)
+app.get('/api/admin/partner-uploads', (req, res) => {
+    try {
+        let uploads = loadPartnerUploads();
+        if (req.query.status) {
+            uploads = uploads.filter(u => u.validation_status === req.query.status);
+        }
+        res.json(uploads);
+    } catch (error) {
+        console.error('[ADMIN] Erreur partner-uploads:', error);
+        res.status(500).json({ error: 'Erreur chargement uploads' });
+    }
+});
+
+// Valider ou rejeter un upload
+app.put('/api/admin/partner-uploads/:uploadId/validate', (req, res) => {
+    try {
+        const { action, rejection_reason } = req.body;
+        if (!action || (action !== 'approve' && action !== 'reject')) {
+            return res.status(400).json({ error: 'action doit etre "approve" ou "reject"' });
+        }
+        const uploads = loadPartnerUploads();
+        const index = uploads.findIndex(u => u.id === req.params.uploadId);
+        if (index === -1) {
+            return res.status(404).json({ error: 'Upload non trouve' });
+        }
+        const upload = uploads[index];
+        if (upload.validation_status !== 'pending') {
+            return res.status(400).json({ error: 'Cet upload a deja ete traite' });
+        }
+        if (action === 'approve') {
+            uploads[index].validation_status = 'approved';
+            uploads[index].validated_at = new Date().toISOString();
+            uploads[index].validated_by = 'admin@fagenesis.com';
+            const livrableId = 'LIV-' + uuidv4().split('-')[0];
+            uploads[index].livrable_id = livrableId;
+            const LIVRABLES_FILE = path.join(__dirname, 'data', 'livrables.json');
+            let livrables = [];
+            try {
+                if (fs.existsSync(LIVRABLES_FILE)) {
+                    livrables = JSON.parse(fs.readFileSync(LIVRABLES_FILE, 'utf8'));
+                }
+            } catch (e) { livrables = []; }
+            const livrable = {
+                id: livrableId,
+                order_id: upload.order_id,
+                client_email: '',
+                name: upload.name,
+                type: upload.file_type,
+                day_number: null,
+                preview_url: null,
+                download_url: upload.file_url,
+                description: upload.description,
+                status: 'pending',
+                created_at: new Date().toISOString()
+            };
+            const order = getOrderById(upload.order_id);
+            if (order && order.client_info) {
+                livrable.client_email = order.client_info.email || '';
+            }
+            livrables.push(livrable);
+            fs.writeFileSync(LIVRABLES_FILE, JSON.stringify(livrables, null, 2), 'utf8');
+            console.log('[ADMIN] Upload approuve:', upload.name, '-> Livrable', livrableId);
+        } else {
+            uploads[index].validation_status = 'rejected';
+            uploads[index].validated_at = new Date().toISOString();
+            uploads[index].validated_by = 'admin@fagenesis.com';
+            uploads[index].rejection_reason = rejection_reason || 'Aucune raison specifiee';
+            console.log('[ADMIN] Upload rejete:', upload.name);
+        }
+        savePartnerUploads(uploads);
+        res.json({ success: true, upload: uploads[index] });
+    } catch (error) {
+        console.error('[ADMIN] Erreur validation upload:', error);
+        res.status(500).json({ error: 'Erreur lors de la validation' });
+    }
+});
+
+// Commenter en tant qu'admin sur un projet partenaire
+app.post('/api/admin/partner-comments', (req, res) => {
+    try {
+        const { order_id, partner_id, content } = req.body;
+        if (!order_id || !content || !content.trim()) {
+            return res.status(400).json({ error: 'order_id et content requis' });
+        }
+        const comment = {
+            id: 'CMT-' + uuidv4().split('-')[0],
+            order_id: order_id,
+            author_type: 'admin',
+            author_id: partner_id || 'admin',
+            author_name: 'FA Genesis Admin',
+            author_email: 'admin@fagenesis.com',
+            content: content.trim(),
+            created_at: new Date().toISOString()
+        };
+        const comments = loadPartnerComments();
+        comments.push(comment);
+        savePartnerComments(comments);
+        console.log('[ADMIN] Commentaire partenaire:', order_id);
+        res.json({ success: true, comment: comment });
+    } catch (error) {
+        console.error('[ADMIN] Erreur comment partenaire:', error);
+        res.status(500).json({ error: 'Erreur envoi commentaire' });
+    }
+});
+
+// Commentaires admin d'un projet
+app.get('/api/admin/partner-comments/:orderId', (req, res) => {
+    try {
+        const comments = loadPartnerComments().filter(c => c.order_id === req.params.orderId);
+        res.json(comments);
+    } catch (error) {
+        console.error('[ADMIN] Erreur comments:', error);
+        res.status(500).json({ error: 'Erreur chargement commentaires' });
     }
 });
 
