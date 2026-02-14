@@ -33,6 +33,7 @@ const PARTNERS_FILE = path.join(__dirname, 'data', 'partners.json');
 const PARTNER_ASSIGNMENTS_FILE = path.join(__dirname, 'data', 'partner-assignments.json');
 const PARTNER_UPLOADS_FILE = path.join(__dirname, 'data', 'partner-uploads.json');
 const PARTNER_COMMENTS_FILE = path.join(__dirname, 'data', 'partner-comments.json');
+const QUOTES_FILE = path.join(__dirname, 'data', 'quotes.json');
 
 // Creer le dossier data s'il n'existe pas
 if (!fs.existsSync(path.join(__dirname, 'data'))) {
@@ -165,6 +166,52 @@ function savePartnerComments(comments) {
         console.error('[PARTNER] Erreur sauvegarde comments:', error);
     }
 }
+
+// ============================================================
+// HELPERS - STOCKAGE DES DEVIS (QUOTES)
+// ============================================================
+
+function loadQuotes() {
+    try {
+        if (fs.existsSync(QUOTES_FILE)) {
+            const data = fs.readFileSync(QUOTES_FILE, 'utf8');
+            return JSON.parse(data);
+        }
+    } catch (error) {
+        console.error('[QUOTE] Erreur lecture quotes:', error);
+    }
+    return [];
+}
+
+function saveQuotes(quotes) {
+    try {
+        fs.writeFileSync(QUOTES_FILE, JSON.stringify(quotes, null, 2), 'utf8');
+    } catch (error) {
+        console.error('[QUOTE] Erreur sauvegarde quotes:', error);
+    }
+}
+
+function getQuoteById(quoteId) {
+    const quotes = loadQuotes();
+    return quotes.find(q => q.id === quoteId) || null;
+}
+
+function generateQuoteNumber() {
+    const quotes = loadQuotes();
+    const year = new Date().getFullYear();
+    const yearQuotes = quotes.filter(q => q.quote_number && q.quote_number.indexOf('FG-' + year) === 0);
+    const nextNum = yearQuotes.length + 1;
+    const padded = String(nextNum).padStart(5, '0');
+    return 'FG-' + year + '-' + padded;
+}
+
+// Mapping service_type -> partner_type
+const SERVICE_TO_PARTNER_TYPE = {
+    photo: 'photographer',
+    video: 'videographer',
+    media: 'media',
+    marketing: 'marketer'
+};
 
 // Middleware d'authentification partenaire
 function authenticatePartner(req, res, next) {
@@ -1428,7 +1475,7 @@ function saveMessages(messages) {
  */
 app.post('/api/contact', async (req, res) => {
     try {
-        const { name, email, phone, profil, subject, message } = req.body;
+        const { name, email, phone, profil, subject, message, service_type } = req.body;
 
         // Validation
         if (!name || !email || !subject || !message) {
@@ -1446,14 +1493,15 @@ app.post('/api/contact', async (req, res) => {
 
         // Creer le message
         const newMessage = {
-            id: `MSG-${uuidv4().split('-')[0].toUpperCase()}`,
+            id: 'MSG-' + uuidv4().split('-')[0].toUpperCase(),
             name: name.trim(),
             email: email.trim().toLowerCase(),
             phone: phone ? phone.trim() : null,
             profil: profil ? profil.trim() : null,
             subject: subject.trim(),
             message: message.trim(),
-            status: 'unread', // 'unread', 'read', 'replied', 'archived'
+            status: 'unread',
+            quote_id: null,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
         };
@@ -1463,7 +1511,7 @@ app.post('/api/contact', async (req, res) => {
         messages.push(newMessage);
         saveMessages(messages);
 
-        console.log(`[CONTACT] Nouveau message: ${newMessage.id} de ${name} <${email}>`);
+        console.log('[CONTACT] Nouveau message: ' + newMessage.id + ' de ' + name + ' <' + email + '>');
 
         // Envoyer les emails en parallele (sans bloquer la reponse)
         const emailPromises = [];
@@ -1471,14 +1519,14 @@ app.post('/api/contact', async (req, res) => {
         // Email de confirmation au client
         emailPromises.push(
             emailService.sendContactConfirmation(email, name, subject)
-                .then(result => {
+                .then(function(result) {
                     if (result.success) {
-                        console.log(`[CONTACT] Email de confirmation envoye a ${email}`);
+                        console.log('[CONTACT] Email de confirmation envoye a ' + email);
                     } else {
-                        console.log(`[CONTACT] Echec envoi confirmation: ${result.reason || result.error}`);
+                        console.log('[CONTACT] Echec envoi confirmation: ' + (result.reason || result.error));
                     }
                 })
-                .catch(err => console.error('[CONTACT] Erreur envoi confirmation:', err))
+                .catch(function(err) { console.error('[CONTACT] Erreur envoi confirmation:', err); })
         );
 
         // Notification a l'admin
@@ -1491,15 +1539,103 @@ app.post('/api/contact', async (req, res) => {
                 subject: subject,
                 message: message
             })
-                .then(result => {
+                .then(function(result) {
                     if (result.success) {
-                        console.log(`[CONTACT] Notification admin envoyee`);
+                        console.log('[CONTACT] Notification admin envoyee');
                     } else {
-                        console.log(`[CONTACT] Echec notification admin: ${result.reason || result.error}`);
+                        console.log('[CONTACT] Echec notification admin: ' + (result.reason || result.error));
                     }
                 })
-                .catch(err => console.error('[CONTACT] Erreur notification admin:', err))
+                .catch(function(err) { console.error('[CONTACT] Erreur notification admin:', err); })
         );
+
+        // === WORKFLOW DEVIS : Si subject === 'devis' et service_type fourni ===
+        var quoteId = null;
+        if (subject.trim().toLowerCase() === 'devis' && service_type) {
+            try {
+                var quotes = loadQuotes();
+                var quoteNumber = generateQuoteNumber();
+                var partnerType = SERVICE_TO_PARTNER_TYPE[service_type] || null;
+
+                // Auto-assigner le partenaire si un seul correspond au type
+                var assignedPartnerId = null;
+                var assignedPartnerEmail = null;
+                if (partnerType) {
+                    var matchingPartners = loadPartners().filter(function(p) {
+                        return p.partner_type === partnerType && p.accountStatus === 'active';
+                    });
+                    if (matchingPartners.length === 1) {
+                        assignedPartnerId = matchingPartners[0].id;
+                        assignedPartnerEmail = matchingPartners[0].email;
+                    }
+                }
+
+                var newQuote = {
+                    id: 'QUO-' + uuidv4().split('-')[0].toUpperCase(),
+                    contact_request_id: newMessage.id,
+                    quote_number: quoteNumber,
+                    status: 'DRAFT_REQUESTED',
+                    service_type: service_type,
+                    partner_id: assignedPartnerId,
+                    partner_email: assignedPartnerEmail,
+                    client_name: name.trim(),
+                    client_email: email.trim().toLowerCase(),
+                    client_profil: profil ? profil.trim() : null,
+                    brief: message.trim(),
+                    partner_proposal: null,
+                    admin_final: null,
+                    pricing: null,
+                    validity_days: 30,
+                    acceptance_token: uuidv4(),
+                    sent_at: null,
+                    accepted_at: null,
+                    expired_at: null,
+                    order_id: null,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                };
+
+                quotes.push(newQuote);
+                saveQuotes(quotes);
+                quoteId = newQuote.id;
+
+                // Mettre a jour le message avec le quote_id
+                newMessage.quote_id = quoteId;
+                var allMessages = loadMessages();
+                var msgIdx = allMessages.findIndex(function(m) { return m.id === newMessage.id; });
+                if (msgIdx !== -1) {
+                    allMessages[msgIdx].quote_id = quoteId;
+                    saveMessages(allMessages);
+                }
+
+                console.log('[QUOTE] Devis cree: ' + newQuote.id + ' (' + quoteNumber + ') - type: ' + service_type);
+
+                // Email notification devis a l'admin
+                if (typeof emailService.sendQuoteAdminNotification === 'function') {
+                    emailPromises.push(
+                        emailService.sendQuoteAdminNotification(newQuote)
+                            .then(function(r) { if (r && r.success) console.log('[QUOTE] Notification admin devis envoyee'); })
+                            .catch(function(err) { console.error('[QUOTE] Erreur notif admin devis:', err); })
+                    );
+                }
+
+                // Email notification au partenaire assigne
+                if (assignedPartnerId && typeof emailService.sendQuotePartnerNotification === 'function') {
+                    var assignedPartner = loadPartners().find(function(p) { return p.id === assignedPartnerId; });
+                    if (assignedPartner) {
+                        emailPromises.push(
+                            emailService.sendQuotePartnerNotification(newQuote, assignedPartner)
+                                .then(function(r) { if (r && r.success) console.log('[QUOTE] Notification partenaire devis envoyee'); })
+                                .catch(function(err) { console.error('[QUOTE] Erreur notif partenaire devis:', err); })
+                        );
+                    }
+                }
+
+            } catch (quoteError) {
+                console.error('[QUOTE] Erreur creation devis:', quoteError);
+                // Ne pas bloquer la reponse du contact si le devis echoue
+            }
+        }
 
         // Ne pas attendre les emails pour repondre
         Promise.all(emailPromises);
@@ -1507,6 +1643,7 @@ app.post('/api/contact', async (req, res) => {
         res.json({
             success: true,
             messageId: newMessage.id,
+            quoteId: quoteId,
             message: 'Votre message a bien ete recu. Vous recevrez une confirmation par email.'
         });
 
@@ -3116,6 +3253,600 @@ app.get('/api/admin/partner-comments/:orderId', (req, res) => {
     } catch (error) {
         console.error('[ADMIN] Erreur comments:', error);
         res.status(500).json({ error: 'Erreur chargement commentaires' });
+    }
+});
+
+// ============================================================
+// ROUTES - DEVIS / QUOTES
+// ============================================================
+
+// --- ADMIN ENDPOINTS ---
+
+/**
+ * GET /api/admin/quotes
+ * Liste tous les devis (filtrable par ?status=X&service_type=X)
+ */
+app.get('/api/admin/quotes', function(req, res) {
+    try {
+        var quotes = loadQuotes();
+        var status = req.query.status;
+        var serviceType = req.query.service_type;
+
+        if (status) {
+            quotes = quotes.filter(function(q) { return q.status === status; });
+        }
+        if (serviceType) {
+            quotes = quotes.filter(function(q) { return q.service_type === serviceType; });
+        }
+
+        // Trier par date decroissante
+        quotes.sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); });
+        res.json(quotes);
+    } catch (error) {
+        console.error('[QUOTE] Erreur liste quotes:', error);
+        res.status(500).json({ error: 'Erreur chargement devis' });
+    }
+});
+
+/**
+ * GET /api/admin/quotes/:id
+ * Detail d'un devis
+ */
+app.get('/api/admin/quotes/:id', function(req, res) {
+    try {
+        var quote = getQuoteById(req.params.id);
+        if (!quote) {
+            return res.status(404).json({ error: 'Devis non trouve' });
+        }
+
+        // Enrichir avec les infos du partenaire assigne
+        var partnerInfo = null;
+        if (quote.partner_id) {
+            var partner = loadPartners().find(function(p) { return p.id === quote.partner_id; });
+            if (partner) {
+                partnerInfo = {
+                    id: partner.id,
+                    prenom: partner.prenom,
+                    nom: partner.nom,
+                    email: partner.email,
+                    partner_type: partner.partner_type
+                };
+            }
+        }
+
+        res.json({ quote: quote, partner: partnerInfo });
+    } catch (error) {
+        console.error('[QUOTE] Erreur detail quote:', error);
+        res.status(500).json({ error: 'Erreur chargement devis' });
+    }
+});
+
+/**
+ * POST /api/admin/quotes/:id/assign-partner
+ * Assigner un partenaire a un devis
+ */
+app.post('/api/admin/quotes/:id/assign-partner', function(req, res) {
+    try {
+        var partnerId = req.body.partner_id;
+        if (!partnerId) {
+            return res.status(400).json({ error: 'partner_id requis' });
+        }
+
+        var quotes = loadQuotes();
+        var idx = quotes.findIndex(function(q) { return q.id === req.params.id; });
+        if (idx === -1) {
+            return res.status(404).json({ error: 'Devis non trouve' });
+        }
+
+        var partner = loadPartners().find(function(p) { return p.id === partnerId; });
+        if (!partner) {
+            return res.status(404).json({ error: 'Partenaire non trouve' });
+        }
+
+        quotes[idx].partner_id = partner.id;
+        quotes[idx].partner_email = partner.email;
+        quotes[idx].updated_at = new Date().toISOString();
+        saveQuotes(quotes);
+
+        console.log('[QUOTE] Partenaire ' + partner.email + ' assigne au devis ' + quotes[idx].quote_number);
+
+        // Notification email au partenaire
+        if (typeof emailService.sendQuotePartnerNotification === 'function') {
+            emailService.sendQuotePartnerNotification(quotes[idx], partner)
+                .catch(function(err) { console.error('[QUOTE] Erreur notif partenaire:', err); });
+        }
+
+        res.json({ success: true, quote: quotes[idx] });
+    } catch (error) {
+        console.error('[QUOTE] Erreur assignation:', error);
+        res.status(500).json({ error: 'Erreur assignation partenaire' });
+    }
+});
+
+/**
+ * POST /api/admin/quotes/:id/review
+ * Admin sauvegarde sa version finale du devis (items + notes) et calcule le pricing
+ */
+app.post('/api/admin/quotes/:id/review', function(req, res) {
+    try {
+        var items = req.body.items;
+        var notes = req.body.notes;
+
+        if (!items || !Array.isArray(items) || items.length === 0) {
+            return res.status(400).json({ error: 'Au moins une ligne de prestation requise' });
+        }
+
+        var quotes = loadQuotes();
+        var idx = quotes.findIndex(function(q) { return q.id === req.params.id; });
+        if (idx === -1) {
+            return res.status(404).json({ error: 'Devis non trouve' });
+        }
+
+        // Calculer le total
+        var total = 0;
+        for (var i = 0; i < items.length; i++) {
+            var qty = Number(items[i].qty) || 1;
+            var unitPrice = Number(items[i].unit_price) || 0;
+            total += qty * unitPrice;
+        }
+
+        var depositAmount = Math.round(total * 0.30);
+        var balanceAmount = total - depositAmount;
+
+        quotes[idx].admin_final = {
+            items: items,
+            notes: notes || ''
+        };
+        quotes[idx].pricing = {
+            total: total,
+            deposit_percent: 30,
+            deposit_amount: depositAmount,
+            balance_amount: balanceAmount
+        };
+        quotes[idx].status = 'ADMIN_REVIEW';
+        quotes[idx].updated_at = new Date().toISOString();
+        saveQuotes(quotes);
+
+        console.log('[QUOTE] Devis ' + quotes[idx].quote_number + ' revise par admin - Total: ' + total + 'EUR');
+
+        res.json({ success: true, quote: quotes[idx] });
+    } catch (error) {
+        console.error('[QUOTE] Erreur review:', error);
+        res.status(500).json({ error: 'Erreur revision devis' });
+    }
+});
+
+/**
+ * POST /api/admin/quotes/:id/send
+ * Envoyer le devis au client par email
+ */
+app.post('/api/admin/quotes/:id/send', async function(req, res) {
+    try {
+        var quotes = loadQuotes();
+        var idx = quotes.findIndex(function(q) { return q.id === req.params.id; });
+        if (idx === -1) {
+            return res.status(404).json({ error: 'Devis non trouve' });
+        }
+
+        var quote = quotes[idx];
+
+        if (!quote.admin_final || !quote.pricing) {
+            return res.status(400).json({ error: 'Le devis doit etre revise avant envoi (items et pricing requis)' });
+        }
+
+        if (quote.status === 'ACCEPTED') {
+            return res.status(400).json({ error: 'Ce devis a deja ete accepte' });
+        }
+
+        // Mettre a jour le statut
+        quotes[idx].status = 'SENT_TO_CLIENT';
+        quotes[idx].sent_at = new Date().toISOString();
+        quotes[idx].updated_at = new Date().toISOString();
+        saveQuotes(quotes);
+
+        // Envoyer l'email au client
+        var emailSent = false;
+        if (typeof emailService.sendQuoteToClient === 'function') {
+            try {
+                var result = await emailService.sendQuoteToClient(quotes[idx]);
+                emailSent = result && result.success;
+                if (emailSent) {
+                    console.log('[QUOTE] Devis ' + quote.quote_number + ' envoye a ' + quote.client_email);
+                } else {
+                    console.log('[QUOTE] Echec envoi devis: ' + (result ? result.error : 'inconnu'));
+                }
+            } catch (emailErr) {
+                console.error('[QUOTE] Erreur envoi email devis:', emailErr);
+            }
+        }
+
+        res.json({ success: true, email_sent: emailSent, quote: quotes[idx] });
+    } catch (error) {
+        console.error('[QUOTE] Erreur envoi devis:', error);
+        res.status(500).json({ error: 'Erreur envoi devis' });
+    }
+});
+
+/**
+ * POST /api/admin/quotes/:id/cancel
+ * Annuler un devis
+ */
+app.post('/api/admin/quotes/:id/cancel', function(req, res) {
+    try {
+        var quotes = loadQuotes();
+        var idx = quotes.findIndex(function(q) { return q.id === req.params.id; });
+        if (idx === -1) {
+            return res.status(404).json({ error: 'Devis non trouve' });
+        }
+
+        if (quotes[idx].status === 'ACCEPTED') {
+            return res.status(400).json({ error: 'Impossible d\'annuler un devis deja accepte' });
+        }
+
+        quotes[idx].status = 'CANCELLED';
+        quotes[idx].updated_at = new Date().toISOString();
+        saveQuotes(quotes);
+
+        console.log('[QUOTE] Devis ' + quotes[idx].quote_number + ' annule');
+
+        res.json({ success: true, quote: quotes[idx] });
+    } catch (error) {
+        console.error('[QUOTE] Erreur annulation:', error);
+        res.status(500).json({ error: 'Erreur annulation devis' });
+    }
+});
+
+// --- PARTNER ENDPOINTS ---
+
+/**
+ * GET /api/partner/quotes
+ * Liste des devis assignes au partenaire connecte
+ */
+app.get('/api/partner/quotes', authenticatePartner, function(req, res) {
+    try {
+        var quotes = loadQuotes().filter(function(q) {
+            return q.partner_id === req.partner.id && q.status !== 'CANCELLED';
+        });
+        quotes.sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); });
+        res.json(quotes);
+    } catch (error) {
+        console.error('[QUOTE] Erreur liste quotes partenaire:', error);
+        res.status(500).json({ error: 'Erreur chargement devis' });
+    }
+});
+
+/**
+ * GET /api/partner/quotes/:id
+ * Detail d'un devis pour le partenaire (verifie l'assignation)
+ */
+app.get('/api/partner/quotes/:id', authenticatePartner, function(req, res) {
+    try {
+        var quote = getQuoteById(req.params.id);
+        if (!quote) {
+            return res.status(404).json({ error: 'Devis non trouve' });
+        }
+        if (quote.partner_id !== req.partner.id) {
+            return res.status(403).json({ error: 'Acces non autorise a ce devis' });
+        }
+
+        // Retourner les infos sans donnees financieres sensibles pour le partenaire
+        var partnerView = {
+            id: quote.id,
+            quote_number: quote.quote_number,
+            status: quote.status,
+            service_type: quote.service_type,
+            client_name: quote.client_name,
+            client_profil: quote.client_profil,
+            brief: quote.brief,
+            partner_proposal: quote.partner_proposal,
+            created_at: quote.created_at,
+            updated_at: quote.updated_at
+        };
+
+        res.json(partnerView);
+    } catch (error) {
+        console.error('[QUOTE] Erreur detail quote partenaire:', error);
+        res.status(500).json({ error: 'Erreur chargement devis' });
+    }
+});
+
+/**
+ * POST /api/partner/quotes/:id/propose
+ * Partenaire soumet sa proposition interne
+ */
+app.post('/api/partner/quotes/:id/propose', authenticatePartner, function(req, res) {
+    try {
+        var items = req.body.items;
+        var delay = req.body.delay;
+        var notes = req.body.notes;
+
+        if (!items || !Array.isArray(items) || items.length === 0) {
+            return res.status(400).json({ error: 'Au moins une ligne de proposition requise' });
+        }
+
+        var quotes = loadQuotes();
+        var idx = quotes.findIndex(function(q) { return q.id === req.params.id; });
+        if (idx === -1) {
+            return res.status(404).json({ error: 'Devis non trouve' });
+        }
+
+        if (quotes[idx].partner_id !== req.partner.id) {
+            return res.status(403).json({ error: 'Acces non autorise' });
+        }
+
+        if (quotes[idx].status !== 'DRAFT_REQUESTED' && quotes[idx].status !== 'PARTNER_PROPOSED') {
+            return res.status(400).json({ error: 'Ce devis ne peut plus etre modifie (statut: ' + quotes[idx].status + ')' });
+        }
+
+        quotes[idx].partner_proposal = {
+            items: items,
+            delay: delay || '',
+            notes: notes || ''
+        };
+        quotes[idx].status = 'PARTNER_PROPOSED';
+        quotes[idx].updated_at = new Date().toISOString();
+        saveQuotes(quotes);
+
+        console.log('[QUOTE] Proposition partenaire pour devis ' + quotes[idx].quote_number);
+
+        res.json({ success: true, message: 'Proposition soumise avec succes' });
+    } catch (error) {
+        console.error('[QUOTE] Erreur proposition:', error);
+        res.status(500).json({ error: 'Erreur soumission proposition' });
+    }
+});
+
+// --- PUBLIC ENDPOINTS ---
+
+/**
+ * GET /api/quotes/view/:token
+ * Page publique : consulter un devis via son token d'acceptation
+ */
+app.get('/api/quotes/view/:token', function(req, res) {
+    try {
+        var quotes = loadQuotes();
+        var quote = quotes.find(function(q) { return q.acceptance_token === req.params.token; });
+
+        if (!quote) {
+            return res.status(404).json({ error: 'Devis non trouve', code: 'INVALID_TOKEN' });
+        }
+
+        if (quote.status === 'ACCEPTED') {
+            return res.json({ quote: null, status: 'ALREADY_ACCEPTED', message: 'Ce devis a deja ete accepte.' });
+        }
+
+        if (quote.status === 'CANCELLED') {
+            return res.json({ quote: null, status: 'CANCELLED', message: 'Ce devis a ete annule.' });
+        }
+
+        if (quote.status !== 'SENT_TO_CLIENT') {
+            return res.json({ quote: null, status: 'NOT_READY', message: 'Ce devis n\'est pas encore disponible.' });
+        }
+
+        // Verifier l'expiration
+        var createdDate = new Date(quote.sent_at || quote.created_at);
+        var expiryDate = new Date(createdDate.getTime() + (quote.validity_days * 24 * 60 * 60 * 1000));
+        if (new Date() > expiryDate) {
+            return res.json({ quote: null, status: 'EXPIRED', message: 'Ce devis a expire.' });
+        }
+
+        // Retourner les donnees publiques du devis (pas de token, pas de donnees internes)
+        var publicView = {
+            quote_number: quote.quote_number,
+            client_name: quote.client_name,
+            service_type: quote.service_type,
+            items: quote.admin_final ? quote.admin_final.items : [],
+            notes: quote.admin_final ? quote.admin_final.notes : '',
+            pricing: quote.pricing,
+            validity_days: quote.validity_days,
+            sent_at: quote.sent_at,
+            expiry_date: expiryDate.toISOString()
+        };
+
+        res.json({ quote: publicView, status: 'OK' });
+    } catch (error) {
+        console.error('[QUOTE] Erreur consultation devis:', error);
+        res.status(500).json({ error: 'Erreur consultation devis' });
+    }
+});
+
+/**
+ * POST /api/quotes/accept
+ * Accepter un devis : cree le compte client + l'order + redirige vers SumUp
+ */
+app.post('/api/quotes/accept', async function(req, res) {
+    try {
+        var token = req.body.token;
+        if (!token) {
+            return res.status(400).json({ error: 'Token requis' });
+        }
+
+        var quotes = loadQuotes();
+        var idx = quotes.findIndex(function(q) { return q.acceptance_token === token; });
+        if (idx === -1) {
+            return res.status(404).json({ error: 'Devis non trouve' });
+        }
+
+        var quote = quotes[idx];
+
+        // Verifier le statut
+        if (quote.status === 'ACCEPTED') {
+            return res.status(400).json({ error: 'Ce devis a deja ete accepte' });
+        }
+        if (quote.status !== 'SENT_TO_CLIENT') {
+            return res.status(400).json({ error: 'Ce devis ne peut pas etre accepte (statut: ' + quote.status + ')' });
+        }
+
+        // Verifier l'expiration
+        var createdDate = new Date(quote.sent_at || quote.created_at);
+        var expiryDate = new Date(createdDate.getTime() + (quote.validity_days * 24 * 60 * 60 * 1000));
+        if (new Date() > expiryDate) {
+            quotes[idx].status = 'EXPIRED';
+            quotes[idx].expired_at = new Date().toISOString();
+            saveQuotes(quotes);
+            return res.status(400).json({ error: 'Ce devis a expire' });
+        }
+
+        if (!quote.pricing || !quote.pricing.total) {
+            return res.status(400).json({ error: 'Devis invalide (pas de pricing)' });
+        }
+
+        // 1. Chercher ou creer le compte client
+        var userCreated = false;
+        var generatedPassword = null;
+        var existingUser = getUserByEmail(quote.client_email);
+
+        if (!existingUser) {
+            // Generer un mot de passe aleatoire
+            generatedPassword = uuidv4().split('-').slice(0, 2).join('').substring(0, 12);
+            var hashedPassword = await bcrypt.hash(generatedPassword, 10);
+            var sessionToken = generateSessionToken();
+
+            // Extraire prenom/nom du client_name
+            var nameParts = quote.client_name.split(' ');
+            var prenom = nameParts[0] || 'Client';
+            var nom = nameParts.slice(1).join(' ') || 'Devis';
+
+            var newUser = {
+                id: 'USR-' + uuidv4().split('-')[0].toUpperCase(),
+                prenom: prenom,
+                nom: nom,
+                email: quote.client_email,
+                telephone: '',
+                password: hashedPassword,
+                offre: null,
+                activeOfferId: null,
+                productType: 'prestation_individuelle',
+                paymentStatus: 'registered',
+                payments: [],
+                accountStatus: 'active',
+                sessionToken: sessionToken,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                lastLogin: null,
+                createdBy: 'quote-accept'
+            };
+
+            var users = loadUsers();
+            users.push(newUser);
+            saveUsers(users);
+            existingUser = newUser;
+            userCreated = true;
+
+            console.log('[QUOTE] Compte client cree pour ' + quote.client_email);
+        }
+
+        // 2. Creer la commande (order)
+        var nameParts2 = quote.client_name.split(' ');
+        var serviceLabels = { photo: 'Photo', video: 'Video', media: 'Media', marketing: 'Marketing', other: 'Prestation' };
+        var productName = 'Devis ' + (serviceLabels[quote.service_type] || 'Personnalise') + ' - ' + quote.quote_number;
+
+        var newOrder = {
+            id: 'ORD-' + uuidv4().split('-')[0].toUpperCase(),
+            product_id: 'quote-' + quote.id,
+            product_name: productName,
+            product_type: 'prestation_individuelle',
+            client_info: {
+                email: quote.client_email,
+                first_name: nameParts2[0] || '',
+                last_name: nameParts2.slice(1).join(' ') || '',
+                phone: null,
+                company: null,
+                client_type: quote.client_profil || 'particulier'
+            },
+            total_amount: quote.pricing.total,
+            deposit_amount: quote.pricing.deposit_amount,
+            balance_amount: quote.pricing.balance_amount,
+            deposit_paid: false,
+            balance_paid: false,
+            duration_days: null,
+            start_date: null,
+            status: 'pending_deposit',
+            checkout_id: null,
+            transaction_id: null,
+            source: 'quote',
+            quote_id: quote.id,
+            quote_number: quote.quote_number,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        };
+
+        var orders = loadOrders();
+        orders.push(newOrder);
+        saveOrders(orders);
+
+        // 3. Mettre a jour le devis
+        quotes[idx].status = 'ACCEPTED';
+        quotes[idx].accepted_at = new Date().toISOString();
+        quotes[idx].order_id = newOrder.id;
+        quotes[idx].updated_at = new Date().toISOString();
+        saveQuotes(quotes);
+
+        console.log('[QUOTE] Devis ' + quote.quote_number + ' accepte - Commande ' + newOrder.id + ' creee');
+
+        // 4. Creer le checkout SumUp pour l'acompte
+        var checkoutUrl = null;
+        try {
+            var successUrl = process.env.SUMUP_SUCCESS_URL || 'https://fagenesis.com/payment-success.html';
+            var returnUrl = successUrl + '?order=' + newOrder.id + '&stage=deposit';
+
+            var checkoutData = {
+                checkout_reference: newOrder.id + '-deposit',
+                amount: quote.pricing.deposit_amount,
+                currency: 'EUR',
+                pay_to_email: process.env.SUMUP_PAY_TO_EMAIL,
+                description: 'FA GENESIS - ' + productName + ' (Acompte 30%)',
+                return_url: returnUrl,
+                merchant_code: process.env.SUMUP_MERCHANT_CODE
+            };
+
+            var checkoutResponse = await callSumUpAPI('/checkouts', 'POST', checkoutData);
+            checkoutUrl = 'https://pay.sumup.com/b/' + checkoutResponse.id;
+
+            // Mettre a jour l'order avec le checkout_id
+            updateOrder(newOrder.id, {
+                checkout_id: checkoutResponse.id,
+                current_stage: 'deposit'
+            });
+
+            console.log('[QUOTE] Checkout SumUp cree: ' + checkoutResponse.id);
+        } catch (sumupError) {
+            console.error('[QUOTE] Erreur SumUp checkout:', sumupError);
+            // Pas bloquant : le devis est accepte, le paiement pourra se faire plus tard
+        }
+
+        // 5. Envoyer les notifications
+        // Notification admin
+        if (typeof emailService.sendAdminNotification === 'function') {
+            emailService.sendAdminNotification({
+                name: quote.client_name,
+                email: quote.client_email,
+                subject: 'Devis accepte',
+                message: 'Le client ' + quote.client_name + ' a accepte le devis ' + quote.quote_number + ' (' + quote.pricing.total + ' EUR). Commande ' + newOrder.id + ' creee.'
+            }).catch(function(err) { console.error('[QUOTE] Erreur notif admin acceptation:', err); });
+        }
+
+        // Email bienvenue + identifiants si nouveau compte
+        if (userCreated && generatedPassword) {
+            if (typeof emailService.sendRegistrationConfirmation === 'function') {
+                emailService.sendRegistrationConfirmation(quote.client_email, quote.client_name, generatedPassword)
+                    .catch(function(err) { console.error('[QUOTE] Erreur email bienvenue:', err); });
+            }
+        }
+
+        res.json({
+            success: true,
+            order_id: newOrder.id,
+            checkout_url: checkoutUrl,
+            user_created: userCreated,
+            credentials: userCreated ? { email: quote.client_email, password: generatedPassword } : null,
+            deposit_amount: quote.pricing.deposit_amount,
+            total_amount: quote.pricing.total
+        });
+
+    } catch (error) {
+        console.error('[QUOTE] Erreur acceptation devis:', error);
+        res.status(500).json({ error: 'Erreur lors de l\'acceptation du devis' });
     }
 });
 

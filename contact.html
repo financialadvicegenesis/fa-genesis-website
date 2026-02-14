@@ -129,6 +129,17 @@
                             <option value="autre">AUTRE</option>
                         </select>
                     </div>
+                    <!-- Champ conditionnel : Type de prestation (visible uniquement si "Devis personnalisé" sélectionné) -->
+                    <div id="devisTypeContainer" style="display:none;">
+                        <select id="contactServiceType" class="w-full bg-white text-black p-6 neo-border neo-shadow-white font-bold outline-none focus:translate-x-1 focus:translate-y-1 focus:shadow-none transition-all font-black uppercase">
+                            <option value="" disabled selected>TYPE DE PRESTATION</option>
+                            <option value="photo">PHOTO</option>
+                            <option value="video">VIDÉO</option>
+                            <option value="media">MÉDIA</option>
+                            <option value="marketing">MARKETING</option>
+                            <option value="other">AUTRE</option>
+                        </select>
+                    </div>
                     <textarea id="contactMessage" placeholder="ÉCRIVEZ VOTRE DEMANDE" rows="5" required class="w-full bg-white text-black p-6 neo-border neo-shadow-white font-bold outline-none focus:translate-x-1 focus:translate-y-1 focus:shadow-none transition-all font-black uppercase"></textarea>
                     <div id="contactFeedback" style="display: none;" class="p-6 neo-border font-bold text-lg text-center"></div>
                     <button id="contactSubmitBtn" type="submit" class="w-full py-8 neo-btn-yellow text-4xl font-black italic uppercase tracking-tighter text-center flex items-center justify-center font-black">Envoyer</button>
@@ -239,20 +250,38 @@
             }
         });
 
+        // Affichage conditionnel du champ "Type de prestation" quand "Devis" est selectionne
+        var objetSelect = document.getElementById('contactObjet');
+        var devisTypeContainer = document.getElementById('devisTypeContainer');
+        var serviceTypeSelect = document.getElementById('contactServiceType');
+
+        if (objetSelect && devisTypeContainer && serviceTypeSelect) {
+            objetSelect.addEventListener('change', function() {
+                if (this.value === 'devis') {
+                    devisTypeContainer.style.display = 'block';
+                    serviceTypeSelect.required = true;
+                } else {
+                    devisTypeContainer.style.display = 'none';
+                    serviceTypeSelect.required = false;
+                    serviceTypeSelect.value = '';
+                }
+            });
+        }
+
         // Soumission du formulaire de contact
-        const API_BASE_URL = window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com';
+        var API_BASE_URL = window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com';
 
         document.getElementById('contactForm').addEventListener('submit', async function(e) {
             e.preventDefault();
 
-            const feedback = document.getElementById('contactFeedback');
-            const submitBtn = document.getElementById('contactSubmitBtn');
+            var feedback = document.getElementById('contactFeedback');
+            var submitBtn = document.getElementById('contactSubmitBtn');
 
-            const name = document.getElementById('contactName').value.trim();
-            const email = document.getElementById('contactEmail').value.trim();
-            const profil = document.getElementById('contactProfil').value;
-            const subject = document.getElementById('contactObjet').value;
-            const message = document.getElementById('contactMessage').value.trim();
+            var name = document.getElementById('contactName').value.trim();
+            var email = document.getElementById('contactEmail').value.trim();
+            var profil = document.getElementById('contactProfil').value;
+            var subject = document.getElementById('contactObjet').value;
+            var message = document.getElementById('contactMessage').value.trim();
 
             // Validation
             if (!name || !email || !profil || !subject || !message) {
@@ -263,31 +292,58 @@
                 return;
             }
 
+            // Validation devis : type de prestation requis
+            var serviceType = null;
+            if (subject === 'devis') {
+                var stSelect = document.getElementById('contactServiceType');
+                serviceType = stSelect ? stSelect.value : null;
+                if (!serviceType) {
+                    feedback.style.display = 'block';
+                    feedback.style.background = '#ff6b6b';
+                    feedback.style.color = 'white';
+                    feedback.textContent = 'Veuillez sélectionner un type de prestation pour votre demande de devis.';
+                    return;
+                }
+            }
+
             // Desactiver le bouton
             submitBtn.disabled = true;
             submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-4"></i>ENVOI EN COURS...';
 
             try {
-                const response = await fetch(API_BASE_URL + '/api/contact', {
+                var bodyData = {
+                    name: name,
+                    email: email,
+                    profil: profil,
+                    subject: subject,
+                    message: message
+                };
+
+                // Ajouter service_type si devis
+                if (serviceType) {
+                    bodyData.service_type = serviceType;
+                }
+
+                var response = await fetch(API_BASE_URL + '/api/contact', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        name: name,
-                        email: email,
-                        profil: profil,
-                        subject: subject,
-                        message: message
-                    })
+                    body: JSON.stringify(bodyData)
                 });
 
-                const data = await response.json();
+                var data = await response.json();
 
                 if (response.ok && data.success) {
                     feedback.style.display = 'block';
                     feedback.style.background = '#51cf66';
                     feedback.style.color = 'black';
-                    feedback.innerHTML = '<i class="fas fa-check-circle mr-2"></i>MESSAGE ENVOY\u00c9 AVEC SUCC\u00c8S ! Un email de confirmation vous a \u00e9t\u00e9 envoy\u00e9.';
+                    if (data.quoteId) {
+                        feedback.innerHTML = '<i class="fas fa-check-circle mr-2"></i>DEMANDE DE DEVIS ENVOYÉE AVEC SUCCÈS ! Nous reviendrons vers vous dans les plus brefs délais.';
+                    } else {
+                        feedback.innerHTML = '<i class="fas fa-check-circle mr-2"></i>MESSAGE ENVOYÉ AVEC SUCCÈS ! Un email de confirmation vous a été envoyé.';
+                    }
                     this.reset();
+                    // Cacher le champ type de prestation apres reset
+                    if (devisTypeContainer) devisTypeContainer.style.display = 'none';
                 } else {
                     throw new Error(data.error || 'Erreur lors de l\'envoi');
                 }

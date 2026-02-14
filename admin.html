@@ -226,6 +226,10 @@
                         <button onclick="showSection('partenaires')" class="nav-btn text-white hover:text-[var(--genesis-yellow)]">
                             <i class="fas fa-handshake mr-2"></i>Partenaires
                         </button>
+                        <button onclick="showSection('devis')" class="nav-btn text-white hover:text-[var(--genesis-yellow)]" style="position:relative;">
+                            <i class="fas fa-file-invoice mr-2"></i>Devis
+                            <span id="pendingQuotesBadge" style="display:none;position:absolute;top:-8px;right:-8px;background:#ff6b6b;color:white;border-radius:50%;width:20px;height:20px;font-size:11px;line-height:20px;text-align:center;"></span>
+                        </button>
                     </div>
                 </div>
                 <button onclick="handleLogout()" class="border-4 border-white text-white px-4 py-2 text-xs font-black hover:bg-white hover:text-black transition">
@@ -402,6 +406,42 @@
                 </div>
             </div>
 
+            <!-- SECTION DEVIS -->
+            <div id="devisSection" class="container mx-auto max-w-7xl" style="display: none;">
+                <!-- En-tete + stats -->
+                <div class="flex justify-between items-center mb-12 flex-wrap gap-4">
+                    <h2 class="text-5xl font-black italic uppercase text-[var(--genesis-yellow)]">
+                        <i class="fas fa-file-invoice mr-4"></i>DEVIS
+                    </h2>
+                    <div id="quotesStats" class="text-right"></div>
+                </div>
+
+                <!-- Sous-onglets -->
+                <div class="admin-card neo-shadow mb-8">
+                    <div class="flex gap-3 flex-wrap">
+                        <button onclick="filterAdminQuotes('all')" class="neo-btn-yellow px-4 py-2 text-xs" id="quoteFilterAll">TOUS</button>
+                        <button onclick="filterAdminQuotes('DRAFT_REQUESTED')" class="border-4 border-[#ff6b6b] bg-[#ff6b6b] text-black px-4 py-2 text-xs font-black" id="quoteFilterDraft">EN ATTENTE</button>
+                        <button onclick="filterAdminQuotes('PARTNER_PROPOSED')" class="border-4 border-[#ffd43b] bg-[#ffd43b] text-black px-4 py-2 text-xs font-black" id="quoteFilterProposed">PROPOSÉS</button>
+                        <button onclick="filterAdminQuotes('ADMIN_REVIEW')" class="border-4 border-[#4dabf7] bg-[#4dabf7] text-black px-4 py-2 text-xs font-black" id="quoteFilterReview">A FINALISER</button>
+                        <button onclick="filterAdminQuotes('SENT_TO_CLIENT')" class="border-4 border-[#845ef7] bg-[#845ef7] text-white px-4 py-2 text-xs font-black" id="quoteFilterSent">ENVOYÉS</button>
+                        <button onclick="filterAdminQuotes('ACCEPTED')" class="border-4 border-[#51cf66] bg-[#51cf66] text-black px-4 py-2 text-xs font-black" id="quoteFilterAccepted">ACCEPTÉS</button>
+                    </div>
+                </div>
+
+                <!-- Liste des devis -->
+                <div id="quotesList">
+                    <p class="text-center py-8 opacity-50 font-bold">Chargement...</p>
+                </div>
+
+                <!-- Detail d'un devis (cache par defaut) -->
+                <div id="quoteDetailView" style="display:none;">
+                    <button onclick="backToQuotesList()" class="border-4 border-black bg-gray-300 text-black px-6 py-3 text-sm font-black mb-6">
+                        <i class="fas fa-arrow-left mr-2"></i>RETOUR A LA LISTE
+                    </button>
+                    <div id="quoteDetailContent"></div>
+                </div>
+            </div>
+
         </div>
     </div>
 
@@ -471,6 +511,7 @@
             document.getElementById('messagesSection').style.display = 'none';
             document.getElementById('commandesSection').style.display = 'none';
             document.getElementById('partenairesSection').style.display = 'none';
+            document.getElementById('devisSection').style.display = 'none';
 
             if (section === 'dashboard') {
                 document.getElementById('dashboardSection').style.display = 'block';
@@ -488,6 +529,9 @@
                 document.getElementById('partenairesSection').style.display = 'block';
                 loadPartnersList();
                 loadPendingUploads();
+            } else if (section === 'devis') {
+                document.getElementById('devisSection').style.display = 'block';
+                loadAdminQuotes();
             }
         }
 
@@ -1973,6 +2017,684 @@
                 alert('Erreur de connexion');
             }
         }
+
+        // ============================================================
+        // SECTION DEVIS
+        // ============================================================
+
+        var allAdminQuotes = [];
+        var currentQuoteFilter = 'all';
+
+        var QUOTE_STATUS_LABELS = {
+            DRAFT_REQUESTED: 'EN ATTENTE',
+            PARTNER_PROPOSED: 'PROPOSÉ',
+            ADMIN_REVIEW: 'A FINALISER',
+            SENT_TO_CLIENT: 'ENVOYÉ',
+            ACCEPTED: 'ACCEPTÉ',
+            EXPIRED: 'EXPIRÉ',
+            CANCELLED: 'ANNULÉ'
+        };
+
+        var QUOTE_STATUS_COLORS = {
+            DRAFT_REQUESTED: '#ff6b6b',
+            PARTNER_PROPOSED: '#ffd43b',
+            ADMIN_REVIEW: '#4dabf7',
+            SENT_TO_CLIENT: '#845ef7',
+            ACCEPTED: '#51cf66',
+            EXPIRED: '#999',
+            CANCELLED: '#999'
+        };
+
+        var SERVICE_TYPE_LABELS = {
+            photo: 'PHOTO',
+            video: 'VIDÉO',
+            media: 'MÉDIA',
+            marketing: 'MARKETING',
+            other: 'AUTRE'
+        };
+
+        async function loadAdminQuotes() {
+            try {
+                var url = API_BASE_URL + '/api/admin/quotes';
+                var response = await fetch(url);
+                if (!response.ok) throw new Error('Erreur chargement devis');
+                allAdminQuotes = await response.json();
+            } catch (error) {
+                console.error('[ADMIN] Erreur chargement devis:', error);
+                var listEl = document.getElementById('quotesList');
+                if (listEl) listEl.innerHTML = '<p class="text-center py-8 opacity-50 font-bold">Chargement... (le serveur demarre)</p>';
+                setTimeout(function() { loadAdminQuotes(); }, 5000);
+                return;
+            }
+
+            // Stats
+            var pending = allAdminQuotes.filter(function(q) { return q.status === 'DRAFT_REQUESTED' || q.status === 'PARTNER_PROPOSED'; }).length;
+            var statsEl = document.getElementById('quotesStats');
+            if (statsEl) {
+                statsEl.innerHTML = '<span class="text-[var(--genesis-yellow)] font-black text-2xl">' + allAdminQuotes.length + '</span>' +
+                    '<span class="text-sm font-bold opacity-70"> devis total</span>' +
+                    (pending > 0 ? '<br><span class="text-[#ff6b6b] font-black text-lg">' + pending + '</span><span class="text-sm font-bold opacity-70"> en attente</span>' : '');
+            }
+
+            // Badge nav
+            var badge = document.getElementById('pendingQuotesBadge');
+            if (badge) {
+                if (pending > 0) { badge.style.display = 'block'; badge.textContent = pending; }
+                else { badge.style.display = 'none'; }
+            }
+
+            renderAdminQuotes();
+        }
+
+        function filterAdminQuotes(status) {
+            currentQuoteFilter = status;
+            renderAdminQuotes();
+        }
+
+        function renderAdminQuotes() {
+            var filtered = allAdminQuotes;
+            if (currentQuoteFilter !== 'all') {
+                filtered = allAdminQuotes.filter(function(q) { return q.status === currentQuoteFilter; });
+            }
+
+            // Assurer que la liste est visible et le detail cache
+            var listEl = document.getElementById('quotesList');
+            var detailEl = document.getElementById('quoteDetailView');
+            if (listEl) listEl.style.display = 'block';
+            if (detailEl) detailEl.style.display = 'none';
+
+            if (filtered.length === 0) {
+                if (listEl) listEl.innerHTML = '<p class="text-center py-8 opacity-50 font-bold">Aucun devis</p>';
+                return;
+            }
+
+            var html = '';
+            filtered.forEach(function(quote) {
+                var date = quote.created_at ? new Date(quote.created_at).toLocaleDateString('fr-FR') : '';
+                var statusColor = QUOTE_STATUS_COLORS[quote.status] || '#999';
+                var statusLabel = QUOTE_STATUS_LABELS[quote.status] || quote.status;
+                var serviceLabel = SERVICE_TYPE_LABELS[quote.service_type] || quote.service_type || '';
+                var partnerInfo = quote.partner_email ? ('<i class="fas fa-handshake mr-1"></i>' + quote.partner_email) : '<span class="text-[#ff6b6b]"><i class="fas fa-exclamation-triangle mr-1"></i>Non assigné</span>';
+                var totalDisplay = quote.pricing ? (quote.pricing.total + '€') : '-';
+
+                html += '<div class="admin-card neo-shadow mb-4" style="cursor:pointer;' +
+                    (quote.status === 'DRAFT_REQUESTED' ? 'border-left:6px solid #ff6b6b;' : '') +
+                    (quote.status === 'PARTNER_PROPOSED' ? 'border-left:6px solid #ffd43b;' : '') +
+                    '" onclick="openQuoteDetail(\'' + quote.id + '\')">' +
+                    '<div class="flex justify-between items-start flex-wrap gap-4">' +
+                        '<div class="flex-1 min-w-[200px]">' +
+                            '<div class="text-xs font-bold opacity-50">' + (quote.quote_number || quote.id) + '</div>' +
+                            '<div class="font-black text-lg">' + (quote.client_name || 'N/A') + '</div>' +
+                            '<div class="text-sm font-bold opacity-70">' + (quote.client_email || '') + '</div>' +
+                        '</div>' +
+                        '<div class="flex-1 min-w-[150px]">' +
+                            '<span style="background:var(--genesis-yellow);color:black;padding:2px 8px;border:2px solid black;font-size:11px;font-weight:900;">' + serviceLabel + '</span>' +
+                            '<div class="text-sm font-bold opacity-60 mt-2">' + partnerInfo + '</div>' +
+                        '</div>' +
+                        '<div class="text-center">' +
+                            '<div class="text-xl font-black text-[var(--genesis-yellow)]">' + totalDisplay + '</div>' +
+                        '</div>' +
+                        '<div class="text-right">' +
+                            '<div style="background:' + statusColor + ';color:' + (quote.status === 'SENT_TO_CLIENT' ? 'white' : 'black') + ';padding:4px 10px;border:2px solid black;font-size:11px;font-weight:900;display:inline-block;">' + statusLabel + '</div>' +
+                            '<div class="text-xs font-bold opacity-60 mt-2">' + date + '</div>' +
+                        '</div>' +
+                    '</div>' +
+                '</div>';
+            });
+
+            if (listEl) listEl.innerHTML = html;
+        }
+
+        function backToQuotesList() {
+            var listEl = document.getElementById('quotesList');
+            var detailEl = document.getElementById('quoteDetailView');
+            if (listEl) listEl.style.display = 'block';
+            if (detailEl) detailEl.style.display = 'none';
+        }
+
+        async function openQuoteDetail(quoteId) {
+            try {
+                var response = await fetch(API_BASE_URL + '/api/admin/quotes/' + quoteId);
+                if (!response.ok) throw new Error('Erreur chargement devis');
+                var quote = await response.json();
+            } catch (error) {
+                console.error('[ADMIN] Erreur chargement detail devis:', error);
+                alert('Erreur de chargement du devis');
+                return;
+            }
+
+            // Cacher la liste, afficher le detail
+            var listEl = document.getElementById('quotesList');
+            var detailEl = document.getElementById('quoteDetailView');
+            if (listEl) listEl.style.display = 'none';
+            if (detailEl) detailEl.style.display = 'block';
+
+            var statusColor = QUOTE_STATUS_COLORS[quote.status] || '#999';
+            var statusLabel = QUOTE_STATUS_LABELS[quote.status] || quote.status;
+            var serviceLabel = SERVICE_TYPE_LABELS[quote.service_type] || quote.service_type || '';
+
+            var html = '';
+
+            // En-tete
+            html += '<div class="admin-card neo-shadow mb-6">' +
+                '<div class="flex justify-between items-start flex-wrap gap-4 mb-6">' +
+                    '<div>' +
+                        '<h3 class="text-3xl font-black italic uppercase text-[var(--genesis-yellow)]">' +
+                            '<i class="fas fa-file-invoice mr-3"></i>DEVIS ' + (quote.quote_number || quote.id) +
+                        '</h3>' +
+                        '<div class="mt-2">' +
+                            '<span style="background:' + statusColor + ';color:' + (quote.status === 'SENT_TO_CLIENT' ? 'white' : 'black') + ';padding:4px 12px;border:2px solid black;font-size:12px;font-weight:900;">' + statusLabel + '</span>' +
+                            ' <span style="background:var(--genesis-yellow);color:black;padding:4px 12px;border:2px solid black;font-size:12px;font-weight:900;margin-left:4px;">' + serviceLabel + '</span>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="text-right text-sm font-bold opacity-60">' +
+                        '<div>Créé le ' + (quote.created_at ? new Date(quote.created_at).toLocaleDateString('fr-FR') : 'N/A') + '</div>' +
+                        (quote.sent_at ? '<div>Envoyé le ' + new Date(quote.sent_at).toLocaleDateString('fr-FR') + '</div>' : '') +
+                        (quote.accepted_at ? '<div class="text-[#51cf66]">Accepté le ' + new Date(quote.accepted_at).toLocaleDateString('fr-FR') + '</div>' : '') +
+                    '</div>' +
+                '</div>' +
+
+                // Infos client
+                '<h4 class="text-xl font-black italic uppercase mb-4"><i class="fas fa-user mr-2"></i>CLIENT</h4>' +
+                '<div class="grid md:grid-cols-3 gap-4 mb-6">' +
+                    '<div><span class="text-sm font-bold opacity-60">Nom</span><br><span class="font-black">' + (quote.client_name || 'N/A') + '</span></div>' +
+                    '<div><span class="text-sm font-bold opacity-60">Email</span><br><span class="font-black">' + (quote.client_email || 'N/A') + '</span></div>' +
+                    '<div><span class="text-sm font-bold opacity-60">Profil</span><br><span class="font-black">' + (quote.client_profil || 'N/A') + '</span></div>' +
+                '</div>' +
+
+                // Brief
+                '<h4 class="text-xl font-black italic uppercase mb-4"><i class="fas fa-clipboard mr-2"></i>BRIEF</h4>' +
+                '<div style="background:#FFF9E6;border-left:4px solid #FFD700;padding:15px;margin-bottom:20px;">' +
+                    '<p style="white-space:pre-wrap;">' + (quote.brief || 'Aucun brief') + '</p>' +
+                '</div>' +
+            '</div>';
+
+            // Partenaire assigne
+            html += '<div class="admin-card neo-shadow mb-6">' +
+                '<h4 class="text-xl font-black italic uppercase mb-4"><i class="fas fa-handshake mr-2"></i>PARTENAIRE</h4>';
+
+            if (quote.partner_id && quote.partner_info) {
+                html += '<div class="document-item">' +
+                    '<div>' +
+                        '<span class="font-black text-lg">' + (quote.partner_info.prenom || '') + ' ' + (quote.partner_info.nom || '') + '</span>' +
+                        ' <span style="background:var(--genesis-yellow);color:black;padding:2px 8px;border:1px solid black;font-size:10px;font-weight:900;">' +
+                            (PARTNER_TYPE_LABELS[quote.partner_info.partner_type] || '').toUpperCase() + '</span>' +
+                        '<div class="text-sm opacity-60">' + (quote.partner_email || '') + '</div>' +
+                    '</div>' +
+                '</div>';
+            } else {
+                html += '<p class="text-[#ff6b6b] font-bold mb-4"><i class="fas fa-exclamation-triangle mr-1"></i>Aucun partenaire assigné</p>';
+            }
+
+            // Dropdown pour assigner/changer partenaire (si pas encore envoye)
+            if (quote.status !== 'SENT_TO_CLIENT' && quote.status !== 'ACCEPTED' && quote.status !== 'CANCELLED') {
+                html += '<div class="mt-4 p-4 bg-gray-100 border-2 border-black">' +
+                    '<label class="block font-black mb-2 uppercase text-sm">' + (quote.partner_id ? 'Changer le partenaire' : 'Assigner un partenaire') + '</label>' +
+                    '<div class="flex gap-2 flex-wrap">' +
+                        '<select id="quotePartnerSelect" class="flex-1 min-w-[200px]">' +
+                            '<option value="">Sélectionner...</option>';
+
+                // On va remplir les options dynamiquement
+                if (allPartners && allPartners.length > 0) {
+                    allPartners.forEach(function(p) {
+                        if (p.accountStatus !== 'deactivated') {
+                            var label = (p.prenom || '') + ' ' + (p.nom || '') + ' (' + (PARTNER_TYPE_LABELS[p.partner_type] || p.partner_type) + ')';
+                            html += '<option value="' + p.id + '"' + (p.id === quote.partner_id ? ' selected' : '') + '>' + label + '</option>';
+                        }
+                    });
+                }
+
+                html += '</select>' +
+                        '<button onclick="assignPartnerToQuote(\'' + quote.id + '\')" class="neo-btn-yellow px-4 py-2 text-xs">' +
+                            '<i class="fas fa-check mr-1"></i>ASSIGNER' +
+                        '</button>' +
+                    '</div>' +
+                '</div>';
+            }
+
+            html += '</div>';
+
+            // Proposition du partenaire (si existe)
+            if (quote.partner_proposal) {
+                html += '<div class="admin-card neo-shadow mb-6">' +
+                    '<h4 class="text-xl font-black italic uppercase mb-4"><i class="fas fa-lightbulb mr-2"></i>PROPOSITION DU PARTENAIRE</h4>';
+
+                if (quote.partner_proposal.items && quote.partner_proposal.items.length > 0) {
+                    html += '<table style="width:100%;border-collapse:collapse;border:2px solid black;">' +
+                        '<thead><tr style="background:var(--genesis-yellow);">' +
+                            '<th style="padding:8px;border:2px solid black;text-align:left;font-size:12px;">PRESTATION</th>' +
+                            '<th style="padding:8px;border:2px solid black;text-align:center;font-size:12px;">QTÉ</th>' +
+                            '<th style="padding:8px;border:2px solid black;text-align:right;font-size:12px;">P.U.</th>' +
+                            '<th style="padding:8px;border:2px solid black;text-align:right;font-size:12px;">TOTAL</th>' +
+                        '</tr></thead><tbody>';
+
+                    var propTotal = 0;
+                    quote.partner_proposal.items.forEach(function(item) {
+                        var lineTotal = (item.qty || 1) * (item.unit_price || 0);
+                        propTotal += lineTotal;
+                        html += '<tr>' +
+                            '<td style="padding:8px;border:2px solid black;">' + (item.label || '') +
+                                (item.description ? '<br><span class="text-xs opacity-60">' + item.description + '</span>' : '') + '</td>' +
+                            '<td style="padding:8px;border:2px solid black;text-align:center;">' + (item.qty || 1) + '</td>' +
+                            '<td style="padding:8px;border:2px solid black;text-align:right;">' + (item.unit_price || 0) + '€</td>' +
+                            '<td style="padding:8px;border:2px solid black;text-align:right;font-weight:900;">' + lineTotal + '€</td>' +
+                        '</tr>';
+                    });
+
+                    html += '</tbody></table>' +
+                        '<div class="text-right mt-2 font-black text-lg">Total proposition : ' + propTotal + '€</div>';
+                }
+
+                if (quote.partner_proposal.delay) {
+                    html += '<div class="mt-3 text-sm"><strong>Délai estimé :</strong> ' + quote.partner_proposal.delay + '</div>';
+                }
+                if (quote.partner_proposal.notes) {
+                    html += '<div class="mt-2 text-sm"><strong>Notes internes :</strong> ' + quote.partner_proposal.notes + '</div>';
+                }
+
+                // Bouton pour pre-remplir depuis proposition
+                if (quote.status === 'PARTNER_PROPOSED' || quote.status === 'DRAFT_REQUESTED') {
+                    html += '<div class="mt-4">' +
+                        '<button onclick="prepareQuoteFromProposal(\'' + quote.id + '\')" class="neo-btn-yellow px-6 py-3 text-sm">' +
+                            '<i class="fas fa-copy mr-2"></i>UTILISER COMME BASE POUR LE DEVIS' +
+                        '</button>' +
+                    '</div>';
+                }
+
+                html += '</div>';
+            }
+
+            // Formulaire version admin (editable si pas encore envoye ou accepte)
+            if (quote.status !== 'ACCEPTED' && quote.status !== 'CANCELLED' && quote.status !== 'EXPIRED') {
+                html += '<div class="admin-card neo-shadow mb-6" id="quoteAdminForm">' +
+                    '<h4 class="text-xl font-black italic uppercase mb-4"><i class="fas fa-edit mr-2"></i>DEVIS FINAL (version FA GENESIS)</h4>';
+
+                // Items editables
+                var adminItems = (quote.admin_final && quote.admin_final.items) ? quote.admin_final.items : [];
+                var adminNotes = (quote.admin_final && quote.admin_final.notes) ? quote.admin_final.notes : '';
+
+                html += '<div id="quoteItemsContainer">';
+                if (adminItems.length > 0) {
+                    adminItems.forEach(function(item, index) {
+                        html += renderQuoteItemRow(index, item);
+                    });
+                } else {
+                    html += renderQuoteItemRow(0, { label: '', qty: 1, unit_price: 0, description: '' });
+                }
+                html += '</div>';
+
+                html += '<button onclick="addQuoteItem()" class="border-4 border-black bg-gray-200 text-black px-4 py-2 text-xs font-black mt-2 mb-4">' +
+                    '<i class="fas fa-plus mr-1"></i>AJOUTER UNE LIGNE' +
+                '</button>';
+
+                // Total calcule
+                html += '<div id="quoteTotalDisplay" class="text-right mb-4 p-4 bg-gray-100 border-2 border-black">' +
+                    '<div class="text-sm font-bold">Total : <span id="quoteTotalAmount" class="text-2xl font-black text-[var(--genesis-yellow)]">0€</span></div>' +
+                    '<div class="text-sm font-bold">Acompte 30% : <span id="quoteDepositAmount" class="font-black">0€</span></div>' +
+                    '<div class="text-sm font-bold">Solde 70% : <span id="quoteBalanceAmount" class="font-black">0€</span></div>' +
+                '</div>';
+
+                // Notes
+                html += '<div class="mb-4">' +
+                    '<label class="block font-black mb-2 uppercase text-sm">Notes / Conditions</label>' +
+                    '<textarea id="quoteAdminNotes" rows="3" class="w-full p-3 border-4 border-black font-bold" placeholder="Conditions particulières...">' + adminNotes + '</textarea>' +
+                '</div>';
+
+                // Boutons action
+                html += '<div class="flex gap-3 flex-wrap">' +
+                    '<button onclick="reviewQuote(\'' + quote.id + '\')" class="neo-btn-yellow px-6 py-3 text-sm">' +
+                        '<i class="fas fa-save mr-2"></i>SAUVEGARDER' +
+                    '</button>';
+
+                if (quote.status === 'ADMIN_REVIEW' || quote.status === 'PARTNER_PROPOSED' || quote.status === 'DRAFT_REQUESTED') {
+                    html += '<button onclick="sendQuoteToClient(\'' + quote.id + '\')" class="border-4 border-[#845ef7] bg-[#845ef7] text-white px-6 py-3 text-sm font-black">' +
+                        '<i class="fas fa-paper-plane mr-2"></i>ENVOYER AU CLIENT' +
+                    '</button>';
+                }
+
+                html += '</div>';
+                html += '</div>';
+            }
+
+            // Pricing affiche si devis deja envoye/accepte
+            if ((quote.status === 'SENT_TO_CLIENT' || quote.status === 'ACCEPTED') && quote.pricing) {
+                html += '<div class="admin-card neo-shadow mb-6">' +
+                    '<h4 class="text-xl font-black italic uppercase mb-4"><i class="fas fa-money-bill-wave mr-2"></i>TARIFICATION</h4>';
+
+                if (quote.admin_final && quote.admin_final.items) {
+                    html += '<table style="width:100%;border-collapse:collapse;border:2px solid black;">' +
+                        '<thead><tr style="background:var(--genesis-yellow);">' +
+                            '<th style="padding:8px;border:2px solid black;text-align:left;font-size:12px;">PRESTATION</th>' +
+                            '<th style="padding:8px;border:2px solid black;text-align:center;font-size:12px;">QTÉ</th>' +
+                            '<th style="padding:8px;border:2px solid black;text-align:right;font-size:12px;">P.U.</th>' +
+                            '<th style="padding:8px;border:2px solid black;text-align:right;font-size:12px;">TOTAL</th>' +
+                        '</tr></thead><tbody>';
+
+                    quote.admin_final.items.forEach(function(item) {
+                        var lineTotal = (item.qty || 1) * (item.unit_price || 0);
+                        html += '<tr>' +
+                            '<td style="padding:8px;border:2px solid black;">' + (item.label || '') + '</td>' +
+                            '<td style="padding:8px;border:2px solid black;text-align:center;">' + (item.qty || 1) + '</td>' +
+                            '<td style="padding:8px;border:2px solid black;text-align:right;">' + (item.unit_price || 0) + '€</td>' +
+                            '<td style="padding:8px;border:2px solid black;text-align:right;font-weight:900;">' + lineTotal + '€</td>' +
+                        '</tr>';
+                    });
+
+                    html += '</tbody></table>';
+                }
+
+                html += '<div class="text-right mt-4 p-4 bg-gray-100 border-2 border-black">' +
+                    '<div class="text-lg font-black">Total : ' + quote.pricing.total + '€</div>' +
+                    '<div class="text-sm font-bold">Acompte 30% : ' + quote.pricing.deposit_amount + '€</div>' +
+                    '<div class="text-sm font-bold">Solde 70% : ' + quote.pricing.balance_amount + '€</div>' +
+                '</div>' +
+                '</div>';
+            }
+
+            // Commande liee
+            if (quote.order_id) {
+                html += '<div class="admin-card neo-shadow mb-6">' +
+                    '<h4 class="text-xl font-black italic uppercase mb-4"><i class="fas fa-receipt mr-2"></i>COMMANDE LIÉE</h4>' +
+                    '<p class="font-black">Commande : ' + quote.order_id + '</p>' +
+                    '<button onclick="showSection(\'commandes\')" class="neo-btn-yellow px-4 py-2 text-sm mt-2">' +
+                        '<i class="fas fa-external-link-alt mr-1"></i>VOIR LES COMMANDES' +
+                    '</button>' +
+                '</div>';
+            }
+
+            // Bouton annuler
+            if (quote.status !== 'ACCEPTED' && quote.status !== 'CANCELLED' && quote.status !== 'EXPIRED') {
+                html += '<div class="mt-6">' +
+                    '<button onclick="cancelQuote(\'' + quote.id + '\')" class="border-4 border-[#ff6b6b] bg-[#ff6b6b] text-black px-6 py-3 text-sm font-black">' +
+                        '<i class="fas fa-times mr-2"></i>ANNULER CE DEVIS' +
+                    '</button>' +
+                '</div>';
+            }
+
+            var contentEl = document.getElementById('quoteDetailContent');
+            if (contentEl) contentEl.innerHTML = html;
+
+            // Charger les partenaires pour le select (si pas encore charges)
+            if (!allPartners || allPartners.length === 0) {
+                try {
+                    var pResp = await fetch(API_BASE_URL + '/api/admin/partners');
+                    if (pResp.ok) allPartners = await pResp.json();
+                    // Re-ouvrir le detail pour mettre a jour le select
+                    openQuoteDetail(quoteId);
+                    return;
+                } catch (e) {}
+            }
+
+            // Calcul initial du total
+            recalculateQuoteTotal();
+        }
+
+        function renderQuoteItemRow(index, item) {
+            return '<div class="quote-item-row grid grid-cols-12 gap-2 mb-2 items-start" data-index="' + index + '">' +
+                '<div class="col-span-4">' +
+                    '<input type="text" class="quote-item-label w-full p-2 border-2 border-black text-sm font-bold" placeholder="Prestation" value="' + (item.label || '') + '">' +
+                '</div>' +
+                '<div class="col-span-2">' +
+                    '<input type="text" class="quote-item-desc w-full p-2 border-2 border-black text-sm" placeholder="Description" value="' + (item.description || '') + '">' +
+                '</div>' +
+                '<div class="col-span-2">' +
+                    '<input type="number" class="quote-item-qty w-full p-2 border-2 border-black text-sm font-bold text-center" value="' + (item.qty || 1) + '" min="1" onchange="recalculateQuoteTotal()">' +
+                '</div>' +
+                '<div class="col-span-2">' +
+                    '<input type="number" class="quote-item-price w-full p-2 border-2 border-black text-sm font-bold text-right" value="' + (item.unit_price || 0) + '" min="0" step="0.01" onchange="recalculateQuoteTotal()">' +
+                '</div>' +
+                '<div class="col-span-2 flex items-center gap-1">' +
+                    '<span class="quote-item-line-total font-black text-sm">0€</span>' +
+                    '<button onclick="removeQuoteItem(' + index + ')" class="text-red-600 font-black hover:opacity-70 ml-2" title="Supprimer">' +
+                        '<i class="fas fa-trash text-xs"></i>' +
+                    '</button>' +
+                '</div>' +
+            '</div>';
+        }
+
+        function addQuoteItem() {
+            var container = document.getElementById('quoteItemsContainer');
+            if (!container) return;
+            var rows = container.querySelectorAll('.quote-item-row');
+            var newIndex = rows.length;
+            var newRow = document.createElement('div');
+            newRow.innerHTML = renderQuoteItemRow(newIndex, { label: '', qty: 1, unit_price: 0, description: '' });
+            container.appendChild(newRow.firstChild);
+        }
+
+        function removeQuoteItem(index) {
+            var container = document.getElementById('quoteItemsContainer');
+            if (!container) return;
+            var rows = container.querySelectorAll('.quote-item-row');
+            if (rows.length <= 1) {
+                alert('Au moins une ligne est requise');
+                return;
+            }
+            if (rows[index]) rows[index].remove();
+            recalculateQuoteTotal();
+        }
+
+        function recalculateQuoteTotal() {
+            var container = document.getElementById('quoteItemsContainer');
+            if (!container) return;
+
+            var rows = container.querySelectorAll('.quote-item-row');
+            var total = 0;
+
+            rows.forEach(function(row) {
+                var qty = parseFloat(row.querySelector('.quote-item-qty').value) || 0;
+                var price = parseFloat(row.querySelector('.quote-item-price').value) || 0;
+                var lineTotal = qty * price;
+                total += lineTotal;
+                var lineTotalEl = row.querySelector('.quote-item-line-total');
+                if (lineTotalEl) lineTotalEl.textContent = lineTotal + '€';
+            });
+
+            var totalEl = document.getElementById('quoteTotalAmount');
+            var depositEl = document.getElementById('quoteDepositAmount');
+            var balanceEl = document.getElementById('quoteBalanceAmount');
+
+            if (totalEl) totalEl.textContent = total + '€';
+            if (depositEl) depositEl.textContent = Math.round(total * 0.3) + '€';
+            if (balanceEl) balanceEl.textContent = Math.round(total * 0.7) + '€';
+        }
+
+        function collectQuoteItems() {
+            var container = document.getElementById('quoteItemsContainer');
+            if (!container) return [];
+
+            var items = [];
+            var rows = container.querySelectorAll('.quote-item-row');
+            rows.forEach(function(row) {
+                var label = row.querySelector('.quote-item-label').value.trim();
+                var description = row.querySelector('.quote-item-desc').value.trim();
+                var qty = parseInt(row.querySelector('.quote-item-qty').value) || 1;
+                var unit_price = parseFloat(row.querySelector('.quote-item-price').value) || 0;
+
+                if (label) {
+                    items.push({ label: label, description: description, qty: qty, unit_price: unit_price });
+                }
+            });
+
+            return items;
+        }
+
+        async function assignPartnerToQuote(quoteId) {
+            var select = document.getElementById('quotePartnerSelect');
+            if (!select || !select.value) {
+                alert('Sélectionnez un partenaire');
+                return;
+            }
+
+            try {
+                var response = await fetch(API_BASE_URL + '/api/admin/quotes/' + quoteId + '/assign-partner', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ partner_id: select.value })
+                });
+
+                var result = await response.json();
+                if (result.success) {
+                    alert('Partenaire assigné au devis !');
+                    openQuoteDetail(quoteId);
+                } else {
+                    alert('Erreur: ' + (result.error || 'Erreur inconnue'));
+                }
+            } catch (error) {
+                console.error('[ADMIN] Erreur assignation partenaire devis:', error);
+                alert('Erreur de connexion');
+            }
+        }
+
+        function prepareQuoteFromProposal(quoteId) {
+            // Trouver le devis dans la liste
+            var quote = allAdminQuotes.find(function(q) { return q.id === quoteId; });
+            if (!quote || !quote.partner_proposal || !quote.partner_proposal.items) {
+                alert('Aucune proposition partenaire trouvée');
+                return;
+            }
+
+            // Remplir les items depuis la proposition
+            var container = document.getElementById('quoteItemsContainer');
+            if (!container) return;
+
+            container.innerHTML = '';
+            quote.partner_proposal.items.forEach(function(item, index) {
+                var row = document.createElement('div');
+                row.innerHTML = renderQuoteItemRow(index, item);
+                container.appendChild(row.firstChild);
+            });
+
+            recalculateQuoteTotal();
+
+            // Scroller vers le formulaire
+            var formEl = document.getElementById('quoteAdminForm');
+            if (formEl) formEl.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        async function reviewQuote(quoteId) {
+            var items = collectQuoteItems();
+            if (items.length === 0) {
+                alert('Ajoutez au moins une prestation');
+                return;
+            }
+
+            var notesEl = document.getElementById('quoteAdminNotes');
+            var notes = notesEl ? notesEl.value.trim() : '';
+
+            try {
+                var response = await fetch(API_BASE_URL + '/api/admin/quotes/' + quoteId + '/review', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ items: items, notes: notes })
+                });
+
+                var result = await response.json();
+                if (result.success) {
+                    alert('Devis sauvegardé !');
+                    // Recharger
+                    loadAdminQuotes();
+                    openQuoteDetail(quoteId);
+                } else {
+                    alert('Erreur: ' + (result.error || 'Erreur inconnue'));
+                }
+            } catch (error) {
+                console.error('[ADMIN] Erreur sauvegarde devis:', error);
+                alert('Erreur de connexion');
+            }
+        }
+
+        async function sendQuoteToClient(quoteId) {
+            // D'abord sauvegarder les items actuels
+            var items = collectQuoteItems();
+            if (items.length === 0) {
+                alert('Ajoutez au moins une prestation avant d\'envoyer');
+                return;
+            }
+
+            // Verifier qu'il y a un total > 0
+            var total = 0;
+            items.forEach(function(item) { total += (item.qty || 1) * (item.unit_price || 0); });
+            if (total <= 0) {
+                alert('Le total du devis doit être supérieur à 0€');
+                return;
+            }
+
+            if (!confirm('Envoyer ce devis au client par email ?\n\nTotal : ' + total + '€\nAcompte 30% : ' + Math.round(total * 0.3) + '€')) return;
+
+            // D'abord sauvegarder
+            var notesEl = document.getElementById('quoteAdminNotes');
+            var notes = notesEl ? notesEl.value.trim() : '';
+
+            try {
+                // Sauvegarder d'abord
+                var reviewResp = await fetch(API_BASE_URL + '/api/admin/quotes/' + quoteId + '/review', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ items: items, notes: notes })
+                });
+
+                var reviewResult = await reviewResp.json();
+                if (!reviewResult.success) {
+                    alert('Erreur sauvegarde: ' + (reviewResult.error || 'Erreur'));
+                    return;
+                }
+
+                // Puis envoyer
+                var sendResp = await fetch(API_BASE_URL + '/api/admin/quotes/' + quoteId + '/send', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                var sendResult = await sendResp.json();
+                if (sendResult.success) {
+                    alert('Devis envoyé au client avec succès !');
+                    loadAdminQuotes();
+                    openQuoteDetail(quoteId);
+                } else {
+                    alert('Erreur envoi: ' + (sendResult.error || 'Erreur inconnue'));
+                }
+            } catch (error) {
+                console.error('[ADMIN] Erreur envoi devis:', error);
+                alert('Erreur de connexion');
+            }
+        }
+
+        async function cancelQuote(quoteId) {
+            if (!confirm('Voulez-vous vraiment annuler ce devis ? Cette action est irréversible.')) return;
+
+            try {
+                var response = await fetch(API_BASE_URL + '/api/admin/quotes/' + quoteId + '/cancel', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                var result = await response.json();
+                if (result.success) {
+                    alert('Devis annulé');
+                    loadAdminQuotes();
+                    backToQuotesList();
+                } else {
+                    alert('Erreur: ' + (result.error || 'Erreur inconnue'));
+                }
+            } catch (error) {
+                console.error('[ADMIN] Erreur annulation devis:', error);
+                alert('Erreur de connexion');
+            }
+        }
+
+        // Charger le badge devis au demarrage
+        (async function() {
+            try {
+                var response = await fetch(API_BASE_URL + '/api/admin/quotes');
+                if (response.ok) {
+                    var quotes = await response.json();
+                    var pending = quotes.filter(function(q) { return q.status === 'DRAFT_REQUESTED' || q.status === 'PARTNER_PROPOSED'; }).length;
+                    var badge = document.getElementById('pendingQuotesBadge');
+                    if (badge && pending > 0) { badge.style.display = 'block'; badge.textContent = pending; }
+                }
+            } catch (e) {}
+        })();
     </script>
 </body>
 </html>

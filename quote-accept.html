@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Accepter le devis - FA GENESIS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Unbounded:wght@400;900&family=Space+Grotesk:wght@300;700&display=swap');
+        :root {
+            --genesis-yellow: #FFD700;
+            --genesis-black: #000000;
+            --genesis-white: #FFFFFF;
+        }
+        body {
+            background-color: var(--genesis-black);
+            color: var(--genesis-white);
+            font-family: 'Space Grotesk', sans-serif;
+            overflow-x: hidden;
+        }
+        h1, h2, h3, h4, h5, .nav-link { font-family: 'Unbounded', cursive; }
+        .neo-border { border: 4px solid var(--genesis-black); }
+        .neo-shadow { box-shadow: 10px 10px 0px 0px var(--genesis-yellow); }
+        .neo-btn-yellow {
+            background: var(--genesis-yellow);
+            color: black;
+            border: 4px solid black;
+            box-shadow: 6px 6px 0px black;
+            font-weight: 900;
+            transition: 0.1s;
+            cursor: pointer;
+        }
+        .neo-btn-yellow:active {
+            transform: translate(4px, 4px);
+            box-shadow: 0px 0px 0px black;
+        }
+        .neo-btn-yellow:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .quote-table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 3px solid black;
+        }
+        .quote-table th {
+            background: var(--genesis-yellow);
+            color: black;
+            padding: 12px 16px;
+            border: 2px solid black;
+            font-weight: 900;
+            text-transform: uppercase;
+            font-size: 12px;
+            text-align: left;
+        }
+        .quote-table td {
+            padding: 12px 16px;
+            border: 2px solid black;
+            font-weight: bold;
+        }
+        .quote-table .text-right { text-align: right; }
+        .quote-table .text-center { text-align: center; }
+    </style>
+</head>
+<body>
+
+    <!-- NAVIGATION -->
+    <nav class="fixed top-0 w-full z-50 bg-black/95 backdrop-blur-md border-b-4 border-[var(--genesis-yellow)] px-4 md:px-6 py-3 md:py-4 flex justify-between items-center text-white text-xs font-black uppercase">
+        <div class="flex items-center">
+            <a href="index.html" class="text-lg md:text-2xl font-black tracking-wider text-[var(--genesis-yellow)]" style="font-family: 'Unbounded', cursive;">FA GENESIS</a>
+        </div>
+        <div class="hidden md:flex gap-12 text-white font-black">
+            <a href="index.html#accueil" class="nav-link hover:text-[var(--genesis-yellow)] transition">Accueil</a>
+            <a href="offres.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">Offres</a>
+            <a href="faq.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">FAQ</a>
+            <a href="contact.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">Contact</a>
+        </div>
+        <a href="contact.html" class="hidden md:block neo-btn-yellow px-6 py-3 text-[12px] tracking-widest text-black font-black">Contact</a>
+    </nav>
+
+    <!-- CONTENU PRINCIPAL -->
+    <section class="min-h-screen flex flex-col items-center justify-center p-4 md:p-6 bg-black pt-28 md:pt-32 pb-20 relative overflow-hidden">
+        <div class="absolute top-20 left-[-10%] w-96 h-96 bg-[var(--genesis-yellow)] rounded-full blur-[120px] opacity-20 z-0"></div>
+
+        <!-- LOADING -->
+        <div id="loadingState" class="w-full max-w-3xl z-10 text-center py-20">
+            <div class="text-4xl text-[var(--genesis-yellow)] mb-4"><i class="fas fa-spinner fa-spin"></i></div>
+            <p class="font-bold opacity-70">Chargement de votre devis...</p>
+        </div>
+
+        <!-- ERROR STATE -->
+        <div id="errorState" class="w-full max-w-3xl z-10" style="display:none;">
+            <div class="bg-white text-black p-10 neo-border neo-shadow text-center">
+                <i class="fas fa-exclamation-triangle text-5xl text-[#ff6b6b] mb-4"></i>
+                <h2 id="errorTitle" class="text-3xl font-black italic uppercase mb-4">ERREUR</h2>
+                <p id="errorMessage" class="font-bold text-lg opacity-70 mb-8"></p>
+                <a href="contact.html" class="neo-btn-yellow px-8 py-4 text-sm tracking-widest inline-block">
+                    <i class="fas fa-envelope mr-2"></i>CONTACTEZ-NOUS
+                </a>
+            </div>
+        </div>
+
+        <!-- QUOTE DISPLAY -->
+        <div id="quoteDisplay" class="w-full max-w-3xl z-10" style="display:none;">
+
+            <!-- En-tete devis -->
+            <div class="text-center mb-8">
+                <h1 class="text-4xl md:text-6xl font-black italic uppercase text-[var(--genesis-yellow)] mb-2">VOTRE DEVIS</h1>
+                <p id="quoteNumber" class="text-lg font-bold opacity-70"></p>
+            </div>
+
+            <div class="bg-white text-black p-6 md:p-10 neo-border neo-shadow">
+
+                <!-- Infos client -->
+                <div class="mb-8">
+                    <p class="text-sm font-bold uppercase opacity-60 mb-1">Devis etabli pour :</p>
+                    <p id="clientName" class="font-black text-xl"></p>
+                    <p id="clientEmail" class="font-bold opacity-70"></p>
+                </div>
+
+                <!-- Tableau des prestations -->
+                <table class="quote-table mb-6">
+                    <thead>
+                        <tr>
+                            <th>Prestation</th>
+                            <th class="text-center">Qte</th>
+                            <th class="text-right">Prix unit.</th>
+                            <th class="text-right">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody id="quoteItemsBody">
+                    </tbody>
+                </table>
+
+                <!-- Totaux -->
+                <div class="bg-gray-100 border-4 border-black p-6 mb-6">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="font-black text-lg uppercase">Total</span>
+                        <span id="quoteTotal" class="font-black text-2xl text-[var(--genesis-yellow)]"></span>
+                    </div>
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="font-bold opacity-70">Acompte 30%</span>
+                        <span id="quoteDeposit" class="font-black text-lg text-[#51cf66]"></span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="font-bold opacity-70">Solde 70% (a la livraison)</span>
+                        <span id="quoteBalance" class="font-black text-lg"></span>
+                    </div>
+                </div>
+
+                <!-- Notes / conditions -->
+                <div id="quoteNotesSection" style="display:none;" class="mb-6">
+                    <h4 class="font-black uppercase text-sm mb-2"><i class="fas fa-info-circle mr-1"></i>Conditions</h4>
+                    <p id="quoteNotes" class="text-sm font-bold opacity-70" style="white-space:pre-wrap;"></p>
+                </div>
+
+                <!-- Validite -->
+                <div class="mb-8 p-3 bg-yellow-50 border-2 border-[var(--genesis-yellow)]">
+                    <p class="text-sm font-bold">
+                        <i class="fas fa-calendar-alt mr-1"></i>
+                        <span id="quoteValidity"></span>
+                    </p>
+                </div>
+
+                <!-- Bouton accepter -->
+                <div class="text-center">
+                    <button id="acceptBtn" onclick="acceptQuote()" class="neo-btn-yellow px-8 md:px-12 py-4 md:py-6 text-lg md:text-2xl font-black italic uppercase tracking-tighter w-full">
+                        <i class="fas fa-check-circle mr-2"></i>ACCEPTER ET PAYER L'ACOMPTE
+                    </button>
+                    <p class="text-xs font-bold opacity-50 mt-4">
+                        En acceptant, vous serez redirige vers notre plateforme de paiement securise SumUp pour regler l'acompte de 30%.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ACCEPTED STATE -->
+        <div id="acceptedState" class="w-full max-w-3xl z-10" style="display:none;">
+            <div class="bg-white text-black p-10 neo-border neo-shadow text-center">
+                <i class="fas fa-check-circle text-5xl text-[#51cf66] mb-4"></i>
+                <h2 class="text-3xl font-black italic uppercase mb-4 text-[#51cf66]">DEVIS ACCEPTE !</h2>
+                <p class="font-bold text-lg mb-6">Merci pour votre confiance.</p>
+
+                <div id="credentialsSection" style="display:none;" class="mb-8 p-6 bg-yellow-50 border-4 border-[var(--genesis-yellow)] text-left">
+                    <h3 class="font-black text-lg mb-3"><i class="fas fa-key mr-2"></i>VOS IDENTIFIANTS</h3>
+                    <p class="text-sm font-bold mb-2">Un compte client a ete cree pour vous :</p>
+                    <div class="bg-white p-4 border-2 border-black mb-2">
+                        <p class="text-sm"><strong>Email :</strong> <span id="credEmail"></span></p>
+                        <p class="text-sm"><strong>Mot de passe :</strong> <span id="credPassword" class="text-[#ff6b6b]"></span></p>
+                    </div>
+                    <p class="text-xs font-bold opacity-60">Conservez ces identifiants. Vous pourrez vous connecter a votre espace client sur <a href="login.html" class="text-[var(--genesis-yellow)] underline">login.html</a></p>
+                </div>
+
+                <div id="redirectSection">
+                    <p class="font-bold mb-4">Redirection vers le paiement de l'acompte...</p>
+                    <div class="text-3xl text-[var(--genesis-yellow)] mb-4"><i class="fas fa-spinner fa-spin"></i></div>
+                    <p class="text-sm opacity-60">Si la redirection ne fonctionne pas, <a id="checkoutLink" href="#" class="text-[var(--genesis-yellow)] underline font-black">cliquez ici</a></p>
+                </div>
+            </div>
+        </div>
+
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="bg-white text-black py-16 border-t-8 border-[var(--genesis-yellow)] px-6 font-black uppercase">
+        <div class="container mx-auto">
+            <div class="flex flex-col md:flex-row justify-between items-center gap-10 text-center md:text-left">
+                <div>
+                    <h2 class="text-3xl font-black italic tracking-tighter uppercase">FA GENESIS</h2>
+                    <p class="text-[11px] text-black uppercase tracking-[8px] mt-2 italic">BUILD. LAUNCH. IMPACT.</p>
+                </div>
+                <p class="text-[11px] uppercase text-black font-bold italic">&copy; 2024 FINANCIAL ADVICE GENESIS &bull; GROUPE FA INDUSTRIES</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="config.js"></script>
+    <script>
+    // ==============================================
+    // PAGE ACCEPTATION DEVIS - FA GENESIS
+    // Pas de AOS, pas d'auth requise
+    // ==============================================
+
+    var API_URL = window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com';
+    var currentToken = null;
+    var currentQuote = null;
+
+    // Recuperer le token depuis l'URL
+    (function init() {
+        try {
+            var params = new URLSearchParams(window.location.search);
+            currentToken = params.get('token');
+
+            if (!currentToken) {
+                showError('LIEN INVALIDE', 'Ce lien ne contient pas de token de devis valide. Veuillez utiliser le lien recu par email.');
+                return;
+            }
+
+            loadQuote(currentToken);
+        } catch (error) {
+            console.error('[QUOTE-ACCEPT] Erreur init:', error);
+            showError('ERREUR', 'Une erreur est survenue. Veuillez recharger la page.');
+        }
+    })();
+
+    async function loadQuote(token) {
+        try {
+            var response = await fetch(API_URL + '/api/quotes/view/' + encodeURIComponent(token));
+
+            if (!response.ok) {
+                var errorData = {};
+                try { errorData = await response.json(); } catch (e) {}
+
+                if (response.status === 404) {
+                    showError('DEVIS INTROUVABLE', 'Ce devis n\'existe pas ou le lien est invalide.');
+                } else if (response.status === 410) {
+                    showError('DEVIS EXPIRÉ', errorData.error || 'Ce devis n\'est plus valide. Veuillez nous contacter pour en obtenir un nouveau.');
+                } else if (response.status === 409) {
+                    showError('DEVIS DÉJÀ ACCEPTÉ', errorData.error || 'Ce devis a deja ete accepte. Connectez-vous a votre espace client.');
+                } else {
+                    showError('ERREUR', errorData.error || 'Impossible de charger le devis.');
+                }
+                return;
+            }
+
+            currentQuote = await response.json();
+            renderQuote(currentQuote);
+
+        } catch (error) {
+            console.error('[QUOTE-ACCEPT] Erreur chargement:', error);
+            showError('ERREUR DE CONNEXION', 'Le serveur est temporairement indisponible. Veuillez reessayer dans quelques instants.');
+        }
+    }
+
+    function renderQuote(quote) {
+        // Cacher loading, afficher le devis
+        var loading = document.getElementById('loadingState');
+        var display = document.getElementById('quoteDisplay');
+        if (loading) loading.style.display = 'none';
+        if (display) display.style.display = 'block';
+
+        // Numero
+        var numEl = document.getElementById('quoteNumber');
+        if (numEl) numEl.textContent = quote.quote_number || '';
+
+        // Client
+        var nameEl = document.getElementById('clientName');
+        var emailEl = document.getElementById('clientEmail');
+        if (nameEl) nameEl.textContent = quote.client_name || '';
+        if (emailEl) emailEl.textContent = quote.client_email || '';
+
+        // Items
+        var tbody = document.getElementById('quoteItemsBody');
+        if (tbody && quote.admin_final && quote.admin_final.items) {
+            var html = '';
+            quote.admin_final.items.forEach(function(item) {
+                var lineTotal = (item.qty || 1) * (item.unit_price || 0);
+                html += '<tr>' +
+                    '<td>' + (item.label || '') +
+                        (item.description ? '<br><span style="font-size:12px;opacity:0.6;">' + item.description + '</span>' : '') +
+                    '</td>' +
+                    '<td class="text-center">' + (item.qty || 1) + '</td>' +
+                    '<td class="text-right">' + (item.unit_price || 0) + ' &euro;</td>' +
+                    '<td class="text-right" style="font-weight:900;">' + lineTotal + ' &euro;</td>' +
+                '</tr>';
+            });
+            tbody.innerHTML = html;
+        }
+
+        // Totaux
+        if (quote.pricing) {
+            var totalEl = document.getElementById('quoteTotal');
+            var depositEl = document.getElementById('quoteDeposit');
+            var balanceEl = document.getElementById('quoteBalance');
+            if (totalEl) totalEl.textContent = quote.pricing.total + ' \u20ac';
+            if (depositEl) depositEl.textContent = quote.pricing.deposit_amount + ' \u20ac';
+            if (balanceEl) balanceEl.textContent = quote.pricing.balance_amount + ' \u20ac';
+
+            // Mettre a jour le bouton
+            var btn = document.getElementById('acceptBtn');
+            if (btn) {
+                btn.innerHTML = '<i class="fas fa-check-circle mr-2"></i>ACCEPTER ET PAYER L\'ACOMPTE (' + quote.pricing.deposit_amount + '\u20ac)';
+            }
+        }
+
+        // Notes
+        if (quote.admin_final && quote.admin_final.notes) {
+            var notesSection = document.getElementById('quoteNotesSection');
+            var notesEl = document.getElementById('quoteNotes');
+            if (notesSection) notesSection.style.display = 'block';
+            if (notesEl) notesEl.textContent = quote.admin_final.notes;
+        }
+
+        // Validite
+        var validityEl = document.getElementById('quoteValidity');
+        if (validityEl) {
+            var createdDate = new Date(quote.created_at);
+            var validDays = quote.validity_days || 30;
+            var expiryDate = new Date(createdDate.getTime() + validDays * 24 * 60 * 60 * 1000);
+            var now = new Date();
+            var daysLeft = Math.ceil((expiryDate - now) / (24 * 60 * 60 * 1000));
+
+            if (daysLeft > 0) {
+                validityEl.textContent = 'Ce devis est valable jusqu\'au ' + expiryDate.toLocaleDateString('fr-FR') + ' (' + daysLeft + ' jour' + (daysLeft > 1 ? 's' : '') + ' restant' + (daysLeft > 1 ? 's' : '') + ')';
+            } else {
+                validityEl.textContent = 'Ce devis a expire le ' + expiryDate.toLocaleDateString('fr-FR');
+                // Desactiver le bouton
+                var btn = document.getElementById('acceptBtn');
+                if (btn) {
+                    btn.disabled = true;
+                    btn.innerHTML = '<i class="fas fa-times-circle mr-2"></i>DEVIS EXPIRÉ';
+                }
+            }
+        }
+    }
+
+    async function acceptQuote() {
+        if (!currentToken) return;
+
+        var btn = document.getElementById('acceptBtn');
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>TRAITEMENT EN COURS...';
+        }
+
+        try {
+            var response = await fetch(API_URL + '/api/quotes/accept', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token: currentToken })
+            });
+
+            var result = await response.json();
+
+            if (!response.ok || !result.success) {
+                alert('Erreur : ' + (result.error || 'Impossible d\'accepter le devis'));
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-check-circle mr-2"></i>ACCEPTER ET PAYER L\'ACOMPTE';
+                }
+                return;
+            }
+
+            // Succes - afficher l'etat accepte
+            var display = document.getElementById('quoteDisplay');
+            var accepted = document.getElementById('acceptedState');
+            if (display) display.style.display = 'none';
+            if (accepted) accepted.style.display = 'block';
+
+            // Afficher les credentials si nouveau compte
+            if (result.user_created && result.credentials) {
+                var credSection = document.getElementById('credentialsSection');
+                var credEmailEl = document.getElementById('credEmail');
+                var credPwdEl = document.getElementById('credPassword');
+                if (credSection) credSection.style.display = 'block';
+                if (credEmailEl) credEmailEl.textContent = result.credentials.email || '';
+                if (credPwdEl) credPwdEl.textContent = result.credentials.password || '';
+            }
+
+            // Rediriger vers SumUp checkout
+            if (result.checkout_url) {
+                var linkEl = document.getElementById('checkoutLink');
+                if (linkEl) linkEl.href = result.checkout_url;
+
+                setTimeout(function() {
+                    window.location.href = result.checkout_url;
+                }, 3000);
+            } else {
+                var redirectSection = document.getElementById('redirectSection');
+                if (redirectSection) {
+                    redirectSection.innerHTML = '<p class="font-bold text-[#51cf66]"><i class="fas fa-check mr-2"></i>Devis accepte ! Connectez-vous a votre <a href="login.html" class="text-[var(--genesis-yellow)] underline">espace client</a> pour suivre votre projet.</p>';
+                }
+            }
+
+        } catch (error) {
+            console.error('[QUOTE-ACCEPT] Erreur acceptation:', error);
+            alert('Erreur de connexion au serveur. Veuillez reessayer.');
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-check-circle mr-2"></i>ACCEPTER ET PAYER L\'ACOMPTE';
+            }
+        }
+    }
+
+    function showError(title, message) {
+        var loading = document.getElementById('loadingState');
+        var errorState = document.getElementById('errorState');
+        var titleEl = document.getElementById('errorTitle');
+        var msgEl = document.getElementById('errorMessage');
+
+        if (loading) loading.style.display = 'none';
+        if (errorState) errorState.style.display = 'block';
+        if (titleEl) titleEl.textContent = title;
+        if (msgEl) msgEl.textContent = message;
+    }
+    </script>
+    <script src="chatbot.js"></script>
+</body>
+</html>

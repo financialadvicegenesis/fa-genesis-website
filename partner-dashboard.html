@@ -124,6 +124,10 @@
                     <button onclick="showSection('projects')" class="nav-tab text-white hover:text-[var(--genesis-yellow)] transition">
                         <i class="fas fa-briefcase mr-1"></i>Projets
                     </button>
+                    <button onclick="showSection('quotes')" class="nav-tab text-white hover:text-[var(--genesis-yellow)] transition" style="position:relative;">
+                        <i class="fas fa-file-invoice mr-1"></i>Devis
+                        <span id="partnerQuotesBadge" style="display:none;position:absolute;top:-8px;right:-8px;background:#ff6b6b;color:white;border-radius:50%;width:18px;height:18px;font-size:10px;line-height:18px;text-align:center;"></span>
+                    </button>
                     <button onclick="showSection('profile')" class="nav-tab text-white hover:text-[var(--genesis-yellow)] transition">
                         <i class="fas fa-user mr-1"></i>Profil
                     </button>
@@ -141,6 +145,10 @@
         <div class="flex md:hidden gap-2 mt-2">
             <button onclick="showSection('projects')" class="nav-tab text-white hover:text-[var(--genesis-yellow)] text-xs font-black">
                 <i class="fas fa-briefcase mr-1"></i>Projets
+            </button>
+            <button onclick="showSection('quotes')" class="nav-tab text-white hover:text-[var(--genesis-yellow)] text-xs font-black" style="position:relative;">
+                <i class="fas fa-file-invoice mr-1"></i>Devis
+                <span id="partnerQuotesBadgeMobile" style="display:none;position:absolute;top:-6px;right:-6px;background:#ff6b6b;color:white;border-radius:50%;width:16px;height:16px;font-size:9px;line-height:16px;text-align:center;"></span>
             </button>
             <button onclick="showSection('profile')" class="nav-tab text-white hover:text-[var(--genesis-yellow)] text-xs font-black">
                 <i class="fas fa-user mr-1"></i>Profil
@@ -301,6 +309,24 @@
             </div>
         </div>
 
+        <!-- SECTION DEVIS -->
+        <div id="quotesSection" class="container mx-auto max-w-5xl" style="display:none;">
+            <h2 class="text-3xl md:text-5xl font-black italic uppercase mb-8 text-[var(--genesis-yellow)]">
+                <i class="fas fa-file-invoice mr-3"></i>MES DEVIS
+            </h2>
+            <div id="partnerQuotesList">
+                <p class="text-center py-8 opacity-50 font-bold">Chargement...</p>
+            </div>
+        </div>
+
+        <!-- SECTION DETAIL DEVIS -->
+        <div id="quoteDetailSection" class="container mx-auto max-w-5xl" style="display:none;">
+            <button onclick="backToQuotes()" class="text-white font-black mb-6 hover:text-[var(--genesis-yellow)] transition">
+                <i class="fas fa-arrow-left mr-2"></i>Retour aux devis
+            </button>
+            <div id="partnerQuoteDetail"></div>
+        </div>
+
     </div>
 
     <script src="config.js"></script>
@@ -368,11 +394,15 @@
         var projects = document.getElementById('projectsSection');
         var detail = document.getElementById('projectDetailSection');
         var profile = document.getElementById('profileSection');
+        var quotes = document.getElementById('quotesSection');
+        var quoteDetail = document.getElementById('quoteDetailSection');
 
         if (loading) loading.style.display = 'none';
         if (projects) projects.style.display = 'none';
         if (detail) detail.style.display = 'none';
         if (profile) profile.style.display = 'none';
+        if (quotes) quotes.style.display = 'none';
+        if (quoteDetail) quoteDetail.style.display = 'none';
 
         if (section === 'projects') {
             if (projects) projects.style.display = 'block';
@@ -380,6 +410,9 @@
         } else if (section === 'profile') {
             if (profile) profile.style.display = 'block';
             renderProfileSection();
+        } else if (section === 'quotes') {
+            if (quotes) quotes.style.display = 'block';
+            loadPartnerQuotes();
         }
     }
 
@@ -972,6 +1005,454 @@
             reader.readAsDataURL(file);
         });
     }
+
+    // ==============================================
+    // SECTION DEVIS PARTENAIRE
+    // ==============================================
+
+    var PARTNER_API_URL = window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com';
+
+    var QUOTE_STATUS_LABELS = {
+        DRAFT_REQUESTED: 'EN ATTENTE DE PROPOSITION',
+        PARTNER_PROPOSED: 'PROPOSITION ENVOYÉE',
+        ADMIN_REVIEW: 'EN COURS DE VALIDATION',
+        SENT_TO_CLIENT: 'ENVOYÉ AU CLIENT',
+        ACCEPTED: 'ACCEPTÉ PAR LE CLIENT',
+        EXPIRED: 'EXPIRÉ',
+        CANCELLED: 'ANNULÉ'
+    };
+
+    var QUOTE_STATUS_COLORS = {
+        DRAFT_REQUESTED: '#ff6b6b',
+        PARTNER_PROPOSED: '#ffd43b',
+        ADMIN_REVIEW: '#4dabf7',
+        SENT_TO_CLIENT: '#845ef7',
+        ACCEPTED: '#51cf66',
+        EXPIRED: '#999',
+        CANCELLED: '#999'
+    };
+
+    var SERVICE_TYPE_LABELS = {
+        photo: 'PHOTO',
+        video: 'VIDÉO',
+        media: 'MÉDIA',
+        marketing: 'MARKETING',
+        other: 'AUTRE'
+    };
+
+    var allPartnerQuotes = [];
+
+    async function loadPartnerQuotes() {
+        var container = document.getElementById('partnerQuotesList');
+        if (!container) return;
+
+        try {
+            var response = await partnerAuthenticatedFetch(PARTNER_API_URL + '/api/partner/quotes');
+            if (!response.ok) throw new Error('Erreur ' + response.status);
+            allPartnerQuotes = await response.json();
+        } catch (error) {
+            console.error('[PARTNER-DASH] Erreur chargement devis:', error);
+            container.innerHTML = '<div class="section-card text-center py-12">' +
+                '<i class="fas fa-inbox text-4xl opacity-30 mb-4"></i>' +
+                '<p class="font-bold opacity-50">Erreur de chargement des devis</p>' +
+                '<button onclick="loadPartnerQuotes()" class="neo-btn-yellow px-6 py-2 mt-4 text-sm">Réessayer</button>' +
+            '</div>';
+            return;
+        }
+
+        // Mettre a jour les badges
+        var pendingCount = allPartnerQuotes.filter(function(q) { return q.status === 'DRAFT_REQUESTED'; }).length;
+        var badge = document.getElementById('partnerQuotesBadge');
+        var badgeMobile = document.getElementById('partnerQuotesBadgeMobile');
+        if (badge) {
+            if (pendingCount > 0) { badge.style.display = 'block'; badge.textContent = pendingCount; }
+            else { badge.style.display = 'none'; }
+        }
+        if (badgeMobile) {
+            if (pendingCount > 0) { badgeMobile.style.display = 'block'; badgeMobile.textContent = pendingCount; }
+            else { badgeMobile.style.display = 'none'; }
+        }
+
+        if (allPartnerQuotes.length === 0) {
+            container.innerHTML = '<div class="section-card text-center py-12">' +
+                '<i class="fas fa-file-invoice text-4xl opacity-30 mb-4"></i>' +
+                '<p class="font-bold opacity-50">Aucun devis assigné pour le moment</p>' +
+                '<p class="text-sm opacity-40 mt-2">Les demandes de devis vous seront assignées par l\'administrateur</p>' +
+            '</div>';
+            return;
+        }
+
+        var html = '';
+        allPartnerQuotes.forEach(function(quote) {
+            var date = quote.created_at ? new Date(quote.created_at).toLocaleDateString('fr-FR') : '';
+            var statusColor = QUOTE_STATUS_COLORS[quote.status] || '#999';
+            var statusLabel = QUOTE_STATUS_LABELS[quote.status] || quote.status;
+            var serviceLabel = SERVICE_TYPE_LABELS[quote.service_type] || quote.service_type || '';
+            var needsAction = quote.status === 'DRAFT_REQUESTED';
+
+            html += '<div class="partner-card' + (needsAction ? '' : '') + '" onclick="openPartnerQuoteDetail(\'' + quote.id + '\')" style="' +
+                (needsAction ? 'border-left:6px solid #ff6b6b;' : '') + '">' +
+                '<div class="flex justify-between items-center flex-wrap gap-3">' +
+                    '<div class="flex-1 min-w-[200px]">' +
+                        '<div class="text-xs font-bold opacity-50">' + (quote.quote_number || quote.id) + '</div>' +
+                        '<div class="font-black text-lg">' + serviceLabel + '</div>' +
+                        '<div class="text-sm font-bold opacity-60">' + date + '</div>' +
+                    '</div>' +
+                    '<div>' +
+                        '<span style="background:' + statusColor + ';color:' + (quote.status === 'SENT_TO_CLIENT' ? 'white' : 'black') + ';padding:4px 10px;border:2px solid black;font-size:11px;font-weight:900;">' + statusLabel + '</span>' +
+                    '</div>' +
+                    (needsAction ? '<div><span class="neo-btn-yellow px-4 py-2 text-xs"><i class="fas fa-pen mr-1"></i>PROPOSER</span></div>' : '') +
+                '</div>' +
+            '</div>';
+        });
+
+        container.innerHTML = html;
+    }
+
+    function backToQuotes() {
+        showSection('quotes');
+    }
+
+    async function openPartnerQuoteDetail(quoteId) {
+        try {
+            var response = await partnerAuthenticatedFetch(PARTNER_API_URL + '/api/partner/quotes/' + quoteId);
+            if (!response.ok) throw new Error('Erreur ' + response.status);
+            var quote = await response.json();
+        } catch (error) {
+            console.error('[PARTNER-DASH] Erreur detail devis:', error);
+            alert('Erreur de chargement du devis');
+            return;
+        }
+
+        // Afficher la section detail
+        var sections = ['projectsSection', 'projectDetailSection', 'profileSection', 'quotesSection', 'loadingState'];
+        sections.forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) el.style.display = 'none';
+        });
+        var detailSection = document.getElementById('quoteDetailSection');
+        if (detailSection) detailSection.style.display = 'block';
+
+        var statusColor = QUOTE_STATUS_COLORS[quote.status] || '#999';
+        var statusLabel = QUOTE_STATUS_LABELS[quote.status] || quote.status;
+        var serviceLabel = SERVICE_TYPE_LABELS[quote.service_type] || quote.service_type || '';
+
+        var html = '';
+
+        // En-tete
+        html += '<div class="section-card neo-shadow mb-6">' +
+            '<div class="flex justify-between items-start flex-wrap gap-4 mb-6">' +
+                '<div>' +
+                    '<h3 class="text-2xl md:text-3xl font-black italic uppercase text-[var(--genesis-yellow)]">' +
+                        '<i class="fas fa-file-invoice mr-2"></i>DEVIS ' + (quote.quote_number || '') +
+                    '</h3>' +
+                    '<div class="mt-2">' +
+                        '<span style="background:' + statusColor + ';color:' + (quote.status === 'SENT_TO_CLIENT' ? 'white' : 'black') + ';padding:4px 12px;border:2px solid black;font-size:12px;font-weight:900;">' + statusLabel + '</span>' +
+                        ' <span style="background:var(--genesis-yellow);color:black;padding:4px 12px;border:2px solid black;font-size:12px;font-weight:900;margin-left:4px;">' + serviceLabel + '</span>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="text-right text-sm font-bold opacity-60">' +
+                    '<div>Reçu le ' + (quote.created_at ? new Date(quote.created_at).toLocaleDateString('fr-FR') : 'N/A') + '</div>' +
+                '</div>' +
+            '</div>' +
+
+            // Brief du client
+            '<h4 class="text-lg font-black italic uppercase mb-3"><i class="fas fa-clipboard mr-2"></i>BRIEF DU CLIENT</h4>' +
+            '<div style="background:#FFF9E6;border-left:4px solid #FFD700;padding:15px;margin-bottom:10px;">' +
+                '<p style="white-space:pre-wrap;">' + (quote.brief || 'Aucun brief fourni') + '</p>' +
+            '</div>' +
+        '</div>';
+
+        // Si DRAFT_REQUESTED : formulaire de proposition
+        if (quote.status === 'DRAFT_REQUESTED') {
+            html += '<div class="section-card neo-shadow mb-6" id="proposalForm">' +
+                '<h4 class="text-xl font-black italic uppercase mb-6 text-[var(--genesis-yellow)]">' +
+                    '<i class="fas fa-lightbulb mr-2"></i>VOTRE PROPOSITION' +
+                '</h4>' +
+                '<p class="text-sm font-bold opacity-60 mb-6">Détaillez votre proposition de prestation. Elle sera examinée par l\'administrateur avant d\'être envoyée au client.</p>' +
+
+                // Items dynamiques
+                '<div id="proposalItemsContainer">' +
+                    renderProposalItemRow(0, { label: '', qty: 1, unit_price: 0, description: '' }) +
+                '</div>' +
+
+                '<button onclick="addProposalItem()" class="border-3 border-black bg-gray-200 text-black px-4 py-2 text-xs font-black mt-2 mb-6">' +
+                    '<i class="fas fa-plus mr-1"></i>AJOUTER UNE LIGNE' +
+                '</button>' +
+
+                // Total indicatif
+                '<div class="text-right mb-6 p-3 bg-gray-100 border-2 border-black">' +
+                    '<span class="text-sm font-bold">Total indicatif : </span>' +
+                    '<span id="proposalTotal" class="text-xl font-black text-[var(--genesis-yellow)]">0€</span>' +
+                '</div>' +
+
+                // Delai
+                '<div class="mb-4">' +
+                    '<label class="block font-black mb-1 uppercase text-sm">Délai estimé</label>' +
+                    '<input type="text" id="proposalDelay" placeholder="Ex: 2 semaines, 10 jours ouvrés...">' +
+                '</div>' +
+
+                // Notes
+                '<div class="mb-6">' +
+                    '<label class="block font-black mb-1 uppercase text-sm">Notes internes (visibles par l\'admin uniquement)</label>' +
+                    '<textarea id="proposalNotes" rows="3" placeholder="Remarques, contraintes, suggestions..."></textarea>' +
+                '</div>' +
+
+                // Bouton soumettre
+                '<button onclick="submitPartnerProposal(\'' + quote.id + '\')" id="submitProposalBtn" class="neo-btn-yellow px-8 py-4 text-lg font-black">' +
+                    '<i class="fas fa-paper-plane mr-2"></i>SOUMETTRE MA PROPOSITION' +
+                '</button>' +
+            '</div>';
+        }
+
+        // Si PARTNER_PROPOSED : proposition en lecture seule
+        if (quote.status === 'PARTNER_PROPOSED' && quote.partner_proposal) {
+            html += '<div class="section-card neo-shadow mb-6">' +
+                '<h4 class="text-xl font-black italic uppercase mb-4"><i class="fas fa-check-circle mr-2 text-[#51cf66]"></i>VOTRE PROPOSITION (envoyée)</h4>' +
+                '<p class="text-sm font-bold opacity-60 mb-4"><i class="fas fa-hourglass-half mr-1"></i>En attente de validation par l\'administrateur FA Genesis</p>';
+
+            if (quote.partner_proposal.items && quote.partner_proposal.items.length > 0) {
+                html += '<table style="width:100%;border-collapse:collapse;border:2px solid black;">' +
+                    '<thead><tr style="background:var(--genesis-yellow);">' +
+                        '<th style="padding:8px;border:2px solid black;text-align:left;font-size:12px;">PRESTATION</th>' +
+                        '<th style="padding:8px;border:2px solid black;text-align:center;font-size:12px;">QTÉ</th>' +
+                        '<th style="padding:8px;border:2px solid black;text-align:right;font-size:12px;">P.U.</th>' +
+                        '<th style="padding:8px;border:2px solid black;text-align:right;font-size:12px;">TOTAL</th>' +
+                    '</tr></thead><tbody>';
+
+                var propTotal = 0;
+                quote.partner_proposal.items.forEach(function(item) {
+                    var lineTotal = (item.qty || 1) * (item.unit_price || 0);
+                    propTotal += lineTotal;
+                    html += '<tr>' +
+                        '<td style="padding:8px;border:2px solid black;">' + (item.label || '') +
+                            (item.description ? '<br><span style="font-size:12px;opacity:0.6;">' + item.description + '</span>' : '') + '</td>' +
+                        '<td style="padding:8px;border:2px solid black;text-align:center;">' + (item.qty || 1) + '</td>' +
+                        '<td style="padding:8px;border:2px solid black;text-align:right;">' + (item.unit_price || 0) + '€</td>' +
+                        '<td style="padding:8px;border:2px solid black;text-align:right;font-weight:900;">' + lineTotal + '€</td>' +
+                    '</tr>';
+                });
+
+                html += '</tbody></table>' +
+                    '<div class="text-right mt-2 font-black text-lg">Total : ' + propTotal + '€</div>';
+            }
+
+            if (quote.partner_proposal.delay) {
+                html += '<div class="mt-3 text-sm"><strong>Délai :</strong> ' + quote.partner_proposal.delay + '</div>';
+            }
+            if (quote.partner_proposal.notes) {
+                html += '<div class="mt-2 text-sm"><strong>Notes :</strong> ' + quote.partner_proposal.notes + '</div>';
+            }
+
+            html += '</div>';
+        }
+
+        // Si ADMIN_REVIEW, SENT_TO_CLIENT ou ACCEPTED : message informatif
+        if (quote.status === 'ADMIN_REVIEW') {
+            html += '<div class="section-card neo-shadow mb-6">' +
+                '<div class="text-center py-8">' +
+                    '<i class="fas fa-cog fa-spin text-4xl text-[#4dabf7] mb-4"></i>' +
+                    '<p class="font-black text-lg">L\'administrateur prépare le devis final</p>' +
+                    '<p class="text-sm opacity-60 mt-2">Votre proposition a été reçue et est en cours de traitement</p>' +
+                '</div>' +
+            '</div>';
+        }
+
+        if (quote.status === 'SENT_TO_CLIENT') {
+            html += '<div class="section-card neo-shadow mb-6">' +
+                '<div class="text-center py-8">' +
+                    '<i class="fas fa-paper-plane text-4xl text-[#845ef7] mb-4"></i>' +
+                    '<p class="font-black text-lg">Le devis a été envoyé au client</p>' +
+                    '<p class="text-sm opacity-60 mt-2">En attente de la réponse du client</p>' +
+                '</div>' +
+            '</div>';
+        }
+
+        if (quote.status === 'ACCEPTED') {
+            html += '<div class="section-card neo-shadow mb-6">' +
+                '<div class="text-center py-8">' +
+                    '<i class="fas fa-check-circle text-4xl text-[#51cf66] mb-4"></i>' +
+                    '<p class="font-black text-lg text-[#51cf66]">Le devis a été accepté par le client !</p>' +
+                    '<p class="text-sm opacity-60 mt-2">Le projet sera bientôt visible dans votre onglet Projets</p>' +
+                '</div>' +
+            '</div>';
+        }
+
+        if (quote.status === 'CANCELLED') {
+            html += '<div class="section-card neo-shadow mb-6">' +
+                '<div class="text-center py-8">' +
+                    '<i class="fas fa-times-circle text-4xl text-[#ff6b6b] mb-4"></i>' +
+                    '<p class="font-black text-lg">Ce devis a été annulé</p>' +
+                '</div>' +
+            '</div>';
+        }
+
+        var detailEl = document.getElementById('partnerQuoteDetail');
+        if (detailEl) detailEl.innerHTML = html;
+
+        // Calculer le total initial si formulaire visible
+        recalculateProposalTotal();
+    }
+
+    function renderProposalItemRow(index, item) {
+        return '<div class="proposal-item-row mb-3 p-3 bg-gray-50 border-2 border-black" data-index="' + index + '">' +
+            '<div class="grid grid-cols-1 md:grid-cols-12 gap-2">' +
+                '<div class="md:col-span-4">' +
+                    '<label class="block text-xs font-black uppercase mb-1">Prestation</label>' +
+                    '<input type="text" class="proposal-item-label" placeholder="Ex: Shooting photo corporate" value="' + (item.label || '') + '">' +
+                '</div>' +
+                '<div class="md:col-span-3">' +
+                    '<label class="block text-xs font-black uppercase mb-1">Description</label>' +
+                    '<input type="text" class="proposal-item-desc" placeholder="Détails..." value="' + (item.description || '') + '">' +
+                '</div>' +
+                '<div class="md:col-span-1">' +
+                    '<label class="block text-xs font-black uppercase mb-1">Qté</label>' +
+                    '<input type="number" class="proposal-item-qty text-center" value="' + (item.qty || 1) + '" min="1" onchange="recalculateProposalTotal()">' +
+                '</div>' +
+                '<div class="md:col-span-2">' +
+                    '<label class="block text-xs font-black uppercase mb-1">Prix unit.</label>' +
+                    '<input type="number" class="proposal-item-price text-right" value="' + (item.unit_price || 0) + '" min="0" step="0.01" onchange="recalculateProposalTotal()">' +
+                '</div>' +
+                '<div class="md:col-span-2 flex items-end gap-2">' +
+                    '<span class="proposal-item-total font-black text-lg">0€</span>' +
+                    '<button onclick="removeProposalItem(' + index + ')" class="text-red-600 font-black hover:opacity-70" title="Supprimer">' +
+                        '<i class="fas fa-trash"></i>' +
+                    '</button>' +
+                '</div>' +
+            '</div>' +
+        '</div>';
+    }
+
+    function addProposalItem() {
+        var container = document.getElementById('proposalItemsContainer');
+        if (!container) return;
+        var rows = container.querySelectorAll('.proposal-item-row');
+        var newIndex = rows.length;
+        var wrapper = document.createElement('div');
+        wrapper.innerHTML = renderProposalItemRow(newIndex, { label: '', qty: 1, unit_price: 0, description: '' });
+        container.appendChild(wrapper.firstChild);
+    }
+
+    function removeProposalItem(index) {
+        var container = document.getElementById('proposalItemsContainer');
+        if (!container) return;
+        var rows = container.querySelectorAll('.proposal-item-row');
+        if (rows.length <= 1) {
+            alert('Au moins une ligne est requise');
+            return;
+        }
+        if (rows[index]) rows[index].remove();
+        recalculateProposalTotal();
+    }
+
+    function recalculateProposalTotal() {
+        var container = document.getElementById('proposalItemsContainer');
+        if (!container) return;
+
+        var rows = container.querySelectorAll('.proposal-item-row');
+        var total = 0;
+
+        rows.forEach(function(row) {
+            var qtyEl = row.querySelector('.proposal-item-qty');
+            var priceEl = row.querySelector('.proposal-item-price');
+            var totalEl = row.querySelector('.proposal-item-total');
+            var qty = parseFloat(qtyEl ? qtyEl.value : 0) || 0;
+            var price = parseFloat(priceEl ? priceEl.value : 0) || 0;
+            var lineTotal = qty * price;
+            total += lineTotal;
+            if (totalEl) totalEl.textContent = lineTotal + '€';
+        });
+
+        var totalDisplay = document.getElementById('proposalTotal');
+        if (totalDisplay) totalDisplay.textContent = total + '€';
+    }
+
+    async function submitPartnerProposal(quoteId) {
+        var container = document.getElementById('proposalItemsContainer');
+        if (!container) return;
+
+        // Collecter les items
+        var items = [];
+        var rows = container.querySelectorAll('.proposal-item-row');
+        rows.forEach(function(row) {
+            var label = row.querySelector('.proposal-item-label').value.trim();
+            var description = row.querySelector('.proposal-item-desc').value.trim();
+            var qty = parseInt(row.querySelector('.proposal-item-qty').value) || 1;
+            var unit_price = parseFloat(row.querySelector('.proposal-item-price').value) || 0;
+
+            if (label) {
+                items.push({ label: label, description: description, qty: qty, unit_price: unit_price });
+            }
+        });
+
+        if (items.length === 0) {
+            alert('Ajoutez au moins une prestation');
+            return;
+        }
+
+        var delayEl = document.getElementById('proposalDelay');
+        var notesEl = document.getElementById('proposalNotes');
+        var delay = delayEl ? delayEl.value.trim() : '';
+        var notes = notesEl ? notesEl.value.trim() : '';
+
+        if (!delay) {
+            alert('Veuillez indiquer un délai estimé');
+            return;
+        }
+
+        var btn = document.getElementById('submitProposalBtn');
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>ENVOI EN COURS...';
+        }
+
+        try {
+            var response = await partnerAuthenticatedFetch(PARTNER_API_URL + '/api/partner/quotes/' + quoteId + '/propose', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ items: items, delay: delay, notes: notes })
+            });
+
+            var result = await response.json();
+
+            if (response.ok && result.success) {
+                alert('Proposition envoyée avec succès ! L\'administrateur va l\'examiner.');
+                openPartnerQuoteDetail(quoteId);
+            } else {
+                alert('Erreur: ' + (result.error || 'Erreur inconnue'));
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-paper-plane mr-2"></i>SOUMETTRE MA PROPOSITION';
+                }
+            }
+        } catch (error) {
+            console.error('[PARTNER-DASH] Erreur soumission proposition:', error);
+            alert('Erreur de connexion au serveur');
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-paper-plane mr-2"></i>SOUMETTRE MA PROPOSITION';
+            }
+        }
+    }
+
+    // Charger le badge devis au demarrage
+    (async function loadQuotesBadge() {
+        try {
+            var token = localStorage.getItem('fa_genesis_partner_token');
+            if (!token) return;
+            var response = await fetch(PARTNER_API_URL + '/api/partner/quotes', {
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            if (response.ok) {
+                var quotes = await response.json();
+                var pending = quotes.filter(function(q) { return q.status === 'DRAFT_REQUESTED'; }).length;
+                var badge = document.getElementById('partnerQuotesBadge');
+                var badgeMobile = document.getElementById('partnerQuotesBadgeMobile');
+                if (badge && pending > 0) { badge.style.display = 'block'; badge.textContent = pending; }
+                if (badgeMobile && pending > 0) { badgeMobile.style.display = 'block'; badgeMobile.textContent = pending; }
+            }
+        } catch (e) {}
+    })();
 
     </script>
     <script src="chatbot.js"></script>

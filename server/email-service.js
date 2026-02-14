@@ -827,6 +827,261 @@ async function sendNewDocumentNotification(clientEmail, clientName, documentName
 }
 
 // ============================================================
+// FONCTIONS DEVIS (QUOTES)
+// ============================================================
+
+/**
+ * Notification admin : nouvelle demande de devis
+ */
+async function sendQuoteAdminNotification(quote) {
+    try {
+        if (!transporter) {
+            console.log('[EMAIL] Transporteur non configure - notification devis admin ignoree');
+            return { success: false, reason: 'no_transporter' };
+        }
+
+        var serviceLabels = { photo: 'Photo', video: 'Vidéo', media: 'Média', marketing: 'Marketing', other: 'Autre' };
+        var serviceLabel = serviceLabels[quote.service_type] || quote.service_type || 'Non spécifié';
+
+        var content = `
+            <h2 style="color: #333333; margin: 0 0 20px 0; font-size: 22px;">
+                Nouvelle demande de devis
+            </h2>
+            <div style="background: #FFF8DC; border-left: 4px solid #FFD700; padding: 15px; margin-bottom: 20px;">
+                <p style="margin: 0; font-weight: bold; color: #333;">Devis ${quote.quote_number}</p>
+                <p style="margin: 5px 0 0 0; font-size: 14px; color: #666;">Type : ${serviceLabel}</p>
+            </div>
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+                <tr>
+                    <td style="padding: 10px; border-bottom: 1px solid #eee; font-weight: bold; color: #333; width: 120px;">Client</td>
+                    <td style="padding: 10px; border-bottom: 1px solid #eee; color: #555;">${quote.client_name}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 10px; border-bottom: 1px solid #eee; font-weight: bold; color: #333;">Email</td>
+                    <td style="padding: 10px; border-bottom: 1px solid #eee;"><a href="mailto:${quote.client_email}" style="color: #FFD700;">${quote.client_email}</a></td>
+                </tr>
+                <tr>
+                    <td style="padding: 10px; border-bottom: 1px solid #eee; font-weight: bold; color: #333;">Profil</td>
+                    <td style="padding: 10px; border-bottom: 1px solid #eee; color: #555;">${quote.client_profil || 'Non spécifié'}</td>
+                </tr>
+            </table>
+            <div style="background: #f9f9f9; padding: 15px; border: 1px solid #eee; margin-bottom: 20px;">
+                <p style="margin: 0 0 5px 0; font-weight: bold; color: #333;">Brief du client :</p>
+                <p style="margin: 0; color: #555; white-space: pre-wrap;">${quote.brief}</p>
+            </div>
+            ${quote.partner_email ? '<p style="color: #28a745; font-weight: bold;">Partenaire auto-assigné : ' + quote.partner_email + '</p>' : '<p style="color: #dc3545; font-weight: bold;">Aucun partenaire assigné - Assignation manuelle requise</p>'}
+        `;
+
+        var html = getEmailTemplate(content, 'Nouveau devis - FA GENESIS');
+        var adminEmail = process.env.EMAIL_ADMIN_ADDRESS;
+
+        if (!adminEmail) {
+            return { success: false, reason: 'no_admin_email' };
+        }
+
+        var mailOptions = {
+            from: '"FA GENESIS" <' + (process.env.EMAIL_FROM_ADDRESS || process.env.SMTP_USER) + '>',
+            to: adminEmail,
+            subject: '[FA GENESIS] Nouvelle demande de devis ' + quote.quote_number,
+            html: html
+        };
+
+        var result = await transporter.sendMail(mailOptions);
+        console.log('[EMAIL] Notification devis admin envoyee - ' + quote.quote_number);
+        return { success: true, messageId: result.messageId };
+
+    } catch (error) {
+        console.error('[EMAIL] Erreur notification devis admin:', error.message);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * Notification partenaire : devis assigne
+ */
+async function sendQuotePartnerNotification(quote, partner) {
+    try {
+        if (!transporter) {
+            return { success: false, reason: 'no_transporter' };
+        }
+
+        var serviceLabels = { photo: 'Photo', video: 'Vidéo', media: 'Média', marketing: 'Marketing', other: 'Autre' };
+        var serviceLabel = serviceLabels[quote.service_type] || quote.service_type || '';
+        var frontUrl = process.env.FRONT_URL || 'https://fagenesis.com';
+
+        var content = `
+            <h2 style="color: #333333; margin: 0 0 20px 0; font-size: 22px;">
+                Nouveau devis à traiter
+            </h2>
+            <p style="color: #555; font-size: 16px;">
+                Bonjour ${partner.prenom},
+            </p>
+            <p style="color: #555;">
+                Un nouveau devis <strong>${serviceLabel}</strong> vous a été assigné.
+            </p>
+            <div style="background: #FFF8DC; border-left: 4px solid #FFD700; padding: 15px; margin: 20px 0;">
+                <p style="margin: 0; font-weight: bold; color: #333;">Devis ${quote.quote_number}</p>
+            </div>
+            <div style="background: #f9f9f9; padding: 15px; border: 1px solid #eee; margin-bottom: 20px;">
+                <p style="margin: 0 0 5px 0; font-weight: bold; color: #333;">Brief :</p>
+                <p style="margin: 0; color: #555; white-space: pre-wrap;">${quote.brief}</p>
+            </div>
+            <p style="color: #555;">
+                Connectez-vous à votre espace partenaire pour soumettre votre proposition.
+            </p>
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="${frontUrl}/partner-dashboard.html" style="display: inline-block; background: #FFD700; color: #000; padding: 14px 30px; text-decoration: none; font-weight: 900; font-size: 14px; border: 3px solid #000;">
+                    ACCÉDER À MON ESPACE
+                </a>
+            </div>
+        `;
+
+        var html = getEmailTemplate(content, 'Devis assigné - FA GENESIS');
+
+        var mailOptions = {
+            from: '"FA GENESIS" <' + (process.env.EMAIL_FROM_ADDRESS || process.env.SMTP_USER) + '>',
+            to: partner.email,
+            subject: '[FA GENESIS] Devis assigné - ' + quote.quote_number,
+            html: html
+        };
+
+        var result = await transporter.sendMail(mailOptions);
+        console.log('[EMAIL] Notification devis partenaire envoyee a ' + partner.email);
+        return { success: true, messageId: result.messageId };
+
+    } catch (error) {
+        console.error('[EMAIL] Erreur notification devis partenaire:', error.message);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * Envoi du devis officiel au client avec bouton d'acceptation
+ */
+async function sendQuoteToClient(quote) {
+    try {
+        if (!transporter) {
+            return { success: false, reason: 'no_transporter' };
+        }
+
+        if (!quote.admin_final || !quote.pricing) {
+            return { success: false, reason: 'quote_not_ready' };
+        }
+
+        var frontUrl = process.env.FRONT_URL || 'https://fagenesis.com';
+        var acceptUrl = frontUrl + '/quote-accept.html?token=' + quote.acceptance_token;
+
+        var serviceLabels = { photo: 'Photo', video: 'Vidéo', media: 'Média', marketing: 'Marketing', other: 'Prestation sur mesure' };
+        var serviceLabel = serviceLabels[quote.service_type] || 'Prestation sur mesure';
+
+        // Construire le tableau des prestations
+        var itemsRows = '';
+        var items = quote.admin_final.items || [];
+        for (var i = 0; i < items.length; i++) {
+            var item = items[i];
+            var qty = Number(item.qty) || 1;
+            var unitPrice = Number(item.unit_price) || 0;
+            var subtotal = qty * unitPrice;
+            itemsRows += '<tr>' +
+                '<td style="padding: 12px; border-bottom: 1px solid #eee; color: #333;">' + (item.label || '') + '</td>' +
+                '<td style="padding: 12px; border-bottom: 1px solid #eee; color: #555; text-align: center;">' + qty + '</td>' +
+                '<td style="padding: 12px; border-bottom: 1px solid #eee; color: #555; text-align: right;">' + unitPrice.toFixed(2) + ' €</td>' +
+                '<td style="padding: 12px; border-bottom: 1px solid #eee; color: #333; text-align: right; font-weight: bold;">' + subtotal.toFixed(2) + ' €</td>' +
+                '</tr>';
+        }
+
+        // Date d'expiration
+        var sentDate = new Date(quote.sent_at || quote.created_at);
+        var expiryDate = new Date(sentDate.getTime() + (quote.validity_days * 24 * 60 * 60 * 1000));
+        var expiryStr = expiryDate.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
+
+        var content = `
+            <h2 style="color: #333333; margin: 0 0 10px 0; font-size: 24px;">
+                Votre devis personnalisé
+            </h2>
+            <p style="color: #888; font-size: 14px; margin: 0 0 25px 0;">
+                Devis n° <strong>${quote.quote_number}</strong> | ${serviceLabel}
+            </p>
+
+            <p style="color: #555; font-size: 16px;">
+                Bonjour ${quote.client_name},
+            </p>
+            <p style="color: #555;">
+                Suite à votre demande, nous avons le plaisir de vous adresser notre proposition.
+            </p>
+
+            <!-- Tableau des prestations -->
+            <table style="width: 100%; border-collapse: collapse; margin: 25px 0; border: 1px solid #ddd;">
+                <thead>
+                    <tr style="background: #000;">
+                        <th style="padding: 12px; text-align: left; color: #FFD700; font-size: 13px;">PRESTATION</th>
+                        <th style="padding: 12px; text-align: center; color: #FFD700; font-size: 13px;">QTÉ</th>
+                        <th style="padding: 12px; text-align: right; color: #FFD700; font-size: 13px;">P.U.</th>
+                        <th style="padding: 12px; text-align: right; color: #FFD700; font-size: 13px;">TOTAL</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${itemsRows}
+                </tbody>
+            </table>
+
+            <!-- Totaux -->
+            <table style="width: 100%; max-width: 300px; margin-left: auto; border-collapse: collapse; margin-bottom: 25px;">
+                <tr>
+                    <td style="padding: 8px 12px; font-weight: bold; color: #333; font-size: 16px;">TOTAL</td>
+                    <td style="padding: 8px 12px; text-align: right; font-weight: 900; color: #000; font-size: 18px;">${quote.pricing.total.toFixed(2)} €</td>
+                </tr>
+                <tr style="background: #FFF8DC;">
+                    <td style="padding: 8px 12px; font-weight: bold; color: #333;">Acompte (30%)</td>
+                    <td style="padding: 8px 12px; text-align: right; font-weight: bold; color: #333;">${quote.pricing.deposit_amount.toFixed(2)} €</td>
+                </tr>
+                <tr>
+                    <td style="padding: 8px 12px; color: #666;">Solde (70%)</td>
+                    <td style="padding: 8px 12px; text-align: right; color: #666;">${quote.pricing.balance_amount.toFixed(2)} €</td>
+                </tr>
+            </table>
+
+            ${quote.admin_final.notes ? '<div style="background: #f9f9f9; padding: 15px; border: 1px solid #eee; margin-bottom: 25px;"><p style="margin: 0 0 5px 0; font-weight: bold; color: #333; font-size: 13px;">CONDITIONS :</p><p style="margin: 0; color: #555; font-size: 14px;">' + quote.admin_final.notes + '</p></div>' : ''}
+
+            <div style="background: #FFF3CD; border: 1px solid #FFD700; padding: 12px; margin-bottom: 25px; text-align: center;">
+                <p style="margin: 0; font-size: 13px; color: #856404;">
+                    Ce devis est valable jusqu'au <strong>${expiryStr}</strong>
+                </p>
+            </div>
+
+            <!-- Bouton d'acceptation -->
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="${acceptUrl}" style="display: inline-block; background: #FFD700; color: #000; padding: 18px 40px; text-decoration: none; font-weight: 900; font-size: 16px; text-transform: uppercase; letter-spacing: 1px; border: 4px solid #000;">
+                    ACCEPTER LE DEVIS
+                </a>
+            </div>
+
+            <p style="color: #999; font-size: 12px; text-align: center;">
+                En acceptant ce devis, un acompte de ${quote.pricing.deposit_amount.toFixed(2)} € (30%) sera requis pour démarrer la prestation.<br>
+                Le solde de ${quote.pricing.balance_amount.toFixed(2)} € (70%) sera dû à la livraison.
+            </p>
+        `;
+
+        var html = getEmailTemplate(content, 'Devis ' + quote.quote_number + ' - FA GENESIS');
+
+        var mailOptions = {
+            from: '"FA GENESIS" <' + (process.env.EMAIL_FROM_ADDRESS || process.env.SMTP_USER) + '>',
+            to: quote.client_email,
+            subject: '[FA GENESIS] Votre devis personnalisé ' + quote.quote_number,
+            html: html
+        };
+
+        var result = await transporter.sendMail(mailOptions);
+        console.log('[EMAIL] Devis ' + quote.quote_number + ' envoye a ' + quote.client_email);
+        return { success: true, messageId: result.messageId };
+
+    } catch (error) {
+        console.error('[EMAIL] Erreur envoi devis client:', error.message);
+        return { success: false, error: error.message };
+    }
+}
+
+// ============================================================
 // EXPORTS
 // ============================================================
 
@@ -838,5 +1093,8 @@ module.exports = {
     sendAdminRegistrationNotification,
     sendPaymentConfirmation,
     sendAdminReply,
-    sendNewDocumentNotification
+    sendNewDocumentNotification,
+    sendQuoteAdminNotification,
+    sendQuotePartnerNotification,
+    sendQuoteToClient
 };
