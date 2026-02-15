@@ -402,14 +402,15 @@ async function callSumUpAPI(endpoint, method, body = null) {
 
 /**
  * Extraire l'URL de paiement depuis la reponse SumUp checkout.
- * Priorite : hosted_checkout_url > fallback checkout.sumup.com/pay/{id}
+ * Pour les hosted checkouts, la reponse contient hosted_checkout_url.
+ * Pour les checkouts widget, on utilise le checkout_id avec SumUpCard.mount().
  */
 function getSumUpCheckoutUrl(checkoutResponse) {
     if (checkoutResponse.hosted_checkout_url) {
         return checkoutResponse.hosted_checkout_url;
     }
-    // Fallback : nouveau format checkout.sumup.com
-    return 'https://checkout.sumup.com/pay/' + checkoutResponse.id;
+    // Fallback si hosted_checkout n'a pas ete demande
+    return null;
 }
 
 // ============================================================
@@ -621,7 +622,7 @@ app.post('/api/payments/sumup/create-checkout', async (req, res) => {
         const failureUrl = process.env.SUMUP_FAILURE_URL || 'https://fagenesis.com/payment-failure.html';
         const returnUrl = `${successUrl}?order=${orderId}&stage=${stage}`;
 
-        // Creer le checkout SumUp
+        // Creer le checkout SumUp (hosted_checkout pour redirection, widget utilise checkout_id)
         const checkoutData = {
             checkout_reference: `${orderId}-${stage}`,
             amount: amount,
@@ -629,7 +630,8 @@ app.post('/api/payments/sumup/create-checkout', async (req, res) => {
             pay_to_email: process.env.SUMUP_PAY_TO_EMAIL,
             description: `FA GENESIS - ${order.product_name} (${stageLabel})`,
             return_url: returnUrl,
-            merchant_code: process.env.SUMUP_MERCHANT_CODE
+            merchant_code: process.env.SUMUP_MERCHANT_CODE,
+            hosted_checkout: { enabled: true }
         };
 
         console.log(`[SUMUP] Creation checkout pour ${orderId} - ${stage} - ${amount}EUR`);
@@ -3720,7 +3722,8 @@ app.post('/api/quotes/accept', async function(req, res) {
                         pay_to_email: process.env.SUMUP_PAY_TO_EMAIL,
                         description: 'FA GENESIS - Acompte devis ' + quote.quote_number,
                         return_url: returnUrl,
-                        merchant_code: process.env.SUMUP_MERCHANT_CODE
+                        merchant_code: process.env.SUMUP_MERCHANT_CODE,
+                        hosted_checkout: { enabled: true }
                     };
                     var ckResp = await callSumUpAPI('/checkouts', 'POST', checkoutData);
                     existingCheckoutUrl = getSumUpCheckoutUrl(ckResp);
@@ -3851,11 +3854,13 @@ app.post('/api/quotes/accept', async function(req, res) {
                 pay_to_email: process.env.SUMUP_PAY_TO_EMAIL,
                 description: 'FA GENESIS - ' + productName + ' (Acompte 30%)',
                 return_url: returnUrl,
-                merchant_code: process.env.SUMUP_MERCHANT_CODE
+                merchant_code: process.env.SUMUP_MERCHANT_CODE,
+                hosted_checkout: { enabled: true }
             };
 
             var checkoutResponse = await callSumUpAPI('/checkouts', 'POST', checkoutData);
             checkoutUrl = getSumUpCheckoutUrl(checkoutResponse);
+            console.log('[QUOTE] Hosted checkout URL:', checkoutUrl);
 
             updateOrder(newOrder.id, {
                 checkout_id: checkoutResponse.id,
