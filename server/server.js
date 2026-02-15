@@ -3809,6 +3809,37 @@ app.post('/api/quotes/accept', async function(req, res) {
 
         console.log('[QUOTE] Devis ' + quote.quote_number + ' accepte par ' + authUser.email + ' - Commande ' + newOrder.id + ' creee');
 
+        // 3.5 Auto-assigner le partenaire du devis a la commande
+        if (quote.partner_id) {
+            try {
+                var assignPartner = getPartnerById(quote.partner_id);
+                if (assignPartner) {
+                    var assignments = loadPartnerAssignments();
+                    var alreadyAssigned = assignments.find(function(a) {
+                        return a.partner_id === quote.partner_id && a.order_id === newOrder.id && a.status === 'active';
+                    });
+                    if (!alreadyAssigned) {
+                        var newAssignment = {
+                            id: 'ASG-' + uuidv4().split('-')[0],
+                            partner_id: quote.partner_id,
+                            partner_email: assignPartner.email,
+                            partner_type: assignPartner.partner_type,
+                            order_id: newOrder.id,
+                            assigned_at: new Date().toISOString(),
+                            assigned_by: 'system-quote-accept',
+                            status: 'active',
+                            notes: 'Auto-assigne depuis devis ' + quote.quote_number
+                        };
+                        assignments.push(newAssignment);
+                        savePartnerAssignments(assignments);
+                        console.log('[QUOTE] Partenaire ' + assignPartner.email + ' auto-assigne a la commande ' + newOrder.id);
+                    }
+                }
+            } catch (assignError) {
+                console.error('[QUOTE] Erreur auto-assignation partenaire:', assignError);
+            }
+        }
+
         // 4. Creer le livrable PDF du devis
         try {
             var frontUrl = process.env.FRONT_URL || 'https://fagenesis.com';
