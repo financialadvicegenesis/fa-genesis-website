@@ -769,6 +769,44 @@ app.post('/api/payments/sumup/webhook', async (req, res) => {
                         }
                     }).catch(err => console.error('[WEBHOOK] Erreur envoi email bienvenue:', err));
 
+                    // Auto-assigner un partenaire pour les prestations individuelles
+                    try {
+                        var productId = updatedOrder.product_id || '';
+                        var partnerTypeMap = { 'photo': 'photographer', 'video': 'videographer', 'marketing': 'marketer', 'media': 'media' };
+                        var prefix = productId.split('-')[0];
+                        var neededType = partnerTypeMap[prefix];
+                        if (neededType) {
+                            var allPartners = loadPartners();
+                            var availablePartner = allPartners.find(function(p) {
+                                return p.partner_type === neededType && p.status === 'active';
+                            });
+                            if (availablePartner) {
+                                var assignments = loadPartnerAssignments();
+                                var alreadyAssigned = assignments.find(function(a) {
+                                    return a.order_id === orderId && a.status === 'active';
+                                });
+                                if (!alreadyAssigned) {
+                                    var assignment = {
+                                        id: 'ASG-' + uuidv4().split('-')[0],
+                                        partner_id: availablePartner.id,
+                                        partner_email: availablePartner.email,
+                                        partner_type: availablePartner.partner_type,
+                                        order_id: orderId,
+                                        assigned_at: new Date().toISOString(),
+                                        assigned_by: 'system-auto-tarif',
+                                        status: 'active',
+                                        notes: 'Auto-assigne depuis tarif ' + productId
+                                    };
+                                    assignments.push(assignment);
+                                    savePartnerAssignments(assignments);
+                                    console.log('[WEBHOOK] Partenaire ' + availablePartner.email + ' auto-assigne a la commande ' + orderId);
+                                }
+                            }
+                        }
+                    } catch (autoAssignErr) {
+                        console.error('[WEBHOOK] Erreur auto-assignation partenaire:', autoAssignErr);
+                    }
+
                 } else if (stage === 'balance') {
                     // Après paiement du solde : envoyer la confirmation de paiement complet
                     emailService.sendPaymentConfirmation(
@@ -879,6 +917,44 @@ app.post('/api/payments/verify', async (req, res) => {
                                 console.log(`[VERIFY] Email de bienvenue envoyé à ${clientEmail}`);
                             }
                         }).catch(err => console.error('[VERIFY] Erreur envoi email bienvenue:', err));
+
+                        // Auto-assigner un partenaire pour les prestations individuelles
+                        try {
+                            var productId = updatedOrder.product_id || '';
+                            var partnerTypeMap = { 'photo': 'photographer', 'video': 'videographer', 'marketing': 'marketer', 'media': 'media' };
+                            var prefix = productId.split('-')[0];
+                            var neededType = partnerTypeMap[prefix];
+                            if (neededType) {
+                                var allPartners = loadPartners();
+                                var availablePartner = allPartners.find(function(p) {
+                                    return p.partner_type === neededType && p.status === 'active';
+                                });
+                                if (availablePartner) {
+                                    var assignments = loadPartnerAssignments();
+                                    var alreadyAssigned = assignments.find(function(a) {
+                                        return a.order_id === orderId && a.status === 'active';
+                                    });
+                                    if (!alreadyAssigned) {
+                                        var assignment = {
+                                            id: 'ASG-' + uuidv4().split('-')[0],
+                                            partner_id: availablePartner.id,
+                                            partner_email: availablePartner.email,
+                                            partner_type: availablePartner.partner_type,
+                                            order_id: orderId,
+                                            assigned_at: new Date().toISOString(),
+                                            assigned_by: 'system-auto-tarif',
+                                            status: 'active',
+                                            notes: 'Auto-assigne depuis tarif ' + productId
+                                        };
+                                        assignments.push(assignment);
+                                        savePartnerAssignments(assignments);
+                                        console.log('[VERIFY] Partenaire ' + availablePartner.email + ' auto-assigne a la commande ' + orderId);
+                                    }
+                                }
+                            }
+                        } catch (autoAssignErr) {
+                            console.error('[VERIFY] Erreur auto-assignation partenaire:', autoAssignErr);
+                        }
 
                     } else if (paymentStage === 'balance') {
                         // Après paiement du solde : confirmation de paiement complet
