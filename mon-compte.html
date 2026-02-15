@@ -270,10 +270,10 @@
 
                     <div class="flex flex-col sm:flex-row gap-4">
                         <button onclick="openDeactivateModal()" class="flex-1 py-4 px-6 border-4 border-black font-black italic uppercase text-sm tracking-tighter bg-[#ffd43b] text-black hover:bg-[#fab005] transition" style="box-shadow: 4px 4px 0px black;">
-                            <i class="fas fa-pause-circle mr-2"></i>Desactiver temporairement
+                            <i class="fas fa-pause-circle mr-2"></i>Désactiver temporairement
                         </button>
                         <button onclick="openDeleteModal()" class="flex-1 py-4 px-6 border-4 border-black font-black italic uppercase text-sm tracking-tighter bg-[#ff6b6b] text-black hover:bg-[#fa5252] transition" style="box-shadow: 4px 4px 0px black;">
-                            <i class="fas fa-trash-alt mr-2"></i>Supprimer definitivement
+                            <i class="fas fa-trash-alt mr-2"></i>Supprimer définitivement
                         </button>
                     </div>
                 </div>
@@ -288,13 +288,13 @@
             <button onclick="closeDeactivateModal()" style="position:absolute; top:15px; right:20px; background:none; border:none; font-size:24px; cursor:pointer; font-weight:900;">&times;</button>
 
             <h3 style="font-size:22px; font-weight:900; text-transform:uppercase; font-style:italic; margin-bottom:20px;">
-                <i class="fas fa-pause-circle" style="color:#ffd43b; margin-right:10px;"></i>Desactiver mon compte
+                <i class="fas fa-pause-circle" style="color:#ffd43b; margin-right:10px;"></i>Désactiver mon compte
             </h3>
 
             <div style="background:#FFF9E6; border-left:4px solid #ffd43b; padding:15px; margin-bottom:20px;">
                 <p style="font-weight:700; font-size:14px; line-height:1.6; margin:0;">
-                    Votre compte sera temporairement suspendu. Vos donnees sont conservees.
-                    Vous pourrez le reactiver a tout moment depuis la page de connexion.
+                    Votre compte sera temporairement suspendu. Vos données sont conservées.
+                    Vous pourrez le réactiver à tout moment depuis la page de connexion.
                 </p>
             </div>
 
@@ -302,7 +302,7 @@
 
             <div style="display:flex; gap:12px;">
                 <button onclick="confirmDeactivate()" id="deactivateBtn" style="flex:1; padding:14px; background:#ffd43b; color:black; border:4px solid black; font-weight:900; font-size:14px; cursor:pointer; text-transform:uppercase;">
-                    Confirmer la desactivation
+                    Confirmer la désactivation
                 </button>
                 <button onclick="closeDeactivateModal()" style="flex:1; padding:14px; background:#f1f1f1; color:black; border:4px solid black; font-weight:900; font-size:14px; cursor:pointer; text-transform:uppercase;">
                     Annuler
@@ -322,8 +322,8 @@
 
             <div style="background:#fff5f5; border-left:4px solid #ff6b6b; padding:15px; margin-bottom:20px;">
                 <p style="font-weight:700; font-size:14px; line-height:1.6; margin:0; color:#c92a2a;">
-                    Cette action est irreversible. Toutes vos donnees seront definitivement supprimees
-                    et ne pourront pas etre recuperees.
+                    Cette action est irréversible. Toutes vos données seront définitivement supprimées
+                    et ne pourront pas être récupérées.
                 </p>
             </div>
 
@@ -338,7 +338,7 @@
 
             <div style="display:flex; gap:12px;">
                 <button onclick="confirmDelete()" id="deleteBtn" style="flex:1; padding:14px; background:#ff6b6b; color:black; border:4px solid black; font-weight:900; font-size:14px; cursor:pointer; text-transform:uppercase;">
-                    Supprimer definitivement
+                    Supprimer définitivement
                 </button>
                 <button onclick="closeDeleteModal()" style="flex:1; padding:14px; background:#f1f1f1; color:black; border:4px solid black; font-weight:900; font-size:14px; cursor:pointer; text-transform:uppercase;">
                     Annuler
@@ -491,7 +491,7 @@
                     msgDiv.style.display = 'block';
                     msgDiv.style.background = '#d3f9d8';
                     msgDiv.style.color = '#2b8a3e';
-                    msgDiv.textContent = 'Compte desactive. Redirection...';
+                    msgDiv.textContent = 'Compte désactivé. Redirection...';
                     localStorage.removeItem(SESSION_KEY);
                     localStorage.removeItem(TOKEN_KEY);
                     setTimeout(function() { window.location.href = 'index.html'; }, 1500);
@@ -499,9 +499,9 @@
                     msgDiv.style.display = 'block';
                     msgDiv.style.background = '#fff5f5';
                     msgDiv.style.color = '#c92a2a';
-                    msgDiv.textContent = data.error || 'Erreur lors de la desactivation';
+                    msgDiv.textContent = data.error || 'Erreur lors de la désactivation';
                     btn.disabled = false;
-                    btn.textContent = 'Confirmer la desactivation';
+                    btn.textContent = 'Confirmer la désactivation';
                 }
             } catch (error) {
                 msgDiv.style.display = 'block';
@@ -509,7 +509,7 @@
                 msgDiv.style.color = '#c92a2a';
                 msgDiv.textContent = 'Erreur de connexion au serveur';
                 btn.disabled = false;
-                btn.textContent = 'Confirmer la desactivation';
+                btn.textContent = 'Confirmer la désactivation';
             }
         }
 
@@ -546,7 +546,7 @@
                     msgDiv.style.display = 'block';
                     msgDiv.style.background = '#d3f9d8';
                     msgDiv.style.color = '#2b8a3e';
-                    msgDiv.textContent = 'Compte supprime. Redirection...';
+                    msgDiv.textContent = 'Compte supprimé. Redirection...';
                     localStorage.removeItem(SESSION_KEY);
                     localStorage.removeItem(TOKEN_KEY);
                     setTimeout(function() { window.location.href = 'index.html'; }, 1500);
@@ -556,7 +556,7 @@
                     msgDiv.style.color = '#c92a2a';
                     msgDiv.textContent = data.error || 'Erreur lors de la suppression';
                     btn.disabled = false;
-                    btn.textContent = 'Supprimer definitivement';
+                    btn.textContent = 'Supprimer définitivement';
                 }
             } catch (error) {
                 msgDiv.style.display = 'block';
@@ -564,7 +564,7 @@
                 msgDiv.style.color = '#c92a2a';
                 msgDiv.textContent = 'Erreur de connexion au serveur';
                 btn.disabled = false;
-                btn.textContent = 'Supprimer definitivement';
+                btn.textContent = 'Supprimer définitivement';
             }
         }
 

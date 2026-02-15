@@ -225,10 +225,10 @@ function authenticatePartner(req, res, next) {
         const partners = loadPartners();
         const partner = partners.find(p => p.sessionToken === token);
         if (!partner) {
-            return res.status(401).json({ error: 'Session partenaire invalide ou expiree' });
+            return res.status(401).json({ error: 'Session partenaire invalide ou expirée' });
         }
         if (partner.accountStatus === 'deactivated') {
-            return res.status(403).json({ error: 'Compte partenaire desactive' });
+            return res.status(403).json({ error: 'Compte partenaire désactivé' });
         }
         req.partner = partner;
         next();
@@ -1992,9 +1992,9 @@ app.post('/api/auth/login', async (req, res) => {
         // Verifier si le compte est desactive
         if (user.accountStatus === 'deactivated') {
             return res.status(403).json({
-                error: 'Compte desactive',
+                error: 'Compte désactivé',
                 deactivated: true,
-                message: 'Votre compte est temporairement desactive. Vous pouvez le reactiver depuis la page de connexion.'
+                message: 'Votre compte est temporairement désactivé. Vous pouvez le réactiver depuis la page de connexion.'
             });
         }
 
@@ -2047,7 +2047,7 @@ app.get('/api/auth/me', (req, res) => {
         const user = users.find(u => u.sessionToken === token);
 
         if (!user) {
-            return res.status(401).json({ error: 'Session invalide ou expiree' });
+            return res.status(401).json({ error: 'Session invalide ou expirée' });
         }
 
         // Retourner l'utilisateur (sans le mot de passe)
@@ -2113,7 +2113,7 @@ app.put('/api/auth/update-profile', async (req, res) => {
         const userIndex = users.findIndex(u => u.sessionToken === token);
 
         if (userIndex === -1) {
-            return res.status(401).json({ error: 'Session invalide ou expiree' });
+            return res.status(401).json({ error: 'Session invalide ou expirée' });
         }
 
         const { prenom, nom, telephone, currentPassword, newPassword } = req.body;
@@ -2188,11 +2188,11 @@ app.put('/api/auth/deactivate-account', async (req, res) => {
 
         console.log(`[AUTH] Compte desactive: ${users[userIndex].email}`);
 
-        res.json({ success: true, message: 'Compte desactive avec succes' });
+        res.json({ success: true, message: 'Compte désactivé avec succès' });
 
     } catch (error) {
         console.error('Erreur desactivation compte:', error);
-        res.status(500).json({ error: 'Erreur lors de la desactivation' });
+        res.status(500).json({ error: 'Erreur lors de la désactivation' });
     }
 });
 
@@ -2223,7 +2223,7 @@ app.put('/api/auth/reactivate-account', async (req, res) => {
         }
 
         if (user.accountStatus !== 'deactivated') {
-            return res.status(400).json({ error: 'Ce compte n\'est pas desactive' });
+            return res.status(400).json({ error: 'Ce compte n\'est pas désactivé' });
         }
 
         users[userIndex].accountStatus = 'active';
@@ -2233,11 +2233,11 @@ app.put('/api/auth/reactivate-account', async (req, res) => {
 
         console.log(`[AUTH] Compte reactive: ${email}`);
 
-        res.json({ success: true, message: 'Compte reactive avec succes. Vous pouvez maintenant vous connecter.' });
+        res.json({ success: true, message: 'Compte réactivé avec succès. Vous pouvez maintenant vous connecter.' });
 
     } catch (error) {
         console.error('Erreur reactivation compte:', error);
-        res.status(500).json({ error: 'Erreur lors de la reactivation' });
+        res.status(500).json({ error: 'Erreur lors de la réactivation' });
     }
 });
 
@@ -2277,7 +2277,7 @@ app.delete('/api/auth/delete-account', async (req, res) => {
 
         console.log(`[AUTH] Compte supprime definitivement: ${deletedEmail}`);
 
-        res.json({ success: true, message: 'Compte supprime definitivement' });
+        res.json({ success: true, message: 'Compte supprimé définitivement' });
 
     } catch (error) {
         console.error('Erreur suppression compte:', error);
@@ -2462,7 +2462,7 @@ app.get('/api/sessions/me', (req, res) => {
         const user = users.find(u => u.sessionToken === token);
 
         if (!user) {
-            return res.status(401).json({ error: 'Session invalide ou expiree' });
+            return res.status(401).json({ error: 'Session invalide ou expirée' });
         }
 
         const sessions = loadSessions();
@@ -2618,7 +2618,7 @@ app.post('/api/partner/auth/login', async (req, res) => {
             return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
         }
         if (partner.accountStatus === 'deactivated') {
-            return res.status(403).json({ error: 'Compte partenaire desactive' });
+            return res.status(403).json({ error: 'Compte partenaire désactivé' });
         }
         const validPassword = await bcrypt.compare(password, partner.password);
         if (!validPassword) {
@@ -3055,8 +3055,8 @@ app.delete('/api/admin/partners/:partnerId', (req, res) => {
             }
         });
         if (modified) savePartnerAssignments(assignments);
-        console.log('[ADMIN] Partenaire supprime:', removed.email);
-        res.json({ success: true, message: 'Partenaire supprime' });
+        console.log('[ADMIN] Partenaire supprimé:', removed.email);
+        res.json({ success: true, message: 'Partenaire supprimé' });
     } catch (error) {
         console.error('[ADMIN] Erreur suppression partenaire:', error);
         res.status(500).json({ error: 'Erreur suppression partenaire' });
@@ -3311,7 +3311,7 @@ app.get('/api/admin/quotes/:id', function(req, res) {
     try {
         var quote = getQuoteById(req.params.id);
         if (!quote) {
-            return res.status(404).json({ error: 'Devis non trouve' });
+            return res.status(404).json({ error: 'Devis non trouvé' });
         }
 
         // Enrichir avec les infos du partenaire assigne
@@ -3352,7 +3352,7 @@ app.post('/api/admin/quotes/:id/assign-partner', function(req, res) {
         var quotes = loadQuotes();
         var idx = quotes.findIndex(function(q) { return q.id === req.params.id; });
         if (idx === -1) {
-            return res.status(404).json({ error: 'Devis non trouve' });
+            return res.status(404).json({ error: 'Devis non trouvé' });
         }
 
         var partner = loadPartners().find(function(p) { return p.id === partnerId; });
@@ -3396,7 +3396,7 @@ app.post('/api/admin/quotes/:id/review', function(req, res) {
         var quotes = loadQuotes();
         var idx = quotes.findIndex(function(q) { return q.id === req.params.id; });
         if (idx === -1) {
-            return res.status(404).json({ error: 'Devis non trouve' });
+            return res.status(404).json({ error: 'Devis non trouvé' });
         }
 
         // Calculer le total
@@ -3442,17 +3442,17 @@ app.post('/api/admin/quotes/:id/send', async function(req, res) {
         var quotes = loadQuotes();
         var idx = quotes.findIndex(function(q) { return q.id === req.params.id; });
         if (idx === -1) {
-            return res.status(404).json({ error: 'Devis non trouve' });
+            return res.status(404).json({ error: 'Devis non trouvé' });
         }
 
         var quote = quotes[idx];
 
         if (!quote.admin_final || !quote.pricing) {
-            return res.status(400).json({ error: 'Le devis doit etre revise avant envoi (items et pricing requis)' });
+            return res.status(400).json({ error: 'Le devis doit être révisé avant envoi (items et pricing requis)' });
         }
 
         if (quote.status === 'ACCEPTED') {
-            return res.status(400).json({ error: 'Ce devis a deja ete accepte' });
+            return res.status(400).json({ error: 'Ce devis a déjà été accepté' });
         }
 
         // Mettre a jour le statut
@@ -3493,11 +3493,11 @@ app.post('/api/admin/quotes/:id/cancel', function(req, res) {
         var quotes = loadQuotes();
         var idx = quotes.findIndex(function(q) { return q.id === req.params.id; });
         if (idx === -1) {
-            return res.status(404).json({ error: 'Devis non trouve' });
+            return res.status(404).json({ error: 'Devis non trouvé' });
         }
 
         if (quotes[idx].status === 'ACCEPTED') {
-            return res.status(400).json({ error: 'Impossible d\'annuler un devis deja accepte' });
+            return res.status(400).json({ error: 'Impossible d\'annuler un devis déjà accepté' });
         }
 
         quotes[idx].status = 'CANCELLED';
@@ -3540,7 +3540,7 @@ app.get('/api/partner/quotes/:id', authenticatePartner, function(req, res) {
     try {
         var quote = getQuoteById(req.params.id);
         if (!quote) {
-            return res.status(404).json({ error: 'Devis non trouve' });
+            return res.status(404).json({ error: 'Devis non trouvé' });
         }
         if (quote.partner_id !== req.partner.id) {
             return res.status(403).json({ error: 'Acces non autorise a ce devis' });
@@ -3584,7 +3584,7 @@ app.post('/api/partner/quotes/:id/propose', authenticatePartner, function(req, r
         var quotes = loadQuotes();
         var idx = quotes.findIndex(function(q) { return q.id === req.params.id; });
         if (idx === -1) {
-            return res.status(404).json({ error: 'Devis non trouve' });
+            return res.status(404).json({ error: 'Devis non trouvé' });
         }
 
         if (quotes[idx].partner_id !== req.partner.id) {
@@ -3625,15 +3625,15 @@ app.get('/api/quotes/view/:token', function(req, res) {
         var quote = quotes.find(function(q) { return q.acceptance_token === req.params.token; });
 
         if (!quote) {
-            return res.status(404).json({ error: 'Devis non trouve', code: 'INVALID_TOKEN' });
+            return res.status(404).json({ error: 'Devis non trouvé', code: 'INVALID_TOKEN' });
         }
 
         if (quote.status === 'ACCEPTED') {
-            return res.json({ quote: null, status: 'ALREADY_ACCEPTED', message: 'Ce devis a deja ete accepte.' });
+            return res.json({ quote: null, status: 'ALREADY_ACCEPTED', message: 'Ce devis a déjà été accepté.' });
         }
 
         if (quote.status === 'CANCELLED') {
-            return res.json({ quote: null, status: 'CANCELLED', message: 'Ce devis a ete annule.' });
+            return res.json({ quote: null, status: 'CANCELLED', message: 'Ce devis a été annulé.' });
         }
 
         if (quote.status !== 'SENT_TO_CLIENT') {
@@ -3644,7 +3644,7 @@ app.get('/api/quotes/view/:token', function(req, res) {
         var createdDate = new Date(quote.sent_at || quote.created_at);
         var expiryDate = new Date(createdDate.getTime() + (quote.validity_days * 24 * 60 * 60 * 1000));
         if (new Date() > expiryDate) {
-            return res.json({ quote: null, status: 'EXPIRED', message: 'Ce devis a expire.' });
+            return res.json({ quote: null, status: 'EXPIRED', message: 'Ce devis a expiré.' });
         }
 
         // Retourner les donnees publiques du devis (pas de token, pas de donnees internes)
@@ -3688,7 +3688,7 @@ app.post('/api/quotes/accept', async function(req, res) {
         var users = loadUsers();
         var authUser = users.find(function(u) { return u.sessionToken === authToken; });
         if (!authUser) {
-            return res.status(401).json({ error: 'Session invalide ou expiree' });
+            return res.status(401).json({ error: 'Session invalide ou expirée' });
         }
 
         var quoteToken = req.body.token;
@@ -3699,7 +3699,7 @@ app.post('/api/quotes/accept', async function(req, res) {
         var quotes = loadQuotes();
         var idx = quotes.findIndex(function(q) { return q.acceptance_token === quoteToken; });
         if (idx === -1) {
-            return res.status(404).json({ error: 'Devis non trouve' });
+            return res.status(404).json({ error: 'Devis non trouvé' });
         }
 
         var quote = quotes[idx];
@@ -3740,7 +3740,7 @@ app.post('/api/quotes/accept', async function(req, res) {
         }
 
         if (quote.status !== 'SENT_TO_CLIENT') {
-            return res.status(400).json({ error: 'Ce devis ne peut pas etre accepte (statut: ' + quote.status + ')' });
+            return res.status(400).json({ error: 'Ce devis ne peut pas être accepté (statut : ' + quote.status + ')' });
         }
 
         // Verifier l'expiration
@@ -3750,7 +3750,7 @@ app.post('/api/quotes/accept', async function(req, res) {
             quotes[idx].status = 'EXPIRED';
             quotes[idx].expired_at = new Date().toISOString();
             saveQuotes(quotes);
-            return res.status(400).json({ error: 'Ce devis a expire' });
+            return res.status(400).json({ error: 'Ce devis a expiré' });
         }
 
         if (!quote.pricing || !quote.pricing.total) {
@@ -3894,7 +3894,7 @@ app.get('/api/quotes/:quoteId/pdf', function(req, res) {
         var quotes = loadQuotes();
         var quote = quotes.find(function(q) { return q.id === req.params.quoteId; });
         if (!quote) {
-            return res.status(404).json({ error: 'Devis non trouve' });
+            return res.status(404).json({ error: 'Devis non trouvé' });
         }
 
         // Verifier que le devis a ete accepte (ou au moins envoye)
@@ -4042,7 +4042,7 @@ app.get('/api/quotes/my-quote/:token', function(req, res) {
         var quotes = loadQuotes();
         var quote = quotes.find(function(q) { return q.acceptance_token === req.params.token; });
         if (!quote) {
-            return res.status(404).json({ error: 'Devis non trouve' });
+            return res.status(404).json({ error: 'Devis non trouvé' });
         }
 
         // Recuperer l'order liee si elle existe
