@@ -85,6 +85,36 @@
         .status-accepted { background: #FFF3CD; color: #856404; }
         .status-deposit-paid { background: #d3f9d8; color: #2b8a3e; }
         .status-pending { background: #ffe8cc; color: #e8590c; }
+
+        /* SumUp Widget Modal */
+        .sumup-modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.85);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+        }
+        .sumup-modal.active {
+            display: flex;
+        }
+        .sumup-modal-content {
+            background: white;
+            border: 4px solid black;
+            box-shadow: 10px 10px 0px var(--genesis-yellow);
+            padding: 2rem;
+            max-width: 500px;
+            width: 90%;
+            position: relative;
+        }
+        .sumup-modal-close {
+            position: absolute;
+            top: 10px; right: 15px;
+            background: none; border: none;
+            font-size: 24px; cursor: pointer;
+            font-weight: 900; color: black;
+        }
     </style>
 </head>
 <body>
@@ -220,6 +250,19 @@
             </div>
         </div>
     </footer>
+
+    <!-- SumUp Card Widget SDK -->
+    <script src="https://gateway.sumup.com/gateway/ecom/card/v2/sdk.js"></script>
+
+    <!-- SumUp Payment Modal -->
+    <div id="sumupModal" class="sumup-modal">
+        <div class="sumup-modal-content">
+            <button class="sumup-modal-close" onclick="closeSumUpModal()">&times;</button>
+            <h3 style="font-family:'Unbounded',cursive; font-size:18px; font-weight:900; text-transform:uppercase; margin-bottom:8px; color:black;">Paiement de l'acompte</h3>
+            <p style="font-size:14px; font-weight:700; color:#555; margin-bottom:16px;">Montant : <span id="sumupModalAmount" style="color:black; font-weight:900;"></span></p>
+            <div id="sumup-card" style="min-height:300px;"></div>
+        </div>
+    </div>
 
     <script src="config.js"></script>
     <script src="auth.js"></script>
@@ -404,12 +447,12 @@
                 // Accepte mais acompte pas encore paye
                 actionsContainer.innerHTML = '<button id="payBtn" onclick="payDeposit()" class="neo-btn-yellow px-8 md:px-12 py-4 md:py-6 text-lg md:text-2xl font-black italic uppercase tracking-tighter w-full">' +
                     '<i class="fas fa-credit-card mr-2"></i>PAYER L\'ACOMPTE (' + (quote.pricing ? quote.pricing.deposit_amount : '') + '\u20ac)</button>' +
-                    '<p class="text-xs font-bold opacity-50 mt-4">Vous serez redirigé vers notre plateforme de paiement sécurisée SumUp.</p>';
+                    '<p class="text-xs font-bold opacity-50 mt-4">Paiement sécurisé par SumUp.</p>';
             } else if (quote.status === 'SENT_TO_CLIENT') {
                 // Pas encore accepte
                 actionsContainer.innerHTML = '<button id="acceptBtn" onclick="acceptAndPay()" class="neo-btn-yellow px-8 md:px-12 py-4 md:py-6 text-lg md:text-2xl font-black italic uppercase tracking-tighter w-full">' +
                     '<i class="fas fa-check-circle mr-2"></i>ACCEPTER ET PAYER L\'ACOMPTE (' + (quote.pricing ? quote.pricing.deposit_amount : '') + '\u20ac)</button>' +
-                    '<p class="text-xs font-bold opacity-50 mt-4">En acceptant, vous serez redirigé vers notre plateforme de paiement sécurisée SumUp.</p>';
+                    '<p class="text-xs font-bold opacity-50 mt-4">Paiement sécurisé par SumUp.</p>';
             }
         }
 
@@ -420,6 +463,46 @@
             if (pdfSection) pdfSection.style.display = 'block';
             if (pdfLink) pdfLink.href = quote.pdf_url;
         }
+    }
+
+    // SumUp Card Widget functions
+    function showSumUpWidget(checkoutId, amount) {
+        try {
+            var modal = document.getElementById('sumupModal');
+            if (!modal) { alert('Erreur : modal de paiement introuvable'); return; }
+            modal.classList.add('active');
+
+            var amountEl = document.getElementById('sumupModalAmount');
+            if (amountEl) amountEl.textContent = amount + '\u20ac';
+
+            var cardContainer = document.getElementById('sumup-card');
+            if (cardContainer) cardContainer.innerHTML = '';
+
+            SumUpCard.mount({
+                id: 'sumup-card',
+                checkoutId: checkoutId,
+                locale: 'fr-FR',
+                onResponse: function(type, body) {
+                    console.log('[QUOTE-VIEW] SumUp response:', type, body);
+                    if (type === 'success') {
+                        closeSumUpModal();
+                        // Recharger la page pour afficher le statut mis a jour
+                        window.location.reload();
+                    } else if (type === 'error') {
+                        closeSumUpModal();
+                        alert('Le paiement a echoue.\n\nRaison: ' + (body.message || body.error_message || 'Erreur inconnue'));
+                    }
+                }
+            });
+        } catch (err) {
+            console.error('[QUOTE-VIEW] Erreur SumUp widget:', err);
+            alert('Erreur lors de l\'ouverture du paiement. Veuillez recharger la page et réessayer.');
+        }
+    }
+
+    function closeSumUpModal() {
+        var modal = document.getElementById('sumupModal');
+        if (modal) modal.classList.remove('active');
     }
 
     async function acceptAndPay() {
@@ -444,8 +527,14 @@
 
             var result = await response.json();
 
-            if (result.success && result.checkout_url) {
-                window.location.href = result.checkout_url;
+            if (result.success && result.checkout_id) {
+                // Ouvrir le widget SumUp
+                var amount = result.deposit_amount || (currentQuote && currentQuote.pricing ? currentQuote.pricing.deposit_amount : '');
+                showSumUpWidget(result.checkout_id, amount);
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-check-circle mr-2"></i>ACCEPTER ET PAYER L\'ACOMPTE';
+                }
             } else if (result.success) {
                 // Recharger la page pour afficher le nouveau statut
                 window.location.reload();
@@ -476,7 +565,7 @@
         try {
             var authToken = (typeof getAuthToken === 'function') ? getAuthToken() : localStorage.getItem('fa_genesis_token');
 
-            // Re-appeler accept (idempotent) pour obtenir un nouveau checkout URL
+            // Re-appeler accept (idempotent) pour obtenir un checkout_id
             var response = await fetch(API_URL + '/api/quotes/accept', {
                 method: 'POST',
                 headers: {
@@ -488,8 +577,13 @@
 
             var result = await response.json();
 
-            if (result.success && result.checkout_url) {
-                window.location.href = result.checkout_url;
+            if (result.success && result.checkout_id) {
+                var amount = result.deposit_amount || (currentQuote && currentQuote.pricing ? currentQuote.pricing.deposit_amount : '');
+                showSumUpWidget(result.checkout_id, amount);
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-credit-card mr-2"></i>PAYER L\'ACOMPTE';
+                }
             } else if (result.success && result.deposit_paid) {
                 window.location.reload();
             } else {

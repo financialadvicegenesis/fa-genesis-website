@@ -520,13 +520,8 @@
 
                     var acceptResult = await acceptResponse.json();
 
-                    if (acceptResult.success && acceptResult.checkout_url) {
+                    if (acceptResult.success) {
                         successMessage.innerHTML = '<strong>Compte créé et devis accepté !</strong><br><br>Redirection vers le paiement de l\'acompte...';
-                        setTimeout(function() {
-                            window.location.href = acceptResult.checkout_url;
-                        }, 2000);
-                    } else if (acceptResult.success) {
-                        successMessage.innerHTML = '<strong>Compte créé et devis accepté !</strong><br><br>Redirection vers votre espace client...';
                         setTimeout(function() {
                             window.location.href = 'quote-accept.html?token=' + encodeURIComponent(quoteTokenParam);
                         }, 2000);

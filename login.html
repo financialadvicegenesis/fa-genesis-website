@@ -395,15 +395,8 @@
 
                 var result = await response.json();
 
-                if (result.success && result.checkout_url) {
-                    // Rediriger vers SumUp pour le paiement de l'acompte
-                    window.location.href = result.checkout_url;
-                } else if (result.success && result.deposit_paid) {
-                    // Acompte deja paye, aller au dashboard
-                    window.location.href = 'dashboard.html';
-                } else if (result.success) {
-                    // Devis accepte mais pas de checkout SumUp (erreur SumUp)
-                    // Rediriger vers la page devis pour payer plus tard
+                if (result.success) {
+                    // Rediriger vers la page devis pour payer via le widget SumUp
                     window.location.href = 'quote-accept.html?token=' + encodeURIComponent(token);
                 } else {
                     var errorMessage = document.getElementById('errorMessage');
