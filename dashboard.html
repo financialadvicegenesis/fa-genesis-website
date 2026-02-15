@@ -142,10 +142,59 @@
                 <p class="text-xl font-bold uppercase text-white" id="welcomeSubtitle">Voici un aperçu de votre espace client</p>
             </div>
 
+            <!-- Bloc d'appel a l'action : paiement de l'acompte requis (cache par defaut) -->
+            <div id="depositRequiredSection" class="mb-16" style="display: none;">
+                <div class="bg-white text-black border-4 border-black neo-shadow p-8 md:p-12">
+                    <div class="text-center mb-8">
+                        <div class="inline-flex items-center justify-center w-24 h-24 bg-[var(--genesis-yellow)] border-4 border-black rounded-full mb-6">
+                            <i class="fas fa-lock text-black text-4xl"></i>
+                        </div>
+                        <h2 class="text-3xl md:text-4xl font-black italic uppercase mb-4">Votre espace est presque prêt !</h2>
+                        <p class="text-lg font-bold text-gray-700 max-w-xl mx-auto">
+                            Pour accéder à votre espace client et démarrer votre <span id="depositOfferTypeLabel">accompagnement</span>,
+                            il vous suffit de régler l'acompte de 30%.
+                        </p>
+                    </div>
+
+                    <div class="bg-black text-white p-6 border-4 border-black mb-8 max-w-lg mx-auto">
+                        <div class="flex items-center gap-4 mb-4">
+                            <i class="fas fa-info-circle text-[var(--genesis-yellow)] text-2xl"></i>
+                            <p class="font-bold text-base" id="depositOfferName">Offre sélectionnée</p>
+                        </div>
+                        <ul class="space-y-3 text-sm">
+                            <li class="flex items-start gap-2">
+                                <i class="fas fa-check text-[var(--genesis-yellow)] mt-1"></i>
+                                <span>L'acompte confirme votre inscription et déclenche le démarrage de votre projet.</span>
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <i class="fas fa-check text-[var(--genesis-yellow)] mt-1"></i>
+                                <span>Vous aurez accès à votre tableau de bord, vos livrables et votre suivi personnalisé.</span>
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <i class="fas fa-check text-[var(--genesis-yellow)] mt-1"></i>
+                                <span>Un conseiller FA Genesis vous contactera sous 24 à 48h après le paiement.</span>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div class="text-center">
+                        <a href="payment.html" class="neo-btn-yellow px-10 py-5 text-xl uppercase inline-block mb-4">
+                            <i class="fas fa-credit-card mr-3"></i>Payer l'acompte (30%)
+                        </a>
+                        <p class="text-sm text-gray-500 mt-4">
+                            <i class="fas fa-shield-alt mr-1"></i> Paiement sécurisé par SumUp — Le solde (70%) sera dû après livraison.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
             <!-- Statut de paiement -->
             <div id="paymentStatusSection" class="mb-16" style="display: none;">
-                <!-- Le contenu sera insere par JavaScript -->
+                <!-- Le contenu sera inséré par JavaScript -->
             </div>
+
+            <!-- Contenu principal du dashboard (masque si acompte non paye) -->
+            <div id="dashboardMainContent">
 
             <!-- Statistiques principales -->
             <div class="grid md:grid-cols-3 gap-8 mb-16">
@@ -227,6 +276,8 @@
                 </a>
             </div>
 
+            </div><!-- fin dashboardMainContent -->
+
         </div>
     </section>
 
@@ -287,18 +338,7 @@
                 document.getElementById('welcomeTitle').textContent = 'Bienvenue ' + (user.prenom || '');
                 document.getElementById('userGreeting').textContent = user.prenom || '';
 
-                // 2. Afficher le statut de paiement
-                try {
-                    displayPaymentStatus(user.email);
-                } catch (payErr) {
-                    console.error('[DASHBOARD] Erreur statut paiement:', payErr);
-                    // Afficher un statut par defaut
-                    var paySection = document.getElementById('paymentStatusSection');
-                    paySection.style.display = 'block';
-                    paySection.innerHTML = '<div class="p-8 neo-border" style="background: #ff6b6b; color: #000;"><div class="flex items-center gap-4"><i class="fas fa-exclamation-circle text-4xl"></i><div><h3 class="text-2xl font-black italic uppercase">STATUT DE PAIEMENT</h3><p class="font-bold text-lg">En attente de paiement</p></div></div></div>';
-                }
-
-                // 3. Recuperer les details de l'offre
+                // 2. Recuperer les details de l'offre (avant le check paiement)
                 var offerId = user.activeOfferId || user.offre;
                 var offerDetails = null;
 
@@ -307,6 +347,55 @@
                 }
 
                 console.log('[DASHBOARD] Offre:', offerId, offerDetails ? offerDetails.nom : 'non trouvee');
+
+                // 3. Verifier si l'acompte a ete paye
+                var paymentStatus = user.paymentStatus || 'registered';
+                var depositPaid = (paymentStatus === 'deposit_paid' || paymentStatus === 'delivery_pending_payment' || paymentStatus === 'fully_paid');
+
+                if (!depositPaid) {
+                    // Afficher le bloc CTA "acompte requis" et masquer le contenu
+                    var depositSection = document.getElementById('depositRequiredSection');
+                    var mainContent = document.getElementById('dashboardMainContent');
+                    var payStatusSection = document.getElementById('paymentStatusSection');
+
+                    if (depositSection) {
+                        depositSection.style.display = 'block';
+
+                        // Personnaliser selon l'offre
+                        var typeLabel = document.getElementById('depositOfferTypeLabel');
+                        var offerNameLabel = document.getElementById('depositOfferName');
+
+                        if (offerDetails) {
+                            if (typeLabel) {
+                                typeLabel.textContent = offerDetails.productType === 'prestation_individuelle' ? 'prestation' : 'accompagnement';
+                            }
+                            if (offerNameLabel) {
+                                offerNameLabel.textContent = offerDetails.nom;
+                            }
+                        } else if (offerId) {
+                            if (offerNameLabel) {
+                                offerNameLabel.textContent = offerId;
+                            }
+                        }
+                    }
+
+                    if (mainContent) mainContent.style.display = 'none';
+                    if (payStatusSection) payStatusSection.style.display = 'none';
+
+                    console.log('[DASHBOARD] Acompte non payé - affichage du bloc CTA');
+                } else {
+                    // Acompte payé : afficher le statut de paiement normalement
+                    try {
+                        displayPaymentStatus(user.email);
+                    } catch (payErr) {
+                        console.error('[DASHBOARD] Erreur statut paiement:', payErr);
+                        var paySection = document.getElementById('paymentStatusSection');
+                        if (paySection) {
+                            paySection.style.display = 'block';
+                            paySection.innerHTML = '<div class="p-8 neo-border" style="background: #51cf66; color: #000;"><div class="flex items-center gap-4"><i class="fas fa-check-circle text-4xl"></i><div><h3 class="text-2xl font-black italic uppercase">STATUT DE PAIEMENT</h3><p class="font-bold text-lg">Acompte payé</p></div></div></div>';
+                        }
+                    }
+                }
 
                 // 4. Mise a jour des statistiques
                 if (offerDetails) {
