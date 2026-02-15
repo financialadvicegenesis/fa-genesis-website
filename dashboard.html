@@ -177,11 +177,11 @@
                         </ul>
                     </div>
 
-                    <div class="text-center">
-                        <a href="payment.html" class="neo-btn-yellow px-10 py-5 text-xl uppercase inline-block mb-4">
+                    <div class="text-center" id="depositCTAContainer">
+                        <a href="payment.html" id="depositPayButton" class="neo-btn-yellow px-10 py-5 text-xl uppercase inline-block mb-4">
                             <i class="fas fa-credit-card mr-3"></i>Payer l'acompte (30%)
                         </a>
-                        <p class="text-sm text-gray-500 mt-4">
+                        <p class="text-sm text-gray-500 mt-4" id="depositAmountInfo">
                             <i class="fas fa-shield-alt mr-1"></i> Paiement sécurisé par SumUp — Le solde (70%) sera dû après livraison.
                         </p>
                     </div>
@@ -408,22 +408,74 @@
                     // Verifier aussi cote backend (le localStorage peut ne pas etre a jour)
                     showDepositRequired();
 
-                    // Verification backend en arriere-plan
+                    // Verification backend : adapter le CTA selon le type de commande
                     try {
                         fetch(API_BASE_URL + '/api/client/orders?email=' + encodeURIComponent(user.email))
                             .then(function(resp) { return resp.ok ? resp.json() : []; })
                             .then(function(orders) {
+                                // Verifier si une commande a deja l'acompte paye
                                 var paidOrder = orders.find(function(o) { return o.deposit_paid === true; });
                                 if (paidOrder) {
                                     console.log('[DASHBOARD] Backend confirme acompte payé - mise a jour localStorage');
                                     user.paymentStatus = 'deposit_paid';
                                     localStorage.setItem('fa_genesis_session', JSON.stringify(user));
-                                    // Basculer vers le dashboard normal
                                     var depositSection = document.getElementById('depositRequiredSection');
                                     if (depositSection) depositSection.style.display = 'none';
                                     var mainContent = document.getElementById('dashboardMainContent');
                                     if (mainContent) mainContent.style.display = '';
                                     showDashboardNormal();
+                                    return;
+                                }
+
+                                // Chercher une commande en attente de paiement
+                                var pendingOrder = orders.find(function(o) { return !o.deposit_paid; });
+                                if (pendingOrder) {
+                                    var payBtn = document.getElementById('depositPayButton');
+                                    var offerNameEl = document.getElementById('depositOfferName');
+                                    var typeLabel = document.getElementById('depositOfferTypeLabel');
+                                    var amountInfo = document.getElementById('depositAmountInfo');
+
+                                    // Afficher le nom de la commande
+                                    if (offerNameEl && pendingOrder.product_name) {
+                                        offerNameEl.textContent = pendingOrder.product_name;
+                                    }
+
+                                    // Afficher le montant de l'acompte
+                                    if (amountInfo && pendingOrder.deposit_amount) {
+                                        amountInfo.innerHTML = '<i class="fas fa-shield-alt mr-1"></i> Acompte : <strong>' + pendingOrder.deposit_amount.toFixed(2) + ' \u20ac</strong> — Paiement sécurisé par SumUp.';
+                                    }
+
+                                    // Adapter le type (prestation/accompagnement)
+                                    if (typeLabel) {
+                                        typeLabel.textContent = pendingOrder.product_type === 'prestation_individuelle' ? 'prestation' : 'accompagnement';
+                                    }
+
+                                    // Adapter le lien selon la source de la commande
+                                    if (pendingOrder.source === 'quote' && pendingOrder.quote_id) {
+                                        // Commande issue d'un devis -> recuperer le token et rediriger vers quote-accept
+                                        console.log('[DASHBOARD] Commande devis détectée - recherche du token...');
+                                        var authTk = localStorage.getItem('fa_genesis_token');
+                                        fetch(API_BASE_URL + '/api/quotes/by-order/' + encodeURIComponent(pendingOrder.id), {
+                                            headers: { 'Authorization': 'Bearer ' + authTk }
+                                        })
+                                        .then(function(qResp) { return qResp.ok ? qResp.json() : null; })
+                                        .then(function(quoteData) {
+                                            if (quoteData && quoteData.acceptance_token && payBtn) {
+                                                payBtn.href = 'quote-accept.html?token=' + encodeURIComponent(quoteData.acceptance_token);
+                                                payBtn.innerHTML = '<i class="fas fa-credit-card mr-3"></i>Payer l\'acompte du devis (' + pendingOrder.deposit_amount.toFixed(2) + ' \u20ac)';
+                                                console.log('[DASHBOARD] Lien devis mis a jour avec token');
+                                            }
+                                        })
+                                        .catch(function(qErr) {
+                                            console.error('[DASHBOARD] Erreur récupération token devis:', qErr);
+                                        });
+                                    } else {
+                                        // Commande offre/tarif -> rediriger vers payment.html
+                                        if (payBtn && pendingOrder.deposit_amount) {
+                                            payBtn.innerHTML = '<i class="fas fa-credit-card mr-3"></i>Payer l\'acompte (' + pendingOrder.deposit_amount.toFixed(2) + ' \u20ac)';
+                                        }
+                                        console.log('[DASHBOARD] Commande offre/tarif détectée - redirection payment.html');
+                                    }
                                 }
                             })
                             .catch(function(err) {

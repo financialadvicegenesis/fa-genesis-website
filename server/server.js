@@ -4185,6 +4185,46 @@ app.get('/api/quotes/my-quote/:token', function(req, res) {
     }
 });
 
+/**
+ * GET /api/quotes/by-order/:orderId
+ * Retrouver le token d'un devis a partir de l'order_id (authentification requise)
+ */
+app.get('/api/quotes/by-order/:orderId', function(req, res) {
+    try {
+        var authHeader = req.headers.authorization;
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return res.status(401).json({ error: 'Authentification requise' });
+        }
+        var authToken = authHeader.split(' ')[1];
+        var users = loadUsers();
+        var authUser = users.find(function(u) { return u.sessionToken === authToken; });
+        if (!authUser) {
+            return res.status(401).json({ error: 'Session invalide' });
+        }
+
+        var quotes = loadQuotes();
+        var quote = quotes.find(function(q) { return q.order_id === req.params.orderId; });
+        if (!quote) {
+            return res.status(404).json({ error: 'Aucun devis lié à cette commande' });
+        }
+
+        // Verifier que le devis appartient au bon client
+        if (quote.client_email.toLowerCase() !== authUser.email.toLowerCase()) {
+            return res.status(403).json({ error: 'Accès non autorisé' });
+        }
+
+        res.json({
+            acceptance_token: quote.acceptance_token,
+            quote_number: quote.quote_number,
+            status: quote.status
+        });
+
+    } catch (error) {
+        console.error('[QUOTE] Erreur recherche devis par order_id:', error);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
 // ============================================================
 // INITIALISATION DES COMPTES PARTENAIRES PAR DEFAUT
 // ============================================================
