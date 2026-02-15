@@ -98,13 +98,13 @@
         <div id="mainNavigation" class="hidden md:flex gap-8 text-white font-black">
             <a href="dashboard.html" class="nav-link text-[var(--genesis-yellow)]">Dashboard</a>
             <a href="livrables.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">Livrables</a>
-            <a href="seances.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">Seances</a>
+            <a href="seances.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">Séances</a>
             <a href="mon-compte.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">Mon compte</a>
         </div>
         <div class="flex gap-4 items-center">
             <span id="userGreeting" class="hidden md:block text-white font-bold"></span>
             <button onclick="logout()" class="border-4 border-white text-white px-3 py-2 text-[10px] tracking-widest font-black hover:bg-white hover:text-black transition">
-                <i class="fas fa-sign-out-alt mr-1"></i><span class="hidden md:inline">Deconnexion</span>
+                <i class="fas fa-sign-out-alt mr-1"></i><span class="hidden md:inline">Déconnexion</span>
             </button>
             <!-- Bouton Menu Mobile -->
             <button id="mobileMenuBtn" class="md:hidden flex flex-col gap-1.5 p-2" aria-label="Menu">
@@ -119,11 +119,11 @@
     <div id="mobileMenu" class="fixed inset-0 z-40 bg-black/98 backdrop-blur-lg hidden flex-col items-center justify-center gap-8 text-white font-black uppercase">
         <a href="dashboard.html" class="text-2xl nav-link text-[var(--genesis-yellow)]" onclick="closeMobileMenu()">Dashboard</a>
         <a href="livrables.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition" onclick="closeMobileMenu()">Livrables</a>
-        <a href="seances.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition" onclick="closeMobileMenu()">Seances</a>
+        <a href="seances.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition" onclick="closeMobileMenu()">Séances</a>
         <a href="mon-compte.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition" onclick="closeMobileMenu()">Mon compte</a>
         <div class="mt-8">
             <button onclick="logout(); closeMobileMenu();" class="neo-btn-yellow px-8 py-4 text-sm tracking-widest text-black font-black text-center">
-                <i class="fas fa-sign-out-alt mr-2"></i>Deconnexion
+                <i class="fas fa-sign-out-alt mr-2"></i>Déconnexion
             </button>
         </div>
     </div>
@@ -139,7 +139,7 @@
             <!-- En-tete de bienvenue -->
             <div class="mb-16">
                 <h1 class="text-5xl md:text-7xl font-black italic uppercase mb-4 text-[var(--genesis-yellow)]" id="welcomeTitle">Bienvenue</h1>
-                <p class="text-xl font-bold uppercase text-white" id="welcomeSubtitle">Voici un apercu de votre espace client</p>
+                <p class="text-xl font-bold uppercase text-white" id="welcomeSubtitle">Voici un aperçu de votre espace client</p>
             </div>
 
             <!-- Statut de paiement -->
@@ -156,9 +156,9 @@
                 </div>
 
                 <div class="stat-card" id="progressCard">
-                    <div class="text-sm font-black uppercase mb-2 opacity-70">Etape actuelle</div>
+                    <div class="text-sm font-black uppercase mb-2 opacity-70">Étape actuelle</div>
                     <div class="text-3xl font-black italic">En attente</div>
-                    <div class="text-xs font-bold uppercase mt-1">Demarrage apres paiement</div>
+                    <div class="text-xs font-bold uppercase mt-1">Démarrage après paiement</div>
                 </div>
 
                 <div class="stat-card">
@@ -176,7 +176,7 @@
                         <span id="progressBarText">0%</span>
                     </div>
                 </div>
-                <p class="text-sm font-bold mt-4 text-white" id="progressMessage">Votre accompagnement n'a pas encore demarre.</p>
+                <p class="text-sm font-bold mt-4 text-white" id="progressMessage">Votre accompagnement n'a pas encore démarré.</p>
             </div>
 
             <!-- Section workflow de livraison (prestation_individuelle uniquement) -->
@@ -195,25 +195,25 @@
                     <a href="livrables.html" class="neo-btn-white p-8 block text-center">
                         <i class="fas fa-file-download text-4xl mb-4"></i>
                         <div class="text-xl font-black italic uppercase">Mes livrables</div>
-                        <div class="text-sm font-bold mt-2 opacity-70">Telechargez vos documents</div>
+                        <div class="text-sm font-bold mt-2 opacity-70">Téléchargez vos documents</div>
                     </a>
 
                     <a href="seances.html" class="neo-btn-white p-8 block text-center">
                         <i class="fas fa-calendar-alt text-4xl mb-4"></i>
-                        <div class="text-xl font-black italic uppercase">Mes seances</div>
+                        <div class="text-xl font-black italic uppercase">Mes séances</div>
                         <div class="text-sm font-bold mt-2 opacity-70">Consultez votre planning</div>
                     </a>
 
                     <a href="mon-compte.html" class="neo-btn-white p-8 block text-center">
                         <i class="fas fa-user-circle text-4xl mb-4"></i>
                         <div class="text-xl font-black italic uppercase">Mon compte</div>
-                        <div class="text-sm font-bold mt-2 opacity-70">Gerez vos informations</div>
+                        <div class="text-sm font-bold mt-2 opacity-70">Gérez vos informations</div>
                     </a>
 
                     <a href="contact.html" class="neo-btn-white p-8 block text-center">
                         <i class="fas fa-envelope text-4xl mb-4"></i>
                         <div class="text-xl font-black italic uppercase">Contact</div>
-                        <div class="text-sm font-bold mt-2 opacity-70">Contactez notre equipe</div>
+                        <div class="text-sm font-bold mt-2 opacity-70">Contactez notre équipe</div>
                     </a>
                 </div>
             </div>
@@ -221,7 +221,7 @@
             <!-- Message d'encouragement -->
             <div class="bg-[var(--genesis-yellow)] text-black p-8 neo-border text-center">
                 <h3 class="text-2xl font-black italic uppercase mb-4">Besoin d'aide ?</h3>
-                <p class="font-bold mb-6">Notre equipe est la pour vous accompagner a chaque etape</p>
+                <p class="font-bold mb-6">Notre équipe est là pour vous accompagner à chaque étape</p>
                 <a href="contact.html" class="inline-block bg-black text-white px-8 py-4 border-4 border-black font-black uppercase text-sm hover:opacity-80 transition">
                     Contactez-nous
                 </a>
@@ -392,9 +392,9 @@
                 var daysRemaining = Math.max(0, total - day);
 
                 if (day > 0 && total > 0) {
-                    card.innerHTML = '<div class="text-sm font-black uppercase mb-2 opacity-70">Etape actuelle</div><div class="text-3xl font-black italic">Jour ' + day + '/' + total + '</div><div class="text-xs font-bold uppercase mt-1">' + daysRemaining + ' jour' + (daysRemaining > 1 ? 's' : '') + ' restant' + (daysRemaining > 1 ? 's' : '') + '</div>';
+                    card.innerHTML = '<div class="text-sm font-black uppercase mb-2 opacity-70">Étape actuelle</div><div class="text-3xl font-black italic">Jour ' + day + '/' + total + '</div><div class="text-xs font-bold uppercase mt-1">' + daysRemaining + ' jour' + (daysRemaining > 1 ? 's' : '') + ' restant' + (daysRemaining > 1 ? 's' : '') + '</div>';
                 } else {
-                    card.innerHTML = '<div class="text-sm font-black uppercase mb-2 opacity-70">Etape actuelle</div><div class="text-3xl font-black italic">En attente</div><div class="text-xs font-bold uppercase mt-1">Demarrage apres paiement</div>';
+                    card.innerHTML = '<div class="text-sm font-black uppercase mb-2 opacity-70">Étape actuelle</div><div class="text-3xl font-black italic">En attente</div><div class="text-xs font-bold uppercase mt-1">Démarrage après paiement</div>';
                 }
             } else {
                 var deliveryStatus = typeof getDeliveryStatus === 'function' ? getDeliveryStatus(user.email) : 'confirmed';
@@ -402,7 +402,7 @@
                 var currentStep = deliverySteps.find(function(s) { return s.id === deliveryStatus; });
                 var stepIndex = typeof getDeliveryStepIndex === 'function' ? getDeliveryStepIndex(user.email) : 0;
 
-                card.innerHTML = '<div class="text-sm font-black uppercase mb-2 opacity-70">Statut de livraison</div><div class="text-3xl font-black italic">' + (currentStep ? currentStep.label : 'En cours') + '</div><div class="text-xs font-bold uppercase mt-1">Etape ' + (stepIndex + 1) + '/4</div>';
+                card.innerHTML = '<div class="text-sm font-black uppercase mb-2 opacity-70">Statut de livraison</div><div class="text-3xl font-black italic">' + (currentStep ? currentStep.label : 'En cours') + '</div><div class="text-xs font-bold uppercase mt-1">Étape ' + (stepIndex + 1) + '/4</div>';
             }
         }
 
@@ -412,9 +412,9 @@
             if (!container) return;
 
             if (productType === 'accompagnement') {
-                container.innerHTML = '<a href="livrables.html" class="neo-btn-white p-8 block text-center"><i class="fas fa-file-download text-4xl mb-4"></i><div class="text-xl font-black italic uppercase">Mes livrables</div><div class="text-sm font-bold mt-2 opacity-70">Telechargez vos documents</div></a><a href="seances.html" class="neo-btn-white p-8 block text-center"><i class="fas fa-calendar-alt text-4xl mb-4"></i><div class="text-xl font-black italic uppercase">Mes seances</div><div class="text-sm font-bold mt-2 opacity-70">Consultez votre planning</div></a><a href="mon-compte.html" class="neo-btn-white p-8 block text-center"><i class="fas fa-user-circle text-4xl mb-4"></i><div class="text-xl font-black italic uppercase">Mon compte</div><div class="text-sm font-bold mt-2 opacity-70">Gerez vos informations</div></a><a href="contact.html" class="neo-btn-white p-8 block text-center"><i class="fas fa-envelope text-4xl mb-4"></i><div class="text-xl font-black italic uppercase">Contact</div><div class="text-sm font-bold mt-2 opacity-70">Contactez notre equipe</div></a>';
+                container.innerHTML = '<a href="livrables.html" class="neo-btn-white p-8 block text-center"><i class="fas fa-file-download text-4xl mb-4"></i><div class="text-xl font-black italic uppercase">Mes livrables</div><div class="text-sm font-bold mt-2 opacity-70">Téléchargez vos documents</div></a><a href="seances.html" class="neo-btn-white p-8 block text-center"><i class="fas fa-calendar-alt text-4xl mb-4"></i><div class="text-xl font-black italic uppercase">Mes séances</div><div class="text-sm font-bold mt-2 opacity-70">Consultez votre planning</div></a><a href="mon-compte.html" class="neo-btn-white p-8 block text-center"><i class="fas fa-user-circle text-4xl mb-4"></i><div class="text-xl font-black italic uppercase">Mon compte</div><div class="text-sm font-bold mt-2 opacity-70">Gérez vos informations</div></a><a href="contact.html" class="neo-btn-white p-8 block text-center"><i class="fas fa-envelope text-4xl mb-4"></i><div class="text-xl font-black italic uppercase">Contact</div><div class="text-sm font-bold mt-2 opacity-70">Contactez notre équipe</div></a>';
             } else {
-                container.innerHTML = '<a href="#deliveryWorkflowSection" class="neo-btn-white p-8 block text-center"><i class="fas fa-receipt text-4xl mb-4"></i><div class="text-xl font-black italic uppercase">Voir ma commande</div><div class="text-sm font-bold mt-2 opacity-70">Details de votre prestation</div></a><a href="#deliveryWorkflowSection" class="neo-btn-white p-8 block text-center"><i class="fas fa-tasks text-4xl mb-4"></i><div class="text-xl font-black italic uppercase">Suivre l\'avancement</div><div class="text-sm font-bold mt-2 opacity-70">Ou en est votre projet</div></a><a href="livrables.html" class="neo-btn-white p-8 block text-center"><i class="fas fa-download text-4xl mb-4"></i><div class="text-xl font-black italic uppercase">Mes livrables</div><div class="text-sm font-bold mt-2 opacity-70">Telechargez vos fichiers</div></a><a href="mon-compte.html" class="neo-btn-white p-8 block text-center"><i class="fas fa-user-circle text-4xl mb-4"></i><div class="text-xl font-black italic uppercase">Mon compte</div><div class="text-sm font-bold mt-2 opacity-70">Gerez vos informations</div></a>';
+                container.innerHTML = '<a href="#deliveryWorkflowSection" class="neo-btn-white p-8 block text-center"><i class="fas fa-receipt text-4xl mb-4"></i><div class="text-xl font-black italic uppercase">Voir ma commande</div><div class="text-sm font-bold mt-2 opacity-70">Détails de votre prestation</div></a><a href="#deliveryWorkflowSection" class="neo-btn-white p-8 block text-center"><i class="fas fa-tasks text-4xl mb-4"></i><div class="text-xl font-black italic uppercase">Suivre l\'avancement</div><div class="text-sm font-bold mt-2 opacity-70">Où en est votre projet</div></a><a href="livrables.html" class="neo-btn-white p-8 block text-center"><i class="fas fa-download text-4xl mb-4"></i><div class="text-xl font-black italic uppercase">Mes livrables</div><div class="text-sm font-bold mt-2 opacity-70">Téléchargez vos fichiers</div></a><a href="mon-compte.html" class="neo-btn-white p-8 block text-center"><i class="fas fa-user-circle text-4xl mb-4"></i><div class="text-xl font-black italic uppercase">Mon compte</div><div class="text-sm font-bold mt-2 opacity-70">Gérez vos informations</div></a>';
             }
         }
 
@@ -429,30 +429,30 @@
                 }
 
                 if (progress === 0) {
-                    progressMessage = 'Votre accompagnement n\'a pas encore demarre.';
+                    progressMessage = 'Votre accompagnement n\'a pas encore démarré.';
                 } else if (progress < 25) {
-                    progressMessage = 'Vous venez de commencer, continuez sur cette lancee !';
+                    progressMessage = 'Vous venez de commencer, continuez sur cette lancée !';
                 } else if (progress < 50) {
-                    progressMessage = 'Excellent debut ! Vous etes sur la bonne voie.';
+                    progressMessage = 'Excellent début ! Vous êtes sur la bonne voie.';
                 } else if (progress < 75) {
-                    progressMessage = 'Vous avez deja parcouru plus de la moitie du chemin !';
+                    progressMessage = 'Vous avez déjà parcouru plus de la moitié du chemin !';
                 } else if (progress < 100) {
                     progressMessage = 'Bravo ! Vous approchez de la fin de votre parcours.';
                 } else {
-                    progressMessage = 'Felicitations ! Votre accompagnement est termine.';
+                    progressMessage = 'Félicitations ! Votre accompagnement est terminé.';
                 }
             } else {
                 var stepIndex = typeof getDeliveryStepIndex === 'function' ? getDeliveryStepIndex(user.email) : 0;
                 progress = Math.round(((stepIndex + 1) / 4) * 100);
 
                 if (progress === 25) {
-                    progressMessage = 'Votre commande est confirmee ! Nous commencons bientot.';
+                    progressMessage = 'Votre commande est confirmée ! Nous commençons bientôt.';
                 } else if (progress === 50) {
-                    progressMessage = 'Notre equipe travaille sur votre prestation.';
+                    progressMessage = 'Notre équipe travaille sur votre prestation.';
                 } else if (progress === 75) {
-                    progressMessage = 'Votre prestation est prete ! Consultez vos livrables.';
+                    progressMessage = 'Votre prestation est prête ! Consultez vos livrables.';
                 } else if (progress === 100) {
-                    progressMessage = 'Prestation livree ! Telechargez vos fichiers.';
+                    progressMessage = 'Prestation livrée ! Téléchargez vos fichiers.';
                 }
             }
 
@@ -511,7 +511,7 @@
             section.style.display = 'block';
 
             if (!summary) {
-                section.innerHTML = '<div class="p-8 neo-border" style="background: #ff6b6b; color: #000;"><div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-6"><div class="flex-1"><div class="flex items-center gap-4 mb-4"><i class="fas fa-exclamation-circle text-4xl"></i><div><h3 class="text-2xl font-black italic uppercase">STATUT DE PAIEMENT</h3><p class="font-bold text-lg">Compte cree - En attente de paiement</p></div></div><p class="font-bold text-base mb-4">Un acompte de 30% est requis pour demarrer l\'accompagnement.</p></div><a href="payment.html" class="bg-black text-white px-8 py-4 border-4 border-black font-black uppercase text-sm hover:opacity-80 transition whitespace-nowrap">Payer l\'acompte (30%) <i class="fas fa-arrow-right ml-2"></i></a></div></div>';
+                section.innerHTML = '<div class="p-8 neo-border" style="background: #ff6b6b; color: #000;"><div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-6"><div class="flex-1"><div class="flex items-center gap-4 mb-4"><i class="fas fa-exclamation-circle text-4xl"></i><div><h3 class="text-2xl font-black italic uppercase">STATUT DE PAIEMENT</h3><p class="font-bold text-lg">Compte créé - En attente de paiement</p></div></div><p class="font-bold text-base mb-4">Un acompte de 30% est requis pour démarrer l\'accompagnement.</p></div><a href="payment.html" class="bg-black text-white px-8 py-4 border-4 border-black font-black uppercase text-sm hover:opacity-80 transition whitespace-nowrap">Payer l\'acompte (30%) <i class="fas fa-arrow-right ml-2"></i></a></div></div>';
                 return;
             }
 
@@ -527,7 +527,7 @@
             var html = '<div class="p-8 neo-border" style="background: ' + config.bg + '; color: #000;"><div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-6"><div class="flex-1"><div class="flex items-center gap-4 mb-4"><i class="fas ' + config.icon + ' text-4xl"></i><div><h3 class="text-2xl font-black italic uppercase">STATUT DE PAIEMENT</h3><p class="font-bold text-lg">' + summary.statusLabel + '</p></div></div><p class="font-bold text-base mb-4">' + summary.accessRights.message + '</p>';
 
             if (summary.activeOffer && summary.activeOffer.prixTotal > 0) {
-                html += '<div class="grid md:grid-cols-3 gap-4 mt-4 p-4 bg-black/10 border-4 border-black"><div><p class="text-xs font-bold opacity-70 uppercase">Offre</p><p class="font-black">' + summary.activeOffer.nom + '</p></div><div><p class="text-xs font-bold opacity-70 uppercase">Total paye</p><p class="font-black text-xl">' + summary.totalPaid + '\u20ac</p></div><div><p class="text-xs font-bold opacity-70 uppercase">Prix total</p><p class="font-black text-xl">' + summary.activeOffer.prixTotal + '\u20ac</p></div></div>';
+                html += '<div class="grid md:grid-cols-3 gap-4 mt-4 p-4 bg-black/10 border-4 border-black"><div><p class="text-xs font-bold opacity-70 uppercase">Offre</p><p class="font-black">' + summary.activeOffer.nom + '</p></div><div><p class="text-xs font-bold opacity-70 uppercase">Total payé</p><p class="font-black text-xl">' + summary.totalPaid + '\u20ac</p></div><div><p class="text-xs font-bold opacity-70 uppercase">Prix total</p><p class="font-black text-xl">' + summary.activeOffer.prixTotal + '\u20ac</p></div></div>';
             }
 
             html += '</div>';
