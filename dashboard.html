@@ -348,12 +348,12 @@
 
                 console.log('[DASHBOARD] Offre:', offerId, offerDetails ? offerDetails.nom : 'non trouvee');
 
-                // 3. Verifier si l'acompte a ete paye
-                var paymentStatus = user.paymentStatus || 'registered';
-                var depositPaid = (paymentStatus === 'deposit_paid' || paymentStatus === 'delivery_pending_payment' || paymentStatus === 'fully_paid');
+                // 3. Verifier si l'acompte a ete paye (localStorage + backend)
+                var paymentStatus = user.paymentStatus || user.payment_status || 'registered';
+                console.log('[DASHBOARD] paymentStatus localStorage:', paymentStatus);
 
-                if (!depositPaid) {
-                    // Afficher le bloc CTA "acompte requis" et masquer le contenu
+                // Fonction pour afficher le bloc CTA acompte
+                function showDepositRequired() {
                     var depositSection = document.getElementById('depositRequiredSection');
                     var mainContent = document.getElementById('dashboardMainContent');
                     var payStatusSection = document.getElementById('paymentStatusSection');
@@ -383,8 +383,10 @@
                     if (payStatusSection) payStatusSection.style.display = 'none';
 
                     console.log('[DASHBOARD] Acompte non payé - affichage du bloc CTA');
-                } else {
-                    // Acompte payé : afficher le statut de paiement normalement
+                }
+
+                // Fonction pour afficher le dashboard normal
+                function showDashboardNormal() {
                     try {
                         displayPaymentStatus(user.email);
                     } catch (payErr) {
@@ -394,6 +396,41 @@
                             paySection.style.display = 'block';
                             paySection.innerHTML = '<div class="p-8 neo-border" style="background: #51cf66; color: #000;"><div class="flex items-center gap-4"><i class="fas fa-check-circle text-4xl"></i><div><h3 class="text-2xl font-black italic uppercase">STATUT DE PAIEMENT</h3><p class="font-bold text-lg">Acompte payé</p></div></div></div>';
                         }
+                    }
+                }
+
+                var depositPaid = (paymentStatus === 'deposit_paid' || paymentStatus === 'delivery_pending_payment' || paymentStatus === 'fully_paid');
+
+                if (depositPaid) {
+                    // Acompte deja paye selon localStorage
+                    showDashboardNormal();
+                } else {
+                    // Verifier aussi cote backend (le localStorage peut ne pas etre a jour)
+                    showDepositRequired();
+
+                    // Verification backend en arriere-plan
+                    try {
+                        fetch(API_BASE_URL + '/api/client/orders?email=' + encodeURIComponent(user.email))
+                            .then(function(resp) { return resp.ok ? resp.json() : []; })
+                            .then(function(orders) {
+                                var paidOrder = orders.find(function(o) { return o.deposit_paid === true; });
+                                if (paidOrder) {
+                                    console.log('[DASHBOARD] Backend confirme acompte payé - mise a jour localStorage');
+                                    user.paymentStatus = 'deposit_paid';
+                                    localStorage.setItem('fa_genesis_session', JSON.stringify(user));
+                                    // Basculer vers le dashboard normal
+                                    var depositSection = document.getElementById('depositRequiredSection');
+                                    if (depositSection) depositSection.style.display = 'none';
+                                    var mainContent = document.getElementById('dashboardMainContent');
+                                    if (mainContent) mainContent.style.display = '';
+                                    showDashboardNormal();
+                                }
+                            })
+                            .catch(function(err) {
+                                console.error('[DASHBOARD] Erreur verification backend:', err);
+                            });
+                    } catch (backendErr) {
+                        console.error('[DASHBOARD] Erreur fetch backend:', backendErr);
                     }
                 }
 
