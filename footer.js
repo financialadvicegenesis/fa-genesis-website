@@ -8,6 +8,10 @@
     // Base path pour GitHub Pages (racine relative)
     var BASE = '';
 
+    // === SVG Drapeaux ===
+    var FLAG_FR = '<svg viewBox="0 0 30 20" style="width:24px;height:16px;border:1px solid #ccc;vertical-align:middle;display:inline-block;"><rect x="0" y="0" width="10" height="20" fill="#002395"/><rect x="10" y="0" width="10" height="20" fill="#FFFFFF"/><rect x="20" y="0" width="10" height="20" fill="#ED2939"/></svg>';
+    var FLAG_US = '<svg viewBox="0 0 30 20" style="width:24px;height:16px;border:1px solid #ccc;vertical-align:middle;display:inline-block;"><rect width="30" height="20" fill="#B22234"/><rect y="1.54" width="30" height="1.54" fill="#FFF"/><rect y="4.62" width="30" height="1.54" fill="#FFF"/><rect y="7.69" width="30" height="1.54" fill="#FFF"/><rect y="10.77" width="30" height="1.54" fill="#FFF"/><rect y="13.85" width="30" height="1.54" fill="#FFF"/><rect y="16.92" width="30" height="1.54" fill="#FFF"/><rect width="12" height="10.77" fill="#3C3B6E"/><circle cx="2" cy="1.5" r="0.6" fill="#FFF"/><circle cx="4" cy="1.5" r="0.6" fill="#FFF"/><circle cx="6" cy="1.5" r="0.6" fill="#FFF"/><circle cx="8" cy="1.5" r="0.6" fill="#FFF"/><circle cx="10" cy="1.5" r="0.6" fill="#FFF"/><circle cx="3" cy="3" r="0.6" fill="#FFF"/><circle cx="5" cy="3" r="0.6" fill="#FFF"/><circle cx="7" cy="3" r="0.6" fill="#FFF"/><circle cx="9" cy="3" r="0.6" fill="#FFF"/><circle cx="2" cy="4.5" r="0.6" fill="#FFF"/><circle cx="4" cy="4.5" r="0.6" fill="#FFF"/><circle cx="6" cy="4.5" r="0.6" fill="#FFF"/><circle cx="8" cy="4.5" r="0.6" fill="#FFF"/><circle cx="10" cy="4.5" r="0.6" fill="#FFF"/><circle cx="3" cy="6" r="0.6" fill="#FFF"/><circle cx="5" cy="6" r="0.6" fill="#FFF"/><circle cx="7" cy="6" r="0.6" fill="#FFF"/><circle cx="9" cy="6" r="0.6" fill="#FFF"/><circle cx="2" cy="7.5" r="0.6" fill="#FFF"/><circle cx="4" cy="7.5" r="0.6" fill="#FFF"/><circle cx="6" cy="7.5" r="0.6" fill="#FFF"/><circle cx="8" cy="7.5" r="0.6" fill="#FFF"/><circle cx="10" cy="7.5" r="0.6" fill="#FFF"/><circle cx="3" cy="9" r="0.6" fill="#FFF"/><circle cx="5" cy="9" r="0.6" fill="#FFF"/><circle cx="7" cy="9" r="0.6" fill="#FFF"/><circle cx="9" cy="9" r="0.6" fill="#FFF"/></svg>';
+
     // Injecter le CSS du footer
     var style = document.createElement('style');
     style.textContent = [
@@ -61,13 +65,24 @@
         '.fg-footer__lang { position: relative; }',
         '.fg-footer__lang-btn { display: flex; align-items: center; gap: 8px; background: none; border: 2px solid #000; padding: 6px 14px; cursor: pointer; font-family: "Space Grotesk", sans-serif; font-size: 12px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px; color: #000; transition: all 0.2s; }',
         '.fg-footer__lang-btn:hover { background: #000; color: #fff; }',
-        '.fg-footer__lang-btn .flag { font-size: 18px; line-height: 1; }',
-        '.fg-footer__lang-dropdown { display: none; position: absolute; bottom: 100%; right: 0; background: #fff; border: 2px solid #000; box-shadow: 4px 4px 0px #000; min-width: 180px; margin-bottom: 4px; z-index: 100; }',
+        '.fg-footer__lang-btn:hover svg rect[fill="#FFFFFF"], .fg-footer__lang-btn:hover svg rect[fill="#FFF"] { fill: #FFF; }',
+        '.fg-footer__lang-dropdown { display: none; position: absolute; bottom: 100%; right: 0; background: #fff; border: 2px solid #000; box-shadow: 4px 4px 0px #000; min-width: 200px; margin-bottom: 4px; z-index: 100; }',
         '.fg-footer__lang-dropdown.open { display: block; }',
-        '.fg-footer__lang-option { display: flex; align-items: center; gap: 10px; padding: 10px 16px; cursor: pointer; font-size: 13px; font-weight: 700; transition: background 0.15s; }',
+        '.fg-footer__lang-option { display: flex; align-items: center; gap: 10px; padding: 12px 16px; cursor: pointer; font-size: 13px; font-weight: 700; transition: background 0.15s; }',
         '.fg-footer__lang-option:hover { background: #FFD700; }',
-        '.fg-footer__lang-option .flag { font-size: 18px; }',
         '.fg-footer__lang-option.active { background: #f0f0f0; font-weight: 900; }',
+
+        /* Cookie banner */
+        '.fg-cookie-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 10000; display: flex; align-items: flex-end; justify-content: center; }',
+        '.fg-cookie-banner { background: #fff; color: #000; border-top: 6px solid #FFD700; padding: 32px; max-width: 700px; width: 100%; margin: 0 16px 0 16px; font-family: "Space Grotesk", sans-serif; }',
+        '.fg-cookie-banner h3 { font-family: "Unbounded", cursive; font-size: 18px; font-weight: 900; text-transform: uppercase; margin: 0 0 16px 0; }',
+        '.fg-cookie-banner p { font-size: 14px; line-height: 1.7; font-weight: 500; margin: 0 0 12px 0; }',
+        '.fg-cookie-banner a { color: #000; font-weight: 900; text-decoration: underline; }',
+        '.fg-cookie-accept { background: #FFD700; color: #000; border: 3px solid #000; box-shadow: 4px 4px 0px #000; padding: 12px 32px; font-family: "Space Grotesk", sans-serif; font-size: 14px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; cursor: pointer; transition: all 0.1s; margin-top: 16px; }',
+        '.fg-cookie-accept:hover { box-shadow: 2px 2px 0px #000; transform: translate(2px, 2px); }',
+        '.fg-cookie-accept:active { box-shadow: 0px 0px 0px #000; transform: translate(4px, 4px); }',
+        '.fg-cookie-icon { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }',
+        '.fg-cookie-icon i { font-size: 32px; color: #FFD700; }',
 
         /* Mobile accordion */
         '.fg-footer__accordion { display: none; }',
@@ -82,7 +97,7 @@
         '  .fg-footer__grid { grid-template-columns: repeat(2, 1fr); gap: 24px; }',
         '}',
 
-        /* Mobile: accordions */
+        /* Mobile */
         '@media (max-width: 640px) {',
         '  .fg-footer__grid { display: none; }',
         '  .fg-footer__accordion { display: block; }',
@@ -91,6 +106,7 @@
         '  .fg-footer__bottom-row { flex-direction: column; align-items: center; gap: 12px; }',
         '  .fg-footer__bottom-links { gap: 16px; }',
         '  .fg-footer__lang-dropdown { right: auto; left: 50%; transform: translateX(-50%); }',
+        '  .fg-cookie-banner { padding: 24px 16px; }',
         '}'
     ].join('\n');
     document.head.appendChild(style);
@@ -149,9 +165,44 @@
         return html;
     }
 
+    // === COOKIE BANNER ===
+    function showCookieBanner() {
+        // Si deja accepte, ne pas afficher
+        try {
+            if (localStorage.getItem('fa_genesis_cookies_accepted') === 'true') return;
+        } catch(e) {}
+
+        var overlay = document.createElement('div');
+        overlay.className = 'fg-cookie-overlay';
+        overlay.id = 'fg-cookie-overlay';
+        overlay.innerHTML = '<div class="fg-cookie-banner">' +
+            '<div class="fg-cookie-icon"><i class="fas fa-cookie-bite"></i><h3>Gestion des cookies</h3></div>' +
+            '<p>Ce site utilise uniquement des <strong>cookies techniques</strong> n\u00e9cessaires au fonctionnement du service (authentification, session).</p>' +
+            '<p>Aucun cookie publicitaire ou de tracking n\u2019est utilis\u00e9.</p>' +
+            '<p><a href="confidentialite.html">En savoir plus sur notre politique de confidentialit\u00e9</a></p>' +
+            '<button class="fg-cookie-accept" id="fg-cookie-accept">J\u2019ai compris</button>' +
+            '</div>';
+        document.body.appendChild(overlay);
+
+        var acceptBtn = document.getElementById('fg-cookie-accept');
+        if (acceptBtn) {
+            acceptBtn.addEventListener('click', function() {
+                try { localStorage.setItem('fa_genesis_cookies_accepted', 'true'); } catch(e) {}
+                var ov = document.getElementById('fg-cookie-overlay');
+                if (ov) ov.remove();
+            });
+        }
+    }
+
     function renderFooter() {
         var target = document.getElementById('site-footer');
         if (!target) return;
+
+        // Langue sauvegardee
+        var currentLang = 'fr';
+        try { currentLang = localStorage.getItem('fa_genesis_lang') || 'fr'; } catch(e) {}
+        var currentFlag = currentLang === 'en' ? FLAG_US : FLAG_FR;
+        var currentLabel = currentLang === 'en' ? 'English' : 'Fran\u00e7ais';
 
         var html = '<footer class="fg-footer" role="contentinfo">';
         html += '<div class="fg-footer__inner">';
@@ -217,19 +268,19 @@
         html += buildLink('contact.html', 'Contact');
         html += '</div>';
 
-        // Droite : Langue
+        // Droite : Langue avec drapeaux SVG
         html += '<div class="fg-footer__lang">';
         html += '<button class="fg-footer__lang-btn" id="fg-lang-btn">';
-        html += '<span class="flag" id="fg-lang-flag">\ud83c\uddeb\ud83c\uddf7</span>';
-        html += '<span id="fg-lang-label">Fran\u00e7ais</span>';
+        html += '<span id="fg-lang-flag">' + currentFlag + '</span>';
+        html += '<span id="fg-lang-label">' + currentLabel + '</span>';
         html += '<i class="fas fa-chevron-down" style="font-size:10px;margin-left:4px;"></i>';
         html += '</button>';
         html += '<div class="fg-footer__lang-dropdown" id="fg-lang-dropdown">';
-        html += '<div class="fg-footer__lang-option active" data-lang="fr" data-flag="\ud83c\uddeb\ud83c\uddf7" data-label="Fran\u00e7ais">';
-        html += '<span class="flag">\ud83c\uddeb\ud83c\uddf7</span> Fran\u00e7ais';
+        html += '<div class="fg-footer__lang-option' + (currentLang === 'fr' ? ' active' : '') + '" data-lang="fr">';
+        html += FLAG_FR + ' <span style="margin-left:4px;">Fran\u00e7ais</span>';
         html += '</div>';
-        html += '<div class="fg-footer__lang-option" data-lang="en" data-flag="\ud83c\uddec\ud83c\udde7" data-label="English">';
-        html += '<span class="flag">\ud83c\uddec\ud83c\udde7</span> English';
+        html += '<div class="fg-footer__lang-option' + (currentLang === 'en' ? ' active' : '') + '" data-lang="en">';
+        html += FLAG_US + ' <span style="margin-left:4px;">English</span>';
         html += '</div>';
         html += '</div>';
         html += '</div>';
@@ -258,12 +309,15 @@
             for (var i = 0; i < options.length; i++) {
                 options[i].addEventListener('click', function() {
                     var lang = this.getAttribute('data-lang');
-                    var flag = this.getAttribute('data-flag');
-                    var label = this.getAttribute('data-label');
 
-                    // Mettre a jour le bouton
-                    langFlag.textContent = flag;
-                    langLabel.textContent = label;
+                    // Mettre a jour le drapeau et le label
+                    if (lang === 'en') {
+                        langFlag.innerHTML = FLAG_US;
+                        langLabel.textContent = 'English';
+                    } else {
+                        langFlag.innerHTML = FLAG_FR;
+                        langLabel.textContent = 'Fran\u00e7ais';
+                    }
 
                     // Mettre a jour la classe active
                     for (var j = 0; j < options.length; j++) {
@@ -276,6 +330,11 @@
 
                     // Fermer le dropdown
                     langDropdown.classList.remove('open');
+
+                    // Traduire la page
+                    if (window.FA_i18n && window.FA_i18n.translatePage) {
+                        window.FA_i18n.translatePage(lang);
+                    }
                 });
             }
 
@@ -283,32 +342,29 @@
             document.addEventListener('click', function() {
                 langDropdown.classList.remove('open');
             });
-
-            // Restaurer le choix sauvegarde
-            try {
-                var savedLang = localStorage.getItem('fa_genesis_lang');
-                if (savedLang) {
-                    var savedOption = langDropdown.querySelector('[data-lang="' + savedLang + '"]');
-                    if (savedOption) {
-                        langFlag.textContent = savedOption.getAttribute('data-flag');
-                        langLabel.textContent = savedOption.getAttribute('data-label');
-                        for (var k = 0; k < options.length; k++) {
-                            options[k].classList.remove('active');
-                        }
-                        savedOption.classList.add('active');
-                    }
-                }
-            } catch(e) {}
         }
 
-        // === Cookies button ===
+        // === Cookies button -> banniere ===
         var cookiesBtn = document.getElementById('fg-cookies-btn');
         if (cookiesBtn) {
             cookiesBtn.addEventListener('click', function(e) {
                 e.preventDefault();
-                alert('Ce site utilise uniquement des cookies techniques n\u00e9cessaires au fonctionnement du service (authentification, session). Aucun cookie publicitaire ou de tracking n\u2019est utilis\u00e9.');
+                // Forcer l'affichage meme si deja accepte (on re-ouvre)
+                try { localStorage.removeItem('fa_genesis_cookies_accepted'); } catch(e) {}
+                // Supprimer l'ancien overlay s'il existe
+                var old = document.getElementById('fg-cookie-overlay');
+                if (old) old.remove();
+                showCookieBanner();
             });
         }
+
+        // Charger i18n.js dynamiquement
+        var i18nScript = document.createElement('script');
+        i18nScript.src = BASE + 'i18n.js';
+        document.body.appendChild(i18nScript);
+
+        // Afficher la banniere cookies au premier chargement
+        showCookieBanner();
     }
 
     // Executer au chargement du DOM
