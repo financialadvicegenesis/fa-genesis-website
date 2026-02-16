@@ -6,11 +6,15 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    <link rel="dns-prefetch" href="https://fonts.googleapis.com">
+    <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
     <title>Offres & Tarifs - FA GENESIS | Nos Solutions</title>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;900&family=Space+Grotesk:wght@300;700&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;900&family=Space+Grotesk:wght@300;700&display=swap" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;900&family=Space+Grotesk:wght@300;700&display=swap"></noscript>
     <link rel="stylesheet" href="tailwind.min.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.css" rel="stylesheet" media="print" onload="this.media='all'">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"></noscript>
     <style>
 
         :root {
@@ -549,9 +553,19 @@
     <!-- FOOTER -->
     <div id="site-footer"></div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>
     <script>
-        AOS.init({ duration: 1000, once: true, disable: 'mobile', offset: 120 });
+        if (window.innerWidth > 768) {
+            var aosScript = document.createElement('script');
+            aosScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js';
+            aosScript.onload = function() { AOS.init({ duration: 800, once: true, offset: 100 }); };
+            document.body.appendChild(aosScript);
+        } else {
+            document.querySelectorAll('[data-aos]').forEach(function(el) {
+                el.removeAttribute('data-aos');
+                el.style.opacity = '1';
+                el.style.transform = 'none';
+            });
+        }
 
         // Menu Mobile Toggle
         const mobileMenuBtn = document.getElementById('mobileMenuBtn');
@@ -624,6 +638,10 @@
         })();
     </script>
     <script src="footer.js" defer></script>
-    <script src="chatbot.js" defer></script>
+    <script>
+        var chatbotLoaded=false;function loadChatbot(){if(chatbotLoaded)return;chatbotLoaded=true;var s=document.createElement('script');s.src='chatbot.js';document.body.appendChild(s);}
+        if('requestIdleCallback' in window){requestIdleCallback(loadChatbot,{timeout:4000});}else{setTimeout(loadChatbot,3000);}
+        window.addEventListener('scroll',loadChatbot,{once:true,passive:true});window.addEventListener('touchstart',loadChatbot,{once:true,passive:true});
+    </script>
 </body>
 </html>
