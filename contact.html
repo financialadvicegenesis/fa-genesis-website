@@ -337,6 +337,82 @@
             submitBtn.disabled = false;
             submitBtn.innerHTML = 'Envoyer';
         });
+
+        // Pre-remplir depuis le mini-diagnostic (localStorage)
+        (function() {
+            try {
+                var diagRaw = localStorage.getItem('fa_diagnostic');
+                if (!diagRaw) return;
+                var diag = JSON.parse(diagRaw);
+                // Ne pre-remplir que si recent (moins de 10 min)
+                if (diag.timestamp && (Date.now() - diag.timestamp) > 600000) {
+                    localStorage.removeItem('fa_diagnostic');
+                    return;
+                }
+
+                var PROFILE_MAP = { student: 'etudiant', individual: 'particulier', business: 'entreprise' };
+                var PROFILE_LABELS = { student: 'Étudiant', individual: 'Particulier', business: 'Entreprise' };
+                var NEED_LABELS = { package: 'Accompagnement packagé', quote: 'Devis personnalisé', individual: 'Prestation individuelle' };
+                var QUOTE_LABELS = { custom_package: 'Offre packagée sur mesure', individual_quote: 'Prestation individuelle sur devis', hybrid: 'Projet hybride (accompagnement + production + média)' };
+                var CHOICE_LABELS = { photo: 'Photo', video: 'Vidéo', marketing: 'Marketing', media: 'Média' };
+
+                // Remplir profil
+                var profilSelect = document.getElementById('contactProfil');
+                if (profilSelect && PROFILE_MAP[diag.profile]) {
+                    profilSelect.value = PROFILE_MAP[diag.profile];
+                }
+
+                // Remplir objet = devis
+                var objetSelect = document.getElementById('contactObjet');
+                if (objetSelect) {
+                    objetSelect.value = 'devis';
+                    // Trigger change pour afficher le champ service type
+                    var changeEvt = new Event('change', { bubbles: true });
+                    objetSelect.dispatchEvent(changeEvt);
+                }
+
+                // Remplir service type si applicable
+                if (diag.need === 'individual' && diag.choice) {
+                    var serviceSelect = document.getElementById('contactServiceType');
+                    if (serviceSelect && (diag.choice === 'photo' || diag.choice === 'video' || diag.choice === 'marketing' || diag.choice === 'media')) {
+                        serviceSelect.value = diag.choice;
+                    }
+                }
+
+                // Construire le message prerempli
+                var lines = [];
+                lines.push('Profil : ' + (PROFILE_LABELS[diag.profile] || diag.profile));
+                lines.push('Besoin : ' + (NEED_LABELS[diag.need] || diag.need));
+                if (diag.quoteType) {
+                    lines.push('Type : ' + (QUOTE_LABELS[diag.quoteType] || diag.quoteType));
+                }
+                if (diag.need === 'individual' && diag.choice) {
+                    lines.push('Prestation : ' + (CHOICE_LABELS[diag.choice] || diag.choice));
+                }
+                lines.push('');
+                lines.push('Objectif : ');
+
+                var messageField = document.getElementById('contactMessage');
+                if (messageField) {
+                    messageField.value = lines.join('\n');
+                }
+
+                // Supprimer apres utilisation
+                localStorage.removeItem('fa_diagnostic');
+
+                // Afficher un bandeau discret
+                var feedback = document.getElementById('contactFeedback');
+                if (feedback) {
+                    feedback.style.display = 'block';
+                    feedback.style.background = '#FFD700';
+                    feedback.style.color = '#000';
+                    feedback.innerHTML = '<i class="fas fa-magic mr-2"></i>Formulaire pré-rempli depuis votre diagnostic. Complétez et envoyez !';
+                    setTimeout(function() { feedback.style.display = 'none'; }, 5000);
+                }
+            } catch (e) {
+                console.error('[CONTACT] Erreur pre-remplissage diagnostic:', e);
+            }
+        })();
     </script>
     <script src="footer.js" defer></script>
     <script src="chatbot.js" defer></script>

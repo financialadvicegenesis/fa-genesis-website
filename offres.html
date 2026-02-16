@@ -179,7 +179,7 @@
             <div id="offres-etudiants" class="mb-16 md:mb-40 text-center font-black uppercase">
                 <h3 class="text-2xl md:text-4xl lg:text-5xl font-black mb-8 md:mb-16 bg-black text-white inline-block px-6 md:px-10 py-3 md:py-5 italic transform -rotate-2 tracking-tighter uppercase">ÉTUDIANTS</h3>
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 md:gap-8 text-left text-white font-black">
-                    <div class="neo-card p-8 flex flex-col justify-between card-high-visibility font-black" style="background: linear-gradient(135deg, #000000, #26ff22);" data-aos="flip-up">
+                    <div id="student-idea" class="neo-card p-8 flex flex-col justify-between card-high-visibility font-black" style="background: linear-gradient(135deg, #000000, #26ff22);" data-aos="flip-up">
                         <div><div class="elite-badge-white mb-6">2 Jours</div><h4 class="text-2xl uppercase italic mb-2 text-white text-left">IDEA</h4></div>
                         <div class="mt-12 flex-grow flex flex-col justify-end text-white text-left font-black">
                             <div class="price-display mb-1 text-3xl">50 €</div>
@@ -190,7 +190,7 @@
                                 <li>✔ Mini plan d'action (7 jours)</li>
                             </ul><a href="register.html?offre=etudiant-idea" class="btn-elite-black text-center">Sélectionner</a></div>
                     </div>
-                    <div class="neo-card p-8 flex flex-col justify-between card-high-visibility font-black" style="background: linear-gradient(135deg, #000000, #05ffff);" data-aos="flip-up" data-aos-delay="100">
+                    <div id="student-starter" class="neo-card p-8 flex flex-col justify-between card-high-visibility font-black" style="background: linear-gradient(135deg, #000000, #05ffff);" data-aos="flip-up" data-aos-delay="100">
                         <div><div class="elite-badge-white mb-6 text-black font-black text-left">7 Jours</div><h4 class="text-2xl uppercase italic mb-2 text-white text-left">STARTER</h4></div>
                         <div class="mt-12 flex-grow flex flex-col justify-end text-white text-left font-black">
                             <div class="price-display mb-1 text-3xl font-black">100 €</div>
@@ -202,7 +202,7 @@
                                 <li>✔ Plan d'action (14 jours)</li>
                             </ul><a href="register.html?offre=etudiant-starter" class="btn-elite-black text-center">Démarrer</a></div>
                     </div>
-                    <div class="neo-card p-8 flex flex-col justify-between card-high-visibility font-black" style="background: linear-gradient(135deg, #191418, #c400ff);" data-aos="flip-up" data-aos-delay="200">
+                    <div id="student-launch" class="neo-card p-8 flex flex-col justify-between card-high-visibility font-black" style="background: linear-gradient(135deg, #191418, #c400ff);" data-aos="flip-up" data-aos-delay="200">
                         <div><div class="elite-badge-white mb-6 text-black font-black text-left">14 Jours</div><h4 class="text-2xl uppercase italic mb-2 text-white text-left">LAUNCH</h4></div>
                         <div class="mt-12 flex-grow flex flex-col justify-end text-white text-left font-black">
                             <div class="price-display mb-1 text-3xl font-black">189 €</div>
@@ -216,7 +216,7 @@
                                 <li>✔ Plan de diffusion (30 jours)</li>
                             </ul><a href="register.html?offre=etudiant-launch" class="btn-elite-black text-center">Lancer</a></div>
                     </div>
-                    <div class="neo-card p-8 flex flex-col justify-between card-high-visibility font-black" style="background: linear-gradient(135deg, #ff0000, #ff00b8);" data-aos="flip-up" data-aos-delay="300">
+                    <div id="student-impact" class="neo-card p-8 flex flex-col justify-between card-high-visibility font-black" style="background: linear-gradient(135deg, #ff0000, #ff00b8);" data-aos="flip-up" data-aos-delay="300">
                         <div><div class="elite-badge-white mb-6 text-black font-black text-left font-black">1 Mois</div><h4 class="text-2xl mt-6 uppercase italic text-white">IMPACT</h4></div>
                         <div class="mt-12 flex-grow flex flex-col justify-end text-white text-left font-black">
                             <div class="price-display mb-1 text-3xl font-black text-left">290 €</div>
@@ -251,7 +251,7 @@
             <div id="offres-particuliers" class="mb-16 md:mb-40 text-center font-black uppercase">
                 <h3 class="text-2xl md:text-4xl lg:text-5xl font-black mb-8 md:mb-16 bg-black text-white inline-block px-6 md:px-10 py-3 md:py-5 italic transform rotate-1 tracking-tighter text-center uppercase">PARTICULIERS</h3>
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 md:gap-8 text-left text-white font-black">
-                    <div class="neo-card p-8 flex flex-col justify-between card-high-visibility font-black" style="background: linear-gradient(135deg, #000000, #00ff66);" data-aos="zoom-in">
+                    <div id="individual-idea" class="neo-card p-8 flex flex-col justify-between card-high-visibility font-black" style="background: linear-gradient(135deg, #000000, #00ff66);" data-aos="zoom-in">
                         <div><div class="elite-badge-white mb-6">2 Jours</div><h4 class="text-2xl font-black italic uppercase mb-2 text-white text-left font-black font-black">IDEA</h4></div>
                         <div class="mt-12 flex-grow flex flex-col justify-end text-white text-left font-black">
                             <div class="price-display mb-1 text-3xl text-left text-white font-black">149 €</div>
@@ -262,7 +262,7 @@
                             </ul><a href="register.html?offre=particulier-idea" class="btn-elite-black text-center font-black">Sélectionner</a></div>
                     </div>
                     <!-- STARTER INDIV -->
-                    <div class="neo-card p-8 flex flex-col justify-between card-high-visibility font-black" style="background: linear-gradient(135deg, #000000, #006d67);" data-aos="zoom-in" data-aos-delay="100">
+                    <div id="individual-starter" class="neo-card p-8 flex flex-col justify-between card-high-visibility font-black" style="background: linear-gradient(135deg, #000000, #006d67);" data-aos="zoom-in" data-aos-delay="100">
                         <div><div class="elite-badge-white mb-6 text-black font-black text-left font-black font-black">7 Jours</div><h4 class="text-2xl font-black italic uppercase mb-2 text-white text-left font-black font-black">STARTER</h4></div>
                         <div class="mt-12 flex-grow flex flex-col justify-end text-white text-left font-black">
                             <div class="price-display mb-1 text-3xl font-black text-left text-left font-black text-left font-black">490 €</div>
@@ -275,7 +275,7 @@
                             </ul><a href="register.html?offre=particulier-starter" class="btn-elite-black text-center font-black font-black">Démarrer</a></div>
                     </div>
                     <!-- LAUNCH INDIV -->
-                    <div class="neo-card p-8 flex flex-col justify-between card-high-visibility font-black" style="background: linear-gradient(135deg, #191418, #8300ab);" data-aos="zoom-in" data-aos-delay="200">
+                    <div id="individual-launch" class="neo-card p-8 flex flex-col justify-between card-high-visibility font-black" style="background: linear-gradient(135deg, #191418, #8300ab);" data-aos="zoom-in" data-aos-delay="200">
                         <div><div class="elite-badge-white mb-6 text-black font-black text-left font-black text-left font-black text-left font-black">14 Jours</div><h4 class="text-2xl font-black italic uppercase mb-2 text-white font-black text-left font-black uppercase text-left font-black">LAUNCH</h4></div>
                         <div class="mt-12 flex-grow flex flex-col justify-end text-white text-left font-black">
                             <div class="price-display mb-1 text-3xl font-black text-left text-left font-black">790 €</div>
@@ -290,7 +290,7 @@
                             </ul><a href="register.html?offre=particulier-launch" class="btn-elite-black text-center font-black">Lancer</a></div>
                     </div>
                     <!-- IMPACT INDIV -->
-                    <div class="neo-card p-8 flex flex-col justify-between card-high-visibility font-black" style="background: linear-gradient(135deg, #ff0000, #ff00b8);" data-aos="zoom-in" data-aos-delay="300">
+                    <div id="individual-impact" class="neo-card p-8 flex flex-col justify-between card-high-visibility font-black" style="background: linear-gradient(135deg, #ff0000, #ff00b8);" data-aos="zoom-in" data-aos-delay="300">
                         <div><div class="elite-badge-white mb-6 text-black font-black text-left font-black font-black">1 mois</div><h4 class="text-2xl font-black italic uppercase mb-2 text-white font-black text-left">IMPACT</h4></div>
                         <div class="mt-12 flex-grow flex flex-col justify-end text-white text-left font-black font-black text-left font-black">
                             <div class="price-display mb-1 text-3xl font-black text-left text-left font-black text-left">1490 €</div>
@@ -327,7 +327,7 @@
             <div id="offres-entreprises" class="mb-16 md:mb-40 text-center font-black uppercase">
                 <h3 class="text-2xl md:text-4xl lg:text-5xl font-black mb-8 md:mb-16 bg-black text-white inline-block px-6 md:px-10 py-3 md:py-5 italic transform -rotate-1 tracking-tighter text-center uppercase">ENTREPRISES</h3>
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8 text-left text-white font-black">
-                    <div class="neo-card p-10 card-high-visibility flex flex-col justify-between text-left font-black" style="background: linear-gradient(135deg, #202020, #ff5c00);" data-aos="fade-up">
+                    <div id="business-start" class="neo-card p-10 card-high-visibility flex flex-col justify-between text-left font-black" style="background: linear-gradient(135deg, #202020, #ff5c00);" data-aos="fade-up">
                         <div>
                             <div class="elite-badge-white mb-6 font-black font-black font-black">7 jours</div>
                             <h4 class="text-3xl font-black italic mb-2 uppercase text-white text-left font-black">START</h4>
@@ -342,7 +342,7 @@
                             <li>✔ Mini plan d'action (30 jours)</li>
                         </ul><a href="register.html?offre=entreprise-start" class="btn-elite-black text-center font-black">Démarrer</a>
                     </div>
-                    <div class="neo-card p-10 card-high-visibility flex flex-col justify-between text-left font-black font-black font-black" style="background: linear-gradient(135deg, #202020, #ff0000);" data-aos="fade-up" data-aos-delay="200">
+                    <div id="business-visibility" class="neo-card p-10 card-high-visibility flex flex-col justify-between text-left font-black font-black font-black" style="background: linear-gradient(135deg, #202020, #ff0000);" data-aos="fade-up" data-aos-delay="200">
                         <div>
                             <div class="elite-badge-white mb-6 text-black font-black font-black text-left">14 jours</div>
                             <h4 class="text-3xl font-black italic mb-2 uppercase text-white text-left font-black">VISIBILITY</h4>
@@ -360,7 +360,7 @@
                             <li>✔ Plan de diffusion (30 jours)</li>
                         </ul><a href="register.html?offre=entreprise-visibility" class="btn-elite-black text-center font-black">Propulser</a>
                     </div>
-                    <div class="neo-card p-10 card-high-visibility flex flex-col justify-between text-left text-white font-black uppercase font-black" style="background: linear-gradient(135deg, #202020, #ffbc0f);" data-aos="fade-up" data-aos-delay="400">
+                    <div id="business-impact" class="neo-card p-10 card-high-visibility flex flex-col justify-between text-left text-white font-black uppercase font-black" style="background: linear-gradient(135deg, #202020, #ffbc0f);" data-aos="fade-up" data-aos-delay="400">
                         <div>
                             <div class="elite-badge-white mb-6 text-black font-black text-left">30 jours</div>
                             <h4 class="text-3xl font-black italic mb-2 uppercase font-black text-white text-left font-black">IMPACT</h4>
@@ -586,6 +586,42 @@
         }
 
         mobileMenuBtn.addEventListener('click', toggleMobileMenu);
+
+        // Highlight offre recommandee depuis le diagnostic
+        (function() {
+            try {
+                var diag = localStorage.getItem('fa_diagnostic');
+                if (!diag) return;
+                var data = JSON.parse(diag);
+                // Ne highlight que si recent (moins de 10 min)
+                if (data.timestamp && (Date.now() - data.timestamp) > 600000) return;
+
+                // Extraire l'ancre depuis recommended
+                var recommended = data.recommended || '';
+                var hash = recommended.indexOf('#') !== -1 ? recommended.split('#')[1] : '';
+                if (!hash) {
+                    // Si on est sur la bonne page avec un hash dans l'URL
+                    hash = window.location.hash.replace('#', '');
+                }
+                if (!hash) return;
+
+                var card = document.getElementById(hash);
+                if (!card) return;
+
+                // Ajouter un highlight visuel
+                card.style.outline = '4px solid #FFD700';
+                card.style.outlineOffset = '4px';
+                card.style.transition = 'outline 0.3s ease';
+
+                // Scroll smooth vers la carte
+                setTimeout(function() {
+                    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }, 500);
+
+                // Supprimer le diagnostic apres utilisation
+                localStorage.removeItem('fa_diagnostic');
+            } catch (e) {}
+        })();
     </script>
     <script src="footer.js" defer></script>
     <script src="chatbot.js" defer></script>
