@@ -446,7 +446,12 @@ app.get('/api/health', (req, res) => {
     res.json({
         status: 'ok',
         sumup_configured: hasApiKey && hasMerchantCode,
-        mode: process.env.SUMUP_MODE || 'sandbox'
+        mode: process.env.SUMUP_MODE || 'sandbox',
+        mongodb: persistentStore.isConnected() ? 'connected' : 'not configured',
+        data: {
+            users: loadUsers().length,
+            orders: loadOrders().length
+        }
     });
 });
 
@@ -1034,6 +1039,27 @@ app.post('/api/payments/verify', async (req, res) => {
                             }
                         } catch (autoAssignErr) {
                             console.error('[VERIFY] Erreur auto-assignation partenaire:', autoAssignErr);
+                        }
+
+                        // Auto-bootstrap projet IA pour offres accompagnement
+                        try {
+                            var productForBootstrap = getProductById(updatedOrder.product_id);
+                            if (productForBootstrap && productForBootstrap.product_type === 'accompagnement') {
+                                var bootstrapUser = {
+                                    email: clientEmail,
+                                    firstName: updatedOrder.client_info.first_name,
+                                    lastName: updatedOrder.client_info.last_name,
+                                    id: updatedOrder.client_info.email
+                                };
+                                var bootstrapResult = bootstrapService.bootstrapProject(updatedOrder, bootstrapUser);
+                                if (bootstrapResult.success) {
+                                    console.log('[VERIFY] Projet IA bootstrap: ' + bootstrapResult.project.id + ' (' + bootstrapResult.deliverables.length + ' livrables)');
+                                } else {
+                                    console.log('[VERIFY] Bootstrap non effectue: ' + (bootstrapResult.error || 'raison inconnue'));
+                                }
+                            }
+                        } catch (bootstrapErr) {
+                            console.error('[VERIFY] Erreur bootstrap projet IA (non-bloquant):', bootstrapErr.message);
                         }
 
                     } else if (paymentStage === 'balance') {
