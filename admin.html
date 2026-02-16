@@ -208,40 +208,40 @@
         <!-- NAVIGATION -->
         <nav class="fixed top-0 w-full z-50 bg-black/95 backdrop-blur-md border-b-4 border-[var(--genesis-yellow)] px-6 py-4">
             <div class="flex justify-between items-center">
-                <div class="flex items-center gap-8">
-                    <h1 class="text-2xl font-black text-[var(--genesis-yellow)]">
-                        <i class="fas fa-shield-alt mr-2"></i>ADMIN FA GENESIS
+                <div class="flex items-center gap-4">
+                    <h1 class="text-xl font-black text-[var(--genesis-yellow)]" style="white-space:nowrap;">
+                        <i class="fas fa-shield-alt mr-1"></i>ADMIN
                     </h1>
-                    <div class="hidden md:flex gap-6 text-sm font-black">
-                        <button onclick="showSection('dashboard')" class="nav-btn text-white hover:text-[var(--genesis-yellow)]">
-                            <i class="fas fa-chart-line mr-2"></i>Dashboard
+                    <div class="hidden md:flex gap-3 text-xs font-black" style="flex-wrap:nowrap;">
+                        <button onclick="showSection('dashboard')" class="nav-btn text-white hover:text-[var(--genesis-yellow)]" style="white-space:nowrap;">
+                            <i class="fas fa-chart-line mr-1"></i>Dashboard
                         </button>
-                        <button onclick="showSection('clients')" class="nav-btn text-white hover:text-[var(--genesis-yellow)]">
-                            <i class="fas fa-users mr-2"></i>Clients
+                        <button onclick="showSection('clients')" class="nav-btn text-white hover:text-[var(--genesis-yellow)]" style="white-space:nowrap;">
+                            <i class="fas fa-users mr-1"></i>Clients
                         </button>
-                        <button onclick="showSection('messages')" class="nav-btn text-white hover:text-[var(--genesis-yellow)]" style="position:relative;">
-                            <i class="fas fa-envelope mr-2"></i>Messages
+                        <button onclick="showSection('messages')" class="nav-btn text-white hover:text-[var(--genesis-yellow)]" style="position:relative;white-space:nowrap;">
+                            <i class="fas fa-envelope mr-1"></i>Messages
                             <span id="unreadBadge" style="display:none;position:absolute;top:-8px;right:-8px;background:#ff6b6b;color:white;border-radius:50%;width:20px;height:20px;font-size:11px;line-height:20px;text-align:center;"></span>
                         </button>
-                        <button onclick="showSection('commandes')" class="nav-btn text-white hover:text-[var(--genesis-yellow)]">
-                            <i class="fas fa-receipt mr-2"></i>Commandes
+                        <button onclick="showSection('commandes')" class="nav-btn text-white hover:text-[var(--genesis-yellow)]" style="white-space:nowrap;">
+                            <i class="fas fa-receipt mr-1"></i>Commandes
                         </button>
-                        <button onclick="showSection('partenaires')" class="nav-btn text-white hover:text-[var(--genesis-yellow)]">
-                            <i class="fas fa-handshake mr-2"></i>Partenaires
+                        <button onclick="showSection('partenaires')" class="nav-btn text-white hover:text-[var(--genesis-yellow)]" style="white-space:nowrap;">
+                            <i class="fas fa-handshake mr-1"></i>Partenaires
                         </button>
-                        <button onclick="showSection('devis')" class="nav-btn text-white hover:text-[var(--genesis-yellow)]" style="position:relative;">
-                            <i class="fas fa-file-invoice mr-2"></i>Devis
+                        <button onclick="showSection('devis')" class="nav-btn text-white hover:text-[var(--genesis-yellow)]" style="position:relative;white-space:nowrap;">
+                            <i class="fas fa-file-invoice mr-1"></i>Devis
                             <span id="pendingQuotesBadge" style="display:none;position:absolute;top:-8px;right:-8px;background:#ff6b6b;color:white;border-radius:50%;width:20px;height:20px;font-size:11px;line-height:20px;text-align:center;"></span>
                         </button>
-                        <button onclick="showSection('workflow')" class="nav-btn text-white hover:text-[var(--genesis-yellow)]" style="position:relative;">
-                            <i class="fas fa-tasks mr-2"></i>À valider
+                        <button onclick="showSection('workflow')" class="nav-btn text-white hover:text-[var(--genesis-yellow)]" style="position:relative;white-space:nowrap;">
+                            <i class="fas fa-tasks mr-1"></i>À valider
                             <span id="pendingWorkflowBadge" style="display:none;position:absolute;top:-8px;right:-8px;background:#ff6b6b;color:white;border-radius:50%;width:20px;height:20px;font-size:11px;line-height:20px;text-align:center;"></span>
                         </button>
-                        <button onclick="showSection('projets')" class="nav-btn text-white hover:text-[var(--genesis-yellow)]">
-                            <i class="fas fa-project-diagram mr-2"></i>Projets IA
+                        <button onclick="showSection('projets')" class="nav-btn text-white hover:text-[var(--genesis-yellow)]" style="white-space:nowrap;">
+                            <i class="fas fa-project-diagram mr-1"></i>Projets IA
                         </button>
-                        <button onclick="showSection('seances')" class="nav-btn text-white hover:text-[var(--genesis-yellow)]" style="position:relative;">
-                            <i class="fas fa-video mr-2"></i>Séances
+                        <button onclick="showSection('seances')" class="nav-btn text-white hover:text-[var(--genesis-yellow)]" style="position:relative;white-space:nowrap;">
+                            <i class="fas fa-video mr-1"></i>Séances
                             <span id="pendingSeancesBadge" style="display:none;position:absolute;top:-8px;right:-8px;background:#ff6b6b;color:white;border-radius:50%;width:20px;height:20px;font-size:11px;line-height:20px;text-align:center;"></span>
                         </button>
                     </div>
@@ -333,7 +333,7 @@
                         <i class="fas fa-handshake mr-4"></i>PARTENAIRES
                     </h2>
                     <button onclick="showCreatePartnerForm()" class="neo-btn-yellow px-6 py-3 text-sm">
-                        <i class="fas fa-user-plus mr-2"></i>CREER UN PARTENAIRE
+                        <i class="fas fa-user-plus mr-2"></i>CRÉER UN PARTENAIRE
                     </button>
                 </div>
 
@@ -345,8 +345,8 @@
                     <form id="createPartnerForm">
                         <div class="grid md:grid-cols-2 gap-4 mb-4">
                             <div>
-                                <label class="block font-black mb-2 uppercase text-sm">Prenom</label>
-                                <input type="text" id="partnerPrenom" required placeholder="Prenom">
+                                <label class="block font-black mb-2 uppercase text-sm">Prénom</label>
+                                <input type="text" id="partnerPrenom" required placeholder="Prénom">
                             </div>
                             <div>
                                 <label class="block font-black mb-2 uppercase text-sm">Nom</label>
@@ -359,7 +359,7 @@
                                 <input type="email" id="partnerEmail" required placeholder="email@partenaire.com">
                             </div>
                             <div>
-                                <label class="block font-black mb-2 uppercase text-sm">Telephone</label>
+                                <label class="block font-black mb-2 uppercase text-sm">Téléphone</label>
                                 <input type="tel" id="partnerTelephone" placeholder="06 12 34 56 78">
                             </div>
                         </div>
@@ -385,7 +385,7 @@
                         </div>
                         <div class="flex gap-3">
                             <button type="submit" class="neo-btn-yellow px-8 py-3 text-sm">
-                                <i class="fas fa-check mr-2"></i>CREER
+                                <i class="fas fa-check mr-2"></i>CRÉER
                             </button>
                             <button type="button" onclick="document.getElementById('createPartnerFormContainer').style.display='none'" class="border-4 border-black bg-gray-300 text-black px-6 py-3 text-sm font-black">
                                 ANNULER
@@ -486,21 +486,21 @@
                     </div>
                 </div>
 
-                <!-- Seance effectuee -->
+                <!-- Séance effectuée -->
                 <div class="mt-8 p-6 bg-gray-100 border-4 border-black">
-                    <h3 class="text-xl font-black mb-4"><i class="fas fa-calendar-check mr-2"></i>SEANCE EFFECTUEE</h3>
+                    <h3 class="text-xl font-black mb-4"><i class="fas fa-calendar-check mr-2"></i>SÉANCE EFFECTUÉE</h3>
                     <div class="mb-4">
                         <label class="block font-bold mb-1">Projet :</label>
                         <select id="sessionProjectSelect" class="w-full border-2 border-black p-2 text-sm">
-                            <option value="">-- Selectionner un projet --</option>
+                            <option value="">-- Sélectionner un projet --</option>
                         </select>
                     </div>
                     <div class="mb-4">
-                        <label class="block font-bold mb-1">Notes de seance :</label>
-                        <textarea id="sessionNotesInput" rows="6" class="w-full border-2 border-black p-3 text-sm" placeholder="Entrez vos notes de seance ici..."></textarea>
+                        <label class="block font-bold mb-1">Notes de séance :</label>
+                        <textarea id="sessionNotesInput" rows="6" class="w-full border-2 border-black p-3 text-sm" placeholder="Entrez vos notes de séance ici..."></textarea>
                     </div>
                     <button onclick="submitSessionCompleted()" class="border-4 border-black bg-green-600 text-white px-6 py-3 text-sm font-black hover:bg-green-700">
-                        <i class="fas fa-check mr-2"></i>MARQUER SEANCE EFFECTUEE
+                        <i class="fas fa-check mr-2"></i>MARQUER SÉANCE EFFECTUÉE
                     </button>
                     <div id="sessionResult" class="mt-4" style="display:none;"></div>
                 </div>
@@ -515,7 +515,7 @@
                 <!-- Bouton creer projet -->
                 <div class="mb-6">
                     <button onclick="showCreateProjectForm()" class="border-4 border-black bg-[var(--genesis-yellow)] text-black px-6 py-3 text-sm font-black hover:bg-yellow-400">
-                        <i class="fas fa-plus mr-2"></i>CREER PROJET POUR UNE COMMANDE
+                        <i class="fas fa-plus mr-2"></i>CRÉER PROJET POUR UNE COMMANDE
                     </button>
                 </div>
 
@@ -524,7 +524,7 @@
                     <label class="block font-bold mb-2">ID de la commande :</label>
                     <input type="text" id="createProjectOrderId" class="border-2 border-black p-2 w-full mb-3 text-sm" placeholder="ORD-xxxxx">
                     <button onclick="createProjectFromOrder()" class="border-4 border-black bg-green-600 text-white px-6 py-3 text-sm font-black">
-                        <i class="fas fa-rocket mr-2"></i>CREER LE PROJET
+                        <i class="fas fa-rocket mr-2"></i>CRÉER LE PROJET
                     </button>
                     <div id="createProjectResult" class="mt-3" style="display:none;"></div>
                 </div>
@@ -1035,7 +1035,7 @@
                         </div>
                         <div>
                             <label class="block font-black mb-2 uppercase text-sm">
-                                <i class="fas fa-map-marker-alt mr-1"></i>Ou lieu physique
+                                <i class="fas fa-map-marker-alt mr-1"></i>Ou lieu physique (optionnel)
                             </label>
                             <input type="text" id="sessionLieu" placeholder="Ex: Studio FA Genesis, Paris">
                         </div>
@@ -1781,7 +1781,7 @@
             allPartners.forEach(function(partner) {
                 var typeLabel = PARTNER_TYPE_LABELS[partner.partner_type] || partner.partner_type;
                 var statusColor = partner.accountStatus === 'deactivated' ? '#999' : '#51cf66';
-                var statusLabel = partner.accountStatus === 'deactivated' ? 'DESACTIVE' : 'ACTIF';
+                var statusLabel = partner.accountStatus === 'deactivated' ? 'DÉSACTIVÉ' : 'ACTIF';
 
                 html += '<div class="client-row" onclick="openPartnerModal(\'' + partner.id + '\')">' +
                     '<div class="flex justify-between items-center flex-wrap gap-4">' +
@@ -1816,7 +1816,7 @@
             }
 
             if (!partner) {
-                alert('Partenaire non trouve');
+                alert('Partenaire non trouvé');
                 return;
             }
 
@@ -1832,7 +1832,7 @@
                         '<p class="font-black">' + partner.email + '</p>' +
                     '</div>' +
                     '<div>' +
-                        '<p class="text-sm font-bold uppercase opacity-70 mb-1">Telephone</p>' +
+                        '<p class="text-sm font-bold uppercase opacity-70 mb-1">Téléphone</p>' +
                         '<p class="font-black">' + (partner.telephone || 'N/A') + '</p>' +
                     '</div>' +
                     '<div>' +
@@ -1848,7 +1848,7 @@
                         '<p class="font-black">' + (partner.accountStatus === 'deactivated' ? 'Désactivé' : 'Actif') + '</p>' +
                     '</div>' +
                     '<div>' +
-                        '<p class="text-sm font-bold uppercase opacity-70 mb-1">Cree le</p>' +
+                        '<p class="text-sm font-bold uppercase opacity-70 mb-1">Créé le</p>' +
                         '<p class="font-black">' + (partner.created_at ? new Date(partner.created_at).toLocaleDateString('fr-FR') : 'N/A') + '</p>' +
                     '</div>' +
                 '</div>' +
@@ -2984,7 +2984,7 @@
                     headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' }
                 });
                 if (response.ok) {
-                    alert('Livrable approuve !');
+                    alert('Livrable approuvé !');
                     loadPendingDeliverables();
                 } else {
                     var err = await response.json();
@@ -3001,7 +3001,7 @@
                     headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' }
                 });
                 if (response.ok) {
-                    alert('Livrable publie ! Le client peut maintenant le voir.');
+                    alert('Livrable publié ! Le client peut maintenant le voir.');
                     loadPendingDeliverables();
                 } else {
                     var err = await response.json();
@@ -3021,7 +3021,7 @@
                     body: JSON.stringify({ note: note })
                 });
                 if (response.ok) {
-                    alert('Revision demandee au partenaire.');
+                    alert('Révision demandée au partenaire.');
                     loadPendingDeliverables();
                 } else {
                     var err = await response.json();
@@ -3041,7 +3041,7 @@
                 var projects = data.projects || [];
                 var select = document.getElementById('sessionProjectSelect');
                 if (!select) return;
-                var optionsHtml = '<option value="">-- Selectionner un projet --</option>';
+                var optionsHtml = '<option value="">-- Sélectionner un projet --</option>';
                 for (var i = 0; i < projects.length; i++) {
                     var p = projects[i];
                     optionsHtml += '<option value="' + p.id + '">' + p.id + ' - ' + (p.client_name || '') + ' (' + (p.offer_name || '') + ')</option>';
@@ -3054,8 +3054,8 @@
             try {
                 var projectId = document.getElementById('sessionProjectSelect').value;
                 var notes = document.getElementById('sessionNotesInput').value;
-                if (!projectId) { alert('Veuillez selectionner un projet'); return; }
-                if (!notes.trim()) { alert('Veuillez entrer des notes de seance'); return; }
+                if (!projectId) { alert('Veuillez sélectionner un projet'); return; }
+                if (!notes.trim()) { alert('Veuillez entrer des notes de séance'); return; }
 
                 var token = localStorage.getItem('fa_genesis_token');
                 var response = await fetch(API_BASE_URL + '/api/admin/session-completed', {
@@ -3069,7 +3069,7 @@
                     resultDiv.style.display = 'block';
                     if (data.success) {
                         resultDiv.innerHTML = '<div class="p-3 bg-green-100 border-2 border-green-500 text-green-800 font-bold">' +
-                            '<i class="fas fa-check mr-2"></i>Seance marquee ! ' + (data.generated ? data.generated.length : 0) + ' documents generes.' +
+                            '<i class="fas fa-check mr-2"></i>Séance marquée ! ' + (data.generated ? data.generated.length : 0) + ' documents générés.' +
                             '</div>';
                         document.getElementById('sessionNotesInput').value = '';
                         loadPendingDeliverables();
@@ -3123,7 +3123,7 @@
                         '<span style="background:' + statusColor + ';color:white;padding:2px 10px;font-size:12px;font-weight:bold;">' + (p.status || '').toUpperCase() + '</span>' +
                         '</div>' +
                         '<div class="mt-2 text-sm text-gray-600">' +
-                        'Etape ' + p.current_step + '/' + totalSteps + ' | ' + progressCount + ' completee(s) | Jour ' + p.current_day + '/' + p.duration_days +
+                        'Étape ' + p.current_step + '/' + totalSteps + ' | ' + progressCount + ' complétée(s) | Jour ' + p.current_day + '/' + p.duration_days +
                         '</div>' +
                         '<div class="mt-2 bg-gray-200 h-3 border border-black">' +
                         '<div style="width:' + (totalSteps > 0 ? Math.round(progressCount / totalSteps * 100) : 0) + '%;height:100%;background:var(--genesis-yellow);"></div>' +
@@ -3160,7 +3160,7 @@
                     resultDiv.style.display = 'block';
                     if (data.success) {
                         resultDiv.innerHTML = '<div class="p-3 bg-green-100 border-2 border-green-500 text-green-800 font-bold">' +
-                            '<i class="fas fa-check mr-2"></i>Projet ' + data.project.id + ' cree avec ' + data.deliverables_count + ' livrables !' +
+                            '<i class="fas fa-check mr-2"></i>Projet ' + data.project.id + ' créé avec ' + data.deliverables_count + ' livrables !' +
                             '</div>';
                         document.getElementById('createProjectOrderId').value = '';
                         loadProjectsList();
