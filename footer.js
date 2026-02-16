@@ -87,7 +87,7 @@
                 { label: 'Accueil', href: 'index.html' },
                 { label: '\u00c0 propos', href: 'a-propos.html' },
                 { label: 'Offres', href: 'offres.html' },
-                { label: 'FAQ', href: 'faq.html#faq' },
+                { label: 'FAQ', href: 'index.html#faq' },
                 { label: 'Contact', href: 'contact.html' }
             ]
         },
