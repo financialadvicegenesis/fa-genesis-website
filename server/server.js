@@ -741,6 +741,32 @@ app.post('/api/payments/sumup/webhook', async (req, res) => {
 
             const updatedOrder = updateOrder(orderId, updates);
 
+            // === SYNCHRONISER users.json avec le paymentStatus ===
+            if (updatedOrder && updatedOrder.client_info && updatedOrder.client_info.email) {
+                try {
+                    var users = loadUsers();
+                    var userIdx = users.findIndex(function(u) {
+                        return u.email && u.email.toLowerCase() === updatedOrder.client_info.email.toLowerCase();
+                    });
+                    if (userIdx !== -1) {
+                        if (stage === 'deposit') {
+                            users[userIdx].paymentStatus = 'deposit_paid';
+                            users[userIdx].payment_status = 'deposit_paid';
+                        } else if (stage === 'balance') {
+                            users[userIdx].paymentStatus = 'fully_paid';
+                            users[userIdx].payment_status = 'fully_paid';
+                        }
+                        users[userIdx].activeOrderId = orderId;
+                        saveUsers(users);
+                        console.log('[WEBHOOK] users.json mis à jour: ' + updatedOrder.client_info.email + ' → paymentStatus=' + (stage === 'deposit' ? 'deposit_paid' : 'fully_paid'));
+                    } else {
+                        console.log('[WEBHOOK] Utilisateur non trouvé dans users.json: ' + updatedOrder.client_info.email);
+                    }
+                } catch (syncErr) {
+                    console.error('[WEBHOOK] Erreur sync users.json (non-bloquant):', syncErr.message);
+                }
+            }
+
             // Envoyer les emails appropriés
             if (updatedOrder && updatedOrder.client_info) {
                 const clientEmail = updatedOrder.client_info.email;
@@ -2223,6 +2249,41 @@ app.get('/api/auth/me', (req, res) => {
 
         if (!user) {
             return res.status(401).json({ error: 'Session invalide ou expirée' });
+        }
+
+        // Synchroniser le paymentStatus depuis orders.json si besoin
+        try {
+            var orders = loadOrders();
+            var userOrders = orders.filter(function(o) {
+                return o.client_info && o.client_info.email &&
+                    o.client_info.email.toLowerCase() === user.email.toLowerCase();
+            });
+            var paidOrder = userOrders.find(function(o) { return o.deposit_paid === true; });
+            var fullyPaidOrder = userOrders.find(function(o) { return o.balance_paid === true; });
+
+            var correctStatus = 'registered';
+            if (fullyPaidOrder) {
+                correctStatus = 'fully_paid';
+            } else if (paidOrder) {
+                correctStatus = 'deposit_paid';
+            }
+
+            if (user.paymentStatus !== correctStatus) {
+                // Mettre à jour users.json
+                var allUsers = loadUsers();
+                var idx = allUsers.findIndex(function(u) { return u.email === user.email; });
+                if (idx !== -1) {
+                    allUsers[idx].paymentStatus = correctStatus;
+                    allUsers[idx].payment_status = correctStatus;
+                    if (paidOrder && paidOrder.id) allUsers[idx].activeOrderId = paidOrder.id;
+                    saveUsers(allUsers);
+                    user.paymentStatus = correctStatus;
+                    user.payment_status = correctStatus;
+                    console.log('[AUTH/ME] Sync paymentStatus pour ' + user.email + ': ' + correctStatus);
+                }
+            }
+        } catch (syncErr) {
+            console.error('[AUTH/ME] Erreur sync paymentStatus:', syncErr.message);
         }
 
         // Retourner l'utilisateur (sans le mot de passe)

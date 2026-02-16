@@ -344,7 +344,41 @@
                 }
             }
 
-            console.log('[DASHBOARD] Utilisateur:', user ? user.email : 'non trouve');
+            console.log('[DASHBOARD] Utilisateur:', user ? user.email : 'non trouvé');
+
+            if (user) {
+                // 0. Synchroniser avec le backend (met à jour paymentStatus depuis orders.json)
+                try {
+                    var syncToken = localStorage.getItem('fa_genesis_token');
+                    if (syncToken) {
+                        fetch(API_BASE_URL + '/api/auth/me', {
+                            headers: { 'Authorization': 'Bearer ' + syncToken }
+                        }).then(function(syncResp) {
+                            if (!syncResp.ok) return null;
+                            return syncResp.json();
+                        }).then(function(syncData) {
+                            if (syncData && syncData.success && syncData.user) {
+                                var freshUser = syncData.user;
+                                var localUser = null;
+                                try { localUser = JSON.parse(localStorage.getItem('fa_genesis_session')); } catch(e) {}
+                                if (localUser && freshUser.paymentStatus && freshUser.paymentStatus !== localUser.paymentStatus) {
+                                    console.log('[DASHBOARD] Sync serveur: paymentStatus ' + localUser.paymentStatus + ' → ' + freshUser.paymentStatus);
+                                    localUser.paymentStatus = freshUser.paymentStatus;
+                                    localUser.payment_status = freshUser.payment_status || freshUser.paymentStatus;
+                                    if (freshUser.activeOrderId) localUser.activeOrderId = freshUser.activeOrderId;
+                                    if (freshUser.activeOfferId) localUser.activeOfferId = freshUser.activeOfferId;
+                                    if (freshUser.offre) localUser.offre = freshUser.offre;
+                                    localStorage.setItem('fa_genesis_session', JSON.stringify(localUser));
+                                }
+                            }
+                        }).catch(function(syncErr) {
+                            console.warn('[DASHBOARD] Sync serveur échouée (non bloquant):', syncErr.message);
+                        });
+                    }
+                } catch (syncErr2) {
+                    console.warn('[DASHBOARD] Erreur sync:', syncErr2.message);
+                }
+            }
 
             if (user) {
                 // 1. Mise a jour de l'en-tete
@@ -418,10 +452,10 @@
                     // Acompte deja paye selon localStorage
                     showDashboardNormal();
                 } else {
-                    // Verifier aussi cote backend (le localStorage peut ne pas etre a jour)
-                    showDepositRequired();
+                    // localStorage dit 'registered' mais le backend a peut-etre deja recu le paiement
+                    // On verifie le backend EN PREMIER avant d'afficher quoi que ce soit
+                    console.log('[DASHBOARD] localStorage=registered, vérification backend...');
 
-                    // Verification backend : adapter le CTA selon le type de commande
                     try {
                         fetch(API_BASE_URL + '/api/client/orders?email=' + encodeURIComponent(user.email))
                             .then(function(resp) { return resp.ok ? resp.json() : []; })
@@ -429,8 +463,10 @@
                                 // Verifier si une commande a deja l'acompte paye
                                 var paidOrder = orders.find(function(o) { return o.deposit_paid === true; });
                                 if (paidOrder) {
-                                    console.log('[DASHBOARD] Backend confirme acompte payé - mise a jour localStorage');
+                                    console.log('[DASHBOARD] Backend confirme acompte payé - mise à jour localStorage');
                                     user.paymentStatus = 'deposit_paid';
+                                    user.payment_status = 'deposit_paid';
+                                    if (paidOrder.id) user.activeOrderId = paidOrder.id;
                                     localStorage.setItem('fa_genesis_session', JSON.stringify(user));
                                     var depositSection = document.getElementById('depositRequiredSection');
                                     if (depositSection) depositSection.style.display = 'none';
@@ -440,7 +476,10 @@
                                     return;
                                 }
 
-                                // Chercher une commande en attente de paiement
+                                // Pas de commande payée → afficher le CTA acompte
+                                showDepositRequired();
+
+                                // Chercher une commande en attente de paiement pour personnaliser le CTA
                                 var pendingOrder = orders.find(function(o) { return !o.deposit_paid; });
                                 if (pendingOrder) {
                                     var payBtn = document.getElementById('depositPayButton');
@@ -476,7 +515,7 @@
                                             if (quoteData && quoteData.acceptance_token && payBtn) {
                                                 payBtn.href = 'quote-accept.html?token=' + encodeURIComponent(quoteData.acceptance_token);
                                                 payBtn.innerHTML = '<i class="fas fa-credit-card mr-3"></i>Payer l\'acompte du devis (' + pendingOrder.deposit_amount.toFixed(2) + ' \u20ac)';
-                                                console.log('[DASHBOARD] Lien devis mis a jour avec token');
+                                                console.log('[DASHBOARD] Lien devis mis à jour avec token');
                                             }
                                         })
                                         .catch(function(qErr) {
@@ -489,13 +528,19 @@
                                         }
                                         console.log('[DASHBOARD] Commande offre/tarif détectée - redirection payment.html');
                                     }
+                                } else {
+                                    // Aucune commande trouvée du tout
+                                    showDepositRequired();
                                 }
                             })
                             .catch(function(err) {
                                 console.error('[DASHBOARD] Erreur verification backend:', err);
+                                // En cas d'erreur réseau, fallback: afficher le CTA acompte
+                                showDepositRequired();
                             });
                     } catch (backendErr) {
                         console.error('[DASHBOARD] Erreur fetch backend:', backendErr);
+                        showDepositRequired();
                     }
                 }
 
