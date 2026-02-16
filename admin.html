@@ -233,6 +233,13 @@
                             <i class="fas fa-file-invoice mr-2"></i>Devis
                             <span id="pendingQuotesBadge" style="display:none;position:absolute;top:-8px;right:-8px;background:#ff6b6b;color:white;border-radius:50%;width:20px;height:20px;font-size:11px;line-height:20px;text-align:center;"></span>
                         </button>
+                        <button onclick="showSection('workflow')" class="nav-btn text-white hover:text-[var(--genesis-yellow)]" style="position:relative;">
+                            <i class="fas fa-tasks mr-2"></i>À valider
+                            <span id="pendingWorkflowBadge" style="display:none;position:absolute;top:-8px;right:-8px;background:#ff6b6b;color:white;border-radius:50%;width:20px;height:20px;font-size:11px;line-height:20px;text-align:center;"></span>
+                        </button>
+                        <button onclick="showSection('projets')" class="nav-btn text-white hover:text-[var(--genesis-yellow)]">
+                            <i class="fas fa-project-diagram mr-2"></i>Projets IA
+                        </button>
                     </div>
                 </div>
                 <button onclick="handleLogout()" class="border-4 border-white text-white px-4 py-2 text-xs font-black hover:bg-white hover:text-black transition">
@@ -445,6 +452,93 @@
                 </div>
             </div>
 
+            <!-- ===== SECTION A VALIDER ===== -->
+            <div id="workflowSection" class="container mx-auto max-w-7xl" style="display: none;">
+                <h2 class="text-3xl font-black mb-6" style="font-family:'Playfair Display',serif;">
+                    <i class="fas fa-tasks mr-3" style="color:var(--genesis-yellow);"></i>LIVRABLES A VALIDER
+                </h2>
+
+                <!-- Sous-onglets -->
+                <div class="flex gap-3 mb-6">
+                    <button onclick="showWorkflowTab('pending-ai')" id="tabPendingAi" class="border-4 border-black bg-[var(--genesis-yellow)] text-black px-4 py-2 text-sm font-black">
+                        Documents IA en attente
+                    </button>
+                    <button onclick="showWorkflowTab('pending-partner')" id="tabPendingPartner" class="border-4 border-black bg-gray-300 text-black px-4 py-2 text-sm font-black">
+                        Livrables partenaires
+                    </button>
+                </div>
+
+                <!-- Contenu docs IA -->
+                <div id="pendingAiContainer">
+                    <div id="pendingAiList" class="space-y-4">
+                        <p class="text-gray-500">Chargement...</p>
+                    </div>
+                </div>
+
+                <!-- Contenu livrables partenaires -->
+                <div id="pendingPartnerContainer" style="display:none;">
+                    <div id="pendingPartnerList" class="space-y-4">
+                        <p class="text-gray-500">Chargement...</p>
+                    </div>
+                </div>
+
+                <!-- Seance effectuee -->
+                <div class="mt-8 p-6 bg-gray-100 border-4 border-black">
+                    <h3 class="text-xl font-black mb-4"><i class="fas fa-calendar-check mr-2"></i>SEANCE EFFECTUEE</h3>
+                    <div class="mb-4">
+                        <label class="block font-bold mb-1">Projet :</label>
+                        <select id="sessionProjectSelect" class="w-full border-2 border-black p-2 text-sm">
+                            <option value="">-- Selectionner un projet --</option>
+                        </select>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block font-bold mb-1">Notes de seance :</label>
+                        <textarea id="sessionNotesInput" rows="6" class="w-full border-2 border-black p-3 text-sm" placeholder="Entrez vos notes de seance ici..."></textarea>
+                    </div>
+                    <button onclick="submitSessionCompleted()" class="border-4 border-black bg-green-600 text-white px-6 py-3 text-sm font-black hover:bg-green-700">
+                        <i class="fas fa-check mr-2"></i>MARQUER SEANCE EFFECTUEE
+                    </button>
+                    <div id="sessionResult" class="mt-4" style="display:none;"></div>
+                </div>
+            </div>
+
+            <!-- ===== SECTION PROJETS IA ===== -->
+            <div id="projetsSection" class="container mx-auto max-w-7xl" style="display: none;">
+                <h2 class="text-3xl font-black mb-6" style="font-family:'Playfair Display',serif;">
+                    <i class="fas fa-project-diagram mr-3" style="color:var(--genesis-yellow);"></i>PROJETS IA
+                </h2>
+
+                <!-- Bouton creer projet -->
+                <div class="mb-6">
+                    <button onclick="showCreateProjectForm()" class="border-4 border-black bg-[var(--genesis-yellow)] text-black px-6 py-3 text-sm font-black hover:bg-yellow-400">
+                        <i class="fas fa-plus mr-2"></i>CREER PROJET POUR UNE COMMANDE
+                    </button>
+                </div>
+
+                <!-- Formulaire creation (cache) -->
+                <div id="createProjectForm" style="display:none;" class="mb-6 p-4 bg-gray-100 border-4 border-black">
+                    <label class="block font-bold mb-2">ID de la commande :</label>
+                    <input type="text" id="createProjectOrderId" class="border-2 border-black p-2 w-full mb-3 text-sm" placeholder="ORD-xxxxx">
+                    <button onclick="createProjectFromOrder()" class="border-4 border-black bg-green-600 text-white px-6 py-3 text-sm font-black">
+                        <i class="fas fa-rocket mr-2"></i>CREER LE PROJET
+                    </button>
+                    <div id="createProjectResult" class="mt-3" style="display:none;"></div>
+                </div>
+
+                <!-- Liste des projets -->
+                <div id="projectsList" class="space-y-4">
+                    <p class="text-gray-500">Chargement...</p>
+                </div>
+
+                <!-- Detail projet (cache) -->
+                <div id="projectDetailView" style="display:none;">
+                    <button onclick="backToProjectsList()" class="border-4 border-black bg-gray-300 text-black px-6 py-3 text-sm font-black mb-6">
+                        <i class="fas fa-arrow-left mr-2"></i>RETOUR AUX PROJETS
+                    </button>
+                    <div id="projectDetailContent"></div>
+                </div>
+            </div>
+
         </div>
     </div>
 
@@ -515,6 +609,8 @@
             document.getElementById('commandesSection').style.display = 'none';
             document.getElementById('partenairesSection').style.display = 'none';
             document.getElementById('devisSection').style.display = 'none';
+            document.getElementById('workflowSection').style.display = 'none';
+            document.getElementById('projetsSection').style.display = 'none';
 
             if (section === 'dashboard') {
                 document.getElementById('dashboardSection').style.display = 'block';
@@ -535,6 +631,12 @@
             } else if (section === 'devis') {
                 document.getElementById('devisSection').style.display = 'block';
                 loadAdminQuotes();
+            } else if (section === 'workflow') {
+                document.getElementById('workflowSection').style.display = 'block';
+                loadPendingDeliverables();
+            } else if (section === 'projets') {
+                document.getElementById('projetsSection').style.display = 'block';
+                loadProjectsList();
             }
         }
 
@@ -2698,6 +2800,419 @@
                     var pending = quotes.filter(function(q) { return q.status === 'DRAFT_REQUESTED' || q.status === 'PARTNER_PROPOSED'; }).length;
                     var badge = document.getElementById('pendingQuotesBadge');
                     if (badge && pending > 0) { badge.style.display = 'block'; badge.textContent = pending; }
+                }
+            } catch (e) {}
+        })();
+
+        // ============================================================
+        // WORKFLOW - LIVRABLES A VALIDER
+        // ============================================================
+
+        function showWorkflowTab(tab) {
+            try {
+                var aiTab = document.getElementById('tabPendingAi');
+                var partnerTab = document.getElementById('tabPendingPartner');
+                var aiContainer = document.getElementById('pendingAiContainer');
+                var partnerContainer = document.getElementById('pendingPartnerContainer');
+                if (!aiTab || !partnerTab || !aiContainer || !partnerContainer) return;
+
+                if (tab === 'pending-ai') {
+                    aiTab.style.background = 'var(--genesis-yellow)';
+                    partnerTab.style.background = '#d1d5db';
+                    aiContainer.style.display = 'block';
+                    partnerContainer.style.display = 'none';
+                } else {
+                    aiTab.style.background = '#d1d5db';
+                    partnerTab.style.background = 'var(--genesis-yellow)';
+                    aiContainer.style.display = 'none';
+                    partnerContainer.style.display = 'block';
+                }
+            } catch (e) { console.error('showWorkflowTab:', e); }
+        }
+
+        async function loadPendingDeliverables() {
+            try {
+                var token = localStorage.getItem('fa_genesis_token');
+                var response = await fetch(API_BASE_URL + '/api/admin/deliverables/pending', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (!response.ok) throw new Error('Erreur chargement');
+                var data = await response.json();
+                var deliverables = data.deliverables || [];
+
+                // Mettre a jour le badge
+                var badge = document.getElementById('pendingWorkflowBadge');
+                if (badge) {
+                    if (deliverables.length > 0) {
+                        badge.style.display = 'block';
+                        badge.textContent = deliverables.length;
+                    } else {
+                        badge.style.display = 'none';
+                    }
+                }
+
+                // Separer IA et partenaires
+                var aiDocs = [];
+                var partnerDocs = [];
+                for (var i = 0; i < deliverables.length; i++) {
+                    if (deliverables[i].owner_role === 'ai' || deliverables[i].workflow_status === 'DRAFT_AI') {
+                        aiDocs.push(deliverables[i]);
+                    } else {
+                        partnerDocs.push(deliverables[i]);
+                    }
+                }
+
+                // Afficher docs IA
+                var aiList = document.getElementById('pendingAiList');
+                if (aiList) {
+                    if (aiDocs.length === 0) {
+                        aiList.innerHTML = '<p class="text-gray-500">Aucun document IA en attente.</p>';
+                    } else {
+                        var html = '';
+                        for (var a = 0; a < aiDocs.length; a++) {
+                            html += renderPendingCard(aiDocs[a]);
+                        }
+                        aiList.innerHTML = html;
+                    }
+                }
+
+                // Afficher docs partenaires
+                var partnerList = document.getElementById('pendingPartnerList');
+                if (partnerList) {
+                    if (partnerDocs.length === 0) {
+                        partnerList.innerHTML = '<p class="text-gray-500">Aucun livrable partenaire en attente.</p>';
+                    } else {
+                        var html2 = '';
+                        for (var p = 0; p < partnerDocs.length; p++) {
+                            html2 += renderPendingCard(partnerDocs[p]);
+                        }
+                        partnerList.innerHTML = html2;
+                    }
+                }
+
+                // Charger les projets pour le select seance
+                loadProjectsForSession();
+            } catch (e) {
+                console.error('loadPendingDeliverables:', e);
+            }
+        }
+
+        function renderPendingCard(liv) {
+            var statusBadge = '';
+            if (liv.workflow_status === 'DRAFT_AI') statusBadge = '<span style="background:#3b82f6;color:white;padding:2px 8px;font-size:11px;font-weight:bold;">BROUILLON IA</span>';
+            else if (liv.workflow_status === 'PENDING_ADMIN') statusBadge = '<span style="background:#f59e0b;color:black;padding:2px 8px;font-size:11px;font-weight:bold;">EN ATTENTE VALIDATION</span>';
+
+            var versionsInfo = '';
+            if (liv.versions && liv.versions.length > 0) {
+                versionsInfo = '<span class="text-gray-500 text-xs ml-2">v' + liv.versions.length + '</span>';
+            }
+
+            var contentPreview = '';
+            if (liv.content_text) {
+                var preview = liv.content_text.substring(0, 200).replace(/</g, '&lt;');
+                contentPreview = '<div class="mt-2 p-3 bg-white border text-xs" style="max-height:150px;overflow-y:auto;white-space:pre-wrap;">' + preview + '...</div>';
+            }
+
+            return '<div class="p-4 bg-white border-4 border-black">' +
+                '<div class="flex justify-between items-start mb-2">' +
+                '<div><strong>' + (liv.name || 'Sans nom') + '</strong>' + versionsInfo + '</div>' +
+                statusBadge +
+                '</div>' +
+                '<div class="text-sm text-gray-600 mb-2">' +
+                'Type: ' + (liv.type || '-') + ' | Domaine: ' + (liv.domain || '-') + ' | Commande: ' + (liv.order_id || '-') +
+                '</div>' +
+                contentPreview +
+                '<div class="mt-3 flex gap-2 flex-wrap">' +
+                '<button onclick="approveDeliverable(\'' + liv.id + '\')" class="border-2 border-black bg-green-500 text-white px-3 py-1 text-xs font-bold hover:bg-green-600"><i class="fas fa-check mr-1"></i>APPROUVER</button>' +
+                '<button onclick="publishDeliverable(\'' + liv.id + '\')" class="border-2 border-black bg-blue-500 text-white px-3 py-1 text-xs font-bold hover:bg-blue-600"><i class="fas fa-eye mr-1"></i>PUBLIER</button>' +
+                '<button onclick="requestRevision(\'' + liv.id + '\')" class="border-2 border-black bg-orange-500 text-white px-3 py-1 text-xs font-bold hover:bg-orange-600"><i class="fas fa-redo mr-1"></i>REVISION</button>' +
+                '</div>' +
+                '</div>';
+        }
+
+        async function approveDeliverable(id) {
+            try {
+                var token = localStorage.getItem('fa_genesis_token');
+                var response = await fetch(API_BASE_URL + '/api/admin/deliverables/' + id + '/approve', {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' }
+                });
+                if (response.ok) {
+                    alert('Livrable approuve !');
+                    loadPendingDeliverables();
+                } else {
+                    var err = await response.json();
+                    alert('Erreur: ' + (err.error || 'Erreur inconnue'));
+                }
+            } catch (e) { alert('Erreur: ' + e.message); }
+        }
+
+        async function publishDeliverable(id) {
+            try {
+                var token = localStorage.getItem('fa_genesis_token');
+                var response = await fetch(API_BASE_URL + '/api/admin/deliverables/' + id + '/publish', {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' }
+                });
+                if (response.ok) {
+                    alert('Livrable publie ! Le client peut maintenant le voir.');
+                    loadPendingDeliverables();
+                } else {
+                    var err = await response.json();
+                    alert('Erreur: ' + (err.error || 'Erreur inconnue'));
+                }
+            } catch (e) { alert('Erreur: ' + e.message); }
+        }
+
+        async function requestRevision(id) {
+            var note = prompt('Raison de la demande de revision :');
+            if (!note) return;
+            try {
+                var token = localStorage.getItem('fa_genesis_token');
+                var response = await fetch(API_BASE_URL + '/api/admin/deliverables/' + id + '/request-revision', {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ note: note })
+                });
+                if (response.ok) {
+                    alert('Revision demandee au partenaire.');
+                    loadPendingDeliverables();
+                } else {
+                    var err = await response.json();
+                    alert('Erreur: ' + (err.error || 'Erreur inconnue'));
+                }
+            } catch (e) { alert('Erreur: ' + e.message); }
+        }
+
+        async function loadProjectsForSession() {
+            try {
+                var token = localStorage.getItem('fa_genesis_token');
+                var response = await fetch(API_BASE_URL + '/api/admin/projects', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (!response.ok) return;
+                var data = await response.json();
+                var projects = data.projects || [];
+                var select = document.getElementById('sessionProjectSelect');
+                if (!select) return;
+                var optionsHtml = '<option value="">-- Selectionner un projet --</option>';
+                for (var i = 0; i < projects.length; i++) {
+                    var p = projects[i];
+                    optionsHtml += '<option value="' + p.id + '">' + p.id + ' - ' + (p.client_name || '') + ' (' + (p.offer_name || '') + ')</option>';
+                }
+                select.innerHTML = optionsHtml;
+            } catch (e) { console.error('loadProjectsForSession:', e); }
+        }
+
+        async function submitSessionCompleted() {
+            try {
+                var projectId = document.getElementById('sessionProjectSelect').value;
+                var notes = document.getElementById('sessionNotesInput').value;
+                if (!projectId) { alert('Veuillez selectionner un projet'); return; }
+                if (!notes.trim()) { alert('Veuillez entrer des notes de seance'); return; }
+
+                var token = localStorage.getItem('fa_genesis_token');
+                var response = await fetch(API_BASE_URL + '/api/admin/session-completed', {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ project_id: projectId, session_notes: notes })
+                });
+                var data = await response.json();
+                var resultDiv = document.getElementById('sessionResult');
+                if (resultDiv) {
+                    resultDiv.style.display = 'block';
+                    if (data.success) {
+                        resultDiv.innerHTML = '<div class="p-3 bg-green-100 border-2 border-green-500 text-green-800 font-bold">' +
+                            '<i class="fas fa-check mr-2"></i>Seance marquee ! ' + (data.generated ? data.generated.length : 0) + ' documents generes.' +
+                            '</div>';
+                        document.getElementById('sessionNotesInput').value = '';
+                        loadPendingDeliverables();
+                    } else {
+                        resultDiv.innerHTML = '<div class="p-3 bg-red-100 border-2 border-red-500 text-red-800 font-bold">Erreur: ' + (data.error || 'Erreur inconnue') + '</div>';
+                    }
+                }
+            } catch (e) {
+                alert('Erreur: ' + e.message);
+            }
+        }
+
+        // ============================================================
+        // PROJETS IA
+        // ============================================================
+
+        async function loadProjectsList() {
+            try {
+                var token = localStorage.getItem('fa_genesis_token');
+                var response = await fetch(API_BASE_URL + '/api/admin/projects', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (!response.ok) throw new Error('Erreur chargement');
+                var data = await response.json();
+                var projects = data.projects || [];
+
+                var container = document.getElementById('projectsList');
+                if (!container) return;
+
+                if (projects.length === 0) {
+                    container.innerHTML = '<p class="text-gray-500">Aucun projet IA pour le moment.</p>';
+                    return;
+                }
+
+                var html = '';
+                for (var i = 0; i < projects.length; i++) {
+                    var p = projects[i];
+                    var statusColor = p.status === 'active' ? 'green' : (p.status === 'completed' ? 'blue' : 'gray');
+                    var progressCount = 0;
+                    for (var t = 0; t < (p.timeline_progress || []).length; t++) {
+                        if (p.timeline_progress[t].status === 'completed') progressCount++;
+                    }
+                    var totalSteps = (p.timeline_progress || []).length;
+
+                    html += '<div class="p-4 bg-white border-4 border-black cursor-pointer hover:bg-gray-50" onclick="viewProjectDetail(\'' + p.id + '\')">' +
+                        '<div class="flex justify-between items-start">' +
+                        '<div>' +
+                        '<div class="font-black text-lg">' + p.id + '</div>' +
+                        '<div class="text-sm">' + (p.client_name || '') + ' - ' + (p.offer_name || '') + '</div>' +
+                        '</div>' +
+                        '<span style="background:' + statusColor + ';color:white;padding:2px 10px;font-size:12px;font-weight:bold;">' + (p.status || '').toUpperCase() + '</span>' +
+                        '</div>' +
+                        '<div class="mt-2 text-sm text-gray-600">' +
+                        'Etape ' + p.current_step + '/' + totalSteps + ' | ' + progressCount + ' completee(s) | Jour ' + p.current_day + '/' + p.duration_days +
+                        '</div>' +
+                        '<div class="mt-2 bg-gray-200 h-3 border border-black">' +
+                        '<div style="width:' + (totalSteps > 0 ? Math.round(progressCount / totalSteps * 100) : 0) + '%;height:100%;background:var(--genesis-yellow);"></div>' +
+                        '</div>' +
+                        '</div>';
+                }
+                container.innerHTML = html;
+            } catch (e) {
+                console.error('loadProjectsList:', e);
+                var container = document.getElementById('projectsList');
+                if (container) container.innerHTML = '<p class="text-red-500">Erreur chargement des projets.</p>';
+            }
+        }
+
+        function showCreateProjectForm() {
+            var form = document.getElementById('createProjectForm');
+            if (form) form.style.display = form.style.display === 'none' ? 'block' : 'none';
+        }
+
+        async function createProjectFromOrder() {
+            try {
+                var orderId = document.getElementById('createProjectOrderId').value.trim();
+                if (!orderId) { alert('Veuillez entrer un ID de commande'); return; }
+
+                var token = localStorage.getItem('fa_genesis_token');
+                var response = await fetch(API_BASE_URL + '/api/admin/projects/create-from-order', {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ order_id: orderId })
+                });
+                var data = await response.json();
+                var resultDiv = document.getElementById('createProjectResult');
+                if (resultDiv) {
+                    resultDiv.style.display = 'block';
+                    if (data.success) {
+                        resultDiv.innerHTML = '<div class="p-3 bg-green-100 border-2 border-green-500 text-green-800 font-bold">' +
+                            '<i class="fas fa-check mr-2"></i>Projet ' + data.project.id + ' cree avec ' + data.deliverables_count + ' livrables !' +
+                            '</div>';
+                        document.getElementById('createProjectOrderId').value = '';
+                        loadProjectsList();
+                    } else {
+                        resultDiv.innerHTML = '<div class="p-3 bg-red-100 border-2 border-red-500 text-red-800 font-bold">Erreur: ' + (data.error || 'Erreur inconnue') + '</div>';
+                    }
+                }
+            } catch (e) { alert('Erreur: ' + e.message); }
+        }
+
+        async function viewProjectDetail(projectId) {
+            try {
+                var token = localStorage.getItem('fa_genesis_token');
+                var response = await fetch(API_BASE_URL + '/api/projects/' + projectId + '/timeline', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (!response.ok) throw new Error('Erreur chargement');
+                var data = await response.json();
+
+                document.getElementById('projectsList').style.display = 'none';
+                document.getElementById('createProjectForm').style.display = 'none';
+                document.getElementById('projectDetailView').style.display = 'block';
+
+                var project = data.project;
+                var timeline = data.timeline || [];
+                var html = '<h3 class="text-2xl font-black mb-2">' + project.id + '</h3>' +
+                    '<div class="mb-4 text-sm">' +
+                    '<strong>Client:</strong> ' + (project.client_name || '') + ' | ' +
+                    '<strong>Offre:</strong> ' + (project.offer_name || '') + ' | ' +
+                    '<strong>Statut:</strong> ' + (project.status || '') +
+                    '</div>';
+
+                // Timeline
+                html += '<h4 class="text-xl font-black mb-3 mt-6">TIMELINE</h4>';
+                for (var t = 0; t < timeline.length; t++) {
+                    var entry = timeline[t];
+                    var step = entry.step || {};
+                    var stepStatus = entry.status || 'pending';
+                    var statusIcon = stepStatus === 'completed' ? 'fa-check-circle text-green-600' : (stepStatus === 'in_progress' ? 'fa-spinner fa-spin text-yellow-500' : 'fa-circle text-gray-300');
+                    var borderColor = stepStatus === 'completed' ? 'border-green-500' : (stepStatus === 'in_progress' ? 'border-yellow-400' : 'border-gray-300');
+
+                    html += '<div class="p-4 mb-3 bg-white border-4 ' + borderColor + '">' +
+                        '<div class="flex items-center gap-3 mb-2">' +
+                        '<i class="fas ' + statusIcon + ' text-xl"></i>' +
+                        '<div>' +
+                        '<div class="font-bold">Jour ' + step.day_number + ' - ' + (step.step_name || '') + '</div>' +
+                        '<div class="text-xs text-gray-500">' + (step.actor || '') + ' | ' + (step.domain || '') + '</div>' +
+                        '</div>' +
+                        '</div>';
+
+                    // Livrables de cette etape
+                    if (entry.deliverables && entry.deliverables.length > 0) {
+                        html += '<div class="ml-8 mt-2 space-y-2">';
+                        for (var dl = 0; dl < entry.deliverables.length; dl++) {
+                            var liv = entry.deliverables[dl];
+                            var wfColor = 'gray';
+                            if (liv.workflow_status === 'PUBLISHED') wfColor = 'green';
+                            else if (liv.workflow_status === 'APPROVED') wfColor = 'blue';
+                            else if (liv.workflow_status === 'PENDING_ADMIN') wfColor = 'orange';
+                            else if (liv.workflow_status === 'DRAFT_AI') wfColor = 'purple';
+
+                            html += '<div class="p-2 bg-gray-50 border text-sm flex justify-between items-center">' +
+                                '<span>' + (liv.name || '') + '</span>' +
+                                '<span style="background:' + wfColor + ';color:white;padding:1px 6px;font-size:10px;font-weight:bold;">' + (liv.workflow_status || '') + '</span>' +
+                                '</div>';
+                        }
+                        html += '</div>';
+                    }
+                    html += '</div>';
+                }
+
+                document.getElementById('projectDetailContent').innerHTML = html;
+            } catch (e) {
+                console.error('viewProjectDetail:', e);
+                alert('Erreur chargement du projet');
+            }
+        }
+
+        function backToProjectsList() {
+            document.getElementById('projectDetailView').style.display = 'none';
+            document.getElementById('projectsList').style.display = 'block';
+        }
+
+        // Charger le badge "a valider" au demarrage
+        (async function() {
+            try {
+                var token = localStorage.getItem('fa_genesis_token');
+                if (!token) return;
+                var response = await fetch(API_BASE_URL + '/api/admin/deliverables/pending', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (response.ok) {
+                    var data = await response.json();
+                    var badge = document.getElementById('pendingWorkflowBadge');
+                    if (badge && data.count > 0) {
+                        badge.style.display = 'block';
+                        badge.textContent = data.count;
+                    }
                 }
             } catch (e) {}
         })();

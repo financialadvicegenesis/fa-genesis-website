@@ -19,6 +19,10 @@ const PDFDocument = require('pdfkit');
 
 const { getProductById, calculatePaymentAmounts, getAmountForStage } = require('./products');
 const emailService = require('./email-service');
+const { OFFER_BLUEPRINTS, getOfferBlueprint, getAllOfferKeys } = require('./config/offerBlueprints');
+const { fillTemplate, getAvailableTemplates, getTemplate } = require('./config/documentTemplates');
+const aiService = require('./services/aiService');
+const bootstrapService = require('./services/bootstrapService');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -35,6 +39,7 @@ const PARTNER_ASSIGNMENTS_FILE = path.join(__dirname, 'data', 'partner-assignmen
 const PARTNER_UPLOADS_FILE = path.join(__dirname, 'data', 'partner-uploads.json');
 const PARTNER_COMMENTS_FILE = path.join(__dirname, 'data', 'partner-comments.json');
 const QUOTES_FILE = path.join(__dirname, 'data', 'quotes.json');
+const PROJECTS_FILE = path.join(__dirname, 'data', 'projects.json');
 
 // Creer le dossier data s'il n'existe pas
 if (!fs.existsSync(path.join(__dirname, 'data'))) {
@@ -807,6 +812,27 @@ app.post('/api/payments/sumup/webhook', async (req, res) => {
                         console.error('[WEBHOOK] Erreur auto-assignation partenaire:', autoAssignErr);
                     }
 
+                    // Auto-bootstrap projet IA pour offres accompagnement
+                    try {
+                        var productForBootstrap = getProductById(updatedOrder.product_id);
+                        if (productForBootstrap && productForBootstrap.product_type === 'accompagnement') {
+                            var bootstrapUser = {
+                                email: clientEmail,
+                                firstName: updatedOrder.client_info.first_name,
+                                lastName: updatedOrder.client_info.last_name,
+                                id: updatedOrder.client_info.email
+                            };
+                            var bootstrapResult = bootstrapService.bootstrapProject(updatedOrder, bootstrapUser);
+                            if (bootstrapResult.success) {
+                                console.log('[WEBHOOK] Projet IA bootstrap: ' + bootstrapResult.project.id + ' (' + bootstrapResult.deliverables.length + ' livrables)');
+                            } else {
+                                console.log('[WEBHOOK] Bootstrap non effectue: ' + (bootstrapResult.error || 'raison inconnue'));
+                            }
+                        }
+                    } catch (bootstrapErr) {
+                        console.error('[WEBHOOK] Erreur bootstrap projet IA (non-bloquant):', bootstrapErr.message);
+                    }
+
                 } else if (stage === 'balance') {
                     // Après paiement du solde : envoyer la confirmation de paiement complet
                     emailService.sendPaymentConfirmation(
@@ -1146,6 +1172,79 @@ function saveLivrables(livrables) {
     } catch (error) {
         console.error('Erreur sauvegarde livrables:', error);
     }
+}
+
+// ============================================================
+// HELPERS - PROJETS
+// ============================================================
+
+function loadProjects() {
+    try {
+        if (fs.existsSync(PROJECTS_FILE)) {
+            const data = fs.readFileSync(PROJECTS_FILE, 'utf8');
+            return JSON.parse(data);
+        }
+    } catch (error) {
+        console.error('Erreur lecture projects:', error);
+    }
+    return [];
+}
+
+function saveProjects(projects) {
+    try {
+        fs.writeFileSync(PROJECTS_FILE, JSON.stringify(projects, null, 2), 'utf8');
+    } catch (error) {
+        console.error('Erreur sauvegarde projects:', error);
+    }
+}
+
+function getProjectByOrderId(orderId) {
+    var projects = loadProjects();
+    for (var i = 0; i < projects.length; i++) {
+        if (projects[i].order_id === orderId) return projects[i];
+    }
+    return null;
+}
+
+function getProjectById(projectId) {
+    var projects = loadProjects();
+    for (var i = 0; i < projects.length; i++) {
+        if (projects[i].id === projectId) return projects[i];
+    }
+    return null;
+}
+
+// ============================================================
+// HELPER - NORMALISATION LIVRABLES (compatibilite arriere)
+// ============================================================
+
+/**
+ * Ajoute les nouveaux champs workflow aux livrables existants.
+ * Les anciens livrables (sans ces champs) recevront des valeurs par defaut.
+ */
+function ensureLivrableFields(livrable) {
+    if (!livrable) return livrable;
+
+    // Champs projet
+    if (!livrable.project_id) livrable.project_id = null;
+    if (!livrable.offer_key) livrable.offer_key = null;
+    if (!livrable.domain) livrable.domain = 'strategy';
+
+    // Workflow
+    if (!livrable.visibility) livrable.visibility = 'CLIENT_ON_PUBLISH';
+    if (!livrable.workflow_status) livrable.workflow_status = 'PUBLISHED';
+    if (!livrable.owner_role) livrable.owner_role = livrable.source || 'admin';
+    if (!livrable.owner_partner_id) livrable.owner_partner_id = livrable.partner_id || null;
+    if (livrable.requires_admin_approval === undefined) livrable.requires_admin_approval = false;
+    if (livrable.requires_partner_approval === undefined) livrable.requires_partner_approval = false;
+
+    // Contenu texte (pour docs IA)
+    if (!livrable.content_text) livrable.content_text = null;
+
+    // Versioning
+    if (!livrable.versions) livrable.versions = [];
+
+    return livrable;
 }
 
 /**
@@ -4271,6 +4370,848 @@ async function seedPartnerAccounts() {
         console.log('   [SEED] Comptes partenaires deja presents (' + partners.length + ')');
     }
 }
+
+// ============================================================
+// ENDPOINTS IA + WORKFLOW PROJET
+// ============================================================
+
+/**
+ * POST /api/ai/bootstrap-project
+ * Cree un projet + livrables Jour 1 pour une commande (admin uniquement)
+ */
+app.post('/api/ai/bootstrap-project', (req, res) => {
+    try {
+        // Verifier admin
+        var authHeader = req.headers.authorization;
+        if (!authHeader) return res.status(401).json({ error: 'Non autorise' });
+        var token = authHeader.replace('Bearer ', '');
+        var jwt = require('jsonwebtoken');
+        var decoded = jwt.verify(token, process.env.JWT_SECRET || 'fa-genesis-secret-key-2024');
+        if (decoded.role !== 'admin') return res.status(403).json({ error: 'Acces admin requis' });
+
+        var orderId = req.body.order_id;
+        if (!orderId) return res.status(400).json({ error: 'order_id requis' });
+
+        var order = getOrderById(orderId);
+        if (!order) return res.status(404).json({ error: 'Commande non trouvee' });
+
+        if (!order.deposit_paid) return res.status(400).json({ error: 'Acompte non paye' });
+
+        // Trouver l'utilisateur
+        var users = loadUsers();
+        var clientEmail = (order.client_info && order.client_info.email) || order.email || '';
+        var user = users.find(function(u) { return u.email === clientEmail; }) || {
+            email: clientEmail,
+            firstName: order.client_info ? order.client_info.first_name : '',
+            lastName: order.client_info ? order.client_info.last_name : ''
+        };
+
+        var result = bootstrapService.bootstrapProject(order, user);
+        if (result.success) {
+            res.json({ success: true, project: result.project, deliverables_count: result.deliverables.length, errors: result.errors });
+        } else {
+            res.status(400).json({ success: false, error: result.error });
+        }
+    } catch (err) {
+        console.error('[API] Erreur bootstrap-project:', err);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * POST /api/ai/client-submit
+ * Client soumet ses reponses au questionnaire → genere pre-analyse + agenda
+ */
+app.post('/api/ai/client-submit', (req, res) => {
+    try {
+        var authHeader = req.headers.authorization;
+        if (!authHeader) return res.status(401).json({ error: 'Non autorise' });
+        var token = authHeader.replace('Bearer ', '');
+        var jwt = require('jsonwebtoken');
+        var decoded = jwt.verify(token, process.env.JWT_SECRET || 'fa-genesis-secret-key-2024');
+
+        var projectId = req.body.project_id;
+        var responses = req.body.responses; // texte des reponses client
+
+        if (!projectId || !responses) return res.status(400).json({ error: 'project_id et responses requis' });
+
+        var projects = loadProjects();
+        var project = null;
+        var projectIndex = -1;
+        for (var i = 0; i < projects.length; i++) {
+            if (projects[i].id === projectId) {
+                project = projects[i];
+                projectIndex = i;
+                break;
+            }
+        }
+        if (!project) return res.status(404).json({ error: 'Projet non trouve' });
+
+        // Verifier que le client est bien le proprietaire
+        if (decoded.email !== project.client_email && decoded.role !== 'admin') {
+            return res.status(403).json({ error: 'Acces non autorise a ce projet' });
+        }
+
+        // Sauvegarder les reponses dans le contexte IA
+        project.ai_context.client_responses = responses;
+        project.updated_at = new Date().toISOString();
+        projects[projectIndex] = project;
+        saveProjects(projects);
+
+        // Generer la pre-analyse et l'agenda
+        var templateData = {
+            client_name: project.client_name,
+            client_email: project.client_email,
+            offer_name: project.offer_name,
+            offer_category: project.category,
+            duration: project.duration_days + ' jours',
+            duration_days: String(project.duration_days),
+            order_id: project.order_id,
+            project_id: project.id,
+            day_number: '1',
+            client_responses: responses,
+            session_notes: '',
+            items_list: '',
+            domain: 'strategy',
+            partner_name: ''
+        };
+
+        var generated = [];
+        var livrables = loadLivrables();
+        var now = new Date().toISOString();
+
+        // Generer pre-analyse (ADMIN_ONLY)
+        var preAnalyse = aiService.generateDocument('pre-analyse', templateData);
+        if (preAnalyse.success) {
+            var livPreAnalyse = {
+                id: 'LIV-' + Date.now() + '-' + Math.floor(Math.random() * 10000),
+                order_id: project.order_id,
+                project_id: project.id,
+                client_email: project.client_email,
+                name: 'Pre-analyse du projet',
+                type: 'pre-analyse',
+                day_number: 1,
+                step_order: 1,
+                offer_key: project.offer_key,
+                domain: 'strategy',
+                status: 'generated',
+                source: 'ai',
+                download_url: null,
+                content_text: preAnalyse.content,
+                visibility: 'ADMIN_ONLY',
+                workflow_status: 'PENDING_ADMIN',
+                owner_role: 'ai',
+                owner_partner_id: null,
+                requires_admin_approval: true,
+                requires_partner_approval: false,
+                is_form: false,
+                is_ai_generated: true,
+                versions: [{
+                    version_number: 1,
+                    updated_by_role: 'ai',
+                    updated_by_id: 'system',
+                    content_text: preAnalyse.content,
+                    file_url: null,
+                    change_note: 'Genere apres soumission questionnaire client',
+                    created_at: now
+                }],
+                created_at: now,
+                updated_at: now
+            };
+            livrables.push(livPreAnalyse);
+            generated.push(livPreAnalyse.id);
+        }
+
+        // Generer agenda de seance
+        var agenda = aiService.generateDocument('agenda', templateData);
+        if (agenda.success) {
+            var livAgenda = {
+                id: 'LIV-' + Date.now() + '-' + Math.floor(Math.random() * 9999),
+                order_id: project.order_id,
+                project_id: project.id,
+                client_email: project.client_email,
+                name: 'Agenda de seance - Jour 1',
+                type: 'agenda',
+                day_number: 1,
+                step_order: 2,
+                offer_key: project.offer_key,
+                domain: 'strategy',
+                status: 'generated',
+                source: 'ai',
+                download_url: null,
+                content_text: agenda.content,
+                visibility: 'ADMIN_ONLY',
+                workflow_status: 'PENDING_ADMIN',
+                owner_role: 'ai',
+                owner_partner_id: null,
+                requires_admin_approval: true,
+                requires_partner_approval: false,
+                is_form: false,
+                is_ai_generated: true,
+                versions: [{
+                    version_number: 1,
+                    updated_by_role: 'ai',
+                    updated_by_id: 'system',
+                    content_text: agenda.content,
+                    file_url: null,
+                    change_note: 'Genere apres soumission questionnaire client',
+                    created_at: now
+                }],
+                created_at: now,
+                updated_at: now
+            };
+            livrables.push(livAgenda);
+            generated.push(livAgenda.id);
+        }
+
+        saveLivrables(livrables);
+
+        res.json({ success: true, message: 'Reponses enregistrees, documents generes', generated_count: generated.length, generated_ids: generated });
+    } catch (err) {
+        console.error('[API] Erreur client-submit:', err);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * POST /api/admin/session-completed
+ * Admin marque une seance comme effectuee + notes → genere synthese + structuration + plan-action
+ */
+app.post('/api/admin/session-completed', (req, res) => {
+    try {
+        var authHeader = req.headers.authorization;
+        if (!authHeader) return res.status(401).json({ error: 'Non autorise' });
+        var token = authHeader.replace('Bearer ', '');
+        var jwt = require('jsonwebtoken');
+        var decoded = jwt.verify(token, process.env.JWT_SECRET || 'fa-genesis-secret-key-2024');
+        if (decoded.role !== 'admin') return res.status(403).json({ error: 'Acces admin requis' });
+
+        var projectId = req.body.project_id;
+        var sessionNotes = req.body.session_notes;
+        var stepOrder = req.body.step_order || null;
+
+        if (!projectId || !sessionNotes) return res.status(400).json({ error: 'project_id et session_notes requis' });
+
+        var projects = loadProjects();
+        var project = null;
+        var projectIndex = -1;
+        for (var i = 0; i < projects.length; i++) {
+            if (projects[i].id === projectId) {
+                project = projects[i];
+                projectIndex = i;
+                break;
+            }
+        }
+        if (!project) return res.status(404).json({ error: 'Projet non trouve' });
+
+        // Ajouter les notes de seance
+        project.ai_context.session_notes.push({
+            step_order: stepOrder || project.current_step,
+            notes: sessionNotes,
+            date: new Date().toISOString()
+        });
+
+        // Marquer l'etape comme terminee dans timeline_progress
+        var targetStep = stepOrder || project.current_step;
+        for (var t = 0; t < project.timeline_progress.length; t++) {
+            if (project.timeline_progress[t].step_order === targetStep) {
+                project.timeline_progress[t].status = 'completed';
+                project.timeline_progress[t].completed_at = new Date().toISOString();
+            }
+            // Activer l'etape suivante
+            if (project.timeline_progress[t].step_order === targetStep + 1) {
+                project.timeline_progress[t].status = 'in_progress';
+            }
+        }
+
+        // Avancer le step courant
+        if (!stepOrder || stepOrder === project.current_step) {
+            project.current_step = project.current_step + 1;
+        }
+
+        project.updated_at = new Date().toISOString();
+        projects[projectIndex] = project;
+        saveProjects(projects);
+
+        // Generer les documents post-seance
+        var templateData = {
+            client_name: project.client_name,
+            client_email: project.client_email,
+            offer_name: project.offer_name,
+            offer_category: project.category,
+            duration: project.duration_days + ' jours',
+            duration_days: String(project.duration_days),
+            order_id: project.order_id,
+            project_id: project.id,
+            day_number: String(targetStep),
+            client_responses: project.ai_context.client_responses || '',
+            session_notes: sessionNotes,
+            items_list: '',
+            domain: 'strategy',
+            partner_name: ''
+        };
+
+        var generated = [];
+        var livrables = loadLivrables();
+        var now = new Date().toISOString();
+
+        // Generer synthese, structuration, plan-action
+        var docTypes = ['synthese', 'structuration', 'plan-action'];
+        var docNames = ['Synthese de seance', 'Structuration du projet', 'Plan d\'action'];
+
+        for (var d = 0; d < docTypes.length; d++) {
+            var doc = aiService.generateDocument(docTypes[d], templateData);
+            if (doc.success) {
+                var livDoc = {
+                    id: 'LIV-' + Date.now() + '-' + Math.floor(Math.random() * 10000 + d),
+                    order_id: project.order_id,
+                    project_id: project.id,
+                    client_email: project.client_email,
+                    name: docNames[d],
+                    type: docTypes[d],
+                    day_number: targetStep,
+                    step_order: targetStep,
+                    offer_key: project.offer_key,
+                    domain: 'strategy',
+                    status: 'generated',
+                    source: 'ai',
+                    download_url: null,
+                    content_text: doc.content,
+                    visibility: 'ADMIN_ONLY',
+                    workflow_status: 'PENDING_ADMIN',
+                    owner_role: 'ai',
+                    owner_partner_id: null,
+                    requires_admin_approval: true,
+                    requires_partner_approval: false,
+                    is_form: false,
+                    is_ai_generated: true,
+                    versions: [{
+                        version_number: 1,
+                        updated_by_role: 'ai',
+                        updated_by_id: 'system',
+                        content_text: doc.content,
+                        file_url: null,
+                        change_note: 'Genere apres seance effectuee',
+                        created_at: now
+                    }],
+                    created_at: now,
+                    updated_at: now
+                };
+                livrables.push(livDoc);
+                generated.push({ id: livDoc.id, type: docTypes[d] });
+            }
+        }
+
+        saveLivrables(livrables);
+
+        res.json({ success: true, message: 'Seance marquee comme effectuee', generated: generated, project_step: project.current_step });
+    } catch (err) {
+        console.error('[API] Erreur session-completed:', err);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * POST /api/admin/deliverables/:id/approve
+ * Admin approuve un livrable (workflow_status → APPROVED)
+ */
+app.post('/api/admin/deliverables/:id/approve', (req, res) => {
+    try {
+        var authHeader = req.headers.authorization;
+        if (!authHeader) return res.status(401).json({ error: 'Non autorise' });
+        var token = authHeader.replace('Bearer ', '');
+        var jwt = require('jsonwebtoken');
+        var decoded = jwt.verify(token, process.env.JWT_SECRET || 'fa-genesis-secret-key-2024');
+        if (decoded.role !== 'admin') return res.status(403).json({ error: 'Acces admin requis' });
+
+        var livrables = loadLivrables();
+        var found = false;
+        for (var i = 0; i < livrables.length; i++) {
+            if (livrables[i].id === req.params.id) {
+                livrables[i].workflow_status = 'APPROVED';
+                livrables[i].updated_at = new Date().toISOString();
+                found = true;
+                saveLivrables(livrables);
+                return res.json({ success: true, livrable: ensureLivrableFields(livrables[i]) });
+            }
+        }
+        if (!found) return res.status(404).json({ error: 'Livrable non trouve' });
+    } catch (err) {
+        console.error('[API] Erreur approve:', err);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * POST /api/admin/deliverables/:id/publish
+ * Admin publie un livrable (visible par le client)
+ */
+app.post('/api/admin/deliverables/:id/publish', (req, res) => {
+    try {
+        var authHeader = req.headers.authorization;
+        if (!authHeader) return res.status(401).json({ error: 'Non autorise' });
+        var token = authHeader.replace('Bearer ', '');
+        var jwt = require('jsonwebtoken');
+        var decoded = jwt.verify(token, process.env.JWT_SECRET || 'fa-genesis-secret-key-2024');
+        if (decoded.role !== 'admin') return res.status(403).json({ error: 'Acces admin requis' });
+
+        var livrables = loadLivrables();
+        for (var i = 0; i < livrables.length; i++) {
+            if (livrables[i].id === req.params.id) {
+                livrables[i].workflow_status = 'PUBLISHED';
+                livrables[i].visibility = 'CLIENT_ON_PUBLISH';
+                livrables[i].updated_at = new Date().toISOString();
+                saveLivrables(livrables);
+                return res.json({ success: true, livrable: ensureLivrableFields(livrables[i]) });
+            }
+        }
+        return res.status(404).json({ error: 'Livrable non trouve' });
+    } catch (err) {
+        console.error('[API] Erreur publish:', err);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * POST /api/admin/deliverables/:id/request-revision
+ * Admin demande une revision au partenaire
+ */
+app.post('/api/admin/deliverables/:id/request-revision', (req, res) => {
+    try {
+        var authHeader = req.headers.authorization;
+        if (!authHeader) return res.status(401).json({ error: 'Non autorise' });
+        var token = authHeader.replace('Bearer ', '');
+        var jwt = require('jsonwebtoken');
+        var decoded = jwt.verify(token, process.env.JWT_SECRET || 'fa-genesis-secret-key-2024');
+        if (decoded.role !== 'admin') return res.status(403).json({ error: 'Acces admin requis' });
+
+        var note = req.body.note || 'Revision demandee';
+        var livrables = loadLivrables();
+        for (var i = 0; i < livrables.length; i++) {
+            if (livrables[i].id === req.params.id) {
+                livrables[i].workflow_status = 'REVISION_REQUESTED';
+                livrables[i].updated_at = new Date().toISOString();
+                // Ajouter une note de revision dans les versions
+                if (!livrables[i].versions) livrables[i].versions = [];
+                livrables[i].versions.push({
+                    version_number: livrables[i].versions.length + 1,
+                    updated_by_role: 'admin',
+                    updated_by_id: decoded.email || 'admin',
+                    content_text: null,
+                    file_url: null,
+                    change_note: 'Revision demandee: ' + note,
+                    created_at: new Date().toISOString()
+                });
+                saveLivrables(livrables);
+                return res.json({ success: true, livrable: ensureLivrableFields(livrables[i]) });
+            }
+        }
+        return res.status(404).json({ error: 'Livrable non trouve' });
+    } catch (err) {
+        console.error('[API] Erreur request-revision:', err);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * GET /api/admin/projects
+ * Liste tous les projets (admin uniquement)
+ */
+app.get('/api/admin/projects', (req, res) => {
+    try {
+        var authHeader = req.headers.authorization;
+        if (!authHeader) return res.status(401).json({ error: 'Non autorise' });
+        var token = authHeader.replace('Bearer ', '');
+        var jwt = require('jsonwebtoken');
+        var decoded = jwt.verify(token, process.env.JWT_SECRET || 'fa-genesis-secret-key-2024');
+        if (decoded.role !== 'admin') return res.status(403).json({ error: 'Acces admin requis' });
+
+        var projects = loadProjects();
+        res.json({ success: true, projects: projects });
+    } catch (err) {
+        console.error('[API] Erreur admin/projects:', err);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * POST /api/admin/projects/create-from-order
+ * Creer un projet manuellement pour une commande existante
+ */
+app.post('/api/admin/projects/create-from-order', (req, res) => {
+    try {
+        var authHeader = req.headers.authorization;
+        if (!authHeader) return res.status(401).json({ error: 'Non autorise' });
+        var token = authHeader.replace('Bearer ', '');
+        var jwt = require('jsonwebtoken');
+        var decoded = jwt.verify(token, process.env.JWT_SECRET || 'fa-genesis-secret-key-2024');
+        if (decoded.role !== 'admin') return res.status(403).json({ error: 'Acces admin requis' });
+
+        var orderId = req.body.order_id;
+        if (!orderId) return res.status(400).json({ error: 'order_id requis' });
+
+        var order = getOrderById(orderId);
+        if (!order) return res.status(404).json({ error: 'Commande non trouvee' });
+
+        var users = loadUsers();
+        var clientEmail = (order.client_info && order.client_info.email) || order.email || '';
+        var user = users.find(function(u) { return u.email === clientEmail; }) || {
+            email: clientEmail,
+            firstName: order.client_info ? order.client_info.first_name : '',
+            lastName: order.client_info ? order.client_info.last_name : ''
+        };
+
+        var result = bootstrapService.bootstrapProject(order, user);
+        if (result.success) {
+            res.json({ success: true, project: result.project, deliverables_count: result.deliverables.length });
+        } else {
+            res.status(400).json({ success: false, error: result.error });
+        }
+    } catch (err) {
+        console.error('[API] Erreur create-from-order:', err);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * GET /api/partner/deliverables
+ * Livrables assignes au partenaire connecte
+ */
+app.get('/api/partner/deliverables', (req, res) => {
+    try {
+        var authHeader = req.headers.authorization;
+        if (!authHeader) return res.status(401).json({ error: 'Non autorise' });
+        var token = authHeader.replace('Bearer ', '');
+        var jwt = require('jsonwebtoken');
+        var decoded = jwt.verify(token, process.env.JWT_SECRET || 'fa-genesis-secret-key-2024');
+        if (decoded.role !== 'partner') return res.status(403).json({ error: 'Acces partenaire requis' });
+
+        var partnerId = decoded.partnerId || decoded.id;
+        var partnerEmail = decoded.email;
+
+        // Trouver les commandes assignees au partenaire
+        var assignments = loadPartnerAssignments();
+        var partnerOrderIds = [];
+        for (var a = 0; a < assignments.length; a++) {
+            if ((assignments[a].partner_id === partnerId || assignments[a].partner_email === partnerEmail) && assignments[a].status === 'active') {
+                partnerOrderIds.push(assignments[a].order_id);
+            }
+        }
+
+        // Charger les livrables de ces commandes
+        var allLivrables = loadLivrables();
+        var partnerLivrables = [];
+        for (var l = 0; l < allLivrables.length; l++) {
+            var liv = ensureLivrableFields(allLivrables[l]);
+            // Livrables assignes au partenaire OU livrables des commandes assignees avec visibilite partenaire
+            if (liv.owner_partner_id === partnerId ||
+                (partnerOrderIds.indexOf(liv.order_id) !== -1 && (liv.visibility === 'PARTNER_ONLY' || liv.owner_role === 'partner' || liv.domain !== 'strategy'))) {
+                partnerLivrables.push(liv);
+            }
+        }
+
+        res.json({ success: true, deliverables: partnerLivrables });
+    } catch (err) {
+        console.error('[API] Erreur partner/deliverables:', err);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * POST /api/partner/deliverables/:id/upload
+ * Partenaire uploade une nouvelle version d'un livrable
+ */
+app.post('/api/partner/deliverables/:id/upload', (req, res) => {
+    try {
+        var authHeader = req.headers.authorization;
+        if (!authHeader) return res.status(401).json({ error: 'Non autorise' });
+        var token = authHeader.replace('Bearer ', '');
+        var jwt = require('jsonwebtoken');
+        var decoded = jwt.verify(token, process.env.JWT_SECRET || 'fa-genesis-secret-key-2024');
+        if (decoded.role !== 'partner') return res.status(403).json({ error: 'Acces partenaire requis' });
+
+        var fileUrl = req.body.file_url;
+        var contentText = req.body.content_text;
+        var changeNote = req.body.change_note || 'Nouvelle version';
+
+        if (!fileUrl && !contentText) return res.status(400).json({ error: 'file_url ou content_text requis' });
+
+        var livrables = loadLivrables();
+        for (var i = 0; i < livrables.length; i++) {
+            if (livrables[i].id === req.params.id) {
+                var liv = livrables[i];
+
+                // Verifier que le livrable n'est pas deja publie
+                if (liv.workflow_status === 'PUBLISHED') {
+                    return res.status(400).json({ error: 'Livrable deja publie, modification impossible' });
+                }
+
+                if (!liv.versions) liv.versions = [];
+                var newVersion = {
+                    version_number: liv.versions.length + 1,
+                    updated_by_role: 'partner',
+                    updated_by_id: decoded.partnerId || decoded.id || decoded.email,
+                    content_text: contentText || null,
+                    file_url: fileUrl || null,
+                    change_note: changeNote,
+                    created_at: new Date().toISOString()
+                };
+                liv.versions.push(newVersion);
+
+                // Mettre a jour le livrable principal
+                if (fileUrl) liv.download_url = fileUrl;
+                if (contentText) liv.content_text = contentText;
+                liv.workflow_status = 'PENDING_PARTNER';
+                liv.owner_role = 'partner';
+                liv.owner_partner_id = decoded.partnerId || decoded.id;
+                liv.updated_at = new Date().toISOString();
+
+                livrables[i] = liv;
+                saveLivrables(livrables);
+                return res.json({ success: true, livrable: ensureLivrableFields(liv), version: newVersion });
+            }
+        }
+        return res.status(404).json({ error: 'Livrable non trouve' });
+    } catch (err) {
+        console.error('[API] Erreur partner upload:', err);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * PATCH /api/partner/deliverables/:id
+ * Partenaire modifie titre/description d'un livrable
+ */
+app.patch('/api/partner/deliverables/:id', (req, res) => {
+    try {
+        var authHeader = req.headers.authorization;
+        if (!authHeader) return res.status(401).json({ error: 'Non autorise' });
+        var token = authHeader.replace('Bearer ', '');
+        var jwt = require('jsonwebtoken');
+        var decoded = jwt.verify(token, process.env.JWT_SECRET || 'fa-genesis-secret-key-2024');
+        if (decoded.role !== 'partner') return res.status(403).json({ error: 'Acces partenaire requis' });
+
+        var livrables = loadLivrables();
+        for (var i = 0; i < livrables.length; i++) {
+            if (livrables[i].id === req.params.id) {
+                // Verifier que le livrable n'est pas publie
+                if (livrables[i].workflow_status === 'PUBLISHED') {
+                    return res.status(400).json({ error: 'Livrable publie, modification impossible' });
+                }
+
+                if (req.body.name) livrables[i].name = req.body.name;
+                if (req.body.description) livrables[i].description = req.body.description;
+                livrables[i].updated_at = new Date().toISOString();
+
+                saveLivrables(livrables);
+                return res.json({ success: true, livrable: ensureLivrableFields(livrables[i]) });
+            }
+        }
+        return res.status(404).json({ error: 'Livrable non trouve' });
+    } catch (err) {
+        console.error('[API] Erreur partner patch:', err);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * POST /api/partner/deliverables/:id/submit
+ * Partenaire soumet un livrable pour validation admin
+ */
+app.post('/api/partner/deliverables/:id/submit', (req, res) => {
+    try {
+        var authHeader = req.headers.authorization;
+        if (!authHeader) return res.status(401).json({ error: 'Non autorise' });
+        var token = authHeader.replace('Bearer ', '');
+        var jwt = require('jsonwebtoken');
+        var decoded = jwt.verify(token, process.env.JWT_SECRET || 'fa-genesis-secret-key-2024');
+        if (decoded.role !== 'partner') return res.status(403).json({ error: 'Acces partenaire requis' });
+
+        var livrables = loadLivrables();
+        for (var i = 0; i < livrables.length; i++) {
+            if (livrables[i].id === req.params.id) {
+                livrables[i].workflow_status = 'PENDING_ADMIN';
+                livrables[i].updated_at = new Date().toISOString();
+                saveLivrables(livrables);
+                return res.json({ success: true, livrable: ensureLivrableFields(livrables[i]) });
+            }
+        }
+        return res.status(404).json({ error: 'Livrable non trouve' });
+    } catch (err) {
+        console.error('[API] Erreur partner submit:', err);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * GET /api/projects/:id/timeline
+ * Timeline complete d'un projet avec livrables par etape
+ */
+app.get('/api/projects/:id/timeline', (req, res) => {
+    try {
+        var authHeader = req.headers.authorization;
+        if (!authHeader) return res.status(401).json({ error: 'Non autorise' });
+        var token = authHeader.replace('Bearer ', '');
+        var jwt = require('jsonwebtoken');
+        var decoded = jwt.verify(token, process.env.JWT_SECRET || 'fa-genesis-secret-key-2024');
+
+        var project = getProjectById(req.params.id);
+        if (!project) return res.status(404).json({ error: 'Projet non trouve' });
+
+        // Verifier acces
+        if (decoded.role !== 'admin' && decoded.email !== project.client_email) {
+            return res.status(403).json({ error: 'Acces non autorise' });
+        }
+
+        // Charger le blueprint
+        var blueprint = getOfferBlueprint(project.offer_key);
+        var allLivrables = loadLivrables();
+
+        // Construire la timeline avec livrables
+        var timeline = [];
+        var steps = blueprint ? blueprint.steps : [];
+        for (var s = 0; s < steps.length; s++) {
+            var step = steps[s];
+            var progress = project.timeline_progress[s] || {};
+
+            // Trouver les livrables de cette etape
+            var stepLivrables = [];
+            for (var l = 0; l < allLivrables.length; l++) {
+                var liv = ensureLivrableFields(allLivrables[l]);
+                if (liv.project_id === project.id && liv.step_order === step.order) {
+                    // Pour les clients, ne montrer que les livrables publies
+                    if (decoded.role === 'admin' || liv.workflow_status === 'PUBLISHED') {
+                        stepLivrables.push(liv);
+                    }
+                }
+            }
+
+            timeline.push({
+                step: step,
+                status: progress.status || 'pending',
+                completed_at: progress.completed_at || null,
+                deliverables: stepLivrables
+            });
+        }
+
+        res.json({ success: true, project: project, timeline: timeline });
+    } catch (err) {
+        console.error('[API] Erreur timeline:', err);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * GET /api/projects/:id/deliverables
+ * Livrables d'un projet filtres par role
+ */
+app.get('/api/projects/:id/deliverables', (req, res) => {
+    try {
+        var authHeader = req.headers.authorization;
+        if (!authHeader) return res.status(401).json({ error: 'Non autorise' });
+        var token = authHeader.replace('Bearer ', '');
+        var jwt = require('jsonwebtoken');
+        var decoded = jwt.verify(token, process.env.JWT_SECRET || 'fa-genesis-secret-key-2024');
+
+        var project = getProjectById(req.params.id);
+        if (!project) return res.status(404).json({ error: 'Projet non trouve' });
+
+        var role = req.query.role || decoded.role;
+        var allLivrables = loadLivrables();
+        var filtered = [];
+
+        for (var i = 0; i < allLivrables.length; i++) {
+            var liv = ensureLivrableFields(allLivrables[i]);
+            if (liv.project_id !== project.id) continue;
+
+            if (role === 'admin') {
+                filtered.push(liv);
+            } else if (role === 'client') {
+                if (liv.workflow_status === 'PUBLISHED' && liv.visibility === 'CLIENT_ON_PUBLISH') {
+                    filtered.push(liv);
+                }
+            } else if (role === 'partner') {
+                if (liv.visibility === 'PARTNER_ONLY' || liv.owner_role === 'partner') {
+                    filtered.push(liv);
+                }
+            }
+        }
+
+        res.json({ success: true, deliverables: filtered });
+    } catch (err) {
+        console.error('[API] Erreur project deliverables:', err);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * GET /api/projects/by-order/:orderId
+ * Trouver un projet par commande
+ */
+app.get('/api/projects/by-order/:orderId', (req, res) => {
+    try {
+        var authHeader = req.headers.authorization;
+        if (!authHeader) return res.status(401).json({ error: 'Non autorise' });
+        var token = authHeader.replace('Bearer ', '');
+        var jwt = require('jsonwebtoken');
+        var decoded = jwt.verify(token, process.env.JWT_SECRET || 'fa-genesis-secret-key-2024');
+
+        var project = getProjectByOrderId(req.params.orderId);
+        if (!project) return res.status(404).json({ error: 'Projet non trouve pour cette commande' });
+
+        // Verifier acces
+        if (decoded.role !== 'admin' && decoded.email !== project.client_email) {
+            return res.status(403).json({ error: 'Acces non autorise' });
+        }
+
+        res.json({ success: true, project: project });
+    } catch (err) {
+        console.error('[API] Erreur project by order:', err);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * GET /api/admin/deliverables/pending
+ * Livrables en attente de validation admin
+ */
+app.get('/api/admin/deliverables/pending', (req, res) => {
+    try {
+        var authHeader = req.headers.authorization;
+        if (!authHeader) return res.status(401).json({ error: 'Non autorise' });
+        var token = authHeader.replace('Bearer ', '');
+        var jwt = require('jsonwebtoken');
+        var decoded = jwt.verify(token, process.env.JWT_SECRET || 'fa-genesis-secret-key-2024');
+        if (decoded.role !== 'admin') return res.status(403).json({ error: 'Acces admin requis' });
+
+        var allLivrables = loadLivrables();
+        var pending = [];
+        for (var i = 0; i < allLivrables.length; i++) {
+            var liv = ensureLivrableFields(allLivrables[i]);
+            if (liv.workflow_status === 'PENDING_ADMIN' || liv.workflow_status === 'DRAFT_AI') {
+                pending.push(liv);
+            }
+        }
+
+        res.json({ success: true, deliverables: pending, count: pending.length });
+    } catch (err) {
+        console.error('[API] Erreur admin pending:', err);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * GET /api/ai/status
+ * Statut du service IA
+ */
+app.get('/api/ai/status', (req, res) => {
+    try {
+        var status = aiService.getServiceStatus();
+        res.json({ success: true, status: status });
+    } catch (err) {
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
 
 // ============================================================
 // DEMARRAGE DU SERVEUR

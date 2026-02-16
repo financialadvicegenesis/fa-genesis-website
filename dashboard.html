@@ -240,6 +240,16 @@
                 </div>
             </div>
 
+            <!-- Timeline projet IA (affichee uniquement si un projet existe) -->
+            <div id="projectTimelineSection" style="display:none;" class="mb-16">
+                <h2 class="text-2xl font-black italic uppercase mb-8 text-white">
+                    <i class="fas fa-project-diagram mr-3" style="color:var(--genesis-yellow);"></i>Timeline de votre projet
+                </h2>
+                <div id="projectTimelineContent">
+                    <p class="text-white opacity-50">Chargement...</p>
+                </div>
+            </div>
+
             <!-- Actions rapides (contenu par defaut en HTML, mis a jour par JS) -->
             <div class="mb-16">
                 <h2 class="text-2xl font-black italic uppercase mb-8 text-white">Actions rapides</h2>
@@ -763,6 +773,105 @@
         }
 
         console.log('[DASHBOARD] v3 - Initialisation terminee');
+
+        // ============================================================
+        // TIMELINE PROJET IA
+        // ============================================================
+        (async function loadProjectTimeline() {
+            try {
+                // Recuperer l'orderId de la commande active
+                var orderId = null;
+                try {
+                    var userData = JSON.parse(localStorage.getItem('fa_genesis_session') || '{}');
+                    if (userData.activeOrderId) {
+                        orderId = userData.activeOrderId;
+                    } else if (userData.email) {
+                        var authTk = localStorage.getItem('fa_genesis_token');
+                        var ordersResp = await fetch(API_BASE_URL + '/api/client/orders?email=' + encodeURIComponent(userData.email), {
+                            headers: authTk ? { 'Authorization': 'Bearer ' + authTk } : {}
+                        });
+                        if (ordersResp.ok) {
+                            var ordersData = await ordersResp.json();
+                            var orders = ordersData.orders || ordersData;
+                            if (orders && orders.length > 0) {
+                                orderId = orders[0].id || orders[0].order_id;
+                            }
+                        }
+                    }
+                } catch (e) {}
+
+                if (!orderId) return;
+
+                // Chercher le projet par commande
+                var authTk = localStorage.getItem('fa_genesis_token');
+                var projResp = await fetch(API_BASE_URL + '/api/projects/by-order/' + orderId, {
+                    headers: authTk ? { 'Authorization': 'Bearer ' + authTk } : {}
+                });
+                if (!projResp.ok) return; // Pas de projet = pas de timeline
+
+                var projData = await projResp.json();
+                if (!projData.success || !projData.project) return;
+                var project = projData.project;
+
+                // Charger la timeline
+                var timeResp = await fetch(API_BASE_URL + '/api/projects/' + project.id + '/timeline', {
+                    headers: authTk ? { 'Authorization': 'Bearer ' + authTk } : {}
+                });
+                if (!timeResp.ok) return;
+                var timeData = await timeResp.json();
+                var timeline = timeData.timeline || [];
+                if (timeline.length === 0) return;
+
+                // Afficher la section
+                var section = document.getElementById('projectTimelineSection');
+                if (section) section.style.display = 'block';
+
+                var container = document.getElementById('projectTimelineContent');
+                if (!container) return;
+
+                var html = '<div class="space-y-4">';
+                for (var t = 0; t < timeline.length; t++) {
+                    var entry = timeline[t];
+                    var step = entry.step || {};
+                    var stepStatus = entry.status || 'pending';
+                    var bgClass = '';
+                    var icon = '';
+                    if (stepStatus === 'completed') {
+                        bgClass = 'bg-green-500 bg-opacity-20 border-green-400';
+                        icon = '<i class="fas fa-check-circle text-green-400 text-2xl"></i>';
+                    } else if (stepStatus === 'in_progress') {
+                        bgClass = 'bg-yellow-500 bg-opacity-20 border-[var(--genesis-yellow)]';
+                        icon = '<i class="fas fa-spinner fa-spin text-[var(--genesis-yellow)] text-2xl"></i>';
+                    } else {
+                        bgClass = 'bg-white bg-opacity-5 border-white border-opacity-20';
+                        icon = '<i class="fas fa-circle text-gray-500 text-2xl"></i>';
+                    }
+
+                    html += '<div class="p-4 border-2 ' + bgClass + ' flex items-start gap-4">';
+                    html += '<div class="flex-shrink-0 mt-1">' + icon + '</div>';
+                    html += '<div class="flex-1">';
+                    html += '<div class="font-bold text-white">Jour ' + (step.day_number || '?') + ' - ' + (step.step_name || '') + '</div>';
+
+                    // Livrables publies
+                    if (entry.deliverables && entry.deliverables.length > 0) {
+                        html += '<div class="mt-2 space-y-1">';
+                        for (var dl = 0; dl < entry.deliverables.length; dl++) {
+                            var liv = entry.deliverables[dl];
+                            var dlIcon = liv.download_url ? '<i class="fas fa-download mr-1"></i>' : '<i class="fas fa-file-alt mr-1"></i>';
+                            html += '<div class="text-sm text-white opacity-80">' + dlIcon + (liv.name || '') + '</div>';
+                        }
+                        html += '</div>';
+                    }
+
+                    html += '</div></div>';
+                }
+                html += '</div>';
+                container.innerHTML = html;
+
+            } catch (e) {
+                console.error('[DASHBOARD] Erreur timeline:', e);
+            }
+        })();
     </script>
     <div id="site-footer"></div>
     <script src="footer.js" defer></script>

@@ -708,10 +708,12 @@
                 const livResp = await fetch(API_BASE_URL + '/api/livrables/' + activeOrder.id);
                 if (livResp.ok) {
                     const livData = await livResp.json();
-                    // Grouper par jour
+                    // Grouper par jour (filtrer uniquement les livrables publies ou sans workflow_status)
                     backendLivrablesByDay = {};
                     (livData.livrables || []).forEach(function(l) {
-                        const day = l.day_number || 0;
+                        // Ne montrer que les livrables PUBLISHED ou les anciens sans workflow_status
+                        if (l.workflow_status && l.workflow_status !== 'PUBLISHED') return;
+                        var day = l.day_number || 0;
                         if (!backendLivrablesByDay[day]) backendLivrablesByDay[day] = [];
                         backendLivrablesByDay[day].push(l);
                     });
