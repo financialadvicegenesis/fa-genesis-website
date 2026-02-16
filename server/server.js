@@ -23,6 +23,7 @@ const { OFFER_BLUEPRINTS, getOfferBlueprint, getAllOfferKeys } = require('./conf
 const { fillTemplate, getAvailableTemplates, getTemplate } = require('./config/documentTemplates');
 const aiService = require('./services/aiService');
 const bootstrapService = require('./services/bootstrapService');
+const persistentStore = require('./persistent-store');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -65,6 +66,7 @@ function loadUsers() {
 function saveUsers(users) {
     try {
         fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2), 'utf8');
+        persistentStore.persistToCloud('users', users).catch(function(e) {});
     } catch (error) {
         console.error('Erreur sauvegarde users:', error);
     }
@@ -98,6 +100,7 @@ function loadPartners() {
 function savePartners(partners) {
     try {
         fs.writeFileSync(PARTNERS_FILE, JSON.stringify(partners, null, 2), 'utf8');
+        persistentStore.persistToCloud('partners', partners).catch(function(e) {});
     } catch (error) {
         console.error('[PARTNER] Erreur sauvegarde partners:', error);
     }
@@ -128,6 +131,7 @@ function loadPartnerAssignments() {
 function savePartnerAssignments(assignments) {
     try {
         fs.writeFileSync(PARTNER_ASSIGNMENTS_FILE, JSON.stringify(assignments, null, 2), 'utf8');
+        persistentStore.persistToCloud('partner-assignments', assignments).catch(function(e) {});
     } catch (error) {
         console.error('[PARTNER] Erreur sauvegarde assignments:', error);
     }
@@ -148,6 +152,7 @@ function loadPartnerUploads() {
 function savePartnerUploads(uploads) {
     try {
         fs.writeFileSync(PARTNER_UPLOADS_FILE, JSON.stringify(uploads, null, 2), 'utf8');
+        persistentStore.persistToCloud('partner-uploads', uploads).catch(function(e) {});
     } catch (error) {
         console.error('[PARTNER] Erreur sauvegarde uploads:', error);
     }
@@ -168,6 +173,7 @@ function loadPartnerComments() {
 function savePartnerComments(comments) {
     try {
         fs.writeFileSync(PARTNER_COMMENTS_FILE, JSON.stringify(comments, null, 2), 'utf8');
+        persistentStore.persistToCloud('partner-comments', comments).catch(function(e) {});
     } catch (error) {
         console.error('[PARTNER] Erreur sauvegarde comments:', error);
     }
@@ -192,6 +198,7 @@ function loadQuotes() {
 function saveQuotes(quotes) {
     try {
         fs.writeFileSync(QUOTES_FILE, JSON.stringify(quotes, null, 2), 'utf8');
+        persistentStore.persistToCloud('quotes', quotes).catch(function(e) {});
     } catch (error) {
         console.error('[QUOTE] Erreur sauvegarde quotes:', error);
     }
@@ -305,6 +312,7 @@ function loadOrders() {
 function saveOrders(orders) {
     try {
         fs.writeFileSync(ORDERS_FILE, JSON.stringify(orders, null, 2), 'utf8');
+        persistentStore.persistToCloud('orders', orders).catch(function(e) {});
     } catch (error) {
         console.error('Erreur sauvegarde orders:', error);
     }
@@ -1215,6 +1223,7 @@ function loadLivrables() {
 function saveLivrables(livrables) {
     try {
         fs.writeFileSync(LIVRABLES_FILE, JSON.stringify(livrables, null, 2), 'utf8');
+        persistentStore.persistToCloud('livrables', livrables).catch(function(e) {});
     } catch (error) {
         console.error('Erreur sauvegarde livrables:', error);
     }
@@ -1239,6 +1248,7 @@ function loadProjects() {
 function saveProjects(projects) {
     try {
         fs.writeFileSync(PROJECTS_FILE, JSON.stringify(projects, null, 2), 'utf8');
+        persistentStore.persistToCloud('projects', projects).catch(function(e) {});
     } catch (error) {
         console.error('Erreur sauvegarde projects:', error);
     }
@@ -2675,6 +2685,7 @@ function loadSessions() {
 function saveSessions(sessions) {
     try {
         fs.writeFileSync(SESSIONS_FILE, JSON.stringify(sessions, null, 2), 'utf8');
+        persistentStore.persistToCloud('sessions', sessions).catch(function(e) {});
     } catch (error) {
         console.error('Erreur sauvegarde sessions:', error);
     }
@@ -5687,6 +5698,20 @@ app.get('/api/ai/status', (req, res) => {
 // ============================================================
 
 app.listen(PORT, async () => {
+    // Restaurer les données depuis MongoDB Atlas (si configuré)
+    try {
+        var mongoConnected = await persistentStore.connect();
+        if (mongoConnected) {
+            var dataDir = path.join(__dirname, 'data');
+            await persistentStore.restoreAllFromCloud(dataDir);
+            console.log('[STARTUP] Données restaurées depuis MongoDB Atlas');
+        } else {
+            console.log('[STARTUP] ATTENTION: Pas de MongoDB → les données seront perdues au prochain redéploiement');
+        }
+    } catch (mongoErr) {
+        console.error('[STARTUP] Erreur restauration MongoDB:', mongoErr.message);
+    }
+
     console.log('');
     console.log('=================================================');
     console.log('   FA GENESIS - Backend SumUp');
