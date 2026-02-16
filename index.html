@@ -1137,7 +1137,7 @@
             business: { idea: '#business-start', struct: '#business-start', visible: '#business-visibility', cap: '#business-impact' }
         };
 
-        var MESSAGES = {
+        var MESSAGES_FR = {
             'package-idea': 'Parfait. On clarifie votre idée et on vous donne une direction simple.',
             'package-struct': 'Bien reçu. On structure votre projet pour le rendre solide et actionnable.',
             'package-visible': "C'est noté. On vous rend visible avec une stratégie adaptée.",
@@ -1148,6 +1148,23 @@
             'individual-marketing': 'Parfait. Voici nos formules marketing — choisissez celle qui vous correspond.',
             'individual-media': 'Parfait. Voici nos formules média — choisissez celle qui vous correspond.'
         };
+        var MESSAGES_EN = {
+            'package-idea': 'Perfect. We\'ll clarify your idea and give you a clear direction.',
+            'package-struct': 'Got it. We\'ll structure your project to make it solid and actionable.',
+            'package-visible': 'Noted. We\'ll make you visible with a tailored strategy.',
+            'package-cap': 'Ambitious. We\'ll support you to reach the next level.',
+            'quote': 'Perfect. Tell us your needs, we\'ll send you a clear quote within 48h.',
+            'individual-photo': 'We\'ll guide you to the right photo package or a custom quote.',
+            'individual-video': 'We\'ll guide you to the right video package or a custom quote.',
+            'individual-marketing': 'Perfect. Here are our marketing packages — choose the one that fits.',
+            'individual-media': 'Perfect. Here are our media packages — choose the one that fits.'
+        };
+        function getDiagLang() {
+            try { return localStorage.getItem('fa_genesis_lang') || 'fr'; } catch(e) { return 'fr'; }
+        }
+        function getMessages() {
+            return getDiagLang() === 'en' ? MESSAGES_EN : MESSAGES_FR;
+        }
 
         function openDiagnostic() {
             diagData = { profile: '', need: '', choice: '', quoteType: '' };
@@ -1205,33 +1222,39 @@
             diagData.choice = choice;
             var anchor = PACKAGE_MAP[diagData.profile] ? PACKAGE_MAP[diagData.profile][choice] : '#offres';
             var url = 'offres.html' + (anchor || '#offres');
-            var msg = MESSAGES['package-' + choice] || 'On vous oriente vers l\'offre adaptée.';
+            var msgs = getMessages();
+            var isEn = getDiagLang() === 'en';
+            var msg = msgs['package-' + choice] || (isEn ? 'We\'ll guide you to the right offer.' : 'On vous oriente vers l\'offre adaptée.');
             showDiagResult(msg, [
-                { label: 'VOIR MON OFFRE RECOMMANDÉE', url: url, primary: true }
+                { label: isEn ? 'VIEW MY RECOMMENDED OFFER' : 'VOIR MON OFFRE RECOMMANDÉE', url: url, primary: true }
             ], url);
         }
 
         function diagSelectQuote(quoteType) {
             diagData.quoteType = quoteType;
             diagData.choice = quoteType;
-            var msg = MESSAGES['quote'];
+            var msgs = getMessages();
+            var isEn = getDiagLang() === 'en';
+            var msg = msgs['quote'];
             showDiagResult(msg, [
-                { label: 'DEMANDER MON DEVIS', url: 'contact.html', primary: true }
+                { label: isEn ? 'REQUEST MY QUOTE' : 'DEMANDER MON DEVIS', url: 'contact.html', primary: true }
             ], 'contact.html');
         }
 
         function diagSelectIndividual(choice) {
             diagData.choice = choice;
-            var msg = MESSAGES['individual-' + choice] || 'On vous oriente vers la bonne formule.';
+            var msgs = getMessages();
+            var isEn = getDiagLang() === 'en';
+            var msg = msgs['individual-' + choice] || (isEn ? 'We\'ll guide you to the right package.' : 'On vous oriente vers la bonne formule.');
 
             if (choice === 'photo' || choice === 'video') {
                 showDiagResult(msg, [
-                    { label: 'VOIR LES OPTIONS', url: 'offres.html#tarifs', primary: false },
-                    { label: 'DEMANDER UN DEVIS (RECOMMANDÉ)', url: 'contact.html', primary: true }
+                    { label: isEn ? 'VIEW OPTIONS' : 'VOIR LES OPTIONS', url: 'offres.html#tarifs', primary: false },
+                    { label: isEn ? 'REQUEST A QUOTE (RECOMMENDED)' : 'DEMANDER UN DEVIS (RECOMMANDÉ)', url: 'contact.html', primary: true }
                 ], 'contact.html');
             } else {
                 showDiagResult(msg, [
-                    { label: 'VOIR LES FORMULES', url: 'offres.html#tarifs', primary: true }
+                    { label: isEn ? 'VIEW PACKAGES' : 'VOIR LES FORMULES', url: 'offres.html#tarifs', primary: true }
                 ], 'offres.html#tarifs');
             }
         }
