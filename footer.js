@@ -112,10 +112,10 @@
         {
             title: 'L\u00e9gal',
             links: [
-                { label: 'Conditions g\u00e9n\u00e9rales', href: 'contact.html' },
-                { label: 'Confidentialit\u00e9', href: 'contact.html' },
-                { label: 'Mentions l\u00e9gales', href: 'contact.html' },
-                { label: 'R\u00e9clamation', href: 'contact.html' }
+                { label: 'Conditions g\u00e9n\u00e9rales', href: 'conditions-generales.html' },
+                { label: 'Confidentialit\u00e9', href: 'confidentialite.html' },
+                { label: 'Mentions l\u00e9gales', href: 'mentions-legales.html' },
+                { label: 'R\u00e9clamation', href: 'reclamation.html' }
             ]
         }
     ];
@@ -188,8 +188,8 @@
         html += '<div class="fg-footer__bottom">';
         html += '<p class="fg-footer__copyright">\u00a9 2026 <strong>Financial Advice Genesis</strong>. Tous droits r\u00e9serv\u00e9s. D\u00c9VELOPP\u00c9 PAR L\u2019\u00c9LITE WEB</p>';
         html += '<div class="fg-footer__bottom-links">';
-        html += buildLink('contact.html', 'Confidentialit\u00e9');
-        html += buildLink('contact.html', 'CGV');
+        html += buildLink('confidentialite.html', 'Confidentialit\u00e9');
+        html += buildLink('conditions-generales.html', 'CGV');
         html += buildLink('contact.html', 'Contact');
         html += '</div>';
         html += '</div>';
