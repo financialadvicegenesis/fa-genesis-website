@@ -655,109 +655,109 @@
                     <div id="diagProgress" class="h-2 bg-[var(--genesis-yellow)] transition-all" style="width:33%;"></div>
                 </div>
 
-                <div class="p-6 md:p-8">
+                <div class="p-6 md:p-8" style="color:#000;">
                     <!-- ETAPE 1 : PROFIL -->
                     <div id="diagStep1">
-                        <p class="text-xs font-bold text-gray-400 uppercase mb-2">Étape 1/3</p>
-                        <h3 class="text-xl md:text-2xl font-black uppercase mb-6">Quel est votre profil ?</h3>
+                        <p style="font-size:11px;font-weight:700;color:#999;text-transform:uppercase;margin-bottom:6px;text-align:center;">Étape 1/3</p>
+                        <h3 style="font-size:18px;font-weight:900;text-transform:uppercase;margin-bottom:20px;color:#000;text-align:center;">Quel est votre profil ?</h3>
                         <div class="space-y-3">
-                            <button onclick="diagSelectProfile('student')" class="w-full text-left p-4 border-4 border-black font-bold text-sm md:text-base hover:bg-[var(--genesis-yellow)] hover:border-[var(--genesis-yellow)] transition">
-                                <i class="fas fa-graduation-cap mr-3 text-lg"></i>Étudiant
+                            <button onclick="diagSelectProfile('student')" style="width:100%;text-align:left;padding:14px;border:4px solid #000;font-weight:700;font-size:14px;color:#000;background:#fff;cursor:pointer;" onmouseover="this.style.background='#FFD700';this.style.borderColor='#FFD700'" onmouseout="this.style.background='#fff';this.style.borderColor='#000'">
+                                <i class="fas fa-graduation-cap" style="margin-right:12px;"></i>Étudiant
                             </button>
-                            <button onclick="diagSelectProfile('individual')" class="w-full text-left p-4 border-4 border-black font-bold text-sm md:text-base hover:bg-[var(--genesis-yellow)] hover:border-[var(--genesis-yellow)] transition">
-                                <i class="fas fa-user mr-3 text-lg"></i>Particulier
+                            <button onclick="diagSelectProfile('individual')" style="width:100%;text-align:left;padding:14px;border:4px solid #000;font-weight:700;font-size:14px;color:#000;background:#fff;cursor:pointer;" onmouseover="this.style.background='#FFD700';this.style.borderColor='#FFD700'" onmouseout="this.style.background='#fff';this.style.borderColor='#000'">
+                                <i class="fas fa-user" style="margin-right:12px;"></i>Particulier
                             </button>
-                            <button onclick="diagSelectProfile('business')" class="w-full text-left p-4 border-4 border-black font-bold text-sm md:text-base hover:bg-[var(--genesis-yellow)] hover:border-[var(--genesis-yellow)] transition">
-                                <i class="fas fa-building mr-3 text-lg"></i>Entreprise
+                            <button onclick="diagSelectProfile('business')" style="width:100%;text-align:left;padding:14px;border:4px solid #000;font-weight:700;font-size:14px;color:#000;background:#fff;cursor:pointer;" onmouseover="this.style.background='#FFD700';this.style.borderColor='#FFD700'" onmouseout="this.style.background='#fff';this.style.borderColor='#000'">
+                                <i class="fas fa-building" style="margin-right:12px;"></i>Entreprise
                             </button>
                         </div>
                     </div>
 
                     <!-- ETAPE 2 : BESOIN -->
                     <div id="diagStep2" style="display:none;">
-                        <button onclick="diagBack(1)" class="text-sm font-bold text-gray-400 hover:text-black mb-3 inline-block"><i class="fas fa-arrow-left mr-1"></i>Retour</button>
-                        <p class="text-xs font-bold text-gray-400 uppercase mb-2">Étape 2/3</p>
-                        <h3 class="text-xl md:text-2xl font-black uppercase mb-6">De quoi avez-vous besoin ?</h3>
+                        <button onclick="diagBack(1)" style="font-size:13px;font-weight:700;color:#999;background:none;border:none;cursor:pointer;margin-bottom:10px;" onmouseover="this.style.color='#000'" onmouseout="this.style.color='#999'"><i class="fas fa-arrow-left" style="margin-right:4px;"></i>Retour</button>
+                        <p style="font-size:11px;font-weight:700;color:#999;text-transform:uppercase;margin-bottom:6px;text-align:center;">Étape 2/3</p>
+                        <h3 style="font-size:18px;font-weight:900;text-transform:uppercase;margin-bottom:20px;color:#000;text-align:center;">De quoi avez-vous besoin ?</h3>
                         <div class="space-y-3">
-                            <button onclick="diagSelectNeed('package')" class="w-full text-left p-4 border-4 border-black font-bold text-sm md:text-base hover:bg-[var(--genesis-yellow)] hover:border-[var(--genesis-yellow)] transition">
-                                <i class="fas fa-box-open mr-3 text-lg"></i>Être accompagné de A à Z (offre packagée)
+                            <button onclick="diagSelectNeed('package')" style="width:100%;text-align:left;padding:14px;border:4px solid #000;font-weight:700;font-size:14px;color:#000;background:#fff;cursor:pointer;" onmouseover="this.style.background='#FFD700';this.style.borderColor='#FFD700'" onmouseout="this.style.background='#fff';this.style.borderColor='#000'">
+                                <i class="fas fa-box-open" style="margin-right:12px;"></i>Être accompagné de A à Z (offre packagée)
                             </button>
-                            <button onclick="diagSelectNeed('quote')" class="w-full text-left p-4 border-4 border-black font-bold text-sm md:text-base hover:bg-[var(--genesis-yellow)] hover:border-[var(--genesis-yellow)] transition">
-                                <i class="fas fa-file-invoice mr-3 text-lg"></i>J'ai besoin d'un devis personnalisé
+                            <button onclick="diagSelectNeed('quote')" style="width:100%;text-align:left;padding:14px;border:4px solid #000;font-weight:700;font-size:14px;color:#000;background:#fff;cursor:pointer;" onmouseover="this.style.background='#FFD700';this.style.borderColor='#FFD700'" onmouseout="this.style.background='#fff';this.style.borderColor='#000'">
+                                <i class="fas fa-file-invoice" style="margin-right:12px;"></i>J'ai besoin d'un devis personnalisé
                             </button>
-                            <button onclick="diagSelectNeed('individual')" class="w-full text-left p-4 border-4 border-black font-bold text-sm md:text-base hover:bg-[var(--genesis-yellow)] hover:border-[var(--genesis-yellow)] transition">
-                                <i class="fas fa-camera mr-3 text-lg"></i>Je veux juste une prestation (photo/vidéo/marketing/média)
+                            <button onclick="diagSelectNeed('individual')" style="width:100%;text-align:left;padding:14px;border:4px solid #000;font-weight:700;font-size:14px;color:#000;background:#fff;cursor:pointer;" onmouseover="this.style.background='#FFD700';this.style.borderColor='#FFD700'" onmouseout="this.style.background='#fff';this.style.borderColor='#000'">
+                                <i class="fas fa-camera" style="margin-right:12px;"></i>Je veux juste une prestation (photo/vidéo/marketing/média)
                             </button>
                         </div>
                     </div>
 
                     <!-- ETAPE 3A : OFFRE PACKAGEE -->
                     <div id="diagStep3Package" style="display:none;">
-                        <button onclick="diagBack(2)" class="text-sm font-bold text-gray-400 hover:text-black mb-3 inline-block"><i class="fas fa-arrow-left mr-1"></i>Retour</button>
-                        <p class="text-xs font-bold text-gray-400 uppercase mb-2">Étape 3/3</p>
-                        <h3 class="text-xl md:text-2xl font-black uppercase mb-6">Où en êtes-vous ?</h3>
+                        <button onclick="diagBack(2)" style="font-size:13px;font-weight:700;color:#999;background:none;border:none;cursor:pointer;margin-bottom:10px;" onmouseover="this.style.color='#000'" onmouseout="this.style.color='#999'"><i class="fas fa-arrow-left" style="margin-right:4px;"></i>Retour</button>
+                        <p style="font-size:11px;font-weight:700;color:#999;text-transform:uppercase;margin-bottom:6px;text-align:center;">Étape 3/3</p>
+                        <h3 style="font-size:18px;font-weight:900;text-transform:uppercase;margin-bottom:20px;color:#000;text-align:center;">Où en êtes-vous ?</h3>
                         <div class="space-y-3">
-                            <button onclick="diagSelectPackage('idea')" class="w-full text-left p-4 border-4 border-black font-bold text-sm md:text-base hover:bg-[var(--genesis-yellow)] hover:border-[var(--genesis-yellow)] transition">
-                                <i class="fas fa-lightbulb mr-3 text-lg"></i>J'ai juste une idée
+                            <button onclick="diagSelectPackage('idea')" style="width:100%;text-align:left;padding:14px;border:4px solid #000;font-weight:700;font-size:14px;color:#000;background:#fff;cursor:pointer;" onmouseover="this.style.background='#FFD700';this.style.borderColor='#FFD700'" onmouseout="this.style.background='#fff';this.style.borderColor='#000'">
+                                <i class="fas fa-lightbulb" style="margin-right:12px;"></i>J'ai juste une idée
                             </button>
-                            <button onclick="diagSelectPackage('struct')" class="w-full text-left p-4 border-4 border-black font-bold text-sm md:text-base hover:bg-[var(--genesis-yellow)] hover:border-[var(--genesis-yellow)] transition">
-                                <i class="fas fa-project-diagram mr-3 text-lg"></i>Je veux structurer mon projet
+                            <button onclick="diagSelectPackage('struct')" style="width:100%;text-align:left;padding:14px;border:4px solid #000;font-weight:700;font-size:14px;color:#000;background:#fff;cursor:pointer;" onmouseover="this.style.background='#FFD700';this.style.borderColor='#FFD700'" onmouseout="this.style.background='#fff';this.style.borderColor='#000'">
+                                <i class="fas fa-project-diagram" style="margin-right:12px;"></i>Je veux structurer mon projet
                             </button>
-                            <button onclick="diagSelectPackage('visible')" class="w-full text-left p-4 border-4 border-black font-bold text-sm md:text-base hover:bg-[var(--genesis-yellow)] hover:border-[var(--genesis-yellow)] transition">
-                                <i class="fas fa-eye mr-3 text-lg"></i>Je veux devenir visible
+                            <button onclick="diagSelectPackage('visible')" style="width:100%;text-align:left;padding:14px;border:4px solid #000;font-weight:700;font-size:14px;color:#000;background:#fff;cursor:pointer;" onmouseover="this.style.background='#FFD700';this.style.borderColor='#FFD700'" onmouseout="this.style.background='#fff';this.style.borderColor='#000'">
+                                <i class="fas fa-eye" style="margin-right:12px;"></i>Je veux devenir visible
                             </button>
-                            <button onclick="diagSelectPackage('cap')" class="w-full text-left p-4 border-4 border-black font-bold text-sm md:text-base hover:bg-[var(--genesis-yellow)] hover:border-[var(--genesis-yellow)] transition">
-                                <i class="fas fa-rocket mr-3 text-lg"></i>Je veux passer un cap
+                            <button onclick="diagSelectPackage('cap')" style="width:100%;text-align:left;padding:14px;border:4px solid #000;font-weight:700;font-size:14px;color:#000;background:#fff;cursor:pointer;" onmouseover="this.style.background='#FFD700';this.style.borderColor='#FFD700'" onmouseout="this.style.background='#fff';this.style.borderColor='#000'">
+                                <i class="fas fa-rocket" style="margin-right:12px;"></i>Je veux passer un cap
                             </button>
                         </div>
                     </div>
 
                     <!-- ETAPE 3B : DEVIS -->
                     <div id="diagStep3Quote" style="display:none;">
-                        <button onclick="diagBack(2)" class="text-sm font-bold text-gray-400 hover:text-black mb-3 inline-block"><i class="fas fa-arrow-left mr-1"></i>Retour</button>
-                        <p class="text-xs font-bold text-gray-400 uppercase mb-2">Étape 3/3</p>
-                        <h3 class="text-xl md:text-2xl font-black uppercase mb-6">Quel type de devis ?</h3>
+                        <button onclick="diagBack(2)" style="font-size:13px;font-weight:700;color:#999;background:none;border:none;cursor:pointer;margin-bottom:10px;" onmouseover="this.style.color='#000'" onmouseout="this.style.color='#999'"><i class="fas fa-arrow-left" style="margin-right:4px;"></i>Retour</button>
+                        <p style="font-size:11px;font-weight:700;color:#999;text-transform:uppercase;margin-bottom:6px;text-align:center;">Étape 3/3</p>
+                        <h3 style="font-size:18px;font-weight:900;text-transform:uppercase;margin-bottom:20px;color:#000;text-align:center;">Quel type de devis ?</h3>
                         <div class="space-y-3">
-                            <button onclick="diagSelectQuote('custom_package')" class="w-full text-left p-4 border-4 border-black font-bold text-sm md:text-base hover:bg-[var(--genesis-yellow)] hover:border-[var(--genesis-yellow)] transition">
-                                <i class="fas fa-box mr-3 text-lg"></i>Offre packagée sur mesure
+                            <button onclick="diagSelectQuote('custom_package')" style="width:100%;text-align:left;padding:14px;border:4px solid #000;font-weight:700;font-size:14px;color:#000;background:#fff;cursor:pointer;" onmouseover="this.style.background='#FFD700';this.style.borderColor='#FFD700'" onmouseout="this.style.background='#fff';this.style.borderColor='#000'">
+                                <i class="fas fa-box" style="margin-right:12px;"></i>Offre packagée sur mesure
                             </button>
-                            <button onclick="diagSelectQuote('individual_quote')" class="w-full text-left p-4 border-4 border-black font-bold text-sm md:text-base hover:bg-[var(--genesis-yellow)] hover:border-[var(--genesis-yellow)] transition">
-                                <i class="fas fa-camera-retro mr-3 text-lg"></i>Prestation individuelle sur devis (photo/vidéo…)
+                            <button onclick="diagSelectQuote('individual_quote')" style="width:100%;text-align:left;padding:14px;border:4px solid #000;font-weight:700;font-size:14px;color:#000;background:#fff;cursor:pointer;" onmouseover="this.style.background='#FFD700';this.style.borderColor='#FFD700'" onmouseout="this.style.background='#fff';this.style.borderColor='#000'">
+                                <i class="fas fa-camera-retro" style="margin-right:12px;"></i>Prestation individuelle sur devis (photo/vidéo…)
                             </button>
-                            <button onclick="diagSelectQuote('hybrid')" class="w-full text-left p-4 border-4 border-black font-bold text-sm md:text-base hover:bg-[var(--genesis-yellow)] hover:border-[var(--genesis-yellow)] transition">
-                                <i class="fas fa-layer-group mr-3 text-lg"></i>Projet hybride (accompagnement + production + média)
+                            <button onclick="diagSelectQuote('hybrid')" style="width:100%;text-align:left;padding:14px;border:4px solid #000;font-weight:700;font-size:14px;color:#000;background:#fff;cursor:pointer;" onmouseover="this.style.background='#FFD700';this.style.borderColor='#FFD700'" onmouseout="this.style.background='#fff';this.style.borderColor='#000'">
+                                <i class="fas fa-layer-group" style="margin-right:12px;"></i>Projet hybride (accompagnement + production + média)
                             </button>
                         </div>
                     </div>
 
                     <!-- ETAPE 3C : PRESTATION INDIVIDUELLE -->
                     <div id="diagStep3Individual" style="display:none;">
-                        <button onclick="diagBack(2)" class="text-sm font-bold text-gray-400 hover:text-black mb-3 inline-block"><i class="fas fa-arrow-left mr-1"></i>Retour</button>
-                        <p class="text-xs font-bold text-gray-400 uppercase mb-2">Étape 3/3</p>
-                        <h3 class="text-xl md:text-2xl font-black uppercase mb-6">Quelle prestation ?</h3>
+                        <button onclick="diagBack(2)" style="font-size:13px;font-weight:700;color:#999;background:none;border:none;cursor:pointer;margin-bottom:10px;" onmouseover="this.style.color='#000'" onmouseout="this.style.color='#999'"><i class="fas fa-arrow-left" style="margin-right:4px;"></i>Retour</button>
+                        <p style="font-size:11px;font-weight:700;color:#999;text-transform:uppercase;margin-bottom:6px;text-align:center;">Étape 3/3</p>
+                        <h3 style="font-size:18px;font-weight:900;text-transform:uppercase;margin-bottom:20px;color:#000;text-align:center;">Quelle prestation ?</h3>
                         <div class="space-y-3">
-                            <button onclick="diagSelectIndividual('photo')" class="w-full text-left p-4 border-4 border-black font-bold text-sm md:text-base hover:bg-[var(--genesis-yellow)] hover:border-[var(--genesis-yellow)] transition">
-                                <i class="fas fa-camera mr-3 text-lg"></i>Photo
+                            <button onclick="diagSelectIndividual('photo')" style="width:100%;text-align:left;padding:14px;border:4px solid #000;font-weight:700;font-size:14px;color:#000;background:#fff;cursor:pointer;" onmouseover="this.style.background='#FFD700';this.style.borderColor='#FFD700'" onmouseout="this.style.background='#fff';this.style.borderColor='#000'">
+                                <i class="fas fa-camera" style="margin-right:12px;"></i>Photo
                             </button>
-                            <button onclick="diagSelectIndividual('video')" class="w-full text-left p-4 border-4 border-black font-bold text-sm md:text-base hover:bg-[var(--genesis-yellow)] hover:border-[var(--genesis-yellow)] transition">
-                                <i class="fas fa-video mr-3 text-lg"></i>Vidéo
+                            <button onclick="diagSelectIndividual('video')" style="width:100%;text-align:left;padding:14px;border:4px solid #000;font-weight:700;font-size:14px;color:#000;background:#fff;cursor:pointer;" onmouseover="this.style.background='#FFD700';this.style.borderColor='#FFD700'" onmouseout="this.style.background='#fff';this.style.borderColor='#000'">
+                                <i class="fas fa-video" style="margin-right:12px;"></i>Vidéo
                             </button>
-                            <button onclick="diagSelectIndividual('marketing')" class="w-full text-left p-4 border-4 border-black font-bold text-sm md:text-base hover:bg-[var(--genesis-yellow)] hover:border-[var(--genesis-yellow)] transition">
-                                <i class="fas fa-bullhorn mr-3 text-lg"></i>Marketing / Stratégie
+                            <button onclick="diagSelectIndividual('marketing')" style="width:100%;text-align:left;padding:14px;border:4px solid #000;font-weight:700;font-size:14px;color:#000;background:#fff;cursor:pointer;" onmouseover="this.style.background='#FFD700';this.style.borderColor='#FFD700'" onmouseout="this.style.background='#fff';this.style.borderColor='#000'">
+                                <i class="fas fa-bullhorn" style="margin-right:12px;"></i>Marketing / Stratégie
                             </button>
-                            <button onclick="diagSelectIndividual('media')" class="w-full text-left p-4 border-4 border-black font-bold text-sm md:text-base hover:bg-[var(--genesis-yellow)] hover:border-[var(--genesis-yellow)] transition">
-                                <i class="fas fa-share-alt mr-3 text-lg"></i>Média (mise en avant)
+                            <button onclick="diagSelectIndividual('media')" style="width:100%;text-align:left;padding:14px;border:4px solid #000;font-weight:700;font-size:14px;color:#000;background:#fff;cursor:pointer;" onmouseover="this.style.background='#FFD700';this.style.borderColor='#FFD700'" onmouseout="this.style.background='#fff';this.style.borderColor='#000'">
+                                <i class="fas fa-share-alt" style="margin-right:12px;"></i>Média (mise en avant)
                             </button>
                         </div>
                     </div>
 
                     <!-- ECRAN RESULTAT -->
                     <div id="diagResult" style="display:none;">
-                        <div class="text-center">
-                            <div class="text-5xl mb-4">✓</div>
-                            <p id="diagResultMessage" class="text-base md:text-lg font-bold mb-6"></p>
+                        <div style="text-align:center;color:#000;">
+                            <div style="font-size:48px;margin-bottom:16px;">✓</div>
+                            <p id="diagResultMessage" style="font-size:16px;font-weight:700;margin-bottom:20px;color:#000;"></p>
                             <div id="diagResultButtons" class="space-y-3"></div>
-                            <button onclick="closeDiagnostic()" class="mt-4 text-sm font-bold text-gray-400 hover:text-black">Fermer</button>
+                            <button onclick="closeDiagnostic()" style="margin-top:16px;font-size:13px;font-weight:700;color:#999;background:none;border:none;cursor:pointer;" onmouseover="this.style.color='#000'" onmouseout="this.style.color='#999'">Fermer</button>
                         </div>
                     </div>
                 </div>
