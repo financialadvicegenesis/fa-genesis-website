@@ -135,6 +135,10 @@
                         <i class="fas fa-file-invoice mr-1"></i>Devis
                         <span id="partnerQuotesBadge" style="display:none;position:absolute;top:-8px;right:-8px;background:#ff6b6b;color:white;border-radius:50%;width:18px;height:18px;font-size:10px;line-height:18px;text-align:center;"></span>
                     </button>
+                    <button onclick="showSection('seances')" class="nav-tab text-white hover:text-[var(--genesis-yellow)] transition" style="position:relative;">
+                        <i class="fas fa-video mr-1"></i>Séances
+                        <span id="seancesBadge" style="display:none;position:absolute;top:-8px;right:-8px;background:#ff6b6b;color:white;border-radius:50%;width:18px;height:18px;font-size:10px;line-height:18px;text-align:center;"></span>
+                    </button>
                     <button onclick="showSection('profile')" class="nav-tab text-white hover:text-[var(--genesis-yellow)] transition">
                         <i class="fas fa-user mr-1"></i>Profil
                     </button>
@@ -160,6 +164,10 @@
             <button onclick="showSection('quotes')" class="nav-tab text-white hover:text-[var(--genesis-yellow)] text-xs font-black" style="position:relative;">
                 <i class="fas fa-file-invoice mr-1"></i>Devis
                 <span id="partnerQuotesBadgeMobile" style="display:none;position:absolute;top:-6px;right:-6px;background:#ff6b6b;color:white;border-radius:50%;width:16px;height:16px;font-size:9px;line-height:16px;text-align:center;"></span>
+            </button>
+            <button onclick="showSection('seances')" class="nav-tab text-white hover:text-[var(--genesis-yellow)] text-xs font-black" style="position:relative;">
+                <i class="fas fa-video mr-1"></i>Séances
+                <span id="seancesBadgeMobile" style="display:none;position:absolute;top:-6px;right:-6px;background:#ff6b6b;color:white;border-radius:50%;width:16px;height:16px;font-size:9px;line-height:16px;text-align:center;"></span>
             </button>
             <button onclick="showSection('profile')" class="nav-tab text-white hover:text-[var(--genesis-yellow)] text-xs font-black">
                 <i class="fas fa-user mr-1"></i>Profil
@@ -358,6 +366,74 @@
             </div>
         </div>
 
+        <!-- ===== SECTION SÉANCES ===== -->
+        <div id="seancesSection" class="container mx-auto max-w-5xl" style="display:none;">
+            <h2 class="text-2xl md:text-3xl font-black text-white mb-6" style="font-family:'Playfair Display',serif;">
+                <i class="fas fa-video mr-3" style="color:var(--genesis-yellow);"></i>MES SÉANCES
+            </h2>
+            <p class="text-white text-sm mb-6 opacity-70">Gérez les demandes de séances de vos clients. Proposez des créneaux, confirmez et ajoutez les liens Google Meet.</p>
+
+            <!-- Sous-tabs -->
+            <div class="flex gap-2 mb-6 flex-wrap">
+                <button onclick="showSeancesTab('demandes')" id="tabSeanceDemandes" class="tab-btn active" style="font-size:0.75rem;">
+                    <i class="fas fa-inbox mr-1"></i>Demandes <span id="seancesDemandesCount" style="background:#ff6b6b;color:white;border-radius:50%;padding:0 6px;margin-left:4px;font-size:10px;"></span>
+                </button>
+                <button onclick="showSeancesTab('confirmees')" id="tabSeanceConfirmees" class="tab-btn" style="font-size:0.75rem;">
+                    <i class="fas fa-check-circle mr-1"></i>Confirmées
+                </button>
+                <button onclick="showSeancesTab('historique')" id="tabSeanceHistorique" class="tab-btn" style="font-size:0.75rem;">
+                    <i class="fas fa-history mr-1"></i>Historique
+                </button>
+            </div>
+
+            <div id="seancesDemandesPanel">
+                <p class="text-center py-8 opacity-50 font-bold text-white">Chargement...</p>
+            </div>
+            <div id="seancesConfirmeesPanel" style="display:none;">
+                <p class="text-center py-8 opacity-50 font-bold text-white">Chargement...</p>
+            </div>
+            <div id="seancesHistoriquePanel" style="display:none;">
+                <p class="text-center py-8 opacity-50 font-bold text-white">Chargement...</p>
+            </div>
+        </div>
+
+        <!-- MODAL : Proposer/Confirmer une séance -->
+        <div id="sessionActionModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:9999;overflow-y:auto;">
+            <div style="max-width:500px;margin:80px auto;background:white;color:black;border:4px solid black;padding:2rem;">
+                <h3 id="sessionModalTitle" style="font-family:'Unbounded',cursive;font-size:1.1rem;font-weight:900;margin-bottom:1rem;"></h3>
+                <form id="sessionActionForm">
+                    <div style="margin-bottom:1rem;">
+                        <label style="font-weight:900;font-size:0.85rem;display:block;margin-bottom:4px;">DATE ET HEURE</label>
+                        <input type="datetime-local" id="sessionModalDatetime" required style="width:100%;padding:0.75rem;border:3px solid black;font-weight:bold;">
+                    </div>
+                    <div style="margin-bottom:1rem;">
+                        <label style="font-weight:900;font-size:0.85rem;display:block;margin-bottom:4px;">DURÉE (MINUTES)</label>
+                        <input type="number" id="sessionModalDuration" value="45" min="15" max="180" required style="width:100%;padding:0.75rem;border:3px solid black;font-weight:bold;">
+                    </div>
+                    <div style="margin-bottom:1rem;">
+                        <label style="font-weight:900;font-size:0.85rem;display:block;margin-bottom:4px;">LIEN GOOGLE MEET (optionnel)</label>
+                        <input type="url" id="sessionModalMeetUrl" placeholder="https://meet.google.com/..." style="width:100%;padding:0.75rem;border:3px solid black;font-weight:bold;">
+                    </div>
+                    <div style="margin-bottom:1rem;">
+                        <label style="font-weight:900;font-size:0.85rem;display:block;margin-bottom:4px;">LIEU (optionnel)</label>
+                        <input type="text" id="sessionModalLocation" placeholder="Ex: Montpellier, À distance..." style="width:100%;padding:0.75rem;border:3px solid black;font-weight:bold;">
+                    </div>
+                    <div style="margin-bottom:1rem;">
+                        <label style="font-weight:900;font-size:0.85rem;display:block;margin-bottom:4px;">NOTES</label>
+                        <textarea id="sessionModalNotes" rows="3" placeholder="Notes pour le client..." style="width:100%;padding:0.75rem;border:3px solid black;font-weight:bold;"></textarea>
+                    </div>
+                    <div style="display:flex;gap:0.5rem;">
+                        <button type="submit" class="neo-btn-yellow" style="padding:0.75rem 1.5rem;font-size:0.85rem;" id="sessionModalSubmitBtn">
+                            <i class="fas fa-check mr-1"></i>VALIDER
+                        </button>
+                        <button type="button" onclick="closeSessionModal()" style="padding:0.75rem 1.5rem;border:3px solid black;font-weight:900;font-size:0.85rem;background:#eee;cursor:pointer;">
+                            ANNULER
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
     </div>
 
     <script src="config.js"></script>
@@ -428,6 +504,7 @@
         var quotes = document.getElementById('quotesSection');
         var quoteDetail = document.getElementById('quoteDetailSection');
         var missions = document.getElementById('missionsSection');
+        var seances = document.getElementById('seancesSection');
 
         if (loading) loading.style.display = 'none';
         if (projects) projects.style.display = 'none';
@@ -436,6 +513,7 @@
         if (quotes) quotes.style.display = 'none';
         if (quoteDetail) quoteDetail.style.display = 'none';
         if (missions) missions.style.display = 'none';
+        if (seances) seances.style.display = 'none';
 
         if (section === 'projects') {
             if (projects) projects.style.display = 'block';
@@ -449,6 +527,9 @@
         } else if (section === 'missions') {
             if (missions) missions.style.display = 'block';
             loadMissions();
+        } else if (section === 'seances') {
+            if (seances) seances.style.display = 'block';
+            loadPartnerSessions();
         }
     }
 
@@ -1751,6 +1832,418 @@
                 var badgeMobile = document.getElementById('missionsBadgeMobile');
                 if (badge && todoCount > 0) { badge.style.display = 'block'; badge.textContent = todoCount; }
                 if (badgeMobile && todoCount > 0) { badgeMobile.style.display = 'block'; badgeMobile.textContent = todoCount; }
+            }
+        } catch (e) {}
+    })();
+
+    // ==============================================
+    // SECTION SÉANCES PARTENAIRE
+    // ==============================================
+
+    var partnerSessionsData = [];
+    var currentSessionAction = null; // { sessionId, action }
+
+    var SESSION_STATUS_MAP = {
+        'REQUESTED': { label: 'Demande', color: '#f59f00', bg: '#fff3cd' },
+        'PROPOSED': { label: 'Proposée', color: '#1c7ed6', bg: '#d0ebff' },
+        'CONFIRMED': { label: 'Confirmée', color: '#2f9e44', bg: '#d3f9d8' },
+        'RESCHEDULE_REQUESTED': { label: 'Reprogrammation', color: '#e67700', bg: '#fff3cd' },
+        'COMPLETED': { label: 'Terminée', color: '#868e96', bg: '#e9ecef' },
+        'CANCELLED': { label: 'Annulée', color: '#e03131', bg: '#ffe3e3' }
+    };
+
+    var SESSION_TYPE_LABELS = {
+        'call': 'Appel',
+        'shooting': 'Shooting',
+        'meeting': 'Réunion'
+    };
+
+    function showSeancesTab(tab) {
+        var panels = ['seancesDemandesPanel', 'seancesConfirmeesPanel', 'seancesHistoriquePanel'];
+        var tabs = ['tabSeanceDemandes', 'tabSeanceConfirmees', 'tabSeanceHistorique'];
+        for (var i = 0; i < panels.length; i++) {
+            var p = document.getElementById(panels[i]);
+            if (p) p.style.display = 'none';
+            var t = document.getElementById(tabs[i]);
+            if (t) t.classList.remove('active');
+        }
+        if (tab === 'demandes') {
+            var dp = document.getElementById('seancesDemandesPanel');
+            var dt = document.getElementById('tabSeanceDemandes');
+            if (dp) dp.style.display = 'block';
+            if (dt) dt.classList.add('active');
+        } else if (tab === 'confirmees') {
+            var cp = document.getElementById('seancesConfirmeesPanel');
+            var ct = document.getElementById('tabSeanceConfirmees');
+            if (cp) cp.style.display = 'block';
+            if (ct) ct.classList.add('active');
+        } else if (tab === 'historique') {
+            var hp = document.getElementById('seancesHistoriquePanel');
+            var ht = document.getElementById('tabSeanceHistorique');
+            if (hp) hp.style.display = 'block';
+            if (ht) ht.classList.add('active');
+        }
+    }
+
+    async function loadPartnerSessions() {
+        try {
+            var token = localStorage.getItem('fa_genesis_partner_token');
+            if (!token) return;
+            var response = await fetch(PARTNER_API_URL + '/api/partner/sessions', {
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            if (!response.ok) {
+                var errData = await response.json().catch(function() { return {}; });
+                throw new Error(errData.error || 'Erreur serveur');
+            }
+            var data = await response.json();
+            partnerSessionsData = data.sessions || [];
+            renderPartnerSessions();
+        } catch (e) {
+            console.error('[SESSIONS] Erreur chargement:', e);
+            var dp = document.getElementById('seancesDemandesPanel');
+            if (dp) dp.innerHTML = '<p class="text-center py-8 text-red-400 font-bold">Erreur: ' + e.message + '</p>';
+        }
+    }
+
+    function renderPartnerSessions() {
+        var demandes = [];
+        var confirmees = [];
+        var historique = [];
+
+        for (var i = 0; i < partnerSessionsData.length; i++) {
+            var s = partnerSessionsData[i];
+            if (s.status === 'REQUESTED' || s.status === 'RESCHEDULE_REQUESTED') {
+                demandes.push(s);
+            } else if (s.status === 'PROPOSED' || s.status === 'CONFIRMED') {
+                confirmees.push(s);
+            } else {
+                historique.push(s);
+            }
+        }
+
+        // Update badge count
+        var countEl = document.getElementById('seancesDemandesCount');
+        if (countEl) countEl.textContent = demandes.length > 0 ? demandes.length : '';
+
+        // Update nav badges
+        updateSeancesBadge(demandes.length);
+
+        renderSessionPanel('seancesDemandesPanel', demandes, 'Aucune demande en attente');
+        renderSessionPanel('seancesConfirmeesPanel', confirmees, 'Aucune séance confirmée');
+        renderSessionPanel('seancesHistoriquePanel', historique, 'Aucun historique');
+    }
+
+    function updateSeancesBadge(count) {
+        var badge = document.getElementById('seancesBadge');
+        var badgeMobile = document.getElementById('seancesBadgeMobile');
+        if (badge) {
+            if (count > 0) { badge.style.display = 'block'; badge.textContent = count; }
+            else { badge.style.display = 'none'; }
+        }
+        if (badgeMobile) {
+            if (count > 0) { badgeMobile.style.display = 'block'; badgeMobile.textContent = count; }
+            else { badgeMobile.style.display = 'none'; }
+        }
+    }
+
+    function renderSessionPanel(panelId, sessions, emptyMsg) {
+        var panel = document.getElementById(panelId);
+        if (!panel) return;
+
+        if (sessions.length === 0) {
+            panel.innerHTML = '<p class="text-center py-8 opacity-50 font-bold text-white">' + emptyMsg + '</p>';
+            return;
+        }
+
+        var html = '';
+        for (var i = 0; i < sessions.length; i++) {
+            html += renderPartnerSessionCard(sessions[i]);
+        }
+        panel.innerHTML = html;
+    }
+
+    function renderPartnerSessionCard(session) {
+        var statusInfo = SESSION_STATUS_MAP[session.status] || { label: session.status, color: '#666', bg: '#eee' };
+        var typeLabel = SESSION_TYPE_LABELS[session.session_type] || session.session_type || 'Séance';
+
+        // Date formatting
+        var dateStr = '—';
+        if (session.datetime_start) {
+            try {
+                var d = new Date(session.datetime_start);
+                dateStr = d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' }) + ' à ' + d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+            } catch (e) { dateStr = session.datetime_start; }
+        }
+
+        var durationStr = session.duration_minutes ? session.duration_minutes + ' min' : '—';
+        var clientName = session.client_name || session.client_id || 'Client inconnu';
+
+        var html = '<div class="section-card" style="margin-bottom:1rem;">';
+        // Header
+        html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.75rem;">';
+        html += '<div>';
+        html += '<span style="font-weight:900;font-size:1rem;">' + clientName + '</span>';
+        html += '<span style="display:inline-block;margin-left:8px;padding:2px 10px;border:2px solid black;font-weight:900;font-size:0.7rem;text-transform:uppercase;background:' + statusInfo.bg + ';color:' + statusInfo.color + ';">' + statusInfo.label + '</span>';
+        html += '</div>';
+        html += '<span style="font-size:0.75rem;font-weight:900;text-transform:uppercase;color:#666;">' + typeLabel + '</span>';
+        html += '</div>';
+
+        // Details
+        html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;font-size:0.85rem;margin-bottom:0.75rem;">';
+        html += '<div><i class="fas fa-calendar" style="color:var(--genesis-yellow);margin-right:4px;"></i><strong>Date :</strong> ' + dateStr + '</div>';
+        html += '<div><i class="fas fa-clock" style="color:var(--genesis-yellow);margin-right:4px;"></i><strong>Durée :</strong> ' + durationStr + '</div>';
+        if (session.location) {
+            html += '<div><i class="fas fa-map-marker-alt" style="color:var(--genesis-yellow);margin-right:4px;"></i><strong>Lieu :</strong> ' + session.location + '</div>';
+        }
+        if (session.meet_url && (session.status === 'CONFIRMED' || session.status === 'PROPOSED')) {
+            html += '<div><i class="fas fa-video" style="color:var(--genesis-yellow);margin-right:4px;"></i><strong>Meet :</strong> <a href="' + session.meet_url + '" target="_blank" style="color:#1c7ed6;text-decoration:underline;">Lien</a></div>';
+        }
+        html += '</div>';
+
+        // Notes client
+        if (session.notes_client) {
+            html += '<div style="background:#f8f9fa;border:2px solid #dee2e6;padding:0.75rem;margin-bottom:0.75rem;font-size:0.85rem;">';
+            html += '<strong style="font-size:0.75rem;text-transform:uppercase;">Notes du client :</strong><br>';
+            html += session.notes_client;
+            html += '</div>';
+        }
+
+        // Proposed slots from client
+        if (session.proposed_slots && session.proposed_slots.length > 0 && (session.status === 'REQUESTED' || session.status === 'RESCHEDULE_REQUESTED')) {
+            html += '<div style="background:#fff9e6;border:2px solid #ffd43b;padding:0.75rem;margin-bottom:0.75rem;font-size:0.85rem;">';
+            html += '<strong style="font-size:0.75rem;text-transform:uppercase;">Créneaux souhaités par le client :</strong><br>';
+            for (var j = 0; j < session.proposed_slots.length; j++) {
+                try {
+                    var slotDate = new Date(session.proposed_slots[j]);
+                    html += '• ' + slotDate.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'long' }) + ' à ' + slotDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) + '<br>';
+                } catch (e) {
+                    html += '• ' + session.proposed_slots[j] + '<br>';
+                }
+            }
+            html += '</div>';
+        }
+
+        // Action buttons
+        html += '<div style="display:flex;gap:0.5rem;flex-wrap:wrap;">';
+
+        if (session.status === 'REQUESTED' || session.status === 'RESCHEDULE_REQUESTED') {
+            html += '<button onclick="openSessionModal(\'' + session.id + '\', \'propose\')" class="neo-btn-yellow" style="padding:0.5rem 1rem;font-size:0.75rem;"><i class="fas fa-calendar-plus mr-1"></i>PROPOSER UN CRÉNEAU</button>';
+            html += '<button onclick="openSessionModal(\'' + session.id + '\', \'confirm\')" style="padding:0.5rem 1rem;font-size:0.75rem;border:3px solid #2f9e44;background:#d3f9d8;color:#2f9e44;font-weight:900;cursor:pointer;"><i class="fas fa-check mr-1"></i>CONFIRMER DIRECTEMENT</button>';
+            html += '<button onclick="cancelPartnerSession(\'' + session.id + '\')" style="padding:0.5rem 1rem;font-size:0.75rem;border:3px solid #e03131;background:#ffe3e3;color:#e03131;font-weight:900;cursor:pointer;"><i class="fas fa-times mr-1"></i>ANNULER</button>';
+        } else if (session.status === 'PROPOSED') {
+            html += '<button onclick="openSessionModal(\'' + session.id + '\', \'modify\')" class="neo-btn-yellow" style="padding:0.5rem 1rem;font-size:0.75rem;"><i class="fas fa-edit mr-1"></i>MODIFIER</button>';
+            if (!session.meet_url) {
+                html += '<button onclick="openSessionModal(\'' + session.id + '\', \'addmeet\')" style="padding:0.5rem 1rem;font-size:0.75rem;border:3px solid #1c7ed6;background:#d0ebff;color:#1c7ed6;font-weight:900;cursor:pointer;"><i class="fas fa-video mr-1"></i>AJOUTER LIEN MEET</button>';
+            }
+        } else if (session.status === 'CONFIRMED') {
+            html += '<button onclick="openSessionModal(\'' + session.id + '\', \'modifymeet\')" class="neo-btn-yellow" style="padding:0.5rem 1rem;font-size:0.75rem;"><i class="fas fa-video mr-1"></i>MODIFIER LIEN MEET</button>';
+            html += '<button onclick="completePartnerSession(\'' + session.id + '\')" style="padding:0.5rem 1rem;font-size:0.75rem;border:3px solid #2f9e44;background:#d3f9d8;color:#2f9e44;font-weight:900;cursor:pointer;"><i class="fas fa-check-double mr-1"></i>TERMINÉE</button>';
+            html += '<button onclick="cancelPartnerSession(\'' + session.id + '\')" style="padding:0.5rem 1rem;font-size:0.75rem;border:3px solid #e03131;background:#ffe3e3;color:#e03131;font-weight:900;cursor:pointer;"><i class="fas fa-times mr-1"></i>ANNULER</button>';
+        }
+
+        html += '</div>';
+        html += '</div>';
+        return html;
+    }
+
+    function openSessionModal(sessionId, action) {
+        currentSessionAction = { sessionId: sessionId, action: action };
+        var modal = document.getElementById('sessionActionModal');
+        var title = document.getElementById('sessionModalTitle');
+        var meetField = document.getElementById('sessionModalMeetUrl');
+        var dateField = document.getElementById('sessionModalDatetime');
+        var durationField = document.getElementById('sessionModalDuration');
+        var locationField = document.getElementById('sessionModalLocation');
+        var notesField = document.getElementById('sessionModalNotes');
+
+        // Reset
+        if (meetField) meetField.value = '';
+        if (dateField) dateField.value = '';
+        if (durationField) durationField.value = '45';
+        if (locationField) locationField.value = '';
+        if (notesField) notesField.value = '';
+
+        // Pre-fill from session data
+        var session = null;
+        for (var i = 0; i < partnerSessionsData.length; i++) {
+            if (partnerSessionsData[i].id === sessionId) { session = partnerSessionsData[i]; break; }
+        }
+
+        if (action === 'propose') {
+            if (title) title.textContent = 'Proposer un créneau';
+            // Pre-fill with first client proposed slot if available
+            if (session && session.proposed_slots && session.proposed_slots.length > 0 && dateField) {
+                try {
+                    var slotD = new Date(session.proposed_slots[0]);
+                    dateField.value = slotD.toISOString().slice(0, 16);
+                } catch (e) {}
+            }
+        } else if (action === 'confirm') {
+            if (title) title.textContent = 'Confirmer directement';
+            if (session && session.proposed_slots && session.proposed_slots.length > 0 && dateField) {
+                try {
+                    var slotD2 = new Date(session.proposed_slots[0]);
+                    dateField.value = slotD2.toISOString().slice(0, 16);
+                } catch (e) {}
+            }
+        } else if (action === 'modify') {
+            if (title) title.textContent = 'Modifier la séance';
+            if (session) {
+                if (session.datetime_start && dateField) {
+                    try { dateField.value = new Date(session.datetime_start).toISOString().slice(0, 16); } catch (e) {}
+                }
+                if (session.duration_minutes && durationField) durationField.value = session.duration_minutes;
+                if (session.meet_url && meetField) meetField.value = session.meet_url;
+                if (session.location && locationField) locationField.value = session.location;
+                if (session.notes_partner && notesField) notesField.value = session.notes_partner;
+            }
+        } else if (action === 'addmeet' || action === 'modifymeet') {
+            if (title) title.textContent = action === 'addmeet' ? 'Ajouter un lien Meet' : 'Modifier le lien Meet';
+            if (session) {
+                if (session.datetime_start && dateField) {
+                    try { dateField.value = new Date(session.datetime_start).toISOString().slice(0, 16); } catch (e) {}
+                }
+                if (session.duration_minutes && durationField) durationField.value = session.duration_minutes;
+                if (session.meet_url && meetField) meetField.value = session.meet_url;
+                if (session.location && locationField) locationField.value = session.location;
+            }
+        }
+
+        if (modal) modal.style.display = 'block';
+    }
+
+    function closeSessionModal() {
+        var modal = document.getElementById('sessionActionModal');
+        if (modal) modal.style.display = 'none';
+        currentSessionAction = null;
+    }
+
+    // Handle form submit
+    (function() {
+        var form = document.getElementById('sessionActionForm');
+        if (form) {
+            form.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                if (!currentSessionAction) return;
+
+                var sessionId = currentSessionAction.sessionId;
+                var action = currentSessionAction.action;
+                var token = localStorage.getItem('fa_genesis_partner_token');
+                if (!token) { alert('Non authentifié'); return; }
+
+                var datetimeVal = document.getElementById('sessionModalDatetime').value;
+                var durationVal = document.getElementById('sessionModalDuration').value;
+                var meetVal = document.getElementById('sessionModalMeetUrl').value;
+                var locationVal = document.getElementById('sessionModalLocation').value;
+                var notesVal = document.getElementById('sessionModalNotes').value;
+
+                var body = {};
+
+                if (action === 'propose') {
+                    body.action = 'propose';
+                    body.datetime_start = new Date(datetimeVal).toISOString();
+                    body.duration_minutes = parseInt(durationVal) || 45;
+                    if (meetVal) body.meet_url = meetVal;
+                    if (locationVal) body.location = locationVal;
+                    if (notesVal) body.notes_partner = notesVal;
+                } else if (action === 'confirm') {
+                    body.action = 'confirm';
+                    body.datetime_start = new Date(datetimeVal).toISOString();
+                    body.duration_minutes = parseInt(durationVal) || 45;
+                    if (meetVal) body.meet_url = meetVal;
+                    if (locationVal) body.location = locationVal;
+                    if (notesVal) body.notes_partner = notesVal;
+                } else if (action === 'modify') {
+                    body.action = 'modify';
+                    body.datetime_start = new Date(datetimeVal).toISOString();
+                    body.duration_minutes = parseInt(durationVal) || 45;
+                    if (meetVal) body.meet_url = meetVal;
+                    if (locationVal) body.location = locationVal;
+                    if (notesVal) body.notes_partner = notesVal;
+                } else if (action === 'addmeet' || action === 'modifymeet') {
+                    body.action = 'modify';
+                    body.meet_url = meetVal;
+                    if (datetimeVal) body.datetime_start = new Date(datetimeVal).toISOString();
+                    if (durationVal) body.duration_minutes = parseInt(durationVal) || 45;
+                    if (locationVal) body.location = locationVal;
+                }
+
+                var submitBtn = document.getElementById('sessionModalSubmitBtn');
+                if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Envoi...'; }
+
+                try {
+                    var response = await fetch(PARTNER_API_URL + '/api/partner/sessions/' + sessionId, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                        body: JSON.stringify(body)
+                    });
+                    var data = await response.json();
+                    if (response.ok) {
+                        closeSessionModal();
+                        loadPartnerSessions();
+                    } else {
+                        alert('Erreur: ' + (data.error || 'Erreur inconnue'));
+                    }
+                } catch (err) {
+                    alert('Erreur réseau: ' + err.message);
+                } finally {
+                    if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = '<i class="fas fa-check mr-1"></i>VALIDER'; }
+                }
+            });
+        }
+    })();
+
+    async function completePartnerSession(sessionId) {
+        if (!confirm('Marquer cette séance comme terminée ?')) return;
+        try {
+            var token = localStorage.getItem('fa_genesis_partner_token');
+            if (!token) return;
+            var response = await fetch(PARTNER_API_URL + '/api/partner/sessions/' + sessionId + '/complete', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            var data = await response.json();
+            if (response.ok) {
+                loadPartnerSessions();
+            } else {
+                alert('Erreur: ' + (data.error || 'Erreur inconnue'));
+            }
+        } catch (e) { alert('Erreur: ' + e.message); }
+    }
+
+    async function cancelPartnerSession(sessionId) {
+        if (!confirm('Annuler cette séance ?')) return;
+        try {
+            var token = localStorage.getItem('fa_genesis_partner_token');
+            if (!token) return;
+            var response = await fetch(PARTNER_API_URL + '/api/partner/sessions/' + sessionId + '/cancel', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            var data = await response.json();
+            if (response.ok) {
+                loadPartnerSessions();
+            } else {
+                alert('Erreur: ' + (data.error || 'Erreur inconnue'));
+            }
+        } catch (e) { alert('Erreur: ' + e.message); }
+    }
+
+    // Charger le badge séances au démarrage
+    (async function() {
+        try {
+            var token = localStorage.getItem('fa_genesis_partner_token');
+            if (!token) return;
+            var response = await fetch(PARTNER_API_URL + '/api/partner/sessions', {
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            if (response.ok) {
+                var data = await response.json();
+                var requestedCount = (data.sessions || []).filter(function(s) {
+                    return s.status === 'REQUESTED' || s.status === 'RESCHEDULE_REQUESTED';
+                }).length;
+                updateSeancesBadge(requestedCount);
             }
         } catch (e) {}
     })();

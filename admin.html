@@ -240,6 +240,10 @@
                         <button onclick="showSection('projets')" class="nav-btn text-white hover:text-[var(--genesis-yellow)]">
                             <i class="fas fa-project-diagram mr-2"></i>Projets IA
                         </button>
+                        <button onclick="showSection('seances')" class="nav-btn text-white hover:text-[var(--genesis-yellow)]" style="position:relative;">
+                            <i class="fas fa-video mr-2"></i>Séances
+                            <span id="pendingSeancesBadge" style="display:none;position:absolute;top:-8px;right:-8px;background:#ff6b6b;color:white;border-radius:50%;width:20px;height:20px;font-size:11px;line-height:20px;text-align:center;"></span>
+                        </button>
                     </div>
                 </div>
                 <button onclick="handleLogout()" class="border-4 border-white text-white px-4 py-2 text-xs font-black hover:bg-white hover:text-black transition">
@@ -539,6 +543,43 @@
                 </div>
             </div>
 
+            <!-- ===== SECTION SÉANCES ===== -->
+            <div id="seancesSection" class="container mx-auto max-w-7xl" style="display: none;">
+                <h2 class="text-3xl font-black mb-6" style="font-family:'Playfair Display',serif;">
+                    <i class="fas fa-video mr-3" style="color:var(--genesis-yellow);"></i>SÉANCES
+                </h2>
+
+                <!-- Filtres -->
+                <div class="mb-6 p-4 bg-gray-100 border-4 border-black" style="display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-end;">
+                    <div>
+                        <label class="block font-bold text-sm mb-1 text-black">Statut</label>
+                        <select id="adminSeancesFilterStatus" onchange="renderAdminSessions()" style="padding:0.5rem;border:3px solid black;font-weight:bold;min-width:160px;">
+                            <option value="">Tous</option>
+                            <option value="REQUESTED">Demandes</option>
+                            <option value="PROPOSED">Proposées</option>
+                            <option value="CONFIRMED">Confirmées</option>
+                            <option value="RESCHEDULE_REQUESTED">Reprogrammation</option>
+                            <option value="COMPLETED">Terminées</option>
+                            <option value="CANCELLED">Annulées</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block font-bold text-sm mb-1 text-black">Partenaire</label>
+                        <select id="adminSeancesFilterPartner" onchange="renderAdminSessions()" style="padding:0.5rem;border:3px solid black;font-weight:bold;min-width:160px;">
+                            <option value="">Tous</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block font-bold text-sm mb-1 text-black">Recherche client</label>
+                        <input type="text" id="adminSeancesSearch" oninput="renderAdminSessions()" placeholder="Nom ou email..." style="padding:0.5rem;border:3px solid black;font-weight:bold;min-width:200px;">
+                    </div>
+                </div>
+
+                <div id="adminSeancesTable" style="overflow-x:auto;">
+                    <p class="text-gray-500">Chargement...</p>
+                </div>
+            </div>
+
         </div>
     </div>
 
@@ -611,6 +652,8 @@
             document.getElementById('devisSection').style.display = 'none';
             document.getElementById('workflowSection').style.display = 'none';
             document.getElementById('projetsSection').style.display = 'none';
+            var seancesEl = document.getElementById('seancesSection');
+            if (seancesEl) seancesEl.style.display = 'none';
 
             if (section === 'dashboard') {
                 document.getElementById('dashboardSection').style.display = 'block';
@@ -637,6 +680,9 @@
             } else if (section === 'projets') {
                 document.getElementById('projetsSection').style.display = 'block';
                 loadProjectsList();
+            } else if (section === 'seances') {
+                if (seancesEl) seancesEl.style.display = 'block';
+                loadAdminSessions();
             }
         }
 
@@ -3216,6 +3262,174 @@
                 }
             } catch (e) {}
         })();
+
+        // ==============================================
+        // SECTION SÉANCES ADMIN
+        // ==============================================
+
+        var adminSessionsData = [];
+
+        var ADMIN_SESSION_STATUS_MAP = {
+            'REQUESTED': { label: 'Demande', color: '#f59f00', bg: '#fff3cd' },
+            'PROPOSED': { label: 'Proposée', color: '#1c7ed6', bg: '#d0ebff' },
+            'CONFIRMED': { label: 'Confirmée', color: '#2f9e44', bg: '#d3f9d8' },
+            'RESCHEDULE_REQUESTED': { label: 'Reprogrammation', color: '#e67700', bg: '#fff3cd' },
+            'COMPLETED': { label: 'Terminée', color: '#868e96', bg: '#e9ecef' },
+            'CANCELLED': { label: 'Annulée', color: '#e03131', bg: '#ffe3e3' }
+        };
+
+        var ADMIN_SESSION_TYPE_LABELS = {
+            'call': 'Appel',
+            'shooting': 'Shooting',
+            'meeting': 'Réunion'
+        };
+
+        async function loadAdminSessions() {
+            try {
+                var response = await fetch(API_BASE_URL + '/api/admin/sessions');
+                if (!response.ok) throw new Error('Erreur serveur');
+                var data = await response.json();
+                adminSessionsData = data.sessions || data || [];
+                // Populate partner filter
+                populatePartnerFilter();
+                renderAdminSessions();
+            } catch (e) {
+                console.error('[ADMIN-SESSIONS] Erreur:', e);
+                var table = document.getElementById('adminSeancesTable');
+                if (table) table.innerHTML = '<p style="color:red;font-weight:bold;">Erreur: ' + e.message + '</p>';
+            }
+        }
+
+        function populatePartnerFilter() {
+            var select = document.getElementById('adminSeancesFilterPartner');
+            if (!select) return;
+            var partners = {};
+            for (var i = 0; i < adminSessionsData.length; i++) {
+                var s = adminSessionsData[i];
+                if (s.partner_name && s.partner_id) {
+                    partners[s.partner_id] = s.partner_name;
+                }
+            }
+            var html = '<option value="">Tous</option>';
+            for (var pid in partners) {
+                html += '<option value="' + pid + '">' + partners[pid] + '</option>';
+            }
+            select.innerHTML = html;
+        }
+
+        function renderAdminSessions() {
+            var table = document.getElementById('adminSeancesTable');
+            if (!table) return;
+
+            var statusFilter = '';
+            var partnerFilter = '';
+            var searchFilter = '';
+            var statusEl = document.getElementById('adminSeancesFilterStatus');
+            var partnerEl = document.getElementById('adminSeancesFilterPartner');
+            var searchEl = document.getElementById('adminSeancesSearch');
+            if (statusEl) statusFilter = statusEl.value;
+            if (partnerEl) partnerFilter = partnerEl.value;
+            if (searchEl) searchFilter = searchEl.value.toLowerCase();
+
+            var filtered = [];
+            for (var i = 0; i < adminSessionsData.length; i++) {
+                var s = adminSessionsData[i];
+                if (statusFilter && s.status !== statusFilter) continue;
+                if (partnerFilter && s.partner_id !== partnerFilter) continue;
+                if (searchFilter) {
+                    var clientText = ((s.client_name || '') + ' ' + (s.client_id || '')).toLowerCase();
+                    if (clientText.indexOf(searchFilter) === -1) continue;
+                }
+                filtered.push(s);
+            }
+
+            if (filtered.length === 0) {
+                table.innerHTML = '<p class="text-gray-500 py-4">Aucune séance trouvée.</p>';
+                return;
+            }
+
+            // Sort by date descending
+            filtered.sort(function(a, b) {
+                var da = a.datetime_start ? new Date(a.datetime_start).getTime() : 0;
+                var db = b.datetime_start ? new Date(b.datetime_start).getTime() : 0;
+                return db - da;
+            });
+
+            var html = '<table style="width:100%;border-collapse:collapse;background:white;color:black;border:4px solid black;">';
+            html += '<thead><tr style="background:var(--genesis-yellow);font-weight:900;font-size:0.8rem;text-transform:uppercase;">';
+            html += '<th style="padding:0.75rem;border:2px solid black;text-align:left;">Client</th>';
+            html += '<th style="padding:0.75rem;border:2px solid black;text-align:left;">Partenaire</th>';
+            html += '<th style="padding:0.75rem;border:2px solid black;text-align:left;">Type</th>';
+            html += '<th style="padding:0.75rem;border:2px solid black;text-align:left;">Date</th>';
+            html += '<th style="padding:0.75rem;border:2px solid black;text-align:left;">Durée</th>';
+            html += '<th style="padding:0.75rem;border:2px solid black;text-align:center;">Statut</th>';
+            html += '<th style="padding:0.75rem;border:2px solid black;text-align:left;">Meet</th>';
+            html += '</tr></thead><tbody>';
+
+            for (var j = 0; j < filtered.length; j++) {
+                var session = filtered[j];
+                var statusInfo = ADMIN_SESSION_STATUS_MAP[session.status] || { label: session.status, color: '#666', bg: '#eee' };
+                var typeLabel = ADMIN_SESSION_TYPE_LABELS[session.session_type] || session.session_type || session.type || '—';
+
+                var dateStr = '—';
+                if (session.datetime_start) {
+                    try {
+                        var d = new Date(session.datetime_start);
+                        dateStr = d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' + d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+                    } catch (e) { dateStr = session.datetime_start; }
+                } else if (session.date) {
+                    dateStr = session.date + (session.heure ? ' ' + session.heure : '');
+                }
+
+                var durationStr = session.duration_minutes ? session.duration_minutes + 'min' : (session.duree || '—');
+                var clientName = session.client_name || session.userName || session.client_id || session.userEmail || '—';
+                var partnerName = session.partner_name || '—';
+                var meetLink = session.meet_url || session.visioLink || '';
+
+                html += '<tr style="border-bottom:2px solid #eee;">';
+                html += '<td style="padding:0.6rem;border:1px solid #dee2e6;font-size:0.85rem;">' + clientName + '</td>';
+                html += '<td style="padding:0.6rem;border:1px solid #dee2e6;font-size:0.85rem;">' + partnerName + '</td>';
+                html += '<td style="padding:0.6rem;border:1px solid #dee2e6;font-size:0.85rem;">' + typeLabel + '</td>';
+                html += '<td style="padding:0.6rem;border:1px solid #dee2e6;font-size:0.85rem;">' + dateStr + '</td>';
+                html += '<td style="padding:0.6rem;border:1px solid #dee2e6;font-size:0.85rem;">' + durationStr + '</td>';
+                html += '<td style="padding:0.6rem;border:1px solid #dee2e6;text-align:center;"><span style="display:inline-block;padding:2px 8px;font-weight:900;font-size:0.7rem;text-transform:uppercase;border:2px solid black;background:' + statusInfo.bg + ';color:' + statusInfo.color + ';">' + statusInfo.label + '</span></td>';
+                html += '<td style="padding:0.6rem;border:1px solid #dee2e6;font-size:0.85rem;">';
+                if (meetLink) {
+                    html += '<a href="' + meetLink + '" target="_blank" style="color:#1c7ed6;text-decoration:underline;font-size:0.8rem;"><i class="fas fa-video mr-1"></i>Lien</a>';
+                } else {
+                    html += '<span style="color:#aaa;">—</span>';
+                }
+                html += '</td>';
+                html += '</tr>';
+            }
+
+            html += '</tbody></table>';
+            html += '<p style="color:#666;font-size:0.8rem;margin-top:0.5rem;">' + filtered.length + ' séance(s)</p>';
+            table.innerHTML = html;
+        }
+
+        // Charger le badge séances admin au démarrage
+        (async function() {
+            try {
+                var response = await fetch(API_BASE_URL + '/api/admin/sessions');
+                if (response.ok) {
+                    var data = await response.json();
+                    var sessions = data.sessions || data || [];
+                    var requestedCount = 0;
+                    for (var i = 0; i < sessions.length; i++) {
+                        if (sessions[i].status === 'REQUESTED' || sessions[i].status === 'RESCHEDULE_REQUESTED') {
+                            requestedCount++;
+                        }
+                    }
+                    var badge = document.getElementById('pendingSeancesBadge');
+                    if (badge && requestedCount > 0) {
+                        badge.style.display = 'block';
+                        badge.textContent = requestedCount;
+                    }
+                }
+            } catch (e) {}
+        })();
+
     </script>
 </body>
 </html>

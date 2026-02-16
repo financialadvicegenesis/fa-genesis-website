@@ -7,111 +7,47 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
     <title>Mes Séances - FA GENESIS | Espace Client</title>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;900&family=Space+Grotesk:wght@300;700&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;900&family=Space+Grotesk:wght@300;700&display=swap" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;900&family=Space+Grotesk:wght@300;700&display=swap"></noscript>
     <link rel="stylesheet" href="tailwind.min.css">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.css" rel="stylesheet" media="print" onload="this.media='all'">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"></noscript>
     <style>
-
         :root {
             --genesis-yellow: #FFD700;
             --genesis-black: #000000;
             --genesis-white: #FFFFFF;
         }
-
-        body {
-            background-color: var(--genesis-black);
-            color: var(--genesis-white);
-            font-family: 'Space Grotesk', sans-serif;
-            overflow-x: hidden;
-        }
-
+        body { background-color: var(--genesis-black); color: var(--genesis-white); font-family: 'Space Grotesk', sans-serif; overflow-x: hidden; }
         h1, h2, h3, h4, h5, .nav-link { font-family: 'Unbounded', cursive; }
-
         .neo-border { border: 4px solid var(--genesis-black); }
-        .neo-shadow { box-shadow: 10px 10px 0px 0px var(--genesis-yellow); }
-
-        .neo-btn-yellow {
-            background: var(--genesis-yellow);
-            color: black;
-            border: 4px solid black;
-            box-shadow: 6px 6px 0px black;
-            font-weight: 900;
-            transition: 0.1s;
-        }
-
-        .seance-card {
-            background: white;
-            color: black;
-            border: 4px solid black;
-            padding: 2rem;
-            margin-bottom: 1.5rem;
-            transition: all 0.2s ease;
-        }
-
-        .seance-card:hover {
-            transform: translate(-4px, -4px);
-            box-shadow: 14px 14px 0px 0px var(--genesis-yellow);
-        }
-
-        .seance-card.upcoming {
-            border-color: black;
-        }
-
-        .seance-card.past {
-            opacity: 0.6;
-            background: #f5f5f5;
-        }
-
-        .seance-status {
-            display: inline-block;
-            padding: 0.5rem 1rem;
-            border: 3px solid black;
-            font-weight: 900;
-            text-transform: uppercase;
-            font-size: 0.75rem;
-            margin-bottom: 1rem;
-        }
-
-        .seance-status.upcoming {
-            background: var(--genesis-yellow);
-            color: black;
-        }
-
-        .seance-status.past {
-            background: #e0e0e0;
-            color: black;
-        }
-
-        .visio-btn {
-            display: inline-block;
-            background: black;
-            color: white;
-            padding: 1rem 2rem;
-            border: 3px solid black;
-            font-weight: 900;
-            text-transform: uppercase;
-            transition: all 0.2s;
-            text-align: center;
-        }
-
-        .visio-btn:hover {
-            background: var(--genesis-yellow);
-            color: black;
-        }
-
-        .seance-icon {
-            font-size: 2.5rem;
-            margin-bottom: 1rem;
-        }
-
-        .empty-state {
-            background: white;
-            color: black;
-            border: 4px dashed black;
-            padding: 3rem;
-            text-align: center;
-        }
+        .neo-btn-yellow { background: var(--genesis-yellow); color: black; border: 4px solid black; box-shadow: 6px 6px 0px black; font-weight: 900; transition: 0.1s; cursor: pointer; }
+        .neo-btn-yellow:hover { transform: translate(-2px, -2px); box-shadow: 8px 8px 0px black; }
+        .seance-card { background: white; color: black; border: 4px solid black; padding: 1.5rem; margin-bottom: 1.5rem; transition: all 0.2s ease; }
+        .seance-card:hover { transform: translate(-2px, -2px); box-shadow: 10px 10px 0px 0px var(--genesis-yellow); }
+        .status-badge { display: inline-block; padding: 0.4rem 0.8rem; border: 3px solid black; font-weight: 900; text-transform: uppercase; font-size: 0.7rem; }
+        .status-REQUESTED { background: #FF9800; color: #000; }
+        .status-PROPOSED { background: #2196F3; color: #fff; }
+        .status-CONFIRMED { background: #4CAF50; color: #fff; }
+        .status-COMPLETED { background: #9E9E9E; color: #fff; }
+        .status-CANCELLED { background: #f44336; color: #fff; }
+        .status-RESCHEDULE_REQUESTED { background: #FF5722; color: #fff; }
+        .visio-btn { display: inline-block; background: #4CAF50; color: white; padding: 0.8rem 1.5rem; border: 3px solid black; font-weight: 900; text-transform: uppercase; transition: all 0.2s; text-decoration: none; font-size: 0.85rem; }
+        .visio-btn:hover { background: var(--genesis-yellow); color: black; }
+        .action-btn { padding: 0.5rem 1rem; border: 3px solid black; font-weight: 700; text-transform: uppercase; font-size: 0.75rem; cursor: pointer; transition: all 0.15s; }
+        .action-btn:hover { transform: translate(-1px, -1px); box-shadow: 3px 3px 0 black; }
+        .action-btn-accept { background: #4CAF50; color: white; }
+        .action-btn-reschedule { background: #FF9800; color: black; }
+        .action-btn-cancel { background: #f44336; color: white; }
+        .empty-state { background: white; color: black; border: 4px dashed black; padding: 3rem; text-align: center; }
+        .filter-btn { cursor: pointer; transition: all 0.15s; }
+        .filter-btn.active { background: var(--genesis-yellow) !important; box-shadow: 6px 6px 0px black; }
+        .filter-btn:hover { transform: translate(-2px, -2px); box-shadow: 6px 6px 0px var(--genesis-yellow); }
+        .form-input { width: 100%; padding: 10px 12px; border: 3px solid black; font-weight: 700; font-size: 14px; color: black; background: white; font-family: 'Space Grotesk', sans-serif; }
+        .form-input:focus { outline: none; border-color: var(--genesis-yellow); }
+        .form-label { display: block; font-weight: 900; text-transform: uppercase; font-size: 0.75rem; margin-bottom: 6px; color: black; }
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999; background: rgba(0,0,0,0.85); overflow-y: auto; }
+        .modal-content { background: white; color: black; border: 4px solid black; max-width: 500px; width: 100%; margin: 5vh auto; padding: 2rem; position: relative; }
     </style>
 </head>
 <body>
@@ -121,9 +57,7 @@
         <div class="flex items-center">
             <a href="dashboard.html" class="text-2xl font-black tracking-wider text-[var(--genesis-yellow)]" style="font-family: 'Unbounded', cursive;">FA GENESIS</a>
         </div>
-        <div id="mainNavigation" class="hidden md:flex gap-8 text-white font-black">
-            <!-- Navigation dynamique générée par JavaScript -->
-        </div>
+        <div id="mainNavigation" class="hidden md:flex gap-8 text-white font-black"></div>
         <div class="flex gap-4 items-center">
             <span id="userGreeting" class="hidden md:block text-white font-bold"></span>
             <button onclick="logout()" class="border-4 border-white text-white px-4 py-2 text-[10px] tracking-widest font-black hover:bg-white hover:text-black transition">
@@ -133,237 +67,490 @@
     </nav>
 
     <!-- SÉANCES CONTENT -->
-    <section class="min-h-screen pt-32 pb-20 px-6 bg-black">
+    <section class="min-h-screen pt-32 pb-20 px-4 md:px-6 bg-black">
         <div class="container mx-auto max-w-5xl">
 
-            <!-- En-tête -->
-            <div class="mb-16" data-aos="fade-up">
-                <h1 class="text-5xl md:text-6xl font-black italic uppercase mb-4 text-[var(--genesis-yellow)]">Mes Séances</h1>
-                <p class="text-xl font-bold uppercase text-white">Votre planning de rendez-vous et visioconférences</p>
+            <!-- En-tête + bouton demande -->
+            <div class="mb-10 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+                <div>
+                    <h1 class="text-3xl md:text-5xl font-black italic uppercase mb-2 text-[var(--genesis-yellow)]">Mes Séances</h1>
+                    <p class="text-sm md:text-base font-bold uppercase text-white">Planning de rendez-vous et visioconférences</p>
+                </div>
+                <button onclick="openRequestForm()" class="neo-btn-yellow px-6 py-3 text-xs md:text-sm tracking-widest uppercase">
+                    <i class="fas fa-plus mr-2"></i>Demander une séance
+                </button>
             </div>
 
             <!-- Filtres -->
-            <div class="mb-12 flex flex-wrap gap-4" data-aos="fade-up">
-                <button class="filter-btn active px-6 py-3 bg-white text-black border-4 border-black font-black uppercase text-sm" data-filter="all">
-                    Toutes
-                </button>
-                <button class="filter-btn px-6 py-3 bg-white text-black border-4 border-black font-black uppercase text-sm" data-filter="upcoming">
-                    À venir
-                </button>
-                <button class="filter-btn px-6 py-3 bg-white text-black border-4 border-black font-black uppercase text-sm" data-filter="past">
-                    Passées
-                </button>
+            <div class="mb-8 flex flex-wrap gap-3">
+                <button class="filter-btn active px-5 py-2 bg-white text-black border-4 border-black font-black uppercase text-xs" data-filter="all">Toutes</button>
+                <button class="filter-btn px-5 py-2 bg-white text-black border-4 border-black font-black uppercase text-xs" data-filter="active">En cours</button>
+                <button class="filter-btn px-5 py-2 bg-white text-black border-4 border-black font-black uppercase text-xs" data-filter="done">Terminées</button>
             </div>
 
             <!-- Liste des séances -->
-            <div id="seancesContainer">
-                <!-- Les séances seront générées dynamiquement ici -->
-            </div>
+            <div id="seancesContainer"></div>
 
             <!-- État vide -->
             <div id="emptyState" class="empty-state" style="display: none;">
-                <i class="fas fa-calendar-times text-6xl mb-6 opacity-30"></i>
-                <h3 class="text-2xl font-black italic uppercase mb-4">Aucune séance planifiée</h3>
-                <p class="font-bold">Vos prochaines séances apparaîtront ici</p>
+                <i class="fas fa-calendar-times text-5xl mb-4 opacity-30"></i>
+                <h3 class="text-xl font-black italic uppercase mb-3">Aucune séance</h3>
+                <p class="font-bold mb-4">Demandez votre première séance avec un partenaire</p>
+                <button onclick="openRequestForm()" class="neo-btn-yellow px-6 py-3 text-xs tracking-widest uppercase">
+                    <i class="fas fa-plus mr-2"></i>Demander une séance
+                </button>
             </div>
-
         </div>
     </section>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>
+    <!-- MODAL : Demander une séance -->
+    <div id="requestModal" class="modal-overlay">
+        <div style="min-height:100%;display:flex;align-items:center;justify-content:center;padding:16px;">
+            <div class="modal-content" style="box-shadow: 8px 8px 0 var(--genesis-yellow);">
+                <button onclick="closeRequestForm()" style="position:absolute;top:12px;right:16px;font-size:24px;font-weight:900;color:black;background:none;border:none;cursor:pointer;line-height:1;">&times;</button>
+                <h3 style="font-size:18px;font-weight:900;text-transform:uppercase;margin-bottom:20px;color:black;">Demander une séance</h3>
+                <div style="margin-bottom:16px;">
+                    <label class="form-label">Type de séance</label>
+                    <select id="reqSessionType" class="form-input">
+                        <option value="call">Appel / Visio</option>
+                        <option value="shooting">Shooting photo/vidéo</option>
+                        <option value="meeting">Réunion / Consultation</option>
+                    </select>
+                </div>
+                <div style="margin-bottom:16px;">
+                    <label class="form-label">Votre besoin / message</label>
+                    <textarea id="reqNotes" class="form-input" rows="3" placeholder="Décrivez votre besoin..."></textarea>
+                </div>
+                <div style="margin-bottom:16px;">
+                    <label class="form-label">Créneau préféré 1 (optionnel)</label>
+                    <input type="datetime-local" id="reqSlot1" class="form-input">
+                </div>
+                <div style="margin-bottom:16px;">
+                    <label class="form-label">Créneau préféré 2 (optionnel)</label>
+                    <input type="datetime-local" id="reqSlot2" class="form-input">
+                </div>
+                <div id="reqError" style="display:none;background:#f44336;color:white;padding:10px;margin-bottom:12px;font-weight:700;font-size:13px;border:3px solid black;"></div>
+                <div id="reqSuccess" style="display:none;background:#4CAF50;color:white;padding:10px;margin-bottom:12px;font-weight:700;font-size:13px;border:3px solid black;"></div>
+                <button onclick="submitRequest()" class="neo-btn-yellow w-full py-3 text-sm tracking-widest uppercase">
+                    <i class="fas fa-paper-plane mr-2"></i>Envoyer la demande
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script src="config.js"></script>
     <script src="auth.js"></script>
     <script>
-        AOS.init({ duration: 1000, once: true, disable: 'mobile', offset: 120 });
-
-        // API_BASE_URL est défini dans auth.js
+    (function() {
+        'use strict';
 
         // Protection de la page
-        requireAuth();
-
-        // Chargement des données utilisateur
-        const user = getCurrentUser();
+        try { requireAuth(); } catch(e) {}
+        var user = null;
+        try { user = getCurrentUser(); } catch(e) {}
 
         if (user) {
-            // Vérifier que l'utilisateur a bien un accompagnement (pas une prestation individuelle)
-            if (user.productType === 'prestation_individuelle') {
-                alert('Cette section est réservée aux accompagnements. Vous avez souscrit à une prestation individuelle.');
-                window.location.href = 'dashboard.html';
+            renderNavigation(user.productType || 'accompagnement', 'seances');
+            var greet = document.getElementById('userGreeting');
+            if (greet) greet.textContent = user.prenom || '';
+            loadSeances();
+        }
+
+        function renderNavigation(productType, currentPage) {
+            var nav = document.getElementById('mainNavigation');
+            if (!nav) return;
+            var links = [
+                { href: 'dashboard.html', label: 'Dashboard', id: 'dashboard' },
+                { href: 'livrables.html', label: 'Livrables', id: 'livrables' },
+                { href: 'seances.html', label: 'Séances', id: 'seances' },
+                { href: 'mon-compte.html', label: 'Mon compte', id: 'mon-compte' }
+            ];
+            var html = '';
+            for (var i = 0; i < links.length; i++) {
+                var cls = links[i].id === currentPage ? 'text-[var(--genesis-yellow)]' : 'hover:text-[var(--genesis-yellow)] transition';
+                html += '<a href="' + links[i].href + '" class="nav-link ' + cls + '">' + links[i].label + '</a>';
+            }
+            nav.innerHTML = html;
+        }
+
+        // ============================================================
+        // STATUS HELPERS
+        // ============================================================
+        var STATUS_LABELS = {
+            'REQUESTED': 'Demandée',
+            'PROPOSED': 'Créneau proposé',
+            'CONFIRMED': 'Confirmée',
+            'RESCHEDULE_REQUESTED': 'Reprogrammation',
+            'COMPLETED': 'Terminée',
+            'CANCELLED': 'Annulée',
+            'scheduled': 'Planifiée',
+            'completed': 'Terminée',
+            'cancelled': 'Annulée'
+        };
+
+        var TYPE_LABELS = {
+            'call': 'Appel / Visio',
+            'shooting': 'Shooting',
+            'meeting': 'Réunion'
+        };
+
+        var ROLE_LABELS = {
+            'photographer': 'Photographe',
+            'videographer': 'Vidéaste',
+            'marketer': 'Marketing',
+            'media': 'Média'
+        };
+
+        function isActiveStatus(s) {
+            return s === 'REQUESTED' || s === 'PROPOSED' || s === 'CONFIRMED' || s === 'RESCHEDULE_REQUESTED' || s === 'scheduled';
+        }
+
+        // ============================================================
+        // LOAD SESSIONS
+        // ============================================================
+        function loadSeances() {
+            var container = document.getElementById('seancesContainer');
+            var emptyState = document.getElementById('emptyState');
+            if (!container) return;
+
+            container.innerHTML = '<div style="text-align:center;padding:32px 0;"><i class="fas fa-spinner fa-spin" style="font-size:2rem;color:var(--genesis-yellow);"></i><p style="margin-top:12px;font-weight:700;">Chargement...</p></div>';
+
+            var token = null;
+            try { token = localStorage.getItem('fa_genesis_token'); } catch(e) {}
+            if (!token) {
+                container.innerHTML = '';
+                if (emptyState) emptyState.style.display = 'block';
                 return;
             }
 
-            // Rendre la navigation selon productType
-            renderNavigation(user.productType || 'accompagnement', 'seances');
-
-            document.getElementById('userGreeting').textContent = user.prenom;
-            loadSeances(user);
-        }
-
-        // Fonction pour rendre la navigation selon le type de produit
-        function renderNavigation(productType, currentPage) {
-            const nav = document.getElementById('mainNavigation');
-
-            nav.innerHTML = `
-                <a href="dashboard.html" class="nav-link ${currentPage === 'dashboard' ? 'text-[var(--genesis-yellow)]' : 'hover:text-[var(--genesis-yellow)] transition'}">Dashboard</a>
-                <a href="livrables.html" class="nav-link ${currentPage === 'livrables' ? 'text-[var(--genesis-yellow)]' : 'hover:text-[var(--genesis-yellow)] transition'}">Livrables</a>
-                <a href="seances.html" class="nav-link ${currentPage === 'seances' ? 'text-[var(--genesis-yellow)]' : 'hover:text-[var(--genesis-yellow)] transition'}">Séances</a>
-                <a href="mon-compte.html" class="nav-link ${currentPage === 'mon-compte' ? 'text-[var(--genesis-yellow)]' : 'hover:text-[var(--genesis-yellow)] transition'}">Mon compte</a>
-            `;
-        }
-
-        let currentFilter = 'all';
-
-        // Charger les séances depuis l'API
-        async function loadSeances(user) {
-            const container = document.getElementById('seancesContainer');
-            const emptyState = document.getElementById('emptyState');
-
-            // Afficher un loader
-            container.innerHTML = '<div class="text-center py-8"><i class="fas fa-spinner fa-spin text-4xl text-[var(--genesis-yellow)]"></i><p class="mt-4 font-bold">Chargement de vos séances...</p></div>';
-
-            try {
-                // Récupérer le token d'authentification
-                const token = localStorage.getItem('fa_genesis_token');
-
-                if (!token) {
-                    throw new Error('Non authentifié');
-                }
-
-                const response = await fetch(`${API_BASE_URL}/api/sessions/me`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
-
-                if (!response.ok) {
-                    throw new Error('Erreur lors de la récupération des séances');
-                }
-
-                const seances = await response.json();
-
-                if (seances.length === 0) {
+            fetch(API_BASE_URL + '/api/sessions/me', {
+                headers: { 'Authorization': 'Bearer ' + token }
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(seances) {
+                if (!seances || !seances.length) {
+                    container.innerHTML = '';
                     container.style.display = 'none';
-                    emptyState.style.display = 'block';
+                    if (emptyState) emptyState.style.display = 'block';
                     return;
                 }
 
                 container.innerHTML = '';
                 container.style.display = 'block';
-                emptyState.style.display = 'none';
+                if (emptyState) emptyState.style.display = 'none';
 
-                const now = new Date();
-
-                seances.forEach((seance, index) => {
-                    const seanceDate = new Date(seance.date + 'T' + seance.heure);
-                    const isPast = seanceDate < now;
-                    const card = createSeanceCard(seance, isPast, index);
+                for (var i = 0; i < seances.length; i++) {
+                    var card = createSeanceCard(seances[i]);
                     container.appendChild(card);
-                });
-
-            } catch (error) {
-                console.error('Erreur chargement séances:', error);
+                }
+            })
+            .catch(function(err) {
+                console.error('Erreur chargement seances:', err);
                 container.innerHTML = '';
                 container.style.display = 'none';
-                emptyState.style.display = 'block';
-            }
-        }
-
-        function createSeanceCard(seance, isPast, index) {
-            const card = document.createElement('div');
-            card.className = `seance-card ${isPast ? 'past' : 'upcoming'}`;
-            card.setAttribute('data-aos', 'fade-up');
-            card.setAttribute('data-aos-delay', index * 100);
-            card.setAttribute('data-status', isPast ? 'past' : 'upcoming');
-
-            const date = new Date(seance.date);
-            const formattedDate = date.toLocaleDateString('fr-FR', {
-                weekday: 'long',
-                day: '2-digit',
-                month: 'long',
-                year: 'numeric'
+                if (emptyState) emptyState.style.display = 'block';
             });
+        }
+        window.loadSeances = loadSeances;
 
-            let locationHTML = '';
-            if (seance.visioLink) {
-                locationHTML = `
-                    <div class="mt-6">
-                        <a href="${seance.visioLink}" target="_blank" class="visio-btn">
-                            <i class="fas fa-video mr-2"></i>Rejoindre la visio
-                        </a>
-                    </div>
-                `;
-            } else if (seance.lieu) {
-                locationHTML = `
-                    <div class="mt-4 p-4 bg-yellow-100 border-3 border-black">
-                        <p class="font-black uppercase text-sm mb-1"><i class="fas fa-map-marker-alt mr-2"></i>Lieu</p>
-                        <p class="font-bold">${seance.lieu}</p>
-                    </div>
-                `;
+        // ============================================================
+        // CREATE SESSION CARD
+        // ============================================================
+        function createSeanceCard(seance) {
+            var card = document.createElement('div');
+            var status = seance.status || 'scheduled';
+            var isActive = isActiveStatus(status);
+            card.className = 'seance-card';
+            if (!isActive) card.style.opacity = '0.7';
+            card.setAttribute('data-filter-status', isActive ? 'active' : 'done');
+
+            // Date
+            var dateStr = '';
+            if (seance.datetime_start) {
+                var d = new Date(seance.datetime_start);
+                dateStr = d.toLocaleDateString('fr-FR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })
+                    + ' à ' + d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+            } else if (seance.date && seance.heure) {
+                dateStr = seance.date + ' à ' + seance.heure;
+            } else {
+                dateStr = 'Date à définir';
             }
 
-            card.innerHTML = `
-                <div class="flex items-start justify-between mb-4 flex-wrap gap-4">
-                    <div class="flex-1">
-                        <div class="seance-icon">
-                            <i class="fas ${seance.icon}"></i>
-                        </div>
-                        <div class="seance-status ${isPast ? 'past' : 'upcoming'}">${isPast ? 'Passée' : 'À venir'}</div>
-                    </div>
-                    <div class="text-right">
-                        <div class="text-sm font-black uppercase opacity-70 mb-1">Date & heure</div>
-                        <div class="text-2xl font-black italic capitalize">${formattedDate}</div>
-                        <div class="text-xl font-bold">${seance.heure}</div>
-                    </div>
-                </div>
-                <h3 class="text-2xl font-black italic uppercase mb-2">${seance.type}</h3>
-                <div class="flex items-center gap-2 mb-4">
-                    <span class="px-3 py-1 bg-black text-white font-black text-xs uppercase">
-                        <i class="fas fa-clock mr-1"></i>${seance.duree}
-                    </span>
-                </div>
-                <p class="font-bold text-base leading-relaxed mb-4">${seance.description}</p>
-                ${locationHTML}
-            `;
+            // Type & duration
+            var typeLabel = TYPE_LABELS[seance.session_type] || seance.session_type || seance.type || 'Séance';
+            var duration = seance.duration_minutes || seance.duree || '45 min';
+            if (typeof duration === 'number') duration = duration + ' min';
+
+            // Partner info
+            var partnerHTML = '';
+            if (seance.partner_name) {
+                var roleLabel = ROLE_LABELS[seance.partner_role] || seance.partner_role || '';
+                partnerHTML = '<div style="margin-bottom:8px;"><span style="font-weight:900;font-size:12px;text-transform:uppercase;opacity:0.6;">Partenaire : </span>'
+                    + '<span style="font-weight:700;">' + escapeHtml(seance.partner_name) + '</span>'
+                    + (roleLabel ? ' <span style="font-size:11px;opacity:0.6;">(' + escapeHtml(roleLabel) + ')</span>' : '')
+                    + '</div>';
+            }
+
+            // Status badge
+            var statusLabel = STATUS_LABELS[status] || status;
+            var statusHTML = '<span class="status-badge status-' + escapeHtml(status) + '">' + escapeHtml(statusLabel) + '</span>';
+
+            // Notes
+            var notesHTML = '';
+            if (seance.notes_client) {
+                notesHTML = '<p style="font-size:13px;margin-top:8px;line-height:1.5;opacity:0.8;"><i class="fas fa-comment-dots" style="margin-right:6px;"></i>' + escapeHtml(seance.notes_client) + '</p>';
+            }
+            if (seance.description) {
+                notesHTML = '<p style="font-size:13px;margin-top:8px;line-height:1.5;opacity:0.8;">' + escapeHtml(seance.description) + '</p>';
+            }
+
+            // Action buttons based on status
+            var actionsHTML = '';
+
+            if (status === 'REQUESTED') {
+                actionsHTML = '<div style="margin-top:12px;padding:10px;background:#FFF3E0;border:2px solid #FF9800;">'
+                    + '<i class="fas fa-hourglass-half" style="margin-right:6px;color:#FF9800;"></i>'
+                    + '<span style="font-weight:700;font-size:13px;">En attente du partenaire</span></div>';
+            } else if (status === 'PROPOSED') {
+                // Proposed slots info
+                var proposedInfo = '';
+                if (seance.datetime_start) {
+                    var pd = new Date(seance.datetime_start);
+                    proposedInfo = '<div style="margin-top:8px;padding:10px;background:#E3F2FD;border:2px solid #2196F3;">'
+                        + '<i class="fas fa-calendar-check" style="margin-right:6px;color:#2196F3;"></i>'
+                        + '<span style="font-weight:700;font-size:13px;">Créneau proposé : '
+                        + pd.toLocaleDateString('fr-FR', { weekday: 'long', day: '2-digit', month: 'long' })
+                        + ' à ' + pd.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+                        + '</span></div>';
+                }
+                actionsHTML = proposedInfo
+                    + '<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">'
+                    + '<button onclick="acceptSession(\'' + seance.id + '\')" class="action-btn action-btn-accept"><i class="fas fa-check mr-1"></i>Accepter</button>'
+                    + '<button onclick="rescheduleSession(\'' + seance.id + '\')" class="action-btn action-btn-reschedule"><i class="fas fa-redo mr-1"></i>Autre créneau</button>'
+                    + '<button onclick="cancelSession(\'' + seance.id + '\')" class="action-btn action-btn-cancel"><i class="fas fa-times mr-1"></i>Annuler</button>'
+                    + '</div>';
+            } else if (status === 'CONFIRMED') {
+                // Meet button ONLY if confirmed
+                if (seance.meet_url) {
+                    actionsHTML = '<div style="margin-top:12px;">'
+                        + '<a href="' + escapeHtml(seance.meet_url) + '" target="_blank" class="visio-btn">'
+                        + '<i class="fas fa-video mr-2"></i>Rejoindre le Google Meet</a></div>';
+                } else if (seance.visioLink) {
+                    actionsHTML = '<div style="margin-top:12px;">'
+                        + '<a href="' + escapeHtml(seance.visioLink) + '" target="_blank" class="visio-btn">'
+                        + '<i class="fas fa-video mr-2"></i>Rejoindre la visio</a></div>';
+                }
+                if (seance.location || seance.lieu) {
+                    actionsHTML += '<div style="margin-top:8px;padding:8px 12px;background:#FFF9E6;border:2px solid #FFD700;">'
+                        + '<i class="fas fa-map-marker-alt" style="margin-right:6px;"></i>'
+                        + '<span style="font-weight:700;font-size:13px;">' + escapeHtml(seance.location || seance.lieu) + '</span></div>';
+                }
+            } else if (status === 'RESCHEDULE_REQUESTED') {
+                actionsHTML = '<div style="margin-top:12px;padding:10px;background:#FFF3E0;border:2px solid #FF5722;">'
+                    + '<i class="fas fa-clock" style="margin-right:6px;color:#FF5722;"></i>'
+                    + '<span style="font-weight:700;font-size:13px;">Reprogrammation demandée — en attente du partenaire</span></div>';
+            } else if (status === 'scheduled' && (seance.visioLink || seance.meet_url)) {
+                // Legacy sessions
+                var link = seance.visioLink || seance.meet_url;
+                actionsHTML = '<div style="margin-top:12px;">'
+                    + '<a href="' + escapeHtml(link) + '" target="_blank" class="visio-btn">'
+                    + '<i class="fas fa-video mr-2"></i>Rejoindre la visio</a></div>';
+            }
+
+            card.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:10px;">'
+                + '<div>' + statusHTML + '</div>'
+                + '<div style="text-align:right;font-size:13px;">'
+                + '<div style="font-weight:900;text-transform:uppercase;opacity:0.5;font-size:11px;">Date & heure</div>'
+                + '<div style="font-weight:900;font-style:italic;font-size:15px;">' + escapeHtml(dateStr) + '</div>'
+                + '</div></div>'
+                + partnerHTML
+                + '<h3 style="font-weight:900;font-style:italic;text-transform:uppercase;font-size:16px;margin-bottom:4px;">' + escapeHtml(typeLabel) + '</h3>'
+                + '<span style="display:inline-block;padding:2px 8px;background:black;color:white;font-weight:900;font-size:11px;text-transform:uppercase;">'
+                + '<i class="fas fa-clock" style="margin-right:4px;"></i>' + escapeHtml(String(duration)) + '</span>'
+                + notesHTML
+                + actionsHTML;
 
             return card;
         }
 
-        // Gestion des filtres
-        document.querySelectorAll('.filter-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        function escapeHtml(t) {
+            if (!t) return '';
+            return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+
+        // ============================================================
+        // FILTERS
+        // ============================================================
+        var filterBtns = document.querySelectorAll('.filter-btn');
+        for (var f = 0; f < filterBtns.length; f++) {
+            filterBtns[f].addEventListener('click', function() {
+                for (var j = 0; j < filterBtns.length; j++) filterBtns[j].classList.remove('active');
                 this.classList.add('active');
-
-                const filter = this.getAttribute('data-filter');
-                currentFilter = filter;
-
-                const cards = document.querySelectorAll('.seance-card');
-                cards.forEach(card => {
-                    if (filter === 'all' || card.getAttribute('data-status') === filter) {
-                        card.style.display = 'block';
+                var filter = this.getAttribute('data-filter');
+                var cards = document.querySelectorAll('.seance-card');
+                for (var k = 0; k < cards.length; k++) {
+                    var cardFilter = cards[k].getAttribute('data-filter-status');
+                    if (filter === 'all' || cardFilter === filter) {
+                        cards[k].style.display = 'block';
                     } else {
-                        card.style.display = 'none';
+                        cards[k].style.display = 'none';
                     }
-                });
+                }
             });
+        }
+
+        // ============================================================
+        // REQUEST FORM
+        // ============================================================
+        window.openRequestForm = function() {
+            document.getElementById('requestModal').style.display = 'block';
+            document.body.style.overflow = 'hidden';
+            document.getElementById('reqError').style.display = 'none';
+            document.getElementById('reqSuccess').style.display = 'none';
+        };
+
+        window.closeRequestForm = function() {
+            document.getElementById('requestModal').style.display = 'none';
+            document.body.style.overflow = '';
+        };
+
+        // Close on overlay click
+        document.getElementById('requestModal').addEventListener('click', function(e) {
+            if (e.target === this || e.target === this.firstElementChild) window.closeRequestForm();
         });
 
-        // Style pour le bouton actif
-        const style = document.createElement('style');
-        style.textContent = `
-            .filter-btn.active {
-                background: var(--genesis-yellow) !important;
-                box-shadow: 6px 6px 0px black;
-            }
-            .filter-btn:hover {
-                transform: translate(-2px, -2px);
-                box-shadow: 6px 6px 0px var(--genesis-yellow);
-            }
-        `;
-        document.head.appendChild(style);
+        window.submitRequest = function() {
+            var token = null;
+            try { token = localStorage.getItem('fa_genesis_token'); } catch(e) {}
+            if (!token) { alert('Non authentifié'); return; }
+
+            var sessionType = document.getElementById('reqSessionType').value;
+            var notes = document.getElementById('reqNotes').value;
+            var slot1 = document.getElementById('reqSlot1').value;
+            var slot2 = document.getElementById('reqSlot2').value;
+
+            var proposedSlots = [];
+            if (slot1) proposedSlots.push(slot1);
+            if (slot2) proposedSlots.push(slot2);
+
+            var errEl = document.getElementById('reqError');
+            var sucEl = document.getElementById('reqSuccess');
+            errEl.style.display = 'none';
+            sucEl.style.display = 'none';
+
+            fetch(API_BASE_URL + '/api/sessions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + token
+                },
+                body: JSON.stringify({
+                    session_type: sessionType,
+                    notes_client: notes,
+                    proposed_slots: proposedSlots
+                })
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    sucEl.textContent = 'Demande envoyée ! Le partenaire sera notifié.';
+                    sucEl.style.display = 'block';
+                    // Reset form
+                    document.getElementById('reqNotes').value = '';
+                    document.getElementById('reqSlot1').value = '';
+                    document.getElementById('reqSlot2').value = '';
+                    setTimeout(function() {
+                        window.closeRequestForm();
+                        loadSeances();
+                    }, 1500);
+                } else {
+                    errEl.textContent = data.error || 'Erreur lors de la demande';
+                    errEl.style.display = 'block';
+                }
+            })
+            .catch(function(err) {
+                errEl.textContent = 'Erreur réseau : ' + err.message;
+                errEl.style.display = 'block';
+            });
+        };
+
+        // ============================================================
+        // SESSION ACTIONS
+        // ============================================================
+        window.acceptSession = function(sessionId) {
+            var token = null;
+            try { token = localStorage.getItem('fa_genesis_token'); } catch(e) {}
+            if (!token) return;
+
+            fetch(API_BASE_URL + '/api/sessions/' + sessionId + '/accept', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' }
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    loadSeances();
+                } else {
+                    alert(data.error || 'Erreur');
+                }
+            })
+            .catch(function(err) { alert('Erreur: ' + err.message); });
+        };
+
+        window.rescheduleSession = function(sessionId) {
+            var notes = prompt('Précisez vos disponibilités pour un nouveau créneau :');
+            if (notes === null) return;
+
+            var token = null;
+            try { token = localStorage.getItem('fa_genesis_token'); } catch(e) {}
+            if (!token) return;
+
+            fetch(API_BASE_URL + '/api/sessions/' + sessionId + '/reschedule', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ notes_client: notes })
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    loadSeances();
+                } else {
+                    alert(data.error || 'Erreur');
+                }
+            })
+            .catch(function(err) { alert('Erreur: ' + err.message); });
+        };
+
+        window.cancelSession = function(sessionId) {
+            if (!confirm('Êtes-vous sûr de vouloir annuler cette séance ?')) return;
+
+            var token = null;
+            try { token = localStorage.getItem('fa_genesis_token'); } catch(e) {}
+            if (!token) return;
+
+            fetch(API_BASE_URL + '/api/sessions/' + sessionId + '/cancel', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' }
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    loadSeances();
+                } else {
+                    alert(data.error || 'Erreur');
+                }
+            })
+            .catch(function(err) { alert('Erreur: ' + err.message); });
+        };
+
+    })();
     </script>
     <div id="site-footer"></div>
     <script src="footer.js" defer></script>
-    <script src="chatbot.js" defer></script>
+    <script>
+        var chatbotLoaded=false;function loadChatbot(){if(chatbotLoaded)return;chatbotLoaded=true;var s=document.createElement('script');s.src='chatbot.js';document.body.appendChild(s);}
+        if('requestIdleCallback' in window){requestIdleCallback(loadChatbot,{timeout:4000});}else{setTimeout(loadChatbot,3000);}
+        window.addEventListener('scroll',loadChatbot,{once:true,passive:true});window.addEventListener('touchstart',loadChatbot,{once:true,passive:true});
+    </script>
 </body>
 </html>

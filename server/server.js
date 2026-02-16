@@ -2619,38 +2619,426 @@ app.get('/api/admin/sessions/user/:userEmail', (req, res) => {
     res.json(userSessions);
 });
 
+// Helper : authentifier un client via Bearer token
+function authenticateClient(req, res) {
+    var authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        res.status(401).json({ error: 'Token d\'authentification requis' });
+        return null;
+    }
+    var token = authHeader.split(' ')[1];
+    var users = loadUsers();
+    var user = users.find(function(u) { return u.sessionToken === token; });
+    if (!user) {
+        res.status(401).json({ error: 'Session invalide ou expiree' });
+        return null;
+    }
+    return user;
+}
+
+// Helper : sanitiser une session pour le client (masquer meet_url si pas CONFIRMED)
+function sanitizeSessionForClient(session) {
+    var s = JSON.parse(JSON.stringify(session));
+    if (s.status !== 'CONFIRMED') {
+        s.meet_url = null;
+    }
+    // Ne pas exposer notes_partner au client
+    delete s.notes_partner;
+    return s;
+}
+
 /**
  * GET /api/sessions/me
  * Recuperer les seances de l'utilisateur connecte
- * Headers: Authorization: Bearer <token>
+ * Supporte ancien modele (userEmail) + nouveau (client_id)
  */
-app.get('/api/sessions/me', (req, res) => {
+app.get('/api/sessions/me', function(req, res) {
     try {
-        const authHeader = req.headers.authorization;
+        var user = authenticateClient(req, res);
+        if (!user) return;
 
-        if (!authHeader || !authHeader.startsWith('Bearer ')) {
-            return res.status(401).json({ error: 'Token d\'authentification requis' });
-        }
-
-        const token = authHeader.split(' ')[1];
-        const users = loadUsers();
-        const user = users.find(u => u.sessionToken === token);
-
-        if (!user) {
-            return res.status(401).json({ error: 'Session invalide ou expirée' });
-        }
-
-        const sessions = loadSessions();
-        const userSessions = sessions.filter(s => s.userEmail.toLowerCase() === user.email.toLowerCase());
+        var sessions = loadSessions();
+        var email = user.email.toLowerCase();
+        var userSessions = sessions.filter(function(s) {
+            return (s.client_id && s.client_id.toLowerCase() === email) ||
+                   (s.userEmail && s.userEmail.toLowerCase() === email);
+        });
 
         // Trier par date (plus proche en premier)
-        userSessions.sort((a, b) => new Date(a.date) - new Date(b.date));
+        userSessions.sort(function(a, b) {
+            var dateA = a.datetime_start || (a.date + 'T' + (a.heure || '00:00'));
+            var dateB = b.datetime_start || (b.date + 'T' + (b.heure || '00:00'));
+            return new Date(dateA) - new Date(dateB);
+        });
 
-        res.json(userSessions);
+        // Masquer meet_url si pas CONFIRMED
+        var sanitized = userSessions.map(sanitizeSessionForClient);
+        res.json(sanitized);
 
     } catch (error) {
         console.error('Erreur recuperation sessions:', error);
         res.status(500).json({ error: 'Erreur lors de la recuperation des seances' });
+    }
+});
+
+/**
+ * POST /api/sessions
+ * Client cree une demande de seance (status=REQUESTED)
+ * Body: { partner_id, session_type, notes_client, proposed_slots, project_id }
+ */
+app.post('/api/sessions', function(req, res) {
+    try {
+        var user = authenticateClient(req, res);
+        if (!user) return;
+
+        var body = req.body;
+        if (!body.session_type) {
+            return res.status(400).json({ error: 'session_type requis (call, shooting, meeting)' });
+        }
+
+        // Chercher le partenaire si fourni
+        var partnerName = null;
+        var partnerRole = null;
+        if (body.partner_id) {
+            var partners = loadPartners();
+            var partner = partners.find(function(p) { return p.id === body.partner_id; });
+            if (partner) {
+                partnerName = (partner.prenom || '') + ' ' + (partner.nom || '');
+                partnerRole = partner.partner_type || null;
+            }
+        }
+
+        var now = new Date().toISOString();
+        var newSession = {
+            id: 'SES-' + uuidv4().split('-')[0].toUpperCase(),
+            project_id: body.project_id || null,
+            client_id: user.email.toLowerCase(),
+            client_name: ((user.prenom || '') + ' ' + (user.nom || '')).trim() || user.email,
+            partner_id: body.partner_id || null,
+            partner_name: partnerName,
+            partner_role: partnerRole,
+            session_type: body.session_type,
+            datetime_start: null,
+            duration_minutes: body.duration_minutes || 45,
+            meet_url: null,
+            location: body.location || null,
+            status: 'REQUESTED',
+            notes_client: body.notes_client || '',
+            notes_partner: '',
+            proposed_slots: body.proposed_slots || [],
+            created_at: now,
+            updated_at: now
+        };
+
+        var sessions = loadSessions();
+        sessions.push(newSession);
+        saveSessions(sessions);
+
+        console.log('[SESSION] Demande creee: ' + newSession.id + ' par ' + user.email);
+        res.json({ success: true, session: sanitizeSessionForClient(newSession) });
+
+    } catch (error) {
+        console.error('Erreur creation session:', error);
+        res.status(500).json({ error: 'Erreur lors de la creation de la seance' });
+    }
+});
+
+/**
+ * POST /api/sessions/:id/accept
+ * Client accepte un creneau PROPOSED -> CONFIRMED (si meet_url present) ou reste PROPOSED
+ */
+app.post('/api/sessions/:id/accept', function(req, res) {
+    try {
+        var user = authenticateClient(req, res);
+        if (!user) return;
+
+        var sessions = loadSessions();
+        var idx = sessions.findIndex(function(s) { return s.id === req.params.id; });
+        if (idx === -1) return res.status(404).json({ error: 'Seance non trouvee' });
+
+        var session = sessions[idx];
+        if (session.client_id.toLowerCase() !== user.email.toLowerCase()) {
+            return res.status(403).json({ error: 'Acces non autorise' });
+        }
+        if (session.status !== 'PROPOSED') {
+            return res.status(400).json({ error: 'La seance doit etre en statut PROPOSED pour accepter' });
+        }
+
+        session.status = session.meet_url ? 'CONFIRMED' : 'CONFIRMED';
+        session.updated_at = new Date().toISOString();
+        saveSessions(sessions);
+
+        // Envoyer email si CONFIRMED avec meet_url
+        if (session.status === 'CONFIRMED' && session.meet_url) {
+            try {
+                var emailService = require('./email-service');
+                if (emailService.sendSessionConfirmedEmail) {
+                    emailService.sendSessionConfirmedEmail(session.client_id, session.client_name, session);
+                }
+            } catch(e) { console.error('[SESSION] Erreur envoi email confirmation:', e.message); }
+        }
+
+        console.log('[SESSION] Acceptee: ' + session.id);
+        res.json({ success: true, session: sanitizeSessionForClient(session) });
+
+    } catch (error) {
+        console.error('Erreur accept session:', error);
+        res.status(500).json({ error: 'Erreur' });
+    }
+});
+
+/**
+ * POST /api/sessions/:id/reschedule
+ * Client demande reprogrammation
+ * Body: { notes_client, proposed_slots }
+ */
+app.post('/api/sessions/:id/reschedule', function(req, res) {
+    try {
+        var user = authenticateClient(req, res);
+        if (!user) return;
+
+        var sessions = loadSessions();
+        var idx = sessions.findIndex(function(s) { return s.id === req.params.id; });
+        if (idx === -1) return res.status(404).json({ error: 'Seance non trouvee' });
+
+        var session = sessions[idx];
+        if (session.client_id.toLowerCase() !== user.email.toLowerCase()) {
+            return res.status(403).json({ error: 'Acces non autorise' });
+        }
+        if (session.status !== 'PROPOSED' && session.status !== 'CONFIRMED') {
+            return res.status(400).json({ error: 'Reprogrammation impossible pour ce statut' });
+        }
+
+        session.status = 'RESCHEDULE_REQUESTED';
+        if (req.body.notes_client) session.notes_client = req.body.notes_client;
+        if (req.body.proposed_slots) session.proposed_slots = req.body.proposed_slots;
+        session.updated_at = new Date().toISOString();
+        saveSessions(sessions);
+
+        console.log('[SESSION] Reprogrammation demandee: ' + session.id);
+        res.json({ success: true, session: sanitizeSessionForClient(session) });
+
+    } catch (error) {
+        console.error('Erreur reschedule session:', error);
+        res.status(500).json({ error: 'Erreur' });
+    }
+});
+
+/**
+ * POST /api/sessions/:id/cancel
+ * Client annule une seance
+ */
+app.post('/api/sessions/:id/cancel', function(req, res) {
+    try {
+        var user = authenticateClient(req, res);
+        if (!user) return;
+
+        var sessions = loadSessions();
+        var idx = sessions.findIndex(function(s) { return s.id === req.params.id; });
+        if (idx === -1) return res.status(404).json({ error: 'Seance non trouvee' });
+
+        var session = sessions[idx];
+        if (session.client_id.toLowerCase() !== user.email.toLowerCase()) {
+            return res.status(403).json({ error: 'Acces non autorise' });
+        }
+        if (session.status === 'COMPLETED' || session.status === 'CANCELLED') {
+            return res.status(400).json({ error: 'Impossible d\'annuler cette seance' });
+        }
+
+        session.status = 'CANCELLED';
+        session.updated_at = new Date().toISOString();
+        saveSessions(sessions);
+
+        console.log('[SESSION] Annulee par client: ' + session.id);
+        res.json({ success: true, session: sanitizeSessionForClient(session) });
+
+    } catch (error) {
+        console.error('Erreur cancel session:', error);
+        res.status(500).json({ error: 'Erreur' });
+    }
+});
+
+// ============================================================
+// ROUTES - SESSIONS PARTENAIRE
+// ============================================================
+
+/**
+ * GET /api/partner/sessions
+ * Partenaire recupere ses seances
+ */
+app.get('/api/partner/sessions', authenticatePartner, function(req, res) {
+    try {
+        var sessions = loadSessions();
+        var partnerSessions = sessions.filter(function(s) {
+            return s.partner_id === req.partner.id;
+        });
+
+        partnerSessions.sort(function(a, b) {
+            var dateA = a.datetime_start || a.created_at;
+            var dateB = b.datetime_start || b.created_at;
+            return new Date(dateB) - new Date(dateA);
+        });
+
+        res.json(partnerSessions);
+    } catch (error) {
+        console.error('Erreur get partner sessions:', error);
+        res.status(500).json({ error: 'Erreur' });
+    }
+});
+
+/**
+ * PATCH /api/partner/sessions/:id
+ * Partenaire propose/confirme/modifie une seance
+ * Body: { action, datetime_start, duration_minutes, meet_url, location, notes_partner }
+ * action: "propose" | "confirm" | "modify"
+ */
+app.patch('/api/partner/sessions/:id', authenticatePartner, function(req, res) {
+    try {
+        var sessions = loadSessions();
+        var idx = sessions.findIndex(function(s) { return s.id === req.params.id; });
+        if (idx === -1) return res.status(404).json({ error: 'Seance non trouvee' });
+
+        var session = sessions[idx];
+        if (session.partner_id !== req.partner.id) {
+            return res.status(403).json({ error: 'Acces non autorise' });
+        }
+
+        var body = req.body;
+        var action = body.action || 'modify';
+        var now = new Date().toISOString();
+
+        if (action === 'propose') {
+            // REQUESTED ou RESCHEDULE_REQUESTED -> PROPOSED
+            if (session.status !== 'REQUESTED' && session.status !== 'RESCHEDULE_REQUESTED') {
+                return res.status(400).json({ error: 'Statut incompatible pour proposer un creneau' });
+            }
+            if (!body.datetime_start) {
+                return res.status(400).json({ error: 'datetime_start requis' });
+            }
+            session.datetime_start = body.datetime_start;
+            if (body.duration_minutes) session.duration_minutes = body.duration_minutes;
+            if (body.location !== undefined) session.location = body.location;
+            if (body.meet_url) session.meet_url = body.meet_url;
+            if (body.notes_partner) session.notes_partner = body.notes_partner;
+            session.status = 'PROPOSED';
+            session.updated_at = now;
+
+            // Email si c'etait une reprogrammation
+            try {
+                var emailService = require('./email-service');
+                if (emailService.sendSessionRescheduledEmail) {
+                    emailService.sendSessionRescheduledEmail(session.client_id, session.client_name, session);
+                }
+            } catch(e) { console.error('[SESSION] Erreur envoi email reschedule:', e.message); }
+
+        } else if (action === 'confirm') {
+            // REQUESTED -> CONFIRMED direct (avec meet_url)
+            if (session.status !== 'REQUESTED' && session.status !== 'PROPOSED') {
+                return res.status(400).json({ error: 'Statut incompatible pour confirmer' });
+            }
+            if (!body.datetime_start && !session.datetime_start) {
+                return res.status(400).json({ error: 'datetime_start requis' });
+            }
+            if (body.datetime_start) session.datetime_start = body.datetime_start;
+            if (body.duration_minutes) session.duration_minutes = body.duration_minutes;
+            if (body.meet_url) session.meet_url = body.meet_url;
+            if (body.location !== undefined) session.location = body.location;
+            if (body.notes_partner) session.notes_partner = body.notes_partner;
+            session.status = 'CONFIRMED';
+            session.updated_at = now;
+
+            // Email confirmation
+            try {
+                var emailService = require('./email-service');
+                if (emailService.sendSessionConfirmedEmail) {
+                    emailService.sendSessionConfirmedEmail(session.client_id, session.client_name, session);
+                }
+            } catch(e) { console.error('[SESSION] Erreur envoi email confirmation:', e.message); }
+
+        } else {
+            // modify : modifier les champs sans changer le statut
+            if (session.status === 'COMPLETED' || session.status === 'CANCELLED') {
+                return res.status(400).json({ error: 'Modification impossible pour ce statut' });
+            }
+            if (body.datetime_start) session.datetime_start = body.datetime_start;
+            if (body.duration_minutes) session.duration_minutes = body.duration_minutes;
+            if (body.meet_url !== undefined) session.meet_url = body.meet_url;
+            if (body.location !== undefined) session.location = body.location;
+            if (body.notes_partner !== undefined) session.notes_partner = body.notes_partner;
+            session.updated_at = now;
+        }
+
+        saveSessions(sessions);
+        console.log('[SESSION] Partenaire ' + action + ': ' + session.id);
+        res.json({ success: true, session: session });
+
+    } catch (error) {
+        console.error('Erreur patch partner session:', error);
+        res.status(500).json({ error: 'Erreur' });
+    }
+});
+
+/**
+ * POST /api/partner/sessions/:id/complete
+ * Partenaire marque la seance comme terminee
+ */
+app.post('/api/partner/sessions/:id/complete', authenticatePartner, function(req, res) {
+    try {
+        var sessions = loadSessions();
+        var idx = sessions.findIndex(function(s) { return s.id === req.params.id; });
+        if (idx === -1) return res.status(404).json({ error: 'Seance non trouvee' });
+
+        var session = sessions[idx];
+        if (session.partner_id !== req.partner.id) {
+            return res.status(403).json({ error: 'Acces non autorise' });
+        }
+        if (session.status !== 'CONFIRMED') {
+            return res.status(400).json({ error: 'Seule une seance CONFIRMED peut etre terminee' });
+        }
+
+        session.status = 'COMPLETED';
+        if (req.body && req.body.notes_partner) session.notes_partner = req.body.notes_partner;
+        session.updated_at = new Date().toISOString();
+        saveSessions(sessions);
+
+        console.log('[SESSION] Terminee: ' + session.id);
+        res.json({ success: true, session: session });
+
+    } catch (error) {
+        console.error('Erreur complete session:', error);
+        res.status(500).json({ error: 'Erreur' });
+    }
+});
+
+/**
+ * POST /api/partner/sessions/:id/cancel
+ * Partenaire annule une seance
+ */
+app.post('/api/partner/sessions/:id/cancel', authenticatePartner, function(req, res) {
+    try {
+        var sessions = loadSessions();
+        var idx = sessions.findIndex(function(s) { return s.id === req.params.id; });
+        if (idx === -1) return res.status(404).json({ error: 'Seance non trouvee' });
+
+        var session = sessions[idx];
+        if (session.partner_id !== req.partner.id) {
+            return res.status(403).json({ error: 'Acces non autorise' });
+        }
+        if (session.status === 'COMPLETED' || session.status === 'CANCELLED') {
+            return res.status(400).json({ error: 'Impossible d\'annuler cette seance' });
+        }
+
+        session.status = 'CANCELLED';
+        if (req.body && req.body.notes_partner) session.notes_partner = req.body.notes_partner;
+        session.updated_at = new Date().toISOString();
+        saveSessions(sessions);
+
+        console.log('[SESSION] Annulee par partenaire: ' + session.id);
+        res.json({ success: true, session: session });
+
+    } catch (error) {
+        console.error('Erreur cancel partner session:', error);
+        res.status(500).json({ error: 'Erreur' });
     }
 });
 
