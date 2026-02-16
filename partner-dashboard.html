@@ -351,7 +351,7 @@
             <h2 class="text-2xl md:text-3xl font-black text-white mb-6" style="font-family:'Playfair Display',serif;">
                 <i class="fas fa-tasks mr-3" style="color:var(--genesis-yellow);"></i>MES MISSIONS
             </h2>
-            <p class="text-white text-sm mb-6 opacity-70">Livrables assignes a vos commandes. Vous pouvez modifier, uploader des fichiers et soumettre pour validation.</p>
+            <p class="text-white text-sm mb-6 opacity-70">Livrables assignés à vos commandes. Vous pouvez modifier, uploader des fichiers et soumettre pour validation.</p>
 
             <div id="missionsListContainer">
                 <p class="text-center py-8 opacity-50 font-bold text-white">Chargement...</p>
@@ -733,9 +733,9 @@
         var header = document.getElementById('projectHeader');
         if (header) {
             var statusLabel = {
-                active: 'Actif', in_progress: 'En cours', delivered: 'Livre',
-                completed: 'Termine', pending_deposit: 'Acompte en attente',
-                pending_balance: 'Solde en attente', paid_in_full: 'Paye'
+                active: 'Actif', in_progress: 'En cours', delivered: 'Livré',
+                completed: 'Terminé', pending_deposit: 'Acompte en attente',
+                pending_balance: 'Solde en attente', paid_in_full: 'Payé'
             }[order.status] || order.status || 'N/A';
 
             header.innerHTML =
@@ -1026,7 +1026,7 @@
                     '<p class="font-black">' + typeLabel + '</p>' +
                 '</div>' +
                 '<div>' +
-                    '<p class="text-sm font-bold uppercase opacity-60 mb-1">Telephone</p>' +
+                    '<p class="text-sm font-bold uppercase opacity-60 mb-1">Téléphone</p>' +
                     '<p class="font-black">' + (currentPartner.telephone || 'Non renseigné') + '</p>' +
                 '</div>' +
                 '<div>' +
@@ -1598,7 +1598,7 @@
             if (!container) return;
 
             if (deliverables.length === 0) {
-                container.innerHTML = '<p class="text-center py-8 opacity-50 font-bold text-white">Aucune mission assignee pour le moment.</p>';
+                container.innerHTML = '<p class="text-center py-8 opacity-50 font-bold text-white">Aucune mission assignée pour le moment.</p>';
                 return;
             }
 
@@ -1673,7 +1673,7 @@
             for (var i = 0; i < deliverables.length; i++) {
                 if (deliverables[i].id === deliverableId) { d = deliverables[i]; break; }
             }
-            if (!d) { alert('Livrable non trouve'); return; }
+            if (!d) { alert('Livrable non trouvé'); return; }
 
             document.getElementById('missionsListContainer').style.display = 'none';
             document.getElementById('missionDetailView').style.display = 'block';
@@ -1789,7 +1789,7 @@
             });
             var data = await response.json();
             if (data.success) {
-                alert('Nouvelle version uploadee (v' + data.version.version_number + ') !');
+                alert('Nouvelle version uploadée (v' + data.version.version_number + ') !');
                 showMissionDetail(id); // Recharger le detail
             } else {
                 alert('Erreur: ' + (data.error || 'Erreur inconnue'));
