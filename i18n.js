@@ -24,6 +24,12 @@
         'Mon compte': 'My Account',
         'Déconnexion': 'Log out',
 
+        // === PARTNER LOGIN ===
+        'ESPACE PARTENAIRE': 'PARTNER AREA',
+        'Connectez-vous pour accéder à vos projets': 'Log in to access your projects',
+        'Mot de passe': 'Password',
+        'Se connecter': 'Log in',
+
         // === INDEX - MARQUEE ===
         'TRANSFORME TON IDÉE EN PROJET': 'TURN YOUR IDEA INTO A PROJECT',
         'STRATÉGIE': 'STRATEGY',
