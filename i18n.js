@@ -34,6 +34,7 @@
 
         // === INDEX - HERO ===
         'BIENVENUE CHEZ FA GENESIS': 'WELCOME TO FA GENESIS',
+        'BIENVENUE CHEZ': 'WELCOME TO',
         'VOTRE PARTENAIRE POUR TRANSFORMER UNE IDÉE EN UN PROJET STRUCTURÉ, CRÉDIBLE ET VISIBLE': 'YOUR PARTNER TO TURN AN IDEA INTO A STRUCTURED, CREDIBLE AND VISIBLE PROJECT',
 
         // === INDEX - VALUES ===
@@ -47,6 +48,8 @@
         // === INDEX - INSPIRATIONAL ===
         '"DE L\'IDÉE À LA RÉALISATION"': '"FROM IDEA TO REALITY"',
         'DE L\'IDÉE À LA RÉALISATION': 'FROM IDEA TO REALITY',
+        '"DE L\'IDÉE À LA': '"FROM IDEA TO',
+        'RÉALISATION"': 'REALITY"',
         'Chaque grand projet commence par une vision. Nous transformons cette vision en succès tangible.': 'Every great project starts with a vision. We turn that vision into tangible success.',
 
         // === INDEX - FOUR PILLARS ===
