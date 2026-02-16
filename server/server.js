@@ -937,6 +937,26 @@ app.post('/api/payments/verify', async (req, res) => {
 
                 const updatedOrder = updateOrder(orderId, updates);
 
+                // Synchroniser users.json
+                if (isNewPayment && updatedOrder && updatedOrder.client_info && updatedOrder.client_info.email) {
+                    try {
+                        var allUsers = loadUsers();
+                        var uIdx = allUsers.findIndex(function(u) {
+                            return u.email && u.email.toLowerCase() === updatedOrder.client_info.email.toLowerCase();
+                        });
+                        if (uIdx !== -1) {
+                            var newStatus = paymentStage === 'deposit' ? 'deposit_paid' : 'fully_paid';
+                            allUsers[uIdx].paymentStatus = newStatus;
+                            allUsers[uIdx].payment_status = newStatus;
+                            allUsers[uIdx].activeOrderId = orderId;
+                            saveUsers(allUsers);
+                            console.log('[VERIFY] users.json sync: ' + updatedOrder.client_info.email + ' → ' + newStatus);
+                        }
+                    } catch (syncErr) {
+                        console.error('[VERIFY] Erreur sync users.json:', syncErr.message);
+                    }
+                }
+
                 // Envoyer les emails appropriés si nouveau paiement
                 if (isNewPayment && updatedOrder && updatedOrder.client_info) {
                     const clientEmail = updatedOrder.client_info.email;

@@ -229,7 +229,18 @@
 
                     if (type === 'success') {
                         closeSumUpModal();
-                        let successUrl = 'payment-success.html?order=' + orderId + '&stage=' + stage;
+
+                        // Notifier le backend immediatement (avant la redirection)
+                        try {
+                            var apiBase = window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com';
+                            fetch(apiBase + '/api/payments/verify', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ orderId: orderId, stage: stage })
+                            }).catch(function() {});
+                        } catch (e) {}
+
+                        var successUrl = 'payment-success.html?order=' + orderId + '&stage=' + stage;
                         if (installmentNumber) {
                             successUrl += '&installment=' + installmentNumber;
                         }

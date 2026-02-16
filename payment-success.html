@@ -147,6 +147,7 @@
         </div>
     </section>
 
+    <script src="config.js"></script>
     <script>
         function createConfetti() {
             const container = document.getElementById('confettiContainer');
@@ -165,16 +166,54 @@
 
         createConfetti();
 
-        const SESSION_KEY = 'fa_genesis_session';
+        var SESSION_KEY = 'fa_genesis_session';
+
+        // Lire les parametres URL (order et stage)
+        var urlParams = new URLSearchParams(window.location.search);
+        var orderId = urlParams.get('order');
+        var stage = urlParams.get('stage') || 'deposit';
+
+        // Mettre a jour localStorage immediatement
         try {
-            const session = localStorage.getItem(SESSION_KEY);
+            var session = localStorage.getItem(SESSION_KEY);
             if (session) {
-                const user = JSON.parse(session);
-                user.paymentStatus = 'deposit_paid';
+                var user = JSON.parse(session);
+                if (stage === 'balance') {
+                    user.paymentStatus = 'fully_paid';
+                    user.payment_status = 'fully_paid';
+                } else {
+                    user.paymentStatus = 'deposit_paid';
+                    user.payment_status = 'deposit_paid';
+                }
+                if (orderId) user.activeOrderId = orderId;
                 localStorage.setItem(SESSION_KEY, JSON.stringify(user));
             }
         } catch (e) {
             console.error('Error updating session:', e);
+        }
+
+        // Notifier le backend pour confirmer le paiement
+        // (au cas ou le webhook SumUp n'a pas fonctionné - Render free tier peut etre endormi)
+        if (orderId) {
+            try {
+                var apiBase = window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com';
+                fetch(apiBase + '/api/payments/verify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ orderId: orderId, stage: stage })
+                }).then(function(resp) {
+                    return resp.json();
+                }).then(function(data) {
+                    console.log('[PAYMENT-SUCCESS] Backend verification:', data);
+                    if (data.success && data.paid) {
+                        console.log('[PAYMENT-SUCCESS] Paiement confirmé côté backend');
+                    }
+                }).catch(function(err) {
+                    console.warn('[PAYMENT-SUCCESS] Erreur verification backend (non bloquant):', err);
+                });
+            } catch (e) {
+                console.warn('[PAYMENT-SUCCESS] Erreur appel backend:', e);
+            }
         }
     </script>
     <div id="site-footer"></div>
