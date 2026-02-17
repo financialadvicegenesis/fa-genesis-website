@@ -423,30 +423,39 @@ async function sendRegistrationConfirmation(clientEmail, prenom, offerData = nul
         // Section des prochaines étapes selon le type d'offre
         if (isAccompagnement) {
             nextStepsSection = `
+            <div style="background-color: #e8f5e9; border-left: 4px solid #4caf50; padding: 15px 20px; border-radius: 4px; margin: 20px 0;">
+                <p style="margin: 0; font-size: 15px; color: #2e7d32;">
+                    <strong>Acompte confirmé (${offerData.deposit_amount ? offerData.deposit_amount.toFixed(2) + ' €' : '30%'})</strong> – Votre accompagnement est lancé !
+                </p>
+            </div>
             <div style="background-color: #FFF9E6; border-left: 4px solid #FFD700; padding: 20px; margin: 25px 0;">
                 <p style="margin: 0 0 15px 0; font-weight: 700; color: #000; font-size: 16px;">
                     Prochaines étapes de votre accompagnement :
                 </p>
                 <ol style="margin: 0; padding-left: 20px; color: #333; line-height: 2;">
-                    <li><strong>Connexion à votre espace client</strong> – Accédez à votre tableau de bord personnalisé</li>
-                    <li><strong>Règlement de l'acompte (30%)</strong> – Pour démarrer votre accompagnement</li>
                     <li><strong>Prise de contact sous 24-48h</strong> – Un conseiller FA Genesis vous contactera</li>
-                    <li><strong>Lancement de votre parcours</strong> – Début de votre accompagnement sur ${offerData.duration || 'la période définie'}</li>
+                    <li><strong>Accédez à votre espace client</strong> – Suivez votre progression depuis votre tableau de bord</li>
+                    <li><strong>Votre parcours démarre</strong> – Début de votre accompagnement sur ${offerData.duration || 'la période définie'}</li>
+                    <li><strong>Solde (${offerData.balance_amount ? offerData.balance_amount.toFixed(2) + ' €' : '70%'})</strong> – À régler en fin de parcours</li>
                 </ol>
             </div>
             `;
         } else if (isPrestation) {
             nextStepsSection = `
+            <div style="background-color: #e8f5e9; border-left: 4px solid #4caf50; padding: 15px 20px; border-radius: 4px; margin: 20px 0;">
+                <p style="margin: 0; font-size: 15px; color: #2e7d32;">
+                    <strong>Acompte confirmé (${offerData.deposit_amount ? offerData.deposit_amount.toFixed(2) + ' €' : '30%'})</strong> – Votre commande est validée !
+                </p>
+            </div>
             <div style="background-color: #FFF9E6; border-left: 4px solid #FFD700; padding: 20px; margin: 25px 0;">
                 <p style="margin: 0 0 15px 0; font-weight: 700; color: #000; font-size: 16px;">
                     Prochaines étapes de votre prestation :
                 </p>
                 <ol style="margin: 0; padding-left: 20px; color: #333; line-height: 2;">
-                    <li><strong>Règlement de l'acompte (30%)</strong> – Pour confirmer votre commande</li>
                     <li><strong>Planification de la prestation</strong> – Nous vous contacterons sous 24-48h pour fixer une date</li>
                     <li><strong>Réalisation de la prestation</strong> – Notre équipe s'occupe de tout</li>
                     <li><strong>Livraison des fichiers</strong> – Vous recevrez un aperçu dans votre espace client</li>
-                    <li><strong>Règlement du solde (70%)</strong> – Pour télécharger vos fichiers originaux en haute qualité</li>
+                    <li><strong>Solde (${offerData.balance_amount ? offerData.balance_amount.toFixed(2) + ' €' : '70%'})</strong> – Pour télécharger vos fichiers originaux en haute qualité</li>
                 </ol>
             </div>
             `;
@@ -473,12 +482,12 @@ async function sendRegistrationConfirmation(clientEmail, prenom, offerData = nul
         </h2>
 
         <p style="margin: 0 0 20px 0; font-size: 16px; color: #333333; line-height: 1.6;">
-            Nous sommes ravis de vous accueillir chez <strong>FA GENESIS</strong>. Votre compte a été créé avec succès et votre inscription a bien été prise en compte.
+            Nous sommes ravis de vous accueillir chez <strong>FA GENESIS</strong>. Votre paiement a bien été reçu et votre ${isAccompagnement ? 'accompagnement' : isPrestation ? 'prestation' : 'commande'} est désormais activé${isPrestation ? 'e' : ''}.
         </p>
 
         <div style="background-color: #e8f5e9; border: 1px solid #4caf50; padding: 15px 20px; border-radius: 4px; margin: 20px 0;">
             <p style="margin: 0; font-size: 15px; color: #2e7d32;">
-                <strong>Votre compte est actif</strong> – Vous pouvez dès maintenant vous connecter à votre espace client.
+                <strong>Votre espace client est prêt</strong> – Connectez-vous pour suivre votre ${isAccompagnement ? 'accompagnement' : 'prestation'} en temps réel.
             </p>
         </div>
 
@@ -508,14 +517,14 @@ async function sendRegistrationConfirmation(clientEmail, prenom, offerData = nul
 
     try {
         const subjectLine = hasOffer
-            ? `Bienvenue ${prenom} ! Votre ${isAccompagnement ? 'accompagnement' : 'prestation'} ${offerData.name} est confirmé(e)`
+            ? `${prenom}, votre ${isAccompagnement ? 'accompagnement' : 'prestation'} ${offerData.name} est lancé${isPrestation ? 'e' : ''} !`
             : `Bienvenue ${prenom} ! Votre compte FA GENESIS est créé`;
 
         const result = await transport.sendMail({
             from: `"${process.env.EMAIL_FROM_NAME}" <${process.env.EMAIL_FROM_ADDRESS}>`,
             to: clientEmail,
             subject: `[FA GENESIS] ${subjectLine}`,
-            html: getEmailTemplate(content, 'Confirmation d\'inscription')
+            html: getEmailTemplate(content, 'Confirmation de paiement')
         });
 
         console.log(`[EMAIL] Confirmation inscription envoyée à ${clientEmail} - ID: ${result.messageId}`);

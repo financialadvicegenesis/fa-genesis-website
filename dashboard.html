@@ -299,8 +299,8 @@
     <script src="offers-config.js"></script>
     <script src="payment-system.js"></script>
     <script>
-        // v3 - Dashboard FA GENESIS
-        console.log('[DASHBOARD] v3 - Demarrage');
+        // v4 - Dashboard FA GENESIS (async-first, pas de race condition)
+        console.log('[DASHBOARD] v4 - Demarrage');
 
         var API_BASE_URL = window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com';
 
@@ -319,7 +319,6 @@
             if (typeof requireAuth === 'function') {
                 requireAuth();
             } else {
-                // Si auth.js n'a pas charge, verifier manuellement
                 var hasSession = localStorage.getItem('fa_genesis_session');
                 var hasToken = localStorage.getItem('fa_genesis_token');
                 if (!hasSession || !hasToken) {
@@ -330,261 +329,223 @@
             showDashboardError('Erreur authentification: ' + authErr.message);
         }
 
-        // Initialisation du dashboard dans un try-catch global
-        try {
-            var user = null;
-
-            if (typeof getCurrentUser === 'function') {
-                user = getCurrentUser();
-            } else {
-                // Fallback: lire directement le localStorage
-                var rawSession = localStorage.getItem('fa_genesis_session');
-                if (rawSession) {
-                    user = JSON.parse(rawSession);
+        // ============================================================
+        // INIT ASYNC - Attend les données backend avant d'afficher
+        // ============================================================
+        (async function initDashboard() {
+            try {
+                // 1. Récupérer l'utilisateur depuis localStorage
+                var user = null;
+                if (typeof getCurrentUser === 'function') {
+                    user = getCurrentUser();
+                } else {
+                    var rawSession = localStorage.getItem('fa_genesis_session');
+                    if (rawSession) user = JSON.parse(rawSession);
                 }
-            }
 
-            console.log('[DASHBOARD] Utilisateur:', user ? user.email : 'non trouvé');
+                if (!user) {
+                    console.warn('[DASHBOARD] Aucun utilisateur dans la session');
+                    var offreEl = document.getElementById('offreName');
+                    if (offreEl) offreEl.textContent = 'Non connecté';
+                    return;
+                }
 
-            if (user) {
-                // 0. Synchroniser avec le backend (met à jour paymentStatus depuis orders.json)
+                console.log('[DASHBOARD] Utilisateur:', user.email);
+
+                // 2. Afficher le nom immédiatement (pas besoin du backend)
+                var welcomeEl = document.getElementById('welcomeTitle');
+                if (welcomeEl) welcomeEl.textContent = 'Bienvenue ' + (user.prenom || '');
+                var greetEl = document.getElementById('userGreeting');
+                if (greetEl) greetEl.textContent = user.prenom || '';
+
+                // 3. Récupérer les données backend EN PARALLELE
+                var token = localStorage.getItem('fa_genesis_token');
+                var orders = [];
+                var freshUser = null;
+
                 try {
-                    var syncToken = localStorage.getItem('fa_genesis_token');
-                    if (syncToken) {
+                    var results = await Promise.all([
                         fetch(API_BASE_URL + '/api/auth/me', {
-                            headers: { 'Authorization': 'Bearer ' + syncToken }
-                        }).then(function(syncResp) {
-                            if (!syncResp.ok) return null;
-                            return syncResp.json();
-                        }).then(function(syncData) {
-                            if (syncData && syncData.success && syncData.user) {
-                                var freshUser = syncData.user;
-                                var localUser = null;
-                                try { localUser = JSON.parse(localStorage.getItem('fa_genesis_session')); } catch(e) {}
-                                if (localUser && freshUser.paymentStatus && freshUser.paymentStatus !== localUser.paymentStatus) {
-                                    console.log('[DASHBOARD] Sync serveur: paymentStatus ' + localUser.paymentStatus + ' → ' + freshUser.paymentStatus);
-                                    localUser.paymentStatus = freshUser.paymentStatus;
-                                    localUser.payment_status = freshUser.payment_status || freshUser.paymentStatus;
-                                    if (freshUser.activeOrderId) localUser.activeOrderId = freshUser.activeOrderId;
-                                    if (freshUser.activeOfferId) localUser.activeOfferId = freshUser.activeOfferId;
-                                    if (freshUser.offre) localUser.offre = freshUser.offre;
-                                    localStorage.setItem('fa_genesis_session', JSON.stringify(localUser));
-                                }
-                            }
-                        }).catch(function(syncErr) {
-                            console.warn('[DASHBOARD] Sync serveur échouée (non bloquant):', syncErr.message);
-                        });
+                            headers: token ? { 'Authorization': 'Bearer ' + token } : {}
+                        }).then(function(r) { return r.ok ? r.json() : null; }).catch(function() { return null; }),
+                        fetch(API_BASE_URL + '/api/client/orders?email=' + encodeURIComponent(user.email))
+                            .then(function(r) { return r.ok ? r.json() : []; }).catch(function() { return []; })
+                    ]);
+
+                    // Résultat /api/auth/me
+                    if (results[0] && results[0].success && results[0].user) {
+                        freshUser = results[0].user;
+                        if (freshUser.paymentStatus) user.paymentStatus = freshUser.paymentStatus;
+                        if (freshUser.payment_status) user.payment_status = freshUser.payment_status;
+                        if (freshUser.activeOrderId) user.activeOrderId = freshUser.activeOrderId;
+                        if (freshUser.activeOfferId) user.activeOfferId = freshUser.activeOfferId;
+                        if (freshUser.offre) user.offre = freshUser.offre;
+                        localStorage.setItem('fa_genesis_session', JSON.stringify(user));
+                        console.log('[DASHBOARD] Sync /api/auth/me OK - paymentStatus:', user.paymentStatus);
                     }
-                } catch (syncErr2) {
-                    console.warn('[DASHBOARD] Erreur sync:', syncErr2.message);
+
+                    // Résultat /api/client/orders
+                    orders = results[1];
+                    if (!Array.isArray(orders)) orders = orders.orders || [];
+                    console.log('[DASHBOARD] Orders récupérées:', orders.length);
+
+                } catch (fetchErr) {
+                    console.warn('[DASHBOARD] Erreur fetch backend (non bloquant):', fetchErr.message);
                 }
-            }
 
-            if (user) {
-                // 1. Mise a jour de l'en-tete
-                document.getElementById('welcomeTitle').textContent = 'Bienvenue ' + (user.prenom || '');
-                document.getElementById('userGreeting').textContent = user.prenom || '';
+                // 4. Chercher une commande payée
+                var paidOrder = orders.find(function(o) { return o.deposit_paid === true; });
+                var pendingOrder = orders.find(function(o) { return !o.deposit_paid; });
 
-                // 2. Recuperer les details de l'offre (avant le check paiement)
+                // 5. Déterminer l'offre et le type de produit
                 var offerId = user.activeOfferId || user.offre;
                 var offerDetails = null;
+                var productType = 'accompagnement';
 
                 if (offerId && typeof getOfferById === 'function') {
                     offerDetails = getOfferById(offerId);
                 }
 
-                console.log('[DASHBOARD] Offre:', offerId, offerDetails ? offerDetails.nom : 'non trouvee');
+                // Si on a une commande payée, prioriser ses infos
+                if (paidOrder) {
+                    if (!offerDetails && paidOrder.product_id && typeof getOfferById === 'function') {
+                        offerDetails = getOfferById(paidOrder.product_id);
+                    }
+                    if (paidOrder.product_type) {
+                        productType = paidOrder.product_type;
+                    }
+                }
 
-                // 3. Verifier si l'acompte a ete paye (localStorage + backend)
-                var paymentStatus = user.paymentStatus || user.payment_status || 'registered';
-                console.log('[DASHBOARD] paymentStatus localStorage:', paymentStatus);
+                if (!paidOrder && offerDetails) {
+                    productType = offerDetails.productType || 'accompagnement';
+                }
 
-                // Fonction pour afficher le bloc CTA acompte
-                function showDepositRequired() {
+                productType = user.productType || user.product_type || productType;
+                console.log('[DASHBOARD] Offre:', offerId, offerDetails ? offerDetails.nom : 'non trouvée', '| Type:', productType);
+
+                // 6. Mettre à jour les cartes statistiques avec données fraîches
+                var offreNameEl = document.getElementById('offreName');
+                var offreTypeEl = document.getElementById('offreType');
+
+                if (offerDetails) {
+                    if (offreNameEl) offreNameEl.textContent = offerDetails.nom;
+                    if (offreTypeEl) offreTypeEl.textContent = offerDetails.categorie || (productType === 'prestation_individuelle' ? 'Prestation individuelle' : 'Accompagnement');
+                } else if (paidOrder && paidOrder.product_name) {
+                    if (offreNameEl) offreNameEl.textContent = paidOrder.product_name;
+                    if (offreTypeEl) offreTypeEl.textContent = productType === 'prestation_individuelle' ? 'Prestation individuelle' : 'Accompagnement';
+                } else if (offerId) {
+                    if (offreNameEl) offreNameEl.textContent = offerId;
+                    if (offreTypeEl) offreTypeEl.textContent = '-';
+                } else {
+                    if (offreNameEl) offreNameEl.textContent = 'Aucune offre';
+                    if (offreTypeEl) offreTypeEl.textContent = '-';
+                }
+
+                // 7. Décider : CTA acompte ou dashboard normal
+                if (!paidOrder) {
+                    // Pas de commande payée → afficher le bloc CTA acompte
+                    console.log('[DASHBOARD] Aucune commande payée - affichage CTA acompte');
+
                     var depositSection = document.getElementById('depositRequiredSection');
                     var mainContent = document.getElementById('dashboardMainContent');
                     var payStatusSection = document.getElementById('paymentStatusSection');
 
                     if (depositSection) {
                         depositSection.style.display = 'block';
-
-                        // Personnaliser selon l'offre
                         var typeLabel = document.getElementById('depositOfferTypeLabel');
                         var offerNameLabel = document.getElementById('depositOfferName');
-
                         if (offerDetails) {
-                            if (typeLabel) {
-                                typeLabel.textContent = offerDetails.productType === 'prestation_individuelle' ? 'prestation' : 'accompagnement';
-                            }
-                            if (offerNameLabel) {
-                                offerNameLabel.textContent = offerDetails.nom;
-                            }
+                            if (typeLabel) typeLabel.textContent = offerDetails.productType === 'prestation_individuelle' ? 'prestation' : 'accompagnement';
+                            if (offerNameLabel) offerNameLabel.textContent = offerDetails.nom;
                         } else if (offerId) {
-                            if (offerNameLabel) {
-                                offerNameLabel.textContent = offerId;
-                            }
+                            if (offerNameLabel) offerNameLabel.textContent = offerId;
                         }
                     }
-
                     if (mainContent) mainContent.style.display = 'none';
                     if (payStatusSection) payStatusSection.style.display = 'none';
 
-                    console.log('[DASHBOARD] Acompte non payé - affichage du bloc CTA');
-                }
+                    // Personnaliser le CTA si une commande en attente existe
+                    if (pendingOrder) {
+                        var payBtn = document.getElementById('depositPayButton');
+                        var offerNameEl2 = document.getElementById('depositOfferName');
+                        var typeLabel2 = document.getElementById('depositOfferTypeLabel');
+                        var amountInfo = document.getElementById('depositAmountInfo');
 
-                // Fonction pour afficher le dashboard normal
-                function showDashboardNormal() {
-                    try {
-                        displayPaymentStatus(user.email);
-                    } catch (payErr) {
-                        console.error('[DASHBOARD] Erreur statut paiement:', payErr);
-                        var paySection = document.getElementById('paymentStatusSection');
-                        if (paySection) {
-                            paySection.style.display = 'block';
-                            paySection.innerHTML = '<div class="p-8 neo-border" style="background: #51cf66; color: #000;"><div class="flex items-center gap-4"><i class="fas fa-check-circle text-4xl"></i><div><h3 class="text-2xl font-black italic uppercase">STATUT DE PAIEMENT</h3><p class="font-bold text-lg">Acompte payé</p></div></div></div>';
+                        if (offerNameEl2 && pendingOrder.product_name) {
+                            offerNameEl2.textContent = pendingOrder.product_name;
+                        }
+                        if (amountInfo && pendingOrder.deposit_amount) {
+                            amountInfo.innerHTML = '<i class="fas fa-shield-alt mr-1"></i> Acompte : <strong>' + pendingOrder.deposit_amount.toFixed(2) + ' \u20ac</strong> \u2014 Paiement sécurisé par SumUp.';
+                        }
+                        if (typeLabel2) {
+                            typeLabel2.textContent = pendingOrder.product_type === 'prestation_individuelle' ? 'prestation' : 'accompagnement';
+                        }
+
+                        // Commande devis
+                        if (pendingOrder.source === 'quote' && pendingOrder.quote_id) {
+                            try {
+                                var qResp = await fetch(API_BASE_URL + '/api/quotes/by-order/' + encodeURIComponent(pendingOrder.id), {
+                                    headers: token ? { 'Authorization': 'Bearer ' + token } : {}
+                                });
+                                if (qResp.ok) {
+                                    var quoteData = await qResp.json();
+                                    if (quoteData && quoteData.acceptance_token && payBtn) {
+                                        payBtn.href = 'quote-accept.html?token=' + encodeURIComponent(quoteData.acceptance_token);
+                                        payBtn.innerHTML = '<i class="fas fa-credit-card mr-3"></i>Payer l\'acompte du devis (' + pendingOrder.deposit_amount.toFixed(2) + ' \u20ac)';
+                                    }
+                                }
+                            } catch (qErr) {
+                                console.error('[DASHBOARD] Erreur récupération token devis:', qErr);
+                            }
+                        } else if (payBtn && pendingOrder.deposit_amount) {
+                            payBtn.innerHTML = '<i class="fas fa-credit-card mr-3"></i>Payer l\'acompte (' + pendingOrder.deposit_amount.toFixed(2) + ' \u20ac)';
                         }
                     }
+
+                    return; // Fin - on ne montre pas le dashboard complet
                 }
 
-                var depositPaid = (paymentStatus === 'deposit_paid' || paymentStatus === 'delivery_pending_payment' || paymentStatus === 'fully_paid');
+                // 8. Acompte payé → Mettre à jour localStorage et afficher le dashboard
+                console.log('[DASHBOARD] Commande payée trouvée:', paidOrder.id);
+                var newPayStatus = paidOrder.balance_paid ? 'fully_paid' : 'deposit_paid';
+                user.paymentStatus = newPayStatus;
+                user.payment_status = newPayStatus;
+                user.activeOrderId = paidOrder.id;
+                localStorage.setItem('fa_genesis_session', JSON.stringify(user));
 
-                if (depositPaid) {
-                    // Acompte deja paye selon localStorage
-                    showDashboardNormal();
-                } else {
-                    // localStorage dit 'registered' mais le backend a peut-etre deja recu le paiement
-                    // On verifie le backend EN PREMIER avant d'afficher quoi que ce soit
-                    console.log('[DASHBOARD] localStorage=registered, vérification backend...');
+                // Masquer le CTA acompte, afficher le contenu principal
+                var depositSec = document.getElementById('depositRequiredSection');
+                if (depositSec) depositSec.style.display = 'none';
+                var mainCont = document.getElementById('dashboardMainContent');
+                if (mainCont) mainCont.style.display = '';
 
-                    try {
-                        fetch(API_BASE_URL + '/api/client/orders?email=' + encodeURIComponent(user.email))
-                            .then(function(resp) { return resp.ok ? resp.json() : []; })
-                            .then(function(orders) {
-                                // Verifier si une commande a deja l'acompte paye
-                                var paidOrder = orders.find(function(o) { return o.deposit_paid === true; });
-                                if (paidOrder) {
-                                    console.log('[DASHBOARD] Backend confirme acompte payé - mise à jour localStorage');
-                                    user.paymentStatus = 'deposit_paid';
-                                    user.payment_status = 'deposit_paid';
-                                    if (paidOrder.id) user.activeOrderId = paidOrder.id;
-                                    localStorage.setItem('fa_genesis_session', JSON.stringify(user));
-                                    var depositSection = document.getElementById('depositRequiredSection');
-                                    if (depositSection) depositSection.style.display = 'none';
-                                    var mainContent = document.getElementById('dashboardMainContent');
-                                    if (mainContent) mainContent.style.display = '';
-                                    showDashboardNormal();
-                                    return;
-                                }
-
-                                // Pas de commande payée → afficher le CTA acompte
-                                showDepositRequired();
-
-                                // Chercher une commande en attente de paiement pour personnaliser le CTA
-                                var pendingOrder = orders.find(function(o) { return !o.deposit_paid; });
-                                if (pendingOrder) {
-                                    var payBtn = document.getElementById('depositPayButton');
-                                    var offerNameEl = document.getElementById('depositOfferName');
-                                    var typeLabel = document.getElementById('depositOfferTypeLabel');
-                                    var amountInfo = document.getElementById('depositAmountInfo');
-
-                                    // Afficher le nom de la commande
-                                    if (offerNameEl && pendingOrder.product_name) {
-                                        offerNameEl.textContent = pendingOrder.product_name;
-                                    }
-
-                                    // Afficher le montant de l'acompte
-                                    if (amountInfo && pendingOrder.deposit_amount) {
-                                        amountInfo.innerHTML = '<i class="fas fa-shield-alt mr-1"></i> Acompte : <strong>' + pendingOrder.deposit_amount.toFixed(2) + ' \u20ac</strong> — Paiement sécurisé par SumUp.';
-                                    }
-
-                                    // Adapter le type (prestation/accompagnement)
-                                    if (typeLabel) {
-                                        typeLabel.textContent = pendingOrder.product_type === 'prestation_individuelle' ? 'prestation' : 'accompagnement';
-                                    }
-
-                                    // Adapter le lien selon la source de la commande
-                                    if (pendingOrder.source === 'quote' && pendingOrder.quote_id) {
-                                        // Commande issue d'un devis -> recuperer le token et rediriger vers quote-accept
-                                        console.log('[DASHBOARD] Commande devis détectée - recherche du token...');
-                                        var authTk = localStorage.getItem('fa_genesis_token');
-                                        fetch(API_BASE_URL + '/api/quotes/by-order/' + encodeURIComponent(pendingOrder.id), {
-                                            headers: { 'Authorization': 'Bearer ' + authTk }
-                                        })
-                                        .then(function(qResp) { return qResp.ok ? qResp.json() : null; })
-                                        .then(function(quoteData) {
-                                            if (quoteData && quoteData.acceptance_token && payBtn) {
-                                                payBtn.href = 'quote-accept.html?token=' + encodeURIComponent(quoteData.acceptance_token);
-                                                payBtn.innerHTML = '<i class="fas fa-credit-card mr-3"></i>Payer l\'acompte du devis (' + pendingOrder.deposit_amount.toFixed(2) + ' \u20ac)';
-                                                console.log('[DASHBOARD] Lien devis mis à jour avec token');
-                                            }
-                                        })
-                                        .catch(function(qErr) {
-                                            console.error('[DASHBOARD] Erreur récupération token devis:', qErr);
-                                        });
-                                    } else {
-                                        // Commande offre/tarif -> rediriger vers payment.html
-                                        if (payBtn && pendingOrder.deposit_amount) {
-                                            payBtn.innerHTML = '<i class="fas fa-credit-card mr-3"></i>Payer l\'acompte (' + pendingOrder.deposit_amount.toFixed(2) + ' \u20ac)';
-                                        }
-                                        console.log('[DASHBOARD] Commande offre/tarif détectée - redirection payment.html');
-                                    }
-                                } else {
-                                    // Aucune commande trouvée du tout
-                                    showDepositRequired();
-                                }
-                            })
-                            .catch(function(err) {
-                                console.error('[DASHBOARD] Erreur verification backend:', err);
-                                // En cas d'erreur réseau, fallback: afficher le CTA acompte
-                                showDepositRequired();
-                            });
-                    } catch (backendErr) {
-                        console.error('[DASHBOARD] Erreur fetch backend:', backendErr);
-                        showDepositRequired();
+                // 9. Afficher le statut de paiement
+                try {
+                    displayPaymentStatus(user.email);
+                } catch (payErr) {
+                    console.error('[DASHBOARD] Erreur statut paiement:', payErr);
+                    var paySection = document.getElementById('paymentStatusSection');
+                    if (paySection) {
+                        paySection.style.display = 'block';
+                        paySection.innerHTML = '<div class="p-8 neo-border" style="background: #51cf66; color: #000;"><div class="flex items-center gap-4"><i class="fas fa-check-circle text-4xl"></i><div><h3 class="text-2xl font-black italic uppercase">STATUT DE PAIEMENT</h3><p class="font-bold text-lg">Acompte payé</p></div></div></div>';
                     }
                 }
 
-                // 4. Mise a jour des statistiques
-                if (offerDetails) {
-                    document.getElementById('offreName').textContent = offerDetails.nom;
-                    document.getElementById('offreType').textContent = offerDetails.categorie;
-                } else if (offerId) {
-                    document.getElementById('offreName').textContent = offerId;
-                    document.getElementById('offreType').textContent = '-';
-                } else {
-                    document.getElementById('offreName').textContent = 'Aucune offre';
-                    document.getElementById('offreType').textContent = '-';
-                }
-
-                // 5. Determiner le type de produit
-                var productType = user.productType || user.product_type || (offerDetails ? offerDetails.productType : null) || 'accompagnement';
-
-                console.log('[DASHBOARD] Type produit:', productType);
-
-                // 6. Rendre les actions rapides (mis a jour par JS)
+                // 10. Actions rapides et progression
                 renderQuickActions(productType);
-
-                // 7. Afficher les valeurs par defaut, puis mettre a jour depuis le backend
                 renderProgressCard(user, productType, 0, 0);
                 renderProgressBar(user, productType, 0, 0);
 
                 if (productType === 'accompagnement') {
                     loadDashboardFromBackend(user, productType);
                 } else {
-                    try {
-                        renderDeliveryWorkflow(user);
-                    } catch (wfErr) {
-                        console.error('[DASHBOARD] Erreur workflow:', wfErr);
-                    }
+                    try { renderDeliveryWorkflow(user); } catch (wfErr) { console.error('[DASHBOARD] Erreur workflow:', wfErr); }
                 }
-            } else {
-                console.warn('[DASHBOARD] Aucun utilisateur trouve dans la session');
-                document.getElementById('offreName').textContent = 'Non connecte';
-            }
 
-        } catch (globalErr) {
-            showDashboardError(globalErr.message);
-        }
+            } catch (globalErr) {
+                showDashboardError(globalErr.message);
+            }
+        })();
 
         // ============================================================
         // FONCTIONS
