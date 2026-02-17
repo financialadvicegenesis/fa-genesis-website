@@ -145,6 +145,23 @@
                 <p class="text-xl font-bold uppercase text-white" id="welcomeSubtitle">Voici un aperçu de votre espace client</p>
             </div>
 
+            <!-- Ecran de chargement (visible par defaut, masque quand les donnees arrivent) -->
+            <div id="loadingScreen" class="mb-16">
+                <div class="bg-white text-black border-4 border-black p-12 text-center" style="box-shadow: 10px 10px 0px 0px var(--genesis-yellow);">
+                    <div class="inline-flex items-center justify-center w-20 h-20 bg-[var(--genesis-yellow)] border-4 border-black rounded-full mb-6">
+                        <i class="fas fa-spinner fa-spin text-black text-3xl"></i>
+                    </div>
+                    <h2 class="text-2xl md:text-3xl font-black italic uppercase mb-4" id="loadingTitle">Chargement de votre espace...</h2>
+                    <p class="font-bold text-gray-600 text-base mb-2" id="loadingMessage">Connexion au serveur en cours</p>
+                    <p class="text-sm text-gray-400" id="loadingHint">Le serveur peut mettre jusqu'à 30 secondes à démarrer lors de la première connexion.</p>
+                    <div class="mt-6">
+                        <div style="background: #f0f0f0; height: 8px; border: 2px solid black; max-width: 300px; margin: 0 auto; overflow: hidden;">
+                            <div id="loadingProgress" style="background: var(--genesis-yellow); height: 100%; width: 0%; transition: width 1s linear;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Bloc d'appel a l'action : paiement de l'acompte requis (cache par defaut) -->
             <div id="depositRequiredSection" class="mb-16" style="display: none;">
                 <div class="bg-white text-black border-4 border-black neo-shadow p-8 md:p-12">
@@ -196,8 +213,8 @@
                 <!-- Le contenu sera inséré par JavaScript -->
             </div>
 
-            <!-- Contenu principal du dashboard (masque si acompte non paye) -->
-            <div id="dashboardMainContent">
+            <!-- Contenu principal du dashboard (cache par defaut, affiche par JS apres chargement) -->
+            <div id="dashboardMainContent" style="display: none;">
 
             <!-- Statistiques principales -->
             <div class="grid md:grid-cols-3 gap-8 mb-16">
@@ -390,8 +407,72 @@
         // ============================================================
         // INIT ASYNC - Attend les données backend avant d'afficher
         // ============================================================
+
+        // Helper : masquer l'ecran de chargement
+        function hideLoadingScreen() {
+            var ls = document.getElementById('loadingScreen');
+            if (ls) ls.style.display = 'none';
+        }
+
+        // Helper : mettre a jour le message de chargement
+        function updateLoadingMessage(msg, hint) {
+            var el = document.getElementById('loadingMessage');
+            if (el) el.textContent = msg;
+            var h = document.getElementById('loadingHint');
+            if (h && hint) h.textContent = hint;
+        }
+
+        // Helper : animer la barre de progression du chargement
+        var _loadingInterval = null;
+        function startLoadingProgress() {
+            var bar = document.getElementById('loadingProgress');
+            if (!bar) return;
+            var width = 0;
+            _loadingInterval = setInterval(function() {
+                width += 1;
+                if (width > 90) width = 90; // Plafonner a 90% tant que pas fini
+                bar.style.width = width + '%';
+            }, 500);
+        }
+        function stopLoadingProgress() {
+            if (_loadingInterval) clearInterval(_loadingInterval);
+            var bar = document.getElementById('loadingProgress');
+            if (bar) bar.style.width = '100%';
+        }
+
+        // Fonction fetch avec retry automatique (cold start Render)
+        async function fetchWithRetry(url, options, maxRetries) {
+            var retries = maxRetries || 3;
+            for (var attempt = 1; attempt <= retries; attempt++) {
+                try {
+                    var resp = await fetch(url, options || {});
+                    if (resp.ok) return await resp.json();
+                    // Si 502/503 (Render en cours de demarrage), on retry
+                    if (resp.status >= 500 && attempt < retries) {
+                        console.log('[DASHBOARD] Serveur erreur ' + resp.status + ', tentative ' + attempt + '/' + retries);
+                        updateLoadingMessage('Le serveur démarre... (tentative ' + attempt + '/' + retries + ')', 'Merci de patienter, cela peut prendre jusqu\'à 60 secondes.');
+                        await new Promise(function(r) { setTimeout(r, 5000); });
+                        continue;
+                    }
+                    return null;
+                } catch (err) {
+                    console.log('[DASHBOARD] Fetch erreur, tentative ' + attempt + '/' + retries + ':', err.message);
+                    if (attempt < retries) {
+                        updateLoadingMessage('Connexion en cours... (tentative ' + attempt + '/' + retries + ')', 'Le serveur est en cours de démarrage. Merci de patienter.');
+                        await new Promise(function(r) { setTimeout(r, 5000); });
+                    } else {
+                        return null;
+                    }
+                }
+            }
+            return null;
+        }
+
         (async function initDashboard() {
             try {
+                // Demarrer l'animation de chargement
+                startLoadingProgress();
+
                 // 1. Récupérer l'utilisateur depuis localStorage
                 var user = null;
                 if (typeof getCurrentUser === 'function') {
@@ -403,8 +484,12 @@
 
                 if (!user) {
                     console.warn('[DASHBOARD] Aucun utilisateur dans la session');
+                    stopLoadingProgress();
+                    hideLoadingScreen();
                     var offreEl = document.getElementById('offreName');
                     if (offreEl) offreEl.textContent = 'Non connecté';
+                    var mainCont0 = document.getElementById('dashboardMainContent');
+                    if (mainCont0) mainCont0.style.display = '';
                     return;
                 }
 
@@ -416,18 +501,19 @@
                 var greetEl = document.getElementById('userGreeting');
                 if (greetEl) greetEl.textContent = user.prenom || '';
 
-                // 3. Récupérer les données backend EN PARALLELE
+                // 3. Récupérer les données backend EN PARALLELE (avec retry)
                 var token = localStorage.getItem('fa_genesis_token');
                 var orders = [];
                 var freshUser = null;
 
+                updateLoadingMessage('Connexion au serveur...', 'Le serveur peut mettre jusqu\'à 30 secondes à démarrer lors de la première connexion.');
+
                 try {
                     var results = await Promise.all([
-                        fetch(API_BASE_URL + '/api/auth/me', {
+                        fetchWithRetry(API_BASE_URL + '/api/auth/me', {
                             headers: token ? { 'Authorization': 'Bearer ' + token } : {}
-                        }).then(function(r) { return r.ok ? r.json() : null; }).catch(function() { return null; }),
-                        fetch(API_BASE_URL + '/api/client/orders?email=' + encodeURIComponent(user.email))
-                            .then(function(r) { return r.ok ? r.json() : []; }).catch(function() { return []; })
+                        }, 3),
+                        fetchWithRetry(API_BASE_URL + '/api/client/orders?email=' + encodeURIComponent(user.email), {}, 3)
                     ]);
 
                     // Résultat /api/auth/me
@@ -443,13 +529,19 @@
                     }
 
                     // Résultat /api/client/orders
-                    orders = results[1];
-                    if (!Array.isArray(orders)) orders = orders.orders || [];
+                    var rawOrders = results[1];
+                    if (rawOrders) {
+                        orders = Array.isArray(rawOrders) ? rawOrders : (rawOrders.orders || []);
+                    }
                     console.log('[DASHBOARD] Orders récupérées:', orders.length);
 
                 } catch (fetchErr) {
-                    console.warn('[DASHBOARD] Erreur fetch backend (non bloquant):', fetchErr.message);
+                    console.warn('[DASHBOARD] Erreur fetch backend:', fetchErr.message);
                 }
+
+                // Arreter l'animation de chargement et masquer l'ecran
+                stopLoadingProgress();
+                hideLoadingScreen();
 
                 // 4. Chercher une commande payée
                 var paidOrder = orders.find(function(o) { return o.deposit_paid === true; });
@@ -500,6 +592,35 @@
                 }
 
                 // 7. Décider : CTA acompte ou dashboard normal
+                // Fallback : si le backend n'a pas repondu mais localStorage dit deposit_paid
+                var localPayStatus = user.paymentStatus || user.payment_status || '';
+                var isLocallyPaid = (localPayStatus === 'deposit_paid' || localPayStatus === 'fully_paid' || localPayStatus === 'delivery_pending_payment');
+
+                if (!paidOrder && isLocallyPaid) {
+                    // Le backend n'a pas repondu mais on sait que l'acompte est paye
+                    // Afficher le dashboard avec les infos du localStorage
+                    console.log('[DASHBOARD] Backend non disponible mais localStorage indique paiement - affichage dashboard');
+                    var mainContFallback = document.getElementById('dashboardMainContent');
+                    if (mainContFallback) mainContFallback.style.display = '';
+
+                    if (offerDetails) {
+                        if (offreNameEl) offreNameEl.textContent = offerDetails.nom;
+                        if (offreTypeEl) offreTypeEl.textContent = offerDetails.categorie || 'Accompagnement';
+                    } else if (offerId) {
+                        if (offreNameEl) offreNameEl.textContent = offerId;
+                    }
+
+                    // Afficher un message d'avertissement
+                    var paySection = document.getElementById('paymentStatusSection');
+                    if (paySection) {
+                        paySection.style.display = 'block';
+                        paySection.innerHTML = '<div class="p-6 neo-border" style="background: #ffd43b; color: #000;"><div class="flex items-center gap-4"><i class="fas fa-exclamation-triangle text-3xl"></i><div><h3 class="text-xl font-black italic uppercase">CONNEXION SERVEUR LENTE</h3><p class="font-bold">Votre acompte est bien confirmé. Le serveur met du temps à répondre — votre espace se chargera complètement d\'ici quelques instants.</p><button onclick="location.reload()" class="mt-3 bg-black text-white px-6 py-2 font-black text-sm uppercase border-2 border-black">Recharger la page</button></div></div></div>';
+                    }
+
+                    renderQuickActions(productType);
+                    return;
+                }
+
                 if (!paidOrder) {
                     // Pas de commande payée → afficher le bloc CTA acompte
                     console.log('[DASHBOARD] Aucune commande payée - affichage CTA acompte');
@@ -602,7 +723,12 @@
                 }
 
             } catch (globalErr) {
+                stopLoadingProgress();
+                hideLoadingScreen();
                 showDashboardError(globalErr.message);
+                // Afficher le contenu principal pour que l'erreur soit visible
+                var mainContErr = document.getElementById('dashboardMainContent');
+                if (mainContErr) mainContErr.style.display = '';
             }
         })();
 
