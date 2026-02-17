@@ -744,8 +744,12 @@ app.post('/api/payments/sumup/webhook', async (req, res) => {
             if (stage === 'deposit') {
                 updates.deposit_paid = true;
                 updates.status = 'active';
-                updates.start_date = new Date().toISOString();
-                console.log(`[WEBHOOK] Acompte payé - Commande active - Accompagnement démarré`);
+                updates.start_date = null;
+                updates.schedule_status = 'awaiting_client_choice';
+                updates.proposed_start_date = null;
+                updates.schedule_confirmed_by_admin = false;
+                updates.schedule_confirmed_by_partner = false;
+                console.log('[WEBHOOK] Acompte paye - Commande active - En attente choix date client');
             } else if (stage === 'balance') {
                 updates.balance_paid = true;
                 updates.status = 'paid_in_full';
@@ -851,26 +855,9 @@ app.post('/api/payments/sumup/webhook', async (req, res) => {
                         console.error('[WEBHOOK] Erreur auto-assignation partenaire:', autoAssignErr);
                     }
 
-                    // Auto-bootstrap projet IA pour offres accompagnement
-                    try {
-                        var productForBootstrap = getProductById(updatedOrder.product_id);
-                        if (productForBootstrap && productForBootstrap.product_type === 'accompagnement') {
-                            var bootstrapUser = {
-                                email: clientEmail,
-                                firstName: updatedOrder.client_info.first_name,
-                                lastName: updatedOrder.client_info.last_name,
-                                id: updatedOrder.client_info.email
-                            };
-                            var bootstrapResult = bootstrapService.bootstrapProject(updatedOrder, bootstrapUser);
-                            if (bootstrapResult.success) {
-                                console.log('[WEBHOOK] Projet IA bootstrap: ' + bootstrapResult.project.id + ' (' + bootstrapResult.deliverables.length + ' livrables)');
-                            } else {
-                                console.log('[WEBHOOK] Bootstrap non effectue: ' + (bootstrapResult.error || 'raison inconnue'));
-                            }
-                        }
-                    } catch (bootstrapErr) {
-                        console.error('[WEBHOOK] Erreur bootstrap projet IA (non-bloquant):', bootstrapErr.message);
-                    }
+                    // NOTE: Le bootstrap projet est maintenant declenche par finalizeSchedule()
+                    // apres que le client ait choisi une date ET que admin+partenaire aient confirme
+                    console.log('[WEBHOOK] Bootstrap reporte - en attente choix date client');
 
                 } else if (stage === 'balance') {
                     // Après paiement du solde : envoyer la confirmation de paiement complet
@@ -938,7 +925,11 @@ app.post('/api/payments/verify', async (req, res) => {
                 if (stage === 'deposit' && !order.deposit_paid) {
                     updates.deposit_paid = true;
                     updates.status = 'active';
-                    updates.start_date = new Date().toISOString();
+                    updates.start_date = null;
+                    updates.schedule_status = 'awaiting_client_choice';
+                    updates.proposed_start_date = null;
+                    updates.schedule_confirmed_by_admin = false;
+                    updates.schedule_confirmed_by_partner = false;
                     isNewPayment = true;
                     paymentStage = 'deposit';
                 } else if (stage === 'balance' && !order.balance_paid) {
@@ -1041,26 +1032,9 @@ app.post('/api/payments/verify', async (req, res) => {
                             console.error('[VERIFY] Erreur auto-assignation partenaire:', autoAssignErr);
                         }
 
-                        // Auto-bootstrap projet IA pour offres accompagnement
-                        try {
-                            var productForBootstrap = getProductById(updatedOrder.product_id);
-                            if (productForBootstrap && productForBootstrap.product_type === 'accompagnement') {
-                                var bootstrapUser = {
-                                    email: clientEmail,
-                                    firstName: updatedOrder.client_info.first_name,
-                                    lastName: updatedOrder.client_info.last_name,
-                                    id: updatedOrder.client_info.email
-                                };
-                                var bootstrapResult = bootstrapService.bootstrapProject(updatedOrder, bootstrapUser);
-                                if (bootstrapResult.success) {
-                                    console.log('[VERIFY] Projet IA bootstrap: ' + bootstrapResult.project.id + ' (' + bootstrapResult.deliverables.length + ' livrables)');
-                                } else {
-                                    console.log('[VERIFY] Bootstrap non effectue: ' + (bootstrapResult.error || 'raison inconnue'));
-                                }
-                            }
-                        } catch (bootstrapErr) {
-                            console.error('[VERIFY] Erreur bootstrap projet IA (non-bloquant):', bootstrapErr.message);
-                        }
+                        // NOTE: Le bootstrap projet est maintenant declenche par finalizeSchedule()
+                        // apres que le client ait choisi une date ET que admin+partenaire aient confirme
+                        console.log('[VERIFY] Bootstrap reporte - en attente choix date client');
 
                     } else if (paymentStage === 'balance') {
                         // Après paiement du solde : confirmation de paiement complet
@@ -1154,7 +1128,10 @@ app.get('/api/client/dashboard/:orderId', (req, res) => {
         product_type: order.product_type,
         currentDay: dayInfo.currentDay,
         totalDays: dayInfo.totalDays,
-        isComplete: dayInfo.isComplete
+        isComplete: dayInfo.isComplete,
+        schedule_status: order.schedule_status || null,
+        proposed_start_date: order.proposed_start_date || null,
+        start_date: order.start_date || null
     });
 });
 
@@ -1649,6 +1626,279 @@ app.post('/api/admin/start-accompaniment/:orderId', (req, res) => {
     } catch (error) {
         console.error('Erreur start-accompaniment:', error);
         res.status(500).json({ error: 'Erreur lors de la mise à jour' });
+    }
+});
+
+// ============================================================
+// ROUTES - PLANIFICATION DATE DE DEBUT (SCHEDULING)
+// ============================================================
+
+/**
+ * Verifie si un partenaire est assigne a une commande
+ */
+function hasAssignedPartner(orderId) {
+    var assignments = loadPartnerAssignments();
+    return assignments.some(function(a) {
+        return a.order_id === orderId && a.status === 'active';
+    });
+}
+
+/**
+ * Finalise la planification apres confirmation admin + partenaire
+ * Cree le projet (accompagnement) ou une session (prestation)
+ */
+function finalizeSchedule(order) {
+    try {
+        // 1. Mettre a jour start_date et schedule_status
+        var updatedOrder = updateOrder(order.id, {
+            start_date: order.proposed_start_date,
+            schedule_status: 'confirmed'
+        });
+
+        var product = getProductById(updatedOrder.product_id);
+        console.log('[SCHEDULE] Finalisation pour ' + updatedOrder.id + ' - type: ' + (product ? product.product_type : 'inconnu'));
+
+        // 2. Si accompagnement → bootstrap projet + livrables
+        if (product && product.product_type === 'accompagnement') {
+            var bootstrapUser = {
+                email: updatedOrder.client_info.email,
+                firstName: updatedOrder.client_info.first_name,
+                lastName: updatedOrder.client_info.last_name,
+                id: updatedOrder.client_info.email
+            };
+            var result = bootstrapService.bootstrapProject(updatedOrder, bootstrapUser);
+            if (result.success) {
+                console.log('[SCHEDULE] Projet bootstrap: ' + result.project.id + ' (' + result.deliverables.length + ' livrables)');
+            } else {
+                console.log('[SCHEDULE] Bootstrap non effectue: ' + (result.error || 'raison inconnue'));
+            }
+        }
+
+        // 3. Si prestation individuelle → creer session REQUESTED
+        if (product && product.product_type === 'prestation_individuelle') {
+            var assignments = loadPartnerAssignments();
+            var assignment = assignments.find(function(a) {
+                return a.order_id === updatedOrder.id && a.status === 'active';
+            });
+
+            if (assignment) {
+                // Deduire le type de session depuis le product_id
+                var prefix = (updatedOrder.product_id || '').split('-')[0];
+                var sessionTypeMap = { 'photo': 'shooting', 'video': 'shooting', 'marketing': 'meeting', 'media': 'meeting' };
+                var sessionType = sessionTypeMap[prefix] || 'meeting';
+
+                var partners = loadPartners();
+                var assignedPartner = partners.find(function(p) { return p.id === assignment.partner_id; });
+
+                var sessions = loadSessions();
+                var newSession = {
+                    id: 'SES-' + uuidv4().split('-')[0].toUpperCase(),
+                    project_id: null,
+                    client_id: updatedOrder.client_info.email.toLowerCase(),
+                    client_name: (updatedOrder.client_info.first_name + ' ' + updatedOrder.client_info.last_name).trim(),
+                    partner_id: assignment.partner_id,
+                    partner_name: assignedPartner ? (assignedPartner.firstName + ' ' + assignedPartner.lastName).trim() : null,
+                    partner_role: assignment.partner_type || null,
+                    session_type: sessionType,
+                    datetime_start: updatedOrder.proposed_start_date + 'T10:00:00.000Z',
+                    duration_minutes: 60,
+                    meet_url: null,
+                    location: null,
+                    status: 'REQUESTED',
+                    notes_client: 'Seance auto-creee depuis la planification de la prestation',
+                    notes_partner: '',
+                    proposed_slots: [updatedOrder.proposed_start_date + 'T10:00:00.000Z'],
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                };
+                sessions.push(newSession);
+                saveSessions(sessions);
+                console.log('[SCHEDULE] Session creee: ' + newSession.id + ' pour partenaire ' + assignment.partner_id);
+            } else {
+                console.log('[SCHEDULE] Aucun partenaire assigne - pas de session creee');
+            }
+        }
+
+        return updatedOrder;
+    } catch (err) {
+        console.error('[SCHEDULE] Erreur finalisation:', err.message);
+        return null;
+    }
+}
+
+/**
+ * POST /api/orders/:orderId/schedule-start
+ * Client propose une date de debut pour son accompagnement/prestation
+ */
+app.post('/api/orders/:orderId/schedule-start', function(req, res) {
+    try {
+        // Authentifier le client
+        var authHeader = req.headers.authorization;
+        if (!authHeader) return res.status(401).json({ error: 'Non autorise' });
+        var token = authHeader.replace('Bearer ', '');
+        var users = loadUsers();
+        var user = users.find(function(u) { return u.sessionToken === token; });
+        if (!user) return res.status(401).json({ error: 'Session invalide' });
+
+        var order = getOrderById(req.params.orderId);
+        if (!order) return res.status(404).json({ error: 'Commande non trouvee' });
+
+        // Verifier que la commande appartient au client
+        if (!order.client_info || order.client_info.email.toLowerCase() !== user.email.toLowerCase()) {
+            return res.status(403).json({ error: 'Acces refuse' });
+        }
+
+        if (!order.deposit_paid) return res.status(400).json({ error: 'Acompte non paye' });
+        if (order.start_date && order.schedule_status === 'confirmed') {
+            return res.status(400).json({ error: 'Date de debut deja confirmee' });
+        }
+
+        var proposedDate = req.body.proposed_date;
+        if (!proposedDate) return res.status(400).json({ error: 'Date requise (proposed_date)' });
+
+        // Valider la date : minimum J+1
+        var dateObj = new Date(proposedDate + 'T00:00:00');
+        var tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        tomorrow.setHours(0, 0, 0, 0);
+
+        if (isNaN(dateObj.getTime())) return res.status(400).json({ error: 'Date invalide' });
+        if (dateObj < tomorrow) return res.status(400).json({ error: 'La date doit etre au minimum demain (J+1)' });
+
+        var updates = {
+            proposed_start_date: proposedDate,
+            schedule_status: 'client_proposed',
+            schedule_confirmed_by_admin: false,
+            schedule_confirmed_by_partner: false
+        };
+
+        var updatedOrder = updateOrder(req.params.orderId, updates);
+        console.log('[SCHEDULE] Client ' + user.email + ' propose date: ' + proposedDate + ' pour ' + req.params.orderId);
+
+        res.json({ success: true, order: updatedOrder });
+    } catch (error) {
+        console.error('[SCHEDULE] Erreur schedule-start:', error);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * GET /api/admin/pending-schedules
+ * Liste des commandes en attente de confirmation de date
+ */
+app.get('/api/admin/pending-schedules', function(req, res) {
+    try {
+        var orders = loadOrders();
+        var pending = orders.filter(function(o) {
+            return o.schedule_status === 'client_proposed';
+        });
+        res.json({ orders: pending });
+    } catch (error) {
+        console.error('[SCHEDULE] Erreur pending-schedules:', error);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * POST /api/admin/confirm-schedule/:orderId
+ * Admin confirme la date proposee par le client
+ */
+app.post('/api/admin/confirm-schedule/:orderId', function(req, res) {
+    try {
+        var order = getOrderById(req.params.orderId);
+        if (!order) return res.status(404).json({ error: 'Commande non trouvee' });
+        if (order.schedule_status !== 'client_proposed') {
+            return res.status(400).json({ error: 'Pas de date proposee a confirmer' });
+        }
+
+        var updates = { schedule_confirmed_by_admin: true };
+        var finalized = false;
+
+        // Verifier si les deux ont confirme (ou pas de partenaire)
+        var partnerNeeded = hasAssignedPartner(order.id);
+        if (!partnerNeeded || order.schedule_confirmed_by_partner) {
+            finalized = true;
+        }
+
+        var updatedOrder = updateOrder(req.params.orderId, updates);
+        console.log('[SCHEDULE] Admin confirme date pour ' + req.params.orderId + ' (finalized: ' + finalized + ')');
+
+        if (finalized) {
+            updatedOrder = finalizeSchedule(updatedOrder);
+        }
+
+        res.json({ success: true, order: updatedOrder, finalized: finalized });
+    } catch (error) {
+        console.error('[SCHEDULE] Erreur confirm-schedule admin:', error);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * GET /api/partner/pending-schedules
+ * Liste des commandes assignees au partenaire en attente de confirmation
+ */
+app.get('/api/partner/pending-schedules', authenticatePartner, function(req, res) {
+    try {
+        var partner = req.partner;
+        var assignments = loadPartnerAssignments().filter(function(a) {
+            return a.partner_id === partner.id && a.status === 'active';
+        });
+
+        var orders = loadOrders();
+        var pending = [];
+        for (var i = 0; i < assignments.length; i++) {
+            var order = orders.find(function(o) { return o.id === assignments[i].order_id; });
+            if (order && order.schedule_status === 'client_proposed') {
+                pending.push(order);
+            }
+        }
+
+        res.json({ orders: pending });
+    } catch (error) {
+        console.error('[SCHEDULE] Erreur partner pending-schedules:', error);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * POST /api/partner/confirm-schedule/:orderId
+ * Partenaire confirme la date proposee par le client
+ */
+app.post('/api/partner/confirm-schedule/:orderId', authenticatePartner, function(req, res) {
+    try {
+        var partner = req.partner;
+        var order = getOrderById(req.params.orderId);
+        if (!order) return res.status(404).json({ error: 'Commande non trouvee' });
+        if (order.schedule_status !== 'client_proposed') {
+            return res.status(400).json({ error: 'Pas de date proposee a confirmer' });
+        }
+
+        // Verifier que le partenaire est bien assigne a cette commande
+        var assignments = loadPartnerAssignments();
+        var isAssigned = assignments.some(function(a) {
+            return a.partner_id === partner.id && a.order_id === order.id && a.status === 'active';
+        });
+        if (!isAssigned) return res.status(403).json({ error: 'Vous n\'etes pas assigne a cette commande' });
+
+        var updates = { schedule_confirmed_by_partner: true };
+        var finalized = false;
+
+        if (order.schedule_confirmed_by_admin) {
+            finalized = true;
+        }
+
+        var updatedOrder = updateOrder(req.params.orderId, updates);
+        console.log('[SCHEDULE] Partenaire ' + partner.email + ' confirme date pour ' + req.params.orderId + ' (finalized: ' + finalized + ')');
+
+        if (finalized) {
+            updatedOrder = finalizeSchedule(updatedOrder);
+        }
+
+        res.json({ success: true, order: updatedOrder, finalized: finalized });
+    } catch (error) {
+        console.error('[SCHEDULE] Erreur confirm-schedule partenaire:', error);
+        res.status(500).json({ error: 'Erreur serveur' });
     }
 });
 

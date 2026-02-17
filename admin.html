@@ -264,6 +264,15 @@
                     <!-- Les statistiques seront générées ici -->
                 </div>
 
+                <!-- Dates a confirmer -->
+                <div class="admin-card neo-shadow mb-12" id="pendingSchedulesCard" style="display: none;">
+                    <h3 class="text-2xl font-black italic uppercase mb-6">
+                        <i class="fas fa-calendar-check mr-2" style="color: var(--genesis-yellow);"></i>Dates à confirmer
+                        <span id="pendingSchedulesBadge" class="ml-3 inline-flex items-center justify-center px-3 py-1 text-sm font-black text-black border-2 border-black" style="background: var(--genesis-yellow);">0</span>
+                    </h3>
+                    <div id="pendingSchedulesContainer"></div>
+                </div>
+
                 <!-- Aperçu récent -->
                 <div class="admin-card neo-shadow">
                     <h3 class="text-2xl font-black italic uppercase mb-6">
@@ -751,12 +760,138 @@
 
                 document.getElementById('recentClients').innerHTML = recentHTML || '<p class="text-center py-8 opacity-50 font-bold">Aucun client inscrit</p>';
 
+                // Charger les dates a confirmer
+                loadPendingSchedules();
+
             } catch (error) {
                 console.error('[ADMIN] Erreur chargement dashboard:', error);
                 document.getElementById('statsContainer').innerHTML = '<p class="col-span-4 text-center py-8 opacity-50 font-bold">Chargement... (le serveur demarre)</p>';
                 document.getElementById('recentClients').innerHTML = '<p class="text-center py-8 opacity-50 font-bold">Chargement...</p>';
                 // Reessayer apres 5 secondes (cold start Render)
                 setTimeout(function() { loadDashboard(); }, 5000);
+            }
+        }
+
+        // ============================================================
+        // PLANIFICATION - DATES A CONFIRMER
+        // ============================================================
+
+        function formatDateFrAdmin(dateStr) {
+            try {
+                var jours = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+                var mois = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+                var d = new Date(dateStr + 'T00:00:00');
+                if (isNaN(d.getTime())) return dateStr;
+                return jours[d.getDay()] + ' ' + d.getDate() + ' ' + mois[d.getMonth()] + ' ' + d.getFullYear();
+            } catch (e) {
+                return dateStr;
+            }
+        }
+
+        async function loadPendingSchedules() {
+            try {
+                var resp = await fetch(API_BASE_URL + '/api/admin/pending-schedules');
+                if (!resp.ok) return;
+
+                var data = await resp.json();
+                var orders = data.orders || [];
+
+                var card = document.getElementById('pendingSchedulesCard');
+                var container = document.getElementById('pendingSchedulesContainer');
+                var badge = document.getElementById('pendingSchedulesBadge');
+
+                if (!card || !container) return;
+
+                if (orders.length === 0) {
+                    card.style.display = 'none';
+                    return;
+                }
+
+                card.style.display = 'block';
+                if (badge) badge.textContent = orders.length;
+
+                var html = '';
+                for (var i = 0; i < orders.length; i++) {
+                    var order = orders[i];
+                    var clientName = (order.client_prenom || '') + ' ' + (order.client_nom || '');
+                    var productName = order.product_name || order.product_id || 'Offre inconnue';
+                    var proposedDate = order.proposed_start_date ? formatDateFrAdmin(order.proposed_start_date) : 'Non définie';
+
+                    var adminConfirmed = order.schedule_confirmed_by_admin === true;
+                    var partnerConfirmed = order.schedule_confirmed_by_partner === true;
+
+                    var adminBadge = adminConfirmed
+                        ? '<span class="inline-block px-2 py-1 text-xs font-black text-white bg-green-600 border-2 border-black mr-2">Admin ✓</span>'
+                        : '<span class="inline-block px-2 py-1 text-xs font-black text-gray-600 bg-gray-200 border-2 border-black mr-2">Admin ✗</span>';
+                    var partnerBadge = partnerConfirmed
+                        ? '<span class="inline-block px-2 py-1 text-xs font-black text-white bg-green-600 border-2 border-black">Partenaire ✓</span>'
+                        : '<span class="inline-block px-2 py-1 text-xs font-black text-gray-600 bg-gray-200 border-2 border-black">Partenaire ✗</span>';
+
+                    html += '<div class="client-row mb-4" style="border: 4px solid black; padding: 1.5rem;">' +
+                        '<div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">' +
+                            '<div class="flex-1">' +
+                                '<div class="font-black text-lg">' + clientName + '</div>' +
+                                '<div class="text-sm font-bold opacity-70 mb-2">' + (order.client_email || '') + '</div>' +
+                                '<div class="text-sm font-bold">' +
+                                    '<i class="fas fa-box mr-1"></i>' + productName +
+                                '</div>' +
+                                '<div class="text-base font-black mt-2" style="color: var(--genesis-yellow);">' +
+                                    '<i class="fas fa-calendar-day mr-1"></i>Date proposée : ' + proposedDate +
+                                '</div>' +
+                                '<div class="mt-2">' + adminBadge + partnerBadge + '</div>' +
+                            '</div>' +
+                            '<div>' +
+                                (adminConfirmed
+                                    ? '<span class="inline-block px-6 py-3 font-black uppercase text-sm bg-green-100 text-green-800 border-4 border-black">Confirmé ✓</span>'
+                                    : '<button onclick="confirmScheduleAdmin(\'' + order.id + '\')" class="neo-btn-yellow px-6 py-3 text-sm uppercase" id="confirmBtn_' + order.id + '"><i class="fas fa-check mr-2"></i>Confirmer</button>'
+                                ) +
+                            '</div>' +
+                        '</div>' +
+                    '</div>';
+                }
+
+                container.innerHTML = html;
+            } catch (err) {
+                console.error('[ADMIN] Erreur chargement dates a confirmer:', err);
+            }
+        }
+
+        async function confirmScheduleAdmin(orderId) {
+            var btn = document.getElementById('confirmBtn_' + orderId);
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Confirmation...';
+            }
+
+            try {
+                var resp = await fetch(API_BASE_URL + '/api/admin/confirm-schedule/' + orderId, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                var data = await resp.json();
+
+                if (resp.ok && data.success) {
+                    if (data.finalized) {
+                        alert('Date confirmée et parcours lancé ! Le projet a été créé.');
+                    } else {
+                        alert('Confirmation admin enregistrée. En attente de la confirmation du partenaire.');
+                    }
+                    // Recharger la liste
+                    loadPendingSchedules();
+                } else {
+                    alert('Erreur : ' + (data.error || 'Impossible de confirmer.'));
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="fas fa-check mr-2"></i>Confirmer';
+                    }
+                }
+            } catch (err) {
+                alert('Erreur réseau : ' + err.message);
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-check mr-2"></i>Confirmer';
+                }
             }
         }
 

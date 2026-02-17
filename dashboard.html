@@ -220,6 +220,64 @@
                 </div>
             </div>
 
+            <!-- Section planification date de debut (affichee si acompte paye et start_date null) -->
+            <div id="scheduleStartSection" class="mb-16" style="display: none;">
+                <div class="bg-white text-black border-4 border-black p-8 md:p-12" style="box-shadow: 10px 10px 0px 0px var(--genesis-yellow);">
+                    <div class="flex items-center gap-4 mb-6">
+                        <div class="inline-flex items-center justify-center w-16 h-16 bg-[var(--genesis-yellow)] border-4 border-black rounded-full flex-shrink-0">
+                            <i class="fas fa-calendar-alt text-black text-2xl"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-2xl md:text-3xl font-black italic uppercase" id="scheduleTitle">Planifiez votre d\u00e9marrage</h2>
+                            <p class="font-bold text-gray-600 text-sm" id="scheduleSubtitle">Choisissez la date de d\u00e9but de votre accompagnement</p>
+                        </div>
+                    </div>
+
+                    <!-- Formulaire de choix de date -->
+                    <div id="scheduleFormBlock">
+                        <p class="font-bold text-gray-700 mb-4">
+                            S\u00e9lectionnez une date pour d\u00e9marrer votre parcours. L'\u00e9quipe FA GENESIS et votre partenaire confirmeront leur disponibilit\u00e9.
+                        </p>
+                        <div class="flex flex-col md:flex-row items-start md:items-end gap-4">
+                            <div>
+                                <label class="font-black text-xs uppercase block mb-2 text-gray-600">Date souhait\u00e9e (minimum demain)</label>
+                                <input type="date" id="startDatePicker" class="p-3 text-lg font-bold w-full"
+                                       style="border: 4px solid black; background: white; color: black; min-width: 220px;" />
+                            </div>
+                            <button onclick="submitStartDate()" id="submitStartDateBtn"
+                                    class="neo-btn-yellow px-8 py-3 text-base uppercase whitespace-nowrap">
+                                <i class="fas fa-check mr-2"></i>CONFIRMER MA DATE
+                            </button>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-3">
+                            <i class="fas fa-info-circle mr-1"></i> Apr\u00e8s votre choix, l'admin et le partenaire doivent confirmer avant le lancement.
+                        </p>
+                    </div>
+
+                    <!-- En attente de confirmation -->
+                    <div id="schedulePendingBlock" style="display: none;">
+                        <div class="flex items-center gap-4 p-6 border-4 border-black" style="background: #FFF9E6;">
+                            <i class="fas fa-clock text-4xl" style="color: var(--genesis-yellow);"></i>
+                            <div>
+                                <p class="font-black text-xl">Date propos\u00e9e : <span id="proposedDateDisplay" class="text-[var(--genesis-yellow)]"></span></p>
+                                <p class="text-gray-600 font-bold">En attente de confirmation par l'\u00e9quipe FA GENESIS.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Date confirmee -->
+                    <div id="scheduleConfirmedBlock" style="display: none;">
+                        <div class="flex items-center gap-4 p-6 border-4 border-black" style="background: #e8f5e9;">
+                            <i class="fas fa-check-circle text-4xl text-green-600"></i>
+                            <div>
+                                <p class="font-black text-xl">Date confirm\u00e9e : <span id="confirmedDateDisplay" class="text-green-700"></span></p>
+                                <p class="text-gray-600 font-bold" id="scheduleConfirmedMsg">Votre parcours est planifi\u00e9 !</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Barre de progression -->
             <div class="mb-16">
                 <h2 class="text-2xl font-black italic uppercase mb-6 text-white">Votre avancement</h2>
@@ -531,13 +589,14 @@
                     }
                 }
 
-                // 10. Actions rapides et progression
+                // 10. Planification date de demarrage + Actions rapides et progression
+                showScheduleSection(paidOrder, productType);
                 renderQuickActions(productType);
-                renderProgressCard(user, productType, 0, 0);
+                renderProgressCard(user, productType, 0, 0, paidOrder);
                 renderProgressBar(user, productType, 0, 0);
 
                 if (productType === 'accompagnement') {
-                    loadDashboardFromBackend(user, productType);
+                    loadDashboardFromBackend(user, productType, paidOrder);
                 } else {
                     try { renderDeliveryWorkflow(user); } catch (wfErr) { console.error('[DASHBOARD] Erreur workflow:', wfErr); }
                 }
@@ -552,9 +611,10 @@
         // ============================================================
 
         // Charger le jour courant depuis le backend
-        async function loadDashboardFromBackend(user, productType) {
+        async function loadDashboardFromBackend(user, productType, order) {
             var currentDay = 0;
             var totalDays = 0;
+            var freshOrder = order || null;
 
             try {
                 var ordersResp = await fetch(API_BASE_URL + '/api/client/orders?email=' + encodeURIComponent(user.email));
@@ -567,6 +627,12 @@
                             var dashData = await dashResp.json();
                             currentDay = dashData.currentDay || 0;
                             totalDays = dashData.totalDays || 0;
+                            // Enrichir l'order avec les donnees schedule du dashboard API
+                            if (freshOrder) {
+                                if (dashData.schedule_status) freshOrder.schedule_status = dashData.schedule_status;
+                                if (dashData.proposed_start_date) freshOrder.proposed_start_date = dashData.proposed_start_date;
+                                if (dashData.start_date) freshOrder.start_date = dashData.start_date;
+                            }
                         }
                     }
                 }
@@ -574,14 +640,26 @@
                 console.error('[DASHBOARD] Erreur chargement backend:', error);
             }
 
-            renderProgressCard(user, productType, currentDay, totalDays);
+            renderProgressCard(user, productType, currentDay, totalDays, freshOrder);
             renderProgressBar(user, productType, currentDay, totalDays);
         }
 
         // Carte de progression
-        function renderProgressCard(user, productType, currentDay, totalDays) {
+        function renderProgressCard(user, productType, currentDay, totalDays, order) {
             var card = document.getElementById('progressCard');
             if (!card) return;
+
+            // Verifier si on est dans le flow de planification
+            var scheduleStatus = order ? (order.schedule_status || '') : '';
+
+            if (scheduleStatus === 'awaiting_client_choice') {
+                card.innerHTML = '<div class="text-sm font-black uppercase mb-2 opacity-70">Étape actuelle</div><div class="text-3xl font-black italic">Planification</div><div class="text-xs font-bold uppercase mt-1">Choisissez votre date de démarrage</div>';
+                return;
+            }
+            if (scheduleStatus === 'client_proposed') {
+                card.innerHTML = '<div class="text-sm font-black uppercase mb-2 opacity-70">Étape actuelle</div><div class="text-3xl font-black italic">Planification</div><div class="text-xs font-bold uppercase mt-1">En attente de confirmation</div>';
+                return;
+            }
 
             if (productType === 'accompagnement') {
                 var day = currentDay || 0;
@@ -735,6 +813,186 @@
 
             html += '</div></div>';
             section.innerHTML = html;
+        }
+
+        // ============================================================
+        // PLANIFICATION DATE DE DEMARRAGE
+        // ============================================================
+
+        // Variable globale pour stocker l'orderId actif (utilisee par submitStartDate)
+        var _scheduleOrderId = null;
+
+        function formatDateFr(dateStr) {
+            try {
+                var jours = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+                var mois = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+                var d = new Date(dateStr + 'T00:00:00');
+                if (isNaN(d.getTime())) return dateStr;
+                return jours[d.getDay()] + ' ' + d.getDate() + ' ' + mois[d.getMonth()] + ' ' + d.getFullYear();
+            } catch (e) {
+                return dateStr;
+            }
+        }
+
+        function showScheduleSection(order, productType) {
+            var section = document.getElementById('scheduleStartSection');
+            if (!section) return;
+
+            var status = order.schedule_status || '';
+            var startDate = order.start_date;
+
+            // Si start_date existe deja et schedule confirmee, pas besoin du calendrier
+            if (startDate && status === 'confirmed') {
+                section.style.display = 'block';
+                var formBlock = document.getElementById('scheduleFormBlock');
+                var pendingBlock = document.getElementById('schedulePendingBlock');
+                var confirmedBlock = document.getElementById('scheduleConfirmedBlock');
+                if (formBlock) formBlock.style.display = 'none';
+                if (pendingBlock) pendingBlock.style.display = 'none';
+                if (confirmedBlock) confirmedBlock.style.display = 'block';
+
+                var confirmedDisplay = document.getElementById('confirmedDateDisplay');
+                if (confirmedDisplay) confirmedDisplay.textContent = formatDateFr(startDate);
+
+                var msg = document.getElementById('scheduleConfirmedMsg');
+                if (msg) {
+                    msg.textContent = productType === 'prestation_individuelle'
+                        ? 'Votre prestation est planifiée !'
+                        : 'Votre parcours est planifié !';
+                }
+                return;
+            }
+
+            // Si start_date existe deja sans schedule_status (ancienne commande), ne pas afficher
+            if (startDate && !status) return;
+
+            // Si pas de schedule_status du tout et pas de start_date, ne pas afficher
+            if (!status && !startDate) return;
+
+            // Stocker l'orderId pour submitStartDate
+            _scheduleOrderId = order.id;
+
+            section.style.display = 'block';
+
+            // Adapter titre selon type
+            var title = document.getElementById('scheduleTitle');
+            var subtitle = document.getElementById('scheduleSubtitle');
+            if (productType === 'prestation_individuelle') {
+                if (title) title.textContent = 'Planifiez votre prestation';
+                if (subtitle) subtitle.textContent = 'Choisissez la date de votre prestation';
+            } else {
+                if (title) title.textContent = 'Planifiez votre démarrage';
+                if (subtitle) subtitle.textContent = 'Choisissez la date de début de votre accompagnement';
+            }
+
+            var formBlock = document.getElementById('scheduleFormBlock');
+            var pendingBlock = document.getElementById('schedulePendingBlock');
+            var confirmedBlock = document.getElementById('scheduleConfirmedBlock');
+
+            if (status === 'awaiting_client_choice') {
+                // Afficher le formulaire de choix de date
+                if (formBlock) formBlock.style.display = 'block';
+                if (pendingBlock) pendingBlock.style.display = 'none';
+                if (confirmedBlock) confirmedBlock.style.display = 'none';
+
+                // Mettre le min du date picker a demain
+                var picker = document.getElementById('startDatePicker');
+                if (picker) {
+                    var tomorrow = new Date();
+                    tomorrow.setDate(tomorrow.getDate() + 1);
+                    var y = tomorrow.getFullYear();
+                    var m = (tomorrow.getMonth() + 1).toString();
+                    if (m.length < 2) m = '0' + m;
+                    var dd = tomorrow.getDate().toString();
+                    if (dd.length < 2) dd = '0' + dd;
+                    picker.min = y + '-' + m + '-' + dd;
+                }
+
+            } else if (status === 'client_proposed') {
+                // Date proposee, en attente de confirmation
+                if (formBlock) formBlock.style.display = 'none';
+                if (pendingBlock) pendingBlock.style.display = 'block';
+                if (confirmedBlock) confirmedBlock.style.display = 'none';
+
+                var proposedDisplay = document.getElementById('proposedDateDisplay');
+                if (proposedDisplay && order.proposed_start_date) {
+                    proposedDisplay.textContent = formatDateFr(order.proposed_start_date);
+                }
+
+            } else if (status === 'confirmed') {
+                // Deja gere plus haut, mais au cas ou
+                if (formBlock) formBlock.style.display = 'none';
+                if (pendingBlock) pendingBlock.style.display = 'none';
+                if (confirmedBlock) confirmedBlock.style.display = 'block';
+
+                var confirmedDisplay2 = document.getElementById('confirmedDateDisplay');
+                if (confirmedDisplay2 && order.start_date) {
+                    confirmedDisplay2.textContent = formatDateFr(order.start_date);
+                }
+            }
+        }
+
+        async function submitStartDate() {
+            var picker = document.getElementById('startDatePicker');
+            var btn = document.getElementById('submitStartDateBtn');
+            if (!picker || !picker.value) {
+                alert('Veuillez sélectionner une date.');
+                return;
+            }
+
+            if (!_scheduleOrderId) {
+                alert('Erreur : commande introuvable. Rechargez la page.');
+                return;
+            }
+
+            // Desactiver le bouton pendant l'envoi
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Envoi en cours...';
+            }
+
+            try {
+                var token = localStorage.getItem('fa_genesis_token');
+                var resp = await fetch(API_BASE_URL + '/api/orders/' + _scheduleOrderId + '/schedule-start', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': token ? ('Bearer ' + token) : ''
+                    },
+                    body: JSON.stringify({ proposed_date: picker.value })
+                });
+
+                var data = await resp.json();
+
+                if (resp.ok && data.success) {
+                    // Basculer vers le bloc "en attente"
+                    var formBlock = document.getElementById('scheduleFormBlock');
+                    var pendingBlock = document.getElementById('schedulePendingBlock');
+                    if (formBlock) formBlock.style.display = 'none';
+                    if (pendingBlock) pendingBlock.style.display = 'block';
+
+                    var proposedDisplay = document.getElementById('proposedDateDisplay');
+                    if (proposedDisplay) proposedDisplay.textContent = formatDateFr(picker.value);
+
+                    // Mettre a jour la carte progression
+                    var card = document.getElementById('progressCard');
+                    if (card) {
+                        card.innerHTML = '<div class="text-sm font-black uppercase mb-2 opacity-70">Étape actuelle</div><div class="text-3xl font-black italic">Planification</div><div class="text-xs font-bold uppercase mt-1">En attente de confirmation</div>';
+                    }
+                } else {
+                    alert('Erreur : ' + (data.error || 'Impossible de soumettre la date.'));
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="fas fa-check mr-2"></i>CONFIRMER MA DATE';
+                    }
+                }
+            } catch (err) {
+                alert('Erreur réseau : ' + err.message);
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-check mr-2"></i>CONFIRMER MA DATE';
+                }
+            }
         }
 
         // ============================================================
