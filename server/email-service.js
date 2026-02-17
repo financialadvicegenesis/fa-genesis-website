@@ -425,7 +425,7 @@ async function sendRegistrationConfirmation(clientEmail, prenom, offerData = nul
             nextStepsSection = `
             <div style="background-color: #e8f5e9; border-left: 4px solid #4caf50; padding: 15px 20px; border-radius: 4px; margin: 20px 0;">
                 <p style="margin: 0; font-size: 15px; color: #2e7d32;">
-                    <strong>Acompte confirmé (${offerData.deposit_amount ? offerData.deposit_amount.toFixed(2) + ' €' : '30%'})</strong> – Votre accompagnement est lancé !
+                    <strong>Acompte confirmé (${offerData.deposit_amount ? offerData.deposit_amount.toFixed(2) + ' €' : '30%'})</strong> – Votre espace client est activé !
                 </p>
             </div>
             <div style="background-color: #FFF9E6; border-left: 4px solid #FFD700; padding: 20px; margin: 25px 0;">
@@ -433,9 +433,9 @@ async function sendRegistrationConfirmation(clientEmail, prenom, offerData = nul
                     Prochaines étapes de votre accompagnement :
                 </p>
                 <ol style="margin: 0; padding-left: 20px; color: #333; line-height: 2;">
-                    <li><strong>Prise de contact sous 24-48h</strong> – Un conseiller FA Genesis vous contactera</li>
-                    <li><strong>Accédez à votre espace client</strong> – Suivez votre progression depuis votre tableau de bord</li>
-                    <li><strong>Votre parcours démarre</strong> – Début de votre accompagnement sur ${offerData.duration || 'la période définie'}</li>
+                    <li><strong>Choisissez votre date de lancement</strong> – Rendez-vous dans votre espace client pour sélectionner la date de début de votre accompagnement via le calendrier</li>
+                    <li><strong>Confirmation par notre équipe</strong> – L'équipe FA Genesis et votre partenaire dédié valideront la date choisie</li>
+                    <li><strong>Votre parcours démarre</strong> – Début de votre accompagnement sur ${offerData.duration || 'la période définie'}, à la date confirmée</li>
                     <li><strong>Solde (${offerData.balance_amount ? offerData.balance_amount.toFixed(2) + ' €' : '70%'})</strong> – À régler en fin de parcours</li>
                 </ol>
             </div>
@@ -452,9 +452,9 @@ async function sendRegistrationConfirmation(clientEmail, prenom, offerData = nul
                     Prochaines étapes de votre prestation :
                 </p>
                 <ol style="margin: 0; padding-left: 20px; color: #333; line-height: 2;">
-                    <li><strong>Planification de la prestation</strong> – Nous vous contacterons sous 24-48h pour fixer une date</li>
-                    <li><strong>Réalisation de la prestation</strong> – Notre équipe s'occupe de tout</li>
-                    <li><strong>Livraison des fichiers</strong> – Vous recevrez un aperçu dans votre espace client</li>
+                    <li><strong>Choisissez votre date de prestation</strong> – Rendez-vous dans votre espace client pour sélectionner la date souhaitée via le calendrier</li>
+                    <li><strong>Confirmation par notre équipe</strong> – L'équipe FA Genesis et votre partenaire dédié valideront la date choisie</li>
+                    <li><strong>Réalisation de la prestation</strong> – Notre équipe s'occupe de tout à la date confirmée</li>
                     <li><strong>Solde (${offerData.balance_amount ? offerData.balance_amount.toFixed(2) + ' €' : '70%'})</strong> – Pour télécharger vos fichiers originaux en haute qualité</li>
                 </ol>
             </div>
@@ -482,12 +482,12 @@ async function sendRegistrationConfirmation(clientEmail, prenom, offerData = nul
         </h2>
 
         <p style="margin: 0 0 20px 0; font-size: 16px; color: #333333; line-height: 1.6;">
-            Nous sommes ravis de vous accueillir chez <strong>FA GENESIS</strong>. Votre paiement a bien été reçu et votre ${isAccompagnement ? 'accompagnement' : isPrestation ? 'prestation' : 'commande'} est désormais activé${isPrestation ? 'e' : ''}.
+            Nous sommes ravis de vous accueillir chez <strong>FA GENESIS</strong>. Votre paiement a bien été reçu et votre espace client est désormais activé.
         </p>
 
         <div style="background-color: #e8f5e9; border: 1px solid #4caf50; padding: 15px 20px; border-radius: 4px; margin: 20px 0;">
             <p style="margin: 0; font-size: 15px; color: #2e7d32;">
-                <strong>Votre espace client est prêt</strong> – Connectez-vous pour suivre votre ${isAccompagnement ? 'accompagnement' : 'prestation'} en temps réel.
+                <strong>Votre espace client est prêt</strong> – Connectez-vous dès maintenant pour choisir votre date de ${isAccompagnement ? 'lancement' : isPrestation ? 'prestation' : 'démarrage'} via le calendrier.
             </p>
         </div>
 
@@ -497,7 +497,7 @@ async function sendRegistrationConfirmation(clientEmail, prenom, offerData = nul
 
         <div style="background-color: #000000; color: #ffffff; padding: 20px; border-radius: 4px; margin: 25px 0; text-align: center;">
             <p style="margin: 0 0 15px 0; font-size: 14px; color: #cccccc;">
-                Accédez à votre espace client pour suivre votre commande
+                Accédez à votre espace client pour choisir votre date de ${isAccompagnement ? 'lancement' : isPrestation ? 'prestation' : 'démarrage'}
             </p>
             <a href="${process.env.FRONT_URL || 'https://fagenesis.com'}/login.html"
                style="display: inline-block; background-color: #FFD700; color: #000; padding: 15px 30px; text-decoration: none; font-weight: 700; border-radius: 4px; font-size: 16px;">
