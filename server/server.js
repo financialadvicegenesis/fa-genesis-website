@@ -447,7 +447,7 @@ app.get('/api/health', (req, res) => {
         status: 'ok',
         sumup_configured: hasApiKey && hasMerchantCode,
         mode: process.env.SUMUP_MODE || 'sandbox',
-        mongodb: persistentStore.isConnected() ? 'connected' : 'not configured',
+        mongodb: persistentStore.getStatus ? persistentStore.getStatus() : (persistentStore.isConnected() ? 'connected' : 'not configured'),
         data: {
             users: loadUsers().length,
             orders: loadOrders().length
