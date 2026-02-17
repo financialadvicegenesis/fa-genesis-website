@@ -440,26 +440,51 @@
             if (bar) bar.style.width = '100%';
         }
 
-        // Fonction fetch avec retry automatique (cold start Render)
+        // Fonction fetch avec timeout + retry automatique (cold start Render)
+        function fetchWithTimeout(url, options, timeoutMs) {
+            return new Promise(function(resolve, reject) {
+                var controller = new AbortController();
+                var timer = setTimeout(function() {
+                    controller.abort();
+                    reject(new Error('Timeout apres ' + timeoutMs + 'ms'));
+                }, timeoutMs);
+
+                var fetchOpts = Object.assign({}, options || {}, { signal: controller.signal });
+                fetch(url, fetchOpts).then(function(resp) {
+                    clearTimeout(timer);
+                    resolve(resp);
+                }).catch(function(err) {
+                    clearTimeout(timer);
+                    reject(err);
+                });
+            });
+        }
+
         async function fetchWithRetry(url, options, maxRetries) {
             var retries = maxRetries || 3;
+            var timeoutPerAttempt = 15000; // 15 secondes par tentative
+
             for (var attempt = 1; attempt <= retries; attempt++) {
                 try {
-                    var resp = await fetch(url, options || {});
+                    updateLoadingMessage(
+                        attempt === 1 ? 'Connexion au serveur...' : 'Le serveur démarre... (tentative ' + attempt + '/' + retries + ')',
+                        attempt === 1 ? 'Première connexion, veuillez patienter quelques secondes.' : 'Le serveur se réveille, merci de patienter.'
+                    );
+
+                    var resp = await fetchWithTimeout(url, options, timeoutPerAttempt);
                     if (resp.ok) return await resp.json();
+
                     // Si 502/503 (Render en cours de demarrage), on retry
                     if (resp.status >= 500 && attempt < retries) {
                         console.log('[DASHBOARD] Serveur erreur ' + resp.status + ', tentative ' + attempt + '/' + retries);
-                        updateLoadingMessage('Le serveur démarre... (tentative ' + attempt + '/' + retries + ')', 'Merci de patienter, cela peut prendre jusqu\'à 60 secondes.');
-                        await new Promise(function(r) { setTimeout(r, 5000); });
+                        await new Promise(function(r) { setTimeout(r, 3000); });
                         continue;
                     }
                     return null;
                 } catch (err) {
                     console.log('[DASHBOARD] Fetch erreur, tentative ' + attempt + '/' + retries + ':', err.message);
                     if (attempt < retries) {
-                        updateLoadingMessage('Connexion en cours... (tentative ' + attempt + '/' + retries + ')', 'Le serveur est en cours de démarrage. Merci de patienter.');
-                        await new Promise(function(r) { setTimeout(r, 5000); });
+                        await new Promise(function(r) { setTimeout(r, 3000); });
                     } else {
                         return null;
                     }
@@ -470,9 +495,6 @@
 
         (async function initDashboard() {
             try {
-                // Demarrer l'animation de chargement
-                startLoadingProgress();
-
                 // 1. Récupérer l'utilisateur depuis localStorage
                 var user = null;
                 if (typeof getCurrentUser === 'function') {
@@ -484,7 +506,6 @@
 
                 if (!user) {
                     console.warn('[DASHBOARD] Aucun utilisateur dans la session');
-                    stopLoadingProgress();
                     hideLoadingScreen();
                     var offreEl = document.getElementById('offreName');
                     if (offreEl) offreEl.textContent = 'Non connecté';
@@ -495,25 +516,85 @@
 
                 console.log('[DASHBOARD] Utilisateur:', user.email);
 
-                // 2. Afficher le nom immédiatement (pas besoin du backend)
+                // 2. Afficher le nom immédiatement
                 var welcomeEl = document.getElementById('welcomeTitle');
                 if (welcomeEl) welcomeEl.textContent = 'Bienvenue ' + (user.prenom || '');
                 var greetEl = document.getElementById('userGreeting');
                 if (greetEl) greetEl.textContent = user.prenom || '';
 
-                // 3. Récupérer les données backend EN PARALLELE (avec retry)
+                // ============================================================
+                // STRATEGIE : Affichage IMMEDIAT depuis localStorage
+                // puis mise a jour en arriere-plan quand le backend repond
+                // ============================================================
+
                 var token = localStorage.getItem('fa_genesis_token');
+                var localPayStatus = user.paymentStatus || user.payment_status || '';
+                var isLocallyPaid = (localPayStatus === 'deposit_paid' || localPayStatus === 'fully_paid' || localPayStatus === 'delivery_pending_payment');
+
+                // 3. AFFICHAGE IMMEDIAT : Si localStorage dit "paye", afficher le dashboard tout de suite
+                if (isLocallyPaid) {
+                    console.log('[DASHBOARD] localStorage indique paiement (' + localPayStatus + ') - affichage immediat');
+                    hideLoadingScreen();
+
+                    var mainContImmediate = document.getElementById('dashboardMainContent');
+                    if (mainContImmediate) mainContImmediate.style.display = '';
+
+                    // Determiner l'offre depuis localStorage
+                    var offerId = user.activeOfferId || user.offre;
+                    var offerDetails = null;
+                    var productType = user.productType || user.product_type || 'accompagnement';
+
+                    if (offerId && typeof getOfferById === 'function') {
+                        offerDetails = getOfferById(offerId);
+                    }
+                    if (offerDetails && offerDetails.productType) {
+                        productType = offerDetails.productType;
+                    }
+
+                    // Mettre a jour les cartes avec les infos locales
+                    var offreNameEl = document.getElementById('offreName');
+                    var offreTypeEl = document.getElementById('offreType');
+                    if (offerDetails) {
+                        if (offreNameEl) offreNameEl.textContent = offerDetails.nom;
+                        if (offreTypeEl) offreTypeEl.textContent = offerDetails.categorie || (productType === 'prestation_individuelle' ? 'Prestation individuelle' : 'Accompagnement');
+                    } else if (offerId) {
+                        if (offreNameEl) offreNameEl.textContent = offerId;
+                    }
+
+                    // Afficher statut de paiement
+                    try { displayPaymentStatus(user.email); } catch (e) {
+                        var paySection = document.getElementById('paymentStatusSection');
+                        if (paySection) {
+                            paySection.style.display = 'block';
+                            paySection.innerHTML = '<div class="p-8 neo-border" style="background: #51cf66; color: #000;"><div class="flex items-center gap-4"><i class="fas fa-check-circle text-4xl"></i><div><h3 class="text-2xl font-black italic uppercase">STATUT DE PAIEMENT</h3><p class="font-bold text-lg">Acompte payé</p></div></div></div>';
+                        }
+                    }
+
+                    renderQuickActions(productType);
+                    renderProgressCard(user, productType, 0, 0, null);
+                    renderProgressBar(user, productType, 0, 0);
+
+                    // Afficher un bandeau "synchronisation en cours"
+                    var syncBanner = document.createElement('div');
+                    syncBanner.id = 'syncBanner';
+                    syncBanner.innerHTML = '<div class="p-4 mb-8 text-center" style="background: #333; border: 2px solid var(--genesis-yellow); color: white;"><i class="fas fa-sync fa-spin mr-2" style="color: var(--genesis-yellow);"></i><span class="font-bold text-sm">Synchronisation avec le serveur en cours... Le calendrier de planification apparaitra dans quelques instants.</span></div>';
+                    var schedSec = document.getElementById('scheduleStartSection');
+                    if (schedSec && schedSec.parentNode) {
+                        schedSec.parentNode.insertBefore(syncBanner, schedSec);
+                    }
+                }
+
+                // 4. APPELS BACKEND EN ARRIERE-PLAN (avec retry + timeout)
+                startLoadingProgress();
                 var orders = [];
                 var freshUser = null;
-
-                updateLoadingMessage('Connexion au serveur...', 'Le serveur peut mettre jusqu\'à 30 secondes à démarrer lors de la première connexion.');
 
                 try {
                     var results = await Promise.all([
                         fetchWithRetry(API_BASE_URL + '/api/auth/me', {
                             headers: token ? { 'Authorization': 'Bearer ' + token } : {}
-                        }, 3),
-                        fetchWithRetry(API_BASE_URL + '/api/client/orders?email=' + encodeURIComponent(user.email), {}, 3)
+                        }, 4),
+                        fetchWithRetry(API_BASE_URL + '/api/client/orders?email=' + encodeURIComponent(user.email), {}, 4)
                     ]);
 
                     // Résultat /api/auth/me
@@ -539,9 +620,11 @@
                     console.warn('[DASHBOARD] Erreur fetch backend:', fetchErr.message);
                 }
 
-                // Arreter l'animation de chargement et masquer l'ecran
+                // Retirer le bandeau de synchro et l'ecran de chargement
                 stopLoadingProgress();
                 hideLoadingScreen();
+                var syncEl = document.getElementById('syncBanner');
+                if (syncEl) syncEl.remove();
 
                 // 4. Chercher une commande payée
                 var paidOrder = orders.find(function(o) { return o.deposit_paid === true; });
