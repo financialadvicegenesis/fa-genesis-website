@@ -456,6 +456,152 @@ app.get('/api/health', (req, res) => {
 });
 
 // ============================================================
+// ROUTE - DASHBOARD CENTRALISE
+// ============================================================
+
+/**
+ * GET /api/dashboard
+ * Endpoint centralise pour le dashboard client.
+ * Retourne TOUJOURS du JSON, jamais de HTML.
+ * Auth: Bearer token requis.
+ */
+app.get('/api/dashboard', (req, res) => {
+    try {
+        // 1. Authentification
+        var authHeader = req.headers.authorization;
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return res.status(401).json({ ok: false, error: 'UNAUTHORIZED', message: 'Token manquant' });
+        }
+        var token = authHeader.replace('Bearer ', '');
+        var jwt = require('jsonwebtoken');
+        var decoded = null;
+        try {
+            decoded = jwt.verify(token, process.env.JWT_SECRET || 'fa-genesis-secret-key-2024');
+        } catch (jwtErr) {
+            return res.status(401).json({ ok: false, error: 'UNAUTHORIZED', message: 'Token invalide ou expire' });
+        }
+
+        // 2. Trouver l'utilisateur
+        var users = loadUsers();
+        var user = users.find(function(u) { return u.email === decoded.email; });
+        if (!user) {
+            return res.status(404).json({ ok: false, error: 'USER_NOT_FOUND', message: 'Utilisateur introuvable' });
+        }
+
+        // 3. Trouver les commandes du client
+        var orders = loadOrders();
+        var clientOrders = orders.filter(function(o) {
+            return o.client_info && o.client_info.email && o.client_info.email.toLowerCase() === user.email.toLowerCase();
+        });
+
+        // 4. Trouver la commande payee (acompte)
+        var paidOrder = null;
+        var pendingOrder = null;
+        for (var i = 0; i < clientOrders.length; i++) {
+            if (clientOrders[i].deposit_paid === true && !paidOrder) {
+                paidOrder = clientOrders[i];
+            }
+            if (!clientOrders[i].deposit_paid && !pendingOrder) {
+                pendingOrder = clientOrders[i];
+            }
+        }
+
+        // 5. Si pas de commande payee
+        if (!paidOrder) {
+            return res.json({
+                ok: true,
+                status: 'NO_PAID_ORDER',
+                user: {
+                    email: user.email,
+                    prenom: user.prenom || '',
+                    nom: user.nom || '',
+                    paymentStatus: user.paymentStatus || 'registered',
+                    activeOfferId: user.activeOfferId || user.offre || null,
+                    productType: user.productType || null
+                },
+                pendingOrder: pendingOrder ? {
+                    id: pendingOrder.id,
+                    product_name: pendingOrder.product_name || '',
+                    product_type: pendingOrder.product_type || 'accompagnement',
+                    product_id: pendingOrder.product_id || '',
+                    deposit_amount: pendingOrder.deposit_amount || 0,
+                    source: pendingOrder.source || '',
+                    quote_id: pendingOrder.quote_id || null
+                } : null,
+                project: null,
+                timeline: [],
+                deliverables: [],
+                sessions: []
+            });
+        }
+
+        // 6. Commande payee - Collecter toutes les donnees
+        var dayInfo = calculateCurrentDay(paidOrder);
+        var accessRights = getAccessRights(paidOrder);
+
+        // Projet
+        var projects = loadProjects();
+        var project = null;
+        for (var p = 0; p < projects.length; p++) {
+            if (projects[p].order_id === paidOrder.id) { project = projects[p]; break; }
+        }
+
+        // Livrables
+        var allLivrables = loadLivrables();
+        var deliverables = allLivrables.filter(function(l) {
+            return l.orderId === paidOrder.id || l.order_id === paidOrder.id;
+        });
+
+        // Sessions
+        var allSessions = loadSessions();
+        var sessions = allSessions.filter(function(s) {
+            return s.client_email && s.client_email.toLowerCase() === user.email.toLowerCase();
+        });
+
+        // 7. Reponse complete
+        res.json({
+            ok: true,
+            status: 'ACTIVE',
+            user: {
+                email: user.email,
+                prenom: user.prenom || '',
+                nom: user.nom || '',
+                paymentStatus: paidOrder.balance_paid ? 'fully_paid' : 'deposit_paid',
+                activeOfferId: user.activeOfferId || user.offre || paidOrder.product_id || null,
+                productType: paidOrder.product_type || user.productType || 'accompagnement'
+            },
+            order: {
+                id: paidOrder.id,
+                product_name: paidOrder.product_name || '',
+                product_type: paidOrder.product_type || 'accompagnement',
+                product_id: paidOrder.product_id || '',
+                deposit_paid: true,
+                balance_paid: paidOrder.balance_paid || false,
+                deposit_amount: paidOrder.deposit_amount || 0,
+                total_amount: paidOrder.total_amount || 0,
+                start_date: paidOrder.start_date || null,
+                schedule_status: paidOrder.schedule_status || null,
+                proposed_start_date: paidOrder.proposed_start_date || null,
+                status: paidOrder.status || 'active'
+            },
+            progress: {
+                currentDay: dayInfo.currentDay,
+                totalDays: dayInfo.totalDays,
+                isComplete: dayInfo.isComplete
+            },
+            access: accessRights,
+            project: project,
+            deliverables: deliverables,
+            sessions: sessions
+        });
+
+    } catch (err) {
+        console.error('[/api/dashboard] Erreur:', err.message);
+        res.status(500).json({ ok: false, error: 'SERVER_ERROR', message: 'Erreur serveur interne' });
+    }
+});
+
+// ============================================================
 // ROUTES - PRODUITS
 // ============================================================
 

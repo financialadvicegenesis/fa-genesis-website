@@ -145,12 +145,39 @@
                 <p class="text-xl font-bold uppercase text-white" id="welcomeSubtitle">Voici un aperçu de votre espace client</p>
             </div>
 
-            <!-- Indicateur de chargement simple (cache quand les donnees arrivent) -->
-            <div id="loadingIndicator" class="mb-8">
-                <div class="flex items-center gap-4 p-4" style="background: #222; border: 2px solid var(--genesis-yellow);">
-                    <i class="fas fa-spinner fa-spin text-[var(--genesis-yellow)] text-xl"></i>
-                    <span class="font-bold text-white text-sm">Chargement de votre espace...</span>
+            <!-- Loader (TOUJOURS masque par finally dans loadDashboard) -->
+            <div id="dashboardLoader" class="mb-8">
+                <div class="flex items-center gap-4 p-6" style="background: #222; border: 2px solid var(--genesis-yellow);">
+                    <i class="fas fa-spinner fa-spin text-[var(--genesis-yellow)] text-2xl"></i>
+                    <div>
+                        <span class="font-bold text-white text-base">Chargement de votre espace...</span>
+                        <p class="text-xs text-gray-400 mt-1" id="loaderDetail">Connexion au serveur</p>
+                    </div>
                 </div>
+            </div>
+
+            <!-- Zone erreur (cachee par defaut) -->
+            <div id="dashboardErrorBlock" class="mb-8" style="display: none;">
+                <div class="p-6 border-4 border-black" style="background: #ff6b6b; color: #000;">
+                    <div class="flex items-center gap-4 mb-4">
+                        <i class="fas fa-exclamation-triangle text-3xl"></i>
+                        <div>
+                            <h3 class="text-xl font-black uppercase" id="errorTitle">Erreur</h3>
+                            <p class="font-bold" id="errorMessage">Impossible de charger votre espace.</p>
+                        </div>
+                    </div>
+                    <button onclick="loadDashboard()" class="bg-black text-white px-6 py-3 font-black text-sm uppercase border-2 border-black mt-2">
+                        <i class="fas fa-redo mr-2"></i>Réessayer
+                    </button>
+                </div>
+            </div>
+
+            <!-- Zone debug (visible en dev, cachee en prod apres validation) -->
+            <div id="debugPanel" class="mb-4" style="display: none;">
+                <details>
+                    <summary class="text-xs text-gray-500 cursor-pointer font-bold">DEBUG INFO</summary>
+                    <pre id="debugOutput" class="text-xs text-green-400 bg-black p-4 mt-2 border border-gray-700 overflow-auto max-h-48" style="white-space: pre-wrap;"></pre>
+                </details>
             </div>
 
             <!-- Bloc d'appel a l'action : paiement de l'acompte requis (cache par defaut) -->
@@ -365,22 +392,52 @@
     <script src="offers-config.js"></script>
     <script src="payment-system.js"></script>
     <script>
-        // v4 - Dashboard FA GENESIS (async-first, pas de race condition)
-        console.log('[DASHBOARD] v4 - Demarrage');
+        // ============================================================
+        // DASHBOARD v6 - UN SEUL ENDPOINT, ZERO LOADING INFINI
+        // ============================================================
+        console.log('[DASHBOARD] v6 - Demarrage');
 
         var API_BASE_URL = window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com';
+        var _debugLines = [];
 
-        // Fonction utilitaire pour afficher une erreur visible
-        function showDashboardError(msg) {
-            console.error('[DASHBOARD] ERREUR:', msg);
-            var el = document.getElementById('dashboardError');
-            if (el) {
-                el.style.display = 'block';
-                el.textContent = 'Erreur: ' + msg;
-            }
+        function dbg(msg) {
+            console.log('[DASHBOARD] ' + msg);
+            _debugLines.push(new Date().toLocaleTimeString() + ' | ' + msg);
+            var el = document.getElementById('debugOutput');
+            if (el) el.textContent = _debugLines.join('\n');
         }
 
-        // Protection de la page
+        // ============================================================
+        // LOADING / ERROR UI
+        // ============================================================
+        function setLoading(visible) {
+            var loader = document.getElementById('dashboardLoader');
+            if (loader) loader.style.display = visible ? '' : 'none';
+        }
+
+        function showError(title, message, showRetry) {
+            var block = document.getElementById('dashboardErrorBlock');
+            if (!block) return;
+            block.style.display = '';
+            var tEl = document.getElementById('errorTitle');
+            if (tEl) tEl.textContent = title;
+            var mEl = document.getElementById('errorMessage');
+            if (mEl) mEl.textContent = message;
+        }
+
+        function hideError() {
+            var block = document.getElementById('dashboardErrorBlock');
+            if (block) block.style.display = 'none';
+        }
+
+        function setLoaderDetail(msg) {
+            var el = document.getElementById('loaderDetail');
+            if (el) el.textContent = msg;
+        }
+
+        // ============================================================
+        // PROTECTION AUTH
+        // ============================================================
         try {
             if (typeof requireAuth === 'function') {
                 requireAuth();
@@ -392,249 +449,236 @@
                 }
             }
         } catch (authErr) {
-            showDashboardError('Erreur authentification: ' + authErr.message);
+            dbg('Erreur auth: ' + authErr.message);
+        }
+
+        // Afficher debug panel si ?debug=1 dans l'URL
+        if (window.location.search.indexOf('debug=1') !== -1) {
+            var dp = document.getElementById('debugPanel');
+            if (dp) dp.style.display = '';
         }
 
         // ============================================================
-        // INIT ASYNC - Version simplifiee (plan Starter, pas de cold start)
+        // FETCH AVEC TIMEOUT 8 SECONDES
         // ============================================================
-
-        // Helper : masquer l'indicateur de chargement
-        function hideLoading() {
-            var el = document.getElementById('loadingIndicator');
-            if (el) el.style.display = 'none';
+        function fetchWithTimeout(url, options, timeoutMs) {
+            return new Promise(function(resolve, reject) {
+                var controller = new AbortController();
+                var timer = setTimeout(function() {
+                    controller.abort();
+                    reject(new Error('TIMEOUT (' + timeoutMs + 'ms)'));
+                }, timeoutMs || 8000);
+                var opts = Object.assign({}, options || {}, { signal: controller.signal });
+                fetch(url, opts).then(function(resp) {
+                    clearTimeout(timer);
+                    resolve(resp);
+                }).catch(function(err) {
+                    clearTimeout(timer);
+                    reject(err);
+                });
+            });
         }
 
-        // SAFETY TIMEOUT : Forcer l'affichage apres 10 secondes quoi qu'il arrive
-        var _safetyTimer = setTimeout(function() {
-            console.warn('[DASHBOARD] SAFETY TIMEOUT - Affichage force apres 10s');
-            hideLoading();
-            var mc = document.getElementById('dashboardMainContent');
-            if (mc && mc.style.display === 'none') mc.style.display = '';
-        }, 10000);
+        // ============================================================
+        // FONCTION PRINCIPALE : loadDashboard()
+        // Regle absolue : setLoading(false) dans le finally
+        // ============================================================
+        async function loadDashboard() {
+            setLoading(true);
+            hideError();
 
-        (async function initDashboard() {
+            // Cacher le contenu pendant le chargement
+            var mainCont = document.getElementById('dashboardMainContent');
+            var depositSec = document.getElementById('depositRequiredSection');
+            if (mainCont) mainCont.style.display = 'none';
+            if (depositSec) depositSec.style.display = 'none';
+
             try {
-                console.log('[DASHBOARD] v5 - Demarrage');
-
-                // 1. Recuperer l'utilisateur depuis localStorage
-                var user = null;
-                try {
-                    if (typeof getCurrentUser === 'function') {
-                        user = getCurrentUser();
-                    }
-                } catch (e) { console.warn('[DASHBOARD] getCurrentUser error:', e); }
-
-                if (!user) {
-                    var rawSession = localStorage.getItem('fa_genesis_session');
-                    if (rawSession) {
-                        try { user = JSON.parse(rawSession); } catch (e) {}
-                    }
-                }
-
-                if (!user) {
-                    console.warn('[DASHBOARD] Aucun utilisateur');
-                    hideLoading();
-                    clearTimeout(_safetyTimer);
+                // 1. Recuperer le token
+                var token = localStorage.getItem('fa_genesis_token');
+                if (!token) {
+                    dbg('Pas de token - redirection login');
+                    window.location.href = 'login.html';
                     return;
                 }
 
-                console.log('[DASHBOARD] Utilisateur:', user.email);
-
-                // 2. Afficher le nom immediatement
-                var welcomeEl = document.getElementById('welcomeTitle');
-                if (welcomeEl) welcomeEl.textContent = 'Bienvenue ' + (user.prenom || '');
-                var greetEl = document.getElementById('userGreeting');
-                if (greetEl) greetEl.textContent = user.prenom || '';
-
-                // 3. Appels backend (simple, pas de retry - plan Starter)
-                var token = localStorage.getItem('fa_genesis_token');
-                var orders = [];
-
+                // 2. Recuperer le prenom depuis localStorage pour affichage immediat
+                var localUser = null;
                 try {
-                    console.log('[DASHBOARD] Fetch orders...');
-                    var ordersResp = await fetch(API_BASE_URL + '/api/client/orders?email=' + encodeURIComponent(user.email));
-                    if (ordersResp.ok) {
-                        var rawOrders = await ordersResp.json();
-                        orders = Array.isArray(rawOrders) ? rawOrders : (rawOrders.orders || []);
-                    }
-                    console.log('[DASHBOARD] Orders:', orders.length);
-                } catch (fetchErr) {
-                    console.warn('[DASHBOARD] Fetch orders echoue:', fetchErr.message);
+                    var raw = localStorage.getItem('fa_genesis_session');
+                    if (raw) localUser = JSON.parse(raw);
+                } catch (e) {}
+                if (localUser) {
+                    var welc = document.getElementById('welcomeTitle');
+                    if (welc) welc.textContent = 'Bienvenue ' + (localUser.prenom || '');
+                    var greet = document.getElementById('userGreeting');
+                    if (greet) greet.textContent = localUser.prenom || '';
                 }
 
-                // Sync user depuis backend (en parallele, non bloquant)
+                // 3. APPEL UNIQUE : GET /api/dashboard
+                setLoaderDetail('Appel ' + API_BASE_URL + '/api/dashboard ...');
+                dbg('Fetch: ' + API_BASE_URL + '/api/dashboard');
+
+                var resp = await fetchWithTimeout(API_BASE_URL + '/api/dashboard', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                }, 8000);
+
+                dbg('Status: ' + resp.status);
+
+                // 4. Verifier le status HTTP
+                if (resp.status === 401) {
+                    dbg('401 - Session expiree');
+                    localStorage.removeItem('fa_genesis_token');
+                    localStorage.removeItem('fa_genesis_session');
+                    alert('Session expir\u00e9e. Veuillez vous reconnecter.');
+                    window.location.href = 'login.html';
+                    return;
+                }
+
+                if (!resp.ok) {
+                    var errText = '';
+                    try { errText = await resp.text(); } catch (e) {}
+                    dbg('Erreur HTTP ' + resp.status + ': ' + errText);
+                    showError('Erreur serveur (' + resp.status + ')', 'Le serveur a renvoy\u00e9 une erreur. R\u00e9essayez.', true);
+                    return;
+                }
+
+                // 5. Parser le JSON
+                var data = null;
                 try {
-                    if (token) {
-                        var meResp = await fetch(API_BASE_URL + '/api/auth/me', {
-                            headers: { 'Authorization': 'Bearer ' + token }
-                        });
-                        if (meResp.ok) {
-                            var meData = await meResp.json();
-                            if (meData && meData.success && meData.user) {
-                                var fu = meData.user;
-                                if (fu.paymentStatus) user.paymentStatus = fu.paymentStatus;
-                                if (fu.payment_status) user.payment_status = fu.payment_status;
-                                if (fu.activeOrderId) user.activeOrderId = fu.activeOrderId;
-                                if (fu.activeOfferId) user.activeOfferId = fu.activeOfferId;
-                                if (fu.offre) user.offre = fu.offre;
-                                localStorage.setItem('fa_genesis_session', JSON.stringify(user));
-                                console.log('[DASHBOARD] Sync user OK - paymentStatus:', user.paymentStatus);
-                            }
-                        }
+                    data = await resp.json();
+                } catch (jsonErr) {
+                    dbg('JSON invalide: ' + jsonErr.message);
+                    showError('R\u00e9ponse invalide', 'Le serveur n\'a pas renvoy\u00e9 du JSON valide.', true);
+                    return;
+                }
+
+                dbg('JSON OK - status: ' + (data.status || data.ok));
+
+                if (!data.ok) {
+                    if (data.error === 'UNAUTHORIZED') {
+                        localStorage.removeItem('fa_genesis_token');
+                        localStorage.removeItem('fa_genesis_session');
+                        window.location.href = 'login.html';
+                        return;
                     }
-                } catch (meErr) {
-                    console.warn('[DASHBOARD] Sync user echoue:', meErr.message);
+                    dbg('API error: ' + (data.error || '') + ' - ' + (data.message || ''));
+                    showError('Erreur', data.message || 'Erreur inconnue du serveur.', true);
+                    return;
                 }
 
-                // 4. Masquer le chargement
-                hideLoading();
-                clearTimeout(_safetyTimer);
+                // 6. Mettre a jour localStorage avec les donnees fraiches
+                if (data.user) {
+                    var session = localUser || {};
+                    session.email = data.user.email;
+                    session.prenom = data.user.prenom;
+                    session.nom = data.user.nom;
+                    session.paymentStatus = data.user.paymentStatus;
+                    session.payment_status = data.user.paymentStatus;
+                    session.activeOfferId = data.user.activeOfferId;
+                    session.productType = data.user.productType;
+                    localStorage.setItem('fa_genesis_session', JSON.stringify(session));
 
-                // 5. Chercher une commande payee
-                var paidOrder = null;
-                var pendingOrder = null;
-                for (var i = 0; i < orders.length; i++) {
-                    if (orders[i].deposit_paid === true) { paidOrder = orders[i]; break; }
-                }
-                for (var j = 0; j < orders.length; j++) {
-                    if (!orders[j].deposit_paid) { pendingOrder = orders[j]; break; }
-                }
-
-                // 6. Determiner l'offre et le type de produit
-                var offerId = user.activeOfferId || user.offre;
-                var offerDetails = null;
-                var productType = 'accompagnement';
-
-                if (offerId && typeof getOfferById === 'function') {
-                    try { offerDetails = getOfferById(offerId); } catch (e) {}
-                }
-                if (paidOrder) {
-                    if (!offerDetails && paidOrder.product_id && typeof getOfferById === 'function') {
-                        try { offerDetails = getOfferById(paidOrder.product_id); } catch (e) {}
-                    }
-                    if (paidOrder.product_type) productType = paidOrder.product_type;
-                }
-                if (!paidOrder && offerDetails && offerDetails.productType) {
-                    productType = offerDetails.productType;
-                }
-                productType = user.productType || user.product_type || productType;
-                console.log('[DASHBOARD] Offre:', offerId, '| Type:', productType, '| Paid:', !!paidOrder);
-
-                // 7. Mettre a jour les infos d'offre
-                var offreNameEl = document.getElementById('offreName');
-                var offreTypeEl = document.getElementById('offreType');
-                if (offerDetails) {
-                    if (offreNameEl) offreNameEl.textContent = offerDetails.nom;
-                    if (offreTypeEl) offreTypeEl.textContent = offerDetails.categorie || (productType === 'prestation_individuelle' ? 'Prestation individuelle' : 'Accompagnement');
-                } else if (paidOrder && paidOrder.product_name) {
-                    if (offreNameEl) offreNameEl.textContent = paidOrder.product_name;
-                    if (offreTypeEl) offreTypeEl.textContent = productType === 'prestation_individuelle' ? 'Prestation individuelle' : 'Accompagnement';
-                } else if (offerId) {
-                    if (offreNameEl) offreNameEl.textContent = offerId;
+                    var welc2 = document.getElementById('welcomeTitle');
+                    if (welc2) welc2.textContent = 'Bienvenue ' + (data.user.prenom || '');
+                    var greet2 = document.getElementById('userGreeting');
+                    if (greet2) greet2.textContent = data.user.prenom || '';
                 }
 
-                // 8. Sous-titre dynamique
+                // 7. Sous-titre dynamique
                 var subtitleEl = document.getElementById('welcomeSubtitle');
 
                 // ============================================================
-                // CAS 1 : Pas de commande payee
+                // CAS 1 : PAS DE COMMANDE PAYEE
                 // ============================================================
-                if (!paidOrder) {
-                    // Verifier localStorage en fallback
-                    var localPay = user.paymentStatus || user.payment_status || '';
-                    var localPaid = (localPay === 'deposit_paid' || localPay === 'fully_paid' || localPay === 'delivery_pending_payment');
-
-                    if (localPaid) {
-                        // localStorage dit paye mais backend n'a pas de commande payee
-                        // Afficher quand meme le dashboard
-                        console.log('[DASHBOARD] localStorage paye mais pas de commande - affichage dashboard');
-                        if (subtitleEl) subtitleEl.textContent = 'Votre espace client';
-                        var mc = document.getElementById('dashboardMainContent');
-                        if (mc) mc.style.display = '';
-                        renderQuickActions(productType);
-                        renderProgressCard(user, productType, 0, 0, null);
-                        renderProgressBar(user, productType, 0, 0);
-                        return;
-                    }
-
-                    // Pas paye du tout - afficher CTA acompte
-                    console.log('[DASHBOARD] Pas de commande payee - CTA acompte');
+                if (data.status === 'NO_PAID_ORDER') {
+                    dbg('Pas de commande payee - CTA acompte');
                     if (subtitleEl) subtitleEl.textContent = 'Finalisez votre inscription';
 
-                    var depositSection = document.getElementById('depositRequiredSection');
-                    var mainContent = document.getElementById('dashboardMainContent');
-                    var payStatusSection = document.getElementById('paymentStatusSection');
+                    if (depositSec) {
+                        depositSec.style.display = 'block';
 
-                    if (depositSection) {
-                        depositSection.style.display = 'block';
+                        // Remplir les infos de l'offre
+                        var offerId = data.user.activeOfferId;
+                        var offerDetails = null;
+                        if (offerId && typeof getOfferById === 'function') {
+                            try { offerDetails = getOfferById(offerId); } catch (e) {}
+                        }
+
                         var typeLabel = document.getElementById('depositOfferTypeLabel');
                         var offerNameLabel = document.getElementById('depositOfferName');
                         if (offerDetails) {
                             if (typeLabel) typeLabel.textContent = offerDetails.productType === 'prestation_individuelle' ? 'prestation' : 'accompagnement';
                             if (offerNameLabel) offerNameLabel.textContent = offerDetails.nom;
-                        } else if (offerId) {
-                            if (offerNameLabel) offerNameLabel.textContent = offerId;
                         }
-                    }
-                    if (mainContent) mainContent.style.display = 'none';
-                    if (payStatusSection) payStatusSection.style.display = 'none';
 
-                    // Personnaliser le CTA si une commande en attente existe
-                    if (pendingOrder) {
-                        var payBtn = document.getElementById('depositPayButton');
-                        var offerNameEl2 = document.getElementById('depositOfferName');
-                        var amountInfo = document.getElementById('depositAmountInfo');
-                        var typeLabel2 = document.getElementById('depositOfferTypeLabel');
+                        // Personnaliser si commande en attente
+                        if (data.pendingOrder) {
+                            var po = data.pendingOrder;
+                            var payBtn = document.getElementById('depositPayButton');
+                            var offerNameEl2 = document.getElementById('depositOfferName');
+                            var amountInfo = document.getElementById('depositAmountInfo');
+                            var typeLabel2 = document.getElementById('depositOfferTypeLabel');
 
-                        if (offerNameEl2 && pendingOrder.product_name) offerNameEl2.textContent = pendingOrder.product_name;
-                        if (amountInfo && pendingOrder.deposit_amount) {
-                            amountInfo.innerHTML = '<i class="fas fa-shield-alt mr-1"></i> Acompte : <strong>' + pendingOrder.deposit_amount.toFixed(2) + ' \u20ac</strong> \u2014 Paiement s\u00e9curis\u00e9 par SumUp.';
-                        }
-                        if (typeLabel2) typeLabel2.textContent = pendingOrder.product_type === 'prestation_individuelle' ? 'prestation' : 'accompagnement';
+                            if (offerNameEl2 && po.product_name) offerNameEl2.textContent = po.product_name;
+                            if (amountInfo && po.deposit_amount) {
+                                amountInfo.innerHTML = '<i class="fas fa-shield-alt mr-1"></i> Acompte : <strong>' + po.deposit_amount.toFixed(2) + ' \u20ac</strong> \u2014 Paiement s\u00e9curis\u00e9 par SumUp.';
+                            }
+                            if (typeLabel2) typeLabel2.textContent = po.product_type === 'prestation_individuelle' ? 'prestation' : 'accompagnement';
 
-                        if (pendingOrder.source === 'quote' && pendingOrder.quote_id) {
-                            try {
-                                var qResp = await fetch(API_BASE_URL + '/api/quotes/by-order/' + encodeURIComponent(pendingOrder.id), {
-                                    headers: token ? { 'Authorization': 'Bearer ' + token } : {}
-                                });
-                                if (qResp.ok) {
-                                    var quoteData = await qResp.json();
-                                    if (quoteData && quoteData.acceptance_token && payBtn) {
-                                        payBtn.href = 'quote-accept.html?token=' + encodeURIComponent(quoteData.acceptance_token);
-                                        payBtn.innerHTML = '<i class="fas fa-credit-card mr-3"></i>Payer l\'acompte du devis (' + pendingOrder.deposit_amount.toFixed(2) + ' \u20ac)';
+                            if (po.source === 'quote' && po.quote_id && payBtn) {
+                                try {
+                                    var qResp = await fetchWithTimeout(API_BASE_URL + '/api/quotes/by-order/' + encodeURIComponent(po.id), {
+                                        headers: { 'Authorization': 'Bearer ' + token }
+                                    }, 5000);
+                                    if (qResp.ok) {
+                                        var quoteData = await qResp.json();
+                                        if (quoteData && quoteData.acceptance_token) {
+                                            payBtn.href = 'quote-accept.html?token=' + encodeURIComponent(quoteData.acceptance_token);
+                                            payBtn.innerHTML = '<i class="fas fa-credit-card mr-3"></i>Payer l\'acompte du devis (' + po.deposit_amount.toFixed(2) + ' \u20ac)';
+                                        }
                                     }
-                                }
-                            } catch (qErr) { console.error('[DASHBOARD] Erreur devis:', qErr); }
-                        } else if (payBtn && pendingOrder.deposit_amount) {
-                            payBtn.innerHTML = '<i class="fas fa-credit-card mr-3"></i>Payer l\'acompte (' + pendingOrder.deposit_amount.toFixed(2) + ' \u20ac)';
+                                } catch (qErr) { dbg('Erreur devis: ' + qErr.message); }
+                            } else if (payBtn && po.deposit_amount) {
+                                payBtn.innerHTML = '<i class="fas fa-credit-card mr-3"></i>Payer l\'acompte (' + po.deposit_amount.toFixed(2) + ' \u20ac)';
+                            }
                         }
                     }
+                    if (mainCont) mainCont.style.display = 'none';
                     return;
                 }
 
                 // ============================================================
-                // CAS 2 : Commande payee - Afficher le dashboard complet
+                // CAS 2 : COMMANDE PAYEE - DASHBOARD COMPLET
                 // ============================================================
-                console.log('[DASHBOARD] Commande payee:', paidOrder.id);
+                dbg('Commande payee: ' + data.order.id + ' | Type: ' + data.order.product_type);
                 if (subtitleEl) subtitleEl.textContent = 'Votre espace client';
 
-                // Mettre a jour localStorage
-                var newPayStatus = paidOrder.balance_paid ? 'fully_paid' : 'deposit_paid';
-                user.paymentStatus = newPayStatus;
-                user.payment_status = newPayStatus;
-                user.activeOrderId = paidOrder.id;
-                localStorage.setItem('fa_genesis_session', JSON.stringify(user));
-
                 // Afficher le dashboard
-                var depositSec = document.getElementById('depositRequiredSection');
                 if (depositSec) depositSec.style.display = 'none';
-                var mainCont = document.getElementById('dashboardMainContent');
                 if (mainCont) mainCont.style.display = '';
 
+                var productType = data.order.product_type || 'accompagnement';
+
+                // Offre
+                var offreNameEl = document.getElementById('offreName');
+                var offreTypeEl = document.getElementById('offreType');
+                var offerDetails2 = null;
+                var oId = data.user.activeOfferId || data.order.product_id;
+                if (oId && typeof getOfferById === 'function') {
+                    try { offerDetails2 = getOfferById(oId); } catch (e) {}
+                }
+                if (offerDetails2) {
+                    if (offreNameEl) offreNameEl.textContent = offerDetails2.nom;
+                    if (offreTypeEl) offreTypeEl.textContent = offerDetails2.categorie || (productType === 'prestation_individuelle' ? 'Prestation individuelle' : 'Accompagnement');
+                } else if (data.order.product_name) {
+                    if (offreNameEl) offreNameEl.textContent = data.order.product_name;
+                    if (offreTypeEl) offreTypeEl.textContent = productType === 'prestation_individuelle' ? 'Prestation individuelle' : 'Accompagnement';
+                }
+
                 // Statut de paiement
-                try { displayPaymentStatus(user.email); } catch (payErr) {
-                    console.error('[DASHBOARD] Erreur statut paiement:', payErr);
+                try { displayPaymentStatus(data.user.email); } catch (payErr) {
+                    dbg('displayPaymentStatus error: ' + payErr.message);
                     var paySection = document.getElementById('paymentStatusSection');
                     if (paySection) {
                         paySection.style.display = 'block';
@@ -642,65 +686,48 @@
                     }
                 }
 
-                // Planification + Actions + Progression
-                showScheduleSection(paidOrder, productType);
-                renderQuickActions(productType);
-                renderProgressCard(user, productType, 0, 0, paidOrder);
-                renderProgressBar(user, productType, 0, 0);
+                // Calendrier de planification
+                showScheduleSection(data.order, productType);
 
-                if (productType === 'accompagnement') {
-                    loadDashboardFromBackend(user, productType, paidOrder);
-                } else {
-                    try { renderDeliveryWorkflow(user); } catch (wfErr) { console.error('[DASHBOARD] Erreur workflow:', wfErr); }
+                // Actions rapides
+                renderQuickActions(productType);
+
+                // Progression
+                var curDay = data.progress ? data.progress.currentDay : 0;
+                var totDays = data.progress ? data.progress.totalDays : 0;
+                renderProgressCard(data.user, productType, curDay, totDays, data.order);
+                renderProgressBar(data.user, productType, curDay, totDays);
+
+                // Workflow prestation ou accompagnement
+                if (productType !== 'accompagnement') {
+                    try { renderDeliveryWorkflow(data.user); } catch (wfErr) { dbg('Workflow error: ' + wfErr.message); }
                 }
 
-            } catch (globalErr) {
-                console.error('[DASHBOARD] ERREUR GLOBALE:', globalErr);
-                hideLoading();
-                clearTimeout(_safetyTimer);
-                showDashboardError(globalErr.message);
-                var mainContErr = document.getElementById('dashboardMainContent');
-                if (mainContErr) mainContErr.style.display = '';
+                dbg('Dashboard charge avec succes');
+
+            } catch (err) {
+                // Erreur reseau, timeout, ou autre
+                dbg('ERREUR: ' + err.message);
+                if (err.message && err.message.indexOf('TIMEOUT') !== -1) {
+                    showError('Connexion impossible', 'Le serveur ne r\u00e9pond pas. V\u00e9rifiez votre connexion internet et r\u00e9essayez.', true);
+                } else if (err.message && (err.message.indexOf('Failed to fetch') !== -1 || err.message.indexOf('NetworkError') !== -1)) {
+                    showError('Connexion impossible', 'Impossible de joindre le serveur. V\u00e9rifiez votre connexion.', true);
+                } else {
+                    showError('Erreur inattendue', err.message || 'Une erreur est survenue.', true);
+                }
+            } finally {
+                // REGLE ABSOLUE : toujours masquer le loader
+                setLoading(false);
+                dbg('finally: loader masque');
             }
-        })();
+        }
+
+        // Lancer le chargement
+        loadDashboard();
 
         // ============================================================
         // FONCTIONS
         // ============================================================
-
-        // Charger le jour courant depuis le backend
-        async function loadDashboardFromBackend(user, productType, order) {
-            var currentDay = 0;
-            var totalDays = 0;
-            var freshOrder = order || null;
-
-            try {
-                var ordersResp = await fetch(API_BASE_URL + '/api/client/orders?email=' + encodeURIComponent(user.email));
-                if (ordersResp.ok) {
-                    var orders = await ordersResp.json();
-                    var activeOrder = orders.find(function(o) { return o.deposit_paid; });
-                    if (activeOrder) {
-                        var dashResp = await fetch(API_BASE_URL + '/api/client/dashboard/' + activeOrder.id);
-                        if (dashResp.ok) {
-                            var dashData = await dashResp.json();
-                            currentDay = dashData.currentDay || 0;
-                            totalDays = dashData.totalDays || 0;
-                            // Enrichir l'order avec les donnees schedule du dashboard API
-                            if (freshOrder) {
-                                if (dashData.schedule_status) freshOrder.schedule_status = dashData.schedule_status;
-                                if (dashData.proposed_start_date) freshOrder.proposed_start_date = dashData.proposed_start_date;
-                                if (dashData.start_date) freshOrder.start_date = dashData.start_date;
-                            }
-                        }
-                    }
-                }
-            } catch (error) {
-                console.error('[DASHBOARD] Erreur chargement backend:', error);
-            }
-
-            renderProgressCard(user, productType, currentDay, totalDays, freshOrder);
-            renderProgressBar(user, productType, currentDay, totalDays);
-        }
 
         // Carte de progression
         function renderProgressCard(user, productType, currentDay, totalDays, order) {
