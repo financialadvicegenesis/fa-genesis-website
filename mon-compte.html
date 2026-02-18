@@ -9,28 +9,22 @@
     <title>Mon Compte - FA GENESIS | Espace Client</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;900&family=Space+Grotesk:wght@300;700&display=swap">
     <link rel="stylesheet" href="tailwind.min.css">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.css" rel="stylesheet" media="print" onload="this.media='all'">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" media="print" onload="this.media='all'">
     <style>
-
         :root {
             --genesis-yellow: #FFD700;
             --genesis-black: #000000;
             --genesis-white: #FFFFFF;
         }
-
         body {
             background-color: var(--genesis-black);
             color: var(--genesis-white);
             font-family: 'Space Grotesk', sans-serif;
             overflow-x: hidden;
         }
-
         h1, h2, h3, h4, h5, .nav-link { font-family: 'Unbounded', cursive; }
-
         .neo-border { border: 4px solid var(--genesis-black); }
         .neo-shadow { box-shadow: 10px 10px 0px 0px var(--genesis-yellow); }
-
         .neo-btn-yellow {
             background: var(--genesis-yellow);
             color: black;
@@ -43,7 +37,6 @@
             transform: translate(4px, 4px);
             box-shadow: 0px 0px 0px black;
         }
-
         .info-card {
             background: white;
             color: black;
@@ -51,30 +44,32 @@
             padding: 2rem;
             margin-bottom: 1.5rem;
         }
-
         .info-row {
             display: flex;
             justify-content: space-between;
+            align-items: center;
             padding: 1rem 0;
             border-bottom: 2px solid #e0e0e0;
         }
-
-        .info-row:last-child {
-            border-bottom: none;
-        }
-
+        .info-row:last-child { border-bottom: none; }
         .info-label {
             font-weight: 900;
             text-transform: uppercase;
             font-size: 0.875rem;
             opacity: 0.7;
         }
-
         .info-value {
             font-weight: 700;
             font-size: 1.125rem;
         }
-
+        .edit-input {
+            border: 3px solid black;
+            padding: 0.5rem 0.75rem;
+            font-weight: 700;
+            font-size: 1rem;
+            width: 200px;
+            max-width: 100%;
+        }
         .message {
             padding: 1rem;
             border: 3px solid black;
@@ -82,205 +77,198 @@
             font-weight: 700;
             display: none;
         }
-
-        .message.success {
-            background: #00ff00;
-            color: black;
-            display: block;
-        }
-
-        .message.error {
-            background: #ff0000;
-            color: white;
-            display: block;
-        }
+        .message.success { background: #00ff00; color: black; display: block; }
+        .message.error { background: #ff0000; color: white; display: block; }
     </style>
 </head>
 <body>
 
-    <!-- NAVIGATION PRIVÉE -->
-    <nav class="fixed top-0 w-full z-50 bg-black/95 backdrop-blur-md border-b-4 border-[var(--genesis-yellow)] px-6 py-4 flex justify-between items-center text-white text-xs font-black uppercase">
+    <!-- NAVIGATION PRIVEE -->
+    <nav class="fixed top-0 w-full z-50 bg-black/95 backdrop-blur-md border-b-4 border-[var(--genesis-yellow)] px-4 md:px-6 py-3 md:py-4 flex justify-between items-center text-white text-xs font-black uppercase">
         <div class="flex items-center">
-            <a href="dashboard.html" class="text-2xl font-black tracking-wider text-[var(--genesis-yellow)]" style="font-family: 'Unbounded', cursive;">FA GENESIS</a>
+            <a href="dashboard.html" class="text-lg md:text-2xl font-black tracking-wider text-[var(--genesis-yellow)]" style="font-family: 'Unbounded', cursive;">FA GENESIS</a>
         </div>
-        <div id="mainNavigation" class="hidden md:flex gap-8 text-white font-black">
-            <!-- Navigation dynamique générée par JavaScript -->
+        <div class="hidden md:flex gap-8 text-white font-black">
+            <a href="dashboard.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">Dashboard</a>
+            <a href="livrables.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">Livrables</a>
+            <a href="seances.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">Seances</a>
+            <a href="mon-compte.html" class="nav-link text-[var(--genesis-yellow)]">Mon compte</a>
         </div>
         <div class="flex gap-4 items-center">
             <span id="userGreeting" class="hidden md:block text-white font-bold"></span>
-            <button onclick="logout()" class="border-4 border-white text-white px-4 py-2 text-[10px] tracking-widest font-black hover:bg-white hover:text-black transition">
-                <i class="fas fa-sign-out-alt mr-2"></i>Déconnexion
+            <button onclick="logout()" class="border-4 border-white text-white px-3 py-2 text-[10px] tracking-widest font-black hover:bg-white hover:text-black transition">
+                <i class="fas fa-sign-out-alt mr-1"></i><span class="hidden md:inline">Deconnexion</span>
+            </button>
+            <button id="mobileMenuBtn" class="md:hidden flex flex-col gap-1.5 p-2" aria-label="Menu">
+                <span class="block w-6 h-0.5 bg-[var(--genesis-yellow)] transition-all" id="menuLine1"></span>
+                <span class="block w-6 h-0.5 bg-[var(--genesis-yellow)] transition-all" id="menuLine2"></span>
+                <span class="block w-6 h-0.5 bg-[var(--genesis-yellow)] transition-all" id="menuLine3"></span>
             </button>
         </div>
     </nav>
+
+    <!-- Menu Mobile -->
+    <div id="mobileMenu" class="fixed inset-0 z-40 bg-black/98 backdrop-blur-lg hidden flex-col items-center justify-center gap-8 text-white font-black uppercase">
+        <a href="dashboard.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)]">Dashboard</a>
+        <a href="livrables.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)]">Livrables</a>
+        <a href="seances.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)]">Seances</a>
+        <a href="mon-compte.html" class="text-2xl nav-link text-[var(--genesis-yellow)]">Mon compte</a>
+        <div class="mt-8">
+            <button onclick="logout()" class="neo-btn-yellow px-8 py-4 text-sm tracking-widest text-black font-black">
+                <i class="fas fa-sign-out-alt mr-2"></i>Deconnexion
+            </button>
+        </div>
+    </div>
 
     <!-- MON COMPTE CONTENT -->
     <section class="min-h-screen pt-32 pb-20 px-6 bg-black">
         <div class="container mx-auto max-w-5xl">
 
-            <!-- En-tête -->
-            <div class="mb-16" data-aos="fade-up">
+            <!-- En-tete -->
+            <div class="mb-16">
                 <h1 class="text-5xl md:text-6xl font-black italic uppercase mb-4 text-[var(--genesis-yellow)]">Mon Compte</h1>
-                <p class="text-xl font-bold uppercase text-white">Gérez vos informations personnelles et vos paramètres</p>
+                <p class="text-xl font-bold uppercase text-white">Gerez vos informations personnelles</p>
             </div>
 
-            <div class="grid lg:grid-cols-2 gap-8">
-
-                <!-- Informations personnelles -->
-                <div data-aos="fade-up">
-                    <h2 class="text-3xl font-black italic uppercase mb-6 text-white">Informations personnelles</h2>
-                    <div class="info-card">
-                        <div class="info-row">
-                            <span class="info-label">Prénom</span>
-                            <span class="info-value" id="prenom">-</span>
-                        </div>
-                        <div class="info-row">
-                            <span class="info-label">Nom</span>
-                            <span class="info-value" id="nom">-</span>
-                        </div>
-                        <div class="info-row">
-                            <span class="info-label">Email</span>
-                            <span class="info-value" id="email">-</span>
-                        </div>
-                        <div class="info-row">
-                            <span class="info-label">Téléphone</span>
-                            <span class="info-value" id="telephone">-</span>
-                        </div>
-                        <div class="info-row" id="entrepriseRow" style="display: none;">
-                            <span class="info-label">Entreprise</span>
-                            <span class="info-value" id="entreprise">-</span>
-                        </div>
-                    </div>
-
-                    <div class="bg-[var(--genesis-yellow)] text-black p-6 neo-border mt-6">
-                        <p class="font-bold text-sm"><i class="fas fa-info-circle mr-2"></i>Pour modifier vos informations personnelles, veuillez <a href="contact.html" class="underline font-black">nous contacter</a>.</p>
-                    </div>
-                </div>
-
-                <!-- Offre active -->
-                <div data-aos="fade-up" data-aos-delay="100">
-                    <h2 class="text-3xl font-black italic uppercase mb-6 text-white">Offre active</h2>
-                    <div class="info-card">
-                        <div class="info-row">
-                            <span class="info-label">Type</span>
-                            <span class="info-value" id="offreType">-</span>
-                        </div>
-                        <div class="info-row">
-                            <span class="info-label">Formule</span>
-                            <span class="info-value" id="offreName">-</span>
-                        </div>
-                        <div class="info-row">
-                            <span class="info-label">Date de début</span>
-                            <span class="info-value" id="dateDebut">-</span>
-                        </div>
-                        <div class="info-row">
-                            <span class="info-label">Durée totale</span>
-                            <span class="info-value" id="duree">-</span>
-                        </div>
-                        <div class="info-row">
-                            <span class="info-label">Progression</span>
-                            <span class="info-value" id="progression">-</span>
-                        </div>
-                    </div>
-
-                    <a href="dashboard.html" class="block mt-6 bg-white text-black p-4 neo-border text-center font-black uppercase hover:opacity-80 transition">
-                        <i class="fas fa-chart-line mr-2"></i>Voir mon tableau de bord
-                    </a>
-                </div>
-
-            </div>
-
-            <!-- Changement de mot de passe -->
-            <div class="mt-16" data-aos="fade-up">
-                <h2 class="text-3xl font-black italic uppercase mb-6 text-white">Changer mon mot de passe</h2>
-
-                <div class="bg-white text-black p-8 neo-border">
-                    <div id="passwordMessage" class="message"></div>
-
-                    <form id="passwordForm" class="space-y-6">
-                        <div>
-                            <label for="currentPassword" class="block text-sm font-black mb-2 uppercase">Mot de passe actuel</label>
-                            <input
-                                type="password"
-                                id="currentPassword"
-                                name="currentPassword"
-                                required
-                                class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none"
-                                placeholder="••••••••"
-                            >
-                        </div>
-
-                        <div>
-                            <label for="newPassword" class="block text-sm font-black mb-2 uppercase">Nouveau mot de passe</label>
-                            <input
-                                type="password"
-                                id="newPassword"
-                                name="newPassword"
-                                required
-                                minlength="6"
-                                class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none"
-                                placeholder="••••••••"
-                            >
-                            <p class="text-xs font-bold mt-2 opacity-70">Minimum 6 caractères</p>
-                        </div>
-
-                        <div>
-                            <label for="confirmPassword" class="block text-sm font-black mb-2 uppercase">Confirmer le nouveau mot de passe</label>
-                            <input
-                                type="password"
-                                id="confirmPassword"
-                                name="confirmPassword"
-                                required
-                                minlength="6"
-                                class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none"
-                                placeholder="••••••••"
-                            >
-                        </div>
-
-                        <button
-                            type="submit"
-                            class="w-full py-4 neo-btn-yellow text-xl font-black italic uppercase tracking-tighter"
-                        >
-                            Mettre à jour le mot de passe
-                        </button>
-                    </form>
+            <!-- Loader -->
+            <div id="accountLoader" class="mb-8">
+                <div class="flex items-center gap-4 p-6" style="background: #222; border: 2px solid var(--genesis-yellow);">
+                    <i class="fas fa-spinner fa-spin text-[var(--genesis-yellow)] text-2xl"></i>
+                    <span class="font-bold text-white text-base">Chargement...</span>
                 </div>
             </div>
 
-            <!-- Aide -->
-            <div class="mt-16 bg-white text-black p-8 neo-border text-center" data-aos="zoom-in">
-                <h3 class="text-2xl font-black italic uppercase mb-4">Besoin d'aide ?</h3>
-                <p class="font-bold mb-6">Notre équipe est disponible pour répondre à toutes vos questions</p>
-                <div class="flex flex-col sm:flex-row gap-4 justify-center">
-                    <a href="contact.html" class="bg-black text-white px-8 py-4 border-4 border-black font-black uppercase text-sm hover:bg-gray-900 transition">
-                        <i class="fas fa-envelope mr-2"></i>Nous contacter
-                    </a>
-                    <a href="dashboard.html" class="bg-[var(--genesis-yellow)] text-black px-8 py-4 border-4 border-black font-black uppercase text-sm hover:opacity-80 transition">
-                        <i class="fas fa-home mr-2"></i>Retour au dashboard
-                    </a>
-                </div>
-            </div>
+            <!-- Contenu (cache pendant le chargement) -->
+            <div id="accountContent" style="display: none;">
 
-            <!-- Gestion du compte -->
-            <div class="mt-16" data-aos="fade-up">
-                <h2 class="text-3xl font-black italic uppercase mb-6 text-white">Gestion du compte</h2>
+                <div class="grid lg:grid-cols-2 gap-8">
 
-                <div class="bg-white text-black p-8 neo-border" style="border-left: 6px solid #ff6b6b;">
-                    <p class="font-bold mb-6 opacity-70">
-                        <i class="fas fa-exclamation-triangle mr-2 text-[#ff6b6b]"></i>
-                        Ces actions affectent votre compte. Veuillez les utiliser avec precaution.
-                    </p>
+                    <!-- Informations personnelles (editables) -->
+                    <div>
+                        <h2 class="text-3xl font-black italic uppercase mb-6 text-white">Informations personnelles</h2>
+                        <div class="info-card">
+                            <div class="info-row">
+                                <span class="info-label">Prenom</span>
+                                <input type="text" id="editPrenom" class="edit-input" value="-" />
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Nom</span>
+                                <input type="text" id="editNom" class="edit-input" value="-" />
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Email</span>
+                                <span class="info-value" id="email">-</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Telephone</span>
+                                <input type="tel" id="editTelephone" class="edit-input" value="" placeholder="06 12 34 56 78" />
+                            </div>
+                        </div>
 
-                    <div class="flex flex-col sm:flex-row gap-4">
-                        <button onclick="openDeactivateModal()" class="flex-1 py-4 px-6 border-4 border-black font-black italic uppercase text-sm tracking-tighter bg-[#ffd43b] text-black hover:bg-[#fab005] transition" style="box-shadow: 4px 4px 0px black;">
-                            <i class="fas fa-pause-circle mr-2"></i>Désactiver temporairement
-                        </button>
-                        <button onclick="openDeleteModal()" class="flex-1 py-4 px-6 border-4 border-black font-black italic uppercase text-sm tracking-tighter bg-[#ff6b6b] text-black hover:bg-[#fa5252] transition" style="box-shadow: 4px 4px 0px black;">
-                            <i class="fas fa-trash-alt mr-2"></i>Supprimer définitivement
+                        <div id="saveInfoMsg" class="mb-4" style="display: none;"></div>
+
+                        <button onclick="savePersonalInfo()" id="saveInfoBtn" class="neo-btn-yellow px-8 py-4 text-sm uppercase w-full">
+                            <i class="fas fa-save mr-2"></i>Enregistrer les modifications
                         </button>
                     </div>
+
+                    <!-- Offre active -->
+                    <div>
+                        <h2 class="text-3xl font-black italic uppercase mb-6 text-white">Offre active</h2>
+                        <div class="info-card">
+                            <div class="info-row">
+                                <span class="info-label">Type</span>
+                                <span class="info-value" id="offreType">-</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Formule</span>
+                                <span class="info-value" id="offreName">-</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Date de debut</span>
+                                <span class="info-value" id="dateDebut">Non definie</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Duree totale</span>
+                                <span class="info-value" id="duree">-</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Statut</span>
+                                <span class="info-value" id="offreStatut">-</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Paiement</span>
+                                <span class="info-value" id="offrePaiement">-</span>
+                            </div>
+                        </div>
+
+                        <a href="dashboard.html" class="block mt-6 bg-white text-black p-4 neo-border text-center font-black uppercase hover:opacity-80 transition">
+                            <i class="fas fa-chart-line mr-2"></i>Voir mon tableau de bord
+                        </a>
+                    </div>
+
                 </div>
-            </div>
+
+                <!-- Changement de mot de passe -->
+                <div class="mt-16">
+                    <h2 class="text-3xl font-black italic uppercase mb-6 text-white">Changer mon mot de passe</h2>
+                    <div class="bg-white text-black p-8 neo-border">
+                        <div id="passwordMessage" class="message"></div>
+                        <form id="passwordForm" class="space-y-6">
+                            <div>
+                                <label for="currentPassword" class="block text-sm font-black mb-2 uppercase">Mot de passe actuel</label>
+                                <input type="password" id="currentPassword" required class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none" placeholder="********">
+                            </div>
+                            <div>
+                                <label for="newPassword" class="block text-sm font-black mb-2 uppercase">Nouveau mot de passe</label>
+                                <input type="password" id="newPassword" required minlength="6" class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none" placeholder="********">
+                                <p class="text-xs font-bold mt-2 opacity-70">Minimum 6 caracteres</p>
+                            </div>
+                            <div>
+                                <label for="confirmPassword" class="block text-sm font-black mb-2 uppercase">Confirmer le nouveau mot de passe</label>
+                                <input type="password" id="confirmPassword" required minlength="6" class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none" placeholder="********">
+                            </div>
+                            <button type="submit" class="w-full py-4 neo-btn-yellow text-xl font-black italic uppercase tracking-tighter">
+                                Mettre a jour le mot de passe
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Aide -->
+                <div class="mt-16 bg-white text-black p-8 neo-border text-center">
+                    <h3 class="text-2xl font-black italic uppercase mb-4">Besoin d'aide ?</h3>
+                    <p class="font-bold mb-6">Notre equipe est disponible pour repondre a toutes vos questions</p>
+                    <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                        <a href="contact.html" class="bg-black text-white px-8 py-4 border-4 border-black font-black uppercase text-sm hover:bg-gray-900 transition">
+                            <i class="fas fa-envelope mr-2"></i>Nous contacter
+                        </a>
+                        <a href="dashboard.html" class="bg-[var(--genesis-yellow)] text-black px-8 py-4 border-4 border-black font-black uppercase text-sm hover:opacity-80 transition">
+                            <i class="fas fa-home mr-2"></i>Retour au dashboard
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Gestion du compte -->
+                <div class="mt-16">
+                    <h2 class="text-3xl font-black italic uppercase mb-6 text-white">Gestion du compte</h2>
+                    <div class="bg-white text-black p-8 neo-border" style="border-left: 6px solid #ff6b6b;">
+                        <p class="font-bold mb-6 opacity-70">
+                            <i class="fas fa-exclamation-triangle mr-2 text-[#ff6b6b]"></i>
+                            Ces actions affectent votre compte. Utilisez-les avec precaution.
+                        </p>
+                        <div class="flex flex-col sm:flex-row gap-4">
+                            <button onclick="openDeactivateModal()" class="flex-1 py-4 px-6 border-4 border-black font-black italic uppercase text-sm tracking-tighter bg-[#ffd43b] text-black hover:bg-[#fab005] transition" style="box-shadow: 4px 4px 0px black;">
+                                <i class="fas fa-pause-circle mr-2"></i>Desactiver temporairement
+                            </button>
+                            <button onclick="openDeleteModal()" class="flex-1 py-4 px-6 border-4 border-black font-black italic uppercase text-sm tracking-tighter bg-[#ff6b6b] text-black hover:bg-[#fa5252] transition" style="box-shadow: 4px 4px 0px black;">
+                                <i class="fas fa-trash-alt mr-2"></i>Supprimer definitivement
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+            </div><!-- fin accountContent -->
 
         </div>
     </section>
@@ -289,23 +277,18 @@
     <div id="deactivateModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:9999; align-items:center; justify-content:center;">
         <div style="background:white; color:black; max-width:500px; width:90%; padding:40px; border:4px solid black; box-shadow:10px 10px 0px #ffd43b; position:relative;">
             <button onclick="closeDeactivateModal()" style="position:absolute; top:15px; right:20px; background:none; border:none; font-size:24px; cursor:pointer; font-weight:900;">&times;</button>
-
             <h3 style="font-size:22px; font-weight:900; text-transform:uppercase; font-style:italic; margin-bottom:20px;">
-                <i class="fas fa-pause-circle" style="color:#ffd43b; margin-right:10px;"></i>Désactiver mon compte
+                <i class="fas fa-pause-circle" style="color:#ffd43b; margin-right:10px;"></i>Desactiver mon compte
             </h3>
-
             <div style="background:#FFF9E6; border-left:4px solid #ffd43b; padding:15px; margin-bottom:20px;">
                 <p style="font-weight:700; font-size:14px; line-height:1.6; margin:0;">
-                    Votre compte sera temporairement suspendu. Vos données sont conservées.
-                    Vous pourrez le réactiver à tout moment depuis la page de connexion.
+                    Votre compte sera temporairement suspendu. Vos donnees sont conservees.
                 </p>
             </div>
-
             <div id="deactivateMessage" style="display:none; padding:10px; margin-bottom:15px; font-weight:700; font-size:14px;"></div>
-
             <div style="display:flex; gap:12px;">
                 <button onclick="confirmDeactivate()" id="deactivateBtn" style="flex:1; padding:14px; background:#ffd43b; color:black; border:4px solid black; font-weight:900; font-size:14px; cursor:pointer; text-transform:uppercase;">
-                    Confirmer la désactivation
+                    Confirmer
                 </button>
                 <button onclick="closeDeactivateModal()" style="flex:1; padding:14px; background:#f1f1f1; color:black; border:4px solid black; font-weight:900; font-size:14px; cursor:pointer; text-transform:uppercase;">
                     Annuler
@@ -318,30 +301,22 @@
     <div id="deleteModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:9999; align-items:center; justify-content:center;">
         <div style="background:white; color:black; max-width:500px; width:90%; padding:40px; border:4px solid black; box-shadow:10px 10px 0px #ff6b6b; position:relative;">
             <button onclick="closeDeleteModal()" style="position:absolute; top:15px; right:20px; background:none; border:none; font-size:24px; cursor:pointer; font-weight:900;">&times;</button>
-
             <h3 style="font-size:22px; font-weight:900; text-transform:uppercase; font-style:italic; margin-bottom:20px;">
                 <i class="fas fa-trash-alt" style="color:#ff6b6b; margin-right:10px;"></i>Supprimer mon compte
             </h3>
-
             <div style="background:#fff5f5; border-left:4px solid #ff6b6b; padding:15px; margin-bottom:20px;">
                 <p style="font-weight:700; font-size:14px; line-height:1.6; margin:0; color:#c92a2a;">
-                    Cette action est irréversible. Toutes vos données seront définitivement supprimées
-                    et ne pourront pas être récupérées.
+                    Action irreversible. Toutes vos donnees seront supprimees.
                 </p>
             </div>
-
             <div style="margin-bottom:20px;">
-                <label style="display:block; font-weight:900; font-size:12px; text-transform:uppercase; margin-bottom:8px;">
-                    Confirmez votre mot de passe
-                </label>
-                <input type="password" id="deletePassword" placeholder="Votre mot de passe actuel" style="width:100%; padding:12px; border:4px solid black; font-weight:700; font-size:14px; box-sizing:border-box;">
+                <label style="display:block; font-weight:900; font-size:12px; text-transform:uppercase; margin-bottom:8px;">Confirmez votre mot de passe</label>
+                <input type="password" id="deletePassword" placeholder="Votre mot de passe" style="width:100%; padding:12px; border:4px solid black; font-weight:700; font-size:14px; box-sizing:border-box;">
             </div>
-
             <div id="deleteMessage" style="display:none; padding:10px; margin-bottom:15px; font-weight:700; font-size:14px;"></div>
-
             <div style="display:flex; gap:12px;">
                 <button onclick="confirmDelete()" id="deleteBtn" style="flex:1; padding:14px; background:#ff6b6b; color:black; border:4px solid black; font-weight:900; font-size:14px; cursor:pointer; text-transform:uppercase;">
-                    Supprimer définitivement
+                    Supprimer
                 </button>
                 <button onclick="closeDeleteModal()" style="flex:1; padding:14px; background:#f1f1f1; color:black; border:4px solid black; font-weight:900; font-size:14px; cursor:pointer; text-transform:uppercase;">
                     Annuler
@@ -350,234 +325,354 @@
         </div>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>
     <script src="config.js"></script>
     <script src="auth.js"></script>
     <script>
-        AOS.init({ duration: 1000, once: true, disable: 'mobile', offset: 120 });
+        // ============================================================
+        // MON COMPTE - FETCH API FRAICHE, ZERO AOS, VAR PARTOUT
+        // ============================================================
+        var API_BASE_URL = window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com';
 
-        // Protection de la page
-        requireAuth();
-
-        // Chargement des données utilisateur
-        const user = getCurrentUser();
-
-        if (user) {
-            // Rendre la navigation selon productType
-            renderNavigation(user.productType || 'accompagnement', 'mon-compte');
-
-            document.getElementById('userGreeting').textContent = user.prenom;
-
-            // Informations personnelles
-            document.getElementById('prenom').textContent = user.prenom;
-            document.getElementById('nom').textContent = user.nom;
-            document.getElementById('email').textContent = user.email;
-            document.getElementById('telephone').textContent = user.telephone;
-
-            if (user.entreprise) {
-                document.getElementById('entrepriseRow').style.display = 'flex';
-                document.getElementById('entreprise').textContent = user.entreprise;
+        // Auth check
+        try {
+            if (typeof requireAuth === 'function') { requireAuth(); }
+            else {
+                var t = localStorage.getItem('fa_genesis_token');
+                if (!t) window.location.href = 'login.html';
             }
+        } catch (e) {}
 
-            // Offre active
-            document.getElementById('offreType').textContent = user.offreType;
-            document.getElementById('offreName').textContent = user.offreName;
-
-            const dateDebut = new Date(user.dateDebut);
-            document.getElementById('dateDebut').textContent = dateDebut.toLocaleDateString('fr-FR', {
-                day: '2-digit',
-                month: 'long',
-                year: 'numeric'
-            });
-
-            document.getElementById('duree').textContent = `${user.duree} jours`;
-
-            const progress = getProgressPercentage();
-            document.getElementById('progression').textContent = `${progress}% (Jour ${user.jourActuel}/${user.duree})`;
-        }
-
-        // Fonction pour rendre la navigation selon le type de produit
-        function renderNavigation(productType, currentPage) {
-            const nav = document.getElementById('mainNavigation');
-
-            nav.innerHTML = `
-                <a href="dashboard.html" class="nav-link ${currentPage === 'dashboard' ? 'text-[var(--genesis-yellow)]' : 'hover:text-[var(--genesis-yellow)] transition'}">Dashboard</a>
-                <a href="livrables.html" class="nav-link ${currentPage === 'livrables' ? 'text-[var(--genesis-yellow)]' : 'hover:text-[var(--genesis-yellow)] transition'}">Livrables</a>
-                <a href="seances.html" class="nav-link ${currentPage === 'seances' ? 'text-[var(--genesis-yellow)]' : 'hover:text-[var(--genesis-yellow)] transition'}">Séances</a>
-                <a href="mon-compte.html" class="nav-link ${currentPage === 'mon-compte' ? 'text-[var(--genesis-yellow)]' : 'hover:text-[var(--genesis-yellow)] transition'}">Mon compte</a>
-            `;
-        }
-
-        // Gestion du formulaire de changement de mot de passe
-        document.getElementById('passwordForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-
-            const currentPassword = document.getElementById('currentPassword').value;
-            const newPassword = document.getElementById('newPassword').value;
-            const confirmPassword = document.getElementById('confirmPassword').value;
-            const messageDiv = document.getElementById('passwordMessage');
-
-            // Vérification que les mots de passe correspondent
-            if (newPassword !== confirmPassword) {
-                messageDiv.textContent = 'Les nouveaux mots de passe ne correspondent pas';
-                messageDiv.className = 'message error';
-                setTimeout(() => {
-                    messageDiv.className = 'message';
-                }, 5000);
-                return;
+        // Greeting immediat depuis localStorage
+        try {
+            var raw = localStorage.getItem('fa_genesis_session');
+            if (raw) {
+                var sess = JSON.parse(raw);
+                var greet = document.getElementById('userGreeting');
+                if (greet && sess.prenom) greet.textContent = sess.prenom;
             }
-
-            // Tentative de changement de mot de passe
-            const result = changePassword(currentPassword, newPassword);
-
-            if (result.success) {
-                messageDiv.textContent = result.message;
-                messageDiv.className = 'message success';
-
-                // Réinitialiser le formulaire
-                document.getElementById('passwordForm').reset();
-
-                setTimeout(() => {
-                    messageDiv.className = 'message';
-                }, 5000);
-            } else {
-                messageDiv.textContent = result.message;
-                messageDiv.className = 'message error';
-
-                setTimeout(() => {
-                    messageDiv.className = 'message';
-                }, 5000);
-            }
-        });
+        } catch (e) {}
 
         // ============================================================
-        // GESTION DU COMPTE - Desactivation / Suppression
+        // CHARGEMENT DES DONNEES DEPUIS API
         // ============================================================
-
-        function openDeactivateModal() {
-            document.getElementById('deactivateModal').style.display = 'flex';
-            document.getElementById('deactivateMessage').style.display = 'none';
-        }
-
-        function closeDeactivateModal() {
-            document.getElementById('deactivateModal').style.display = 'none';
-        }
-
-        function openDeleteModal() {
-            document.getElementById('deleteModal').style.display = 'flex';
-            document.getElementById('deleteMessage').style.display = 'none';
-            document.getElementById('deletePassword').value = '';
-        }
-
-        function closeDeleteModal() {
-            document.getElementById('deleteModal').style.display = 'none';
-        }
-
-        async function confirmDeactivate() {
-            const btn = document.getElementById('deactivateBtn');
-            const msgDiv = document.getElementById('deactivateMessage');
-            btn.disabled = true;
-            btn.textContent = 'Desactivation...';
+        async function loadAccount() {
+            var loader = document.getElementById('accountLoader');
+            var content = document.getElementById('accountContent');
 
             try {
-                const token = getAuthToken();
-                const response = await fetch(API_BASE_URL + '/api/auth/deactivate-account', {
-                    method: 'PUT',
-                    headers: {
-                        'Authorization': 'Bearer ' + token
-                    }
+                var token = localStorage.getItem('fa_genesis_token');
+                if (!token) { window.location.href = 'login.html'; return; }
+
+                var resp = await fetch(API_BASE_URL + '/api/auth/me', {
+                    headers: { 'Authorization': 'Bearer ' + token }
                 });
 
-                const data = await response.json();
+                if (resp.status === 401) {
+                    localStorage.removeItem('fa_genesis_token');
+                    localStorage.removeItem('fa_genesis_session');
+                    window.location.href = 'login.html';
+                    return;
+                }
 
+                var data = await resp.json();
+                if (!data.success || !data.user) {
+                    if (loader) loader.innerHTML = '<p class="text-white font-bold p-6">Erreur de chargement. <a href="mon-compte.html" class="underline">Reessayer</a></p>';
+                    return;
+                }
+
+                var user = data.user;
+                var sub = data.activeSubscription;
+
+                // Remplir infos personnelles
+                var editPrenom = document.getElementById('editPrenom');
+                var editNom = document.getElementById('editNom');
+                var editTel = document.getElementById('editTelephone');
+                var emailEl = document.getElementById('email');
+
+                if (editPrenom) editPrenom.value = user.prenom || '';
+                if (editNom) editNom.value = user.nom || '';
+                if (editTel) editTel.value = user.telephone || '';
+                if (emailEl) emailEl.textContent = user.email || '-';
+
+                var greet2 = document.getElementById('userGreeting');
+                if (greet2) greet2.textContent = user.prenom || '';
+
+                // Remplir offre active
+                if (sub) {
+                    var offreTypeEl = document.getElementById('offreType');
+                    var offreNameEl = document.getElementById('offreName');
+                    var dateDebutEl = document.getElementById('dateDebut');
+                    var dureeEl = document.getElementById('duree');
+                    var statutEl = document.getElementById('offreStatut');
+                    var paiementEl = document.getElementById('offrePaiement');
+
+                    if (offreTypeEl) offreTypeEl.textContent = sub.category || '-';
+                    if (offreNameEl) offreNameEl.textContent = sub.formula_label || '-';
+
+                    if (dateDebutEl) {
+                        if (sub.startDate) {
+                            try {
+                                var d = new Date(sub.startDate);
+                                dateDebutEl.textContent = d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
+                            } catch (e) { dateDebutEl.textContent = sub.startDate; }
+                        } else {
+                            dateDebutEl.textContent = 'Non definie';
+                        }
+                    }
+
+                    if (dureeEl) {
+                        if (sub.durationDays && sub.durationDays > 0) {
+                            dureeEl.textContent = sub.durationDays + ' jours';
+                        } else {
+                            dureeEl.textContent = 'Non applicable';
+                        }
+                    }
+
+                    if (statutEl) {
+                        var statusLabels = {
+                            'active': 'Actif',
+                            'pending_deposit': 'En attente d\'acompte',
+                            'pending_balance': 'En attente du solde',
+                            'paid_in_full': 'Paye integralement',
+                            'delivered': 'Livre',
+                            'registered': 'Inscrit'
+                        };
+                        statutEl.textContent = statusLabels[sub.status] || sub.status || '-';
+                    }
+
+                    if (paiementEl) {
+                        if (sub.balance_paid) {
+                            paiementEl.textContent = 'Paye integralement (' + sub.total_amount + ' EUR)';
+                        } else if (sub.deposit_paid) {
+                            paiementEl.textContent = 'Acompte paye / Solde : ' + sub.remaining_due + ' EUR';
+                        } else {
+                            paiementEl.textContent = 'En attente de paiement';
+                        }
+                    }
+                } else {
+                    // Pas de souscription
+                    var offreTypeEl2 = document.getElementById('offreType');
+                    if (offreTypeEl2) offreTypeEl2.textContent = 'Aucune offre active';
+                }
+
+                // Afficher le contenu
+                if (loader) loader.style.display = 'none';
+                if (content) content.style.display = '';
+
+            } catch (err) {
+                console.error('[MON-COMPTE] Erreur:', err.message);
+                if (loader) loader.innerHTML = '<p class="text-white font-bold p-6">Erreur de connexion. <a href="mon-compte.html" class="underline text-[var(--genesis-yellow)]">Reessayer</a></p>';
+            }
+        }
+
+        loadAccount();
+
+        // ============================================================
+        // ENREGISTRER INFOS PERSONNELLES
+        // ============================================================
+        async function savePersonalInfo() {
+            var btn = document.getElementById('saveInfoBtn');
+            var msgEl = document.getElementById('saveInfoMsg');
+            if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Enregistrement...'; }
+
+            try {
+                var token = localStorage.getItem('fa_genesis_token');
+                var prenom = (document.getElementById('editPrenom') || {}).value || '';
+                var nom = (document.getElementById('editNom') || {}).value || '';
+                var telephone = (document.getElementById('editTelephone') || {}).value || '';
+
+                var resp = await fetch(API_BASE_URL + '/api/me', {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + (token || '')
+                    },
+                    body: JSON.stringify({ prenom: prenom, nom: nom, telephone: telephone })
+                });
+
+                var data = await resp.json();
+
+                if (msgEl) {
+                    msgEl.style.display = '';
+                    if (resp.ok && data.success) {
+                        msgEl.innerHTML = '<div class="p-3 border-4 border-black font-bold" style="background: #51cf66; color: black;"><i class="fas fa-check mr-2"></i>Modifications enregistrees !</div>';
+                        // Mettre a jour localStorage
+                        try {
+                            var s = JSON.parse(localStorage.getItem('fa_genesis_session') || '{}');
+                            s.prenom = prenom;
+                            s.nom = nom;
+                            s.telephone = telephone;
+                            localStorage.setItem('fa_genesis_session', JSON.stringify(s));
+                        } catch (e) {}
+                        var greet3 = document.getElementById('userGreeting');
+                        if (greet3) greet3.textContent = prenom;
+                    } else {
+                        msgEl.innerHTML = '<div class="p-3 border-4 border-black font-bold" style="background: #ff6b6b; color: black;">' + (data.error || 'Erreur') + '</div>';
+                    }
+                }
+
+                setTimeout(function() { if (msgEl) msgEl.style.display = 'none'; }, 4000);
+            } catch (err) {
+                if (msgEl) {
+                    msgEl.style.display = '';
+                    msgEl.innerHTML = '<div class="p-3 border-4 border-black font-bold" style="background: #ff6b6b; color: black;">Erreur de connexion</div>';
+                }
+            } finally {
+                if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-save mr-2"></i>Enregistrer les modifications'; }
+            }
+        }
+
+        // ============================================================
+        // CHANGEMENT MOT DE PASSE
+        // ============================================================
+        var pwdForm = document.getElementById('passwordForm');
+        if (pwdForm) {
+            pwdForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                var currentPwd = document.getElementById('currentPassword').value;
+                var newPwd = document.getElementById('newPassword').value;
+                var confirmPwd = document.getElementById('confirmPassword').value;
+                var msgDiv = document.getElementById('passwordMessage');
+
+                if (newPwd !== confirmPwd) {
+                    if (msgDiv) { msgDiv.textContent = 'Les mots de passe ne correspondent pas'; msgDiv.className = 'message error'; }
+                    setTimeout(function() { if (msgDiv) msgDiv.className = 'message'; }, 5000);
+                    return;
+                }
+
+                try {
+                    if (typeof changePassword === 'function') {
+                        var result = changePassword(currentPwd, newPwd);
+                        if (result && result.success) {
+                            if (msgDiv) { msgDiv.textContent = result.message || 'Mot de passe modifie'; msgDiv.className = 'message success'; }
+                            pwdForm.reset();
+                        } else {
+                            if (msgDiv) { msgDiv.textContent = (result && result.message) || 'Erreur'; msgDiv.className = 'message error'; }
+                        }
+                    } else {
+                        if (msgDiv) { msgDiv.textContent = 'Fonction non disponible'; msgDiv.className = 'message error'; }
+                    }
+                } catch (err) {
+                    if (msgDiv) { msgDiv.textContent = err.message || 'Erreur'; msgDiv.className = 'message error'; }
+                }
+                setTimeout(function() { if (msgDiv) msgDiv.className = 'message'; }, 5000);
+            });
+        }
+
+        // ============================================================
+        // GESTION DU COMPTE
+        // ============================================================
+        function openDeactivateModal() {
+            document.getElementById('deactivateModal').style.display = 'flex';
+            var msg = document.getElementById('deactivateMessage');
+            if (msg) msg.style.display = 'none';
+        }
+        function closeDeactivateModal() { document.getElementById('deactivateModal').style.display = 'none'; }
+        function openDeleteModal() {
+            document.getElementById('deleteModal').style.display = 'flex';
+            var msg = document.getElementById('deleteMessage');
+            if (msg) msg.style.display = 'none';
+            var pwd = document.getElementById('deletePassword');
+            if (pwd) pwd.value = '';
+        }
+        function closeDeleteModal() { document.getElementById('deleteModal').style.display = 'none'; }
+
+        async function confirmDeactivate() {
+            var btn = document.getElementById('deactivateBtn');
+            var msgDiv = document.getElementById('deactivateMessage');
+            if (btn) { btn.disabled = true; btn.textContent = 'Desactivation...'; }
+            try {
+                var token = localStorage.getItem('fa_genesis_token');
+                var response = await fetch(API_BASE_URL + '/api/auth/deactivate-account', {
+                    method: 'PUT',
+                    headers: { 'Authorization': 'Bearer ' + (token || '') }
+                });
+                var rData = await response.json();
                 if (response.ok) {
-                    msgDiv.style.display = 'block';
-                    msgDiv.style.background = '#d3f9d8';
-                    msgDiv.style.color = '#2b8a3e';
-                    msgDiv.textContent = 'Compte désactivé. Redirection...';
-                    localStorage.removeItem(SESSION_KEY);
-                    localStorage.removeItem(TOKEN_KEY);
+                    if (msgDiv) { msgDiv.style.display = 'block'; msgDiv.style.background = '#d3f9d8'; msgDiv.style.color = '#2b8a3e'; msgDiv.textContent = 'Compte desactive. Redirection...'; }
+                    localStorage.removeItem('fa_genesis_session');
+                    localStorage.removeItem('fa_genesis_token');
                     setTimeout(function() { window.location.href = 'index.html'; }, 1500);
                 } else {
-                    msgDiv.style.display = 'block';
-                    msgDiv.style.background = '#fff5f5';
-                    msgDiv.style.color = '#c92a2a';
-                    msgDiv.textContent = data.error || 'Erreur lors de la désactivation';
-                    btn.disabled = false;
-                    btn.textContent = 'Confirmer la désactivation';
+                    if (msgDiv) { msgDiv.style.display = 'block'; msgDiv.style.background = '#fff5f5'; msgDiv.style.color = '#c92a2a'; msgDiv.textContent = rData.error || 'Erreur'; }
+                    if (btn) { btn.disabled = false; btn.textContent = 'Confirmer'; }
                 }
             } catch (error) {
-                msgDiv.style.display = 'block';
-                msgDiv.style.background = '#fff5f5';
-                msgDiv.style.color = '#c92a2a';
-                msgDiv.textContent = 'Erreur de connexion au serveur';
-                btn.disabled = false;
-                btn.textContent = 'Confirmer la désactivation';
+                if (msgDiv) { msgDiv.style.display = 'block'; msgDiv.style.background = '#fff5f5'; msgDiv.style.color = '#c92a2a'; msgDiv.textContent = 'Erreur de connexion'; }
+                if (btn) { btn.disabled = false; btn.textContent = 'Confirmer'; }
             }
         }
 
         async function confirmDelete() {
-            const btn = document.getElementById('deleteBtn');
-            const msgDiv = document.getElementById('deleteMessage');
-            const password = document.getElementById('deletePassword').value;
-
+            var btn = document.getElementById('deleteBtn');
+            var msgDiv = document.getElementById('deleteMessage');
+            var password = (document.getElementById('deletePassword') || {}).value;
             if (!password) {
-                msgDiv.style.display = 'block';
-                msgDiv.style.background = '#fff5f5';
-                msgDiv.style.color = '#c92a2a';
-                msgDiv.textContent = 'Veuillez saisir votre mot de passe';
+                if (msgDiv) { msgDiv.style.display = 'block'; msgDiv.style.background = '#fff5f5'; msgDiv.style.color = '#c92a2a'; msgDiv.textContent = 'Saisissez votre mot de passe'; }
                 return;
             }
-
-            btn.disabled = true;
-            btn.textContent = 'Suppression...';
-
+            if (btn) { btn.disabled = true; btn.textContent = 'Suppression...'; }
             try {
-                const token = getAuthToken();
-                const response = await fetch(API_BASE_URL + '/api/auth/delete-account', {
+                var token = localStorage.getItem('fa_genesis_token');
+                var response = await fetch(API_BASE_URL + '/api/auth/delete-account', {
                     method: 'DELETE',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': 'Bearer ' + token
-                    },
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (token || '') },
                     body: JSON.stringify({ password: password })
                 });
-
-                const data = await response.json();
-
+                var rData = await response.json();
                 if (response.ok) {
-                    msgDiv.style.display = 'block';
-                    msgDiv.style.background = '#d3f9d8';
-                    msgDiv.style.color = '#2b8a3e';
-                    msgDiv.textContent = 'Compte supprimé. Redirection...';
-                    localStorage.removeItem(SESSION_KEY);
-                    localStorage.removeItem(TOKEN_KEY);
+                    if (msgDiv) { msgDiv.style.display = 'block'; msgDiv.style.background = '#d3f9d8'; msgDiv.style.color = '#2b8a3e'; msgDiv.textContent = 'Compte supprime. Redirection...'; }
+                    localStorage.removeItem('fa_genesis_session');
+                    localStorage.removeItem('fa_genesis_token');
                     setTimeout(function() { window.location.href = 'index.html'; }, 1500);
                 } else {
-                    msgDiv.style.display = 'block';
-                    msgDiv.style.background = '#fff5f5';
-                    msgDiv.style.color = '#c92a2a';
-                    msgDiv.textContent = data.error || 'Erreur lors de la suppression';
-                    btn.disabled = false;
-                    btn.textContent = 'Supprimer définitivement';
+                    if (msgDiv) { msgDiv.style.display = 'block'; msgDiv.style.background = '#fff5f5'; msgDiv.style.color = '#c92a2a'; msgDiv.textContent = rData.error || 'Erreur'; }
+                    if (btn) { btn.disabled = false; btn.textContent = 'Supprimer'; }
                 }
             } catch (error) {
-                msgDiv.style.display = 'block';
-                msgDiv.style.background = '#fff5f5';
-                msgDiv.style.color = '#c92a2a';
-                msgDiv.textContent = 'Erreur de connexion au serveur';
-                btn.disabled = false;
-                btn.textContent = 'Supprimer définitivement';
+                if (msgDiv) { msgDiv.style.display = 'block'; msgDiv.style.background = '#fff5f5'; msgDiv.style.color = '#c92a2a'; msgDiv.textContent = 'Erreur de connexion'; }
+                if (btn) { btn.disabled = false; btn.textContent = 'Supprimer'; }
             }
         }
 
-        // Fermer les modals en cliquant en dehors
-        document.getElementById('deactivateModal').addEventListener('click', function(e) {
-            if (e.target === this) closeDeactivateModal();
-        });
-        document.getElementById('deleteModal').addEventListener('click', function(e) {
-            if (e.target === this) closeDeleteModal();
-        });
+        // Fermer modals en cliquant dehors
+        var deactModal = document.getElementById('deactivateModal');
+        if (deactModal) deactModal.addEventListener('click', function(e) { if (e.target === this) closeDeactivateModal(); });
+        var delModal = document.getElementById('deleteModal');
+        if (delModal) delModal.addEventListener('click', function(e) { if (e.target === this) closeDeleteModal(); });
+
+        // ============================================================
+        // MENU MOBILE
+        // ============================================================
+        var mobileMenuBtn = document.getElementById('mobileMenuBtn');
+        var mobileMenu = document.getElementById('mobileMenu');
+        var menuLine1 = document.getElementById('menuLine1');
+        var menuLine2 = document.getElementById('menuLine2');
+        var menuLine3 = document.getElementById('menuLine3');
+        var isMenuOpen = false;
+
+        function toggleMobileMenu() {
+            isMenuOpen = !isMenuOpen;
+            if (isMenuOpen) {
+                mobileMenu.classList.remove('hidden');
+                mobileMenu.classList.add('flex');
+                menuLine1.style.transform = 'rotate(45deg) translate(5px, 5px)';
+                menuLine2.style.opacity = '0';
+                menuLine3.style.transform = 'rotate(-45deg) translate(5px, -5px)';
+                document.body.style.overflow = 'hidden';
+            } else { closeMobileMenu(); }
+        }
+
+        function closeMobileMenu() {
+            isMenuOpen = false;
+            if (mobileMenu) { mobileMenu.classList.add('hidden'); mobileMenu.classList.remove('flex'); }
+            if (menuLine1) menuLine1.style.transform = 'none';
+            if (menuLine2) menuLine2.style.opacity = '1';
+            if (menuLine3) menuLine3.style.transform = 'none';
+            document.body.style.overflow = 'auto';
+        }
+
+        if (mobileMenuBtn) mobileMenuBtn.addEventListener('click', toggleMobileMenu);
     </script>
     <div id="site-footer"></div>
     <script src="footer.js" defer></script>

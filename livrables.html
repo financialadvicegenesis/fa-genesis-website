@@ -9,28 +9,22 @@
     <title>Mes Livrables - FA GENESIS | Espace Client</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;900&family=Space+Grotesk:wght@300;700&display=swap">
     <link rel="stylesheet" href="tailwind.min.css">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.css" rel="stylesheet" media="print" onload="this.media='all'">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" media="print" onload="this.media='all'">
     <style>
-
         :root {
             --genesis-yellow: #FFD700;
             --genesis-black: #000000;
             --genesis-white: #FFFFFF;
         }
-
         body {
             background-color: var(--genesis-black);
             color: var(--genesis-white);
             font-family: 'Space Grotesk', sans-serif;
             overflow-x: hidden;
         }
-
         h1, h2, h3, h4, h5, .nav-link { font-family: 'Unbounded', cursive; }
-
         .neo-border { border: 4px solid var(--genesis-black); }
         .neo-shadow { box-shadow: 10px 10px 0px 0px var(--genesis-yellow); }
-
         .neo-btn-yellow {
             background: var(--genesis-yellow);
             color: black;
@@ -39,7 +33,6 @@
             font-weight: 900;
             transition: 0.1s;
         }
-
         .livrable-card {
             background: white;
             color: black;
@@ -50,17 +43,10 @@
             flex-direction: column;
             height: 100%;
         }
-
         .livrable-card:hover {
             transform: translate(-4px, -4px);
             box-shadow: 14px 14px 0px 0px var(--genesis-yellow);
         }
-
-        .livrable-icon {
-            font-size: 3rem;
-            margin-bottom: 1rem;
-        }
-
         .livrable-type {
             display: inline-block;
             padding: 0.25rem 0.75rem;
@@ -71,7 +57,6 @@
             font-size: 0.7rem;
             margin-bottom: 1rem;
         }
-
         .download-btn {
             background: black;
             color: white;
@@ -85,12 +70,28 @@
             display: inline-block;
             margin-top: auto;
         }
-
-        .download-btn:hover {
+        .download-btn:hover { background: var(--genesis-yellow); color: black; }
+        .download-btn.disabled {
+            background: #999;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+        .download-btn.disabled:hover { background: #999; color: white; }
+        .tab-btn {
+            padding: 0.75rem 1.5rem;
+            border: 4px solid black;
+            font-weight: 900;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            cursor: pointer;
+            background: white;
+            color: black;
+            transition: 0.1s;
+        }
+        .tab-btn.active {
             background: var(--genesis-yellow);
             color: black;
         }
-
         .empty-state {
             background: white;
             color: black;
@@ -98,1071 +99,387 @@
             padding: 3rem;
             text-align: center;
         }
-
-        /* Documents communs */
-        .common-category {
-            margin-bottom: 3rem;
-        }
-
-        .category-header {
-            background: var(--genesis-yellow);
-            color: black;
-            padding: 1rem 1.5rem;
-            border: 4px solid black;
-            margin-bottom: 1.5rem;
-        }
-
-        .common-doc-item {
-            background: white;
-            color: black;
-            border: 4px solid black;
-            padding: 1.5rem;
-            margin-bottom: 1rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 1.5rem;
-            flex-wrap: wrap;
-            transition: all 0.2s ease;
-        }
-
-        .common-doc-item:hover {
-            transform: translate(-3px, -3px);
-            box-shadow: 8px 8px 0px 0px var(--genesis-yellow);
-        }
-
-        .doc-info {
-            flex: 1;
-            min-width: 250px;
-        }
-
-        .doc-title {
-            font-weight: 900;
-            font-size: 1.125rem;
-            margin-bottom: 0.5rem;
-        }
-
-        .doc-meta {
-            display: flex;
-            gap: 1rem;
-            flex-wrap: wrap;
-            font-size: 0.875rem;
-            font-weight: 700;
-            opacity: 0.7;
-        }
-
-        .file-type-badge {
-            display: inline-block;
-            padding: 0.25rem 0.75rem;
-            color: white;
-            font-weight: 900;
-            font-size: 0.75rem;
-            text-transform: uppercase;
-        }
-
-        .doc-actions {
-            display: flex;
-            gap: 0.75rem;
-            flex-wrap: wrap;
-        }
-
-        .doc-btn {
-            background: black;
-            color: white;
-            border: 3px solid black;
-            padding: 0.75rem 1.5rem;
-            font-weight: 900;
-            text-transform: uppercase;
-            font-size: 0.875rem;
-            transition: all 0.2s;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .doc-btn:hover {
-            background: var(--genesis-yellow);
-            color: black;
-        }
-
-        .doc-btn.view-btn {
-            background: white;
-            color: black;
-            border-color: black;
-        }
-
-        .doc-btn.view-btn:hover {
-            background: var(--genesis-yellow);
-        }
-
-        /* Day tabs */
-        .day-tab.active {
-            background: var(--genesis-yellow) !important;
-            box-shadow: 6px 6px 0px black;
-        }
-        .day-tab:hover {
-            transform: translate(-2px, -2px);
-            box-shadow: 6px 6px 0px var(--genesis-yellow);
-        }
-
-        .day-section {
-            margin-bottom: 2rem;
-        }
-        .day-section-header {
-            background: #4dabf7;
-            color: black;
-            padding: 1rem 1.5rem;
-            border: 4px solid black;
-            margin-bottom: 1rem;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-        .day-section-header.day-1 {
-            background: var(--genesis-yellow);
-        }
-        .day-section-header.current-day {
-            box-shadow: 8px 8px 0px black;
-        }
     </style>
 </head>
 <body>
 
-    <!-- NAVIGATION PRIVÉE -->
-    <nav class="fixed top-0 w-full z-50 bg-black/95 backdrop-blur-md border-b-4 border-[var(--genesis-yellow)] px-6 py-4 flex justify-between items-center text-white text-xs font-black uppercase">
+    <!-- NAVIGATION PRIVEE -->
+    <nav class="fixed top-0 w-full z-50 bg-black/95 backdrop-blur-md border-b-4 border-[var(--genesis-yellow)] px-4 md:px-6 py-3 md:py-4 flex justify-between items-center text-white text-xs font-black uppercase">
         <div class="flex items-center">
-            <a href="dashboard.html" class="text-2xl font-black tracking-wider text-[var(--genesis-yellow)]" style="font-family: 'Unbounded', cursive;">FA GENESIS</a>
+            <a href="dashboard.html" class="text-lg md:text-2xl font-black tracking-wider text-[var(--genesis-yellow)]" style="font-family: 'Unbounded', cursive;">FA GENESIS</a>
         </div>
-        <div id="mainNavigation" class="hidden md:flex gap-8 text-white font-black">
-            <!-- Navigation dynamique générée par JavaScript -->
+        <div class="hidden md:flex gap-8 text-white font-black">
+            <a href="dashboard.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">Dashboard</a>
+            <a href="livrables.html" class="nav-link text-[var(--genesis-yellow)]">Livrables</a>
+            <a href="seances.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">Seances</a>
+            <a href="mon-compte.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">Mon compte</a>
         </div>
         <div class="flex gap-4 items-center">
             <span id="userGreeting" class="hidden md:block text-white font-bold"></span>
-            <button onclick="logout()" class="border-4 border-white text-white px-4 py-2 text-[10px] tracking-widest font-black hover:bg-white hover:text-black transition">
-                <i class="fas fa-sign-out-alt mr-2"></i>Déconnexion
+            <button onclick="logout()" class="border-4 border-white text-white px-3 py-2 text-[10px] tracking-widest font-black hover:bg-white hover:text-black transition">
+                <i class="fas fa-sign-out-alt mr-1"></i><span class="hidden md:inline">Deconnexion</span>
+            </button>
+            <button id="mobileMenuBtn" class="md:hidden flex flex-col gap-1.5 p-2" aria-label="Menu">
+                <span class="block w-6 h-0.5 bg-[var(--genesis-yellow)] transition-all" id="menuLine1"></span>
+                <span class="block w-6 h-0.5 bg-[var(--genesis-yellow)] transition-all" id="menuLine2"></span>
+                <span class="block w-6 h-0.5 bg-[var(--genesis-yellow)] transition-all" id="menuLine3"></span>
             </button>
         </div>
     </nav>
 
-    <!-- LIVRABLES CONTENT -->
+    <!-- Menu Mobile -->
+    <div id="mobileMenu" class="fixed inset-0 z-40 bg-black/98 backdrop-blur-lg hidden flex-col items-center justify-center gap-8 text-white font-black uppercase">
+        <a href="dashboard.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)]">Dashboard</a>
+        <a href="livrables.html" class="text-2xl nav-link text-[var(--genesis-yellow)]">Livrables</a>
+        <a href="seances.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)]">Seances</a>
+        <a href="mon-compte.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)]">Mon compte</a>
+        <div class="mt-8">
+            <button onclick="logout()" class="neo-btn-yellow px-8 py-4 text-sm tracking-widest text-black font-black">
+                <i class="fas fa-sign-out-alt mr-2"></i>Deconnexion
+            </button>
+        </div>
+    </div>
+
+    <!-- CONTENU PRINCIPAL -->
     <section class="min-h-screen pt-32 pb-20 px-6 bg-black">
         <div class="container mx-auto max-w-6xl">
 
-            <!-- En-tête -->
-            <div class="mb-16" data-aos="fade-up">
-                <h1 class="text-5xl md:text-6xl font-black italic uppercase mb-4 text-[var(--genesis-yellow)]">Mes Livrables</h1>
-                <p class="text-xl font-bold uppercase text-white">Tous vos documents et fichiers en un seul endroit</p>
+            <!-- Titre -->
+            <div class="mb-12">
+                <h1 class="text-5xl md:text-7xl font-black italic uppercase mb-4 text-[var(--genesis-yellow)]">
+                    <i class="fas fa-file-download mr-4"></i>Mes livrables
+                </h1>
+                <p class="text-xl font-bold uppercase text-white">Documents, photos et videos de votre projet</p>
             </div>
 
-            <!-- Indicateur de jour (accompagnement uniquement) -->
-            <div id="dayIndicator" class="mb-12" data-aos="fade-up" style="display: none;">
-                <div class="bg-[var(--genesis-yellow)] text-black p-8 border-4 border-black" style="box-shadow: 10px 10px 0px black;">
-                    <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+            <!-- Loader -->
+            <div id="livrablesLoader" class="mb-8">
+                <div class="flex items-center gap-4 p-6" style="background: #222; border: 2px solid var(--genesis-yellow);">
+                    <i class="fas fa-spinner fa-spin text-[var(--genesis-yellow)] text-2xl"></i>
+                    <span class="font-bold text-white text-base">Chargement des livrables...</span>
+                </div>
+            </div>
+
+            <!-- Erreur -->
+            <div id="livrablesError" class="mb-8" style="display: none;">
+                <div class="p-6 border-4 border-black" style="background: #ff6b6b; color: #000;">
+                    <div class="flex items-center gap-4 mb-4">
+                        <i class="fas fa-exclamation-triangle text-3xl"></i>
                         <div>
-                            <div class="text-sm font-black uppercase opacity-70 mb-1">Votre accompagnement</div>
-                            <div class="text-4xl md:text-5xl font-black italic" id="dayLabel">JOUR 1 / 7</div>
-                        </div>
-                        <div class="text-right">
-                            <div id="dayStatus" class="text-lg font-black uppercase"></div>
+                            <h3 class="text-xl font-black uppercase">Erreur</h3>
+                            <p class="font-bold" id="livrablesErrorMsg">Impossible de charger les livrables.</p>
                         </div>
                     </div>
+                    <button onclick="loadLivrables()" class="bg-black text-white px-6 py-3 font-black text-sm uppercase border-2 border-black mt-2">
+                        <i class="fas fa-redo mr-2"></i>Reessayer
+                    </button>
                 </div>
             </div>
 
-            <!-- Onglets jour (accompagnement uniquement) -->
-            <div id="dayTabs" class="mb-12 flex flex-wrap gap-4" data-aos="fade-up" style="display: none;">
-                <button class="day-tab active px-6 py-3 bg-white text-black border-4 border-black font-black uppercase text-sm" data-tab="current">
-                    <i class="fas fa-star mr-2"></i>Jour actuel
-                </button>
-                <button class="day-tab px-6 py-3 bg-white text-black border-4 border-black font-black uppercase text-sm" data-tab="previous">
-                    <i class="fas fa-history mr-2"></i>Jours précédents
-                </button>
-                <button class="day-tab px-6 py-3 bg-white text-black border-4 border-black font-black uppercase text-sm" data-tab="all">
-                    <i class="fas fa-list mr-2"></i>Tous les jours
-                </button>
-            </div>
-
-            <!-- Documents communs -->
-            <div id="commonDocumentsSection" class="mb-16">
-                <!-- Les documents communs seront générés dynamiquement ici -->
-            </div>
-
-            <!-- Livrables par jour (backend) -->
-            <div id="backendLivrablesSection" style="display: none;">
-                <h2 class="text-3xl font-black italic uppercase mb-8 text-[var(--genesis-yellow)]">
-                    <i class="fas fa-calendar-day mr-3"></i>Documents de votre accompagnement
-                </h2>
-                <div id="backendLivrablesContainer">
-                    <!-- Les livrables jour par jour seront générés ici -->
+            <!-- Acces limite (pas d'acompte) -->
+            <div id="livrablesLocked" class="mb-8" style="display: none;">
+                <div class="p-8 border-4 border-black text-center" style="background: #333;">
+                    <i class="fas fa-lock text-[var(--genesis-yellow)] text-4xl mb-4"></i>
+                    <h2 class="text-2xl font-black italic uppercase text-white mb-4">Acces limite</h2>
+                    <p class="text-white font-bold mb-6">Payez l'acompte pour acceder a vos livrables.</p>
+                    <a href="dashboard.html" class="neo-btn-yellow px-8 py-4 text-sm uppercase inline-block">
+                        <i class="fas fa-arrow-left mr-2"></i>Retour au dashboard
+                    </a>
                 </div>
             </div>
 
-            <!-- Livrables personnels (ancien système, prestations individuelles) -->
-            <div id="personalLivrablesSection">
-                <h2 id="personalLivrablesTitle" class="text-3xl font-black italic uppercase mb-8 text-white" style="display: none;">Vos documents personnels</h2>
-                <div id="livrablesContainer" class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-                    <!-- Les livrables personnels seront générés dynamiquement ici -->
-                </div>
-            </div>
+            <!-- Contenu livrables -->
+            <div id="livrablesContent" style="display: none;">
 
-            <!-- État vide -->
-            <div id="emptyState" class="empty-state" style="display: none;">
-                <i class="fas fa-inbox text-6xl mb-6 opacity-30"></i>
-                <h3 class="text-2xl font-black italic uppercase mb-4">Aucun livrable pour le moment</h3>
-                <p class="font-bold">Vos documents apparaîtront ici au fur et à mesure de votre progression</p>
+                <!-- Onglets -->
+                <div class="flex flex-wrap gap-2 mb-8">
+                    <button class="tab-btn active" onclick="filterLivrables('all')" id="tabAll">Tous</button>
+                    <button class="tab-btn" onclick="filterLivrables('Documents')" id="tabDocuments">Documents</button>
+                    <button class="tab-btn" onclick="filterLivrables('Photos')" id="tabPhotos">Photos</button>
+                    <button class="tab-btn" onclick="filterLivrables('Videos')" id="tabVideos">Videos</button>
+                </div>
+
+                <!-- Message telechargement bloque -->
+                <div id="downloadNotice" class="mb-8" style="display: none;">
+                    <div class="p-4 border-4 border-black" style="background: #ffd43b; color: black;">
+                        <i class="fas fa-info-circle mr-2"></i>
+                        <strong>Telechargement bloque</strong> - Payez le solde restant pour debloquer les telechargements.
+                    </div>
+                </div>
+
+                <!-- Grille de livrables -->
+                <div id="livrablesList" class="grid md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+
+                <!-- Etat vide -->
+                <div id="livrablesEmpty" style="display: none;">
+                    <div class="empty-state">
+                        <i class="fas fa-folder-open text-6xl mb-6 opacity-50"></i>
+                        <h3 class="text-2xl font-black italic uppercase mb-4">Aucun livrable pour l'instant</h3>
+                        <p class="font-bold opacity-70 mb-6">Vos documents, photos et videos apparaitront ici au fur et a mesure de votre projet.</p>
+                        <a href="dashboard.html" class="download-btn inline-block">
+                            <i class="fas fa-arrow-left mr-2"></i>Retour au dashboard
+                        </a>
+                    </div>
+                </div>
             </div>
 
         </div>
     </section>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>
     <script src="config.js"></script>
     <script src="auth.js"></script>
-    <script src="common-documents.js"></script>
-    <script src="offer-specific-documents.js"></script>
-    <script src="offers-config.js"></script>
-    <script src="payment-system.js"></script>
-    <script src="admin-system.js"></script>
     <script>
-        AOS.init({ duration: 1000, once: true, disable: 'mobile', offset: 120 });
+        // ============================================================
+        // LIVRABLES - FETCH AUTHENTIFIE, ONGLETS, ZERO AOS
+        // ============================================================
+        var API_BASE_URL = window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com';
+        var _allLivrables = [];
+        var _canDownload = false;
 
-        const API_BASE_URL = window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com';
-
-        // Protection de la page
-        requireAuth();
-
-        // Chargement des données utilisateur
-        const user = getCurrentUser();
-        let userAccessRights = null;
-
-        if (user) {
-            // Rendre la navigation selon productType
-            renderNavigation(user.productType || 'accompagnement', 'livrables');
-
-            document.getElementById('userGreeting').textContent = user.prenom;
-
-            // Vérifier les droits d'accès selon le statut de paiement
-            userAccessRights = checkAccessRights(user.email);
-            console.log('💳 Droits d\'accès:', userAccessRights);
-
-            // Afficher un message si l'accès aux livrables finaux est bloqué
-            if (!userAccessRights.canDownloadLivrables) {
-                const message = `
-                    <div class="bg-[#ffd43b] text-black p-8 neo-border mb-8" data-aos="fade-up">
-                        <div class="flex items-center gap-4 mb-4">
-                            <i class="fas fa-info-circle text-4xl"></i>
-                            <h3 class="text-2xl font-black italic uppercase">ACCÈS AUX CONTENUS</h3>
-                        </div>
-                        <p class="font-bold text-lg mb-4">
-                            ${userAccessRights.status === 'deposit_paid' ?
-                                'Vous avez accès aux documents communs, documents spécifiques à votre offre, documents journaliers, photos et vidéos. Les livrables finaux seront disponibles après le paiement du solde.' :
-                                userAccessRights.status === 'delivery_pending_payment' ?
-                                'Accompagnement terminé ! Réglez le solde pour accéder à vos livrables finaux.' :
-                                userAccessRights.message
-                            }
-                        </p>
-                        ${userAccessRights.status === 'delivery_pending_payment' ?
-                            '<a href="payment.html" class="inline-block bg-black text-white px-8 py-4 border-4 border-black font-black uppercase text-sm hover:opacity-80 transition">Régler le solde maintenant</a>' :
-                            userAccessRights.status === 'deposit_paid' ?
-                            '<p class="font-bold text-sm mt-4"><i class="fas fa-check-circle mr-2"></i>Profitez de vos photos et vidéos pendant votre accompagnement !</p>' :
-                            userAccessRights.status === 'registered' ?
-                            '<a href="payment.html" class="inline-block bg-black text-white px-8 py-4 border-4 border-black font-black uppercase text-sm hover:opacity-80 transition">Payer l\'acompte maintenant</a>' :
-                            ''}
-                    </div>
-                `;
-                document.querySelector('.container').insertAdjacentHTML('afterbegin', message);
+        // Auth check
+        try {
+            if (typeof requireAuth === 'function') { requireAuth(); }
+            else {
+                var t = localStorage.getItem('fa_genesis_token');
+                if (!t) window.location.href = 'login.html';
             }
+        } catch (e) {}
 
-            loadLivrables(user);
+        // Greeting
+        try {
+            var raw = localStorage.getItem('fa_genesis_session');
+            if (raw) {
+                var u = JSON.parse(raw);
+                var greet = document.getElementById('userGreeting');
+                if (greet && u.prenom) greet.textContent = u.prenom;
+            }
+        } catch (e) {}
 
-            // Charger les livrables depuis le backend (jour par jour)
-            loadBackendLivrables(user);
+        function setLoading(v) {
+            var el = document.getElementById('livrablesLoader');
+            if (el) el.style.display = v ? '' : 'none';
         }
 
-        // Fonction pour rendre la navigation selon le type de produit
-        function renderNavigation(productType, currentPage) {
-            const nav = document.getElementById('mainNavigation');
-
-            nav.innerHTML = `
-                <a href="dashboard.html" class="nav-link ${currentPage === 'dashboard' ? 'text-[var(--genesis-yellow)]' : 'hover:text-[var(--genesis-yellow)] transition'}">Dashboard</a>
-                <a href="livrables.html" class="nav-link ${currentPage === 'livrables' ? 'text-[var(--genesis-yellow)]' : 'hover:text-[var(--genesis-yellow)] transition'}">Livrables</a>
-                <a href="seances.html" class="nav-link ${currentPage === 'seances' ? 'text-[var(--genesis-yellow)]' : 'hover:text-[var(--genesis-yellow)] transition'}">Séances</a>
-                <a href="mon-compte.html" class="nav-link ${currentPage === 'mon-compte' ? 'text-[var(--genesis-yellow)]' : 'hover:text-[var(--genesis-yellow)] transition'}">Mon compte</a>
-            `;
+        function showError(msg) {
+            var el = document.getElementById('livrablesError');
+            if (el) el.style.display = '';
+            var msgEl = document.getElementById('livrablesErrorMsg');
+            if (msgEl) msgEl.textContent = msg;
         }
 
-        // Base de données des livrables par offre
-        const LIVRABLES_DATA = {
-            'etudiant-idea': [
-                {
-                    title: 'Mini Plan d\'Action',
-                    type: 'document',
-                    date: '2024-01-16',
-                    description: 'Plan d\'action structuré sur 7 jours',
-                    icon: 'fa-file-alt',
-                    file: '#'
-                }
-            ],
-            'etudiant-starter': [
-                {
-                    title: 'Séance Stratégique - Notes',
-                    type: 'document',
-                    date: '2024-01-21',
-                    description: 'Résumé de votre séance stratégique',
-                    icon: 'fa-file-alt',
-                    file: '#'
-                },
-                {
-                    title: 'Plan d\'Action 14 Jours',
-                    type: 'document',
-                    date: '2024-01-23',
-                    description: 'Votre feuille de route complète',
-                    icon: 'fa-file-pdf',
-                    file: '#'
-                },
-                {
-                    title: 'Guide Visibilité Digitale',
-                    type: 'document',
-                    date: '2024-01-24',
-                    description: 'Conseils pour votre présence en ligne',
-                    icon: 'fa-file-alt',
-                    file: '#'
-                }
-            ],
-            'etudiant-launch': [
-                {
-                    title: 'Stratégie Complète',
-                    type: 'document',
-                    date: '2024-01-16',
-                    description: 'Document de stratégie et positionnement',
-                    icon: 'fa-file-pdf',
-                    file: '#'
-                },
-                {
-                    title: 'Vidéo Courte (1 min)',
-                    type: 'video',
-                    date: '2024-01-20',
-                    description: 'Votre vidéo de présentation optimisée',
-                    icon: 'fa-video',
-                    file: '#'
-                },
-                {
-                    title: 'Vidéo Format Carré',
-                    type: 'video',
-                    date: '2024-01-20',
-                    description: 'Version adaptée pour Instagram',
-                    icon: 'fa-video',
-                    file: '#'
-                },
-                {
-                    title: 'Plan de Diffusion 30 Jours',
-                    type: 'document',
-                    date: '2024-01-25',
-                    description: 'Calendrier de contenus et stratégie',
-                    icon: 'fa-calendar-alt',
-                    file: '#'
-                }
-            ],
-            'particulier-impact': [
-                {
-                    title: 'Stratégie Positionnement',
-                    type: 'document',
-                    date: '2024-01-02',
-                    description: 'Document complet de positionnement',
-                    icon: 'fa-file-pdf',
-                    file: '#'
-                },
-                {
-                    title: 'Photos Professionnelles (9)',
-                    type: 'photo',
-                    date: '2024-01-10',
-                    description: 'Archive ZIP avec 9 photos retouchées',
-                    icon: 'fa-images',
-                    file: '#'
-                },
-                {
-                    title: 'Vidéo Longue (2 min)',
-                    type: 'video',
-                    date: '2024-01-15',
-                    description: 'Vidéo storytelling professionnelle',
-                    icon: 'fa-video',
-                    file: '#'
-                },
-                {
-                    title: 'Plan de Communication',
-                    type: 'document',
-                    date: '2024-01-20',
-                    description: 'Stratégie de communication sur 30 jours',
-                    icon: 'fa-file-alt',
-                    file: '#'
-                }
-            ],
-            'entreprise-visibility': [
-                {
-                    title: 'Photos Entreprise (24)',
-                    type: 'photo',
-                    date: '2024-01-12',
-                    description: 'Archive ZIP avec toutes les photos',
-                    icon: 'fa-images',
-                    file: '#'
-                },
-                {
-                    title: 'Vidéo Corporate',
-                    type: 'video',
-                    date: '2024-01-15',
-                    description: 'Vidéo de présentation entreprise',
-                    icon: 'fa-video',
-                    file: '#'
-                },
-                {
-                    title: 'Plan de Diffusion Média',
-                    type: 'document',
-                    date: '2024-01-18',
-                    description: 'Stratégie de visibilité média',
-                    icon: 'fa-file-pdf',
-                    file: '#'
-                }
-            ]
-        };
-
-        let currentFilter = 'all';
-
-        function loadLivrables(user) {
-            // Charger les documents communs
-            loadCommonDocuments();
-
-            // Charger les livrables personnels
-            // Photos/Vidéos accessibles après acompte
-            // Documents finaux accessibles après solde complet
-            const container = document.getElementById('livrablesContainer');
-            const emptyState = document.getElementById('emptyState');
-            const personalTitle = document.getElementById('personalLivrablesTitle');
-            const personalSection = document.getElementById('personalLivrablesSection');
-
-            const canAccessDuringAccompaniment = userAccessRights && userAccessRights.canAccessDocuments; // Après acompte
-            const canAccessFinalDeliverables = userAccessRights && userAccessRights.canDownloadLivrables; // Après solde
-
-            // Déterminer le type de produit
-            const productType = user.productType || 'accompagnement';
-
-            const allLivrables = LIVRABLES_DATA[user.offre] || [];
-
-            if (allLivrables.length === 0) {
-                personalSection.style.display = 'none';
-                container.style.display = 'none';
-                personalTitle.style.display = 'none';
-            } else {
-                // Filtrer les livrables selon les droits d'accès
-                let accessibleLivrables = [];
-
-                if (canAccessFinalDeliverables) {
-                    // Accès total après paiement complet
-                    accessibleLivrables = allLivrables;
-                } else if (canAccessDuringAccompaniment) {
-                    // Après acompte: accès aux photos et vidéos
-                    accessibleLivrables = allLivrables.filter(l => l.type === 'photo' || l.type === 'video');
-                }
-
-                if (accessibleLivrables.length === 0) {
-                    personalSection.style.display = 'none';
-                    container.style.display = 'none';
-                    personalTitle.style.display = 'none';
-                } else {
-                    personalSection.style.display = 'block';
-                    personalTitle.style.display = 'block';
-                    container.innerHTML = '';
-
-                    // Afficher un bandeau informatif pour les prestations individuelles
-                    if (productType === 'prestation_individuelle' && !canAccessFinalDeliverables && canAccessDuringAccompaniment) {
-                        const infoBar = document.createElement('div');
-                        infoBar.className = 'bg-[var(--genesis-yellow)] text-black p-6 border-4 border-black mb-8 font-bold';
-                        infoBar.innerHTML = `
-                            <div class="flex items-start gap-4">
-                                <i class="fas fa-info-circle text-2xl"></i>
-                                <div>
-                                    <h4 class="font-black uppercase mb-2">Mode consultation activé</h4>
-                                    <p class="text-sm">Vous pouvez consulter vos livrables, mais le téléchargement des fichiers sera disponible après le règlement du solde (70%).</p>
-                                </div>
-                            </div>
-                        `;
-                        container.appendChild(infoBar);
-                    }
-
-                    accessibleLivrables.forEach((livrable, index) => {
-                        const card = createLivrableCard(livrable, index, canAccessFinalDeliverables, productType, canAccessDuringAccompaniment);
-                        container.appendChild(card);
-                    });
-                }
-            }
-
-            // L'état vide ne s'affiche que si aucun document (ni commun ni personnel)
-            const hasCommonDocs = getCommonDocuments().length > 0;
-            const hasAccessibleContent = canAccessDuringAccompaniment;
-            if (!hasCommonDocs && !hasAccessibleContent) {
-                emptyState.style.display = 'block';
-            }
-        }
-
-        function loadCommonDocuments() {
-            const commonSection = document.getElementById('commonDocumentsSection');
-            const documentsByCategory = getDocumentsByCategory();
-
-            console.log('Documents par catégorie:', documentsByCategory);
-            console.log('Ordre des catégories:', CATEGORIES_ORDER);
-
-            let html = '<h2 class="text-3xl font-black italic uppercase mb-8 text-white">Documents</h2>';
-
-            // Documents communs
-            html += '<h3 class="text-2xl font-black uppercase mb-6 text-[var(--genesis-yellow)]">Documents communs</h3>';
-
-            CATEGORIES_ORDER.forEach(category => {
-                const docs = documentsByCategory[category];
-                console.log(`Catégorie "${category}":`, docs);
-
-                if (docs && docs.length > 0) {
-                    html += `
-                        <div class="common-category" data-category="${category}">
-                            <div class="category-header">
-                                <h3 class="text-xl font-black italic uppercase">${category}</h3>
-                            </div>
-                            <div class="category-docs">
-                    `;
-
-                    docs.forEach(doc => {
-                        console.log('Ajout du document:', doc.title);
-                        html += createCommonDocumentHTML(doc);
-                    });
-
-                    html += `
-                            </div>
-                        </div>
-                    `;
-                }
-            });
-
-            // Documents spécifiques à l'offre de l'utilisateur
-            const offerDocs = getOfferSpecificDocuments(user.offre);
-            console.log('Documents spécifiques à l\'offre:', offerDocs);
-
-            if (offerDocs && offerDocs.length > 0) {
-                html += `
-                    <h3 class="text-2xl font-black uppercase mb-6 mt-12 text-[var(--genesis-yellow)]">Documents spécifiques à votre offre</h3>
-                    <div class="common-category" data-category="offer-specific">
-                        <div class="category-header" style="background: #51cf66;">
-                            <h3 class="text-xl font-black italic uppercase">
-                                <i class="fas fa-star mr-2"></i>Documents personnalisés pour votre accompagnement
-                            </h3>
-                        </div>
-                        <div class="category-docs">
-                `;
-
-                offerDocs.forEach(doc => {
-                    console.log('Ajout du document spécifique:', doc.title);
-                    html += createCommonDocumentHTML(doc);
+        function fetchWithTimeout(url, options, timeoutMs) {
+            return new Promise(function(resolve, reject) {
+                var controller = new AbortController();
+                var timer = setTimeout(function() {
+                    controller.abort();
+                    reject(new Error('TIMEOUT'));
+                }, timeoutMs || 8000);
+                var opts = Object.assign({}, options || {}, { signal: controller.signal });
+                fetch(url, opts).then(function(resp) {
+                    clearTimeout(timer);
+                    resolve(resp);
+                }).catch(function(err) {
+                    clearTimeout(timer);
+                    reject(err);
                 });
-
-                html += `
-                        </div>
-                    </div>
-                `;
-            }
-
-            console.log('HTML généré:', html);
-            commonSection.innerHTML = html;
+            });
         }
 
-        // ============================================================
-        // CHARGEMENT DES LIVRABLES BACKEND (JOUR PAR JOUR)
-        // ============================================================
-
-        let backendCurrentDay = 0;
-        let backendTotalDays = 0;
-        let backendLivrablesByDay = {};
-        let currentDayTab = 'current';
-
-        async function loadBackendLivrables(user) {
-            const productType = user.productType || 'accompagnement';
-
-            // Ne charger le système jour par jour que pour les accompagnements
-            if (productType !== 'accompagnement') return;
+        async function loadLivrables() {
+            setLoading(true);
+            var errEl = document.getElementById('livrablesError');
+            if (errEl) errEl.style.display = 'none';
+            var lockedEl = document.getElementById('livrablesLocked');
+            if (lockedEl) lockedEl.style.display = 'none';
+            var contentEl = document.getElementById('livrablesContent');
+            if (contentEl) contentEl.style.display = 'none';
 
             try {
-                // 1. Récupérer la commande active du client
-                const ordersResp = await fetch(API_BASE_URL + '/api/client/orders?email=' + encodeURIComponent(user.email));
-                if (!ordersResp.ok) return;
+                var token = localStorage.getItem('fa_genesis_token');
+                if (!token) { window.location.href = 'login.html'; return; }
 
-                const clientOrders = await ordersResp.json();
-                const activeOrder = clientOrders.find(function(o) { return o.deposit_paid; });
-                if (!activeOrder) return;
+                var resp = await fetchWithTimeout(API_BASE_URL + '/api/deliverables/mine', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                }, 8000);
 
-                // 2. Récupérer le jour courant
-                const dashResp = await fetch(API_BASE_URL + '/api/client/dashboard/' + activeOrder.id);
-                if (dashResp.ok) {
-                    const dashData = await dashResp.json();
-                    backendCurrentDay = dashData.currentDay || 0;
-                    backendTotalDays = dashData.totalDays || 0;
+                if (resp.status === 401) {
+                    localStorage.removeItem('fa_genesis_token');
+                    localStorage.removeItem('fa_genesis_session');
+                    window.location.href = 'login.html';
+                    return;
                 }
 
-                // 3. Récupérer les livrables
-                const livResp = await fetch(API_BASE_URL + '/api/livrables/' + activeOrder.id);
-                if (livResp.ok) {
-                    const livData = await livResp.json();
-                    // Grouper par jour (filtrer uniquement les livrables publies ou sans workflow_status)
-                    backendLivrablesByDay = {};
-                    (livData.livrables || []).forEach(function(l) {
-                        // Ne montrer que les livrables PUBLISHED ou les anciens sans workflow_status
-                        if (l.workflow_status && l.workflow_status !== 'PUBLISHED') return;
-                        var day = l.day_number || 0;
-                        if (!backendLivrablesByDay[day]) backendLivrablesByDay[day] = [];
-                        backendLivrablesByDay[day].push(l);
-                    });
+                if (!resp.ok) {
+                    showError('Erreur serveur (' + resp.status + ')');
+                    return;
                 }
 
-                // 4. Afficher l'indicateur de jour
-                if (backendCurrentDay > 0 && backendTotalDays > 0) {
-                    document.getElementById('dayIndicator').style.display = 'block';
-                    document.getElementById('dayLabel').textContent = 'JOUR ' + backendCurrentDay + ' / ' + backendTotalDays;
-                    const statusEl = document.getElementById('dayStatus');
-                    if (backendCurrentDay === 1) {
-                        statusEl.innerHTML = '<i class="fas fa-star mr-2"></i>Bienvenue !';
-                    } else if (backendCurrentDay >= backendTotalDays) {
-                        statusEl.innerHTML = '<i class="fas fa-flag-checkered mr-2"></i>Dernier jour !';
-                    } else {
-                        statusEl.innerHTML = '<i class="fas fa-rocket mr-2"></i>En cours';
+                var data = await resp.json();
+                if (!data.ok) {
+                    // Pas de commande payee = acces bloque
+                    if (data.message && data.message.indexOf('payee') !== -1) {
+                        if (lockedEl) lockedEl.style.display = '';
+                        return;
                     }
+                    showError(data.error || 'Erreur inconnue');
+                    return;
                 }
 
-                // 5. Afficher les onglets et les livrables
-                const hasBackendDocs = Object.keys(backendLivrablesByDay).length > 0;
-                if (hasBackendDocs || backendCurrentDay > 0) {
-                    document.getElementById('dayTabs').style.display = 'flex';
-                    document.getElementById('backendLivrablesSection').style.display = 'block';
-                    renderBackendLivrables();
-                    setupDayTabs();
-                }
+                _allLivrables = data.deliverables || [];
+                _canDownload = data.can_download === true;
 
-            } catch (error) {
-                console.error('Erreur chargement livrables backend:', error);
+                // Check deposit status from localStorage
+                try {
+                    var sess = JSON.parse(localStorage.getItem('fa_genesis_session') || '{}');
+                    if (sess.deposit_paid === false || sess.paymentStatus === 'registered') {
+                        if (lockedEl) lockedEl.style.display = '';
+                        return;
+                    }
+                } catch (e) {}
+
+                if (contentEl) contentEl.style.display = '';
+
+                // Notice telechargement bloque
+                var noticeEl = document.getElementById('downloadNotice');
+                if (noticeEl) noticeEl.style.display = _canDownload ? 'none' : '';
+
+                renderLivrables(_allLivrables);
+
+            } catch (err) {
+                console.error('[LIVRABLES] Erreur:', err.message);
+                if (err.message.indexOf('TIMEOUT') !== -1) {
+                    showError('Le serveur ne repond pas. Reessayez.');
+                } else {
+                    showError(err.message || 'Erreur de connexion');
+                }
+            } finally {
+                setLoading(false);
             }
         }
 
-        function renderBackendLivrables() {
-            const container = document.getElementById('backendLivrablesContainer');
-            const dayNumbers = Object.keys(backendLivrablesByDay).map(Number).filter(function(d) { return d > 0; }).sort(function(a, b) { return b - a; });
+        function renderLivrables(items) {
+            var container = document.getElementById('livrablesList');
+            var emptyEl = document.getElementById('livrablesEmpty');
+            if (!container) return;
 
-            if (dayNumbers.length === 0) {
-                container.innerHTML = '<div class="empty-state"><i class="fas fa-inbox text-4xl mb-4 opacity-30"></i><h3 class="text-xl font-black italic uppercase mb-2">Aucun document pour le moment</h3><p class="font-bold">Votre accompagnateur ajoutera des documents au fur et à mesure de votre progression</p></div>';
+            if (!items || items.length === 0) {
+                container.innerHTML = '';
+                if (emptyEl) emptyEl.style.display = '';
                 return;
             }
 
-            let html = '';
+            if (emptyEl) emptyEl.style.display = 'none';
 
-            // Filtrer selon l'onglet actif
-            let filteredDays = dayNumbers;
-            if (currentDayTab === 'current') {
-                filteredDays = dayNumbers.filter(function(d) { return d === backendCurrentDay; });
-            } else if (currentDayTab === 'previous') {
-                filteredDays = dayNumbers.filter(function(d) { return d < backendCurrentDay; });
-            }
+            var html = '';
+            for (var i = 0; i < items.length; i++) {
+                var liv = items[i];
+                var icon = 'fa-file-alt';
+                if (liv.type === 'photo') icon = 'fa-image';
+                else if (liv.type === 'video') icon = 'fa-video';
+                else if (liv.type === 'audio') icon = 'fa-music';
 
-            if (filteredDays.length === 0) {
-                const tabLabel = currentDayTab === 'current' ? 'le jour actuel (Jour ' + backendCurrentDay + ')' : 'les jours pr\u00e9c\u00e9dents';
-                container.innerHTML = '<div class="empty-state"><i class="fas fa-calendar-times text-4xl mb-4 opacity-30"></i><p class="font-bold">Aucun document pour ' + tabLabel + '</p></div>';
-                return;
-            }
-
-            filteredDays.forEach(function(dayNum) {
-                const docs = backendLivrablesByDay[dayNum];
-                const isCurrentDay = dayNum === backendCurrentDay;
-                const isDay1 = dayNum === 1;
-                const headerClass = isDay1 ? 'day-section-header day-1' : isCurrentDay ? 'day-section-header current-day' : 'day-section-header';
-
-                html += '<div class="day-section" data-day="' + dayNum + '">';
-                html += '<div class="' + headerClass + '">';
-                html += '<h3 class="text-xl font-black italic uppercase">';
-                if (isDay1) {
-                    html += '<i class="fas fa-star mr-2"></i>JOUR 1 — Onboarding';
-                } else {
-                    html += '<i class="fas fa-calendar-check mr-2"></i>JOUR ' + dayNum;
+                var dateStr = '';
+                if (liv.created_at) {
+                    try {
+                        var d = new Date(liv.created_at);
+                        dateStr = d.toLocaleDateString('fr-FR');
+                    } catch (e) { dateStr = ''; }
                 }
-                html += '</h3>';
-                if (isCurrentDay) {
-                    html += '<span class="px-3 py-1 bg-black text-white text-xs font-black uppercase">Jour actuel</span>';
+
+                var downloadHtml = '';
+                if (liv.download_url) {
+                    if (_canDownload) {
+                        downloadHtml = '<a href="' + liv.download_url + '" target="_blank" class="download-btn"><i class="fas fa-download mr-2"></i>Telecharger</a>';
+                    } else {
+                        downloadHtml = '<span class="download-btn disabled" title="Payez le solde pour telecharger"><i class="fas fa-lock mr-2"></i>Telecharger</span>';
+                    }
+                } else if (liv.content_text) {
+                    downloadHtml = '<button onclick="previewText(this)" class="download-btn" data-content="' + escapeAttr(liv.content_text) + '"><i class="fas fa-eye mr-2"></i>Voir</button>';
                 }
+
+                html += '<div class="livrable-card" data-category="' + (liv.category || 'Documents') + '">';
+                html += '<i class="fas ' + icon + ' text-4xl mb-4 text-[var(--genesis-yellow)]"></i>';
+                html += '<span class="livrable-type">' + (liv.category || 'Document') + '</span>';
+                html += '<h3 class="text-lg font-black uppercase mb-2">' + escapeHtml(liv.name) + '</h3>';
+                if (dateStr) html += '<p class="text-xs font-bold opacity-50 mb-4">' + dateStr + '</p>';
+                if (liv.status) html += '<p class="text-xs font-bold uppercase mb-4" style="color: ' + (liv.status === 'ready' || liv.status === 'delivered' ? '#51cf66' : '#ffd43b') + ';">' + escapeHtml(liv.status) + '</p>';
+                html += '<div class="mt-auto">' + downloadHtml + '</div>';
                 html += '</div>';
-                html += '<div class="category-docs">';
-
-                docs.forEach(function(doc) {
-                    html += createBackendLivrableHTML(doc);
-                });
-
-                html += '</div></div>';
-            });
+            }
 
             container.innerHTML = html;
         }
 
-        function createBackendLivrableHTML(doc) {
-            const date = doc.created_at ? new Date(doc.created_at) : null;
-            const formattedDate = date ? date.toLocaleDateString('fr-FR', {
-                day: '2-digit',
-                month: 'long',
-                year: 'numeric'
-            }) : '';
-
-            // Déterminer l'icône et le badge selon le type
-            let badgeClass = 'bg-gray-600';
-            let fileIcon = 'fa-file';
-            const docType = (doc.type || 'document').toLowerCase();
-
-            if (docType === 'photo') {
-                badgeClass = 'bg-purple-600';
-                fileIcon = 'fa-file-image';
-            } else if (docType === 'video') {
-                badgeClass = 'bg-red-600';
-                fileIcon = 'fa-video';
-            } else {
-                badgeClass = 'bg-blue-600';
-                fileIcon = 'fa-file-alt';
+        function filterLivrables(category) {
+            // Update tab buttons
+            var tabs = document.querySelectorAll('.tab-btn');
+            for (var i = 0; i < tabs.length; i++) {
+                tabs[i].classList.remove('active');
             }
+            var tabId = 'tab' + (category === 'all' ? 'All' : category);
+            var activeTab = document.getElementById(tabId);
+            if (activeTab) activeTab.classList.add('active');
 
-            const canAccess = userAccessRights && userAccessRights.canAccessDocuments;
-            const downloadButton = canAccess && doc.download_url ?
-                '<a href="' + doc.download_url + '" download="' + (doc.name || 'document') + '" class="doc-btn"><i class="fas fa-download"></i>T\u00e9l\u00e9charger</a>' :
-                doc.download_url ?
-                '<button onclick="alert(\'' + (userAccessRights ? userAccessRights.message : 'Acc\u00e8s restreint') + '\')" class="doc-btn" style="opacity: 0.5; cursor: not-allowed;"><i class="fas fa-lock"></i>Bloqu\u00e9</button>' :
-                '<span class="doc-btn" style="opacity: 0.5; cursor: default;"><i class="fas fa-clock"></i>Bient\u00f4t disponible</span>';
-
-            return '<div class="common-doc-item" data-type="' + docType + '">' +
-                '<div class="doc-info">' +
-                    '<div class="doc-title">' + (doc.name || 'Document') + '</div>' +
-                    '<div class="doc-meta">' +
-                        '<span class="file-type-badge ' + badgeClass + '"><i class="fas ' + fileIcon + ' mr-1"></i>' + docType.toUpperCase() + '</span>' +
-                        (formattedDate ? '<span>Ajout\u00e9 le ' + formattedDate + '</span>' : '') +
-                    '</div>' +
-                    (doc.description ? '<p class="mt-2 text-sm font-bold opacity-70">' + doc.description + '</p>' : '') +
-                '</div>' +
-                '<div class="doc-actions">' + downloadButton + '</div>' +
-            '</div>';
-        }
-
-        function setupDayTabs() {
-            document.querySelectorAll('.day-tab').forEach(function(tab) {
-                tab.addEventListener('click', function() {
-                    document.querySelectorAll('.day-tab').forEach(function(t) { t.classList.remove('active'); });
-                    this.classList.add('active');
-                    currentDayTab = this.getAttribute('data-tab');
-                    renderBackendLivrables();
+            if (category === 'all') {
+                renderLivrables(_allLivrables);
+            } else {
+                var filtered = _allLivrables.filter(function(l) {
+                    return l.category === category;
                 });
-            });
-        }
-
-        function createDailyDocumentHTML(doc) {
-            const date = doc.uploadedAt ? new Date(doc.uploadedAt) : null;
-            const formattedDate = date ? date.toLocaleDateString('fr-FR', {
-                day: '2-digit',
-                month: 'long',
-                year: 'numeric'
-            }) : '';
-
-            // Déterminer le type de fichier pour l'icône et le badge
-            const fileExtension = doc.fileName ? doc.fileName.split('.').pop().toUpperCase() : doc.fileType;
-            let badgeClass = 'bg-gray-600';
-            let fileIcon = 'fa-file';
-
-            if (fileExtension === 'PDF') {
-                badgeClass = 'bg-red-600';
-                fileIcon = 'fa-file-pdf';
-            } else if (['DOC', 'DOCX'].includes(fileExtension)) {
-                badgeClass = 'bg-blue-600';
-                fileIcon = 'fa-file-word';
-            } else if (['XLS', 'XLSX'].includes(fileExtension)) {
-                badgeClass = 'bg-green-600';
-                fileIcon = 'fa-file-excel';
-            } else if (['PNG', 'JPG', 'JPEG'].includes(fileExtension)) {
-                badgeClass = 'bg-purple-600';
-                fileIcon = 'fa-file-image';
-            } else if (fileExtension === 'ZIP') {
-                badgeClass = 'bg-yellow-600';
-                fileIcon = 'fa-file-archive';
+                renderLivrables(filtered);
             }
-
-            // Vérifier si l'utilisateur peut accéder aux documents
-            const canAccess = userAccessRights && userAccessRights.canAccessDocuments;
-
-            const downloadButton = canAccess ?
-                `<a href="${doc.fileUrl}" download="${doc.fileName}" class="doc-btn">
-                    <i class="fas fa-download"></i>Télécharger
-                </a>` :
-                `<button onclick="alert('${userAccessRights.message}')" class="doc-btn" style="opacity: 0.5; cursor: not-allowed;">
-                    <i class="fas fa-lock"></i>Bloqué
-                </button>`;
-
-            return `
-                <div class="common-doc-item" data-type="document">
-                    <div class="doc-info">
-                        <div class="doc-title">${doc.title}</div>
-                        <div class="doc-meta">
-                            <span class="file-type-badge ${badgeClass}">
-                                <i class="fas ${fileIcon} mr-1"></i>${fileExtension}
-                            </span>
-                            ${formattedDate ? `<span>Ajouté le ${formattedDate}</span>` : ''}
-                            ${doc.fileName ? `<span>${doc.fileName}</span>` : ''}
-                        </div>
-                        ${doc.description ? `<p class="mt-2 text-sm font-bold opacity-70">${doc.description}</p>` : ''}
-                    </div>
-                    <div class="doc-actions">
-                        ${downloadButton}
-                    </div>
-                </div>
-            `;
         }
 
-        function createCommonDocumentHTML(doc) {
-            const date = doc.updatedAt ? new Date(doc.updatedAt) : null;
-            const formattedDate = date ? date.toLocaleDateString('fr-FR', {
-                day: '2-digit',
-                month: 'long',
-                year: 'numeric'
-            }) : '';
-
-            const badgeClass = getFileTypeBadgeClass(doc.fileType);
-
-            // Vérifier si l'utilisateur peut accéder aux documents
-            const canAccess = userAccessRights && userAccessRights.canAccessDocuments;
-
-            const viewButton = doc.fileType === 'PDF' && canAccess ?
-                `<a href="${doc.fileUrl}" target="_blank" class="doc-btn view-btn">
-                    <i class="fas fa-eye"></i>Voir
-                </a>` : '';
-
-            // Les documents communs sont toujours téléchargeables si on a accès
-            const downloadButton = canAccess ?
-                `<a href="${doc.fileUrl}" download class="doc-btn">
-                    <i class="fas fa-download"></i>Télécharger
-                </a>` :
-                `<button onclick="alert('${userAccessRights.message}')" class="doc-btn" style="opacity: 0.5; cursor: not-allowed;">
-                    <i class="fas fa-lock"></i>Bloqué
-                </button>`;
-
-            return `
-                <div class="common-doc-item" data-type="document">
-                    <div class="doc-info">
-                        <div class="doc-title">${doc.title}</div>
-                        <div class="doc-meta">
-                            <span class="file-type-badge ${badgeClass}">
-                                <i class="fas ${getFileIcon(doc.fileType)} mr-1"></i>${doc.fileType}
-                            </span>
-                            ${formattedDate ? `<span>Mis à jour le ${formattedDate}</span>` : ''}
-                        </div>
-                        ${doc.description ? `<p class="mt-2 text-sm font-bold opacity-70">${doc.description}</p>` : ''}
-                    </div>
-                    <div class="doc-actions">
-                        ${viewButton}
-                        ${downloadButton}
-                    </div>
-                </div>
-            `;
+        function previewText(btn) {
+            var content = btn.getAttribute('data-content') || '';
+            alert(content);
         }
 
-        function createLivrableCard(livrable, index, canAccessFinalDeliverables, productType, canAccessDuringAccompaniment) {
-            const card = document.createElement('div');
-            card.className = 'livrable-card';
-            card.setAttribute('data-aos', 'zoom-in');
-            card.setAttribute('data-aos-delay', index * 100);
-            card.setAttribute('data-type', livrable.type);
-
-            const date = new Date(livrable.date);
-            const formattedDate = date.toLocaleDateString('fr-FR', {
-                day: '2-digit',
-                month: 'long',
-                year: 'numeric'
-            });
-
-            // Déterminer le mode d'affichage selon le type de produit et le statut de paiement
-            let buttonHTML = '';
-            const isPhotoOrVideo = livrable.type === 'photo' || livrable.type === 'video';
-
-            if (productType === 'prestation_individuelle') {
-                // PRESTATION INDIVIDUELLE
-                if (canAccessFinalDeliverables) {
-                    // Solde payé → Téléchargement débloqué
-                    buttonHTML = `
-                        <a href="${livrable.file}" download class="download-btn">
-                            <i class="fas fa-download mr-2"></i>Télécharger
-                        </a>
-                    `;
-                } else if (canAccessDuringAccompaniment && isPhotoOrVideo) {
-                    // Acompte payé → Consultation uniquement (pas de téléchargement)
-                    buttonHTML = `
-                        <button onclick="previewLivrable('${livrable.type}', '${livrable.title}')" class="download-btn" style="background: #4dabf7;">
-                            <i class="fas fa-eye mr-2"></i>Consulter
-                        </button>
-                        <p class="text-xs text-white mt-2 opacity-70">
-                            <i class="fas fa-lock mr-1"></i>Téléchargement disponible après règlement du solde
-                        </p>
-                    `;
-                }
-            } else {
-                // ACCOMPAGNEMENT (logique normale)
-                const canDownload = canAccessFinalDeliverables || isPhotoOrVideo;
-
-                if (canDownload) {
-                    buttonHTML = `
-                        <a href="${livrable.file}" download class="download-btn">
-                            <i class="fas fa-download mr-2"></i>Télécharger
-                        </a>
-                    `;
-                } else {
-                    buttonHTML = `
-                        <button onclick="alert('Ce livrable sera disponible après le paiement complet du solde')" class="download-btn" style="opacity: 0.5; cursor: not-allowed; background: #999;">
-                            <i class="fas fa-lock mr-2"></i>Solde requis
-                        </button>
-                    `;
-                }
-            }
-
-            card.innerHTML = `
-                <div class="livrable-icon">
-                    <i class="fas ${livrable.icon}"></i>
-                </div>
-                <div class="livrable-type">${getTypeLabel(livrable.type)}</div>
-                <h3 class="text-xl font-black italic uppercase mb-2">${livrable.title}</h3>
-                <p class="font-bold text-sm mb-4">${livrable.description}</p>
-                <p class="text-xs font-bold opacity-70 mb-4">Ajouté le ${formattedDate}</p>
-                ${buttonHTML}
-            `;
-
-            return card;
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
         }
 
-        function getTypeLabel(type) {
-            const labels = {
-                'document': 'Document',
-                'photo': 'Photo',
-                'video': 'Vidéo'
-            };
-            return labels[type] || type;
+        function escapeAttr(str) {
+            if (!str) return '';
+            return String(str).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         }
 
-        console.log('Livrables page chargée');
+        // ============================================================
+        // MENU MOBILE
+        // ============================================================
+        var mobileMenuBtn = document.getElementById('mobileMenuBtn');
+        var mobileMenu = document.getElementById('mobileMenu');
+        var menuLine1 = document.getElementById('menuLine1');
+        var menuLine2 = document.getElementById('menuLine2');
+        var menuLine3 = document.getElementById('menuLine3');
+        var isMenuOpen = false;
 
-        // Fonction de prévisualisation des livrables (pour prestations individuelles)
-        function previewLivrable(type, title) {
-            let message = '';
-            let icon = '';
-
-            if (type === 'photo') {
-                icon = 'fa-images';
-                message = `
-                    <div style="text-align: center;">
-                        <i class="fas ${icon}" style="font-size: 4rem; color: var(--genesis-yellow); margin-bottom: 1rem;"></i>
-                        <h3 style="font-size: 1.5rem; font-weight: 900; text-transform: uppercase; margin-bottom: 1rem;">
-                            Prévisualisation Photo
-                        </h3>
-                        <p style="font-weight: bold; margin-bottom: 1rem;">${title}</p>
-                        <div style="background: #fffbea; padding: 1rem; border: 3px solid #ffd700; margin-bottom: 1rem;">
-                            <p style="color: #000; font-weight: bold;">
-                                <i class="fas fa-info-circle"></i> Mode consultation activé
-                            </p>
-                            <p style="color: #000; margin-top: 0.5rem;">
-                                Vous visualisez actuellement vos photos en résolution limitée.
-                            </p>
-                        </div>
-                        <p style="margin-bottom: 1rem;">
-                            Le téléchargement des photos en haute résolution sera disponible après le règlement du solde (70%).
-                        </p>
-                        <p style="font-size: 0.875rem; opacity: 0.7;">
-                            💡 Cette prévisualisation vous permet de valider les contenus avant le paiement final.
-                        </p>
-                    </div>
-                `;
-            } else if (type === 'video') {
-                icon = 'fa-video';
-                message = `
-                    <div style="text-align: center;">
-                        <i class="fas ${icon}" style="font-size: 4rem; color: var(--genesis-yellow); margin-bottom: 1rem;"></i>
-                        <h3 style="font-size: 1.5rem; font-weight: 900; text-transform: uppercase; margin-bottom: 1rem;">
-                            Prévisualisation Vidéo
-                        </h3>
-                        <p style="font-weight: bold; margin-bottom: 1rem;">${title}</p>
-                        <div style="background: #fffbea; padding: 1rem; border: 3px solid #ffd700; margin-bottom: 1rem;">
-                            <p style="color: #000; font-weight: bold;">
-                                <i class="fas fa-info-circle"></i> Mode consultation activé
-                            </p>
-                            <p style="color: #000; margin-top: 0.5rem;">
-                                Vous visualisez actuellement votre vidéo en streaming.
-                            </p>
-                        </div>
-                        <p style="margin-bottom: 1rem;">
-                            Le téléchargement de la vidéo en qualité finale sera disponible après le règlement du solde (70%).
-                        </p>
-                        <p style="font-size: 0.875rem; opacity: 0.7;">
-                            💡 Cette prévisualisation vous permet de valider le contenu avant le paiement final.
-                        </p>
-                    </div>
-                `;
-            }
-
-            // Créer une modale simple
-            const modal = document.createElement('div');
-            modal.style.cssText = `
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                background: rgba(0, 0, 0, 0.9);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                z-index: 9999;
-                padding: 2rem;
-            `;
-
-            const modalContent = document.createElement('div');
-            modalContent.style.cssText = `
-                background: white;
-                color: black;
-                padding: 2rem;
-                max-width: 600px;
-                width: 100%;
-                border: 4px solid black;
-                box-shadow: 10px 10px 0px var(--genesis-yellow);
-            `;
-
-            modalContent.innerHTML = message + `
-                <button onclick="this.closest('div[style*=\"fixed\"]').remove()"
-                        style="
-                            width: 100%;
-                            background: var(--genesis-yellow);
-                            color: black;
-                            border: 4px solid black;
-                            padding: 1rem;
-                            font-weight: 900;
-                            text-transform: uppercase;
-                            cursor: pointer;
-                            margin-top: 1.5rem;
-                            box-shadow: 4px 4px 0px black;
-                        "
-                        onmouseover="this.style.transform='translate(-2px, -2px)'; this.style.boxShadow='6px 6px 0px black'"
-                        onmouseout="this.style.transform=''; this.style.boxShadow='4px 4px 0px black'"
-                        >
-                    Fermer
-                </button>
-            `;
-
-            modal.appendChild(modalContent);
-            document.body.appendChild(modal);
-
-            // Fermer en cliquant en dehors de la modale
-            modal.addEventListener('click', function(e) {
-                if (e.target === modal) {
-                    modal.remove();
-                }
-            });
+        function toggleMobileMenu() {
+            isMenuOpen = !isMenuOpen;
+            if (isMenuOpen) {
+                mobileMenu.classList.remove('hidden');
+                mobileMenu.classList.add('flex');
+                menuLine1.style.transform = 'rotate(45deg) translate(5px, 5px)';
+                menuLine2.style.opacity = '0';
+                menuLine3.style.transform = 'rotate(-45deg) translate(5px, -5px)';
+                document.body.style.overflow = 'hidden';
+            } else { closeMobileMenu(); }
         }
+
+        function closeMobileMenu() {
+            isMenuOpen = false;
+            if (mobileMenu) { mobileMenu.classList.add('hidden'); mobileMenu.classList.remove('flex'); }
+            if (menuLine1) menuLine1.style.transform = 'none';
+            if (menuLine2) menuLine2.style.opacity = '1';
+            if (menuLine3) menuLine3.style.transform = 'none';
+            document.body.style.overflow = 'auto';
+        }
+
+        if (mobileMenuBtn) mobileMenuBtn.addEventListener('click', toggleMobileMenu);
+
+        // Lancer le chargement
+        loadLivrables();
     </script>
     <div id="site-footer"></div>
     <script src="footer.js" defer></script>

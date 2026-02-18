@@ -135,24 +135,17 @@
     <section class="min-h-screen pt-32 pb-20 px-6 bg-black">
         <div class="container mx-auto max-w-6xl">
 
-            <!-- Bandeau d'erreur (cache par defaut) -->
-            <div id="dashboardError" style="display: none; background: #ff0000; color: white; padding: 1rem; border: 4px solid black; margin-bottom: 2rem; font-weight: bold;">
-            </div>
-
             <!-- En-tete de bienvenue -->
             <div class="mb-16">
                 <h1 class="text-5xl md:text-7xl font-black italic uppercase mb-4 text-[var(--genesis-yellow)]" id="welcomeTitle">Bienvenue</h1>
                 <p class="text-xl font-bold uppercase text-white" id="welcomeSubtitle">Votre espace client</p>
             </div>
 
-            <!-- Loader (TOUJOURS masque par finally dans loadDashboard) -->
+            <!-- Loader (TOUJOURS masque par finally) -->
             <div id="dashboardLoader" class="mb-8">
                 <div class="flex items-center gap-4 p-6" style="background: #222; border: 2px solid var(--genesis-yellow);">
                     <i class="fas fa-spinner fa-spin text-[var(--genesis-yellow)] text-2xl"></i>
-                    <div>
-                        <span class="font-bold text-white text-base">Chargement de votre espace...</span>
-                        <p class="text-xs text-gray-400 mt-1" id="loaderDetail">Connexion au serveur</p>
-                    </div>
+                    <span class="font-bold text-white text-base">Chargement de votre espace...</span>
                 </div>
             </div>
 
@@ -167,220 +160,184 @@
                         </div>
                     </div>
                     <button onclick="loadDashboard()" class="bg-black text-white px-6 py-3 font-black text-sm uppercase border-2 border-black mt-2">
-                        <i class="fas fa-redo mr-2"></i>Réessayer
+                        <i class="fas fa-redo mr-2"></i>Reessayer
                     </button>
                 </div>
             </div>
 
-            <!-- Zone debug (TEMPORAIRE - a retirer apres validation) -->
-            <div id="debugPanel" class="mb-4">
-                <div class="p-3 border-2 border-green-500" style="background: #0a0a0a;">
-                    <p class="text-green-400 text-xs font-bold mb-1">DEBUG (temporaire)</p>
-                    <pre id="debugOutput" class="text-xs text-green-400 overflow-auto max-h-48" style="white-space: pre-wrap;">En attente...</pre>
-                </div>
-            </div>
-
-            <!-- Bloc d'appel a l'action : paiement de l'acompte requis (cache par defaut) -->
+            <!-- Bloc acompte requis (cache par defaut) -->
             <div id="depositRequiredSection" class="mb-16" style="display: none;">
                 <div class="bg-white text-black border-4 border-black neo-shadow p-8 md:p-12">
                     <div class="text-center mb-8">
                         <div class="inline-flex items-center justify-center w-24 h-24 bg-[var(--genesis-yellow)] border-4 border-black rounded-full mb-6">
                             <i class="fas fa-lock text-black text-4xl"></i>
                         </div>
-                        <h2 class="text-3xl md:text-4xl font-black italic uppercase mb-4">Votre espace est presque prêt !</h2>
+                        <h2 class="text-3xl md:text-4xl font-black italic uppercase mb-4">Votre espace est presque pret !</h2>
                         <p class="text-lg font-bold text-gray-700 max-w-xl mx-auto">
-                            Pour accéder à votre espace client et démarrer votre <span id="depositOfferTypeLabel">accompagnement</span>,
-                            il vous suffit de régler l'acompte de 30%.
+                            Pour acceder a votre espace client et demarrer votre <span id="depositOfferTypeLabel">accompagnement</span>,
+                            il vous suffit de regler l'acompte de 30%.
                         </p>
                     </div>
-
                     <div class="bg-black text-white p-6 border-4 border-black mb-8 max-w-lg mx-auto">
                         <div class="flex items-center gap-4 mb-4">
                             <i class="fas fa-info-circle text-[var(--genesis-yellow)] text-2xl"></i>
-                            <p class="font-bold text-base" id="depositOfferName">Offre sélectionnée</p>
+                            <p class="font-bold text-base" id="depositOfferName">Offre selectionnee</p>
                         </div>
                         <ul class="space-y-3 text-sm">
-                            <li class="flex items-start gap-2">
-                                <i class="fas fa-check text-[var(--genesis-yellow)] mt-1"></i>
-                                <span>L'acompte confirme votre inscription et déclenche le démarrage de votre projet.</span>
-                            </li>
-                            <li class="flex items-start gap-2">
-                                <i class="fas fa-check text-[var(--genesis-yellow)] mt-1"></i>
-                                <span>Vous aurez accès à votre tableau de bord, vos livrables et votre suivi personnalisé.</span>
-                            </li>
-                            <li class="flex items-start gap-2">
-                                <i class="fas fa-check text-[var(--genesis-yellow)] mt-1"></i>
-                                <span>Un conseiller FA Genesis vous contactera sous 24 à 48h après le paiement.</span>
-                            </li>
+                            <li class="flex items-start gap-2"><i class="fas fa-check text-[var(--genesis-yellow)] mt-1"></i><span>L'acompte confirme votre inscription et declenche le demarrage.</span></li>
+                            <li class="flex items-start gap-2"><i class="fas fa-check text-[var(--genesis-yellow)] mt-1"></i><span>Acces a votre tableau de bord, livrables et suivi.</span></li>
+                            <li class="flex items-start gap-2"><i class="fas fa-check text-[var(--genesis-yellow)] mt-1"></i><span>Un conseiller vous contactera sous 24 a 48h.</span></li>
                         </ul>
                     </div>
-
-                    <div class="text-center" id="depositCTAContainer">
+                    <div class="text-center">
                         <a href="payment.html" id="depositPayButton" class="neo-btn-yellow px-10 py-5 text-xl uppercase inline-block mb-4">
                             <i class="fas fa-credit-card mr-3"></i>Payer l'acompte (30%)
                         </a>
                         <p class="text-sm text-gray-500 mt-4" id="depositAmountInfo">
-                            <i class="fas fa-shield-alt mr-1"></i> Paiement sécurisé par SumUp — Le solde (70%) sera dû après livraison.
+                            <i class="fas fa-shield-alt mr-1"></i> Paiement securise par SumUp
                         </p>
                     </div>
                 </div>
             </div>
 
-            <!-- Statut de paiement -->
-            <div id="paymentStatusSection" class="mb-16" style="display: none;">
-                <!-- Le contenu sera inséré par JavaScript -->
-            </div>
-
-            <!-- Contenu principal du dashboard -->
+            <!-- Contenu principal (cache par defaut, montre apres load) -->
             <div id="dashboardMainContent" style="display: none;">
 
-            <!-- Statistiques principales -->
-            <div class="grid md:grid-cols-3 gap-8 mb-16">
-                <div class="stat-card">
-                    <div class="text-sm font-black uppercase mb-2 opacity-70">Votre offre</div>
-                    <div class="text-3xl font-black italic" id="offreName">Chargement...</div>
-                    <div class="text-xs font-bold uppercase mt-1" id="offreType">-</div>
-                </div>
+                <!-- Cartes principales -->
+                <div class="grid md:grid-cols-2 gap-8 mb-16">
 
-                <div class="stat-card" id="progressCard">
-                    <div class="text-sm font-black uppercase mb-2 opacity-70">Étape actuelle</div>
-                    <div class="text-3xl font-black italic">En attente</div>
-                    <div class="text-xs font-bold uppercase mt-1">Démarrage après paiement</div>
-                </div>
-
-                <div class="stat-card">
-                    <div class="text-sm font-black uppercase mb-2 opacity-70">Progression</div>
-                    <div class="text-3xl font-black italic" id="progressPercent">0%</div>
-                    <div class="text-xs font-bold uppercase mt-1">Votre parcours</div>
-                </div>
-            </div>
-
-            <!-- Section planification date de debut (affichee si acompte paye et start_date null) -->
-            <div id="scheduleStartSection" class="mb-16" style="display: none;">
-                <div class="bg-white text-black border-4 border-black p-8 md:p-12" style="box-shadow: 10px 10px 0px 0px var(--genesis-yellow);">
-                    <div class="flex items-center gap-4 mb-6">
-                        <div class="inline-flex items-center justify-center w-16 h-16 bg-[var(--genesis-yellow)] border-4 border-black rounded-full flex-shrink-0">
-                            <i class="fas fa-calendar-alt text-black text-2xl"></i>
-                        </div>
-                        <div>
-                            <h2 class="text-2xl md:text-3xl font-black italic uppercase" id="scheduleTitle">Planifiez votre d\u00e9marrage</h2>
-                            <p class="font-bold text-gray-600 text-sm" id="scheduleSubtitle">Choisissez la date de d\u00e9but de votre accompagnement</p>
-                        </div>
+                    <!-- Carte Offre active -->
+                    <div class="stat-card">
+                        <div class="text-sm font-black uppercase mb-2 opacity-70">Votre offre</div>
+                        <div class="text-3xl font-black italic" id="offreLabel">-</div>
+                        <div class="text-xs font-bold uppercase mt-1" id="offreCategory">-</div>
                     </div>
 
-                    <!-- Formulaire de choix de date -->
-                    <div id="scheduleFormBlock">
-                        <p class="font-bold text-gray-700 mb-4">
-                            S\u00e9lectionnez une date pour d\u00e9marrer votre parcours. L'\u00e9quipe FA GENESIS et votre partenaire confirmeront leur disponibilit\u00e9.
-                        </p>
-                        <div class="flex flex-col md:flex-row items-start md:items-end gap-4">
-                            <div>
-                                <label class="font-black text-xs uppercase block mb-2 text-gray-600">Date souhait\u00e9e (minimum demain)</label>
-                                <input type="date" id="startDatePicker" class="p-3 text-lg font-bold w-full"
-                                       style="border: 4px solid black; background: white; color: black; min-width: 220px;" />
-                            </div>
-                            <button onclick="submitStartDate()" id="submitStartDateBtn"
-                                    class="neo-btn-yellow px-8 py-3 text-base uppercase whitespace-nowrap">
-                                <i class="fas fa-check mr-2"></i>CONFIRMER MA DATE
-                            </button>
-                        </div>
-                        <p class="text-xs text-gray-500 mt-3">
-                            <i class="fas fa-info-circle mr-1"></i> Apr\u00e8s votre choix, l'admin et le partenaire doivent confirmer avant le lancement.
-                        </p>
+                    <!-- Carte Paiement -->
+                    <div class="stat-card" id="paymentCard">
+                        <div class="text-sm font-black uppercase mb-2 opacity-70">Paiement</div>
+                        <div class="text-3xl font-black italic" id="paymentStatus">-</div>
+                        <div class="text-xs font-bold uppercase mt-1" id="paymentDetail">-</div>
                     </div>
+                </div>
 
-                    <!-- En attente de confirmation -->
-                    <div id="schedulePendingBlock" style="display: none;">
-                        <div class="flex items-center gap-4 p-6 border-4 border-black" style="background: #FFF9E6;">
-                            <i class="fas fa-clock text-4xl" style="color: var(--genesis-yellow);"></i>
+                <!-- Carte Prochaine etape -->
+                <div class="mb-16">
+                    <div class="p-8 border-4 border-black" style="background: var(--genesis-yellow); color: black;">
+                        <div class="flex items-center gap-4">
+                            <i class="fas fa-arrow-right text-3xl"></i>
                             <div>
-                                <p class="font-black text-xl">Date propos\u00e9e : <span id="proposedDateDisplay" class="text-[var(--genesis-yellow)]"></span></p>
-                                <p class="text-gray-600 font-bold">En attente de confirmation par l'\u00e9quipe FA GENESIS.</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Date confirmee -->
-                    <div id="scheduleConfirmedBlock" style="display: none;">
-                        <div class="flex items-center gap-4 p-6 border-4 border-black" style="background: #e8f5e9;">
-                            <i class="fas fa-check-circle text-4xl text-green-600"></i>
-                            <div>
-                                <p class="font-black text-xl">Date confirm\u00e9e : <span id="confirmedDateDisplay" class="text-green-700"></span></p>
-                                <p class="text-gray-600 font-bold" id="scheduleConfirmedMsg">Votre parcours est planifi\u00e9 !</p>
+                                <div class="text-sm font-black uppercase opacity-70">Prochaine etape</div>
+                                <div class="text-2xl font-black italic" id="nextStepLabel">-</div>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Barre de progression -->
-            <div class="mb-16">
-                <h2 class="text-2xl font-black italic uppercase mb-6 text-white">Votre avancement</h2>
-                <div class="progress-bar">
-                    <div class="progress-fill" id="progressBar" style="width: 0%;">
-                        <span id="progressBarText">0%</span>
+                <!-- Carte Demarrage / Calendrier -->
+                <div id="startDateSection" class="mb-16" style="display: none;">
+                    <div class="bg-white text-black border-4 border-black p-8 md:p-12" style="box-shadow: 10px 10px 0px 0px var(--genesis-yellow);">
+                        <div class="flex items-center gap-4 mb-6">
+                            <div class="inline-flex items-center justify-center w-16 h-16 bg-[var(--genesis-yellow)] border-4 border-black rounded-full flex-shrink-0">
+                                <i class="fas fa-calendar-alt text-black text-2xl"></i>
+                            </div>
+                            <div>
+                                <h2 class="text-2xl md:text-3xl font-black italic uppercase" id="scheduleTitle">Planifiez votre demarrage</h2>
+                                <p class="font-bold text-gray-600 text-sm" id="scheduleSubtitle">Choisissez la date de debut</p>
+                            </div>
+                        </div>
+
+                        <!-- Formulaire de choix de date -->
+                        <div id="scheduleFormBlock">
+                            <p class="font-bold text-gray-700 mb-4">Selectionnez une date. L'equipe FA GENESIS confirmera la disponibilite.</p>
+                            <div class="flex flex-col md:flex-row items-start md:items-end gap-4">
+                                <div>
+                                    <label class="font-black text-xs uppercase block mb-2 text-gray-600">Date souhaitee (minimum demain)</label>
+                                    <input type="date" id="startDatePicker" class="p-3 text-lg font-bold w-full"
+                                           style="border: 4px solid black; background: white; color: black; min-width: 220px;" />
+                                </div>
+                                <button onclick="submitStartDate()" id="submitStartDateBtn"
+                                        class="neo-btn-yellow px-8 py-3 text-base uppercase whitespace-nowrap">
+                                    <i class="fas fa-check mr-2"></i>CONFIRMER MA DATE
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- En attente de confirmation -->
+                        <div id="schedulePendingBlock" style="display: none;">
+                            <div class="flex items-center gap-4 p-6 border-4 border-black" style="background: #FFF9E6;">
+                                <i class="fas fa-clock text-4xl" style="color: var(--genesis-yellow);"></i>
+                                <div>
+                                    <p class="font-black text-xl">Date proposee : <span id="proposedDateDisplay" class="text-[var(--genesis-yellow)]"></span></p>
+                                    <p class="text-gray-600 font-bold">En attente de confirmation par l'equipe FA GENESIS.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Date confirmee -->
+                        <div id="scheduleConfirmedBlock" style="display: none;">
+                            <div class="flex items-center gap-4 p-6 border-4 border-black" style="background: #e8f5e9;">
+                                <i class="fas fa-check-circle text-4xl text-green-600"></i>
+                                <div>
+                                    <p class="font-black text-xl">Date confirmee : <span id="confirmedDateDisplay" class="text-green-700"></span></p>
+                                    <p class="text-gray-600 font-bold" id="scheduleConfirmedMsg">Votre parcours est planifie !</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Date deja fixee (pas de calendrier) -->
+                        <div id="startDateFixedBlock" style="display: none;">
+                            <div class="flex items-center gap-4 p-6 border-4 border-black" style="background: #e8f5e9;">
+                                <i class="fas fa-calendar-check text-4xl text-green-600"></i>
+                                <div>
+                                    <p class="font-black text-xl">Demarrage : <span id="fixedDateDisplay" class="text-green-700"></span></p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <p class="text-sm font-bold mt-4 text-white" id="progressMessage">Votre accompagnement n'a pas encore démarré.</p>
-            </div>
 
-            <!-- Section workflow de livraison (prestation_individuelle uniquement) -->
-            <div id="deliveryWorkflowSection" class="mb-16" style="display: none;">
-                <h2 class="text-3xl font-black italic uppercase mb-8 text-white">
-                    <i class="fas fa-shipping-fast mr-4"></i>Suivi de votre prestation
-                </h2>
-                <div class="space-y-6" id="deliveryStepsContainer">
+                <!-- Bouton payer solde (si solde restant) -->
+                <div id="payBalanceSection" class="mb-16" style="display: none;">
+                    <div class="p-8 border-4 border-black text-center" style="background: #ffd43b; color: black;">
+                        <h3 class="text-xl font-black italic uppercase mb-2">Solde restant</h3>
+                        <p class="font-bold mb-4" id="balanceAmount">-</p>
+                        <a href="payment.html" class="inline-block bg-black text-white px-8 py-4 border-4 border-black font-black uppercase text-sm hover:opacity-80 transition">
+                            <i class="fas fa-credit-card mr-2"></i>Payer le solde
+                        </a>
+                    </div>
                 </div>
-            </div>
 
-            <!-- Timeline projet IA (affichee uniquement si un projet existe) -->
-            <div id="projectTimelineSection" style="display:none;" class="mb-16">
-                <h2 class="text-2xl font-black italic uppercase mb-8 text-white">
-                    <i class="fas fa-project-diagram mr-3" style="color:var(--genesis-yellow);"></i>Timeline de votre projet
-                </h2>
-                <div id="projectTimelineContent">
-                    <p class="text-white opacity-50">Chargement...</p>
+                <!-- Actions rapides -->
+                <div class="mb-16">
+                    <h2 class="text-2xl font-black italic uppercase mb-8 text-white">Acces rapide</h2>
+                    <div class="grid md:grid-cols-3 gap-6">
+                        <a href="livrables.html" class="neo-btn-white p-8 block text-center">
+                            <i class="fas fa-file-download text-4xl mb-4"></i>
+                            <div class="text-xl font-black italic uppercase">Mes livrables</div>
+                            <div class="text-sm font-bold mt-2 opacity-70">Documents, photos, videos</div>
+                        </a>
+                        <a href="seances.html" class="neo-btn-white p-8 block text-center">
+                            <i class="fas fa-calendar-alt text-4xl mb-4"></i>
+                            <div class="text-xl font-black italic uppercase">Mes seances</div>
+                            <div class="text-sm font-bold mt-2 opacity-70">Planning et rendez-vous</div>
+                        </a>
+                        <a href="contact.html" class="neo-btn-white p-8 block text-center">
+                            <i class="fas fa-envelope text-4xl mb-4"></i>
+                            <div class="text-xl font-black italic uppercase">Support</div>
+                            <div class="text-sm font-bold mt-2 opacity-70">Contactez notre equipe</div>
+                        </a>
+                    </div>
                 </div>
-            </div>
 
-            <!-- Actions rapides (contenu par defaut en HTML, mis a jour par JS) -->
-            <div class="mb-16">
-                <h2 class="text-2xl font-black italic uppercase mb-8 text-white">Actions rapides</h2>
-                <div id="quickActionsContainer" class="grid md:grid-cols-2 gap-6">
-                    <a href="livrables.html" class="neo-btn-white p-8 block text-center">
-                        <i class="fas fa-file-download text-4xl mb-4"></i>
-                        <div class="text-xl font-black italic uppercase">Mes livrables</div>
-                        <div class="text-sm font-bold mt-2 opacity-70">Téléchargez vos documents</div>
-                    </a>
-
-                    <a href="seances.html" class="neo-btn-white p-8 block text-center">
-                        <i class="fas fa-calendar-alt text-4xl mb-4"></i>
-                        <div class="text-xl font-black italic uppercase">Mes séances</div>
-                        <div class="text-sm font-bold mt-2 opacity-70">Consultez votre planning</div>
-                    </a>
-
-                    <a href="mon-compte.html" class="neo-btn-white p-8 block text-center">
-                        <i class="fas fa-user-circle text-4xl mb-4"></i>
-                        <div class="text-xl font-black italic uppercase">Mon compte</div>
-                        <div class="text-sm font-bold mt-2 opacity-70">Gérez vos informations</div>
-                    </a>
-
-                    <a href="contact.html" class="neo-btn-white p-8 block text-center">
-                        <i class="fas fa-envelope text-4xl mb-4"></i>
-                        <div class="text-xl font-black italic uppercase">Contact</div>
-                        <div class="text-sm font-bold mt-2 opacity-70">Contactez notre équipe</div>
+                <!-- Besoin d'aide -->
+                <div class="bg-[var(--genesis-yellow)] text-black p-8 neo-border text-center">
+                    <h3 class="text-2xl font-black italic uppercase mb-4">Besoin d'aide ?</h3>
+                    <p class="font-bold mb-6">Notre equipe est la pour vous accompagner</p>
+                    <a href="contact.html" class="inline-block bg-black text-white px-8 py-4 border-4 border-black font-black uppercase text-sm hover:opacity-80 transition">
+                        Contactez-nous
                     </a>
                 </div>
-            </div>
-
-            <!-- Message d'encouragement -->
-            <div class="bg-[var(--genesis-yellow)] text-black p-8 neo-border text-center">
-                <h3 class="text-2xl font-black italic uppercase mb-4">Besoin d'aide ?</h3>
-                <p class="font-bold mb-6">Notre équipe est là pour vous accompagner à chaque étape</p>
-                <a href="contact.html" class="inline-block bg-black text-white px-8 py-4 border-4 border-black font-black uppercase text-sm hover:opacity-80 transition">
-                    Contactez-nous
-                </a>
-            </div>
 
             </div><!-- fin dashboardMainContent -->
 
@@ -389,33 +346,23 @@
 
     <script src="config.js"></script>
     <script src="auth.js"></script>
-    <script src="offers-config.js"></script>
-    <script src="payment-system.js"></script>
     <script>
         // ============================================================
-        // DASHBOARD v6 - UN SEUL ENDPOINT, ZERO LOADING INFINI
+        // DASHBOARD v7 - SIMPLE, ZERO PROGRESSION, ZERO LOADING INFINI
         // ============================================================
-        console.log('[DASHBOARD] v6 - Demarrage');
+        console.log('[DASHBOARD] v7 - Demarrage');
 
         var API_BASE_URL = window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com';
-        var _debugLines = [];
-
-        function dbg(msg) {
-            console.log('[DASHBOARD] ' + msg);
-            _debugLines.push(new Date().toLocaleTimeString() + ' | ' + msg);
-            var el = document.getElementById('debugOutput');
-            if (el) el.textContent = _debugLines.join('\n');
-        }
 
         // ============================================================
-        // LOADING / ERROR UI
+        // UI HELPERS
         // ============================================================
         function setLoading(visible) {
             var loader = document.getElementById('dashboardLoader');
             if (loader) loader.style.display = visible ? '' : 'none';
         }
 
-        function showError(title, message, showRetry) {
+        function showError(title, message) {
             var block = document.getElementById('dashboardErrorBlock');
             if (!block) return;
             block.style.display = '';
@@ -430,41 +377,12 @@
             if (block) block.style.display = 'none';
         }
 
-        function setLoaderDetail(msg) {
-            var el = document.getElementById('loaderDetail');
-            if (el) el.textContent = msg;
-        }
-
-        // ============================================================
-        // PROTECTION AUTH
-        // ============================================================
-        try {
-            if (typeof requireAuth === 'function') {
-                requireAuth();
-            } else {
-                var hasSession = localStorage.getItem('fa_genesis_session');
-                var hasToken = localStorage.getItem('fa_genesis_token');
-                if (!hasSession || !hasToken) {
-                    window.location.href = 'login.html';
-                }
-            }
-        } catch (authErr) {
-            dbg('Erreur auth: ' + authErr.message);
-        }
-
-        // Afficher debug panel (temporaire - a retirer apres validation)
-        var dp = document.getElementById('debugPanel');
-        if (dp) dp.style.display = '';
-
-        // ============================================================
-        // FETCH AVEC TIMEOUT 8 SECONDES
-        // ============================================================
         function fetchWithTimeout(url, options, timeoutMs) {
             return new Promise(function(resolve, reject) {
                 var controller = new AbortController();
                 var timer = setTimeout(function() {
                     controller.abort();
-                    reject(new Error('TIMEOUT (' + timeoutMs + 'ms)'));
+                    reject(new Error('TIMEOUT'));
                 }, timeoutMs || 8000);
                 var opts = Object.assign({}, options || {}, { signal: controller.signal });
                 fetch(url, opts).then(function(resp) {
@@ -477,85 +395,75 @@
             });
         }
 
+        function formatDateFr(dateStr) {
+            try {
+                var jours = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+                var moisNoms = ['janvier', 'fevrier', 'mars', 'avril', 'mai', 'juin', 'juillet', 'aout', 'septembre', 'octobre', 'novembre', 'decembre'];
+                var d = new Date(dateStr + 'T00:00:00');
+                if (isNaN(d.getTime())) return dateStr || 'Non definie';
+                return jours[d.getDay()] + ' ' + d.getDate() + ' ' + moisNoms[d.getMonth()] + ' ' + d.getFullYear();
+            } catch (e) { return dateStr || 'Non definie'; }
+        }
+
+        // ============================================================
+        // PROTECTION AUTH
+        // ============================================================
+        try {
+            if (typeof requireAuth === 'function') {
+                requireAuth();
+            } else {
+                var hasToken = localStorage.getItem('fa_genesis_token');
+                if (!hasToken) { window.location.href = 'login.html'; }
+            }
+        } catch (authErr) {
+            console.error('[DASHBOARD] Auth error:', authErr.message);
+        }
+
         // ============================================================
         // FONCTION PRINCIPALE : loadDashboard()
-        // Regle absolue : setLoading(false) dans le finally
         // ============================================================
         async function loadDashboard() {
             setLoading(true);
             hideError();
-
-            // Cacher le contenu pendant le chargement
             var mainCont = document.getElementById('dashboardMainContent');
             var depositSec = document.getElementById('depositRequiredSection');
             if (mainCont) mainCont.style.display = 'none';
             if (depositSec) depositSec.style.display = 'none';
 
             try {
-                // 1. Recuperer le token
                 var token = localStorage.getItem('fa_genesis_token');
-                dbg('API_BASE_URL: ' + API_BASE_URL);
-                dbg('Token present: ' + (token ? 'OUI (' + token.substring(0, 8) + '...)' : 'NON'));
-                dbg('Session present: ' + (localStorage.getItem('fa_genesis_session') ? 'OUI' : 'NON'));
-                if (!token) {
-                    dbg('Pas de token - redirection login');
-                    window.location.href = 'login.html';
-                    return;
-                }
+                if (!token) { window.location.href = 'login.html'; return; }
 
-                // 2. Recuperer le prenom depuis localStorage pour affichage immediat
-                var localUser = null;
+                // Affichage immediat du prenom
                 try {
                     var raw = localStorage.getItem('fa_genesis_session');
-                    if (raw) localUser = JSON.parse(raw);
+                    if (raw) {
+                        var localUser = JSON.parse(raw);
+                        var welc = document.getElementById('welcomeTitle');
+                        if (welc && localUser.prenom) welc.textContent = 'Bienvenue ' + localUser.prenom;
+                        var greet = document.getElementById('userGreeting');
+                        if (greet && localUser.prenom) greet.textContent = localUser.prenom;
+                    }
                 } catch (e) {}
-                if (localUser) {
-                    var welc = document.getElementById('welcomeTitle');
-                    if (welc) welc.textContent = 'Bienvenue ' + (localUser.prenom || '');
-                    var greet = document.getElementById('userGreeting');
-                    if (greet) greet.textContent = localUser.prenom || '';
-                }
 
-                // 3. APPEL UNIQUE : GET /api/dashboard
-                setLoaderDetail('Appel ' + API_BASE_URL + '/api/dashboard ...');
-                dbg('Fetch: ' + API_BASE_URL + '/api/dashboard');
-
+                // APPEL UNIQUE : GET /api/dashboard
                 var resp = await fetchWithTimeout(API_BASE_URL + '/api/dashboard', {
                     headers: { 'Authorization': 'Bearer ' + token }
                 }, 8000);
 
-                dbg('Status: ' + resp.status);
-
-                // 4. Verifier le status HTTP
                 if (resp.status === 401) {
-                    dbg('401 - Session expiree');
                     localStorage.removeItem('fa_genesis_token');
                     localStorage.removeItem('fa_genesis_session');
-                    alert('Session expir\u00e9e. Veuillez vous reconnecter.');
                     window.location.href = 'login.html';
                     return;
                 }
 
                 if (!resp.ok) {
-                    var errText = '';
-                    try { errText = await resp.text(); } catch (e) {}
-                    dbg('Erreur HTTP ' + resp.status + ': ' + errText);
-                    showError('Erreur serveur (' + resp.status + ')', 'Le serveur a renvoy\u00e9 une erreur. R\u00e9essayez.', true);
+                    showError('Erreur serveur (' + resp.status + ')', 'Le serveur a renvoye une erreur. Reessayez.');
                     return;
                 }
 
-                // 5. Parser le JSON
-                var data = null;
-                try {
-                    data = await resp.json();
-                } catch (jsonErr) {
-                    dbg('JSON invalide: ' + jsonErr.message);
-                    showError('R\u00e9ponse invalide', 'Le serveur n\'a pas renvoy\u00e9 du JSON valide.', true);
-                    return;
-                }
-
-                dbg('JSON OK - status: ' + (data.status || data.ok));
-
+                var data = await resp.json();
                 if (!data.ok) {
                     if (data.error === 'UNAUTHORIZED') {
                         localStorage.removeItem('fa_genesis_token');
@@ -563,21 +471,24 @@
                         window.location.href = 'login.html';
                         return;
                     }
-                    dbg('API error: ' + (data.error || '') + ' - ' + (data.message || ''));
-                    showError('Erreur', data.message || 'Erreur inconnue du serveur.', true);
+                    showError('Erreur', data.message || 'Erreur inconnue.');
                     return;
                 }
 
-                // 6. Mettre a jour localStorage avec les donnees fraiches
+                // Mettre a jour localStorage
                 if (data.user) {
-                    var session = localUser || {};
+                    var session = {};
+                    try { session = JSON.parse(localStorage.getItem('fa_genesis_session') || '{}'); } catch (e) {}
                     session.email = data.user.email;
                     session.prenom = data.user.prenom;
                     session.nom = data.user.nom;
+                    session.telephone = data.user.telephone || '';
                     session.paymentStatus = data.user.paymentStatus;
-                    session.payment_status = data.user.paymentStatus;
                     session.activeOfferId = data.user.activeOfferId;
                     session.productType = data.user.productType;
+                    if (data.activeSubscription) {
+                        session.deposit_paid = data.activeSubscription.deposit_paid;
+                    }
                     localStorage.setItem('fa_genesis_session', JSON.stringify(session));
 
                     var welc2 = document.getElementById('welcomeTitle');
@@ -586,47 +497,26 @@
                     if (greet2) greet2.textContent = data.user.prenom || '';
                 }
 
-                // 7. Sous-titre dynamique
-                var subtitleEl = document.getElementById('welcomeSubtitle');
-
-                // ============================================================
+                // ============================
                 // CAS 1 : PAS DE COMMANDE PAYEE
-                // ============================================================
+                // ============================
                 if (data.status === 'NO_PAID_ORDER') {
-                    dbg('Pas de commande payee - CTA acompte');
+                    var subtitleEl = document.getElementById('welcomeSubtitle');
                     if (subtitleEl) subtitleEl.textContent = 'Finalisez votre inscription';
 
                     if (depositSec) {
                         depositSec.style.display = 'block';
-
-                        // Remplir les infos de l'offre
-                        var offerId = data.user.activeOfferId;
-                        var offerDetails = null;
-                        if (offerId && typeof getOfferById === 'function') {
-                            try { offerDetails = getOfferById(offerId); } catch (e) {}
-                        }
-
-                        var typeLabel = document.getElementById('depositOfferTypeLabel');
-                        var offerNameLabel = document.getElementById('depositOfferName');
-                        if (offerDetails) {
-                            if (typeLabel) typeLabel.textContent = offerDetails.productType === 'prestation_individuelle' ? 'prestation' : 'accompagnement';
-                            if (offerNameLabel) offerNameLabel.textContent = offerDetails.nom;
-                        }
-
-                        // Personnaliser si commande en attente
                         if (data.pendingOrder) {
                             var po = data.pendingOrder;
+                            var offerNameEl = document.getElementById('depositOfferName');
+                            if (offerNameEl && po.product_name) offerNameEl.textContent = po.product_name;
+                            var typeLabel = document.getElementById('depositOfferTypeLabel');
+                            if (typeLabel) typeLabel.textContent = po.product_type === 'prestation_individuelle' ? 'prestation' : 'accompagnement';
                             var payBtn = document.getElementById('depositPayButton');
-                            var offerNameEl2 = document.getElementById('depositOfferName');
                             var amountInfo = document.getElementById('depositAmountInfo');
-                            var typeLabel2 = document.getElementById('depositOfferTypeLabel');
-
-                            if (offerNameEl2 && po.product_name) offerNameEl2.textContent = po.product_name;
                             if (amountInfo && po.deposit_amount) {
-                                amountInfo.innerHTML = '<i class="fas fa-shield-alt mr-1"></i> Acompte : <strong>' + po.deposit_amount.toFixed(2) + ' \u20ac</strong> \u2014 Paiement s\u00e9curis\u00e9 par SumUp.';
+                                amountInfo.innerHTML = '<i class="fas fa-shield-alt mr-1"></i> Acompte : <strong>' + po.deposit_amount.toFixed(2) + ' EUR</strong> - Paiement securise par SumUp.';
                             }
-                            if (typeLabel2) typeLabel2.textContent = po.product_type === 'prestation_individuelle' ? 'prestation' : 'accompagnement';
-
                             if (po.source === 'quote' && po.quote_id && payBtn) {
                                 try {
                                     var qResp = await fetchWithTimeout(API_BASE_URL + '/api/quotes/by-order/' + encodeURIComponent(po.id), {
@@ -636,455 +526,202 @@
                                         var quoteData = await qResp.json();
                                         if (quoteData && quoteData.acceptance_token) {
                                             payBtn.href = 'quote-accept.html?token=' + encodeURIComponent(quoteData.acceptance_token);
-                                            payBtn.innerHTML = '<i class="fas fa-credit-card mr-3"></i>Payer l\'acompte du devis (' + po.deposit_amount.toFixed(2) + ' \u20ac)';
                                         }
                                     }
-                                } catch (qErr) { dbg('Erreur devis: ' + qErr.message); }
-                            } else if (payBtn && po.deposit_amount) {
-                                payBtn.innerHTML = '<i class="fas fa-credit-card mr-3"></i>Payer l\'acompte (' + po.deposit_amount.toFixed(2) + ' \u20ac)';
+                                } catch (qErr) { console.error('[DASHBOARD] Quote error:', qErr.message); }
+                            }
+                            if (payBtn && po.deposit_amount) {
+                                payBtn.innerHTML = '<i class="fas fa-credit-card mr-3"></i>Payer l\'acompte (' + po.deposit_amount.toFixed(2) + ' EUR)';
                             }
                         }
                     }
-                    if (mainCont) mainCont.style.display = 'none';
                     return;
                 }
 
-                // ============================================================
-                // CAS 2 : COMMANDE PAYEE - DASHBOARD COMPLET
-                // ============================================================
-                dbg('Commande payee: ' + data.order.id + ' | Type: ' + data.order.product_type);
-                if (subtitleEl) subtitleEl.textContent = 'Votre espace client';
-
-                // Afficher le dashboard
+                // ============================
+                // CAS 2 : COMMANDE PAYEE
+                // ============================
                 if (depositSec) depositSec.style.display = 'none';
                 if (mainCont) mainCont.style.display = '';
 
-                var productType = data.order.product_type || 'accompagnement';
-
-                // Offre
-                var offreNameEl = document.getElementById('offreName');
-                var offreTypeEl = document.getElementById('offreType');
-                var offerDetails2 = null;
-                var oId = data.user.activeOfferId || data.order.product_id;
-                if (oId && typeof getOfferById === 'function') {
-                    try { offerDetails2 = getOfferById(oId); } catch (e) {}
-                }
-                if (offerDetails2) {
-                    if (offreNameEl) offreNameEl.textContent = offerDetails2.nom;
-                    if (offreTypeEl) offreTypeEl.textContent = offerDetails2.categorie || (productType === 'prestation_individuelle' ? 'Prestation individuelle' : 'Accompagnement');
-                } else if (data.order.product_name) {
-                    if (offreNameEl) offreNameEl.textContent = data.order.product_name;
-                    if (offreTypeEl) offreTypeEl.textContent = productType === 'prestation_individuelle' ? 'Prestation individuelle' : 'Accompagnement';
+                var sub = data.activeSubscription;
+                if (!sub) {
+                    showError('Erreur', 'Donnees de souscription manquantes.');
+                    return;
                 }
 
-                // Statut de paiement
-                try { displayPaymentStatus(data.user.email); } catch (payErr) {
-                    dbg('displayPaymentStatus error: ' + payErr.message);
-                    var paySection = document.getElementById('paymentStatusSection');
-                    if (paySection) {
-                        paySection.style.display = 'block';
-                        paySection.innerHTML = '<div class="p-8 neo-border" style="background: #51cf66; color: #000;"><div class="flex items-center gap-4"><i class="fas fa-check-circle text-4xl"></i><div><h3 class="text-2xl font-black italic uppercase">STATUT DE PAIEMENT</h3><p class="font-bold text-lg">Acompte pay\u00e9</p></div></div></div>';
-                    }
+                // Carte Offre
+                var offreLabelEl = document.getElementById('offreLabel');
+                if (offreLabelEl) offreLabelEl.textContent = sub.formula_label || '-';
+                var offreCatEl = document.getElementById('offreCategory');
+                if (offreCatEl) offreCatEl.textContent = sub.category || '-';
+
+                // Carte Paiement
+                var payStatusEl = document.getElementById('paymentStatus');
+                var payDetailEl = document.getElementById('paymentDetail');
+                if (sub.balance_paid) {
+                    if (payStatusEl) payStatusEl.textContent = 'Paye integralement';
+                    if (payDetailEl) payDetailEl.textContent = sub.total_amount + ' EUR';
+                } else if (sub.deposit_paid) {
+                    if (payStatusEl) payStatusEl.textContent = 'Acompte paye';
+                    if (payDetailEl) payDetailEl.textContent = 'Solde restant : ' + sub.remaining_due + ' EUR';
+                } else {
+                    if (payStatusEl) payStatusEl.textContent = 'En attente';
+                    if (payDetailEl) payDetailEl.textContent = '-';
                 }
 
-                // Calendrier de planification
-                showScheduleSection(data.order, productType);
+                // Prochaine etape
+                var nextEl = document.getElementById('nextStepLabel');
+                if (nextEl) nextEl.textContent = sub.next_step_label || '-';
 
-                // Actions rapides
-                renderQuickActions(productType);
-
-                // Progression
-                var curDay = data.progress ? data.progress.currentDay : 0;
-                var totDays = data.progress ? data.progress.totalDays : 0;
-                renderProgressCard(data.user, productType, curDay, totDays, data.order);
-                renderProgressBar(data.user, productType, curDay, totDays);
-
-                // Workflow prestation ou accompagnement
-                if (productType !== 'accompagnement') {
-                    try { renderDeliveryWorkflow(data.user); } catch (wfErr) { dbg('Workflow error: ' + wfErr.message); }
+                // Section payer solde
+                if (sub.deposit_paid && !sub.balance_paid && sub.remaining_due > 0) {
+                    var payBalSec = document.getElementById('payBalanceSection');
+                    if (payBalSec) payBalSec.style.display = '';
+                    var balAmtEl = document.getElementById('balanceAmount');
+                    if (balAmtEl) balAmtEl.textContent = sub.remaining_due + ' EUR a regler pour debloquer les telechargements';
                 }
 
-                dbg('Dashboard charge avec succes');
+                // Section demarrage / calendrier
+                renderStartDateSection(sub, data.order);
+
+                console.log('[DASHBOARD] Charge avec succes');
 
             } catch (err) {
-                // Erreur reseau, timeout, ou autre
-                dbg('ERREUR: ' + err.message);
+                console.error('[DASHBOARD] Erreur:', err.message);
                 if (err.message && err.message.indexOf('TIMEOUT') !== -1) {
-                    showError('Connexion impossible', 'Le serveur ne r\u00e9pond pas. V\u00e9rifiez votre connexion internet et r\u00e9essayez.', true);
+                    showError('Connexion impossible', 'Le serveur ne repond pas. Verifiez votre connexion et reessayez.');
                 } else if (err.message && (err.message.indexOf('Failed to fetch') !== -1 || err.message.indexOf('NetworkError') !== -1)) {
-                    showError('Connexion impossible', 'Impossible de joindre le serveur. V\u00e9rifiez votre connexion.', true);
+                    showError('Connexion impossible', 'Impossible de joindre le serveur.');
                 } else {
-                    showError('Erreur inattendue', err.message || 'Une erreur est survenue.', true);
+                    showError('Erreur inattendue', err.message || 'Une erreur est survenue.');
                 }
             } finally {
-                // REGLE ABSOLUE : toujours masquer le loader
                 setLoading(false);
-                dbg('finally: loader masque');
             }
-        }
-
-        // Lancer le chargement
-        loadDashboard();
-
-        // ============================================================
-        // FONCTIONS
-        // ============================================================
-
-        // Carte de progression
-        function renderProgressCard(user, productType, currentDay, totalDays, order) {
-            var card = document.getElementById('progressCard');
-            if (!card) return;
-
-            // Verifier si on est dans le flow de planification
-            var scheduleStatus = order ? (order.schedule_status || '') : '';
-
-            if (scheduleStatus === 'awaiting_client_choice') {
-                card.innerHTML = '<div class="text-sm font-black uppercase mb-2 opacity-70">Étape actuelle</div><div class="text-3xl font-black italic">Planification</div><div class="text-xs font-bold uppercase mt-1">Choisissez votre date de démarrage</div>';
-                return;
-            }
-            if (scheduleStatus === 'client_proposed') {
-                card.innerHTML = '<div class="text-sm font-black uppercase mb-2 opacity-70">Étape actuelle</div><div class="text-3xl font-black italic">Planification</div><div class="text-xs font-bold uppercase mt-1">En attente de confirmation</div>';
-                return;
-            }
-
-            if (productType === 'accompagnement') {
-                var day = currentDay || 0;
-                var total = totalDays || 0;
-                var daysRemaining = Math.max(0, total - day);
-
-                if (day > 0 && total > 0) {
-                    card.innerHTML = '<div class="text-sm font-black uppercase mb-2 opacity-70">Étape actuelle</div><div class="text-3xl font-black italic">Jour ' + day + '/' + total + '</div><div class="text-xs font-bold uppercase mt-1">' + daysRemaining + ' jour' + (daysRemaining > 1 ? 's' : '') + ' restant' + (daysRemaining > 1 ? 's' : '') + '</div>';
-                } else {
-                    card.innerHTML = '<div class="text-sm font-black uppercase mb-2 opacity-70">Étape actuelle</div><div class="text-3xl font-black italic">En attente</div><div class="text-xs font-bold uppercase mt-1">Démarrage après paiement</div>';
-                }
-            } else {
-                var deliveryStatus = typeof getDeliveryStatus === 'function' ? getDeliveryStatus(user.email) : 'confirmed';
-                var deliverySteps = typeof getDeliverySteps === 'function' ? getDeliverySteps('prestation_individuelle') : [];
-                var currentStep = deliverySteps.find(function(s) { return s.id === deliveryStatus; });
-                var stepIndex = typeof getDeliveryStepIndex === 'function' ? getDeliveryStepIndex(user.email) : 0;
-
-                card.innerHTML = '<div class="text-sm font-black uppercase mb-2 opacity-70">Statut de livraison</div><div class="text-3xl font-black italic">' + (currentStep ? currentStep.label : 'En cours') + '</div><div class="text-xs font-bold uppercase mt-1">Étape ' + (stepIndex + 1) + '/4</div>';
-            }
-        }
-
-        // Actions rapides
-        function renderQuickActions(productType) {
-            var container = document.getElementById('quickActionsContainer');
-            if (!container) return;
-
-            if (productType === 'accompagnement') {
-                container.innerHTML = '<a href="livrables.html" class="neo-btn-white p-8 block text-center"><i class="fas fa-file-download text-4xl mb-4"></i><div class="text-xl font-black italic uppercase">Mes livrables</div><div class="text-sm font-bold mt-2 opacity-70">Téléchargez vos documents</div></a><a href="seances.html" class="neo-btn-white p-8 block text-center"><i class="fas fa-calendar-alt text-4xl mb-4"></i><div class="text-xl font-black italic uppercase">Mes séances</div><div class="text-sm font-bold mt-2 opacity-70">Consultez votre planning</div></a><a href="mon-compte.html" class="neo-btn-white p-8 block text-center"><i class="fas fa-user-circle text-4xl mb-4"></i><div class="text-xl font-black italic uppercase">Mon compte</div><div class="text-sm font-bold mt-2 opacity-70">Gérez vos informations</div></a><a href="contact.html" class="neo-btn-white p-8 block text-center"><i class="fas fa-envelope text-4xl mb-4"></i><div class="text-xl font-black italic uppercase">Contact</div><div class="text-sm font-bold mt-2 opacity-70">Contactez notre équipe</div></a>';
-            } else {
-                container.innerHTML = '<a href="#deliveryWorkflowSection" class="neo-btn-white p-8 block text-center"><i class="fas fa-receipt text-4xl mb-4"></i><div class="text-xl font-black italic uppercase">Voir ma commande</div><div class="text-sm font-bold mt-2 opacity-70">Détails de votre prestation</div></a><a href="#deliveryWorkflowSection" class="neo-btn-white p-8 block text-center"><i class="fas fa-tasks text-4xl mb-4"></i><div class="text-xl font-black italic uppercase">Suivre l\'avancement</div><div class="text-sm font-bold mt-2 opacity-70">Où en est votre projet</div></a><a href="livrables.html" class="neo-btn-white p-8 block text-center"><i class="fas fa-download text-4xl mb-4"></i><div class="text-xl font-black italic uppercase">Mes livrables</div><div class="text-sm font-bold mt-2 opacity-70">Téléchargez vos fichiers</div></a><a href="mon-compte.html" class="neo-btn-white p-8 block text-center"><i class="fas fa-user-circle text-4xl mb-4"></i><div class="text-xl font-black italic uppercase">Mon compte</div><div class="text-sm font-bold mt-2 opacity-70">Gérez vos informations</div></a>';
-            }
-        }
-
-        // Barre de progression
-        function renderProgressBar(user, productType, currentDay, totalDays) {
-            var progress = 0;
-            var progressMessage = '';
-
-            if (productType === 'accompagnement') {
-                if (currentDay > 0 && totalDays > 0) {
-                    progress = Math.round((currentDay / totalDays) * 100);
-                }
-
-                if (progress === 0) {
-                    progressMessage = 'Votre accompagnement n\'a pas encore démarré.';
-                } else if (progress < 25) {
-                    progressMessage = 'Vous venez de commencer, continuez sur cette lancée !';
-                } else if (progress < 50) {
-                    progressMessage = 'Excellent début ! Vous êtes sur la bonne voie.';
-                } else if (progress < 75) {
-                    progressMessage = 'Vous avez déjà parcouru plus de la moitié du chemin !';
-                } else if (progress < 100) {
-                    progressMessage = 'Bravo ! Vous approchez de la fin de votre parcours.';
-                } else {
-                    progressMessage = 'Félicitations ! Votre accompagnement est terminé.';
-                }
-            } else {
-                var stepIndex = typeof getDeliveryStepIndex === 'function' ? getDeliveryStepIndex(user.email) : 0;
-                progress = Math.round(((stepIndex + 1) / 4) * 100);
-
-                if (progress === 25) {
-                    progressMessage = 'Votre commande est confirmée ! Nous commençons bientôt.';
-                } else if (progress === 50) {
-                    progressMessage = 'Notre équipe travaille sur votre prestation.';
-                } else if (progress === 75) {
-                    progressMessage = 'Votre prestation est prête ! Consultez vos livrables.';
-                } else if (progress === 100) {
-                    progressMessage = 'Prestation livrée ! Téléchargez vos fichiers.';
-                }
-            }
-
-            var el;
-            el = document.getElementById('progressPercent');
-            if (el) el.textContent = progress + '%';
-            el = document.getElementById('progressBar');
-            if (el) el.style.width = progress + '%';
-            el = document.getElementById('progressBarText');
-            if (el) el.textContent = progress + '%';
-            el = document.getElementById('progressMessage');
-            if (el) el.textContent = progressMessage;
-        }
-
-        // Workflow de livraison
-        function renderDeliveryWorkflow(user) {
-            var section = document.getElementById('deliveryWorkflowSection');
-            var container = document.getElementById('deliveryStepsContainer');
-            if (!section || !container) return;
-
-            section.style.display = 'block';
-
-            var currentStatus = typeof getDeliveryStatus === 'function' ? getDeliveryStatus(user.email) : 'confirmed';
-            var steps = typeof getDeliverySteps === 'function' ? getDeliverySteps('prestation_individuelle') : [];
-            if (!steps || steps.length === 0) return;
-
-            var currentStepIndex = steps.findIndex(function(s) { return s.id === currentStatus; });
-
-            container.innerHTML = steps.map(function(step, index) {
-                var isActive = step.id === currentStatus;
-                var isPast = currentStepIndex > index;
-                var isFuture = !isActive && !isPast;
-
-                var statusClass = isActive ? 'bg-[var(--genesis-yellow)] text-black border-black' :
-                                   isPast ? 'bg-green-500 text-white border-black' :
-                                   'bg-gray-300 text-gray-600 border-gray-600';
-
-                var cardClass = isActive ? 'neo-shadow' : '';
-                var opacityClass = isFuture ? 'opacity-50' : '';
-
-                return '<div class="flex items-start gap-6 ' + opacityClass + '"><div class="' + statusClass + ' w-16 h-16 rounded-full flex items-center justify-center text-2xl font-black border-4 flex-shrink-0">' + (isPast ? '<i class="fas fa-check"></i>' : (index + 1)) + '</div><div class="flex-1 bg-white text-black p-6 border-4 border-black ' + cardClass + '"><h3 class="text-xl font-black uppercase mb-2">' + step.label + (isActive ? ' <span class="ml-2 text-[var(--genesis-yellow)]">EN COURS</span>' : '') + '</h3><p class="font-bold">' + step.description + '</p></div></div>';
-            }).join('');
-        }
-
-        // Statut de paiement
-        function displayPaymentStatus(email) {
-            var summary = null;
-
-            if (typeof getPaymentSummary === 'function') {
-                summary = getPaymentSummary(email);
-            }
-
-            var section = document.getElementById('paymentStatusSection');
-            if (!section) return;
-
-            section.style.display = 'block';
-
-            if (!summary) {
-                section.innerHTML = '<div class="p-8 neo-border" style="background: #ff6b6b; color: #000;"><div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-6"><div class="flex-1"><div class="flex items-center gap-4 mb-4"><i class="fas fa-exclamation-circle text-4xl"></i><div><h3 class="text-2xl font-black italic uppercase">STATUT DE PAIEMENT</h3><p class="font-bold text-lg">Compte créé - En attente de paiement</p></div></div><p class="font-bold text-base mb-4">Un acompte de 30% est requis pour démarrer l\'accompagnement.</p></div><a href="payment.html" class="bg-black text-white px-8 py-4 border-4 border-black font-black uppercase text-sm hover:opacity-80 transition whitespace-nowrap">Payer l\'acompte (30%) <i class="fas fa-arrow-right ml-2"></i></a></div></div>';
-                return;
-            }
-
-            var statusConfig = {
-                'registered': { bg: '#ff6b6b', icon: 'fa-exclamation-circle', btnText: 'Payer l\'acompte (30%)', showBtn: true },
-                'deposit_paid': { bg: '#51cf66', icon: 'fa-check-circle', btnText: '', showBtn: false },
-                'delivery_pending_payment': { bg: '#ffd43b', icon: 'fa-clock', btnText: 'Payer le solde (70%)', showBtn: true },
-                'fully_paid': { bg: '#4dabf7', icon: 'fa-star', btnText: '', showBtn: false }
-            };
-
-            var config = statusConfig[summary.status] || statusConfig['registered'];
-
-            var html = '<div class="p-8 neo-border" style="background: ' + config.bg + '; color: #000;"><div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-6"><div class="flex-1"><div class="flex items-center gap-4 mb-4"><i class="fas ' + config.icon + ' text-4xl"></i><div><h3 class="text-2xl font-black italic uppercase">STATUT DE PAIEMENT</h3><p class="font-bold text-lg">' + summary.statusLabel + '</p></div></div><p class="font-bold text-base mb-4">' + summary.accessRights.message + '</p>';
-
-            if (summary.activeOffer && summary.activeOffer.prixTotal > 0) {
-                html += '<div class="grid md:grid-cols-3 gap-4 mt-4 p-4 bg-black/10 border-4 border-black"><div><p class="text-xs font-bold opacity-70 uppercase">Offre</p><p class="font-black">' + summary.activeOffer.nom + '</p></div><div><p class="text-xs font-bold opacity-70 uppercase">Total payé</p><p class="font-black text-xl">' + summary.totalPaid + '\u20ac</p></div><div><p class="text-xs font-bold opacity-70 uppercase">Prix total</p><p class="font-black text-xl">' + summary.activeOffer.prixTotal + '\u20ac</p></div></div>';
-            }
-
-            html += '</div>';
-
-            if (config.showBtn) {
-                html += '<a href="payment.html" class="bg-black text-white px-8 py-4 border-4 border-black font-black uppercase text-sm hover:opacity-80 transition whitespace-nowrap">' + config.btnText + ' <i class="fas fa-arrow-right ml-2"></i></a>';
-            }
-
-            html += '</div></div>';
-            section.innerHTML = html;
         }
 
         // ============================================================
         // PLANIFICATION DATE DE DEMARRAGE
         // ============================================================
-
-        // Variable globale pour stocker l'orderId actif (utilisee par submitStartDate)
         var _scheduleOrderId = null;
 
-        function formatDateFr(dateStr) {
-            try {
-                var jours = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
-                var mois = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
-                var d = new Date(dateStr + 'T00:00:00');
-                if (isNaN(d.getTime())) return dateStr;
-                return jours[d.getDay()] + ' ' + d.getDate() + ' ' + mois[d.getMonth()] + ' ' + d.getFullYear();
-            } catch (e) {
-                return dateStr;
-            }
-        }
-
-        function showScheduleSection(order, productType) {
-            var section = document.getElementById('scheduleStartSection');
+        function renderStartDateSection(sub, order) {
+            var section = document.getElementById('startDateSection');
             if (!section) return;
 
-            var status = order.schedule_status || '';
-            var startDate = order.start_date;
+            var schedStatus = sub.schedule_status || '';
+            var startDate = sub.startDate;
+            var ordObj = order || {};
 
-            // Si start_date existe deja et schedule confirmee, pas besoin du calendrier
-            if (startDate && status === 'confirmed') {
-                section.style.display = 'block';
-                var formBlock = document.getElementById('scheduleFormBlock');
-                var pendingBlock = document.getElementById('schedulePendingBlock');
-                var confirmedBlock = document.getElementById('scheduleConfirmedBlock');
-                if (formBlock) formBlock.style.display = 'none';
-                if (pendingBlock) pendingBlock.style.display = 'none';
-                if (confirmedBlock) confirmedBlock.style.display = 'block';
-
-                var confirmedDisplay = document.getElementById('confirmedDateDisplay');
-                if (confirmedDisplay) confirmedDisplay.textContent = formatDateFr(startDate);
-
-                var msg = document.getElementById('scheduleConfirmedMsg');
-                if (msg) {
-                    msg.textContent = productType === 'prestation_individuelle'
-                        ? 'Votre prestation est planifiée !'
-                        : 'Votre parcours est planifié !';
-                }
+            // Si date deja fixee sans processus de planification
+            if (startDate && !schedStatus) {
+                section.style.display = '';
+                hideAllScheduleBlocks();
+                var fixedBlock = document.getElementById('startDateFixedBlock');
+                if (fixedBlock) fixedBlock.style.display = '';
+                var fixedDisplay = document.getElementById('fixedDateDisplay');
+                if (fixedDisplay) fixedDisplay.textContent = formatDateFr(startDate);
                 return;
             }
 
-            // Si start_date existe deja sans schedule_status (ancienne commande), ne pas afficher
-            if (startDate && !status) return;
-
-            // Si pas de schedule_status du tout et pas de start_date, ne pas afficher
-            if (!status && !startDate) return;
-
-            // Stocker l'orderId pour submitStartDate
-            _scheduleOrderId = order.id;
-
-            section.style.display = 'block';
-
-            // Adapter titre selon type
-            var title = document.getElementById('scheduleTitle');
-            var subtitle = document.getElementById('scheduleSubtitle');
-            if (productType === 'prestation_individuelle') {
-                if (title) title.textContent = 'Planifiez votre prestation';
-                if (subtitle) subtitle.textContent = 'Choisissez la date de votre prestation';
-            } else {
-                if (title) title.textContent = 'Planifiez votre démarrage';
-                if (subtitle) subtitle.textContent = 'Choisissez la date de début de votre accompagnement';
+            // Date confirmee par planification
+            if (startDate && schedStatus === 'confirmed') {
+                section.style.display = '';
+                hideAllScheduleBlocks();
+                var confirmedBlock = document.getElementById('scheduleConfirmedBlock');
+                if (confirmedBlock) confirmedBlock.style.display = '';
+                var confirmedDisplay = document.getElementById('confirmedDateDisplay');
+                if (confirmedDisplay) confirmedDisplay.textContent = formatDateFr(startDate);
+                var msg = document.getElementById('scheduleConfirmedMsg');
+                if (msg) msg.textContent = sub.product_type === 'prestation_individuelle' ? 'Votre prestation est planifiee !' : 'Votre parcours est planifie !';
+                return;
             }
 
-            var formBlock = document.getElementById('scheduleFormBlock');
-            var pendingBlock = document.getElementById('schedulePendingBlock');
-            var confirmedBlock = document.getElementById('scheduleConfirmedBlock');
+            // Pas encore de date et acompte paye -> proposer calendrier
+            if (!startDate && sub.deposit_paid) {
+                _scheduleOrderId = ordObj.id || (sub.order_id || null);
+                section.style.display = '';
 
-            if (status === 'awaiting_client_choice') {
-                // Afficher le formulaire de choix de date
-                if (formBlock) formBlock.style.display = 'block';
-                if (pendingBlock) pendingBlock.style.display = 'none';
-                if (confirmedBlock) confirmedBlock.style.display = 'none';
-
-                // Mettre le min du date picker a demain
-                var picker = document.getElementById('startDatePicker');
-                if (picker) {
-                    var tomorrow = new Date();
-                    tomorrow.setDate(tomorrow.getDate() + 1);
-                    var y = tomorrow.getFullYear();
-                    var m = (tomorrow.getMonth() + 1).toString();
-                    if (m.length < 2) m = '0' + m;
-                    var dd = tomorrow.getDate().toString();
-                    if (dd.length < 2) dd = '0' + dd;
-                    picker.min = y + '-' + m + '-' + dd;
+                var title = document.getElementById('scheduleTitle');
+                var subtitle = document.getElementById('scheduleSubtitle');
+                if (sub.product_type === 'prestation_individuelle') {
+                    if (title) title.textContent = 'Planifiez votre prestation';
+                    if (subtitle) subtitle.textContent = 'Choisissez la date de votre prestation';
                 }
 
-            } else if (status === 'client_proposed') {
-                // Date proposee, en attente de confirmation
-                if (formBlock) formBlock.style.display = 'none';
-                if (pendingBlock) pendingBlock.style.display = 'block';
-                if (confirmedBlock) confirmedBlock.style.display = 'none';
+                hideAllScheduleBlocks();
 
-                var proposedDisplay = document.getElementById('proposedDateDisplay');
-                if (proposedDisplay && order.proposed_start_date) {
-                    proposedDisplay.textContent = formatDateFr(order.proposed_start_date);
+                if (schedStatus === 'client_proposed') {
+                    var pendingBlock = document.getElementById('schedulePendingBlock');
+                    if (pendingBlock) pendingBlock.style.display = '';
+                    var proposedDisp = document.getElementById('proposedDateDisplay');
+                    if (proposedDisp) proposedDisp.textContent = formatDateFr(sub.proposed_start_date);
+                } else {
+                    // awaiting_client_choice ou pas de status
+                    var formBlock = document.getElementById('scheduleFormBlock');
+                    if (formBlock) formBlock.style.display = '';
+                    var picker = document.getElementById('startDatePicker');
+                    if (picker) {
+                        var tomorrow = new Date();
+                        tomorrow.setDate(tomorrow.getDate() + 1);
+                        var y = tomorrow.getFullYear();
+                        var m = String(tomorrow.getMonth() + 1);
+                        if (m.length < 2) m = '0' + m;
+                        var dd = String(tomorrow.getDate());
+                        if (dd.length < 2) dd = '0' + dd;
+                        picker.min = y + '-' + m + '-' + dd;
+                    }
                 }
+                return;
+            }
+        }
 
-            } else if (status === 'confirmed') {
-                // Deja gere plus haut, mais au cas ou
-                if (formBlock) formBlock.style.display = 'none';
-                if (pendingBlock) pendingBlock.style.display = 'none';
-                if (confirmedBlock) confirmedBlock.style.display = 'block';
-
-                var confirmedDisplay2 = document.getElementById('confirmedDateDisplay');
-                if (confirmedDisplay2 && order.start_date) {
-                    confirmedDisplay2.textContent = formatDateFr(order.start_date);
-                }
+        function hideAllScheduleBlocks() {
+            var ids = ['scheduleFormBlock', 'schedulePendingBlock', 'scheduleConfirmedBlock', 'startDateFixedBlock'];
+            for (var i = 0; i < ids.length; i++) {
+                var el = document.getElementById(ids[i]);
+                if (el) el.style.display = 'none';
             }
         }
 
         async function submitStartDate() {
             var picker = document.getElementById('startDatePicker');
             var btn = document.getElementById('submitStartDateBtn');
-            if (!picker || !picker.value) {
-                alert('Veuillez sélectionner une date.');
-                return;
-            }
+            if (!picker || !picker.value) { alert('Veuillez selectionner une date.'); return; }
+            if (!_scheduleOrderId) { alert('Erreur : commande introuvable. Rechargez la page.'); return; }
 
-            if (!_scheduleOrderId) {
-                alert('Erreur : commande introuvable. Rechargez la page.');
-                return;
-            }
-
-            // Desactiver le bouton pendant l'envoi
-            if (btn) {
-                btn.disabled = true;
-                btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Envoi en cours...';
-            }
+            if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Envoi...'; }
 
             try {
                 var token = localStorage.getItem('fa_genesis_token');
                 var resp = await fetch(API_BASE_URL + '/api/orders/' + _scheduleOrderId + '/schedule-start', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': token ? ('Bearer ' + token) : ''
-                    },
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (token || '') },
                     body: JSON.stringify({ proposed_date: picker.value })
                 });
-
-                var data = await resp.json();
-
-                if (resp.ok && data.success) {
-                    // Basculer vers le bloc "en attente"
-                    var formBlock = document.getElementById('scheduleFormBlock');
+                var rData = await resp.json();
+                if (resp.ok && rData.success) {
+                    hideAllScheduleBlocks();
                     var pendingBlock = document.getElementById('schedulePendingBlock');
-                    if (formBlock) formBlock.style.display = 'none';
-                    if (pendingBlock) pendingBlock.style.display = 'block';
-
-                    var proposedDisplay = document.getElementById('proposedDateDisplay');
-                    if (proposedDisplay) proposedDisplay.textContent = formatDateFr(picker.value);
-
-                    // Mettre a jour la carte progression
-                    var card = document.getElementById('progressCard');
-                    if (card) {
-                        card.innerHTML = '<div class="text-sm font-black uppercase mb-2 opacity-70">Étape actuelle</div><div class="text-3xl font-black italic">Planification</div><div class="text-xs font-bold uppercase mt-1">En attente de confirmation</div>';
-                    }
+                    if (pendingBlock) pendingBlock.style.display = '';
+                    var proposedDisp = document.getElementById('proposedDateDisplay');
+                    if (proposedDisp) proposedDisp.textContent = formatDateFr(picker.value);
+                    var nextEl = document.getElementById('nextStepLabel');
+                    if (nextEl) nextEl.textContent = 'En attente de confirmation de la date';
                 } else {
-                    alert('Erreur : ' + (data.error || 'Impossible de soumettre la date.'));
-                    if (btn) {
-                        btn.disabled = false;
-                        btn.innerHTML = '<i class="fas fa-check mr-2"></i>CONFIRMER MA DATE';
-                    }
+                    alert('Erreur : ' + (rData.error || 'Impossible de soumettre la date.'));
+                    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-check mr-2"></i>CONFIRMER MA DATE'; }
                 }
             } catch (err) {
-                alert('Erreur réseau : ' + err.message);
-                if (btn) {
-                    btn.disabled = false;
-                    btn.innerHTML = '<i class="fas fa-check mr-2"></i>CONFIRMER MA DATE';
-                }
+                alert('Erreur reseau : ' + err.message);
+                if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-check mr-2"></i>CONFIRMER MA DATE'; }
             }
         }
 
         // ============================================================
         // MENU MOBILE
         // ============================================================
-
         var mobileMenuBtn = document.getElementById('mobileMenuBtn');
         var mobileMenu = document.getElementById('mobileMenu');
         var menuLine1 = document.getElementById('menuLine1');
@@ -1101,127 +738,22 @@
                 menuLine2.style.opacity = '0';
                 menuLine3.style.transform = 'rotate(-45deg) translate(5px, -5px)';
                 document.body.style.overflow = 'hidden';
-            } else {
-                closeMobileMenu();
-            }
+            } else { closeMobileMenu(); }
         }
 
         function closeMobileMenu() {
             isMenuOpen = false;
-            if (mobileMenu) {
-                mobileMenu.classList.add('hidden');
-                mobileMenu.classList.remove('flex');
-            }
+            if (mobileMenu) { mobileMenu.classList.add('hidden'); mobileMenu.classList.remove('flex'); }
             if (menuLine1) menuLine1.style.transform = 'none';
             if (menuLine2) menuLine2.style.opacity = '1';
             if (menuLine3) menuLine3.style.transform = 'none';
             document.body.style.overflow = 'auto';
         }
 
-        if (mobileMenuBtn) {
-            mobileMenuBtn.addEventListener('click', toggleMobileMenu);
-        }
+        if (mobileMenuBtn) mobileMenuBtn.addEventListener('click', toggleMobileMenu);
 
-        console.log('[DASHBOARD] v3 - Initialisation terminee');
-
-        // ============================================================
-        // TIMELINE PROJET IA
-        // ============================================================
-        (async function loadProjectTimeline() {
-            try {
-                // Recuperer l'orderId de la commande active
-                var orderId = null;
-                try {
-                    var userData = JSON.parse(localStorage.getItem('fa_genesis_session') || '{}');
-                    if (userData.activeOrderId) {
-                        orderId = userData.activeOrderId;
-                    } else if (userData.email) {
-                        var authTk = localStorage.getItem('fa_genesis_token');
-                        var ordersResp = await fetch(API_BASE_URL + '/api/client/orders?email=' + encodeURIComponent(userData.email), {
-                            headers: authTk ? { 'Authorization': 'Bearer ' + authTk } : {}
-                        });
-                        if (ordersResp.ok) {
-                            var ordersData = await ordersResp.json();
-                            var orders = ordersData.orders || ordersData;
-                            if (orders && orders.length > 0) {
-                                orderId = orders[0].id || orders[0].order_id;
-                            }
-                        }
-                    }
-                } catch (e) {}
-
-                if (!orderId) return;
-
-                // Chercher le projet par commande
-                var authTk = localStorage.getItem('fa_genesis_token');
-                var projResp = await fetch(API_BASE_URL + '/api/projects/by-order/' + orderId, {
-                    headers: authTk ? { 'Authorization': 'Bearer ' + authTk } : {}
-                });
-                if (!projResp.ok) return; // Pas de projet = pas de timeline
-
-                var projData = await projResp.json();
-                if (!projData.success || !projData.project) return;
-                var project = projData.project;
-
-                // Charger la timeline
-                var timeResp = await fetch(API_BASE_URL + '/api/projects/' + project.id + '/timeline', {
-                    headers: authTk ? { 'Authorization': 'Bearer ' + authTk } : {}
-                });
-                if (!timeResp.ok) return;
-                var timeData = await timeResp.json();
-                var timeline = timeData.timeline || [];
-                if (timeline.length === 0) return;
-
-                // Afficher la section
-                var section = document.getElementById('projectTimelineSection');
-                if (section) section.style.display = 'block';
-
-                var container = document.getElementById('projectTimelineContent');
-                if (!container) return;
-
-                var html = '<div class="space-y-4">';
-                for (var t = 0; t < timeline.length; t++) {
-                    var entry = timeline[t];
-                    var step = entry.step || {};
-                    var stepStatus = entry.status || 'pending';
-                    var bgClass = '';
-                    var icon = '';
-                    if (stepStatus === 'completed') {
-                        bgClass = 'bg-green-500 bg-opacity-20 border-green-400';
-                        icon = '<i class="fas fa-check-circle text-green-400 text-2xl"></i>';
-                    } else if (stepStatus === 'in_progress') {
-                        bgClass = 'bg-yellow-500 bg-opacity-20 border-[var(--genesis-yellow)]';
-                        icon = '<i class="fas fa-spinner fa-spin text-[var(--genesis-yellow)] text-2xl"></i>';
-                    } else {
-                        bgClass = 'bg-white bg-opacity-5 border-white border-opacity-20';
-                        icon = '<i class="fas fa-circle text-gray-500 text-2xl"></i>';
-                    }
-
-                    html += '<div class="p-4 border-2 ' + bgClass + ' flex items-start gap-4">';
-                    html += '<div class="flex-shrink-0 mt-1">' + icon + '</div>';
-                    html += '<div class="flex-1">';
-                    html += '<div class="font-bold text-white">Jour ' + (step.day_number || '?') + ' - ' + (step.step_name || '') + '</div>';
-
-                    // Livrables publies
-                    if (entry.deliverables && entry.deliverables.length > 0) {
-                        html += '<div class="mt-2 space-y-1">';
-                        for (var dl = 0; dl < entry.deliverables.length; dl++) {
-                            var liv = entry.deliverables[dl];
-                            var dlIcon = liv.download_url ? '<i class="fas fa-download mr-1"></i>' : '<i class="fas fa-file-alt mr-1"></i>';
-                            html += '<div class="text-sm text-white opacity-80">' + dlIcon + (liv.name || '') + '</div>';
-                        }
-                        html += '</div>';
-                    }
-
-                    html += '</div></div>';
-                }
-                html += '</div>';
-                container.innerHTML = html;
-
-            } catch (e) {
-                console.error('[DASHBOARD] Erreur timeline:', e);
-            }
-        })();
+        // Lancer le chargement
+        loadDashboard();
     </script>
     <div id="site-footer"></div>
     <script src="footer.js" defer></script>

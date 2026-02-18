@@ -353,6 +353,57 @@ function parseDurationToDays(duration) {
     return num;
 }
 
+// ============================================================
+// HELPER - ACTIVE SUBSCRIPTION (source de verite unique)
+// ============================================================
+
+/**
+ * Construit l'objet activeSubscription a partir d'un user et de sa commande payee.
+ * Utilise par /api/dashboard et /api/auth/me.
+ */
+function buildActiveSubscription(user, order) {
+    if (!order) return null;
+    var product = getProductById(order.product_id);
+    var categoryMap = {
+        'etudiant': 'ETUDIANTS',
+        'particulier': 'PARTICULIERS',
+        'entreprise': 'ENTREPRISES'
+    };
+    var catKey = (order.product_id || '').split('-')[0];
+    var category = categoryMap[catKey] || (order.product_type === 'prestation_individuelle' ? 'TARIF_INDIVIDUEL' : 'DEVIS');
+    var formulaLabel = product ? product.name : (order.product_name || 'Offre personnalisee');
+    var durationDays = order.duration_days || (product ? product.duration_days : null) || null;
+
+    return {
+        product_type: order.product_type || 'accompagnement',
+        category: category,
+        formula_key: order.product_id || '',
+        formula_label: formulaLabel,
+        startDate: order.start_date || null,
+        durationDays: durationDays,
+        deposit_paid: order.deposit_paid === true,
+        balance_paid: order.balance_paid === true,
+        remaining_due: order.balance_paid ? 0 : (order.balance_amount || 0),
+        total_amount: order.total_amount || 0,
+        deposit_amount: order.deposit_amount || 0,
+        status: order.status || 'registered',
+        schedule_status: order.schedule_status || null,
+        proposed_start_date: order.proposed_start_date || null,
+        order_id: order.id || null,
+        next_step_label: computeNextStep(order)
+    };
+}
+
+function computeNextStep(order) {
+    if (!order) return '';
+    if (!order.deposit_paid) return 'Payer l\'acompte pour activer votre espace';
+    if (!order.start_date && order.schedule_status !== 'confirmed')
+        return 'Choisir votre date de demarrage';
+    if (!order.balance_paid)
+        return 'Payer le solde pour debloquer les telechargements';
+    return 'Votre accompagnement est en cours';
+}
+
 /**
  * Calcule le jour courant d'un accompagnement
  * @param {Object} order - La commande
@@ -531,10 +582,12 @@ app.get('/api/dashboard', (req, res) => {
                     email: user.email,
                     prenom: user.prenom || '',
                     nom: user.nom || '',
+                    telephone: user.telephone || '',
                     paymentStatus: user.paymentStatus || 'registered',
                     activeOfferId: user.activeOfferId || user.offre || null,
                     productType: user.productType || null
                 },
+                activeSubscription: pendingOrder ? buildActiveSubscription(user, pendingOrder) : null,
                 pendingOrder: pendingOrder ? {
                     id: pendingOrder.id,
                     product_name: pendingOrder.product_name || '',
@@ -544,8 +597,6 @@ app.get('/api/dashboard', (req, res) => {
                     source: pendingOrder.source || '',
                     quote_id: pendingOrder.quote_id || null
                 } : null,
-                project: null,
-                timeline: [],
                 deliverables: [],
                 sessions: []
             });
@@ -575,6 +626,8 @@ app.get('/api/dashboard', (req, res) => {
         });
 
         // 7. Reponse complete
+        var subscription = buildActiveSubscription(user, paidOrder);
+
         res.json({
             ok: true,
             status: 'ACTIVE',
@@ -582,10 +635,12 @@ app.get('/api/dashboard', (req, res) => {
                 email: user.email,
                 prenom: user.prenom || '',
                 nom: user.nom || '',
+                telephone: user.telephone || '',
                 paymentStatus: paidOrder.balance_paid ? 'fully_paid' : 'deposit_paid',
                 activeOfferId: user.activeOfferId || user.offre || paidOrder.product_id || null,
                 productType: paidOrder.product_type || user.productType || 'accompagnement'
             },
+            activeSubscription: subscription,
             order: {
                 id: paidOrder.id,
                 product_name: paidOrder.product_name || '',
@@ -595,17 +650,16 @@ app.get('/api/dashboard', (req, res) => {
                 balance_paid: paidOrder.balance_paid || false,
                 deposit_amount: paidOrder.deposit_amount || 0,
                 total_amount: paidOrder.total_amount || 0,
+                balance_amount: paidOrder.balance_amount || 0,
                 start_date: paidOrder.start_date || null,
                 schedule_status: paidOrder.schedule_status || null,
                 proposed_start_date: paidOrder.proposed_start_date || null,
                 status: paidOrder.status || 'active'
             },
-            progress: {
-                currentDay: dayInfo.currentDay,
-                totalDays: dayInfo.totalDays,
-                isComplete: dayInfo.isComplete
+            access: {
+                can_view_livrables: true,
+                can_download: paidOrder.balance_paid === true
             },
-            access: accessRights,
             project: project,
             deliverables: deliverables,
             sessions: sessions
@@ -2757,15 +2811,159 @@ app.get('/api/auth/me', (req, res) => {
         // Retourner l'utilisateur (sans le mot de passe)
         const userResponse = { ...user };
         delete userResponse.password;
+        delete userResponse.sessionToken;
+
+        // Construire activeSubscription depuis la commande payee
+        var meSubscription = null;
+        if (paidOrder) {
+            meSubscription = buildActiveSubscription(user, paidOrder);
+        } else {
+            // Chercher une commande en attente
+            var pendingOrd = userOrders.find(function(o) { return !o.deposit_paid; });
+            if (pendingOrd) {
+                meSubscription = buildActiveSubscription(user, pendingOrd);
+            }
+        }
 
         res.json({
             success: true,
-            user: userResponse
+            user: userResponse,
+            activeSubscription: meSubscription
         });
 
     } catch (error) {
         console.error('Erreur verification session:', error);
         res.status(500).json({ error: 'Erreur lors de la verification' });
+    }
+});
+
+/**
+ * PATCH /api/me
+ * Mettre a jour les infos personnelles (prenom, nom, telephone)
+ */
+app.patch('/api/me', (req, res) => {
+    try {
+        var authHeader = req.headers.authorization || '';
+        var token = '';
+        if (authHeader.toLowerCase().startsWith('bearer ')) {
+            token = authHeader.slice(7).trim();
+        } else if (authHeader.trim()) {
+            token = authHeader.trim();
+        }
+        if (!token) {
+            return res.status(401).json({ success: false, error: 'Token manquant' });
+        }
+
+        var users = loadUsers();
+        var userIdx = -1;
+        for (var i = 0; i < users.length; i++) {
+            if (users[i].sessionToken === token) { userIdx = i; break; }
+        }
+        if (userIdx === -1) {
+            return res.status(401).json({ success: false, error: 'Session invalide' });
+        }
+
+        var body = req.body || {};
+        if (body.prenom && typeof body.prenom === 'string' && body.prenom.trim()) {
+            users[userIdx].prenom = body.prenom.trim();
+        }
+        if (body.nom && typeof body.nom === 'string' && body.nom.trim()) {
+            users[userIdx].nom = body.nom.trim();
+        }
+        if (typeof body.telephone === 'string') {
+            users[userIdx].telephone = body.telephone.trim();
+        }
+
+        users[userIdx].updatedAt = new Date().toISOString();
+        saveUsers(users);
+
+        var userResp = Object.assign({}, users[userIdx]);
+        delete userResp.password;
+        delete userResp.sessionToken;
+
+        res.json({ success: true, user: userResp });
+    } catch (err) {
+        console.error('[PATCH /api/me] Erreur:', err.message);
+        res.status(500).json({ success: false, error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * GET /api/deliverables/mine
+ * Recuperer les livrables du client connecte
+ */
+app.get('/api/deliverables/mine', (req, res) => {
+    try {
+        var authHeader = req.headers.authorization || '';
+        var token = '';
+        if (authHeader.toLowerCase().startsWith('bearer ')) {
+            token = authHeader.slice(7).trim();
+        } else if (authHeader.trim()) {
+            token = authHeader.trim();
+        }
+        if (!token) {
+            return res.status(401).json({ ok: false, error: 'Token manquant' });
+        }
+
+        var users = loadUsers();
+        var user = users.find(function(u) { return u.sessionToken === token; });
+        if (!user) {
+            return res.status(401).json({ ok: false, error: 'Session invalide' });
+        }
+
+        // Trouver la commande payee
+        var orders = loadOrders();
+        var paidOrder = null;
+        for (var i = 0; i < orders.length; i++) {
+            if (orders[i].client_info && orders[i].client_info.email &&
+                orders[i].client_info.email.toLowerCase() === user.email.toLowerCase() &&
+                orders[i].deposit_paid === true) {
+                paidOrder = orders[i];
+                break;
+            }
+        }
+
+        if (!paidOrder) {
+            return res.json({ ok: true, deliverables: [], can_download: false, order_id: null,
+                message: 'Aucune commande payee' });
+        }
+
+        // Recuperer les livrables
+        var allLivrables = loadLivrables();
+        var myLivrables = allLivrables.filter(function(l) {
+            var matchOrder = (l.orderId === paidOrder.id || l.order_id === paidOrder.id);
+            if (!matchOrder) return false;
+            // Filtrer: seulement PUBLISHED ou pas de workflow_status
+            if (l.workflow_status && l.workflow_status !== 'PUBLISHED') return false;
+            return true;
+        });
+
+        // Nettoyer les livrables pour le client
+        var cleaned = myLivrables.map(function(l) {
+            return {
+                id: l.id,
+                name: l.name || l.title || 'Document',
+                type: l.type || 'document',
+                category: l.type === 'photo' ? 'Photos' : (l.type === 'video' ? 'Videos' : 'Documents'),
+                day_number: l.day_number || null,
+                status: l.status || 'ready',
+                download_url: l.download_url || null,
+                preview_url: l.preview_url || l.previewUrl || null,
+                content_text: l.content_text || null,
+                created_at: l.created_at || l.createdAt || null
+            };
+        });
+
+        res.json({
+            ok: true,
+            deliverables: cleaned,
+            can_download: paidOrder.balance_paid === true,
+            order_id: paidOrder.id
+        });
+
+    } catch (err) {
+        console.error('[GET /api/deliverables/mine] Erreur:', err.message);
+        res.status(500).json({ ok: false, error: 'Erreur serveur' });
     }
 });
 
