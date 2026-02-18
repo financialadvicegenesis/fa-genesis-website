@@ -452,11 +452,9 @@
             dbg('Erreur auth: ' + authErr.message);
         }
 
-        // Afficher debug panel si ?debug=1 dans l'URL
-        if (window.location.search.indexOf('debug=1') !== -1) {
-            var dp = document.getElementById('debugPanel');
-            if (dp) dp.style.display = '';
-        }
+        // Afficher debug panel (temporaire - a retirer apres validation)
+        var dp = document.getElementById('debugPanel');
+        if (dp) dp.style.display = '';
 
         // ============================================================
         // FETCH AVEC TIMEOUT 8 SECONDES
@@ -496,6 +494,9 @@
             try {
                 // 1. Recuperer le token
                 var token = localStorage.getItem('fa_genesis_token');
+                dbg('API_BASE_URL: ' + API_BASE_URL);
+                dbg('Token present: ' + (token ? 'OUI (' + token.substring(0, 8) + '...)' : 'NON'));
+                dbg('Session present: ' + (localStorage.getItem('fa_genesis_session') ? 'OUI' : 'NON'));
                 if (!token) {
                     dbg('Pas de token - redirection login');
                     window.location.href = 'login.html';

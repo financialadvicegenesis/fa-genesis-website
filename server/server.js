@@ -476,18 +476,33 @@ app.get('/api/health', (req, res) => {
 app.get('/api/dashboard', (req, res) => {
     try {
         // 1. Authentification par sessionToken (meme logique que /api/auth/me)
-        var authHeader = req.headers.authorization;
-        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        var authHeader = req.headers.authorization || '';
+        console.log('[/api/dashboard] authorization header:', authHeader ? 'PRESENT (' + authHeader.substring(0, 20) + '...)' : 'MISSING');
+
+        // Accepter "Bearer <token>" ou "<token>" directement
+        var token = '';
+        if (authHeader.toLowerCase().startsWith('bearer ')) {
+            token = authHeader.slice(7).trim();
+        } else if (authHeader.trim()) {
+            token = authHeader.trim();
+        }
+
+        if (!token) {
+            console.log('[/api/dashboard] Token vide - 401');
             return res.status(401).json({ ok: false, error: 'UNAUTHORIZED', message: 'Token manquant' });
         }
-        var token = authHeader.split(' ')[1];
+
+        console.log('[/api/dashboard] Token parsed: ' + token.substring(0, 8) + '...');
 
         // 2. Trouver l'utilisateur par sessionToken
         var users = loadUsers();
+        console.log('[/api/dashboard] Users count: ' + users.length);
         var user = users.find(function(u) { return u.sessionToken === token; });
         if (!user) {
+            console.log('[/api/dashboard] Aucun user avec ce sessionToken - 401');
             return res.status(401).json({ ok: false, error: 'UNAUTHORIZED', message: 'Session invalide ou expiree' });
         }
+        console.log('[/api/dashboard] User trouve: ' + user.email);
 
         // 3. Trouver les commandes du client
         var orders = loadOrders();
