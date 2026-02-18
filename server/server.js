@@ -1298,6 +1298,107 @@ app.post('/api/payments/verify', async (req, res) => {
 });
 
 // ============================================================
+// ROUTE - HISTORIQUE DES PAIEMENTS
+// ============================================================
+
+/**
+ * GET /api/payments/history
+ * Retourne l'historique des paiements du client authentifie.
+ * Auth: Bearer sessionToken
+ */
+app.get('/api/payments/history', (req, res) => {
+    try {
+        var authHeader = req.headers.authorization || '';
+        var token = '';
+        if (authHeader.toLowerCase().startsWith('bearer ')) {
+            token = authHeader.slice(7).trim();
+        } else if (authHeader.trim()) {
+            token = authHeader.trim();
+        }
+        if (!token) {
+            return res.status(401).json({ ok: false, error: 'Token manquant' });
+        }
+
+        var users = loadUsers();
+        var user = users.find(function(u) { return u.sessionToken === token; });
+        if (!user) {
+            return res.status(401).json({ ok: false, error: 'Session invalide' });
+        }
+
+        var orders = loadOrders();
+        var clientOrders = orders.filter(function(o) {
+            return o.client_info && o.client_info.email &&
+                o.client_info.email.toLowerCase() === user.email.toLowerCase();
+        });
+
+        // Construire l'historique des paiements
+        var payments = [];
+        var activeOrder = null;
+        var canPayBalance = false;
+        var balanceAmount = 0;
+
+        for (var i = 0; i < clientOrders.length; i++) {
+            var ord = clientOrders[i];
+            if (ord.deposit_paid) {
+                payments.push({
+                    type: 'deposit',
+                    label: 'Acompte (30%)',
+                    amount: ord.deposit_amount || 0,
+                    currency: 'EUR',
+                    paid_at: ord.deposit_paid_at || ord.updated_at || ord.created_at,
+                    order_id: ord.id,
+                    product_name: ord.product_name || ''
+                });
+                if (!activeOrder) activeOrder = ord;
+            }
+            if (ord.balance_paid) {
+                payments.push({
+                    type: 'balance',
+                    label: 'Solde (70%)',
+                    amount: ord.balance_amount || 0,
+                    currency: 'EUR',
+                    paid_at: ord.balance_paid_at || ord.updated_at,
+                    order_id: ord.id,
+                    product_name: ord.product_name || ''
+                });
+            }
+            // Commande en attente d'acompte
+            if (!ord.deposit_paid && !activeOrder) {
+                activeOrder = ord;
+            }
+        }
+
+        // Determiner si le solde peut etre paye
+        if (activeOrder && activeOrder.deposit_paid && !activeOrder.balance_paid) {
+            canPayBalance = true;
+            balanceAmount = activeOrder.balance_amount || 0;
+        }
+
+        // Trier par date (plus recent en premier)
+        payments.sort(function(a, b) {
+            return new Date(b.paid_at || 0) - new Date(a.paid_at || 0);
+        });
+
+        res.json({
+            ok: true,
+            payments: payments,
+            can_pay_balance: canPayBalance,
+            balance_amount: balanceAmount,
+            order_id: activeOrder ? activeOrder.id : null,
+            product_name: activeOrder ? (activeOrder.product_name || '') : '',
+            deposit_paid: activeOrder ? (activeOrder.deposit_paid === true) : false,
+            balance_paid: activeOrder ? (activeOrder.balance_paid === true) : false,
+            total_amount: activeOrder ? (activeOrder.total_amount || 0) : 0,
+            deposit_amount: activeOrder ? (activeOrder.deposit_amount || 0) : 0
+        });
+
+    } catch (error) {
+        console.error('[PAYMENTS/HISTORY] Erreur:', error);
+        res.status(500).json({ ok: false, error: 'Erreur serveur' });
+    }
+});
+
+// ============================================================
 // ROUTES - ESPACE CLIENT
 // ============================================================
 

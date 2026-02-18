@@ -91,13 +91,13 @@
         <div class="hidden md:flex gap-8 text-white font-black">
             <a href="dashboard.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">Dashboard</a>
             <a href="livrables.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">Livrables</a>
-            <a href="seances.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">Seances</a>
+            <a href="seances.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">Séances</a>
             <a href="mon-compte.html" class="nav-link text-[var(--genesis-yellow)]">Mon compte</a>
         </div>
         <div class="flex gap-4 items-center">
             <span id="userGreeting" class="hidden md:block text-white font-bold"></span>
             <button onclick="logout()" class="border-4 border-white text-white px-3 py-2 text-[10px] tracking-widest font-black hover:bg-white hover:text-black transition">
-                <i class="fas fa-sign-out-alt mr-1"></i><span class="hidden md:inline">Deconnexion</span>
+                <i class="fas fa-sign-out-alt mr-1"></i><span class="hidden md:inline">Déconnexion</span>
             </button>
             <button id="mobileMenuBtn" class="md:hidden flex flex-col gap-1.5 p-2" aria-label="Menu">
                 <span class="block w-6 h-0.5 bg-[var(--genesis-yellow)] transition-all" id="menuLine1"></span>
@@ -111,11 +111,11 @@
     <div id="mobileMenu" class="fixed inset-0 z-40 bg-black/98 backdrop-blur-lg hidden flex-col items-center justify-center gap-8 text-white font-black uppercase">
         <a href="dashboard.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)]">Dashboard</a>
         <a href="livrables.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)]">Livrables</a>
-        <a href="seances.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)]">Seances</a>
+        <a href="seances.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)]">Séances</a>
         <a href="mon-compte.html" class="text-2xl nav-link text-[var(--genesis-yellow)]">Mon compte</a>
         <div class="mt-8">
             <button onclick="logout()" class="neo-btn-yellow px-8 py-4 text-sm tracking-widest text-black font-black">
-                <i class="fas fa-sign-out-alt mr-2"></i>Deconnexion
+                <i class="fas fa-sign-out-alt mr-2"></i>Déconnexion
             </button>
         </div>
     </div>
@@ -127,7 +127,7 @@
             <!-- En-tete -->
             <div class="mb-16">
                 <h1 class="text-5xl md:text-6xl font-black italic uppercase mb-4 text-[var(--genesis-yellow)]">Mon Compte</h1>
-                <p class="text-xl font-bold uppercase text-white">Gerez vos informations personnelles</p>
+                <p class="text-xl font-bold uppercase text-white">Gérez vos informations personnelles</p>
             </div>
 
             <!-- Loader -->
@@ -148,7 +148,7 @@
                         <h2 class="text-3xl font-black italic uppercase mb-6 text-white">Informations personnelles</h2>
                         <div class="info-card">
                             <div class="info-row">
-                                <span class="info-label">Prenom</span>
+                                <span class="info-label">Prénom</span>
                                 <input type="text" id="editPrenom" class="edit-input" value="-" />
                             </div>
                             <div class="info-row">
@@ -186,7 +186,7 @@
                             </div>
                             <div class="info-row">
                                 <span class="info-label">Date de debut</span>
-                                <span class="info-value" id="dateDebut">Non definie</span>
+                                <span class="info-value" id="dateDebut">Non définie</span>
                             </div>
                             <div class="info-row">
                                 <span class="info-label">Duree totale</span>
@@ -338,7 +338,7 @@
             console.error('[MON-COMPTE] FAILSAFE: loader force masque apres 12s');
             var l = document.getElementById('accountLoader');
             if (l && l.style.display !== 'none') {
-                l.innerHTML = '<p class="text-white font-bold p-6">Le chargement a pris trop de temps. <a href="mon-compte.html" class="underline text-[var(--genesis-yellow)]">Reessayer</a> ou faites Ctrl+Maj+R</p>';
+                l.innerHTML = '<p class="text-white font-bold p-6">Le chargement a pris trop de temps. <a href="mon-compte.html" class="underline text-[var(--genesis-yellow)]">Réessayer</a> ou faites Ctrl+Maj+R</p>';
             }
         }, 12000);
 
@@ -346,7 +346,7 @@
         window.onerror = function(msg, url, line) {
             console.error('[MON-COMPTE] JS Error:', msg, 'at', url, ':', line);
             var l2 = document.getElementById('accountLoader');
-            if (l2) l2.innerHTML = '<p class="text-white font-bold p-6">Erreur JS: ' + msg + ' <a href="mon-compte.html" class="underline text-[var(--genesis-yellow)]">Reessayer</a></p>';
+            if (l2) l2.innerHTML = '<p class="text-white font-bold p-6">Erreur JS: ' + msg + ' <a href="mon-compte.html" class="underline text-[var(--genesis-yellow)]">Réessayer</a></p>';
             return false;
         };
 
@@ -395,7 +395,7 @@
 
                 var data = await resp.json();
                 if (!data.success || !data.user) {
-                    if (loader) loader.innerHTML = '<p class="text-white font-bold p-6">Erreur de chargement. <a href="mon-compte.html" class="underline">Reessayer</a></p>';
+                    if (loader) loader.innerHTML = '<p class="text-white font-bold p-6">Erreur de chargement. <a href="mon-compte.html" class="underline">Réessayer</a></p>';
                     return;
                 }
 
@@ -435,7 +435,7 @@
                                 dateDebutEl.textContent = d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
                             } catch (e) { dateDebutEl.textContent = sub.startDate; }
                         } else {
-                            dateDebutEl.textContent = 'Non definie';
+                            dateDebutEl.textContent = 'Non définie';
                         }
                     }
 
@@ -449,21 +449,24 @@
 
                     if (statutEl) {
                         var statusLabels = {
+                            'registered': 'Inscrit',
                             'active': 'Actif',
+                            'deposit_paid': 'Acompte payé',
                             'pending_deposit': 'En attente d\'acompte',
+                            'delivery_pending_payment': 'En attente du solde',
                             'pending_balance': 'En attente du solde',
-                            'paid_in_full': 'Paye integralement',
-                            'delivered': 'Livre',
-                            'registered': 'Inscrit'
+                            'paid_in_full': 'Payé intégralement',
+                            'fully_paid': 'Payé intégralement',
+                            'delivered': 'Livré'
                         };
                         statutEl.textContent = statusLabels[sub.status] || sub.status || '-';
                     }
 
                     if (paiementEl) {
                         if (sub.balance_paid) {
-                            paiementEl.textContent = 'Paye integralement (' + sub.total_amount + ' EUR)';
+                            paiementEl.textContent = 'Payé intégralement (' + sub.total_amount + ' EUR)';
                         } else if (sub.deposit_paid) {
-                            paiementEl.textContent = 'Acompte paye / Solde : ' + sub.remaining_due + ' EUR';
+                            paiementEl.textContent = 'Acompte payé / Solde : ' + sub.remaining_due + ' EUR';
                         } else {
                             paiementEl.textContent = 'En attente de paiement';
                         }
@@ -480,7 +483,7 @@
 
             } catch (err) {
                 console.error('[MON-COMPTE] Erreur:', err.message);
-                if (loader) loader.innerHTML = '<p class="text-white font-bold p-6">Erreur : ' + (err.message || 'Connexion impossible') + '. <a href="mon-compte.html" class="underline text-[var(--genesis-yellow)]">Reessayer</a></p>';
+                if (loader) loader.innerHTML = '<p class="text-white font-bold p-6">Erreur : ' + (err.message || 'Connexion impossible') + '. <a href="mon-compte.html" class="underline text-[var(--genesis-yellow)]">Réessayer</a></p>';
             } finally {
                 clearTimeout(_mcFailsafe);
             }

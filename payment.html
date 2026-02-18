@@ -9,7 +9,7 @@
     <title>Paiement - FA GENESIS</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;900&family=Space+Grotesk:wght@300;700&display=swap">
     <link rel="stylesheet" href="tailwind.min.css">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.css" rel="stylesheet" media="print" onload="this.media='all'">
+    <!-- AOS removed - functional page -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" media="print" onload="this.media='all'">
     <style>
 
@@ -199,716 +199,513 @@
         </div>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>
+    <!-- AOS script removed - functional page -->
     <script src="https://gateway.sumup.com/gateway/ecom/card/v2/sdk.js"></script>
     <script src="config.js"></script>
     <script src="auth.js"></script>
     <script src="offers-config.js"></script>
-    <script src="payment-system.js"></script>
     <script>
-        AOS.init({ duration: 1000, once: true, disable: 'mobile' });
+    (function() {
+        try {
+            var PAY_API = window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com';
 
-        // API_BASE_URL est défini dans auth.js (chargé avant ce script)
+            // === SumUp Card Widget ===
+            window.showSumUpWidget = function(checkoutId, amount, orderId, stage) {
+                var modal = document.getElementById('sumupModal');
+                if (modal) modal.classList.add('active');
+                var amountEl = document.getElementById('sumupModalAmount');
+                if (amountEl) amountEl.textContent = amount + '\u20AC';
 
-        // === SumUp Card Widget ===
-        function showSumUpWidget(checkoutId, amount, orderId, stage, installmentNumber) {
-            const modal = document.getElementById('sumupModal');
-            modal.classList.add('active');
-            document.getElementById('sumupModalAmount').textContent = amount + '€';
+                var container = document.getElementById('sumup-card');
+                if (container) container.innerHTML = '';
 
-            // Vider le container précédent
-            document.getElementById('sumup-card').innerHTML = '';
-
-            // Monter le widget SumUp
-            SumUpCard.mount({
-                id: 'sumup-card',
-                checkoutId: checkoutId,
-                locale: 'fr-FR',
-                onResponse: function(type, body) {
-                    console.log('[SUMUP WIDGET] Response:', type, body);
-
-                    if (type === 'success') {
-                        closeSumUpModal();
-
-                        // Notifier le backend immediatement (avant la redirection)
-                        try {
-                            var apiBase = window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com';
-                            fetch(apiBase + '/api/payments/verify', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ orderId: orderId, stage: stage })
-                            }).catch(function() {});
-                        } catch (e) {}
-
-                        var successUrl = 'payment-success.html?order=' + orderId + '&stage=' + stage;
-                        if (installmentNumber) {
-                            successUrl += '&installment=' + installmentNumber;
+                SumUpCard.mount({
+                    id: 'sumup-card',
+                    checkoutId: checkoutId,
+                    locale: 'fr-FR',
+                    onResponse: function(type, body) {
+                        console.log('[SUMUP WIDGET] Response:', type, body);
+                        if (type === 'success') {
+                            closeSumUpModal();
+                            try {
+                                fetch(PAY_API + '/api/payments/verify', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ orderId: orderId, stage: stage })
+                                }).catch(function() {});
+                            } catch (e) {}
+                            window.location.href = 'payment-success.html?order=' + orderId + '&stage=' + stage;
+                        } else if (type === 'error') {
+                            console.error('[SUMUP WIDGET] Erreur:', body);
+                            closeSumUpModal();
+                            alert('Le paiement a echoue.\n\nRaison: ' + (body.message || body.error_message || 'Erreur inconnue') + '\n\nVeuillez reessayer.');
                         }
-                        window.location.href = successUrl;
-                    } else if (type === 'error') {
-                        console.error('[SUMUP WIDGET] Erreur:', body);
-                        closeSumUpModal();
-                        alert('Le paiement a échoué.\n\nRaison: ' + (body.message || body.error_message || 'Erreur inconnue') + '\n\nVeuillez réessayer.');
+                    }
+                });
+            };
+
+            window.closeSumUpModal = function() {
+                var modal = document.getElementById('sumupModal');
+                if (modal) modal.classList.remove('active');
+                var container = document.getElementById('sumup-card');
+                if (container) container.innerHTML = '';
+            };
+
+            // Protection de la page
+            if (typeof requireAuth === 'function') { requireAuth(); }
+
+            var currentUser = (typeof getCurrentUser === 'function') ? getCurrentUser() : null;
+            if (!currentUser) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            // === Helpers ===
+            function getToken() {
+                return localStorage.getItem('fa_genesis_token') || localStorage.getItem('fa_genesis_session') || '';
+            }
+
+            function getStatusLabel(status) {
+                var labels = {
+                    'registered': 'Inscrit',
+                    'deposit_paid': 'Acompte paye',
+                    'delivery_pending_payment': 'En attente du solde',
+                    'pending_balance': 'En attente du solde',
+                    'fully_paid': 'Paye integralement',
+                    'paid_in_full': 'Paye integralement',
+                    'delivered': 'Livre'
+                };
+                return labels[status] || status || 'Inconnu';
+            }
+
+            function getStatusClass(status) {
+                var classes = {
+                    'registered': 'status-registered',
+                    'deposit_paid': 'status-deposit',
+                    'delivery_pending_payment': 'status-pending',
+                    'pending_balance': 'status-pending',
+                    'fully_paid': 'status-fully',
+                    'paid_in_full': 'status-fully'
+                };
+                return classes[status] || 'status-registered';
+            }
+
+            // ===============================
+            // LOAD PAYMENT STATUS FROM BACKEND
+            // ===============================
+            function loadPaymentStatus() {
+                console.log('[PAYMENT PAGE] Chargement depuis le backend...');
+
+                var statusMsg = document.getElementById('statusMessage');
+                if (statusMsg) statusMsg.textContent = 'Chargement...';
+
+                var token = getToken();
+                if (!token) {
+                    if (statusMsg) statusMsg.textContent = 'Session expir\u00E9e. Veuillez vous reconnecter.';
+                    return;
+                }
+
+                fetch(PAY_API + '/api/payments/history', {
+                    method: 'GET',
+                    headers: { 'Authorization': 'Bearer ' + token }
+                })
+                .then(function(resp) {
+                    if (!resp.ok) throw new Error('Erreur serveur: ' + resp.status);
+                    return resp.json();
+                })
+                .then(function(data) {
+                    console.log('[PAYMENT PAGE] Reponse backend:', data);
+                    if (!data.ok) {
+                        if (statusMsg) statusMsg.textContent = data.error || 'Erreur de chargement';
+                        return;
+                    }
+                    displayFromBackend(data);
+                })
+                .catch(function(err) {
+                    console.error('[PAYMENT PAGE] Erreur fetch:', err);
+                    // Fallback: utiliser les donnees locales de l'utilisateur
+                    console.log('[PAYMENT PAGE] Tentative fallback avec donnees locales...');
+                    displayFromLocalUser(currentUser);
+                });
+            }
+
+            // ========================
+            // DISPLAY FROM BACKEND DATA
+            // ========================
+            function displayFromBackend(data) {
+                var statusMsg = document.getElementById('statusMessage');
+                var status = data.payment_status || 'registered';
+                var totalPaid = 0;
+
+                // Calculer total paye depuis l'historique
+                if (data.payments && data.payments.length > 0) {
+                    for (var i = 0; i < data.payments.length; i++) {
+                        totalPaid += (data.payments[i].amount || 0);
                     }
                 }
-            });
-        }
 
-        function closeSumUpModal() {
-            const modal = document.getElementById('sumupModal');
-            modal.classList.remove('active');
-            document.getElementById('sumup-card').innerHTML = '';
-        }
-
-        // Protection de la page
-        requireAuth();
-
-        const user = getCurrentUser();
-        if (!user) {
-            window.location.href = 'login.html';
-        }
-
-        // Charger et afficher le statut de paiement
-        function loadPaymentStatus() {
-            console.log('[PAYMENT PAGE] Chargement du statut de paiement...');
-            console.log('[PAYMENT PAGE] User object:', JSON.stringify(user));
-
-            let summary = null;
-
-            try {
-                summary = getPaymentSummary(user.email);
-                console.log('[PAYMENT PAGE] Summary from getPaymentSummary:', summary);
-            } catch (e) {
-                console.error('[PAYMENT PAGE] Erreur getPaymentSummary:', e);
-            }
-
-            // Fallback: construire le summary directement depuis l'objet user
-            if (!summary) {
-                console.log('[PAYMENT PAGE] Fallback: construction du summary depuis user object');
-                const offerId = user.activeOfferId || user.active_offer_id || user.offre;
-                console.log('[PAYMENT PAGE] offerId trouvé:', offerId);
-                const activeOffer = offerId ? getOfferById(offerId) : null;
-                console.log('[PAYMENT PAGE] activeOffer:', activeOffer);
-                const status = user.paymentStatus || user.payment_status || 'registered';
-
-                summary = {
-                    status: status,
-                    statusLabel: getStatusLabel(status),
-                    activeOffer: activeOffer,
-                    totalPaid: (user.payments || []).reduce(function(sum, p) { return sum + (p.amount || 0); }, 0),
-                    payments: user.payments || [],
-                    accessRights: { message: status === 'registered' ? 'Un acompte de 30% est requis pour démarrer.' : 'Bienvenue dans votre espace paiement.' }
-                };
-            }
-
-            if (!summary) {
-                document.getElementById('statusMessage').textContent = 'Erreur de chargement';
-                return;
-            }
-
-            // Afficher le message de statut
-            document.getElementById('statusMessage').textContent = summary.accessRights.message;
-
-            // Afficher le résumé du statut
-            displayStatusSummary(summary);
-
-            // Afficher les sections appropriées
-            if (summary.status === 'registered' && summary.activeOffer) {
-                document.getElementById('depositSection').style.display = 'block';
-                displayDepositDetails(summary.activeOffer);
-            }
-
-            if (summary.status === 'delivery_pending_payment' && summary.activeOffer) {
-                document.getElementById('balanceSection').style.display = 'block';
-                displayBalanceDetails(summary.activeOffer);
-            }
-
-            // Si registered mais pas d'offre active, afficher un message
-            if (summary.status === 'registered' && !summary.activeOffer) {
-                const offerId = user.activeOfferId || user.active_offer_id || user.offre;
-                if (offerId) {
-                    // L'offre existe dans la session mais n'est pas trouvée dans offers-config
-                    document.getElementById('statusMessage').textContent = 'Offre non reconnue. Veuillez vous réinscrire ou contacter le support.';
+                // Message de statut
+                if (status === 'registered') {
+                    if (statusMsg) statusMsg.textContent = 'Un acompte de 30% est requis pour demarrer.';
+                } else if (status === 'deposit_paid' || status === 'delivery_pending_payment') {
+                    if (statusMsg) statusMsg.textContent = 'Votre acompte a ete regle. Merci !';
+                } else if (status === 'fully_paid' || status === 'paid_in_full') {
+                    if (statusMsg) statusMsg.textContent = 'Tous les paiements sont regles. Merci !';
                 } else {
-                    document.getElementById('statusMessage').textContent = 'Aucune offre sélectionnée. Veuillez choisir une offre.';
+                    if (statusMsg) statusMsg.textContent = 'Bienvenue dans votre espace paiement.';
                 }
+
+                // Afficher le resume du statut
+                displayStatusSummary(status, totalPaid, data.product_name, data.total_amount, data.deposit_amount);
+
+                // Section acompte (si status registered et qu'il y a une offre)
+                if (status === 'registered' && data.product_name) {
+                    var depSection = document.getElementById('depositSection');
+                    if (depSection) depSection.style.display = 'block';
+                    displayDepositDetails(data);
+                }
+
+                // Section solde (si can_pay_balance)
+                if (data.can_pay_balance) {
+                    var balSection = document.getElementById('balanceSection');
+                    if (balSection) balSection.style.display = 'block';
+                    displayBalanceDetails(data);
+                }
+
+                // Si registered et pas de produit
+                if (status === 'registered' && !data.product_name) {
+                    if (statusMsg) statusMsg.textContent = 'Aucune offre selectionn\u00E9e. Veuillez choisir une offre.';
+                }
+
+                // Afficher l'historique
+                displayPaymentHistory(data.payments || []);
             }
 
-            // Afficher l'historique des paiements
-            displayPaymentHistory(summary.payments);
-        }
+            // ==========================
+            // FALLBACK: LOCAL USER DATA
+            // ==========================
+            function displayFromLocalUser(user) {
+                var statusMsg = document.getElementById('statusMessage');
+                var status = user.paymentStatus || user.payment_status || 'registered';
+                var offerId = user.activeOfferId || user.active_offer_id || user.offre;
+                var offer = null;
 
-        function displayStatusSummary(summary) {
-            const statusClass = {
-                'registered': 'status-registered',
-                'deposit_paid': 'status-deposit',
-                'delivery_pending_payment': 'status-pending',
-                'fully_paid': 'status-fully'
-            }[summary.status] || 'status-registered';
+                if (offerId && typeof getOfferById === 'function') {
+                    try { offer = getOfferById(offerId); } catch (e) {}
+                }
 
-            let html = `
-                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-                    <div>
-                        <h3 class="text-2xl font-black italic uppercase mb-2">VOTRE STATUT</h3>
-                        <span class="status-badge ${statusClass}">${summary.statusLabel}</span>
-                    </div>
-                    <div class="text-right">
-                        <p class="text-sm font-bold opacity-70 uppercase">Total payé</p>
-                        <p class="text-3xl font-black text-[var(--genesis-yellow)]">${summary.totalPaid}€</p>
-                    </div>
-                </div>
-            `;
-
-            if (summary.activeOffer) {
-                html += `
-                    <div class="border-t-4 border-black pt-6">
-                        <h4 class="text-xl font-black uppercase mb-3">OFFRE ACTIVE</h4>
-                        <div class="grid md:grid-cols-3 gap-4">
-                            <div>
-                                <p class="text-sm font-bold opacity-70 uppercase">Formule</p>
-                                <p class="font-black text-lg">${summary.activeOffer.nom}</p>
-                            </div>
-                            <div>
-                                <p class="text-sm font-bold opacity-70 uppercase">Prix total</p>
-                                <p class="font-black text-lg">${summary.activeOffer.prixTotal}€</p>
-                            </div>
-                            <div>
-                                <p class="text-sm font-bold opacity-70 uppercase">Durée</p>
-                                <p class="font-black text-lg">${summary.activeOffer.duree}</p>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }
-
-            document.getElementById('statusSummary').innerHTML = html;
-        }
-
-        function displayDepositDetails(offer) {
-            // Adapter le message selon le type de produit
-            const productType = offer.productType || 'accompagnement';
-
-            let introMessage = '';
-            let balanceMessage = '';
-
-            if (productType === 'accompagnement') {
-                introMessage = 'Pour démarrer votre accompagnement, un acompte de 30% est requis.';
-                balanceMessage = `Le solde de ${offer.solde}€ sera à régler à la fin de votre accompagnement.`;
-            } else {
-                introMessage = 'Pour confirmer votre commande et lancer votre prestation, un acompte de 30% est requis.';
-                balanceMessage = `Le solde de ${offer.solde}€ sera à régler une fois votre prestation terminée.`;
-            }
-
-            // Afficher le message d'intro
-            document.getElementById('depositIntroMessage').textContent = introMessage;
-
-            const html = `
-                <div class="bg-[var(--genesis-yellow)] p-6 border-4 border-black mb-6">
-                    <div class="flex justify-between items-center">
-                        <div>
-                            <p class="text-2xl font-black uppercase">${offer.nom}</p>
-                            <p class="font-bold opacity-70">Acompte requis (30%)</p>
-                        </div>
-                        <p class="text-4xl font-black">${offer.acompte}€</p>
-                    </div>
-                </div>
-                <p class="text-sm font-bold opacity-70">
-                    <i class="fas fa-info-circle mr-2"></i>
-                    ${balanceMessage}
-                </p>
-            `;
-            document.getElementById('depositDetails').innerHTML = html;
-        }
-
-        function displayBalanceDetails(offer) {
-            const html = `
-                <div class="bg-[var(--genesis-yellow)] p-6 border-4 border-black mb-6">
-                    <div class="flex justify-between items-center">
-                        <div>
-                            <p class="text-2xl font-black uppercase">${offer.nom}</p>
-                            <p class="font-bold opacity-70">Solde restant (70%)</p>
-                        </div>
-                        <p class="text-4xl font-black">${offer.solde}€</p>
-                    </div>
-                </div>
-                <p class="text-sm font-bold opacity-70 mb-6">
-                    <i class="fas fa-info-circle mr-2"></i>
-                    Une fois le solde réglé, vous aurez accès immédiat à tous vos livrables finaux.
-                </p>
-            `;
-            document.getElementById('balanceDetails').innerHTML = html;
-
-            // Afficher les options de paiement
-            displayPaymentOptions(offer);
-        }
-
-        function displayPaymentOptions(offer) {
-            const plan = calculateInstallmentPlan(user.activeOfferId);
-
-            let optionsHTML = `
-                <!-- Option 1: Paiement comptant -->
-                <div class="border-4 border-black p-6 hover:shadow-lg transition cursor-pointer" onclick="selectPaymentOption('full')">
-                    <div class="text-center">
-                        <i class="fas fa-money-bill-wave text-4xl text-[var(--genesis-yellow)] mb-4"></i>
-                        <h3 class="text-xl font-black uppercase mb-2">Paiement comptant</h3>
-                        <p class="text-3xl font-black mb-2">${offer.solde}€</p>
-                        <p class="text-sm font-bold opacity-70">En une seule fois</p>
-                        <button class="mt-4 neo-btn-yellow px-6 py-3 text-sm w-full">
-                            Payer maintenant
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Option 2: Paiement échelonné -->
-                <div class="border-4 border-black p-6 hover:shadow-lg transition cursor-pointer" style="background: #e8f5e9;" onclick="selectPaymentOption('installments')">
-                    <div class="text-center">
-                        <i class="fas fa-calendar-alt text-4xl text-[#51cf66] mb-4"></i>
-                        <h3 class="text-xl font-black uppercase mb-2">Paiement échelonné</h3>
-                        <p class="text-3xl font-black mb-2">${plan.monthlyAmount}€<span class="text-base">/mois</span></p>
-                        <p class="text-sm font-bold opacity-70">Sur ${plan.numberOfInstallments} mois</p>
-                        <button class="mt-4 bg-[#51cf66] text-black border-4 border-black px-6 py-3 text-sm font-black uppercase w-full">
-                            Choisir ce mode
-                        </button>
-                    </div>
-                </div>
-            `;
-
-            document.getElementById('paymentOptions').innerHTML = optionsHTML;
-
-            // Vérifier si un plan existe déjà
-            const existingPlan = getInstallmentPlan(user.email);
-            if (existingPlan) {
-                displayInstallments(existingPlan);
-            }
-        }
-
-        async function selectPaymentOption(option) {
-            if (option === 'full') {
-                await payBalance();
-            } else if (option === 'installments') {
-                initializePaymentPlan();
-            }
-        }
-
-        function initializePaymentPlan() {
-            if (confirm(`Confirmer le paiement échelonné ?\n\nVous allez payer le solde en plusieurs mensualités selon la durée de votre accompagnement.\n\nCela vous permettra de mieux gérer votre budget.`)) {
-                const success = initializeInstallmentPlan(user.email);
-
-                if (success) {
-                    alert('✅ Plan de paiement échelonné activé !\n\nVous pouvez maintenant payer vos mensualités.');
-
-                    // Recharger l'utilisateur
-                    const users = JSON.parse(localStorage.getItem('users') || '[]');
-                    const updatedUser = users.find(u => u.email === user.email);
-                    localStorage.setItem('currentUser', JSON.stringify(updatedUser));
-
-                    // Afficher les mensualités
-                    const plan = getInstallmentPlan(user.email);
-                    displayInstallments(plan);
+                if (status === 'registered') {
+                    if (statusMsg) statusMsg.textContent = 'Un acompte de 30% est requis pour demarrer.';
                 } else {
-                    alert('❌ Erreur lors de l\'activation du plan de paiement');
-                }
-            }
-        }
-
-        function displayInstallments(plan) {
-            document.getElementById('installmentSection').style.display = 'block';
-
-            let html = '';
-            plan.installments.forEach(installment => {
-                const isPaid = installment.status === 'paid';
-                const isCurrent = !isPaid && !plan.installments.slice(0, installment.number - 1).some(i => i.status === 'pending');
-
-                html += `
-                    <div class="border-4 border-black p-4 mb-4 ${isPaid ? 'bg-[#e8f5e9]' : isCurrent ? 'bg-[#fff9c4]' : 'bg-white'}">
-                        <div class="flex justify-between items-center">
-                            <div>
-                                <p class="font-black text-lg uppercase">
-                                    <i class="fas ${isPaid ? 'fa-check-circle text-[#51cf66]' : 'fa-circle'} mr-2"></i>
-                                    Mensualité ${installment.number} / ${plan.numberOfInstallments}
-                                </p>
-                                <p class="text-sm font-bold opacity-70">${installment.dueDate}</p>
-                                ${isPaid ? `<p class="text-xs font-bold text-[#51cf66] mt-1">Payée le ${new Date(installment.paidDate).toLocaleDateString('fr-FR')}</p>` : ''}
-                            </div>
-                            <div class="text-right">
-                                <p class="text-2xl font-black">${installment.amount}€</p>
-                                ${!isPaid && isCurrent ?
-                                    `<button onclick="payInstallment(${installment.number})" class="mt-2 bg-black text-white px-4 py-2 text-sm font-black uppercase border-2 border-black hover:bg-[var(--genesis-yellow)] hover:text-black transition">
-                                        Payer maintenant
-                                    </button>` :
-                                    isPaid ? '<span class="text-[#51cf66] font-black text-sm">✓ PAYÉE</span>' :
-                                    '<span class="opacity-50 font-black text-sm">EN ATTENTE</span>'
-                                }
-                            </div>
-                        </div>
-                    </div>
-                `;
-            });
-
-            document.getElementById('installmentsList').innerHTML = html;
-        }
-
-        async function payInstallment(installmentNumber) {
-            // Utiliser la session backend ou l'ancien système
-            const currentUser = getUserFromStorage(user.email);
-
-            // Chercher l'offre active
-            const offerId = currentUser ? (currentUser.activeOfferId || currentUser.active_offer_id || currentUser.offre) : null;
-
-            if (!currentUser || !offerId) {
-                alert('Erreur: Aucune offre active trouvée');
-                return;
-            }
-
-            // Récupérer le plan de paiement pour obtenir le montant de la mensualité
-            const plan = getInstallmentPlan(user.email);
-            if (!plan) {
-                alert('Erreur: Plan de paiement non trouvé');
-                return;
-            }
-
-            const installment = plan.installments.find(i => i.number === installmentNumber);
-            if (!installment) {
-                alert('Erreur: Mensualité non trouvée');
-                return;
-            }
-
-            try {
-                // Créer une commande pour cette mensualité
-                console.log(`[PAYMENT] Création du checkout SumUp pour mensualité ${installmentNumber}...`);
-
-                const clientInfo = {
-                    firstName: currentUser.prenom || currentUser.firstName || '',
-                    lastName: currentUser.nom || currentUser.lastName || '',
-                    email: currentUser.email,
-                    phone: currentUser.telephone || currentUser.phone || '',
-                    address: currentUser.adresse || currentUser.address || 'Non renseigné',
-                    country: 'FRANCE',
-                    city: currentUser.ville || currentUser.city || 'Non renseigné',
-                    postalCode: currentUser.codePostal || currentUser.postalCode || '00000',
-                    clientType: 'particulier'
-                };
-
-                // Créer une commande pour la mensualité
-                const orderResponse = await fetch(`${API_BASE_URL}/api/orders/create`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        productId: offerId,
-                        clientInfo: clientInfo,
-                        customAmount: installment.amount,
-                        description: `Mensualité ${installmentNumber}/${plan.numberOfInstallments}`
-                    })
-                });
-
-                if (!orderResponse.ok) {
-                    const errorData = await orderResponse.json();
-                    throw new Error(errorData.error || 'Erreur création commande');
+                    if (statusMsg) statusMsg.textContent = 'Bienvenue dans votre espace paiement.';
                 }
 
-                const orderData = await orderResponse.json();
-                const orderId = orderData.orderId;
-
-                // Stocker pour le suivi
-                sessionStorage.setItem('pendingOrderId', orderId);
-                sessionStorage.setItem('pendingPaymentType', 'installment');
-                sessionStorage.setItem('pendingInstallmentNumber', installmentNumber.toString());
-
-                // Créer le checkout SumUp pour cette mensualité
-                const checkoutResponse = await fetch(`${API_BASE_URL}/api/payments/sumup/create-checkout`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        orderId: orderId,
-                        stage: 'installment',
-                        installmentNumber: installmentNumber
-                    })
-                });
-
-                if (!checkoutResponse.ok) {
-                    const errorData = await checkoutResponse.json();
-                    throw new Error(errorData.error || errorData.details || 'Erreur création checkout SumUp');
-                }
-
-                const checkoutData = await checkoutResponse.json();
-                console.log('[PAYMENT] Checkout SumUp créé pour mensualité:', checkoutData);
-
-                // Afficher le widget SumUp pour le paiement par carte
-                if (checkoutData.checkout_id) {
-                    console.log('[PAYMENT] Ouverture du widget SumUp pour mensualité', installmentNumber);
-                    showSumUpWidget(checkoutData.checkout_id, checkoutData.amount, orderId, 'installment', installmentNumber);
-                } else {
-                    throw new Error('ID de checkout non reçu');
-                }
-
-            } catch (error) {
-                console.error('[PAYMENT] Erreur:', error);
-
-                if (error.message.includes('Configuration SumUp') || error.message.includes('non configuree')) {
-                    alert('❌ Le système de paiement n\'est pas encore configuré.\n\nVeuillez contacter l\'administrateur.');
-                } else if (error.message.includes('fetch') || error.message.includes('Failed')) {
-                    alert('❌ Impossible de contacter le serveur de paiement.\n\nVérifiez votre connexion internet et réessayez.');
-                } else {
-                    alert('❌ Erreur lors de la préparation du paiement:\n\n' + error.message);
-                }
-            }
-        }
-
-        function displayPaymentHistory(payments) {
-            if (!payments || payments.length === 0) {
-                document.getElementById('paymentHistory').innerHTML = `
-                    <p class="font-bold opacity-50 text-center py-8">Aucun paiement enregistré</p>
-                `;
-                return;
-            }
-
-            let html = '<div class="space-y-4">';
-            payments.forEach(payment => {
-                const date = new Date(payment.date).toLocaleDateString('fr-FR');
-                const typeLabel = payment.type === 'acompte' ? 'ACOMPTE' : 'SOLDE';
-                const typeIcon = payment.type === 'acompte' ? 'fa-hand-holding-usd' : 'fa-check-circle';
-
-                html += `
-                    <div class="border-4 border-black p-4 bg-[var(--genesis-yellow)]">
-                        <div class="flex justify-between items-center">
-                            <div>
-                                <p class="font-black text-lg uppercase">
-                                    <i class="fas ${typeIcon} mr-2"></i>${typeLabel}
-                                </p>
-                                <p class="text-sm font-bold opacity-70">${date}</p>
-                            </div>
-                            <p class="text-2xl font-black">${payment.amount}€</p>
-                        </div>
-                    </div>
-                `;
-            });
-            html += '</div>';
-
-            document.getElementById('paymentHistory').innerHTML = html;
-        }
-
-        async function payDeposit() {
-            // Utiliser la session backend ou l'ancien système
-            const currentUser = getUserFromStorage(user.email);
-
-            // Chercher l'offre active - compatible avec différents formats
-            const offerId = currentUser ? (currentUser.activeOfferId || currentUser.active_offer_id || currentUser.offre) : null;
-
-            if (!currentUser || !offerId) {
-                alert('Erreur: Aucune offre active trouvée');
-                return;
-            }
-
-            // Récupérer les détails de l'offre
-            const offer = getOfferById(offerId);
-            if (!offer) {
-                alert('Erreur: Offre non trouvée');
-                return;
-            }
-
-            // Désactiver le bouton pendant le traitement
-            const depositBtn = document.querySelector('#depositSection button');
-            if (depositBtn) {
-                depositBtn.disabled = true;
-                depositBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Traitement en cours...';
-            }
-
-            try {
-                // ÉTAPE 1: Créer la commande sur le backend
-                console.log('[PAYMENT] Création de la commande pour acompte...');
-
-                const clientInfo = {
-                    firstName: currentUser.prenom || currentUser.firstName || '',
-                    lastName: currentUser.nom || currentUser.lastName || '',
-                    email: currentUser.email,
-                    phone: currentUser.telephone || currentUser.phone || '',
-                    address: currentUser.adresse || currentUser.address || 'Non renseigné',
-                    country: 'FRANCE',
-                    city: currentUser.ville || currentUser.city || 'Non renseigné',
-                    postalCode: currentUser.codePostal || currentUser.postalCode || '00000',
-                    clientType: 'particulier'
-                };
-
-                const orderResponse = await fetch(`${API_BASE_URL}/api/orders/create`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        productId: offerId,
-                        clientInfo: clientInfo
-                    })
-                });
-
-                if (!orderResponse.ok) {
-                    const errorData = await orderResponse.json();
-                    throw new Error(errorData.error || 'Erreur création commande');
-                }
-
-                const orderData = await orderResponse.json();
-                const orderId = orderData.orderId;
-                console.log('[PAYMENT] Commande créée:', orderId);
-
-                // Stocker l'ID pour le suivi
-                sessionStorage.setItem('pendingOrderId', orderId);
-                sessionStorage.setItem('pendingPaymentType', 'deposit');
-
-                // ÉTAPE 2: Créer le checkout SumUp pour l'acompte
-                console.log('[PAYMENT] Création du checkout SumUp...');
-                const checkoutResponse = await fetch(`${API_BASE_URL}/api/payments/sumup/create-checkout`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        orderId: orderId,
-                        stage: 'deposit'
-                    })
-                });
-
-                if (!checkoutResponse.ok) {
-                    const errorData = await checkoutResponse.json();
-                    throw new Error(errorData.error || errorData.details || 'Erreur création checkout SumUp');
-                }
-
-                const checkoutData = await checkoutResponse.json();
-                console.log('[PAYMENT] Checkout SumUp créé:', checkoutData);
-
-                // ÉTAPE 3: Afficher le widget SumUp pour le paiement par carte
-                if (checkoutData.checkout_id) {
-                    // Réactiver le bouton
-                    if (depositBtn) {
-                        depositBtn.disabled = false;
-                        depositBtn.innerHTML = '<i class="fas fa-credit-card mr-2"></i>Payer l\'acompte';
+                // Resume
+                var summaryEl = document.getElementById('statusSummary');
+                if (summaryEl) {
+                    var html = '<div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">';
+                    html += '<div><h3 class="text-2xl font-black italic uppercase mb-2">VOTRE STATUT</h3>';
+                    html += '<span class="status-badge ' + getStatusClass(status) + '">' + getStatusLabel(status) + '</span></div>';
+                    html += '<div class="text-right"><p class="text-sm font-bold opacity-70 uppercase">Total paye</p>';
+                    html += '<p class="text-3xl font-black text-[var(--genesis-yellow)]">--\u20AC</p></div></div>';
+                    if (offer) {
+                        html += '<div class="border-t-4 border-black pt-6">';
+                        html += '<h4 class="text-xl font-black uppercase mb-3">OFFRE ACTIVE</h4>';
+                        html += '<div class="grid md:grid-cols-3 gap-4">';
+                        html += '<div><p class="text-sm font-bold opacity-70 uppercase">Formule</p>';
+                        html += '<p class="font-black text-lg">' + (offer.nom || '') + '</p></div>';
+                        html += '<div><p class="text-sm font-bold opacity-70 uppercase">Prix total</p>';
+                        html += '<p class="font-black text-lg">' + (offer.prixTotal || '') + '\u20AC</p></div>';
+                        html += '<div><p class="text-sm font-bold opacity-70 uppercase">Duree</p>';
+                        html += '<p class="font-black text-lg">' + (offer.duree || '') + '</p></div>';
+                        html += '</div></div>';
                     }
-                    console.log('[PAYMENT] Ouverture du widget SumUp, checkout_id:', checkoutData.checkout_id);
-                    showSumUpWidget(checkoutData.checkout_id, checkoutData.amount, orderId, 'deposit');
-                } else {
-                    throw new Error('ID de checkout non reçu');
+                    summaryEl.innerHTML = html;
                 }
 
-            } catch (error) {
-                console.error('[PAYMENT] Erreur:', error);
+                // Section acompte
+                if (status === 'registered' && offer) {
+                    var depSection = document.getElementById('depositSection');
+                    if (depSection) depSection.style.display = 'block';
+                    var introMsg = document.getElementById('depositIntroMessage');
+                    if (introMsg) introMsg.textContent = 'Pour demarrer votre accompagnement, un acompte de 30% est requis.';
+                    var detEl = document.getElementById('depositDetails');
+                    if (detEl) {
+                        detEl.innerHTML = '<div class="bg-[var(--genesis-yellow)] p-6 border-4 border-black mb-6">' +
+                            '<div class="flex justify-between items-center"><div>' +
+                            '<p class="text-2xl font-black uppercase">' + (offer.nom || '') + '</p>' +
+                            '<p class="font-bold opacity-70">Acompte requis (30%)</p></div>' +
+                            '<p class="text-4xl font-black">' + (offer.acompte || '') + '\u20AC</p></div></div>';
+                    }
+                }
 
-                // Réactiver le bouton
+                // Historique vide en fallback
+                var histEl = document.getElementById('paymentHistory');
+                if (histEl) {
+                    histEl.innerHTML = '<p class="font-bold opacity-50 text-center py-8">Impossible de charger l\'historique. Veuillez reessayer.</p>';
+                }
+            }
+
+            // ==================
+            // DISPLAY FUNCTIONS
+            // ==================
+            function displayStatusSummary(status, totalPaid, productName, totalAmount, depositAmount) {
+                var el = document.getElementById('statusSummary');
+                if (!el) return;
+
+                var html = '<div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">';
+                html += '<div><h3 class="text-2xl font-black italic uppercase mb-2">VOTRE STATUT</h3>';
+                html += '<span class="status-badge ' + getStatusClass(status) + '">' + getStatusLabel(status) + '</span></div>';
+                html += '<div class="text-right"><p class="text-sm font-bold opacity-70 uppercase">Total paye</p>';
+                html += '<p class="text-3xl font-black text-[var(--genesis-yellow)]">' + totalPaid + '\u20AC</p></div></div>';
+
+                if (productName) {
+                    html += '<div class="border-t-4 border-black pt-6">';
+                    html += '<h4 class="text-xl font-black uppercase mb-3">OFFRE ACTIVE</h4>';
+                    html += '<div class="grid md:grid-cols-3 gap-4">';
+                    html += '<div><p class="text-sm font-bold opacity-70 uppercase">Formule</p>';
+                    html += '<p class="font-black text-lg">' + productName + '</p></div>';
+                    html += '<div><p class="text-sm font-bold opacity-70 uppercase">Prix total</p>';
+                    html += '<p class="font-black text-lg">' + (totalAmount || '--') + '\u20AC</p></div>';
+                    html += '<div><p class="text-sm font-bold opacity-70 uppercase">Acompte (30%)</p>';
+                    html += '<p class="font-black text-lg">' + (depositAmount || '--') + '\u20AC</p></div>';
+                    html += '</div></div>';
+                }
+
+                el.innerHTML = html;
+            }
+
+            function displayDepositDetails(data) {
+                var introMsg = document.getElementById('depositIntroMessage');
+                if (introMsg) introMsg.textContent = 'Pour demarrer votre accompagnement, un acompte de 30% est requis.';
+
+                var detEl = document.getElementById('depositDetails');
+                if (!detEl) return;
+
+                var html = '<div class="bg-[var(--genesis-yellow)] p-6 border-4 border-black mb-6">';
+                html += '<div class="flex justify-between items-center"><div>';
+                html += '<p class="text-2xl font-black uppercase">' + (data.product_name || 'Votre offre') + '</p>';
+                html += '<p class="font-bold opacity-70">Acompte requis (30%)</p></div>';
+                html += '<p class="text-4xl font-black">' + (data.deposit_amount || '--') + '\u20AC</p></div></div>';
+                html += '<p class="text-sm font-bold opacity-70"><i class="fas fa-info-circle mr-2"></i>';
+                html += 'Le solde de ' + (data.balance_amount || '--') + '\u20AC sera a regler a la fin de votre accompagnement.</p>';
+
+                detEl.innerHTML = html;
+            }
+
+            function displayBalanceDetails(data) {
+                var detEl = document.getElementById('balanceDetails');
+                if (!detEl) return;
+
+                var html = '<div class="bg-[var(--genesis-yellow)] p-6 border-4 border-black mb-6">';
+                html += '<div class="flex justify-between items-center"><div>';
+                html += '<p class="text-2xl font-black uppercase">' + (data.product_name || 'Votre offre') + '</p>';
+                html += '<p class="font-bold opacity-70">Solde restant (70%)</p></div>';
+                html += '<p class="text-4xl font-black">' + (data.balance_amount || '--') + '\u20AC</p></div></div>';
+                html += '<p class="text-sm font-bold opacity-70 mb-6"><i class="fas fa-info-circle mr-2"></i>';
+                html += 'Une fois le solde regle, vous aurez acces immediat a tous vos livrables finaux.</p>';
+
+                detEl.innerHTML = html;
+
+                // Bouton payer le solde en comptant
+                var optEl = document.getElementById('paymentOptions');
+                if (optEl) {
+                    var optHtml = '<div class="border-4 border-black p-6 hover:shadow-lg transition cursor-pointer" onclick="payBalance()">';
+                    optHtml += '<div class="text-center">';
+                    optHtml += '<i class="fas fa-money-bill-wave text-4xl text-[var(--genesis-yellow)] mb-4"></i>';
+                    optHtml += '<h3 class="text-xl font-black uppercase mb-2">Paiement comptant</h3>';
+                    optHtml += '<p class="text-3xl font-black mb-2">' + (data.balance_amount || '--') + '\u20AC</p>';
+                    optHtml += '<p class="text-sm font-bold opacity-70">En une seule fois</p>';
+                    optHtml += '<button class="mt-4 neo-btn-yellow px-6 py-3 text-sm w-full">Payer maintenant</button>';
+                    optHtml += '</div></div>';
+                    optEl.innerHTML = optHtml;
+                }
+            }
+
+            function displayPaymentHistory(payments) {
+                var el = document.getElementById('paymentHistory');
+                if (!el) return;
+
+                if (!payments || payments.length === 0) {
+                    el.innerHTML = '<p class="font-bold opacity-50 text-center py-8">Aucun paiement enregistre</p>';
+                    return;
+                }
+
+                var html = '<div class="space-y-4">';
+                for (var i = 0; i < payments.length; i++) {
+                    var p = payments[i];
+                    var dateStr = '';
+                    try { dateStr = new Date(p.paid_at || p.date).toLocaleDateString('fr-FR'); } catch (e) { dateStr = p.paid_at || ''; }
+                    var typeLabel = (p.type === 'deposit' || p.type === 'acompte') ? 'ACOMPTE' : 'SOLDE';
+                    var typeIcon = (p.type === 'deposit' || p.type === 'acompte') ? 'fa-hand-holding-usd' : 'fa-check-circle';
+
+                    html += '<div class="border-4 border-black p-4 bg-[var(--genesis-yellow)]">';
+                    html += '<div class="flex justify-between items-center"><div>';
+                    html += '<p class="font-black text-lg uppercase"><i class="fas ' + typeIcon + ' mr-2"></i>' + typeLabel + '</p>';
+                    html += '<p class="text-sm font-bold opacity-70">' + dateStr + '</p>';
+                    if (p.label) html += '<p class="text-xs font-bold opacity-50">' + p.label + '</p>';
+                    html += '</div>';
+                    html += '<p class="text-2xl font-black">' + (p.amount || 0) + '\u20AC</p>';
+                    html += '</div></div>';
+                }
+                html += '</div>';
+                el.innerHTML = html;
+            }
+
+            // ==================
+            // PAY DEPOSIT
+            // ==================
+            window.payDeposit = function() {
+                var depositBtn = document.querySelector('#depositSection button');
                 if (depositBtn) {
-                    depositBtn.disabled = false;
-                    depositBtn.innerHTML = '<i class="fas fa-credit-card mr-2"></i>Payer l\'acompte';
+                    depositBtn.disabled = true;
+                    depositBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Traitement en cours...';
                 }
 
-                // Message d'erreur spécifique
-                if (error.message.includes('Configuration SumUp') || error.message.includes('non configuree')) {
-                    alert('❌ Le système de paiement n\'est pas encore configuré.\n\nVeuillez contacter l\'administrateur.');
-                } else if (error.message.includes('fetch') || error.message.includes('Failed')) {
-                    alert('❌ Impossible de contacter le serveur de paiement.\n\nVérifiez votre connexion internet et réessayez.');
-                } else {
-                    alert('❌ Erreur lors de la préparation du paiement:\n\n' + error.message);
-                }
-            }
-        }
+                var token = getToken();
 
-        async function payBalance() {
-            // Utiliser la session backend ou l'ancien système
-            const currentUser = getUserFromStorage(user.email);
+                // D'abord verifier s'il y a deja une commande pendante
+                fetch(PAY_API + '/api/payments/history', {
+                    method: 'GET',
+                    headers: { 'Authorization': 'Bearer ' + token }
+                })
+                .then(function(resp) { return resp.json(); })
+                .then(function(histData) {
+                    var existingOrderId = histData.order_id || null;
 
-            // Chercher l'offre active - compatible avec différents formats
-            const offerId = currentUser ? (currentUser.activeOfferId || currentUser.active_offer_id || currentUser.offre) : null;
+                    if (existingOrderId && !histData.deposit_paid) {
+                        // Commande existante, pas encore payee - utiliser cette commande
+                        console.log('[PAYMENT] Commande existante trouvee:', existingOrderId);
+                        return createCheckoutForDeposit(existingOrderId);
+                    }
 
-            if (!currentUser || !offerId) {
-                alert('Erreur: Aucune offre active trouvée');
-                return;
-            }
+                    // Pas de commande existante ou deja payee - creer une nouvelle
+                    console.log('[PAYMENT] Creation nouvelle commande pour acompte...');
+                    var user = currentUser;
+                    var offerId = user.activeOfferId || user.active_offer_id || user.offre || '';
 
-            // Récupérer les détails de l'offre
-            const offer = getOfferById(offerId);
-            if (!offer) {
-                alert('Erreur: Offre non trouvée');
-                return;
-            }
-
-            // Récupérer l'ID de commande existant (créé lors du paiement de l'acompte)
-            // ou créer une nouvelle commande si nécessaire
-            let orderId = sessionStorage.getItem('pendingOrderId');
-
-            try {
-                // Si pas d'orderId, on doit d'abord créer une commande
-                if (!orderId) {
-                    console.log('[PAYMENT] Pas d\'orderId trouvé, création d\'une nouvelle commande...');
-
-                    const clientInfo = {
-                        firstName: currentUser.prenom || currentUser.firstName || '',
-                        lastName: currentUser.nom || currentUser.lastName || '',
-                        email: currentUser.email,
-                        phone: currentUser.telephone || currentUser.phone || '',
-                        address: currentUser.adresse || currentUser.address || 'Non renseigné',
-                        country: 'FRANCE',
-                        city: currentUser.ville || currentUser.city || 'Non renseigné',
-                        postalCode: currentUser.codePostal || currentUser.postalCode || '00000',
-                        clientType: 'particulier'
-                    };
-
-                    const orderResponse = await fetch(`${API_BASE_URL}/api/orders/create`, {
+                    return fetch(PAY_API + '/api/orders/create', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             productId: offerId,
-                            clientInfo: clientInfo
+                            clientInfo: {
+                                firstName: user.prenom || user.firstName || '',
+                                lastName: user.nom || user.lastName || '',
+                                email: user.email || '',
+                                phone: user.telephone || user.phone || '',
+                                address: user.adresse || user.address || 'Non renseigne',
+                                country: 'FRANCE',
+                                city: user.ville || user.city || 'Non renseigne',
+                                postalCode: user.codePostal || user.postalCode || '00000',
+                                clientType: 'particulier'
+                            }
                         })
+                    })
+                    .then(function(resp) {
+                        if (!resp.ok) return resp.json().then(function(d) { throw new Error(d.error || 'Erreur creation commande'); });
+                        return resp.json();
+                    })
+                    .then(function(orderData) {
+                        console.log('[PAYMENT] Commande creee:', orderData.orderId);
+                        return createCheckoutForDeposit(orderData.orderId);
                     });
-
-                    if (!orderResponse.ok) {
-                        const errorData = await orderResponse.json();
-                        throw new Error(errorData.error || 'Erreur création commande');
+                })
+                .catch(function(err) {
+                    console.error('[PAYMENT] Erreur payDeposit:', err);
+                    if (depositBtn) {
+                        depositBtn.disabled = false;
+                        depositBtn.innerHTML = '<i class="fas fa-credit-card mr-2"></i>Payer l\'acompte';
                     }
+                    alert('Erreur lors de la preparation du paiement:\n\n' + err.message);
+                });
+            };
 
-                    const orderData = await orderResponse.json();
-                    orderId = orderData.orderId;
-                    console.log('[PAYMENT] Commande créée pour solde:', orderId);
-                }
-
-                // Stocker pour le suivi
-                sessionStorage.setItem('pendingOrderId', orderId);
-                sessionStorage.setItem('pendingPaymentType', 'balance');
-
-                // Créer le checkout SumUp pour le solde (70%)
-                console.log('[PAYMENT] Création du checkout SumUp pour le solde...');
-                const checkoutResponse = await fetch(`${API_BASE_URL}/api/payments/sumup/create-checkout`, {
+            function createCheckoutForDeposit(orderId) {
+                var depositBtn = document.querySelector('#depositSection button');
+                return fetch(PAY_API + '/api/payments/sumup/create-checkout', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        orderId: orderId,
-                        stage: 'balance'
-                    })
+                    body: JSON.stringify({ orderId: orderId, stage: 'deposit' })
+                })
+                .then(function(resp) {
+                    if (!resp.ok) return resp.json().then(function(d) { throw new Error(d.error || d.details || 'Erreur creation checkout'); });
+                    return resp.json();
+                })
+                .then(function(checkoutData) {
+                    console.log('[PAYMENT] Checkout SumUp cree:', checkoutData);
+                    if (depositBtn) {
+                        depositBtn.disabled = false;
+                        depositBtn.innerHTML = '<i class="fas fa-credit-card mr-2"></i>Payer l\'acompte';
+                    }
+                    if (checkoutData.checkout_id) {
+                        showSumUpWidget(checkoutData.checkout_id, checkoutData.amount, orderId, 'deposit');
+                    } else {
+                        throw new Error('ID de checkout non recu');
+                    }
                 });
-
-                if (!checkoutResponse.ok) {
-                    const errorData = await checkoutResponse.json();
-                    throw new Error(errorData.error || errorData.details || 'Erreur création checkout SumUp');
-                }
-
-                const checkoutData = await checkoutResponse.json();
-                console.log('[PAYMENT] Checkout SumUp créé pour solde:', checkoutData);
-
-                // Afficher le widget SumUp pour le paiement par carte
-                if (checkoutData.checkout_id) {
-                    console.log('[PAYMENT] Ouverture du widget SumUp pour solde, checkout_id:', checkoutData.checkout_id);
-                    showSumUpWidget(checkoutData.checkout_id, checkoutData.amount, orderId, 'balance');
-                } else {
-                    throw new Error('ID de checkout non reçu');
-                }
-
-            } catch (error) {
-                console.error('[PAYMENT] Erreur:', error);
-
-                // Message d'erreur spécifique
-                if (error.message.includes('Configuration SumUp') || error.message.includes('non configuree')) {
-                    alert('❌ Le système de paiement n\'est pas encore configuré.\n\nVeuillez contacter l\'administrateur.');
-                } else if (error.message.includes('fetch') || error.message.includes('Failed')) {
-                    alert('❌ Impossible de contacter le serveur de paiement.\n\nVérifiez votre connexion internet et réessayez.');
-                } else {
-                    alert('❌ Erreur lors de la préparation du paiement:\n\n' + error.message);
-                }
             }
-        }
 
-        // Charger le statut au chargement de la page
-        loadPaymentStatus();
+            // ==================
+            // PAY BALANCE
+            // ==================
+            // Store backend data for payBalance to use
+            var _backendOrderId = null;
+
+            window.payBalance = function() {
+                var token = getToken();
+
+                // Fetch the order_id from backend
+                fetch(PAY_API + '/api/payments/history', {
+                    method: 'GET',
+                    headers: { 'Authorization': 'Bearer ' + token }
+                })
+                .then(function(resp) { return resp.json(); })
+                .then(function(data) {
+                    var orderId = data.order_id || _backendOrderId;
+                    if (!orderId) {
+                        throw new Error('Aucune commande trouvee pour le paiement du solde.');
+                    }
+                    if (!data.can_pay_balance) {
+                        throw new Error('Le paiement du solde n\'est pas encore disponible.');
+                    }
+                    console.log('[PAYMENT] Paiement du solde pour commande:', orderId);
+
+                    return fetch(PAY_API + '/api/payments/sumup/create-checkout', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ orderId: orderId, stage: 'balance' })
+                    })
+                    .then(function(resp) {
+                        if (!resp.ok) return resp.json().then(function(d) { throw new Error(d.error || d.details || 'Erreur creation checkout'); });
+                        return resp.json();
+                    })
+                    .then(function(checkoutData) {
+                        console.log('[PAYMENT] Checkout SumUp cree pour solde:', checkoutData);
+                        if (checkoutData.checkout_id) {
+                            showSumUpWidget(checkoutData.checkout_id, checkoutData.amount, orderId, 'balance');
+                        } else {
+                            throw new Error('ID de checkout non recu');
+                        }
+                    });
+                })
+                .catch(function(err) {
+                    console.error('[PAYMENT] Erreur payBalance:', err);
+                    alert('Erreur lors de la preparation du paiement du solde:\n\n' + err.message);
+                });
+            };
+
+            // Charger le statut au chargement de la page
+            loadPaymentStatus();
+
+        } catch (globalErr) {
+            console.error('[PAYMENT PAGE] Erreur globale:', globalErr);
+            var errMsg = document.getElementById('statusMessage');
+            if (errMsg) errMsg.textContent = 'Erreur de chargement. Veuillez rafraichir la page.';
+            var summaryEl = document.getElementById('statusSummary');
+            if (summaryEl) summaryEl.innerHTML = '<p class="text-center font-bold text-red-400 py-8">Une erreur est survenue. Veuillez rafraichir la page ou contacter le support.</p>';
+        }
+    })();
     </script>
     <div id="site-footer"></div>
     <script src="footer.js" defer></script>
