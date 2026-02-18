@@ -439,6 +439,14 @@ app.get('/', (req, res) => {
     });
 });
 
+app.get('/api/ping', (req, res) => {
+    res.json({
+        ok: true,
+        service: 'FA GENESIS Backend',
+        timestamp: new Date().toISOString()
+    });
+});
+
 app.get('/api/health', (req, res) => {
     const hasApiKey = process.env.SUMUP_API_KEY && process.env.SUMUP_API_KEY !== 'COLLER_LA_CLE_ICI';
     const hasMerchantCode = process.env.SUMUP_MERCHANT_CODE && process.env.SUMUP_MERCHANT_CODE !== 'COLLER_LE_MERCHANT_CODE_ICI';
