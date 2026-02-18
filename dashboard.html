@@ -142,7 +142,7 @@
             <!-- En-tete de bienvenue -->
             <div class="mb-16">
                 <h1 class="text-5xl md:text-7xl font-black italic uppercase mb-4 text-[var(--genesis-yellow)]" id="welcomeTitle">Bienvenue</h1>
-                <p class="text-xl font-bold uppercase text-white" id="welcomeSubtitle">Voici un aperçu de votre espace client</p>
+                <p class="text-xl font-bold uppercase text-white" id="welcomeSubtitle">Votre espace client</p>
             </div>
 
             <!-- Loader (TOUJOURS masque par finally dans loadDashboard) -->
@@ -172,12 +172,12 @@
                 </div>
             </div>
 
-            <!-- Zone debug (visible en dev, cachee en prod apres validation) -->
-            <div id="debugPanel" class="mb-4" style="display: none;">
-                <details>
-                    <summary class="text-xs text-gray-500 cursor-pointer font-bold">DEBUG INFO</summary>
-                    <pre id="debugOutput" class="text-xs text-green-400 bg-black p-4 mt-2 border border-gray-700 overflow-auto max-h-48" style="white-space: pre-wrap;"></pre>
-                </details>
+            <!-- Zone debug (TEMPORAIRE - a retirer apres validation) -->
+            <div id="debugPanel" class="mb-4">
+                <div class="p-3 border-2 border-green-500" style="background: #0a0a0a;">
+                    <p class="text-green-400 text-xs font-bold mb-1">DEBUG (temporaire)</p>
+                    <pre id="debugOutput" class="text-xs text-green-400 overflow-auto max-h-48" style="white-space: pre-wrap;">En attente...</pre>
+                </div>
             </div>
 
             <!-- Bloc d'appel a l'action : paiement de l'acompte requis (cache par defaut) -->
