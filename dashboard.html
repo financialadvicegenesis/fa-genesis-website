@@ -352,7 +352,7 @@
         // ============================================================
         console.log('[DASHBOARD] v7 - Demarrage');
 
-        var API_BASE_URL = window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com';
+        var DASH_API = window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com';
 
         // ============================================================
         // UI HELPERS
@@ -447,7 +447,7 @@
                 } catch (e) {}
 
                 // APPEL UNIQUE : GET /api/dashboard
-                var resp = await fetchWithTimeout(API_BASE_URL + '/api/dashboard', {
+                var resp = await fetchWithTimeout(DASH_API + '/api/dashboard', {
                     headers: { 'Authorization': 'Bearer ' + token }
                 }, 8000);
 
@@ -519,7 +519,7 @@
                             }
                             if (po.source === 'quote' && po.quote_id && payBtn) {
                                 try {
-                                    var qResp = await fetchWithTimeout(API_BASE_URL + '/api/quotes/by-order/' + encodeURIComponent(po.id), {
+                                    var qResp = await fetchWithTimeout(DASH_API + '/api/quotes/by-order/' + encodeURIComponent(po.id), {
                                         headers: { 'Authorization': 'Bearer ' + token }
                                     }, 5000);
                                     if (qResp.ok) {
@@ -695,7 +695,7 @@
 
             try {
                 var token = localStorage.getItem('fa_genesis_token');
-                var resp = await fetch(API_BASE_URL + '/api/orders/' + _scheduleOrderId + '/schedule-start', {
+                var resp = await fetch(DASH_API + '/api/orders/' + _scheduleOrderId + '/schedule-start', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (token || '') },
                     body: JSON.stringify({ proposed_date: picker.value })

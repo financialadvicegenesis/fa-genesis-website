@@ -232,7 +232,7 @@
         // ============================================================
         // LIVRABLES - FETCH AUTHENTIFIE, ONGLETS, ZERO AOS
         // ============================================================
-        var API_BASE_URL = window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com';
+        var LIV_API = window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com';
         var _allLivrables = [];
         var _canDownload = false;
 
@@ -298,7 +298,7 @@
                 var token = localStorage.getItem('fa_genesis_token');
                 if (!token) { window.location.href = 'login.html'; return; }
 
-                var resp = await fetchWithTimeout(API_BASE_URL + '/api/deliverables/mine', {
+                var resp = await fetchWithTimeout(LIV_API + '/api/deliverables/mine', {
                     headers: { 'Authorization': 'Bearer ' + token }
                 }, 8000);
 

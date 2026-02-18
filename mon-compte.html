@@ -331,7 +331,7 @@
         // ============================================================
         // MON COMPTE - FETCH API FRAICHE, ZERO AOS, VAR PARTOUT
         // ============================================================
-        var API_BASE_URL = window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com';
+        var MC_API = window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com';
 
         // Auth check
         try {
@@ -363,7 +363,7 @@
                 var token = localStorage.getItem('fa_genesis_token');
                 if (!token) { window.location.href = 'login.html'; return; }
 
-                var resp = await fetch(API_BASE_URL + '/api/auth/me', {
+                var resp = await fetch(MC_API + '/api/auth/me', {
                     headers: { 'Authorization': 'Bearer ' + token }
                 });
 
@@ -481,7 +481,7 @@
                 var nom = (document.getElementById('editNom') || {}).value || '';
                 var telephone = (document.getElementById('editTelephone') || {}).value || '';
 
-                var resp = await fetch(API_BASE_URL + '/api/me', {
+                var resp = await fetch(MC_API + '/api/me', {
                     method: 'PATCH',
                     headers: {
                         'Content-Type': 'application/json',
@@ -583,7 +583,7 @@
             if (btn) { btn.disabled = true; btn.textContent = 'Desactivation...'; }
             try {
                 var token = localStorage.getItem('fa_genesis_token');
-                var response = await fetch(API_BASE_URL + '/api/auth/deactivate-account', {
+                var response = await fetch(MC_API + '/api/auth/deactivate-account', {
                     method: 'PUT',
                     headers: { 'Authorization': 'Bearer ' + (token || '') }
                 });
@@ -614,7 +614,7 @@
             if (btn) { btn.disabled = true; btn.textContent = 'Suppression...'; }
             try {
                 var token = localStorage.getItem('fa_genesis_token');
-                var response = await fetch(API_BASE_URL + '/api/auth/delete-account', {
+                var response = await fetch(MC_API + '/api/auth/delete-account', {
                     method: 'DELETE',
                     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (token || '') },
                     body: JSON.stringify({ password: password })
