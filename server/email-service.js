@@ -1206,6 +1206,177 @@ async function sendSessionRescheduledEmail(clientEmail, clientName, sessionData)
     }
 }
 
+/**
+ * Email envoye a l'admin (et au partenaire si assigne) quand un client demande une seance
+ */
+async function sendSessionRequestedEmail(adminEmail, clientName, sessionData) {
+    var transport = initializeTransporter();
+    if (!transport) {
+        console.log('[EMAIL] Transport non configure - Email session requested non envoye');
+        return { success: false, reason: 'SMTP non configure' };
+    }
+
+    var typeLabels = { call: 'Appel / Visio', shooting: 'Shooting photo/video', meeting: 'Reunion / Consultation' };
+    var typeLabel = typeLabels[sessionData.session_type] || sessionData.session_type || 'Non precise';
+
+    var slotsHtml = '';
+    if (sessionData.proposed_slots && sessionData.proposed_slots.length > 0) {
+        slotsHtml = '<p style="margin:10px 0 5px 0;font-weight:700;color:#333;">Creneaux proposes :</p><ul style="margin:0;padding-left:20px;">';
+        for (var i = 0; i < sessionData.proposed_slots.length; i++) {
+            var d = new Date(sessionData.proposed_slots[i]);
+            var slotStr = d.toLocaleDateString('fr-FR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })
+                + ' a ' + d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+            slotsHtml += '<li style="color:#555;">' + escapeHtml(slotStr) + '</li>';
+        }
+        slotsHtml += '</ul>';
+    }
+
+    var providerLabel = '';
+    if (sessionData.requested_provider_role) {
+        var roleLabels = { admin: 'Consultant FA GENESIS', photographer: 'Photographe', videographer: 'Videaste', marketer: 'Consultant Marketing', media: 'Specialiste Media' };
+        providerLabel = roleLabels[sessionData.requested_provider_role] || sessionData.requested_provider_role;
+    }
+
+    var content = '<h2 style="margin:0 0 20px 0;font-size:24px;color:#000;font-weight:700;">'
+        + 'Nouvelle demande de seance</h2>'
+        + '<p style="margin:0 0 20px 0;font-size:16px;color:#333;line-height:1.6;">'
+        + '<strong>' + escapeHtml(clientName) + '</strong> a demande une nouvelle seance.</p>'
+        + '<div style="background:#f5f5f5;padding:20px;border-radius:4px;margin:25px 0;">'
+        + '<table style="width:100%;border-collapse:collapse;">'
+        + '<tr><td style="padding:8px 0;font-weight:700;color:#666;">Type</td>'
+        + '<td style="padding:8px 0;color:#000;text-align:right;">' + escapeHtml(typeLabel) + '</td></tr>'
+        + (providerLabel ? '<tr><td style="padding:8px 0;font-weight:700;color:#666;">Intervenant souhaite</td>'
+        + '<td style="padding:8px 0;color:#000;text-align:right;">' + escapeHtml(providerLabel) + '</td></tr>' : '')
+        + '<tr><td style="padding:8px 0;font-weight:700;color:#666;">Seance ID</td>'
+        + '<td style="padding:8px 0;color:#000;text-align:right;">' + escapeHtml(sessionData.id || '') + '</td></tr>'
+        + '</table></div>'
+        + (sessionData.notes_client ? '<div style="background:#FFF9E6;border-left:4px solid #FFD700;padding:15px 20px;margin:20px 0;">'
+        + '<p style="margin:0 0 5px 0;font-weight:700;color:#000;">Message du client :</p>'
+        + '<p style="margin:0;color:#555;">' + escapeHtml(sessionData.notes_client) + '</p></div>' : '')
+        + slotsHtml
+        + '<p style="margin:30px 0 0 0;font-size:14px;color:#666;">Connectez-vous a l\'interface admin pour gerer cette demande.</p>';
+
+    try {
+        var recipients = [adminEmail];
+        // Envoyer aussi au partenaire si assigne
+        if (sessionData.partner_id) {
+            // Le partenaire sera notifie separement si besoin
+        }
+
+        var result = await transport.sendMail({
+            from: '"' + (process.env.EMAIL_FROM_NAME || 'FA GENESIS') + '" <' + (process.env.EMAIL_FROM_ADDRESS || process.env.SMTP_USER) + '>',
+            to: adminEmail,
+            subject: '[FA GENESIS] Nouvelle demande de seance de ' + escapeHtml(clientName),
+            html: getEmailTemplate(content, 'Nouvelle demande de seance')
+        });
+        console.log('[EMAIL] Notification demande seance envoyee a ' + adminEmail);
+        return { success: true, messageId: result.messageId };
+    } catch (error) {
+        console.error('[EMAIL] Erreur envoi notification demande seance:', error.message);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * Email envoye au client quand un partenaire propose un creneau (PROPOSED)
+ */
+async function sendSessionProposedEmail(clientEmail, clientName, sessionData) {
+    var transport = initializeTransporter();
+    if (!transport) {
+        console.log('[EMAIL] Transport non configure - Email session proposed non envoye');
+        return { success: false, reason: 'SMTP non configure' };
+    }
+
+    var dateStr = 'Date a confirmer';
+    if (sessionData.datetime_start) {
+        var d = new Date(sessionData.datetime_start);
+        dateStr = d.toLocaleDateString('fr-FR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })
+            + ' a ' + d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    }
+
+    var frontUrl = process.env.FRONT_URL || 'https://fagenesis.com';
+
+    var content = '<h2 style="margin:0 0 20px 0;font-size:24px;color:#000;font-weight:700;">'
+        + 'Un creneau vous a ete propose, ' + escapeHtml(clientName) + '</h2>'
+        + '<p style="margin:0 0 20px 0;font-size:16px;color:#333;line-height:1.6;">'
+        + 'Un intervenant vous a propose un creneau pour votre seance. Connectez-vous pour accepter ou demander un autre creneau.</p>'
+        + '<div style="background:#FFF9E6;border-left:4px solid #FFD700;padding:20px;margin:25px 0;">'
+        + '<p style="margin:0 0 10px 0;font-weight:700;color:#000;">Creneau propose :</p>'
+        + '<p style="margin:0;font-size:18px;color:#000;font-weight:700;">' + escapeHtml(dateStr) + '</p>'
+        + '<p style="margin:5px 0 0 0;color:#666;">Duree : ' + (sessionData.duration_minutes || 45) + ' min</p>'
+        + (sessionData.partner_name ? '<p style="margin:5px 0 0 0;color:#666;">Avec : ' + escapeHtml(sessionData.partner_name) + '</p>' : '')
+        + '</div>'
+        + '<div style="text-align:center;margin:25px 0;">'
+        + '<a href="' + frontUrl + '/seances.html" target="_blank" '
+        + 'style="display:inline-block;background:#FFD700;color:#000;padding:16px 32px;font-weight:700;'
+        + 'text-transform:uppercase;text-decoration:none;font-size:14px;border:3px solid #000;">'
+        + 'Voir mes seances</a></div>'
+        + '<p style="margin:30px 0 0 0;font-size:16px;color:#333;">Merci pour votre confiance,<br>'
+        + '<strong style="color:#000;">L\'equipe FA GENESIS</strong></p>';
+
+    try {
+        var result = await transport.sendMail({
+            from: '"' + (process.env.EMAIL_FROM_NAME || 'FA GENESIS') + '" <' + (process.env.EMAIL_FROM_ADDRESS || process.env.SMTP_USER) + '>',
+            to: clientEmail,
+            subject: '[FA GENESIS] Un creneau vous a ete propose pour votre seance',
+            html: getEmailTemplate(content, 'Creneau propose')
+        });
+        console.log('[EMAIL] Email creneau propose envoye a ' + clientEmail);
+        return { success: true, messageId: result.messageId };
+    } catch (error) {
+        console.error('[EMAIL] Erreur envoi email creneau propose:', error.message);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * Email envoye au client quand une seance est terminee (COMPLETED)
+ */
+async function sendSessionCompletedEmail(clientEmail, clientName, sessionData) {
+    var transport = initializeTransporter();
+    if (!transport) {
+        console.log('[EMAIL] Transport non configure - Email session completed non envoye');
+        return { success: false, reason: 'SMTP non configure' };
+    }
+
+    var frontUrl = process.env.FRONT_URL || 'https://fagenesis.com';
+
+    var dateStr = '';
+    if (sessionData.datetime_start) {
+        var d = new Date(sessionData.datetime_start);
+        dateStr = d.toLocaleDateString('fr-FR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+    }
+
+    var content = '<h2 style="margin:0 0 20px 0;font-size:24px;color:#000;font-weight:700;">'
+        + 'Seance terminee, ' + escapeHtml(clientName) + ' !</h2>'
+        + '<p style="margin:0 0 20px 0;font-size:16px;color:#333;line-height:1.6;">'
+        + 'Votre seance' + (dateStr ? ' du ' + escapeHtml(dateStr) : '') + ' est maintenant terminee.</p>'
+        + '<div style="background:#e8f5e9;border-left:4px solid #4caf50;padding:20px;margin:25px 0;">'
+        + '<p style="margin:0;font-size:15px;color:#2e7d32;">'
+        + '<strong>Vos livrables seront bientot disponibles</strong> dans votre espace client.</p></div>'
+        + '<div style="text-align:center;margin:25px 0;">'
+        + '<a href="' + frontUrl + '/livrables.html" target="_blank" '
+        + 'style="display:inline-block;background:#FFD700;color:#000;padding:16px 32px;font-weight:700;'
+        + 'text-transform:uppercase;text-decoration:none;font-size:14px;border:3px solid #000;">'
+        + 'Voir mes livrables</a></div>'
+        + '<p style="margin:30px 0 0 0;font-size:16px;color:#333;">Merci pour votre confiance,<br>'
+        + '<strong style="color:#000;">L\'equipe FA GENESIS</strong></p>';
+
+    try {
+        var result = await transport.sendMail({
+            from: '"' + (process.env.EMAIL_FROM_NAME || 'FA GENESIS') + '" <' + (process.env.EMAIL_FROM_ADDRESS || process.env.SMTP_USER) + '>',
+            to: clientEmail,
+            subject: '[FA GENESIS] Votre seance est terminee',
+            html: getEmailTemplate(content, 'Seance terminee')
+        });
+        console.log('[EMAIL] Email seance terminee envoye a ' + clientEmail);
+        return { success: true, messageId: result.messageId };
+    } catch (error) {
+        console.error('[EMAIL] Erreur envoi email seance terminee:', error.message);
+        return { success: false, error: error.message };
+    }
+}
+
 // ============================================================
 // EXPORTS
 // ============================================================
@@ -1223,5 +1394,8 @@ module.exports = {
     sendQuotePartnerNotification,
     sendQuoteToClient,
     sendSessionConfirmedEmail,
-    sendSessionRescheduledEmail
+    sendSessionRescheduledEmail,
+    sendSessionRequestedEmail,
+    sendSessionProposedEmail,
+    sendSessionCompletedEmail
 };

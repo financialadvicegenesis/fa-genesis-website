@@ -23,6 +23,7 @@
             overflow-x: hidden;
         }
         h1, h2, h3, h4, h5, .nav-link { font-family: 'Unbounded', cursive; }
+        .notif-badge { display:inline-block;background:#f44336;color:#fff;font-size:11px;font-weight:900;min-width:18px;height:18px;line-height:18px;text-align:center;border-radius:50%;margin-left:4px;vertical-align:super; }
         .neo-border { border: 4px solid var(--genesis-black); }
         .neo-shadow { box-shadow: 10px 10px 0px 0px var(--genesis-yellow); }
         .neo-btn-yellow {
@@ -480,6 +481,34 @@
 
         // Lancer le chargement
         loadLivrables();
+
+        // Notification badge for sessions PROPOSED
+        (function() {
+            try {
+                var tkn = localStorage.getItem('fa_genesis_token');
+                if (!tkn) return;
+                fetch(LIV_API + '/api/sessions/me', { headers: { 'Authorization': 'Bearer ' + tkn } })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    var sessions = data.sessions || data || [];
+                    if (!Array.isArray(sessions)) return;
+                    var count = 0;
+                    for (var i = 0; i < sessions.length; i++) {
+                        if (sessions[i].status === 'PROPOSED') count++;
+                    }
+                    if (count > 0) {
+                        var links = document.querySelectorAll('a[href="seances.html"]');
+                        for (var j = 0; j < links.length; j++) {
+                            var badge = document.createElement('span');
+                            badge.className = 'notif-badge';
+                            badge.textContent = count;
+                            links[j].appendChild(badge);
+                        }
+                    }
+                })
+                .catch(function() {});
+            } catch(e) {}
+        })();
     </script>
     <div id="site-footer"></div>
     <script src="footer.js" defer></script>

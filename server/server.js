@@ -3642,6 +3642,16 @@ app.post('/api/sessions', function(req, res) {
         saveSessions(sessions);
 
         console.log('[SESSION] Demande creee: ' + newSession.id + ' par ' + user.email);
+
+        // Email notification a l'admin
+        try {
+            var emailService = require('./email-service');
+            var adminEmail = process.env.EMAIL_ADMIN_ADDRESS;
+            if (adminEmail && emailService.sendSessionRequestedEmail) {
+                emailService.sendSessionRequestedEmail(adminEmail, newSession.client_name, newSession);
+            }
+        } catch(e) { console.error('[SESSION] Erreur envoi email requested:', e.message); }
+
         res.json({ success: true, session: sanitizeSessionForClient(newSession) });
 
     } catch (error) {
@@ -3830,13 +3840,13 @@ app.patch('/api/partner/sessions/:id', authenticatePartner, function(req, res) {
             session.status = 'PROPOSED';
             session.updated_at = now;
 
-            // Email si c'etait une reprogrammation
+            // Email au client : creneau propose
             try {
                 var emailService = require('./email-service');
-                if (emailService.sendSessionRescheduledEmail) {
-                    emailService.sendSessionRescheduledEmail(session.client_id, session.client_name, session);
+                if (emailService.sendSessionProposedEmail) {
+                    emailService.sendSessionProposedEmail(session.client_id, session.client_name, session);
                 }
-            } catch(e) { console.error('[SESSION] Erreur envoi email reschedule:', e.message); }
+            } catch(e) { console.error('[SESSION] Erreur envoi email proposed:', e.message); }
 
         } else if (action === 'confirm') {
             // REQUESTED -> CONFIRMED direct (avec meet_url)
@@ -3909,6 +3919,15 @@ app.post('/api/partner/sessions/:id/complete', authenticatePartner, function(req
         saveSessions(sessions);
 
         console.log('[SESSION] Terminee: ' + session.id);
+
+        // Email au client : seance terminee
+        try {
+            var emailService = require('./email-service');
+            if (emailService.sendSessionCompletedEmail) {
+                emailService.sendSessionCompletedEmail(session.client_id, session.client_name, session);
+            }
+        } catch(e) { console.error('[SESSION] Erreur envoi email completed:', e.message); }
+
         res.json({ success: true, session: session });
 
     } catch (error) {
