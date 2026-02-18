@@ -348,9 +348,38 @@
     <script src="auth.js"></script>
     <script>
         // ============================================================
-        // DASHBOARD v7 - SIMPLE, ZERO PROGRESSION, ZERO LOADING INFINI
+        // DASHBOARD v7.1 - FAILSAFE ANTI-BLOCAGE
         // ============================================================
-        console.log('[DASHBOARD] v7 - Demarrage');
+        console.log('[DASHBOARD] v7.1 - Demarrage');
+
+        // FAILSAFE: forcer masquage loader apres 12 secondes quoi qu'il arrive
+        var _dashFailsafe = setTimeout(function() {
+            console.error('[DASHBOARD] FAILSAFE: loader force masque apres 12s');
+            var l = document.getElementById('dashboardLoader');
+            if (l && l.style.display !== 'none') {
+                l.style.display = 'none';
+                var eb = document.getElementById('dashboardErrorBlock');
+                if (eb) {
+                    eb.style.display = '';
+                    var em = document.getElementById('errorMessage');
+                    if (em) em.textContent = 'Le chargement a pris trop de temps. Essayez Ctrl+Maj+R pour vider le cache.';
+                }
+            }
+        }, 12000);
+
+        // FAILSAFE: capturer toute erreur JS non geree
+        window.onerror = function(msg, url, line) {
+            console.error('[DASHBOARD] JS Error:', msg, 'at', url, ':', line);
+            var l2 = document.getElementById('dashboardLoader');
+            if (l2) l2.style.display = 'none';
+            var eb2 = document.getElementById('dashboardErrorBlock');
+            if (eb2) {
+                eb2.style.display = '';
+                var em2 = document.getElementById('errorMessage');
+                if (em2) em2.textContent = 'Erreur JS: ' + msg;
+            }
+            return false;
+        };
 
         var DASH_API = window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com';
 
@@ -598,6 +627,7 @@
                 }
             } finally {
                 setLoading(false);
+                clearTimeout(_dashFailsafe);
             }
         }
 

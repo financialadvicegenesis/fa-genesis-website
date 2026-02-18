@@ -329,8 +329,27 @@
     <script src="auth.js"></script>
     <script>
         // ============================================================
-        // MON COMPTE - FETCH API FRAICHE, ZERO AOS, VAR PARTOUT
+        // MON COMPTE v2 - FAILSAFE ANTI-BLOCAGE
         // ============================================================
+        console.log('[MON-COMPTE] v2 - Demarrage');
+
+        // FAILSAFE: forcer masquage loader apres 12 secondes
+        var _mcFailsafe = setTimeout(function() {
+            console.error('[MON-COMPTE] FAILSAFE: loader force masque apres 12s');
+            var l = document.getElementById('accountLoader');
+            if (l && l.style.display !== 'none') {
+                l.innerHTML = '<p class="text-white font-bold p-6">Le chargement a pris trop de temps. <a href="mon-compte.html" class="underline text-[var(--genesis-yellow)]">Reessayer</a> ou faites Ctrl+Maj+R</p>';
+            }
+        }, 12000);
+
+        // FAILSAFE: capturer erreurs JS
+        window.onerror = function(msg, url, line) {
+            console.error('[MON-COMPTE] JS Error:', msg, 'at', url, ':', line);
+            var l2 = document.getElementById('accountLoader');
+            if (l2) l2.innerHTML = '<p class="text-white font-bold p-6">Erreur JS: ' + msg + ' <a href="mon-compte.html" class="underline text-[var(--genesis-yellow)]">Reessayer</a></p>';
+            return false;
+        };
+
         var MC_API = window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com';
 
         // Auth check
@@ -461,7 +480,9 @@
 
             } catch (err) {
                 console.error('[MON-COMPTE] Erreur:', err.message);
-                if (loader) loader.innerHTML = '<p class="text-white font-bold p-6">Erreur de connexion. <a href="mon-compte.html" class="underline text-[var(--genesis-yellow)]">Reessayer</a></p>';
+                if (loader) loader.innerHTML = '<p class="text-white font-bold p-6">Erreur : ' + (err.message || 'Connexion impossible') + '. <a href="mon-compte.html" class="underline text-[var(--genesis-yellow)]">Reessayer</a></p>';
+            } finally {
+                clearTimeout(_mcFailsafe);
             }
         }
 

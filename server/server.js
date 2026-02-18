@@ -279,7 +279,7 @@ app.use(cors({
         'https://financialadvicegenesis.github.io',
         process.env.FRONT_URL
     ].filter(Boolean),
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
     credentials: true,
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
