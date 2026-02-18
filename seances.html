@@ -138,6 +138,12 @@
                     </select>
                 </div>
                 <div style="margin-bottom:16px;">
+                    <label class="form-label">Intervenant souhaité</label>
+                    <select id="reqProviderRole" class="form-input">
+                        <option value="admin">Consultant FA GENESIS</option>
+                    </select>
+                </div>
+                <div style="margin-bottom:16px;">
                     <label class="form-label">Votre besoin / message</label>
                     <textarea id="reqNotes" class="form-input" rows="3" placeholder="Décrivez votre besoin..."></textarea>
                 </div>
@@ -443,6 +449,31 @@
             document.body.style.overflow = 'hidden';
             document.getElementById('reqError').style.display = 'none';
             document.getElementById('reqSuccess').style.display = 'none';
+
+            // Charger les intervenants autorises
+            var token = null;
+            try { token = localStorage.getItem('fa_genesis_token'); } catch(e) {}
+            if (token) {
+                fetch(API_BASE_URL + '/api/sessions/allowed-providers', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.ok && data.providers) {
+                        var sel = document.getElementById('reqProviderRole');
+                        if (sel) {
+                            sel.innerHTML = '';
+                            for (var i = 0; i < data.providers.length; i++) {
+                                var opt = document.createElement('option');
+                                opt.value = data.providers[i].role;
+                                opt.textContent = data.providers[i].label;
+                                sel.appendChild(opt);
+                            }
+                        }
+                    }
+                })
+                .catch(function() {});
+            }
         };
 
         window.closeRequestForm = function() {
@@ -461,6 +492,7 @@
             if (!token) { alert('Non authentifié'); return; }
 
             var sessionType = document.getElementById('reqSessionType').value;
+            var providerRole = document.getElementById('reqProviderRole').value || 'admin';
             var notes = document.getElementById('reqNotes').value;
             var slot1 = document.getElementById('reqSlot1').value;
             var slot2 = document.getElementById('reqSlot2').value;
@@ -482,6 +514,7 @@
                 },
                 body: JSON.stringify({
                     session_type: sessionType,
+                    requested_provider_role: providerRole,
                     notes_client: notes,
                     proposed_slots: proposedSlots
                 })

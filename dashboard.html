@@ -249,12 +249,19 @@
 
                         <!-- Formulaire de choix de date -->
                         <div id="scheduleFormBlock">
-                            <p class="font-bold text-gray-700 mb-4">Sélectionnez une date. L'équipe FA GENESIS confirmera la disponibilité.</p>
-                            <div class="flex flex-col md:flex-row items-start md:items-end gap-4">
+                            <p class="font-bold text-gray-700 mb-4">Sélectionnez une date et un intervenant. L'équipe FA GENESIS confirmera la disponibilité.</p>
+                            <div class="flex flex-col md:flex-row items-start md:items-end gap-4 flex-wrap">
                                 <div>
                                     <label class="font-black text-xs uppercase block mb-2 text-gray-600">Date souhaitée (minimum demain)</label>
                                     <input type="date" id="startDatePicker" class="p-3 text-lg font-bold w-full"
                                            style="border: 4px solid black; background: white; color: black; min-width: 220px;" />
+                                </div>
+                                <div>
+                                    <label class="font-black text-xs uppercase block mb-2 text-gray-600">Avec qui démarrer ?</label>
+                                    <select id="kickoffProviderRole" class="p-3 text-lg font-bold w-full"
+                                            style="border: 4px solid black; background: white; color: black; min-width: 220px;">
+                                        <option value="admin">Consultant FA GENESIS</option>
+                                    </select>
                                 </div>
                                 <button onclick="submitStartDate()" id="submitStartDateBtn"
                                         class="neo-btn-yellow px-8 py-3 text-base uppercase whitespace-nowrap">
@@ -702,6 +709,31 @@
                         if (dd.length < 2) dd = '0' + dd;
                         picker.min = y + '-' + m + '-' + dd;
                     }
+                    // Charger les intervenants autorises pour le dropdown kickoff
+                    try {
+                        var tkn = localStorage.getItem('fa_genesis_token');
+                        if (tkn) {
+                            fetch(DASH_API + '/api/sessions/allowed-providers', {
+                                headers: { 'Authorization': 'Bearer ' + tkn }
+                            })
+                            .then(function(r) { return r.json(); })
+                            .then(function(d) {
+                                if (d.ok && d.providers) {
+                                    var sel = document.getElementById('kickoffProviderRole');
+                                    if (sel) {
+                                        sel.innerHTML = '';
+                                        for (var j = 0; j < d.providers.length; j++) {
+                                            var opt = document.createElement('option');
+                                            opt.value = d.providers[j].role;
+                                            opt.textContent = d.providers[j].label;
+                                            sel.appendChild(opt);
+                                        }
+                                    }
+                                }
+                            })
+                            .catch(function() {});
+                        }
+                    } catch(e) {}
                 }
                 return;
             }
@@ -728,7 +760,7 @@
                 var resp = await fetch(DASH_API + '/api/orders/' + _scheduleOrderId + '/schedule-start', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (token || '') },
-                    body: JSON.stringify({ proposed_date: picker.value })
+                    body: JSON.stringify({ proposed_date: picker.value, kickoff_provider_role: (document.getElementById('kickoffProviderRole') || {}).value || 'admin' })
                 });
                 var rData = await resp.json();
                 if (resp.ok && rData.success) {

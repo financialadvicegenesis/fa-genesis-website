@@ -405,6 +405,38 @@ function computeNextStep(order) {
 }
 
 /**
+ * Retourne les roles d'intervenants autorises selon le type de produit de la commande
+ */
+function getAllowedProviders(order) {
+    var productId = (order && order.product_id) || '';
+    var PROVIDER_LABELS = {
+        admin: 'Consultant FA GENESIS',
+        photographer: 'Photographe',
+        videographer: 'Videaste',
+        marketer: 'Consultant Marketing',
+        media: 'Specialiste Media'
+    };
+
+    var roles = [];
+    if (productId.indexOf('photo-') === 0) {
+        roles = ['photographer'];
+    } else if (productId.indexOf('video-') === 0) {
+        roles = ['videographer'];
+    } else if (productId.indexOf('marketing-') === 0) {
+        roles = ['marketer'];
+    } else if (productId.indexOf('media-') === 0) {
+        roles = ['photographer', 'videographer', 'media'];
+    } else {
+        // accompagnement ou autre : tous les types
+        roles = ['admin', 'photographer', 'videographer', 'marketer', 'media'];
+    }
+
+    return roles.map(function(role) {
+        return { role: role, label: PROVIDER_LABELS[role] || role };
+    });
+}
+
+/**
  * Calcule le jour courant d'un accompagnement
  * @param {Object} order - La commande
  * @returns {{ currentDay: number, totalDays: number, isComplete: boolean }}
@@ -2082,15 +2114,18 @@ app.post('/api/orders/:orderId/schedule-start', function(req, res) {
         if (isNaN(dateObj.getTime())) return res.status(400).json({ error: 'Date invalide' });
         if (dateObj < tomorrow) return res.status(400).json({ error: 'La date doit etre au minimum demain (J+1)' });
 
+        var kickoffRole = req.body.kickoff_provider_role || 'admin';
+
         var updates = {
             proposed_start_date: proposedDate,
+            kickoff_provider_role: kickoffRole,
             schedule_status: 'client_proposed',
             schedule_confirmed_by_admin: false,
             schedule_confirmed_by_partner: false
         };
 
         var updatedOrder = updateOrder(req.params.orderId, updates);
-        console.log('[SCHEDULE] Client ' + user.email + ' propose date: ' + proposedDate + ' pour ' + req.params.orderId);
+        console.log('[SCHEDULE] Client ' + user.email + ' propose date: ' + proposedDate + ' (provider: ' + kickoffRole + ') pour ' + req.params.orderId);
 
         res.json({ success: true, order: updatedOrder });
     } catch (error) {
@@ -3477,6 +3512,32 @@ function sanitizeSessionForClient(session) {
 }
 
 /**
+ * GET /api/sessions/allowed-providers
+ * Retourne les types d'intervenants autorises pour l'utilisateur connecte
+ */
+app.get('/api/sessions/allowed-providers', function(req, res) {
+    try {
+        var user = authenticateClient(req, res);
+        if (!user) return;
+
+        // Trouver la commande active de l'utilisateur
+        var orders = loadOrders();
+        var userOrders = orders.filter(function(o) {
+            return o.client_info && o.client_info.email &&
+                o.client_info.email.toLowerCase() === user.email.toLowerCase();
+        });
+        // Prendre la commande la plus recente
+        var order = userOrders.length > 0 ? userOrders[userOrders.length - 1] : null;
+
+        var providers = getAllowedProviders(order);
+        res.json({ ok: true, providers: providers });
+    } catch (error) {
+        console.error('[PROVIDERS] Erreur:', error);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
  * GET /api/sessions/me
  * Recuperer les seances de l'utilisateur connecte
  * Supporte ancien modele (userEmail) + nouveau (client_id)
@@ -3525,15 +3586,31 @@ app.post('/api/sessions', function(req, res) {
             return res.status(400).json({ error: 'session_type requis (call, shooting, meeting)' });
         }
 
-        // Chercher le partenaire si fourni
+        // Chercher le partenaire si fourni directement ou via requested_provider_role
         var partnerName = null;
         var partnerRole = null;
-        if (body.partner_id) {
-            var partners = loadPartners();
-            var partner = partners.find(function(p) { return p.id === body.partner_id; });
+        var partnerId = body.partner_id || null;
+        var requestedProviderRole = body.requested_provider_role || 'admin';
+
+        var partners = loadPartners();
+
+        if (partnerId) {
+            // Partenaire specifique fourni
+            var partner = partners.find(function(p) { return p.id === partnerId; });
             if (partner) {
                 partnerName = (partner.prenom || '') + ' ' + (partner.nom || '');
                 partnerRole = partner.partner_type || null;
+            }
+        } else if (requestedProviderRole && requestedProviderRole !== 'admin') {
+            // Auto-assigner un partenaire actif du type demande
+            var matchingPartner = partners.find(function(p) {
+                return p.partner_type === requestedProviderRole && p.accountStatus === 'active';
+            });
+            if (matchingPartner) {
+                partnerId = matchingPartner.id;
+                partnerName = (matchingPartner.prenom || '') + ' ' + (matchingPartner.nom || '');
+                partnerRole = matchingPartner.partner_type;
+                console.log('[SESSION] Auto-assign partenaire ' + partnerId + ' (type: ' + requestedProviderRole + ')');
             }
         }
 
@@ -3543,9 +3620,10 @@ app.post('/api/sessions', function(req, res) {
             project_id: body.project_id || null,
             client_id: user.email.toLowerCase(),
             client_name: ((user.prenom || '') + ' ' + (user.nom || '')).trim() || user.email,
-            partner_id: body.partner_id || null,
+            partner_id: partnerId,
             partner_name: partnerName,
             partner_role: partnerRole,
+            requested_provider_role: requestedProviderRole,
             session_type: body.session_type,
             datetime_start: null,
             duration_minutes: body.duration_minutes || 45,
