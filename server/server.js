@@ -475,25 +475,18 @@ app.get('/api/health', (req, res) => {
  */
 app.get('/api/dashboard', (req, res) => {
     try {
-        // 1. Authentification
+        // 1. Authentification par sessionToken (meme logique que /api/auth/me)
         var authHeader = req.headers.authorization;
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
             return res.status(401).json({ ok: false, error: 'UNAUTHORIZED', message: 'Token manquant' });
         }
-        var token = authHeader.replace('Bearer ', '');
-        var jwt = require('jsonwebtoken');
-        var decoded = null;
-        try {
-            decoded = jwt.verify(token, process.env.JWT_SECRET || 'fa-genesis-secret-key-2024');
-        } catch (jwtErr) {
-            return res.status(401).json({ ok: false, error: 'UNAUTHORIZED', message: 'Token invalide ou expire' });
-        }
+        var token = authHeader.split(' ')[1];
 
-        // 2. Trouver l'utilisateur
+        // 2. Trouver l'utilisateur par sessionToken
         var users = loadUsers();
-        var user = users.find(function(u) { return u.email === decoded.email; });
+        var user = users.find(function(u) { return u.sessionToken === token; });
         if (!user) {
-            return res.status(404).json({ ok: false, error: 'USER_NOT_FOUND', message: 'Utilisateur introuvable' });
+            return res.status(401).json({ ok: false, error: 'UNAUTHORIZED', message: 'Session invalide ou expiree' });
         }
 
         // 3. Trouver les commandes du client
