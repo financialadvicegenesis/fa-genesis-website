@@ -338,13 +338,19 @@
             var statusLabel = STATUS_LABELS[status] || status;
             var statusHTML = '<span class="status-badge status-' + escapeHtml(status) + '">' + escapeHtml(statusLabel) + '</span>';
 
-            // Notes
+            // Notes client
             var notesHTML = '';
             if (seance.notes_client) {
                 notesHTML = '<p style="font-size:13px;margin-top:8px;line-height:1.5;opacity:0.8;"><i class="fas fa-comment-dots" style="margin-right:6px;"></i>' + escapeHtml(seance.notes_client) + '</p>';
             }
             if (seance.description) {
                 notesHTML = '<p style="font-size:13px;margin-top:8px;line-height:1.5;opacity:0.8;">' + escapeHtml(seance.description) + '</p>';
+            }
+            // Notes du partenaire (message visible par le client)
+            if (seance.notes_partner) {
+                notesHTML += '<div style="margin-top:8px;padding:10px;background:#E8F5E9;border:2px solid #4CAF50;border-radius:4px;">'
+                    + '<span style="font-weight:900;font-size:11px;text-transform:uppercase;color:#2E7D32;"><i class="fas fa-user-tie" style="margin-right:4px;"></i>Message du partenaire :</span>'
+                    + '<p style="font-size:13px;margin-top:4px;line-height:1.5;color:#1B5E20;">' + escapeHtml(seance.notes_partner) + '</p></div>';
             }
 
             // Action buttons based on status

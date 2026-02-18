@@ -3506,8 +3506,7 @@ function sanitizeSessionForClient(session) {
     if (s.status !== 'CONFIRMED') {
         s.meet_url = null;
     }
-    // Ne pas exposer notes_partner au client
-    delete s.notes_partner;
+    // Exposer notes_partner au client pour la communication bidirectionnelle
     return s;
 }
 
@@ -3649,6 +3648,14 @@ app.post('/api/sessions', function(req, res) {
             var adminEmail = process.env.EMAIL_ADMIN_ADDRESS;
             if (adminEmail && emailService.sendSessionRequestedEmail) {
                 emailService.sendSessionRequestedEmail(adminEmail, newSession.client_name, newSession);
+            }
+            // Email notification au partenaire assigne
+            if (newSession.partner_id && emailService.sendSessionRequestedEmail) {
+                var assignedPartner = partners.find(function(p) { return p.id === newSession.partner_id; });
+                if (assignedPartner && assignedPartner.email) {
+                    emailService.sendSessionRequestedEmail(assignedPartner.email, newSession.client_name, newSession);
+                    console.log('[SESSION] Email envoye au partenaire ' + assignedPartner.email);
+                }
             }
         } catch(e) { console.error('[SESSION] Erreur envoi email requested:', e.message); }
 

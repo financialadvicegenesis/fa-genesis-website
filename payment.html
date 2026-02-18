@@ -142,9 +142,7 @@
                 </h2>
                 <p id="depositIntroMessage" class="font-bold mb-6"></p>
                 <div id="depositDetails" class="mb-6"></div>
-                <button onclick="payDeposit()" class="neo-btn-yellow px-8 py-4 text-xl font-black uppercase">
-                    <i class="fas fa-credit-card mr-2"></i>Payer l'acompte
-                </button>
+                <div id="depositAction"></div>
             </div>
 
             <!-- Section Solde -->
@@ -153,7 +151,7 @@
                     <i class="fas fa-check-circle text-[var(--genesis-yellow)] mr-3"></i>
                     SOLDE - 70%
                 </h2>
-                <p class="font-bold mb-6">Votre accompagnement est terminé. Choisissez votre mode de paiement du solde.</p>
+                <p id="balanceIntroMessage" class="font-bold mb-6"></p>
                 <div id="balanceDetails" class="mb-6"></div>
 
                 <!-- Options de paiement -->
@@ -238,7 +236,7 @@
                         } else if (type === 'error') {
                             console.error('[SUMUP WIDGET] Erreur:', body);
                             closeSumUpModal();
-                            alert('Le paiement a echoue.\n\nRaison: ' + (body.message || body.error_message || 'Erreur inconnue') + '\n\nVeuillez reessayer.');
+                            alert('Le paiement a \u00E9chou\u00E9.\n\nRaison : ' + (body.message || body.error_message || 'Erreur inconnue') + '\n\nVeuillez r\u00E9essayer.');
                         }
                     }
                 });
@@ -268,12 +266,12 @@
             function getStatusLabel(status) {
                 var labels = {
                     'registered': 'Inscrit',
-                    'deposit_paid': 'Acompte paye',
+                    'deposit_paid': 'Acompte r\u00E9gl\u00E9',
                     'delivery_pending_payment': 'En attente du solde',
                     'pending_balance': 'En attente du solde',
-                    'fully_paid': 'Paye integralement',
-                    'paid_in_full': 'Paye integralement',
-                    'delivered': 'Livre'
+                    'fully_paid': 'Pay\u00E9 int\u00E9gralement',
+                    'paid_in_full': 'Pay\u00E9 int\u00E9gralement',
+                    'delivered': 'Livr\u00E9'
                 };
                 return labels[status] || status || 'Inconnu';
             }
@@ -334,35 +332,44 @@
             // ========================
             function displayFromBackend(data) {
                 var statusMsg = document.getElementById('statusMessage');
-                var status = data.payment_status || 'registered';
                 var totalPaid = 0;
 
-                // Calculer total paye depuis l'historique
+                // Calculer total pay\u00E9 depuis l'historique
                 if (data.payments && data.payments.length > 0) {
                     for (var i = 0; i < data.payments.length; i++) {
                         totalPaid += (data.payments[i].amount || 0);
                     }
                 }
 
+                // D\u00E9river le statut depuis deposit_paid / balance_paid (payment_status n'est pas retourn\u00E9 par le backend)
+                var status = 'registered';
+                if (data.balance_paid) {
+                    status = 'fully_paid';
+                } else if (data.deposit_paid) {
+                    status = 'deposit_paid';
+                }
+
                 // Message de statut
-                if (status === 'registered') {
-                    if (statusMsg) statusMsg.textContent = 'Un acompte de 30% est requis pour demarrer.';
-                } else if (status === 'deposit_paid' || status === 'delivery_pending_payment') {
-                    if (statusMsg) statusMsg.textContent = 'Votre acompte a ete regle. Merci !';
-                } else if (status === 'fully_paid' || status === 'paid_in_full') {
-                    if (statusMsg) statusMsg.textContent = 'Tous les paiements sont regles. Merci !';
+                if (status === 'registered' && !data.product_name) {
+                    if (statusMsg) statusMsg.textContent = 'Aucune offre s\u00E9lectionn\u00E9e. Veuillez choisir une offre.';
+                } else if (status === 'registered') {
+                    if (statusMsg) statusMsg.textContent = 'Un acompte de 30% est requis pour d\u00E9marrer.';
+                } else if (status === 'deposit_paid') {
+                    if (statusMsg) statusMsg.textContent = 'Votre acompte a \u00E9t\u00E9 r\u00E9gl\u00E9. Merci !';
+                } else if (status === 'fully_paid') {
+                    if (statusMsg) statusMsg.textContent = 'Tous les paiements sont r\u00E9gl\u00E9s. Merci !';
                 } else {
                     if (statusMsg) statusMsg.textContent = 'Bienvenue dans votre espace paiement.';
                 }
 
-                // Afficher le resume du statut
+                // Afficher le r\u00E9sum\u00E9 du statut
                 displayStatusSummary(status, totalPaid, data.product_name, data.total_amount, data.deposit_amount);
 
-                // Section acompte (si status registered et qu'il y a une offre)
-                if (status === 'registered' && data.product_name) {
+                // Section acompte - toujours afficher si offre active
+                if (data.product_name) {
                     var depSection = document.getElementById('depositSection');
                     if (depSection) depSection.style.display = 'block';
-                    displayDepositDetails(data);
+                    displayDepositDetails(data, status);
                 }
 
                 // Section solde (si can_pay_balance)
@@ -370,11 +377,6 @@
                     var balSection = document.getElementById('balanceSection');
                     if (balSection) balSection.style.display = 'block';
                     displayBalanceDetails(data);
-                }
-
-                // Si registered et pas de produit
-                if (status === 'registered' && !data.product_name) {
-                    if (statusMsg) statusMsg.textContent = 'Aucune offre selectionn\u00E9e. Veuillez choisir une offre.';
                 }
 
                 // Afficher l'historique
@@ -395,7 +397,7 @@
                 }
 
                 if (status === 'registered') {
-                    if (statusMsg) statusMsg.textContent = 'Un acompte de 30% est requis pour demarrer.';
+                    if (statusMsg) statusMsg.textContent = 'Un acompte de 30% est requis pour d\u00E9marrer.';
                 } else {
                     if (statusMsg) statusMsg.textContent = 'Bienvenue dans votre espace paiement.';
                 }
@@ -407,7 +409,7 @@
                     html += '<div><h3 class="text-2xl font-black italic uppercase mb-2">VOTRE STATUT</h3>';
                     html += '<span class="status-badge ' + getStatusClass(status) + '">' + getStatusLabel(status) + '</span></div>';
                     html += '<div class="text-right"><p class="text-sm font-bold opacity-70 uppercase">Total paye</p>';
-                    html += '<p class="text-3xl font-black text-[var(--genesis-yellow)]">--\u20AC</p></div></div>';
+                    html += '<p class="text-3xl font-black text-[var(--genesis-yellow)]">-- \u20AC</p></div></div>';
                     if (offer) {
                         html += '<div class="border-t-4 border-black pt-6">';
                         html += '<h4 class="text-xl font-black uppercase mb-3">OFFRE ACTIVE</h4>';
@@ -428,7 +430,7 @@
                     var depSection = document.getElementById('depositSection');
                     if (depSection) depSection.style.display = 'block';
                     var introMsg = document.getElementById('depositIntroMessage');
-                    if (introMsg) introMsg.textContent = 'Pour demarrer votre accompagnement, un acompte de 30% est requis.';
+                    if (introMsg) introMsg.textContent = 'Pour d\u00E9marrer votre accompagnement, un acompte de 30% est requis.';
                     var detEl = document.getElementById('depositDetails');
                     if (detEl) {
                         detEl.innerHTML = '<div class="bg-[var(--genesis-yellow)] p-6 border-4 border-black mb-6">' +
@@ -437,12 +439,17 @@
                             '<p class="font-bold opacity-70">Acompte requis (30%)</p></div>' +
                             '<p class="text-4xl font-black">' + (offer.acompte || '') + '\u20AC</p></div></div>';
                     }
+                    var actionEl = document.getElementById('depositAction');
+                    if (actionEl) {
+                        actionEl.innerHTML = '<button onclick="payDeposit()" class="neo-btn-yellow px-8 py-4 text-xl font-black uppercase mt-4">' +
+                            '<i class="fas fa-credit-card mr-2"></i>Payer l\'acompte</button>';
+                    }
                 }
 
                 // Historique vide en fallback
                 var histEl = document.getElementById('paymentHistory');
                 if (histEl) {
-                    histEl.innerHTML = '<p class="font-bold opacity-50 text-center py-8">Impossible de charger l\'historique. Veuillez reessayer.</p>';
+                    histEl.innerHTML = '<p class="font-bold opacity-50 text-center py-8">Impossible de charger l\'historique. Veuillez r\u00E9essayer.</p>';
                 }
             }
 
@@ -456,7 +463,7 @@
                 var html = '<div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">';
                 html += '<div><h3 class="text-2xl font-black italic uppercase mb-2">VOTRE STATUT</h3>';
                 html += '<span class="status-badge ' + getStatusClass(status) + '">' + getStatusLabel(status) + '</span></div>';
-                html += '<div class="text-right"><p class="text-sm font-bold opacity-70 uppercase">Total paye</p>';
+                html += '<div class="text-right"><p class="text-sm font-bold opacity-70 uppercase">Total pay\u00E9</p>';
                 html += '<p class="text-3xl font-black text-[var(--genesis-yellow)]">' + totalPaid + '\u20AC</p></div></div>';
 
                 if (productName) {
@@ -475,25 +482,51 @@
                 el.innerHTML = html;
             }
 
-            function displayDepositDetails(data) {
+            function displayDepositDetails(data, status) {
                 var introMsg = document.getElementById('depositIntroMessage');
-                if (introMsg) introMsg.textContent = 'Pour demarrer votre accompagnement, un acompte de 30% est requis.';
-
                 var detEl = document.getElementById('depositDetails');
-                if (!detEl) return;
+                var actionEl = document.getElementById('depositAction');
 
-                var html = '<div class="bg-[var(--genesis-yellow)] p-6 border-4 border-black mb-6">';
-                html += '<div class="flex justify-between items-center"><div>';
-                html += '<p class="text-2xl font-black uppercase">' + (data.product_name || 'Votre offre') + '</p>';
-                html += '<p class="font-bold opacity-70">Acompte requis (30%)</p></div>';
-                html += '<p class="text-4xl font-black">' + (data.deposit_amount || '--') + '\u20AC</p></div></div>';
-                html += '<p class="text-sm font-bold opacity-70"><i class="fas fa-info-circle mr-2"></i>';
-                html += 'Le solde de ' + (data.balance_amount || '--') + '\u20AC sera a regler a la fin de votre accompagnement.</p>';
-
-                detEl.innerHTML = html;
+                if (status === 'deposit_paid' || status === 'fully_paid') {
+                    // Acompte d\u00E9j\u00E0 pay\u00E9 - afficher confirmation
+                    if (introMsg) introMsg.textContent = 'Votre acompte a bien \u00E9t\u00E9 r\u00E9gl\u00E9. Merci !';
+                    if (detEl) {
+                        var html = '<div class="bg-green-100 p-6 border-4 border-green-600 mb-6">';
+                        html += '<div class="flex justify-between items-center"><div>';
+                        html += '<p class="text-2xl font-black uppercase text-green-800"><i class="fas fa-check-circle mr-2"></i>' + (data.product_name || 'Votre offre') + '</p>';
+                        html += '<p class="font-bold text-green-700">Acompte r\u00E9gl\u00E9 (30%)</p></div>';
+                        html += '<p class="text-4xl font-black text-green-800">' + (data.deposit_amount || '--') + '\u20AC</p></div></div>';
+                        if (status !== 'fully_paid') {
+                            html += '<p class="text-sm font-bold opacity-70"><i class="fas fa-info-circle mr-2"></i>';
+                            html += 'Il vous reste le solde de ' + (data.balance_amount || '--') + '\u20AC \u00E0 r\u00E9gler \u00E0 la fin de votre accompagnement pour acc\u00E9der \u00E0 vos livrables.</p>';
+                        }
+                        detEl.innerHTML = html;
+                    }
+                    if (actionEl) actionEl.innerHTML = '';
+                } else {
+                    // Acompte pas encore pay\u00E9
+                    if (introMsg) introMsg.textContent = 'Pour d\u00E9marrer votre accompagnement, un acompte de 30% est requis.';
+                    if (detEl) {
+                        var html2 = '<div class="bg-[var(--genesis-yellow)] p-6 border-4 border-black mb-6">';
+                        html2 += '<div class="flex justify-between items-center"><div>';
+                        html2 += '<p class="text-2xl font-black uppercase">' + (data.product_name || 'Votre offre') + '</p>';
+                        html2 += '<p class="font-bold opacity-70">Acompte requis (30%)</p></div>';
+                        html2 += '<p class="text-4xl font-black">' + (data.deposit_amount || '--') + '\u20AC</p></div></div>';
+                        html2 += '<p class="text-sm font-bold opacity-70"><i class="fas fa-info-circle mr-2"></i>';
+                        html2 += 'Le solde de ' + (data.balance_amount || '--') + '\u20AC sera \u00E0 r\u00E9gler \u00E0 la fin de votre accompagnement.</p>';
+                        detEl.innerHTML = html2;
+                    }
+                    if (actionEl) {
+                        actionEl.innerHTML = '<button onclick="payDeposit()" class="neo-btn-yellow px-8 py-4 text-xl font-black uppercase mt-4">' +
+                            '<i class="fas fa-credit-card mr-2"></i>Payer l\'acompte</button>';
+                    }
+                }
             }
 
             function displayBalanceDetails(data) {
+                var introMsg = document.getElementById('balanceIntroMessage');
+                if (introMsg) introMsg.textContent = 'R\u00E9glez le solde pour acc\u00E9der \u00E0 vos livrables finaux.';
+
                 var detEl = document.getElementById('balanceDetails');
                 if (!detEl) return;
 
@@ -503,7 +536,7 @@
                 html += '<p class="font-bold opacity-70">Solde restant (70%)</p></div>';
                 html += '<p class="text-4xl font-black">' + (data.balance_amount || '--') + '\u20AC</p></div></div>';
                 html += '<p class="text-sm font-bold opacity-70 mb-6"><i class="fas fa-info-circle mr-2"></i>';
-                html += 'Une fois le solde regle, vous aurez acces immediat a tous vos livrables finaux.</p>';
+                html += 'Une fois le solde r\u00E9gl\u00E9, vous aurez acc\u00E8s imm\u00E9diat \u00E0 tous vos livrables finaux.</p>';
 
                 detEl.innerHTML = html;
 
@@ -527,7 +560,7 @@
                 if (!el) return;
 
                 if (!payments || payments.length === 0) {
-                    el.innerHTML = '<p class="font-bold opacity-50 text-center py-8">Aucun paiement enregistre</p>';
+                    el.innerHTML = '<p class="font-bold opacity-50 text-center py-8">Aucun paiement enregistr\u00E9</p>';
                     return;
                 }
 
@@ -556,7 +589,7 @@
             // PAY DEPOSIT
             // ==================
             window.payDeposit = function() {
-                var depositBtn = document.querySelector('#depositSection button');
+                var depositBtn = document.querySelector('#depositAction button');
                 if (depositBtn) {
                     depositBtn.disabled = true;
                     depositBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Traitement en cours...';
@@ -617,12 +650,12 @@
                         depositBtn.disabled = false;
                         depositBtn.innerHTML = '<i class="fas fa-credit-card mr-2"></i>Payer l\'acompte';
                     }
-                    alert('Erreur lors de la preparation du paiement:\n\n' + err.message);
+                    alert('Erreur lors de la pr\u00E9paration du paiement :\n\n' + err.message);
                 });
             };
 
             function createCheckoutForDeposit(orderId) {
-                var depositBtn = document.querySelector('#depositSection button');
+                var depositBtn = document.querySelector('#depositAction button');
                 return fetch(PAY_API + '/api/payments/sumup/create-checkout', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -691,7 +724,7 @@
                 })
                 .catch(function(err) {
                     console.error('[PAYMENT] Erreur payBalance:', err);
-                    alert('Erreur lors de la preparation du paiement du solde:\n\n' + err.message);
+                    alert('Erreur lors de la pr\u00E9paration du paiement du solde :\n\n' + err.message);
                 });
             };
 
@@ -701,9 +734,9 @@
         } catch (globalErr) {
             console.error('[PAYMENT PAGE] Erreur globale:', globalErr);
             var errMsg = document.getElementById('statusMessage');
-            if (errMsg) errMsg.textContent = 'Erreur de chargement. Veuillez rafraichir la page.';
+            if (errMsg) errMsg.textContent = 'Erreur de chargement. Veuillez rafra\u00EEchir la page.';
             var summaryEl = document.getElementById('statusSummary');
-            if (summaryEl) summaryEl.innerHTML = '<p class="text-center font-bold text-red-400 py-8">Une erreur est survenue. Veuillez rafraichir la page ou contacter le support.</p>';
+            if (summaryEl) summaryEl.innerHTML = '<p class="text-center font-bold text-red-400 py-8">Une erreur est survenue. Veuillez rafra\u00EEchir la page ou contacter le support.</p>';
         }
     })();
     </script>
