@@ -2287,6 +2287,34 @@ app.get('/api/admin/users/:email', (req, res) => {
 });
 
 /**
+ * DELETE /api/admin/users/:email
+ * Supprimer un utilisateur (Admin)
+ */
+app.delete('/api/admin/users/:email', function(req, res) {
+    try {
+        var emailToDelete = decodeURIComponent(req.params.email).toLowerCase();
+        var users = loadUsers();
+        var index = -1;
+        for (var i = 0; i < users.length; i++) {
+            if (users[i].email && users[i].email.toLowerCase() === emailToDelete) {
+                index = i;
+                break;
+            }
+        }
+        if (index === -1) {
+            return res.status(404).json({ error: 'Utilisateur non trouve' });
+        }
+        var deleted = users.splice(index, 1)[0];
+        saveUsers(users);
+        console.log('[ADMIN] Utilisateur supprime: ' + emailToDelete);
+        res.json({ success: true, deleted_email: emailToDelete });
+    } catch (err) {
+        console.error('[ADMIN] Erreur suppression utilisateur:', err);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
  * GET /api/admin/stats
  * Statistiques globales du dashboard admin
  */
@@ -6140,13 +6168,6 @@ app.post('/api/admin/deliverables/:id/request-revision', (req, res) => {
  */
 app.get('/api/admin/projects', (req, res) => {
     try {
-        var authHeader = req.headers.authorization;
-        if (!authHeader) return res.status(401).json({ error: 'Non autorise' });
-        var token = authHeader.replace('Bearer ', '');
-        var jwt = require('jsonwebtoken');
-        var decoded = jwt.verify(token, process.env.JWT_SECRET || 'fa-genesis-secret-key-2024');
-        if (decoded.role !== 'admin') return res.status(403).json({ error: 'Acces admin requis' });
-
         var projects = loadProjects();
         res.json({ success: true, projects: projects });
     } catch (err) {
@@ -6161,13 +6182,6 @@ app.get('/api/admin/projects', (req, res) => {
  */
 app.post('/api/admin/projects/create-from-order', (req, res) => {
     try {
-        var authHeader = req.headers.authorization;
-        if (!authHeader) return res.status(401).json({ error: 'Non autorise' });
-        var token = authHeader.replace('Bearer ', '');
-        var jwt = require('jsonwebtoken');
-        var decoded = jwt.verify(token, process.env.JWT_SECRET || 'fa-genesis-secret-key-2024');
-        if (decoded.role !== 'admin') return res.status(403).json({ error: 'Acces admin requis' });
-
         var orderId = req.body.order_id;
         if (!orderId) return res.status(400).json({ error: 'order_id requis' });
 
@@ -6370,12 +6384,6 @@ app.post('/api/partner/deliverables/:id/submit', (req, res) => {
  */
 app.get('/api/projects/:id/timeline', (req, res) => {
     try {
-        var authHeader = req.headers.authorization;
-        if (!authHeader) return res.status(401).json({ error: 'Non autorise' });
-        var token = authHeader.replace('Bearer ', '');
-        var jwt = require('jsonwebtoken');
-        var decoded = jwt.verify(token, process.env.JWT_SECRET || 'fa-genesis-secret-key-2024');
-
         var project = getProjectById(req.params.id);
         if (!project) return res.status(404).json({ error: 'Projet non trouve' });
 

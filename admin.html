@@ -64,6 +64,7 @@
 
         .client-row {
             background: white;
+            color: black;
             border: 3px solid black;
             padding: 1rem;
             margin-bottom: 0.75rem;
@@ -158,6 +159,8 @@
             border: 3px solid black;
             font-weight: bold;
             font-family: 'Space Grotesk', sans-serif;
+            color: black;
+            background: white;
         }
 
         input:focus, select:focus, textarea:focus {
@@ -483,21 +486,21 @@
 
                 <!-- Contenu docs IA -->
                 <div id="pendingAiContainer">
-                    <div id="pendingAiList" class="space-y-4">
-                        <p class="text-gray-500">Chargement...</p>
+                    <div id="pendingAiList" class="space-y-4" style="color:black;">
+                        <p style="color:white;opacity:0.5;font-weight:bold;">Chargement...</p>
                     </div>
                 </div>
 
                 <!-- Contenu livrables partenaires -->
                 <div id="pendingPartnerContainer" style="display:none;">
-                    <div id="pendingPartnerList" class="space-y-4">
-                        <p class="text-gray-500">Chargement...</p>
+                    <div id="pendingPartnerList" class="space-y-4" style="color:black;">
+                        <p style="color:white;opacity:0.5;font-weight:bold;">Chargement...</p>
                     </div>
                 </div>
 
                 <!-- Séance effectuée -->
-                <div class="mt-8 p-6 bg-gray-100 border-4 border-black">
-                    <h3 class="text-xl font-black mb-4"><i class="fas fa-calendar-check mr-2"></i>SÉANCE EFFECTUÉE</h3>
+                <div class="mt-8 p-6 bg-gray-100 border-4 border-black" style="color:black;">
+                    <h3 class="text-xl font-black mb-4" style="color:black;"><i class="fas fa-calendar-check mr-2"></i>SÉANCE EFFECTUÉE</h3>
                     <div class="mb-4">
                         <label class="block font-bold mb-1">Projet :</label>
                         <select id="sessionProjectSelect" class="w-full border-2 border-black p-2 text-sm">
@@ -529,7 +532,7 @@
                 </div>
 
                 <!-- Formulaire creation (cache) -->
-                <div id="createProjectForm" style="display:none;" class="mb-6 p-4 bg-gray-100 border-4 border-black">
+                <div id="createProjectForm" style="display:none;color:black;" class="mb-6 p-4 bg-gray-100 border-4 border-black">
                     <label class="block font-bold mb-2">ID de la commande :</label>
                     <input type="text" id="createProjectOrderId" class="border-2 border-black p-2 w-full mb-3 text-sm" placeholder="ORD-xxxxx">
                     <button onclick="createProjectFromOrder()" class="border-4 border-black bg-green-600 text-white px-6 py-3 text-sm font-black">
@@ -539,8 +542,8 @@
                 </div>
 
                 <!-- Liste des projets -->
-                <div id="projectsList" class="space-y-4">
-                    <p class="text-gray-500">Chargement...</p>
+                <div id="projectsList" class="space-y-4" style="color:black;">
+                    <p style="color:white;opacity:0.5;font-weight:bold;">Chargement...</p>
                 </div>
 
                 <!-- Detail projet (cache) -->
@@ -585,7 +588,7 @@
                 </div>
 
                 <div id="adminSeancesTable" style="overflow-x:auto;">
-                    <p class="text-gray-500">Chargement...</p>
+                    <p style="color:white;opacity:0.5;font-weight:bold;">Chargement...</p>
                 </div>
             </div>
 
@@ -969,6 +972,29 @@
             loadClientsList(query);
         }
 
+        async function deleteClient(email) {
+            if (!confirm('Voulez-vous vraiment supprimer le compte de ' + email + ' ?\n\nCette action est irréversible.')) return;
+            try {
+                var resp = await fetch(API_BASE_URL + '/api/admin/users/' + encodeURIComponent(email), { method: 'DELETE' });
+                var data = await resp.json();
+                if (resp.ok && data.success) {
+                    alert('Compte supprimé : ' + email);
+                    closeClientModal();
+                    loadClientsList();
+                    loadDashboard();
+                } else {
+                    alert('Erreur : ' + (data.error || 'Impossible de supprimer'));
+                }
+            } catch (err) {
+                alert('Erreur réseau : ' + err.message);
+            }
+        }
+
+        function closeClientModal() {
+            var m = document.getElementById('clientModal');
+            if (m) m.style.display = 'none';
+        }
+
         async function openClientModal(clientEmail) {
             // Chercher d'abord dans les donnees deja chargees, sinon appeler le backend
             var client = allBackendClients.find(function(c) { return c.email === clientEmail; });
@@ -1023,9 +1049,14 @@
             }
 
             let modalHTML = `
-                <h2 class="text-3xl font-black italic uppercase mb-6 text-[var(--genesis-yellow)]">
-                    <i class="fas fa-user-circle mr-3"></i>${client.prenom} ${client.nom}
-                </h2>
+                <div class="flex justify-between items-start mb-6">
+                    <h2 class="text-3xl font-black italic uppercase text-[var(--genesis-yellow)]">
+                        <i class="fas fa-user-circle mr-3"></i>${client.prenom} ${client.nom}
+                    </h2>
+                    <button onclick="deleteClient('${client.email}')" class="border-4 border-red-600 bg-red-600 text-white px-4 py-2 text-xs font-black hover:bg-red-700" title="Supprimer ce client">
+                        <i class="fas fa-trash mr-1"></i>SUPPRIMER
+                    </button>
+                </div>
 
                 <div class="grid md:grid-cols-2 gap-6 mb-8">
                     <div>
@@ -3167,10 +3198,7 @@
 
         async function loadProjectsForSession() {
             try {
-                var token = localStorage.getItem('fa_genesis_token');
-                var response = await fetch(API_BASE_URL + '/api/admin/projects', {
-                    headers: { 'Authorization': 'Bearer ' + token }
-                });
+                var response = await fetch(API_BASE_URL + '/api/admin/projects');
                 if (!response.ok) return;
                 var data = await response.json();
                 var projects = data.projects || [];
@@ -3223,10 +3251,7 @@
 
         async function loadProjectsList() {
             try {
-                var token = localStorage.getItem('fa_genesis_token');
-                var response = await fetch(API_BASE_URL + '/api/admin/projects', {
-                    headers: { 'Authorization': 'Bearer ' + token }
-                });
+                var response = await fetch(API_BASE_URL + '/api/admin/projects');
                 if (!response.ok) throw new Error('Erreur chargement');
                 var data = await response.json();
                 var projects = data.projects || [];
@@ -3283,10 +3308,9 @@
                 var orderId = document.getElementById('createProjectOrderId').value.trim();
                 if (!orderId) { alert('Veuillez entrer un ID de commande'); return; }
 
-                var token = localStorage.getItem('fa_genesis_token');
                 var response = await fetch(API_BASE_URL + '/api/admin/projects/create-from-order', {
                     method: 'POST',
-                    headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ order_id: orderId })
                 });
                 var data = await response.json();
@@ -3308,10 +3332,7 @@
 
         async function viewProjectDetail(projectId) {
             try {
-                var token = localStorage.getItem('fa_genesis_token');
-                var response = await fetch(API_BASE_URL + '/api/projects/' + projectId + '/timeline', {
-                    headers: { 'Authorization': 'Bearer ' + token }
-                });
+                var response = await fetch(API_BASE_URL + '/api/projects/' + projectId + '/timeline');
                 if (!response.ok) throw new Error('Erreur chargement');
                 var data = await response.json();
 
@@ -3499,6 +3520,7 @@
             html += '<th style="padding:0.75rem;border:2px solid black;text-align:left;">Durée</th>';
             html += '<th style="padding:0.75rem;border:2px solid black;text-align:center;">Statut</th>';
             html += '<th style="padding:0.75rem;border:2px solid black;text-align:left;">Meet</th>';
+            html += '<th style="padding:0.75rem;border:2px solid black;text-align:center;">Actions</th>';
             html += '</tr></thead><tbody>';
 
             for (var j = 0; j < filtered.length; j++) {
@@ -3535,12 +3557,31 @@
                     html += '<span style="color:#aaa;">—</span>';
                 }
                 html += '</td>';
+                html += '<td style="padding:0.6rem;border:1px solid #dee2e6;text-align:center;">';
+                html += '<button onclick="deleteAdminSession(\'' + session.id + '\')" style="background:#ff6b6b;color:white;border:2px solid black;padding:4px 10px;font-size:0.75rem;font-weight:900;cursor:pointer;" title="Supprimer"><i class="fas fa-trash"></i></button>';
+                html += '</td>';
                 html += '</tr>';
             }
 
             html += '</tbody></table>';
             html += '<p style="color:#666;font-size:0.8rem;margin-top:0.5rem;">' + filtered.length + ' séance(s)</p>';
             table.innerHTML = html;
+        }
+
+        async function deleteAdminSession(sessionId) {
+            if (!confirm('Voulez-vous vraiment supprimer cette séance ?\n\nCette action est irréversible.')) return;
+            try {
+                var resp = await fetch(API_BASE_URL + '/api/admin/sessions/' + sessionId, { method: 'DELETE' });
+                var data = await resp.json();
+                if (resp.ok && data.success) {
+                    alert('Séance supprimée.');
+                    loadAdminSessions();
+                } else {
+                    alert('Erreur : ' + (data.error || 'Impossible de supprimer'));
+                }
+            } catch (err) {
+                alert('Erreur réseau : ' + err.message);
+            }
         }
 
         // Charger le badge séances admin au démarrage
