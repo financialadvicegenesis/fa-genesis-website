@@ -314,6 +314,15 @@
                 <h2 class="text-5xl font-black italic uppercase mb-12 text-[var(--genesis-yellow)]">
                     <i class="fas fa-receipt mr-4"></i>COMMANDES
                 </h2>
+                <div id="ordersLoader" style="display:none;padding:30px;background:#222;border:2px solid var(--genesis-yellow);margin-bottom:20px;">
+                    <div style="display:flex;align-items:center;gap:12px;">
+                        <i class="fas fa-spinner fa-spin" style="color:var(--genesis-yellow);font-size:24px;"></i>
+                        <div>
+                            <div style="font-weight:900;color:white;font-size:15px;" id="ordersLoaderMsg">Chargement des commandes...</div>
+                            <div style="font-size:12px;color:#aaa;margin-top:4px;" id="ordersLoaderSub"></div>
+                        </div>
+                    </div>
+                </div>
                 <div id="ordersList"></div>
             </div>
 
@@ -1760,20 +1769,44 @@
         // SECTION COMMANDES
         // ============================================================
 
+        var _ordersRetryCount = 0;
+        var _ordersMaxRetries = 12;
+
         async function loadOrders() {
+            var loader = document.getElementById('ordersLoader');
+            var loaderMsg = document.getElementById('ordersLoaderMsg');
+            var loaderSub = document.getElementById('ordersLoaderSub');
+            var listEl = document.getElementById('ordersList');
+
+            // Afficher le loader
+            if (loader) loader.style.display = '';
+            if (listEl) listEl.innerHTML = '';
+
+            if (_ordersRetryCount === 0) {
+                if (loaderMsg) loaderMsg.textContent = 'Chargement des commandes...';
+                if (loaderSub) loaderSub.textContent = '';
+            } else {
+                if (loaderMsg) loaderMsg.textContent = 'Le serveur d\u00e9marre, veuillez patienter...';
+                if (loaderSub) loaderSub.textContent = 'Tentative ' + _ordersRetryCount + '/' + _ordersMaxRetries + ' - Le serveur gratuit peut mettre jusqu\u0027\u00e0 60 secondes \u00e0 d\u00e9marrer';
+            }
+
             try {
                 var response = await fetch(API_BASE_URL + '/api/orders/all');
-                if (!response.ok) throw new Error('Erreur chargement commandes');
+                if (!response.ok) throw new Error('Erreur serveur (' + response.status + ')');
                 var orders = await response.json();
 
+                // Succ\u00e8s : cacher le loader et reset
+                if (loader) loader.style.display = 'none';
+                _ordersRetryCount = 0;
+
                 if (!orders || orders.length === 0) {
-                    document.getElementById('ordersList').innerHTML = '<p class="text-center py-8 opacity-50 font-bold">Aucune commande</p>';
+                    if (listEl) listEl.innerHTML = '<p class="text-center py-8 opacity-50 font-bold" style="color:white;">Aucune commande</p>';
                     return;
                 }
 
                 var html = '';
                 orders.forEach(function(order) {
-                    var date = new Date(order.created_at).toLocaleDateString('fr-FR');
+                    var date = order.created_at ? new Date(order.created_at).toLocaleDateString('fr-FR') : '';
                     var statusColors = {
                         pending_deposit: '#ff6b6b', active: '#51cf66', in_progress: '#ffd43b',
                         delivered: '#4dabf7', completed: '#51cf66', pending_balance: '#ffd43b',
@@ -1781,8 +1814,8 @@
                     };
                     var statusLabels = {
                         pending_deposit: 'ACOMPTE EN ATTENTE', active: 'ACTIF', in_progress: 'EN COURS',
-                        delivered: 'LIVRÉ', completed: 'TERMINÉ', pending_balance: 'SOLDE EN ATTENTE',
-                        paid_in_full: 'PAYÉ COMPLET', cancelled: 'ANNULÉ'
+                        delivered: 'LIVR\u00c9', completed: 'TERMIN\u00c9', pending_balance: 'SOLDE EN ATTENTE',
+                        paid_in_full: 'PAY\u00c9 COMPLET', cancelled: 'ANNUL\u00c9'
                     };
                     var bgColor = statusColors[order.status] || '#999';
                     var label = statusLabels[order.status] || order.status;
@@ -1815,12 +1848,25 @@
                     '</div>';
                 });
 
-                document.getElementById('ordersList').innerHTML = html;
+                if (listEl) listEl.innerHTML = html;
 
             } catch (error) {
                 console.error('[ADMIN] Erreur chargement commandes:', error);
-                document.getElementById('ordersList').innerHTML = '<p class="text-center py-8 opacity-50 font-bold">Chargement... (le serveur demarre)</p>';
-                setTimeout(function() { loadOrders(); }, 5000);
+                _ordersRetryCount++;
+
+                if (_ordersRetryCount <= _ordersMaxRetries) {
+                    if (loaderMsg) loaderMsg.textContent = 'Le serveur d\u00e9marre, veuillez patienter...';
+                    if (loaderSub) loaderSub.textContent = 'Tentative ' + _ordersRetryCount + '/' + _ordersMaxRetries + ' - R\u00e9essai automatique dans 5 secondes';
+                    setTimeout(function() { loadOrders(); }, 5000);
+                } else {
+                    if (loader) loader.style.display = 'none';
+                    if (listEl) listEl.innerHTML = '<div style="padding:20px;background:#ff6b6b;border:2px solid black;color:black;text-align:center;">' +
+                        '<p style="font-weight:900;font-size:15px;margin-bottom:8px;">Impossible de charger les commandes</p>' +
+                        '<p style="font-size:13px;margin-bottom:12px;">Le serveur ne r\u00e9pond pas apr\u00e8s plusieurs tentatives.</p>' +
+                        '<button onclick="_ordersRetryCount=0;loadOrders();" style="background:black;color:white;border:2px solid black;padding:8px 20px;font-weight:900;cursor:pointer;font-size:13px;">' +
+                        '<i class="fas fa-redo" style="margin-right:6px;"></i>R\u00e9essayer</button></div>';
+                    _ordersRetryCount = 0;
+                }
             }
         }
 

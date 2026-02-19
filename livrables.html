@@ -78,6 +78,55 @@
             opacity: 0.6;
         }
         .download-btn.disabled:hover { background: #999; color: white; }
+        .preview-btn {
+            background: var(--genesis-yellow);
+            color: black;
+            border: 3px solid black;
+            padding: 0.75rem 1.5rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            font-size: 0.875rem;
+            transition: all 0.2s;
+            text-align: center;
+            display: inline-block;
+            cursor: pointer;
+        }
+        .preview-btn:hover { background: #e6c200; }
+        .preview-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.92); z-index: 9999;
+            display: flex; align-items: center; justify-content: center;
+            flex-direction: column; padding: 20px;
+        }
+        .preview-overlay .preview-close {
+            position: absolute; top: 20px; right: 30px;
+            color: white; font-size: 36px; cursor: pointer;
+            font-weight: 900; z-index: 10000;
+            background: none; border: none;
+        }
+        .preview-overlay .preview-close:hover { color: var(--genesis-yellow); }
+        .preview-overlay .preview-title {
+            color: var(--genesis-yellow); font-weight: 900;
+            text-transform: uppercase; font-size: 1rem;
+            margin-bottom: 16px; text-align: center;
+        }
+        .preview-overlay img {
+            max-width: 90vw; max-height: 80vh; object-fit: contain;
+            border: 4px solid var(--genesis-yellow);
+        }
+        .preview-overlay video {
+            max-width: 90vw; max-height: 80vh;
+            border: 4px solid var(--genesis-yellow);
+        }
+        .preview-overlay iframe {
+            width: 90vw; height: 80vh;
+            border: 4px solid var(--genesis-yellow); background: white;
+        }
+        .preview-overlay .preview-no-content {
+            color: white; font-size: 1.1rem; text-align: center;
+            padding: 40px; border: 4px dashed var(--genesis-yellow);
+            max-width: 500px;
+        }
         .tab-btn {
             padding: 0.75rem 1.5rem;
             border: 4px solid black;
@@ -387,15 +436,24 @@
                     } catch (e) { dateStr = ''; }
                 }
 
+                // Bouton pr\u00e9visualiser (toujours visible)
+                var previewHtml = '';
+                var previewUrl = liv.preview_url || liv.download_url || '';
+                if (previewUrl || liv.content_text) {
+                    previewHtml = '<button onclick="openPreview(' + i + ')" class="preview-btn" style="margin-right:8px;"><i class="fas fa-eye mr-2"></i>Pr\u00e9visualiser</button>';
+                }
+
+                // Bouton t\u00e9l\u00e9charger (seulement si solde pay\u00e9)
                 var downloadHtml = '';
                 if (liv.download_url) {
                     if (_canDownload) {
-                        downloadHtml = '<a href="' + liv.download_url + '" target="_blank" class="download-btn"><i class="fas fa-download mr-2"></i>Télécharger</a>';
+                        downloadHtml = '<a href="' + liv.download_url + '" target="_blank" class="download-btn"><i class="fas fa-download mr-2"></i>T\u00e9l\u00e9charger</a>';
                     } else {
-                        downloadHtml = '<span class="download-btn disabled" title="Payez le solde pour télécharger"><i class="fas fa-lock mr-2"></i>Télécharger</span>';
+                        downloadHtml = '<span class="download-btn disabled" title="Payez le solde pour t\u00e9l\u00e9charger"><i class="fas fa-lock mr-2"></i>T\u00e9l\u00e9charger</span>';
                     }
-                } else if (liv.content_text) {
-                    downloadHtml = '<button onclick="previewText(this)" class="download-btn" data-content="' + escapeAttr(liv.content_text) + '"><i class="fas fa-eye mr-2"></i>Voir</button>';
+                } else if (liv.content_text && !previewUrl) {
+                    // Texte sans URL : pas de bouton t\u00e9l\u00e9charger s\u00e9par\u00e9
+                    downloadHtml = '';
                 }
 
                 html += '<div class="livrable-card" data-category="' + (liv.category || 'Documents') + '">';
@@ -404,7 +462,7 @@
                 html += '<h3 class="text-lg font-black uppercase mb-2">' + escapeHtml(liv.name) + '</h3>';
                 if (dateStr) html += '<p class="text-xs font-bold opacity-50 mb-4">' + dateStr + '</p>';
                 if (liv.status) html += '<p class="text-xs font-bold uppercase mb-4" style="color: ' + (liv.status === 'ready' || liv.status === 'delivered' ? '#51cf66' : '#ffd43b') + ';">' + escapeHtml(liv.status) + '</p>';
-                html += '<div class="mt-auto">' + downloadHtml + '</div>';
+                html += '<div class="mt-auto" style="display:flex;flex-wrap:wrap;gap:8px;">' + previewHtml + downloadHtml + '</div>';
                 html += '</div>';
             }
 
@@ -431,10 +489,57 @@
             }
         }
 
-        function previewText(btn) {
-            var content = btn.getAttribute('data-content') || '';
-            alert(content);
+        function openPreview(index) {
+            var liv = _allLivrables[index];
+            if (!liv) return;
+
+            var previewUrl = liv.preview_url || liv.download_url || '';
+            var livType = (liv.type || '').toLowerCase();
+
+            // Cr\u00e9er l'overlay
+            var overlay = document.createElement('div');
+            overlay.className = 'preview-overlay';
+            overlay.id = 'previewOverlay';
+
+            var closeBtn = '<button class="preview-close" onclick="closePreview()">&times;</button>';
+            var title = '<div class="preview-title">' + escapeHtml(liv.name) + '</div>';
+            var contentHtml = '';
+
+            if (liv.content_text && !previewUrl) {
+                // Contenu texte
+                contentHtml = '<div style="background:white;color:black;padding:30px;max-width:800px;max-height:80vh;overflow:auto;border:4px solid var(--genesis-yellow);font-size:15px;line-height:1.7;">'
+                    + escapeHtml(liv.content_text).replace(/\n/g, '<br>') + '</div>';
+            } else if (livType === 'photo' || livType === 'image') {
+                contentHtml = '<img src="' + escapeAttr(previewUrl) + '" alt="' + escapeAttr(liv.name) + '" />';
+            } else if (livType === 'video') {
+                contentHtml = '<video controls autoplay><source src="' + escapeAttr(previewUrl) + '"></video>';
+            } else if (previewUrl) {
+                // Document (PDF, etc.) - ouvrir dans un iframe
+                contentHtml = '<iframe src="' + escapeAttr(previewUrl) + '" title="' + escapeAttr(liv.name) + '"></iframe>';
+            } else {
+                contentHtml = '<div class="preview-no-content"><i class="fas fa-file-alt" style="font-size:48px;color:var(--genesis-yellow);margin-bottom:16px;display:block;"></i>Aucun aper\u00e7u disponible pour ce livrable.</div>';
+            }
+
+            overlay.innerHTML = closeBtn + title + contentHtml;
+            document.body.appendChild(overlay);
+            document.body.style.overflow = 'hidden';
+
+            // Fermer en cliquant sur le fond
+            overlay.addEventListener('click', function(e) {
+                if (e.target === overlay) closePreview();
+            });
         }
+
+        function closePreview() {
+            var overlay = document.getElementById('previewOverlay');
+            if (overlay) overlay.remove();
+            document.body.style.overflow = 'auto';
+        }
+
+        // Fermer avec Echap
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') closePreview();
+        });
 
         function escapeHtml(str) {
             if (!str) return '';

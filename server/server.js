@@ -418,6 +418,8 @@ function getAllowedProviders(order) {
     };
 
     var roles = [];
+
+    // Tarifs individuels (devis)
     if (productId.indexOf('photo-') === 0) {
         roles = ['photographer'];
     } else if (productId.indexOf('video-') === 0) {
@@ -425,9 +427,29 @@ function getAllowedProviders(order) {
     } else if (productId.indexOf('marketing-') === 0) {
         roles = ['marketer'];
     } else if (productId.indexOf('media-') === 0) {
-        roles = ['photographer', 'videographer', 'media'];
-    } else {
-        // accompagnement ou autre : tous les types
+        roles = ['media'];
+    }
+    // Offres ETUDIANT et PARTICULIER
+    else if (productId === 'etudiant-idea' || productId === 'etudiant-starter'
+          || productId === 'particulier-idea' || productId === 'particulier-starter') {
+        roles = ['admin'];
+    } else if (productId === 'etudiant-launch' || productId === 'particulier-launch') {
+        roles = ['admin', 'videographer', 'media'];
+    } else if (productId === 'etudiant-impact' || productId === 'particulier-impact') {
+        roles = ['admin', 'photographer', 'videographer', 'media'];
+    } else if (productId === 'etudiant-custom' || productId === 'particulier-custom') {
+        roles = ['admin', 'photographer', 'videographer', 'marketer', 'media'];
+    }
+    // Offres ENTREPRISE
+    else if (productId === 'entreprise-start') {
+        roles = ['admin'];
+    } else if (productId === 'entreprise-visibility' || productId === 'entreprise-impact') {
+        roles = ['admin', 'photographer', 'videographer', 'media'];
+    } else if (productId === 'entreprise-custom') {
+        roles = ['admin', 'photographer', 'videographer', 'marketer', 'media'];
+    }
+    // Fallback : tous les types
+    else {
         roles = ['admin', 'photographer', 'videographer', 'marketer', 'media'];
     }
 
