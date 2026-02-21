@@ -60,6 +60,10 @@
         </div>
         <div id="mainNavigation" class="hidden md:flex gap-8 text-white font-black"></div>
         <div class="flex gap-4 items-center">
+            <a href="panier.html" class="relative text-white hover:text-[var(--genesis-yellow)] transition px-2 py-2" title="Panier">
+                <i class="fas fa-shopping-cart text-lg"></i>
+                <span class="panier-badge" style="display:none;position:absolute;top:-4px;right:-4px;background:#f44336;color:#fff;font-size:10px;font-weight:900;min-width:16px;height:16px;line-height:16px;text-align:center;border-radius:50%;"></span>
+            </a>
             <span id="userGreeting" class="hidden md:block text-white font-bold"></span>
             <button onclick="logout()" class="border-4 border-white text-white px-4 py-2 text-[10px] tracking-widest font-black hover:bg-white hover:text-black transition">
                 <i class="fas fa-sign-out-alt mr-2"></i>Déconnexion
@@ -166,6 +170,8 @@
     </div>
 
     <script src="config.js"></script>
+    <script src="offers-config.js"></script>
+    <script src="panier.js"></script>
     <script src="auth.js"></script>
     <script>
     (function() {
