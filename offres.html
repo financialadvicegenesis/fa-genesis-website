@@ -153,7 +153,7 @@
         <div class="hidden md:flex gap-12 text-white font-black">
             <a href="index.html#accueil" class="nav-link hover:text-[var(--genesis-yellow)] transition">Accueil</a>
             <a href="a-propos.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">À Propos</a>
-            <a href="offres.html" class="nav-link text-[var(--genesis-yellow)]">Prestations</a>
+            <a href="offres.html" class="nav-link text-[var(--genesis-yellow)]">Offres</a>
             <a href="index.html#faq" class="nav-link hover:text-[var(--genesis-yellow)] transition">FAQ</a>
             <a href="contact.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">Contact</a>
         </div>
@@ -176,7 +176,7 @@
     <div id="mobileMenu" class="fixed inset-0 z-40 bg-black/98 backdrop-blur-lg hidden flex-col items-center justify-center gap-8 text-white font-black uppercase">
         <a href="index.html#accueil" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition" onclick="closeMobileMenu()">Accueil</a>
         <a href="a-propos.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition" onclick="closeMobileMenu()">À Propos</a>
-        <a href="offres.html" class="text-2xl nav-link text-[var(--genesis-yellow)]" onclick="closeMobileMenu()">Prestations</a>
+        <a href="offres.html" class="text-2xl nav-link text-[var(--genesis-yellow)]" onclick="closeMobileMenu()">Offres</a>
         <a href="index.html#faq" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition" onclick="closeMobileMenu()">FAQ</a>
         <a href="contact.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition" onclick="closeMobileMenu()">Contact</a>
         <a href="panier.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition panier-link" onclick="closeMobileMenu()"><i class="fas fa-shopping-cart" style="margin-right:8px;"></i>Panier <span class="panier-badge" style="position:static;display:none;margin-left:6px;"></span></a>
@@ -190,7 +190,7 @@
     <section class="min-h-[60vh] md:min-h-screen flex flex-col items-center justify-center p-4 md:p-6 bg-black pt-24 md:pt-32 text-center relative overflow-hidden text-white font-black uppercase">
         <div class="absolute top-20 left-[-10%] w-96 h-96 bg-[var(--genesis-yellow)] rounded-full blur-[120px] opacity-20 z-0"></div>
         <div class="w-full max-w-7xl z-10" data-aos="zoom-in">
-            <h1 class="section-header text-[var(--genesis-yellow)] mb-6 md:mb-12 italic">NOS PRESTATIONS</h1>
+            <h1 class="text-[var(--genesis-yellow)] mb-6 md:mb-12 italic uppercase" style="font-size:clamp(2rem,7vw,5rem);line-height:0.9;letter-spacing:-0.05em;">NOS PRESTATIONS</h1>
             <p class="text-lg md:text-2xl lg:text-3xl font-black italic uppercase mb-10 md:mb-20 max-w-4xl mx-auto px-4">Découvrez nos solutions sur mesure pour transformer votre projet</p>
         </div>
     </section>
@@ -198,7 +198,7 @@
     <!-- SECTION SOLUTIONS -->
     <section id="offres" class="py-16 md:py-32 px-4 md:px-6 font-black uppercase" style="background-color: var(--genesis-solution-bg);">
         <div class="container mx-auto">
-            <h2 class="section-header mb-12 md:mb-24 underline decoration-black decoration-4 md:decoration-8 text-white text-center italic" data-aos="fade-down">NOS PRESTATIONS</h2>
+            <h2 class="section-header mb-12 md:mb-24 underline decoration-black decoration-4 md:decoration-8 text-white text-center italic" data-aos="fade-down">NOS OFFRES</h2>
 
             <!-- 01. OFFRES ÉTUDIANTS -->
             <div id="offres-etudiants" class="mb-16 md:mb-40 text-center font-black uppercase">
@@ -666,5 +666,6 @@
         if('requestIdleCallback' in window){requestIdleCallback(loadChatbot,{timeout:4000});}else{setTimeout(loadChatbot,3000);}
         window.addEventListener('scroll',loadChatbot,{once:true,passive:true});window.addEventListener('touchstart',loadChatbot,{once:true,passive:true});
     </script>
+    <script src="nav-global.js"></script>
 </body>
 </html>
