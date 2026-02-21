@@ -540,11 +540,12 @@
                 // ============================
                 if (data.status === 'NO_PAID_ORDER') {
                     var subtitleEl = document.getElementById('welcomeSubtitle');
-                    if (subtitleEl) subtitleEl.textContent = 'Finalisez votre inscription';
 
-                    if (depositSec) {
-                        depositSec.style.display = 'block';
-                        if (data.pendingOrder) {
+                    // Verifier si l'utilisateur a un pending order (acompte a payer)
+                    if (data.pendingOrder) {
+                        if (subtitleEl) subtitleEl.textContent = 'Finalisez votre inscription';
+                        if (depositSec) {
+                            depositSec.style.display = 'block';
                             var po = data.pendingOrder;
                             var offerNameEl = document.getElementById('depositOfferName');
                             if (offerNameEl && po.product_name) offerNameEl.textContent = po.product_name;
@@ -553,7 +554,7 @@
                             var payBtn = document.getElementById('depositPayButton');
                             var amountInfo = document.getElementById('depositAmountInfo');
                             if (amountInfo && po.deposit_amount) {
-                                amountInfo.innerHTML = '<i class="fas fa-shield-alt mr-1"></i> Acompte : <strong>' + po.deposit_amount.toFixed(2) + ' EUR</strong> - Paiement sécurisé par SumUp.';
+                                amountInfo.innerHTML = '<i class="fas fa-shield-alt mr-1"></i> Acompte : <strong>' + po.deposit_amount.toFixed(2) + ' EUR</strong> - Paiement s\u00e9curis\u00e9 par SumUp.';
                             }
                             if (po.source === 'quote' && po.quote_id && payBtn) {
                                 try {
@@ -571,6 +572,47 @@
                             if (payBtn && po.deposit_amount) {
                                 payBtn.innerHTML = '<i class="fas fa-credit-card mr-3"></i>Payer l\'acompte (' + po.deposit_amount.toFixed(2) + ' EUR)';
                             }
+                        }
+                    } else {
+                        // Pas de commande du tout - inscription libre, proposer les offres
+                        if (subtitleEl) subtitleEl.textContent = 'Choisissez votre accompagnement';
+                        if (depositSec) {
+                            depositSec.style.display = 'block';
+                            // Remplacer le contenu par un CTA vers les offres/panier
+                            depositSec.innerHTML = '<div class="bg-white text-black border-4 border-black neo-shadow p-8 md:p-12">'
+                                + '<div class="text-center mb-8">'
+                                + '<div class="inline-flex items-center justify-center w-24 h-24 bg-[var(--genesis-yellow)] border-4 border-black rounded-full mb-6">'
+                                + '<i class="fas fa-rocket text-black text-4xl"></i>'
+                                + '</div>'
+                                + '<h2 class="text-3xl md:text-4xl font-black italic uppercase mb-4">Bienvenue chez FA GENESIS !</h2>'
+                                + '<p class="text-lg font-bold text-gray-700 max-w-xl mx-auto">'
+                                + 'Votre compte est cr\u00e9\u00e9. D\u00e9couvrez nos offres et tarifs pour d\u00e9marrer votre accompagnement.'
+                                + '</p>'
+                                + '</div>'
+                                + '<div class="text-center">'
+                                + '<a href="offres.html" class="neo-btn-yellow px-10 py-5 text-xl uppercase inline-block mb-4">'
+                                + '<i class="fas fa-th-large mr-3"></i>D\u00e9couvrir nos offres'
+                                + '</a>'
+                                + '<div id="dashPanierReminder" style="display:none;margin-top:16px;">'
+                                + '<a href="panier.html" class="inline-block bg-black text-white px-8 py-4 border-4 border-black font-black uppercase text-sm hover:opacity-80 transition">'
+                                + '<i class="fas fa-shopping-cart mr-2"></i>Voir mon panier (<span id="dashPanierCount">0</span> \u00e9l\u00e9ments)'
+                                + '</a>'
+                                + '</div>'
+                                + '</div>'
+                                + '</div>';
+                            // Verifier si le panier contient des items
+                            try {
+                                var panierData = localStorage.getItem('fa_genesis_panier');
+                                if (panierData) {
+                                    var panier = JSON.parse(panierData);
+                                    if (panier && panier.items && panier.items.length > 0) {
+                                        var reminder = document.getElementById('dashPanierReminder');
+                                        var countEl = document.getElementById('dashPanierCount');
+                                        if (reminder) reminder.style.display = '';
+                                        if (countEl) countEl.textContent = panier.items.length;
+                                    }
+                                }
+                            } catch (pe) {}
                         }
                     }
                     return;

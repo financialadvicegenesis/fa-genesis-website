@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="fr" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <title>Votre Panier - FA GENESIS</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;900&family=Space+Grotesk:wght@300;700&display=swap">
+    <link rel="stylesheet" href="tailwind.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"></noscript>
+    <style>
+        :root {
+            --genesis-yellow: #FFD700;
+            --genesis-black: #000000;
+            --genesis-white: #FFFFFF;
+        }
+        body {
+            background-color: var(--genesis-black);
+            color: var(--genesis-white);
+            font-family: 'Space Grotesk', sans-serif;
+            overflow-x: hidden;
+        }
+        h1, h2, h3, h4, h5, .nav-link { font-family: 'Unbounded', cursive; }
+        .neo-btn-yellow {
+            background: var(--genesis-yellow);
+            color: black;
+            border: 4px solid black;
+            box-shadow: 6px 6px 0px black;
+            font-weight: 900;
+            transition: 0.1s;
+        }
+        .neo-btn-yellow:active { transform: translate(4px, 4px); box-shadow: 0px 0px 0px black; }
+        .panier-item {
+            background: white;
+            color: black;
+            border: 4px solid black;
+            padding: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        .panier-item:hover { box-shadow: 8px 8px 0px var(--genesis-yellow); }
+        .panier-summary {
+            background: var(--genesis-yellow);
+            color: black;
+            border: 4px solid black;
+            box-shadow: 10px 10px 0px black;
+            padding: 2rem;
+        }
+        .btn-retirer {
+            background: #ff4444;
+            color: white;
+            border: 3px solid black;
+            padding: 0.5rem 1rem;
+            font-weight: 900;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: 0.1s;
+        }
+        .btn-retirer:hover { background: #cc0000; }
+        .btn-action {
+            display: inline-block;
+            padding: 1.25rem 2rem;
+            font-weight: 900;
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            text-align: center;
+            border: 4px solid black;
+            cursor: pointer;
+            transition: 0.1s;
+        }
+        .btn-action:active { transform: translate(3px, 3px); box-shadow: none; }
+        .btn-valider {
+            background: var(--genesis-yellow);
+            color: black;
+            box-shadow: 6px 6px 0px black;
+        }
+        .btn-valider:hover { background: #e6c200; }
+        .btn-continuer {
+            background: white;
+            color: black;
+            box-shadow: 6px 6px 0px var(--genesis-yellow);
+        }
+        .btn-continuer:hover { background: #f0f0f0; }
+        .btn-vider {
+            background: transparent;
+            color: #ff4444;
+            border: 3px solid #ff4444;
+            padding: 0.75rem 1.5rem;
+            font-weight: 900;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            cursor: pointer;
+        }
+        .btn-vider:hover { background: #ff4444; color: white; }
+        .devis-banner {
+            background: #FFF3CD;
+            color: #856404;
+            border: 4px solid #856404;
+            padding: 1rem 1.5rem;
+            font-weight: 700;
+            font-size: 0.875rem;
+        }
+        .empty-state {
+            background: white;
+            color: black;
+            border: 4px dashed black;
+            padding: 4rem;
+            text-align: center;
+        }
+        .panier-badge {
+            display: none;
+            position: absolute;
+            top: -6px; right: -8px;
+            background: #f44336;
+            color: #fff;
+            font-size: 10px;
+            font-weight: 900;
+            min-width: 16px; height: 16px;
+            line-height: 16px;
+            text-align: center;
+            border-radius: 50%;
+        }
+        .panier-link { position: relative; display: inline-block; }
+    </style>
+</head>
+<body>
+
+    <!-- NAVIGATION -->
+    <nav class="fixed top-0 w-full z-50 bg-black/95 backdrop-blur-md border-b-4 border-[var(--genesis-yellow)] px-4 md:px-6 py-3 md:py-4 flex justify-between items-center text-white text-xs font-black uppercase">
+        <div class="flex items-center">
+            <a href="index.html" class="text-lg md:text-2xl font-black tracking-wider text-[var(--genesis-yellow)]" style="font-family: 'Unbounded', cursive;">FA GENESIS</a>
+        </div>
+        <div class="hidden md:flex gap-12 text-white font-black">
+            <a href="index.html#accueil" class="nav-link hover:text-[var(--genesis-yellow)] transition">Accueil</a>
+            <a href="a-propos.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">A Propos</a>
+            <a href="offres.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">Offres</a>
+            <a href="contact.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">Contact</a>
+        </div>
+        <div class="hidden md:flex gap-4 items-center">
+            <a href="panier.html" class="panier-link text-[var(--genesis-yellow)] text-lg" title="Panier">
+                <i class="fas fa-shopping-cart"></i><span class="panier-badge"></span>
+            </a>
+            <a href="login.html" class="border-4 border-white text-white px-6 py-3 text-[12px] tracking-widest font-black hover:bg-white hover:text-black transition">Espace client</a>
+        </div>
+        <button id="mobileMenuBtn" class="md:hidden flex flex-col gap-1.5 p-2" aria-label="Menu">
+            <span class="block w-6 h-0.5 bg-[var(--genesis-yellow)] transition-all" id="menuLine1"></span>
+            <span class="block w-6 h-0.5 bg-[var(--genesis-yellow)] transition-all" id="menuLine2"></span>
+            <span class="block w-6 h-0.5 bg-[var(--genesis-yellow)] transition-all" id="menuLine3"></span>
+        </button>
+    </nav>
+
+    <!-- Menu Mobile -->
+    <div id="mobileMenu" class="fixed inset-0 z-40 bg-black/98 backdrop-blur-lg hidden flex-col items-center justify-center gap-8 text-white font-black uppercase">
+        <a href="index.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)]">Accueil</a>
+        <a href="offres.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)]">Offres</a>
+        <a href="panier.html" class="text-2xl nav-link text-[var(--genesis-yellow)]"><i class="fas fa-shopping-cart" style="margin-right:8px;"></i>Panier</a>
+        <a href="login.html" class="border-4 border-white text-white px-8 py-4 text-sm tracking-widest font-black hover:bg-white hover:text-black transition text-center">Espace client</a>
+    </div>
+
+    <!-- CONTENU PRINCIPAL -->
+    <section class="min-h-screen pt-32 pb-20 px-4 md:px-6 bg-black">
+        <div class="container mx-auto max-w-4xl">
+
+            <!-- Titre -->
+            <div class="mb-12">
+                <h1 class="text-4xl md:text-6xl font-black italic uppercase mb-4 text-[var(--genesis-yellow)]">
+                    <i class="fas fa-shopping-cart mr-4"></i>Votre panier
+                </h1>
+            </div>
+
+            <!-- Liste des items -->
+            <div id="panierList" class="space-y-4 mb-8"></div>
+
+            <!-- Banniere devis -->
+            <div id="devisBanner" class="devis-banner mb-8" style="display:none;">
+                <i class="fas fa-info-circle mr-2"></i>
+                <strong>Devis requis</strong> - Certains elements de votre panier necessitent un devis personnalise. Un conseiller FA GENESIS vous contactera sous 48h.
+            </div>
+
+            <!-- Resume -->
+            <div id="panierSummary" class="panier-summary mb-8" style="display:none;">
+                <h2 class="text-2xl font-black italic uppercase mb-6">Resume</h2>
+                <div id="summaryDetails"></div>
+            </div>
+
+            <!-- Boutons -->
+            <div id="panierActions" class="flex flex-wrap gap-4 mb-8" style="display:none;">
+                <a href="offres.html" class="btn-action btn-continuer"><i class="fas fa-arrow-left mr-2"></i>Continuer mes achats</a>
+                <button onclick="validerPanier()" class="btn-action btn-valider"><i class="fas fa-check mr-2"></i>Valider et continuer</button>
+                <button onclick="confirmerVider()" class="btn-vider"><i class="fas fa-trash mr-2"></i>Vider le panier</button>
+            </div>
+
+            <!-- Etat vide -->
+            <div id="panierEmpty" class="empty-state" style="display:none;">
+                <i class="fas fa-shopping-cart text-6xl mb-6 opacity-30"></i>
+                <h3 class="text-2xl font-black italic uppercase mb-4">Votre panier est vide</h3>
+                <p class="font-bold opacity-70 mb-8">Decouvrez nos offres et tarifs pour construire votre accompagnement sur mesure.</p>
+                <a href="offres.html" class="btn-action btn-valider inline-block"><i class="fas fa-arrow-right mr-2"></i>Voir nos offres</a>
+            </div>
+
+        </div>
+    </section>
+
+    <script src="offers-config.js"></script>
+    <script src="panier.js"></script>
+    <script>
+        // ============================================================
+        // PAGE PANIER - AUCUN AOS (page fonctionnelle)
+        // ============================================================
+
+        function renderPanier() {
+            try {
+                var panier = getPanier();
+                var listEl = document.getElementById('panierList');
+                var emptyEl = document.getElementById('panierEmpty');
+                var summaryEl = document.getElementById('panierSummary');
+                var actionsEl = document.getElementById('panierActions');
+                var devisEl = document.getElementById('devisBanner');
+
+                if (!panier.items || panier.items.length === 0) {
+                    if (listEl) listEl.innerHTML = '';
+                    if (emptyEl) emptyEl.style.display = '';
+                    if (summaryEl) summaryEl.style.display = 'none';
+                    if (actionsEl) actionsEl.style.display = 'none';
+                    if (devisEl) devisEl.style.display = 'none';
+                    return;
+                }
+
+                if (emptyEl) emptyEl.style.display = 'none';
+                if (summaryEl) summaryEl.style.display = '';
+                if (actionsEl) actionsEl.style.display = '';
+
+                // Render items
+                var html = '';
+                var total = 0;
+                var hasDevis = false;
+
+                for (var i = 0; i < panier.items.length; i++) {
+                    var item = panier.items[i];
+                    var offer = (typeof getOfferById === 'function') ? getOfferById(item.id) : null;
+                    var nom = offer ? offer.nom : item.id;
+                    var prix = offer ? offer.prixTotal : 0;
+                    var duree = offer ? offer.duree : '';
+                    var categorie = offer ? offer.categorie : '';
+                    var isDevis = (prix === 0);
+
+                    if (isDevis) hasDevis = true;
+                    else total += prix;
+
+                    var prixText = isDevis
+                        ? '<span style="color:#856404;font-weight:900;">SUR DEVIS</span>'
+                        : '<span style="font-weight:900;font-size:1.25rem;">' + prix + ' \u20ac</span>';
+
+                    html += '<div class="panier-item">'
+                        + '<div style="flex:1;min-width:200px;">'
+                        + '<div style="font-weight:900;font-size:1.1rem;text-transform:uppercase;">' + escapeH(nom) + '</div>'
+                        + '<div style="font-size:0.8rem;opacity:0.6;margin-top:2px;">' + escapeH(categorie) + (duree ? ' \u2022 ' + escapeH(duree) : '') + '</div>'
+                        + '</div>'
+                        + '<div style="text-align:right;min-width:100px;">' + prixText + '</div>'
+                        + '<button class="btn-retirer" onclick="retirerEtRender(\'' + item.id + '\')">'
+                        + '<i class="fas fa-times mr-1"></i>Retirer</button>'
+                        + '</div>';
+                }
+
+                if (listEl) listEl.innerHTML = html;
+
+                // Devis banner
+                if (devisEl) devisEl.style.display = hasDevis ? '' : 'none';
+
+                // Summary
+                var deposit = Math.round(total * 0.30);
+                var balance = total - deposit;
+                var summaryHtml = '';
+
+                if (total > 0) {
+                    summaryHtml += '<div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:1.1rem;">'
+                        + '<span style="font-weight:700;">Total</span>'
+                        + '<span style="font-weight:900;font-size:1.3rem;">' + total + ' \u20ac</span></div>';
+                    summaryHtml += '<div style="display:flex;justify-content:space-between;margin-bottom:4px;">'
+                        + '<span>Acompte (30%)</span>'
+                        + '<span style="font-weight:900;">' + deposit + ' \u20ac</span></div>';
+                    summaryHtml += '<div style="display:flex;justify-content:space-between;margin-bottom:4px;">'
+                        + '<span>Solde (70%)</span>'
+                        + '<span style="font-weight:700;">' + balance + ' \u20ac</span></div>';
+                }
+
+                if (hasDevis) {
+                    summaryHtml += '<div style="margin-top:12px;padding-top:12px;border-top:2px solid black;font-size:0.85rem;font-style:italic;">'
+                        + '<i class="fas fa-file-alt mr-2"></i>Un devis personnalis\u00e9 sera \u00e9tabli pour les prestations sur devis.</div>';
+                }
+
+                var detailsEl = document.getElementById('summaryDetails');
+                if (detailsEl) detailsEl.innerHTML = summaryHtml;
+
+            } catch (e) {
+                console.error('[PANIER] Erreur rendu:', e);
+            }
+        }
+
+        function retirerEtRender(productId) {
+            retirerDuPanier(productId);
+            renderPanier();
+        }
+
+        function confirmerVider() {
+            if (confirm('Voulez-vous vraiment vider votre panier ?')) {
+                viderPanier();
+                renderPanier();
+            }
+        }
+
+        function validerPanier() {
+            var panier = getPanier();
+            if (!panier.items || panier.items.length === 0) return;
+
+            // Verifier si connecte
+            var token = localStorage.getItem('fa_genesis_token');
+            if (token) {
+                // Connecte -> checkout
+                window.location.href = 'checkout.html?source=panier';
+            } else {
+                // Non connecte -> inscription puis checkout
+                window.location.href = 'register.html?redirect=checkout';
+            }
+        }
+
+        function escapeH(str) {
+            if (!str) return '';
+            return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        // Menu mobile
+        var mobileMenuBtn = document.getElementById('mobileMenuBtn');
+        var mobileMenu = document.getElementById('mobileMenu');
+        var isMenuOpen = false;
+
+        function toggleMobileMenu() {
+            isMenuOpen = !isMenuOpen;
+            if (isMenuOpen) {
+                mobileMenu.classList.remove('hidden');
+                mobileMenu.classList.add('flex');
+                document.body.style.overflow = 'hidden';
+            } else {
+                mobileMenu.classList.add('hidden');
+                mobileMenu.classList.remove('flex');
+                document.body.style.overflow = 'auto';
+            }
+        }
+
+        if (mobileMenuBtn) mobileMenuBtn.addEventListener('click', toggleMobileMenu);
+
+        // Render au chargement
+        renderPanier();
+    </script>
+    <div id="site-footer"></div>
+    <script src="footer.js" defer></script>
+</body>
+</html>

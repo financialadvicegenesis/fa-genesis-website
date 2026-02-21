@@ -90,7 +90,13 @@
             <a href="offres.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">Offres</a>
             <a href="contact.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">Contact</a>
         </div>
-        <a href="login.html" class="hidden md:block neo-btn-yellow px-6 py-3 text-[12px] tracking-widest text-black font-black">Se connecter</a>
+        <div class="hidden md:flex gap-4 items-center">
+            <a href="panier.html" class="relative text-white hover:text-[var(--genesis-yellow)] transition px-2 py-2" title="Panier">
+                <i class="fas fa-shopping-cart text-lg"></i>
+                <span class="panier-badge" style="display:none;position:absolute;top:-4px;right:-4px;background:#f44336;color:#fff;font-size:10px;font-weight:900;min-width:16px;height:16px;line-height:16px;text-align:center;border-radius:50%;"></span>
+            </a>
+            <a href="login.html" class="neo-btn-yellow px-6 py-3 text-[12px] tracking-widest text-black font-black">Se connecter</a>
+        </div>
         <!-- Bouton Menu Mobile -->
         <button id="mobileMenuBtn" class="md:hidden flex flex-col gap-1.5 p-2" aria-label="Menu">
             <span class="block w-6 h-0.5 bg-[var(--genesis-yellow)] transition-all" id="menuLine1"></span>
@@ -105,6 +111,7 @@
         <a href="a-propos.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition" onclick="closeMobileMenu()">À Propos</a>
         <a href="offres.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition" onclick="closeMobileMenu()">Offres</a>
         <a href="contact.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition" onclick="closeMobileMenu()">Contact</a>
+        <a href="panier.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition" onclick="closeMobileMenu()"><i class="fas fa-shopping-cart mr-2"></i>Panier <span class="panier-badge" style="display:none;background:#f44336;color:#fff;font-size:12px;padding:2px 6px;border-radius:50%;margin-left:4px;"></span></a>
         <div class="flex flex-col gap-4 mt-8">
             <a href="login.html" class="neo-btn-yellow px-8 py-4 text-sm tracking-widest text-black font-black text-center" onclick="closeMobileMenu()">Se connecter</a>
         </div>
@@ -116,7 +123,7 @@
 
         <div class="w-full max-w-2xl z-10" data-aos="zoom-in">
             <h1 class="text-5xl md:text-6xl font-black italic uppercase text-center mb-6 text-[var(--genesis-yellow)]">CRÉER UN COMPTE</h1>
-            <p class="text-center text-lg font-bold mb-10 uppercase">Rejoignez FA Genesis et accédez à votre espace client</p>
+            <p class="text-center text-lg font-bold mb-10 uppercase">Inscription gratuite et sans engagement</p>
 
             <div class="bg-white text-black p-10 neo-border neo-shadow">
                 <div id="errorMessage" class="error-message"></div>
@@ -173,54 +180,8 @@
                         >
                     </div>
 
-                    <div>
-                        <label for="offre" class="block text-sm font-black mb-2 uppercase">Offre souhaitée</label>
-                        <select
-                            id="offre"
-                            name="offre"
-                            required
-                            class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none focus:translate-x-1 focus:translate-y-1 transition-all uppercase"
-                        >
-                            <option value="" disabled selected>QUELLE FORMULE ?</option>
-                            <optgroup label="ÉTUDIANTS">
-                                <option value="etudiant-idea">IDEA</option>
-                                <option value="etudiant-starter">STARTER</option>
-                                <option value="etudiant-launch">LAUNCH</option>
-                                <option value="etudiant-impact">IMPACT</option>
-                                <option value="etudiant-custom">CUSTOM</option>
-                            </optgroup>
-                            <optgroup label="PARTICULIERS">
-                                <option value="particulier-idea">IDEA</option>
-                                <option value="particulier-starter">STARTER</option>
-                                <option value="particulier-launch">LAUNCH</option>
-                                <option value="particulier-impact">IMPACT</option>
-                                <option value="particulier-custom">CUSTOM</option>
-                            </optgroup>
-                            <optgroup label="ENTREPRISES">
-                                <option value="entreprise-start">START</option>
-                                <option value="entreprise-visibility">VISIBILITY</option>
-                                <option value="entreprise-impact">IMPACT</option>
-                                <option value="entreprise-custom">CUSTOM</option>
-                            </optgroup>
-                            <optgroup label="TARIFS INDIVIDUELS">
-                                <option value="photo-essentiel">PHOTO - ESSENTIEL</option>
-                                <option value="photo-pro">PHOTO - PRO</option>
-                                <option value="photo-event">PHOTO - EVENT</option>
-                                <option value="photo-custom">PHOTO - CUSTOM</option>
-                                <option value="video-pro">VIDÉO - PRO</option>
-                                <option value="video-storytelling">VIDÉO - STORYTELLING</option>
-                                <option value="video-visibility">VIDÉO - VISIBILITY</option>
-                                <option value="video-custom">VIDÉO - CUSTOM</option>
-                                <option value="marketing-express">MARKETING - EXPRESS</option>
-                                <option value="marketing-strategy">MARKETING - STRATEGY</option>
-                                <option value="marketing-impact">MARKETING - IMPACT</option>
-                                <option value="media-visibility">MÉDIA - VISIBILITY</option>
-                                <option value="media-impact">MÉDIA - IMPACT</option>
-                                <option value="media-premium">MÉDIA - PREMIUM</option>
-                                <option value="media-promotion">MÉDIA - PROMOTION</option>
-                            </optgroup>
-                        </select>
-                    </div>
+                    <!-- Champ offre masque - l'offre est choisie via le panier -->
+                    <input type="hidden" id="offre" name="offre" value="">
 
                     <div class="grid md:grid-cols-2 gap-6">
                         <div>
@@ -293,42 +254,35 @@
     <script src="config.js"></script>
     <script src="auth.js"></script>
     <script src="offers-config.js"></script>
+    <script src="panier.js"></script>
     <script src="payment-system.js"></script>
     <script>
         AOS.init({ duration: 1000, once: true, disable: 'mobile', offset: 120 });
 
         // Recuperer les parametres de l'URL
         var quoteTokenParam = null;
+        var redirectParam = null;
 
         window.addEventListener('DOMContentLoaded', function() {
             try {
                 var urlParams = new URLSearchParams(window.location.search);
                 var offreParam = urlParams.get('offre');
                 quoteTokenParam = urlParams.get('quote_token');
+                redirectParam = urlParams.get('redirect');
 
-                // --- Mode DEVIS : cacher l'offre, afficher bandeau ---
+                // --- Mode DEVIS : afficher bandeau ---
                 if (quoteTokenParam) {
-                    // Cacher le champ offre (pas necessaire pour un devis)
-                    var offreField = document.getElementById('offre');
-                    if (offreField) {
-                        offreField.closest('div').style.display = 'none';
-                        offreField.removeAttribute('required');
-                    }
-
-                    // Afficher bandeau d'information
                     var successMessage = document.getElementById('successMessage');
                     if (successMessage) {
-                        successMessage.innerHTML = '<i class="fas fa-file-invoice mr-2"></i><strong>Acceptation de devis</strong><br>Créez votre compte pour accepter votre devis personnalisé et payer l\'acompte de 30%.';
+                        successMessage.innerHTML = '<i class="fas fa-file-invoice mr-2"></i><strong>Acceptation de devis</strong><br>Cr\u00e9ez votre compte pour accepter votre devis personnalis\u00e9 et payer l\'acompte de 30%.';
                         successMessage.classList.add('show');
                     }
 
-                    // Mettre a jour le lien "Deja un compte"
                     var loginLink = document.querySelector('a[href="login.html"]');
                     if (loginLink) {
                         loginLink.href = 'login.html?quote_token=' + encodeURIComponent(quoteTokenParam);
                     }
 
-                    // Pre-remplir l'email depuis les donnees du devis
                     var apiUrl = window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com';
                     fetch(apiUrl + '/api/quotes/view/' + encodeURIComponent(quoteTokenParam))
                         .then(function(r) { return r.json(); })
@@ -338,7 +292,6 @@
                                 if (emailField && !emailField.value) {
                                     emailField.value = data.quote.client_email;
                                 }
-                                // Pre-remplir le nom si disponible
                                 if (data.quote.client_name) {
                                     var parts = data.quote.client_name.split(' ');
                                     var prenomField = document.getElementById('prenom');
@@ -353,58 +306,48 @@
                     console.log('[REGISTER] Mode devis detecte');
                 }
 
-                // --- Mode OFFRE standard ---
-                if (offreParam && !quoteTokenParam) {
-                    var offreSelect = document.getElementById('offre');
-                    var option = offreSelect ? offreSelect.querySelector('option[value="' + offreParam + '"]') : null;
-
-                    if (option) {
-                        offreSelect.value = offreParam;
-
-                        var selectedOffer = typeof getOfferById === 'function' ? getOfferById(offreParam) : null;
-                        if (selectedOffer) {
-                            var successMessage2 = document.getElementById('successMessage');
-                            if (selectedOffer.prixTotal > 0) {
-                                successMessage2.innerHTML = '<strong><i class="fas fa-check-circle mr-2"></i>Offre sélectionnée :</strong> ' + selectedOffer.nom + '<br><strong>Prix :</strong> ' + selectedOffer.prixTotal + '\u20ac (Acompte: ' + selectedOffer.acompte + '\u20ac)';
-                            } else {
-                                successMessage2.innerHTML = '<strong><i class="fas fa-check-circle mr-2"></i>Offre sélectionnée :</strong> ' + selectedOffer.nom + '<br>Offre sur mesure - Devis personnalisé';
-                            }
-                            successMessage2.classList.add('show');
-                        }
+                // --- Mode REDIRECT (depuis panier) : afficher bandeau panier ---
+                if (redirectParam === 'checkout') {
+                    var successMsg = document.getElementById('successMessage');
+                    if (successMsg) {
+                        successMsg.innerHTML = '<i class="fas fa-shopping-cart mr-2"></i><strong>Cr\u00e9ez votre compte</strong><br>Inscription gratuite et sans engagement. Vous serez redirig\u00e9 vers votre panier apr\u00e8s inscription.';
+                        successMsg.classList.add('show');
                     }
+                }
+
+                // --- Mode OFFRE (legacy, si offre dans URL) ---
+                if (offreParam && !quoteTokenParam) {
+                    var offreField = document.getElementById('offre');
+                    if (offreField) offreField.value = offreParam;
                 }
             } catch (err) {
                 console.error('[REGISTER] Erreur init params:', err);
             }
         });
 
-        // Gestion de la soumission du formulaire (asynchrone)
+        // Gestion de la soumission du formulaire
         document.getElementById('registerForm').addEventListener('submit', async function(e) {
             e.preventDefault();
 
-            const prenom = document.getElementById('prenom').value.trim();
-            const nom = document.getElementById('nom').value.trim();
-            const email = document.getElementById('email').value.trim();
-            const telephone = document.getElementById('telephone').value.trim();
-            const offre = document.getElementById('offre').value;
-            const password = document.getElementById('password').value;
-            const confirmPassword = document.getElementById('confirmPassword').value;
-            const terms = document.getElementById('terms').checked;
+            var prenom = document.getElementById('prenom').value.trim();
+            var nom = document.getElementById('nom').value.trim();
+            var email = document.getElementById('email').value.trim();
+            var telephone = document.getElementById('telephone').value.trim();
+            var offreField = document.getElementById('offre');
+            var offre = offreField ? offreField.value : '';
+            var password = document.getElementById('password').value;
+            var confirmPassword = document.getElementById('confirmPassword').value;
+            var terms = document.getElementById('terms').checked;
 
-            const errorMessage = document.getElementById('errorMessage');
-            const successMessage = document.getElementById('successMessage');
-            const submitBtn = this.querySelector('button[type="submit"]');
+            var errorMessage = document.getElementById('errorMessage');
+            var successMessage = document.getElementById('successMessage');
+            var submitBtn = this.querySelector('button[type="submit"]');
 
-            // Réinitialiser les messages
             errorMessage.classList.remove('show');
             successMessage.classList.remove('show');
 
-            // Validation - offre pas obligatoire en mode devis
-            var requiredFields = !quoteTokenParam
-                ? (!prenom || !nom || !email || !telephone || !offre || !password || !confirmPassword)
-                : (!prenom || !nom || !email || !telephone || !password || !confirmPassword);
-
-            if (requiredFields) {
+            // Validation - offre n'est PLUS obligatoire
+            if (!prenom || !nom || !email || !telephone || !password || !confirmPassword) {
                 errorMessage.textContent = 'Veuillez remplir tous les champs obligatoires.';
                 errorMessage.classList.add('show');
                 return;
@@ -417,45 +360,38 @@
             }
 
             if (password.length < 6) {
-                errorMessage.textContent = 'Le mot de passe doit contenir au moins 6 caractères.';
+                errorMessage.textContent = 'Le mot de passe doit contenir au moins 6 caract\u00e8res.';
                 errorMessage.classList.add('show');
                 return;
             }
 
             if (!terms) {
-                errorMessage.textContent = 'Vous devez accepter les conditions générales.';
+                errorMessage.textContent = 'Vous devez accepter les conditions g\u00e9n\u00e9rales.';
                 errorMessage.classList.add('show');
                 return;
             }
 
-            // Validation email
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            var emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
             if (!emailRegex.test(email)) {
                 errorMessage.textContent = 'Veuillez entrer une adresse email valide.';
                 errorMessage.classList.add('show');
                 return;
             }
 
-            // Récupérer l'offre sélectionnée
-            const selectedOffer = getOfferById(offre);
-
-            // Désactiver le bouton pendant l'inscription
             submitBtn.disabled = true;
             submitBtn.textContent = 'Inscription en cours...';
 
-            // Appel API d'inscription (asynchrone)
-            const result = await register({
+            var result = await register({
                 prenom: prenom,
                 nom: nom,
                 email: email,
                 telephone: telephone,
                 password: password,
-                offre: offre
+                offre: offre || null
             });
 
-            // Réactiver le bouton
             submitBtn.disabled = false;
-            submitBtn.textContent = 'Créer mon compte';
+            submitBtn.textContent = 'Cr\u00e9er mon compte';
 
             if (!result.success) {
                 errorMessage.textContent = result.message;
@@ -463,7 +399,7 @@
                 return;
             }
 
-            console.log('Nouvel utilisateur créé:', result.user);
+            console.log('[REGISTER] Utilisateur cree:', result.user);
 
             // Mettre a jour la session locale
             var sessionData = null;
@@ -478,11 +414,10 @@
 
             // --- Mode DEVIS : accepter le devis apres inscription ---
             if (quoteTokenParam) {
-                successMessage.innerHTML = '<strong>Compte créé avec succès !</strong><br><br>Acceptation de votre devis en cours...';
+                successMessage.innerHTML = '<strong>Compte cr\u00e9\u00e9 avec succ\u00e8s !</strong><br><br>Acceptation de votre devis en cours...';
                 successMessage.classList.add('show');
                 document.getElementById('registerForm').reset();
 
-                // Appeler l'acceptation du devis
                 try {
                     var authToken = typeof getAuthToken === 'function' ? getAuthToken() : localStorage.getItem('fa_genesis_token');
                     var apiUrl = window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com';
@@ -499,7 +434,7 @@
                     var acceptResult = await acceptResponse.json();
 
                     if (acceptResult.success) {
-                        successMessage.innerHTML = '<strong>Compte créé et devis accepté !</strong><br><br>Redirection vers le paiement de l\'acompte...';
+                        successMessage.innerHTML = '<strong>Compte cr\u00e9\u00e9 et devis accept\u00e9 !</strong><br><br>Redirection vers le paiement de l\'acompte...';
                         setTimeout(function() {
                             window.location.href = 'quote-accept.html?token=' + encodeURIComponent(quoteTokenParam);
                         }, 2000);
@@ -509,32 +444,30 @@
                     }
                 } catch (acceptErr) {
                     console.error('[REGISTER] Erreur acceptation devis:', acceptErr);
-                    errorMessage.textContent = 'Compte créé mais erreur lors de l\'acceptation du devis. Vous pouvez réessayer depuis votre espace client.';
+                    errorMessage.textContent = 'Compte cr\u00e9\u00e9 mais erreur lors de l\'acceptation du devis.';
                     errorMessage.classList.add('show');
                     setTimeout(function() { window.location.href = 'dashboard.html'; }, 3000);
                 }
                 return;
             }
 
-            // --- Mode OFFRE standard ---
-            if (selectedOffer && selectedOffer.prixTotal > 0) {
-                successMessage.innerHTML = '<strong>Compte créé avec succès !</strong><br><br>' +
-                    '<strong>Offre sélectionnée :</strong> ' + selectedOffer.nom + '<br>' +
-                    '<strong>Prix total :</strong> ' + selectedOffer.prixTotal + ' \u20ac<br>' +
-                    '<strong>Acompte (30%) :</strong> ' + selectedOffer.acompte + ' \u20ac<br><br>' +
-                    '<strong>Étape suivante :</strong> Règlement de l\'acompte pour confirmer votre inscription.<br>' +
-                    'Redirection vers la page de paiement...';
+            // --- Mode REDIRECT (depuis panier) ---
+            if (redirectParam === 'checkout') {
+                successMessage.innerHTML = '<strong>Compte cr\u00e9\u00e9 avec succ\u00e8s !</strong><br><br>' +
+                    '<i class="fas fa-shopping-cart mr-2"></i>Redirection vers votre panier...';
                 successMessage.classList.add('show');
                 document.getElementById('registerForm').reset();
-                setTimeout(function() { window.location.href = 'payment.html'; }, 3000);
-            } else {
-                successMessage.innerHTML = '<strong>Compte créé avec succès !</strong><br><br>' +
-                    'Vous avez sélectionné une offre sur mesure. Nous vous contacterons pour établir un devis personnalisé.<br><br>' +
-                    'Redirection vers votre espace client...';
-                successMessage.classList.add('show');
-                document.getElementById('registerForm').reset();
-                setTimeout(function() { window.location.href = 'dashboard.html'; }, 3000);
+                setTimeout(function() { window.location.href = 'checkout.html?source=panier'; }, 2000);
+                return;
             }
+
+            // --- Mode standard (inscription libre) ---
+            successMessage.innerHTML = '<strong>Compte cr\u00e9\u00e9 avec succ\u00e8s !</strong><br><br>' +
+                'Bienvenue chez FA GENESIS ! D\u00e9couvrez nos offres et tarifs.<br><br>' +
+                'Redirection...';
+            successMessage.classList.add('show');
+            document.getElementById('registerForm').reset();
+            setTimeout(function() { window.location.href = 'offres.html'; }, 2500);
         });
 
         // Menu Mobile Toggle

@@ -770,72 +770,121 @@ app.get('/api/products/:productId', (req, res) => {
  * POST /api/orders/create
  * Creer une nouvelle commande
  *
- * Body: { productId, clientInfo }
+ * Body LEGACY: { productId, clientInfo }
+ * Body MULTI:  { items: [{id: "..."}], clientInfo }
  * Response: { orderId, deposit_amount, balance_amount, total_amount }
  */
 app.post('/api/orders/create', (req, res) => {
     try {
-        const { productId, clientInfo } = req.body;
-
-        // Validation
-        if (!productId) {
-            return res.status(400).json({ error: 'productId requis' });
-        }
+        const { productId, items, clientInfo } = req.body;
 
         if (!clientInfo || !clientInfo.email || !clientInfo.firstName || !clientInfo.lastName) {
             return res.status(400).json({ error: 'Informations client incompletes (email, firstName, lastName requis)' });
         }
 
-        // Recuperer le produit
-        const product = getProductById(productId);
-        if (!product) {
-            return res.status(404).json({ error: 'Produit non trouve' });
+        let order;
+
+        // ---- FORMAT MULTI-ITEMS (depuis panier) ----
+        if (items && Array.isArray(items) && items.length > 0) {
+            const { calculateMultiItemAmounts } = require('./products');
+            const itemIds = items.map(i => i.id);
+            const calc = calculateMultiItemAmounts(itemIds);
+
+            if (calc.items.length === 0) {
+                return res.status(400).json({ error: 'Aucun produit valide dans le panier' });
+            }
+
+            // Determiner le product_type
+            let orderProductType = 'multi';
+            if (calc.items.length === 1) {
+                orderProductType = calc.items[0].product_type;
+            }
+
+            order = {
+                id: `ORD-${uuidv4().split('-')[0].toUpperCase()}`,
+                product_id: calc.items.length === 1 ? calc.items[0].product_id : null,
+                product_name: calc.items.length === 1 ? calc.items[0].product_name : calc.items.map(i => i.product_name).join(' + '),
+                product_type: orderProductType,
+                items: calc.items,
+                client_info: {
+                    email: clientInfo.email,
+                    first_name: clientInfo.firstName,
+                    last_name: clientInfo.lastName,
+                    phone: clientInfo.phone || null,
+                    company: clientInfo.company || null,
+                    client_type: clientInfo.clientType || 'particulier'
+                },
+                total_amount: calc.total_amount,
+                deposit_amount: calc.deposit_amount,
+                balance_amount: calc.balance_amount,
+                has_devis_items: calc.has_devis_items,
+                deposit_paid: false,
+                balance_paid: false,
+                duration_days: Math.max.apply(null, calc.items.map(i => i.duration_days || 0)) || 0,
+                start_date: null,
+                status: calc.total_amount === 0 ? 'devis_requested' : 'pending_deposit',
+                checkout_id: null,
+                transaction_id: null,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            };
+
+            console.log(`[ORDER] Commande multi-items creee: ${order.id} - ${calc.items.length} items - ${calc.total_amount}EUR`);
+
+        // ---- FORMAT LEGACY (1 seul productId) ----
+        } else if (productId) {
+            const product = getProductById(productId);
+            if (!product) {
+                return res.status(404).json({ error: 'Produit non trouve' });
+            }
+
+            const amounts = calculatePaymentAmounts(product.total_price);
+
+            order = {
+                id: `ORD-${uuidv4().split('-')[0].toUpperCase()}`,
+                product_id: productId,
+                product_name: product.name,
+                product_type: product.product_type,
+                client_info: {
+                    email: clientInfo.email,
+                    first_name: clientInfo.firstName,
+                    last_name: clientInfo.lastName,
+                    phone: clientInfo.phone || null,
+                    company: clientInfo.company || null,
+                    client_type: clientInfo.clientType || 'particulier'
+                },
+                total_amount: amounts.total_amount,
+                deposit_amount: amounts.deposit_amount,
+                balance_amount: amounts.balance_amount,
+                deposit_paid: false,
+                balance_paid: false,
+                duration_days: product.duration_days || parseDurationToDays(product.duration),
+                start_date: null,
+                status: 'pending_deposit',
+                checkout_id: null,
+                transaction_id: null,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            };
+
+            console.log(`[ORDER] Commande creee: ${order.id} - ${product.name} - ${amounts.total_amount}EUR`);
+
+        } else {
+            return res.status(400).json({ error: 'productId ou items requis' });
         }
-
-        // Calculer les montants cote serveur (SECURITE)
-        const amounts = calculatePaymentAmounts(product.total_price);
-
-        // Creer la commande
-        const order = {
-            id: `ORD-${uuidv4().split('-')[0].toUpperCase()}`,
-            product_id: productId,
-            product_name: product.name,
-            product_type: product.product_type,
-            client_info: {
-                email: clientInfo.email,
-                first_name: clientInfo.firstName,
-                last_name: clientInfo.lastName,
-                phone: clientInfo.phone || null,
-                company: clientInfo.company || null,
-                client_type: clientInfo.clientType || 'particulier'
-            },
-            total_amount: amounts.total_amount,
-            deposit_amount: amounts.deposit_amount,
-            balance_amount: amounts.balance_amount,
-            deposit_paid: false,
-            balance_paid: false,
-            duration_days: product.duration_days || parseDurationToDays(product.duration),
-            start_date: null,
-            status: 'pending_deposit', // pending_deposit, active, pending_balance, paid_in_full, cancelled
-            checkout_id: null,
-            transaction_id: null,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-        };
 
         // Sauvegarder
         const orders = loadOrders();
         orders.push(order);
         saveOrders(orders);
 
-        console.log(`[ORDER] Commande creee: ${order.id} - ${product.name} - ${amounts.total_amount}EUR`);
-
         res.json({
             success: true,
             orderId: order.id,
             deposit_amount: order.deposit_amount,
             balance_amount: order.balance_amount,
-            total_amount: order.total_amount
+            total_amount: order.total_amount,
+            has_devis_items: order.has_devis_items || false
         });
 
     } catch (error) {

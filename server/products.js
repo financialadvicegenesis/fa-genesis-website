@@ -248,9 +248,44 @@ function getAmountForStage(productId, stage) {
     return null;
 }
 
+/**
+ * Calculer les montants pour une commande multi-items
+ * @param {string[]} productIds - tableau d'IDs produit
+ * @returns {Object}
+ */
+function calculateMultiItemAmounts(productIds) {
+    var totalPrice = 0;
+    var items = [];
+    var hasDevisItems = false;
+    for (var i = 0; i < productIds.length; i++) {
+        var product = getProductById(productIds[i]);
+        if (!product) continue;
+        if (product.total_price === 0) hasDevisItems = true;
+        totalPrice += product.total_price;
+        items.push({
+            product_id: product.id,
+            product_name: product.name,
+            product_type: product.product_type,
+            category: product.category,
+            unit_price: product.total_price,
+            duration: product.duration,
+            duration_days: product.duration_days
+        });
+    }
+    var deposit = Math.round(totalPrice * 0.30);
+    return {
+        items: items,
+        total_amount: totalPrice,
+        deposit_amount: deposit,
+        balance_amount: totalPrice - deposit,
+        has_devis_items: hasDevisItems
+    };
+}
+
 module.exports = {
     PRODUCTS,
     getProductById,
     calculatePaymentAmounts,
+    calculateMultiItemAmounts,
     getAmountForStage
 };

@@ -148,7 +148,14 @@
     </section>
 
     <script src="config.js"></script>
+    <script src="panier.js"></script>
     <script>
+        // Vider le panier apres un paiement reussi
+        try {
+            if (typeof viderPanier === 'function') viderPanier();
+            localStorage.removeItem('fa_genesis_panier');
+        } catch (e) {}
+
         function createConfetti() {
             const container = document.getElementById('confettiContainer');
             const colors = ['#FFD700', '#51cf66', '#4dabf7', '#ff6b6b', '#ffffff'];

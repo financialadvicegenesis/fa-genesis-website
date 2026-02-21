@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
     <link rel="dns-prefetch" href="https://fonts.googleapis.com">
     <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
-    <title>Offres & Tarifs - FA GENESIS | Nos Solutions</title>
+    <title>Choisir mon accompagnement - FA GENESIS</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;900&family=Space+Grotesk:wght@300;700&display=swap" media="print" onload="this.media='all'">
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;900&family=Space+Grotesk:wght@300;700&display=swap"></noscript>
     <link rel="stylesheet" href="tailwind.min.css">
@@ -124,6 +124,23 @@
             transform: scale(1.02);
             box-shadow: 0px 0px 15px rgba(255,255,255,0.3);
         }
+        .panier-badge {
+            display: none;
+            position: absolute;
+            top: -6px; right: -8px;
+            background: #f44336;
+            color: #fff;
+            font-size: 10px;
+            font-weight: 900;
+            min-width: 16px; height: 16px;
+            line-height: 16px;
+            text-align: center;
+            border-radius: 50%;
+        }
+        .panier-link {
+            position: relative;
+            display: inline-block;
+        }
     </style>
 </head>
 <body>
@@ -141,6 +158,9 @@
             <a href="contact.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">Contact</a>
         </div>
         <div class="hidden md:flex gap-4 items-center">
+            <a href="panier.html" class="panier-link text-white hover:text-[var(--genesis-yellow)] transition text-lg" title="Panier">
+                <i class="fas fa-shopping-cart"></i><span class="panier-badge"></span>
+            </a>
             <a href="login.html" class="border-4 border-white text-white px-6 py-3 text-[12px] tracking-widest font-black hover:bg-white hover:text-black transition">Espace client</a>
             <a href="contact.html" class="neo-btn-yellow px-6 py-3 text-[12px] tracking-widest text-black font-black">Lancer un projet</a>
         </div>
@@ -159,6 +179,7 @@
         <a href="offres.html" class="text-2xl nav-link text-[var(--genesis-yellow)]" onclick="closeMobileMenu()">Offres</a>
         <a href="index.html#faq" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition" onclick="closeMobileMenu()">FAQ</a>
         <a href="contact.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition" onclick="closeMobileMenu()">Contact</a>
+        <a href="panier.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition panier-link" onclick="closeMobileMenu()"><i class="fas fa-shopping-cart" style="margin-right:8px;"></i>Panier <span class="panier-badge" style="position:static;display:none;margin-left:6px;"></span></a>
         <div class="flex flex-col gap-4 mt-8">
             <a href="login.html" class="border-4 border-white text-white px-8 py-4 text-sm tracking-widest font-black hover:bg-white hover:text-black transition text-center" onclick="closeMobileMenu()">Espace client</a>
             <a href="contact.html" class="neo-btn-yellow px-8 py-4 text-sm tracking-widest text-black font-black text-center" onclick="closeMobileMenu()">Lancer un projet</a>
@@ -177,7 +198,7 @@
     <!-- SECTION SOLUTIONS -->
     <section id="offres" class="py-16 md:py-32 px-4 md:px-6 font-black uppercase" style="background-color: var(--genesis-solution-bg);">
         <div class="container mx-auto">
-            <h2 class="section-header mb-12 md:mb-24 underline decoration-black decoration-4 md:decoration-8 text-white text-center italic" data-aos="fade-down">SOLUTIONS</h2>
+            <h2 class="section-header mb-12 md:mb-24 underline decoration-black decoration-4 md:decoration-8 text-white text-center italic" data-aos="fade-down">NOS OFFRES</h2>
 
             <!-- 01. OFFRES ÉTUDIANTS -->
             <div id="offres-etudiants" class="mb-16 md:mb-40 text-center font-black uppercase">
@@ -192,7 +213,7 @@
                                 <li>✔ 1 Mini séance stratégique (45 min)</li>
                                 <li>✔ Structuration claire du projet</li>
                                 <li>✔ Mini plan d'action (7 jours)</li>
-                            </ul><a href="register.html?offre=etudiant-idea" class="btn-elite-black text-center">Sélectionner</a></div>
+                            </ul><button onclick="ajouterAuPanier('etudiant-idea')" class="btn-elite-black text-center">Ajouter au panier</button></div>
                     </div>
                     <div id="student-starter" class="neo-card p-8 flex flex-col justify-between card-high-visibility font-black" style="background: linear-gradient(135deg, #000000, #05ffff);" data-aos="flip-up" data-aos-delay="100">
                         <div><div class="elite-badge-white mb-6 text-black font-black text-left">7 Jours</div><h4 class="text-2xl uppercase italic mb-2 text-white text-left">STARTER</h4></div>
@@ -204,7 +225,7 @@
                                 <li>✔ Structuration claire du projet</li>
                                 <li>✔ Conseils visibilité gratuits (sans tournage)</li>
                                 <li>✔ Plan d'action (14 jours)</li>
-                            </ul><a href="register.html?offre=etudiant-starter" class="btn-elite-black text-center">Démarrer</a></div>
+                            </ul><button onclick="ajouterAuPanier('etudiant-starter')" class="btn-elite-black text-center">Ajouter au panier</button></div>
                     </div>
                     <div id="student-launch" class="neo-card p-8 flex flex-col justify-between card-high-visibility font-black" style="background: linear-gradient(135deg, #191418, #c400ff);" data-aos="flip-up" data-aos-delay="200">
                         <div><div class="elite-badge-white mb-6 text-black font-black text-left">14 Jours</div><h4 class="text-2xl uppercase italic mb-2 text-white text-left">LAUNCH</h4></div>
@@ -218,7 +239,7 @@
                                 <li>✔ 1 vidéo courte (1 min)</li>
                                 <li>✔ Accès à 1 Média crédible (1 Post et/ou 1 Story)</li>
                                 <li>✔ Plan de diffusion (30 jours)</li>
-                            </ul><a href="register.html?offre=etudiant-launch" class="btn-elite-black text-center">Lancer</a></div>
+                            </ul><button onclick="ajouterAuPanier('etudiant-launch')" class="btn-elite-black text-center">Ajouter au panier</button></div>
                     </div>
                     <div id="student-impact" class="neo-card p-8 flex flex-col justify-between card-high-visibility font-black" style="background: linear-gradient(135deg, #ff0000, #ff00b8);" data-aos="flip-up" data-aos-delay="300">
                         <div><div class="elite-badge-white mb-6 text-black font-black text-left font-black">1 Mois</div><h4 class="text-2xl mt-6 uppercase italic text-white">IMPACT</h4></div>
@@ -233,7 +254,7 @@
                                 <li>✔ 1 vidéo longue (2 min)</li>
                                 <li>✔ Accès à 1 Média crédible (1 Post et/ou 1 Story)</li>
                                 <li>✔ Plan de communication (30 jours)</li>
-                            </ul><a href="register.html?offre=etudiant-impact" class="btn-elite-black text-center">Maximiser</a></div>
+                            </ul><button onclick="ajouterAuPanier('etudiant-impact')" class="btn-elite-black text-center">Ajouter au panier</button></div>
                     </div>
                     <div class="neo-card p-8 flex flex-col justify-between card-high-visibility font-black" style="background: linear-gradient(135deg, #000000, #dd9a08);" data-aos="flip-up" data-aos-delay="400">
                         <div><div class="elite-badge-white mb-6 text-black font-black text-left font-black font-black">Sur Mesure</div><h4 class="text-2xl italic uppercase mb-2 text-white text-left">CUSTOM</h4></div>
@@ -246,7 +267,7 @@
                                 <li>✔ Structuration & storytelling du projet</li>
                                 <li>✔ Image, visibilité & posture professionnelle</li>
                                 <li>✔ Plan d'action concret & réaliste</li>
-                            </ul><a href="contact.html?formule=devis" class="btn-elite-black text-center">Demander un devis</a></div>
+                            </ul><button onclick="ajouterAuPanier('etudiant-custom')" class="btn-elite-black text-center">Ajouter au panier</button></div>
                     </div>
                 </div>
             </div>
@@ -263,7 +284,7 @@
                                 <li>✔ 1 Séance stratégique (1h30)</li>
                                 <li>✔ Structuration claire du projet</li>
                                 <li>✔ Plan d'action (7 jours)</li>
-                            </ul><a href="register.html?offre=particulier-idea" class="btn-elite-black text-center font-black">Sélectionner</a></div>
+                            </ul><button onclick="ajouterAuPanier('particulier-idea')" class="btn-elite-black text-center font-black">Ajouter au panier</button></div>
                     </div>
                     <!-- STARTER INDIV -->
                     <div id="individual-starter" class="neo-card p-8 flex flex-col justify-between card-high-visibility font-black" style="background: linear-gradient(135deg, #000000, #006d67);" data-aos="zoom-in" data-aos-delay="100">
@@ -276,7 +297,7 @@
                                 <li>✔ Structuration claire du projet</li>
                                 <li>✔ Conseils visibilité gratuits (sans tournage)</li>
                                 <li>✔ Plan d'action (14 jours)</li>
-                            </ul><a href="register.html?offre=particulier-starter" class="btn-elite-black text-center font-black font-black">Démarrer</a></div>
+                            </ul><button onclick="ajouterAuPanier('particulier-starter')" class="btn-elite-black text-center font-black">Ajouter au panier</button></div>
                     </div>
                     <!-- LAUNCH INDIV -->
                     <div id="individual-launch" class="neo-card p-8 flex flex-col justify-between card-high-visibility font-black" style="background: linear-gradient(135deg, #191418, #8300ab);" data-aos="zoom-in" data-aos-delay="200">
@@ -291,7 +312,7 @@
                                 <li>✔ 1 vidéo courte (1 min)</li>
                                 <li>✔ Accès à 1 Média crédible (2 Post et/ou 2 Story)</li>
                                 <li>✔ Plan de diffusion (30 jours)</li>
-                            </ul><a href="register.html?offre=particulier-launch" class="btn-elite-black text-center font-black">Lancer</a></div>
+                            </ul><button onclick="ajouterAuPanier('particulier-launch')" class="btn-elite-black text-center font-black">Ajouter au panier</button></div>
                     </div>
                     <!-- IMPACT INDIV -->
                     <div id="individual-impact" class="neo-card p-8 flex flex-col justify-between card-high-visibility font-black" style="background: linear-gradient(135deg, #ff0000, #ff00b8);" data-aos="zoom-in" data-aos-delay="300">
@@ -307,7 +328,7 @@
                                 <li>✔ 1 vidéo longue (2 min)</li>
                                 <li>✔ Accès à 1 Média crédible (4 Post et/ou 4 Story)</li>
                                 <li>✔ Plan de communication (30 jours)</li>
-                            </ul><a href="register.html?offre=particulier-impact" class="btn-elite-black text-center font-black">Maximiser</a></div>
+                            </ul><button onclick="ajouterAuPanier('particulier-impact')" class="btn-elite-black text-center font-black">Ajouter au panier</button></div>
                     </div>
                     <!-- CUSTOM INDIV -->
                     <div class="neo-card p-8 flex flex-col justify-between card-high-visibility font-black" style="background: linear-gradient(135deg, #000000, #dd9a08);" data-aos="zoom-in" data-aos-delay="400">
@@ -321,7 +342,7 @@
                                 <li>✔ Structuration & storytelling du projet</li>
                                 <li>✔ Image, visibilité & posture professionnelle</li>
                                 <li>✔ Plan d'action concret & réaliste</li>
-                            </ul><a href="contact.html?formule=devis" class="btn-elite-black text-center">Demander un devis</a>
+                            </ul><button onclick="ajouterAuPanier('particulier-custom')" class="btn-elite-black text-center">Ajouter au panier</button>
                         </div>
                     </div>
                 </div>
@@ -344,7 +365,7 @@
                             <li>✔ Message central & discours clair</li>
                             <li>✔ Conseils visibilité (sans tournage)</li>
                             <li>✔ Mini plan d'action (30 jours)</li>
-                        </ul><a href="register.html?offre=entreprise-start" class="btn-elite-black text-center font-black">Démarrer</a>
+                        </ul><button onclick="ajouterAuPanier('entreprise-start')" class="btn-elite-black text-center font-black">Ajouter au panier</button>
                     </div>
                     <div id="business-visibility" class="neo-card p-10 card-high-visibility flex flex-col justify-between text-left font-black font-black font-black" style="background: linear-gradient(135deg, #202020, #ff0000);" data-aos="fade-up" data-aos-delay="200">
                         <div>
@@ -362,7 +383,7 @@
                             <li>✔ Format réseaux sociaux</li>
                             <li>✔ Accès à 1 Média crédible (6 Post et/ou 6 Story)</li>
                             <li>✔ Plan de diffusion (30 jours)</li>
-                        </ul><a href="register.html?offre=entreprise-visibility" class="btn-elite-black text-center font-black">Propulser</a>
+                        </ul><button onclick="ajouterAuPanier('entreprise-visibility')" class="btn-elite-black text-center font-black">Ajouter au panier</button>
                     </div>
                     <div id="business-impact" class="neo-card p-10 card-high-visibility flex flex-col justify-between text-left text-white font-black uppercase font-black" style="background: linear-gradient(135deg, #202020, #ffbc0f);" data-aos="fade-up" data-aos-delay="400">
                         <div>
@@ -380,7 +401,7 @@
                             <li>✔ Format réseaux sociaux</li>
                             <li>✔ Accès à 1 Média crédible (9 Post et/ou 9 Story)</li>
                             <li>✔ Plan de communication (60 jours)</li>
-                        </ul><a href="register.html?offre=entreprise-impact" class="btn-elite-black text-center font-black">Dominer</a>
+                        </ul><button onclick="ajouterAuPanier('entreprise-impact')" class="btn-elite-black text-center font-black">Ajouter au panier</button>
                     </div>
                     <div class="neo-card p-10 card-high-visibility flex flex-col justify-between text-left font-black font-black" style="background: linear-gradient(135deg, #202020, #f2ff00);" data-aos="fade-up" data-aos-delay="600">
                         <div>
@@ -396,7 +417,7 @@
                                 <li>✔ Storytelling & communication globale</li>
                                 <li>✔ Production de contenus personnalisée</li>
                                 <li>✔ Plan d'action réaliste & mesurable</li>
-                            </ul><a href="contact.html?formule=devis" class="btn-elite-black text-center font-black">Demander un devis</a>
+                            </ul><button onclick="ajouterAuPanier('entreprise-custom')" class="btn-elite-black text-center font-black">Ajouter au panier</button>
                         </div>
                     </div>
                 </div>
@@ -407,7 +428,7 @@
     <!-- SECTION TARIFS INDIVIDUELS -->
     <section id="tarifs" class="py-12 md:py-20 bg-black text-white px-4 md:px-6 font-black uppercase">
         <div class="container mx-auto font-black">
-            <h3 class="text-xl md:text-3xl lg:text-5xl font-black mb-10 md:mb-20 bg-white text-black inline-block px-6 md:px-10 py-3 md:py-5 italic transform rotate-1 tracking-tighter w-full text-center uppercase">TARIFS INDIVIDUELS</h3>
+            <h3 class="text-xl md:text-3xl lg:text-5xl font-black mb-10 md:mb-20 bg-white text-black inline-block px-6 md:px-10 py-3 md:py-5 italic transform rotate-1 tracking-tighter w-full text-center uppercase">NOS TARIFS</h3>
 
             <!-- PHOTO -->
             <h4 class="text-xl md:text-3xl font-black mb-6 md:mb-10 text-left italic border-b-4 border-white inline-block uppercase">Photo</h4>
@@ -423,7 +444,7 @@
                         <li>✔ Format réseaux sociaux</li>
                         <li>✔ Nombre de photos retouchées adapté</li>
                     </ul>
-                    <a href="contact.html?formule=devis" class="btn-elite-black text-center w-full">Demander un devis</a>
+                    <button onclick="ajouterAuPanier('photo-devis')" class="btn-elite-black text-center w-full">Ajouter au panier</button>
                 </div>
             </div>
 
@@ -444,7 +465,7 @@
                         <li>✔ Orientation posture & discours</li>
                         <li>✔ Format réseaux sociaux</li>
                     </ul>
-                    <a href="contact.html?formule=devis" class="btn-elite-black text-center w-full">Demander un devis</a>
+                    <button onclick="ajouterAuPanier('video-devis')" class="btn-elite-black text-center w-full">Ajouter au panier</button>
                 </div>
             </div>
 
@@ -460,7 +481,7 @@
                         <li>✔ Clarification cible & message</li>
                         <li>✔ Recommandations concrètes</li>
                     </ul>
-                    <a href="register.html?offre=marketing-express" class="btn-elite-black text-center w-full">Analyser</a>
+                    <button onclick="ajouterAuPanier('marketing-express')" class="btn-elite-black text-center w-full">Ajouter au panier</button>
                 </div>
                 <div class="neo-card p-8 border-white" style="background: linear-gradient(135deg, #4b0505, #fa2a2a, #ff2323); color: white;" data-aos="fade-up" data-aos-delay="100">
                     <h5 class="text-xl font-black mb-4 uppercase text-white font-black">STRATEGY</h5>
@@ -479,7 +500,7 @@
                         <li>✔ Choix des plateformes</li>
                         <li>✔ Conseils contenus</li>
                     </ul>
-                    <a href="register.html?offre=marketing-strategy" class="btn-elite-black text-center w-full">Planifier</a>
+                    <button onclick="ajouterAuPanier('marketing-strategy')" class="btn-elite-black text-center w-full">Ajouter au panier</button>
                 </div>
                 <div class="neo-card p-8 border-white" style="background: linear-gradient(135deg, #4b0505, #fa2a2a, #ff2323); color: white;" data-aos="fade-up" data-aos-delay="200">
                     <h5 class="text-xl font-black mb-4 uppercase text-white font-black">IMPACT</h5>
@@ -491,7 +512,7 @@
                         <li>✔ Storytelling du projet</li>
                         <li>✔ Plan de publication (30 jours)</li>
                     </ul>
-                    <a href="register.html?offre=marketing-impact" class="btn-elite-black text-center w-full">Transformer</a>
+                    <button onclick="ajouterAuPanier('marketing-impact')" class="btn-elite-black text-center w-full">Ajouter au panier</button>
                 </div>
             </div>
 
@@ -507,7 +528,7 @@
                         <li>✔ Publication (4 Post et/ou 4 Story)</li>
                         <li>✔ Brief en amont pour cadrer le message</li>
                     </ul>
-                    <a href="register.html?offre=media-visibility" class="btn-elite-black text-center w-full">Médiatiser</a>
+                    <button onclick="ajouterAuPanier('media-visibility')" class="btn-elite-black text-center w-full">Ajouter au panier</button>
                 </div>
                 <div class="neo-card p-8 border-white font-black" style="background: linear-gradient(135deg, #003274, #2212a2, #2217f4); color: white;" data-aos="fade-up" data-aos-delay="100">
                     <h5 class="text-xl font-black mb-4 uppercase text-white font-black">IMPACT</h5>
@@ -519,7 +540,7 @@
                         <li>✔ Brief en amont pour cadrer le message</li>
                         <li>✔ Conseils pour réutiliser la publication sur les réseaux sociaux</li>
                     </ul>
-                    <a href="register.html?offre=media-impact" class="btn-elite-black text-center w-full">Amplifier</a>
+                    <button onclick="ajouterAuPanier('media-impact')" class="btn-elite-black text-center w-full">Ajouter au panier</button>
                 </div>
                 <div class="neo-card p-8 border-white font-black" style="background: linear-gradient(135deg, #003274, #2212a2, #2217f4); color: white;" data-aos="fade-up" data-aos-delay="200">
                     <h5 class="text-xl font-black mb-4 uppercase text-white font-black">PREMIUM</h5>
@@ -531,7 +552,7 @@
                         <li>✔ Brief en amont pour cadrer le message</li>
                         <li>✔ Stratégie de visibilité pour avoir une crédibilité sur du long terme</li>
                     </ul>
-                    <a href="register.html?offre=media-premium" class="btn-elite-black text-center w-full">Rayonner</a>
+                    <button onclick="ajouterAuPanier('media-premium')" class="btn-elite-black text-center w-full">Ajouter au panier</button>
                 </div>
                 <div class="neo-card p-8 border-black font-black" style="background-color: #00ffff; color: black;" data-aos="fade-up" data-aos-delay="300">
                     <h5 class="text-xl font-black mb-4 uppercase text-black font-black">PROMOTION</h5>
@@ -544,7 +565,7 @@
                         <li>✔ Mise en avant de votre contenus (Artiste, marque ou évènement)</li>
                         <li>✔ Gain de notoriété et de crédibilité grâce à un relais média</li>
                     </ul>
-                    <a href="register.html?offre=media-promotion" class="btn-elite-black text-center w-full">Promouvoir</a>
+                    <button onclick="ajouterAuPanier('media-promotion')" class="btn-elite-black text-center w-full">Ajouter au panier</button>
                 </div>
             </div>
         </div>
@@ -553,6 +574,8 @@
     <!-- FOOTER -->
     <div id="site-footer"></div>
 
+    <script src="offers-config.js"></script>
+    <script src="panier.js"></script>
     <script>
         if (window.innerWidth > 768) {
             var aosScript = document.createElement('script');
