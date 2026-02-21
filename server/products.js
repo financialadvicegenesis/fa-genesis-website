@@ -162,6 +162,15 @@ const PRODUCTS = [
         duration: '3 mois',
         duration_days: 0
     },
+    {
+        id: 'marketing-option-digitales',
+        name: 'Option Digitales',
+        category: 'TARIFS INDIVIDUELS - MARKETING',
+        product_type: 'prestation_individuelle',
+        total_price: 70,
+        duration: 'Complément',
+        duration_days: 0
+    },
 
     // ========== TARIFS INDIVIDUELS - MEDIA ==========
     {

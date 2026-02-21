@@ -263,6 +263,18 @@ const FA_GENESIS_OFFERS = [
         description: 'Accompagnement marketing intensif',
         inclus: ['Diagnostic approfondi', 'Priorités claires', 'Storytelling du projet', 'Plan de publication (30 jours)']
     },
+    {
+        id: 'marketing-option-digitales',
+        nom: 'Option Digitales',
+        categorie: 'TARIFS INDIVIDUELS - MARKETING',
+        productType: 'prestation_individuelle',
+        prixTotal: 70,
+        ...calculatePaymentSplit(70),
+        duree: 'Complément',
+        echelonsPaiement: 1,
+        description: 'Option digitale en complément de Marketing STRATEGY',
+        inclus: ['Choix des plateformes', 'Conseils contenus']
+    },
 
     // ========== TARIFS INDIVIDUELS - MÉDIA ==========
     {
