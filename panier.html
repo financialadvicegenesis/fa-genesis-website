@@ -319,13 +319,30 @@
             var panier = getPanier();
             if (!panier.items || panier.items.length === 0) return;
 
+            // Verifier si tous les items sont sur devis (prixTotal === 0)
+            var tousDevis = true;
+            for (var i = 0; i < panier.items.length; i++) {
+                var offer = (typeof getOfferById === 'function') ? getOfferById(panier.items[i].id) : null;
+                if (offer && offer.prixTotal > 0) { tousDevis = false; break; }
+            }
+
+            // Si tous les items sont sur devis, rediriger vers contact
+            if (tousDevis) {
+                var noms = [];
+                for (var j = 0; j < panier.items.length; j++) {
+                    var o = (typeof getOfferById === 'function') ? getOfferById(panier.items[j].id) : null;
+                    if (o) noms.push(o.nom);
+                }
+                viderPanier();
+                window.location.href = 'contact.html?objet=devis&message=' + encodeURIComponent('Demande de devis pour : ' + noms.join(', '));
+                return;
+            }
+
             // Verifier si connecte
             var token = localStorage.getItem('fa_genesis_token');
             if (token) {
-                // Connecte -> checkout
                 window.location.href = 'checkout.html?source=panier';
             } else {
-                // Non connecte -> inscription puis checkout
                 window.location.href = 'register.html?redirect=checkout';
             }
         }

@@ -228,21 +228,45 @@
 
         mobileMenuBtn.addEventListener('click', toggleMobileMenu);
 
-        // Pré-remplir le formulaire avec la formule choisie
+        // Pre-remplir le formulaire depuis les parametres URL
         document.addEventListener('DOMContentLoaded', function() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const formule = urlParams.get('formule');
+            try {
+                var urlParams = new URLSearchParams(window.location.search);
 
-            if (formule) {
-                const formuleSelect = document.querySelector('select[name="formule"]');
-                if (!formuleSelect) {
-                    const selects = document.querySelectorAll('select');
-                    if (selects.length >= 2) {
-                        selects[1].value = formule;
+                // Pre-remplir l'objet (ex: ?objet=devis)
+                var objetParam = urlParams.get('objet');
+                if (objetParam) {
+                    var objetSel = document.getElementById('contactObjet');
+                    if (objetSel) {
+                        objetSel.value = objetParam;
+                        // Declencher le change pour afficher le champ type de prestation si devis
+                        var evt = new Event('change', { bubbles: true });
+                        objetSel.dispatchEvent(evt);
                     }
-                } else {
-                    formuleSelect.value = formule;
                 }
+
+                // Pre-remplir le type de prestation (ex: ?service=photo)
+                var serviceParam = urlParams.get('service');
+                if (serviceParam) {
+                    var serviceSel = document.getElementById('contactServiceType');
+                    if (serviceSel) serviceSel.value = serviceParam;
+                }
+
+                // Pre-remplir le message (ex: ?message=...)
+                var messageParam = urlParams.get('message');
+                if (messageParam) {
+                    var msgField = document.getElementById('contactMessage');
+                    if (msgField && !msgField.value) msgField.value = decodeURIComponent(messageParam);
+                }
+
+                // Legacy : formule
+                var formule = urlParams.get('formule');
+                if (formule) {
+                    var formuleSelect = document.querySelector('select[name="formule"]');
+                    if (formuleSelect) formuleSelect.value = formule;
+                }
+            } catch (e) {
+                console.error('[CONTACT] Erreur pre-remplissage URL:', e);
             }
         });
 

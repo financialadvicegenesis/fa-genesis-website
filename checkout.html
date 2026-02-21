@@ -525,13 +525,15 @@
                 }
             }
 
-            // Si tout est sur devis (total = 0), changer le bouton
+            // Si tout est sur devis (total = 0), rediriger vers le formulaire de contact
             if (totalAmount === 0) {
-                var submitBtn = document.querySelector('button[type="submit"]');
-                if (submitBtn) {
-                    submitBtn.innerHTML = '<i class="fas fa-file-invoice"></i> DEMANDER UN DEVIS <i class="fas fa-arrow-right"></i>';
+                var noms = [];
+                for (var k = 0; k < panierItems.length; k++) {
+                    if (panierItems[k].nom) noms.push(panierItems[k].nom);
                 }
-                if (toPayEl) toPayEl.textContent = 'Devis';
+                if (typeof viderPanier === 'function') viderPanier();
+                window.location.href = 'contact.html?objet=devis&message=' + encodeURIComponent('Demande de devis pour : ' + noms.join(', '));
+                return;
             }
 
             console.log('[CHECKOUT] Panier charge: ' + panierItems.length + ' items, total=' + totalAmount + 'EUR');
@@ -681,15 +683,6 @@
                 currentOrderId = orderData.orderId;
                 console.log('[CHECKOUT] Commande cr\u00e9\u00e9e:', currentOrderId);
                 sessionStorage.setItem('pendingOrderId', currentOrderId);
-
-                // Si tout est sur devis (total = 0), pas de paiement SumUp
-                if (orderData.total_amount === 0 || orderData.has_devis_items && orderData.total_amount === 0) {
-                    showSuccess('Demande de devis envoy\u00e9e ! Un conseiller vous contactera sous 48h.');
-                    // Vider le panier
-                    if (checkoutMode === 'panier' && typeof viderPanier === 'function') viderPanier();
-                    setTimeout(function() { window.location.href = 'dashboard.html'; }, 3000);
-                    return;
-                }
 
                 showSuccess('Commande cr\u00e9\u00e9e ! Redirection vers SumUp...');
 
