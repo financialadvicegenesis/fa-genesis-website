@@ -527,12 +527,8 @@
 
             // Si tout est sur devis (total = 0), rediriger vers le formulaire de contact
             if (totalAmount === 0) {
-                var noms = [];
-                for (var k = 0; k < panierItems.length; k++) {
-                    if (panierItems[k].nom) noms.push(panierItems[k].nom);
-                }
                 if (typeof viderPanier === 'function') viderPanier();
-                window.location.href = 'contact.html?objet=devis&message=' + encodeURIComponent('Demande de devis pour : ' + noms.join(', '));
+                window.location.href = 'contact.html?objet=devis';
                 return;
             }
 

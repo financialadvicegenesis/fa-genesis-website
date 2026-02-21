@@ -328,13 +328,8 @@
 
             // Si tous les items sont sur devis, rediriger vers contact
             if (tousDevis) {
-                var noms = [];
-                for (var j = 0; j < panier.items.length; j++) {
-                    var o = (typeof getOfferById === 'function') ? getOfferById(panier.items[j].id) : null;
-                    if (o) noms.push(o.nom);
-                }
                 viderPanier();
-                window.location.href = 'contact.html?objet=devis&message=' + encodeURIComponent('Demande de devis pour : ' + noms.join(', '));
+                window.location.href = 'contact.html?objet=devis';
                 return;
             }
 
