@@ -113,6 +113,8 @@
         .preview-overlay img {
             max-width: 90vw; max-height: 80vh; object-fit: contain;
             border: 4px solid var(--genesis-yellow);
+            -webkit-user-select: none; user-select: none;
+            -webkit-user-drag: none; pointer-events: auto;
         }
         .preview-overlay video {
             max-width: 90vw; max-height: 80vh;
@@ -510,12 +512,13 @@
                 contentHtml = '<div style="background:white;color:black;padding:30px;max-width:800px;max-height:80vh;overflow:auto;border:4px solid var(--genesis-yellow);font-size:15px;line-height:1.7;">'
                     + escapeHtml(liv.content_text).replace(/\n/g, '<br>') + '</div>';
             } else if (livType === 'photo' || livType === 'image') {
-                contentHtml = '<img src="' + escapeAttr(previewUrl) + '" alt="' + escapeAttr(liv.name) + '" />';
+                contentHtml = '<img src="' + escapeAttr(previewUrl) + '" alt="' + escapeAttr(liv.name) + '" oncontextmenu="return false" draggable="false" style="pointer-events:auto;-webkit-user-select:none;user-select:none;" />';
             } else if (livType === 'video') {
-                contentHtml = '<video controls autoplay><source src="' + escapeAttr(previewUrl) + '"></video>';
+                contentHtml = '<video controls autoplay controlsList="nodownload nofullscreen" disablePictureInPicture oncontextmenu="return false"><source src="' + escapeAttr(previewUrl) + '"></video>';
             } else if (previewUrl) {
-                // Document (PDF, etc.) - ouvrir dans un iframe
-                contentHtml = '<iframe src="' + escapeAttr(previewUrl) + '" title="' + escapeAttr(liv.name) + '"></iframe>';
+                // Document (PDF, etc.) - masquer la barre d\u0027outils du viewer
+                var pdfUrl = previewUrl + (previewUrl.indexOf('?') === -1 ? '?' : '&') + '#toolbar=0&navpanes=0';
+                contentHtml = '<iframe src="' + escapeAttr(pdfUrl) + '" title="' + escapeAttr(liv.name) + '" sandbox="allow-same-origin allow-scripts" style="pointer-events:auto;"></iframe>';
             } else {
                 contentHtml = '<div class="preview-no-content"><i class="fas fa-file-alt" style="font-size:48px;color:var(--genesis-yellow);margin-bottom:16px;display:block;"></i>Aucun aper\u00e7u disponible pour ce livrable.</div>';
             }

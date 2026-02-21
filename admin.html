@@ -655,6 +655,8 @@
             document.getElementById('loginPage').style.display = 'none';
             document.getElementById('adminPanel').style.display = 'block';
             loadDashboard();
+            // Wake-up ping pour r\u00e9veiller le serveur Render en arri\u00e8re-plan
+            try { fetch(API_BASE_URL + '/api/orders/all').catch(function(){}); } catch(e){}
         }
 
         function handleLogout() {
@@ -777,10 +779,9 @@
 
             } catch (error) {
                 console.error('[ADMIN] Erreur chargement dashboard:', error);
-                document.getElementById('statsContainer').innerHTML = '<p class="col-span-4 text-center py-8 opacity-50 font-bold">Chargement... (le serveur demarre)</p>';
-                document.getElementById('recentClients').innerHTML = '<p class="text-center py-8 opacity-50 font-bold">Chargement...</p>';
-                // Reessayer apres 5 secondes (cold start Render)
-                setTimeout(function() { loadDashboard(); }, 5000);
+                document.getElementById('statsContainer').innerHTML = '<p class="col-span-4 text-center py-8 font-bold" style="color:white;"><i class="fas fa-spinner fa-spin" style="margin-right:8px;color:var(--genesis-yellow);"></i>Le serveur d\u00e9marre, veuillez patienter...</p>';
+                document.getElementById('recentClients').innerHTML = '<p class="text-center py-8 font-bold" style="color:#aaa;">R\u00e9essai automatique...</p>';
+                setTimeout(function() { loadDashboard(); }, 3000);
             }
         }
 
@@ -1770,7 +1771,24 @@
         // ============================================================
 
         var _ordersRetryCount = 0;
-        var _ordersMaxRetries = 12;
+        var _ordersMaxRetries = 20;
+
+        function fetchWithAbort(url, timeoutMs) {
+            return new Promise(function(resolve, reject) {
+                var controller = new AbortController();
+                var timer = setTimeout(function() {
+                    controller.abort();
+                    reject(new Error('TIMEOUT'));
+                }, timeoutMs || 90000);
+                fetch(url, { signal: controller.signal }).then(function(resp) {
+                    clearTimeout(timer);
+                    resolve(resp);
+                }).catch(function(err) {
+                    clearTimeout(timer);
+                    reject(err);
+                });
+            });
+        }
 
         async function loadOrders() {
             var loader = document.getElementById('ordersLoader');
@@ -1784,14 +1802,15 @@
 
             if (_ordersRetryCount === 0) {
                 if (loaderMsg) loaderMsg.textContent = 'Chargement des commandes...';
-                if (loaderSub) loaderSub.textContent = '';
+                if (loaderSub) loaderSub.textContent = 'Le serveur peut mettre jusqu\u0027\u00e0 60 secondes \u00e0 d\u00e9marrer';
             } else {
                 if (loaderMsg) loaderMsg.textContent = 'Le serveur d\u00e9marre, veuillez patienter...';
-                if (loaderSub) loaderSub.textContent = 'Tentative ' + _ordersRetryCount + '/' + _ordersMaxRetries + ' - Le serveur gratuit peut mettre jusqu\u0027\u00e0 60 secondes \u00e0 d\u00e9marrer';
+                if (loaderSub) loaderSub.textContent = 'Tentative ' + _ordersRetryCount + '/' + _ordersMaxRetries + ' - R\u00e9essai automatique...';
             }
 
             try {
-                var response = await fetch(API_BASE_URL + '/api/orders/all');
+                // Timeout de 90s pour laisser le temps au cold start Render
+                var response = await fetchWithAbort(API_BASE_URL + '/api/orders/all', 90000);
                 if (!response.ok) throw new Error('Erreur serveur (' + response.status + ')');
                 var orders = await response.json();
 
@@ -1856,14 +1875,14 @@
 
                 if (_ordersRetryCount <= _ordersMaxRetries) {
                     if (loaderMsg) loaderMsg.textContent = 'Le serveur d\u00e9marre, veuillez patienter...';
-                    if (loaderSub) loaderSub.textContent = 'Tentative ' + _ordersRetryCount + '/' + _ordersMaxRetries + ' - R\u00e9essai automatique dans 5 secondes';
-                    setTimeout(function() { loadOrders(); }, 5000);
+                    if (loaderSub) loaderSub.textContent = 'Tentative ' + _ordersRetryCount + '/' + _ordersMaxRetries + ' - R\u00e9essai dans 3 secondes...';
+                    setTimeout(function() { loadOrders(); }, 3000);
                 } else {
                     if (loader) loader.style.display = 'none';
-                    if (listEl) listEl.innerHTML = '<div style="padding:20px;background:#ff6b6b;border:2px solid black;color:black;text-align:center;">' +
-                        '<p style="font-weight:900;font-size:15px;margin-bottom:8px;">Impossible de charger les commandes</p>' +
-                        '<p style="font-size:13px;margin-bottom:12px;">Le serveur ne r\u00e9pond pas apr\u00e8s plusieurs tentatives.</p>' +
-                        '<button onclick="_ordersRetryCount=0;loadOrders();" style="background:black;color:white;border:2px solid black;padding:8px 20px;font-weight:900;cursor:pointer;font-size:13px;">' +
+                    if (listEl) listEl.innerHTML = '<div style="padding:20px;background:#ffd43b;border:2px solid black;color:black;text-align:center;">' +
+                        '<p style="font-weight:900;font-size:15px;margin-bottom:8px;"><i class="fas fa-exclamation-triangle" style="margin-right:8px;"></i>Serveur temporairement indisponible</p>' +
+                        '<p style="font-size:13px;margin-bottom:12px;">Le serveur Render (gratuit) est en veille. Cliquez pour r\u00e9essayer.</p>' +
+                        '<button onclick="_ordersRetryCount=0;loadOrders();" style="background:black;color:white;border:2px solid black;padding:10px 24px;font-weight:900;cursor:pointer;font-size:13px;">' +
                         '<i class="fas fa-redo" style="margin-right:6px;"></i>R\u00e9essayer</button></div>';
                     _ordersRetryCount = 0;
                 }
