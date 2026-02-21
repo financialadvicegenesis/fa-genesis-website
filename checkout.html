@@ -323,8 +323,8 @@
                                 <label class="flex items-start gap-4 cursor-pointer">
                                     <input type="checkbox" id="cgv_accepted" required class="checkbox-custom mt-1">
                                     <span class="font-bold text-sm">
-                                        J'accepte les <a href="#" class="underline">Conditions Générales de Vente</a>
-                                        et la <a href="#" class="underline">Politique de confidentialité</a> *
+                                        J'accepte les <a href="conditions-generales.html" target="_blank" class="underline">Conditions Générales de Vente</a>
+                                        et la <a href="confidentialite.html" target="_blank" class="underline">Politique de confidentialité</a> *
                                     </span>
                                 </label>
 
@@ -680,34 +680,15 @@
                 console.log('[CHECKOUT] Commande cr\u00e9\u00e9e:', currentOrderId);
                 sessionStorage.setItem('pendingOrderId', currentOrderId);
 
-                showSuccess('Commande cr\u00e9\u00e9e ! Redirection vers SumUp...');
+                showSuccess('Commande cr\u00e9\u00e9e ! Redirection vers le paiement...');
 
-                // Creer le checkout SumUp
-                console.log('[CHECKOUT] Cr\u00e9ation du checkout SumUp...');
-                var checkoutResponse = await fetch(API_BASE_URL + '/api/payments/sumup/create-checkout', {
-                    method: 'POST',
-                    headers: authHeaders,
-                    body: JSON.stringify({
-                        orderId: currentOrderId,
-                        stage: 'deposit'
-                    })
-                });
+                // Vider le panier avant redirection
+                if (checkoutMode === 'panier' && typeof viderPanier === 'function') viderPanier();
 
-                if (!checkoutResponse.ok) {
-                    var errData = await checkoutResponse.json();
-                    throw new Error(errData.error || errData.details || 'Erreur cr\u00e9ation checkout');
-                }
-
-                var checkoutData = await checkoutResponse.json();
-                console.log('[CHECKOUT] Checkout SumUp cr\u00e9\u00e9');
-
-                if (checkoutData.checkout_url) {
-                    // Vider le panier avant redirection
-                    if (checkoutMode === 'panier' && typeof viderPanier === 'function') viderPanier();
-                    window.location.href = checkoutData.checkout_url;
-                } else {
-                    throw new Error('URL de checkout non re\u00e7ue');
-                }
+                // Rediriger vers payment.html qui gere le widget SumUp
+                setTimeout(function() {
+                    window.location.href = 'payment.html';
+                }, 1500);
 
             } catch (error) {
                 console.error('[CHECKOUT] Erreur:', error);

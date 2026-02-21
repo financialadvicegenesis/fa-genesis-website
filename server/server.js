@@ -2883,8 +2883,14 @@ app.post('/api/auth/register', async (req, res) => {
 
         console.log(`[AUTH] Nouvel utilisateur inscrit: ${newUser.id} - ${email}`);
 
-        // NOTE: L'email de bienvenue sera envoyé APRÈS le paiement de l'acompte
-        // Seule la notification admin est envoyée à l'inscription
+        // Email de bienvenue au client (invitation a decouvrir les offres)
+        emailService.sendWelcomeEmail(email, prenom)
+            .then(result => {
+                if (result.success) console.log(`[AUTH] Email bienvenue envoye a ${email}`);
+            })
+            .catch(err => console.error('[AUTH] Erreur email bienvenue:', err));
+
+        // Notification admin
         emailService.sendAdminRegistrationNotification({
             firstName: prenom,
             lastName: nom,

@@ -1377,6 +1377,79 @@ async function sendSessionCompletedEmail(clientEmail, clientName, sessionData) {
     }
 }
 
+/**
+ * Envoyer un email de bienvenue a l'inscription (avant paiement)
+ * Invite le client a decouvrir les offres et tarifs
+ *
+ * @param {string} clientEmail
+ * @param {string} prenom
+ */
+async function sendWelcomeEmail(clientEmail, prenom) {
+    const transport = initializeTransporter();
+    if (!transport) {
+        console.log('[EMAIL] Transport non configure - Email bienvenue non envoye');
+        return { success: false, reason: 'SMTP non configure' };
+    }
+
+    const frontUrl = process.env.FRONT_URL || 'https://fagenesis.com';
+
+    const content = `
+        <h2 style="margin: 0 0 20px 0; font-size: 24px; color: #000000; font-weight: 700;">
+            Bienvenue ${prenom} !
+        </h2>
+
+        <p style="margin: 0 0 20px 0; font-size: 16px; color: #333333; line-height: 1.6;">
+            Nous sommes ravis de vous accueillir chez <strong>FA GENESIS</strong>. Votre compte a bien ete cree avec succes.
+        </p>
+
+        <div style="background-color: #FFF9E6; border-left: 4px solid #FFD700; padding: 20px; margin: 25px 0;">
+            <p style="margin: 0 0 15px 0; font-weight: 700; color: #000; font-size: 16px;">
+                Pour demarrer votre accompagnement :
+            </p>
+            <ol style="margin: 0; padding-left: 20px; color: #333; line-height: 2;">
+                <li><strong>Decouvrez nos prestations</strong> - Consultez notre catalogue d'offres et tarifs</li>
+                <li><strong>Ajoutez au panier</strong> - Selectionnez les prestations adaptees a vos besoins</li>
+                <li><strong>Lancez votre projet</strong> - Finalisez votre commande et commencez l'aventure</li>
+            </ol>
+        </div>
+
+        <div style="background-color: #000000; color: #ffffff; padding: 20px; border-radius: 4px; margin: 25px 0; text-align: center;">
+            <p style="margin: 0 0 15px 0; font-size: 14px; color: #cccccc;">
+                Decouvrez nos offres et tarifs
+            </p>
+            <a href="${frontUrl}/offres.html"
+               style="display: inline-block; background-color: #FFD700; color: #000; padding: 15px 30px; text-decoration: none; font-weight: 700; border-radius: 4px; font-size: 16px;">
+                Voir nos prestations
+            </a>
+        </div>
+
+        <p style="margin: 25px 0 15px 0; font-size: 16px; color: #333333; line-height: 1.6;">
+            <strong>Une question ?</strong> Notre equipe est a votre disposition pour vous accompagner. N'hesitez pas a nous contacter par email ou via le formulaire de contact.
+        </p>
+
+        <p style="margin: 30px 0 0 0; font-size: 16px; color: #333333;">
+            A tres bientot,<br>
+            <strong style="color: #000000;">L'equipe FA GENESIS</strong>
+        </p>
+    `;
+
+    try {
+        const result = await transport.sendMail({
+            from: `"${process.env.EMAIL_FROM_NAME}" <${process.env.EMAIL_FROM_ADDRESS}>`,
+            to: clientEmail,
+            subject: `[FA GENESIS] Bienvenue ${prenom} ! Decouvrez nos offres et tarifs`,
+            html: getEmailTemplate(content, 'Bienvenue chez FA GENESIS')
+        });
+
+        console.log(`[EMAIL] Email bienvenue envoye a ${clientEmail} - ID: ${result.messageId}`);
+        return { success: true, messageId: result.messageId };
+
+    } catch (error) {
+        console.error('[EMAIL] Erreur envoi email bienvenue:', error.message);
+        return { success: false, error: error.message };
+    }
+}
+
 // ============================================================
 // EXPORTS
 // ============================================================
@@ -1397,5 +1470,6 @@ module.exports = {
     sendSessionRescheduledEmail,
     sendSessionRequestedEmail,
     sendSessionProposedEmail,
-    sendSessionCompletedEmail
+    sendSessionCompletedEmail,
+    sendWelcomeEmail
 };
