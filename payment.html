@@ -662,7 +662,11 @@
                     body: JSON.stringify({ orderId: orderId, stage: 'deposit' })
                 })
                 .then(function(resp) {
-                    if (!resp.ok) return resp.json().then(function(d) { throw new Error(d.error || d.details || 'Erreur creation checkout'); });
+                    if (!resp.ok) return resp.json().then(function(d) {
+                        var msg = d.error || 'Erreur création checkout';
+                        if (d.details) msg += ' : ' + d.details;
+                        throw new Error(msg);
+                    });
                     return resp.json();
                 })
                 .then(function(checkoutData) {
@@ -674,7 +678,7 @@
                     if (checkoutData.checkout_id) {
                         showSumUpWidget(checkoutData.checkout_id, checkoutData.amount, orderId, 'deposit');
                     } else {
-                        throw new Error('ID de checkout non recu');
+                        throw new Error('ID de checkout non reçu');
                     }
                 });
             }

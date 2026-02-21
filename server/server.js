@@ -960,14 +960,14 @@ app.post('/api/payments/sumup/create-checkout', async (req, res) => {
         const returnUrl = `${successUrl}?order=${orderId}&stage=${stage}`;
 
         // Creer le checkout SumUp (widget mode - SumUpCard.mount utilise checkout_id)
+        // On ajoute un timestamp pour garantir l'unicite de la reference (evite le doublon si retry)
         const checkoutData = {
-            checkout_reference: `${orderId}-${stage}`,
+            checkout_reference: `${orderId}-${stage}-${Date.now()}`,
             amount: amount,
             currency: 'EUR',
             pay_to_email: process.env.SUMUP_PAY_TO_EMAIL,
             description: `FA GENESIS - ${order.product_name} (${stageLabel})`,
-            return_url: returnUrl,
-            merchant_code: process.env.SUMUP_MERCHANT_CODE
+            return_url: returnUrl
         };
 
         console.log(`[SUMUP] Creation checkout pour ${orderId} - ${stage} - ${amount}EUR`);

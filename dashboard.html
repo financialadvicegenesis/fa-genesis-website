@@ -104,7 +104,8 @@
             <a href="dashboard.html" class="nav-link text-[var(--genesis-yellow)]">Dashboard</a>
             <a href="livrables.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">Livrables</a>
             <a href="seances.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">Séances</a>
-            <a href="mon-compte.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">Mon compte</a>
+            <a href="mon-compte.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">Paramètres</a>
+            <a href="offres.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">Nos offres</a>
         </div>
         <div class="flex gap-4 items-center">
             <span id="userGreeting" class="hidden md:block text-white font-bold"></span>
@@ -125,7 +126,8 @@
         <a href="dashboard.html" class="text-2xl nav-link text-[var(--genesis-yellow)]" onclick="closeMobileMenu()">Dashboard</a>
         <a href="livrables.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition" onclick="closeMobileMenu()">Livrables</a>
         <a href="seances.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition" onclick="closeMobileMenu()">Séances</a>
-        <a href="mon-compte.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition" onclick="closeMobileMenu()">Mon compte</a>
+        <a href="mon-compte.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition" onclick="closeMobileMenu()">Paramètres</a>
+        <a href="offres.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition" onclick="closeMobileMenu()">Nos offres</a>
         <div class="mt-8">
             <button onclick="logout(); closeMobileMenu();" class="neo-btn-yellow px-8 py-4 text-sm tracking-widest text-black font-black text-center">
                 <i class="fas fa-sign-out-alt mr-2"></i>Déconnexion
@@ -324,7 +326,7 @@
                         <a href="livrables.html" class="neo-btn-white p-8 block text-center">
                             <i class="fas fa-file-download text-4xl mb-4"></i>
                             <div class="text-xl font-black italic uppercase">Mes livrables</div>
-                            <div class="text-sm font-bold mt-2 opacity-70">Documents, photos, videos</div>
+                            <div class="text-sm font-bold mt-2 opacity-70">Documents, photos, vidéos</div>
                         </a>
                         <a href="seances.html" class="neo-btn-white p-8 block text-center">
                             <i class="fas fa-calendar-alt text-4xl mb-4"></i>
@@ -334,7 +336,7 @@
                         <a href="contact.html" class="neo-btn-white p-8 block text-center">
                             <i class="fas fa-envelope text-4xl mb-4"></i>
                             <div class="text-xl font-black italic uppercase">Support</div>
-                            <div class="text-sm font-bold mt-2 opacity-70">Contactez notre equipe</div>
+                            <div class="text-sm font-bold mt-2 opacity-70">Contactez notre équipe</div>
                         </a>
                     </div>
                 </div>
@@ -497,7 +499,7 @@
                 }
 
                 if (!resp.ok) {
-                    showError('Erreur serveur (' + resp.status + ')', 'Le serveur a renvoye une erreur. Reessayez.');
+                    showError('Erreur serveur (' + resp.status + ')', 'Le serveur a renvoyé une erreur. Réessayez.');
                     return;
                 }
 
@@ -626,7 +628,7 @@
 
                 var sub = data.activeSubscription;
                 if (!sub) {
-                    showError('Erreur', 'Donnees de souscription manquantes.');
+                    showError('Erreur', 'Données de souscription manquantes.');
                     return;
                 }
 
@@ -820,7 +822,7 @@
                     if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-check mr-2"></i>CONFIRMER MA DATE'; }
                 }
             } catch (err) {
-                alert('Erreur reseau : ' + err.message);
+                alert('Erreur réseau : ' + err.message);
                 if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-check mr-2"></i>CONFIRMER MA DATE'; }
             }
         }

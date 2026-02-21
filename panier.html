@@ -138,15 +138,17 @@
         </div>
         <div class="hidden md:flex gap-12 text-white font-black">
             <a href="index.html#accueil" class="nav-link hover:text-[var(--genesis-yellow)] transition">Accueil</a>
-            <a href="a-propos.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">A Propos</a>
+            <a href="a-propos.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">À Propos</a>
             <a href="offres.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">Offres</a>
+            <a href="faq.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">FAQ</a>
             <a href="contact.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">Contact</a>
         </div>
         <div class="hidden md:flex gap-4 items-center">
-            <a href="panier.html" class="panier-link text-[var(--genesis-yellow)] text-lg" title="Panier">
+            <a href="panier.html" class="panier-link relative text-[var(--genesis-yellow)] text-lg px-2 py-2" title="Panier">
                 <i class="fas fa-shopping-cart"></i><span class="panier-badge"></span>
             </a>
             <a href="login.html" class="border-4 border-white text-white px-6 py-3 text-[12px] tracking-widest font-black hover:bg-white hover:text-black transition">Espace client</a>
+            <a href="contact.html" class="neo-btn-yellow px-6 py-3 text-[12px] tracking-widest text-black font-black">Lancer un projet</a>
         </div>
         <button id="mobileMenuBtn" class="md:hidden flex flex-col gap-1.5 p-2" aria-label="Menu">
             <span class="block w-6 h-0.5 bg-[var(--genesis-yellow)] transition-all" id="menuLine1"></span>
@@ -157,10 +159,16 @@
 
     <!-- Menu Mobile -->
     <div id="mobileMenu" class="fixed inset-0 z-40 bg-black/98 backdrop-blur-lg hidden flex-col items-center justify-center gap-8 text-white font-black uppercase">
-        <a href="index.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)]">Accueil</a>
-        <a href="offres.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)]">Offres</a>
-        <a href="panier.html" class="text-2xl nav-link text-[var(--genesis-yellow)]"><i class="fas fa-shopping-cart" style="margin-right:8px;"></i>Panier</a>
-        <a href="login.html" class="border-4 border-white text-white px-8 py-4 text-sm tracking-widest font-black hover:bg-white hover:text-black transition text-center">Espace client</a>
+        <a href="index.html#accueil" class="text-2xl nav-link hover:text-[var(--genesis-yellow)]" onclick="toggleMobileMenu()">Accueil</a>
+        <a href="a-propos.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)]" onclick="toggleMobileMenu()">À Propos</a>
+        <a href="offres.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)]" onclick="toggleMobileMenu()">Offres</a>
+        <a href="faq.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)]" onclick="toggleMobileMenu()">FAQ</a>
+        <a href="contact.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)]" onclick="toggleMobileMenu()">Contact</a>
+        <a href="panier.html" class="text-2xl nav-link text-[var(--genesis-yellow)]" onclick="toggleMobileMenu()"><i class="fas fa-shopping-cart" style="margin-right:8px;"></i>Panier</a>
+        <div class="flex flex-col gap-4 mt-8">
+            <a href="login.html" class="border-4 border-white text-white px-8 py-4 text-sm tracking-widest font-black hover:bg-white hover:text-black transition text-center">Espace client</a>
+            <a href="contact.html" class="neo-btn-yellow px-8 py-4 text-sm tracking-widest text-black font-black text-center" onclick="toggleMobileMenu()">Lancer un projet</a>
+        </div>
     </div>
 
     <!-- CONTENU PRINCIPAL -->
@@ -168,7 +176,7 @@
         <div class="container mx-auto max-w-4xl">
 
             <!-- Titre -->
-            <div class="mb-12">
+            <div class="mb-12 text-center">
                 <h1 class="text-4xl md:text-6xl font-black italic uppercase mb-4 text-[var(--genesis-yellow)]">
                     <i class="fas fa-shopping-cart mr-4"></i>Votre panier
                 </h1>
@@ -180,12 +188,12 @@
             <!-- Banniere devis -->
             <div id="devisBanner" class="devis-banner mb-8" style="display:none;">
                 <i class="fas fa-info-circle mr-2"></i>
-                <strong>Devis requis</strong> - Certains elements de votre panier necessitent un devis personnalise. Un conseiller FA GENESIS vous contactera sous 48h.
+                <strong>Devis requis</strong> - Certains éléments de votre panier nécessitent un devis personnalisé. Un conseiller FA GENESIS vous contactera sous 48h.
             </div>
 
             <!-- Resume -->
             <div id="panierSummary" class="panier-summary mb-8" style="display:none;">
-                <h2 class="text-2xl font-black italic uppercase mb-6">Resume</h2>
+                <h2 class="text-2xl font-black italic uppercase mb-6">Résumé</h2>
                 <div id="summaryDetails"></div>
             </div>
 
@@ -200,7 +208,7 @@
             <div id="panierEmpty" class="empty-state" style="display:none;">
                 <i class="fas fa-shopping-cart text-6xl mb-6 opacity-30"></i>
                 <h3 class="text-2xl font-black italic uppercase mb-4">Votre panier est vide</h3>
-                <p class="font-bold opacity-70 mb-8">Decouvrez nos offres et tarifs pour construire votre accompagnement sur mesure.</p>
+                <p class="font-bold opacity-70 mb-8">Découvrez nos offres et tarifs pour construire votre accompagnement sur mesure.</p>
                 <a href="offres.html" class="btn-action btn-valider inline-block"><i class="fas fa-arrow-right mr-2"></i>Voir nos offres</a>
             </div>
 

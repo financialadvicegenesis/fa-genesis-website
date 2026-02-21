@@ -6,7 +6,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
-    <title>Mon Compte - FA GENESIS | Espace Client</title>
+    <title>Paramètres du compte - FA GENESIS | Espace Client</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;900&family=Space+Grotesk:wght@300;700&display=swap">
     <link rel="stylesheet" href="tailwind.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" media="print" onload="this.media='all'">
@@ -93,7 +93,7 @@
             <a href="dashboard.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">Dashboard</a>
             <a href="livrables.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">Livrables</a>
             <a href="seances.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">Séances</a>
-            <a href="mon-compte.html" class="nav-link text-[var(--genesis-yellow)]">Mon compte</a>
+            <a href="mon-compte.html" class="nav-link text-[var(--genesis-yellow)]">Paramètres</a>
         </div>
         <div class="flex gap-4 items-center">
             <span id="userGreeting" class="hidden md:block text-white font-bold"></span>
@@ -127,7 +127,7 @@
 
             <!-- En-tete -->
             <div class="mb-16">
-                <h1 class="text-5xl md:text-6xl font-black italic uppercase mb-4 text-[var(--genesis-yellow)]">Mon Compte</h1>
+                <h1 class="text-5xl md:text-6xl font-black italic uppercase mb-4 text-[var(--genesis-yellow)]">Paramètres du compte</h1>
                 <p class="text-xl font-bold uppercase text-white">Gérez vos informations personnelles</p>
             </div>
 
@@ -161,7 +161,7 @@
                                 <span class="info-value" id="email">-</span>
                             </div>
                             <div class="info-row">
-                                <span class="info-label">Telephone</span>
+                                <span class="info-label">Téléphone</span>
                                 <input type="tel" id="editTelephone" class="edit-input" value="" placeholder="06 12 34 56 78" />
                             </div>
                         </div>
@@ -186,11 +186,11 @@
                                 <span class="info-value" id="offreName">-</span>
                             </div>
                             <div class="info-row">
-                                <span class="info-label">Date de debut</span>
+                                <span class="info-label">Date de début</span>
                                 <span class="info-value" id="dateDebut">Non définie</span>
                             </div>
                             <div class="info-row">
-                                <span class="info-label">Duree totale</span>
+                                <span class="info-label">Durée totale</span>
                                 <span class="info-value" id="duree">-</span>
                             </div>
                             <div class="info-row">
@@ -223,14 +223,14 @@
                             <div>
                                 <label for="newPassword" class="block text-sm font-black mb-2 uppercase">Nouveau mot de passe</label>
                                 <input type="password" id="newPassword" required minlength="6" class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none" placeholder="********">
-                                <p class="text-xs font-bold mt-2 opacity-70">Minimum 6 caracteres</p>
+                                <p class="text-xs font-bold mt-2 opacity-70">Minimum 6 caractères</p>
                             </div>
                             <div>
                                 <label for="confirmPassword" class="block text-sm font-black mb-2 uppercase">Confirmer le nouveau mot de passe</label>
                                 <input type="password" id="confirmPassword" required minlength="6" class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none" placeholder="********">
                             </div>
                             <button type="submit" class="w-full py-4 neo-btn-yellow text-xl font-black italic uppercase tracking-tighter">
-                                Mettre a jour le mot de passe
+                                Mettre à jour le mot de passe
                             </button>
                         </form>
                     </div>
@@ -239,7 +239,7 @@
                 <!-- Aide -->
                 <div class="mt-16 bg-white text-black p-8 neo-border text-center">
                     <h3 class="text-2xl font-black italic uppercase mb-4">Besoin d'aide ?</h3>
-                    <p class="font-bold mb-6">Notre equipe est disponible pour repondre a toutes vos questions</p>
+                    <p class="font-bold mb-6">Notre équipe est disponible pour répondre à toutes vos questions</p>
                     <div class="flex flex-col sm:flex-row gap-4 justify-center">
                         <a href="contact.html" class="bg-black text-white px-8 py-4 border-4 border-black font-black uppercase text-sm hover:bg-gray-900 transition">
                             <i class="fas fa-envelope mr-2"></i>Nous contacter
@@ -256,14 +256,14 @@
                     <div class="bg-white text-black p-8 neo-border" style="border-left: 6px solid #ff6b6b;">
                         <p class="font-bold mb-6 opacity-70">
                             <i class="fas fa-exclamation-triangle mr-2 text-[#ff6b6b]"></i>
-                            Ces actions affectent votre compte. Utilisez-les avec precaution.
+                            Ces actions affectent votre compte. Utilisez-les avec précaution.
                         </p>
                         <div class="flex flex-col sm:flex-row gap-4">
                             <button onclick="openDeactivateModal()" class="flex-1 py-4 px-6 border-4 border-black font-black italic uppercase text-sm tracking-tighter bg-[#ffd43b] text-black hover:bg-[#fab005] transition" style="box-shadow: 4px 4px 0px black;">
-                                <i class="fas fa-pause-circle mr-2"></i>Desactiver temporairement
+                                <i class="fas fa-pause-circle mr-2"></i>Désactiver temporairement
                             </button>
                             <button onclick="openDeleteModal()" class="flex-1 py-4 px-6 border-4 border-black font-black italic uppercase text-sm tracking-tighter bg-[#ff6b6b] text-black hover:bg-[#fa5252] transition" style="box-shadow: 4px 4px 0px black;">
-                                <i class="fas fa-trash-alt mr-2"></i>Supprimer definitivement
+                                <i class="fas fa-trash-alt mr-2"></i>Supprimer définitivement
                             </button>
                         </div>
                     </div>
@@ -279,11 +279,11 @@
         <div style="background:white; color:black; max-width:500px; width:90%; padding:40px; border:4px solid black; box-shadow:10px 10px 0px #ffd43b; position:relative;">
             <button onclick="closeDeactivateModal()" style="position:absolute; top:15px; right:20px; background:none; border:none; font-size:24px; cursor:pointer; font-weight:900;">&times;</button>
             <h3 style="font-size:22px; font-weight:900; text-transform:uppercase; font-style:italic; margin-bottom:20px;">
-                <i class="fas fa-pause-circle" style="color:#ffd43b; margin-right:10px;"></i>Desactiver mon compte
+                <i class="fas fa-pause-circle" style="color:#ffd43b; margin-right:10px;"></i>Désactiver mon compte
             </h3>
             <div style="background:#FFF9E6; border-left:4px solid #ffd43b; padding:15px; margin-bottom:20px;">
                 <p style="font-weight:700; font-size:14px; line-height:1.6; margin:0;">
-                    Votre compte sera temporairement suspendu. Vos donnees sont conservees.
+                    Votre compte sera temporairement suspendu. Vos données sont conservées.
                 </p>
             </div>
             <div id="deactivateMessage" style="display:none; padding:10px; margin-bottom:15px; font-weight:700; font-size:14px;"></div>
@@ -307,7 +307,7 @@
             </h3>
             <div style="background:#fff5f5; border-left:4px solid #ff6b6b; padding:15px; margin-bottom:20px;">
                 <p style="font-weight:700; font-size:14px; line-height:1.6; margin:0; color:#c92a2a;">
-                    Action irreversible. Toutes vos donnees seront supprimees.
+                    Action irréversible. Toutes vos données seront supprimées.
                 </p>
             </div>
             <div style="margin-bottom:20px;">
@@ -520,7 +520,7 @@
                 if (msgEl) {
                     msgEl.style.display = '';
                     if (resp.ok && data.success) {
-                        msgEl.innerHTML = '<div class="p-3 border-4 border-black font-bold" style="background: #51cf66; color: black;"><i class="fas fa-check mr-2"></i>Modifications enregistrees !</div>';
+                        msgEl.innerHTML = '<div class="p-3 border-4 border-black font-bold" style="background: #51cf66; color: black;"><i class="fas fa-check mr-2"></i>Modifications enregistrées !</div>';
                         // Mettre a jour localStorage
                         try {
                             var s = JSON.parse(localStorage.getItem('fa_genesis_session') || '{}');
@@ -569,7 +569,7 @@
                     if (typeof changePassword === 'function') {
                         var result = changePassword(currentPwd, newPwd);
                         if (result && result.success) {
-                            if (msgDiv) { msgDiv.textContent = result.message || 'Mot de passe modifie'; msgDiv.className = 'message success'; }
+                            if (msgDiv) { msgDiv.textContent = result.message || 'Mot de passe modifié'; msgDiv.className = 'message success'; }
                             pwdForm.reset();
                         } else {
                             if (msgDiv) { msgDiv.textContent = (result && result.message) || 'Erreur'; msgDiv.className = 'message error'; }
@@ -605,7 +605,7 @@
         async function confirmDeactivate() {
             var btn = document.getElementById('deactivateBtn');
             var msgDiv = document.getElementById('deactivateMessage');
-            if (btn) { btn.disabled = true; btn.textContent = 'Desactivation...'; }
+            if (btn) { btn.disabled = true; btn.textContent = 'Désactivation...'; }
             try {
                 var token = localStorage.getItem('fa_genesis_token');
                 var response = await fetch(MC_API + '/api/auth/deactivate-account', {
@@ -614,7 +614,7 @@
                 });
                 var rData = await response.json();
                 if (response.ok) {
-                    if (msgDiv) { msgDiv.style.display = 'block'; msgDiv.style.background = '#d3f9d8'; msgDiv.style.color = '#2b8a3e'; msgDiv.textContent = 'Compte desactive. Redirection...'; }
+                    if (msgDiv) { msgDiv.style.display = 'block'; msgDiv.style.background = '#d3f9d8'; msgDiv.style.color = '#2b8a3e'; msgDiv.textContent = 'Compte désactivé. Redirection...'; }
                     localStorage.removeItem('fa_genesis_session');
                     localStorage.removeItem('fa_genesis_token');
                     setTimeout(function() { window.location.href = 'index.html'; }, 1500);
@@ -646,7 +646,7 @@
                 });
                 var rData = await response.json();
                 if (response.ok) {
-                    if (msgDiv) { msgDiv.style.display = 'block'; msgDiv.style.background = '#d3f9d8'; msgDiv.style.color = '#2b8a3e'; msgDiv.textContent = 'Compte supprime. Redirection...'; }
+                    if (msgDiv) { msgDiv.style.display = 'block'; msgDiv.style.background = '#d3f9d8'; msgDiv.style.color = '#2b8a3e'; msgDiv.textContent = 'Compte supprimé. Redirection...'; }
                     localStorage.removeItem('fa_genesis_session');
                     localStorage.removeItem('fa_genesis_token');
                     setTimeout(function() { window.location.href = 'index.html'; }, 1500);
