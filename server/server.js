@@ -896,6 +896,16 @@ app.post('/api/orders/create', (req, res) => {
 });
 
 /**
+ * GET /api/orders/all (Admin)
+ * Recuperer toutes les commandes
+ * DOIT etre avant /api/orders/:orderId pour eviter le conflit de route
+ */
+app.get('/api/orders/all', (req, res) => {
+    const orders = loadOrders();
+    res.json(orders);
+});
+
+/**
  * GET /api/orders/:orderId
  * Recuperer une commande par son ID
  */
@@ -3651,15 +3661,6 @@ app.put('/api/orders/:orderId/mark-completed', (req, res) => {
         console.error('Erreur mark-completed:', error);
         res.status(500).json({ error: 'Erreur lors de la mise a jour' });
     }
-});
-
-/**
- * GET /api/orders/all (Admin)
- * Recuperer toutes les commandes
- */
-app.get('/api/orders/all', (req, res) => {
-    const orders = loadOrders();
-    res.json(orders);
 });
 
 // ============================================================
