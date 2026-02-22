@@ -265,13 +265,13 @@ const FA_GENESIS_OFFERS = [
     },
     {
         id: 'marketing-option-digitales',
-        nom: 'Option Digitales',
+        nom: 'Marketing DIGITALES',
         categorie: 'TARIFS INDIVIDUELS - MARKETING',
         productType: 'prestation_individuelle',
         prixTotal: 70,
         ...calculatePaymentSplit(70),
         duree: 'Complément',
-        echelonsPaiement: 1,
+        echelonsPaiement: 2,
         description: 'Option digitale en complément de Marketing STRATEGY',
         inclus: ['Choix des plateformes', 'Conseils contenus']
     },

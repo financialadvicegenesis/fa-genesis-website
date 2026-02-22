@@ -54,22 +54,47 @@
 <body>
 
     <!-- NAVIGATION PRIVÉE -->
-    <nav class="fixed top-0 w-full z-50 bg-black/95 backdrop-blur-md border-b-4 border-[var(--genesis-yellow)] px-6 py-4 flex justify-between items-center text-white text-xs font-black uppercase">
+    <nav class="fixed top-0 w-full z-50 bg-black/95 backdrop-blur-md border-b-4 border-[var(--genesis-yellow)] px-4 md:px-6 py-3 md:py-4 flex justify-between items-center text-white text-xs font-black uppercase" style="transform:translateZ(0);will-change:transform;">
         <div class="flex items-center">
-            <a href="dashboard.html" class="text-2xl font-black tracking-wider text-[var(--genesis-yellow)]" style="font-family: 'Unbounded', cursive;">FA GENESIS</a>
+            <a href="dashboard.html" class="text-lg md:text-2xl font-black tracking-wider text-[var(--genesis-yellow)]" style="font-family: 'Unbounded', cursive;">FA GENESIS</a>
         </div>
-        <div id="mainNavigation" class="hidden md:flex gap-8 text-white font-black"></div>
-        <div class="flex gap-4 items-center">
+        <div id="mainNavigation" class="hidden md:flex gap-8 text-white font-black">
+            <a href="dashboard.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">Dashboard</a>
+            <a href="livrables.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">Livrables</a>
+            <a href="seances.html" class="nav-link text-[var(--genesis-yellow)]">Séances</a>
+            <a href="mon-compte.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">Paramètres</a>
+        </div>
+        <div class="flex gap-4 items-center" style="flex-shrink:0;">
             <a href="panier.html" class="relative text-white hover:text-[var(--genesis-yellow)] transition px-2 py-2" title="Panier">
                 <i class="fas fa-shopping-cart text-lg"></i>
                 <span class="panier-badge" style="display:none;position:absolute;top:-4px;right:-4px;background:#f44336;color:#fff;font-size:10px;font-weight:900;min-width:16px;height:16px;line-height:16px;text-align:center;border-radius:50%;"></span>
             </a>
             <span id="userGreeting" class="hidden md:block text-white font-bold"></span>
-            <button onclick="logout()" class="border-4 border-white text-white px-4 py-2 text-[10px] tracking-widest font-black hover:bg-white hover:text-black transition">
-                <i class="fas fa-sign-out-alt mr-2"></i>Déconnexion
+            <button onclick="logout()" class="border-4 border-white text-white px-3 py-2 text-[10px] tracking-widest font-black hover:bg-white hover:text-black transition">
+                <i class="fas fa-sign-out-alt mr-1"></i><span class="hidden md:inline">Déconnexion</span>
+            </button>
+            <!-- Bouton Menu Mobile -->
+            <button id="mobileMenuBtn" class="md:hidden flex flex-col gap-1.5 p-2" aria-label="Menu">
+                <span class="block w-6 h-0.5 bg-[var(--genesis-yellow)] transition-all" id="menuLine1"></span>
+                <span class="block w-6 h-0.5 bg-[var(--genesis-yellow)] transition-all" id="menuLine2"></span>
+                <span class="block w-6 h-0.5 bg-[var(--genesis-yellow)] transition-all" id="menuLine3"></span>
             </button>
         </div>
     </nav>
+
+    <!-- Menu Mobile -->
+    <div id="mobileMenu" class="fixed inset-0 z-40 bg-black/98 backdrop-blur-lg hidden flex-col items-center justify-center gap-8 text-white font-black uppercase">
+        <a href="dashboard.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition" onclick="closeMobileMenu()">Dashboard</a>
+        <a href="livrables.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition" onclick="closeMobileMenu()">Livrables</a>
+        <a href="seances.html" class="text-2xl nav-link text-[var(--genesis-yellow)]" onclick="closeMobileMenu()">Séances</a>
+        <a href="mon-compte.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition" onclick="closeMobileMenu()">Paramètres</a>
+        <a href="panier.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition flex items-center gap-2" onclick="closeMobileMenu()"><i class="fas fa-shopping-cart"></i>Panier</a>
+        <div class="mt-8">
+            <button onclick="logout(); closeMobileMenu();" class="neo-btn-yellow px-8 py-4 text-sm tracking-widest text-black font-black text-center">
+                <i class="fas fa-sign-out-alt mr-2"></i>Déconnexion
+            </button>
+        </div>
+    </div>
 
     <!-- SÉANCES CONTENT -->
     <section class="min-h-screen pt-32 pb-20 px-4 md:px-6 bg-black">
@@ -183,7 +208,6 @@
         try { user = getCurrentUser(); } catch(e) {}
 
         if (user) {
-            renderNavigation(user.productType || 'accompagnement', 'seances');
             var greet = document.getElementById('userGreeting');
             if (greet) greet.textContent = user.prenom || '';
 
@@ -654,6 +678,37 @@
             .catch(function() {});
         } catch(e) {}
     })();
+    </script>
+    <script>
+        // Mobile menu toggle
+        var mobileMenuBtn = document.getElementById('mobileMenuBtn');
+        var mobileMenu = document.getElementById('mobileMenu');
+        var menuLine1 = document.getElementById('menuLine1');
+        var menuLine2 = document.getElementById('menuLine2');
+        var menuLine3 = document.getElementById('menuLine3');
+        var isMenuOpen = false;
+
+        function closeMobileMenu() {
+            isMenuOpen = false;
+            if (mobileMenu) { mobileMenu.classList.add('hidden'); mobileMenu.classList.remove('flex'); }
+            if (menuLine1) menuLine1.style.transform = 'none';
+            if (menuLine2) menuLine2.style.opacity = '1';
+            if (menuLine3) menuLine3.style.transform = 'none';
+            document.body.style.overflow = 'auto';
+        }
+
+        if (mobileMenuBtn) {
+            mobileMenuBtn.addEventListener('click', function() {
+                isMenuOpen = !isMenuOpen;
+                if (isMenuOpen) {
+                    mobileMenu.classList.remove('hidden'); mobileMenu.classList.add('flex');
+                    menuLine1.style.transform = 'rotate(45deg) translate(5px, 5px)';
+                    menuLine2.style.opacity = '0';
+                    menuLine3.style.transform = 'rotate(-45deg) translate(5px, -5px)';
+                    document.body.style.overflow = 'hidden';
+                } else { closeMobileMenu(); }
+            });
+        }
     </script>
     <div id="site-footer"></div>
     <script src="footer.js" defer></script>
