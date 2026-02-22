@@ -655,12 +655,14 @@
             document.getElementById('loginPage').style.display = 'none';
             document.getElementById('adminPanel').style.display = 'block';
             loadDashboard();
-            // Wake-up ping pour r\u00e9veiller le serveur Render en arri\u00e8re-plan
-            try { fetch(API_BASE_URL + '/api/orders/all').catch(function(){}); } catch(e){}
+            // Reveil immediat du serveur Render + keep-alive toutes les 10 min
+            try { fetch(API_BASE_URL + '/api/ping').catch(function(){}); } catch(e){}
+            startKeepAlive();
         }
 
         function handleLogout() {
             if (confirm('Voulez-vous vraiment vous déconnecter ?')) {
+                stopKeepAlive();
                 adminLogout();
                 location.reload();
             }
@@ -689,8 +691,6 @@
                 loadMessages();
             } else if (section === 'commandes') {
                 document.getElementById('commandesSection').style.display = 'block';
-                // Ping de reveil avant de charger (le serveur Render peut etre en veille)
-                try { fetch(API_BASE_URL + '/api/orders/all').catch(function(){}); } catch(e){}
                 loadOrders();
             } else if (section === 'partenaires') {
                 document.getElementById('partenairesSection').style.display = 'block';
@@ -1769,136 +1769,169 @@
         }
 
         // ============================================================
-        // SECTION COMMANDES
+        // SECTION COMMANDES — chargement rapide avec cache + keep-alive
         // ============================================================
 
-        var _ordersRetryCount = 0;
-        var _ordersMaxRetries = 25;
-        var _ordersRetryInterval = 5000; // 5s x 25 = 125s max (suffit pour tout cold start Render)
+        var _ORDERS_CACHE_KEY = 'fa_genesis_admin_orders_v1';
+        var _keepAliveTimer = null;
+        var _pingAbortCtrl = null;
 
-        function fetchWithAbort(url, timeoutMs) {
-            return new Promise(function(resolve, reject) {
-                var controller = new AbortController();
-                var timer = setTimeout(function() {
-                    controller.abort();
-                    reject(new Error('TIMEOUT'));
-                }, timeoutMs || 90000);
-                fetch(url, { signal: controller.signal }).then(function(resp) {
-                    clearTimeout(timer);
-                    resolve(resp);
-                }).catch(function(err) {
-                    clearTimeout(timer);
-                    reject(err);
-                });
-            });
+        // --- Keep-alive : pinger /api/ping toutes les 10 min pour eviter le cold start ---
+        function startKeepAlive() {
+            if (_keepAliveTimer) return;
+            _keepAliveTimer = setInterval(function() {
+                try { fetch(API_BASE_URL + '/api/ping').catch(function(){}); } catch(e){}
+            }, 10 * 60 * 1000);
+        }
+        function stopKeepAlive() {
+            if (_keepAliveTimer) { clearInterval(_keepAliveTimer); _keepAliveTimer = null; }
         }
 
-        async function loadOrders() {
+        // --- Cache localStorage ---
+        function getCachedOrders() {
+            try { return JSON.parse(localStorage.getItem(_ORDERS_CACHE_KEY) || 'null'); } catch(e) { return null; }
+        }
+        function setCachedOrders(orders) {
+            try {
+                localStorage.setItem(_ORDERS_CACHE_KEY, JSON.stringify({
+                    orders: orders,
+                    savedAt: new Date().toLocaleString('fr-FR')
+                }));
+            } catch(e) {}
+        }
+
+        // --- Construire le HTML des commandes ---
+        function buildOrdersHtml(orders) {
+            if (!orders || orders.length === 0) {
+                return '<p class="text-center py-8 font-bold" style="color:white;">Aucune commande</p>';
+            }
+            var html = '';
+            var statusColors = {
+                pending_deposit: '#ff6b6b', active: '#51cf66', in_progress: '#ffd43b',
+                delivered: '#4dabf7', completed: '#51cf66', pending_balance: '#ffd43b',
+                paid_in_full: '#4dabf7', cancelled: '#999'
+            };
+            var statusLabels = {
+                pending_deposit: 'ACOMPTE EN ATTENTE', active: 'ACTIF', in_progress: 'EN COURS',
+                delivered: 'LIVR\u00c9', completed: 'TERMIN\u00c9', pending_balance: 'SOLDE EN ATTENTE',
+                paid_in_full: 'PAY\u00c9 COMPLET', cancelled: 'ANNUL\u00c9'
+            };
+            orders.forEach(function(order) {
+                var date = order.created_at ? new Date(order.created_at).toLocaleDateString('fr-FR') : '';
+                var bgColor = statusColors[order.status] || '#999';
+                var label = statusLabels[order.status] || order.status;
+                var clientName = order.client_info ? ((order.client_info.first_name || order.client_info.firstName || '') + ' ' + (order.client_info.last_name || order.client_info.lastName || '')) : 'N/A';
+                var clientEmail = order.client_info ? order.client_info.email : '';
+                var scheduleBtn = '';
+                if ((order.schedule_status || '') === 'confirmed' && order.start_date) {
+                    var confirmedDateStr = new Date(order.start_date).toLocaleDateString('fr-FR');
+                    scheduleBtn = '<button onclick="adminCancelStartDate(\'' + order.id + '\')" class="text-xs font-bold uppercase border-2 border-black px-3 py-1 hover:bg-red-100 mt-1">' +
+                        '<i class="fas fa-calendar-times mr-1"></i>R\u00e9initialiser date (' + confirmedDateStr + ')</button>';
+                }
+                html += '<div class="admin-card neo-shadow mb-4">' +
+                    '<div class="flex justify-between items-start flex-wrap gap-4">' +
+                        '<div class="flex-1 min-w-[200px]">' +
+                            '<div class="text-xs font-bold">' + order.id + '</div>' +
+                            '<div class="font-black text-lg">' + clientName + '</div>' +
+                            '<div class="text-sm font-bold">' + clientEmail + '</div>' +
+                        '</div>' +
+                        '<div class="flex-1 min-w-[200px]">' +
+                            '<div class="font-black">' + (order.product_name || 'N/A') + '</div>' +
+                            '<div class="text-sm font-bold">' + date + '</div>' +
+                            scheduleBtn +
+                        '</div>' +
+                        '<div class="text-center">' +
+                            '<div class="text-2xl font-black text-[var(--genesis-yellow)]">' + (order.total_amount || 0) + '\u20ac</div>' +
+                            '<div class="text-xs font-bold">Acompte: ' + (order.deposit_amount || 0) + '\u20ac | Solde: ' + (order.balance_amount || 0) + '\u20ac</div>' +
+                            '<div class="text-xs mt-1">' +
+                                (order.deposit_paid ? '<span style="color:#51cf66;">Acompte \u2713</span>' : '<span style="color:#ff6b6b;">Acompte \u2717</span>') + ' | ' +
+                                (order.balance_paid ? '<span style="color:#51cf66;">Solde \u2713</span>' : '<span style="color:#ff6b6b;">Solde \u2717</span>') +
+                            '</div>' +
+                        '</div>' +
+                        '<div class="text-right">' +
+                            '<div style="background:' + bgColor + ';color:black;padding:4px 10px;border:2px solid black;font-size:11px;font-weight:900;display:inline-block;">' + label + '</div>' +
+                        '</div>' +
+                    '</div>' +
+                '</div>';
+            });
+            return html;
+        }
+
+        // --- Ping /api/ping jusqu'au reveil du serveur, puis appel callback ---
+        function pingUntilAlive(onSuccess, onGiveUp, loaderMsg, loaderSub) {
+            var attempt = 0;
+            var maxAttempts = 45; // 90s max a 2s d'intervalle
+            var startTs = Date.now();
+            function tryPing() {
+                attempt++;
+                if (attempt > maxAttempts) { onGiveUp(); return; }
+                var elapsed = Math.round((Date.now() - startTs) / 1000);
+                if (loaderMsg) loaderMsg.textContent = 'R\u00e9veil du serveur en cours...';
+                if (loaderSub) loaderSub.textContent = 'Tentative ' + attempt + '/' + maxAttempts + ' \u2014 ' + elapsed + 's \u00e9coul\u00e9es';
+                fetch(API_BASE_URL + '/api/ping')
+                    .then(function(r) { if (r.ok) { onSuccess(); } else { setTimeout(tryPing, 2000); } })
+                    .catch(function() { setTimeout(tryPing, 2000); });
+            }
+            tryPing();
+        }
+
+        // --- Charger les commandes : cache immediat + reveil serveur + refresh ---
+        function loadOrders() {
             var loader = document.getElementById('ordersLoader');
             var loaderMsg = document.getElementById('ordersLoaderMsg');
             var loaderSub = document.getElementById('ordersLoaderSub');
             var listEl = document.getElementById('ordersList');
 
-            // Afficher le loader
-            if (loader) loader.style.display = '';
-            if (listEl) listEl.innerHTML = '';
-
-            if (_ordersRetryCount === 0) {
-                if (loaderMsg) loaderMsg.textContent = 'Chargement des commandes...';
-                if (loaderSub) loaderSub.textContent = 'Le serveur peut mettre jusqu\u0027\u00e0 60 secondes \u00e0 d\u00e9marrer';
+            // 1. Afficher le cache immediatement (donnees instantanees)
+            var cache = getCachedOrders();
+            if (cache && cache.orders) {
+                if (listEl) listEl.innerHTML = buildOrdersHtml(cache.orders);
+                if (loader) loader.style.display = '';
+                if (loaderMsg) loaderMsg.textContent = 'Actualisation en cours...';
+                if (loaderSub) loaderSub.textContent = cache.savedAt ? 'Donn\u00e9es du ' + cache.savedAt : '';
             } else {
-                if (loaderMsg) loaderMsg.textContent = 'Le serveur d\u00e9marre, veuillez patienter...';
-                if (loaderSub) loaderSub.textContent = 'Tentative ' + _ordersRetryCount + '/' + _ordersMaxRetries + ' - R\u00e9essai automatique...';
+                if (listEl) listEl.innerHTML = '';
+                if (loader) loader.style.display = '';
+                if (loaderMsg) loaderMsg.textContent = 'Chargement des commandes...';
+                if (loaderSub) loaderSub.textContent = 'R\u00e9veil du serveur en cours...';
             }
 
-            try {
-                // Timeout de 90s pour laisser le temps au cold start Render
-                var response = await fetchWithAbort(API_BASE_URL + '/api/orders/all', 90000);
-                if (!response.ok) throw new Error('Erreur serveur (' + response.status + ')');
-                var orders = await response.json();
-
-                // Succ\u00e8s : cacher le loader et reset
-                if (loader) loader.style.display = 'none';
-                _ordersRetryCount = 0;
-
-                if (!orders || orders.length === 0) {
-                    if (listEl) listEl.innerHTML = '<p class="text-center py-8 opacity-50 font-bold" style="color:white;">Aucune commande</p>';
-                    return;
-                }
-
-                var html = '';
-                orders.forEach(function(order) {
-                    var date = order.created_at ? new Date(order.created_at).toLocaleDateString('fr-FR') : '';
-                    var statusColors = {
-                        pending_deposit: '#ff6b6b', active: '#51cf66', in_progress: '#ffd43b',
-                        delivered: '#4dabf7', completed: '#51cf66', pending_balance: '#ffd43b',
-                        paid_in_full: '#4dabf7', cancelled: '#999'
-                    };
-                    var statusLabels = {
-                        pending_deposit: 'ACOMPTE EN ATTENTE', active: 'ACTIF', in_progress: 'EN COURS',
-                        delivered: 'LIVR\u00c9', completed: 'TERMIN\u00c9', pending_balance: 'SOLDE EN ATTENTE',
-                        paid_in_full: 'PAY\u00c9 COMPLET', cancelled: 'ANNUL\u00c9'
-                    };
-                    var bgColor = statusColors[order.status] || '#999';
-                    var label = statusLabels[order.status] || order.status;
-                    var clientName = order.client_info ? ((order.client_info.first_name || order.client_info.firstName || '') + ' ' + (order.client_info.last_name || order.client_info.lastName || '')) : 'N/A';
-                    var clientEmail = order.client_info ? order.client_info.email : '';
-
-                    var scheduleStatus = order.schedule_status || '';
-                    var scheduleBtn = '';
-                    if (scheduleStatus === 'confirmed' && order.start_date) {
-                        var confirmedDateStr = new Date(order.start_date).toLocaleDateString('fr-FR');
-                        scheduleBtn = '<button onclick="adminCancelStartDate(\'' + order.id + '\')" class="text-xs font-bold uppercase border-2 border-black px-3 py-1 hover:bg-red-100 mt-1" title="Réinitialiser date ' + confirmedDateStr + '">' +
-                            '<i class="fas fa-calendar-times mr-1"></i>Réinitialiser date (' + confirmedDateStr + ')</button>';
-                    }
-                    html += '<div class="admin-card neo-shadow mb-4">' +
-                        '<div class="flex justify-between items-start flex-wrap gap-4">' +
-                            '<div class="flex-1 min-w-[200px]">' +
-                                '<div class="text-xs font-bold">' + order.id + '</div>' +
-                                '<div class="font-black text-lg">' + clientName + '</div>' +
-                                '<div class="text-sm font-bold">' + clientEmail + '</div>' +
-                            '</div>' +
-                            '<div class="flex-1 min-w-[200px]">' +
-                                '<div class="font-black">' + (order.product_name || 'N/A') + '</div>' +
-                                '<div class="text-sm font-bold">' + date + '</div>' +
-                                scheduleBtn +
-                            '</div>' +
-                            '<div class="text-center">' +
-                                '<div class="text-2xl font-black text-[var(--genesis-yellow)]">' + (order.total_amount || 0) + '\u20ac</div>' +
-                                '<div class="text-xs font-bold">Acompte: ' + (order.deposit_amount || 0) + '\u20ac | Solde: ' + (order.balance_amount || 0) + '\u20ac</div>' +
-                                '<div class="text-xs mt-1">' +
-                                    (order.deposit_paid ? '<span style="color:#51cf66;">Acompte \u2713</span>' : '<span style="color:#ff6b6b;">Acompte \u2717</span>') + ' | ' +
-                                    (order.balance_paid ? '<span style="color:#51cf66;">Solde \u2713</span>' : '<span style="color:#ff6b6b;">Solde \u2717</span>') +
-                                '</div>' +
-                            '</div>' +
-                            '<div class="text-right">' +
-                                '<div style="background:' + bgColor + ';color:black;padding:4px 10px;border:2px solid black;font-size:11px;font-weight:900;display:inline-block;">' + label + '</div>' +
-                            '</div>' +
-                        '</div>' +
-                    '</div>';
-                });
-
-                if (listEl) listEl.innerHTML = html;
-
-            } catch (error) {
-                console.error('[ADMIN] Erreur chargement commandes:', error);
-                _ordersRetryCount++;
-
-                if (_ordersRetryCount <= _ordersMaxRetries) {
-                    if (loaderMsg) loaderMsg.textContent = 'Le serveur d\u00e9marre, veuillez patienter...';
-                    var secondsLeft = Math.round((_ordersMaxRetries - _ordersRetryCount) * _ordersRetryInterval / 1000);
-                    if (loaderSub) loaderSub.textContent = 'Tentative ' + _ordersRetryCount + '/' + _ordersMaxRetries + ' \u2014 Nouveau essai dans 5 secondes (' + secondsLeft + 's restantes)';
-                    setTimeout(function() { loadOrders(); }, _ordersRetryInterval);
-                } else {
+            // 2. Pinger jusqu'au reveil, puis charger les commandes fraiches
+            pingUntilAlive(
+                function() {
+                    // Serveur reveille : fetch des commandes
+                    fetch(API_BASE_URL + '/api/orders/all')
+                        .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+                        .then(function(orders) {
+                            if (loader) loader.style.display = 'none';
+                            if (listEl) listEl.innerHTML = buildOrdersHtml(orders);
+                            setCachedOrders(orders);
+                            console.log('[ADMIN] Commandes chargees : ' + orders.length);
+                        })
+                        .catch(function(err) {
+                            console.error('[ADMIN] Erreur fetch commandes:', err);
+                            if (loader) loader.style.display = 'none';
+                            if (!cache) {
+                                if (listEl) listEl.innerHTML = '<div style="padding:20px;background:#ffd43b;border:2px solid black;color:black;text-align:center;">' +
+                                    '<p style="font-weight:900;font-size:15px;margin-bottom:8px;"><i class="fas fa-exclamation-triangle" style="margin-right:8px;"></i>Erreur de chargement</p>' +
+                                    '<button onclick="loadOrders();" style="background:black;color:white;border:2px solid black;padding:10px 24px;font-weight:900;cursor:pointer;font-size:13px;">' +
+                                    '<i class="fas fa-redo" style="margin-right:6px;"></i>R\u00e9essayer</button></div>';
+                            }
+                        });
+                },
+                function() {
+                    // Abandon apres 90s
                     if (loader) loader.style.display = 'none';
-                    if (listEl) listEl.innerHTML = '<div style="padding:20px;background:#ffd43b;border:2px solid black;color:black;text-align:center;">' +
-                        '<p style="font-weight:900;font-size:15px;margin-bottom:8px;"><i class="fas fa-exclamation-triangle" style="margin-right:8px;"></i>Serveur temporairement indisponible</p>' +
-                        '<p style="font-size:13px;margin-bottom:12px;">Le serveur Render (gratuit) est en veille. Cliquez pour r\u00e9essayer.</p>' +
-                        '<button onclick="_ordersRetryCount=0;loadOrders();" style="background:black;color:white;border:2px solid black;padding:10px 24px;font-weight:900;cursor:pointer;font-size:13px;">' +
-                        '<i class="fas fa-redo" style="margin-right:6px;"></i>R\u00e9essayer</button></div>';
-                    _ordersRetryCount = 0;
-                }
-            }
+                    if (!cache) {
+                        if (listEl) listEl.innerHTML = '<div style="padding:20px;background:#ffd43b;border:2px solid black;color:black;text-align:center;">' +
+                            '<p style="font-weight:900;font-size:15px;margin-bottom:8px;"><i class="fas fa-exclamation-triangle" style="margin-right:8px;"></i>Serveur temporairement indisponible</p>' +
+                            '<p style="font-size:13px;margin-bottom:12px;">Le serveur Render (gratuit) est en veille. Cliquez pour r\u00e9essayer.</p>' +
+                            '<button onclick="loadOrders();" style="background:black;color:white;border:2px solid black;padding:10px 24px;font-weight:900;cursor:pointer;font-size:13px;">' +
+                            '<i class="fas fa-redo" style="margin-right:6px;"></i>R\u00e9essayer</button></div>';
+                    }
+                },
+                loaderMsg, loaderSub
+            );
         }
 
         // Annuler date de demarrage confirmee (admin)
