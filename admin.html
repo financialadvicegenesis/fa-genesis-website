@@ -689,6 +689,8 @@
                 loadMessages();
             } else if (section === 'commandes') {
                 document.getElementById('commandesSection').style.display = 'block';
+                // Ping de reveil avant de charger (le serveur Render peut etre en veille)
+                try { fetch(API_BASE_URL + '/api/orders/all').catch(function(){}); } catch(e){}
                 loadOrders();
             } else if (section === 'partenaires') {
                 document.getElementById('partenairesSection').style.display = 'block';
@@ -1771,7 +1773,8 @@
         // ============================================================
 
         var _ordersRetryCount = 0;
-        var _ordersMaxRetries = 20;
+        var _ordersMaxRetries = 25;
+        var _ordersRetryInterval = 5000; // 5s x 25 = 125s max (suffit pour tout cold start Render)
 
         function fetchWithAbort(url, timeoutMs) {
             return new Promise(function(resolve, reject) {
@@ -1875,8 +1878,9 @@
 
                 if (_ordersRetryCount <= _ordersMaxRetries) {
                     if (loaderMsg) loaderMsg.textContent = 'Le serveur d\u00e9marre, veuillez patienter...';
-                    if (loaderSub) loaderSub.textContent = 'Tentative ' + _ordersRetryCount + '/' + _ordersMaxRetries + ' - R\u00e9essai dans 3 secondes...';
-                    setTimeout(function() { loadOrders(); }, 3000);
+                    var secondsLeft = Math.round((_ordersMaxRetries - _ordersRetryCount) * _ordersRetryInterval / 1000);
+                    if (loaderSub) loaderSub.textContent = 'Tentative ' + _ordersRetryCount + '/' + _ordersMaxRetries + ' \u2014 Nouveau essai dans 5 secondes (' + secondsLeft + 's restantes)';
+                    setTimeout(function() { loadOrders(); }, _ordersRetryInterval);
                 } else {
                     if (loader) loader.style.display = 'none';
                     if (listEl) listEl.innerHTML = '<div style="padding:20px;background:#ffd43b;border:2px solid black;color:black;text-align:center;">' +

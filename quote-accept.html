@@ -176,9 +176,9 @@
 
                 <!-- Infos client -->
                 <div class="mb-8">
-                    <p class="text-sm font-bold uppercase opacity-60 mb-1">Devis établi pour :</p>
-                    <p id="clientName" class="font-black text-xl"></p>
-                    <p id="clientEmail" class="font-bold opacity-70"></p>
+                    <p class="text-sm font-bold uppercase mb-1" style="color:#000;">Devis établi pour :</p>
+                    <p id="clientName" class="font-black text-xl" style="color:#000;"></p>
+                    <p id="clientEmail" class="font-bold" style="color:#000;"></p>
                 </div>
 
                 <!-- Tableau des prestations -->
@@ -202,12 +202,12 @@
                         <span id="quoteTotal" class="font-black text-2xl text-[var(--genesis-yellow)]"></span>
                     </div>
                     <div class="flex justify-between items-center mb-2">
-                        <span class="font-bold opacity-70">Acompte 30%</span>
+                        <span class="font-bold" style="color:#000;">Acompte 30%</span>
                         <span id="quoteDeposit" class="font-black text-lg text-[#51cf66]"></span>
                     </div>
                     <div class="flex justify-between items-center">
-                        <span class="font-bold opacity-70">Solde 70% (à la livraison)</span>
-                        <span id="quoteBalance" class="font-black text-lg"></span>
+                        <span class="font-bold" style="color:#000;">Solde 70% (à la livraison)</span>
+                        <span id="quoteBalance" class="font-black text-lg" style="color:#000;"></span>
                     </div>
                 </div>
 
@@ -252,7 +252,7 @@
         <div class="sumup-modal-content">
             <button class="sumup-modal-close" onclick="closeSumUpModal()">&times;</button>
             <h3 style="font-family:'Unbounded',cursive; font-size:18px; font-weight:900; text-transform:uppercase; margin-bottom:8px; color:black;">Paiement de l'acompte</h3>
-            <p style="font-size:14px; font-weight:700; color:#555; margin-bottom:16px;">Montant : <span id="sumupModalAmount" style="color:black; font-weight:900;"></span></p>
+            <p style="font-size:14px; font-weight:700; color:#000; margin-bottom:16px;">Montant : <span id="sumupModalAmount" style="color:black; font-weight:900;"></span></p>
             <div id="sumup-card" style="min-height:300px;"></div>
         </div>
     </div>
@@ -440,12 +440,12 @@
                 // Accepte mais acompte pas encore paye
                 actionsContainer.innerHTML = '<button id="payBtn" onclick="payDeposit()" class="neo-btn-yellow px-8 md:px-12 py-4 md:py-6 text-lg md:text-2xl font-black italic uppercase tracking-tighter w-full">' +
                     '<i class="fas fa-credit-card mr-2"></i>PAYER L\'ACOMPTE (' + (quote.pricing ? quote.pricing.deposit_amount : '') + '\u20ac)</button>' +
-                    '<p class="text-xs font-bold opacity-50 mt-4">Paiement sécurisé par SumUp.</p>';
+                    '<p class="text-xs font-bold mt-4" style="color:#000;">Paiement sécurisé par SumUp.</p>';
             } else if (quote.status === 'SENT_TO_CLIENT') {
                 // Pas encore accepte
                 actionsContainer.innerHTML = '<button id="acceptBtn" onclick="acceptAndPay()" class="neo-btn-yellow px-8 md:px-12 py-4 md:py-6 text-lg md:text-2xl font-black italic uppercase tracking-tighter w-full">' +
                     '<i class="fas fa-check-circle mr-2"></i>ACCEPTER ET PAYER L\'ACOMPTE (' + (quote.pricing ? quote.pricing.deposit_amount : '') + '\u20ac)</button>' +
-                    '<p class="text-xs font-bold opacity-50 mt-4">Paiement sécurisé par SumUp.</p>';
+                    '<p class="text-xs font-bold mt-4" style="color:#000;">Paiement sécurisé par SumUp.</p>';
             }
         }
 

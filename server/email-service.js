@@ -151,13 +151,13 @@ function getEmailTemplate(content, title = 'FA GENESIS') {
                     <!-- Footer -->
                     <tr>
                         <td style="padding: 30px 40px; background-color: #f8f8f8; border-top: 1px solid #e0e0e0;">
-                            <p style="margin: 0 0 10px 0; font-size: 14px; color: #666666; text-align: center;">
+                            <p style="margin: 0 0 10px 0; font-size: 14px; color: #000000; text-align: center;">
                                 <strong>FA GENESIS</strong> - Structurez votre idée. Lancez avec clarté
                             </p>
-                            <p style="margin: 0; font-size: 12px; color: #999999; text-align: center;">
-                                Email : <a href="mailto:Financialadvicegenesis@gmail.com" style="color: #FFD700;">Financialadvicegenesis@gmail.com</a>
+                            <p style="margin: 0; font-size: 12px; color: #333333; text-align: center;">
+                                Email : <a href="mailto:Financialadvicegenesis@gmail.com" style="color: #B8860B; font-weight:700;">Financialadvicegenesis@gmail.com</a>
                             </p>
-                            <p style="margin: 15px 0 0 0; font-size: 11px; color: #cccccc; text-align: center;">
+                            <p style="margin: 15px 0 0 0; font-size: 11px; color: #555555; text-align: center;">
                                 Cet email a été envoyé automatiquement. Merci de ne pas y répondre directement.
                             </p>
                         </td>
@@ -348,7 +348,7 @@ async function sendAdminNotification(messageData) {
     try {
         const result = await transport.sendMail({
             from: `"${process.env.EMAIL_FROM_NAME}" <${process.env.EMAIL_FROM_ADDRESS}>`,
-            to: process.env.EMAIL_ADMIN_ADDRESS,
+            to: process.env.EMAIL_ADMIN_ADDRESS || 'financialadvicegenesis@gmail.com',
             subject: `[FA GENESIS] Nouveau message de ${messageData.name}`,
             html: getEmailTemplate(content, 'Nouveau message'),
             replyTo: messageData.email
@@ -590,7 +590,7 @@ async function sendAdminRegistrationNotification(registrationData) {
     try {
         const result = await transport.sendMail({
             from: `"${process.env.EMAIL_FROM_NAME}" <${process.env.EMAIL_FROM_ADDRESS}>`,
-            to: process.env.EMAIL_ADMIN_ADDRESS,
+            to: process.env.EMAIL_ADMIN_ADDRESS || 'financialadvicegenesis@gmail.com',
             subject: `[FA GENESIS] Nouvelle inscription - ${registrationData.firstName} ${registrationData.lastName}`,
             html: getEmailTemplate(content, 'Nouvelle inscription'),
             replyTo: registrationData.email
@@ -882,7 +882,7 @@ async function sendQuoteAdminNotification(quote) {
         `;
 
         var html = getEmailTemplate(content, 'Nouveau devis - FA GENESIS');
-        var adminEmail = process.env.EMAIL_ADMIN_ADDRESS;
+        var adminEmail = process.env.EMAIL_ADMIN_ADDRESS || 'financialadvicegenesis@gmail.com';
 
         if (!adminEmail) {
             return { success: false, reason: 'no_admin_email' };
@@ -992,10 +992,10 @@ async function sendQuoteToClient(quote) {
             var unitPrice = Number(item.unit_price) || 0;
             var subtotal = qty * unitPrice;
             itemsRows += '<tr>' +
-                '<td style="padding: 12px; border-bottom: 1px solid #eee; color: #333;">' + (item.label || '') + '</td>' +
-                '<td style="padding: 12px; border-bottom: 1px solid #eee; color: #555; text-align: center;">' + qty + '</td>' +
-                '<td style="padding: 12px; border-bottom: 1px solid #eee; color: #555; text-align: right;">' + unitPrice.toFixed(2) + ' €</td>' +
-                '<td style="padding: 12px; border-bottom: 1px solid #eee; color: #333; text-align: right; font-weight: bold;">' + subtotal.toFixed(2) + ' €</td>' +
+                '<td style="padding: 12px; border-bottom: 1px solid #eee; color: #000; font-weight:700;">' + (item.label || '') + '</td>' +
+                '<td style="padding: 12px; border-bottom: 1px solid #eee; color: #000; text-align: center; font-weight:700;">' + qty + '</td>' +
+                '<td style="padding: 12px; border-bottom: 1px solid #eee; color: #000; text-align: right; font-weight:700;">' + unitPrice.toFixed(2) + ' €</td>' +
+                '<td style="padding: 12px; border-bottom: 1px solid #eee; color: #000; text-align: right; font-weight: 900;">' + subtotal.toFixed(2) + ' €</td>' +
                 '</tr>';
         }
 
@@ -1005,17 +1005,17 @@ async function sendQuoteToClient(quote) {
         var expiryStr = expiryDate.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
 
         var content = `
-            <h2 style="color: #333333; margin: 0 0 10px 0; font-size: 24px;">
+            <h2 style="color: #000000; margin: 0 0 10px 0; font-size: 24px; font-weight: 900;">
                 Votre devis personnalisé
             </h2>
-            <p style="color: #888; font-size: 14px; margin: 0 0 25px 0;">
+            <p style="color: #333; font-size: 14px; margin: 0 0 25px 0; font-weight: 700;">
                 Devis n° <strong>${quote.quote_number}</strong> | ${serviceLabel}
             </p>
 
-            <p style="color: #555; font-size: 16px;">
+            <p style="color: #000; font-size: 16px; font-weight: 700;">
                 Bonjour ${quote.client_name},
             </p>
-            <p style="color: #555;">
+            <p style="color: #000; font-weight: 700;">
                 Suite à votre demande, nous avons le plaisir de vous adresser notre proposition.
             </p>
 
@@ -1045,8 +1045,8 @@ async function sendQuoteToClient(quote) {
                     <td style="padding: 8px 12px; text-align: right; font-weight: bold; color: #333;">${quote.pricing.deposit_amount.toFixed(2)} €</td>
                 </tr>
                 <tr>
-                    <td style="padding: 8px 12px; color: #666;">Solde (70%)</td>
-                    <td style="padding: 8px 12px; text-align: right; color: #666;">${quote.pricing.balance_amount.toFixed(2)} €</td>
+                    <td style="padding: 8px 12px; color: #333; font-weight: bold;">Solde (70%)</td>
+                    <td style="padding: 8px 12px; text-align: right; color: #333; font-weight: bold;">${quote.pricing.balance_amount.toFixed(2)} €</td>
                 </tr>
             </table>
 
@@ -1065,7 +1065,7 @@ async function sendQuoteToClient(quote) {
                 </a>
             </div>
 
-            <p style="color: #999; font-size: 12px; text-align: center;">
+            <p style="color: #333; font-size: 13px; text-align: center; font-weight: 700;">
                 En cliquant sur le bouton, vous serez invité à créer votre compte ou vous connecter.<br>
                 Un acompte de ${quote.pricing.deposit_amount.toFixed(2)} € (30%) sera ensuite requis pour démarrer la prestation.<br>
                 Le solde de ${quote.pricing.balance_amount.toFixed(2)} € (70%) sera dû à la livraison.
