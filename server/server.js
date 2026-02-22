@@ -965,6 +965,69 @@ app.post('/api/orders/:orderId/cancel-pending', function(req, res) {
     }
 });
 
+/**
+ * POST /api/orders/:orderId/cancel-start-date
+ * Annuler la date de demarrage confirmee
+ * Accessible par : client (son propre ordre), partenaire, ou admin (sans token)
+ */
+app.post('/api/orders/:orderId/cancel-start-date', function(req, res) {
+    try {
+        var orderId = req.params.orderId;
+        var order = getOrderById(orderId);
+        if (!order) {
+            return res.status(404).json({ success: false, error: 'Commande introuvable.' });
+        }
+        if (order.schedule_status !== 'confirmed') {
+            return res.status(400).json({ success: false, error: 'La date de demarrage n\'est pas encore confirmee.' });
+        }
+
+        // Determiner qui appelle
+        var callerRole = 'admin';
+        var authHeader = req.headers.authorization;
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            var token = authHeader.split(' ')[1];
+            // Essayer client
+            var users = loadUsers();
+            var clientUser = users.find(function(u) { return u.sessionToken === token; });
+            if (clientUser) {
+                var orderEmail = order.client_info && order.client_info.email ? order.client_info.email.toLowerCase() : '';
+                if (orderEmail !== (clientUser.email || '').toLowerCase()) {
+                    return res.status(403).json({ success: false, error: 'Commande non autorisee.' });
+                }
+                callerRole = 'client';
+            } else {
+                // Essayer partenaire
+                var partners = loadPartners();
+                var partner = partners.find(function(p) { return p.sessionToken === token; });
+                if (partner) {
+                    callerRole = 'partner';
+                }
+            }
+        }
+
+        var updatedOrder = updateOrder(orderId, {
+            start_date: null,
+            proposed_start_date: null,
+            schedule_status: 'awaiting_client_choice',
+            schedule_confirmed_by_admin: false,
+            schedule_confirmed_by_partner: false,
+            start_date_cancelled_at: new Date().toISOString(),
+            start_date_cancelled_by: callerRole
+        });
+
+        if (!updatedOrder) {
+            return res.status(500).json({ success: false, error: 'Erreur mise a jour commande.' });
+        }
+
+        console.log('[CANCEL-DATE] Date annulee pour commande ' + orderId + ' par ' + callerRole);
+        res.json({ success: true, message: 'Date de demarrage annulee. Le client peut proposer une nouvelle date.' });
+
+    } catch (err) {
+        console.error('[CANCEL-DATE] Erreur:', err.message);
+        res.status(500).json({ success: false, error: 'Erreur serveur lors de l\'annulation de la date.' });
+    }
+});
+
 // ============================================================
 // ROUTES - PAIEMENTS SUMUP
 // ============================================================
@@ -4384,6 +4447,8 @@ app.get('/api/partner/projects', authenticatePartner, (req, res) => {
                     product_type: order.product_type,
                     status: order.status,
                     created_at: order.created_at,
+                    schedule_status: order.schedule_status || null,
+                    start_date: order.start_date || null,
                     client_name: order.client_info
                         ? (order.client_info.first_name + ' ' + (order.client_info.last_name || '').charAt(0) + '.')
                         : 'Client'

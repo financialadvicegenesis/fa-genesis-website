@@ -662,15 +662,24 @@
 
                 var date = order.created_at ? new Date(order.created_at).toLocaleDateString('fr-FR') : '';
 
+                var cancelDateBtn = '';
+                if (order.schedule_status === 'confirmed' && order.start_date) {
+                    var startDateStr = new Date(order.start_date).toLocaleDateString('fr-FR');
+                    cancelDateBtn = '<button onclick="event.stopPropagation();partnerCancelStartDate(\'' + order.id + '\')" ' +
+                        'class="text-xs font-bold uppercase border-2 border-white text-white px-3 py-1 hover:bg-red-700 mt-2" ' +
+                        'id="partnerCancelDateBtn_' + order.id + '">' +
+                        '<i class="fas fa-calendar-times mr-1"></i>Réinitialiser date (' + startDateStr + ')</button>';
+                }
                 html += '<div class="partner-card" onclick="openProject(\'' + order.id + '\')">' +
                     '<div class="flex justify-between items-center flex-wrap gap-3">' +
                         '<div class="flex-1 min-w-[200px]">' +
                             '<div class="font-black text-lg">' + (order.product_name || 'Projet') + '</div>' +
-                            '<div class="text-sm font-bold opacity-60">' +
+                            '<div class="text-sm font-bold">' +
                                 '<i class="fas fa-user mr-1"></i>' + (order.client_name || 'Client') +
                                 (date ? ' <span class="ml-3"><i class="fas fa-calendar mr-1"></i>' + date + '</span>' : '') +
                             '</div>' +
-                            (assignment.notes ? '<div class="text-xs opacity-50 mt-1"><i class="fas fa-sticky-note mr-1"></i>' + assignment.notes + '</div>' : '') +
+                            (assignment.notes ? '<div class="text-xs mt-1"><i class="fas fa-sticky-note mr-1"></i>' + assignment.notes + '</div>' : '') +
+                            cancelDateBtn +
                         '</div>' +
                         '<div class="flex items-center gap-3">' +
                             '<span class="status-badge status-active">' + statusLabel + '</span>' +
@@ -748,11 +757,11 @@
                     '<div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">' +
                         '<div class="flex-1">' +
                             '<div class="font-black text-lg text-white">' + clientName + '</div>' +
-                            '<div class="text-sm font-bold opacity-60">' + productName + '</div>' +
+                            '<div class="text-sm font-bold">' + productName + '</div>' +
                             '<div class="font-black mt-2" style="color: var(--genesis-yellow);">' +
                                 '<i class="fas fa-calendar-day mr-1"></i>Date proposée : ' + proposedDate +
                             '</div>' +
-                            '<div class="text-xs mt-1 opacity-60">' +
+                            '<div class="text-xs mt-1 font-bold">' +
                                 (adminConfirmed ? '<i class="fas fa-check text-green-400 mr-1"></i>Admin a confirmé' : '<i class="fas fa-clock text-yellow-400 mr-1"></i>Admin n\'a pas encore confirmé') +
                             '</div>' +
                         '</div>' +
@@ -808,6 +817,29 @@
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fas fa-check mr-2"></i>Confirmer';
             }
+        }
+    }
+
+    async function partnerCancelStartDate(orderId) {
+        if (!confirm('Réinitialiser la date de démarrage confirmée ? Le client pourra proposer une nouvelle date.')) return;
+        var btn = document.getElementById('partnerCancelDateBtn_' + orderId);
+        if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>En cours...'; }
+        try {
+            var token = localStorage.getItem('fa_genesis_partner_token');
+            var resp = await fetch(PARTNER_API_BASE_URL + '/api/orders/' + encodeURIComponent(orderId) + '/cancel-start-date', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }
+            });
+            var data = await resp.json();
+            if (data.success) {
+                loadProjects();
+            } else {
+                alert(data.error || 'Erreur lors de la réinitialisation.');
+                if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-calendar-times mr-1"></i>Réinitialiser date'; }
+            }
+        } catch (err) {
+            alert('Erreur réseau : ' + err.message);
+            if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-calendar-times mr-1"></i>Réinitialiser date'; }
         }
     }
 

@@ -1844,20 +1844,28 @@
                     var clientName = order.client_info ? ((order.client_info.first_name || order.client_info.firstName || '') + ' ' + (order.client_info.last_name || order.client_info.lastName || '')) : 'N/A';
                     var clientEmail = order.client_info ? order.client_info.email : '';
 
+                    var scheduleStatus = order.schedule_status || '';
+                    var scheduleBtn = '';
+                    if (scheduleStatus === 'confirmed' && order.start_date) {
+                        var confirmedDateStr = new Date(order.start_date).toLocaleDateString('fr-FR');
+                        scheduleBtn = '<button onclick="adminCancelStartDate(\'' + order.id + '\')" class="text-xs font-bold uppercase border-2 border-black px-3 py-1 hover:bg-red-100 mt-1" title="Réinitialiser date ' + confirmedDateStr + '">' +
+                            '<i class="fas fa-calendar-times mr-1"></i>Réinitialiser date (' + confirmedDateStr + ')</button>';
+                    }
                     html += '<div class="admin-card neo-shadow mb-4">' +
                         '<div class="flex justify-between items-start flex-wrap gap-4">' +
                             '<div class="flex-1 min-w-[200px]">' +
-                                '<div class="text-xs font-bold opacity-50">' + order.id + '</div>' +
+                                '<div class="text-xs font-bold">' + order.id + '</div>' +
                                 '<div class="font-black text-lg">' + clientName + '</div>' +
-                                '<div class="text-sm font-bold opacity-70">' + clientEmail + '</div>' +
+                                '<div class="text-sm font-bold">' + clientEmail + '</div>' +
                             '</div>' +
                             '<div class="flex-1 min-w-[200px]">' +
                                 '<div class="font-black">' + (order.product_name || 'N/A') + '</div>' +
-                                '<div class="text-sm font-bold opacity-70">' + date + '</div>' +
+                                '<div class="text-sm font-bold">' + date + '</div>' +
+                                scheduleBtn +
                             '</div>' +
                             '<div class="text-center">' +
                                 '<div class="text-2xl font-black text-[var(--genesis-yellow)]">' + (order.total_amount || 0) + '\u20ac</div>' +
-                                '<div class="text-xs font-bold opacity-60">Acompte: ' + (order.deposit_amount || 0) + '\u20ac | Solde: ' + (order.balance_amount || 0) + '\u20ac</div>' +
+                                '<div class="text-xs font-bold">Acompte: ' + (order.deposit_amount || 0) + '\u20ac | Solde: ' + (order.balance_amount || 0) + '\u20ac</div>' +
                                 '<div class="text-xs mt-1">' +
                                     (order.deposit_paid ? '<span style="color:#51cf66;">Acompte \u2713</span>' : '<span style="color:#ff6b6b;">Acompte \u2717</span>') + ' | ' +
                                     (order.balance_paid ? '<span style="color:#51cf66;">Solde \u2713</span>' : '<span style="color:#ff6b6b;">Solde \u2717</span>') +
@@ -1890,6 +1898,25 @@
                         '<i class="fas fa-redo" style="margin-right:6px;"></i>R\u00e9essayer</button></div>';
                     _ordersRetryCount = 0;
                 }
+            }
+        }
+
+        // Annuler date de demarrage confirmee (admin)
+        async function adminCancelStartDate(orderId) {
+            if (!confirm('Réinitialiser la date de démarrage confirmée pour cette commande ? Le client pourra proposer une nouvelle date.')) return;
+            try {
+                var resp = await fetch(API_BASE_URL + '/api/orders/' + encodeURIComponent(orderId) + '/cancel-start-date', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                var data = await resp.json();
+                if (data.success) {
+                    loadOrders();
+                } else {
+                    alert(data.error || 'Erreur lors de la réinitialisation.');
+                }
+            } catch (err) {
+                alert('Erreur réseau : ' + err.message);
             }
         }
 
