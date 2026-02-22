@@ -523,9 +523,28 @@
             } else if (livType === 'video') {
                 contentHtml = '<video controls autoplay controlsList="nodownload nofullscreen" disablePictureInPicture oncontextmenu="return false"><source src="' + escapeAttr(previewUrl) + '"></video>';
             } else if (previewUrl) {
-                // Document (PDF, etc.) - masquer la barre d\u0027outils du viewer
-                var pdfUrl = previewUrl + (previewUrl.indexOf('?') === -1 ? '?' : '&') + '#toolbar=0&navpanes=0';
-                contentHtml = '<iframe src="' + escapeAttr(pdfUrl) + '" title="' + escapeAttr(liv.name) + '" sandbox="allow-same-origin allow-scripts" style="pointer-events:auto;"></iframe>';
+                // Document (PDF, etc.)
+                // Chrome bloque les data: URLs dans les iframes -> convertir en Blob URL
+                if (previewUrl.indexOf('data:') === 0) {
+                    try {
+                        var parts = previewUrl.split(',');
+                        var mimeMatch = parts[0].match(/:(.*?);/);
+                        var mime = mimeMatch ? mimeMatch[1] : 'application/pdf';
+                        var b64 = parts[1];
+                        var byteStr = atob(b64);
+                        var byteArr = new Uint8Array(byteStr.length);
+                        for (var k = 0; k < byteStr.length; k++) { byteArr[k] = byteStr.charCodeAt(k); }
+                        var blob = new Blob([byteArr], { type: mime });
+                        var blobUrl = URL.createObjectURL(blob);
+                        window._previewBlobUrl = blobUrl;
+                        contentHtml = '<iframe src="' + blobUrl + '" title="' + escapeAttr(liv.name) + '" style="width:90vw;height:80vh;border:4px solid var(--genesis-yellow);background:white;pointer-events:auto;"></iframe>';
+                    } catch (convErr) {
+                        contentHtml = '<div class="preview-no-content"><i class="fas fa-exclamation-triangle" style="font-size:48px;color:var(--genesis-yellow);margin-bottom:16px;display:block;"></i>Impossible d\'afficher l\'aperçu.<br><small>' + convErr.message + '</small></div>';
+                    }
+                } else {
+                    var pdfUrl = previewUrl + (previewUrl.indexOf('?') === -1 ? '?' : '&') + '#toolbar=0&navpanes=0';
+                    contentHtml = '<iframe src="' + escapeAttr(pdfUrl) + '" title="' + escapeAttr(liv.name) + '" style="width:90vw;height:80vh;border:4px solid var(--genesis-yellow);background:white;pointer-events:auto;"></iframe>';
+                }
             } else {
                 contentHtml = '<div class="preview-no-content"><i class="fas fa-file-alt" style="font-size:48px;color:var(--genesis-yellow);margin-bottom:16px;display:block;"></i>Aucun aper\u00e7u disponible pour ce livrable.</div>';
             }
@@ -544,6 +563,10 @@
             var overlay = document.getElementById('previewOverlay');
             if (overlay) overlay.remove();
             document.body.style.overflow = 'auto';
+            if (window._previewBlobUrl) {
+                URL.revokeObjectURL(window._previewBlobUrl);
+                window._previewBlobUrl = null;
+            }
         }
 
         // Fermer avec Echap
