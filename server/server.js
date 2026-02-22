@@ -1038,6 +1038,31 @@ app.post('/api/orders/:orderId/cancel-start-date', function(req, res) {
     }
 });
 
+/**
+ * DELETE /api/orders/:orderId
+ * Supprimer une commande (admin seulement, sans token requis)
+ */
+app.delete('/api/orders/:orderId', function(req, res) {
+    try {
+        var orderId = req.params.orderId;
+        var order = getOrderById(orderId);
+        if (!order) {
+            return res.status(404).json({ success: false, error: 'Commande introuvable : ' + orderId });
+        }
+        var orders = loadOrders();
+        var newOrders = orders.filter(function(o) { return o.id !== orderId; });
+        if (newOrders.length === orders.length) {
+            return res.status(404).json({ success: false, error: 'Commande introuvable.' });
+        }
+        saveOrders(newOrders);
+        console.log('[DELETE-ORDER] Commande supprimee : ' + orderId);
+        res.json({ success: true, message: 'Commande ' + orderId + ' supprimee.' });
+    } catch (err) {
+        console.error('[DELETE-ORDER] Erreur:', err.message);
+        res.status(500).json({ success: false, error: 'Erreur serveur lors de la suppression.' });
+    }
+});
+
 // ============================================================
 // ROUTES - PAIEMENTS SUMUP
 // ============================================================

@@ -543,7 +543,8 @@
                 <!-- Formulaire creation (cache) -->
                 <div id="createProjectForm" style="display:none;color:black;" class="mb-6 p-4 bg-gray-100 border-4 border-black">
                     <label class="block font-bold mb-2">ID de la commande :</label>
-                    <input type="text" id="createProjectOrderId" class="border-2 border-black p-2 w-full mb-3 text-sm" placeholder="ORD-xxxxx">
+                    <input type="text" id="createProjectOrderId" class="border-2 border-black p-2 w-full mb-3 text-sm" placeholder="ORD-xxxxx" oninput="previewOrderForProject(this.value)">
+                    <div id="orderPreview" class="mb-3" style="display:none;"></div>
                     <button onclick="createProjectFromOrder()" class="border-4 border-black bg-green-600 text-white px-6 py-3 text-sm font-black">
                         <i class="fas fa-rocket mr-2"></i>CRÉER LE PROJET
                     </button>
@@ -1830,6 +1831,12 @@
                             '<div style="background:' + bgColor + ';color:black;padding:4px 10px;border:2px solid black;font-size:11px;font-weight:900;display:inline-block;">' + label + '</div>' +
                         '</div>' +
                     '</div>' +
+                    '<div class="flex gap-2 mt-3 pt-3" style="border-top:2px solid rgba(0,0,0,0.15);">' +
+                        '<button onclick="goToProjetIA(\'' + order.id + '\')" class="text-xs font-bold uppercase border-2 border-black px-3 py-1 hover:bg-yellow-100" title="Créer un projet IA pour cette commande">' +
+                            '<i class="fas fa-project-diagram mr-1"></i>Projet IA</button>' +
+                        '<button onclick="deleteOrder(\'' + order.id + '\')" class="text-xs font-bold uppercase border-2 border-red-600 text-red-700 px-3 py-1 hover:bg-red-100" title="Supprimer cette commande">' +
+                            '<i class="fas fa-trash mr-1"></i>Supprimer</button>' +
+                    '</div>' +
                 '</div>';
             });
             return html;
@@ -1888,6 +1895,80 @@
                     loadOrders();
                 } else {
                     alert(data.error || 'Erreur lors de la réinitialisation.');
+                }
+            } catch (err) {
+                alert('Erreur réseau : ' + err.message);
+            }
+        }
+
+        // Naviguer vers PROJETS IA et pre-remplir l'ID de commande
+        function goToProjetIA(orderId) {
+            showSection('projets');
+            var form = document.getElementById('createProjectForm');
+            if (form) form.style.display = 'block';
+            var input = document.getElementById('createProjectOrderId');
+            if (input) {
+                input.value = orderId;
+                previewOrderForProject(orderId);
+            }
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // Afficher un apercu de la commande dans le formulaire PROJETS IA
+        var _previewDebounce = null;
+        function previewOrderForProject(val) {
+            var previewDiv = document.getElementById('orderPreview');
+            if (!previewDiv) return;
+            val = (val || '').trim();
+            if (!val || val.length < 5) {
+                previewDiv.style.display = 'none';
+                previewDiv.innerHTML = '';
+                return;
+            }
+            clearTimeout(_previewDebounce);
+            _previewDebounce = setTimeout(async function() {
+                previewDiv.style.display = 'block';
+                previewDiv.innerHTML = '<div style="padding:8px;font-size:12px;color:#666;">Recherche...</div>';
+                try {
+                    var resp = await fetch(API_BASE_URL + '/api/orders/' + encodeURIComponent(val));
+                    if (!resp.ok) {
+                        previewDiv.innerHTML = '<div style="padding:8px;background:#fee2e2;border:2px solid #dc2626;font-size:12px;font-weight:bold;color:#dc2626;">Commande introuvable : ' + val + '</div>';
+                        return;
+                    }
+                    var order = await resp.json();
+                    var clientName = order.client_info ? ((order.client_info.first_name || order.client_info.firstName || '') + ' ' + (order.client_info.last_name || order.client_info.lastName || '')) : 'N/A';
+                    var clientEmail = order.client_info ? (order.client_info.email || '') : '';
+                    var statusLabel = order.status || 'N/A';
+                    previewDiv.innerHTML = '<div style="padding:10px;background:#dcfce7;border:2px solid #16a34a;font-size:13px;">' +
+                        '<div style="font-weight:900;margin-bottom:4px;"><i class="fas fa-check-circle" style="color:#16a34a;margin-right:6px;"></i>Commande trouvée</div>' +
+                        '<div><strong>Client :</strong> ' + clientName + ' (' + clientEmail + ')</div>' +
+                        '<div><strong>Offre :</strong> ' + (order.product_name || order.offre || 'N/A') + '</div>' +
+                        '<div><strong>Statut :</strong> ' + statusLabel + ' | <strong>Montant :</strong> ' + (order.total_amount || 0) + '\u20ac</div>' +
+                        '</div>';
+                } catch (e) {
+                    previewDiv.innerHTML = '<div style="padding:8px;background:#fee2e2;border:2px solid #dc2626;font-size:12px;font-weight:bold;color:#dc2626;">Erreur : ' + e.message + '</div>';
+                }
+            }, 400);
+        }
+
+        // Supprimer une commande
+        async function deleteOrder(orderId) {
+            if (!confirm('Supprimer définitivement la commande ' + orderId + ' ?\n\nCette action est irréversible.')) return;
+            try {
+                var resp = await fetch(API_BASE_URL + '/api/orders/' + encodeURIComponent(orderId), {
+                    method: 'DELETE'
+                });
+                var data = await resp.json();
+                if (data.success) {
+                    // Retirer du cache
+                    var cache = getCachedOrders();
+                    if (cache && cache.orders) {
+                        cache.orders = cache.orders.filter(function(o) { return o.id !== orderId; });
+                        setCachedOrders(cache.orders);
+                    }
+                    loadOrders();
+                } else {
+                    alert(data.error || 'Erreur lors de la suppression.');
                 }
             } catch (err) {
                 alert('Erreur réseau : ' + err.message);
