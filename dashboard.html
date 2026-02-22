@@ -200,14 +200,14 @@
                         <a href="payment.html" id="depositPayButton" class="neo-btn-yellow px-10 py-5 text-xl uppercase inline-block mb-4">
                             <i class="fas fa-credit-card mr-3"></i>Payer l'acompte (30%)
                         </a>
-                        <p class="text-sm text-gray-500 mt-4" id="depositAmountInfo">
+                        <p class="text-sm font-bold text-black mt-4" id="depositAmountInfo">
                             <i class="fas fa-shield-alt mr-1"></i> Paiement sécurisé par SumUp
                         </p>
                         <div class="mt-6 pt-6 border-t-2 border-gray-200">
-                            <button id="cancelOrderBtn" onclick="cancelPendingOrder()" class="text-sm font-bold uppercase text-gray-400 hover:text-red-600 transition border-2 border-gray-300 hover:border-red-500 px-6 py-2">
+                            <button id="cancelOrderBtn" onclick="cancelPendingOrder()" class="text-sm font-bold uppercase text-black hover:text-red-600 transition border-2 border-black hover:border-red-500 px-6 py-2">
                                 <i class="fas fa-times mr-2"></i>Annuler cette commande
                             </button>
-                            <p class="text-xs text-gray-400 mt-2">Vous pourrez choisir une autre offre après annulation.</p>
+                            <p class="text-xs font-bold text-black mt-2">Vous pourrez choisir une autre offre après annulation.</p>
                         </div>
                     </div>
                 </div>
@@ -884,10 +884,10 @@
 
             try {
                 var token = localStorage.getItem('fa_genesis_token');
-                var resp = await fetch(DASH_API + '/api/orders/' + encodeURIComponent(orderId) + '/cancel-pending', {
+                var resp = await fetchWithTimeout(DASH_API + '/api/orders/' + encodeURIComponent(orderId) + '/cancel-pending', {
                     method: 'POST',
                     headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' }
-                });
+                }, 20000);
                 var data = await resp.json();
                 if (data.success) {
                     // Mettre a jour le localStorage
