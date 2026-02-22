@@ -852,9 +852,18 @@
                                 '<div class="mt-2">' + adminBadge + partnerBadge + '</div>' +
                             '</div>' +
                             '<div>' +
-                                (adminConfirmed
-                                    ? '<span class="inline-block px-6 py-3 font-black uppercase text-sm bg-green-100 text-green-800 border-4 border-black">Confirmé ✓</span>'
-                                    : '<button onclick="confirmScheduleAdmin(\'' + order.id + '\')" class="neo-btn-yellow px-6 py-3 text-sm uppercase" id="confirmBtn_' + order.id + '"><i class="fas fa-check mr-2"></i>Confirmer</button>'
+                                (order.schedule_status === 'reproposed'
+                                    ? '<div style="border:4px solid #F97316;padding:12px;background:#FFF7ED;max-width:220px;">' +
+                                        '<p style="margin:0 0 4px 0;font-weight:900;color:#C2410C;font-size:12px;text-transform:uppercase;"><i class="fas fa-clock mr-1"></i>Contre-proposition envoyée</p>' +
+                                        '<p style="margin:0;font-weight:700;font-size:13px;color:#000;">Nouvelle date proposée :<br>' + formatDateFrAdmin(order.reproposed_date || '') + '</p>' +
+                                      '</div>'
+                                    : (adminConfirmed
+                                        ? '<span class="inline-block px-6 py-3 font-black uppercase text-sm bg-green-100 text-green-800 border-4 border-black">Confirmé ✓</span>'
+                                        : '<div class="flex flex-col gap-2">' +
+                                            '<button onclick="confirmScheduleAdmin(\'' + order.id + '\')" class="neo-btn-yellow px-6 py-3 text-sm uppercase" id="confirmBtn_' + order.id + '"><i class="fas fa-check mr-2"></i>Confirmer</button>' +
+                                            '<button onclick="openReproposeAdmin(\'' + order.id + '\')" class="px-6 py-3 text-sm uppercase font-black border-4 border-black bg-white hover:bg-gray-100"><i class="fas fa-calendar-alt mr-2"></i>Autre date</button>' +
+                                          '</div>'
+                                      )
                                 ) +
                             '</div>' +
                         '</div>' +
@@ -3755,6 +3764,64 @@
             } catch (e) {}
         })();
 
+    </script>
+
+    <!-- Modale re-proposition de date (Admin) -->
+    <div id="reproposeAdminModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:9999; align-items:center; justify-content:center;">
+        <div style="background:#fff; border:4px solid #000; padding:2rem; max-width:480px; width:calc(100% - 2rem); box-shadow: 8px 8px 0 #000;">
+            <h3 style="font-weight:900; font-size:1.25rem; text-transform:uppercase; margin:0 0 1.5rem 0;">
+                <i class="fas fa-calendar-alt mr-2" style="color:var(--genesis-yellow);"></i>Proposer une autre date
+            </h3>
+            <input type="hidden" id="reproposeAdminOrderId">
+            <label style="font-weight:700; display:block; margin-bottom:4px;">Nouvelle date</label>
+            <input type="date" id="reproposeAdminDate" style="border:4px solid #000; padding:12px; width:100%; margin-bottom:1rem; font-size:1rem; font-weight:700; box-sizing:border-box;">
+            <label style="font-weight:700; display:block; margin-bottom:4px;">Message pour le client (optionnel)</label>
+            <textarea id="reproposeAdminMessage" rows="3" placeholder="Ex : Cette date nous convient mieux car..." style="border:4px solid #000; padding:12px; width:100%; margin-bottom:1.5rem; font-size:14px; resize:vertical; box-sizing:border-box;"></textarea>
+            <div style="display:flex; gap:12px;">
+                <button onclick="submitReproposeAdmin()" style="background:var(--genesis-yellow); border:4px solid #000; padding:12px 24px; font-weight:900; text-transform:uppercase; cursor:pointer; flex:1;">
+                    <i class="fas fa-paper-plane mr-2"></i>Envoyer
+                </button>
+                <button onclick="closeReproposeAdmin()" style="background:#fff; border:4px solid #000; padding:12px 24px; font-weight:900; text-transform:uppercase; cursor:pointer;">
+                    Annuler
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function openReproposeAdmin(orderId) {
+            document.getElementById('reproposeAdminOrderId').value = orderId;
+            document.getElementById('reproposeAdminDate').value = '';
+            document.getElementById('reproposeAdminMessage').value = '';
+            var modal = document.getElementById('reproposeAdminModal');
+            modal.style.display = 'flex';
+        }
+        function closeReproposeAdmin() {
+            document.getElementById('reproposeAdminModal').style.display = 'none';
+        }
+        async function submitReproposeAdmin() {
+            var orderId = document.getElementById('reproposeAdminOrderId').value;
+            var date = document.getElementById('reproposeAdminDate').value;
+            var message = document.getElementById('reproposeAdminMessage').value;
+            if (!date) { alert('Veuillez sélectionner une date.'); return; }
+            try {
+                var resp = await fetch(API_BASE_URL + '/api/admin/reschedule-start/' + orderId, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ reproposed_date: date, message: message })
+                });
+                var data = await resp.json();
+                if (resp.ok && data.success) {
+                    closeReproposeAdmin();
+                    alert('Contre-proposition envoyée au client. Il recevra un email.');
+                    loadPendingSchedules();
+                } else {
+                    alert('Erreur : ' + (data.error || 'Impossible d\'envoyer la contre-proposition.'));
+                }
+            } catch (err) {
+                alert('Erreur réseau : ' + err.message);
+            }
+        }
     </script>
 </body>
 </html>

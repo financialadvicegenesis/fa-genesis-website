@@ -765,9 +765,20 @@
                                 (adminConfirmed ? '<i class="fas fa-check text-green-400 mr-1"></i>Admin a confirmé' : '<i class="fas fa-clock text-yellow-400 mr-1"></i>Admin n\'a pas encore confirmé') +
                             '</div>' +
                         '</div>' +
-                        '<button onclick="confirmSchedulePartner(\'' + order.id + '\')" class="neo-btn-yellow px-6 py-3 text-sm uppercase" id="partnerConfirmBtn_' + order.id + '">' +
-                            '<i class="fas fa-check mr-2"></i>Confirmer' +
-                        '</button>' +
+                        (order.schedule_status === 'reproposed'
+                            ? '<div style="border:3px solid #F97316;padding:10px;background:#FFF7ED;max-width:200px;">' +
+                                '<p style="margin:0 0 4px 0;font-weight:900;color:#C2410C;font-size:11px;text-transform:uppercase;"><i class="fas fa-clock mr-1"></i>Contre-proposition envoyée</p>' +
+                                '<p style="margin:0;font-weight:700;font-size:12px;">Nouvelle date : ' + formatDateFrPartner(order.reproposed_date || '') + '</p>' +
+                              '</div>'
+                            : '<div style="display:flex;flex-direction:column;gap:8px;">' +
+                                '<button onclick="confirmSchedulePartner(\'' + order.id + '\')" class="neo-btn-yellow px-6 py-3 text-sm uppercase" id="partnerConfirmBtn_' + order.id + '">' +
+                                    '<i class="fas fa-check mr-2"></i>Confirmer' +
+                                '</button>' +
+                                '<button onclick="openReproposePartner(\'' + order.id + '\')" style="border:3px solid #fff;background:transparent;color:#fff;padding:10px 16px;font-weight:900;text-transform:uppercase;font-size:12px;cursor:pointer;">' +
+                                    '<i class="fas fa-calendar-alt mr-2"></i>Autre date' +
+                                '</button>' +
+                              '</div>'
+                        ) +
                     '</div>' +
                 '</div>';
             }
@@ -2413,6 +2424,69 @@
     })();
 
     </script>
+
+    <!-- Modale re-proposition de date (Partenaire) -->
+    <div id="reproposePartnerModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:9999; align-items:center; justify-content:center;">
+        <div style="background:#1a1a2e; border:3px solid var(--genesis-yellow); padding:2rem; max-width:480px; width:calc(100% - 2rem); box-shadow: 6px 6px 0 var(--genesis-yellow);">
+            <h3 style="font-weight:900; font-size:1.2rem; text-transform:uppercase; margin:0 0 1.5rem 0; color:#fff;">
+                <i class="fas fa-calendar-alt mr-2" style="color:var(--genesis-yellow);"></i>Proposer une autre date
+            </h3>
+            <input type="hidden" id="reproposePartnerOrderId">
+            <label style="font-weight:700; display:block; margin-bottom:4px; color:#ccc;">Nouvelle date</label>
+            <input type="date" id="reproposePartnerDate" style="border:3px solid var(--genesis-yellow); background:#111; color:#fff; padding:12px; width:100%; margin-bottom:1rem; font-size:1rem; font-weight:700; box-sizing:border-box;">
+            <label style="font-weight:700; display:block; margin-bottom:4px; color:#ccc;">Message pour le client (optionnel)</label>
+            <textarea id="reproposePartnerMessage" rows="3" placeholder="Ex : Cette date nous convient mieux..." style="border:3px solid var(--genesis-yellow); background:#111; color:#fff; padding:12px; width:100%; margin-bottom:1.5rem; font-size:14px; resize:vertical; box-sizing:border-box;"></textarea>
+            <div style="display:flex; gap:12px;">
+                <button onclick="submitReproposePartner()" style="background:var(--genesis-yellow); border:3px solid #000; padding:12px 24px; font-weight:900; text-transform:uppercase; cursor:pointer; flex:1; color:#000;">
+                    <i class="fas fa-paper-plane mr-2"></i>Envoyer
+                </button>
+                <button onclick="closeReproposePartner()" style="background:transparent; border:3px solid #fff; padding:12px 24px; font-weight:900; text-transform:uppercase; cursor:pointer; color:#fff;">
+                    Annuler
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function openReproposePartner(orderId) {
+            document.getElementById('reproposePartnerOrderId').value = orderId;
+            document.getElementById('reproposePartnerDate').value = '';
+            document.getElementById('reproposePartnerMessage').value = '';
+            var modal = document.getElementById('reproposePartnerModal');
+            modal.style.display = 'flex';
+        }
+        function closeReproposePartner() {
+            document.getElementById('reproposePartnerModal').style.display = 'none';
+        }
+        async function submitReproposePartner() {
+            var orderId = document.getElementById('reproposePartnerOrderId').value;
+            var date = document.getElementById('reproposePartnerDate').value;
+            var message = document.getElementById('reproposePartnerMessage').value;
+            if (!date) { alert('Veuillez sélectionner une date.'); return; }
+            try {
+                var token = localStorage.getItem('fa_genesis_partner_token');
+                var resp = await fetch(PARTNER_API_BASE_URL + '/api/partner/reschedule-start/' + orderId, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({ reproposed_date: date, message: message })
+                });
+                var data = await resp.json();
+                if (resp.ok && data.success) {
+                    closeReproposePartner();
+                    alert('Contre-proposition envoyée au client. Il recevra un email.');
+                    loadPartnerPendingSchedules();
+                } else {
+                    alert('Erreur : ' + (data.error || 'Impossible d\'envoyer la contre-proposition.'));
+                }
+            } catch (err) {
+                alert('Erreur réseau : ' + err.message);
+            }
+        }
+    </script>
+
     <div id="site-footer"></div>
     <script src="footer.js" defer></script>
     <script src="chatbot.js" defer></script>

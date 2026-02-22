@@ -2231,6 +2231,17 @@ function finalizeSchedule(order) {
             schedule_status: 'confirmed'
         });
 
+        // Email de confirmation au client
+        try {
+            if (updatedOrder.client_info && updatedOrder.client_info.email) {
+                var confirmClientName = ((updatedOrder.client_info.first_name || '') + ' ' + (updatedOrder.client_info.last_name || '')).trim() || updatedOrder.client_info.email;
+                var confirmOrderName = updatedOrder.product_name || updatedOrder.product_id || 'votre commande';
+                emailService.sendScheduleConfirmedToClient(updatedOrder.client_info.email, confirmClientName, updatedOrder.start_date, confirmOrderName);
+            }
+        } catch (emailErr) {
+            console.error('[SCHEDULE] Erreur email confirmation date client:', emailErr.message);
+        }
+
         var product = getProductById(updatedOrder.product_id);
         console.log('[SCHEDULE] Finalisation pour ' + updatedOrder.id + ' - type: ' + (product ? product.product_type : 'inconnu'));
 
@@ -2354,6 +2365,28 @@ app.post('/api/orders/:orderId/schedule-start', function(req, res) {
         var updatedOrder = updateOrder(req.params.orderId, updates);
         console.log('[SCHEDULE] Client ' + user.email + ' propose date: ' + proposedDate + ' (provider: ' + kickoffRole + ') pour ' + req.params.orderId);
 
+        // Notifier l'admin par email
+        try {
+            var clientDisplayName = ((order.client_info.first_name || '') + ' ' + (order.client_info.last_name || '')).trim() || user.email;
+            var orderDisplayName = order.product_name || order.product_id || 'Commande ' + order.id;
+            var adminEmailAddr = process.env.ADMIN_EMAIL || 'contact@fagenesis.com';
+            emailService.sendScheduleProposedNotification(adminEmailAddr, clientDisplayName, proposedDate, orderDisplayName);
+            // Si l'intervenant est un partenaire, notifier aussi le partenaire assigne
+            if (kickoffRole !== 'admin') {
+                var partnerAssignments = loadPartnerAssignments();
+                var partnerAssignment = partnerAssignments.find(function(a) { return a.order_id === req.params.orderId && a.status === 'active'; });
+                if (partnerAssignment) {
+                    var allPartners = loadPartners();
+                    var assignedPartner = allPartners.find(function(p) { return p.id === partnerAssignment.partner_id; });
+                    if (assignedPartner && assignedPartner.email) {
+                        emailService.sendScheduleProposedNotification(assignedPartner.email, clientDisplayName, proposedDate, orderDisplayName);
+                    }
+                }
+            }
+        } catch (emailErr) {
+            console.error('[SCHEDULE] Erreur envoi email notification planning:', emailErr.message);
+        }
+
         res.json({ success: true, order: updatedOrder });
     } catch (error) {
         console.error('[SCHEDULE] Erreur schedule-start:', error);
@@ -2369,7 +2402,7 @@ app.get('/api/admin/pending-schedules', function(req, res) {
     try {
         var orders = loadOrders();
         var pending = orders.filter(function(o) {
-            return o.schedule_status === 'client_proposed';
+            return o.schedule_status === 'client_proposed' || o.schedule_status === 'reproposed';
         });
         res.json({ orders: pending });
     } catch (error) {
@@ -2414,6 +2447,51 @@ app.post('/api/admin/confirm-schedule/:orderId', function(req, res) {
 });
 
 /**
+ * POST /api/admin/reschedule-start/:orderId
+ * Admin contre-propose une date differente au client
+ */
+app.post('/api/admin/reschedule-start/:orderId', function(req, res) {
+    try {
+        var order = getOrderById(req.params.orderId);
+        if (!order) return res.status(404).json({ error: 'Commande non trouvee' });
+        if (order.schedule_status !== 'client_proposed') {
+            return res.status(400).json({ error: 'Pas de date proposee a contre-proposer' });
+        }
+
+        var reproposedDate = req.body.reproposed_date;
+        var reproposedMessage = req.body.message || '';
+        if (!reproposedDate) return res.status(400).json({ error: 'reproposed_date requis' });
+
+        var updatedOrder = updateOrder(req.params.orderId, {
+            schedule_status: 'reproposed',
+            reproposed_date: reproposedDate,
+            reproposed_by: 'admin',
+            repropose_message: reproposedMessage,
+            schedule_confirmed_by_admin: false,
+            schedule_confirmed_by_partner: false
+        });
+
+        console.log('[SCHEDULE] Admin contre-propose date ' + reproposedDate + ' pour ' + req.params.orderId);
+
+        // Email au client
+        try {
+            if (order.client_info && order.client_info.email) {
+                var rClientName = ((order.client_info.first_name || '') + ' ' + (order.client_info.last_name || '')).trim() || order.client_info.email;
+                var rOrderName = order.product_name || order.product_id || 'votre commande';
+                emailService.sendScheduleReproposedToClient(order.client_info.email, rClientName, reproposedDate, reproposedMessage, rOrderName);
+            }
+        } catch (emailErr) {
+            console.error('[SCHEDULE] Erreur email contre-proposition admin:', emailErr.message);
+        }
+
+        res.json({ success: true, order: updatedOrder });
+    } catch (error) {
+        console.error('[SCHEDULE] Erreur reschedule-start admin:', error);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
  * GET /api/partner/pending-schedules
  * Liste des commandes assignees au partenaire en attente de confirmation
  */
@@ -2428,7 +2506,7 @@ app.get('/api/partner/pending-schedules', authenticatePartner, function(req, res
         var pending = [];
         for (var i = 0; i < assignments.length; i++) {
             var order = orders.find(function(o) { return o.id === assignments[i].order_id; });
-            if (order && order.schedule_status === 'client_proposed') {
+            if (order && (order.schedule_status === 'client_proposed' || order.schedule_status === 'reproposed')) {
                 pending.push(order);
             }
         }
@@ -2436,6 +2514,59 @@ app.get('/api/partner/pending-schedules', authenticatePartner, function(req, res
         res.json({ orders: pending });
     } catch (error) {
         console.error('[SCHEDULE] Erreur partner pending-schedules:', error);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * POST /api/partner/reschedule-start/:orderId
+ * Partenaire contre-propose une date differente au client
+ */
+app.post('/api/partner/reschedule-start/:orderId', authenticatePartner, function(req, res) {
+    try {
+        var partner = req.partner;
+        var order = getOrderById(req.params.orderId);
+        if (!order) return res.status(404).json({ error: 'Commande non trouvee' });
+        if (order.schedule_status !== 'client_proposed') {
+            return res.status(400).json({ error: 'Pas de date proposee a contre-proposer' });
+        }
+
+        // Verifier que le partenaire est bien assigne
+        var pAssignments = loadPartnerAssignments();
+        var pIsAssigned = pAssignments.some(function(a) {
+            return a.partner_id === partner.id && a.order_id === order.id && a.status === 'active';
+        });
+        if (!pIsAssigned) return res.status(403).json({ error: 'Vous n\'etes pas assigne a cette commande' });
+
+        var reproposedDate = req.body.reproposed_date;
+        var reproposedMessage = req.body.message || '';
+        if (!reproposedDate) return res.status(400).json({ error: 'reproposed_date requis' });
+
+        var updatedOrder = updateOrder(req.params.orderId, {
+            schedule_status: 'reproposed',
+            reproposed_date: reproposedDate,
+            reproposed_by: 'partner',
+            repropose_message: reproposedMessage,
+            schedule_confirmed_by_admin: false,
+            schedule_confirmed_by_partner: false
+        });
+
+        console.log('[SCHEDULE] Partenaire ' + partner.email + ' contre-propose date ' + reproposedDate + ' pour ' + req.params.orderId);
+
+        // Email au client
+        try {
+            if (order.client_info && order.client_info.email) {
+                var rpClientName = ((order.client_info.first_name || '') + ' ' + (order.client_info.last_name || '')).trim() || order.client_info.email;
+                var rpOrderName = order.product_name || order.product_id || 'votre commande';
+                emailService.sendScheduleReproposedToClient(order.client_info.email, rpClientName, reproposedDate, reproposedMessage, rpOrderName);
+            }
+        } catch (emailErr) {
+            console.error('[SCHEDULE] Erreur email contre-proposition partenaire:', emailErr.message);
+        }
+
+        res.json({ success: true, order: updatedOrder });
+    } catch (error) {
+        console.error('[SCHEDULE] Erreur reschedule-start partenaire:', error);
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });
@@ -2477,6 +2608,51 @@ app.post('/api/partner/confirm-schedule/:orderId', authenticatePartner, function
         res.json({ success: true, order: updatedOrder, finalized: finalized });
     } catch (error) {
         console.error('[SCHEDULE] Erreur confirm-schedule partenaire:', error);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * POST /api/orders/:orderId/accept-reschedule
+ * Client accepte la contre-proposition de date de l'admin ou du partenaire
+ */
+app.post('/api/orders/:orderId/accept-reschedule', function(req, res) {
+    try {
+        var authHeader = req.headers.authorization;
+        if (!authHeader) return res.status(401).json({ error: 'Non autorise' });
+        var token = authHeader.replace('Bearer ', '');
+        var users = loadUsers();
+        var user = users.find(function(u) { return u.sessionToken === token; });
+        if (!user) return res.status(401).json({ error: 'Session invalide' });
+
+        var order = getOrderById(req.params.orderId);
+        if (!order) return res.status(404).json({ error: 'Commande non trouvee' });
+
+        // Verifier que la commande appartient au client
+        if (!order.client_info || order.client_info.email.toLowerCase() !== user.email.toLowerCase()) {
+            return res.status(403).json({ error: 'Acces refuse' });
+        }
+
+        if (order.schedule_status !== 'reproposed') {
+            return res.status(400).json({ error: 'Pas de contre-proposition a accepter' });
+        }
+
+        // Accepter la contre-proposition : copier reproposed_date -> proposed_start_date
+        var updatedOrder = updateOrder(req.params.orderId, {
+            proposed_start_date: order.reproposed_date,
+            schedule_status: 'client_proposed',
+            schedule_confirmed_by_admin: false,
+            schedule_confirmed_by_partner: false
+        });
+
+        console.log('[SCHEDULE] Client ' + user.email + ' accepte contre-proposition date ' + order.reproposed_date + ' pour ' + req.params.orderId);
+
+        // La date est acceptee par le client : finaliser directement
+        updatedOrder = finalizeSchedule(updatedOrder);
+
+        res.json({ success: true, order: updatedOrder });
+    } catch (error) {
+        console.error('[SCHEDULE] Erreur accept-reschedule:', error);
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });

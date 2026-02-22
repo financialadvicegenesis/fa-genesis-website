@@ -294,6 +294,27 @@
                             </div>
                         </div>
 
+                        <!-- Contre-proposition de date par l'equipe -->
+                        <div id="scheduleReproposedBlock" style="display: none;">
+                            <div class="flex items-start gap-4 p-6 border-4 border-black" style="background: #FFF3CD;">
+                                <i class="fas fa-calendar-alt text-4xl" style="color: #856404;"></i>
+                                <div class="flex-1">
+                                    <p class="font-black text-xl" style="color:#000;">Nouvelle date proposée par l'équipe FA GENESIS :</p>
+                                    <p class="font-black text-2xl mt-1" id="reproposedDateDisplay" style="color: var(--genesis-yellow);"></p>
+                                    <p class="text-black font-bold mt-2" id="reproposedMessageDisplay" style="font-style:italic;"></p>
+                                    <div class="flex gap-3 mt-4 flex-wrap">
+                                        <button onclick="acceptReschedule()" class="neo-btn-yellow px-6 py-3 font-black uppercase">
+                                            <i class="fas fa-check mr-2"></i>Accepter cette date
+                                        </button>
+                                        <button onclick="cancelStartDate()" class="px-6 py-3 font-black uppercase border-4 border-black bg-white hover:bg-gray-100">
+                                            <i class="fas fa-times mr-2"></i>Refuser
+                                        </button>
+                                    </div>
+                                    <p class="text-xs font-bold text-gray-500 mt-2">En cas de refus, vous pourrez proposer une nouvelle date.</p>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Date confirmee -->
                         <div id="scheduleConfirmedBlock" style="display: none;">
                             <div class="flex items-center gap-4 p-6 border-4 border-black" style="background: #e8f5e9;">
@@ -755,7 +776,15 @@
 
                 hideAllScheduleBlocks();
 
-                if (schedStatus === 'client_proposed') {
+                if (schedStatus === 'reproposed') {
+                    // L'equipe a contre-propose une date
+                    var reproposedBlock = document.getElementById('scheduleReproposedBlock');
+                    if (reproposedBlock) reproposedBlock.style.display = '';
+                    var reproposedDisp = document.getElementById('reproposedDateDisplay');
+                    if (reproposedDisp) reproposedDisp.textContent = formatDateFr(sub.reproposed_date || '');
+                    var reproposedMsg = document.getElementById('reproposedMessageDisplay');
+                    if (reproposedMsg) reproposedMsg.textContent = sub.repropose_message || '';
+                } else if (schedStatus === 'client_proposed') {
                     var pendingBlock = document.getElementById('schedulePendingBlock');
                     if (pendingBlock) pendingBlock.style.display = '';
                     var proposedDisp = document.getElementById('proposedDateDisplay');
@@ -806,7 +835,7 @@
         }
 
         function hideAllScheduleBlocks() {
-            var ids = ['scheduleFormBlock', 'schedulePendingBlock', 'scheduleConfirmedBlock', 'startDateFixedBlock'];
+            var ids = ['scheduleFormBlock', 'schedulePendingBlock', 'scheduleReproposedBlock', 'scheduleConfirmedBlock', 'startDateFixedBlock'];
             for (var i = 0; i < ids.length; i++) {
                 var el = document.getElementById(ids[i]);
                 if (el) el.style.display = 'none';
@@ -917,9 +946,29 @@
             }
         }
 
-        // Annuler la date de demarrage confirmee
+        // Accepter la contre-proposition de date de l'equipe
+        async function acceptReschedule() {
+            if (!_scheduleOrderId) { alert('Commande introuvable. Rechargez la page.'); return; }
+            try {
+                var token = localStorage.getItem('fa_genesis_token');
+                var resp = await fetchWithTimeout(DASH_API + '/api/orders/' + encodeURIComponent(_scheduleOrderId) + '/accept-reschedule', {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + (token || ''), 'Content-Type': 'application/json' }
+                }, 10000);
+                var data = await resp.json();
+                if (data.success) {
+                    loadDashboard();
+                } else {
+                    alert(data.error || 'Erreur lors de l\'acceptation de la date.');
+                }
+            } catch (err) {
+                alert('Erreur réseau : ' + err.message);
+            }
+        }
+
+        // Annuler la date de demarrage confirmee (ou refuser une contre-proposition)
         async function cancelStartDate() {
-            var orderId = window._activeOrderId;
+            var orderId = window._activeOrderId || _scheduleOrderId;
             if (!orderId) { alert('Identifiant de commande introuvable.'); return; }
             if (!confirm('Annuler la date de démarrage confirmée ? Le client pourra proposer une nouvelle date.')) return;
 

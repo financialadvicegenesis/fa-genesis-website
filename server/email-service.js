@@ -1454,6 +1454,176 @@ async function sendWelcomeEmail(clientEmail, prenom) {
 // EXPORTS
 // ============================================================
 
+// ============================================================
+// EMAILS - PLANIFICATION DE DATE DE DEMARRAGE
+// ============================================================
+
+/**
+ * Notification a l'admin (ou partenaire) quand un client propose une date de demarrage
+ */
+async function sendScheduleProposedNotification(recipientEmail, clientName, proposedDate, orderName) {
+    var transport = initializeTransporter();
+    if (!transport) {
+        console.log('[EMAIL] Transport non configure - Notification planning non envoyee');
+        return { success: false, reason: 'SMTP non configure' };
+    }
+
+    var dateStr = proposedDate;
+    try {
+        var d = new Date(proposedDate + 'T00:00:00');
+        dateStr = d.toLocaleDateString('fr-FR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+    } catch (e) {}
+
+    var frontUrl = process.env.FRONT_URL || 'https://fagenesis.com';
+
+    var content = '<h2 style="margin:0 0 20px 0;font-size:24px;color:#000;font-weight:700;">'
+        + 'Nouvelle demande de date</h2>'
+        + '<p style="margin:0 0 20px 0;font-size:16px;color:#333;line-height:1.6;">'
+        + '<strong>' + escapeHtml(clientName) + '</strong> a propose une date de demarrage pour sa commande.'
+        + '</p>'
+        + '<div style="background:#FFF9E6;border-left:4px solid #FFD700;padding:20px;margin:25px 0;">'
+        + '<table style="width:100%;border-collapse:collapse;">'
+        + '<tr><td style="padding:8px 0;font-weight:700;color:#666;">Client</td>'
+        + '<td style="padding:8px 0;color:#000;text-align:right;">' + escapeHtml(clientName) + '</td></tr>'
+        + '<tr><td style="padding:8px 0;font-weight:700;color:#666;">Offre</td>'
+        + '<td style="padding:8px 0;color:#000;text-align:right;">' + escapeHtml(orderName || '') + '</td></tr>'
+        + '<tr><td style="padding:8px 0;font-weight:700;color:#666;">Date proposee</td>'
+        + '<td style="padding:8px 0;color:#000;font-weight:900;text-align:right;">' + escapeHtml(dateStr) + '</td></tr>'
+        + '</table></div>'
+        + '<p style="margin:0 0 20px 0;font-size:15px;color:#333;">Connectez-vous a votre espace pour confirmer cette date ou proposer une autre.</p>'
+        + '<p style="margin:30px 0 0 0;font-size:16px;color:#333;">Cordialement,<br>'
+        + '<strong style="color:#000;">FA GENESIS</strong></p>';
+
+    try {
+        var result = await transport.sendMail({
+            from: '"' + (process.env.EMAIL_FROM_NAME || 'FA GENESIS') + '" <' + (process.env.EMAIL_FROM_ADDRESS || process.env.SMTP_USER) + '>',
+            to: recipientEmail,
+            subject: '[FA GENESIS] Nouvelle demande de date - ' + escapeHtml(clientName),
+            html: getEmailTemplate(content, 'Nouvelle demande de date')
+        });
+        console.log('[EMAIL] Notification planning envoyee a ' + recipientEmail);
+        return { success: true, messageId: result.messageId };
+    } catch (error) {
+        console.error('[EMAIL] Erreur notification planning:', error.message);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * Email au client quand sa date de demarrage est confirmee par l'equipe
+ */
+async function sendScheduleConfirmedToClient(clientEmail, clientName, confirmedDate, orderName) {
+    var transport = initializeTransporter();
+    if (!transport) {
+        console.log('[EMAIL] Transport non configure - Confirmation date non envoyee');
+        return { success: false, reason: 'SMTP non configure' };
+    }
+
+    var dateStr = confirmedDate;
+    try {
+        var d = new Date(confirmedDate + 'T00:00:00');
+        dateStr = d.toLocaleDateString('fr-FR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+    } catch (e) {}
+
+    var frontUrl = process.env.FRONT_URL || 'https://fagenesis.com';
+
+    var content = '<h2 style="margin:0 0 20px 0;font-size:24px;color:#000;font-weight:700;">'
+        + 'Votre date de demarrage est confirmee !</h2>'
+        + '<p style="margin:0 0 20px 0;font-size:16px;color:#333;line-height:1.6;">'
+        + 'Bonjour ' + escapeHtml(clientName) + ',<br><br>'
+        + 'Votre date de demarrage a ete confirmee par l\'equipe FA GENESIS. Votre parcours commence bientot !'
+        + '</p>'
+        + '<div style="background:#e8f5e9;border-left:4px solid #4CAF50;padding:20px;margin:25px 0;">'
+        + '<table style="width:100%;border-collapse:collapse;">'
+        + '<tr><td style="padding:8px 0;font-weight:700;color:#666;">Offre</td>'
+        + '<td style="padding:8px 0;color:#000;text-align:right;">' + escapeHtml(orderName || '') + '</td></tr>'
+        + '<tr><td style="padding:8px 0;font-weight:700;color:#666;">Date confirmee</td>'
+        + '<td style="padding:8px 0;color:#000;font-weight:900;text-align:right;">' + escapeHtml(dateStr) + '</td></tr>'
+        + '</table></div>'
+        + '<div style="text-align:center;margin:25px 0;">'
+        + '<a href="' + frontUrl + '/dashboard.html" target="_blank" '
+        + 'style="display:inline-block;background:#FFD700;color:#000;padding:16px 32px;font-weight:700;'
+        + 'text-transform:uppercase;text-decoration:none;font-size:14px;border:3px solid #000;">'
+        + 'Voir mon espace client</a></div>'
+        + '<p style="margin:30px 0 0 0;font-size:16px;color:#333;">Merci pour votre confiance,<br>'
+        + '<strong style="color:#000;">L\'equipe FA GENESIS</strong></p>';
+
+    try {
+        var result = await transport.sendMail({
+            from: '"' + (process.env.EMAIL_FROM_NAME || 'FA GENESIS') + '" <' + (process.env.EMAIL_FROM_ADDRESS || process.env.SMTP_USER) + '>',
+            to: clientEmail,
+            subject: '[FA GENESIS] Votre date de demarrage est confirmee !',
+            html: getEmailTemplate(content, 'Date confirmee')
+        });
+        console.log('[EMAIL] Confirmation date envoyee a ' + clientEmail);
+        return { success: true, messageId: result.messageId };
+    } catch (error) {
+        console.error('[EMAIL] Erreur confirmation date client:', error.message);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * Email au client quand l'admin ou le partenaire contre-propose une date
+ */
+async function sendScheduleReproposedToClient(clientEmail, clientName, reproposedDate, message, orderName) {
+    var transport = initializeTransporter();
+    if (!transport) {
+        console.log('[EMAIL] Transport non configure - Contre-proposition date non envoyee');
+        return { success: false, reason: 'SMTP non configure' };
+    }
+
+    var dateStr = reproposedDate;
+    try {
+        var d = new Date(reproposedDate + 'T00:00:00');
+        dateStr = d.toLocaleDateString('fr-FR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+    } catch (e) {}
+
+    var frontUrl = process.env.FRONT_URL || 'https://fagenesis.com';
+
+    var messageSection = '';
+    if (message) {
+        messageSection = '<div style="background:#f9f9f9;border-left:4px solid #ccc;padding:15px 20px;margin:20px 0;">'
+            + '<p style="margin:0 0 5px 0;font-weight:700;color:#333;">Message de l\'equipe :</p>'
+            + '<p style="margin:0;color:#555;">' + escapeHtml(message) + '</p></div>';
+    }
+
+    var content = '<h2 style="margin:0 0 20px 0;font-size:24px;color:#000;font-weight:700;">'
+        + 'Une nouvelle date vous est proposee</h2>'
+        + '<p style="margin:0 0 20px 0;font-size:16px;color:#333;line-height:1.6;">'
+        + 'Bonjour ' + escapeHtml(clientName) + ',<br><br>'
+        + 'L\'equipe FA GENESIS vous propose une autre date de demarrage pour votre commande '
+        + '"' + escapeHtml(orderName || '') + '".'
+        + '</p>'
+        + '<div style="background:#FFF9E6;border-left:4px solid #FFD700;padding:20px;margin:25px 0;">'
+        + '<p style="margin:0 0 10px 0;font-weight:700;color:#000;">Nouvelle date proposee :</p>'
+        + '<p style="margin:0;font-size:20px;color:#000;font-weight:900;">' + escapeHtml(dateStr) + '</p>'
+        + '</div>'
+        + messageSection
+        + '<p style="margin:0 0 20px 0;font-size:15px;color:#333;">Connectez-vous a votre espace client pour accepter cette date ou en demander une autre.</p>'
+        + '<div style="text-align:center;margin:25px 0;">'
+        + '<a href="' + frontUrl + '/dashboard.html" target="_blank" '
+        + 'style="display:inline-block;background:#FFD700;color:#000;padding:16px 32px;font-weight:700;'
+        + 'text-transform:uppercase;text-decoration:none;font-size:14px;border:3px solid #000;">'
+        + 'Voir mon espace client</a></div>'
+        + '<p style="margin:30px 0 0 0;font-size:16px;color:#333;">Merci pour votre confiance,<br>'
+        + '<strong style="color:#000;">L\'equipe FA GENESIS</strong></p>';
+
+    try {
+        var result = await transport.sendMail({
+            from: '"' + (process.env.EMAIL_FROM_NAME || 'FA GENESIS') + '" <' + (process.env.EMAIL_FROM_ADDRESS || process.env.SMTP_USER) + '>',
+            to: clientEmail,
+            subject: '[FA GENESIS] Une nouvelle date de demarrage vous est proposee',
+            html: getEmailTemplate(content, 'Nouvelle date proposee')
+        });
+        console.log('[EMAIL] Contre-proposition date envoyee a ' + clientEmail);
+        return { success: true, messageId: result.messageId };
+    } catch (error) {
+        console.error('[EMAIL] Erreur contre-proposition date client:', error.message);
+        return { success: false, error: error.message };
+    }
+}
+
 module.exports = {
     initializeTransporter,
     sendContactConfirmation,
@@ -1471,5 +1641,8 @@ module.exports = {
     sendSessionRequestedEmail,
     sendSessionProposedEmail,
     sendSessionCompletedEmail,
-    sendWelcomeEmail
+    sendWelcomeEmail,
+    sendScheduleProposedNotification,
+    sendScheduleConfirmedToClient,
+    sendScheduleReproposedToClient
 };
