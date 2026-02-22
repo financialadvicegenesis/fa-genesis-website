@@ -907,6 +907,60 @@ app.get('/api/orders/:orderId', (req, res) => {
     res.json(order);
 });
 
+/**
+ * POST /api/orders/:orderId/cancel-pending
+ * Client annule sa commande si l'acompte n'a pas encore ete paye
+ */
+app.post('/api/orders/:orderId/cancel-pending', authenticateToken, function(req, res) {
+    try {
+        var orderId = req.params.orderId;
+        var userId = req.user.userId || req.user.id;
+        var userEmail = req.user.email;
+
+        var order = getOrderById(orderId);
+        if (!order) {
+            return res.status(404).json({ success: false, error: 'Commande introuvable.' });
+        }
+
+        // Verifier que la commande appartient a cet utilisateur
+        var orderEmail = order.client_info && order.client_info.email ? order.client_info.email.toLowerCase() : '';
+        if (orderEmail !== (userEmail || '').toLowerCase()) {
+            return res.status(403).json({ success: false, error: 'Commande non autorisee.' });
+        }
+
+        // Verifier que l'acompte n'est pas deja paye
+        if (order.deposit_paid) {
+            return res.status(400).json({ success: false, error: 'Impossible d\'annuler : l\'acompte a deja ete regle.' });
+        }
+
+        // Annuler la commande
+        var updatedOrder = updateOrder(orderId, { status: 'cancelled', cancelled_at: new Date().toISOString(), cancelled_by: 'client' });
+
+        // Reinitialiser le statut de paiement de l'utilisateur
+        try {
+            var allUsers = loadUsers();
+            var uIdx = allUsers.findIndex(function(u) { return u.email && u.email.toLowerCase() === (userEmail || '').toLowerCase(); });
+            if (uIdx !== -1) {
+                allUsers[uIdx].paymentStatus = 'registered';
+                allUsers[uIdx].payment_status = 'registered';
+                allUsers[uIdx].activeOrderId = null;
+                allUsers[uIdx].activeOfferId = null;
+                saveUsers(allUsers);
+                console.log('[CANCEL-ORDER] Statut utilisateur reinitialise pour ' + userEmail);
+            }
+        } catch (syncErr) {
+            console.error('[CANCEL-ORDER] Erreur sync users:', syncErr.message);
+        }
+
+        console.log('[CANCEL-ORDER] Commande ' + orderId + ' annulee par ' + userEmail);
+        res.json({ success: true, message: 'Commande annulee avec succes.' });
+
+    } catch (err) {
+        console.error('[CANCEL-ORDER] Erreur:', err.message);
+        res.status(500).json({ success: false, error: 'Erreur serveur lors de l\'annulation.' });
+    }
+});
+
 // ============================================================
 // ROUTES - PAIEMENTS SUMUP
 // ============================================================

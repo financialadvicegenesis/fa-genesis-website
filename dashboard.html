@@ -203,6 +203,12 @@
                         <p class="text-sm text-gray-500 mt-4" id="depositAmountInfo">
                             <i class="fas fa-shield-alt mr-1"></i> Paiement sécurisé par SumUp
                         </p>
+                        <div class="mt-6 pt-6 border-t-2 border-gray-200">
+                            <button id="cancelOrderBtn" onclick="cancelPendingOrder()" class="text-sm font-bold uppercase text-gray-400 hover:text-red-600 transition border-2 border-gray-300 hover:border-red-500 px-6 py-2">
+                                <i class="fas fa-times mr-2"></i>Annuler cette commande
+                            </button>
+                            <p class="text-xs text-gray-400 mt-2">Vous pourrez choisir une autre offre après annulation.</p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -554,6 +560,8 @@
                         if (depositSec) {
                             depositSec.style.display = 'block';
                             var po = data.pendingOrder;
+                            // Stocker l'orderId pour le bouton d'annulation
+                            window._pendingOrderId = po.id;
                             var offerNameEl = document.getElementById('depositOfferName');
                             if (offerNameEl && po.product_name) offerNameEl.textContent = po.product_name;
                             var typeLabel = document.getElementById('depositOfferTypeLabel');
@@ -864,6 +872,43 @@
         }
 
         if (mobileMenuBtn) mobileMenuBtn.addEventListener('click', toggleMobileMenu);
+
+        // Annuler une commande en attente d'acompte
+        async function cancelPendingOrder() {
+            var orderId = window._pendingOrderId;
+            if (!orderId) { alert('Identifiant de commande introuvable.'); return; }
+            if (!confirm('Êtes-vous sûr de vouloir annuler cette commande ? Vous pourrez choisir une nouvelle offre ensuite.')) return;
+
+            var btn = document.getElementById('cancelOrderBtn');
+            if (btn) { btn.disabled = true; btn.textContent = 'Annulation en cours...'; }
+
+            try {
+                var token = localStorage.getItem('fa_genesis_token');
+                var resp = await fetch(DASH_API + '/api/orders/' + encodeURIComponent(orderId) + '/cancel-pending', {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' }
+                });
+                var data = await resp.json();
+                if (data.success) {
+                    // Mettre a jour le localStorage
+                    try {
+                        var sess = JSON.parse(localStorage.getItem('fa_genesis_session') || '{}');
+                        sess.paymentStatus = 'registered';
+                        sess.activeOfferId = null;
+                        sess.activeOrderId = null;
+                        localStorage.setItem('fa_genesis_session', JSON.stringify(sess));
+                    } catch (e) {}
+                    window._pendingOrderId = null;
+                    loadDashboard(); // Recharger le dashboard
+                } else {
+                    alert(data.error || 'Erreur lors de l\'annulation.');
+                    if (btn) { btn.disabled = false; btn.textContent = 'Annuler cette commande'; }
+                }
+            } catch (err) {
+                alert('Erreur réseau : ' + err.message);
+                if (btn) { btn.disabled = false; btn.textContent = 'Annuler cette commande'; }
+            }
+        }
 
         // Lancer le chargement
         loadDashboard();
