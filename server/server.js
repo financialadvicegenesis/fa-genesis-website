@@ -911,11 +911,13 @@ app.get('/api/orders/:orderId', (req, res) => {
  * POST /api/orders/:orderId/cancel-pending
  * Client annule sa commande si l'acompte n'a pas encore ete paye
  */
-app.post('/api/orders/:orderId/cancel-pending', authenticateToken, function(req, res) {
+app.post('/api/orders/:orderId/cancel-pending', function(req, res) {
     try {
+        var user = authenticateClient(req, res);
+        if (!user) return;
+
         var orderId = req.params.orderId;
-        var userId = req.user.userId || req.user.id;
-        var userEmail = req.user.email;
+        var userEmail = user.email;
 
         var order = getOrderById(orderId);
         if (!order) {
