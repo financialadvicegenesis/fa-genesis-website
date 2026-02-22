@@ -1855,23 +1855,23 @@
                 if (loaderSub) loaderSub.textContent = '';
             }
 
+            var _ordersApiUrl = (typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : (window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com')) + '/api/orders/all';
             try {
-                var response = await fetch(API_BASE_URL + '/api/orders/all');
-                if (!response.ok) throw new Error('HTTP ' + response.status);
+                var response = await fetch(_ordersApiUrl);
+                if (!response.ok) throw new Error('HTTP ' + response.status + ' ' + response.statusText);
                 var orders = await response.json();
                 if (loader) loader.style.display = 'none';
                 if (listEl) listEl.innerHTML = buildOrdersHtml(orders);
                 setCachedOrders(orders);
             } catch (err) {
-                console.error('[ADMIN] Erreur chargement commandes:', err);
+                console.error('[ADMIN] Erreur chargement commandes (' + _ordersApiUrl + '):', err);
                 if (loader) loader.style.display = 'none';
-                if (!cache) {
-                    if (listEl) listEl.innerHTML = '<div style="padding:20px;background:#ffd43b;border:2px solid black;color:black;text-align:center;">' +
-                        '<p style="font-weight:900;font-size:15px;margin-bottom:8px;"><i class="fas fa-exclamation-triangle" style="margin-right:8px;"></i>Erreur de chargement</p>' +
-                        '<p style="font-size:13px;margin-bottom:12px;">V\u00e9rifiez votre connexion et r\u00e9essayez.</p>' +
-                        '<button onclick="loadOrders();" style="background:black;color:white;border:2px solid black;padding:10px 24px;font-weight:900;cursor:pointer;font-size:13px;">' +
-                        '<i class="fas fa-redo" style="margin-right:6px;"></i>R\u00e9essayer</button></div>';
-                }
+                if (listEl) listEl.innerHTML = '<div style="padding:20px;background:#ffd43b;border:2px solid black;color:black;text-align:center;">' +
+                    '<p style="font-weight:900;font-size:15px;margin-bottom:8px;"><i class="fas fa-exclamation-triangle" style="margin-right:8px;"></i>Erreur de chargement</p>' +
+                    '<p style="font-size:13px;margin-bottom:8px;font-family:monospace;">' + (err.message || 'Erreur inconnue') + '</p>' +
+                    '<p style="font-size:11px;margin-bottom:12px;opacity:0.7;">' + _ordersApiUrl + '</p>' +
+                    '<button onclick="loadOrders();" style="background:black;color:white;border:2px solid black;padding:10px 24px;font-weight:900;cursor:pointer;font-size:13px;">' +
+                    '<i class="fas fa-redo" style="margin-right:6px;"></i>R\u00e9essayer</button></div>';
             }
         }
 
