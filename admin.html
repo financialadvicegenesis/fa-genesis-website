@@ -655,14 +655,10 @@
             document.getElementById('loginPage').style.display = 'none';
             document.getElementById('adminPanel').style.display = 'block';
             loadDashboard();
-            // Reveil immediat du serveur Render + keep-alive toutes les 10 min
-            try { fetch(API_BASE_URL + '/api/ping').catch(function(){}); } catch(e){}
-            startKeepAlive();
         }
 
         function handleLogout() {
             if (confirm('Voulez-vous vraiment vous déconnecter ?')) {
-                stopKeepAlive();
                 adminLogout();
                 location.reload();
             }
@@ -781,9 +777,8 @@
 
             } catch (error) {
                 console.error('[ADMIN] Erreur chargement dashboard:', error);
-                document.getElementById('statsContainer').innerHTML = '<p class="col-span-4 text-center py-8 font-bold" style="color:white;"><i class="fas fa-spinner fa-spin" style="margin-right:8px;color:var(--genesis-yellow);"></i>Le serveur d\u00e9marre, veuillez patienter...</p>';
-                document.getElementById('recentClients').innerHTML = '<p class="text-center py-8 font-bold" style="color:#aaa;">R\u00e9essai automatique...</p>';
-                setTimeout(function() { loadDashboard(); }, 3000);
+                document.getElementById('statsContainer').innerHTML = '<p class="col-span-4 text-center py-8 font-bold" style="color:white;"><i class="fas fa-exclamation-triangle" style="margin-right:8px;color:var(--genesis-yellow);"></i>Erreur de chargement. <button onclick="loadDashboard()" style="border:2px solid white;color:white;padding:4px 12px;font-weight:900;cursor:pointer;background:transparent;">R\u00e9essayer</button></p>';
+                document.getElementById('recentClients').innerHTML = '';
             }
         }
 
@@ -919,8 +914,7 @@
                 allBackendClients = await response.json();
             } catch (error) {
                 console.error('[ADMIN] Erreur chargement clients:', error);
-                document.getElementById('clientsList').innerHTML = '<p class="text-center py-8 opacity-50 font-bold">Chargement... (le serveur demarre)</p>';
-                setTimeout(function() { loadClientsList(); }, 5000);
+                document.getElementById('clientsList').innerHTML = '<p class="text-center py-8 font-bold">Erreur de chargement. <button onclick="loadClientsList()" style="border:2px solid black;padding:4px 12px;font-weight:900;cursor:pointer;">R\u00e9essayer</button></p>';
                 return;
             }
 
@@ -1543,8 +1537,7 @@
                 allMessages = await response.json();
             } catch (error) {
                 console.error('[ADMIN] Erreur chargement messages:', error);
-                document.getElementById('messagesList').innerHTML = '<p class="text-center py-8 opacity-50 font-bold">Chargement... (le serveur demarre)</p>';
-                setTimeout(function() { loadMessages(); }, 5000);
+                document.getElementById('messagesList').innerHTML = '<p class="text-center py-8 font-bold">Erreur de chargement. <button onclick="loadMessages()" style="border:2px solid black;padding:4px 12px;font-weight:900;cursor:pointer;">R\u00e9essayer</button></p>';
                 return;
             }
 
@@ -1736,7 +1729,7 @@
                     data = JSON.parse(responseText);
                 } catch (parseErr) {
                     console.error('[ADMIN] Reponse non-JSON du serveur:', responseText.substring(0, 500));
-                    alert('Le serveur est en cours de red\u00e9marrage. Veuillez patienter 30 secondes et r\u00e9essayer.');
+                    alert('Erreur de connexion au serveur. Veuillez r\u00e9essayer.');
                     btn.disabled = false;
                     btn.innerHTML = '<i class="fas fa-paper-plane mr-2"></i>ENVOYER';
                     return;
@@ -1769,25 +1762,11 @@
         }
 
         // ============================================================
-        // SECTION COMMANDES — chargement rapide avec cache + keep-alive
+        // SECTION COMMANDES — cache localStorage + fetch direct (Render Starter)
         // ============================================================
 
         var _ORDERS_CACHE_KEY = 'fa_genesis_admin_orders_v1';
-        var _keepAliveTimer = null;
-        var _pingAbortCtrl = null;
 
-        // --- Keep-alive : pinger /api/ping toutes les 10 min pour eviter le cold start ---
-        function startKeepAlive() {
-            if (_keepAliveTimer) return;
-            _keepAliveTimer = setInterval(function() {
-                try { fetch(API_BASE_URL + '/api/ping').catch(function(){}); } catch(e){}
-            }, 10 * 60 * 1000);
-        }
-        function stopKeepAlive() {
-            if (_keepAliveTimer) { clearInterval(_keepAliveTimer); _keepAliveTimer = null; }
-        }
-
-        // --- Cache localStorage ---
         function getCachedOrders() {
             try { return JSON.parse(localStorage.getItem(_ORDERS_CACHE_KEY) || 'null'); } catch(e) { return null; }
         }
@@ -1800,7 +1779,6 @@
             } catch(e) {}
         }
 
-        // --- Construire le HTML des commandes ---
         function buildOrdersHtml(orders) {
             if (!orders || orders.length === 0) {
                 return '<p class="text-center py-8 font-bold" style="color:white;">Aucune commande</p>';
@@ -1857,81 +1835,44 @@
             return html;
         }
 
-        // --- Ping /api/ping jusqu'au reveil du serveur, puis appel callback ---
-        function pingUntilAlive(onSuccess, onGiveUp, loaderMsg, loaderSub) {
-            var attempt = 0;
-            var maxAttempts = 45; // 90s max a 2s d'intervalle
-            var startTs = Date.now();
-            function tryPing() {
-                attempt++;
-                if (attempt > maxAttempts) { onGiveUp(); return; }
-                var elapsed = Math.round((Date.now() - startTs) / 1000);
-                if (loaderMsg) loaderMsg.textContent = 'R\u00e9veil du serveur en cours...';
-                if (loaderSub) loaderSub.textContent = 'Tentative ' + attempt + '/' + maxAttempts + ' \u2014 ' + elapsed + 's \u00e9coul\u00e9es';
-                fetch(API_BASE_URL + '/api/ping')
-                    .then(function(r) { if (r.ok) { onSuccess(); } else { setTimeout(tryPing, 2000); } })
-                    .catch(function() { setTimeout(tryPing, 2000); });
-            }
-            tryPing();
-        }
-
-        // --- Charger les commandes : cache immediat + reveil serveur + refresh ---
-        function loadOrders() {
+        async function loadOrders() {
             var loader = document.getElementById('ordersLoader');
             var loaderMsg = document.getElementById('ordersLoaderMsg');
             var loaderSub = document.getElementById('ordersLoaderSub');
             var listEl = document.getElementById('ordersList');
 
-            // 1. Afficher le cache immediatement (donnees instantanees)
+            // Afficher le cache immediatement si disponible
             var cache = getCachedOrders();
             if (cache && cache.orders) {
                 if (listEl) listEl.innerHTML = buildOrdersHtml(cache.orders);
                 if (loader) loader.style.display = '';
-                if (loaderMsg) loaderMsg.textContent = 'Actualisation en cours...';
+                if (loaderMsg) loaderMsg.textContent = 'Actualisation...';
                 if (loaderSub) loaderSub.textContent = cache.savedAt ? 'Donn\u00e9es du ' + cache.savedAt : '';
             } else {
                 if (listEl) listEl.innerHTML = '';
                 if (loader) loader.style.display = '';
                 if (loaderMsg) loaderMsg.textContent = 'Chargement des commandes...';
-                if (loaderSub) loaderSub.textContent = 'R\u00e9veil du serveur en cours...';
+                if (loaderSub) loaderSub.textContent = '';
             }
 
-            // 2. Pinger jusqu'au reveil, puis charger les commandes fraiches
-            pingUntilAlive(
-                function() {
-                    // Serveur reveille : fetch des commandes
-                    fetch(API_BASE_URL + '/api/orders/all')
-                        .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-                        .then(function(orders) {
-                            if (loader) loader.style.display = 'none';
-                            if (listEl) listEl.innerHTML = buildOrdersHtml(orders);
-                            setCachedOrders(orders);
-                            console.log('[ADMIN] Commandes chargees : ' + orders.length);
-                        })
-                        .catch(function(err) {
-                            console.error('[ADMIN] Erreur fetch commandes:', err);
-                            if (loader) loader.style.display = 'none';
-                            if (!cache) {
-                                if (listEl) listEl.innerHTML = '<div style="padding:20px;background:#ffd43b;border:2px solid black;color:black;text-align:center;">' +
-                                    '<p style="font-weight:900;font-size:15px;margin-bottom:8px;"><i class="fas fa-exclamation-triangle" style="margin-right:8px;"></i>Erreur de chargement</p>' +
-                                    '<button onclick="loadOrders();" style="background:black;color:white;border:2px solid black;padding:10px 24px;font-weight:900;cursor:pointer;font-size:13px;">' +
-                                    '<i class="fas fa-redo" style="margin-right:6px;"></i>R\u00e9essayer</button></div>';
-                            }
-                        });
-                },
-                function() {
-                    // Abandon apres 90s
-                    if (loader) loader.style.display = 'none';
-                    if (!cache) {
-                        if (listEl) listEl.innerHTML = '<div style="padding:20px;background:#ffd43b;border:2px solid black;color:black;text-align:center;">' +
-                            '<p style="font-weight:900;font-size:15px;margin-bottom:8px;"><i class="fas fa-exclamation-triangle" style="margin-right:8px;"></i>Serveur temporairement indisponible</p>' +
-                            '<p style="font-size:13px;margin-bottom:12px;">Le serveur Render (gratuit) est en veille. Cliquez pour r\u00e9essayer.</p>' +
-                            '<button onclick="loadOrders();" style="background:black;color:white;border:2px solid black;padding:10px 24px;font-weight:900;cursor:pointer;font-size:13px;">' +
-                            '<i class="fas fa-redo" style="margin-right:6px;"></i>R\u00e9essayer</button></div>';
-                    }
-                },
-                loaderMsg, loaderSub
-            );
+            try {
+                var response = await fetch(API_BASE_URL + '/api/orders/all');
+                if (!response.ok) throw new Error('HTTP ' + response.status);
+                var orders = await response.json();
+                if (loader) loader.style.display = 'none';
+                if (listEl) listEl.innerHTML = buildOrdersHtml(orders);
+                setCachedOrders(orders);
+            } catch (err) {
+                console.error('[ADMIN] Erreur chargement commandes:', err);
+                if (loader) loader.style.display = 'none';
+                if (!cache) {
+                    if (listEl) listEl.innerHTML = '<div style="padding:20px;background:#ffd43b;border:2px solid black;color:black;text-align:center;">' +
+                        '<p style="font-weight:900;font-size:15px;margin-bottom:8px;"><i class="fas fa-exclamation-triangle" style="margin-right:8px;"></i>Erreur de chargement</p>' +
+                        '<p style="font-size:13px;margin-bottom:12px;">V\u00e9rifiez votre connexion et r\u00e9essayez.</p>' +
+                        '<button onclick="loadOrders();" style="background:black;color:white;border:2px solid black;padding:10px 24px;font-weight:900;cursor:pointer;font-size:13px;">' +
+                        '<i class="fas fa-redo" style="margin-right:6px;"></i>R\u00e9essayer</button></div>';
+                }
+            }
         }
 
         // Annuler date de demarrage confirmee (admin)
@@ -2062,8 +2003,7 @@
                 allPartners = await response.json();
             } catch (error) {
                 console.error('[ADMIN] Erreur chargement partenaires:', error);
-                container.innerHTML = '<p class="text-center py-8 opacity-50 font-bold">Chargement... (le serveur demarre)</p>';
-                setTimeout(function() { loadPartnersList(); }, 5000);
+                container.innerHTML = '<p class="text-center py-8 font-bold">Erreur de chargement. <button onclick="loadPartnersList()" style="border:2px solid black;padding:4px 12px;font-weight:900;cursor:pointer;">R\u00e9essayer</button></p>';
                 return;
             }
 
@@ -2509,8 +2449,7 @@
             } catch (error) {
                 console.error('[ADMIN] Erreur chargement devis:', error);
                 var listEl = document.getElementById('quotesList');
-                if (listEl) listEl.innerHTML = '<p class="text-center py-8 opacity-50 font-bold">Chargement... (le serveur demarre)</p>';
-                setTimeout(function() { loadAdminQuotes(); }, 5000);
+                if (listEl) listEl.innerHTML = '<p class="text-center py-8 font-bold">Erreur de chargement. <button onclick="loadAdminQuotes()" style="border:2px solid black;padding:4px 12px;font-weight:900;cursor:pointer;">R\u00e9essayer</button></p>';
                 return;
             }
 

@@ -894,7 +894,7 @@
                 var resp = await fetchWithTimeout(DASH_API + '/api/orders/' + encodeURIComponent(orderId) + '/cancel-pending', {
                     method: 'POST',
                     headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' }
-                }, 20000);
+                }, 10000);
                 var data = await resp.json();
                 if (data.success) {
                     // Mettre a jour le localStorage
@@ -931,7 +931,7 @@
                 var resp = await fetchWithTimeout(DASH_API + '/api/orders/' + encodeURIComponent(orderId) + '/cancel-start-date', {
                     method: 'POST',
                     headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' }
-                }, 15000);
+                }, 10000);
                 var data = await resp.json();
                 if (data.success) {
                     window._activeOrderId = null;
