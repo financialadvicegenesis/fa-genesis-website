@@ -537,7 +537,10 @@
                         var blob = new Blob([byteArr], { type: mime });
                         var blobUrl = URL.createObjectURL(blob);
                         window._previewBlobUrl = blobUrl;
-                        contentHtml = '<iframe src="' + blobUrl + '" title="' + escapeAttr(liv.name) + '" style="width:90vw;height:80vh;border:4px solid var(--genesis-yellow);background:white;pointer-events:auto;"></iframe>';
+                        contentHtml = '<div style="background:#222;color:var(--genesis-yellow);padding:8px 16px;font-size:11px;font-weight:900;text-align:center;letter-spacing:1px;border:2px solid var(--genesis-yellow);margin-bottom:8px;width:90vw;box-sizing:border-box;">' +
+                            '<i class="fas fa-lock mr-2"></i>PR\u00c9VISUALISATION UNIQUEMENT \u2014 T\u00c9L\u00c9CHARGEMENT DISPONIBLE APR\u00c8S PAIEMENT DU SOLDE' +
+                            '</div>' +
+                            '<iframe src="' + blobUrl + '#toolbar=0&navpanes=0&view=FitH" title="' + escapeAttr(liv.name) + '" style="width:90vw;height:80vh;border:4px solid var(--genesis-yellow);background:white;pointer-events:auto;" oncontextmenu="return false"></iframe>';
                     } catch (convErr) {
                         contentHtml = '<div class="preview-no-content"><i class="fas fa-exclamation-triangle" style="font-size:48px;color:var(--genesis-yellow);margin-bottom:16px;display:block;"></i>Impossible d\'afficher l\'aperçu.<br><small>' + convErr.message + '</small></div>';
                     }
@@ -557,6 +560,16 @@
             overlay.addEventListener('click', function(e) {
                 if (e.target === overlay) closePreview();
             });
+
+            // Bloquer Ctrl+S et Ctrl+P pendant la prévisualisation
+            window._previewSaveBlocker = function(e) {
+                if (e.ctrlKey && (e.key === 's' || e.key === 'S' || e.key === 'p' || e.key === 'P')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return false;
+                }
+            };
+            document.addEventListener('keydown', window._previewSaveBlocker, true);
         }
 
         function closePreview() {
@@ -566,6 +579,10 @@
             if (window._previewBlobUrl) {
                 URL.revokeObjectURL(window._previewBlobUrl);
                 window._previewBlobUrl = null;
+            }
+            if (window._previewSaveBlocker) {
+                document.removeEventListener('keydown', window._previewSaveBlocker, true);
+                window._previewSaveBlocker = null;
             }
         }
 
