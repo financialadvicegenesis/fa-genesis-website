@@ -619,11 +619,13 @@ app.get('/api/dashboard', (req, res) => {
         var paidOrder = null;
         var pendingOrder = null;
         for (var i = 0; i < clientOrders.length; i++) {
-            if (clientOrders[i].deposit_paid === true && !paidOrder) {
-                paidOrder = clientOrders[i];
+            var o = clientOrders[i];
+            if (o.deposit_paid === true && !paidOrder) {
+                paidOrder = o;
             }
-            if (!clientOrders[i].deposit_paid && !pendingOrder) {
-                pendingOrder = clientOrders[i];
+            // Exclure les commandes annulees de la file d'attente
+            if (!o.deposit_paid && o.status !== 'cancelled' && !pendingOrder) {
+                pendingOrder = o;
             }
         }
 
@@ -1521,8 +1523,8 @@ app.get('/api/payments/history', (req, res) => {
                     product_name: ord.product_name || ''
                 });
             }
-            // Commande en attente d'acompte
-            if (!ord.deposit_paid && !activeOrder) {
+            // Commande en attente d'acompte (exclure les annulees)
+            if (!ord.deposit_paid && ord.status !== 'cancelled' && !activeOrder) {
                 activeOrder = ord;
             }
         }
@@ -3115,8 +3117,8 @@ app.get('/api/auth/me', (req, res) => {
         if (paidOrder) {
             meSubscription = buildActiveSubscription(user, paidOrder);
         } else {
-            // Chercher une commande en attente
-            var pendingOrd = userOrders.find(function(o) { return !o.deposit_paid; });
+            // Chercher une commande en attente (exclure les annulees)
+            var pendingOrd = userOrders.find(function(o) { return !o.deposit_paid && o.status !== 'cancelled'; });
             if (pendingOrd) {
                 meSubscription = buildActiveSubscription(user, pendingOrd);
             }
