@@ -1624,6 +1624,84 @@ async function sendScheduleReproposedToClient(clientEmail, clientName, repropose
     }
 }
 
+/**
+ * Notification a l'admin ou au partenaire quand un client annule sa date
+ * Ou notification au client quand l'admin/partenaire annule
+ */
+async function sendScheduleCancelledNotification(recipientEmail, recipientName, clientName, cancelledDate, orderName, cancelledBy) {
+    var transport = initializeTransporter();
+    if (!transport) {
+        console.log('[EMAIL] Transport non configure - Notification annulation date non envoyee');
+        return { success: false, reason: 'SMTP non configure' };
+    }
+
+    var dateStr = cancelledDate || 'Non renseignee';
+    if (cancelledDate) {
+        try {
+            var d = new Date(cancelledDate + 'T00:00:00');
+            dateStr = d.toLocaleDateString('fr-FR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+        } catch (e) {}
+    }
+
+    var frontUrl = process.env.FRONT_URL || 'https://fagenesis.com';
+    var isClientCancelling = (cancelledBy === 'client');
+
+    var title, intro, cta, ctaUrl;
+    if (isClientCancelling) {
+        title = 'Annulation de date - ' + escapeHtml(clientName);
+        intro = '<strong>' + escapeHtml(clientName) + '</strong> a annule sa date de demarrage pour la commande '
+            + '"' + escapeHtml(orderName || '') + '".'
+            + ' Le client va proposer une nouvelle date.';
+        cta = 'Voir l\'espace admin';
+        ctaUrl = frontUrl + '/admin.html';
+    } else {
+        title = 'Votre date de demarrage a ete annulee';
+        intro = 'Bonjour ' + escapeHtml(clientName) + ',<br><br>'
+            + 'Votre date de demarrage pour la commande "'
+            + escapeHtml(orderName || '') + '" a ete annulee par l\'equipe.'
+            + ' Vous pouvez proposer une nouvelle date depuis votre espace client.';
+        cta = 'Proposer une nouvelle date';
+        ctaUrl = frontUrl + '/dashboard.html';
+    }
+
+    var content = '<h2 style="margin:0 0 20px 0;font-size:24px;color:#000;font-weight:700;">'
+        + escapeHtml(title) + '</h2>'
+        + '<p style="margin:0 0 20px 0;font-size:16px;color:#333;line-height:1.6;">'
+        + intro + '</p>'
+        + '<div style="background:#FFF0F0;border-left:4px solid #e53e3e;padding:20px;margin:25px 0;">'
+        + '<table style="width:100%;border-collapse:collapse;">'
+        + '<tr><td style="padding:8px 0;font-weight:700;color:#666;">Client</td>'
+        + '<td style="padding:8px 0;color:#000;text-align:right;">' + escapeHtml(clientName) + '</td></tr>'
+        + '<tr><td style="padding:8px 0;font-weight:700;color:#666;">Offre</td>'
+        + '<td style="padding:8px 0;color:#000;text-align:right;">' + escapeHtml(orderName || '') + '</td></tr>'
+        + '<tr><td style="padding:8px 0;font-weight:700;color:#666;">Date annulee</td>'
+        + '<td style="padding:8px 0;color:#e53e3e;font-weight:900;text-align:right;">' + escapeHtml(dateStr) + '</td></tr>'
+        + '</table></div>'
+        + '<div style="text-align:center;margin:25px 0;">'
+        + '<a href="' + ctaUrl + '" target="_blank" '
+        + 'style="display:inline-block;background:#FFD700;color:#000;padding:16px 32px;font-weight:700;'
+        + 'text-transform:uppercase;text-decoration:none;font-size:14px;border:3px solid #000;">'
+        + escapeHtml(cta) + '</a></div>'
+        + '<p style="margin:30px 0 0 0;font-size:16px;color:#333;">Cordialement,<br>'
+        + '<strong style="color:#000;">FA GENESIS</strong></p>';
+
+    var subjectSuffix = isClientCancelling ? (clientName + ' - ' + escapeHtml(orderName || '')) : 'Commande ' + escapeHtml(orderName || '');
+
+    try {
+        var result = await transport.sendMail({
+            from: '"' + (process.env.EMAIL_FROM_NAME || 'FA GENESIS') + '" <' + (process.env.EMAIL_FROM_ADDRESS || process.env.SMTP_USER) + '>',
+            to: recipientEmail,
+            subject: '[FA GENESIS] Annulation de date - ' + subjectSuffix,
+            html: getEmailTemplate(content, 'Annulation de date')
+        });
+        console.log('[EMAIL] Notification annulation date envoyee a ' + recipientEmail);
+        return { success: true, messageId: result.messageId };
+    } catch (error) {
+        console.error('[EMAIL] Erreur notification annulation date:', error.message);
+        return { success: false, error: error.message };
+    }
+}
+
 module.exports = {
     initializeTransporter,
     sendContactConfirmation,
@@ -1644,5 +1722,6 @@ module.exports = {
     sendWelcomeEmail,
     sendScheduleProposedNotification,
     sendScheduleConfirmedToClient,
-    sendScheduleReproposedToClient
+    sendScheduleReproposedToClient,
+    sendScheduleCancelledNotification
 };

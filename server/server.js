@@ -1031,6 +1031,79 @@ app.post('/api/orders/:orderId/cancel-start-date', function(req, res) {
         }
 
         console.log('[CANCEL-DATE] Date annulee pour commande ' + orderId + ' par ' + callerRole);
+
+        // --- Notifications email ---
+        try {
+            var cancelClientName = (updatedOrder.client_info && (updatedOrder.client_info.first_name || updatedOrder.client_info.last_name))
+                ? ((updatedOrder.client_info.first_name || '') + ' ' + (updatedOrder.client_info.last_name || '')).trim()
+                : (updatedOrder.client_info && updatedOrder.client_info.email ? updatedOrder.client_info.email : 'Client');
+            var cancelOrderName = updatedOrder.offreName || updatedOrder.offre || 'Commande';
+            var cancelledDateVal = order.proposed_start_date || order.start_date || null;
+            var adminEmailForCancel = process.env.ADMIN_EMAIL || 'contact@fagenesis.com';
+
+            if (callerRole === 'client') {
+                // Notifier l'admin
+                emailService.sendScheduleCancelledNotification(
+                    adminEmailForCancel,
+                    'Admin FA GENESIS',
+                    cancelClientName,
+                    cancelledDateVal,
+                    cancelOrderName,
+                    'client'
+                );
+
+                // Notifier le partenaire si le kickoff est gere par un partenaire
+                var kickoffRole = order.kickoff_provider_role;
+                if (kickoffRole && kickoffRole !== 'admin') {
+                    var allCancelAssignments = loadPartnerAssignments();
+                    var cancelOrderAssignments = allCancelAssignments.filter(function(a) { return a.order_id === orderId && a.status === 'active'; });
+                    var allCancelPartners = loadPartners();
+
+                    var cancelTargetPartners = [];
+                    var sameTypeCancelAssignments = cancelOrderAssignments.filter(function(a) {
+                        if (a.partner_type) return a.partner_type === kickoffRole;
+                        var pt = allCancelPartners.find(function(p) { return p.id === a.partner_id; });
+                        return pt && pt.partner_type === kickoffRole;
+                    });
+                    if (sameTypeCancelAssignments.length > 0) {
+                        sameTypeCancelAssignments.forEach(function(a) {
+                            var pt = allCancelPartners.find(function(p) { return p.id === a.partner_id; });
+                            if (pt && pt.email) cancelTargetPartners.push(pt);
+                        });
+                    } else {
+                        allCancelPartners.forEach(function(pt) {
+                            if (pt.partner_type === kickoffRole && pt.email) cancelTargetPartners.push(pt);
+                        });
+                    }
+                    cancelTargetPartners.forEach(function(pt) {
+                        emailService.sendScheduleCancelledNotification(
+                            pt.email,
+                            pt.name || pt.email,
+                            cancelClientName,
+                            cancelledDateVal,
+                            cancelOrderName,
+                            'client'
+                        );
+                    });
+                }
+            } else {
+                // Admin ou partenaire annule → notifier le client
+                var cancelClientEmail = updatedOrder.client_info && updatedOrder.client_info.email ? updatedOrder.client_info.email : null;
+                if (cancelClientEmail) {
+                    emailService.sendScheduleCancelledNotification(
+                        cancelClientEmail,
+                        cancelClientName,
+                        cancelClientName,
+                        cancelledDateVal,
+                        cancelOrderName,
+                        callerRole
+                    );
+                }
+            }
+        } catch (notifErr) {
+            console.error('[CANCEL-DATE] Erreur notification email:', notifErr.message);
+        }
+
         res.json({ success: true, message: 'Date de demarrage annulee. Le client peut proposer une nouvelle date.' });
 
     } catch (err) {
