@@ -137,6 +137,121 @@ function savePartnerAssignments(assignments) {
     }
 }
 
+// ============================================================
+// ASSIGNATION AUTOMATIQUE DES INTERVENANTS (après acompte)
+// ============================================================
+var ASSIGNMENT_RULES = {
+    // Accompagnement Etudiant - consultant FA GENESIS uniquement
+    'etudiant-idea':    ['admin'],
+    'etudiant-starter': ['admin'],
+    'etudiant-launch':  ['admin'],
+    'etudiant-impact':  ['admin'],
+    // Accompagnement Particulier - consultant FA GENESIS uniquement
+    'particulier-idea':    ['admin'],
+    'particulier-starter': ['admin'],
+    'particulier-launch':  ['admin'],
+    'particulier-impact':  ['admin'],
+    // Accompagnement Entreprise - consultant FA GENESIS uniquement
+    'entreprise-start':      ['admin'],
+    'entreprise-visibility': ['admin'],
+    'entreprise-impact':     ['admin'],
+    // Photo & vidéo - devis = assignation manuelle uniquement
+    'photo-devis': [],
+    'video-devis': [],
+    // Marketing - marketer
+    'marketing-express':          ['marketer'],
+    'marketing-strategy':         ['marketer'],
+    'marketing-impact':           ['marketer'],
+    'marketing-option-digitales': ['marketer'],
+    // Médias - media
+    'media-visibility': ['media'],
+    'media-impact':     ['media'],
+    'media-premium':    ['media'],
+    'media-promotion':  ['media']
+};
+
+function assignIntervenantsFromOrder(orderId) {
+    try {
+        var orders = loadOrders();
+        var order = orders.find(function(o) { return o.id === orderId; });
+        if (!order) { console.log('[ASSIGN] Commande introuvable: ' + orderId); return; }
+
+        // Récupérer tous les product IDs (panier multi ou produit unique)
+        var productIds = [];
+        if (order.items && Array.isArray(order.items) && order.items.length > 0) {
+            order.items.forEach(function(item) { if (item.product_id) productIds.push(item.product_id); });
+        } else if (order.product_id) {
+            productIds.push(order.product_id);
+        }
+        if (productIds.length === 0) { console.log('[ASSIGN] Aucun product_id pour commande: ' + orderId); return; }
+
+        var allPartners = loadPartners();
+        var assignments = loadPartnerAssignments();
+        var newAssignments = [];
+        var assignedRoles = [];
+
+        productIds.forEach(function(productId) {
+            var roles = ASSIGNMENT_RULES[productId] || [];
+            roles.forEach(function(role) {
+                if (role === 'admin') {
+                    // Consultant FA GENESIS - pas d'assignation partenaire externe
+                    if (assignedRoles.indexOf('admin') === -1) assignedRoles.push('admin');
+                    return;
+                }
+                // Vérifier si ce type de partenaire est déjà assigné
+                var alreadyAssigned = assignments.find(function(a) {
+                    return a.order_id === orderId && a.partner_type === role && a.status === 'active';
+                });
+                var alreadyNew = newAssignments.find(function(a) {
+                    return a.order_id === orderId && a.partner_type === role;
+                });
+                if (alreadyAssigned || alreadyNew) {
+                    if (assignedRoles.indexOf(role) === -1) assignedRoles.push(role);
+                    return;
+                }
+                // Trouver un partenaire actif du bon type
+                var partner = allPartners.find(function(p) {
+                    return p.partner_type === role && p.status === 'active';
+                });
+                if (partner) {
+                    newAssignments.push({
+                        id: 'ASG-' + uuidv4().split('-')[0],
+                        partner_id: partner.id,
+                        partner_email: partner.email,
+                        partner_type: partner.partner_type,
+                        order_id: orderId,
+                        assigned_at: new Date().toISOString(),
+                        assigned_by: 'system-auto',
+                        status: 'active',
+                        notes: 'Auto-assigne depuis offre ' + productId
+                    });
+                    if (assignedRoles.indexOf(role) === -1) assignedRoles.push(role);
+                    console.log('[ASSIGN] Partenaire ' + partner.email + ' (' + role + ') assigne a ' + orderId);
+                } else {
+                    console.log('[ASSIGN] Aucun partenaire actif de type ' + role + ' pour ' + orderId);
+                }
+            });
+        });
+
+        if (newAssignments.length > 0) {
+            savePartnerAssignments(assignments.concat(newAssignments));
+        }
+
+        // Mettre à jour la commande avec les rôles assignés
+        var orderIdx = orders.findIndex(function(o) { return o.id === orderId; });
+        if (orderIdx !== -1) {
+            orders[orderIdx].assigned_roles = assignedRoles;
+            orders[orderIdx].assigned_at = new Date().toISOString();
+            if (!orders[orderIdx].project_status) orders[orderIdx].project_status = 'active';
+            saveOrders(orders);
+        }
+
+        console.log('[ASSIGN] Assignation terminee pour ' + orderId + '. Roles: ' + assignedRoles.join(', '));
+    } catch (e) {
+        console.error('[ASSIGN] Erreur assignIntervenantsFromOrder:', e);
+    }
+}
+
 function loadPartnerUploads() {
     try {
         if (fs.existsSync(PARTNER_UPLOADS_FILE)) {
@@ -1366,43 +1481,8 @@ app.post('/api/payments/sumup/webhook', async (req, res) => {
                         }
                     }).catch(err => console.error('[WEBHOOK] Erreur envoi email bienvenue:', err));
 
-                    // Auto-assigner un partenaire pour les prestations individuelles
-                    try {
-                        var productId = updatedOrder.product_id || '';
-                        var partnerTypeMap = { 'photo': 'photographer', 'video': 'videographer', 'marketing': 'marketer', 'media': 'media' };
-                        var prefix = productId.split('-')[0];
-                        var neededType = partnerTypeMap[prefix];
-                        if (neededType) {
-                            var allPartners = loadPartners();
-                            var availablePartner = allPartners.find(function(p) {
-                                return p.partner_type === neededType && p.status === 'active';
-                            });
-                            if (availablePartner) {
-                                var assignments = loadPartnerAssignments();
-                                var alreadyAssigned = assignments.find(function(a) {
-                                    return a.order_id === orderId && a.status === 'active';
-                                });
-                                if (!alreadyAssigned) {
-                                    var assignment = {
-                                        id: 'ASG-' + uuidv4().split('-')[0],
-                                        partner_id: availablePartner.id,
-                                        partner_email: availablePartner.email,
-                                        partner_type: availablePartner.partner_type,
-                                        order_id: orderId,
-                                        assigned_at: new Date().toISOString(),
-                                        assigned_by: 'system-auto-tarif',
-                                        status: 'active',
-                                        notes: 'Auto-assigne depuis tarif ' + productId
-                                    };
-                                    assignments.push(assignment);
-                                    savePartnerAssignments(assignments);
-                                    console.log('[WEBHOOK] Partenaire ' + availablePartner.email + ' auto-assigne a la commande ' + orderId);
-                                }
-                            }
-                        }
-                    } catch (autoAssignErr) {
-                        console.error('[WEBHOOK] Erreur auto-assignation partenaire:', autoAssignErr);
-                    }
+                    // Auto-assigner tous les intervenants selon les règles de l'offre
+                    assignIntervenantsFromOrder(orderId);
 
                     // NOTE: Le bootstrap projet est maintenant declenche par finalizeSchedule()
                     // apres que le client ait choisi une date ET que admin+partenaire aient confirme
@@ -1543,43 +1623,8 @@ app.post('/api/payments/verify', async (req, res) => {
                             }
                         }).catch(err => console.error('[VERIFY] Erreur envoi email bienvenue:', err));
 
-                        // Auto-assigner un partenaire pour les prestations individuelles
-                        try {
-                            var productId = updatedOrder.product_id || '';
-                            var partnerTypeMap = { 'photo': 'photographer', 'video': 'videographer', 'marketing': 'marketer', 'media': 'media' };
-                            var prefix = productId.split('-')[0];
-                            var neededType = partnerTypeMap[prefix];
-                            if (neededType) {
-                                var allPartners = loadPartners();
-                                var availablePartner = allPartners.find(function(p) {
-                                    return p.partner_type === neededType && p.status === 'active';
-                                });
-                                if (availablePartner) {
-                                    var assignments = loadPartnerAssignments();
-                                    var alreadyAssigned = assignments.find(function(a) {
-                                        return a.order_id === orderId && a.status === 'active';
-                                    });
-                                    if (!alreadyAssigned) {
-                                        var assignment = {
-                                            id: 'ASG-' + uuidv4().split('-')[0],
-                                            partner_id: availablePartner.id,
-                                            partner_email: availablePartner.email,
-                                            partner_type: availablePartner.partner_type,
-                                            order_id: orderId,
-                                            assigned_at: new Date().toISOString(),
-                                            assigned_by: 'system-auto-tarif',
-                                            status: 'active',
-                                            notes: 'Auto-assigne depuis tarif ' + productId
-                                        };
-                                        assignments.push(assignment);
-                                        savePartnerAssignments(assignments);
-                                        console.log('[VERIFY] Partenaire ' + availablePartner.email + ' auto-assigne a la commande ' + orderId);
-                                    }
-                                }
-                            }
-                        } catch (autoAssignErr) {
-                            console.error('[VERIFY] Erreur auto-assignation partenaire:', autoAssignErr);
-                        }
+                        // Auto-assigner tous les intervenants selon les règles de l'offre
+                        assignIntervenantsFromOrder(orderId);
 
                         // NOTE: Le bootstrap projet est maintenant declenche par finalizeSchedule()
                         // apres que le client ait choisi une date ET que admin+partenaire aient confirme

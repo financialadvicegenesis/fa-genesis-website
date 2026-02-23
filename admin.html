@@ -3927,11 +3927,21 @@
             var content = ta.value.trim();
             if (!content) { alert('Veuillez écrire un message.'); return; }
 
+            // Extraire le sujet du fil pour la continuité
+            var threadMsgs = allChatMessages.filter(function(m) {
+                return (m.from_email === toEmail || m.to_email === toEmail) && m.subject;
+            });
+            var origSubject = threadMsgs.length > 0 ? threadMsgs[threadMsgs.length - 1].subject : '';
+            var replySubject = '';
+            if (origSubject) {
+                replySubject = origSubject.toLowerCase().indexOf('re :') === 0 ? origSubject : 'Re : ' + origSubject;
+            }
+
             try {
                 var resp = await fetch(API_BASE_URL + '/api/admin/inbox/reply', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ to_email: toEmail, to_name: toName, content: content })
+                    body: JSON.stringify({ to_email: toEmail, to_name: toName, content: content, subject: replySubject })
                 });
                 var data = await resp.json();
                 if (data.ok) {

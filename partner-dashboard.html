@@ -2431,6 +2431,8 @@
     // ============================================================
     // PARTNER INBOX (Chat client <-> partenaire)
     // ============================================================
+    var allPartnerChatMessages = [];
+
     async function loadPartnerInbox() {
         var loader = document.getElementById('partnerInboxLoader');
         var emptyEl = document.getElementById('partnerInboxEmpty');
@@ -2449,6 +2451,7 @@
             if (!resp.ok) throw new Error('Erreur ' + resp.status);
             var data = await resp.json();
             var msgs = data.messages || [];
+            allPartnerChatMessages = msgs; // cache pour la continuité de sujet
 
             if (loader) loader.style.display = 'none';
 
@@ -2537,12 +2540,22 @@
         var content = ta.value.trim();
         if (!content) { alert('Veuillez écrire un message.'); return; }
 
+        // Extraire le sujet du fil pour la continuité
+        var threadMsgs = allPartnerChatMessages.filter(function(m) {
+            return (m.from_email === toEmail || m.to_email === toEmail) && m.subject;
+        });
+        var origSubject = threadMsgs.length > 0 ? threadMsgs[threadMsgs.length - 1].subject : '';
+        var replySubject = '';
+        if (origSubject) {
+            replySubject = origSubject.toLowerCase().indexOf('re :') === 0 ? origSubject : 'Re : ' + origSubject;
+        }
+
         try {
             var token = localStorage.getItem('fa_genesis_partner_token');
             var resp = await fetch(PARTNER_API_URL + '/api/partner/inbox/reply', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-                body: JSON.stringify({ to_email: toEmail, to_name: toName, content: content })
+                body: JSON.stringify({ to_email: toEmail, to_name: toName, content: content, subject: replySubject })
             });
             var data = await resp.json();
             if (data.ok) {
