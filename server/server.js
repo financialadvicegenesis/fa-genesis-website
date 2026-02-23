@@ -3910,6 +3910,77 @@ function saveChat(msgs) {
 }
 
 /**
+ * GET /api/my-partners — Client recupere les partenaires assignes a sa commande
+ * Utilise pour alimenter le selecteur de destinataires dans messagerie.html
+ */
+app.get('/api/my-partners', function(req, res) {
+    try {
+        var authHeader = req.headers.authorization;
+        if (!authHeader) return res.status(401).json({ error: 'Non autorise' });
+        var token = authHeader.replace('Bearer ', '').trim();
+        var users = loadUsers();
+        var user = users.find(function(u) { return u.sessionToken === token; });
+        if (!user) return res.status(401).json({ error: 'Session invalide' });
+
+        // Trouver la commande payee du client
+        var orders = loadOrders();
+        var paidOrder = null;
+        for (var i = 0; i < orders.length; i++) {
+            var o = orders[i];
+            if (o.client_info && o.client_info.email &&
+                o.client_info.email.toLowerCase() === user.email.toLowerCase() &&
+                o.deposit_paid === true) {
+                paidOrder = o;
+                break;
+            }
+        }
+
+        if (!paidOrder) {
+            return res.json({ ok: true, partners: [] });
+        }
+
+        // Trouver les assignments de cette commande
+        var allAssignments = loadPartnerAssignments();
+        var orderAssignments = allAssignments.filter(function(a) {
+            return a.order_id === paidOrder.id && a.status === 'active';
+        });
+
+        if (orderAssignments.length === 0) {
+            return res.json({ ok: true, partners: [] });
+        }
+
+        // Recuperer les infos des partenaires
+        var allPartners = loadPartners();
+        var partnerTypeLabels = {
+            'photographer': 'Photographe',
+            'videographer': 'Vidéaste',
+            'marketer': 'Consultant Marketing',
+            'media': 'Spécialiste Média'
+        };
+
+        var result = [];
+        orderAssignments.forEach(function(a) {
+            var p = allPartners.find(function(pt) { return pt.id === a.partner_id; });
+            if (p && p.email) {
+                var name = ((p.prenom || p.firstName || '') + ' ' + (p.nom || p.lastName || '')).trim() || p.email;
+                var typeLabel = partnerTypeLabels[p.partner_type] || p.partner_type || 'Partenaire';
+                result.push({
+                    email: p.email,
+                    name: name,
+                    partner_type: p.partner_type || '',
+                    label: typeLabel + ' — ' + name
+                });
+            }
+        });
+
+        res.json({ ok: true, partners: result });
+    } catch (err) {
+        console.error('[MY-PARTNERS] Erreur:', err.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
  * GET /api/messages — Client recupere ses messages de chat
  */
 app.get('/api/messages', function(req, res) {

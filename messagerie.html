@@ -202,6 +202,9 @@
                         <select id="msgRecipient">
                             <option value="admin">Consultant FA GENESIS</option>
                         </select>
+                        <p id="partnersInfo" style="display:none;margin-top:8px;font-size:12px;font-weight:700;color:#888;">
+                            <i class="fas fa-info-circle mr-1"></i>Les partenaires assignés à votre projet apparaîtront ici une fois votre accompagnement démarré.
+                        </p>
                     </div>
 
                     <!-- Sujet (optionnel) -->
@@ -385,42 +388,39 @@
         } catch (e) {}
 
         // ============================================================
-        // CHARGER LES PARTENAIRES ASSIGNÉS (depuis /api/dashboard)
+        // CHARGER LES PARTENAIRES ASSIGNÉS (depuis /api/my-partners)
         // ============================================================
         async function loadAssignedPartners() {
+            var select = document.getElementById('msgRecipient');
+            if (!select) return;
+
             try {
                 var token = localStorage.getItem('fa_genesis_token');
                 if (!token) return;
-                var resp = await fetch(MSG_API + '/api/dashboard', {
+
+                var resp = await fetch(MSG_API + '/api/my-partners', {
                     headers: { 'Authorization': 'Bearer ' + token }
                 });
                 if (!resp.ok) return;
                 var data = await resp.json();
-                if (!data.ok || !data.order) return;
-
-                var order = data.order;
-                var select = document.getElementById('msgRecipient');
-                if (!select) return;
-
-                // Partenaires assignés
-                var partnerLabels = {
-                    'photographer': 'Photographe',
-                    'videographer': 'Vidéaste',
-                    'marketer': 'Consultant Marketing',
-                    'media': 'Spécialiste Média'
-                };
-
-                if (order.partner_assignments && Array.isArray(order.partner_assignments)) {
-                    order.partner_assignments.forEach(function(pa) {
-                        if (pa.partner_email && pa.partner_type) {
-                            var opt = document.createElement('option');
-                            opt.value = 'partner:' + pa.partner_email;
-                            var label = partnerLabels[pa.partner_type] || pa.partner_type;
-                            opt.textContent = label + (pa.partner_name ? ' — ' + pa.partner_name : '');
-                            select.appendChild(opt);
-                        }
-                    });
+                if (!data.ok || !data.partners || data.partners.length === 0) {
+                    // Aucun partenaire assigné : afficher un message informatif
+                    var infoEl = document.getElementById('partnersInfo');
+                    if (infoEl) infoEl.style.display = '';
+                    return;
                 }
+
+                data.partners.forEach(function(p) {
+                    var opt = document.createElement('option');
+                    opt.value = 'partner:' + p.email;
+                    opt.textContent = p.label || p.name;
+                    select.appendChild(opt);
+                });
+
+                // Masquer le message informatif si des partenaires ont été trouvés
+                var infoEl = document.getElementById('partnersInfo');
+                if (infoEl) infoEl.style.display = 'none';
+
             } catch (e) {
                 console.error('[MESSAGERIE] Erreur chargement partenaires:', e.message);
             }
