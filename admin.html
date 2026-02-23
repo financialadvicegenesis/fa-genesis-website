@@ -3879,10 +3879,45 @@
             }
         }
 
-        function toggleAdminThread(email) {
+        async function toggleAdminThread(email) {
             var id = 'thread-' + email.replace(/[^a-z0-9]/gi, '_');
             var el = document.getElementById(id);
-            if (el) el.style.display = el.style.display === 'none' ? '' : 'none';
+            if (!el) return;
+            var isOpening = el.style.display === 'none';
+            el.style.display = isOpening ? '' : 'none';
+
+            if (!isOpening) return;
+
+            // Marquer tous les messages non lus de ce client comme lus
+            var unreadMsgs = allChatMessages.filter(function(m) {
+                return m.from_type === 'client' && m.from_email === email && !m.read_at;
+            });
+            if (unreadMsgs.length === 0) return;
+
+            for (var i = 0; i < unreadMsgs.length; i++) {
+                try {
+                    await fetch(API_BASE_URL + '/api/messages/' + unreadMsgs[i].id + '/read', { method: 'PATCH' });
+                    unreadMsgs[i].read_at = new Date().toISOString(); // mise à jour locale
+                } catch (e) {}
+            }
+
+            // Recalculer et mettre à jour le badge global
+            var totalUnread = allChatMessages.filter(function(m) { return m.from_type === 'client' && !m.read_at; }).length;
+            var badge = document.getElementById('adminInboxBadge');
+            if (badge) {
+                if (totalUnread > 0) { badge.textContent = totalUnread + ' non lu' + (totalUnread > 1 ? 's' : ''); badge.style.display = ''; }
+                else { badge.style.display = 'none'; }
+            }
+
+            // Mettre à jour visuellement le thread : supprimer le badge rouge et changer la bordure
+            var threadRow = el.parentElement;
+            if (threadRow) {
+                threadRow.style.borderColor = '#ddd';
+                var redBadgeEl = threadRow.querySelector('span[style*="f44336"]');
+                if (redBadgeEl) redBadgeEl.remove();
+                var redHeader = threadRow.querySelector('div[style*="fff3f3"]');
+                if (redHeader) redHeader.style.background = '#f5f5f5';
+            }
         }
 
         async function sendAdminInboxReply(toEmail, toName) {
