@@ -550,7 +550,68 @@
 
             wrapper.appendChild(meta);
             wrapper.appendChild(bubble);
+
+            // Bouton Répondre pour les messages reçus
+            if (!isSent) {
+                var replyBtn = document.createElement('button');
+                replyBtn.style.cssText = 'background:none;border:2px solid #555;color:#aaa;padding:4px 12px;font-size:11px;font-weight:900;text-transform:uppercase;cursor:pointer;letter-spacing:0.05em;margin-top:4px;';
+                replyBtn.innerHTML = '<i class="fas fa-reply" style="margin-right:4px;"></i>Répondre';
+                replyBtn.onmouseover = function() { this.style.borderColor = 'var(--genesis-yellow)'; this.style.color = 'var(--genesis-yellow)'; };
+                replyBtn.onmouseout = function() { this.style.borderColor = '#555'; this.style.color = '#aaa'; };
+                (function(m) {
+                    replyBtn.onclick = function() { replyToMessage(m); };
+                })(msg);
+                wrapper.appendChild(replyBtn);
+            }
+
             container.appendChild(wrapper);
+        }
+
+        // ============================================================
+        // RÉPONDRE À UN MESSAGE
+        // ============================================================
+        function replyToMessage(msg) {
+            // Sélectionner le bon destinataire
+            var select = document.getElementById('msgRecipient');
+            if (select) {
+                var targetVal = 'admin';
+                if (msg.from_type === 'partner' && msg.from_email) {
+                    targetVal = 'partner:' + msg.from_email;
+                }
+                // Chercher l'option correspondante
+                var found = false;
+                for (var i = 0; i < select.options.length; i++) {
+                    if (select.options[i].value === targetVal) {
+                        select.value = targetVal;
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) select.value = 'admin';
+            }
+
+            // Pré-remplir le sujet
+            var subjectInput = document.getElementById('msgSubject');
+            if (subjectInput) {
+                var origSubject = msg.subject || '';
+                if (origSubject && origSubject.substring(0, 3).toLowerCase() !== 're:') {
+                    subjectInput.value = 'Re : ' + origSubject;
+                } else if (origSubject) {
+                    subjectInput.value = origSubject;
+                }
+            }
+
+            // Vider le contenu précédent
+            var contentInput = document.getElementById('msgContent');
+            if (contentInput) {
+                contentInput.value = '';
+                // Scroll vers le formulaire et focus
+                var form = document.getElementById('msgRecipient');
+                if (form) {
+                    form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    setTimeout(function() { contentInput.focus(); }, 400);
+                }
+            }
         }
 
         // ============================================================

@@ -155,7 +155,7 @@ function getEmailTemplate(content, title = 'FA GENESIS') {
                                 <strong>FA GENESIS</strong> - Structurez votre idée. Lancez avec clarté
                             </p>
                             <p style="margin: 0; font-size: 12px; color: #333333; text-align: center;">
-                                Email : <a href="mailto:Financialadvicegenesis@gmail.com" style="color: #B8860B; font-weight:700;">Financialadvicegenesis@gmail.com</a>
+                                Email : <a href="mailto:Financialadvicegenesis@gmail.com" style="color: #FFD700; font-weight:700;">Financialadvicegenesis@gmail.com</a>
                             </p>
                             <p style="margin: 15px 0 0 0; font-size: 11px; color: #555555; text-align: center;">
                                 Cet email a été envoyé automatiquement. Merci de ne pas y répondre directement.
@@ -260,11 +260,11 @@ async function sendContactConfirmation(clientEmail, clientName, subject) {
         <p style="margin: 0 0 5px 0; font-size: 16px; color: #000000; font-weight: 700;">
             L'équipe Financial Advice Genesis
         </p>
-        <p style="margin: 0 0 10px 0; font-size: 14px; color: #B8860B; font-weight: 700; font-style: italic;">
+        <p style="margin: 0 0 10px 0; font-size: 14px; color: #FFD700; font-weight: 700; font-style: italic;">
             Build. Launch. Impact.
         </p>
         <p style="margin: 0; font-size: 14px; color: #666666;">
-            Contact : <a href="mailto:financialadvicegenesis@gmail.com" style="color: #B8860B;">financialadvicegenesis@gmail.com</a>
+            Contact : <a href="mailto:financialadvicegenesis@gmail.com" style="color: #FFD700; font-weight:700;">financialadvicegenesis@gmail.com</a>
         </p>
     `;
 
@@ -738,11 +738,11 @@ async function sendAdminReply(clientEmail, clientName, originalSubject, replyMes
         <p style="margin: 0 0 5px 0; font-size: 16px; color: #000000; font-weight: 700;">
             L'équipe Financial Advice Genesis
         </p>
-        <p style="margin: 0 0 10px 0; font-size: 14px; color: #B8860B; font-weight: 700; font-style: italic;">
+        <p style="margin: 0 0 10px 0; font-size: 14px; color: #FFD700; font-weight: 700; font-style: italic;">
             Build. Launch. Impact.
         </p>
         <p style="margin: 0; font-size: 14px; color: #666666;">
-            Contact : <a href="mailto:financialadvicegenesis@gmail.com" style="color: #B8860B;">financialadvicegenesis@gmail.com</a>
+            Contact : <a href="mailto:financialadvicegenesis@gmail.com" style="color: #FFD700; font-weight:700;">financialadvicegenesis@gmail.com</a>
         </p>
     `;
 
@@ -1105,11 +1105,11 @@ async function sendSessionConfirmedEmail(clientEmail, clientName, sessionData) {
         return { success: false, reason: 'SMTP non configure' };
     }
 
-    var dateStr = 'Date a confirmer';
+    var dateStr = 'Date à confirmer';
     if (sessionData.datetime_start) {
         var d = new Date(sessionData.datetime_start);
         dateStr = d.toLocaleDateString('fr-FR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })
-            + ' a ' + d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+            + ' à ' + d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
     }
 
     var meetSection = '';
@@ -1121,17 +1121,17 @@ async function sendSessionConfirmedEmail(clientEmail, clientName, sessionData) {
             + 'Rejoindre le Google Meet</a></div>';
     }
 
-    var locationStr = sessionData.location ? escapeHtml(sessionData.location) : 'A distance';
+    var locationStr = sessionData.location ? escapeHtml(sessionData.location) : 'À distance';
 
     var content = '<h2 style="margin:0 0 20px 0;font-size:24px;color:#000;font-weight:700;">'
-        + 'Seance confirmee, ' + escapeHtml(clientName) + ' !</h2>'
+        + 'Séance confirmée, ' + escapeHtml(clientName) + ' !</h2>'
         + '<p style="margin:0 0 20px 0;font-size:16px;color:#333;line-height:1.6;">'
-        + 'Votre seance a ete confirmee. Voici les details :</p>'
+        + 'Votre séance a été confirmée. Voici les détails :</p>'
         + '<div style="background:#f5f5f5;padding:20px;border-radius:4px;margin:25px 0;">'
         + '<table style="width:100%;border-collapse:collapse;">'
         + '<tr><td style="padding:8px 0;font-weight:700;color:#666;">Date & Heure</td>'
         + '<td style="padding:8px 0;color:#000;text-align:right;">' + escapeHtml(dateStr) + '</td></tr>'
-        + '<tr><td style="padding:8px 0;font-weight:700;color:#666;">Duree</td>'
+        + '<tr><td style="padding:8px 0;font-weight:700;color:#666;">Durée</td>'
         + '<td style="padding:8px 0;color:#000;text-align:right;">' + (sessionData.duration_minutes || 45) + ' min</td></tr>'
         + '<tr><td style="padding:8px 0;font-weight:700;color:#666;">Lieu</td>'
         + '<td style="padding:8px 0;color:#000;text-align:right;">' + locationStr + '</td></tr>'
@@ -1140,14 +1140,14 @@ async function sendSessionConfirmedEmail(clientEmail, clientName, sessionData) {
         + '</table></div>'
         + meetSection
         + '<p style="margin:30px 0 0 0;font-size:16px;color:#333;">Merci pour votre confiance,<br>'
-        + '<strong style="color:#000;">L\'equipe FA GENESIS</strong></p>';
+        + '<strong style="color:#000;">L\'équipe FA GENESIS</strong></p>';
 
     try {
         var result = await transport.sendMail({
             from: '"' + process.env.EMAIL_FROM_NAME + '" <' + process.env.EMAIL_FROM_ADDRESS + '>',
             to: clientEmail,
-            subject: '[FA GENESIS] Seance confirmee - ' + escapeHtml(dateStr),
-            html: getEmailTemplate(content, 'Seance confirmee')
+            subject: '[FA GENESIS] Séance confirmée - ' + escapeHtml(dateStr),
+            html: getEmailTemplate(content, 'Séance confirmée')
         });
         console.log('[EMAIL] Confirmation seance envoyee a ' + clientEmail);
         return { success: true, messageId: result.messageId };
@@ -1167,36 +1167,36 @@ async function sendSessionRescheduledEmail(clientEmail, clientName, sessionData)
         return { success: false, reason: 'SMTP non configure' };
     }
 
-    var dateStr = 'Date a confirmer';
+    var dateStr = 'Date à confirmer';
     if (sessionData.datetime_start) {
         var d = new Date(sessionData.datetime_start);
         dateStr = d.toLocaleDateString('fr-FR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })
-            + ' a ' + d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+            + ' à ' + d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
     }
 
     var content = '<h2 style="margin:0 0 20px 0;font-size:24px;color:#000;font-weight:700;">'
-        + 'Nouveau creneau propose, ' + escapeHtml(clientName) + '</h2>'
+        + 'Nouveau créneau proposé, ' + escapeHtml(clientName) + '</h2>'
         + '<p style="margin:0 0 20px 0;font-size:16px;color:#333;line-height:1.6;">'
-        + 'Un nouveau creneau a ete propose pour votre seance. Connectez-vous a votre espace client pour accepter ou demander un autre creneau.</p>'
+        + 'Un nouveau créneau a été proposé pour votre séance. Connectez-vous à votre espace client pour accepter ou demander un autre créneau.</p>'
         + '<div style="background:#FFF9E6;border-left:4px solid #FFD700;padding:20px;margin:25px 0;">'
-        + '<p style="margin:0 0 10px 0;font-weight:700;color:#000;">Nouveau creneau propose :</p>'
+        + '<p style="margin:0 0 10px 0;font-weight:700;color:#000;">Nouveau créneau proposé :</p>'
         + '<p style="margin:0;font-size:18px;color:#000;font-weight:700;">' + escapeHtml(dateStr) + '</p>'
-        + '<p style="margin:5px 0 0 0;color:#666;">Duree : ' + (sessionData.duration_minutes || 45) + ' min</p>'
+        + '<p style="margin:5px 0 0 0;color:#666;">Durée : ' + (sessionData.duration_minutes || 45) + ' min</p>'
         + '</div>'
         + '<div style="text-align:center;margin:25px 0;">'
         + '<a href="https://fagenesis.com/seances.html" target="_blank" '
         + 'style="display:inline-block;background:#FFD700;color:#000;padding:16px 32px;font-weight:700;'
         + 'text-transform:uppercase;text-decoration:none;font-size:14px;border:3px solid #000;">'
-        + 'Voir mes seances</a></div>'
+        + 'Voir mes séances</a></div>'
         + '<p style="margin:30px 0 0 0;font-size:16px;color:#333;">Merci pour votre confiance,<br>'
-        + '<strong style="color:#000;">L\'equipe FA GENESIS</strong></p>';
+        + '<strong style="color:#000;">L\'équipe FA GENESIS</strong></p>';
 
     try {
         var result = await transport.sendMail({
             from: '"' + process.env.EMAIL_FROM_NAME + '" <' + process.env.EMAIL_FROM_ADDRESS + '>',
             to: clientEmail,
-            subject: '[FA GENESIS] Nouveau creneau propose pour votre seance',
-            html: getEmailTemplate(content, 'Nouveau creneau')
+            subject: '[FA GENESIS] Nouveau créneau proposé pour votre séance',
+            html: getEmailTemplate(content, 'Nouveau créneau')
         });
         console.log('[EMAIL] Email reprogrammation envoye a ' + clientEmail);
         return { success: true, messageId: result.messageId };
@@ -1216,16 +1216,16 @@ async function sendSessionRequestedEmail(adminEmail, clientName, sessionData) {
         return { success: false, reason: 'SMTP non configure' };
     }
 
-    var typeLabels = { call: 'Appel / Visio', shooting: 'Shooting photo/video', meeting: 'Reunion / Consultation' };
-    var typeLabel = typeLabels[sessionData.session_type] || sessionData.session_type || 'Non precise';
+    var typeLabels = { call: 'Appel / Visio', shooting: 'Shooting photo/vidéo', meeting: 'Réunion / Consultation' };
+    var typeLabel = typeLabels[sessionData.session_type] || sessionData.session_type || 'Non précisé';
 
     var slotsHtml = '';
     if (sessionData.proposed_slots && sessionData.proposed_slots.length > 0) {
-        slotsHtml = '<p style="margin:10px 0 5px 0;font-weight:700;color:#333;">Creneaux proposes :</p><ul style="margin:0;padding-left:20px;">';
+        slotsHtml = '<p style="margin:10px 0 5px 0;font-weight:700;color:#333;">Créneaux proposés :</p><ul style="margin:0;padding-left:20px;">';
         for (var i = 0; i < sessionData.proposed_slots.length; i++) {
             var d = new Date(sessionData.proposed_slots[i]);
             var slotStr = d.toLocaleDateString('fr-FR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })
-                + ' a ' + d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+                + ' à ' + d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
             slotsHtml += '<li style="color:#555;">' + escapeHtml(slotStr) + '</li>';
         }
         slotsHtml += '</ul>';
@@ -1233,28 +1233,28 @@ async function sendSessionRequestedEmail(adminEmail, clientName, sessionData) {
 
     var providerLabel = '';
     if (sessionData.requested_provider_role) {
-        var roleLabels = { admin: 'Consultant FA GENESIS', photographer: 'Photographe', videographer: 'Videaste', marketer: 'Consultant Marketing', media: 'Specialiste Media' };
+        var roleLabels = { admin: 'Consultant FA GENESIS', photographer: 'Photographe', videographer: 'Vidéaste', marketer: 'Consultant Marketing', media: 'Spécialiste Média' };
         providerLabel = roleLabels[sessionData.requested_provider_role] || sessionData.requested_provider_role;
     }
 
     var content = '<h2 style="margin:0 0 20px 0;font-size:24px;color:#000;font-weight:700;">'
-        + 'Nouvelle demande de seance</h2>'
+        + 'Nouvelle demande de séance</h2>'
         + '<p style="margin:0 0 20px 0;font-size:16px;color:#333;line-height:1.6;">'
-        + '<strong>' + escapeHtml(clientName) + '</strong> a demande une nouvelle seance.</p>'
+        + '<strong>' + escapeHtml(clientName) + '</strong> a demandé une nouvelle séance.</p>'
         + '<div style="background:#f5f5f5;padding:20px;border-radius:4px;margin:25px 0;">'
         + '<table style="width:100%;border-collapse:collapse;">'
         + '<tr><td style="padding:8px 0;font-weight:700;color:#666;">Type</td>'
         + '<td style="padding:8px 0;color:#000;text-align:right;">' + escapeHtml(typeLabel) + '</td></tr>'
-        + (providerLabel ? '<tr><td style="padding:8px 0;font-weight:700;color:#666;">Intervenant souhaite</td>'
+        + (providerLabel ? '<tr><td style="padding:8px 0;font-weight:700;color:#666;">Intervenant souhaité</td>'
         + '<td style="padding:8px 0;color:#000;text-align:right;">' + escapeHtml(providerLabel) + '</td></tr>' : '')
-        + '<tr><td style="padding:8px 0;font-weight:700;color:#666;">Seance ID</td>'
+        + '<tr><td style="padding:8px 0;font-weight:700;color:#666;">Séance ID</td>'
         + '<td style="padding:8px 0;color:#000;text-align:right;">' + escapeHtml(sessionData.id || '') + '</td></tr>'
         + '</table></div>'
         + (sessionData.notes_client ? '<div style="background:#FFF9E6;border-left:4px solid #FFD700;padding:15px 20px;margin:20px 0;">'
         + '<p style="margin:0 0 5px 0;font-weight:700;color:#000;">Message du client :</p>'
         + '<p style="margin:0;color:#555;">' + escapeHtml(sessionData.notes_client) + '</p></div>' : '')
         + slotsHtml
-        + '<p style="margin:30px 0 0 0;font-size:14px;color:#666;">Connectez-vous a l\'interface admin pour gerer cette demande.</p>';
+        + '<p style="margin:30px 0 0 0;font-size:14px;color:#666;">Connectez-vous à l\'interface admin pour gérer cette demande.</p>';
 
     try {
         var recipients = [adminEmail];
@@ -1266,8 +1266,8 @@ async function sendSessionRequestedEmail(adminEmail, clientName, sessionData) {
         var result = await transport.sendMail({
             from: '"' + (process.env.EMAIL_FROM_NAME || 'FA GENESIS') + '" <' + (process.env.EMAIL_FROM_ADDRESS || process.env.SMTP_USER) + '>',
             to: adminEmail,
-            subject: '[FA GENESIS] Nouvelle demande de seance de ' + escapeHtml(clientName),
-            html: getEmailTemplate(content, 'Nouvelle demande de seance')
+            subject: '[FA GENESIS] Nouvelle demande de séance de ' + escapeHtml(clientName),
+            html: getEmailTemplate(content, 'Nouvelle demande de séance')
         });
         console.log('[EMAIL] Notification demande seance envoyee a ' + adminEmail);
         return { success: true, messageId: result.messageId };
@@ -1297,29 +1297,29 @@ async function sendSessionProposedEmail(clientEmail, clientName, sessionData) {
     var frontUrl = process.env.FRONT_URL || 'https://fagenesis.com';
 
     var content = '<h2 style="margin:0 0 20px 0;font-size:24px;color:#000;font-weight:700;">'
-        + 'Un creneau vous a ete propose, ' + escapeHtml(clientName) + '</h2>'
+        + 'Un créneau vous a été proposé, ' + escapeHtml(clientName) + '</h2>'
         + '<p style="margin:0 0 20px 0;font-size:16px;color:#333;line-height:1.6;">'
-        + 'Un intervenant vous a propose un creneau pour votre seance. Connectez-vous pour accepter ou demander un autre creneau.</p>'
+        + 'Un intervenant vous a proposé un créneau pour votre séance. Connectez-vous pour accepter ou demander un autre créneau.</p>'
         + '<div style="background:#FFF9E6;border-left:4px solid #FFD700;padding:20px;margin:25px 0;">'
-        + '<p style="margin:0 0 10px 0;font-weight:700;color:#000;">Creneau propose :</p>'
+        + '<p style="margin:0 0 10px 0;font-weight:700;color:#000;">Créneau proposé :</p>'
         + '<p style="margin:0;font-size:18px;color:#000;font-weight:700;">' + escapeHtml(dateStr) + '</p>'
-        + '<p style="margin:5px 0 0 0;color:#666;">Duree : ' + (sessionData.duration_minutes || 45) + ' min</p>'
+        + '<p style="margin:5px 0 0 0;color:#666;">Durée : ' + (sessionData.duration_minutes || 45) + ' min</p>'
         + (sessionData.partner_name ? '<p style="margin:5px 0 0 0;color:#666;">Avec : ' + escapeHtml(sessionData.partner_name) + '</p>' : '')
         + '</div>'
         + '<div style="text-align:center;margin:25px 0;">'
         + '<a href="' + frontUrl + '/seances.html" target="_blank" '
         + 'style="display:inline-block;background:#FFD700;color:#000;padding:16px 32px;font-weight:700;'
         + 'text-transform:uppercase;text-decoration:none;font-size:14px;border:3px solid #000;">'
-        + 'Voir mes seances</a></div>'
+        + 'Voir mes séances</a></div>'
         + '<p style="margin:30px 0 0 0;font-size:16px;color:#333;">Merci pour votre confiance,<br>'
-        + '<strong style="color:#000;">L\'equipe FA GENESIS</strong></p>';
+        + '<strong style="color:#000;">L\'équipe FA GENESIS</strong></p>';
 
     try {
         var result = await transport.sendMail({
             from: '"' + (process.env.EMAIL_FROM_NAME || 'FA GENESIS') + '" <' + (process.env.EMAIL_FROM_ADDRESS || process.env.SMTP_USER) + '>',
             to: clientEmail,
-            subject: '[FA GENESIS] Un creneau vous a ete propose pour votre seance',
-            html: getEmailTemplate(content, 'Creneau propose')
+            subject: '[FA GENESIS] Un créneau vous a été proposé pour votre séance',
+            html: getEmailTemplate(content, 'Créneau proposé')
         });
         console.log('[EMAIL] Email creneau propose envoye a ' + clientEmail);
         return { success: true, messageId: result.messageId };
@@ -1348,26 +1348,26 @@ async function sendSessionCompletedEmail(clientEmail, clientName, sessionData) {
     }
 
     var content = '<h2 style="margin:0 0 20px 0;font-size:24px;color:#000;font-weight:700;">'
-        + 'Seance terminee, ' + escapeHtml(clientName) + ' !</h2>'
+        + 'Séance terminée, ' + escapeHtml(clientName) + ' !</h2>'
         + '<p style="margin:0 0 20px 0;font-size:16px;color:#333;line-height:1.6;">'
-        + 'Votre seance' + (dateStr ? ' du ' + escapeHtml(dateStr) : '') + ' est maintenant terminee.</p>'
+        + 'Votre séance' + (dateStr ? ' du ' + escapeHtml(dateStr) : '') + ' est maintenant terminée.</p>'
         + '<div style="background:#e8f5e9;border-left:4px solid #4caf50;padding:20px;margin:25px 0;">'
         + '<p style="margin:0;font-size:15px;color:#2e7d32;">'
-        + '<strong>Vos livrables seront bientot disponibles</strong> dans votre espace client.</p></div>'
+        + '<strong>Vos livrables seront bientôt disponibles</strong> dans votre espace client.</p></div>'
         + '<div style="text-align:center;margin:25px 0;">'
         + '<a href="' + frontUrl + '/livrables.html" target="_blank" '
         + 'style="display:inline-block;background:#FFD700;color:#000;padding:16px 32px;font-weight:700;'
         + 'text-transform:uppercase;text-decoration:none;font-size:14px;border:3px solid #000;">'
         + 'Voir mes livrables</a></div>'
         + '<p style="margin:30px 0 0 0;font-size:16px;color:#333;">Merci pour votre confiance,<br>'
-        + '<strong style="color:#000;">L\'equipe FA GENESIS</strong></p>';
+        + '<strong style="color:#000;">L\'équipe FA GENESIS</strong></p>';
 
     try {
         var result = await transport.sendMail({
             from: '"' + (process.env.EMAIL_FROM_NAME || 'FA GENESIS') + '" <' + (process.env.EMAIL_FROM_ADDRESS || process.env.SMTP_USER) + '>',
             to: clientEmail,
-            subject: '[FA GENESIS] Votre seance est terminee',
-            html: getEmailTemplate(content, 'Seance terminee')
+            subject: '[FA GENESIS] Votre séance est terminée',
+            html: getEmailTemplate(content, 'Séance terminée')
         });
         console.log('[EMAIL] Email seance terminee envoye a ' + clientEmail);
         return { success: true, messageId: result.messageId };
@@ -1399,23 +1399,23 @@ async function sendWelcomeEmail(clientEmail, prenom) {
         </h2>
 
         <p style="margin: 0 0 20px 0; font-size: 16px; color: #333333; line-height: 1.6;">
-            Nous sommes ravis de vous accueillir chez <strong>FA GENESIS</strong>. Votre compte a bien ete cree avec succes.
+            Nous sommes ravis de vous accueillir chez <strong>FA GENESIS</strong>. Votre compte a bien été créé avec succès.
         </p>
 
         <div style="background-color: #FFF9E6; border-left: 4px solid #FFD700; padding: 20px; margin: 25px 0;">
             <p style="margin: 0 0 15px 0; font-weight: 700; color: #000; font-size: 16px;">
-                Pour demarrer votre accompagnement :
+                Pour démarrer votre accompagnement :
             </p>
             <ol style="margin: 0; padding-left: 20px; color: #333; line-height: 2;">
-                <li><strong>Decouvrez nos prestations</strong> - Consultez notre catalogue d'offres et tarifs</li>
-                <li><strong>Ajoutez au panier</strong> - Selectionnez les prestations adaptees a vos besoins</li>
+                <li><strong>Découvrez nos prestations</strong> - Consultez notre catalogue d'offres et tarifs</li>
+                <li><strong>Ajoutez au panier</strong> - Sélectionnez les prestations adaptées à vos besoins</li>
                 <li><strong>Lancez votre projet</strong> - Finalisez votre commande et commencez l'aventure</li>
             </ol>
         </div>
 
         <div style="background-color: #000000; color: #ffffff; padding: 20px; border-radius: 4px; margin: 25px 0; text-align: center;">
             <p style="margin: 0 0 15px 0; font-size: 14px; color: #cccccc;">
-                Decouvrez nos offres et tarifs
+                Découvrez nos offres et tarifs
             </p>
             <a href="${frontUrl}/offres.html"
                style="display: inline-block; background-color: #FFD700; color: #000; padding: 15px 30px; text-decoration: none; font-weight: 700; border-radius: 4px; font-size: 16px;">
@@ -1424,12 +1424,12 @@ async function sendWelcomeEmail(clientEmail, prenom) {
         </div>
 
         <p style="margin: 25px 0 15px 0; font-size: 16px; color: #333333; line-height: 1.6;">
-            <strong>Une question ?</strong> Notre equipe est a votre disposition pour vous accompagner. N'hesitez pas a nous contacter par email ou via le formulaire de contact.
+            <strong>Une question ?</strong> Notre équipe est à votre disposition pour vous accompagner. N'hésitez pas à nous contacter par email ou via le formulaire de contact.
         </p>
 
         <p style="margin: 30px 0 0 0; font-size: 16px; color: #333333;">
-            A tres bientot,<br>
-            <strong style="color: #000000;">L'equipe FA GENESIS</strong>
+            À très bientôt,<br>
+            <strong style="color: #000000;">L'équipe FA GENESIS</strong>
         </p>
     `;
 
@@ -1437,7 +1437,7 @@ async function sendWelcomeEmail(clientEmail, prenom) {
         const result = await transport.sendMail({
             from: `"${process.env.EMAIL_FROM_NAME}" <${process.env.EMAIL_FROM_ADDRESS}>`,
             to: clientEmail,
-            subject: `[FA GENESIS] Bienvenue ${prenom} ! Decouvrez nos offres et tarifs`,
+            subject: `[FA GENESIS] Bienvenue ${prenom} ! Découvrez nos offres et tarifs`,
             html: getEmailTemplate(content, 'Bienvenue chez FA GENESIS')
         });
 
@@ -1479,7 +1479,7 @@ async function sendScheduleProposedNotification(recipientEmail, clientName, prop
     var content = '<h2 style="margin:0 0 20px 0;font-size:24px;color:#000;font-weight:700;">'
         + 'Nouvelle demande de date</h2>'
         + '<p style="margin:0 0 20px 0;font-size:16px;color:#333;line-height:1.6;">'
-        + '<strong>' + escapeHtml(clientName) + '</strong> a propose une date de demarrage pour sa commande.'
+        + '<strong>' + escapeHtml(clientName) + '</strong> a proposé une date de démarrage pour sa commande.'
         + '</p>'
         + '<div style="background:#FFF9E6;border-left:4px solid #FFD700;padding:20px;margin:25px 0;">'
         + '<table style="width:100%;border-collapse:collapse;">'
@@ -1487,10 +1487,10 @@ async function sendScheduleProposedNotification(recipientEmail, clientName, prop
         + '<td style="padding:8px 0;color:#000;text-align:right;">' + escapeHtml(clientName) + '</td></tr>'
         + '<tr><td style="padding:8px 0;font-weight:700;color:#666;">Offre</td>'
         + '<td style="padding:8px 0;color:#000;text-align:right;">' + escapeHtml(orderName || '') + '</td></tr>'
-        + '<tr><td style="padding:8px 0;font-weight:700;color:#666;">Date proposee</td>'
+        + '<tr><td style="padding:8px 0;font-weight:700;color:#666;">Date proposée</td>'
         + '<td style="padding:8px 0;color:#000;font-weight:900;text-align:right;">' + escapeHtml(dateStr) + '</td></tr>'
         + '</table></div>'
-        + '<p style="margin:0 0 20px 0;font-size:15px;color:#333;">Connectez-vous a votre espace pour confirmer cette date ou proposer une autre.</p>'
+        + '<p style="margin:0 0 20px 0;font-size:15px;color:#333;">Connectez-vous à votre espace pour confirmer cette date ou en proposer une autre.</p>'
         + '<p style="margin:30px 0 0 0;font-size:16px;color:#333;">Cordialement,<br>'
         + '<strong style="color:#000;">FA GENESIS</strong></p>';
 
@@ -1528,16 +1528,16 @@ async function sendScheduleConfirmedToClient(clientEmail, clientName, confirmedD
     var frontUrl = process.env.FRONT_URL || 'https://fagenesis.com';
 
     var content = '<h2 style="margin:0 0 20px 0;font-size:24px;color:#000;font-weight:700;">'
-        + 'Votre date de demarrage est confirmee !</h2>'
+        + 'Votre date de démarrage est confirmée !</h2>'
         + '<p style="margin:0 0 20px 0;font-size:16px;color:#333;line-height:1.6;">'
         + 'Bonjour ' + escapeHtml(clientName) + ',<br><br>'
-        + 'Votre date de demarrage a ete confirmee par l\'equipe FA GENESIS. Votre parcours commence bientot !'
+        + 'Votre date de démarrage a été confirmée par l\'équipe FA GENESIS. Votre parcours commence bientôt !'
         + '</p>'
         + '<div style="background:#e8f5e9;border-left:4px solid #4CAF50;padding:20px;margin:25px 0;">'
         + '<table style="width:100%;border-collapse:collapse;">'
         + '<tr><td style="padding:8px 0;font-weight:700;color:#666;">Offre</td>'
         + '<td style="padding:8px 0;color:#000;text-align:right;">' + escapeHtml(orderName || '') + '</td></tr>'
-        + '<tr><td style="padding:8px 0;font-weight:700;color:#666;">Date confirmee</td>'
+        + '<tr><td style="padding:8px 0;font-weight:700;color:#666;">Date confirmée</td>'
         + '<td style="padding:8px 0;color:#000;font-weight:900;text-align:right;">' + escapeHtml(dateStr) + '</td></tr>'
         + '</table></div>'
         + '<div style="text-align:center;margin:25px 0;">'
@@ -1552,8 +1552,8 @@ async function sendScheduleConfirmedToClient(clientEmail, clientName, confirmedD
         var result = await transport.sendMail({
             from: '"' + (process.env.EMAIL_FROM_NAME || 'FA GENESIS') + '" <' + (process.env.EMAIL_FROM_ADDRESS || process.env.SMTP_USER) + '>',
             to: clientEmail,
-            subject: '[FA GENESIS] Votre date de demarrage est confirmee !',
-            html: getEmailTemplate(content, 'Date confirmee')
+            subject: '[FA GENESIS] Votre date de démarrage est confirmée !',
+            html: getEmailTemplate(content, 'Date confirmée')
         });
         console.log('[EMAIL] Confirmation date envoyee a ' + clientEmail);
         return { success: true, messageId: result.messageId };
@@ -1589,10 +1589,10 @@ async function sendScheduleReproposedToClient(clientEmail, clientName, repropose
     }
 
     var content = '<h2 style="margin:0 0 20px 0;font-size:24px;color:#000;font-weight:700;">'
-        + 'Une nouvelle date vous est proposee</h2>'
+        + 'Une nouvelle date vous est proposée</h2>'
         + '<p style="margin:0 0 20px 0;font-size:16px;color:#333;line-height:1.6;">'
         + 'Bonjour ' + escapeHtml(clientName) + ',<br><br>'
-        + 'L\'equipe FA GENESIS vous propose une autre date de demarrage pour votre commande '
+        + 'L\'équipe FA GENESIS vous propose une autre date de démarrage pour votre commande '
         + '"' + escapeHtml(orderName || '') + '".'
         + '</p>'
         + '<div style="background:#FFF9E6;border-left:4px solid #FFD700;padding:20px;margin:25px 0;">'
@@ -1613,8 +1613,8 @@ async function sendScheduleReproposedToClient(clientEmail, clientName, repropose
         var result = await transport.sendMail({
             from: '"' + (process.env.EMAIL_FROM_NAME || 'FA GENESIS') + '" <' + (process.env.EMAIL_FROM_ADDRESS || process.env.SMTP_USER) + '>',
             to: clientEmail,
-            subject: '[FA GENESIS] Une nouvelle date de demarrage vous est proposee',
-            html: getEmailTemplate(content, 'Nouvelle date proposee')
+            subject: '[FA GENESIS] Une nouvelle date de démarrage vous est proposée',
+            html: getEmailTemplate(content, 'Nouvelle date proposée')
         });
         console.log('[EMAIL] Contre-proposition date envoyee a ' + clientEmail);
         return { success: true, messageId: result.messageId };
@@ -1649,7 +1649,7 @@ async function sendScheduleCancelledNotification(recipientEmail, recipientName, 
     var title, intro, cta, ctaUrl;
     if (isClientCancelling) {
         title = 'Annulation de date - ' + escapeHtml(clientName);
-        intro = '<strong>' + escapeHtml(clientName) + '</strong> a annule sa date de demarrage pour la commande '
+        intro = '<strong>' + escapeHtml(clientName) + '</strong> a annulé sa date de démarrage pour la commande '
             + '"' + escapeHtml(orderName || '') + '".'
             + ' Le client va proposer une nouvelle date.';
         cta = 'Voir l\'espace admin';
@@ -1657,8 +1657,8 @@ async function sendScheduleCancelledNotification(recipientEmail, recipientName, 
     } else {
         title = 'Votre date de demarrage a ete annulee';
         intro = 'Bonjour ' + escapeHtml(clientName) + ',<br><br>'
-            + 'Votre date de demarrage pour la commande "'
-            + escapeHtml(orderName || '') + '" a ete annulee par l\'equipe.'
+            + 'Votre date de démarrage pour la commande "'
+            + escapeHtml(orderName || '') + '" a été annulée par l\'équipe.'
             + ' Vous pouvez proposer une nouvelle date depuis votre espace client.';
         cta = 'Proposer une nouvelle date';
         ctaUrl = frontUrl + '/dashboard.html';
@@ -1674,7 +1674,7 @@ async function sendScheduleCancelledNotification(recipientEmail, recipientName, 
         + '<td style="padding:8px 0;color:#000;text-align:right;">' + escapeHtml(clientName) + '</td></tr>'
         + '<tr><td style="padding:8px 0;font-weight:700;color:#666;">Offre</td>'
         + '<td style="padding:8px 0;color:#000;text-align:right;">' + escapeHtml(orderName || '') + '</td></tr>'
-        + '<tr><td style="padding:8px 0;font-weight:700;color:#666;">Date annulee</td>'
+        + '<tr><td style="padding:8px 0;font-weight:700;color:#666;">Date annulée</td>'
         + '<td style="padding:8px 0;color:#e53e3e;font-weight:900;text-align:right;">' + escapeHtml(dateStr) + '</td></tr>'
         + '</table></div>'
         + '<div style="text-align:center;margin:25px 0;">'
@@ -1692,7 +1692,7 @@ async function sendScheduleCancelledNotification(recipientEmail, recipientName, 
             from: '"' + (process.env.EMAIL_FROM_NAME || 'FA GENESIS') + '" <' + (process.env.EMAIL_FROM_ADDRESS || process.env.SMTP_USER) + '>',
             to: recipientEmail,
             subject: '[FA GENESIS] Annulation de date - ' + subjectSuffix,
-            html: getEmailTemplate(content, 'Annulation de date')
+            html: getEmailTemplate(content, 'Annulation de date de démarrage')
         });
         console.log('[EMAIL] Notification annulation date envoyee a ' + recipientEmail);
         return { success: true, messageId: result.messageId };
