@@ -277,11 +277,38 @@
                 </div>
 
                 <!-- Aperçu récent -->
-                <div class="admin-card neo-shadow">
+                <div class="admin-card neo-shadow mb-12">
                     <h3 class="text-2xl font-black italic uppercase mb-6">
                         <i class="fas fa-clock mr-2"></i>Derniers clients inscrits
                     </h3>
                     <div id="recentClients"></div>
+                </div>
+
+                <!-- Chat Clients -->
+                <div class="admin-card neo-shadow" id="adminInboxCard">
+                    <div class="flex justify-between items-center mb-6 flex-wrap gap-4">
+                        <h3 class="text-2xl font-black italic uppercase">
+                            <i class="fas fa-comments mr-2" style="color:var(--genesis-yellow);"></i>Chat Clients
+                            <span id="adminInboxBadge" style="display:none;background:#f44336;color:#fff;font-size:12px;font-weight:900;padding:2px 8px;border:2px solid black;margin-left:8px;vertical-align:middle;"></span>
+                        </h3>
+                        <button onclick="loadAdminInbox()" style="background:var(--genesis-yellow);border:3px solid black;padding:6px 14px;font-weight:900;font-size:12px;cursor:pointer;text-transform:uppercase;">
+                            <i class="fas fa-sync-alt mr-1"></i>Actualiser
+                        </button>
+                    </div>
+
+                    <!-- Loader -->
+                    <div id="adminInboxLoader" style="text-align:center;padding:1.5rem;color:var(--genesis-yellow);">
+                        <i class="fas fa-spinner fa-spin"></i> Chargement...
+                    </div>
+
+                    <!-- Vide -->
+                    <div id="adminInboxEmpty" style="display:none;text-align:center;padding:2rem;color:#888;">
+                        <i class="fas fa-inbox" style="font-size:2rem;margin-bottom:8px;display:block;"></i>
+                        <p style="font-weight:900;text-transform:uppercase;">Aucun message client pour l'instant</p>
+                    </div>
+
+                    <!-- Liste des conversations par client -->
+                    <div id="adminInboxList" style="display:none;"></div>
                 </div>
             </div>
 
@@ -775,6 +802,8 @@
 
                 // Charger les dates a confirmer
                 loadPendingSchedules();
+                // Charger le chat clients
+                loadAdminInbox();
 
             } catch (error) {
                 console.error('[ADMIN] Erreur chargement dashboard:', error);
@@ -3749,6 +3778,133 @@
                     loadAdminSessions();
                 } else {
                     alert('Erreur : ' + (data.error || 'Impossible de supprimer'));
+                }
+            } catch (err) {
+                alert('Erreur réseau : ' + err.message);
+            }
+        }
+
+        // ============================================================
+        // ADMIN INBOX (Chat client <-> admin)
+        // ============================================================
+        var allChatMessages = [];
+
+        async function loadAdminInbox() {
+            var loader = document.getElementById('adminInboxLoader');
+            var emptyEl = document.getElementById('adminInboxEmpty');
+            var listEl = document.getElementById('adminInboxList');
+            if (loader) loader.style.display = '';
+            if (emptyEl) emptyEl.style.display = 'none';
+            if (listEl) listEl.style.display = 'none';
+
+            try {
+                var resp = await fetch(API_BASE_URL + '/api/admin/inbox');
+                if (!resp.ok) throw new Error('Erreur ' + resp.status);
+                var data = await resp.json();
+                allChatMessages = (data.messages || []);
+
+                if (loader) loader.style.display = 'none';
+
+                if (allChatMessages.length === 0) {
+                    if (emptyEl) emptyEl.style.display = '';
+                    return;
+                }
+
+                // Badge non lus
+                var unreadCount = allChatMessages.filter(function(m) { return m.from_type === 'client' && !m.read_at; }).length;
+                var badge = document.getElementById('adminInboxBadge');
+                if (badge) {
+                    if (unreadCount > 0) { badge.textContent = unreadCount + ' non lu' + (unreadCount > 1 ? 's' : ''); badge.style.display = ''; }
+                    else { badge.style.display = 'none'; }
+                }
+
+                // Grouper par client (from_email si client, to_email si admin)
+                var threads = {};
+                allChatMessages.forEach(function(m) {
+                    var clientEmail = m.from_type === 'client' ? m.from_email : m.to_email;
+                    var clientName = m.from_type === 'client' ? m.from_name : m.to_name;
+                    if (!threads[clientEmail]) threads[clientEmail] = { email: clientEmail, name: clientName, msgs: [] };
+                    threads[clientEmail].msgs.push(m);
+                });
+
+                var html = '';
+                Object.keys(threads).forEach(function(email) {
+                    var t = threads[email];
+                    var unread = t.msgs.filter(function(m) { return m.from_type === 'client' && !m.read_at; }).length;
+                    html += '<div style="border:3px solid ' + (unread > 0 ? '#f44336' : '#ddd') + ';margin-bottom:1rem;background:#fafafa;">';
+                    html += '<div style="background:' + (unread > 0 ? '#fff3f3' : '#f5f5f5') + ';border-bottom:2px solid #ddd;padding:0.75rem 1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">';
+                    html += '<div><span style="font-weight:900;font-size:15px;">' + (t.name || email) + '</span>';
+                    html += '<span style="font-size:12px;color:#888;margin-left:8px;">' + email + '</span>';
+                    if (unread > 0) html += '<span style="background:#f44336;color:#fff;font-size:10px;font-weight:900;padding:1px 6px;border:1px solid black;margin-left:8px;">' + unread + ' non lu</span>';
+                    html += '</div>';
+                    html += '<button onclick="toggleAdminThread(\'' + email + '\')" style="background:var(--genesis-yellow);border:2px solid black;padding:4px 10px;font-size:11px;font-weight:900;cursor:pointer;text-transform:uppercase;">Voir / Répondre</button>';
+                    html += '</div>';
+
+                    html += '<div id="thread-' + email.replace(/[^a-z0-9]/gi, '_') + '" style="display:none;padding:1rem;">';
+                    // Fil de messages
+                    html += '<div style="max-height:300px;overflow-y:auto;display:flex;flex-direction:column;gap:0.5rem;margin-bottom:1rem;padding:0.5rem;background:#fff;border:2px solid #eee;" id="thread-msgs-' + email.replace(/[^a-z0-9]/gi, '_') + '">';
+                    t.msgs.forEach(function(m) {
+                        var isSent = m.from_type !== 'client';
+                        var bg = isSent ? 'var(--genesis-yellow)' : '#e8e8e8';
+                        var align = isSent ? 'flex-end' : 'flex-start';
+                        var time = '';
+                        try { time = new Date(m.created_at).toLocaleString('fr-FR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }); } catch(e) {}
+                        html += '<div style="display:flex;flex-direction:column;align-items:' + align + ';">';
+                        html += '<div style="background:' + bg + ';border:2px solid black;padding:8px 12px;max-width:75%;font-size:13px;white-space:pre-wrap;">';
+                        if (m.subject) html += '<p style="font-weight:900;font-size:11px;text-transform:uppercase;margin-bottom:4px;">' + m.subject + '</p>';
+                        html += m.content;
+                        html += '</div>';
+                        html += '<span style="font-size:10px;color:#999;font-weight:900;margin-top:2px;">' + (isSent ? 'FA GENESIS' : m.from_name) + ' · ' + time + '</span>';
+                        html += '</div>';
+                    });
+                    html += '</div>';
+
+                    // Formulaire de réponse
+                    html += '<div>';
+                    html += '<textarea id="reply-' + email.replace(/[^a-z0-9]/gi, '_') + '" rows="3" style="width:100%;border:3px solid black;padding:8px;font-family:inherit;font-size:13px;resize:vertical;" placeholder="Votre réponse..."></textarea>';
+                    html += '<div style="margin-top:8px;">';
+                    html += '<button onclick="sendAdminInboxReply(\'' + email + '\', \'' + (t.name || '').replace(/'/g, "\\'") + '\')" style="background:var(--genesis-yellow);border:3px solid black;padding:8px 16px;font-weight:900;font-size:12px;cursor:pointer;text-transform:uppercase;">';
+                    html += '<i class="fas fa-paper-plane mr-1"></i>Envoyer</button>';
+                    html += '</div>';
+                    html += '</div>';
+                    html += '</div>';
+                    html += '</div>';
+                });
+
+                if (listEl) { listEl.innerHTML = html; listEl.style.display = ''; }
+
+            } catch (e) {
+                if (loader) loader.style.display = 'none';
+                if (listEl) { listEl.innerHTML = '<p style="color:#f44336;font-weight:900;padding:1rem;">Erreur : ' + e.message + '</p>'; listEl.style.display = ''; }
+            }
+        }
+
+        function toggleAdminThread(email) {
+            var id = 'thread-' + email.replace(/[^a-z0-9]/gi, '_');
+            var el = document.getElementById(id);
+            if (el) el.style.display = el.style.display === 'none' ? '' : 'none';
+        }
+
+        async function sendAdminInboxReply(toEmail, toName) {
+            var id = toEmail.replace(/[^a-z0-9]/gi, '_');
+            var ta = document.getElementById('reply-' + id);
+            if (!ta) return;
+            var content = ta.value.trim();
+            if (!content) { alert('Veuillez écrire un message.'); return; }
+
+            try {
+                var resp = await fetch(API_BASE_URL + '/api/admin/inbox/reply', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ to_email: toEmail, to_name: toName, content: content })
+                });
+                var data = await resp.json();
+                if (data.ok) {
+                    ta.value = '';
+                    alert('Réponse envoyée !');
+                    loadAdminInbox();
+                } else {
+                    alert('Erreur : ' + (data.error || 'Impossible d\'envoyer'));
                 }
             } catch (err) {
                 alert('Erreur réseau : ' + err.message);

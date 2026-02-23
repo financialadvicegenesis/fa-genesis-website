@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="fr" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    <title>Messagerie - FA GENESIS | Espace Client</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;900&family=Space+Grotesk:wght@300;700&display=swap">
+    <link rel="stylesheet" href="tailwind.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" media="print" onload="this.media='all'">
+    <style>
+        :root {
+            --genesis-yellow: #FFD700;
+            --genesis-black: #000000;
+            --genesis-white: #FFFFFF;
+        }
+
+        body {
+            background-color: var(--genesis-black);
+            color: var(--genesis-white);
+            font-family: 'Space Grotesk', sans-serif;
+            overflow-x: hidden;
+        }
+
+        h1, h2, h3, h4, h5, .nav-link { font-family: 'Unbounded', cursive; }
+
+        .neo-border { border: 4px solid var(--genesis-black); }
+        .neo-shadow { box-shadow: 10px 10px 0px 0px var(--genesis-yellow); }
+
+        .neo-btn-yellow {
+            background: var(--genesis-yellow);
+            color: black;
+            border: 4px solid black;
+            box-shadow: 6px 6px 0px black;
+            font-weight: 900;
+            transition: 0.1s;
+            cursor: pointer;
+        }
+        .neo-btn-yellow:hover {
+            transform: translate(-2px, -2px);
+            box-shadow: 8px 8px 0px black;
+        }
+        .neo-btn-yellow:active {
+            transform: translate(4px, 4px);
+            box-shadow: 0px 0px 0px black;
+        }
+
+        .neo-btn-white {
+            background: white;
+            color: black;
+            border: 4px solid black;
+            box-shadow: 6px 6px 0px var(--genesis-yellow);
+            font-weight: 900;
+            transition: 0.1s;
+            cursor: pointer;
+        }
+        .neo-btn-white:hover {
+            transform: translate(-2px, -2px);
+            box-shadow: 8px 8px 0px var(--genesis-yellow);
+        }
+
+        /* Message bubbles */
+        .msg-sent {
+            background: var(--genesis-yellow);
+            color: black;
+            border: 3px solid black;
+            box-shadow: 4px 4px 0px black;
+            border-radius: 0;
+            margin-left: auto;
+            max-width: 75%;
+        }
+
+        .msg-received {
+            background: white;
+            color: black;
+            border: 3px solid black;
+            box-shadow: 4px 4px 0px var(--genesis-yellow);
+            border-radius: 0;
+            margin-right: auto;
+            max-width: 75%;
+        }
+
+        .msg-thread {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            max-height: 500px;
+            overflow-y: auto;
+            padding: 1rem;
+            background: #111;
+            border: 4px solid var(--genesis-yellow);
+        }
+
+        .msg-thread::-webkit-scrollbar { width: 8px; }
+        .msg-thread::-webkit-scrollbar-track { background: #111; }
+        .msg-thread::-webkit-scrollbar-thumb { background: var(--genesis-yellow); }
+
+        select, textarea {
+            background: #111;
+            color: white;
+            border: 4px solid var(--genesis-yellow);
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 700;
+            outline: none;
+            width: 100%;
+            padding: 0.75rem 1rem;
+        }
+
+        select option { background: #111; color: white; }
+
+        textarea::placeholder { color: #888; }
+
+        select:focus, textarea:focus {
+            border-color: white;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- NAVIGATION PRIVEE -->
+    <nav class="fixed top-0 w-full z-50 bg-black/95 backdrop-blur-md border-b-4 border-[var(--genesis-yellow)] px-4 md:px-6 py-3 md:py-4 flex justify-between items-center text-white text-xs font-black uppercase">
+        <div class="flex items-center">
+            <a href="dashboard.html" class="text-lg md:text-2xl font-black tracking-wider text-[var(--genesis-yellow)]" style="font-family: 'Unbounded', cursive;">FA GENESIS</a>
+        </div>
+        <div id="mainNavigation" class="hidden md:flex gap-8 text-white font-black">
+            <a href="dashboard.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">Dashboard</a>
+            <a href="livrables.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">Livrables</a>
+            <a href="seances.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">Séances</a>
+            <a href="messagerie.html" class="nav-link text-[var(--genesis-yellow)]">Messagerie</a>
+            <a href="mon-compte.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">Paramètres</a>
+        </div>
+        <div class="flex gap-4 items-center">
+            <a href="panier.html" class="relative text-white hover:text-[var(--genesis-yellow)] transition px-2 py-2" title="Panier">
+                <i class="fas fa-shopping-cart text-lg"></i>
+            </a>
+            <a href="mon-compte.html" class="flex items-center gap-2 hover:opacity-80 transition" title="Mon compte" style="text-decoration:none;">
+                <div id="navAvatarCircle" style="width:32px;height:32px;border-radius:50%;border:2px solid var(--genesis-yellow);overflow:hidden;background:#444;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <i class="fas fa-user text-xs text-gray-300" id="navAvatarIcon"></i>
+                    <img id="navAvatarImg" src="" alt="" style="display:none;width:100%;height:100%;object-fit:cover;">
+                </div>
+                <span id="userGreeting" class="hidden md:block text-white font-bold"></span>
+            </a>
+            <button onclick="logout()" class="border-4 border-white text-white px-3 py-2 text-[10px] tracking-widest font-black hover:bg-white hover:text-black transition">
+                <i class="fas fa-sign-out-alt mr-1"></i><span class="hidden md:inline">Déconnexion</span>
+            </button>
+            <!-- Bouton Menu Mobile -->
+            <button id="mobileMenuBtn" class="md:hidden flex flex-col gap-1.5 p-2" aria-label="Menu">
+                <span class="block w-6 h-0.5 bg-[var(--genesis-yellow)] transition-all" id="menuLine1"></span>
+                <span class="block w-6 h-0.5 bg-[var(--genesis-yellow)] transition-all" id="menuLine2"></span>
+                <span class="block w-6 h-0.5 bg-[var(--genesis-yellow)] transition-all" id="menuLine3"></span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Menu Mobile Overlay -->
+    <div id="mobileMenu" class="fixed inset-0 z-40 bg-black/98 backdrop-blur-lg hidden flex-col items-center justify-center gap-8 text-white font-black uppercase">
+        <a href="dashboard.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition" onclick="closeMobileMenu()">Dashboard</a>
+        <a href="livrables.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition" onclick="closeMobileMenu()">Livrables</a>
+        <a href="seances.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition" onclick="closeMobileMenu()">Séances</a>
+        <a href="messagerie.html" class="text-2xl nav-link text-[var(--genesis-yellow)]" onclick="closeMobileMenu()">Messagerie</a>
+        <a href="mon-compte.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition" onclick="closeMobileMenu()">Paramètres</a>
+        <a href="panier.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition flex items-center gap-2" onclick="closeMobileMenu()"><i class="fas fa-shopping-cart"></i>Panier</a>
+        <div class="mt-8">
+            <button onclick="logout(); closeMobileMenu();" class="neo-btn-yellow px-8 py-4 text-sm tracking-widest text-black font-black text-center">
+                <i class="fas fa-sign-out-alt mr-2"></i>Déconnexion
+            </button>
+        </div>
+    </div>
+
+    <!-- MESSAGERIE CONTENT -->
+    <section class="min-h-screen pt-32 pb-20 px-6 bg-black">
+        <div class="container mx-auto max-w-4xl">
+
+            <!-- En-tête -->
+            <div class="mb-12">
+                <h1 class="text-5xl md:text-7xl font-black italic uppercase mb-4 text-[var(--genesis-yellow)]">Messagerie</h1>
+                <p class="text-xl font-bold uppercase text-white">Communiquez avec votre équipe FA GENESIS</p>
+            </div>
+
+            <!-- Bandeau erreur -->
+            <div id="errorBanner" style="display:none;background:#ff4444;border:4px solid black;padding:1rem 1.5rem;margin-bottom:1.5rem;">
+                <p class="font-black text-white" id="errorText">Erreur</p>
+            </div>
+
+            <!-- Bandeau succès -->
+            <div id="successBanner" style="display:none;background:var(--genesis-yellow);border:4px solid black;padding:1rem 1.5rem;margin-bottom:1.5rem;">
+                <p class="font-black text-black" id="successText">Message envoyé !</p>
+            </div>
+
+            <!-- SECTION 1 : Nouveau message -->
+            <div style="background:#111;border:4px solid var(--genesis-yellow);padding:2rem;margin-bottom:2rem;box-shadow:10px 10px 0px var(--genesis-yellow);">
+                <h2 class="text-xl font-black uppercase mb-6 text-[var(--genesis-yellow)]">
+                    <i class="fas fa-pen mr-2"></i>Nouveau message
+                </h2>
+
+                <div class="flex flex-col gap-4">
+                    <!-- Destinataire -->
+                    <div>
+                        <label class="block text-xs font-black uppercase mb-2 text-gray-400">Destinataire</label>
+                        <select id="msgRecipient">
+                            <option value="admin">Consultant FA GENESIS</option>
+                        </select>
+                    </div>
+
+                    <!-- Sujet (optionnel) -->
+                    <div>
+                        <label class="block text-xs font-black uppercase mb-2 text-gray-400">Sujet <span class="text-gray-600">(optionnel)</span></label>
+                        <input type="text" id="msgSubject" placeholder="Ex : Question sur ma commande..." style="background:#111;color:white;border:4px solid var(--genesis-yellow);font-family:'Space Grotesk',sans-serif;font-weight:700;outline:none;width:100%;padding:0.75rem 1rem;">
+                    </div>
+
+                    <!-- Message -->
+                    <div>
+                        <label class="block text-xs font-black uppercase mb-2 text-gray-400">Message</label>
+                        <textarea id="msgContent" rows="5" placeholder="Écrivez votre message ici..."></textarea>
+                    </div>
+
+                    <!-- Bouton envoyer -->
+                    <div>
+                        <button id="sendMsgBtn" onclick="sendMessage()" class="neo-btn-yellow px-8 py-3 text-sm uppercase font-black">
+                            <i class="fas fa-paper-plane mr-2"></i>Envoyer
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION 2 : Fil de messages -->
+            <div style="background:#111;border:4px solid white;padding:2rem;box-shadow:10px 10px 0px white;">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-black uppercase text-white">
+                        <i class="fas fa-comments mr-2"></i>Fil de messages
+                    </h2>
+                    <button onclick="loadMessages()" class="neo-btn-white px-4 py-2 text-xs uppercase font-black">
+                        <i class="fas fa-sync-alt mr-1"></i>Actualiser
+                    </button>
+                </div>
+
+                <!-- Loader messages -->
+                <div id="msgsLoader" style="text-align:center;padding:2rem;color:var(--genesis-yellow);">
+                    <i class="fas fa-spinner fa-spin text-2xl"></i>
+                    <p class="mt-2 text-sm font-bold uppercase">Chargement des messages...</p>
+                </div>
+
+                <!-- Fil vide -->
+                <div id="msgsEmpty" style="display:none;text-align:center;padding:3rem;">
+                    <i class="fas fa-inbox text-4xl text-gray-600 mb-4"></i>
+                    <p class="font-black uppercase text-gray-500">Aucun message pour l'instant</p>
+                    <p class="text-sm text-gray-600 mt-2">Envoyez votre premier message via le formulaire ci-dessus.</p>
+                </div>
+
+                <!-- Thread -->
+                <div id="msgThread" class="msg-thread" style="display:none;"></div>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- Scripts -->
+    <script src="config.js"></script>
+    <script src="auth.js"></script>
+
+    <script>
+        var MSG_API = (window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com');
+        var currentUserEmail = '';
+        var currentUserName = '';
+
+        // ============================================================
+        // MOBILE MENU
+        // ============================================================
+        var mobileMenuOpen = false;
+        var mobileMenuBtn = document.getElementById('mobileMenuBtn');
+        var mobileMenuEl = document.getElementById('mobileMenu');
+
+        if (mobileMenuBtn) {
+            mobileMenuBtn.addEventListener('click', function() {
+                mobileMenuOpen = !mobileMenuOpen;
+                if (mobileMenuEl) {
+                    mobileMenuEl.classList.toggle('hidden', !mobileMenuOpen);
+                    mobileMenuEl.classList.toggle('flex', mobileMenuOpen);
+                }
+            });
+        }
+
+        function closeMobileMenu() {
+            mobileMenuOpen = false;
+            if (mobileMenuEl) {
+                mobileMenuEl.classList.add('hidden');
+                mobileMenuEl.classList.remove('flex');
+            }
+        }
+
+        // ============================================================
+        // LOGOUT
+        // ============================================================
+        function logout() {
+            try {
+                if (typeof window.logout === 'function' && window.logout !== logout) {
+                    window.logout();
+                } else {
+                    localStorage.removeItem('fa_genesis_token');
+                    localStorage.removeItem('fa_genesis_session');
+                    window.location.href = 'login.html';
+                }
+            } catch (e) {
+                localStorage.removeItem('fa_genesis_token');
+                localStorage.removeItem('fa_genesis_session');
+                window.location.href = 'login.html';
+            }
+        }
+
+        // ============================================================
+        // UI HELPERS
+        // ============================================================
+        function showError(msg) {
+            var el = document.getElementById('errorBanner');
+            var txt = document.getElementById('errorText');
+            if (el && txt) { txt.textContent = msg; el.style.display = ''; }
+            hideSuccess();
+        }
+
+        function hideError() {
+            var el = document.getElementById('errorBanner');
+            if (el) el.style.display = 'none';
+        }
+
+        function showSuccess(msg) {
+            var el = document.getElementById('successBanner');
+            var txt = document.getElementById('successText');
+            if (el && txt) { txt.textContent = msg; el.style.display = ''; }
+            hideError();
+        }
+
+        function hideSuccess() {
+            var el = document.getElementById('successBanner');
+            if (el) el.style.display = 'none';
+        }
+
+        function formatHeureFr(isoStr) {
+            try {
+                var d = new Date(isoStr);
+                if (isNaN(d.getTime())) return '';
+                var jours = ['dim', 'lun', 'mar', 'mer', 'jeu', 'ven', 'sam'];
+                var mois = ['jan', 'fév', 'mar', 'avr', 'mai', 'jun', 'jul', 'aoû', 'sep', 'oct', 'nov', 'déc'];
+                return jours[d.getDay()] + ' ' + d.getDate() + ' ' + mois[d.getMonth()] + ' ' + d.getFullYear()
+                    + ' à ' + String(d.getHours()).padStart(2, '0') + 'h' + String(d.getMinutes()).padStart(2, '0');
+            } catch (e) { return ''; }
+        }
+
+        // ============================================================
+        // PROTECTION AUTH
+        // ============================================================
+        try {
+            if (typeof requireAuth === 'function') {
+                requireAuth();
+            } else {
+                var hasToken = localStorage.getItem('fa_genesis_token');
+                if (!hasToken) { window.location.href = 'login.html'; }
+            }
+        } catch (authErr) {
+            var hasToken2 = localStorage.getItem('fa_genesis_token');
+            if (!hasToken2) { window.location.href = 'login.html'; }
+        }
+
+        // ============================================================
+        // INIT : chargement session locale
+        // ============================================================
+        try {
+            var rawSession = localStorage.getItem('fa_genesis_session');
+            if (rawSession) {
+                var localUser = JSON.parse(rawSession);
+                if (localUser.prenom) {
+                    var greet = document.getElementById('userGreeting');
+                    if (greet) greet.textContent = localUser.prenom;
+                    currentUserName = (localUser.prenom || '') + (localUser.nom ? ' ' + localUser.nom : '');
+                }
+                if (localUser.email) currentUserEmail = localUser.email;
+                if (localUser.profilePhoto) {
+                    var navImg = document.getElementById('navAvatarImg');
+                    var navIcon = document.getElementById('navAvatarIcon');
+                    if (navImg) { navImg.src = localUser.profilePhoto; navImg.style.display = ''; }
+                    if (navIcon) navIcon.style.display = 'none';
+                }
+            }
+        } catch (e) {}
+
+        // ============================================================
+        // CHARGER LES PARTENAIRES ASSIGNÉS (depuis /api/dashboard)
+        // ============================================================
+        async function loadAssignedPartners() {
+            try {
+                var token = localStorage.getItem('fa_genesis_token');
+                if (!token) return;
+                var resp = await fetch(MSG_API + '/api/dashboard', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (!resp.ok) return;
+                var data = await resp.json();
+                if (!data.ok || !data.order) return;
+
+                var order = data.order;
+                var select = document.getElementById('msgRecipient');
+                if (!select) return;
+
+                // Partenaires assignés
+                var partnerLabels = {
+                    'photographer': 'Photographe',
+                    'videographer': 'Vidéaste',
+                    'marketer': 'Consultant Marketing',
+                    'media': 'Spécialiste Média'
+                };
+
+                if (order.partner_assignments && Array.isArray(order.partner_assignments)) {
+                    order.partner_assignments.forEach(function(pa) {
+                        if (pa.partner_email && pa.partner_type) {
+                            var opt = document.createElement('option');
+                            opt.value = 'partner:' + pa.partner_email;
+                            var label = partnerLabels[pa.partner_type] || pa.partner_type;
+                            opt.textContent = label + (pa.partner_name ? ' — ' + pa.partner_name : '');
+                            select.appendChild(opt);
+                        }
+                    });
+                }
+            } catch (e) {
+                console.error('[MESSAGERIE] Erreur chargement partenaires:', e.message);
+            }
+        }
+
+        // ============================================================
+        // CHARGER LES MESSAGES
+        // ============================================================
+        async function loadMessages() {
+            var loader = document.getElementById('msgsLoader');
+            var emptyEl = document.getElementById('msgsEmpty');
+            var threadEl = document.getElementById('msgThread');
+
+            if (loader) loader.style.display = '';
+            if (emptyEl) emptyEl.style.display = 'none';
+            if (threadEl) threadEl.style.display = 'none';
+
+            try {
+                var token = localStorage.getItem('fa_genesis_token');
+                if (!token) return;
+
+                var resp = await fetch(MSG_API + '/api/messages', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+
+                if (loader) loader.style.display = 'none';
+
+                if (!resp.ok) {
+                    showError('Impossible de charger les messages (' + resp.status + ')');
+                    if (emptyEl) emptyEl.style.display = '';
+                    return;
+                }
+
+                var data = await resp.json();
+                if (!data.ok) {
+                    showError(data.error || 'Erreur chargement messages');
+                    if (emptyEl) emptyEl.style.display = '';
+                    return;
+                }
+
+                var msgs = data.messages || [];
+
+                if (msgs.length === 0) {
+                    if (emptyEl) emptyEl.style.display = '';
+                    return;
+                }
+
+                // Rendre les messages
+                if (threadEl) {
+                    threadEl.innerHTML = '';
+                    msgs.forEach(function(msg) {
+                        renderMessage(msg, threadEl);
+                    });
+                    threadEl.style.display = '';
+                    // Scroller vers le bas
+                    threadEl.scrollTop = threadEl.scrollHeight;
+                }
+
+                // Marquer les messages reçus non lus comme lus
+                msgs.forEach(function(msg) {
+                    if (msg.from_email !== currentUserEmail && !msg.read_at) {
+                        markAsRead(msg.id);
+                    }
+                });
+
+            } catch (e) {
+                if (loader) loader.style.display = 'none';
+                showError('Erreur réseau : ' + e.message);
+                if (emptyEl) emptyEl.style.display = '';
+            }
+        }
+
+        function renderMessage(msg, container) {
+            var isSent = (msg.from_email === currentUserEmail || msg.from_type === 'client');
+            var wrapper = document.createElement('div');
+            wrapper.style.display = 'flex';
+            wrapper.style.flexDirection = 'column';
+            wrapper.style.alignItems = isSent ? 'flex-end' : 'flex-start';
+            wrapper.style.gap = '4px';
+
+            // Infos expéditeur
+            var meta = document.createElement('div');
+            meta.style.fontSize = '11px';
+            meta.style.fontWeight = '900';
+            meta.style.color = '#888';
+            meta.style.textTransform = 'uppercase';
+            meta.style.letterSpacing = '0.05em';
+
+            var senderName = msg.from_name || msg.from_email || 'Inconnu';
+            var timeStr = formatHeureFr(msg.created_at);
+            meta.textContent = senderName + (timeStr ? ' · ' + timeStr : '');
+
+            // Bulle
+            var bubble = document.createElement('div');
+            bubble.className = isSent ? 'msg-sent' : 'msg-received';
+            bubble.style.padding = '0.75rem 1rem';
+
+            // Sujet si présent
+            if (msg.subject) {
+                var subj = document.createElement('p');
+                subj.style.fontWeight = '900';
+                subj.style.fontSize = '12px';
+                subj.style.textTransform = 'uppercase';
+                subj.style.marginBottom = '4px';
+                subj.style.color = isSent ? '#333' : '#555';
+                subj.textContent = msg.subject;
+                bubble.appendChild(subj);
+            }
+
+            var content = document.createElement('p');
+            content.style.fontSize = '14px';
+            content.style.lineHeight = '1.5';
+            content.style.whiteSpace = 'pre-wrap';
+            content.textContent = msg.content;
+            bubble.appendChild(content);
+
+            // Destinataire info pour messages envoyés
+            if (isSent && msg.to_name) {
+                var toInfo = document.createElement('p');
+                toInfo.style.fontSize = '10px';
+                toInfo.style.fontWeight = '900';
+                toInfo.style.color = '#555';
+                toInfo.style.marginTop = '4px';
+                toInfo.textContent = 'À : ' + msg.to_name;
+                bubble.appendChild(toInfo);
+            }
+
+            wrapper.appendChild(meta);
+            wrapper.appendChild(bubble);
+            container.appendChild(wrapper);
+        }
+
+        // ============================================================
+        // MARQUER COMME LU
+        // ============================================================
+        async function markAsRead(msgId) {
+            try {
+                var token = localStorage.getItem('fa_genesis_token');
+                if (!token) return;
+                await fetch(MSG_API + '/api/messages/' + msgId + '/read', {
+                    method: 'PATCH',
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+            } catch (e) {}
+        }
+
+        // ============================================================
+        // ENVOYER UN MESSAGE
+        // ============================================================
+        async function sendMessage() {
+            hideError();
+            hideSuccess();
+
+            var select = document.getElementById('msgRecipient');
+            var subjectInput = document.getElementById('msgSubject');
+            var contentInput = document.getElementById('msgContent');
+            var sendBtn = document.getElementById('sendMsgBtn');
+
+            var recipientVal = select ? select.value : 'admin';
+            var subject = subjectInput ? subjectInput.value.trim() : '';
+            var content = contentInput ? contentInput.value.trim() : '';
+
+            if (!content) {
+                showError('Veuillez écrire un message avant d\'envoyer.');
+                return;
+            }
+
+            // Déterminer to_type et to_id
+            var to_type = 'admin';
+            var to_id = null;
+            var to_email = 'admin';
+
+            if (recipientVal && recipientVal.indexOf('partner:') === 0) {
+                to_type = 'partner';
+                to_email = recipientVal.replace('partner:', '');
+                to_id = to_email;
+            }
+
+            if (sendBtn) {
+                sendBtn.disabled = true;
+                sendBtn.textContent = 'Envoi...';
+            }
+
+            try {
+                var token = localStorage.getItem('fa_genesis_token');
+                if (!token) { window.location.href = 'login.html'; return; }
+
+                var payload = {
+                    to_type: to_type,
+                    to_id: to_id,
+                    to_email: to_email,
+                    content: content
+                };
+                if (subject) payload.subject = subject;
+
+                var resp = await fetch(MSG_API + '/api/messages', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                var data = await resp.json();
+
+                if (data.ok) {
+                    showSuccess('Message envoyé avec succès !');
+                    if (contentInput) contentInput.value = '';
+                    if (subjectInput) subjectInput.value = '';
+                    // Recharger le fil
+                    loadMessages();
+                } else {
+                    showError(data.error || 'Erreur lors de l\'envoi du message.');
+                }
+            } catch (e) {
+                showError('Erreur réseau : ' + e.message);
+            } finally {
+                if (sendBtn) {
+                    sendBtn.disabled = false;
+                    sendBtn.innerHTML = '<i class="fas fa-paper-plane mr-2"></i>Envoyer';
+                }
+            }
+        }
+
+        // ============================================================
+        // INITIALISATION
+        // ============================================================
+        loadAssignedPartners();
+        loadMessages();
+
+        // Actualisation automatique toutes les 30 secondes
+        setInterval(function() {
+            loadMessages();
+        }, 30000);
+    </script>
+</body>
+</html>

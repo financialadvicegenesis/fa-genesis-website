@@ -987,8 +987,9 @@ app.post('/api/orders/:orderId/cancel-start-date', function(req, res) {
         if (!order) {
             return res.status(404).json({ success: false, error: 'Commande introuvable.' });
         }
-        if (order.schedule_status !== 'confirmed') {
-            return res.status(400).json({ success: false, error: 'La date de demarrage n\'est pas encore confirmee.' });
+        var cancellableStatuses = ['confirmed', 'client_proposed', 'reproposed'];
+        if (cancellableStatuses.indexOf(order.schedule_status) === -1) {
+            return res.status(400).json({ success: false, error: 'Aucune date a annuler pour cette commande.' });
         }
 
         // Determiner qui appelle
@@ -3462,6 +3463,12 @@ app.patch('/api/me', (req, res) => {
         if (typeof body.telephone === 'string') {
             users[userIdx].telephone = body.telephone.trim();
         }
+        if (typeof body.profilePhoto === 'string') {
+            if (body.profilePhoto.length > 2800000) {
+                return res.status(400).json({ success: false, error: 'Image trop grande (max 2 Mo)' });
+            }
+            users[userIdx].profilePhoto = body.profilePhoto;
+        }
 
         users[userIdx].updatedAt = new Date().toISOString();
         saveUsers(users);
@@ -3877,6 +3884,222 @@ app.put('/api/orders/:orderId/mark-completed', (req, res) => {
     } catch (error) {
         console.error('Erreur mark-completed:', error);
         res.status(500).json({ error: 'Erreur lors de la mise a jour' });
+    }
+});
+
+// ============================================================
+// ROUTES - MESSAGERIE INTERNE (chat client <-> admin/partenaire)
+// Utilise chat.json separe des messages de contact (messages.json)
+// ============================================================
+
+var CHAT_FILE = path.join(__dirname, 'data', 'chat.json');
+
+function loadChat() {
+    try {
+        if (fs.existsSync(CHAT_FILE)) {
+            var data = fs.readFileSync(CHAT_FILE, 'utf8');
+            return JSON.parse(data);
+        }
+    } catch (e) { console.error('[CHAT] Erreur lecture:', e.message); }
+    return [];
+}
+
+function saveChat(msgs) {
+    try { fs.writeFileSync(CHAT_FILE, JSON.stringify(msgs, null, 2), 'utf8'); }
+    catch (e) { console.error('[CHAT] Erreur ecriture:', e.message); }
+}
+
+/**
+ * GET /api/messages — Client recupere ses messages de chat
+ */
+app.get('/api/messages', function(req, res) {
+    try {
+        var authHeader = req.headers.authorization;
+        if (!authHeader) return res.status(401).json({ error: 'Non autorise' });
+        var token = authHeader.replace('Bearer ', '');
+        var users = loadUsers();
+        var user = users.find(function(u) { return u.sessionToken === token; });
+        if (!user) return res.status(401).json({ error: 'Session invalide' });
+
+        var msgs = loadChat();
+        var myMsgs = msgs.filter(function(m) {
+            return m.from_email === user.email || m.to_email === user.email;
+        });
+        myMsgs.sort(function(a, b) { return new Date(a.created_at) - new Date(b.created_at); });
+        res.json({ ok: true, messages: myMsgs });
+    } catch (err) {
+        console.error('[CHAT] Erreur GET client:', err.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * POST /api/messages — Client envoie un message de chat
+ */
+app.post('/api/messages', function(req, res) {
+    try {
+        var authHeader = req.headers.authorization;
+        if (!authHeader) return res.status(401).json({ error: 'Non autorise' });
+        var token = authHeader.replace('Bearer ', '');
+        var users = loadUsers();
+        var user = users.find(function(u) { return u.sessionToken === token; });
+        if (!user) return res.status(401).json({ error: 'Session invalide' });
+
+        var content = (req.body.content || '').trim();
+        if (!content) return res.status(400).json({ error: 'Message vide' });
+
+        var toType = req.body.to_type || 'admin';
+        var toId = req.body.to_id || null; // email partenaire si partenaire
+        var toEmail = 'admin';
+        var toName = 'FA GENESIS';
+
+        if (toType === 'partner' && toId) {
+            var partners = loadPartners();
+            var targetPartner = partners.find(function(p) { return p.email === toId; });
+            if (!targetPartner) return res.status(404).json({ error: 'Partenaire introuvable' });
+            toEmail = targetPartner.email;
+            toName = ((targetPartner.prenom || '') + ' ' + (targetPartner.nom || '')).trim();
+        }
+
+        var newMsg = {
+            id: 'MSG-' + uuidv4().split('-')[0].toUpperCase(),
+            from_email: user.email,
+            from_name: ((user.prenom || '') + ' ' + (user.nom || '')).trim() || user.email,
+            from_type: 'client',
+            to_type: toType,
+            to_id: toId,
+            to_email: toEmail,
+            to_name: toName.trim(),
+            subject: req.body.subject || '',
+            content: content,
+            created_at: new Date().toISOString(),
+            read_at: null
+        };
+
+        var msgs = loadChat();
+        msgs.push(newMsg);
+        saveChat(msgs);
+        console.log('[CHAT] Client ' + user.email + ' -> ' + toType + ' : ' + content.substring(0, 50));
+        res.json({ ok: true, message: newMsg });
+    } catch (err) {
+        console.error('[CHAT] Erreur POST client:', err.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * PATCH /api/messages/:id/read — Marquer un message de chat comme lu
+ */
+app.patch('/api/messages/:id/read', function(req, res) {
+    try {
+        var msgs = loadChat();
+        var idx = msgs.findIndex(function(m) { return m.id === req.params.id; });
+        if (idx === -1) return res.status(404).json({ error: 'Message introuvable' });
+        msgs[idx].read_at = new Date().toISOString();
+        saveChat(msgs);
+        res.json({ ok: true });
+    } catch (err) {
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * GET /api/admin/inbox — Admin recupere tous les messages du chat client
+ */
+app.get('/api/admin/inbox', function(req, res) {
+    try {
+        var msgs = loadChat();
+        msgs.sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); });
+        res.json({ ok: true, messages: msgs });
+    } catch (err) {
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * POST /api/admin/inbox/reply — Admin repond a un client
+ */
+app.post('/api/admin/inbox/reply', function(req, res) {
+    try {
+        var toEmail = req.body.to_email;
+        var content = (req.body.content || '').trim();
+        if (!toEmail || !content) return res.status(400).json({ error: 'to_email et content requis' });
+
+        var newMsg = {
+            id: 'MSG-' + uuidv4().split('-')[0].toUpperCase(),
+            from_email: process.env.ADMIN_EMAIL || 'admin@fagenesis.com',
+            from_name: 'FA GENESIS',
+            from_type: 'admin',
+            to_type: 'client',
+            to_id: null,
+            to_email: toEmail,
+            to_name: req.body.to_name || '',
+            subject: req.body.subject || '',
+            content: content,
+            created_at: new Date().toISOString(),
+            read_at: null
+        };
+
+        var msgs = loadChat();
+        msgs.push(newMsg);
+        saveChat(msgs);
+        console.log('[CHAT] Admin -> ' + toEmail + ' : ' + content.substring(0, 50));
+        res.json({ ok: true, message: newMsg });
+    } catch (err) {
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * GET /api/partner/inbox — Partenaire recupere ses messages du chat client
+ */
+app.get('/api/partner/inbox', authenticatePartner, function(req, res) {
+    try {
+        var partner = req.partner;
+        var msgs = loadChat();
+        var myMsgs = msgs.filter(function(m) {
+            return (m.to_type === 'partner' && m.to_email === partner.email) ||
+                   (m.from_type === 'partner' && m.from_email === partner.email);
+        });
+        myMsgs.sort(function(a, b) { return new Date(a.created_at) - new Date(b.created_at); });
+        res.json({ ok: true, messages: myMsgs });
+    } catch (err) {
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * POST /api/partner/inbox/reply — Partenaire repond a un client
+ */
+app.post('/api/partner/inbox/reply', authenticatePartner, function(req, res) {
+    try {
+        var partner = req.partner;
+        var toEmail = req.body.to_email;
+        var content = (req.body.content || '').trim();
+        if (!toEmail || !content) return res.status(400).json({ error: 'to_email et content requis' });
+
+        var newMsg = {
+            id: 'MSG-' + uuidv4().split('-')[0].toUpperCase(),
+            from_email: partner.email,
+            from_name: ((partner.prenom || '') + ' ' + (partner.nom || '')).trim(),
+            from_type: 'partner',
+            to_type: 'client',
+            to_id: null,
+            to_email: toEmail,
+            to_name: req.body.to_name || '',
+            subject: req.body.subject || '',
+            content: content,
+            created_at: new Date().toISOString(),
+            read_at: null
+        };
+
+        var msgs = loadChat();
+        msgs.push(newMsg);
+        saveChat(msgs);
+        console.log('[CHAT] Partenaire ' + partner.email + ' -> ' + toEmail + ' : ' + content.substring(0, 50));
+        res.json({ ok: true, message: newMsg });
+    } catch (err) {
+        res.status(500).json({ error: 'Erreur serveur' });
     }
 });
 

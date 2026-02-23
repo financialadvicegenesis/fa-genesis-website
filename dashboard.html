@@ -104,6 +104,7 @@
             <a href="dashboard.html" class="nav-link text-[var(--genesis-yellow)]">Dashboard</a>
             <a href="livrables.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">Livrables</a>
             <a href="seances.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">Séances</a>
+            <a href="messagerie.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">Messagerie</a>
             <a href="mon-compte.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">Paramètres</a>
         </div>
         <div class="flex gap-4 items-center">
@@ -111,7 +112,13 @@
                 <i class="fas fa-shopping-cart text-lg"></i>
                 <span class="panier-badge" style="display:none;position:absolute;top:-4px;right:-4px;background:#f44336;color:#fff;font-size:10px;font-weight:900;min-width:16px;height:16px;line-height:16px;text-align:center;border-radius:50%;"></span>
             </a>
-            <span id="userGreeting" class="hidden md:block text-white font-bold"></span>
+            <a href="mon-compte.html" class="flex items-center gap-2 hover:opacity-80 transition" title="Mon compte" style="text-decoration:none;">
+                <div id="navAvatarCircle" style="width:32px;height:32px;border-radius:50%;border:2px solid var(--genesis-yellow);overflow:hidden;background:#444;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <i class="fas fa-user text-xs text-gray-300" id="navAvatarIcon"></i>
+                    <img id="navAvatarImg" src="" alt="" style="display:none;width:100%;height:100%;object-fit:cover;">
+                </div>
+                <span id="userGreeting" class="hidden md:block text-white font-bold"></span>
+            </a>
             <button onclick="logout()" class="border-4 border-white text-white px-3 py-2 text-[10px] tracking-widest font-black hover:bg-white hover:text-black transition">
                 <i class="fas fa-sign-out-alt mr-1"></i><span class="hidden md:inline">Déconnexion</span>
             </button>
@@ -129,6 +136,7 @@
         <a href="dashboard.html" class="text-2xl nav-link text-[var(--genesis-yellow)]" onclick="closeMobileMenu()">Dashboard</a>
         <a href="livrables.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition" onclick="closeMobileMenu()">Livrables</a>
         <a href="seances.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition" onclick="closeMobileMenu()">Séances</a>
+        <a href="messagerie.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition" onclick="closeMobileMenu()">Messagerie</a>
         <a href="mon-compte.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition" onclick="closeMobileMenu()">Paramètres</a>
         <a href="panier.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition flex items-center gap-2" onclick="closeMobileMenu()"><i class="fas fa-shopping-cart"></i>Panier</a>
         <div class="mt-8">
@@ -289,11 +297,17 @@
 
                         <!-- En attente de confirmation -->
                         <div id="schedulePendingBlock" style="display: none;">
-                            <div class="flex items-center gap-4 p-6 border-4 border-black" style="background: #FFF9E6;">
+                            <div class="flex items-start gap-4 p-6 border-4 border-black" style="background: #FFF9E6;">
                                 <i class="fas fa-clock text-4xl" style="color: var(--genesis-yellow);"></i>
-                                <div>
+                                <div class="flex-1">
                                     <p class="font-black text-xl">Date proposée : <span id="proposedDateDisplay" class="text-[var(--genesis-yellow)]"></span></p>
                                     <p class="text-black font-bold">En attente de confirmation par l'équipe FA GENESIS.</p>
+                                    <div class="mt-4">
+                                        <button onclick="cancelStartDate()" class="text-sm font-bold uppercase text-black hover:text-red-600 transition border-2 border-black hover:border-red-500 px-6 py-2">
+                                            <i class="fas fa-times mr-2"></i>Annuler ma proposition
+                                        </button>
+                                        <p class="text-xs font-bold text-gray-500 mt-2">Vous pourrez proposer une nouvelle date après annulation.</p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -525,6 +539,13 @@
                         if (welc && localUser.prenom) welc.textContent = 'Bienvenue ' + localUser.prenom;
                         var greet = document.getElementById('userGreeting');
                         if (greet && localUser.prenom) greet.textContent = localUser.prenom;
+                        // Avatar nav
+                        if (localUser.profilePhoto) {
+                            var navImg = document.getElementById('navAvatarImg');
+                            var navIcon = document.getElementById('navAvatarIcon');
+                            if (navImg) { navImg.src = localUser.profilePhoto; navImg.style.display = ''; }
+                            if (navIcon) navIcon.style.display = 'none';
+                        }
                     }
                 } catch (e) {}
 
