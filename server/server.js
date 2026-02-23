@@ -2403,6 +2403,10 @@ app.get('/api/admin/pending-schedules', function(req, res) {
         var orders = loadOrders();
         var pending = orders.filter(function(o) {
             return o.schedule_status === 'client_proposed' || o.schedule_status === 'reproposed';
+        }).map(function(o) {
+            // requires_admin_action = vrai seulement si l'intervenant choisi est l'admin
+            var role = o.kickoff_provider_role || 'admin';
+            return Object.assign({}, o, { requires_admin_action: role === 'admin' });
         });
         res.json({ orders: pending });
     } catch (error) {
@@ -2423,23 +2427,21 @@ app.post('/api/admin/confirm-schedule/:orderId', function(req, res) {
             return res.status(400).json({ error: 'Pas de date proposee a confirmer' });
         }
 
-        var updates = { schedule_confirmed_by_admin: true };
-        var finalized = false;
-
-        // Verifier si les deux ont confirme (ou pas de partenaire)
-        var partnerNeeded = hasAssignedPartner(order.id);
-        if (!partnerNeeded || order.schedule_confirmed_by_partner) {
-            finalized = true;
+        // Bloquer si la demande est destinee a un partenaire (pas a l'admin)
+        var kickoffRole = order.kickoff_provider_role || 'admin';
+        var roleLabels = { photographer: 'Photographe', videographer: 'Vidéaste', marketer: 'Consultant Marketing', media: 'Spécialiste Média' };
+        if (kickoffRole !== 'admin') {
+            return res.status(400).json({
+                error: 'Cette demande est destinée au ' + (roleLabels[kickoffRole] || kickoffRole) + '. Seul ce partenaire peut la confirmer.'
+            });
         }
 
-        var updatedOrder = updateOrder(req.params.orderId, updates);
-        console.log('[SCHEDULE] Admin confirme date pour ' + req.params.orderId + ' (finalized: ' + finalized + ')');
+        // Rôle admin : finaliser directement, sans attendre le partenaire
+        var updatedOrder = updateOrder(req.params.orderId, { schedule_confirmed_by_admin: true });
+        console.log('[SCHEDULE] Admin confirme date pour ' + req.params.orderId + ' (finalisation directe)');
+        updatedOrder = finalizeSchedule(updatedOrder);
 
-        if (finalized) {
-            updatedOrder = finalizeSchedule(updatedOrder);
-        }
-
-        res.json({ success: true, order: updatedOrder, finalized: finalized });
+        res.json({ success: true, order: updatedOrder, finalized: true });
     } catch (error) {
         console.error('[SCHEDULE] Erreur confirm-schedule admin:', error);
         res.status(500).json({ error: 'Erreur serveur' });
@@ -2456,6 +2458,12 @@ app.post('/api/admin/reschedule-start/:orderId', function(req, res) {
         if (!order) return res.status(404).json({ error: 'Commande non trouvee' });
         if (order.schedule_status !== 'client_proposed') {
             return res.status(400).json({ error: 'Pas de date proposee a contre-proposer' });
+        }
+
+        // Bloquer si la demande est destinee a un partenaire
+        var kickoffRoleR = order.kickoff_provider_role || 'admin';
+        if (kickoffRoleR !== 'admin') {
+            return res.status(400).json({ error: 'Cette demande est destinée au partenaire, pas à l\'administrateur.' });
         }
 
         var reproposedDate = req.body.reproposed_date;
@@ -2507,7 +2515,11 @@ app.get('/api/partner/pending-schedules', authenticatePartner, function(req, res
         for (var i = 0; i < assignments.length; i++) {
             var order = orders.find(function(o) { return o.id === assignments[i].order_id; });
             if (order && (order.schedule_status === 'client_proposed' || order.schedule_status === 'reproposed')) {
-                pending.push(order);
+                // Ne montrer que les demandes dont le kickoff_provider_role correspond au type du partenaire
+                var orderRole = order.kickoff_provider_role || 'admin';
+                if (orderRole === partner.partner_type) {
+                    pending.push(order);
+                }
             }
         }
 
@@ -2537,6 +2549,12 @@ app.post('/api/partner/reschedule-start/:orderId', authenticatePartner, function
             return a.partner_id === partner.id && a.order_id === order.id && a.status === 'active';
         });
         if (!pIsAssigned) return res.status(403).json({ error: 'Vous n\'etes pas assigne a cette commande' });
+
+        // Verifier que le kickoff_provider_role correspond au type du partenaire
+        var pKickoffRole = order.kickoff_provider_role || 'admin';
+        if (pKickoffRole !== partner.partner_type) {
+            return res.status(403).json({ error: 'Cette demande n\'est pas destinée à votre rôle.' });
+        }
 
         var reproposedDate = req.body.reproposed_date;
         var reproposedMessage = req.body.message || '';
@@ -2591,21 +2609,19 @@ app.post('/api/partner/confirm-schedule/:orderId', authenticatePartner, function
         });
         if (!isAssigned) return res.status(403).json({ error: 'Vous n\'etes pas assigne a cette commande' });
 
-        var updates = { schedule_confirmed_by_partner: true };
-        var finalized = false;
+        // Si le partenaire est l'intervenant designe (kickoff_provider_role correspond),
+        // il finalise directement sans attendre l'admin
+        var partnerKickoffRole = order.kickoff_provider_role || 'admin';
+        var partnerIsKickoff = (partnerKickoffRole === partner.partner_type);
 
-        if (order.schedule_confirmed_by_admin) {
-            finalized = true;
-        }
+        var updatedOrder = updateOrder(req.params.orderId, { schedule_confirmed_by_partner: true });
+        console.log('[SCHEDULE] Partenaire ' + partner.email + ' confirme date pour ' + req.params.orderId + ' (kickoff: ' + partnerIsKickoff + ')');
 
-        var updatedOrder = updateOrder(req.params.orderId, updates);
-        console.log('[SCHEDULE] Partenaire ' + partner.email + ' confirme date pour ' + req.params.orderId + ' (finalized: ' + finalized + ')');
-
-        if (finalized) {
+        if (partnerIsKickoff || order.schedule_confirmed_by_admin) {
             updatedOrder = finalizeSchedule(updatedOrder);
         }
 
-        res.json({ success: true, order: updatedOrder, finalized: finalized });
+        res.json({ success: true, order: updatedOrder, finalized: partnerIsKickoff || order.schedule_confirmed_by_admin });
     } catch (error) {
         console.error('[SCHEDULE] Erreur confirm-schedule partenaire:', error);
         res.status(500).json({ error: 'Erreur serveur' });

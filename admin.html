@@ -821,22 +821,45 @@
                 card.style.display = 'block';
                 if (badge) badge.textContent = orders.length;
 
+                var roleLabelsAdmin = { admin: 'Consultant FA GENESIS', photographer: 'Photographe', videographer: 'Vidéaste', marketer: 'Consultant Marketing', media: 'Spécialiste Média' };
+                var roleIconsAdmin = { admin: 'fa-user-tie', photographer: 'fa-camera', videographer: 'fa-video', marketer: 'fa-chart-bar', media: 'fa-satellite-dish' };
+
                 var html = '';
                 for (var i = 0; i < orders.length; i++) {
                     var order = orders[i];
                     var clientName = (order.client_prenom || '') + ' ' + (order.client_nom || '');
                     var productName = order.product_name || order.product_id || 'Offre inconnue';
                     var proposedDate = order.proposed_start_date ? formatDateFrAdmin(order.proposed_start_date) : 'Non définie';
+                    var kickoffRole = order.kickoff_provider_role || 'admin';
+                    var kickoffLabel = roleLabelsAdmin[kickoffRole] || kickoffRole;
+                    var kickoffIcon = roleIconsAdmin[kickoffRole] || 'fa-user';
+                    var requiresAdminAction = order.requires_admin_action !== false; // true si admin ou undefined
 
-                    var adminConfirmed = order.schedule_confirmed_by_admin === true;
-                    var partnerConfirmed = order.schedule_confirmed_by_partner === true;
-
-                    var adminBadge = adminConfirmed
-                        ? '<span class="inline-block px-2 py-1 text-xs font-black text-white bg-green-600 border-2 border-black mr-2">Admin ✓</span>'
-                        : '<span class="inline-block px-2 py-1 text-xs font-black text-gray-600 bg-gray-200 border-2 border-black mr-2">Admin ✗</span>';
-                    var partnerBadge = partnerConfirmed
-                        ? '<span class="inline-block px-2 py-1 text-xs font-black text-white bg-green-600 border-2 border-black">Partenaire ✓</span>'
-                        : '<span class="inline-block px-2 py-1 text-xs font-black text-gray-600 bg-gray-200 border-2 border-black">Partenaire ✗</span>';
+                    // Zone d'action selon qui doit agir
+                    var actionHtml = '';
+                    if (order.schedule_status === 'reproposed') {
+                        // Contre-proposition envoyée au client
+                        actionHtml = '<div style="border:4px solid #F97316;padding:12px;background:#FFF7ED;max-width:220px;">' +
+                            '<p style="margin:0 0 4px 0;font-weight:900;color:#C2410C;font-size:12px;text-transform:uppercase;"><i class="fas fa-clock mr-1"></i>Contre-proposition envoyée</p>' +
+                            '<p style="margin:0;font-weight:700;font-size:13px;color:#000;">Nouvelle date :<br>' + formatDateFrAdmin(order.reproposed_date || '') + '</p>' +
+                          '</div>';
+                    } else if (!requiresAdminAction) {
+                        // Demande destinée au partenaire — l'admin surveille uniquement
+                        actionHtml = '<div style="border:4px solid #6366F1;padding:12px;background:#EEF2FF;max-width:240px;">' +
+                            '<p style="margin:0 0 6px 0;font-weight:900;color:#4338CA;font-size:12px;text-transform:uppercase;">' +
+                                '<i class="fas ' + kickoffIcon + ' mr-1"></i>En attente du ' + kickoffLabel +
+                            '</p>' +
+                            '<p style="margin:0;font-weight:700;font-size:12px;color:#555;">Ce partenaire doit confirmer la date. Vous recevrez une notification quand c\'est fait.</p>' +
+                          '</div>';
+                    } else if (order.schedule_confirmed_by_admin) {
+                        actionHtml = '<span class="inline-block px-6 py-3 font-black uppercase text-sm bg-green-100 text-green-800 border-4 border-black">Confirmé ✓</span>';
+                    } else {
+                        // Admin doit agir
+                        actionHtml = '<div class="flex flex-col gap-2">' +
+                            '<button onclick="confirmScheduleAdmin(\'' + order.id + '\')" class="neo-btn-yellow px-6 py-3 text-sm uppercase" id="confirmBtn_' + order.id + '"><i class="fas fa-check mr-2"></i>Confirmer</button>' +
+                            '<button onclick="openReproposeAdmin(\'' + order.id + '\')" class="px-6 py-3 text-sm uppercase font-black border-4 border-black bg-white hover:bg-gray-100"><i class="fas fa-calendar-alt mr-2"></i>Autre date</button>' +
+                          '</div>';
+                    }
 
                     html += '<div class="client-row mb-4" style="border: 4px solid black; padding: 1.5rem;">' +
                         '<div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">' +
@@ -849,23 +872,13 @@
                                 '<div class="text-base font-black mt-2" style="color: var(--genesis-yellow);">' +
                                     '<i class="fas fa-calendar-day mr-1"></i>Date proposée : ' + proposedDate +
                                 '</div>' +
-                                '<div class="mt-2">' + adminBadge + partnerBadge + '</div>' +
+                                '<div class="mt-2">' +
+                                    '<span class="inline-block px-2 py-1 text-xs font-black border-2 border-black" style="background:' + (requiresAdminAction ? 'var(--genesis-yellow)' : '#E0E7FF') + ';color:#000;">' +
+                                        '<i class="fas ' + kickoffIcon + ' mr-1"></i>' + kickoffLabel +
+                                    '</span>' +
+                                '</div>' +
                             '</div>' +
-                            '<div>' +
-                                (order.schedule_status === 'reproposed'
-                                    ? '<div style="border:4px solid #F97316;padding:12px;background:#FFF7ED;max-width:220px;">' +
-                                        '<p style="margin:0 0 4px 0;font-weight:900;color:#C2410C;font-size:12px;text-transform:uppercase;"><i class="fas fa-clock mr-1"></i>Contre-proposition envoyée</p>' +
-                                        '<p style="margin:0;font-weight:700;font-size:13px;color:#000;">Nouvelle date proposée :<br>' + formatDateFrAdmin(order.reproposed_date || '') + '</p>' +
-                                      '</div>'
-                                    : (adminConfirmed
-                                        ? '<span class="inline-block px-6 py-3 font-black uppercase text-sm bg-green-100 text-green-800 border-4 border-black">Confirmé ✓</span>'
-                                        : '<div class="flex flex-col gap-2">' +
-                                            '<button onclick="confirmScheduleAdmin(\'' + order.id + '\')" class="neo-btn-yellow px-6 py-3 text-sm uppercase" id="confirmBtn_' + order.id + '"><i class="fas fa-check mr-2"></i>Confirmer</button>' +
-                                            '<button onclick="openReproposeAdmin(\'' + order.id + '\')" class="px-6 py-3 text-sm uppercase font-black border-4 border-black bg-white hover:bg-gray-100"><i class="fas fa-calendar-alt mr-2"></i>Autre date</button>' +
-                                          '</div>'
-                                      )
-                                ) +
-                            '</div>' +
+                            '<div>' + actionHtml + '</div>' +
                         '</div>' +
                     '</div>';
                 }
