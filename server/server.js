@@ -2502,25 +2502,53 @@ app.post('/api/admin/reschedule-start/:orderId', function(req, res) {
 
 /**
  * GET /api/partner/pending-schedules
- * Liste des commandes assignees au partenaire en attente de confirmation
+ * Liste des commandes en attente de confirmation par ce partenaire.
+ *
+ * Logique :
+ *  - Le rôle (kickoff_provider_role) doit correspondre au partner_type du partenaire
+ *  - Si le partenaire est explicitement assigné à la commande → il voit toujours
+ *  - Sinon, si aucun autre partenaire du même type n'est assigné → il voit aussi
+ *    (permet aux partenaires de voir les propositions sans assignment préalable)
  */
 app.get('/api/partner/pending-schedules', authenticatePartner, function(req, res) {
     try {
         var partner = req.partner;
-        var assignments = loadPartnerAssignments().filter(function(a) {
-            return a.partner_id === partner.id && a.status === 'active';
-        });
-
         var orders = loadOrders();
+        var allAssignments = loadPartnerAssignments();
+        var allPartners = loadPartners();
         var pending = [];
-        for (var i = 0; i < assignments.length; i++) {
-            var order = orders.find(function(o) { return o.id === assignments[i].order_id; });
-            if (order && (order.schedule_status === 'client_proposed' || order.schedule_status === 'reproposed')) {
-                // Ne montrer que les demandes dont le kickoff_provider_role correspond au type du partenaire
-                var orderRole = order.kickoff_provider_role || 'admin';
-                if (orderRole === partner.partner_type) {
-                    pending.push(order);
-                }
+
+        for (var i = 0; i < orders.length; i++) {
+            var order = orders[i];
+
+            // Uniquement les commandes avec une proposition en attente
+            if (order.schedule_status !== 'client_proposed' && order.schedule_status !== 'reproposed') continue;
+
+            // Le rôle du kickoff doit correspondre au type de ce partenaire
+            var orderRole = order.kickoff_provider_role || 'admin';
+            if (orderRole !== partner.partner_type) continue;
+
+            // Chercher les assignments actifs sur cette commande pour ce type de rôle
+            var orderAssignments = allAssignments.filter(function(a) {
+                return a.order_id === order.id && a.status === 'active';
+            });
+
+            // Parmi ces assignments, trouver ceux du même type que le partenaire
+            // (en vérifiant partner_type sur l'assignment OU en cherchant dans partners.json)
+            var sameTypeAssignments = orderAssignments.filter(function(a) {
+                if (a.partner_type) return a.partner_type === partner.partner_type;
+                var p = allPartners.find(function(pt) { return pt.id === a.partner_id; });
+                return p && p.partner_type === partner.partner_type;
+            });
+
+            if (sameTypeAssignments.length === 0) {
+                // Aucun partenaire de ce type assigné → la commande est visible par tous
+                // les partenaires actifs de ce type
+                pending.push(order);
+            } else {
+                // Un partenaire de ce type est déjà assigné → montrer seulement à lui
+                var isMe = sameTypeAssignments.some(function(a) { return a.partner_id === partner.id; });
+                if (isMe) pending.push(order);
             }
         }
 
@@ -2540,21 +2568,30 @@ app.post('/api/partner/reschedule-start/:orderId', authenticatePartner, function
         var partner = req.partner;
         var order = getOrderById(req.params.orderId);
         if (!order) return res.status(404).json({ error: 'Commande non trouvee' });
-        if (order.schedule_status !== 'client_proposed') {
+        if (order.schedule_status !== 'client_proposed' && order.schedule_status !== 'reproposed') {
             return res.status(400).json({ error: 'Pas de date proposee a contre-proposer' });
         }
 
-        // Verifier que le partenaire est bien assigne
-        var pAssignments = loadPartnerAssignments();
-        var pIsAssigned = pAssignments.some(function(a) {
-            return a.partner_id === partner.id && a.order_id === order.id && a.status === 'active';
-        });
-        if (!pIsAssigned) return res.status(403).json({ error: 'Vous n\'etes pas assigne a cette commande' });
-
-        // Verifier que le kickoff_provider_role correspond au type du partenaire
+        // Verifier que le partenaire est habilite (meme logique que pending-schedules)
         var pKickoffRole = order.kickoff_provider_role || 'admin';
         if (pKickoffRole !== partner.partner_type) {
             return res.status(403).json({ error: 'Cette demande n\'est pas destinée à votre rôle.' });
+        }
+
+        var pAllAssignments = loadPartnerAssignments();
+        var pAllPartners = loadPartners();
+        var pOrderAssignments = pAllAssignments.filter(function(a) {
+            return a.order_id === order.id && a.status === 'active';
+        });
+        var pSameTypeAssignments = pOrderAssignments.filter(function(a) {
+            if (a.partner_type) return a.partner_type === partner.partner_type;
+            var p = pAllPartners.find(function(pt) { return pt.id === a.partner_id; });
+            return p && p.partner_type === partner.partner_type;
+        });
+        var pCanAct = pSameTypeAssignments.length === 0 ||
+                      pSameTypeAssignments.some(function(a) { return a.partner_id === partner.id; });
+        if (!pCanAct) {
+            return res.status(403).json({ error: 'Un autre partenaire est deja assigne a cette commande' });
         }
 
         var reproposedDate = req.body.reproposed_date;
@@ -2599,30 +2636,47 @@ app.post('/api/partner/confirm-schedule/:orderId', authenticatePartner, function
         var partner = req.partner;
         var order = getOrderById(req.params.orderId);
         if (!order) return res.status(404).json({ error: 'Commande non trouvee' });
-        if (order.schedule_status !== 'client_proposed') {
+        if (order.schedule_status !== 'client_proposed' && order.schedule_status !== 'reproposed') {
             return res.status(400).json({ error: 'Pas de date proposee a confirmer' });
         }
 
-        // Verifier que le partenaire est bien assigne a cette commande
-        var assignments = loadPartnerAssignments();
-        var isAssigned = assignments.some(function(a) {
-            return a.partner_id === partner.id && a.order_id === order.id && a.status === 'active';
-        });
-        if (!isAssigned) return res.status(403).json({ error: 'Vous n\'etes pas assigne a cette commande' });
-
-        // Si le partenaire est l'intervenant designe (kickoff_provider_role correspond),
-        // il finalise directement sans attendre l'admin
+        // Verifier que le partenaire est habilite a confirmer cette commande.
+        // Logique identique a GET /api/partner/pending-schedules :
+        //   - son partner_type doit correspondre au kickoff_provider_role de la commande
+        //   - ET soit il est explicitement assigne, soit aucun autre partenaire du meme type ne l'est
         var partnerKickoffRole = order.kickoff_provider_role || 'admin';
         var partnerIsKickoff = (partnerKickoffRole === partner.partner_type);
 
-        var updatedOrder = updateOrder(req.params.orderId, { schedule_confirmed_by_partner: true });
-        console.log('[SCHEDULE] Partenaire ' + partner.email + ' confirme date pour ' + req.params.orderId + ' (kickoff: ' + partnerIsKickoff + ')');
-
-        if (partnerIsKickoff || order.schedule_confirmed_by_admin) {
-            updatedOrder = finalizeSchedule(updatedOrder);
+        if (!partnerIsKickoff) {
+            return res.status(403).json({ error: 'Vous n\'etes pas l\'intervenant designe pour cette commande' });
         }
 
-        res.json({ success: true, order: updatedOrder, finalized: partnerIsKickoff || order.schedule_confirmed_by_admin });
+        var allAssignments = loadPartnerAssignments();
+        var allPartners = loadPartners();
+
+        var orderAssignments = allAssignments.filter(function(a) {
+            return a.order_id === order.id && a.status === 'active';
+        });
+        var sameTypeAssignments = orderAssignments.filter(function(a) {
+            if (a.partner_type) return a.partner_type === partner.partner_type;
+            var p = allPartners.find(function(pt) { return pt.id === a.partner_id; });
+            return p && p.partner_type === partner.partner_type;
+        });
+
+        var canConfirm = sameTypeAssignments.length === 0 ||
+                         sameTypeAssignments.some(function(a) { return a.partner_id === partner.id; });
+
+        if (!canConfirm) {
+            return res.status(403).json({ error: 'Un autre partenaire est deja assigne a cette commande' });
+        }
+
+        // Le partenaire kickoff finalise directement (sans attendre l'admin)
+        var updatedOrder = updateOrder(req.params.orderId, { schedule_confirmed_by_partner: true });
+        console.log('[SCHEDULE] Partenaire ' + partner.email + ' confirme date pour ' + req.params.orderId);
+
+        updatedOrder = finalizeSchedule(updatedOrder);
+
+        res.json({ success: true, order: updatedOrder, finalized: true });
     } catch (error) {
         console.error('[SCHEDULE] Erreur confirm-schedule partenaire:', error);
         res.status(500).json({ error: 'Erreur serveur' });
@@ -4257,14 +4311,17 @@ app.get('/api/sessions/allowed-providers', function(req, res) {
         var user = authenticateClient(req, res);
         if (!user) return;
 
-        // Trouver la commande active de l'utilisateur
+        // Trouver la commande active de l'utilisateur (priorité : commande avec acompte payé)
         var orders = loadOrders();
         var userOrders = orders.filter(function(o) {
             return o.client_info && o.client_info.email &&
                 o.client_info.email.toLowerCase() === user.email.toLowerCase();
         });
-        // Prendre la commande la plus recente
-        var order = userOrders.length > 0 ? userOrders[userOrders.length - 1] : null;
+        // Préférer la commande payée (deposit_paid), sinon la plus récente
+        var paidOrders = userOrders.filter(function(o) { return o.deposit_paid === true; });
+        var order = paidOrders.length > 0
+            ? paidOrders[paidOrders.length - 1]
+            : (userOrders.length > 0 ? userOrders[userOrders.length - 1] : null);
 
         var providers = getAllowedProviders(order);
         res.json({ ok: true, providers: providers });

@@ -772,11 +772,9 @@
             var html = '';
             for (var i = 0; i < orders.length; i++) {
                 var order = orders[i];
-                var clientName = (order.client_prenom || '') + ' ' + (order.client_nom || '');
+                var clientName = ((order.client_info && order.client_info.first_name) ? order.client_info.first_name + ' ' + (order.client_info.last_name || '') : (order.client_prenom || '') + ' ' + (order.client_nom || '')).trim() || 'Client';
                 var productName = order.product_name || order.product_id || 'Offre';
                 var proposedDate = order.proposed_start_date ? formatDateFrPartner(order.proposed_start_date) : 'Non définie';
-
-                var adminConfirmed = order.schedule_confirmed_by_admin === true;
 
                 html += '<div class="partner-card mb-3">' +
                     '<div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">' +
@@ -786,8 +784,8 @@
                             '<div class="font-black mt-2" style="color: var(--genesis-yellow);">' +
                                 '<i class="fas fa-calendar-day mr-1"></i>Date proposée : ' + proposedDate +
                             '</div>' +
-                            '<div class="text-xs mt-1 font-bold">' +
-                                (adminConfirmed ? '<i class="fas fa-check text-green-400 mr-1"></i>Admin a confirmé' : '<i class="fas fa-clock text-yellow-400 mr-1"></i>Admin n\'a pas encore confirmé') +
+                            '<div class="text-xs mt-1 font-bold" style="color:#aaa;">' +
+                                '<i class="fas fa-info-circle mr-1"></i>Vous pouvez confirmer ou proposer une autre date.' +
                             '</div>' +
                         '</div>' +
                         (order.schedule_status === 'reproposed'
