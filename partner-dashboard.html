@@ -708,6 +708,10 @@
                         '</div>' +
                         '<div class="flex items-center gap-3">' +
                             '<span class="status-badge status-active">' + statusLabel + '</span>' +
+                            '<button onclick="event.stopPropagation();partnerLeaveProject(\'' + order.id + '\')" ' +
+                                'style="background:#fff;color:#c00;border:2px solid #c00;padding:4px 10px;font-size:11px;font-weight:900;cursor:pointer;text-transform:uppercase;" ' +
+                                'title="Se désaffecter de ce projet">' +
+                                '<i class="fas fa-times mr-1"></i>Quitter</button>' +
                             '<i class="fas fa-chevron-right opacity-30"></i>' +
                         '</div>' +
                     '</div>' +
@@ -874,6 +878,26 @@
         } catch (err) {
             alert('Erreur réseau : ' + err.message);
             if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-calendar-times mr-1"></i>Réinitialiser date'; }
+        }
+    }
+
+    async function partnerLeaveProject(orderId) {
+        if (!confirm('Voulez-vous vraiment vous désaffecter de ce projet ?\n\nL\'administrateur sera notifié.')) return;
+        try {
+            var token = localStorage.getItem('fa_genesis_partner_token');
+            var resp = await fetch(PARTNER_API_BASE_URL + '/api/partner/projects/' + encodeURIComponent(orderId) + '/leave', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }
+            });
+            var data = await resp.json();
+            if (data.success) {
+                alert('Vous avez bien été désaffecté de ce projet.');
+                loadProjects();
+            } else {
+                alert(data.error || 'Erreur lors de la désaffectation.');
+            }
+        } catch (err) {
+            alert('Erreur réseau : ' + err.message);
         }
     }
 
@@ -1405,6 +1429,7 @@
             var serviceLabel = SERVICE_TYPE_LABELS[quote.service_type] || quote.service_type || '';
             var needsAction = quote.status === 'DRAFT_REQUESTED';
 
+            var canCancel = quote.status !== 'ACCEPTED' && quote.status !== 'DEPOSIT_PAID' && quote.status !== 'CANCELLED';
             html += '<div class="partner-card' + (needsAction ? '' : '') + '" onclick="openPartnerQuoteDetail(\'' + quote.id + '\')" style="' +
                 (needsAction ? 'border-left:6px solid #ff6b6b;' : '') + '">' +
                 '<div class="flex justify-between items-center flex-wrap gap-3">' +
@@ -1413,8 +1438,9 @@
                         '<div class="font-black text-lg">' + serviceLabel + '</div>' +
                         '<div class="text-sm font-bold opacity-60">' + date + '</div>' +
                     '</div>' +
-                    '<div>' +
+                    '<div class="flex items-center gap-2">' +
                         '<span style="background:' + statusColor + ';color:' + (quote.status === 'SENT_TO_CLIENT' ? 'white' : 'black') + ';padding:4px 10px;border:2px solid black;font-size:11px;font-weight:900;">' + statusLabel + '</span>' +
+                        (canCancel ? '<button onclick="event.stopPropagation();partnerCancelQuote(\'' + quote.id + '\')" style="background:#fff;color:#c00;border:2px solid #c00;padding:4px 10px;font-size:11px;font-weight:900;cursor:pointer;text-transform:uppercase;"><i class="fas fa-times mr-1"></i>Annuler</button>' : '') +
                     '</div>' +
                     (needsAction ? '<div><span class="neo-btn-yellow px-4 py-2 text-xs"><i class="fas fa-pen mr-1"></i>PROPOSER</span></div>' : '') +
                 '</div>' +
@@ -1422,6 +1448,26 @@
         });
 
         container.innerHTML = html;
+    }
+
+    async function partnerCancelQuote(quoteId) {
+        if (!confirm('Voulez-vous vraiment annuler ce devis ?\n\nL\'administrateur sera notifié.')) return;
+        try {
+            var token = localStorage.getItem('fa_genesis_partner_token');
+            var resp = await fetch(PARTNER_API_URL + '/api/partner/quotes/' + encodeURIComponent(quoteId) + '/cancel', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }
+            });
+            var data = await resp.json();
+            if (data.success) {
+                alert('Devis annulé avec succès.');
+                loadPartnerQuotes();
+            } else {
+                alert(data.error || 'Erreur lors de l\'annulation.');
+            }
+        } catch (err) {
+            alert('Erreur réseau : ' + err.message);
+        }
     }
 
     function backToQuotes() {

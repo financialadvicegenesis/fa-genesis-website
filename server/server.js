@@ -5209,6 +5209,41 @@ app.get('/api/partner/projects/:orderId', authenticatePartner, (req, res) => {
     }
 });
 
+// Partenaire se désaffecte d'un projet
+app.post('/api/partner/projects/:orderId/leave', authenticatePartner, function(req, res) {
+    try {
+        var orderId = req.params.orderId;
+        var partner = req.partner;
+        var assignments = loadPartnerAssignments();
+        var idx = assignments.findIndex(function(a) {
+            return a.order_id === orderId && a.partner_id === partner.id && a.status === 'active';
+        });
+        if (idx === -1) {
+            return res.status(404).json({ error: 'Assignation introuvable ou déjà annulée' });
+        }
+        assignments[idx].status = 'cancelled';
+        assignments[idx].cancelled_at = new Date().toISOString();
+        assignments[idx].cancelled_by = 'partner';
+        savePartnerAssignments(assignments);
+
+        // Notifier l'admin
+        if (typeof emailService.sendAdminNotification === 'function') {
+            emailService.sendAdminNotification({
+                name: partner.prenom || partner.name || partner.email,
+                email: partner.email,
+                subject: 'Désaffectation projet',
+                message: 'Le partenaire ' + (partner.prenom || '') + ' ' + (partner.nom || partner.email) + ' s\'est désaffecté du projet ' + orderId + '.'
+            }).catch(function(e) {});
+        }
+
+        console.log('[PARTNER] ' + partner.email + ' s\'est desaffecte du projet ' + orderId);
+        res.json({ success: true });
+    } catch (error) {
+        console.error('[PARTNER] Erreur leave project:', error);
+        res.status(500).json({ error: 'Erreur lors de la désaffectation' });
+    }
+});
+
 // Upload livrable par partenaire
 app.post('/api/partner/upload', authenticatePartner, (req, res) => {
     try {
@@ -6017,6 +6052,59 @@ app.post('/api/partner/quotes/:id/propose', authenticatePartner, function(req, r
     } catch (error) {
         console.error('[QUOTE] Erreur proposition:', error);
         res.status(500).json({ error: 'Erreur soumission proposition' });
+    }
+});
+
+/**
+ * POST /api/partner/quotes/:id/cancel
+ * Partenaire annule un devis qui lui est assigné (avant acceptation client)
+ */
+app.post('/api/partner/quotes/:id/cancel', authenticatePartner, function(req, res) {
+    try {
+        var partner = req.partner;
+        var quotes = loadQuotes();
+        var idx = quotes.findIndex(function(q) { return q.id === req.params.id; });
+        if (idx === -1) {
+            return res.status(404).json({ error: 'Devis non trouvé' });
+        }
+
+        var quote = quotes[idx];
+
+        // Vérifier que ce devis est bien assigné à ce partenaire
+        if (quote.partner_id !== partner.id && quote.partner_email !== partner.email) {
+            return res.status(403).json({ error: 'Accès non autorisé à ce devis' });
+        }
+
+        if (quote.status === 'ACCEPTED' || quote.status === 'DEPOSIT_PAID') {
+            return res.status(400).json({ error: 'Ce devis a déjà été accepté par le client, annulation impossible' });
+        }
+
+        if (quote.status === 'CANCELLED') {
+            return res.status(400).json({ error: 'Ce devis est déjà annulé' });
+        }
+
+        quotes[idx].status = 'CANCELLED';
+        quotes[idx].cancelled_at = new Date().toISOString();
+        quotes[idx].cancelled_by = 'partner';
+        quotes[idx].updated_at = new Date().toISOString();
+        saveQuotes(quotes);
+
+        // Notifier l'admin
+        if (typeof emailService.sendAdminNotification === 'function') {
+            emailService.sendAdminNotification({
+                name: partner.prenom || partner.email,
+                email: partner.email,
+                subject: 'Devis annulé par un partenaire',
+                message: 'Le partenaire ' + (partner.prenom || '') + ' ' + (partner.nom || partner.email) + ' a annulé le devis ' + (quote.quote_number || quote.id) + ' (client : ' + (quote.client_name || quote.client_email) + ').'
+            }).catch(function(e) {});
+        }
+
+        console.log('[QUOTE] Devis ' + quote.quote_number + ' annule par partenaire ' + partner.email);
+        res.json({ success: true });
+
+    } catch (error) {
+        console.error('[QUOTE] Erreur annulation partenaire:', error);
+        res.status(500).json({ error: 'Erreur lors de l\'annulation' });
     }
 });
 
@@ -7173,12 +7261,11 @@ app.get('/api/partner/deliverables', (req, res) => {
         var authHeader = req.headers.authorization;
         if (!authHeader) return res.status(401).json({ error: 'Non autorise' });
         var token = authHeader.replace('Bearer ', '');
-        var jwt = require('jsonwebtoken');
-        var decoded = jwt.verify(token, process.env.JWT_SECRET || 'fa-genesis-secret-key-2024');
-        if (decoded.role !== 'partner') return res.status(403).json({ error: 'Acces partenaire requis' });
+        var partnerAuth = loadPartners().find(function(p) { return p.sessionToken === token; });
+        if (!partnerAuth) return res.status(401).json({ error: 'Session partenaire invalide ou expirée' });
 
-        var partnerId = decoded.partnerId || decoded.id;
-        var partnerEmail = decoded.email;
+        var partnerId = partnerAuth.id;
+        var partnerEmail = partnerAuth.email;
 
         // Trouver les commandes assignees au partenaire
         var assignments = loadPartnerAssignments();
@@ -7217,9 +7304,8 @@ app.post('/api/partner/deliverables/:id/upload', (req, res) => {
         var authHeader = req.headers.authorization;
         if (!authHeader) return res.status(401).json({ error: 'Non autorise' });
         var token = authHeader.replace('Bearer ', '');
-        var jwt = require('jsonwebtoken');
-        var decoded = jwt.verify(token, process.env.JWT_SECRET || 'fa-genesis-secret-key-2024');
-        if (decoded.role !== 'partner') return res.status(403).json({ error: 'Acces partenaire requis' });
+        var partnerAuth = loadPartners().find(function(p) { return p.sessionToken === token; });
+        if (!partnerAuth) return res.status(401).json({ error: 'Session partenaire invalide ou expirée' });
 
         var fileUrl = req.body.file_url;
         var contentText = req.body.content_text;
@@ -7241,7 +7327,7 @@ app.post('/api/partner/deliverables/:id/upload', (req, res) => {
                 var newVersion = {
                     version_number: liv.versions.length + 1,
                     updated_by_role: 'partner',
-                    updated_by_id: decoded.partnerId || decoded.id || decoded.email,
+                    updated_by_id: partnerAuth.id,
                     content_text: contentText || null,
                     file_url: fileUrl || null,
                     change_note: changeNote,
@@ -7254,7 +7340,7 @@ app.post('/api/partner/deliverables/:id/upload', (req, res) => {
                 if (contentText) liv.content_text = contentText;
                 liv.workflow_status = 'PENDING_PARTNER';
                 liv.owner_role = 'partner';
-                liv.owner_partner_id = decoded.partnerId || decoded.id;
+                liv.owner_partner_id = partnerAuth.id;
                 liv.updated_at = new Date().toISOString();
 
                 livrables[i] = liv;
@@ -7278,9 +7364,8 @@ app.patch('/api/partner/deliverables/:id', (req, res) => {
         var authHeader = req.headers.authorization;
         if (!authHeader) return res.status(401).json({ error: 'Non autorise' });
         var token = authHeader.replace('Bearer ', '');
-        var jwt = require('jsonwebtoken');
-        var decoded = jwt.verify(token, process.env.JWT_SECRET || 'fa-genesis-secret-key-2024');
-        if (decoded.role !== 'partner') return res.status(403).json({ error: 'Acces partenaire requis' });
+        var partnerAuth = loadPartners().find(function(p) { return p.sessionToken === token; });
+        if (!partnerAuth) return res.status(401).json({ error: 'Session partenaire invalide ou expirée' });
 
         var livrables = loadLivrables();
         for (var i = 0; i < livrables.length; i++) {
@@ -7314,9 +7399,8 @@ app.post('/api/partner/deliverables/:id/submit', (req, res) => {
         var authHeader = req.headers.authorization;
         if (!authHeader) return res.status(401).json({ error: 'Non autorise' });
         var token = authHeader.replace('Bearer ', '');
-        var jwt = require('jsonwebtoken');
-        var decoded = jwt.verify(token, process.env.JWT_SECRET || 'fa-genesis-secret-key-2024');
-        if (decoded.role !== 'partner') return res.status(403).json({ error: 'Acces partenaire requis' });
+        var partnerAuth = loadPartners().find(function(p) { return p.sessionToken === token; });
+        if (!partnerAuth) return res.status(401).json({ error: 'Session partenaire invalide ou expirée' });
 
         var livrables = loadLivrables();
         for (var i = 0; i < livrables.length; i++) {
