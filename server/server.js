@@ -5907,10 +5907,6 @@ app.post('/api/admin/quotes/:id/cancel', function(req, res) {
             return res.status(404).json({ error: 'Devis non trouvé' });
         }
 
-        if (quotes[idx].status === 'ACCEPTED') {
-            return res.status(400).json({ error: 'Impossible d\'annuler un devis déjà accepté' });
-        }
-
         quotes[idx].status = 'CANCELLED';
         quotes[idx].updated_at = new Date().toISOString();
         saveQuotes(quotes);
@@ -6324,6 +6320,79 @@ app.post('/api/quotes/accept', async function(req, res) {
     } catch (error) {
         console.error('[QUOTE] Erreur acceptation devis:', error);
         res.status(500).json({ error: 'Erreur lors de l\'acceptation du devis' });
+    }
+});
+
+/**
+ * POST /api/quotes/cancel
+ * Annuler un devis depuis l'espace client (même si déjà accepté)
+ */
+app.post('/api/quotes/cancel', function(req, res) {
+    try {
+        var authHeader = req.headers.authorization;
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return res.status(401).json({ error: 'Authentification requise' });
+        }
+        var authToken = authHeader.split(' ')[1];
+        var users = loadUsers();
+        var authUser = users.find(function(u) { return u.sessionToken === authToken; });
+        if (!authUser) {
+            return res.status(401).json({ error: 'Session invalide ou expirée' });
+        }
+
+        var quoteToken = req.body.token;
+        if (!quoteToken) {
+            return res.status(400).json({ error: 'Token de devis requis' });
+        }
+
+        var quotes = loadQuotes();
+        var idx = quotes.findIndex(function(q) { return q.acceptance_token === quoteToken; });
+        if (idx === -1) {
+            return res.status(404).json({ error: 'Devis non trouvé' });
+        }
+
+        var quote = quotes[idx];
+
+        // Vérifier que le client est bien le destinataire
+        if (quote.client_email && quote.client_email !== authUser.email) {
+            return res.status(403).json({ error: 'Accès non autorisé' });
+        }
+
+        if (quote.status === 'CANCELLED') {
+            return res.status(400).json({ error: 'Ce devis est déjà annulé' });
+        }
+
+        quotes[idx].status = 'CANCELLED';
+        quotes[idx].cancelled_at = new Date().toISOString();
+        quotes[idx].cancelled_by = 'client';
+        quotes[idx].updated_at = new Date().toISOString();
+        saveQuotes(quotes);
+
+        // Si une commande liée existe, la marquer annulée
+        if (quote.order_id) {
+            try {
+                var orders = loadOrders();
+                var oIdx = orders.findIndex(function(o) { return o.id === quote.order_id; });
+                if (oIdx !== -1 && orders[oIdx].status !== 'fully_paid') {
+                    orders[oIdx].status = 'cancelled';
+                    orders[oIdx].updated_at = new Date().toISOString();
+                    saveOrders(orders);
+                }
+            } catch (e) { console.error('[QUOTE] Erreur annulation order liee:', e); }
+        }
+
+        // Notifications email
+        if (typeof emailService.sendQuoteCancelledNotification === 'function') {
+            emailService.sendQuoteCancelledNotification(quotes[idx], 'client')
+                .catch(function(e) { console.error('[QUOTE] Erreur notif annulation:', e); });
+        }
+
+        console.log('[QUOTE] Devis ' + quote.quote_number + ' annule par le client ' + authUser.email);
+        res.json({ success: true });
+
+    } catch (error) {
+        console.error('[QUOTE] Erreur annulation client:', error);
+        res.status(500).json({ error: 'Erreur lors de l\'annulation' });
     }
 });
 

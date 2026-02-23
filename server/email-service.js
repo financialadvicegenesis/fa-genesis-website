@@ -135,7 +135,7 @@ function getEmailTemplate(content, title = 'FA GENESIS') {
                             <h1 style="margin: 0; font-size: 28px; font-weight: 900; color: #FFD700; letter-spacing: 2px;">
                                 FA GENESIS
                             </h1>
-                            <p style="margin: 5px 0 0 0; font-size: 12px; color: #888888; text-transform: uppercase; letter-spacing: 1px;">
+                            <p style="margin: 5px 0 0 0; font-size: 12px; color: #ffffff; text-transform: uppercase; letter-spacing: 1px;">
                                 Groupe FA Industries
                             </p>
                         </td>
@@ -1702,6 +1702,76 @@ async function sendScheduleCancelledNotification(recipientEmail, recipientName, 
     }
 }
 
+/**
+ * Notification annulation de devis par le client
+ * Envoie à l'admin et au partenaire si assigné
+ */
+async function sendQuoteCancelledNotification(quote, cancelledBy) {
+    try {
+        if (!transporter) {
+            console.log('[EMAIL] Transporteur non configure - notification annulation devis ignoree');
+            return { success: false, reason: 'no_transporter' };
+        }
+
+        var cancellerLabel = cancelledBy === 'client' ? 'Le client' : 'L\'équipe FA GENESIS';
+        var content = '<h2 style="color: #333333; margin: 0 0 20px 0; font-size: 22px;">Devis annulé</h2>' +
+            '<div style="background: #fff3f3; border-left: 4px solid #f44336; padding: 15px; margin-bottom: 20px;">' +
+            '<p style="margin: 0; font-weight: bold; color: #333;">Devis ' + (quote.quote_number || '') + '</p>' +
+            '<p style="margin: 5px 0 0 0; font-size: 14px; color: #666;">' + cancellerLabel + ' a annulé ce devis.</p>' +
+            '</div>' +
+            '<table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">' +
+            '<tr><td style="padding: 10px; border-bottom: 1px solid #eee; font-weight: bold; color: #333; width: 120px;">Client</td>' +
+            '<td style="padding: 10px; border-bottom: 1px solid #eee; color: #555;">' + (quote.client_name || '') + '</td></tr>' +
+            '<tr><td style="padding: 10px; border-bottom: 1px solid #eee; font-weight: bold; color: #333;">Email</td>' +
+            '<td style="padding: 10px; border-bottom: 1px solid #eee;"><a href="mailto:' + (quote.client_email || '') + '" style="color: #FFD700;">' + (quote.client_email || '') + '</a></td></tr>' +
+            '</table>' +
+            '<p style="color: #555; font-size: 14px;">Rendez-vous dans l\'espace administration pour plus de détails.</p>';
+
+        var html = getEmailTemplate(content, 'Devis annulé - FA GENESIS');
+        var adminEmail = process.env.EMAIL_ADMIN_ADDRESS || 'financialadvicegenesis@gmail.com';
+
+        var results = [];
+
+        // Notification admin
+        var mailAdmin = {
+            from: '"FA GENESIS" <' + (process.env.EMAIL_FROM_ADDRESS || process.env.SMTP_USER) + '>',
+            to: adminEmail,
+            subject: '[FA GENESIS] Devis annulé - ' + (quote.quote_number || ''),
+            html: html
+        };
+        try {
+            var r = await transporter.sendMail(mailAdmin);
+            results.push({ to: adminEmail, success: true, messageId: r.messageId });
+            console.log('[EMAIL] Notification annulation devis envoyee a admin');
+        } catch (e) {
+            results.push({ to: adminEmail, success: false, error: e.message });
+        }
+
+        // Notification partenaire si assigné
+        if (quote.partner_email) {
+            var mailPartner = {
+                from: '"FA GENESIS" <' + (process.env.EMAIL_FROM_ADDRESS || process.env.SMTP_USER) + '>',
+                to: quote.partner_email,
+                subject: '[FA GENESIS] Devis annulé - ' + (quote.quote_number || ''),
+                html: html
+            };
+            try {
+                var rp = await transporter.sendMail(mailPartner);
+                results.push({ to: quote.partner_email, success: true, messageId: rp.messageId });
+                console.log('[EMAIL] Notification annulation devis envoyee au partenaire ' + quote.partner_email);
+            } catch (e) {
+                results.push({ to: quote.partner_email, success: false, error: e.message });
+            }
+        }
+
+        return { success: true, results: results };
+
+    } catch (error) {
+        console.error('[EMAIL] Erreur notification annulation devis:', error.message);
+        return { success: false, error: error.message };
+    }
+}
+
 module.exports = {
     initializeTransporter,
     sendContactConfirmation,
@@ -1723,5 +1793,6 @@ module.exports = {
     sendScheduleProposedNotification,
     sendScheduleConfirmedToClient,
     sendScheduleReproposedToClient,
-    sendScheduleCancelledNotification
+    sendScheduleCancelledNotification,
+    sendQuoteCancelledNotification
 };

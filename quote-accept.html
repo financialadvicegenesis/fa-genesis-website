@@ -426,7 +426,21 @@
         // Actions dynamiques
         var actionsContainer = document.getElementById('actionsContainer');
         if (actionsContainer) {
-            if (quote.deposit_paid) {
+            var cancelBtn = '<div class="mt-6 pt-6" style="border-top:2px solid #eee;">' +
+                '<button id="cancelBtn" onclick="cancelQuote()" class="neo-btn-white px-6 py-3 text-sm font-black uppercase">' +
+                '<i class="fas fa-times mr-2"></i>Annuler ce devis</button>' +
+                '<p class="text-xs font-bold mt-2" style="color:#999;">Cette action est irréversible.</p>' +
+                '</div>';
+
+            if (quote.status === 'CANCELLED') {
+                actionsContainer.innerHTML = '<div class="p-6 bg-gray-100 border-4 border-gray-400 text-center">' +
+                    '<i class="fas fa-times-circle text-3xl text-gray-500 mb-2"></i>' +
+                    '<p class="font-black text-lg uppercase" style="color:#333;">DEVIS ANNULÉ</p>' +
+                    '<p class="font-bold text-sm opacity-70 mt-2">Ce devis a été annulé. Contactez-nous pour toute question.</p>' +
+                    '</div>' +
+                    '<div class="mt-6"><a href="dashboard.html" class="neo-btn-yellow px-8 py-4 text-lg uppercase inline-block">' +
+                    '<i class="fas fa-home mr-2"></i>MON ESPACE CLIENT</a></div>';
+            } else if (quote.deposit_paid) {
                 // Acompte deja paye
                 actionsContainer.innerHTML = '<div class="p-6 bg-[#d3f9d8] border-4 border-[#2b8a3e]">' +
                     '<i class="fas fa-check-circle text-3xl text-[#2b8a3e] mb-2"></i>' +
@@ -435,17 +449,20 @@
                     '</div>' +
                     '<div class="mt-6">' +
                     '<a href="dashboard.html" class="neo-btn-yellow px-8 py-4 text-lg uppercase inline-block">' +
-                    '<i class="fas fa-home mr-2"></i>MON ESPACE CLIENT</a></div>';
+                    '<i class="fas fa-home mr-2"></i>MON ESPACE CLIENT</a></div>' +
+                    cancelBtn;
             } else if (quote.status === 'ACCEPTED') {
                 // Accepte mais acompte pas encore paye
                 actionsContainer.innerHTML = '<button id="payBtn" onclick="payDeposit()" class="neo-btn-yellow px-8 md:px-12 py-4 md:py-6 text-lg md:text-2xl font-black italic uppercase tracking-tighter w-full">' +
                     '<i class="fas fa-credit-card mr-2"></i>PAYER L\'ACOMPTE (' + (quote.pricing ? quote.pricing.deposit_amount : '') + '\u20ac)</button>' +
-                    '<p class="text-xs font-bold mt-4" style="color:#000;">Paiement sécurisé par SumUp.</p>';
+                    '<p class="text-xs font-bold mt-4" style="color:#000;">Paiement sécurisé par SumUp.</p>' +
+                    cancelBtn;
             } else if (quote.status === 'SENT_TO_CLIENT') {
                 // Pas encore accepte
                 actionsContainer.innerHTML = '<button id="acceptBtn" onclick="acceptAndPay()" class="neo-btn-yellow px-8 md:px-12 py-4 md:py-6 text-lg md:text-2xl font-black italic uppercase tracking-tighter w-full">' +
                     '<i class="fas fa-check-circle mr-2"></i>ACCEPTER ET PAYER L\'ACOMPTE (' + (quote.pricing ? quote.pricing.deposit_amount : '') + '\u20ac)</button>' +
-                    '<p class="text-xs font-bold mt-4" style="color:#000;">Paiement sécurisé par SumUp.</p>';
+                    '<p class="text-xs font-bold mt-4" style="color:#000;">Paiement sécurisé par SumUp.</p>' +
+                    cancelBtn;
             }
         }
 
@@ -593,6 +610,34 @@
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fas fa-credit-card mr-2"></i>PAYER L\'ACOMPTE';
             }
+        }
+    }
+
+    async function cancelQuote() {
+        if (!currentToken) return;
+        if (!confirm('Êtes-vous sûr de vouloir annuler ce devis ?\n\nCette action est irréversible et nous en serons informés.')) return;
+
+        var btn = document.getElementById('cancelBtn');
+        if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Annulation...'; }
+
+        try {
+            var authToken = (typeof getAuthToken === 'function') ? getAuthToken() : localStorage.getItem('fa_genesis_token');
+            var response = await fetch(API_URL + '/api/quotes/cancel', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
+                body: JSON.stringify({ token: currentToken })
+            });
+            var result = await response.json();
+            if (result.success) {
+                alert('Votre devis a bien été annulé. Notre équipe a été notifiée.');
+                window.location.reload();
+            } else {
+                alert('Erreur : ' + (result.error || 'Impossible d\'annuler le devis'));
+                if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-times mr-2"></i>Annuler ce devis'; }
+            }
+        } catch (error) {
+            alert('Erreur de connexion. Veuillez réessayer.');
+            if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-times mr-2"></i>Annuler ce devis'; }
         }
     }
 
