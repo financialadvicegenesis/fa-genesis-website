@@ -594,10 +594,13 @@
             var subjectInput = document.getElementById('msgSubject');
             if (subjectInput) {
                 var origSubject = msg.subject || '';
-                if (origSubject && origSubject.substring(0, 3).toLowerCase() !== 're:') {
-                    subjectInput.value = 'Re : ' + origSubject;
-                } else if (origSubject) {
-                    subjectInput.value = origSubject;
+                if (origSubject) {
+                    // Supprimer tous les "Re : " en tête avant de remettre un seul
+                    var stripped = origSubject;
+                    while (stripped.toLowerCase().indexOf('re : ') === 0) {
+                        stripped = stripped.substring(5);
+                    }
+                    subjectInput.value = 'Re : ' + stripped;
                 }
             }
 

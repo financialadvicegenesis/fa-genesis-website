@@ -2547,7 +2547,9 @@
         var origSubject = threadMsgs.length > 0 ? threadMsgs[threadMsgs.length - 1].subject : '';
         var replySubject = '';
         if (origSubject) {
-            replySubject = origSubject.toLowerCase().indexOf('re :') === 0 ? origSubject : 'Re : ' + origSubject;
+            var stripped = origSubject;
+            while (stripped.toLowerCase().indexOf('re : ') === 0) { stripped = stripped.substring(5); }
+            replySubject = 'Re : ' + stripped;
         }
 
         try {
