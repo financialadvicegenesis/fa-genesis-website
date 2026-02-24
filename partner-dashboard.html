@@ -1429,7 +1429,7 @@
             var serviceLabel = SERVICE_TYPE_LABELS[quote.service_type] || quote.service_type || '';
             var needsAction = quote.status === 'DRAFT_REQUESTED';
 
-            var canCancel = quote.status !== 'ACCEPTED' && quote.status !== 'DEPOSIT_PAID' && quote.status !== 'CANCELLED';
+            var canCancel = quote.status !== 'CANCELLED';
             html += '<div class="partner-card' + (needsAction ? '' : '') + '" onclick="openPartnerQuoteDetail(\'' + quote.id + '\')" style="' +
                 (needsAction ? 'border-left:6px solid #ff6b6b;' : '') + '">' +
                 '<div class="flex justify-between items-center flex-wrap gap-3">' +

@@ -6057,7 +6057,7 @@ app.post('/api/partner/quotes/:id/propose', authenticatePartner, function(req, r
 
 /**
  * POST /api/partner/quotes/:id/cancel
- * Partenaire annule un devis qui lui est assigné (avant acceptation client)
+ * Partenaire annule un devis qui lui est assigné (même si déjà accepté par le client)
  */
 app.post('/api/partner/quotes/:id/cancel', authenticatePartner, function(req, res) {
     try {
@@ -6073,10 +6073,6 @@ app.post('/api/partner/quotes/:id/cancel', authenticatePartner, function(req, re
         // Vérifier que ce devis est bien assigné à ce partenaire
         if (quote.partner_id !== partner.id && quote.partner_email !== partner.email) {
             return res.status(403).json({ error: 'Accès non autorisé à ce devis' });
-        }
-
-        if (quote.status === 'ACCEPTED' || quote.status === 'DEPOSIT_PAID') {
-            return res.status(400).json({ error: 'Ce devis a déjà été accepté par le client, annulation impossible' });
         }
 
         if (quote.status === 'CANCELLED') {
