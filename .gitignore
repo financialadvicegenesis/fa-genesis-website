@@ -3,10 +3,9 @@
 *.env
 credentials.json
 
-# Dossiers de documents (gérés séparément sur le serveur)
+# Dossiers de documents locaux (non publiés)
 DOCUMENTS COMMUNS*/
 DOCUMENTS SPÉCIFIQUES*/
-documents-communs/
 
 # Fichiers Word (templates gérés séparément)
 *.docx
