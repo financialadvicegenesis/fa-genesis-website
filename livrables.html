@@ -321,6 +321,7 @@
         var LIV_API = window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com';
         var _allLivrables = [];
         var _canDownload = false;
+        var _balancePaymentReady = false;
 
         // Auth check
         try {
@@ -419,12 +420,13 @@
 
                 _allLivrables = data.deliverables || [];
                 _canDownload = data.can_download === true;
+                _balancePaymentReady = data.balance_payment_ready === true;
 
                 // Le serveur a confirmé que l'acompte est payé → synchroniser localStorage
                 try {
                     var sess = JSON.parse(localStorage.getItem('fa_genesis_session') || '{}');
                     if (!sess.paymentStatus || sess.paymentStatus === 'registered') {
-                        sess.paymentStatus = _canDownload ? 'fully_paid' : 'deposit_paid';
+                        sess.paymentStatus = _canDownload ? 'fully_paid' : (_balancePaymentReady ? 'delivery_pending_payment' : 'deposit_paid');
                         if (_canDownload) sess.deposit_paid = true;
                         localStorage.setItem('fa_genesis_session', JSON.stringify(sess));
                         console.log('[LIVRABLES] paymentStatus sync → ' + sess.paymentStatus);
@@ -438,7 +440,31 @@
 
                 // Notice telechargement bloque
                 var noticeEl = document.getElementById('downloadNotice');
-                if (noticeEl) noticeEl.style.display = _canDownload ? 'none' : '';
+                if (_canDownload) {
+                    if (noticeEl) noticeEl.style.display = 'none';
+                } else if (_balancePaymentReady) {
+                    // Solde débloqué par admin, inviter le client à payer
+                    if (noticeEl) {
+                        noticeEl.innerHTML = '<div class="p-4 border-4 border-black" style="background:#ff922b;color:black;">' +
+                            '<div style="font-weight:900;font-size:1.1rem;margin-bottom:8px;">' +
+                                '<i class="fas fa-flag-checkered mr-2"></i>Votre accompagnement est terminé !' +
+                            '</div>' +
+                            '<p style="margin-bottom:12px;">Payez le solde restant (70%) pour débloquer vos livrables finaux.</p>' +
+                            '<a href="payment.html" style="background:black;color:#ffd43b;padding:10px 20px;font-weight:900;text-transform:uppercase;text-decoration:none;display:inline-block;border:2px solid black;">' +
+                                '<i class="fas fa-credit-card mr-2"></i>Payer le solde maintenant</a>' +
+                        '</div>';
+                        noticeEl.style.display = '';
+                    }
+                } else {
+                    // Accompagnement en cours, solde pas encore débloqué
+                    if (noticeEl) {
+                        noticeEl.innerHTML = '<div class="p-4 border-4 border-black" style="background:#ffd43b;color:black;">' +
+                            '<i class="fas fa-info-circle mr-2"></i>' +
+                            '<strong>Documents finaux verrouillés</strong> — Disponibles après la fin de votre accompagnement et le paiement du solde.' +
+                        '</div>';
+                        noticeEl.style.display = '';
+                    }
+                }
 
                 renderLivrables(_allLivrables);
 

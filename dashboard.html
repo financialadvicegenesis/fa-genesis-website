@@ -713,9 +713,12 @@
                 if (sub.balance_paid) {
                     if (payStatusEl) payStatusEl.textContent = 'Payé intégralement';
                     if (payDetailEl) payDetailEl.textContent = sub.total_amount + ' EUR';
+                } else if (sub.deposit_paid && sub.balance_payment_ready) {
+                    if (payStatusEl) { payStatusEl.textContent = 'Solde dû'; payStatusEl.style.color = '#ff922b'; }
+                    if (payDetailEl) payDetailEl.textContent = 'Solde à payer : ' + sub.remaining_due + ' EUR';
                 } else if (sub.deposit_paid) {
                     if (payStatusEl) payStatusEl.textContent = 'Acompte payé';
-                    if (payDetailEl) payDetailEl.textContent = 'Solde restant : ' + sub.remaining_due + ' EUR';
+                    if (payDetailEl) payDetailEl.textContent = 'Solde : ' + sub.remaining_due + ' EUR (fin d\'accompagnement)';
                 } else {
                     if (payStatusEl) payStatusEl.textContent = 'En attente';
                     if (payDetailEl) payDetailEl.textContent = '-';
@@ -725,12 +728,22 @@
                 var nextEl = document.getElementById('nextStepLabel');
                 if (nextEl) nextEl.textContent = sub.next_step_label || '-';
 
-                // Section payer solde
-                if (sub.deposit_paid && !sub.balance_paid && sub.remaining_due > 0) {
-                    var payBalSec = document.getElementById('payBalanceSection');
-                    if (payBalSec) payBalSec.style.display = '';
-                    var balAmtEl = document.getElementById('balanceAmount');
-                    if (balAmtEl) balAmtEl.textContent = sub.remaining_due + ' EUR à régler pour débloquer les téléchargements';
+                // Section payer solde — uniquement si admin a débloqué le paiement du solde
+                var payBalSec = document.getElementById('payBalanceSection');
+                if (sub.deposit_paid && !sub.balance_paid && sub.balance_payment_ready) {
+                    if (payBalSec) {
+                        payBalSec.innerHTML = '<div class="p-8 border-4 border-black text-center" style="background:#ff922b;color:black;">' +
+                            '<div style="font-size:2rem;margin-bottom:8px;">🎉</div>' +
+                            '<h3 class="text-xl font-black italic uppercase mb-2">Votre accompagnement est terminé !</h3>' +
+                            '<p class="font-bold mb-4" id="balanceAmount">Solde à payer : ' + (sub.remaining_due || 0) + ' EUR pour débloquer vos livrables finaux</p>' +
+                            '<a href="payment.html" class="inline-block bg-black text-white px-8 py-4 border-4 border-black font-black uppercase text-sm hover:opacity-80 transition">' +
+                                '<i class="fas fa-credit-card mr-2"></i>Payer le solde maintenant' +
+                            '</a>' +
+                        '</div>';
+                        payBalSec.style.display = '';
+                    }
+                } else if (payBalSec) {
+                    payBalSec.style.display = 'none';
                 }
 
                 // Section demarrage / calendrier

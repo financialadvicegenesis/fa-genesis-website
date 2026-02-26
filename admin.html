@@ -1903,6 +1903,12 @@
                         (!order.deposit_paid ?
                             '<button onclick="confirmDeposit(\'' + order.id + '\')" style="background:#51cf66;border:2px solid black;color:black;padding:4px 12px;font-weight:900;font-size:12px;cursor:pointer;text-transform:uppercase;" title="Confirmer paiement acompte">' +
                                 '<i class="fas fa-check mr-1"></i>Confirmer acompte</button>' : '') +
+                        (order.deposit_paid && !order.balance_paid && !order.balance_payment_ready ?
+                            '<button onclick="unlockBalance(\'' + order.id + '\')" style="background:#ff922b;border:2px solid black;color:black;padding:4px 12px;font-weight:900;font-size:12px;cursor:pointer;text-transform:uppercase;" title="Déclarer la fin de l\'accompagnement et débloquer le paiement du solde">' +
+                                '<i class="fas fa-flag-checkered mr-1"></i>Fin d\'accompagnement</button>' : '') +
+                        (order.balance_payment_ready && !order.balance_paid ?
+                            '<span style="background:#fff3cd;border:2px solid #ff922b;color:#b35900;padding:4px 10px;font-weight:900;font-size:11px;display:inline-block;">' +
+                                '<i class="fas fa-clock mr-1"></i>Attente paiement solde</span>' : '') +
                         '<button onclick="goToProjetIA(\'' + order.id + '\')" class="text-xs font-bold uppercase border-2 border-black px-3 py-1 hover:bg-yellow-100" title="Créer un projet IA pour cette commande">' +
                             '<i class="fas fa-project-diagram mr-1"></i>Projet IA</button>' +
                         '<button onclick="deleteOrder(\'' + order.id + '\')" class="text-xs font-bold uppercase border-2 border-red-600 text-red-700 px-3 py-1 hover:bg-red-100" title="Supprimer cette commande">' +
@@ -2060,6 +2066,26 @@
                     loadOrders();
                 } else {
                     alert(data.error || 'Erreur lors de la confirmation.');
+                }
+            } catch (err) {
+                alert('Erreur réseau : ' + err.message);
+            }
+        }
+
+        // Déclarer la fin de l'accompagnement → débloque le paiement du solde
+        async function unlockBalance(orderId) {
+            if (!confirm('Déclarer la fin de l\'accompagnement pour la commande ' + orderId + ' ?\n\nLe client recevra une notification pour payer son solde (70%).')) return;
+            try {
+                var resp = await fetch(API_BASE_URL + '/api/admin/orders/' + encodeURIComponent(orderId) + '/unlock-balance', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                var data = await resp.json();
+                if (data.success) {
+                    alert('Fin d\'accompagnement déclarée ! Le client peut maintenant payer son solde.');
+                    loadOrders();
+                } else {
+                    alert(data.error || 'Erreur lors du déblocage du solde.');
                 }
             } catch (err) {
                 alert('Erreur réseau : ' + err.message);
