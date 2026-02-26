@@ -4148,26 +4148,45 @@ app.post('/api/admin/orders/:orderId/unlock-balance', function(req, res) {
         var updates = {
             balance_payment_ready: true,
             balance_unlocked_at: new Date().toISOString(),
+            balance_unlocked_by: 'admin',
             status: 'pending_balance'
         };
         var updatedOrder = updateOrder(orderId, updates);
 
+        var clientEmail = updatedOrder && updatedOrder.client_info && updatedOrder.client_info.email;
+        var clientName = updatedOrder && updatedOrder.client_info
+            ? ((updatedOrder.client_info.prenom || '') + ' ' + (updatedOrder.client_info.nom || '')).trim()
+            : '';
+
         // Synchroniser paymentStatus dans users.json
         try {
-            if (updatedOrder && updatedOrder.client_info && updatedOrder.client_info.email) {
+            if (clientEmail) {
                 var allUsers = loadUsers();
                 var uIdx = allUsers.findIndex(function(u) {
-                    return u.email && u.email.toLowerCase() === updatedOrder.client_info.email.toLowerCase();
+                    return u.email && u.email.toLowerCase() === clientEmail.toLowerCase();
                 });
                 if (uIdx !== -1) {
                     allUsers[uIdx].paymentStatus = 'delivery_pending_payment';
                     allUsers[uIdx].payment_status = 'delivery_pending_payment';
                     saveUsers(allUsers);
-                    console.log('[ADMIN] Solde débloqué: ' + updatedOrder.client_info.email + ' → delivery_pending_payment');
+                    console.log('[ADMIN] Solde débloqué: ' + clientEmail + ' → delivery_pending_payment');
                 }
             }
         } catch (syncErr) {
             console.error('[ADMIN] Erreur sync users apres unlock-balance:', syncErr.message);
+        }
+
+        // Envoyer email de notification au client
+        if (clientEmail && clientName) {
+            emailService.sendAccompanimentEndNotification(
+                clientEmail,
+                clientName,
+                'admin',
+                updatedOrder.product_name || '',
+                updatedOrder.balance_amount || 0
+            ).catch(function(e) {
+                console.error('[ADMIN] Erreur email fin accompagnement:', e.message);
+            });
         }
 
         res.json({ success: true, order: updatedOrder });
@@ -5254,6 +5273,9 @@ app.get('/api/partner/projects', authenticatePartner, (req, res) => {
                     created_at: order.created_at,
                     schedule_status: order.schedule_status || null,
                     start_date: order.start_date || null,
+                    deposit_paid: order.deposit_paid === true,
+                    balance_paid: order.balance_paid === true,
+                    balance_payment_ready: order.balance_payment_ready === true,
                     client_name: order.client_info
                         ? (order.client_info.first_name + ' ' + (order.client_info.last_name || '').charAt(0) + '.')
                         : 'Client'
@@ -5359,6 +5381,100 @@ app.post('/api/partner/projects/:orderId/leave', authenticatePartner, function(r
     } catch (error) {
         console.error('[PARTNER] Erreur leave project:', error);
         res.status(500).json({ error: 'Erreur lors de la désaffectation' });
+    }
+});
+
+/**
+ * POST /api/partner/orders/:orderId/unlock-balance
+ * Le partenaire déclare la fin de l'accompagnement → débloque le paiement du solde
+ */
+app.post('/api/partner/orders/:orderId/unlock-balance', authenticatePartner, function(req, res) {
+    try {
+        var orderId = req.params.orderId;
+        var partner = req.partner;
+
+        // Vérifier que le partenaire est assigné à cette commande
+        var assignments = loadPartnerAssignments();
+        var assignment = assignments.find(function(a) {
+            return a.order_id === orderId && a.partner_id === partner.id && a.status === 'active';
+        });
+        if (!assignment) {
+            return res.status(403).json({ error: 'Vous n\'êtes pas assigné à cette commande' });
+        }
+
+        var order = getOrderById(orderId);
+        if (!order) {
+            return res.status(404).json({ error: 'Commande non trouvée' });
+        }
+        if (!order.deposit_paid) {
+            return res.status(400).json({ error: 'L\'acompte n\'a pas encore été payé' });
+        }
+        if (order.balance_paid) {
+            return res.status(400).json({ error: 'Le solde a déjà été payé' });
+        }
+        if (order.balance_payment_ready) {
+            return res.status(400).json({ error: 'La fin d\'accompagnement a déjà été déclarée' });
+        }
+
+        var partnerName = ((partner.prenom || '') + ' ' + (partner.nom || partner.name || '')).trim() || partner.email;
+
+        var updates = {
+            balance_payment_ready: true,
+            balance_unlocked_at: new Date().toISOString(),
+            balance_unlocked_by: 'partner:' + partnerName,
+            status: 'pending_balance'
+        };
+        var updatedOrder = updateOrder(orderId, updates);
+
+        var clientEmail = updatedOrder && updatedOrder.client_info && updatedOrder.client_info.email;
+        var clientName = updatedOrder && updatedOrder.client_info
+            ? ((updatedOrder.client_info.prenom || '') + ' ' + (updatedOrder.client_info.nom || '')).trim()
+            : '';
+
+        // Synchroniser paymentStatus dans users.json
+        try {
+            if (clientEmail) {
+                var allUsers = loadUsers();
+                var uIdx = allUsers.findIndex(function(u) {
+                    return u.email && u.email.toLowerCase() === clientEmail.toLowerCase();
+                });
+                if (uIdx !== -1) {
+                    allUsers[uIdx].paymentStatus = 'delivery_pending_payment';
+                    allUsers[uIdx].payment_status = 'delivery_pending_payment';
+                    saveUsers(allUsers);
+                    console.log('[PARTNER] Solde débloqué par ' + partnerName + ': ' + clientEmail + ' → delivery_pending_payment');
+                }
+            }
+        } catch (syncErr) {
+            console.error('[PARTNER] Erreur sync users apres unlock-balance:', syncErr.message);
+        }
+
+        // Envoyer email de notification au client
+        if (clientEmail && clientName) {
+            emailService.sendAccompanimentEndNotification(
+                clientEmail,
+                clientName,
+                partnerName,
+                updatedOrder.product_name || '',
+                updatedOrder.balance_amount || 0
+            ).catch(function(e) {
+                console.error('[PARTNER] Erreur email fin accompagnement:', e.message);
+            });
+        }
+
+        // Notifier aussi l'admin
+        emailService.sendAdminNotification({
+            name: partnerName,
+            email: partner.email,
+            subject: 'Fin d\'accompagnement déclarée',
+            message: 'Le partenaire ' + partnerName + ' a déclaré la fin de l\'accompagnement pour la commande '
+                + orderId + ' (client : ' + (clientEmail || 'inconnu') + ').'
+        }).catch(function(e) {});
+
+        res.json({ success: true, order: updatedOrder });
+    } catch (err) {
+        console.error('[PARTNER] Erreur unlock-balance:', err.message);
+        res.status(500).json({ error: 'Erreur serveur' });
     }
 });
 
