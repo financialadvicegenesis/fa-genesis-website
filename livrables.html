@@ -420,16 +420,21 @@
                 _allLivrables = data.deliverables || [];
                 _canDownload = data.can_download === true;
 
-                // Check deposit status from localStorage
+                // Le serveur a confirmé que l'acompte est payé → synchroniser localStorage
                 try {
                     var sess = JSON.parse(localStorage.getItem('fa_genesis_session') || '{}');
-                    if (sess.deposit_paid === false || sess.paymentStatus === 'registered') {
-                        if (lockedEl) lockedEl.style.display = '';
-                        return;
+                    if (!sess.paymentStatus || sess.paymentStatus === 'registered') {
+                        sess.paymentStatus = _canDownload ? 'fully_paid' : 'deposit_paid';
+                        if (_canDownload) sess.deposit_paid = true;
+                        localStorage.setItem('fa_genesis_session', JSON.stringify(sess));
+                        console.log('[LIVRABLES] paymentStatus sync → ' + sess.paymentStatus);
                     }
                 } catch (e) {}
 
                 if (contentEl) contentEl.style.display = '';
+
+                // Afficher les documents de démarrage maintenant que le statut est à jour
+                initCommonDocs();
 
                 // Notice telechargement bloque
                 var noticeEl = document.getElementById('downloadNotice');
@@ -733,9 +738,8 @@
 
         if (mobileMenuBtn) mobileMenuBtn.addEventListener('click', toggleMobileMenu);
 
-        // Lancer le chargement
+        // Lancer le chargement (initCommonDocs() est appelé depuis loadLivrables() après confirmation serveur)
         loadLivrables();
-        initCommonDocs();
 
         // Notification badge for sessions PROPOSED
         (function() {

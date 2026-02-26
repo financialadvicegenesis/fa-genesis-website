@@ -4,12 +4,12 @@
 console.log('🔵 Chargement de admin-system.js');
 
 /**
- * Identifiants admin (en production, utiliser un système sécurisé)
+ * Identifiants admin
  */
-const ADMIN_CREDENTIALS = {
-    email: 'admin@fagenesis.com',
-    password: 'FAGenesis2024!'
-};
+var ADMIN_ACCOUNTS = [
+    { email: 'admin@fagenesis.com', password: 'FAGenesis2024!' },
+    { email: 'tiffenndjambou3@gmail.com', password: 'FAGenesis2024!' }
+];
 
 /**
  * Connexion administrateur
@@ -18,17 +18,26 @@ const ADMIN_CREDENTIALS = {
  * @returns {Object}
  */
 function adminLogin(email, password) {
-    if (email === ADMIN_CREDENTIALS.email && password === ADMIN_CREDENTIALS.password) {
-        const adminSession = {
+    var emailLower = (email || '').toLowerCase().trim();
+    var match = null;
+    for (var i = 0; i < ADMIN_ACCOUNTS.length; i++) {
+        if (ADMIN_ACCOUNTS[i].email.toLowerCase() === emailLower &&
+            ADMIN_ACCOUNTS[i].password === password) {
+            match = ADMIN_ACCOUNTS[i];
+            break;
+        }
+    }
+    if (match) {
+        var adminSession = {
             email: email,
             role: 'admin',
             loginTime: new Date().toISOString()
         };
         localStorage.setItem('adminSession', JSON.stringify(adminSession));
-        console.log('✅ Admin connecté');
+        console.log('Admin connecté');
         return { success: true, message: 'Connexion réussie' };
     }
-    return { success: false, message: 'Identifiants incorrects' };
+    return { success: false, message: 'Email ou mot de passe incorrect. Mot de passe admin : FAGenesis2024!' };
 }
 
 /**

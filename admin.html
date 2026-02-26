@@ -662,6 +662,17 @@
         // API_BASE_URL est défini dans auth.js
     </script>
     <script>
+        // Libellés des statuts de paiement
+        function getStatusLabel(status) {
+            var labels = {
+                'registered': 'Inscrit',
+                'deposit_paid': 'Acompte payé',
+                'delivery_pending_payment': 'Solde à payer',
+                'fully_paid': 'Entièrement payé'
+            };
+            return labels[status] || status || 'Inconnu';
+        }
+
         // Vérifier si admin est déjà connecté
         if (isAdminAuthenticated()) {
             showAdminPanel();
@@ -671,16 +682,17 @@
         document.getElementById('loginForm').addEventListener('submit', function(e) {
             e.preventDefault();
 
-            const email = document.getElementById('adminEmail').value;
-            const password = document.getElementById('adminPassword').value;
-            const result = adminLogin(email, password);
+            var email = document.getElementById('adminEmail').value;
+            var password = document.getElementById('adminPassword').value;
+            var result = adminLogin(email, password);
 
             if (result.success) {
                 showAdminPanel();
             } else {
-                const errorDiv = document.getElementById('loginError');
-                errorDiv.textContent = result.message;
+                var errorDiv = document.getElementById('loginError');
+                errorDiv.innerHTML = '<i class="fas fa-exclamation-triangle mr-2"></i>' + result.message;
                 errorDiv.style.display = 'block';
+                errorDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
         });
 
