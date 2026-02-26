@@ -4059,6 +4059,58 @@ app.put('/api/orders/:orderId/mark-completed', (req, res) => {
     }
 });
 
+/**
+ * POST /api/admin/orders/:orderId/confirm-deposit
+ * Confirmer manuellement le paiement de l'acompte (sans SumUp)
+ */
+app.post('/api/admin/orders/:orderId/confirm-deposit', function(req, res) {
+    try {
+        var orderId = req.params.orderId;
+        var order = getOrderById(orderId);
+        if (!order) {
+            return res.status(404).json({ error: 'Commande non trouvee' });
+        }
+        if (order.deposit_paid) {
+            return res.status(400).json({ error: 'Acompte deja marque comme paye' });
+        }
+
+        var updates = {
+            deposit_paid: true,
+            deposit_paid_at: new Date().toISOString(),
+            status: 'active',
+            schedule_status: 'awaiting_client_choice',
+            proposed_start_date: null,
+            schedule_confirmed_by_admin: false,
+            schedule_confirmed_by_partner: false
+        };
+        var updatedOrder = updateOrder(orderId, updates);
+
+        // Synchroniser paymentStatus dans users.json
+        try {
+            if (updatedOrder && updatedOrder.client_info && updatedOrder.client_info.email) {
+                var allUsers = loadUsers();
+                var uIdx = allUsers.findIndex(function(u) {
+                    return u.email && u.email.toLowerCase() === updatedOrder.client_info.email.toLowerCase();
+                });
+                if (uIdx !== -1) {
+                    allUsers[uIdx].paymentStatus = 'deposit_paid';
+                    allUsers[uIdx].payment_status = 'deposit_paid';
+                    allUsers[uIdx].activeOrderId = orderId;
+                    saveUsers(allUsers);
+                    console.log('[ADMIN] Acompte confirme manuellement: ' + updatedOrder.client_info.email + ' → deposit_paid');
+                }
+            }
+        } catch (syncErr) {
+            console.error('[ADMIN] Erreur sync users apres confirmation acompte:', syncErr.message);
+        }
+
+        res.json({ success: true, order: updatedOrder });
+    } catch (err) {
+        console.error('[ADMIN] Erreur confirm-deposit:', err.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
 // ============================================================
 // ROUTES - MESSAGERIE INTERNE (chat client <-> admin/partenaire)
 // Utilise chat.json separe des messages de contact (messages.json)
