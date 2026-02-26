@@ -1899,7 +1899,10 @@
                             '<div style="background:' + bgColor + ';color:black;padding:4px 10px;border:2px solid black;font-size:11px;font-weight:900;display:inline-block;">' + label + '</div>' +
                         '</div>' +
                     '</div>' +
-                    '<div class="flex gap-2 mt-3 pt-3" style="border-top:2px solid rgba(0,0,0,0.15);">' +
+                    '<div class="flex gap-2 mt-3 pt-3 flex-wrap" style="border-top:2px solid rgba(0,0,0,0.15);">' +
+                        (!order.deposit_paid ?
+                            '<button onclick="confirmDeposit(\'' + order.id + '\')" style="background:#51cf66;border:2px solid black;color:black;padding:4px 12px;font-weight:900;font-size:12px;cursor:pointer;text-transform:uppercase;" title="Confirmer paiement acompte">' +
+                                '<i class="fas fa-check mr-1"></i>Confirmer acompte</button>' : '') +
                         '<button onclick="goToProjetIA(\'' + order.id + '\')" class="text-xs font-bold uppercase border-2 border-black px-3 py-1 hover:bg-yellow-100" title="Créer un projet IA pour cette commande">' +
                             '<i class="fas fa-project-diagram mr-1"></i>Projet IA</button>' +
                         '<button onclick="deleteOrder(\'' + order.id + '\')" class="text-xs font-bold uppercase border-2 border-red-600 text-red-700 px-3 py-1 hover:bg-red-100" title="Supprimer cette commande">' +
@@ -2037,6 +2040,26 @@
                     loadOrders();
                 } else {
                     alert(data.error || 'Erreur lors de la suppression.');
+                }
+            } catch (err) {
+                alert('Erreur réseau : ' + err.message);
+            }
+        }
+
+        // Confirmer manuellement le paiement de l'acompte
+        async function confirmDeposit(orderId) {
+            if (!confirm('Confirmer le paiement de l\'acompte pour la commande ' + orderId + ' ?\n\nCela rendra les documents accessibles au client.')) return;
+            try {
+                var resp = await fetch(API_BASE_URL + '/api/admin/orders/' + encodeURIComponent(orderId) + '/confirm-deposit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                var data = await resp.json();
+                if (data.success) {
+                    alert('Acompte confirmé ! Le client peut maintenant accéder à ses documents.');
+                    loadOrders();
+                } else {
+                    alert(data.error || 'Erreur lors de la confirmation.');
                 }
             } catch (err) {
                 alert('Erreur réseau : ' + err.message);
