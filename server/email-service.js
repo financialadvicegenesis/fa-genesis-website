@@ -1772,6 +1772,81 @@ async function sendQuoteCancelledNotification(quote, cancelledBy) {
     }
 }
 
+/**
+ * Email au client : fin d'accompagnement déclarée (par admin ou partenaire)
+ * @param {string} clientEmail
+ * @param {string} clientName
+ * @param {string} declaredBy  - 'admin' | nom du partenaire
+ * @param {string} orderName   - nom de l'offre/tarif
+ * @param {number} balanceAmount - montant du solde restant (EUR)
+ */
+async function sendAccompanimentEndNotification(clientEmail, clientName, declaredBy, orderName, balanceAmount) {
+    var transport = initializeTransporter();
+    if (!transport) {
+        console.log('[EMAIL] Transport non configure - Fin accompagnement non envoyee');
+        return { success: false, reason: 'SMTP non configure' };
+    }
+
+    var frontUrl = process.env.FRONT_URL || 'https://fagenesis.com';
+    var declarantLabel = (declaredBy && declaredBy !== 'admin')
+        ? 'votre conseiller <strong>' + escapeHtml(declaredBy) + '</strong>'
+        : 'l\'équipe FA GENESIS';
+
+    var balanceLine = '';
+    if (balanceAmount && balanceAmount > 0) {
+        balanceLine = '<div style="background:#fff3cd;border-left:4px solid #ff922b;padding:20px;margin:25px 0;">'
+            + '<p style="margin:0;font-size:15px;font-weight:700;color:#000;">'
+            + 'Solde restant à régler : <span style="font-size:22px;font-weight:900;">' + balanceAmount + ' €</span>'
+            + '</p>'
+            + '<p style="margin:8px 0 0 0;font-size:13px;color:#555;">'
+            + 'Payez le solde pour débloquer immédiatement vos livrables finaux.'
+            + '</p></div>';
+    }
+
+    var content = '<h2 style="margin:0 0 20px 0;font-size:24px;color:#000;font-weight:900;">'
+        + '🎉 Votre accompagnement est terminé !</h2>'
+        + '<p style="margin:0 0 20px 0;font-size:16px;color:#333;line-height:1.6;">'
+        + 'Bonjour ' + escapeHtml(clientName) + ',<br><br>'
+        + 'Félicitations ! ' + declarantLabel + ' vient de déclarer la fin de votre accompagnement '
+        + '<strong style="color:#000;">' + escapeHtml(orderName || '') + '</strong>.<br><br>'
+        + 'Nous espérons que cet accompagnement vous a apporté les résultats attendus et que vous avez apprécié cette expérience avec FA GENESIS.'
+        + '</p>'
+        + balanceLine
+        + '<div style="background:#f8f8f8;border:2px solid #000;padding:20px;margin:25px 0;">'
+        + '<p style="margin:0 0 10px 0;font-weight:900;font-size:15px;color:#000;">Vos prochaines étapes :</p>'
+        + '<ul style="margin:0;padding-left:20px;font-size:14px;color:#333;line-height:2;">'
+        + (balanceAmount > 0 ? '<li>Payer le solde de <strong>' + balanceAmount + ' €</strong> pour accéder à vos livrables finaux</li>' : '')
+        + '<li>Télécharger tous vos livrables depuis votre espace client</li>'
+        + '<li>Nous laisser un retour sur votre expérience</li>'
+        + '</ul></div>'
+        + '<div style="text-align:center;margin:30px 0;">'
+        + '<a href="' + frontUrl + '/payment.html" target="_blank" '
+        + 'style="display:inline-block;background:#FFD700;color:#000;padding:16px 32px;font-weight:900;'
+        + 'text-transform:uppercase;text-decoration:none;font-size:14px;border:3px solid #000;margin-right:12px;">'
+        + '💳 Payer le solde</a>'
+        + '<a href="' + frontUrl + '/livrables.html" target="_blank" '
+        + 'style="display:inline-block;background:#000;color:#FFD700;padding:16px 32px;font-weight:900;'
+        + 'text-transform:uppercase;text-decoration:none;font-size:14px;border:3px solid #000;">'
+        + '📁 Mes livrables</a>'
+        + '</div>'
+        + '<p style="margin:30px 0 0 0;font-size:16px;color:#333;">Merci pour votre confiance,<br>'
+        + '<strong style="color:#000;">L\'équipe FA GENESIS</strong></p>';
+
+    try {
+        var result = await transport.sendMail({
+            from: '"' + (process.env.EMAIL_FROM_NAME || 'FA GENESIS') + '" <' + (process.env.EMAIL_FROM_ADDRESS || process.env.SMTP_USER) + '>',
+            to: clientEmail,
+            subject: '[FA GENESIS] Votre accompagnement est terminé — Téléchargez vos livrables',
+            html: getEmailTemplate(content, 'Fin d\'accompagnement')
+        });
+        console.log('[EMAIL] Fin accompagnement envoyee a ' + clientEmail);
+        return { success: true, messageId: result.messageId };
+    } catch (error) {
+        console.error('[EMAIL] Erreur fin accompagnement:', error.message);
+        return { success: false, error: error.message };
+    }
+}
+
 module.exports = {
     initializeTransporter,
     sendContactConfirmation,
@@ -1794,5 +1869,6 @@ module.exports = {
     sendScheduleConfirmedToClient,
     sendScheduleReproposedToClient,
     sendScheduleCancelledNotification,
-    sendQuoteCancelledNotification
+    sendQuoteCancelledNotification,
+    sendAccompanimentEndNotification
 };
