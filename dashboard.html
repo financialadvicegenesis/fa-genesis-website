@@ -728,18 +728,31 @@
                 var nextEl = document.getElementById('nextStepLabel');
                 if (nextEl) nextEl.textContent = sub.next_step_label || '-';
 
-                // Section payer solde — uniquement si admin a débloqué le paiement du solde
+                // Section payer solde — dès que l'acompte est payé (anticipé ou en fin d'accompagnement)
                 var payBalSec = document.getElementById('payBalanceSection');
-                if (sub.deposit_paid && !sub.balance_paid && sub.balance_payment_ready) {
+                if (sub.deposit_paid && !sub.balance_paid) {
                     if (payBalSec) {
-                        payBalSec.innerHTML = '<div class="p-8 border-4 border-black text-center" style="background:#ff922b;color:black;">' +
-                            '<div style="font-size:2rem;margin-bottom:8px;">🎉</div>' +
-                            '<h3 class="text-xl font-black italic uppercase mb-2">Votre accompagnement est terminé !</h3>' +
-                            '<p class="font-bold mb-4" id="balanceAmount">Solde à payer : ' + (sub.remaining_due || 0) + ' EUR pour débloquer vos livrables finaux</p>' +
-                            '<a href="payment.html" class="inline-block bg-black text-white px-8 py-4 border-4 border-black font-black uppercase text-sm hover:opacity-80 transition">' +
-                                '<i class="fas fa-credit-card mr-2"></i>Payer le solde maintenant' +
-                            '</a>' +
-                        '</div>';
+                        if (sub.balance_payment_ready) {
+                            // Admin a déclaré la fin : mode urgent orange
+                            payBalSec.innerHTML = '<div class="p-8 border-4 border-black text-center" style="background:#ff922b;color:black;">' +
+                                '<div style="font-size:2rem;margin-bottom:8px;">&#127881;</div>' +
+                                '<h3 class="text-xl font-black italic uppercase mb-2">Votre accompagnement est termin\u00e9 !</h3>' +
+                                '<p class="font-bold mb-4">Solde \u00e0 payer : ' + (sub.remaining_due || 0) + ' EUR pour d\u00e9bloquer vos livrables finaux</p>' +
+                                '<a href="payment.html" class="inline-block bg-black text-white px-8 py-4 border-4 border-black font-black uppercase text-sm hover:opacity-80 transition">' +
+                                    '<i class="fas fa-credit-card mr-2"></i>Payer le solde maintenant' +
+                                '</a>' +
+                            '</div>';
+                        } else {
+                            // Paiement anticipé optionnel
+                            payBalSec.innerHTML = '<div class="p-6 border-4 border-black" style="background:#ffd43b;color:black;">' +
+                                '<h3 class="text-lg font-black italic uppercase mb-2"><i class="fas fa-bolt mr-2"></i>Payer le solde en avance</h3>' +
+                                '<p class="font-bold mb-1">Solde : ' + (sub.remaining_due || 0) + ' EUR</p>' +
+                                '<p class="text-sm font-bold mb-4" style="color:#555;">Vous pouvez anticiper le paiement du solde (70%) \u00e0 tout moment pour d\u00e9bloquer imm\u00e9diatement vos livrables finaux.</p>' +
+                                '<a href="payment.html" class="inline-block bg-black text-white px-6 py-3 border-4 border-black font-black uppercase text-sm hover:opacity-80 transition">' +
+                                    '<i class="fas fa-credit-card mr-2"></i>Anticiper le paiement' +
+                                '</a>' +
+                            '</div>';
+                        }
                         payBalSec.style.display = '';
                     }
                 } else if (payBalSec) {
