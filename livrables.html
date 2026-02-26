@@ -694,14 +694,37 @@
             container.innerHTML = html;
         }
 
-        function initCommonDocs() {
+        function showCommonDocsSection() {
+            var section = document.getElementById('commonDocsSection');
+            if (section) section.style.display = '';
+            renderCommonDocs();
+        }
+
+        async function initCommonDocs() {
             try {
+                // Chemin rapide : localStorage déjà à jour
                 var sess = JSON.parse(localStorage.getItem('fa_genesis_session') || '{}');
                 var status = sess.paymentStatus || 'registered';
-                if (status === 'registered') return;
-                var section = document.getElementById('commonDocsSection');
-                if (section) section.style.display = '';
-                renderCommonDocs();
+                if (status !== 'registered') {
+                    showCommonDocsSection();
+                    return;
+                }
+                // Chemin serveur : localStorage périmé → vérifier /api/auth/me
+                var token = localStorage.getItem('fa_genesis_token');
+                if (!token) return;
+                var resp = await fetch(LIV_API + '/api/auth/me', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (!resp.ok) return;
+                var data = await resp.json();
+                var serverStatus = (data.user && data.user.paymentStatus) || 'registered';
+                if (serverStatus !== 'registered') {
+                    // Mettre à jour le cache local et afficher
+                    sess.paymentStatus = serverStatus;
+                    localStorage.setItem('fa_genesis_session', JSON.stringify(sess));
+                    console.log('[COMMON DOCS] paymentStatus récupéré du serveur: ' + serverStatus);
+                    showCommonDocsSection();
+                }
             } catch(e) { console.warn('[COMMON DOCS]', e); }
         }
 
@@ -738,8 +761,10 @@
 
         if (mobileMenuBtn) mobileMenuBtn.addEventListener('click', toggleMobileMenu);
 
-        // Lancer le chargement (initCommonDocs() est appelé depuis loadLivrables() après confirmation serveur)
+        // Lancer le chargement en parallèle
+        // initCommonDocs() vérifie localStorage puis /api/auth/me si périmé
         loadLivrables();
+        initCommonDocs();
 
         // Notification badge for sessions PROPOSED
         (function() {
