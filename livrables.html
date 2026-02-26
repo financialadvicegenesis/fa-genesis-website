@@ -443,24 +443,26 @@
                 if (_canDownload) {
                     if (noticeEl) noticeEl.style.display = 'none';
                 } else if (_balancePaymentReady) {
-                    // Solde débloqué par admin, inviter le client à payer
+                    // Admin a déclaré la fin → mode urgent orange
                     if (noticeEl) {
                         noticeEl.innerHTML = '<div class="p-4 border-4 border-black" style="background:#ff922b;color:black;">' +
                             '<div style="font-weight:900;font-size:1.1rem;margin-bottom:8px;">' +
-                                '<i class="fas fa-flag-checkered mr-2"></i>Votre accompagnement est terminé !' +
+                                '<i class="fas fa-flag-checkered mr-2"></i>Votre accompagnement est termin\u00e9 !' +
                             '</div>' +
-                            '<p style="margin-bottom:12px;">Payez le solde restant (70%) pour débloquer vos livrables finaux.</p>' +
+                            '<p style="margin-bottom:12px;">Payez le solde restant (70%) pour d\u00e9bloquer vos livrables finaux.</p>' +
                             '<a href="payment.html" style="background:black;color:#ffd43b;padding:10px 20px;font-weight:900;text-transform:uppercase;text-decoration:none;display:inline-block;border:2px solid black;">' +
                                 '<i class="fas fa-credit-card mr-2"></i>Payer le solde maintenant</a>' +
                         '</div>';
                         noticeEl.style.display = '';
                     }
                 } else {
-                    // Accompagnement en cours, solde pas encore débloqué
+                    // Accompagnement en cours — option d'anticiper le paiement
                     if (noticeEl) {
                         noticeEl.innerHTML = '<div class="p-4 border-4 border-black" style="background:#ffd43b;color:black;">' +
-                            '<i class="fas fa-info-circle mr-2"></i>' +
-                            '<strong>Documents finaux verrouillés</strong> — Disponibles après la fin de votre accompagnement et le paiement du solde.' +
+                            '<div style="font-weight:900;margin-bottom:6px;"><i class="fas fa-lock mr-2"></i><strong>Livrables finaux verrouill\u00e9s</strong></div>' +
+                            '<p style="margin-bottom:10px;font-size:0.9rem;">Disponibles apr\u00e8s le paiement du solde (70%). Vous pouvez anticiper ce paiement \u00e0 tout moment si vous le souhaitez.</p>' +
+                            '<a href="payment.html" style="background:black;color:#ffd43b;padding:8px 18px;font-weight:900;font-size:0.85rem;text-transform:uppercase;text-decoration:none;display:inline-block;border:2px solid black;">' +
+                                '<i class="fas fa-bolt mr-2"></i>Anticiper le paiement du solde</a>' +
                         '</div>';
                         noticeEl.style.display = '';
                     }
@@ -708,7 +710,7 @@
                     html += '<i class="fas ' + icon + ' text-3xl mb-3" style="color:' + iconColor + ';"></i>';
                     html += '<span class="livrable-type">' + escapeHtml(item.fileType) + '</span>';
                     html += '<h4 class="text-sm font-black uppercase mb-2">' + escapeHtml(item.title) + '</h4>';
-                    html += '<p class="text-xs font-bold mb-4" style="color:#333;">' + escapeHtml(item.description) + '</p>';
+                    html += '<p class="text-xs font-bold mb-4" style="color:black;">' + escapeHtml(item.description) + '</p>';
                     html += '<a href="' + href + '" download class="download-btn" style="margin-top:auto;"><i class="fas fa-download mr-2"></i>T\u00e9l\u00e9charger</a>';
                     html += '</div>';
                 }
