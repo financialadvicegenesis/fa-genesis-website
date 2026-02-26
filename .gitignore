@@ -7,7 +7,7 @@ credentials.json
 DOCUMENTS COMMUNS*/
 DOCUMENTS SPÉCIFIQUES*/
 
-# Fichiers Word (templates gérés séparément)
+# Fichiers Word
 *.docx
 *.doc
 
@@ -18,6 +18,9 @@ nul
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Sous-dossier repo séparé (ne pas tracker dans ce repo)
+fa-genesis-landing/
 
 # Dossiers de développement
 node_modules/
