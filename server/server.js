@@ -498,6 +498,7 @@ function buildActiveSubscription(user, order) {
         durationDays: durationDays,
         deposit_paid: order.deposit_paid === true,
         balance_paid: order.balance_paid === true,
+        balance_payment_ready: order.balance_payment_ready === true,
         remaining_due: order.balance_paid ? 0 : (order.balance_amount || 0),
         total_amount: order.total_amount || 0,
         deposit_amount: order.deposit_amount || 0,
@@ -1756,7 +1757,14 @@ app.get('/api/payments/history', (req, res) => {
         }) || clientOrders[0] || null;
 
         // Determiner si le solde peut etre paye
-        if (activeOrder && activeOrder.deposit_paid && !activeOrder.balance_paid) {
+        // Require: acompte paye + solde non paye + accompagnement termine (balance_payment_ready ou status terminal)
+        var balanceUnlocked = activeOrder && (
+            activeOrder.balance_payment_ready === true ||
+            activeOrder.status === 'pending_balance' ||
+            activeOrder.status === 'completed' ||
+            activeOrder.status === 'delivered'
+        );
+        if (activeOrder && activeOrder.deposit_paid && !activeOrder.balance_paid && balanceUnlocked) {
             canPayBalance = true;
             balanceAmount = activeOrder.balance_amount || 0;
         }
@@ -3735,6 +3743,8 @@ app.get('/api/deliverables/mine', (req, res) => {
             ok: true,
             deliverables: cleaned,
             can_download: paidOrder.balance_paid === true,
+            balance_payment_ready: paidOrder.balance_payment_ready === true,
+            balance_paid: paidOrder.balance_paid === true,
             order_id: paidOrder.id
         });
 
@@ -4116,6 +4126,59 @@ app.post('/api/admin/orders/:orderId/confirm-deposit', function(req, res) {
         res.json({ success: true, order: updatedOrder });
     } catch (err) {
         console.error('[ADMIN] Erreur confirm-deposit:', err.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * POST /api/admin/orders/:orderId/unlock-balance
+ * Déclarer la fin de l'accompagnement → débloque le paiement du solde pour le client
+ */
+app.post('/api/admin/orders/:orderId/unlock-balance', function(req, res) {
+    try {
+        var orderId = req.params.orderId;
+        var order = getOrderById(orderId);
+        if (!order) {
+            return res.status(404).json({ error: 'Commande non trouvee' });
+        }
+        if (!order.deposit_paid) {
+            return res.status(400).json({ error: 'L\'acompte n\'a pas encore été payé' });
+        }
+        if (order.balance_paid) {
+            return res.status(400).json({ error: 'Le solde a déjà été payé' });
+        }
+        if (order.balance_payment_ready) {
+            return res.status(400).json({ error: 'Le solde est déjà débloqué' });
+        }
+
+        var updates = {
+            balance_payment_ready: true,
+            balance_unlocked_at: new Date().toISOString(),
+            status: 'pending_balance'
+        };
+        var updatedOrder = updateOrder(orderId, updates);
+
+        // Synchroniser paymentStatus dans users.json
+        try {
+            if (updatedOrder && updatedOrder.client_info && updatedOrder.client_info.email) {
+                var allUsers = loadUsers();
+                var uIdx = allUsers.findIndex(function(u) {
+                    return u.email && u.email.toLowerCase() === updatedOrder.client_info.email.toLowerCase();
+                });
+                if (uIdx !== -1) {
+                    allUsers[uIdx].paymentStatus = 'delivery_pending_payment';
+                    allUsers[uIdx].payment_status = 'delivery_pending_payment';
+                    saveUsers(allUsers);
+                    console.log('[ADMIN] Solde débloqué: ' + updatedOrder.client_info.email + ' → delivery_pending_payment');
+                }
+            }
+        } catch (syncErr) {
+            console.error('[ADMIN] Erreur sync users apres unlock-balance:', syncErr.message);
+        }
+
+        res.json({ success: true, order: updatedOrder });
+    } catch (err) {
+        console.error('[ADMIN] Erreur unlock-balance:', err.message);
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });
