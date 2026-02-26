@@ -711,8 +711,16 @@
                             (assignment.notes ? '<div class="text-xs mt-1"><i class="fas fa-sticky-note mr-1"></i>' + assignment.notes + '</div>' : '') +
                             cancelDateBtn +
                         '</div>' +
-                        '<div class="flex items-center gap-3">' +
+                        '<div class="flex items-center gap-3 flex-wrap">' +
                             '<span class="status-badge status-active">' + statusLabel + '</span>' +
+                            (order.deposit_paid && !order.balance_paid && !order.balance_payment_ready ?
+                                '<button onclick="event.stopPropagation();partnerUnlockBalance(\'' + order.id + '\')" ' +
+                                    'style="background:#ff922b;color:#000;border:2px solid #000;padding:4px 10px;font-size:11px;font-weight:900;cursor:pointer;text-transform:uppercase;" ' +
+                                    'title="Déclarer la fin de l\'accompagnement">' +
+                                    '<i class="fas fa-flag-checkered mr-1"></i>Fin accompagnement</button>' : '') +
+                            (order.balance_payment_ready && !order.balance_paid ?
+                                '<span style="background:#fff3cd;border:2px solid #ff922b;color:#b35900;padding:4px 8px;font-size:11px;font-weight:900;">' +
+                                    '<i class="fas fa-clock mr-1"></i>Attente solde client</span>' : '') +
                             '<button onclick="event.stopPropagation();partnerLeaveProject(\'' + order.id + '\')" ' +
                                 'style="background:#fff;color:#c00;border:2px solid #c00;padding:4px 10px;font-size:11px;font-weight:900;cursor:pointer;text-transform:uppercase;" ' +
                                 'title="Se désaffecter de ce projet">' +
@@ -900,6 +908,27 @@
                 loadProjects();
             } else {
                 alert(data.error || 'Erreur lors de la désaffectation.');
+            }
+        } catch (err) {
+            alert('Erreur réseau : ' + err.message);
+        }
+    }
+
+    // Déclarer la fin de l'accompagnement → débloque le paiement du solde client
+    async function partnerUnlockBalance(orderId) {
+        if (!confirm('Déclarer la fin de l\'accompagnement pour ce projet ?\n\nLe client sera notifié par email et pourra payer son solde pour télécharger ses livrables finaux.')) return;
+        try {
+            var token = localStorage.getItem('fa_genesis_partner_token');
+            var resp = await fetch(PARTNER_API_BASE_URL + '/api/partner/orders/' + encodeURIComponent(orderId) + '/unlock-balance', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }
+            });
+            var data = await resp.json();
+            if (data.success) {
+                alert('Fin d\'accompagnement déclarée !\n\nLe client a reçu un email de notification et peut maintenant payer son solde.');
+                loadProjects();
+            } else {
+                alert(data.error || 'Erreur lors de la déclaration.');
             }
         } catch (err) {
             alert('Erreur réseau : ' + err.message);
