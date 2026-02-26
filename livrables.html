@@ -257,6 +257,15 @@
                 </div>
             </div>
 
+            <!-- Documents de démarrage (automatiques après acompte) -->
+            <div id="commonDocsSection" style="display:none; margin-bottom:3rem;">
+                <div class="mb-6" style="border-left:8px solid var(--genesis-yellow); padding-left:1.5rem;">
+                    <h2 class="text-2xl font-black italic uppercase text-white">Documents de démarrage</h2>
+                    <p class="font-bold mt-1" style="color:#aaa;">Automatiquement disponibles après paiement de l'acompte — téléchargeables immédiatement</p>
+                </div>
+                <div id="commonDocsList"></div>
+            </div>
+
             <!-- Contenu livrables -->
             <div id="livrablesContent" style="display: none;">
 
@@ -297,6 +306,7 @@
 
     <script src="config.js"></script>
     <script src="offers-config.js"></script>
+    <script src="common-documents.js"></script>
     <script src="panier.js"></script>
     <script src="auth.js"></script>
     <script>
@@ -619,6 +629,72 @@
             return String(str).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         }
 
+        function encodeFileUrl(url) {
+            if (!url) return '';
+            return url.split('/').map(function(seg) { return encodeURIComponent(seg); }).join('/');
+        }
+
+        // ============================================================
+        // DOCUMENTS DE DÉMARRAGE (common-documents.js)
+        // ============================================================
+        function renderCommonDocs() {
+            var container = document.getElementById('commonDocsList');
+            if (!container) return;
+            if (typeof COMMON_DOCUMENTS === 'undefined' || !COMMON_DOCUMENTS.length) return;
+
+            var order = (typeof CATEGORIES_ORDER !== 'undefined') ? CATEGORIES_ORDER : [];
+            var grouped = {};
+            for (var i = 0; i < COMMON_DOCUMENTS.length; i++) {
+                var doc = COMMON_DOCUMENTS[i];
+                if (!grouped[doc.category]) grouped[doc.category] = [];
+                grouped[doc.category].push(doc);
+            }
+
+            var categories = order.length ? order : Object.keys(grouped);
+            var html = '';
+
+            for (var c = 0; c < categories.length; c++) {
+                var cat = categories[c];
+                var docs = grouped[cat];
+                if (!docs || !docs.length) continue;
+
+                html += '<div class="mb-8">';
+                html += '<h3 class="text-xs font-black uppercase tracking-widest mb-4" style="color:var(--genesis-yellow);">' + escapeHtml(cat) + '</h3>';
+                html += '<div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">';
+
+                for (var d = 0; d < docs.length; d++) {
+                    var item = docs[d];
+                    var icon = item.fileType === 'PDF' ? 'fa-file-pdf' : 'fa-file-word';
+                    var iconColor = item.fileType === 'PDF' ? '#dc2626' : '#2563eb';
+                    var href = encodeFileUrl(item.fileUrl);
+
+                    html += '<div class="livrable-card">';
+                    html += '<i class="fas ' + icon + ' text-3xl mb-3" style="color:' + iconColor + ';"></i>';
+                    html += '<span class="livrable-type">' + escapeHtml(item.fileType) + '</span>';
+                    html += '<h4 class="text-sm font-black uppercase mb-2">' + escapeHtml(item.title) + '</h4>';
+                    html += '<p class="text-xs font-bold mb-4" style="opacity:0.6;">' + escapeHtml(item.description) + '</p>';
+                    html += '<a href="' + href + '" download class="download-btn" style="margin-top:auto;"><i class="fas fa-download mr-2"></i>T\u00e9l\u00e9charger</a>';
+                    html += '</div>';
+                }
+
+                html += '</div>';
+                html += '</div>';
+            }
+
+            container.innerHTML = html;
+        }
+
+        function initCommonDocs() {
+            try {
+                var sess = JSON.parse(localStorage.getItem('fa_genesis_session') || '{}');
+                var status = sess.paymentStatus || 'registered';
+                if (status === 'registered') return;
+                var section = document.getElementById('commonDocsSection');
+                if (section) section.style.display = '';
+                renderCommonDocs();
+            } catch(e) { console.warn('[COMMON DOCS]', e); }
+        }
+
         // ============================================================
         // MENU MOBILE
         // ============================================================
@@ -654,6 +730,7 @@
 
         // Lancer le chargement
         loadLivrables();
+        initCommonDocs();
 
         // Notification badge for sessions PROPOSED
         (function() {
