@@ -19,6 +19,9 @@ nul
 Thumbs.db
 desktop.ini
 
+# Sous-dossier repo séparé (ne pas tracker dans ce repo)
+fa-genesis-landing/
+
 # Dossiers de développement
 node_modules/
 .vscode/
