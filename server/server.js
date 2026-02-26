@@ -1709,9 +1709,13 @@ app.get('/api/payments/history', (req, res) => {
                 o.client_info.email.toLowerCase() === user.email.toLowerCase();
         });
 
+        // Trier par date de creation decroissante (la plus recente en premier)
+        clientOrders.sort(function(a, b) {
+            return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+        });
+
         // Construire l'historique des paiements
         var payments = [];
-        var activeOrder = null;
         var canPayBalance = false;
         var balanceAmount = 0;
 
@@ -1727,7 +1731,6 @@ app.get('/api/payments/history', (req, res) => {
                     order_id: ord.id,
                     product_name: ord.product_name || ''
                 });
-                if (!activeOrder) activeOrder = ord;
             }
             if (ord.balance_paid) {
                 payments.push({
@@ -1740,11 +1743,17 @@ app.get('/api/payments/history', (req, res) => {
                     product_name: ord.product_name || ''
                 });
             }
-            // Commande en attente d'acompte (exclure les annulees)
-            if (!ord.deposit_paid && ord.status !== 'cancelled' && !activeOrder) {
-                activeOrder = ord;
-            }
         }
+
+        // Commande active = la plus recente non annulee et non entierement payee
+        // Priorite : acompte non paye > acompte paye mais solde non paye > entierement payee
+        var activeOrder = clientOrders.find(function(o) {
+            return o.status !== 'cancelled' && !o.deposit_paid;
+        }) || clientOrders.find(function(o) {
+            return o.status !== 'cancelled' && o.deposit_paid && !o.balance_paid;
+        }) || clientOrders.find(function(o) {
+            return o.status !== 'cancelled';
+        }) || clientOrders[0] || null;
 
         // Determiner si le solde peut etre paye
         if (activeOrder && activeOrder.deposit_paid && !activeOrder.balance_paid) {
