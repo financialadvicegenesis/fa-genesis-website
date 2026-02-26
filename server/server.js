@@ -1757,14 +1757,8 @@ app.get('/api/payments/history', (req, res) => {
         }) || clientOrders[0] || null;
 
         // Determiner si le solde peut etre paye
-        // Require: acompte paye + solde non paye + accompagnement termine (balance_payment_ready ou status terminal)
-        var balanceUnlocked = activeOrder && (
-            activeOrder.balance_payment_ready === true ||
-            activeOrder.status === 'pending_balance' ||
-            activeOrder.status === 'completed' ||
-            activeOrder.status === 'delivered'
-        );
-        if (activeOrder && activeOrder.deposit_paid && !activeOrder.balance_paid && balanceUnlocked) {
+        // Autorise des que l'acompte est paye : le client peut anticiper a tout moment
+        if (activeOrder && activeOrder.deposit_paid && !activeOrder.balance_paid) {
             canPayBalance = true;
             balanceAmount = activeOrder.balance_amount || 0;
         }
