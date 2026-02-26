@@ -736,8 +736,56 @@
                 });
             };
 
+            // =============================================
+            // CHARGEMENT PAR COMMANDE SPECIFIQUE
+            // Utilise quand on vient de checkout.html (pendingOrderId en sessionStorage)
+            // pour eviter d'afficher une ancienne commande deja payee comme active
+            // =============================================
+            function loadPaymentForOrder(orderId) {
+                var statusMsg = document.getElementById('statusMessage');
+                if (statusMsg) statusMsg.textContent = 'Chargement...';
+                fetch(PAY_API + '/api/orders/' + encodeURIComponent(orderId))
+                .then(function(resp) {
+                    if (!resp.ok) { loadPaymentStatus(); return null; }
+                    return resp.json();
+                })
+                .then(function(order) {
+                    if (!order || !order.id) { loadPaymentStatus(); return; }
+                    // Construire un objet compatible avec displayFromBackend
+                    var data = {
+                        ok: true,
+                        order_id: order.id,
+                        product_name: order.product_name || '',
+                        total_amount: order.total_amount || 0,
+                        deposit_amount: order.deposit_amount || 0,
+                        balance_amount: order.balance_amount || 0,
+                        deposit_paid: order.deposit_paid === true,
+                        balance_paid: order.balance_paid === true,
+                        can_pay_balance: order.deposit_paid === true && order.balance_paid !== true,
+                        payments: []
+                    };
+                    if (order.deposit_paid) {
+                        data.payments.push({
+                            type: 'deposit', label: 'Acompte (30%)',
+                            amount: order.deposit_amount || 0, currency: 'EUR',
+                            paid_at: order.deposit_paid_at || order.updated_at,
+                            order_id: order.id, product_name: order.product_name || ''
+                        });
+                    }
+                    displayFromBackend(data);
+                })
+                .catch(function() { loadPaymentStatus(); });
+            }
+
             // Charger le statut au chargement de la page
-            loadPaymentStatus();
+            // Si on vient de checkout.html → utiliser la commande fraîchement créée
+            var _pendingOrderId = sessionStorage.getItem('pendingOrderId');
+            if (_pendingOrderId) {
+                sessionStorage.removeItem('pendingOrderId');
+                loadPaymentForOrder(_pendingOrderId);
+            } else {
+                loadPaymentStatus();
+            }
 
         } catch (globalErr) {
             console.error('[PAYMENT PAGE] Erreur globale:', globalErr);
