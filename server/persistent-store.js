@@ -29,7 +29,8 @@ var COLLECTIONS = [
     'quotes',
     'sessions',
     'projects',
-    'livrables'
+    'livrables',
+    'feedbacks'
 ];
 
 /**

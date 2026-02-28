@@ -1446,9 +1446,13 @@ app.post('/api/payments/sumup/webhook', async (req, res) => {
         const { event_type, checkout_reference, id, status, transaction_code, transaction_id } = req.body;
 
         // Extraire l'orderId et le stage du checkout_reference
-        // Format: ORD-XXXXX-deposit ou ORD-XXXXX-balance
+        // Format: ORD-XXXXX-deposit-TIMESTAMP ou ORD-XXXXX-balance-TIMESTAMP (ou sans timestamp)
         const parts = checkout_reference ? checkout_reference.split('-') : [];
-        const stage = parts.pop(); // 'deposit' ou 'balance'
+        // Retirer le timestamp final s'il est numerique (format avec timestamp)
+        if (parts.length > 0 && /^\d+$/.test(parts[parts.length - 1])) {
+            parts.pop();
+        }
+        const stage = parts.pop(); // 'deposit', 'balance', ou 'installment_N'
         const orderId = parts.join('-'); // 'ORD-XXXXX'
 
         if (!orderId) {
@@ -2124,6 +2128,7 @@ function loadFeedbacks() {
 function saveFeedbacks(feedbacks) {
     try {
         fs.writeFileSync(FEEDBACKS_FILE, JSON.stringify(feedbacks, null, 2), 'utf8');
+        persistentStore.persistToCloud('feedbacks', feedbacks).catch(function(e) {});
     } catch (error) {
         console.error('Erreur sauvegarde feedbacks:', error);
     }
