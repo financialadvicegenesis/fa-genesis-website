@@ -41,6 +41,7 @@ const PARTNER_UPLOADS_FILE = path.join(__dirname, 'data', 'partner-uploads.json'
 const PARTNER_COMMENTS_FILE = path.join(__dirname, 'data', 'partner-comments.json');
 const QUOTES_FILE = path.join(__dirname, 'data', 'quotes.json');
 const PROJECTS_FILE = path.join(__dirname, 'data', 'projects.json');
+const FEEDBACKS_FILE = path.join(__dirname, 'data', 'feedbacks.json');
 
 // Creer le dossier data s'il n'existe pas
 if (!fs.existsSync(path.join(__dirname, 'data'))) {
@@ -2103,6 +2104,31 @@ function saveProjects(projects) {
         console.error('Erreur sauvegarde projects:', error);
     }
 }
+
+// ============================================================
+// HELPERS - FEEDBACKS
+// ============================================================
+
+function loadFeedbacks() {
+    try {
+        if (fs.existsSync(FEEDBACKS_FILE)) {
+            var data = fs.readFileSync(FEEDBACKS_FILE, 'utf8');
+            return JSON.parse(data);
+        }
+    } catch (error) {
+        console.error('Erreur lecture feedbacks:', error);
+    }
+    return [];
+}
+
+function saveFeedbacks(feedbacks) {
+    try {
+        fs.writeFileSync(FEEDBACKS_FILE, JSON.stringify(feedbacks, null, 2), 'utf8');
+    } catch (error) {
+        console.error('Erreur sauvegarde feedbacks:', error);
+    }
+}
+
 
 function getProjectByOrderId(orderId) {
     var projects = loadProjects();
@@ -7950,6 +7976,168 @@ app.get('/api/ai/status', (req, res) => {
         res.json({ success: true, status: status });
     } catch (err) {
         res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// ============================================================
+// ROUTES - FEEDBACKS (CLIENTS + ADMIN)
+// ============================================================
+
+/**
+ * POST /api/feedbacks
+ * Client authentifié soumet un feedback.
+ */
+app.post('/api/feedbacks', function(req, res) {
+    try {
+        var authHeader = req.headers.authorization || '';
+        var token = authHeader.toLowerCase().startsWith('bearer ') ? authHeader.slice(7).trim() : authHeader.trim();
+        if (!token) return res.status(401).json({ ok: false, error: 'Token manquant' });
+
+        var users = loadUsers();
+        var user = users.find(function(u) { return u.sessionToken === token; });
+        if (!user) return res.status(401).json({ ok: false, error: 'Session invalide' });
+
+        var body = req.body || {};
+        var rating = parseInt(body.rating) || 0;
+        var category = (body.category || '').trim();
+        var feedbackText = (body.feedbackText || '').trim();
+        var suggestionText = (body.suggestionText || '').trim();
+        var consentTestimonial = body.consentTestimonial === true || body.consentTestimonial === 'true';
+
+        if (!feedbackText) return res.status(400).json({ ok: false, error: 'Le retour d\'expérience est obligatoire.' });
+        if (!rating || rating < 1 || rating > 5) return res.status(400).json({ ok: false, error: 'La note doit être entre 1 et 5.' });
+        if (!category) return res.status(400).json({ ok: false, error: 'Veuillez sélectionner une catégorie.' });
+
+        // Retrouver l'offre active du client
+        var orders = loadOrders();
+        var activeOrder = null;
+        for (var i = 0; i < orders.length; i++) {
+            var o = orders[i];
+            if (o.client_info && o.client_info.email && o.client_info.email.toLowerCase() === user.email.toLowerCase() && o.deposit_paid) {
+                activeOrder = o;
+                break;
+            }
+        }
+
+        var feedback = {
+            id: 'fb-' + uuidv4().split('-')[0] + '-' + Date.now(),
+            userId: user.id || user.email,
+            userEmail: user.email,
+            userName: ((user.prenom || '') + ' ' + (user.nom || '')).trim() || user.email,
+            offerType: activeOrder ? (activeOrder.product_type || 'accompagnement') : 'inconnu',
+            offerName: activeOrder ? (activeOrder.product_name || 'N/A') : 'N/A',
+            rating: rating,
+            category: category,
+            feedbackText: feedbackText,
+            suggestionText: suggestionText,
+            consentTestimonial: consentTestimonial,
+            status: 'new',
+            createdAt: new Date().toISOString()
+        };
+
+        var feedbacks = loadFeedbacks();
+        feedbacks.unshift(feedback);
+        saveFeedbacks(feedbacks);
+
+        console.log('[FEEDBACKS] Nouveau feedback:', feedback.id, '- Note:', rating, '- Categorie:', category);
+
+        // Email si urgent (note ≤ 2 ou catégorie Site/Bug)
+        if (rating <= 2 || category === 'Site/Bug') {
+            emailService.sendUrgentFeedbackNotification(feedback).catch(function(e) {
+                console.error('[FEEDBACKS] Erreur email urgent:', e.message);
+            });
+        }
+
+        res.json({ ok: true, message: 'Merci, votre retour a bien été enregistré !' });
+    } catch (err) {
+        console.error('[FEEDBACKS] Erreur POST:', err);
+        res.status(500).json({ ok: false, error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * GET /api/admin/feedbacks
+ * Admin récupère tous les feedbacks avec filtres optionnels.
+ * Query params : ?category=...&status=...&search=...&sort=date|rating
+ */
+app.get('/api/admin/feedbacks', function(req, res) {
+    try {
+        var feedbacks = loadFeedbacks();
+
+        var filterCategory = (req.query.category || '').trim();
+        var filterStatus = (req.query.status || '').trim();
+        var filterSearch = (req.query.search || '').toLowerCase().trim();
+        var sortBy = (req.query.sort || 'date');
+
+        // Filtrer
+        if (filterCategory) {
+            feedbacks = feedbacks.filter(function(f) { return f.category === filterCategory; });
+        }
+        if (filterStatus) {
+            feedbacks = feedbacks.filter(function(f) { return f.status === filterStatus; });
+        }
+        if (filterSearch) {
+            feedbacks = feedbacks.filter(function(f) {
+                return (f.userName || '').toLowerCase().indexOf(filterSearch) !== -1
+                    || (f.userEmail || '').toLowerCase().indexOf(filterSearch) !== -1
+                    || (f.feedbackText || '').toLowerCase().indexOf(filterSearch) !== -1
+                    || (f.offerName || '').toLowerCase().indexOf(filterSearch) !== -1;
+            });
+        }
+
+        // Trier
+        if (sortBy === 'rating_asc') feedbacks.sort(function(a, b) { return (a.rating || 0) - (b.rating || 0); });
+        else if (sortBy === 'rating_desc') feedbacks.sort(function(a, b) { return (b.rating || 0) - (a.rating || 0); });
+        else feedbacks.sort(function(a, b) { return new Date(b.createdAt || 0) - new Date(a.createdAt || 0); });
+
+        var newCount = loadFeedbacks().filter(function(f) { return f.status === 'new'; }).length;
+
+        res.json({ ok: true, feedbacks: feedbacks, total: feedbacks.length, new_count: newCount });
+    } catch (err) {
+        console.error('[FEEDBACKS] Erreur GET admin:', err);
+        res.status(500).json({ ok: false, error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * PATCH /api/admin/feedbacks/:id/status
+ * Admin met à jour le statut d'un feedback.
+ */
+app.patch('/api/admin/feedbacks/:id/status', function(req, res) {
+    try {
+        var fbId = req.params.id;
+        var newStatus = (req.body && req.body.status) || '';
+        var validStatuses = ['new', 'in_progress', 'resolved'];
+        if (!validStatuses.includes(newStatus)) {
+            return res.status(400).json({ ok: false, error: 'Statut invalide' });
+        }
+
+        var feedbacks = loadFeedbacks();
+        var fb = feedbacks.find(function(f) { return f.id === fbId; });
+        if (!fb) return res.status(404).json({ ok: false, error: 'Feedback introuvable' });
+
+        fb.status = newStatus;
+        fb.updatedAt = new Date().toISOString();
+        saveFeedbacks(feedbacks);
+
+        res.json({ ok: true, feedback: fb });
+    } catch (err) {
+        console.error('[FEEDBACKS] Erreur PATCH status:', err);
+        res.status(500).json({ ok: false, error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * GET /api/admin/feedbacks/unread-count
+ * Badge : nombre de feedbacks "new" pour l'admin.
+ */
+app.get('/api/admin/feedbacks/unread-count', function(req, res) {
+    try {
+        var feedbacks = loadFeedbacks();
+        var count = feedbacks.filter(function(f) { return f.status === 'new'; }).length;
+        res.json({ ok: true, count: count });
+    } catch (err) {
+        res.status(500).json({ ok: false, error: 'Erreur serveur' });
     }
 });
 

@@ -1870,5 +1870,58 @@ module.exports = {
     sendScheduleReproposedToClient,
     sendScheduleCancelledNotification,
     sendQuoteCancelledNotification,
-    sendAccompanimentEndNotification
+    sendAccompanimentEndNotification,
+    sendUrgentFeedbackNotification
 };
+
+/**
+ * Envoyer une notification email pour un feedback urgent (note ≤ 2 ou catégorie Site/Bug)
+ * @param {Object} feedback - L'objet feedback complet
+ */
+async function sendUrgentFeedbackNotification(feedback) {
+    var transport = initializeTransporter();
+    if (!transport) {
+        console.log('[EMAIL] Transport non configure - Feedback urgent non envoye');
+        return;
+    }
+
+    var stars = '';
+    for (var s = 0; s < 5; s++) {
+        stars += s < (feedback.rating || 0) ? '\u2605' : '\u2606';
+    }
+
+    var isUrgent = (feedback.rating <= 2) || (feedback.category === 'Site/Bug');
+    var urgentLabel = isUrgent ? '[URGENT] ' : '';
+
+    var html = '<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">'
+        + '<div style="background:#000;padding:20px;text-align:center;">'
+        + '<h1 style="color:#FFD700;font-size:24px;margin:0;">FA GENESIS</h1>'
+        + '</div>'
+        + '<div style="background:' + (isUrgent ? '#ff6b6b' : '#fff3cd') + ';padding:16px;text-align:center;">'
+        + '<h2 style="margin:0;color:#000;font-size:18px;">' + urgentLabel + 'Nouveau feedback client</h2>'
+        + '</div>'
+        + '<div style="background:#fff;padding:24px;border:1px solid #ddd;">'
+        + '<table style="width:100%;border-collapse:collapse;">'
+        + '<tr><td style="padding:8px;font-weight:700;color:#555;width:40%;">Client</td><td style="padding:8px;">' + (feedback.userName || 'Inconnu') + ' (' + (feedback.userEmail || '') + ')</td></tr>'
+        + '<tr style="background:#f9f9f9;"><td style="padding:8px;font-weight:700;color:#555;">Offre</td><td style="padding:8px;">' + (feedback.offerName || 'N/A') + '</td></tr>'
+        + '<tr><td style="padding:8px;font-weight:700;color:#555;">Note</td><td style="padding:8px;font-size:20px;">' + stars + ' (' + (feedback.rating || 0) + '/5)</td></tr>'
+        + '<tr style="background:#f9f9f9;"><td style="padding:8px;font-weight:700;color:#555;">Cat\u00e9gorie</td><td style="padding:8px;">' + (feedback.category || '') + '</td></tr>'
+        + '<tr><td style="padding:8px;font-weight:700;color:#555;">Retour</td><td style="padding:8px;">' + (feedback.feedbackText || '').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</td></tr>'
+        + (feedback.suggestionText ? '<tr style="background:#f9f9f9;"><td style="padding:8px;font-weight:700;color:#555;">Suggestion</td><td style="padding:8px;">' + (feedback.suggestionText || '').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</td></tr>' : '')
+        + '</table>'
+        + '<div style="margin-top:20px;padding:12px;background:#000;text-align:center;">'
+        + '<a href="https://fagenesis.com/admin.html" style="color:#FFD700;font-weight:700;">Voir dans l\'espace admin \u2192</a>'
+        + '</div></div></div>';
+
+    try {
+        await transport.sendMail({
+            from: '"FA GENESIS" <financialadvicegenesis@gmail.com>',
+            to: 'financialadvicegenesis@gmail.com',
+            subject: urgentLabel + 'Feedback ' + (feedback.rating || '?') + '/5 - ' + (feedback.category || '') + ' - ' + (feedback.userName || ''),
+            html: html
+        });
+        console.log('[EMAIL] Feedback urgent envoye pour:', feedback.userEmail);
+    } catch (err) {
+        console.error('[EMAIL] Erreur envoi feedback urgent:', err.message);
+    }
+}
