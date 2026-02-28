@@ -42,6 +42,7 @@ const PARTNER_COMMENTS_FILE = path.join(__dirname, 'data', 'partner-comments.jso
 const QUOTES_FILE = path.join(__dirname, 'data', 'quotes.json');
 const PROJECTS_FILE = path.join(__dirname, 'data', 'projects.json');
 const FEEDBACKS_FILE = path.join(__dirname, 'data', 'feedbacks.json');
+const SETTINGS_FILE = path.join(__dirname, 'data', 'settings.json');
 
 // Creer le dossier data s'il n'existe pas
 if (!fs.existsSync(path.join(__dirname, 'data'))) {
@@ -2134,6 +2135,26 @@ function saveFeedbacks(feedbacks) {
     }
 }
 
+function loadSettings() {
+    try {
+        if (fs.existsSync(SETTINGS_FILE)) {
+            return JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8'));
+        }
+    } catch (error) {
+        console.error('Erreur lecture settings:', error);
+    }
+    return { revenue_offset: 0 };
+}
+
+function saveSettings(settings) {
+    try {
+        fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settings, null, 2), 'utf8');
+        persistentStore.persistToCloud('settings', settings).catch(function(e) {});
+    } catch (error) {
+        console.error('Erreur sauvegarde settings:', error);
+    }
+}
+
 
 function getProjectByOrderId(orderId) {
     var projects = loadProjects();
@@ -3097,13 +3118,16 @@ app.get('/api/admin/stats', (req, res) => {
     const users = loadUsers();
     const orders = loadOrders();
     const messages = loadMessages();
+    const settings = loadSettings();
 
-    const totalRevenue = orders.reduce((sum, o) => {
+    const grossRevenue = orders.reduce((sum, o) => {
         let revenue = 0;
         if (o.deposit_paid) revenue += (o.deposit_amount || 0);
         if (o.balance_paid) revenue += (o.balance_amount || 0);
         return sum + revenue;
     }, 0);
+
+    const totalRevenue = Math.max(0, grossRevenue - (settings.revenue_offset || 0));
 
     res.json({
         totalClients: users.length,
@@ -3115,6 +3139,29 @@ app.get('/api/admin/stats', (req, res) => {
         unreadMessages: messages.filter(m => m.status === 'unread').length,
         totalMessages: messages.length
     });
+});
+
+/**
+ * POST /api/admin/reset-revenue
+ * Réinitialise le compteur de revenu total (stocke un offset = total actuel)
+ */
+app.post('/api/admin/reset-revenue', (req, res) => {
+    const orders = loadOrders();
+    const settings = loadSettings();
+
+    const grossRevenue = orders.reduce((sum, o) => {
+        let revenue = 0;
+        if (o.deposit_paid) revenue += (o.deposit_amount || 0);
+        if (o.balance_paid) revenue += (o.balance_amount || 0);
+        return sum + revenue;
+    }, 0);
+
+    settings.revenue_offset = grossRevenue;
+    settings.revenue_reset_at = new Date().toISOString();
+    saveSettings(settings);
+
+    console.log('Revenu total réinitialisé. Offset:', grossRevenue);
+    res.json({ success: true, revenue_offset: grossRevenue, reset_at: settings.revenue_reset_at });
 });
 
 // ============================================================

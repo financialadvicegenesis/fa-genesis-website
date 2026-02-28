@@ -30,7 +30,8 @@ var COLLECTIONS = [
     'sessions',
     'projects',
     'livrables',
-    'feedbacks'
+    'feedbacks',
+    'settings'
 ];
 
 /**
