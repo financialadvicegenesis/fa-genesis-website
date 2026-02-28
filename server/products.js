@@ -127,6 +127,38 @@ const PRODUCTS = [
         installments_count: 2
     },
 
+    // ========== OFFRES SUR MESURE (prix défini après contact) ==========
+    {
+        id: 'etudiant-custom',
+        name: 'Etudiant Sur Mesure',
+        category: 'ETUDIANTS',
+        product_type: 'accompagnement',
+        total_price: 0,
+        duration: 'Variable',
+        duration_days: 0,
+        installments_count: 2
+    },
+    {
+        id: 'particulier-custom',
+        name: 'Particulier Sur Mesure',
+        category: 'PARTICULIERS',
+        product_type: 'accompagnement',
+        total_price: 0,
+        duration: 'Variable',
+        duration_days: 0,
+        installments_count: 2
+    },
+    {
+        id: 'entreprise-custom',
+        name: 'Entreprise Sur Mesure',
+        category: 'ENTREPRISES',
+        product_type: 'accompagnement',
+        total_price: 0,
+        duration: 'Variable',
+        duration_days: 0,
+        installments_count: 2
+    },
+
     // ========== TARIFS INDIVIDUELS - PHOTO (sur devis) ==========
     {
         id: 'photo-devis',
