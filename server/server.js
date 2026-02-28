@@ -17,7 +17,7 @@ const path = require('path');
 const bcrypt = require('bcryptjs');
 const PDFDocument = require('pdfkit');
 
-const { getProductById, calculatePaymentAmounts, getAmountForStage } = require('./products');
+const { getProductById, calculatePaymentAmounts, getAmountForStage, generateInstallments } = require('./products');
 const emailService = require('./email-service');
 const { OFFER_BLUEPRINTS, getOfferBlueprint, getAllOfferKeys } = require('./config/offerBlueprints');
 const { fillTemplate, getAvailableTemplates, getTemplate } = require('./config/documentTemplates');
@@ -489,6 +489,23 @@ function buildActiveSubscription(user, order) {
     var formulaLabel = product ? product.name : (order.product_name || 'Offre personnalisee');
     var durationDays = order.duration_days || (product ? product.duration_days : null) || null;
 
+    // Solde restant : en mode installements, total - deja_paye ; sinon balance_amount
+    var remainingDue = 0;
+    if (!order.balance_paid) {
+        if (order.installments && order.installments.length > 0) {
+            remainingDue = (order.total_amount || 0) - (order.amount_paid || 0);
+        } else {
+            remainingDue = order.balance_amount || 0;
+        }
+    }
+    // Prochain versement a payer
+    var nextInst = null;
+    if (order.installments && order.installments.length > 0) {
+        nextInst = order.installments.find(function(inst) {
+            return !inst.paid && inst.stage !== 'deposit';
+        }) || null;
+    }
+
     return {
         product_type: order.product_type || 'accompagnement',
         category: category,
@@ -499,9 +516,13 @@ function buildActiveSubscription(user, order) {
         deposit_paid: order.deposit_paid === true,
         balance_paid: order.balance_paid === true,
         balance_payment_ready: order.balance_payment_ready === true,
-        remaining_due: order.balance_paid ? 0 : (order.balance_amount || 0),
+        remaining_due: remainingDue,
         total_amount: order.total_amount || 0,
         deposit_amount: order.deposit_amount || 0,
+        amount_paid: order.amount_paid || 0,
+        installments_count: order.installments_count || 2,
+        installments: order.installments || null,
+        next_installment: nextInst,
         status: order.status || 'registered',
         schedule_status: order.schedule_status || null,
         proposed_start_date: order.proposed_start_date || null,
@@ -918,6 +939,9 @@ app.post('/api/orders/create', (req, res) => {
                 orderProductType = calc.items[0].product_type;
             }
 
+            var multiInstallCount = calc.installments_count || 2;
+            var multiInstallPlan = generateInstallments(calc.total_amount, calc.deposit_amount, multiInstallCount, new Date());
+
             order = {
                 id: `ORD-${uuidv4().split('-')[0].toUpperCase()}`,
                 product_id: calc.items.length === 1 ? calc.items[0].product_id : null,
@@ -936,6 +960,9 @@ app.post('/api/orders/create', (req, res) => {
                 deposit_amount: calc.deposit_amount,
                 balance_amount: calc.balance_amount,
                 has_devis_items: calc.has_devis_items,
+                installments_count: multiInstallCount,
+                installments: multiInstallPlan,
+                amount_paid: 0,
                 deposit_paid: false,
                 balance_paid: false,
                 duration_days: Math.max.apply(null, calc.items.map(i => i.duration_days || 0)) || 0,
@@ -957,6 +984,8 @@ app.post('/api/orders/create', (req, res) => {
             }
 
             const amounts = calculatePaymentAmounts(product.total_price);
+            var legacyInstallCount = product.installments_count || 2;
+            var legacyInstallPlan = generateInstallments(amounts.total_amount, amounts.deposit_amount, legacyInstallCount, new Date());
 
             order = {
                 id: `ORD-${uuidv4().split('-')[0].toUpperCase()}`,
@@ -974,6 +1003,9 @@ app.post('/api/orders/create', (req, res) => {
                 total_amount: amounts.total_amount,
                 deposit_amount: amounts.deposit_amount,
                 balance_amount: amounts.balance_amount,
+                installments_count: legacyInstallCount,
+                installments: legacyInstallPlan,
+                amount_paid: 0,
                 deposit_paid: false,
                 balance_paid: false,
                 duration_days: product.duration_days || parseDurationToDays(product.duration),
@@ -1273,8 +1305,9 @@ app.post('/api/payments/sumup/create-checkout', async (req, res) => {
             return res.status(400).json({ error: 'orderId requis' });
         }
 
-        if (!stage || !['deposit', 'balance'].includes(stage)) {
-            return res.status(400).json({ error: 'stage doit etre "deposit" ou "balance"' });
+        var isInstallmentStage = stage && stage.startsWith('installment_');
+        if (!stage || (!['deposit', 'balance'].includes(stage) && !isInstallmentStage)) {
+            return res.status(400).json({ error: 'stage invalide (deposit, balance ou installment_N)' });
         }
 
         // Recuperer la commande
@@ -1288,17 +1321,47 @@ app.post('/api/payments/sumup/create-checkout', async (req, res) => {
             return res.status(400).json({ error: 'Acompte deja paye' });
         }
 
-        if (stage === 'balance' && !order.deposit_paid) {
-            return res.status(400).json({ error: 'L\'acompte doit etre paye avant le solde' });
+        if ((stage === 'balance' || isInstallmentStage) && !order.deposit_paid) {
+            return res.status(400).json({ error: 'L\'acompte doit etre paye en premier' });
         }
 
         if (stage === 'balance' && order.balance_paid) {
             return res.status(400).json({ error: 'Solde deja paye' });
         }
 
-        // Determiner le montant
-        const amount = stage === 'deposit' ? order.deposit_amount : order.balance_amount;
-        const stageLabel = stage === 'deposit' ? 'Acompte 30%' : 'Solde 70%';
+        // Determiner le montant selon le stage
+        var amount;
+        var stageLabel;
+
+        if (isInstallmentStage) {
+            // Versement spécifique : stage = 'installment_N'
+            var installList = order.installments || [];
+            var instItem = installList.find(function(it) { return it.stage === stage; });
+            if (!instItem) {
+                return res.status(400).json({ error: 'Versement introuvable : ' + stage });
+            }
+            if (instItem.paid) {
+                return res.status(400).json({ error: 'Ce versement a déjà été réglé' });
+            }
+            amount = instItem.amount;
+            stageLabel = instItem.label;
+        } else if (stage === 'balance') {
+            // Paiement du solde restant (tout payer maintenant)
+            if (order.installments && order.installments.length > 0) {
+                // Avec installments : solde = total - montant déjà payé
+                var alreadyPaid = order.amount_paid || order.deposit_amount || 0;
+                amount = order.total_amount - alreadyPaid;
+                if (amount <= 0) {
+                    return res.status(400).json({ error: 'Aucun solde restant à payer' });
+                }
+            } else {
+                amount = order.balance_amount;
+            }
+            stageLabel = 'Solde restant';
+        } else {
+            amount = order.deposit_amount;
+            stageLabel = 'Acompte 30%';
+        }
 
         // Construire les URLs de retour
         const successUrl = process.env.SUMUP_SUCCESS_URL || 'https://fagenesis.com/payment-success.html';
@@ -1551,20 +1614,61 @@ app.post('/api/payments/verify', async (req, res) => {
 
                 let isNewPayment = false;
                 let paymentStage = null;
+                var isInstallVerify = stage && stage.startsWith('installment_');
 
                 if (stage === 'deposit' && !order.deposit_paid) {
                     updates.deposit_paid = true;
+                    updates.deposit_paid_at = new Date().toISOString();
+                    updates.amount_paid = order.deposit_amount || 0;
                     updates.status = 'active';
                     updates.start_date = null;
                     updates.schedule_status = 'awaiting_client_choice';
                     updates.proposed_start_date = null;
                     updates.schedule_confirmed_by_admin = false;
                     updates.schedule_confirmed_by_partner = false;
+                    // Marquer le versement #1 comme payé dans installments si présent
+                    if (order.installments && order.installments.length > 0) {
+                        var installsCopy = JSON.parse(JSON.stringify(order.installments));
+                        var dep = installsCopy.find(function(it) { return it.stage === 'deposit'; });
+                        if (dep) { dep.paid = true; dep.paid_at = new Date().toISOString(); }
+                        updates.installments = installsCopy;
+                    }
                     isNewPayment = true;
                     paymentStage = 'deposit';
+
+                } else if (isInstallVerify && !order.balance_paid) {
+                    // Versement spécifique
+                    var installsCopy2 = order.installments ? JSON.parse(JSON.stringify(order.installments)) : [];
+                    var instToMark = installsCopy2.find(function(it) { return it.stage === stage; });
+                    if (instToMark && !instToMark.paid) {
+                        instToMark.paid = true;
+                        instToMark.paid_at = new Date().toISOString();
+                        var newAmountPaid = (order.amount_paid || 0) + instToMark.amount;
+                        updates.installments = installsCopy2;
+                        updates.amount_paid = newAmountPaid;
+                        // Vérifier si tous les versements sont payés
+                        var allPaid = installsCopy2.every(function(it) { return it.paid; });
+                        if (allPaid || newAmountPaid >= order.total_amount) {
+                            updates.balance_paid = true;
+                            updates.status = 'paid_in_full';
+                        }
+                        isNewPayment = true;
+                        paymentStage = allPaid ? 'balance' : 'installment';
+                    }
+
                 } else if (stage === 'balance' && !order.balance_paid) {
+                    // Paiement total du solde restant (tout payer maintenant)
                     updates.balance_paid = true;
+                    updates.amount_paid = order.total_amount;
                     updates.status = 'paid_in_full';
+                    // Marquer tous les versements restants comme payés
+                    if (order.installments && order.installments.length > 0) {
+                        var installsCopy3 = JSON.parse(JSON.stringify(order.installments));
+                        installsCopy3.forEach(function(it) {
+                            if (!it.paid) { it.paid = true; it.paid_at = new Date().toISOString(); }
+                        });
+                        updates.installments = installsCopy3;
+                    }
                     isNewPayment = true;
                     paymentStage = 'balance';
                 }
@@ -1722,27 +1826,46 @@ app.get('/api/payments/history', (req, res) => {
 
         for (var i = 0; i < clientOrders.length; i++) {
             var ord = clientOrders[i];
-            if (ord.deposit_paid) {
-                payments.push({
-                    type: 'deposit',
-                    label: 'Acompte (30%)',
-                    amount: ord.deposit_amount || 0,
-                    currency: 'EUR',
-                    paid_at: ord.deposit_paid_at || ord.updated_at || ord.created_at,
-                    order_id: ord.id,
-                    product_name: ord.product_name || ''
-                });
-            }
-            if (ord.balance_paid) {
-                payments.push({
-                    type: 'balance',
-                    label: 'Solde (70%)',
-                    amount: ord.balance_amount || 0,
-                    currency: 'EUR',
-                    paid_at: ord.balance_paid_at || ord.updated_at,
-                    order_id: ord.id,
-                    product_name: ord.product_name || ''
-                });
+            // Mode installements : construire l'historique depuis le tableau installments
+            if (ord.installments && ord.installments.length > 0) {
+                for (var j = 0; j < ord.installments.length; j++) {
+                    var inst = ord.installments[j];
+                    if (inst.paid) {
+                        payments.push({
+                            type: inst.stage || 'installment',
+                            label: inst.label || ('Versement #' + inst.number),
+                            amount: inst.amount || 0,
+                            currency: 'EUR',
+                            paid_at: inst.paid_at || ord.updated_at || ord.created_at,
+                            order_id: ord.id,
+                            product_name: ord.product_name || ''
+                        });
+                    }
+                }
+            } else {
+                // Mode standard (N=2)
+                if (ord.deposit_paid) {
+                    payments.push({
+                        type: 'deposit',
+                        label: 'Acompte (30%)',
+                        amount: ord.deposit_amount || 0,
+                        currency: 'EUR',
+                        paid_at: ord.deposit_paid_at || ord.updated_at || ord.created_at,
+                        order_id: ord.id,
+                        product_name: ord.product_name || ''
+                    });
+                }
+                if (ord.balance_paid) {
+                    payments.push({
+                        type: 'balance',
+                        label: 'Solde (70%)',
+                        amount: ord.balance_amount || 0,
+                        currency: 'EUR',
+                        paid_at: ord.balance_paid_at || ord.updated_at,
+                        order_id: ord.id,
+                        product_name: ord.product_name || ''
+                    });
+                }
             }
         }
 
@@ -1760,7 +1883,20 @@ app.get('/api/payments/history', (req, res) => {
         // Autorise des que l'acompte est paye : le client peut anticiper a tout moment
         if (activeOrder && activeOrder.deposit_paid && !activeOrder.balance_paid) {
             canPayBalance = true;
-            balanceAmount = activeOrder.balance_amount || 0;
+            // En mode installements : solde restant = total - deja paye
+            if (activeOrder.installments && activeOrder.installments.length > 0) {
+                balanceAmount = (activeOrder.total_amount || 0) - (activeOrder.amount_paid || 0);
+            } else {
+                balanceAmount = activeOrder.balance_amount || 0;
+            }
+        }
+
+        // Prochain versement a payer (mode installements)
+        var nextInstallment = null;
+        if (activeOrder && activeOrder.installments && activeOrder.installments.length > 0) {
+            nextInstallment = activeOrder.installments.find(function(inst) {
+                return !inst.paid && inst.stage !== 'deposit';
+            }) || null;
         }
 
         // Trier par date (plus recent en premier)
@@ -1778,7 +1914,12 @@ app.get('/api/payments/history', (req, res) => {
             deposit_paid: activeOrder ? (activeOrder.deposit_paid === true) : false,
             balance_paid: activeOrder ? (activeOrder.balance_paid === true) : false,
             total_amount: activeOrder ? (activeOrder.total_amount || 0) : 0,
-            deposit_amount: activeOrder ? (activeOrder.deposit_amount || 0) : 0
+            deposit_amount: activeOrder ? (activeOrder.deposit_amount || 0) : 0,
+            amount_paid: activeOrder ? (activeOrder.amount_paid || 0) : 0,
+            installments_count: activeOrder ? (activeOrder.installments_count || 2) : 2,
+            installments: activeOrder ? (activeOrder.installments || null) : null,
+            next_installment: nextInstallment,
+            balance_payment_ready: activeOrder ? (activeOrder.balance_payment_ready === true) : false
         });
 
     } catch (error) {
