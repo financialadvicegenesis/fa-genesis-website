@@ -111,7 +111,7 @@
             <h1 class="text-4xl md:text-6xl font-black italic uppercase text-center mb-4 text-[var(--genesis-yellow)]">
                 FINALISER VOTRE COMMANDE
             </h1>
-            <p class="text-center text-xl font-bold mb-12 uppercase">Paiement en 2 étapes : acompte 30% + solde 70%</p>
+            <p id="paymentSubtitle" class="text-center text-xl font-bold mb-12 uppercase">Paiement en 2 étapes : acompte 30% + solde 70%</p>
 
             <!-- Messages d'erreur/succès -->
             <div id="errorMessage" class="error-message"></div>
@@ -188,6 +188,14 @@
                                 À payer aujourd'hui
                             </p>
                             <p class="text-3xl font-black text-center mt-2" id="amountToPay">0€</p>
+                        </div>
+
+                        <!-- Echéancier de paiement (visible si N > 2) -->
+                        <div id="installmentScheduleSection" style="display:none;" class="mt-4 p-4 border-4 border-black bg-yellow-50 text-black">
+                            <div class="text-xs font-black uppercase mb-3">
+                                <i class="fas fa-calendar-alt mr-1"></i> Echéancier complet
+                            </div>
+                            <div id="installmentScheduleList"></div>
                         </div>
 
                         <div class="mt-6 text-xs font-bold opacity-70">
@@ -515,6 +523,16 @@
             if (balanceEl) balanceEl.textContent = formatPrice(balanceAmount);
             if (toPayEl) toPayEl.textContent = formatPrice(depositAmount);
 
+            // Determiner le nombre max d'echelons parmi les offres du panier
+            var maxInstallments = 2;
+            for (var j = 0; j < panier.items.length; j++) {
+                var offJ = (typeof getOfferById === 'function') ? getOfferById(panier.items[j].id) : null;
+                if (offJ && offJ.echelonsPaiement && offJ.echelonsPaiement > maxInstallments) {
+                    maxInstallments = offJ.echelonsPaiement;
+                }
+            }
+            showInstallmentSchedule(totalAmount, depositAmount, maxInstallments);
+
             // Banniere devis si necessaire
             if (hasDevis) {
                 var summaryContainer = orderSummary ? orderSummary.parentNode : null;
@@ -576,6 +594,13 @@
                 if (depositEl) depositEl.textContent = formatPrice(selectedProduct.deposit_amount);
                 if (balanceEl) balanceEl.textContent = formatPrice(selectedProduct.balance_amount);
                 if (toPayEl) toPayEl.textContent = formatPrice(selectedProduct.deposit_amount);
+
+                // Afficher l'echeancier selon installments_count du produit
+                showInstallmentSchedule(
+                    selectedProduct.total_amount,
+                    selectedProduct.deposit_amount,
+                    selectedProduct.installments_count || 2
+                );
 
             } catch (error) {
                 console.error('[CHECKOUT] Erreur chargement produit:', error);
@@ -748,6 +773,62 @@
             successDiv.innerHTML = '<i class="fas fa-check-circle mr-2"></i>' + message;
             successDiv.style.display = 'block';
             window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // ============================================================
+        // ECHEANCIER DE PAIEMENT
+        // ============================================================
+        function showInstallmentSchedule(totalAmount, depositAmount, count) {
+            var section = document.getElementById('installmentScheduleSection');
+            var list = document.getElementById('installmentScheduleList');
+            if (!section || !list) return;
+
+            // Mode standard 2x : pas d'echeancier detaille
+            if (!count || count <= 2) {
+                section.style.display = 'none';
+                return;
+            }
+
+            // Mettre a jour le sous-titre
+            var subtitle = document.getElementById('paymentSubtitle');
+            if (subtitle) {
+                subtitle.textContent = 'PAIEMENT EN ' + count + 'X : ACOMPTE 30% AUJOURD\'HUI + ' + (count - 1) + ' VERSEMENTS TOUS LES 30 JOURS';
+            }
+
+            var balanceAmount = totalAmount - depositAmount;
+            var numBalanceInstallments = count - 1;
+            var baseAmount = Math.floor(balanceAmount / numBalanceInstallments);
+            var lastAmount = balanceAmount - baseAmount * (numBalanceInstallments - 1);
+
+            var html = '';
+
+            // Versement 1 : acompte
+            html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #ccc;font-size:12px;font-weight:700;">'
+                + '<span><i class="fas fa-check-circle" style="color:green;margin-right:4px;"></i>Acompte 30% <span style="opacity:0.6;font-size:10px;">(aujourd\'hui)</span></span>'
+                + '<span style="color:#2c7a2c;">' + formatPrice(depositAmount) + '</span>'
+                + '</div>';
+
+            // Versements solde
+            for (var i = 2; i <= count; i++) {
+                var amount = (i === count) ? lastAmount : baseAmount;
+                var days = (i - 1) * 30;
+                html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;'
+                    + (i < count ? 'border-bottom:1px solid #ccc;' : '')
+                    + 'font-size:12px;font-weight:700;">'
+                    + '<span><i class="fas fa-clock" style="color:#888;margin-right:4px;"></i>'
+                    + i + 'e versement <span style="opacity:0.6;font-size:10px;">(J+' + days + 'j)</span></span>'
+                    + '<span>' + formatPrice(amount) + '</span>'
+                    + '</div>';
+            }
+
+            // Total
+            html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0 0;font-size:13px;font-weight:900;border-top:2px solid black;margin-top:6px;">'
+                + '<span>Total</span>'
+                + '<span>' + formatPrice(totalAmount) + '</span>'
+                + '</div>';
+
+            list.innerHTML = html;
+            section.style.display = 'block';
         }
     </script>
     <div id="site-footer"></div>

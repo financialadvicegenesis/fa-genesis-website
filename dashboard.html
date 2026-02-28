@@ -710,12 +710,25 @@
                 // Carte Paiement
                 var payStatusEl = document.getElementById('paymentStatus');
                 var payDetailEl = document.getElementById('paymentDetail');
+                var installN = sub.installments_count || 2;
                 if (sub.balance_paid) {
                     if (payStatusEl) payStatusEl.textContent = 'Payé intégralement';
                     if (payDetailEl) payDetailEl.textContent = sub.total_amount + ' EUR';
                 } else if (sub.deposit_paid && sub.balance_payment_ready) {
                     if (payStatusEl) { payStatusEl.textContent = 'Solde dû'; payStatusEl.style.color = '#ff922b'; }
                     if (payDetailEl) payDetailEl.textContent = 'Solde à payer : ' + sub.remaining_due + ' EUR';
+                } else if (sub.deposit_paid && installN > 2) {
+                    // Mode installements : afficher la progression
+                    var numPaidInst = 0;
+                    if (sub.installments) {
+                        for (var ki = 0; ki < sub.installments.length; ki++) {
+                            if (sub.installments[ki].paid) numPaidInst++;
+                        }
+                    } else {
+                        numPaidInst = 1; // au moins l'acompte
+                    }
+                    if (payStatusEl) payStatusEl.textContent = numPaidInst + '/' + installN + ' versements';
+                    if (payDetailEl) payDetailEl.textContent = (sub.amount_paid || 0) + ' EUR payés / ' + (sub.total_amount || 0) + ' EUR total';
                 } else if (sub.deposit_paid) {
                     if (payStatusEl) payStatusEl.textContent = 'Acompte payé';
                     if (payDetailEl) payDetailEl.textContent = 'Solde : ' + sub.remaining_due + ' EUR (fin d\'accompagnement)';
@@ -742,8 +755,26 @@
                                     '<i class="fas fa-credit-card mr-2"></i>Payer le solde maintenant' +
                                 '</a>' +
                             '</div>';
+                        } else if (installN > 2 && sub.next_installment) {
+                            // Mode installements : afficher le prochain versement
+                            var ni = sub.next_installment;
+                            var niDateStr = '';
+                            if (ni.due_date) {
+                                try { niDateStr = new Date(ni.due_date).toLocaleDateString('fr-FR'); } catch(e) { niDateStr = ni.due_date; }
+                            }
+                            payBalSec.innerHTML = '<div class="p-6 border-4 border-black" style="background:#ffd43b;color:black;">' +
+                                '<h3 class="text-lg font-black italic uppercase mb-2"><i class="fas fa-calendar-alt mr-2"></i>Prochain versement</h3>' +
+                                '<p class="font-bold text-2xl mb-1">' + (ni.amount || 0) + ' EUR</p>' +
+                                '<p class="font-bold mb-1">' + (ni.label || '') + (niDateStr ? ' — \u00c9ch\u00e9ance : ' + niDateStr : '') + '</p>' +
+                                '<p class="text-sm font-bold mb-1" style="color:#555;">Solde restant total : ' + (sub.remaining_due || 0) + ' EUR</p>' +
+                                '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:12px;">' +
+                                    '<a href="payment.html" class="inline-block bg-black text-white px-6 py-3 border-4 border-black font-black uppercase text-sm hover:opacity-80 transition">' +
+                                        '<i class="fas fa-credit-card mr-2"></i>Voir mon \u00e9ch\u00e9ancier' +
+                                    '</a>' +
+                                '</div>' +
+                            '</div>';
                         } else {
-                            // Paiement anticipé optionnel
+                            // Paiement anticipé optionnel (N=2)
                             payBalSec.innerHTML = '<div class="p-6 border-4 border-black" style="background:#ffd43b;color:black;">' +
                                 '<h3 class="text-lg font-black italic uppercase mb-2"><i class="fas fa-bolt mr-2"></i>Payer le solde en avance</h3>' +
                                 '<p class="font-bold mb-1">Solde : ' + (sub.remaining_due || 0) + ' EUR</p>' +
