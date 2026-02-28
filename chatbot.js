@@ -542,6 +542,130 @@
             response: 'La protection de vos donn\u00e9es personnelles est une priorit\u00e9. Vos informations sont utilis\u00e9es uniquement dans le cadre de votre accompagnement et ne sont jamais partag\u00e9es avec des tiers sans votre consentement. Les paiements sont s\u00e9curis\u00e9s via SumUp.',
             quickReplies: [],
             link: null
+        },
+
+        // ===================== PANIER & COMMANDE =====================
+        {
+            id: 'cart_how',
+            category: 'panier',
+            keywords: ['panier', 'ajouter panier', 'mettre dans panier', 'comment commander', 'mon panier', 'voir panier', 'vider panier', 'modifier panier', 'comment ajouter'],
+            response: 'Ajouter une offre au panier est simple :\n\n1\ufe0f\u20e3 Allez sur la page Prestations\n2\ufe0f\u20e3 Choisissez une ou plusieurs offres\n3\ufe0f\u20e3 Cliquez sur \u00ab Ajouter au panier \u00bb\n4\ufe0f\u20e3 Consultez votre panier via l\u2019ic\u00f4ne \ud83d\uded2 en haut de page\n5\ufe0f\u20e3 Validez et payez l\u2019acompte\n\nVous pouvez combiner plusieurs offres dans un seul panier !',
+            quickReplies: ['Passer une commande', 'Voir les offres'],
+            link: { url: 'offres.html', label: 'Voir les prestations' }
+        },
+        {
+            id: 'checkout_process',
+            category: 'panier',
+            keywords: ['passer commande', 'valider commande', 'finaliser', 'checkout', 'commander', 'inscription avant paiement', 'faut creer compte', 'compte avant payer', 'comment valider'],
+            response: 'Pour passer commande :\n\n1\ufe0f\u20e3 Ajoutez vos offres au panier\n2\ufe0f\u20e3 Cliquez sur \u00ab Valider mon panier \u00bb\n3\ufe0f\u20e3 Remplissez le formulaire (pr\u00e9nom, nom, email)\n4\ufe0f\u20e3 Payez l\u2019acompte de 30% par carte bancaire\n5\ufe0f\u20e3 Votre espace client est cr\u00e9\u00e9 automatiquement \u2014 vous recevez vos identifiants par email\n\n\u2728 Pas besoin de cr\u00e9er un compte avant : il est cr\u00e9\u00e9 lors de la validation !',
+            quickReplies: ['Comment fonctionne le paiement ?', 'Espace client'],
+            link: { url: 'panier.html', label: 'Mon panier' }
+        },
+        {
+            id: 'combine_offers',
+            category: 'panier',
+            keywords: ['combiner offres', 'plusieurs offres', 'deux offres', 'cumuler', 'ajouter plusieurs', 'pack personnalise', 'plusieurs prestations', 'mixer', 'associer'],
+            response: 'Oui, vous pouvez tout \u00e0 fait combiner plusieurs offres dans votre panier ! Par exemple : une offre accompagnement + une prestation Marketing ou M\u00e9dia. Le total est calcul\u00e9 automatiquement et vous b\u00e9n\u00e9ficiez d\u2019un seul acompte de 30% sur l\u2019ensemble. \ud83d\udc4c',
+            quickReplies: ['Voir les offres', 'Ajouter au panier'],
+            link: { url: 'offres.html', label: 'Voir les prestations' }
+        },
+
+        // ===================== COMPARAISONS OFFRES =====================
+        {
+            id: 'offer_comparison',
+            category: 'offres',
+            keywords: ['difference entre', 'comparer offres', 'launch vs impact', 'idea vs starter', 'laquelle choisir', 'meilleur rapport', 'quelle difference', 'quel avantage', 'plus complete', 'quelle est la meilleure', 'comparer'],
+            response: 'Voici comment choisir selon vos besoins :\n\n\u2022 IDEA \u2014 Clarifier votre id\u00e9e rapidement (2 jours)\n\u2022 STARTER \u2014 Structurer et planifier (7 jours)\n\u2022 LAUNCH \u2014 D\u00e9crocher la visibilit\u00e9 : vid\u00e9o + m\u00e9dia (14 jours)\n\u2022 IMPACT \u2014 Le tout-en-un : photo + vid\u00e9o + m\u00e9dia + plan (1 mois)\n\nEn r\u00e9sum\u00e9 : IDEA pour d\u00e9buter, LAUNCH pour \u00eatre visible, IMPACT pour tout avoir. Notre \u00e9quipe peut aussi vous conseiller !',
+            quickReplies: ['Voir les offres', 'Contacter l\u2019\u00e9quipe'],
+            link: { url: 'offres.html', label: 'Comparer les offres' }
+        },
+        {
+            id: 'hours_per_offer',
+            category: 'offres',
+            keywords: ['combien heures', 'heure consulting', 'heures incluses', 'duree seance', 'temps seance', 'combien de seances', 'nombre seances', 'seances incluses'],
+            response: 'Voici les s\u00e9ances incluses selon l\u2019offre :\n\n\u2022 IDEA : 1 mini-s\u00e9ance (45 min)\n\u2022 STARTER : 1 s\u00e9ance compl\u00e8te (1h30)\n\u2022 LAUNCH : 2 s\u00e9ances strat\u00e9giques (1h30 chacune)\n\u2022 IMPACT : 3 s\u00e9ances + suivi continu\n\nPour les entreprises, les s\u00e9ances sont adapt\u00e9es \u00e0 votre organisation. Les offres CUSTOM sont enti\u00e8rement n\u00e9gociables.',
+            quickReplies: ['Voir les offres', 'Offres \u00c9tudiants'],
+            link: { url: 'offres.html', label: 'Voir les offres' }
+        },
+
+        // ===================== SUIVI DE COMMANDE =====================
+        {
+            id: 'order_status',
+            category: 'espace_client',
+            keywords: ['statut commande', 'ou est ma commande', 'quand commence', 'etat commande', 'suivi commande', 'ma commande', 'mon accompagnement statut', 'avancement', 'progression accompagnement'],
+            response: 'Suivez votre accompagnement depuis votre espace client :\n\n\u2022 \ud83d\udcca Dashboard \u2014 vue d\u2019ensemble et statut de paiement\n\u2022 \ud83d\udcc5 S\u00e9ances \u2014 dates et planning de vos rendez-vous\n\u2022 \ud83d\udcc1 Livrables \u2014 vos fichiers disponibles au t\u00e9l\u00e9chargement\n\nConnectez-vous avec l\u2019email utilis\u00e9 lors de la commande.',
+            quickReplies: ['Espace client', 'S\u00e9ances et planning'],
+            link: { url: 'dashboard.html', label: 'Mon espace client' }
+        },
+        {
+            id: 'when_get_deliverables',
+            category: 'accompagnement',
+            keywords: ['quand recevoir livrable', 'quand photos', 'quand video', 'delai livraison', 'combien de temps livrable', 'livraison livrables', 'attente livrables', 'quand fichiers disponibles'],
+            response: 'Les livrables sont mis \u00e0 disposition dans votre espace client \u00e0 la fin de l\u2019accompagnement :\n\n\ud83d\udcf8 Photos : retouches sous 3-5 jours ouvrables apr\u00e8s la s\u00e9ance\n\ud83c\udfac Vid\u00e9os : montage sous 5-7 jours ouvrables apr\u00e8s le tournage\n\ud83d\udcdd Documents strat\u00e9giques : fournis au fil de l\u2019accompagnement\n\nVous recevez une notification par email d\u00e8s que vos fichiers sont disponibles.',
+            quickReplies: ['Mes livrables', 'Espace client'],
+            link: { url: 'livrables.html', label: 'Mes livrables' }
+        },
+
+        // ===================== PAIEMENT (COMPL\u00c9MENTS) =====================
+        {
+            id: 'when_balance_due',
+            category: 'paiement',
+            keywords: ['quand payer solde', 'solde du', 'echeance solde', 'deuxieme paiement quand', 'delai solde', 'quand payer reste', 'solde quand'],
+            response: 'Le solde (70% restant) est d\u00fb \u00e0 la fin de votre accompagnement, au moment de la livraison de vos livrables.\n\nPour les offres \u00e9tudiants \u00e0 plusieurs versements, les \u00e9ch\u00e9ances sont espac\u00e9es tous les 30 jours apr\u00e8s le paiement de l\u2019acompte.\n\n\ud83d\udca1 Vous pouvez aussi r\u00e9gler le solde en avance depuis votre espace client.',
+            quickReplies: ['Payer en plusieurs fois ?', 'Espace client'],
+            link: null
+        },
+        {
+            id: 'invoice_receipt',
+            category: 'paiement',
+            keywords: ['facture', 'recu paiement', 'justificatif', 'tva', 'confirmation paiement', 'preuve paiement', 'ticket', 'avoir une facture'],
+            response: 'Un email de confirmation est envoy\u00e9 automatiquement apr\u00e8s chaque paiement. Pour une facture formelle, contactez-nous \u00e0 financialadvicegenesis@gmail.com en indiquant votre num\u00e9ro de commande.\n\n\u2139\ufe0f FA Genesis est une micro-entreprise (TVA non applicable, article 293 B du CGI).',
+            quickReplies: ['Contacter l\u2019\u00e9quipe'],
+            link: null
+        },
+        {
+            id: 'payment_failed',
+            category: 'paiement',
+            keywords: ['paiement echoue', 'paiement refuse', 'carte refusee', 'erreur paiement', 'paiement bloque', 'transaction echouee', 'carte non acceptee', 'probleme paiement', 'paiement ne marche pas'],
+            response: 'Si votre paiement a \u00e9chou\u00e9 :\n\n1\ufe0f\u20e3 V\u00e9rifiez que les informations de carte sont correctes\n2\ufe0f\u20e3 Assurez-vous que votre carte est activ\u00e9e pour les paiements en ligne\n3\ufe0f\u20e3 Contactez votre banque si votre carte a \u00e9t\u00e9 bloqu\u00e9e\n4\ufe0f\u20e3 R\u00e9essayez depuis votre espace client\n\nProbl\u00e8me persistant ? Contactez-nous au +33 7 64 16 36 09.',
+            quickReplies: ['Contacter l\u2019\u00e9quipe', 'Espace client'],
+            link: null
+        },
+
+        // ===================== S\u00c9ANCES & LIVRABLES =====================
+        {
+            id: 'session_reschedule',
+            category: 'accompagnement',
+            keywords: ['reprogrammer', 'reporter seance', 'changer date', 'annuler seance', 'modifier rdv', 'deplacement seance', 'seance reportee', 'changer rendez vous', 'pas disponible ce jour', 'decaler seance'],
+            response: 'Pour reprogrammer une s\u00e9ance :\n\n1\ufe0f\u20e3 Connectez-vous \u00e0 votre espace client\n2\ufe0f\u20e3 Allez dans la section \u00ab S\u00e9ances \u00bb\n3\ufe0f\u20e3 Soumettez une demande de modification de date\n\nL\u2019\u00e9quipe vous proposera de nouveaux cr\u00e9neaux dans les plus brefs d\u00e9lais. En cas d\u2019urgence, contactez-nous directement.',
+            quickReplies: ['S\u00e9ances et planning', 'Contacter l\u2019\u00e9quipe'],
+            link: { url: 'seances.html', label: 'Mes s\u00e9ances' }
+        },
+        {
+            id: 'choose_partner',
+            category: 'accompagnement',
+            keywords: ['choisir photographe', 'choisir videaste', 'quel photographe', 'qui fait les photos', 'qui fait la video', 'photographe partenaire', 'videaste partenaire', 'qui prend photos'],
+            response: 'Le photographe ou vid\u00e9aste est s\u00e9lectionn\u00e9 par FA Genesis selon votre profil, vos objectifs et votre localisation. Nous choisissons des professionnels de confiance adapt\u00e9s \u00e0 votre univers visuel.\n\nSi vous avez des pr\u00e9f\u00e9rences particulières (style, ambiance), n\u2019h\u00e9sitez pas \u00e0 nous en faire part lors de votre premi\u00e8re s\u00e9ance \u2014 nous ferons de notre mieux pour y r\u00e9pondre.',
+            quickReplies: ['Contacter l\u2019\u00e9quipe'],
+            link: null
+        },
+
+        // ===================== ESPACE CLIENT (COMPL\u00c9MENTS) =====================
+        {
+            id: 'feedback_how',
+            category: 'espace_client',
+            keywords: ['laisser avis', 'donner avis', 'note', 'satisfaction', 'retour experience', 'espace feedback', 'evaluer', 'opinion', 'avis client', 'temoignage laisser'],
+            response: 'Vous pouvez laisser un retour d\u2019exp\u00e9rience depuis votre espace client, dans la section \u00ab Feedback \u00bb. Vous pouvez :\n\n\u2b50 Attribuer une note\n\ud83d\udcac Laisser un commentaire\n\u2705 Accepter que votre t\u00e9moignage soit visible sur le site\n\nVotre avis compte vraiment pour am\u00e9liorer nos services !',
+            quickReplies: ['Espace client'],
+            link: { url: 'feedback.html', label: 'Laisser un feedback' }
+        },
+        {
+            id: 'registration_issue',
+            category: 'espace_client',
+            keywords: ['inscription bloquee', 'n arrive pas a m inscrire', 'erreur inscription', 'compte pas cree', 'pas recu email', 'email confirmation', 'pas recu identifiants', 'compte inexistant', 'email non recu', 'pas de mail'],
+            response: 'Si vous avez un probl\u00e8me d\u2019inscription ou n\u2019avez pas re\u00e7u votre email de confirmation :\n\n1\ufe0f\u20e3 V\u00e9rifiez vos spams / courriers ind\u00e9sirables\n2\ufe0f\u20e3 Attendez 5 \u00e0 10 minutes\n3\ufe0f\u20e3 Si rien apr\u00e8s 30 minutes, contactez-nous \u00e0 financialadvicegenesis@gmail.com avec l\u2019email utilis\u00e9\n\nNous cr\u00e9erons votre compte manuellement si n\u00e9cessaire.',
+            quickReplies: ['Contacter l\u2019\u00e9quipe'],
+            link: null
         }
     ];
 
@@ -566,7 +690,12 @@
         'Espace client': 'Comment acc\u00e9der \u00e0 mon espace client ?',
         'Contact': 'Comment vous contacter ?',
         'Voir la FAQ': '__FAQ_REDIRECT__',
-        'Oui, transmettre ma question': '__ESCALATION__'
+        'Oui, transmettre ma question': '__ESCALATION__',
+        'Passer une commande': 'Comment passer une commande ?',
+        'Ajouter au panier': 'Comment ajouter une offre au panier ?',
+        'Séances et planning': 'Comment fonctionnent les séances ?',
+        'Mes livrables': 'Quand est-ce que je reçois mes livrables ?',
+        'Comment fonctionne le paiement ?': 'Comment fonctionne le paiement ?'
     };
 
     // ============================================================
