@@ -13,7 +13,6 @@
     <title>Connexion - FA GENESIS | Espace Client</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;900&family=Space+Grotesk:wght@300;700&display=swap">
     <link rel="stylesheet" href="tailwind.min.css">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.css" rel="stylesheet" media="print" onload="this.media='all'">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" media="print" onload="this.media='all'">
     <style>
 
@@ -120,7 +119,7 @@
     <section class="min-h-screen flex flex-col items-center justify-center p-6 bg-black pt-32 relative overflow-hidden">
         <div class="absolute top-20 left-[-10%] w-96 h-96 bg-[var(--genesis-yellow)] rounded-full blur-[120px] opacity-20 z-0"></div>
 
-        <div class="w-full max-w-xl z-10" data-aos="zoom-in">
+        <div class="w-full max-w-xl z-10">
             <h1 class="text-6xl md:text-7xl font-black italic uppercase text-center mb-8 text-[var(--genesis-yellow)]">ESPACE CLIENT</h1>
             <p class="text-center text-xl font-bold mb-12 uppercase">Connectez-vous pour accéder à votre tableau de bord</p>
 
@@ -192,14 +191,11 @@
     <!-- FOOTER -->
     <div id="site-footer"></div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>
     <script src="config.js"></script>
     <script src="auth.js"></script>
     <script src="offers-config.js"></script>
     <script src="payment-system.js"></script>
     <script>
-        AOS.init({ duration: 1000, once: true, disable: 'mobile', offset: 120 });
-
         // Recuperer les parametres de l'URL
         var selectedOffreId = null;
         var quoteTokenParam = null;

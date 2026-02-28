@@ -37,7 +37,7 @@ function adminLogin(email, password) {
         console.log('Admin connecté');
         return { success: true, message: 'Connexion réussie' };
     }
-    return { success: false, message: 'Email ou mot de passe incorrect. Mot de passe admin : FAGenesis2024!' };
+    return { success: false, message: 'Email ou mot de passe incorrect.' };
 }
 
 /**
@@ -289,4 +289,3 @@ function searchClients(query) {
 
 console.log('🟢 admin-system.js chargé avec succès');
 console.log('🔐 Système d\'administration actif');
-console.log('📊 Identifiants admin: admin@fagenesis.com / FAGenesis2024!');

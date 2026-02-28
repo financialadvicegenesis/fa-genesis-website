@@ -517,7 +517,7 @@ function recordInstallmentPayment(email, installmentNumber) {
  * @param {string} email - Email de l'utilisateur
  * @returns {Object|null}
  */
-function getInstallmentPlan(email) {
+function getUserInstallmentPlan(email) {
     const user = getUserFromStorage(email);
     return user && user.installmentPlan ? user.installmentPlan : null;
 }
@@ -528,7 +528,7 @@ function getInstallmentPlan(email) {
  * @returns {Object|null}
  */
 function getNextInstallment(email) {
-    const plan = getInstallmentPlan(email);
+    const plan = getUserInstallmentPlan(email);
     if (!plan) return null;
 
     return plan.installments.find(i => i.status === 'pending') || null;
