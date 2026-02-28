@@ -252,6 +252,10 @@
                             <i class="fas fa-video mr-1"></i>Séances
                             <span id="pendingSeancesBadge" style="display:none;position:absolute;top:-8px;right:-8px;background:#ff6b6b;color:white;border-radius:50%;width:20px;height:20px;font-size:11px;line-height:20px;text-align:center;"></span>
                         </button>
+                        <button onclick="showSection('feedbacks')" class="nav-btn text-white hover:text-[var(--genesis-yellow)]" style="position:relative;white-space:nowrap;">
+                            <i class="fas fa-comments mr-1"></i>Feedbacks
+                            <span id="feedbacksBadge" style="display:none;position:absolute;top:-8px;right:-8px;background:#ff6b6b;color:white;border-radius:50%;width:20px;height:20px;font-size:11px;line-height:20px;text-align:center;"></span>
+                        </button>
                     </div>
                 </div>
                 <button onclick="handleLogout()" class="border-4 border-white text-white px-4 py-2 text-xs font-black hover:bg-white hover:text-black transition">
@@ -637,6 +641,71 @@
         </div>
     </div>
 
+    <!-- ===== SECTION FEEDBACKS ===== -->
+    <div id="feedbacksSection" class="container mx-auto max-w-7xl" style="display: none;">
+        <h2 class="text-3xl font-black mb-6" style="font-family:'Playfair Display',serif;">
+            <i class="fas fa-comments mr-3" style="color:var(--genesis-yellow);"></i>FEEDBACKS CLIENTS
+        </h2>
+
+        <!-- Filtres -->
+        <div class="mb-6 p-4 bg-gray-100 border-4 border-black" style="display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-end;">
+            <div>
+                <label class="block font-bold text-sm mb-1 text-black">Catégorie</label>
+                <select id="fbFilterCategory" onchange="renderFeedbacks()" style="padding:0.5rem;border:3px solid black;font-weight:bold;min-width:160px;">
+                    <option value="">Toutes</option>
+                    <option value="Offre/Accompagnement">Offre / Accompagnement</option>
+                    <option value="Paiement">Paiement</option>
+                    <option value="Livrables">Livrables</option>
+                    <option value="Séances">Séances</option>
+                    <option value="Site/Bug">Site / Bug</option>
+                    <option value="Suggestions">Suggestions</option>
+                    <option value="Autre">Autre</option>
+                </select>
+            </div>
+            <div>
+                <label class="block font-bold text-sm mb-1 text-black">Statut</label>
+                <select id="fbFilterStatus" onchange="renderFeedbacks()" style="padding:0.5rem;border:3px solid black;font-weight:bold;min-width:160px;">
+                    <option value="">Tous</option>
+                    <option value="new">Nouveau</option>
+                    <option value="in_progress">En cours</option>
+                    <option value="resolved">Traité</option>
+                </select>
+            </div>
+            <div>
+                <label class="block font-bold text-sm mb-1 text-black">Trier par</label>
+                <select id="fbSort" onchange="renderFeedbacks()" style="padding:0.5rem;border:3px solid black;font-weight:bold;min-width:160px;">
+                    <option value="date_desc">Date ↓</option>
+                    <option value="date_asc">Date ↑</option>
+                    <option value="rating_desc">Note ↓</option>
+                    <option value="rating_asc">Note ↑</option>
+                </select>
+            </div>
+            <div>
+                <label class="block font-bold text-sm mb-1 text-black">Recherche</label>
+                <input type="text" id="fbSearch" oninput="renderFeedbacks()" placeholder="Nom, email, texte..." style="padding:0.5rem;border:3px solid black;font-weight:bold;min-width:200px;">
+            </div>
+            <div style="margin-left:auto;">
+                <label class="block font-bold text-sm mb-1 text-black">&nbsp;</label>
+                <button onclick="loadAdminFeedbacks()" style="padding:0.5rem 1rem;border:3px solid black;font-weight:bold;background:var(--genesis-yellow);cursor:pointer;">
+                    <i class="fas fa-sync-alt mr-1"></i>Rafraîchir
+                </button>
+            </div>
+        </div>
+
+        <!-- Liste -->
+        <div id="feedbacksList" style="color:black;">
+            <p style="color:white;opacity:0.5;font-weight:bold;">Chargement...</p>
+        </div>
+
+        <!-- Détail overlay -->
+        <div id="feedbackDetailOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:2000;overflow-y:auto;">
+            <div style="background:white;max-width:700px;margin:4rem auto 4rem;border:4px solid black;padding:2rem;position:relative;">
+                <button onclick="closeFeedbackDetail()" style="position:absolute;top:1rem;right:1rem;font-size:1.5rem;border:none;background:none;cursor:pointer;line-height:1;">&times;</button>
+                <div id="feedbackDetailContent"></div>
+            </div>
+        </div>
+    </div>
+
     <!-- MODAL PARTENAIRE DETAIL -->
     <div id="partnerModal" class="modal">
         <div class="modal-content">
@@ -700,6 +769,7 @@
             document.getElementById('loginPage').style.display = 'none';
             document.getElementById('adminPanel').style.display = 'block';
             loadDashboard();
+            loadFeedbacksBadge();
         }
 
         function handleLogout() {
@@ -720,6 +790,8 @@
             document.getElementById('projetsSection').style.display = 'none';
             var seancesEl = document.getElementById('seancesSection');
             if (seancesEl) seancesEl.style.display = 'none';
+            var feedbacksEl = document.getElementById('feedbacksSection');
+            if (feedbacksEl) feedbacksEl.style.display = 'none';
 
             if (section === 'dashboard') {
                 document.getElementById('dashboardSection').style.display = 'block';
@@ -749,8 +821,208 @@
             } else if (section === 'seances') {
                 if (seancesEl) seancesEl.style.display = 'block';
                 loadAdminSessions();
+            } else if (section === 'feedbacks') {
+                if (feedbacksEl) feedbacksEl.style.display = 'block';
+                loadAdminFeedbacks();
             }
         }
+
+        // ===== FEEDBACKS =====
+        var _allFeedbacks = [];
+
+        function loadFeedbacksBadge() {
+            var API = window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com';
+            fetch(API + '/api/admin/feedbacks/unread-count')
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    var count = data.count || 0;
+                    var badge = document.getElementById('feedbacksBadge');
+                    if (badge) {
+                        if (count > 0) {
+                            badge.textContent = count;
+                            badge.style.display = 'inline-block';
+                        } else {
+                            badge.style.display = 'none';
+                        }
+                    }
+                })
+                .catch(function() {});
+        }
+
+        function loadAdminFeedbacks() {
+            var API = window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com';
+            var listEl = document.getElementById('feedbacksList');
+            if (listEl) listEl.innerHTML = '<p style="color:white;opacity:0.5;font-weight:bold;">Chargement...</p>';
+            fetch(API + '/api/admin/feedbacks')
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    _allFeedbacks = Array.isArray(data) ? data : (data.feedbacks || []);
+                    renderFeedbacks();
+                    var newCount = _allFeedbacks.filter(function(f) { return f.status === 'new'; }).length;
+                    var badge = document.getElementById('feedbacksBadge');
+                    if (badge) {
+                        if (newCount > 0) {
+                            badge.textContent = newCount;
+                            badge.style.display = 'inline-block';
+                        } else {
+                            badge.style.display = 'none';
+                        }
+                    }
+                })
+                .catch(function(err) {
+                    if (listEl) listEl.innerHTML = '<p style="color:#ff6b6b;font-weight:bold;">Erreur de chargement : ' + err.message + '</p>';
+                });
+        }
+
+        function renderFeedbacks() {
+            var listEl = document.getElementById('feedbacksList');
+            if (!listEl) return;
+            var category = (document.getElementById('fbFilterCategory') || {}).value || '';
+            var status = (document.getElementById('fbFilterStatus') || {}).value || '';
+            var sort = (document.getElementById('fbSort') || {}).value || 'date_desc';
+            var search = ((document.getElementById('fbSearch') || {}).value || '').toLowerCase();
+
+            var filtered = _allFeedbacks.filter(function(f) {
+                if (category && f.category !== category) return false;
+                if (status && f.status !== status) return false;
+                if (search) {
+                    var hay = ((f.userName || '') + ' ' + (f.userEmail || '') + ' ' + (f.feedbackText || '') + ' ' + (f.suggestionText || '')).toLowerCase();
+                    if (hay.indexOf(search) === -1) return false;
+                }
+                return true;
+            });
+
+            filtered.sort(function(a, b) {
+                if (sort === 'date_desc') return new Date(b.createdAt) - new Date(a.createdAt);
+                if (sort === 'date_asc') return new Date(a.createdAt) - new Date(b.createdAt);
+                if (sort === 'rating_desc') return (b.rating || 0) - (a.rating || 0);
+                if (sort === 'rating_asc') return (a.rating || 0) - (b.rating || 0);
+                return 0;
+            });
+
+            if (filtered.length === 0) {
+                listEl.innerHTML = '<p style="color:white;opacity:0.5;font-weight:bold;padding:2rem 0;">Aucun feedback trouvé.</p>';
+                return;
+            }
+
+            var statusColors = { new: '#dc3545', in_progress: '#fd7e14', resolved: '#28a745' };
+            var statusLabels = { new: 'Nouveau', in_progress: 'En cours', resolved: 'Traité' };
+
+            var html = '<div style="display:flex;flex-direction:column;gap:0.6rem;">';
+            filtered.forEach(function(f) {
+                var isUrgent = f.rating <= 2 || f.category === 'Site/Bug';
+                var stars = '';
+                for (var i = 1; i <= 5; i++) {
+                    stars += '<span style="color:' + (i <= (f.rating || 0) ? '#FFD700' : '#ccc') + ';">★</span>';
+                }
+                var sLabel = statusLabels[f.status] || f.status;
+                var sColor = statusColors[f.status] || '#666';
+                var date = f.createdAt ? new Date(f.createdAt).toLocaleDateString('fr-FR') : '-';
+                var preview = (f.feedbackText || '').substring(0, 110) + (f.feedbackText && f.feedbackText.length > 110 ? '…' : '');
+
+                html += '<div onclick="showFeedbackDetail(\'' + f.id + '\')" style="background:white;border:3px solid black;padding:0.85rem 1rem;display:flex;gap:1rem;align-items:flex-start;cursor:pointer;transition:opacity 0.1s;" onmouseover="this.style.opacity=\'0.85\'" onmouseout="this.style.opacity=\'1\'">';
+                html += '<div style="min-width:72px;text-align:center;flex-shrink:0;">';
+                html += '<div style="font-size:1.1rem;line-height:1;">' + stars + '</div>';
+                html += '<div style="font-size:0.68rem;color:#666;margin-top:3px;">' + date + '</div>';
+                html += '</div>';
+                html += '<div style="flex:1;min-width:0;">';
+                html += '<div style="display:flex;align-items:center;gap:0.4rem;flex-wrap:wrap;margin-bottom:0.2rem;">';
+                if (isUrgent) html += '<span style="background:#ff6b6b;color:white;font-size:0.65rem;font-weight:900;padding:1px 6px;border:2px solid black;">⚠ URGENT</span>';
+                html += '<span style="font-weight:900;font-size:0.85rem;">' + (f.userName || 'Inconnu') + '</span>';
+                html += '<span style="font-size:0.75rem;color:#666;">' + (f.userEmail || '') + '</span>';
+                html += '<span style="background:#eee;border:1px solid #ccc;font-size:0.68rem;padding:1px 5px;">' + (f.category || '-') + '</span>';
+                html += '<span style="border:2px solid ' + sColor + ';color:' + sColor + ';font-size:0.68rem;font-weight:bold;padding:1px 6px;">' + sLabel + '</span>';
+                html += '</div>';
+                html += '<p style="font-size:0.82rem;color:#333;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + preview + '</p>';
+                html += '</div>';
+                html += '<div style="min-width:110px;text-align:right;font-size:0.72rem;color:#666;flex-shrink:0;">' + (f.offerName || f.offerType || '-') + '</div>';
+                html += '</div>';
+            });
+            html += '</div>';
+            listEl.innerHTML = html;
+        }
+
+        function showFeedbackDetail(id) {
+            var f = null;
+            for (var i = 0; i < _allFeedbacks.length; i++) {
+                if (_allFeedbacks[i].id === id) { f = _allFeedbacks[i]; break; }
+            }
+            if (!f) return;
+
+            var isUrgent = f.rating <= 2 || f.category === 'Site/Bug';
+            var stars = '';
+            for (var i = 1; i <= 5; i++) {
+                stars += '<span style="color:' + (i <= (f.rating || 0) ? '#FFD700' : '#ccc') + ';font-size:1.4rem;">★</span>';
+            }
+            var statusLabels = { new: 'Nouveau', in_progress: 'En cours', resolved: 'Traité' };
+            var sLabel = statusLabels[f.status] || f.status;
+            var date = f.createdAt ? new Date(f.createdAt).toLocaleString('fr-FR') : '-';
+
+            var html = '';
+            if (isUrgent) {
+                html += '<div style="background:#ff6b6b;color:white;padding:0.5rem 1rem;font-weight:900;margin-bottom:1rem;border:2px solid black;">⚠ FEEDBACK URGENT — nécessite une attention immédiate</div>';
+            }
+            html += '<h2 style="font-size:1.4rem;font-weight:900;margin-bottom:0.25rem;">Feedback de ' + (f.userName || 'Inconnu') + '</h2>';
+            html += '<p style="font-size:0.8rem;color:#666;margin-bottom:1rem;">' + (f.userEmail || '') + ' — ' + date + '</p>';
+            html += '<div style="display:flex;gap:1.5rem;flex-wrap:wrap;margin-bottom:1rem;padding-bottom:1rem;border-bottom:2px solid #eee;">';
+            html += '<div><strong>Note :</strong> ' + stars + '</div>';
+            html += '<div><strong>Catégorie :</strong> ' + (f.category || '-') + '</div>';
+            html += '<div><strong>Offre :</strong> ' + (f.offerName || f.offerType || '-') + '</div>';
+            html += '<div><strong>Statut :</strong> ' + sLabel + '</div>';
+            html += '</div>';
+            html += '<div style="background:#f8f8f8;border:2px solid #e0e0e0;padding:1rem;margin-bottom:1rem;border-radius:2px;">';
+            html += '<strong style="display:block;margin-bottom:0.5rem;font-size:0.85rem;text-transform:uppercase;letter-spacing:0.05em;">Retour d\'expérience</strong>';
+            html += '<p style="white-space:pre-wrap;margin:0;font-size:0.9rem;">' + (f.feedbackText || '-') + '</p>';
+            html += '</div>';
+            if (f.suggestionText) {
+                html += '<div style="background:#fffde7;border:2px solid #ffe082;padding:1rem;margin-bottom:1rem;border-radius:2px;">';
+                html += '<strong style="display:block;margin-bottom:0.5rem;font-size:0.85rem;text-transform:uppercase;letter-spacing:0.05em;">Suggestion d\'amélioration</strong>';
+                html += '<p style="white-space:pre-wrap;margin:0;font-size:0.9rem;">' + f.suggestionText + '</p>';
+                html += '</div>';
+            }
+            html += '<p style="font-size:0.78rem;color:#888;margin-bottom:1.5rem;">' + (f.consentTestimonial ? '✅ Autorise l\'utilisation comme témoignage' : '❌ N\'autorise pas l\'utilisation comme témoignage') + '</p>';
+            html += '<div style="display:flex;gap:0.75rem;flex-wrap:wrap;">';
+            if (f.status === 'new') {
+                html += '<button onclick="markFeedbackStatus(\'' + f.id + '\', \'in_progress\')" style="padding:0.6rem 1.2rem;border:3px solid black;background:#fd7e14;color:white;font-weight:900;cursor:pointer;"><i class="fas fa-spinner mr-1"></i>Marquer en cours</button>';
+            }
+            if (f.status !== 'resolved') {
+                html += '<button onclick="markFeedbackStatus(\'' + f.id + '\', \'resolved\')" style="padding:0.6rem 1.2rem;border:3px solid black;background:#28a745;color:white;font-weight:900;cursor:pointer;"><i class="fas fa-check mr-1"></i>Marquer comme traité</button>';
+            }
+            if (f.status === 'resolved') {
+                html += '<button onclick="markFeedbackStatus(\'' + f.id + '\', \'new\')" style="padding:0.6rem 1.2rem;border:3px solid black;background:#6c757d;color:white;font-weight:900;cursor:pointer;"><i class="fas fa-undo mr-1"></i>Rouvrir</button>';
+            }
+            html += '<button onclick="closeFeedbackDetail()" style="padding:0.6rem 1.2rem;border:3px solid black;background:#eee;color:black;font-weight:900;cursor:pointer;"><i class="fas fa-times mr-1"></i>Fermer</button>';
+            html += '</div>';
+
+            document.getElementById('feedbackDetailContent').innerHTML = html;
+            document.getElementById('feedbackDetailOverlay').style.display = 'block';
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeFeedbackDetail() {
+            document.getElementById('feedbackDetailOverlay').style.display = 'none';
+            document.body.style.overflow = '';
+        }
+
+        function markFeedbackStatus(id, newStatus) {
+            var API = window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com';
+            fetch(API + '/api/admin/feedbacks/' + id + '/status', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: newStatus })
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.ok) {
+                    closeFeedbackDetail();
+                    loadAdminFeedbacks();
+                } else {
+                    alert('Erreur : ' + (data.error || 'Impossible de mettre à jour le statut.'));
+                }
+            })
+            .catch(function() { alert('Erreur réseau.'); });
+        }
+        // ===== FIN FEEDBACKS =====
 
         async function loadDashboard() {
             try {
