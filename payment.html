@@ -367,7 +367,7 @@
                 }
 
                 // Afficher le r\u00E9sum\u00E9 du statut
-                displayStatusSummary(status, totalPaid, data.product_name, data.total_amount, data.deposit_amount);
+                displayStatusSummary(status, totalPaid, data.product_name, data.total_amount, data.deposit_amount, data.amount_paid || 0, data.installments_count || 2);
 
                 // Section acompte - toujours afficher si offre active
                 if (data.product_name) {
@@ -460,15 +460,32 @@
             // ==================
             // DISPLAY FUNCTIONS
             // ==================
-            function displayStatusSummary(status, totalPaid, productName, totalAmount, depositAmount) {
+            function displayStatusSummary(status, totalPaid, productName, totalAmount, depositAmount, amountPaid, installmentsCount) {
                 var el = document.getElementById('statusSummary');
                 if (!el) return;
 
+                var paidDisplay = (amountPaid !== undefined && amountPaid !== null) ? amountPaid : totalPaid;
+
                 var html = '<div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">';
                 html += '<div><h3 class="text-2xl font-black italic uppercase mb-2">VOTRE STATUT</h3>';
-                html += '<span class="status-badge ' + getStatusClass(status) + '">' + getStatusLabel(status) + '</span></div>';
+                html += '<span class="status-badge ' + getStatusClass(status) + '">' + getStatusLabel(status) + '</span>';
+                if (installmentsCount && installmentsCount > 2 && totalAmount > 0) {
+                    var numPaid = 0;
+                    // compter les versements payes (hors deposit) plus acompte
+                    // approximation : paie = amountPaid / (totalAmount/installmentsCount)
+                    // On calcule simplement combien de versements sont payes depuis amountPaid
+                    var installAmt = Math.round(totalAmount / installmentsCount);
+                    if (installAmt > 0) numPaid = Math.round(paidDisplay / installAmt);
+                    if (numPaid > installmentsCount) numPaid = installmentsCount;
+                    html += '<div class="mt-2 text-sm font-bold" style="color:#555;">'
+                        + numPaid + '/' + installmentsCount + ' versements'
+                        + '</div>';
+                }
+                html += '</div>';
                 html += '<div class="text-right"><p class="text-sm font-bold opacity-70 uppercase">Total pay\u00E9</p>';
-                html += '<p class="text-3xl font-black text-[var(--genesis-yellow)]">' + totalPaid + '\u20AC</p></div></div>';
+                html += '<p class="text-3xl font-black text-[var(--genesis-yellow)]">' + paidDisplay + '\u20AC';
+                if (totalAmount && totalAmount > 0) html += '<span class="text-sm opacity-60"> / ' + totalAmount + '\u20AC</span>';
+                html += '</p></div></div>';
 
                 if (productName) {
                     html += '<div class="border-t-4 border-black pt-6">';
@@ -529,33 +546,115 @@
 
             function displayBalanceDetails(data) {
                 var introMsg = document.getElementById('balanceIntroMessage');
+                var detEl = document.getElementById('balanceDetails');
+                var optEl = document.getElementById('paymentOptions');
+                var instSection = document.getElementById('installmentSection');
+                var instList = document.getElementById('installmentsList');
+
+                // ---- MODE INSTALLEMENTS : data.installments present ----
+                if (data.installments && data.installments.length > 0) {
+                    if (introMsg) introMsg.textContent = 'R\u00E9glez chaque versement \u00E0 son \u00E9ch\u00E9ance. Vous pouvez aussi tout payer en une fois.';
+
+                    // Cacher le bloc balanceDetails standard
+                    if (detEl) detEl.innerHTML = '';
+
+                    // Afficher la section installements
+                    if (instSection) instSection.style.display = 'block';
+                    if (instList) {
+                        var html = '<div class="space-y-3">';
+                        for (var k = 0; k < data.installments.length; k++) {
+                            var inst = data.installments[k];
+                            var isPaid = inst.paid === true;
+                            var isDeposit = inst.stage === 'deposit';
+                            var dueDateStr = '';
+                            if (isDeposit) {
+                                dueDateStr = 'Imm\u00E9diat (acompte)';
+                            } else if (inst.due_date) {
+                                try {
+                                    dueDateStr = '\u00C9ch\u00E9ance : ' + new Date(inst.due_date).toLocaleDateString('fr-FR');
+                                } catch(e) { dueDateStr = inst.due_date; }
+                            }
+                            var paidAtStr = '';
+                            if (isPaid && inst.paid_at) {
+                                try { paidAtStr = 'Pay\u00E9 le ' + new Date(inst.paid_at).toLocaleDateString('fr-FR'); } catch(e) {}
+                            }
+
+                            var rowBg = isPaid ? 'background:#d4edda;border:3px solid #28a745;' : 'background:#fff;border:3px solid #000;';
+                            html += '<div style="' + rowBg + 'padding:12px 16px;display:flex;justify-content:space-between;align-items:center;gap:12px;">';
+                            // Icone + label
+                            html += '<div style="display:flex;align-items:center;gap:10px;">';
+                            if (isPaid) {
+                                html += '<i class="fas fa-check-circle" style="color:#28a745;font-size:20px;"></i>';
+                            } else if (isDeposit) {
+                                html += '<i class="fas fa-clock" style="color:#888;font-size:20px;"></i>';
+                            } else {
+                                html += '<i class="fas fa-circle" style="color:#ccc;font-size:20px;"></i>';
+                            }
+                            html += '<div>';
+                            html += '<div style="font-weight:900;font-size:14px;">' + (inst.label || ('Versement #' + inst.number)) + '</div>';
+                            if (paidAtStr) {
+                                html += '<div style="font-size:11px;color:#28a745;font-weight:700;">' + paidAtStr + '</div>';
+                            } else if (dueDateStr) {
+                                html += '<div style="font-size:11px;color:#555;font-weight:700;">' + dueDateStr + '</div>';
+                            }
+                            html += '</div></div>';
+                            // Montant + bouton
+                            html += '<div style="display:flex;align-items:center;gap:12px;">';
+                            html += '<span style="font-size:18px;font-weight:900;">' + (inst.amount || 0) + '\u20AC</span>';
+                            if (!isPaid && !isDeposit) {
+                                html += '<button onclick="payInstallment(\'' + inst.stage + '\',\'' + data.order_id + '\',' + (inst.amount || 0) + ')" '
+                                    + 'style="background:#FFD700;border:3px solid #000;padding:8px 16px;font-weight:900;font-size:12px;cursor:pointer;text-transform:uppercase;">'
+                                    + 'Payer</button>';
+                            }
+                            html += '</div>';
+                            html += '</div>';
+                        }
+                        html += '</div>';
+                        instList.innerHTML = html;
+                    }
+
+                    // Bouton "Tout payer maintenant" = solde restant en une fois
+                    var remaining = (data.total_amount || 0) - (data.amount_paid || 0);
+                    if (remaining > 0 && optEl) {
+                        var optHtml = '<div class="border-4 border-black p-6" style="background:#fff7;grid-column:1/-1;">';
+                        optHtml += '<div class="text-center">';
+                        optHtml += '<i class="fas fa-bolt text-4xl text-[var(--genesis-yellow)] mb-4"></i>';
+                        optHtml += '<h3 class="text-xl font-black uppercase mb-2">Tout payer maintenant</h3>';
+                        optHtml += '<p class="text-3xl font-black mb-2">' + remaining + '\u20AC</p>';
+                        optHtml += '<p class="text-sm font-bold opacity-70 mb-4">Solde restant en une seule fois &mdash; livrables d\u00E9bloqu\u00E9s imm\u00E9diatement</p>';
+                        optHtml += '<button onclick="payBalance()" class="neo-btn-yellow px-6 py-3 w-full font-black uppercase">'
+                            + '<i class="fas fa-credit-card mr-2"></i>Payer ' + remaining + '\u20AC maintenant</button>';
+                        optHtml += '</div></div>';
+                        optEl.innerHTML = optHtml;
+                    }
+                    return;
+                }
+
+                // ---- MODE STANDARD (N=2) ----
                 if (introMsg) introMsg.textContent = 'R\u00E9glez le solde pour acc\u00E9der \u00E0 vos livrables finaux.';
 
-                var detEl = document.getElementById('balanceDetails');
-                if (!detEl) return;
-
-                var html = '<div class="bg-[var(--genesis-yellow)] p-6 border-4 border-black mb-6">';
-                html += '<div class="flex justify-between items-center"><div>';
-                html += '<p class="text-2xl font-black uppercase">' + (data.product_name || 'Votre offre') + '</p>';
-                html += '<p class="font-bold opacity-70">Solde restant (70%)</p></div>';
-                html += '<p class="text-4xl font-black">' + (data.balance_amount || '--') + '\u20AC</p></div></div>';
-                html += '<p class="text-sm font-bold opacity-70 mb-6"><i class="fas fa-info-circle mr-2"></i>';
-                html += 'Une fois le solde r\u00E9gl\u00E9, vous aurez acc\u00E8s imm\u00E9diat \u00E0 tous vos livrables finaux.</p>';
-
-                detEl.innerHTML = html;
+                if (detEl) {
+                    var html2 = '<div class="bg-[var(--genesis-yellow)] p-6 border-4 border-black mb-6">';
+                    html2 += '<div class="flex justify-between items-center"><div>';
+                    html2 += '<p class="text-2xl font-black uppercase">' + (data.product_name || 'Votre offre') + '</p>';
+                    html2 += '<p class="font-bold opacity-70">Solde restant (70%)</p></div>';
+                    html2 += '<p class="text-4xl font-black">' + (data.balance_amount || '--') + '\u20AC</p></div></div>';
+                    html2 += '<p class="text-sm font-bold opacity-70 mb-6"><i class="fas fa-info-circle mr-2"></i>';
+                    html2 += 'Une fois le solde r\u00E9gl\u00E9, vous aurez acc\u00E8s imm\u00E9diat \u00E0 tous vos livrables finaux.</p>';
+                    detEl.innerHTML = html2;
+                }
 
                 // Bouton payer le solde en comptant
-                var optEl = document.getElementById('paymentOptions');
                 if (optEl) {
-                    var optHtml = '<div class="border-4 border-black p-6 hover:shadow-lg transition cursor-pointer" onclick="payBalance()">';
-                    optHtml += '<div class="text-center">';
-                    optHtml += '<i class="fas fa-money-bill-wave text-4xl text-[var(--genesis-yellow)] mb-4"></i>';
-                    optHtml += '<h3 class="text-xl font-black uppercase mb-2">Paiement comptant</h3>';
-                    optHtml += '<p class="text-3xl font-black mb-2">' + (data.balance_amount || '--') + '\u20AC</p>';
-                    optHtml += '<p class="text-sm font-bold opacity-70">En une seule fois</p>';
-                    optHtml += '<button class="mt-4 neo-btn-yellow px-6 py-3 text-sm w-full">Payer maintenant</button>';
-                    optHtml += '</div></div>';
-                    optEl.innerHTML = optHtml;
+                    var optHtml2 = '<div class="border-4 border-black p-6 hover:shadow-lg transition cursor-pointer" onclick="payBalance()">';
+                    optHtml2 += '<div class="text-center">';
+                    optHtml2 += '<i class="fas fa-money-bill-wave text-4xl text-[var(--genesis-yellow)] mb-4"></i>';
+                    optHtml2 += '<h3 class="text-xl font-black uppercase mb-2">Paiement comptant</h3>';
+                    optHtml2 += '<p class="text-3xl font-black mb-2">' + (data.balance_amount || '--') + '\u20AC</p>';
+                    optHtml2 += '<p class="text-sm font-bold opacity-70">En une seule fois</p>';
+                    optHtml2 += '<button class="mt-4 neo-btn-yellow px-6 py-3 text-sm w-full">Payer maintenant</button>';
+                    optHtml2 += '</div></div>';
+                    optEl.innerHTML = optHtml2;
                 }
             }
 
@@ -573,14 +672,27 @@
                     var p = payments[i];
                     var dateStr = '';
                     try { dateStr = new Date(p.paid_at || p.date).toLocaleDateString('fr-FR'); } catch (e) { dateStr = p.paid_at || ''; }
-                    var typeLabel = (p.type === 'deposit' || p.type === 'acompte') ? 'ACOMPTE' : 'SOLDE';
-                    var typeIcon = (p.type === 'deposit' || p.type === 'acompte') ? 'fa-hand-holding-usd' : 'fa-check-circle';
+                    // Determiner le label et l'icone selon le type
+                    var typeLabel, typeIcon;
+                    if (p.type === 'deposit' || p.type === 'acompte') {
+                        typeLabel = p.label || 'ACOMPTE';
+                        typeIcon = 'fa-hand-holding-usd';
+                    } else if (p.type === 'balance') {
+                        typeLabel = p.label || 'SOLDE';
+                        typeIcon = 'fa-check-circle';
+                    } else if (p.type && p.type.indexOf('installment') === 0) {
+                        typeLabel = p.label || p.type.toUpperCase().replace('_', ' ');
+                        typeIcon = 'fa-calendar-check';
+                    } else {
+                        typeLabel = p.label || (p.type || 'PAIEMENT').toUpperCase();
+                        typeIcon = 'fa-receipt';
+                    }
 
                     html += '<div class="border-4 border-black p-4 bg-[var(--genesis-yellow)]">';
                     html += '<div class="flex justify-between items-center"><div>';
                     html += '<p class="font-black text-lg uppercase"><i class="fas ' + typeIcon + ' mr-2"></i>' + typeLabel + '</p>';
                     html += '<p class="text-sm font-bold opacity-70">' + dateStr + '</p>';
-                    if (p.label) html += '<p class="text-xs font-bold opacity-50">' + p.label + '</p>';
+                    if (p.product_name) html += '<p class="text-xs font-bold opacity-50">' + p.product_name + '</p>';
                     html += '</div>';
                     html += '<p class="text-2xl font-black">' + (p.amount || 0) + '\u20AC</p>';
                     html += '</div></div>';
@@ -690,6 +802,36 @@
             // ==================
             // PAY BALANCE
             // ==================
+            // ==================
+            // PAY INSTALLMENT
+            // ==================
+            window.payInstallment = function(stage, orderId, amount) {
+                if (!orderId || !stage) {
+                    alert('Erreur : commande introuvable. Veuillez rafra\u00EEchir la page.');
+                    return;
+                }
+                fetch(PAY_API + '/api/payments/sumup/create-checkout', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ orderId: orderId, stage: stage })
+                })
+                .then(function(resp) {
+                    if (!resp.ok) return resp.json().then(function(d) { throw new Error(d.error || d.details || 'Erreur checkout'); });
+                    return resp.json();
+                })
+                .then(function(checkoutData) {
+                    if (checkoutData.checkout_id) {
+                        showSumUpWidget(checkoutData.checkout_id, checkoutData.amount, orderId, stage);
+                    } else {
+                        throw new Error('ID de checkout non re\u00E7u');
+                    }
+                })
+                .catch(function(err) {
+                    console.error('[PAYMENT] Erreur payInstallment:', err);
+                    alert('Erreur lors du paiement du versement :\n\n' + err.message);
+                });
+            };
+
             // Store backend data for payBalance to use
             var _backendOrderId = null;
 

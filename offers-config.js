@@ -91,7 +91,7 @@ const FA_GENESIS_OFFERS = [
         prixTotal: 149,
         ...calculatePaymentSplit(149),
         duree: '2 jours',
-        echelonsPaiement: 1, // Paiement comptant uniquement
+        echelonsPaiement: 2, // Paiement en 2x (acompte + solde)
         description: 'Accompagnement starter pour entrepreneurs particuliers',
         inclus: ['1 Séance stratégique (1h30)', 'Structuration claire du projet', 'Plan d\'action (7 jours)']
     },
@@ -166,7 +166,7 @@ const FA_GENESIS_OFFERS = [
         prixTotal: 2990,
         ...calculatePaymentSplit(2990),
         duree: '14 jours',
-        echelonsPaiement: 3, // Paiement en 3x (non affiché sur le site mais logique pour ce montant)
+        echelonsPaiement: 2, // Paiement en 2x
         description: 'Développez votre visibilité et votre notoriété',
         inclus: ['1 Séance stratégique (1h30)', 'Structuration du storytelling de l\'entreprise', '1 shooting photo professionnel (24 photos retouchées)', '1 tournage vidéo (1h30)', '1 Vidéo longue (2 min)', 'Format réseaux sociaux', 'Accès à 1 Média crédible (6 Post et/ou 6 Story)', 'Plan de diffusion (30 jours)']
     },
@@ -178,7 +178,7 @@ const FA_GENESIS_OFFERS = [
         prixTotal: 4900,
         ...calculatePaymentSplit(4900),
         duree: '30 jours',
-        echelonsPaiement: 4, // Paiement en 4x (non affiché sur le site mais logique pour ce montant)
+        echelonsPaiement: 2, // Paiement en 2x
         description: 'Accompagnement premium pour maximiser votre impact',
         inclus: ['1 Séance stratégique (1h30)', 'Structuration du positionnement & discours', '1 Shooting photo professionnel (40 photos retouchées)', '2 tournages vidéos (1h30 chacun)', '2 vidéos longues (2 min chacune) + Direction narrative', 'Format réseaux sociaux', 'Accès à 1 Média crédible (9 Post et/ou 9 Story)', 'Plan de communication (60 jours)']
     },
@@ -363,6 +363,65 @@ function getDepositAmount(offerId) {
 function getBalanceAmount(offerId) {
     const offer = getOfferById(offerId);
     return offer ? offer.solde : 0;
+}
+
+/**
+ * Calcule le plan d'echeances pour une offre donnee.
+ * Utilise cote frontend pour afficher le calendrier dans checkout.html et payment.html.
+ * @param {string} offerId
+ * @param {Date|null} refDate - Date de reference (aujourd'hui si null)
+ * @returns {Array} - tableau de versements { number, label, amount, due_date_label, stage }
+ */
+function getInstallmentPlan(offerId, refDate) {
+    var offer = getOfferById(offerId);
+    if (!offer) return [];
+    var total = offer.prixTotal || 0;
+    var deposit = offer.acompte || Math.round(total * 0.30);
+    var count = offer.echelonsPaiement || 2;
+    var ref = refDate ? new Date(refDate) : new Date();
+
+    var plan = [];
+    plan.push({
+        number: 1,
+        label: 'Acompte (30%)',
+        amount: deposit,
+        due_date_label: "Aujourd'hui",
+        stage: 'deposit'
+    });
+
+    if (count <= 2) {
+        // Paiement standard : acompte + solde
+        if (total - deposit > 0) {
+            plan.push({
+                number: 2,
+                label: 'Solde (70%)',
+                amount: total - deposit,
+                due_date_label: "A la fin de l'accompagnement",
+                stage: 'balance'
+            });
+        }
+        return plan;
+    }
+
+    // Mode installements N > 2
+    var balanceAmount = total - deposit;
+    var numBalanceInstallments = count - 1;
+    var baseAmount = Math.floor(balanceAmount / numBalanceInstallments);
+    var lastAmount = balanceAmount - baseAmount * (numBalanceInstallments - 1);
+    var labelMap = { 2: '2eme', 3: '3eme', 4: '4eme', 5: '5eme', 6: '6eme', 7: '7eme', 8: '8eme', 9: '9eme' };
+
+    for (var i = 2; i <= count; i++) {
+        var amount = (i === count) ? lastAmount : baseAmount;
+        var daysLabel = 'J+' + ((i - 1) * 30) + ' jours';
+        plan.push({
+            number: i,
+            label: (labelMap[i] || (i + 'eme')) + ' versement',
+            amount: amount,
+            due_date_label: daysLabel,
+            stage: 'installment_' + i
+        });
+    }
+    return plan;
 }
 
 console.log('🟢 offers-config.js chargé avec succès');
