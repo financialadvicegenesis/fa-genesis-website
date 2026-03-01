@@ -1,0 +1,23 @@
+User-agent: *
+Allow: /
+Disallow: /dashboard.html
+Disallow: /seances.html
+Disallow: /livrables.html
+Disallow: /mon-compte.html
+Disallow: /payment.html
+Disallow: /payment-success.html
+Disallow: /payment-failure.html
+Disallow: /payment-cancel.html
+Disallow: /checkout.html
+Disallow: /register.html
+Disallow: /admin.html
+Disallow: /partner-dashboard.html
+Disallow: /partner-login.html
+Disallow: /feedback.html
+Disallow: /messagerie.html
+Disallow: /reclamation.html
+Disallow: /espace-client.html
+Disallow: /quote-accept.html
+Disallow: /server/
+
+Sitemap: https://fagenesis.com/sitemap.xml
