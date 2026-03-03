@@ -54,19 +54,19 @@ const FA_GENESIS_OFFERS = [
         duree: '14 jours',
         echelonsPaiement: 6, // Paiement en 6x
         description: 'Lancement complet de votre projet étudiant',
-        inclus: ['1 Séance stratégique (1h30)', 'Structuration claire & storytelling simple du projet', '1 Mini tournage vidéo (45 min)', '1 vidéo courte (1 min)', 'Accès à 1 Média crédible (1 Post et/ou 1 Story)', 'Plan de diffusion (30 jours)']
+        inclus: ['1 Séance stratégique (1h30)', 'Structuration claire & storytelling simple du projet', '1 MINI SHOOTING PHOTO (45 Min)', '2 photos retouchées', 'Accès à 1 Média crédible (1 Post et/ou 1 Story)', 'Plan de diffusion (30 jours)']
     },
     {
         id: 'etudiant-impact',
         nom: 'Étudiant IMPACT',
         categorie: 'ÉTUDIANTS',
         productType: 'accompagnement',
-        prixTotal: 290,
-        ...calculatePaymentSplit(290),
+        prixTotal: 390,
+        ...calculatePaymentSplit(390),
         duree: '1 mois',
         echelonsPaiement: 8, // Paiement en 8x
         description: 'Accompagnement complet pour maximiser l\'impact',
-        inclus: ['1 Séance stratégique (1h30)', 'Structuration claire du projet', '1 Shooting photo (5 photos retouchées)', '1 Tournage vidéo (1h00)', '1 vidéo longue (2 min)', 'Accès à 1 Média crédible (1 Post et/ou 1 Story)', 'Plan de communication (30 jours)']
+        inclus: ['1 Séance stratégique (1h30)', 'Structuration claire du projet', '1 Shooting photo (5 photos retouchées)', '1 Tournage vidéo (1h00)', '1 vidéo (1 min)', 'Accès à 1 Média crédible (1 Post et/ou 1 Story)', 'Plan de communication (30 jours)']
     },
     {
         id: 'etudiant-custom',
@@ -117,7 +117,7 @@ const FA_GENESIS_OFFERS = [
         duree: '14 jours',
         echelonsPaiement: 2, // Paiement en 2x
         description: 'Lancement professionnel de votre activité',
-        inclus: ['1 Séance stratégique (1h30)', 'Structuration claire & storytelling simple du projet', '1 Mini tournage vidéo (45 min)', '1 vidéo courte (1 min)', 'Accès à 1 Média crédible (2 Post et/ou 2 Story)', 'Plan de diffusion (30 jours)']
+        inclus: ['1 Séance stratégique (1h30)', 'Structuration claire & storytelling simple du projet', '1 MINI SHOOTING PHOTO (45 Min)', '4 photos retouchées', 'Accès à 1 Média crédible (2 Post et/ou 2 Story)', 'Plan de diffusion (30 jours)']
     },
     {
         id: 'particulier-impact',
@@ -129,7 +129,7 @@ const FA_GENESIS_OFFERS = [
         duree: '1 mois',
         echelonsPaiement: 2, // Paiement en 2x
         description: 'Accompagnement intensif pour maximiser votre impact',
-        inclus: ['1 Séance stratégique (1h30)', 'Structuration claire du projet', '1 Shooting photo (9 photos retouchées)', '1 Tournage vidéo (1h00)', '1 vidéo longue (2 min)', 'Accès à 1 Média crédible (4 Post et/ou 4 Story)', 'Plan de communication (30 jours)']
+        inclus: ['1 Séance stratégique (1h30)', 'Structuration claire du projet', '1 Shooting photo (9 photos retouchées)', '1 Tournage vidéo (1h00)', '1 vidéo (1 min)', 'Accès à 1 Média crédible (4 Post et/ou 4 Story)', 'Plan de communication (30 jours)']
     },
     {
         id: 'particulier-custom',
@@ -277,6 +277,18 @@ const FA_GENESIS_OFFERS = [
     },
 
     // ========== TARIFS INDIVIDUELS - MÉDIA ==========
+    {
+        id: 'media-simple',
+        nom: 'Média SIMPLE',
+        categorie: 'TARIFS INDIVIDUELS - MÉDIA',
+        productType: 'prestation_individuelle',
+        prixTotal: 55,
+        ...calculatePaymentSplit(55),
+        duree: '1 publication',
+        echelonsPaiement: 2, // Paiement possible en 2x dont 1x/mois (27,5 €/mois)
+        description: 'Accès à un média crédible pour une première visibilité',
+        inclus: ['Accès à 1 média crédible', 'Publication (1 Post et/ou 1 Story)', 'Brief en amont pour cadrer le message']
+    },
     {
         id: 'media-visibility',
         nom: 'Média VISIBILITY',

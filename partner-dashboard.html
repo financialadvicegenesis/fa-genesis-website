@@ -144,6 +144,10 @@
                         <i class="fas fa-video mr-1"></i>Séances
                         <span id="seancesBadge" style="display:none;position:absolute;top:-8px;right:-8px;background:#ff6b6b;color:white;border-radius:50%;width:18px;height:18px;font-size:10px;line-height:18px;text-align:center;"></span>
                     </button>
+                    <button onclick="showSection('messaging')" class="nav-tab text-white hover:text-[var(--genesis-yellow)] transition" style="position:relative;">
+                        <i class="fas fa-comments mr-1"></i>Messagerie
+                        <span id="partnerMsgBadge" style="display:none;position:absolute;top:-8px;right:-8px;background:#ff6b6b;color:white;border-radius:50%;width:18px;height:18px;font-size:10px;line-height:18px;text-align:center;"></span>
+                    </button>
                     <button onclick="showSection('profile')" class="nav-tab text-white hover:text-[var(--genesis-yellow)] transition">
                         <i class="fas fa-user mr-1"></i>Profil
                     </button>
@@ -173,6 +177,10 @@
             <button onclick="showSection('seances')" class="nav-tab text-white hover:text-[var(--genesis-yellow)] text-xs font-black" style="position:relative;">
                 <i class="fas fa-video mr-1"></i>Séances
                 <span id="seancesBadgeMobile" style="display:none;position:absolute;top:-6px;right:-6px;background:#ff6b6b;color:white;border-radius:50%;width:16px;height:16px;font-size:9px;line-height:16px;text-align:center;"></span>
+            </button>
+            <button onclick="showSection('messaging')" class="nav-tab text-white hover:text-[var(--genesis-yellow)] text-xs font-black" style="position:relative;">
+                <i class="fas fa-comments mr-1"></i>Msg
+                <span id="partnerMsgBadgeMobile" style="display:none;position:absolute;top:-6px;right:-6px;background:#ff6b6b;color:white;border-radius:50%;width:16px;height:16px;font-size:9px;line-height:16px;text-align:center;"></span>
             </button>
             <button onclick="showSection('profile')" class="nav-tab text-white hover:text-[var(--genesis-yellow)] text-xs font-black">
                 <i class="fas fa-user mr-1"></i>Profil
@@ -407,6 +415,57 @@
             </div>
         </div>
 
+        <!-- ===== SECTION MESSAGERIE ===== -->
+        <div id="messagingSection" class="container mx-auto max-w-3xl" style="display:none;">
+            <h2 class="text-3xl md:text-5xl font-black italic uppercase mb-8" style="color:var(--genesis-yellow);">
+                <i class="fas fa-comments mr-3"></i>MESSAGERIE
+            </h2>
+
+            <!-- Fil de messages -->
+            <div style="background:#111;border:4px solid white;padding:2rem;margin-bottom:2rem;box-shadow:10px 10px 0px white;">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-lg font-black uppercase text-white"><i class="fas fa-inbox mr-2"></i>Messages clients</h3>
+                    <button onclick="loadPartnerMessages()" style="background:none;border:3px solid white;color:white;padding:6px 16px;font-size:12px;font-weight:900;text-transform:uppercase;cursor:pointer;">
+                        <i class="fas fa-sync-alt mr-1"></i>Actualiser
+                    </button>
+                </div>
+                <div id="partnerMsgLoader" style="text-align:center;padding:2rem;color:var(--genesis-yellow);">
+                    <i class="fas fa-spinner fa-spin text-2xl"></i>
+                    <p class="mt-2 text-sm font-bold uppercase">Chargement...</p>
+                </div>
+                <div id="partnerMsgEmpty" style="display:none;text-align:center;padding:3rem;">
+                    <i class="fas fa-inbox text-4xl mb-4" style="color:#555;"></i>
+                    <p class="font-black uppercase" style="color:#555;">Aucun message reçu</p>
+                    <p class="text-sm mt-2" style="color:#666;">Les clients peuvent vous contacter via leur espace messagerie.</p>
+                </div>
+                <div id="partnerMsgThread" style="display:none;max-height:500px;overflow-y:auto;display:none;flex-direction:column;gap:16px;padding:8px 0;"></div>
+            </div>
+
+            <!-- Formulaire réponse -->
+            <div style="background:#111;border:4px solid var(--genesis-yellow);padding:2rem;box-shadow:10px 10px 0px var(--genesis-yellow);">
+                <h3 class="text-lg font-black uppercase mb-4" style="color:var(--genesis-yellow);"><i class="fas fa-reply mr-2"></i>Répondre</h3>
+                <div class="flex flex-col gap-4">
+                    <div>
+                        <label class="block text-xs font-black uppercase mb-2" style="color:#888;">Destinataire (email client)</label>
+                        <input type="email" id="partnerMsgTo" placeholder="email@client.com"
+                            style="background:#222;color:white;border:4px solid var(--genesis-yellow);font-family:'Space Grotesk',sans-serif;font-weight:700;outline:none;width:100%;padding:0.75rem 1rem;">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-black uppercase mb-2" style="color:#888;">Message</label>
+                        <textarea id="partnerMsgContent" rows="5" placeholder="Écrivez votre réponse..."
+                            style="background:#222;color:white;border:4px solid var(--genesis-yellow);font-family:'Space Grotesk',sans-serif;font-weight:700;outline:none;width:100%;padding:0.75rem 1rem;resize:vertical;"></textarea>
+                    </div>
+                    <div>
+                        <button onclick="sendPartnerMessage()" id="partnerSendBtn"
+                            style="background:var(--genesis-yellow);color:black;border:4px solid black;padding:0.75rem 2rem;font-weight:900;font-size:0.875rem;text-transform:uppercase;cursor:pointer;box-shadow:4px 4px 0 black;">
+                            <i class="fas fa-paper-plane mr-2"></i>Envoyer
+                        </button>
+                    </div>
+                    <div id="partnerMsgStatus" style="display:none;"></div>
+                </div>
+            </div>
+        </div>
+
         <!-- ===== SECTION SÉANCES ===== -->
         <div id="seancesSection" class="container mx-auto max-w-5xl" style="display:none;">
             <h2 class="text-2xl md:text-3xl font-black text-white mb-6" style="font-family:'Playfair Display',serif;">
@@ -546,6 +605,7 @@
         var quoteDetail = document.getElementById('quoteDetailSection');
         var missions = document.getElementById('missionsSection');
         var seances = document.getElementById('seancesSection');
+        var messaging = document.getElementById('messagingSection');
 
         if (loading) loading.style.display = 'none';
         if (projects) projects.style.display = 'none';
@@ -555,6 +615,7 @@
         if (quoteDetail) quoteDetail.style.display = 'none';
         if (missions) missions.style.display = 'none';
         if (seances) seances.style.display = 'none';
+        if (messaging) messaging.style.display = 'none';
 
         if (section === 'projects') {
             if (projects) projects.style.display = 'block';
@@ -573,6 +634,9 @@
         } else if (section === 'seances') {
             if (seances) seances.style.display = 'block';
             loadPartnerSessions();
+        } else if (section === 'messaging') {
+            if (messaging) messaging.style.display = 'block';
+            loadPartnerMessages();
         }
     }
 
@@ -1470,7 +1534,10 @@
                     '<div class="flex-1 min-w-[200px]">' +
                         '<div class="text-xs font-bold opacity-50">' + (quote.quote_number || quote.id) + '</div>' +
                         '<div class="font-black text-lg">' + serviceLabel + '</div>' +
-                        '<div class="text-sm font-bold opacity-60">' + date + '</div>' +
+                        (quote.client_name ? '<div class="text-sm font-black mt-1" style="color:var(--genesis-yellow);"><i class="fas fa-user mr-1"></i>' + escapeHtml(quote.client_name) + '</div>' : '') +
+                        (quote.client_profil ? '<div class="text-xs font-black mt-0.5" style="background:#222;color:#fff;display:inline-block;padding:2px 8px;border:2px solid #555;text-transform:uppercase;">' + escapeHtml(quote.client_profil) + '</div>' : '') +
+                        (quote.client_email ? '<div class="text-xs font-bold opacity-50 mt-1"><i class="fas fa-envelope mr-1"></i>' + escapeHtml(quote.client_email) + '</div>' : '') +
+                        '<div class="text-xs font-bold opacity-40 mt-1">' + date + '</div>' +
                     '</div>' +
                     '<div class="flex items-center gap-2">' +
                         '<span style="background:' + statusColor + ';color:' + (quote.status === 'SENT_TO_CLIENT' ? 'white' : 'black') + ';padding:4px 10px;border:2px solid black;font-size:11px;font-weight:900;">' + statusLabel + '</span>' +
@@ -2669,6 +2736,150 @@
             }
         } catch (e) {}
     })();
+
+    // =====================================================
+    // MESSAGERIE PARTENAIRE
+    // =====================================================
+
+    function formatPartnerTime(isoStr) {
+        if (!isoStr) return '';
+        try {
+            return new Date(isoStr).toLocaleString('fr-FR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+        } catch(e) { return ''; }
+    }
+
+    function escapePartnerHtml(str) {
+        if (!str) return '';
+        return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    async function loadPartnerMessages() {
+        var loader = document.getElementById('partnerMsgLoader');
+        var emptyEl = document.getElementById('partnerMsgEmpty');
+        var thread = document.getElementById('partnerMsgThread');
+
+        if (loader) loader.style.display = '';
+        if (emptyEl) emptyEl.style.display = 'none';
+        if (thread) { thread.style.display = 'none'; thread.innerHTML = ''; }
+
+        try {
+            var token = localStorage.getItem('fa_genesis_partner_token');
+            if (!token) return;
+            var resp = await fetch(PARTNER_API_URL + '/api/partner/inbox', {
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            if (loader) loader.style.display = 'none';
+            if (!resp.ok) { if (emptyEl) emptyEl.style.display = ''; return; }
+            var data = await resp.json();
+            var msgs = data.messages || [];
+
+            // Mise à jour badge
+            var unread = msgs.filter(function(m) { return m.from_type === 'client' && !m.read_at; }).length;
+            var badge = document.getElementById('partnerMsgBadge');
+            var badgeM = document.getElementById('partnerMsgBadgeMobile');
+            if (badge) { badge.textContent = unread; badge.style.display = unread > 0 ? '' : 'none'; }
+            if (badgeM) { badgeM.textContent = unread; badgeM.style.display = unread > 0 ? '' : 'none'; }
+
+            if (msgs.length === 0) { if (emptyEl) emptyEl.style.display = ''; return; }
+
+            if (thread) {
+                thread.style.display = 'flex';
+                msgs.forEach(function(msg) { renderPartnerMessage(msg, thread); });
+                thread.scrollTop = thread.scrollHeight;
+            }
+
+            // Pré-remplir le destinataire avec le dernier client qui a écrit
+            var lastFromClient = null;
+            for (var i = msgs.length - 1; i >= 0; i--) {
+                if (msgs[i].from_type === 'client') { lastFromClient = msgs[i]; break; }
+            }
+            if (lastFromClient) {
+                var toInput = document.getElementById('partnerMsgTo');
+                if (toInput && !toInput.value) toInput.value = lastFromClient.from_email;
+            }
+        } catch(e) {
+            if (loader) loader.style.display = 'none';
+            if (emptyEl) emptyEl.style.display = '';
+        }
+    }
+
+    function renderPartnerMessage(msg, container) {
+        var isFromPartner = (msg.from_type === 'partner');
+        var wrapper = document.createElement('div');
+        wrapper.style.cssText = 'display:flex;flex-direction:column;align-items:' + (isFromPartner ? 'flex-end' : 'flex-start') + ';gap:4px;';
+
+        var meta = document.createElement('div');
+        meta.style.cssText = 'font-size:11px;font-weight:900;color:#888;text-transform:uppercase;letter-spacing:0.05em;';
+        meta.textContent = (msg.from_name || msg.from_email || 'Inconnu') + (msg.created_at ? ' · ' + formatPartnerTime(msg.created_at) : '');
+
+        var bubble = document.createElement('div');
+        bubble.style.cssText = 'max-width:80%;padding:0.75rem 1rem;font-size:14px;line-height:1.5;white-space:pre-wrap;border:3px solid '
+            + (isFromPartner ? 'var(--genesis-yellow)' : 'white') + ';'
+            + 'background:' + (isFromPartner ? 'var(--genesis-yellow)' : '#222') + ';'
+            + 'color:' + (isFromPartner ? '#000' : '#fff') + ';font-weight:700;';
+        bubble.textContent = msg.content;
+
+        wrapper.appendChild(meta);
+        wrapper.appendChild(bubble);
+
+        // Bouton Répondre à ce client
+        if (!isFromPartner && msg.from_email) {
+            var replyBtn = document.createElement('button');
+            replyBtn.style.cssText = 'background:none;border:2px solid #555;color:#aaa;padding:4px 12px;font-size:11px;font-weight:900;text-transform:uppercase;cursor:pointer;margin-top:4px;';
+            replyBtn.innerHTML = '<i class="fas fa-reply" style="margin-right:4px;"></i>Répondre';
+            replyBtn.onmouseover = function() { this.style.borderColor = 'var(--genesis-yellow)'; this.style.color = 'var(--genesis-yellow)'; };
+            replyBtn.onmouseout = function() { this.style.borderColor = '#555'; this.style.color = '#aaa'; };
+            (function(email) {
+                replyBtn.onclick = function() {
+                    var toInput = document.getElementById('partnerMsgTo');
+                    if (toInput) { toInput.value = email; toInput.focus(); }
+                    document.getElementById('partnerMsgContent').scrollIntoView({ behavior: 'smooth' });
+                };
+            })(msg.from_email);
+            wrapper.appendChild(replyBtn);
+        }
+
+        container.appendChild(wrapper);
+    }
+
+    async function sendPartnerMessage() {
+        var toInput = document.getElementById('partnerMsgTo');
+        var contentInput = document.getElementById('partnerMsgContent');
+        var sendBtn = document.getElementById('partnerSendBtn');
+        var statusEl = document.getElementById('partnerMsgStatus');
+
+        var toEmail = toInput ? toInput.value.trim() : '';
+        var content = contentInput ? contentInput.value.trim() : '';
+
+        if (!toEmail || !content) {
+            if (statusEl) { statusEl.style.display = ''; statusEl.style.color = '#ff6b6b'; statusEl.textContent = 'Veuillez indiquer un destinataire et un message.'; }
+            return;
+        }
+
+        if (sendBtn) { sendBtn.disabled = true; sendBtn.textContent = 'Envoi...'; }
+        if (statusEl) statusEl.style.display = 'none';
+
+        try {
+            var token = localStorage.getItem('fa_genesis_partner_token');
+            var resp = await fetch(PARTNER_API_URL + '/api/partner/inbox/reply', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                body: JSON.stringify({ to_email: toEmail, to_name: '', content: content })
+            });
+            var data = await resp.json();
+            if (data.ok) {
+                if (contentInput) contentInput.value = '';
+                if (statusEl) { statusEl.style.display = ''; statusEl.style.color = 'var(--genesis-yellow)'; statusEl.textContent = 'Message envoyé !'; }
+                loadPartnerMessages();
+            } else {
+                if (statusEl) { statusEl.style.display = ''; statusEl.style.color = '#ff6b6b'; statusEl.textContent = data.error || 'Erreur lors de l\'envoi.'; }
+            }
+        } catch(e) {
+            if (statusEl) { statusEl.style.display = ''; statusEl.style.color = '#ff6b6b'; statusEl.textContent = 'Erreur réseau : ' + e.message; }
+        } finally {
+            if (sendBtn) { sendBtn.disabled = false; sendBtn.innerHTML = '<i class="fas fa-paper-plane mr-2"></i>Envoyer'; }
+        }
+    }
 
     </script>
 

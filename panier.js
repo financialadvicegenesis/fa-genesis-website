@@ -33,17 +33,21 @@ function savePanier(panier) {
 }
 
 /**
- * Ajouter un produit au panier (empeche les doublons)
+ * Ajouter un produit au panier (incremente la quantite si deja present)
  */
 function ajouterAuPanier(productId) {
     var panier = getPanier();
+    var found = false;
     for (var i = 0; i < panier.items.length; i++) {
         if (panier.items[i].id === productId) {
-            showPanierToast('D\u00e9j\u00e0 dans votre panier', 'info');
-            return;
+            panier.items[i].qty = (panier.items[i].qty || 1) + 1;
+            found = true;
+            break;
         }
     }
-    panier.items.push({ id: productId, qty: 1 });
+    if (!found) {
+        panier.items.push({ id: productId, qty: 1 });
+    }
     savePanier(panier);
 
     var offer = (typeof getOfferById === 'function') ? getOfferById(productId) : null;
@@ -70,14 +74,19 @@ function viderPanier() {
 }
 
 /**
- * Nombre d'items dans le panier
+ * Nombre d'items dans le panier (somme des quantites)
  */
 function getPanierCount() {
-    return getPanier().items.length;
+    var panier = getPanier();
+    var count = 0;
+    for (var i = 0; i < panier.items.length; i++) {
+        count += (panier.items[i].qty || 1);
+    }
+    return count;
 }
 
 /**
- * Total du panier en euros (via getOfferById)
+ * Total du panier en euros (via getOfferById, multiplie par qty)
  */
 function getPanierTotal() {
     var panier = getPanier();
@@ -85,7 +94,7 @@ function getPanierTotal() {
     for (var i = 0; i < panier.items.length; i++) {
         var offer = (typeof getOfferById === 'function') ? getOfferById(panier.items[i].id) : null;
         if (offer && offer.prixTotal > 0) {
-            total += offer.prixTotal;
+            total += offer.prixTotal * (panier.items[i].qty || 1);
         }
     }
     return total;

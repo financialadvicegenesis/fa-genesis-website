@@ -67,6 +67,26 @@
             transition: 0.1s;
         }
         .btn-retirer:hover { background: #cc0000; }
+        .btn-qty {
+            background: #FFD700;
+            color: black;
+            border: 3px solid black;
+            width: 32px;
+            height: 32px;
+            font-weight: 900;
+            font-size: 1.1rem;
+            cursor: pointer;
+            line-height: 1;
+            transition: 0.1s;
+            flex-shrink: 0;
+        }
+        .btn-qty:hover { background: #e6be00; }
+        .qty-display {
+            font-weight: 900;
+            font-size: 1rem;
+            min-width: 28px;
+            text-align: center;
+        }
         .btn-action {
             display: inline-block;
             padding: 1.25rem 2rem;
@@ -269,19 +289,25 @@
                     var categorie = offer ? offer.categorie : '';
                     var isDevis = (prix === 0);
 
+                    var qty = item.qty || 1;
                     if (isDevis) hasDevis = true;
-                    else total += prix;
+                    else total += prix * qty;
 
-                    var prixText = isDevis
+                    var prixUnitaire = isDevis
                         ? '<span style="color:#856404;font-weight:900;">SUR DEVIS</span>'
-                        : '<span style="font-weight:900;font-size:1.25rem;">' + prix + ' \u20ac</span>';
+                        : '<span style="font-weight:900;">' + prix + ' \u20ac \u00d7 ' + qty + ' = <span style="font-size:1.1rem;">' + (prix * qty) + ' \u20ac</span></span>';
 
                     html += '<div class="panier-item">'
                         + '<div style="flex:1;min-width:200px;">'
                         + '<div style="font-weight:900;font-size:1.1rem;text-transform:uppercase;">' + escapeH(nom) + '</div>'
                         + '<div style="font-size:0.8rem;opacity:0.6;margin-top:2px;">' + escapeH(categorie) + (duree ? ' \u2022 ' + escapeH(duree) : '') + '</div>'
                         + '</div>'
-                        + '<div style="text-align:right;min-width:100px;">' + prixText + '</div>'
+                        + '<div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">'
+                        + '<button class="btn-qty" onclick="changerQtyEtRender(\'' + item.id + '\',-1)">\u2212</button>'
+                        + '<span class="qty-display">' + qty + '</span>'
+                        + '<button class="btn-qty" onclick="changerQtyEtRender(\'' + item.id + '\',1)">+</button>'
+                        + '</div>'
+                        + '<div style="text-align:right;min-width:130px;">' + prixUnitaire + '</div>'
                         + '<button class="btn-retirer" onclick="retirerEtRender(\'' + item.id + '\')">'
                         + '<i class="fas fa-times mr-1"></i>Retirer</button>'
                         + '</div>';
@@ -324,6 +350,23 @@
 
         function retirerEtRender(productId) {
             retirerDuPanier(productId);
+            renderPanier();
+        }
+
+        function changerQtyEtRender(productId, delta) {
+            var panier = getPanier();
+            for (var i = 0; i < panier.items.length; i++) {
+                if (panier.items[i].id === productId) {
+                    var newQty = (panier.items[i].qty || 1) + delta;
+                    if (newQty <= 0) {
+                        panier.items.splice(i, 1);
+                    } else {
+                        panier.items[i].qty = newQty;
+                    }
+                    break;
+                }
+            }
+            savePanier(panier);
             renderPanier();
         }
 
