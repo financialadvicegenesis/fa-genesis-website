@@ -928,7 +928,12 @@ app.post('/api/orders/create', (req, res) => {
         // ---- FORMAT MULTI-ITEMS (depuis panier) ----
         if (items && Array.isArray(items) && items.length > 0) {
             const { calculateMultiItemAmounts } = require('./products');
-            const itemIds = items.map(i => i.id);
+            // Expand items by qty (e.g. [{id:'x', qty:2}] → ['x','x'])
+            const itemIds = [];
+            items.forEach(function(it) {
+                var qty = parseInt(it.qty) || 1;
+                for (var q = 0; q < qty; q++) itemIds.push(it.id);
+            });
             const calc = calculateMultiItemAmounts(itemIds);
 
             if (calc.items.length === 0) {

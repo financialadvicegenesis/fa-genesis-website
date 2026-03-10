@@ -47,7 +47,7 @@ const PRODUCTS = [
         name: 'Etudiant IMPACT',
         category: 'ETUDIANTS',
         product_type: 'accompagnement',
-        total_price: 290,
+        total_price: 390,
         duration: '1 mois',
         duration_days: 30,
         installments_count: 8
@@ -226,6 +226,16 @@ const PRODUCTS = [
     },
 
     // ========== TARIFS INDIVIDUELS - MEDIA ==========
+    {
+        id: 'media-simple',
+        name: 'Media SIMPLE',
+        category: 'TARIFS INDIVIDUELS - MEDIA',
+        product_type: 'prestation_individuelle',
+        total_price: 55,
+        duration: '1 publication',
+        duration_days: 0,
+        installments_count: 2
+    },
     {
         id: 'media-visibility',
         name: 'Media VISIBILITY',

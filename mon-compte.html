@@ -156,15 +156,15 @@
             </div>
 
             <!-- Loader -->
-            <div id="accountLoader" class="mb-8">
+            <div id="accountLoader" class="mb-8" style="display: none;">
                 <div class="flex items-center gap-4 p-6" style="background: #222; border: 2px solid var(--genesis-yellow);">
                     <i class="fas fa-spinner fa-spin text-[var(--genesis-yellow)] text-2xl"></i>
                     <span class="font-bold text-white text-base">Chargement...</span>
                 </div>
             </div>
 
-            <!-- Contenu (cache pendant le chargement) -->
-            <div id="accountContent" style="display: none;">
+            <!-- Contenu -->
+            <div id="accountContent">
 
                 <div class="grid lg:grid-cols-2 gap-8">
 
@@ -488,6 +488,24 @@
             var loader = document.getElementById('accountLoader');
             var content = document.getElementById('accountContent');
 
+            // Pre-remplir depuis localStorage immédiatement
+            try {
+                var localSession = localStorage.getItem('fa_genesis_session');
+                if (localSession) {
+                    var localUser = JSON.parse(localSession);
+                    var editPrenom0 = document.getElementById('editPrenom');
+                    var editNom0 = document.getElementById('editNom');
+                    var editTel0 = document.getElementById('editTelephone');
+                    var emailEl0 = document.getElementById('email');
+                    if (editPrenom0 && localUser.prenom) editPrenom0.value = localUser.prenom;
+                    if (editNom0 && localUser.nom) editNom0.value = localUser.nom;
+                    if (editTel0 && localUser.telephone) editTel0.value = localUser.telephone;
+                    if (emailEl0 && localUser.email) emailEl0.textContent = localUser.email;
+                    var greet0 = document.getElementById('userGreeting');
+                    if (greet0 && localUser.prenom) greet0.textContent = localUser.prenom;
+                }
+            } catch (e) {}
+
             try {
                 var token = localStorage.getItem('fa_genesis_token');
                 if (!token) { window.location.href = 'login.html'; return; }
@@ -592,9 +610,7 @@
                     if (offreTypeEl2) offreTypeEl2.textContent = 'Aucune offre active';
                 }
 
-                // Afficher le contenu
                 if (loader) loader.style.display = 'none';
-                if (content) content.style.display = '';
 
             } catch (err) {
                 console.error('[MON-COMPTE] Erreur:', err.message);

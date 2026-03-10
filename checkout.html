@@ -177,7 +177,7 @@
                                 <span class="text-xl font-black text-[var(--genesis-yellow)]" id="depositAmount">0€</span>
                             </div>
                             <div class="flex justify-between items-center">
-                                <span class="font-bold uppercase text-sm opacity-70">Solde (70%)</span>
+                                <span class="font-bold uppercase text-sm">Solde (70%)</span>
                                 <span class="font-bold" id="balanceAmount">0€</span>
                             </div>
                         </div>
@@ -198,7 +198,7 @@
                             <div id="installmentScheduleList"></div>
                         </div>
 
-                        <div class="mt-6 text-xs font-bold opacity-70">
+                        <div class="mt-6 text-xs font-bold text-center">
                             <p><i class="fas fa-shield-alt mr-2"></i>Paiement 100% sécurisé avec SumUp</p>
                             <p class="mt-2"><i class="fas fa-lock mr-2"></i>Vos données sont cryptées</p>
                         </div>
@@ -480,23 +480,29 @@
                 var offer = (typeof getOfferById === 'function') ? getOfferById(panier.items[i].id) : null;
                 if (!offer) continue;
 
+                var qty = panier.items[i].qty || 1;
+
                 panierItems.push({
                     id: offer.id,
                     nom: offer.nom,
                     categorie: offer.categorie || '',
                     prixTotal: offer.prixTotal,
+                    qty: qty,
                     duree: offer.duree || ''
                 });
 
                 if (offer.prixTotal === 0) hasDevis = true;
-                totalAmount += offer.prixTotal;
+                totalAmount += offer.prixTotal * qty;
 
-                var prixLabel = offer.prixTotal > 0 ? (offer.prixTotal + ' \u20ac') : 'SUR DEVIS';
+                var lineTotal = offer.prixTotal * qty;
+                var prixLabel = offer.prixTotal > 0
+                    ? (qty > 1 ? (offer.prixTotal + ' \u20ac \u00d7 ' + qty + ' = ' + lineTotal + ' \u20ac') : (lineTotal + ' \u20ac'))
+                    : 'SUR DEVIS';
                 summaryHtml += '<div class="flex justify-between items-center py-3'
                     + (i < panier.items.length - 1 ? ' border-b-2 border-gray-200' : '') + '">'
                     + '<div>'
                     + '<div class="font-black text-sm">' + offer.nom + '</div>'
-                    + '<div class="text-xs opacity-70">' + (offer.categorie || '') + '</div>'
+                    + '<div class="text-xs font-bold">' + (offer.categorie || '') + '</div>'
                     + '</div>'
                     + '<div class="font-black">' + prixLabel + '</div>'
                     + '</div>';
@@ -682,7 +688,7 @@
                 var orderBody = { clientInfo: clientInfo };
 
                 if (checkoutMode === 'panier') {
-                    orderBody.items = panierItems.map(function(item) { return { id: item.id }; });
+                    orderBody.items = panierItems.map(function(item) { return { id: item.id, qty: item.qty || 1 }; });
                 } else {
                     orderBody.productId = selectedProduct.id;
                 }
