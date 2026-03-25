@@ -3624,6 +3624,31 @@ app.delete('/api/admin/messages/:messageId', (req, res) => {
     res.json({ success: true, deleted: deleted });
 });
 
+/**
+ * POST /api/admin/messages/bulk-delete (Admin)
+ * Supprimer plusieurs messages en une seule requete
+ * Body: { ids: ['MSG-XXX', 'MSG-YYY', ...] }
+ */
+app.post('/api/admin/messages/bulk-delete', (req, res) => {
+    try {
+        const { ids } = req.body;
+        if (!ids || !Array.isArray(ids) || ids.length === 0) {
+            return res.status(400).json({ error: 'ids requis (tableau)' });
+        }
+        var messages = loadMessages();
+        var idSet = new Set(ids);
+        var before = messages.length;
+        messages = messages.filter(function(m) { return !idSet.has(m.id); });
+        var deletedCount = before - messages.length;
+        saveMessages(messages);
+        console.log('[CONTACT] ' + deletedCount + ' message(s) supprimes en masse');
+        res.json({ success: true, deleted: deletedCount });
+    } catch (error) {
+        console.error('[CONTACT] Erreur suppression en masse:', error);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
 // ============================================================
 // ROUTES - AUTHENTIFICATION
 // ============================================================
@@ -6516,6 +6541,52 @@ app.post('/api/admin/quotes/:id/cancel', function(req, res) {
     } catch (error) {
         console.error('[QUOTE] Erreur annulation:', error);
         res.status(500).json({ error: 'Erreur annulation devis' });
+    }
+});
+
+/**
+ * DELETE /api/admin/quotes/:id (Admin)
+ * Supprimer un devis unitaire
+ */
+app.delete('/api/admin/quotes/:id', function(req, res) {
+    try {
+        var quotes = loadQuotes();
+        var idx = quotes.findIndex(function(q) { return q.id === req.params.id; });
+        if (idx === -1) {
+            return res.status(404).json({ error: 'Devis non trouve' });
+        }
+        var deleted = quotes.splice(idx, 1)[0];
+        saveQuotes(quotes);
+        console.log('[QUOTE] Devis supprime: ' + deleted.id);
+        res.json({ success: true, deleted: deleted });
+    } catch (error) {
+        console.error('[QUOTE] Erreur suppression devis:', error);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * POST /api/admin/quotes/bulk-delete (Admin)
+ * Supprimer plusieurs devis en une seule requete
+ * Body: { ids: ['QUO-XXX', ...] }
+ */
+app.post('/api/admin/quotes/bulk-delete', function(req, res) {
+    try {
+        var ids = req.body.ids;
+        if (!ids || !Array.isArray(ids) || ids.length === 0) {
+            return res.status(400).json({ error: 'ids requis (tableau)' });
+        }
+        var quotes = loadQuotes();
+        var idSet = new Set(ids);
+        var before = quotes.length;
+        quotes = quotes.filter(function(q) { return !idSet.has(q.id); });
+        var deletedCount = before - quotes.length;
+        saveQuotes(quotes);
+        console.log('[QUOTE] ' + deletedCount + ' devis supprime(s) en masse');
+        res.json({ success: true, deleted: deletedCount });
+    } catch (error) {
+        console.error('[QUOTE] Erreur suppression en masse:', error);
+        res.status(500).json({ error: 'Erreur serveur' });
     }
 });
 
