@@ -218,6 +218,13 @@
                         </div>
                     </div>
 
+                    <!-- Anti-spam : champ honeypot invisible pour les humains, les bots le remplissent -->
+                    <div aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;opacity:0;" tabindex="-1">
+                        <input type="text" id="_hp" name="_hp" autocomplete="off" tabindex="-1">
+                    </div>
+                    <!-- Anti-spam : horodatage du chargement du formulaire -->
+                    <input type="hidden" id="_ft" name="_ft">
+
                     <div class="flex items-start gap-3">
                         <input
                             type="checkbox"
@@ -267,6 +274,10 @@
         var redirectParam = null;
 
         window.addEventListener('DOMContentLoaded', function() {
+            // Anti-spam : enregistrer l'heure de chargement du formulaire
+            var ftField = document.getElementById('_ft');
+            if (ftField) ftField.value = Date.now();
+
             try {
                 var urlParams = new URLSearchParams(window.location.search);
                 var offreParam = urlParams.get('offre');
@@ -384,13 +395,17 @@
             submitBtn.disabled = true;
             submitBtn.textContent = 'Inscription en cours...';
 
+            var hpField = document.getElementById('_hp');
+            var ftField2 = document.getElementById('_ft');
             var result = await register({
                 prenom: prenom,
                 nom: nom,
                 email: email,
                 telephone: telephone,
                 password: password,
-                offre: offre || null
+                offre: offre || null,
+                _hp: hpField ? hpField.value : '',
+                _ft: ftField2 ? ftField2.value : ''
             });
 
             submitBtn.disabled = false;

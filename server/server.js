@@ -50,6 +50,56 @@ if (!fs.existsSync(path.join(__dirname, 'data'))) {
 }
 
 // ============================================================
+// ANTI-SPAM - Rate limiting et validation des soumissions
+// ============================================================
+
+var _rateCache = {};
+function checkRateLimit(ip, action, maxReqs, windowMs) {
+    var key = ip + ':' + action;
+    var now = Date.now();
+    if (!_rateCache[key]) _rateCache[key] = [];
+    _rateCache[key] = _rateCache[key].filter(function(t) { return now - t < windowMs; });
+    if (_rateCache[key].length >= maxReqs) return false;
+    _rateCache[key].push(now);
+    return true;
+}
+setInterval(function() {
+    var now = Date.now();
+    Object.keys(_rateCache).forEach(function(k) {
+        _rateCache[k] = (_rateCache[k] || []).filter(function(t) { return now - t < 3600000; });
+        if (!_rateCache[k].length) delete _rateCache[k];
+    });
+}, 3600000);
+
+// Detecte si un nom ressemble a une chaine aleatoire generee par un bot
+function isSpamName(name) {
+    if (!name || name.length < 2) return false;
+    // Seuls les lettres, espaces, tirets et apostrophes sont autorises
+    if (!/^[a-zA-Z\u00C0-\u024F\-' ]+$/.test(name)) return true;
+    var words = name.trim().split(/[\s\-]+/);
+    for (var wi = 0; wi < words.length; wi++) {
+        var w = words[wi];
+        // Un mot de plus de 16 caracteres est suspect (peu de noms reels depassent ca)
+        if (w.length > 16) return true;
+        // Dans un mot de 7+ lettres, plus de 5 consonnes consecutives = chaine aleatoire
+        if (w.length >= 7) {
+            var maxRun = 0, run = 0;
+            var lower = w.toLowerCase();
+            for (var ci = 0; ci < lower.length; ci++) {
+                if (/[aeiouy\u00e0\u00e2\u00e4\u00e9\u00e8\u00ea\u00eb\u00ee\u00ef\u00f4\u00f9\u00fb\u00fc]/.test(lower[ci])) {
+                    run = 0;
+                } else if (/[a-z\u00c0-\u024f]/.test(lower[ci])) {
+                    run++;
+                    if (run > maxRun) maxRun = run;
+                }
+            }
+            if (maxRun > 5) return true;
+        }
+    }
+    return false;
+}
+
+// ============================================================
 // HELPERS - STOCKAGE DES UTILISATEURS
 // ============================================================
 
@@ -3220,6 +3270,34 @@ app.post('/api/contact', async (req, res) => {
             return res.status(400).json({ error: 'Format d\'email invalide' });
         }
 
+        // Anti-spam : champ honeypot
+        if (req.body._hp && req.body._hp.trim() !== '') {
+            console.log('[SPAM] Contact bloque (honeypot): ' + email);
+            return res.status(400).json({ error: 'Formulaire invalide.' });
+        }
+
+        // Anti-spam : rate limiting (max 5 messages par IP par heure)
+        var contactClientIp = req.ip || (req.connection && req.connection.remoteAddress) || 'unknown';
+        if (!checkRateLimit(contactClientIp, 'contact', 5, 3600000)) {
+            console.log('[SPAM] Contact bloque (rate limit): ' + contactClientIp);
+            return res.status(429).json({ error: 'Trop de messages envoyes. Veuillez reessayer dans 1 heure.' });
+        }
+
+        // Anti-spam : validation du nom
+        if (isSpamName(name)) {
+            console.log('[SPAM] Contact bloque (nom suspect): ' + name + ' <' + email + '>');
+            return res.status(400).json({ error: 'Veuillez entrer votre vrai nom.' });
+        }
+
+        // Anti-spam : timing minimum
+        if (req.body._ft) {
+            var contactFormTime = parseInt(req.body._ft, 10);
+            if (!isNaN(contactFormTime) && Date.now() - contactFormTime < 3000) {
+                console.log('[SPAM] Contact bloque (soumission trop rapide): ' + email);
+                return res.status(400).json({ error: 'Formulaire soumis trop rapidement.' });
+            }
+        }
+
         // Creer le message
         const newMessage = {
             id: 'MSG-' + uuidv4().split('-')[0].toUpperCase(),
@@ -3572,6 +3650,34 @@ app.post('/api/auth/register', async (req, res) => {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(email)) {
             return res.status(400).json({ error: 'Format d\'email invalide' });
+        }
+
+        // Anti-spam : champ honeypot (les bots remplissent les champs caches)
+        if (req.body._hp && req.body._hp.trim() !== '') {
+            console.log('[SPAM] Inscription bloquee (honeypot): ' + email);
+            return res.status(400).json({ error: 'Formulaire invalide.' });
+        }
+
+        // Anti-spam : rate limiting (max 3 inscriptions par IP par heure)
+        var regClientIp = req.ip || (req.connection && req.connection.remoteAddress) || 'unknown';
+        if (!checkRateLimit(regClientIp, 'register', 3, 3600000)) {
+            console.log('[SPAM] Inscription bloquee (rate limit): ' + regClientIp);
+            return res.status(429).json({ error: 'Trop de tentatives. Veuillez reessayer dans 1 heure.' });
+        }
+
+        // Anti-spam : les noms qui ressemblent a des chaines aleatoires sont rejetes
+        if (isSpamName(prenom) || isSpamName(nom)) {
+            console.log('[SPAM] Inscription bloquee (nom suspect): ' + prenom + ' ' + nom + ' <' + email + '>');
+            return res.status(400).json({ error: 'Veuillez entrer votre vrai prenom et nom.' });
+        }
+
+        // Anti-spam : le formulaire doit avoir ete ouvert depuis au moins 3 secondes
+        if (req.body._ft) {
+            var regFormTime = parseInt(req.body._ft, 10);
+            if (!isNaN(regFormTime) && Date.now() - regFormTime < 3000) {
+                console.log('[SPAM] Inscription bloquee (soumission trop rapide): ' + email);
+                return res.status(400).json({ error: 'Formulaire soumis trop rapidement.' });
+            }
         }
 
         // Validation mot de passe (minimum 6 caracteres)

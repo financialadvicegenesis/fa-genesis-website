@@ -172,6 +172,11 @@
                         </select>
                     </div>
                     <textarea id="contactMessage" placeholder="Écrivez votre demande" rows="5" required class="w-full bg-white text-black p-6 neo-border neo-shadow-white font-bold outline-none focus:translate-x-1 focus:translate-y-1 focus:shadow-none transition-all font-black"></textarea>
+                    <!-- Anti-spam : champ honeypot invisible pour les humains -->
+                    <div aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;opacity:0;" tabindex="-1">
+                        <input type="text" id="contact_hp" name="_hp" autocomplete="off" tabindex="-1">
+                    </div>
+                    <input type="hidden" id="contact_ft" name="_ft">
                     <div id="contactFeedback" style="display: none;" class="p-6 neo-border font-bold text-lg text-center"></div>
                     <button id="contactSubmitBtn" type="submit" class="w-full py-8 neo-btn-yellow text-4xl font-black italic uppercase tracking-tighter text-center flex items-center justify-center font-black">Envoyer</button>
                 </form>
@@ -249,6 +254,10 @@
 
         // Pre-remplir le formulaire depuis les parametres URL
         document.addEventListener('DOMContentLoaded', function() {
+            // Anti-spam : enregistrer l'heure de chargement du formulaire
+            var contactFtField = document.getElementById('contact_ft');
+            if (contactFtField) contactFtField.value = Date.now();
+
             try {
                 var urlParams = new URLSearchParams(window.location.search);
 
@@ -350,12 +359,16 @@
             submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-4"></i>ENVOI EN COURS...';
 
             try {
+                var contactHpField = document.getElementById('contact_hp');
+                var contactFtField2 = document.getElementById('contact_ft');
                 var bodyData = {
                     name: name,
                     email: email,
                     profil: profil,
                     subject: subject,
-                    message: message
+                    message: message,
+                    _hp: contactHpField ? contactHpField.value : '',
+                    _ft: contactFtField2 ? contactFtField2.value : ''
                 };
 
                 // Ajouter service_type si devis
