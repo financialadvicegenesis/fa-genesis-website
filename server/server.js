@@ -43,6 +43,7 @@ const QUOTES_FILE = path.join(__dirname, 'data', 'quotes.json');
 const PROJECTS_FILE = path.join(__dirname, 'data', 'projects.json');
 const FEEDBACKS_FILE = path.join(__dirname, 'data', 'feedbacks.json');
 const SETTINGS_FILE = path.join(__dirname, 'data', 'settings.json');
+const RESERVATIONS_FILE = path.join(__dirname, 'data', 'reservations.json');
 
 // Creer le dossier data s'il n'existe pas
 if (!fs.existsSync(path.join(__dirname, 'data'))) {
@@ -483,6 +484,22 @@ function saveOrders(orders) {
     } catch (error) {
         console.error('Erreur sauvegarde orders:', error);
     }
+}
+
+function loadReservations() {
+    try {
+        if (fs.existsSync(RESERVATIONS_FILE)) {
+            return JSON.parse(fs.readFileSync(RESERVATIONS_FILE, 'utf8'));
+        }
+    } catch (e) { console.error('Erreur lecture reservations:', e); }
+    return [];
+}
+
+function saveReservations(reservations) {
+    try {
+        fs.writeFileSync(RESERVATIONS_FILE, JSON.stringify(reservations, null, 2), 'utf8');
+        persistentStore.persistToCloud('reservations', reservations).catch(function(e) {});
+    } catch (e) { console.error('Erreur sauvegarde reservations:', e); }
 }
 
 function getOrderById(orderId) {
@@ -977,34 +994,110 @@ app.post('/api/orders/create', (req, res) => {
 
         // ---- FORMAT MULTI-ITEMS (depuis panier) ----
         if (items && Array.isArray(items) && items.length > 0) {
-            const { calculateMultiItemAmounts } = require('./products');
-            // Expand items by qty (e.g. [{id:'x', qty:2}] → ['x','x'])
-            const itemIds = [];
-            items.forEach(function(it) {
-                var qty = parseInt(it.qty) || 1;
-                for (var q = 0; q < qty; q++) itemIds.push(it.id);
-            });
-            const calc = calculateMultiItemAmounts(itemIds);
+            const { calculateMultiItemAmounts: calcMulti } = require('./products');
+            var cwInstallsChoice = req.body.cwInstallmentsChoice || 1;
+            var cwItems = items.filter(function(it) { return it.coworkingData; });
+            var stdItems = items.filter(function(it) { return !it.coworkingData; });
+            var allOrderItems = [];
+            var totalAmountCW = 0;
+            var pendingReservations = [];
 
-            if (calc.items.length === 0) {
+            // Items COWORKING
+            for (var ci = 0; ci < cwItems.length; ci++) {
+                var cwIt = cwItems[ci];
+                var cwProduct = getProductById(cwIt.id);
+                if (!cwProduct) continue;
+                var cwData = cwIt.coworkingData;
+                var cwPrix = 0;
+                if (cwProduct.payment_model === 'full') {
+                    var nbDays = cwData.dates ? cwData.dates.length : (cwData.nb_days || 1);
+                    cwPrix = cwProduct.price_per_day * nbDays;
+                } else if (cwProduct.payment_model === 'event') {
+                    cwPrix = cwProduct.total_price;
+                }
+                totalAmountCW += cwPrix;
+                allOrderItems.push({
+                    product_id: cwProduct.id,
+                    product_name: cwProduct.name,
+                    product_type: 'coworking',
+                    category: 'COWORKING',
+                    payment_model: cwProduct.payment_model,
+                    unit_price: cwPrix,
+                    price_per_day: cwProduct.price_per_day || 0,
+                    dates: cwData.dates || [],
+                    nb_days: cwData.nb_days || 0,
+                    duration: cwProduct.duration,
+                    is_event: cwData.is_event || false,
+                    installments: cwInstallsChoice,
+                    installments_count: cwProduct.installments_count || 1
+                });
+                pendingReservations.push({
+                    id: 'RES-' + uuidv4().split('-')[0].toUpperCase(),
+                    product_id: cwProduct.id,
+                    product_name: cwProduct.name,
+                    payment_model: cwProduct.payment_model,
+                    dates: cwData.dates || [],
+                    nb_days: cwData.nb_days || 0,
+                    is_event: cwData.is_event || false,
+                    prix: cwPrix,
+                    client_email: clientInfo.email,
+                    client_name: clientInfo.firstName + ' ' + clientInfo.lastName,
+                    client_phone: clientInfo.phone || '',
+                    status: 'pending',
+                    partner_note: '',
+                    order_id: null,
+                    created_at: new Date().toISOString()
+                });
+            }
+
+            // Items STANDARDS
+            var stdCalc = null;
+            if (stdItems.length > 0) {
+                var stdItemIds = [];
+                stdItems.forEach(function(it) {
+                    var qty = parseInt(it.qty) || 1;
+                    for (var q = 0; q < qty; q++) stdItemIds.push(it.id);
+                });
+                stdCalc = calcMulti(stdItemIds);
+                totalAmountCW += stdCalc.total_amount;
+                allOrderItems = allOrderItems.concat(stdCalc.items);
+            }
+
+            if (allOrderItems.length === 0) {
                 return res.status(400).json({ error: 'Aucun produit valide dans le panier' });
             }
 
-            // Determiner le product_type
-            let orderProductType = 'multi';
-            if (calc.items.length === 1) {
-                orderProductType = calc.items[0].product_type;
+            var totalAmountFinal = totalAmountCW;
+            var hasOnlyCw = stdItems.length === 0;
+            var hasCwEvent = pendingReservations.some(function(r) { return r.is_event; });
+            var depositAmountFinal, balanceAmountFinal, installCountFinal, installPlanFinal;
+
+            if (hasOnlyCw && !hasCwEvent) {
+                depositAmountFinal = totalAmountFinal;
+                balanceAmountFinal = 0;
+                installCountFinal = 1;
+                installPlanFinal = null;
+            } else if (hasCwEvent) {
+                depositAmountFinal = cwInstallsChoice === 3 ? Math.ceil(totalAmountFinal / 3) : totalAmountFinal;
+                balanceAmountFinal = totalAmountFinal - depositAmountFinal;
+                installCountFinal = cwInstallsChoice === 3 ? 3 : 1;
+                installPlanFinal = installCountFinal > 1 ? generateInstallments(totalAmountFinal, depositAmountFinal, installCountFinal + 1, new Date()) : null;
+            } else {
+                depositAmountFinal = stdCalc ? stdCalc.deposit_amount : Math.round(totalAmountFinal * 0.30);
+                balanceAmountFinal = totalAmountFinal - depositAmountFinal;
+                var maxInstFinal = stdCalc ? (stdCalc.installments_count || 2) : 2;
+                installCountFinal = maxInstFinal;
+                installPlanFinal = generateInstallments(totalAmountFinal, depositAmountFinal, installCountFinal, new Date());
             }
 
-            var multiInstallCount = calc.installments_count || 2;
-            var multiInstallPlan = generateInstallments(calc.total_amount, calc.deposit_amount, multiInstallCount, new Date());
+            var orderIdFinal = 'ORD-' + uuidv4().split('-')[0].toUpperCase();
 
             order = {
-                id: `ORD-${uuidv4().split('-')[0].toUpperCase()}`,
-                product_id: calc.items.length === 1 ? calc.items[0].product_id : null,
-                product_name: calc.items.length === 1 ? calc.items[0].product_name : calc.items.map(i => i.product_name).join(' + '),
-                product_type: orderProductType,
-                items: calc.items,
+                id: orderIdFinal,
+                product_id: allOrderItems.length === 1 ? allOrderItems[0].product_id : null,
+                product_name: allOrderItems.map(function(i) { return i.product_name; }).join(' + '),
+                product_type: allOrderItems.every(function(i) { return i.product_type === 'coworking'; }) ? 'coworking' : 'multi',
+                items: allOrderItems,
                 client_info: {
                     email: clientInfo.email,
                     first_name: clientInfo.firstName,
@@ -1013,25 +1106,30 @@ app.post('/api/orders/create', (req, res) => {
                     company: clientInfo.company || null,
                     client_type: clientInfo.clientType || 'particulier'
                 },
-                total_amount: calc.total_amount,
-                deposit_amount: calc.deposit_amount,
-                balance_amount: calc.balance_amount,
-                has_devis_items: calc.has_devis_items,
-                installments_count: multiInstallCount,
-                installments: multiInstallPlan,
+                total_amount: totalAmountFinal,
+                deposit_amount: depositAmountFinal,
+                balance_amount: balanceAmountFinal,
+                has_devis_items: stdCalc ? stdCalc.has_devis_items : false,
+                installments_count: installCountFinal,
+                installments: installPlanFinal,
                 amount_paid: 0,
                 deposit_paid: false,
                 balance_paid: false,
-                duration_days: Math.max.apply(null, calc.items.map(i => i.duration_days || 0)) || 0,
+                duration_days: 0,
                 start_date: null,
-                status: calc.total_amount === 0 ? 'devis_requested' : 'pending_deposit',
+                status: totalAmountFinal === 0 ? 'devis_requested' : 'pending_deposit',
                 checkout_id: null,
                 transaction_id: null,
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()
             };
 
-            console.log(`[ORDER] Commande multi-items creee: ${order.id} - ${calc.items.length} items - ${calc.total_amount}EUR`);
+            if (pendingReservations.length > 0) {
+                var allRes = loadReservations();
+                pendingReservations.forEach(function(res) { res.order_id = orderIdFinal; allRes.push(res); });
+                saveReservations(allRes);
+            }
+            console.log('[ORDER] Commande multi: ' + order.id + ' - ' + allOrderItems.length + ' items - ' + totalAmountFinal + 'EUR');
 
         // ---- FORMAT LEGACY (1 seul productId) ----
         } else if (productId) {
@@ -8372,6 +8470,90 @@ app.get('/api/admin/feedbacks/unread-count', function(req, res) {
         res.json({ ok: true, count: count });
     } catch (err) {
         res.status(500).json({ ok: false, error: 'Erreur serveur' });
+    }
+});
+
+// ============================================================
+// RESERVATIONS COWORKING
+// ============================================================
+
+/**
+ * GET /api/reservations/me
+ * Réservations coworking du client connecté (par email)
+ */
+app.get('/api/reservations/me', function(req, res) {
+    try {
+        var user = authenticateClient(req, res);
+        if (!user) return;
+        var reservations = loadReservations();
+        var myRes = reservations.filter(function(r) { return r.client_email === user.email; });
+        res.json(myRes);
+    } catch (e) {
+        console.error('[RESERVATIONS] Erreur /me:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * GET /api/reservations/all
+ * Toutes les réservations (admin / partenaire)
+ */
+app.get('/api/reservations/all', function(req, res) {
+    try {
+        var token = (req.headers.authorization || '').replace('Bearer ', '');
+        // Accès simple par token partenaire ou admin
+        var partnerToken = process.env.PARTNER_TOKEN || 'fa-genesis-partner-2024';
+        var adminToken = process.env.ADMIN_TOKEN || null;
+        var isAdmin = req.headers['x-admin-key'] === process.env.ADMIN_KEY;
+        var isPartner = token === partnerToken;
+        if (!isAdmin && !isPartner) {
+            var user = authenticateClient(req, res);
+            if (!user || user.role !== 'admin') return;
+        }
+        var reservations = loadReservations();
+        res.json(reservations);
+    } catch (e) {
+        console.error('[RESERVATIONS] Erreur /all:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * PUT /api/reservations/:id/status
+ * Partenaire accepte ou refuse une réservation
+ * Body: { status: 'confirmed' | 'refused', partner_note: '...' }
+ */
+app.put('/api/reservations/:id/status', function(req, res) {
+    try {
+        var partnerToken = process.env.PARTNER_TOKEN || 'fa-genesis-partner-2024';
+        var token = (req.headers.authorization || '').replace('Bearer ', '');
+        var isAdmin = req.headers['x-admin-key'] === process.env.ADMIN_KEY;
+        if (token !== partnerToken && !isAdmin) {
+            return res.status(403).json({ error: 'Non autorisé' });
+        }
+
+        var resId = req.params.id;
+        var newStatus = req.body.status;
+        var partnerNote = req.body.partner_note || '';
+
+        if (!['confirmed', 'refused', 'pending'].includes(newStatus)) {
+            return res.status(400).json({ error: 'Status invalide' });
+        }
+
+        var reservations = loadReservations();
+        var idx = reservations.findIndex(function(r) { return r.id === resId; });
+        if (idx === -1) return res.status(404).json({ error: 'Réservation non trouvée' });
+
+        reservations[idx].status = newStatus;
+        reservations[idx].partner_note = partnerNote;
+        reservations[idx].updated_at = new Date().toISOString();
+        saveReservations(reservations);
+
+        console.log('[RESERVATIONS] ' + resId + ' -> ' + newStatus);
+        res.json({ ok: true, reservation: reservations[idx] });
+    } catch (e) {
+        console.error('[RESERVATIONS] Erreur PUT status:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
     }
 });
 

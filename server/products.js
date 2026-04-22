@@ -275,6 +275,107 @@ const PRODUCTS = [
         duration: '1 mois',
         duration_days: 0,
         installments_count: 2
+    },
+
+    // ========== COWORKING COM VISA ==========
+    // payment_model 'full' : paiement 100% immédiat (pas d'acompte 30/70)
+    // payment_model 'event': paiement 1x ou 3x selon choix client
+    // Pour 'full', total_price = 0 car calculé dynamiquement (price_per_day × nb_days)
+    {
+        id: 'coworking-openspace-etudiant',
+        name: 'OpenSpace Étudiant - COM VISA',
+        category: 'COWORKING',
+        product_type: 'coworking',
+        payment_model: 'full',
+        total_price: 0,
+        price_per_day: 10,
+        duration: 'Par journée',
+        duration_days: 1,
+        installments_count: 1
+    },
+    {
+        id: 'coworking-openspace-particulier',
+        name: 'OpenSpace Particulier - COM VISA',
+        category: 'COWORKING',
+        product_type: 'coworking',
+        payment_model: 'full',
+        total_price: 0,
+        price_per_day: 15,
+        duration: 'Par journée',
+        duration_days: 1,
+        installments_count: 1
+    },
+    {
+        id: 'coworking-openspace-entreprise',
+        name: 'OpenSpace Entreprise - COM VISA',
+        category: 'COWORKING',
+        product_type: 'coworking',
+        payment_model: 'full',
+        total_price: 0,
+        price_per_day: 25,
+        duration: 'Par journée',
+        duration_days: 1,
+        installments_count: 1
+    },
+    {
+        id: 'coworking-bureau-particulier',
+        name: 'Bureau Privé Particulier - COM VISA',
+        category: 'COWORKING',
+        product_type: 'coworking',
+        payment_model: 'full',
+        total_price: 0,
+        price_per_day: 45,
+        duration: 'Par journée',
+        duration_days: 1,
+        installments_count: 1
+    },
+    {
+        id: 'coworking-bureau-entreprise',
+        name: 'Bureau Privé Entreprise - COM VISA',
+        category: 'COWORKING',
+        product_type: 'coworking',
+        payment_model: 'full',
+        total_price: 0,
+        price_per_day: 85,
+        duration: 'Par journée',
+        duration_days: 1,
+        installments_count: 1
+    },
+    {
+        id: 'coworking-evenement-etudiant',
+        name: 'Événement Étudiant - COM VISA',
+        category: 'COWORKING',
+        product_type: 'coworking',
+        payment_model: 'event',
+        total_price: 200,
+        price_per_day: 0,
+        duration: 'Format 4h',
+        duration_days: 0,
+        installments_count: 3
+    },
+    {
+        id: 'coworking-evenement-particulier',
+        name: 'Événement Particulier - COM VISA',
+        category: 'COWORKING',
+        product_type: 'coworking',
+        payment_model: 'event',
+        total_price: 300,
+        price_per_day: 0,
+        duration: 'Format 4h',
+        duration_days: 0,
+        installments_count: 3
+    },
+    {
+        id: 'coworking-evenement-entreprise',
+        name: 'Événement Entreprise - COM VISA',
+        category: 'COWORKING',
+        product_type: 'coworking',
+        payment_model: 'event',
+        total_price: 375,
+        price_per_day: 0,
+        duration: 'Format 4h',
+        duration_days: 0,
+        installments_count: 3
     }
 ];
 

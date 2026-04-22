@@ -170,6 +170,16 @@
                     <i class="fas fa-plus mr-2"></i>Demander une séance
                 </button>
             </div>
+
+            <!-- RESERVATIONS COWORKING -->
+            <div id="coworkingSection" style="margin-top:48px;display:none;">
+                <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;border-bottom:4px solid #fff;padding-bottom:12px;">
+                    <div style="width:8px;height:32px;background:linear-gradient(135deg,#6b0a3a,#e8229a);"></div>
+                    <h2 class="text-xl font-black italic uppercase tracking-wider">Réservations Coworking</h2>
+                    <span style="font-size:11px;font-weight:900;letter-spacing:2px;color:#b81a6e;background:#fff;padding:2px 8px;">COM VISA</span>
+                </div>
+                <div id="coworkingList"></div>
+            </div>
         </div>
     </section>
 
@@ -254,7 +264,69 @@
                     if (reminder) reminder.style.display = '';
                 }
                 loadSeances();
+                loadCoworkingReservations();
             }
+        }
+
+        // ============================================================
+        // COWORKING RESERVATIONS
+        // ============================================================
+        function loadCoworkingReservations() {
+            var token = null;
+            try { token = localStorage.getItem('fa_genesis_token'); } catch(e) {}
+            if (!token) return;
+
+            fetch(API_BASE_URL + '/api/reservations/me', {
+                headers: { 'Authorization': 'Bearer ' + token }
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(reservations) {
+                if (!reservations || !reservations.length) return;
+                var section = document.getElementById('coworkingSection');
+                var list = document.getElementById('coworkingList');
+                if (!section || !list) return;
+                section.style.display = 'block';
+
+                var html = '';
+                var STATUS_LABEL = { pending: 'En attente', confirmed: 'Confirmée', refused: 'Refusée' };
+                var STATUS_COLOR = { pending: '#FF9800', confirmed: '#4CAF50', refused: '#f44336' };
+                var STATUS_TEXT = { pending: '#000', confirmed: '#fff', refused: '#fff' };
+
+                for (var i = 0; i < reservations.length; i++) {
+                    var r = reservations[i];
+                    var statusLabel = STATUS_LABEL[r.status] || r.status;
+                    var statusBg = STATUS_COLOR[r.status] || '#999';
+                    var statusTxt = STATUS_TEXT[r.status] || '#fff';
+
+                    var detail = '';
+                    if (r.dates && r.dates.length > 0) {
+                        detail = r.dates.length + ' journée(s) : ' + r.dates.join(', ');
+                    } else if (r.is_event) {
+                        detail = 'Format événement 4h';
+                    }
+
+                    var partnerNote = r.partner_note ? '<p style="margin-top:8px;font-size:12px;font-weight:700;color:#555;"><i class="fas fa-comment mr-1"></i>' + r.partner_note + '</p>' : '';
+
+                    html += '<div class="seance-card" style="border-left:6px solid #b81a6e;">'
+                        + '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;">'
+                        + '<div>'
+                        + '<h3 style="font-size:15px;font-weight:900;text-transform:uppercase;margin-bottom:4px;">' + (r.product_name || r.product_id) + '</h3>'
+                        + '<p style="font-size:12px;font-weight:700;color:#b81a6e;letter-spacing:2px;text-transform:uppercase;">COM VISA — Coworking</p>'
+                        + (detail ? '<p style="font-size:12px;margin-top:6px;font-weight:700;">' + detail + '</p>' : '')
+                        + partnerNote
+                        + '</div>'
+                        + '<div style="text-align:right;">'
+                        + '<span style="display:inline-block;padding:4px 12px;font-weight:900;font-size:11px;text-transform:uppercase;background:' + statusBg + ';color:' + statusTxt + ';border:2px solid #000;">' + statusLabel + '</span>'
+                        + '<p style="margin-top:8px;font-size:15px;font-weight:900;">' + r.prix + ' €</p>'
+                        + '</div>'
+                        + '</div>'
+                        + '</div>';
+                }
+                list.innerHTML = html;
+            })
+            .catch(function(e) {
+                console.error('[COWORKING] Erreur chargement réservations:', e);
+            });
         }
 
         function renderNavigation(productType, currentPage) {

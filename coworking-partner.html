@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>COM VISA — Gestion Réservations Coworking</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;900&family=Space+Grotesk:wght@300;700&display=swap">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        :root { --pink: #b81a6e; --yellow: #FFD700; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background: #111; color: #fff; font-family: 'Space Grotesk', sans-serif; min-height: 100vh; }
+        h1, h2, h3 { font-family: 'Unbounded', cursive; }
+
+        /* NAV */
+        .topnav { background: #000; border-bottom: 4px solid var(--pink); padding: 16px 32px; display: flex; align-items: center; justify-content: space-between; }
+        .topnav-logo { font-family: 'Unbounded', cursive; font-weight: 900; font-size: 14px; letter-spacing: 2px; text-transform: uppercase; }
+        .topnav-logo span { color: var(--pink); }
+        .topnav-right { font-size: 12px; font-weight: 700; color: #aaa; }
+
+        /* LOGIN */
+        .login-wrap { max-width: 400px; margin: 80px auto; background: #fff; color: #000; border: 4px solid #000; box-shadow: 8px 8px 0 var(--pink); padding: 40px; }
+        .login-wrap h2 { font-size: 18px; text-transform: uppercase; margin-bottom: 24px; }
+        .form-input { width: 100%; padding: 12px 16px; border: 3px solid #000; font-weight: 700; font-size: 14px; margin-top: 8px; margin-bottom: 16px; outline: none; }
+        .form-input:focus { border-color: var(--pink); }
+        .btn-primary { width: 100%; padding: 14px; background: #000; color: #fff; border: 3px solid #000; font-weight: 900; font-size: 13px; text-transform: uppercase; letter-spacing: 2px; cursor: pointer; }
+        .btn-primary:hover { background: var(--pink); }
+        .login-error { color: #c00; font-weight: 700; font-size: 13px; margin-top: 8px; display: none; }
+
+        /* MAIN */
+        .main { max-width: 1100px; margin: 0 auto; padding: 40px 24px; display: none; }
+        .page-title { font-size: 24px; font-weight: 900; text-transform: uppercase; margin-bottom: 8px; }
+        .page-sub { font-size: 13px; color: #aaa; font-weight: 700; margin-bottom: 32px; }
+
+        /* FILTRES */
+        .filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 28px; }
+        .filter-btn { padding: 8px 20px; border: 3px solid #fff; background: transparent; color: #fff; font-weight: 900; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; cursor: pointer; transition: all 0.15s; }
+        .filter-btn.active, .filter-btn:hover { background: var(--yellow); color: #000; border-color: var(--yellow); }
+
+        /* STATS */
+        .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 32px; }
+        .stat-card { background: #1a1a1a; border: 3px solid #333; padding: 20px; text-align: center; }
+        .stat-card .num { font-size: 32px; font-weight: 900; }
+        .stat-card .lbl { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; color: #aaa; margin-top: 4px; }
+
+        /* RESERVATION CARD */
+        .res-card { background: #fff; color: #000; border: 3px solid #000; margin-bottom: 20px; overflow: hidden; }
+        .res-card-header { padding: 16px 20px; display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 8px; border-bottom: 2px solid #eee; }
+        .res-card-body { padding: 16px 20px; }
+        .res-product { font-size: 16px; font-weight: 900; text-transform: uppercase; }
+        .res-client { font-size: 13px; color: #555; font-weight: 700; margin-top: 4px; }
+        .res-detail { font-size: 12px; font-weight: 700; color: #333; margin-top: 8px; }
+        .res-price { font-size: 20px; font-weight: 900; }
+
+        .badge { display: inline-block; padding: 4px 12px; font-weight: 900; font-size: 11px; text-transform: uppercase; border: 2px solid #000; }
+        .badge-pending { background: #FF9800; color: #000; }
+        .badge-confirmed { background: #4CAF50; color: #fff; }
+        .badge-refused { background: #f44336; color: #fff; }
+
+        .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+        .action-btn { padding: 8px 16px; border: 3px solid #000; font-weight: 900; font-size: 12px; text-transform: uppercase; cursor: pointer; transition: all 0.15s; }
+        .action-btn:hover { transform: translate(-1px, -1px); box-shadow: 3px 3px 0 #000; }
+        .btn-confirm { background: #4CAF50; color: #fff; }
+        .btn-refuse { background: #f44336; color: #fff; }
+
+        .note-input { width: 100%; padding: 8px 12px; border: 2px solid #ccc; font-size: 13px; margin-top: 8px; font-family: 'Space Grotesk', sans-serif; }
+        .note-input:focus { outline: none; border-color: var(--pink); }
+
+        .empty-state { text-align: center; padding: 60px 20px; color: #aaa; }
+        .empty-state i { font-size: 48px; margin-bottom: 16px; }
+        .empty-state p { font-size: 14px; font-weight: 700; }
+
+        .spinner { text-align: center; padding: 60px; }
+        .spinner i { font-size: 32px; color: var(--pink); }
+
+        @media (max-width: 600px) {
+            .stats-row { grid-template-columns: 1fr; }
+            .topnav { padding: 12px 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- NAVIGATION -->
+<div class="topnav">
+    <div class="topnav-logo">FA GENESIS × <span>COM VISA</span></div>
+    <div class="topnav-right" id="navUser"></div>
+</div>
+
+<!-- LOGIN -->
+<div id="loginSection">
+    <div class="login-wrap">
+        <p style="font-size:11px;font-weight:900;letter-spacing:3px;text-transform:uppercase;color:var(--pink);margin-bottom:8px;">COM VISA</p>
+        <h2>Accès Partenaire<br>Réservations Coworking</h2>
+        <p style="font-size:13px;color:#555;font-weight:700;margin-bottom:24px;">Connectez-vous pour gérer les réservations de votre espace.</p>
+        <label style="font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:1px;">Mot de passe partenaire</label>
+        <input type="password" id="partnerPwd" class="form-input" placeholder="••••••••" onkeydown="if(event.key==='Enter')partnerLogin()">
+        <button class="btn-primary" onclick="partnerLogin()">
+            <i class="fas fa-unlock mr-2"></i>Accéder au tableau de bord
+        </button>
+        <p class="login-error" id="loginError">Mot de passe incorrect.</p>
+    </div>
+</div>
+
+<!-- DASHBOARD -->
+<div class="main" id="mainSection">
+    <h1 class="page-title">Réservations Coworking</h1>
+    <p class="page-sub">Gérez les demandes de réservation — COM VISA Espace Coworking</p>
+
+    <!-- STATS -->
+    <div class="stats-row">
+        <div class="stat-card">
+            <div class="num" id="statPending" style="color:var(--yellow);">–</div>
+            <div class="lbl">En attente</div>
+        </div>
+        <div class="stat-card">
+            <div class="num" id="statConfirmed" style="color:#4CAF50;">–</div>
+            <div class="lbl">Confirmées</div>
+        </div>
+        <div class="stat-card">
+            <div class="num" id="statRefused" style="color:#f44336;">–</div>
+            <div class="lbl">Refusées</div>
+        </div>
+    </div>
+
+    <!-- FILTRES -->
+    <div class="filters">
+        <button class="filter-btn active" data-filter="all" onclick="applyFilter('all',this)">Toutes</button>
+        <button class="filter-btn" data-filter="pending" onclick="applyFilter('pending',this)">En attente</button>
+        <button class="filter-btn" data-filter="confirmed" onclick="applyFilter('confirmed',this)">Confirmées</button>
+        <button class="filter-btn" data-filter="refused" onclick="applyFilter('refused',this)">Refusées</button>
+    </div>
+
+    <!-- LISTE -->
+    <div id="resList">
+        <div class="spinner"><i class="fas fa-spinner fa-spin"></i><p style="margin-top:12px;font-weight:700;color:#aaa;">Chargement...</p></div>
+    </div>
+</div>
+
+<script src="config.js"></script>
+<script>
+(function() {
+    var API = window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com';
+    var STORAGE_KEY = 'cw_partner_access';
+    var PARTNER_TOKEN = null;
+    var allReservations = [];
+    var currentFilter = 'all';
+
+    // Essayer de récupérer le token depuis la session
+    try {
+        var stored = sessionStorage.getItem(STORAGE_KEY);
+        if (stored) PARTNER_TOKEN = stored;
+    } catch(e) {}
+
+    if (PARTNER_TOKEN) {
+        showDashboard();
+        loadReservations();
+    }
+
+    window.partnerLogin = function() {
+        var pwd = document.getElementById('partnerPwd');
+        var errEl = document.getElementById('loginError');
+        if (!pwd || !pwd.value.trim()) return;
+
+        // Le mot de passe est envoyé au serveur pour validation via un appel test
+        fetch(API + '/api/reservations/all', {
+            headers: { 'Authorization': 'Bearer ' + pwd.value.trim() }
+        })
+        .then(function(r) {
+            if (r.status === 403) throw new Error('forbidden');
+            return r.json();
+        })
+        .then(function(data) {
+            PARTNER_TOKEN = pwd.value.trim();
+            try { sessionStorage.setItem(STORAGE_KEY, PARTNER_TOKEN); } catch(e) {}
+            if (errEl) errEl.style.display = 'none';
+            allReservations = Array.isArray(data) ? data : [];
+            showDashboard();
+            renderReservations();
+        })
+        .catch(function() {
+            if (errEl) errEl.style.display = 'block';
+        });
+    };
+
+    function showDashboard() {
+        var loginSec = document.getElementById('loginSection');
+        var mainSec = document.getElementById('mainSection');
+        if (loginSec) loginSec.style.display = 'none';
+        if (mainSec) mainSec.style.display = 'block';
+        var navUser = document.getElementById('navUser');
+        if (navUser) navUser.textContent = 'COM VISA — Connecté';
+    }
+
+    function loadReservations() {
+        if (!PARTNER_TOKEN) return;
+        fetch(API + '/api/reservations/all', {
+            headers: { 'Authorization': 'Bearer ' + PARTNER_TOKEN }
+        })
+        .then(function(r) {
+            if (!r.ok) throw new Error('auth');
+            return r.json();
+        })
+        .then(function(data) {
+            allReservations = Array.isArray(data) ? data : [];
+            renderReservations();
+        })
+        .catch(function(e) {
+            if (e.message === 'auth') {
+                sessionStorage.removeItem(STORAGE_KEY);
+                window.location.reload();
+            }
+        });
+    }
+
+    window.applyFilter = function(filter, btn) {
+        currentFilter = filter;
+        var btns = document.querySelectorAll('.filter-btn');
+        for (var i = 0; i < btns.length; i++) btns[i].classList.remove('active');
+        if (btn) btn.classList.add('active');
+        renderReservations();
+    };
+
+    function renderReservations() {
+        var list = document.getElementById('resList');
+        if (!list) return;
+
+        // Stats
+        var pending = allReservations.filter(function(r) { return r.status === 'pending'; }).length;
+        var confirmed = allReservations.filter(function(r) { return r.status === 'confirmed'; }).length;
+        var refused = allReservations.filter(function(r) { return r.status === 'refused'; }).length;
+        var sp = document.getElementById('statPending');
+        var sc = document.getElementById('statConfirmed');
+        var sr = document.getElementById('statRefused');
+        if (sp) sp.textContent = pending;
+        if (sc) sc.textContent = confirmed;
+        if (sr) sr.textContent = refused;
+
+        var filtered = currentFilter === 'all' ? allReservations
+            : allReservations.filter(function(r) { return r.status === currentFilter; });
+
+        if (!filtered.length) {
+            list.innerHTML = '<div class="empty-state"><i class="fas fa-calendar-check"></i><p>Aucune réservation ' + (currentFilter === 'all' ? '' : ('(' + currentFilter + ')')) + '</p></div>';
+            return;
+        }
+
+        // Trier par date de création (plus récent en premier)
+        filtered = filtered.slice().sort(function(a, b) {
+            return new Date(b.created_at) - new Date(a.created_at);
+        });
+
+        var html = '';
+        var STATUS_LABEL = { pending: 'En attente', confirmed: 'Confirmée', refused: 'Refusée' };
+        var STATUS_CLASS = { pending: 'badge-pending', confirmed: 'badge-confirmed', refused: 'badge-refused' };
+
+        for (var i = 0; i < filtered.length; i++) {
+            var r = filtered[i];
+            var created = r.created_at ? new Date(r.created_at).toLocaleDateString('fr-FR') : '–';
+            var detail = '';
+            if (r.dates && r.dates.length > 0) {
+                detail = r.dates.length + ' journée(s) : ' + r.dates.join(', ');
+            } else if (r.is_event) {
+                detail = 'Événement — Format 4h';
+            }
+
+            var noteVal = (r.partner_note || '').replace(/"/g, '&quot;');
+            var isPending = r.status === 'pending';
+
+            html += '<div class="res-card" id="card-' + r.id + '">';
+            html += '<div class="res-card-header">';
+            html += '<div>';
+            html += '<div class="res-product">' + (r.product_name || r.product_id) + '</div>';
+            html += '<div class="res-client"><i class="fas fa-user mr-1"></i>' + (r.client_name || r.client_email) + ' — ' + (r.client_email || '') + '</div>';
+            if (r.client_phone) html += '<div class="res-client"><i class="fas fa-phone mr-1"></i>' + r.client_phone + '</div>';
+            if (detail) html += '<div class="res-detail"><i class="fas fa-calendar-alt mr-1"></i>' + detail + '</div>';
+            html += '<div class="res-detail" style="color:#999;">Reçue le ' + created + ' — #' + r.id + '</div>';
+            html += '</div>';
+            html += '<div style="text-align:right;">';
+            html += '<span class="badge ' + (STATUS_CLASS[r.status] || '') + '">' + (STATUS_LABEL[r.status] || r.status) + '</span>';
+            html += '<div class="res-price" style="margin-top:8px;">' + r.prix + ' €</div>';
+            if (r.is_event) html += '<div style="font-size:11px;font-weight:700;color:#555;margin-top:2px;">' + (r.installments && r.installments > 1 ? 'Paiement ' + r.installments + 'x' : 'Paiement 1x') + '</div>';
+            html += '</div>';
+            html += '</div>';
+
+            if (isPending) {
+                html += '<div class="res-card-body">';
+                html += '<label style="font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:1px;">Note pour le client (optionnel)</label>';
+                html += '<input type="text" class="note-input" id="note-' + r.id + '" value="' + noteVal + '" placeholder="Ex: Confirmé pour le créneau 9h–18h">';
+                html += '<div class="actions">';
+                html += '<button class="action-btn btn-confirm" onclick="updateStatus(\'' + r.id + '\',\'confirmed\')"><i class="fas fa-check mr-1"></i>Confirmer</button>';
+                html += '<button class="action-btn btn-refuse" onclick="updateStatus(\'' + r.id + '\',\'refused\')"><i class="fas fa-times mr-1"></i>Refuser</button>';
+                html += '</div>';
+                html += '</div>';
+            } else if (r.partner_note) {
+                html += '<div class="res-card-body"><p style="font-size:13px;font-weight:700;color:#555;"><i class="fas fa-comment mr-1"></i>' + r.partner_note + '</p></div>';
+            }
+
+            html += '</div>';
+        }
+        list.innerHTML = html;
+    }
+
+    window.updateStatus = function(resId, newStatus) {
+        var noteEl = document.getElementById('note-' + resId);
+        var note = noteEl ? noteEl.value.trim() : '';
+
+        fetch(API + '/api/reservations/' + resId + '/status', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + PARTNER_TOKEN
+            },
+            body: JSON.stringify({ status: newStatus, partner_note: note })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.ok) {
+                // Mettre à jour localement
+                for (var i = 0; i < allReservations.length; i++) {
+                    if (allReservations[i].id === resId) {
+                        allReservations[i].status = newStatus;
+                        allReservations[i].partner_note = note;
+                        break;
+                    }
+                }
+                renderReservations();
+            }
+        })
+        .catch(function(e) { console.error('[CW PARTNER] Erreur:', e); });
+    };
+})();
+</script>
+</body>
+</html>

@@ -33,6 +33,20 @@ function savePanier(panier) {
 }
 
 /**
+ * Ajouter un item coworking au panier
+ * coworkingData = { dates: ['YYYY-MM-DD', ...], prix: X, nb_days: N, label: '...' }
+ *              ou { prix: X, installments: 1|3, label: '...' } pour les événements
+ */
+function ajouterCoworkingAuPanier(productId, coworkingData) {
+    var panier = getPanier();
+    // Chaque réservation coworking est unique (pas d'incrément qty)
+    panier.items.push({ id: productId, qty: 1, coworkingData: coworkingData });
+    savePanier(panier);
+    var nom = coworkingData.label || productId;
+    showPanierToast(nom + ' ajouté au panier', 'success');
+}
+
+/**
  * Ajouter un produit au panier (incremente la quantite si deja present)
  */
 function ajouterAuPanier(productId) {
@@ -86,15 +100,20 @@ function getPanierCount() {
 }
 
 /**
- * Total du panier en euros (via getOfferById, multiplie par qty)
+ * Total du panier en euros (via getOfferById ou coworkingData.prix)
  */
 function getPanierTotal() {
     var panier = getPanier();
     var total = 0;
     for (var i = 0; i < panier.items.length; i++) {
-        var offer = (typeof getOfferById === 'function') ? getOfferById(panier.items[i].id) : null;
+        var item = panier.items[i];
+        if (item.coworkingData && item.coworkingData.prix > 0) {
+            total += item.coworkingData.prix * (item.qty || 1);
+            continue;
+        }
+        var offer = (typeof getOfferById === 'function') ? getOfferById(item.id) : null;
         if (offer && offer.prixTotal > 0) {
-            total += offer.prixTotal * (panier.items[i].qty || 1);
+            total += offer.prixTotal * (item.qty || 1);
         }
     }
     return total;
