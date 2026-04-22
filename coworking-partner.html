@@ -162,9 +162,6 @@
             <span style="font-size:11px;font-weight:700;display:flex;align-items:center;gap:6px;">
                 <span style="width:14px;height:14px;background:#f44336;border:2px solid #000;display:inline-block;"></span>Bloqué par vous
             </span>
-            <span style="font-size:11px;font-weight:700;display:flex;align-items:center;gap:6px;">
-                <span style="width:14px;height:14px;background:#444;border:2px solid #666;display:inline-block;"></span>Week-end (fermé)
-            </span>
         </div>
 
         <div id="dispoCalendar" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;">
@@ -266,21 +263,13 @@
             var d = new Date(today);
             d.setDate(today.getDate() + i);
             var iso = dateToISO(d);
-            var dayOfWeek = d.getDay();
-            var isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
             var isBooked = dispoData.booked_dates && dispoData.booked_dates.indexOf(iso) > -1;
             var isBlocked = dispoData.blocked_dates && dispoData.blocked_dates.indexOf(iso) > -1;
 
             var cell = document.createElement('div');
             cell.style.cssText = 'padding:10px 8px;border:2px solid;text-align:center;font-weight:900;font-size:11px;text-transform:uppercase;';
 
-            if (isWeekend) {
-                cell.style.borderColor = '#444';
-                cell.style.background = '#222';
-                cell.style.color = '#555';
-                cell.style.cursor = 'not-allowed';
-                cell.innerHTML = fmtDate(iso);
-            } else if (isBooked) {
+            if (isBooked) {
                 cell.style.borderColor = '#4CAF50';
                 cell.style.background = '#1a3320';
                 cell.style.color = '#4CAF50';

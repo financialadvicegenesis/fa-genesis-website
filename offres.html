@@ -872,21 +872,13 @@
                 var d = new Date(today);
                 d.setDate(today.getDate() + i);
                 var iso = dateToISO(d);
-                var dayOfWeek = d.getDay();
-                var isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
                 var isUnavailable = CW.unavailableDates.indexOf(iso) > -1;
 
                 var btn = document.createElement('button');
                 btn.type = 'button';
                 btn.setAttribute('data-date', iso);
 
-                if (isWeekend) {
-                    btn.style.cssText = 'padding:8px 6px;border:2px solid #ddd;font-weight:700;font-size:11px;'
-                        + 'text-align:center;cursor:not-allowed;text-transform:uppercase;background:#f5f5f5;color:#ccc;';
-                    btn.title = 'Fermé le week-end';
-                    btn.disabled = true;
-                    btn.innerHTML = formatDateFR(iso);
-                } else if (isUnavailable) {
+                if (isUnavailable) {
                     btn.style.cssText = 'padding:8px 6px;border:2px solid #f5c6c6;font-weight:700;font-size:11px;'
                         + 'text-align:center;cursor:not-allowed;text-transform:uppercase;background:#fff0f0;color:#c00;';
                     btn.title = 'Date non disponible';
