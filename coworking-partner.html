@@ -135,6 +135,42 @@
     <div id="resList">
         <div class="spinner"><i class="fas fa-spinner fa-spin"></i><p style="margin-top:12px;font-weight:700;color:#aaa;">Chargement...</p></div>
     </div>
+
+    <!-- GESTION DES DISPONIBILITÉS -->
+    <div style="margin-top:56px;border-top:4px solid #333;padding-top:40px;">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
+            <div style="width:8px;height:32px;background:linear-gradient(135deg,#6b0a3a,#e8229a);flex-shrink:0;"></div>
+            <h2 style="font-size:20px;font-weight:900;text-transform:uppercase;letter-spacing:1px;">Gestion des disponibilités</h2>
+        </div>
+        <p style="font-size:13px;color:#aaa;font-weight:700;margin-bottom:24px;">Bloquez des dates pour empêcher les réservations clients — mis à jour en temps réel.</p>
+
+        <!-- Sélecteur d'espace -->
+        <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;">
+            <button class="filter-btn active" onclick="setDispoCategory('openspace',this)">OpenSpace</button>
+            <button class="filter-btn" onclick="setDispoCategory('bureau',this)">Bureau Privé</button>
+            <button class="filter-btn" onclick="setDispoCategory('all',this)">Tous les espaces</button>
+        </div>
+
+        <!-- Légende -->
+        <div style="display:flex;gap:16px;margin-bottom:16px;flex-wrap:wrap;">
+            <span style="font-size:11px;font-weight:700;display:flex;align-items:center;gap:6px;">
+                <span style="width:14px;height:14px;background:#fff;border:2px solid #000;display:inline-block;"></span>Disponible
+            </span>
+            <span style="font-size:11px;font-weight:700;display:flex;align-items:center;gap:6px;">
+                <span style="width:14px;height:14px;background:#4CAF50;border:2px solid #000;display:inline-block;"></span>Réservé (client)
+            </span>
+            <span style="font-size:11px;font-weight:700;display:flex;align-items:center;gap:6px;">
+                <span style="width:14px;height:14px;background:#f44336;border:2px solid #000;display:inline-block;"></span>Bloqué par vous
+            </span>
+            <span style="font-size:11px;font-weight:700;display:flex;align-items:center;gap:6px;">
+                <span style="width:14px;height:14px;background:#444;border:2px solid #666;display:inline-block;"></span>Week-end (fermé)
+            </span>
+        </div>
+
+        <div id="dispoCalendar" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;">
+            <div style="color:#aaa;font-weight:700;font-size:13px;grid-column:1/-1;">Chargement...</div>
+        </div>
+    </div>
 </div>
 
 <script src="config.js"></script>
@@ -177,11 +213,118 @@
             allReservations = Array.isArray(data) ? data : [];
             showDashboard();
             renderReservations();
+            loadAvailability();
         })
         .catch(function() {
             if (errEl) errEl.style.display = 'block';
         });
     };
+
+    // ---- DISPONIBILITÉS ----
+    var dispoCategory = 'openspace';
+    var dispoData = { booked_dates: [], blocked_dates: [], blocked_details: [] };
+
+    var JOURS = ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
+    var MOIS = ['jan','fév','mar','avr','mai','juin','juil','août','sep','oct','nov','déc'];
+
+    function pad2(n) { return n < 10 ? '0' + n : '' + n; }
+    function dateToISO(d) { return d.getFullYear() + '-' + pad2(d.getMonth()+1) + '-' + pad2(d.getDate()); }
+    function fmtDate(iso) {
+        var p = iso.split('-');
+        var d = new Date(parseInt(p[0]), parseInt(p[1])-1, parseInt(p[2]));
+        return JOURS[d.getDay()] + ' ' + d.getDate() + ' ' + MOIS[d.getMonth()];
+    }
+
+    window.setDispoCategory = function(cat, btn) {
+        dispoCategory = cat;
+        var btns = document.querySelectorAll('#mainSection .filters + div .filter-btn, #mainSection [onclick*="setDispoCategory"]');
+        // reset all dispo filter buttons
+        document.querySelectorAll('[onclick*="setDispoCategory"]').forEach(function(b) { b.classList.remove('active'); });
+        if (btn) btn.classList.add('active');
+        loadAvailability();
+    };
+
+    function loadAvailability() {
+        if (!PARTNER_TOKEN) return;
+        fetch(API + '/api/coworking/availability?category=' + dispoCategory)
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                dispoData = data;
+                renderCalendar();
+            })
+            .catch(function(e) { console.error('[DISPO] error:', e); });
+    }
+
+    function renderCalendar() {
+        var cal = document.getElementById('dispoCalendar');
+        if (!cal) return;
+        cal.innerHTML = '';
+        var today = new Date();
+        today.setHours(0,0,0,0);
+
+        for (var i = 1; i <= 30; i++) {
+            var d = new Date(today);
+            d.setDate(today.getDate() + i);
+            var iso = dateToISO(d);
+            var dayOfWeek = d.getDay();
+            var isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
+            var isBooked = dispoData.booked_dates && dispoData.booked_dates.indexOf(iso) > -1;
+            var isBlocked = dispoData.blocked_dates && dispoData.blocked_dates.indexOf(iso) > -1;
+
+            var cell = document.createElement('div');
+            cell.style.cssText = 'padding:10px 8px;border:2px solid;text-align:center;font-weight:900;font-size:11px;text-transform:uppercase;';
+
+            if (isWeekend) {
+                cell.style.borderColor = '#444';
+                cell.style.background = '#222';
+                cell.style.color = '#555';
+                cell.style.cursor = 'not-allowed';
+                cell.innerHTML = fmtDate(iso);
+            } else if (isBooked) {
+                cell.style.borderColor = '#4CAF50';
+                cell.style.background = '#1a3320';
+                cell.style.color = '#4CAF50';
+                cell.style.cursor = 'default';
+                cell.innerHTML = fmtDate(iso) + '<br><span style="font-size:9px;font-weight:700;">Réservé</span>';
+            } else if (isBlocked) {
+                cell.style.borderColor = '#f44336';
+                cell.style.background = '#2a1a1a';
+                cell.style.color = '#f44336';
+                cell.style.cursor = 'pointer';
+                cell.title = 'Cliquer pour débloquer';
+                cell.innerHTML = fmtDate(iso) + '<br><span style="font-size:9px;font-weight:700;">Bloqué</span>';
+                (function(dateIso) {
+                    cell.onclick = function() { toggleBlock(dateIso, 'unblock'); };
+                })(iso);
+            } else {
+                cell.style.borderColor = '#555';
+                cell.style.background = '#1a1a1a';
+                cell.style.color = '#fff';
+                cell.style.cursor = 'pointer';
+                cell.title = 'Cliquer pour bloquer cette date';
+                cell.innerHTML = fmtDate(iso);
+                (function(dateIso) {
+                    cell.onclick = function() { toggleBlock(dateIso, 'block'); };
+                })(iso);
+            }
+            cal.appendChild(cell);
+        }
+    }
+
+    function toggleBlock(date, action) {
+        if (!PARTNER_TOKEN) return;
+        fetch(API + '/api/coworking/blocked-dates', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + PARTNER_TOKEN
+            },
+            body: JSON.stringify({ date: date, category: dispoCategory, action: action })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function() { loadAvailability(); })
+        .catch(function(e) { console.error('[DISPO] toggleBlock error:', e); });
+    }
 
     function showDashboard() {
         var loginSec = document.getElementById('loginSection');
@@ -204,6 +347,7 @@
         .then(function(data) {
             allReservations = Array.isArray(data) ? data : [];
             renderReservations();
+            loadAvailability();
         })
         .catch(function(e) {
             if (e.message === 'auth') {

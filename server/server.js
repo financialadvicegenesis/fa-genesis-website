@@ -44,6 +44,7 @@ const PROJECTS_FILE = path.join(__dirname, 'data', 'projects.json');
 const FEEDBACKS_FILE = path.join(__dirname, 'data', 'feedbacks.json');
 const SETTINGS_FILE = path.join(__dirname, 'data', 'settings.json');
 const RESERVATIONS_FILE = path.join(__dirname, 'data', 'reservations.json');
+const BLOCKED_DATES_FILE = path.join(__dirname, 'data', 'blocked-dates.json');
 
 // Creer le dossier data s'il n'existe pas
 if (!fs.existsSync(path.join(__dirname, 'data'))) {
@@ -484,6 +485,22 @@ function saveOrders(orders) {
     } catch (error) {
         console.error('Erreur sauvegarde orders:', error);
     }
+}
+
+function loadBlockedDates() {
+    try {
+        if (fs.existsSync(BLOCKED_DATES_FILE)) {
+            return JSON.parse(fs.readFileSync(BLOCKED_DATES_FILE, 'utf8'));
+        }
+    } catch(e) { console.error('Erreur lecture blocked-dates:', e); }
+    return [];
+}
+
+function saveBlockedDates(dates) {
+    try {
+        fs.writeFileSync(BLOCKED_DATES_FILE, JSON.stringify(dates, null, 2), 'utf8');
+        persistentStore.persistToCloud('blocked-dates', dates).catch(function(e) {});
+    } catch(e) { console.error('Erreur sauvegarde blocked-dates:', e); }
 }
 
 function loadReservations() {
@@ -8470,6 +8487,95 @@ app.get('/api/admin/feedbacks/unread-count', function(req, res) {
         res.json({ ok: true, count: count });
     } catch (err) {
         res.status(500).json({ ok: false, error: 'Erreur serveur' });
+    }
+});
+
+// ============================================================
+// DISPONIBILITES COWORKING
+// ============================================================
+
+/**
+ * GET /api/coworking/availability?category=openspace|bureau|all
+ * Retourne les dates réservées (confirmées) + bloquées par le partenaire.
+ * Endpoint public — pas d'auth requise (les dates sont anonymes).
+ */
+app.get('/api/coworking/availability', function(req, res) {
+    try {
+        var category = req.query.category || 'all';
+
+        // Dates issues des réservations confirmées
+        var reservations = loadReservations();
+        var bookedSet = {};
+        reservations.forEach(function(r) {
+            if (r.status !== 'confirmed') return;
+            var rCat = r.product_id && r.product_id.indexOf('openspace') > -1 ? 'openspace'
+                     : r.product_id && r.product_id.indexOf('bureau') > -1 ? 'bureau'
+                     : 'evenement';
+            if (category !== 'all' && rCat !== category) return;
+            if (r.dates && r.dates.length > 0) {
+                r.dates.forEach(function(d) { bookedSet[d] = true; });
+            }
+        });
+
+        // Dates bloquées manuellement par le partenaire
+        var allBlocked = loadBlockedDates();
+        var blockedForCat = allBlocked.filter(function(b) {
+            return b.category === 'all' || b.category === category || category === 'all';
+        });
+
+        res.json({
+            booked_dates: Object.keys(bookedSet),
+            blocked_dates: blockedForCat.map(function(b) { return b.date; }),
+            blocked_details: blockedForCat
+        });
+    } catch(e) {
+        console.error('[COWORKING] availability error:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * POST /api/coworking/blocked-dates
+ * Partenaire bloque ou débloque une date pour un type d'espace.
+ * Body: { date: 'YYYY-MM-DD', category: 'openspace'|'bureau'|'all', action: 'block'|'unblock', reason: '...' }
+ */
+app.post('/api/coworking/blocked-dates', function(req, res) {
+    try {
+        var token = (req.headers.authorization || '').replace('Bearer ', '');
+        var partnerToken = process.env.PARTNER_TOKEN || 'fa-genesis-partner-2024';
+        var isAdmin = req.headers['x-admin-key'] === process.env.ADMIN_KEY;
+        if (token !== partnerToken && !isAdmin) {
+            return res.status(403).json({ error: 'Non autorisé' });
+        }
+
+        var date = req.body.date;
+        var category = req.body.category || 'all';
+        var action = req.body.action; // 'block' ou 'unblock'
+        var reason = req.body.reason || '';
+
+        if (!date || !action) {
+            return res.status(400).json({ error: 'date et action requis' });
+        }
+
+        var blocked = loadBlockedDates();
+
+        if (action === 'block') {
+            var exists = blocked.some(function(b) { return b.date === date && b.category === category; });
+            if (!exists) {
+                blocked.push({ date: date, category: category, reason: reason, created_at: new Date().toISOString() });
+            }
+        } else if (action === 'unblock') {
+            blocked = blocked.filter(function(b) {
+                return !(b.date === date && b.category === category);
+            });
+        }
+
+        saveBlockedDates(blocked);
+        console.log('[COWORKING] Date ' + action + 'ed: ' + date + ' (' + category + ')');
+        res.json({ ok: true, blocked_dates: blocked });
+    } catch(e) {
+        console.error('[COWORKING] blocked-dates error:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
     }
 });
 

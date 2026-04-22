@@ -843,7 +843,8 @@
             productId: '',
             label: '',
             pricePerDay: 0,
-            selectedDates: []
+            selectedDates: [],
+            unavailableDates: []  // dates réservées ou bloquées par le partenaire
         };
 
         var JOURS_FR = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
@@ -873,18 +874,28 @@
                 var iso = dateToISO(d);
                 var dayOfWeek = d.getDay();
                 var isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
+                var isUnavailable = CW.unavailableDates.indexOf(iso) > -1;
 
                 var btn = document.createElement('button');
                 btn.type = 'button';
                 btn.setAttribute('data-date', iso);
-                btn.style.cssText = 'padding:8px 10px;border:2px solid #000;font-weight:900;font-size:12px;'
-                    + 'text-align:center;cursor:pointer;text-transform:uppercase;transition:all 0.15s;'
-                    + (isWeekend ? 'background:#f0f0f0;color:#999;border-color:#ccc;' : 'background:#fff;color:#000;');
-                btn.innerHTML = formatDateFR(iso);
+
                 if (isWeekend) {
+                    btn.style.cssText = 'padding:8px 6px;border:2px solid #ddd;font-weight:700;font-size:11px;'
+                        + 'text-align:center;cursor:not-allowed;text-transform:uppercase;background:#f5f5f5;color:#ccc;';
                     btn.title = 'Fermé le week-end';
                     btn.disabled = true;
+                    btn.innerHTML = formatDateFR(iso);
+                } else if (isUnavailable) {
+                    btn.style.cssText = 'padding:8px 6px;border:2px solid #f5c6c6;font-weight:700;font-size:11px;'
+                        + 'text-align:center;cursor:not-allowed;text-transform:uppercase;background:#fff0f0;color:#c00;';
+                    btn.title = 'Date non disponible';
+                    btn.disabled = true;
+                    btn.innerHTML = formatDateFR(iso) + '<br><span style="font-size:9px;letter-spacing:0;">Complet</span>';
                 } else {
+                    btn.style.cssText = 'padding:8px 6px;border:2px solid #000;font-weight:900;font-size:11px;'
+                        + 'text-align:center;cursor:pointer;text-transform:uppercase;transition:all 0.15s;background:#fff;color:#000;';
+                    btn.innerHTML = formatDateFR(iso);
                     btn.onclick = function() { toggleDate(this); };
                 }
                 container.appendChild(btn);
@@ -932,6 +943,7 @@
             CW.label = label;
             CW.pricePerDay = pricePerDay;
             CW.selectedDates = [];
+            CW.unavailableDates = [];
 
             document.getElementById('cwModalTitle').textContent = label;
             document.getElementById('cwModalPriceInfo').textContent = pricePerDay + ' € par journée — sélectionnez une ou plusieurs dates';
@@ -939,9 +951,29 @@
             document.getElementById('cwConfirmBtn').disabled = true;
             document.getElementById('cwConfirmBtn').style.opacity = '0.4';
 
-            buildDateList();
+            // Afficher le modal immédiatement avec indicateur de chargement
+            document.getElementById('cwDateList').innerHTML = '<p style="color:#777;font-size:12px;font-weight:700;padding:16px 0;grid-column:1/-1;">Chargement des disponibilités...</p>';
             document.getElementById('coworkingModal').style.display = 'block';
             document.body.style.overflow = 'hidden';
+
+            // Déterminer la catégorie à partir du productId
+            var category = productId.indexOf('openspace') > -1 ? 'openspace'
+                         : productId.indexOf('bureau') > -1 ? 'bureau'
+                         : 'all';
+
+            // Récupérer les dates indisponibles depuis le serveur
+            var apiBase = (typeof window.FA_GENESIS_API !== 'undefined') ? window.FA_GENESIS_API : 'https://fa-genesis-website.onrender.com';
+            fetch(apiBase + '/api/coworking/availability?category=' + category)
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    CW.unavailableDates = (data.booked_dates || []).concat(data.blocked_dates || []);
+                    buildDateList();
+                })
+                .catch(function() {
+                    // En cas d'erreur réseau, afficher le calendrier sans restriction
+                    CW.unavailableDates = [];
+                    buildDateList();
+                });
         };
 
         window.closeCoworkingModal = function() {
