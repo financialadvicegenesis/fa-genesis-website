@@ -760,6 +760,9 @@
                 <span id="cwSummaryText"></span>
             </div>
 
+            <!-- AVERTISSEMENT CONFLIT HORAIRE -->
+            <div id="cwConflictWarning" style="margin:8px 24px 0;background:#fff3cd;border:2px solid #e67e00;padding:10px 14px;font-weight:700;font-size:12px;color:#7a4000;display:none;"></div>
+
             <!-- BOUTONS — toujours dans le flux, jamais cachés -->
             <div style="padding:16px 24px 20px;display:flex;gap:10px;margin-top:12px;">
                 <button onclick="closeCoworkingModal()" style="flex:1;padding:12px 8px;border:3px solid #000;background:#fff;color:#000;font-weight:900;font-size:12px;text-transform:uppercase;cursor:pointer;">Annuler</button>
@@ -865,9 +868,39 @@
             label: '',
             pricePerDay: 0,
             selectedDates: [],
-            unavailableDates: [],
-            selectedHours: { start: '08:00', end: '18:00' }
+            selectedHours: { start: '08:00', end: '18:00' },
+            bookedSlots: [],   // {date, time_start, time_end} - réservations confirmées
+            blockedSlots: []   // {date, time_start, time_end} - bloquées par le partenaire
         };
+
+        // Vérifie si deux plages horaires se chevauchent
+        function timesOverlap(aS, aE, bS, bE) {
+            return aS < bE && aE > bS;
+        }
+
+        // Renvoie true si la date entière est bloquée (slot couvrant 06:00-23:00)
+        function isFullDayBlocked(iso) {
+            var all = CW.bookedSlots.concat(CW.blockedSlots);
+            return all.some(function(s) {
+                return s.date === iso && s.time_start <= '06:00' && s.time_end >= '23:00';
+            });
+        }
+
+        // Renvoie les conflits pour une date + les horaires actuellement sélectionnés
+        function getConflictsForDate(iso) {
+            var cs = CW.selectedHours.start;
+            var ce = CW.selectedHours.end;
+            return CW.bookedSlots.concat(CW.blockedSlots).filter(function(s) {
+                return s.date === iso && timesOverlap(cs, ce, s.time_start, s.time_end);
+            });
+        }
+
+        // Renvoie les dates sélectionnées qui ont un conflit horaire
+        function getConflictingDates() {
+            return CW.selectedDates.filter(function(d) {
+                return getConflictsForDate(d).length > 0;
+            });
+        }
 
         var JOURS_FR = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
         var MOIS_FR = ['jan', 'fév', 'mar', 'avr', 'mai', 'juin', 'juil', 'août', 'sep', 'oct', 'nov', 'déc'];
@@ -920,6 +953,7 @@
                 e = newVal;
             }
             CW.selectedHours = { start: s, end: e };
+            buildDateList();   // re-colorier les dates (créneau pris peut changer)
             updateCwSummary();
         };
 
@@ -933,22 +967,33 @@
                 var d = new Date(today);
                 d.setDate(today.getDate() + i);
                 var iso = dateToISO(d);
-                var isUnavailable = CW.unavailableDates.indexOf(iso) > -1;
+                // Complet uniquement si la journée entière (6h-23h) est bloquée
+                var fullBlocked = isFullDayBlocked(iso);
 
                 var btn = document.createElement('button');
                 btn.type = 'button';
                 btn.setAttribute('data-date', iso);
 
-                if (isUnavailable) {
+                if (fullBlocked) {
                     btn.style.cssText = 'padding:8px 6px;border:2px solid #f5c6c6;font-weight:700;font-size:11px;'
                         + 'text-align:center;cursor:not-allowed;text-transform:uppercase;background:#fff0f0;color:#c00;';
-                    btn.title = 'Date non disponible';
+                    btn.title = 'Journée complète';
                     btn.disabled = true;
                     btn.innerHTML = formatDateFR(iso) + '<br><span style="font-size:9px;letter-spacing:0;">Complet</span>';
                 } else {
-                    btn.style.cssText = 'padding:8px 6px;border:2px solid #000;font-weight:900;font-size:11px;'
-                        + 'text-align:center;cursor:pointer;text-transform:uppercase;transition:all 0.15s;background:#fff;color:#000;';
-                    btn.innerHTML = formatDateFR(iso);
+                    // Partiellement occupé : indiquer les créneaux pris
+                    var partialSlots = CW.bookedSlots.concat(CW.blockedSlots).filter(function(s) { return s.date === iso; });
+                    var isSelected = CW.selectedDates.indexOf(iso) > -1;
+                    var base = isSelected
+                        ? 'padding:8px 6px;border:2px solid #000;font-weight:900;font-size:11px;text-align:center;cursor:pointer;text-transform:uppercase;background:#000;color:#FFD700;'
+                        : 'padding:8px 6px;border:2px solid #000;font-weight:900;font-size:11px;text-align:center;cursor:pointer;text-transform:uppercase;background:#fff;color:#000;';
+                    btn.style.cssText = base;
+                    var inner = formatDateFR(iso);
+                    if (partialSlots.length > 0) {
+                        inner += '<br><span style="font-size:9px;letter-spacing:0;color:#e67e00;font-weight:700;">'
+                            + partialSlots.length + ' créneau(x) pris</span>';
+                    }
+                    btn.innerHTML = inner;
                     btn.onclick = function() { toggleDate(this); };
                 }
                 container.appendChild(btn);
@@ -978,15 +1023,30 @@
             var summary = document.getElementById('cwSummary');
             var summaryText = document.getElementById('cwSummaryText');
             var confirmBtn = document.getElementById('cwConfirmBtn');
+            var conflictWarn = document.getElementById('cwConflictWarning');
 
             if (nb > 0) {
                 summary.style.display = 'block';
                 var timeStr = CW.selectedHours.start.replace(':00', 'h') + ' → ' + CW.selectedHours.end.replace(':00', 'h');
                 summaryText.textContent = nb + ' jour' + (nb > 1 ? 's' : '') + ' × ' + CW.pricePerDay + ' € = ' + total + ' €  |  ' + timeStr;
-                confirmBtn.disabled = false;
-                confirmBtn.style.opacity = '1';
+
+                // Vérifier les conflits horaires sur les dates sélectionnées
+                var conflicting = getConflictingDates();
+                if (conflicting.length > 0 && conflictWarn) {
+                    conflictWarn.style.display = 'block';
+                    conflictWarn.innerHTML = '<i class="fas fa-exclamation-triangle" style="margin-right:6px;"></i>'
+                        + 'Créneau déjà pris le : ' + conflicting.join(', ')
+                        + '<br><span style="font-size:11px;font-weight:700;">Veuillez choisir d'autres horaires ou décocher ces dates.</span>';
+                    confirmBtn.disabled = true;
+                    confirmBtn.style.opacity = '0.4';
+                } else {
+                    if (conflictWarn) conflictWarn.style.display = 'none';
+                    confirmBtn.disabled = false;
+                    confirmBtn.style.opacity = '1';
+                }
             } else {
                 summary.style.display = 'none';
+                if (conflictWarn) conflictWarn.style.display = 'none';
                 confirmBtn.disabled = true;
                 confirmBtn.style.opacity = '0.4';
             }
@@ -997,7 +1057,8 @@
             CW.label = label;
             CW.pricePerDay = pricePerDay;
             CW.selectedDates = [];
-            CW.unavailableDates = [];
+            CW.bookedSlots = [];
+            CW.blockedSlots = [];
 
             document.getElementById('cwModalTitle').textContent = label;
             document.getElementById('cwModalPriceInfo').textContent = pricePerDay + ' € par journée — sélectionnez une ou plusieurs dates';
@@ -1021,12 +1082,24 @@
             fetch(apiBase + '/api/coworking/availability?category=' + category)
                 .then(function(r) { return r.json(); })
                 .then(function(data) {
-                    CW.unavailableDates = (data.booked_dates || []).concat(data.blocked_dates || []);
+                    CW.bookedSlots = data.booked_slots || [];
+                    CW.blockedSlots = data.blocked_slots || [];
+                    // Rétrocompatibilité : anciennes dates sans horaire → journée entière
+                    (data.booked_dates || []).forEach(function(d) {
+                        if (!CW.bookedSlots.some(function(s) { return s.date === d; })) {
+                            CW.bookedSlots.push({ date: d, time_start: '06:00', time_end: '23:00' });
+                        }
+                    });
+                    (data.blocked_dates || []).forEach(function(d) {
+                        if (!CW.blockedSlots.some(function(s) { return s.date === d; })) {
+                            CW.blockedSlots.push({ date: d, time_start: '06:00', time_end: '23:00' });
+                        }
+                    });
                     buildDateList();
                 })
                 .catch(function() {
-                    // En cas d'erreur réseau, afficher le calendrier sans restriction
-                    CW.unavailableDates = [];
+                    CW.bookedSlots = [];
+                    CW.blockedSlots = [];
                     buildDateList();
                 });
         };

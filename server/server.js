@@ -1055,6 +1055,8 @@ app.post('/api/orders/create', (req, res) => {
                     payment_model: cwProduct.payment_model,
                     dates: cwData.dates || [],
                     nb_days: cwData.nb_days || 0,
+                    time_start: cwData.time_start || null,
+                    time_end: cwData.time_end || null,
                     is_event: cwData.is_event || false,
                     prix: cwPrix,
                     client_email: clientInfo.email,
@@ -8504,9 +8506,10 @@ app.get('/api/coworking/availability', function(req, res) {
     try {
         var category = req.query.category || 'all';
 
-        // Dates issues des réservations confirmées
+        // Réservations confirmées → slots avec horaires
         var reservations = loadReservations();
         var bookedSet = {};
+        var bookedSlots = [];
         reservations.forEach(function(r) {
             if (r.status !== 'confirmed') return;
             var rCat = r.product_id && r.product_id.indexOf('openspace') > -1 ? 'openspace'
@@ -8514,20 +8517,37 @@ app.get('/api/coworking/availability', function(req, res) {
                      : 'evenement';
             if (category !== 'all' && rCat !== category) return;
             if (r.dates && r.dates.length > 0) {
-                r.dates.forEach(function(d) { bookedSet[d] = true; });
+                r.dates.forEach(function(d) {
+                    bookedSet[d] = true;
+                    bookedSlots.push({
+                        date: d,
+                        time_start: r.time_start || '06:00',
+                        time_end: r.time_end || '23:00'
+                    });
+                });
             }
         });
 
-        // Dates bloquées manuellement par le partenaire
+        // Dates bloquées manuellement par le partenaire → slots avec horaires
         var allBlocked = loadBlockedDates();
         var blockedForCat = allBlocked.filter(function(b) {
             return b.category === 'all' || b.category === category || category === 'all';
+        });
+        var blockedSlots = blockedForCat.map(function(b) {
+            return {
+                date: b.date,
+                time_start: b.time_start || '06:00',
+                time_end: b.time_end || '23:00',
+                reason: b.reason || ''
+            };
         });
 
         res.json({
             booked_dates: Object.keys(bookedSet),
             blocked_dates: blockedForCat.map(function(b) { return b.date; }),
-            blocked_details: blockedForCat
+            blocked_details: blockedForCat,
+            booked_slots: bookedSlots,
+            blocked_slots: blockedSlots
         });
     } catch(e) {
         console.error('[COWORKING] availability error:', e);
@@ -8553,6 +8573,8 @@ app.post('/api/coworking/blocked-dates', function(req, res) {
         var category = req.body.category || 'all';
         var action = req.body.action; // 'block' ou 'unblock'
         var reason = req.body.reason || '';
+        var time_start = req.body.time_start || '06:00';
+        var time_end = req.body.time_end || '23:00';
 
         if (!date || !action) {
             return res.status(400).json({ error: 'date et action requis' });
@@ -8561,18 +8583,27 @@ app.post('/api/coworking/blocked-dates', function(req, res) {
         var blocked = loadBlockedDates();
 
         if (action === 'block') {
-            var exists = blocked.some(function(b) { return b.date === date && b.category === category; });
+            // Permettre plusieurs créneaux par jour — vérifier l'exact doublon (date+heure+catégorie)
+            var exists = blocked.some(function(b) {
+                return b.date === date && b.category === category
+                    && (b.time_start || '06:00') === time_start
+                    && (b.time_end || '23:00') === time_end;
+            });
             if (!exists) {
-                blocked.push({ date: date, category: category, reason: reason, created_at: new Date().toISOString() });
+                blocked.push({ date: date, category: category, reason: reason,
+                               time_start: time_start, time_end: time_end,
+                               created_at: new Date().toISOString() });
             }
         } else if (action === 'unblock') {
             blocked = blocked.filter(function(b) {
-                return !(b.date === date && b.category === category);
+                return !(b.date === date && b.category === category
+                      && (b.time_start || '06:00') === time_start
+                      && (b.time_end || '23:00') === time_end);
             });
         }
 
         saveBlockedDates(blocked);
-        console.log('[COWORKING] Date ' + action + 'ed: ' + date + ' (' + category + ')');
+        console.log('[COWORKING] Date ' + action + 'ed: ' + date + ' ' + time_start + '-' + time_end + ' (' + category + ')');
         res.json({ ok: true, blocked_dates: blocked });
     } catch(e) {
         console.error('[COWORKING] blocked-dates error:', e);
