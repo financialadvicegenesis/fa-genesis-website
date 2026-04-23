@@ -461,6 +461,22 @@
             }
         });
 
+        function updatePaymentTermsText(mode) {
+            var lbl = document.querySelector('label[for="payment_terms_accepted"] span, label:has(#payment_terms_accepted) span');
+            // Fallback: chercher via le checkbox
+            var cb = document.getElementById('payment_terms_accepted');
+            if (cb && cb.parentNode) {
+                var span = cb.parentNode.querySelector('span');
+                if (span) {
+                    if (mode === 'full') {
+                        span.innerHTML = 'Je comprends que le paiement intégral est exigible aujourd\'hui en une seule fois *';
+                    } else if (mode === 'event') {
+                        span.innerHTML = 'Je comprends que l\'acompte de 30% est exigible aujourd\'hui, et que le solde de 70% sera réglé selon le mode choisi *';
+                    }
+                }
+            }
+        }
+
         // ============================================================
         // MODE PANIER - Charger depuis localStorage
         // ============================================================
@@ -523,12 +539,19 @@
             var orderSummary = document.getElementById('orderSummary');
             if (orderSummary) orderSummary.innerHTML = summaryHtml;
 
+            var subtitle = document.getElementById('paymentSubtitle');
             if (allCoworkingFull && !cwEventHasItems) {
-                setPaymentDisplay(totalAmount, totalAmount, 0, 'Paiement total', 'Aucun solde restant');
+                setPaymentDisplay(totalAmount, totalAmount, 0, 'Paiement intégral', 'Aucun solde restant');
                 showInstallmentSchedule(totalAmount, totalAmount, 1);
+                if (subtitle) subtitle.textContent = 'Paiement intégral en une seule fois';
+                updatePaymentTermsText('full');
             } else if (cwEventHasItems) {
-                setPaymentDisplay(totalAmount, totalAmount, 0, 'Paiement total', '');
-                injectCoworkingEventSelector(totalAmount);
+                var evtDeposit = Math.round(totalAmount * 0.30);
+                var evtBalance = totalAmount - evtDeposit;
+                setPaymentDisplay(totalAmount, evtDeposit, evtBalance, 'Acompte (30%)', 'Solde (70%)');
+                if (subtitle) subtitle.textContent = 'ÉVÉNEMENT : acompte 30% obligatoire — solde payable en 1x ou 3x';
+                injectCoworkingEventSelector(evtBalance);
+                updatePaymentTermsText('event');
             } else {
                 var depositAmount = Math.round(totalAmount * 0.30);
                 var balanceAmount = totalAmount - depositAmount;
@@ -577,37 +600,37 @@
         }
 
         var cwInstallmentsChoice = 1;
-        function injectCoworkingEventSelector(totalAmount) {
+
+        // balanceAmount = 70% du total événement (le solde à régler après l'acompte)
+        function injectCoworkingEventSelector(balanceAmount) {
             var container = document.getElementById('installmentScheduleSection');
             if (!container) return;
-            var installAmt = Math.ceil(totalAmount / 3);
+            var installAmt = Math.ceil(balanceAmount / 3);
             container.style.display = 'block';
-            var html = '<div class="text-xs font-black uppercase mb-3"><i class="fas fa-calendar-alt mr-1"></i> Mode de paiement</div>';
+            var html = '<div class="text-xs font-black uppercase mb-3"><i class="fas fa-calendar-alt mr-1"></i> Paiement du solde (' + formatPrice(balanceAmount) + ')</div>';
             html += '<div style="display:flex;gap:8px;margin-bottom:8px;">';
-            html += '<button id="cw1xBtn" onclick="setCwInstallments(1,' + totalAmount + ')" style="flex:1;padding:10px;border:3px solid #000;font-weight:900;font-size:12px;text-transform:uppercase;cursor:pointer;background:#000;color:#FFD700;">1x — ' + totalAmount + ' €</button>';
-            html += '<button id="cw3xBtn" onclick="setCwInstallments(3,' + totalAmount + ')" style="flex:1;padding:10px;border:3px solid #000;font-weight:900;font-size:12px;text-transform:uppercase;cursor:pointer;background:#fff;color:#000;">3x — ' + installAmt + ' €/mois</button>';
-            html += '</div><p id="cwInstallNote" class="text-xs font-bold" style="color:#555;">Paiement total en 1 fois</p>';
+            html += '<button id="cw1xBtn" onclick="setCwInstallments(1,' + balanceAmount + ')" style="flex:1;padding:10px;border:3px solid #000;font-weight:900;font-size:12px;text-transform:uppercase;cursor:pointer;background:#000;color:#FFD700;">1x — ' + formatPrice(balanceAmount) + '</button>';
+            html += '<button id="cw3xBtn" onclick="setCwInstallments(3,' + balanceAmount + ')" style="flex:1;padding:10px;border:3px solid #000;font-weight:900;font-size:12px;text-transform:uppercase;cursor:pointer;background:#fff;color:#000;">3x — ' + formatPrice(installAmt) + '/mois</button>';
+            html += '</div><p id="cwInstallNote" class="text-xs font-bold" style="color:#555;">Solde réglé en 1 fois après l\'acompte</p>';
             container.innerHTML = html;
             cwInstallmentsChoice = 1;
         }
 
-        window.setCwInstallments = function(n, total) {
+        // n = nb d'échéances pour le SOLDE (pas le total). amountToPay reste l'acompte 30%.
+        window.setCwInstallments = function(n, balanceAmount) {
             cwInstallmentsChoice = n;
             var btn1 = document.getElementById('cw1xBtn');
             var btn3 = document.getElementById('cw3xBtn');
             var note = document.getElementById('cwInstallNote');
-            var toPayEl = document.getElementById('amountToPay');
             if (n === 1) {
                 if (btn1) { btn1.style.background = '#000'; btn1.style.color = '#FFD700'; }
                 if (btn3) { btn3.style.background = '#fff'; btn3.style.color = '#000'; }
-                if (note) note.textContent = 'Paiement total en 1 fois';
-                if (toPayEl) toPayEl.textContent = formatPrice(total);
+                if (note) note.textContent = 'Solde réglé en 1 fois après l\'acompte';
             } else {
                 if (btn1) { btn1.style.background = '#fff'; btn1.style.color = '#000'; }
                 if (btn3) { btn3.style.background = '#000'; btn3.style.color = '#FFD700'; }
-                var installAmt = Math.ceil(total / 3);
-                if (note) note.textContent = '3 versements de ' + formatPrice(installAmt) + ' (J+0, J+30, J+60)';
-                if (toPayEl) toPayEl.textContent = formatPrice(installAmt);
+                var installAmt = Math.ceil(balanceAmount / 3);
+                if (note) note.textContent = 'Solde en 3 versements de ' + formatPrice(installAmt) + ' (J+30, J+60, J+90)';
             }
             for (var k = 0; k < panierItems.length; k++) {
                 if (panierItems[k].coworkingData && panierItems[k].coworkingData.is_event) {

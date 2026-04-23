@@ -1095,7 +1095,8 @@ app.post('/api/orders/create', (req, res) => {
                 installCountFinal = 1;
                 installPlanFinal = null;
             } else if (hasCwEvent) {
-                depositAmountFinal = cwInstallsChoice === 3 ? Math.ceil(totalAmountFinal / 3) : totalAmountFinal;
+                // Acompte 30% obligatoire ; le solde (70%) est payable en 1x ou 3x selon cwInstallsChoice
+                depositAmountFinal = Math.round(totalAmountFinal * 0.30);
                 balanceAmountFinal = totalAmountFinal - depositAmountFinal;
                 installCountFinal = cwInstallsChoice === 3 ? 3 : 1;
                 installPlanFinal = installCountFinal > 1 ? generateInstallments(totalAmountFinal, depositAmountFinal, installCountFinal + 1, new Date()) : null;

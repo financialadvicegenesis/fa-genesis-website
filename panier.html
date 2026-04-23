@@ -384,7 +384,10 @@
             // Verifier si tous les items sont sur devis (prixTotal === 0)
             var tousDevis = true;
             for (var i = 0; i < panier.items.length; i++) {
-                var offer = (typeof getOfferById === 'function') ? getOfferById(panier.items[i].id) : null;
+                var item = panier.items[i];
+                // Les items coworking avec un prix sont des items payants (pas des devis)
+                if (item.coworkingData && item.coworkingData.prix > 0) { tousDevis = false; break; }
+                var offer = (typeof getOfferById === 'function') ? getOfferById(item.id) : null;
                 if (offer && offer.prixTotal > 0) { tousDevis = false; break; }
             }
 
