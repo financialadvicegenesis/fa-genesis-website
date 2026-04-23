@@ -275,13 +275,60 @@
                 if (summaryEl) summaryEl.style.display = '';
                 if (actionsEl) actionsEl.style.display = '';
 
-                // Render items
                 var html = '';
                 var total = 0;
-                var hasDevis = false;
+                var hasDevis = false;       // true si événement ou item standard sur devis
+                var allCwSpaces = true;     // true si que des espaces coworking (paiement intégral)
 
                 for (var i = 0; i < panier.items.length; i++) {
                     var item = panier.items[i];
+
+                    // ---- Items COWORKING ----
+                    if (item.coworkingData) {
+                        var cwData = item.coworkingData;
+                        var cwIsEvent = cwData.is_event || false;
+                        var cwPrix = cwData.prix || 0;
+                        var cwNom = cwData.label || item.id;
+
+                        if (cwIsEvent) {
+                            // Événement : afficher le prix + bannière devis (coordination nécessaire)
+                            hasDevis = true;
+                            allCwSpaces = false;
+                        } else {
+                            // Espace (openspace / bureau) : prix réel, pas de devis
+                            total += cwPrix;
+                        }
+
+                        // Ligne de détail : dates + horaires
+                        var cwDetail = '';
+                        if (cwData.dates && cwData.dates.length > 0) {
+                            cwDetail = cwData.nb_days + ' jour(s) : ' + cwData.dates.join(', ');
+                            if (cwData.time_start && cwData.time_end) {
+                                cwDetail += ' | ' + cwData.time_start.replace(':00', 'h') + ' → ' + cwData.time_end.replace(':00', 'h');
+                            }
+                        } else if (cwIsEvent) {
+                            cwDetail = 'Format 4h — salle événementielle';
+                        }
+
+                        var cwPrixDisplay = cwIsEvent
+                            ? '<span style="font-weight:900;">' + cwPrix + ' €</span><br><span style="font-size:0.7rem;color:#856404;font-weight:700;">À confirmer</span>'
+                            : '<span style="font-weight:900;font-size:1.1rem;">' + cwPrix + ' €</span>';
+
+                        html += '<div class="panier-item">'
+                            + '<div style="flex:1;min-width:200px;">'
+                            + '<div style="font-weight:900;font-size:1.05rem;text-transform:uppercase;">' + escapeH(cwNom) + '</div>'
+                            + '<div style="font-size:0.8rem;opacity:0.6;margin-top:2px;">COM VISA — Espace Coworking</div>'
+                            + (cwDetail ? '<div style="font-size:0.75rem;margin-top:4px;font-weight:700;color:#333;">' + escapeH(cwDetail) + '</div>' : '')
+                            + '</div>'
+                            + '<div style="text-align:right;min-width:110px;">' + cwPrixDisplay + '</div>'
+                            + '<button class="btn-retirer" onclick="retirerItemByIndex(' + i + ')">'
+                            + '<i class="fas fa-times mr-1"></i>Retirer</button>'
+                            + '</div>';
+                        continue;
+                    }
+
+                    // ---- Items STANDARDS ----
+                    allCwSpaces = false;
                     var offer = (typeof getOfferById === 'function') ? getOfferById(item.id) : null;
                     var nom = offer ? offer.nom : item.id;
                     var prix = offer ? offer.prixTotal : 0;
@@ -295,49 +342,56 @@
 
                     var prixUnitaire = isDevis
                         ? '<span style="color:#856404;font-weight:900;">SUR DEVIS</span>'
-                        : '<span style="font-weight:900;">' + prix + ' \u20ac \u00d7 ' + qty + ' = <span style="font-size:1.1rem;">' + (prix * qty) + ' \u20ac</span></span>';
+                        : '<span style="font-weight:900;">' + prix + ' € × ' + qty + ' = <span style="font-size:1.1rem;">' + (prix * qty) + ' €</span></span>';
 
                     html += '<div class="panier-item">'
                         + '<div style="flex:1;min-width:200px;">'
                         + '<div style="font-weight:900;font-size:1.1rem;text-transform:uppercase;">' + escapeH(nom) + '</div>'
-                        + '<div style="font-size:0.8rem;opacity:0.6;margin-top:2px;">' + escapeH(categorie) + (duree ? ' \u2022 ' + escapeH(duree) : '') + '</div>'
+                        + '<div style="font-size:0.8rem;opacity:0.6;margin-top:2px;">' + escapeH(categorie) + (duree ? ' • ' + escapeH(duree) : '') + '</div>'
                         + '</div>'
                         + '<div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">'
-                        + '<button class="btn-qty" onclick="changerQtyEtRender(\'' + item.id + '\',-1)">\u2212</button>'
+                        + '<button class="btn-qty" onclick="changerQtyEtRender('' + item.id + '',-1)">−</button>'
                         + '<span class="qty-display">' + qty + '</span>'
-                        + '<button class="btn-qty" onclick="changerQtyEtRender(\'' + item.id + '\',1)">+</button>'
+                        + '<button class="btn-qty" onclick="changerQtyEtRender('' + item.id + '',1)">+</button>'
                         + '</div>'
                         + '<div style="text-align:right;min-width:130px;">' + prixUnitaire + '</div>'
-                        + '<button class="btn-retirer" onclick="retirerEtRender(\'' + item.id + '\')">'
+                        + '<button class="btn-retirer" onclick="retirerEtRender('' + item.id + '')">'
                         + '<i class="fas fa-times mr-1"></i>Retirer</button>'
                         + '</div>';
                 }
 
                 if (listEl) listEl.innerHTML = html;
 
-                // Devis banner
+                // Bannière devis : uniquement pour événements et items standard sur devis
+                // PAS pour les openspace/bureau (qui ont un prix réel)
                 if (devisEl) devisEl.style.display = hasDevis ? '' : 'none';
 
-                // Summary
-                var deposit = Math.round(total * 0.30);
-                var balance = total - deposit;
+                // Résumé
                 var summaryHtml = '';
-
                 if (total > 0) {
                     summaryHtml += '<div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:1.1rem;">'
                         + '<span style="font-weight:700;">Total</span>'
-                        + '<span style="font-weight:900;font-size:1.3rem;">' + total + ' \u20ac</span></div>';
-                    summaryHtml += '<div style="display:flex;justify-content:space-between;margin-bottom:4px;">'
-                        + '<span>Acompte (30%)</span>'
-                        + '<span style="font-weight:900;">' + deposit + ' \u20ac</span></div>';
-                    summaryHtml += '<div style="display:flex;justify-content:space-between;margin-bottom:4px;">'
-                        + '<span>Solde (70%)</span>'
-                        + '<span style="font-weight:700;">' + balance + ' \u20ac</span></div>';
+                        + '<span style="font-weight:900;font-size:1.3rem;">' + total + ' €</span></div>';
+
+                    if (allCwSpaces) {
+                        summaryHtml += '<div style="display:flex;justify-content:space-between;margin-bottom:4px;">'
+                            + '<span>Paiement intégral</span>'
+                            + '<span style="font-weight:900;">' + total + ' €</span></div>';
+                    } else {
+                        var deposit = Math.round(total * 0.30);
+                        var balance = total - deposit;
+                        summaryHtml += '<div style="display:flex;justify-content:space-between;margin-bottom:4px;">'
+                            + '<span>Acompte (30%)</span>'
+                            + '<span style="font-weight:900;">' + deposit + ' €</span></div>';
+                        summaryHtml += '<div style="display:flex;justify-content:space-between;margin-bottom:4px;">'
+                            + '<span>Solde (70%)</span>'
+                            + '<span style="font-weight:700;">' + balance + ' €</span></div>';
+                    }
                 }
 
                 if (hasDevis) {
                     summaryHtml += '<div style="margin-top:12px;padding-top:12px;border-top:2px solid black;font-size:0.85rem;font-style:italic;">'
-                        + '<i class="fas fa-file-alt mr-2"></i>Un devis personnalis\u00e9 sera \u00e9tabli pour les prestations sur devis.</div>';
+                        + '<i class="fas fa-file-alt mr-2"></i>Un devis personnalisé sera établi pour les prestations sur devis.</div>';
                 }
 
                 var detailsEl = document.getElementById('summaryDetails');
@@ -346,6 +400,16 @@
             } catch (e) {
                 console.error('[PANIER] Erreur rendu:', e);
             }
+        }
+
+        // Suppression par index (nécessaire pour les items coworking)
+        function retirerItemByIndex(index) {
+            var panier = getPanier();
+            if (index >= 0 && index < panier.items.length) {
+                panier.items.splice(index, 1);
+            }
+            savePanier(panier);
+            renderPanier();
         }
 
         function retirerEtRender(productId) {
