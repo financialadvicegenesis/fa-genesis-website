@@ -734,6 +734,22 @@
                 <div id="cwDateList" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;max-height:200px;overflow-y:auto;padding-right:4px;"></div>
             </div>
 
+            <!-- HORAIRES -->
+            <div id="cwTimeSection" style="padding:12px 24px 0;">
+                <p style="font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:2px;margin-bottom:8px;color:#000;">Horaires :</p>
+                <div style="display:flex;gap:12px;align-items:flex-end;">
+                    <div style="flex:1;">
+                        <label for="cwTimeStart" style="font-size:10px;font-weight:900;text-transform:uppercase;color:#555;display:block;margin-bottom:4px;">Début</label>
+                        <select id="cwTimeStart" onchange="onCwTimeChange()" style="width:100%;padding:8px 6px;border:2px solid #000;font-weight:900;font-size:13px;color:#000;background:#fff;"></select>
+                    </div>
+                    <span style="font-weight:900;font-size:18px;color:#000;padding-bottom:10px;">→</span>
+                    <div style="flex:1;">
+                        <label for="cwTimeEnd" style="font-size:10px;font-weight:900;text-transform:uppercase;color:#555;display:block;margin-bottom:4px;">Fin</label>
+                        <select id="cwTimeEnd" onchange="onCwTimeChange()" style="width:100%;padding:8px 6px;border:2px solid #000;font-weight:900;font-size:13px;color:#000;background:#fff;"></select>
+                    </div>
+                </div>
+            </div>
+
             <!-- RÉSUMÉ -->
             <div id="cwSummary" style="margin:12px 24px 0;background:#f5f5f5;border:2px solid #000;padding:10px 14px;font-weight:900;font-size:14px;color:#000;display:none;">
                 <span id="cwSummaryText"></span>
@@ -844,7 +860,8 @@
             label: '',
             pricePerDay: 0,
             selectedDates: [],
-            unavailableDates: []  // dates réservées ou bloquées par le partenaire
+            unavailableDates: [],
+            selectedHours: { start: '08:00', end: '18:00' }
         };
 
         var JOURS_FR = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
@@ -861,6 +878,45 @@
             var d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
             return JOURS_FR[d.getDay()] + ' ' + d.getDate() + ' ' + MOIS_FR[d.getMonth()];
         }
+
+        function initTimeSelects() {
+            var startSel = document.getElementById('cwTimeStart');
+            var endSel = document.getElementById('cwTimeEnd');
+            startSel.innerHTML = '';
+            endSel.innerHTML = '';
+            for (var h = 6; h <= 23; h++) {
+                var val = (h < 10 ? '0' : '') + h + ':00';
+                var label = h + 'h';
+                var optS = document.createElement('option');
+                optS.value = val;
+                optS.textContent = label;
+                if (h === 8) optS.selected = true;
+                startSel.appendChild(optS);
+
+                var optE = document.createElement('option');
+                optE.value = val;
+                optE.textContent = label;
+                if (h === 18) optE.selected = true;
+                endSel.appendChild(optE);
+            }
+            CW.selectedHours = { start: '08:00', end: '18:00' };
+        }
+
+        window.onCwTimeChange = function() {
+            var s = document.getElementById('cwTimeStart').value;
+            var e = document.getElementById('cwTimeEnd').value;
+            // Empêcher fin <= début : ajuster fin si nécessaire
+            var sH = parseInt(s);
+            var eH = parseInt(e);
+            if (eH <= sH) {
+                var newEnd = Math.min(sH + 1, 23);
+                var newVal = (newEnd < 10 ? '0' : '') + newEnd + ':00';
+                document.getElementById('cwTimeEnd').value = newVal;
+                e = newVal;
+            }
+            CW.selectedHours = { start: s, end: e };
+            updateCwSummary();
+        };
 
         function buildDateList() {
             var container = document.getElementById('cwDateList');
@@ -920,7 +976,8 @@
 
             if (nb > 0) {
                 summary.style.display = 'block';
-                summaryText.textContent = nb + ' jour' + (nb > 1 ? 's' : '') + ' × ' + CW.pricePerDay + ' € = ' + total + ' €';
+                var timeStr = CW.selectedHours.start.replace(':00', 'h') + ' → ' + CW.selectedHours.end.replace(':00', 'h');
+                summaryText.textContent = nb + ' jour' + (nb > 1 ? 's' : '') + ' × ' + CW.pricePerDay + ' € = ' + total + ' €  |  ' + timeStr;
                 confirmBtn.disabled = false;
                 confirmBtn.style.opacity = '1';
             } else {
@@ -942,6 +999,7 @@
             document.getElementById('cwSummary').style.display = 'none';
             document.getElementById('cwConfirmBtn').disabled = true;
             document.getElementById('cwConfirmBtn').style.opacity = '0.4';
+            initTimeSelects();
 
             // Afficher le modal immédiatement avec indicateur de chargement
             document.getElementById('cwDateList').innerHTML = '<p style="color:#777;font-size:12px;font-weight:700;padding:16px 0;grid-column:1/-1;">Chargement des disponibilités...</p>';
@@ -989,7 +1047,9 @@
                 dates: sorted,
                 nb_days: nb,
                 prix: total,
-                price_per_day: CW.pricePerDay
+                price_per_day: CW.pricePerDay,
+                time_start: CW.selectedHours.start,
+                time_end: CW.selectedHours.end
             };
             if (typeof ajouterCoworkingAuPanier === 'function') {
                 ajouterCoworkingAuPanier(CW.productId, coworkingData);
