@@ -45,6 +45,7 @@ const FEEDBACKS_FILE = path.join(__dirname, 'data', 'feedbacks.json');
 const SETTINGS_FILE = path.join(__dirname, 'data', 'settings.json');
 const RESERVATIONS_FILE = path.join(__dirname, 'data', 'reservations.json');
 const BLOCKED_DATES_FILE = path.join(__dirname, 'data', 'blocked-dates.json');
+const CW_MESSAGES_FILE = path.join(__dirname, 'data', 'cw-messages.json');
 
 // Creer le dossier data s'il n'existe pas
 if (!fs.existsSync(path.join(__dirname, 'data'))) {
@@ -8693,6 +8694,111 @@ app.put('/api/reservations/:id/status', function(req, res) {
         console.error('[RESERVATIONS] Erreur PUT status:', e);
         res.status(500).json({ error: 'Erreur serveur' });
     }
+});
+
+// ============================================================
+// MESSAGERIE COWORKING
+// ============================================================
+
+function loadCwMessages() {
+    try {
+        if (fs.existsSync(CW_MESSAGES_FILE)) return JSON.parse(fs.readFileSync(CW_MESSAGES_FILE, 'utf8'));
+    } catch(e) { console.error('[MSG] Lecture:', e); }
+    return [];
+}
+function saveCwMessages(msgs) {
+    try { fs.writeFileSync(CW_MESSAGES_FILE, JSON.stringify(msgs, null, 2), 'utf8'); }
+    catch(e) { console.error('[MSG] Sauvegarde:', e); }
+}
+
+// GET /api/coworking/messages?reservation_id=X
+app.get('/api/coworking/messages', function(req, res) {
+    try {
+        var reservationId = req.query.reservation_id;
+        if (!reservationId) return res.status(400).json({ error: 'reservation_id requis' });
+        var token = (req.headers.authorization || '').replace('Bearer ', '');
+        var partnerToken = process.env.PARTNER_TOKEN || 'fa-genesis-partner-2024';
+        var isPartner = token === partnerToken;
+        if (!isPartner) {
+            var users = loadUsers();
+            var cu = users.find(function(u) { return u.sessionToken === token; });
+            if (!cu) return res.status(401).json({ error: 'Non autorise' });
+            var myRes = loadReservations().find(function(r) { return r.id === reservationId && r.client_email === cu.email; });
+            if (!myRes) return res.status(403).json({ error: 'Reservation introuvable' });
+        }
+        var all = loadCwMessages();
+        var msgs = all.filter(function(m) { return m.reservation_id === reservationId; });
+        var changed = false;
+        all.forEach(function(m) {
+            if (m.reservation_id !== reservationId) return;
+            if (isPartner && !m.read_by_partner) { m.read_by_partner = true; changed = true; }
+            if (!isPartner && !m.read_by_client) { m.read_by_client = true; changed = true; }
+        });
+        if (changed) saveCwMessages(all);
+        msgs.sort(function(a, b) { return new Date(a.created_at) - new Date(b.created_at); });
+        res.json(msgs);
+    } catch(e) { console.error('[MSG] GET:', e); res.status(500).json({ error: 'Erreur serveur' }); }
+});
+
+// POST /api/coworking/messages — { reservation_id, content }
+app.post('/api/coworking/messages', function(req, res) {
+    try {
+        var reservationId = req.body.reservation_id;
+        var content = (req.body.content || '').trim();
+        if (!reservationId || !content) return res.status(400).json({ error: 'Champs manquants' });
+        if (content.length > 2000) return res.status(400).json({ error: 'Message trop long' });
+        var token = (req.headers.authorization || '').replace('Bearer ', '');
+        var partnerToken = process.env.PARTNER_TOKEN || 'fa-genesis-partner-2024';
+        var isPartner = token === partnerToken;
+        var senderName = 'COM VISA', senderType = 'partner';
+        if (!isPartner) {
+            var users = loadUsers();
+            var cu = users.find(function(u) { return u.sessionToken === token; });
+            if (!cu) return res.status(401).json({ error: 'Non autorise' });
+            var reservation = loadReservations().find(function(r) { return r.id === reservationId && r.client_email === cu.email; });
+            if (!reservation) return res.status(403).json({ error: 'Reservation introuvable' });
+            senderName = ((cu.firstName || cu.first_name || '') + ' ' + (cu.lastName || cu.last_name || '')).trim() || cu.email;
+            senderType = 'client';
+        }
+        var msg = {
+            id: uuidv4(),
+            reservation_id: reservationId,
+            sender_type: senderType,
+            sender_name: senderName,
+            content: content,
+            created_at: new Date().toISOString(),
+            read_by_partner: isPartner,
+            read_by_client: !isPartner
+        };
+        var all = loadCwMessages();
+        all.push(msg);
+        saveCwMessages(all);
+        res.json({ ok: true, message: msg });
+    } catch(e) { console.error('[MSG] POST:', e); res.status(500).json({ error: 'Erreur serveur' }); }
+});
+
+// GET /api/coworking/messages/unread — stats non lus
+app.get('/api/coworking/messages/unread', function(req, res) {
+    try {
+        var token = (req.headers.authorization || '').replace('Bearer ', '');
+        var partnerToken = process.env.PARTNER_TOKEN || 'fa-genesis-partner-2024';
+        var isPartner = token === partnerToken;
+        var all = loadCwMessages();
+        if (isPartner) {
+            var byRes = {};
+            all.forEach(function(m) {
+                if (m.sender_type === 'client' && !m.read_by_partner)
+                    byRes[m.reservation_id] = (byRes[m.reservation_id] || 0) + 1;
+            });
+            return res.json(byRes);
+        }
+        var users = loadUsers();
+        var cu = users.find(function(u) { return u.sessionToken === token; });
+        if (!cu) return res.status(401).json({ error: 'Non autorise' });
+        var myIds = loadReservations().filter(function(r) { return r.client_email === cu.email; }).map(function(r) { return r.id; });
+        var count = all.filter(function(m) { return myIds.indexOf(m.reservation_id) !== -1 && m.sender_type === 'partner' && !m.read_by_client; }).length;
+        res.json({ unread: count });
+    } catch(e) { console.error('[MSG] UNREAD:', e); res.status(500).json({ error: 'Erreur serveur' }); }
 });
 
 // ============================================================

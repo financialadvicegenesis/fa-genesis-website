@@ -138,6 +138,32 @@
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
+
+        /* MESSAGERIE */
+        .cw-chat-wrap { display:flex; border:4px solid black; height:500px; overflow:hidden; box-shadow:8px 8px 0 black; }
+        .cw-conv-list { width:240px; border-right:4px solid black; overflow-y:auto; flex-shrink:0; background:#f9f9f9; }
+        .cw-conv-item { padding:12px 16px; border-bottom:2px solid #eee; cursor:pointer; transition:background 0.1s; }
+        .cw-conv-item:hover { background:#fff7e0; }
+        .cw-conv-item.active { background:#fffbe6; border-left:4px solid black; }
+        .cw-conv-name { font-weight:900; font-size:12px; text-transform:uppercase; }
+        .cw-conv-sub { font-size:10px; color:#888; margin-top:2px; font-weight:700; }
+        .cw-conv-unread { display:inline-block; background:#e8229a; color:#fff; border-radius:50%; width:18px; height:18px; font-size:10px; font-weight:900; text-align:center; line-height:18px; margin-left:6px; vertical-align:middle; }
+        .cw-chat-area { flex:1; display:flex; flex-direction:column; overflow:hidden; background:#fff; }
+        .cw-chat-msgs { flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; }
+        .cw-bubble { max-width:72%; padding:8px 14px; font-size:13px; font-weight:700; line-height:1.5; border:2px solid; word-break:break-word; }
+        .cw-bubble-me { background:#FFD700; border-color:black; align-self:flex-end; border-radius:0 8px 8px 8px; color:#000; }
+        .cw-bubble-partner { background:#f5f5f5; border-color:#ccc; align-self:flex-start; border-radius:8px 8px 8px 0; color:#000; }
+        .cw-bubble-wrap-r { display:flex; flex-direction:column; align-items:flex-end; margin-bottom:12px; }
+        .cw-bubble-wrap-l { display:flex; flex-direction:column; align-items:flex-start; margin-bottom:12px; }
+        .cw-bubble-meta { font-size:10px; color:#888; font-weight:700; margin-bottom:3px; }
+        .cw-input-row { display:flex; border-top:3px solid black; flex-shrink:0; }
+        .cw-input-row input { flex:1; background:#fff; color:#000; border:none; padding:12px 16px; font-size:13px; font-family:'Space Grotesk',sans-serif; font-weight:700; outline:none; }
+        .cw-input-row button { padding:12px 20px; background:#000; color:#fff; border:none; font-weight:900; font-size:12px; text-transform:uppercase; cursor:pointer; letter-spacing:1px; }
+        .cw-input-row button:hover { background:#e8229a; }
+        @media (max-width: 768px) {
+            .cw-chat-wrap { flex-direction:column; height:auto; }
+            .cw-conv-list { width:100%; border-right:none; border-bottom:4px solid black; max-height:180px; }
+        }
     </style>
 </head>
 <body>
@@ -167,6 +193,11 @@
                 <a href="#compte" class="sidebar-link" data-section="compte">
                     <i class="fas fa-user w-5"></i>
                     <span>Mon Compte</span>
+                </a>
+                <a href="#messagerie" class="sidebar-link" data-section="messagerie" id="navMessagerie" style="display:none;">
+                    <i class="fas fa-comments w-5"></i>
+                    <span>Messagerie Coworking</span>
+                    <span id="cwMsgBadge" style="display:none;margin-left:auto;background:#e8229a;color:#fff;border-radius:50%;width:20px;height:20px;font-size:10px;font-weight:900;text-align:center;line-height:20px;flex-shrink:0;"></span>
                 </a>
             </nav>
 
@@ -428,6 +459,27 @@
                         </button>
                     </div>
                 </section>
+
+                <!-- Section: Messagerie Coworking -->
+                <section id="sectionMessagerie" class="section-content hidden">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-3xl font-black uppercase">
+                            <i class="fas fa-comments mr-3" style="color:#e8229a;"></i>
+                            Messagerie Coworking
+                        </h2>
+                        <button onclick="showSection('dashboard')" class="text-gray-600 hover:text-black font-bold">
+                            <i class="fas fa-arrow-left mr-2"></i> Retour
+                        </button>
+                    </div>
+                    <p class="text-gray-500 font-bold mb-6 text-sm">Discutez avec l'équipe COM VISA concernant vos réservations.</p>
+
+                    <div id="cwMsgContent">
+                        <div class="text-center py-12 text-gray-400">
+                            <div class="loading-spinner mx-auto mb-4"></div>
+                            <p class="font-bold">Chargement...</p>
+                        </div>
+                    </div>
+                </section>
             </div>
         </main>
     </div>
@@ -602,6 +654,9 @@
 
             // Charger les livrables
             loadLivrables();
+
+            // Initialiser la messagerie coworking
+            initCwMessagerie();
         }
 
         function setupNavigation() {
@@ -631,6 +686,11 @@
                     link.classList.add('active');
                 }
             });
+
+            // Charger la messagerie à la demande
+            if (sectionName === 'messagerie') {
+                renderCwConvList();
+            }
         }
 
         // ============================================================
@@ -844,6 +904,147 @@
 
         function closeDeleteModal() {
             document.getElementById('deleteAccountModal').classList.add('hidden');
+        }
+
+        // ============================================================
+        // MESSAGERIE COWORKING CLIENT
+        // ============================================================
+        let cwReservations = [];
+        let cwActiveResId = null;
+        let cwMsgPollTimer = null;
+        let cwUnreadPollTimer = null;
+
+        async function initCwMessagerie() {
+            const token = localStorage.getItem('fa_genesis_token');
+            if (!token) return;
+            try {
+                const r = await fetch(`${API_BASE_URL}/api/reservations/me`, {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (!r.ok) return;
+                cwReservations = await r.json();
+                if (cwReservations.length > 0) {
+                    const navMsg = document.getElementById('navMessagerie');
+                    if (navMsg) navMsg.style.display = 'flex';
+                    pollCwUnread();
+                    cwUnreadPollTimer = setInterval(pollCwUnread, 60000);
+                }
+            } catch(e) { console.error('[CW MSG] init:', e); }
+        }
+
+        async function pollCwUnread() {
+            const token = localStorage.getItem('fa_genesis_token');
+            if (!token) return;
+            try {
+                const r = await fetch(`${API_BASE_URL}/api/coworking/messages/unread`, {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (!r.ok) return;
+                const data = await r.json();
+                const badge = document.getElementById('cwMsgBadge');
+                if (badge) {
+                    if (data.unread > 0) { badge.textContent = data.unread; badge.style.display = 'inline-block'; }
+                    else badge.style.display = 'none';
+                }
+            } catch(e) {}
+        }
+
+        function renderCwConvList() {
+            const el = document.getElementById('cwMsgContent');
+            if (!el) return;
+            if (!cwReservations.length) {
+                el.innerHTML = '<div class="text-center py-12 text-gray-400"><i class="fas fa-calendar-times text-5xl mb-4 block"></i><p class="font-bold">Vous n\'avez pas encore de réservation coworking.</p></div>';
+                return;
+            }
+            let convHtml = '';
+            cwReservations.forEach(function(res) {
+                const isActive = res.id === cwActiveResId;
+                const dateStr = new Date(res.created_at).toLocaleDateString('fr-FR');
+                const daysStr = res.dates && res.dates.length ? res.dates.length + ' jour(s)' : 'Événement';
+                convHtml += '<div class="cw-conv-item' + (isActive ? ' active' : '') + '" onclick="openCwConversation(\'' + res.id + '\')">';
+                convHtml += '<div class="cw-conv-name">' + escCwHtml(res.product_name || res.product_id || 'Coworking') + '</div>';
+                convHtml += '<div class="cw-conv-sub">' + daysStr + ' · ' + dateStr + '</div>';
+                convHtml += '</div>';
+            });
+
+            let inputHtml = '';
+            if (cwActiveResId) {
+                inputHtml = '<div class="cw-input-row"><input type="text" id="cwClientInput" placeholder="Écrire un message..." onkeydown="if(event.key===\'Enter\')sendClientMessage()"><button onclick="sendClientMessage()"><i class="fas fa-paper-plane"></i> Envoyer</button></div>';
+            }
+
+            el.innerHTML = '<div class="cw-chat-wrap">'
+                + '<div class="cw-conv-list">' + convHtml + '</div>'
+                + '<div class="cw-chat-area">'
+                + '<div class="cw-chat-msgs" id="cwClientChatMsgs">'
+                + (cwActiveResId ? '' : '<p style="color:#aaa;font-weight:700;font-size:13px;text-align:center;margin:auto;">Sélectionnez une réservation</p>')
+                + '</div>'
+                + inputHtml
+                + '</div>'
+                + '</div>';
+
+            if (cwActiveResId) fetchCwMessages(cwActiveResId);
+        }
+
+        function openCwConversation(resId) {
+            cwActiveResId = resId;
+            renderCwConvList();
+            if (cwMsgPollTimer) clearInterval(cwMsgPollTimer);
+            cwMsgPollTimer = setInterval(function() { if (cwActiveResId) fetchCwMessages(cwActiveResId); }, 12000);
+        }
+
+        async function fetchCwMessages(resId) {
+            const token = localStorage.getItem('fa_genesis_token');
+            if (!token) return;
+            try {
+                const r = await fetch(`${API_BASE_URL}/api/coworking/messages?reservation_id=${resId}`, {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (!r.ok) return;
+                const msgs = await r.json();
+                renderCwMessages(msgs);
+                pollCwUnread();
+            } catch(e) { console.error('[CW MSG] fetch:', e); }
+        }
+
+        function renderCwMessages(msgs) {
+            const el = document.getElementById('cwClientChatMsgs');
+            if (!el) return;
+            if (!msgs || !msgs.length) {
+                el.innerHTML = '<p style="color:#aaa;font-weight:700;font-size:13px;text-align:center;margin:auto;">Pas encore de messages.<br>Démarrez la conversation !</p>';
+                return;
+            }
+            let html = '';
+            msgs.forEach(function(m) {
+                const isMe = m.sender_type === 'client';
+                const time = new Date(m.created_at).toLocaleString('fr-FR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
+                html += '<div class="' + (isMe ? 'cw-bubble-wrap-r' : 'cw-bubble-wrap-l') + '">';
+                html += '<div class="cw-bubble-meta">' + escCwHtml(m.sender_name) + ' · ' + time + '</div>';
+                html += '<div class="cw-bubble ' + (isMe ? 'cw-bubble-me' : 'cw-bubble-partner') + '">' + escCwHtml(m.content) + '</div>';
+                html += '</div>';
+            });
+            el.innerHTML = html;
+            el.scrollTop = el.scrollHeight;
+        }
+
+        async function sendClientMessage() {
+            const input = document.getElementById('cwClientInput');
+            if (!input || !input.value.trim() || !cwActiveResId) return;
+            const content = input.value.trim();
+            input.value = '';
+            const token = localStorage.getItem('fa_genesis_token');
+            if (!token) return;
+            try {
+                await fetch(`${API_BASE_URL}/api/coworking/messages`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                    body: JSON.stringify({ reservation_id: cwActiveResId, content: content })
+                });
+                fetchCwMessages(cwActiveResId);
+            } catch(e) { console.error('[CW MSG] send:', e); }
+        }
+
+        function escCwHtml(s) {
+            return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
         }
 
         async function confirmDeleteAccount() {
