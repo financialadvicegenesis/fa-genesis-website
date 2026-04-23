@@ -338,9 +338,10 @@
                 cell.style.cursor = 'pointer';
                 blSlots.forEach(function(s) {
                     var slotCopy = s;
-                    inner += '<div style="background:#3d1a1a;border:1px solid #f44336;border-radius:2px;padding:1px 4px;margin-top:2px;font-size:9px;cursor:pointer;" '
-                        + 'onclick="event.stopPropagation();unblockSlot('' + iso + '','' + slotCopy.time_start + '','' + slotCopy.time_end + '')" '
-                        + 'title="Cliquer pour débloquer">'
+                    inner += '<div style="background:#3d1a1a;border:1px solid #f44336;border-radius:2px;padding:1px 4px;margin-top:2px;font-size:9px;cursor:pointer;"'
+                        + ' onclick="event.stopPropagation();unblockSlot('
+                        + "'" + iso + "','" + slotCopy.time_start + "','" + slotCopy.time_end + "')"
+                        + '" title="Cliquer pour débloquer">'
                         + slotCopy.time_start.replace(':00','h') + '–' + slotCopy.time_end.replace(':00','h') + ' ✕</div>';
                 });
                 // Clic sur la cellule → sélectionner pour ajouter un autre créneau
@@ -394,7 +395,7 @@
         var ts = tsEl ? tsEl.value : '09:00';
         var te = teEl ? teEl.value : '18:00';
         if (ts >= te) {
-            alert('L'heure de fin doit être supérieure à l'heure de début.');
+            alert("L'heure de fin doit être supérieure à l'heure de début.");
             return;
         }
         fetch(API + '/api/coworking/blocked-dates', {
