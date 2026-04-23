@@ -350,12 +350,12 @@
                         + '<div style="font-size:0.8rem;opacity:0.6;margin-top:2px;">' + escapeH(categorie) + (duree ? ' • ' + escapeH(duree) : '') + '</div>'
                         + '</div>'
                         + '<div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">'
-                        + '<button class="btn-qty" onclick="changerQtyEtRender('' + item.id + '',-1)">−</button>'
+                        + '<button class="btn-qty" data-pid="' + item.id + '" data-delta="-1" onclick="changerQtyEtRender(this.dataset.pid, parseInt(this.dataset.delta))">−</button>'
                         + '<span class="qty-display">' + qty + '</span>'
-                        + '<button class="btn-qty" onclick="changerQtyEtRender('' + item.id + '',1)">+</button>'
+                        + '<button class="btn-qty" data-pid="' + item.id + '" data-delta="1" onclick="changerQtyEtRender(this.dataset.pid, parseInt(this.dataset.delta))">+</button>'
                         + '</div>'
                         + '<div style="text-align:right;min-width:130px;">' + prixUnitaire + '</div>'
-                        + '<button class="btn-retirer" onclick="retirerEtRender('' + item.id + '')">'
+                        + '<button class="btn-retirer" data-pid="' + item.id + '" onclick="retirerEtRender(this.dataset.pid)">'
                         + '<i class="fas fa-times mr-1"></i>Retirer</button>'
                         + '</div>';
                 }
