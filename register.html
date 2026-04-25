@@ -272,6 +272,7 @@
         // Recuperer les parametres de l'URL
         var quoteTokenParam = null;
         var redirectParam = null;
+        var cwDevisId = null;
 
         window.addEventListener('DOMContentLoaded', function() {
             // Anti-spam : enregistrer l'heure de chargement du formulaire
@@ -318,6 +319,31 @@
                         .catch(function(err) { console.error('[REGISTER] Erreur pre-remplissage:', err); });
 
                     console.log('[REGISTER] Mode devis detecte');
+                }
+
+                // --- Mode DEVIS CW : accepté depuis email ---
+                cwDevisId = urlParams.get('cw_devis_id');
+                if (cwDevisId) {
+                    var apiUrlCw = window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com';
+                    fetch(apiUrlCw + '/api/coworking/devis/' + cwDevisId + '/summary')
+                        .then(function(r) { return r.json(); })
+                        .then(function(summary) {
+                            var sMsg = document.getElementById('successMessage');
+                            if (sMsg && summary.amount) {
+                                sMsg.innerHTML = '<i class="fas fa-check-circle mr-2" style="color:#22c55e;"></i>Vous avez accepté le devis <strong>' + (summary.service_label || '') + '</strong> — <strong>' + Number(summary.amount).toFixed(2) + ' €</strong>.<br>Créez votre compte pour procéder au paiement.';
+                                sMsg.classList.add('show');
+                            }
+                            if (summary.client_name) {
+                                var nameParts = (summary.client_name || '').split(' ');
+                                var pField = document.getElementById('prenom');
+                                var nField = document.getElementById('nom');
+                                if (pField && !pField.value && nameParts[0]) pField.value = nameParts[0];
+                                if (nField && !nField.value && nameParts.length > 1) nField.value = nameParts.slice(1).join(' ');
+                            }
+                        })
+                        .catch(function() {});
+                    var loginLinkCw = document.querySelector('a[href="login.html"]');
+                    if (loginLinkCw) loginLinkCw.href = 'login.html?cw_devis_id=' + cwDevisId;
                 }
 
                 // --- Mode REDIRECT (depuis panier) : afficher bandeau panier ---
@@ -469,6 +495,15 @@
                 return;
             }
 
+            // --- Mode DEVIS CW ---
+            if (cwDevisId) {
+                successMessage.innerHTML = '<strong>Compte créé !</strong><br><br>Redirection vers le paiement de votre devis...';
+                successMessage.classList.add('show');
+                document.getElementById('registerForm').reset();
+                await handleCwDevisAfterAuth(cwDevisId);
+                return;
+            }
+
             // --- Mode REDIRECT (depuis panier) ---
             if (redirectParam === 'checkout') {
                 successMessage.innerHTML = '<strong>Compte cr\u00e9\u00e9 avec succ\u00e8s !</strong><br><br>' +
@@ -487,6 +522,29 @@
             document.getElementById('registerForm').reset();
             setTimeout(function() { window.location.href = 'offres.html'; }, 2500);
         });
+
+        async function handleCwDevisAfterAuth(devisId) {
+            try {
+                var apiUrl = window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com';
+                var r = await fetch(apiUrl + '/api/coworking/devis/' + devisId + '/summary');
+                var summary = await r.json();
+                if (!summary.amount) throw new Error('Devis non trouvé');
+                var panier = { items: [{ productId: 'cw-devis', coworkingData: {
+                    label: summary.service_label,
+                    prix: Number(summary.amount),
+                    is_devis: true,
+                    devis_id: devisId,
+                    total_amount: Number(summary.amount),
+                    installments: 1,
+                    installments_options: summary.installments_options || [1]
+                }}]};
+                localStorage.setItem('fa_genesis_panier', JSON.stringify(panier));
+                window.location.href = 'checkout.html?source=panier';
+            } catch(err) {
+                console.error('[REGISTER] CW devis after auth:', err);
+                setTimeout(function() { window.location.href = 'espace-client.html#devis'; }, 2500);
+            }
+        }
 
         // Menu Mobile Toggle
         const mobileMenuBtn = document.getElementById('mobileMenuBtn');

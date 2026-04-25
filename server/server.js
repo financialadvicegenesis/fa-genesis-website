@@ -8922,6 +8922,10 @@ app.get('/api/coworking/devis/:id/email-respond', function(req, res) {
         var devis = all[idx];
         if (devis.email_token !== emailToken) return res.redirect(frontUrl + '/devis-response.html?error=invalid');
         if (devis.status !== 'quoted') {
+            // Si déjà accepté, laisser l'utilisateur aller payer
+            if (action === 'accept' && devis.status === 'accepted') {
+                return res.redirect(frontUrl + '/login.html?cw_devis_id=' + devis.id);
+            }
             return res.redirect(frontUrl + '/devis-response.html?error=expired&action=' + action + '&service=' + encodeURIComponent(devis.service_label || ''));
         }
         var accepted = action === 'accept';
@@ -8930,11 +8934,34 @@ app.get('/api/coworking/devis/:id/email-respond', function(req, res) {
         all[idx].updated_at = new Date().toISOString();
         saveCwDevis(all);
         console.log('[DEVIS] email-respond:', action, devis.client_email);
-        res.redirect(frontUrl + '/devis-response.html?action=' + (accepted ? 'accepted' : 'declined') + '&service=' + encodeURIComponent(devis.service_label || '') + '&devis_id=' + devis.id);
+        if (accepted) {
+            res.redirect(frontUrl + '/login.html?cw_devis_id=' + devis.id);
+        } else {
+            res.redirect(frontUrl + '/devis-response.html?action=declined&service=' + encodeURIComponent(devis.service_label || ''));
+        }
     } catch(e) {
         console.error('[DEVIS] email-respond:', e);
-        res.redirect(frontUrl + '/devis-response.html?error=server');
+        var frontUrlErr = process.env.FRONT_URL || 'https://fagenesis.com';
+        res.redirect(frontUrlErr + '/devis-response.html?error=server');
     }
+});
+
+// GET /api/coworking/devis/:id/summary — résumé public pour checkout post-email
+app.get('/api/coworking/devis/:id/summary', function(req, res) {
+    try {
+        var all = loadCwDevis();
+        var devis = all.find(function(d) { return d.id === req.params.id; });
+        if (!devis || !devis.quote) return res.status(404).json({ error: 'Devis non trouvé' });
+        res.json({
+            id: devis.id,
+            service_label: devis.service_label,
+            amount: devis.quote.amount,
+            installments_options: devis.quote.installments_options || [1],
+            valid_until: devis.quote.valid_until,
+            status: devis.status,
+            client_name: devis.client_name
+        });
+    } catch(e) { console.error('[DEVIS] GET summary:', e); res.status(500).json({ error: 'Erreur serveur' }); }
 });
 
 // PUT /api/coworking/devis/:id/respond — client accepte ou décline (JWT)
