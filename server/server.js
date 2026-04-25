@@ -8898,10 +8898,43 @@ app.put('/api/coworking/devis/:id/quote', function(req, res) {
         if (idx === -1) return res.status(404).json({ error: 'Devis non trouvé' });
         all[idx].quote = { description: description, amount: amount, installments_options: installmentsOptions, valid_until: validUntil, sent_at: new Date().toISOString() };
         all[idx].status = 'quoted';
+        all[idx].email_token = uuidv4();
         all[idx].updated_at = new Date().toISOString();
         saveCwDevis(all);
+        var devisToSend = all[idx];
+        emailService.sendCwDevisToClient(devisToSend).catch(function(e) { console.error('[DEVIS] Email error:', e); });
         res.json({ ok: true, devis: all[idx] });
     } catch(e) { console.error('[DEVIS] PUT quote:', e); res.status(500).json({ error: 'Erreur serveur' }); }
+});
+
+// GET /api/coworking/devis/:id/email-respond — accepter ou décliner depuis email (tokenisé)
+app.get('/api/coworking/devis/:id/email-respond', function(req, res) {
+    var frontUrl = process.env.FRONT_URL || 'https://fagenesis.com';
+    try {
+        var emailToken = req.query.token;
+        var action = req.query.action;
+        if (!emailToken || (action !== 'accept' && action !== 'decline')) {
+            return res.redirect(frontUrl + '/devis-response.html?error=invalid');
+        }
+        var all = loadCwDevis();
+        var idx = all.findIndex(function(d) { return d.id === req.params.id; });
+        if (idx === -1) return res.redirect(frontUrl + '/devis-response.html?error=notfound');
+        var devis = all[idx];
+        if (devis.email_token !== emailToken) return res.redirect(frontUrl + '/devis-response.html?error=invalid');
+        if (devis.status !== 'quoted') {
+            return res.redirect(frontUrl + '/devis-response.html?error=expired&action=' + action + '&service=' + encodeURIComponent(devis.service_label || ''));
+        }
+        var accepted = action === 'accept';
+        all[idx].client_response = { accepted: accepted, installments_choice: null, responded_at: new Date().toISOString(), via_email: true };
+        all[idx].status = accepted ? 'accepted' : 'declined';
+        all[idx].updated_at = new Date().toISOString();
+        saveCwDevis(all);
+        console.log('[DEVIS] email-respond:', action, devis.client_email);
+        res.redirect(frontUrl + '/devis-response.html?action=' + (accepted ? 'accepted' : 'declined') + '&service=' + encodeURIComponent(devis.service_label || '') + '&devis_id=' + devis.id);
+    } catch(e) {
+        console.error('[DEVIS] email-respond:', e);
+        res.redirect(frontUrl + '/devis-response.html?error=server');
+    }
 });
 
 // PUT /api/coworking/devis/:id/respond — client accepte ou décline (JWT)

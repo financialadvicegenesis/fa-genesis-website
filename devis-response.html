@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Réponse au devis — FA GENESIS</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', sans-serif; background: #f5f5f5; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+        .card { background: #fff; border: 4px solid #000; box-shadow: 8px 8px 0 #b81a6e; padding: 48px 40px; max-width: 520px; width: 100%; margin: 24px; text-align: center; }
+        .badge { font-size: 10px; font-weight: 900; letter-spacing: 3px; text-transform: uppercase; color: #b81a6e; margin-bottom: 8px; }
+        .icon { font-size: 56px; margin-bottom: 16px; }
+        h1 { font-size: 22px; font-weight: 900; text-transform: uppercase; color: #000; margin-bottom: 12px; }
+        .subtitle { font-size: 14px; color: #444; font-weight: 700; margin-bottom: 24px; line-height: 1.5; }
+        .service-tag { display: inline-block; background: #000; color: #FFD700; font-size: 11px; font-weight: 900; letter-spacing: 2px; text-transform: uppercase; padding: 6px 14px; margin-bottom: 24px; }
+        .btn { display: inline-block; background: #000; color: #FFD700; padding: 16px 36px; text-decoration: none; font-weight: 900; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; margin-top: 8px; }
+        .btn:hover { background: #222; }
+        .btn-outline { display: inline-block; background: #fff; color: #000; padding: 14px 36px; text-decoration: none; font-weight: 900; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; border: 3px solid #000; margin-top: 8px; margin-left: 8px; }
+        .btn-outline:hover { background: #f5f5f5; }
+        .info-box { background: #f9f9f9; border: 2px solid #e0e0e0; padding: 16px; margin: 20px 0 0 0; font-size: 13px; color: #555; font-weight: 700; line-height: 1.6; }
+        .error-card .icon { font-size: 48px; }
+        .logo { font-size: 13px; font-weight: 900; color: #000; letter-spacing: 2px; text-transform: uppercase; margin-top: 32px; opacity: 0.4; }
+    </style>
+</head>
+<body>
+    <div id="card" class="card">
+        <div id="content">
+            <div class="icon">⏳</div>
+            <h1>Chargement…</h1>
+        </div>
+        <p class="logo">FA GENESIS</p>
+    </div>
+
+    <script>
+    (function() {
+        var params = new URLSearchParams(window.location.search);
+        var action = params.get('action');
+        var service = params.get('service') || '';
+        var devisId = params.get('devis_id') || '';
+        var error = params.get('error');
+        var content = document.getElementById('content');
+
+        if (error) {
+            var msgs = {
+                invalid: 'Le lien est invalide ou a déjà été utilisé.',
+                notfound: 'Ce devis est introuvable.',
+                expired: 'Ce devis a déjà reçu une réponse.',
+                server: 'Une erreur serveur est survenue. Réessayez plus tard.'
+            };
+            content.innerHTML = '<div class="icon">⚠️</div>'
+                + '<h1>Lien invalide</h1>'
+                + '<p class="subtitle">' + (msgs[error] || 'Lien invalide ou expiré.') + '</p>'
+                + '<a href="espace-client.html" class="btn">Mon espace client</a>';
+            return;
+        }
+
+        var serviceHtml = service ? '<div class="service-tag">' + service + '</div>' : '';
+
+        if (action === 'accepted') {
+            content.innerHTML = '<div class="icon">✅</div>'
+                + '<div class="badge">COM VISA — Espace Coworking</div>'
+                + '<h1>Devis accepté !</h1>'
+                + serviceHtml
+                + '<p class="subtitle">Votre réponse a bien été enregistrée.<br>Connectez-vous à votre espace client pour choisir votre mode de paiement et finaliser la réservation.</p>'
+                + '<div style="margin-top:24px;">'
+                + '<a href="espace-client.html#devis" class="btn">Procéder au paiement</a>'
+                + '</div>'
+                + '<div class="info-box">Vous pourrez choisir entre un paiement en 1x, 2x ou 3x dans votre espace client, selon les options proposées dans le devis.</div>';
+        } else if (action === 'declined') {
+            content.innerHTML = '<div class="icon">❌</div>'
+                + '<div class="badge">COM VISA — Espace Coworking</div>'
+                + '<h1>Devis décliné</h1>'
+                + serviceHtml
+                + '<p class="subtitle">Votre réponse a bien été enregistrée.<br>Vous pouvez nous contacter si vous souhaitez modifier votre demande ou obtenir un nouveau devis.</p>'
+                + '<div style="margin-top:24px;">'
+                + '<a href="contact.html" class="btn">Nous contacter</a>'
+                + '<a href="offres.html" class="btn-outline">Voir les offres</a>'
+                + '</div>';
+        } else {
+            content.innerHTML = '<div class="icon">❓</div>'
+                + '<h1>Page introuvable</h1>'
+                + '<p class="subtitle">Aucune action reconnue.</p>'
+                + '<a href="index.html" class="btn">Accueil</a>';
+        }
+    })();
+    </script>
+</body>
+</html>

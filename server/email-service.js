@@ -1847,6 +1847,75 @@ async function sendAccompanimentEndNotification(clientEmail, clientName, declare
     }
 }
 
+/**
+ * Envoyer le devis coworking au client avec boutons Accepter / Décliner
+ */
+async function sendCwDevisToClient(devis) {
+    var transport = initializeTransporter();
+    if (!transport) {
+        console.log('[EMAIL] Transport non configure - CW Devis non envoye');
+        return { success: false, reason: 'no_transporter' };
+    }
+
+    var apiUrl = process.env.API_URL || 'https://fa-genesis-website.onrender.com';
+    var acceptUrl = apiUrl + '/api/coworking/devis/' + devis.id + '/email-respond?token=' + devis.email_token + '&action=accept';
+    var declineUrl = apiUrl + '/api/coworking/devis/' + devis.id + '/email-respond?token=' + devis.email_token + '&action=decline';
+
+    var opts = (devis.quote && devis.quote.installments_options) || [1];
+    var installmentsText = '';
+    if (opts.length > 1 || (opts.length === 1 && opts[0] > 1)) {
+        installmentsText = '<p style="color:#000;font-weight:700;margin:0 0 12px 0;">Options de paiement : '
+            + opts.map(function(n){ return n === 1 ? '1x (paiement intégral)' : n + ' versements'; }).join(' &bull; ')
+            + '</p>';
+    }
+
+    var validUntilText = '';
+    if (devis.quote && devis.quote.valid_until) {
+        var d = new Date(devis.quote.valid_until);
+        validUntilText = '<div style="background:#FFF3CD;border:1px solid #FFD700;padding:12px;margin:20px 0;text-align:center;">'
+            + '<p style="margin:0;font-size:13px;color:#856404;font-weight:700;">Offre valable jusqu\'au <strong>' + d.toLocaleDateString('fr-FR') + '</strong></p>'
+            + '</div>';
+    }
+
+    var content = '<h2 style="color:#000;margin:0 0 6px 0;font-size:22px;font-weight:900;text-transform:uppercase;">Votre devis coworking</h2>'
+        + '<p style="color:#b81a6e;font-size:10px;font-weight:900;letter-spacing:3px;text-transform:uppercase;margin:0 0 20px 0;">COM VISA — Espace Coworking</p>'
+        + '<p style="color:#000;font-weight:700;">Bonjour ' + (devis.client_name || '') + ',</p>'
+        + '<p style="color:#000;font-weight:700;">Suite à votre demande pour <strong>' + (devis.service_label || '') + '</strong>, voici le devis que nous vous proposons :</p>'
+        + '<table role="presentation" style="width:100%;border-collapse:collapse;border:3px solid #000;margin:20px 0;">'
+        + '<tr style="background:#000;"><td style="padding:12px 16px;color:#FFD700;font-weight:900;font-size:13px;text-transform:uppercase;">Prestation</td><td style="padding:12px 16px;color:#FFD700;font-weight:900;font-size:13px;text-transform:uppercase;text-align:right;">Montant</td></tr>'
+        + '<tr><td style="padding:16px;color:#000;font-weight:700;">' + (devis.quote ? devis.quote.description : '') + '</td><td style="padding:16px;text-align:right;font-weight:900;color:#000;font-size:22px;">' + Number((devis.quote || {}).amount || 0).toFixed(2) + ' €</td></tr>'
+        + '</table>'
+        + installmentsText
+        + validUntilText
+        + '<table role="presentation" style="width:100%;border-collapse:collapse;margin:24px 0;">'
+        + '<tr>'
+        + '<td style="padding-right:8px;width:50%;">'
+        + '<a href="' + acceptUrl + '" style="display:block;background:#000;color:#FFD700;padding:16px 0;text-decoration:none;font-weight:900;font-size:14px;text-transform:uppercase;letter-spacing:1px;text-align:center;">ACCEPTER LE DEVIS</a>'
+        + '</td>'
+        + '<td style="padding-left:8px;width:50%;">'
+        + '<a href="' + declineUrl + '" style="display:block;background:#fff;color:#000;padding:14px 0;text-decoration:none;font-weight:900;font-size:14px;text-transform:uppercase;letter-spacing:1px;text-align:center;border:3px solid #000;">DÉCLINER</a>'
+        + '</td>'
+        + '</tr>'
+        + '</table>'
+        + '<p style="color:#666;font-size:12px;font-weight:700;margin:0;">En acceptant, vous serez invité à vous connecter à votre espace client pour procéder au paiement.</p>';
+
+    var html = getEmailTemplate(content, 'Devis Coworking — FA GENESIS');
+
+    try {
+        await transport.sendMail({
+            from: '"FA GENESIS" <' + (process.env.EMAIL_FROM_ADDRESS || process.env.SMTP_USER) + '>',
+            to: devis.client_email,
+            subject: '[FA GENESIS] Votre devis — ' + (devis.service_label || 'Coworking'),
+            html: html
+        });
+        console.log('[EMAIL] CW Devis envoye a ' + devis.client_email);
+        return { success: true };
+    } catch(e) {
+        console.error('[EMAIL] Erreur CW devis:', e.message);
+        return { success: false, error: e.message };
+    }
+}
+
 module.exports = {
     initializeTransporter,
     sendContactConfirmation,
@@ -1871,7 +1940,8 @@ module.exports = {
     sendScheduleCancelledNotification,
     sendQuoteCancelledNotification,
     sendAccompanimentEndNotification,
-    sendUrgentFeedbackNotification
+    sendUrgentFeedbackNotification,
+    sendCwDevisToClient
 };
 
 /**
