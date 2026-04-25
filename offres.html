@@ -632,8 +632,8 @@
                     <ul class="text-xs space-y-2 border-t border-white/30 pt-4 text-white font-black uppercase text-left font-black mb-6">
                         <li>✔ Salle événementielle</li>
                         <li>✔ Équipement inclus</li>
-                        <li class="normal-case"><a href="contact.html?objet=devis&service=restauration-boisson" class="underline hover:text-[var(--genesis-yellow)] transition">+ Restauration &amp; Boisson — <span style="white-space:nowrap;">Demander un devis →</span></a></li>
-                        <li class="normal-case"><a href="contact.html?objet=devis&service=prestation-dj" class="underline hover:text-[var(--genesis-yellow)] transition">+ Prestation DJ — <span style="white-space:nowrap;">Demander un devis →</span></a></li>
+                        <li class="normal-case"><a href="#" onclick="openDevisModal('restauration-boisson');return false;" class="underline hover:text-[var(--genesis-yellow)] transition">+ Restauration &amp; Boisson — <span style="white-space:nowrap;">Demander un devis →</span></a></li>
+                        <li class="normal-case"><a href="#" onclick="openDevisModal('prestation-dj');return false;" class="underline hover:text-[var(--genesis-yellow)] transition">+ Prestation DJ — <span style="white-space:nowrap;">Demander un devis →</span></a></li>
                     </ul>
                     <button onclick="addCoworkingEventToCart('coworking-evenement-etudiant','Événement Étudiant',200)" class="btn-elite-black text-center w-full">Réserver</button>
                 </div>
@@ -673,8 +673,8 @@
                     <ul class="text-xs space-y-2 border-t border-white/30 pt-4 text-white font-black uppercase text-left font-black mb-6">
                         <li>✔ Salle événementielle</li>
                         <li>✔ Équipement inclus</li>
-                        <li class="normal-case"><a href="contact.html?objet=devis&service=restauration-boisson" class="underline hover:text-[var(--genesis-yellow)] transition">+ Restauration &amp; Boisson — <span style="white-space:nowrap;">Demander un devis →</span></a></li>
-                        <li class="normal-case"><a href="contact.html?objet=devis&service=prestation-dj" class="underline hover:text-[var(--genesis-yellow)] transition">+ Prestation DJ — <span style="white-space:nowrap;">Demander un devis →</span></a></li>
+                        <li class="normal-case"><a href="#" onclick="openDevisModal('restauration-boisson');return false;" class="underline hover:text-[var(--genesis-yellow)] transition">+ Restauration &amp; Boisson — <span style="white-space:nowrap;">Demander un devis →</span></a></li>
+                        <li class="normal-case"><a href="#" onclick="openDevisModal('prestation-dj');return false;" class="underline hover:text-[var(--genesis-yellow)] transition">+ Prestation DJ — <span style="white-space:nowrap;">Demander un devis →</span></a></li>
                     </ul>
                     <button onclick="addCoworkingEventToCart('coworking-evenement-particulier','Événement Particulier',300)" class="btn-elite-black text-center w-full">Réserver</button>
                 </div>
@@ -713,8 +713,8 @@
                     <ul class="text-xs space-y-2 border-t border-white/30 pt-4 text-white font-black uppercase text-left font-black mb-6">
                         <li>✔ Salle événementielle</li>
                         <li>✔ Équipement inclus</li>
-                        <li class="normal-case"><a href="contact.html?objet=devis&service=restauration-boisson" class="underline hover:text-[var(--genesis-yellow)] transition">+ Restauration &amp; Boisson — <span style="white-space:nowrap;">Demander un devis →</span></a></li>
-                        <li class="normal-case"><a href="contact.html?objet=devis&service=prestation-dj" class="underline hover:text-[var(--genesis-yellow)] transition">+ Prestation DJ — <span style="white-space:nowrap;">Demander un devis →</span></a></li>
+                        <li class="normal-case"><a href="#" onclick="openDevisModal('restauration-boisson');return false;" class="underline hover:text-[var(--genesis-yellow)] transition">+ Restauration &amp; Boisson — <span style="white-space:nowrap;">Demander un devis →</span></a></li>
+                        <li class="normal-case"><a href="#" onclick="openDevisModal('prestation-dj');return false;" class="underline hover:text-[var(--genesis-yellow)] transition">+ Prestation DJ — <span style="white-space:nowrap;">Demander un devis →</span></a></li>
                     </ul>
                     <button onclick="addCoworkingEventToCart('coworking-evenement-entreprise','Événement Entreprise',375)" class="btn-elite-black text-center w-full">Réserver</button>
                 </div>
@@ -1144,6 +1144,138 @@
             if (typeof ajouterCoworkingAuPanier === 'function') {
                 ajouterCoworkingAuPanier(productId, coworkingData);
             }
+        };
+    })();
+    </script>
+
+    <!-- MODAL DEMANDE DE DEVIS COWORKING -->
+    <div id="devisModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:99999;background:rgba(0,0,0,0.78);overflow-y:auto;" onclick="if(event.target===this)closeDevisModal()">
+        <div style="max-width:520px;margin:40px auto 40px;background:#fff;border:4px solid #000;box-shadow:8px 8px 0 #b81a6e;padding:32px;position:relative;">
+            <button onclick="closeDevisModal()" style="position:absolute;top:10px;right:14px;font-size:22px;font-weight:900;background:none;border:none;cursor:pointer;color:#000;">✕</button>
+            <p style="font-size:10px;font-weight:900;letter-spacing:3px;text-transform:uppercase;color:#b81a6e;margin-bottom:4px;">COM VISA — Espace Coworking</p>
+            <h2 style="font-size:18px;font-weight:900;text-transform:uppercase;margin-bottom:4px;" id="devisModalTitle">Demande de devis</h2>
+            <p style="font-size:12px;color:#555;font-weight:700;margin-bottom:24px;">Envoyez votre demande et recevez un devis personnalisé sous 24-48h.</p>
+
+            <div id="devisFormArea">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+                    <div>
+                        <label style="font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:4px;">Prénom &amp; Nom *</label>
+                        <input type="text" id="devisName" style="width:100%;padding:10px;border:3px solid #000;font-weight:700;font-size:13px;box-sizing:border-box;" placeholder="Jean Dupont">
+                    </div>
+                    <div>
+                        <label style="font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:4px;">Email *</label>
+                        <input type="email" id="devisEmail" style="width:100%;padding:10px;border:3px solid #000;font-weight:700;font-size:13px;box-sizing:border-box;" placeholder="email@exemple.fr">
+                    </div>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+                    <div>
+                        <label style="font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:4px;">Téléphone</label>
+                        <input type="tel" id="devisPhone" style="width:100%;padding:10px;border:3px solid #000;font-weight:700;font-size:13px;box-sizing:border-box;" placeholder="06 12 34 56 78">
+                    </div>
+                    <div>
+                        <label style="font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:4px;">Nb de personnes</label>
+                        <input type="number" id="devisGuests" min="1" style="width:100%;padding:10px;border:3px solid #000;font-weight:700;font-size:13px;box-sizing:border-box;" placeholder="Ex : 50">
+                    </div>
+                </div>
+                <div style="margin-bottom:12px;">
+                    <label style="font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:4px;">Date souhaitée</label>
+                    <input type="date" id="devisDate" style="width:100%;padding:10px;border:3px solid #000;font-weight:700;font-size:13px;box-sizing:border-box;">
+                </div>
+                <div style="margin-bottom:20px;">
+                    <label style="font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:4px;">Détails de votre demande</label>
+                    <textarea id="devisDetails" rows="4" style="width:100%;padding:10px;border:3px solid #000;font-weight:700;font-size:13px;box-sizing:border-box;resize:vertical;" placeholder="Décrivez votre événement, vos besoins, votre budget approximatif..."></textarea>
+                </div>
+                <div id="devisError" style="display:none;background:#ff6b6b;color:#fff;padding:10px;border:2px solid #c00;font-weight:700;font-size:12px;margin-bottom:12px;"></div>
+                <button onclick="submitDevisRequest()" id="devisSubmitBtn" style="width:100%;padding:14px;background:#000;color:#fff;border:3px solid #000;font-weight:900;font-size:13px;text-transform:uppercase;letter-spacing:2px;cursor:pointer;">Envoyer ma demande</button>
+            </div>
+
+            <div id="devisSuccess" style="display:none;text-align:center;padding:24px 0;">
+                <div style="font-size:48px;margin-bottom:16px;">✅</div>
+                <p style="font-size:16px;font-weight:900;text-transform:uppercase;margin-bottom:8px;">Demande envoyée !</p>
+                <p style="font-size:13px;color:#555;font-weight:700;">Vous recevrez votre devis dans votre espace client sous 24-48h.<br>Connectez-vous sur <strong>FA GENESIS</strong> pour le consulter.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    (function() {
+        var _devisService = '';
+
+        window.openDevisModal = function(service) {
+            _devisService = service;
+            var labels = { 'restauration-boisson': 'Restauration & Boisson', 'prestation-dj': 'Prestation DJ' };
+            var titleEl = document.getElementById('devisModalTitle');
+            if (titleEl) titleEl.textContent = 'Devis — ' + (labels[service] || service);
+            document.getElementById('devisFormArea').style.display = 'block';
+            document.getElementById('devisSuccess').style.display = 'none';
+            document.getElementById('devisError').style.display = 'none';
+            var submitBtn = document.getElementById('devisSubmitBtn');
+            if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Envoyer ma demande'; }
+            // Pré-remplir si connecté
+            try {
+                var session = JSON.parse(localStorage.getItem('fa_genesis_session') || 'null');
+                if (session) {
+                    var n = document.getElementById('devisName');
+                    var e = document.getElementById('devisEmail');
+                    var p = document.getElementById('devisPhone');
+                    if (n && !n.value) n.value = ((session.prenom || '') + ' ' + (session.nom || '')).trim();
+                    if (e && !e.value) e.value = session.email || '';
+                    if (p && !p.value) p.value = session.telephone || '';
+                }
+            } catch(ex) {}
+            document.getElementById('devisModal').style.display = 'block';
+            document.body.style.overflow = 'hidden';
+        };
+
+        window.closeDevisModal = function() {
+            document.getElementById('devisModal').style.display = 'none';
+            document.body.style.overflow = '';
+        };
+
+        window.submitDevisRequest = function() {
+            var name = (document.getElementById('devisName').value || '').trim();
+            var email = (document.getElementById('devisEmail').value || '').trim();
+            var errEl = document.getElementById('devisError');
+            var submitBtn = document.getElementById('devisSubmitBtn');
+            if (!name || !email) {
+                errEl.textContent = 'Veuillez renseigner votre nom et votre email.';
+                errEl.style.display = 'block';
+                return;
+            }
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Envoi en cours...';
+            var apiBase = (typeof window.FA_GENESIS_API !== 'undefined') ? window.FA_GENESIS_API : 'https://fa-genesis-website.onrender.com';
+            fetch(apiBase + '/api/coworking/devis', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    service: _devisService,
+                    client_name: name,
+                    client_email: email,
+                    client_phone: (document.getElementById('devisPhone').value || '').trim(),
+                    guest_count: document.getElementById('devisGuests').value || '',
+                    event_date: document.getElementById('devisDate').value || '',
+                    event_details: (document.getElementById('devisDetails').value || '').trim()
+                })
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.ok) {
+                    document.getElementById('devisFormArea').style.display = 'none';
+                    document.getElementById('devisSuccess').style.display = 'block';
+                } else {
+                    errEl.textContent = data.error || 'Erreur lors de l\'envoi.';
+                    errEl.style.display = 'block';
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Envoyer ma demande';
+                }
+            })
+            .catch(function() {
+                errEl.textContent = 'Erreur de connexion. Veuillez réessayer.';
+                errEl.style.display = 'block';
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Envoyer ma demande';
+            });
         };
     })();
     </script>

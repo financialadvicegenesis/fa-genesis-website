@@ -503,7 +503,11 @@
                     panierItems.push({ id: panierItem.id, nom: cwData.label || panierItem.id, categorie: 'COM VISA — Coworking', prixTotal: cwPrix, qty: 1, coworkingData: cwData });
                     if (cwData.is_event) cwEventHasItems = true;
                     var detailLabel = '';
-                    if (cwData.dates && cwData.dates.length > 0) {
+                    if (cwData.is_devis) {
+                        detailLabel = cwData.installments > 1
+                            ? '1er versement sur ' + cwData.installments + ' — Total : ' + cwData.total_amount.toFixed(2) + ' €'
+                            : 'Paiement intégral';
+                    } else if (cwData.dates && cwData.dates.length > 0) {
                         detailLabel = cwData.nb_days + ' jour(s) : ' + cwData.dates.join(', ');
                     } else if (cwData.is_event) {
                         detailLabel = 'Format 4h — salle événementielle';
@@ -540,7 +544,20 @@
             if (orderSummary) orderSummary.innerHTML = summaryHtml;
 
             var subtitle = document.getElementById('paymentSubtitle');
-            if (allCoworkingFull && !cwEventHasItems) {
+            // Vérifier si c'est un paiement de devis coworking
+            var devisItem = panierItems.find(function(p) { return p.coworkingData && p.coworkingData.is_devis; });
+            if (devisItem) {
+                var devisData = devisItem.coworkingData;
+                var installLabel = devisData.installments > 1 ? ('Versement 1/' + devisData.installments) : 'Paiement intégral';
+                setPaymentDisplay(devisData.total_amount || totalAmount, totalAmount, 0, installLabel, 'Aucun solde restant');
+                showInstallmentSchedule(totalAmount, totalAmount, 1);
+                if (subtitle) {
+                    subtitle.textContent = devisData.installments > 1
+                        ? 'Devis COM VISA — ' + devisData.installments + 'x (1er versement aujourd\'hui)'
+                        : 'Devis COM VISA — Paiement intégral';
+                }
+                updatePaymentTermsText('full');
+            } else if (allCoworkingFull && !cwEventHasItems) {
                 setPaymentDisplay(totalAmount, totalAmount, 0, 'Paiement intégral', 'Aucun solde restant');
                 showInstallmentSchedule(totalAmount, totalAmount, 1);
                 if (subtitle) subtitle.textContent = 'Paiement intégral en une seule fois';

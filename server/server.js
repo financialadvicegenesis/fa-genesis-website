@@ -46,6 +46,7 @@ const SETTINGS_FILE = path.join(__dirname, 'data', 'settings.json');
 const RESERVATIONS_FILE = path.join(__dirname, 'data', 'reservations.json');
 const BLOCKED_DATES_FILE = path.join(__dirname, 'data', 'blocked-dates.json');
 const CW_MESSAGES_FILE = path.join(__dirname, 'data', 'cw-messages.json');
+const CW_DEVIS_FILE = path.join(__dirname, 'data', 'cw-devis.json');
 
 // Creer le dossier data s'il n'existe pas
 if (!fs.existsSync(path.join(__dirname, 'data'))) {
@@ -8799,6 +8800,145 @@ app.get('/api/coworking/messages/unread', function(req, res) {
         var count = all.filter(function(m) { return myIds.indexOf(m.reservation_id) !== -1 && m.sender_type === 'partner' && !m.read_by_client; }).length;
         res.json({ unread: count });
     } catch(e) { console.error('[MSG] UNREAD:', e); res.status(500).json({ error: 'Erreur serveur' }); }
+});
+
+// ============================================================
+// DEVIS COWORKING (Restauration & Boisson / Prestation DJ)
+// ============================================================
+
+function loadCwDevis() {
+    try {
+        if (fs.existsSync(CW_DEVIS_FILE)) return JSON.parse(fs.readFileSync(CW_DEVIS_FILE, 'utf8'));
+    } catch(e) { console.error('[DEVIS] Lecture:', e); }
+    return [];
+}
+function saveCwDevis(devis) {
+    try { fs.writeFileSync(CW_DEVIS_FILE, JSON.stringify(devis, null, 2), 'utf8'); }
+    catch(e) { console.error('[DEVIS] Sauvegarde:', e); }
+}
+
+var DEVIS_SERVICE_LABELS = {
+    'restauration-boisson': 'Restauration & Boisson',
+    'prestation-dj': 'Prestation DJ'
+};
+
+// POST /api/coworking/devis — client soumet une demande (sans auth)
+app.post('/api/coworking/devis', function(req, res) {
+    try {
+        var service = req.body.service;
+        var clientName = (req.body.client_name || '').trim();
+        var clientEmail = (req.body.client_email || '').trim().toLowerCase();
+        var clientPhone = (req.body.client_phone || '').trim();
+        var eventDate = req.body.event_date || '';
+        var eventDetails = (req.body.event_details || '').trim();
+        var guestCount = req.body.guest_count || '';
+        if (!clientName || !clientEmail || !service) return res.status(400).json({ error: 'Champs obligatoires manquants' });
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clientEmail)) return res.status(400).json({ error: 'Email invalide' });
+        var item = {
+            id: uuidv4(),
+            service: service,
+            service_label: DEVIS_SERVICE_LABELS[service] || service,
+            client_name: clientName,
+            client_email: clientEmail,
+            client_phone: clientPhone,
+            event_date: eventDate,
+            event_details: eventDetails,
+            guest_count: guestCount,
+            status: 'pending',
+            created_at: new Date().toISOString(),
+            quote: null,
+            client_response: null
+        };
+        var all = loadCwDevis();
+        all.push(item);
+        saveCwDevis(all);
+        console.log('[DEVIS] Nouvelle demande:', clientEmail, service);
+        res.json({ ok: true, id: item.id });
+    } catch(e) { console.error('[DEVIS] POST:', e); res.status(500).json({ error: 'Erreur serveur' }); }
+});
+
+// GET /api/coworking/devis — partenaire récupère tout
+app.get('/api/coworking/devis', function(req, res) {
+    try {
+        var token = (req.headers.authorization || '').replace('Bearer ', '');
+        var partnerToken = process.env.PARTNER_TOKEN || 'fa-genesis-partner-2024';
+        if (token !== partnerToken) return res.status(403).json({ error: 'Non autorisé' });
+        var all = loadCwDevis();
+        all.sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); });
+        res.json(all);
+    } catch(e) { console.error('[DEVIS] GET all:', e); res.status(500).json({ error: 'Erreur serveur' }); }
+});
+
+// GET /api/coworking/devis/me — client voit ses devis (JWT)
+app.get('/api/coworking/devis/me', function(req, res) {
+    try {
+        var token = (req.headers.authorization || '').replace('Bearer ', '');
+        var users = loadUsers();
+        var cu = users.find(function(u) { return u.sessionToken === token; });
+        if (!cu) return res.status(401).json({ error: 'Non autorisé' });
+        var all = loadCwDevis().filter(function(d) { return d.client_email === cu.email; });
+        all.sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); });
+        res.json(all);
+    } catch(e) { console.error('[DEVIS] GET me:', e); res.status(500).json({ error: 'Erreur serveur' }); }
+});
+
+// PUT /api/coworking/devis/:id/quote — partenaire envoie le devis élaboré
+app.put('/api/coworking/devis/:id/quote', function(req, res) {
+    try {
+        var token = (req.headers.authorization || '').replace('Bearer ', '');
+        var partnerToken = process.env.PARTNER_TOKEN || 'fa-genesis-partner-2024';
+        if (token !== partnerToken) return res.status(403).json({ error: 'Non autorisé' });
+        var amount = parseFloat(req.body.amount);
+        var description = (req.body.description || '').trim();
+        var installmentsOptions = req.body.installments_options || [1];
+        var validUntil = req.body.valid_until || '';
+        if (!amount || amount <= 0 || !description) return res.status(400).json({ error: 'Champs obligatoires manquants' });
+        var all = loadCwDevis();
+        var idx = all.findIndex(function(d) { return d.id === req.params.id; });
+        if (idx === -1) return res.status(404).json({ error: 'Devis non trouvé' });
+        all[idx].quote = { description: description, amount: amount, installments_options: installmentsOptions, valid_until: validUntil, sent_at: new Date().toISOString() };
+        all[idx].status = 'quoted';
+        all[idx].updated_at = new Date().toISOString();
+        saveCwDevis(all);
+        res.json({ ok: true, devis: all[idx] });
+    } catch(e) { console.error('[DEVIS] PUT quote:', e); res.status(500).json({ error: 'Erreur serveur' }); }
+});
+
+// PUT /api/coworking/devis/:id/respond — client accepte ou décline (JWT)
+app.put('/api/coworking/devis/:id/respond', function(req, res) {
+    try {
+        var token = (req.headers.authorization || '').replace('Bearer ', '');
+        var users = loadUsers();
+        var cu = users.find(function(u) { return u.sessionToken === token; });
+        if (!cu) return res.status(401).json({ error: 'Non autorisé' });
+        var accepted = req.body.accepted === true || req.body.accepted === 'true';
+        var installmentsChoice = parseInt(req.body.installments_choice) || 1;
+        var all = loadCwDevis();
+        var idx = all.findIndex(function(d) { return d.id === req.params.id && d.client_email === cu.email; });
+        if (idx === -1) return res.status(404).json({ error: 'Devis non trouvé' });
+        if (all[idx].status !== 'quoted') return res.status(400).json({ error: 'Devis non répondable' });
+        all[idx].client_response = { accepted: accepted, installments_choice: accepted ? installmentsChoice : null, responded_at: new Date().toISOString() };
+        all[idx].status = accepted ? 'accepted' : 'declined';
+        all[idx].updated_at = new Date().toISOString();
+        saveCwDevis(all);
+        res.json({ ok: true, devis: all[idx] });
+    } catch(e) { console.error('[DEVIS] PUT respond:', e); res.status(500).json({ error: 'Erreur serveur' }); }
+});
+
+// PUT /api/coworking/devis/:id/pay — partenaire marque comme payé
+app.put('/api/coworking/devis/:id/pay', function(req, res) {
+    try {
+        var token = (req.headers.authorization || '').replace('Bearer ', '');
+        var partnerToken = process.env.PARTNER_TOKEN || 'fa-genesis-partner-2024';
+        if (token !== partnerToken) return res.status(403).json({ error: 'Non autorisé' });
+        var all = loadCwDevis();
+        var idx = all.findIndex(function(d) { return d.id === req.params.id; });
+        if (idx === -1) return res.status(404).json({ error: 'Devis non trouvé' });
+        all[idx].status = 'paid';
+        all[idx].paid_at = new Date().toISOString();
+        saveCwDevis(all);
+        res.json({ ok: true });
+    } catch(e) { console.error('[DEVIS] PUT pay:', e); res.status(500).json({ error: 'Erreur serveur' }); }
 });
 
 // ============================================================

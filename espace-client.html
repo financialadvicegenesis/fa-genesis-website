@@ -194,6 +194,11 @@
                     <i class="fas fa-user w-5"></i>
                     <span>Mon Compte</span>
                 </a>
+                <a href="#devis" class="sidebar-link" data-section="devis" id="navDevis" style="display:none;">
+                    <i class="fas fa-file-invoice w-5"></i>
+                    <span>Mes Devis Coworking</span>
+                    <span id="cwDevisBadge" style="display:none;margin-left:auto;background:#e8229a;color:#fff;border-radius:50%;width:20px;height:20px;font-size:10px;font-weight:900;text-align:center;line-height:20px;flex-shrink:0;"></span>
+                </a>
                 <a href="#messagerie" class="sidebar-link" data-section="messagerie" id="navMessagerie" style="display:none;">
                     <i class="fas fa-comments w-5"></i>
                     <span>Messagerie Coworking</span>
@@ -460,6 +465,26 @@
                     </div>
                 </section>
 
+                <!-- Section: Devis Coworking -->
+                <section id="sectionDevis" class="section-content hidden">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-3xl font-black uppercase">
+                            <i class="fas fa-file-invoice mr-3" style="color:#e8229a;"></i>
+                            Mes Devis Coworking
+                        </h2>
+                        <button onclick="showSection('dashboard')" class="text-gray-600 hover:text-black font-bold">
+                            <i class="fas fa-arrow-left mr-2"></i> Retour
+                        </button>
+                    </div>
+                    <p class="text-gray-500 font-bold mb-6 text-sm">Restauration &amp; Boisson — Prestation DJ — Consultez et répondez aux devis de COM VISA.</p>
+                    <div id="cwClientDevisList">
+                        <div class="text-center py-12 text-gray-400">
+                            <div class="loading-spinner mx-auto mb-4"></div>
+                            <p class="font-bold">Chargement...</p>
+                        </div>
+                    </div>
+                </section>
+
                 <!-- Section: Messagerie Coworking -->
                 <section id="sectionMessagerie" class="section-content hidden">
                     <div class="flex justify-between items-center mb-6">
@@ -657,6 +682,9 @@
 
             // Initialiser la messagerie coworking
             initCwMessagerie();
+
+            // Initialiser les devis coworking
+            initCwDevis();
         }
 
         function setupNavigation() {
@@ -687,10 +715,9 @@
                 }
             });
 
-            // Charger la messagerie à la demande
-            if (sectionName === 'messagerie') {
-                renderCwConvList();
-            }
+            // Charger à la demande
+            if (sectionName === 'messagerie') renderCwConvList();
+            if (sectionName === 'devis') loadClientDevisList();
         }
 
         // ============================================================
@@ -904,6 +931,163 @@
 
         function closeDeleteModal() {
             document.getElementById('deleteAccountModal').classList.add('hidden');
+        }
+
+        // ============================================================
+        // DEVIS COWORKING CLIENT
+        // ============================================================
+        let cwClientDevis = [];
+
+        async function initCwDevis() {
+            const token = localStorage.getItem('fa_genesis_token');
+            if (!token) return;
+            try {
+                const r = await fetch(`${API_BASE_URL}/api/coworking/devis/me`, {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (!r.ok) return;
+                cwClientDevis = await r.json();
+                if (cwClientDevis.length > 0) {
+                    const navDevis = document.getElementById('navDevis');
+                    if (navDevis) navDevis.style.display = 'flex';
+                    // Badge si devis avec quote non répondu
+                    const newQuotes = cwClientDevis.filter(d => d.status === 'quoted').length;
+                    const badge = document.getElementById('cwDevisBadge');
+                    if (badge) {
+                        if (newQuotes > 0) { badge.textContent = newQuotes; badge.style.display = 'inline-block'; }
+                        else badge.style.display = 'none';
+                    }
+                }
+            } catch(e) { console.error('[DEVIS] init:', e); }
+        }
+
+        async function loadClientDevisList() {
+            const token = localStorage.getItem('fa_genesis_token');
+            if (!token) {
+                document.getElementById('cwClientDevisList').innerHTML = '<div class="text-center py-8 text-gray-500 font-bold">Connectez-vous pour voir vos devis.</div>';
+                return;
+            }
+            try {
+                const r = await fetch(`${API_BASE_URL}/api/coworking/devis/me`, {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (!r.ok) throw new Error('auth');
+                cwClientDevis = await r.json();
+                renderClientDevisList();
+            } catch(e) { console.error('[DEVIS] load:', e); }
+        }
+
+        const DEVIS_STATUS_LABEL_CLIENT = { pending: 'En attente de devis', quoted: 'Devis reçu', accepted: 'Accepté', declined: 'Décliné', paid: 'Payé' };
+        const DEVIS_STATUS_BG_CLIENT = { pending: 'bg-yellow-400 text-black', quoted: 'bg-blue-500 text-white', accepted: 'bg-green-500 text-white', declined: 'bg-red-500 text-white', paid: 'bg-purple-500 text-white' };
+
+        function renderClientDevisList() {
+            const el = document.getElementById('cwClientDevisList');
+            if (!el) return;
+            if (!cwClientDevis.length) {
+                el.innerHTML = '<div class="text-center py-12 text-gray-400"><i class="fas fa-file-invoice text-5xl mb-4 block"></i><p class="font-bold">Vous n\'avez pas encore de demande de devis.</p><p class="text-sm mt-2">Rendez-vous sur <a href="offres.html" class="underline font-black">nos offres</a> pour en faire une.</p></div>';
+                return;
+            }
+            let html = '';
+            cwClientDevis.forEach(function(d) {
+                const statusLabel = DEVIS_STATUS_LABEL_CLIENT[d.status] || d.status;
+                const statusBg = DEVIS_STATUS_BG_CLIENT[d.status] || 'bg-gray-400 text-white';
+                const created = new Date(d.created_at).toLocaleDateString('fr-FR');
+                html += '<div class="card p-6 neo-shadow mb-6">';
+                html += '<div class="flex justify-between items-start flex-wrap gap-3 mb-4">';
+                html += '<div>';
+                html += '<h3 class="text-xl font-black uppercase">' + escCwHtml(d.service_label) + '</h3>';
+                html += '<p class="text-sm text-gray-500 font-bold mt-1">Demande envoyée le ' + created + '</p>';
+                if (d.event_date) html += '<p class="text-sm text-gray-600 font-bold mt-1"><i class="fas fa-calendar mr-1"></i>Date souhaitée : ' + escCwHtml(d.event_date) + (d.guest_count ? ' — ' + escCwHtml(d.guest_count) + ' personnes' : '') + '</p>';
+                html += '</div>';
+                html += '<span class="status-badge ' + statusBg + '">' + statusLabel + '</span>';
+                html += '</div>';
+                if (d.event_details) html += '<p class="text-sm text-gray-700 font-bold italic mb-4 border-l-4 border-yellow-400 pl-3">' + escCwHtml(d.event_details) + '</p>';
+                // Afficher le devis si reçu
+                if (d.status === 'quoted' && d.quote) {
+                    html += '<div class="bg-yellow-50 border-4 border-black p-5 mb-4">';
+                    html += '<p class="text-xs font-black uppercase tracking-widest text-pink-700 mb-2">Devis de COM VISA</p>';
+                    html += '<p class="text-3xl font-black mb-1">' + d.quote.amount.toFixed(2) + ' €</p>';
+                    html += '<p class="text-sm font-bold text-gray-700 mb-3">' + escCwHtml(d.quote.description) + '</p>';
+                    if (d.quote.valid_until) html += '<p class="text-xs font-black text-gray-500 mb-3">Valable jusqu\'au : ' + escCwHtml(d.quote.valid_until) + '</p>';
+                    // Choisir le mode de paiement
+                    const opts = d.quote.installments_options || [1];
+                    html += '<div class="mb-4">';
+                    html += '<p class="text-xs font-black uppercase tracking-widest mb-2">Choisissez votre mode de paiement :</p>';
+                    html += '<div class="flex flex-wrap gap-3" id="devisOpts-' + d.id + '">';
+                    opts.forEach(function(n, i) {
+                        const amount = n === 1 ? d.quote.amount : Math.ceil(d.quote.amount / n);
+                        html += '<label class="flex items-center gap-2 cursor-pointer font-bold text-sm border-4 border-black px-3 py-2 hover:bg-yellow-100">';
+                        html += '<input type="radio" name="devis_inst_' + d.id + '" value="' + n + '"' + (i === 0 ? ' checked' : '') + '> ';
+                        if (n === 1) { html += 'Paiement intégral — <strong>' + d.quote.amount.toFixed(2) + ' €</strong>'; }
+                        else { html += n + 'x — <strong>' + amount.toFixed(2) + ' €</strong>/versement'; }
+                        html += '</label>';
+                    });
+                    html += '</div></div>';
+                    html += '<div class="flex gap-3 flex-wrap">';
+                    html += '<button onclick="respondToClientDevis(\'' + d.id + '\', true)" class="neo-btn-yellow px-6 py-3 font-black uppercase text-sm"><i class="fas fa-check mr-2"></i>Accepter le devis</button>';
+                    html += '<button onclick="respondToClientDevis(\'' + d.id + '\', false)" class="bg-white text-black border-4 border-black px-6 py-3 font-black uppercase text-sm hover:bg-red-100"><i class="fas fa-times mr-2"></i>Décliner</button>';
+                    html += '</div></div>';
+                } else if (d.status === 'accepted' && d.quote && d.client_response) {
+                    const choice = d.client_response.installments_choice || 1;
+                    const firstPay = choice === 1 ? d.quote.amount : Math.ceil(d.quote.amount / choice);
+                    html += '<div class="bg-green-50 border-4 border-green-500 p-4 mb-4">';
+                    html += '<p class="font-black text-green-700 uppercase text-sm mb-1">✓ Devis accepté — Paiement ' + choice + 'x</p>';
+                    html += '<p class="font-bold text-gray-700">Total : <strong>' + d.quote.amount.toFixed(2) + ' €</strong> | 1er versement : <strong>' + firstPay.toFixed(2) + ' €</strong></p>';
+                    html += '</div>';
+                    html += '<button onclick="payClientDevis(\'' + d.id + '\',' + d.quote.amount + ',\'' + escCwHtml(d.service_label) + '\',' + choice + ')" class="neo-btn-yellow px-8 py-4 font-black uppercase text-sm"><i class="fas fa-credit-card mr-2"></i>Payer maintenant — ' + firstPay.toFixed(2) + ' €</button>';
+                } else if (d.status === 'paid') {
+                    html += '<div class="bg-purple-50 border-4 border-purple-500 p-4"><p class="font-black text-purple-700 uppercase text-sm">✓ Payé</p></div>';
+                } else if (d.status === 'declined') {
+                    html += '<div class="bg-red-50 border-4 border-red-500 p-4"><p class="font-black text-red-700 uppercase text-sm">✗ Devis décliné</p></div>';
+                }
+                html += '</div>';
+            });
+            el.innerHTML = html;
+        }
+
+        async function respondToClientDevis(devisId, accepted) {
+            const token = localStorage.getItem('fa_genesis_token');
+            if (!token) return;
+            let installmentsChoice = 1;
+            if (accepted) {
+                const radios = document.querySelectorAll('input[name="devis_inst_' + devisId + '"]');
+                radios.forEach(function(r) { if (r.checked) installmentsChoice = parseInt(r.value); });
+            }
+            try {
+                const r = await fetch(`${API_BASE_URL}/api/coworking/devis/${devisId}/respond`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                    body: JSON.stringify({ accepted: accepted, installments_choice: installmentsChoice })
+                });
+                if (r.ok) {
+                    await loadClientDevisList();
+                    // Mettre à jour le badge
+                    const newQuotes = cwClientDevis.filter(d => d.status === 'quoted').length;
+                    const badge = document.getElementById('cwDevisBadge');
+                    if (badge) {
+                        if (newQuotes > 0) { badge.textContent = newQuotes; badge.style.display = 'inline-block'; }
+                        else badge.style.display = 'none';
+                    }
+                }
+            } catch(e) { console.error('[DEVIS] respond:', e); }
+        }
+
+        function payClientDevis(devisId, totalAmount, serviceLabel, installments) {
+            const firstPay = installments === 1 ? totalAmount : Math.ceil(totalAmount / installments);
+            // Ajouter au panier et rediriger vers checkout
+            const panierItem = {
+                productId: 'cw-devis',
+                coworkingData: {
+                    label: serviceLabel + ' — Devis COM VISA',
+                    prix: firstPay,
+                    is_devis: true,
+                    devis_id: devisId,
+                    total_amount: totalAmount,
+                    installments: installments
+                }
+            };
+            localStorage.setItem('panier', JSON.stringify({ items: [panierItem] }));
+            window.location.href = 'checkout.html?source=panier';
         }
 
         // ============================================================

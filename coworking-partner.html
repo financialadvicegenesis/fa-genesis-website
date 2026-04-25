@@ -219,6 +219,52 @@
         </div>
     </div>
 
+    <!-- DEVIS COWORKING -->
+    <div style="margin-top:56px;border-top:4px solid #333;padding-top:40px;">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
+            <div style="width:8px;height:32px;background:linear-gradient(135deg,#6b0a3a,#e8229a);flex-shrink:0;"></div>
+            <h2 style="font-size:20px;font-weight:900;text-transform:uppercase;letter-spacing:1px;">Demandes de Devis</h2>
+            <span id="devisPendingBadge" style="display:none;background:var(--yellow);color:#000;border-radius:12px;padding:2px 10px;font-size:12px;font-weight:900;margin-left:4px;"></span>
+        </div>
+        <p style="font-size:13px;color:#aaa;font-weight:700;margin-bottom:20px;">Restauration &amp; Boisson — Prestation DJ — Élaborez et envoyez vos devis.</p>
+        <div id="cwDevisList">
+            <div style="color:#555;font-weight:700;font-size:13px;">Aucune demande pour l'instant.</div>
+        </div>
+        <!-- Formulaire de création de devis -->
+        <div id="cwQuoteForm" style="display:none;margin-top:20px;background:#1a1a1a;border:3px solid #b81a6e;padding:20px;">
+            <p style="font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:2px;color:#b81a6e;margin-bottom:4px;">Établir le devis pour</p>
+            <p id="cwQuoteForLabel" style="font-weight:900;font-size:14px;color:#fff;margin-bottom:14px;"></p>
+            <input type="hidden" id="cwQuoteForId">
+            <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px;">
+                <div style="flex:1;min-width:120px;">
+                    <label style="font-size:10px;font-weight:900;text-transform:uppercase;color:#aaa;display:block;margin-bottom:4px;">Montant total (€) *</label>
+                    <input type="number" id="cwQAmount" min="1" step="0.01" style="width:100%;padding:8px;border:2px solid #555;background:#000;color:#fff;font-weight:900;font-size:14px;box-sizing:border-box;">
+                </div>
+                <div style="flex:1;min-width:140px;">
+                    <label style="font-size:10px;font-weight:900;text-transform:uppercase;color:#aaa;display:block;margin-bottom:4px;">Valable jusqu'au</label>
+                    <input type="date" id="cwQDate" style="width:100%;padding:8px;border:2px solid #555;background:#000;color:#fff;font-weight:900;font-size:13px;box-sizing:border-box;">
+                </div>
+            </div>
+            <div style="margin-bottom:12px;">
+                <label style="font-size:10px;font-weight:900;text-transform:uppercase;color:#aaa;display:block;margin-bottom:4px;">Description du devis *</label>
+                <textarea id="cwQDesc" rows="3" style="width:100%;padding:8px;border:2px solid #555;background:#000;color:#fff;font-weight:700;font-size:12px;box-sizing:border-box;resize:vertical;" placeholder="Détail des prestations, inclus/exclus, conditions..."></textarea>
+            </div>
+            <div style="margin-bottom:16px;">
+                <label style="font-size:10px;font-weight:900;text-transform:uppercase;color:#aaa;display:block;margin-bottom:8px;">Options de paiement proposées</label>
+                <div style="display:flex;gap:16px;flex-wrap:wrap;">
+                    <label style="font-size:12px;font-weight:700;color:#fff;display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox" id="cwQ1x" checked style="width:16px;height:16px;"> 1x (intégral)</label>
+                    <label style="font-size:12px;font-weight:700;color:#fff;display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox" id="cwQ2x" style="width:16px;height:16px;"> 2x</label>
+                    <label style="font-size:12px;font-weight:700;color:#fff;display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox" id="cwQ3x" style="width:16px;height:16px;"> 3x</label>
+                </div>
+            </div>
+            <div id="cwQError" style="display:none;background:#c00;color:#fff;padding:8px;font-weight:700;font-size:12px;margin-bottom:10px;"></div>
+            <div style="display:flex;gap:10px;">
+                <button onclick="submitCwQuote()" style="padding:10px 20px;border:3px solid #b81a6e;background:#b81a6e;color:#fff;font-weight:900;font-size:12px;text-transform:uppercase;cursor:pointer;">Envoyer le devis →</button>
+                <button onclick="cancelCwQuoteForm()" style="padding:10px 20px;border:3px solid #555;background:#000;color:#aaa;font-weight:900;font-size:12px;text-transform:uppercase;cursor:pointer;">Annuler</button>
+            </div>
+        </div>
+    </div>
+
     <!-- MESSAGERIE -->
     <div style="margin-top:56px;border-top:4px solid #333;padding-top:40px;">
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
@@ -307,6 +353,7 @@
             renderReservations();
             loadAvailability();
             loadConversations();
+            loadDevisRequests();
         })
         .catch(function() {
             if (errEl) errEl.style.display = 'block';
@@ -499,6 +546,7 @@
             renderReservations();
             loadAvailability();
             loadConversations();
+            loadDevisRequests();
         })
         .catch(function(e) {
             if (e.message === 'auth') {
@@ -622,6 +670,142 @@
             }
         })
         .catch(function(e) { console.error('[CW PARTNER] Erreur:', e); });
+    };
+
+    // ---- DEVIS ----
+    var DEVIS_STATUS_LABEL = { pending: 'En attente', quoted: 'Devis envoyé', accepted: 'Accepté', declined: 'Décliné', paid: 'Payé' };
+    var DEVIS_STATUS_COLOR = { pending: '#FF9800', quoted: '#2196F3', accepted: '#4CAF50', declined: '#f44336', paid: '#9C27B0' };
+
+    function loadDevisRequests() {
+        if (!PARTNER_TOKEN) return;
+        fetch(API + '/api/coworking/devis', {
+            headers: { 'Authorization': 'Bearer ' + PARTNER_TOKEN }
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) { renderDevisRequests(data); })
+        .catch(function(e) { console.error('[DEVIS] load:', e); });
+    }
+
+    function renderDevisRequests(devisArr) {
+        var el = document.getElementById('cwDevisList');
+        if (!el) return;
+        var pendingCount = (devisArr || []).filter(function(d) { return d.status === 'pending'; }).length;
+        var badge = document.getElementById('devisPendingBadge');
+        if (badge) {
+            if (pendingCount > 0) { badge.textContent = pendingCount + ' nouvelle' + (pendingCount > 1 ? 's' : ''); badge.style.display = 'inline-block'; }
+            else badge.style.display = 'none';
+        }
+        if (!devisArr || !devisArr.length) {
+            el.innerHTML = '<div style="color:#555;font-weight:700;font-size:13px;">Aucune demande pour l\'instant.</div>';
+            return;
+        }
+        var html = '';
+        devisArr.forEach(function(d) {
+            var statusColor = DEVIS_STATUS_COLOR[d.status] || '#aaa';
+            var statusLabel = DEVIS_STATUS_LABEL[d.status] || d.status;
+            var created = new Date(d.created_at).toLocaleDateString('fr-FR');
+            html += '<div style="background:#1a1a1a;border:3px solid ' + statusColor + ';padding:16px;margin-bottom:12px;">';
+            html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:10px;">';
+            html += '<div>';
+            html += '<div style="font-size:13px;font-weight:900;text-transform:uppercase;color:#fff;">' + escHtml(d.service_label) + '</div>';
+            html += '<div style="font-size:12px;color:#aaa;margin-top:4px;">' + escHtml(d.client_name) + ' — ' + escHtml(d.client_email) + (d.client_phone ? ' — ' + escHtml(d.client_phone) : '') + '</div>';
+            if (d.event_date) html += '<div style="font-size:11px;color:#777;margin-top:2px;">Date souhaitée : ' + escHtml(d.event_date) + (d.guest_count ? ' | ' + escHtml(d.guest_count) + ' personnes' : '') + '</div>';
+            if (d.event_details) html += '<div style="font-size:12px;color:#ccc;margin-top:6px;font-style:italic;">' + escHtml(d.event_details) + '</div>';
+            html += '</div>';
+            html += '<div style="text-align:right;flex-shrink:0;">';
+            html += '<span style="display:inline-block;padding:4px 10px;background:' + statusColor + ';color:#fff;font-weight:900;font-size:11px;text-transform:uppercase;">' + statusLabel + '</span>';
+            html += '<div style="font-size:10px;color:#666;margin-top:4px;">Reçu le ' + created + '</div>';
+            html += '</div>';
+            html += '</div>';
+            // Actions selon statut
+            if (d.status === 'pending') {
+                html += '<button onclick="openCwQuoteForm(' + "'" + d.id + "','" + escHtml(d.service_label) + ' — ' + escHtml(d.client_name) + "'" + ')" style="padding:8px 16px;border:3px solid var(--pink);background:transparent;color:var(--pink);font-weight:900;font-size:11px;text-transform:uppercase;cursor:pointer;">Établir le devis →</button>';
+            } else if (d.status === 'quoted' && d.quote) {
+                html += '<div style="background:#111;border:2px solid #2196F3;padding:10px;margin-top:8px;">';
+                html += '<div style="font-size:11px;font-weight:900;color:#2196F3;text-transform:uppercase;margin-bottom:4px;">Devis envoyé</div>';
+                html += '<div style="font-size:13px;font-weight:900;color:#fff;">' + d.quote.amount.toFixed(2) + ' €</div>';
+                html += '<div style="font-size:11px;color:#aaa;margin-top:2px;">' + escHtml(d.quote.description) + '</div>';
+                html += '</div>';
+            } else if (d.status === 'accepted' && d.quote && d.client_response) {
+                var choice = d.client_response.installments_choice || 1;
+                var firstPay = choice === 1 ? d.quote.amount : Math.ceil(d.quote.amount / choice);
+                html += '<div style="background:#0d1f12;border:2px solid #4CAF50;padding:10px;margin-top:8px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">';
+                html += '<div><div style="font-size:11px;font-weight:900;color:#4CAF50;text-transform:uppercase;">Accepté — ' + choice + 'x</div>';
+                html += '<div style="font-size:13px;font-weight:900;color:#fff;">Total : ' + d.quote.amount.toFixed(2) + ' € | 1er versement : ' + firstPay.toFixed(2) + ' €</div></div>';
+                html += '<button onclick="markCwDevisPaid(' + "'" + d.id + "'" + ')" style="padding:8px 14px;border:3px solid #4CAF50;background:#4CAF50;color:#fff;font-weight:900;font-size:11px;text-transform:uppercase;cursor:pointer;">Marquer payé</button>';
+                html += '</div>';
+            } else if (d.status === 'paid') {
+                html += '<div style="font-size:12px;color:#9C27B0;font-weight:900;text-transform:uppercase;margin-top:8px;">✓ Payé — ' + (d.paid_at ? new Date(d.paid_at).toLocaleDateString('fr-FR') : '') + '</div>';
+            } else if (d.status === 'declined') {
+                html += '<div style="font-size:12px;color:#f44336;font-weight:900;text-transform:uppercase;margin-top:8px;">✗ Décliné par le client</div>';
+            }
+            html += '</div>';
+        });
+        el.innerHTML = html;
+    }
+
+    window.openCwQuoteForm = function(devisId, label) {
+        document.getElementById('cwQuoteForId').value = devisId;
+        document.getElementById('cwQuoteForLabel').textContent = label;
+        document.getElementById('cwQAmount').value = '';
+        document.getElementById('cwQDesc').value = '';
+        document.getElementById('cwQDate').value = '';
+        document.getElementById('cwQ1x').checked = true;
+        document.getElementById('cwQ2x').checked = false;
+        document.getElementById('cwQ3x').checked = false;
+        document.getElementById('cwQError').style.display = 'none';
+        var form = document.getElementById('cwQuoteForm');
+        if (form) { form.style.display = 'block'; form.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
+    };
+
+    window.cancelCwQuoteForm = function() {
+        var form = document.getElementById('cwQuoteForm');
+        if (form) form.style.display = 'none';
+    };
+
+    window.submitCwQuote = function() {
+        var id = document.getElementById('cwQuoteForId').value;
+        var amount = parseFloat(document.getElementById('cwQAmount').value);
+        var desc = document.getElementById('cwQDesc').value.trim();
+        var validDate = document.getElementById('cwQDate').value;
+        var errEl = document.getElementById('cwQError');
+        if (!amount || amount <= 0 || !desc) {
+            errEl.textContent = 'Montant et description sont obligatoires.';
+            errEl.style.display = 'block';
+            return;
+        }
+        var opts = [];
+        if (document.getElementById('cwQ1x').checked) opts.push(1);
+        if (document.getElementById('cwQ2x').checked) opts.push(2);
+        if (document.getElementById('cwQ3x').checked) opts.push(3);
+        if (!opts.length) opts = [1];
+        fetch(API + '/api/coworking/devis/' + id + '/quote', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + PARTNER_TOKEN },
+            body: JSON.stringify({ amount: amount, description: desc, installments_options: opts, valid_until: validDate })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.ok) {
+                document.getElementById('cwQuoteForm').style.display = 'none';
+                loadDevisRequests();
+            } else {
+                errEl.textContent = data.error || 'Erreur.';
+                errEl.style.display = 'block';
+            }
+        })
+        .catch(function(e) { errEl.textContent = 'Erreur réseau.'; errEl.style.display = 'block'; console.error(e); });
+    };
+
+    window.markCwDevisPaid = function(devisId) {
+        if (!PARTNER_TOKEN) return;
+        fetch(API + '/api/coworking/devis/' + devisId + '/pay', {
+            method: 'PUT',
+            headers: { 'Authorization': 'Bearer ' + PARTNER_TOKEN }
+        })
+        .then(function(r) { return r.json(); })
+        .then(function() { loadDevisRequests(); })
+        .catch(function(e) { console.error('[DEVIS] pay:', e); });
     };
 
     // ---- MESSAGERIE ----
