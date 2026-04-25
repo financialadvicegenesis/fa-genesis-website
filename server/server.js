@@ -1022,11 +1022,39 @@ app.post('/api/orders/create', (req, res) => {
             var pendingReservations = [];
 
             // Items COWORKING
+            var hasCwDevis = false;
+            var cwDevisBalance = 0;
+            var cwDevisInstallments = 1;
             for (var ci = 0; ci < cwItems.length; ci++) {
                 var cwIt = cwItems[ci];
+                var cwData = cwIt.coworkingData;
+
+                // Cas spécial : devis coworking (payment depuis email)
+                if (cwData && cwData.is_devis) {
+                    var devisPrix = Number(cwData.prix) || Number(cwData.total_amount) || 0;
+                    var devisTotal = Number(cwData.total_amount) || devisPrix;
+                    var devisInstalls = parseInt(cwData.installments) || 1;
+                    hasCwDevis = true;
+                    cwDevisBalance = devisInstalls > 1 ? Math.max(0, devisTotal - devisPrix) : 0;
+                    cwDevisInstallments = devisInstalls;
+                    totalAmountCW += devisPrix;
+                    allOrderItems.push({
+                        product_id: 'cw-devis',
+                        product_name: cwData.label || 'Devis Coworking',
+                        product_type: 'coworking_devis',
+                        category: 'COWORKING',
+                        payment_model: 'devis',
+                        unit_price: devisPrix,
+                        total_amount: devisTotal,
+                        installments: devisInstalls,
+                        installments_count: devisInstalls,
+                        devis_id: cwData.devis_id || null
+                    });
+                    continue;
+                }
+
                 var cwProduct = getProductById(cwIt.id);
                 if (!cwProduct) continue;
-                var cwData = cwIt.coworkingData;
                 var cwPrix = 0;
                 if (cwProduct.payment_model === 'full') {
                     var nbDays = cwData.dates ? cwData.dates.length : (cwData.nb_days || 1);
@@ -1093,7 +1121,12 @@ app.post('/api/orders/create', (req, res) => {
             var hasCwEvent = pendingReservations.some(function(r) { return r.is_event; });
             var depositAmountFinal, balanceAmountFinal, installCountFinal, installPlanFinal;
 
-            if (hasOnlyCw && !hasCwEvent) {
+            if (hasCwDevis) {
+                depositAmountFinal = totalAmountFinal; // premier versement (prix)
+                balanceAmountFinal = cwDevisBalance;
+                installCountFinal = cwDevisInstallments;
+                installPlanFinal = null;
+            } else if (hasOnlyCw && !hasCwEvent) {
                 depositAmountFinal = totalAmountFinal;
                 balanceAmountFinal = 0;
                 installCountFinal = 1;
