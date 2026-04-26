@@ -2166,6 +2166,135 @@ app.get('/api/client/orders', (req, res) => {
 });
 
 /**
+ * GET /api/client/payments-list
+ * Liste complète des paiements d'un client (JWT)
+ */
+app.get('/api/client/payments-list', function(req, res) {
+    try {
+        var token = (req.headers.authorization || '').replace('Bearer ', '');
+        var users = loadUsers();
+        var user = users.find(function(u) { return u.sessionToken === token; });
+        if (!user) return res.status(401).json({ error: 'Non autorisé' });
+
+        var orders = loadOrders();
+        var clientOrders = orders.filter(function(o) {
+            return o.client_info && o.client_info.email &&
+                   o.client_info.email.toLowerCase() === user.email.toLowerCase() &&
+                   o.status !== 'cancelled';
+        });
+        clientOrders.sort(function(a, b) { return new Date(b.created_at || 0) - new Date(a.created_at || 0); });
+
+        var cwDevisAll = loadCwDevis();
+        var clientDevis = cwDevisAll.filter(function(d) {
+            return d.client_email && d.client_email.toLowerCase() === user.email.toLowerCase() &&
+                   (d.status === 'accepted' || d.status === 'paid');
+        });
+
+        var paymentList = [];
+
+        clientOrders.forEach(function(order) {
+            var orderName = order.product_name || 'Commande';
+            var cat = order.product_type === 'coworking_devis' ? 'Devis Coworking'
+                    : order.product_type === 'coworking' ? 'Coworking'
+                    : 'Accompagnement';
+
+            if (order.product_type === 'coworking_devis') {
+                var installs = parseInt(order.installments_count) || 1;
+                var devisTotal = Number(order.total_amount) || 0;
+                var installAmt = installs > 1 ? Math.ceil(devisTotal / installs) : devisTotal;
+                for (var i = 1; i <= installs; i++) {
+                    var isPaid = i === 1 && order.deposit_paid === true;
+                    var amt = i < installs ? installAmt : Math.max(0, devisTotal - installAmt * (installs - 1));
+                    paymentList.push({
+                        id: order.id + '-inst-' + i,
+                        order_id: order.id,
+                        label: orderName,
+                        category: cat,
+                        type_label: installs > 1 ? 'Versement ' + i + '/' + installs : 'Paiement',
+                        amount: amt,
+                        status: isPaid ? 'paid' : 'pending',
+                        paid_at: isPaid ? (order.deposit_paid_at || order.updated_at || null) : null,
+                        can_pay: false
+                    });
+                }
+            } else if (order.product_type === 'coworking') {
+                paymentList.push({
+                    id: order.id + '-full',
+                    order_id: order.id,
+                    label: orderName,
+                    category: 'Coworking',
+                    type_label: 'Paiement',
+                    amount: Number(order.total_amount) || 0,
+                    status: order.deposit_paid ? 'paid' : 'pending',
+                    paid_at: order.deposit_paid ? (order.deposit_paid_at || null) : null,
+                    can_pay: !order.deposit_paid
+                });
+            } else {
+                paymentList.push({
+                    id: order.id + '-deposit',
+                    order_id: order.id,
+                    label: orderName,
+                    category: cat,
+                    type_label: 'Acompte (30%)',
+                    amount: Number(order.deposit_amount) || 0,
+                    status: order.deposit_paid ? 'paid' : 'pending',
+                    paid_at: order.deposit_paid ? (order.deposit_paid_at || null) : null,
+                    can_pay: false
+                });
+                if (Number(order.balance_amount) > 0) {
+                    paymentList.push({
+                        id: order.id + '-balance',
+                        order_id: order.id,
+                        label: orderName,
+                        category: cat,
+                        type_label: 'Solde (70%)',
+                        amount: Number(order.balance_amount) || 0,
+                        status: order.balance_paid ? 'paid' : (order.deposit_paid ? 'due' : 'pending'),
+                        paid_at: order.balance_paid ? (order.balance_paid_at || null) : null,
+                        can_pay: order.deposit_paid === true && !order.balance_paid
+                    });
+                }
+            }
+        });
+
+        clientDevis.forEach(function(d) {
+            var hasOrder = clientOrders.some(function(o) {
+                return o.items && o.items.some(function(it) { return it.devis_id === d.id; });
+            });
+            if (hasOrder) return;
+            paymentList.push({
+                id: 'devis-' + d.id,
+                devis_id: d.id,
+                label: d.service_label,
+                category: 'Devis Coworking',
+                type_label: 'Devis accepté',
+                amount: Number((d.quote || {}).amount) || 0,
+                total_amount: Number((d.quote || {}).amount) || 0,
+                installments_options: (d.quote || {}).installments_options || [1],
+                status: d.status === 'paid' ? 'paid' : 'accepted_unpaid',
+                can_pay: d.status !== 'paid'
+            });
+        });
+
+        var totalPaid = 0, totalPending = 0;
+        paymentList.forEach(function(p) {
+            if (p.status === 'paid') totalPaid += p.amount;
+            else totalPending += p.amount;
+        });
+
+        paymentList.sort(function(a, b) {
+            var rank = { due: 0, accepted_unpaid: 1, pending: 2, paid: 3 };
+            return (rank[a.status] || 2) - (rank[b.status] || 2);
+        });
+
+        res.json({ payments: paymentList, summary: { total_paid: totalPaid, total_pending: totalPending } });
+    } catch(e) {
+        console.error('[PAYMENTS LIST]', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
  * GET /api/client/dashboard/:orderId
  * Recuperer les informations du dashboard pour une commande
  * Retourne les droits d'acces selon le statut
