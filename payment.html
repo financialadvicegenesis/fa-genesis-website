@@ -140,7 +140,7 @@
 
             <!-- Section Acompte -->
             <div id="depositSection" class="payment-card neo-shadow" style="display: none;">
-                <h2 class="text-3xl font-black italic uppercase mb-4">
+                <h2 class="text-3xl font-black italic uppercase mb-4" id="depositSectionTitle">
                     <i class="fas fa-hand-holding-usd text-[var(--genesis-yellow)] mr-3"></i>
                     ACOMPTE - 30%
                 </h2>
@@ -507,43 +507,58 @@
                 var introMsg = document.getElementById('depositIntroMessage');
                 var detEl = document.getElementById('depositDetails');
                 var actionEl = document.getElementById('depositAction');
+                var titleEl = document.getElementById('depositSectionTitle');
+
+                var isDevis = data.product_type === 'coworking_devis';
+                var installs = parseInt(data.installments_count) || 1;
+                var isFullPay = isDevis && (installs === 1 || !data.balance_amount);
+                var payLabel = isFullPay ? 'Paiement intégral' : ('Versement 1/' + installs);
+                var payBtnLabel = isFullPay ? 'Payer le devis' : 'Payer le versement';
+
+                if (isDevis && titleEl) {
+                    titleEl.innerHTML = '<i class="fas fa-file-invoice text-[var(--genesis-yellow)] mr-3"></i>PAIEMENT DEVIS';
+                }
 
                 if (status === 'deposit_paid' || status === 'fully_paid') {
-                    // Acompte d\u00E9j\u00E0 pay\u00E9 - afficher confirmation
-                    if (introMsg) introMsg.textContent = 'Votre acompte a bien \u00E9t\u00E9 r\u00E9gl\u00E9. Merci !';
+                    if (introMsg) introMsg.textContent = isDevis ? 'Votre paiement a bien été réglé. Merci !' : 'Votre acompte a bien été réglé. Merci !';
                     if (detEl) {
                         var html = '<div class="bg-green-100 p-6 border-4 border-green-600 mb-6">';
                         html += '<div class="flex justify-between items-center"><div>';
                         html += '<p class="text-2xl font-black uppercase text-green-800"><i class="fas fa-check-circle mr-2"></i>' + (data.product_name || 'Votre offre') + '</p>';
-                        html += '<p class="font-bold text-green-700">Acompte r\u00E9gl\u00E9 (30%)</p></div>';
-                        html += '<p class="text-4xl font-black text-green-800">' + (data.deposit_amount || '--') + '\u20AC</p></div></div>';
-                        if (status !== 'fully_paid') {
+                        html += '<p class="font-bold text-green-700">' + (isDevis ? payLabel + ' réglé' : 'Acompte réglé (30%)') + '</p></div>';
+                        html += '<p class="text-4xl font-black text-green-800">' + (data.deposit_amount || '--') + '€</p></div></div>';
+                        if (!isDevis && status !== 'fully_paid') {
                             html += '<p class="text-sm font-bold opacity-70"><i class="fas fa-info-circle mr-2"></i>';
-                            html += 'Il vous reste le solde de ' + (data.balance_amount || '--') + '\u20AC \u00E0 r\u00E9gler \u00E0 la fin de votre accompagnement pour acc\u00E9der \u00E0 vos livrables.</p>';
+                            html += 'Il vous reste le solde de ' + (data.balance_amount || '--') + '€ à régler à la fin de votre accompagnement pour accéder à vos livrables.</p>';
                         }
                         detEl.innerHTML = html;
                     }
                     if (actionEl) actionEl.innerHTML = '';
                 } else {
-                    // Acompte pas encore pay\u00E9
-                    if (introMsg) introMsg.textContent = 'Pour d\u00E9marrer votre accompagnement, un acompte de 30% est requis.';
+                    if (introMsg) introMsg.textContent = isDevis
+                        ? (isFullPay ? 'Devis accepté — paiement intégral à régler.' : 'Devis accepté — versement 1/' + installs + ' à régler.')
+                        : 'Pour démarrer votre accompagnement, un acompte de 30% est requis.';
                     if (detEl) {
                         var html2 = '<div class="bg-[var(--genesis-yellow)] p-6 border-4 border-black mb-6">';
                         html2 += '<div class="flex justify-between items-center"><div>';
                         html2 += '<p class="text-2xl font-black uppercase">' + (data.product_name || 'Votre offre') + '</p>';
-                        html2 += '<p class="font-bold opacity-70">Acompte requis (30%)</p></div>';
-                        html2 += '<p class="text-4xl font-black">' + (data.deposit_amount || '--') + '\u20AC</p></div></div>';
-                        html2 += '<p class="text-sm font-bold opacity-70"><i class="fas fa-info-circle mr-2"></i>';
-                        html2 += 'Le solde de ' + (data.balance_amount || '--') + '\u20AC sera \u00E0 r\u00E9gler \u00E0 la fin de votre accompagnement.</p>';
+                        html2 += '<p class="font-bold opacity-70">' + (isDevis ? payLabel : 'Acompte requis (30%)') + '</p></div>';
+                        html2 += '<p class="text-4xl font-black">' + (data.deposit_amount || '--') + '€</p></div></div>';
+                        if (!isDevis) {
+                            html2 += '<p class="text-sm font-bold opacity-70"><i class="fas fa-info-circle mr-2"></i>';
+                            html2 += 'Le solde de ' + (data.balance_amount > 0 ? data.balance_amount : '--') + '€ sera à régler à la fin de votre accompagnement.</p>';
+                        } else if (!isFullPay && data.balance_amount > 0) {
+                            html2 += '<p class="text-sm font-bold opacity-70"><i class="fas fa-info-circle mr-2"></i>';
+                            html2 += 'Le solde de ' + data.balance_amount + '€ sera à régler ultérieurement.</p>';
+                        }
                         detEl.innerHTML = html2;
                     }
                     if (actionEl) {
                         actionEl.innerHTML = '<button onclick="payDeposit()" class="neo-btn-yellow px-8 py-4 text-xl font-black uppercase mt-4">' +
-                            '<i class="fas fa-credit-card mr-2"></i>Payer l\'acompte</button>';
+                            '<i class="fas fa-credit-card mr-2"></i>' + (isDevis ? payBtnLabel : 'Payer l\'acompte') + '</button>';
                     }
                 }
             }
-
             function displayBalanceDetails(data) {
                 var introMsg = document.getElementById('balanceIntroMessage');
                 var detEl = document.getElementById('balanceDetails');
@@ -898,6 +913,8 @@
                         ok: true,
                         order_id: order.id,
                         product_name: order.product_name || '',
+                        product_type: order.product_type || '',
+                        installments_count: order.installments_count || 1,
                         total_amount: order.total_amount || 0,
                         deposit_amount: order.deposit_amount || 0,
                         balance_amount: order.balance_amount || 0,
