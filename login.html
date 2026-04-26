@@ -465,11 +465,11 @@
 
         // Verifier si deja connecte
         if (typeof isAuthenticated === 'function' && isAuthenticated()) {
-            // Si mode devis et deja connecte, accepter directement
             if (quoteTokenParam) {
                 handleQuoteAcceptAfterAuth(quoteTokenParam);
             } else if (cwDevisId) {
-                handleCwDevisAfterAuth(cwDevisId);
+                // Déjà connecté : aller directement aux paiements, le devis y apparaît
+                window.location.href = 'espace-client.html#paiements';
             } else {
                 window.location.href = 'dashboard.html';
             }

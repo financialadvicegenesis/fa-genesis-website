@@ -679,9 +679,12 @@
             // Initialiser les devis coworking
             initCwDevis();
 
-            // Navigation automatique par hash (ex: espace-client.html#devis depuis email)
-            if (window.location.hash === '#devis') {
+            // Navigation automatique par hash (ex: depuis email)
+            var hash = window.location.hash;
+            if (hash === '#devis') {
                 setTimeout(function() { showSection('devis'); }, 400);
+            } else if (hash === '#paiements') {
+                setTimeout(function() { showSection('paiements'); }, 400);
             }
         }
 
