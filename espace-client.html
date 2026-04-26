@@ -818,16 +818,16 @@
         }
 
         function payDevisFromList(devisId, totalAmount, label, installmentsOptions) {
-            var n = 1;
-            if (installmentsOptions && installmentsOptions.length > 1) {
-                var choice = prompt('Choisissez le nombre de versements : ' + installmentsOptions.join(', '));
-                n = parseInt(choice);
-                if (!installmentsOptions.includes(n)) n = installmentsOptions[0];
-            }
-            var firstPay = n === 1 ? totalAmount : Math.ceil(totalAmount / n);
+            var opts = installmentsOptions && installmentsOptions.length ? installmentsOptions : [1];
+            // On envoie au checkout avec toutes les options — le sélecteur s'y charge
             var panier = { items: [{ productId: 'cw-devis', coworkingData: {
-                label: label, prix: firstPay, is_devis: true, devis_id: devisId,
-                total_amount: totalAmount, installments: n, installments_options: installmentsOptions
+                label: label,
+                prix: Number(totalAmount),
+                is_devis: true,
+                devis_id: devisId,
+                total_amount: Number(totalAmount),
+                installments: opts[0],
+                installments_options: opts
             }}]};
             localStorage.setItem('fa_genesis_panier', JSON.stringify(panier));
             window.location.href = 'checkout.html?source=panier';

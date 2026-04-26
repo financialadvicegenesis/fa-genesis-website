@@ -549,10 +549,13 @@
             if (devisItem) {
                 var devisData = devisItem.coworkingData;
                 var devisOpts = devisData.installments_options || [1];
-                var defaultN = devisOpts[0] || 1;
-                var defaultPay = defaultN === 1 ? (devisData.total_amount || totalAmount) : Math.ceil((devisData.total_amount || totalAmount) / defaultN);
+                var devisTotal = Number(devisData.total_amount) || totalAmount;
+                // Utiliser l'option pré-sélectionnée si disponible
+                var defaultN = (devisData.installments && devisOpts.indexOf(devisData.installments) !== -1)
+                                ? devisData.installments : (devisOpts[0] || 1);
+                var defaultPay = defaultN === 1 ? devisTotal : Math.ceil(devisTotal / defaultN);
                 var installLabel = defaultN > 1 ? ('Versement 1/' + defaultN) : 'Paiement intégral';
-                setPaymentDisplay(devisData.total_amount || totalAmount, defaultPay, 0, installLabel, 'Aucun solde restant');
+                setPaymentDisplay(devisTotal, defaultPay, 0, installLabel, 'Aucun solde restant');
                 showInstallmentSchedule(defaultPay, defaultPay, 1);
                 if (subtitle) {
                     subtitle.textContent = defaultN > 1
@@ -560,8 +563,17 @@
                         : 'Devis COM VISA — Paiement intégral';
                 }
                 updatePaymentTermsText('full');
+                // Mettre à jour prix/installments dans panierItems avec les valeurs par défaut
+                for (var di = 0; di < panierItems.length; di++) {
+                    if (panierItems[di].coworkingData && panierItems[di].coworkingData.is_devis) {
+                        panierItems[di].coworkingData.prix = defaultPay;
+                        panierItems[di].coworkingData.installments = defaultN;
+                        panierItems[di].prixTotal = defaultPay;
+                        break;
+                    }
+                }
                 if (devisOpts.length > 1) {
-                    injectDevisInstallmentSelector(devisData);
+                    injectDevisInstallmentSelector(devisData, defaultN);
                 }
             } else if (allCoworkingFull && !cwEventHasItems) {
                 setPaymentDisplay(totalAmount, totalAmount, 0, 'Paiement intégral', 'Aucun solde restant');
@@ -625,20 +637,20 @@
         var cwInstallmentsChoice = 1;
         var cwDevisInstallmentsChoice = 1;
 
-        function injectDevisInstallmentSelector(devisData) {
+        function injectDevisInstallmentSelector(devisData, preSelectedN) {
             var opts = devisData.installments_options || [1];
             var total = Number(devisData.total_amount) || 0;
             window._devisInstOpts = opts;
-            cwDevisInstallmentsChoice = opts[0] || 1;
+            cwDevisInstallmentsChoice = preSelectedN || opts[0] || 1;
             var html = '<div id="devisInstallSelector" style="margin:16px 0;padding:16px;border:3px solid #000;background:#f9f9f9;">'
                 + '<div style="font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;color:#000;">Choisissez votre mode de paiement</div>'
                 + '<div style="display:flex;gap:10px;flex-wrap:wrap;">';
             for (var i = 0; i < opts.length; i++) {
                 var n = opts[i];
                 var fp = n === 1 ? total : Math.ceil(total / n);
-                var isFirst = (i === 0);
+                var isSelected = (n === cwDevisInstallmentsChoice);
                 html += '<button type="button" onclick="selectDevisInstallments(' + n + ',' + total + ')" id="dInstBtn' + n + '"'
-                    + ' style="flex:1;min-width:120px;padding:12px 8px;border:3px solid #000;background:' + (isFirst ? '#000' : '#fff') + ';color:' + (isFirst ? '#FFD700' : '#000') + ';font-weight:900;cursor:pointer;font-size:13px;text-align:center;">'
+                    + ' style="flex:1;min-width:120px;padding:12px 8px;border:3px solid #000;background:' + (isSelected ? '#000' : '#fff') + ';color:' + (isSelected ? '#FFD700' : '#000') + ';font-weight:900;cursor:pointer;font-size:13px;text-align:center;">'
                     + (n === 1 ? 'Payer en 1 fois<br><strong>' + fp.toFixed(2) + ' €</strong>' : 'Payer en ' + n + ' fois<br><strong>' + fp.toFixed(2) + ' €</strong> × ' + n)
                     + '</button>';
             }
