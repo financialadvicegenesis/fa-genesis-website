@@ -964,7 +964,7 @@
         // UTILITAIRES
         // ============================================================
         function formatPrice(amount) {
-            if (amount === 0) return 'Gratuit';
+            if (amount === 0) return '0 €';
             try {
                 return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(amount);
             } catch (e) {
