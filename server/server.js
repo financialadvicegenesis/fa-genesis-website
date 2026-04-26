@@ -2202,19 +2202,25 @@ app.get('/api/client/payments-list', function(req, res) {
                 var installs = parseInt(order.installments_count) || 1;
                 var devisTotal = Number(order.total_amount) || 0;
                 var installAmt = installs > 1 ? Math.ceil(devisTotal / installs) : devisTotal;
+                var devisItemRef = (order.items || []).find(function(it) { return it.devis_id; });
+                var orderDevisId = devisItemRef ? devisItemRef.devis_id : null;
                 for (var i = 1; i <= installs; i++) {
-                    var isPaid = i === 1 && order.deposit_paid === true;
+                    var isPaid = i === 1 ? order.deposit_paid === true : (i === 2 ? order.balance_paid === true : false);
+                    var canPayThis = (i === 1 && !order.deposit_paid) || (i === 2 && order.deposit_paid === true && !order.balance_paid);
                     var amt = i < installs ? installAmt : Math.max(0, devisTotal - installAmt * (installs - 1));
                     paymentList.push({
                         id: order.id + '-inst-' + i,
                         order_id: order.id,
+                        devis_id: i === 1 ? orderDevisId : null,
                         label: orderName,
                         category: cat,
-                        type_label: installs > 1 ? 'Versement ' + i + '/' + installs : 'Paiement',
+                        type_label: installs > 1 ? 'Versement ' + i + '/' + installs : 'Paiement intégral',
                         amount: amt,
-                        status: isPaid ? 'paid' : 'pending',
+                        total_amount: devisTotal,
+                        installments_options: [1],
+                        status: isPaid ? 'paid' : (canPayThis ? 'accepted_unpaid' : 'pending'),
                         paid_at: isPaid ? (order.deposit_paid_at || order.updated_at || null) : null,
-                        can_pay: false
+                        can_pay: canPayThis
                     });
                 }
             } else if (order.product_type === 'coworking') {
@@ -9038,7 +9044,7 @@ app.get('/api/coworking/devis/me', function(req, res) {
         var users = loadUsers();
         var cu = users.find(function(u) { return u.sessionToken === token; });
         if (!cu) return res.status(401).json({ error: 'Non autorisé' });
-        var all = loadCwDevis().filter(function(d) { return d.client_email === cu.email; });
+        var all = loadCwDevis().filter(function(d) { return d.client_email && d.client_email.toLowerCase() === cu.email.toLowerCase(); });
         all.sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); });
         res.json(all);
     } catch(e) { console.error('[DEVIS] GET me:', e); res.status(500).json({ error: 'Erreur serveur' }); }

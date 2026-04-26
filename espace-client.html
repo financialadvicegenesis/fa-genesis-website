@@ -598,7 +598,7 @@
                 sessionStorage.setItem('currentOrderId', orderId);
 
                 // Afficher le dashboard
-                displayDashboard();
+                await displayDashboard();
 
             } catch (error) {
                 console.error('[DASHBOARD] Erreur:', error);
@@ -615,7 +615,7 @@
             document.getElementById('noAccessMessage').textContent = message;
         }
 
-        function displayDashboard() {
+        async function displayDashboard() {
             document.getElementById('loadingState').classList.add('hidden');
             document.getElementById('dashboardContent').classList.remove('hidden');
 
@@ -679,8 +679,8 @@
             // Initialiser la messagerie coworking
             initCwMessagerie();
 
-            // Initialiser les devis coworking
-            initCwDevis();
+            // Initialiser les devis coworking (await pour que cwClientDevis soit prêt)
+            await initCwDevis();
 
             // Charger les devis en attente sur le dashboard
             loadPendingDevisForDashboard();
@@ -823,6 +823,37 @@
             container.innerHTML = html;
         }
 
+        function showDevisPaymentBannerFromCwData() {
+            var banner = document.getElementById('pendingDevisBanner');
+            if (!banner) return;
+            var accepted = cwClientDevis.filter(function(d) { return d.status === 'accepted' && d.quote; });
+            if (accepted.length === 0) return;
+            var html = '<div style="border:4px solid #b81a6e;background:#fff;padding:20px;box-shadow:6px 6px 0 #b81a6e;">';
+            html += '<div style="font-size:11px;font-weight:900;letter-spacing:2px;text-transform:uppercase;color:#b81a6e;margin-bottom:10px;"><i class="fas fa-exclamation-circle mr-2"></i>Devis accepté — Paiement en attente</div>';
+            accepted.forEach(function(d) {
+                var opts = d.quote.installments_options || [1];
+                html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:2px solid #f0f0f0;">';
+                html += '<div>';
+                html += '<div style="font-weight:900;font-size:14px;color:#000;">' + escPmt(d.service_label) + '</div>';
+                html += '<div style="font-size:11px;font-weight:700;color:#b81a6e;text-transform:uppercase;letter-spacing:1px;">Devis Coworking</div>';
+                if (opts.length > 1) {
+                    var optLabels = opts.map(function(n) {
+                        var fp = n === 1 ? d.quote.amount : Math.ceil(d.quote.amount / n);
+                        return n === 1 ? '1x ' + formatPrice(fp) : n + 'x ' + formatPrice(fp);
+                    });
+                    html += '<div style="font-size:11px;color:#555;font-weight:700;margin-top:2px;">Options : ' + optLabels.join(' — ') + '</div>';
+                }
+                html += '</div>';
+                html += '<div style="text-align:right;margin-left:16px;">';
+                html += '<div style="font-size:18px;font-weight:900;color:#000;margin-bottom:6px;">' + formatPrice(d.quote.amount) + '</div>';
+                html += '<button onclick="payDevisFromList(\'' + d.id + '\',' + d.quote.amount + ',\'' + escPmt(d.service_label) + '\',[' + opts.join(',') + '])" style="background:#000;color:#FFD700;padding:10px 18px;font-weight:900;font-size:12px;text-transform:uppercase;border:none;cursor:pointer;white-space:nowrap;">PAYER →</button>';
+                html += '</div></div>';
+            });
+            html += '</div>';
+            banner.innerHTML = html;
+            banner.style.display = 'block';
+        }
+
         async function loadPendingDevisForDashboard() {
             var banner = document.getElementById('pendingDevisBanner');
             var token = localStorage.getItem('fa_genesis_token');
@@ -830,10 +861,10 @@
             try {
                 var apiUrl = window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com';
                 var r = await fetch(apiUrl + '/api/client/payments-list', { headers: { 'Authorization': 'Bearer ' + token } });
-                if (!r.ok) return;
+                if (!r.ok) { console.error('[PENDING DEVIS] API error:', r.status); return; }
                 var data = await r.json();
                 var pending = (data.payments || []).filter(function(p) { return p.can_pay; });
-                if (pending.length === 0) { banner.style.display = 'none'; return; }
+                if (pending.length === 0) { return; } // Ne pas masquer si déjà affiché par showDevisPaymentBannerFromCwData
 
                 var html = '<div style="border:4px solid #b81a6e;background:#fff;padding:20px;box-shadow:6px 6px 0 #b81a6e;">';
                 html += '<div style="font-size:11px;font-weight:900;letter-spacing:2px;text-transform:uppercase;color:#b81a6e;margin-bottom:10px;"><i class="fas fa-exclamation-circle mr-2"></i>Paiement(s) en attente</div>';
@@ -1109,8 +1140,10 @@
                 const r = await fetch(`${API_BASE_URL}/api/coworking/devis/me`, {
                     headers: { 'Authorization': 'Bearer ' + token }
                 });
-                if (!r.ok) return;
+                if (!r.ok) { console.error('[DEVIS] me:', r.status); return; }
                 cwClientDevis = await r.json();
+                // Afficher la bannière pour les devis acceptés non payés
+                showDevisPaymentBannerFromCwData();
                 if (cwClientDevis.length > 0) {
                     const navDevis = document.getElementById('navDevis');
                     if (navDevis) navDevis.style.display = 'flex';
