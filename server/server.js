@@ -8794,7 +8794,29 @@ app.get('/api/reservations/me', function(req, res) {
         var user = authenticateClient(req, res);
         if (!user) return;
         var reservations = loadReservations();
-        var myRes = reservations.filter(function(r) { return r.client_email === user.email; });
+        var myRes = reservations.filter(function(r) { return r.client_email && r.client_email.toLowerCase() === user.email.toLowerCase(); });
+        // Inclure les commandes coworking comme conversations virtuelles
+        var orders = loadOrders();
+        orders.forEach(function(o) {
+            if ((o.product_type === 'coworking' || o.product_type === 'coworking_devis') &&
+                o.client_info && o.client_info.email && o.client_info.email.toLowerCase() === user.email.toLowerCase()) {
+                var alreadyLinked = myRes.some(function(r) { return r.order_id === o.id; });
+                if (!alreadyLinked) {
+                    myRes.push({
+                        id: o.id,
+                        order_id: o.id,
+                        client_email: o.client_info.email,
+                        client_name: (o.client_info.first_name || '') + ' ' + (o.client_info.last_name || ''),
+                        product_id: o.product_id || 'coworking',
+                        product_name: o.product_name || 'Coworking',
+                        status: o.status || 'active',
+                        created_at: o.created_at,
+                        is_order: true
+                    });
+                }
+            }
+        });
+        myRes.sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); });
         res.json(myRes);
     } catch (e) {
         console.error('[RESERVATIONS] Erreur /me:', e);
@@ -8819,6 +8841,25 @@ app.get('/api/reservations/all', function(req, res) {
             if (!user || user.role !== 'admin') return;
         }
         var reservations = loadReservations();
+        // Inclure les commandes coworking comme réservations virtuelles
+        var orders = loadOrders();
+        orders.forEach(function(o) {
+            if ((o.product_type === 'coworking' || o.product_type === 'coworking_devis') &&
+                o.client_info && o.client_info.email) {
+                var alreadyLinked = reservations.some(function(r) { return r.order_id === o.id; });
+                if (!alreadyLinked) {
+                    reservations.push({
+                        id: o.id, order_id: o.id,
+                        client_email: o.client_info.email,
+                        client_name: (o.client_info.first_name || '') + ' ' + (o.client_info.last_name || ''),
+                        product_id: o.product_id || 'coworking',
+                        product_name: o.product_name || 'Coworking',
+                        status: o.status || 'active',
+                        created_at: o.created_at, is_order: true
+                    });
+                }
+            }
+        });
         res.json(reservations);
     } catch (e) {
         console.error('[RESERVATIONS] Erreur /all:', e);
@@ -8892,8 +8933,16 @@ app.get('/api/coworking/messages', function(req, res) {
             var users = loadUsers();
             var cu = users.find(function(u) { return u.sessionToken === token; });
             if (!cu) return res.status(401).json({ error: 'Non autorise' });
-            var myRes = loadReservations().find(function(r) { return r.id === reservationId && r.client_email === cu.email; });
-            if (!myRes) return res.status(403).json({ error: 'Reservation introuvable' });
+            var myRes = loadReservations().find(function(r) { return r.id === reservationId && r.client_email && r.client_email.toLowerCase() === cu.email.toLowerCase(); });
+            if (!myRes) {
+                // Vérifier si c'est un order coworking (conversation virtuelle)
+                var cwOrder = loadOrders().find(function(o) {
+                    return o.id === reservationId &&
+                        (o.product_type === 'coworking' || o.product_type === 'coworking_devis') &&
+                        o.client_info && o.client_info.email && o.client_info.email.toLowerCase() === cu.email.toLowerCase();
+                });
+                if (!cwOrder) return res.status(403).json({ error: 'Reservation introuvable' });
+            }
         }
         var all = loadCwMessages();
         var msgs = all.filter(function(m) { return m.reservation_id === reservationId; });
@@ -8924,8 +8973,16 @@ app.post('/api/coworking/messages', function(req, res) {
             var users = loadUsers();
             var cu = users.find(function(u) { return u.sessionToken === token; });
             if (!cu) return res.status(401).json({ error: 'Non autorise' });
-            var reservation = loadReservations().find(function(r) { return r.id === reservationId && r.client_email === cu.email; });
-            if (!reservation) return res.status(403).json({ error: 'Reservation introuvable' });
+            var reservation = loadReservations().find(function(r) { return r.id === reservationId && r.client_email && r.client_email.toLowerCase() === cu.email.toLowerCase(); });
+            if (!reservation) {
+                // Accepter aussi les orders coworking comme conversations
+                var cwOrder = loadOrders().find(function(o) {
+                    return o.id === reservationId &&
+                        (o.product_type === 'coworking' || o.product_type === 'coworking_devis') &&
+                        o.client_info && o.client_info.email && o.client_info.email.toLowerCase() === cu.email.toLowerCase();
+                });
+                if (!cwOrder) return res.status(403).json({ error: 'Reservation introuvable' });
+            }
             senderName = ((cu.firstName || cu.first_name || '') + ' ' + (cu.lastName || cu.last_name || '')).trim() || cu.email;
             senderType = 'client';
         }
@@ -8964,7 +9021,14 @@ app.get('/api/coworking/messages/unread', function(req, res) {
         var users = loadUsers();
         var cu = users.find(function(u) { return u.sessionToken === token; });
         if (!cu) return res.status(401).json({ error: 'Non autorise' });
-        var myIds = loadReservations().filter(function(r) { return r.client_email === cu.email; }).map(function(r) { return r.id; });
+        var myIds = loadReservations().filter(function(r) { return r.client_email && r.client_email.toLowerCase() === cu.email.toLowerCase(); }).map(function(r) { return r.id; });
+        // Inclure aussi les orders coworking
+        loadOrders().forEach(function(o) {
+            if ((o.product_type === 'coworking' || o.product_type === 'coworking_devis') &&
+                o.client_info && o.client_info.email && o.client_info.email.toLowerCase() === cu.email.toLowerCase()) {
+                if (myIds.indexOf(o.id) === -1) myIds.push(o.id);
+            }
+        });
         var count = all.filter(function(m) { return myIds.indexOf(m.reservation_id) !== -1 && m.sender_type === 'partner' && !m.read_by_client; }).length;
         res.json({ unread: count });
     } catch(e) { console.error('[MSG] UNREAD:', e); res.status(500).json({ error: 'Erreur serveur' }); }
