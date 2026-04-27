@@ -9169,6 +9169,21 @@ app.put('/api/coworking/devis/:id/pay', function(req, res) {
     } catch(e) { console.error('[DEVIS] PUT pay:', e); res.status(500).json({ error: 'Erreur serveur' }); }
 });
 
+// DELETE /api/coworking/devis/:id — partenaire supprime un devis
+app.delete('/api/coworking/devis/:id', function(req, res) {
+    try {
+        var token = (req.headers.authorization || '').replace('Bearer ', '');
+        var partnerToken = process.env.PARTNER_TOKEN || 'fa-genesis-partner-2024';
+        if (token !== partnerToken) return res.status(403).json({ error: 'Non autorisé' });
+        var all = loadCwDevis();
+        var idx = all.findIndex(function(d) { return d.id === req.params.id; });
+        if (idx === -1) return res.status(404).json({ error: 'Devis non trouvé' });
+        all.splice(idx, 1);
+        saveCwDevis(all);
+        res.json({ ok: true });
+    } catch(e) { console.error('[DEVIS] DELETE:', e); res.status(500).json({ error: 'Erreur serveur' }); }
+});
+
 // ============================================================
 // DEMARRAGE DU SERVEUR
 // ============================================================

@@ -739,6 +739,9 @@
             } else if (d.status === 'declined') {
                 html += '<div style="font-size:12px;color:#f44336;font-weight:900;text-transform:uppercase;margin-top:8px;">✗ Décliné par le client</div>';
             }
+            html += '<div style="margin-top:10px;text-align:right;">';
+            html += '<button onclick="deleteCwDevis(\'' + d.id + '\')" style="padding:6px 14px;border:2px solid #f44336;background:transparent;color:#f44336;font-weight:900;font-size:11px;text-transform:uppercase;cursor:pointer;letter-spacing:1px;"><i class="fas fa-trash mr-1"></i>Supprimer</button>';
+            html += '</div>';
             html += '</div>';
         });
         el.innerHTML = html;
@@ -806,6 +809,21 @@
         .then(function(r) { return r.json(); })
         .then(function() { loadDevisRequests(); })
         .catch(function(e) { console.error('[DEVIS] pay:', e); });
+    };
+
+    window.deleteCwDevis = function(devisId) {
+        if (!confirm('Supprimer ce devis ? Cette action est irréversible.')) return;
+        if (!PARTNER_TOKEN) return;
+        fetch(API + '/api/coworking/devis/' + devisId, {
+            method: 'DELETE',
+            headers: { 'Authorization': 'Bearer ' + PARTNER_TOKEN }
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.ok) { loadDevisRequests(); }
+            else { alert('Erreur : ' + (data.error || 'Impossible de supprimer le devis.')); }
+        })
+        .catch(function(e) { console.error('[DEVIS] delete:', e); alert('Erreur réseau.'); });
     };
 
     // ---- MESSAGERIE ----
