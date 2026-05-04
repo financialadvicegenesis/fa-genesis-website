@@ -9054,6 +9054,25 @@ var DEVIS_SERVICE_LABELS = {
     'prestation-dj': 'Prestation DJ'
 };
 
+// POST /api/coworking/auth/login — connexion partenaire coworking (email + mot de passe)
+app.post('/api/coworking/auth/login', function(req, res) {
+    try {
+        var email = (req.body.email || '').trim().toLowerCase();
+        var password = (req.body.password || '').trim();
+        var validEmail = (process.env.CW_PARTNER_EMAIL || 'partenaire@comvisa.com').toLowerCase();
+        var validPassword = process.env.CW_PARTNER_PASSWORD || 'ComVisa@2024';
+        if (!email || !password) return res.status(400).json({ error: 'Identifiant et mot de passe requis' });
+        if (email !== validEmail || password !== validPassword) {
+            return res.status(401).json({ error: 'Identifiants incorrects' });
+        }
+        var token = process.env.PARTNER_TOKEN || 'fa-genesis-partner-2024';
+        res.json({ success: true, token: token });
+    } catch(e) {
+        console.error('[CW AUTH] Erreur login:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
 // POST /api/coworking/devis — client soumet une demande (sans auth)
 app.post('/api/coworking/devis', function(req, res) {
     try {

@@ -118,12 +118,14 @@
         <p style="font-size:11px;font-weight:900;letter-spacing:3px;text-transform:uppercase;color:var(--pink);margin-bottom:8px;">COM VISA</p>
         <h2>Accès Partenaire<br>Réservations Coworking</h2>
         <p style="font-size:13px;color:#555;font-weight:700;margin-bottom:24px;">Connectez-vous pour gérer les réservations de votre espace.</p>
-        <label style="font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:1px;">Mot de passe partenaire</label>
+        <label style="font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:1px;">Identifiant (email)</label>
+        <input type="email" id="partnerEmail" class="form-input" placeholder="votre@email.com" style="margin-bottom:16px;" onkeydown="if(event.key==='Enter')partnerLogin()">
+        <label style="font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:1px;">Mot de passe</label>
         <input type="password" id="partnerPwd" class="form-input" placeholder="••••••••" onkeydown="if(event.key==='Enter')partnerLogin()">
         <button class="btn-primary" onclick="partnerLogin()">
             <i class="fas fa-unlock mr-2"></i>Accéder au tableau de bord
         </button>
-        <p class="login-error" id="loginError">Mot de passe incorrect.</p>
+        <p class="login-error" id="loginError">Identifiants incorrects.</p>
     </div>
 </div>
 
@@ -332,22 +334,32 @@
     }
 
     window.partnerLogin = function() {
-        var pwd = document.getElementById('partnerPwd');
+        var emailEl = document.getElementById('partnerEmail');
+        var pwdEl = document.getElementById('partnerPwd');
         var errEl = document.getElementById('loginError');
-        if (!pwd || !pwd.value.trim()) return;
+        if (!emailEl || !pwdEl) return;
+        var email = emailEl.value.trim();
+        var password = pwdEl.value.trim();
+        if (!email || !password) return;
+        if (errEl) errEl.style.display = 'none';
 
-        // Le mot de passe est envoyé au serveur pour validation via un appel test
-        fetch(API + '/api/reservations/all', {
-            headers: { 'Authorization': 'Bearer ' + pwd.value.trim() }
+        fetch(API + '/api/coworking/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: email, password: password })
         })
-        .then(function(r) {
-            if (r.status === 403) throw new Error('forbidden');
-            return r.json();
-        })
+        .then(function(r) { return r.json(); })
         .then(function(data) {
-            PARTNER_TOKEN = pwd.value.trim();
+            if (!data.success || !data.token) throw new Error('auth');
+            PARTNER_TOKEN = data.token;
             try { sessionStorage.setItem(STORAGE_KEY, PARTNER_TOKEN); } catch(e) {}
-            if (errEl) errEl.style.display = 'none';
+            // Charger les données
+            return fetch(API + '/api/reservations/all', {
+                headers: { 'Authorization': 'Bearer ' + PARTNER_TOKEN }
+            });
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
             allReservations = Array.isArray(data) ? data : [];
             showDashboard();
             renderReservations();
