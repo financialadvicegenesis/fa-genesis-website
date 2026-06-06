@@ -1916,6 +1916,75 @@ async function sendCwDevisToClient(devis) {
     }
 }
 
+/**
+ * Notifier le partenaire coworking d'une nouvelle réservation (depuis email)
+ * @param {Object} reservation - La réservation créée
+ * @param {Object} order - La commande associée
+ */
+async function sendCwReservationToPartner(reservation, order) {
+    var transport = initializeTransporter();
+    if (!transport) {
+        console.log('[EMAIL] Transport non configure - CW reservation non envoyee');
+        return { success: false, reason: 'no_transporter' };
+    }
+
+    var partnerEmail = process.env.CW_PARTNER_EMAIL || 'comvisaformation@gmail.com';
+    var apiUrl = process.env.API_URL || 'https://fa-genesis-website.onrender.com';
+    var confirmUrl = apiUrl + '/api/reservations/' + reservation.id + '/email-respond?action=confirmed&token=' + reservation.email_token;
+    var refuseUrl  = apiUrl + '/api/reservations/' + reservation.id + '/email-respond?action=refused&token=' + reservation.email_token;
+
+    var datesText = '';
+    if (reservation.dates && reservation.dates.length > 0) {
+        var datesFormatted = reservation.dates.map(function(d) {
+            return new Date(d).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+        }).join(', ');
+        datesText = '<p style="color:#000;font-weight:700;margin:0 0 8px 0;"><strong>Date(s) :</strong> ' + datesFormatted + '</p>';
+    }
+    if (reservation.time_start && reservation.time_end) {
+        datesText += '<p style="color:#000;font-weight:700;margin:0 0 8px 0;"><strong>Créneau :</strong> ' + reservation.time_start + ' – ' + reservation.time_end + '</p>';
+    }
+
+    var content = '<h2 style="color:#000;margin:0 0 6px 0;font-size:22px;font-weight:900;text-transform:uppercase;">Nouvelle réservation</h2>'
+        + '<p style="color:#b81a6e;font-size:10px;font-weight:900;letter-spacing:3px;text-transform:uppercase;margin:0 0 20px 0;">COM VISA — Espace Coworking</p>'
+        + '<p style="color:#000;font-weight:700;">Un client vient de réserver votre espace. Confirmez ou refusez ci-dessous.</p>'
+        + '<table role="presentation" style="width:100%;border-collapse:collapse;border:3px solid #000;margin:20px 0;">'
+        + '<tr style="background:#000;"><td colspan="2" style="padding:12px 16px;color:#FFD700;font-weight:900;font-size:13px;text-transform:uppercase;">Détails de la réservation</td></tr>'
+        + '<tr><td style="padding:12px 16px;color:#000;font-weight:700;border-bottom:1px solid #eee;width:40%;">Prestation</td><td style="padding:12px 16px;color:#000;font-weight:900;border-bottom:1px solid #eee;">' + (reservation.product_name || '') + '</td></tr>'
+        + '<tr><td style="padding:12px 16px;color:#000;font-weight:700;border-bottom:1px solid #eee;">Client</td><td style="padding:12px 16px;color:#000;font-weight:700;border-bottom:1px solid #eee;">' + (reservation.client_name || '') + '</td></tr>'
+        + '<tr><td style="padding:12px 16px;color:#000;font-weight:700;border-bottom:1px solid #eee;">Email</td><td style="padding:12px 16px;border-bottom:1px solid #eee;"><a href="mailto:' + (reservation.client_email || '') + '" style="color:#b81a6e;font-weight:700;">' + (reservation.client_email || '') + '</a></td></tr>'
+        + (reservation.client_phone ? '<tr><td style="padding:12px 16px;color:#000;font-weight:700;border-bottom:1px solid #eee;">Téléphone</td><td style="padding:12px 16px;color:#000;font-weight:700;border-bottom:1px solid #eee;">' + reservation.client_phone + '</td></tr>' : '')
+        + (datesText ? '<tr><td colspan="2" style="padding:12px 16px;color:#000;border-bottom:1px solid #eee;">' + datesText + '</td></tr>' : '')
+        + '<tr><td style="padding:12px 16px;color:#000;font-weight:700;">Montant</td><td style="padding:12px 16px;color:#000;font-weight:900;font-size:20px;">' + Number(reservation.prix || 0).toFixed(2) + ' €</td></tr>'
+        + '</table>'
+        + '<table role="presentation" style="width:100%;border-collapse:collapse;margin:24px 0;">'
+        + '<tr>'
+        + '<td style="padding-right:8px;width:50%;">'
+        + '<a href="' + confirmUrl + '" style="display:block;background:#000;color:#FFD700;padding:16px 0;text-decoration:none;font-weight:900;font-size:14px;text-transform:uppercase;letter-spacing:1px;text-align:center;">✔ CONFIRMER</a>'
+        + '</td>'
+        + '<td style="padding-left:8px;width:50%;">'
+        + '<a href="' + refuseUrl + '" style="display:block;background:#fff;color:#000;padding:14px 0;text-decoration:none;font-weight:900;font-size:14px;text-transform:uppercase;letter-spacing:1px;text-align:center;border:3px solid #000;">✗ REFUSER</a>'
+        + '</td>'
+        + '</tr>'
+        + '</table>'
+        + '<p style="color:#666;font-size:12px;font-weight:700;margin:0;">Vous pouvez également gérer cette réservation depuis votre <a href="https://fagenesis.com/coworking-partner.html" style="color:#b81a6e;">espace partenaire</a>.</p>';
+
+    var html = getEmailTemplate(content, 'Nouvelle Réservation — COM VISA');
+
+    try {
+        await transport.sendMail({
+            from: '"FA GENESIS" <' + (process.env.EMAIL_FROM_ADDRESS || process.env.SMTP_USER) + '>',
+            to: partnerEmail,
+            subject: '[COM VISA] Nouvelle réservation — ' + (reservation.product_name || 'Coworking'),
+            html: html
+        });
+        console.log('[EMAIL] CW Reservation envoyee au partenaire: ' + partnerEmail);
+        return { success: true };
+    } catch(e) {
+        console.error('[EMAIL] Erreur CW reservation:', e.message);
+        return { success: false, error: e.message };
+    }
+}
+
 module.exports = {
     initializeTransporter,
     sendContactConfirmation,
@@ -1941,7 +2010,8 @@ module.exports = {
     sendQuoteCancelledNotification,
     sendAccompanimentEndNotification,
     sendUrgentFeedbackNotification,
-    sendCwDevisToClient
+    sendCwDevisToClient,
+    sendCwReservationToPartner
 };
 
 /**

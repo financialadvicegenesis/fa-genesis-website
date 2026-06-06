@@ -1095,6 +1095,7 @@ app.post('/api/orders/create', (req, res) => {
                     status: 'pending',
                     partner_note: '',
                     order_id: null,
+                    email_token: uuidv4(),
                     created_at: new Date().toISOString()
                 });
             }
@@ -1237,6 +1238,15 @@ app.post('/api/orders/create', (req, res) => {
         const orders = loadOrders();
         orders.push(order);
         saveOrders(orders);
+
+        // Envoyer email de notification au partenaire coworking pour chaque réservation
+        if (pendingReservations && pendingReservations.length > 0) {
+            pendingReservations.forEach(function(resv) {
+                emailService.sendCwReservationToPartner(resv, order).catch(function(e) {
+                    console.error('[EMAIL] Erreur envoi reservation partenaire:', e.message);
+                });
+            });
+        }
 
         res.json({
             success: true,
@@ -8903,6 +8913,56 @@ app.put('/api/reservations/:id/status', function(req, res) {
     } catch (e) {
         console.error('[RESERVATIONS] Erreur PUT status:', e);
         res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * GET /api/reservations/:id/email-respond
+ * Partenaire confirme ou refuse depuis un lien email (tokenisé)
+ * ?action=confirmed|refused&token=XXX
+ */
+app.get('/api/reservations/:id/email-respond', function(req, res) {
+    try {
+        var resId = req.params.id;
+        var action = req.query.action;
+        var token = req.query.token;
+
+        if (!['confirmed', 'refused'].includes(action)) {
+            return res.status(400).send('<html><body style="font-family:Arial;text-align:center;padding:40px;"><h2>Action invalide.</h2></body></html>');
+        }
+
+        var reservations = loadReservations();
+        var idx = reservations.findIndex(function(r) { return r.id === resId; });
+        if (idx === -1) {
+            return res.status(404).send('<html><body style="font-family:Arial;text-align:center;padding:40px;"><h2>Réservation introuvable.</h2></body></html>');
+        }
+
+        if (reservations[idx].email_token !== token) {
+            return res.status(403).send('<html><body style="font-family:Arial;text-align:center;padding:40px;"><h2>Lien invalide ou expiré.</h2></body></html>');
+        }
+
+        reservations[idx].status = action;
+        reservations[idx].updated_at = new Date().toISOString();
+        saveReservations(reservations);
+
+        var r = reservations[idx];
+        var label = action === 'confirmed' ? 'CONFIRMÉE' : 'REFUSÉE';
+        var color = action === 'confirmed' ? '#4CAF50' : '#f44336';
+        var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Réservation ' + label + '</title></head>'
+            + '<body style="font-family:Arial,sans-serif;background:#f5f5f5;margin:0;padding:40px;">'
+            + '<div style="max-width:500px;margin:0 auto;background:#fff;border:4px solid #000;padding:40px;text-align:center;">'
+            + '<h1 style="color:#FFD700;background:#000;margin:-40px -40px 30px -40px;padding:20px;font-size:24px;letter-spacing:2px;">FA GENESIS</h1>'
+            + '<h2 style="color:' + color + ';font-size:22px;text-transform:uppercase;">Réservation ' + label + '</h2>'
+            + '<p style="font-weight:700;color:#000;">' + (r.product_name || '') + '</p>'
+            + '<p style="color:#333;font-weight:700;">Client : ' + (r.client_name || '') + '</p>'
+            + '<p style="margin-top:30px;"><a href="https://fagenesis.com/coworking-partner.html" style="background:#000;color:#FFD700;padding:14px 28px;text-decoration:none;font-weight:900;text-transform:uppercase;letter-spacing:1px;">Gérer l\'espace coworking</a></p>'
+            + '</div></body></html>';
+
+        console.log('[RESERVATIONS] Email-respond: ' + resId + ' -> ' + action);
+        res.send(html);
+    } catch (e) {
+        console.error('[RESERVATIONS] Erreur email-respond:', e);
+        res.status(500).send('<html><body style="font-family:Arial;text-align:center;padding:40px;"><h2>Erreur serveur.</h2></body></html>');
     }
 });
 
