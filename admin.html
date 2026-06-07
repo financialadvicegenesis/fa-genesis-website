@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="fr" class="scroll-smooth">
 <head>
     <meta charset="UTF-8">
@@ -173,15 +173,55 @@
         }
 
         /* ===== MOBILE RESPONSIVE ===== */
+        #adminMobileNavBar {
+            display: none;
+        }
         @media (max-width: 767px) {
-            .pt-28 { padding-top: 5rem !important; }
+            /* Barre de navigation horizontale fixe sous le header */
+            #adminMobileNavBar {
+                display: flex;
+                position: fixed;
+                top: 72px;
+                left: 0; right: 0;
+                z-index: 49;
+                background: #111;
+                border-bottom: 3px solid #FFD700;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none;
+                gap: 0;
+                white-space: nowrap;
+            }
+            #adminMobileNavBar::-webkit-scrollbar { display: none; }
+            #adminMobileNavBar button {
+                flex-shrink: 0;
+                background: transparent;
+                border: none;
+                color: #aaa;
+                padding: 10px 14px;
+                font-size: 11px;
+                font-weight: 900;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                cursor: pointer;
+                border-bottom: 3px solid transparent;
+                margin-bottom: -3px;
+                transition: color 0.15s;
+            }
+            #adminMobileNavBar button.active-nav,
+            #adminMobileNavBar button:active {
+                color: #FFD700;
+                border-bottom-color: #FFD700;
+            }
+            /* Contenu décalé sous les deux barres */
+            .pt-28 { padding-top: 7.5rem !important; }
             .pt-28.pb-20.px-6 { padding-left: 1rem !important; padding-right: 1rem !important; }
             .modal-content { width: 96% !important; margin: 4% auto !important; padding: 1rem !important; }
             .modal-content table { font-size: 12px; }
-            .grid.md:grid-cols-4 { grid-template-columns: repeat(2, 1fr) !important; }
-            .grid.md:grid-cols-2 { grid-template-columns: 1fr !important; }
-            .text-5xl { font-size: 1.75rem !important; }
-            .text-4xl { font-size: 1.5rem !important; }
+            .text-5xl { font-size: 1.5rem !important; }
+            .text-4xl { font-size: 1.35rem !important; }
+            .text-2xl { font-size: 1.1rem !important; }
+            h2.mb-12 { margin-bottom: 1.5rem !important; }
             table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
             .admin-card { padding: 1rem !important; }
         }
@@ -300,7 +340,19 @@
                 </button>
             </div>
         </nav>
-
+        <!-- Barre navigation mobile scrollable -->
+        <div id="adminMobileNavBar">
+            <button onclick="showSectionMobile('dashboard')" id="mnav-dashboard" class="active-nav"><i class="fas fa-chart-line"></i> Dashboard</button>
+            <button onclick="showSectionMobile('clients')" id="mnav-clients"><i class="fas fa-users"></i> Clients</button>
+            <button onclick="showSectionMobile('messages')" id="mnav-messages"><i class="fas fa-envelope"></i> Messages</button>
+            <button onclick="showSectionMobile('commandes')" id="mnav-commandes"><i class="fas fa-receipt"></i> Commandes</button>
+            <button onclick="showSectionMobile('partenaires')" id="mnav-partenaires"><i class="fas fa-handshake"></i> Partenaires</button>
+            <button onclick="showSectionMobile('devis')" id="mnav-devis"><i class="fas fa-file-invoice"></i> Devis</button>
+            <button onclick="showSectionMobile('workflow')" id="mnav-workflow"><i class="fas fa-tasks"></i> A valider</button>
+            <button onclick="showSectionMobile('projets')" id="mnav-projets"><i class="fas fa-project-diagram"></i> Projets IA</button>
+            <button onclick="showSectionMobile('seances')" id="mnav-seances"><i class="fas fa-video"></i> Seances</button>
+            <button onclick="showSectionMobile('feedbacks')" id="mnav-feedbacks"><i class="fas fa-comments"></i> Feedbacks</button>
+        </div>
         <div class="pt-28 pb-20 px-6">
             <!-- SECTION DASHBOARD -->
             <div id="dashboardSection" class="container mx-auto max-w-7xl">
@@ -4621,6 +4673,15 @@
         var menu = document.getElementById('adminMobileMenu');
         if (menu) menu.style.display = 'none';
         if (typeof showSection === 'function') showSection(section);
+        // Activer le bouton dans la barre mobile
+        document.querySelectorAll('#adminMobileNavBar button').forEach(function(b) {
+            b.classList.remove('active-nav');
+        });
+        var activeBtn = document.getElementById('mnav-' + section);
+        if (activeBtn) {
+            activeBtn.classList.add('active-nav');
+            activeBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+        }
     }
 </script>
 </body>
