@@ -37,9 +37,9 @@ html, body { height: 100%; background: var(--black); color: var(--text); font-fa
 #splash {
   position: fixed; inset: 0; background: #000; z-index: 9999;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 32px;
-  transition: opacity 0.6s ease;
+  animation: splashExit 0.5s ease 2s forwards;
 }
-#splash.fade-out { opacity: 0; pointer-events: none; }
+@keyframes splashExit { from { opacity: 1; } to { opacity: 0; visibility: hidden; pointer-events: none; } }
 .splash-logo {
   width: 96px; height: 96px; border-radius: 50%; object-fit: cover;
   animation: splashPop 0.7s cubic-bezier(0.34,1.56,0.64,1) 0.2s both;
@@ -72,12 +72,11 @@ html, body { height: 100%; background: var(--black); color: var(--text); font-fa
    ÉCRAN DE BIENVENUE
 ══════════════════════════════════════════════════ */
 #welcome {
-  display: none; position: fixed; inset: 0; background: var(--black);
+  display: flex; position: fixed; inset: 0; background: var(--black);
   flex-direction: column; align-items: center; justify-content: center;
-  padding: 40px 28px; z-index: 100; animation: fadeIn 0.5s ease;
+  padding: 40px 28px; z-index: 100;
   overflow-y: auto;
 }
-#welcome.show { display: flex; }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 .welcome-logo { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; margin-bottom: 28px; }
 .welcome-tagline {
@@ -781,27 +780,35 @@ function loadUserSession() {
 }
 
 // ─── SPLASH → APP ───────────────────────────────
+// Welcome est visible par défaut - juste cacher le splash et switcher si connecté
 setTimeout(function() {
   var splash = document.getElementById('splash');
-  if (splash) {
-    splash.style.opacity = '0';
-    splash.style.transition = 'opacity 0.4s';
-  }
-  setTimeout(function() {
-    if (splash) splash.style.display = 'none';
-    try {
-      if (loadUserSession()) { showApp(); } else { showWelcome(); }
-    } catch(e) { showWelcome(); }
-  }, 450);
-}, 2000);
+  if (splash) splash.style.display = 'none';
+  try {
+    var s = localStorage.getItem('fa_genesis_session');
+    var t = localStorage.getItem('fa_genesis_token');
+    if (s && t) {
+      APP_USER = JSON.parse(s);
+      APP_USER._token = t;
+      document.getElementById('welcome').style.display = 'none';
+      document.getElementById('app').style.display = 'flex';
+      initApp();
+    }
+  } catch(e) {}
+}, 2100);
 
 function showWelcome() {
-  document.getElementById('welcome').classList.add('show');
+  var w = document.getElementById('welcome');
+  if (w) w.style.display = 'flex';
+  var a = document.getElementById('app');
+  if (a) a.style.display = 'none';
 }
 
 function showApp() {
-  document.getElementById('welcome').classList.remove('show');
-  document.getElementById('app').classList.add('show');
+  var w = document.getElementById('welcome');
+  if (w) w.style.display = 'none';
+  var a = document.getElementById('app');
+  if (a) a.style.display = 'flex';
   initApp();
 }
 
