@@ -31,7 +31,8 @@ var COLLECTIONS = [
     'projects',
     'livrables',
     'feedbacks',
-    'settings'
+    'settings',
+    'push-subscriptions'
 ];
 
 /**

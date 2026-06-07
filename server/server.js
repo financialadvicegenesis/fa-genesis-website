@@ -542,8 +542,13 @@ function loadPushSubscriptions() {
 }
 
 function savePushSubscriptions(subs) {
-    try { fs.writeFileSync(PUSH_SUBSCRIPTIONS_FILE, JSON.stringify(subs, null, 2), 'utf8'); } catch(e) {}
+    try {
+        fs.writeFileSync(PUSH_SUBSCRIPTIONS_FILE, JSON.stringify(subs, null, 2), 'utf8');
+        persistentStore.persistToCloud('push-subscriptions', subs).catch(function(e) {});
+    } catch(e) {}
 }
+
+var ADMIN_EMAILS = (process.env.ADMIN_EMAILS || 'admin@fagenesis.com,tiffenndjambou3@gmail.com').toLowerCase().split(',');
 
 function sendPushToUser(email, payload) {
     if (!email) return;
@@ -604,7 +609,11 @@ app.post('/api/push/subscribe', function(req, res) {
         } else if (token) {
             var users = loadUsers();
             var u = users.find(function(u) { return u.sessionToken === token; });
-            if (u) { email = u.email; role = 'client'; }
+            if (u) {
+                email = u.email;
+                // Élever le rôle en 'admin' si l'email est un compte admin
+                role = ADMIN_EMAILS.indexOf(u.email.toLowerCase()) !== -1 ? 'admin' : 'client';
+            }
         }
 
         var subs = loadPushSubscriptions();
@@ -3034,12 +3043,14 @@ function finalizeSchedule(order) {
             schedule_status: 'confirmed'
         });
 
-        // Email de confirmation au client
+        // Email + push de confirmation au client
         try {
             if (updatedOrder.client_info && updatedOrder.client_info.email) {
                 var confirmClientName = ((updatedOrder.client_info.first_name || '') + ' ' + (updatedOrder.client_info.last_name || '')).trim() || updatedOrder.client_info.email;
                 var confirmOrderName = updatedOrder.product_name || updatedOrder.product_id || 'votre commande';
                 emailService.sendScheduleConfirmedToClient(updatedOrder.client_info.email, confirmClientName, updatedOrder.start_date, confirmOrderName);
+                var dateStr = updatedOrder.start_date ? new Date(updatedOrder.start_date).toLocaleDateString('fr-FR') : '';
+                sendPushToUser(updatedOrder.client_info.email, { title: 'Rendez-vous confirmé 📅', body: confirmOrderName + (dateStr ? ' — ' + dateStr : '') + ' est confirmé !', icon: '/assets/images/logo-favicon-192.png', badge: '/assets/images/logo-favicon-32.png', url: '/espace-client.html', tag: 'rdv' });
             }
         } catch (emailErr) {
             console.error('[SCHEDULE] Erreur email confirmation date client:', emailErr.message);
@@ -4020,6 +4031,8 @@ app.post('/api/admin/messages/:messageId/reply', async (req, res) => {
         saveMessages(messages);
 
         console.log(`[CONTACT] Reponse envoyee avec succes au message ${msg.id} (${msg.email})`);
+        // Push au client : réponse admin reçue
+        sendPushToUser(msg.email, { title: 'FA GENESIS vous a répondu', body: replyMessage.trim().substring(0, 100), icon: '/assets/images/logo-favicon-192.png', badge: '/assets/images/logo-favicon-32.png', url: '/espace-client.html', tag: 'reponse-admin' });
 
         res.json({ success: true, message: 'Reponse envoyee avec succes' });
 
@@ -5142,6 +5155,13 @@ app.post('/api/messages', function(req, res) {
         msgs.push(newMsg);
         saveChat(msgs);
         console.log('[CHAT] Client ' + user.email + ' -> ' + toType + ' : ' + content.substring(0, 50));
+        // Push au destinataire
+        var senderDisplayName = ((user.prenom || '') + ' ' + (user.nom || '')).trim() || user.email;
+        if (toType === 'admin') {
+            sendPushToRole('admin', { title: 'Message de ' + senderDisplayName, body: content.substring(0, 100), icon: '/assets/images/logo-favicon-192.png', badge: '/assets/images/logo-favicon-32.png', url: '/admin.html', tag: 'message-client' });
+        } else if (toType === 'partner' && toEmail) {
+            sendPushToUser(toEmail, { title: 'Message de ' + senderDisplayName, body: content.substring(0, 100), icon: '/assets/images/logo-favicon-192.png', badge: '/assets/images/logo-favicon-32.png', url: '/partner-dashboard.html', tag: 'message-client' });
+        }
         res.json({ ok: true, message: newMsg });
     } catch (err) {
         console.error('[CHAT] Erreur POST client:', err.message);
