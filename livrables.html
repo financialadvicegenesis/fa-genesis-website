@@ -162,6 +162,16 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="FA GENESIS">
+
+    <style>
+    /* PWA Mobile Global Fix */
+    @media (max-width: 767px) {
+        table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; width: 100%; }
+        .modal-content, [class*='modal'] > div { width: 96% !important; max-width: 96vw !important; margin: 4% auto !important; padding: 1rem !important; }
+        .text-5xl, .text-6xl { font-size: 2rem !important; }
+        .text-4xl { font-size: 1.75rem !important; }
+    }
+    </style>
 </head>
 <body>
 

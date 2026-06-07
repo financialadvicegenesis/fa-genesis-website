@@ -171,6 +171,20 @@
             outline: none;
             border-color: var(--genesis-yellow);
         }
+
+        /* ===== MOBILE RESPONSIVE ===== */
+        @media (max-width: 767px) {
+            .pt-28 { padding-top: 5rem !important; }
+            .pt-28.pb-20.px-6 { padding-left: 1rem !important; padding-right: 1rem !important; }
+            .modal-content { width: 96% !important; margin: 4% auto !important; padding: 1rem !important; }
+            .modal-content table { font-size: 12px; }
+            .grid.md:grid-cols-4 { grid-template-columns: repeat(2, 1fr) !important; }
+            .grid.md:grid-cols-2 { grid-template-columns: 1fr !important; }
+            .text-5xl { font-size: 1.75rem !important; }
+            .text-4xl { font-size: 1.5rem !important; }
+            table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+            .admin-card { padding: 1rem !important; }
+        }
     </style>
     <link rel="manifest" href="manifest-admin.json">
     <meta name="theme-color" content="#FFD700">
@@ -215,6 +229,23 @@
         </div>
     </div>
 
+
+    <!-- Menu Mobile Admin -->
+    <div id="adminMobileMenu" style="display:none;position:fixed;inset:0;z-index:45;background:rgba(0,0,0,0.97);overflow-y:auto;padding:80px 24px 40px;">
+        <div style="display:flex;flex-direction:column;gap:8px;">
+            <button onclick="showSectionMobile('dashboard')" style="background:transparent;border:2px solid #444;color:#fff;padding:16px 20px;text-align:left;font-weight:900;font-size:14px;text-transform:uppercase;letter-spacing:1px;"><i class="fas fa-chart-line mr-3" style="color:#FFD700;"></i>Dashboard</button>
+            <button onclick="showSectionMobile('clients')" style="background:transparent;border:2px solid #444;color:#fff;padding:16px 20px;text-align:left;font-weight:900;font-size:14px;text-transform:uppercase;letter-spacing:1px;"><i class="fas fa-users mr-3" style="color:#FFD700;"></i>Clients</button>
+            <button onclick="showSectionMobile('messages')" style="background:transparent;border:2px solid #444;color:#fff;padding:16px 20px;text-align:left;font-weight:900;font-size:14px;text-transform:uppercase;letter-spacing:1px;"><i class="fas fa-envelope mr-3" style="color:#FFD700;"></i>Messages</button>
+            <button onclick="showSectionMobile('commandes')" style="background:transparent;border:2px solid #444;color:#fff;padding:16px 20px;text-align:left;font-weight:900;font-size:14px;text-transform:uppercase;letter-spacing:1px;"><i class="fas fa-receipt mr-3" style="color:#FFD700;"></i>Commandes</button>
+            <button onclick="showSectionMobile('partenaires')" style="background:transparent;border:2px solid #444;color:#fff;padding:16px 20px;text-align:left;font-weight:900;font-size:14px;text-transform:uppercase;letter-spacing:1px;"><i class="fas fa-handshake mr-3" style="color:#FFD700;"></i>Partenaires</button>
+            <button onclick="showSectionMobile('devis')" style="background:transparent;border:2px solid #444;color:#fff;padding:16px 20px;text-align:left;font-weight:900;font-size:14px;text-transform:uppercase;letter-spacing:1px;"><i class="fas fa-file-invoice mr-3" style="color:#FFD700;"></i>Devis</button>
+            <button onclick="showSectionMobile('workflow')" style="background:transparent;border:2px solid #444;color:#fff;padding:16px 20px;text-align:left;font-weight:900;font-size:14px;text-transform:uppercase;letter-spacing:1px;"><i class="fas fa-tasks mr-3" style="color:#FFD700;"></i>À valider</button>
+            <button onclick="showSectionMobile('projets')" style="background:transparent;border:2px solid #444;color:#fff;padding:16px 20px;text-align:left;font-weight:900;font-size:14px;text-transform:uppercase;letter-spacing:1px;"><i class="fas fa-project-diagram mr-3" style="color:#FFD700;"></i>Projets IA</button>
+            <button onclick="showSectionMobile('seances')" style="background:transparent;border:2px solid #444;color:#fff;padding:16px 20px;text-align:left;font-weight:900;font-size:14px;text-transform:uppercase;letter-spacing:1px;"><i class="fas fa-video mr-3" style="color:#FFD700;"></i>Séances</button>
+            <button onclick="showSectionMobile('feedbacks')" style="background:transparent;border:2px solid #444;color:#fff;padding:16px 20px;text-align:left;font-weight:900;font-size:14px;text-transform:uppercase;letter-spacing:1px;"><i class="fas fa-comments mr-3" style="color:#FFD700;"></i>Feedbacks</button>
+            <button onclick="handleLogout()" style="background:#fff;border:4px solid #fff;color:#000;padding:16px 20px;font-weight:900;font-size:14px;text-transform:uppercase;letter-spacing:1px;margin-top:16px;"><i class="fas fa-sign-out-alt mr-3"></i>Déconnexion</button>
+        </div>
+    </div>
     <!-- PANEL ADMINISTRATEUR -->
     <div id="adminPanel" class="admin-panel">
 
@@ -4580,6 +4611,17 @@
             }
         }
     </script>
-    <script src="pwa-init.js"></script>
+    <script src="pwa-init.js">
+    function toggleAdminMobileMenu() {
+        var menu = document.getElementById('adminMobileMenu');
+        if (!menu) return;
+        menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+    }
+    function showSectionMobile(section) {
+        var menu = document.getElementById('adminMobileMenu');
+        if (menu) menu.style.display = 'none';
+        if (typeof showSection === 'function') showSection(section);
+    }
+</script>
 </body>
 </html>

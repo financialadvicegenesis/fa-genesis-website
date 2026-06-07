@@ -71,6 +71,43 @@
             border-left-color: var(--genesis-yellow);
         }
 
+        
+        /* ===== MOBILE RESPONSIVE ===== */
+        #mobileClientHeader { display: none; }
+        @media (max-width: 767px) {
+            #mobileClientHeader {
+                display: flex;
+                position: fixed;
+                top: 0; left: 0; right: 0;
+                height: 56px;
+                background: #000;
+                border-bottom: 4px solid #FFD700;
+                z-index: 50;
+                align-items: center;
+                justify-content: space-between;
+                padding: 0 16px;
+            }
+            .sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.25s ease;
+                z-index: 45;
+            }
+            .sidebar.open { transform: translateX(0); }
+            #sidebarBackdrop {
+                display: none;
+                position: fixed; inset: 0;
+                background: rgba(0,0,0,0.6);
+                z-index: 44;
+            }
+            #sidebarBackdrop.open { display: block; }
+            main.ml-64 {
+                margin-left: 0 !important;
+                padding: 72px 1rem 2rem !important;
+            }
+            .text-3xl { font-size: 1.5rem !important; }
+            .text-4xl { font-size: 1.75rem !important; }
+        }
+
         .sidebar-link.active {
             background: rgba(255, 215, 0, 0.2);
             border-left-color: var(--genesis-yellow);
@@ -175,7 +212,17 @@
 <body>
     <!-- Sidebar -->
     <div class="flex">
-        <aside class="sidebar w-64 fixed left-0 top-0 h-full z-40">
+    <!-- Mobile Header -->
+    <div id="mobileClientHeader">
+        <a href="index.html" style="font-family:'Unbounded',cursive;font-weight:900;font-size:14px;color:#FFD700;letter-spacing:1px;text-decoration:none;">FA GENESIS</a>
+        <button onclick="toggleClientSidebar()" style="background:transparent;border:none;cursor:pointer;display:flex;flex-direction:column;gap:5px;padding:4px;">
+            <span style="display:block;width:22px;height:2px;background:#FFD700;"></span>
+            <span style="display:block;width:22px;height:2px;background:#FFD700;"></span>
+            <span style="display:block;width:22px;height:2px;background:#FFD700;"></span>
+        </button>
+    </div>
+    <div id="sidebarBackdrop" onclick="toggleClientSidebar()"></div>
+        <aside class="sidebar w-64 fixed left-0 top-0 h-full z-40" id="clientSidebar">
             <div class="p-6 border-b border-gray-800">
                 <a href="index.html" class="text-2xl font-black text-[var(--genesis-yellow)]" style="font-family: 'Unbounded', cursive; display:flex; align-items:center; gap:10px;">
                     <img src="assets/images/logo-favicon-192.png" alt="Logo FA GENESIS" style="width:48px;height:48px;border-radius:50%;object-fit:cover;">FA GENESIS
@@ -1493,6 +1540,25 @@
     <div id="site-footer"></div>
     <script src="footer.js" defer></script>
     <script src="chatbot.js" defer></script>
-    <script src="pwa-init.js"></script>
+    <script src="pwa-init.js">
+    function toggleClientSidebar() {
+        var sidebar = document.getElementById('clientSidebar');
+        var backdrop = document.getElementById('sidebarBackdrop');
+        if (!sidebar) return;
+        sidebar.classList.toggle('open');
+        if (backdrop) backdrop.classList.toggle('open');
+    }
+    // Close sidebar when a nav link is clicked on mobile
+    document.querySelectorAll('.sidebar-link').forEach(function(link) {
+        link.addEventListener('click', function() {
+            if (window.innerWidth < 768) {
+                var sidebar = document.getElementById('clientSidebar');
+                var backdrop = document.getElementById('sidebarBackdrop');
+                if (sidebar) sidebar.classList.remove('open');
+                if (backdrop) backdrop.classList.remove('open');
+            }
+        });
+    });
+</script>
 </body>
 </html>
