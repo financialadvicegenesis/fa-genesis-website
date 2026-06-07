@@ -2,7 +2,7 @@
   "name": "FA GENESIS",
   "short_name": "FA GENESIS",
   "description": "Pôle d'incubation stratégique — Accompagnement étudiants, particuliers et entreprises.",
-  "start_url": "/",
+  "start_url": "/app.html",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
