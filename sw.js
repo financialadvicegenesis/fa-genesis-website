@@ -1,5 +1,5 @@
 // FA GENESIS — Service Worker
-var CACHE_NAME = 'fa-genesis-v1';
+var CACHE_NAME = 'fa-genesis-v2';
 
 var STATIC_ASSETS = [
   '/',
@@ -103,6 +103,43 @@ self.addEventListener('fetch', function(event) {
       return caches.match(event.request).then(function(cached) {
         return cached || caches.match('/index.html');
       });
+    })
+  );
+});
+
+// ============================================================
+// PUSH NOTIFICATIONS
+// ============================================================
+
+self.addEventListener('push', function(event) {
+  var data = {};
+  try { data = event.data ? event.data.json() : {}; } catch(e) {}
+
+  var title = data.title || 'FA GENESIS';
+  var options = {
+    body: data.body || '',
+    icon: data.icon || '/assets/images/logo-favicon-192.png',
+    badge: data.badge || '/assets/images/logo-favicon-32.png',
+    tag: data.tag || 'fa-genesis',
+    renotify: true,
+    data: { url: data.url || '/' },
+    vibrate: [200, 100, 200]
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener('notificationclick', function(event) {
+  event.notification.close();
+  var targetUrl = (event.notification.data && event.notification.data.url) ? event.notification.data.url : '/';
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clientList) {
+      for (var i = 0; i < clientList.length; i++) {
+        var c = clientList[i];
+        if (c.url.indexOf(targetUrl) !== -1 && 'focus' in c) return c.focus();
+      }
+      if (clients.openWindow) return clients.openWindow(targetUrl);
     })
   );
 });

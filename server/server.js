@@ -24,6 +24,7 @@ const { fillTemplate, getAvailableTemplates, getTemplate } = require('./config/d
 const aiService = require('./services/aiService');
 const bootstrapService = require('./services/bootstrapService');
 const persistentStore = require('./persistent-store');
+const webpush = require('web-push');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -47,6 +48,7 @@ const RESERVATIONS_FILE = path.join(__dirname, 'data', 'reservations.json');
 const BLOCKED_DATES_FILE = path.join(__dirname, 'data', 'blocked-dates.json');
 const CW_MESSAGES_FILE = path.join(__dirname, 'data', 'cw-messages.json');
 const CW_DEVIS_FILE = path.join(__dirname, 'data', 'cw-devis.json');
+const PUSH_SUBSCRIPTIONS_FILE = path.join(__dirname, 'data', 'push-subscriptions.json');
 
 // Creer le dossier data s'il n'existe pas
 if (!fs.existsSync(path.join(__dirname, 'data'))) {
@@ -520,6 +522,120 @@ function saveReservations(reservations) {
         persistentStore.persistToCloud('reservations', reservations).catch(function(e) {});
     } catch (e) { console.error('Erreur sauvegarde reservations:', e); }
 }
+
+// ============================================================
+// PUSH NOTIFICATIONS — Web Push API (VAPID)
+// ============================================================
+
+var VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || 'BMfYDfWWoNiitqwi1OYkGAuksro9t4bE_udb6vqVRNEFPy54CWaSM2fBoIjSUbT97SOdypKSollhkNqTgyCsUUs';
+var VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || 'MNbWG8XGiuU8wc6t4i7yaFDKtZxIeCbRRb7TF-GJGrQ';
+
+try {
+    webpush.setVapidDetails('mailto:Financialadvicegenesis@gmail.com', VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+} catch(e) { console.error('[PUSH] Erreur config VAPID:', e.message); }
+
+function loadPushSubscriptions() {
+    try {
+        if (fs.existsSync(PUSH_SUBSCRIPTIONS_FILE)) return JSON.parse(fs.readFileSync(PUSH_SUBSCRIPTIONS_FILE, 'utf8'));
+    } catch(e) {}
+    return [];
+}
+
+function savePushSubscriptions(subs) {
+    try { fs.writeFileSync(PUSH_SUBSCRIPTIONS_FILE, JSON.stringify(subs, null, 2), 'utf8'); } catch(e) {}
+}
+
+function sendPushToUser(email, payload) {
+    if (!email) return;
+    var subs = loadPushSubscriptions().filter(function(s) {
+        return s.email && s.email.toLowerCase() === email.toLowerCase();
+    });
+    if (subs.length === 0) return;
+    var toRemove = [];
+    subs.forEach(function(s) {
+        webpush.sendNotification(s.subscription, JSON.stringify(payload)).catch(function(err) {
+            if (err.statusCode === 410 || err.statusCode === 404) toRemove.push(s.id);
+            console.error('[PUSH] Erreur envoi a ' + email + ':', err.statusCode || err.message);
+        });
+    });
+    if (toRemove.length > 0) {
+        var cleaned = loadPushSubscriptions().filter(function(s) { return toRemove.indexOf(s.id) === -1; });
+        savePushSubscriptions(cleaned);
+    }
+}
+
+function sendPushToRole(role, payload) {
+    var subs = loadPushSubscriptions().filter(function(s) { return s.role === role; });
+    if (subs.length === 0) return;
+    var toRemove = [];
+    subs.forEach(function(s) {
+        webpush.sendNotification(s.subscription, JSON.stringify(payload)).catch(function(err) {
+            if (err.statusCode === 410 || err.statusCode === 404) toRemove.push(s.id);
+        });
+    });
+    if (toRemove.length > 0) {
+        var cleaned = loadPushSubscriptions().filter(function(s) { return toRemove.indexOf(s.id) === -1; });
+        savePushSubscriptions(cleaned);
+    }
+}
+
+// GET /api/push/vapid-public-key
+app.get('/api/push/vapid-public-key', function(req, res) {
+    res.json({ publicKey: VAPID_PUBLIC_KEY });
+});
+
+// POST /api/push/subscribe
+app.post('/api/push/subscribe', function(req, res) {
+    try {
+        var subscription = req.body.subscription;
+        var role = req.body.role || 'client';
+        if (!subscription || !subscription.endpoint) return res.status(400).json({ error: 'Subscription invalide' });
+
+        var email = null;
+        var token = (req.headers.authorization || '').replace('Bearer ', '');
+        var partnerToken = process.env.PARTNER_TOKEN || 'fa-genesis-partner-2024';
+
+        if (token === partnerToken) {
+            role = 'partner';
+            email = 'partner';
+        } else if (req.headers['x-admin-key'] === process.env.ADMIN_KEY) {
+            role = 'admin';
+            email = 'admin';
+        } else if (token) {
+            var users = loadUsers();
+            var u = users.find(function(u) { return u.sessionToken === token; });
+            if (u) { email = u.email; role = 'client'; }
+        }
+
+        var subs = loadPushSubscriptions();
+        // Supprimer l'ancienne subscription du même endpoint
+        subs = subs.filter(function(s) { return s.subscription.endpoint !== subscription.endpoint; });
+        subs.push({
+            id: uuidv4(),
+            email: email,
+            role: role,
+            subscription: subscription,
+            created_at: new Date().toISOString()
+        });
+        savePushSubscriptions(subs);
+        console.log('[PUSH] Abonnement enregistré — role:', role, 'email:', email);
+        res.json({ success: true });
+    } catch(e) {
+        console.error('[PUSH] Erreur subscribe:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// DELETE /api/push/unsubscribe
+app.delete('/api/push/unsubscribe', function(req, res) {
+    try {
+        var endpoint = req.body.endpoint;
+        if (!endpoint) return res.status(400).json({ error: 'endpoint requis' });
+        var subs = loadPushSubscriptions().filter(function(s) { return s.subscription.endpoint !== endpoint; });
+        savePushSubscriptions(subs);
+        res.json({ success: true });
+    } catch(e) { res.status(500).json({ error: 'Erreur serveur' }); }
+});
 
 function getOrderById(orderId) {
     const orders = loadOrders();
@@ -1239,6 +1355,9 @@ app.post('/api/orders/create', (req, res) => {
         orders.push(order);
         saveOrders(orders);
 
+        // Push admin : nouvelle commande
+        sendPushToRole('admin', { title: 'FA GENESIS — Nouvelle commande', body: (order.client_info ? order.client_info.first_name + ' ' + order.client_info.last_name : '') + ' — ' + (order.product_name || ''), icon: '/assets/images/logo-favicon-192.png', badge: '/assets/images/logo-favicon-32.png', url: '/admin.html', tag: 'commande' });
+
         // Envoyer email de notification au partenaire coworking pour chaque réservation
         if (pendingReservations && pendingReservations.length > 0) {
             pendingReservations.forEach(function(resv) {
@@ -1734,6 +1853,14 @@ app.post('/api/payments/sumup/webhook', async (req, res) => {
                 } catch (syncErr) {
                     console.error('[WEBHOOK] Erreur sync users.json (non-bloquant):', syncErr.message);
                 }
+            }
+
+            // Push notifications paiement
+            if (updatedOrder && updatedOrder.client_info && updatedOrder.client_info.email) {
+                var pushClientEmail = updatedOrder.client_info.email;
+                var pushMsgClient = stage === 'deposit' ? 'Votre acompte a été reçu. Votre accompagnement démarre !' : 'Votre paiement complet a été confirmé. Merci !';
+                sendPushToUser(pushClientEmail, { title: 'Paiement confirmé ✅', body: pushMsgClient, icon: '/assets/images/logo-favicon-192.png', badge: '/assets/images/logo-favicon-32.png', url: '/espace-client.html', tag: 'paiement' });
+                sendPushToRole('admin', { title: 'Paiement reçu', body: (updatedOrder.client_info.first_name || '') + ' — ' + (updatedOrder.product_name || '') + ' — ' + (stage === 'deposit' ? 'acompte' : 'solde'), icon: '/assets/images/logo-favicon-192.png', badge: '/assets/images/logo-favicon-32.png', url: '/admin.html', tag: 'paiement-admin' });
             }
 
             // Envoyer les emails appropriés
@@ -4067,6 +4194,8 @@ app.post('/api/auth/register', async (req, res) => {
         saveUsers(users);
 
         console.log(`[AUTH] Nouvel utilisateur inscrit: ${newUser.id} - ${email}`);
+        // Push admin : nouvelle inscription
+        sendPushToRole('admin', { title: 'FA GENESIS — Nouvelle inscription', body: prenom + ' ' + nom + ' vient de s\'inscrire.', icon: '/assets/images/logo-favicon-192.png', badge: '/assets/images/logo-favicon-32.png', url: '/admin.html', tag: 'inscription' });
 
         // Email de bienvenue au client (invitation a decouvrir les offres)
         emailService.sendWelcomeEmail(email, prenom)
@@ -8909,6 +9038,12 @@ app.put('/api/reservations/:id/status', function(req, res) {
         saveReservations(reservations);
 
         console.log('[RESERVATIONS] ' + resId + ' -> ' + newStatus);
+        // Push client : confirmation/refus réservation
+        var clientEmailRes = reservations[idx].client_email;
+        if (clientEmailRes) {
+            var labelRes = newStatus === 'confirmed' ? 'confirmée ✅' : 'refusée ❌';
+            sendPushToUser(clientEmailRes, { title: 'Réservation ' + labelRes, body: (reservations[idx].product_name || 'Coworking') + ' — ' + labelRes, icon: '/assets/images/logo-favicon-192.png', badge: '/assets/images/logo-favicon-32.png', url: '/espace-client.html', tag: 'reservation' });
+        }
         res.json({ ok: true, reservation: reservations[idx] });
     } catch (e) {
         console.error('[RESERVATIONS] Erreur PUT status:', e);
@@ -9059,6 +9194,20 @@ app.post('/api/coworking/messages', function(req, res) {
         var all = loadCwMessages();
         all.push(msg);
         saveCwMessages(all);
+        // Push au destinataire
+        if (isPartner) {
+            sendPushToRole('partner', { title: 'Nouveau message client', body: (senderName || 'Client') + ' : ' + content.substring(0, 80), icon: '/assets/images/logo-favicon-192.png', badge: '/assets/images/logo-favicon-32.png', url: '/coworking-partner.html', tag: 'message-cw' });
+        } else {
+            // Trouver l'email du client pour lui envoyer le push si le partenaire répond
+            var resForPush = loadReservations().find(function(r) { return r.id === reservationId; });
+            if (!resForPush) {
+                var orderForPush = loadOrders().find(function(o) { return o.id === reservationId; });
+                if (orderForPush && orderForPush.client_info) resForPush = { client_email: orderForPush.client_info.email };
+            }
+            if (resForPush && resForPush.client_email) {
+                sendPushToUser(resForPush.client_email, { title: 'Nouveau message', body: 'COM VISA : ' + content.substring(0, 80), icon: '/assets/images/logo-favicon-192.png', badge: '/assets/images/logo-favicon-32.png', url: '/espace-client.html#messagerie', tag: 'message-cw' });
+            }
+        }
         res.json({ ok: true, message: msg });
     } catch(e) { console.error('[MSG] POST:', e); res.status(500).json({ error: 'Erreur serveur' }); }
 });
