@@ -4659,7 +4659,8 @@
             }
         }
     </script>
-    <script src="pwa-init.js">
+    <script src="pwa-init.js"></script>
+    <script>
     function toggleAdminMobileMenu() {
         var menu = document.getElementById('adminMobileMenu');
         if (!menu) return;
@@ -4669,16 +4670,12 @@
         var menu = document.getElementById('adminMobileMenu');
         if (menu) menu.style.display = 'none';
         if (typeof showSection === 'function') showSection(section);
-        // Activer le bouton dans la barre mobile
         document.querySelectorAll('#adminMobileNavBar button').forEach(function(b) {
             b.classList.remove('active-nav');
         });
         var activeBtn = document.getElementById('mnav-' + section);
-        if (activeBtn) {
-            activeBtn.classList.add('active-nav');
-            activeBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-        }
+        if (activeBtn) activeBtn.classList.add('active-nav');
     }
-</script>
+    </script>
 </body>
 </html>
