@@ -954,6 +954,7 @@ function renderCompteSection() {
       + item('fas fa-file-alt', '#a78bfa', '#100a1a', 'Mes livrables', 'livrables.html')
       + item('fas fa-video', '#f97316', '#1a0a00', 'Mes séances', 'seances.html')
       + item('fas fa-star', '#FFD700', '#1a1000', 'Laisser un avis', 'feedback.html')
+      + item('fas fa-download', '#34d399', '#001a0a', 'Installer l'application', null, 'window.FA_installApp && window.FA_installApp()')
       + item('fas fa-bell', '#fb923c', '#1a0a00', 'Notifications', null, 'window.FA_activerNotifications && window.FA_activerNotifications()')
       + item('fas fa-cog', '#888', '#1a1a1a', 'Paramètres', 'mon-compte.html')
       + '</div>'
@@ -979,6 +980,8 @@ function item(icon, color, bg, label, href, onclick) {
     + '<i class="fas fa-chevron-right arrow"></i>'
     + '</' + closeTag + '>';
 }
+
+function openInstallGuide() { if (window.FA_installApp) window.FA_installApp(); }
 
 function deconnexion() {
   if (confirm('Se déconnecter ?')) {

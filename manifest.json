@@ -2,13 +2,16 @@
   "name": "FA GENESIS",
   "short_name": "FA GENESIS",
   "description": "Pôle d'incubation stratégique — Accompagnement étudiants, particuliers et entreprises.",
+  "id": "/app.html",
   "start_url": "/app.html",
   "scope": "/",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
   "orientation": "portrait",
   "background_color": "#000000",
-  "theme_color": "#FFD700",
+  "theme_color": "#000000",
   "lang": "fr",
+  "prefer_related_applications": false,
   "categories": ["business", "finance", "education"],
   "icons": [
     {
