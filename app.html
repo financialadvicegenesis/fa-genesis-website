@@ -323,7 +323,18 @@ a{text-decoration:none;color:inherit}
   padding:60px 40px;text-align:center;gap:12px;color:var(--sub)}
 .empty .e-ico{font-size:40px;opacity:.3}
 .empty p{font-size:14px;line-height:1.6}
-</style>
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   GROUPES PRESTATIONS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.prest-group{margin-bottom:4px}
+.prest-group-hdr{display:flex;align-items:center;gap:10px;padding:20px 0 10px}
+.prest-group-emoji{font-size:18px}
+.prest-group-label{font-size:12px;font-weight:900;color:var(--yellow);
+  text-transform:uppercase;letter-spacing:1.5px;white-space:nowrap;
+  font-family:'Unbounded',sans-serif}
+.prest-group-line{flex:1;height:1px;background:var(--border)}
+.prest-group-items{display:flex;flex-direction:column;gap:10px}</style>
 </head>
 <body>
 
@@ -412,7 +423,7 @@ a{text-decoration:none;color:inherit}
 
       <!-- Quick actions -->
       <div class="qa-row">
-        <div class="qa" onclick="nav('offres')">
+        <div class="qa" onclick="nav('prestations')">
           <div class="qa-icon">🏢</div>
           <div class="qa-label">Réserver</div>
         </div>
@@ -432,7 +443,7 @@ a{text-decoration:none;color:inherit}
 
       <!-- Hero banner -->
       <div class="sec-lbl"><h2>À la une</h2></div>
-      <div class="hero-banner" onclick="nav('offres')">
+      <div class="hero-banner" onclick="nav('prestations')">
         <img class="hero-img" src="assets/images/Openspace-1.png" alt=""
           onerror="this.style.display='none'">
         <div class="hero-body">
@@ -468,21 +479,22 @@ a{text-decoration:none;color:inherit}
       <!-- Offres populaires -->
       <div class="sec-lbl" style="margin-top:8px">
         <h2>Prestations populaires</h2>
-        <a onclick="nav('offres')">Tout voir</a>
+        <a onclick="nav('prestations')">Tout voir</a>
       </div>
       <div class="offer-scroll" id="homeOffers"></div>
       <div style="height:8px"></div>
     </div>
 
-    <!-- OFFRES -->
-    <div class="tab" id="tab-offres">
-      <div class="filter-bar" id="offerFilter">
-        <button class="fpill on" onclick="filterOffers('all',this)">Toutes</button>
-        <button class="fpill" onclick="filterOffers('coworking',this)">Coworking</button>
-        <button class="fpill" onclick="filterOffers('accompagnement',this)">Accompagnement</button>
-        <button class="fpill" onclick="filterOffers('evenement',this)">Événements</button>
+    <!-- PRESTATIONS -->
+    <div class="tab" id="tab-prestations">
+      <div class="filter-bar">
+        <button class="fpill on" onclick="filterPrestations('all',this)">Toutes</button>
+        <button class="fpill" onclick="filterPrestations('etudiant',this)">Étudiant</button>
+        <button class="fpill" onclick="filterPrestations('particulier',this)">Particulier</button>
+        <button class="fpill" onclick="filterPrestations('entreprise',this)">Entreprise</button>
+        <button class="fpill" onclick="filterPrestations('accompagnement',this)">Accompagnement</button>
       </div>
-      <div class="offer-list" id="offerList"></div>
+      <div id="prestList" style="padding:0 16px 16px"></div>
     </div>
 
     <!-- RÉSERVATIONS -->
@@ -507,8 +519,8 @@ a{text-decoration:none;color:inherit}
     <button class="nav-btn on" id="nb-home" onclick="nav('home')">
       <span class="ni">🏠</span><span>Accueil</span>
     </button>
-    <button class="nav-btn" id="nb-offres" onclick="nav('offres')">
-      <span class="ni">⊞</span><span>Offres</span>
+    <button class="nav-btn" id="nb-prestations" onclick="nav('prestations')">
+      <span class="ni">⊞</span><span>Prestations</span>
     </button>
     <button class="nav-btn" id="nb-reservations" onclick="nav('reservations')" style="position:relative">
       <span class="ni">📅</span><span>Réservations</span>
@@ -531,17 +543,17 @@ var USER = null, GUEST = false;
 var API = 'https://fa-genesis-website.onrender.com';
 
 var OFFERS = [
-  {id:'os-e',cat:'coworking',name:'OpenSpace Étudiant',price:'10 €',unit:'/poste/jour',img:'assets/images/Openspace-1.png'},
-  {id:'os-p',cat:'coworking',name:'OpenSpace Particulier',price:'15 €',unit:'/poste/jour',img:'assets/images/Openspace-2.png'},
-  {id:'os-b',cat:'coworking',name:'OpenSpace Entreprise',price:'25 €',unit:'/poste/jour',img:'assets/images/Openspace-3.png'},
-  {id:'bu-p',cat:'coworking',name:'Bureau Privé Particulier',price:'45 €',unit:'/jour',img:'assets/images/Bureau-Duo-2.png'},
-  {id:'bu-e',cat:'coworking',name:'Bureau Privé Entreprise',price:'85 €',unit:'/jour',img:'assets/images/Bureau-Duo-3.png'},
-  {id:'ev-e',cat:'evenement',name:'Événement Étudiant',price:'dès 200 €',unit:'format 4h',img:'assets/images/Soirée 1.png'},
-  {id:'ev-p',cat:'evenement',name:'Événement Particulier',price:'dès 300 €',unit:'format 4h',img:'assets/images/Soirée 2.png'},
-  {id:'ev-b',cat:'evenement',name:'Événement Entreprise',price:'dès 500 €',unit:'format 4h',img:'assets/images/Soirée 3.png'},
-  {id:'ac-e',cat:'accompagnement',name:'Accompagnement Essentiel',price:'290 €',unit:'',img:'assets/images/Image 1.png'},
-  {id:'ac-p',cat:'accompagnement',name:'Accompagnement Premium',price:'490 €',unit:'',img:'assets/images/Image 2.png'},
-  {id:'ac-el',cat:'accompagnement',name:'Accompagnement Élite',price:'890 €',unit:'',img:'assets/images/Image 3.png'},
+  {id:'os-e',profil:'etudiant',cat:'coworking',name:'OpenSpace',tag:'Étudiant',price:'10 €',unit:'/ poste / journée',img:'assets/images/Openspace-1.png'},
+  {id:'ev-e',profil:'etudiant',cat:'evenement',name:'Événement / Soirée',tag:'Étudiant',price:'dès 200 €',unit:'format 4h',img:'assets/images/Soirée 1.png'},
+  {id:'os-p',profil:'particulier',cat:'coworking',name:'OpenSpace',tag:'Particulier',price:'15 €',unit:'/ poste / journée',img:'assets/images/Openspace-2.png'},
+  {id:'bu-p',profil:'particulier',cat:'coworking',name:'Bureau Privé',tag:'Particulier',price:'45 €',unit:'/ journée',img:'assets/images/Bureau-Duo-2.png'},
+  {id:'ev-p',profil:'particulier',cat:'evenement',name:'Événement / Soirée',tag:'Particulier',price:'dès 300 €',unit:'format 4h',img:'assets/images/Soirée 2.png'},
+  {id:'os-b',profil:'entreprise',cat:'coworking',name:'OpenSpace',tag:'Entreprise',price:'25 €',unit:'/ poste / journée',img:'assets/images/Openspace-3.png'},
+  {id:'bu-e',profil:'entreprise',cat:'coworking',name:'Bureau Privé',tag:'Entreprise',price:'85 €',unit:'/ journée',img:'assets/images/Bureau-Duo-3.png'},
+  {id:'ev-b',profil:'entreprise',cat:'evenement',name:'Événement / Soirée',tag:'Entreprise',price:'dès 500 €',unit:'format 4h',img:'assets/images/Soirée 3.png'},
+  {id:'ac-e',profil:'accompagnement',cat:'accompagnement',name:'Accompagnement Essentiel',tag:'',price:'290 €',unit:'',img:'assets/images/Image 1.png'},
+  {id:'ac-p',profil:'accompagnement',cat:'accompagnement',name:'Accompagnement Premium',tag:'',price:'490 €',unit:'',img:'assets/images/Image 2.png'},
+  {id:'ac-el',profil:'accompagnement',cat:'accompagnement',name:'Accompagnement Élite',tag:'',price:'890 €',unit:'',img:'assets/images/Image 3.png'},
 ];
 
 // ── SPLASH → APP ─────────────────────────────────────────────
@@ -584,7 +596,7 @@ function initApp(){
     document.getElementById('greetName').textContent = 'Invité';
   }
   renderHomeOffers();
-  renderOfferList('all');
+  renderPrestations('all');
   renderResaTab();
   renderMsgTab();
   renderProfil();
@@ -631,44 +643,68 @@ function navExternal(url){
 function setCat(cat,el){
   document.querySelectorAll('.cat-chip').forEach(function(c){c.classList.remove('on');});
   el.classList.add('on');
-  renderHomeOffers(cat==='all'?null:cat);
+  renderHomeOffers(cat);
 }
 
 // ── RENDU OFFRES HOME ─────────────────────────────────────────
-function renderHomeOffers(cat){
-  var list = cat ? OFFERS.filter(function(o){return o.cat===cat;}) : OFFERS.slice(0,5);
-  var html = list.map(function(o){
+function renderHomeOffers(filter){
+  var list;
+  if(!filter||filter==='all'){list=OFFERS.slice(0,5);}
+  else if(filter==='etudiant'||filter==='particulier'||filter==='entreprise'||filter==='accompagnement'){
+    list=OFFERS.filter(function(o){return o.profil===filter;});
+  } else {
+    list=OFFERS.filter(function(o){return o.cat===filter;});
+  }
+  var html=list.map(function(o){
     return '<div class="offer-card" onclick="window.location.href=\'offres.html\'">'
       +'<img src="'+o.img+'" alt="'+o.name+'" onerror="this.style.background=\'#222\';this.removeAttribute(\'src\')">'
       +'<div class="offer-body">'
-      +'<div class="offer-cat">'+o.cat+'</div>'
+      +(o.tag?'<div class="offer-cat">'+o.tag+'</div>':'')
       +'<div class="offer-name">'+o.name+'</div>'
       +'<div class="offer-foot">'
       +'<div class="offer-price">'+o.price+'</div>'
       +'<button class="offer-btn" onclick="event.stopPropagation();window.location.href=\'offres.html\'">Réserver</button>'
       +'</div></div></div>';
   }).join('');
-  document.getElementById('homeOffers').innerHTML = html;
+  document.getElementById('homeOffers').innerHTML=html||'<div style="padding:20px;color:#555;text-align:center;font-size:13px">Aucune offre</div>';
 }
 
-// ── RENDU LISTE OFFRES ────────────────────────────────────────
-function renderOfferList(cat){
-  var list = cat&&cat!=='all' ? OFFERS.filter(function(o){return o.cat===cat;}) : OFFERS;
-  var html = list.map(function(o){
-    return '<div class="offer-row" onclick="window.location.href=\'offres.html\'">'
-      +'<img src="'+o.img+'" alt="'+o.name+'" onerror="this.style.background=\'#222\';this.removeAttribute(\'src\')">'
-      +'<div class="offer-row-body">'
-      +'<div class="offer-row-cat">'+o.cat+'</div>'
-      +'<div class="offer-row-name">'+o.name+'</div>'
-      +'<div class="offer-row-price">'+o.price+'<span class="offer-row-unit">'+o.unit+'</span></div>'
-      +'</div></div>';
-  }).join('');
-  document.getElementById('offerList').innerHTML = html;
+// ── RENDU PRESTATIONS (groupées) ─────────────────────────────
+var GROUPS=[
+  {key:'etudiant',label:'Étudiant',emoji:'🎓'},
+  {key:'particulier',label:'Particulier',emoji:'👤'},
+  {key:'entreprise',label:'Entreprise',emoji:'🏢'},
+  {key:'accompagnement',label:'Accompagnement',emoji:'⭐'},
+];
+function renderPrestations(filter){
+  var groups=(!filter||filter==='all')?GROUPS:GROUPS.filter(function(g){return g.key===filter;});
+  var html='';
+  groups.forEach(function(g){
+    var items=OFFERS.filter(function(o){return o.profil===g.key;});
+    if(!items.length) return;
+    html+='<div class="prest-group">'
+      +'<div class="prest-group-hdr">'
+      +'<span class="prest-group-emoji">'+g.emoji+'</span>'
+      +'<span class="prest-group-label">'+g.label+'</span>'
+      +'<div class="prest-group-line"></div>'
+      +'</div><div class="prest-group-items">';
+    items.forEach(function(o){
+      html+='<div class="offer-row" onclick="window.location.href=\'offres.html\'">'
+        +'<img src="'+o.img+'" alt="'+o.name+'" onerror="this.style.background=\'#222\';this.removeAttribute(\'src\')">'
+        +'<div class="offer-row-body">'
+        +'<div class="offer-row-cat">'+(o.tag||g.label)+'</div>'
+        +'<div class="offer-row-name">'+o.name+'</div>'
+        +'<div class="offer-row-price">'+o.price+'<span class="offer-row-unit">'+o.unit+'</span></div>'
+        +'</div></div>';
+    });
+    html+='</div></div>';
+  });
+  document.getElementById('prestList').innerHTML=html;
 }
-function filterOffers(cat,el){
+function filterPrestations(cat,el){
   document.querySelectorAll('.fpill').forEach(function(p){p.className='fpill';});
   el.className='fpill on';
-  renderOfferList(cat);
+  renderPrestations(cat);
 }
 
 // ── RÉSERVATIONS ──────────────────────────────────────────────
