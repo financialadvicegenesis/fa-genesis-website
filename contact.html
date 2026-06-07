@@ -72,6 +72,12 @@
             letter-spacing: -0.05em;
         }
     </style>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#FFD700">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="FA GENESIS">
 </head>
 <body>
 
@@ -498,5 +504,6 @@
         window.addEventListener('scroll',loadChatbot,{once:true,passive:true});window.addEventListener('touchstart',loadChatbot,{once:true,passive:true});
     </script>
     <script src="nav-global.js"></script>
+    <script src="pwa-init.js"></script>
 </body>
 </html>

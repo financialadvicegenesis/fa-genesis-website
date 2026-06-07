@@ -1,0 +1,57 @@
+{
+  "name": "FA GENESIS",
+  "short_name": "FA GENESIS",
+  "description": "Pôle d'incubation stratégique — Accompagnement étudiants, particuliers et entreprises.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#000000",
+  "theme_color": "#FFD700",
+  "lang": "fr",
+  "categories": ["business", "finance", "education"],
+  "icons": [
+    {
+      "src": "assets/images/logo-favicon-32.png",
+      "sizes": "32x32",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/images/logo-favicon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/images/logo-favicon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Mes offres",
+      "short_name": "Offres",
+      "description": "Voir les offres FA GENESIS",
+      "url": "/offres.html",
+      "icons": [{ "src": "assets/images/logo-favicon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Mon espace client",
+      "short_name": "Espace client",
+      "description": "Accéder à mon espace client",
+      "url": "/espace-client.html",
+      "icons": [{ "src": "assets/images/logo-favicon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Contact",
+      "short_name": "Contact",
+      "description": "Nous contacter",
+      "url": "/contact.html",
+      "icons": [{ "src": "assets/images/logo-favicon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}
