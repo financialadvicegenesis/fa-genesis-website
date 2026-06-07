@@ -5,110 +5,810 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>FA GENESIS</title>
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#000000">
+<meta name="theme-color" content="#0a0a0a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-title" content="FA GENESIS">
 <link rel="apple-touch-icon" href="assets/images/logo-favicon-192.png">
 <link rel="icon" href="assets/images/logo-favicon-192.png">
+<!-- Fonts async — ne bloquent pas le rendu -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@700;900&family=Space+Grotesk:wght@400;700&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@700;900&family=Space+Grotesk:wght@400;700&display=swap"></noscript>
 <style>
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   BASE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+:root{
+  --bg:#0a0a0a; --card:#141414; --border:#222;
+  --yellow:#FFD700; --pink:#b81a6e; --green:#22c55e;
+  --text:#fff; --muted:#666; --sub:#444;
+  --nav:68px; --safe:env(safe-area-inset-bottom,0px);
+}
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{
-  height:100%;background:#000;
-  display:flex;flex-direction:column;
-  align-items:center;justify-content:center;
-  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;
-  overflow:hidden;
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);
+  font-family:'Space Grotesk','Helvetica Neue',Arial,sans-serif}
+button{cursor:pointer;border:none;background:none;color:inherit;font-family:inherit}
+a{text-decoration:none;color:inherit}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   SPLASH
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+#splash{
+  position:fixed;inset:0;background:#000;z-index:9999;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;
 }
-.logo{
-  width:100px;height:100px;border-radius:50%;object-fit:cover;
-  animation:pop .7s cubic-bezier(.34,1.56,.64,1) .3s both;
+#splash .s-logo{width:88px;height:88px;border-radius:50%;object-fit:cover;
+  animation:sPop .7s cubic-bezier(.34,1.56,.64,1) .2s both}
+#splash .s-name{font-size:22px;font-weight:900;color:var(--yellow);letter-spacing:3px;
+  text-transform:uppercase;margin-top:22px;animation:sUp .5s ease .7s both}
+#splash .s-bar{width:48px;height:2px;background:#1a1a1a;border-radius:9px;overflow:hidden;
+  margin-top:40px;animation:sUp .3s ease 1s both}
+#splash .s-fill{height:100%;background:var(--yellow);border-radius:9px;
+  animation:sFill 1.8s ease 1.1s both}
+@keyframes sPop{from{opacity:0;transform:scale(.5)}to{opacity:1;transform:scale(1)}}
+@keyframes sUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes sFill{from{width:0}to{width:100%}}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   WELCOME
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+#welcome{
+  display:flex;flex-direction:column;align-items:center;justify-content:flex-end;
+  position:fixed;inset:0;z-index:100;overflow-y:auto;
+  background:linear-gradient(180deg,#0a0a0a 0%,#0f0010 60%,#000 100%);
+  padding:0 24px calc(40px + var(--safe));
 }
-.logo-fallback{
-  width:100px;height:100px;border-radius:50%;background:#1a1a1a;
-  display:flex;align-items:center;justify-content:center;
-  font-size:36px;font-weight:900;color:#FFD700;
-  animation:pop .7s cubic-bezier(.34,1.56,.64,1) .3s both;
+.w-hero{width:100%;max-width:400px;display:flex;flex-direction:column;align-items:center;padding-top:60px;flex:1;justify-content:center}
+.w-logo{width:72px;height:72px;border-radius:20px;object-fit:cover;margin-bottom:28px;box-shadow:0 0 40px rgba(255,215,0,.2)}
+.w-title{font-size:26px;font-weight:900;color:var(--yellow);text-align:center;line-height:1.2;margin-bottom:12px;
+  font-family:'Unbounded',sans-serif}
+.w-desc{font-size:14px;color:#888;text-align:center;line-height:1.7;max-width:280px;margin-bottom:36px}
+.w-features{display:flex;gap:24px;margin-bottom:40px}
+.w-feat{display:flex;flex-direction:column;align-items:center;gap:8px;font-size:10px;color:#555;text-transform:uppercase;letter-spacing:.5px}
+.w-feat .ico{width:44px;height:44px;border-radius:12px;background:#141414;border:1px solid #222;
+  display:flex;align-items:center;justify-content:center;font-size:20px}
+.w-btns{width:100%;max-width:360px;display:flex;flex-direction:column;gap:12px}
+.btn-main{padding:17px;background:var(--yellow);color:#000;font-weight:900;font-size:15px;
+  border-radius:14px;letter-spacing:.5px;transition:transform .1s}
+.btn-main:active{transform:scale(.98)}
+.btn-ghost{padding:15px;background:#141414;color:#aaa;font-size:14px;font-weight:700;
+  border:1px solid #222;border-radius:14px}
+.btn-ghost:active{background:#1a1a1a}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   APP SHELL
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+#app{display:none;height:100%;flex-direction:column}
+#app.on{display:flex}
+
+/* Header */
+#hdr{
+  flex-shrink:0;background:var(--bg);
+  padding:calc(14px + env(safe-area-inset-top,0px)) 20px 14px;
+  display:flex;align-items:center;justify-content:space-between;
+  border-bottom:1px solid var(--border);
 }
-.name{
-  font-size:24px;font-weight:900;color:#FFD700;
-  letter-spacing:3px;margin-top:28px;
-  text-transform:uppercase;
-  animation:up .6s ease .7s both;
+.hdr-left{display:flex;align-items:center;gap:10px}
+.hdr-logo{width:32px;height:32px;border-radius:10px;object-fit:cover}
+.hdr-name{font-size:14px;font-weight:900;color:var(--yellow);letter-spacing:1px;
+  font-family:'Unbounded',sans-serif}
+.hdr-right{display:flex;align-items:center;gap:12px}
+.hdr-btn{width:36px;height:36px;border-radius:10px;background:var(--card);
+  display:flex;align-items:center;justify-content:center;font-size:16px;position:relative}
+.hdr-badge{position:absolute;top:-3px;right:-3px;width:10px;height:10px;
+  background:#ef4444;border-radius:50%;border:2px solid var(--bg);display:none}
+.hdr-avatar{width:36px;height:36px;border-radius:10px;background:var(--card);
+  display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;color:var(--yellow);
+  overflow:hidden}
+
+/* Scroll content */
+#content{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+#content::-webkit-scrollbar{display:none}
+.tab{display:none;padding-bottom:calc(var(--nav) + var(--safe) + 16px)}
+.tab.on{display:block}
+
+/* Bottom nav */
+#nav{
+  flex-shrink:0;background:#0d0d0d;
+  border-top:1px solid var(--border);
+  display:flex;
+  padding-bottom:var(--safe);
 }
-.sub{
-  font-size:10px;color:#444;letter-spacing:2px;
-  margin-top:8px;text-transform:uppercase;
-  animation:up .6s ease .9s both;
+.nav-btn{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:4px;padding:10px 4px;font-size:9px;font-weight:700;text-transform:uppercase;
+  letter-spacing:.3px;color:var(--muted);transition:color .15s;
 }
-.bar-wrap{
-  width:56px;height:3px;background:#1a1a1a;
-  border-radius:99px;overflow:hidden;margin-top:48px;
-  animation:up .4s ease 1.1s both;
+.nav-btn .ni{font-size:22px;transition:transform .2s}
+.nav-btn.on{color:var(--yellow)}
+.nav-btn.on .ni{transform:translateY(-2px)}
+.nav-dot{position:absolute;top:6px;right:calc(50% - 16px);width:7px;height:7px;
+  background:#ef4444;border-radius:50%;border:2px solid #0d0d0d;display:none}
+.nav-dot.on{display:block}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   HOME TAB
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.greet{padding:20px 20px 0}
+.greet-hi{font-size:12px;color:var(--muted);font-weight:700;letter-spacing:.5px}
+.greet-name{font-size:22px;font-weight:900;color:var(--text);margin-top:2px;font-family:'Unbounded',sans-serif}
+
+/* Status card */
+.status-card{margin:16px;border-radius:16px;overflow:hidden;
+  background:linear-gradient(135deg,#1a0026 0%,#0d001a 100%);
+  border:1px solid #2a1040;padding:20px}
+.status-card-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.status-badge-pill{background:rgba(255,215,0,.15);color:var(--yellow);font-size:10px;font-weight:900;
+  padding:4px 12px;border-radius:99px;letter-spacing:.5px;text-transform:uppercase}
+.status-card-title{font-size:15px;font-weight:900;color:var(--text);margin-bottom:4px}
+.status-card-sub{font-size:12px;color:#888}
+.status-card-action{margin-top:14px;display:flex;gap:8px}
+.sc-btn{padding:8px 16px;border-radius:8px;font-size:12px;font-weight:900;font-family:inherit}
+.sc-btn-primary{background:var(--yellow);color:#000}
+.sc-btn-ghost{background:rgba(255,255,255,.08);color:#fff}
+
+/* Quick actions */
+.qa-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:0 16px;margin-top:20px}
+.qa{display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer}
+.qa-icon{width:56px;height:56px;border-radius:16px;background:var(--card);
+  display:flex;align-items:center;justify-content:center;font-size:22px;
+  border:1px solid var(--border);transition:transform .15s}
+.qa:active .qa-icon{transform:scale(.93)}
+.qa-label{font-size:10px;color:var(--muted);font-weight:700;letter-spacing:.3px}
+
+/* Section label */
+.sec-lbl{padding:20px 20px 10px;display:flex;align-items:center;justify-content:space-between}
+.sec-lbl h2{font-size:15px;font-weight:900;font-family:'Unbounded',sans-serif}
+.sec-lbl a{font-size:12px;color:var(--yellow);font-weight:700}
+
+/* Hero banner */
+.hero-banner{
+  margin:8px 16px;border-radius:16px;overflow:hidden;position:relative;height:160px;
+  background:linear-gradient(135deg,#1a0a10,#0a0018);
 }
-.bar{
-  height:100%;background:#FFD700;border-radius:99px;
-  animation:fill 1.6s ease 1.2s both;
-}
-@keyframes pop{
-  0%{opacity:0;transform:scale(.5)}
-  100%{opacity:1;transform:scale(1)}
-}
-@keyframes up{
-  0%{opacity:0;transform:translateY(14px)}
-  100%{opacity:1;transform:translateY(0)}
-}
-@keyframes fill{0%{width:0}100%{width:100%}}
-.link{
-  position:absolute;bottom:40px;
-  font-size:12px;color:#333;text-decoration:none;
-}
+.hero-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.35}
+.hero-body{position:absolute;inset:0;padding:20px;display:flex;flex-direction:column;justify-content:flex-end}
+.hero-tag{background:var(--yellow);color:#000;font-size:9px;font-weight:900;padding:3px 10px;
+  border-radius:99px;display:inline-block;margin-bottom:8px;width:fit-content;letter-spacing:.5px;text-transform:uppercase}
+.hero-title{font-size:17px;font-weight:900;color:#fff;line-height:1.3;margin-bottom:10px;font-family:'Unbounded',sans-serif}
+.hero-cta{background:var(--yellow);color:#000;padding:8px 18px;border-radius:8px;
+  font-size:12px;font-weight:900;width:fit-content;letter-spacing:.3px}
+
+/* Category chips */
+.cat-scroll{display:flex;gap:10px;padding:0 16px;overflow-x:auto;scrollbar-width:none;margin-bottom:4px}
+.cat-scroll::-webkit-scrollbar{display:none}
+.cat-chip{flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer}
+.cat-ico{width:56px;height:56px;border-radius:16px;background:var(--card);border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;font-size:22px;transition:border-color .15s}
+.cat-chip.on .cat-ico{border-color:var(--yellow)}
+.cat-chip:active .cat-ico{transform:scale(.93)}
+.cat-lbl{font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.3px}
+.cat-chip.on .cat-lbl{color:var(--yellow)}
+
+/* Offer cards horizontal */
+.offer-scroll{display:flex;gap:12px;padding:0 16px;overflow-x:auto;scrollbar-width:none}
+.offer-scroll::-webkit-scrollbar{display:none}
+.offer-card{flex-shrink:0;width:180px;border-radius:14px;overflow:hidden;background:var(--card);border:1px solid var(--border)}
+.offer-card img{width:100%;height:110px;object-fit:cover;display:block}
+.offer-body{padding:12px}
+.offer-cat{font-size:9px;color:var(--yellow);font-weight:900;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px}
+.offer-name{font-size:12px;font-weight:900;color:var(--text);margin-bottom:8px;line-height:1.3}
+.offer-foot{display:flex;align-items:center;justify-content:space-between}
+.offer-price{font-size:16px;font-weight:900;color:var(--yellow)}
+.offer-btn{background:var(--yellow);color:#000;padding:5px 12px;border-radius:6px;
+  font-size:10px;font-weight:900;font-family:inherit}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   OFFERS TAB
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.filter-bar{display:flex;gap:8px;padding:16px 16px 8px;overflow-x:auto;scrollbar-width:none}
+.filter-bar::-webkit-scrollbar{display:none}
+.fpill{flex-shrink:0;padding:8px 18px;border-radius:99px;border:1px solid var(--border);
+  background:transparent;color:var(--muted);font-size:12px;font-weight:700;transition:all .15s}
+.fpill.on{background:var(--yellow);border-color:var(--yellow);color:#000}
+.offer-list{display:flex;flex-direction:column;gap:10px;padding:0 16px}
+.offer-row{display:flex;border-radius:14px;overflow:hidden;background:var(--card);
+  border:1px solid var(--border);cursor:pointer;transition:border-color .15s}
+.offer-row:active{border-color:var(--yellow)}
+.offer-row img{width:90px;height:82px;object-fit:cover;flex-shrink:0}
+.offer-row-body{padding:12px;flex:1;display:flex;flex-direction:column;justify-content:space-between}
+.offer-row-cat{font-size:9px;color:var(--yellow);font-weight:900;text-transform:uppercase;letter-spacing:.5px}
+.offer-row-name{font-size:13px;font-weight:900;color:var(--text)}
+.offer-row-price{font-size:14px;font-weight:900;color:var(--yellow)}
+.offer-row-unit{font-size:10px;color:var(--muted);font-weight:400;margin-left:3px}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   RESERVATIONS TAB
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.resa-list{display:flex;flex-direction:column;gap:10px;padding:16px}
+.resa-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px}
+.resa-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px}
+.resa-name{font-size:14px;font-weight:900;color:var(--text)}
+.resa-status{font-size:9px;font-weight:900;padding:3px 10px;border-radius:99px;text-transform:uppercase;letter-spacing:.3px}
+.s-pending{background:rgba(251,191,36,.15);color:#fbbf24}
+.s-confirmed{background:rgba(34,197,94,.15);color:var(--green)}
+.s-refused{background:rgba(239,68,68,.15);color:#ef4444}
+.s-active{background:rgba(96,165,250,.15);color:#60a5fa}
+.resa-date{font-size:12px;color:var(--muted);margin-bottom:4px}
+.resa-price{font-size:13px;font-weight:900;color:var(--yellow)}
+.resa-actions{display:flex;gap:8px;margin-top:12px}
+.resa-action-btn{flex:1;padding:9px;border-radius:8px;font-size:11px;font-weight:900;font-family:inherit}
+.rab-primary{background:var(--yellow);color:#000}
+.rab-ghost{background:rgba(255,255,255,.06);color:#aaa;border:1px solid var(--border)}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   MESSAGERIE TAB
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.msg-list{display:flex;flex-direction:column;padding:16px;gap:2px}
+.msg-row{display:flex;align-items:center;gap:14px;padding:14px;border-radius:14px;
+  background:var(--card);border:1px solid var(--border);cursor:pointer;margin-bottom:8px}
+.msg-row:active{background:#1a1a1a}
+.msg-avatar{width:46px;height:46px;border-radius:14px;background:#1a0d18;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;font-size:20px}
+.msg-body{flex:1;min-width:0}
+.msg-from{font-size:14px;font-weight:900;color:var(--text);margin-bottom:2px}
+.msg-preview{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.msg-meta{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.msg-time{font-size:10px;color:var(--sub)}
+.msg-unread{background:#ef4444;color:#fff;font-size:9px;font-weight:900;
+  width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   PROFIL TAB
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.profile-header{padding:24px 20px;display:flex;align-items:center;gap:16px;
+  border-bottom:1px solid var(--border)}
+.profile-ava{width:60px;height:60px;border-radius:18px;background:#1a0d18;
+  display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;color:var(--yellow);
+  flex-shrink:0;overflow:hidden}
+.profile-info{}
+.profile-name{font-size:17px;font-weight:900;font-family:'Unbounded',sans-serif;margin-bottom:2px}
+.profile-email{font-size:12px;color:var(--muted)}
+.profile-plan{display:inline-block;margin-top:6px;background:rgba(255,215,0,.1);
+  border:1px solid rgba(255,215,0,.3);color:var(--yellow);font-size:9px;font-weight:900;
+  padding:3px 10px;border-radius:99px;text-transform:uppercase;letter-spacing:.5px}
+.menu-section{padding:16px 16px 0}
+.menu-section-title{font-size:10px;color:var(--sub);font-weight:900;text-transform:uppercase;
+  letter-spacing:1px;padding:0 4px;margin-bottom:8px}
+.menu-group{background:var(--card);border-radius:14px;overflow:hidden;border:1px solid var(--border)}
+.menu-item{display:flex;align-items:center;gap:14px;padding:15px 16px;
+  border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s}
+.menu-item:last-child{border:none}
+.menu-item:active{background:#1a1a1a}
+.menu-item-ico{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.menu-item-label{flex:1;font-size:14px;font-weight:700;color:var(--text)}
+.menu-item-arrow{font-size:12px;color:var(--sub)}
+.menu-item-badge{background:#ef4444;color:#fff;font-size:9px;font-weight:900;
+  padding:2px 6px;border-radius:99px}
+.logout-btn{margin:20px 16px;width:calc(100% - 32px);padding:15px;background:transparent;
+  border:1px solid #2a0a0a;border-radius:14px;color:#ef4444;font-size:14px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;gap:10px;font-family:inherit}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   MODAL NOTIFICATIONS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+#notif-overlay{display:none;position:fixed;inset:0;z-index:800;
+  background:rgba(0,0,0,.7);backdrop-filter:blur(8px);align-items:flex-end;justify-content:center}
+#notif-overlay.on{display:flex}
+.notif-sheet{background:#141414;border:1px solid var(--border);border-radius:24px 24px 0 0;
+  width:100%;max-width:500px;padding:28px 24px calc(32px + var(--safe));
+  animation:sheetUp .4s cubic-bezier(.34,1.56,.64,1)}
+@keyframes sheetUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.ns-ico{width:60px;height:60px;border-radius:20px;background:var(--yellow);
+  display:flex;align-items:center;justify-content:center;font-size:26px;margin:0 auto 16px}
+.ns-title{font-size:20px;font-weight:900;font-family:'Unbounded',sans-serif;text-align:center;margin-bottom:8px}
+.ns-desc{font-size:13px;color:#888;text-align:center;line-height:1.6;margin-bottom:20px}
+.ns-list{background:#0d0d0d;border-radius:12px;padding:14px 18px;margin-bottom:24px;list-style:none}
+.ns-list li{font-size:13px;color:#bbb;padding:5px 0;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border)}
+.ns-list li:last-child{border:none}
+.ns-list li::before{content:'';width:6px;height:6px;background:var(--yellow);border-radius:50%;flex-shrink:0}
+.ns-ok{width:100%;padding:16px;background:var(--yellow);color:#000;font-weight:900;font-size:14px;
+  border-radius:12px;margin-bottom:10px;font-family:inherit}
+.ns-skip{width:100%;padding:12px;background:transparent;color:var(--sub);font-size:13px;font-family:inherit}
+
+/* Locked section */
+.locked{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  min-height:60vh;padding:40px;text-align:center;gap:14px}
+.locked .lock-ico{font-size:44px;margin-bottom:4px}
+.locked h3{font-size:18px;font-weight:900;font-family:'Unbounded',sans-serif}
+.locked p{font-size:13px;color:var(--muted);max-width:260px;line-height:1.6}
+.locked .lock-btn{margin-top:8px;background:var(--yellow);color:#000;padding:14px 32px;
+  border-radius:12px;font-size:13px;font-weight:900;font-family:inherit}
+.locked .guest-btn{margin-top:4px;background:transparent;color:var(--sub);font-size:12px;font-family:inherit}
+
+/* Empty state */
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:60px 40px;text-align:center;gap:12px;color:var(--sub)}
+.empty .e-ico{font-size:40px;opacity:.3}
+.empty p{font-size:14px;line-height:1.6}
 </style>
 </head>
 <body>
 
-<img
-  class="logo"
-  src="assets/images/logo-favicon-192.png"
-  alt="FA GENESIS"
-  onerror="this.outerHTML='<div class=\'logo-fallback\'>FA</div>'"
->
-<div class="name">FA GENESIS</div>
-<div class="sub">Développez vos projets</div>
-<div class="bar-wrap"><div class="bar"></div></div>
+<!-- ══════════ SPLASH ══════════ -->
+<div id="splash">
+  <img class="s-logo" src="assets/images/logo-favicon-192.png" alt="FA GENESIS"
+    onerror="this.style.display='none'">
+  <div class="s-name">FA GENESIS</div>
+  <div class="s-bar"><div class="s-fill"></div></div>
+</div>
 
-<a href="index.html" class="link">Accéder au site →</a>
+<!-- ══════════ WELCOME ══════════ -->
+<div id="welcome" style="display:none">
+  <div class="w-hero">
+    <img class="w-logo" src="assets/images/logo-favicon-192.png" alt="FA GENESIS"
+      onerror="this.style.display='none'">
+    <div class="w-title">Bienvenue sur<br>FA GENESIS</div>
+    <div class="w-desc">Développez vos projets grâce à notre réseau de partenaires professionnels.</div>
+    <div class="w-features">
+      <div class="w-feat"><div class="ico">🤝</div>Partenaires</div>
+      <div class="w-feat"><div class="ico">📅</div>Réservation</div>
+      <div class="w-feat"><div class="ico">💬</div>Messagerie</div>
+      <div class="w-feat"><div class="ico">📂</div>Livrables</div>
+    </div>
+  </div>
+  <div class="w-btns">
+    <button class="btn-main" onclick="goLogin()">Connexion / Inscription</button>
+    <button class="btn-ghost" onclick="goGuest()">Continuer en tant qu'invité →</button>
+  </div>
+</div>
+
+<!-- ══════════ MODAL NOTIFS ══════════ -->
+<div id="notif-overlay">
+  <div class="notif-sheet">
+    <div class="ns-ico">🔔</div>
+    <div class="ns-title">Restez informé</div>
+    <div class="ns-desc">Recevez vos alertes directement sur votre téléphone.</div>
+    <ul class="ns-list">
+      <li>Confirmations de réservations</li>
+      <li>Rappels de rendez-vous</li>
+      <li>Nouveaux messages</li>
+      <li>Livrables disponibles</li>
+      <li>Confirmations de paiements</li>
+    </ul>
+    <button class="ns-ok" onclick="activerNotifs()">Activer les notifications</button>
+    <button class="ns-skip" onclick="closeNotifModal()">Plus tard</button>
+  </div>
+</div>
+
+<!-- ══════════ APP ══════════ -->
+<div id="app">
+
+  <!-- Header -->
+  <div id="hdr">
+    <div class="hdr-left">
+      <img class="hdr-logo" src="assets/images/logo-favicon-192.png" alt="FA GENESIS"
+        onerror="this.style.display='none'">
+      <span class="hdr-name">FA GENESIS</span>
+    </div>
+    <div class="hdr-right">
+      <button class="hdr-btn" onclick="openNotifModal()" title="Notifications">
+        🔔<span class="hdr-badge" id="hdrBadge"></span>
+      </button>
+      <div class="hdr-avatar" id="hdrAvatar" onclick="nav('profil')">👤</div>
+    </div>
+  </div>
+
+  <!-- Content -->
+  <div id="content">
+
+    <!-- ACCUEIL -->
+    <div class="tab on" id="tab-home">
+      <div class="greet">
+        <div class="greet-hi">Bonjour 👋</div>
+        <div class="greet-name" id="greetName">FA GENESIS</div>
+      </div>
+
+      <!-- Status commande active -->
+      <div id="statusCard" class="status-card" style="display:none">
+        <div class="status-card-top">
+          <span class="status-badge-pill" id="scStatus">En cours</span>
+          <span style="font-size:18px">📦</span>
+        </div>
+        <div class="status-card-title" id="scName">Votre accompagnement</div>
+        <div class="status-card-sub" id="scSub">Suivi de votre commande</div>
+        <div class="status-card-action">
+          <button class="sc-btn sc-btn-primary" onclick="nav('reservations')">Voir →</button>
+          <button class="sc-btn sc-btn-ghost" onclick="nav('messages')">Messages</button>
+        </div>
+      </div>
+
+      <!-- Quick actions -->
+      <div class="qa-row">
+        <div class="qa" onclick="nav('offres')">
+          <div class="qa-icon">🏢</div>
+          <div class="qa-label">Réserver</div>
+        </div>
+        <div class="qa" onclick="nav('messages')">
+          <div class="qa-icon">💬</div>
+          <div class="qa-label">Messages</div>
+        </div>
+        <div class="qa" onclick="navExternal('livrables.html')">
+          <div class="qa-icon">📂</div>
+          <div class="qa-label">Livrables</div>
+        </div>
+        <div class="qa" onclick="navExternal('seances.html')">
+          <div class="qa-icon">📅</div>
+          <div class="qa-label">Séances</div>
+        </div>
+      </div>
+
+      <!-- Hero banner -->
+      <div class="sec-lbl"><h2>À la une</h2></div>
+      <div class="hero-banner" onclick="nav('offres')">
+        <img class="hero-img" src="assets/images/Openspace-1.png" alt=""
+          onerror="this.style.display='none'">
+        <div class="hero-body">
+          <div class="hero-tag">Offre du moment</div>
+          <div class="hero-title">Espace coworking<br>professionnel</div>
+          <div class="hero-cta">Réserver →</div>
+        </div>
+      </div>
+
+      <!-- Catégories -->
+      <div class="sec-lbl"><h2>Catégories</h2></div>
+      <div class="cat-scroll">
+        <div class="cat-chip on" onclick="setCat('all',this)">
+          <div class="cat-ico">🏠</div><div class="cat-lbl">Tous</div>
+        </div>
+        <div class="cat-chip" onclick="setCat('coworking',this)">
+          <div class="cat-ico">💼</div><div class="cat-lbl">Coworking</div>
+        </div>
+        <div class="cat-chip" onclick="setCat('etudiant',this)">
+          <div class="cat-ico">🎓</div><div class="cat-lbl">Étudiant</div>
+        </div>
+        <div class="cat-chip" onclick="setCat('particulier',this)">
+          <div class="cat-ico">👤</div><div class="cat-lbl">Particulier</div>
+        </div>
+        <div class="cat-chip" onclick="setCat('entreprise',this)">
+          <div class="cat-ico">🏢</div><div class="cat-lbl">Entreprise</div>
+        </div>
+        <div class="cat-chip" onclick="setCat('evenement',this)">
+          <div class="cat-ico">🎉</div><div class="cat-lbl">Événement</div>
+        </div>
+      </div>
+
+      <!-- Offres populaires -->
+      <div class="sec-lbl" style="margin-top:8px">
+        <h2>Prestations populaires</h2>
+        <a onclick="nav('offres')">Tout voir</a>
+      </div>
+      <div class="offer-scroll" id="homeOffers"></div>
+      <div style="height:8px"></div>
+    </div>
+
+    <!-- OFFRES -->
+    <div class="tab" id="tab-offres">
+      <div class="filter-bar" id="offerFilter">
+        <button class="fpill on" onclick="filterOffers('all',this)">Toutes</button>
+        <button class="fpill" onclick="filterOffers('coworking',this)">Coworking</button>
+        <button class="fpill" onclick="filterOffers('accompagnement',this)">Accompagnement</button>
+        <button class="fpill" onclick="filterOffers('evenement',this)">Événements</button>
+      </div>
+      <div class="offer-list" id="offerList"></div>
+    </div>
+
+    <!-- RÉSERVATIONS -->
+    <div class="tab" id="tab-reservations">
+      <div id="resaContent"></div>
+    </div>
+
+    <!-- MESSAGES -->
+    <div class="tab" id="tab-messages">
+      <div id="msgContent"></div>
+    </div>
+
+    <!-- PROFIL -->
+    <div class="tab" id="tab-profil">
+      <div id="profilContent"></div>
+    </div>
+
+  </div>
+
+  <!-- Bottom nav -->
+  <div id="nav">
+    <button class="nav-btn on" id="nb-home" onclick="nav('home')">
+      <span class="ni">🏠</span><span>Accueil</span>
+    </button>
+    <button class="nav-btn" id="nb-offres" onclick="nav('offres')">
+      <span class="ni">⊞</span><span>Offres</span>
+    </button>
+    <button class="nav-btn" id="nb-reservations" onclick="nav('reservations')" style="position:relative">
+      <span class="ni">📅</span><span>Réservations</span>
+      <span class="nav-dot" id="dot-resa"></span>
+    </button>
+    <button class="nav-btn" id="nb-messages" onclick="nav('messages')" style="position:relative">
+      <span class="ni">💬</span><span>Messages</span>
+      <span class="nav-dot" id="dot-msg"></span>
+    </button>
+    <button class="nav-btn" id="nb-profil" onclick="nav('profil')">
+      <span class="ni">👤</span><span>Profil</span>
+    </button>
+  </div>
+
+</div>
 
 <script>
-(function(){
-  // Désenregistrer l'ancien service worker au besoin
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.getRegistrations().then(function(regs) {
-      regs.forEach(function(reg) {
-        reg.update(); // forcer la vérification de mise à jour
-      });
+// ── DATA ─────────────────────────────────────────────────────
+var USER = null, GUEST = false;
+var API = 'https://fa-genesis-website.onrender.com';
+
+var OFFERS = [
+  {id:'os-e',cat:'coworking',name:'OpenSpace Étudiant',price:'10 €',unit:'/poste/jour',img:'assets/images/Openspace-1.png'},
+  {id:'os-p',cat:'coworking',name:'OpenSpace Particulier',price:'15 €',unit:'/poste/jour',img:'assets/images/Openspace-2.png'},
+  {id:'os-b',cat:'coworking',name:'OpenSpace Entreprise',price:'25 €',unit:'/poste/jour',img:'assets/images/Openspace-3.png'},
+  {id:'bu-p',cat:'coworking',name:'Bureau Privé Particulier',price:'45 €',unit:'/jour',img:'assets/images/Bureau-Duo-2.png'},
+  {id:'bu-e',cat:'coworking',name:'Bureau Privé Entreprise',price:'85 €',unit:'/jour',img:'assets/images/Bureau-Duo-3.png'},
+  {id:'ev-e',cat:'evenement',name:'Événement Étudiant',price:'dès 200 €',unit:'format 4h',img:'assets/images/Soirée 1.png'},
+  {id:'ev-p',cat:'evenement',name:'Événement Particulier',price:'dès 300 €',unit:'format 4h',img:'assets/images/Soirée 2.png'},
+  {id:'ev-b',cat:'evenement',name:'Événement Entreprise',price:'dès 500 €',unit:'format 4h',img:'assets/images/Soirée 3.png'},
+  {id:'ac-e',cat:'accompagnement',name:'Accompagnement Essentiel',price:'290 €',unit:'',img:'assets/images/Image 1.png'},
+  {id:'ac-p',cat:'accompagnement',name:'Accompagnement Premium',price:'490 €',unit:'',img:'assets/images/Image 2.png'},
+  {id:'ac-el',cat:'accompagnement',name:'Accompagnement Élite',price:'890 €',unit:'',img:'assets/images/Image 3.png'},
+];
+
+// ── SPLASH → APP ─────────────────────────────────────────────
+setTimeout(function(){
+  document.getElementById('splash').style.display = 'none';
+  try{
+    var s = localStorage.getItem('fa_genesis_session');
+    var t = localStorage.getItem('fa_genesis_token');
+    if(s && t){ USER = JSON.parse(s); USER._token = t; showApp(); }
+    else { showWelcome(); }
+  } catch(e){ showWelcome(); }
+}, 2500);
+
+function showWelcome(){
+  document.getElementById('welcome').style.display = 'flex';
+}
+function showApp(){
+  document.getElementById('welcome').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  document.getElementById('app').className = 'on';
+  initApp();
+}
+function goLogin(){ window.location.href = 'login.html?from=app.html'; }
+function goGuest(){ GUEST = true; showApp(); }
+
+// ── APP INIT ─────────────────────────────────────────────────
+function initApp(){
+  if(USER){
+    var fn = USER.prenom || USER.firstName || USER.first_name || (USER.email||'').split('@')[0];
+    document.getElementById('greetName').textContent = fn;
+    var ini = (fn[0]||'U').toUpperCase();
+    document.getElementById('hdrAvatar').textContent = ini;
+    loadStatusCard();
+    setTimeout(function(){
+      if(typeof Notification!=='undefined' && Notification.permission==='default' && !sessionStorage.getItem('na')){
+        openNotifModal(); sessionStorage.setItem('na','1');
+      }
+    }, 5000);
+  } else {
+    document.getElementById('greetName').textContent = 'Invité';
+  }
+  renderHomeOffers();
+  renderOfferList('all');
+  renderResaTab();
+  renderMsgTab();
+  renderProfil();
+
+  // SW update
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.getRegistrations().then(function(r){
+      r.forEach(function(reg){ reg.update(); });
     });
   }
+}
 
-  function go() {
-    try {
-      var s = localStorage.getItem('fa_genesis_session');
-      var t = localStorage.getItem('fa_genesis_token');
-      if (s && t) {
-        window.location.replace('espace-client.html');
-      } else {
-        window.location.replace('index.html');
+function loadStatusCard(){
+  if(!USER||!USER._token) return;
+  fetch(API+'/api/client/payments-list',{headers:{'Authorization':'Bearer '+USER._token}})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      var payments = d.payments || [];
+      var active = payments.find(function(p){return p.status!=='fully_paid'&&p.status!=='cancelled';});
+      if(active){
+        document.getElementById('statusCard').style.display = 'block';
+        document.getElementById('scName').textContent = active.product_name||'Votre commande';
+        document.getElementById('scStatus').textContent = active.status_label||'En cours';
+        document.getElementById('scSub').textContent = 'Commande #'+(active.order_id||'').substring(0,8);
       }
-    } catch(e) {
-      window.location.replace('index.html');
-    }
-  }
+    }).catch(function(){});
+}
 
-  // Lancement après 2.5s
-  setTimeout(go, 2500);
-})();
+// ── NAVIGATION ───────────────────────────────────────────────
+function nav(tab){
+  document.querySelectorAll('.tab').forEach(function(t){t.className='tab';});
+  document.querySelectorAll('.nav-btn').forEach(function(b){b.className='nav-btn';});
+  var t = document.getElementById('tab-'+tab);
+  var b = document.getElementById('nb-'+tab);
+  if(t) t.className='tab on';
+  if(b) b.className='nav-btn on';
+  document.getElementById('content').scrollTop = 0;
+}
+function navExternal(url){
+  window.location.href = USER ? url : 'login.html?from=app.html';
+}
+
+// ── CATÉGORIES ────────────────────────────────────────────────
+function setCat(cat,el){
+  document.querySelectorAll('.cat-chip').forEach(function(c){c.classList.remove('on');});
+  el.classList.add('on');
+  renderHomeOffers(cat==='all'?null:cat);
+}
+
+// ── RENDU OFFRES HOME ─────────────────────────────────────────
+function renderHomeOffers(cat){
+  var list = cat ? OFFERS.filter(function(o){return o.cat===cat;}) : OFFERS.slice(0,5);
+  var html = list.map(function(o){
+    return '<div class="offer-card" onclick="window.location.href=\'offres.html\'">'
+      +'<img src="'+o.img+'" alt="'+o.name+'" onerror="this.style.background=\'#222\';this.removeAttribute(\'src\')">'
+      +'<div class="offer-body">'
+      +'<div class="offer-cat">'+o.cat+'</div>'
+      +'<div class="offer-name">'+o.name+'</div>'
+      +'<div class="offer-foot">'
+      +'<div class="offer-price">'+o.price+'</div>'
+      +'<button class="offer-btn" onclick="event.stopPropagation();window.location.href=\'offres.html\'">Réserver</button>'
+      +'</div></div></div>';
+  }).join('');
+  document.getElementById('homeOffers').innerHTML = html;
+}
+
+// ── RENDU LISTE OFFRES ────────────────────────────────────────
+function renderOfferList(cat){
+  var list = cat&&cat!=='all' ? OFFERS.filter(function(o){return o.cat===cat;}) : OFFERS;
+  var html = list.map(function(o){
+    return '<div class="offer-row" onclick="window.location.href=\'offres.html\'">'
+      +'<img src="'+o.img+'" alt="'+o.name+'" onerror="this.style.background=\'#222\';this.removeAttribute(\'src\')">'
+      +'<div class="offer-row-body">'
+      +'<div class="offer-row-cat">'+o.cat+'</div>'
+      +'<div class="offer-row-name">'+o.name+'</div>'
+      +'<div class="offer-row-price">'+o.price+'<span class="offer-row-unit">'+o.unit+'</span></div>'
+      +'</div></div>';
+  }).join('');
+  document.getElementById('offerList').innerHTML = html;
+}
+function filterOffers(cat,el){
+  document.querySelectorAll('.fpill').forEach(function(p){p.className='fpill';});
+  el.className='fpill on';
+  renderOfferList(cat);
+}
+
+// ── RÉSERVATIONS ──────────────────────────────────────────────
+function renderResaTab(){
+  var c = document.getElementById('resaContent');
+  if(!USER||GUEST){ c.innerHTML = locked('Mes réservations','Connectez-vous pour voir vos réservations et leur statut.'); return; }
+  c.innerHTML = '<div class="resa-list" id="resaList"><div class="empty"><div class="e-ico">📅</div><p>Chargement...</p></div></div>';
+  fetch(API+'/api/reservations/me',{headers:{'Authorization':'Bearer '+USER._token}})
+    .then(function(r){return r.json();})
+    .then(function(data){
+      var list = Array.isArray(data)?data:[];
+      if(list.length===0){
+        document.getElementById('resaList').innerHTML='<div class="empty"><div class="e-ico">📅</div><p>Aucune réservation pour le moment</p></div>';
+        return;
+      }
+      document.getElementById('resaList').innerHTML = list.map(function(r){
+        var sc = r.status==='confirmed'?'s-confirmed':r.status==='refused'?'s-refused':r.status==='pending'?'s-pending':'s-active';
+        var sl = r.status==='confirmed'?'Confirmée':r.status==='refused'?'Refusée':r.status==='pending'?'En attente':'Actif';
+        var dates = (r.dates&&r.dates.length>0) ? new Date(r.dates[0]).toLocaleDateString('fr-FR') : '';
+        return '<div class="resa-card">'
+          +'<div class="resa-top"><div class="resa-name">'+(r.product_name||r.product_id||'Réservation')+'</div>'
+          +'<span class="resa-status '+sc+'">'+sl+'</span></div>'
+          +(dates?'<div class="resa-date">📅 '+dates+'</div>':'')
+          +'<div class="resa-price">'+(r.prix?r.prix+' €':'')+'</div>'
+          +'<div class="resa-actions">'
+          +'<button class="resa-action-btn rab-ghost" onclick="nav(\'messages\')">💬 Message</button>'
+          +'</div></div>';
+      }).join('');
+    }).catch(function(){
+      document.getElementById('resaList').innerHTML='<div class="empty"><div class="e-ico">⚠️</div><p>Impossible de charger les réservations</p></div>';
+    });
+}
+
+// ── MESSAGES ─────────────────────────────────────────────────
+function renderMsgTab(){
+  var c = document.getElementById('msgContent');
+  if(!USER||GUEST){ c.innerHTML = locked('Messagerie','Connectez-vous pour accéder à vos conversations.'); return; }
+  c.innerHTML = '<div class="msg-list">'
+    +'<div class="msg-row" onclick="window.location.href=\'messagerie.html\'">'
+    +'<div class="msg-avatar">🌟</div>'
+    +'<div class="msg-body"><div class="msg-from">FA GENESIS</div><div class="msg-preview">Votre espace de messagerie avec l\'équipe</div></div>'
+    +'<div class="msg-meta"><div class="msg-time">→</div></div>'
+    +'</div>'
+    +'<div class="msg-row" onclick="window.location.href=\'espace-client.html#messagerie\'">'
+    +'<div class="msg-avatar" style="background:#1a0d18;">🏢</div>'
+    +'<div class="msg-body"><div class="msg-from">COM VISA Coworking</div><div class="msg-preview">Messages avec votre espace coworking</div></div>'
+    +'<div class="msg-meta"><div class="msg-time">→</div></div>'
+    +'</div>'
+    +'</div>';
+}
+
+// ── PROFIL ────────────────────────────────────────────────────
+function renderProfil(){
+  var c = document.getElementById('profilContent');
+  if(!USER||GUEST){
+    c.innerHTML = '<div class="locked"><div class="lock-ico">👤</div>'
+      +'<h3>Mon Profil</h3>'
+      +'<p>Connectez-vous pour accéder à votre espace personnel.</p>'
+      +'<button class="lock-btn" onclick="goLogin()">Connexion / Inscription</button>'
+      +'<button class="guest-btn" onclick="goGuest()">Continuer en invité</button>'
+      +'</div>';
+    return;
+  }
+  var fn = USER.prenom||USER.firstName||'';
+  var ln = USER.nom||USER.lastName||'';
+  var em = USER.email||'';
+  var ini = ((fn||em)[0]||'U').toUpperCase();
+  c.innerHTML = '<div class="profile-header">'
+    +'<div class="profile-ava">'+ini+'</div>'
+    +'<div class="profile-info">'
+    +'<div class="profile-name">'+fn+' '+ln+'</div>'
+    +'<div class="profile-email">'+em+'</div>'
+    +'<span class="profile-plan">Client FA GENESIS</span>'
+    +'</div></div>'
+    +'<div class="menu-section">'
+    +'<div class="menu-section-title">Mon espace</div>'
+    +'<div class="menu-group">'
+    +mi('📊','#1a1000','Tableau de bord','espace-client.html')
+    +mi('🧾','#0a1a0a','Mes paiements','espace-client.html#paiements')
+    +mi('📅','#0a0a1a','Mes réservations',null,'nav(\'reservations\')')
+    +mi('📂','#100a1a','Mes livrables','livrables.html')
+    +mi('🎥','#1a0a00','Mes séances','seances.html')
+    +'</div></div>'
+    +'<div class="menu-section" style="margin-top:16px;">'
+    +'<div class="menu-section-title">Paramètres</div>'
+    +'<div class="menu-group">'
+    +mi('🔔','#1a0a00','Notifications',null,'window.FA_activerNotifications&&window.FA_activerNotifications()')
+    +mi('⭐','#1a1000','Laisser un avis','feedback.html')
+    +mi('⚙️','#141414','Paramètres du compte','mon-compte.html')
+    +'</div></div>'
+    +'<button class="logout-btn" onclick="deconnexion()">🚪 Déconnexion</button>';
+}
+
+function mi(ico,bg,label,href,action){
+  var onc = action ? ' onclick="'+action+'"' : '';
+  var tag = href ? 'a href="'+href+'"' : 'div';
+  var close = href ? 'a' : 'div';
+  return '<'+tag+' class="menu-item"'+onc+'>'
+    +'<div class="menu-item-ico" style="background:'+bg+'">'+ico+'</div>'
+    +'<div class="menu-item-label">'+label+'</div>'
+    +'<div class="menu-item-arrow">›</div>'
+    +'</'+close+'>';
+}
+
+function locked(title,desc){
+  return '<div class="locked"><div class="lock-ico">🔒</div>'
+    +'<h3>'+title+'</h3><p>'+desc+'</p>'
+    +'<button class="lock-btn" onclick="goLogin()">Se connecter</button>'
+    +'</div>';
+}
+
+function deconnexion(){
+  if(confirm('Se déconnecter ?')){
+    localStorage.removeItem('fa_genesis_session');
+    localStorage.removeItem('fa_genesis_token');
+    localStorage.removeItem('fa_push_subscribed');
+    window.location.reload();
+  }
+}
+
+// ── NOTIFICATIONS ─────────────────────────────────────────────
+function openNotifModal(){ document.getElementById('notif-overlay').className='on'; }
+function closeNotifModal(){ document.getElementById('notif-overlay').className=''; }
+function activerNotifs(){
+  closeNotifModal();
+  if(window.FA_activerNotifications) window.FA_activerNotifications();
+  else if('Notification' in window) Notification.requestPermission();
+}
 </script>
 
+<!-- Font Awesome async -->
+<link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+  onload="this.onload=null;this.rel='stylesheet'">
+
+<script src="config.js" defer></script>
+<script src="pwa-init.js" defer></script>
 </body>
 </html>
