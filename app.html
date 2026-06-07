@@ -334,7 +334,149 @@ a{text-decoration:none;color:inherit}
   text-transform:uppercase;letter-spacing:1.5px;white-space:nowrap;
   font-family:'Unbounded',sans-serif}
 .prest-group-line{flex:1;height:1px;background:var(--border)}
-.prest-group-items{display:flex;flex-direction:column;gap:10px}</style>
+.prest-group-items{display:flex;flex-direction:column;gap:10px}
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   NEO-BRUTALIST PRESTATIONS MOBILE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.prest-tab{padding-bottom:calc(var(--nav) + var(--safe) + 20px)}
+
+/* Section */
+.p-section{margin-bottom:8px}
+.p-section-hdr{
+  margin:0 16px 16px;padding:14px 20px;
+  display:inline-block;width:calc(100% - 32px);
+  font-size:22px;font-weight:900;font-style:italic;text-transform:uppercase;
+  letter-spacing:-0.5px;color:#fff;font-family:'Unbounded',sans-serif;
+  border:4px solid #000;position:relative;
+}
+.p-section-hdr.gold{background:linear-gradient(135deg,#c89116,#e8a820);color:#000}
+.p-section-hdr.black{background:#000;color:var(--yellow)}
+.p-section-hdr.dark{background:#0a0a0a;color:#fff;border-color:var(--yellow)}
+.p-section-hdr::after{
+  content:'';position:absolute;bottom:-6px;right:-6px;
+  width:100%;height:100%;background:#000;z-index:-1;
+}
+.p-section-hdr.gold::after{background:var(--yellow)}
+
+/* Sub-filter tabs */
+.p-sub-filter{
+  display:flex;gap:0;margin:0 16px 14px;
+  background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden;
+}
+.p-sub-btn{
+  flex:1;padding:10px 4px;font-size:11px;font-weight:900;text-transform:uppercase;
+  letter-spacing:.3px;color:var(--muted);background:transparent;border:none;
+  border-right:1px solid var(--border);font-family:inherit;transition:all .15s;
+}
+.p-sub-btn:last-child{border-right:none}
+.p-sub-btn.on{background:var(--yellow);color:#000}
+
+/* Cards horizontal scroll */
+.p-cards-scroll{
+  display:flex;gap:14px;padding:0 16px 4px;
+  overflow-x:auto;scrollbar-width:none;
+}
+.p-cards-scroll::-webkit-scrollbar{display:none}
+
+/* Neo-brutalist card */
+.p-neo-card{
+  flex-shrink:0;width:260px;
+  border:4px solid #000;
+  display:flex;flex-direction:column;
+  position:relative;
+  box-shadow:6px 6px 0 #000;
+  overflow:hidden;
+}
+.p-neo-card::after{
+  content:'';position:absolute;inset:0;
+  border:4px solid rgba(255,255,255,.08);pointer-events:none;
+}
+.p-neo-card-inner{padding:20px;display:flex;flex-direction:column;height:100%;min-height:340px}
+.p-neo-badge{
+  display:inline-block;background:#fff;color:#000;
+  font-size:9px;font-weight:900;padding:3px 10px;
+  text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;width:fit-content;
+  border:2px solid #000;
+}
+.p-neo-name{
+  font-size:24px;font-weight:900;font-style:italic;text-transform:uppercase;
+  color:#fff;margin-bottom:2px;font-family:'Unbounded',sans-serif;line-height:1;
+}
+.p-neo-sub{font-size:9px;font-weight:900;color:rgba(255,255,255,.5);
+  text-transform:uppercase;letter-spacing:2px;margin-bottom:16px}
+.p-neo-price{font-size:28px;font-weight:900;font-style:italic;color:#fff;margin-bottom:2px;font-family:'Unbounded',sans-serif}
+.p-neo-payment{font-size:10px;color:rgba(255,255,255,.6);font-weight:700;margin-bottom:12px;line-height:1.4}
+.p-neo-divider{height:2px;background:rgba(255,255,255,.2);margin-bottom:12px}
+.p-neo-features{list-style:none;flex:1}
+.p-neo-features li{
+  font-size:9px;font-weight:900;color:rgba(255,255,255,.85);
+  text-transform:uppercase;padding:3px 0;letter-spacing:.3px;
+  display:flex;align-items:flex-start;gap:5px;line-height:1.4;
+}
+.p-neo-features li::before{content:'✔';color:rgba(255,255,255,.5);flex-shrink:0}
+.p-neo-cta{
+  margin-top:14px;padding:12px;background:#000;color:#fff;
+  font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:1px;
+  border:3px solid rgba(255,255,255,.3);text-align:center;
+  font-family:inherit;width:100%;cursor:pointer;
+  transition:background .15s,color .15s;
+}
+.p-neo-cta:active{background:var(--yellow);color:#000;border-color:#000}
+.p-neo-cta.gold-cta{background:var(--yellow);color:#000;border-color:#000}
+
+/* Coworking cards (image background) */
+.p-cw-card{
+  flex-shrink:0;width:230px;border:4px solid rgba(255,255,255,.3);
+  border-radius:0;overflow:hidden;box-shadow:6px 6px 0 rgba(255,255,255,.1);
+  position:relative;min-height:280px;display:flex;flex-direction:column;justify-content:flex-end;
+}
+.p-cw-card-bg{
+  position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+  filter:brightness(.45);
+}
+.p-cw-card-body{position:relative;z-index:1;padding:16px}
+.p-cw-card-name{font-size:14px;font-weight:900;font-style:italic;text-transform:uppercase;
+  color:#fff;font-family:'Unbounded',sans-serif;margin-bottom:2px}
+.p-cw-card-price{font-size:22px;font-weight:900;color:var(--yellow);margin-bottom:2px}
+.p-cw-card-unit{font-size:10px;color:rgba(255,255,255,.6);font-weight:700;margin-bottom:10px}
+.p-cw-card-feats{list-style:none;margin-bottom:12px}
+.p-cw-card-feats li{font-size:9px;color:rgba(255,255,255,.8);font-weight:700;text-transform:uppercase;padding:1px 0}
+.p-cw-card-feats li::before{content:'✔ '}
+.p-cw-cta{
+  width:100%;padding:10px;background:var(--yellow);color:#000;
+  font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:1px;
+  border:3px solid #000;font-family:inherit;cursor:pointer;
+}
+
+/* Group header inside scroll sections */
+.p-group-label{
+  flex-shrink:0;display:flex;align-items:center;
+  padding:0 4px;
+}
+.p-group-tag{
+  writing-mode:vertical-lr;transform:rotate(180deg);
+  font-size:9px;font-weight:900;color:var(--yellow);text-transform:uppercase;
+  letter-spacing:2px;background:#000;padding:8px 4px;border:2px solid var(--yellow);
+  font-family:'Unbounded',sans-serif;
+}
+
+/* Visibilité cards */
+.p-vis-card{
+  flex-shrink:0;width:220px;background:var(--card);border:4px solid #000;
+  box-shadow:6px 6px 0 var(--yellow);padding:20px;display:flex;flex-direction:column;
+}
+.p-vis-type{font-size:10px;font-weight:900;color:var(--yellow);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
+.p-vis-name{font-size:18px;font-weight:900;font-style:italic;color:#fff;text-transform:uppercase;font-family:'Unbounded',sans-serif;margin-bottom:12px}
+.p-vis-price{font-size:22px;font-weight:900;color:var(--yellow);margin-bottom:4px}
+.p-vis-payment{font-size:10px;color:var(--muted);margin-bottom:10px;line-height:1.4}
+.p-vis-feats{list-style:none;flex:1}
+.p-vis-feats li{font-size:9px;color:#bbb;font-weight:700;text-transform:uppercase;padding:2px 0}
+.p-vis-feats li::before{content:'✔ ';color:var(--yellow)}
+.p-vis-cta{
+  margin-top:12px;padding:10px;background:var(--yellow);color:#000;
+  font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:1px;
+  border:3px solid #000;font-family:inherit;cursor:pointer;
+}</style>
 </head>
 <body>
 
@@ -486,15 +628,14 @@ a{text-decoration:none;color:inherit}
     </div>
 
     <!-- PRESTATIONS -->
-    <div class="tab" id="tab-prestations">
-      <div class="filter-bar">
+    <div class="tab prest-tab" id="tab-prestations">
+      <div class="filter-bar" style="padding-top:16px;">
         <button class="fpill on" onclick="filterPrestations('all',this)">Toutes</button>
-        <button class="fpill" onclick="filterPrestations('etudiant',this)">Étudiant</button>
-        <button class="fpill" onclick="filterPrestations('particulier',this)">Particulier</button>
-        <button class="fpill" onclick="filterPrestations('entreprise',this)">Entreprise</button>
         <button class="fpill" onclick="filterPrestations('accompagnement',this)">Accompagnement</button>
+        <button class="fpill" onclick="filterPrestations('coworking',this)">Coworking</button>
+        <button class="fpill" onclick="filterPrestations('visibilite',this)">Visibilité</button>
       </div>
-      <div id="prestList" style="padding:0 16px 16px"></div>
+      <div id="prestList"></div>
     </div>
 
     <!-- RÉSERVATIONS -->
@@ -669,42 +810,186 @@ function renderHomeOffers(filter){
   document.getElementById('homeOffers').innerHTML=html||'<div style="padding:20px;color:#555;text-align:center;font-size:13px">Aucune offre</div>';
 }
 
-// ── RENDU PRESTATIONS (groupées) ─────────────────────────────
-var GROUPS=[
-  {key:'etudiant',label:'Étudiant',emoji:'🎓'},
-  {key:'particulier',label:'Particulier',emoji:'👤'},
-  {key:'entreprise',label:'Entreprise',emoji:'🏢'},
-  {key:'accompagnement',label:'Accompagnement',emoji:'⭐'},
-];
+// ── DATA COMPLÈTE PRESTATIONS (fidèle au site) ────────────────
+var PDATA = {
+  accompagnement: {
+    etudiant: [
+      {badge:'2 Jours',name:'IDEA',sub:'Structurer',price:'50 €',payment:'en 2x (24,50€/mois)',gradient:'135deg,#000,#26ff22',feats:['1 Mini séance (45 min)','Structuration du projet','Mini plan d\'action (7 jours)']},
+      {badge:'7 Jours',name:'STARTER',sub:'Démarrer',price:'100 €',payment:'en 4x (25€/mois)',gradient:'135deg,#000,#05ffff',feats:['1 Séance stratégique (1h30)','Structuration du projet','Conseils visibilité','Plan d\'action (14 jours)']},
+      {badge:'14 Jours',name:'LAUNCH',sub:'Lancer',price:'189 €',payment:'en 6x (31,50€/mois)',gradient:'135deg,#191418,#c400ff',feats:['1 Séance stratégique (1h30)','Structuration & storytelling','Mini shooting (45 min)','2 photos retouchées','1 Média crédible']},
+      {badge:'1 Mois',name:'IMPACT',sub:'Rayonner',price:'390 €',payment:'en 8x (48,75€/mois)',gradient:'135deg,#ff0000,#ff00b8',feats:['1 Séance (1h30)','Shooting (5 photos)','Tournage vidéo (1h)','1 vidéo (1 min)','1 Média crédible']},
+      {badge:'Sur Mesure',name:'CUSTOM',sub:'Personnalisé',price:'Sur Devis',payment:'Selon le projet',gradient:'135deg,#000,#dd9a08',feats:['Diagnostic personnalisé','Séances sur mesure','Structuration & storytelling','Image & visibilité','Plan d\'action réaliste'],cta:'Demander un devis',link:'contact.html?objet=devis'},
+    ],
+    particulier: [
+      {badge:'2 Jours',name:'IDEA',sub:'Structurer',price:'149 €',payment:'',gradient:'135deg,#000,#00ff66',feats:['1 Séance stratégique (1h30)','Structuration du projet','Plan d\'action (7 jours)']},
+      {badge:'7 Jours',name:'STARTER',sub:'Démarrer',price:'490 €',payment:'en 2x (245€/mois)',gradient:'135deg,#000,#006d67',feats:['1 Séance (1h30)','Structuration','Conseils visibilité','Plan d\'action (14 jours)']},
+      {badge:'14 Jours',name:'LAUNCH',sub:'Lancer',price:'790 €',payment:'en 2x (395€/mois)',gradient:'135deg,#191418,#8300ab',feats:['1 Séance (1h30)','Structuration & storytelling','Mini shooting (45 min)','4 photos retouchées','2 Post/Story Média']},
+      {badge:'1 Mois',name:'IMPACT',sub:'Rayonner',price:'1490 €',payment:'en 2x (745€/mois)',gradient:'135deg,#ff0000,#ff00b8',feats:['1 Séance (1h30)','Shooting (9 photos)','Tournage (1h)','1 vidéo (1 min)','4 Post/Story Média']},
+      {badge:'Sur Mesure',name:'CUSTOM',sub:'Personnalisé',price:'Sur Devis',payment:'Selon le projet',gradient:'135deg,#000,#dd9a08',feats:['Diagnostic personnalisé','Séances sur mesure','Structuration & storytelling','Image & visibilité'],cta:'Demander un devis',link:'contact.html?objet=devis'},
+    ],
+    entreprise: [
+      {badge:'7 Jours',name:'START',sub:'Structurer',price:'1490 €',payment:'',gradient:'135deg,#202020,#ff5c00',feats:['1 Séance (1h30)','Positionnement & message','Conseils visibilité','Mini plan d\'action (30j)']},
+      {badge:'14 Jours',name:'VISIBILITY',sub:'Crédibilité',price:'2990 €',payment:'',gradient:'135deg,#202020,#ff0000',feats:['1 Séance (1h30)','Shooting (24 photos)','Tournage (1h30)','1 Vidéo longue (2 min)','6 Post/Story Média']},
+      {badge:'30 Jours',name:'IMPACT',sub:'Autorité',price:'4900 €',payment:'',gradient:'135deg,#202020,#ffbc0f',feats:['1 Séance (1h30)','Shooting (40 photos)','2 Tournages (1h30)','2 Vidéos longues (2 min)','9 Post/Story Média']},
+      {badge:'Sur Mesure',name:'CUSTOM',sub:'Personnalisé',price:'Sur Devis',payment:'',gradient:'135deg,#202020,#f2ff00',feats:['Diagnostic personnalisé','Séances sur mesure','Storytelling & communication','Production de contenus'],cta:'Demander un devis',link:'contact.html?objet=devis'},
+    ]
+  },
+  coworking: {
+    etudiant: [
+      {name:'OPENSPACE',price:'10 €',unit:'/ poste / journée',img:'assets/images/Openspace-1.png',feats:['Espace de travail partagé','Café offert','Wi-Fi inclus'],cta:'Réserver'},
+      {name:'ÉVÉNEMENT / SOIRÉE',price:'dès 200 €',unit:'Format 4h',img:'assets/images/Soirée 1.png',feats:['Salle événementielle','Équipement inclus','Paiement 3x (dès 67€/mois)'],cta:'Réserver'},
+    ],
+    particulier: [
+      {name:'OPENSPACE',price:'15 €',unit:'/ poste / journée',img:'assets/images/Openspace-2.png',feats:['Espace de travail partagé','Café offert','Wi-Fi inclus'],cta:'Réserver'},
+      {name:'BUREAU PRIVÉ',price:'45 €',unit:'/ journée',img:'assets/images/Bureau-Duo-2.png',feats:['Bureau fermé & privatisé','Café offert','Wi-Fi inclus'],cta:'Réserver'},
+      {name:'ÉVÉNEMENT / SOIRÉE',price:'dès 300 €',unit:'Format 4h',img:'assets/images/Soirée 2.png',feats:['Salle événementielle','Équipement inclus','Paiement 3x (dès 100€/mois)'],cta:'Réserver'},
+    ],
+    entreprise: [
+      {name:'OPENSPACE',price:'25 €',unit:'/ poste / journée',img:'assets/images/Openspace-3.png',feats:['Espace de travail partagé','Café offert','Wi-Fi inclus'],cta:'Réserver'},
+      {name:'BUREAU PRIVÉ',price:'85 €',unit:'/ journée',img:'assets/images/Bureau-Duo-3.png',feats:['Bureau fermé & privatisé','Café offert','Wi-Fi inclus'],cta:'Réserver'},
+      {name:'ÉVÉNEMENT / SOIRÉE',price:'dès 375 €',unit:'Format 4h',img:'assets/images/Soirée 3.png',feats:['Salle événementielle','Équipement inclus','Paiement 3x (dès 125€/mois)'],cta:'Réserver'},
+    ]
+  },
+  visibilite: [
+    {type:'Photo',name:'ESSENTIEL',price:'290 €',payment:'en 2x (145€/mois)',feats:['Shooting 1h30','8 photos retouchées','Livrables HD']},
+    {type:'Photo',name:'PREMIUM',price:'490 €',payment:'en 2x (245€/mois)',feats:['Shooting 3h','20 photos retouchées','Retouches pro + brief']},
+    {type:'Vidéo',name:'ESSENTIEL',price:'390 €',payment:'en 2x (195€/mois)',feats:['Tournage 1h','1 vidéo (1 min)','Format réseaux sociaux']},
+    {type:'Vidéo',name:'PREMIUM',price:'590 €',payment:'en 2x (295€/mois)',feats:['Tournage 1h30','1 vidéo longue (2 min)','Brief + direction narrative']},
+    {type:'Marketing',name:'ESSENTIEL',price:'390 €',payment:'en 2x (195€/mois)',feats:['Stratégie réseaux sociaux','Plan de contenus (30j)','Conseils & accompagnement']},
+    {type:'Médias',name:'IMPACT',price:'490 €',payment:'en 2x (245€/mois)',feats:['Accès 1 média crédible','8 Post et/ou 8 Story','Brief en amont']},
+    {type:'Médias',name:'PREMIUM',price:'590 €',payment:'en 2x (295€/mois)',feats:['Accès 1 média crédible','12 Post et/ou 12 Story','Stratégie de visibilité long terme']},
+  ]
+};
+
+var _prestFilter = 'all';
+var _prestSub = 'etudiant';
+
 function renderPrestations(filter){
-  var groups=(!filter||filter==='all')?GROUPS:GROUPS.filter(function(g){return g.key===filter;});
-  var html='';
-  groups.forEach(function(g){
-    var items=OFFERS.filter(function(o){return o.profil===g.key;});
-    if(!items.length) return;
-    html+='<div class="prest-group">'
-      +'<div class="prest-group-hdr">'
-      +'<span class="prest-group-emoji">'+g.emoji+'</span>'
-      +'<span class="prest-group-label">'+g.label+'</span>'
-      +'<div class="prest-group-line"></div>'
-      +'</div><div class="prest-group-items">';
-    items.forEach(function(o){
-      html+='<div class="offer-row" onclick="window.location.href=\'offres.html\'">'
-        +'<img src="'+o.img+'" alt="'+o.name+'" onerror="this.style.background=\'#222\';this.removeAttribute(\'src\')">'
-        +'<div class="offer-row-body">'
-        +'<div class="offer-row-cat">'+(o.tag||g.label)+'</div>'
-        +'<div class="offer-row-name">'+o.name+'</div>'
-        +'<div class="offer-row-price">'+o.price+'<span class="offer-row-unit">'+o.unit+'</span></div>'
-        +'</div></div>';
+  _prestFilter = filter||'all';
+  var html = '';
+
+  // ── ACCOMPAGNEMENT ────────────────────────────────────────────
+  if(_prestFilter==='all'||_prestFilter==='accompagnement'){
+    html += '<div class="p-section" id="p-section-accompagnement">';
+    html += '<div class="p-section-hdr gold">NOS OFFRES</div>';
+    // Sub-filter
+    html += '<div class="p-sub-filter">'
+      +'<button class="p-sub-btn '+(_prestSub==='etudiant'?'on':'')+'" onclick="setPrestSub(\'etudiant\',this)">Étudiant</button>'
+      +'<button class="p-sub-btn '+(_prestSub==='particulier'?'on':'')+'" onclick="setPrestSub(\'particulier\',this)">Particulier</button>'
+      +'<button class="p-sub-btn '+(_prestSub==='entreprise'?'on':'')+'" onclick="setPrestSub(\'entreprise\',this)">Entreprise</button>'
+      +'</div>';
+    html += '<div class="p-cards-scroll" id="p-accomp-cards">';
+    PDATA.accompagnement[_prestSub].forEach(function(o){
+      html += neoCard(o);
     });
-    html+='</div></div>';
-  });
-  document.getElementById('prestList').innerHTML=html;
+    html += '</div></div>';
+  }
+
+  // ── COWORKING ─────────────────────────────────────────────────
+  if(_prestFilter==='all'||_prestFilter==='coworking'){
+    html += '<div class="p-section" style="margin-top:24px;">';
+    html += '<div class="p-section-hdr black">COM VISA — Coworking</div>';
+    html += '<div style="padding:0 16px 8px;">'
+      +'<div style="font-size:11px;color:#888;font-weight:700;margin-bottom:4px;">23 Rue Saint-Guilhem, Montpellier</div>'
+      +'</div>';
+    // Sub-filter
+    var cwSub = _prestSub==='accompagnement'?'etudiant':_prestSub;
+    html += '<div class="p-sub-filter" id="p-cw-filter">'
+      +'<button class="p-sub-btn '+(cwSub==='etudiant'?'on':'')+'" onclick="setPrestSubCW(\'etudiant\',this)">Étudiant</button>'
+      +'<button class="p-sub-btn '+(cwSub==='particulier'?'on':'')+'" onclick="setPrestSubCW(\'particulier\',this)">Particulier</button>'
+      +'<button class="p-sub-btn '+(cwSub==='entreprise'?'on':'')+'" onclick="setPrestSubCW(\'entreprise\',this)">Entreprise</button>'
+      +'</div>';
+    html += '<div class="p-cards-scroll" id="p-cw-cards">';
+    PDATA.coworking[cwSub].forEach(function(o){
+      html += cwCard(o);
+    });
+    html += '</div></div>';
+  }
+
+  // ── VISIBILITÉ ────────────────────────────────────────────────
+  if(_prestFilter==='all'||_prestFilter==='visibilite'){
+    html += '<div class="p-section" style="margin-top:24px;">';
+    html += '<div class="p-section-hdr dark">Tarifs Visibilité</div>';
+    html += '<div class="p-cards-scroll">';
+    PDATA.visibilite.forEach(function(o){
+      html += visCard(o);
+    });
+    html += '</div></div>';
+  }
+
+  document.getElementById('prestList').innerHTML = html;
 }
+
+// Card builders
+function neoCard(o){
+  var featsHtml = o.feats.map(function(f){return '<li>'+f+'</li>';}).join('');
+  var ctaLabel = o.cta||'Ajouter au panier';
+  var ctaAction = o.link ? 'window.location.href=\''+o.link+'\'' : 'window.location.href=\'offres.html\'';
+  var ctaCls = o.link ? 'p-neo-cta gold-cta' : 'p-neo-cta';
+  return '<div class="p-neo-card" style="background:linear-gradient('+o.gradient+')">'
+    +'<div class="p-neo-card-inner">'
+    +'<div class="p-neo-badge">'+o.badge+'</div>'
+    +'<div class="p-neo-name">'+o.name+'</div>'
+    +(o.sub?'<div class="p-neo-sub">'+o.sub+'</div>':'')
+    +'<div class="p-neo-price">'+o.price+'</div>'
+    +(o.payment?'<div class="p-neo-payment">'+o.payment+'</div>':'')
+    +'<div class="p-neo-divider"></div>'
+    +'<ul class="p-neo-features">'+featsHtml+'</ul>'
+    +'<button class="'+ctaCls+'" onclick="'+ctaAction+'">'+ctaLabel+'</button>'
+    +'</div></div>';
+}
+
+function cwCard(o){
+  var featsHtml = o.feats.map(function(f){return '<li>'+f+'</li>';}).join('');
+  return '<div class="p-cw-card">'
+    +'<img class="p-cw-card-bg" src="'+o.img+'" alt="'+o.name+'" onerror="this.style.display=\'none\'">'
+    +'<div class="p-cw-card-body">'
+    +'<div class="p-cw-card-name">'+o.name+'</div>'
+    +'<div class="p-cw-card-price">'+o.price+'</div>'
+    +'<div class="p-cw-card-unit">'+o.unit+'</div>'
+    +'<ul class="p-cw-card-feats">'+featsHtml+'</ul>'
+    +'<button class="p-cw-cta" onclick="window.location.href=\'offres.html\'">'+o.cta+'</button>'
+    +'</div></div>';
+}
+
+function visCard(o){
+  var featsHtml = o.feats.map(function(f){return '<li>'+f+'</li>';}).join('');
+  return '<div class="p-vis-card">'
+    +'<div class="p-vis-type">'+o.type+'</div>'
+    +'<div class="p-vis-name">'+o.name+'</div>'
+    +'<div class="p-vis-price">'+o.price+'</div>'
+    +(o.payment?'<div class="p-vis-payment">'+o.payment+'</div>':'')
+    +'<ul class="p-vis-feats">'+featsHtml+'</ul>'
+    +'<button class="p-vis-cta" onclick="window.location.href=\'offres.html\'">Voir l\'offre</button>'
+    +'</div>';
+}
+
+function setPrestSub(sub,el){
+  _prestSub = sub;
+  document.querySelectorAll('#p-section-accompagnement .p-sub-btn').forEach(function(b){b.className='p-sub-btn';});
+  el.className='p-sub-btn on';
+  var cards = document.getElementById('p-accomp-cards');
+  if(cards){
+    var html = '';
+    PDATA.accompagnement[sub].forEach(function(o){html+=neoCard(o);});
+    cards.innerHTML=html;
+  }
+}
+function setPrestSubCW(sub,el){
+  document.querySelectorAll('#p-cw-filter .p-sub-btn').forEach(function(b){b.className='p-sub-btn';});
+  el.className='p-sub-btn on';
+  var cards = document.getElementById('p-cw-cards');
+  if(cards){
+    var html = '';
+    PDATA.coworking[sub].forEach(function(o){html+=cwCard(o);});
+    cards.innerHTML=html;
+  }
+}
+
 function filterPrestations(cat,el){
   document.querySelectorAll('.fpill').forEach(function(p){p.className='fpill';});
   el.className='fpill on';
-  renderPrestations(cat);
+  renderPrestations(cat==='all'?null:cat);
 }
 
 // ── RÉSERVATIONS ──────────────────────────────────────────────
