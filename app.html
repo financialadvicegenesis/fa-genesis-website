@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
@@ -781,21 +781,31 @@ function loadUserSession() {
 }
 
 // ─── SPLASH → APP ───────────────────────────────
-window.addEventListener('load', function() {
+// Utiliser DOMContentLoaded (pas 'load') pour ne pas attendre les CDN
+function launchSplashTransition() {
+  var splash = document.getElementById('splash');
+  if (!splash) return;
+  splash.classList.add('fade-out');
   setTimeout(function() {
-    var splash = document.getElementById('splash');
-    splash.classList.add('fade-out');
-    setTimeout(function() {
-      splash.style.display = 'none';
-      var hasUser = loadUserSession();
-      if (hasUser) {
-        showApp();
-      } else {
-        showWelcome();
-      }
-    }, 600);
-  }, 2600);
+    splash.style.display = 'none';
+    var hasUser = loadUserSession();
+    if (hasUser) {
+      showApp();
+    } else {
+      showWelcome();
+    }
+  }, 500);
+}
+
+// Déclencher après 2s dès que le DOM est prêt (sans attendre les CDN)
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(launchSplashTransition, 2000);
 });
+
+// Garde-fou : si DOMContentLoaded a déjà tiré (script chargé tard), lancer immédiatement
+if (document.readyState === 'interactive' || document.readyState === 'complete') {
+  setTimeout(launchSplashTransition, 2000);
+}
 
 function showWelcome() {
   document.getElementById('welcome').classList.add('show');
