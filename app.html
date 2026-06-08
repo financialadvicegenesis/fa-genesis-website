@@ -85,6 +85,33 @@ a{text-decoration:none;color:inherit}
 .btn-ghost:active{background:#1a1a1a}
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   DESKTOP RESPONSIVE (≥768px)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+@media (min-width:768px){
+  #bgOverlay{background:rgba(0,0,0,.5)}
+  #splash .s-logo{width:120px;height:120px}
+  #splash .s-name{font-size:30px;letter-spacing:5px}
+  #splash .s-bar{width:72px;margin-top:56px}
+  #welcome{padding:0 40px calc(60px + var(--safe))}
+  .w-hero{max-width:580px;padding-top:80px}
+  .w-logo{width:90px;height:90px;border-radius:22px;margin-bottom:32px}
+  .w-title{font-size:34px;margin-bottom:16px}
+  .w-desc{font-size:15px;max-width:420px;margin-bottom:44px}
+  .w-features{gap:36px;margin-bottom:48px}
+  .w-feat .ico{width:54px;height:54px;font-size:24px;border-radius:14px}
+  .w-feat{font-size:11px}
+  .w-btns{max-width:520px;flex-direction:row;gap:16px}
+  .btn-main{flex:1;padding:19px;font-size:16px;border-radius:16px}
+  .btn-ghost{flex:1;padding:17px;font-size:15px;border-radius:16px}
+  #app{
+    max-width:480px;
+    margin:0 auto;
+    height:100vh;
+    box-shadow:0 0 100px rgba(0,0,0,.85),0 0 0 1px #1a1a1a;
+  }
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    APP SHELL
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 #app{display:none;height:100%;flex-direction:column;background:var(--bg)}
