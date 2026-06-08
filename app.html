@@ -823,6 +823,32 @@ a{text-decoration:none;color:inherit}
 </div>
 
 <script>
+// ── VIDÉO FOND : lecture forcée & persistante ─────────────────
+function _playBgVideo(){
+  var bv = document.getElementById('bgVideo');
+  if(!bv || bv.style.display === 'none') return;
+  bv.muted = true;
+  var p = bv.play();
+  if(p && p.catch) p.catch(function(){});
+}
+// Tentative immédiate au chargement
+window.addEventListener('load', _playBgVideo);
+// Reprise si l'onglet revient au premier plan (retour d'une autre app, écran qui se rallume)
+document.addEventListener('visibilitychange', function(){
+  if(!document.hidden) _playBgVideo();
+});
+// Reprise au premier toucher (bypass restriction autoplay iOS Safari)
+document.addEventListener('touchstart', _playBgVideo, {passive:true});
+// Reprise si la vidéo se met en pause pour une raison quelconque
+document.addEventListener('DOMContentLoaded', function(){
+  var bv = document.getElementById('bgVideo');
+  if(bv){
+    bv.addEventListener('pause', function(){
+      if(bv.style.display !== 'none') _playBgVideo();
+    });
+  }
+});
+
 // ── DATA ─────────────────────────────────────────────────────
 var USER = null, GUEST = false;
 var API = 'https://fa-genesis-website.onrender.com';
