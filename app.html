@@ -85,6 +85,59 @@ a{text-decoration:none;color:inherit}
 .btn-ghost:active{background:#1a1a1a}
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   TRANSITION SPLASH → WELCOME
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+/* Splash : s'envole vers le haut avec un éclat de lumière */
+@keyframes splashExit{
+  0%  {opacity:1;transform:scale(1);filter:brightness(1)}
+  20% {opacity:1;transform:scale(1.06);filter:brightness(2.5)}
+  100%{opacity:0;transform:scale(1.22) translateY(-6%);filter:brightness(5);pointer-events:none}
+}
+#splash.exiting{
+  animation:splashExit .85s cubic-bezier(.4,0,.6,1) forwards;
+  pointer-events:none;
+}
+
+/* Flash doré central */
+#goldFlash{
+  position:fixed;inset:0;z-index:9998;pointer-events:none;
+  background:radial-gradient(circle at 50% 42%,
+    rgba(255,215,0,.85) 0%,
+    rgba(255,180,0,.4)  28%,
+    rgba(255,140,0,.1)  55%,
+    transparent         75%);
+  opacity:0;
+}
+@keyframes goldBurst{
+  0%  {opacity:0;transform:scale(.15)}
+  30% {opacity:1;transform:scale(1)}
+  70% {opacity:.6}
+  100%{opacity:0;transform:scale(2.8)}
+}
+#goldFlash.on{animation:goldBurst 1s cubic-bezier(.2,0,.3,1) forwards}
+
+/* Welcome : éléments cachés initialement puis en cascade spring */
+#welcome.entering{opacity:1!important}
+@keyframes wLogoIn{
+  from{opacity:0;transform:scale(2) rotate(-15deg) translateY(-20px)}
+  to  {opacity:1;transform:scale(1)  rotate(0deg)  translateY(0)}
+}
+@keyframes wSlideUp{
+  from{opacity:0;transform:translateY(38px)}
+  to  {opacity:1;transform:translateY(0)}
+}
+@keyframes wBtnsIn{
+  from{opacity:0;transform:translateY(50px) scale(.94)}
+  to  {opacity:1;transform:translateY(0)    scale(1)}
+}
+#welcome.entering .w-logo   {animation:wLogoIn  .65s cubic-bezier(.34,1.56,.64,1) .05s both}
+#welcome.entering .w-title  {animation:wSlideUp .55s cubic-bezier(.34,1.56,.64,1) .22s both}
+#welcome.entering .w-desc   {animation:wSlideUp .45s ease-out                     .36s both}
+#welcome.entering .w-features{animation:wSlideUp .45s ease-out                    .46s both}
+#welcome.entering .w-btns   {animation:wBtnsIn  .6s  cubic-bezier(.34,1.56,.64,1) .58s both}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    DESKTOP RESPONSIVE (≥768px)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 @media (min-width:768px){
@@ -624,6 +677,7 @@ a{text-decoration:none;color:inherit}
 </video>
 <script>(function(){var v=document.getElementById('bgVideo');if(v){v.muted=true;v.play().catch(function(){});}})();</script>
 <div id="bgOverlay"></div>
+<div id="goldFlash"></div>
 
 <!-- ══════════ SPLASH ══════════ -->
 <div id="splash">
@@ -873,17 +927,39 @@ var OFFERS = [
 
 // ── SPLASH → APP ─────────────────────────────────────────────
 setTimeout(function(){
-  document.getElementById('splash').style.display = 'none';
   try{
     var s = localStorage.getItem('fa_genesis_session');
     var t = localStorage.getItem('fa_genesis_token');
-    if(s && t){ USER = JSON.parse(s); USER._token = t; showApp(); }
-    else { showWelcome(); }
-  } catch(e){ showWelcome(); }
+    if(s && t){ USER = JSON.parse(s); USER._token = t; _exitSplash(showApp); }
+    else { _exitSplash(showWelcome); }
+  } catch(e){ _exitSplash(showWelcome); }
 }, 2500);
 
+function _exitSplash(callback){
+  var splash = document.getElementById('splash');
+  var flash  = document.getElementById('goldFlash');
+  // Déclenche le flash doré
+  if(flash){ flash.className='on'; }
+  // Splash s'envole
+  if(splash){ splash.className='exiting'; }
+  // Après la transition, cache définitivement le splash et appelle callback
+  setTimeout(function(){
+    if(splash){ splash.style.display='none'; splash.className=''; }
+    if(flash) { flash.style.display='none';  flash.className=''; }
+    callback();
+  }, 820);
+}
+
 function showWelcome(){
-  document.getElementById('welcome').style.display = 'flex';
+  var w = document.getElementById('welcome');
+  w.style.opacity = '0';
+  w.style.display = 'flex';
+  // Petit délai pour que le navigateur applique opacity:0 avant la transition
+  setTimeout(function(){
+    w.style.transition = 'opacity .35s ease';
+    w.style.opacity = '1';
+    w.className = 'entering';
+  }, 30);
 }
 function showApp(){
   document.getElementById('welcome').style.display = 'none';
