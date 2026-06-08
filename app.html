@@ -721,7 +721,7 @@ a{text-decoration:none;color:inherit}
 
       <!-- Offres populaires -->
       <div class="sec-lbl" style="margin-top:8px">
-        <h2>Prestations populaires</h2>
+        <h2 id="homeOffersTitle">Prestations populaires</h2>
         <a onclick="nav('prestations')">Tout voir</a>
       </div>
       <div class="offer-scroll" id="homeOffers"></div>
@@ -890,25 +890,87 @@ function setCat(cat,el){
 
 // ── RENDU OFFRES HOME ─────────────────────────────────────────
 function renderHomeOffers(filter){
-  var list;
-  if(!filter||filter==='all'){list=OFFERS.slice(0,5);}
-  else if(filter==='etudiant'||filter==='particulier'||filter==='entreprise'||filter==='accompagnement'){
-    list=OFFERS.filter(function(o){return o.profil===filter;});
+  var items = [];
+  var title = 'Prestations populaires';
+
+  if(!filter || filter==='all'){
+    items = OFFERS.slice(0,5).map(function(o){
+      return {name:o.name, tag:o.tag, price:o.price, unit:o.unit, img:o.img};
+    });
+
+  } else if(filter==='etudiant'||filter==='particulier'||filter==='entreprise'){
+    var profil = filter;
+    var profilLabel = profil==='etudiant'?'Étudiant':profil==='particulier'?'Particulier':'Entreprise';
+    title = 'Offres '+profilLabel;
+    if(PDATA && PDATA.accompagnement && PDATA.accompagnement[profil]){
+      PDATA.accompagnement[profil].forEach(function(o){
+        items.push({name:o.name, tag:o.sub||'', price:o.price, unit:o.badge||'', gradient:o.gradient, link:o.link});
+      });
+    }
+    if(PDATA && PDATA.coworking && PDATA.coworking[profil]){
+      PDATA.coworking[profil].forEach(function(o){
+        items.push({name:o.name, tag:profilLabel, price:o.price, unit:o.unit, img:o.img});
+      });
+    }
+
+  } else if(filter==='evenement'){
+    title = 'Événements & Soirées';
+    ['etudiant','particulier','entreprise'].forEach(function(profil){
+      if(PDATA && PDATA.coworking && PDATA.coworking[profil]){
+        PDATA.coworking[profil].forEach(function(o){
+          if(o.name.indexOf('ÉVÉNEMENT')>=0||o.name.indexOf('SOIR')>=0){
+            var lbl = profil==='etudiant'?'Étudiant':profil==='particulier'?'Particulier':'Entreprise';
+            items.push({name:o.name, tag:lbl, price:o.price, unit:o.unit, img:o.img});
+          }
+        });
+      }
+    });
+
+  } else if(filter==='coworking'){
+    title = 'Espaces Coworking';
+    OFFERS.filter(function(o){return o.cat==='coworking';}).forEach(function(o){
+      items.push({name:o.name, tag:o.tag, price:o.price, unit:o.unit, img:o.img});
+    });
+
   } else {
-    list=OFFERS.filter(function(o){return o.cat===filter;});
+    items = OFFERS.filter(function(o){return o.cat===filter;}).map(function(o){
+      return {name:o.name, tag:o.tag, price:o.price, unit:o.unit, img:o.img};
+    });
   }
-  var html=list.map(function(o){
-    return '<div class="offer-card" onclick="window.location.href=\'offres.html\'">'
-      +'<img src="'+o.img+'" alt="'+o.name+'" onerror="this.style.background=\'#222\';this.removeAttribute(\'src\')">'
+
+  var titleEl = document.getElementById('homeOffersTitle');
+  if(titleEl) titleEl.textContent = title;
+
+  var html = items.map(function(o){ return homeCard(o); }).join('');
+  document.getElementById('homeOffers').innerHTML = html || '<div style="padding:20px;color:#555;text-align:center;font-size:13px">Aucune offre</div>';
+}
+
+function homeCard(o){
+  var goAct = o.link ? 'window.location.href=\''+o.link+'\'' : 'nav(\'prestations\')';
+  if(o.gradient){
+    return '<div class="offer-card" style="cursor:pointer;border:2px solid #000;box-shadow:4px 4px 0 #000" onclick="'+goAct+'">'
+      +'<div style="width:100%;height:110px;display:flex;flex-direction:column;align-items:center;justify-content:center;'
+      +'background:linear-gradient('+o.gradient+');padding:10px;">'
+      +'<div style="font-size:18px;font-weight:900;font-style:italic;text-transform:uppercase;'
+      +'text-align:center;color:#fff;font-family:\'Unbounded\',sans-serif;line-height:1">'+o.name+'</div>'
+      +(o.tag?'<div style="font-size:8px;font-weight:900;color:rgba(255,255,255,.65);text-transform:uppercase;letter-spacing:1px;margin-top:5px">'+o.tag+'</div>':'')
+      +'</div>'
       +'<div class="offer-body">'
-      +(o.tag?'<div class="offer-cat">'+o.tag+'</div>':'')
-      +'<div class="offer-name">'+o.name+'</div>'
+      +(o.unit?'<div style="font-size:9px;color:#888;margin-bottom:3px;text-transform:uppercase;font-weight:700;letter-spacing:.3px">'+o.unit+'</div>':'')
       +'<div class="offer-foot">'
       +'<div class="offer-price">'+o.price+'</div>'
-      +'<button class="offer-btn" onclick="event.stopPropagation();window.location.href=\'offres.html\'">Réserver</button>'
+      +'<button class="offer-btn" onclick="event.stopPropagation();'+goAct+'">Voir</button>'
       +'</div></div></div>';
-  }).join('');
-  document.getElementById('homeOffers').innerHTML=html||'<div style="padding:20px;color:#555;text-align:center;font-size:13px">Aucune offre</div>';
+  }
+  return '<div class="offer-card" style="cursor:pointer" onclick="nav(\'prestations\')">'
+    +'<img src="'+(o.img||'')+'" alt="'+o.name+'" onerror="this.style.background=\'#222\';this.removeAttribute(\'src\')">'
+    +'<div class="offer-body">'
+    +(o.tag?'<div class="offer-cat">'+o.tag+'</div>':'')
+    +'<div class="offer-name">'+o.name+'</div>'
+    +'<div class="offer-foot">'
+    +'<div class="offer-price">'+o.price+'</div>'
+    +'<button class="offer-btn" onclick="event.stopPropagation();nav(\'prestations\')">Voir</button>'
+    +'</div></div></div>';
 }
 
 // ── DATA COMPLÈTE PRESTATIONS (fidèle au site) ────────────────
