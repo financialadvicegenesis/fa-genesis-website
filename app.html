@@ -476,7 +476,108 @@ a{text-decoration:none;color:inherit}
   margin-top:12px;padding:10px;background:var(--yellow);color:#000;
   font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:1px;
   border:3px solid #000;font-family:inherit;cursor:pointer;
-}</style>
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   VISIBILITÉ SOUS-FILTRES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.p-vis-filter{display:flex;gap:8px;padding:0 16px 12px;overflow-x:auto;scrollbar-width:none}
+.p-vis-filter::-webkit-scrollbar{display:none}
+.p-vis-fpill{
+  flex-shrink:0;padding:7px 14px;border-radius:6px;border:2px solid #000;
+  background:var(--card);color:var(--muted);font-size:10px;font-weight:900;
+  text-transform:uppercase;letter-spacing:.5px;transition:all .15s;font-family:inherit;cursor:pointer;
+}
+.p-vis-fpill.on{background:var(--yellow);border-color:#000;color:#000}
+
+/* Carte Marketing */
+.p-mkt-card{
+  flex-shrink:0;width:200px;background:#0d0d0d;border:4px solid var(--yellow);
+  box-shadow:5px 5px 0 rgba(255,215,0,.25);padding:18px;display:flex;flex-direction:column;
+}
+.p-mkt-name{font-size:16px;font-weight:900;font-style:italic;color:#fff;text-transform:uppercase;
+  font-family:'Unbounded',sans-serif;margin-bottom:10px;line-height:1.1}
+.p-mkt-price{font-size:26px;font-weight:900;color:var(--yellow);margin-bottom:4px;
+  font-family:'Unbounded',sans-serif;font-style:italic}
+.p-mkt-payment{font-size:10px;color:var(--muted);margin-bottom:10px;font-weight:700;min-height:14px}
+.p-mkt-feats{list-style:none;flex:1;margin-bottom:12px}
+.p-mkt-feats li{font-size:9px;color:#bbb;font-weight:700;text-transform:uppercase;padding:3px 0;line-height:1.3}
+.p-mkt-feats li::before{content:'→ ';color:var(--yellow)}
+.p-mkt-cta{
+  padding:10px;background:var(--yellow);color:#000;font-size:10px;font-weight:900;
+  text-transform:uppercase;letter-spacing:1px;border:3px solid #000;
+  font-family:inherit;cursor:pointer;width:100%;
+}
+
+/* Carte Médias */
+.p-med-card{
+  flex-shrink:0;width:200px;background:#050515;border:4px solid #818cf8;
+  box-shadow:5px 5px 0 rgba(129,140,248,.25);padding:18px;display:flex;flex-direction:column;
+}
+.p-med-name{font-size:16px;font-weight:900;font-style:italic;color:#fff;text-transform:uppercase;
+  font-family:'Unbounded',sans-serif;margin-bottom:10px;line-height:1.1}
+.p-med-price{font-size:26px;font-weight:900;color:#818cf8;margin-bottom:4px;
+  font-family:'Unbounded',sans-serif;font-style:italic}
+.p-med-payment{font-size:10px;color:var(--muted);margin-bottom:10px;font-weight:700;min-height:14px}
+.p-med-feats{list-style:none;flex:1;margin-bottom:12px}
+.p-med-feats li{font-size:9px;color:#bbb;font-weight:700;text-transform:uppercase;padding:3px 0;line-height:1.3}
+.p-med-feats li::before{content:'● ';color:#818cf8}
+.p-med-cta{
+  padding:10px;background:#818cf8;color:#000;font-size:10px;font-weight:900;
+  text-transform:uppercase;letter-spacing:1px;border:3px solid #000;
+  font-family:inherit;cursor:pointer;width:100%;
+}
+
+/* Badge Populaire */
+.p-neo-card.featured{border-color:var(--yellow);box-shadow:6px 6px 0 var(--yellow)}
+.p-recommended{
+  position:absolute;top:10px;right:10px;
+  background:var(--yellow);color:#000;font-size:8px;font-weight:900;
+  padding:3px 8px;border:2px solid #000;text-transform:uppercase;letter-spacing:.5px;
+}
+
+/* Fiche détail — bottom sheet */
+#detail-sheet{
+  display:none;position:fixed;inset:0;z-index:900;
+  background:rgba(0,0,0,.8);backdrop-filter:blur(12px);
+  align-items:flex-end;justify-content:center;
+}
+#detail-sheet.on{display:flex}
+.detail-panel{
+  background:#141414;border:1px solid #2a2a2a;border-radius:24px 24px 0 0;
+  width:100%;max-width:500px;max-height:88vh;overflow-y:auto;
+  padding:0 24px calc(32px + var(--safe));
+  animation:sheetUp .35s cubic-bezier(.34,1.56,.64,1);
+}
+.detail-panel::-webkit-scrollbar{display:none}
+.detail-handle{width:40px;height:4px;background:#2a2a2a;border-radius:2px;margin:16px auto 20px}
+.detail-badge{display:inline-block;background:var(--yellow);color:#000;font-size:9px;font-weight:900;
+  padding:4px 12px;border:2px solid #000;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px}
+.detail-name{font-size:28px;font-weight:900;font-style:italic;color:#fff;text-transform:uppercase;
+  font-family:'Unbounded',sans-serif;line-height:1;margin-bottom:4px}
+.detail-sub{font-size:10px;color:#555;text-transform:uppercase;letter-spacing:2px;margin-bottom:18px}
+.detail-price{font-size:38px;font-weight:900;color:var(--yellow);font-style:italic;
+  font-family:'Unbounded',sans-serif;margin-bottom:4px}
+.detail-payment{font-size:12px;color:#777;font-weight:700;margin-bottom:18px}
+.detail-divider{height:1px;background:#222;margin-bottom:14px}
+.detail-feats-title{font-size:9px;color:#444;font-weight:900;text-transform:uppercase;
+  letter-spacing:1px;margin-bottom:10px}
+.detail-feats{list-style:none;margin-bottom:24px}
+.detail-feats li{
+  font-size:13px;color:#ccc;font-weight:600;padding:10px 0;
+  border-bottom:1px solid #1c1c1c;display:flex;align-items:center;gap:10px;
+}
+.detail-feats li::before{content:'✔';color:var(--yellow);font-size:10px;flex-shrink:0}
+.detail-cta{
+  width:100%;padding:17px;background:var(--yellow);color:#000;
+  font-size:14px;font-weight:900;text-transform:uppercase;letter-spacing:1px;
+  border:3px solid #000;font-family:inherit;cursor:pointer;margin-bottom:10px;display:block;
+}
+.detail-close-btn{
+  width:100%;padding:12px;background:transparent;color:#444;
+  font-size:13px;font-family:inherit;cursor:pointer;border:none;
+}
+</style>
 </head>
 <body>
 
@@ -850,19 +951,34 @@ var PDATA = {
       {name:'ÉVÉNEMENT / SOIRÉE',price:'dès 375 €',unit:'Format 4h',img:'assets/images/Soirée 3.png',feats:['Salle événementielle','Équipement inclus','Paiement 3x (dès 125€/mois)'],cta:'Réserver'},
     ]
   },
-  visibilite: [
-    {type:'Photo',name:'ESSENTIEL',price:'290 €',payment:'en 2x (145€/mois)',feats:['Shooting 1h30','8 photos retouchées','Livrables HD']},
-    {type:'Photo',name:'PREMIUM',price:'490 €',payment:'en 2x (245€/mois)',feats:['Shooting 3h','20 photos retouchées','Retouches pro + brief']},
-    {type:'Vidéo',name:'ESSENTIEL',price:'390 €',payment:'en 2x (195€/mois)',feats:['Tournage 1h','1 vidéo (1 min)','Format réseaux sociaux']},
-    {type:'Vidéo',name:'PREMIUM',price:'590 €',payment:'en 2x (295€/mois)',feats:['Tournage 1h30','1 vidéo longue (2 min)','Brief + direction narrative']},
-    {type:'Marketing',name:'ESSENTIEL',price:'390 €',payment:'en 2x (195€/mois)',feats:['Stratégie réseaux sociaux','Plan de contenus (30j)','Conseils & accompagnement']},
-    {type:'Médias',name:'IMPACT',price:'490 €',payment:'en 2x (245€/mois)',feats:['Accès 1 média crédible','8 Post et/ou 8 Story','Brief en amont']},
-    {type:'Médias',name:'PREMIUM',price:'590 €',payment:'en 2x (295€/mois)',feats:['Accès 1 média crédible','12 Post et/ou 12 Story','Stratégie de visibilité long terme']},
-  ]
+  visibilite: {
+    photo: [
+      {name:'ESSENTIEL',price:'290 €',payment:'en 2x (145€/mois)',feats:['Shooting 1h30','8 photos retouchées','Livrables HD','Retouches standard']},
+      {name:'PREMIUM',price:'490 €',payment:'en 2x (245€/mois)',feats:['Shooting 3h','20 photos retouchées','Retouches professionnelles','Brief créatif inclus','Rapport de sélection']},
+    ],
+    video: [
+      {name:'ESSENTIEL',price:'390 €',payment:'en 2x (195€/mois)',feats:['Tournage 1h','1 vidéo (1 min)','Format réseaux sociaux','Montage inclus']},
+      {name:'PREMIUM',price:'590 €',payment:'en 2x (295€/mois)',feats:['Tournage 1h30','1 vidéo longue (2 min)','Brief + direction narrative','Sous-titres inclus','Exports multi-formats']},
+    ],
+    marketing: [
+      {name:'DIGITALES',price:'70 €',payment:'',feats:['Audit réseaux sociaux','Conseils digitaux','Plan d\'action court']},
+      {name:'EXPRESS',price:'120 €',payment:'',feats:['Stratégie rapide','Conseils opérationnels','Rapport PDF']},
+      {name:'STRATEGY',price:'150 €',payment:'',feats:['Analyse de marché','Plan de communication','Recommandations stratégiques']},
+      {name:'IMPACT',price:'350 €',payment:'en 2x (175€/mois)',feats:['Stratégie complète réseaux sociaux','Plan de contenus (30j)','Accompagnement personnalisé']},
+    ],
+    media: [
+      {name:'SIMPLE',price:'55 €',payment:'',feats:['1 Post média','1 Story média','1 média crédible']},
+      {name:'VISIBILITY',price:'223 €',payment:'',feats:['4 Post et/ou 4 Story','1 média crédible','Brief en amont']},
+      {name:'IMPACT',price:'420 €',payment:'en 2x (210€/mois)',feats:['8 Post et/ou 8 Story','1 média crédible','Stratégie de visibilité']},
+      {name:'PREMIUM',price:'590 €',payment:'en 2x (295€/mois)',feats:['12 Post et/ou 12 Story','2 médias crédibles','Stratégie long terme']},
+      {name:'PROMOTION',price:'679 €',payment:'en 2x (339,50€/mois)',feats:['15 Post et/ou 15 Story','3 médias crédibles','Accompagnement complet']},
+    ]
+  }
 };
 
 var _prestFilter = 'all';
 var _prestSub = 'etudiant';
+var _prestVisFilter = 'photo';
 
 function renderPrestations(filter){
   _prestFilter = filter||'all';
@@ -879,8 +995,8 @@ function renderPrestations(filter){
       +'<button class="p-sub-btn '+(_prestSub==='entreprise'?'on':'')+'" onclick="setPrestSub(\'entreprise\',this)">Entreprise</button>'
       +'</div>';
     html += '<div class="p-cards-scroll" id="p-accomp-cards">';
-    PDATA.accompagnement[_prestSub].forEach(function(o){
-      html += neoCard(o);
+    PDATA.accompagnement[_prestSub].forEach(function(o,i){
+      html += neoCard(o, _prestSub, i);
     });
     html += '</div></div>';
   }
@@ -900,19 +1016,25 @@ function renderPrestations(filter){
       +'<button class="p-sub-btn '+(cwSub==='entreprise'?'on':'')+'" onclick="setPrestSubCW(\'entreprise\',this)">Entreprise</button>'
       +'</div>';
     html += '<div class="p-cards-scroll" id="p-cw-cards">';
-    PDATA.coworking[cwSub].forEach(function(o){
-      html += cwCard(o);
+    PDATA.coworking[cwSub].forEach(function(o,i){
+      html += cwCard(o, cwSub, i);
     });
     html += '</div></div>';
   }
 
   // ── VISIBILITÉ ────────────────────────────────────────────────
   if(_prestFilter==='all'||_prestFilter==='visibilite'){
-    html += '<div class="p-section" style="margin-top:24px;">';
+    html += '<div class="p-section" style="margin-top:24px;" id="p-section-visibilite">';
     html += '<div class="p-section-hdr dark">Tarifs Visibilité</div>';
-    html += '<div class="p-cards-scroll">';
-    PDATA.visibilite.forEach(function(o){
-      html += visCard(o);
+    html += '<div class="p-vis-filter" id="p-vis-filter">'
+      +'<button class="p-vis-fpill '+(_prestVisFilter==='photo'?'on':'')+'" onclick="setPrestVisFilter(\'photo\',this)">📷 Photo</button>'
+      +'<button class="p-vis-fpill '+(_prestVisFilter==='video'?'on':'')+'" onclick="setPrestVisFilter(\'video\',this)">🎬 Vidéo</button>'
+      +'<button class="p-vis-fpill '+(_prestVisFilter==='marketing'?'on':'')+'" onclick="setPrestVisFilter(\'marketing\',this)">📊 Marketing</button>'
+      +'<button class="p-vis-fpill '+(_prestVisFilter==='media'?'on':'')+'" onclick="setPrestVisFilter(\'media\',this)">🌐 Médias</button>'
+      +'</div>';
+    html += '<div class="p-cards-scroll" id="p-vis-cards">';
+    PDATA.visibilite[_prestVisFilter].forEach(function(o,i){
+      html += visCardByType(o, _prestVisFilter, i);
     });
     html += '</div></div>';
   }
@@ -921,12 +1043,22 @@ function renderPrestations(filter){
 }
 
 // Card builders
-function neoCard(o){
+function neoCard(o, profil, idx){
   var featsHtml = o.feats.map(function(f){return '<li>'+f+'</li>';}).join('');
-  var ctaLabel = o.cta||'Ajouter au panier';
-  var ctaAction = o.link ? 'window.location.href=\''+o.link+'\'' : 'window.location.href=\'offres.html\'';
-  var ctaCls = o.link ? 'p-neo-cta gold-cta' : 'p-neo-cta';
-  return '<div class="p-neo-card" style="background:linear-gradient('+o.gradient+')">'
+  var ctaLabel, ctaAction, ctaCls;
+  if(o.link){
+    ctaLabel = o.cta||'Demander un devis';
+    ctaAction = 'window.location.href=\''+o.link+'\'';
+    ctaCls = 'p-neo-cta gold-cta';
+  } else {
+    ctaLabel = 'Voir le détail';
+    ctaAction = 'openDetailAccomp(\''+(profil||'etudiant')+'\','+(idx||0)+')';
+    ctaCls = 'p-neo-cta';
+  }
+  var isFeatured = !o.link && (o.name==='LAUNCH'||o.name==='IMPACT'||o.name==='VISIBILITY');
+  var featuredBadge = isFeatured ? '<div class="p-recommended">Populaire</div>' : '';
+  return '<div class="p-neo-card'+(isFeatured?' featured':'')+'" style="background:linear-gradient('+o.gradient+');position:relative">'
+    +featuredBadge
     +'<div class="p-neo-card-inner">'
     +'<div class="p-neo-badge">'+o.badge+'</div>'
     +'<div class="p-neo-name">'+o.name+'</div>'
@@ -939,8 +1071,9 @@ function neoCard(o){
     +'</div></div>';
 }
 
-function cwCard(o){
+function cwCard(o, sub, idx){
   var featsHtml = o.feats.map(function(f){return '<li>'+f+'</li>';}).join('');
+  var detailAction = (sub!==undefined&&idx!==undefined) ? 'openDetailCW(\''+(sub||'etudiant')+'\','+(idx||0)+')' : '';
   return '<div class="p-cw-card">'
     +'<img class="p-cw-card-bg" src="'+o.img+'" alt="'+o.name+'" onerror="this.style.display=\'none\'">'
     +'<div class="p-cw-card-body">'
@@ -948,19 +1081,45 @@ function cwCard(o){
     +'<div class="p-cw-card-price">'+o.price+'</div>'
     +'<div class="p-cw-card-unit">'+o.unit+'</div>'
     +'<ul class="p-cw-card-feats">'+featsHtml+'</ul>'
-    +'<button class="p-cw-cta" onclick="window.location.href=\'offres.html\'">'+o.cta+'</button>'
+    +(detailAction
+      ?'<button class="p-cw-cta" onclick="'+detailAction+'">Voir le détail</button>'
+      :'<button class="p-cw-cta" onclick="window.location.href=\'offres.html\'">'+o.cta+'</button>'
+    )
     +'</div></div>';
 }
 
-function visCard(o){
+function visCardByType(o, type, idx){
+  if(type==='marketing') return mktCard(o, idx);
+  if(type==='media') return medCard(o, idx);
   var featsHtml = o.feats.map(function(f){return '<li>'+f+'</li>';}).join('');
+  var typeLabel = type==='video' ? 'Vidéo' : 'Photo';
   return '<div class="p-vis-card">'
-    +'<div class="p-vis-type">'+o.type+'</div>'
+    +'<div class="p-vis-type">'+typeLabel+'</div>'
     +'<div class="p-vis-name">'+o.name+'</div>'
     +'<div class="p-vis-price">'+o.price+'</div>'
     +(o.payment?'<div class="p-vis-payment">'+o.payment+'</div>':'')
     +'<ul class="p-vis-feats">'+featsHtml+'</ul>'
-    +'<button class="p-vis-cta" onclick="window.location.href=\'offres.html\'">Voir l\'offre</button>'
+    +'<button class="p-vis-cta" onclick="openDetailVis(\''+type+'\','+idx+')">Voir le détail</button>'
+    +'</div>';
+}
+function mktCard(o, idx){
+  var featsHtml = o.feats.map(function(f){return '<li>'+f+'</li>';}).join('');
+  return '<div class="p-mkt-card">'
+    +'<div class="p-mkt-name">'+o.name+'</div>'
+    +'<div class="p-mkt-price">'+o.price+'</div>'
+    +'<div class="p-mkt-payment">'+(o.payment||'&nbsp;')+'</div>'
+    +'<ul class="p-mkt-feats">'+featsHtml+'</ul>'
+    +'<button class="p-mkt-cta" onclick="openDetailVis(\'marketing\','+idx+')">Voir le détail</button>'
+    +'</div>';
+}
+function medCard(o, idx){
+  var featsHtml = o.feats.map(function(f){return '<li>'+f+'</li>';}).join('');
+  return '<div class="p-med-card">'
+    +'<div class="p-med-name">'+o.name+'</div>'
+    +'<div class="p-med-price">'+o.price+'</div>'
+    +'<div class="p-med-payment">'+(o.payment||'&nbsp;')+'</div>'
+    +'<ul class="p-med-feats">'+featsHtml+'</ul>'
+    +'<button class="p-med-cta" onclick="openDetailVis(\'media\','+idx+')">Voir le détail</button>'
     +'</div>';
 }
 
@@ -971,7 +1130,7 @@ function setPrestSub(sub,el){
   var cards = document.getElementById('p-accomp-cards');
   if(cards){
     var html = '';
-    PDATA.accompagnement[sub].forEach(function(o){html+=neoCard(o);});
+    PDATA.accompagnement[sub].forEach(function(o,i){html+=neoCard(o,sub,i);});
     cards.innerHTML=html;
   }
 }
@@ -981,7 +1140,7 @@ function setPrestSubCW(sub,el){
   var cards = document.getElementById('p-cw-cards');
   if(cards){
     var html = '';
-    PDATA.coworking[sub].forEach(function(o){html+=cwCard(o);});
+    PDATA.coworking[sub].forEach(function(o,i){html+=cwCard(o,sub,i);});
     cards.innerHTML=html;
   }
 }
@@ -990,6 +1149,55 @@ function filterPrestations(cat,el){
   document.querySelectorAll('.fpill').forEach(function(p){p.className='fpill';});
   el.className='fpill on';
   renderPrestations(cat==='all'?null:cat);
+}
+function setPrestVisFilter(type,el){
+  _prestVisFilter = type;
+  document.querySelectorAll('#p-vis-filter .p-vis-fpill').forEach(function(b){b.className='p-vis-fpill';});
+  el.className='p-vis-fpill on';
+  var cards = document.getElementById('p-vis-cards');
+  if(cards){
+    var html='';
+    PDATA.visibilite[type].forEach(function(o,i){html+=visCardByType(o,type,i);});
+    cards.innerHTML=html;
+  }
+}
+function openDetailAccomp(profil, idx){
+  openDetail(PDATA.accompagnement[profil][idx], 'accompagnement');
+}
+function openDetailCW(sub, idx){
+  openDetail(PDATA.coworking[sub][idx], 'coworking');
+}
+function openDetailVis(type, idx){
+  openDetail(PDATA.visibilite[type][idx], type);
+}
+function openDetail(o, type){
+  var badge = o.badge
+    || (type==='photo'?'Photo'
+      :type==='video'?'Vidéo'
+      :type==='marketing'?'Marketing'
+      :type==='media'?'Médias'
+      :type||'');
+  var ctaHtml = o.link
+    ?'<button class="detail-cta" onclick="window.location.href=\''+o.link+'\'">Demander un devis</button>'
+    :'<button class="detail-cta" onclick="window.location.href=\'offres.html\'">Commander cette offre</button>';
+  document.getElementById('detail-content').innerHTML = ''
+    +(badge?'<div class="detail-badge">'+badge+'</div>':'')
+    +'<div class="detail-name">'+o.name+'</div>'
+    +(o.sub?'<div class="detail-sub">'+o.sub+'</div>':'')
+    +'<div class="detail-price">'+o.price+'</div>'
+    +(o.payment?'<div class="detail-payment">'+o.payment+'</div>':'')
+    +(o.unit?'<div class="detail-payment">'+o.unit+'</div>':'')
+    +'<div class="detail-divider"></div>'
+    +'<div class="detail-feats-title">Ce qui est inclus</div>'
+    +'<ul class="detail-feats">'
+    +o.feats.map(function(f){return '<li>'+f+'</li>';}).join('')
+    +'</ul>'
+    +ctaHtml
+    +'<button class="detail-close-btn" onclick="closeDetail()">Fermer</button>';
+  document.getElementById('detail-sheet').className='on';
+}
+function closeDetail(){
+  document.getElementById('detail-sheet').className='';
 }
 
 // ── RÉSERVATIONS ──────────────────────────────────────────────
@@ -1119,6 +1327,14 @@ function activerNotifs(){
   else if('Notification' in window) Notification.requestPermission();
 }
 </script>
+
+<!-- Fiche détail — bottom sheet -->
+<div id="detail-sheet" onclick="if(event.target===this)closeDetail()">
+  <div class="detail-panel">
+    <div class="detail-handle"></div>
+    <div id="detail-content"></div>
+  </div>
+</div>
 
 <!-- Font Awesome async -->
 <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
