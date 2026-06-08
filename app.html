@@ -619,9 +619,10 @@ a{text-decoration:none;color:inherit}
 <body>
 
 <!-- ══════════ VIDÉO FOND ══════════ -->
-<video id="bgVideo" autoplay muted loop playsinline>
+<video id="bgVideo" autoplay muted loop playsinline webkit-playsinline preload="auto">
   <source src="assets/videos/teaser.mp4" type="video/mp4">
 </video>
+<script>(function(){var v=document.getElementById('bgVideo');if(v){v.muted=true;v.play().catch(function(){});}})();</script>
 <div id="bgOverlay"></div>
 
 <!-- ══════════ SPLASH ══════════ -->
@@ -828,24 +829,27 @@ function _playBgVideo(){
   var bv = document.getElementById('bgVideo');
   if(!bv || bv.style.display === 'none') return;
   bv.muted = true;
-  var p = bv.play();
-  if(p && p.catch) p.catch(function(){});
+  bv.setAttribute('muted','');
+  bv.setAttribute('playsinline','');
+  bv.setAttribute('webkit-playsinline','');
+  if(bv.paused){ var p = bv.play(); if(p && p.catch) p.catch(function(){}); }
 }
-// Tentative immédiate au chargement
+// Relance dès que la page est entièrement chargée
 window.addEventListener('load', _playBgVideo);
 // Reprise si l'onglet revient au premier plan (retour d'une autre app, écran qui se rallume)
 document.addEventListener('visibilitychange', function(){
   if(!document.hidden) _playBgVideo();
 });
-// Reprise au premier toucher (bypass restriction autoplay iOS Safari)
-document.addEventListener('touchstart', _playBgVideo, {passive:true});
-// Reprise si la vidéo se met en pause pour une raison quelconque
+// Reprise si la vidéo se met en pause pour une raison quelconque (système, navigateur)
 document.addEventListener('DOMContentLoaded', function(){
   var bv = document.getElementById('bgVideo');
   if(bv){
     bv.addEventListener('pause', function(){
-      if(bv.style.display !== 'none') _playBgVideo();
+      if(bv.style.display !== 'none') setTimeout(_playBgVideo, 200);
     });
+    bv.addEventListener('stalled', _playBgVideo);
+    bv.addEventListener('waiting', _playBgVideo);
+    bv.addEventListener('suspend', _playBgVideo);
   }
 });
 
