@@ -490,43 +490,43 @@ a{text-decoration:none;color:inherit}
 }
 .p-vis-fpill.on{background:var(--yellow);border-color:#000;color:#000}
 
-/* Carte Marketing */
-.p-mkt-card{
-  flex-shrink:0;width:200px;background:#0d0d0d;border:4px solid var(--yellow);
-  box-shadow:5px 5px 0 rgba(255,215,0,.25);padding:18px;display:flex;flex-direction:column;
+/* ━━ TARIFS PARTENAIRES — carte unifiée ━━ */
+.p-partner-card{
+  flex-shrink:0;width:220px;border:4px solid #000;
+  box-shadow:6px 6px 0 #000;padding:20px;display:flex;flex-direction:column;
 }
-.p-mkt-name{font-size:16px;font-weight:900;font-style:italic;color:#fff;text-transform:uppercase;
-  font-family:'Unbounded',sans-serif;margin-bottom:10px;line-height:1.1}
-.p-mkt-price{font-size:26px;font-weight:900;color:var(--yellow);margin-bottom:4px;
-  font-family:'Unbounded',sans-serif;font-style:italic}
-.p-mkt-payment{font-size:10px;color:var(--muted);margin-bottom:10px;font-weight:700;min-height:14px}
-.p-mkt-feats{list-style:none;flex:1;margin-bottom:12px}
-.p-mkt-feats li{font-size:9px;color:#bbb;font-weight:700;text-transform:uppercase;padding:3px 0;line-height:1.3}
-.p-mkt-feats li::before{content:'→ ';color:var(--yellow)}
-.p-mkt-cta{
-  padding:10px;background:var(--yellow);color:#000;font-size:10px;font-weight:900;
-  text-transform:uppercase;letter-spacing:1px;border:3px solid #000;
-  font-family:inherit;cursor:pointer;width:100%;
+.p-partner-card.wide{width:300px}
+.p-partner-name{
+  font-size:20px;font-weight:900;font-style:italic;text-transform:uppercase;
+  font-family:'Unbounded',sans-serif;margin-bottom:10px;line-height:1.1;
 }
-
-/* Carte Médias */
-.p-med-card{
-  flex-shrink:0;width:200px;background:#050515;border:4px solid #818cf8;
-  box-shadow:5px 5px 0 rgba(129,140,248,.25);padding:18px;display:flex;flex-direction:column;
+.p-partner-price{
+  font-size:28px;font-weight:900;font-style:italic;
+  font-family:'Unbounded',sans-serif;margin-bottom:4px;
 }
-.p-med-name{font-size:16px;font-weight:900;font-style:italic;color:#fff;text-transform:uppercase;
-  font-family:'Unbounded',sans-serif;margin-bottom:10px;line-height:1.1}
-.p-med-price{font-size:26px;font-weight:900;color:#818cf8;margin-bottom:4px;
-  font-family:'Unbounded',sans-serif;font-style:italic}
-.p-med-payment{font-size:10px;color:var(--muted);margin-bottom:10px;font-weight:700;min-height:14px}
-.p-med-feats{list-style:none;flex:1;margin-bottom:12px}
-.p-med-feats li{font-size:9px;color:#bbb;font-weight:700;text-transform:uppercase;padding:3px 0;line-height:1.3}
-.p-med-feats li::before{content:'● ';color:#818cf8}
-.p-med-cta{
-  padding:10px;background:#818cf8;color:#000;font-size:10px;font-weight:900;
-  text-transform:uppercase;letter-spacing:1px;border:3px solid #000;
-  font-family:inherit;cursor:pointer;width:100%;
+.p-partner-payment{
+  font-size:9px;font-weight:900;text-transform:uppercase;
+  letter-spacing:.3px;margin-bottom:10px;opacity:.85;line-height:1.4;
 }
+.p-partner-desc{
+  font-size:10px;line-height:1.5;font-weight:500;opacity:.85;
+  padding-top:10px;margin-bottom:10px;text-transform:none;
+  border-top:1px solid rgba(255,255,255,.25);
+}
+.p-partner-desc.dark-border{border-top-color:rgba(0,0,0,.15)}
+.p-partner-feats{list-style:none;flex:1;margin-bottom:14px;padding-top:10px;
+  border-top:1px solid rgba(255,255,255,.25)}
+.p-partner-feats.dark-border{border-top-color:rgba(0,0,0,.15)}
+.p-partner-feats li{
+  font-size:9px;font-weight:900;text-transform:uppercase;
+  padding:3px 0;line-height:1.3;
+}
+.p-partner-cta{
+  padding:11px;background:#000;color:#fff;font-size:10px;font-weight:900;
+  text-transform:uppercase;letter-spacing:1px;
+  border:3px solid rgba(255,255,255,.35);font-family:inherit;cursor:pointer;width:100%;
+}
+.p-partner-cta.dark-cta{background:#000;color:#00ffff;border-color:#000}
 
 /* Badge Populaire */
 .p-neo-card.featured{border-color:var(--yellow);box-shadow:6px 6px 0 var(--yellow)}
@@ -734,7 +734,7 @@ a{text-decoration:none;color:inherit}
         <button class="fpill on" onclick="filterPrestations('all',this)">Toutes</button>
         <button class="fpill" onclick="filterPrestations('accompagnement',this)">Accompagnement</button>
         <button class="fpill" onclick="filterPrestations('coworking',this)">Coworking</button>
-        <button class="fpill" onclick="filterPrestations('visibilite',this)">Visibilité</button>
+        <button class="fpill" onclick="filterPrestations('visibilite',this)">Partenaires</button>
       </div>
       <div id="prestList"></div>
     </div>
@@ -953,25 +953,37 @@ var PDATA = {
   },
   visibilite: {
     photo: [
-      {name:'ESSENTIEL',price:'290 €',payment:'en 2x (145€/mois)',feats:['Shooting 1h30','8 photos retouchées','Livrables HD','Retouches standard']},
-      {name:'PREMIUM',price:'490 €',payment:'en 2x (245€/mois)',feats:['Shooting 3h','20 photos retouchées','Retouches professionnelles','Brief créatif inclus','Rapport de sélection']},
+      {
+        name:'PHOTO', price:'SUR DEVIS', wide:true,
+        gradient:'135deg, #8b5a00, #b5cd63',
+        payment:'Paiement possible en plusieurs fois selon le projet',
+        desc:'FA Genesis collabore avec plusieurs photographes professionnels indépendants. Le tarif dépend du projet, du format, de la durée et du prestataire sélectionné.',
+        feats:['Séance photo personnalisée','Orientation posture & image professionnelle','Format réseaux sociaux','Nombre de photos retouchées adapté'],
+        link:'contact.html?objet=devis&service=photo', cta:'Demander un devis'
+      },
     ],
     video: [
-      {name:'ESSENTIEL',price:'390 €',payment:'en 2x (195€/mois)',feats:['Tournage 1h','1 vidéo (1 min)','Format réseaux sociaux','Montage inclus']},
-      {name:'PREMIUM',price:'590 €',payment:'en 2x (295€/mois)',feats:['Tournage 1h30','1 vidéo longue (2 min)','Brief + direction narrative','Sous-titres inclus','Exports multi-formats']},
+      {
+        name:'VIDÉO', price:'SUR DEVIS', wide:true,
+        gradient:'135deg, #0e6c9b, #5d0069, #e300ff',
+        payment:'Paiement possible en plusieurs fois selon le projet',
+        desc:'Les tarifs sont définis en fonction du format, des objectifs du projet et du vidéaste partenaire.',
+        feats:['Tournage vidéo personnalisé','Nombre de vidéos adapté','Direction narrative & storytelling','Conseils de diffusion','Son & cadrage professionnels','Orientation posture & discours','Format réseaux sociaux'],
+        link:'contact.html?objet=devis&service=video', cta:'Demander un devis'
+      },
     ],
     marketing: [
-      {name:'DIGITALES',price:'70 €',payment:'',feats:['Audit réseaux sociaux','Conseils digitaux','Plan d\'action court']},
-      {name:'EXPRESS',price:'120 €',payment:'',feats:['Stratégie rapide','Conseils opérationnels','Rapport PDF']},
-      {name:'STRATEGY',price:'150 €',payment:'',feats:['Analyse de marché','Plan de communication','Recommandations stratégiques']},
-      {name:'IMPACT',price:'350 €',payment:'en 2x (175€/mois)',feats:['Stratégie complète réseaux sociaux','Plan de contenus (30j)','Accompagnement personnalisé']},
+      {name:'EXPRESS',  price:'120 €', gradient:'135deg, #4b0505, #fa2a2a, #ff2323', payment:'Paiement possible en 2x dont 1x/mois (60 €/mois)',  feats:['Analyse du projet','Clarification cible & message','Recommandations concrètes']},
+      {name:'STRATEGY', price:'150 €', gradient:'135deg, #4b0505, #fa2a2a, #ff2323', payment:'Paiement possible en 2x dont 1x/mois (75 €/mois)',  feats:['Positionnement','Message central','Branding']},
+      {name:'IMPACT',   price:'350 €', gradient:'135deg, #4b0505, #fa2a2a, #ff2323', payment:'Paiement possible en 2x dont 1x/mois (175 €/mois)', feats:['Diagnostic approfondi','Priorités claires','Storytelling du projet','Plan de publication (30 jours)']},
+      {name:'DIGITALES',price:'70 €',  gradient:'135deg, #4b0505, #fa2a2a, #ff2323', payment:'Paiement possible en 2x dont 1x/mois (35 €/mois)',  feats:['Choix des plateformes','Conseils contenus']},
     ],
     media: [
-      {name:'SIMPLE',price:'55 €',payment:'',feats:['1 Post média','1 Story média','1 média crédible']},
-      {name:'VISIBILITY',price:'223 €',payment:'',feats:['4 Post et/ou 4 Story','1 média crédible','Brief en amont']},
-      {name:'IMPACT',price:'420 €',payment:'en 2x (210€/mois)',feats:['8 Post et/ou 8 Story','1 média crédible','Stratégie de visibilité']},
-      {name:'PREMIUM',price:'590 €',payment:'en 2x (295€/mois)',feats:['12 Post et/ou 12 Story','2 médias crédibles','Stratégie long terme']},
-      {name:'PROMOTION',price:'679 €',payment:'en 2x (339,50€/mois)',feats:['15 Post et/ou 15 Story','3 médias crédibles','Accompagnement complet']},
+      {name:'SIMPLE',    price:'55 €',  gradient:'135deg, #003274, #2212a2, #2217f4', payment:'Paiement possible en 2x dont 1x/mois (27,5 €/mois)',    feats:['Accès à 1 média crédible','Publication (1 Post et/ou 1 Story)','Brief en amont pour cadrer le message']},
+      {name:'VISIBILITY',price:'223 €', gradient:'135deg, #003274, #2212a2, #2217f4', payment:'Paiement possible en 2x dont 1x/mois (111,50 €/mois)',  feats:['Accès à 1 média crédible','Publication (4 Post et/ou 4 Story)','Brief en amont pour cadrer le message']},
+      {name:'IMPACT',    price:'420 €', gradient:'135deg, #003274, #2212a2, #2217f4', payment:'Paiement possible en 2x dont 1x/mois (210 €/mois)',    feats:['Accès à 1 média crédible','Publication (6 Post et/ou 6 Story)','Brief en amont pour cadrer le message','Conseils pour réutiliser la publication sur les réseaux sociaux']},
+      {name:'PREMIUM',   price:'590 €', gradient:'135deg, #003274, #2212a2, #2217f4', payment:'Paiement possible en 2x dont 1x/mois (295 €/mois)',    feats:['Accès à 1 média crédible','Publication (8 Post et/ou 8 Story)','Brief en amont pour cadrer le message','Stratégie de visibilité pour avoir une crédibilité sur du long terme']},
+      {name:'PROMOTION', price:'679 €', bg:'#00ffff', textColor:'black',              payment:'Paiement possible en 2x dont 1x/mois (339,50 €/mois)', feats:['Accès à 1 média crédible','Publication (12 Post et/ou 12 Story)','Visibilité auprès d\'une audience ciblée et engagée','Mise en avant de votre contenu (Artiste, marque ou évènement)','Gain de notoriété et de crédibilité grâce à un relais média']},
     ]
   }
 };
@@ -1025,7 +1037,7 @@ function renderPrestations(filter){
   // ── VISIBILITÉ ────────────────────────────────────────────────
   if(_prestFilter==='all'||_prestFilter==='visibilite'){
     html += '<div class="p-section" style="margin-top:24px;" id="p-section-visibilite">';
-    html += '<div class="p-section-hdr dark">Tarifs Visibilité</div>';
+    html += '<div class="p-section-hdr dark">TARIFS PARTENAIRES</div>';
     html += '<div class="p-vis-filter" id="p-vis-filter">'
       +'<button class="p-vis-fpill '+(_prestVisFilter==='photo'?'on':'')+'" onclick="setPrestVisFilter(\'photo\',this)">📷 Photo</button>'
       +'<button class="p-vis-fpill '+(_prestVisFilter==='video'?'on':'')+'" onclick="setPrestVisFilter(\'video\',this)">🎬 Vidéo</button>'
@@ -1088,38 +1100,36 @@ function cwCard(o, sub, idx){
     +'</div></div>';
 }
 
-function visCardByType(o, type, idx){
-  if(type==='marketing') return mktCard(o, idx);
-  if(type==='media') return medCard(o, idx);
-  var featsHtml = o.feats.map(function(f){return '<li>'+f+'</li>';}).join('');
-  var typeLabel = type==='video' ? 'Vidéo' : 'Photo';
-  return '<div class="p-vis-card">'
-    +'<div class="p-vis-type">'+typeLabel+'</div>'
-    +'<div class="p-vis-name">'+o.name+'</div>'
-    +'<div class="p-vis-price">'+o.price+'</div>'
-    +(o.payment?'<div class="p-vis-payment">'+o.payment+'</div>':'')
-    +'<ul class="p-vis-feats">'+featsHtml+'</ul>'
-    +'<button class="p-vis-cta" onclick="openDetailVis(\''+type+'\','+idx+')">Voir le détail</button>'
-    +'</div>';
-}
-function mktCard(o, idx){
-  var featsHtml = o.feats.map(function(f){return '<li>'+f+'</li>';}).join('');
-  return '<div class="p-mkt-card">'
-    +'<div class="p-mkt-name">'+o.name+'</div>'
-    +'<div class="p-mkt-price">'+o.price+'</div>'
-    +'<div class="p-mkt-payment">'+(o.payment||'&nbsp;')+'</div>'
-    +'<ul class="p-mkt-feats">'+featsHtml+'</ul>'
-    +'<button class="p-mkt-cta" onclick="openDetailVis(\'marketing\','+idx+')">Voir le détail</button>'
-    +'</div>';
-}
-function medCard(o, idx){
-  var featsHtml = o.feats.map(function(f){return '<li>'+f+'</li>';}).join('');
-  return '<div class="p-med-card">'
-    +'<div class="p-med-name">'+o.name+'</div>'
-    +'<div class="p-med-price">'+o.price+'</div>'
-    +'<div class="p-med-payment">'+(o.payment||'&nbsp;')+'</div>'
-    +'<ul class="p-med-feats">'+featsHtml+'</ul>'
-    +'<button class="p-med-cta" onclick="openDetailVis(\'media\','+idx+')">Voir le détail</button>'
+function visCardByType(o, type, idx){ return partnerCard(o, type, idx); }
+function mktCard(o, idx){ return partnerCard(o, 'marketing', idx); }
+function medCard(o, idx){ return partnerCard(o, 'media', idx); }
+
+function partnerCard(o, type, idx){
+  var isPromo = (o.name==='PROMOTION');
+  var isDark = isPromo;
+  var textColor = o.textColor || 'white';
+  var bgStyle = o.bg
+    ? 'background-color:'+o.bg
+    : 'background:linear-gradient('+o.gradient+')';
+  var dividerColor = isDark ? 'rgba(0,0,0,.15)' : 'rgba(255,255,255,.25)';
+  var featsHtml = o.feats.map(function(f){return '<li>✔ '+f+'</li>';}).join('');
+  var ctaAction, ctaLabel, ctaCls;
+  if(o.link){
+    ctaAction = 'window.location.href=\''+o.link+'\'';
+    ctaLabel = o.cta || 'Demander un devis';
+    ctaCls = 'p-partner-cta';
+  } else {
+    ctaAction = 'openDetailVis(\''+type+'\','+idx+')';
+    ctaLabel = 'Voir le détail';
+    ctaCls = isPromo ? 'p-partner-cta dark-cta' : 'p-partner-cta';
+  }
+  return '<div class="p-partner-card'+(o.wide?' wide':'')+'" style="'+bgStyle+';color:'+textColor+';">'
+    +'<div class="p-partner-name">'+o.name+'</div>'
+    +'<div class="p-partner-price">'+o.price+'</div>'
+    +(o.payment?'<div class="p-partner-payment">'+o.payment+'</div>':'')
+    +(o.desc?'<p class="p-partner-desc'+(isDark?' dark-border':'')+'" style="border-top-color:'+dividerColor+'">'+o.desc+'</p>':'')
+    +'<ul class="p-partner-feats'+(isDark?' dark-border':'')+'" style="border-top-color:'+dividerColor+'">'+featsHtml+'</ul>'
+    +'<button class="'+ctaCls+'" onclick="'+ctaAction+'">'+ctaLabel+'</button>'
     +'</div>';
 }
 
