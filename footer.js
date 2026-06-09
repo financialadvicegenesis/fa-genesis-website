@@ -146,8 +146,10 @@
             links: [
                 { label: 'Conditions g\u00e9n\u00e9rales', href: 'conditions-generales.html' },
                 { label: 'Confidentialit\u00e9', href: 'confidentialite.html' },
+                { label: 'Donn\u00e9es personnelles', href: 'protection-donnees.html' },
                 { label: 'Mentions l\u00e9gales', href: 'mentions-legales.html' },
-                { label: 'R\u00e9clamation', href: 'reclamation.html' }
+                { label: 'R\u00e9clamation', href: 'reclamation.html' },
+                { label: 'Cookies', href: 'cookies.html' }
             ]
         }
     ];
@@ -264,6 +266,8 @@
         // Centre : liens
         html += '<div class="fg-footer__bottom-links">';
         html += buildLink('confidentialite.html', 'Confidentialit\u00e9');
+        html += buildLink('protection-donnees.html', 'Donn\u00e9es pers.');
+        html += buildLink('cookies.html', 'Cookies');
         html += buildLink('conditions-generales.html', 'CGV');
         html += buildLink('contact.html', 'Contact');
         html += '</div>';
