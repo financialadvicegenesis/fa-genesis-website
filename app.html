@@ -418,6 +418,42 @@ a{text-decoration:none;color:inherit}
 .plus-item-label{flex:1;font-size:14px;font-weight:600;line-height:1.4}
 .plus-item-arrow{font-size:16px;color:#333;font-weight:300}
 
+/* Gestion cookies — style Didomi */
+.ck-intro{padding:16px 16px 0;font-size:13px;color:#666;line-height:1.6}
+.ck-row{display:flex;align-items:flex-start;justify-content:space-between;
+  gap:16px;padding:18px 16px;border-bottom:1px solid var(--border)}
+.ck-row:last-child{border:none}
+.ck-info{flex:1}
+.ck-title{font-size:14px;font-weight:800;margin-bottom:5px;color:var(--text)}
+.ck-desc{font-size:12px;color:#555;line-height:1.5}
+.ck-required{font-size:10px;font-weight:900;color:#444;text-transform:uppercase;
+  letter-spacing:.8px;margin-top:4px}
+/* Toggle switch */
+.tgl{position:relative;width:46px;height:26px;flex-shrink:0}
+.tgl input{opacity:0;width:0;height:0;position:absolute}
+.tgl-slider{position:absolute;inset:0;background:#2a2a2a;border-radius:26px;
+  cursor:pointer;transition:background .22s}
+.tgl-slider::before{content:'';position:absolute;width:20px;height:20px;
+  left:3px;top:3px;background:#555;border-radius:50%;
+  transition:transform .22s,background .22s}
+.tgl input:checked+.tgl-slider{background:var(--yellow)}
+.tgl input:checked+.tgl-slider::before{transform:translateX(20px);background:#000}
+.tgl input:disabled+.tgl-slider{cursor:not-allowed;background:#1e1e1e}
+.tgl input:disabled+.tgl-slider::before{background:#333}
+/* Boutons cookies */
+.ck-actions{display:flex;flex-direction:column;gap:10px;padding:20px 16px}
+.ck-btn-all{padding:15px;background:var(--yellow);color:#000;font-weight:900;
+  font-size:14px;border-radius:14px;font-family:'Unbounded',sans-serif;
+  letter-spacing:.3px;text-align:center}
+.ck-btn-all:active{opacity:.85}
+.ck-btn-save{padding:14px;background:transparent;border:1px solid #2a2a2a;
+  color:#aaa;font-size:14px;font-weight:700;border-radius:14px;font-family:inherit}
+.ck-btn-save:active{background:#141414}
+.ck-saved-banner{margin:0 16px;padding:12px 16px;background:#0a1a0a;
+  border:1px solid #22c55e;border-radius:12px;font-size:13px;
+  color:#22c55e;font-weight:700;display:none;text-align:center}
+.ck-saved-banner.on{display:block}
+
 /* Sous-page drill-down (style McDonald's) */
 @keyframes plusSlideIn{from{opacity:0;transform:translateX(32px)}to{opacity:1;transform:translateX(0)}}
 .plus-subpage{animation:plusSlideIn .28s cubic-bezier(.34,1.2,.64,1)}
@@ -1589,7 +1625,7 @@ function renderProfil(){
     +'<div class="plus-section-title">MES PARAMÈTRES</div>'
     +'<div class="plus-group">'
     +pli('🗂️','#0d0d1a','Gestion des données personnelles',null,'showDonneesMenu()')
-    +pli('🍪','#1a1000','Gestion des cookies','confidentialite.html#cookies')
+    +pli('🍪','#1a1000','Gestion des cookies',null,'showCookiesMenu()')
     +(USER && !GUEST ? pli('🔔','#1a0800','Notifications',null,'window.FA_activerNotifications&&window.FA_activerNotifications()') : '')
     +(USER && !GUEST ? pli('⚙️','#141414','Paramètres du compte','mon-compte.html') : '')
     +'</div></div>';
@@ -1642,7 +1678,7 @@ function showDonneesMenu(){
     // ── Politique ──
     +'<a href="'+url+'" target="_blank" rel="noopener noreferrer" class="plus-item">'
     +'<div class="plus-item-ico" style="background:#0d0d1a">📜</div>'
-    +'<div class="plus-item-label">Politique de Protection des Données Personnelles</div>'
+    +'<div class="plus-item-label">Politique de confidentialité</div>'
     +'<div class="plus-item-arrow">›</div>'
     +'</a>'
     // ── Gérer ──
@@ -1653,6 +1689,80 @@ function showDonneesMenu(){
     +'</a>'
     +'</div></div>'
     +'</div>';
+}
+
+function showCookiesMenu(){
+  var c = document.getElementById('profilContent');
+  // Lit les préférences sauvegardées
+  var prefs = {};
+  try{ prefs = JSON.parse(localStorage.getItem('fa_cookie_prefs')||'{}'); }catch(e){}
+  var ana  = prefs.analytiques  !== false;
+  var perso = prefs.personnalisation !== false;
+
+  function ckRow(id, emoji, title, desc, checked, disabled){
+    var dis = disabled ? ' disabled' : '';
+    var chk = checked  ? ' checked'  : '';
+    return '<div class="ck-row">'
+      +'<div class="ck-info">'
+      +'<div class="ck-title">'+emoji+' '+title+'</div>'
+      +'<div class="ck-desc">'+desc+'</div>'
+      +(disabled ? '<div class="ck-required">Toujours actifs</div>' : '')
+      +'</div>'
+      +'<label class="tgl">'
+      +'<input type="checkbox" id="ck-'+id+'"'+chk+dis+'>'
+      +'<span class="tgl-slider"></span>'
+      +'</label>'
+      +'</div>';
+  }
+
+  c.innerHTML = '<div class="plus-subpage">'
+    +'<div class="plus-back-bar">'
+    +'<button class="plus-back-btn" onclick="renderProfil()">‹</button>'
+    +'<div class="plus-sub-title">Gestion des cookies</div>'
+    +'</div>'
+    +'<p class="ck-intro">Nous utilisons des cookies pour améliorer votre expérience. Vous pouvez choisir les cookies que vous acceptez. Certains cookies sont nécessaires au fonctionnement de l\'application et ne peuvent pas être désactivés.</p>'
+    +'<div class="plus-section" style="padding-top:16px">'
+    +'<div class="plus-group">'
+    +ckRow('essentiel','🔒','Cookies essentiels',
+      'Nécessaires au fonctionnement de l\'application : connexion, session, sécurité.',
+      true, true)
+    +ckRow('analytiques','📊','Cookies analytiques',
+      'Nous aident à comprendre comment vous utilisez l\'application afin d\'améliorer nos services. Aucune donnée personnelle n\'est transmise à des tiers.',
+      ana, false)
+    +ckRow('personnalisation','✨','Cookies de personnalisation',
+      'Mémorisent vos préférences pour une expérience adaptée à vos habitudes.',
+      perso, false)
+    +'</div></div>'
+    +'<div class="ck-saved-banner" id="ck-banner">✔ Vos préférences ont été enregistrées</div>'
+    +'<div class="ck-actions">'
+    +'<button class="ck-btn-all" onclick="ckAcceptAll()">Tout accepter</button>'
+    +'<button class="ck-btn-save" onclick="ckSaveChoices()">Enregistrer mes choix</button>'
+    +'</div>'
+    +'</div>';
+}
+
+function ckAcceptAll(){
+  localStorage.setItem('fa_cookie_prefs', JSON.stringify({analytiques:true,personnalisation:true}));
+  var el = document.getElementById('ck-analytiques'); if(el) el.checked = true;
+  var ep = document.getElementById('ck-personnalisation'); if(ep) ep.checked = true;
+  _ckShowBanner();
+}
+
+function ckSaveChoices(){
+  var ana  = document.getElementById('ck-analytiques');
+  var perso = document.getElementById('ck-personnalisation');
+  localStorage.setItem('fa_cookie_prefs', JSON.stringify({
+    analytiques:   ana  ? ana.checked  : true,
+    personnalisation: perso ? perso.checked : true
+  }));
+  _ckShowBanner();
+}
+
+function _ckShowBanner(){
+  var b = document.getElementById('ck-banner');
+  if(!b) return;
+  b.className = 'ck-saved-banner on';
+  setTimeout(function(){ b.className = 'ck-saved-banner'; }, 3000);
 }
 
 function mi(ico,bg,label,href,action){
