@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/images/logo-favicon-32.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="assets/images/logo-favicon-192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="assets/images/logo-favicon.png">
+    <link rel="apple-touch-icon" sizes="192x192" href="assets/images/logo-favicon-192.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    <title>Protection des Données Personnelles - FA GENESIS</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;900&family=Space+Grotesk:wght@300;700&display=swap">
+    <link rel="stylesheet" href="tailwind.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" media="print" onload="this.media='all'">
+    <style>
+        body { background: #ffffff; color: #0b0b0b; font-family: 'Space Grotesk', sans-serif; margin: 0; }
+        h1, h2, h3, h4, h5 { font-family: 'Unbounded', cursive; }
+        .legal-nav { background: #000; border-bottom: 4px solid #FFD700; }
+        .legal-nav a { color: #fff; font-weight: 900; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; text-decoration: none; transition: color 0.2s; }
+        .legal-nav a:hover { color: #FFD700; }
+        .legal-nav a.active { color: #FFD700; }
+        .legal-subnav { background: #fff; border-bottom: 4px solid #000; box-shadow: 0 6px 20px rgba(0,0,0,0.10); }
+        .legal-subnav a { color: #444; font-weight: 700; font-size: 13px; text-decoration: none; transition: color 0.2s, border-color 0.2s; border-bottom: 3px solid transparent; padding-bottom: 2px; }
+        .legal-subnav a:hover { color: #000; border-bottom-color: #FFD700; }
+        .legal-subnav a.active { color: #000; font-weight: 900; border-bottom-color: #FFD700; }
+        .legal-subnav span { color: #ccc; }
+        .legal-content { max-width: 900px; margin: 0 auto; padding: 40px 24px 60px; }
+        .legal-content h1 { font-size: 2.5rem; font-weight: 900; font-style: italic; text-transform: uppercase; margin-bottom: 8px; }
+        .legal-content .legal-date { font-size: 13px; font-weight: 700; color: #666; margin-bottom: 40px; }
+        .legal-content h2 { font-size: 1.4rem; font-weight: 900; text-transform: uppercase; margin-top: 40px; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 3px solid #FFD700; }
+        .legal-content h3 { font-size: 1rem; font-weight: 900; margin-top: 24px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; color: #000; }
+        .legal-content p { font-size: 15px; line-height: 1.8; font-weight: 500; margin-bottom: 16px; }
+        .legal-content ul { list-style: none; padding: 0; margin-bottom: 16px; }
+        .legal-content ul li { font-size: 15px; line-height: 1.8; font-weight: 500; padding-left: 24px; position: relative; margin-bottom: 8px; }
+        .legal-content ul li::before { content: ""; position: absolute; left: 0; top: 10px; width: 10px; height: 10px; background: #FFD700; border: 2px solid #000; }
+        .sommaire { background: #0a0a0a; border: 4px solid #000; padding: 28px 32px; margin-bottom: 40px; }
+        .sommaire-title { font-family: 'Unbounded', cursive; font-size: 13px; font-weight: 900; text-transform: uppercase; letter-spacing: 2px; color: #FFD700; margin-bottom: 16px; }
+        .sommaire ol { list-style: none; padding: 0; margin: 0; counter-reset: sommaire-counter; }
+        .sommaire ol li { counter-increment: sommaire-counter; padding: 6px 0 6px 32px; position: relative; border-bottom: 1px solid #222; }
+        .sommaire ol li:last-child { border-bottom: none; }
+        .sommaire ol li::before { content: counter(sommaire-counter) "."; position: absolute; left: 0; top: 6px; font-family: 'Unbounded', cursive; font-size: 11px; font-weight: 900; color: #FFD700; }
+        .sommaire ol li a { font-size: 14px; font-weight: 500; color: #ccc; text-decoration: none; transition: color 0.2s; }
+        .sommaire ol li a:hover { color: #FFD700; }
+        .retention-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0; }
+        .retention-card { background: #f9f9f9; border: 3px solid #000; padding: 20px; }
+        .retention-card .rc-label { font-family: 'Unbounded', cursive; font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; color: #000; margin-bottom: 8px; }
+        .retention-card .rc-value { font-size: 14px; font-weight: 700; color: #444; }
+        .right-card { background: #fff; border: 3px solid #000; border-left: 6px solid #FFD700; padding: 16px 20px; margin-bottom: 12px; }
+        .right-card .rc-name { font-family: 'Unbounded', cursive; font-size: 12px; font-weight: 900; text-transform: uppercase; color: #000; margin-bottom: 4px; }
+        .right-card .rc-desc { font-size: 14px; font-weight: 500; color: #444; margin: 0; }
+        .legal-contact { background: #000; color: #fff; padding: 32px; margin-top: 48px; border: 4px solid #000; }
+        .legal-contact h3 { color: #FFD700; margin-top: 0; font-size: 1rem; text-transform: uppercase; }
+        .legal-contact p { font-size: 15px; line-height: 1.8; font-weight: 500; margin-bottom: 8px; color: #ccc; }
+        .legal-contact a { color: #FFD700; font-weight: 900; text-decoration: underline; }
+        .cnil-box { background: #111; border: 2px solid #333; padding: 16px 20px; margin-top: 12px; border-left: 4px solid #FFD700; }
+        .cnil-box p { font-size: 13px; color: #aaa; margin: 0; line-height: 1.7; }
+
+        /* ── MOBILE (≤640px) ── */
+        @media (max-width: 640px) {
+            .legal-nav { padding: 10px 16px !important; }
+            .legal-nav a:first-child { font-size: 13px !important; gap: 6px !important; }
+            .legal-nav a:first-child img { height: 36px !important; width: 36px !important; }
+            .legal-nav a:last-child { font-size: 11px !important; }
+
+            .legal-subnav {
+                top: 56px !important;
+                overflow-x: auto !important;
+                -webkit-overflow-scrolling: touch;
+                flex-wrap: nowrap !important;
+                justify-content: flex-start !important;
+                padding: 8px 12px !important;
+                gap: 14px !important;
+                scrollbar-width: none;
+            }
+            .legal-subnav::-webkit-scrollbar { display: none; }
+            .legal-subnav span { display: none !important; }
+            .legal-subnav a { white-space: nowrap; font-size: 12px !important; }
+
+            .legal-content {
+                padding-top: 108px !important;
+                padding-left: 16px !important;
+                padding-right: 16px !important;
+            }
+
+            .legal-content h1 {
+                font-size: 1.4rem !important;
+                line-height: 1.2;
+                word-break: break-word;
+                overflow-wrap: break-word;
+            }
+            .legal-content h2 { font-size: 0.95rem !important; word-break: break-word; }
+            .legal-content h3 { font-size: 0.85rem !important; }
+
+            .legal-content p,
+            .legal-content ul li,
+            .legal-content strong {
+                font-size: 14px !important;
+                word-break: break-word;
+                overflow-wrap: break-word;
+            }
+
+            .sommaire { padding: 20px 16px !important; }
+            .sommaire ol li a { font-size: 13px !important; }
+
+            .retention-grid { grid-template-columns: 1fr !important; }
+
+            .legal-contact {
+                padding: 20px 16px !important;
+                word-break: break-word;
+                overflow-wrap: break-word;
+            }
+            .legal-contact a { word-break: break-all; }
+        }
+    </style>
+    <meta name="theme-color" content="#FFD700">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="FA GENESIS">
+</head>
+<body>
+
+    <!-- NAVIGATION PRINCIPALE -->
+    <nav class="legal-nav fixed top-0 w-full z-50 px-6 py-4 flex justify-between items-center">
+        <a href="index.html" class="flex items-center gap-2 text-2xl tracking-wider" style="font-family: 'Unbounded', cursive; color: #FFD700;"><img src="assets/images/logo-favicon-192.png" alt="Logo FA GENESIS" style="height:48px;width:48px;flex-shrink:0;border-radius:50%;object-fit:cover;display:inline-block;vertical-align:middle;"> FA GENESIS</a>
+        <a href="index.html" class="flex items-center gap-2">
+            <i class="fas fa-arrow-left"></i> Retour au site
+        </a>
+    </nav>
+
+    <!-- NAVIGATION LÉGALE -->
+    <div class="legal-subnav fixed top-[84px] w-full z-40 px-6 py-4 flex justify-center gap-6 flex-wrap">
+        <a href="conditions-generales.html">Conditions générales</a>
+        <span class="text-gray-300">|</span>
+        <a href="confidentialite.html">Confidentialité</a>
+        <span class="text-gray-300">|</span>
+        <a href="protection-donnees.html" class="active">Données personnelles</a>
+        <span class="text-gray-300">|</span>
+        <a href="mentions-legales.html">Mentions légales</a>
+        <span class="text-gray-300">|</span>
+        <a href="reclamation.html">Réclamation</a>
+        <span class="text-gray-300">|</span>
+        <a href="cookies.html">Cookies</a>
+    </div>
+
+    <!-- CONTENU -->
+    <div class="legal-content" style="padding-top: 148px;">
+        <h1>Protection des Données Personnelles</h1>
+        <p class="legal-date">Date de dernière mise à jour : 10 juin 2026</p>
+
+        <!-- SOMMAIRE -->
+        <div class="sommaire">
+            <div class="sommaire-title">Sommaire</div>
+            <ol>
+                <li><a href="#s1">Présentation de la politique</a></li>
+                <li><a href="#s2">Les données personnelles que nous collectons</a></li>
+                <li><a href="#s3">Comment nous utilisons vos données personnelles</a></li>
+                <li><a href="#s4">Partage de vos données personnelles</a></li>
+                <li><a href="#s5">Protection des données personnelles</a></li>
+                <li><a href="#s6">Conservation des données personnelles</a></li>
+                <li><a href="#s7">Vos droits</a></li>
+                <li><a href="#s8">Utilisation des cookies et technologies similaires</a></li>
+                <li><a href="#s9">Protection des données des mineurs</a></li>
+                <li><a href="#s10">Transferts de données</a></li>
+                <li><a href="#s11">Modifications de la politique</a></li>
+                <li><a href="#s12">Nous contacter</a></li>
+            </ol>
+        </div>
+
+        <!-- 1 -->
+        <h2 id="s1">1. Présentation de la politique</h2>
+        <p>La présente Politique de Protection des Données Personnelles décrit la manière dont FA GENESIS collecte, utilise, protège, conserve et partage les données personnelles de ses utilisateurs.</p>
+        <p>Cette politique s'applique à :</p>
+        <ul>
+            <li>L'application mobile FA GENESIS ;</li>
+            <li>Le site internet FA GENESIS ;</li>
+            <li>Les formulaires de contact ;</li>
+            <li>Les demandes de devis ;</li>
+            <li>Les demandes d'accompagnement ;</li>
+            <li>Les événements organisés ou coorganisés par FA GENESIS ;</li>
+            <li>Les échanges par téléphone, courriel, réseaux sociaux ou messagerie instantanée.</li>
+        </ul>
+        <p>FA GENESIS s'engage à traiter les données personnelles conformément au Règlement Général sur la Protection des Données (RGPD) et aux lois applicables en matière de protection de la vie privée.</p>
+
+        <!-- 2 -->
+        <h2 id="s2">2. Les données personnelles que nous collectons</h2>
+        <p>Nous pouvons collecter plusieurs catégories de données.</p>
+
+        <h3>Informations d'identité</h3>
+        <ul>
+            <li>Nom</li>
+            <li>Prénom</li>
+            <li>Date de naissance</li>
+            <li>Sexe (facultatif)</li>
+            <li>Nationalité (facultatif)</li>
+        </ul>
+
+        <h3>Coordonnées</h3>
+        <ul>
+            <li>Adresse e-mail</li>
+            <li>Numéro de téléphone</li>
+            <li>Adresse postale</li>
+        </ul>
+
+        <h3>Informations relatives au compte utilisateur</h3>
+        <ul>
+            <li>Identifiant</li>
+            <li>Mot de passe crypté</li>
+            <li>Historique de connexion</li>
+            <li>Préférences utilisateur</li>
+        </ul>
+
+        <h3>Informations professionnelles</h3>
+        <ul>
+            <li>Statut (étudiant, entrepreneur, salarié, dirigeant)</li>
+            <li>Nom de l'entreprise</li>
+            <li>Secteur d'activité</li>
+            <li>Projets professionnels</li>
+        </ul>
+
+        <h3>Informations relatives aux prestations</h3>
+        <ul>
+            <li>Demandes d'accompagnement</li>
+            <li>Demandes de financement</li>
+            <li>Réservations de rendez-vous</li>
+            <li>Demandes de mise en relation</li>
+            <li>Participation à des événements</li>
+        </ul>
+
+        <h3>Données techniques</h3>
+        <p>Lorsque vous utilisez notre application ou notre site internet, nous pouvons collecter automatiquement :</p>
+        <ul>
+            <li>Adresse IP</li>
+            <li>Type d'appareil</li>
+            <li>Système d'exploitation</li>
+            <li>Navigateur utilisé</li>
+            <li>Pages consultées</li>
+            <li>Durée de navigation</li>
+            <li>Données de performance</li>
+        </ul>
+
+        <!-- 3 -->
+        <h2 id="s3">3. Comment nous utilisons vos données personnelles</h2>
+        <p>Nous utilisons vos données pour les finalités suivantes :</p>
+
+        <h3>Fourniture de nos services</h3>
+        <ul>
+            <li>Création et gestion de votre compte FA GENESIS</li>
+            <li>Gestion de vos demandes d'accompagnement</li>
+            <li>Réservation de rendez-vous</li>
+            <li>Mise en relation avec nos partenaires</li>
+            <li>Gestion des événements</li>
+        </ul>
+
+        <h3>Communication</h3>
+        <ul>
+            <li>Réponse à vos demandes</li>
+            <li>Envoi de confirmations</li>
+            <li>Assistance client</li>
+            <li>Informations relatives à nos services</li>
+        </ul>
+
+        <h3>Marketing et développement</h3>
+        <p>Sous réserve de votre consentement :</p>
+        <ul>
+            <li>Envoi de newsletters</li>
+            <li>Notifications de nouveaux services</li>
+            <li>Invitations à des événements</li>
+            <li>Offres partenaires</li>
+            <li>Communications promotionnelles</li>
+        </ul>
+
+        <h3>Amélioration de nos services</h3>
+        <ul>
+            <li>Analyse statistique de l'utilisation de l'application</li>
+            <li>Études de satisfaction</li>
+            <li>Optimisation de l'expérience utilisateur</li>
+            <li>Développement de nouvelles fonctionnalités</li>
+        </ul>
+
+        <h3>Sécurité</h3>
+        <ul>
+            <li>Prévention de la fraude</li>
+            <li>Protection des comptes utilisateurs</li>
+            <li>Détection des activités suspectes</li>
+            <li>Sécurisation de la plateforme</li>
+        </ul>
+
+        <h3>Obligations légales</h3>
+        <ul>
+            <li>Respect de nos obligations réglementaires</li>
+            <li>Réponse aux demandes des autorités compétentes</li>
+            <li>Gestion des contentieux éventuels</li>
+        </ul>
+
+        <!-- 4 -->
+        <h2 id="s4">4. Partage de vos données personnelles</h2>
+        <p>FA GENESIS ne vend jamais les données personnelles de ses utilisateurs.</p>
+        <p>Nous pouvons partager certaines données avec :</p>
+
+        <h3>Nos prestataires techniques</h3>
+        <ul>
+            <li>Hébergement de l'application</li>
+            <li>Maintenance informatique</li>
+            <li>Sécurité informatique</li>
+            <li>Services d'envoi d'e-mails</li>
+        </ul>
+
+        <h3>Nos partenaires professionnels</h3>
+        <p>Uniquement lorsque cela est nécessaire pour répondre à votre demande :</p>
+        <ul>
+            <li>Vidéastes</li>
+            <li>Photographes</li>
+            <li>Community managers</li>
+            <li>Consultants</li>
+            <li>Agences marketing</li>
+            <li>Experts-comptables</li>
+            <li>Juristes</li>
+            <li>Organismes de financement</li>
+        </ul>
+
+        <h3>Autorités compétentes</h3>
+        <p>Lorsque la loi l'exige ou dans le cadre d'une procédure judiciaire.</p>
+        <p>Tous nos partenaires et sous-traitants sont soumis à des obligations strictes de confidentialité.</p>
+
+        <!-- 5 -->
+        <h2 id="s5">5. Protection des données personnelles</h2>
+        <p>FA GENESIS met en œuvre des mesures techniques et organisationnelles destinées à protéger vos données :</p>
+        <ul>
+            <li>Chiffrement des données sensibles</li>
+            <li>Serveurs sécurisés</li>
+            <li>Sauvegardes régulières</li>
+            <li>Contrôle des accès</li>
+            <li>Authentification sécurisée</li>
+            <li>Surveillance des activités suspectes</li>
+        </ul>
+        <p>Malgré toutes les mesures mises en place, aucun système informatique ne peut garantir une sécurité absolue.</p>
+
+        <!-- 6 -->
+        <h2 id="s6">6. Conservation des données personnelles</h2>
+        <p>Nous conservons vos données uniquement pendant la durée nécessaire aux finalités poursuivies.</p>
+        <div class="retention-grid">
+            <div class="retention-card">
+                <div class="rc-label">Comptes utilisateurs</div>
+                <div class="rc-value">Jusqu'à la suppression du compte ou après 3 ans d'inactivité.</div>
+            </div>
+            <div class="retention-card">
+                <div class="rc-label">Prospects</div>
+                <div class="rc-value">3 ans après le dernier contact.</div>
+            </div>
+            <div class="retention-card">
+                <div class="rc-label">Demandes de contact</div>
+                <div class="rc-value">3 ans maximum.</div>
+            </div>
+            <div class="retention-card">
+                <div class="rc-label">Données de navigation</div>
+                <div class="rc-value">13 mois maximum.</div>
+            </div>
+            <div class="retention-card" style="grid-column: 1 / -1;">
+                <div class="rc-label">Documents administratifs et comptables</div>
+                <div class="rc-value">10 ans conformément aux obligations légales.</div>
+            </div>
+        </div>
+
+        <!-- 7 -->
+        <h2 id="s7">7. Vos droits</h2>
+        <p>Conformément au RGPD, vous disposez des droits suivants :</p>
+
+        <div class="right-card">
+            <div class="rc-name">Droit d'accès</div>
+            <p class="rc-desc">Obtenir une copie de vos données personnelles.</p>
+        </div>
+        <div class="right-card">
+            <div class="rc-name">Droit de rectification</div>
+            <p class="rc-desc">Corriger des données inexactes ou incomplètes.</p>
+        </div>
+        <div class="right-card">
+            <div class="rc-name">Droit à l'effacement</div>
+            <p class="rc-desc">Demander la suppression de vos données.</p>
+        </div>
+        <div class="right-card">
+            <div class="rc-name">Droit à la limitation</div>
+            <p class="rc-desc">Limiter temporairement le traitement de vos données.</p>
+        </div>
+        <div class="right-card">
+            <div class="rc-name">Droit à la portabilité</div>
+            <p class="rc-desc">Recevoir vos données dans un format exploitable.</p>
+        </div>
+        <div class="right-card">
+            <div class="rc-name">Droit d'opposition</div>
+            <p class="rc-desc">Vous opposer à certains traitements.</p>
+        </div>
+        <div class="right-card">
+            <div class="rc-name">Retrait du consentement</div>
+            <p class="rc-desc">Retirer votre consentement à tout moment.</p>
+        </div>
+        <div class="right-card">
+            <div class="rc-name">Réclamation</div>
+            <p class="rc-desc">Déposer une plainte auprès de la CNIL :</p>
+        </div>
+        <div class="cnil-box">
+            <p>Commission Nationale de l'Informatique et des Libertés (CNIL)<br>
+            3 Place de Fontenoy — 75007 Paris, France<br>
+            <a href="https://www.cnil.fr" target="_blank" rel="noopener noreferrer" style="color:#FFD700;font-weight:700;">www.cnil.fr</a></p>
+        </div>
+
+        <!-- 8 -->
+        <h2 id="s8">8. Utilisation des cookies et technologies similaires</h2>
+        <p>FA GENESIS utilise des cookies afin :</p>
+        <ul>
+            <li>d'assurer le fonctionnement de l'application ;</li>
+            <li>de sécuriser les connexions ;</li>
+            <li>d'améliorer l'expérience utilisateur ;</li>
+            <li>d'analyser l'utilisation de nos services ;</li>
+            <li>de mémoriser vos préférences.</li>
+        </ul>
+        <p>Les catégories de cookies utilisées sont :</p>
+
+        <h3>Cookies essentiels</h3>
+        <p>Nécessaires au fonctionnement de l'application.</p>
+
+        <h3>Cookies analytiques</h3>
+        <p>Permettent de mesurer l'audience et les performances.</p>
+
+        <h3>Cookies de personnalisation</h3>
+        <p>Permettent d'adapter l'expérience utilisateur.</p>
+
+        <p>Vous pouvez modifier vos préférences à tout moment depuis les paramètres de l'application. Pour en savoir plus, consultez notre <a href="cookies.html" style="color:#000;font-weight:900;text-decoration:underline;">Politique de Cookies</a>.</p>
+
+        <!-- 9 -->
+        <h2 id="s9">9. Protection des données des mineurs</h2>
+        <p>FA GENESIS accorde une importance particulière à la protection des mineurs.</p>
+        <p>Nous ne collectons pas volontairement les données personnelles des personnes de moins de 15 ans sans l'autorisation d'un parent ou représentant légal.</p>
+        <p>Si nous apprenons qu'un mineur a fourni des données sans autorisation appropriée, celles-ci seront supprimées dans les meilleurs délais.</p>
+
+        <!-- 10 -->
+        <h2 id="s10">10. Transferts de données</h2>
+        <p>Les données sont principalement hébergées au sein de l'Union Européenne.</p>
+        <p>Si un transfert international devait être nécessaire, FA GENESIS mettrait en place toutes les garanties exigées par le RGPD afin d'assurer un niveau de protection équivalent.</p>
+
+        <!-- 11 -->
+        <h2 id="s11">11. Modifications de la politique</h2>
+        <p>FA GENESIS peut modifier la présente politique afin :</p>
+        <ul>
+            <li>de respecter l'évolution de la réglementation ;</li>
+            <li>d'améliorer la transparence ;</li>
+            <li>d'intégrer de nouveaux services.</li>
+        </ul>
+        <p>Toute modification importante fera l'objet d'une notification sur l'application ou le site internet.</p>
+
+        <!-- 12 -->
+        <h2 id="s12">12. Nous contacter</h2>
+        <p>Pour toute question concernant cette politique ou l'exercice de vos droits :</p>
+        <div class="legal-contact">
+            <h3>FA GENESIS — Service Protection des Données</h3>
+            <p><i class="fas fa-envelope" style="color: #FFD700; margin-right: 8px;"></i> <a href="mailto:contact@fagenesis.com">contact@fagenesis.com</a></p>
+            <p><i class="fas fa-globe" style="color: #FFD700; margin-right: 8px;"></i> <a href="https://fagenesis.com/" target="_blank" rel="noopener noreferrer">www.fagenesis.com</a></p>
+            <p style="margin-top:16px;font-size:14px;color:#aaa;">Ou via le formulaire de contact disponible sur l'application et le site internet.</p>
+        </div>
+    </div>
+
+    <div id="site-footer"></div>
+    <script src="footer.js" defer></script>
+    <script src="chatbot.js" defer></script>
+    <script src="pwa-init.js"></script>
+</body>
+</html>
