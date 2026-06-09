@@ -453,6 +453,19 @@ a{text-decoration:none;color:inherit}
   border:1px solid #22c55e;border-radius:12px;font-size:13px;
   color:#22c55e;font-weight:700;display:none;text-align:center}
 .ck-saved-banner.on{display:block}
+/* Bloc traitements de données (style Didomi) */
+.ck-purposes{margin:20px 16px 0;background:#111;border:1px solid #1e1e1e;
+  border-radius:14px;overflow:hidden}
+.ck-purposes-header{padding:14px 16px;font-size:12px;color:#555;
+  font-weight:700;border-bottom:1px solid #1a1a1a;
+  text-transform:uppercase;letter-spacing:.8px}
+.ck-purposes-body{padding:14px 16px}
+.ck-purposes-intro{font-size:12px;color:#555;line-height:1.6;margin-bottom:12px}
+.ck-purposes-list{list-style:none;padding:0;margin:0}
+.ck-purposes-list li{font-size:12px;color:#444;line-height:1.5;
+  padding:5px 0 5px 14px;position:relative;border-bottom:1px solid #1a1a1a}
+.ck-purposes-list li:last-child{border:none}
+.ck-purposes-list li::before{content:'–';position:absolute;left:0;color:#333}
 
 /* Sous-page drill-down (style McDonald's) */
 @keyframes plusSlideIn{from{opacity:0;transform:translateX(32px)}to{opacity:1;transform:translateX(0)}}
@@ -1733,7 +1746,20 @@ function showCookiesMenu(){
       'Mémorisent vos préférences pour une expérience adaptée à vos habitudes.',
       perso, false)
     +'</div></div>'
-    +'<div class="ck-saved-banner" id="ck-banner">✔ Vos préférences ont été enregistrées</div>'
+    +'<div class="ck-purposes">'
+    +'<div class="ck-purposes-header">Traitements de données</div>'
+    +'<div class="ck-purposes-body">'
+    +'<p class="ck-purposes-intro">En donnant votre consentement aux finalités ci-dessus, vous autorisez également cette application à réaliser les traitements de données suivants :</p>'
+    +'<ul class="ck-purposes-list">'
+    +'<li>Assurer la sécurité, prévenir et détecter la fraude</li>'
+    +'<li>Enregistrer et communiquer les choix en matière de confidentialité</li>'
+    +'<li>Fournir et présenter des publicités et du contenu</li>'
+    +'<li>Identifier les appareils en fonction des informations transmises automatiquement</li>'
+    +'<li>Mettre en correspondance et combiner des données à partir d\'autres sources de données</li>'
+    +'<li>Relier différents appareils</li>'
+    +'</ul>'
+    +'</div></div>'
+    +'<div class="ck-saved-banner" id="ck-banner">Vos préférences ont été enregistrées</div>'
     +'<div class="ck-actions">'
     +'<button class="ck-btn-all" onclick="ckAcceptAll()">Tout accepter</button>'
     +'<button class="ck-btn-save" onclick="ckSaveChoices()">Enregistrer mes choix</button>'
