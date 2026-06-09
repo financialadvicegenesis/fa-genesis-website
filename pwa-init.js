@@ -1,5 +1,9 @@
 // FA GENESIS — PWA Init + Push Notifications
 (function() {
+  // L'installation PWA ne s'affiche QUE sur app.html
+  var _isAppPage = /\/app\.html$|\/app$/.test(window.location.pathname) ||
+                   window.location.pathname === '/';
+
   var VAPID_PUBLIC_KEY = 'BMfYDfWWoNiitqwi1OYkGAuksro9t4bE_udb6vqVRNEFPy54CWaSM2fBoIjSUbT97SOdypKSollhkNqTgyCsUUs';
 
   function getApiBase() {
@@ -43,10 +47,10 @@
   // ── Expo install prompt (Android/Chrome) ─────────────────────
   var deferredPrompt = null;
   window.addEventListener('beforeinstallprompt', function(e) {
-    e.preventDefault();
+    e.preventDefault(); // Toujours bloquer le prompt natif du navigateur
+    if (!_isAppPage) return; // Bannière install uniquement sur app.html
     deferredPrompt = e;
     console.log('[PWA] beforeinstallprompt capturé');
-    // Notifier app.html si présent
     if (typeof window._onInstallPromptReady === 'function') {
       window._onInstallPromptReady();
     }
@@ -187,20 +191,18 @@
     document.body.appendChild(banner);
   }
 
-  // Afficher la bannière selon la plateforme
+  // Afficher la bannière selon la plateforme — uniquement sur app.html
   window.addEventListener('load', function() {
+    if (!_isAppPage) return;
     if (isStandalone()) return;
     if (sessionStorage.getItem('pwa-dismissed')) return;
 
     if (isIOS() && isSafari()) {
-      // iOS Safari : montrer la bannière après 3s
       setTimeout(showInstallBanner, 3000);
     } else {
-      // Android / autres : attendre le beforeinstallprompt
       window._onInstallPromptReady = function() {
         setTimeout(showInstallBanner, 1000);
       };
-      // Fallback : si le prompt ne vient pas dans 8s, montrer quand même
       setTimeout(function() {
         if (!deferredPrompt && !isStandalone()) showInstallBanner();
       }, 8000);

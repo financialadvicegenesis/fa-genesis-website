@@ -1,0 +1,53 @@
+[
+  {
+    "id": "USR-43F9226D",
+    "prenom": "Joyce Orphet",
+    "nom": "NDJAMBOU MVE",
+    "email": "joycendjambou18@gmail.com",
+    "telephone": "+33764540638",
+    "password": "$2a$10$zTXj6441Qi41Q6k4uo6uQeGNuTLaPLoUi3FvbDNWtl41t5IaoeQ/2",
+    "offre": "etudiant-idea",
+    "activeOfferId": "etudiant-idea",
+    "productType": "accompagnement",
+    "paymentStatus": "registered",
+    "payments": [],
+    "sessionToken": "3d8f15f5-d1de-4aed-9691-c8c8a6eec913-1770231410264",
+    "createdAt": "2026-02-04T18:56:50.266Z",
+    "updatedAt": "2026-02-04T18:56:50.266Z",
+    "lastLogin": "2026-02-04T18:56:50.266Z"
+  },
+  {
+    "id": "USR-F5E0DBE2",
+    "prenom": "Tiffen Elane",
+    "nom": "NDJAMBOU MVE",
+    "email": "tiffenndjambou481@gmail.com",
+    "telephone": "+33764163609",
+    "password": "$2a$10$FYyxt9olzm1QcGzv42lPxO2rzeaX03Y4re1/.U/RiIljKJfl4htiW",
+    "offre": "etudiant-idea",
+    "activeOfferId": "etudiant-idea",
+    "productType": "accompagnement",
+    "paymentStatus": "registered",
+    "payments": [],
+    "sessionToken": "33a89ee9-1386-4194-8f33-8d5504f804a0-1770232545750",
+    "createdAt": "2026-02-04T19:15:45.751Z",
+    "updatedAt": "2026-02-04T19:15:45.751Z",
+    "lastLogin": "2026-02-04T19:15:45.751Z"
+  },
+  {
+    "id": "USR-7939E824",
+    "prenom": "Tiffen Elane",
+    "nom": "NDJAMBOU MVE",
+    "email": "ndjamboubookstore@gmail.com",
+    "telephone": "+33764163609",
+    "password": "$2a$10$tvlUfAhRaZxogLraQbEnTupR4XJ/aLs9G2yVzP7rQinMeuYyeSMOO",
+    "offre": "etudiant-idea",
+    "activeOfferId": "etudiant-idea",
+    "productType": "accompagnement",
+    "paymentStatus": "registered",
+    "payments": [],
+    "sessionToken": null,
+    "createdAt": "2026-02-04T19:24:01.806Z",
+    "updatedAt": "2026-02-04T23:03:33.432Z",
+    "lastLogin": "2026-02-04T21:59:12.529Z"
+  }
+]
