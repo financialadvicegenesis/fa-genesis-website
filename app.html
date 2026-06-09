@@ -1647,12 +1647,12 @@ function renderProfil(){
   var infos = '<div class="plus-section">'
     +'<div class="plus-section-title">INFORMATIONS GÉNÉRALES</div>'
     +'<div class="plus-group">'
-    +pli('❓','#0a1a0a','Aide','faq.html')
-    +pli('📄','#141414','Mentions légales','mentions-legales.html')
-    +pli('📑','#0a0a1a','CGU','conditions-generales.html')
-    +pli('📋','#0a0a1a','CGV','conditions-generales.html#cgv')
-    +pli('🔒','#1a0a0a','Protection des données personnelles','confidentialite.html')
-    +pli('🍪','#1a1000','Cookies','confidentialite.html#cookies')
+    +pli('','#0a1a0a','Aide','https://fagenesis.com/index.html#faq')
+    +pli('','#141414','Mentions légales','https://fagenesis.com/mentions-legales.html')
+    +pli('','#0a0a1a','CGU','https://fagenesis.com/conditions-generales.html#cgu')
+    +pli('','#0a0a1a','CGV','https://fagenesis.com/conditions-generales.html#cgv')
+    +pli('','#1a0a0a','Protection des données personnelles','confidentialite.html')
+    +pli('','#1a1000','Cookies',null,'showCookiesMenu()')
     +'</div></div>';
 
   var logout = (USER && !GUEST)
@@ -1665,14 +1665,18 @@ function renderProfil(){
 function pli(ico, bg, label, href, action){
   var onc = action ? ' onclick="'+action+'"' : '';
   if(href){
-    return '<a href="'+href+'" class="plus-item">'
-      +'<div class="plus-item-ico" style="background:'+bg+'">'+ico+'</div>'
+    var ext = (href.indexOf('https://')===0||href.indexOf('http://')===0)
+      ? ' target="_blank" rel="noopener noreferrer"' : '';
+    var icoHtml = ico ? '<div class="plus-item-ico" style="background:'+bg+'">'+ico+'</div>' : '';
+    return '<a href="'+href+'"'+ext+' class="plus-item">'
+      +icoHtml
       +'<div class="plus-item-label">'+label+'</div>'
       +'<div class="plus-item-arrow">›</div>'
       +'</a>';
   }
+  var icoHtml2 = ico ? '<div class="plus-item-ico" style="background:'+bg+'">'+ico+'</div>' : '';
   return '<div class="plus-item"'+onc+'>'
-    +'<div class="plus-item-ico" style="background:'+bg+'">'+ico+'</div>'
+    +icoHtml2
     +'<div class="plus-item-label">'+label+'</div>'
     +'<div class="plus-item-arrow">›</div>'
     +'</div>';
