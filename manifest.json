@@ -4,7 +4,7 @@
   "description": "Pôle d'incubation stratégique — Accompagnement étudiants, particuliers et entreprises.",
   "id": "/app.html",
   "start_url": "/app.html",
-  "scope": "/",
+  "scope": "/app.html",
   "display": "standalone",
   "display_override": ["standalone", "minimal-ui"],
   "orientation": "portrait",
@@ -27,28 +27,5 @@
       "purpose": "any maskable"
     }
   ],
-  "screenshots": [],
-  "shortcuts": [
-    {
-      "name": "Mes offres",
-      "short_name": "Offres",
-      "description": "Voir les offres FA GENESIS",
-      "url": "/offres.html",
-      "icons": [{ "src": "assets/images/logo-favicon-192.png", "sizes": "192x192" }]
-    },
-    {
-      "name": "Mon espace client",
-      "short_name": "Espace client",
-      "description": "Accéder à mon espace client",
-      "url": "/espace-client.html",
-      "icons": [{ "src": "assets/images/logo-favicon-192.png", "sizes": "192x192" }]
-    },
-    {
-      "name": "Contact",
-      "short_name": "Contact",
-      "description": "Nous contacter",
-      "url": "/contact.html",
-      "icons": [{ "src": "assets/images/logo-favicon-192.png", "sizes": "192x192" }]
-    }
-  ]
+  "screenshots": []
 }

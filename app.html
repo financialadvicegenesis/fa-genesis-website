@@ -1662,11 +1662,18 @@ function renderProfil(){
     +'<div class="plus-version">Version 1.1</div>';
 }
 
+function openInBrowser(url){
+  window.open(url, '_blank', 'noopener,noreferrer');
+  return false;
+}
+
 function pli(ico, bg, label, href, action){
   var onc = action ? ' onclick="'+action+'"' : '';
   if(href){
-    var ext = (href.indexOf('https://')===0||href.indexOf('http://')===0)
-      ? ' target="_blank" rel="noopener noreferrer"' : '';
+    var isExt = (href.indexOf('https://')===0||href.indexOf('http://')===0);
+    var ext = isExt
+      ? ' target="_blank" rel="noopener noreferrer" onclick="return openInBrowser(this.href)"'
+      : '';
     var icoHtml = ico ? '<div class="plus-item-ico" style="background:'+bg+'">'+ico+'</div>' : '';
     return '<a href="'+href+'"'+ext+' class="plus-item">'
       +icoHtml
@@ -1693,13 +1700,13 @@ function showDonneesMenu(){
     +'<div class="plus-section" style="padding-top:20px">'
     +'<div class="plus-group">'
     // ── Politique ──
-    +'<a href="'+url+'" target="_blank" rel="noopener noreferrer" class="plus-item">'
+    +'<a href="'+url+'" target="_blank" rel="noopener noreferrer" onclick="return openInBrowser(this.href)" class="plus-item">'
     +'<div class="plus-item-ico" style="background:#0d0d1a">📜</div>'
     +'<div class="plus-item-label">Politique de confidentialité</div>'
     +'<div class="plus-item-arrow">›</div>'
     +'</a>'
     // ── Gérer ──
-    +'<a href="'+url+'" target="_blank" rel="noopener noreferrer" class="plus-item">'
+    +'<a href="'+url+'" target="_blank" rel="noopener noreferrer" onclick="return openInBrowser(this.href)" class="plus-item">'
     +'<div class="plus-item-ico" style="background:#0a1a0a">✏️</div>'
     +'<div class="plus-item-label">Gérer mes données personnelles</div>'
     +'<div class="plus-item-arrow">›</div>'
