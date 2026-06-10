@@ -826,6 +826,90 @@ a{text-decoration:none;color:inherit}
 .reg-win-sub{font-size:14px;color:#777;line-height:1.65;}
 .reg-global-err{font-size:13px;color:#ff5555;text-align:center;margin-bottom:12px;display:none;padding:10px;background:#1a0808;border:1px solid #ff3333;}
 .reg-global-err.on{display:block;}
+
+/* ── LOGIN OVERLAY ── */
+#login-overlay{display:none;position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,.65);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);align-items:flex-end;justify-content:center;}
+#login-overlay.open{display:flex;animation:regFadeIn .2s ease;}
+#login-sheet{width:100%;max-width:480px;background:#0d0d0d;border-radius:20px 20px 0 0;border-top:3px solid #FFD700;min-height:55vh;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;transform:translateY(100%);transition:transform .45s cubic-bezier(.34,1.56,.64,1);}
+#login-sheet.up{transform:translateY(0);}
+
+/* ── CART ── */
+.hdr-cart-btn{position:relative;font-size:20px;background:none;border:none;color:#fff;cursor:pointer;padding:4px 8px;line-height:1;transition:transform .2s;}
+.hdr-cart-btn:active{opacity:.7;}
+.cart-badge{position:absolute;top:-2px;right:-2px;background:#FFD700;color:#000;font-size:9px;font-weight:900;min-width:16px;height:16px;border-radius:50%;display:none;align-items:center;justify-content:center;font-family:'Unbounded',cursive;line-height:1;padding:0 2px;}
+.cart-badge.on{display:flex;}
+#cart-overlay{display:none;position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,.65);backdrop-filter:blur(4px);align-items:flex-end;justify-content:center;}
+#cart-overlay.open{display:flex;animation:regFadeIn .2s ease;}
+#cart-sheet{width:100%;max-width:480px;background:#0d0d0d;border-radius:20px 20px 0 0;border-top:3px solid #FFD700;max-height:85vh;display:flex;flex-direction:column;overflow:hidden;transform:translateY(100%);transition:transform .45s cubic-bezier(.34,1.56,.64,1);}
+#cart-sheet.up{transform:translateY(0);}
+.cart-hdr{display:flex;align-items:center;justify-content:space-between;padding:18px 20px 12px;border-bottom:1px solid #1f1f1f;flex-shrink:0;}
+.cart-title{font-family:'Unbounded',cursive;font-size:1rem;font-weight:900;color:#FFD700;}
+.cart-body{flex:1;overflow-y:auto;padding:0 16px;}
+.cart-item{display:flex;align-items:flex-start;gap:10px;padding:14px 0;border-bottom:1px solid #1a1a1a;}
+.cart-item-info{flex:1;min-width:0;}
+.cart-item-name{font-weight:900;font-size:13px;color:#fff;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cart-item-sub{font-size:11px;color:#555;margin-bottom:4px;line-height:1.4;}
+.cart-item-price{font-size:13px;color:#FFD700;font-weight:700;}
+.cart-item-del{background:none;border:none;color:#444;font-size:16px;cursor:pointer;padding:2px 4px;line-height:1;flex-shrink:0;margin-top:2px;}
+.cart-empty{text-align:center;padding:48px 20px;color:#444;}
+.cart-empty .ce-ico{font-size:44px;margin-bottom:12px;}
+.cart-empty p{font-size:13px;}
+.cart-footer{padding:14px 20px;border-top:1px solid #1f1f1f;flex-shrink:0;}
+.cart-total-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+.cart-total-label{font-size:12px;color:#666;font-weight:700;text-transform:uppercase;letter-spacing:.5px;}
+.cart-total-price{font-family:'Unbounded',cursive;font-size:1.1rem;font-weight:900;color:#FFD700;}
+.cart-checkout-btn{width:100%;background:#FFD700;color:#000;font-family:'Unbounded',cursive;font-weight:900;font-size:12px;text-transform:uppercase;letter-spacing:1px;padding:16px;border:none;cursor:pointer;transition:opacity .15s;}
+.cart-checkout-btn:active{opacity:.8;}
+.cart-checkout-btn:disabled{opacity:.35;cursor:default;}
+.cart-toast{position:fixed;bottom:calc(var(--nav) + 20px);left:50%;transform:translateX(-50%) translateY(16px);background:#FFD700;color:#000;font-size:12px;font-weight:900;padding:9px 18px;border-radius:20px;z-index:9400;opacity:0;transition:opacity .25s,transform .25s;pointer-events:none;white-space:nowrap;}
+.cart-toast.on{opacity:1;transform:translateX(-50%) translateY(0);}
+
+/* ── COWORKING BOOKING ── */
+#cw-booking-overlay{display:none;position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,.75);backdrop-filter:blur(4px);align-items:flex-end;justify-content:center;}
+#cw-booking-overlay.open{display:flex;animation:regFadeIn .2s ease;}
+#cw-booking-sheet{width:100%;max-width:480px;background:#0d0d0d;border-radius:20px 20px 0 0;border-top:3px solid #FFD700;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;transform:translateY(100%);transition:transform .45s cubic-bezier(.34,1.56,.64,1);}
+#cw-booking-sheet.up{transform:translateY(0);}
+.cwb-hdr{display:flex;align-items:center;justify-content:space-between;padding:18px 20px 0;flex-shrink:0;}
+.cwb-body{flex:1;overflow-y:auto;padding:16px 20px 28px;}
+.cwb-name{font-family:'Unbounded',cursive;font-size:1.05rem;font-weight:900;color:#FFD700;margin-bottom:4px;}
+.cwb-price-info{font-size:13px;color:#666;margin-bottom:20px;}
+.cwb-field{margin-bottom:16px;}
+.cwb-label{display:block;font-family:'Unbounded',cursive;font-size:10px;font-weight:900;letter-spacing:1.5px;text-transform:uppercase;color:#FFD700;margin-bottom:8px;}
+.cwb-input{width:100%;background:#1a1a1a;border:2px solid #262626;color:#fff;font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:500;padding:13px 14px;outline:none;transition:border-color .2s;box-sizing:border-box;-webkit-appearance:none;border-radius:0;}
+.cwb-input:focus{border-color:#FFD700;}
+.cwb-input::placeholder{color:#444;}
+.cwb-input option{background:#1a1a1a;color:#fff;}
+.cwb-err{font-size:12px;color:#ff5555;margin-top:5px;display:none;}
+.cwb-err.on{display:block;}
+.cwb-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;}
+.cwb-btn{padding:14px;font-family:'Unbounded',cursive;font-weight:900;font-size:10px;text-transform:uppercase;letter-spacing:.5px;border:none;cursor:pointer;transition:opacity .15s;}
+.cwb-btn-yellow{background:#FFD700;color:#000;}
+.cwb-btn-ghost{background:#1a1a1a;color:#888;border:1px solid #2a2a2a;}
+.cwb-btn:disabled{opacity:.35;cursor:default;}
+.cwb-success{text-align:center;padding:24px 0;}
+.cwb-success-ico{font-size:52px;margin-bottom:12px;}
+.cwb-success p{font-size:14px;color:#777;line-height:1.7;}
+
+/* ── MSG COMPOSE ── */
+#msg-compose-overlay{display:none;position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,.72);backdrop-filter:blur(4px);align-items:flex-end;justify-content:center;}
+#msg-compose-overlay.open{display:flex;animation:regFadeIn .2s ease;}
+#msg-compose-sheet{width:100%;max-width:480px;background:#0d0d0d;border-radius:20px 20px 0 0;border-top:3px solid #FFD700;max-height:88vh;display:flex;flex-direction:column;overflow:hidden;transform:translateY(100%);transition:transform .45s cubic-bezier(.34,1.56,.64,1);}
+#msg-compose-sheet.up{transform:translateY(0);}
+.mc-hdr{display:flex;align-items:center;justify-content:space-between;padding:18px 20px 0;flex-shrink:0;}
+.mc-body{flex:1;overflow-y:auto;padding:14px 20px 24px;}
+.mc-field{margin-bottom:14px;}
+.mc-label{display:block;font-family:'Unbounded',cursive;font-size:10px;font-weight:900;letter-spacing:1.5px;text-transform:uppercase;color:#FFD700;margin-bottom:8px;}
+.mc-input,.mc-select{width:100%;background:#1a1a1a;border:2px solid #262626;color:#fff;font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:500;padding:13px 14px;outline:none;transition:border-color .2s;box-sizing:border-box;border-radius:0;-webkit-appearance:none;}
+.mc-input:focus,.mc-select:focus{border-color:#FFD700;}
+.mc-input::placeholder{color:#444;}
+.mc-select option{background:#1a1a1a;color:#fff;}
+.mc-textarea{width:100%;background:#1a1a1a;border:2px solid #262626;color:#fff;font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:500;padding:13px 14px;outline:none;transition:border-color .2s;box-sizing:border-box;border-radius:0;min-height:120px;resize:none;}
+.mc-textarea:focus{border-color:#FFD700;}
+.mc-textarea::placeholder{color:#444;}
+.mc-err{font-size:12px;color:#ff5555;margin-top:6px;display:none;}
+.mc-err.on{display:block;}
+.mc-send-btn{width:100%;background:#FFD700;color:#000;font-family:'Unbounded',cursive;font-weight:900;font-size:12px;text-transform:uppercase;letter-spacing:1px;padding:16px;border:none;cursor:pointer;margin-top:4px;transition:opacity .15s;}
+.mc-send-btn:disabled{opacity:.38;cursor:default;}
 </style>
 </head>
 <body>
@@ -890,6 +974,9 @@ a{text-decoration:none;color:inherit}
       <span class="hdr-name">FA GENESIS</span>
     </div>
     <div class="hdr-right">
+      <button class="hdr-cart-btn" id="cart-icon-btn" onclick="openCart()" title="Panier">
+        🛒<span class="cart-badge" id="cart-count"></span>
+      </button>
       <button class="hdr-btn" onclick="openNotifModal()" title="Notifications">
         🔔<span class="hdr-badge" id="hdrBadge"></span>
       </button>
@@ -943,7 +1030,7 @@ a{text-decoration:none;color:inherit}
 
       <!-- Hero banner -->
       <div class="sec-lbl"><h2>À la une</h2></div>
-      <div class="hero-banner" onclick="nav('prestations')">
+      <div class="hero-banner" onclick="navToCwPrestations()">
         <img class="hero-img" src="assets/images/Openspace-1.png" alt=""
           onerror="this.style.display='none'">
         <div class="hero-body">
@@ -1130,7 +1217,7 @@ function showApp(){
   document.getElementById('app').className = 'on';
   initApp();
 }
-function goLogin(){ window.location.href = 'login.html?from=app.html'; }
+function goLogin(){ showLoginSheet(); }
 function goGuest(){ GUEST = true; showApp(); }
 
 // ── APP INIT ─────────────────────────────────────────────────
@@ -1149,6 +1236,7 @@ function initApp(){
   } else {
     document.getElementById('greetName').textContent = 'Invité';
   }
+  updateCartBadge();
   renderHomeOffers();
   renderPrestations('all');
   renderResaTab();
@@ -1459,6 +1547,7 @@ function neoCard(o, profil, idx){
 
 function cwCard(o, sub, idx){
   var featsHtml = o.feats.map(function(f){return '<li>'+f+'</li>';}).join('');
+  var bookAction = (sub!==undefined&&idx!==undefined) ? 'openCwBooking(\''+(sub||'etudiant')+'\','+(idx||0)+')' : '';
   var detailAction = (sub!==undefined&&idx!==undefined) ? 'openDetailCW(\''+(sub||'etudiant')+'\','+(idx||0)+')' : '';
   return '<div class="p-cw-card">'
     +'<img class="p-cw-card-bg" src="'+o.img+'" alt="'+o.name+'" onerror="this.style.display=\'none\'">'
@@ -1467,8 +1556,11 @@ function cwCard(o, sub, idx){
     +'<div class="p-cw-card-price">'+o.price+'</div>'
     +'<div class="p-cw-card-unit">'+o.unit+'</div>'
     +'<ul class="p-cw-card-feats">'+featsHtml+'</ul>'
-    +(detailAction
-      ?'<button class="p-cw-cta" onclick="'+detailAction+'">Voir le détail</button>'
+    +(bookAction
+      ?'<div style="display:flex;gap:8px;margin-top:4px;">'
+        +'<button class="p-cw-cta" style="flex:1;background:#FFD700;color:#000;" onclick="'+bookAction+'">Réserver</button>'
+        +(detailAction?'<button class="p-cw-cta" style="flex:0 0 60px;background:#1a1a1a;color:#888;border:1px solid #2a2a2a;font-size:10px;" onclick="'+detailAction+'">Détail</button>':'')
+        +'</div>'
       :'<button class="p-cw-cta" onclick="window.location.href=\'offres.html\'">'+o.cta+'</button>'
     )
     +'</div></div>';
@@ -1548,7 +1640,9 @@ function setPrestVisFilter(type,el){
 function openDetailAccomp(profil, idx){
   openDetail(PDATA.accompagnement[profil][idx], 'accompagnement');
 }
+var _cwDetailSub = null, _cwDetailIdx = null;
 function openDetailCW(sub, idx){
+  _cwDetailSub = sub; _cwDetailIdx = idx;
   openDetail(PDATA.coworking[sub][idx], 'coworking');
 }
 function openDetailVis(type, idx){
@@ -1561,9 +1655,15 @@ function openDetail(o, type){
       :type==='marketing'?'Marketing'
       :type==='media'?'Médias'
       :type||'');
-  var ctaHtml = o.link
-    ?'<button class="detail-cta" onclick="window.location.href=\''+o.link+'\'">Demander un devis</button>'
-    :'<button class="detail-cta" onclick="window.location.href=\'offres.html\'">Commander cette offre</button>';
+  var ctaHtml;
+  if(o.link){
+    ctaHtml = '<button class="detail-cta" onclick="window.location.href=\''+o.link+'\'">Demander un devis</button>';
+  } else if(type==='coworking' && _cwDetailSub!==null){
+    ctaHtml = '<button class="detail-cta" onclick="closeDetail();openCwBooking(\''+_cwDetailSub+'\','+_cwDetailIdx+')">Réserver</button>'
+      +'<button class="detail-cta" style="background:#1a1a1a;border:1px solid #2a2a2a;color:#888;margin-top:8px;font-size:11px;padding:12px" onclick="addToCart({id:\'cw-'+_cwDetailSub+'-'+_cwDetailIdx+'\',name:\''+o.name+'\',price:\''+o.price+'\',priceNum:null,type:\'coworking\'});closeDetail()">🛒 Ajouter au panier</button>';
+  } else {
+    ctaHtml = '<button class="detail-cta" onclick="window.location.href=\'offres.html\'">Commander cette offre</button>';
+  }
   document.getElementById('detail-content').innerHTML = ''
     +(badge?'<div class="detail-badge">'+badge+'</div>':'')
     +'<div class="detail-name">'+o.name+'</div>'
@@ -1619,16 +1719,19 @@ function renderResaTab(){
 function renderMsgTab(){
   var c = document.getElementById('msgContent');
   if(!USER||GUEST){ c.innerHTML = locked('Messagerie','Connectez-vous pour accéder à vos conversations.'); return; }
-  c.innerHTML = '<div class="msg-list">'
-    +'<div class="msg-row" onclick="window.location.href=\'messagerie.html\'">'
-    +'<div class="msg-avatar">🌟</div>'
-    +'<div class="msg-body"><div class="msg-from">FA GENESIS</div><div class="msg-preview">Votre espace de messagerie avec l\'équipe</div></div>'
-    +'<div class="msg-meta"><div class="msg-time">→</div></div>'
+  c.innerHTML = '<div style="padding:16px 16px 0;">'
+    +'<button onclick="openMsgCompose()" style="width:100%;background:#FFD700;color:#000;font-family:\'Unbounded\',cursive;font-weight:900;font-size:11px;letter-spacing:1px;padding:14px;border:none;cursor:pointer;text-transform:uppercase;border-radius:0;">+ Nouveau message</button>'
     +'</div>'
-    +'<div class="msg-row" onclick="window.location.href=\'espace-client.html#messagerie\'">'
+    +'<div class="msg-list">'
+    +'<div class="msg-row" onclick="openInBrowser(\'https://fagenesis.com/messagerie.html\')">'
+    +'<div class="msg-avatar">🌟</div>'
+    +'<div class="msg-body"><div class="msg-from">FA GENESIS</div><div class="msg-preview">Messagerie avec l\'équipe</div></div>'
+    +'<div class="msg-meta"><div class="msg-time">›</div></div>'
+    +'</div>'
+    +'<div class="msg-row" onclick="openInBrowser(\'https://fagenesis.com/espace-client.html#messagerie\')">'
     +'<div class="msg-avatar" style="background:#1a0d18;">🏢</div>'
     +'<div class="msg-body"><div class="msg-from">COM VISA Coworking</div><div class="msg-preview">Messages avec votre espace coworking</div></div>'
-    +'<div class="msg-meta"><div class="msg-time">→</div></div>'
+    +'<div class="msg-meta"><div class="msg-time">›</div></div>'
     +'</div>'
     +'</div>';
 }
@@ -1885,6 +1988,303 @@ function activerNotifs(){
   else if('Notification' in window) Notification.requestPermission();
 }
 
+// ── NAVIGATION VERS COWORKING ────────────────────────────────
+function navToCwPrestations(){
+  nav('prestations');
+  setTimeout(function(){
+    var pills = document.querySelectorAll('#tab-prestations .fpill');
+    pills.forEach(function(p){ p.className='fpill'; });
+    var cwPill = null;
+    pills.forEach(function(p){ if(p.getAttribute('onclick')&&p.getAttribute('onclick').indexOf('coworking')>=0) cwPill=p; });
+    if(cwPill){ cwPill.className='fpill on'; renderPrestations('coworking'); }
+    var tab = document.getElementById('tab-prestations'); if(tab) tab.scrollTop=0;
+  }, 200);
+}
+
+// ── REGISTER (fallback direct API pour app.html) ──────────────
+function register(userData){
+  var apiUrl = window.FA_GENESIS_API || API;
+  return fetch(apiUrl+'/api/auth/register',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(userData)
+  }).then(function(r){return r.json();}).then(function(res){
+    if(res&&res.token){
+      try{
+        localStorage.setItem('fa_genesis_session',JSON.stringify(res.user||res));
+        localStorage.setItem('fa_genesis_token',res.token);
+      }catch(e){}
+    }
+    return res;
+  });
+}
+
+// ── LOGIN OVERLAY ─────────────────────────────────────────────
+function showLoginSheet(){
+  var overlay=document.getElementById('login-overlay');
+  var sheet=document.getElementById('login-sheet');
+  if(!overlay||!sheet) return;
+  var e=document.getElementById('lo-email'); if(e) e.value='';
+  var p=document.getElementById('lo-pwd'); if(p){p.value='';p.type='password';}
+  var eye=document.getElementById('lo-eye'); if(eye) eye.textContent='👁';
+  var err=document.getElementById('lo-err'); if(err) err.classList.remove('on');
+  var btn=document.getElementById('lo-btn'); if(btn){btn.disabled=false;btn.textContent='SE CONNECTER';}
+  overlay.classList.add('open');
+  setTimeout(function(){ sheet.classList.add('up'); }, 20);
+  setTimeout(function(){ var inp=document.getElementById('lo-email'); if(inp) inp.focus(); }, 500);
+}
+function closeLoginSheet(){
+  var sheet=document.getElementById('login-sheet'); var overlay=document.getElementById('login-overlay');
+  if(!sheet||!overlay) return;
+  sheet.classList.remove('up');
+  setTimeout(function(){ overlay.classList.remove('open'); }, 460);
+}
+function loginTogglePwd(){
+  var inp=document.getElementById('lo-pwd'); var btn=document.getElementById('lo-eye');
+  if(!inp) return;
+  inp.type=inp.type==='password'?'text':'password';
+  if(btn) btn.textContent=inp.type==='password'?'👁':'🙈';
+}
+function doAppLogin(){
+  var email=((document.getElementById('lo-email')||{}).value||'').trim();
+  var pwd=((document.getElementById('lo-pwd')||{}).value||'');
+  var err=document.getElementById('lo-err'); var btn=document.getElementById('lo-btn');
+  if(!email||!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){
+    if(err){err.textContent='Adresse email invalide.';err.classList.add('on');} return;
+  }
+  if(!pwd){ if(err){err.textContent='Mot de passe requis.';err.classList.add('on');} return; }
+  if(err) err.classList.remove('on');
+  if(btn){btn.disabled=true;btn.textContent='Connexion...';}
+  fetch((window.FA_GENESIS_API||API)+'/api/auth/login',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({email:email,password:pwd})
+  }).then(function(r){return r.json();}).then(function(res){
+    if(btn){btn.disabled=false;btn.textContent='SE CONNECTER';}
+    if(res&&res.token){
+      try{
+        localStorage.setItem('fa_genesis_session',JSON.stringify(res.user||res));
+        localStorage.setItem('fa_genesis_token',res.token);
+      }catch(e){}
+      USER=res.user||res; USER._token=res.token; GUEST=false;
+      closeLoginSheet();
+      var welcome=document.getElementById('welcome');
+      if(welcome&&welcome.style.display!=='none'){ showApp(); return; }
+      var fn=USER.prenom||USER.firstName||(USER.email||'').split('@')[0];
+      var greet=document.getElementById('greetName'); if(greet) greet.textContent=fn;
+      var av=document.getElementById('hdrAvatar'); if(av) av.textContent=(fn[0]||'U').toUpperCase();
+      loadStatusCard(); renderResaTab(); renderMsgTab(); renderProfil();
+    } else {
+      var msg=(res&&(res.message||res.error))||'Email ou mot de passe incorrect.';
+      if(err){err.textContent=msg;err.classList.add('on');}
+    }
+  }).catch(function(){
+    if(btn){btn.disabled=false;btn.textContent='SE CONNECTER';}
+    if(err){err.textContent='Erreur réseau. Vérifiez votre connexion.';err.classList.add('on');}
+  });
+}
+
+// ── CART ─────────────────────────────────────────────────────
+var APP_CART=(function(){try{return JSON.parse(localStorage.getItem('fa_app_cart')||'[]')||[];}catch(e){return [];}})();
+
+function _saveCart(){ try{localStorage.setItem('fa_app_cart',JSON.stringify(APP_CART));}catch(e){} updateCartBadge(); }
+
+function updateCartBadge(){
+  var b=document.getElementById('cart-count'); if(!b) return;
+  var n=APP_CART.length; b.textContent=n>9?'9+':n; b.className='cart-badge'+(n>0?' on':'');
+}
+
+function addToCart(item){
+  APP_CART.push(item); _saveCart();
+  var btn=document.getElementById('cart-icon-btn');
+  if(btn){ btn.style.transform='scale(1.35)'; setTimeout(function(){btn.style.transform='';},250); }
+  showCartToast((item.name||'Offre')+' ajouté au panier');
+}
+
+function removeFromCart(idx){ APP_CART.splice(idx,1); _saveCart(); renderCartBody(); }
+
+function showCartToast(msg){
+  var t=document.getElementById('cart-toast'); if(!t) return;
+  t.textContent=msg; t.className='cart-toast on';
+  setTimeout(function(){ t.className='cart-toast'; }, 2600);
+}
+
+function openCart(){
+  var overlay=document.getElementById('cart-overlay'); var sheet=document.getElementById('cart-sheet');
+  if(!overlay||!sheet) return;
+  renderCartBody();
+  overlay.classList.add('open');
+  setTimeout(function(){ sheet.classList.add('up'); }, 20);
+}
+function closeCart(){
+  var sheet=document.getElementById('cart-sheet'); var overlay=document.getElementById('cart-overlay');
+  if(!sheet||!overlay) return;
+  sheet.classList.remove('up');
+  setTimeout(function(){ overlay.classList.remove('open'); }, 460);
+}
+
+function cartTotal(){
+  var t=0;
+  APP_CART.forEach(function(item){ if(item.priceNum&&!isNaN(item.priceNum)) t+=item.priceNum*(item.quantity||1); });
+  return t;
+}
+
+function renderCartBody(){
+  var body=document.getElementById('cart-body'); var tr=document.getElementById('cart-total-row'); var cb=document.getElementById('cart-checkout-btn');
+  if(!body) return;
+  if(APP_CART.length===0){
+    body.innerHTML='<div class="cart-empty"><div class="ce-ico">🛒</div><p>Votre panier est vide.</p></div>';
+    if(tr) tr.style.display='none'; if(cb) cb.disabled=true; return;
+  }
+  if(tr) tr.style.display='flex'; if(cb) cb.disabled=false;
+  body.innerHTML=APP_CART.map(function(item,i){
+    return '<div class="cart-item">'
+      +'<div class="cart-item-info">'
+      +'<div class="cart-item-name">'+item.name+'</div>'
+      +(item.sub?'<div class="cart-item-sub">'+item.sub+'</div>':'')
+      +'<div class="cart-item-price">'+item.price+(item.quantity>1?' × '+item.quantity:'')+'</div>'
+      +'</div>'
+      +'<button class="cart-item-del" onclick="removeFromCart('+i+')">✕</button>'
+      +'</div>';
+  }).join('');
+  var total=cartTotal();
+  var tp=document.getElementById('cart-total-price');
+  if(tp) tp.textContent=total>0?total.toFixed(2)+' €':'Sur devis';
+}
+
+function cartCheckout(){
+  if(APP_CART.length===0) return;
+  var panier={items:APP_CART.map(function(item){
+    return {productId:item.id||'app-item',name:item.name,prix:item.priceNum,data:item};
+  })};
+  try{localStorage.setItem('fa_genesis_panier',JSON.stringify(panier));}catch(e){}
+  closeCart();
+  setTimeout(function(){ openInBrowser('https://fagenesis.com/panier.html'); }, 500);
+}
+
+// ── COWORKING BOOKING ─────────────────────────────────────────
+var _cwBookOffer=null, _cwBookSub=null, _cwBookIdx=null;
+
+function openCwBooking(sub, idx){
+  _cwBookSub=sub; _cwBookIdx=idx; _cwBookOffer=PDATA.coworking[sub][idx];
+  var overlay=document.getElementById('cw-booking-overlay'); var sheet=document.getElementById('cw-booking-sheet');
+  if(!overlay||!sheet) return;
+  var o=_cwBookOffer;
+  var nm=document.getElementById('cwb-offer-name'); if(nm) nm.textContent=o.name;
+  var pr=document.getElementById('cwb-offer-price'); if(pr) pr.textContent=o.price+(o.unit?' – '+o.unit:'');
+  var dt=document.getElementById('cwb-date'); if(dt){dt.value='';dt.min=new Date().toISOString().split('T')[0];}
+  var qty=document.getElementById('cwb-qty'); if(qty) qty.value='1';
+  var nt=document.getElementById('cwb-notes'); if(nt) nt.value='';
+  var er=document.getElementById('cwb-err'); if(er) er.classList.remove('on');
+  var fm=document.getElementById('cwb-form'); if(fm) fm.style.display='';
+  var sc=document.getElementById('cwb-success'); if(sc) sc.style.display='none';
+  var sb=document.getElementById('cwb-send-btn'); if(sb){sb.disabled=false;sb.textContent='ENVOYER DEMANDE';}
+  var cb2=document.getElementById('cwb-cart-btn'); if(cb2){cb2.disabled=false;cb2.textContent='🛒 Panier';}
+  var qr=document.getElementById('cwb-qty-row'); if(qr) qr.style.display=o.name.indexOf('OPENSPACE')>=0?'':'none';
+  overlay.classList.add('open');
+  setTimeout(function(){ sheet.classList.add('up'); }, 20);
+}
+function closeCwBooking(){
+  var sheet=document.getElementById('cw-booking-sheet'); var overlay=document.getElementById('cw-booking-overlay');
+  if(!sheet||!overlay) return;
+  sheet.classList.remove('up');
+  setTimeout(function(){ overlay.classList.remove('open'); }, 460);
+}
+function cwBookingAddToCart(){
+  if(!_cwBookOffer) return;
+  var dt=(document.getElementById('cwb-date')||{}).value||'';
+  var qty=parseInt((document.getElementById('cwb-qty')||{}).value||'1')||1;
+  var nt=((document.getElementById('cwb-notes')||{}).value||'').trim();
+  var er=document.getElementById('cwb-err');
+  if(!dt){ if(er){er.textContent='Veuillez choisir une date.';er.classList.add('on');} return; }
+  if(er) er.classList.remove('on');
+  var o=_cwBookOffer;
+  var sub='📅 '+new Date(dt).toLocaleDateString('fr-FR')+(qty>1?' × '+qty+' postes':'');
+  addToCart({id:'cw-'+_cwBookSub+'-'+_cwBookIdx,name:o.name,sub:sub,price:o.price,priceNum:null,quantity:qty,date:dt,notes:nt,type:'coworking'});
+  closeCwBooking();
+}
+function cwBookingSendRequest(){
+  if(!_cwBookOffer) return;
+  var dt=(document.getElementById('cwb-date')||{}).value||'';
+  var qty=parseInt((document.getElementById('cwb-qty')||{}).value||'1')||1;
+  var nt=((document.getElementById('cwb-notes')||{}).value||'').trim();
+  var er=document.getElementById('cwb-err');
+  if(!dt){ if(er){er.textContent='Veuillez choisir une date.';er.classList.add('on');} return; }
+  if(!USER||GUEST){ if(er){er.textContent='Connectez-vous pour envoyer une demande.';er.classList.add('on');} return; }
+  if(er) er.classList.remove('on');
+  var sb=document.getElementById('cwb-send-btn'); if(sb){sb.disabled=true;sb.textContent='Envoi...';}
+  var cb2=document.getElementById('cwb-cart-btn'); if(cb2) cb2.disabled=true;
+  var o=_cwBookOffer;
+  fetch((window.FA_GENESIS_API||API)+'/api/reservations',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+USER._token},
+    body:JSON.stringify({
+      product_id:'coworking-'+o.name.toLowerCase().replace(/[^a-z]/g,'-'),
+      product_name:o.name,dates:[dt],quantity:qty,notes:nt,prix:o.price
+    })
+  }).then(function(r){return r.json();}).then(function(res){
+    if(sb){sb.disabled=false;sb.textContent='ENVOYER DEMANDE';}
+    if(cb2) cb2.disabled=false;
+    if(res&&(res.success||res._id||res.id)){
+      var fm=document.getElementById('cwb-form'); if(fm) fm.style.display='none';
+      var sc=document.getElementById('cwb-success'); if(sc) sc.style.display='block';
+      renderResaTab();
+    } else {
+      var msg=(res&&res.error)||'Erreur. Réessayez.';
+      if(er){er.textContent=msg;er.classList.add('on');}
+    }
+  }).catch(function(){
+    if(sb){sb.disabled=false;sb.textContent='ENVOYER DEMANDE';}
+    if(cb2) cb2.disabled=false;
+    if(er){er.textContent='Erreur réseau. Réessayez.';er.classList.add('on');}
+  });
+}
+
+// ── MESSAGE COMPOSE ───────────────────────────────────────────
+function openMsgCompose(){
+  if(!USER||GUEST){ showLoginSheet(); return; }
+  var overlay=document.getElementById('msg-compose-overlay'); var sheet=document.getElementById('msg-compose-sheet');
+  if(!overlay||!sheet) return;
+  var s=document.getElementById('mc-subject'); if(s) s.value='';
+  var b=document.getElementById('mc-body'); if(b) b.value='';
+  var e=document.getElementById('mc-err'); if(e) e.classList.remove('on');
+  var btn=document.getElementById('mc-send-btn'); if(btn){btn.disabled=false;btn.textContent='ENVOYER';}
+  overlay.classList.add('open');
+  setTimeout(function(){ sheet.classList.add('up'); }, 20);
+}
+function closeMsgCompose(){
+  var sheet=document.getElementById('msg-compose-sheet'); var overlay=document.getElementById('msg-compose-overlay');
+  if(!sheet||!overlay) return;
+  sheet.classList.remove('up');
+  setTimeout(function(){ overlay.classList.remove('open'); }, 460);
+}
+function sendAppMessage(){
+  var to=((document.getElementById('mc-to')||{}).value||'FA_GENESIS');
+  var subj=((document.getElementById('mc-subject')||{}).value||'').trim();
+  var body=((document.getElementById('mc-body')||{}).value||'').trim();
+  var er=document.getElementById('mc-err'); var btn=document.getElementById('mc-send-btn');
+  if(!subj){ if(er){er.textContent='Objet requis.';er.classList.add('on');} return; }
+  if(!body){ if(er){er.textContent='Message requis.';er.classList.add('on');} return; }
+  if(er) er.classList.remove('on');
+  if(btn){btn.disabled=true;btn.textContent='Envoi...';}
+  fetch((window.FA_GENESIS_API||API)+'/api/messages',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+USER._token},
+    body:JSON.stringify({to:to,subject:subj,body:body,message:body})
+  }).then(function(r){return r.json();}).then(function(res){
+    if(btn){btn.disabled=false;btn.textContent='ENVOYER';}
+    if(res&&(res.success||res._id||res.id)){
+      closeMsgCompose(); showCartToast('Message envoyé !');
+    } else {
+      closeMsgCompose();
+      openInBrowser('https://fagenesis.com/messagerie.html');
+    }
+  }).catch(function(){
+    if(btn){btn.disabled=false;btn.textContent='ENVOYER';}
+    closeMsgCompose();
+    openInBrowser('https://fagenesis.com/messagerie.html');
+  });
+}
+
 // ── INSCRIPTION OVERLAY (style McDonald's) ────────────────────
 var regCurrentStep = 0;
 var regData = {};
@@ -2049,6 +2449,135 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
   <div class="detail-panel">
     <div class="detail-handle"></div>
     <div id="detail-content"></div>
+  </div>
+</div>
+
+<!-- TOAST PANIER -->
+<div id="cart-toast" class="cart-toast"></div>
+
+<!-- LOGIN OVERLAY -->
+<div id="login-overlay" onclick="if(event.target===this)closeLoginSheet()">
+  <div id="login-sheet">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px 0;flex-shrink:0;">
+      <button class="reg-nav-btn" onclick="closeLoginSheet()">&#8249;</button>
+      <div style="font-family:'Unbounded',cursive;font-size:10px;font-weight:900;color:#FFD700;letter-spacing:1.5px;">CONNEXION</div>
+      <button class="reg-nav-btn" onclick="closeLoginSheet()">&#x2715;</button>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:24px 24px 32px;">
+      <div class="reg-title" style="margin-bottom:8px;">Bon retour &#128075;</div>
+      <div class="reg-sub">Connectez-vous à votre compte FA GENESIS.</div>
+      <div class="reg-field">
+        <label class="reg-label" for="lo-email">Adresse email</label>
+        <input id="lo-email" class="reg-input" type="email" placeholder="votre@email.com" autocomplete="email" onkeydown="if(event.key==='Enter')document.getElementById('lo-pwd').focus()">
+      </div>
+      <div class="reg-field">
+        <label class="reg-label" for="lo-pwd">Mot de passe</label>
+        <div class="reg-pw-wrap">
+          <input id="lo-pwd" class="reg-input" type="password" placeholder="&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;" autocomplete="current-password" onkeydown="if(event.key==='Enter'||event.keyCode===13)doAppLogin()">
+          <button class="reg-eye" id="lo-eye" onclick="loginTogglePwd()" type="button">&#128065;</button>
+        </div>
+      </div>
+      <div class="reg-err" id="lo-err"></div>
+      <div class="reg-cta" style="padding-top:8px;">
+        <button class="reg-btn" id="lo-btn" onclick="doAppLogin()">SE CONNECTER</button>
+        <div class="reg-link-row" style="margin-top:14px;">Pas de compte ? <a href="#" onclick="closeLoginSheet();showRegisterSheet();return false;">S'inscrire</a></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CART OVERLAY -->
+<div id="cart-overlay" onclick="if(event.target===this)closeCart()">
+  <div id="cart-sheet">
+    <div class="cart-hdr">
+      <div class="cart-title">&#128722; Mon Panier</div>
+      <button class="reg-nav-btn" onclick="closeCart()">&#x2715;</button>
+    </div>
+    <div class="cart-body" id="cart-body">
+      <div class="cart-empty"><div class="ce-ico">&#128722;</div><p>Votre panier est vide.</p></div>
+    </div>
+    <div class="cart-footer">
+      <div class="cart-total-row" id="cart-total-row" style="display:none;">
+        <span class="cart-total-label">Total estimé</span>
+        <span class="cart-total-price" id="cart-total-price">Sur devis</span>
+      </div>
+      <button class="cart-checkout-btn" id="cart-checkout-btn" onclick="cartCheckout()" disabled>PASSER COMMANDE</button>
+    </div>
+  </div>
+</div>
+
+<!-- COWORKING BOOKING OVERLAY -->
+<div id="cw-booking-overlay" onclick="if(event.target===this)closeCwBooking()">
+  <div id="cw-booking-sheet">
+    <div class="cwb-hdr">
+      <button class="reg-nav-btn" onclick="closeCwBooking()">&#8249;</button>
+      <div style="font-family:'Unbounded',cursive;font-size:10px;font-weight:900;color:#FFD700;letter-spacing:1.5px;">RÉSERVATION</div>
+      <button class="reg-nav-btn" onclick="closeCwBooking()">&#x2715;</button>
+    </div>
+    <div class="cwb-body">
+      <div class="cwb-name" id="cwb-offer-name">OPENSPACE</div>
+      <div class="cwb-price-info" id="cwb-offer-price"></div>
+      <div id="cwb-form">
+        <div class="cwb-field">
+          <label class="cwb-label" for="cwb-date">Date souhaitée *</label>
+          <input id="cwb-date" class="cwb-input" type="date">
+        </div>
+        <div class="cwb-field" id="cwb-qty-row">
+          <label class="cwb-label" for="cwb-qty">Nombre de postes</label>
+          <select id="cwb-qty" class="cwb-input">
+            <option value="1">1 poste</option>
+            <option value="2">2 postes</option>
+            <option value="3">3 postes</option>
+            <option value="4">4 postes</option>
+            <option value="5">5 postes ou plus</option>
+          </select>
+        </div>
+        <div class="cwb-field">
+          <label class="cwb-label" for="cwb-notes">Message (facultatif)</label>
+          <input id="cwb-notes" class="cwb-input" type="text" placeholder="Informations complémentaires...">
+        </div>
+        <div class="cwb-err" id="cwb-err"></div>
+        <div class="cwb-actions">
+          <button class="cwb-btn cwb-btn-yellow" id="cwb-cart-btn" onclick="cwBookingAddToCart()">&#128722; Panier</button>
+          <button class="cwb-btn cwb-btn-ghost" id="cwb-send-btn" onclick="cwBookingSendRequest()">ENVOYER DEMANDE</button>
+        </div>
+      </div>
+      <div class="cwb-success" id="cwb-success" style="display:none;">
+        <div class="cwb-success-ico">&#9989;</div>
+        <p>Demande envoyée ! Nous vous contacterons rapidement pour confirmer votre réservation.</p>
+        <button class="cwb-btn cwb-btn-yellow" style="width:100%;margin-top:16px;" onclick="closeCwBooking()">Fermer</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MSG COMPOSE OVERLAY -->
+<div id="msg-compose-overlay" onclick="if(event.target===this)closeMsgCompose()">
+  <div id="msg-compose-sheet">
+    <div class="mc-hdr">
+      <button class="reg-nav-btn" onclick="closeMsgCompose()">&#8249;</button>
+      <div style="font-family:'Unbounded',cursive;font-size:10px;font-weight:900;color:#FFD700;letter-spacing:1.5px;">NOUVEAU MESSAGE</div>
+      <button class="reg-nav-btn" onclick="closeMsgCompose()">&#x2715;</button>
+    </div>
+    <div class="mc-body">
+      <div class="mc-field">
+        <label class="mc-label" for="mc-to">Destinataire</label>
+        <select id="mc-to" class="mc-select">
+          <option value="FA_GENESIS">&#127775; FA GENESIS (équipe)</option>
+          <option value="COMVISA">&#127970; COM VISA Coworking</option>
+        </select>
+      </div>
+      <div class="mc-field">
+        <label class="mc-label" for="mc-subject">Objet *</label>
+        <input id="mc-subject" class="mc-input" type="text" placeholder="Objet de votre message...">
+      </div>
+      <div class="mc-field">
+        <label class="mc-label" for="mc-body">Message *</label>
+        <textarea id="mc-body" class="mc-textarea" placeholder="Écrivez votre message ici..."></textarea>
+      </div>
+      <div class="mc-err" id="mc-err"></div>
+      <button class="mc-send-btn" id="mc-send-btn" onclick="sendAppMessage()">ENVOYER</button>
+    </div>
   </div>
 </div>
 
