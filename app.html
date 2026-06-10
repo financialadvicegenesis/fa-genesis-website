@@ -953,6 +953,15 @@ a{text-decoration:none;color:inherit}
 /* ── BOUTON PANIER SUR CARDS ── */
 .card-cart-btn{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);color:#FFD700;font-size:15px;padding:8px 10px;cursor:pointer;transition:background .15s;flex-shrink:0;border-radius:0;line-height:1;}
 .card-cart-btn:active{background:rgba(255,215,0,.18);}
+
+/* ── DOC VIEWER OVERLAY ── */
+#doc-viewer-overlay{position:fixed;inset:0;z-index:10100;background:#000;flex-direction:column;display:none;}
+#doc-viewer-overlay.open{display:flex;}
+.dvo-hdr{display:flex;align-items:center;gap:8px;padding:10px 14px;background:#111;border-bottom:3px solid #FFD700;flex-shrink:0;min-height:52px;}
+.dvo-back{background:none;border:none;color:#FFD700;font-size:30px;font-weight:900;cursor:pointer;line-height:1;padding:0 4px;flex-shrink:0;}
+.dvo-title{flex:1;font-family:'Unbounded',cursive;font-size:10px;font-weight:900;color:#fff;text-transform:uppercase;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.dvo-dl-btn{background:#FFD700;color:#000;border:none;font-family:'Unbounded',cursive;font-size:10px;font-weight:900;padding:8px 14px;cursor:pointer;white-space:nowrap;flex-shrink:0;}
+.dvo-frame{flex:1;width:100%;border:none;background:#fff;}
 </style>
 </head>
 <body>
@@ -1061,11 +1070,11 @@ a{text-decoration:none;color:inherit}
           <div class="qa-icon">💬</div>
           <div class="qa-label">Messages</div>
         </div>
-        <div class="qa" onclick="navExternal('livrables.html')">
+        <div class="qa" onclick="_navToLivrables()">
           <div class="qa-icon">📂</div>
           <div class="qa-label">Livrables</div>
         </div>
-        <div class="qa" onclick="navExternal('seances.html')">
+        <div class="qa" onclick="_navToSeances()">
           <div class="qa-icon">📅</div>
           <div class="qa-label">Séances</div>
         </div>
@@ -1322,6 +1331,18 @@ function nav(tab){
 }
 function navExternal(url){
   window.location.href = USER ? url : 'login.html?from=app.html';
+}
+function _navToLivrables(){
+  if(!USER){showLoginSheet();return;}
+  nav('profil');
+  if(!document.getElementById('profilContent'))renderProfil();
+  showLivrables();
+}
+function _navToSeances(){
+  if(!USER){showLoginSheet();return;}
+  nav('profil');
+  if(!document.getElementById('profilContent'))renderProfil();
+  showSeances();
 }
 
 // ── CATÉGORIES ────────────────────────────────────────────────
@@ -2180,52 +2201,216 @@ function showPaiements(){
     }).catch(function(){var el=document.getElementById('pmt-list');if(el)el.innerHTML='<div class="espace-empty">Impossible de charger.</div>';});
 }
 
-function showLivrables(){
-  var c=document.getElementById('profilContent');
-  c.innerHTML='<div class="espace-view">'
-    +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="renderProfil()">&#8249;</button><div class="espace-title">Mes livrables</div></div>'
-    +'<div id="lvr-list"><div class="espace-loading">Chargement...</div></div></div>';
-  fetch((window.FA_GENESIS_API||API)+'/api/client/livrables',{headers:{'Authorization':'Bearer '+USER._token}})
-    .then(function(r){return r.json();}).then(function(data){
-      var list=Array.isArray(data)?data:(data.livrables||[]);
-      var el=document.getElementById('lvr-list'); if(!el) return;
-      if(list.length===0){el.innerHTML='<div class="espace-empty">Aucun livrable disponible.</div>';return;}
-      el.innerHTML=list.map(function(l){
-        var date=l.date||l.createdAt?new Date(l.date||l.createdAt).toLocaleDateString('fr-FR'):'';
-        return '<div class="espace-card">'
-          +'<div class="espace-card-name">'+(l.titre||l.title||l.name||'Livrable')+'</div>'
-          +(date?'<div class="espace-card-sub">'+date+'</div>':'')
-          +(l.description?'<div class="espace-card-detail">'+l.description+'</div>':'')
-          +(l.url?'<a href="'+l.url+'" target="_blank" onclick="return openInBrowser(this.href)" style="display:inline-block;margin-top:8px;background:#FFD700;color:#000;font-family:\'Unbounded\',cursive;font-weight:900;font-size:10px;padding:7px 14px;text-decoration:none;letter-spacing:.5px;">Télécharger</a>':'')
-          +'</div>';
-      }).join('');
-    }).catch(function(){var el=document.getElementById('lvr-list');if(el)el.innerHTML='<div class="espace-empty">Impossible de charger.</div>';});
+// ── HTML ESCAPE HELPER ───────────────────────────────────────────
+function _escHtml(s){if(!s)return '';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+// ── DOC VIEWER ───────────────────────────────────────────────────
+var _dvoUrl=null,_dvoFile=null;
+function openDocViewer(url,title,filename){
+  _dvoUrl=url;_dvoFile=filename||title||'document.pdf';
+  var el=document.getElementById('doc-viewer-overlay');if(!el)return;
+  var t=document.getElementById('dvo-title');if(t)t.textContent=title||'Document';
+  var f=document.getElementById('dvo-frame');if(f)f.src=url;
+  el.classList.add('open');document.body.style.overflow='hidden';
+}
+function closeDocViewer(){
+  var el=document.getElementById('doc-viewer-overlay');if(!el)return;
+  var f=document.getElementById('dvo-frame');if(f)f.src='about:blank';
+  el.classList.remove('open');document.body.style.overflow='';
+}
+function docViewerDownload(){if(_dvoUrl)_blobDownload(_dvoUrl,_dvoFile);}
+function _blobDownload(url,filename){
+  fetch(url).then(function(r){return r.blob();}).then(function(blob){
+    var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename||'document';
+    document.body.appendChild(a);a.click();
+    setTimeout(function(){URL.revokeObjectURL(a.href);if(a.parentNode)a.parentNode.removeChild(a);},1500);
+  }).catch(function(e){console.warn('[DL]',e&&e.message);});
+}
+function _loadCommonDocs(cb){
+  if(typeof COMMON_DOCUMENTS!=='undefined'){cb();return;}
+  var s=document.createElement('script');s.src='common-documents.js';
+  s.onload=cb;s.onerror=function(){cb();};document.head.appendChild(s);
 }
 
+// ── LIVRABLES IN-APP ─────────────────────────────────────────────
+function showLivrables(){
+  var c=document.getElementById('profilContent');if(!c)return;
+  var API2=window.FA_GENESIS_API||API;
+  var token=USER?USER._token:(localStorage.getItem('fa_genesis_token')||'');
+  c.innerHTML='<div class="espace-view">'
+    +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="renderProfil()">&#8249;</button><div class="espace-title">Mes livrables</div></div>'
+    +'<div id="lvr-main" style="padding:14px 16px 80px;overflow-y:auto;flex:1;"><div class="espace-loading">Chargement...</div></div>'
+    +'</div>';
+  _loadCommonDocs(function(){_renderAppLivrables(API2,token);});
+}
+function _renderAppLivrables(API2,token){
+  var el=document.getElementById('lvr-main');if(!el)return;
+  var commonHtml='';
+  if(typeof COMMON_DOCUMENTS!=='undefined'&&COMMON_DOCUMENTS.length){
+    var grouped={};
+    var order=typeof CATEGORIES_ORDER!=='undefined'?CATEGORIES_ORDER:[];
+    for(var i=0;i<COMMON_DOCUMENTS.length;i++){var doc=COMMON_DOCUMENTS[i];if(!grouped[doc.category])grouped[doc.category]=[];grouped[doc.category].push(doc);}
+    var cats=order.length?order:Object.keys(grouped);
+    commonHtml='<div style="border-left:4px solid #FFD700;padding-left:12px;margin-bottom:14px;">'
+      +'<div style="font-family:\'Unbounded\',cursive;font-size:11px;font-weight:900;color:#FFD700;text-transform:uppercase;">Documents de démarrage</div>'
+      +'<div style="font-size:10px;color:#555;margin-top:2px;">Disponibles après paiement de l\'acompte</div>'
+      +'</div>';
+    for(var ci=0;ci<cats.length;ci++){
+      var cat=cats[ci];var docs=grouped[cat];if(!docs||!docs.length)continue;
+      commonHtml+='<div style="margin-bottom:14px;">'
+        +'<div style="font-size:9px;font-weight:900;color:#444;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">'+_escHtml(cat)+'</div>';
+      for(var di=0;di<docs.length;di++){
+        var item=docs[di];
+        var safeUrl=item.fileUrl.split('/').map(function(p){return encodeURIComponent(p);}).join('/');
+        var jsUrl=safeUrl.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+        var jsTitle=item.title.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+        var jsFile=(item.title+'.pdf').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+        commonHtml+='<div class="espace-card" style="margin-bottom:8px;">'
+          +'<div class="espace-card-name" style="font-size:12px;">'+_escHtml(item.title)+'</div>'
+          +'<div class="espace-card-sub" style="font-size:10px;margin-bottom:10px;">'+_escHtml(item.description)+'</div>'
+          +'<button onclick="openDocViewer(\''+jsUrl+'\',\''+jsTitle+'\',\''+jsFile+'\')" style="width:100%;background:#FFD700;color:#000;border:none;font-family:\'Unbounded\',cursive;font-size:10px;font-weight:900;padding:10px;cursor:pointer;margin-top:8px;">Ouvrir &amp; Sauvegarder</button>'
+          +'</div>';
+      }
+      commonHtml+='</div>';
+    }
+  }
+  el.innerHTML=commonHtml+'<div id="lvr-api"></div>';
+  fetch(API2+'/api/deliverables/mine',{headers:{'Authorization':'Bearer '+token}})
+    .then(function(r){return r.json();}).then(function(data){
+      var apiEl=document.getElementById('lvr-api');if(!apiEl)return;
+      var list=data.ok?(data.deliverables||[]):[];
+      if(!list.length){apiEl.innerHTML='';return;}
+      var canDl=data.can_download===true;
+      var h='<div style="border-left:4px solid #fff;padding-left:12px;margin-bottom:14px;margin-top:8px;">'
+        +'<div style="font-family:\'Unbounded\',cursive;font-size:11px;font-weight:900;color:#fff;text-transform:uppercase;">Documents d\'accompagnement</div>'
+        +'</div>';
+      for(var j=0;j<list.length;j++){
+        var l=list[j];var pu=l.preview_url||l.download_url||'';var du=l.download_url||'';
+        var lname=l.name||'Livrable';
+        var jsPu=pu.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+        var jsDu=du.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+        var jsLname=_escHtml(lname).replace(/'/g,"\\'");
+        h+='<div class="espace-card" style="margin-bottom:8px;">'
+          +'<div class="espace-card-name" style="font-size:12px;">'+_escHtml(lname)+'</div>'
+          +(l.category?'<div class="espace-card-sub" style="font-size:10px;margin-bottom:10px;">'+_escHtml(l.category)+'</div>':'<div style="margin-bottom:10px;"></div>')
+        if(pu){h+='<button onclick="openDocViewer(\''+jsPu+'\',\''+jsLname+'\',\''+jsLname+'\')" style="width:100%;background:#FFD700;color:#000;border:none;font-family:\'Unbounded\',cursive;font-size:10px;font-weight:900;padding:10px;cursor:pointer;margin-top:8px;">Ouvrir &amp; Sauvegarder</button>';}
+        else if(du){if(canDl){h+='<button onclick="openDocViewer(\''+jsDu+'\',\''+jsLname+'\',\''+jsLname+'\')" style="width:100%;background:#FFD700;color:#000;border:none;font-family:\'Unbounded\',cursive;font-size:10px;font-weight:900;padding:10px;cursor:pointer;margin-top:8px;">Ouvrir &amp; Sauvegarder</button>';}else{h+='<div style="margin-top:8px;padding:8px;background:#1a1a1a;color:#555;font-size:10px;font-weight:900;text-align:center;">Disponible après paiement du solde</div>';}}
+        h+='</div>';
+      }
+      apiEl.innerHTML=h;
+    }).catch(function(){var apiEl=document.getElementById('lvr-api');if(apiEl)apiEl.innerHTML='';});
+}
+
+// ── SÉANCES IN-APP ───────────────────────────────────────────────
 function showSeances(){
-  var c=document.getElementById('profilContent');
+  var c=document.getElementById('profilContent');if(!c)return;
+  var API2=window.FA_GENESIS_API||API;
+  var token=USER?USER._token:(localStorage.getItem('fa_genesis_token')||'');
   c.innerHTML='<div class="espace-view">'
     +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="renderProfil()">&#8249;</button><div class="espace-title">Mes séances</div></div>'
-    +'<div id="sea-list"><div class="espace-loading">Chargement...</div></div></div>';
-  fetch((window.FA_GENESIS_API||API)+'/api/client/seances',{headers:{'Authorization':'Bearer '+USER._token}})
+    +'<div id="sea-main" style="padding:14px 16px 80px;overflow-y:auto;flex:1;">'
+    +'<button onclick="_appShowSeanceForm()" style="width:100%;background:#FFD700;color:#000;border:none;font-family:\'Unbounded\',cursive;font-size:11px;font-weight:900;padding:12px;cursor:pointer;margin-bottom:16px;letter-spacing:.5px;">+ Demander une séance</button>'
+    +'<div id="sea-list"><div class="espace-loading">Chargement...</div></div>'
+    +'</div></div>';
+  fetch(API2+'/api/sessions/me',{headers:{'Authorization':'Bearer '+token}})
     .then(function(r){return r.json();}).then(function(data){
-      var list=Array.isArray(data)?data:(data.seances||[]);
-      var el=document.getElementById('sea-list'); if(!el) return;
-      if(list.length===0){el.innerHTML='<div class="espace-empty">Aucune séance pour le moment.</div>';return;}
+      var list=Array.isArray(data)?data:(data.sessions||[]);
+      var el=document.getElementById('sea-list');if(!el)return;
+      if(!list.length){el.innerHTML='<div class="espace-empty">Aucune séance pour le moment.</div>';return;}
+      var SL={'REQUESTED':'Demandée','PROPOSED':'Créneau proposé','CONFIRMED':'Confirmée','RESCHEDULE_REQUESTED':'Reprogrammation','COMPLETED':'Terminée','CANCELLED':'Annulée','scheduled':'Planifiée','completed':'Terminée','cancelled':'Annulée'};
+      var SC={'REQUESTED':'#FF9800','PROPOSED':'#2196F3','CONFIRMED':'#4CAF50','RESCHEDULE_REQUESTED':'#FF5722','COMPLETED':'#9E9E9E','CANCELLED':'#f44336','scheduled':'#555','completed':'#9E9E9E','cancelled':'#f44336'};
+      var TL={'call':'Appel / Visio','shooting':'Shooting','meeting':'Réunion'};
       el.innerHTML=list.map(function(s){
-        var date=s.date||s.createdAt?new Date(s.date||s.createdAt).toLocaleDateString('fr-FR',{weekday:'short',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'';
-        var sc=s.status==='confirmed'?'#22c55e':s.status==='pending'?'#FFD700':'#555';
-        var sl=s.status==='confirmed'?'Confirmée':s.status==='pending'?'En attente':s.status||'—';
-        return '<div class="espace-card">'
-          +'<div style="display:flex;justify-content:space-between;gap:8px;">'
-          +'<div class="espace-card-name">'+(s.type||s.title||s.name||'Séance')+'</div>'
-          +'<span style="font-size:11px;font-weight:900;color:'+sc+';white-space:nowrap;">'+sl+'</span>'
+        var status=s.status||'scheduled';
+        var typeLabel=TL[s.session_type]||s.session_type||s.type||'Séance';
+        var dateStr='Date à définir';
+        if(s.datetime_start){var d=new Date(s.datetime_start);dateStr=d.toLocaleDateString('fr-FR',{weekday:'short',day:'2-digit',month:'short'})+' à '+d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});}
+        else if(s.date&&s.heure){dateStr=s.date+' à '+s.heure;}
+        var meetUrl=s.meet_url||s.visioLink||'';
+        var joinBtn='';
+        if((status==='CONFIRMED'||status==='scheduled')&&meetUrl){
+          joinBtn='<button onclick="window.location.href=\''+meetUrl.replace(/\\/g,'\\\\').replace(/'/g,"\\'")+'\'" style="width:100%;background:#4CAF50;color:#fff;border:none;font-family:\'Unbounded\',cursive;font-size:10px;font-weight:900;padding:11px;cursor:pointer;margin-top:10px;">Rejoindre la séance</button>';
+        }
+        var actHtml='';
+        if(status==='PROPOSED'){
+          actHtml='<div style="display:flex;gap:6px;margin-top:10px;">'
+            +'<button onclick="_appAcceptSession(\''+s.id+'\')" style="flex:1;background:#4CAF50;color:#fff;border:none;font-size:10px;font-weight:900;padding:9px 4px;cursor:pointer;">Accepter</button>'
+            +'<button onclick="_appRescheduleSession(\''+s.id+'\')" style="flex:1;background:#FF9800;color:#000;border:none;font-size:10px;font-weight:900;padding:9px 4px;cursor:pointer;">Autre créneau</button>'
+            +'<button onclick="_appCancelSession(\''+s.id+'\')" style="flex:1;background:#f44336;color:#fff;border:none;font-size:10px;font-weight:900;padding:9px 4px;cursor:pointer;">Annuler</button>'
+            +'</div>';
+        } else if(status==='REQUESTED'){
+          actHtml='<div style="margin-top:8px;padding:8px;background:#1a1000;font-size:11px;color:#FF9800;font-weight:700;">En attente du partenaire...</div>';
+        } else if(status==='RESCHEDULE_REQUESTED'){
+          actHtml='<div style="margin-top:8px;padding:8px;background:#1a0800;font-size:11px;color:#FF5722;font-weight:700;">Reprogrammation en cours...</div>';
+        }
+        return '<div class="espace-card" style="margin-bottom:10px;">'
+          +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px;">'
+          +'<div class="espace-card-name" style="font-size:12px;">'+_escHtml(typeLabel)+'</div>'
+          +'<span style="font-size:10px;font-weight:900;color:'+(SC[status]||'#555')+';white-space:nowrap;flex-shrink:0;">'+(SL[status]||_escHtml(status))+'</span>'
           +'</div>'
-          +(date?'<div class="espace-card-sub">'+date+'</div>':'')
-          +(s.notes||s.description?'<div class="espace-card-detail">'+(s.notes||s.description)+'</div>':'')
+          +'<div class="espace-card-sub" style="font-size:11px;">'+_escHtml(dateStr)+'</div>'
+          +(s.partner_name?'<div class="espace-card-detail" style="font-size:10px;margin-top:4px;">Partenaire : '+_escHtml(s.partner_name)+'</div>':'')
+          +(s.notes_partner?'<div style="margin-top:8px;padding:8px;background:#0a1a0a;border-left:3px solid #4CAF50;font-size:11px;color:#88cc88;">'+_escHtml(s.notes_partner)+'</div>':'')
+          +actHtml+joinBtn
           +'</div>';
       }).join('');
-    }).catch(function(){var el=document.getElementById('sea-list');if(el)el.innerHTML='<div class="espace-empty">Impossible de charger.</div>';});
+    }).catch(function(){var el=document.getElementById('sea-list');if(el)el.innerHTML='<div class="espace-empty">Impossible de charger les séances.</div>';});
+}
+function _appAcceptSession(id){
+  var API2=window.FA_GENESIS_API||API;var token=USER?USER._token:(localStorage.getItem('fa_genesis_token')||'');
+  fetch(API2+'/api/sessions/'+id+'/accept',{method:'POST',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'}})
+    .then(function(r){return r.json();}).then(function(d){if(d.success||d.ok)showSeances();else alert(d.error||'Erreur');}).catch(function(e){alert('Erreur: '+e.message);});
+}
+function _appRescheduleSession(id){
+  var notes=prompt('Précisez vos disponibilités pour un nouveau créneau :');if(notes===null)return;
+  var API2=window.FA_GENESIS_API||API;var token=USER?USER._token:(localStorage.getItem('fa_genesis_token')||'');
+  fetch(API2+'/api/sessions/'+id+'/reschedule',{method:'POST',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({notes_client:notes})})
+    .then(function(r){return r.json();}).then(function(d){if(d.success||d.ok)showSeances();else alert(d.error||'Erreur');}).catch(function(e){alert('Erreur: '+e.message);});
+}
+function _appCancelSession(id){
+  if(!confirm('Annuler cette séance ?'))return;
+  var API2=window.FA_GENESIS_API||API;var token=USER?USER._token:(localStorage.getItem('fa_genesis_token')||'');
+  fetch(API2+'/api/sessions/'+id+'/cancel',{method:'POST',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'}})
+    .then(function(r){return r.json();}).then(function(d){if(d.success||d.ok)showSeances();else alert(d.error||'Erreur');}).catch(function(e){alert('Erreur: '+e.message);});
+}
+function _appShowSeanceForm(){
+  var main=document.getElementById('sea-main');if(!main)return;
+  main.innerHTML='<button onclick="showSeances()" style="background:none;border:none;color:#FFD700;font-size:20px;font-weight:900;cursor:pointer;margin-bottom:14px;padding:0;">&#8249; Retour</button>'
+    +'<div style="font-family:\'Unbounded\',cursive;font-size:11px;font-weight:900;color:#FFD700;margin-bottom:16px;text-transform:uppercase;">Demander une séance</div>'
+    +'<div style="margin-bottom:12px;">'
+    +'<div style="font-size:10px;font-weight:900;color:#666;text-transform:uppercase;margin-bottom:6px;">Type de séance</div>'
+    +'<select id="sf-type" style="width:100%;padding:10px;background:#141414;border:1px solid #333;color:#fff;font-size:13px;font-family:\'Space Grotesk\',sans-serif;">'
+    +'<option value="call">Appel / Visio</option>'
+    +'<option value="shooting">Shooting photo/vidéo</option>'
+    +'<option value="meeting">Réunion / Consultation</option>'
+    +'</select></div>'
+    +'<div style="margin-bottom:12px;">'
+    +'<div style="font-size:10px;font-weight:900;color:#666;text-transform:uppercase;margin-bottom:6px;">Votre besoin</div>'
+    +'<textarea id="sf-notes" rows="3" placeholder="Décrivez votre besoin..." style="width:100%;padding:10px;background:#141414;border:1px solid #333;color:#fff;font-size:13px;font-family:\'Space Grotesk\',sans-serif;resize:vertical;box-sizing:border-box;"></textarea></div>'
+    +'<div style="margin-bottom:16px;">'
+    +'<div style="font-size:10px;font-weight:900;color:#666;text-transform:uppercase;margin-bottom:6px;">Créneau préféré (optionnel)</div>'
+    +'<input id="sf-slot" type="datetime-local" style="width:100%;padding:10px;background:#141414;border:1px solid #333;color:#fff;font-size:13px;box-sizing:border-box;"></div>'
+    +'<div id="sf-err" style="display:none;color:#ff5555;font-size:12px;font-weight:700;margin-bottom:12px;padding:8px;background:#1a0808;border:1px solid #ff3333;"></div>'
+    +'<button onclick="_appSubmitSeanceForm()" style="width:100%;background:#FFD700;color:#000;border:none;font-family:\'Unbounded\',cursive;font-size:11px;font-weight:900;padding:13px;cursor:pointer;letter-spacing:.5px;">Envoyer la demande</button>';
+}
+function _appSubmitSeanceForm(){
+  var API2=window.FA_GENESIS_API||API;var token=USER?USER._token:(localStorage.getItem('fa_genesis_token')||'');
+  var st=document.getElementById('sf-type');var notes=document.getElementById('sf-notes');var slot=document.getElementById('sf-slot');var errEl=document.getElementById('sf-err');
+  if(!st||!notes)return;if(errEl)errEl.style.display='none';
+  var payload={session_type:st.value,requested_provider_role:'admin',notes_client:notes.value};
+  if(slot&&slot.value)payload.proposed_slots=[slot.value];
+  fetch(API2+'/api/sessions',{method:'POST',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify(payload)})
+    .then(function(r){return r.json();}).then(function(d){
+      if(d.success||d.ok){
+        var main=document.getElementById('sea-main');
+        if(main)main.innerHTML='<div style="text-align:center;padding:48px 20px;">'
+          +'<div style="font-size:48px;margin-bottom:16px;color:#FFD700;">&#10003;</div>'
+          +'<div style="font-family:\'Unbounded\',cursive;font-size:12px;font-weight:900;color:#FFD700;margin-bottom:8px;">Demande envoyée !</div>'
+          +'<div style="font-size:12px;color:#555;margin-bottom:24px;">Le partenaire sera notifié.</div>'
+          +'<button onclick="showSeances()" style="background:#FFD700;color:#000;border:none;font-family:\'Unbounded\',cursive;font-size:10px;font-weight:900;padding:12px 24px;cursor:pointer;">Voir mes séances</button>'
+          +'</div>';
+      } else {if(errEl){errEl.textContent=d.error||'Erreur lors de la demande';errEl.style.display='';}}
+    }).catch(function(e){if(errEl){errEl.textContent='Erreur réseau : '+e.message;errEl.style.display='';}});
 }
 
 // ── NAVIGATION VERS COWORKING ────────────────────────────────
@@ -2904,6 +3089,16 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
       </div>
     </div>
   </div>
+</div>
+
+<!-- DOC VIEWER OVERLAY -->
+<div id="doc-viewer-overlay">
+  <div class="dvo-hdr">
+    <button class="dvo-back" onclick="closeDocViewer()">&#8249;</button>
+    <div class="dvo-title" id="dvo-title">Document</div>
+    <button class="dvo-dl-btn" onclick="docViewerDownload()">Sauvegarder</button>
+  </div>
+  <iframe class="dvo-frame" id="dvo-frame" src="about:blank" title="Aper&#231;u document" allow="fullscreen"></iframe>
 </div>
 
 <!-- Font Awesome async -->
