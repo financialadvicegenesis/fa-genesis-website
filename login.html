@@ -146,14 +146,18 @@
 
                     <div>
                         <label for="password" class="block text-sm font-black mb-2 uppercase">Mot de passe</label>
-                        <input
-                            type="password"
-                            id="password"
-                            name="password"
-                            required
-                            class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none focus:translate-x-1 focus:translate-y-1 transition-all"
-                            placeholder="••••••••"
-                        >
+                        <div style="position:relative;">
+                            <input
+                                type="password"
+                                id="password"
+                                name="password"
+                                required
+                                class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none focus:translate-x-1 focus:translate-y-1 transition-all"
+                                placeholder="••••••••"
+                                style="padding-right:52px;"
+                            >
+                            <button type="button" id="togglePassword" onclick="togglePasswordVisibility()" aria-label="Afficher/masquer le mot de passe" style="position:absolute;right:0;top:0;bottom:0;width:52px;background:none;border:none;cursor:pointer;font-size:18px;color:#666;display:flex;align-items:center;justify-content:center;transition:color .15s;">👁</button>
+                        </div>
                     </div>
 
                     <button
@@ -513,6 +517,14 @@
         }
 
         mobileMenuBtn.addEventListener('click', toggleMobileMenu);
+
+        function togglePasswordVisibility() {
+            var inp = document.getElementById('password');
+            var btn = document.getElementById('togglePassword');
+            if (!inp || !btn) return;
+            inp.type = inp.type === 'password' ? 'text' : 'password';
+            btn.textContent = inp.type === 'password' ? '👁' : '🙈';
+        }
     </script>
     <script src="panier.js"></script>
     <script src="footer.js" defer></script>
