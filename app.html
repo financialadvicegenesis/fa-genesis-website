@@ -1565,10 +1565,10 @@ function renderPrestations(filter){
     html += '<div class="p-section" style="margin-top:24px;" id="p-section-visibilite">';
     html += '<div class="p-section-hdr dark">TARIFS PARTENAIRES</div>';
     html += '<div class="p-vis-filter" id="p-vis-filter">'
-      +'<button class="p-vis-fpill '+(_prestVisFilter==='photo'?'on':'')+'" onclick="setPrestVisFilter(\'photo\',this)">📷 Photo</button>'
-      +'<button class="p-vis-fpill '+(_prestVisFilter==='video'?'on':'')+'" onclick="setPrestVisFilter(\'video\',this)">🎬 Vidéo</button>'
-      +'<button class="p-vis-fpill '+(_prestVisFilter==='marketing'?'on':'')+'" onclick="setPrestVisFilter(\'marketing\',this)">📊 Marketing</button>'
-      +'<button class="p-vis-fpill '+(_prestVisFilter==='media'?'on':'')+'" onclick="setPrestVisFilter(\'media\',this)">🌐 Médias</button>'
+      +'<button class="p-vis-fpill '+(_prestVisFilter==='photo'?'on':'')+'" onclick="setPrestVisFilter(\'photo\',this)">Photo</button>'
+      +'<button class="p-vis-fpill '+(_prestVisFilter==='video'?'on':'')+'" onclick="setPrestVisFilter(\'video\',this)">Vidéo</button>'
+      +'<button class="p-vis-fpill '+(_prestVisFilter==='marketing'?'on':'')+'" onclick="setPrestVisFilter(\'marketing\',this)">Marketing</button>'
+      +'<button class="p-vis-fpill '+(_prestVisFilter==='media'?'on':'')+'" onclick="setPrestVisFilter(\'media\',this)">Médias</button>'
       +'</div>';
     html += '<div class="p-cards-scroll" id="p-vis-cards">';
     PDATA.visibilite[_prestVisFilter].forEach(function(o,i){
