@@ -1607,10 +1607,7 @@ function neoCard(o, profil, idx){
     +'<ul class="p-neo-features">'+featsHtml+'</ul>'
     +(o.link
       ?'<button class="'+ctaCls+'" onclick="'+ctaAction+'">'+ctaLabel+'</button>'
-      :'<div style="display:flex;gap:6px;">'
-        +'<button class="'+ctaCls+'" style="flex:1;" onclick="'+ctaAction+'">'+ctaLabel+'</button>'
-        +'<button class="card-cart-btn" onclick="event.stopPropagation();_neoAddCart(\''+profil+'\','+idx+')">&#128722;</button>'
-        +'</div>'
+      :'<button class="p-neo-cta gold-cta" onclick="_neoAddCart(\''+profil+'\','+idx+')">+ Ajouter au panier</button>'
     )
     +'</div></div>';
 }
@@ -1667,10 +1664,7 @@ function partnerCard(o, type, idx){
     +'<ul class="p-partner-feats'+(isDark?' dark-border':'')+'" style="border-top-color:'+dividerColor+'">'+featsHtml+'</ul>'
     +(o.link
       ?'<button class="'+ctaCls+'" onclick="'+ctaAction+'">'+ctaLabel+'</button>'
-      :'<div style="display:flex;gap:6px;">'
-        +'<button class="'+ctaCls+'" style="flex:1;" onclick="'+ctaAction+'">'+ctaLabel+'</button>'
-        +'<button class="card-cart-btn" style="background:rgba(0,0,0,.25);border-color:rgba(255,255,255,.2);" onclick="event.stopPropagation();_partnerAddCart(\''+type+'\','+idx+')">&#128722;</button>'
-        +'</div>'
+      :'<button class="p-partner-cta" style="background:#FFD700;color:#000;border-color:#FFD700;" onclick="_partnerAddCart(\''+type+'\','+idx+')">+ Ajouter au panier</button>'
     )
     +'</div>';
 }
