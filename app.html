@@ -910,6 +910,49 @@ a{text-decoration:none;color:inherit}
 .mc-err.on{display:block;}
 .mc-send-btn{width:100%;background:#FFD700;color:#000;font-family:'Unbounded',cursive;font-weight:900;font-size:12px;text-transform:uppercase;letter-spacing:1px;padding:16px;border:none;cursor:pointer;margin-top:4px;transition:opacity .15s;}
 .mc-send-btn:disabled{opacity:.38;cursor:default;}
+
+/* ── CHAT IN-APP ── */
+.chat-view{display:flex;flex-direction:column;height:100%;overflow:hidden;}
+.chat-back-bar{display:flex;align-items:center;gap:10px;padding:13px 14px;border-bottom:1px solid #1a1a1a;flex-shrink:0;background:#0d0d0d;}
+.chat-back-btn{background:none;border:none;color:#FFD700;font-size:24px;cursor:pointer;padding:0 4px;line-height:1;}
+.chat-conv-name{font-family:'Unbounded',cursive;font-size:12px;font-weight:900;color:#fff;flex:1;}
+.chat-messages{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px;}
+.chat-bubble{max-width:78%;padding:10px 14px;font-size:13px;line-height:1.6;word-break:break-word;}
+.chat-bubble-mine{align-self:flex-end;background:#FFD700;color:#000;font-weight:600;}
+.chat-bubble-theirs{align-self:flex-start;background:#1a1a1a;color:#ccc;border:1px solid #222;}
+.chat-bubble-subj{font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;opacity:.65;}
+.chat-bubble-time{font-size:10px;opacity:.45;margin-top:4px;}
+.chat-empty-state{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#333;font-size:13px;text-align:center;gap:8px;padding:24px;}
+.chat-compose{display:flex;gap:8px;padding:10px 12px;border-top:1px solid #1a1a1a;background:#0d0d0d;flex-shrink:0;}
+.chat-text-input{flex:1;background:#1a1a1a;border:1.5px solid #262626;color:#fff;font-family:'Space Grotesk',sans-serif;font-size:14px;padding:10px 12px;outline:none;-webkit-appearance:none;border-radius:0;}
+.chat-text-input:focus{border-color:#FFD700;}
+.chat-text-input::placeholder{color:#444;}
+.chat-send-btn{background:#FFD700;color:#000;border:none;padding:10px 14px;font-size:16px;cursor:pointer;flex-shrink:0;transition:opacity .15s;}
+.chat-send-btn:disabled{opacity:.35;cursor:default;}
+
+/* ── ESPACE CLIENT IN-APP ── */
+.espace-view{padding:14px 16px;}
+.espace-back-bar{display:flex;align-items:center;gap:10px;padding:10px 0 14px;border-bottom:1px solid #1a1a1a;margin-bottom:16px;}
+.espace-back-btn{background:none;border:none;color:#FFD700;font-size:24px;cursor:pointer;padding:0 4px;line-height:1;}
+.espace-title{font-family:'Unbounded',cursive;font-size:13px;font-weight:900;color:#fff;}
+.espace-card{background:#141414;border:1px solid #1f1f1f;padding:14px 16px;margin-bottom:10px;}
+.espace-card-name{font-weight:900;font-size:13px;color:#fff;margin-bottom:4px;}
+.espace-card-sub{font-size:12px;color:#555;line-height:1.4;margin-bottom:5px;}
+.espace-card-detail{font-size:12px;color:#888;line-height:1.5;}
+.espace-status{display:inline-block;font-size:11px;font-weight:900;padding:3px 8px;margin-bottom:6px;}
+.espace-loading{text-align:center;padding:40px 20px;color:#333;font-size:13px;}
+.espace-empty{text-align:center;padding:40px 20px;color:#2a2a2a;font-size:13px;}
+.espace-dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;}
+.espace-dash-stat{background:#141414;border:1px solid #1f1f1f;padding:14px;text-align:center;}
+.espace-dash-num{font-family:'Unbounded',cursive;font-size:1.5rem;font-weight:900;color:#FFD700;}
+.espace-dash-lbl{font-size:10px;color:#444;text-transform:uppercase;letter-spacing:.5px;margin-top:4px;}
+.espace-user-card{background:#0d0d0d;border:2px solid #FFD700;padding:14px 16px;margin-bottom:14px;}
+.espace-user-name{font-family:'Unbounded',cursive;font-size:13px;font-weight:900;color:#FFD700;margin-bottom:4px;}
+.espace-user-email{font-size:12px;color:#555;}
+
+/* ── BOUTON PANIER SUR CARDS ── */
+.card-cart-btn{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);color:#FFD700;font-size:15px;padding:8px 10px;cursor:pointer;transition:background .15s;flex-shrink:0;border-radius:0;line-height:1;}
+.card-cart-btn:active{background:rgba(255,215,0,.18);}
 </style>
 </head>
 <body>
@@ -1541,7 +1584,13 @@ function neoCard(o, profil, idx){
     +(o.payment?'<div class="p-neo-payment">'+o.payment+'</div>':'')
     +'<div class="p-neo-divider"></div>'
     +'<ul class="p-neo-features">'+featsHtml+'</ul>'
-    +'<button class="'+ctaCls+'" onclick="'+ctaAction+'">'+ctaLabel+'</button>'
+    +(o.link
+      ?'<button class="'+ctaCls+'" onclick="'+ctaAction+'">'+ctaLabel+'</button>'
+      :'<div style="display:flex;gap:6px;">'
+        +'<button class="'+ctaCls+'" style="flex:1;" onclick="'+ctaAction+'">'+ctaLabel+'</button>'
+        +'<button class="card-cart-btn" onclick="event.stopPropagation();_neoAddCart(\''+profil+'\','+idx+')">&#128722;</button>'
+        +'</div>'
+    )
     +'</div></div>';
 }
 
@@ -1595,7 +1644,13 @@ function partnerCard(o, type, idx){
     +(o.payment?'<div class="p-partner-payment">'+o.payment+'</div>':'')
     +(o.desc?'<p class="p-partner-desc'+(isDark?' dark-border':'')+'" style="border-top-color:'+dividerColor+'">'+o.desc+'</p>':'')
     +'<ul class="p-partner-feats'+(isDark?' dark-border':'')+'" style="border-top-color:'+dividerColor+'">'+featsHtml+'</ul>'
-    +'<button class="'+ctaCls+'" onclick="'+ctaAction+'">'+ctaLabel+'</button>'
+    +(o.link
+      ?'<button class="'+ctaCls+'" onclick="'+ctaAction+'">'+ctaLabel+'</button>'
+      :'<div style="display:flex;gap:6px;">'
+        +'<button class="'+ctaCls+'" style="flex:1;" onclick="'+ctaAction+'">'+ctaLabel+'</button>'
+        +'<button class="card-cart-btn" style="background:rgba(0,0,0,.25);border-color:rgba(255,255,255,.2);" onclick="event.stopPropagation();_partnerAddCart(\''+type+'\','+idx+')">&#128722;</button>'
+        +'</div>'
+    )
     +'</div>';
 }
 
@@ -1641,6 +1696,7 @@ function openDetailAccomp(profil, idx){
   openDetail(PDATA.accompagnement[profil][idx], 'accompagnement');
 }
 var _cwDetailSub = null, _cwDetailIdx = null;
+var _detailOffer = null, _detailType = null;
 function openDetailCW(sub, idx){
   _cwDetailSub = sub; _cwDetailIdx = idx;
   openDetail(PDATA.coworking[sub][idx], 'coworking');
@@ -1648,7 +1704,7 @@ function openDetailCW(sub, idx){
 function openDetailVis(type, idx){
   openDetail(PDATA.visibilite[type][idx], type);
 }
-function openDetail(o, type){
+function openDetail(o, type){ _detailOffer=o; _detailType=type;
   var badge = o.badge
     || (type==='photo'?'Photo'
       :type==='video'?'Vidéo'
@@ -1662,7 +1718,8 @@ function openDetail(o, type){
     ctaHtml = '<button class="detail-cta" onclick="closeDetail();openCwBooking(\''+_cwDetailSub+'\','+_cwDetailIdx+')">Réserver</button>'
       +'<button class="detail-cta" style="background:#1a1a1a;border:1px solid #2a2a2a;color:#888;margin-top:8px;font-size:11px;padding:12px" onclick="addToCart({id:\'cw-'+_cwDetailSub+'-'+_cwDetailIdx+'\',name:\''+o.name+'\',price:\''+o.price+'\',priceNum:null,type:\'coworking\'});closeDetail()">🛒 Ajouter au panier</button>';
   } else {
-    ctaHtml = '<button class="detail-cta" onclick="window.location.href=\'offres.html\'">Commander cette offre</button>';
+    ctaHtml = '<button class="detail-cta" onclick="_addDetailToCart()">&#128722; Ajouter au panier</button>'
+      +'<button class="detail-cta" style="background:#1a1a1a;border:1px solid #2a2a2a;color:#888;margin-top:8px;font-size:11px;padding:12px;" onclick="window.location.href=\'offres.html\'">Voir sur le site</button>';
   }
   document.getElementById('detail-content').innerHTML = ''
     +(badge?'<div class="detail-badge">'+badge+'</div>':'')
@@ -1719,18 +1776,15 @@ function renderResaTab(){
 function renderMsgTab(){
   var c = document.getElementById('msgContent');
   if(!USER||GUEST){ c.innerHTML = locked('Messagerie','Connectez-vous pour accéder à vos conversations.'); return; }
-  c.innerHTML = '<div style="padding:16px 16px 0;">'
-    +'<button onclick="openMsgCompose()" style="width:100%;background:#FFD700;color:#000;font-family:\'Unbounded\',cursive;font-weight:900;font-size:11px;letter-spacing:1px;padding:14px;border:none;cursor:pointer;text-transform:uppercase;border-radius:0;">+ Nouveau message</button>'
-    +'</div>'
-    +'<div class="msg-list">'
-    +'<div class="msg-row" onclick="openInBrowser(\'https://fagenesis.com/messagerie.html\')">'
-    +'<div class="msg-avatar">🌟</div>'
-    +'<div class="msg-body"><div class="msg-from">FA GENESIS</div><div class="msg-preview">Messagerie avec l\'équipe</div></div>'
+  c.innerHTML = '<div class="msg-list">'
+    +'<div class="msg-row" onclick="openConversation(\'FA_GENESIS\',\'FA GENESIS\',\'⭐\')">'
+    +'<div class="msg-avatar">⭐</div>'
+    +'<div class="msg-body"><div class="msg-from">FA GENESIS</div><div class="msg-preview">Échangez avec l\'équipe</div></div>'
     +'<div class="msg-meta"><div class="msg-time">›</div></div>'
     +'</div>'
-    +'<div class="msg-row" onclick="openInBrowser(\'https://fagenesis.com/espace-client.html#messagerie\')">'
+    +'<div class="msg-row" onclick="openConversation(\'COMVISA\',\'COM VISA Coworking\',\'🏢\')">'
     +'<div class="msg-avatar" style="background:#1a0d18;">🏢</div>'
-    +'<div class="msg-body"><div class="msg-from">COM VISA Coworking</div><div class="msg-preview">Messages avec votre espace coworking</div></div>'
+    +'<div class="msg-body"><div class="msg-from">COM VISA Coworking</div><div class="msg-preview">Messages avec l\'espace coworking</div></div>'
     +'<div class="msg-meta"><div class="msg-time">›</div></div>'
     +'</div>'
     +'</div>';
@@ -1773,11 +1827,11 @@ function renderProfil(){
     monEspace = '<div class="plus-section">'
       +'<div class="plus-section-title">MON ESPACE</div>'
       +'<div class="plus-group">'
-      +pli('📊','#1a1000','Tableau de bord','espace-client.html')
-      +pli('🧾','#0a1a0a','Mes paiements','espace-client.html#paiements')
-      +pli('📅','#0a0a1a','Mes réservations',null,'nav(\'reservations\')')
-      +pli('📂','#100a1a','Mes livrables','livrables.html')
-      +pli('🎥','#1a0a00','Mes séances','seances.html')
+      +pli('','#1a1000','Tableau de bord',null,'showDashboard()')
+      +pli('','#0a1a0a','Mes paiements',null,'showPaiements()')
+      +pli('','#0a0a1a','Mes réservations',null,'nav(\'reservations\')')
+      +pli('','#100a1a','Mes livrables',null,'showLivrables()')
+      +pli('','#1a0a00','Mes séances',null,'showSeances()')
       +'</div></div>';
   }
 
@@ -1986,6 +2040,192 @@ function activerNotifs(){
   closeNotifModal();
   if(window.FA_activerNotifications) window.FA_activerNotifications();
   else if('Notification' in window) Notification.requestPermission();
+}
+
+// ── HELPERS PANIER ───────────────────────────────────────────
+function _parsePrice(s){
+  if(!s||s.indexOf('Devis')>=0||s.indexOf('devis')>=0) return null;
+  var m=(s||'').replace(/\s/g,'').match(/(\d+)/); return m?parseInt(m[1]):null;
+}
+function _neoAddCart(profil, idx){
+  var o=PDATA.accompagnement[profil][idx]; if(!o) return;
+  addToCart({id:'accomp-'+profil+'-'+idx,name:o.name,price:o.price,priceNum:_parsePrice(o.price),type:'accompagnement',sub:profil+(o.badge?' – '+o.badge:'')});
+}
+function _partnerAddCart(type, idx){
+  var o=PDATA.visibilite[type][idx]; if(!o) return;
+  addToCart({id:'partner-'+type+'-'+idx,name:o.name,price:o.price,priceNum:_parsePrice(o.price),type:type});
+}
+function _addDetailToCart(){
+  if(!_detailOffer) return;
+  addToCart({id:'detail-'+Date.now(),name:_detailOffer.name,price:_detailOffer.price,priceNum:_parsePrice(_detailOffer.price),type:_detailType||'',sub:_detailOffer.unit||_detailOffer.badge||''});
+  closeDetail();
+}
+
+// ── CHAT IN-APP ───────────────────────────────────────────────
+var _chatKey=null, _chatName=null;
+function openConversation(key, name, icon){
+  _chatKey=key; _chatName=name;
+  var c=document.getElementById('msgContent');
+  c.innerHTML='<div class="chat-view">'
+    +'<div class="chat-back-bar">'
+    +'<button class="chat-back-btn" onclick="renderMsgTab()">&#8249;</button>'
+    +'<div style="font-size:16px;line-height:1;margin-right:6px;">'+(icon||'💬')+'</div>'
+    +'<div class="chat-conv-name">'+name+'</div>'
+    +'</div>'
+    +'<div class="chat-messages" id="chat-msgs"><div class="chat-empty-state"><span>Chargement...</span></div></div>'
+    +'<div class="chat-compose">'
+    +'<input id="chat-input" class="chat-text-input" type="text" placeholder="Votre message..." onkeydown="if(event.key===\'Enter\'||event.keyCode===13)sendChatMessage()">'
+    +'<button class="chat-send-btn" id="chat-send-btn" onclick="sendChatMessage()">&#8593;</button>'
+    +'</div>'
+    +'</div>';
+  loadChatMessages(key);
+}
+
+function loadChatMessages(key){
+  var msgs=document.getElementById('chat-msgs'); if(!msgs) return;
+  if(!USER||!USER._token){ msgs.innerHTML='<div class="chat-empty-state"><span>Connectez-vous.</span></div>'; return; }
+  fetch((window.FA_GENESIS_API||API)+'/api/messages?conversation='+key,{
+    headers:{'Authorization':'Bearer '+USER._token}
+  }).then(function(r){return r.json();}).then(function(data){
+    var list=Array.isArray(data)?data:(data.messages||[]);
+    if(list.length===0){
+      msgs.innerHTML='<div class="chat-empty-state"><span>Aucun message.</span><span style="font-size:12px;color:#222;">Commencez la conversation !</span></div>';
+      return;
+    }
+    msgs.innerHTML=list.map(function(m){
+      var uid=(USER._id||USER.id||USER.email||'');
+      var isMine=(m.userId===uid||m.from===uid||m.from_user===uid||m.fromUser===uid||m.senderEmail===USER.email);
+      var time=m.createdAt?new Date(m.createdAt).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}):'';
+      return '<div class="chat-bubble '+(isMine?'chat-bubble-mine':'chat-bubble-theirs')+'">'
+        +(m.subject&&m.subject!=='Message'?'<div class="chat-bubble-subj">'+m.subject+'</div>':'')
+        +'<div>'+m.body+'</div>'
+        +(time?'<div class="chat-bubble-time">'+time+'</div>':'')
+        +'</div>';
+    }).join('');
+    msgs.scrollTop=msgs.scrollHeight;
+  }).catch(function(){
+    msgs.innerHTML='<div class="chat-empty-state"><span>Aucun message.</span><span style="font-size:12px;color:#222;">Commencez la conversation !</span></div>';
+  });
+}
+
+function sendChatMessage(){
+  var inp=document.getElementById('chat-input'); var btn=document.getElementById('chat-send-btn');
+  if(!inp||!_chatKey) return;
+  var text=inp.value.trim(); if(!text) return;
+  if(btn){btn.disabled=true;btn.textContent='...';}
+  inp.value='';
+  // Optimiste : afficher tout de suite
+  var msgs=document.getElementById('chat-msgs');
+  if(msgs){
+    var d=document.createElement('div'); d.className='chat-bubble chat-bubble-mine';
+    d.innerHTML='<div>'+text+'</div>';
+    var em=msgs.querySelector('.chat-empty-state'); if(em) em.remove();
+    msgs.appendChild(d); msgs.scrollTop=msgs.scrollHeight;
+  }
+  fetch((window.FA_GENESIS_API||API)+'/api/messages',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+USER._token},
+    body:JSON.stringify({to:_chatKey,subject:'Message',body:text,message:text,conversation:_chatKey})
+  }).then(function(r){return r.json();}).then(function(res){
+    if(btn){btn.disabled=false;btn.textContent='↑';}
+    setTimeout(function(){ loadChatMessages(_chatKey); }, 1200);
+  }).catch(function(){
+    if(btn){btn.disabled=false;btn.textContent='↑';}
+  });
+}
+
+// ── ESPACE CLIENT IN-APP ──────────────────────────────────────
+function showDashboard(){
+  var c=document.getElementById('profilContent'); if(!USER||GUEST){renderProfil();return;}
+  var fn=USER.prenom||USER.firstName||''; var ln=USER.nom||USER.lastName||''; var em=USER.email||'';
+  c.innerHTML='<div class="espace-view">'
+    +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="renderProfil()">&#8249;</button><div class="espace-title">Tableau de bord</div></div>'
+    +'<div class="espace-user-card"><div class="espace-user-name">'+((fn+' '+ln).trim()||em)+'</div><div class="espace-user-email">'+em+'</div>'
+    +(USER.activeOfferId||USER.offre?'<div style="font-size:11px;color:#aaa;margin-top:8px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;">Offre : '+(USER.activeOfferId||USER.offre)+'</div>':'')
+    +'</div>'
+    +'<div class="espace-dash-grid" id="db-stats"><div class="espace-loading" style="grid-column:1/-1">Chargement...</div></div>'
+    +'</div>';
+  fetch((window.FA_GENESIS_API||API)+'/api/client/payments-list',{headers:{'Authorization':'Bearer '+USER._token}})
+    .then(function(r){return r.json();}).then(function(data){
+      var list=Array.isArray(data)?data:[];
+      var paid=list.filter(function(p){return p.paymentStatus==='fully_paid'||p.status==='paid';}).length;
+      var s=document.getElementById('db-stats');
+      if(s) s.innerHTML='<div class="espace-dash-stat"><div class="espace-dash-num">'+list.length+'</div><div class="espace-dash-lbl">Commandes</div></div>'
+        +'<div class="espace-dash-stat"><div class="espace-dash-num">'+paid+'</div><div class="espace-dash-lbl">Payées</div></div>';
+    }).catch(function(){ var s=document.getElementById('db-stats'); if(s) s.innerHTML=''; });
+}
+
+function showPaiements(){
+  var c=document.getElementById('profilContent');
+  c.innerHTML='<div class="espace-view">'
+    +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="renderProfil()">&#8249;</button><div class="espace-title">Mes paiements</div></div>'
+    +'<div id="pmt-list"><div class="espace-loading">Chargement...</div></div></div>';
+  fetch((window.FA_GENESIS_API||API)+'/api/client/payments-list',{headers:{'Authorization':'Bearer '+USER._token}})
+    .then(function(r){return r.json();}).then(function(data){
+      var list=Array.isArray(data)?data:[];
+      var el=document.getElementById('pmt-list'); if(!el) return;
+      if(list.length===0){el.innerHTML='<div class="espace-empty">Aucun paiement.</div>';return;}
+      el.innerHTML=list.map(function(p){
+        var sl=p.paymentStatus==='fully_paid'?'Payé':p.paymentStatus==='deposit_paid'?'Acompte':p.paymentStatus==='pending'?'En attente':'—';
+        var sc=p.paymentStatus==='fully_paid'?'#22c55e':p.paymentStatus==='deposit_paid'?'#FFD700':'#555';
+        return '<div class="espace-card">'
+          +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">'
+          +'<div class="espace-card-name">'+(p.offre||p.activeOfferId||'Commande')+'</div>'
+          +'<span style="font-size:11px;font-weight:900;color:'+sc+';white-space:nowrap;">'+sl+'</span>'
+          +'</div>'
+          +(p.email?'<div class="espace-card-sub">'+p.email+'</div>':'')
+          +(p.totalPaid?'<div class="espace-card-detail">Versé : '+Number(p.totalPaid).toLocaleString('fr-FR')+' €</div>':'')
+          +'</div>';
+      }).join('');
+    }).catch(function(){var el=document.getElementById('pmt-list');if(el)el.innerHTML='<div class="espace-empty">Impossible de charger.</div>';});
+}
+
+function showLivrables(){
+  var c=document.getElementById('profilContent');
+  c.innerHTML='<div class="espace-view">'
+    +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="renderProfil()">&#8249;</button><div class="espace-title">Mes livrables</div></div>'
+    +'<div id="lvr-list"><div class="espace-loading">Chargement...</div></div></div>';
+  fetch((window.FA_GENESIS_API||API)+'/api/client/livrables',{headers:{'Authorization':'Bearer '+USER._token}})
+    .then(function(r){return r.json();}).then(function(data){
+      var list=Array.isArray(data)?data:(data.livrables||[]);
+      var el=document.getElementById('lvr-list'); if(!el) return;
+      if(list.length===0){el.innerHTML='<div class="espace-empty">Aucun livrable disponible.</div>';return;}
+      el.innerHTML=list.map(function(l){
+        var date=l.date||l.createdAt?new Date(l.date||l.createdAt).toLocaleDateString('fr-FR'):'';
+        return '<div class="espace-card">'
+          +'<div class="espace-card-name">'+(l.titre||l.title||l.name||'Livrable')+'</div>'
+          +(date?'<div class="espace-card-sub">'+date+'</div>':'')
+          +(l.description?'<div class="espace-card-detail">'+l.description+'</div>':'')
+          +(l.url?'<a href="'+l.url+'" target="_blank" onclick="return openInBrowser(this.href)" style="display:inline-block;margin-top:8px;background:#FFD700;color:#000;font-family:\'Unbounded\',cursive;font-weight:900;font-size:10px;padding:7px 14px;text-decoration:none;letter-spacing:.5px;">Télécharger</a>':'')
+          +'</div>';
+      }).join('');
+    }).catch(function(){var el=document.getElementById('lvr-list');if(el)el.innerHTML='<div class="espace-empty">Impossible de charger.</div>';});
+}
+
+function showSeances(){
+  var c=document.getElementById('profilContent');
+  c.innerHTML='<div class="espace-view">'
+    +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="renderProfil()">&#8249;</button><div class="espace-title">Mes séances</div></div>'
+    +'<div id="sea-list"><div class="espace-loading">Chargement...</div></div></div>';
+  fetch((window.FA_GENESIS_API||API)+'/api/client/seances',{headers:{'Authorization':'Bearer '+USER._token}})
+    .then(function(r){return r.json();}).then(function(data){
+      var list=Array.isArray(data)?data:(data.seances||[]);
+      var el=document.getElementById('sea-list'); if(!el) return;
+      if(list.length===0){el.innerHTML='<div class="espace-empty">Aucune séance pour le moment.</div>';return;}
+      el.innerHTML=list.map(function(s){
+        var date=s.date||s.createdAt?new Date(s.date||s.createdAt).toLocaleDateString('fr-FR',{weekday:'short',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'';
+        var sc=s.status==='confirmed'?'#22c55e':s.status==='pending'?'#FFD700':'#555';
+        var sl=s.status==='confirmed'?'Confirmée':s.status==='pending'?'En attente':s.status||'—';
+        return '<div class="espace-card">'
+          +'<div style="display:flex;justify-content:space-between;gap:8px;">'
+          +'<div class="espace-card-name">'+(s.type||s.title||s.name||'Séance')+'</div>'
+          +'<span style="font-size:11px;font-weight:900;color:'+sc+';white-space:nowrap;">'+sl+'</span>'
+          +'</div>'
+          +(date?'<div class="espace-card-sub">'+date+'</div>':'')
+          +(s.notes||s.description?'<div class="espace-card-detail">'+(s.notes||s.description)+'</div>':'')
+          +'</div>';
+      }).join('');
+    }).catch(function(){var el=document.getElementById('sea-list');if(el)el.innerHTML='<div class="espace-empty">Impossible de charger.</div>';});
 }
 
 // ── NAVIGATION VERS COWORKING ────────────────────────────────
