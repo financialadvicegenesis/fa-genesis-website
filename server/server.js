@@ -4575,6 +4575,89 @@ app.post('/api/auth/logout', (req, res) => {
 });
 
 /**
+ * POST /api/auth/forgot-password
+ * Génère un token de réinitialisation et envoie l'email
+ */
+app.post('/api/auth/forgot-password', async (req, res) => {
+    try {
+        const { email } = req.body;
+        if (!email) return res.status(400).json({ error: 'Email requis' });
+
+        // Rate limiting : max 3 demandes par IP par heure
+        const fpIp = req.ip || (req.connection && req.connection.remoteAddress) || 'unknown';
+        if (!checkRateLimit(fpIp, 'forgot_password', 3, 3600000)) {
+            return res.status(429).json({ error: 'Trop de tentatives. Réessayez dans 1 heure.' });
+        }
+
+        const users = loadUsers();
+        const userIndex = users.findIndex(u => u.email.toLowerCase() === email.toLowerCase());
+
+        if (userIndex !== -1) {
+            const crypto = require('crypto');
+            const resetToken = crypto.randomBytes(32).toString('hex');
+            users[userIndex].reset_token = resetToken;
+            users[userIndex].reset_token_expires = Date.now() + 3600000; // 1h
+            saveUsers(users);
+
+            const user = users[userIndex];
+            const resetLink = 'https://fagenesis.com/reset-password.html?token=' + resetToken;
+            try {
+                await emailService.sendPasswordResetEmail(user.email, user.prenom || 'Client', resetLink);
+            } catch (emailErr) {
+                console.error('[FORGOT PWD] Erreur email:', emailErr.message);
+            }
+            console.log('[FORGOT PWD] Token généré: ' + email);
+        } else {
+            console.log('[FORGOT PWD] Email inconnu (réponse neutre): ' + email);
+        }
+
+        // Toujours répondre succès pour ne pas révéler si l'email existe
+        res.json({ ok: true });
+
+    } catch (error) {
+        console.error('[FORGOT PWD]', error);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * POST /api/auth/reset-password
+ * Valide le token et met à jour le mot de passe
+ */
+app.post('/api/auth/reset-password', async (req, res) => {
+    try {
+        const { token, newPassword } = req.body;
+        if (!token || !newPassword) return res.status(400).json({ error: 'Token et nouveau mot de passe requis' });
+        if (newPassword.length < 6) return res.status(400).json({ error: 'Le mot de passe doit contenir au moins 6 caractères' });
+
+        const users = loadUsers();
+        const userIndex = users.findIndex(u =>
+            u.reset_token === token &&
+            u.reset_token_expires &&
+            u.reset_token_expires > Date.now()
+        );
+
+        if (userIndex === -1) {
+            return res.status(400).json({ error: 'Lien de réinitialisation invalide ou expiré.' });
+        }
+
+        const salt = await bcrypt.genSalt(10);
+        users[userIndex].password = await bcrypt.hash(newPassword, salt);
+        users[userIndex].reset_token = null;
+        users[userIndex].reset_token_expires = null;
+        users[userIndex].updatedAt = new Date().toISOString();
+        saveUsers(users);
+
+        console.log('[RESET PWD] Mot de passe mis à jour: ' + users[userIndex].email);
+        res.json({ ok: true });
+
+    } catch (error) {
+        console.error('[RESET PWD]', error);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
  * PUT /api/auth/update-profile
  * Mettre a jour le profil utilisateur
  */

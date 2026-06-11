@@ -1985,6 +1985,50 @@ async function sendCwReservationToPartner(reservation, order) {
     }
 }
 
+/**
+ * Envoyer l'email de réinitialisation de mot de passe
+ */
+async function sendPasswordResetEmail(email, prenom, resetLink) {
+    var transport = initializeTransporter();
+    if (!transport) {
+        console.warn('[EMAIL] Transport non configuré - email reset non envoyé');
+        return;
+    }
+
+    var content = '<h2 style="color:#000;font-size:22px;font-weight:900;margin:0 0 16px;">Réinitialisation de votre mot de passe</h2>'
+        + '<p style="color:#333;font-size:16px;line-height:1.6;margin:0 0 16px;">Bonjour ' + (prenom || 'Client') + ',</p>'
+        + '<p style="color:#333;font-size:15px;line-height:1.6;margin:0 0 24px;">'
+        + 'Vous avez demandé à réinitialiser votre mot de passe FA GENESIS.<br>'
+        + 'Cliquez sur le bouton ci-dessous pour créer un nouveau mot de passe.'
+        + '</p>'
+        + '<div style="text-align:center;margin:32px 0;">'
+        + '<a href="' + resetLink + '" style="display:inline-block;background:#FFD700;color:#000;font-weight:900;font-size:15px;padding:16px 40px;text-decoration:none;text-transform:uppercase;letter-spacing:1px;">'
+        + 'Réinitialiser mon mot de passe</a>'
+        + '</div>'
+        + '<p style="color:#888;font-size:13px;line-height:1.6;margin:24px 0 0;">'
+        + 'Ce lien est valable <strong>1 heure</strong>. Si vous n\'avez pas fait cette demande, ignorez cet email — votre compte reste sécurisé.'
+        + '</p>'
+        + '<hr style="border:none;border-top:1px solid #eee;margin:24px 0;">'
+        + '<p style="color:#aaa;font-size:12px;">Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :<br>'
+        + '<span style="color:#666;word-break:break-all;">' + resetLink + '</span></p>';
+
+    var html = getEmailTemplate(content, 'Réinitialisation mot de passe — FA GENESIS');
+
+    try {
+        await transport.sendMail({
+            from: '"FA GENESIS" <noreply@fagenesis.com>',
+            to: email,
+            subject: 'Réinitialisation de votre mot de passe FA GENESIS',
+            html: html
+        });
+        console.log('[EMAIL] Reset password envoyé à: ' + email);
+        return { success: true };
+    } catch (e) {
+        console.error('[EMAIL] Erreur reset password:', e.message);
+        return { success: false, error: e.message };
+    }
+}
+
 module.exports = {
     initializeTransporter,
     sendContactConfirmation,
@@ -2011,7 +2055,8 @@ module.exports = {
     sendAccompanimentEndNotification,
     sendUrgentFeedbackNotification,
     sendCwDevisToClient,
-    sendCwReservationToPartner
+    sendCwReservationToPartner,
+    sendPasswordResetEmail
 };
 
 /**

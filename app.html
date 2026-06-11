@@ -1873,7 +1873,7 @@ function renderProfil(){
     +'</div></div>';
 
   var logout = (USER && !GUEST)
-    ? '<button class="plus-logout" onclick="deconnexion()">🚪 Déconnexion</button>' : '';
+    ? '<button class="plus-logout" onclick="deconnexion()">Déconnexion</button>' : '';
 
   c.innerHTML = header + monEspace + params + infos + logout
     +'<div class="plus-version">Version 1.1</div>';
@@ -2448,9 +2448,67 @@ function showLoginSheet(){
   var eye=document.getElementById('lo-eye'); if(eye) eye.textContent='👁';
   var err=document.getElementById('lo-err'); if(err) err.classList.remove('on');
   var btn=document.getElementById('lo-btn'); if(btn){btn.disabled=false;btn.textContent='SE CONNECTER';}
+  // reset panes
+  var pLogin=document.getElementById('lo-pane-login'); if(pLogin) pLogin.style.transform='translateX(0)';
+  var pForgot=document.getElementById('lo-pane-forgot'); if(pForgot) pForgot.style.transform='translateX(110%)';
+  var hdr=document.getElementById('lo-hdr-title'); if(hdr) hdr.textContent='CONNEXION';
+  var back=document.getElementById('lo-back-btn'); if(back) back.style.visibility='hidden';
+  var fpErr=document.getElementById('lo-fp-err'); if(fpErr) fpErr.classList.remove('on');
+  var fpEmail=document.getElementById('lo-fp-email'); if(fpEmail) fpEmail.value='';
+  var fpBtn=document.getElementById('lo-fp-btn'); if(fpBtn){fpBtn.disabled=false;fpBtn.textContent='ENVOYER LE LIEN';}
+  var emailStep=document.getElementById('lo-fp-email-step'); if(emailStep) emailStep.style.display='';
+  var successStep=document.getElementById('lo-fp-success-step'); if(successStep) successStep.style.display='none';
   overlay.classList.add('open');
   setTimeout(function(){ sheet.classList.add('up'); }, 20);
   setTimeout(function(){ var inp=document.getElementById('lo-email'); if(inp) inp.focus(); }, 500);
+}
+function showForgotPane(){
+  var pLogin=document.getElementById('lo-pane-login'); if(pLogin) pLogin.style.transition='transform .38s cubic-bezier(.4,0,.2,1)';
+  var pForgot=document.getElementById('lo-pane-forgot'); if(pForgot) pForgot.style.transition='transform .38s cubic-bezier(.4,0,.2,1)';
+  if(pLogin) pLogin.style.transform='translateX(-110%)';
+  if(pForgot) pForgot.style.transform='translateX(0)';
+  var hdr=document.getElementById('lo-hdr-title'); if(hdr) hdr.textContent='MOT DE PASSE';
+  var back=document.getElementById('lo-back-btn'); if(back) back.style.visibility='visible';
+  setTimeout(function(){ var inp=document.getElementById('lo-fp-email'); if(inp) inp.focus(); }, 400);
+}
+function hideForgotPane(){
+  var pLogin=document.getElementById('lo-pane-login'); if(pLogin) pLogin.style.transition='transform .38s cubic-bezier(.4,0,.2,1)';
+  var pForgot=document.getElementById('lo-pane-forgot'); if(pForgot) pForgot.style.transition='transform .38s cubic-bezier(.4,0,.2,1)';
+  if(pLogin) pLogin.style.transform='translateX(0)';
+  if(pForgot) pForgot.style.transform='translateX(110%)';
+  var hdr=document.getElementById('lo-hdr-title'); if(hdr) hdr.textContent='CONNEXION';
+  var back=document.getElementById('lo-back-btn'); if(back) back.style.visibility='hidden';
+}
+function loBack(){
+  var pForgot=document.getElementById('lo-pane-forgot');
+  if(pForgot&&pForgot.style.transform==='translateX(0px)'||pForgot&&pForgot.style.transform==='translateX(0)'){
+    hideForgotPane(); return;
+  }
+  closeLoginSheet();
+}
+function doForgotPassword(){
+  var emailEl=document.getElementById('lo-fp-email');
+  var errEl=document.getElementById('lo-fp-err');
+  var btn=document.getElementById('lo-fp-btn');
+  var email=((emailEl||{}).value||'').trim();
+  if(!email||!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){
+    if(errEl){errEl.textContent='Adresse email invalide.';errEl.classList.add('on');} return;
+  }
+  if(errEl) errEl.classList.remove('on');
+  if(btn){btn.disabled=true;btn.textContent='Envoi en cours...';}
+  fetch((window.FA_GENESIS_API||API)+'/api/auth/forgot-password',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({email:email})
+  }).then(function(r){return r.json();}).then(function(){
+    if(btn){btn.disabled=false;btn.textContent='ENVOYER LE LIEN';}
+    var emailStep=document.getElementById('lo-fp-email-step');
+    var successStep=document.getElementById('lo-fp-success-step');
+    if(emailStep) emailStep.style.display='none';
+    if(successStep) successStep.style.display='';
+  }).catch(function(){
+    if(btn){btn.disabled=false;btn.textContent='ENVOYER LE LIEN';}
+    if(errEl){errEl.textContent='Erreur réseau. Vérifiez votre connexion.';errEl.classList.add('on');}
+  });
 }
 function closeLoginSheet(){
   var sheet=document.getElementById('login-sheet'); var overlay=document.getElementById('login-overlay');
@@ -2878,28 +2936,55 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
 <div id="login-overlay" onclick="if(event.target===this)closeLoginSheet()">
   <div id="login-sheet">
     <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px 0;flex-shrink:0;">
-      <button class="reg-nav-btn" onclick="closeLoginSheet()">&#8249;</button>
-      <div style="font-family:'Unbounded',cursive;font-size:10px;font-weight:900;color:#FFD700;letter-spacing:1.5px;">CONNEXION</div>
+      <button class="reg-nav-btn" id="lo-back-btn" onclick="loBack()" style="visibility:hidden;">&#8249;</button>
+      <div id="lo-hdr-title" style="font-family:'Unbounded',cursive;font-size:10px;font-weight:900;color:#FFD700;letter-spacing:1.5px;">CONNEXION</div>
       <button class="reg-nav-btn" onclick="closeLoginSheet()">&#x2715;</button>
     </div>
-    <div style="flex:1;overflow-y:auto;padding:24px 24px 32px;">
-      <div class="reg-title" style="margin-bottom:8px;">Bon retour &#128075;</div>
-      <div class="reg-sub">Connectez-vous à votre compte FA GENESIS.</div>
-      <div class="reg-field">
-        <label class="reg-label" for="lo-email">Adresse email</label>
-        <input id="lo-email" class="reg-input" type="email" placeholder="votre@email.com" autocomplete="email" onkeydown="if(event.key==='Enter')document.getElementById('lo-pwd').focus()">
-      </div>
-      <div class="reg-field">
-        <label class="reg-label" for="lo-pwd">Mot de passe</label>
-        <div class="reg-pw-wrap">
-          <input id="lo-pwd" class="reg-input" type="password" placeholder="&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;" autocomplete="current-password" onkeydown="if(event.key==='Enter'||event.keyCode===13)doAppLogin()">
-          <button class="reg-eye" id="lo-eye" onclick="loginTogglePwd()" type="button">&#128065;</button>
+    <div style="flex:1;overflow:hidden;position:relative;">
+      <!-- Pane 1 : connexion -->
+      <div id="lo-pane-login" style="position:absolute;inset:0;overflow-y:auto;padding:24px 24px 32px;">
+        <div class="reg-title" style="margin-bottom:8px;">Bon retour &#128075;</div>
+        <div class="reg-sub">Connectez-vous à votre compte FA GENESIS.</div>
+        <div class="reg-field">
+          <label class="reg-label" for="lo-email">Adresse email</label>
+          <input id="lo-email" class="reg-input" type="email" placeholder="votre@email.com" autocomplete="email" onkeydown="if(event.key==='Enter')document.getElementById('lo-pwd').focus()">
+        </div>
+        <div class="reg-field">
+          <label class="reg-label" for="lo-pwd">Mot de passe</label>
+          <div class="reg-pw-wrap">
+            <input id="lo-pwd" class="reg-input" type="password" placeholder="&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;" autocomplete="current-password" onkeydown="if(event.key==='Enter'||event.keyCode===13)doAppLogin()">
+            <button class="reg-eye" id="lo-eye" onclick="loginTogglePwd()" type="button">&#128065;</button>
+          </div>
+        </div>
+        <div class="reg-err" id="lo-err"></div>
+        <div class="reg-cta" style="padding-top:8px;">
+          <button class="reg-btn" id="lo-btn" onclick="doAppLogin()">SE CONNECTER</button>
+          <div style="text-align:center;margin-top:16px;">
+            <a href="#" onclick="showForgotPane();return false;" style="font-size:13px;color:#FFD700;font-weight:700;text-decoration:none;">Mot de passe oublié ?</a>
+          </div>
+          <div class="reg-link-row" style="margin-top:10px;">Pas de compte ? <a href="#" onclick="closeLoginSheet();showRegisterSheet();return false;">S'inscrire</a></div>
         </div>
       </div>
-      <div class="reg-err" id="lo-err"></div>
-      <div class="reg-cta" style="padding-top:8px;">
-        <button class="reg-btn" id="lo-btn" onclick="doAppLogin()">SE CONNECTER</button>
-        <div class="reg-link-row" style="margin-top:14px;">Pas de compte ? <a href="#" onclick="closeLoginSheet();showRegisterSheet();return false;">S'inscrire</a></div>
+      <!-- Pane 2 : mot de passe oublié -->
+      <div id="lo-pane-forgot" style="position:absolute;inset:0;overflow-y:auto;padding:24px 24px 32px;transform:translateX(110%);">
+        <div id="lo-fp-email-step">
+          <div class="reg-title" style="margin-bottom:8px;">Mot de passe<br>oublié ?</div>
+          <div class="reg-sub" style="margin-bottom:24px;">Entrez votre adresse email. Vous recevrez un lien pour créer un nouveau mot de passe, envoyé depuis <strong>noreply@fagenesis.com</strong>.</div>
+          <div class="reg-field">
+            <label class="reg-label" for="lo-fp-email">Adresse email</label>
+            <input id="lo-fp-email" class="reg-input" type="email" placeholder="votre@email.com" autocomplete="email" onkeydown="if(event.key==='Enter'||event.keyCode===13)doForgotPassword()">
+          </div>
+          <div class="reg-err" id="lo-fp-err"></div>
+          <div class="reg-cta" style="padding-top:8px;">
+            <button class="reg-btn" id="lo-fp-btn" onclick="doForgotPassword()">ENVOYER LE LIEN</button>
+          </div>
+        </div>
+        <div id="lo-fp-success-step" style="display:none;text-align:center;padding-top:24px;">
+          <div style="width:72px;height:72px;border-radius:50%;background:#FFD700;display:flex;align-items:center;justify-content:center;margin:0 auto 24px;font-size:36px;font-weight:900;color:#000;">&#10003;</div>
+          <div class="reg-title" style="margin-bottom:12px;">Email envoyé !</div>
+          <div class="reg-sub" style="margin-bottom:28px;">Un lien de réinitialisation vous a été envoyé. Vérifiez aussi vos spams. Le lien est valable 1 heure.</div>
+          <button class="reg-btn" onclick="hideForgotPane()">RETOUR À LA CONNEXION</button>
+        </div>
       </div>
     </div>
   </div>
