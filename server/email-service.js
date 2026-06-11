@@ -2058,7 +2058,7 @@ async function sendOtpSms(phone, otpCode) {
     var body = JSON.stringify({
         sender: 'FAGENESIS',
         recipient: phone,
-        content: 'FA GENESIS - Votre code : ' + otpCode + '. Valable 10 minutes. Ne le partagez pas.',
+        content: 'Saisissez le code ' + otpCode + ' pour vous connecter. Ne le partagez pas.',
         type: 'transactional'
     });
 

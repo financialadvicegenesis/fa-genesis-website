@@ -873,6 +873,17 @@ a{text-decoration:none;color:inherit}
 .cart-checkout-btn:disabled{opacity:.35;cursor:default;}
 .cart-toast{position:fixed;bottom:calc(var(--nav) + 20px);left:50%;transform:translateX(-50%) translateY(16px);background:#FFD700;color:#000;font-size:12px;font-weight:900;padding:9px 18px;border-radius:20px;z-index:9400;opacity:0;transition:opacity .25s,transform .25s;pointer-events:none;white-space:nowrap;}
 .cart-toast.on{opacity:1;transform:translateX(-50%) translateY(0);}
+#pay-overlay{display:none;position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,.72);backdrop-filter:blur(4px);align-items:flex-end;justify-content:center;}
+#pay-overlay.open{display:flex;animation:regFadeIn .2s ease;}
+#pay-sheet{width:100%;max-width:480px;background:#0d0d0d;border-radius:20px 20px 0 0;border-top:3px solid #FFD700;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;transform:translateY(100%);transition:transform .45s cubic-bezier(.34,1.56,.64,1);}
+#pay-sheet.up{transform:translateY(0);}
+.pay-hdr{display:flex;align-items:center;justify-content:space-between;padding:18px 20px 12px;border-bottom:1px solid #1f1f1f;flex-shrink:0;}
+.pay-body{flex:1;overflow-y:auto;}
+.pay-amount-row{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid #1f1f1f;}
+.pay-amount-label{font-size:13px;color:#aaa;font-weight:600;}
+.pay-amount-val{font-family:'Unbounded',cursive;font-size:1.15rem;font-weight:900;color:#FFD700;}
+.pay-spinner{width:36px;height:36px;border:3px solid #2a2a2a;border-top-color:#FFD700;border-radius:50%;animation:pay-spin .8s linear infinite;margin:0 auto;}
+@keyframes pay-spin{to{transform:rotate(360deg)}}
 
 /* ── COWORKING BOOKING ── */
 #cw-booking-overlay{display:none;position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,.75);backdrop-filter:blur(4px);align-items:flex-end;justify-content:center;}
@@ -1369,7 +1380,7 @@ function renderHomeOffers(filter){
 
   if(!filter || filter==='all'){
     items = OFFERS.slice(0,5).map(function(o){
-      return {name:o.name, tag:o.tag, price:o.price, unit:o.unit, img:o.img};
+      return {name:o.name, tag:o.tag, price:o.price, unit:o.unit, img:o.img, navCat:'coworking', navSub:''};
     });
 
   } else if(filter==='etudiant'||filter==='particulier'||filter==='entreprise'){
@@ -1378,12 +1389,12 @@ function renderHomeOffers(filter){
     title = 'Offres '+profilLabel;
     if(PDATA && PDATA.accompagnement && PDATA.accompagnement[profil]){
       PDATA.accompagnement[profil].forEach(function(o){
-        items.push({name:o.name, tag:o.sub||'', price:o.price, unit:o.badge||'', gradient:o.gradient, link:o.link});
+        items.push({name:o.name, tag:o.sub||'', price:o.price, unit:o.badge||'', gradient:o.gradient, navCat:'accompagnement', navSub:profil});
       });
     }
     if(PDATA && PDATA.coworking && PDATA.coworking[profil]){
       PDATA.coworking[profil].forEach(function(o){
-        items.push({name:o.name, tag:profilLabel, price:o.price, unit:o.unit, img:o.img});
+        items.push({name:o.name, tag:profilLabel, price:o.price, unit:o.unit, img:o.img, navCat:'coworking', navSub:profil});
       });
     }
 
@@ -1394,7 +1405,7 @@ function renderHomeOffers(filter){
         PDATA.coworking[profil].forEach(function(o){
           if(o.name.indexOf('ÉVÉNEMENT')>=0||o.name.indexOf('SOIR')>=0){
             var lbl = profil==='etudiant'?'Étudiant':profil==='particulier'?'Particulier':'Entreprise';
-            items.push({name:o.name, tag:lbl, price:o.price, unit:o.unit, img:o.img});
+            items.push({name:o.name, tag:lbl, price:o.price, unit:o.unit, img:o.img, navCat:'coworking', navSub:profil});
           }
         });
       }
@@ -1403,12 +1414,12 @@ function renderHomeOffers(filter){
   } else if(filter==='coworking'){
     title = 'Espaces Coworking';
     OFFERS.filter(function(o){return o.cat==='coworking';}).forEach(function(o){
-      items.push({name:o.name, tag:o.tag, price:o.price, unit:o.unit, img:o.img});
+      items.push({name:o.name, tag:o.tag, price:o.price, unit:o.unit, img:o.img, navCat:'coworking', navSub:''});
     });
 
   } else {
     items = OFFERS.filter(function(o){return o.cat===filter;}).map(function(o){
-      return {name:o.name, tag:o.tag, price:o.price, unit:o.unit, img:o.img};
+      return {name:o.name, tag:o.tag, price:o.price, unit:o.unit, img:o.img, navCat:filter, navSub:''};
     });
   }
 
@@ -1420,9 +1431,11 @@ function renderHomeOffers(filter){
 }
 
 function homeCard(o){
-  var goAct = o.link ? 'window.location.href=\''+o.link+'\'' : 'nav(\'prestations\')';
+  var nc = o.navCat || 'coworking';
+  var ns = o.navSub || '';
+  var navAct = '_navToPrestation(\'' + nc + '\'' + (ns ? ',\'' + ns + '\'' : '') + ')';
   if(o.gradient){
-    return '<div class="offer-card" style="cursor:pointer;border:2px solid #000;box-shadow:4px 4px 0 #000" onclick="'+goAct+'">'
+    return '<div class="offer-card" style="cursor:pointer;border:2px solid #000;box-shadow:4px 4px 0 #000" onclick="'+navAct+'">'
       +'<div style="width:100%;height:110px;display:flex;flex-direction:column;align-items:center;justify-content:center;'
       +'background:linear-gradient('+o.gradient+');padding:10px;">'
       +'<div style="font-size:18px;font-weight:900;font-style:italic;text-transform:uppercase;'
@@ -1433,18 +1446,35 @@ function homeCard(o){
       +(o.unit?'<div style="font-size:9px;color:#888;margin-bottom:3px;text-transform:uppercase;font-weight:700;letter-spacing:.3px">'+o.unit+'</div>':'')
       +'<div class="offer-foot">'
       +'<div class="offer-price">'+o.price+'</div>'
-      +'<button class="offer-btn" onclick="event.stopPropagation();'+goAct+'">Voir</button>'
+      +'<button class="offer-btn" onclick="event.stopPropagation();'+navAct+'">Voir</button>'
       +'</div></div></div>';
   }
-  return '<div class="offer-card" style="cursor:pointer" onclick="nav(\'prestations\')">'
+  return '<div class="offer-card" style="cursor:pointer" onclick="'+navAct+'">'
     +'<img src="'+(o.img||'')+'" alt="'+o.name+'" onerror="this.style.background=\'#222\';this.removeAttribute(\'src\')">'
     +'<div class="offer-body">'
     +(o.tag?'<div class="offer-cat">'+o.tag+'</div>':'')
     +'<div class="offer-name">'+o.name+'</div>'
     +'<div class="offer-foot">'
     +'<div class="offer-price">'+o.price+'</div>'
-    +'<button class="offer-btn" onclick="event.stopPropagation();nav(\'prestations\')">Voir</button>'
+    +'<button class="offer-btn" onclick="event.stopPropagation();'+navAct+'">Voir</button>'
     +'</div></div></div>';
+}
+
+function _navToPrestation(cat, sub){
+  if(sub) _prestSub = sub;
+  nav('prestations');
+  setTimeout(function(){
+    var pills = document.querySelectorAll('.fpill');
+    var targetPill = null;
+    pills.forEach(function(p){
+      p.className = 'fpill';
+      var oc = p.getAttribute('onclick') || '';
+      if(oc.indexOf("'"+cat+"'") >= 0) targetPill = p;
+    });
+    if(targetPill) targetPill.className = 'fpill on';
+    else if(pills.length) pills[0].className = 'fpill on';
+    renderPrestations(cat === 'all' || !cat ? null : cat);
+  }, 50);
 }
 
 // ── DATA COMPLÈTE PRESTATIONS (fidèle au site) ────────────────
@@ -2807,12 +2837,94 @@ function renderCartBody(){
 
 function cartCheckout(){
   if(APP_CART.length===0) return;
-  var panier={items:APP_CART.map(function(item){
-    return {productId:item.id||'app-item',name:item.name,prix:item.priceNum,data:item};
-  })};
-  try{localStorage.setItem('fa_genesis_panier',JSON.stringify(panier));}catch(e){}
+  if(!USER){ closeCart(); setTimeout(showLoginSheet, 400); return; }
+  var total = cartTotal();
+  if(total <= 0){
+    closeCart();
+    setTimeout(function(){ nav('contact'); }, 400);
+    return;
+  }
+  var cartSnap = APP_CART.slice();
   closeCart();
-  setTimeout(function(){ openInBrowser('https://fagenesis.com/panier.html'); }, 500);
+  setTimeout(function(){ openPayOverlay(total, cartSnap); }, 450);
+}
+
+function openPayOverlay(total, cartItems){
+  var overlay = document.getElementById('pay-overlay');
+  var sheet = document.getElementById('pay-sheet');
+  if(!overlay || !sheet) return;
+  var amtEl = document.getElementById('pay-amount-val');
+  if(amtEl) amtEl.textContent = total.toFixed(2) + ' €';
+  document.getElementById('pay-loading').style.display = '';
+  var wc = document.getElementById('sumup-widget-container');
+  if(wc){ wc.style.display = 'none'; wc.innerHTML = ''; }
+  document.getElementById('pay-success').style.display = 'none';
+  document.getElementById('pay-error-msg').style.display = 'none';
+  overlay.classList.add('open');
+  void overlay.offsetHeight;
+  setTimeout(function(){ sheet.classList.add('up'); }, 20);
+  var token = USER ? USER._token : (localStorage.getItem('fa_genesis_token') || '');
+  var itemsPayload = cartItems.map(function(item){ return {name: item.name, priceNum: item.priceNum}; });
+  fetch((window.FA_GENESIS_API || API) + '/api/payments/cart/checkout', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+    body: JSON.stringify({ items: itemsPayload, total: total, currency: 'EUR' })
+  }).then(function(r){ return r.json(); }).then(function(res){
+    if(res.checkout_id){ _mountSumUpWidget(res.checkout_id, cartItems); }
+    else { _showPayError(res.error || res.details || 'Erreur lors de la création du paiement'); }
+  }).catch(function(e){ _showPayError('Erreur réseau : ' + e.message); });
+}
+
+function _mountSumUpWidget(checkoutId, cartItems){
+  document.getElementById('pay-loading').style.display = 'none';
+  var container = document.getElementById('sumup-widget-container');
+  if(!container) return;
+  container.style.display = '';
+  container.innerHTML = '<div id="sumup-card-div"></div>';
+  function doMount(){
+    try {
+      SumUpCard.mount({
+        id: 'sumup-card-div',
+        checkoutId: checkoutId,
+        locale: 'fr-FR',
+        showSubmitButton: true,
+        onResponse: function(type, body){
+          if(type === 'success'){
+            APP_CART = []; _saveCart();
+            var wc = document.getElementById('sumup-widget-container');
+            if(wc) wc.style.display = 'none';
+            document.getElementById('pay-success').style.display = '';
+          } else if(type === 'error'){
+            var msg = (body && (body.message || body.error)) ? (body.message || body.error) : 'Paiement refusé. Vérifiez vos informations.';
+            _showPayError(msg);
+          }
+        }
+      });
+    } catch(e) { _showPayError('Erreur chargement du module de paiement : ' + e.message); }
+  }
+  if(typeof SumUpCard !== 'undefined'){
+    doMount();
+  } else {
+    var script = document.createElement('script');
+    script.src = 'https://gateway.sumup.com/gateway/ecom/card/v2/sdk.js';
+    script.onload = doMount;
+    script.onerror = function(){ _showPayError('Impossible de charger le module de paiement. Vérifiez votre connexion.'); };
+    document.head.appendChild(script);
+  }
+}
+
+function _showPayError(msg){
+  document.getElementById('pay-loading').style.display = 'none';
+  var errEl = document.getElementById('pay-error-msg');
+  if(errEl){ errEl.textContent = msg; errEl.style.display = ''; }
+}
+
+function closePayOverlay(){
+  var sheet = document.getElementById('pay-sheet');
+  var overlay = document.getElementById('pay-overlay');
+  if(!sheet || !overlay) return;
+  sheet.classList.remove('up');
+  setTimeout(function(){ overlay.classList.remove('open'); }, 450);
 }
 
 // ── COWORKING BOOKING ─────────────────────────────────────────
@@ -3227,6 +3339,35 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
         <span class="cart-total-price" id="cart-total-price">Sur devis</span>
       </div>
       <button class="cart-checkout-btn" id="cart-checkout-btn" onclick="cartCheckout()" disabled>PASSER COMMANDE</button>
+    </div>
+  </div>
+</div>
+
+<!-- PAYMENT OVERLAY -->
+<div id="pay-overlay">
+  <div id="pay-sheet">
+    <div class="pay-hdr">
+      <button class="reg-nav-btn" onclick="closePayOverlay()">&#8249;</button>
+      <div style="font-family:'Unbounded',cursive;font-size:10px;font-weight:900;color:#FFD700;letter-spacing:1.5px;">PAIEMENT</div>
+      <button class="reg-nav-btn" onclick="closePayOverlay()">&#x2715;</button>
+    </div>
+    <div class="pay-body">
+      <div class="pay-amount-row">
+        <span class="pay-amount-label">Total à payer</span>
+        <span class="pay-amount-val" id="pay-amount-val">-</span>
+      </div>
+      <div id="pay-loading" style="text-align:center;padding:40px 20px;color:#888;font-size:14px;">
+        <div class="pay-spinner"></div>
+        <p style="margin-top:16px;">Chargement du paiement...</p>
+      </div>
+      <div id="sumup-widget-container" style="display:none;padding-bottom:24px;"></div>
+      <div id="pay-success" style="display:none;text-align:center;padding:40px 20px;">
+        <div style="width:72px;height:72px;border-radius:50%;background:#FFD700;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-size:36px;font-weight:900;color:#000;">&#10003;</div>
+        <div style="font-family:'Unbounded',cursive;font-size:15px;font-weight:900;color:#FFD700;margin-bottom:12px;">Paiement réussi !</div>
+        <div style="font-size:13px;color:#aaa;line-height:1.7;">Votre commande a bien été enregistrée.<br>Nous vous contacterons très prochainement.</div>
+        <button onclick="closePayOverlay()" style="margin-top:28px;background:#FFD700;color:#000;border:none;border-radius:8px;padding:14px 32px;font-family:'Unbounded',cursive;font-size:11px;font-weight:900;cursor:pointer;letter-spacing:1px;">FERMER</button>
+      </div>
+      <div id="pay-error-msg" style="display:none;background:#1a0000;border:1px solid #ff4444;border-radius:10px;padding:14px 16px;margin:16px;color:#ff7777;font-size:13px;line-height:1.5;"></div>
     </div>
   </div>
 </div>
