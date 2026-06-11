@@ -6401,6 +6401,37 @@ app.post('/api/partner/subprofiles', authenticatePartner, async (req, res) => {
     } catch(e) { res.status(500).json({ error: 'Erreur serveur' }); }
 });
 
+// ── DELETE /api/admin/partner/subprofiles/:id — supprimer un sous-profil (admin) ──
+app.delete('/api/admin/partner/subprofiles/:id', (req, res) => {
+    try {
+        const all = loadSubProfiles();
+        const idx = all.findIndex(p => p.id === req.params.id);
+        if (idx === -1) return res.status(404).json({ error: 'Profil introuvable' });
+        const deleted = all.splice(idx, 1)[0];
+        saveSubProfiles(all);
+        console.log('[ADMIN] Sous-profil supprimé:', deleted.id, deleted.name);
+        res.json({ success: true, deleted });
+    } catch(e) { res.status(500).json({ error: 'Erreur serveur' }); }
+});
+
+// ── GET /api/admin/partner/subprofiles — liste tous les sous-profils (admin) ──
+app.get('/api/admin/partner/subprofiles', (req, res) => {
+    try {
+        const all = loadSubProfiles();
+        const partners = loadPartners();
+        // Enrichir avec les infos du compte partenaire parent
+        const enriched = all.map(function(p) {
+            const parent = partners.find(function(pt) { return pt.id === p.partnerId; });
+            return Object.assign({}, p, {
+                partnerEmail: parent ? parent.email : '',
+                partnerType: parent ? parent.partner_type : (p.partnerType || ''),
+                pinHash: undefined
+            });
+        });
+        res.json({ success: true, profiles: enriched });
+    } catch(e) { res.status(500).json({ error: 'Erreur serveur' }); }
+});
+
 // ── PUT /api/partner/subprofiles/:id — modifier nom, initiales ou PIN ──
 app.put('/api/partner/subprofiles/:id', authenticatePartner, async (req, res) => {
     try {
