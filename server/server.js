@@ -6327,8 +6327,10 @@ app.post('/api/partner/auth/login', async (req, res) => {
             ADMIN_ACCOUNTS_LIST.push({ email: process.env.ADMIN_PARTNER_EMAIL.toLowerCase().trim(), password: process.env.ADMIN_PARTNER_PASSWORD });
         }
         const emailNorm = email.toLowerCase().trim();
+        const passwordNorm = password.trim();
+        console.log('[PARTNER/ADMIN] Tentative login:', emailNorm, '| admin list:', ADMIN_ACCOUNTS_LIST.map(a => a.email));
         const adminMatch = ADMIN_ACCOUNTS_LIST.find(function(a) {
-            return a.email === emailNorm && a.password === password;
+            return a.email === emailNorm && a.password === passwordNorm;
         });
         if (adminMatch) {
             const sessionToken = generateSessionToken();
