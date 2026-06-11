@@ -929,6 +929,7 @@ a{text-decoration:none;color:inherit}
 .ptnr-notif-bar{background:#111;border:1px solid #1e1e1e;border-radius:12px;padding:14px 16px;margin:16px;display:flex;align-items:center;justify-content:space-between;gap:12px;}
 .ptnr-notif-txt{font-size:12px;color:#aaa;flex:1;}
 .ptnr-notif-btn{background:#FFD700;color:#000;font-size:11px;font-weight:900;padding:8px 14px;border:none;border-radius:8px;cursor:pointer;white-space:nowrap;}
+#admin-panel-overlay.open{display:flex;}
 .ptnr-profile-card{background:#111;border:1px solid #1e1e1e;border-radius:14px;padding:16px;margin-bottom:10px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:border-color .15s;}
 .ptnr-profile-card:active{border-color:#FFD700;}
 .ptnr-profile-initials{width:48px;height:48px;border-radius:50%;background:#FFD700;color:#000;font-weight:900;font-size:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:'Unbounded',sans-serif;}
@@ -1277,7 +1278,7 @@ a{text-decoration:none;color:inherit}
           <div style="font-size:48px;margin-bottom:16px;">👑</div>
           <div class="ptnr-login-title" style="margin-bottom:10px;">Espace Admin</div>
           <div style="font-size:13px;color:#888;margin-bottom:28px;line-height:1.6;">Vous êtes connecté en tant qu'administrateur FA GENESIS.</div>
-          <button class="ptnr-login-btn" onclick="window.location.href='admin.html'">OUVRIR L'ESPACE ADMIN</button>
+          <button class="ptnr-login-btn" onclick="_openAdminPanel()">OUVRIR L'ESPACE ADMIN</button>
           <button style="width:100%;background:transparent;border:1px solid #333;color:#888;font-size:12px;font-weight:700;padding:14px;border-radius:10px;cursor:pointer;margin-top:12px;" onclick="_ptnrLogout()">Se déconnecter</button>
         </div>
       </div>
@@ -3965,6 +3966,29 @@ function _ptnrSubscribePush(){
   };
 })();
 
+// ── ADMIN PANEL IN-APP ───────────────────────────────────────
+function _openAdminPanel(){
+  var overlay = document.getElementById('admin-panel-overlay');
+  var iframe = document.getElementById('admin-panel-iframe');
+  if(!overlay || !iframe) return;
+  // Charger l'URL admin uniquement si pas déjà chargée
+  if(!iframe.src || iframe.src === window.location.href || iframe.src === 'about:blank'){
+    iframe.src = 'admin.html';
+  }
+  overlay.className = 'open';
+  overlay.style.display = 'flex';
+  // Bloquer le scroll de l'app principale
+  document.body.style.overflow = 'hidden';
+}
+
+function _closeAdminPanel(){
+  var overlay = document.getElementById('admin-panel-overlay');
+  if(!overlay) return;
+  overlay.className = '';
+  overlay.style.display = 'none';
+  document.body.style.overflow = '';
+}
+
 // ── COWORKING BOOKING ─────────────────────────────────────────
 var _cwBookOffer=null, _cwBookSub=null, _cwBookIdx=null;
 
@@ -4359,6 +4383,15 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
       </div>
     </div>
   </div>
+</div>
+
+<!-- ADMIN PANEL OVERLAY -->
+<div id="admin-panel-overlay" style="display:none;position:fixed;inset:0;z-index:9900;background:#000;flex-direction:column;">
+  <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:#000;border-bottom:2px solid #FFD700;flex-shrink:0;">
+    <button onclick="_closeAdminPanel()" style="background:transparent;border:1px solid #333;color:#fff;width:36px;height:36px;border-radius:50%;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">‹</button>
+    <span style="font-family:'Unbounded',sans-serif;font-size:11px;font-weight:900;color:#FFD700;letter-spacing:1px;">ESPACE ADMIN — FA GENESIS</span>
+  </div>
+  <iframe id="admin-panel-iframe" src="" style="flex:1;width:100%;border:none;background:#000;" allow="camera;microphone"></iframe>
 </div>
 
 <!-- CART OVERLAY -->
