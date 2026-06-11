@@ -4596,7 +4596,7 @@ app.post('/api/auth/forgot-password', async (req, res) => {
             const crypto = require('crypto');
             const resetToken = crypto.randomBytes(32).toString('hex');
             users[userIndex].reset_token = resetToken;
-            users[userIndex].reset_token_expires = Date.now() + 3600000; // 1h
+            users[userIndex].reset_token_expires = Date.now() + 86400000; // 24h
             saveUsers(users);
 
             const user = users[userIndex];

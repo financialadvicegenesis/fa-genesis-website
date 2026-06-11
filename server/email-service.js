@@ -2006,7 +2006,7 @@ async function sendPasswordResetEmail(email, prenom, resetLink) {
         + 'Réinitialiser mon mot de passe</a>'
         + '</div>'
         + '<p style="color:#888;font-size:13px;line-height:1.6;margin:24px 0 0;">'
-        + 'Ce lien est valable <strong>1 heure</strong>. Si vous n\'avez pas fait cette demande, ignorez cet email — votre compte reste sécurisé.'
+        + 'Ce lien est valable <strong>24 heures</strong>. Si vous n\'avez pas fait cette demande, ignorez cet email — votre compte reste sécurisé.'
         + '</p>'
         + '<hr style="border:none;border-top:1px solid #eee;margin:24px 0;">'
         + '<p style="color:#aaa;font-size:12px;">Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :<br>'
