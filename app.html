@@ -2960,7 +2960,7 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
         <div class="reg-cta" style="padding-top:8px;">
           <button class="reg-btn" id="lo-btn" onclick="doAppLogin()">SE CONNECTER</button>
           <div style="text-align:center;margin-top:16px;">
-            <a href="#" onclick="showForgotPane();return false;" style="font-size:13px;color:#FFD700;font-weight:700;text-decoration:none;">Mot de passe oublié ?</a>
+            <a href="#" onclick="showForgotPane();return false;" style="font-size:13px;color:#FFD700;font-weight:700;text-decoration:none;white-space:nowrap;">Mot de passe oublié ?</a>
           </div>
           <div class="reg-link-row" style="margin-top:10px;">Pas de compte ? <a href="#" onclick="closeLoginSheet();showRegisterSheet();return false;">S'inscrire</a></div>
         </div>
@@ -2969,7 +2969,7 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
       <div id="lo-pane-forgot" style="position:absolute;inset:0;overflow-y:auto;padding:24px 24px 32px;transform:translateX(110%);">
         <div id="lo-fp-email-step">
           <div class="reg-title" style="margin-bottom:8px;">Mot de passe<br>oublié ?</div>
-          <div class="reg-sub" style="margin-bottom:24px;">Entrez votre adresse email. Vous recevrez un lien pour créer un nouveau mot de passe, envoyé depuis <strong>noreply@fagenesis.com</strong>.</div>
+          <div class="reg-sub" style="margin-bottom:24px;">Entrez votre adresse email. Vous recevrez un lien pour créer un nouveau mot de passe.</div>
           <div class="reg-field">
             <label class="reg-label" for="lo-fp-email">Adresse email</label>
             <input id="lo-fp-email" class="reg-input" type="email" placeholder="votre@email.com" autocomplete="email" onkeydown="if(event.key==='Enter'||event.keyCode===13)doForgotPassword()">
