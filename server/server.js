@@ -4702,7 +4702,12 @@ app.post('/api/auth/send-otp', async (req, res) => {
         if (channel === 'sms') {
             if (!phone) return res.status(400).json({ error: 'Numéro requis' });
             saveUsers(users);
-            try { await emailService.sendOtpSms(phone, otp); } catch(e) { console.error('[OTP SMS]', e.message); }
+            try {
+                await emailService.sendOtpSms(phone, otp);
+            } catch(e) {
+                console.error('[OTP SMS]', e.message);
+                return res.status(500).json({ error: 'Échec envoi SMS : ' + e.message });
+            }
             maskedDest = phone.slice(0, 4) + '****' + phone.slice(-2);
         } else {
             saveUsers(users);

@@ -2052,23 +2052,35 @@ async function sendOtpEmail(email, prenom, otpCode) {
 }
 
 async function sendOtpSms(phone, otpCode) {
-    var apiKey = process.env.BREVO_API_KEY;
-    if (!apiKey) { console.warn('[SMS] BREVO_API_KEY non configuré — SMS non envoyé'); return; }
-    var body = JSON.stringify({
-        sender: 'FAGENESIS',
-        recipient: phone,
-        content: 'FA GENESIS - Code : ' + otpCode + '. Valable 10 min. Ne le partagez pas.'
-    });
-    try {
-        var response = await fetch('https://api.brevo.com/v3/transactionalSMS/sms', {
+    var sid = process.env.TWILIO_ACCOUNT_SID;
+    var token = process.env.TWILIO_AUTH_TOKEN;
+    var from = process.env.TWILIO_PHONE_NUMBER;
+
+    if (!sid || !token || !from) {
+        throw new Error('Service SMS non configuré (variables TWILIO manquantes).');
+    }
+
+    var message = 'FA GENESIS - Votre code : ' + otpCode + '. Valable 10 minutes. Ne le partagez pas.';
+    var params = 'From=' + encodeURIComponent(from) + '&To=' + encodeURIComponent(phone) + '&Body=' + encodeURIComponent(message);
+    var auth = Buffer.from(sid + ':' + token).toString('base64');
+
+    var response = await fetch(
+        'https://api.twilio.com/2010-04-01/Accounts/' + sid + '/Messages.json',
+        {
             method: 'POST',
-            headers: { 'api-key': apiKey, 'Content-Type': 'application/json', 'Accept': 'application/json' },
-            body: body
-        });
-        var result = await response.json();
-        if (!response.ok) { console.error('[SMS] Erreur Brevo:', JSON.stringify(result)); }
-        else { console.log('[SMS] OTP envoyé à ' + phone); }
-    } catch(e) { console.error('[SMS]', e.message); }
+            headers: {
+                'Authorization': 'Basic ' + auth,
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: params
+        }
+    );
+
+    var result = await response.json();
+    if (!response.ok) {
+        throw new Error('Twilio erreur ' + response.status + ' : ' + (result.message || JSON.stringify(result)));
+    }
+    console.log('[SMS] OTP envoyé via Twilio à ' + phone + ' (SID: ' + result.sid + ')');
 }
 
 module.exports = {
