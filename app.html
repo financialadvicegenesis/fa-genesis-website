@@ -873,6 +873,62 @@ a{text-decoration:none;color:inherit}
 .cart-checkout-btn:disabled{opacity:.35;cursor:default;}
 .cart-toast{position:fixed;bottom:calc(var(--nav) + 20px);left:50%;transform:translateX(-50%) translateY(16px);background:#FFD700;color:#000;font-size:12px;font-weight:900;padding:9px 18px;border-radius:20px;z-index:9400;opacity:0;transition:opacity .25s,transform .25s;pointer-events:none;white-space:nowrap;}
 .cart-toast.on{opacity:1;transform:translateX(-50%) translateY(0);}
+
+/* ── PARTNER TAB ── */
+#tab-partner{padding:0 0 calc(var(--nav) + var(--safe) + 16px);}
+.ptnr-header{background:linear-gradient(135deg,#0d0d0d 0%,#1a1200 100%);border-bottom:2px solid #FFD700;padding:20px 16px 16px;display:flex;align-items:center;justify-content:space-between;}
+.ptnr-header-left{display:flex;align-items:center;gap:12px;}
+.ptnr-avatar{width:42px;height:42px;border-radius:50%;background:#FFD700;color:#000;font-weight:900;font-size:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.ptnr-name{font-size:14px;font-weight:900;color:#fff;}
+.ptnr-type{font-size:10px;color:#FFD700;font-weight:700;text-transform:uppercase;letter-spacing:.5px;}
+.ptnr-logout-btn{background:transparent;border:1px solid #333;color:#888;font-size:11px;font-weight:700;padding:6px 12px;border-radius:8px;cursor:pointer;}
+.ptnr-subnav{display:flex;background:#0d0d0d;border-bottom:1px solid #1a1a1a;overflow-x:auto;-webkit-overflow-scrolling:touch;}
+.ptnr-subnav::-webkit-scrollbar{display:none;}
+.ptnr-snbtn{flex:1;min-width:70px;padding:12px 8px 10px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;color:#555;display:flex;flex-direction:column;align-items:center;gap:3px;position:relative;border-bottom:2px solid transparent;}
+.ptnr-snbtn .pni{font-size:18px;}
+.ptnr-snbtn.on{color:#FFD700;border-bottom:2px solid #FFD700;}
+.ptnr-badge{position:absolute;top:6px;right:calc(50% - 20px);min-width:16px;height:16px;background:#ef4444;border-radius:8px;font-size:9px;font-weight:900;color:#fff;display:none;align-items:center;justify-content:center;padding:0 4px;}
+.ptnr-badge.on{display:flex;}
+.ptnr-screen{display:none;padding:0 16px 16px;}
+.ptnr-screen.on{display:block;}
+.ptnr-card{background:#111;border:1px solid #1e1e1e;border-radius:14px;padding:16px;margin-bottom:12px;}
+.ptnr-card-title{font-size:13px;font-weight:900;color:#fff;margin-bottom:4px;}
+.ptnr-card-sub{font-size:11px;color:#888;margin-bottom:10px;}
+.ptnr-status{display:inline-block;font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.5px;padding:3px 8px;border-radius:6px;}
+.ptnr-status.pending{background:rgba(255,215,0,.15);color:#FFD700;}
+.ptnr-status.confirmed{background:rgba(34,197,94,.15);color:#22c55e;}
+.ptnr-status.cancelled{background:rgba(239,68,68,.15);color:#ef4444;}
+.ptnr-status.active{background:rgba(59,130,246,.15);color:#3b82f6;}
+.ptnr-row-btns{display:flex;gap:8px;margin-top:10px;}
+.ptnr-btn-yes{flex:1;background:#FFD700;color:#000;font-weight:900;font-size:11px;padding:9px;border:none;border-radius:8px;cursor:pointer;text-transform:uppercase;}
+.ptnr-btn-no{flex:1;background:#1a1a1a;color:#ef4444;font-weight:700;font-size:11px;padding:9px;border:1px solid #2a2a2a;border-radius:8px;cursor:pointer;text-transform:uppercase;}
+.ptnr-msg-bubble{background:#1a1a1a;border-radius:10px;padding:12px;margin-bottom:8px;}
+.ptnr-msg-bubble.partner{background:#1a1200;border-left:3px solid #FFD700;}
+.ptnr-msg-meta{font-size:10px;color:#555;margin-bottom:4px;}
+.ptnr-msg-text{font-size:13px;color:#ddd;line-height:1.5;}
+.ptnr-reply-row{display:flex;gap:8px;margin-top:10px;}
+.ptnr-reply-input{flex:1;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;color:#fff;font-size:13px;padding:10px 12px;font-family:inherit;resize:none;}
+.ptnr-reply-send{background:#FFD700;color:#000;font-weight:900;font-size:11px;padding:10px 14px;border:none;border-radius:8px;cursor:pointer;}
+.ptnr-stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:16px;}
+.ptnr-stat{background:#111;border:1px solid #1e1e1e;border-radius:12px;padding:14px;text-align:center;}
+.ptnr-stat-val{font-size:22px;font-weight:900;color:#FFD700;font-family:'Unbounded',sans-serif;}
+.ptnr-stat-label{font-size:10px;color:#888;margin-top:2px;text-transform:uppercase;letter-spacing:.3px;}
+.ptnr-empty{text-align:center;padding:40px 20px;color:#555;}
+.ptnr-empty-ico{font-size:36px;margin-bottom:12px;}
+.ptnr-empty-txt{font-size:13px;font-weight:700;}
+.ptnr-section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#555;padding:16px 0 8px;border-bottom:1px solid #1a1a1a;margin-bottom:12px;}
+.ptnr-login-wrap{padding:24px 16px;}
+.ptnr-login-logo{font-family:'Unbounded',sans-serif;font-size:11px;font-weight:900;color:#FFD700;letter-spacing:2px;margin-bottom:24px;text-align:center;}
+.ptnr-login-title{font-family:'Unbounded',sans-serif;font-size:18px;font-weight:900;color:#fff;margin-bottom:6px;}
+.ptnr-login-sub{font-size:13px;color:#888;margin-bottom:28px;line-height:1.6;}
+.ptnr-input{width:100%;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:10px;padding:14px;color:#fff;font-size:14px;font-family:inherit;margin-bottom:12px;box-sizing:border-box;}
+.ptnr-input:focus{outline:none;border-color:#FFD700;}
+.ptnr-login-btn{width:100%;background:#FFD700;color:#000;font-family:'Unbounded',sans-serif;font-weight:900;font-size:12px;letter-spacing:1px;padding:16px;border:none;border-radius:10px;cursor:pointer;margin-top:4px;}
+.ptnr-login-err{color:#ef4444;font-size:13px;margin-top:8px;display:none;}
+.ptnr-login-err.on{display:block;}
+.ptnr-notif-bar{background:#111;border:1px solid #1e1e1e;border-radius:12px;padding:14px 16px;margin:16px;display:flex;align-items:center;justify-content:space-between;gap:12px;}
+.ptnr-notif-txt{font-size:12px;color:#aaa;flex:1;}
+.ptnr-notif-btn{background:#FFD700;color:#000;font-size:11px;font-weight:900;padding:8px 14px;border:none;border-radius:8px;cursor:pointer;white-space:nowrap;}
 #pay-overlay{display:none;position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,.72);backdrop-filter:blur(4px);align-items:flex-end;justify-content:center;}
 #pay-overlay.open{display:flex;animation:regFadeIn .2s ease;}
 #pay-sheet{width:100%;max-width:480px;background:#0d0d0d;border-radius:20px 20px 0 0;border-top:3px solid #FFD700;max-height:92vh;display:flex;flex-direction:column;overflow:hidden;transform:translateY(100%);transition:transform .45s cubic-bezier(.34,1.56,.64,1);}
@@ -1187,6 +1243,100 @@ a{text-decoration:none;color:inherit}
       <div id="profilContent"></div>
     </div>
 
+    <!-- PARTENAIRE -->
+    <div class="tab" id="tab-partner">
+      <!-- Login screen (shown when not authenticated as partner) -->
+      <div id="ptnr-login-screen">
+        <div class="ptnr-login-wrap">
+          <div class="ptnr-login-logo">FA GENESIS</div>
+          <div class="ptnr-login-title">Espace<br>Partenaire</div>
+          <div class="ptnr-login-sub">Connectez-vous pour gérer vos projets, devis et messages directement depuis l'application.</div>
+          <input class="ptnr-input" id="ptnr-email" type="email" placeholder="Email partenaire" autocomplete="email">
+          <input class="ptnr-input" id="ptnr-pass" type="password" placeholder="Mot de passe" autocomplete="current-password" onkeydown="if(event.key==='Enter')_ptnrLogin()">
+          <div class="ptnr-login-err" id="ptnr-login-err"></div>
+          <button class="ptnr-login-btn" id="ptnr-login-btn" onclick="_ptnrLogin()">SE CONNECTER</button>
+        </div>
+      </div>
+
+      <!-- Dashboard (shown when authenticated) -->
+      <div id="ptnr-dash-screen" style="display:none;">
+        <!-- Header with partner info -->
+        <div class="ptnr-header">
+          <div class="ptnr-header-left">
+            <div class="ptnr-avatar" id="ptnr-avatar">P</div>
+            <div>
+              <div class="ptnr-name" id="ptnr-display-name">Partenaire</div>
+              <div class="ptnr-type" id="ptnr-display-type"></div>
+            </div>
+          </div>
+          <button class="ptnr-logout-btn" onclick="_ptnrLogout()">Déconnexion</button>
+        </div>
+
+        <!-- Push notification bar (shown if not subscribed) -->
+        <div class="ptnr-notif-bar" id="ptnr-notif-bar" style="display:none;">
+          <div class="ptnr-notif-txt">Activez les notifications pour recevoir vos réservations en temps réel</div>
+          <button class="ptnr-notif-btn" onclick="_ptnrEnablePush()">Activer</button>
+        </div>
+
+        <!-- Sub-navigation -->
+        <div class="ptnr-subnav">
+          <button class="ptnr-snbtn on" id="ptnr-sn-home" onclick="_ptnrNav('home')">
+            <span class="pni">🏠</span><span>Accueil</span>
+          </button>
+          <button class="ptnr-snbtn" id="ptnr-sn-projets" onclick="_ptnrNav('projets')">
+            <span class="pni">📋</span><span>Projets</span>
+            <span class="ptnr-badge" id="ptnr-badge-projets"></span>
+          </button>
+          <button class="ptnr-snbtn" id="ptnr-sn-devis" onclick="_ptnrNav('devis')">
+            <span class="pni">📄</span><span>Devis</span>
+            <span class="ptnr-badge" id="ptnr-badge-devis"></span>
+          </button>
+          <button class="ptnr-snbtn" id="ptnr-sn-seances" onclick="_ptnrNav('seances')">
+            <span class="pni">📅</span><span>Séances</span>
+            <span class="ptnr-badge" id="ptnr-badge-seances"></span>
+          </button>
+          <button class="ptnr-snbtn" id="ptnr-sn-messages" onclick="_ptnrNav('messages')">
+            <span class="pni">💬</span><span>Messages</span>
+            <span class="ptnr-badge" id="ptnr-badge-messages"></span>
+          </button>
+        </div>
+
+        <!-- Sub-screen: Home / Stats -->
+        <div class="ptnr-screen on" id="ptnr-screen-home">
+          <div class="ptnr-stat-row">
+            <div class="ptnr-stat"><div class="ptnr-stat-val" id="ptnr-stat-projets">—</div><div class="ptnr-stat-label">Projets</div></div>
+            <div class="ptnr-stat"><div class="ptnr-stat-val" id="ptnr-stat-devis">—</div><div class="ptnr-stat-label">Devis</div></div>
+            <div class="ptnr-stat"><div class="ptnr-stat-val" id="ptnr-stat-msg">—</div><div class="ptnr-stat-label">Messages</div></div>
+          </div>
+          <div id="ptnr-home-list" style="padding:0 0 16px;"></div>
+        </div>
+
+        <!-- Sub-screen: Projets -->
+        <div class="ptnr-screen" id="ptnr-screen-projets">
+          <div class="ptnr-section-title">Projets assignés</div>
+          <div id="ptnr-projets-list"></div>
+        </div>
+
+        <!-- Sub-screen: Devis -->
+        <div class="ptnr-screen" id="ptnr-screen-devis">
+          <div class="ptnr-section-title">Devis à traiter</div>
+          <div id="ptnr-devis-list"></div>
+        </div>
+
+        <!-- Sub-screen: Séances -->
+        <div class="ptnr-screen" id="ptnr-screen-seances">
+          <div class="ptnr-section-title">Séances à confirmer</div>
+          <div id="ptnr-seances-list"></div>
+        </div>
+
+        <!-- Sub-screen: Messages -->
+        <div class="ptnr-screen" id="ptnr-screen-messages">
+          <div class="ptnr-section-title">Messages clients</div>
+          <div id="ptnr-messages-list"></div>
+        </div>
+      </div>
+    </div>
+
   </div>
 
   <!-- Bottom nav -->
@@ -1207,6 +1357,10 @@ a{text-decoration:none;color:inherit}
     </button>
     <button class="nav-btn" id="nb-profil" onclick="nav('profil')">
       <span class="ni">⊕</span><span>Plus</span>
+    </button>
+    <button class="nav-btn" id="nb-partner" onclick="nav('partner')" style="display:none;position:relative;">
+      <span class="ni">🤝</span><span>Partenaire</span>
+      <span class="nav-dot" id="dot-partner"></span>
     </button>
   </div>
 
@@ -1331,6 +1485,7 @@ function initApp(){
   renderResaTab();
   renderMsgTab();
   renderProfil();
+  _ptnrInit();
 
   // SW update
   if('serviceWorker' in navigator){
@@ -3097,6 +3252,403 @@ function closePayOverlay(){
   sheet.classList.remove('up');
   setTimeout(function(){ overlay.classList.remove('open'); }, 450);
 }
+
+// ── ESPACE PARTENAIRE ─────────────────────────────────────────
+var _ptnrToken = null;
+var _ptnrSession = null;
+var _ptnrRefreshTimer = null;
+
+function _ptnrApiUrl(){ return window.FA_GENESIS_API || API; }
+
+function _ptnrFetch(path, method, body){
+  var opts = {method: method || 'GET', headers: {'Content-Type':'application/json', 'Authorization':'Bearer '+_ptnrToken}};
+  if(body) opts.body = JSON.stringify(body);
+  return fetch(_ptnrApiUrl() + path, opts).then(function(r){
+    return r.text().then(function(txt){ try{return JSON.parse(txt);}catch(e){throw new Error('Erreur serveur');} });
+  });
+}
+
+function _ptnrInit(){
+  _ptnrToken = localStorage.getItem('fa_genesis_partner_token') || null;
+  if(_ptnrToken){
+    var nb = document.getElementById('nb-partner'); if(nb) nb.style.display = '';
+    _ptnrFetch('/api/partner/auth/me').then(function(data){
+      if(data && data.partner){
+        _ptnrSession = data.partner;
+        _ptnrRefreshBadges();
+        _ptnrCheckPushStatus();
+      } else { _ptnrClearSession(); }
+    }).catch(function(){ _ptnrClearSession(); });
+  }
+}
+
+function _ptnrClearSession(){
+  _ptnrToken = null; _ptnrSession = null;
+  localStorage.removeItem('fa_genesis_partner_token');
+  var nb = document.getElementById('nb-partner'); if(nb) nb.style.display = 'none';
+}
+
+function _ptnrLogin(){
+  var emailEl = document.getElementById('ptnr-email');
+  var passEl = document.getElementById('ptnr-pass');
+  var errEl = document.getElementById('ptnr-login-err');
+  var btnEl = document.getElementById('ptnr-login-btn');
+  var email = emailEl ? emailEl.value.trim() : '';
+  var pass = passEl ? passEl.value : '';
+  if(!email || !pass){ if(errEl){errEl.textContent='Email et mot de passe requis.';errEl.className='ptnr-login-err on';} return; }
+  if(errEl) errEl.className = 'ptnr-login-err';
+  if(btnEl){btnEl.disabled=true;btnEl.textContent='Connexion...';}
+  fetch(_ptnrApiUrl()+'/api/partner/auth/login',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({email:email, password:pass})
+  }).then(function(r){return r.text().then(function(t){try{return JSON.parse(t);}catch(e){throw new Error('Erreur serveur');}});})
+  .then(function(res){
+    if(btnEl){btnEl.disabled=false;btnEl.textContent='SE CONNECTER';}
+    if(res.token){
+      _ptnrToken = res.token;
+      _ptnrSession = res.partner;
+      localStorage.setItem('fa_genesis_partner_token', res.token);
+      var nb = document.getElementById('nb-partner'); if(nb) nb.style.display = '';
+      _ptnrShowDash();
+      _ptnrNav('home');
+      _ptnrRefreshBadges();
+      _ptnrCheckPushStatus();
+    } else {
+      var msg = (res.message || res.error || 'Identifiants incorrects.');
+      if(errEl){errEl.textContent=msg;errEl.className='ptnr-login-err on';}
+    }
+  }).catch(function(e){
+    if(btnEl){btnEl.disabled=false;btnEl.textContent='SE CONNECTER';}
+    if(errEl){errEl.textContent='Erreur de connexion.';errEl.className='ptnr-login-err on';}
+  });
+}
+
+function _ptnrLogout(){
+  if(_ptnrRefreshTimer) clearInterval(_ptnrRefreshTimer);
+  if(_ptnrToken) _ptnrFetch('/api/partner/auth/logout','POST',{}).catch(function(){});
+  _ptnrClearSession();
+  var ls = document.getElementById('ptnr-login-screen');
+  var ds = document.getElementById('ptnr-dash-screen');
+  if(ls) ls.style.display = '';
+  if(ds) ds.style.display = 'none';
+  nav('home');
+}
+
+function _ptnrShowDash(){
+  var ls = document.getElementById('ptnr-login-screen');
+  var ds = document.getElementById('ptnr-dash-screen');
+  if(ls) ls.style.display = 'none';
+  if(ds) ds.style.display = '';
+  if(_ptnrSession){
+    var p = _ptnrSession;
+    var nm = p.name || p.email || 'Partenaire';
+    var av = document.getElementById('ptnr-avatar'); if(av) av.textContent = (nm[0]||'P').toUpperCase();
+    var dn = document.getElementById('ptnr-display-name'); if(dn) dn.textContent = nm;
+    var dt = document.getElementById('ptnr-display-type'); if(dt) dt.textContent = p.type || p.role || '';
+  }
+  if(!_ptnrRefreshTimer) _ptnrRefreshTimer = setInterval(_ptnrRefreshBadges, 30000);
+}
+
+function _ptnrNav(screen){
+  document.querySelectorAll('.ptnr-snbtn').forEach(function(b){b.className='ptnr-snbtn';});
+  document.querySelectorAll('.ptnr-screen').forEach(function(s){s.className='ptnr-screen';});
+  var btn = document.getElementById('ptnr-sn-'+screen);
+  var scr = document.getElementById('ptnr-screen-'+screen);
+  if(btn) btn.className = 'ptnr-snbtn on';
+  if(scr) scr.className = 'ptnr-screen on';
+  if(screen==='home') _ptnrLoadHome();
+  if(screen==='projets') _ptnrLoadProjets();
+  if(screen==='devis') _ptnrLoadDevis();
+  if(screen==='seances') _ptnrLoadSeances();
+  if(screen==='messages') _ptnrLoadMessages();
+}
+
+function _ptnrFmt(dateStr){
+  if(!dateStr) return '';
+  try{ var d=new Date(dateStr); return d.toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'}); }catch(e){ return dateStr; }
+}
+
+// ── ACCUEIL PARTENAIRE ──
+function _ptnrLoadHome(){
+  var list = document.getElementById('ptnr-home-list');
+  if(list) list.innerHTML = '<div style="padding:16px 0;text-align:center;color:#555;font-size:12px;">Chargement...</div>';
+  Promise.all([
+    _ptnrFetch('/api/partner/projects').catch(function(){return [];}),
+    _ptnrFetch('/api/partner/quotes').catch(function(){return [];}),
+    _ptnrFetch('/api/partner/inbox').catch(function(){return [];})
+  ]).then(function(results){
+    var projets = Array.isArray(results[0]) ? results[0] : (results[0].projects||[]);
+    var devis = Array.isArray(results[1]) ? results[1] : (results[1].quotes||[]);
+    var inbox = Array.isArray(results[2]) ? results[2] : (results[2].messages||results[2].inbox||[]);
+    var pendingDevis = devis.filter(function(q){return q.status==='pending'||q.status==='open';}).length;
+    var unreadMsg = inbox.filter(function(m){return m.unread||m.isUnread;}).length;
+    var sp = document.getElementById('ptnr-stat-projets'); if(sp) sp.textContent = projets.length;
+    var sd = document.getElementById('ptnr-stat-devis'); if(sd) sd.textContent = pendingDevis;
+    var sm = document.getElementById('ptnr-stat-msg'); if(sm) sm.textContent = unreadMsg || inbox.length;
+    var html = '';
+    if(pendingDevis>0) html += '<div class="ptnr-card" style="border-left:3px solid #FFD700;cursor:pointer;" onclick="_ptnrNav(\'devis\')"><div class="ptnr-card-title">'+pendingDevis+' devis en attente</div><div class="ptnr-card-sub">Appuyez pour traiter les devis</div></div>';
+    if(inbox.length>0) html += '<div class="ptnr-card" style="border-left:3px solid #3b82f6;cursor:pointer;" onclick="_ptnrNav(\'messages\')"><div class="ptnr-card-title">'+inbox.length+' conversation(s) client</div><div class="ptnr-card-sub">Appuyez pour voir les messages</div></div>';
+    if(projets.length>0) html += '<div class="ptnr-card" style="border-left:3px solid #22c55e;cursor:pointer;" onclick="_ptnrNav(\'projets\')"><div class="ptnr-card-title">'+projets.length+' projet(s) assigné(s)</div><div class="ptnr-card-sub">Appuyez pour voir vos projets</div></div>';
+    if(!html) html = '<div class="ptnr-empty"><div class="ptnr-empty-ico">✅</div><div class="ptnr-empty-txt">Tout est à jour !</div></div>';
+    if(list) list.innerHTML = html;
+  });
+}
+
+// ── PROJETS ──
+function _ptnrLoadProjets(){
+  var el = document.getElementById('ptnr-projets-list');
+  if(el) el.innerHTML = '<div class="ptnr-empty"><div style="color:#FFD700;font-size:24px;">⏳</div></div>';
+  _ptnrFetch('/api/partner/projects').then(function(data){
+    var items = Array.isArray(data) ? data : (data.projects||[]);
+    if(!items.length){ if(el) el.innerHTML = '<div class="ptnr-empty"><div class="ptnr-empty-ico">📭</div><div class="ptnr-empty-txt">Aucun projet assigné</div></div>'; return; }
+    var html = '';
+    items.forEach(function(p){
+      var status = p.status||''; var statusLabel = status||'En cours';
+      var statusClass = status==='completed'?'confirmed':(status==='cancelled'?'cancelled':'active');
+      html += '<div class="ptnr-card">';
+      html += '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">';
+      html += '<div><div class="ptnr-card-title">'+(p.client_name||p.clientName||p.order_id||'Projet')+'</div>';
+      html += '<div class="ptnr-card-sub">'+(p.product_name||p.productName||'')+(p.start_date?' · '+ _ptnrFmt(p.start_date):'')+'</div></div>';
+      html += '<span class="ptnr-status '+statusClass+'">'+statusLabel+'</span></div>';
+      if(p.notes||p.description) html += '<div style="font-size:12px;color:#aaa;margin-top:8px;line-height:1.5;">'+(p.notes||p.description)+'</div>';
+      html += '</div>';
+    });
+    if(el) el.innerHTML = html;
+  }).catch(function(){ if(el) el.innerHTML='<div class="ptnr-empty"><div class="ptnr-empty-txt">Erreur de chargement</div></div>'; });
+}
+
+// ── DEVIS ──
+function _ptnrLoadDevis(){
+  var el = document.getElementById('ptnr-devis-list');
+  if(el) el.innerHTML = '<div class="ptnr-empty"><div style="color:#FFD700;font-size:24px;">⏳</div></div>';
+  _ptnrFetch('/api/partner/quotes').then(function(data){
+    var items = Array.isArray(data) ? data : (data.quotes||[]);
+    if(!items.length){ if(el) el.innerHTML = '<div class="ptnr-empty"><div class="ptnr-empty-ico">📭</div><div class="ptnr-empty-txt">Aucun devis en attente</div></div>'; return; }
+    var html = '';
+    items.forEach(function(q){
+      var isPending = q.status==='pending'||q.status==='open'||!q.status;
+      var statusClass = q.status==='accepted'||q.status==='confirmed'?'confirmed':(q.status==='cancelled'||q.status==='rejected'?'cancelled':'pending');
+      html += '<div class="ptnr-card" id="ptnr-devis-'+q.id+'">';
+      html += '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">';
+      html += '<div><div class="ptnr-card-title">'+(q.client_name||q.clientName||q.title||'Demande de devis')+'</div>';
+      html += '<div class="ptnr-card-sub">'+(q.service||q.product_name||'')+(q.date?' · '+_ptnrFmt(q.date):'')+'</div></div>';
+      html += '<span class="ptnr-status '+statusClass+'">'+(q.status||'En attente')+'</span></div>';
+      if(q.description||q.notes) html += '<div style="font-size:12px;color:#aaa;margin-top:8px;line-height:1.5;">'+(q.description||q.notes)+'</div>';
+      if(q.client_message||q.message) html += '<div style="font-size:12px;color:#ccc;background:#1a1a1a;border-radius:8px;padding:10px;margin-top:8px;line-height:1.5;">'+'"'+(q.client_message||q.message)+'"'+'</div>';
+      if(isPending){
+        html += '<div class="ptnr-row-btns">';
+        html += '<button class="ptnr-btn-yes" onclick="_ptnrAcceptDevis(\''+q.id+'\')">✓ Accepter</button>';
+        html += '<button class="ptnr-btn-no" onclick="_ptnrCancelDevis(\''+q.id+'\')">✕ Refuser</button>';
+        html += '</div>';
+      }
+      html += '</div>';
+    });
+    if(el) el.innerHTML = html;
+  }).catch(function(){ if(el) el.innerHTML='<div class="ptnr-empty"><div class="ptnr-empty-txt">Erreur de chargement</div></div>'; });
+}
+
+function _ptnrAcceptDevis(id){
+  var card = document.getElementById('ptnr-devis-'+id);
+  var btns = card ? card.querySelectorAll('button') : [];
+  btns.forEach(function(b){b.disabled=true;});
+  _ptnrFetch('/api/partner/quotes/'+id+'/propose','POST',{status:'accepted'}).then(function(){
+    _ptnrLoadDevis(); _ptnrRefreshBadges();
+  }).catch(function(){ btns.forEach(function(b){b.disabled=false;}); });
+}
+
+function _ptnrCancelDevis(id){
+  var card = document.getElementById('ptnr-devis-'+id);
+  var btns = card ? card.querySelectorAll('button') : [];
+  btns.forEach(function(b){b.disabled=true;});
+  _ptnrFetch('/api/partner/quotes/'+id+'/cancel','POST',{}).then(function(){
+    _ptnrLoadDevis(); _ptnrRefreshBadges();
+  }).catch(function(){ btns.forEach(function(b){b.disabled=false;}); });
+}
+
+// ── SÉANCES ──
+function _ptnrLoadSeances(){
+  var el = document.getElementById('ptnr-seances-list');
+  if(el) el.innerHTML = '<div class="ptnr-empty"><div style="color:#FFD700;font-size:24px;">⏳</div></div>';
+  _ptnrFetch('/api/partner/sessions').then(function(data){
+    var items = Array.isArray(data) ? data : (data.sessions||[]);
+    if(!items.length){ if(el) el.innerHTML = '<div class="ptnr-empty"><div class="ptnr-empty-ico">📭</div><div class="ptnr-empty-txt">Aucune séance à confirmer</div></div>'; return; }
+    var html = '';
+    items.forEach(function(s){
+      var isPending = s.status==='pending'||s.status==='proposed';
+      var statusClass = s.status==='confirmed'?'confirmed':(s.status==='cancelled'?'cancelled':'pending');
+      html += '<div class="ptnr-card" id="ptnr-seance-'+s.id+'">';
+      html += '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">';
+      html += '<div><div class="ptnr-card-title">'+(s.client_name||s.title||'Séance')+'</div>';
+      html += '<div class="ptnr-card-sub">'+(s.date?_ptnrFmt(s.date):'')+(s.time?' à '+s.time:'')+(s.duration?' · '+s.duration+' min':'')+'</div></div>';
+      html += '<span class="ptnr-status '+statusClass+'">'+(s.status||'En attente')+'</span></div>';
+      if(s.notes) html += '<div style="font-size:12px;color:#aaa;margin-top:8px;">'+s.notes+'</div>';
+      if(isPending){
+        html += '<div class="ptnr-row-btns">';
+        html += '<button class="ptnr-btn-yes" onclick="_ptnrConfirmSeance(\''+s.id+'\')">✓ Confirmer</button>';
+        html += '<button class="ptnr-btn-no" onclick="_ptnrCancelSeance(\''+s.id+'\')">✕ Annuler</button>';
+        html += '</div>';
+      }
+      html += '</div>';
+    });
+    if(el) el.innerHTML = html;
+  }).catch(function(){ if(el) el.innerHTML='<div class="ptnr-empty"><div class="ptnr-empty-txt">Erreur de chargement</div></div>'; });
+}
+
+function _ptnrConfirmSeance(id){
+  var card = document.getElementById('ptnr-seance-'+id);
+  var btns = card ? card.querySelectorAll('button') : [];
+  btns.forEach(function(b){b.disabled=true;});
+  _ptnrFetch('/api/partner/sessions/'+id,'PATCH',{status:'confirmed'}).then(function(){
+    _ptnrLoadSeances(); _ptnrRefreshBadges();
+  }).catch(function(){ btns.forEach(function(b){b.disabled=false;}); });
+}
+
+function _ptnrCancelSeance(id){
+  var card = document.getElementById('ptnr-seance-'+id);
+  var btns = card ? card.querySelectorAll('button') : [];
+  btns.forEach(function(b){b.disabled=true;});
+  _ptnrFetch('/api/partner/sessions/'+id+'/cancel','POST',{}).then(function(){
+    _ptnrLoadSeances(); _ptnrRefreshBadges();
+  }).catch(function(){ btns.forEach(function(b){b.disabled=false;}); });
+}
+
+// ── MESSAGES ──
+function _ptnrLoadMessages(){
+  var el = document.getElementById('ptnr-messages-list');
+  if(el) el.innerHTML = '<div class="ptnr-empty"><div style="color:#FFD700;font-size:24px;">⏳</div></div>';
+  _ptnrFetch('/api/partner/inbox').then(function(data){
+    var threads = Array.isArray(data) ? data : (data.messages||data.inbox||[]);
+    if(!threads.length){ if(el) el.innerHTML = '<div class="ptnr-empty"><div class="ptnr-empty-ico">💬</div><div class="ptnr-empty-txt">Aucun message</div></div>'; return; }
+    var html = '';
+    threads.forEach(function(thread){
+      var msgs = thread.messages || [thread];
+      var orderId = thread.orderId || thread.order_id || thread.id || '';
+      var clientName = thread.clientName || thread.client_name || thread.from || 'Client';
+      html += '<div class="ptnr-card" style="margin-bottom:16px;">';
+      html += '<div class="ptnr-card-title">'+clientName+'</div>';
+      if(orderId) html += '<div class="ptnr-card-sub" style="margin-bottom:12px;">Réservation #'+(orderId+'').substring(0,8)+'</div>';
+      msgs.forEach(function(m){
+        var isPartner = m.from==='partner'||m.role==='partner'||m.sender==='partner';
+        html += '<div class="ptnr-msg-bubble'+(isPartner?' partner':'')+'">';
+        html += '<div class="ptnr-msg-meta">'+(isPartner?'Vous':'Client')+' · '+_ptnrFmt(m.date||m.createdAt||m.timestamp)+'</div>';
+        html += '<div class="ptnr-msg-text">'+(m.message||m.text||m.content||'')+'</div></div>';
+      });
+      html += '<div class="ptnr-reply-row">';
+      html += '<textarea class="ptnr-reply-input" id="ptnr-reply-'+orderId+'" placeholder="Répondre..." rows="2"></textarea>';
+      html += '<button class="ptnr-reply-send" onclick="_ptnrSendReply(\''+orderId+'\',\''+clientName+'\')">Envoyer</button>';
+      html += '</div>';
+      html += '</div>';
+    });
+    if(el) el.innerHTML = html;
+  }).catch(function(){ if(el) el.innerHTML='<div class="ptnr-empty"><div class="ptnr-empty-txt">Erreur de chargement</div></div>'; });
+}
+
+function _ptnrSendReply(orderId, clientName){
+  var inp = document.getElementById('ptnr-reply-'+orderId);
+  if(!inp) return;
+  var msg = inp.value.trim();
+  if(!msg) return;
+  inp.disabled = true;
+  _ptnrFetch('/api/partner/inbox/reply','POST',{orderId:orderId, message:msg, clientName:clientName}).then(function(){
+    inp.value = ''; inp.disabled = false;
+    _ptnrLoadMessages();
+  }).catch(function(){ inp.disabled = false; });
+}
+
+// ── BADGES ──
+function _ptnrRefreshBadges(){
+  if(!_ptnrToken) return;
+  Promise.all([
+    _ptnrFetch('/api/partner/quotes').catch(function(){return [];}),
+    _ptnrFetch('/api/partner/inbox').catch(function(){return [];}),
+    _ptnrFetch('/api/partner/sessions').catch(function(){return [];}),
+    _ptnrFetch('/api/partner/projects').catch(function(){return [];})
+  ]).then(function(results){
+    var devis = Array.isArray(results[0]) ? results[0] : (results[0].quotes||[]);
+    var inbox = Array.isArray(results[1]) ? results[1] : (results[1].messages||results[1].inbox||[]);
+    var sessions = Array.isArray(results[2]) ? results[2] : (results[2].sessions||[]);
+    var projets = Array.isArray(results[3]) ? results[3] : (results[3].projects||[]);
+    var pendingDevis = devis.filter(function(q){return q.status==='pending'||q.status==='open'||!q.status;}).length;
+    var pendingSeances = sessions.filter(function(s){return s.status==='pending'||s.status==='proposed';}).length;
+    var unreadMsg = inbox.filter(function(m){return m.unread||m.isUnread;}).length || inbox.length;
+    function _setBadge(id, count){
+      var el = document.getElementById(id);
+      if(!el) return;
+      if(count>0){ el.textContent=count; el.className='ptnr-badge on'; }
+      else { el.className='ptnr-badge'; }
+    }
+    _setBadge('ptnr-badge-devis', pendingDevis);
+    _setBadge('ptnr-badge-seances', pendingSeances);
+    _setBadge('ptnr-badge-messages', unreadMsg);
+    _setBadge('ptnr-badge-projets', 0);
+    var hasAny = pendingDevis > 0 || pendingSeances > 0 || unreadMsg > 0;
+    var dot = document.getElementById('dot-partner'); if(dot) dot.style.display = hasAny ? '' : 'none';
+    if(dot && hasAny) dot.className = 'nav-dot on'; else if(dot) dot.className = 'nav-dot';
+  });
+}
+
+// ── NOTIFICATIONS PUSH ──
+function _ptnrCheckPushStatus(){
+  if(!('Notification' in window) || !('serviceWorker' in navigator)){
+    var bar = document.getElementById('ptnr-notif-bar'); if(bar) bar.style.display = 'none'; return;
+  }
+  if(Notification.permission === 'granted'){
+    var bar2 = document.getElementById('ptnr-notif-bar'); if(bar2) bar2.style.display = 'none';
+    _ptnrSubscribePush();
+  } else if(Notification.permission === 'default'){
+    var bar3 = document.getElementById('ptnr-notif-bar'); if(bar3) bar3.style.display = '';
+  } else {
+    var bar4 = document.getElementById('ptnr-notif-bar'); if(bar4) bar4.style.display = 'none';
+  }
+}
+
+function _ptnrEnablePush(){
+  Notification.requestPermission().then(function(perm){
+    if(perm==='granted') _ptnrSubscribePush();
+    var bar = document.getElementById('ptnr-notif-bar'); if(bar) bar.style.display = 'none';
+  });
+}
+
+function _urlBase64ToUint8Array(base64String){
+  var padding = '='.repeat((4 - base64String.length % 4) % 4);
+  var base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  var raw = window.atob(base64);
+  var arr = new Uint8Array(raw.length);
+  for(var i=0;i<raw.length;i++) arr[i] = raw.charCodeAt(i);
+  return arr;
+}
+
+function _ptnrSubscribePush(){
+  if(!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+  navigator.serviceWorker.ready.then(function(reg){
+    return fetch(_ptnrApiUrl()+'/api/push/vapid-public-key').then(function(r){return r.json();}).then(function(d){
+      return reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: _urlBase64ToUint8Array(d.publicKey)
+      });
+    }).then(function(subscription){
+      return fetch(_ptnrApiUrl()+'/api/push/subscribe',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+_ptnrToken},
+        body:JSON.stringify({subscription:subscription.toJSON(), email:_ptnrSession?_ptnrSession.email:'', role:'partner'})
+      });
+    });
+  }).catch(function(e){ console.log('[PARTNER PUSH]', e); });
+}
+
+// Called from nav() to check if partner is logged in when partner tab is shown
+var _ptnrNavOriginal = nav;
+// Extend nav() to handle partner tab logic
+(function(){
+  var _origNav = nav;
+  nav = function(tab){
+    _origNav(tab);
+    if(tab === 'partner'){
+      if(_ptnrToken && _ptnrSession){ _ptnrShowDash(); }
+    }
+  };
+})();
 
 // ── COWORKING BOOKING ─────────────────────────────────────────
 var _cwBookOffer=null, _cwBookSub=null, _cwBookIdx=null;
