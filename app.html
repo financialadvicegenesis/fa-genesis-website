@@ -3168,14 +3168,12 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
         <div class="reg-title" style="margin-bottom:8px;">Vérifiez votre identité</div>
         <div class="reg-sub" style="margin-bottom:24px;">Choisissez comment recevoir votre code de vérification à 6 chiffres.</div>
         <div class="lo-otp-card" onclick="sendOtpByEmail()">
-          <div class="lo-otp-card-icon">&#9993;</div>
           <div>
             <div class="lo-otp-card-title">Par email</div>
             <div class="lo-otp-card-sub" id="lo-otp-masked-email">Code envoyé par email</div>
           </div>
         </div>
         <div class="lo-otp-card" onclick="toggleSmsInput()" style="margin-bottom:4px;">
-          <div class="lo-otp-card-icon">&#128241;</div>
           <div>
             <div class="lo-otp-card-title">Par SMS</div>
             <div class="lo-otp-card-sub">Entrez votre numéro de téléphone</div>
