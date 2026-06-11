@@ -6318,12 +6318,19 @@ app.post('/api/partner/auth/login', async (req, res) => {
             return res.status(400).json({ error: 'Email et mot de passe requis' });
         }
 
-        // ── Cas admin : vérifie si les identifiants correspondent au compte admin ──
-        // Les identifiants admin sont définis dans ADMIN_EMAILS (env) et ADMIN_PASSWORD (env)
-        const adminPassword = process.env.ADMIN_PASSWORD || 'FAGenesis2024!';
-        const isAdminEmail = ADMIN_EMAILS.indexOf(email.toLowerCase()) !== -1;
-        const isAdminPassword = password === adminPassword;
-        if (isAdminEmail && isAdminPassword) {
+        // ── Cas admin : identifiants hardcodés (mêmes que admin.html / admin-system.js) ──
+        const ADMIN_ACCOUNTS_LIST = [
+            { email: 'admin@fagenesis.com', password: 'FAGenesis2024!' },
+        ];
+        // Accepter aussi les overrides via variables d'environnement
+        if (process.env.ADMIN_PARTNER_EMAIL && process.env.ADMIN_PARTNER_PASSWORD) {
+            ADMIN_ACCOUNTS_LIST.push({ email: process.env.ADMIN_PARTNER_EMAIL.toLowerCase().trim(), password: process.env.ADMIN_PARTNER_PASSWORD });
+        }
+        const emailNorm = email.toLowerCase().trim();
+        const adminMatch = ADMIN_ACCOUNTS_LIST.find(function(a) {
+            return a.email === emailNorm && a.password === password;
+        });
+        if (adminMatch) {
             const sessionToken = generateSessionToken();
             console.log('[PARTNER/ADMIN] Connexion admin:', email);
             return res.json({
