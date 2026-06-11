@@ -1366,7 +1366,7 @@ app.post('/api/orders/create', (req, res) => {
         saveOrders(orders);
 
         // Push admin : nouvelle commande
-        sendPushToRole('admin', { title: 'FA GENESIS — Nouvelle commande', body: (order.client_info ? order.client_info.first_name + ' ' + order.client_info.last_name : '') + ' — ' + (order.product_name || ''), icon: '/assets/images/logo-favicon-192.png', badge: '/assets/images/logo-favicon-32.png', url: '/admin.html', tag: 'commande' });
+        sendPushToRole('admin', { title: 'FA GENESIS — Nouvelle commande', body: (order.client_info ? order.client_info.first_name + ' ' + order.client_info.last_name : '') + ' — ' + (order.product_name || ''), icon: '/assets/images/logo-favicon-192.png', badge: '/assets/images/logo-favicon-32.png', url: '/app.html#open-admin', tag: 'commande' });
 
         // Envoyer email de notification au partenaire coworking pour chaque réservation
         if (pendingReservations && pendingReservations.length > 0) {
@@ -2001,7 +2001,7 @@ app.post('/api/payments/sumup/webhook', async (req, res) => {
                 var pushClientEmail = updatedOrder.client_info.email;
                 var pushMsgClient = stage === 'deposit' ? 'Votre acompte a été reçu. Votre accompagnement démarre !' : 'Votre paiement complet a été confirmé. Merci !';
                 sendPushToUser(pushClientEmail, { title: 'Paiement confirmé ✅', body: pushMsgClient, icon: '/assets/images/logo-favicon-192.png', badge: '/assets/images/logo-favicon-32.png', url: '/espace-client.html', tag: 'paiement' });
-                sendPushToRole('admin', { title: 'Paiement reçu', body: (updatedOrder.client_info.first_name || '') + ' — ' + (updatedOrder.product_name || '') + ' — ' + (stage === 'deposit' ? 'acompte' : 'solde'), icon: '/assets/images/logo-favicon-192.png', badge: '/assets/images/logo-favicon-32.png', url: '/admin.html', tag: 'paiement-admin' });
+                sendPushToRole('admin', { title: 'Paiement reçu', body: (updatedOrder.client_info.first_name || '') + ' — ' + (updatedOrder.product_name || '') + ' — ' + (stage === 'deposit' ? 'acompte' : 'solde'), icon: '/assets/images/logo-favicon-192.png', badge: '/assets/images/logo-favicon-32.png', url: '/app.html#open-admin', tag: 'paiement-admin' });
             }
 
             // Envoyer les emails appropriés
@@ -4340,7 +4340,7 @@ app.post('/api/auth/register', async (req, res) => {
 
         console.log(`[AUTH] Nouvel utilisateur inscrit: ${newUser.id} - ${email}`);
         // Push admin : nouvelle inscription
-        sendPushToRole('admin', { title: 'FA GENESIS — Nouvelle inscription', body: prenom + ' ' + nom + ' vient de s\'inscrire.', icon: '/assets/images/logo-favicon-192.png', badge: '/assets/images/logo-favicon-32.png', url: '/admin.html', tag: 'inscription' });
+        sendPushToRole('admin', { title: 'FA GENESIS — Nouvelle inscription', body: prenom + ' ' + nom + ' vient de s\'inscrire.', icon: '/assets/images/logo-favicon-192.png', badge: '/assets/images/logo-favicon-32.png', url: '/app.html#open-admin', tag: 'inscription' });
 
         // Email de bienvenue au client (invitation a decouvrir les offres)
         emailService.sendWelcomeEmail(email, prenom)
@@ -5501,9 +5501,9 @@ app.post('/api/messages', function(req, res) {
         // Push au destinataire
         var senderDisplayName = ((user.prenom || '') + ' ' + (user.nom || '')).trim() || user.email;
         if (toType === 'admin') {
-            sendPushToRole('admin', { title: 'Message de ' + senderDisplayName, body: content.substring(0, 100), icon: '/assets/images/logo-favicon-192.png', badge: '/assets/images/logo-favicon-32.png', url: '/admin.html', tag: 'message-client' });
+            sendPushToRole('admin', { title: 'Message de ' + senderDisplayName, body: content.substring(0, 100), icon: '/assets/images/logo-favicon-192.png', badge: '/assets/images/logo-favicon-32.png', url: '/app.html#open-admin', tag: 'message-client' });
         } else if (toType === 'partner' && toEmail) {
-            sendPushToUser(toEmail, { title: 'Message de ' + senderDisplayName, body: content.substring(0, 100), icon: '/assets/images/logo-favicon-192.png', badge: '/assets/images/logo-favicon-32.png', url: '/partner-dashboard.html', tag: 'message-client' });
+            sendPushToUser(toEmail, { title: 'Message de ' + senderDisplayName, body: content.substring(0, 100), icon: '/assets/images/logo-favicon-192.png', badge: '/assets/images/logo-favicon-32.png', url: '/app.html#open-partner', tag: 'message-client' });
         }
         res.json({ ok: true, message: newMsg });
     } catch (err) {
@@ -9698,7 +9698,7 @@ app.post('/api/coworking/messages', function(req, res) {
         saveCwMessages(all);
         // Push au destinataire
         if (isPartner) {
-            sendPushToRole('partner', { title: 'Nouveau message client', body: (senderName || 'Client') + ' : ' + content.substring(0, 80), icon: '/assets/images/logo-favicon-192.png', badge: '/assets/images/logo-favicon-32.png', url: '/coworking-partner.html', tag: 'message-cw' });
+            sendPushToRole('partner', { title: 'Nouveau message client', body: (senderName || 'Client') + ' : ' + content.substring(0, 80), icon: '/assets/images/logo-favicon-192.png', badge: '/assets/images/logo-favicon-32.png', url: '/app.html#open-partner', tag: 'message-cw' });
         } else {
             // Trouver l'email du client pour lui envoyer le push si le partenaire répond
             var resForPush = loadReservations().find(function(r) { return r.id === reservationId; });

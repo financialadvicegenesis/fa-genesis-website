@@ -113,12 +113,32 @@ self.addEventListener('push', function(event) {
 self.addEventListener('notificationclick', function(event) {
   event.notification.close();
   var targetUrl = (event.notification.data && event.notification.data.url) || '/';
+  var isAdmin = targetUrl.indexOf('admin') !== -1;
+  var isPartner = targetUrl.indexOf('partner') !== -1;
+
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(list) {
+      // Chercher une fenêtre app.html déjà ouverte
+      var appClient = null;
       for (var i = 0; i < list.length; i++) {
-        if (list[i].url.indexOf(targetUrl) !== -1 && 'focus' in list[i]) return list[i].focus();
+        var cu = list[i].url || '';
+        if (cu.indexOf('/app') !== -1 || cu.indexOf('app.html') !== -1) {
+          appClient = list[i]; break;
+        }
       }
-      if (clients.openWindow) return clients.openWindow(targetUrl);
+      if (appClient) {
+        if ('focus' in appClient) appClient.focus();
+        if (isAdmin) appClient.postMessage({ action: 'open-admin-panel' });
+        else if (isPartner) appClient.postMessage({ action: 'open-partner-tab' });
+        return;
+      }
+      // Aucune fenêtre app ouverte — en ouvrir une avec le hash d'action
+      if (clients.openWindow) {
+        var openUrl = '/app.html';
+        if (isAdmin) openUrl = '/app.html#open-admin';
+        else if (isPartner) openUrl = '/app.html#open-partner';
+        return clients.openWindow(openUrl);
+      }
     })
   );
 });

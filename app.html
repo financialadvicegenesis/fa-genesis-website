@@ -1277,7 +1277,11 @@ a{text-decoration:none;color:inherit}
         <div class="ptnr-login-wrap" style="text-align:center;">
           <div style="font-size:48px;margin-bottom:16px;">👑</div>
           <div class="ptnr-login-title" style="margin-bottom:10px;">Espace Admin</div>
-          <div style="font-size:13px;color:#888;margin-bottom:28px;line-height:1.6;">Vous êtes connecté en tant qu'administrateur FA GENESIS.</div>
+          <div style="font-size:13px;color:#888;margin-bottom:20px;line-height:1.6;">Vous êtes connecté en tant qu'administrateur FA GENESIS.</div>
+          <div class="ptnr-notif-bar" id="admin-notif-bar" style="display:none;text-align:left;margin-bottom:20px;">
+            <div class="ptnr-notif-txt">🔔 Activez les alertes pour recevoir les nouvelles commandes, paiements et messages en temps réel</div>
+            <button class="ptnr-notif-btn" onclick="_adminEnablePush()">Activer</button>
+          </div>
           <button class="ptnr-login-btn" onclick="_openAdminPanel()">OUVRIR L'ESPACE ADMIN</button>
           <button style="width:100%;background:transparent;border:1px solid #333;color:#888;font-size:12px;font-weight:700;padding:14px;border-radius:10px;cursor:pointer;margin-top:12px;" onclick="_ptnrLogout()">Se déconnecter</button>
         </div>
@@ -3429,6 +3433,7 @@ function _ptnrShowScreen(name){
   screens.forEach(function(id){ var el=document.getElementById(id); if(el) el.style.display='none'; });
   var show = name==='login'?'ptnr-login-screen':name==='admin'?'ptnr-admin-screen':name==='profiles'?'ptnr-profile-screen':'ptnr-dash-screen';
   var el = document.getElementById(show); if(el) el.style.display='';
+  if(name === 'admin') setTimeout(_adminCheckPushStatus, 300);
 }
 
 // ── PROFILE SELECTOR ──
@@ -3950,6 +3955,77 @@ function _ptnrSubscribePush(){
     });
   }).catch(function(e){ console.log('[PARTNER PUSH]', e); });
 }
+
+// ── ADMIN PUSH NOTIFICATIONS ──
+function _adminCheckPushStatus(){
+  var bar = document.getElementById('admin-notif-bar');
+  if(!('Notification' in window) || !('serviceWorker' in navigator)){
+    if(bar) bar.style.display='none'; return;
+  }
+  if(Notification.permission === 'granted'){
+    if(bar) bar.style.display='none';
+    _adminSubscribePush();
+  } else if(Notification.permission === 'default'){
+    if(bar) bar.style.display='';
+  } else {
+    if(bar) bar.style.display='none';
+  }
+}
+
+function _adminEnablePush(){
+  Notification.requestPermission().then(function(perm){
+    if(perm==='granted') _adminSubscribePush();
+    var bar = document.getElementById('admin-notif-bar'); if(bar) bar.style.display='none';
+  });
+}
+
+function _adminSubscribePush(){
+  if(!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+  navigator.serviceWorker.ready.then(function(reg){
+    return fetch(_ptnrApiUrl()+'/api/push/vapid-public-key').then(function(r){return r.json();}).then(function(d){
+      return reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: _urlBase64ToUint8Array(d.publicKey)
+      });
+    }).then(function(subscription){
+      return fetch(_ptnrApiUrl()+'/api/push/subscribe',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({subscription:subscription.toJSON(), email:'admin@fagenesis.com', role:'admin'})
+      });
+    });
+  }).catch(function(e){ console.log('[ADMIN PUSH]', e); });
+}
+
+// ── SW MESSAGE HANDLER : routing des clics de notification ──
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.addEventListener('message', function(event){
+    if(!event.data) return;
+    if(event.data.action === 'open-admin-panel'){
+      nav('partner');
+      setTimeout(_openAdminPanel, 300);
+    } else if(event.data.action === 'open-partner-tab'){
+      nav('partner');
+    }
+  });
+}
+
+// Hash routing : quand l'appli était fermée au moment du clic sur la notification
+(function(){
+  var _initHash = window.location.hash;
+  if(_initHash === '#open-admin' || _initHash === '#open-partner'){
+    document.addEventListener('DOMContentLoaded', function(){
+      setTimeout(function(){
+        history.replaceState(null, '', window.location.pathname);
+        nav('partner');
+        if(_initHash === '#open-admin'){
+          var isAdmin = _ptnrSession && (_ptnrSession.role==='admin'||_ptnrSession.partner_type==='admin');
+          if(isAdmin) setTimeout(_openAdminPanel, 500);
+        }
+      }, 900);
+    });
+  }
+})();
 
 // Extend nav() to handle partner tab logic
 (function(){
