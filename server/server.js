@@ -1785,9 +1785,11 @@ app.post('/api/payments/cart/checkout', async (req, res) => {
             checkout_reference: checkoutRef,
             amount: parseFloat(amount.toFixed(2)),
             currency: currency || 'EUR',
-            pay_to_email: process.env.SUMUP_PAY_TO_EMAIL,
             description: description
         };
+        if (process.env.SUMUP_PAY_TO_EMAIL) {
+            checkoutData.pay_to_email = process.env.SUMUP_PAY_TO_EMAIL;
+        }
 
         console.log('[SUMUP CART] Création checkout:', checkoutRef, amount + ' EUR');
         const checkoutResponse = await callSumUpAPI('/checkouts', 'POST', checkoutData);

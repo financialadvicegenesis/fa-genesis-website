@@ -2855,11 +2855,11 @@ function openPayOverlay(total, cartItems){
   if(!overlay || !sheet) return;
   var amtEl = document.getElementById('pay-amount-val');
   if(amtEl) amtEl.textContent = total.toFixed(2) + ' €';
-  document.getElementById('pay-loading').style.display = '';
+  var ldEl = document.getElementById('pay-loading'); if(ldEl) ldEl.style.display = '';
   var wc = document.getElementById('sumup-widget-container');
   if(wc){ wc.style.display = 'none'; wc.innerHTML = ''; }
-  document.getElementById('pay-success').style.display = 'none';
-  document.getElementById('pay-error-msg').style.display = 'none';
+  var okEl = document.getElementById('pay-success'); if(okEl) okEl.style.display = 'none';
+  var erEl = document.getElementById('pay-error-msg'); if(erEl) erEl.style.display = 'none';
   overlay.classList.add('open');
   void overlay.offsetHeight;
   setTimeout(function(){ sheet.classList.add('up'); }, 20);
@@ -2869,10 +2869,16 @@ function openPayOverlay(total, cartItems){
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
     body: JSON.stringify({ items: itemsPayload, total: total, currency: 'EUR' })
-  }).then(function(r){ return r.json(); }).then(function(res){
+  }).then(function(r){
+    var status = r.status;
+    return r.text().then(function(text){
+      try { return JSON.parse(text); }
+      catch(e) { throw new Error('Erreur serveur (' + status + '). Réessayez dans quelques instants.'); }
+    });
+  }).then(function(res){
     if(res.checkout_id){ _mountSumUpWidget(res.checkout_id, cartItems); }
-    else { _showPayError(res.error || res.details || 'Erreur lors de la création du paiement'); }
-  }).catch(function(e){ _showPayError('Erreur réseau : ' + e.message); });
+    else { _showPayError(res.details || res.error || 'Erreur lors de la création du paiement'); }
+  }).catch(function(e){ _showPayError(e.message || 'Erreur de connexion au serveur de paiement.'); });
 }
 
 function _mountSumUpWidget(checkoutId, cartItems){
@@ -2914,9 +2920,9 @@ function _mountSumUpWidget(checkoutId, cartItems){
 }
 
 function _showPayError(msg){
-  document.getElementById('pay-loading').style.display = 'none';
+  var ldEl = document.getElementById('pay-loading'); if(ldEl) ldEl.style.display = 'none';
   var errEl = document.getElementById('pay-error-msg');
-  if(errEl){ errEl.textContent = msg; errEl.style.display = ''; }
+  if(errEl){ errEl.textContent = msg || 'Erreur de paiement.'; errEl.style.display = ''; }
 }
 
 function closePayOverlay(){
