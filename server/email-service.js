@@ -2052,35 +2052,31 @@ async function sendOtpEmail(email, prenom, otpCode) {
 }
 
 async function sendOtpSms(phone, otpCode) {
-    var sid = process.env.TWILIO_ACCOUNT_SID;
-    var token = process.env.TWILIO_AUTH_TOKEN;
-    var from = process.env.TWILIO_PHONE_NUMBER;
+    var apiKey = process.env.BREVO_API_KEY;
+    if (!apiKey) throw new Error('BREVO_API_KEY non configuré');
 
-    if (!sid || !token || !from) {
-        throw new Error('Service SMS non configuré (variables TWILIO manquantes).');
-    }
+    var body = JSON.stringify({
+        sender: 'FAGENESIS',
+        recipient: phone,
+        content: 'FA GENESIS - Votre code : ' + otpCode + '. Valable 10 minutes. Ne le partagez pas.',
+        type: 'transactional'
+    });
 
-    var message = 'FA GENESIS - Votre code : ' + otpCode + '. Valable 10 minutes. Ne le partagez pas.';
-    var params = 'From=' + encodeURIComponent(from) + '&To=' + encodeURIComponent(phone) + '&Body=' + encodeURIComponent(message);
-    var auth = Buffer.from(sid + ':' + token).toString('base64');
-
-    var response = await fetch(
-        'https://api.twilio.com/2010-04-01/Accounts/' + sid + '/Messages.json',
-        {
-            method: 'POST',
-            headers: {
-                'Authorization': 'Basic ' + auth,
-                'Content-Type': 'application/x-www-form-urlencoded'
-            },
-            body: params
-        }
-    );
+    var response = await fetch('https://api.brevo.com/v3/transactionalSMS/sms', {
+        method: 'POST',
+        headers: {
+            'api-key': apiKey,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        },
+        body: body
+    });
 
     var result = await response.json();
     if (!response.ok) {
-        throw new Error('Twilio erreur ' + response.status + ' : ' + (result.message || JSON.stringify(result)));
+        throw new Error('Brevo SMS erreur ' + response.status + ' : ' + (result.message || JSON.stringify(result)));
     }
-    console.log('[SMS] OTP envoyé via Twilio à ' + phone + ' (SID: ' + result.sid + ')');
+    console.log('[SMS] OTP envoyé via Brevo à ' + phone);
 }
 
 module.exports = {
