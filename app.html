@@ -811,7 +811,17 @@ a{text-decoration:none;color:inherit}
 .reg-input::placeholder{color:#444;}
 .reg-pw-wrap{position:relative;}
 .reg-pw-wrap .reg-input{padding-right:48px;}
-.reg-eye{position:absolute;right:14px;top:50%;transform:translateY(-50%);background:none;border:none;color:#555;font-size:17px;cursor:pointer;padding:4px;line-height:1;}
+.reg-eye{position:absolute;right:14px;top:50%;transform:translateY(-50%);background:none;border:none;color:#666;cursor:pointer;padding:4px;line-height:0;display:flex;align-items:center;}
+.lo-otp-card{background:#1a1a1a;border:2px solid #2a2a2a;border-radius:12px;padding:16px 18px;cursor:pointer;display:flex;align-items:center;gap:16px;transition:border-color .2s,background .2s;margin-bottom:12px;}
+.lo-otp-card:active{border-color:#FFD700;background:#1f1c00;}
+.lo-otp-card-icon{font-size:22px;flex-shrink:0;line-height:1;}
+.lo-otp-card-title{font-size:14px;font-weight:700;color:#fff;margin-bottom:2px;}
+.lo-otp-card-sub{font-size:12px;color:#888;}
+.lo-otp-digits{display:flex;gap:8px;justify-content:center;margin:24px 0 8px;}
+.lo-otp-digit{width:42px;height:54px;background:#1a1a1a;border:2px solid #2a2a2a;border-radius:8px;text-align:center;font-size:24px;font-weight:900;color:#fff;font-family:'Unbounded',cursive;outline:none;caret-color:transparent;-webkit-appearance:none;}
+.lo-otp-digit:focus{border-color:#FFD700;}
+.lo-otp-digit.filled{border-color:#555;}
+@keyframes lo-shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-7px)}40%{transform:translateX(7px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}
 .reg-err{font-size:12px;color:#ff5555;margin-top:5px;display:none;}
 .reg-err.on{display:block;}
 .reg-cta{margin-top:auto;padding-top:20px;}
@@ -2445,12 +2455,14 @@ function showLoginSheet(){
   if(!overlay||!sheet) return;
   var e=document.getElementById('lo-email'); if(e) e.value='';
   var p=document.getElementById('lo-pwd'); if(p){p.value='';p.type='password';}
-  var eye=document.getElementById('lo-eye'); if(eye) eye.textContent='👁';
+  var eye=document.getElementById('lo-eye'); if(eye) eye.innerHTML=EYE_OPEN_SVG;
   var err=document.getElementById('lo-err'); if(err) err.classList.remove('on');
   var btn=document.getElementById('lo-btn'); if(btn){btn.disabled=false;btn.textContent='SE CONNECTER';}
-  // reset panes
-  var pLogin=document.getElementById('lo-pane-login'); if(pLogin) pLogin.style.transform='translateX(0)';
-  var pForgot=document.getElementById('lo-pane-forgot'); if(pForgot) pForgot.style.transform='translateX(110%)';
+  // reset all panes
+  ['lo-pane-login','lo-pane-forgot','lo-pane-otp-method','lo-pane-otp-code'].forEach(function(id,i){
+    var el=document.getElementById(id); if(el){el.style.transition='none';el.style.transform=i===0?'translateX(0)':'translateX(110%)';}
+  });
+  _loCurrentPane='login'; _loPendingToken=null;
   var hdr=document.getElementById('lo-hdr-title'); if(hdr) hdr.textContent='CONNEXION';
   var back=document.getElementById('lo-back-btn'); if(back) back.style.visibility='hidden';
   var fpErr=document.getElementById('lo-fp-err'); if(fpErr) fpErr.classList.remove('on');
@@ -2458,32 +2470,22 @@ function showLoginSheet(){
   var fpBtn=document.getElementById('lo-fp-btn'); if(fpBtn){fpBtn.disabled=false;fpBtn.textContent='ENVOYER LE LIEN';}
   var emailStep=document.getElementById('lo-fp-email-step'); if(emailStep) emailStep.style.display='';
   var successStep=document.getElementById('lo-fp-success-step'); if(successStep) successStep.style.display='none';
+  var smsInput=document.getElementById('lo-otp-sms-input'); if(smsInput) smsInput.style.display='none';
+  var otpMethodErr=document.getElementById('lo-otp-method-err'); if(otpMethodErr) otpMethodErr.classList.remove('on');
+  for(var _i=0;_i<6;_i++){var _d=document.getElementById('lo-otp-d'+_i);if(_d){_d.value='';_d.classList.remove('filled');}}
   overlay.classList.add('open');
   setTimeout(function(){ sheet.classList.add('up'); }, 20);
   setTimeout(function(){ var inp=document.getElementById('lo-email'); if(inp) inp.focus(); }, 500);
 }
 function showForgotPane(){
-  var pLogin=document.getElementById('lo-pane-login'); if(pLogin) pLogin.style.transition='transform .38s cubic-bezier(.4,0,.2,1)';
-  var pForgot=document.getElementById('lo-pane-forgot'); if(pForgot) pForgot.style.transition='transform .38s cubic-bezier(.4,0,.2,1)';
-  if(pLogin) pLogin.style.transform='translateX(-110%)';
-  if(pForgot) pForgot.style.transform='translateX(0)';
-  var hdr=document.getElementById('lo-hdr-title'); if(hdr) hdr.textContent='MOT DE PASSE';
-  var back=document.getElementById('lo-back-btn'); if(back) back.style.visibility='visible';
-  setTimeout(function(){ var inp=document.getElementById('lo-fp-email'); if(inp) inp.focus(); }, 400);
+  _loPaneTo('forgot','forward');
+  setTimeout(function(){var inp=document.getElementById('lo-fp-email');if(inp)inp.focus();},400);
 }
-function hideForgotPane(){
-  var pLogin=document.getElementById('lo-pane-login'); if(pLogin) pLogin.style.transition='transform .38s cubic-bezier(.4,0,.2,1)';
-  var pForgot=document.getElementById('lo-pane-forgot'); if(pForgot) pForgot.style.transition='transform .38s cubic-bezier(.4,0,.2,1)';
-  if(pLogin) pLogin.style.transform='translateX(0)';
-  if(pForgot) pForgot.style.transform='translateX(110%)';
-  var hdr=document.getElementById('lo-hdr-title'); if(hdr) hdr.textContent='CONNEXION';
-  var back=document.getElementById('lo-back-btn'); if(back) back.style.visibility='hidden';
-}
+function hideForgotPane(){ _loPaneTo('login','back'); }
 function loBack(){
-  var pForgot=document.getElementById('lo-pane-forgot');
-  if(pForgot&&pForgot.style.transform==='translateX(0px)'||pForgot&&pForgot.style.transform==='translateX(0)'){
-    hideForgotPane(); return;
-  }
+  if(_loCurrentPane==='forgot'){_loPaneTo('login','back');return;}
+  if(_loCurrentPane==='otp-method'){_loPaneTo('login','back');return;}
+  if(_loCurrentPane==='otp-code'){_loPaneTo('otp-method','back');return;}
   closeLoginSheet();
 }
 function doForgotPassword(){
@@ -2516,11 +2518,31 @@ function closeLoginSheet(){
   sheet.classList.remove('up');
   setTimeout(function(){ overlay.classList.remove('open'); }, 460);
 }
+var EYE_OPEN_SVG='<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+var EYE_OFF_SVG='<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+// OTP state
+var _loPendingToken=null, _loCurrentPane='login', _loOtpChannel='email', _loOtpPhone=null, _loMaskedEmail='', _loResendTimer=null;
+function _loGetDeviceToken(){try{return localStorage.getItem('fa_genesis_device')||null;}catch(e){return null;}}
+function _loPaneTo(pane,dir){
+  var ids={login:'lo-pane-login',forgot:'lo-pane-forgot','otp-method':'lo-pane-otp-method','otp-code':'lo-pane-otp-code'};
+  var curEl=document.getElementById(ids[_loCurrentPane]); var nextEl=document.getElementById(ids[pane]);
+  if(!nextEl) return;
+  var fromX=(dir==='back')?'-110%':'110%'; var toX=(dir==='back')?'110%':'-110%';
+  nextEl.style.transition='none'; nextEl.style.transform='translateX('+fromX+')';
+  void nextEl.offsetHeight;
+  var tr='transform .38s cubic-bezier(.4,0,.2,1)';
+  nextEl.style.transition=tr; nextEl.style.transform='translateX(0)';
+  if(curEl){curEl.style.transition=tr; curEl.style.transform='translateX('+toX+')';}
+  _loCurrentPane=pane;
+  var titles={login:'CONNEXION',forgot:'MOT DE PASSE','otp-method':'VÉRIFICATION','otp-code':'VÉRIFICATION'};
+  var hdr=document.getElementById('lo-hdr-title'); if(hdr) hdr.textContent=titles[pane]||'';
+  var back=document.getElementById('lo-back-btn'); if(back) back.style.visibility=(pane==='login')?'hidden':'visible';
+}
 function loginTogglePwd(){
   var inp=document.getElementById('lo-pwd'); var btn=document.getElementById('lo-eye');
   if(!inp) return;
   inp.type=inp.type==='password'?'text':'password';
-  if(btn) btn.textContent=inp.type==='password'?'👁':'🙈';
+  if(btn) btn.innerHTML=inp.type==='password'?EYE_OPEN_SVG:EYE_OFF_SVG;
 }
 function doAppLogin(){
   var email=((document.getElementById('lo-email')||{}).value||'').trim();
@@ -2534,22 +2556,19 @@ function doAppLogin(){
   if(btn){btn.disabled=true;btn.textContent='Connexion...';}
   fetch((window.FA_GENESIS_API||API)+'/api/auth/login',{
     method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({email:email,password:pwd})
+    body:JSON.stringify({email:email,password:pwd,deviceToken:_loGetDeviceToken()})
   }).then(function(r){return r.json();}).then(function(res){
     if(btn){btn.disabled=false;btn.textContent='SE CONNECTER';}
+    if(res&&res.requiresOtp){
+      _loPendingToken=res.pendingToken;
+      _loMaskedEmail=res.maskedEmail||email;
+      var maskedEl=document.getElementById('lo-otp-masked-email');
+      if(maskedEl) maskedEl.textContent='Code envoyé à '+_loMaskedEmail;
+      _loPaneTo('otp-method','forward');
+      return;
+    }
     if(res&&res.token){
-      try{
-        localStorage.setItem('fa_genesis_session',JSON.stringify(res.user||res));
-        localStorage.setItem('fa_genesis_token',res.token);
-      }catch(e){}
-      USER=res.user||res; USER._token=res.token; GUEST=false;
-      closeLoginSheet();
-      var welcome=document.getElementById('welcome');
-      if(welcome&&welcome.style.display!=='none'){ showApp(); return; }
-      var fn=USER.prenom||USER.firstName||(USER.email||'').split('@')[0];
-      var greet=document.getElementById('greetName'); if(greet) greet.textContent=fn;
-      var av=document.getElementById('hdrAvatar'); if(av) av.textContent=(fn[0]||'U').toUpperCase();
-      loadStatusCard(); renderResaTab(); renderMsgTab(); renderProfil();
+      _loOnLoginSuccess(res);
     } else {
       var msg=(res&&(res.message||res.error))||'Email ou mot de passe incorrect.';
       if(err){err.textContent=msg;err.classList.add('on');}
@@ -2557,6 +2576,164 @@ function doAppLogin(){
   }).catch(function(){
     if(btn){btn.disabled=false;btn.textContent='SE CONNECTER';}
     if(err){err.textContent='Erreur réseau. Vérifiez votre connexion.';err.classList.add('on');}
+  });
+}
+function _loOnLoginSuccess(res){
+  try{
+    localStorage.setItem('fa_genesis_session',JSON.stringify(res.user||res));
+    localStorage.setItem('fa_genesis_token',res.token);
+  }catch(e){}
+  if(res.deviceToken){try{localStorage.setItem('fa_genesis_device',res.deviceToken);}catch(e){}}
+  USER=res.user||res; USER._token=res.token; GUEST=false;
+  closeLoginSheet();
+  var welcome=document.getElementById('welcome');
+  if(welcome&&welcome.style.display!=='none'){showApp();return;}
+  var fn=USER.prenom||USER.firstName||(USER.email||'').split('@')[0];
+  var greet=document.getElementById('greetName'); if(greet) greet.textContent=fn;
+  var av=document.getElementById('hdrAvatar'); if(av) av.textContent=(fn[0]||'U').toUpperCase();
+  loadStatusCard(); renderResaTab(); renderMsgTab(); renderProfil();
+}
+// OTP functions
+function toggleSmsInput(){
+  var el=document.getElementById('lo-otp-sms-input');
+  if(!el) return;
+  var isOpen=el.style.display!=='none';
+  el.style.display=isOpen?'none':'';
+  if(!isOpen) setTimeout(function(){var p=document.getElementById('lo-otp-phone');if(p)p.focus();},100);
+}
+function sendOtpByEmail(){
+  var errEl=document.getElementById('lo-otp-method-err'); if(errEl) errEl.classList.remove('on');
+  var card=document.querySelector('.lo-otp-card'); if(card){card.style.pointerEvents='none';card.style.opacity='.65';}
+  _loOtpChannel='email';
+  fetch((window.FA_GENESIS_API||API)+'/api/auth/send-otp',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({pendingToken:_loPendingToken,channel:'email',phone:null})
+  }).then(function(r){return r.json();}).then(function(res){
+    if(card){card.style.pointerEvents='';card.style.opacity='';}
+    if(res&&res.ok){
+      _loShowOtpCode(res.maskedDest||_loMaskedEmail);
+    } else {
+      if(errEl){errEl.textContent=(res&&(res.message||res.error))||'Erreur envoi.';errEl.classList.add('on');}
+    }
+  }).catch(function(){
+    if(card){card.style.pointerEvents='';card.style.opacity='';}
+    if(errEl){errEl.textContent='Erreur réseau.';errEl.classList.add('on');}
+  });
+}
+function sendOtpBySms(){
+  var phone=((document.getElementById('lo-otp-phone')||{}).value||'').replace(/\s/g,'');
+  var errEl=document.getElementById('lo-otp-method-err'); if(errEl) errEl.classList.remove('on');
+  if(!phone||!/^\+[0-9]{8,15}$/.test(phone)){
+    if(errEl){errEl.textContent='Format requis : +33 6 12 34 56 78';errEl.classList.add('on');} return;
+  }
+  _loOtpChannel='sms'; _loOtpPhone=phone;
+  var btn=document.getElementById('lo-otp-sms-btn'); if(btn){btn.disabled=true;btn.textContent='Envoi...';}
+  fetch((window.FA_GENESIS_API||API)+'/api/auth/send-otp',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({pendingToken:_loPendingToken,channel:'sms',phone:phone})
+  }).then(function(r){return r.json();}).then(function(res){
+    if(btn){btn.disabled=false;btn.textContent='ENVOYER LE CODE PAR SMS';}
+    if(res&&res.ok){
+      _loShowOtpCode(res.maskedDest||phone);
+    } else {
+      if(errEl){errEl.textContent=(res&&(res.message||res.error))||'Erreur envoi SMS.';errEl.classList.add('on');}
+    }
+  }).catch(function(){
+    if(btn){btn.disabled=false;btn.textContent='ENVOYER LE CODE PAR SMS';}
+    if(errEl){errEl.textContent='Erreur réseau.';errEl.classList.add('on');}
+  });
+}
+function _loShowOtpCode(maskedDest){
+  var dest=document.getElementById('lo-otp-dest'); if(dest) dest.textContent=maskedDest;
+  _loPaneTo('otp-code','forward');
+  _setupOtpDigits();
+  _loStartResendCountdown(45);
+}
+function _setupOtpDigits(){
+  var ids=['lo-otp-d0','lo-otp-d1','lo-otp-d2','lo-otp-d3','lo-otp-d4','lo-otp-d5'];
+  ids.forEach(function(id,i){
+    var inp=document.getElementById(id); if(!inp) return;
+    inp.value=''; inp.classList.remove('filled');
+    inp.oninput=function(){
+      var v=inp.value.replace(/[^0-9]/g,'').slice(-1);
+      inp.value=v; inp.classList.toggle('filled',v.length>0);
+      if(v&&i<5){var nxt=document.getElementById(ids[i+1]);if(nxt)nxt.focus();}
+      if(i===5&&v) setTimeout(doVerifyOtp,100);
+    };
+    inp.onkeydown=function(e){
+      if((e.key==='Backspace'||e.keyCode===8)&&!inp.value&&i>0){
+        var prev=document.getElementById(ids[i-1]);
+        if(prev){prev.value='';prev.classList.remove('filled');prev.focus();}
+      }
+    };
+    inp.onpaste=function(e){
+      e.preventDefault();
+      var pasted=((e.clipboardData||window.clipboardData).getData('text')||'').replace(/[^0-9]/g,'').slice(0,6);
+      for(var j=0;j<pasted.length&&j<6;j++){var el=document.getElementById(ids[j]);if(el){el.value=pasted[j];el.classList.add('filled');}}
+      if(pasted.length===6) setTimeout(doVerifyOtp,100);
+      else {var nxt=document.getElementById(ids[Math.min(pasted.length,5)]);if(nxt)nxt.focus();}
+    };
+  });
+  setTimeout(function(){var d=document.getElementById('lo-otp-d0');if(d)d.focus();},400);
+}
+function _loStartResendCountdown(secs){
+  if(_loResendTimer) clearInterval(_loResendTimer);
+  var resendLink=document.getElementById('lo-otp-resend-link');
+  var countdownEl=document.getElementById('lo-otp-countdown');
+  if(resendLink) resendLink.style.display='none';
+  var remaining=secs;
+  _loResendTimer=setInterval(function(){
+    remaining--;
+    if(countdownEl) countdownEl.textContent='Renvoyer dans '+remaining+'s';
+    if(remaining<=0){
+      clearInterval(_loResendTimer);
+      if(resendLink) resendLink.style.display='';
+      if(countdownEl) countdownEl.textContent='';
+    }
+  },1000);
+}
+function loOtpResend(){
+  var errEl=document.getElementById('lo-otp-code-err'); if(errEl) errEl.classList.remove('on');
+  var payload={pendingToken:_loPendingToken,channel:_loOtpChannel,phone:_loOtpPhone||null};
+  fetch((window.FA_GENESIS_API||API)+'/api/auth/send-otp',{
+    method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)
+  }).then(function(r){return r.json();}).then(function(res){
+    if(res&&res.ok){
+      _loStartResendCountdown(45);
+      if(errEl){errEl.style.color='#FFD700';errEl.textContent='Code renvoyé !';errEl.classList.add('on');}
+      setTimeout(function(){if(errEl){errEl.classList.remove('on');errEl.style.color='';}},3000);
+    } else {
+      if(errEl){errEl.style.color='';errEl.textContent=(res&&(res.message||res.error))||'Erreur.';errEl.classList.add('on');}
+    }
+  }).catch(function(){
+    if(errEl){errEl.style.color='';errEl.textContent='Erreur réseau.';errEl.classList.add('on');}
+  });
+}
+function doVerifyOtp(){
+  var otp='';
+  for(var i=0;i<6;i++){var d=document.getElementById('lo-otp-d'+i);otp+=((d&&d.value)||'');}
+  var errEl=document.getElementById('lo-otp-code-err');
+  if(otp.length<6){if(errEl){errEl.style.color='';errEl.textContent='Entrez les 6 chiffres.';errEl.classList.add('on');}return;}
+  if(errEl) errEl.classList.remove('on');
+  var vBtn=document.getElementById('lo-otp-verify-btn'); if(vBtn){vBtn.disabled=true;vBtn.textContent='Vérification...';}
+  fetch((window.FA_GENESIS_API||API)+'/api/auth/verify-otp',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({pendingToken:_loPendingToken,otp:otp})
+  }).then(function(r){return r.json();}).then(function(res){
+    if(vBtn){vBtn.disabled=false;vBtn.textContent='VÉRIFIER';}
+    if(res&&res.token){
+      _loOnLoginSuccess(res);
+    } else {
+      var msg=(res&&(res.message||res.error))||'Code incorrect.';
+      if(errEl){errEl.style.color='';errEl.textContent=msg;errEl.classList.add('on');}
+      var digs=document.querySelector('.lo-otp-digits');
+      if(digs){digs.style.animation='none';void digs.offsetHeight;digs.style.animation='lo-shake .4s ease';}
+      for(var j=0;j<6;j++){var d2=document.getElementById('lo-otp-d'+j);if(d2){d2.value='';d2.classList.remove('filled');}}
+      setTimeout(function(){var d0=document.getElementById('lo-otp-d0');if(d0)d0.focus();},100);
+    }
+  }).catch(function(){
+    if(vBtn){vBtn.disabled=false;vBtn.textContent='VÉRIFIER';}
+    if(errEl){errEl.style.color='';errEl.textContent='Erreur réseau.';errEl.classList.add('on');}
   });
 }
 
@@ -2915,7 +3092,7 @@ function regTogglePwd(inputId, btnId){
   var inp=document.getElementById(inputId); var btn=document.getElementById(btnId);
   if(!inp) return;
   inp.type=(inp.type==='password')?'text':'password';
-  if(btn) btn.textContent=(inp.type==='password')?'👁':'🙈';
+  if(btn) btn.innerHTML=(inp.type==='password')?EYE_OPEN_SVG:EYE_OFF_SVG;
 }
 
 function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
@@ -2953,7 +3130,7 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
           <label class="reg-label" for="lo-pwd">Mot de passe</label>
           <div class="reg-pw-wrap">
             <input id="lo-pwd" class="reg-input" type="password" placeholder="&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;" autocomplete="current-password" onkeydown="if(event.key==='Enter'||event.keyCode===13)doAppLogin()">
-            <button class="reg-eye" id="lo-eye" onclick="loginTogglePwd()" type="button">&#128065;</button>
+            <button class="reg-eye" id="lo-eye" onclick="loginTogglePwd()" type="button"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
           </div>
         </div>
         <div class="reg-err" id="lo-err"></div>
@@ -2982,9 +3159,55 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
         <div id="lo-fp-success-step" style="display:none;text-align:center;padding-top:24px;">
           <div style="width:72px;height:72px;border-radius:50%;background:#FFD700;display:flex;align-items:center;justify-content:center;margin:0 auto 24px;font-size:36px;font-weight:900;color:#000;">&#10003;</div>
           <div class="reg-title" style="margin-bottom:12px;">Email envoyé !</div>
-          <div class="reg-sub" style="margin-bottom:28px;">Un lien de réinitialisation vous a été envoyé. Vérifiez aussi vos spams. Le lien est valable 1 heure.</div>
+          <div class="reg-sub" style="margin-bottom:28px;">Un lien de réinitialisation vous a été envoyé. Vérifiez aussi vos spams. Le lien est valable 24 heures.</div>
           <button class="reg-btn" onclick="hideForgotPane()">RETOUR À LA CONNEXION</button>
         </div>
+      <!-- Pane 3 : OTP - choix méthode -->
+      <div id="lo-pane-otp-method" style="position:absolute;inset:0;overflow-y:auto;padding:24px 24px 32px;transform:translateX(110%);">
+        <div class="reg-title" style="margin-bottom:8px;">Vérifiez votre identité</div>
+        <div class="reg-sub" style="margin-bottom:24px;">Choisissez comment recevoir votre code de vérification à 6 chiffres.</div>
+        <div class="lo-otp-card" onclick="sendOtpByEmail()">
+          <div class="lo-otp-card-icon">&#9993;</div>
+          <div>
+            <div class="lo-otp-card-title">Par email</div>
+            <div class="lo-otp-card-sub" id="lo-otp-masked-email">Code envoyé par email</div>
+          </div>
+        </div>
+        <div class="lo-otp-card" onclick="toggleSmsInput()" style="margin-bottom:4px;">
+          <div class="lo-otp-card-icon">&#128241;</div>
+          <div>
+            <div class="lo-otp-card-title">Par SMS</div>
+            <div class="lo-otp-card-sub">Entrez votre numéro de téléphone</div>
+          </div>
+        </div>
+        <div id="lo-otp-sms-input" style="display:none;margin:4px 0 0;padding:12px 0 0;">
+          <input id="lo-otp-phone" class="reg-input" type="tel" placeholder="+33 6 12 34 56 78" autocomplete="tel" style="margin-bottom:10px;" onkeydown="if(event.key==='Enter'||event.keyCode===13)sendOtpBySms()">
+          <button class="reg-btn" id="lo-otp-sms-btn" onclick="sendOtpBySms()">ENVOYER LE CODE PAR SMS</button>
+        </div>
+        <div class="reg-err" id="lo-otp-method-err" style="margin-top:12px;"></div>
+      </div>
+      <!-- Pane 4 : OTP - saisie du code -->
+      <div id="lo-pane-otp-code" style="position:absolute;inset:0;overflow-y:auto;padding:24px 24px 32px;transform:translateX(110%);">
+        <div class="reg-title" style="margin-bottom:4px;">Code envoyé</div>
+        <div class="reg-sub">Entrez le code à 6 chiffres envoyé à</div>
+        <div id="lo-otp-dest" style="color:#FFD700;font-weight:700;font-size:13px;margin:4px 0 28px;word-break:break-all;"></div>
+        <div class="lo-otp-digits">
+          <input class="lo-otp-digit" id="lo-otp-d0" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1" autocomplete="one-time-code">
+          <input class="lo-otp-digit" id="lo-otp-d1" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1">
+          <input class="lo-otp-digit" id="lo-otp-d2" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1">
+          <input class="lo-otp-digit" id="lo-otp-d3" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1">
+          <input class="lo-otp-digit" id="lo-otp-d4" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1">
+          <input class="lo-otp-digit" id="lo-otp-d5" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1">
+        </div>
+        <div class="reg-err" id="lo-otp-code-err"></div>
+        <div class="reg-cta" style="padding-top:8px;">
+          <button class="reg-btn" id="lo-otp-verify-btn" onclick="doVerifyOtp()">VÉRIFIER</button>
+          <div style="text-align:center;margin-top:16px;">
+            <a href="#" id="lo-otp-resend-link" onclick="loOtpResend();return false;" style="font-size:13px;color:#FFD700;font-weight:700;text-decoration:none;display:none;">Renvoyer le code</a>
+            <span id="lo-otp-countdown" style="font-size:13px;color:#888;"></span>
+          </div>
+        </div>
+      </div>
       </div>
     </div>
   </div>
@@ -3122,7 +3345,7 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
           <label class="reg-label" for="reg-pwd">Mot de passe</label>
           <div class="reg-pw-wrap">
             <input id="reg-pwd" class="reg-input" type="password" placeholder="&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;" autocomplete="new-password" onkeydown="regHandleEnter(event,regStep2)">
-            <button class="reg-eye" id="reg-eye1" onclick="regTogglePwd('reg-pwd','reg-eye1')" type="button">&#128065;</button>
+            <button class="reg-eye" id="reg-eye1" onclick="regTogglePwd('reg-pwd','reg-eye1')" type="button"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
           </div>
           <div class="reg-err" id="reg-err-pwd">Minimum 8 caractères requis</div>
         </div>
@@ -3130,7 +3353,7 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
           <label class="reg-label" for="reg-pwd2">Confirmer le mot de passe</label>
           <div class="reg-pw-wrap">
             <input id="reg-pwd2" class="reg-input" type="password" placeholder="&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;" autocomplete="new-password" onkeydown="regHandleEnter(event,regStep2)">
-            <button class="reg-eye" id="reg-eye2" onclick="regTogglePwd('reg-pwd2','reg-eye2')" type="button">&#128065;</button>
+            <button class="reg-eye" id="reg-eye2" onclick="regTogglePwd('reg-pwd2','reg-eye2')" type="button"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
           </div>
           <div class="reg-err" id="reg-err-pwd2">Les mots de passe ne correspondent pas</div>
         </div>

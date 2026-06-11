@@ -4289,20 +4289,38 @@ app.post('/api/auth/login', async (req, res) => {
             });
         }
 
-        // Generer un nouveau token de session
-        const sessionToken = generateSessionToken();
+        // Vérifier si l'appareil est déjà de confiance
+        const { deviceToken } = req.body;
+        const isTrustedDevice = deviceToken &&
+            Array.isArray(user.trustedDevices) &&
+            user.trustedDevices.some(function(d) { return d.token === deviceToken; });
 
-        // Mettre a jour l'utilisateur
+        if (!isTrustedDevice) {
+            // Premier accès sur cet appareil → demander OTP
+            const pendingToken = crypto.randomBytes(32).toString('hex');
+            users[userIndex].pending_token = pendingToken;
+            users[userIndex].pending_token_expires = Date.now() + 600000; // 10min
+            saveUsers(users);
+            const emailParts = user.email.split('@');
+            const maskedEmail = emailParts[0].slice(0,2) + '***@' + emailParts[1];
+            console.log(`[AUTH] OTP requis: ${email}`);
+            return res.json({ requiresOtp: true, pendingToken, maskedEmail });
+        }
+
+        // Appareil de confiance → connexion directe
+        const sessionToken = generateSessionToken();
         users[userIndex].sessionToken = sessionToken;
         users[userIndex].lastLogin = new Date().toISOString();
         users[userIndex].updatedAt = new Date().toISOString();
         saveUsers(users);
 
-        console.log(`[AUTH] Connexion: ${user.id} - ${email}`);
+        console.log(`[AUTH] Connexion (appareil connu): ${user.id} - ${email}`);
 
-        // Retourner l'utilisateur (sans le mot de passe)
         const userResponse = { ...users[userIndex] };
         delete userResponse.password;
+        delete userResponse.trustedDevices;
+        delete userResponse.otp_code;
+        delete userResponse.pending_token;
 
         res.json({
             success: true,
@@ -4653,6 +4671,112 @@ app.post('/api/auth/reset-password', async (req, res) => {
 
     } catch (error) {
         console.error('[RESET PWD]', error);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * POST /api/auth/send-otp
+ * Génère et envoie un code OTP à 6 chiffres (email ou SMS)
+ */
+app.post('/api/auth/send-otp', async (req, res) => {
+    try {
+        const { pendingToken, channel, phone } = req.body;
+        if (!pendingToken || !channel) return res.status(400).json({ error: 'Données manquantes' });
+
+        const users = loadUsers();
+        const userIndex = users.findIndex(function(u) {
+            return u.pending_token === pendingToken && u.pending_token_expires && u.pending_token_expires > Date.now();
+        });
+        if (userIndex === -1) return res.status(400).json({ error: 'Session expirée. Recommencez la connexion.' });
+
+        const user = users[userIndex];
+
+        // Générer OTP à 6 chiffres
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        users[userIndex].otp_code = otp;
+        users[userIndex].otp_expires = Date.now() + 600000; // 10min
+        users[userIndex].otp_attempts = 0;
+
+        let maskedDest;
+        if (channel === 'sms') {
+            if (!phone) return res.status(400).json({ error: 'Numéro requis' });
+            saveUsers(users);
+            try { await emailService.sendOtpSms(phone, otp); } catch(e) { console.error('[OTP SMS]', e.message); }
+            maskedDest = phone.slice(0, 4) + '****' + phone.slice(-2);
+        } else {
+            saveUsers(users);
+            try { await emailService.sendOtpEmail(user.email, user.prenom || 'Client', otp); } catch(e) { console.error('[OTP EMAIL]', e.message); }
+            const ep = user.email.split('@');
+            maskedDest = ep[0].slice(0, 2) + '***@' + ep[1];
+        }
+
+        console.log('[OTP] Code envoyé (' + channel + '): ' + user.email);
+        res.json({ ok: true, maskedDest });
+    } catch (error) {
+        console.error('[SEND OTP]', error);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * POST /api/auth/verify-otp
+ * Valide le code OTP et retourne le token de session + token d'appareil
+ */
+app.post('/api/auth/verify-otp', async (req, res) => {
+    try {
+        const { pendingToken, otp } = req.body;
+        if (!pendingToken || !otp) return res.status(400).json({ error: 'Données manquantes' });
+
+        const users = loadUsers();
+        const userIndex = users.findIndex(function(u) {
+            return u.pending_token === pendingToken && u.pending_token_expires && u.pending_token_expires > Date.now();
+        });
+        if (userIndex === -1) return res.status(400).json({ error: 'Session expirée. Recommencez la connexion.' });
+
+        users[userIndex].otp_attempts = (users[userIndex].otp_attempts || 0) + 1;
+        if (users[userIndex].otp_attempts > 5) {
+            saveUsers(users);
+            return res.status(429).json({ error: 'Trop de tentatives. Recommencez la connexion.' });
+        }
+
+        if (!users[userIndex].otp_code || users[userIndex].otp_expires < Date.now() || users[userIndex].otp_code !== otp) {
+            saveUsers(users);
+            return res.status(400).json({ error: 'Code incorrect. Vérifiez le code reçu.' });
+        }
+
+        // OTP valide → générer token appareil de confiance
+        const deviceToken = crypto.randomBytes(32).toString('hex');
+        if (!Array.isArray(users[userIndex].trustedDevices)) users[userIndex].trustedDevices = [];
+        users[userIndex].trustedDevices.push({ token: deviceToken, createdAt: new Date().toISOString() });
+        if (users[userIndex].trustedDevices.length > 5) users[userIndex].trustedDevices.shift(); // max 5 appareils
+
+        // Nettoyer OTP et pending token
+        users[userIndex].otp_code = null;
+        users[userIndex].otp_expires = null;
+        users[userIndex].otp_attempts = 0;
+        users[userIndex].pending_token = null;
+        users[userIndex].pending_token_expires = null;
+
+        // Générer session
+        const sessionToken = generateSessionToken();
+        users[userIndex].sessionToken = sessionToken;
+        users[userIndex].lastLogin = new Date().toISOString();
+        users[userIndex].updatedAt = new Date().toISOString();
+        saveUsers(users);
+
+        console.log('[OTP] Vérifié, appareil enregistré: ' + users[userIndex].email);
+
+        const userResponse = { ...users[userIndex] };
+        delete userResponse.password;
+        delete userResponse.trustedDevices;
+        delete userResponse.otp_code;
+        delete userResponse.pending_token;
+        delete userResponse.reset_token;
+
+        res.json({ success: true, user: userResponse, token: sessionToken, deviceToken });
+    } catch (error) {
+        console.error('[VERIFY OTP]', error);
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });

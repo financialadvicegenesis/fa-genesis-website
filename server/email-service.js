@@ -2029,6 +2029,48 @@ async function sendPasswordResetEmail(email, prenom, resetLink) {
     }
 }
 
+async function sendOtpEmail(email, prenom, otpCode) {
+    var transport = initializeTransporter();
+    if (!transport) { console.warn('[OTP EMAIL] Transport non configuré'); return; }
+    var content = '<h2 style="font-family:Unbounded,cursive;font-size:20px;font-weight:900;margin:0 0 20px;color:#000;">Code de vérification</h2>'
+        + '<p style="color:#555;font-size:15px;line-height:1.6;margin:0 0 8px;">Bonjour ' + (prenom || 'Client') + ',</p>'
+        + '<p style="color:#555;font-size:15px;line-height:1.6;margin:0 0 24px;">Voici votre code de vérification FA GENESIS. Ne le partagez avec personne.</p>'
+        + '<div style="text-align:center;margin:32px 0;">'
+        + '<div style="display:inline-block;background:#111;color:#FFD700;font-family:Courier New,monospace;font-size:38px;font-weight:900;letter-spacing:10px;padding:20px 32px;border-radius:12px;border:2px solid #FFD700;">'
+        + otpCode + '</div></div>'
+        + '<p style="color:#888;font-size:13px;line-height:1.6;margin:24px 0 0;">Ce code est valable <strong>10 minutes</strong>. Ne le partagez jamais.</p>';
+    var html = getEmailTemplate(content, 'Code de vérification — FA GENESIS');
+    try {
+        await transport.sendMail({
+            from: '"FA GENESIS" <noreply@fagenesis.com>',
+            to: email,
+            subject: 'Votre code FA GENESIS : ' + otpCode,
+            html: html
+        });
+        console.log('[OTP EMAIL] Envoyé à ' + email);
+    } catch(e) { console.error('[OTP EMAIL]', e.message); }
+}
+
+async function sendOtpSms(phone, otpCode) {
+    var apiKey = process.env.BREVO_API_KEY;
+    if (!apiKey) { console.warn('[SMS] BREVO_API_KEY non configuré — SMS non envoyé'); return; }
+    var body = JSON.stringify({
+        sender: 'FAGENESIS',
+        recipient: phone,
+        content: 'FA GENESIS - Code : ' + otpCode + '. Valable 10 min. Ne le partagez pas.'
+    });
+    try {
+        var response = await fetch('https://api.brevo.com/v3/transactionalSMS/sms', {
+            method: 'POST',
+            headers: { 'api-key': apiKey, 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: body
+        });
+        var result = await response.json();
+        if (!response.ok) { console.error('[SMS] Erreur Brevo:', JSON.stringify(result)); }
+        else { console.log('[SMS] OTP envoyé à ' + phone); }
+    } catch(e) { console.error('[SMS]', e.message); }
+}
+
 module.exports = {
     initializeTransporter,
     sendContactConfirmation,
@@ -2056,7 +2098,9 @@ module.exports = {
     sendUrgentFeedbackNotification,
     sendCwDevisToClient,
     sendCwReservationToPartner,
-    sendPasswordResetEmail
+    sendPasswordResetEmail,
+    sendOtpEmail,
+    sendOtpSms
 };
 
 /**
