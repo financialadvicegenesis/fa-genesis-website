@@ -6297,13 +6297,50 @@ app.delete('/api/admin/sessions/:sessionId', (req, res) => {
 // ENDPOINTS PARTENAIRES - AUTHENTIFICATION
 // ============================================================
 
-// Connexion partenaire
+// ── Sous-profils partenaires (plusieurs personnes sur un compte partagé) ──
+const SUBPROFILES_FILE = path.join(__dirname, 'data', 'partner-subprofiles.json');
+
+function loadSubProfiles() {
+    try {
+        if (fs.existsSync(SUBPROFILES_FILE)) return JSON.parse(fs.readFileSync(SUBPROFILES_FILE, 'utf8'));
+    } catch(e) {}
+    return [];
+}
+function saveSubProfiles(profiles) {
+    try { fs.writeFileSync(SUBPROFILES_FILE, JSON.stringify(profiles, null, 2)); } catch(e) {}
+}
+
+// Connexion partenaire (+ admin via email admin)
 app.post('/api/partner/auth/login', async (req, res) => {
     try {
         const { email, password } = req.body;
         if (!email || !password) {
             return res.status(400).json({ error: 'Email et mot de passe requis' });
         }
+
+        // ── Cas admin : l'email est un email administrateur ──
+        const isAdminEmail = ADMIN_EMAILS.indexOf(email.toLowerCase()) !== -1;
+        if (isAdminEmail) {
+            const users = loadUsers();
+            const adminUser = users.find(u => u.email.toLowerCase() === email.toLowerCase());
+            if (!adminUser) return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
+            const validPwd = await bcrypt.compare(password, adminUser.password);
+            if (!validPwd) return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
+            const sessionToken = generateSessionToken();
+            const uIdx = users.findIndex(u => u.email.toLowerCase() === email.toLowerCase());
+            users[uIdx].sessionToken = sessionToken;
+            users[uIdx].lastLogin = new Date().toISOString();
+            saveUsers(users);
+            console.log('[PARTNER/ADMIN] Connexion admin:', email);
+            return res.json({
+                success: true,
+                role: 'admin',
+                partner: { id: adminUser.id, email: adminUser.email, prenom: adminUser.prenom || adminUser.firstName || 'Admin', nom: adminUser.nom || adminUser.lastName || '', partner_type: 'admin', role: 'admin' },
+                token: sessionToken
+            });
+        }
+
+        // ── Cas partenaire normal ──
         const partner = getPartnerByEmail(email);
         if (!partner) {
             return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
@@ -6332,6 +6369,57 @@ app.post('/api/partner/auth/login', async (req, res) => {
         console.error('[PARTNER] Erreur login:', error);
         res.status(500).json({ error: 'Erreur lors de la connexion' });
     }
+});
+
+// ── GET /api/partner/subprofiles — liste les sous-profils du compte partenaire connecté ──
+app.get('/api/partner/subprofiles', authenticatePartner, (req, res) => {
+    try {
+        const all = loadSubProfiles();
+        const mine = all.filter(p => p.partnerId === req.partner.id);
+        res.json({ success: true, profiles: mine.map(p => ({ id: p.id, name: p.name, initials: p.initials, hasPin: !!p.pinHash, createdAt: p.createdAt })) });
+    } catch(e) { res.status(500).json({ error: 'Erreur serveur' }); }
+});
+
+// ── POST /api/partner/subprofiles — créer un sous-profil ──
+app.post('/api/partner/subprofiles', authenticatePartner, async (req, res) => {
+    try {
+        const { name, initials, pin } = req.body;
+        if (!name || !initials) return res.status(400).json({ error: 'Nom et initiales requis' });
+        const all = loadSubProfiles();
+        const existing = all.filter(p => p.partnerId === req.partner.id);
+        if (existing.find(p => p.name.toLowerCase() === name.toLowerCase())) {
+            return res.status(409).json({ error: 'Un profil avec ce nom existe déjà' });
+        }
+        const pinHash = pin ? await bcrypt.hash(pin, 10) : null;
+        const profile = {
+            id: 'PRF-' + require('crypto').randomBytes(4).toString('hex').toUpperCase(),
+            partnerId: req.partner.id,
+            partnerType: req.partner.partner_type,
+            name: name.trim(),
+            initials: initials.trim().toUpperCase().substring(0, 3),
+            pinHash,
+            createdAt: new Date().toISOString()
+        };
+        all.push(profile);
+        saveSubProfiles(all);
+        console.log('[SUBPROFILE] Créé:', profile.id, 'pour', req.partner.email);
+        res.json({ success: true, profile: { id: profile.id, name: profile.name, initials: profile.initials, hasPin: !!pinHash } });
+    } catch(e) { res.status(500).json({ error: 'Erreur serveur' }); }
+});
+
+// ── POST /api/partner/subprofiles/:id/verify-pin — vérifier le code PIN d'un sous-profil ──
+app.post('/api/partner/subprofiles/:id/verify-pin', authenticatePartner, async (req, res) => {
+    try {
+        const { pin } = req.body;
+        const all = loadSubProfiles();
+        const profile = all.find(p => p.id === req.params.id && p.partnerId === req.partner.id);
+        if (!profile) return res.status(404).json({ error: 'Profil introuvable' });
+        if (!profile.pinHash) return res.json({ success: true });
+        if (!pin) return res.status(400).json({ error: 'Code PIN requis' });
+        const valid = await bcrypt.compare(pin, profile.pinHash);
+        if (!valid) return res.status(401).json({ error: 'Code PIN incorrect' });
+        res.json({ success: true });
+    } catch(e) { res.status(500).json({ error: 'Erreur serveur' }); }
 });
 
 // Infos partenaire connecte

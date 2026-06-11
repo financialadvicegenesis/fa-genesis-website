@@ -929,6 +929,19 @@ a{text-decoration:none;color:inherit}
 .ptnr-notif-bar{background:#111;border:1px solid #1e1e1e;border-radius:12px;padding:14px 16px;margin:16px;display:flex;align-items:center;justify-content:space-between;gap:12px;}
 .ptnr-notif-txt{font-size:12px;color:#aaa;flex:1;}
 .ptnr-notif-btn{background:#FFD700;color:#000;font-size:11px;font-weight:900;padding:8px 14px;border:none;border-radius:8px;cursor:pointer;white-space:nowrap;}
+.ptnr-profile-card{background:#111;border:1px solid #1e1e1e;border-radius:14px;padding:16px;margin-bottom:10px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:border-color .15s;}
+.ptnr-profile-card:active{border-color:#FFD700;}
+.ptnr-profile-initials{width:48px;height:48px;border-radius:50%;background:#FFD700;color:#000;font-weight:900;font-size:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:'Unbounded',sans-serif;}
+.ptnr-profile-info{flex:1;}
+.ptnr-profile-name{font-size:14px;font-weight:900;color:#fff;}
+.ptnr-profile-sub{font-size:11px;color:#888;margin-top:2px;}
+.ptnr-profile-arrow{color:#333;font-size:18px;}
+.ptnr-folder-row{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px;}
+.ptnr-folder{background:#111;border:1px solid #1e1e1e;border-radius:14px;padding:16px 12px;text-align:center;}
+.ptnr-folder.locked{opacity:.6;}
+.ptnr-folder-ico{font-size:32px;margin-bottom:8px;}
+.ptnr-folder-label{font-size:11px;font-weight:900;color:#fff;text-transform:uppercase;letter-spacing:.3px;}
+.ptnr-folder-sub{font-size:10px;color:#555;margin-top:3px;}
 #pay-overlay{display:none;position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,.72);backdrop-filter:blur(4px);align-items:flex-end;justify-content:center;}
 #pay-overlay.open{display:flex;animation:regFadeIn .2s ease;}
 #pay-sheet{width:100%;max-width:480px;background:#0d0d0d;border-radius:20px 20px 0 0;border-top:3px solid #FFD700;max-height:92vh;display:flex;flex-direction:column;overflow:hidden;transform:translateY(100%);transition:transform .45s cubic-bezier(.34,1.56,.64,1);}
@@ -1255,6 +1268,51 @@ a{text-decoration:none;color:inherit}
           <input class="ptnr-input" id="ptnr-pass" type="password" placeholder="Mot de passe" autocomplete="current-password" onkeydown="if(event.key==='Enter')_ptnrLogin()">
           <div class="ptnr-login-err" id="ptnr-login-err"></div>
           <button class="ptnr-login-btn" id="ptnr-login-btn" onclick="_ptnrLogin()">SE CONNECTER</button>
+        </div>
+      </div>
+
+      <!-- Admin redirect screen -->
+      <div id="ptnr-admin-screen" style="display:none;">
+        <div class="ptnr-login-wrap" style="text-align:center;">
+          <div style="font-size:48px;margin-bottom:16px;">👑</div>
+          <div class="ptnr-login-title" style="margin-bottom:10px;">Espace Admin</div>
+          <div style="font-size:13px;color:#888;margin-bottom:28px;line-height:1.6;">Vous êtes connecté en tant qu'administrateur FA GENESIS.</div>
+          <button class="ptnr-login-btn" onclick="window.location.href='admin.html'">OUVRIR L'ESPACE ADMIN</button>
+          <button style="width:100%;background:transparent;border:1px solid #333;color:#888;font-size:12px;font-weight:700;padding:14px;border-radius:10px;cursor:pointer;margin-top:12px;" onclick="_ptnrLogout()">Se déconnecter</button>
+        </div>
+      </div>
+
+      <!-- Profile selector screen (shown after partner login, before dashboard) -->
+      <div id="ptnr-profile-screen" style="display:none;">
+        <div style="padding:20px 16px 8px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+            <div style="font-family:'Unbounded',sans-serif;font-size:13px;font-weight:900;color:#FFD700;">Qui êtes-vous ?</div>
+            <button style="background:transparent;border:none;color:#555;font-size:11px;cursor:pointer;font-weight:700;" onclick="_ptnrLogout()">Déconnexion</button>
+          </div>
+          <div style="font-size:12px;color:#888;margin-bottom:20px;">Sélectionnez votre profil pour accéder à votre espace personnel.</div>
+          <div id="ptnr-profile-list"></div>
+          <button class="ptnr-login-btn" style="margin-top:8px;" onclick="_ptnrShowCreateProfile()">+ Créer mon profil</button>
+        </div>
+        <!-- PIN verify overlay (hidden inside profile screen) -->
+        <div id="ptnr-pin-overlay" style="display:none;position:fixed;inset:0;z-index:9700;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;padding:20px;">
+          <div style="background:#111;border:1px solid #2a2a2a;border-radius:16px;padding:28px 20px;width:100%;max-width:340px;">
+            <div style="font-size:14px;font-weight:900;color:#fff;margin-bottom:6px;">Code PIN</div>
+            <div style="font-size:12px;color:#888;margin-bottom:16px;">Entrez votre code PIN pour accéder à votre espace.</div>
+            <input class="ptnr-input" id="ptnr-pin-input" type="number" placeholder="Code PIN" style="letter-spacing:8px;font-size:20px;text-align:center;">
+            <div class="ptnr-login-err" id="ptnr-pin-err"></div>
+            <button class="ptnr-login-btn" id="ptnr-pin-btn" onclick="_ptnrVerifyPin()" style="margin-top:8px;">VALIDER</button>
+            <button style="width:100%;background:transparent;border:none;color:#555;font-size:12px;font-weight:700;padding:12px;cursor:pointer;" onclick="_ptnrClosePinOverlay()">Annuler</button>
+          </div>
+        </div>
+        <!-- Create profile form -->
+        <div id="ptnr-create-profile-form" style="display:none;padding:0 16px;">
+          <div style="font-size:13px;font-weight:900;color:#fff;margin-bottom:16px;padding-top:8px;">Créer mon profil</div>
+          <input class="ptnr-input" id="ptnr-new-name" type="text" placeholder="Votre prénom et nom (ex: Jean Dupont)">
+          <input class="ptnr-input" id="ptnr-new-initials" type="text" placeholder="Initiales (ex: JD)" maxlength="3" style="text-transform:uppercase;">
+          <input class="ptnr-input" id="ptnr-new-pin" type="number" placeholder="Code PIN personnel (optionnel)">
+          <div class="ptnr-login-err" id="ptnr-create-err"></div>
+          <button class="ptnr-login-btn" id="ptnr-create-btn" onclick="_ptnrCreateProfile()" style="margin-top:4px;">CRÉER MON PROFIL</button>
+          <button style="width:100%;background:transparent;border:none;color:#555;font-size:12px;font-weight:700;padding:12px;cursor:pointer;" onclick="_ptnrHideCreateProfile()">Annuler</button>
         </div>
       </div>
 
@@ -3272,11 +3330,21 @@ function _ptnrInit(){
   _ptnrToken = localStorage.getItem('fa_genesis_partner_token') || null;
   if(_ptnrToken){
     var nb = document.getElementById('nb-partner'); if(nb) nb.style.display = '';
+    var stored = localStorage.getItem('fa_genesis_partner_data');
+    if(stored){ try{ _ptnrSession = JSON.parse(stored); }catch(e){} }
     _ptnrFetch('/api/partner/auth/me').then(function(data){
       if(data && data.partner){
         _ptnrSession = data.partner;
-        _ptnrRefreshBadges();
-        _ptnrCheckPushStatus();
+        localStorage.setItem('fa_genesis_partner_data', JSON.stringify(data.partner));
+        // Admin: go straight to admin screen if partner tab is active
+        var savedProfileId = localStorage.getItem('fa_genesis_partner_profile');
+        if(_ptnrSession.partner_type === 'admin' || _ptnrSession.role === 'admin'){
+          // admin doesn't need a profile
+        } else if(savedProfileId){
+          _ptnrSession._profileId = savedProfileId;
+          _ptnrRefreshBadges();
+          _ptnrCheckPushStatus();
+        }
       } else { _ptnrClearSession(); }
     }).catch(function(){ _ptnrClearSession(); });
   }
@@ -3287,6 +3355,8 @@ function _ptnrClearSession(){
   localStorage.removeItem('fa_genesis_partner_token');
   var nb = document.getElementById('nb-partner'); if(nb) nb.style.display = 'none';
 }
+
+var _ptnrPendingProfileId = null; // profile being PIN-verified
 
 function _ptnrLogin(){
   var emailEl = document.getElementById('ptnr-email');
@@ -3309,11 +3379,14 @@ function _ptnrLogin(){
       _ptnrToken = res.token;
       _ptnrSession = res.partner;
       localStorage.setItem('fa_genesis_partner_token', res.token);
-      var nb = document.getElementById('nb-partner'); if(nb) nb.style.display = '';
-      _ptnrShowDash();
-      _ptnrNav('home');
-      _ptnrRefreshBadges();
-      _ptnrCheckPushStatus();
+      localStorage.setItem('fa_genesis_partner_data', JSON.stringify(res.partner));
+      // Admin case → show admin screen
+      if(res.role === 'admin' || (res.partner && res.partner.partner_type === 'admin')){
+        _ptnrShowScreen('admin'); return;
+      }
+      // Partner → go to profile selector
+      _ptnrShowScreen('profiles');
+      _ptnrLoadProfileSelector();
     } else {
       var msg = (res.message || res.error || 'Identifiants incorrects.');
       if(errEl){errEl.textContent=msg;errEl.className='ptnr-login-err on';}
@@ -3324,28 +3397,153 @@ function _ptnrLogin(){
   });
 }
 
+function _ptnrShowScreen(name){
+  // name: 'login' | 'admin' | 'profiles' | 'dash'
+  var screens = ['ptnr-login-screen','ptnr-admin-screen','ptnr-profile-screen','ptnr-dash-screen'];
+  screens.forEach(function(id){ var el=document.getElementById(id); if(el) el.style.display='none'; });
+  var show = name==='login'?'ptnr-login-screen':name==='admin'?'ptnr-admin-screen':name==='profiles'?'ptnr-profile-screen':'ptnr-dash-screen';
+  var el = document.getElementById(show); if(el) el.style.display='';
+}
+
+// ── PROFILE SELECTOR ──
+function _ptnrLoadProfileSelector(){
+  var list = document.getElementById('ptnr-profile-list');
+  if(list) list.innerHTML = '<div style="text-align:center;padding:20px;color:#555;font-size:12px;">Chargement...</div>';
+  var cpf = document.getElementById('ptnr-create-profile-form'); if(cpf) cpf.style.display='none';
+  _ptnrFetch('/api/partner/subprofiles').then(function(data){
+    var profiles = data.profiles || [];
+    if(!profiles.length){
+      // Aucun profil → montrer directement la création
+      if(list) list.innerHTML = '<div style="text-align:center;padding:16px 0 8px;color:#888;font-size:13px;">Bienvenue ! Créez votre profil pour commencer.</div>';
+      _ptnrShowCreateProfile(); return;
+    }
+    var html = '';
+    profiles.forEach(function(p){
+      html += '<div class="ptnr-profile-card" onclick="_ptnrSelectProfile(\''+p.id+'\','+p.hasPin+')">';
+      html += '<div class="ptnr-profile-initials">'+p.initials+'</div>';
+      html += '<div class="ptnr-profile-info"><div class="ptnr-profile-name">'+p.name+'</div>';
+      html += '<div class="ptnr-profile-sub">'+(p.hasPin?'🔐 Code PIN activé':'Accès direct')+'</div></div>';
+      html += '<div class="ptnr-profile-arrow">›</div></div>';
+    });
+    if(list) list.innerHTML = html;
+  }).catch(function(){
+    if(list) list.innerHTML = '<div style="text-align:center;padding:16px;color:#ef4444;font-size:13px;">Erreur de chargement</div>';
+  });
+}
+
+function _ptnrSelectProfile(profileId, hasPin){
+  if(hasPin){
+    _ptnrPendingProfileId = profileId;
+    var pinInp = document.getElementById('ptnr-pin-input'); if(pinInp) pinInp.value='';
+    var pinErr = document.getElementById('ptnr-pin-err'); if(pinErr) pinErr.className='ptnr-login-err';
+    var ov = document.getElementById('ptnr-pin-overlay'); if(ov) ov.style.display='flex';
+  } else {
+    _ptnrEnterDashboard(profileId);
+  }
+}
+
+function _ptnrClosePinOverlay(){
+  var ov = document.getElementById('ptnr-pin-overlay'); if(ov) ov.style.display='none';
+  _ptnrPendingProfileId = null;
+}
+
+function _ptnrVerifyPin(){
+  var pin = (document.getElementById('ptnr-pin-input')||{}).value || '';
+  var errEl = document.getElementById('ptnr-pin-err');
+  var btnEl = document.getElementById('ptnr-pin-btn');
+  if(!pin){ if(errEl){errEl.textContent='Entrez votre code PIN.';errEl.className='ptnr-login-err on';} return; }
+  if(btnEl){btnEl.disabled=true;btnEl.textContent='Vérification...';}
+  _ptnrFetch('/api/partner/subprofiles/'+_ptnrPendingProfileId+'/verify-pin','POST',{pin:pin})
+  .then(function(res){
+    if(btnEl){btnEl.disabled=false;btnEl.textContent='VALIDER';}
+    if(res.success){
+      var ov = document.getElementById('ptnr-pin-overlay'); if(ov) ov.style.display='none';
+      _ptnrEnterDashboard(_ptnrPendingProfileId);
+      _ptnrPendingProfileId = null;
+    } else {
+      if(errEl){errEl.textContent='Code PIN incorrect.';errEl.className='ptnr-login-err on';}
+    }
+  }).catch(function(){
+    if(btnEl){btnEl.disabled=false;btnEl.textContent='VALIDER';}
+    if(errEl){errEl.textContent='Code PIN incorrect.';errEl.className='ptnr-login-err on';}
+  });
+}
+
+function _ptnrShowCreateProfile(){
+  var cpf = document.getElementById('ptnr-create-profile-form'); if(cpf) cpf.style.display='';
+  var nm = document.getElementById('ptnr-new-name'); if(nm) nm.value='';
+  var ini = document.getElementById('ptnr-new-initials'); if(ini) ini.value='';
+  var pin = document.getElementById('ptnr-new-pin'); if(pin) pin.value='';
+  var err = document.getElementById('ptnr-create-err'); if(err) err.className='ptnr-login-err';
+  // Auto-fill initials from name
+  var nmInp = document.getElementById('ptnr-new-name');
+  var iniInp = document.getElementById('ptnr-new-initials');
+  if(nmInp && iniInp){
+    nmInp.oninput = function(){
+      var words = nmInp.value.trim().split(' ');
+      iniInp.value = words.map(function(w){return w[0]||'';}).join('').toUpperCase().substring(0,3);
+    };
+  }
+}
+
+function _ptnrHideCreateProfile(){
+  var cpf = document.getElementById('ptnr-create-profile-form'); if(cpf) cpf.style.display='none';
+}
+
+function _ptnrCreateProfile(){
+  var name = (document.getElementById('ptnr-new-name')||{}).value || '';
+  var initials = (document.getElementById('ptnr-new-initials')||{}).value || '';
+  var pin = (document.getElementById('ptnr-new-pin')||{}).value || '';
+  var errEl = document.getElementById('ptnr-create-err');
+  var btnEl = document.getElementById('ptnr-create-btn');
+  if(!name.trim()||!initials.trim()){ if(errEl){errEl.textContent='Nom et initiales requis.';errEl.className='ptnr-login-err on';} return; }
+  if(errEl) errEl.className='ptnr-login-err';
+  if(btnEl){btnEl.disabled=true;btnEl.textContent='Création...';}
+  _ptnrFetch('/api/partner/subprofiles','POST',{name:name.trim(), initials:initials.trim().toUpperCase(), pin:pin||undefined})
+  .then(function(res){
+    if(btnEl){btnEl.disabled=false;btnEl.textContent='CRÉER MON PROFIL';}
+    if(res.success){
+      _ptnrEnterDashboard(res.profile.id);
+    } else {
+      if(errEl){errEl.textContent=res.error||'Erreur.';errEl.className='ptnr-login-err on';}
+    }
+  }).catch(function(){
+    if(btnEl){btnEl.disabled=false;btnEl.textContent='CRÉER MON PROFIL';}
+    if(errEl){errEl.textContent='Erreur de connexion.';errEl.className='ptnr-login-err on';}
+  });
+}
+
+function _ptnrEnterDashboard(profileId){
+  localStorage.setItem('fa_genesis_partner_profile', profileId);
+  _ptnrSession._profileId = profileId;
+  _ptnrShowDash();
+  _ptnrNav('home');
+  _ptnrRefreshBadges();
+  _ptnrCheckPushStatus();
+}
+
 function _ptnrLogout(){
-  if(_ptnrRefreshTimer) clearInterval(_ptnrRefreshTimer);
+  if(_ptnrRefreshTimer){ clearInterval(_ptnrRefreshTimer); _ptnrRefreshTimer = null; }
   if(_ptnrToken) _ptnrFetch('/api/partner/auth/logout','POST',{}).catch(function(){});
   _ptnrClearSession();
-  var ls = document.getElementById('ptnr-login-screen');
-  var ds = document.getElementById('ptnr-dash-screen');
-  if(ls) ls.style.display = '';
-  if(ds) ds.style.display = 'none';
+  localStorage.removeItem('fa_genesis_partner_profile');
+  localStorage.removeItem('fa_genesis_partner_profile_data');
+  localStorage.removeItem('fa_genesis_partner_data');
+  _ptnrShowScreen('login');
   nav('home');
 }
 
 function _ptnrShowDash(){
-  var ls = document.getElementById('ptnr-login-screen');
-  var ds = document.getElementById('ptnr-dash-screen');
-  if(ls) ls.style.display = 'none';
-  if(ds) ds.style.display = '';
+  _ptnrShowScreen('dash');
   if(_ptnrSession){
     var p = _ptnrSession;
-    var nm = p.name || p.email || 'Partenaire';
-    var av = document.getElementById('ptnr-avatar'); if(av) av.textContent = (nm[0]||'P').toUpperCase();
+    var savedProfile = null;
+    try { savedProfile = JSON.parse(localStorage.getItem('fa_genesis_partner_profile_data')||'null'); } catch(e){}
+    var nm = (savedProfile && savedProfile.name) || p.prenom || p.name || p.email || 'Partenaire';
+    var ini = (savedProfile && savedProfile.initials) || (nm[0]||'P').toUpperCase();
+    var av = document.getElementById('ptnr-avatar'); if(av) av.textContent = ini;
     var dn = document.getElementById('ptnr-display-name'); if(dn) dn.textContent = nm;
-    var dt = document.getElementById('ptnr-display-type'); if(dt) dt.textContent = p.type || p.role || '';
+    var dt = document.getElementById('ptnr-display-type'); if(dt) dt.textContent = p.partner_type || p.type || p.role || '';
   }
   if(!_ptnrRefreshTimer) _ptnrRefreshTimer = setInterval(_ptnrRefreshBadges, 30000);
 }
@@ -3376,21 +3574,49 @@ function _ptnrLoadHome(){
   Promise.all([
     _ptnrFetch('/api/partner/projects').catch(function(){return [];}),
     _ptnrFetch('/api/partner/quotes').catch(function(){return [];}),
-    _ptnrFetch('/api/partner/inbox').catch(function(){return [];})
+    _ptnrFetch('/api/partner/inbox').catch(function(){return [];}),
+    _ptnrFetch('/api/partner/subprofiles').catch(function(){return {profiles:[]};})
   ]).then(function(results){
     var projets = Array.isArray(results[0]) ? results[0] : (results[0].projects||[]);
     var devis = Array.isArray(results[1]) ? results[1] : (results[1].quotes||[]);
     var inbox = Array.isArray(results[2]) ? results[2] : (results[2].messages||results[2].inbox||[]);
+    var allProfiles = results[3].profiles || [];
+    var currentProfileId = _ptnrSession && _ptnrSession._profileId;
+    var currentProfile = allProfiles.find(function(p){return p.id===currentProfileId;}) || {initials:'?', name:'Moi'};
+    var otherProfiles = allProfiles.filter(function(p){return p.id!==currentProfileId;});
+
     var pendingDevis = devis.filter(function(q){return q.status==='pending'||q.status==='open';}).length;
     var unreadMsg = inbox.filter(function(m){return m.unread||m.isUnread;}).length;
     var sp = document.getElementById('ptnr-stat-projets'); if(sp) sp.textContent = projets.length;
     var sd = document.getElementById('ptnr-stat-devis'); if(sd) sd.textContent = pendingDevis;
     var sm = document.getElementById('ptnr-stat-msg'); if(sm) sm.textContent = unreadMsg || inbox.length;
+
     var html = '';
+
+    // ── Dossiers : mon dossier ouvert + dossiers des autres verrouillés ──
+    if(allProfiles.length > 0){
+      html += '<div style="font-size:11px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.5px;padding:16px 0 10px;">Mes dossiers</div>';
+      html += '<div class="ptnr-folder-row">';
+      // Mon dossier (ouvert)
+      html += '<div class="ptnr-folder" style="border:1px solid #FFD700;cursor:pointer;" onclick="_ptnrNav(\'projets\')">';
+      html += '<div class="ptnr-folder-ico">📂</div>';
+      html += '<div class="ptnr-folder-label">'+currentProfile.initials+'</div>';
+      html += '<div class="ptnr-folder-sub">Mon espace</div></div>';
+      // Dossiers des autres (verrouillés)
+      otherProfiles.forEach(function(op){
+        html += '<div class="ptnr-folder locked">';
+        html += '<div class="ptnr-folder-ico">🔒</div>';
+        html += '<div class="ptnr-folder-label">'+op.initials+'</div>';
+        html += '<div class="ptnr-folder-sub">Confidentiel</div></div>';
+      });
+      html += '</div>';
+    }
+
+    // ── Alertes ──
     if(pendingDevis>0) html += '<div class="ptnr-card" style="border-left:3px solid #FFD700;cursor:pointer;" onclick="_ptnrNav(\'devis\')"><div class="ptnr-card-title">'+pendingDevis+' devis en attente</div><div class="ptnr-card-sub">Appuyez pour traiter les devis</div></div>';
     if(inbox.length>0) html += '<div class="ptnr-card" style="border-left:3px solid #3b82f6;cursor:pointer;" onclick="_ptnrNav(\'messages\')"><div class="ptnr-card-title">'+inbox.length+' conversation(s) client</div><div class="ptnr-card-sub">Appuyez pour voir les messages</div></div>';
     if(projets.length>0) html += '<div class="ptnr-card" style="border-left:3px solid #22c55e;cursor:pointer;" onclick="_ptnrNav(\'projets\')"><div class="ptnr-card-title">'+projets.length+' projet(s) assigné(s)</div><div class="ptnr-card-sub">Appuyez pour voir vos projets</div></div>';
-    if(!html) html = '<div class="ptnr-empty"><div class="ptnr-empty-ico">✅</div><div class="ptnr-empty-txt">Tout est à jour !</div></div>';
+    if(!pendingDevis && !inbox.length && !projets.length) html += '<div class="ptnr-empty"><div class="ptnr-empty-ico">✅</div><div class="ptnr-empty-txt">Tout est à jour !</div></div>';
     if(list) list.innerHTML = html;
   });
 }
@@ -3637,15 +3863,17 @@ function _ptnrSubscribePush(){
   }).catch(function(e){ console.log('[PARTNER PUSH]', e); });
 }
 
-// Called from nav() to check if partner is logged in when partner tab is shown
-var _ptnrNavOriginal = nav;
 // Extend nav() to handle partner tab logic
 (function(){
   var _origNav = nav;
   nav = function(tab){
     _origNav(tab);
     if(tab === 'partner'){
-      if(_ptnrToken && _ptnrSession){ _ptnrShowDash(); }
+      if(!_ptnrToken){ _ptnrShowScreen('login'); return; }
+      if(_ptnrSession && (_ptnrSession.partner_type==='admin'||_ptnrSession.role==='admin')){ _ptnrShowScreen('admin'); return; }
+      var profileId = localStorage.getItem('fa_genesis_partner_profile');
+      if(_ptnrToken && profileId){ if(_ptnrSession) _ptnrSession._profileId = profileId; _ptnrShowDash(); }
+      else if(_ptnrToken){ _ptnrShowScreen('profiles'); _ptnrLoadProfileSelector(); }
     }
   };
 })();
