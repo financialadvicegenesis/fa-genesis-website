@@ -3349,32 +3349,36 @@ function _ptnrFetch(path, method, body){
 
 function _ptnrInit(){
   _ptnrToken = localStorage.getItem('fa_genesis_partner_token') || null;
-  if(_ptnrToken){
-    var nb = document.getElementById('nb-partner'); if(nb) nb.style.display = '';
-    var stored = localStorage.getItem('fa_genesis_partner_data');
-    if(stored){ try{ _ptnrSession = JSON.parse(stored); }catch(e){} }
-    _ptnrFetch('/api/partner/auth/me').then(function(data){
-      if(data && data.partner){
-        _ptnrSession = data.partner;
-        localStorage.setItem('fa_genesis_partner_data', JSON.stringify(data.partner));
-        // Admin: go straight to admin screen if partner tab is active
-        var savedProfileId = localStorage.getItem('fa_genesis_partner_profile');
-        if(_ptnrSession.partner_type === 'admin' || _ptnrSession.role === 'admin'){
-          // admin doesn't need a profile
-        } else if(savedProfileId){
-          _ptnrSession._profileId = savedProfileId;
-          _ptnrRefreshBadges();
-          _ptnrCheckPushStatus();
-        }
-      } else { _ptnrClearSession(); }
-    }).catch(function(){ _ptnrClearSession(); });
-  }
+  if(!_ptnrToken) return;
+
+  var stored = localStorage.getItem('fa_genesis_partner_data');
+  if(stored){ try{ _ptnrSession = JSON.parse(stored); }catch(e){} }
+
+  // Session admin : pas de vérification API (token non stocké dans partners.json)
+  var isAdmin = _ptnrSession && (_ptnrSession.partner_type === 'admin' || _ptnrSession.role === 'admin');
+  if(isAdmin){ return; } // nav() affichera l'écran admin au prochain clic
+
+  // Session partenaire normal : vérification via API
+  _ptnrFetch('/api/partner/auth/me').then(function(data){
+    if(data && data.partner){
+      _ptnrSession = data.partner;
+      localStorage.setItem('fa_genesis_partner_data', JSON.stringify(data.partner));
+      var savedProfileId = localStorage.getItem('fa_genesis_partner_profile');
+      if(savedProfileId){
+        _ptnrSession._profileId = savedProfileId;
+        _ptnrRefreshBadges();
+        _ptnrCheckPushStatus();
+      }
+    } else { _ptnrClearSession(); }
+  }).catch(function(){ _ptnrClearSession(); });
 }
 
 function _ptnrClearSession(){
   _ptnrToken = null; _ptnrSession = null;
   localStorage.removeItem('fa_genesis_partner_token');
-  var nb = document.getElementById('nb-partner'); if(nb) nb.style.display = 'none';
+  localStorage.removeItem('fa_genesis_partner_data');
+  localStorage.removeItem('fa_genesis_partner_profile');
+  localStorage.removeItem('fa_genesis_partner_profile_data');
 }
 
 var _ptnrPendingProfileId = null; // profile being PIN-verified
