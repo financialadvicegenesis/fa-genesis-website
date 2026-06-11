@@ -2869,13 +2869,14 @@ function cartCheckout(){
 var _payCheckoutId = null;
 var _payCheckoutWaiters = [];
 var _payCartSnap = [];
+var _payTotal = 0;
 
 function openPayOverlay(total, cartItems){
   var overlay = document.getElementById('pay-overlay');
   var sheet = document.getElementById('pay-sheet');
   if(!overlay || !sheet) return;
 
-  _payCheckoutId = null; _payCheckoutWaiters = []; _payCartSnap = cartItems;
+  _payCheckoutId = null; _payCheckoutWaiters = []; _payCartSnap = cartItems; _payTotal = total;
 
   var amtEl = document.getElementById('pay-amount-val');
   if(amtEl) amtEl.textContent = total.toFixed(2) + ' €';
@@ -2888,9 +2889,10 @@ function openPayOverlay(total, cartItems){
 
   // Device detection
   var ua = navigator.userAgent || '';
+  var hasApplePay = !!(window.ApplePaySession && typeof ApplePaySession.canMakePayments === 'function' && ApplePaySession.canMakePayments());
   var appleBtn = document.getElementById('pay-btn-apple');
   var googleBtn = document.getElementById('pay-btn-google');
-  if(appleBtn) appleBtn.style.display = (/iPad|iPhone|iPod/i.test(ua) && !window.MSStream) ? '' : 'none';
+  if(appleBtn) appleBtn.style.display = hasApplePay ? '' : 'none';
   if(googleBtn) googleBtn.style.display = /Android/i.test(ua) ? '' : 'none';
 
   overlay.classList.add('open'); void overlay.offsetHeight;
@@ -2921,6 +2923,12 @@ function openPayOverlay(total, cartItems){
 }
 
 function _selectPayMethod(method){
+  // Apple Pay: start native session IMMEDIATELY (user gesture requirement — no async allowed before begin())
+  if(method === 'apple' && window.ApplePaySession){
+    _startNativeApplePay(_payTotal);
+    return;
+  }
+
   var ms = document.getElementById('pay-screen-methods');
   var ws = document.getElementById('pay-screen-widget');
   var ldEl = document.getElementById('pay-loading');
@@ -2951,6 +2959,93 @@ function _payGoBack(){
     if(ms) ms.style.display = ''; if(ws) ws.style.display = 'none'; return;
   }
   closePayOverlay();
+}
+
+function _startNativeApplePay(total){
+  var request = {
+    countryCode: 'FR',
+    currencyCode: 'EUR',
+    supportedNetworks: ['visa', 'masterCard', 'amex', 'maestro'],
+    merchantCapabilities: ['supports3DS'],
+    total: { label: 'FA GENESIS', amount: total.toFixed(2), type: 'final' }
+  };
+  var session;
+  try { session = new ApplePaySession(3, request); }
+  catch(e){
+    // Fallback to SumUp widget (domain not registered for Apple Pay)
+    var ms2 = document.getElementById('pay-screen-methods');
+    var ws2 = document.getElementById('pay-screen-widget');
+    var ldEl2 = document.getElementById('pay-loading');
+    var wc2 = document.getElementById('sumup-widget-container');
+    var errEl2 = document.getElementById('pay-error-msg');
+    if(ms2) ms2.style.display = 'none'; if(ws2) ws2.style.display = '';
+    if(ldEl2) ldEl2.style.display = ''; if(wc2){ wc2.style.display = 'none'; wc2.innerHTML = ''; }
+    if(errEl2) errEl2.style.display = 'none';
+    if(_payCheckoutId !== null){ if(_payCheckoutId.indexOf('ERROR:') === 0){ _showPayError(_payCheckoutId.slice(6)); } else { _mountSumUpWidget(_payCheckoutId); } }
+    else { _payCheckoutWaiters.push(function(cid){ if(cid.indexOf('ERROR:') === 0){ _showPayError(cid.slice(6)); } else { _mountSumUpWidget(cid); } }); }
+    return;
+  }
+
+  session.onvalidatemerchant = function(event){
+    var authToken = USER ? USER._token : (localStorage.getItem('fa_genesis_token') || '');
+    fetch((window.FA_GENESIS_API || API) + '/api/payments/apple-pay/validate', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json', 'Authorization':'Bearer ' + authToken},
+      body: JSON.stringify({validationURL: event.validationURL})
+    }).then(function(r){ return r.json(); }).then(function(ms){
+      session.completeMerchantValidation(ms);
+    }).catch(function(err){
+      session.abort();
+      _showPayError('Validation marchande Apple Pay échouée. Vérifiez votre connexion.');
+    });
+  };
+
+  session.onpaymentauthorized = function(event){
+    var payToken = event.payment.token;
+    function completeWithCheckout(cid){
+      if(cid.indexOf('ERROR:') === 0){
+        session.completePayment(ApplePaySession.STATUS_FAILURE);
+        _showPayError(cid.slice(6)); return;
+      }
+      var authToken2 = USER ? USER._token : (localStorage.getItem('fa_genesis_token') || '');
+      fetch((window.FA_GENESIS_API || API) + '/api/payments/apple-pay/complete', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json', 'Authorization':'Bearer ' + authToken2},
+        body: JSON.stringify({checkoutId: cid, paymentToken: payToken})
+      }).then(function(r){ return r.text().then(function(txt){ try{ return JSON.parse(txt); }catch(e){ throw new Error('Erreur serveur'); } }); }).then(function(res){
+        session.completePayment(res.success ? ApplePaySession.STATUS_SUCCESS : ApplePaySession.STATUS_FAILURE);
+        if(res.success){
+          APP_CART = []; _saveCart();
+          var ws3 = document.getElementById('pay-screen-widget'); if(ws3) ws3.style.display = 'none';
+          var succ3 = document.getElementById('pay-success'); if(succ3) succ3.style.display = '';
+        } else {
+          _showPayError(res.error || 'Paiement Apple Pay refusé.');
+        }
+      }).catch(function(){
+        session.completePayment(ApplePaySession.STATUS_FAILURE);
+        _showPayError('Erreur de connexion pendant le paiement Apple Pay.');
+      });
+    }
+    if(_payCheckoutId !== null){ completeWithCheckout(_payCheckoutId); }
+    else { _payCheckoutWaiters.push(completeWithCheckout); }
+  };
+
+  session.oncancel = function(){ _payGoBack(); };
+
+  try { session.begin(); }
+  catch(e){
+    // Domain not verified for Apple Pay — fallback to SumUp widget
+    var ms3 = document.getElementById('pay-screen-methods');
+    var ws3b = document.getElementById('pay-screen-widget');
+    var ldEl3 = document.getElementById('pay-loading');
+    var wc3 = document.getElementById('sumup-widget-container');
+    var errEl3 = document.getElementById('pay-error-msg');
+    if(ms3) ms3.style.display = 'none'; if(ws3b) ws3b.style.display = '';
+    if(ldEl3) ldEl3.style.display = ''; if(wc3){ wc3.style.display = 'none'; wc3.innerHTML = ''; }
+    if(errEl3) errEl3.style.display = 'none';
+    if(_payCheckoutId !== null){ if(_payCheckoutId.indexOf('ERROR:') === 0){ _showPayError(_payCheckoutId.slice(6)); } else { _mountSumUpWidget(_payCheckoutId); } }
+    else { _payCheckoutWaiters.push(function(cid){ if(cid.indexOf('ERROR:') === 0){ _showPayError(cid.slice(6)); } else { _mountSumUpWidget(cid); } }); }
+  }
 }
 
 function _mountSumUpWidget(checkoutId){

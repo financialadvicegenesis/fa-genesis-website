@@ -1802,6 +1802,99 @@ app.post('/api/payments/cart/checkout', async (req, res) => {
 });
 
 /**
+ * POST /api/payments/apple-pay/validate
+ * Merchant validation for Apple Pay JS API — proxies request to Apple with merchant certificate
+ */
+app.post('/api/payments/apple-pay/validate', async (req, res) => {
+    try {
+        const { validationURL } = req.body;
+        if (!validationURL) return res.status(400).json({ error: 'validationURL manquante' });
+
+        const merchantId = process.env.APPLE_PAY_MERCHANT_ID;
+        const certPath = process.env.APPLE_PAY_CERT_PATH;
+        const keyPath = process.env.APPLE_PAY_KEY_PATH;
+
+        if (!merchantId || !certPath || !keyPath) {
+            console.warn('[APPLE PAY] Variables d\'environnement manquantes (APPLE_PAY_MERCHANT_ID, APPLE_PAY_CERT_PATH, APPLE_PAY_KEY_PATH)');
+            return res.status(503).json({ error: 'Apple Pay non configuré sur ce serveur' });
+        }
+
+        const url = new URL(validationURL);
+        // Security: Apple validation URLs must be on apple.com
+        if (!url.hostname.endsWith('.apple.com')) {
+            return res.status(400).json({ error: 'URL de validation invalide' });
+        }
+
+        const payload = JSON.stringify({
+            merchantIdentifier: merchantId,
+            domainName: 'fagenesis.com',
+            displayName: 'FA GENESIS'
+        });
+
+        const https = require('https');
+        const fs = require('fs');
+
+        const merchantSession = await new Promise((resolve, reject) => {
+            const options = {
+                hostname: url.hostname,
+                path: url.pathname + url.search,
+                method: 'POST',
+                cert: fs.readFileSync(certPath),
+                key: fs.readFileSync(keyPath),
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Content-Length': Buffer.byteLength(payload)
+                }
+            };
+            const req2 = https.request(options, (res2) => {
+                let data = '';
+                res2.on('data', c => data += c);
+                res2.on('end', () => {
+                    try { resolve(JSON.parse(data)); }
+                    catch (e) { reject(new Error('Réponse Apple invalide: ' + data.substring(0, 200))); }
+                });
+            });
+            req2.on('error', reject);
+            req2.write(payload);
+            req2.end();
+        });
+
+        console.log('[APPLE PAY] Merchant validation OK');
+        res.json(merchantSession);
+    } catch (error) {
+        console.error('[APPLE PAY] Validate error:', error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * POST /api/payments/apple-pay/complete
+ * Complete a SumUp checkout using an Apple Pay payment token
+ */
+app.post('/api/payments/apple-pay/complete', async (req, res) => {
+    try {
+        const { checkoutId, paymentToken } = req.body;
+        if (!checkoutId || !paymentToken) {
+            return res.status(400).json({ error: 'checkoutId et paymentToken requis', success: false });
+        }
+
+        console.log('[APPLE PAY] Completion checkout:', checkoutId);
+
+        const result = await callSumUpAPI('/checkouts/' + checkoutId, 'PUT', {
+            payment_type: 'applepay',
+            token: typeof paymentToken === 'string' ? paymentToken : JSON.stringify(paymentToken)
+        });
+
+        const success = result.status === 'PAID' || result.status === 'SUCCESSFUL';
+        console.log('[APPLE PAY] Checkout status:', result.status, '— success:', success);
+        res.json({ success: success, status: result.status });
+    } catch (error) {
+        console.error('[APPLE PAY] Complete error:', error.message);
+        res.status(500).json({ error: error.message, success: false });
+    }
+});
+
+/**
  * GET /api/payments/sumup/status/:checkoutId
  * Verifier le statut d'un checkout SumUp
  */
