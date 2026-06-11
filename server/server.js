@@ -15,6 +15,7 @@ const { v4: uuidv4 } = require('uuid');
 const fs = require('fs');
 const path = require('path');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const PDFDocument = require('pdfkit');
 
 const { getProductById, calculatePaymentAmounts, getAmountForStage, generateInstallments } = require('./products');
@@ -4611,7 +4612,6 @@ app.post('/api/auth/forgot-password', async (req, res) => {
         const userIndex = users.findIndex(u => u.email.toLowerCase() === email.toLowerCase());
 
         if (userIndex !== -1) {
-            const crypto = require('crypto');
             const resetToken = crypto.randomBytes(32).toString('hex');
             users[userIndex].reset_token = resetToken;
             users[userIndex].reset_token_expires = Date.now() + 86400000; // 24h
