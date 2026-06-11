@@ -1327,7 +1327,28 @@ a{text-decoration:none;color:inherit}
               <div class="ptnr-type" id="ptnr-display-type"></div>
             </div>
           </div>
-          <button class="ptnr-logout-btn" onclick="_ptnrLogout()">Déconnexion</button>
+          <div style="display:flex;gap:8px;">
+            <button class="ptnr-logout-btn" onclick="_ptnrShowEditProfile()" style="border-color:#FFD700;color:#FFD700;">✏️ Modifier</button>
+            <button class="ptnr-logout-btn" onclick="_ptnrLogout()">Déconnexion</button>
+          </div>
+        </div>
+
+        <!-- Edit profile overlay -->
+        <div id="ptnr-edit-overlay" style="display:none;position:fixed;inset:0;z-index:9700;background:rgba(0,0,0,.85);align-items:flex-end;justify-content:center;padding:0;">
+          <div style="background:#111;border-top:2px solid #FFD700;border-radius:20px 20px 0 0;width:100%;max-width:480px;padding:24px 20px 32px;">
+            <div style="font-family:'Unbounded',sans-serif;font-size:14px;font-weight:900;color:#fff;margin-bottom:6px;">Modifier mon profil</div>
+            <div style="font-size:12px;color:#888;margin-bottom:20px;">Modifiez votre nom, initiales ou code PIN.</div>
+            <input class="ptnr-input" id="ptnr-edit-name" type="text" placeholder="Votre prénom et nom">
+            <input class="ptnr-input" id="ptnr-edit-initials" type="text" placeholder="Initiales (ex: JD)" maxlength="3" style="text-transform:uppercase;">
+            <input class="ptnr-input" id="ptnr-edit-pin" type="number" placeholder="Nouveau code PIN (laisser vide pour ne pas changer)">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+              <input type="checkbox" id="ptnr-edit-remove-pin" style="width:auto;margin:0;">
+              <label for="ptnr-edit-remove-pin" style="font-size:12px;color:#888;cursor:pointer;">Supprimer le code PIN</label>
+            </div>
+            <div class="ptnr-login-err" id="ptnr-edit-err"></div>
+            <button class="ptnr-login-btn" id="ptnr-edit-btn" onclick="_ptnrSaveProfile()">ENREGISTRER</button>
+            <button style="width:100%;background:transparent;border:none;color:#555;font-size:12px;font-weight:700;padding:12px;cursor:pointer;" onclick="_ptnrCloseEditProfile()">Annuler</button>
+          </div>
         </div>
 
         <!-- Push notification bar (shown if not subscribed) -->
@@ -3780,6 +3801,68 @@ function _ptnrSendReply(orderId, clientName){
     inp.value = ''; inp.disabled = false;
     _ptnrLoadMessages();
   }).catch(function(){ inp.disabled = false; });
+}
+
+// ── MODIFIER PROFIL ──
+function _ptnrShowEditProfile(){
+  var profileId = _ptnrSession && _ptnrSession._profileId;
+  if(!profileId) return;
+  // Pre-fill current values
+  _ptnrFetch('/api/partner/subprofiles').then(function(data){
+    var p = (data.profiles||[]).find(function(x){return x.id===profileId;});
+    if(!p) return;
+    var nm = document.getElementById('ptnr-edit-name'); if(nm) nm.value = p.name||'';
+    var ini = document.getElementById('ptnr-edit-initials'); if(ini) ini.value = p.initials||'';
+    var pin = document.getElementById('ptnr-edit-pin'); if(pin) pin.value = '';
+    var rem = document.getElementById('ptnr-edit-remove-pin'); if(rem) rem.checked = false;
+    var err = document.getElementById('ptnr-edit-err'); if(err) err.className='ptnr-login-err';
+    var ov = document.getElementById('ptnr-edit-overlay'); if(ov) ov.style.display='flex';
+    // Auto-fill initials from name
+    var nmInp = document.getElementById('ptnr-edit-name');
+    var iniInp = document.getElementById('ptnr-edit-initials');
+    if(nmInp && iniInp){
+      nmInp.oninput = function(){
+        var words = nmInp.value.trim().split(' ');
+        iniInp.value = words.map(function(w){return w[0]||'';}).join('').toUpperCase().substring(0,3);
+      };
+    }
+  });
+}
+
+function _ptnrCloseEditProfile(){
+  var ov = document.getElementById('ptnr-edit-overlay'); if(ov) ov.style.display='none';
+}
+
+function _ptnrSaveProfile(){
+  var profileId = _ptnrSession && _ptnrSession._profileId;
+  if(!profileId) return;
+  var name = (document.getElementById('ptnr-edit-name')||{}).value||'';
+  var initials = (document.getElementById('ptnr-edit-initials')||{}).value||'';
+  var pin = (document.getElementById('ptnr-edit-pin')||{}).value||'';
+  var removePin = (document.getElementById('ptnr-edit-remove-pin')||{}).checked||false;
+  var errEl = document.getElementById('ptnr-edit-err');
+  var btnEl = document.getElementById('ptnr-edit-btn');
+  if(!name.trim()||!initials.trim()){ if(errEl){errEl.textContent='Nom et initiales requis.';errEl.className='ptnr-login-err on';} return; }
+  if(errEl) errEl.className='ptnr-login-err';
+  if(btnEl){btnEl.disabled=true;btnEl.textContent='Enregistrement...';}
+  var body = {name:name.trim(), initials:initials.trim().toUpperCase()};
+  if(removePin) body.removePin = true;
+  else if(pin) body.pin = pin;
+  _ptnrFetch('/api/partner/subprofiles/'+profileId,'PUT',body).then(function(res){
+    if(btnEl){btnEl.disabled=false;btnEl.textContent='ENREGISTRER';}
+    if(res.success){
+      // Update header display
+      var av = document.getElementById('ptnr-avatar'); if(av) av.textContent = res.profile.initials;
+      var dn = document.getElementById('ptnr-display-name'); if(dn) dn.textContent = res.profile.name;
+      localStorage.setItem('fa_genesis_partner_profile_data', JSON.stringify({name:res.profile.name, initials:res.profile.initials}));
+      _ptnrCloseEditProfile();
+    } else {
+      if(errEl){errEl.textContent=res.error||'Erreur.';errEl.className='ptnr-login-err on';}
+    }
+  }).catch(function(){
+    if(btnEl){btnEl.disabled=false;btnEl.textContent='ENREGISTRER';}
+    if(errEl){errEl.textContent='Erreur de connexion.';errEl.className='ptnr-login-err on';}
+  });
 }
 
 // ── BADGES ──

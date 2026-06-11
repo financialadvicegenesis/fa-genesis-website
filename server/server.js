@@ -549,7 +549,7 @@ function savePushSubscriptions(subs) {
     } catch(e) {}
 }
 
-var ADMIN_EMAILS = (process.env.ADMIN_EMAILS || 'admin@fagenesis.com,tiffenndjambou3@gmail.com').toLowerCase().split(',');
+var ADMIN_EMAILS = (process.env.ADMIN_EMAILS || 'admin@fagenesis.com').toLowerCase().split(',');
 
 function sendPushToUser(email, payload) {
     if (!email) return;
@@ -6318,24 +6318,18 @@ app.post('/api/partner/auth/login', async (req, res) => {
             return res.status(400).json({ error: 'Email et mot de passe requis' });
         }
 
-        // ── Cas admin : l'email est un email administrateur ──
+        // ── Cas admin : vérifie si les identifiants correspondent au compte admin ──
+        // Les identifiants admin sont définis dans ADMIN_EMAILS (env) et ADMIN_PASSWORD (env)
+        const adminPassword = process.env.ADMIN_PASSWORD || 'FAGenesis2024!';
         const isAdminEmail = ADMIN_EMAILS.indexOf(email.toLowerCase()) !== -1;
-        if (isAdminEmail) {
-            const users = loadUsers();
-            const adminUser = users.find(u => u.email.toLowerCase() === email.toLowerCase());
-            if (!adminUser) return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
-            const validPwd = await bcrypt.compare(password, adminUser.password);
-            if (!validPwd) return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
+        const isAdminPassword = password === adminPassword;
+        if (isAdminEmail && isAdminPassword) {
             const sessionToken = generateSessionToken();
-            const uIdx = users.findIndex(u => u.email.toLowerCase() === email.toLowerCase());
-            users[uIdx].sessionToken = sessionToken;
-            users[uIdx].lastLogin = new Date().toISOString();
-            saveUsers(users);
             console.log('[PARTNER/ADMIN] Connexion admin:', email);
             return res.json({
                 success: true,
                 role: 'admin',
-                partner: { id: adminUser.id, email: adminUser.email, prenom: adminUser.prenom || adminUser.firstName || 'Admin', nom: adminUser.nom || adminUser.lastName || '', partner_type: 'admin', role: 'admin' },
+                partner: { id: 'ADMIN', email: email, prenom: 'Admin', nom: 'FA GENESIS', partner_type: 'admin', role: 'admin' },
                 token: sessionToken
             });
         }
@@ -6404,6 +6398,23 @@ app.post('/api/partner/subprofiles', authenticatePartner, async (req, res) => {
         saveSubProfiles(all);
         console.log('[SUBPROFILE] Créé:', profile.id, 'pour', req.partner.email);
         res.json({ success: true, profile: { id: profile.id, name: profile.name, initials: profile.initials, hasPin: !!pinHash } });
+    } catch(e) { res.status(500).json({ error: 'Erreur serveur' }); }
+});
+
+// ── PUT /api/partner/subprofiles/:id — modifier nom, initiales ou PIN ──
+app.put('/api/partner/subprofiles/:id', authenticatePartner, async (req, res) => {
+    try {
+        const { name, initials, pin, removePin } = req.body;
+        const all = loadSubProfiles();
+        const idx = all.findIndex(p => p.id === req.params.id && p.partnerId === req.partner.id);
+        if (idx === -1) return res.status(404).json({ error: 'Profil introuvable' });
+        if (name) all[idx].name = name.trim();
+        if (initials) all[idx].initials = initials.trim().toUpperCase().substring(0, 3);
+        if (removePin) { all[idx].pinHash = null; }
+        else if (pin) { all[idx].pinHash = await bcrypt.hash(pin, 10); }
+        all[idx].updatedAt = new Date().toISOString();
+        saveSubProfiles(all);
+        res.json({ success: true, profile: { id: all[idx].id, name: all[idx].name, initials: all[idx].initials, hasPin: !!all[idx].pinHash } });
     } catch(e) { res.status(500).json({ error: 'Erreur serveur' }); }
 });
 
