@@ -875,15 +875,31 @@ a{text-decoration:none;color:inherit}
 .cart-toast.on{opacity:1;transform:translateX(-50%) translateY(0);}
 #pay-overlay{display:none;position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,.72);backdrop-filter:blur(4px);align-items:flex-end;justify-content:center;}
 #pay-overlay.open{display:flex;animation:regFadeIn .2s ease;}
-#pay-sheet{width:100%;max-width:480px;background:#0d0d0d;border-radius:20px 20px 0 0;border-top:3px solid #FFD700;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;transform:translateY(100%);transition:transform .45s cubic-bezier(.34,1.56,.64,1);}
+#pay-sheet{width:100%;max-width:480px;background:#0d0d0d;border-radius:20px 20px 0 0;border-top:3px solid #FFD700;max-height:92vh;display:flex;flex-direction:column;overflow:hidden;transform:translateY(100%);transition:transform .45s cubic-bezier(.34,1.56,.64,1);}
 #pay-sheet.up{transform:translateY(0);}
 .pay-hdr{display:flex;align-items:center;justify-content:space-between;padding:18px 20px 12px;border-bottom:1px solid #1f1f1f;flex-shrink:0;}
+.pay-hdr-title{font-family:'Unbounded',cursive;font-size:10px;font-weight:900;color:#FFD700;letter-spacing:1.5px;}
 .pay-body{flex:1;overflow-y:auto;}
-.pay-amount-row{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid #1f1f1f;}
+.pay-amount-row{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid #1f1f1f;flex-shrink:0;}
 .pay-amount-label{font-size:13px;color:#aaa;font-weight:600;}
 .pay-amount-val{font-family:'Unbounded',cursive;font-size:1.15rem;font-weight:900;color:#FFD700;}
-.pay-spinner{width:36px;height:36px;border:3px solid #2a2a2a;border-top-color:#FFD700;border-radius:50%;animation:pay-spin .8s linear infinite;margin:0 auto;}
+.pay-screen{flex:1;}
+.pay-methods-title{padding:22px 20px 10px;font-size:12px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.6px;}
+.pay-method-row{display:flex;align-items:center;gap:15px;padding:15px 20px;background:transparent;border:none;border-bottom:1px solid #161616;width:100%;cursor:pointer;text-align:left;-webkit-tap-highlight-color:transparent;transition:background .12s;}
+.pay-method-row:active,.pay-method-row:focus{background:#111;outline:none;}
+.pay-method-ico{width:46px;height:46px;border-radius:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.pay-ico-apple{background:#000;border:1.5px solid #2a2a2a;}
+.pay-ico-gpay{background:#fff;border:1.5px solid #e8e8e8;}
+.pay-ico-card{background:#181818;border:1.5px solid #2a2a2a;}
+.pay-method-info{flex:1;min-width:0;}
+.pay-method-name{font-size:15px;font-weight:600;color:#fff;line-height:1.2;}
+.pay-method-sub{font-size:11px;color:#666;margin-top:3px;}
+.pay-method-arr{font-size:24px;color:#444;font-weight:300;line-height:1;flex-shrink:0;}
+.pay-security{display:flex;align-items:center;gap:8px;padding:18px 20px 24px;font-size:11px;color:#444;font-weight:500;}
+.pay-spinner{width:34px;height:34px;border:3px solid #1e1e1e;border-top-color:#FFD700;border-radius:50%;animation:pay-spin .75s linear infinite;margin:0 auto;}
 @keyframes pay-spin{to{transform:rotate(360deg)}}
+.pay-error-box{background:#160000;border:1px solid #5a1111;border-radius:12px;padding:14px 16px;margin:16px;color:#ff7777;font-size:13px;line-height:1.6;}
+.pay-retry-btn{margin-top:12px;background:transparent;border:1px solid #ff4444;color:#ff7777;border-radius:8px;padding:9px 18px;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:.3px;}
 
 /* ── COWORKING BOOKING ── */
 #cw-booking-overlay{display:none;position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,.75);backdrop-filter:blur(4px);align-items:flex-end;justify-content:center;}
@@ -2849,80 +2865,134 @@ function cartCheckout(){
   setTimeout(function(){ openPayOverlay(total, cartSnap); }, 450);
 }
 
+// ── PAYMENT OVERLAY ──────────────────────────────────────────
+var _payCheckoutId = null;
+var _payCheckoutWaiters = [];
+var _payCartSnap = [];
+
 function openPayOverlay(total, cartItems){
   var overlay = document.getElementById('pay-overlay');
   var sheet = document.getElementById('pay-sheet');
   if(!overlay || !sheet) return;
+
+  _payCheckoutId = null; _payCheckoutWaiters = []; _payCartSnap = cartItems;
+
   var amtEl = document.getElementById('pay-amount-val');
   if(amtEl) amtEl.textContent = total.toFixed(2) + ' €';
-  var ldEl = document.getElementById('pay-loading'); if(ldEl) ldEl.style.display = '';
-  var wc = document.getElementById('sumup-widget-container');
-  if(wc){ wc.style.display = 'none'; wc.innerHTML = ''; }
-  var okEl = document.getElementById('pay-success'); if(okEl) okEl.style.display = 'none';
-  var erEl = document.getElementById('pay-error-msg'); if(erEl) erEl.style.display = 'none';
-  overlay.classList.add('open');
-  void overlay.offsetHeight;
+
+  // Show method selector instantly
+  var ms = document.getElementById('pay-screen-methods');
+  var ws = document.getElementById('pay-screen-widget');
+  var succ = document.getElementById('pay-success');
+  if(ms) ms.style.display = ''; if(ws) ws.style.display = 'none'; if(succ) succ.style.display = 'none';
+
+  // Device detection
+  var ua = navigator.userAgent || '';
+  var appleBtn = document.getElementById('pay-btn-apple');
+  var googleBtn = document.getElementById('pay-btn-google');
+  if(appleBtn) appleBtn.style.display = (/iPad|iPhone|iPod/i.test(ua) && !window.MSStream) ? '' : 'none';
+  if(googleBtn) googleBtn.style.display = /Android/i.test(ua) ? '' : 'none';
+
+  overlay.classList.add('open'); void overlay.offsetHeight;
   setTimeout(function(){ sheet.classList.add('up'); }, 20);
+
+  // Create SumUp checkout IN BACKGROUND while user reads method selector
   var token = USER ? USER._token : (localStorage.getItem('fa_genesis_token') || '');
   var itemsPayload = cartItems.map(function(item){ return {name: item.name, priceNum: item.priceNum}; });
   fetch((window.FA_GENESIS_API || API) + '/api/payments/cart/checkout', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-    body: JSON.stringify({ items: itemsPayload, total: total, currency: 'EUR' })
+    headers: {'Content-Type':'application/json', 'Authorization':'Bearer ' + token},
+    body: JSON.stringify({items: itemsPayload, total: total, currency: 'EUR'})
   }).then(function(r){
-    var status = r.status;
-    return r.text().then(function(text){
-      try { return JSON.parse(text); }
-      catch(e) { throw new Error('Erreur serveur (' + status + '). Réessayez dans quelques instants.'); }
+    var st = r.status;
+    return r.text().then(function(txt){
+      try { return JSON.parse(txt); }
+      catch(e){ throw new Error('Erreur serveur (' + st + '). Réessayez.'); }
     });
   }).then(function(res){
-    if(res.checkout_id){ _mountSumUpWidget(res.checkout_id, cartItems); }
-    else { _showPayError(res.details || res.error || 'Erreur lors de la création du paiement'); }
-  }).catch(function(e){ _showPayError(e.message || 'Erreur de connexion au serveur de paiement.'); });
+    var cid = res.checkout_id ? res.checkout_id : ('ERROR:' + (res.details || res.error || 'Erreur de création'));
+    _payCheckoutId = cid;
+    _payCheckoutWaiters.forEach(function(fn){ fn(cid); }); _payCheckoutWaiters = [];
+  }).catch(function(e){
+    var cid = 'ERROR:' + (e.message || 'Erreur de connexion');
+    _payCheckoutId = cid;
+    _payCheckoutWaiters.forEach(function(fn){ fn(cid); }); _payCheckoutWaiters = [];
+  });
 }
 
-function _mountSumUpWidget(checkoutId, cartItems){
-  document.getElementById('pay-loading').style.display = 'none';
-  var container = document.getElementById('sumup-widget-container');
-  if(!container) return;
-  container.style.display = '';
-  container.innerHTML = '<div id="sumup-card-div"></div>';
+function _selectPayMethod(method){
+  var ms = document.getElementById('pay-screen-methods');
+  var ws = document.getElementById('pay-screen-widget');
+  var ldEl = document.getElementById('pay-loading');
+  var wc = document.getElementById('sumup-widget-container');
+  var errEl = document.getElementById('pay-error-msg');
+  if(ms) ms.style.display = 'none'; if(ws) ws.style.display = '';
+  if(ldEl) ldEl.style.display = ''; if(wc){ wc.style.display = 'none'; wc.innerHTML = ''; }
+  if(errEl) errEl.style.display = 'none';
+
+  function onReady(cid){
+    if(cid.indexOf('ERROR:') === 0){ _showPayError(cid.slice(6)); return; }
+    _mountSumUpWidget(cid);
+  }
+  if(_payCheckoutId !== null){ onReady(_payCheckoutId); }
+  else { _payCheckoutWaiters.push(onReady); }
+}
+
+function _payGoBack(){
+  var ms = document.getElementById('pay-screen-methods');
+  var ws = document.getElementById('pay-screen-widget');
+  var succ = document.getElementById('pay-success');
+  if(succ && succ.style.display !== 'none'){ closePayOverlay(); return; }
+  if(ws && ws.style.display !== 'none'){
+    var wc = document.getElementById('sumup-widget-container');
+    var errEl = document.getElementById('pay-error-msg');
+    if(wc){ wc.style.display = 'none'; wc.innerHTML = ''; }
+    if(errEl) errEl.style.display = 'none';
+    if(ms) ms.style.display = ''; if(ws) ws.style.display = 'none'; return;
+  }
+  closePayOverlay();
+}
+
+function _mountSumUpWidget(checkoutId){
+  var ldEl = document.getElementById('pay-loading'); if(ldEl) ldEl.style.display = 'none';
+  var container = document.getElementById('sumup-widget-container'); if(!container) return;
+  container.style.display = ''; container.innerHTML = '<div id="sumup-card-div"></div>';
   function doMount(){
     try {
       SumUpCard.mount({
-        id: 'sumup-card-div',
-        checkoutId: checkoutId,
-        locale: 'fr-FR',
-        showSubmitButton: true,
+        id: 'sumup-card-div', checkoutId: checkoutId, locale: 'fr-FR', showSubmitButton: true,
         onResponse: function(type, body){
           if(type === 'success'){
             APP_CART = []; _saveCart();
-            var wc = document.getElementById('sumup-widget-container');
-            if(wc) wc.style.display = 'none';
-            document.getElementById('pay-success').style.display = '';
+            var wc = document.getElementById('sumup-widget-container'); if(wc) wc.style.display = 'none';
+            var ws = document.getElementById('pay-screen-widget'); if(ws) ws.style.display = 'none';
+            var succ = document.getElementById('pay-success'); if(succ) succ.style.display = '';
           } else if(type === 'error'){
-            var msg = (body && (body.message || body.error)) ? (body.message || body.error) : 'Paiement refusé. Vérifiez vos informations.';
+            var msg = body && (body.message || body.error) ? (body.message || body.error) : 'Paiement refusé. Vérifiez vos informations.';
             _showPayError(msg);
           }
         }
       });
-    } catch(e) { _showPayError('Erreur chargement du module de paiement : ' + e.message); }
+    } catch(e){ _showPayError('Erreur module de paiement : ' + e.message); }
   }
-  if(typeof SumUpCard !== 'undefined'){
-    doMount();
-  } else {
+  if(typeof SumUpCard !== 'undefined'){ doMount(); }
+  else {
     var script = document.createElement('script');
     script.src = 'https://gateway.sumup.com/gateway/ecom/card/v2/sdk.js';
     script.onload = doMount;
-    script.onerror = function(){ _showPayError('Impossible de charger le module de paiement. Vérifiez votre connexion.'); };
+    script.onerror = function(){ _showPayError('Impossible de charger le module de paiement.'); };
     document.head.appendChild(script);
   }
 }
 
 function _showPayError(msg){
   var ldEl = document.getElementById('pay-loading'); if(ldEl) ldEl.style.display = 'none';
+  var wc = document.getElementById('sumup-widget-container'); if(wc) wc.style.display = 'none';
+  var ws = document.getElementById('pay-screen-widget'); if(ws) ws.style.display = '';
   var errEl = document.getElementById('pay-error-msg');
-  if(errEl){ errEl.textContent = msg || 'Erreur de paiement.'; errEl.style.display = ''; }
+  var errTxt = document.getElementById('pay-error-text');
+  if(errTxt) errTxt.textContent = msg || 'Erreur de paiement.';
+  if(errEl) errEl.style.display = '';
 }
 
 function closePayOverlay(){
@@ -3352,29 +3422,101 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
 <!-- PAYMENT OVERLAY -->
 <div id="pay-overlay">
   <div id="pay-sheet">
+    <!-- Header -->
     <div class="pay-hdr">
-      <button class="reg-nav-btn" onclick="closePayOverlay()">&#8249;</button>
-      <div style="font-family:'Unbounded',cursive;font-size:10px;font-weight:900;color:#FFD700;letter-spacing:1.5px;">PAIEMENT</div>
+      <button class="reg-nav-btn" onclick="_payGoBack()">&#8249;</button>
+      <div class="pay-hdr-title" id="pay-hdr-title">PAIEMENT</div>
       <button class="reg-nav-btn" onclick="closePayOverlay()">&#x2715;</button>
     </div>
-    <div class="pay-body">
-      <div class="pay-amount-row">
-        <span class="pay-amount-label">Total à payer</span>
-        <span class="pay-amount-val" id="pay-amount-val">-</span>
-      </div>
-      <div id="pay-loading" style="text-align:center;padding:40px 20px;color:#888;font-size:14px;">
-        <div class="pay-spinner"></div>
-        <p style="margin-top:16px;">Chargement du paiement...</p>
-      </div>
-      <div id="sumup-widget-container" style="display:none;padding-bottom:24px;"></div>
-      <div id="pay-success" style="display:none;text-align:center;padding:40px 20px;">
-        <div style="width:72px;height:72px;border-radius:50%;background:#FFD700;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-size:36px;font-weight:900;color:#000;">&#10003;</div>
-        <div style="font-family:'Unbounded',cursive;font-size:15px;font-weight:900;color:#FFD700;margin-bottom:12px;">Paiement réussi !</div>
-        <div style="font-size:13px;color:#aaa;line-height:1.7;">Votre commande a bien été enregistrée.<br>Nous vous contacterons très prochainement.</div>
-        <button onclick="closePayOverlay()" style="margin-top:28px;background:#FFD700;color:#000;border:none;border-radius:8px;padding:14px 32px;font-family:'Unbounded',cursive;font-size:11px;font-weight:900;cursor:pointer;letter-spacing:1px;">FERMER</button>
-      </div>
-      <div id="pay-error-msg" style="display:none;background:#1a0000;border:1px solid #ff4444;border-radius:10px;padding:14px 16px;margin:16px;color:#ff7777;font-size:13px;line-height:1.5;"></div>
+    <!-- Total (always visible) -->
+    <div class="pay-amount-row">
+      <span class="pay-amount-label">Total à payer</span>
+      <span class="pay-amount-val" id="pay-amount-val">-</span>
     </div>
+
+    <div class="pay-body">
+
+      <!-- Screen 1 : choix du moyen de paiement -->
+      <div id="pay-screen-methods">
+        <div class="pay-methods-title">Comment souhaitez-vous payer ?</div>
+
+        <!-- Apple Pay (iOS uniquement) -->
+        <button id="pay-btn-apple" class="pay-method-row" onclick="_selectPayMethod('apple')" style="display:none;">
+          <div class="pay-method-ico pay-ico-apple">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 814 1000" style="height:22px;width:auto;">
+              <path fill="white" d="M788.1 340.9c-5.8 4.5-108.2 62.2-108.2 190.5 0 148.4 130.3 200.9 134.2 202.2-.6 3.2-20.7 71.9-68.7 141.9-42.8 61.6-87.5 123.1-155.5 123.1s-85.5-39.5-164-39.5c-76 0-103.7 40.8-165.9 40.8s-105-57.8-155.5-127.4C46 790.7 0 663 0 541.8c0-207.8 135.7-318.2 269.7-318.2 71.2 0 130.5 46.8 174.5 46.8 42.3 0 109.2-49.7 189.2-49.7 30.8 0 108.2 2.6 168.9 80.8zm-198.3-200.6c31.8-37.6 54.3-89.8 54.3-142 0-7.1-.6-14.3-1.9-20.1-51.5 1.9-112.9 34.4-149.4 77.3-28.2 31.8-54.9 83.4-54.9 136.4 0 7.7 1.3 15.4 1.9 17.9 3.2.6 8.4 1.3 13.6 1.3 46.1 0 101.9-31.1 136.4-70.8z"/>
+            </svg>
+          </div>
+          <div class="pay-method-info">
+            <div class="pay-method-name">Apple Pay</div>
+            <div class="pay-method-sub">Touch ID · Face ID</div>
+          </div>
+          <div class="pay-method-arr">&#8250;</div>
+        </button>
+
+        <!-- Google Pay (Android uniquement) -->
+        <button id="pay-btn-google" class="pay-method-row" onclick="_selectPayMethod('google')" style="display:none;">
+          <div class="pay-method-ico pay-ico-gpay">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style="height:24px;width:24px;">
+              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+            </svg>
+          </div>
+          <div class="pay-method-info">
+            <div class="pay-method-name">Google Pay</div>
+            <div class="pay-method-sub">Paiement rapide et sécurisé</div>
+          </div>
+          <div class="pay-method-arr">&#8250;</div>
+        </button>
+
+        <!-- Carte bancaire (toujours visible) -->
+        <button class="pay-method-row" onclick="_selectPayMethod('card')">
+          <div class="pay-method-ico pay-ico-card">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#FFD700" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:22px;height:22px;">
+              <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
+              <line x1="1" y1="10" x2="23" y2="10"/>
+            </svg>
+          </div>
+          <div class="pay-method-info">
+            <div class="pay-method-name">Carte bancaire</div>
+            <div class="pay-method-sub">Visa · Mastercard · Amex</div>
+          </div>
+          <div class="pay-method-arr">&#8250;</div>
+        </button>
+
+        <!-- Note sécurité -->
+        <div class="pay-security">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;flex-shrink:0;">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          </svg>
+          Paiement 100&nbsp;% sécurisé · Traité par SumUp
+        </div>
+      </div>
+
+      <!-- Screen 2 : widget SumUp -->
+      <div id="pay-screen-widget" style="display:none;">
+        <div id="pay-loading" style="text-align:center;padding:44px 20px;color:#888;font-size:14px;">
+          <div class="pay-spinner"></div>
+          <p style="margin-top:18px;font-size:13px;">Initialisation du paiement&hellip;</p>
+        </div>
+        <div id="sumup-widget-container" style="display:none;padding-bottom:28px;"></div>
+        <div id="pay-error-msg" class="pay-error-box" style="display:none;">
+          <div id="pay-error-text"></div>
+          <button class="pay-retry-btn" onclick="_payGoBack()">&#8592; Choisir un autre moyen</button>
+        </div>
+      </div>
+
+      <!-- Screen 3 : succès -->
+      <div id="pay-success" style="display:none;text-align:center;padding:44px 20px;">
+        <div style="width:76px;height:76px;border-radius:50%;background:#FFD700;display:flex;align-items:center;justify-content:center;margin:0 auto 22px;font-size:38px;font-weight:900;color:#000;">&#10003;</div>
+        <div style="font-family:'Unbounded',cursive;font-size:15px;font-weight:900;color:#FFD700;margin-bottom:12px;">Paiement réussi&nbsp;!</div>
+        <div style="font-size:13px;color:#aaa;line-height:1.8;">Votre commande a bien été enregistrée.<br>Nous vous contacterons très prochainement.</div>
+        <button onclick="closePayOverlay()" style="margin-top:30px;background:#FFD700;color:#000;border:none;border-radius:10px;padding:15px 36px;font-family:'Unbounded',cursive;font-size:11px;font-weight:900;cursor:pointer;letter-spacing:1px;">FERMER</button>
+      </div>
+
+    </div><!-- /.pay-body -->
   </div>
 </div>
 
