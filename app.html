@@ -1234,6 +1234,27 @@ a{text-decoration:none;color:inherit}
 /* ── Glow sur les éléments interactifs actifs ── */
 .sc-btn-primary:active{box-shadow:0 0 20px rgba(255,215,0,.35)}
 .hero-cta:active{box-shadow:0 0 16px rgba(255,215,0,.45)}
+
+/* ── Pull-to-refresh ── */
+#pull-indicator{
+  height:0;overflow:hidden;
+  display:flex;align-items:center;justify-content:center;
+  background:#000;opacity:0;
+  transition:height .18s ease,opacity .15s ease;
+  position:sticky;top:0;z-index:10;
+}
+#pull-indicator.ptr-visible{height:60px;opacity:1;}
+.ptr-inner{display:flex;align-items:center;gap:10px}
+.ptr-spinner{
+  width:20px;height:20px;
+  border:2px solid rgba(255,215,0,.2);
+  border-top-color:#FFD700;
+  border-radius:50%;
+  animation:ptrSpin .7s linear infinite;
+}
+@keyframes ptrSpin{to{transform:rotate(360deg)}}
+.ptr-text{font-size:11px;font-weight:700;color:var(--yellow);
+  letter-spacing:.8px;text-transform:uppercase}
 </style>
 </head>
 <body>
@@ -1311,6 +1332,13 @@ a{text-decoration:none;color:inherit}
 
   <!-- Content -->
   <div id="content">
+    <!-- Pull-to-refresh indicator -->
+    <div id="pull-indicator">
+      <div class="ptr-inner">
+        <div class="ptr-spinner"></div>
+        <span class="ptr-text">Actualisation…</span>
+      </div>
+    </div>
 
     <!-- ACCUEIL -->
     <div class="tab on" id="tab-home">
@@ -5011,6 +5039,84 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
   });
   /* Si DOMContentLoaded déjà passé */
   if(document.readyState !== 'loading'){ init(); tick(); }
+})();
+
+/* ══════════════════════════════════════
+   PULL-TO-REFRESH (style Facebook)
+══════════════════════════════════════ */
+(function(){
+  var content = document.getElementById('content');
+  var indicator = document.getElementById('pull-indicator');
+  if(!content || !indicator) return;
+
+  var startY = 0, dist = 0, pulling = false, refreshing = false;
+  var THRESHOLD = 72;
+
+  content.addEventListener('touchstart', function(e){
+    if(content.scrollTop === 0 && !refreshing){
+      startY = e.touches[0].clientY;
+      pulling = true;
+      dist = 0;
+    }
+  }, {passive:true});
+
+  content.addEventListener('touchmove', function(e){
+    if(!pulling || refreshing) return;
+    dist = e.touches[0].clientY - startY;
+    if(dist > 0){
+      var h = Math.min(dist * 0.55, 60);
+      var op = Math.min(dist / THRESHOLD, 1);
+      indicator.style.height = h + 'px';
+      indicator.style.opacity = op;
+    }
+  }, {passive:true});
+
+  content.addEventListener('touchend', function(){
+    if(!pulling) return;
+    pulling = false;
+    if(dist >= THRESHOLD){
+      triggerRefresh();
+    } else {
+      indicator.style.height = '0';
+      indicator.style.opacity = '0';
+    }
+    dist = 0;
+  });
+
+  function triggerRefresh(){
+    refreshing = true;
+    indicator.style.height = '60px';
+    indicator.style.opacity = '1';
+    indicator.classList.add('ptr-visible');
+
+    var active = document.querySelector('.tab.on');
+    var tabId = active ? active.id : '';
+    try {
+      if(tabId === 'tab-home'){
+        if(typeof renderHomeOffers === 'function') renderHomeOffers();
+        if(typeof loadStatusCard === 'function') loadStatusCard();
+        if(typeof updateCartBadge === 'function') updateCartBadge();
+      } else if(tabId === 'tab-prestations'){
+        if(typeof renderPrestations === 'function') renderPrestations('all');
+      } else if(tabId === 'tab-reservations'){
+        if(typeof renderResaTab === 'function') renderResaTab();
+      } else if(tabId === 'tab-messages'){
+        if(typeof renderMsgTab === 'function') renderMsgTab();
+      } else if(tabId === 'tab-profil'){
+        if(typeof renderProfil === 'function') renderProfil();
+      } else if(tabId === 'tab-partner'){
+        if(typeof _ptnrLoadHome === 'function') _ptnrLoadHome();
+        if(typeof _ptnrRefreshBadges === 'function') _ptnrRefreshBadges();
+      }
+    } catch(e){}
+
+    setTimeout(function(){
+      indicator.classList.remove('ptr-visible');
+      indicator.style.height = '0';
+      indicator.style.opacity = '0';
+      refreshing = false;
+    }, 1400);
+  }
 })();
 </script>
 </body>
