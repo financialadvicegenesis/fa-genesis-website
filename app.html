@@ -1069,6 +1069,168 @@ a{text-decoration:none;color:inherit}
 .dvo-title{flex:1;font-family:'Unbounded',cursive;font-size:10px;font-weight:900;color:#fff;text-transform:uppercase;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .dvo-dl-btn{background:#FFD700;color:#000;border:none;font-family:'Unbounded',cursive;font-size:10px;font-weight:900;padding:8px 14px;cursor:pointer;white-space:nowrap;flex-shrink:0;}
 .dvo-frame{flex:1;width:100%;border:none;background:#fff;}
+
+/* ══════════════════════════════════════════
+   TOUCHE TECH — Moderne & Révolutionnaire
+══════════════════════════════════════════ */
+
+/* Canvas particules (réseau neuronal) */
+#techCanvas{
+  position:absolute;inset:0;z-index:0;pointer-events:none;
+  opacity:.28;border-radius:inherit;
+}
+#app{position:relative;}
+
+/* ── Shimmer doré sur le logo texte ── */
+@keyframes goldShimmer{
+  0%  {background-position:-200% center}
+  100%{background-position: 200% center}
+}
+.hdr-name{
+  background:linear-gradient(90deg,
+    #b8860b 0%, #FFD700 25%, #FFFACD 50%, #FFD700 75%, #b8860b 100%
+  );
+  background-size:250% auto;
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+  background-clip:text;
+  animation:goldShimmer 4s linear infinite;
+}
+
+/* ── Header glassmorphism ── */
+#hdr{
+  background:rgba(10,10,10,.75)!important;
+  backdrop-filter:blur(24px) saturate(1.4);
+  -webkit-backdrop-filter:blur(24px) saturate(1.4);
+  border-bottom:1px solid rgba(255,215,0,.1)!important;
+}
+
+/* ── Bottom nav glassmorphism + indicateur lumineux ── */
+#nav{
+  background:rgba(8,8,8,.88)!important;
+  backdrop-filter:blur(20px);
+  -webkit-backdrop-filter:blur(20px);
+  border-top:1px solid rgba(255,215,0,.08)!important;
+}
+.nav-btn{position:relative;}
+.nav-btn.on::after{
+  content:'';
+  position:absolute;
+  top:0;left:50%;transform:translateX(-50%);
+  width:28px;height:2px;
+  background:var(--yellow);
+  border-radius:0 0 3px 3px;
+  box-shadow:0 0 10px var(--yellow),0 0 22px rgba(255,215,0,.45);
+  animation:navGlow .4s ease;
+}
+@keyframes navGlow{from{opacity:0;width:0}to{opacity:1;width:28px}}
+.nav-btn.on .ni{
+  filter:drop-shadow(0 0 7px rgba(255,215,0,.75));
+  animation:iconLift .3s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes iconLift{from{transform:translateY(0)}to{transform:translateY(-2px)}}
+
+/* ── Transitions entre onglets ── */
+@keyframes tabReveal{
+  from{opacity:0;transform:translateY(14px)}
+  to  {opacity:1;transform:translateY(0)}
+}
+.tab.on{animation:tabReveal .35s cubic-bezier(.25,.46,.45,.94) both}
+
+/* ── Titre welcome : gradient animé ── */
+@keyframes gradientFlow{
+  0%  {background-position:0%   50%}
+  50% {background-position:100% 50%}
+  100%{background-position:0%   50%}
+}
+.w-title{
+  background:linear-gradient(270deg,#FFD700,#FFF8DC,#DAA520,#FFD700);
+  background-size:400% 400%;
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+  background-clip:text;
+  animation:gradientFlow 5s ease infinite;
+}
+
+/* ── Glow pulsant sur les badges actifs ── */
+@keyframes auraPulse{
+  0%,100%{box-shadow:0 0 0 0 rgba(255,215,0,.0)}
+  50%    {box-shadow:0 0 0 5px rgba(255,215,0,.12)}
+}
+.status-badge-pill{animation:auraPulse 3s ease-in-out infinite}
+
+/* ── Bouton principal : glow doré ── */
+.btn-main{
+  box-shadow:0 4px 28px rgba(255,215,0,.28);
+  position:relative;overflow:hidden;
+}
+.btn-main::after{
+  content:'';position:absolute;top:-50%;left:-75%;
+  width:50%;height:200%;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.18),transparent);
+  transform:skewX(-20deg);
+  animation:btnSweep 4s ease-in-out infinite;
+}
+@keyframes btnSweep{
+  0%,100%{left:-75%;opacity:0}
+  10%    {opacity:1}
+  40%    {left:125%;opacity:0}
+}
+
+/* ── Cartes : apparition avec lift ── */
+@keyframes cardFloat{
+  from{opacity:0;transform:translateY(18px) scale(.97)}
+  to  {opacity:1;transform:translateY(0) scale(1)}
+}
+.offer-card,.offer-row{animation:cardFloat .45s cubic-bezier(.34,1.2,.64,1) both}
+.offer-card:nth-child(2),.offer-row:nth-child(2){animation-delay:.06s}
+.offer-card:nth-child(3),.offer-row:nth-child(3){animation-delay:.12s}
+.offer-card:nth-child(4),.offer-row:nth-child(4){animation-delay:.18s}
+.offer-card:nth-child(5),.offer-row:nth-child(5){animation-delay:.24s}
+
+/* ── Logo FA GENESIS : halo ── */
+.hdr-logo,.w-logo{
+  filter:drop-shadow(0 0 10px rgba(255,215,0,.3));
+}
+
+/* ── Quick-action icons ── */
+.qa-icon:active{
+  box-shadow:0 0 18px rgba(255,215,0,.35)!important;
+  background:rgba(255,215,0,.08)!important;
+}
+
+/* ── Stat cards : ligne supérieure dorée ── */
+.stat-row-card,.sc-card{
+  position:relative;overflow:hidden;
+}
+.sc-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(255,215,0,.5),transparent);
+}
+
+/* ── Scanlines très subtiles ── */
+#app::before{
+  content:'';
+  position:absolute;inset:0;z-index:9990;pointer-events:none;
+  background:repeating-linear-gradient(
+    0deg,transparent,transparent 3px,
+    rgba(255,215,0,.012) 3px,rgba(255,215,0,.012) 4px
+  );
+}
+
+/* ── Halo côté écran sur desktop ── */
+@media(min-width:768px){
+  #app{
+    box-shadow:
+      0 0 0 1px rgba(255,215,0,.08),
+      0 0 60px rgba(255,215,0,.06),
+      0 0 120px rgba(0,0,0,.9)!important;
+  }
+}
+
+/* ── Glow sur les éléments interactifs actifs ── */
+.sc-btn-primary:active{box-shadow:0 0 20px rgba(255,215,0,.35)}
+.hero-cta:active{box-shadow:0 0 16px rgba(255,215,0,.45)}
 </style>
 </head>
 <body>
@@ -1124,6 +1286,7 @@ a{text-decoration:none;color:inherit}
 
 <!-- ══════════ APP ══════════ -->
 <div id="app">
+<canvas id="techCanvas" aria-hidden="true"></canvas>
 
   <!-- Header -->
   <div id="hdr">
@@ -4767,5 +4930,86 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
 
 <script src="config.js" defer></script>
 <script src="pwa-init.js" defer></script>
+
+<!-- ══ MOTEUR TECH : réseau neuronal de particules ══ -->
+<script>
+(function(){
+  'use strict';
+  var canvas = document.getElementById('techCanvas');
+  if(!canvas || !canvas.getContext) return;
+  var ctx = canvas.getContext('2d');
+
+  var N = 38;          /* nombre de nœuds */
+  var LINK = 110;      /* distance max de connexion */
+  var SPEED = 0.35;
+  var pts = [];
+
+  function resize(){
+    var app = canvas.parentElement;
+    canvas.width  = app ? app.clientWidth  : window.innerWidth;
+    canvas.height = app ? app.clientHeight : window.innerHeight;
+  }
+
+  function init(){
+    resize();
+    pts = [];
+    for(var i = 0; i < N; i++){
+      pts.push({
+        x:  Math.random() * canvas.width,
+        y:  Math.random() * canvas.height,
+        vx: (Math.random() - .5) * SPEED,
+        vy: (Math.random() - .5) * SPEED,
+        r:  Math.random() * 1.2 + .4
+      });
+    }
+  }
+
+  function tick(){
+    var W = canvas.width, H = canvas.height;
+    ctx.clearRect(0, 0, W, H);
+
+    /* Connexions */
+    for(var i = 0; i < N; i++){
+      for(var j = i + 1; j < N; j++){
+        var dx = pts[i].x - pts[j].x;
+        var dy = pts[i].y - pts[j].y;
+        var d  = Math.sqrt(dx*dx + dy*dy);
+        if(d < LINK){
+          var alpha = (1 - d / LINK) * 0.22;
+          ctx.beginPath();
+          ctx.moveTo(pts[i].x, pts[i].y);
+          ctx.lineTo(pts[j].x, pts[j].y);
+          ctx.strokeStyle = 'rgba(255,215,0,' + alpha + ')';
+          ctx.lineWidth = .6;
+          ctx.stroke();
+        }
+      }
+    }
+
+    /* Nœuds + mouvement */
+    for(var k = 0; k < N; k++){
+      var p = pts[k];
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, 6.2832);
+      ctx.fillStyle = 'rgba(255,215,0,.5)';
+      ctx.fill();
+      p.x += p.vx; p.y += p.vy;
+      if(p.x < 0 || p.x > W) p.vx = -p.vx;
+      if(p.y < 0 || p.y > H) p.vy = -p.vy;
+    }
+
+    requestAnimationFrame(tick);
+  }
+
+  /* Démarrage après que l'app soit visible */
+  window.addEventListener('resize', function(){ resize(); });
+  document.addEventListener('DOMContentLoaded', function(){
+    init();
+    tick();
+  });
+  /* Si DOMContentLoaded déjà passé */
+  if(document.readyState !== 'loading'){ init(); tick(); }
+})();
+</script>
 </body>
 </html>
