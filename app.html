@@ -1089,6 +1089,8 @@ a{text-decoration:none;color:inherit}
 #tab-partner{
   background:#000;
   min-height:100%;
+  position:relative;
+  z-index:1;
 }
 
 /* ── Shimmer doré sur le logo texte ── */
@@ -1218,15 +1220,6 @@ a{text-decoration:none;color:inherit}
   background:linear-gradient(90deg,transparent,rgba(255,215,0,.5),transparent);
 }
 
-/* ── Scanlines très subtiles ── */
-#app::before{
-  content:'';
-  position:absolute;inset:0;z-index:9990;pointer-events:none;
-  background:repeating-linear-gradient(
-    0deg,transparent,transparent 3px,
-    rgba(255,215,0,.012) 3px,rgba(255,215,0,.012) 4px
-  );
-}
 
 /* ── Halo côté écran sur desktop ── */
 @media(min-width:768px){
