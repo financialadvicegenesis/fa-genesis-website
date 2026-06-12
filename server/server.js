@@ -1802,6 +1802,116 @@ app.post('/api/payments/cart/checkout', async (req, res) => {
 });
 
 /**
+ * ══════════════════════════════════════════════════════
+ *  PAYPAL
+ * ══════════════════════════════════════════════════════
+ */
+const PAYPAL_BASE = (process.env.PAYPAL_MODE === 'live')
+    ? 'https://api-m.paypal.com'
+    : 'https://api-m.sandbox.paypal.com';
+
+async function getPayPalAccessToken() {
+    const clientId = process.env.PAYPAL_CLIENT_ID;
+    const secret   = process.env.PAYPAL_SECRET;
+    if (!clientId || !secret) throw new Error('PayPal non configuré (PAYPAL_CLIENT_ID, PAYPAL_SECRET manquants)');
+    const resp = await fetch(PAYPAL_BASE + '/v1/oauth2/token', {
+        method: 'POST',
+        headers: {
+            'Authorization': 'Basic ' + Buffer.from(clientId + ':' + secret).toString('base64'),
+            'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: 'grant_type=client_credentials'
+    });
+    const data = await resp.json();
+    if (!data.access_token) throw new Error('Erreur auth PayPal : ' + JSON.stringify(data));
+    return data.access_token;
+}
+
+/**
+ * POST /api/payments/paypal/create-order
+ * Body: { amount, currency, description, installments, totalAmount }
+ * Response: { orderId }
+ */
+app.post('/api/payments/paypal/create-order', async (req, res) => {
+    try {
+        const { amount, currency, description, installments, totalAmount } = req.body;
+        const amt = parseFloat(amount);
+        if (!amt || isNaN(amt) || amt <= 0) {
+            return res.status(400).json({ error: 'Montant invalide' });
+        }
+        const token = await getPayPalAccessToken();
+        const ref = 'FAG-' + Date.now();
+        const n = parseInt(installments) || 1;
+        const descFull = ((description || 'FA GENESIS') + (n > 1 ? ' — Versement 1/' + n : '')).substring(0, 127);
+
+        const orderBody = {
+            intent: 'CAPTURE',
+            purchase_units: [{
+                reference_id: ref,
+                description: descFull,
+                amount: { currency_code: currency || 'EUR', value: amt.toFixed(2) }
+            }],
+            application_context: {
+                brand_name: 'FA GENESIS',
+                locale: 'fr-FR',
+                shipping_preference: 'NO_SHIPPING',
+                user_action: 'PAY_NOW',
+                return_url: 'https://fagenesis.com/app.html',
+                cancel_url: 'https://fagenesis.com/app.html'
+            }
+        };
+
+        const resp = await fetch(PAYPAL_BASE + '/v2/checkout/orders', {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Bearer ' + token,
+                'Content-Type': 'application/json',
+                'PayPal-Request-Id': ref
+            },
+            body: JSON.stringify(orderBody)
+        });
+        const order = await resp.json();
+        if (!order.id) throw new Error('Erreur PayPal create-order : ' + JSON.stringify(order));
+
+        console.log('[PAYPAL] Commande créée:', order.id, amt + ' EUR', n > 1 ? '(' + n + 'x)' : '');
+        res.json({ success: true, orderId: order.id });
+    } catch (err) {
+        console.error('[PAYPAL] create-order:', err.message);
+        res.status(500).json({ error: 'Erreur création commande PayPal', details: err.message });
+    }
+});
+
+/**
+ * POST /api/payments/paypal/capture-order
+ * Body: { paypalOrderId }
+ * Response: { success, details }
+ */
+app.post('/api/payments/paypal/capture-order', async (req, res) => {
+    try {
+        const { paypalOrderId } = req.body;
+        if (!paypalOrderId) return res.status(400).json({ error: 'paypalOrderId requis' });
+
+        const token = await getPayPalAccessToken();
+        const resp = await fetch(PAYPAL_BASE + '/v2/checkout/orders/' + paypalOrderId + '/capture', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' }
+        });
+        const result = await resp.json();
+
+        if (result.status === 'COMPLETED') {
+            console.log('[PAYPAL] Capturé:', paypalOrderId);
+            res.json({ success: true, details: result });
+        } else {
+            console.warn('[PAYPAL] Statut inattendu:', result.status);
+            res.status(400).json({ error: 'Paiement non complété', status: result.status });
+        }
+    } catch (err) {
+        console.error('[PAYPAL] capture-order:', err.message);
+        res.status(500).json({ error: 'Erreur capture PayPal', details: err.message });
+    }
+});
+
+/**
  * POST /api/payments/apple-pay/validate
  * Merchant validation for Apple Pay JS API — proxies request to Apple with merchant certificate
  */
