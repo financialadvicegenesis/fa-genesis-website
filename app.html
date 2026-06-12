@@ -1267,6 +1267,38 @@ a{text-decoration:none;color:inherit}
 @keyframes ptrSpin{to{transform:rotate(360deg)}}
 .ptr-text{font-size:11px;font-weight:700;color:var(--yellow);
   letter-spacing:.8px;text-transform:uppercase}
+/* ══════════════════════════════════════════════════
+   UX PREMIUM — Expérience inoubliable
+══════════════════════════════════════════════════ */
+/* ── Toast stack ── */
+#toast-stack{position:fixed;bottom:calc(var(--nav) + var(--safe) + 16px);left:50%;transform:translateX(-50%);z-index:99999;display:flex;flex-direction:column;gap:8px;pointer-events:none;width:calc(100% - 32px);max-width:370px;}
+.toast-item{display:flex;align-items:flex-start;gap:11px;background:rgba(12,12,12,.97);border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:13px 14px 12px;backdrop-filter:blur(20px);box-shadow:0 12px 44px rgba(0,0,0,.75);transform:translateY(24px) scale(.94);opacity:0;transition:transform .32s cubic-bezier(.34,1.56,.64,1),opacity .28s ease;pointer-events:auto;overflow:hidden;position:relative;}
+.toast-item.t-in{transform:translateY(0) scale(1);opacity:1;}
+.toast-item.t-out{transform:translateY(-10px) scale(.95);opacity:0;transition:all .22s ease;}
+.toast-ico{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;flex-shrink:0;margin-top:1px;}
+.toast-ico-success{background:rgba(34,197,94,.2);color:#22c55e;}
+.toast-ico-error{background:rgba(239,68,68,.2);color:#ef4444;}
+.toast-ico-info{background:rgba(255,215,0,.15);color:#FFD700;}
+.toast-body{flex:1;min-width:0;}
+.toast-title{font-size:12.5px;font-weight:700;color:#fff;line-height:1.35;}
+.toast-sub{font-size:11px;color:#666;margin-top:2px;}
+.toast-prog{position:absolute;bottom:0;left:0;height:2.5px;animation:tprog 3.2s linear forwards;}
+.toast-prog-success{background:linear-gradient(90deg,#22c55e,rgba(34,197,94,.1));}
+.toast-prog-error{background:linear-gradient(90deg,#ef4444,rgba(239,68,68,.1));}
+.toast-prog-info{background:linear-gradient(90deg,#FFD700,rgba(255,215,0,.05));}
+@keyframes tprog{from{width:100%}to{width:0%}}
+/* ── Confetti canvas ── */
+#confetti-canvas{position:fixed;inset:0;z-index:99998;pointer-events:none;display:none;}
+/* ── Cart badge pop ── */
+@keyframes cartBadgePop{0%{transform:scale(1)}35%{transform:scale(1.9)}65%{transform:scale(.82)}100%{transform:scale(1)}}
+.cart-badge-pop{animation:cartBadgePop .44s cubic-bezier(.34,1.56,.64,1)!important;}
+/* ── Header auto-hide ── */
+#hdr{transition:transform .28s cubic-bezier(.4,0,.2,1);}
+#hdr.hdr-hidden{transform:translateY(-110%);}
+/* ── Card press spring ── */
+.home-card,.presta-card{transition:transform .13s cubic-bezier(.34,1.56,.64,1)!important;}
+.home-card:active{transform:scale(.96)!important;}
+.presta-card:active{transform:scale(.97)!important;}
 </style>
 </head>
 <body>
@@ -1355,7 +1387,7 @@ a{text-decoration:none;color:inherit}
     <!-- ACCUEIL -->
     <div class="tab on" id="tab-home">
       <div class="greet">
-        <div class="greet-hi">Bonjour 👋</div>
+        <div class="greet-hi" id="greetHi">Bonjour 👋</div>
         <div class="greet-name" id="greetName">FA GENESIS</div>
       </div>
 
@@ -1769,6 +1801,7 @@ function initApp(){
     document.getElementById('greetName').textContent = 'Invité';
   }
   updateCartBadge();
+  _updateGreeting();
   renderHomeOffers();
   renderPrestations('all');
   renderResaTab();
@@ -1802,6 +1835,7 @@ function loadStatusCard(){
 
 // ── NAVIGATION ───────────────────────────────────────────────
 function nav(tab){
+  haptic(8);
   document.querySelectorAll('.tab').forEach(function(t){t.className='tab';});
   document.querySelectorAll('.nav-btn').forEach(function(b){b.className='nav-btn';});
   var t = document.getElementById('tab-'+tab);
@@ -1809,6 +1843,7 @@ function nav(tab){
   if(t) t.className='tab on';
   if(b) b.className='nav-btn on';
   document.getElementById('content').scrollTop = 0;
+  var hdr=document.getElementById('hdr'); if(hdr) hdr.classList.remove('hdr-hidden');
 }
 function navExternal(url){
   window.location.href = USER ? url : 'login.html?from=app.html';
@@ -3239,9 +3274,13 @@ function updateCartBadge(){
 
 function addToCart(item){
   APP_CART.push(item); _saveCart();
+  haptic(10);
   var btn=document.getElementById('cart-icon-btn');
-  if(btn){ btn.style.transform='scale(1.35)'; setTimeout(function(){btn.style.transform='';},250); }
-  showCartToast((item.name||'Offre')+' ajouté au panier');
+  if(btn){ btn.style.transform='scale(1.4)'; setTimeout(function(){btn.style.transform='';},260); }
+  var badge=document.getElementById('cart-count');
+  if(badge){ badge.classList.remove('cart-badge-pop'); void badge.offsetWidth; badge.classList.add('cart-badge-pop'); setTimeout(function(){badge.classList.remove('cart-badge-pop');},450); }
+  updateCartBadge();
+  showToast((item.name||'Offre')+' ajouté', 'Votre panier a été mis à jour', 'success');
 }
 
 function removeFromCart(idx){ APP_CART.splice(idx,1); _saveCart(); renderCartBody(); }
@@ -3570,6 +3609,7 @@ function _startNativeApplePay(total){
           APP_CART = []; _saveCart();
           var ws3 = document.getElementById('pay-screen-widget'); if(ws3) ws3.style.display = 'none';
           var succ3 = document.getElementById('pay-success'); if(succ3) succ3.style.display = '';
+          launchConfetti(); showToast('Paiement réussi !', 'Votre commande est confirmée', 'success');
         } else {
           _showPayError(res.error || 'Paiement Apple Pay refusé.');
         }
@@ -3614,6 +3654,7 @@ function _mountSumUpWidget(checkoutId){
             var wc = document.getElementById('sumup-widget-container'); if(wc) wc.style.display = 'none';
             var ws = document.getElementById('pay-screen-widget'); if(ws) ws.style.display = 'none';
             var succ = document.getElementById('pay-success'); if(succ) succ.style.display = '';
+            launchConfetti(); showToast('Paiement réussi !', 'Votre commande est confirmée', 'success');
           } else if(type === 'error'){
             var msg = body && (body.message || body.error) ? (body.message || body.error) : 'Paiement refusé. Vérifiez vos informations.';
             _showPayError(msg);
@@ -3701,6 +3742,7 @@ function _showPayPalScreen(){
               APP_CART = []; _saveCart();
               if(pp) pp.style.display = 'none';
               var succ = document.getElementById('pay-success'); if(succ) succ.style.display = '';
+              launchConfetti(); showToast('Paiement réussi !', 'Votre commande est confirmée', 'success');
             } else {
               _showPayPalError(result.error||'Paiement non complété');
             }
@@ -4752,6 +4794,9 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
 
 <!-- TOAST PANIER -->
 <div id="cart-toast" class="cart-toast"></div>
+<!-- ── UX Premium ── -->
+<canvas id="confetti-canvas"></canvas>
+<div id="toast-stack"></div>
 
 <!-- LOGIN OVERLAY -->
 <div id="login-overlay" onclick="if(event.target===this)closeLoginSheet()">
@@ -5352,6 +5397,143 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
       refreshing = false;
     }, 1400);
   }
+})();
+
+/* ══════════════════════════════════════════════════
+   UX PREMIUM — Expérience inoubliable
+══════════════════════════════════════════════════ */
+
+// ── 1. Haptic feedback ──
+function haptic(p){try{if(navigator.vibrate)navigator.vibrate(p||10);}catch(e){}}
+
+// ── 2. Toast notifications ──
+function showToast(title,sub,type){
+  var stack=document.getElementById('toast-stack'); if(!stack) return;
+  type=type||'info';
+  var ico={success:'✓',error:'✕',info:'★'}[type]||'●';
+  var el=document.createElement('div');
+  el.className='toast-item';
+  el.innerHTML='<div class="toast-ico toast-ico-'+type+'">'+ico+'</div>'
+    +'<div class="toast-body">'
+    +'<div class="toast-title">'+title+'</div>'
+    +(sub?'<div class="toast-sub">'+sub+'</div>':'')
+    +'</div>'
+    +'<div class="toast-prog toast-prog-'+type+'"></div>';
+  while(stack.children.length>=3){
+    var old=stack.firstChild;
+    old.classList.add('t-out');
+    (function(o){setTimeout(function(){if(o.parentNode)o.parentNode.removeChild(o);},230);})(old);
+  }
+  stack.appendChild(el);
+  requestAnimationFrame(function(){requestAnimationFrame(function(){el.classList.add('t-in');});});
+  setTimeout(function(){
+    el.classList.remove('t-in'); el.classList.add('t-out');
+    setTimeout(function(){if(el.parentNode)el.parentNode.removeChild(el);},230);
+  },3400);
+}
+
+// ── 3. Confetti (gold burst on payment success) ──
+function launchConfetti(){
+  var c=document.getElementById('confetti-canvas'); if(!c) return;
+  c.style.display='block'; c.width=window.innerWidth; c.height=window.innerHeight;
+  var ctx=c.getContext('2d');
+  var cols=['#FFD700','#FFF8DC','#ffffff','#DAA520','#FFFACD','#F5E642','#FFC200'];
+  var parts=[]; var N=140;
+  for(var i=0;i<N;i++){
+    parts.push({
+      x:c.width*(0.2+Math.random()*0.6),
+      y:c.height*0.15+Math.random()*c.height*0.15,
+      vx:(Math.random()-0.5)*7,
+      vy:-(4+Math.random()*6),
+      w:5+Math.random()*9, h:5+Math.random()*7,
+      r:Math.random()*Math.PI*2, dr:(Math.random()-0.5)*0.25,
+      col:cols[Math.floor(Math.random()*cols.length)], a:1
+    });
+  }
+  var frame=0;
+  function draw(){
+    ctx.clearRect(0,0,c.width,c.height);
+    var alive=false;
+    for(var i=0;i<parts.length;i++){
+      var p=parts[i]; if(p.a<=0) continue; alive=true;
+      ctx.save(); ctx.globalAlpha=p.a;
+      ctx.translate(p.x+p.w/2,p.y+p.h/2); ctx.rotate(p.r);
+      ctx.fillStyle=p.col; ctx.fillRect(-p.w/2,-p.h/2,p.w,p.h);
+      ctx.restore();
+      p.x+=p.vx; p.y+=p.vy; p.vy+=0.18; p.r+=p.dr;
+      if(p.y>c.height*0.72) p.a-=0.028;
+    }
+    frame++;
+    if(alive&&frame<260) requestAnimationFrame(draw);
+    else{ctx.clearRect(0,0,c.width,c.height); c.style.display='none';}
+  }
+  draw();
+  haptic([60,40,100,40,150]);
+}
+
+// ── 4. Dynamic greeting (time-aware) ──
+function _updateGreeting(){
+  var el=document.getElementById('greetHi'); if(!el) return;
+  var h=new Date().getHours(); var t,e;
+  if(h>=5&&h<12){t='Bonjour';e='☀️';}
+  else if(h>=12&&h<18){t='Bon après-midi';e='⚡';}
+  else if(h>=18&&h<22){t='Bonsoir';e='🌙';}
+  else{t='Bonne nuit';e='✨';}
+  el.textContent=t+' '+e;
+}
+
+// ── 5. Swipe left/right to navigate tabs ──
+(function(){
+  var c=document.getElementById('content'); if(!c) return;
+  var tabs=['home','prestations','reservations','messages','profil','partner'];
+  var sx=0,sy=0,moved=false;
+  c.addEventListener('touchstart',function(e){
+    sx=e.touches[0].clientX; sy=e.touches[0].clientY; moved=false;
+  },{passive:true});
+  c.addEventListener('touchmove',function(e){
+    if(moved) return;
+    var dx=e.touches[0].clientX-sx, dy=e.touches[0].clientY-sy;
+    if(Math.abs(dx)>Math.abs(dy)&&Math.abs(dx)>18) moved=true;
+  },{passive:true});
+  c.addEventListener('touchend',function(e){
+    if(!moved) return; moved=false;
+    var dx=e.changedTouches[0].clientX-sx;
+    if(Math.abs(dx)<55) return;
+    var act=document.querySelector('.tab.on'); if(!act) return;
+    var cur=act.id.replace('tab-','');
+    var idx=tabs.indexOf(cur); if(idx<0) return;
+    if(dx<0&&idx<tabs.length-1){haptic(8);nav(tabs[idx+1]);}
+    else if(dx>0&&idx>0){haptic(8);nav(tabs[idx-1]);}
+  });
+})();
+
+// ── 6. Header auto-hide on scroll ──
+(function(){
+  var c=document.getElementById('content');
+  var h=document.getElementById('hdr'); if(!c||!h) return;
+  var ly=0;
+  c.addEventListener('scroll',function(){
+    var y=c.scrollTop;
+    if(y>ly&&y>60) h.classList.add('hdr-hidden');
+    else h.classList.remove('hdr-hidden');
+    ly=y;
+  },{passive:true});
+})();
+
+// ── 7. Double-tap nav button = scroll to top ──
+(function(){
+  var lt={id:'',t:0};
+  document.querySelectorAll('.nav-btn').forEach(function(b){
+    b.addEventListener('click',function(){
+      var now=Date.now(); var id=b.id;
+      if(id===lt.id&&now-lt.t<380){
+        var c=document.getElementById('content');
+        if(c) c.scrollTo({top:0,behavior:'smooth'});
+        haptic(20);
+      }
+      lt={id:id,t:now};
+    });
+  });
 })();
 </script>
 </body>
