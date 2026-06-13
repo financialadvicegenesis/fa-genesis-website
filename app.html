@@ -874,6 +874,50 @@ a{text-decoration:none;color:inherit}
 .cart-toast{position:fixed;bottom:calc(var(--nav) + 20px);left:50%;transform:translateX(-50%) translateY(16px);background:#FFD700;color:#000;font-size:12px;font-weight:900;padding:9px 18px;border-radius:20px;z-index:9400;opacity:0;transition:opacity .25s,transform .25s;pointer-events:none;white-space:nowrap;}
 .cart-toast.on{opacity:1;transform:translateX(-50%) translateY(0);}
 
+/* ── DISPATCH / MISSIONS ── */
+.dispatch-card{background:#111;border:1px solid #1e1e1e;border-radius:16px;padding:16px;margin-bottom:12px;position:relative;overflow:hidden;}
+.dispatch-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:#FFD700;}
+.dispatch-card.new-card{animation:dispatchPulse 2s ease-in-out;}
+@keyframes dispatchPulse{0%,100%{border-color:#1e1e1e}50%{border-color:#FFD700}}
+.dispatch-badge{display:inline-flex;align-items:center;gap:5px;background:rgba(255,215,0,.15);color:#FFD700;font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.5px;padding:3px 9px;border-radius:99px;margin-bottom:10px;}
+.dispatch-badge-dot{width:6px;height:6px;border-radius:50%;background:#FFD700;animation:dispatchBlink 1.2s ease-in-out infinite;}
+@keyframes dispatchBlink{0%,100%{opacity:1}50%{opacity:.3}}
+.dispatch-title{font-size:13px;font-weight:900;color:#fff;margin-bottom:3px;}
+.dispatch-meta{font-size:11px;color:#777;margin-bottom:10px;}
+.dispatch-avail{background:#0d0d0d;border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:11px;color:#aaa;line-height:1.7;}
+.dispatch-avail strong{color:#FFD700;font-weight:700;}
+.dispatch-claim-btn{width:100%;background:#FFD700;color:#000;font-family:'Unbounded',cursive;font-weight:900;font-size:11px;letter-spacing:.5px;padding:13px;border:none;border-radius:10px;cursor:pointer;transition:opacity .15s;}
+.dispatch-claim-btn:active{opacity:.8;}
+.dispatch-claim-btn:disabled{opacity:.4;cursor:default;}
+/* Overlay claim */
+#dispatch-claim-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9600;display:none;align-items:flex-end;}
+#dispatch-claim-overlay.open{display:flex;}
+#dispatch-claim-sheet{background:#111;border-radius:20px 20px 0 0;width:100%;max-height:85vh;overflow-y:auto;padding:24px 20px calc(20px + env(safe-area-inset-bottom,0px));}
+.dclaim-title{font-family:'Unbounded',cursive;font-size:13px;font-weight:900;color:#FFD700;margin-bottom:4px;}
+.dclaim-sub{font-size:12px;color:#777;margin-bottom:20px;}
+.dclaim-label{font-size:11px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;margin-top:14px;}
+.dclaim-input{width:100%;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:10px;padding:13px 14px;color:#fff;font-size:13px;font-family:inherit;box-sizing:border-box;}
+.dclaim-input:focus{outline:none;border-color:#FFD700;}
+.dclaim-textarea{resize:none;min-height:70px;}
+.dclaim-submit-btn{width:100%;background:#FFD700;color:#000;font-family:'Unbounded',cursive;font-weight:900;font-size:11px;letter-spacing:.5px;padding:15px;border:none;border-radius:10px;cursor:pointer;margin-top:20px;}
+.dclaim-cancel-btn{width:100%;background:transparent;border:1px solid #2a2a2a;color:#888;font-size:12px;font-weight:700;padding:12px;border-radius:10px;cursor:pointer;margin-top:8px;}
+/* Client availability overlay */
+#avail-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9700;display:none;align-items:flex-end;}
+#avail-overlay.open{display:flex;}
+#avail-sheet{background:#0d0d0d;border-radius:20px 20px 0 0;width:100%;max-height:90vh;overflow-y:auto;padding:24px 20px calc(20px + env(safe-area-inset-bottom,0px));}
+.avail-title{font-family:'Unbounded',cursive;font-size:13px;font-weight:900;color:#FFD700;margin-bottom:4px;}
+.avail-sub{font-size:12px;color:#777;margin-bottom:22px;line-height:1.6;}
+.avail-label{font-size:11px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;margin-top:16px;}
+.avail-input{width:100%;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:10px;padding:13px 14px;color:#fff;font-size:13px;font-family:inherit;box-sizing:border-box;}
+.avail-input:focus{outline:none;border-color:#FFD700;}
+.avail-days{display:flex;flex-wrap:wrap;gap:8px;}
+.avail-day{flex:1;min-width:60px;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:9px;padding:10px 6px;font-size:11px;font-weight:700;color:#777;text-align:center;cursor:pointer;transition:all .15s;}
+.avail-day.sel{background:rgba(255,215,0,.15);border-color:#FFD700;color:#FFD700;}
+.avail-slots{display:flex;gap:8px;}
+.avail-slot{flex:1;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:9px;padding:11px 6px;font-size:11px;font-weight:700;color:#777;text-align:center;cursor:pointer;transition:all .15s;}
+.avail-slot.sel{background:rgba(255,215,0,.15);border-color:#FFD700;color:#FFD700;}
+.avail-submit{width:100%;background:#FFD700;color:#000;font-family:'Unbounded',cursive;font-weight:900;font-size:11px;letter-spacing:.5px;padding:15px;border:none;border-radius:10px;cursor:pointer;margin-top:22px;}
+.avail-skip{width:100%;background:transparent;border:none;color:#555;font-size:12px;padding:12px;cursor:pointer;margin-top:4px;}
 /* ── PARTNER TAB ── */
 #tab-partner{padding:0 0 calc(var(--nav) + var(--safe) + 16px);}
 .ptnr-header{background:linear-gradient(135deg,#0d0d0d 0%,#1a1200 100%);border-bottom:2px solid #FFD700;padding:20px 16px 16px;display:flex;align-items:center;justify-content:space-between;}
@@ -1620,6 +1664,10 @@ a{text-decoration:none;color:inherit}
             <span class="pni">💬</span><span>Messages</span>
             <span class="ptnr-badge" id="ptnr-badge-messages"></span>
           </button>
+          <button class="ptnr-snbtn" id="ptnr-sn-missions" onclick="_ptnrNav('missions')">
+            <span class="pni">⚡</span><span>Missions</span>
+            <span class="ptnr-badge" id="ptnr-badge-missions"></span>
+          </button>
         </div>
 
         <!-- Sub-screen: Home / Stats -->
@@ -1654,6 +1702,12 @@ a{text-decoration:none;color:inherit}
         <div class="ptnr-screen" id="ptnr-screen-messages">
           <div class="ptnr-section-title">Messages clients</div>
           <div id="ptnr-messages-list"></div>
+        </div>
+
+        <!-- Sub-screen: Missions (dispatch) -->
+        <div class="ptnr-screen" id="ptnr-screen-missions">
+          <div class="ptnr-section-title">Missions disponibles</div>
+          <div id="ptnr-missions-list"></div>
         </div>
       </div>
     </div>
@@ -4027,6 +4081,7 @@ function _ptnrNav(screen){
   if(screen==='devis') _ptnrLoadDevis();
   if(screen==='seances') _ptnrLoadSeances();
   if(screen==='messages') _ptnrLoadMessages();
+  if(screen==='missions') _ptnrLoadMissions();
 }
 
 function _ptnrFmt(dateStr){
@@ -4060,6 +4115,8 @@ function _ptnrLoadHome(){
 
     var html = '';
 
+    // ── Alerte missions : chargée séparément ──
+
     // ── Dossiers : mon dossier ouvert + dossiers des autres verrouillés ──
     if(allProfiles.length > 0){
       html += '<div style="font-size:11px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.5px;padding:16px 0 10px;">Mes dossiers</div>';
@@ -4085,6 +4142,14 @@ function _ptnrLoadHome(){
     if(projets.length>0) html += '<div class="ptnr-card" style="border-left:3px solid #22c55e;cursor:pointer;" onclick="_ptnrNav(\'projets\')"><div class="ptnr-card-title">'+projets.length+' projet(s) assigné(s)</div><div class="ptnr-card-sub">Appuyez pour voir vos projets</div></div>';
     if(!pendingDevis && !inbox.length && !projets.length) html += '<div class="ptnr-empty"><div class="ptnr-empty-ico">✅</div><div class="ptnr-empty-txt">Tout est à jour !</div></div>';
     if(list) list.innerHTML = html;
+    // Charger le compteur de missions et afficher l'alerte
+    _ptnrFetch('/api/partner/dispatches/count').then(function(r){
+      var cnt = r && r.count ? r.count : 0;
+      if(cnt > 0 && list){
+        var alertCard = '<div class="dispatch-card" style="cursor:pointer;margin-bottom:12px;" onclick="_ptnrNav(\'missions\')"><div class="dispatch-badge"><span class="dispatch-badge-dot"></span>'+cnt+' mission(s) disponible(s)</div><div class="ptnr-card-title">Soyez le premier à répondre !</div><div class="ptnr-card-sub">Des clients attendent un partenaire. Appuyez pour voir les missions.</div></div>';
+        list.insertAdjacentHTML('afterbegin', alertCard);
+      }
+    }).catch(function(){});
   });
 }
 
@@ -4318,18 +4383,19 @@ function _ptnrRefreshBadges(){
     _ptnrFetch('/api/partner/quotes').catch(function(){return [];}),
     _ptnrFetch('/api/partner/inbox').catch(function(){return [];}),
     _ptnrFetch('/api/partner/sessions').catch(function(){return [];}),
-    _ptnrFetch('/api/partner/projects').catch(function(){return [];})
+    _ptnrFetch('/api/partner/projects').catch(function(){return [];}),
+    _ptnrFetch('/api/partner/dispatches/count').catch(function(){return {count:0};})
   ]).then(function(results){
     var devis = Array.isArray(results[0]) ? results[0] : (results[0].quotes||[]);
     var inbox = Array.isArray(results[1]) ? results[1] : (results[1].messages||results[1].inbox||[]);
     var sessions = Array.isArray(results[2]) ? results[2] : (results[2].sessions||[]);
     var projets = Array.isArray(results[3]) ? results[3] : (results[3].projects||[]);
+    var missionCount = (results[4] && results[4].count) || 0;
     var pendingDevis = devis.filter(function(q){return q.status==='pending'||q.status==='open'||!q.status;}).length;
     var pendingSeances = sessions.filter(function(s){return s.status==='pending'||s.status==='proposed';}).length;
     var unreadMsg = inbox.filter(function(m){return m.unread||m.isUnread;}).length || inbox.length;
     function _setBadge(id, count){
-      var el = document.getElementById(id);
-      if(!el) return;
+      var el = document.getElementById(id); if(!el) return;
       if(count>0){ el.textContent=count; el.className='ptnr-badge on'; }
       else { el.className='ptnr-badge'; }
     }
@@ -4337,7 +4403,8 @@ function _ptnrRefreshBadges(){
     _setBadge('ptnr-badge-seances', pendingSeances);
     _setBadge('ptnr-badge-messages', unreadMsg);
     _setBadge('ptnr-badge-projets', 0);
-    var hasAny = pendingDevis > 0 || pendingSeances > 0 || unreadMsg > 0;
+    _setBadgeMissions(missionCount);
+    var hasAny = pendingDevis > 0 || pendingSeances > 0 || unreadMsg > 0 || missionCount > 0;
     var dot = document.getElementById('dot-partner'); if(dot) dot.style.display = hasAny ? '' : 'none';
     if(dot && hasAny) dot.className = 'nav-dot on'; else if(dot) dot.className = 'nav-dot';
   });
@@ -4798,6 +4865,50 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
 <canvas id="confetti-canvas"></canvas>
 <div id="toast-stack"></div>
 
+<!-- ── Overlay : Prise en charge d'une mission (partenaire) ── -->
+<div id="dispatch-claim-overlay" onclick="if(event.target===this)_closeDClaimOverlay()">
+  <div id="dispatch-claim-sheet">
+    <div class="dclaim-title">Prendre en charge la mission</div>
+    <div class="dclaim-sub" id="dclaim-subtitle">Premier arrivé, premier servi</div>
+    <div class="dclaim-label">Votre prénom / nom *</div>
+    <input class="dclaim-input" id="dclaim-name" placeholder="Ex : Sophie Martin" autocomplete="name">
+    <div class="dclaim-label">Date de démarrage proposée *</div>
+    <input class="dclaim-input" type="date" id="dclaim-date">
+    <div class="dclaim-label">Message pour le client (optionnel)</div>
+    <textarea class="dclaim-input dclaim-textarea" id="dclaim-message" placeholder="Ex : Je suis disponible dès lundi matin…"></textarea>
+    <button class="dclaim-submit-btn" id="dclaim-submit-btn" onclick="_submitClaim()">CONFIRMER LA PRISE EN CHARGE</button>
+    <button class="dclaim-cancel-btn" onclick="_closeDClaimOverlay()">Annuler</button>
+  </div>
+</div>
+
+<!-- ── Overlay : Disponibilités client (après paiement) ── -->
+<div id="avail-overlay" onclick="if(event.target===this)_closeAvailOverlay()">
+  <div id="avail-sheet">
+    <div class="avail-title">Vos disponibilités</div>
+    <div class="avail-sub">Indiquez quand vous souhaitez démarrer votre accompagnement. Nos partenaires pourront ainsi vous contacter rapidement.</div>
+    <div class="avail-label">Date de démarrage souhaitée *</div>
+    <input class="avail-input" type="date" id="avail-date">
+    <div class="avail-label">Jours disponibles</div>
+    <div class="avail-days">
+      <div class="avail-day" data-day="lun" onclick="_toggleDay(this)">Lun</div>
+      <div class="avail-day" data-day="mar" onclick="_toggleDay(this)">Mar</div>
+      <div class="avail-day" data-day="mer" onclick="_toggleDay(this)">Mer</div>
+      <div class="avail-day" data-day="jeu" onclick="_toggleDay(this)">Jeu</div>
+      <div class="avail-day" data-day="ven" onclick="_toggleDay(this)">Ven</div>
+    </div>
+    <div class="avail-label">Créneau préféré</div>
+    <div class="avail-slots">
+      <div class="avail-slot" data-slot="matin" onclick="_selectSlot(this)">Matin</div>
+      <div class="avail-slot" data-slot="après-midi" onclick="_selectSlot(this)">Après-midi</div>
+      <div class="avail-slot" data-slot="soir" onclick="_selectSlot(this)">Soir</div>
+    </div>
+    <div class="avail-label">Note (optionnel)</div>
+    <input class="avail-input" id="avail-notes" placeholder="Ex : Plutôt en fin de matinée…">
+    <button class="avail-submit" id="avail-submit-btn" onclick="_submitAvailability()">ENREGISTRER MES DISPONIBILITÉS</button>
+    <button class="avail-skip" onclick="_closeAvailOverlay()">Passer pour l'instant</button>
+  </div>
+</div>
+
 <!-- LOGIN OVERLAY -->
 <div id="login-overlay" onclick="if(event.target===this)closeLoginSheet()">
   <div id="login-sheet">
@@ -5057,7 +5168,8 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
         <div style="width:76px;height:76px;border-radius:50%;background:#FFD700;display:flex;align-items:center;justify-content:center;margin:0 auto 22px;font-size:38px;font-weight:900;color:#000;">&#10003;</div>
         <div style="font-family:'Unbounded',cursive;font-size:15px;font-weight:900;color:#FFD700;margin-bottom:12px;">Paiement réussi&nbsp;!</div>
         <div style="font-size:13px;color:#aaa;line-height:1.8;">Votre commande a bien été enregistrée.<br>Nous vous contacterons très prochainement.</div>
-        <button onclick="closePayOverlay()" style="margin-top:30px;background:#FFD700;color:#000;border:none;border-radius:10px;padding:15px 36px;font-family:'Unbounded',cursive;font-size:11px;font-weight:900;cursor:pointer;letter-spacing:1px;">FERMER</button>
+        <button onclick="_openAvailOverlay()" style="margin-top:26px;width:100%;background:#FFD700;color:#000;border:none;border-radius:10px;padding:15px;font-family:'Unbounded',cursive;font-size:11px;font-weight:900;cursor:pointer;letter-spacing:1px;">RENSEIGNER MES DISPONIBILITÉS →</button>
+        <button onclick="closePayOverlay()" style="margin-top:10px;width:100%;background:transparent;border:1px solid #2a2a2a;color:#666;border-radius:10px;padding:13px;font-size:12px;cursor:pointer;">Plus tard</button>
       </div>
 
     </div><!-- /.pay-body -->
@@ -5398,6 +5510,145 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
     }, 1400);
   }
 })();
+
+/* ══════════════════════════════════════════════════
+   DISPATCH — Système de missions partenaire
+══════════════════════════════════════════════════ */
+
+var _currentDispatchId = null;
+
+function _ptnrLoadMissions(){
+  var el = document.getElementById('ptnr-missions-list');
+  if(el) el.innerHTML = '<div class="ptnr-empty"><div style="color:#FFD700;font-size:24px;">⏳</div></div>';
+  _ptnrFetch('/api/partner/dispatches').then(function(data){
+    var items = data.dispatches || [];
+    if(!items.length){
+      if(el) el.innerHTML = '<div class="ptnr-empty"><div class="ptnr-empty-ico">✅</div><div class="ptnr-empty-txt">Aucune mission disponible</div><div style="font-size:12px;color:#555;margin-top:6px;">Vous serez notifié à chaque nouvelle mission.</div></div>';
+      _setBadgeMissions(0); return;
+    }
+    var html = '<div style="font-size:12px;color:#888;margin-bottom:14px;line-height:1.6;">Premier à confirmer vos disponibilités = vous prenez en charge le client. Soyez rapide !</div>';
+    items.forEach(function(d){
+      var avail = d.client_availability;
+      var days = avail && avail.days && avail.days.length ? avail.days.join(', ') : 'Non renseigné';
+      var slot = avail && avail.time_slot ? avail.time_slot : '—';
+      var start = avail && avail.preferred_start ? _ptnrFmt(avail.preferred_start) : 'Non renseigné';
+      var notes = avail && avail.notes ? avail.notes : '';
+      html += '<div class="dispatch-card new-card" id="dispatch-'+d.id+'">';
+      html += '<div class="dispatch-badge"><span class="dispatch-badge-dot"></span>Mission disponible</div>';
+      html += '<div class="dispatch-title">'+d.client_prenom+' — '+(d.offer_name||'Offre')+'</div>';
+      html += '<div class="dispatch-meta">Reçue le '+_ptnrFmt(d.created_at)+'</div>';
+      html += '<div class="dispatch-avail">';
+      html += '<strong>Démarrage souhaité :</strong> '+start+'<br>';
+      html += '<strong>Jours disponibles :</strong> '+days+'<br>';
+      html += '<strong>Créneau :</strong> '+slot;
+      if(notes) html += '<br><strong>Note :</strong> '+notes;
+      html += '</div>';
+      html += '<button class="dispatch-claim-btn" onclick="_openDClaimOverlay(\''+d.id+'\',\''+d.client_prenom+'\')">⚡ Prendre en charge</button>';
+      html += '</div>';
+    });
+    if(el) el.innerHTML = html;
+    _setBadgeMissions(items.length);
+  }).catch(function(){
+    if(el) el.innerHTML = '<div class="ptnr-empty"><div class="ptnr-empty-txt">Erreur de chargement</div></div>';
+  });
+}
+
+function _setBadgeMissions(count){
+  var b = document.getElementById('ptnr-badge-missions'); if(!b) return;
+  if(count>0){ b.textContent=count; b.className='ptnr-badge on'; }
+  else { b.className='ptnr-badge'; }
+}
+
+function _openDClaimOverlay(id, prenom){
+  _currentDispatchId = id;
+  var sub = document.getElementById('dclaim-subtitle');
+  if(sub) sub.textContent = 'Client : '+prenom+' — Premier arrivé, premier servi';
+  var d = document.getElementById('dclaim-date');
+  if(d){ var t = new Date(); t.setDate(t.getDate()+1); d.value = t.toISOString().split('T')[0]; }
+  var n = document.getElementById('dclaim-name');
+  if(n){ var prof = null; try{prof=JSON.parse(localStorage.getItem('fa_genesis_partner_profile_data')||'null');}catch(e){} n.value=(prof&&prof.name)||''; }
+  var ov = document.getElementById('dispatch-claim-overlay');
+  if(ov){ ov.style.display='flex'; } haptic(10);
+}
+function _closeDClaimOverlay(){
+  var ov = document.getElementById('dispatch-claim-overlay');
+  if(ov) ov.style.display='none';
+  _currentDispatchId = null;
+}
+function _submitClaim(){
+  if(!_currentDispatchId) return;
+  var name = (document.getElementById('dclaim-name')||{}).value||'';
+  var date = (document.getElementById('dclaim-date')||{}).value||'';
+  var msg = (document.getElementById('dclaim-message')||{}).value||'';
+  if(!name.trim()){ showToast('Votre nom est requis','','error'); return; }
+  if(!date){ showToast('Indiquez une date de démarrage','','error'); return; }
+  var btn = document.getElementById('dclaim-submit-btn');
+  if(btn){ btn.disabled=true; btn.textContent='En cours...'; }
+  haptic(15);
+  var profileId = localStorage.getItem('fa_genesis_partner_profile')||null;
+  _ptnrFetch('/api/partner/dispatches/'+_currentDispatchId+'/claim','POST',{
+    partner_name:name.trim(), proposed_start:date, claim_message:msg, profile_id:profileId
+  }).then(function(res){
+    if(btn){ btn.disabled=false; btn.textContent='CONFIRMER LA PRISE EN CHARGE'; }
+    if(res.success){
+      _closeDClaimOverlay();
+      launchConfetti();
+      showToast('Mission attribuée !','Le client apparaît dans vos projets.','success');
+      haptic([50,30,100,30,150]);
+      _ptnrLoadMissions(); _ptnrRefreshBadges();
+    } else if(res.taken){
+      showToast('Mission déjà prise','Un autre partenaire a été plus rapide !','error');
+      _closeDClaimOverlay(); _ptnrLoadMissions();
+    } else {
+      showToast(res.error||'Erreur','Réessayez','error');
+    }
+  }).catch(function(){
+    if(btn){ btn.disabled=false; btn.textContent='CONFIRMER LA PRISE EN CHARGE'; }
+    showToast('Erreur de connexion','Réessayez','error');
+  });
+}
+
+function _openAvailOverlay(){
+  var ov = document.getElementById('avail-overlay');
+  if(ov){ ov.style.display='flex'; }
+  var d = document.getElementById('avail-date');
+  if(d){ var w=new Date(); w.setDate(w.getDate()+7); d.min=new Date().toISOString().split('T')[0]; d.value=w.toISOString().split('T')[0]; }
+  haptic(10);
+}
+function _closeAvailOverlay(){
+  var ov = document.getElementById('avail-overlay');
+  if(ov) ov.style.display='none';
+}
+function _toggleDay(el){ el.classList.toggle('sel'); haptic(8); }
+function _selectSlot(el){
+  document.querySelectorAll('.avail-slot').forEach(function(s){s.classList.remove('sel');});
+  el.classList.add('sel'); haptic(8);
+}
+function _submitAvailability(){
+  var date = (document.getElementById('avail-date')||{}).value||'';
+  if(!date){ showToast('Sélectionnez une date','','error'); return; }
+  var days = [];
+  document.querySelectorAll('.avail-day.sel').forEach(function(d){ days.push(d.dataset.day); });
+  var slotEl = document.querySelector('.avail-slot.sel');
+  var timeSlot = slotEl ? slotEl.dataset.slot : '';
+  var notes = (document.getElementById('avail-notes')||{}).value||'';
+  var btn = document.getElementById('avail-submit-btn');
+  if(btn){ btn.disabled=true; btn.textContent='Envoi...'; }
+  var token = USER ? USER._token : (localStorage.getItem('fa_genesis_token')||'');
+  fetch((window.FA_GENESIS_API||API)+'/api/client/set-availability',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+    body:JSON.stringify({preferred_start:date, days:days, time_slot:timeSlot, notes:notes})
+  }).then(function(r){return r.json();}).then(function(){
+    if(btn){ btn.disabled=false; btn.textContent='ENREGISTRER MES DISPONIBILITÉS'; }
+    _closeAvailOverlay(); closePayOverlay();
+    showToast('Disponibilités enregistrées !','Nos partenaires vont vous contacter.','success');
+    haptic([30,20,60]);
+  }).catch(function(){
+    if(btn){ btn.disabled=false; btn.textContent='ENREGISTRER MES DISPONIBILITÉS'; }
+    showToast('Erreur réseau','Réessayez plus tard','error');
+  });
+}
 
 /* ══════════════════════════════════════════════════
    UX PREMIUM — Expérience inoubliable

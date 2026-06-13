@@ -50,6 +50,7 @@ const BLOCKED_DATES_FILE = path.join(__dirname, 'data', 'blocked-dates.json');
 const CW_MESSAGES_FILE = path.join(__dirname, 'data', 'cw-messages.json');
 const CW_DEVIS_FILE = path.join(__dirname, 'data', 'cw-devis.json');
 const PUSH_SUBSCRIPTIONS_FILE = path.join(__dirname, 'data', 'push-subscriptions.json');
+const DISPATCHES_FILE = path.join(__dirname, 'data', 'dispatches.json');
 
 // Creer le dossier data s'il n'existe pas
 if (!fs.existsSync(path.join(__dirname, 'data'))) {
@@ -196,6 +197,19 @@ function savePartnerAssignments(assignments) {
     }
 }
 
+// ── Dispatches (missions partenaire en mode "course") ──
+function loadDispatches() {
+    try {
+        if (!fs.existsSync(DISPATCHES_FILE)) return [];
+        return JSON.parse(fs.readFileSync(DISPATCHES_FILE, 'utf8')) || [];
+    } catch(e) { return []; }
+}
+function saveDispatches(data) {
+    try { fs.writeFileSync(DISPATCHES_FILE, JSON.stringify(data, null, 2), 'utf8'); }
+    catch(e) { console.error('[DISPATCH] Erreur sauvegarde:', e); }
+}
+var _dispatchLocks = {}; // verrou en mémoire contre les race conditions
+
 // ============================================================
 // ASSIGNATION AUTOMATIQUE DES INTERVENANTS (après acompte)
 // ============================================================
@@ -253,42 +267,14 @@ function assignIntervenantsFromOrder(orderId) {
             var roles = ASSIGNMENT_RULES[productId] || [];
             roles.forEach(function(role) {
                 if (role === 'admin') {
-                    // Consultant FA GENESIS - pas d'assignation partenaire externe
+                    // Consultant FA GENESIS - assignation interne immédiate
                     if (assignedRoles.indexOf('admin') === -1) assignedRoles.push('admin');
                     return;
                 }
-                // Vérifier si ce type de partenaire est déjà assigné
-                var alreadyAssigned = assignments.find(function(a) {
-                    return a.order_id === orderId && a.partner_type === role && a.status === 'active';
-                });
-                var alreadyNew = newAssignments.find(function(a) {
-                    return a.order_id === orderId && a.partner_type === role;
-                });
-                if (alreadyAssigned || alreadyNew) {
-                    if (assignedRoles.indexOf(role) === -1) assignedRoles.push(role);
-                    return;
-                }
-                // Trouver un partenaire actif du bon type
-                var partner = allPartners.find(function(p) {
-                    return p.partner_type === role && p.status === 'active';
-                });
-                if (partner) {
-                    newAssignments.push({
-                        id: 'ASG-' + uuidv4().split('-')[0],
-                        partner_id: partner.id,
-                        partner_email: partner.email,
-                        partner_type: partner.partner_type,
-                        order_id: orderId,
-                        assigned_at: new Date().toISOString(),
-                        assigned_by: 'system-auto',
-                        status: 'active',
-                        notes: 'Auto-assigne depuis offre ' + productId
-                    });
-                    if (assignedRoles.indexOf(role) === -1) assignedRoles.push(role);
-                    console.log('[ASSIGN] Partenaire ' + partner.email + ' (' + role + ') assigne a ' + orderId);
-                } else {
-                    console.log('[ASSIGN] Aucun partenaire actif de type ' + role + ' pour ' + orderId);
-                }
+                // Partenaires externes (marketer, media, photographer, videographer)
+                // → système de dispatch (course) : ils se manifestent eux-mêmes
+                if (assignedRoles.indexOf(role) === -1) assignedRoles.push(role);
+                console.log('[ASSIGN] Role ' + role + ' mis en mode dispatch pour ' + orderId);
             });
         });
 
@@ -308,6 +294,68 @@ function assignIntervenantsFromOrder(orderId) {
         console.log('[ASSIGN] Assignation terminee pour ' + orderId + '. Roles: ' + assignedRoles.join(', '));
     } catch (e) {
         console.error('[ASSIGN] Erreur assignIntervenantsFromOrder:', e);
+    }
+}
+
+// Crée les missions (dispatches) pour les partenaires externes d'une commande
+function createDispatchesForOrder(orderId) {
+    try {
+        var orders = loadOrders();
+        var order = orders.find(function(o) { return o.id === orderId; });
+        if (!order) return;
+
+        var productIds = [];
+        if (order.items && Array.isArray(order.items) && order.items.length > 0) {
+            order.items.forEach(function(item) { if (item.product_id) productIds.push(item.product_id); });
+        } else if (order.product_id) {
+            productIds.push(order.product_id);
+        }
+        if (productIds.length === 0) return;
+
+        var users = loadUsers();
+        var clientEmail = (order.client_info && order.client_info.email) || order.email || '';
+        var user = users.find(function(u) { return u.email === clientEmail; });
+        var clientPrenom = (order.client_info && order.client_info.first_name)
+            || (user && (user.prenom || user.firstName || user.first_name))
+            || 'Client';
+
+        var dispatches = loadDispatches();
+        var createdTypes = [];
+
+        productIds.forEach(function(productId) {
+            var roles = ASSIGNMENT_RULES[productId] || [];
+            roles.forEach(function(role) {
+                if (role === 'admin') return;
+                if (createdTypes.indexOf(role) !== -1) return;
+                var existing = dispatches.find(function(d) {
+                    return d.order_id === orderId && d.partner_type === role && d.status !== 'cancelled';
+                });
+                if (existing) return;
+
+                dispatches.push({
+                    id: 'DSP-' + uuidv4().split('-')[0],
+                    order_id: orderId,
+                    client_prenom: clientPrenom,
+                    offer_name: productId,
+                    partner_type: role,
+                    client_availability: null,
+                    status: 'open',
+                    claimed_by_name: null,
+                    claimed_by_profile: null,
+                    claimed_by_partner_id: null,
+                    claimed_at: null,
+                    claim_message: null,
+                    proposed_start: null,
+                    created_at: new Date().toISOString()
+                });
+                createdTypes.push(role);
+                console.log('[DISPATCH] Mission créée : ' + role + ' pour commande ' + orderId);
+            });
+        });
+
+        if (createdTypes.length > 0) saveDispatches(dispatches);
+    } catch(e) {
+        console.error('[DISPATCH] Erreur création missions:', e);
     }
 }
 
@@ -2147,8 +2195,9 @@ app.post('/api/payments/sumup/webhook', async (req, res) => {
                         }
                     }).catch(err => console.error('[WEBHOOK] Erreur envoi email bienvenue:', err));
 
-                    // Auto-assigner tous les intervenants selon les règles de l'offre
+                    // Assigner les intervenants admin + créer les missions partenaires
                     assignIntervenantsFromOrder(orderId);
+                    createDispatchesForOrder(orderId);
 
                     // NOTE: Le bootstrap projet est maintenant declenche par finalizeSchedule()
                     // apres que le client ait choisi une date ET que admin+partenaire aient confirme
@@ -2330,8 +2379,9 @@ app.post('/api/payments/verify', async (req, res) => {
                             }
                         }).catch(err => console.error('[VERIFY] Erreur envoi email bienvenue:', err));
 
-                        // Auto-assigner tous les intervenants selon les règles de l'offre
+                        // Assigner les intervenants admin + créer les missions partenaires
                         assignIntervenantsFromOrder(orderId);
+                        createDispatchesForOrder(orderId);
 
                         // NOTE: Le bootstrap projet est maintenant declenche par finalizeSchedule()
                         // apres que le client ait choisi une date ET que admin+partenaire aient confirme
@@ -6680,6 +6730,158 @@ app.get('/api/partner/projects', authenticatePartner, (req, res) => {
     } catch (error) {
         console.error('[PARTNER] Erreur projects:', error);
         res.status(500).json({ error: 'Erreur chargement projets' });
+    }
+});
+
+// ============================================================
+//  DISPATCH — Système de missions (course entre partenaires)
+// ============================================================
+
+// GET /api/partner/dispatches — liste des missions ouvertes pour ce type
+app.get('/api/partner/dispatches', authenticatePartner, function(req, res) {
+    try {
+        var dispatches = loadDispatches();
+        var pType = req.partner.partner_type;
+        var open = dispatches
+            .filter(function(d) { return d.partner_type === pType && d.status === 'open'; })
+            .sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); });
+        res.json({ dispatches: open });
+    } catch(e) {
+        console.error('[DISPATCH] Erreur liste:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// GET /api/partner/dispatches/count — badge count
+app.get('/api/partner/dispatches/count', authenticatePartner, function(req, res) {
+    try {
+        var dispatches = loadDispatches();
+        var count = dispatches.filter(function(d) {
+            return d.partner_type === req.partner.partner_type && d.status === 'open';
+        }).length;
+        res.json({ count: count });
+    } catch(e) {
+        res.status(500).json({ error: 'Erreur' });
+    }
+});
+
+// POST /api/partner/dispatches/:id/claim — prendre en charge (premier arrivé = servi)
+app.post('/api/partner/dispatches/:id/claim', authenticatePartner, function(req, res) {
+    var dispatchId = req.params.id;
+    if (_dispatchLocks[dispatchId]) {
+        return res.status(409).json({ error: 'Mission en cours de traitement. Réessayez dans un instant.' });
+    }
+    _dispatchLocks[dispatchId] = true;
+    try {
+        var dispatches = loadDispatches();
+        var idx = dispatches.findIndex(function(d) { return d.id === dispatchId; });
+        if (idx === -1) {
+            delete _dispatchLocks[dispatchId];
+            return res.status(404).json({ error: 'Mission introuvable' });
+        }
+        var dispatch = dispatches[idx];
+        if (dispatch.status !== 'open') {
+            delete _dispatchLocks[dispatchId];
+            return res.status(409).json({ taken: true, error: 'Cette mission a déjà été prise en charge par un autre partenaire.' });
+        }
+        if (dispatch.partner_type !== req.partner.partner_type) {
+            delete _dispatchLocks[dispatchId];
+            return res.status(403).json({ error: 'Cette mission ne correspond pas à votre domaine.' });
+        }
+
+        var partnerName = req.body.partner_name || req.partner.prenom || req.partner.email;
+        var claimMessage = req.body.claim_message || '';
+        var proposedStart = req.body.proposed_start || null;
+        var profileId = req.body.profile_id || null;
+
+        dispatches[idx].status = 'taken';
+        dispatches[idx].claimed_by_name = partnerName;
+        dispatches[idx].claimed_by_profile = profileId;
+        dispatches[idx].claimed_by_partner_id = req.partner.id;
+        dispatches[idx].claimed_at = new Date().toISOString();
+        dispatches[idx].claim_message = claimMessage;
+        dispatches[idx].proposed_start = proposedStart;
+        saveDispatches(dispatches);
+
+        // Créer l'assignation partenaire pour que le projet apparaisse dans son espace
+        var assignments = loadPartnerAssignments();
+        assignments.push({
+            id: 'ASG-' + uuidv4().split('-')[0],
+            partner_id: req.partner.id,
+            partner_email: req.partner.email,
+            partner_type: req.partner.partner_type,
+            order_id: dispatch.order_id,
+            assigned_at: new Date().toISOString(),
+            assigned_by: 'partner-claim',
+            status: 'active',
+            notes: 'Mission prise en charge par ' + partnerName + (proposedStart ? ' — Démarrage proposé : ' + proposedStart : ''),
+            dispatch_id: dispatchId,
+            sub_profile_name: partnerName
+        });
+        savePartnerAssignments(assignments);
+
+        delete _dispatchLocks[dispatchId];
+        res.json({ success: true, message: 'Mission prise en charge avec succès !' });
+    } catch(e) {
+        delete _dispatchLocks[dispatchId];
+        console.error('[DISPATCH] Erreur claim:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// POST /api/client/set-availability — client renseigne ses disponibilités après paiement
+app.post('/api/client/set-availability', function(req, res) {
+    try {
+        var authHeader = req.headers.authorization;
+        if (!authHeader) return res.status(401).json({ error: 'Non autorisé' });
+        var token = authHeader.replace('Bearer ', '');
+        var jwt = require('jsonwebtoken');
+        var decoded = jwt.verify(token, process.env.JWT_SECRET || 'fa-genesis-secret-key-2024');
+
+        var preferredStart = req.body.preferred_start;
+        var days = req.body.days || [];
+        var timeSlot = req.body.time_slot || '';
+        var notes = req.body.notes || '';
+
+        if (!preferredStart) return res.status(400).json({ error: 'preferred_start requis' });
+
+        var availability = {
+            preferred_start: preferredStart,
+            days: days,
+            time_slot: timeSlot,
+            notes: notes,
+            submitted_at: new Date().toISOString()
+        };
+
+        // Mettre à jour tous les dispatches ouverts de ce client
+        var orders = loadOrders();
+        var userOrders = orders.filter(function(o) {
+            var email = (o.client_info && o.client_info.email) || o.email || o.user_email || '';
+            return email === decoded.email;
+        });
+
+        var dispatches = loadDispatches();
+        var updated = false;
+        userOrders.forEach(function(order) {
+            dispatches.forEach(function(d) {
+                if (d.order_id === order.id && d.status === 'open') {
+                    d.client_availability = availability;
+                    updated = true;
+                }
+            });
+            var oIdx = orders.findIndex(function(o) { return o.id === order.id; });
+            if (oIdx !== -1) orders[oIdx].client_availability = availability;
+        });
+
+        if (updated) {
+            saveDispatches(dispatches);
+            saveOrders(orders);
+        }
+
+        res.json({ success: true, updated: updated });
+    } catch(e) {
+        console.error('[AVAIL] Erreur:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
     }
 });
 
