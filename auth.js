@@ -7,6 +7,7 @@ const API_BASE_URL = window.FA_GENESIS_API || 'https://fa-genesis-website.onrend
 // Cle de stockage local
 const SESSION_KEY = 'fa_genesis_session';
 const TOKEN_KEY = 'fa_genesis_token';
+const DEVICE_TOKEN_KEY = 'fa_genesis_device_token';
 
 /**
  * Fonction de connexion (asynchrone)
@@ -16,12 +17,13 @@ const TOKEN_KEY = 'fa_genesis_token';
  */
 async function login(email, password) {
     try {
+        // Envoyer le token d'appareil de confiance si disponible
+        const deviceToken = localStorage.getItem(DEVICE_TOKEN_KEY);
+
         const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ email, password })
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password, deviceToken: deviceToken || undefined })
         });
 
         const data = await response.json();
@@ -34,15 +36,21 @@ async function login(email, password) {
             };
         }
 
-        // Sauvegarder la session et le token
+        // Appareil non reconnu \u2192 OTP requis
+        if (data.requiresOtp) {
+            return {
+                success: false,
+                requiresOtp: true,
+                pendingToken: data.pendingToken,
+                maskedEmail: data.maskedEmail
+            };
+        }
+
+        // Connexion directe (appareil de confiance)
         localStorage.setItem(SESSION_KEY, JSON.stringify(data.user));
         localStorage.setItem(TOKEN_KEY, data.token);
 
-        return {
-            success: true,
-            message: 'Connexion reussie',
-            user: data.user
-        };
+        return { success: true, message: 'Connexion reussie', user: data.user };
 
     } catch (error) {
         console.error('Erreur login:', error);
@@ -50,6 +58,50 @@ async function login(email, password) {
             success: false,
             message: 'Le serveur est temporairement indisponible. Veuillez r\u00e9essayer dans quelques instants.'
         };
+    }
+}
+
+/**
+ * Envoie le code OTP par email
+ */
+async function sendOtp(pendingToken) {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/auth/send-otp`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pendingToken, channel: 'email' })
+        });
+        const data = await response.json();
+        return { ok: response.ok, maskedDest: data.maskedDest, error: data.error };
+    } catch (error) {
+        return { ok: false, error: 'Erreur de connexion au serveur' };
+    }
+}
+
+/**
+ * V\u00e9rifie le code OTP et finalise la connexion
+ */
+async function verifyOtp(pendingToken, otp) {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/auth/verify-otp`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pendingToken, otp })
+        });
+        const data = await response.json();
+
+        if (!response.ok) {
+            return { success: false, message: data.error || 'Code incorrect' };
+        }
+
+        // Sauvegarder session + token appareil pour ne plus redemander l'OTP
+        localStorage.setItem(SESSION_KEY, JSON.stringify(data.user));
+        localStorage.setItem(TOKEN_KEY, data.token);
+        if (data.deviceToken) localStorage.setItem(DEVICE_TOKEN_KEY, data.deviceToken);
+
+        return { success: true, user: data.user };
+    } catch (error) {
+        return { success: false, message: 'Erreur de connexion au serveur' };
     }
 }
 

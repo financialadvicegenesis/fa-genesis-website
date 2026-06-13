@@ -131,6 +131,7 @@
             <div class="bg-white text-black p-10 neo-border neo-shadow">
                 <div id="errorMessage" class="error-message"></div>
 
+                <!-- Étape 1 : Email + mot de passe -->
                 <form id="loginForm" class="space-y-6">
                     <div>
                         <label for="email" class="block text-sm font-black mb-2 uppercase">Email</label>
@@ -167,6 +168,42 @@
                         Se connecter
                     </button>
                 </form>
+
+                <!-- Étape 2 : Code de vérification OTP (affiché après login si nouvel appareil) -->
+                <div id="otpStep" style="display:none;">
+                    <div style="margin-bottom:20px;padding:16px;background:#fff9e6;border:3px solid #FFD700;">
+                        <p class="font-black uppercase text-sm mb-1">Vérification requise</p>
+                        <p class="font-bold text-sm" id="otpInfo">Un code de vérification a été envoyé à votre adresse email.</p>
+                    </div>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-black mb-2 uppercase">Code de vérification (6 chiffres)</label>
+                            <input
+                                type="text"
+                                id="otpCode"
+                                maxlength="6"
+                                inputmode="numeric"
+                                autocomplete="one-time-code"
+                                class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none text-center text-2xl tracking-widest focus:translate-x-1 focus:translate-y-1 transition-all"
+                                placeholder="000000"
+                                onkeydown="if(event.key==='Enter'){event.preventDefault();verifyOtpCode();}"
+                            >
+                        </div>
+                        <button
+                            type="button"
+                            id="otpVerifyBtn"
+                            onclick="verifyOtpCode()"
+                            class="w-full py-4 neo-btn-yellow text-xl font-black italic uppercase tracking-tighter"
+                        >
+                            Vérifier le code
+                        </button>
+                        <p class="text-center text-sm font-bold">
+                            Code non reçu ?
+                            <button type="button" onclick="resendOtp()" class="underline font-black bg-transparent border-0 cursor-pointer">Renvoyer</button>
+                        </p>
+                        <button type="button" onclick="backToLogin()" class="w-full text-center text-sm font-bold underline bg-transparent border-0 cursor-pointer mt-2">← Retour</button>
+                    </div>
+                </div>
 
                 <div class="mt-8 text-center">
                     <p class="text-sm font-bold">Mot de passe oublié ? <a href="contact.html" class="text-black underline font-black">Contactez-nous</a></p>
@@ -276,6 +313,9 @@
             }
         });
 
+        // Variable pour stocker le pending token OTP
+        var _otpPendingToken = null;
+
         // Gestion de la soumission du formulaire
         document.getElementById('loginForm').addEventListener('submit', async function(e) {
             e.preventDefault();
@@ -309,6 +349,31 @@
                 }
                 // Sinon redirection vers le dashboard
                 window.location.href = 'dashboard.html';
+            } else if (result.requiresOtp) {
+                // Nouvel appareil – passer à l'étape OTP
+                _otpPendingToken = result.pendingToken;
+                errorMessage.classList.remove('show');
+                document.getElementById('reactivateBlock').style.display = 'none';
+                // Afficher l'étape OTP et cacher le formulaire
+                document.getElementById('loginForm').style.display = 'none';
+                var otpStep = document.getElementById('otpStep');
+                otpStep.style.display = 'block';
+                // Mettre à jour le texte d'info
+                var otpInfo = document.getElementById('otpInfo');
+                if (result.maskedEmail) {
+                    otpInfo.textContent = 'Un code de vérification a été envoyé à ' + result.maskedEmail + '.';
+                }
+                // Envoyer le code OTP automatiquement
+                sendOtp(_otpPendingToken).then(function(r) {
+                    if (!r.ok) {
+                        otpInfo.textContent = 'Erreur lors de l\'envoi du code. Cliquez sur "Renvoyer".';
+                    }
+                });
+                // Focus sur le champ OTP
+                setTimeout(function() {
+                    var f = document.getElementById('otpCode');
+                    if (f) f.focus();
+                }, 100);
             } else if (result.deactivated) {
                 // Compte desactive - afficher le bloc de reactivation
                 errorMessage.textContent = '';
@@ -329,6 +394,68 @@
                 }, 5000);
             }
         });
+
+        // Vérifie le code OTP saisi par l'utilisateur
+        async function verifyOtpCode() {
+            var otp = (document.getElementById('otpCode').value || '').trim();
+            var errorMessage = document.getElementById('errorMessage');
+            var btn = document.getElementById('otpVerifyBtn');
+
+            if (!otp || otp.length < 4) {
+                errorMessage.textContent = 'Veuillez saisir le code reçu par email.';
+                errorMessage.classList.add('show');
+                return;
+            }
+            if (!_otpPendingToken) {
+                errorMessage.textContent = 'Session expirée, veuillez réessayer.';
+                errorMessage.classList.add('show');
+                backToLogin();
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = 'Vérification...';
+
+            var result = await verifyOtp(_otpPendingToken, otp);
+
+            btn.disabled = false;
+            btn.textContent = 'Vérifier le code';
+
+            if (result.success) {
+                if (quoteTokenParam) {
+                    await handleQuoteAcceptAfterAuth(quoteTokenParam);
+                    return;
+                }
+                window.location.href = 'dashboard.html';
+            } else {
+                errorMessage.textContent = result.message || 'Code incorrect. Veuillez réessayer.';
+                errorMessage.classList.add('show');
+                setTimeout(function() { errorMessage.classList.remove('show'); }, 5000);
+            }
+        }
+
+        // Renvoie un nouveau code OTP
+        async function resendOtp() {
+            if (!_otpPendingToken) { backToLogin(); return; }
+            var info = document.getElementById('otpInfo');
+            info.textContent = 'Envoi en cours...';
+            var r = await sendOtp(_otpPendingToken);
+            if (r.ok) {
+                info.textContent = 'Code renvoyé' + (r.maskedDest ? ' à ' + r.maskedDest : '') + '.';
+            } else {
+                info.textContent = 'Erreur lors du renvoi. Veuillez réessayer.';
+            }
+        }
+
+        // Retour à l'étape email/mot de passe
+        function backToLogin() {
+            _otpPendingToken = null;
+            document.getElementById('otpCode').value = '';
+            document.getElementById('otpStep').style.display = 'none';
+            document.getElementById('loginForm').style.display = '';
+            var errorMessage = document.getElementById('errorMessage');
+            errorMessage.classList.remove('show');
+        }
 
         // Fonction de reactivation de compte
         async function reactivateAccount() {
