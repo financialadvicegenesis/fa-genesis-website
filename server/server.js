@@ -4147,7 +4147,7 @@ function saveMessages(messages) {
  */
 app.post('/api/contact', async (req, res) => {
     try {
-        const { name, email, phone, profil, subject, message, service_type } = req.body;
+        const { name, email, phone, profil, subject, message, service_type, client_budget } = req.body;
 
         // Validation
         if (!name || !email || !subject || !message) {
@@ -4282,6 +4282,7 @@ app.post('/api/contact', async (req, res) => {
                     client_email: email.trim().toLowerCase(),
                     client_profil: profil ? profil.trim() : null,
                     brief: message.trim(),
+                    client_budget: (client_budget && !isNaN(parseFloat(client_budget)) && parseFloat(client_budget) > 0) ? parseFloat(client_budget) : null,
                     partner_proposal: null,
                     admin_final: null,
                     pricing: null,
@@ -8124,6 +8125,9 @@ app.post('/api/partner/quotes/:id/propose', authenticatePartner, function(req, r
         var items = req.body.items;
         var delay = req.body.delay;
         var notes = req.body.notes;
+        var budgetAccepted = req.body.budget_accepted;
+        var counterBudget = req.body.counter_budget;
+        var budgetJustification = req.body.budget_justification;
 
         if (!items || !Array.isArray(items) || items.length === 0) {
             return res.status(400).json({ error: 'Au moins une ligne de proposition requise' });
@@ -8143,11 +8147,22 @@ app.post('/api/partner/quotes/:id/propose', authenticatePartner, function(req, r
             return res.status(400).json({ error: 'Ce devis ne peut plus etre modifie (statut: ' + quotes[idx].status + ')' });
         }
 
-        quotes[idx].partner_proposal = {
+        var proposal = {
             items: items,
             delay: delay || '',
             notes: notes || ''
         };
+
+        // Réponse au budget client
+        if (quotes[idx].client_budget != null) {
+            proposal.budget_accepted = budgetAccepted === true || budgetAccepted === 'true';
+            if (!proposal.budget_accepted && counterBudget != null && !isNaN(parseFloat(counterBudget))) {
+                proposal.counter_budget = parseFloat(counterBudget);
+                proposal.budget_justification = budgetJustification || '';
+            }
+        }
+
+        quotes[idx].partner_proposal = proposal;
         quotes[idx].status = 'PARTNER_PROPOSED';
         quotes[idx].updated_at = new Date().toISOString();
         saveQuotes(quotes);
