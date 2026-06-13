@@ -1009,7 +1009,7 @@ a{text-decoration:none;color:inherit}
 .pay-method-name{font-size:15px;font-weight:600;color:#fff;line-height:1.2;}
 .pay-method-sub{font-size:11px;color:#666;margin-top:3px;}
 .pay-method-arr{font-size:24px;color:#444;font-weight:300;line-height:1;flex-shrink:0;}
-.pay-security{display:flex;align-items:center;gap:8px;padding:18px 20px 24px;font-size:11px;color:#444;font-weight:500;}
+.pay-security{display:flex;align-items:center;justify-content:center;gap:8px;padding:18px 20px 24px;font-size:11px;color:#444;font-weight:500;text-align:center;}
 .pay-spinner{width:34px;height:34px;border:3px solid #1e1e1e;border-top-color:#FFD700;border-radius:50%;animation:pay-spin .75s linear infinite;margin:0 auto;}
 @keyframes pay-spin{to{transform:rotate(360deg)}}
 .pay-error-box{background:#160000;border:1px solid #5a1111;border-radius:12px;padding:14px 16px;margin:16px;color:#ff7777;font-size:13px;line-height:1.6;}
@@ -2667,7 +2667,8 @@ function _parseEchelons(paymentStr){
 }
 function _neoAddCart(profil, idx){
   var o=PDATA.accompagnement[profil][idx]; if(!o) return;
-  addToCart({id:'accomp-'+profil+'-'+idx,name:o.name,price:o.price,priceNum:_parsePrice(o.price),type:'accompagnement',sub:profil+(o.badge?' – '+o.badge:''),echelonsPaiement:_parseEchelons(o.payment)});
+  var profilLabel = profil.charAt(0).toUpperCase()+profil.slice(1);
+  addToCart({id:'accomp-'+profil+'-'+idx,name:o.name,price:o.price,priceNum:_parsePrice(o.price),type:'accompagnement',sub:profilLabel+(o.badge?' – '+o.badge:''),echelonsPaiement:_parseEchelons(o.payment)});
 }
 function _partnerAddCart(type, idx){
   var o=PDATA.visibilite[type][idx]; if(!o) return;
