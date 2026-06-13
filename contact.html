@@ -165,8 +165,8 @@
                             <option value="autre">AUTRE</option>
                         </select>
                     </div>
-                    <!-- Champ conditionnel : Type de prestation (visible uniquement si "Devis personnalisé" sélectionné) -->
-                    <div id="devisTypeContainer" style="display:none;">
+                    <!-- Champ conditionnel : Type de prestation + Budget (visible uniquement si "Devis personnalisé" sélectionné) -->
+                    <div id="devisTypeContainer" style="display:none;" class="space-y-6">
                         <select id="contactServiceType" class="w-full bg-white text-black p-6 neo-border neo-shadow-white font-bold outline-none focus:translate-x-1 focus:translate-y-1 focus:shadow-none transition-all font-black uppercase">
                             <option value="" disabled selected>TYPE DE PRESTATION</option>
                             <option value="photo">PHOTO</option>
@@ -175,6 +175,19 @@
                             <option value="marketing">MARKETING</option>
                             <option value="other">AUTRE</option>
                         </select>
+                        <div style="position:relative;">
+                            <input
+                                type="number"
+                                id="contactBudget"
+                                min="0"
+                                step="50"
+                                placeholder="Votre budget estimé (€) — optionnel"
+                                class="w-full bg-white text-black p-6 neo-border neo-shadow-white font-bold outline-none focus:translate-x-1 focus:translate-y-1 focus:shadow-none transition-all font-black"
+                                style="padding-right:60px;"
+                            >
+                            <span style="position:absolute;right:20px;top:50%;transform:translateY(-50%);font-weight:900;font-size:1.2rem;color:#333;pointer-events:none;">€</span>
+                        </div>
+                        <p style="margin-top:-12px;font-size:0.75rem;font-weight:700;opacity:0.6;text-transform:none;">Indiquez votre budget pour ce projet. Le prestataire pourra l'accepter ou vous proposer un tarif adapté.</p>
                     </div>
                     <textarea id="contactMessage" placeholder="Écrivez votre demande" rows="5" required class="w-full bg-white text-black p-6 neo-border neo-shadow-white font-bold outline-none focus:translate-x-1 focus:translate-y-1 focus:shadow-none transition-all font-black"></textarea>
                     <!-- Anti-spam : champ honeypot invisible pour les humains -->
@@ -376,9 +389,16 @@
                     _ft: contactFtField2 ? contactFtField2.value : ''
                 };
 
-                // Ajouter service_type si devis
+                // Ajouter service_type et budget si devis
                 if (serviceType) {
                     bodyData.service_type = serviceType;
+                }
+                var budgetField = document.getElementById('contactBudget');
+                if (budgetField && budgetField.value) {
+                    var budgetVal = parseFloat(budgetField.value);
+                    if (!isNaN(budgetVal) && budgetVal > 0) {
+                        bodyData.client_budget = budgetVal;
+                    }
                 }
 
                 var response = await fetch(CONTACT_API + '/api/contact', {

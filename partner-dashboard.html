@@ -1628,6 +1628,16 @@
             '<div style="background:#FFF9E6;border-left:4px solid #FFD700;padding:15px;margin-bottom:10px;">' +
                 '<p style="white-space:pre-wrap;">' + (quote.brief || 'Aucun brief fourni') + '</p>' +
             '</div>' +
+            // Budget client
+            (quote.client_budget != null ?
+                '<div style="margin-top:12px;display:flex;align-items:center;gap:12px;padding:12px 16px;background:#000;border:3px solid #FFD700;">' +
+                    '<i class="fas fa-coins" style="color:#FFD700;font-size:1.2rem;"></i>' +
+                    '<div>' +
+                        '<div style="font-size:11px;font-weight:900;opacity:0.6;text-transform:uppercase;letter-spacing:.05em;">Budget du client</div>' +
+                        '<div style="font-size:1.4rem;font-weight:900;color:#FFD700;">' + Number(quote.client_budget).toLocaleString('fr-FR') + ' €</div>' +
+                    '</div>' +
+                '</div>'
+            : '') +
         '</div>';
 
         // Si DRAFT_REQUESTED : formulaire de proposition
@@ -1664,6 +1674,28 @@
                     '<label class="block font-black mb-1 uppercase text-sm">Notes internes (visibles par l\'admin uniquement)</label>' +
                     '<textarea id="proposalNotes" rows="3" placeholder="Remarques, contraintes, suggestions..."></textarea>' +
                 '</div>' +
+
+                // Section réponse au budget (si le client a renseigné un budget)
+                (quote.client_budget != null ?
+                    '<div id="budgetResponseSection" class="mb-6" style="border:3px solid #FFD700;padding:16px;">' +
+                        '<h5 class="font-black italic uppercase mb-3" style="color:#FFD700;"><i class="fas fa-coins mr-2"></i>Réponse au budget client : ' + Number(quote.client_budget).toLocaleString('fr-FR') + ' €</h5>' +
+                        '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px;">' +
+                            '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:900;font-size:0.9rem;padding:10px 16px;border:3px solid #FFD700;background:#FFD700;color:#000;" onclick="toggleBudgetResponse(true)">' +
+                                '<input type="radio" name="budgetResponse" value="accept" id="budgetAcceptRadio" style="accent-color:#000;"> J\'ACCEPTE CE BUDGET' +
+                            '</label>' +
+                            '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:900;font-size:0.9rem;padding:10px 16px;border:3px solid #ccc;background:#fff;color:#000;" onclick="toggleBudgetResponse(false)">' +
+                                '<input type="radio" name="budgetResponse" value="counter" id="budgetCounterRadio" style="accent-color:#000;"> JE PROPOSE UN AUTRE MONTANT' +
+                            '</label>' +
+                        '</div>' +
+                        '<div id="counterBudgetFields" style="display:none;">' +
+                            '<div class="mb-3" style="position:relative;">' +
+                                '<input type="number" id="counterBudgetInput" min="0" step="50" placeholder="Montant que vous proposez (€)" style="width:100%;padding:12px 48px 12px 16px;border:3px solid black;font-weight:900;font-size:1rem;background:#fff;color:#000;box-sizing:border-box;">' +
+                                '<span style="position:absolute;right:16px;top:50%;transform:translateY(-50%);font-weight:900;color:#333;pointer-events:none;">€</span>' +
+                            '</div>' +
+                            '<textarea id="counterBudgetJustification" rows="2" placeholder="Justifiez brièvement votre tarif (optionnel)..." style="width:100%;padding:12px;border:3px solid black;font-weight:700;font-size:0.9rem;background:#fff;color:#000;resize:vertical;box-sizing:border-box;"></textarea>' +
+                        '</div>' +
+                    '</div>'
+                : '') +
 
                 // Bouton soumettre
                 '<button onclick="submitPartnerProposal(\'' + quote.id + '\')" id="submitProposalBtn" class="neo-btn-yellow px-8 py-4 text-lg font-black">' +
@@ -1709,6 +1741,23 @@
             }
             if (quote.partner_proposal.notes) {
                 html += '<div class="mt-2 text-sm"><strong>Notes :</strong> ' + quote.partner_proposal.notes + '</div>';
+            }
+
+            // Réponse au budget
+            if (quote.client_budget != null && quote.partner_proposal.budget_accepted != null) {
+                var budgetRespHtml = '';
+                if (quote.partner_proposal.budget_accepted) {
+                    budgetRespHtml = '<div style="margin-top:12px;padding:10px 14px;background:#d3f9d8;border:2px solid #2b8a3e;display:flex;align-items:center;gap:10px;">' +
+                        '<i class="fas fa-check-circle" style="color:#2b8a3e;"></i>' +
+                        '<span style="font-weight:900;color:#2b8a3e;font-size:0.9rem;">Vous avez accepté le budget du client : ' + Number(quote.client_budget).toLocaleString('fr-FR') + ' €</span>' +
+                    '</div>';
+                } else if (quote.partner_proposal.counter_budget != null) {
+                    budgetRespHtml = '<div style="margin-top:12px;padding:10px 14px;background:#fff9e6;border:2px solid #FFD700;">' +
+                        '<div style="font-weight:900;font-size:0.9rem;color:#333;"><i class="fas fa-exchange-alt mr-1" style="color:#FFD700;"></i>Contre-proposition de budget : <span style="color:#000;font-size:1.1rem;">' + Number(quote.partner_proposal.counter_budget).toLocaleString('fr-FR') + ' €</span> <span style="opacity:0.5;font-size:0.8rem;">(client : ' + Number(quote.client_budget).toLocaleString('fr-FR') + ' €)</span></div>' +
+                        (quote.partner_proposal.budget_justification ? '<div style="margin-top:6px;font-size:0.85rem;opacity:0.7;">' + escapeHtml(quote.partner_proposal.budget_justification) + '</div>' : '') +
+                    '</div>';
+                }
+                html += budgetRespHtml;
             }
 
             html += '</div>';
@@ -1834,6 +1883,23 @@
         if (totalDisplay) totalDisplay.textContent = total + '€';
     }
 
+    function toggleBudgetResponse(accepted) {
+        var counterFields = document.getElementById('counterBudgetFields');
+        var acceptLabel = document.querySelector('label[onclick="toggleBudgetResponse(true)"]');
+        var counterLabel = document.querySelector('label[onclick="toggleBudgetResponse(false)"]');
+        if (accepted) {
+            if (counterFields) counterFields.style.display = 'none';
+            if (acceptLabel) { acceptLabel.style.background = '#FFD700'; acceptLabel.style.borderColor = '#FFD700'; }
+            if (counterLabel) { counterLabel.style.background = '#fff'; counterLabel.style.borderColor = '#ccc'; }
+        } else {
+            if (counterFields) counterFields.style.display = 'block';
+            if (counterLabel) { counterLabel.style.background = '#FFD700'; counterLabel.style.borderColor = '#FFD700'; }
+            if (acceptLabel) { acceptLabel.style.background = '#fff'; acceptLabel.style.borderColor = '#ccc'; }
+            var inp = document.getElementById('counterBudgetInput');
+            if (inp) inp.focus();
+        }
+    }
+
     async function submitPartnerProposal(quoteId) {
         var container = document.getElementById('proposalItemsContainer');
         if (!container) return;
@@ -1867,6 +1933,30 @@
             return;
         }
 
+        // Collecter la réponse au budget si la section est présente
+        var budgetPayload = {};
+        var budgetSection = document.getElementById('budgetResponseSection');
+        if (budgetSection) {
+            var acceptRadio = document.getElementById('budgetAcceptRadio');
+            var counterRadio = document.getElementById('budgetCounterRadio');
+            if (!acceptRadio.checked && !counterRadio.checked) {
+                alert('Veuillez indiquer si vous acceptez le budget du client ou si vous en proposez un autre.');
+                return;
+            }
+            budgetPayload.budget_accepted = acceptRadio.checked;
+            if (counterRadio.checked) {
+                var counterInput = document.getElementById('counterBudgetInput');
+                var counterVal = counterInput ? parseFloat(counterInput.value) : NaN;
+                if (!counterInput.value || isNaN(counterVal) || counterVal <= 0) {
+                    alert('Veuillez saisir le montant que vous proposez.');
+                    return;
+                }
+                budgetPayload.counter_budget = counterVal;
+                var justifEl = document.getElementById('counterBudgetJustification');
+                budgetPayload.budget_justification = justifEl ? justifEl.value.trim() : '';
+            }
+        }
+
         var btn = document.getElementById('submitProposalBtn');
         if (btn) {
             btn.disabled = true;
@@ -1874,10 +1964,11 @@
         }
 
         try {
+            var payload = Object.assign({ items: items, delay: delay, notes: notes }, budgetPayload);
             var response = await partnerAuthenticatedFetch(PARTNER_API_URL + '/api/partner/quotes/' + quoteId + '/propose', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ items: items, delay: delay, notes: notes })
+                body: JSON.stringify(payload)
             });
 
             var result = await response.json();
