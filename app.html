@@ -1668,6 +1668,9 @@ a{text-decoration:none;color:inherit}
             <span class="pni">⚡</span><span>Missions</span>
             <span class="ptnr-badge" id="ptnr-badge-missions"></span>
           </button>
+          <button class="ptnr-snbtn" id="ptnr-sn-versements" onclick="_ptnrNav('versements')">
+            <span class="pni">💰</span><span>Versements</span>
+          </button>
         </div>
 
         <!-- Sub-screen: Home / Stats -->
@@ -1708,6 +1711,13 @@ a{text-decoration:none;color:inherit}
         <div class="ptnr-screen" id="ptnr-screen-missions">
           <div class="ptnr-section-title">Missions disponibles</div>
           <div id="ptnr-missions-list"></div>
+        </div>
+
+        <!-- Sub-screen: Versements -->
+        <div class="ptnr-screen" id="ptnr-screen-versements">
+          <div class="ptnr-section-title">Mes versements</div>
+          <div id="ptnr-paypal-setup" style="padding:0 0 16px;"></div>
+          <div id="ptnr-versements-list"></div>
         </div>
       </div>
     </div>
@@ -2651,17 +2661,21 @@ function _parsePrice(s){
   if(!s||s.indexOf('Devis')>=0||s.indexOf('devis')>=0) return null;
   var m=(s||'').replace(/\s/g,'').match(/(\d+)/); return m?parseInt(m[1]):null;
 }
+function _parseEchelons(paymentStr){
+  var m=(paymentStr||'').match(/en\s*(\d+)x/i);
+  return m?parseInt(m[1]):2;
+}
 function _neoAddCart(profil, idx){
   var o=PDATA.accompagnement[profil][idx]; if(!o) return;
-  addToCart({id:'accomp-'+profil+'-'+idx,name:o.name,price:o.price,priceNum:_parsePrice(o.price),type:'accompagnement',sub:profil+(o.badge?' – '+o.badge:'')});
+  addToCart({id:'accomp-'+profil+'-'+idx,name:o.name,price:o.price,priceNum:_parsePrice(o.price),type:'accompagnement',sub:profil+(o.badge?' – '+o.badge:''),echelonsPaiement:_parseEchelons(o.payment)});
 }
 function _partnerAddCart(type, idx){
   var o=PDATA.visibilite[type][idx]; if(!o) return;
-  addToCart({id:'partner-'+type+'-'+idx,name:o.name,price:o.price,priceNum:_parsePrice(o.price),type:type});
+  addToCart({id:'partner-'+type+'-'+idx,name:o.name,price:o.price,priceNum:_parsePrice(o.price),type:type,echelonsPaiement:_parseEchelons(o.payment)||2});
 }
 function _addDetailToCart(){
   if(!_detailOffer) return;
-  addToCart({id:'detail-'+Date.now(),name:_detailOffer.name,price:_detailOffer.price,priceNum:_parsePrice(_detailOffer.price),type:_detailType||'',sub:_detailOffer.unit||_detailOffer.badge||''});
+  addToCart({id:'detail-'+Date.now(),name:_detailOffer.name,price:_detailOffer.price,priceNum:_parsePrice(_detailOffer.price),type:_detailType||'',sub:_detailOffer.unit||_detailOffer.badge||'',echelonsPaiement:_detailOffer.echelonsPaiement||_parseEchelons(_detailOffer.payment)||2});
   closeDetail();
 }
 
@@ -3417,14 +3431,25 @@ function openPayOverlay(total, cartItems){
 
   _payCheckoutId = null; _payCheckoutWaiters = [];
   _payCartSnap = cartItems; _payTotal = total;
-  _payInstallments = 1; _payInstallmentAmount = total;
 
+  // Acompte 30 % obligatoire — le client ne choisit pas le plan
+  var deposit = parseFloat((total * 0.30).toFixed(2));
+  var balance  = parseFloat((total - deposit).toFixed(2));
+  // Récupère le nombre d'échelons depuis le panier (max des offres du panier)
+  var echelons = 2;
+  if(cartItems && cartItems.length){
+    cartItems.forEach(function(ci){ if(ci.echelonsPaiement && ci.echelonsPaiement > echelons) echelons = ci.echelonsPaiement; });
+  }
+  _payInstallments = echelons;
+  _payInstallmentAmount = deposit;
+
+  // Header : acompte
   var amtEl = document.getElementById('pay-amount-val');
   var lblEl = document.getElementById('pay-amount-label');
-  if(amtEl) amtEl.textContent = total.toFixed(2) + ' €';
-  if(lblEl) lblEl.textContent = 'Total à payer';
+  if(amtEl) amtEl.textContent = deposit.toFixed(2) + ' €';
+  if(lblEl) lblEl.textContent = 'Acompte obligatoire (30 %)';
 
-  // Device detection (préparer les boutons avant affichage)
+  // Device detection
   var ua = navigator.userAgent || '';
   var hasApplePay = !!(window.ApplePaySession && typeof ApplePaySession.canMakePayments === 'function' && ApplePaySession.canMakePayments());
   var appleBtn = document.getElementById('pay-btn-apple');
@@ -3443,76 +3468,66 @@ function openPayOverlay(total, cartItems){
   if(succ) succ.style.display = 'none';
   if(ms) ms.style.display = 'none';
 
-  // Construire les options de plan
-  _buildPlanGrid(total);
+  // Construire l'affichage acompte + solde
+  _buildDepositDisplay(deposit, balance, echelons);
 
-  // Si plusieurs options disponibles : afficher le plan screen
-  // Sinon (total <= 0 ou forfait unique) : passer directement aux méthodes
-  var plans = _getPlans(total);
-  if(plans.length > 1){
-    if(ps) ps.style.display = '';
-  } else {
-    if(ps) ps.style.display = 'none';
-    if(ms) ms.style.display = '';
-    // Créer le checkout SumUp en arrière-plan (1 seul versement possible)
-    _createCartCheckout(total);
-  }
+  // Toujours afficher le plan screen d'abord
+  if(ps) ps.style.display = '';
+
+  // Pré-créer le checkout SumUp en arrière-plan pour le montant de l'acompte
+  _createCartCheckout(deposit);
 
   overlay.classList.add('open'); void overlay.offsetHeight;
   setTimeout(function(){ sheet.classList.add('up'); }, 20);
 }
 
-function _getPlans(total){
-  var plans = [{n:1}];
-  if(total >= 50)  plans.push({n:2});
-  if(total >= 150) plans.push({n:3});
-  if(total >= 300) plans.push({n:4});
-  return plans;
-}
-
-function _buildPlanGrid(total){
-  var grid = document.getElementById('pay-plan-grid');
-  if(!grid) return;
-  var plans = _getPlans(total);
-  grid.innerHTML = plans.map(function(p){
-    var amt = (total / p.n);
-    var amtStr = amt.toFixed(2);
-    var badge = p.n > 1 ? '<span class="pay-plan-badge">×' + p.n + '</span>' : '';
-    var label = p.n === 1 ? 'Payer en 1 fois' : 'Payer en ' + p.n + ' fois';
-    var detail = p.n === 1
-      ? total.toFixed(2) + ' € · Paiement immédiat'
-      : amtStr + ' €/mois · dont 1 versement/mois';
-    return '<button class="pay-plan-btn" onclick="_choosePlan(' + p.n + ',' + total + ')">'
-      + '<div class="pay-plan-left">'
-      + '<div class="pay-plan-name">' + label + badge + '</div>'
-      + '<div class="pay-plan-detail">' + detail + '</div>'
+function _buildDepositDisplay(deposit, balance, echelons){
+  var el = document.getElementById('pay-deposit-display');
+  if(!el) return;
+  var nSolde = echelons - 1; // nombre de versements du solde
+  var perSolde = nSolde > 0 ? parseFloat((balance / nSolde).toFixed(2)) : balance;
+  var html = '<div style="background:#111;border:1.5px solid #1e1e1e;border-radius:14px;overflow:hidden;">';
+  // Ligne acompte (obligatoire aujourd'hui)
+  html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #1e1e1e;">'
+    + '<div>'
+    + '<div style="font-size:12px;color:#FFD700;font-weight:700;letter-spacing:.5px;">AUJOURD\'HUI — OBLIGATOIRE</div>'
+    + '<div style="font-size:14px;color:#fff;font-weight:700;margin-top:2px;">Acompte 30 %</div>'
+    + '</div>'
+    + '<div style="font-size:18px;color:#FFD700;font-weight:800;">' + deposit.toFixed(2) + ' €</div>'
+    + '</div>';
+  // Ligne(s) solde
+  if(nSolde <= 1){
+    html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;">'
+      + '<div>'
+      + '<div style="font-size:12px;color:#888;font-weight:700;letter-spacing:.5px;">SOLDE (70 %)</div>'
+      + '<div style="font-size:13px;color:#aaa;margin-top:2px;">1 versement après accompagnement</div>'
       + '</div>'
-      + '<div class="pay-plan-right">' + amtStr + ' €</div>'
-      + '</button>';
-  }).join('');
+      + '<div style="font-size:15px;color:#aaa;font-weight:700;">' + balance.toFixed(2) + ' €</div>'
+      + '</div>';
+  } else {
+    html += '<div style="padding:14px 16px;">'
+      + '<div style="font-size:12px;color:#888;font-weight:700;letter-spacing:.5px;margin-bottom:8px;">SOLDE 70 % EN ' + nSolde + ' VERSEMENTS</div>';
+    for(var i=0;i<nSolde;i++){
+      var isLast = (i === nSolde-1);
+      var remaining = balance - perSolde * i;
+      var amt = isLast ? parseFloat(remaining.toFixed(2)) : perSolde;
+      html += '<div style="display:flex;align-items:center;justify-content:space-between;' + (i>0?'margin-top:6px;':'') + '">'
+        + '<div style="font-size:13px;color:#aaa;">Versement ' + (i+1) + ' <span style="color:#555;font-size:11px;">(J+' + (i+1)*30 + ')</span></div>'
+        + '<div style="font-size:13px;color:#aaa;font-weight:600;">' + amt.toFixed(2) + ' €</div>'
+        + '</div>';
+    }
+    html += '</div>';
+  }
+  html += '</div>';
+  el.innerHTML = html;
 }
 
-function _choosePlan(n, total){
-  _payInstallments = n;
-  _payInstallmentAmount = parseFloat((total / n).toFixed(2));
-
-  var amtEl = document.getElementById('pay-amount-val');
-  var lblEl = document.getElementById('pay-amount-label');
-  if(n > 1){
-    if(amtEl) amtEl.textContent = _payInstallmentAmount.toFixed(2) + ' €';
-    if(lblEl) lblEl.textContent = '1er versement (sur ' + n + 'x)';
-  } else {
-    if(amtEl) amtEl.textContent = total.toFixed(2) + ' €';
-    if(lblEl) lblEl.textContent = 'Total à payer';
-  }
-
+function _proceedToPayment(){
+  // L'acompte est déjà créé en arrière-plan dans openPayOverlay — passer aux méthodes
   var ps = document.getElementById('pay-screen-plan');
   var ms = document.getElementById('pay-screen-methods');
   if(ps) ps.style.display = 'none';
   if(ms) ms.style.display = '';
-
-  // Créer le checkout SumUp en arrière-plan avec le bon montant
-  _createCartCheckout(_payInstallmentAmount);
 }
 
 function _createCartCheckout(amount){
@@ -3597,11 +3612,8 @@ function _payGoBack(){
     if(ms) ms.style.display = ''; return;
   }
   if(ms && ms.style.display !== 'none'){
-    var plans = _getPlans(_payTotal);
-    if(plans.length > 1){
-      ms.style.display = 'none';
-      if(ps) ps.style.display = ''; return;
-    }
+    ms.style.display = 'none';
+    if(ps) ps.style.display = ''; return;
   }
   closePayOverlay();
 }
@@ -4082,6 +4094,7 @@ function _ptnrNav(screen){
   if(screen==='seances') _ptnrLoadSeances();
   if(screen==='messages') _ptnrLoadMessages();
   if(screen==='missions') _ptnrLoadMissions();
+  if(screen==='versements') _ptnrLoadVersements();
 }
 
 function _ptnrFmt(dateStr){
@@ -5057,11 +5070,14 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
 
     <div class="pay-body">
 
-      <!-- Screen 0 : choix du plan de paiement -->
+      <!-- Screen 0 : résumé acompte 30 % + échéancier solde 70 % -->
       <div id="pay-screen-plan" style="display:none;">
-        <div class="pay-methods-title">Comment souhaitez-vous régler ?</div>
-        <div class="pay-plan-grid" id="pay-plan-grid"></div>
-        <div class="pay-plan-note">Premier versement débité aujourd'hui · Sans frais supplémentaires</div>
+        <div class="pay-methods-title">Votre plan de paiement</div>
+        <div id="pay-deposit-display" style="padding:0 16px 8px;"></div>
+        <div style="padding:0 16px 16px;">
+          <button class="dclaim-submit-btn" style="width:100%;margin-top:4px;" onclick="_proceedToPayment()">PAYER L'ACOMPTE 30 % →</button>
+        </div>
+        <div class="pay-plan-note">Acompte obligatoire aujourd'hui · Sans frais supplémentaires</div>
       </div>
 
       <!-- Screen 1 : choix du moyen de paiement -->
@@ -5648,6 +5664,131 @@ function _submitAvailability(){
     if(btn){ btn.disabled=false; btn.textContent='ENREGISTRER MES DISPONIBILITÉS'; }
     showToast('Erreur réseau','Réessayez plus tard','error');
   });
+}
+
+// ── Versements (répartition automatique des revenus) ──
+function _ptnrLoadVersements(){
+  var setupEl = document.getElementById('ptnr-paypal-setup');
+  var listEl  = document.getElementById('ptnr-versements-list');
+  if(setupEl) setupEl.innerHTML = '<div class="ptnr-empty"><div style="color:#FFD700;font-size:22px;">⏳</div></div>';
+  if(listEl)  listEl.innerHTML  = '';
+
+  _ptnrFetch('/api/partner/payouts').then(function(data){
+    var paypalEmail = data.paypal_email || null;
+    var rib         = data.rib || null;   // { iban_masked, bic, titulaire }
+    var payouts     = data.payouts || [];
+
+    if(setupEl){
+      var html = '';
+
+      // ── Bloc PayPal ──
+      var paypalOk = !!paypalEmail;
+      html += '<div style="background:#111;border:1.5px solid '+(paypalOk?'#1a3a1a':'#252510')+';border-radius:14px;padding:16px;margin-bottom:12px;">';
+      html += '<div style="font-size:12px;color:'+(paypalOk?'#4caf50':'#888')+';font-weight:700;letter-spacing:.5px;margin-bottom:8px;">'+(paypalOk?'✓ PAYPAL CONFIGURÉ':'PAYPAL (versement automatique)')+'</div>';
+      if(paypalOk){
+        html += '<div style="font-size:13px;color:#ccc;margin-bottom:10px;">Email : <strong style="color:#fff;">'+paypalEmail+'</strong></div>';
+        html += '<div style="font-size:11px;color:#555;margin-bottom:10px;">Vos versements sont envoyés automatiquement à cette adresse après chaque paiement client.</div>';
+      } else {
+        html += '<div style="font-size:12px;color:#666;margin-bottom:10px;line-height:1.5;">Renseignez votre email PayPal pour recevoir vos versements automatiquement.</div>';
+      }
+      html += '<div style="display:flex;gap:8px;flex-wrap:wrap;">';
+      html += '<input id="ptnr-paypal-input" type="email" placeholder="votre@paypal.com" value="'+(paypalEmail||'')+'" style="flex:1;min-width:160px;background:#1a1a1a;border:1px solid #333;border-radius:10px;color:#fff;padding:10px 12px;font-size:13px;">';
+      html += '<button onclick="_savePartnerPaypal()" style="background:#FFD700;color:#000;border:none;border-radius:10px;padding:10px 14px;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap;">'+(paypalOk?'MODIFIER':'ENREGISTRER')+'</button>';
+      html += '</div></div>';
+
+      // ── Bloc RIB / IBAN ──
+      var ribOk = rib && rib.iban_masked;
+      html += '<div style="background:#111;border:1.5px solid '+(ribOk?'#1a3a1a':'#252510')+';border-radius:14px;padding:16px;margin-bottom:16px;">';
+      html += '<div style="font-size:12px;color:'+(ribOk?'#4caf50':'#888')+';font-weight:700;letter-spacing:.5px;margin-bottom:8px;">'+(ribOk?'✓ RIB CONFIGURÉ':'RIB / VIREMENT BANCAIRE')+'</div>';
+      if(ribOk){
+        html += '<div style="font-size:13px;color:#ccc;margin-bottom:4px;">Titulaire : <strong style="color:#fff;">'+rib.titulaire+'</strong></div>';
+        html += '<div style="font-size:13px;color:#ccc;margin-bottom:4px;">IBAN : <strong style="color:#fff;">'+rib.iban_masked+'</strong></div>';
+        html += '<div style="font-size:13px;color:#ccc;margin-bottom:10px;">BIC : <strong style="color:#fff;">'+rib.bic+'</strong></div>';
+        html += '<div style="font-size:11px;color:#555;margin-bottom:10px;">Les virements bancaires sont traités sous 2–3 jours ouvrés.</div>';
+      } else {
+        html += '<div style="font-size:12px;color:#666;margin-bottom:10px;line-height:1.5;">Renseignez votre IBAN pour recevoir vos versements par virement bancaire.</div>';
+      }
+      html += '<div style="display:flex;flex-direction:column;gap:8px;">';
+      html += '<input id="ptnr-rib-titulaire" type="text" placeholder="Titulaire du compte" value="'+(ribOk?rib.titulaire:'')+'" style="background:#1a1a1a;border:1px solid #333;border-radius:10px;color:#fff;padding:10px 12px;font-size:13px;">';
+      html += '<input id="ptnr-rib-iban" type="text" placeholder="FR76 XXXX XXXX XXXX XXXX XXXX XXX" value="" maxlength="34" style="background:#1a1a1a;border:1px solid #333;border-radius:10px;color:#fff;padding:10px 12px;font-size:13px;letter-spacing:1px;" oninput="this.value=this.value.toUpperCase()">';
+      html += '<div style="display:flex;gap:8px;">';
+      html += '<input id="ptnr-rib-bic" type="text" placeholder="BIC / SWIFT" value="" maxlength="11" style="flex:1;background:#1a1a1a;border:1px solid #333;border-radius:10px;color:#fff;padding:10px 12px;font-size:13px;" oninput="this.value=this.value.toUpperCase()">';
+      html += '<button onclick="_savePartnerRib()" style="background:#FFD700;color:#000;border:none;border-radius:10px;padding:10px 14px;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap;">'+(ribOk?'MODIFIER':'ENREGISTRER')+'</button>';
+      html += '</div>';
+      if(ribOk) html += '<div style="font-size:11px;color:#444;">Pour modifier, saisissez le nouvel IBAN et BIC puis cliquez Modifier.</div>';
+      html += '</div></div>';
+
+      setupEl.innerHTML = html;
+    }
+
+    // ── Liste des versements ──
+    if(!listEl) return;
+    if(!payouts.length){
+      listEl.innerHTML = '<div class="ptnr-empty"><div class="ptnr-empty-ico">💸</div><div class="ptnr-empty-txt">Aucun versement pour l\'instant</div><div style="font-size:12px;color:#555;margin-top:6px;">Vos versements apparaîtront ici après chaque paiement client.</div></div>';
+      return;
+    }
+    var totalSent = 0; var totalPending = 0;
+    payouts.forEach(function(p){ if(p.status==='sent') totalSent+=p.amount; else totalPending+=p.amount; });
+    var listHtml = '<div style="display:flex;gap:8px;margin-bottom:16px;">';
+    listHtml += '<div style="flex:1;background:#111;border:1px solid #1e1e1e;border-radius:12px;padding:12px 14px;text-align:center;">';
+    listHtml += '<div style="font-size:18px;color:#4caf50;font-weight:800;">'+totalSent.toFixed(2)+' €</div>';
+    listHtml += '<div style="font-size:10px;color:#555;margin-top:3px;font-weight:600;">REÇUS</div></div>';
+    listHtml += '<div style="flex:1;background:#111;border:1px solid #1e1e1e;border-radius:12px;padding:12px 14px;text-align:center;">';
+    listHtml += '<div style="font-size:18px;color:#FFD700;font-weight:800;">'+totalPending.toFixed(2)+' €</div>';
+    listHtml += '<div style="font-size:10px;color:#555;margin-top:3px;font-weight:600;">EN ATTENTE</div></div>';
+    listHtml += '</div>';
+    payouts.forEach(function(p){
+      var stageLabel  = p.stage==='deposit'?'Acompte 30 %':(p.stage==='balance'?'Solde 70 %':'Versement');
+      var statusColor = p.status==='sent'?'#4caf50':(p.status==='failed'?'#f44336':'#FFD700');
+      var statusLabel = p.status==='sent'?'Envoyé':(p.status==='failed'?'Échoué':'En attente');
+      var methodIco   = p.payout_method==='bank_transfer'?'🏦':(p.payout_method==='paypal'?'💳':'⏳');
+      listHtml += '<div style="background:#111;border:1px solid #1e1e1e;border-radius:14px;padding:14px 16px;margin-bottom:10px;">';
+      listHtml += '<div style="display:flex;justify-content:space-between;align-items:flex-start;">';
+      listHtml += '<div>';
+      listHtml += '<div style="font-size:11px;color:'+statusColor+';font-weight:700;letter-spacing:.5px;margin-bottom:4px;">'+statusLabel.toUpperCase()+' · '+stageLabel.toUpperCase()+'</div>';
+      listHtml += '<div style="font-size:12px;color:#666;">'+methodIco+' '+(p.payout_method==='bank_transfer'?'Virement bancaire':(p.payout_method==='paypal'?'PayPal':'Coordonnées manquantes'))+'</div>';
+      listHtml += '<div style="font-size:12px;color:#555;margin-top:2px;">Commande '+p.order_id.substring(0,12).toUpperCase()+'</div>';
+      var dateStr = p.sent_at ? _ptnrFmt(p.sent_at) : _ptnrFmt(p.created_at);
+      listHtml += '<div style="font-size:11px;color:#444;margin-top:3px;">'+dateStr+'</div>';
+      if(p.error) listHtml += '<div style="font-size:11px;color:#f44336;margin-top:4px;">'+p.error+'</div>';
+      listHtml += '</div>';
+      listHtml += '<div style="font-size:20px;color:'+statusColor+';font-weight:800;">'+p.amount.toFixed(2)+' €</div>';
+      listHtml += '</div>';
+      if(p.payout_method==='pending') listHtml += '<div style="font-size:11px;color:#f44336;margin-top:8px;border-top:1px solid #1e1e1e;padding-top:8px;">Configurez votre PayPal ou votre RIB ci-dessus pour recevoir ce versement.</div>';
+      listHtml += '</div>';
+    });
+    listEl.innerHTML = listHtml;
+  }).catch(function(){
+    if(setupEl) setupEl.innerHTML = '<div class="ptnr-empty"><div class="ptnr-empty-txt">Erreur de chargement</div></div>';
+  });
+}
+
+function _savePartnerPaypal(){
+  var input = document.getElementById('ptnr-paypal-input');
+  if(!input) return;
+  var email = (input.value||'').trim();
+  if(!email||!email.includes('@')){ showToast('Email invalide','Saisissez un email PayPal valide','error'); return; }
+  _ptnrFetch('/api/partner/profile/set-paypal','POST',{paypal_email:email}).then(function(res){
+    if(res.success){
+      showToast('Email PayPal enregistré !','Vos futurs versements seront envoyés automatiquement','success');
+      haptic([20,10,40]); _ptnrLoadVersements();
+    } else { showToast(res.error||'Erreur','Réessayez','error'); }
+  }).catch(function(){ showToast('Erreur réseau','Réessayez plus tard','error'); });
+}
+
+function _savePartnerRib(){
+  var titulaire = ((document.getElementById('ptnr-rib-titulaire')||{}).value||'').trim();
+  var iban      = ((document.getElementById('ptnr-rib-iban')||{}).value||'').replace(/\s/g,'').toUpperCase();
+  var bic       = ((document.getElementById('ptnr-rib-bic')||{}).value||'').replace(/\s/g,'').toUpperCase();
+  if(!titulaire){ showToast('Titulaire requis','Saisissez le nom du titulaire du compte','error'); return; }
+  if(!iban||iban.length<14){ showToast('IBAN invalide','Vérifiez votre IBAN (ex : FR76…)','error'); return; }
+  if(!bic||bic.length<8){ showToast('BIC invalide','Vérifiez votre code BIC / SWIFT','error'); return; }
+  _ptnrFetch('/api/partner/profile/set-rib','POST',{titulaire:titulaire,iban:iban,bic:bic}).then(function(res){
+    if(res.success){
+      showToast('RIB enregistré !','Vos versements seront virés sur ce compte sous 2–3 jours ouvrés','success');
+      haptic([20,10,40]); _ptnrLoadVersements();
+    } else { showToast(res.error||'Erreur','Réessayez','error'); }
+  }).catch(function(){ showToast('Erreur réseau','Réessayez plus tard','error'); });
 }
 
 /* ══════════════════════════════════════════════════

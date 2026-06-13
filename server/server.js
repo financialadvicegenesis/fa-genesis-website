@@ -51,6 +51,7 @@ const CW_MESSAGES_FILE = path.join(__dirname, 'data', 'cw-messages.json');
 const CW_DEVIS_FILE = path.join(__dirname, 'data', 'cw-devis.json');
 const PUSH_SUBSCRIPTIONS_FILE = path.join(__dirname, 'data', 'push-subscriptions.json');
 const DISPATCHES_FILE = path.join(__dirname, 'data', 'dispatches.json');
+const PAYOUTS_FILE    = path.join(__dirname, 'data', 'payouts.json');
 
 // Creer le dossier data s'il n'existe pas
 if (!fs.existsSync(path.join(__dirname, 'data'))) {
@@ -209,6 +210,132 @@ function saveDispatches(data) {
     catch(e) { console.error('[DISPATCH] Erreur sauvegarde:', e); }
 }
 var _dispatchLocks = {}; // verrou en mémoire contre les race conditions
+
+// ── Payouts (répartition automatique des revenus) ──
+function loadPayouts() {
+    try {
+        if (!fs.existsSync(PAYOUTS_FILE)) return [];
+        return JSON.parse(fs.readFileSync(PAYOUTS_FILE, 'utf8')) || [];
+    } catch(e) { return []; }
+}
+function savePayouts(data) {
+    try { fs.writeFileSync(PAYOUTS_FILE, JSON.stringify(data, null, 2), 'utf8'); }
+    catch(e) { console.error('[PAYOUT] Erreur sauvegarde:', e); }
+}
+
+// IDs de tarifs partenaires (FA GENESIS 15 %, partenaire 85 %)
+var PARTNER_TARIF_IDS = ['photo-devis', 'video-devis'];
+
+function calculateRevenueShares(order, paidAmount) {
+    var productIds = [];
+    if (order.items && order.items.length > 0) {
+        order.items.forEach(function(item) { if (item.product_id) productIds.push(item.product_id); });
+    } else if (order.product_id) {
+        productIds.push(order.product_id);
+    }
+    var isPartnerTarif = productIds.length > 0 && productIds.every(function(pid) { return PARTNER_TARIF_IDS.indexOf(pid) !== -1; });
+    var assignments = loadPartnerAssignments().filter(function(a) {
+        return a.order_id === order.id && a.status === 'active' && a.partner_type !== 'admin';
+    });
+    if (assignments.length === 0) return [];
+    var partners = loadPartners();
+    var shares = [];
+    if (isPartnerTarif) {
+        // Tarif partenaire : FA GENESIS 15 %, partenaire 85 %
+        assignments.forEach(function(a) {
+            var partner = partners.find(function(p) { return p.id === a.partner_id; }) || {};
+            var partnerAmount = parseFloat((paidAmount * 0.85).toFixed(2));
+            var faAmount      = parseFloat((paidAmount - partnerAmount).toFixed(2));
+            shares.push({ partner_id: a.partner_id, partner_email: a.partner_email, partner_paypal: partner.payout_paypal_email || null, partner_iban: partner.payout_iban || null, partner_bic: partner.payout_bic || null, partner_titulaire: partner.payout_titulaire || null, partner_amount: partnerAmount, fa_amount: faAmount, partner_pct: 85, fa_pct: 15, type: 'tarif_partenaire' });
+        });
+    } else {
+        // Offre multi-service : chaque partenaire 15 %, FA GENESIS prend le reste
+        var n = assignments.length;
+        var faPct      = 100 - n * 15;
+        var faAmount   = parseFloat((paidAmount * faPct / 100).toFixed(2));
+        var perPartner = parseFloat(((paidAmount - faAmount) / n).toFixed(2));
+        assignments.forEach(function(a, i) {
+            var partner = partners.find(function(p) { return p.id === a.partner_id; }) || {};
+            shares.push({ partner_id: a.partner_id, partner_email: a.partner_email, partner_paypal: partner.payout_paypal_email || null, partner_iban: partner.payout_iban || null, partner_bic: partner.payout_bic || null, partner_titulaire: partner.payout_titulaire || null, partner_amount: perPartner, fa_amount: i === 0 ? faAmount : 0, partner_pct: 15, fa_pct: faPct, type: 'offre_multi_service' });
+        });
+    }
+    return shares;
+}
+
+async function triggerPayPalPayouts(items) {
+    if (!items || !items.length) return { success: false, error: 'Aucun élément' };
+    try {
+        var token = await getPayPalAccessToken();
+        var batchId = 'FAG-' + Date.now();
+        var payoutItems = items.map(function(item, i) {
+            return { recipient_type: 'EMAIL', amount: { value: item.amount.toFixed(2), currency: item.currency || 'EUR' }, receiver: item.recipient_email, note: item.note || 'Versement FA GENESIS', sender_item_id: batchId + '-' + i };
+        });
+        var resp = await fetch(PAYPAL_BASE + '/v1/payments/payouts', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sender_batch_header: { sender_batch_id: batchId, email_subject: 'Votre versement FA GENESIS', email_message: 'Votre part de prestation FA GENESIS a été versée automatiquement.' }, items: payoutItems })
+        });
+        var data = await resp.json();
+        return { success: resp.ok, payout_batch_id: (data.batch_header && data.batch_header.payout_batch_id) || null, raw: data };
+    } catch(e) {
+        return { success: false, error: e.message };
+    }
+}
+
+async function processPaymentSplit(orderId, paidAmount, stage) {
+    try {
+        var orders = loadOrders();
+        var order = orders.find(function(o) { return o.id === orderId; });
+        if (!order || !paidAmount || paidAmount <= 0) return;
+        var shares = calculateRevenueShares(order, paidAmount);
+        if (!shares.length) { console.log('[SPLIT] Pas de partenaires externes pour commande ' + orderId); return; }
+        var payouts = loadPayouts();
+        var newPayouts = [];
+        shares.forEach(function(share) {
+            if (share.partner_amount <= 0) return;
+            // Déterminer la méthode préférée : PayPal si email dispo, virement si IBAN dispo, sinon en attente
+            var method = share.partner_paypal ? 'paypal' : (share.partner_iban ? 'bank_transfer' : 'pending');
+            newPayouts.push({
+                id: 'PAY-' + Math.random().toString(36).substring(2, 10).toUpperCase(),
+                order_id: orderId, stage: stage || 'deposit',
+                partner_id: share.partner_id, partner_email: share.partner_email,
+                partner_paypal: share.partner_paypal,
+                partner_iban: share.partner_iban, partner_bic: share.partner_bic, partner_titulaire: share.partner_titulaire,
+                payout_method: method,
+                amount: share.partner_amount, currency: 'EUR',
+                fa_amount: share.fa_amount, fa_pct: share.fa_pct, partner_pct: share.partner_pct,
+                type: share.type, status: 'pending',
+                created_at: new Date().toISOString(), sent_at: null, payout_batch_id: null, error: null
+            });
+        });
+        savePayouts(payouts.concat(newPayouts));
+
+        // Envoyer via PayPal les partenaires ayant un email PayPal
+        var itemsToSend = newPayouts.filter(function(p) { return p.payout_method === 'paypal'; }).map(function(p) {
+            return { recipient_email: p.partner_paypal, amount: p.amount, currency: 'EUR', note: 'Versement FA GENESIS — Commande ' + orderId.substring(0, 8).toUpperCase() };
+        });
+        if (itemsToSend.length > 0) {
+            var result = await triggerPayPalPayouts(itemsToSend);
+            var latestPayouts = loadPayouts();
+            newPayouts.forEach(function(np) {
+                if (np.payout_method !== 'paypal') return;
+                var idx = latestPayouts.findIndex(function(p) { return p.id === np.id; });
+                if (idx !== -1) {
+                    if (result.success) { latestPayouts[idx].status = 'sent'; latestPayouts[idx].sent_at = new Date().toISOString(); latestPayouts[idx].payout_batch_id = result.payout_batch_id || null; }
+                    else { latestPayouts[idx].status = 'failed'; latestPayouts[idx].error = result.error || 'Erreur PayPal Payouts'; }
+                }
+            });
+            savePayouts(latestPayouts);
+            console.log('[SPLIT] Versements PayPal ' + (result.success ? 'envoyés' : 'ÉCHOUÉS') + ' pour commande ' + orderId);
+        }
+        // Les partenaires avec IBAN sont marqués status='pending' + payout_method='bank_transfer'
+        // Un virement SEPA doit être déclenché manuellement ou via une API bancaire (ex: Stripe Treasury)
+        var bankCount = newPayouts.filter(function(p) { return p.payout_method === 'bank_transfer'; }).length;
+        if (bankCount > 0) console.log('[SPLIT] ' + bankCount + ' virement(s) bancaire(s) à effectuer pour commande ' + orderId);
+        var noneCount = newPayouts.filter(function(p) { return p.payout_method === 'pending'; }).length;
+        if (noneCount > 0) console.log('[SPLIT] ' + noneCount + ' partenaire(s) sans coordonnées bancaires — versements en attente pour commande ' + orderId);
+    } catch(e) { console.error('[SPLIT] Erreur processPaymentSplit:', e); }
+}
 
 // ============================================================
 // ASSIGNATION AUTOMATIQUE DES INTERVENANTS (après acompte)
@@ -2199,6 +2326,10 @@ app.post('/api/payments/sumup/webhook', async (req, res) => {
                     assignIntervenantsFromOrder(orderId);
                     createDispatchesForOrder(orderId);
 
+                    // Répartition automatique des revenus (acompte 30 %)
+                    var _depositAmt = updatedOrder.deposit_amount || 0;
+                    processPaymentSplit(orderId, _depositAmt, 'deposit').catch(function(e) { console.error('[SPLIT] Erreur async webhook deposit:', e); });
+
                     // NOTE: Le bootstrap projet est maintenant declenche par finalizeSchedule()
                     // apres que le client ait choisi une date ET que admin+partenaire aient confirme
                     console.log('[WEBHOOK] Bootstrap reporte - en attente choix date client');
@@ -2214,6 +2345,10 @@ app.post('/api/payments/sumup/webhook', async (req, res) => {
                             console.log(`[WEBHOOK] Email de paiement envoyé à ${clientEmail}`);
                         }
                     }).catch(err => console.error('[WEBHOOK] Erreur envoi email paiement:', err));
+
+                    // Répartition automatique des revenus (solde)
+                    var _balanceAmt = updatedOrder.balance_amount || (updatedOrder.total_amount - (updatedOrder.deposit_amount || 0));
+                    processPaymentSplit(orderId, _balanceAmt, 'balance').catch(function(e) { console.error('[SPLIT] Erreur async webhook balance:', e); });
                 }
             }
         }
@@ -2383,6 +2518,10 @@ app.post('/api/payments/verify', async (req, res) => {
                         assignIntervenantsFromOrder(orderId);
                         createDispatchesForOrder(orderId);
 
+                        // Répartition automatique des revenus (acompte 30 %)
+                        var _vDepositAmt = updatedOrder.deposit_amount || 0;
+                        processPaymentSplit(orderId, _vDepositAmt, 'deposit').catch(function(e) { console.error('[SPLIT] Erreur async verify deposit:', e); });
+
                         // NOTE: Le bootstrap projet est maintenant declenche par finalizeSchedule()
                         // apres que le client ait choisi une date ET que admin+partenaire aient confirme
                         console.log('[VERIFY] Bootstrap reporte - en attente choix date client');
@@ -2398,6 +2537,10 @@ app.post('/api/payments/verify', async (req, res) => {
                                 console.log(`[VERIFY] Email de paiement envoyé à ${clientEmail}`);
                             }
                         }).catch(err => console.error('[VERIFY] Erreur envoi email paiement:', err));
+
+                        // Répartition automatique des revenus (solde)
+                        var _vBalanceAmt = updatedOrder.balance_amount || (updatedOrder.total_amount - (updatedOrder.deposit_amount || 0));
+                        processPaymentSplit(orderId, _vBalanceAmt, 'balance').catch(function(e) { console.error('[SPLIT] Erreur async verify balance:', e); });
                     }
                 }
 
@@ -6881,6 +7024,71 @@ app.post('/api/client/set-availability', function(req, res) {
         res.json({ success: true, updated: updated });
     } catch(e) {
         console.error('[AVAIL] Erreur:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// POST /api/partner/profile/set-paypal — partenaire enregistre son email PayPal pour recevoir les versements
+app.post('/api/partner/profile/set-paypal', authenticatePartner, function(req, res) {
+    try {
+        var paypalEmail = (req.body.paypal_email || '').trim();
+        if (!paypalEmail || !paypalEmail.includes('@')) return res.status(400).json({ error: 'Email PayPal invalide' });
+        var partners = loadPartners();
+        var idx = partners.findIndex(function(p) { return p.id === req.partner.id; });
+        if (idx === -1) return res.status(404).json({ error: 'Partenaire introuvable' });
+        partners[idx].payout_paypal_email = paypalEmail;
+        partners[idx].updatedAt = new Date().toISOString();
+        savePartners(partners);
+        res.json({ success: true, paypal_email: paypalEmail });
+    } catch(e) {
+        console.error('[PAYPAL-SET] Erreur:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// POST /api/partner/profile/set-rib — partenaire enregistre son IBAN/BIC pour virement bancaire
+app.post('/api/partner/profile/set-rib', authenticatePartner, function(req, res) {
+    try {
+        var iban     = (req.body.iban || '').replace(/\s/g, '').toUpperCase();
+        var bic      = (req.body.bic  || '').replace(/\s/g, '').toUpperCase();
+        var titulaire = (req.body.titulaire || '').trim();
+        if (!iban || iban.length < 14) return res.status(400).json({ error: 'IBAN invalide' });
+        if (!bic  || bic.length < 8)   return res.status(400).json({ error: 'BIC invalide' });
+        if (!titulaire)                 return res.status(400).json({ error: 'Titulaire requis' });
+        var partners = loadPartners();
+        var idx = partners.findIndex(function(p) { return p.id === req.partner.id; });
+        if (idx === -1) return res.status(404).json({ error: 'Partenaire introuvable' });
+        partners[idx].payout_iban      = iban;
+        partners[idx].payout_bic       = bic;
+        partners[idx].payout_titulaire = titulaire;
+        partners[idx].updatedAt = new Date().toISOString();
+        savePartners(partners);
+        // Masquer l'IBAN dans la réponse (ne renvoyer que les 4 derniers chiffres)
+        var ibanMasked = '••••' + iban.slice(-4);
+        res.json({ success: true, iban_masked: ibanMasked, bic: bic, titulaire: titulaire });
+    } catch(e) {
+        console.error('[RIB-SET] Erreur:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// GET /api/partner/payouts — historique des versements du partenaire connecté
+app.get('/api/partner/payouts', authenticatePartner, function(req, res) {
+    try {
+        var payouts = loadPayouts();
+        var mine = payouts
+            .filter(function(p) { return p.partner_id === req.partner.id; })
+            .sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); });
+        var partners = loadPartners();
+        var me = partners.find(function(p) { return p.id === req.partner.id; });
+        var ibanMasked = me && me.payout_iban ? '••••' + me.payout_iban.slice(-4) : null;
+        res.json({
+            payouts: mine,
+            paypal_email: (me && me.payout_paypal_email) || null,
+            rib: me && me.payout_iban ? { iban_masked: ibanMasked, bic: me.payout_bic || '', titulaire: me.payout_titulaire || '' } : null
+        });
+    } catch(e) {
+        console.error('[PAYOUTS] Erreur:', e);
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });
