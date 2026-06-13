@@ -5618,14 +5618,40 @@ function _ptnrLoadMissions(){
     var html = '<div style="font-size:12px;color:#888;margin-bottom:14px;line-height:1.6;">Premier à confirmer vos disponibilités = vous prenez en charge le client. Soyez rapide !</div>';
     items.forEach(function(d){
       var avail = d.client_availability;
-      var days = avail && avail.days && avail.days.length ? avail.days.join(', ') : 'Non renseigné';
-      var slot = avail && avail.time_slot ? avail.time_slot : '—';
+      var days  = avail && avail.days && avail.days.length ? avail.days.join(', ') : 'Non renseigné';
+      var slot  = avail && avail.time_slot ? avail.time_slot : '—';
       var start = avail && avail.preferred_start ? _ptnrFmt(avail.preferred_start) : 'Non renseigné';
       var notes = avail && avail.notes ? avail.notes : '';
+
+      // Gains
+      var pct          = d.partner_pct || 0;
+      var totalGain    = d.partner_total_amount   ? parseFloat(d.partner_total_amount).toFixed(2)   : null;
+      var depositGain  = d.partner_deposit_amount ? parseFloat(d.partner_deposit_amount).toFixed(2) : null;
+      var offerPrice   = d.offer_total_price       ? parseFloat(d.offer_total_price).toFixed(2)      : null;
+
       html += '<div class="dispatch-card new-card" id="dispatch-'+d.id+'">';
       html += '<div class="dispatch-badge"><span class="dispatch-badge-dot"></span>Mission disponible</div>';
       html += '<div class="dispatch-title">'+d.client_prenom+' — '+(d.offer_name||'Offre')+'</div>';
       html += '<div class="dispatch-meta">Reçue le '+_ptnrFmt(d.created_at)+'</div>';
+
+      // Bloc gain — affiché seulement si les données sont disponibles
+      if(totalGain && depositGain){
+        html += '<div style="display:flex;align-items:stretch;gap:8px;margin:10px 0 2px;">';
+        // Gain total
+        html += '<div style="flex:1;background:rgba(255,215,0,.08);border:1px solid rgba(255,215,0,.2);border-radius:12px;padding:10px 12px;text-align:center;">';
+        html += '<div style="font-size:10px;color:#888;font-weight:700;letter-spacing:.5px;margin-bottom:3px;">VOTRE GAIN TOTAL</div>';
+        html += '<div style="font-size:20px;color:#FFD700;font-weight:800;">'+totalGain+' €</div>';
+        html += '<div style="font-size:10px;color:#666;margin-top:2px;">'+pct+' % de '+( offerPrice ? offerPrice+' €' : 'l\'offre' )+'</div>';
+        html += '</div>';
+        // Acompte à recevoir
+        html += '<div style="flex:1;background:#111;border:1px solid #1e1e1e;border-radius:12px;padding:10px 12px;text-align:center;">';
+        html += '<div style="font-size:10px;color:#888;font-weight:700;letter-spacing:.5px;margin-bottom:3px;">À LA SIGNATURE</div>';
+        html += '<div style="font-size:20px;color:#fff;font-weight:800;">'+depositGain+' €</div>';
+        html += '<div style="font-size:10px;color:#555;margin-top:2px;">dès l\'acompte client</div>';
+        html += '</div>';
+        html += '</div>';
+      }
+
       html += '<div class="dispatch-avail">';
       html += '<strong>Démarrage souhaité :</strong> '+start+'<br>';
       html += '<strong>Jours disponibles :</strong> '+days+'<br>';

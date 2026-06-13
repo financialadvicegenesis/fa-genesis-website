@@ -446,6 +446,21 @@ function createDispatchesForOrder(orderId) {
             || (user && (user.prenom || user.firstName || user.first_name))
             || 'Client';
 
+        // Calculer les montants du partenaire
+        var totalAmount   = parseFloat(order.total_amount   || 0);
+        var depositAmount = parseFloat(order.deposit_amount || (totalAmount * 0.30));
+        var balanceAmount = parseFloat(order.balance_amount || (totalAmount - depositAmount));
+
+        // Compter les rôles externes distincts sur l'ensemble de la commande
+        var allExternalRoles = [];
+        productIds.forEach(function(pid) {
+            (ASSIGNMENT_RULES[pid] || []).forEach(function(r) {
+                if (r !== 'admin' && allExternalRoles.indexOf(r) === -1) allExternalRoles.push(r);
+            });
+        });
+        var isPartnerTarif = productIds.length > 0 && productIds.every(function(pid) { return PARTNER_TARIF_IDS.indexOf(pid) !== -1; });
+        var partnerPct = isPartnerTarif ? 85 : 15;
+
         var dispatches = loadDispatches();
         var createdTypes = [];
 
@@ -459,12 +474,19 @@ function createDispatchesForOrder(orderId) {
                 });
                 if (existing) return;
 
+                var partnerDeposit = parseFloat((depositAmount * partnerPct / 100).toFixed(2));
+                var partnerTotal   = parseFloat((totalAmount   * partnerPct / 100).toFixed(2));
+
                 dispatches.push({
                     id: 'DSP-' + uuidv4().split('-')[0],
                     order_id: orderId,
                     client_prenom: clientPrenom,
                     offer_name: productId,
+                    offer_total_price: totalAmount,
                     partner_type: role,
+                    partner_pct: partnerPct,
+                    partner_deposit_amount: partnerDeposit,
+                    partner_total_amount: partnerTotal,
                     client_availability: null,
                     status: 'open',
                     claimed_by_name: null,
@@ -476,7 +498,7 @@ function createDispatchesForOrder(orderId) {
                     created_at: new Date().toISOString()
                 });
                 createdTypes.push(role);
-                console.log('[DISPATCH] Mission créée : ' + role + ' pour commande ' + orderId);
+                console.log('[DISPATCH] Mission créée : ' + role + ' pour commande ' + orderId + ' (gain ' + partnerPct + '% = ' + partnerTotal + ' €)');
             });
         });
 
