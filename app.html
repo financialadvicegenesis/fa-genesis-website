@@ -1709,7 +1709,7 @@ a{text-decoration:none;color:inherit}
 
         <!-- Sub-screen: Missions (dispatch) -->
         <div class="ptnr-screen" id="ptnr-screen-missions">
-          <div class="ptnr-section-title">Missions disponibles</div>
+          <div class="ptnr-section-title">Mes missions</div>
           <div id="ptnr-missions-list"></div>
         </div>
 
@@ -5606,6 +5606,26 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
 
 var _currentDispatchId = null;
 
+function _ptnrRenderGainBloc(d){
+  var pct = d.partner_pct || 0;
+  var totalGain   = d.partner_total_amount   ? parseFloat(d.partner_total_amount).toFixed(2)   : null;
+  var depositGain = d.partner_deposit_amount ? parseFloat(d.partner_deposit_amount).toFixed(2) : null;
+  var offerPrice  = d.offer_total_price       ? parseFloat(d.offer_total_price).toFixed(2)      : null;
+  if(!totalGain || !depositGain) return '';
+  return '<div style="display:flex;align-items:stretch;gap:8px;margin:10px 0 2px;">' +
+    '<div style="flex:1;background:rgba(255,215,0,.08);border:1px solid rgba(255,215,0,.2);border-radius:12px;padding:10px 12px;text-align:center;">' +
+      '<div style="font-size:10px;color:#888;font-weight:700;letter-spacing:.5px;margin-bottom:3px;">VOTRE GAIN TOTAL</div>' +
+      '<div style="font-size:20px;color:#FFD700;font-weight:800;">'+totalGain+' €</div>' +
+      '<div style="font-size:10px;color:#666;margin-top:2px;">'+pct+'% de '+(offerPrice ? offerPrice+' €' : "l'offre")+'</div>' +
+    '</div>' +
+    '<div style="flex:1;background:#111;border:1px solid #1e1e1e;border-radius:12px;padding:10px 12px;text-align:center;">' +
+      '<div style="font-size:10px;color:#888;font-weight:700;letter-spacing:.5px;margin-bottom:3px;">À L\'ACCEPTATION</div>' +
+      '<div style="font-size:20px;color:#fff;font-weight:800;">'+depositGain+' €</div>' +
+      '<div style="font-size:10px;color:#555;margin-top:2px;">versé dès votre acceptation</div>' +
+    '</div>' +
+  '</div>';
+}
+
 function _ptnrLoadMissions(){
   var el = document.getElementById('ptnr-missions-list');
   if(el) el.innerHTML = '<div class="ptnr-empty"><div style="color:#FFD700;font-size:24px;">⏳</div></div>';
@@ -5615,56 +5635,102 @@ function _ptnrLoadMissions(){
       if(el) el.innerHTML = '<div class="ptnr-empty"><div class="ptnr-empty-ico">✅</div><div class="ptnr-empty-txt">Aucune mission disponible</div><div style="font-size:12px;color:#555;margin-top:6px;">Vous serez notifié à chaque nouvelle mission.</div></div>';
       _setBadgeMissions(0); return;
     }
-    var html = '<div style="font-size:12px;color:#888;margin-bottom:14px;line-height:1.6;">Premier à confirmer vos disponibilités = vous prenez en charge le client. Soyez rapide !</div>';
-    items.forEach(function(d){
-      var avail = d.client_availability;
-      var days  = avail && avail.days && avail.days.length ? avail.days.join(', ') : 'Non renseigné';
-      var slot  = avail && avail.time_slot ? avail.time_slot : '—';
-      var start = avail && avail.preferred_start ? _ptnrFmt(avail.preferred_start) : 'Non renseigné';
-      var notes = avail && avail.notes ? avail.notes : '';
 
-      // Gains
-      var pct          = d.partner_pct || 0;
-      var totalGain    = d.partner_total_amount   ? parseFloat(d.partner_total_amount).toFixed(2)   : null;
-      var depositGain  = d.partner_deposit_amount ? parseFloat(d.partner_deposit_amount).toFixed(2) : null;
-      var offerPrice   = d.offer_total_price       ? parseFloat(d.offer_total_price).toFixed(2)      : null;
+    // Séparer missions à accepter (paiement reçu) et missions libres
+    var pendingItems = items.filter(function(d){ return d.status === 'pending_acceptance'; });
+    var openItems    = items.filter(function(d){ return d.status !== 'pending_acceptance'; });
+    var html = '';
 
-      html += '<div class="dispatch-card new-card" id="dispatch-'+d.id+'">';
-      html += '<div class="dispatch-badge"><span class="dispatch-badge-dot"></span>Mission disponible</div>';
-      html += '<div class="dispatch-title">'+d.client_prenom+' — '+(d.offer_name||'Offre')+'</div>';
-      html += '<div class="dispatch-meta">Reçue le '+_ptnrFmt(d.created_at)+'</div>';
-
-      // Bloc gain — affiché seulement si les données sont disponibles
-      if(totalGain && depositGain){
-        html += '<div style="display:flex;align-items:stretch;gap:8px;margin:10px 0 2px;">';
-        // Gain total
-        html += '<div style="flex:1;background:rgba(255,215,0,.08);border:1px solid rgba(255,215,0,.2);border-radius:12px;padding:10px 12px;text-align:center;">';
-        html += '<div style="font-size:10px;color:#888;font-weight:700;letter-spacing:.5px;margin-bottom:3px;">VOTRE GAIN TOTAL</div>';
-        html += '<div style="font-size:20px;color:#FFD700;font-weight:800;">'+totalGain+' €</div>';
-        html += '<div style="font-size:10px;color:#666;margin-top:2px;">'+pct+' % de '+( offerPrice ? offerPrice+' €' : 'l\'offre' )+'</div>';
-        html += '</div>';
-        // Acompte à recevoir
-        html += '<div style="flex:1;background:#111;border:1px solid #1e1e1e;border-radius:12px;padding:10px 12px;text-align:center;">';
-        html += '<div style="font-size:10px;color:#888;font-weight:700;letter-spacing:.5px;margin-bottom:3px;">À LA SIGNATURE</div>';
-        html += '<div style="font-size:20px;color:#fff;font-weight:800;">'+depositGain+' €</div>';
-        html += '<div style="font-size:10px;color:#555;margin-top:2px;">dès l\'acompte client</div>';
+    // ── Missions à accepter (acompte déjà payé) ──
+    if(pendingItems.length){
+      html += '<div style="border-left:4px solid #FFD700;padding-left:12px;margin-bottom:12px;">';
+      html += '<div style="font-size:13px;font-weight:800;color:#FFD700;text-transform:uppercase;letter-spacing:.05em;">⚡ À accepter</div>';
+      html += '<div style="font-size:11px;color:#888;margin-top:2px;">Le client a payé son acompte. Acceptez pour recevoir votre part immédiatement.</div>';
+      html += '</div>';
+      pendingItems.forEach(function(d){
+        html += '<div class="dispatch-card new-card" id="dispatch-'+d.id+'" style="border-color:#FFD700;">';
+        html += '<div class="dispatch-badge" style="background:#FFD700;color:#000;"><span class="dispatch-badge-dot" style="background:#000;"></span>Acompte reçu — en attente</div>';
+        html += '<div class="dispatch-title">'+d.client_prenom+' — '+(d.offer_name||'Mission')+'</div>';
+        html += '<div class="dispatch-meta">Reçue le '+_ptnrFmt(d.created_at)+'</div>';
+        html += _ptnrRenderGainBloc(d);
+        html += '<div style="display:flex;gap:10px;margin-top:14px;">';
+        html += '<button id="accept-btn-'+d.id+'" class="dispatch-claim-btn" style="flex:1;background:#FFD700;color:#000;" onclick="_acceptDispatch(\''+d.id+'\')">✓ ACCEPTER</button>';
+        html += '<button style="flex:0 0 auto;background:transparent;color:#c00;border:2px solid #c00;padding:10px 16px;font-weight:800;font-size:13px;border-radius:10px;cursor:pointer;" onclick="_declineDispatch(\''+d.id+'\')">✗</button>';
         html += '</div>';
         html += '</div>';
+      });
+      if(openItems.length) html += '<div style="height:20px;"></div>';
+    }
+
+    // ── Missions libres (premier arrivé) ──
+    if(openItems.length){
+      if(pendingItems.length){
+        html += '<div style="border-left:4px solid #444;padding-left:12px;margin-bottom:12px;">';
+        html += '<div style="font-size:13px;font-weight:800;color:#888;text-transform:uppercase;letter-spacing:.05em;">Missions libres</div>';
+        html += '<div style="font-size:11px;color:#555;margin-top:2px;">Premier à confirmer = vous prenez en charge le client.</div>';
+        html += '</div>';
+      } else {
+        html += '<div style="font-size:12px;color:#888;margin-bottom:14px;line-height:1.6;">Premier à confirmer vos disponibilités = vous prenez en charge le client. Soyez rapide !</div>';
       }
+      openItems.forEach(function(d){
+        var avail = d.client_availability;
+        var days  = avail && avail.days && avail.days.length ? avail.days.join(', ') : 'Non renseigné';
+        var slot  = avail && avail.time_slot ? avail.time_slot : '—';
+        var start = avail && avail.preferred_start ? _ptnrFmt(avail.preferred_start) : 'Non renseigné';
+        var notes = avail && avail.notes ? avail.notes : '';
+        html += '<div class="dispatch-card new-card" id="dispatch-'+d.id+'">';
+        html += '<div class="dispatch-badge"><span class="dispatch-badge-dot"></span>Mission disponible</div>';
+        html += '<div class="dispatch-title">'+d.client_prenom+' — '+(d.offer_name||'Offre')+'</div>';
+        html += '<div class="dispatch-meta">Reçue le '+_ptnrFmt(d.created_at)+'</div>';
+        html += _ptnrRenderGainBloc(d);
+        html += '<div class="dispatch-avail">';
+        html += '<strong>Démarrage souhaité :</strong> '+start+'<br>';
+        html += '<strong>Jours disponibles :</strong> '+days+'<br>';
+        html += '<strong>Créneau :</strong> '+slot;
+        if(notes) html += '<br><strong>Note :</strong> '+notes;
+        html += '</div>';
+        html += '<button class="dispatch-claim-btn" onclick="_openDClaimOverlay(\''+d.id+'\',\''+d.client_prenom+'\')">⚡ Prendre en charge</button>';
+        html += '</div>';
+      });
+    }
 
-      html += '<div class="dispatch-avail">';
-      html += '<strong>Démarrage souhaité :</strong> '+start+'<br>';
-      html += '<strong>Jours disponibles :</strong> '+days+'<br>';
-      html += '<strong>Créneau :</strong> '+slot;
-      if(notes) html += '<br><strong>Note :</strong> '+notes;
-      html += '</div>';
-      html += '<button class="dispatch-claim-btn" onclick="_openDClaimOverlay(\''+d.id+'\',\''+d.client_prenom+'\')">⚡ Prendre en charge</button>';
-      html += '</div>';
-    });
     if(el) el.innerHTML = html;
     _setBadgeMissions(items.length);
   }).catch(function(){
     if(el) el.innerHTML = '<div class="ptnr-empty"><div class="ptnr-empty-txt">Erreur de chargement</div></div>';
+  });
+}
+
+function _acceptDispatch(id){
+  var btn = document.getElementById('accept-btn-'+id);
+  if(btn){ btn.disabled=true; btn.textContent='En cours...'; }
+  haptic(15);
+  _ptnrFetch('/api/partner/dispatches/'+id+'/accept','POST',{}).then(function(res){
+    if(res.success){
+      launchConfetti();
+      showToast('Mission acceptée !','Votre acompte est en cours de versement.','success');
+      haptic([50,30,100,30,150]);
+      _ptnrLoadMissions(); _ptnrRefreshBadges();
+    } else {
+      if(btn){ btn.disabled=false; btn.textContent='✓ ACCEPTER'; }
+      showToast(res.error||'Erreur','Réessayez','error');
+    }
+  }).catch(function(){
+    if(btn){ btn.disabled=false; btn.textContent='✓ ACCEPTER'; }
+    showToast('Erreur de connexion','Réessayez','error');
+  });
+}
+
+function _declineDispatch(id){
+  _ptnrFetch('/api/partner/dispatches/'+id+'/decline','POST',{}).then(function(res){
+    if(res.success){
+      showToast('Mission refusée','Elle reste disponible pour les autres partenaires.','info');
+      _ptnrLoadMissions(); _ptnrRefreshBadges();
+    } else {
+      showToast(res.error||'Erreur','Réessayez','error');
+    }
+  }).catch(function(){
+    showToast('Erreur de connexion','Réessayez','error');
   });
 }
 
