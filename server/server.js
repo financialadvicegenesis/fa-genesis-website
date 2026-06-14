@@ -10729,6 +10729,112 @@ app.delete('/api/coworking/devis/:id', function(req, res) {
 });
 
 // ============================================================
+// ASSISTANT LINKEDIN B2B — Génération de messages IA
+// ============================================================
+
+/**
+ * POST /api/admin/linkedin/generate-message
+ * Génère un message LinkedIn B2B personnalisé via Claude API
+ * Protégé par x-admin-key
+ */
+app.post('/api/admin/linkedin/generate-message', async function(req, res) {
+    if (req.headers['x-admin-key'] !== process.env.ADMIN_KEY) {
+        return res.status(401).json({ error: 'Non autorisé' });
+    }
+
+    var anthropicKey = process.env.ANTHROPIC_API_KEY;
+    if (!anthropicKey) {
+        return res.status(503).json({ error: 'ANTHROPIC_API_KEY non configurée sur le serveur.' });
+    }
+
+    var { prenom, nom, titre, entreprise, secteur, bio, objectif, langue } = req.body;
+    if (!prenom || !entreprise || !objectif) {
+        return res.status(400).json({ error: 'Champs requis : prenom, entreprise, objectif' });
+    }
+
+    var langCode = langue === 'en' ? 'anglais' : 'français';
+    var objetLabel = {
+        connexion: 'une demande de connexion personnalisée (note d\'invitation)',
+        collaboration: 'une proposition de collaboration ou partenariat',
+        presentation: 'une présentation de FA GENESIS et de ses offres',
+        relance: 'une relance après une première prise de contact'
+    }[objectif] || objectif;
+
+    var systemPrompt = [
+        'Tu es l\'assistant commercial B2B de FA GENESIS, une société de conseil financier et d\'accompagnement basée en France.',
+        '',
+        '== À PROPOS DE FA GENESIS ==',
+        'FA GENESIS propose trois types de services :',
+        '1. ACCOMPAGNEMENT FINANCIER : coaching individuel et collectif pour étudiants, particuliers et entrepreneurs (budgeting, investissement, gestion de patrimoine, création d\'entreprise). Formules en 2, 3 ou 4 jours selon le profil.',
+        '2. PRODUCTION MÉDIA : photo professionnelle, vidéo corporate/promotionnelle, contenu réseaux sociaux pour entreprises (tarifs sur devis personnalisé).',
+        '3. MARKETING & STRATÉGIE : stratégie de contenu, branding, accompagnement communication pour TPE/PME.',
+        '',
+        '== VALEUR AJOUTÉE ==',
+        '- Accompagnement 100% personnalisé, suivi individuel',
+        '- Expertise combinée finance + production + marketing sous un seul toit',
+        '- Résultats mesurables et orientés impact business',
+        '- Tarifs adaptés au profil (étudiant, particulier, entreprise)',
+        '',
+        '== RÈGLES DE RÉDACTION LINKEDIN B2B ==',
+        '- Message court : 3 à 5 phrases maximum',
+        '- Ton professionnel mais chaleureux, jamais agressif ni trop commercial',
+        '- Commencer par une phrase de personnalisation (référencer quelque chose de spécifique au profil)',
+        '- Proposer de la valeur avant de parler de FA GENESIS',
+        '- Terminer par UN seul call-to-action clair (appel, échange, réponse)',
+        '- PAS de formules génériques ("J\'espère que vous allez bien", "Je me permets de vous contacter")',
+        '- PAS de pression, PAS de liste à puces, PAS de majuscules excessives',
+        '- Langue : ' + langCode,
+        '',
+        'Génère UNIQUEMENT le texte du message LinkedIn, sans titre ni explication.'
+    ].join('\n');
+
+    var userPrompt = [
+        'Génère un message LinkedIn de type : ' + objetLabel,
+        '',
+        'PROFIL DU PROSPECT :',
+        '- Prénom : ' + prenom + (nom ? ' ' + nom : ''),
+        '- Titre / Poste : ' + (titre || 'non précisé'),
+        '- Entreprise : ' + entreprise,
+        '- Secteur : ' + (secteur || 'non précisé'),
+        (bio ? '- Bio / À propos : ' + bio : ''),
+        '',
+        'Génère le message en ' + langCode + '.'
+    ].filter(Boolean).join('\n');
+
+    try {
+        var aiResp = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': anthropicKey,
+                'anthropic-version': '2023-06-01'
+            },
+            body: JSON.stringify({
+                model: 'claude-haiku-4-5-20251001',
+                max_tokens: 400,
+                system: systemPrompt,
+                messages: [{ role: 'user', content: userPrompt }]
+            })
+        });
+
+        if (!aiResp.ok) {
+            var errText = await aiResp.text();
+            console.error('[LINKEDIN AI] Erreur API:', aiResp.status, errText);
+            return res.status(502).json({ error: 'Erreur API IA : ' + aiResp.status });
+        }
+
+        var aiData = await aiResp.json();
+        var message = (aiData.content && aiData.content[0] && aiData.content[0].text) || '';
+        if (!message) return res.status(502).json({ error: 'Réponse IA vide' });
+
+        res.json({ success: true, message: message.trim() });
+    } catch(e) {
+        console.error('[LINKEDIN AI] Erreur:', e);
+        res.status(500).json({ error: 'Erreur serveur : ' + e.message });
+    }
+});
+
+// ============================================================
 // DEMARRAGE DU SERVEUR
 // ============================================================
 
