@@ -737,7 +737,7 @@ app.use(cors({
     ].filter(Boolean),
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
     credentials: true,
-    allowedHeaders: ['Content-Type', 'Authorization']
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-admin-key']
 }));
 
 // Parser JSON (limite augmentee pour supporter les fichiers base64)
