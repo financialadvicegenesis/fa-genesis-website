@@ -405,7 +405,20 @@
             <h2 class="text-2xl md:text-3xl font-black text-white mb-6" style="font-family:'Playfair Display',serif;">
                 <i class="fas fa-tasks mr-3" style="color:var(--genesis-yellow);"></i>MES MISSIONS
             </h2>
-            <p class="text-white text-sm mb-6 opacity-70">Livrables assignés à vos commandes. Vous pouvez modifier, uploader des fichiers et soumettre pour validation.</p>
+
+            <!-- Sous-section : missions à accepter (dispatches pending_acceptance) -->
+            <div id="pendingDispatchesBlock" style="display:none;margin-bottom:32px;">
+                <div style="border-left:5px solid #FFD700;padding-left:16px;margin-bottom:16px;">
+                    <h3 class="text-lg font-black italic uppercase text-[var(--genesis-yellow)]"><i class="fas fa-bell mr-2"></i>MISSIONS EN ATTENTE D'ACCEPTATION</h3>
+                    <p class="text-sm font-bold opacity-60 text-white">Acceptez ou refusez ces missions. Si vous acceptez, votre acompte vous sera versé automatiquement.</p>
+                </div>
+                <div id="pendingDispatchesContainer"></div>
+            </div>
+
+            <div style="border-left:5px solid #fff;padding-left:16px;margin-bottom:16px;">
+                <h3 class="text-lg font-black italic uppercase text-white"><i class="fas fa-file-alt mr-2"></i>MES LIVRABLES</h3>
+                <p class="text-sm font-bold opacity-60 text-white">Livrables assignés à vos commandes. Vous pouvez modifier, uploader des fichiers et soumettre pour validation.</p>
+            </div>
 
             <div id="missionsListContainer">
                 <p class="text-center py-8 opacity-50 font-bold text-white">Chargement...</p>
@@ -2019,40 +2032,130 @@
     async function loadMissions() {
         try {
             var token = localStorage.getItem('fa_genesis_partner_token');
-            var response = await fetch(PARTNER_API_URL + '/api/partner/deliverables', {
-                headers: { 'Authorization': 'Bearer ' + token }
-            });
-            if (!response.ok) throw new Error('Erreur chargement');
-            var data = await response.json();
-            var deliverables = data.deliverables || [];
 
-            // Badge
+            // Charger en parallèle : livrables + dispatches en attente
+            var [delResp, dispResp] = await Promise.all([
+                fetch(PARTNER_API_URL + '/api/partner/deliverables', { headers: { 'Authorization': 'Bearer ' + token } }),
+                fetch(PARTNER_API_URL + '/api/partner/dispatches', { headers: { 'Authorization': 'Bearer ' + token } })
+            ]);
+
+            var deliverables = [];
+            if (delResp.ok) { var dd = await delResp.json(); deliverables = dd.deliverables || []; }
+
+            var pendingDispatches = [];
+            if (dispResp.ok) {
+                var dd2 = await dispResp.json();
+                pendingDispatches = (dd2.dispatches || []).filter(function(d) { return d.status === 'pending_acceptance'; });
+            }
+
+            // Badge : livrables non terminés + dispatches en attente
             var todoCount = deliverables.filter(function(d) {
                 return d.workflow_status !== 'PUBLISHED' && d.workflow_status !== 'APPROVED';
-            }).length;
+            }).length + pendingDispatches.length;
             var badge = document.getElementById('missionsBadge');
             var badgeMobile = document.getElementById('missionsBadgeMobile');
             if (badge) { if (todoCount > 0) { badge.style.display = 'block'; badge.textContent = todoCount; } else { badge.style.display = 'none'; } }
             if (badgeMobile) { if (todoCount > 0) { badgeMobile.style.display = 'block'; badgeMobile.textContent = todoCount; } else { badgeMobile.style.display = 'none'; } }
 
+            // Afficher les dispatches en attente
+            var pdBlock = document.getElementById('pendingDispatchesBlock');
+            var pdContainer = document.getElementById('pendingDispatchesContainer');
+            if (pdBlock && pdContainer) {
+                if (pendingDispatches.length > 0) {
+                    pdBlock.style.display = 'block';
+                    var pdHtml = '';
+                    pendingDispatches.forEach(function(d) { pdHtml += renderPendingDispatchCard(d); });
+                    pdContainer.innerHTML = pdHtml;
+                } else {
+                    pdBlock.style.display = 'none';
+                }
+            }
+
+            // Afficher les livrables
             var container = document.getElementById('missionsListContainer');
             if (!container) return;
-
             if (deliverables.length === 0) {
-                container.innerHTML = '<p class="text-center py-8 opacity-50 font-bold text-white">Aucune mission assignée pour le moment.</p>';
+                container.innerHTML = '<p class="text-center py-8 opacity-50 font-bold text-white">Aucun livrable assigné pour le moment.</p>';
                 return;
             }
-
             var html = '';
-            for (var i = 0; i < deliverables.length; i++) {
-                var d = deliverables[i];
-                html += renderMissionCard(d);
-            }
+            for (var i = 0; i < deliverables.length; i++) { html += renderMissionCard(deliverables[i]); }
             container.innerHTML = html;
         } catch (e) {
             console.error('loadMissions:', e);
             var container = document.getElementById('missionsListContainer');
             if (container) container.innerHTML = '<p class="text-red-400 font-bold">Erreur de chargement des missions.</p>';
+        }
+    }
+
+    function renderPendingDispatchCard(d) {
+        var offerLabel = d.offer_name || d.partner_type || 'Mission';
+        var clientName = d.client_prenom ? ('Pour : ' + escapeHtml(d.client_prenom)) : '';
+        var partnerPct = d.partner_pct || 15;
+        var depositGain = d.partner_deposit_amount ? parseFloat(d.partner_deposit_amount).toFixed(2) : null;
+        var totalGain   = d.partner_total_amount   ? parseFloat(d.partner_total_amount).toFixed(2)   : null;
+        var offerPrice  = d.offer_total_price       ? parseFloat(d.offer_total_price).toFixed(2)      : null;
+        var date = d.created_at ? new Date(d.created_at).toLocaleDateString('fr-FR') : '';
+
+        return '<div style="background:#111;border:3px solid #FFD700;padding:20px;margin-bottom:16px;box-shadow:6px 6px 0 #FFD700;">' +
+            '<div class="flex justify-between items-start flex-wrap gap-3 mb-4">' +
+                '<div>' +
+                    '<div class="text-xs font-bold opacity-50 text-white uppercase">' + date + '</div>' +
+                    '<div class="font-black text-white text-lg uppercase mt-1">' + escapeHtml(offerLabel) + '</div>' +
+                    (clientName ? '<div class="text-sm font-bold text-[var(--genesis-yellow)]"><i class="fas fa-user mr-1"></i>' + clientName + '</div>' : '') +
+                '</div>' +
+                '<div style="text-align:right;">' +
+                    (offerPrice ? '<div class="text-xs font-bold opacity-50 text-white">Valeur totale : ' + offerPrice + ' €</div>' : '') +
+                    (totalGain ? '<div class="font-black text-[var(--genesis-yellow)] text-xl">Votre gain : ' + totalGain + ' €<span class="text-xs ml-1 opacity-70">(' + partnerPct + '%)</span></div>' : '') +
+                    (depositGain ? '<div class="text-sm font-bold text-white">À l\'acceptation : <span style="color:#51cf66;">' + depositGain + ' €</span></div>' : '') +
+                '</div>' +
+            '</div>' +
+            '<div class="flex gap-3 flex-wrap">' +
+                '<button onclick="acceptDispatch(\'' + d.id + '\')" style="background:#FFD700;color:#000;border:3px solid #000;padding:10px 24px;font-weight:900;font-size:0.9rem;text-transform:uppercase;cursor:pointer;letter-spacing:.05em;">' +
+                    '<i class="fas fa-check mr-2"></i>ACCEPTER LA MISSION' +
+                '</button>' +
+                '<button onclick="declineDispatch(\'' + d.id + '\')" style="background:#fff;color:#c00;border:3px solid #c00;padding:10px 24px;font-weight:900;font-size:0.9rem;text-transform:uppercase;cursor:pointer;">' +
+                    '<i class="fas fa-times mr-2"></i>REFUSER' +
+                '</button>' +
+            '</div>' +
+        '</div>';
+    }
+
+    async function acceptDispatch(dispatchId) {
+        var token = localStorage.getItem('fa_genesis_partner_token');
+        try {
+            var resp = await fetch(PARTNER_API_URL + '/api/partner/dispatches/' + encodeURIComponent(dispatchId) + '/accept', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' }
+            });
+            var result = await resp.json();
+            if (resp.ok && result.success) {
+                alert(result.message || 'Mission acceptée ! Votre acompte est en cours de versement.');
+                loadMissions();
+            } else {
+                alert('Erreur : ' + (result.error || 'Erreur inconnue'));
+            }
+        } catch(e) {
+            alert('Erreur de connexion au serveur.');
+        }
+    }
+
+    async function declineDispatch(dispatchId) {
+        if (!confirm('Voulez-vous vraiment refuser cette mission ?\n\nElle restera disponible pour d\'autres partenaires.')) return;
+        var token = localStorage.getItem('fa_genesis_partner_token');
+        try {
+            var resp = await fetch(PARTNER_API_URL + '/api/partner/dispatches/' + encodeURIComponent(dispatchId) + '/decline', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' }
+            });
+            var result = await resp.json();
+            if (resp.ok && result.success) {
+                loadMissions();
+            } else {
+                alert('Erreur : ' + (result.error || 'Erreur inconnue'));
+            }
+        } catch(e) {
+            alert('Erreur de connexion au serveur.');
         }
     }
 
