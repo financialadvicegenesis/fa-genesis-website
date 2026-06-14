@@ -425,6 +425,91 @@ function assignIntervenantsFromOrder(orderId) {
 }
 
 // Crée les missions (dispatches) pour les partenaires externes d'une commande
+// Versement unitaire pour un dispatch accepté (acompte ou solde)
+async function processDispatchPayout(dispatch, stage) {
+    try {
+        if (!dispatch || !dispatch.claimed_by_partner_id) return;
+
+        var partnerPct = dispatch.partner_pct || 15;
+        var faPct = 100 - partnerPct;
+        var paidAmount;
+
+        if (stage === 'deposit') {
+            paidAmount = parseFloat((dispatch.partner_deposit_amount || 0).toFixed(2));
+        } else {
+            var pTotal = parseFloat(dispatch.partner_total_amount || 0);
+            var pDeposit = parseFloat(dispatch.partner_deposit_amount || 0);
+            paidAmount = parseFloat((pTotal - pDeposit).toFixed(2));
+        }
+        if (paidAmount <= 0) return;
+
+        var partners = loadPartners();
+        var partner = partners.find(function(p) { return p.id === dispatch.claimed_by_partner_id; });
+        if (!partner) return;
+
+        var orders = loadOrders();
+        var order = orders.find(function(o) { return o.id === dispatch.order_id; });
+        var stageTotal = 0;
+        if (order) {
+            var orderTotal = parseFloat(order.total_amount || 0);
+            var depositAmt = parseFloat(order.deposit_amount || (orderTotal * 0.30));
+            stageTotal = stage === 'deposit' ? depositAmt : parseFloat(order.balance_amount || (orderTotal - depositAmt));
+        }
+        var faAmount = parseFloat((stageTotal - paidAmount).toFixed(2));
+
+        var method = (partner.payout_paypal ? 'paypal' : (partner.payout_iban ? 'bank_transfer' : 'pending'));
+        var newPayout = {
+            id: 'PAY-' + Math.random().toString(36).substring(2, 10).toUpperCase(),
+            order_id: dispatch.order_id,
+            dispatch_id: dispatch.id,
+            stage: stage,
+            partner_id: partner.id,
+            partner_email: partner.email,
+            partner_paypal: partner.payout_paypal || null,
+            partner_iban: partner.payout_iban || null,
+            partner_bic: partner.payout_bic || null,
+            partner_titulaire: partner.payout_titulaire || null,
+            payout_method: method,
+            amount: paidAmount,
+            fa_amount: faAmount,
+            fa_pct: faPct,
+            partner_pct: partnerPct,
+            currency: 'EUR',
+            status: 'pending',
+            created_at: new Date().toISOString(),
+            sent_at: null,
+            payout_batch_id: null,
+            error: null
+        };
+
+        var payouts = loadPayouts();
+        payouts.push(newPayout);
+        savePayouts(payouts);
+
+        if (method === 'paypal') {
+            var result = await triggerPayPalPayouts([{
+                recipient_email: partner.payout_paypal,
+                amount: paidAmount,
+                currency: 'EUR',
+                note: 'Versement FA GENESIS — ' + (dispatch.offer_name || dispatch.order_id) + ' (' + stage + ')'
+            }]);
+            var latest = loadPayouts();
+            var pi = latest.findIndex(function(p) { return p.id === newPayout.id; });
+            if (pi !== -1) {
+                latest[pi].status = result.success ? 'sent' : 'failed';
+                if (result.success) { latest[pi].sent_at = new Date().toISOString(); latest[pi].payout_batch_id = result.payout_batch_id || null; }
+                else { latest[pi].error = result.error || 'Erreur PayPal'; }
+                savePayouts(latest);
+            }
+            console.log('[PAYOUT] ' + stage + ' PayPal ' + (result.success ? 'envoyé' : 'ÉCHOUÉ') + ' → ' + partner.email + ' : ' + paidAmount + ' €');
+        } else {
+            console.log('[PAYOUT] ' + stage + ' en attente (' + method + ') → ' + partner.email + ' : ' + paidAmount + ' €');
+        }
+    } catch(e) {
+        console.error('[PAYOUT] Erreur processDispatchPayout:', e);
+    }
+}
+
 function createDispatchesForOrder(orderId) {
     try {
         var orders = loadOrders();
@@ -488,7 +573,7 @@ function createDispatchesForOrder(orderId) {
                     partner_deposit_amount: partnerDeposit,
                     partner_total_amount: partnerTotal,
                     client_availability: null,
-                    status: 'open',
+                    status: 'pending_acceptance',
                     claimed_by_name: null,
                     claimed_by_profile: null,
                     claimed_by_partner_id: null,
@@ -2347,10 +2432,9 @@ app.post('/api/payments/sumup/webhook', async (req, res) => {
                     // Assigner les intervenants admin + créer les missions partenaires
                     assignIntervenantsFromOrder(orderId);
                     createDispatchesForOrder(orderId);
-
-                    // Répartition automatique des revenus (acompte 30 %)
-                    var _depositAmt = updatedOrder.deposit_amount || 0;
-                    processPaymentSplit(orderId, _depositAmt, 'deposit').catch(function(e) { console.error('[SPLIT] Erreur async webhook deposit:', e); });
+                    // Le versement de l'acompte partenaire est déclenché uniquement
+                    // lorsque le partenaire accepte explicitement la mission.
+                    console.log('[WEBHOOK] Acompte retenu — en attente acceptation partenaire');
 
                     // NOTE: Le bootstrap projet est maintenant declenche par finalizeSchedule()
                     // apres que le client ait choisi une date ET que admin+partenaire aient confirme
@@ -2368,9 +2452,10 @@ app.post('/api/payments/sumup/webhook', async (req, res) => {
                         }
                     }).catch(err => console.error('[WEBHOOK] Erreur envoi email paiement:', err));
 
-                    // Répartition automatique des revenus (solde)
-                    var _balanceAmt = updatedOrder.balance_amount || (updatedOrder.total_amount - (updatedOrder.deposit_amount || 0));
-                    processPaymentSplit(orderId, _balanceAmt, 'balance').catch(function(e) { console.error('[SPLIT] Erreur async webhook balance:', e); });
+                    // Verser la part de solde à chaque partenaire ayant accepté sa mission
+                    var _acceptedD = loadDispatches().filter(function(d) { return d.order_id === orderId && d.status === 'accepted'; });
+                    _acceptedD.forEach(function(d) { processDispatchPayout(d, 'balance').catch(function(e) { console.error('[PAYOUT] Erreur solde webhook:', e); }); });
+                    if (_acceptedD.length === 0) console.log('[WEBHOOK] Aucun dispatch accepté pour versement solde — commande ' + orderId);
                 }
             }
         }
@@ -2539,10 +2624,8 @@ app.post('/api/payments/verify', async (req, res) => {
                         // Assigner les intervenants admin + créer les missions partenaires
                         assignIntervenantsFromOrder(orderId);
                         createDispatchesForOrder(orderId);
-
-                        // Répartition automatique des revenus (acompte 30 %)
-                        var _vDepositAmt = updatedOrder.deposit_amount || 0;
-                        processPaymentSplit(orderId, _vDepositAmt, 'deposit').catch(function(e) { console.error('[SPLIT] Erreur async verify deposit:', e); });
+                        // Le versement de l'acompte partenaire est déclenché à l'acceptation de la mission.
+                        console.log('[VERIFY] Acompte retenu — en attente acceptation partenaire');
 
                         // NOTE: Le bootstrap projet est maintenant declenche par finalizeSchedule()
                         // apres que le client ait choisi une date ET que admin+partenaire aient confirme
@@ -2560,9 +2643,10 @@ app.post('/api/payments/verify', async (req, res) => {
                             }
                         }).catch(err => console.error('[VERIFY] Erreur envoi email paiement:', err));
 
-                        // Répartition automatique des revenus (solde)
-                        var _vBalanceAmt = updatedOrder.balance_amount || (updatedOrder.total_amount - (updatedOrder.deposit_amount || 0));
-                        processPaymentSplit(orderId, _vBalanceAmt, 'balance').catch(function(e) { console.error('[SPLIT] Erreur async verify balance:', e); });
+                        // Verser la part de solde à chaque partenaire ayant accepté sa mission
+                        var _vAccD = loadDispatches().filter(function(d) { return d.order_id === orderId && d.status === 'accepted'; });
+                        _vAccD.forEach(function(d) { processDispatchPayout(d, 'balance').catch(function(e) { console.error('[PAYOUT] Erreur solde verify:', e); }); });
+                        if (_vAccD.length === 0) console.log('[VERIFY] Aucun dispatch accepté pour versement solde — commande ' + orderId);
                     }
                 }
 
@@ -6903,15 +6987,24 @@ app.get('/api/partner/projects', authenticatePartner, (req, res) => {
 //  DISPATCH — Système de missions (course entre partenaires)
 // ============================================================
 
-// GET /api/partner/dispatches — liste des missions ouvertes pour ce type
+// GET /api/partner/dispatches — missions à accepter / ouvertes pour ce type
 app.get('/api/partner/dispatches', authenticatePartner, function(req, res) {
     try {
         var dispatches = loadDispatches();
         var pType = req.partner.partner_type;
-        var open = dispatches
-            .filter(function(d) { return d.partner_type === pType && d.status === 'open'; })
+        var partnerId = req.partner.id;
+        var available = dispatches
+            .filter(function(d) {
+                if (d.partner_type !== pType) return false;
+                if (d.status === 'open') return true;
+                if (d.status === 'pending_acceptance') {
+                    var declined = d.declined_partners || [];
+                    return declined.indexOf(partnerId) === -1;
+                }
+                return false;
+            })
             .sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); });
-        res.json({ dispatches: open });
+        res.json({ dispatches: available });
     } catch(e) {
         console.error('[DISPATCH] Erreur liste:', e);
         res.status(500).json({ error: 'Erreur serveur' });
@@ -6922,8 +7015,16 @@ app.get('/api/partner/dispatches', authenticatePartner, function(req, res) {
 app.get('/api/partner/dispatches/count', authenticatePartner, function(req, res) {
     try {
         var dispatches = loadDispatches();
+        var pType = req.partner.partner_type;
+        var partnerId = req.partner.id;
         var count = dispatches.filter(function(d) {
-            return d.partner_type === req.partner.partner_type && d.status === 'open';
+            if (d.partner_type !== pType) return false;
+            if (d.status === 'open') return true;
+            if (d.status === 'pending_acceptance') {
+                var declined = d.declined_partners || [];
+                return declined.indexOf(partnerId) === -1;
+            }
+            return false;
         }).length;
         res.json({ count: count });
     } catch(e) {
@@ -6946,7 +7047,8 @@ app.post('/api/partner/dispatches/:id/claim', authenticatePartner, function(req,
             return res.status(404).json({ error: 'Mission introuvable' });
         }
         var dispatch = dispatches[idx];
-        if (dispatch.status !== 'open') {
+        var isPendingAcc = dispatch.status === 'pending_acceptance';
+        if (dispatch.status !== 'open' && !isPendingAcc) {
             delete _dispatchLocks[dispatchId];
             return res.status(409).json({ taken: true, error: 'Cette mission a déjà été prise en charge par un autre partenaire.' });
         }
@@ -6960,13 +7062,14 @@ app.post('/api/partner/dispatches/:id/claim', authenticatePartner, function(req,
         var proposedStart = req.body.proposed_start || null;
         var profileId = req.body.profile_id || null;
 
-        dispatches[idx].status = 'taken';
+        dispatches[idx].status = isPendingAcc ? 'accepted' : 'taken';
         dispatches[idx].claimed_by_name = partnerName;
         dispatches[idx].claimed_by_profile = profileId;
         dispatches[idx].claimed_by_partner_id = req.partner.id;
         dispatches[idx].claimed_at = new Date().toISOString();
         dispatches[idx].claim_message = claimMessage;
         dispatches[idx].proposed_start = proposedStart;
+        if (isPendingAcc) dispatches[idx].accepted_at = new Date().toISOString();
         saveDispatches(dispatches);
 
         // Créer l'assignation partenaire pour que le projet apparaisse dans son espace
@@ -6986,11 +7089,101 @@ app.post('/api/partner/dispatches/:id/claim', authenticatePartner, function(req,
         });
         savePartnerAssignments(assignments);
 
+        // Si la mission était en attente d'acceptation, déclencher le versement de l'acompte
+        if (isPendingAcc) {
+            processDispatchPayout(dispatches[idx], 'deposit').catch(function(e) { console.error('[PAYOUT] Erreur acompte claim:', e); });
+        }
+
         delete _dispatchLocks[dispatchId];
-        res.json({ success: true, message: 'Mission prise en charge avec succès !' });
+        var claimMsg = isPendingAcc ? 'Mission acceptée ! Votre acompte est en cours de versement.' : 'Mission prise en charge avec succès !';
+        res.json({ success: true, message: claimMsg });
     } catch(e) {
         delete _dispatchLocks[dispatchId];
         console.error('[DISPATCH] Erreur claim:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// POST /api/partner/dispatches/:id/accept — accepter explicitement une mission (pending_acceptance → accepted)
+app.post('/api/partner/dispatches/:id/accept', authenticatePartner, function(req, res) {
+    var dispatchId = req.params.id;
+    if (_dispatchLocks[dispatchId]) {
+        return res.status(409).json({ error: 'Mission en cours de traitement. Réessayez dans un instant.' });
+    }
+    _dispatchLocks[dispatchId] = true;
+    try {
+        var dispatches = loadDispatches();
+        var idx = dispatches.findIndex(function(d) { return d.id === dispatchId; });
+        if (idx === -1) { delete _dispatchLocks[dispatchId]; return res.status(404).json({ error: 'Mission introuvable' }); }
+
+        var dispatch = dispatches[idx];
+        if (dispatch.status !== 'pending_acceptance') {
+            delete _dispatchLocks[dispatchId];
+            return res.status(409).json({ error: 'Cette mission n\'est plus en attente d\'acceptation (statut: ' + dispatch.status + ').' });
+        }
+        if (dispatch.partner_type !== req.partner.partner_type) {
+            delete _dispatchLocks[dispatchId];
+            return res.status(403).json({ error: 'Cette mission ne correspond pas à votre domaine.' });
+        }
+
+        var partnerName = req.partner.prenom || req.partner.email;
+        dispatches[idx].status = 'accepted';
+        dispatches[idx].claimed_by_name = partnerName;
+        dispatches[idx].claimed_by_partner_id = req.partner.id;
+        dispatches[idx].claimed_at = new Date().toISOString();
+        dispatches[idx].accepted_at = new Date().toISOString();
+        saveDispatches(dispatches);
+
+        var assignments = loadPartnerAssignments();
+        assignments.push({
+            id: 'ASG-' + uuidv4().split('-')[0],
+            partner_id: req.partner.id,
+            partner_email: req.partner.email,
+            partner_type: req.partner.partner_type,
+            order_id: dispatch.order_id,
+            assigned_at: new Date().toISOString(),
+            assigned_by: 'partner-accept',
+            status: 'active',
+            notes: 'Mission acceptée par ' + partnerName,
+            dispatch_id: dispatchId,
+            sub_profile_name: partnerName
+        });
+        savePartnerAssignments(assignments);
+
+        processDispatchPayout(dispatches[idx], 'deposit').catch(function(e) { console.error('[PAYOUT] Erreur acompte accept:', e); });
+
+        delete _dispatchLocks[dispatchId];
+        res.json({ success: true, message: 'Mission acceptée ! Votre acompte est en cours de versement.' });
+    } catch(e) {
+        delete _dispatchLocks[dispatchId];
+        console.error('[DISPATCH] Erreur accept:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// POST /api/partner/dispatches/:id/decline — refuser une mission (reste visible pour les autres partenaires)
+app.post('/api/partner/dispatches/:id/decline', authenticatePartner, function(req, res) {
+    try {
+        var dispatches = loadDispatches();
+        var idx = dispatches.findIndex(function(d) { return d.id === req.params.id; });
+        if (idx === -1) return res.status(404).json({ error: 'Mission introuvable' });
+
+        if (dispatches[idx].partner_type !== req.partner.partner_type) {
+            return res.status(403).json({ error: 'Cette mission ne correspond pas à votre domaine.' });
+        }
+        if (dispatches[idx].status !== 'pending_acceptance') {
+            return res.status(409).json({ error: 'Statut invalide pour refuser cette mission.' });
+        }
+
+        var declined = dispatches[idx].declined_partners || [];
+        if (declined.indexOf(req.partner.id) === -1) declined.push(req.partner.id);
+        dispatches[idx].declined_partners = declined;
+        saveDispatches(dispatches);
+
+        console.log('[DISPATCH] Refus de ' + req.partner.email + ' pour mission ' + req.params.id);
+        res.json({ success: true, message: 'Mission refusée.' });
+    } catch(e) {
+        console.error('[DISPATCH] Erreur decline:', e);
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });
