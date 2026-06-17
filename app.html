@@ -5017,6 +5017,7 @@ var regData = {};
 function showRegisterSheet(){
   regCurrentStep = 1;
   regData = {};
+  if(_regStepTimer){ clearTimeout(_regStepTimer); _regStepTimer=null; }
   var overlay = document.getElementById('reg-overlay');
   var sheet = document.getElementById('reg-sheet');
   if(!overlay || !sheet) return;
@@ -5046,25 +5047,29 @@ function closeRegSheet(){
   setTimeout(function(){ overlay.classList.remove('open'); }, 460);
 }
 
+var _regStepTimer = null;
 function regGoToStep(next){
   var curr = regCurrentStep;
+  if(next===curr) return;
   var fromEl = document.getElementById('reg-s'+curr);
   var toEl = document.getElementById('reg-s'+next);
   if(!fromEl || !toEl) return;
+  if(_regStepTimer){ clearTimeout(_regStepTimer); _regStepTimer=null; }
   var fwd = next > curr;
   fromEl.style.transition = 'transform .35s cubic-bezier(.4,0,.2,1)';
   fromEl.style.transform = fwd ? 'translateX(-110%)' : 'translateX(110%)';
+  fromEl.classList.remove('active');
   toEl.style.transition = 'none';
   toEl.style.transform = fwd ? 'translateX(110%)' : 'translateX(-110%)';
   void toEl.offsetWidth;
   toEl.style.transition = 'transform .35s cubic-bezier(.4,0,.2,1)';
   toEl.style.transform = 'translateX(0)';
-  setTimeout(function(){
-    fromEl.classList.remove('active');
+  toEl.classList.add('active');
+  _regStepTimer = setTimeout(function(){
     fromEl.style.transform=''; fromEl.style.transition='';
-    toEl.classList.add('active');
     toEl.style.transform=''; toEl.style.transition='';
     var inp = toEl.querySelector('.reg-input'); if(inp) inp.focus();
+    _regStepTimer = null;
   }, 360);
   regCurrentStep = next;
   regUpdateProgress(next);
@@ -5150,6 +5155,7 @@ function regStepIdentity(){
 function regShowSuccess(prenom){
   var s3=document.getElementById('reg-s4'); var s4=document.getElementById('reg-s5');
   if(!s3||!s4) return;
+  if(_regStepTimer){ clearTimeout(_regStepTimer); _regStepTimer=null; }
   s3.style.transition='transform .35s cubic-bezier(.4,0,.2,1)';
   s3.style.transform='translateX(-110%)';
   s3.classList.remove('active');
