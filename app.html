@@ -1051,6 +1051,7 @@ a{text-decoration:none;color:inherit}
 .ptnr-login-btn{width:100%;background:#FFD700;color:#000;font-family:'Unbounded',sans-serif;font-weight:900;font-size:12px;letter-spacing:1px;padding:16px;border:none;border-radius:10px;cursor:pointer;margin-top:4px;}
 .ptnr-login-err{color:#ef4444;font-size:13px;margin-top:8px;display:none;}
 .ptnr-login-err.on{display:block;}
+.ptnr-link-btn{width:100%;background:transparent;border:none;color:#888;font-size:12px;font-weight:700;padding:14px;cursor:pointer;margin-top:6px;text-align:center;}
 .ptnr-notif-bar{background:#111;border:1px solid #1e1e1e;border-radius:12px;padding:14px 16px;margin:16px;display:flex;align-items:center;justify-content:space-between;gap:12px;}
 .ptnr-notif-txt{font-size:12px;color:#aaa;flex:1;}
 .ptnr-notif-btn{background:#FFD700;color:#000;font-size:11px;font-weight:900;padding:8px 14px;border:none;border-radius:8px;cursor:pointer;white-space:nowrap;}
@@ -1680,6 +1681,37 @@ a{text-decoration:none;color:inherit}
           <input class="ptnr-input" id="ptnr-pass" type="password" placeholder="Mot de passe" autocomplete="current-password" onkeydown="if(event.key==='Enter')_ptnrLogin()">
           <div class="ptnr-login-err" id="ptnr-login-err"></div>
           <button class="ptnr-login-btn" id="ptnr-login-btn" onclick="_ptnrLogin()">SE CONNECTER</button>
+          <button class="ptnr-link-btn" onclick="_ptnrRegStart()">Pas encore partenaire ? Devenir partenaire</button>
+        </div>
+      </div>
+
+      <!-- Register screen (in-app, no redirect to website) -->
+      <div id="ptnr-register-screen" style="display:none;">
+        <div class="ptnr-login-wrap">
+          <div class="ptnr-login-logo">GENESIS</div>
+          <div class="ptnr-login-title">Devenir<br>Partenaire</div>
+          <div class="ptnr-login-sub">Créez votre compte partenaire pour proposer vos services directement depuis l'application.</div>
+          <input class="ptnr-input" id="ptnr-reg-prenom" type="text" placeholder="Prénom" autocomplete="given-name">
+          <input class="ptnr-input" id="ptnr-reg-nom" type="text" placeholder="Nom" autocomplete="family-name">
+          <input class="ptnr-input" id="ptnr-reg-email" type="email" placeholder="Email" autocomplete="email">
+          <input class="ptnr-input" id="ptnr-reg-tel" type="tel" placeholder="Téléphone" autocomplete="tel">
+          <select class="ptnr-input" id="ptnr-reg-type">
+            <option value="">Choisir une catégorie...</option>
+            <option value="photographer">Photographe</option>
+            <option value="videographer">Vidéaste</option>
+            <option value="marketer">Marketeur</option>
+            <option value="media">Médias</option>
+            <option value="community_manager">Community Manager</option>
+            <option value="graphiste">Graphiste</option>
+            <option value="developpeur_web">Développeur Web</option>
+            <option value="pilote_drone">Pilote Drone</option>
+            <option value="consultant">Consultant</option>
+          </select>
+          <input class="ptnr-input" id="ptnr-reg-entreprise" type="text" placeholder="Entreprise (optionnel)">
+          <input class="ptnr-input" id="ptnr-reg-pass" type="password" placeholder="Mot de passe (6 caractères min.)" autocomplete="new-password" onkeydown="if(event.key==='Enter')_ptnrRegSubmit()">
+          <div class="ptnr-login-err" id="ptnr-reg-err"></div>
+          <button class="ptnr-login-btn" id="ptnr-reg-btn" onclick="_ptnrRegSubmit()">CRÉER MON COMPTE</button>
+          <button class="ptnr-link-btn" onclick="_ptnrRegBackToLogin()">J'ai déjà un compte, me connecter</button>
         </div>
       </div>
 
@@ -1985,7 +2017,7 @@ function showApp(){
 }
 function goLogin(){ showLoginSheet(); }
 function goGuest(){ GUEST = true; showApp(); }
-function goPartner(){ window.location.href = 'partner-register.html'; }
+function goPartner(){ GUEST = true; showApp(); nav('partner'); }
 
 // ── APP INIT ─────────────────────────────────────────────────
 function initApp(){
@@ -4320,12 +4352,65 @@ function _ptnrLogin(){
 }
 
 function _ptnrShowScreen(name){
-  // name: 'login' | 'admin' | 'profiles' | 'dash'
-  var screens = ['ptnr-login-screen','ptnr-admin-screen','ptnr-profile-screen','ptnr-dash-screen'];
+  // name: 'login' | 'register' | 'admin' | 'profiles' | 'dash'
+  var screens = ['ptnr-login-screen','ptnr-register-screen','ptnr-admin-screen','ptnr-profile-screen','ptnr-dash-screen'];
   screens.forEach(function(id){ var el=document.getElementById(id); if(el) el.style.display='none'; });
-  var show = name==='login'?'ptnr-login-screen':name==='admin'?'ptnr-admin-screen':name==='profiles'?'ptnr-profile-screen':'ptnr-dash-screen';
+  var show = name==='login'?'ptnr-login-screen':name==='register'?'ptnr-register-screen':name==='admin'?'ptnr-admin-screen':name==='profiles'?'ptnr-profile-screen':'ptnr-dash-screen';
   var el = document.getElementById(show); if(el) el.style.display='';
   if(name === 'admin') setTimeout(_adminCheckPushStatus, 300);
+}
+
+function _ptnrRegStart(){
+  ['ptnr-reg-prenom','ptnr-reg-nom','ptnr-reg-email','ptnr-reg-tel','ptnr-reg-entreprise','ptnr-reg-pass'].forEach(function(id){
+    var el=document.getElementById(id); if(el) el.value='';
+  });
+  var typeEl=document.getElementById('ptnr-reg-type'); if(typeEl) typeEl.value='';
+  var errEl=document.getElementById('ptnr-reg-err'); if(errEl) errEl.className='ptnr-login-err';
+  _ptnrShowScreen('register');
+}
+
+function _ptnrRegBackToLogin(){ _ptnrShowScreen('login'); }
+
+function _ptnrRegSubmit(){
+  var prenom = (document.getElementById('ptnr-reg-prenom')||{}).value || '';
+  var nom = (document.getElementById('ptnr-reg-nom')||{}).value || '';
+  var email = (document.getElementById('ptnr-reg-email')||{}).value || '';
+  var telephone = (document.getElementById('ptnr-reg-tel')||{}).value || '';
+  var partnerType = (document.getElementById('ptnr-reg-type')||{}).value || '';
+  var company = (document.getElementById('ptnr-reg-entreprise')||{}).value || '';
+  var password = (document.getElementById('ptnr-reg-pass')||{}).value || '';
+  var errEl = document.getElementById('ptnr-reg-err');
+  var btnEl = document.getElementById('ptnr-reg-btn');
+  if(!prenom.trim()||!nom.trim()||!email.trim()||!partnerType||!password){
+    if(errEl){errEl.textContent='Merci de remplir tous les champs obligatoires.';errEl.className='ptnr-login-err on';} return;
+  }
+  if(password.length<6){
+    if(errEl){errEl.textContent='Le mot de passe doit faire au moins 6 caractères.';errEl.className='ptnr-login-err on';} return;
+  }
+  if(errEl) errEl.className = 'ptnr-login-err';
+  if(btnEl){btnEl.disabled=true;btnEl.textContent='Création...';}
+  fetch(_ptnrApiUrl()+'/api/partner/auth/register',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({prenom:prenom.trim(), nom:nom.trim(), email:email.trim(), telephone:telephone.trim(), password:password, partner_type:partnerType, company:company.trim()})
+  }).then(function(r){return r.text().then(function(t){try{return JSON.parse(t);}catch(e){throw new Error('Erreur serveur');}});})
+  .then(function(res){
+    if(btnEl){btnEl.disabled=false;btnEl.textContent='CRÉER MON COMPTE';}
+    if(res.token){
+      _ptnrToken = res.token;
+      _ptnrSession = res.partner;
+      localStorage.setItem('fa_genesis_partner_token', res.token);
+      localStorage.setItem('fa_genesis_partner_data', JSON.stringify(res.partner));
+      _ptnrShowScreen('profiles');
+      _ptnrLoadProfileSelector();
+    } else {
+      var msg = (res.error || res.message || 'Erreur lors de la création du compte.');
+      if(errEl){errEl.textContent=msg;errEl.className='ptnr-login-err on';}
+    }
+  }).catch(function(){
+    if(btnEl){btnEl.disabled=false;btnEl.textContent='CRÉER MON COMPTE';}
+    if(errEl){errEl.textContent='Erreur de connexion.';errEl.className='ptnr-login-err on';}
+  });
 }
 
 // ── PROFILE SELECTOR ──
