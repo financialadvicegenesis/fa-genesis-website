@@ -1706,6 +1706,7 @@ a{text-decoration:none;color:inherit}
             <option value="developpeur_web">Développeur Web</option>
             <option value="pilote_drone">Pilote Drone</option>
             <option value="consultant">Consultant</option>
+            <option value="coworking">Espace Coworking</option>
           </select>
           <input class="ptnr-input" id="ptnr-reg-entreprise" type="text" placeholder="Entreprise (optionnel)">
           <input class="ptnr-input" id="ptnr-reg-pass" type="password" placeholder="Mot de passe (6 caractères min.)" autocomplete="new-password" onkeydown="if(event.key==='Enter')_ptnrRegSubmit()">
@@ -2375,6 +2376,7 @@ function renderPrestataires(){
     +'<button class="p-vis-fpill" onclick="setDirCategory(\'developpeur_web\',this)">Développeur Web</button>'
     +'<button class="p-vis-fpill" onclick="setDirCategory(\'pilote_drone\',this)">Pilote Drone</button>'
     +'<button class="p-vis-fpill" onclick="setDirCategory(\'consultant\',this)">Consultant</button>'
+    +'<button class="p-vis-fpill" onclick="setDirCategory(\'coworking\',this)">Espace Coworking</button>'
     +'</div>';
   html += '<div class="p-dir-controls">'
     +'<input type="text" id="p-dir-search" class="p-dir-search-input" placeholder="Rechercher un partenaire..." oninput="_dirSearchDebounced()">'
@@ -2520,7 +2522,7 @@ function setPrestVisFilter(type,el){
 }
 // ── ANNUAIRE PARTENAIRES ────────────────────────────────────────
 var _dirCategory = null, _dirQuery = '', _dirMaxPrice = '', _dirCity = '', _dirSearchTimer = null, _dirCityTimer = null;
-var PARTNER_TYPE_LABELS_DIR = {photographer:'Photographe', videographer:'Vidéaste', marketer:'Marketeur', media:'Médias', community_manager:'Community Manager', graphiste:'Graphiste', developpeur_web:'Développeur Web', pilote_drone:'Pilote Drone', consultant:'Consultant'};
+var PARTNER_TYPE_LABELS_DIR = {photographer:'Photographe', videographer:'Vidéaste', marketer:'Marketeur', media:'Médias', community_manager:'Community Manager', graphiste:'Graphiste', developpeur_web:'Développeur Web', pilote_drone:'Pilote Drone', consultant:'Consultant', coworking:'Espace Coworking'};
 
 function setDirCategory(cat, el){
   _dirCategory = cat;

@@ -64,9 +64,39 @@ const PARTNER_TYPES = [
     { value: 'graphiste', label: 'Graphiste' },
     { value: 'developpeur_web', label: 'Développeur Web' },
     { value: 'pilote_drone', label: 'Pilote Drone' },
-    { value: 'consultant', label: 'Consultant' }
+    { value: 'consultant', label: 'Consultant' },
+    { value: 'coworking', label: 'Espace Coworking' }
 ];
 const PARTNER_TYPE_VALUES = PARTNER_TYPES.map(t => t.value);
+
+// Tarifs deja en place aujourd'hui (catalogue fige admin) pour les categories qui basculent
+// vers l'auto-gestion : pre-remplir les prestations du partenaire a l'inscription avec ses
+// vrais tarifs actuels, plutot que de le faire tout ressaisir depuis zero.
+const LEGACY_SERVICE_CATALOG = {
+    marketer: [
+        { label: 'Marketing EXPRESS', description: 'Audit marketing rapide et recommandations', price: 120, audience: 'particulier' },
+        { label: 'Marketing STRATEGY', description: 'Stratégie marketing complète', price: 150, audience: 'particulier' },
+        { label: 'Marketing IMPACT', description: 'Accompagnement marketing intensif', price: 350, audience: 'particulier' },
+        { label: 'Marketing DIGITALES', description: 'Option digitale en complément de Marketing STRATEGY', price: 70, audience: 'particulier' }
+    ],
+    media: [
+        { label: 'Média SIMPLE', description: 'Accès à un média crédible pour une première visibilité', price: 55, audience: 'particulier' },
+        { label: 'Média VISIBILITY', description: 'Pack visibilité médiatique', price: 223, audience: 'particulier' },
+        { label: 'Média IMPACT', description: 'Campagne média pour maximiser votre impact', price: 420, audience: 'particulier' },
+        { label: 'Média PREMIUM', description: 'Package média premium complet', price: 590, audience: 'particulier' },
+        { label: 'Média PROMOTION', description: 'Promotion médiatique ciblée', price: 679, audience: 'particulier' }
+    ],
+    coworking: [
+        { label: 'OpenSpace Étudiant (par jour)', description: 'Accès espace de coworking ouvert', price: 10, audience: 'etudiant' },
+        { label: 'OpenSpace Particulier (par jour)', description: 'Accès espace de coworking ouvert', price: 15, audience: 'particulier' },
+        { label: 'OpenSpace Entreprise (par jour)', description: 'Accès espace de coworking ouvert', price: 25, audience: 'entreprise' },
+        { label: 'Bureau Privé Particulier (par jour)', description: 'Bureau privé', price: 45, audience: 'particulier' },
+        { label: 'Bureau Privé Entreprise (par jour)', description: 'Bureau privé', price: 85, audience: 'entreprise' },
+        { label: 'Événement Étudiant (format 4h)', description: 'Location de salle pour événement', price: 200, audience: 'etudiant' },
+        { label: 'Événement Particulier (format 4h)', description: 'Location de salle pour événement', price: 300, audience: 'particulier' },
+        { label: 'Événement Entreprise (format 4h)', description: 'Location de salle pour événement', price: 375, audience: 'entreprise' }
+    ]
+};
 
 // Creer le dossier data s'il n'existe pas
 if (!fs.existsSync(path.join(__dirname, 'data'))) {
@@ -7029,7 +7059,7 @@ app.post('/api/partner/auth/register', async (req, res) => {
             password: hashedPassword,
             partner_type: partner_type,
             company: company || '',
-            services: [],
+            services: (LEGACY_SERVICE_CATALOG[partner_type] || []).map(s => Object.assign({ id: 'SVC-' + uuidv4().split('-')[0] }, s, { active: true })),
             sessionToken: sessionToken,
             accountStatus: 'pending',
             createdAt: now,
