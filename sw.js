@@ -99,7 +99,7 @@ self.addEventListener('fetch', function(event) {
 self.addEventListener('push', function(event) {
   var data = {};
   try { data = event.data ? event.data.json() : {}; } catch(e) {}
-  event.waitUntil(self.registration.showNotification(data.title || 'FA GENESIS', {
+  event.waitUntil(self.registration.showNotification(data.title || 'GENESIS', {
     body: data.body || '',
     icon: data.icon || '/assets/images/logo-favicon-192.png',
     badge: data.badge || '/assets/images/logo-favicon-32.png',

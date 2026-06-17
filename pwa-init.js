@@ -100,7 +100,7 @@
       '<div style="text-align:center;margin-bottom:20px;">',
       '<img src="assets/images/logo-favicon-192.png" style="width:56px;height:56px;border-radius:14px;object-fit:cover;">',
       '</div>',
-      '<h2 style="font-family:Unbounded,cursive;font-size:18px;font-weight:900;color:#fff;text-align:center;margin-bottom:8px;">Installer FA GENESIS</h2>',
+      '<h2 style="font-family:Unbounded,cursive;font-size:18px;font-weight:900;color:#fff;text-align:center;margin-bottom:8px;">Installer GENESIS</h2>',
       '<p style="font-size:13px;color:#888;text-align:center;margin-bottom:24px;line-height:1.5;">Suivez ces 3 étapes dans Safari pour ajouter l\'app sur votre écran d\'accueil.</p>',
 
       '<div style="display:flex;flex-direction:column;gap:14px;margin-bottom:28px;">',
@@ -182,7 +182,7 @@
 
     banner.innerHTML = '<img src="assets/images/logo-favicon-192.png" style="width:40px;height:40px;border-radius:10px;object-fit:cover;flex-shrink:0;">'
       + '<div style="flex:1;min-width:0;">'
-      + '<div style="font-family:Unbounded,cursive;font-size:12px;font-weight:900;color:#FFD700;">FA GENESIS</div>'
+      + '<div style="font-family:Unbounded,cursive;font-size:12px;font-weight:900;color:#FFD700;">GENESIS</div>'
       + '<div style="font-size:11px;color:#888;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + iosHint + '</div>'
       + '</div>'
       + '<button onclick="window.FA_installApp && window.FA_installApp()" style="background:#FFD700;color:#000;border:none;padding:9px 16px;font-size:12px;font-weight:900;text-transform:uppercase;cursor:pointer;border-radius:6px;flex-shrink:0;">Installer</button>'

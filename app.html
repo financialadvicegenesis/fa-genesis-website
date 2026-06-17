@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>FA GENESIS</title>
+<title>GENESIS</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0a0a0a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
-<meta name="apple-mobile-web-app-title" content="FA GENESIS">
+<meta name="apple-mobile-web-app-title" content="GENESIS">
 <link rel="apple-touch-icon" href="assets/images/apple-touch-icon.png">
 <link rel="icon" href="assets/images/icon-app-192.png">
 <!-- Fonts async — ne bloquent pas le rendu -->
@@ -1357,18 +1357,18 @@ a{text-decoration:none;color:inherit}
 
 <!-- ══════════ SPLASH ══════════ -->
 <div id="splash">
-  <img class="s-logo" src="assets/images/logo-favicon-192.png" alt="FA GENESIS"
+  <img class="s-logo" src="assets/images/logo-favicon-192.png" alt="GENESIS"
     onerror="this.style.display='none'">
-  <div class="s-name">FA GENESIS</div>
+  <div class="s-name">GENESIS</div>
   <div class="s-bar"><div class="s-fill"></div></div>
 </div>
 
 <!-- ══════════ WELCOME ══════════ -->
 <div id="welcome" style="display:none">
   <div class="w-hero">
-    <img class="w-logo" src="assets/images/icon-app-192.png" alt="FA GENESIS"
+    <img class="w-logo" src="assets/images/icon-app-192.png" alt="GENESIS"
       onerror="this.style.display='none'">
-    <div class="w-title">Bienvenue sur<br>FA GENESIS</div>
+    <div class="w-title">Bienvenue sur<br>GENESIS</div>
     <div class="w-desc">Développez vos projets grâce à notre réseau de partenaires professionnels.</div>
 
   </div>
@@ -1403,9 +1403,9 @@ a{text-decoration:none;color:inherit}
   <!-- Header -->
   <div id="hdr">
     <div class="hdr-left">
-      <img class="hdr-logo" src="assets/images/logo-favicon-192.png" alt="FA GENESIS"
+      <img class="hdr-logo" src="assets/images/logo-favicon-192.png" alt="GENESIS"
         onerror="this.style.display='none'">
-      <span class="hdr-name">FA GENESIS</span>
+      <span class="hdr-name">GENESIS</span>
     </div>
     <div class="hdr-right">
       <button class="hdr-cart-btn" id="cart-icon-btn" onclick="openCart()" title="Panier">
@@ -1432,7 +1432,7 @@ a{text-decoration:none;color:inherit}
     <div class="tab on" id="tab-home">
       <div class="greet">
         <div class="greet-hi" id="greetHi">Bonjour 👋</div>
-        <div class="greet-name" id="greetName">FA GENESIS</div>
+        <div class="greet-name" id="greetName">GENESIS</div>
       </div>
 
       <!-- Status commande active -->
@@ -1544,7 +1544,7 @@ a{text-decoration:none;color:inherit}
       <!-- Login screen (shown when not authenticated as partner) -->
       <div id="ptnr-login-screen">
         <div class="ptnr-login-wrap">
-          <div class="ptnr-login-logo">FA GENESIS</div>
+          <div class="ptnr-login-logo">GENESIS</div>
           <div class="ptnr-login-title">Espace<br>Partenaire</div>
           <div class="ptnr-login-sub">Connectez-vous pour gérer vos projets, devis et messages directement depuis l'application.</div>
           <input class="ptnr-input" id="ptnr-email" type="email" placeholder="Email partenaire" autocomplete="email">
@@ -2391,9 +2391,9 @@ function renderMsgTab(){
   var c = document.getElementById('msgContent');
   if(!USER||GUEST){ c.innerHTML = locked('Messagerie','Connectez-vous pour accéder à vos conversations.'); return; }
   c.innerHTML = '<div class="msg-list">'
-    +'<div class="msg-row" onclick="openConversation(\'FA_GENESIS\',\'FA GENESIS\',\'⭐\')">'
+    +'<div class="msg-row" onclick="openConversation(\'FA_GENESIS\',\'GENESIS\',\'⭐\')">'
     +'<div class="msg-avatar">⭐</div>'
-    +'<div class="msg-body"><div class="msg-from">FA GENESIS</div><div class="msg-preview">Échangez avec l\'équipe</div></div>'
+    +'<div class="msg-body"><div class="msg-from">GENESIS</div><div class="msg-preview">Échangez avec l\'équipe</div></div>'
     +'<div class="msg-meta"><div class="msg-time">›</div></div>'
     +'</div>'
     +'<div class="msg-row" onclick="openConversation(\'COMVISA\',\'COM VISA Coworking\',\'🏢\')">'
@@ -2407,7 +2407,7 @@ function renderMsgTab(){
 // ── PROFIL ────────────────────────────────────────────────────
 function renderProfil(){
   var c = document.getElementById('profilContent');
-  var logo = '<img class="plus-logo" src="assets/images/icon-app-192.png" alt="FA GENESIS" onerror="this.style.display=\'none\'">';
+  var logo = '<img class="plus-logo" src="assets/images/icon-app-192.png" alt="GENESIS" onerror="this.style.display=\'none\'">';
 
   // ── EN-TÊTE ──────────────────────────────────────────────────
   var header;
@@ -5007,7 +5007,7 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
       <!-- Pane 1 : connexion -->
       <div id="lo-pane-login" style="position:absolute;inset:0;overflow-y:auto;padding:24px 24px 32px;">
         <div class="reg-title" style="margin-bottom:8px;">Bon retour &#128075;</div>
-        <div class="reg-sub">Connectez-vous à votre compte FA GENESIS.</div>
+        <div class="reg-sub">Connectez-vous à votre compte GENESIS.</div>
         <div class="reg-field">
           <label class="reg-label" for="lo-email">Adresse email</label>
           <input id="lo-email" class="reg-input" type="email" placeholder="votre@email.com" autocomplete="email" onkeydown="if(event.key==='Enter')document.getElementById('lo-pwd').focus()">
@@ -5418,7 +5418,7 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
       <!-- Étape 4 : Succès -->
       <div class="reg-step" id="reg-s4">
         <div class="reg-check-circle">&#10003;</div>
-        <div class="reg-win-title">Bienvenue sur<br>FA GENESIS !</div>
+        <div class="reg-win-title">Bienvenue sur<br>GENESIS !</div>
         <div class="reg-win-sub">Votre compte a été créé avec succès.<br>Vous allez être redirigé vers votre profil.</div>
       </div>
     </div>
