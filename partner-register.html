@@ -125,9 +125,11 @@
     <section class="min-h-screen flex flex-col items-center justify-center p-6 bg-black pt-32 pb-16 relative overflow-hidden">
         <div class="absolute top-20 left-[-10%] w-96 h-96 bg-[var(--genesis-yellow)] rounded-full blur-[120px] opacity-20 z-0"></div>
 
-        <div class="w-full max-w-xl z-10">
+        <div class="w-full max-w-2xl z-10">
             <h1 class="text-5xl md:text-7xl font-black italic uppercase text-center mb-4 text-[var(--genesis-yellow)]">DEVENIR PARTENAIRE</h1>
-            <p class="text-center text-lg font-bold mb-12 uppercase opacity-80">Inscrivez-vous et fixez vos propres prix</p>
+            <p class="text-center text-lg font-bold mb-8 uppercase opacity-80">Inscrivez-vous et fixez vos propres prix</p>
+
+            <div class="flex justify-center items-center gap-2 mb-8" id="wizardProgress"></div>
 
             <div class="bg-white text-black p-10 neo-border neo-shadow">
                 <div id="errorMessage" class="error-message"></div>
@@ -136,25 +138,65 @@
                     Votre compte sera visible dans l'annuaire après validation par l'équipe FA GENESIS. Vous pouvez dès maintenant configurer votre profil et vos prestations.
                 </div>
 
-                <form id="partnerRegisterForm" class="space-y-6">
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label for="prenom" class="block text-sm font-black mb-2 uppercase">Prénom</label>
-                            <input type="text" id="prenom" name="prenom" required
-                                class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none focus:border-[var(--genesis-yellow)] transition-all"
-                                placeholder="Prénom">
+                <!-- ÉTAPE 1 : INFOS PERSO -->
+                <div class="wizard-step" data-step="1">
+                    <h2 class="text-2xl font-black uppercase mb-6">Étape 1 — Vos informations</h2>
+                    <div class="space-y-6">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label for="prenom" class="block text-sm font-black mb-2 uppercase">Prénom</label>
+                                <input type="text" id="prenom" name="prenom"
+                                    class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none focus:border-[var(--genesis-yellow)] transition-all"
+                                    placeholder="Prénom">
+                            </div>
+                            <div>
+                                <label for="nom" class="block text-sm font-black mb-2 uppercase">Nom</label>
+                                <input type="text" id="nom" name="nom"
+                                    class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none focus:border-[var(--genesis-yellow)] transition-all"
+                                    placeholder="Nom">
+                            </div>
                         </div>
+
                         <div>
-                            <label for="nom" class="block text-sm font-black mb-2 uppercase">Nom</label>
-                            <input type="text" id="nom" name="nom" required
+                            <label for="email" class="block text-sm font-black mb-2 uppercase">Email</label>
+                            <input type="email" id="email" name="email"
                                 class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none focus:border-[var(--genesis-yellow)] transition-all"
-                                placeholder="Nom">
+                                placeholder="votre.email@exemple.com">
+                        </div>
+
+                        <div>
+                            <label for="telephone" class="block text-sm font-black mb-2 uppercase">Téléphone</label>
+                            <input type="tel" id="telephone" name="telephone"
+                                class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none focus:border-[var(--genesis-yellow)] transition-all"
+                                placeholder="06 12 34 56 78">
+                        </div>
+
+                        <div>
+                            <label for="password" class="block text-sm font-black mb-2 uppercase">Mot de passe</label>
+                            <input type="password" id="password" name="password" minlength="6"
+                                class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none focus:border-[var(--genesis-yellow)] transition-all"
+                                placeholder="6 caractères minimum">
+                        </div>
+
+                        <div>
+                            <label for="company" class="block text-sm font-black mb-2 uppercase">Entreprise (optionnel)</label>
+                            <input type="text" id="company" name="company"
+                                class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none focus:border-[var(--genesis-yellow)] transition-all"
+                                placeholder="Nom de votre entreprise">
                         </div>
                     </div>
 
+                    <div class="flex justify-end mt-8">
+                        <button type="button" onclick="goFromStep1()" class="neo-btn-yellow px-8 py-4 text-xl font-black italic uppercase">Suivant</button>
+                    </div>
+                </div>
+
+                <!-- ÉTAPE 2 : ACTIVITÉ -->
+                <div class="wizard-step" data-step="2" style="display:none">
+                    <h2 class="text-2xl font-black uppercase mb-6">Étape 2 — Votre activité</h2>
                     <div>
                         <label for="partner_type" class="block text-sm font-black mb-2 uppercase">Catégorie</label>
-                        <select id="partner_type" name="partner_type" required class="fa-select">
+                        <select id="partner_type" name="partner_type" class="fa-select">
                             <option value="">Choisir une catégorie...</option>
                             <option value="photographer">Photographe</option>
                             <option value="videographer">Vidéaste</option>
@@ -168,39 +210,151 @@
                         </select>
                     </div>
 
-                    <div>
-                        <label for="company" class="block text-sm font-black mb-2 uppercase">Entreprise (optionnel)</label>
-                        <input type="text" id="company" name="company"
-                            class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none focus:border-[var(--genesis-yellow)] transition-all"
-                            placeholder="Nom de votre entreprise">
+                    <div class="flex justify-between mt-8">
+                        <button type="button" onclick="showStep(1)" class="px-8 py-4 border-4 border-black font-black uppercase bg-white">Précédent</button>
+                        <button type="button" id="submitBtn" onclick="submitStep2()" class="neo-btn-yellow px-8 py-4 text-xl font-black italic uppercase">Créer mon compte</button>
+                    </div>
+                </div>
+
+                <!-- ÉTAPE 3 : PROFIL PROFESSIONNEL -->
+                <div class="wizard-step" data-step="3" style="display:none">
+                    <h2 class="text-2xl font-black uppercase mb-6">Étape 3 — Profil professionnel</h2>
+
+                    <div class="grid grid-cols-2 gap-4 mb-6">
+                        <div>
+                            <label class="block text-sm font-black mb-2 uppercase">Photo de profil</label>
+                            <div class="flex items-center gap-3">
+                                <img id="step3PhotoPreview" alt="" style="display:none;width:56px;height:56px;border-radius:50%;object-fit:cover;border:3px solid black;">
+                                <button type="button" onclick="document.getElementById('step3PhotoInput').click()" class="neo-btn-yellow px-4 py-2 text-xs">CHOISIR</button>
+                                <input type="file" id="step3PhotoInput" accept="image/*" style="display:none">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-black mb-2 uppercase">Logo (optionnel)</label>
+                            <div class="flex items-center gap-3">
+                                <img id="step3LogoPreview" alt="" style="display:none;width:56px;height:56px;object-fit:contain;border:3px solid black;">
+                                <button type="button" onclick="document.getElementById('step3LogoInput').click()" class="neo-btn-yellow px-4 py-2 text-xs">CHOISIR</button>
+                                <input type="file" id="step3LogoInput" accept="image/*" style="display:none">
+                            </div>
+                        </div>
                     </div>
 
-                    <div>
-                        <label for="email" class="block text-sm font-black mb-2 uppercase">Email</label>
-                        <input type="email" id="email" name="email" required
-                            class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none focus:border-[var(--genesis-yellow)] transition-all"
-                            placeholder="votre.email@exemple.com">
+                    <div class="mb-4">
+                        <label for="step3Bio" class="block text-sm font-black mb-2 uppercase">Description</label>
+                        <textarea id="step3Bio" rows="4" class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none focus:border-[var(--genesis-yellow)] transition-all" placeholder="Présentez votre activité..."></textarea>
                     </div>
 
-                    <div>
-                        <label for="telephone" class="block text-sm font-black mb-2 uppercase">Téléphone</label>
-                        <input type="tel" id="telephone" name="telephone"
-                            class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none focus:border-[var(--genesis-yellow)] transition-all"
-                            placeholder="06 12 34 56 78">
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label for="step3City" class="block text-sm font-black mb-2 uppercase">Ville</label>
+                            <input type="text" id="step3City" class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none focus:border-[var(--genesis-yellow)] transition-all" placeholder="Paris">
+                        </div>
+                        <div>
+                            <label for="step3InterventionZone" class="block text-sm font-black mb-2 uppercase">Zone d'intervention</label>
+                            <input type="text" id="step3InterventionZone" class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none focus:border-[var(--genesis-yellow)] transition-all" placeholder="Île-de-France, national...">
+                        </div>
                     </div>
 
-                    <div>
-                        <label for="password" class="block text-sm font-black mb-2 uppercase">Mot de passe</label>
-                        <input type="password" id="password" name="password" required minlength="6"
-                            class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none focus:border-[var(--genesis-yellow)] transition-all"
-                            placeholder="6 caractères minimum">
+                    <div class="grid grid-cols-2 gap-4 mb-2">
+                        <div>
+                            <label for="step3Instagram" class="block text-sm font-black mb-2 uppercase">Instagram</label>
+                            <input type="text" id="step3Instagram" class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none focus:border-[var(--genesis-yellow)] transition-all" placeholder="@votrecompte">
+                        </div>
+                        <div>
+                            <label for="step3Tiktok" class="block text-sm font-black mb-2 uppercase">TikTok</label>
+                            <input type="text" id="step3Tiktok" class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none focus:border-[var(--genesis-yellow)] transition-all" placeholder="@votrecompte">
+                        </div>
+                        <div>
+                            <label for="step3Linkedin" class="block text-sm font-black mb-2 uppercase">LinkedIn</label>
+                            <input type="text" id="step3Linkedin" class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none focus:border-[var(--genesis-yellow)] transition-all" placeholder="linkedin.com/in/...">
+                        </div>
+                        <div>
+                            <label for="step3Website" class="block text-sm font-black mb-2 uppercase">Site web</label>
+                            <input type="text" id="step3Website" class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none focus:border-[var(--genesis-yellow)] transition-all" placeholder="https://...">
+                        </div>
                     </div>
 
-                    <button type="submit" id="submitBtn"
-                        class="w-full py-4 neo-btn-yellow text-2xl font-black italic uppercase tracking-tighter">
-                        Créer mon compte
+                    <div id="step3Message" style="display:none;margin-top:1rem;"></div>
+
+                    <div class="flex justify-between items-center mt-8 flex-wrap gap-3">
+                        <button type="button" onclick="showStep(2)" class="px-8 py-4 border-4 border-black font-black uppercase bg-white">Précédent</button>
+                        <div class="flex gap-3">
+                            <button type="button" onclick="skipToStep(4)" class="px-6 py-4 border-4 border-black font-black uppercase bg-white opacity-70">Passer cette étape</button>
+                            <button type="button" id="step3NextBtn" onclick="submitStep3()" class="neo-btn-yellow px-8 py-4 text-xl font-black italic uppercase">Suivant</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ÉTAPE 4 : PORTFOLIO -->
+                <div class="wizard-step" data-step="4" style="display:none">
+                    <h2 class="text-2xl font-black uppercase mb-6">Étape 4 — Portfolio</h2>
+                    <p class="text-sm font-bold opacity-60 mb-4">Ajoutez vos plus belles réalisations (photos ou vidéos).</p>
+
+                    <div id="portfolioItemsContainer" class="mb-4"></div>
+                    <button type="button" onclick="addWizardPortfolioItem()" class="px-4 py-2 border-2 border-black font-black uppercase text-xs bg-gray-50 mb-4">
+                        <i class="fas fa-plus mr-1"></i>Ajouter une réalisation
                     </button>
-                </form>
+
+                    <div id="step4Message" style="display:none;margin-top:1rem;"></div>
+
+                    <div class="flex justify-between items-center mt-8 flex-wrap gap-3">
+                        <button type="button" onclick="showStep(3)" class="px-8 py-4 border-4 border-black font-black uppercase bg-white">Précédent</button>
+                        <div class="flex gap-3">
+                            <button type="button" onclick="skipToStep(5)" class="px-6 py-4 border-4 border-black font-black uppercase bg-white opacity-70">Passer cette étape</button>
+                            <button type="button" id="step4NextBtn" onclick="submitStep4()" class="neo-btn-yellow px-8 py-4 text-xl font-black italic uppercase">Suivant</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ÉTAPE 5 : TARIFS -->
+                <div class="wizard-step" data-step="5" style="display:none">
+                    <h2 class="text-2xl font-black uppercase mb-6">Étape 5 — Vos tarifs</h2>
+                    <p class="text-sm font-bold opacity-60 mb-6">Définissez vos offres pour chaque type de client. Vous pouvez en ajouter plusieurs par catégorie.</p>
+
+                    <div class="mb-8">
+                        <h3 class="text-lg font-black uppercase mb-3" style="color:#444;">Offre Étudiant</h3>
+                        <div id="tarifsEtudiantContainer" class="mb-2"></div>
+                        <button type="button" onclick="addWizardTarifItem('tarifsEtudiantContainer')" class="px-4 py-2 border-2 border-black font-black uppercase text-xs bg-gray-50">
+                            <i class="fas fa-plus mr-1"></i>Ajouter une offre
+                        </button>
+                    </div>
+
+                    <div class="mb-8">
+                        <h3 class="text-lg font-black uppercase mb-3" style="color:#444;">Offre Particulier</h3>
+                        <div id="tarifsParticulierContainer" class="mb-2"></div>
+                        <button type="button" onclick="addWizardTarifItem('tarifsParticulierContainer')" class="px-4 py-2 border-2 border-black font-black uppercase text-xs bg-gray-50">
+                            <i class="fas fa-plus mr-1"></i>Ajouter une offre
+                        </button>
+                    </div>
+
+                    <div class="mb-4">
+                        <h3 class="text-lg font-black uppercase mb-3" style="color:#444;">Offre Entreprise</h3>
+                        <div id="tarifsEntrepriseContainer" class="mb-2"></div>
+                        <button type="button" onclick="addWizardTarifItem('tarifsEntrepriseContainer')" class="px-4 py-2 border-2 border-black font-black uppercase text-xs bg-gray-50">
+                            <i class="fas fa-plus mr-1"></i>Ajouter une offre
+                        </button>
+                    </div>
+
+                    <div id="step5Message" style="display:none;margin-top:1rem;"></div>
+
+                    <div class="flex justify-between items-center mt-8 flex-wrap gap-3">
+                        <button type="button" onclick="showStep(4)" class="px-8 py-4 border-4 border-black font-black uppercase bg-white">Précédent</button>
+                        <div class="flex gap-3">
+                            <button type="button" onclick="skipToStep(6)" class="px-6 py-4 border-4 border-black font-black uppercase bg-white opacity-70">Passer cette étape</button>
+                            <button type="button" id="step5NextBtn" onclick="submitStep5()" class="neo-btn-yellow px-8 py-4 text-xl font-black italic uppercase">Suivant</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ÉTAPE 6 : VALIDATION -->
+                <div class="wizard-step" data-step="6" style="display:none">
+                    <div class="text-center py-6">
+                        <i class="fas fa-circle-check text-6xl mb-6" style="color:#16a34a;"></i>
+                        <h2 class="text-2xl font-black uppercase mb-6">Candidature envoyée</h2>
+                        <p class="text-lg font-bold mb-8">Votre candidature a bien été reçue. Notre équipe va vérifier votre profil avant sa publication sur la plateforme FA GENESIS. Vous recevrez une notification dès validation.</p>
+                        <button type="button" onclick="window.location.href='partner-dashboard.html'" class="neo-btn-yellow px-10 py-4 text-xl font-black italic uppercase">Accéder à mon tableau de bord</button>
+                    </div>
+                </div>
             </div>
 
             <div class="mt-8 text-center">
@@ -222,49 +376,348 @@
             window.location.href = 'partner-dashboard.html';
         }
 
-        var partnerRegisterFormEl = document.getElementById('partnerRegisterForm');
-        if (partnerRegisterFormEl) {
-            partnerRegisterFormEl.addEventListener('submit', async function(e) {
-                e.preventDefault();
+        var WIZARD_STEP_COUNT = 6;
+        var step3PhotoData = '';
+        var step3LogoData = '';
 
-                var errorMessage = document.getElementById('errorMessage');
-                var infoMessage = document.getElementById('infoMessage');
-                var submitBtn = document.getElementById('submitBtn');
-                errorMessage.classList.remove('show');
+        function renderWizardProgress(step) {
+            var el = document.getElementById('wizardProgress');
+            if (!el) return;
+            var html = '';
+            for (var i = 1; i <= WIZARD_STEP_COUNT; i++) {
+                html += '<div style="width:32px;height:8px;border:2px solid black;background:' + (i <= step ? 'var(--genesis-yellow)' : 'white') + ';"></div>';
+            }
+            el.innerHTML = html;
+        }
 
-                var registerData = {
-                    prenom: document.getElementById('prenom').value.trim(),
-                    nom: document.getElementById('nom').value.trim(),
-                    partner_type: document.getElementById('partner_type').value,
-                    company: document.getElementById('company').value.trim(),
-                    email: document.getElementById('email').value.trim(),
-                    telephone: document.getElementById('telephone').value.trim(),
-                    password: document.getElementById('password').value
-                };
+        function showStep(n) {
+            var steps = document.querySelectorAll('.wizard-step');
+            for (var i = 0; i < steps.length; i++) {
+                steps[i].style.display = (parseInt(steps[i].getAttribute('data-step'), 10) === n) ? 'block' : 'none';
+            }
+            renderWizardProgress(n);
+            window.scrollTo(0, 0);
+        }
 
-                submitBtn.disabled = true;
-                submitBtn.textContent = 'Création en cours...';
+        function skipToStep(n) {
+            showStep(n);
+        }
 
-                var result = await partnerRegister(registerData);
+        function showWizardError(message) {
+            var errorMessage = document.getElementById('errorMessage');
+            if (!errorMessage) return;
+            errorMessage.textContent = message;
+            errorMessage.classList.add('show');
+            setTimeout(function() { errorMessage.classList.remove('show'); }, 5000);
+        }
 
-                submitBtn.disabled = false;
-                submitBtn.textContent = 'Créer mon compte';
+        function goFromStep1() {
+            var prenom = document.getElementById('prenom').value.trim();
+            var nom = document.getElementById('nom').value.trim();
+            var email = document.getElementById('email').value.trim();
+            var password = document.getElementById('password').value;
 
-                if (result.success) {
-                    infoMessage.classList.add('show');
-                    setTimeout(function() {
-                        window.location.href = 'partner-dashboard.html';
-                    }, 1800);
-                } else {
-                    errorMessage.textContent = result.message;
-                    errorMessage.classList.add('show');
+            if (!prenom || !nom || !email || !password || password.length < 6) {
+                showWizardError('Merci de renseigner prénom, nom, email et un mot de passe de 6 caractères minimum.');
+                return;
+            }
+            showStep(2);
+        }
 
-                    setTimeout(function() {
-                        errorMessage.classList.remove('show');
-                    }, 5000);
-                }
+        async function submitStep2() {
+            var errorMessage = document.getElementById('errorMessage');
+            var infoMessage = document.getElementById('infoMessage');
+            var submitBtn = document.getElementById('submitBtn');
+            errorMessage.classList.remove('show');
+
+            var partnerType = document.getElementById('partner_type').value;
+            if (!partnerType) {
+                showWizardError('Merci de choisir une catégorie.');
+                return;
+            }
+
+            var registerData = {
+                prenom: document.getElementById('prenom').value.trim(),
+                nom: document.getElementById('nom').value.trim(),
+                partner_type: partnerType,
+                company: document.getElementById('company').value.trim(),
+                email: document.getElementById('email').value.trim(),
+                telephone: document.getElementById('telephone').value.trim(),
+                password: document.getElementById('password').value
+            };
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Création en cours...';
+
+            var result = await partnerRegister(registerData);
+
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Créer mon compte';
+
+            if (result.success) {
+                infoMessage.classList.add('show');
+                showStep(3);
+            } else {
+                showWizardError(result.message);
+            }
+        }
+
+        var step3PhotoInputEl = document.getElementById('step3PhotoInput');
+        if (step3PhotoInputEl) {
+            step3PhotoInputEl.addEventListener('change', async function(e) {
+                var file = e.target.files && e.target.files[0];
+                if (!file) return;
+                step3PhotoData = await fileToBase64(file);
+                var preview = document.getElementById('step3PhotoPreview');
+                if (preview) { preview.src = step3PhotoData; preview.style.display = 'inline-block'; }
             });
         }
+
+        var step3LogoInputEl = document.getElementById('step3LogoInput');
+        if (step3LogoInputEl) {
+            step3LogoInputEl.addEventListener('change', async function(e) {
+                var file = e.target.files && e.target.files[0];
+                if (!file) return;
+                step3LogoData = await fileToBase64(file);
+                var preview = document.getElementById('step3LogoPreview');
+                if (preview) { preview.src = step3LogoData; preview.style.display = 'inline-block'; }
+            });
+        }
+
+        function fileToBase64(file) {
+            return new Promise(function(resolve, reject) {
+                var reader = new FileReader();
+                reader.onload = function() { resolve(reader.result); };
+                reader.onerror = function(error) { reject(error); };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        async function submitStep3() {
+            var msgEl = document.getElementById('step3Message');
+            var btnEl = document.getElementById('step3NextBtn');
+
+            var payload = {
+                bio: document.getElementById('step3Bio').value.trim(),
+                city: document.getElementById('step3City').value.trim(),
+                interventionZone: document.getElementById('step3InterventionZone').value.trim(),
+                social: {
+                    instagram: document.getElementById('step3Instagram').value.trim(),
+                    tiktok: document.getElementById('step3Tiktok').value.trim(),
+                    linkedin: document.getElementById('step3Linkedin').value.trim(),
+                    website: document.getElementById('step3Website').value.trim()
+                }
+            };
+            if (step3PhotoData) payload.photo = step3PhotoData;
+            if (step3LogoData) payload.logo = step3LogoData;
+
+            if (btnEl) { btnEl.disabled = true; btnEl.textContent = 'Enregistrement...'; }
+
+            var result = await updatePartnerProfile(payload);
+
+            if (btnEl) { btnEl.disabled = false; btnEl.textContent = 'Suivant'; }
+
+            if (result.success) {
+                showStep(4);
+            } else if (msgEl) {
+                msgEl.style.display = 'block';
+                msgEl.innerHTML = '<p class="font-black" style="color:#dc2626;"><i class="fas fa-exclamation-circle mr-2"></i>' + (result.message || 'Erreur lors de l\'enregistrement') + '</p>';
+            }
+        }
+
+        function renderWizardPortfolioItemRow(index, item) {
+            return '<div class="proposal-item-row mb-3 p-3 bg-gray-50 border-2 border-black" data-index="' + index + '">' +
+                '<div class="grid grid-cols-1 md:grid-cols-12 gap-2">' +
+                    '<div class="md:col-span-2">' +
+                        '<label class="block text-xs font-black uppercase mb-1">Type</label>' +
+                        '<select class="portfolio-item-type">' +
+                            '<option value="photo"' + (item.type === 'video' ? '' : ' selected') + '>Photo</option>' +
+                            '<option value="video"' + (item.type === 'video' ? ' selected' : '') + '>Vidéo</option>' +
+                        '</select>' +
+                    '</div>' +
+                    '<div class="md:col-span-5">' +
+                        '<label class="block text-xs font-black uppercase mb-1">URL (image ou lien YouTube/Vimeo)</label>' +
+                        '<input type="text" class="portfolio-item-url" placeholder="https://..." value="' + (item.url || '') + '">' +
+                    '</div>' +
+                    '<div class="md:col-span-3">' +
+                        '<label class="block text-xs font-black uppercase mb-1">Légende</label>' +
+                        '<input type="text" class="portfolio-item-caption" placeholder="Légende (optionnel)" value="' + (item.caption || '') + '">' +
+                    '</div>' +
+                    '<div class="md:col-span-2 flex items-end">' +
+                        '<button type="button" onclick="removeWizardPortfolioItem(' + index + ')" class="text-red-600 font-black hover:opacity-70" title="Supprimer">' +
+                            '<i class="fas fa-trash"></i>' +
+                        '</button>' +
+                    '</div>' +
+                '</div>' +
+            '</div>';
+        }
+
+        function addWizardPortfolioItem() {
+            var container = document.getElementById('portfolioItemsContainer');
+            if (!container) return;
+            var rows = container.querySelectorAll('.proposal-item-row');
+            var newIndex = rows.length;
+            var wrapper = document.createElement('div');
+            wrapper.innerHTML = renderWizardPortfolioItemRow(newIndex, { type: 'photo', url: '', caption: '' });
+            container.appendChild(wrapper.firstChild);
+        }
+
+        function removeWizardPortfolioItem(index) {
+            var container = document.getElementById('portfolioItemsContainer');
+            if (!container) return;
+            var rows = container.querySelectorAll('.proposal-item-row');
+            if (rows[index]) rows[index].remove();
+        }
+
+        async function submitStep4() {
+            var container = document.getElementById('portfolioItemsContainer');
+            var msgEl = document.getElementById('step4Message');
+            var btnEl = document.getElementById('step4NextBtn');
+            if (!container) { showStep(5); return; }
+
+            var rows = container.querySelectorAll('.proposal-item-row');
+            var portfolio = [];
+            for (var i = 0; i < rows.length; i++) {
+                var typeEl = rows[i].querySelector('.portfolio-item-type');
+                var urlEl = rows[i].querySelector('.portfolio-item-url');
+                var captionEl = rows[i].querySelector('.portfolio-item-caption');
+                var url = urlEl ? urlEl.value.trim() : '';
+                if (!url) continue;
+                portfolio.push({
+                    type: typeEl ? typeEl.value : 'photo',
+                    url: url,
+                    caption: captionEl ? captionEl.value.trim() : ''
+                });
+            }
+
+            if (portfolio.length === 0) { showStep(5); return; }
+
+            if (btnEl) { btnEl.disabled = true; btnEl.textContent = 'Enregistrement...'; }
+
+            try {
+                var response = await partnerAuthenticatedFetch(PARTNER_API_BASE_URL + '/api/partner/portfolio', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ portfolio: portfolio })
+                });
+                var data = await response.json();
+
+                if (response.ok && data.success) {
+                    showStep(5);
+                } else if (msgEl) {
+                    msgEl.style.display = 'block';
+                    msgEl.innerHTML = '<p class="font-black" style="color:#dc2626;"><i class="fas fa-exclamation-circle mr-2"></i>' + (data.error || 'Erreur lors de l\'enregistrement') + '</p>';
+                }
+            } catch (error) {
+                console.error('[PARTNER-REGISTER] Erreur portfolio:', error);
+                if (msgEl) {
+                    msgEl.style.display = 'block';
+                    msgEl.innerHTML = '<p class="font-black" style="color:#dc2626;"><i class="fas fa-exclamation-circle mr-2"></i>Erreur de connexion au serveur</p>';
+                }
+            } finally {
+                if (btnEl) { btnEl.disabled = false; btnEl.textContent = 'Suivant'; }
+            }
+        }
+
+        function renderWizardTarifItemRow(index, service) {
+            return '<div class="proposal-item-row mb-3 p-3 bg-gray-50 border-2 border-black" data-index="' + index + '">' +
+                '<div class="grid grid-cols-1 md:grid-cols-12 gap-2">' +
+                    '<div class="md:col-span-4">' +
+                        '<label class="block text-xs font-black uppercase mb-1">Prestation</label>' +
+                        '<input type="text" class="service-item-label" placeholder="Ex: Shooting photo corporate" value="' + (service.label || '') + '">' +
+                    '</div>' +
+                    '<div class="md:col-span-4">' +
+                        '<label class="block text-xs font-black uppercase mb-1">Description</label>' +
+                        '<input type="text" class="service-item-desc" placeholder="Détails..." value="' + (service.description || '') + '">' +
+                    '</div>' +
+                    '<div class="md:col-span-2">' +
+                        '<label class="block text-xs font-black uppercase mb-1">Prix (€)</label>' +
+                        '<input type="number" class="service-item-price text-right" value="' + (service.price || 0) + '" min="0" step="0.01">' +
+                    '</div>' +
+                    '<div class="md:col-span-2 flex items-end">' +
+                        '<button type="button" onclick="removeWizardTarifItem(this)" class="text-red-600 font-black hover:opacity-70" title="Supprimer">' +
+                            '<i class="fas fa-trash"></i>' +
+                        '</button>' +
+                    '</div>' +
+                '</div>' +
+            '</div>';
+        }
+
+        function addWizardTarifItem(containerId) {
+            var container = document.getElementById(containerId);
+            if (!container) return;
+            var rows = container.querySelectorAll('.proposal-item-row');
+            var wrapper = document.createElement('div');
+            wrapper.innerHTML = renderWizardTarifItemRow(rows.length, { label: '', description: '', price: 0 });
+            container.appendChild(wrapper.firstChild);
+        }
+
+        function removeWizardTarifItem(buttonEl) {
+            var row = buttonEl.closest('.proposal-item-row');
+            if (row) row.remove();
+        }
+
+        function collectWizardTarifs(containerId, audience) {
+            var container = document.getElementById(containerId);
+            if (!container) return [];
+            var rows = container.querySelectorAll('.proposal-item-row');
+            var services = [];
+            for (var i = 0; i < rows.length; i++) {
+                var labelEl = rows[i].querySelector('.service-item-label');
+                var descEl = rows[i].querySelector('.service-item-desc');
+                var priceEl = rows[i].querySelector('.service-item-price');
+                var label = labelEl ? labelEl.value.trim() : '';
+                var price = priceEl ? parseFloat(priceEl.value) : 0;
+                if (!label || !price || price <= 0) continue;
+                services.push({
+                    label: label,
+                    description: descEl ? descEl.value.trim() : '',
+                    price: price,
+                    active: true,
+                    audience: audience
+                });
+            }
+            return services;
+        }
+
+        async function submitStep5() {
+            var msgEl = document.getElementById('step5Message');
+            var btnEl = document.getElementById('step5NextBtn');
+
+            var services = collectWizardTarifs('tarifsEtudiantContainer', 'etudiant')
+                .concat(collectWizardTarifs('tarifsParticulierContainer', 'particulier'))
+                .concat(collectWizardTarifs('tarifsEntrepriseContainer', 'entreprise'));
+
+            if (services.length === 0) { showStep(6); return; }
+
+            if (btnEl) { btnEl.disabled = true; btnEl.textContent = 'Enregistrement...'; }
+
+            try {
+                var response = await partnerAuthenticatedFetch(PARTNER_API_BASE_URL + '/api/partner/services', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ services: services })
+                });
+                var data = await response.json();
+
+                if (response.ok && data.success) {
+                    showStep(6);
+                } else if (msgEl) {
+                    msgEl.style.display = 'block';
+                    msgEl.innerHTML = '<p class="font-black" style="color:#dc2626;"><i class="fas fa-exclamation-circle mr-2"></i>' + (data.error || 'Erreur lors de l\'enregistrement') + '</p>';
+                }
+            } catch (error) {
+                console.error('[PARTNER-REGISTER] Erreur tarifs:', error);
+                if (msgEl) {
+                    msgEl.style.display = 'block';
+                    msgEl.innerHTML = '<p class="font-black" style="color:#dc2626;"><i class="fas fa-exclamation-circle mr-2"></i>Erreur de connexion au serveur</p>';
+                }
+            } finally {
+                if (btnEl) { btnEl.disabled = false; btnEl.textContent = 'Suivant'; }
+            }
+        }
+
+        renderWizardProgress(1);
 
         // Menu Mobile Toggle
         var mobileMenuBtn = document.getElementById('mobileMenuBtn');

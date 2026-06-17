@@ -153,6 +153,9 @@
                         <i class="fas fa-comments mr-1"></i>Messagerie
                         <span id="partnerMsgBadge" style="display:none;position:absolute;top:-8px;right:-8px;background:#ff6b6b;color:white;border-radius:50%;width:18px;height:18px;font-size:10px;line-height:18px;text-align:center;"></span>
                     </button>
+                    <button onclick="showSection('revenus')" class="nav-tab text-white hover:text-[var(--genesis-yellow)] transition">
+                        <i class="fas fa-coins mr-1"></i>Revenus
+                    </button>
                     <button onclick="showSection('profile')" class="nav-tab text-white hover:text-[var(--genesis-yellow)] transition">
                         <i class="fas fa-user mr-1"></i>Profil
                     </button>
@@ -186,6 +189,9 @@
             <button onclick="showSection('messaging')" class="nav-tab text-white hover:text-[var(--genesis-yellow)] text-xs font-black" style="position:relative;">
                 <i class="fas fa-comments mr-1"></i>Msg
                 <span id="partnerMsgBadgeMobile" style="display:none;position:absolute;top:-6px;right:-6px;background:#ff6b6b;color:white;border-radius:50%;width:16px;height:16px;font-size:9px;line-height:16px;text-align:center;"></span>
+            </button>
+            <button onclick="showSection('revenus')" class="nav-tab text-white hover:text-[var(--genesis-yellow)] text-xs font-black">
+                <i class="fas fa-coins mr-1"></i>Revenus
             </button>
             <button onclick="showSection('profile')" class="nav-tab text-white hover:text-[var(--genesis-yellow)] text-xs font-black">
                 <i class="fas fa-user mr-1"></i>Profil
@@ -363,7 +369,7 @@
                 <i class="fas fa-clock mr-2"></i>Compte en attente de validation — vous serez visible dans l'annuaire après validation par l'équipe FA GENESIS. Vous pouvez dès maintenant configurer votre profil et vos prestations.
             </div>
             <div class="section-card neo-shadow">
-                <div class="flex items-center gap-6 mb-8">
+                <div class="flex items-center gap-6 mb-4 flex-wrap">
                     <div id="profilePhotoPreview" style="width:96px;height:96px;border-radius:50%;background:#1a1a1a;border:3px solid #000;overflow:hidden;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                         <i class="fas fa-user text-3xl" style="opacity:.3;color:#fff;"></i>
                     </div>
@@ -373,6 +379,18 @@
                             <i class="fas fa-camera mr-2"></i>CHANGER LA PHOTO
                         </button>
                         <p id="profilePhotoMsg" class="text-sm font-bold mt-2" style="display:none;"></p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-6 mb-8 flex-wrap">
+                    <div id="profileLogoPreview" style="width:96px;height:96px;background:#1a1a1a;border:3px solid #000;overflow:hidden;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                        <i class="fas fa-image text-3xl" style="opacity:.3;color:#fff;"></i>
+                    </div>
+                    <div>
+                        <input type="file" id="profileLogoInput" accept="image/*" class="hidden">
+                        <button type="button" id="profileLogoBtn" class="neo-btn-yellow px-4 py-2 text-sm" onclick="document.getElementById('profileLogoInput').click()">
+                            <i class="fas fa-image mr-2"></i>CHANGER LE LOGO (optionnel)
+                        </button>
+                        <p id="profileLogoMsg" class="text-sm font-bold mt-2" style="display:none;"></p>
                     </div>
                 </div>
                 <div id="profileInfo" class="mb-8"></div>
@@ -386,9 +404,15 @@
                         <label class="block font-black mb-1 uppercase text-sm">Bio / présentation</label>
                         <textarea id="profileBio" rows="3" placeholder="Présentez votre activité, votre expérience..."></textarea>
                     </div>
-                    <div>
-                        <label class="block font-black mb-1 uppercase text-sm">Ville / zone d'intervention</label>
-                        <input type="text" id="profileCity" placeholder="Ex: Paris, Lyon...">
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block font-black mb-1 uppercase text-sm">Ville</label>
+                            <input type="text" id="profileCity" placeholder="Ex: Paris, Lyon...">
+                        </div>
+                        <div>
+                            <label class="block font-black mb-1 uppercase text-sm">Zone d'intervention</label>
+                            <input type="text" id="profileInterventionZone" placeholder="Ex: Île-de-France, national...">
+                        </div>
                     </div>
                     <div class="grid md:grid-cols-2 gap-4">
                         <div>
@@ -441,12 +465,27 @@
                 <h3 class="text-lg font-black italic uppercase mb-2">
                     <i class="fas fa-tags mr-2"></i>MES PRESTATIONS
                 </h3>
-                <p class="text-sm opacity-60 mb-4">Définissez vos prestations et leurs prix. Les clients verront ce menu dans l'annuaire et pourront commander directement.</p>
-                <div id="servicesItemsContainer"></div>
-                <button type="button" onclick="addServiceItem()" class="neo-btn-yellow px-4 py-2 text-sm mt-3">
-                    <i class="fas fa-plus mr-2"></i>AJOUTER UNE PRESTATION
+                <p class="text-sm opacity-60 mb-4">Définissez vos prestations et leurs prix par type de client. Les clients verront ce menu dans l'annuaire et pourront commander directement.</p>
+
+                <h4 class="font-black uppercase text-sm mb-2" style="color:var(--genesis-yellow);">Offre Étudiant</h4>
+                <div id="servicesItemsContainer_etudiant" class="mb-2"></div>
+                <button type="button" onclick="addServiceItem('etudiant')" class="px-4 py-2 text-xs font-black uppercase border-2 border-black bg-gray-50 mb-6">
+                    <i class="fas fa-plus mr-2"></i>AJOUTER UNE OFFRE ÉTUDIANT
                 </button>
-                <div class="mt-6">
+
+                <h4 class="font-black uppercase text-sm mb-2" style="color:var(--genesis-yellow);">Offre Particulier</h4>
+                <div id="servicesItemsContainer_particulier" class="mb-2"></div>
+                <button type="button" onclick="addServiceItem('particulier')" class="px-4 py-2 text-xs font-black uppercase border-2 border-black bg-gray-50 mb-6">
+                    <i class="fas fa-plus mr-2"></i>AJOUTER UNE OFFRE PARTICULIER
+                </button>
+
+                <h4 class="font-black uppercase text-sm mb-2" style="color:var(--genesis-yellow);">Offre Entreprise</h4>
+                <div id="servicesItemsContainer_entreprise" class="mb-2"></div>
+                <button type="button" onclick="addServiceItem('entreprise')" class="px-4 py-2 text-xs font-black uppercase border-2 border-black bg-gray-50 mb-6">
+                    <i class="fas fa-plus mr-2"></i>AJOUTER UNE OFFRE ENTREPRISE
+                </button>
+
+                <div class="mt-2">
                     <button type="button" onclick="saveServices()" id="saveServicesBtn" class="neo-btn-yellow px-6 py-3 text-sm">
                         <i class="fas fa-save mr-2"></i>ENREGISTRER MES PRESTATIONS
                     </button>
@@ -488,6 +527,33 @@
                 <i class="fas fa-arrow-left mr-2"></i>Retour aux devis
             </button>
             <div id="partnerQuoteDetail"></div>
+        </div>
+
+        <!-- ===== SECTION REVENUS ===== -->
+        <div id="revenusSection" class="container mx-auto max-w-5xl" style="display:none;">
+            <h2 class="text-2xl md:text-3xl font-black text-white mb-6" style="font-family:'Playfair Display',serif;">
+                <i class="fas fa-coins mr-3" style="color:var(--genesis-yellow);"></i>MES REVENUS
+            </h2>
+
+            <div class="grid md:grid-cols-3 gap-4 mb-8">
+                <div class="section-card neo-shadow text-center">
+                    <p class="text-xs font-black uppercase opacity-60 mb-2">Total reçu</p>
+                    <p id="revenusTotalReceived" class="text-3xl font-black" style="color:#51cf66;">0€</p>
+                </div>
+                <div class="section-card neo-shadow text-center">
+                    <p class="text-xs font-black uppercase opacity-60 mb-2">En attente de versement</p>
+                    <p id="revenusTotalPending" class="text-3xl font-black" style="color:#ffd43b;">0€</p>
+                </div>
+                <div class="section-card neo-shadow text-center">
+                    <p class="text-xs font-black uppercase opacity-60 mb-2">Commission FA GENESIS prélevée</p>
+                    <p id="revenusTotalCommission" class="text-3xl font-black" style="color:#ff6b6b;">0€</p>
+                </div>
+            </div>
+
+            <div class="section-card neo-shadow">
+                <h3 class="text-lg font-black italic uppercase mb-4"><i class="fas fa-history mr-2"></i>HISTORIQUE DES TRANSACTIONS</h3>
+                <div id="revenusHistoryList"></div>
+            </div>
         </div>
 
         <!-- ===== SECTION MISSIONS ===== -->
@@ -724,6 +790,7 @@
         var missions = document.getElementById('missionsSection');
         var seances = document.getElementById('seancesSection');
         var messaging = document.getElementById('messagingSection');
+        var revenus = document.getElementById('revenusSection');
 
         if (loading) loading.style.display = 'none';
         if (projects) projects.style.display = 'none';
@@ -734,6 +801,7 @@
         if (missions) missions.style.display = 'none';
         if (seances) seances.style.display = 'none';
         if (messaging) messaging.style.display = 'none';
+        if (revenus) revenus.style.display = 'none';
 
         if (section === 'projects') {
             if (projects) projects.style.display = 'block';
@@ -755,6 +823,9 @@
         } else if (section === 'messaging') {
             if (messaging) messaging.style.display = 'block';
             loadPartnerMessages();
+        } else if (section === 'revenus') {
+            if (revenus) revenus.style.display = 'block';
+            loadRevenus();
         }
     }
 
@@ -1454,6 +1525,8 @@
         if (bioEl) bioEl.value = currentPartner.bio || '';
         var cityEl = document.getElementById('profileCity');
         if (cityEl) cityEl.value = currentPartner.city || '';
+        var interventionZoneEl = document.getElementById('profileInterventionZone');
+        if (interventionZoneEl) interventionZoneEl.value = currentPartner.interventionZone || '';
         var social = currentPartner.social || {};
         var instaEl = document.getElementById('profileInstagram');
         if (instaEl) instaEl.value = social.instagram || '';
@@ -1474,6 +1547,12 @@
             photoPreview.innerHTML = currentPartner.photo
                 ? '<img src="' + currentPartner.photo + '" alt="Photo de profil" style="width:100%;height:100%;object-fit:cover;">'
                 : '<i class="fas fa-user text-3xl" style="opacity:.3;color:#fff;"></i>';
+        }
+        var logoPreview = document.getElementById('profileLogoPreview');
+        if (logoPreview) {
+            logoPreview.innerHTML = currentPartner.logo
+                ? '<img src="' + currentPartner.logo + '" alt="Logo" style="width:100%;height:100%;object-fit:contain;">'
+                : '<i class="fas fa-image text-3xl" style="opacity:.3;color:#fff;"></i>';
         }
 
         var typeLabel = PARTNER_TYPE_LABELS[currentPartner.partner_type] || currentPartner.partner_type;
@@ -1513,6 +1592,7 @@
         var payload = {
             bio: (document.getElementById('profileBio') || {}).value || '',
             city: (document.getElementById('profileCity') || {}).value || '',
+            interventionZone: (document.getElementById('profileInterventionZone') || {}).value || '',
             social: {
                 instagram: (document.getElementById('profileInstagram') || {}).value || '',
                 facebook: (document.getElementById('profileFacebook') || {}).value || '',
@@ -1628,6 +1708,44 @@
             } finally {
                 if (btnEl) { btnEl.disabled = false; btnEl.innerHTML = '<i class="fas fa-camera mr-2"></i>CHANGER LA PHOTO'; }
                 profilePhotoInputEl.value = '';
+            }
+        });
+    }
+
+    var profileLogoInputEl = document.getElementById('profileLogoInput');
+    if (profileLogoInputEl) {
+        profileLogoInputEl.addEventListener('change', async function(e) {
+            var file = e.target.files && e.target.files[0];
+            if (!file) return;
+            var msgEl = document.getElementById('profileLogoMsg');
+            var btnEl = document.getElementById('profileLogoBtn');
+            try {
+                if (btnEl) { btnEl.disabled = true; btnEl.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>ENVOI...'; }
+                var dataUri = await fileToBase64(file);
+                var result = await updatePartnerProfile({ logo: dataUri });
+                if (result.success) {
+                    currentPartner.logo = dataUri;
+                    renderProfileSection();
+                    if (msgEl) {
+                        msgEl.style.display = 'block';
+                        msgEl.style.color = '#16a34a';
+                        msgEl.textContent = 'Logo mis à jour';
+                    }
+                } else if (msgEl) {
+                    msgEl.style.display = 'block';
+                    msgEl.style.color = '#dc2626';
+                    msgEl.textContent = result.message || 'Erreur lors de l\'envoi du logo';
+                }
+            } catch (error) {
+                console.error('[PARTNER-DASH] Erreur upload logo:', error);
+                if (msgEl) {
+                    msgEl.style.display = 'block';
+                    msgEl.style.color = '#dc2626';
+                    msgEl.textContent = 'Erreur de connexion au serveur';
+                }
+            } finally {
+                if (btnEl) { btnEl.disabled = false; btnEl.innerHTML = '<i class="fas fa-image mr-2"></i>CHANGER LE LOGO (optionnel)'; }
+                profileLogoInputEl.value = '';
             }
         });
     }
@@ -2034,8 +2152,10 @@
     // MES PRESTATIONS
     // ==============================================
 
-    function renderServiceItemRow(index, service) {
-        return '<div class="proposal-item-row mb-3 p-3 bg-gray-50 border-2 border-black" data-index="' + index + '">' +
+    var SERVICE_AUDIENCES = ['etudiant', 'particulier', 'entreprise'];
+
+    function renderServiceItemRow(service) {
+        return '<div class="proposal-item-row mb-3 p-3 bg-gray-50 border-2 border-black">' +
             '<div class="grid grid-cols-1 md:grid-cols-12 gap-2">' +
                 '<div class="md:col-span-4">' +
                     '<label class="block text-xs font-black uppercase mb-1">Prestation</label>' +
@@ -2053,7 +2173,7 @@
                     '<label class="flex items-center gap-1 text-xs font-black uppercase">' +
                         '<input type="checkbox" class="service-item-active" ' + (service.active === false ? '' : 'checked') + '> Active' +
                     '</label>' +
-                    '<button onclick="removeServiceItem(' + index + ')" class="text-red-600 font-black hover:opacity-70" title="Supprimer">' +
+                    '<button onclick="removeServiceItem(this)" class="text-red-600 font-black hover:opacity-70" title="Supprimer">' +
                         '<i class="fas fa-trash"></i>' +
                     '</button>' +
                 '</div>' +
@@ -2062,39 +2182,32 @@
     }
 
     function renderServicesSection() {
-        var container = document.getElementById('servicesItemsContainer');
-        if (!container || !currentPartner) return;
+        if (!currentPartner) return;
         var services = currentPartner.services || [];
-        if (services.length === 0) {
-            container.innerHTML = renderServiceItemRow(0, { label: '', description: '', price: 0, active: true });
-        } else {
-            container.innerHTML = services.map(function(s, i) { return renderServiceItemRow(i, s); }).join('');
-        }
+        SERVICE_AUDIENCES.forEach(function(audience) {
+            var container = document.getElementById('servicesItemsContainer_' + audience);
+            if (!container) return;
+            var inAudience = services.filter(function(s) { return (s.audience || 'particulier') === audience; });
+            container.innerHTML = inAudience.map(function(s) { return renderServiceItemRow(s); }).join('');
+        });
     }
 
-    function addServiceItem() {
-        var container = document.getElementById('servicesItemsContainer');
+    function addServiceItem(audience) {
+        var container = document.getElementById('servicesItemsContainer_' + audience);
         if (!container) return;
-        var rows = container.querySelectorAll('.proposal-item-row');
-        var newIndex = rows.length;
         var wrapper = document.createElement('div');
-        wrapper.innerHTML = renderServiceItemRow(newIndex, { label: '', description: '', price: 0, active: true });
+        wrapper.innerHTML = renderServiceItemRow({ label: '', description: '', price: 0, active: true });
         container.appendChild(wrapper.firstChild);
     }
 
-    function removeServiceItem(index) {
-        var container = document.getElementById('servicesItemsContainer');
-        if (!container) return;
-        var rows = container.querySelectorAll('.proposal-item-row');
-        if (rows[index]) rows[index].remove();
+    function removeServiceItem(buttonEl) {
+        var row = buttonEl.closest('.proposal-item-row');
+        if (row) row.remove();
     }
 
-    async function saveServices() {
-        var container = document.getElementById('servicesItemsContainer');
-        var msgEl = document.getElementById('servicesMessage');
-        var saveBtn = document.getElementById('saveServicesBtn');
-        if (!container) return;
-
+    function collectServiceItems(audience) {
+        var container = document.getElementById('servicesItemsContainer_' + audience);
+        if (!container) return [];
         var rows = container.querySelectorAll('.proposal-item-row');
         var services = [];
         for (var i = 0; i < rows.length; i++) {
@@ -2109,9 +2222,20 @@
                 label: label,
                 description: descEl ? descEl.value.trim() : '',
                 price: price,
-                active: activeEl ? activeEl.checked : true
+                active: activeEl ? activeEl.checked : true,
+                audience: audience
             });
         }
+        return services;
+    }
+
+    async function saveServices() {
+        var msgEl = document.getElementById('servicesMessage');
+        var saveBtn = document.getElementById('saveServicesBtn');
+
+        var services = SERVICE_AUDIENCES.reduce(function(acc, audience) {
+            return acc.concat(collectServiceItems(audience));
+        }, []);
 
         if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Enregistrement...'; }
 
@@ -2127,6 +2251,7 @@
                 msgEl.style.display = 'block';
                 if (response.ok && data.success) {
                     currentPartner.services = data.services;
+                    renderServicesSection();
                     msgEl.innerHTML = '<p class="font-black" style="color:#51cf66;"><i class="fas fa-check-circle mr-2"></i>Prestations enregistrées avec succès.</p>';
                 } else {
                     msgEl.innerHTML = '<p class="font-black" style="color:#ff6b6b;"><i class="fas fa-exclamation-circle mr-2"></i>' + (data.error || 'Erreur lors de l\'enregistrement') + '</p>';
@@ -2141,6 +2266,75 @@
             }
         } finally {
             if (saveBtn) { saveBtn.disabled = false; saveBtn.innerHTML = '<i class="fas fa-save mr-2"></i>ENREGISTRER MES PRESTATIONS'; }
+        }
+    }
+
+    // ==============================================
+    // MES REVENUS
+    // ==============================================
+
+    async function loadRevenus() {
+        var listEl = document.getElementById('revenusHistoryList');
+        var totalReceivedEl = document.getElementById('revenusTotalReceived');
+        var totalPendingEl = document.getElementById('revenusTotalPending');
+        var totalCommissionEl = document.getElementById('revenusTotalCommission');
+        if (!listEl) return;
+
+        listEl.innerHTML = '<p class="text-center font-bold opacity-50 py-8"><i class="fas fa-spinner fa-spin mr-2"></i>Chargement...</p>';
+
+        try {
+            var response = await partnerAuthenticatedFetch(PARTNER_API_BASE_URL + '/api/partner/payouts');
+            if (!response.ok) throw new Error('Erreur ' + response.status);
+            var data = await response.json();
+            var payouts = data.payouts || [];
+
+            var totalReceived = 0, totalPending = 0, totalCommission = 0;
+            payouts.forEach(function(p) {
+                if (p.status === 'sent') totalReceived += (p.amount || 0);
+                else if (p.status === 'pending') totalPending += (p.amount || 0);
+                totalCommission += (p.fa_amount || 0);
+            });
+
+            if (totalReceivedEl) totalReceivedEl.textContent = totalReceived.toFixed(2) + '€';
+            if (totalPendingEl) totalPendingEl.textContent = totalPending.toFixed(2) + '€';
+            if (totalCommissionEl) totalCommissionEl.textContent = totalCommission.toFixed(2) + '€';
+
+            if (payouts.length === 0) {
+                listEl.innerHTML = '<div class="text-center py-12">' +
+                    '<i class="fas fa-inbox text-4xl opacity-30 mb-4"></i>' +
+                    '<p class="font-bold opacity-50">Aucune transaction pour le moment</p>' +
+                '</div>';
+                return;
+            }
+
+            var STATUS_LABELS = { sent: 'VERSÉ', pending: 'EN ATTENTE' };
+            var STATUS_COLORS = { sent: '#51cf66', pending: '#ffd43b' };
+
+            var html = '<div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr class="text-left border-b-2 border-black">' +
+                '<th class="py-2 pr-3">Date</th><th class="py-2 pr-3">Mission</th><th class="py-2 pr-3">Montant reçu</th><th class="py-2 pr-3">Commission FA GENESIS</th><th class="py-2">Statut</th>' +
+            '</tr></thead><tbody>';
+            payouts.forEach(function(p) {
+                var date = p.created_at ? new Date(p.created_at).toLocaleDateString('fr-FR') : '';
+                var label = p.offer_name || p.type || 'Prestation';
+                var statusLabel = STATUS_LABELS[p.status] || p.status;
+                var statusColor = STATUS_COLORS[p.status] || '#999';
+                html += '<tr class="border-b border-gray-200">' +
+                    '<td class="py-2 pr-3">' + date + '</td>' +
+                    '<td class="py-2 pr-3 font-bold">' + escapeHtml(label) + '</td>' +
+                    '<td class="py-2 pr-3 font-black">' + (p.amount || 0).toFixed(2) + '€</td>' +
+                    '<td class="py-2 pr-3 opacity-60">' + (p.fa_amount || 0).toFixed(2) + '€</td>' +
+                    '<td class="py-2"><span style="background:' + statusColor + ';color:black;padding:2px 8px;border:2px solid black;font-size:11px;font-weight:900;">' + statusLabel + '</span></td>' +
+                '</tr>';
+            });
+            html += '</tbody></table></div>';
+            listEl.innerHTML = html;
+        } catch (error) {
+            console.error('[PARTNER-DASH] Erreur chargement revenus:', error);
+            listEl.innerHTML = '<div class="text-center py-12">' +
+                '<i class="fas fa-exclamation-triangle text-4xl opacity-30 mb-4"></i>' +
+                '<p class="font-bold opacity-50">Erreur de chargement des revenus</p>' +
+                '<button onclick="loadRevenus()" class="neo-btn-yellow px-6 py-2 mt-4 text-sm">Réessayer</button>' +
+            '</div>';
         }
     }
 

@@ -7179,7 +7179,7 @@ app.post('/api/partner/auth/logout', authenticatePartner, (req, res) => {
 // Modifier profil partenaire
 app.put('/api/partner/auth/update-profile', authenticatePartner, async (req, res) => {
     try {
-        const { prenom, nom, telephone, photo, bio, city, social, currentPassword, newPassword } = req.body;
+        const { prenom, nom, telephone, photo, logo, bio, city, interventionZone, social, currentPassword, newPassword } = req.body;
         const partners = loadPartners();
         const index = partners.findIndex(p => p.id === req.partner.id);
         if (index === -1) {
@@ -7189,8 +7189,10 @@ app.put('/api/partner/auth/update-profile', authenticatePartner, async (req, res
         if (nom) partners[index].nom = nom;
         if (telephone) partners[index].telephone = telephone;
         if (photo) partners[index].photo = photo;
+        if (logo) partners[index].logo = logo;
         if (typeof bio === 'string') partners[index].bio = bio.trim();
         if (typeof city === 'string') partners[index].city = city.trim();
+        if (typeof interventionZone === 'string') partners[index].interventionZone = interventionZone.trim();
         if (social && typeof social === 'object') {
             const prevSocial = partners[index].social || {};
             const cleanedSocial = {};
@@ -7224,6 +7226,9 @@ app.get('/api/partner/services', authenticatePartner, (req, res) => {
     res.json({ success: true, services: req.partner.services || [] });
 });
 
+// Segments client pour les prestations (tarifs differencies)
+const SERVICE_AUDIENCES = ['etudiant', 'particulier', 'entreprise'];
+
 // Remplacer la liste de mes prestations (partenaire connecté)
 app.put('/api/partner/services', authenticatePartner, (req, res) => {
     try {
@@ -7245,7 +7250,8 @@ app.put('/api/partner/services', authenticatePartner, (req, res) => {
                 label: s.label.trim(),
                 description: (s.description || '').trim(),
                 price: price,
-                active: s.active !== false
+                active: s.active !== false,
+                audience: SERVICE_AUDIENCES.indexOf(s.audience) !== -1 ? s.audience : 'particulier'
             });
         }
         const partners = loadPartners();
@@ -7384,7 +7390,7 @@ app.get('/api/partners/:id/reviews', (req, res) => {
         }
         const fromPrice = getPartnerFromPrice(partner);
         const activeServices = (partner.services || []).filter(s => s.active !== false)
-            .map(s => ({ id: s.id, label: s.label, description: s.description || '', price: s.price }));
+            .map(s => ({ id: s.id, label: s.label, description: s.description || '', price: s.price, audience: s.audience || 'particulier' }));
         const activePortfolio = (partner.portfolio || [])
             .map(item => ({ id: item.id, type: item.type, url: item.url, caption: item.caption || '' }));
         const reviews = loadPartnerReviews()
@@ -7823,9 +7829,14 @@ app.post('/api/partner/profile/set-rib', authenticatePartner, function(req, res)
 app.get('/api/partner/payouts', authenticatePartner, function(req, res) {
     try {
         var payouts = loadPayouts();
+        var dispatches = loadDispatches();
         var mine = payouts
             .filter(function(p) { return p.partner_id === req.partner.id; })
-            .sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); });
+            .sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); })
+            .map(function(p) {
+                var dispatch = p.dispatch_id ? dispatches.find(function(d) { return d.id === p.dispatch_id; }) : null;
+                return Object.assign({}, p, { offer_name: dispatch ? dispatch.offer_name : null });
+            });
         var partners = loadPartners();
         var me = partners.find(function(p) { return p.id === req.partner.id; });
         var ibanMasked = me && me.payout_iban ? '••••' + me.payout_iban.slice(-4) : null;

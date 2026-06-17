@@ -61,7 +61,7 @@ a{text-decoration:none;color:inherit}
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    WELCOME
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-#welcome{
+#welcome,#roleChoice{
   display:flex;flex-direction:column;align-items:center;justify-content:flex-end;
   position:fixed;inset:0;z-index:100;overflow-y:auto;
   background:transparent;
@@ -118,7 +118,7 @@ a{text-decoration:none;color:inherit}
 #goldFlash.on{animation:goldBurst 1s cubic-bezier(.2,0,.3,1) forwards}
 
 /* Welcome : éléments cachés initialement puis en cascade spring */
-#welcome.entering{opacity:1!important}
+#welcome.entering,#roleChoice.entering{opacity:1!important}
 @keyframes wLogoIn{
   from{opacity:0;transform:scale(2) rotate(-15deg) translateY(-20px)}
   to  {opacity:1;transform:scale(1)  rotate(0deg)  translateY(0)}
@@ -131,11 +131,11 @@ a{text-decoration:none;color:inherit}
   from{opacity:0;transform:translateY(50px) scale(.94)}
   to  {opacity:1;transform:translateY(0)    scale(1)}
 }
-#welcome.entering .w-logo   {animation:wLogoIn  .65s cubic-bezier(.34,1.56,.64,1) .05s both}
-#welcome.entering .w-title  {animation:wSlideUp .55s cubic-bezier(.34,1.56,.64,1) .22s both}
-#welcome.entering .w-desc   {animation:wSlideUp .45s ease-out                     .36s both}
+#welcome.entering .w-logo   ,#roleChoice.entering .w-logo   {animation:wLogoIn  .65s cubic-bezier(.34,1.56,.64,1) .05s both}
+#welcome.entering .w-title  ,#roleChoice.entering .w-title  {animation:wSlideUp .55s cubic-bezier(.34,1.56,.64,1) .22s both}
+#welcome.entering .w-desc   ,#roleChoice.entering .w-desc   {animation:wSlideUp .45s ease-out                     .36s both}
 #welcome.entering .w-features{animation:wSlideUp .45s ease-out                    .46s both}
-#welcome.entering .w-btns   {animation:wBtnsIn  .6s  cubic-bezier(.34,1.56,.64,1) .58s both}
+#welcome.entering .w-btns   ,#roleChoice.entering .w-btns   {animation:wBtnsIn  .6s  cubic-bezier(.34,1.56,.64,1) .58s both}
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    DESKTOP RESPONSIVE (≥768px)
@@ -144,11 +144,11 @@ a{text-decoration:none;color:inherit}
   #bgVideo{display:none!important}
   #bgOverlay{display:none!important}
   #splash{background:#000}
-  #welcome{background:linear-gradient(180deg,#0a0a0a 0%,#111 100%)}
+  #welcome,#roleChoice{background:linear-gradient(180deg,#0a0a0a 0%,#111 100%)}
   #splash .s-logo{width:120px;height:120px}
   #splash .s-name{font-size:30px;letter-spacing:5px}
   #splash .s-bar{width:72px;margin-top:56px}
-  #welcome{padding:0 40px calc(60px + var(--safe))}
+  #welcome,#roleChoice{padding:0 40px calc(60px + var(--safe))}
   .w-hero{max-width:580px;padding-top:80px}
   .w-logo{width:90px;height:90px;border-radius:22px;margin-bottom:32px}
   .w-title{font-size:34px;margin-bottom:16px}
@@ -1452,6 +1452,21 @@ a{text-decoration:none;color:inherit}
   <div class="s-bar"><div class="s-fill"></div></div>
 </div>
 
+<!-- ══════════ CHOIX DE RÔLE ══════════ -->
+<div id="roleChoice" style="display:none">
+  <div class="w-hero">
+    <img class="w-logo" src="assets/images/icon-app-192.png" alt="GENESIS"
+      onerror="this.style.display='none'">
+    <div class="w-title">Bienvenue sur<br>GENESIS</div>
+    <div class="w-desc">La marketplace qui connecte clients et prestataires professionnels.</div>
+  </div>
+  <div class="w-btns">
+    <button class="btn-main" onclick="showWelcome()">Je recherche un prestataire</button>
+    <button class="btn-main" onclick="goPartner()">Je propose mes services</button>
+    <button class="btn-ghost" onclick="goGuest()">Continuer en tant qu'invité</button>
+  </div>
+</div>
+
 <!-- ══════════ WELCOME ══════════ -->
 <div id="welcome" style="display:none">
   <div class="w-hero">
@@ -1914,8 +1929,8 @@ setTimeout(function(){
     var s = localStorage.getItem('fa_genesis_session');
     var t = localStorage.getItem('fa_genesis_token');
     if(s && t){ USER = JSON.parse(s); USER._token = t; _exitSplash(showApp); }
-    else { _exitSplash(showWelcome); }
-  } catch(e){ _exitSplash(showWelcome); }
+    else { _exitSplash(showRoleChoice); }
+  } catch(e){ _exitSplash(showRoleChoice); }
 }, 2500);
 
 function _exitSplash(callback){
@@ -1933,7 +1948,19 @@ function _exitSplash(callback){
   }, 820);
 }
 
+function showRoleChoice(){
+  var r = document.getElementById('roleChoice');
+  r.style.opacity = '0';
+  r.style.display = 'flex';
+  setTimeout(function(){
+    r.style.transition = 'opacity .35s ease';
+    r.style.opacity = '1';
+    r.className = 'entering';
+  }, 30);
+}
 function showWelcome(){
+  var rc = document.getElementById('roleChoice');
+  if(rc) rc.style.display = 'none';
   var w = document.getElementById('welcome');
   w.style.opacity = '0';
   w.style.display = 'flex';
@@ -1946,6 +1973,8 @@ function showWelcome(){
 }
 function showApp(){
   document.getElementById('welcome').style.display = 'none';
+  var rc = document.getElementById('roleChoice');
+  if(rc) rc.style.display = 'none';
   var bv = document.getElementById('bgVideo');
   var bo = document.getElementById('bgOverlay');
   if(bv){ try{bv.pause();}catch(e){} bv.style.display='none'; }
@@ -1956,6 +1985,7 @@ function showApp(){
 }
 function goLogin(){ showLoginSheet(); }
 function goGuest(){ GUEST = true; showApp(); }
+function goPartner(){ window.location.href = 'partner-register.html'; }
 
 // ── APP INIT ─────────────────────────────────────────────────
 function initApp(){
