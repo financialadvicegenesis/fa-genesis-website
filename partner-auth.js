@@ -51,6 +51,47 @@ async function partnerLogin(email, password) {
 }
 
 /**
+ * Inscription partenaire (self-service)
+ * @param {Object} registerData - prenom, nom, email, telephone, password, partner_type, company
+ * @returns {Promise<Object>}
+ */
+async function partnerRegister(registerData) {
+    try {
+        var response = await fetch(PARTNER_API_BASE_URL + '/api/partner/auth/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(registerData)
+        });
+
+        var data = await response.json();
+
+        if (!response.ok) {
+            return {
+                success: false,
+                message: data.error || 'Erreur lors de l\'inscription'
+            };
+        }
+
+        // Sauvegarder la session et le token partenaire (connexion immediate)
+        localStorage.setItem(PARTNER_SESSION_KEY, JSON.stringify(data.partner));
+        localStorage.setItem(PARTNER_TOKEN_KEY, data.token);
+
+        return {
+            success: true,
+            message: 'Inscription réussie',
+            partner: data.partner
+        };
+
+    } catch (error) {
+        console.error('[PARTNER] Erreur inscription:', error);
+        return {
+            success: false,
+            message: 'Le serveur est temporairement indisponible. Veuillez réessayer dans quelques instants.'
+        };
+    }
+}
+
+/**
  * Deconnexion partenaire
  */
 async function partnerLogout() {

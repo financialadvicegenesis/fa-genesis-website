@@ -3168,8 +3168,9 @@
             var html = '';
             allPartners.forEach(function(partner) {
                 var typeLabel = PARTNER_TYPE_LABELS[partner.partner_type] || partner.partner_type;
-                var statusColor = partner.accountStatus === 'deactivated' ? '#999' : '#51cf66';
-                var statusLabel = partner.accountStatus === 'deactivated' ? 'DÉSACTIVÉ' : 'ACTIF';
+                var statusColor = partner.accountStatus === 'deactivated' ? '#999' : (partner.accountStatus === 'pending' ? '#ffd43b' : '#51cf66');
+                var statusTextColor = partner.accountStatus === 'pending' ? 'black' : 'white';
+                var statusLabel = partner.accountStatus === 'deactivated' ? 'DÉSACTIVÉ' : (partner.accountStatus === 'pending' ? 'EN ATTENTE' : 'ACTIF');
 
                 html += '<div class="client-row" onclick="openPartnerModal(\'' + partner.id + '\')">' +
                     '<div class="flex justify-between items-center flex-wrap gap-4">' +
@@ -3181,10 +3182,13 @@
                             '<span style="background:var(--genesis-yellow);color:black;padding:4px 10px;border:2px solid black;font-size:11px;font-weight:900;">' + typeLabel.toUpperCase() + '</span>' +
                         '</div>' +
                         '<div>' +
-                            '<span style="background:' + statusColor + ';color:white;padding:4px 10px;border:2px solid black;font-size:11px;font-weight:900;">' + statusLabel + '</span>' +
+                            '<span style="background:' + statusColor + ';color:' + statusTextColor + ';padding:4px 10px;border:2px solid black;font-size:11px;font-weight:900;">' + statusLabel + '</span>' +
                         '</div>' +
-                        '<div>' +
-                            '<button class="neo-btn-yellow px-4 py-2 text-sm"><i class="fas fa-folder-open mr-1"></i>Gerer</button>' +
+                        '<div onclick="event.stopPropagation();">' +
+                            (partner.accountStatus === 'pending'
+                                ? '<button onclick="togglePartnerStatus(\'' + partner.id + '\', \'active\')" class="border-4 border-[#51cf66] bg-[#51cf66] text-black px-4 py-2 text-sm font-black mr-2"><i class="fas fa-check mr-1"></i>Approuver</button>'
+                                : '') +
+                            '<button onclick="openPartnerModal(\'' + partner.id + '\')" class="neo-btn-yellow px-4 py-2 text-sm"><i class="fas fa-folder-open mr-1"></i>Gerer</button>' +
                         '</div>' +
                     '</div>' +
                 '</div>';
@@ -3233,7 +3237,7 @@
                     '</div>' +
                     '<div>' +
                         '<p class="text-sm font-bold uppercase opacity-70 mb-1">Statut</p>' +
-                        '<p class="font-black">' + (partner.accountStatus === 'deactivated' ? 'Désactivé' : 'Actif') + '</p>' +
+                        '<p class="font-black">' + (partner.accountStatus === 'deactivated' ? 'Désactivé' : (partner.accountStatus === 'pending' ? 'En attente de validation' : 'Actif')) + '</p>' +
                     '</div>' +
                     '<div>' +
                         '<p class="text-sm font-bold uppercase opacity-70 mb-1">Créé le</p>' +
@@ -3244,7 +3248,11 @@
                 '<h3 class="text-xl font-black italic uppercase mb-4"><i class="fas fa-cog mr-2"></i>ACTIONS</h3>' +
                 '<div class="flex gap-3 flex-wrap">';
 
-            if (partner.accountStatus === 'deactivated') {
+            if (partner.accountStatus === 'pending') {
+                modalHTML += '<button onclick="togglePartnerStatus(\'' + partner.id + '\', \'active\')" class="border-4 border-[#51cf66] bg-[#51cf66] text-black px-6 py-3 text-sm font-black">' +
+                    '<i class="fas fa-check mr-2"></i>APPROUVER (visible dans l\'annuaire)' +
+                '</button>';
+            } else if (partner.accountStatus === 'deactivated') {
                 modalHTML += '<button onclick="togglePartnerStatus(\'' + partner.id + '\', \'active\')" class="neo-btn-yellow px-6 py-3 text-sm">' +
                     '<i class="fas fa-check mr-2"></i>RÉACTIVER' +
                 '</button>';

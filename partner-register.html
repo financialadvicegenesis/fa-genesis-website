@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
-    <title>Connexion Partenaire - FA GENESIS</title>
+    <title>Devenir Partenaire - FA GENESIS</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;900&family=Space+Grotesk:wght@300;700&display=swap">
     <link rel="stylesheet" href="tailwind.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" media="print" onload="this.media='all'">
@@ -57,6 +57,28 @@
             font-weight: bold;
         }
         .error-message.show { display: block; }
+
+        .info-message {
+            display: none;
+            background: var(--genesis-yellow);
+            color: black;
+            padding: 1rem;
+            border: 4px solid black;
+            margin-bottom: 1.5rem;
+            font-weight: bold;
+        }
+        .info-message.show { display: block; }
+
+        select.fa-select {
+            width: 100%;
+            background: white;
+            color: black;
+            padding: 1rem;
+            border: 4px solid black;
+            font-weight: bold;
+            outline: none;
+        }
+        select.fa-select:focus { border-color: var(--genesis-yellow); }
     </style>
     <meta name="theme-color" content="#FFD700">
     <meta name="mobile-web-app-capable" content="yes">
@@ -99,64 +121,86 @@
         </div>
     </div>
 
-    <!-- LOGIN SECTION - PAS DE AOS -->
-    <section class="min-h-screen flex flex-col items-center justify-center p-6 bg-black pt-32 relative overflow-hidden">
+    <!-- REGISTER SECTION - PAS DE AOS -->
+    <section class="min-h-screen flex flex-col items-center justify-center p-6 bg-black pt-32 pb-16 relative overflow-hidden">
         <div class="absolute top-20 left-[-10%] w-96 h-96 bg-[var(--genesis-yellow)] rounded-full blur-[120px] opacity-20 z-0"></div>
 
         <div class="w-full max-w-xl z-10">
-            <h1 class="text-5xl md:text-7xl font-black italic uppercase text-center mb-4 text-[var(--genesis-yellow)]">ESPACE PARTENAIRE</h1>
-            <p class="text-center text-lg font-bold mb-12 uppercase opacity-80">Connectez-vous pour accéder à vos projets</p>
+            <h1 class="text-5xl md:text-7xl font-black italic uppercase text-center mb-4 text-[var(--genesis-yellow)]">DEVENIR PARTENAIRE</h1>
+            <p class="text-center text-lg font-bold mb-12 uppercase opacity-80">Inscrivez-vous et fixez vos propres prix</p>
 
             <div class="bg-white text-black p-10 neo-border neo-shadow">
                 <div id="errorMessage" class="error-message"></div>
+                <div id="infoMessage" class="info-message">
+                    <i class="fas fa-circle-info mr-1"></i>
+                    Votre compte sera visible dans l'annuaire après validation par l'équipe FA GENESIS. Vous pouvez dès maintenant configurer votre profil et vos prestations.
+                </div>
 
-                <form id="partnerLoginForm" class="space-y-6">
+                <form id="partnerRegisterForm" class="space-y-6">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label for="prenom" class="block text-sm font-black mb-2 uppercase">Prénom</label>
+                            <input type="text" id="prenom" name="prenom" required
+                                class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none focus:border-[var(--genesis-yellow)] transition-all"
+                                placeholder="Prénom">
+                        </div>
+                        <div>
+                            <label for="nom" class="block text-sm font-black mb-2 uppercase">Nom</label>
+                            <input type="text" id="nom" name="nom" required
+                                class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none focus:border-[var(--genesis-yellow)] transition-all"
+                                placeholder="Nom">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="partner_type" class="block text-sm font-black mb-2 uppercase">Catégorie</label>
+                        <select id="partner_type" name="partner_type" required class="fa-select">
+                            <option value="">Choisir une catégorie...</option>
+                            <option value="photographer">Photographe</option>
+                            <option value="videographer">Vidéaste</option>
+                            <option value="marketer">Marketeur</option>
+                            <option value="media">Médias</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="company" class="block text-sm font-black mb-2 uppercase">Entreprise (optionnel)</label>
+                        <input type="text" id="company" name="company"
+                            class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none focus:border-[var(--genesis-yellow)] transition-all"
+                            placeholder="Nom de votre entreprise">
+                    </div>
+
                     <div>
                         <label for="email" class="block text-sm font-black mb-2 uppercase">Email</label>
-                        <input
-                            type="email"
-                            id="email"
-                            name="email"
-                            required
+                        <input type="email" id="email" name="email" required
                             class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none focus:border-[var(--genesis-yellow)] transition-all"
-                            placeholder="votre.email@exemple.com"
-                        >
+                            placeholder="votre.email@exemple.com">
+                    </div>
+
+                    <div>
+                        <label for="telephone" class="block text-sm font-black mb-2 uppercase">Téléphone</label>
+                        <input type="tel" id="telephone" name="telephone"
+                            class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none focus:border-[var(--genesis-yellow)] transition-all"
+                            placeholder="06 12 34 56 78">
                     </div>
 
                     <div>
                         <label for="password" class="block text-sm font-black mb-2 uppercase">Mot de passe</label>
-                        <input
-                            type="password"
-                            id="password"
-                            name="password"
-                            required
+                        <input type="password" id="password" name="password" required minlength="6"
                             class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none focus:border-[var(--genesis-yellow)] transition-all"
-                            placeholder="••••••••"
-                        >
+                            placeholder="6 caractères minimum">
                     </div>
 
-                    <button
-                        type="submit"
-                        id="submitBtn"
-                        class="w-full py-4 neo-btn-yellow text-2xl font-black italic uppercase tracking-tighter"
-                    >
-                        Se connecter
+                    <button type="submit" id="submitBtn"
+                        class="w-full py-4 neo-btn-yellow text-2xl font-black italic uppercase tracking-tighter">
+                        Créer mon compte
                     </button>
                 </form>
-
-                <div class="mt-8 text-center">
-                    <p class="text-sm font-bold opacity-60">
-                        <i class="fas fa-info-circle mr-1"></i>
-                        Pas encore de compte ? Inscrivez-vous en tant que partenaire ci-dessous.
-                    </p>
-                </div>
             </div>
 
             <div class="mt-8 text-center">
-                <p class="text-white font-bold">Pas encore partenaire ? <a href="partner-register.html" class="text-[var(--genesis-yellow)] underline font-black">Devenir partenaire</a></p>
-                <p class="text-white font-bold mt-4">Mot de passe oublié ? <a href="contact.html" class="text-[var(--genesis-yellow)] underline font-black">Contactez-nous</a></p>
-                <p class="text-white font-bold mt-4 opacity-60 text-sm">
-                    <a href="login.html" class="text-white underline hover:text-[var(--genesis-yellow)]">Espace Client</a>
+                <p class="text-white font-bold">
+                    Déjà partenaire ? <a href="partner-login.html" class="text-[var(--genesis-yellow)] underline font-black">Connectez-vous</a>
                 </p>
             </div>
         </div>
@@ -173,30 +217,39 @@
             window.location.href = 'partner-dashboard.html';
         }
 
-        // Gestion de la soumission du formulaire
-        var partnerLoginFormEl = document.getElementById('partnerLoginForm');
-        if (partnerLoginFormEl) {
-            partnerLoginFormEl.addEventListener('submit', async function(e) {
+        var partnerRegisterFormEl = document.getElementById('partnerRegisterForm');
+        if (partnerRegisterFormEl) {
+            partnerRegisterFormEl.addEventListener('submit', async function(e) {
                 e.preventDefault();
 
-                var email = document.getElementById('email').value;
-                var password = document.getElementById('password').value;
                 var errorMessage = document.getElementById('errorMessage');
+                var infoMessage = document.getElementById('infoMessage');
                 var submitBtn = document.getElementById('submitBtn');
+                errorMessage.classList.remove('show');
 
-                // Desactiver le bouton
+                var registerData = {
+                    prenom: document.getElementById('prenom').value.trim(),
+                    nom: document.getElementById('nom').value.trim(),
+                    partner_type: document.getElementById('partner_type').value,
+                    company: document.getElementById('company').value.trim(),
+                    email: document.getElementById('email').value.trim(),
+                    telephone: document.getElementById('telephone').value.trim(),
+                    password: document.getElementById('password').value
+                };
+
                 submitBtn.disabled = true;
-                submitBtn.textContent = 'Connexion en cours...';
+                submitBtn.textContent = 'Création en cours...';
 
-                // Tentative de connexion
-                var result = await partnerLogin(email, password);
+                var result = await partnerRegister(registerData);
 
-                // Reactiver le bouton
                 submitBtn.disabled = false;
-                submitBtn.textContent = 'Se connecter';
+                submitBtn.textContent = 'Créer mon compte';
 
                 if (result.success) {
-                    window.location.href = 'partner-dashboard.html';
+                    infoMessage.classList.add('show');
+                    setTimeout(function() {
+                        window.location.href = 'partner-dashboard.html';
+                    }, 1800);
                 } else {
                     errorMessage.textContent = result.message;
                     errorMessage.classList.add('show');

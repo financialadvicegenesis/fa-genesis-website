@@ -643,6 +643,61 @@ function createDispatchesForOrder(orderId) {
     }
 }
 
+// Commande "prestation partenaire" (marketplace) : le client a déjà choisi un partenaire précis,
+// donc la mission est créée directement acceptée (pas de dispatch ouvert à réclamation).
+function createPartnerServiceDispatch(order) {
+    try {
+        if (!order || order.product_type !== 'partner_service' || !order.partner_id) return null;
+
+        var dispatches = loadDispatches();
+        var existing = dispatches.find(function(d) { return d.order_id === order.id; });
+        if (existing) return existing;
+
+        var partnerPct = 85;
+        var totalAmount = parseFloat(order.total_amount || 0);
+        var depositAmount = parseFloat(order.deposit_amount || 0);
+        var partnerDeposit = parseFloat((depositAmount * partnerPct / 100).toFixed(2));
+        var partnerTotal = parseFloat((totalAmount * partnerPct / 100).toFixed(2));
+
+        var users = loadUsers();
+        var clientEmail = (order.client_info && order.client_info.email) || '';
+        var user = users.find(function(u) { return u.email === clientEmail; });
+        var clientPrenom = (order.client_info && order.client_info.first_name)
+            || (user && (user.prenom || user.firstName || user.first_name))
+            || 'Client';
+
+        var partner = getPartnerById(order.partner_id);
+
+        var dispatch = {
+            id: 'DSP-' + uuidv4().split('-')[0],
+            order_id: order.id,
+            client_prenom: clientPrenom,
+            offer_name: order.product_name,
+            offer_total_price: totalAmount,
+            partner_type: partner ? partner.partner_type : null,
+            partner_pct: partnerPct,
+            partner_deposit_amount: partnerDeposit,
+            partner_total_amount: partnerTotal,
+            client_availability: null,
+            status: 'accepted',
+            claimed_by_name: partner ? (partner.prenom + ' ' + partner.nom) : null,
+            claimed_by_profile: null,
+            claimed_by_partner_id: order.partner_id,
+            claimed_at: new Date().toISOString(),
+            claim_message: null,
+            proposed_start: null,
+            created_at: new Date().toISOString()
+        };
+        dispatches.push(dispatch);
+        saveDispatches(dispatches);
+        console.log('[DISPATCH] Mission prestation partenaire créée et acceptée directement : ' + order.id + ' → ' + order.partner_id);
+        return dispatch;
+    } catch (e) {
+        console.error('[DISPATCH] Erreur createPartnerServiceDispatch:', e);
+        return null;
+    }
+}
+
 function loadPartnerUploads() {
     try {
         if (fs.existsSync(PARTNER_UPLOADS_FILE)) {
@@ -1461,7 +1516,7 @@ app.get('/api/products/:productId', (req, res) => {
  */
 app.post('/api/orders/create', (req, res) => {
     try {
-        const { productId, items, clientInfo } = req.body;
+        const { productId, items, clientInfo, partnerServiceOrder } = req.body;
 
         if (!clientInfo || !clientInfo.email || !clientInfo.firstName || !clientInfo.lastName) {
             return res.status(400).json({ error: 'Informations client incompletes (email, firstName, lastName requis)' });
@@ -1645,6 +1700,60 @@ app.post('/api/orders/create', (req, res) => {
             }
             console.log('[ORDER] Commande multi: ' + order.id + ' - ' + allOrderItems.length + ' items - ' + totalAmountFinal + 'EUR');
 
+        // ---- FORMAT PRESTATION PARTENAIRE (marketplace, commande directe) ----
+        } else if (partnerServiceOrder && partnerServiceOrder.partnerId && partnerServiceOrder.serviceId) {
+            const partner = getPartnerById(partnerServiceOrder.partnerId);
+            if (!partner) {
+                return res.status(404).json({ error: 'Partenaire non trouve' });
+            }
+            if (partner.accountStatus !== 'active') {
+                return res.status(400).json({ error: 'Ce partenaire n\'est pas disponible actuellement' });
+            }
+            const service = (partner.services || []).find(function(s) {
+                return s.id === partnerServiceOrder.serviceId && s.active !== false;
+            });
+            if (!service) {
+                return res.status(404).json({ error: 'Prestation non trouvee' });
+            }
+
+            const psoTotal = parseFloat(service.price);
+            const psoDeposit = Math.round(psoTotal * 0.30);
+            const psoBalance = psoTotal - psoDeposit;
+
+            order = {
+                id: `ORD-${uuidv4().split('-')[0].toUpperCase()}`,
+                product_id: null,
+                product_name: service.label,
+                product_type: 'partner_service',
+                partner_id: partner.id,
+                partner_service_id: service.id,
+                client_info: {
+                    email: clientInfo.email,
+                    first_name: clientInfo.firstName,
+                    last_name: clientInfo.lastName,
+                    phone: clientInfo.phone || null,
+                    company: clientInfo.company || null,
+                    client_type: clientInfo.clientType || 'particulier'
+                },
+                total_amount: psoTotal,
+                deposit_amount: psoDeposit,
+                balance_amount: psoBalance,
+                installments_count: 1,
+                installments: null,
+                amount_paid: 0,
+                deposit_paid: false,
+                balance_paid: false,
+                duration_days: 0,
+                start_date: null,
+                status: 'pending_deposit',
+                checkout_id: null,
+                transaction_id: null,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            };
+
+            console.log(`[ORDER] Commande prestation partenaire: ${order.id} - ${service.label} (${partner.email}) - ${psoTotal}EUR`);
+
         // ---- FORMAT LEGACY (1 seul productId) ----
         } else if (productId) {
             const product = getProductById(productId);
@@ -1689,7 +1798,7 @@ app.post('/api/orders/create', (req, res) => {
             console.log(`[ORDER] Commande creee: ${order.id} - ${product.name} - ${amounts.total_amount}EUR`);
 
         } else {
-            return res.status(400).json({ error: 'productId ou items requis' });
+            return res.status(400).json({ error: 'productId, items ou partnerServiceOrder requis' });
         }
 
         // Sauvegarder
@@ -2479,12 +2588,21 @@ app.post('/api/payments/sumup/webhook', async (req, res) => {
                         }
                     }).catch(err => console.error('[WEBHOOK] Erreur envoi email bienvenue:', err));
 
-                    // Assigner les intervenants admin + créer les missions partenaires
-                    assignIntervenantsFromOrder(orderId);
-                    createDispatchesForOrder(orderId);
-                    // Le versement de l'acompte partenaire est déclenché uniquement
-                    // lorsque le partenaire accepte explicitement la mission.
-                    console.log('[WEBHOOK] Acompte retenu — en attente acceptation partenaire');
+                    if (updatedOrder.product_type === 'partner_service') {
+                        // Commande directe sur un partenaire choisi : mission déjà acceptée, acompte versé immédiatement.
+                        const psDispatch = createPartnerServiceDispatch(updatedOrder);
+                        if (psDispatch) {
+                            await processDispatchPayout(psDispatch, 'deposit');
+                        }
+                        console.log('[WEBHOOK] Mission partenaire créée et acompte versé (commande directe)');
+                    } else {
+                        // Assigner les intervenants admin + créer les missions partenaires
+                        assignIntervenantsFromOrder(orderId);
+                        createDispatchesForOrder(orderId);
+                        // Le versement de l'acompte partenaire est déclenché uniquement
+                        // lorsque le partenaire accepte explicitement la mission.
+                        console.log('[WEBHOOK] Acompte retenu — en attente acceptation partenaire');
+                    }
 
                     // NOTE: Le bootstrap projet est maintenant declenche par finalizeSchedule()
                     // apres que le client ait choisi une date ET que admin+partenaire aient confirme
@@ -2672,11 +2790,20 @@ app.post('/api/payments/verify', async (req, res) => {
                             }
                         }).catch(err => console.error('[VERIFY] Erreur envoi email bienvenue:', err));
 
-                        // Assigner les intervenants admin + créer les missions partenaires
-                        assignIntervenantsFromOrder(orderId);
-                        createDispatchesForOrder(orderId);
-                        // Le versement de l'acompte partenaire est déclenché à l'acceptation de la mission.
-                        console.log('[VERIFY] Acompte retenu — en attente acceptation partenaire');
+                        if (updatedOrder.product_type === 'partner_service') {
+                            // Commande directe sur un partenaire choisi : mission déjà acceptée, acompte versé immédiatement.
+                            const psDispatch = createPartnerServiceDispatch(updatedOrder);
+                            if (psDispatch) {
+                                await processDispatchPayout(psDispatch, 'deposit');
+                            }
+                            console.log('[VERIFY] Mission partenaire créée et acompte versé (commande directe)');
+                        } else {
+                            // Assigner les intervenants admin + créer les missions partenaires
+                            assignIntervenantsFromOrder(orderId);
+                            createDispatchesForOrder(orderId);
+                            // Le versement de l'acompte partenaire est déclenché à l'acceptation de la mission.
+                            console.log('[VERIFY] Acompte retenu — en attente acceptation partenaire');
+                        }
 
                         // NOTE: Le bootstrap projet est maintenant declenche par finalizeSchedule()
                         // apres que le client ait choisi une date ET que admin+partenaire aient confirme
@@ -6859,6 +6986,56 @@ app.post('/api/partner/auth/login', async (req, res) => {
     }
 });
 
+// Inscription partenaire (self-service) — compte créé en 'pending', visible en annuaire seulement après validation admin
+app.post('/api/partner/auth/register', async (req, res) => {
+    try {
+        const { prenom, nom, email, telephone, password, partner_type, company } = req.body;
+        if (!prenom || !nom || !email || !password || !partner_type) {
+            return res.status(400).json({ error: 'Champs obligatoires: prenom, nom, email, password, partner_type' });
+        }
+        const validTypes = ['photographer', 'videographer', 'marketer', 'media'];
+        if (validTypes.indexOf(partner_type) === -1) {
+            return res.status(400).json({ error: 'partner_type invalide. Valeurs acceptees: ' + validTypes.join(', ') });
+        }
+        const existing = getPartnerByEmail(email);
+        if (existing) {
+            return res.status(409).json({ error: 'Un compte existe deja avec cet email' });
+        }
+        if (password.length < 6) {
+            return res.status(400).json({ error: 'Le mot de passe doit faire au moins 6 caracteres' });
+        }
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const now = new Date().toISOString();
+        const sessionToken = generateSessionToken();
+        const partner = {
+            id: 'PTR-' + uuidv4().split('-')[0],
+            prenom: prenom,
+            nom: nom,
+            email: email.toLowerCase(),
+            telephone: telephone || '',
+            password: hashedPassword,
+            partner_type: partner_type,
+            company: company || '',
+            services: [],
+            sessionToken: sessionToken,
+            accountStatus: 'pending',
+            createdAt: now,
+            updatedAt: now,
+            lastLogin: now,
+            createdBy: 'self-register'
+        };
+        const partners = loadPartners();
+        partners.push(partner);
+        savePartners(partners);
+        const { password: _, ...partnerSafe } = partner;
+        console.log('[PARTNER] Inscription self-service:', email, '(' + partner_type + ')');
+        res.json({ success: true, partner: partnerSafe, token: sessionToken });
+    } catch (error) {
+        console.error('[PARTNER] Erreur inscription:', error);
+        res.status(500).json({ error: 'Erreur lors de l\'inscription' });
+    }
+});
+
 // ── GET /api/partner/subprofiles — liste les sous-profils du compte partenaire connecté ──
 app.get('/api/partner/subprofiles', authenticatePartner, (req, res) => {
     try {
@@ -7019,16 +7196,61 @@ app.put('/api/partner/auth/update-profile', authenticatePartner, async (req, res
     }
 });
 
+// Lister mes prestations (partenaire connecté)
+app.get('/api/partner/services', authenticatePartner, (req, res) => {
+    res.json({ success: true, services: req.partner.services || [] });
+});
+
+// Remplacer la liste de mes prestations (partenaire connecté)
+app.put('/api/partner/services', authenticatePartner, (req, res) => {
+    try {
+        const { services } = req.body;
+        if (!Array.isArray(services)) {
+            return res.status(400).json({ error: 'services doit etre un tableau' });
+        }
+        const cleaned = [];
+        for (const s of services) {
+            if (!s || !s.label || typeof s.label !== 'string' || !s.label.trim()) {
+                return res.status(400).json({ error: 'Chaque prestation doit avoir un libelle' });
+            }
+            const price = Number(s.price);
+            if (!Number.isFinite(price) || price <= 0) {
+                return res.status(400).json({ error: 'Chaque prestation doit avoir un prix numerique superieur a 0' });
+            }
+            cleaned.push({
+                id: s.id || ('SVC-' + uuidv4().split('-')[0]),
+                label: s.label.trim(),
+                description: (s.description || '').trim(),
+                price: price,
+                active: s.active !== false
+            });
+        }
+        const partners = loadPartners();
+        const index = partners.findIndex(p => p.id === req.partner.id);
+        if (index === -1) {
+            return res.status(404).json({ error: 'Partenaire non trouve' });
+        }
+        partners[index].services = cleaned;
+        partners[index].updatedAt = new Date().toISOString();
+        savePartners(partners);
+        res.json({ success: true, services: cleaned });
+    } catch (error) {
+        console.error('[PARTNER] Erreur update services:', error);
+        res.status(500).json({ error: 'Erreur lors de la mise a jour des prestations' });
+    }
+});
+
 // ============================================================
 // ENDPOINT PUBLIC - ANNUAIRE PARTENAIRES
 // ============================================================
 
-const PARTNER_CATEGORY_FROM_PRICE = {
-    photographer: null,
-    videographer: null,
-    marketer: 70,
-    media: 55
-};
+function getPartnerFromPrice(partner) {
+    const activePrices = (partner.services || [])
+        .filter(s => s.active !== false)
+        .map(s => s.price)
+        .filter(p => typeof p === 'number' && isFinite(p));
+    return activePrices.length ? Math.min(...activePrices) : null;
+}
 
 function getPartnerRatingSummary(partnerId) {
     const reviews = loadPartnerReviews().filter(
@@ -7056,9 +7278,7 @@ app.get('/api/partners/directory', (req, res) => {
         }
 
         let results = partners.map(p => {
-            const fromPrice = PARTNER_CATEGORY_FROM_PRICE.hasOwnProperty(p.partner_type)
-                ? PARTNER_CATEGORY_FROM_PRICE[p.partner_type]
-                : null;
+            const fromPrice = getPartnerFromPrice(p);
             return {
                 id: p.id,
                 prenom: p.prenom,
@@ -7091,9 +7311,9 @@ app.get('/api/partners/:id/reviews', (req, res) => {
         if (!partner) {
             return res.status(404).json({ error: 'Partenaire non trouve' });
         }
-        const fromPrice = PARTNER_CATEGORY_FROM_PRICE.hasOwnProperty(partner.partner_type)
-            ? PARTNER_CATEGORY_FROM_PRICE[partner.partner_type]
-            : null;
+        const fromPrice = getPartnerFromPrice(partner);
+        const activeServices = (partner.services || []).filter(s => s.active !== false)
+            .map(s => ({ id: s.id, label: s.label, description: s.description || '', price: s.price }));
         const reviews = loadPartnerReviews()
             .filter(r => r.partnerId === partner.id && r.status === 'published')
             .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
@@ -7107,7 +7327,8 @@ app.get('/api/partners/:id/reviews', (req, res) => {
                 partner_type: partner.partner_type,
                 photo: partner.photo || null,
                 fromPrice: fromPrice,
-                rating: getPartnerRatingSummary(partner.id)
+                rating: getPartnerRatingSummary(partner.id),
+                services: activeServices
             },
             reviews: reviews
         });

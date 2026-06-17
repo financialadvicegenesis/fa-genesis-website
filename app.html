@@ -783,6 +783,14 @@ a{text-decoration:none;color:inherit}
 .p-dir-review-name{font-size:12px;font-weight:700;color:#ccc}
 .p-dir-review-comment{font-size:12px;color:#999;line-height:1.4}
 .p-dir-review-empty{color:var(--muted);font-size:12px;padding:10px 0}
+.p-dir-services-list{display:flex;flex-direction:column;gap:8px}
+.p-dir-service-row{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#111;border:1.5px solid #1e1e1e;border-radius:12px;padding:12px 14px}
+.p-dir-service-info{flex:1;min-width:0}
+.p-dir-service-label{font-size:13px;font-weight:900;color:var(--text)}
+.p-dir-service-desc{font-size:11px;color:var(--muted);margin-top:2px;line-height:1.3}
+.p-dir-service-cta{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0}
+.p-dir-service-price{font-size:13px;font-weight:900;color:var(--yellow)}
+.p-dir-service-btn{background:var(--yellow);color:#000;border:none;border-radius:8px;font-size:11px;font-weight:900;text-transform:uppercase;padding:7px 12px;cursor:pointer;white-space:nowrap}
 
 /* Badge Populaire */
 .p-neo-card.featured{border-color:var(--yellow);box-shadow:6px 6px 0 var(--yellow)}
@@ -1090,6 +1098,12 @@ a{text-decoration:none;color:inherit}
 #cw-booking-overlay.open{display:flex;animation:regFadeIn .2s ease;}
 #cw-booking-sheet{width:100%;max-width:480px;background:#0d0d0d;border-radius:20px 20px 0 0;border-top:3px solid #FFD700;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;transform:translateY(100%);transition:transform .45s cubic-bezier(.34,1.56,.64,1);}
 #cw-booking-sheet.up{transform:translateY(0);}
+
+/* ── PARTNER SERVICE BOOKING (marketplace) ── */
+#pb-overlay{display:none;position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,.75);backdrop-filter:blur(4px);align-items:flex-end;justify-content:center;}
+#pb-overlay.open{display:flex;animation:regFadeIn .2s ease;}
+#pb-sheet{width:100%;max-width:480px;background:#0d0d0d;border-radius:20px 20px 0 0;border-top:3px solid #FFD700;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;transform:translateY(100%);transition:transform .45s cubic-bezier(.34,1.56,.64,1);}
+#pb-sheet.up{transform:translateY(0);}
 .cwb-hdr{display:flex;align-items:center;justify-content:space-between;padding:18px 20px 0;flex-shrink:0;}
 .cwb-body{flex:1;overflow-y:auto;padding:16px 20px 28px;}
 .cwb-name{font-family:'Unbounded',cursive;font-size:1.05rem;font-weight:900;color:#FFD700;margin-bottom:4px;}
@@ -2474,15 +2488,28 @@ function directoryCard(p){
     +'<div class="p-dir-card-price">'+priceLabel+'</div>'
     +'</div>';
 }
+var _dirPartnerCache = {};
 function openPartnerDetail(partnerId){
   fetch(API+'/api/partners/'+encodeURIComponent(partnerId)+'/reviews')
     .then(function(r){return r.json();})
     .then(function(data){
       if(!data || !data.success) return;
       var p = data.partner;
+      _dirPartnerCache[p.id] = p;
       var label = PARTNER_TYPE_LABELS_DIR[p.partner_type] || p.partner_type;
       var priceLabel = (p.fromPrice===null||p.fromPrice===undefined) ? 'Sur devis' : ('à partir de '+p.fromPrice+' €');
       var starsLabel = (p.rating && p.rating.count) ? ('★ '+p.rating.average+' ('+p.rating.count+' avis)') : 'Aucun avis pour le moment';
+      var services = p.services || [];
+      var servicesHtml = services.length
+        ? services.map(function(s){
+            return '<div class="p-dir-service-row">'
+              +'<div class="p-dir-service-info"><div class="p-dir-service-label">'+s.label+'</div>'
+              +(s.description?'<div class="p-dir-service-desc">'+s.description+'</div>':'')+'</div>'
+              +'<div class="p-dir-service-cta"><div class="p-dir-service-price">'+s.price+' €</div>'
+              +'<button class="p-dir-service-btn" onclick="openPartnerBooking(\''+p.id+'\',\''+s.id+'\')">Commander</button></div>'
+              +'</div>';
+          }).join('')
+        : '<div class="p-dir-review-empty">Ce partenaire n\'a pas encore publié de prestations.</div>';
       var reviewsHtml = (data.reviews||[]).map(function(r){
         return '<li><div class="p-dir-review-top"><span>'+'★'.repeat(r.rating||0)+'</span><span class="p-dir-review-name">'+r.userName+'</span></div>'
           +(r.comment?'<p class="p-dir-review-comment">'+r.comment+'</p>':'')+'</li>';
@@ -2492,6 +2519,9 @@ function openPartnerDetail(partnerId){
         +'<div class="detail-sub">'+label+'</div>'
         +'<div class="detail-price">'+priceLabel+'</div>'
         +'<div class="detail-payment">'+starsLabel+'</div>'
+        +'<div class="detail-divider"></div>'
+        +'<div class="detail-feats-title">Prestations</div>'
+        +'<div class="p-dir-services-list">'+servicesHtml+'</div>'
         +'<div class="detail-divider"></div>'
         +'<div class="detail-feats-title">Avis clients</div>'
         +'<ul class="p-dir-reviews-list">'+reviewsHtml+'</ul>'
@@ -4964,6 +4994,116 @@ function cwBookingSendRequest(){
   });
 }
 
+// ── PARTNER SERVICE BOOKING (marketplace : commande directe sur un partenaire choisi) ──
+var _pbPartner=null, _pbService=null;
+
+function openPartnerBooking(partnerId, serviceId){
+  if(!USER||GUEST){ closeDetail(); showLoginSheet(); return; }
+  var p = _dirPartnerCache[partnerId];
+  if(!p) return;
+  var service = (p.services||[]).find(function(s){ return s.id===serviceId; });
+  if(!service) return;
+  _pbPartner = p; _pbService = service;
+
+  var overlay=document.getElementById('pb-overlay'); var sheet=document.getElementById('pb-sheet');
+  if(!overlay||!sheet) return;
+
+  var total = parseFloat(service.price)||0;
+  var deposit = Math.round(total*0.30);
+  var balance = total-deposit;
+
+  var nm=document.getElementById('pb-service-name'); if(nm) nm.textContent=service.label;
+  var pn=document.getElementById('pb-partner-name'); if(pn) pn.textContent='avec '+(p.prenom||'')+' '+(p.nom||'');
+  var amt=document.getElementById('pb-deposit-amt'); if(amt) amt.textContent=deposit+' €';
+  var bal=document.getElementById('pb-balance-amt'); if(bal) bal.textContent=balance+' €';
+  var tot=document.getElementById('pb-total-amt'); if(tot) tot.textContent=total+' €';
+  var er=document.getElementById('pb-err'); if(er) er.classList.remove('on');
+  var fm=document.getElementById('pb-form'); if(fm) fm.style.display='';
+  var ws=document.getElementById('pb-widget-screen'); if(ws) ws.style.display='none';
+  var sc=document.getElementById('pb-success'); if(sc) sc.style.display='none';
+  var sb=document.getElementById('pb-pay-btn'); if(sb){sb.disabled=false;sb.textContent='PAYER L\'ACOMPTE';}
+
+  closeDetail();
+  overlay.classList.add('open');
+  setTimeout(function(){ sheet.classList.add('up'); }, 20);
+}
+function closePartnerBooking(){
+  var sheet=document.getElementById('pb-sheet'); var overlay=document.getElementById('pb-overlay');
+  if(!sheet||!overlay) return;
+  sheet.classList.remove('up');
+  setTimeout(function(){ overlay.classList.remove('open'); }, 460);
+}
+function pbPayDeposit(){
+  if(!_pbPartner||!_pbService||!USER||GUEST) return;
+  var er=document.getElementById('pb-err'); if(er) er.classList.remove('on');
+  var sb=document.getElementById('pb-pay-btn'); if(sb){sb.disabled=true;sb.textContent='Création de la commande...';}
+
+  var clientInfo = {
+    firstName: USER.prenom||USER.firstName||'',
+    lastName: USER.nom||USER.lastName||'',
+    email: USER.email||'',
+    phone: USER.telephone||USER.phone||'',
+    clientType: 'particulier'
+  };
+
+  fetch((window.FA_GENESIS_API||API)+'/api/orders/create',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+USER._token},
+    body:JSON.stringify({ clientInfo: clientInfo, partnerServiceOrder:{ partnerId:_pbPartner.id, serviceId:_pbService.id } })
+  }).then(function(r){ return r.json().then(function(d){ return {ok:r.ok, data:d}; }); })
+  .then(function(res){
+    if(!res.ok || !res.data || !res.data.orderId) throw new Error((res.data&&res.data.error)||'Erreur création commande');
+    var orderId = res.data.orderId;
+    return fetch((window.FA_GENESIS_API||API)+'/api/payments/sumup/create-checkout',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({orderId:orderId, stage:'deposit'})
+    }).then(function(r2){ return r2.json().then(function(d2){ return {ok:r2.ok, data:d2, orderId:orderId}; }); });
+  }).then(function(res2){
+    if(!res2.ok || !res2.data || !res2.data.checkout_id) throw new Error((res2.data&&res2.data.error)||'Erreur création paiement');
+    _pbMountWidget(res2.data.checkout_id, res2.orderId);
+  }).catch(function(err){
+    if(sb){sb.disabled=false;sb.textContent='Réessayer le paiement';}
+    if(er){er.textContent=err.message||'Erreur. Réessayez.';er.classList.add('on');}
+  });
+}
+function _pbMountWidget(checkoutId, orderId){
+  var fm=document.getElementById('pb-form'); if(fm) fm.style.display='none';
+  var ws=document.getElementById('pb-widget-screen'); if(ws) ws.style.display='';
+  var container=document.getElementById('pb-widget-container');
+  if(container) container.innerHTML='<div id="pb-card-div"></div>';
+  function doMount(){
+    try{
+      SumUpCard.mount({
+        id:'pb-card-div', checkoutId:checkoutId, locale:'fr-FR', showSubmitButton:true,
+        onResponse:function(type, body){
+          if(type==='success'){
+            fetch((window.FA_GENESIS_API||API)+'/api/payments/verify',{
+              method:'POST', headers:{'Content-Type':'application/json'},
+              body:JSON.stringify({orderId:orderId, stage:'deposit'})
+            }).catch(function(){});
+            if(ws) ws.style.display='none';
+            var sc=document.getElementById('pb-success'); if(sc) sc.style.display='';
+            launchConfetti(); showToast('Paiement réussi !','Votre commande est confirmée','success');
+          } else if(type==='error'){
+            var msg = body&&(body.message||body.error) ? (body.message||body.error) : 'Paiement refusé. Vérifiez vos informations.';
+            var er=document.getElementById('pb-err'); if(er){er.textContent=msg;er.classList.add('on');}
+          }
+        }
+      });
+    } catch(e){
+      var er=document.getElementById('pb-err'); if(er){er.textContent='Erreur module de paiement : '+e.message;er.classList.add('on');}
+    }
+  }
+  if(typeof SumUpCard!=='undefined'){ doMount(); }
+  else {
+    var script=document.createElement('script');
+    script.src='https://gateway.sumup.com/gateway/ecom/card/v2/sdk.js';
+    script.onload=doMount;
+    script.onerror=function(){ var er=document.getElementById('pb-err'); if(er){er.textContent='Impossible de charger le module de paiement.';er.classList.add('on');} };
+    document.head.appendChild(script);
+  }
+}
+
 // ── MESSAGE COMPOSE ───────────────────────────────────────────
 function openMsgCompose(){
   if(!USER||GUEST){ showLoginSheet(); return; }
@@ -5586,6 +5726,52 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
         <div class="cwb-success-ico">&#9989;</div>
         <p>Demande envoyée ! Nous vous contacterons rapidement pour confirmer votre réservation.</p>
         <button class="cwb-btn cwb-btn-yellow" style="width:100%;margin-top:16px;" onclick="closeCwBooking()">Fermer</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PARTNER SERVICE BOOKING OVERLAY (marketplace) -->
+<div id="pb-overlay" onclick="if(event.target===this)closePartnerBooking()">
+  <div id="pb-sheet">
+    <div class="cwb-hdr">
+      <button class="reg-nav-btn" onclick="closePartnerBooking()">&#8249;</button>
+      <div style="font-family:'Unbounded',cursive;font-size:10px;font-weight:900;color:#FFD700;letter-spacing:1.5px;">COMMANDE</div>
+      <button class="reg-nav-btn" onclick="closePartnerBooking()">&#x2715;</button>
+    </div>
+    <div class="cwb-body">
+      <div class="cwb-name" id="pb-service-name">Prestation</div>
+      <div class="cwb-price-info" id="pb-partner-name"></div>
+      <div class="cwb-err" id="pb-err"></div>
+      <div id="pb-form">
+        <div style="background:#111;border:1.5px solid #1e1e1e;border-radius:14px;overflow:hidden;margin-bottom:14px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #1e1e1e;">
+            <div>
+              <div style="font-size:12px;color:#FFD700;font-weight:700;letter-spacing:.5px;">AUJOURD'HUI — OBLIGATOIRE</div>
+              <div style="font-size:14px;color:#fff;font-weight:700;margin-top:2px;">Acompte 30 %</div>
+            </div>
+            <div id="pb-deposit-amt" style="font-size:18px;color:#FFD700;font-weight:800;"></div>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;">
+            <div>
+              <div style="font-size:12px;color:#888;font-weight:700;letter-spacing:.5px;">SOLDE (70 %)</div>
+              <div style="font-size:13px;color:#aaa;margin-top:2px;">À régler après la prestation</div>
+            </div>
+            <div id="pb-balance-amt" style="font-size:15px;color:#aaa;font-weight:700;"></div>
+          </div>
+        </div>
+        <p style="font-size:11px;color:#666;font-weight:700;text-align:center;margin-bottom:14px;">Total prestation : <span id="pb-total-amt"></span></p>
+        <div class="cwb-actions" style="grid-template-columns:1fr;">
+          <button class="cwb-btn cwb-btn-yellow" id="pb-pay-btn" onclick="pbPayDeposit()">PAYER L'ACOMPTE</button>
+        </div>
+      </div>
+      <div id="pb-widget-screen" style="display:none;">
+        <div id="pb-widget-container"></div>
+      </div>
+      <div class="cwb-success" id="pb-success" style="display:none;">
+        <div class="cwb-success-ico">&#9989;</div>
+        <p>Acompte payé ! Le partenaire a été notifié et votre commande apparaît dans "Mes réservations".</p>
+        <button class="cwb-btn cwb-btn-yellow" style="width:100%;margin-top:16px;" onclick="closePartnerBooking()">Fermer</button>
       </div>
     </div>
   </div>
