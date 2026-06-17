@@ -4697,11 +4697,11 @@ app.post('/api/auth/register', async (req, res) => {
         const validAccountTypes = ['etudiant', 'particulier', 'entreprise'];
         const userAccountType = validAccountTypes.includes(accountType) ? accountType : null;
 
-        // Validation des champs requis
-        if (!prenom || !nom || !email || !password) {
+        // Validation des champs requis (le nom est facultatif côté formulaire)
+        if (!prenom || !email || !password) {
             return res.status(400).json({
                 error: 'Champs requis manquants',
-                required: ['prenom', 'nom', 'email', 'password']
+                required: ['prenom', 'email', 'password']
             });
         }
 
@@ -4725,8 +4725,8 @@ app.post('/api/auth/register', async (req, res) => {
         }
 
         // Anti-spam : les noms qui ressemblent a des chaines aleatoires sont rejetes
-        if (isSpamName(prenom) || isSpamName(nom)) {
-            console.log('[SPAM] Inscription bloquee (nom suspect): ' + prenom + ' ' + nom + ' <' + email + '>');
+        if (isSpamName(prenom) || (nom && isSpamName(nom))) {
+            console.log('[SPAM] Inscription bloquee (nom suspect): ' + prenom + ' ' + (nom || '') + ' <' + email + '>');
             return res.status(400).json({ error: 'Veuillez entrer votre vrai prenom et nom.' });
         }
 
@@ -4782,7 +4782,7 @@ app.post('/api/auth/register', async (req, res) => {
         const newUser = {
             id: `USR-${uuidv4().split('-')[0].toUpperCase()}`,
             prenom: prenom.trim(),
-            nom: nom.trim(),
+            nom: nom ? nom.trim() : '',
             email: email.trim().toLowerCase(),
             telephone: telephone ? telephone.trim() : null,
             password: hashedPassword,
@@ -4805,7 +4805,7 @@ app.post('/api/auth/register', async (req, res) => {
 
         console.log(`[AUTH] Nouvel utilisateur inscrit: ${newUser.id} - ${email}`);
         // Push admin : nouvelle inscription
-        sendPushToRole('admin', { title: 'FA GENESIS — Nouvelle inscription', body: prenom + ' ' + nom + ' vient de s\'inscrire.', icon: '/assets/images/logo-favicon-192.png', badge: '/assets/images/logo-favicon-32.png', url: '/app.html#open-admin', tag: 'inscription' });
+        sendPushToRole('admin', { title: 'FA GENESIS — Nouvelle inscription', body: prenom + (nom ? ' ' + nom : '') + ' vient de s\'inscrire.', icon: '/assets/images/logo-favicon-192.png', badge: '/assets/images/logo-favicon-32.png', url: '/app.html#open-admin', tag: 'inscription' });
 
         // Email de bienvenue au client (invitation a decouvrir les offres)
         emailService.sendWelcomeEmail(email, prenom)

@@ -5128,7 +5128,7 @@ function regStepIdentity(){
       register(regData).then(function(res){
         if(btn){btn.disabled=false;btn.textContent='CRÉER MON COMPTE';}
         if(res&&res.success){ regShowSuccess(prenom); }
-        else{ var msg=(res&&res.error)?res.error:'Erreur lors de la création du compte.'; if(ge){ge.textContent=msg;ge.classList.add('on');} }
+        else{ var msg=(res&&(res.message||res.error))?(res.message||res.error):'Erreur lors de la création du compte.'; if(ge){ge.textContent=msg;ge.classList.add('on');} }
       }).catch(function(e){
         if(btn){btn.disabled=false;btn.textContent='CRÉER MON COMPTE';}
         var msg=(e&&e.message)?e.message:'Erreur réseau. Vérifiez votre connexion.'; if(ge){ge.textContent=msg;ge.classList.add('on');}
