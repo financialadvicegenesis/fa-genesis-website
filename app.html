@@ -3305,6 +3305,8 @@ function showLoginSheet(){
   var overlay=document.getElementById('login-overlay');
   var sheet=document.getElementById('login-sheet');
   if(!overlay||!sheet) return;
+  var rgOverlay=document.getElementById('reg-overlay'); var rgSheet=document.getElementById('reg-sheet');
+  if(rgOverlay&&rgOverlay.classList.contains('open')){ if(rgSheet) rgSheet.classList.remove('up'); rgOverlay.classList.remove('open'); }
   var e=document.getElementById('lo-email'); if(e) e.value='';
   var p=document.getElementById('lo-pwd'); if(p){p.value='';p.type='password';}
   var eye=document.getElementById('lo-eye'); if(eye) eye.innerHTML=EYE_OPEN_SVG;
@@ -5018,6 +5020,8 @@ function showRegisterSheet(){
   var overlay = document.getElementById('reg-overlay');
   var sheet = document.getElementById('reg-sheet');
   if(!overlay || !sheet) return;
+  var loOverlay=document.getElementById('login-overlay'); var loSheet=document.getElementById('login-sheet');
+  if(loOverlay&&loOverlay.classList.contains('open')){ if(loSheet) loSheet.classList.remove('up'); loOverlay.classList.remove('open'); }
   var steps = document.querySelectorAll('.reg-step');
   for(var i=0; i<steps.length; i++){ steps[i].classList.remove('active','left'); steps[i].style.transform=''; steps[i].style.transition=''; }
   document.getElementById('reg-s1').classList.add('active');
@@ -5148,14 +5152,22 @@ function regShowSuccess(prenom){
   if(!s3||!s4) return;
   s3.style.transition='transform .35s cubic-bezier(.4,0,.2,1)';
   s3.style.transform='translateX(-110%)';
+  s3.classList.remove('active');
   s4.style.transition='transform .45s cubic-bezier(.34,1.56,.64,1)';
   s4.style.transform='translateX(0)';
   s4.classList.add('active');
   var hdr=document.getElementById('reg-header'); if(hdr) hdr.style.opacity='0';
+  try{
+    var s=localStorage.getItem('fa_genesis_session');
+    var t=localStorage.getItem('fa_genesis_token');
+    if(s&&t){ USER=JSON.parse(s); USER._token=t; GUEST=false; }
+  }catch(e){}
   setTimeout(function(){
     closeRegSheet();
     setTimeout(function(){
       if(hdr) hdr.style.opacity='';
+      var welcome=document.getElementById('welcome');
+      if(welcome&&welcome.style.display!=='none'){ showApp(); nav('profil'); return; }
       if(typeof renderProfil==='function') renderProfil();
       if(typeof nav==='function') nav('profil');
     }, 500);
