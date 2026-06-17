@@ -850,10 +850,10 @@ a{text-decoration:none;color:inherit}
 .reg-prog-line{width:22px;height:2px;background:#2a2a2a;border-radius:2px;transition:background .3s;}
 .reg-prog-line.done{background:#FFD700;}
 #reg-steps{flex:1;position:relative;overflow:hidden;}
-.reg-step{position:absolute;inset:0;padding:28px 24px 32px;display:flex;flex-direction:column;transform:translateX(110%);transition:transform .35s cubic-bezier(.4,0,.2,1);overflow-y:auto;}
-.reg-step.active{transform:translateX(0);}
+.reg-step{position:absolute;inset:0;padding:28px 24px 32px;display:flex;flex-direction:column;transform:translateX(110%);transition:transform .35s cubic-bezier(.4,0,.2,1);overflow-y:auto;visibility:hidden;pointer-events:none;z-index:1;background:#0d0d0d;}
+.reg-step.active{transform:translateX(0);visibility:visible;pointer-events:auto;z-index:2;}
 .reg-step.left{transform:translateX(-110%);}
-#reg-s5{align-items:center;justify-content:center;text-align:center;transform:translateX(110%);}
+#reg-s5{align-items:center;justify-content:center;text-align:center;}
 .reg-profile-tile{width:100%;background:#1a1a1a;border:2px solid #262626;color:#fff;font-family:'Space Grotesk',sans-serif;padding:18px 16px;outline:none;transition:border-color .15s,background .15s;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;gap:14px;margin-bottom:12px;text-align:left;}
 .reg-profile-tile:active{border-color:#FFD700;background:#1f1c00;}
 .reg-profile-tile-ico{font-size:24px;flex-shrink:0;line-height:1;}
