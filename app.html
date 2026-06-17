@@ -512,6 +512,21 @@ a{text-decoration:none;color:inherit}
   border-radius:12px;margin-bottom:10px;font-family:inherit}
 .ns-skip{width:100%;padding:12px;background:transparent;color:var(--sub);font-size:13px;font-family:inherit}
 
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   MODAL AVIS PARTENAIRE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+#review-overlay{display:none;position:fixed;inset:0;z-index:800;
+  background:rgba(0,0,0,.7);backdrop-filter:blur(8px);align-items:flex-end;justify-content:center}
+#review-overlay.on{display:flex}
+.rv-stars{display:flex;justify-content:center;gap:8px;margin-bottom:20px}
+.rv-star{font-size:32px;color:#333;cursor:pointer;transition:color .15s,transform .15s;background:none;border:none;font-family:inherit}
+.rv-star.on{color:var(--yellow);transform:scale(1.1)}
+.rv-comment{width:100%;background:#0d0d0d;border:1px solid var(--border);border-radius:12px;
+  padding:14px;color:var(--text);font-size:13px;font-family:inherit;resize:none;min-height:80px;margin-bottom:20px}
+.rv-comment::placeholder{color:#555}
+.rv-error{font-size:12px;color:#ef4444;text-align:center;margin:-10px 0 14px;display:none}
+.rv-error.on{display:block}
+
 /* Locked section */
 .locked{display:flex;flex-direction:column;align-items:center;justify-content:center;
   min-height:60vh;padding:40px;text-align:center;gap:14px}
@@ -732,6 +747,43 @@ a{text-decoration:none;color:inherit}
 }
 .p-partner-cta.dark-cta{background:#000;color:#00ffff;border-color:#000}
 
+/* ━━ ANNUAIRE PARTENAIRES ━━ */
+.p-dir-controls{display:flex;gap:8px;padding:0 16px 14px;}
+.p-dir-search-input{
+  flex:1;background:var(--card);border:1px solid var(--border);border-radius:8px;
+  color:var(--text);font-family:inherit;font-size:13px;padding:10px 12px;outline:none;
+}
+.p-dir-search-input:focus{border-color:var(--yellow)}
+.p-dir-price-select{
+  background:var(--card);border:1px solid var(--border);border-radius:8px;
+  color:var(--text);font-family:inherit;font-size:12px;padding:10px 8px;outline:none;flex-shrink:0;
+}
+.p-dir-results{display:flex;flex-direction:column;gap:10px;padding:0 16px 8px;}
+.p-dir-card{
+  display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--border);
+  border-radius:12px;padding:12px;cursor:pointer;transition:border-color .15s;
+}
+.p-dir-card:active{border-color:var(--yellow)}
+.p-dir-card-avatar{
+  width:52px;height:52px;border-radius:50%;flex-shrink:0;overflow:hidden;
+  background:#1a1a1a;display:flex;align-items:center;justify-content:center;
+}
+.p-dir-card-avatar img{width:100%;height:100%;object-fit:cover}
+.p-dir-card-initials{font-size:16px;font-weight:900;color:var(--yellow);font-family:'Unbounded',sans-serif}
+.p-dir-card-info{flex:1;min-width:0}
+.p-dir-card-name{font-size:14px;font-weight:900;color:var(--text)}
+.p-dir-card-cat{font-size:10px;color:var(--yellow);font-weight:900;text-transform:uppercase;letter-spacing:.5px;margin:2px 0}
+.p-dir-card-stars{font-size:11px;color:var(--muted);font-weight:700}
+.p-dir-card-price{font-size:12px;font-weight:900;color:var(--text);text-align:right;flex-shrink:0;max-width:90px}
+.p-dir-empty{padding:30px 16px;color:var(--muted);text-align:center;font-size:13px}
+.p-dir-reviews-list{list-style:none}
+.p-dir-reviews-list li{padding:10px 0;border-bottom:1px solid #1c1c1c}
+.p-dir-review-top{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.p-dir-review-top span:first-child{color:var(--yellow);font-size:12px;letter-spacing:1px}
+.p-dir-review-name{font-size:12px;font-weight:700;color:#ccc}
+.p-dir-review-comment{font-size:12px;color:#999;line-height:1.4}
+.p-dir-review-empty{color:var(--muted);font-size:12px;padding:10px 0}
+
 /* Badge Populaire */
 .p-neo-card.featured{border-color:var(--yellow);box-shadow:6px 6px 0 var(--yellow)}
 .p-recommended{
@@ -801,7 +853,13 @@ a{text-decoration:none;color:inherit}
 .reg-step{position:absolute;inset:0;padding:28px 24px 32px;display:flex;flex-direction:column;transform:translateX(110%);transition:transform .35s cubic-bezier(.4,0,.2,1);overflow-y:auto;}
 .reg-step.active{transform:translateX(0);}
 .reg-step.left{transform:translateX(-110%);}
-#reg-s4{align-items:center;justify-content:center;text-align:center;transform:translateX(110%);}
+#reg-s5{align-items:center;justify-content:center;text-align:center;transform:translateX(110%);}
+.reg-profile-tile{width:100%;background:#1a1a1a;border:2px solid #262626;color:#fff;font-family:'Space Grotesk',sans-serif;padding:18px 16px;outline:none;transition:border-color .15s,background .15s;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;gap:14px;margin-bottom:12px;text-align:left;}
+.reg-profile-tile:active{border-color:#FFD700;background:#1f1c00;}
+.reg-profile-tile-ico{font-size:24px;flex-shrink:0;line-height:1;}
+.reg-profile-tile-txt{display:flex;flex-direction:column;}
+.reg-profile-tile-name{font-size:15px;font-weight:700;color:#fff;}
+.reg-profile-tile-sub{font-size:12px;color:#777;margin-top:2px;}
 .reg-title{font-family:'Unbounded',cursive;font-size:1.35rem;font-weight:900;color:#fff;line-height:1.2;margin-bottom:8px;}
 .reg-sub{font-size:14px;color:#777;margin-bottom:30px;line-height:1.65;}
 .reg-field{margin-bottom:18px;}
@@ -1396,6 +1454,26 @@ a{text-decoration:none;color:inherit}
   </div>
 </div>
 
+<!-- ══════════ MODAL AVIS PARTENAIRE ══════════ -->
+<div id="review-overlay">
+  <div class="notif-sheet">
+    <div class="ns-ico">⭐</div>
+    <div class="ns-title">Comment était votre expérience ?</div>
+    <div class="ns-desc" id="rv-partner-name">Notez votre partenaire</div>
+    <div class="rv-stars" id="rv-stars">
+      <button type="button" class="rv-star" data-v="1" onclick="_rvSetStars(1)">★</button>
+      <button type="button" class="rv-star" data-v="2" onclick="_rvSetStars(2)">★</button>
+      <button type="button" class="rv-star" data-v="3" onclick="_rvSetStars(3)">★</button>
+      <button type="button" class="rv-star" data-v="4" onclick="_rvSetStars(4)">★</button>
+      <button type="button" class="rv-star" data-v="5" onclick="_rvSetStars(5)">★</button>
+    </div>
+    <textarea class="rv-comment" id="rv-comment" placeholder="Un commentaire (facultatif)..."></textarea>
+    <div class="rv-error" id="rv-error">Merci de sélectionner une note.</div>
+    <button class="ns-ok" id="rv-submit" onclick="_rvSubmit()">Envoyer mon avis</button>
+    <button class="ns-skip" onclick="_rvSkip()">Plus tard</button>
+  </div>
+</div>
+
 <!-- ══════════ APP ══════════ -->
 <div id="app">
 <canvas id="techCanvas" aria-hidden="true"></canvas>
@@ -1520,6 +1598,7 @@ a{text-decoration:none;color:inherit}
         <button class="fpill" onclick="filterPrestations('accompagnement',this)">Accompagnement</button>
         <button class="fpill" onclick="filterPrestations('coworking',this)">Coworking</button>
         <button class="fpill" onclick="filterPrestations('visibilite',this)">Partenaires</button>
+        <button class="fpill" onclick="filterPrestations('annuaire',this)">Trouver un partenaire</button>
       </div>
       <div id="prestList"></div>
     </div>
@@ -1856,6 +1935,7 @@ function initApp(){
     var ini = (fn[0]||'U').toUpperCase();
     document.getElementById('hdrAvatar').textContent = ini;
     loadStatusCard();
+    _checkPendingReviews();
     setTimeout(function(){
       if(typeof Notification!=='undefined' && Notification.permission==='default' && !sessionStorage.getItem('na')){
         openNotifModal(); sessionStorage.setItem('na','1');
@@ -1866,7 +1946,14 @@ function initApp(){
   }
   updateCartBadge();
   _updateGreeting();
-  renderHomeOffers();
+  if(USER && USER.accountType){
+    renderHomeOffers(USER.accountType);
+    document.querySelectorAll('.cat-chip').forEach(function(c){
+      c.classList.toggle('on', c.getAttribute('onclick')==="setCat('"+USER.accountType+"',this)");
+    });
+  } else {
+    renderHomeOffers();
+  }
   renderPrestations('all');
   renderResaTab();
   renderMsgTab();
@@ -2176,7 +2263,32 @@ function renderPrestations(filter){
     html += '</div></div>';
   }
 
+  // ── ANNUAIRE PARTENAIRES ────────────────────────────────────────
+  if(_prestFilter==='annuaire'){
+    _dirCategory = null; _dirQuery = ''; _dirMaxPrice = '';
+    html += '<div class="p-section" style="margin-top:24px;" id="p-section-annuaire">';
+    html += '<div class="p-section-hdr dark">TROUVER UN PARTENAIRE</div>';
+    html += '<div class="p-vis-filter" id="p-dir-cat-filter">'
+      +'<button class="p-vis-fpill on" onclick="setDirCategory(null,this)">Tous</button>'
+      +'<button class="p-vis-fpill" onclick="setDirCategory(\'photographer\',this)">Photographe</button>'
+      +'<button class="p-vis-fpill" onclick="setDirCategory(\'videographer\',this)">Vidéaste</button>'
+      +'<button class="p-vis-fpill" onclick="setDirCategory(\'marketer\',this)">Marketeur</button>'
+      +'<button class="p-vis-fpill" onclick="setDirCategory(\'media\',this)">Médias</button>'
+      +'</div>';
+    html += '<div class="p-dir-controls">'
+      +'<input type="text" id="p-dir-search" class="p-dir-search-input" placeholder="Rechercher un partenaire..." oninput="_dirSearchDebounced()">'
+      +'<select id="p-dir-price" class="p-dir-price-select" onchange="onDirPriceChange()">'
+      +'<option value="">Tous prix</option>'
+      +'<option value="100">Moins de 100 €</option>'
+      +'<option value="300">Moins de 300 €</option>'
+      +'</select>'
+      +'</div>';
+    html += '<div id="p-dir-results" class="p-dir-results"><div class="p-dir-empty">Chargement...</div></div>';
+    html += '</div>';
+  }
+
   document.getElementById('prestList').innerHTML = html;
+  if(_prestFilter==='annuaire'){ loadPartnerDirectory(); }
 }
 
 // Card builders
@@ -2306,6 +2418,88 @@ function setPrestVisFilter(type,el){
     cards.innerHTML=html;
   }
 }
+// ── ANNUAIRE PARTENAIRES ────────────────────────────────────────
+var _dirCategory = null, _dirQuery = '', _dirMaxPrice = '', _dirSearchTimer = null;
+var PARTNER_TYPE_LABELS_DIR = {photographer:'Photographe', videographer:'Vidéaste', marketer:'Marketeur', media:'Médias'};
+
+function setDirCategory(cat, el){
+  _dirCategory = cat;
+  document.querySelectorAll('#p-dir-cat-filter .p-vis-fpill').forEach(function(b){b.className='p-vis-fpill';});
+  el.className='p-vis-fpill on';
+  loadPartnerDirectory();
+}
+function _dirSearchDebounced(){
+  clearTimeout(_dirSearchTimer);
+  _dirSearchTimer = setTimeout(function(){
+    _dirQuery = ((document.getElementById('p-dir-search')||{}).value || '').trim();
+    loadPartnerDirectory();
+  }, 300);
+}
+function onDirPriceChange(){
+  _dirMaxPrice = (document.getElementById('p-dir-price')||{}).value || '';
+  loadPartnerDirectory();
+}
+function loadPartnerDirectory(){
+  var results = document.getElementById('p-dir-results');
+  if(!results) return;
+  results.innerHTML = '<div class="p-dir-empty">Chargement...</div>';
+  var params = [];
+  if(_dirCategory) params.push('category='+encodeURIComponent(_dirCategory));
+  if(_dirQuery) params.push('q='+encodeURIComponent(_dirQuery));
+  if(_dirMaxPrice) params.push('maxPrice='+encodeURIComponent(_dirMaxPrice));
+  fetch(API+'/api/partners/directory'+(params.length?'?'+params.join('&'):''))
+    .then(function(r){return r.json();})
+    .then(function(data){
+      var partners = (data && data.partners) || [];
+      if(!partners.length){ results.innerHTML = '<div class="p-dir-empty">Aucun partenaire trouvé.</div>'; return; }
+      results.innerHTML = partners.map(function(p){ return directoryCard(p); }).join('');
+    })
+    .catch(function(){ results.innerHTML = '<div class="p-dir-empty">Erreur de chargement. Réessayez.</div>'; });
+}
+function directoryCard(p){
+  var label = PARTNER_TYPE_LABELS_DIR[p.partner_type] || p.partner_type;
+  var priceLabel = (p.fromPrice===null||p.fromPrice===undefined) ? 'Sur devis' : ('à partir de '+p.fromPrice+' €');
+  var starsLabel = (p.rating && p.rating.count) ? ('★ '+p.rating.average+' ('+p.rating.count+' avis)') : 'Aucun avis';
+  var initials = (((p.prenom||'')[0]||'')+((p.nom||'')[0]||'')).toUpperCase();
+  var avatarHtml = p.photo
+    ? '<img src="'+p.photo+'" alt="'+(p.prenom||'')+'">'
+    : '<div class="p-dir-card-initials">'+initials+'</div>';
+  return '<div class="p-dir-card" onclick="openPartnerDetail(\''+p.id+'\')">'
+    +'<div class="p-dir-card-avatar">'+avatarHtml+'</div>'
+    +'<div class="p-dir-card-info">'
+    +'<div class="p-dir-card-name">'+(p.prenom||'')+' '+(p.nom||'')+'</div>'
+    +'<div class="p-dir-card-cat">'+label+'</div>'
+    +'<div class="p-dir-card-stars">'+starsLabel+'</div>'
+    +'</div>'
+    +'<div class="p-dir-card-price">'+priceLabel+'</div>'
+    +'</div>';
+}
+function openPartnerDetail(partnerId){
+  fetch(API+'/api/partners/'+encodeURIComponent(partnerId)+'/reviews')
+    .then(function(r){return r.json();})
+    .then(function(data){
+      if(!data || !data.success) return;
+      var p = data.partner;
+      var label = PARTNER_TYPE_LABELS_DIR[p.partner_type] || p.partner_type;
+      var priceLabel = (p.fromPrice===null||p.fromPrice===undefined) ? 'Sur devis' : ('à partir de '+p.fromPrice+' €');
+      var starsLabel = (p.rating && p.rating.count) ? ('★ '+p.rating.average+' ('+p.rating.count+' avis)') : 'Aucun avis pour le moment';
+      var reviewsHtml = (data.reviews||[]).map(function(r){
+        return '<li><div class="p-dir-review-top"><span>'+'★'.repeat(r.rating||0)+'</span><span class="p-dir-review-name">'+r.userName+'</span></div>'
+          +(r.comment?'<p class="p-dir-review-comment">'+r.comment+'</p>':'')+'</li>';
+      }).join('') || '<li class="p-dir-review-empty">Aucun avis publié pour le moment.</li>';
+      document.getElementById('detail-content').innerHTML = ''
+        +'<div class="detail-name">'+(p.prenom||'')+' '+(p.nom||'')+'</div>'
+        +'<div class="detail-sub">'+label+'</div>'
+        +'<div class="detail-price">'+priceLabel+'</div>'
+        +'<div class="detail-payment">'+starsLabel+'</div>'
+        +'<div class="detail-divider"></div>'
+        +'<div class="detail-feats-title">Avis clients</div>'
+        +'<ul class="p-dir-reviews-list">'+reviewsHtml+'</ul>'
+        +'<button class="detail-close-btn" onclick="closeDetail()">Fermer</button>';
+      document.getElementById('detail-sheet').className='on';
+    }).catch(function(){});
+}
+
 function openDetailAccomp(profil, idx){
   openDetail(PDATA.accompagnement[profil][idx], 'accompagnement');
 }
@@ -2654,6 +2848,70 @@ function activerNotifs(){
   closeNotifModal();
   if(window.FA_activerNotifications) window.FA_activerNotifications();
   else if('Notification' in window) Notification.requestPermission();
+}
+
+// ── AVIS PARTENAIRE (post-paiement solde) ────────────────────
+var _rvQueue = [];
+var _rvCurrent = null;
+var _rvRating = 0;
+
+function _checkPendingReviews(){
+  if(!USER || !USER._token) return;
+  fetch(API+'/api/auth/me',{headers:{'Authorization':'Bearer '+USER._token}})
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if(d && d.pendingReviewPrompts && d.pendingReviewPrompts.length>0){
+        _rvQueue = d.pendingReviewPrompts.slice();
+        _rvShowNext();
+      }
+    }).catch(function(){});
+}
+
+function _rvShowNext(){
+  if(_rvQueue.length===0){ _rvCurrent=null; return; }
+  _rvCurrent = _rvQueue.shift();
+  _rvRating = 0;
+  document.getElementById('rv-partner-name').textContent = 'Notez ' + (_rvCurrent.partnerName||'votre partenaire');
+  document.getElementById('rv-comment').value = '';
+  document.getElementById('rv-error').className = 'rv-error';
+  document.querySelectorAll('#rv-stars .rv-star').forEach(function(s){ s.classList.remove('on'); });
+  document.getElementById('review-overlay').className = 'on';
+}
+
+function _rvSetStars(v){
+  _rvRating = v;
+  document.querySelectorAll('#rv-stars .rv-star').forEach(function(s){
+    s.classList.toggle('on', parseInt(s.getAttribute('data-v'))<=v);
+  });
+}
+
+function _rvSkip(){
+  document.getElementById('review-overlay').className = '';
+  _rvShowNext();
+}
+
+function _rvSubmit(){
+  if(!_rvCurrent) return;
+  if(_rvRating<1 || _rvRating>5){
+    document.getElementById('rv-error').className = 'rv-error on';
+    return;
+  }
+  var comment = document.getElementById('rv-comment').value.trim();
+  var btn = document.getElementById('rv-submit');
+  btn.disabled = true;
+  fetch(API+'/api/partner-reviews',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+USER._token},
+    body:JSON.stringify({dispatchId:_rvCurrent.dispatchId, rating:_rvRating, comment:comment})
+  }).then(function(r){ return r.json(); }).then(function(d){
+    btn.disabled = false;
+    document.getElementById('review-overlay').className = '';
+    _rvShowNext();
+  }).catch(function(){
+    btn.disabled = false;
+    document.getElementById('review-overlay').className = '';
+    _rvShowNext();
+  });
 }
 
 // ── HELPERS PANIER ───────────────────────────────────────────
@@ -4809,12 +5067,12 @@ function regGoToStep(next){
 }
 
 function regUpdateProgress(step){
-  for(var i=1;i<=3;i++){
+  for(var i=1;i<=4;i++){
     var d=document.getElementById('reg-dot'+i);
     if(!d) continue;
     d.className = i<step?'reg-dot done':i===step?'reg-dot active':'reg-dot';
   }
-  for(var j=1;j<=2;j++){
+  for(var j=1;j<=3;j++){
     var l=document.getElementById('reg-line'+j);
     if(!l) continue;
     l.className = j<step?'reg-prog-line done':'reg-prog-line';
@@ -4826,7 +5084,12 @@ function regBack(){
   regGoToStep(regCurrentStep-1);
 }
 
-function regStep1(){
+function regSelectProfile(type){
+  regData.accountType = type;
+  regGoToStep(2);
+}
+
+function regStepEmail(){
   var email=((document.getElementById('reg-email')||{}).value||'').trim();
   var err=document.getElementById('reg-err-email');
   if(!email||!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){
@@ -4834,10 +5097,10 @@ function regStep1(){
   }
   if(err) err.classList.remove('on');
   regData.email = email;
-  regGoToStep(2);
+  regGoToStep(3);
 }
 
-function regStep2(){
+function regStepPassword(){
   var pwd=((document.getElementById('reg-pwd')||{}).value||'');
   var pwd2=((document.getElementById('reg-pwd2')||{}).value||'');
   var e1=document.getElementById('reg-err-pwd'); var e2=document.getElementById('reg-err-pwd2');
@@ -4846,10 +5109,10 @@ function regStep2(){
   if(pwd!==pwd2){ if(e2){e2.textContent='Les mots de passe ne correspondent pas.';e2.classList.add('on');} return; }
   if(e2) e2.classList.remove('on');
   regData.password = pwd;
-  regGoToStep(3);
+  regGoToStep(4);
 }
 
-function regStep3(){
+function regStepIdentity(){
   var prenom=((document.getElementById('reg-prenom')||{}).value||'').trim();
   var nom=((document.getElementById('reg-nom')||{}).value||'').trim();
   var tel=((document.getElementById('reg-tel')||{}).value||'').trim();
@@ -4881,7 +5144,7 @@ function regStep3(){
 }
 
 function regShowSuccess(prenom){
-  var s3=document.getElementById('reg-s3'); var s4=document.getElementById('reg-s4');
+  var s3=document.getElementById('reg-s4'); var s4=document.getElementById('reg-s5');
   if(!s3||!s4) return;
   s3.style.transition='transform .35s cubic-bezier(.4,0,.2,1)';
   s3.style.transform='translateX(-110%)';
@@ -5351,32 +5614,52 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
         <div class="reg-dot" id="reg-dot2"></div>
         <div class="reg-prog-line" id="reg-line2"></div>
         <div class="reg-dot" id="reg-dot3"></div>
+        <div class="reg-prog-line" id="reg-line3"></div>
+        <div class="reg-dot" id="reg-dot4"></div>
       </div>
       <button class="reg-nav-btn" onclick="closeRegSheet()" aria-label="Fermer">&#x2715;</button>
     </div>
     <div id="reg-steps">
-      <!-- Étape 1 : Email -->
+      <!-- Étape 1 : Profil -->
       <div class="reg-step active" id="reg-s1">
+        <div class="reg-title">Vous êtes…</div>
+        <div class="reg-sub">Pour personnaliser votre expérience GENESIS.</div>
+        <button class="reg-profile-tile" onclick="regSelectProfile('etudiant')" type="button">
+          <div class="reg-profile-tile-ico">🎓</div>
+          <div class="reg-profile-tile-txt"><div class="reg-profile-tile-name">Étudiant</div><div class="reg-profile-tile-sub">Offres et tarifs étudiants</div></div>
+        </button>
+        <button class="reg-profile-tile" onclick="regSelectProfile('particulier')" type="button">
+          <div class="reg-profile-tile-ico">👤</div>
+          <div class="reg-profile-tile-txt"><div class="reg-profile-tile-name">Particulier</div><div class="reg-profile-tile-sub">Accompagnement individuel</div></div>
+        </button>
+        <button class="reg-profile-tile" onclick="regSelectProfile('entreprise')" type="button">
+          <div class="reg-profile-tile-ico">🏢</div>
+          <div class="reg-profile-tile-txt"><div class="reg-profile-tile-name">Entreprise</div><div class="reg-profile-tile-sub">Solutions pour structures</div></div>
+        </button>
+        <div class="reg-link-row">Déjà un compte ? <a href="#" onclick="closeRegSheet();goLogin();return false;">Se connecter</a></div>
+      </div>
+      <!-- Étape 2 : Email -->
+      <div class="reg-step" id="reg-s2">
         <div class="reg-title">Créez votre<br>compte</div>
         <div class="reg-sub">Commençons par votre adresse email.</div>
         <div class="reg-field">
           <label class="reg-label" for="reg-email">Adresse email</label>
-          <input id="reg-email" class="reg-input" type="email" placeholder="votre@email.com" autocomplete="email" onkeydown="regHandleEnter(event,regStep1)">
+          <input id="reg-email" class="reg-input" type="email" placeholder="votre@email.com" autocomplete="email" onkeydown="regHandleEnter(event,regStepEmail)">
           <div class="reg-err" id="reg-err-email">Email invalide</div>
         </div>
         <div class="reg-cta">
-          <button class="reg-btn" onclick="regStep1()">CONTINUER</button>
+          <button class="reg-btn" onclick="regStepEmail()">CONTINUER</button>
           <div class="reg-link-row">Déjà un compte ? <a href="#" onclick="closeRegSheet();goLogin();return false;">Se connecter</a></div>
         </div>
       </div>
-      <!-- Étape 2 : Mot de passe -->
-      <div class="reg-step" id="reg-s2">
+      <!-- Étape 3 : Mot de passe -->
+      <div class="reg-step" id="reg-s3">
         <div class="reg-title">Choisissez un<br>mot de passe</div>
         <div class="reg-sub">Minimum 8 caractères pour sécuriser votre compte.</div>
         <div class="reg-field">
           <label class="reg-label" for="reg-pwd">Mot de passe</label>
           <div class="reg-pw-wrap">
-            <input id="reg-pwd" class="reg-input" type="password" placeholder="&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;" autocomplete="new-password" onkeydown="regHandleEnter(event,regStep2)">
+            <input id="reg-pwd" class="reg-input" type="password" placeholder="&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;" autocomplete="new-password" onkeydown="regHandleEnter(event,regStepPassword)">
             <button class="reg-eye" id="reg-eye1" onclick="regTogglePwd('reg-pwd','reg-eye1')" type="button"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
           </div>
           <div class="reg-err" id="reg-err-pwd">Minimum 8 caractères requis</div>
@@ -5384,39 +5667,39 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
         <div class="reg-field">
           <label class="reg-label" for="reg-pwd2">Confirmer le mot de passe</label>
           <div class="reg-pw-wrap">
-            <input id="reg-pwd2" class="reg-input" type="password" placeholder="&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;" autocomplete="new-password" onkeydown="regHandleEnter(event,regStep2)">
+            <input id="reg-pwd2" class="reg-input" type="password" placeholder="&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;" autocomplete="new-password" onkeydown="regHandleEnter(event,regStepPassword)">
             <button class="reg-eye" id="reg-eye2" onclick="regTogglePwd('reg-pwd2','reg-eye2')" type="button"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
           </div>
           <div class="reg-err" id="reg-err-pwd2">Les mots de passe ne correspondent pas</div>
         </div>
         <div class="reg-cta">
-          <button class="reg-btn" onclick="regStep2()">CONTINUER</button>
+          <button class="reg-btn" onclick="regStepPassword()">CONTINUER</button>
         </div>
       </div>
-      <!-- Étape 3 : Identité -->
-      <div class="reg-step" id="reg-s3">
+      <!-- Étape 4 : Identité -->
+      <div class="reg-step" id="reg-s4">
         <div class="reg-title">Dites-nous<br>qui vous êtes</div>
         <div class="reg-sub">Votre prénom est requis. Le reste est facultatif.</div>
         <div class="reg-field">
           <label class="reg-label" for="reg-prenom">Prénom *</label>
-          <input id="reg-prenom" class="reg-input" type="text" placeholder="Votre prénom" autocomplete="given-name" onkeydown="regHandleEnter(event,regStep3)">
+          <input id="reg-prenom" class="reg-input" type="text" placeholder="Votre prénom" autocomplete="given-name" onkeydown="regHandleEnter(event,regStepIdentity)">
           <div class="reg-err" id="reg-err-prenom">Prénom requis</div>
         </div>
         <div class="reg-field">
           <label class="reg-label" for="reg-nom">Nom</label>
-          <input id="reg-nom" class="reg-input" type="text" placeholder="Votre nom" autocomplete="family-name" onkeydown="regHandleEnter(event,regStep3)">
+          <input id="reg-nom" class="reg-input" type="text" placeholder="Votre nom" autocomplete="family-name" onkeydown="regHandleEnter(event,regStepIdentity)">
         </div>
         <div class="reg-field">
           <label class="reg-label" for="reg-tel">Téléphone</label>
-          <input id="reg-tel" class="reg-input" type="tel" placeholder="+33 6 00 00 00 00" autocomplete="tel" onkeydown="regHandleEnter(event,regStep3)">
+          <input id="reg-tel" class="reg-input" type="tel" placeholder="+33 6 00 00 00 00" autocomplete="tel" onkeydown="regHandleEnter(event,regStepIdentity)">
         </div>
         <div class="reg-global-err" id="reg-global-err">Erreur</div>
         <div class="reg-cta">
-          <button class="reg-btn" id="reg-btn3" onclick="regStep3()">CRÉER MON COMPTE</button>
+          <button class="reg-btn" id="reg-btn3" onclick="regStepIdentity()">CRÉER MON COMPTE</button>
         </div>
       </div>
-      <!-- Étape 4 : Succès -->
-      <div class="reg-step" id="reg-s4">
+      <!-- Étape 5 : Succès -->
+      <div class="reg-step" id="reg-s5">
         <div class="reg-check-circle">&#10003;</div>
         <div class="reg-win-title">Bienvenue sur<br>GENESIS !</div>
         <div class="reg-win-sub">Votre compte a été créé avec succès.<br>Vous allez être redirigé vers votre profil.</div>

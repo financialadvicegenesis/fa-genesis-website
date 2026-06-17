@@ -52,6 +52,7 @@ const CW_DEVIS_FILE = path.join(__dirname, 'data', 'cw-devis.json');
 const PUSH_SUBSCRIPTIONS_FILE = path.join(__dirname, 'data', 'push-subscriptions.json');
 const DISPATCHES_FILE = path.join(__dirname, 'data', 'dispatches.json');
 const PAYOUTS_FILE    = path.join(__dirname, 'data', 'payouts.json');
+const PARTNER_REVIEWS_FILE = path.join(__dirname, 'data', 'partner_reviews.json');
 
 // Creer le dossier data s'il n'existe pas
 if (!fs.existsSync(path.join(__dirname, 'data'))) {
@@ -164,6 +165,27 @@ function savePartners(partners) {
         persistentStore.persistToCloud('partners', partners).catch(function(e) {});
     } catch (error) {
         console.error('[PARTNER] Erreur sauvegarde partners:', error);
+    }
+}
+
+function loadPartnerReviews() {
+    try {
+        if (fs.existsSync(PARTNER_REVIEWS_FILE)) {
+            const data = fs.readFileSync(PARTNER_REVIEWS_FILE, 'utf8');
+            return JSON.parse(data);
+        }
+    } catch (error) {
+        console.error('[PARTNER-REVIEWS] Erreur lecture partner_reviews:', error);
+    }
+    return [];
+}
+
+function savePartnerReviews(reviews) {
+    try {
+        fs.writeFileSync(PARTNER_REVIEWS_FILE, JSON.stringify(reviews, null, 2), 'utf8');
+        persistentStore.persistToCloud('partner_reviews', reviews).catch(function(e) {});
+    } catch (error) {
+        console.error('[PARTNER-REVIEWS] Erreur sauvegarde partner_reviews:', error);
     }
 }
 
@@ -507,6 +529,34 @@ async function processDispatchPayout(dispatch, stage) {
         }
     } catch(e) {
         console.error('[PAYOUT] Erreur processDispatchPayout:', e);
+    }
+}
+
+// Demande d'avis client après versement du solde à chaque partenaire ayant accepté sa mission
+function requestPartnerReviews(clientEmail, acceptedDispatches) {
+    if (!clientEmail || !acceptedDispatches || acceptedDispatches.length === 0) return;
+    try {
+        var allDispatches = loadDispatches();
+        var changed = false;
+        acceptedDispatches.forEach(function(d) {
+            var idx = allDispatches.findIndex(function(x) { return x.id === d.id; });
+            if (idx === -1 || allDispatches[idx].review_requested) return;
+            allDispatches[idx].review_requested = true;
+            changed = true;
+            var partner = getPartnerById(d.claimed_by_partner_id);
+            var partnerName = partner ? (partner.prenom + ' ' + partner.nom) : 'votre partenaire';
+            sendPushToUser(clientEmail, {
+                title: 'Comment était votre expérience ?',
+                body: 'Donnez votre avis sur ' + partnerName,
+                icon: '/assets/images/logo-favicon-192.png',
+                badge: '/assets/images/logo-favicon-32.png',
+                url: '/app.html#client-review-' + d.claimed_by_partner_id + '-' + d.id,
+                tag: 'review-request'
+            });
+        });
+        if (changed) saveDispatches(allDispatches);
+    } catch (e) {
+        console.error('[REVIEW] Erreur requestPartnerReviews:', e);
     }
 }
 
@@ -2456,6 +2506,7 @@ app.post('/api/payments/sumup/webhook', async (req, res) => {
                     var _acceptedD = loadDispatches().filter(function(d) { return d.order_id === orderId && d.status === 'accepted'; });
                     _acceptedD.forEach(function(d) { processDispatchPayout(d, 'balance').catch(function(e) { console.error('[PAYOUT] Erreur solde webhook:', e); }); });
                     if (_acceptedD.length === 0) console.log('[WEBHOOK] Aucun dispatch accepté pour versement solde — commande ' + orderId);
+                    requestPartnerReviews(clientEmail, _acceptedD);
                 }
             }
         }
@@ -2647,6 +2698,7 @@ app.post('/api/payments/verify', async (req, res) => {
                         var _vAccD = loadDispatches().filter(function(d) { return d.order_id === orderId && d.status === 'accepted'; });
                         _vAccD.forEach(function(d) { processDispatchPayout(d, 'balance').catch(function(e) { console.error('[PAYOUT] Erreur solde verify:', e); }); });
                         if (_vAccD.length === 0) console.log('[VERIFY] Aucun dispatch accepté pour versement solde — commande ' + orderId);
+                        requestPartnerReviews(clientEmail, _vAccD);
                     }
                 }
 
@@ -4641,7 +4693,9 @@ app.post('/api/admin/messages/bulk-delete', (req, res) => {
  */
 app.post('/api/auth/register', async (req, res) => {
     try {
-        const { prenom, nom, email, telephone, password, offre } = req.body;
+        const { prenom, nom, email, telephone, password, offre, accountType } = req.body;
+        const validAccountTypes = ['etudiant', 'particulier', 'entreprise'];
+        const userAccountType = validAccountTypes.includes(accountType) ? accountType : null;
 
         // Validation des champs requis
         if (!prenom || !nom || !email || !password) {
@@ -4732,6 +4786,7 @@ app.post('/api/auth/register', async (req, res) => {
             email: email.trim().toLowerCase(),
             telephone: telephone ? telephone.trim() : null,
             password: hashedPassword,
+            accountType: userAccountType,
             offre: offre || null,
             activeOfferId: offre || null,
             productType: productType,
@@ -4953,10 +5008,30 @@ app.get('/api/auth/me', (req, res) => {
             }
         }
 
+        // Avis en attente : dispatches des commandes de l'utilisateur dont l'avis a ete demande mais pas encore soumis
+        var pendingReviewPrompts = [];
+        try {
+            var userOrderIds = userOrders.map(function(o) { return o.id; });
+            var pendingDispatches = loadDispatches().filter(function(d) {
+                return userOrderIds.indexOf(d.order_id) !== -1 && d.review_requested === true && !d.review_submitted;
+            });
+            pendingReviewPrompts = pendingDispatches.map(function(d) {
+                var partner = getPartnerById(d.claimed_by_partner_id);
+                return {
+                    dispatchId: d.id,
+                    partnerId: d.claimed_by_partner_id,
+                    partnerName: partner ? ((partner.prenom || '') + ' ' + (partner.nom || '')).trim() : 'votre partenaire'
+                };
+            });
+        } catch (prErr) {
+            console.error('[AUTH/ME] Erreur pendingReviewPrompts:', prErr.message);
+        }
+
         res.json({
             success: true,
             user: userResponse,
-            activeSubscription: meSubscription
+            activeSubscription: meSubscription,
+            pendingReviewPrompts: pendingReviewPrompts
         });
 
     } catch (error) {
@@ -6914,7 +6989,7 @@ app.post('/api/partner/auth/logout', authenticatePartner, (req, res) => {
 // Modifier profil partenaire
 app.put('/api/partner/auth/update-profile', authenticatePartner, async (req, res) => {
     try {
-        const { prenom, nom, telephone, currentPassword, newPassword } = req.body;
+        const { prenom, nom, telephone, photo, currentPassword, newPassword } = req.body;
         const partners = loadPartners();
         const index = partners.findIndex(p => p.id === req.partner.id);
         if (index === -1) {
@@ -6923,6 +6998,7 @@ app.put('/api/partner/auth/update-profile', authenticatePartner, async (req, res
         if (prenom) partners[index].prenom = prenom;
         if (nom) partners[index].nom = nom;
         if (telephone) partners[index].telephone = telephone;
+        if (photo) partners[index].photo = photo;
         if (currentPassword && newPassword) {
             const validPassword = await bcrypt.compare(currentPassword, partners[index].password);
             if (!validPassword) {
@@ -6940,6 +7016,162 @@ app.put('/api/partner/auth/update-profile', authenticatePartner, async (req, res
     } catch (error) {
         console.error('[PARTNER] Erreur update-profile:', error);
         res.status(500).json({ error: 'Erreur lors de la mise a jour' });
+    }
+});
+
+// ============================================================
+// ENDPOINT PUBLIC - ANNUAIRE PARTENAIRES
+// ============================================================
+
+const PARTNER_CATEGORY_FROM_PRICE = {
+    photographer: null,
+    videographer: null,
+    marketer: 70,
+    media: 55
+};
+
+function getPartnerRatingSummary(partnerId) {
+    const reviews = loadPartnerReviews().filter(
+        r => r.partnerId === partnerId && r.status === 'published'
+    );
+    if (reviews.length === 0) return { average: 0, count: 0 };
+    const sum = reviews.reduce((acc, r) => acc + (r.rating || 0), 0);
+    return { average: Math.round((sum / reviews.length) * 10) / 10, count: reviews.length };
+}
+
+// Annuaire public des partenaires (recherche, filtre categorie, filtre prix)
+app.get('/api/partners/directory', (req, res) => {
+    try {
+        const { category, q, maxPrice } = req.query;
+        let partners = loadPartners().filter(p => p.accountStatus === 'active');
+
+        if (category) {
+            partners = partners.filter(p => p.partner_type === category);
+        }
+        if (q) {
+            const needle = q.trim().toLowerCase();
+            partners = partners.filter(p =>
+                ((p.prenom || '') + ' ' + (p.nom || '')).toLowerCase().includes(needle)
+            );
+        }
+
+        let results = partners.map(p => {
+            const fromPrice = PARTNER_CATEGORY_FROM_PRICE.hasOwnProperty(p.partner_type)
+                ? PARTNER_CATEGORY_FROM_PRICE[p.partner_type]
+                : null;
+            return {
+                id: p.id,
+                prenom: p.prenom,
+                nom: p.nom,
+                partner_type: p.partner_type,
+                photo: p.photo || null,
+                fromPrice: fromPrice,
+                rating: getPartnerRatingSummary(p.id)
+            };
+        });
+
+        if (maxPrice !== undefined && maxPrice !== '') {
+            const maxPriceNum = parseFloat(maxPrice);
+            if (!isNaN(maxPriceNum)) {
+                results = results.filter(r => r.fromPrice !== null && r.fromPrice <= maxPriceNum);
+            }
+        }
+
+        res.json({ success: true, partners: results });
+    } catch (error) {
+        console.error('[PARTNERS-DIRECTORY] Erreur:', error);
+        res.status(500).json({ error: 'Erreur lors du chargement de l\'annuaire' });
+    }
+});
+
+// Detail public d'un partenaire + ses avis publies
+app.get('/api/partners/:id/reviews', (req, res) => {
+    try {
+        const partner = loadPartners().find(p => p.id === req.params.id && p.accountStatus === 'active');
+        if (!partner) {
+            return res.status(404).json({ error: 'Partenaire non trouve' });
+        }
+        const fromPrice = PARTNER_CATEGORY_FROM_PRICE.hasOwnProperty(partner.partner_type)
+            ? PARTNER_CATEGORY_FROM_PRICE[partner.partner_type]
+            : null;
+        const reviews = loadPartnerReviews()
+            .filter(r => r.partnerId === partner.id && r.status === 'published')
+            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+            .map(r => ({ rating: r.rating, comment: r.comment || '', userName: r.userName || 'Client GENESIS', createdAt: r.createdAt }));
+        res.json({
+            success: true,
+            partner: {
+                id: partner.id,
+                prenom: partner.prenom,
+                nom: partner.nom,
+                partner_type: partner.partner_type,
+                photo: partner.photo || null,
+                fromPrice: fromPrice,
+                rating: getPartnerRatingSummary(partner.id)
+            },
+            reviews: reviews
+        });
+    } catch (error) {
+        console.error('[PARTNERS-DIRECTORY] Erreur reviews:', error);
+        res.status(500).json({ error: 'Erreur lors du chargement des avis' });
+    }
+});
+
+// Soumission d'un avis client sur un partenaire (suite a une demande post-paiement solde)
+app.post('/api/partner-reviews', (req, res) => {
+    try {
+        var authHeader = req.headers.authorization || '';
+        var token = authHeader.toLowerCase().startsWith('bearer ') ? authHeader.slice(7).trim() : authHeader.trim();
+        if (!token) return res.status(401).json({ success: false, message: 'Token manquant' });
+
+        var users = loadUsers();
+        var user = users.find(function(u) { return u.sessionToken === token; });
+        if (!user) return res.status(401).json({ success: false, message: 'Session invalide' });
+
+        var body = req.body || {};
+        var dispatchId = (body.dispatchId || '').trim();
+        var rating = parseInt(body.rating) || 0;
+        var comment = (body.comment || '').trim();
+
+        if (!dispatchId) return res.status(400).json({ success: false, message: 'dispatchId manquant' });
+        if (!rating || rating < 1 || rating > 5) return res.status(400).json({ success: false, message: 'La note doit être entre 1 et 5.' });
+
+        var dispatches = loadDispatches();
+        var dIdx = dispatches.findIndex(function(d) { return d.id === dispatchId; });
+        if (dIdx === -1) return res.status(404).json({ success: false, message: 'Mission non trouvée' });
+        var dispatch = dispatches[dIdx];
+        if (dispatch.status !== 'accepted') return res.status(403).json({ success: false, message: 'Mission non éligible à un avis' });
+
+        var orders = loadOrders();
+        var order = orders.find(function(o) { return o.id === dispatch.order_id; });
+        if (!order || !order.client_info || (order.client_info.email || '').toLowerCase() !== user.email.toLowerCase()) {
+            return res.status(403).json({ success: false, message: 'Accès refusé à cette mission' });
+        }
+
+        var review = {
+            id: 'PRV-' + uuidv4().split('-')[0],
+            dispatchId: dispatch.id,
+            orderId: dispatch.order_id,
+            partnerId: dispatch.claimed_by_partner_id,
+            userEmail: user.email,
+            userName: ((user.prenom || '') + ' ' + (user.nom || '')).trim() || user.email,
+            rating: rating,
+            comment: comment,
+            status: 'published',
+            createdAt: new Date().toISOString()
+        };
+
+        var reviews = loadPartnerReviews();
+        reviews.push(review);
+        savePartnerReviews(reviews);
+
+        dispatches[dIdx].review_submitted = true;
+        saveDispatches(dispatches);
+
+        res.json({ success: true, review: review });
+    } catch (error) {
+        console.error('[PARTNER-REVIEWS] Erreur soumission avis:', error);
+        res.status(500).json({ success: false, message: 'Erreur lors de l\'enregistrement de l\'avis' });
     }
 });
 

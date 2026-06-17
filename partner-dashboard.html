@@ -360,6 +360,18 @@
                 <i class="fas fa-user-circle mr-3"></i>MON PROFIL
             </h2>
             <div class="section-card neo-shadow">
+                <div class="flex items-center gap-6 mb-8">
+                    <div id="profilePhotoPreview" style="width:96px;height:96px;border-radius:50%;background:#1a1a1a;border:3px solid #000;overflow:hidden;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                        <i class="fas fa-user text-3xl" style="opacity:.3;color:#fff;"></i>
+                    </div>
+                    <div>
+                        <input type="file" id="profilePhotoInput" accept="image/*" class="hidden">
+                        <button type="button" id="profilePhotoBtn" class="neo-btn-yellow px-4 py-2 text-sm" onclick="document.getElementById('profilePhotoInput').click()">
+                            <i class="fas fa-camera mr-2"></i>CHANGER LA PHOTO
+                        </button>
+                        <p id="profilePhotoMsg" class="text-sm font-bold mt-2" style="display:none;"></p>
+                    </div>
+                </div>
                 <div id="profileInfo" class="mb-8"></div>
                 <hr class="border-2 border-black my-6">
                 <h3 class="text-lg font-black italic uppercase mb-4">
@@ -1347,6 +1359,13 @@
         var container = document.getElementById('profileInfo');
         if (!container) return;
 
+        var photoPreview = document.getElementById('profilePhotoPreview');
+        if (photoPreview) {
+            photoPreview.innerHTML = currentPartner.photo
+                ? '<img src="' + currentPartner.photo + '" alt="Photo de profil" style="width:100%;height:100%;object-fit:cover;">'
+                : '<i class="fas fa-user text-3xl" style="opacity:.3;color:#fff;"></i>';
+        }
+
         var typeLabel = PARTNER_TYPE_LABELS[currentPartner.partner_type] || currentPartner.partner_type;
 
         container.innerHTML =
@@ -1421,6 +1440,44 @@
                     msgEl.style.display = 'block';
                     msgEl.innerHTML = '<div class="bg-red-100 border-2 border-red-500 p-3 font-bold text-red-700">Erreur de connexion au serveur</div>';
                 }
+            }
+        });
+    }
+
+    var profilePhotoInputEl = document.getElementById('profilePhotoInput');
+    if (profilePhotoInputEl) {
+        profilePhotoInputEl.addEventListener('change', async function(e) {
+            var file = e.target.files && e.target.files[0];
+            if (!file) return;
+            var msgEl = document.getElementById('profilePhotoMsg');
+            var btnEl = document.getElementById('profilePhotoBtn');
+            try {
+                if (btnEl) { btnEl.disabled = true; btnEl.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>ENVOI...'; }
+                var dataUri = await fileToBase64(file);
+                var result = await updatePartnerProfile({ photo: dataUri });
+                if (result.success) {
+                    currentPartner.photo = dataUri;
+                    renderProfileSection();
+                    if (msgEl) {
+                        msgEl.style.display = 'block';
+                        msgEl.style.color = '#16a34a';
+                        msgEl.textContent = 'Photo mise à jour';
+                    }
+                } else if (msgEl) {
+                    msgEl.style.display = 'block';
+                    msgEl.style.color = '#dc2626';
+                    msgEl.textContent = result.message || 'Erreur lors de l\'envoi de la photo';
+                }
+            } catch (error) {
+                console.error('[PARTNER-DASH] Erreur upload photo:', error);
+                if (msgEl) {
+                    msgEl.style.display = 'block';
+                    msgEl.style.color = '#dc2626';
+                    msgEl.textContent = 'Erreur de connexion au serveur';
+                }
+            } finally {
+                if (btnEl) { btnEl.disabled = false; btnEl.innerHTML = '<i class="fas fa-camera mr-2"></i>CHANGER LA PHOTO'; }
+                profilePhotoInputEl.value = '';
             }
         });
     }
