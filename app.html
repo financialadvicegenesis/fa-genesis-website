@@ -575,6 +575,7 @@ a{text-decoration:none;color:inherit}
 .p-section-hdr.gold{background:linear-gradient(135deg,#c89116,#e8a820);color:#000}
 .p-section-hdr.black{background:#000;color:var(--yellow)}
 .p-section-hdr.dark{background:#0a0a0a;color:#fff;border-color:var(--yellow)}
+.p-section-hdr-fit{font-size:clamp(13px,5.2vw,22px);text-align:center;white-space:nowrap;display:flex;align-items:center;justify-content:center;}
 .p-section-hdr::after{
   content:'';position:absolute;bottom:-6px;right:-6px;
   width:100%;height:100%;background:#000;z-index:-1;
@@ -1533,13 +1534,13 @@ a{text-decoration:none;color:inherit}
       <span class="hdr-name">GENESIS</span>
     </div>
     <div class="hdr-right">
-      <button class="hdr-cart-btn" id="cart-icon-btn" onclick="openCart()" title="Panier">
+      <button class="hdr-cart-btn" id="cart-icon-btn" onclick="openCart()" title="Panier" style="display:none;">
         🛒<span class="cart-badge" id="cart-count"></span>
       </button>
       <button class="hdr-btn" onclick="openNotifModal()" title="Notifications">
         🔔<span class="hdr-badge" id="hdrBadge"></span>
       </button>
-      <div class="hdr-avatar" id="hdrAvatar" onclick="nav('profil')">👤</div>
+      <div class="hdr-avatar" id="hdrAvatar" onclick="nav('profil')" style="display:none;">👤</div>
     </div>
   </div>
 
@@ -2364,7 +2365,7 @@ function renderPrestations(filter){
 function renderPrestataires(){
   _dirCategory = null; _dirQuery = ''; _dirMaxPrice = ''; _dirCity = '';
   var html = '<div class="p-section" style="margin-top:16px;" id="p-section-annuaire">';
-  html += '<div class="p-section-hdr dark">TROUVER UN PARTENAIRE</div>';
+  html += '<div class="p-section-hdr dark p-section-hdr-fit">TROUVER UN PARTENAIRE</div>';
   html += '<div class="p-vis-filter" id="p-dir-cat-filter">'
     +'<button class="p-vis-fpill on" onclick="setDirCategory(null,this)">Tous</button>'
     +'<button class="p-vis-fpill" onclick="setDirCategory(\'photographer\',this)">Photographe</button>'
