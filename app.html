@@ -217,6 +217,10 @@ a{text-decoration:none;color:inherit}
 .nav-dot{position:absolute;top:6px;right:calc(50% - 16px);width:7px;height:7px;
   background:#ef4444;border-radius:50%;border:2px solid #000;display:none}
 .nav-dot.on{display:block}
+.nav-cart-badge{position:absolute;top:2px;right:calc(50% - 22px);background:#FFD700;color:#000;
+  font-size:9px;font-weight:900;min-width:15px;height:15px;border-radius:50%;display:none;
+  align-items:center;justify-content:center;font-family:'Unbounded',cursive;line-height:1;padding:0 2px;}
+.nav-cart-badge.on{display:flex;}
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    HOME TAB
@@ -791,6 +795,17 @@ a{text-decoration:none;color:inherit}
 .p-dir-service-cta{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0}
 .p-dir-service-price{font-size:13px;font-weight:900;color:var(--yellow)}
 .p-dir-service-btn{background:var(--yellow);color:#000;border:none;border-radius:8px;font-size:11px;font-weight:900;text-transform:uppercase;padding:7px 12px;cursor:pointer;white-space:nowrap}
+.p-dir-card-city{font-size:10px;color:var(--muted);font-weight:700;margin:2px 0}
+.p-dir-card-verified{font-size:9px;color:#000;background:var(--yellow);font-weight:900;padding:1px 6px;border-radius:6px;text-transform:uppercase;letter-spacing:.3px;white-space:nowrap}
+.p-dir-detail-city{font-size:11px;color:var(--muted);font-weight:700;margin:2px 0 8px}
+.p-dir-detail-bio{font-size:12px;color:#ccc;line-height:1.5;margin:8px 0}
+.p-dir-detail-social{display:flex;gap:12px;margin:8px 0}
+.p-dir-detail-social a{color:var(--yellow);font-size:18px}
+.p-dir-portfolio-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+.p-dir-portfolio-item{aspect-ratio:1;border-radius:10px;overflow:hidden;background:#111;border:1px solid #1e1e1e}
+.p-dir-portfolio-item img{width:100%;height:100%;object-fit:cover}
+.p-dir-portfolio-video{display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--yellow);font-size:22px;text-decoration:none;text-align:center;gap:4px}
+.p-dir-portfolio-video span{font-size:9px;color:var(--muted);padding:0 4px}
 
 /* Badge Populaire */
 .p-neo-card.featured{border-color:var(--yellow);box-shadow:6px 6px 0 var(--yellow)}
@@ -1209,10 +1224,12 @@ a{text-decoration:none;color:inherit}
 }
 #app{position:relative;background:transparent!important;}
 
-/* ── Fond noir uniquement sur les 5 onglets ── */
+/* ── Fond noir uniquement sur les onglets ── */
 #tab-home,
-#tab-prestations,
+#tab-explorer,
+#tab-prestataires,
 #tab-reservations,
+#tab-messages,
 #tab-profil,
 #tab-partner{
   background:#000;
@@ -1543,7 +1560,7 @@ a{text-decoration:none;color:inherit}
 
       <!-- Quick actions -->
       <div class="qa-row">
-        <div class="qa" onclick="nav('prestations')">
+        <div class="qa" onclick="nav('explorer')">
           <div class="qa-icon">🏢</div>
           <div class="qa-label">Réserver</div>
         </div>
@@ -1599,22 +1616,26 @@ a{text-decoration:none;color:inherit}
       <!-- Offres populaires -->
       <div class="sec-lbl" style="margin-top:8px">
         <h2 id="homeOffersTitle">Prestations populaires</h2>
-        <a onclick="nav('prestations')">Tout voir</a>
+        <a onclick="nav('explorer')">Tout voir</a>
       </div>
       <div class="offer-scroll" id="homeOffers"></div>
       <div style="height:8px"></div>
     </div>
 
-    <!-- PRESTATIONS -->
-    <div class="tab prest-tab" id="tab-prestations">
+    <!-- EXPLORER (catalogue général) -->
+    <div class="tab prest-tab" id="tab-explorer">
       <div class="filter-bar" style="padding-top:16px;">
         <button class="fpill on" onclick="filterPrestations('all',this)">Toutes</button>
         <button class="fpill" onclick="filterPrestations('accompagnement',this)">Accompagnement</button>
         <button class="fpill" onclick="filterPrestations('coworking',this)">Coworking</button>
         <button class="fpill" onclick="filterPrestations('visibilite',this)">Partenaires</button>
-        <button class="fpill" onclick="filterPrestations('annuaire',this)">Trouver un partenaire</button>
       </div>
       <div id="prestList"></div>
+    </div>
+
+    <!-- PRESTATAIRES (annuaire marketplace) -->
+    <div class="tab prest-tab" id="tab-prestataires">
+      <div id="prestatairesList"></div>
     </div>
 
     <!-- RÉSERVATIONS -->
@@ -1822,23 +1843,18 @@ a{text-decoration:none;color:inherit}
     <button class="nav-btn on" id="nb-home" onclick="nav('home')">
       <span class="ni">🏠</span><span>Accueil</span>
     </button>
-    <button class="nav-btn" id="nb-prestations" onclick="nav('prestations')">
-      <span class="ni">⊞</span><span>Prestations</span>
+    <button class="nav-btn" id="nb-explorer" onclick="nav('explorer')">
+      <span class="ni">⊞</span><span>Explorer</span>
     </button>
-    <button class="nav-btn" id="nb-reservations" onclick="nav('reservations')" style="position:relative">
-      <span class="ni">📅</span><span>Réservations</span>
-      <span class="nav-dot" id="dot-resa"></span>
+    <button class="nav-btn" id="nb-prestataires" onclick="nav('prestataires')">
+      <span class="ni">🤝</span><span>Prestataires</span>
     </button>
-    <button class="nav-btn" id="nb-messages" onclick="nav('messages')" style="position:relative">
-      <span class="ni">💬</span><span>Messages</span>
-      <span class="nav-dot" id="dot-msg"></span>
+    <button class="nav-btn" id="nb-panier" onclick="openCart()" style="position:relative">
+      <span class="ni">🛒</span><span>Panier</span>
+      <span class="nav-cart-badge" id="cart-count-nav"></span>
     </button>
     <button class="nav-btn" id="nb-profil" onclick="nav('profil')">
-      <span class="ni">⊕</span><span>Plus</span>
-    </button>
-    <button class="nav-btn" id="nb-partner" onclick="nav('partner')" style="position:relative;">
-      <span class="ni">🤝</span><span>Partenaire</span>
-      <span class="nav-dot" id="dot-partner"></span>
+      <span class="ni">👤</span><span>Profil</span>
     </button>
   </div>
 
@@ -1969,6 +1985,7 @@ function initApp(){
     renderHomeOffers();
   }
   renderPrestations('all');
+  renderPrestataires();
   renderResaTab();
   renderMsgTab();
   renderProfil();
@@ -2122,7 +2139,7 @@ function homeCard(o){
 
 function _navToPrestation(cat, sub){
   if(sub) _prestSub = sub;
-  nav('prestations');
+  nav('explorer');
   setTimeout(function(){
     var pills = document.querySelectorAll('.fpill');
     var targetPill = null;
@@ -2277,32 +2294,39 @@ function renderPrestations(filter){
     html += '</div></div>';
   }
 
-  // ── ANNUAIRE PARTENAIRES ────────────────────────────────────────
-  if(_prestFilter==='annuaire'){
-    _dirCategory = null; _dirQuery = ''; _dirMaxPrice = '';
-    html += '<div class="p-section" style="margin-top:24px;" id="p-section-annuaire">';
-    html += '<div class="p-section-hdr dark">TROUVER UN PARTENAIRE</div>';
-    html += '<div class="p-vis-filter" id="p-dir-cat-filter">'
-      +'<button class="p-vis-fpill on" onclick="setDirCategory(null,this)">Tous</button>'
-      +'<button class="p-vis-fpill" onclick="setDirCategory(\'photographer\',this)">Photographe</button>'
-      +'<button class="p-vis-fpill" onclick="setDirCategory(\'videographer\',this)">Vidéaste</button>'
-      +'<button class="p-vis-fpill" onclick="setDirCategory(\'marketer\',this)">Marketeur</button>'
-      +'<button class="p-vis-fpill" onclick="setDirCategory(\'media\',this)">Médias</button>'
-      +'</div>';
-    html += '<div class="p-dir-controls">'
-      +'<input type="text" id="p-dir-search" class="p-dir-search-input" placeholder="Rechercher un partenaire..." oninput="_dirSearchDebounced()">'
-      +'<select id="p-dir-price" class="p-dir-price-select" onchange="onDirPriceChange()">'
-      +'<option value="">Tous prix</option>'
-      +'<option value="100">Moins de 100 €</option>'
-      +'<option value="300">Moins de 300 €</option>'
-      +'</select>'
-      +'</div>';
-    html += '<div id="p-dir-results" class="p-dir-results"><div class="p-dir-empty">Chargement...</div></div>';
-    html += '</div>';
-  }
-
   document.getElementById('prestList').innerHTML = html;
-  if(_prestFilter==='annuaire'){ loadPartnerDirectory(); }
+}
+
+// ── PRESTATAIRES (annuaire marketplace, onglet dédié) ───────────
+function renderPrestataires(){
+  _dirCategory = null; _dirQuery = ''; _dirMaxPrice = ''; _dirCity = '';
+  var html = '<div class="p-section" style="margin-top:16px;" id="p-section-annuaire">';
+  html += '<div class="p-section-hdr dark">TROUVER UN PARTENAIRE</div>';
+  html += '<div class="p-vis-filter" id="p-dir-cat-filter">'
+    +'<button class="p-vis-fpill on" onclick="setDirCategory(null,this)">Tous</button>'
+    +'<button class="p-vis-fpill" onclick="setDirCategory(\'photographer\',this)">Photographe</button>'
+    +'<button class="p-vis-fpill" onclick="setDirCategory(\'videographer\',this)">Vidéaste</button>'
+    +'<button class="p-vis-fpill" onclick="setDirCategory(\'marketer\',this)">Marketeur</button>'
+    +'<button class="p-vis-fpill" onclick="setDirCategory(\'media\',this)">Médias</button>'
+    +'<button class="p-vis-fpill" onclick="setDirCategory(\'community_manager\',this)">Community Manager</button>'
+    +'<button class="p-vis-fpill" onclick="setDirCategory(\'graphiste\',this)">Graphiste</button>'
+    +'<button class="p-vis-fpill" onclick="setDirCategory(\'developpeur_web\',this)">Développeur Web</button>'
+    +'<button class="p-vis-fpill" onclick="setDirCategory(\'pilote_drone\',this)">Pilote Drone</button>'
+    +'<button class="p-vis-fpill" onclick="setDirCategory(\'consultant\',this)">Consultant</button>'
+    +'</div>';
+  html += '<div class="p-dir-controls">'
+    +'<input type="text" id="p-dir-search" class="p-dir-search-input" placeholder="Rechercher un partenaire..." oninput="_dirSearchDebounced()">'
+    +'<input type="text" id="p-dir-city" class="p-dir-search-input" placeholder="Ville..." style="flex:0 0 120px;" oninput="_dirCityDebounced()">'
+    +'<select id="p-dir-price" class="p-dir-price-select" onchange="onDirPriceChange()">'
+    +'<option value="">Tous prix</option>'
+    +'<option value="100">Moins de 100 €</option>'
+    +'<option value="300">Moins de 300 €</option>'
+    +'</select>'
+    +'</div>';
+  html += '<div id="p-dir-results" class="p-dir-results"><div class="p-dir-empty">Chargement...</div></div>';
+  html += '</div>';
+  document.getElementById('prestatairesList').innerHTML = html;
+  loadPartnerDirectory();
 }
 
 // Card builders
@@ -2433,8 +2457,8 @@ function setPrestVisFilter(type,el){
   }
 }
 // ── ANNUAIRE PARTENAIRES ────────────────────────────────────────
-var _dirCategory = null, _dirQuery = '', _dirMaxPrice = '', _dirSearchTimer = null;
-var PARTNER_TYPE_LABELS_DIR = {photographer:'Photographe', videographer:'Vidéaste', marketer:'Marketeur', media:'Médias'};
+var _dirCategory = null, _dirQuery = '', _dirMaxPrice = '', _dirCity = '', _dirSearchTimer = null, _dirCityTimer = null;
+var PARTNER_TYPE_LABELS_DIR = {photographer:'Photographe', videographer:'Vidéaste', marketer:'Marketeur', media:'Médias', community_manager:'Community Manager', graphiste:'Graphiste', developpeur_web:'Développeur Web', pilote_drone:'Pilote Drone', consultant:'Consultant'};
 
 function setDirCategory(cat, el){
   _dirCategory = cat;
@@ -2453,6 +2477,13 @@ function onDirPriceChange(){
   _dirMaxPrice = (document.getElementById('p-dir-price')||{}).value || '';
   loadPartnerDirectory();
 }
+function _dirCityDebounced(){
+  clearTimeout(_dirCityTimer);
+  _dirCityTimer = setTimeout(function(){
+    _dirCity = ((document.getElementById('p-dir-city')||{}).value || '').trim();
+    loadPartnerDirectory();
+  }, 300);
+}
 function loadPartnerDirectory(){
   var results = document.getElementById('p-dir-results');
   if(!results) return;
@@ -2461,6 +2492,7 @@ function loadPartnerDirectory(){
   if(_dirCategory) params.push('category='+encodeURIComponent(_dirCategory));
   if(_dirQuery) params.push('q='+encodeURIComponent(_dirQuery));
   if(_dirMaxPrice) params.push('maxPrice='+encodeURIComponent(_dirMaxPrice));
+  if(_dirCity) params.push('city='+encodeURIComponent(_dirCity));
   fetch(API+'/api/partners/directory'+(params.length?'?'+params.join('&'):''))
     .then(function(r){return r.json();})
     .then(function(data){
@@ -2478,11 +2510,14 @@ function directoryCard(p){
   var avatarHtml = p.photo
     ? '<img src="'+p.photo+'" alt="'+(p.prenom||'')+'">'
     : '<div class="p-dir-card-initials">'+initials+'</div>';
+  var cityHtml = p.city ? '<div class="p-dir-card-city"><i class="fas fa-location-dot"></i> '+p.city+'</div>' : '';
+  var verifiedHtml = p.verified ? '<span class="p-dir-card-verified">✓ Vérifié</span>' : '';
   return '<div class="p-dir-card" onclick="openPartnerDetail(\''+p.id+'\')">'
     +'<div class="p-dir-card-avatar">'+avatarHtml+'</div>'
     +'<div class="p-dir-card-info">'
-    +'<div class="p-dir-card-name">'+(p.prenom||'')+' '+(p.nom||'')+'</div>'
+    +'<div class="p-dir-card-name">'+(p.prenom||'')+' '+(p.nom||'')+' '+verifiedHtml+'</div>'
     +'<div class="p-dir-card-cat">'+label+'</div>'
+    +cityHtml
     +'<div class="p-dir-card-stars">'+starsLabel+'</div>'
     +'</div>'
     +'<div class="p-dir-card-price">'+priceLabel+'</div>'
@@ -2499,6 +2534,25 @@ function openPartnerDetail(partnerId){
       var label = PARTNER_TYPE_LABELS_DIR[p.partner_type] || p.partner_type;
       var priceLabel = (p.fromPrice===null||p.fromPrice===undefined) ? 'Sur devis' : ('à partir de '+p.fromPrice+' €');
       var starsLabel = (p.rating && p.rating.count) ? ('★ '+p.rating.average+' ('+p.rating.count+' avis)') : 'Aucun avis pour le moment';
+      var verifiedHtml = p.verified ? '<span class="p-dir-card-verified">✓ Vérifié</span>' : '';
+      var cityHtml = p.city ? '<div class="p-dir-detail-city"><i class="fas fa-location-dot"></i> '+p.city+'</div>' : '';
+      var bioHtml = p.bio ? '<div class="p-dir-detail-bio">'+p.bio+'</div>' : '';
+      var social = p.social || {};
+      var socialLinks = [];
+      if(social.instagram) socialLinks.push('<a href="'+social.instagram+'" target="_blank" rel="noopener"><i class="fab fa-instagram"></i></a>');
+      if(social.facebook) socialLinks.push('<a href="'+social.facebook+'" target="_blank" rel="noopener"><i class="fab fa-facebook"></i></a>');
+      if(social.linkedin) socialLinks.push('<a href="'+social.linkedin+'" target="_blank" rel="noopener"><i class="fab fa-linkedin"></i></a>');
+      if(social.tiktok) socialLinks.push('<a href="'+social.tiktok+'" target="_blank" rel="noopener"><i class="fab fa-tiktok"></i></a>');
+      if(social.website) socialLinks.push('<a href="'+social.website+'" target="_blank" rel="noopener"><i class="fas fa-globe"></i></a>');
+      var socialHtml = socialLinks.length ? '<div class="p-dir-detail-social">'+socialLinks.join('')+'</div>' : '';
+      var portfolio = p.portfolio || [];
+      var portfolioHtml = portfolio.length
+        ? '<div class="p-dir-portfolio-grid">'+portfolio.map(function(item){
+            return item.type === 'video'
+              ? '<a class="p-dir-portfolio-item p-dir-portfolio-video" href="'+item.url+'" target="_blank" rel="noopener"><i class="fas fa-circle-play"></i>'+(item.caption?'<span>'+item.caption+'</span>':'')+'</a>'
+              : '<div class="p-dir-portfolio-item"><img src="'+item.url+'" alt="'+(item.caption||'')+'"></div>';
+          }).join('')+'</div>'
+        : '';
       var services = p.services || [];
       var servicesHtml = services.length
         ? services.map(function(s){
@@ -2515,10 +2569,14 @@ function openPartnerDetail(partnerId){
           +(r.comment?'<p class="p-dir-review-comment">'+r.comment+'</p>':'')+'</li>';
       }).join('') || '<li class="p-dir-review-empty">Aucun avis publié pour le moment.</li>';
       document.getElementById('detail-content').innerHTML = ''
-        +'<div class="detail-name">'+(p.prenom||'')+' '+(p.nom||'')+'</div>'
+        +'<div class="detail-name">'+(p.prenom||'')+' '+(p.nom||'')+' '+verifiedHtml+'</div>'
         +'<div class="detail-sub">'+label+'</div>'
+        +cityHtml
         +'<div class="detail-price">'+priceLabel+'</div>'
         +'<div class="detail-payment">'+starsLabel+'</div>'
+        +bioHtml
+        +socialHtml
+        +(portfolioHtml ? '<div class="detail-divider"></div><div class="detail-feats-title">Portfolio</div>'+portfolioHtml : '')
         +'<div class="detail-divider"></div>'
         +'<div class="detail-feats-title">Prestations</div>'
         +'<div class="p-dir-services-list">'+servicesHtml+'</div>'
@@ -2670,8 +2728,16 @@ function renderProfil(){
       +pli('','#0a0a1a','Mes réservations',null,'nav(\'reservations\')')
       +pli('','#100a1a','Mes livrables',null,'showLivrables()')
       +pli('','#1a0a00','Mes séances',null,'showSeances()')
+      +pli('','#0d1a1a','Messages',null,'nav(\'messages\')')
       +'</div></div>';
   }
+
+  // ── ESPACE PARTENAIRE (visible aussi en invité) ─────────────
+  var espacePartenaire = '<div class="plus-section">'
+    +'<div class="plus-section-title">VOUS ÊTES PRESTATAIRE ?</div>'
+    +'<div class="plus-group">'
+    +pli('','#1a1400','Espace partenaire',null,'nav(\'partner\')')
+    +'</div></div>';
 
   // ── MES PARAMÈTRES ──────────────────────────────────────────
   var params = '<div class="plus-section">'
@@ -2698,7 +2764,7 @@ function renderProfil(){
   var logout = (USER && !GUEST)
     ? '<button class="plus-logout" onclick="deconnexion()">Déconnexion</button>' : '';
 
-  c.innerHTML = header + monEspace + params + infos + logout
+  c.innerHTML = header + monEspace + espacePartenaire + params + infos + logout
     +'<div class="plus-version">Version 1.1</div>';
 }
 
@@ -3301,14 +3367,14 @@ function _appSubmitSeanceForm(){
 
 // ── NAVIGATION VERS COWORKING ────────────────────────────────
 function navToCwPrestations(){
-  nav('prestations');
+  nav('explorer');
   setTimeout(function(){
-    var pills = document.querySelectorAll('#tab-prestations .fpill');
+    var pills = document.querySelectorAll('#tab-explorer .fpill');
     pills.forEach(function(p){ p.className='fpill'; });
     var cwPill = null;
     pills.forEach(function(p){ if(p.getAttribute('onclick')&&p.getAttribute('onclick').indexOf('coworking')>=0) cwPill=p; });
     if(cwPill){ cwPill.className='fpill on'; renderPrestations('coworking'); }
-    var tab = document.getElementById('tab-prestations'); if(tab) tab.scrollTop=0;
+    var tab = document.getElementById('tab-explorer'); if(tab) tab.scrollTop=0;
   }, 200);
 }
 
@@ -3627,8 +3693,11 @@ var APP_CART=(function(){try{return JSON.parse(localStorage.getItem('fa_app_cart
 function _saveCart(){ try{localStorage.setItem('fa_app_cart',JSON.stringify(APP_CART));}catch(e){} updateCartBadge(); }
 
 function updateCartBadge(){
-  var b=document.getElementById('cart-count'); if(!b) return;
-  var n=APP_CART.length; b.textContent=n>9?'9+':n; b.className='cart-badge'+(n>0?' on':'');
+  var n=APP_CART.length;
+  var b=document.getElementById('cart-count');
+  if(b){ b.textContent=n>9?'9+':n; b.className='cart-badge'+(n>0?' on':''); }
+  var nb=document.getElementById('cart-count-nav');
+  if(nb){ nb.textContent=n>9?'9+':n; nb.className='nav-cart-badge'+(n>0?' on':''); }
 }
 
 function addToCart(item){
@@ -6064,8 +6133,10 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
         if(typeof renderHomeOffers === 'function') renderHomeOffers();
         if(typeof loadStatusCard === 'function') loadStatusCard();
         if(typeof updateCartBadge === 'function') updateCartBadge();
-      } else if(tabId === 'tab-prestations'){
+      } else if(tabId === 'tab-explorer'){
         if(typeof renderPrestations === 'function') renderPrestations('all');
+      } else if(tabId === 'tab-prestataires'){
+        if(typeof renderPrestataires === 'function') renderPrestataires();
       } else if(tabId === 'tab-reservations'){
         if(typeof renderResaTab === 'function') renderResaTab();
       } else if(tabId === 'tab-messages'){
@@ -6529,7 +6600,7 @@ function _updateGreeting(){
 // ── 5. Swipe left/right to navigate tabs ──
 (function(){
   var c=document.getElementById('content'); if(!c) return;
-  var tabs=['home','prestations','reservations','messages','profil','partner'];
+  var tabs=['home','explorer','prestataires','profil'];
   var sx=0,sy=0,moved=false;
   c.addEventListener('touchstart',function(e){
     sx=e.touches[0].clientX; sy=e.touches[0].clientY; moved=false;

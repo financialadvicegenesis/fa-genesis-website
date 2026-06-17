@@ -378,6 +378,47 @@
                 <div id="profileInfo" class="mb-8"></div>
                 <hr class="border-2 border-black my-6">
                 <h3 class="text-lg font-black italic uppercase mb-4">
+                    <i class="fas fa-id-card mr-2"></i>MA VITRINE PUBLIQUE
+                </h3>
+                <p class="text-sm opacity-60 mb-4">Ces informations sont visibles par les clients dans l'annuaire des partenaires.</p>
+                <div class="space-y-4 mb-6">
+                    <div>
+                        <label class="block font-black mb-1 uppercase text-sm">Bio / présentation</label>
+                        <textarea id="profileBio" rows="3" placeholder="Présentez votre activité, votre expérience..."></textarea>
+                    </div>
+                    <div>
+                        <label class="block font-black mb-1 uppercase text-sm">Ville / zone d'intervention</label>
+                        <input type="text" id="profileCity" placeholder="Ex: Paris, Lyon...">
+                    </div>
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block font-black mb-1 uppercase text-sm">Instagram</label>
+                            <input type="text" id="profileInstagram" placeholder="https://instagram.com/...">
+                        </div>
+                        <div>
+                            <label class="block font-black mb-1 uppercase text-sm">Facebook</label>
+                            <input type="text" id="profileFacebook" placeholder="https://facebook.com/...">
+                        </div>
+                        <div>
+                            <label class="block font-black mb-1 uppercase text-sm">LinkedIn</label>
+                            <input type="text" id="profileLinkedin" placeholder="https://linkedin.com/...">
+                        </div>
+                        <div>
+                            <label class="block font-black mb-1 uppercase text-sm">TikTok</label>
+                            <input type="text" id="profileTiktok" placeholder="https://tiktok.com/...">
+                        </div>
+                        <div>
+                            <label class="block font-black mb-1 uppercase text-sm">Site web</label>
+                            <input type="text" id="profileWebsite" placeholder="https://...">
+                        </div>
+                    </div>
+                    <button type="button" onclick="saveProfileShowcase()" id="saveProfileShowcaseBtn" class="neo-btn-yellow px-6 py-3 text-sm">
+                        <i class="fas fa-save mr-2"></i>ENREGISTRER MA VITRINE
+                    </button>
+                    <div id="profileShowcaseMessage" class="mt-2" style="display:none;"></div>
+                </div>
+                <hr class="border-2 border-black my-6">
+                <h3 class="text-lg font-black italic uppercase mb-4">
                     <i class="fas fa-lock mr-2"></i>CHANGER MON MOT DE PASSE
                 </h3>
                 <form id="passwordForm" class="space-y-4">
@@ -411,6 +452,23 @@
                     </button>
                 </div>
                 <div id="servicesMessage" class="mt-4" style="display:none;"></div>
+            </div>
+
+            <div class="section-card neo-shadow mt-8">
+                <h3 class="text-lg font-black italic uppercase mb-2">
+                    <i class="fas fa-images mr-2"></i>MON PORTFOLIO
+                </h3>
+                <p class="text-sm opacity-60 mb-4">Ajoutez des photos ou des liens vidéo (YouTube, Vimeo...) pour illustrer vos réalisations dans l'annuaire.</p>
+                <div id="portfolioItemsContainer"></div>
+                <button type="button" onclick="addPortfolioItem()" class="neo-btn-yellow px-4 py-2 text-sm mt-3">
+                    <i class="fas fa-plus mr-2"></i>AJOUTER UN ELEMENT
+                </button>
+                <div class="mt-6">
+                    <button type="button" onclick="savePortfolio()" id="savePortfolioBtn" class="neo-btn-yellow px-6 py-3 text-sm">
+                        <i class="fas fa-save mr-2"></i>ENREGISTRER MON PORTFOLIO
+                    </button>
+                </div>
+                <div id="portfolioMessage" class="mt-4" style="display:none;"></div>
             </div>
         </div>
 
@@ -602,7 +660,12 @@
         photographer: { extensions: ['jpg', 'jpeg', 'png'], accept: '.jpg,.jpeg,.png', label: 'JPG, JPEG, PNG' },
         videographer: { extensions: ['mp4', 'mov', '4k'], accept: '.mp4,.mov,.4k', label: 'MP4, MOV, 4K' },
         marketer: { extensions: ['pdf', 'docx'], accept: '.pdf,.docx', label: 'PDF, DOCX' },
-        media: { extensions: ['jpg', 'jpeg', 'png', 'pdf'], accept: '.jpg,.jpeg,.png,.pdf', label: 'JPG, JPEG, PNG, PDF' }
+        media: { extensions: ['jpg', 'jpeg', 'png', 'pdf'], accept: '.jpg,.jpeg,.png,.pdf', label: 'JPG, JPEG, PNG, PDF' },
+        community_manager: { extensions: ['pdf', 'docx'], accept: '.pdf,.docx', label: 'PDF, DOCX' },
+        graphiste: { extensions: ['jpg', 'jpeg', 'png', 'pdf'], accept: '.jpg,.jpeg,.png,.pdf', label: 'JPG, JPEG, PNG, PDF' },
+        developpeur_web: { extensions: ['pdf', 'docx'], accept: '.pdf,.docx', label: 'PDF, DOCX' },
+        pilote_drone: { extensions: ['jpg', 'jpeg', 'png', 'mp4', 'mov', '4k'], accept: '.jpg,.jpeg,.png,.mp4,.mov,.4k', label: 'JPG, JPEG, PNG, MP4, MOV, 4K' },
+        consultant: { extensions: ['pdf', 'docx'], accept: '.pdf,.docx', label: 'PDF, DOCX' }
     };
 
     // Labels des types de partenaire
@@ -610,7 +673,12 @@
         photographer: 'Photographe',
         videographer: 'Vidéographe',
         marketer: 'Marketeur',
-        media: 'Média'
+        media: 'Média',
+        community_manager: 'Community Manager',
+        graphiste: 'Graphiste',
+        developpeur_web: 'Développeur Web',
+        pilote_drone: 'Pilote Drone',
+        consultant: 'Consultant'
     };
 
     // ==============================================
@@ -1380,6 +1448,23 @@
         if (pendingBanner) pendingBanner.style.display = (currentPartner.accountStatus === 'pending') ? 'block' : 'none';
 
         renderServicesSection();
+        renderPortfolioSection();
+
+        var bioEl = document.getElementById('profileBio');
+        if (bioEl) bioEl.value = currentPartner.bio || '';
+        var cityEl = document.getElementById('profileCity');
+        if (cityEl) cityEl.value = currentPartner.city || '';
+        var social = currentPartner.social || {};
+        var instaEl = document.getElementById('profileInstagram');
+        if (instaEl) instaEl.value = social.instagram || '';
+        var fbEl = document.getElementById('profileFacebook');
+        if (fbEl) fbEl.value = social.facebook || '';
+        var liEl = document.getElementById('profileLinkedin');
+        if (liEl) liEl.value = social.linkedin || '';
+        var ttEl = document.getElementById('profileTiktok');
+        if (ttEl) ttEl.value = social.tiktok || '';
+        var webEl = document.getElementById('profileWebsite');
+        if (webEl) webEl.value = social.website || '';
 
         var container = document.getElementById('profileInfo');
         if (!container) return;
@@ -1420,6 +1505,46 @@
                     '<span class="status-badge ' + (currentPartner.accountStatus === 'pending' ? 'status-pending' : 'status-active') + '">' + (currentPartner.accountStatus || 'actif').toUpperCase() + '</span>' +
                 '</div>' +
             '</div>';
+    }
+
+    async function saveProfileShowcase() {
+        var msgEl = document.getElementById('profileShowcaseMessage');
+        var btnEl = document.getElementById('saveProfileShowcaseBtn');
+        var payload = {
+            bio: (document.getElementById('profileBio') || {}).value || '',
+            city: (document.getElementById('profileCity') || {}).value || '',
+            social: {
+                instagram: (document.getElementById('profileInstagram') || {}).value || '',
+                facebook: (document.getElementById('profileFacebook') || {}).value || '',
+                linkedin: (document.getElementById('profileLinkedin') || {}).value || '',
+                tiktok: (document.getElementById('profileTiktok') || {}).value || '',
+                website: (document.getElementById('profileWebsite') || {}).value || ''
+            }
+        };
+
+        if (btnEl) { btnEl.disabled = true; btnEl.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>ENREGISTREMENT...'; }
+
+        try {
+            var result = await updatePartnerProfile(payload);
+            if (msgEl) {
+                msgEl.style.display = 'block';
+                if (result.success) {
+                    if (result.partner) currentPartner = result.partner;
+                    msgEl.innerHTML = '<p class="font-black" style="color:#51cf66;"><i class="fas fa-check-circle mr-2"></i>Vitrine mise à jour.</p>';
+                } else {
+                    msgEl.innerHTML = '<p class="font-black" style="color:#ff6b6b;"><i class="fas fa-exclamation-circle mr-2"></i>' + (result.message || 'Erreur lors de l\'enregistrement') + '</p>';
+                }
+                setTimeout(function() { msgEl.style.display = 'none'; }, 5000);
+            }
+        } catch (error) {
+            console.error('[PARTNER-DASH] Erreur saveProfileShowcase:', error);
+            if (msgEl) {
+                msgEl.style.display = 'block';
+                msgEl.innerHTML = '<p class="font-black" style="color:#ff6b6b;"><i class="fas fa-exclamation-circle mr-2"></i>Erreur de connexion au serveur</p>';
+            }
+        } finally {
+            if (btnEl) { btnEl.disabled = false; btnEl.innerHTML = '<i class="fas fa-save mr-2"></i>ENREGISTRER MA VITRINE'; }
+        }
     }
 
     var passwordFormEl = document.getElementById('passwordForm');
@@ -2016,6 +2141,113 @@
             }
         } finally {
             if (saveBtn) { saveBtn.disabled = false; saveBtn.innerHTML = '<i class="fas fa-save mr-2"></i>ENREGISTRER MES PRESTATIONS'; }
+        }
+    }
+
+    function renderPortfolioItemRow(index, item) {
+        return '<div class="proposal-item-row mb-3 p-3 bg-gray-50 border-2 border-black" data-index="' + index + '">' +
+            '<div class="grid grid-cols-1 md:grid-cols-12 gap-2">' +
+                '<div class="md:col-span-2">' +
+                    '<label class="block text-xs font-black uppercase mb-1">Type</label>' +
+                    '<select class="portfolio-item-type">' +
+                        '<option value="photo"' + (item.type === 'video' ? '' : ' selected') + '>Photo</option>' +
+                        '<option value="video"' + (item.type === 'video' ? ' selected' : '') + '>Vidéo</option>' +
+                    '</select>' +
+                '</div>' +
+                '<div class="md:col-span-5">' +
+                    '<label class="block text-xs font-black uppercase mb-1">URL (image ou lien YouTube/Vimeo)</label>' +
+                    '<input type="text" class="portfolio-item-url" placeholder="https://..." value="' + (item.url || '') + '">' +
+                '</div>' +
+                '<div class="md:col-span-3">' +
+                    '<label class="block text-xs font-black uppercase mb-1">Légende</label>' +
+                    '<input type="text" class="portfolio-item-caption" placeholder="Légende (optionnel)" value="' + (item.caption || '') + '">' +
+                '</div>' +
+                '<div class="md:col-span-2 flex items-end">' +
+                    '<button onclick="removePortfolioItem(' + index + ')" class="text-red-600 font-black hover:opacity-70" title="Supprimer">' +
+                        '<i class="fas fa-trash"></i>' +
+                    '</button>' +
+                '</div>' +
+            '</div>' +
+        '</div>';
+    }
+
+    function renderPortfolioSection() {
+        var container = document.getElementById('portfolioItemsContainer');
+        if (!container || !currentPartner) return;
+        var portfolio = currentPartner.portfolio || [];
+        if (portfolio.length === 0) {
+            container.innerHTML = renderPortfolioItemRow(0, { type: 'photo', url: '', caption: '' });
+        } else {
+            container.innerHTML = portfolio.map(function(item, i) { return renderPortfolioItemRow(i, item); }).join('');
+        }
+    }
+
+    function addPortfolioItem() {
+        var container = document.getElementById('portfolioItemsContainer');
+        if (!container) return;
+        var rows = container.querySelectorAll('.proposal-item-row');
+        var newIndex = rows.length;
+        var wrapper = document.createElement('div');
+        wrapper.innerHTML = renderPortfolioItemRow(newIndex, { type: 'photo', url: '', caption: '' });
+        container.appendChild(wrapper.firstChild);
+    }
+
+    function removePortfolioItem(index) {
+        var container = document.getElementById('portfolioItemsContainer');
+        if (!container) return;
+        var rows = container.querySelectorAll('.proposal-item-row');
+        if (rows[index]) rows[index].remove();
+    }
+
+    async function savePortfolio() {
+        var container = document.getElementById('portfolioItemsContainer');
+        var msgEl = document.getElementById('portfolioMessage');
+        var saveBtn = document.getElementById('savePortfolioBtn');
+        if (!container) return;
+
+        var rows = container.querySelectorAll('.proposal-item-row');
+        var portfolio = [];
+        for (var i = 0; i < rows.length; i++) {
+            var typeEl = rows[i].querySelector('.portfolio-item-type');
+            var urlEl = rows[i].querySelector('.portfolio-item-url');
+            var captionEl = rows[i].querySelector('.portfolio-item-caption');
+            var url = urlEl ? urlEl.value.trim() : '';
+            if (!url) continue;
+            portfolio.push({
+                type: typeEl ? typeEl.value : 'photo',
+                url: url,
+                caption: captionEl ? captionEl.value.trim() : ''
+            });
+        }
+
+        if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Enregistrement...'; }
+
+        try {
+            var response = await partnerAuthenticatedFetch(PARTNER_API_BASE_URL + '/api/partner/portfolio', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ portfolio: portfolio })
+            });
+            var data = await response.json();
+
+            if (msgEl) {
+                msgEl.style.display = 'block';
+                if (response.ok && data.success) {
+                    currentPartner.portfolio = data.portfolio;
+                    msgEl.innerHTML = '<p class="font-black" style="color:#51cf66;"><i class="fas fa-check-circle mr-2"></i>Portfolio enregistré avec succès.</p>';
+                } else {
+                    msgEl.innerHTML = '<p class="font-black" style="color:#ff6b6b;"><i class="fas fa-exclamation-circle mr-2"></i>' + (data.error || 'Erreur lors de l\'enregistrement') + '</p>';
+                }
+                setTimeout(function() { msgEl.style.display = 'none'; }, 5000);
+            }
+        } catch (error) {
+            console.error('[PARTNER-DASH] Erreur savePortfolio:', error);
+            if (msgEl) {
+                msgEl.style.display = 'block';
+                msgEl.innerHTML = '<p class="font-black" style="color:#ff6b6b;"><i class="fas fa-exclamation-circle mr-2"></i>Erreur de connexion au serveur</p>';
+            }
+        } finally {
+            if (saveBtn) { saveBtn.disabled = false; saveBtn.innerHTML = '<i class="fas fa-save mr-2"></i>ENREGISTRER MON PORTFOLIO'; }
         }
     }
 

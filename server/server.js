@@ -54,6 +54,20 @@ const DISPATCHES_FILE = path.join(__dirname, 'data', 'dispatches.json');
 const PAYOUTS_FILE    = path.join(__dirname, 'data', 'payouts.json');
 const PARTNER_REVIEWS_FILE = path.join(__dirname, 'data', 'partner_reviews.json');
 
+// Catégories de partenaires marketplace (source unique, partagée par inscription + admin)
+const PARTNER_TYPES = [
+    { value: 'photographer', label: 'Photographe' },
+    { value: 'videographer', label: 'Vidéaste' },
+    { value: 'marketer', label: 'Marketeur' },
+    { value: 'media', label: 'Média' },
+    { value: 'community_manager', label: 'Community Manager' },
+    { value: 'graphiste', label: 'Graphiste' },
+    { value: 'developpeur_web', label: 'Développeur Web' },
+    { value: 'pilote_drone', label: 'Pilote Drone' },
+    { value: 'consultant', label: 'Consultant' }
+];
+const PARTNER_TYPE_VALUES = PARTNER_TYPES.map(t => t.value);
+
 // Creer le dossier data s'il n'existe pas
 if (!fs.existsSync(path.join(__dirname, 'data'))) {
     fs.mkdirSync(path.join(__dirname, 'data'), { recursive: true });
@@ -6993,9 +7007,8 @@ app.post('/api/partner/auth/register', async (req, res) => {
         if (!prenom || !nom || !email || !password || !partner_type) {
             return res.status(400).json({ error: 'Champs obligatoires: prenom, nom, email, password, partner_type' });
         }
-        const validTypes = ['photographer', 'videographer', 'marketer', 'media'];
-        if (validTypes.indexOf(partner_type) === -1) {
-            return res.status(400).json({ error: 'partner_type invalide. Valeurs acceptees: ' + validTypes.join(', ') });
+        if (PARTNER_TYPE_VALUES.indexOf(partner_type) === -1) {
+            return res.status(400).json({ error: 'partner_type invalide. Valeurs acceptees: ' + PARTNER_TYPE_VALUES.join(', ') });
         }
         const existing = getPartnerByEmail(email);
         if (existing) {
@@ -7166,7 +7179,7 @@ app.post('/api/partner/auth/logout', authenticatePartner, (req, res) => {
 // Modifier profil partenaire
 app.put('/api/partner/auth/update-profile', authenticatePartner, async (req, res) => {
     try {
-        const { prenom, nom, telephone, photo, currentPassword, newPassword } = req.body;
+        const { prenom, nom, telephone, photo, bio, city, social, currentPassword, newPassword } = req.body;
         const partners = loadPartners();
         const index = partners.findIndex(p => p.id === req.partner.id);
         if (index === -1) {
@@ -7176,6 +7189,16 @@ app.put('/api/partner/auth/update-profile', authenticatePartner, async (req, res
         if (nom) partners[index].nom = nom;
         if (telephone) partners[index].telephone = telephone;
         if (photo) partners[index].photo = photo;
+        if (typeof bio === 'string') partners[index].bio = bio.trim();
+        if (typeof city === 'string') partners[index].city = city.trim();
+        if (social && typeof social === 'object') {
+            const prevSocial = partners[index].social || {};
+            const cleanedSocial = {};
+            ['instagram', 'facebook', 'linkedin', 'tiktok', 'website'].forEach(key => {
+                cleanedSocial[key] = typeof social[key] === 'string' ? social[key].trim() : (prevSocial[key] || '');
+            });
+            partners[index].social = cleanedSocial;
+        }
         if (currentPassword && newPassword) {
             const validPassword = await bcrypt.compare(currentPassword, partners[index].password);
             if (!validPassword) {
@@ -7240,6 +7263,48 @@ app.put('/api/partner/services', authenticatePartner, (req, res) => {
     }
 });
 
+// Lister mon portfolio (partenaire connecté)
+app.get('/api/partner/portfolio', authenticatePartner, (req, res) => {
+    res.json({ success: true, portfolio: req.partner.portfolio || [] });
+});
+
+// Remplacer mon portfolio (partenaire connecté)
+app.put('/api/partner/portfolio', authenticatePartner, (req, res) => {
+    try {
+        const { portfolio } = req.body;
+        if (!Array.isArray(portfolio)) {
+            return res.status(400).json({ error: 'portfolio doit etre un tableau' });
+        }
+        const cleaned = [];
+        for (const item of portfolio) {
+            if (!item || (item.type !== 'photo' && item.type !== 'video')) {
+                return res.status(400).json({ error: 'Chaque element doit avoir un type "photo" ou "video"' });
+            }
+            if (!item.url || typeof item.url !== 'string' || !item.url.trim()) {
+                return res.status(400).json({ error: 'Chaque element doit avoir une url' });
+            }
+            cleaned.push({
+                id: item.id || ('PF-' + uuidv4().split('-')[0]),
+                type: item.type,
+                url: item.url.trim(),
+                caption: (item.caption || '').trim()
+            });
+        }
+        const partners = loadPartners();
+        const index = partners.findIndex(p => p.id === req.partner.id);
+        if (index === -1) {
+            return res.status(404).json({ error: 'Partenaire non trouve' });
+        }
+        partners[index].portfolio = cleaned;
+        partners[index].updatedAt = new Date().toISOString();
+        savePartners(partners);
+        res.json({ success: true, portfolio: cleaned });
+    } catch (error) {
+        console.error('[PARTNER] Erreur update portfolio:', error);
+        res.status(500).json({ error: 'Erreur lors de la mise a jour du portfolio' });
+    }
+});
+
 // ============================================================
 // ENDPOINT PUBLIC - ANNUAIRE PARTENAIRES
 // ============================================================
@@ -7264,7 +7329,7 @@ function getPartnerRatingSummary(partnerId) {
 // Annuaire public des partenaires (recherche, filtre categorie, filtre prix)
 app.get('/api/partners/directory', (req, res) => {
     try {
-        const { category, q, maxPrice } = req.query;
+        const { category, q, maxPrice, city } = req.query;
         let partners = loadPartners().filter(p => p.accountStatus === 'active');
 
         if (category) {
@@ -7276,6 +7341,10 @@ app.get('/api/partners/directory', (req, res) => {
                 ((p.prenom || '') + ' ' + (p.nom || '')).toLowerCase().includes(needle)
             );
         }
+        if (city) {
+            const needleCity = city.trim().toLowerCase();
+            partners = partners.filter(p => (p.city || '').toLowerCase().includes(needleCity));
+        }
 
         let results = partners.map(p => {
             const fromPrice = getPartnerFromPrice(p);
@@ -7285,8 +7354,10 @@ app.get('/api/partners/directory', (req, res) => {
                 nom: p.nom,
                 partner_type: p.partner_type,
                 photo: p.photo || null,
+                city: p.city || '',
                 fromPrice: fromPrice,
-                rating: getPartnerRatingSummary(p.id)
+                rating: getPartnerRatingSummary(p.id),
+                verified: true
             };
         });
 
@@ -7314,6 +7385,8 @@ app.get('/api/partners/:id/reviews', (req, res) => {
         const fromPrice = getPartnerFromPrice(partner);
         const activeServices = (partner.services || []).filter(s => s.active !== false)
             .map(s => ({ id: s.id, label: s.label, description: s.description || '', price: s.price }));
+        const activePortfolio = (partner.portfolio || [])
+            .map(item => ({ id: item.id, type: item.type, url: item.url, caption: item.caption || '' }));
         const reviews = loadPartnerReviews()
             .filter(r => r.partnerId === partner.id && r.status === 'published')
             .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
@@ -7326,9 +7399,14 @@ app.get('/api/partners/:id/reviews', (req, res) => {
                 nom: partner.nom,
                 partner_type: partner.partner_type,
                 photo: partner.photo || null,
+                bio: partner.bio || '',
+                city: partner.city || '',
+                social: partner.social || {},
                 fromPrice: fromPrice,
                 rating: getPartnerRatingSummary(partner.id),
-                services: activeServices
+                services: activeServices,
+                portfolio: activePortfolio,
+                verified: true
             },
             reviews: reviews
         });
@@ -8083,9 +8161,8 @@ app.post('/api/admin/partners/create', async (req, res) => {
         if (!prenom || !nom || !email || !password || !partner_type) {
             return res.status(400).json({ error: 'Champs obligatoires: prenom, nom, email, password, partner_type' });
         }
-        const validTypes = ['photographer', 'videographer', 'marketer', 'media'];
-        if (validTypes.indexOf(partner_type) === -1) {
-            return res.status(400).json({ error: 'partner_type invalide. Valeurs acceptees: ' + validTypes.join(', ') });
+        if (PARTNER_TYPE_VALUES.indexOf(partner_type) === -1) {
+            return res.status(400).json({ error: 'partner_type invalide. Valeurs acceptees: ' + PARTNER_TYPE_VALUES.join(', ') });
         }
         const existing = getPartnerByEmail(email);
         if (existing) {
@@ -8172,8 +8249,7 @@ app.put('/api/admin/partners/:partnerId', (req, res) => {
         if (nom) partners[index].nom = nom;
         if (telephone !== undefined) partners[index].telephone = telephone;
         if (partner_type) {
-            const validTypes = ['photographer', 'videographer', 'marketer', 'media'];
-            if (validTypes.indexOf(partner_type) !== -1) {
+            if (PARTNER_TYPE_VALUES.indexOf(partner_type) !== -1) {
                 partners[index].partner_type = partner_type;
             }
         }
