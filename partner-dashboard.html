@@ -603,6 +603,15 @@
                 <p class="text-xs font-black uppercase opacity-60 mb-2">Classement dans votre catégorie</p>
                 <p id="reputationClassement" class="text-2xl font-black text-white">—</p>
             </div>
+
+            <div class="section-card neo-shadow text-center">
+                <p class="text-xs font-black uppercase opacity-60 mb-2">Programme de parrainage <span id="reputationReferralBadge"></span></p>
+                <div class="flex items-center justify-center gap-2 mb-2">
+                    <p id="reputationReferralCode" class="text-xl font-black" style="color:#ffd43b;">—</p>
+                    <button onclick="navigator.clipboard&&navigator.clipboard.writeText(document.getElementById('reputationReferralCode').textContent)" class="text-xs font-black uppercase px-3 py-1" style="background:#ffd43b;color:#000;border-radius:8px;border:none;cursor:pointer;">Copier</button>
+                </div>
+                <p id="reputationReferralCount" class="text-sm opacity-70">0 partenaire parrainé</p>
+            </div>
         </div>
 
         <!-- ===== SECTION MISSIONS ===== -->
@@ -2404,6 +2413,8 @@
     var REPUTATION_BADGE_COLORS = {
         bronze: '#cd7f32', argent: '#c7c7c7', or: '#FFD700', elite: '#a855f7', fondateur: '#FFD700'
     };
+    var REFERRAL_STATUS_LABELS = { batisseur: 'BÂTISSEUR', architecte: 'ARCHITECTE' };
+    var REFERRAL_STATUS_COLORS = { batisseur: '#c7c7c7', architecte: '#a855f7' };
 
     async function loadReputation() {
         var badgeEl = document.getElementById('reputationBadge');
@@ -2450,6 +2461,23 @@
                 if (classementEl) classementEl.textContent = '#' + classement.rank + ' / ' + classement.total;
             } else if (classementBlock) {
                 classementBlock.style.display = 'none';
+            }
+
+            var refCodeEl = document.getElementById('reputationReferralCode');
+            var refCountEl = document.getElementById('reputationReferralCount');
+            var refBadgeEl = document.getElementById('reputationReferralBadge');
+            if (refCodeEl) refCodeEl.textContent = data.referralCode || '—';
+            if (refCountEl) {
+                var refCount = data.referralCount || 0;
+                refCountEl.textContent = refCount + ' partenaire' + (refCount > 1 ? 's' : '') + ' parrainé' + (refCount > 1 ? 's' : '');
+            }
+            if (refBadgeEl) {
+                if (data.referralStatus && REFERRAL_STATUS_LABELS[data.referralStatus]) {
+                    refBadgeEl.textContent = REFERRAL_STATUS_LABELS[data.referralStatus];
+                    refBadgeEl.style.color = REFERRAL_STATUS_COLORS[data.referralStatus];
+                } else {
+                    refBadgeEl.textContent = '';
+                }
             }
         } catch (error) {
             console.error('[PARTNER-DASH] Erreur chargement réputation:', error);
@@ -2842,7 +2870,7 @@
             '<div class="flex justify-between items-start flex-wrap gap-3 mb-4">' +
                 '<div>' +
                     '<div class="text-xs font-bold opacity-50 text-white uppercase">' + date + '</div>' +
-                    '<div class="font-black text-white text-lg uppercase mt-1">' + escapeHtml(offerLabel) + '</div>' +
+                    '<div class="font-black text-white text-lg uppercase mt-1">' + escapeHtml(offerLabel) + (d.priority > 0 ? ' <span style="background:#FFD700;color:#000;font-size:10px;padding:2px 7px;border-radius:6px;text-transform:uppercase;letter-spacing:.3px;">⭐ Prioritaire</span>' : '') + '</div>' +
                     (clientName ? '<div class="text-sm font-bold text-[var(--genesis-yellow)]"><i class="fas fa-user mr-1"></i>' + clientName + '</div>' : '') +
                 '</div>' +
                 '<div style="text-align:right;">' +

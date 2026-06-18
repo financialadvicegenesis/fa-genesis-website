@@ -640,6 +640,10 @@ function createDispatchesForOrder(orderId) {
         var isPartnerTarif = productIds.length > 0 && productIds.every(function(pid) { return PARTNER_TARIF_IDS.indexOf(pid) !== -1; });
         var partnerPct = isPartnerTarif ? 85 : 15;
 
+        // Reservation prioritaire : les clients Or/Prestige sont mis en avant aux partenaires
+        var clientBadge = clientEmail ? getClientBadge(getClientCompletedOrders(clientEmail)) : null;
+        var dispatchPriority = clientBadge === 'prestige' ? 2 : (clientBadge === 'or' ? 1 : 0);
+
         var dispatches = loadDispatches();
         var createdTypes = [];
 
@@ -667,6 +671,8 @@ function createDispatchesForOrder(orderId) {
                     partner_deposit_amount: partnerDeposit,
                     partner_total_amount: partnerTotal,
                     client_availability: null,
+                    client_badge: clientBadge,
+                    priority: dispatchPriority,
                     status: 'pending_acceptance',
                     claimed_by_name: null,
                     claimed_by_profile: null,
@@ -4864,7 +4870,7 @@ app.post('/api/admin/messages/bulk-delete', (req, res) => {
  */
 app.post('/api/auth/register', async (req, res) => {
     try {
-        const { prenom, nom, email, telephone, password, offre, accountType } = req.body;
+        const { prenom, nom, email, telephone, password, offre, accountType, referralCode } = req.body;
         const validAccountTypes = ['etudiant', 'particulier', 'entreprise'];
         const userAccountType = validAccountTypes.includes(accountType) ? accountType : null;
 
@@ -4949,6 +4955,14 @@ app.post('/api/auth/register', async (req, res) => {
             }
         }
 
+        // Code de parrainage optionnel : l'id de l'utilisateur sert directement de code
+        const users = loadUsers();
+        let referredBy = null;
+        if (referralCode && typeof referralCode === 'string') {
+            const referrer = users.find(u => u.id.toLowerCase() === referralCode.trim().toLowerCase());
+            if (referrer) referredBy = referrer.id;
+        }
+
         // Creer l'utilisateur
         const newUser = {
             id: `USR-${uuidv4().split('-')[0].toUpperCase()}`,
@@ -4964,6 +4978,7 @@ app.post('/api/auth/register', async (req, res) => {
             paymentStatus: 'registered',
             payments: [],
             favoris: [],
+            referredBy: referredBy,
             sessionToken: sessionToken,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
@@ -4971,7 +4986,6 @@ app.post('/api/auth/register', async (req, res) => {
         };
 
         // Sauvegarder
-        const users = loadUsers();
         users.push(newUser);
         saveUsers(users);
 
@@ -5201,6 +5215,7 @@ app.get('/api/auth/me', (req, res) => {
 
         var completedOrders = getClientCompletedOrders(user.email);
         var clientBadge = getClientBadge(completedOrders);
+        var referralCount = getClientReferralCount(user.id);
 
         res.json({
             success: true,
@@ -5210,7 +5225,10 @@ app.get('/api/auth/me', (req, res) => {
             badge: clientBadge,
             completedOrders: completedOrders,
             isClientFidele: completedOrders >= 5,
-            favoris: user.favoris || []
+            favoris: user.favoris || [],
+            referralCode: user.id,
+            referralCount: referralCount,
+            isCerclePrivilege: getClientReferralStatus(referralCount) === 'cercle_privilege'
         });
 
     } catch (error) {
@@ -7114,7 +7132,7 @@ app.post('/api/partner/auth/login', async (req, res) => {
 // Inscription partenaire (self-service) — compte créé en 'pending', visible en annuaire seulement après validation admin
 app.post('/api/partner/auth/register', async (req, res) => {
     try {
-        const { prenom, nom, email, telephone, password, partner_type, company } = req.body;
+        const { prenom, nom, email, telephone, password, partner_type, company, referralCode } = req.body;
         if (!prenom || !nom || !email || !password || !partner_type) {
             return res.status(400).json({ error: 'Champs obligatoires: prenom, nom, email, password, partner_type' });
         }
@@ -7131,6 +7149,12 @@ app.post('/api/partner/auth/register', async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, 10);
         const now = new Date().toISOString();
         const sessionToken = generateSessionToken();
+        const partners = loadPartners();
+        let referredBy = null;
+        if (referralCode && typeof referralCode === 'string') {
+            const referrer = partners.find(p => p.id.toLowerCase() === referralCode.trim().toLowerCase());
+            if (referrer) referredBy = referrer.id;
+        }
         const partner = {
             id: 'PTR-' + uuidv4().split('-')[0],
             prenom: prenom,
@@ -7143,12 +7167,12 @@ app.post('/api/partner/auth/register', async (req, res) => {
             services: (LEGACY_SERVICE_CATALOG[partner_type] || []).map(s => Object.assign({ id: 'SVC-' + uuidv4().split('-')[0] }, s, { active: true })),
             sessionToken: sessionToken,
             accountStatus: 'pending',
+            referredBy: referredBy,
             createdAt: now,
             updatedAt: now,
             lastLogin: now,
             createdBy: 'self-register'
         };
-        const partners = loadPartners();
         partners.push(partner);
         savePartners(partners);
         const { password: _, ...partnerSafe } = partner;
@@ -7478,6 +7502,19 @@ function getPartnerBadge(partner, ratingSummary, missionsCompleted) {
     return null;
 }
 
+// Parrainage partenaire : un filleul ne compte que s'il a ete active (equivalent partenaire du "premier paiement" client)
+function getPartnerReferralCount(partnerId) {
+    if (!partnerId) return 0;
+    return loadPartners().filter(function(p) {
+        return p.referredBy === partnerId && p.accountStatus === 'active';
+    }).length;
+}
+function getPartnerReferralStatus(count) {
+    if (count >= 10) return 'architecte';
+    if (count >= 3) return 'batisseur';
+    return null;
+}
+
 const CLIENT_BADGE_TIERS = [
     { id: 'prestige', orders: 20 },
     { id: 'or', orders: 10 },
@@ -7500,6 +7537,17 @@ function getClientBadge(completedCount) {
         if (completedCount >= tier.orders) return tier.id;
     }
     return null;
+}
+
+// Parrainage client : un filleul ne compte que s'il a effectue son premier paiement (evite les faux comptes)
+function getClientReferralCount(userId) {
+    if (!userId) return 0;
+    return loadUsers().filter(function(u) {
+        return u.referredBy === userId && getClientCompletedOrders(u.email) >= 1;
+    }).length;
+}
+function getClientReferralStatus(count) {
+    return count >= 3 ? 'cercle_privilege' : null;
 }
 
 const PARTNER_BADGE_SCORE_BONUS = { fondateur: 40, elite: 30, or: 20, argent: 10, bronze: 5 };
@@ -7778,7 +7826,11 @@ app.get('/api/partner/dispatches', authenticatePartner, function(req, res) {
                 }
                 return false;
             })
-            .sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); });
+            .sort(function(a, b) {
+                var prioDiff = (b.priority || 0) - (a.priority || 0);
+                if (prioDiff !== 0) return prioDiff;
+                return new Date(a.created_at) - new Date(b.created_at);
+            });
         res.json({ dispatches: available });
     } catch(e) {
         console.error('[DISPATCH] Erreur liste:', e);
@@ -8113,6 +8165,7 @@ app.get('/api/partner/reputation', authenticatePartner, function(req, res) {
 
         var categoryPartners = partners.filter(function(p) { return p.partner_type === partner.partner_type && p.accountStatus === 'active'; });
         var classement = getPartnerCategoryRank(partner, categoryPartners);
+        var referralCount = getPartnerReferralCount(partner.id);
 
         res.json({
             success: true,
@@ -8124,7 +8177,10 @@ app.get('/api/partner/reputation', authenticatePartner, function(req, res) {
             commissionsVersees: Math.round(commissionsVersees * 100) / 100,
             nombreClients: nombreClients,
             classement: classement,
-            avgResponseMinutes: typeof partner.avgResponseMinutes === 'number' ? Math.round(partner.avgResponseMinutes) : null
+            avgResponseMinutes: typeof partner.avgResponseMinutes === 'number' ? Math.round(partner.avgResponseMinutes) : null,
+            referralCode: partner.id,
+            referralCount: referralCount,
+            referralStatus: getPartnerReferralStatus(referralCount)
         });
     } catch (e) {
         console.error('[REPUTATION] Erreur:', e);

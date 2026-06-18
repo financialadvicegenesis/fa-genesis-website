@@ -817,7 +817,17 @@ a{text-decoration:none;color:inherit}
 .tier-badge.elite{background:linear-gradient(135deg,#6a11cb,#2575fc);color:#fff;box-shadow:0 0 10px rgba(106,17,203,.45)}
 .tier-badge.prestige{background:linear-gradient(135deg,#8a2be2,#ff00aa);color:#fff;box-shadow:0 0 10px rgba(138,43,226,.45)}
 .tier-badge.fondateur{background:linear-gradient(135deg,#1a1a1a,#3a2f00);color:var(--yellow);border:1px solid var(--yellow);box-shadow:0 0 12px rgba(255,200,0,.35)}
+.tier-badge.cercle-privilege{background:linear-gradient(135deg,#8a2be2,#ff00aa);color:#fff;box-shadow:0 0 10px rgba(138,43,226,.45)}
+.tier-badge.batisseur{background:#c7c7c7;color:#000}
+.tier-badge.architecte{background:linear-gradient(135deg,#6a11cb,#2575fc);color:#fff;box-shadow:0 0 10px rgba(106,17,203,.45)}
 .client-tier-badge{margin-top:6px}
+.p-ref-box{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:14px;margin-top:10px}
+.p-ref-box-title{font-size:11px;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px}
+.p-ref-code-row{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.06);border-radius:8px;padding:8px 10px}
+.p-ref-code{font-size:14px;font-weight:900;color:var(--yellow);letter-spacing:.5px;flex:1;word-break:break-all}
+.p-ref-copy-btn{background:var(--yellow);color:#000;border:none;border-radius:8px;font-size:11px;font-weight:900;padding:6px 10px;cursor:pointer;white-space:nowrap}
+.p-ref-count{font-size:12px;color:var(--muted);margin-top:8px}
+.p-priority-tag{display:inline-block;font-size:10px;font-weight:900;color:#000;background:var(--yellow);border-radius:6px;padding:2px 7px;text-transform:uppercase;letter-spacing:.3px;margin-left:6px}
 .p-fav-heart{display:inline-block;font-size:16px;line-height:1;cursor:pointer;color:#666;user-select:none}
 .p-fav-heart.on{color:#ff2d55}
 .p-dir-card{position:relative}
@@ -1826,6 +1836,7 @@ a{text-decoration:none;color:inherit}
           </select>
           <input class="ptnr-input" id="ptnr-reg-entreprise" type="text" placeholder="Entreprise (optionnel)">
           <input class="ptnr-input" id="ptnr-reg-pass" type="password" placeholder="Mot de passe (6 caractères min.)" autocomplete="new-password">
+          <input class="ptnr-input" id="ptnr-reg-referral" type="text" placeholder="Code de parrainage (optionnel)">
           <div style="font-size:11px;color:#555;font-weight:700;letter-spacing:.5px;margin:14px 0 2px;">RIB — POUR RECEVOIR VOS PAIEMENTS (OPTIONNEL)</div>
           <div style="font-size:11px;color:#666;margin-bottom:8px;line-height:1.4;">Vous pouvez aussi le renseigner plus tard depuis votre tableau de bord.</div>
           <input class="ptnr-input" id="ptnr-reg-rib-titulaire" type="text" placeholder="Titulaire du compte" autocomplete="name">
@@ -3073,7 +3084,10 @@ function tierBadgeMeta(tier){
     or:{label:'Or',cls:'or'},
     elite:{label:'Elite',cls:'elite'},
     prestige:{label:'Prestige',cls:'prestige'},
-    fondateur:{label:'Fondateur',cls:'fondateur'}
+    fondateur:{label:'Fondateur',cls:'fondateur'},
+    cercle_privilege:{label:'Cercle Privilège',cls:'cercle-privilege'},
+    batisseur:{label:'Bâtisseur',cls:'batisseur'},
+    architecte:{label:'Architecte',cls:'architecte'}
   };
   return map[tier]||null;
 }
@@ -3102,6 +3116,29 @@ function toggleFavorite(partnerId){
   }).then(function(r){return r.json();}).then(function(d){
     if(d && d.success){ USER.favoris = d.favoris; try{ localStorage.setItem('fa_genesis_session', JSON.stringify(USER)); }catch(e){} }
   }).catch(function(){});
+}
+function referralBoxHtml(){
+  if(!USER || GUEST || !USER.referralCode) return '';
+  var count = USER.referralCount || 0;
+  return '<div class="p-ref-box">'
+    +'<div class="p-ref-box-title">Programme de parrainage</div>'
+    +'<div class="p-ref-code-row">'
+    +'<span class="p-ref-code" id="p-ref-code-val">'+USER.referralCode+'</span>'
+    +'<button class="p-ref-copy-btn" onclick="copyReferralCode()">Copier</button>'
+    +'</div>'
+    +'<div class="p-ref-count">'+count+' parrainage'+(count>1?'s':'')+' validé'+(count>1?'s':'')+(count<3?' · encore '+(3-count)+' pour le statut Cercle Privilège':'')+'</div>'
+    +'</div>';
+}
+function copyReferralCode(){
+  if(!USER || !USER.referralCode) return;
+  var doCopy = function(){
+    if(navigator.clipboard && navigator.clipboard.writeText){ return navigator.clipboard.writeText(USER.referralCode); }
+    return Promise.reject();
+  };
+  doCopy().catch(function(){}).then(function(){
+    var btn = document.querySelector('.p-ref-copy-btn');
+    if(btn){ var orig = btn.textContent; btn.textContent = 'Copié !'; setTimeout(function(){ btn.textContent = orig; }, 1500); }
+  });
 }
 function showFavoris(){
   var c = document.getElementById('profilContent'); if(!c) return;
@@ -3149,9 +3186,11 @@ function renderProfil(){
       +'<div class="plus-user-ava">'+ini+'</div>'
       +'<div><div class="plus-user-name">'+fn+' '+ln+'</div>'
       +'<div class="plus-user-email">'+em+'</div>'
-      +(USER.badge?'<div class="client-tier-badge">'+tierBadgeHtml(USER.badge)+'</div>':'')
+      +'<div class="client-tier-badge">'+(USER.badge?tierBadgeHtml(USER.badge):'')+(USER.isCerclePrivilege?tierBadgeHtml('cercle_privilege'):'')+'</div>'
       +'</div>'
-      +'</div></div>';
+      +'</div>'
+      +referralBoxHtml()
+      +'</div>';
   }
 
   // ── MON ESPACE (connecté seulement) ─────────────────────────
@@ -3399,6 +3438,9 @@ function _syncUserBadge(){
       USER.completedOrders = d.completedOrders;
       USER.isClientFidele = d.isClientFidele;
       USER.favoris = d.favoris || [];
+      USER.referralCode = d.referralCode;
+      USER.referralCount = d.referralCount;
+      USER.isCerclePrivilege = d.isCerclePrivilege;
       try{ localStorage.setItem('fa_genesis_session', JSON.stringify(USER)); }catch(e){}
       if(document.getElementById('tab-profil') && document.getElementById('tab-profil').classList.contains('on')) renderProfil();
     }).catch(function(){});
@@ -4752,7 +4794,7 @@ function _ptnrShowScreen(name){
 }
 
 function _ptnrRegStart(){
-  ['ptnr-reg-prenom','ptnr-reg-nom','ptnr-reg-email','ptnr-reg-tel','ptnr-reg-entreprise','ptnr-reg-pass','ptnr-reg-rib-titulaire','ptnr-reg-rib-iban','ptnr-reg-rib-bic'].forEach(function(id){
+  ['ptnr-reg-prenom','ptnr-reg-nom','ptnr-reg-email','ptnr-reg-tel','ptnr-reg-entreprise','ptnr-reg-pass','ptnr-reg-referral','ptnr-reg-rib-titulaire','ptnr-reg-rib-iban','ptnr-reg-rib-bic'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.value='';
   });
   var typeEl=document.getElementById('ptnr-reg-type'); if(typeEl) typeEl.value='';
@@ -4770,6 +4812,7 @@ function _ptnrRegSubmit(){
   var partnerType = (document.getElementById('ptnr-reg-type')||{}).value || '';
   var company = (document.getElementById('ptnr-reg-entreprise')||{}).value || '';
   var password = (document.getElementById('ptnr-reg-pass')||{}).value || '';
+  var referralCode = ((document.getElementById('ptnr-reg-referral')||{}).value || '').trim();
   var ribTitulaire = ((document.getElementById('ptnr-reg-rib-titulaire')||{}).value || '').trim();
   var ribIban = ((document.getElementById('ptnr-reg-rib-iban')||{}).value || '').replace(/\s/g,'').toUpperCase();
   var ribBic = ((document.getElementById('ptnr-reg-rib-bic')||{}).value || '').replace(/\s/g,'').toUpperCase();
@@ -4794,7 +4837,7 @@ function _ptnrRegSubmit(){
   fetch(_ptnrApiUrl()+'/api/partner/auth/register',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({prenom:prenom.trim(), nom:nom.trim(), email:email.trim(), telephone:telephone.trim(), password:password, partner_type:partnerType, company:company.trim()})
+    body:JSON.stringify({prenom:prenom.trim(), nom:nom.trim(), email:email.trim(), telephone:telephone.trim(), password:password, partner_type:partnerType, company:company.trim(), referralCode:referralCode})
   }).then(function(r){return r.text().then(function(t){try{return JSON.parse(t);}catch(e){throw new Error('Erreur serveur');}});})
   .then(function(res){
     if(btnEl){btnEl.disabled=false;btnEl.textContent='CRÉER MON COMPTE';}
@@ -5793,7 +5836,7 @@ function showRegisterSheet(){
   var hdr = document.getElementById('reg-header');
   if(hdr) hdr.style.opacity='';
   regUpdateProgress(1);
-  var inputs = ['reg-email','reg-pwd','reg-pwd2','reg-prenom','reg-nom','reg-tel'];
+  var inputs = ['reg-email','reg-pwd','reg-pwd2','reg-prenom','reg-nom','reg-tel','reg-referral'];
   for(var j=0; j<inputs.length; j++){ var el=document.getElementById(inputs[j]); if(el) el.value=''; }
   var btn3=document.getElementById('reg-btn3'); if(btn3){btn3.disabled=false;btn3.textContent='CRÉER MON COMPTE';}
   var gerr=document.getElementById('reg-global-err'); if(gerr) gerr.classList.remove('on');
@@ -5889,11 +5932,12 @@ function regStepIdentity(){
   var prenom=((document.getElementById('reg-prenom')||{}).value||'').trim();
   var nom=((document.getElementById('reg-nom')||{}).value||'').trim();
   var tel=((document.getElementById('reg-tel')||{}).value||'').trim();
+  var referral=((document.getElementById('reg-referral')||{}).value||'').trim();
   var ep=document.getElementById('reg-err-prenom'); var ge=document.getElementById('reg-global-err');
   if(!prenom){ if(ep){ep.textContent='Prénom requis.';ep.classList.add('on');} return; }
   if(ep) ep.classList.remove('on');
   if(ge) ge.classList.remove('on');
-  regData.prenom=prenom; if(nom) regData.nom=nom; if(tel) regData.telephone=tel;
+  regData.prenom=prenom; if(nom) regData.nom=nom; if(tel) regData.telephone=tel; if(referral) regData.referralCode=referral;
   var btn=document.getElementById('reg-btn3');
   if(btn){btn.disabled=true;btn.textContent='Création...';}
   try{
@@ -6521,6 +6565,10 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
           <label class="reg-label" for="reg-tel">Téléphone</label>
           <input id="reg-tel" class="reg-input" type="tel" placeholder="+33 6 00 00 00 00" autocomplete="tel" onkeydown="regHandleEnter(event,regStepIdentity)">
         </div>
+        <div class="reg-field">
+          <label class="reg-label" for="reg-referral">Code de parrainage</label>
+          <input id="reg-referral" class="reg-input" type="text" placeholder="USR-XXXXXXXX (optionnel)" onkeydown="regHandleEnter(event,regStepIdentity)">
+        </div>
         <div class="reg-global-err" id="reg-global-err">Erreur</div>
         <div class="reg-cta">
           <button class="reg-btn" id="reg-btn3" onclick="regStepIdentity()">CRÉER MON COMPTE</button>
@@ -6763,7 +6811,7 @@ function _ptnrLoadMissions(){
       pendingItems.forEach(function(d){
         html += '<div class="dispatch-card new-card" id="dispatch-'+d.id+'" style="border-color:#FFD700;">';
         html += '<div class="dispatch-badge" style="background:#FFD700;color:#000;"><span class="dispatch-badge-dot" style="background:#000;"></span>Acompte reçu — en attente</div>';
-        html += '<div class="dispatch-title">'+d.client_prenom+' — '+(d.offer_name||'Mission')+'</div>';
+        html += '<div class="dispatch-title">'+d.client_prenom+' — '+(d.offer_name||'Mission')+(d.priority>0?'<span class="p-priority-tag">⭐ Prioritaire</span>':'')+'</div>';
         html += '<div class="dispatch-meta">Reçue le '+_ptnrFmt(d.created_at)+'</div>';
         html += _ptnrRenderGainBloc(d);
         html += '<div style="display:flex;gap:10px;margin-top:14px;">';
@@ -6780,10 +6828,10 @@ function _ptnrLoadMissions(){
       if(pendingItems.length){
         html += '<div style="border-left:4px solid #444;padding-left:12px;margin-bottom:12px;">';
         html += '<div style="font-size:13px;font-weight:800;color:#888;text-transform:uppercase;letter-spacing:.05em;">Missions libres</div>';
-        html += '<div style="font-size:11px;color:#555;margin-top:2px;">Premier à confirmer = vous prenez en charge le client.</div>';
+        html += '<div style="font-size:11px;color:#555;margin-top:2px;">Les demandes prioritaires (clients Or/Prestige) sont affichées en tête.</div>';
         html += '</div>';
       } else {
-        html += '<div style="font-size:12px;color:#888;margin-bottom:14px;line-height:1.6;">Premier à confirmer vos disponibilités = vous prenez en charge le client. Soyez rapide !</div>';
+        html += '<div style="font-size:12px;color:#888;margin-bottom:14px;line-height:1.6;">Confirmez vos disponibilités pour prendre en charge le client. Les demandes prioritaires (clients Or/Prestige) sont affichées en tête.</div>';
       }
       openItems.forEach(function(d){
         var avail = d.client_availability;
@@ -6793,7 +6841,7 @@ function _ptnrLoadMissions(){
         var notes = avail && avail.notes ? avail.notes : '';
         html += '<div class="dispatch-card new-card" id="dispatch-'+d.id+'">';
         html += '<div class="dispatch-badge"><span class="dispatch-badge-dot"></span>Mission disponible</div>';
-        html += '<div class="dispatch-title">'+d.client_prenom+' — '+(d.offer_name||'Offre')+'</div>';
+        html += '<div class="dispatch-title">'+d.client_prenom+' — '+(d.offer_name||'Offre')+(d.priority>0?'<span class="p-priority-tag">⭐ Prioritaire</span>':'')+'</div>';
         html += '<div class="dispatch-meta">Reçue le '+_ptnrFmt(d.created_at)+'</div>';
         html += _ptnrRenderGainBloc(d);
         html += '<div class="dispatch-avail">';
@@ -7111,6 +7159,18 @@ function _ptnrLoadReputation(){
       html += '<div class="ptnr-card-title">Classement : #'+classement.rank+' / '+classement.total+'</div>';
       html += '<div class="ptnr-card-sub">dans votre catégorie</div>';
       html += '</div>';
+    }
+
+    if(data.referralCode){
+      var refCount = data.referralCount || 0;
+      html += '<div class="p-ref-box">'
+        + '<div class="p-ref-box-title">Programme de parrainage' + (data.referralStatus?(' '+tierBadgeHtml(data.referralStatus)):'') + '</div>'
+        + '<div class="p-ref-code-row">'
+        + '<span class="p-ref-code">'+data.referralCode+'</span>'
+        + '<button class="p-ref-copy-btn" onclick="navigator.clipboard&&navigator.clipboard.writeText(\''+data.referralCode+'\')">Copier</button>'
+        + '</div>'
+        + '<div class="p-ref-count">'+refCount+' partenaire'+(refCount>1?'s':'')+' parrainé'+(refCount>1?'s':'')+(refCount<3?' · encore '+(3-refCount)+' pour le statut Bâtisseur':'')+'</div>'
+        + '</div>';
     }
 
     el.innerHTML = html;
