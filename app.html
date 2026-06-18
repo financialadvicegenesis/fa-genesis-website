@@ -1774,7 +1774,12 @@ a{text-decoration:none;color:inherit}
             <option value="coworking">Espace Coworking</option>
           </select>
           <input class="ptnr-input" id="ptnr-reg-entreprise" type="text" placeholder="Entreprise (optionnel)">
-          <input class="ptnr-input" id="ptnr-reg-pass" type="password" placeholder="Mot de passe (6 caractères min.)" autocomplete="new-password" onkeydown="if(event.key==='Enter')_ptnrRegSubmit()">
+          <input class="ptnr-input" id="ptnr-reg-pass" type="password" placeholder="Mot de passe (6 caractères min.)" autocomplete="new-password">
+          <div style="font-size:11px;color:#555;font-weight:700;letter-spacing:.5px;margin:14px 0 2px;">RIB — POUR RECEVOIR VOS PAIEMENTS (OPTIONNEL)</div>
+          <div style="font-size:11px;color:#666;margin-bottom:8px;line-height:1.4;">Vous pouvez aussi le renseigner plus tard depuis votre tableau de bord.</div>
+          <input class="ptnr-input" id="ptnr-reg-rib-titulaire" type="text" placeholder="Titulaire du compte" autocomplete="name">
+          <input class="ptnr-input" id="ptnr-reg-rib-iban" type="text" placeholder="IBAN (ex : FR76 XXXX XXXX XXXX XXXX XXXX XXX)" maxlength="34" autocomplete="off" oninput="this.value=this.value.toUpperCase()">
+          <input class="ptnr-input" id="ptnr-reg-rib-bic" type="text" placeholder="BIC / SWIFT" maxlength="11" autocomplete="off" oninput="this.value=this.value.toUpperCase()" onkeydown="if(event.key==='Enter')_ptnrRegSubmit()">
           <div class="ptnr-login-err" id="ptnr-reg-err"></div>
           <button class="ptnr-login-btn" id="ptnr-reg-btn" onclick="_ptnrRegSubmit()">CRÉER MON COMPTE</button>
           <button class="ptnr-link-btn" onclick="_ptnrRegBackToLogin()">J'ai déjà un compte, me connecter</button>
@@ -4571,7 +4576,7 @@ function _ptnrShowScreen(name){
 }
 
 function _ptnrRegStart(){
-  ['ptnr-reg-prenom','ptnr-reg-nom','ptnr-reg-email','ptnr-reg-tel','ptnr-reg-entreprise','ptnr-reg-pass'].forEach(function(id){
+  ['ptnr-reg-prenom','ptnr-reg-nom','ptnr-reg-email','ptnr-reg-tel','ptnr-reg-entreprise','ptnr-reg-pass','ptnr-reg-rib-titulaire','ptnr-reg-rib-iban','ptnr-reg-rib-bic'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.value='';
   });
   var typeEl=document.getElementById('ptnr-reg-type'); if(typeEl) typeEl.value='';
@@ -4589,6 +4594,9 @@ function _ptnrRegSubmit(){
   var partnerType = (document.getElementById('ptnr-reg-type')||{}).value || '';
   var company = (document.getElementById('ptnr-reg-entreprise')||{}).value || '';
   var password = (document.getElementById('ptnr-reg-pass')||{}).value || '';
+  var ribTitulaire = ((document.getElementById('ptnr-reg-rib-titulaire')||{}).value || '').trim();
+  var ribIban = ((document.getElementById('ptnr-reg-rib-iban')||{}).value || '').replace(/\s/g,'').toUpperCase();
+  var ribBic = ((document.getElementById('ptnr-reg-rib-bic')||{}).value || '').replace(/\s/g,'').toUpperCase();
   var errEl = document.getElementById('ptnr-reg-err');
   var btnEl = document.getElementById('ptnr-reg-btn');
   if(!prenom.trim()||!nom.trim()||!email.trim()||!partnerType||!password){
@@ -4596,6 +4604,14 @@ function _ptnrRegSubmit(){
   }
   if(password.length<6){
     if(errEl){errEl.textContent='Le mot de passe doit faire au moins 6 caractères.';errEl.className='ptnr-login-err on';} return;
+  }
+  var ribFilledCount = (ribTitulaire?1:0)+(ribIban?1:0)+(ribBic?1:0);
+  if(ribFilledCount>0 && ribFilledCount<3){
+    if(errEl){errEl.textContent='Merci de compléter les 3 champs RIB, ou de les laisser tous vides.';errEl.className='ptnr-login-err on';} return;
+  }
+  if(ribFilledCount===3){
+    if(ribIban.length<14){ if(errEl){errEl.textContent='IBAN invalide — vérifiez le format (ex : FR76…).';errEl.className='ptnr-login-err on';} return; }
+    if(ribBic.length<8){ if(errEl){errEl.textContent='BIC invalide — vérifiez votre code BIC / SWIFT.';errEl.className='ptnr-login-err on';} return; }
   }
   if(errEl) errEl.className = 'ptnr-login-err';
   if(btnEl){btnEl.disabled=true;btnEl.textContent='Création...';}
@@ -4611,6 +4627,9 @@ function _ptnrRegSubmit(){
       _ptnrSession = res.partner;
       localStorage.setItem('fa_genesis_partner_token', res.token);
       localStorage.setItem('fa_genesis_partner_data', JSON.stringify(res.partner));
+      if(ribFilledCount===3){
+        _ptnrFetch('/api/partner/profile/set-rib','POST',{titulaire:ribTitulaire,iban:ribIban,bic:ribBic}).catch(function(){});
+      }
       _ptnrShowScreen('profiles');
       _ptnrLoadProfileSelector();
     } else {
