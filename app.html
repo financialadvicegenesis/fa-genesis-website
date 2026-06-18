@@ -810,6 +810,14 @@ a{text-decoration:none;color:inherit}
 .p-dir-service-btn{background:var(--yellow);color:#000;border:none;border-radius:8px;font-size:11px;font-weight:900;text-transform:uppercase;padding:7px 12px;cursor:pointer;white-space:nowrap}
 .p-dir-card-city{font-size:10px;color:var(--muted);font-weight:700;margin:2px 0}
 .p-dir-card-verified{font-size:9px;color:#000;background:var(--yellow);font-weight:900;padding:1px 6px;border-radius:6px;text-transform:uppercase;letter-spacing:.3px;white-space:nowrap}
+.tier-badge{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:900;padding:3px 9px;border-radius:8px;text-transform:uppercase;letter-spacing:.3px;white-space:nowrap}
+.tier-badge.bronze{background:#cd7f32;color:#fff}
+.tier-badge.argent{background:#c7c7c7;color:#000}
+.tier-badge.or{background:var(--yellow);color:#000}
+.tier-badge.elite{background:linear-gradient(135deg,#6a11cb,#2575fc);color:#fff;box-shadow:0 0 10px rgba(106,17,203,.45)}
+.tier-badge.prestige{background:linear-gradient(135deg,#8a2be2,#ff00aa);color:#fff;box-shadow:0 0 10px rgba(138,43,226,.45)}
+.tier-badge.fondateur{background:linear-gradient(135deg,#1a1a1a,#3a2f00);color:var(--yellow);border:1px solid var(--yellow);box-shadow:0 0 12px rgba(255,200,0,.35)}
+.client-tier-badge{margin-top:6px}
 .p-dir-detail-city{font-size:11px;color:var(--muted);font-weight:700;margin:2px 0 8px}
 .p-dir-detail-bio{font-size:12px;color:#ccc;line-height:1.5;margin:8px 0}
 .p-dir-detail-social{display:flex;gap:12px;margin:8px 0}
@@ -1940,6 +1948,9 @@ a{text-decoration:none;color:inherit}
           <button class="ptnr-snbtn" id="ptnr-sn-versements" onclick="_ptnrNav('versements')">
             <i class="pni fa-solid fa-sack-dollar"></i><span>Versements</span>
           </button>
+          <button class="ptnr-snbtn" id="ptnr-sn-reputation" onclick="_ptnrNav('reputation')">
+            <i class="pni fa-solid fa-trophy"></i><span>Réputation</span>
+          </button>
         </div>
 
         <!-- Sub-screen: Home / Stats -->
@@ -1987,6 +1998,12 @@ a{text-decoration:none;color:inherit}
           <div class="ptnr-section-title">Mes versements</div>
           <div id="ptnr-paypal-setup" style="padding:0 0 16px;"></div>
           <div id="ptnr-versements-list"></div>
+        </div>
+
+        <!-- Sub-screen: Réputation -->
+        <div class="ptnr-screen" id="ptnr-screen-reputation">
+          <div class="ptnr-section-title">Ma réputation</div>
+          <div id="ptnr-reputation-content"></div>
         </div>
       </div>
     </div>
@@ -2142,6 +2159,7 @@ function initApp(){
     document.getElementById('hdrAvatar').textContent = ini;
     loadStatusCard();
     _checkPendingReviews();
+    _syncUserBadge();
     setTimeout(function(){
       if(typeof Notification!=='undefined' && Notification.permission==='default' && !sessionStorage.getItem('na')){
         openNotifModal(); sessionStorage.setItem('na','1');
@@ -2585,11 +2603,12 @@ function recoPartnerCard(p, idx){
   var avatarHtml = p.photo ? '<img src="'+p.photo+'" alt="">' : '<div class="p-reco-initials">'+initials+'</div>';
   var starsLabel = (p.rating && p.rating.count) ? ('★ '+p.rating.average+' ('+p.rating.count+')') : 'Nouveau';
   var tag = idx===0 ? '<div class="p-reco-tag">Top</div>' : '';
+  var badgeHtml = tierBadgeHtml(p.badge);
   return '<div class="p-reco-card" onclick="openPartnerDetail(\''+p.id+'\')">'
     +tag
     +'<div class="p-reco-photo">'+avatarHtml+'</div>'
     +'<div class="p-reco-body">'
-    +'<div class="p-reco-name">'+(p.prenom||'')+' '+(p.nom||'')+'</div>'
+    +'<div class="p-reco-name">'+(p.prenom||'')+' '+(p.nom||'')+(badgeHtml?' '+badgeHtml:'')+'</div>'
     +'<div class="p-reco-cat">'+label+'</div>'
     +'<div class="p-reco-stars">'+starsLabel+'</div>'
     +'</div></div>';
@@ -2604,6 +2623,7 @@ function renderPrestataires(){
     +'<div class="p-hero-stat" id="p-dir-stat">Chargement...</div>'
     +'</div>';
   html += '<div id="p-dir-reco-wrap"></div>';
+  html += '<div id="p-dir-top-categories-wrap"></div>';
   html += '<div class="p-section" style="margin-top:8px;" id="p-section-annuaire">';
   html += '<div class="p-section-hdr dark p-section-hdr-fit">TROUVER UN PARTENAIRE</div>';
   html += '<div class="p-vis-filter" id="p-dir-cat-filter">'
@@ -2633,6 +2653,7 @@ function renderPrestataires(){
   document.getElementById('prestatairesList').innerHTML = html;
   loadPartnerDirectory();
   loadPartnerRecommendations();
+  loadTopCategories();
 }
 
 // ── RECOMMANDATIONS INTELLIGENTES (Prestataires) ────────────────
@@ -2648,6 +2669,30 @@ function loadPartnerRecommendations(){
         +'<div class="p-reco-row">'+partners.map(function(p,i){return recoPartnerCard(p,i);}).join('')+'</div>'
       : '';
   }).catch(function(){ wrap.innerHTML=''; });
+}
+
+var TOP_CATEGORIES = [
+  {id:'videographer', label:'Top Vidéastes'},
+  {id:'photographer', label:'Top Photographes'},
+  {id:'graphiste', label:'Top Graphistes'},
+  {id:'marketer', label:'Top Marketeurs'},
+  {id:'media', label:'Top Médias'},
+  {id:'community_manager', label:'Top Community Managers'}
+];
+function loadTopCategories(){
+  var wrap = document.getElementById('p-dir-top-categories-wrap');
+  if(!wrap) return;
+  wrap.innerHTML = '';
+  TOP_CATEGORIES.forEach(function(cat){
+    fetch(API+'/api/partners/top?category='+cat.id+'&limit=8').then(function(r){return r.json();}).then(function(data){
+      var partners = (data && data.partners) || [];
+      if(!partners.length) return;
+      var block = document.createElement('div');
+      block.innerHTML = '<div class="p-section-hdr black p-section-hdr-fit" style="margin:16px 16px 12px;">'+cat.label.toUpperCase()+'</div>'
+        +'<div class="p-reco-row">'+partners.map(function(p,i){return recoPartnerCard(p,i);}).join('')+'</div>';
+      wrap.appendChild(block);
+    }).catch(function(){});
+  });
 }
 
 // Card builders
@@ -2836,10 +2881,11 @@ function directoryCard(p){
     : '<div class="p-dir-card-initials">'+initials+'</div>';
   var cityHtml = p.city ? '<div class="p-dir-card-city"><i class="fas fa-location-dot"></i> '+p.city+'</div>' : '';
   var verifiedHtml = p.verified ? '<span class="p-dir-card-verified">✓ Vérifié</span>' : '';
+  var badgeHtml = tierBadgeHtml(p.badge);
   return '<div class="p-dir-card" onclick="openPartnerDetail(\''+p.id+'\')">'
     +'<div class="p-dir-card-avatar">'+avatarHtml+'</div>'
     +'<div class="p-dir-card-info">'
-    +'<div class="p-dir-card-name">'+(p.prenom||'')+' '+(p.nom||'')+' '+verifiedHtml+'</div>'
+    +'<div class="p-dir-card-name">'+(p.prenom||'')+' '+(p.nom||'')+' '+verifiedHtml+' '+badgeHtml+'</div>'
     +'<div class="p-dir-card-cat">'+label+'</div>'
     +cityHtml
     +'<div class="p-dir-card-stars">'+starsLabel+'</div>'
@@ -2859,6 +2905,7 @@ function openPartnerDetail(partnerId){
       var priceLabel = (p.fromPrice===null||p.fromPrice===undefined) ? 'Sur devis' : ('à partir de '+p.fromPrice+' €');
       var starsLabel = (p.rating && p.rating.count) ? ('★ '+p.rating.average+' ('+p.rating.count+' avis)') : 'Aucun avis pour le moment';
       var verifiedHtml = p.verified ? '<span class="p-dir-card-verified">✓ Vérifié</span>' : '';
+      var badgeHtml = tierBadgeHtml(p.badge);
       var cityHtml = p.city ? '<div class="p-dir-detail-city"><i class="fas fa-location-dot"></i> '+p.city+'</div>' : '';
       var bioHtml = p.bio ? '<div class="p-dir-detail-bio">'+p.bio+'</div>' : '';
       var social = p.social || {};
@@ -2893,7 +2940,7 @@ function openPartnerDetail(partnerId){
           +(r.comment?'<p class="p-dir-review-comment">'+r.comment+'</p>':'')+'</li>';
       }).join('') || '<li class="p-dir-review-empty">Aucun avis publié pour le moment.</li>';
       document.getElementById('detail-content').innerHTML = ''
-        +'<div class="detail-name">'+(p.prenom||'')+' '+(p.nom||'')+' '+verifiedHtml+'</div>'
+        +'<div class="detail-name">'+(p.prenom||'')+' '+(p.nom||'')+' '+verifiedHtml+' '+badgeHtml+'</div>'
         +'<div class="detail-sub">'+label+'</div>'
         +cityHtml
         +'<div class="detail-price">'+priceLabel+'</div>'
@@ -3011,6 +3058,23 @@ function renderMsgTab(){
 }
 
 // ── PROFIL ────────────────────────────────────────────────────
+function tierBadgeMeta(tier){
+  var map = {
+    bronze:{label:'Bronze',cls:'bronze'},
+    argent:{label:'Argent',cls:'argent'},
+    or:{label:'Or',cls:'or'},
+    elite:{label:'Elite',cls:'elite'},
+    prestige:{label:'Prestige',cls:'prestige'},
+    fondateur:{label:'Fondateur',cls:'fondateur'}
+  };
+  return map[tier]||null;
+}
+function tierBadgeHtml(tier, extraClass){
+  var meta = tierBadgeMeta(tier);
+  if(!meta) return '';
+  return '<span class="tier-badge '+meta.cls+(extraClass?' '+extraClass:'')+'">'+meta.label+'</span>';
+}
+
 function renderProfil(){
   var c = document.getElementById('profilContent');
   var logo = '<img class="plus-logo" src="assets/images/icon-app-192.png" alt="GENESIS" onerror="this.style.display=\'none\'">';
@@ -3038,7 +3102,9 @@ function renderProfil(){
       +'<div class="plus-user-row">'
       +'<div class="plus-user-ava">'+ini+'</div>'
       +'<div><div class="plus-user-name">'+fn+' '+ln+'</div>'
-      +'<div class="plus-user-email">'+em+'</div></div>'
+      +'<div class="plus-user-email">'+em+'</div>'
+      +(USER.badge?'<div class="client-tier-badge">'+tierBadgeHtml(USER.badge)+'</div>':'')
+      +'</div>'
       +'</div></div>';
   }
 
@@ -3275,6 +3341,20 @@ function activerNotifs(){
 var _rvQueue = [];
 var _rvCurrent = null;
 var _rvRating = 0;
+
+function _syncUserBadge(){
+  if(!USER || GUEST || !USER._token) return;
+  fetch(API+'/api/auth/me',{headers:{'Authorization':'Bearer '+USER._token}})
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if(!d || !d.success) return;
+      USER.badge = d.badge;
+      USER.completedOrders = d.completedOrders;
+      USER.isClientFidele = d.isClientFidele;
+      try{ localStorage.setItem('fa_genesis_session', JSON.stringify(USER)); }catch(e){}
+      if(document.getElementById('tab-profil') && document.getElementById('tab-profil').classList.contains('on')) renderProfil();
+    }).catch(function(){});
+}
 
 function _checkPendingReviews(){
   if(!USER || !USER._token) return;
@@ -4891,6 +4971,7 @@ function _ptnrNav(screen){
   if(screen==='messages') _ptnrLoadMessages();
   if(screen==='missions') _ptnrLoadMissions();
   if(screen==='versements') _ptnrLoadVersements();
+  if(screen==='reputation') _ptnrLoadReputation();
 }
 
 function _ptnrFmt(dateStr){
@@ -6940,6 +7021,58 @@ function _savePartnerRib(){
       haptic([20,10,40]); _ptnrLoadVersements();
     } else { showToast(res.error||'Erreur','Réessayez','error'); }
   }).catch(function(){ showToast('Erreur réseau','Réessayez plus tard','error'); });
+}
+
+// ── RÉPUTATION ──
+function _ptnrLoadReputation(){
+  var el = document.getElementById('ptnr-reputation-content');
+  if(el) el.innerHTML = _skeletonRows(3);
+  _ptnrFetch('/api/partner/reputation').then(function(data){
+    if(!el) return;
+    var badge = data.founderBadge ? 'fondateur' : data.badge;
+    var rating = data.rating || {average:0, count:0};
+    var classement = data.classement || {rank:null, total:0};
+    var responseTxt = (typeof data.avgResponseMinutes === 'number')
+      ? (data.avgResponseMinutes < 60
+          ? Math.round(data.avgResponseMinutes) + ' min'
+          : Math.round(data.avgResponseMinutes/60) + ' h')
+      : '—';
+
+    var html = '<div style="text-align:center;padding:20px 0 16px;">'
+      + (tierBadgeHtml(badge) || '<span style="font-size:12px;color:#666;">Pas encore de badge</span>')
+      + '<div style="font-size:13px;color:#999;margin-top:10px;">'+rating.average.toFixed(1)+' ★ ('+rating.count+' avis)</div>'
+      + '</div>';
+
+    html += '<div class="ptnr-stat-row">'
+      + '<div class="ptnr-stat"><div class="ptnr-stat-val" id="ptnr-rep-missions">—</div><div class="ptnr-stat-label">Missions</div></div>'
+      + '<div class="ptnr-stat"><div class="ptnr-stat-val" id="ptnr-rep-clients">—</div><div class="ptnr-stat-label">Clients</div></div>'
+      + '<div class="ptnr-stat"><div class="ptnr-stat-val">'+responseTxt+'</div><div class="ptnr-stat-label">Réponse moy.</div></div>'
+      + '</div>';
+
+    html += '<div style="display:flex;gap:8px;margin:14px 0;">';
+    html += '<div style="flex:1;background:#111;border:1px solid #1e1e1e;border-radius:12px;padding:12px 14px;text-align:center;">';
+    html += '<div id="ptnr-rep-revenus" style="font-size:16px;color:#4caf50;font-weight:800;">0.00 €</div>';
+    html += '<div style="font-size:10px;color:#555;margin-top:3px;font-weight:600;">REVENUS GÉNÉRÉS</div></div>';
+    html += '<div style="flex:1;background:#111;border:1px solid #1e1e1e;border-radius:12px;padding:12px 14px;text-align:center;">';
+    html += '<div id="ptnr-rep-commissions" style="font-size:16px;color:#FFD700;font-weight:800;">0.00 €</div>';
+    html += '<div style="font-size:10px;color:#555;margin-top:3px;font-weight:600;">COMMISSIONS VERSÉES</div></div>';
+    html += '</div>';
+
+    if(classement.rank && classement.total){
+      html += '<div class="ptnr-card" style="text-align:center;">';
+      html += '<div class="ptnr-card-title">Classement : #'+classement.rank+' / '+classement.total+'</div>';
+      html += '<div class="ptnr-card-sub">dans votre catégorie</div>';
+      html += '</div>';
+    }
+
+    el.innerHTML = html;
+    _animateCount(document.getElementById('ptnr-rep-missions'), data.missionsCompleted || 0);
+    _animateCount(document.getElementById('ptnr-rep-clients'), data.nombreClients || 0);
+    _animateCount(document.getElementById('ptnr-rep-revenus'), data.revenusGeneres || 0, {decimals:2, suffix:' €', duration:900});
+    _animateCount(document.getElementById('ptnr-rep-commissions'), data.commissionsVersees || 0, {decimals:2, suffix:' €', duration:900});
+  }).catch(function(){
+    if(el) el.innerHTML = '<div class="ptnr-empty"><div class="ptnr-empty-txt">Erreur de chargement</div></div>';
+  });
 }
 
 /* ══════════════════════════════════════════════════

@@ -5198,11 +5198,17 @@ app.get('/api/auth/me', (req, res) => {
             console.error('[AUTH/ME] Erreur pendingReviewPrompts:', prErr.message);
         }
 
+        var completedOrders = getClientCompletedOrders(user.email);
+        var clientBadge = getClientBadge(completedOrders);
+
         res.json({
             success: true,
             user: userResponse,
             activeSubscription: meSubscription,
-            pendingReviewPrompts: pendingReviewPrompts
+            pendingReviewPrompts: pendingReviewPrompts,
+            badge: clientBadge,
+            completedOrders: completedOrders,
+            isClientFidele: completedOrders >= 5
         });
 
     } catch (error) {
@@ -6258,6 +6264,26 @@ app.post('/api/partner/inbox/reply', authenticatePartner, function(req, res) {
         var toEmail = req.body.to_email;
         var content = (req.body.content || '').trim();
         if (!toEmail || !content) return res.status(400).json({ error: 'to_email et content requis' });
+
+        var thread = loadChat().filter(function(m) {
+            return (m.from_email === partner.email && m.to_email === toEmail) ||
+                   (m.from_email === toEmail && m.to_email === partner.email);
+        }).sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); });
+        var lastFromClient = thread.find(function(m) { return m.from_type === 'client'; });
+        if (lastFromClient) {
+            var deltaMinutes = (new Date() - new Date(lastFromClient.created_at)) / 60000;
+            if (deltaMinutes >= 0 && deltaMinutes < 60 * 24 * 14) {
+                var allPartners = loadPartners();
+                var pIndex = allPartners.findIndex(function(p) { return p.id === partner.id; });
+                if (pIndex !== -1) {
+                    var samples = allPartners[pIndex].responseSamples || 0;
+                    var prevAvg = allPartners[pIndex].avgResponseMinutes || 0;
+                    allPartners[pIndex].avgResponseMinutes = ((prevAvg * samples) + deltaMinutes) / (samples + 1);
+                    allPartners[pIndex].responseSamples = samples + 1;
+                    savePartners(allPartners);
+                }
+            }
+        }
 
         var newMsg = {
             id: 'MSG-' + uuidv4().split('-')[0].toUpperCase(),
@@ -7362,6 +7388,97 @@ function getPartnerRatingSummary(partnerId) {
     return { average: Math.round((sum / reviews.length) * 10) / 10, count: reviews.length };
 }
 
+// ============================================================
+// SYSTEME DE FIDELISATION / REPUTATION — Phase 1 (badges, classement)
+// ============================================================
+
+// Une mission est consideree "realisee" quand le versement du solde a ete cree
+function getPartnerMissionsCompleted(partnerId) {
+    return loadPayouts().filter(p => p.partner_id === partnerId && p.stage === 'balance').length;
+}
+
+function getPartnerSatisfactionRate(partnerId) {
+    const reviews = loadPartnerReviews().filter(r => r.partnerId === partnerId && r.status === 'published');
+    if (reviews.length === 0) return 0;
+    const satisfied = reviews.filter(r => (r.rating || 0) >= 4).length;
+    return satisfied / reviews.length;
+}
+
+const PARTNER_BADGE_TIERS = [
+    { id: 'elite', missions: 100, rating: 5 },
+    { id: 'or', missions: 50, rating: 4.5 },
+    { id: 'argent', missions: 20, rating: 4.3 },
+    { id: 'bronze', missions: 5, rating: 4 }
+];
+
+// 'fondateur' est attribue manuellement par l'admin (partner.founderBadge), pas calculable
+function getPartnerBadge(partner, ratingSummary, missionsCompleted) {
+    if (!partner) return null;
+    if (partner.founderBadge === true) return 'fondateur';
+    const summary = ratingSummary || getPartnerRatingSummary(partner.id);
+    const missions = typeof missionsCompleted === 'number' ? missionsCompleted : getPartnerMissionsCompleted(partner.id);
+    for (const tier of PARTNER_BADGE_TIERS) {
+        if (missions >= tier.missions && summary.average >= tier.rating) return tier.id;
+    }
+    return null;
+}
+
+const CLIENT_BADGE_TIERS = [
+    { id: 'prestige', orders: 20 },
+    { id: 'or', orders: 10 },
+    { id: 'argent', orders: 5 },
+    { id: 'bronze', orders: 1 }
+];
+
+// Une commande "realisee" = solde paye (convention deja utilisee dans /api/auth/me, cf paymentStatus 'fully_paid')
+function getClientCompletedOrders(email) {
+    if (!email) return 0;
+    const needle = email.toLowerCase();
+    return loadOrders().filter(o => {
+        const oe = (o.client_info && o.client_info.email) || o.email || '';
+        return oe.toLowerCase() === needle && o.balance_paid === true;
+    }).length;
+}
+
+function getClientBadge(completedCount) {
+    for (const tier of CLIENT_BADGE_TIERS) {
+        if (completedCount >= tier.orders) return tier.id;
+    }
+    return null;
+}
+
+const PARTNER_BADGE_SCORE_BONUS = { fondateur: 40, elite: 30, or: 20, argent: 10, bronze: 5 };
+
+// Score composite utilise pour le classement par categorie et les "Top [categorie]"
+function getPartnerCategoryScore(partner) {
+    const summary = getPartnerRatingSummary(partner.id);
+    const missions = getPartnerMissionsCompleted(partner.id);
+    const satisfaction = getPartnerSatisfactionRate(partner.id);
+    const badge = getPartnerBadge(partner, summary, missions);
+    const ratingComponent = summary.count > 0 ? summary.average * Math.log(summary.count + 1) : 0;
+    const seniorityMonths = partner.createdAt
+        ? Math.max(0, (Date.now() - new Date(partner.createdAt).getTime()) / (1000 * 60 * 60 * 24 * 30))
+        : 0;
+    const avgResponseMinutes = typeof partner.avgResponseMinutes === 'number' ? partner.avgResponseMinutes : null;
+    // Reponse rapide = bonus ; pas encore de donnee = neutre (ni bonus ni malus)
+    const responseComponent = avgResponseMinutes === null ? 0 : Math.max(0, 10 - Math.min(avgResponseMinutes, 600) / 60);
+
+    return (ratingComponent * 10)
+        + (missions * 0.5)
+        + (Math.min(seniorityMonths, 36) * 0.3)
+        + (satisfaction * 10)
+        + responseComponent
+        + (PARTNER_BADGE_SCORE_BONUS[badge] || 0);
+}
+
+function getPartnerCategoryRank(partner, allPartnersSameCategory) {
+    const scored = allPartnersSameCategory
+        .map(p => ({ id: p.id, score: getPartnerCategoryScore(p) }))
+        .sort((a, b) => b.score - a.score);
+    const idx = scored.findIndex(s => s.id === partner.id);
+    return { rank: idx === -1 ? null : idx + 1, total: scored.length };
+}
+
 // Annuaire public des partenaires (recherche, filtre categorie, filtre prix)
 app.get('/api/partners/directory', (req, res) => {
     try {
@@ -7393,6 +7510,7 @@ app.get('/api/partners/directory', (req, res) => {
                 city: p.city || '',
                 fromPrice: fromPrice,
                 rating: getPartnerRatingSummary(p.id),
+                badge: getPartnerBadge(p),
                 verified: true
             };
         });
@@ -7440,6 +7558,7 @@ app.get('/api/partners/:id/reviews', (req, res) => {
                 social: partner.social || {},
                 fromPrice: fromPrice,
                 rating: getPartnerRatingSummary(partner.id),
+                badge: getPartnerBadge(partner),
                 services: activeServices,
                 portfolio: activePortfolio,
                 verified: true
@@ -7449,6 +7568,40 @@ app.get('/api/partners/:id/reviews', (req, res) => {
     } catch (error) {
         console.error('[PARTNERS-DIRECTORY] Erreur reviews:', error);
         res.status(500).json({ error: 'Erreur lors du chargement des avis' });
+    }
+});
+
+// Top prestataires d'une categorie, classes par score composite (badge, note, missions, anciennete, satisfaction, reponse)
+app.get('/api/partners/top', (req, res) => {
+    try {
+        const { category, limit } = req.query;
+        if (!category) return res.status(400).json({ error: 'category requis' });
+        const max = Math.max(1, Math.min(parseInt(limit) || 10, 50));
+        const categoryPartners = loadPartners().filter(p => p.accountStatus === 'active' && p.partner_type === category);
+
+        const ranked = categoryPartners
+            .map(p => ({ partner: p, score: getPartnerCategoryScore(p) }))
+            .sort((a, b) => b.score - a.score)
+            .slice(0, max)
+            .map(entry => {
+                const p = entry.partner;
+                return {
+                    id: p.id,
+                    prenom: p.prenom,
+                    nom: p.nom,
+                    partner_type: p.partner_type,
+                    photo: p.photo || null,
+                    city: p.city || '',
+                    fromPrice: getPartnerFromPrice(p),
+                    rating: getPartnerRatingSummary(p.id),
+                    badge: getPartnerBadge(p)
+                };
+            });
+
+        res.json({ success: true, category: category, partners: ranked });
+    } catch (error) {
+        console.error('[PARTNERS-TOP] Erreur:', error);
+        res.status(500).json({ error: 'Erreur lors du chargement du classement' });
     }
 });
 
@@ -7881,6 +8034,49 @@ app.get('/api/partner/payouts', authenticatePartner, function(req, res) {
     }
 });
 
+// Reputation du partenaire connecte : badge, note, missions, classement, revenus, commissions, clients
+app.get('/api/partner/reputation', authenticatePartner, function(req, res) {
+    try {
+        var partner = req.partner;
+        var partners = loadPartners();
+        var summary = getPartnerRatingSummary(partner.id);
+        var missionsCompleted = getPartnerMissionsCompleted(partner.id);
+        var badge = getPartnerBadge(partner, summary, missionsCompleted);
+
+        var myPayouts = loadPayouts().filter(function(p) { return p.partner_id === partner.id; });
+        var revenusGeneres = myPayouts.reduce(function(sum, p) { return sum + (parseFloat(p.amount) || 0); }, 0);
+        var commissionsVersees = myPayouts.reduce(function(sum, p) { return sum + (parseFloat(p.fa_amount) || 0); }, 0);
+
+        var orderIds = myPayouts.map(function(p) { return p.order_id; }).filter(Boolean);
+        var uniqueOrderIds = orderIds.filter(function(id, idx) { return orderIds.indexOf(id) === idx; });
+        var orders = loadOrders();
+        var clientEmails = uniqueOrderIds.map(function(id) {
+            var order = orders.find(function(o) { return o.id === id; });
+            return order && order.client_info ? (order.client_info.email || '').toLowerCase() : '';
+        }).filter(Boolean);
+        var nombreClients = clientEmails.filter(function(email, idx) { return clientEmails.indexOf(email) === idx; }).length;
+
+        var categoryPartners = partners.filter(function(p) { return p.partner_type === partner.partner_type && p.accountStatus === 'active'; });
+        var classement = getPartnerCategoryRank(partner, categoryPartners);
+
+        res.json({
+            success: true,
+            rating: summary,
+            badge: badge,
+            founderBadge: partner.founderBadge === true,
+            missionsCompleted: missionsCompleted,
+            revenusGeneres: Math.round(revenusGeneres * 100) / 100,
+            commissionsVersees: Math.round(commissionsVersees * 100) / 100,
+            nombreClients: nombreClients,
+            classement: classement,
+            avgResponseMinutes: typeof partner.avgResponseMinutes === 'number' ? Math.round(partner.avgResponseMinutes) : null
+        });
+    } catch (e) {
+        console.error('[REPUTATION] Erreur:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
 // Detail d'un projet assigne
 app.get('/api/partner/projects/:orderId', authenticatePartner, (req, res) => {
     try {
@@ -8303,6 +8499,24 @@ app.put('/api/admin/partners/:partnerId', (req, res) => {
     } catch (error) {
         console.error('[ADMIN] Erreur modif partenaire:', error);
         res.status(500).json({ error: 'Erreur modification partenaire' });
+    }
+});
+
+// Toggle du badge Membre Fondateur (attribution manuelle admin)
+app.put('/api/admin/partners/:partnerId/founder-badge', (req, res) => {
+    try {
+        const partners = loadPartners();
+        const index = partners.findIndex(p => p.id === req.params.partnerId);
+        if (index === -1) {
+            return res.status(404).json({ error: 'Partenaire non trouve' });
+        }
+        partners[index].founderBadge = req.body.value === true;
+        partners[index].updatedAt = new Date().toISOString();
+        savePartners(partners);
+        res.json({ success: true, founderBadge: partners[index].founderBadge });
+    } catch (error) {
+        console.error('[ADMIN] Erreur toggle founder badge:', error);
+        res.status(500).json({ error: 'Erreur modification badge' });
     }
 });
 

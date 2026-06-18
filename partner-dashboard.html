@@ -156,6 +156,9 @@
                     <button onclick="showSection('revenus')" class="nav-tab text-white hover:text-[var(--genesis-yellow)] transition">
                         <i class="fas fa-coins mr-1"></i>Revenus
                     </button>
+                    <button onclick="showSection('reputation')" class="nav-tab text-white hover:text-[var(--genesis-yellow)] transition">
+                        <i class="fas fa-trophy mr-1"></i>Réputation
+                    </button>
                     <button onclick="showSection('profile')" class="nav-tab text-white hover:text-[var(--genesis-yellow)] transition">
                         <i class="fas fa-user mr-1"></i>Profil
                     </button>
@@ -192,6 +195,9 @@
             </button>
             <button onclick="showSection('revenus')" class="nav-tab text-white hover:text-[var(--genesis-yellow)] text-xs font-black">
                 <i class="fas fa-coins mr-1"></i>Revenus
+            </button>
+            <button onclick="showSection('reputation')" class="nav-tab text-white hover:text-[var(--genesis-yellow)] text-xs font-black">
+                <i class="fas fa-trophy mr-1"></i>Réputation
             </button>
             <button onclick="showSection('profile')" class="nav-tab text-white hover:text-[var(--genesis-yellow)] text-xs font-black">
                 <i class="fas fa-user mr-1"></i>Profil
@@ -556,6 +562,49 @@
             </div>
         </div>
 
+        <!-- ===== SECTION REPUTATION ===== -->
+        <div id="reputationSection" class="container mx-auto max-w-5xl" style="display:none;">
+            <h2 class="text-2xl md:text-3xl font-black text-white mb-6" style="font-family:'Playfair Display',serif;">
+                <i class="fas fa-trophy mr-3" style="color:var(--genesis-yellow);"></i>MA RÉPUTATION
+            </h2>
+
+            <div class="section-card neo-shadow text-center mb-8">
+                <p id="reputationBadge" class="text-2xl font-black mb-2">—</p>
+                <p id="reputationRating" class="text-sm font-bold opacity-70">—</p>
+            </div>
+
+            <div class="grid md:grid-cols-3 gap-4 mb-8">
+                <div class="section-card neo-shadow text-center">
+                    <p class="text-xs font-black uppercase opacity-60 mb-2">Missions réalisées</p>
+                    <p id="reputationMissions" class="text-3xl font-black text-white">0</p>
+                </div>
+                <div class="section-card neo-shadow text-center">
+                    <p class="text-xs font-black uppercase opacity-60 mb-2">Clients</p>
+                    <p id="reputationClients" class="text-3xl font-black text-white">0</p>
+                </div>
+                <div class="section-card neo-shadow text-center">
+                    <p class="text-xs font-black uppercase opacity-60 mb-2">Délai de réponse moyen</p>
+                    <p id="reputationResponseTime" class="text-3xl font-black text-white">—</p>
+                </div>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-4 mb-8">
+                <div class="section-card neo-shadow text-center">
+                    <p class="text-xs font-black uppercase opacity-60 mb-2">Revenus générés</p>
+                    <p id="reputationRevenus" class="text-3xl font-black" style="color:#51cf66;">0€</p>
+                </div>
+                <div class="section-card neo-shadow text-center">
+                    <p class="text-xs font-black uppercase opacity-60 mb-2">Commissions versées</p>
+                    <p id="reputationCommissions" class="text-3xl font-black" style="color:#ffd43b;">0€</p>
+                </div>
+            </div>
+
+            <div id="reputationClassementBlock" class="section-card neo-shadow text-center" style="display:none;">
+                <p class="text-xs font-black uppercase opacity-60 mb-2">Classement dans votre catégorie</p>
+                <p id="reputationClassement" class="text-2xl font-black text-white">—</p>
+            </div>
+        </div>
+
         <!-- ===== SECTION MISSIONS ===== -->
         <div id="missionsSection" class="container mx-auto max-w-5xl" style="display:none;">
             <h2 class="text-2xl md:text-3xl font-black text-white mb-6" style="font-family:'Playfair Display',serif;">
@@ -793,6 +842,7 @@
         var seances = document.getElementById('seancesSection');
         var messaging = document.getElementById('messagingSection');
         var revenus = document.getElementById('revenusSection');
+        var reputation = document.getElementById('reputationSection');
 
         if (loading) loading.style.display = 'none';
         if (projects) projects.style.display = 'none';
@@ -804,6 +854,7 @@
         if (seances) seances.style.display = 'none';
         if (messaging) messaging.style.display = 'none';
         if (revenus) revenus.style.display = 'none';
+        if (reputation) reputation.style.display = 'none';
 
         if (section === 'projects') {
             if (projects) projects.style.display = 'block';
@@ -828,6 +879,9 @@
         } else if (section === 'revenus') {
             if (revenus) revenus.style.display = 'block';
             loadRevenus();
+        } else if (section === 'reputation') {
+            if (reputation) reputation.style.display = 'block';
+            loadReputation();
         }
     }
 
@@ -2337,6 +2391,69 @@
                 '<p class="font-bold opacity-50">Erreur de chargement des revenus</p>' +
                 '<button onclick="loadRevenus()" class="neo-btn-yellow px-6 py-2 mt-4 text-sm">Réessayer</button>' +
             '</div>';
+        }
+    }
+
+    // ==============================================
+    // MA RÉPUTATION
+    // ==============================================
+
+    var REPUTATION_BADGE_LABELS = {
+        bronze: 'BRONZE', argent: 'ARGENT', or: 'OR', elite: 'ELITE', fondateur: 'MEMBRE FONDATEUR'
+    };
+    var REPUTATION_BADGE_COLORS = {
+        bronze: '#cd7f32', argent: '#c7c7c7', or: '#FFD700', elite: '#a855f7', fondateur: '#FFD700'
+    };
+
+    async function loadReputation() {
+        var badgeEl = document.getElementById('reputationBadge');
+        var ratingEl = document.getElementById('reputationRating');
+        var missionsEl = document.getElementById('reputationMissions');
+        var clientsEl = document.getElementById('reputationClients');
+        var responseEl = document.getElementById('reputationResponseTime');
+        var revenusEl = document.getElementById('reputationRevenus');
+        var commissionsEl = document.getElementById('reputationCommissions');
+        var classementBlock = document.getElementById('reputationClassementBlock');
+        var classementEl = document.getElementById('reputationClassement');
+        if (!badgeEl) return;
+
+        try {
+            var response = await partnerAuthenticatedFetch(PARTNER_API_BASE_URL + '/api/partner/reputation');
+            if (!response.ok) throw new Error('Erreur ' + response.status);
+            var data = await response.json();
+
+            var badge = data.founderBadge ? 'fondateur' : data.badge;
+            var label = REPUTATION_BADGE_LABELS[badge] || 'Pas encore de badge';
+            var color = REPUTATION_BADGE_COLORS[badge] || '#999';
+            if (badgeEl) { badgeEl.textContent = label; badgeEl.style.color = color; }
+
+            var rating = data.rating || { average: 0, count: 0 };
+            if (ratingEl) ratingEl.textContent = rating.average.toFixed(1) + ' ★ (' + rating.count + ' avis)';
+
+            if (missionsEl) missionsEl.textContent = data.missionsCompleted || 0;
+            if (clientsEl) clientsEl.textContent = data.nombreClients || 0;
+            if (responseEl) {
+                if (typeof data.avgResponseMinutes === 'number') {
+                    responseEl.textContent = data.avgResponseMinutes < 60
+                        ? Math.round(data.avgResponseMinutes) + ' min'
+                        : Math.round(data.avgResponseMinutes / 60) + ' h';
+                } else {
+                    responseEl.textContent = '—';
+                }
+            }
+            if (revenusEl) revenusEl.textContent = (data.revenusGeneres || 0).toFixed(2) + '€';
+            if (commissionsEl) commissionsEl.textContent = (data.commissionsVersees || 0).toFixed(2) + '€';
+
+            var classement = data.classement || {};
+            if (classement.rank && classement.total) {
+                if (classementBlock) classementBlock.style.display = 'block';
+                if (classementEl) classementEl.textContent = '#' + classement.rank + ' / ' + classement.total;
+            } else if (classementBlock) {
+                classementBlock.style.display = 'none';
+            }
+        } catch (error) {
+            console.error('[PARTNER-DASH] Erreur chargement réputation:', error);
+            if (badgeEl) badgeEl.textContent = 'Erreur de chargement';
         }
     }
 
