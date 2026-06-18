@@ -53,6 +53,7 @@ const PUSH_SUBSCRIPTIONS_FILE = path.join(__dirname, 'data', 'push-subscriptions
 const DISPATCHES_FILE = path.join(__dirname, 'data', 'dispatches.json');
 const PAYOUTS_FILE    = path.join(__dirname, 'data', 'payouts.json');
 const PARTNER_REVIEWS_FILE = path.join(__dirname, 'data', 'partner_reviews.json');
+const HALL_OF_FAME_FILE = path.join(__dirname, 'data', 'hall_of_fame.json');
 
 // Catégories de partenaires marketplace (source unique, partagée par inscription + admin)
 const PARTNER_TYPES = [
@@ -209,6 +210,25 @@ function savePartners(partners) {
         persistentStore.persistToCloud('partners', partners).catch(function(e) {});
     } catch (error) {
         console.error('[PARTNER] Erreur sauvegarde partners:', error);
+    }
+}
+
+function loadHallOfFame() {
+    try {
+        if (fs.existsSync(HALL_OF_FAME_FILE)) {
+            return JSON.parse(fs.readFileSync(HALL_OF_FAME_FILE, 'utf8'));
+        }
+    } catch (error) {
+        console.error('[HALL_OF_FAME] Erreur lecture:', error);
+    }
+    return { lastComputedMonth: null, snapshots: [] };
+}
+
+function saveHallOfFame(data) {
+    try {
+        fs.writeFileSync(HALL_OF_FAME_FILE, JSON.stringify(data, null, 2), 'utf8');
+    } catch (error) {
+        console.error('[HALL_OF_FAME] Erreur sauvegarde:', error);
     }
 }
 
@@ -7581,6 +7601,159 @@ function getPartnerCategoryRank(partner, allPartnersSameCategory) {
     const idx = scored.findIndex(s => s.id === partner.id);
     return { rank: idx === -1 ? null : idx + 1, total: scored.length };
 }
+
+// ============================================================
+// HALL OF FAME — calcul automatique mensuel (Phase 4)
+// ============================================================
+
+// dateStr au format ISO ('YYYY-MM-DDTHH:...') ; monthStr au format 'YYYY-MM'
+function _hofDateInMonth(dateStr, monthStr) {
+    return !!dateStr && dateStr.slice(0, 7) === monthStr;
+}
+
+function getPreviousMonthStr(date) {
+    var d = new Date(date.getFullYear(), date.getMonth(), 1);
+    d.setMonth(d.getMonth() - 1);
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+}
+
+function computeHallOfFameForMonth(monthStr) {
+    var partners = loadPartners();
+    var orders = loadOrders();
+    var users = loadUsers();
+    var payouts = loadPayouts();
+
+    // Meilleur partenaire par categorie : parmi ceux ayant complete au moins une mission
+    // dans le mois (payout stage=balance), le meilleur score global (reutilise le score
+    // Phase 1 plutot qu'un second calculateur "du mois" — simplification documentee)
+    var bestPartners = [];
+    PARTNER_TYPE_VALUES.forEach(function(category) {
+        var categoryPartners = partners.filter(function(p) { return p.partner_type === category && p.accountStatus === 'active'; });
+        var qualifying = categoryPartners.filter(function(p) {
+            return payouts.some(function(pay) {
+                return pay.partner_id === p.id && pay.stage === 'balance' && _hofDateInMonth(pay.created_at, monthStr);
+            });
+        });
+        if (!qualifying.length) return;
+        var winner = qualifying
+            .map(function(p) { return { partner: p, score: getPartnerCategoryScore(p) }; })
+            .sort(function(a, b) { return b.score - a.score; })[0];
+        bestPartners.push({
+            category: category,
+            partnerId: winner.partner.id,
+            partnerName: (winner.partner.prenom || '') + ' ' + (winner.partner.nom || ''),
+            company: winner.partner.company || '',
+            score: Math.round(winner.score * 10) / 10
+        });
+    });
+
+    // Meilleur client : le plus de commandes au solde paye dans le mois
+    var clientCounts = {};
+    orders.forEach(function(o) {
+        if (!o.balance_paid) return;
+        var date = o.balance_paid_at || o.updated_at || o.created_at;
+        if (!_hofDateInMonth(date, monthStr)) return;
+        var email = ((o.client_info && o.client_info.email) || o.email || '').toLowerCase();
+        if (!email) return;
+        clientCounts[email] = (clientCounts[email] || 0) + 1;
+    });
+    var bestClient = null;
+    Object.keys(clientCounts).forEach(function(email) {
+        if (!bestClient || clientCounts[email] > bestClient.count) {
+            var user = users.find(function(u) { return u.email.toLowerCase() === email; });
+            bestClient = {
+                email: email,
+                name: user ? ((user.prenom || '') + ' ' + (user.nom || '')).trim() : email,
+                count: clientCounts[email]
+            };
+        }
+    });
+
+    // Meilleur parrain (client ou partenaire) : le plus de filleuls valides dans le mois
+    var referrerCounts = {};
+    users.forEach(function(u) {
+        if (!u.referredBy) return;
+        var paidDates = orders.filter(function(o) {
+            var email = ((o.client_info && o.client_info.email) || o.email || '').toLowerCase();
+            return email === u.email.toLowerCase() && o.balance_paid === true;
+        }).map(function(o) { return o.balance_paid_at || o.updated_at || o.created_at; }).sort();
+        if (paidDates.length && _hofDateInMonth(paidDates[0], monthStr)) {
+            referrerCounts[u.referredBy] = (referrerCounts[u.referredBy] || 0) + 1;
+        }
+    });
+    partners.forEach(function(p) {
+        if (!p.referredBy || p.accountStatus !== 'active') return;
+        // Pas de date d'activation dediee : updatedAt est mis a jour lors du passage a 'active'
+        if (_hofDateInMonth(p.updatedAt || p.createdAt, monthStr)) {
+            referrerCounts[p.referredBy] = (referrerCounts[p.referredBy] || 0) + 1;
+        }
+    });
+    var bestReferrer = null;
+    Object.keys(referrerCounts).forEach(function(id) {
+        if (!bestReferrer || referrerCounts[id] > bestReferrer.count) {
+            var u = users.find(function(usr) { return usr.id === id; });
+            var p = !u ? partners.find(function(ptn) { return ptn.id === id; }) : null;
+            var name = u ? ((u.prenom || '') + ' ' + (u.nom || '')).trim() : (p ? ((p.prenom || '') + ' ' + (p.nom || '')).trim() : id);
+            bestReferrer = { id: id, type: u ? 'client' : 'partenaire', name: name, count: referrerCounts[id] };
+        }
+    });
+
+    return {
+        month: monthStr,
+        computedAt: new Date().toISOString(),
+        bestPartners: bestPartners,
+        bestClient: bestClient,
+        bestReferrer: bestReferrer
+    };
+}
+
+function maybeComputeHallOfFame() {
+    try {
+        var hof = loadHallOfFame();
+        var prevMonth = getPreviousMonthStr(new Date());
+        if (hof.lastComputedMonth === prevMonth) return;
+        var snapshot = computeHallOfFameForMonth(prevMonth);
+        hof.snapshots = hof.snapshots || [];
+        hof.snapshots.push(snapshot);
+        hof.lastComputedMonth = prevMonth;
+        saveHallOfFame(hof);
+        console.log('[HALL_OF_FAME] Snapshot calcule pour ' + prevMonth);
+    } catch (e) {
+        console.error('[HALL_OF_FAME] Erreur calcul:', e);
+    }
+}
+setInterval(maybeComputeHallOfFame, 3600000);
+maybeComputeHallOfFame();
+
+// Hall of Fame public : dernier snapshot mensuel calcule
+app.get('/api/hall-of-fame', function(req, res) {
+    try {
+        var hof = loadHallOfFame();
+        var snapshots = hof.snapshots || [];
+        var snapshot = snapshots.length ? snapshots[snapshots.length - 1] : null;
+        if (snapshot) {
+            var partners = loadPartners();
+            snapshot = Object.assign({}, snapshot, {
+                bestPartners: (snapshot.bestPartners || []).map(function(bp) {
+                    var p = partners.find(function(pp) { return pp.id === bp.partnerId; });
+                    return Object.assign({}, bp, {
+                        id: bp.partnerId,
+                        prenom: p ? p.prenom : bp.partnerName.split(' ')[0],
+                        nom: p ? p.nom : bp.partnerName.split(' ').slice(1).join(' '),
+                        partner_type: bp.category,
+                        photo: p ? (p.photo || null) : null,
+                        rating: p ? getPartnerRatingSummary(p.id) : null,
+                        badge: p ? getPartnerBadge(p) : null
+                    });
+                })
+            });
+        }
+        res.json({ success: true, hallOfFame: snapshot });
+    } catch (e) {
+        console.error('[HALL_OF_FAME] Erreur lecture:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
 
 // Annuaire public des partenaires (recherche, filtre categorie, filtre prix)
 app.get('/api/partners/directory', (req, res) => {

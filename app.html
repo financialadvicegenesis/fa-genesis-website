@@ -2641,6 +2641,7 @@ function renderPrestataires(){
     +'<div class="p-hero-stat" id="p-dir-stat">Chargement...</div>'
     +'</div>';
   html += '<div id="p-dir-reco-wrap"></div>';
+  html += '<div id="p-dir-hall-of-fame-wrap"></div>';
   html += '<div id="p-dir-top-categories-wrap"></div>';
   html += '<div class="p-section" style="margin-top:8px;" id="p-section-annuaire">';
   html += '<div class="p-section-hdr dark p-section-hdr-fit">TROUVER UN PARTENAIRE</div>';
@@ -2671,6 +2672,7 @@ function renderPrestataires(){
   document.getElementById('prestatairesList').innerHTML = html;
   loadPartnerDirectory();
   loadPartnerRecommendations();
+  loadHallOfFame();
   loadTopCategories();
 }
 
@@ -2711,6 +2713,37 @@ function loadTopCategories(){
       wrap.appendChild(block);
     }).catch(function(){});
   });
+}
+
+var HOF_MONTH_LABELS = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+function hofMonthLabel(monthStr){
+  if(!monthStr) return '';
+  var parts = monthStr.split('-');
+  var idx = parseInt(parts[1],10)-1;
+  return (HOF_MONTH_LABELS[idx]||'')+' '+parts[0];
+}
+function loadHallOfFame(){
+  var wrap = document.getElementById('p-dir-hall-of-fame-wrap');
+  if(!wrap) return;
+  fetch(API+'/api/hall-of-fame').then(function(r){return r.json();}).then(function(data){
+    var hof = data && data.hallOfFame;
+    if(!hof || (!((hof.bestPartners||[]).length) && !hof.bestClient && !hof.bestReferrer)){ wrap.innerHTML=''; return; }
+    var html = '<div class="p-section-hdr black p-section-hdr-fit" style="margin:16px 16px 12px;">🏆 HALL OF FAME — '+hofMonthLabel(hof.month).toUpperCase()+'</div>';
+    if((hof.bestPartners||[]).length){
+      html += '<div class="p-reco-row">'+hof.bestPartners.map(function(p,i){return recoPartnerCard(p,i);}).join('')+'</div>';
+    }
+    var highlights = '';
+    if(hof.bestClient){
+      highlights += '<div class="p-ref-box"><div class="p-ref-box-title">🥇 Meilleur client du mois</div><div class="p-ref-count">'+hof.bestClient.name+' · '+hof.bestClient.count+' commande'+(hof.bestClient.count>1?'s':'')+'</div></div>';
+    }
+    if(hof.bestReferrer){
+      highlights += '<div class="p-ref-box"><div class="p-ref-box-title">🤝 Meilleur parrain du mois</div><div class="p-ref-count">'+hof.bestReferrer.name+' ('+(hof.bestReferrer.type==='partenaire'?'partenaire':'client')+') · '+hof.bestReferrer.count+' parrainage'+(hof.bestReferrer.count>1?'s':'')+' validé'+(hof.bestReferrer.count>1?'s':'')+'</div></div>';
+    }
+    if(highlights){
+      html += '<div style="display:flex;flex-direction:column;gap:8px;margin:0 16px 8px;">'+highlights+'</div>';
+    }
+    wrap.innerHTML = html;
+  }).catch(function(){ wrap.innerHTML=''; });
 }
 
 // Card builders
