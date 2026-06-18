@@ -906,6 +906,25 @@ a{text-decoration:none;color:inherit}
 .p-explore-search-input:focus{border-color:var(--yellow)}
 .p-explore-search-input::placeholder{color:var(--muted)}
 
+/* Onglets rapides Prestataires / Événements (Explorer) */
+.p-explore-tabs{display:flex;gap:10px;padding:0 16px 16px}
+.p-explore-tab{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;
+  background:var(--card);border:2px solid #000;border-radius:14px;color:var(--muted);
+  font-family:inherit;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.3px;
+  padding:13px 8px;cursor:pointer}
+.p-explore-tab.on{background:var(--yellow);color:#000;box-shadow:4px 4px 0 #000}
+.p-explore-tab-icon{font-size:15px}
+
+/* Recherches populaires (Explorer) */
+.p-popular-label{font-size:11px;font-weight:900;color:var(--muted);text-transform:uppercase;
+  letter-spacing:.4px;padding:0 16px;margin-bottom:10px}
+.p-popular-row{display:flex;flex-wrap:wrap;gap:8px;padding:0 16px 18px}
+.p-popular-chip{display:flex;align-items:center;gap:6px;background:var(--card);border:2px solid #000;
+  border-radius:20px;color:var(--text);font-family:inherit;font-size:11px;font-weight:700;
+  padding:8px 13px;cursor:pointer}
+.p-popular-chip i{color:var(--yellow);font-size:10px}
+.p-popular-chip:active{background:var(--yellow);color:#000}
+
 /* Catégories en icônes défilantes (Explorer) */
 .p-cat-icon-strip{display:flex;gap:10px;padding:0 16px 16px;overflow-x:auto;scrollbar-width:none}
 .p-cat-icon-strip::-webkit-scrollbar{display:none}
@@ -2750,6 +2769,22 @@ var DIR_CATEGORY_ICONS_ORDER = [
   {id:'animateur_evenementiel', icon:'🎤', label:'Animateurs / Événementiel'},
   {id:'consultant', icon:'💡', label:'Consultants'}
 ];
+var POPULAR_SEARCHES = ['Vidéaste','Photographe','Mariage','Coworking','Drone','Graphiste','Community Manager','Site web'];
+function setExploreTab(tab, el){
+  document.querySelectorAll('.p-explore-tab').forEach(function(b){b.className='p-explore-tab';});
+  el.className = 'p-explore-tab on';
+  var targetId = tab==='evenements' ? 'p-dir-events-wrap' : 'p-dir-featured-wrap';
+  var target = document.getElementById(targetId);
+  if(target) target.scrollIntoView({behavior:'smooth', block:'start'});
+}
+function quickSearch(term){
+  var inp = document.getElementById('p-dir-search');
+  if(inp) inp.value = term;
+  _dirQuery = term;
+  loadPartnerDirectory();
+  var target = document.getElementById('p-section-annuaire');
+  if(target) target.scrollIntoView({behavior:'smooth', block:'start'});
+}
 function renderPrestataires(){
   _dirCategory = null; _dirQuery = ''; _dirMaxPrice = ''; _dirCity = '';
   var html = '<div class="p-hero">'
@@ -2758,6 +2793,16 @@ function renderPrestataires(){
     +'</div>';
   html += '<div class="p-explore-search-wrap">'
     +'<input type="text" id="p-dir-search" class="p-explore-search-input" placeholder="Rechercher un vidéaste, photographe, graphiste, espace coworking, média, marketeur…" oninput="_dirSearchDebounced()">'
+    +'</div>';
+  html += '<div class="p-explore-tabs">'
+    +'<button class="p-explore-tab on" onclick="setExploreTab(\'prestataires\',this)"><span class="p-explore-tab-icon">🤝</span>PRESTATAIRES</button>'
+    +'<button class="p-explore-tab" onclick="setExploreTab(\'evenements\',this)"><span class="p-explore-tab-icon">🎉</span>ÉVÉNEMENTS</button>'
+    +'</div>';
+  html += '<div class="p-popular-label">RECHERCHES POPULAIRES</div>';
+  html += '<div class="p-popular-row">'
+    +POPULAR_SEARCHES.map(function(s){
+      return '<button class="p-popular-chip" onclick="quickSearch(\''+s+'\')"><i class="fas fa-magnifying-glass"></i>'+s+'</button>';
+    }).join('')
     +'</div>';
   html += '<div class="p-cat-icon-strip" id="p-dir-cat-icons">'
     +DIR_CATEGORY_ICONS_ORDER.map(function(c,i){
