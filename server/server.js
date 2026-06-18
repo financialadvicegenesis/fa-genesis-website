@@ -4963,6 +4963,7 @@ app.post('/api/auth/register', async (req, res) => {
             productType: productType,
             paymentStatus: 'registered',
             payments: [],
+            favoris: [],
             sessionToken: sessionToken,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
@@ -5208,12 +5209,66 @@ app.get('/api/auth/me', (req, res) => {
             pendingReviewPrompts: pendingReviewPrompts,
             badge: clientBadge,
             completedOrders: completedOrders,
-            isClientFidele: completedOrders >= 5
+            isClientFidele: completedOrders >= 5,
+            favoris: user.favoris || []
         });
 
     } catch (error) {
         console.error('Erreur verification session:', error);
         res.status(500).json({ error: 'Erreur lors de la verification' });
+    }
+});
+
+// POST /api/users/favorites/:partnerId/toggle — ajoute/retire un partenaire des favoris du client connecte
+app.post('/api/users/favorites/:partnerId/toggle', (req, res) => {
+    var user = authenticateClient(req, res);
+    if (!user) return;
+    try {
+        var partnerId = req.params.partnerId;
+        var users = loadUsers();
+        var idx = users.findIndex(function(u) { return u.email === user.email; });
+        if (idx === -1) return res.status(404).json({ error: 'Utilisateur non trouve' });
+        var favoris = users[idx].favoris || [];
+        var pos = favoris.indexOf(partnerId);
+        if (pos === -1) favoris.push(partnerId);
+        else favoris.splice(pos, 1);
+        users[idx].favoris = favoris;
+        users[idx].updatedAt = new Date().toISOString();
+        saveUsers(users);
+        res.json({ success: true, favoris: favoris });
+    } catch (error) {
+        console.error('[FAVORIS] Erreur toggle:', error);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// GET /api/users/favorites — partenaires favoris du client connecte, meme forme que /api/partners/directory
+app.get('/api/users/favorites', (req, res) => {
+    var user = authenticateClient(req, res);
+    if (!user) return;
+    try {
+        var favIds = user.favoris || [];
+        var partners = loadPartners().filter(function(p) {
+            return p.accountStatus === 'active' && favIds.indexOf(p.id) !== -1;
+        });
+        var results = partners.map(function(p) {
+            return {
+                id: p.id,
+                prenom: p.prenom,
+                nom: p.nom,
+                partner_type: p.partner_type,
+                photo: p.photo || null,
+                city: p.city || '',
+                fromPrice: getPartnerFromPrice(p),
+                rating: getPartnerRatingSummary(p.id),
+                badge: getPartnerBadge(p),
+                verified: true
+            };
+        });
+        res.json({ success: true, partners: results });
+    } catch (error) {
+        console.error('[FAVORIS] Erreur liste:', error);
+        res.status(500).json({ error: 'Erreur serveur' });
     }
 });
 

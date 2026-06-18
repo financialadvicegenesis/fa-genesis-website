@@ -818,6 +818,12 @@ a{text-decoration:none;color:inherit}
 .tier-badge.prestige{background:linear-gradient(135deg,#8a2be2,#ff00aa);color:#fff;box-shadow:0 0 10px rgba(138,43,226,.45)}
 .tier-badge.fondateur{background:linear-gradient(135deg,#1a1a1a,#3a2f00);color:var(--yellow);border:1px solid var(--yellow);box-shadow:0 0 12px rgba(255,200,0,.35)}
 .client-tier-badge{margin-top:6px}
+.p-fav-heart{display:inline-block;font-size:16px;line-height:1;cursor:pointer;color:#666;user-select:none}
+.p-fav-heart.on{color:#ff2d55}
+.p-dir-card{position:relative}
+.p-dir-card .p-fav-heart{position:absolute;top:10px;right:10px;font-size:18px}
+.p-reco-card{position:relative}
+.p-reco-card .p-fav-heart{position:absolute;top:8px;right:8px;font-size:16px;z-index:2}
 .p-dir-detail-city{font-size:11px;color:var(--muted);font-weight:700;margin:2px 0 8px}
 .p-dir-detail-bio{font-size:12px;color:#ccc;line-height:1.5;margin:8px 0}
 .p-dir-detail-social{display:flex;gap:12px;margin:8px 0}
@@ -2606,6 +2612,7 @@ function recoPartnerCard(p, idx){
   var badgeHtml = tierBadgeHtml(p.badge);
   return '<div class="p-reco-card" onclick="openPartnerDetail(\''+p.id+'\')">'
     +tag
+    +favHeartHtml(p.id)
     +'<div class="p-reco-photo">'+avatarHtml+'</div>'
     +'<div class="p-reco-body">'
     +'<div class="p-reco-name">'+(p.prenom||'')+' '+(p.nom||'')+(badgeHtml?' '+badgeHtml:'')+'</div>'
@@ -2883,6 +2890,7 @@ function directoryCard(p){
   var verifiedHtml = p.verified ? '<span class="p-dir-card-verified">✓ Vérifié</span>' : '';
   var badgeHtml = tierBadgeHtml(p.badge);
   return '<div class="p-dir-card" onclick="openPartnerDetail(\''+p.id+'\')">'
+    +favHeartHtml(p.id)
     +'<div class="p-dir-card-avatar">'+avatarHtml+'</div>'
     +'<div class="p-dir-card-info">'
     +'<div class="p-dir-card-name">'+(p.prenom||'')+' '+(p.nom||'')+' '+verifiedHtml+' '+badgeHtml+'</div>'
@@ -2940,7 +2948,7 @@ function openPartnerDetail(partnerId){
           +(r.comment?'<p class="p-dir-review-comment">'+r.comment+'</p>':'')+'</li>';
       }).join('') || '<li class="p-dir-review-empty">Aucun avis publié pour le moment.</li>';
       document.getElementById('detail-content').innerHTML = ''
-        +'<div class="detail-name">'+(p.prenom||'')+' '+(p.nom||'')+' '+verifiedHtml+' '+badgeHtml+'</div>'
+        +'<div class="detail-name">'+(p.prenom||'')+' '+(p.nom||'')+' '+verifiedHtml+' '+badgeHtml+' '+favHeartHtml(p.id)+'</div>'
         +'<div class="detail-sub">'+label+'</div>'
         +cityHtml
         +'<div class="detail-price">'+priceLabel+'</div>'
@@ -3074,6 +3082,44 @@ function tierBadgeHtml(tier, extraClass){
   if(!meta) return '';
   return '<span class="tier-badge '+meta.cls+(extraClass?' '+extraClass:'')+'">'+meta.label+'</span>';
 }
+function favHeartHtml(partnerId){
+  var isFav = !!(USER && USER.favoris && USER.favoris.indexOf(partnerId)!==-1);
+  return '<span class="p-fav-heart'+(isFav?' on':'')+'" data-fav-id="'+partnerId+'" onclick="event.stopPropagation();toggleFavorite(\''+partnerId+'\')">'+(isFav?'♥':'♡')+'</span>';
+}
+function toggleFavorite(partnerId){
+  if(!USER || GUEST){ if(typeof goLogin==='function') goLogin(); return; }
+  if(!USER.favoris) USER.favoris = [];
+  var pos = USER.favoris.indexOf(partnerId);
+  var wasFav = pos !== -1;
+  if(wasFav) USER.favoris.splice(pos,1); else USER.favoris.push(partnerId);
+  try{ localStorage.setItem('fa_genesis_session', JSON.stringify(USER)); }catch(e){}
+  document.querySelectorAll('[data-fav-id="'+partnerId+'"]').forEach(function(el){
+    el.textContent = wasFav ? '♡' : '♥';
+    el.classList.toggle('on', !wasFav);
+  });
+  fetch(API+'/api/users/favorites/'+encodeURIComponent(partnerId)+'/toggle', {
+    method:'POST', headers:{'Authorization':'Bearer '+USER._token}
+  }).then(function(r){return r.json();}).then(function(d){
+    if(d && d.success){ USER.favoris = d.favoris; try{ localStorage.setItem('fa_genesis_session', JSON.stringify(USER)); }catch(e){} }
+  }).catch(function(){});
+}
+function showFavoris(){
+  var c = document.getElementById('profilContent'); if(!c) return;
+  c.innerHTML = '<div class="espace-view">'
+    +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="renderProfil()">&#8249;</button><div class="espace-title">Mes favoris</div></div>'
+    +'<div id="fav-list" style="padding:14px 16px 80px;overflow-y:auto;flex:1;"><div class="espace-loading">Chargement...</div></div>'
+    +'</div>';
+  fetch(API+'/api/users/favorites', {headers:{'Authorization':'Bearer '+USER._token}})
+    .then(function(r){return r.json();})
+    .then(function(data){
+      var el = document.getElementById('fav-list'); if(!el) return;
+      var partners = (data && data.partners) || [];
+      if(!partners.length){ el.innerHTML = '<div class="espace-empty">Aucun favori pour le moment. Touchez le cœur sur un profil partenaire pour l\'ajouter ici.</div>'; return; }
+      el.innerHTML = partners.map(function(p){ return directoryCard(p); }).join('');
+    }).catch(function(){
+      var el = document.getElementById('fav-list'); if(el) el.innerHTML = '<div class="espace-empty">Erreur de chargement.</div>';
+    });
+}
 
 function renderProfil(){
   var c = document.getElementById('profilContent');
@@ -3118,6 +3164,7 @@ function renderProfil(){
       +pli('','#0a1a0a','Mes paiements',null,'showPaiements()')
       +pli('','#0a0a1a','Mes réservations',null,'nav(\'reservations\')')
       +pli('','#100a1a','Mes livrables',null,'showLivrables()')
+      +pli('','#1a0014','Mes favoris',null,'showFavoris()')
       +pli('','#1a0a00','Mes séances',null,'showSeances()')
       +pli('','#0d1a1a','Messages',null,'nav(\'messages\')')
       +'</div></div>';
@@ -3351,6 +3398,7 @@ function _syncUserBadge(){
       USER.badge = d.badge;
       USER.completedOrders = d.completedOrders;
       USER.isClientFidele = d.isClientFidele;
+      USER.favoris = d.favoris || [];
       try{ localStorage.setItem('fa_genesis_session', JSON.stringify(USER)); }catch(e){}
       if(document.getElementById('tab-profil') && document.getElementById('tab-profil').classList.contains('on')) renderProfil();
     }).catch(function(){});
