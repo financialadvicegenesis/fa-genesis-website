@@ -230,9 +230,13 @@ a{text-decoration:none;color:inherit}
 .greet-name{font-size:22px;font-weight:900;color:var(--text);margin-top:2px;font-family:'Unbounded',sans-serif}
 
 /* Status card */
-.status-card{margin:16px;border-radius:16px;overflow:hidden;
-  background:linear-gradient(135deg,#1a0026 0%,#0d001a 100%);
-  border:1px solid #2a1040;padding:20px}
+.status-card{margin:16px;border-radius:16px;overflow:hidden;position:relative;
+  background:linear-gradient(135deg,rgba(26,0,38,.75) 0%,rgba(13,0,26,.75) 100%);
+  backdrop-filter:blur(14px) saturate(140%);-webkit-backdrop-filter:blur(14px) saturate(140%);
+  border:1px solid #2a1040;padding:20px;
+  box-shadow:0 0 0 1px rgba(255,215,0,.06),0 10px 30px rgba(0,0,0,.4);
+  animation:statusGlow 4s ease-in-out infinite}
+@keyframes statusGlow{0%,100%{box-shadow:0 0 0 1px rgba(255,215,0,.06),0 10px 30px rgba(0,0,0,.4)}50%{box-shadow:0 0 0 1px rgba(255,215,0,.18),0 10px 34px rgba(255,215,0,.1)}}
 .status-card-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 .status-badge-pill{background:rgba(255,215,0,.15);color:var(--yellow);font-size:10px;font-weight:900;
   padding:4px 12px;border-radius:99px;letter-spacing:.5px;text-transform:uppercase}
@@ -997,10 +1001,10 @@ a{text-decoration:none;color:inherit}
 .cart-toast.on{opacity:1;transform:translateX(-50%) translateY(0);}
 
 /* ── DISPATCH / MISSIONS ── */
-.dispatch-card{background:#111;border:1px solid #1e1e1e;border-radius:16px;padding:16px;margin-bottom:12px;position:relative;overflow:hidden;}
+.dispatch-card{background:rgba(17,17,17,.7);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid #1e1e1e;border-radius:16px;padding:16px;margin-bottom:12px;position:relative;overflow:hidden;}
 .dispatch-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:#FFD700;}
-.dispatch-card.new-card{animation:dispatchPulse 2s ease-in-out;}
-@keyframes dispatchPulse{0%,100%{border-color:#1e1e1e}50%{border-color:#FFD700}}
+.dispatch-card.new-card{animation:dispatchPulse 2.4s ease-in-out infinite;}
+@keyframes dispatchPulse{0%,100%{border-color:#1e1e1e;box-shadow:0 0 0 rgba(255,215,0,0)}50%{border-color:#FFD700;box-shadow:0 0 16px rgba(255,215,0,.18)}}
 .dispatch-badge{display:inline-flex;align-items:center;gap:5px;background:rgba(255,215,0,.15);color:#FFD700;font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.5px;padding:3px 9px;border-radius:99px;margin-bottom:10px;}
 .dispatch-badge-dot{width:6px;height:6px;border-radius:50%;background:#FFD700;animation:dispatchBlink 1.2s ease-in-out infinite;}
 @keyframes dispatchBlink{0%,100%{opacity:1}50%{opacity:.3}}
@@ -1082,6 +1086,30 @@ a{text-decoration:none;color:inherit}
 .ptnr-empty{text-align:center;padding:40px 20px;color:#555;}
 .ptnr-empty-ico{font-size:36px;margin-bottom:12px;}
 .ptnr-empty-txt{font-size:13px;font-weight:700;}
+
+/* ── Skeleton loaders (chargement "tech") ── */
+.skeleton-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:12px;}
+.skeleton-row{display:flex;align-items:center;gap:12px;}
+.skeleton-line,.skeleton-avatar{
+  background:linear-gradient(90deg,#161616 25%,#262626 37%,#161616 63%);
+  background-size:400% 100%;animation:skeletonShimmer 1.4s ease-in-out infinite;
+}
+.skeleton-avatar{width:38px;height:38px;border-radius:50%;flex-shrink:0;}
+.skeleton-line{height:10px;border-radius:6px;margin-bottom:8px;width:100%;}
+.skeleton-line:last-child{margin-bottom:0;}
+.skeleton-line.lg{width:65%;height:12px;}
+.skeleton-line.sm{width:40%;height:8px;}
+.skeleton-line.xs{width:25%;height:8px;margin-top:10px;}
+@keyframes skeletonShimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+/* ── Compteurs animés : glow bref sur la tuile au moment où la valeur change ── */
+.ptnr-stat{transition:box-shadow .25s,border-color .25s;}
+.ptnr-stat.pulse{border-color:rgba(255,215,0,.5);box-shadow:0 0 0 1px rgba(255,215,0,.15),0 0 18px rgba(255,215,0,.25);}
+
+/* ── Indicateurs "live" pulsants sur les badges temps réel ── */
+.ptnr-badge.on{animation:liveBadgePulse 1.6s ease-in-out infinite;}
+.nav-dot.on{animation:liveBadgePulse 1.6s ease-in-out infinite;}
+@keyframes liveBadgePulse{0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,.55)}50%{box-shadow:0 0 0 4px rgba(239,68,68,0)}}
 .ptnr-section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#555;padding:16px 0 8px;border-bottom:1px solid #1a1a1a;margin-bottom:12px;}
 .ptnr-login-wrap{padding:24px 16px;}
 .ptnr-login-logo{font-family:'Unbounded',sans-serif;font-size:11px;font-weight:900;color:#FFD700;letter-spacing:2px;margin-bottom:24px;text-align:center;}
@@ -4853,7 +4881,7 @@ function _ptnrFmt(dateStr){
 // ── ACCUEIL PARTENAIRE ──
 function _ptnrLoadHome(){
   var list = document.getElementById('ptnr-home-list');
-  if(list) list.innerHTML = '<div style="padding:16px 0;text-align:center;color:#555;font-size:12px;">Chargement...</div>';
+  if(list) list.innerHTML = _skeletonRows(2);
   Promise.all([
     _ptnrFetch('/api/partner/projects').catch(function(){return [];}),
     _ptnrFetch('/api/partner/quotes').catch(function(){return [];}),
@@ -4870,9 +4898,9 @@ function _ptnrLoadHome(){
 
     var pendingDevis = devis.filter(function(q){return q.status==='pending'||q.status==='open';}).length;
     var unreadMsg = inbox.filter(function(m){return m.unread||m.isUnread;}).length;
-    var sp = document.getElementById('ptnr-stat-projets'); if(sp) sp.textContent = projets.length;
-    var sd = document.getElementById('ptnr-stat-devis'); if(sd) sd.textContent = pendingDevis;
-    var sm = document.getElementById('ptnr-stat-msg'); if(sm) sm.textContent = unreadMsg || inbox.length;
+    var sp = document.getElementById('ptnr-stat-projets'); _animateCount(sp, projets.length);
+    var sd = document.getElementById('ptnr-stat-devis'); _animateCount(sd, pendingDevis);
+    var sm = document.getElementById('ptnr-stat-msg'); _animateCount(sm, unreadMsg || inbox.length);
 
     var html = '';
 
@@ -4914,10 +4942,44 @@ function _ptnrLoadHome(){
   });
 }
 
+// ── Skeleton loaders & compteurs animés (effet "data live") ──
+function _skeletonRows(n, withAvatar){
+  var row='';
+  for(var i=0;i<n;i++){
+    row += '<div class="skeleton-card">'
+      + (withAvatar
+        ? '<div class="skeleton-row"><div class="skeleton-avatar"></div><div style="flex:1"><div class="skeleton-line lg"></div><div class="skeleton-line sm"></div></div></div>'
+        : '<div class="skeleton-line lg"></div><div class="skeleton-line sm"></div><div class="skeleton-line xs"></div>')
+      + '</div>';
+  }
+  return row;
+}
+function _animateCount(el, target, opts){
+  if(!el) return;
+  opts = opts || {};
+  var duration = opts.duration || 700;
+  var decimals = opts.decimals || 0;
+  var suffix = opts.suffix || '';
+  target = parseFloat(target) || 0;
+  var start = parseFloat((el.textContent||'0').replace(/[^\d.\-]/g,'')) || 0;
+  var t0 = null;
+  function step(ts){
+    if(!t0) t0=ts;
+    var p = Math.min((ts-t0)/duration, 1);
+    var eased = 1-Math.pow(1-p, 3);
+    el.textContent = (start+(target-start)*eased).toFixed(decimals)+suffix;
+    if(p<1) requestAnimationFrame(step);
+    else el.textContent = target.toFixed(decimals)+suffix;
+  }
+  requestAnimationFrame(step);
+  var tile = el.closest('.ptnr-stat');
+  if(tile){ tile.classList.add('pulse'); setTimeout(function(){tile.classList.remove('pulse');}, duration+150); }
+}
+
 // ── PROJETS ──
 function _ptnrLoadProjets(){
   var el = document.getElementById('ptnr-projets-list');
-  if(el) el.innerHTML = '<div class="ptnr-empty"><div style="color:#FFD700;font-size:24px;"><i class="fa-solid fa-hourglass-half"></i></div></div>';
+  if(el) el.innerHTML = _skeletonRows(3);
   _ptnrFetch('/api/partner/projects').then(function(data){
     var items = Array.isArray(data) ? data : (data.projects||[]);
     if(!items.length){ if(el) el.innerHTML = '<div class="ptnr-empty"><div class="ptnr-empty-ico"><i class="fa-solid fa-inbox"></i></div><div class="ptnr-empty-txt">Aucun projet assigné</div></div>'; return; }
@@ -4940,7 +5002,7 @@ function _ptnrLoadProjets(){
 // ── DEVIS ──
 function _ptnrLoadDevis(){
   var el = document.getElementById('ptnr-devis-list');
-  if(el) el.innerHTML = '<div class="ptnr-empty"><div style="color:#FFD700;font-size:24px;"><i class="fa-solid fa-hourglass-half"></i></div></div>';
+  if(el) el.innerHTML = _skeletonRows(3);
   _ptnrFetch('/api/partner/quotes').then(function(data){
     var items = Array.isArray(data) ? data : (data.quotes||[]);
     if(!items.length){ if(el) el.innerHTML = '<div class="ptnr-empty"><div class="ptnr-empty-ico"><i class="fa-solid fa-inbox"></i></div><div class="ptnr-empty-txt">Aucun devis en attente</div></div>'; return; }
@@ -4988,7 +5050,7 @@ function _ptnrCancelDevis(id){
 // ── SÉANCES ──
 function _ptnrLoadSeances(){
   var el = document.getElementById('ptnr-seances-list');
-  if(el) el.innerHTML = '<div class="ptnr-empty"><div style="color:#FFD700;font-size:24px;"><i class="fa-solid fa-hourglass-half"></i></div></div>';
+  if(el) el.innerHTML = _skeletonRows(3);
   _ptnrFetch('/api/partner/sessions').then(function(data){
     var items = Array.isArray(data) ? data : (data.sessions||[]);
     if(!items.length){ if(el) el.innerHTML = '<div class="ptnr-empty"><div class="ptnr-empty-ico"><i class="fa-solid fa-inbox"></i></div><div class="ptnr-empty-txt">Aucune séance à confirmer</div></div>'; return; }
@@ -5035,7 +5097,7 @@ function _ptnrCancelSeance(id){
 // ── MESSAGES ──
 function _ptnrLoadMessages(){
   var el = document.getElementById('ptnr-messages-list');
-  if(el) el.innerHTML = '<div class="ptnr-empty"><div style="color:#FFD700;font-size:24px;"><i class="fa-solid fa-hourglass-half"></i></div></div>';
+  if(el) el.innerHTML = _skeletonRows(3, true);
   _ptnrFetch('/api/partner/inbox').then(function(data){
     var threads = Array.isArray(data) ? data : (data.messages||data.inbox||[]);
     if(!threads.length){ if(el) el.innerHTML = '<div class="ptnr-empty"><div class="ptnr-empty-ico"><i class="fa-solid fa-comment-dots"></i></div><div class="ptnr-empty-txt">Aucun message</div></div>'; return; }
@@ -6530,7 +6592,7 @@ function _ptnrRenderGainBloc(d){
 
 function _ptnrLoadMissions(){
   var el = document.getElementById('ptnr-missions-list');
-  if(el) el.innerHTML = '<div class="ptnr-empty"><div style="color:#FFD700;font-size:24px;"><i class="fa-solid fa-hourglass-half"></i></div></div>';
+  if(el) el.innerHTML = _skeletonRows(2);
   _ptnrFetch('/api/partner/dispatches').then(function(data){
     var items = data.dispatches || [];
     if(!items.length){
@@ -6737,7 +6799,7 @@ function _submitAvailability(){
 function _ptnrLoadVersements(){
   var setupEl = document.getElementById('ptnr-paypal-setup');
   var listEl  = document.getElementById('ptnr-versements-list');
-  if(setupEl) setupEl.innerHTML = '<div class="ptnr-empty"><div style="color:#FFD700;font-size:22px;"><i class="fa-solid fa-hourglass-half"></i></div></div>';
+  if(setupEl) setupEl.innerHTML = _skeletonRows(2);
   if(listEl)  listEl.innerHTML  = '';
 
   _ptnrFetch('/api/partner/payouts').then(function(data){
@@ -6798,10 +6860,10 @@ function _ptnrLoadVersements(){
     payouts.forEach(function(p){ if(p.status==='sent') totalSent+=p.amount; else totalPending+=p.amount; });
     var listHtml = '<div style="display:flex;gap:8px;margin-bottom:16px;">';
     listHtml += '<div style="flex:1;background:#111;border:1px solid #1e1e1e;border-radius:12px;padding:12px 14px;text-align:center;">';
-    listHtml += '<div style="font-size:18px;color:#4caf50;font-weight:800;">'+totalSent.toFixed(2)+' €</div>';
+    listHtml += '<div id="ptnr-total-sent" style="font-size:18px;color:#4caf50;font-weight:800;">0.00 €</div>';
     listHtml += '<div style="font-size:10px;color:#555;margin-top:3px;font-weight:600;">REÇUS</div></div>';
     listHtml += '<div style="flex:1;background:#111;border:1px solid #1e1e1e;border-radius:12px;padding:12px 14px;text-align:center;">';
-    listHtml += '<div style="font-size:18px;color:#FFD700;font-weight:800;">'+totalPending.toFixed(2)+' €</div>';
+    listHtml += '<div id="ptnr-total-pending" style="font-size:18px;color:#FFD700;font-weight:800;">0.00 €</div>';
     listHtml += '<div style="font-size:10px;color:#555;margin-top:3px;font-weight:600;">EN ATTENTE</div></div>';
     listHtml += '</div>';
     payouts.forEach(function(p){
@@ -6825,6 +6887,8 @@ function _ptnrLoadVersements(){
       listHtml += '</div>';
     });
     listEl.innerHTML = listHtml;
+    _animateCount(document.getElementById('ptnr-total-sent'), totalSent, {decimals:2, suffix:' €', duration:900});
+    _animateCount(document.getElementById('ptnr-total-pending'), totalPending, {decimals:2, suffix:' €', duration:900});
   }).catch(function(){
     if(setupEl) setupEl.innerHTML = '<div class="ptnr-empty"><div class="ptnr-empty-txt">Erreur de chargement</div></div>';
   });
