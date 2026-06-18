@@ -943,6 +943,19 @@ a{text-decoration:none;color:inherit}
 .p-event-title{font-size:13px;font-weight:900;color:#fff;line-height:1.25;margin-bottom:4px}
 .p-event-loc{font-size:10px;color:var(--muted);font-weight:700}
 
+/* Hall of Fame — carte premium dorée */
+.p-hof-card{flex-shrink:0;width:148px;background:linear-gradient(160deg,var(--card),#241d05);
+  border:3px solid #FFD700;border-radius:14px;overflow:hidden;cursor:pointer;position:relative;
+  box-shadow:0 0 14px rgba(255,215,0,.45),4px 4px 0 #000}
+.p-hof-card .p-fav-heart{position:absolute;top:8px;right:8px;font-size:16px;z-index:2}
+.p-hof-ribbon{position:absolute;top:6px;left:6px;background:linear-gradient(135deg,#FFD700,#b8860b);
+  color:#000;font-size:8px;font-weight:900;padding:2px 7px;border:2px solid #000;
+  text-transform:uppercase;letter-spacing:.3px;z-index:1;border-radius:4px}
+
+/* Animation d'entrée discrète appliquée aux sections Explorer une fois peuplées */
+@keyframes fadeSlideIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.p-fade-in{animation:fadeSlideIn .45s ease both}
+
 /* Fiche détail — bottom sheet */
 #detail-sheet{
   display:none;position:fixed;inset:0;z-index:900;
@@ -2687,6 +2700,24 @@ function recoPartnerCard(p, idx, tagOverride){
     +'<button class="p-reco-viewbtn" onclick="event.stopPropagation();openPartnerDetail(\''+p.id+'\')">Voir le profil</button>'
     +'</div></div>';
 }
+function hofPremiumCard(p, idx){
+  var label = PARTNER_TYPE_LABELS_DIR[p.partner_type] || p.partner_type;
+  var initials = (((p.prenom||'')[0]||'')+((p.nom||'')[0]||'')).toUpperCase();
+  var avatarHtml = p.photo ? '<img src="'+p.photo+'" alt="">' : '<div class="p-reco-initials">'+initials+'</div>';
+  var starsLabel = (p.rating && p.rating.count) ? ('★ '+p.rating.average+' ('+p.rating.count+')') : 'Nouveau';
+  var badgeHtml = tierBadgeHtml(p.badge);
+  return '<div class="p-hof-card" onclick="openPartnerDetail(\''+p.id+'\')">'
+    +'<div class="p-hof-ribbon">🏆 N°'+(idx+1)+'</div>'
+    +favHeartHtml(p.id)
+    +'<div class="p-reco-photo">'+avatarHtml+'</div>'
+    +'<div class="p-reco-body">'
+    +'<div class="p-reco-name">'+(p.prenom||'')+' '+(p.nom||'')+(badgeHtml?' '+badgeHtml:'')+'</div>'
+    +'<div class="p-reco-cat">'+label+'</div>'
+    +(p.city?'<div class="p-reco-city">📍 '+p.city+'</div>':'')
+    +'<div class="p-reco-stars">'+starsLabel+'</div>'
+    +'<button class="p-reco-viewbtn" onclick="event.stopPropagation();openPartnerDetail(\''+p.id+'\')">Voir le profil</button>'
+    +'</div></div>';
+}
 function bigCategoryCard(p, idx){
   var label = PARTNER_TYPE_LABELS_DIR[p.partner_type] || p.partner_type;
   var initials = (((p.prenom||'')[0]||'')+((p.nom||'')[0]||'')).toUpperCase();
@@ -2793,6 +2824,7 @@ function loadEventsExplorer(){
   if(!wrap) return;
   fetch(API+'/api/events').then(function(r){return r.json();}).then(function(data){
     var events = (data && data.events) || [];
+    wrap.className = events.length ? 'p-fade-in' : '';
     wrap.innerHTML = events.length
       ? '<div class="p-section-hdr black p-section-hdr-fit" style="margin:16px 16px 12px;">🎉 ÉVÉNEMENTS FA GENESIS</div>'
         +'<div class="p-reco-row">'+events.map(eventCard).join('')+'</div>'
@@ -2823,6 +2855,7 @@ function loadNewTalents(){
   if(!wrap) return;
   fetch(API+'/api/partners/new?limit=8').then(function(r){return r.json();}).then(function(data){
     var partners = (data && data.partners) || [];
+    wrap.className = partners.length ? 'p-fade-in' : '';
     wrap.innerHTML = partners.length
       ? '<div class="p-section-hdr black p-section-hdr-fit" style="margin:16px 16px 12px;">✨ NOUVEAUX TALENTS</div>'
         +'<div class="p-reco-row">'+partners.map(function(p,i){return recoPartnerCard(p,i,'Nouveau');}).join('')+'</div>'
@@ -2839,6 +2872,7 @@ function loadPersonalizedRecommendations(){
   var headers = (USER && !GUEST && USER._token) ? {'Authorization':'Bearer '+USER._token} : {};
   fetch(API+'/api/partners/recommended?limit=8', {headers:headers}).then(function(r){return r.json();}).then(function(data){
     var partners = (data && data.partners) || [];
+    wrap.className = partners.length ? 'p-fade-in' : '';
     wrap.innerHTML = partners.length
       ? '<div class="p-section-hdr black p-section-hdr-fit" style="margin:16px 16px 12px;">💡 RECOMMANDÉS POUR VOUS</div>'
         +'<div class="p-reco-row">'+partners.map(function(p,i){return recoPartnerCard(p,i);}).join('')+'</div>'
@@ -2853,6 +2887,7 @@ function loadFavoritesInExplorer(){
   if(!USER || GUEST || !USER._token){ wrap.innerHTML=''; return; }
   fetch(API+'/api/users/favorites', {headers:{'Authorization':'Bearer '+USER._token}}).then(function(r){return r.json();}).then(function(data){
     var partners = (data && data.partners) || [];
+    wrap.className = partners.length ? 'p-fade-in' : '';
     wrap.innerHTML = partners.length
       ? '<div class="p-section-hdr black p-section-hdr-fit" style="margin:16px 16px 12px;">❤️ VOS FAVORIS</div>'
         +'<div class="p-reco-row">'+partners.map(function(p,i){return recoPartnerCard(p,i);}).join('')+'</div>'
@@ -2869,6 +2904,7 @@ function loadFeaturedPartners(){
   if(!wrap) return;
   fetch(API+'/api/partners/featured?limit=8').then(function(r){return r.json();}).then(function(data){
     var partners = (data && data.partners) || [];
+    wrap.className = partners.length ? 'p-fade-in' : '';
     wrap.innerHTML = partners.length
       ? '<div class="p-section-hdr black p-section-hdr-fit" style="margin:16px 16px 12px;">⭐ PROFESSIONNELS À LA UNE</div>'
         +'<div class="p-reco-row">'+partners.map(function(p,i){return recoPartnerCard(p,i);}).join('')+'</div>'
@@ -2900,6 +2936,7 @@ function loadTopCategories(){
       pending--;
       if(pending===0){
         var html = blocks.join('');
+        wrap.className = html ? 'p-fade-in' : '';
         wrap.innerHTML = html ? '<div class="p-section-hdr black p-section-hdr-fit" style="margin:16px 16px 12px;">🔥 LES PLUS RECHERCHÉS</div>'+html : '';
       }
     });
@@ -2921,7 +2958,7 @@ function loadHallOfFame(){
     if(!hof || (!((hof.bestPartners||[]).length) && !hof.bestClient && !hof.bestReferrer)){ wrap.innerHTML=''; return; }
     var html = '<div class="p-section-hdr black p-section-hdr-fit" style="margin:16px 16px 12px;">🏆 HALL OF FAME — '+hofMonthLabel(hof.month).toUpperCase()+'</div>';
     if((hof.bestPartners||[]).length){
-      html += '<div class="p-reco-row">'+hof.bestPartners.map(function(p,i){return recoPartnerCard(p,i);}).join('')+'</div>';
+      html += '<div class="p-reco-row">'+hof.bestPartners.map(function(p,i){return hofPremiumCard(p,i);}).join('')+'</div>';
     }
     var highlights = '';
     if(hof.bestClient){
@@ -2933,6 +2970,7 @@ function loadHallOfFame(){
     if(highlights){
       html += '<div style="display:flex;flex-direction:column;gap:8px;margin:0 16px 8px;">'+highlights+'</div>';
     }
+    wrap.className = 'p-fade-in';
     wrap.innerHTML = html;
   }).catch(function(){ wrap.innerHTML=''; });
 }
