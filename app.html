@@ -817,6 +817,45 @@ a{text-decoration:none;color:inherit}
   padding:3px 8px;border:2px solid #000;text-transform:uppercase;letter-spacing:.5px;
 }
 
+/* ━━ HERO (Explorer / Prestataires) ━━ */
+.p-hero{padding:18px 16px 6px}
+.p-hero-title{font-size:30px;font-weight:900;font-style:italic;text-transform:uppercase;
+  color:#fff;font-family:'Unbounded',sans-serif;line-height:1;margin-bottom:6px}
+.p-hero-sub{font-size:12px;color:var(--muted);font-weight:600;margin-bottom:14px;line-height:1.4}
+.p-hero-search{display:flex;gap:8px;margin-bottom:10px}
+.p-hero-search input{flex:1;min-width:0;background:var(--card);border:2px solid #000;border-radius:10px;
+  color:var(--text);font-family:inherit;font-size:13px;padding:13px 14px;outline:none}
+.p-hero-search input:focus{border-color:var(--yellow)}
+.p-hero-loc-btn{flex-shrink:0;width:46px;height:46px;border-radius:10px;background:var(--yellow);
+  border:2px solid #000;font-size:17px;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.p-hero-stat{font-size:11px;color:var(--muted);font-weight:700;margin-bottom:4px}
+
+/* Tuiles catégories */
+.p-tile-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 16px 6px}
+.p-tile{position:relative;height:92px;border-radius:14px;overflow:hidden;border:3px solid #000;
+  cursor:pointer;display:flex;align-items:flex-end;padding:10px;box-shadow:4px 4px 0 #000;background-size:cover;background-position:center}
+.p-tile::before{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0),rgba(0,0,0,.55));z-index:0}
+.p-tile-label{position:relative;z-index:1;font-size:13px;font-weight:900;color:#fff;
+  text-transform:uppercase;font-family:'Unbounded',sans-serif;line-height:1.15}
+.p-tile-sub{position:relative;z-index:1;font-size:9px;color:rgba(255,255,255,.75);font-weight:700;display:block;margin-top:2px}
+
+/* Carrousel "Recommandé pour vous" */
+.p-reco-row{display:flex;gap:12px;padding:0 16px 4px;overflow-x:auto;scrollbar-width:none}
+.p-reco-row::-webkit-scrollbar{display:none}
+.p-reco-card{flex-shrink:0;width:148px;background:var(--card);border:3px solid #000;border-radius:14px;
+  overflow:hidden;box-shadow:4px 4px 0 var(--yellow);cursor:pointer;position:relative}
+.p-reco-photo{width:100%;height:88px;background:#1a1a1a;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.p-reco-photo img{width:100%;height:100%;object-fit:cover}
+.p-reco-initials{font-size:22px;font-weight:900;color:var(--yellow);font-family:'Unbounded',sans-serif}
+.p-reco-body{padding:10px}
+.p-reco-name{font-size:12px;font-weight:900;color:#fff;line-height:1.2;margin-bottom:2px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.p-reco-cat{font-size:9px;color:var(--yellow);font-weight:900;text-transform:uppercase;letter-spacing:.3px;margin-bottom:4px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.p-reco-stars{font-size:10px;color:var(--muted);font-weight:700}
+.p-reco-tag{position:absolute;top:6px;left:6px;background:var(--yellow);color:#000;font-size:8px;font-weight:900;
+  padding:2px 6px;border:2px solid #000;text-transform:uppercase;z-index:1}
+
 /* Fiche détail — bottom sheet */
 #detail-sheet{
   display:none;position:fixed;inset:0;z-index:900;
@@ -1642,7 +1681,31 @@ a{text-decoration:none;color:inherit}
 
     <!-- EXPLORER (catalogue général) -->
     <div class="tab prest-tab" id="tab-explorer">
-      <div class="filter-bar" style="padding-top:16px;">
+      <div class="p-hero">
+        <div class="p-hero-title">Explorer</div>
+        <div class="p-hero-sub">Toutes nos offres et tarifs partenaires, au même endroit.</div>
+        <div class="p-hero-search">
+          <input type="text" id="p-exp-search" placeholder="Rechercher une offre, une prestation..." oninput="_expSearchDebounced()">
+          <div class="p-hero-loc-btn" onclick="nav('prestataires')" title="Voir les prestataires">👥</div>
+        </div>
+        <div class="p-hero-stat" id="p-exp-stat"></div>
+      </div>
+      <div class="p-tile-grid">
+        <div class="p-tile" style="background:linear-gradient(135deg,#191418,#c400ff)" onclick="_navToPrestation('accompagnement')">
+          <div><div class="p-tile-label">Accompagnement</div><span class="p-tile-sub">Coaching & stratégie</span></div>
+        </div>
+        <div class="p-tile" style="background-image:url('assets/images/Openspace-2.png')" onclick="_navToPrestation('coworking')">
+          <div><div class="p-tile-label">Coworking</div><span class="p-tile-sub">ComVisa Montpellier</span></div>
+        </div>
+        <div class="p-tile" style="background:linear-gradient(135deg,#003274,#2217f4)" onclick="_navToPrestation('visibilite')">
+          <div><div class="p-tile-label">Visibilité</div><span class="p-tile-sub">Photo, vidéo, médias</span></div>
+        </div>
+        <div class="p-tile" style="background:linear-gradient(135deg,#0d3d3d,#021414)" onclick="nav('prestataires')">
+          <div><div class="p-tile-label">Prestataires</div><span class="p-tile-sub">Tout l'annuaire</span></div>
+        </div>
+      </div>
+      <div id="p-exp-reco-wrap"></div>
+      <div class="filter-bar">
         <button class="fpill on" onclick="filterPrestations('all',this)">Toutes</button>
         <button class="fpill" onclick="filterPrestations('accompagnement',this)">Accompagnement</button>
         <button class="fpill" onclick="filterPrestations('coworking',this)">Coworking</button>
@@ -2299,73 +2362,197 @@ var PDATA = {
 var _prestFilter = 'all';
 var _prestSub = 'etudiant';
 var _prestVisFilter = 'photo';
+var _expSearchQuery = '', _expSearchTimer = null;
+
+function _expSearchDebounced(){
+  clearTimeout(_expSearchTimer);
+  _expSearchTimer = setTimeout(function(){
+    _expSearchQuery = ((document.getElementById('p-exp-search')||{}).value || '').trim().toLowerCase();
+    renderPrestations(_prestFilter);
+  }, 300);
+}
+function _expMatch(name){
+  return !_expSearchQuery || (name||'').toLowerCase().indexOf(_expSearchQuery) >= 0;
+}
 
 function renderPrestations(filter){
   _prestFilter = filter||'all';
   var html = '';
+  var totalCount = 0;
 
   // ── ACCOMPAGNEMENT ────────────────────────────────────────────
   if(_prestFilter==='all'||_prestFilter==='accompagnement'){
-    html += '<div class="p-section" id="p-section-accompagnement">';
-    html += '<div class="p-section-hdr gold">NOS OFFRES</div>';
-    // Sub-filter
-    html += '<div class="p-sub-filter">'
-      +'<button class="p-sub-btn '+(_prestSub==='etudiant'?'on':'')+'" onclick="setPrestSub(\'etudiant\',this)">Étudiant</button>'
-      +'<button class="p-sub-btn '+(_prestSub==='particulier'?'on':'')+'" onclick="setPrestSub(\'particulier\',this)">Particulier</button>'
-      +'<button class="p-sub-btn '+(_prestSub==='entreprise'?'on':'')+'" onclick="setPrestSub(\'entreprise\',this)">Entreprise</button>'
-      +'</div>';
-    html += '<div class="p-cards-scroll" id="p-accomp-cards">';
+    var accompHtml = '', accompCount = 0;
     PDATA.accompagnement[_prestSub].forEach(function(o,i){
-      html += neoCard(o, _prestSub, i);
+      if(!_expMatch(o.name)) return;
+      accompCount++;
+      accompHtml += neoCard(o, _prestSub, i);
     });
-    html += '</div></div>';
+    if(accompCount || !_expSearchQuery){
+      totalCount += accompCount;
+      html += '<div class="p-section" id="p-section-accompagnement">';
+      html += '<div class="p-section-hdr gold">NOS OFFRES</div>';
+      // Sub-filter
+      html += '<div class="p-sub-filter">'
+        +'<button class="p-sub-btn '+(_prestSub==='etudiant'?'on':'')+'" onclick="setPrestSub(\'etudiant\',this)">Étudiant</button>'
+        +'<button class="p-sub-btn '+(_prestSub==='particulier'?'on':'')+'" onclick="setPrestSub(\'particulier\',this)">Particulier</button>'
+        +'<button class="p-sub-btn '+(_prestSub==='entreprise'?'on':'')+'" onclick="setPrestSub(\'entreprise\',this)">Entreprise</button>'
+        +'</div>';
+      html += '<div class="p-cards-scroll" id="p-accomp-cards">'+accompHtml+'</div></div>';
+    }
   }
 
   // ── COWORKING ─────────────────────────────────────────────────
   if(_prestFilter==='all'||_prestFilter==='coworking'){
-    html += '<div class="p-section" style="margin-top:24px;">';
-    html += '<div class="p-section-hdr black">COM VISA — Coworking</div>';
-    html += '<div style="padding:0 16px 8px;">'
-      +'<div style="font-size:11px;color:#888;font-weight:700;margin-bottom:4px;">23 Rue Saint-Guilhem, Montpellier</div>'
-      +'</div>';
-    // Sub-filter
     var cwSub = _prestSub==='accompagnement'?'etudiant':_prestSub;
-    html += '<div class="p-sub-filter" id="p-cw-filter">'
-      +'<button class="p-sub-btn '+(cwSub==='etudiant'?'on':'')+'" onclick="setPrestSubCW(\'etudiant\',this)">Étudiant</button>'
-      +'<button class="p-sub-btn '+(cwSub==='particulier'?'on':'')+'" onclick="setPrestSubCW(\'particulier\',this)">Particulier</button>'
-      +'<button class="p-sub-btn '+(cwSub==='entreprise'?'on':'')+'" onclick="setPrestSubCW(\'entreprise\',this)">Entreprise</button>'
-      +'</div>';
-    html += '<div class="p-cards-scroll" id="p-cw-cards">';
+    var cwHtml = '', cwCount = 0;
     PDATA.coworking[cwSub].forEach(function(o,i){
-      html += cwCard(o, cwSub, i);
+      if(!_expMatch(o.name)) return;
+      cwCount++;
+      cwHtml += cwCard(o, cwSub, i);
     });
-    html += '</div></div>';
+    if(cwCount || !_expSearchQuery){
+      totalCount += cwCount;
+      html += '<div class="p-section" style="margin-top:24px;">';
+      html += '<div class="p-section-hdr black">COM VISA — Coworking</div>';
+      html += '<div style="padding:0 16px 8px;">'
+        +'<div style="font-size:11px;color:#888;font-weight:700;margin-bottom:4px;">23 Rue Saint-Guilhem, Montpellier</div>'
+        +'</div>';
+      // Sub-filter
+      html += '<div class="p-sub-filter" id="p-cw-filter">'
+        +'<button class="p-sub-btn '+(cwSub==='etudiant'?'on':'')+'" onclick="setPrestSubCW(\'etudiant\',this)">Étudiant</button>'
+        +'<button class="p-sub-btn '+(cwSub==='particulier'?'on':'')+'" onclick="setPrestSubCW(\'particulier\',this)">Particulier</button>'
+        +'<button class="p-sub-btn '+(cwSub==='entreprise'?'on':'')+'" onclick="setPrestSubCW(\'entreprise\',this)">Entreprise</button>'
+        +'</div>';
+      html += '<div class="p-cards-scroll" id="p-cw-cards">'+cwHtml+'</div></div>';
+    }
   }
 
   // ── VISIBILITÉ ────────────────────────────────────────────────
   if(_prestFilter==='all'||_prestFilter==='visibilite'){
-    html += '<div class="p-section" style="margin-top:24px;" id="p-section-visibilite">';
-    html += '<div class="p-section-hdr dark">TARIFS PARTENAIRES</div>';
-    html += '<div class="p-vis-filter" id="p-vis-filter">'
-      +'<button class="p-vis-fpill '+(_prestVisFilter==='photo'?'on':'')+'" onclick="setPrestVisFilter(\'photo\',this)">Photo</button>'
-      +'<button class="p-vis-fpill '+(_prestVisFilter==='video'?'on':'')+'" onclick="setPrestVisFilter(\'video\',this)">Vidéo</button>'
-      +'<button class="p-vis-fpill '+(_prestVisFilter==='marketing'?'on':'')+'" onclick="setPrestVisFilter(\'marketing\',this)">Marketing</button>'
-      +'<button class="p-vis-fpill '+(_prestVisFilter==='media'?'on':'')+'" onclick="setPrestVisFilter(\'media\',this)">Médias</button>'
-      +'</div>';
-    html += '<div class="p-cards-scroll" id="p-vis-cards">';
+    var visHtml = '', visCount = 0;
     PDATA.visibilite[_prestVisFilter].forEach(function(o,i){
-      html += visCardByType(o, _prestVisFilter, i);
+      if(!_expMatch(o.name)) return;
+      visCount++;
+      visHtml += visCardByType(o, _prestVisFilter, i);
     });
-    html += '</div></div>';
+    if(visCount || !_expSearchQuery){
+      totalCount += visCount;
+      html += '<div class="p-section" style="margin-top:24px;" id="p-section-visibilite">';
+      html += '<div class="p-section-hdr dark">TARIFS PARTENAIRES</div>';
+      html += '<div class="p-vis-filter" id="p-vis-filter">'
+        +'<button class="p-vis-fpill '+(_prestVisFilter==='photo'?'on':'')+'" onclick="setPrestVisFilter(\'photo\',this)">Photo</button>'
+        +'<button class="p-vis-fpill '+(_prestVisFilter==='video'?'on':'')+'" onclick="setPrestVisFilter(\'video\',this)">Vidéo</button>'
+        +'<button class="p-vis-fpill '+(_prestVisFilter==='marketing'?'on':'')+'" onclick="setPrestVisFilter(\'marketing\',this)">Marketing</button>'
+        +'<button class="p-vis-fpill '+(_prestVisFilter==='media'?'on':'')+'" onclick="setPrestVisFilter(\'media\',this)">Médias</button>'
+        +'</div>';
+      html += '<div class="p-cards-scroll" id="p-vis-cards">'+visHtml+'</div></div>';
+    }
   }
 
+  if(!html && _expSearchQuery){
+    html = '<div class="p-dir-empty">Aucun résultat pour "'+_expSearchQuery+'".</div>';
+  }
   document.getElementById('prestList').innerHTML = html;
+
+  var statEl = document.getElementById('p-exp-stat');
+  if(statEl){
+    statEl.textContent = _expSearchQuery
+      ? (totalCount + ' résultat' + (totalCount===1?'':'s') + ' pour "'+_expSearchQuery+'"')
+      : (totalCount + ' offre' + (totalCount===1?'':'s') + ' disponible' + (totalCount===1?'':'s'));
+  }
+  renderExplorerReco();
+}
+
+// ── RECOMMANDATIONS INTELLIGENTES (Explorer) ────────────────────
+// Met en avant les offres "populaires" du profil courant (étudiant/particulier/
+// entreprise) puis enrichit avec les meilleurs partenaires notés de l'annuaire.
+function renderExplorerReco(){
+  var wrap = document.getElementById('p-exp-reco-wrap');
+  if(!wrap) return;
+  var profil = _prestSub || 'particulier';
+  var items = [];
+  if(PDATA.accompagnement && PDATA.accompagnement[profil]){
+    PDATA.accompagnement[profil].forEach(function(o,i){
+      if(o.name==='LAUNCH'||o.name==='IMPACT'||o.name==='VISIBILITY'){
+        items.push({kind:'accomp', o:o, idx:i});
+      }
+    });
+  }
+  if(PDATA.coworking && PDATA.coworking[profil] && PDATA.coworking[profil].length){
+    items.push({kind:'cw', o:PDATA.coworking[profil][0], idx:0});
+  }
+  if(PDATA.visibilite && PDATA.visibilite.media && PDATA.visibilite.media.length){
+    items.push({kind:'vis', vtype:'media', o:PDATA.visibilite.media[1] || PDATA.visibilite.media[0], idx: PDATA.visibilite.media[1] ? 1 : 0});
+  }
+  _renderRecoRow(wrap, items.map(function(it,i){ return expRecoCard(it,i); }));
+  fetch(API+'/api/partners/directory').then(function(r){return r.json();}).then(function(data){
+    var partners = _sortByRating((data && data.partners) || []).slice(0,2);
+    if(!partners.length) return;
+    var row = document.getElementById('p-exp-reco-row');
+    if(row){
+      row.insertAdjacentHTML('beforeend', partners.map(function(p){return recoPartnerCard(p,1);}).join(''));
+    } else {
+      _renderRecoRow(wrap, partners.map(function(p){return recoPartnerCard(p,0);}));
+    }
+  }).catch(function(){});
+}
+function _renderRecoRow(wrap, cardsHtml){
+  wrap.innerHTML = cardsHtml.length
+    ? '<div class="p-section-hdr black p-section-hdr-fit" style="margin:16px 16px 12px;">★ RECOMMANDÉ POUR VOUS</div>'
+      +'<div class="p-reco-row" id="p-exp-reco-row">'+cardsHtml.join('')+'</div>'
+    : '';
+}
+function _sortByRating(partners){
+  return partners.slice().sort(function(a,b){
+    var sa = (a.rating && a.rating.count) ? a.rating.average*Math.log(a.rating.count+1) : -1;
+    var sb = (b.rating && b.rating.count) ? b.rating.average*Math.log(b.rating.count+1) : -1;
+    return sb - sa;
+  });
+}
+function expRecoCard(it, idx){
+  var o = it.o;
+  var clickAction = it.kind==='accomp' ? 'openDetailAccomp(\''+(_prestSub||'particulier')+'\','+it.idx+')'
+    : it.kind==='cw' ? 'openDetailCW(\''+(_prestSub||'particulier')+'\','+it.idx+')'
+    : 'openDetailVis(\''+(it.vtype||'media')+'\','+it.idx+')';
+  var photoStyle = o.gradient ? ' style="background:linear-gradient('+o.gradient+')"' : (o.bg ? ' style="background:'+o.bg+'"' : '');
+  var photoInner = o.img ? '<img src="'+o.img+'" alt="">' : '<div class="p-reco-initials">'+((o.name||'★')[0])+'</div>';
+  var tag = idx===0 ? '<div class="p-reco-tag">Populaire</div>' : '';
+  return '<div class="p-reco-card" onclick="'+clickAction+'">'
+    +tag
+    +'<div class="p-reco-photo"'+photoStyle+'>'+photoInner+'</div>'
+    +'<div class="p-reco-body">'
+    +'<div class="p-reco-name">'+o.name+'</div>'
+    +'<div class="p-reco-cat">'+(o.sub||o.badge||'')+'</div>'
+    +'<div class="p-reco-stars">'+(o.price||'')+'</div>'
+    +'</div></div>';
+}
+function recoPartnerCard(p, idx){
+  var label = PARTNER_TYPE_LABELS_DIR[p.partner_type] || p.partner_type;
+  var initials = (((p.prenom||'')[0]||'')+((p.nom||'')[0]||'')).toUpperCase();
+  var avatarHtml = p.photo ? '<img src="'+p.photo+'" alt="">' : '<div class="p-reco-initials">'+initials+'</div>';
+  var starsLabel = (p.rating && p.rating.count) ? ('★ '+p.rating.average+' ('+p.rating.count+')') : 'Nouveau';
+  var tag = idx===0 ? '<div class="p-reco-tag">Top</div>' : '';
+  return '<div class="p-reco-card" onclick="openPartnerDetail(\''+p.id+'\')">'
+    +tag
+    +'<div class="p-reco-photo">'+avatarHtml+'</div>'
+    +'<div class="p-reco-body">'
+    +'<div class="p-reco-name">'+(p.prenom||'')+' '+(p.nom||'')+'</div>'
+    +'<div class="p-reco-cat">'+label+'</div>'
+    +'<div class="p-reco-stars">'+starsLabel+'</div>'
+    +'</div></div>';
 }
 
 // ── PRESTATAIRES (annuaire marketplace, onglet dédié) ───────────
 function renderPrestataires(){
   _dirCategory = null; _dirQuery = ''; _dirMaxPrice = ''; _dirCity = '';
-  var html = '<div class="p-section" style="margin-top:16px;" id="p-section-annuaire">';
+  var html = '<div class="p-hero">'
+    +'<div class="p-hero-title">Prestataires</div>'
+    +'<div class="p-hero-sub">Trouvez le bon partenaire, noté et vérifié, pour votre projet.</div>'
+    +'<div class="p-hero-stat" id="p-dir-stat">Chargement...</div>'
+    +'</div>';
+  html += '<div id="p-dir-reco-wrap"></div>';
+  html += '<div class="p-section" style="margin-top:8px;" id="p-section-annuaire">';
   html += '<div class="p-section-hdr dark p-section-hdr-fit">TROUVER UN PARTENAIRE</div>';
   html += '<div class="p-vis-filter" id="p-dir-cat-filter">'
     +'<button class="p-vis-fpill on" onclick="setDirCategory(null,this)">Tous</button>'
@@ -2393,6 +2580,22 @@ function renderPrestataires(){
   html += '</div>';
   document.getElementById('prestatairesList').innerHTML = html;
   loadPartnerDirectory();
+  loadPartnerRecommendations();
+}
+
+// ── RECOMMANDATIONS INTELLIGENTES (Prestataires) ────────────────
+// Met en avant les partenaires les mieux notés de l'annuaire (innovation :
+// tri par note pondérée du nombre d'avis, sans filtre appliqué par le client).
+function loadPartnerRecommendations(){
+  var wrap = document.getElementById('p-dir-reco-wrap');
+  if(!wrap) return;
+  fetch(API+'/api/partners/directory').then(function(r){return r.json();}).then(function(data){
+    var partners = _sortByRating((data && data.partners) || []).slice(0,8);
+    wrap.innerHTML = partners.length
+      ? '<div class="p-section-hdr black p-section-hdr-fit" style="margin:16px 16px 12px;">★ RECOMMANDÉ POUR VOUS</div>'
+        +'<div class="p-reco-row">'+partners.map(function(p,i){return recoPartnerCard(p,i);}).join('')+'</div>'
+      : '';
+  }).catch(function(){ wrap.innerHTML=''; });
 }
 
 // Card builders
@@ -2491,9 +2694,10 @@ function setPrestSub(sub,el){
   var cards = document.getElementById('p-accomp-cards');
   if(cards){
     var html = '';
-    PDATA.accompagnement[sub].forEach(function(o,i){html+=neoCard(o,sub,i);});
+    PDATA.accompagnement[sub].forEach(function(o,i){ if(_expMatch(o.name)) html+=neoCard(o,sub,i); });
     cards.innerHTML=html;
   }
+  renderExplorerReco();
 }
 function setPrestSubCW(sub,el){
   document.querySelectorAll('#p-cw-filter .p-sub-btn').forEach(function(b){b.className='p-sub-btn';});
@@ -2501,7 +2705,7 @@ function setPrestSubCW(sub,el){
   var cards = document.getElementById('p-cw-cards');
   if(cards){
     var html = '';
-    PDATA.coworking[sub].forEach(function(o,i){html+=cwCard(o,sub,i);});
+    PDATA.coworking[sub].forEach(function(o,i){ if(_expMatch(o.name)) html+=cwCard(o,sub,i); });
     cards.innerHTML=html;
   }
 }
@@ -2518,7 +2722,7 @@ function setPrestVisFilter(type,el){
   var cards = document.getElementById('p-vis-cards');
   if(cards){
     var html='';
-    PDATA.visibilite[type].forEach(function(o,i){html+=visCardByType(o,type,i);});
+    PDATA.visibilite[type].forEach(function(o,i){ if(_expMatch(o.name)) html+=visCardByType(o,type,i); });
     cards.innerHTML=html;
   }
 }
@@ -2563,6 +2767,8 @@ function loadPartnerDirectory(){
     .then(function(r){return r.json();})
     .then(function(data){
       var partners = (data && data.partners) || [];
+      var statEl = document.getElementById('p-dir-stat');
+      if(statEl) statEl.textContent = partners.length + ' prestataire' + (partners.length===1?'':'s') + ' disponible' + (partners.length===1?'':'s');
       if(!partners.length){ results.innerHTML = '<div class="p-dir-empty">Aucun partenaire trouvé.</div>'; return; }
       results.innerHTML = partners.map(function(p){ return directoryCard(p); }).join('');
     })
