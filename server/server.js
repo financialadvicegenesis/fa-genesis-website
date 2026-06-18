@@ -54,6 +54,7 @@ const DISPATCHES_FILE = path.join(__dirname, 'data', 'dispatches.json');
 const PAYOUTS_FILE    = path.join(__dirname, 'data', 'payouts.json');
 const PARTNER_REVIEWS_FILE = path.join(__dirname, 'data', 'partner_reviews.json');
 const HALL_OF_FAME_FILE = path.join(__dirname, 'data', 'hall_of_fame.json');
+const EVENTS_FILE = path.join(__dirname, 'data', 'events.json');
 
 // Catégories de partenaires marketplace (source unique, partagée par inscription + admin)
 const PARTNER_TYPES = [
@@ -230,6 +231,26 @@ function saveHallOfFame(data) {
         fs.writeFileSync(HALL_OF_FAME_FILE, JSON.stringify(data, null, 2), 'utf8');
     } catch (error) {
         console.error('[HALL_OF_FAME] Erreur sauvegarde:', error);
+    }
+}
+
+function loadEvents() {
+    try {
+        if (fs.existsSync(EVENTS_FILE)) {
+            return JSON.parse(fs.readFileSync(EVENTS_FILE, 'utf8'));
+        }
+    } catch (error) {
+        console.error('[EVENTS] Erreur lecture events:', error);
+    }
+    return [];
+}
+
+function saveEvents(events) {
+    try {
+        fs.writeFileSync(EVENTS_FILE, JSON.stringify(events, null, 2), 'utf8');
+        persistentStore.persistToCloud('events', events).catch(function(e) {});
+    } catch (error) {
+        console.error('[EVENTS] Erreur sauvegarde events:', error);
     }
 }
 
@@ -8032,6 +8053,112 @@ app.get('/api/partners/recommended', (req, res) => {
     } catch (error) {
         console.error('[PARTNERS-RECOMMENDED] Erreur:', error);
         res.status(500).json({ error: 'Erreur lors du chargement des recommandations' });
+    }
+});
+
+// ============================================================
+// EVENEMENTS ET WORKSHOPS
+// ============================================================
+
+// Liste publique des evenements publies, tries par date croissante
+app.get('/api/events', (req, res) => {
+    try {
+        var events = loadEvents()
+            .filter(function(e) { return e.published === true; })
+            .sort(function(a, b) { return new Date(a.date) - new Date(b.date); });
+        res.json({ success: true, events: events });
+    } catch (error) {
+        console.error('[EVENTS] Erreur liste publique:', error);
+        res.status(500).json({ error: 'Erreur chargement des evenements' });
+    }
+});
+
+// Admin : lister tous les evenements (publies et non publies)
+app.get('/api/admin/events', (req, res) => {
+    try {
+        var events = loadEvents().sort(function(a, b) { return new Date(b.date) - new Date(a.date); });
+        res.json(events);
+    } catch (error) {
+        console.error('[ADMIN] Erreur liste evenements:', error);
+        res.status(500).json({ error: 'Erreur chargement des evenements' });
+    }
+});
+
+// Admin : creer un evenement
+app.post('/api/admin/events/create', (req, res) => {
+    try {
+        var body = req.body || {};
+        var title = (body.title || '').trim();
+        var date = (body.date || '').trim();
+        if (!title || !date) {
+            return res.status(400).json({ error: 'Champs obligatoires: title, date' });
+        }
+        var now = new Date().toISOString();
+        var event = {
+            id: 'EVT-' + uuidv4().split('-')[0],
+            title: title,
+            type: body.type || 'workshop',
+            date: date,
+            location: (body.location || '').trim(),
+            description: (body.description || '').trim(),
+            image: (body.image || '').trim(),
+            link: (body.link || '').trim(),
+            published: body.published !== false,
+            createdAt: now,
+            updatedAt: now
+        };
+        var events = loadEvents();
+        events.push(event);
+        saveEvents(events);
+        console.log('[ADMIN] Evenement cree:', event.title);
+        res.json({ success: true, event: event });
+    } catch (error) {
+        console.error('[ADMIN] Erreur creation evenement:', error);
+        res.status(500).json({ error: 'Erreur lors de la creation de l\'evenement' });
+    }
+});
+
+// Admin : modifier un evenement
+app.put('/api/admin/events/:eventId', (req, res) => {
+    try {
+        var events = loadEvents();
+        var index = events.findIndex(function(e) { return e.id === req.params.eventId; });
+        if (index === -1) {
+            return res.status(404).json({ error: 'Evenement non trouve' });
+        }
+        var body = req.body || {};
+        if (body.title !== undefined) events[index].title = body.title.trim();
+        if (body.type !== undefined) events[index].type = body.type;
+        if (body.date !== undefined) events[index].date = body.date.trim();
+        if (body.location !== undefined) events[index].location = body.location.trim();
+        if (body.description !== undefined) events[index].description = body.description.trim();
+        if (body.image !== undefined) events[index].image = body.image.trim();
+        if (body.link !== undefined) events[index].link = body.link.trim();
+        if (body.published !== undefined) events[index].published = body.published === true;
+        events[index].updatedAt = new Date().toISOString();
+        saveEvents(events);
+        res.json({ success: true, event: events[index] });
+    } catch (error) {
+        console.error('[ADMIN] Erreur modif evenement:', error);
+        res.status(500).json({ error: 'Erreur modification evenement' });
+    }
+});
+
+// Admin : supprimer un evenement
+app.delete('/api/admin/events/:eventId', (req, res) => {
+    try {
+        var events = loadEvents();
+        var index = events.findIndex(function(e) { return e.id === req.params.eventId; });
+        if (index === -1) {
+            return res.status(404).json({ error: 'Evenement non trouve' });
+        }
+        var removed = events.splice(index, 1)[0];
+        saveEvents(events);
+        console.log('[ADMIN] Evenement supprime:', removed.title);
+        res.json({ success: true, message: 'Evenement supprime' });
+    } catch (error) {
+        console.error('[ADMIN] Erreur suppression evenement:', error);
+        res.status(500).json({ error: 'Erreur suppression evenement' });
     }
 });
 

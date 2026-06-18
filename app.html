@@ -931,6 +931,18 @@ a{text-decoration:none;color:inherit}
 .p-big-photo img{width:100%;height:100%;object-fit:cover}
 .p-big-body{padding:12px}
 
+/* Événements et Workshops (Explorer) */
+.p-event-card{flex-shrink:0;width:220px;background:var(--card);border:3px solid #000;border-radius:16px;
+  overflow:hidden;box-shadow:5px 5px 0 var(--yellow);cursor:pointer;position:relative}
+.p-event-photo{width:100%;height:120px;background:#1a1a1a;display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:30px}
+.p-event-photo img{width:100%;height:100%;object-fit:cover}
+.p-event-body{padding:12px}
+.p-event-tag{position:absolute;top:8px;left:8px;background:var(--yellow);color:#000;font-size:8px;font-weight:900;
+  padding:3px 8px;border:2px solid #000;text-transform:uppercase;letter-spacing:.3px;z-index:1}
+.p-event-date{font-size:10px;color:var(--yellow);font-weight:900;text-transform:uppercase;letter-spacing:.2px;margin-bottom:4px}
+.p-event-title{font-size:13px;font-weight:900;color:#fff;line-height:1.25;margin-bottom:4px}
+.p-event-loc{font-size:10px;color:var(--muted);font-weight:700}
+
 /* Fiche détail — bottom sheet */
 #detail-sheet{
   display:none;position:fixed;inset:0;z-index:900;
@@ -2748,8 +2760,61 @@ function renderPrestataires(){
   loadHallOfFame();
   loadTopCategories();
   loadNewTalents();
+  loadEventsExplorer();
   loadPersonalizedRecommendations();
   loadFavoritesInExplorer();
+}
+
+// ── ÉVÉNEMENTS FA GENESIS (Explorer) ─────────────────────────────
+var EVENT_TYPE_LABELS_DIR = {workshop:'Workshop', conference:'Conférence', soiree:'Soirée', masterclass:'Masterclass'};
+var _eventsCache = {};
+function eventDateLabel(iso){
+  if(!iso) return '';
+  var d = new Date(iso);
+  if(isNaN(d.getTime())) return '';
+  var months = ['janv.','févr.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'];
+  return d.getDate()+' '+months[d.getMonth()]+' · '+(d.getHours()<10?'0':'')+d.getHours()+'h'+(d.getMinutes()<10?'0':'')+d.getMinutes();
+}
+function eventCard(ev){
+  _eventsCache[ev.id] = ev;
+  var typeLabel = EVENT_TYPE_LABELS_DIR[ev.type] || ev.type;
+  var photoHtml = ev.image ? '<img src="'+ev.image+'" alt="">' : '🎉';
+  return '<div class="p-event-card" onclick="openEventDetail(\''+ev.id+'\')">'
+    +'<div class="p-event-tag">'+typeLabel+'</div>'
+    +'<div class="p-event-photo">'+photoHtml+'</div>'
+    +'<div class="p-event-body">'
+    +'<div class="p-event-date">'+eventDateLabel(ev.date)+'</div>'
+    +'<div class="p-event-title">'+(ev.title||'')+'</div>'
+    +(ev.location?'<div class="p-event-loc">📍 '+ev.location+'</div>':'')
+    +'</div></div>';
+}
+function loadEventsExplorer(){
+  var wrap = document.getElementById('p-dir-events-wrap');
+  if(!wrap) return;
+  fetch(API+'/api/events').then(function(r){return r.json();}).then(function(data){
+    var events = (data && data.events) || [];
+    wrap.innerHTML = events.length
+      ? '<div class="p-section-hdr black p-section-hdr-fit" style="margin:16px 16px 12px;">🎉 ÉVÉNEMENTS FA GENESIS</div>'
+        +'<div class="p-reco-row">'+events.map(eventCard).join('')+'</div>'
+      : '';
+  }).catch(function(){ wrap.innerHTML=''; });
+}
+function openEventDetail(eventId){
+  var ev = _eventsCache[eventId];
+  if(!ev) return;
+  var typeLabel = EVENT_TYPE_LABELS_DIR[ev.type] || ev.type;
+  var photoHtml = ev.image ? '<div class="p-dir-portfolio-item" style="aspect-ratio:16/9;margin-bottom:10px;"><img src="'+ev.image+'" alt=""></div>' : '';
+  var ctaHtml = ev.link ? '<button class="detail-cta" onclick="window.open(\''+ev.link+'\',\'_blank\')">En savoir plus / S\'inscrire</button>' : '';
+  document.getElementById('detail-content').innerHTML = ''
+    +photoHtml
+    +'<div class="detail-name">'+(ev.title||'')+'</div>'
+    +'<div class="detail-sub">'+typeLabel+'</div>'
+    +'<div class="detail-price">'+eventDateLabel(ev.date)+'</div>'
+    +(ev.location?'<div class="detail-payment">📍 '+ev.location+'</div>':'')
+    +(ev.description?'<div class="p-dir-detail-bio">'+ev.description+'</div>':'')
+    +ctaHtml
+    +'<button class="detail-close-btn" onclick="closeDetail()">Fermer</button>';
+  document.getElementById('detail-sheet').className='on';
 }
 
 // ── NOUVEAUX TALENTS (Explorer) ──────────────────────────────────

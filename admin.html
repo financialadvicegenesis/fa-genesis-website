@@ -701,6 +701,9 @@
                         <button onclick="showSection('partenaires')" class="nav-btn" style="color:#aaa;white-space:nowrap;">
                             <i class="fas fa-handshake mr-1"></i>Partenaires
                         </button>
+                        <button onclick="showSection('evenements')" class="nav-btn" style="color:#aaa;white-space:nowrap;">
+                            <i class="fas fa-calendar-alt mr-1"></i>Événements
+                        </button>
                         <button onclick="showSection('devis')" class="nav-btn" style="position:relative;color:#aaa;white-space:nowrap;">
                             <i class="fas fa-file-invoice mr-1"></i>Devis
                             <span id="pendingQuotesBadge" style="display:none;position:absolute;top:-6px;right:-6px;background:#ef4444;color:white;border-radius:50%;width:16px;height:16px;font-size:9px;line-height:16px;text-align:center;"></span>
@@ -731,7 +734,7 @@
         <div id="adminMobileNavBar" style="display:none;">
             <button id="mnav-dashboard"></button><button id="mnav-clients"></button>
             <button id="mnav-messages"></button><button id="mnav-commandes"></button>
-            <button id="mnav-partenaires"></button><button id="mnav-devis"></button>
+            <button id="mnav-partenaires"></button><button id="mnav-evenements"></button><button id="mnav-devis"></button>
             <button id="mnav-workflow"></button><button id="mnav-projets"></button>
             <button id="mnav-seances"></button><button id="mnav-feedbacks"></button>
         </div>
@@ -983,6 +986,82 @@
                     <div id="dossiersList">
                         <p class="text-center py-8 opacity-50 font-bold">Chargement...</p>
                     </div>
+                </div>
+            </div>
+
+            <!-- SECTION EVENEMENTS -->
+            <div id="evenementsSection" class="container mx-auto max-w-7xl" style="display: none;">
+                <div class="flex justify-between items-center mb-12 flex-wrap gap-4">
+                    <h2 class="text-5xl font-black italic uppercase text-[var(--genesis-yellow)]">
+                        <i class="fas fa-calendar-alt mr-4"></i>ÉVÉNEMENTS
+                    </h2>
+                    <button onclick="showCreateEventForm()" class="neo-btn-yellow px-6 py-3 text-sm">
+                        <i class="fas fa-plus mr-2"></i>CRÉER UN ÉVÉNEMENT
+                    </button>
+                </div>
+
+                <!-- Formulaire creation/edition evenement (cache par defaut) -->
+                <div id="createEventFormContainer" class="admin-card neo-shadow mb-8" style="display: none;">
+                    <h3 class="text-2xl font-black italic uppercase mb-6" id="eventFormTitle">
+                        <i class="fas fa-plus mr-2"></i>NOUVEL ÉVÉNEMENT
+                    </h3>
+                    <form id="createEventForm">
+                        <input type="hidden" id="eventId" value="">
+                        <div class="grid md:grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <label class="block font-black mb-2 uppercase text-sm">Titre</label>
+                                <input type="text" id="eventTitle" required placeholder="Titre de l'événement">
+                            </div>
+                            <div>
+                                <label class="block font-black mb-2 uppercase text-sm">Type</label>
+                                <select id="eventType" required>
+                                    <option value="workshop">Workshop</option>
+                                    <option value="conference">Conférence</option>
+                                    <option value="soiree">Soirée</option>
+                                    <option value="masterclass">Masterclass</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="grid md:grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <label class="block font-black mb-2 uppercase text-sm">Date</label>
+                                <input type="datetime-local" id="eventDate" required>
+                            </div>
+                            <div>
+                                <label class="block font-black mb-2 uppercase text-sm">Lieu</label>
+                                <input type="text" id="eventLocation" placeholder="Ex: Paris, en ligne...">
+                            </div>
+                        </div>
+                        <div class="mb-4">
+                            <label class="block font-black mb-2 uppercase text-sm">Image (URL)</label>
+                            <input type="text" id="eventImage" placeholder="https://...">
+                        </div>
+                        <div class="mb-4">
+                            <label class="block font-black mb-2 uppercase text-sm">Description</label>
+                            <textarea id="eventDescription" rows="4" placeholder="Description de l'événement"></textarea>
+                        </div>
+                        <div class="mb-4">
+                            <label class="block font-black mb-2 uppercase text-sm">Lien (optionnel)</label>
+                            <input type="text" id="eventLink" placeholder="https://... (inscription, en savoir plus)">
+                        </div>
+                        <div class="mb-4 flex items-center gap-2">
+                            <input type="checkbox" id="eventPublished" checked style="width:auto;">
+                            <label class="font-black uppercase text-sm" for="eventPublished">Publié (visible dans l'Explorer)</label>
+                        </div>
+                        <div class="flex gap-3">
+                            <button type="submit" class="neo-btn-yellow px-8 py-3 text-sm">
+                                <i class="fas fa-check mr-2"></i>ENREGISTRER
+                            </button>
+                            <button type="button" onclick="resetEventForm()" style="background:#262626;border:1px solid rgba(255,215,0,.2);border-radius:8px;color:#e0e0e0;padding:12px 20px;font-size:13px;font-weight:700;cursor:pointer;">
+                                ANNULER
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Liste des evenements -->
+                <div id="eventsList">
+                    <p class="text-center py-8 opacity-50 font-bold">Chargement...</p>
                 </div>
             </div>
 
@@ -1324,6 +1403,8 @@
             document.getElementById('messagesSection').style.display = 'none';
             document.getElementById('commandesSection').style.display = 'none';
             document.getElementById('partenairesSection').style.display = 'none';
+            var evenementsEl = document.getElementById('evenementsSection');
+            if (evenementsEl) evenementsEl.style.display = 'none';
             document.getElementById('devisSection').style.display = 'none';
             document.getElementById('workflowSection').style.display = 'none';
             document.getElementById('projetsSection').style.display = 'none';
@@ -1348,6 +1429,9 @@
                 document.getElementById('partenairesSection').style.display = 'block';
                 loadPartnersList();
                 loadPendingUploads();
+            } else if (section === 'evenements') {
+                if (evenementsEl) evenementsEl.style.display = 'block';
+                loadEventsList();
             } else if (section === 'devis') {
                 document.getElementById('devisSection').style.display = 'block';
                 loadAdminQuotes();
@@ -3358,6 +3442,158 @@
                 }
             } catch (error) {
                 console.error('[ADMIN] Erreur suppression:', error);
+                alert('Erreur de connexion');
+            }
+        }
+
+        // ============================================================
+        // EVENEMENTS ET WORKSHOPS
+        // ============================================================
+
+        var EVENT_TYPE_LABELS = { workshop: 'Workshop', conference: 'Conférence', soiree: 'Soirée', masterclass: 'Masterclass' };
+        var allEvents = [];
+
+        function showCreateEventForm() {
+            resetEventForm();
+            document.getElementById('createEventFormContainer').style.display = 'block';
+        }
+
+        function resetEventForm() {
+            document.getElementById('createEventForm').reset();
+            document.getElementById('eventId').value = '';
+            document.getElementById('eventFormTitle').innerHTML = '<i class="fas fa-plus mr-2"></i>NOUVEL ÉVÉNEMENT';
+            document.getElementById('eventPublished').checked = true;
+            document.getElementById('createEventFormContainer').style.display = 'none';
+        }
+
+        function toDatetimeLocalValue(iso) {
+            if (!iso) return '';
+            var d = new Date(iso);
+            if (isNaN(d.getTime())) return '';
+            var pad = function(n) { return (n < 10 ? '0' : '') + n; };
+            return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+        }
+
+        function editEvent(eventId) {
+            var ev = allEvents.find(function(e) { return e.id === eventId; });
+            if (!ev) return;
+            document.getElementById('eventId').value = ev.id;
+            document.getElementById('eventTitle').value = ev.title || '';
+            document.getElementById('eventType').value = ev.type || 'workshop';
+            document.getElementById('eventDate').value = toDatetimeLocalValue(ev.date);
+            document.getElementById('eventLocation').value = ev.location || '';
+            document.getElementById('eventImage').value = ev.image || '';
+            document.getElementById('eventDescription').value = ev.description || '';
+            document.getElementById('eventLink').value = ev.link || '';
+            document.getElementById('eventPublished').checked = ev.published !== false;
+            document.getElementById('eventFormTitle').innerHTML = '<i class="fas fa-edit mr-2"></i>MODIFIER L\'ÉVÉNEMENT';
+            document.getElementById('createEventFormContainer').style.display = 'block';
+            document.getElementById('createEventFormContainer').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        var createEventFormEl = document.getElementById('createEventForm');
+        if (createEventFormEl) {
+            createEventFormEl.addEventListener('submit', async function(e) {
+                e.preventDefault();
+
+                var eventId = document.getElementById('eventId').value;
+                var dateVal = document.getElementById('eventDate').value;
+                var data = {
+                    title: document.getElementById('eventTitle').value,
+                    type: document.getElementById('eventType').value,
+                    date: dateVal ? new Date(dateVal).toISOString() : '',
+                    location: document.getElementById('eventLocation').value,
+                    image: document.getElementById('eventImage').value,
+                    description: document.getElementById('eventDescription').value,
+                    link: document.getElementById('eventLink').value,
+                    published: document.getElementById('eventPublished').checked
+                };
+
+                try {
+                    var url = eventId ? (API_BASE_URL + '/api/admin/events/' + eventId) : (API_BASE_URL + '/api/admin/events/create');
+                    var response = await fetch(url, {
+                        method: eventId ? 'PUT' : 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(data)
+                    });
+
+                    var result = await response.json();
+
+                    if (result.success) {
+                        resetEventForm();
+                        loadEventsList();
+                    } else {
+                        alert('Erreur: ' + (result.error || 'Erreur inconnue'));
+                    }
+                } catch (error) {
+                    console.error('[ADMIN] Erreur enregistrement evenement:', error);
+                    alert('Erreur de connexion au serveur');
+                }
+            });
+        }
+
+        async function loadEventsList() {
+            var container = document.getElementById('eventsList');
+            if (!container) return;
+
+            try {
+                var response = await fetch(API_BASE_URL + '/api/admin/events');
+                if (!response.ok) throw new Error('Erreur chargement');
+                allEvents = await response.json();
+            } catch (error) {
+                console.error('[ADMIN] Erreur chargement evenements:', error);
+                container.innerHTML = '<p class="text-center py-8 font-bold">Erreur de chargement. <button onclick="loadEventsList()" style="border:2px solid black;padding:4px 12px;font-weight:900;cursor:pointer;">Réessayer</button></p>';
+                return;
+            }
+
+            if (allEvents.length === 0) {
+                container.innerHTML = '<p class="text-center py-8 opacity-50 font-bold">Aucun événement</p>';
+                return;
+            }
+
+            var html = '';
+            allEvents.forEach(function(ev) {
+                var typeLabel = EVENT_TYPE_LABELS[ev.type] || ev.type;
+                var dateStr = ev.date ? new Date(ev.date).toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: 'short' }) : 'N/A';
+                var statusColor = ev.published ? '#51cf66' : '#999';
+                var statusLabel = ev.published ? 'PUBLIÉ' : 'BROUILLON';
+
+                html += '<div class="client-row">' +
+                    '<div class="flex justify-between items-center flex-wrap gap-4">' +
+                        '<div class="flex-1 min-w-[200px]">' +
+                            '<div class="font-black text-lg">' + (ev.title || '') + '</div>' +
+                            '<div class="text-sm font-bold opacity-70">' + dateStr + (ev.location ? ' · ' + ev.location : '') + '</div>' +
+                        '</div>' +
+                        '<div>' +
+                            '<span style="background:var(--genesis-yellow);color:black;padding:4px 10px;border:2px solid black;font-size:11px;font-weight:900;">' + typeLabel.toUpperCase() + '</span>' +
+                        '</div>' +
+                        '<div>' +
+                            '<span style="background:' + statusColor + ';color:white;padding:4px 10px;border:2px solid black;font-size:11px;font-weight:900;">' + statusLabel + '</span>' +
+                        '</div>' +
+                        '<div>' +
+                            '<button onclick="editEvent(\'' + ev.id + '\')" class="neo-btn-yellow px-4 py-2 text-sm mr-2"><i class="fas fa-edit mr-1"></i>Modifier</button>' +
+                            '<button onclick="deleteEvent(\'' + ev.id + '\')" class="border-4 border-black bg-gray-300 text-black px-4 py-2 text-sm font-black"><i class="fas fa-trash mr-1"></i>Supprimer</button>' +
+                        '</div>' +
+                    '</div>' +
+                '</div>';
+            });
+
+            container.innerHTML = html;
+        }
+
+        async function deleteEvent(eventId) {
+            if (!confirm('Voulez-vous vraiment supprimer cet événement ? Cette action est irréversible.')) return;
+
+            try {
+                var response = await fetch(API_BASE_URL + '/api/admin/events/' + eventId, { method: 'DELETE' });
+                var result = await response.json();
+                if (result.success) {
+                    loadEventsList();
+                } else {
+                    alert('Erreur: ' + (result.error || 'Erreur inconnue'));
+                }
+            } catch (error) {
+                console.error('[ADMIN] Erreur suppression evenement:', error);
                 alert('Erreur de connexion');
             }
         }
