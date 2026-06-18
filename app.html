@@ -83,6 +83,10 @@ a{text-decoration:none;color:inherit}
 .btn-ghost{padding:15px;background:#141414;color:#aaa;font-size:14px;font-weight:700;
   border:1px solid #222;border-radius:14px}
 .btn-ghost:active{background:#1a1a1a}
+.w-back-btn{position:fixed;top:calc(16px + var(--safe));left:16px;z-index:101;
+  width:40px;height:40px;border-radius:12px;background:#141414;border:1px solid #222;
+  color:var(--yellow);font-size:22px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.w-back-btn:active{background:#1a1a1a}
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    TRANSITION SPLASH → WELCOME
@@ -497,6 +501,9 @@ a{text-decoration:none;color:inherit}
   display:flex;align-items:center;justify-content:center;gap:10px;font-family:inherit}
 .plus-version{text-align:center;font-size:11px;color:#2a2a2a;
   padding:28px 0 20px;font-weight:700;letter-spacing:.8px}
+.plus-guest-exit{margin:12px 16px 0;width:calc(100% - 32px);padding:14px;background:transparent;
+  border:1px solid #222;border-radius:14px;color:#888;font-size:13px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;gap:8px;font-family:inherit}
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    MODAL NOTIFICATIONS
@@ -1539,6 +1546,7 @@ a{text-decoration:none;color:inherit}
 
 <!-- ══════════ WELCOME ══════════ -->
 <div id="welcome" style="display:none">
+  <button class="w-back-btn" onclick="welcomeBack()" aria-label="Retour">&#8249;</button>
   <div class="w-hero">
     <img class="w-logo" src="assets/images/icon-app-192.png" alt="GENESIS"
       onerror="this.style.display='none'">
@@ -1767,6 +1775,7 @@ a{text-decoration:none;color:inherit}
       <!-- Login screen (shown when not authenticated as partner) -->
       <div id="ptnr-login-screen">
         <div class="ptnr-login-wrap">
+          <button class="plus-guest-exit" id="ptnrBackStartBtn" style="display:none;margin-bottom:20px;" onclick="exitGuestMode()">&#8249; Retour à l'écran de démarrage</button>
           <div class="ptnr-login-logo">GENESIS</div>
           <div class="ptnr-login-title">Espace Partenaire</div>
           <div class="ptnr-login-sub">Connectez-vous pour gérer vos projets, devis et messages directement depuis l'application.</div>
@@ -2102,6 +2111,11 @@ function showWelcome(){
     w.className = 'entering';
   }, 30);
 }
+function welcomeBack(){
+  var w = document.getElementById('welcome');
+  if(w) w.style.display = 'none';
+  showRoleChoice();
+}
 function showApp(){
   document.getElementById('welcome').style.display = 'none';
   var rc = document.getElementById('roleChoice');
@@ -2117,6 +2131,7 @@ function showApp(){
 function goLogin(){ showLoginSheet(); }
 function goGuest(){ GUEST = true; showApp(); }
 function goPartner(){ GUEST = true; showApp(); nav('partner'); }
+function exitGuestMode(){ window.location.reload(); }
 
 // ── APP INIT ─────────────────────────────────────────────────
 function initApp(){
@@ -2187,6 +2202,10 @@ function nav(tab){
   if(b) b.className='nav-btn on';
   document.getElementById('content').scrollTop = 0;
   var hdr=document.getElementById('hdr'); if(hdr) hdr.classList.remove('hdr-hidden');
+  if(tab==='partner'){
+    var pbb=document.getElementById('ptnrBackStartBtn');
+    if(pbb) pbb.style.display = GUEST ? '' : 'none';
+  }
 }
 function navExternal(url){
   window.location.href = USER ? url : 'login.html?from=app.html';
@@ -3007,6 +3026,7 @@ function renderProfil(){
       +'<button class="plus-cta-yellow" onclick="goLogin()">Connexion</button>'
       +'<button class="plus-cta-white" onclick="showRegisterSheet()">Inscription</button>'
       +'</div>'
+      +'<button class="plus-guest-exit" onclick="exitGuestMode()">&#8249; Retour à l\'écran de démarrage</button>'
       +'</div>';
   } else {
     var fn  = USER.prenom||USER.firstName||'';
