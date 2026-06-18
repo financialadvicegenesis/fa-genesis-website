@@ -66,7 +66,8 @@ const PARTNER_TYPES = [
     { value: 'developpeur_web', label: 'Développeur Web' },
     { value: 'pilote_drone', label: 'Pilote Drone' },
     { value: 'consultant', label: 'Consultant' },
-    { value: 'coworking', label: 'Espace Coworking' }
+    { value: 'coworking', label: 'Espace Coworking' },
+    { value: 'animateur_evenementiel', label: 'Animateur / Événementiel' }
 ];
 const PARTNER_TYPE_VALUES = PARTNER_TYPES.map(t => t.value);
 
@@ -7767,9 +7768,13 @@ app.get('/api/partners/directory', (req, res) => {
         }
         if (q) {
             const needle = q.trim().toLowerCase();
-            partners = partners.filter(p =>
-                ((p.prenom || '') + ' ' + (p.nom || '')).toLowerCase().includes(needle)
-            );
+            partners = partners.filter(p => {
+                const typeLabel = (PARTNER_TYPES.find(t => t.value === p.partner_type) || {}).label || '';
+                return ((p.prenom || '') + ' ' + (p.nom || '')).toLowerCase().includes(needle)
+                    || typeLabel.toLowerCase().includes(needle)
+                    || (p.city || '').toLowerCase().includes(needle)
+                    || (p.company || '').toLowerCase().includes(needle);
+            });
         }
         if (city) {
             const needleCity = city.trim().toLowerCase();
@@ -7879,6 +7884,39 @@ app.get('/api/partners/top', (req, res) => {
     } catch (error) {
         console.error('[PARTNERS-TOP] Erreur:', error);
         res.status(500).json({ error: 'Erreur lors du chargement du classement' });
+    }
+});
+
+// Professionnels a la Une : meilleurs partenaires toutes categories confondues, classes par score composite
+app.get('/api/partners/featured', (req, res) => {
+    try {
+        const { limit } = req.query;
+        const max = Math.max(1, Math.min(parseInt(limit) || 10, 50));
+        const activePartners = loadPartners().filter(p => p.accountStatus === 'active');
+
+        const ranked = activePartners
+            .map(p => ({ partner: p, score: getPartnerCategoryScore(p) }))
+            .sort((a, b) => b.score - a.score)
+            .slice(0, max)
+            .map(entry => {
+                const p = entry.partner;
+                return {
+                    id: p.id,
+                    prenom: p.prenom,
+                    nom: p.nom,
+                    partner_type: p.partner_type,
+                    photo: p.photo || null,
+                    city: p.city || '',
+                    fromPrice: getPartnerFromPrice(p),
+                    rating: getPartnerRatingSummary(p.id),
+                    badge: getPartnerBadge(p)
+                };
+            });
+
+        res.json({ success: true, partners: ranked });
+    } catch (error) {
+        console.error('[PARTNERS-FEATURED] Erreur:', error);
+        res.status(500).json({ error: 'Erreur lors du chargement des professionnels à la une' });
     }
 });
 

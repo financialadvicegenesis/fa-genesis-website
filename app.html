@@ -834,6 +834,8 @@ a{text-decoration:none;color:inherit}
 .p-dir-card .p-fav-heart{position:absolute;top:10px;right:10px;font-size:18px}
 .p-reco-card{position:relative}
 .p-reco-card .p-fav-heart{position:absolute;top:8px;right:8px;font-size:16px;z-index:2}
+.p-big-card{position:relative}
+.p-big-card .p-fav-heart{position:absolute;top:10px;right:10px;font-size:18px;z-index:2}
 .p-dir-detail-city{font-size:11px;color:var(--muted);font-weight:700;margin:2px 0 8px}
 .p-dir-detail-bio{font-size:12px;color:#ccc;line-height:1.5;margin:8px 0}
 .p-dir-detail-social{display:flex;gap:12px;margin:8px 0}
@@ -890,6 +892,44 @@ a{text-decoration:none;color:inherit}
 .p-reco-stars{font-size:10px;color:var(--muted);font-weight:700}
 .p-reco-tag{position:absolute;top:6px;left:6px;background:var(--yellow);color:#000;font-size:8px;font-weight:900;
   padding:2px 6px;border:2px solid #000;text-transform:uppercase;z-index:1}
+.p-reco-city{font-size:9px;color:var(--muted);font-weight:700;margin-bottom:4px}
+.p-reco-viewbtn{margin-top:6px;width:100%;background:var(--yellow);color:#000;border:none;border-radius:7px;
+  font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.2px;padding:7px 0;cursor:pointer;font-family:inherit}
+
+/* Barre de recherche proéminente (Explorer) */
+.p-explore-search-wrap{padding:0 16px 14px}
+.p-explore-search-input{
+  width:100%;background:var(--card);border:2px solid #000;border-radius:14px;
+  color:var(--text);font-family:inherit;font-size:13px;padding:15px 16px;outline:none;
+  box-shadow:4px 4px 0 var(--yellow);
+}
+.p-explore-search-input:focus{border-color:var(--yellow)}
+.p-explore-search-input::placeholder{color:var(--muted)}
+
+/* Catégories en icônes défilantes (Explorer) */
+.p-cat-icon-strip{display:flex;gap:10px;padding:0 16px 16px;overflow-x:auto;scrollbar-width:none}
+.p-cat-icon-strip::-webkit-scrollbar{display:none}
+.p-cat-icon-pill{
+  flex-shrink:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
+  width:76px;padding:12px 4px;border-radius:14px;border:2px solid #000;background:var(--card);
+  cursor:pointer;font-family:inherit;
+}
+.p-cat-icon-pill.on{background:var(--yellow);border-color:#000}
+.p-cat-icon-emoji{font-size:22px;line-height:1}
+.p-cat-icon-label{font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.2px;
+  color:var(--text);text-align:center;line-height:1.15}
+.p-cat-icon-pill.on .p-cat-icon-label{color:#000}
+
+/* Sous-titres de catégorie (Les plus recherchés) */
+.p-subcat-hdr{font-size:13px;font-weight:900;text-transform:uppercase;color:var(--yellow);
+  margin:14px 16px 8px;letter-spacing:.3px}
+
+/* Grandes cartes modernes (Les plus recherchés) */
+.p-big-card{flex-shrink:0;width:220px;background:var(--card);border:3px solid #000;border-radius:16px;
+  overflow:hidden;box-shadow:5px 5px 0 var(--yellow);cursor:pointer;position:relative}
+.p-big-photo{width:100%;height:140px;background:#1a1a1a;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.p-big-photo img{width:100%;height:100%;object-fit:cover}
+.p-big-body{padding:12px}
 
 /* Fiche détail — bottom sheet */
 #detail-sheet{
@@ -1833,6 +1873,7 @@ a{text-decoration:none;color:inherit}
             <option value="pilote_drone">Pilote Drone</option>
             <option value="consultant">Consultant</option>
             <option value="coworking">Espace Coworking</option>
+            <option value="animateur_evenementiel">Animateur / Événementiel</option>
           </select>
           <input class="ptnr-input" id="ptnr-reg-ville" type="text" placeholder="Ville" autocomplete="address-level2">
           <input class="ptnr-input" id="ptnr-reg-entreprise" type="text" placeholder="Entreprise (optionnel)">
@@ -2629,90 +2670,127 @@ function recoPartnerCard(p, idx){
     +'<div class="p-reco-body">'
     +'<div class="p-reco-name">'+(p.prenom||'')+' '+(p.nom||'')+(badgeHtml?' '+badgeHtml:'')+'</div>'
     +'<div class="p-reco-cat">'+label+'</div>'
+    +(p.city?'<div class="p-reco-city">📍 '+p.city+'</div>':'')
     +'<div class="p-reco-stars">'+starsLabel+'</div>'
+    +'<button class="p-reco-viewbtn" onclick="event.stopPropagation();openPartnerDetail(\''+p.id+'\')">Voir le profil</button>'
+    +'</div></div>';
+}
+function bigCategoryCard(p, idx){
+  var label = PARTNER_TYPE_LABELS_DIR[p.partner_type] || p.partner_type;
+  var initials = (((p.prenom||'')[0]||'')+((p.nom||'')[0]||'')).toUpperCase();
+  var avatarHtml = p.photo ? '<img src="'+p.photo+'" alt="">' : '<div class="p-reco-initials">'+initials+'</div>';
+  var starsLabel = (p.rating && p.rating.count) ? ('★ '+p.rating.average+' ('+p.rating.count+')') : 'Nouveau';
+  var badgeHtml = tierBadgeHtml(p.badge);
+  return '<div class="p-big-card" onclick="openPartnerDetail(\''+p.id+'\')">'
+    +favHeartHtml(p.id)
+    +'<div class="p-big-photo">'+avatarHtml+'</div>'
+    +'<div class="p-big-body">'
+    +'<div class="p-reco-name">'+(p.prenom||'')+' '+(p.nom||'')+(badgeHtml?' '+badgeHtml:'')+'</div>'
+    +'<div class="p-reco-cat">'+label+(p.city?' · '+p.city:'')+'</div>'
+    +'<div class="p-reco-stars">'+starsLabel+'</div>'
+    +'<button class="p-reco-viewbtn" onclick="event.stopPropagation();openPartnerDetail(\''+p.id+'\')">Voir le profil</button>'
     +'</div></div>';
 }
 
-// ── PRESTATAIRES (annuaire marketplace, onglet dédié) ───────────
+// ── PRESTATAIRES (annuaire marketplace, onglet dédié "Explorer") ───────────
+var DIR_CATEGORY_ICONS_ORDER = [
+  {id:null, icon:'🔎', label:'Tous'},
+  {id:'videographer', icon:'🎥', label:'Vidéastes'},
+  {id:'photographer', icon:'📸', label:'Photographes'},
+  {id:'marketer', icon:'📈', label:'Marketeurs'},
+  {id:'graphiste', icon:'🎨', label:'Graphistes'},
+  {id:'community_manager', icon:'📱', label:'Community Managers'},
+  {id:'media', icon:'📰', label:'Médias'},
+  {id:'developpeur_web', icon:'💻', label:'Développeurs Web'},
+  {id:'pilote_drone', icon:'🚁', label:'Pilotes Drone'},
+  {id:'coworking', icon:'🏢', label:'Espaces Coworking'},
+  {id:'animateur_evenementiel', icon:'🎤', label:'Animateurs / Événementiel'},
+  {id:'consultant', icon:'💡', label:'Consultants'}
+];
 function renderPrestataires(){
   _dirCategory = null; _dirQuery = ''; _dirMaxPrice = ''; _dirCity = '';
   var html = '<div class="p-hero">'
-    +'<div class="p-hero-title">Prestataires</div>'
+    +'<div class="p-hero-title">Explorer</div>'
     +'<div class="p-hero-sub">Trouvez le bon partenaire, noté et vérifié, pour votre projet.</div>'
-    +'<div class="p-hero-stat" id="p-dir-stat">Chargement...</div>'
     +'</div>';
-  html += '<div id="p-dir-reco-wrap"></div>';
-  html += '<div id="p-dir-hall-of-fame-wrap"></div>';
+  html += '<div class="p-explore-search-wrap">'
+    +'<input type="text" id="p-dir-search" class="p-explore-search-input" placeholder="Rechercher un vidéaste, photographe, graphiste, espace coworking, média, marketeur…" oninput="_dirSearchDebounced()">'
+    +'</div>';
+  html += '<div class="p-cat-icon-strip" id="p-dir-cat-icons">'
+    +DIR_CATEGORY_ICONS_ORDER.map(function(c,i){
+      return '<button class="p-cat-icon-pill'+(i===0?' on':'')+'" onclick="setDirCategory('+(c.id?'\''+c.id+'\'':'null')+',this)">'
+        +'<span class="p-cat-icon-emoji">'+c.icon+'</span><span class="p-cat-icon-label">'+c.label+'</span></button>';
+    }).join('')
+    +'</div>';
+  html += '<div id="p-dir-featured-wrap"></div>';
   html += '<div id="p-dir-top-categories-wrap"></div>';
+  html += '<div id="p-dir-new-talents-wrap"></div>';
+  html += '<div id="p-dir-hall-of-fame-wrap"></div>';
+  html += '<div id="p-dir-events-wrap"></div>';
+  html += '<div id="p-dir-personalized-wrap"></div>';
+  html += '<div id="p-dir-favorites-wrap"></div>';
   html += '<div class="p-section" style="margin-top:8px;" id="p-section-annuaire">';
   html += '<div class="p-section-hdr dark p-section-hdr-fit">TROUVER UN PARTENAIRE</div>';
-  html += '<div class="p-vis-filter" id="p-dir-cat-filter">'
-    +'<button class="p-vis-fpill on" onclick="setDirCategory(null,this)">Tous</button>'
-    +'<button class="p-vis-fpill" onclick="setDirCategory(\'photographer\',this)">Photographe</button>'
-    +'<button class="p-vis-fpill" onclick="setDirCategory(\'videographer\',this)">Vidéaste</button>'
-    +'<button class="p-vis-fpill" onclick="setDirCategory(\'marketer\',this)">Marketeur</button>'
-    +'<button class="p-vis-fpill" onclick="setDirCategory(\'media\',this)">Médias</button>'
-    +'<button class="p-vis-fpill" onclick="setDirCategory(\'community_manager\',this)">Community Manager</button>'
-    +'<button class="p-vis-fpill" onclick="setDirCategory(\'graphiste\',this)">Graphiste</button>'
-    +'<button class="p-vis-fpill" onclick="setDirCategory(\'developpeur_web\',this)">Développeur Web</button>'
-    +'<button class="p-vis-fpill" onclick="setDirCategory(\'pilote_drone\',this)">Pilote Drone</button>'
-    +'<button class="p-vis-fpill" onclick="setDirCategory(\'consultant\',this)">Consultant</button>'
-    +'<button class="p-vis-fpill" onclick="setDirCategory(\'coworking\',this)">Espace Coworking</button>'
-    +'</div>';
   html += '<div class="p-dir-controls">'
-    +'<input type="text" id="p-dir-search" class="p-dir-search-input" placeholder="Rechercher un partenaire..." oninput="_dirSearchDebounced()">'
-    +'<input type="text" id="p-dir-city" class="p-dir-search-input" placeholder="Ville..." style="flex:0 0 120px;" oninput="_dirCityDebounced()">'
+    +'<input type="text" id="p-dir-city" class="p-dir-search-input" placeholder="Ville..." oninput="_dirCityDebounced()">'
     +'<select id="p-dir-price" class="p-dir-price-select" onchange="onDirPriceChange()">'
     +'<option value="">Tous prix</option>'
     +'<option value="100">Moins de 100 €</option>'
     +'<option value="300">Moins de 300 €</option>'
     +'</select>'
     +'</div>';
+  html += '<div class="p-hero-stat" id="p-dir-stat" style="padding:0 16px 6px;">Chargement...</div>';
   html += '<div id="p-dir-results" class="p-dir-results"><div class="p-dir-empty">Chargement...</div></div>';
   html += '</div>';
   document.getElementById('prestatairesList').innerHTML = html;
   loadPartnerDirectory();
-  loadPartnerRecommendations();
+  loadFeaturedPartners();
   loadHallOfFame();
   loadTopCategories();
 }
 
-// ── RECOMMANDATIONS INTELLIGENTES (Prestataires) ────────────────
-// Met en avant les partenaires les mieux notés de l'annuaire (innovation :
-// tri par note pondérée du nombre d'avis, sans filtre appliqué par le client).
-function loadPartnerRecommendations(){
-  var wrap = document.getElementById('p-dir-reco-wrap');
+// ── PROFESSIONNELS À LA UNE (Explorer) ──────────────────────────
+// Meilleurs partenaires toutes catégories confondues, classés par score composite
+// (badge, note moyenne, nombre de prestations, ancienneté, réactivité).
+function loadFeaturedPartners(){
+  var wrap = document.getElementById('p-dir-featured-wrap');
   if(!wrap) return;
-  fetch(API+'/api/partners/directory').then(function(r){return r.json();}).then(function(data){
-    var partners = _sortByRating((data && data.partners) || []).slice(0,8);
+  fetch(API+'/api/partners/featured?limit=8').then(function(r){return r.json();}).then(function(data){
+    var partners = (data && data.partners) || [];
     wrap.innerHTML = partners.length
-      ? '<div class="p-section-hdr black p-section-hdr-fit" style="margin:16px 16px 12px;">★ RECOMMANDÉ POUR VOUS</div>'
+      ? '<div class="p-section-hdr black p-section-hdr-fit" style="margin:16px 16px 12px;">⭐ PROFESSIONNELS À LA UNE</div>'
         +'<div class="p-reco-row">'+partners.map(function(p,i){return recoPartnerCard(p,i);}).join('')+'</div>'
       : '';
   }).catch(function(){ wrap.innerHTML=''; });
 }
 
 var TOP_CATEGORIES = [
-  {id:'videographer', label:'Top Vidéastes'},
-  {id:'photographer', label:'Top Photographes'},
-  {id:'graphiste', label:'Top Graphistes'},
-  {id:'marketer', label:'Top Marketeurs'},
-  {id:'media', label:'Top Médias'},
-  {id:'community_manager', label:'Top Community Managers'}
+  {id:'videographer', label:'Vidéastes'},
+  {id:'photographer', label:'Photographes'},
+  {id:'coworking', label:'Espaces Coworking'},
+  {id:'marketer', label:'Marketeurs'},
+  {id:'media', label:'Médias'}
 ];
 function loadTopCategories(){
   var wrap = document.getElementById('p-dir-top-categories-wrap');
   if(!wrap) return;
   wrap.innerHTML = '';
-  TOP_CATEGORIES.forEach(function(cat){
-    fetch(API+'/api/partners/top?category='+cat.id+'&limit=8').then(function(r){return r.json();}).then(function(data){
+  var pending = TOP_CATEGORIES.length;
+  var blocks = [];
+  TOP_CATEGORIES.forEach(function(cat, idx){
+    fetch(API+'/api/partners/top?category='+cat.id+'&limit=6').then(function(r){return r.json();}).then(function(data){
       var partners = (data && data.partners) || [];
-      if(!partners.length) return;
-      var block = document.createElement('div');
-      block.innerHTML = '<div class="p-section-hdr black p-section-hdr-fit" style="margin:16px 16px 12px;">'+cat.label.toUpperCase()+'</div>'
-        +'<div class="p-reco-row">'+partners.map(function(p,i){return recoPartnerCard(p,i);}).join('')+'</div>';
-      wrap.appendChild(block);
-    }).catch(function(){});
+      blocks[idx] = partners.length
+        ? '<div class="p-subcat-hdr">'+cat.label+'</div>'
+          +'<div class="p-reco-row">'+partners.map(function(p,i){return bigCategoryCard(p,i);}).join('')+'</div>'
+        : '';
+    }).catch(function(){ blocks[idx]=''; }).then(function(){
+      pending--;
+      if(pending===0){
+        var html = blocks.join('');
+        wrap.innerHTML = html ? '<div class="p-section-hdr black p-section-hdr-fit" style="margin:16px 16px 12px;">🔥 LES PLUS RECHERCHÉS</div>'+html : '';
+      }
+    });
   });
 }
 
@@ -2877,13 +2955,16 @@ function setPrestVisFilter(type,el){
 }
 // ── ANNUAIRE PARTENAIRES ────────────────────────────────────────
 var _dirCategory = null, _dirQuery = '', _dirMaxPrice = '', _dirCity = '', _dirSearchTimer = null, _dirCityTimer = null;
-var PARTNER_TYPE_LABELS_DIR = {photographer:'Photographe', videographer:'Vidéaste', marketer:'Marketeur', media:'Médias', community_manager:'Community Manager', graphiste:'Graphiste', developpeur_web:'Développeur Web', pilote_drone:'Pilote Drone', consultant:'Consultant', coworking:'Espace Coworking'};
+var PARTNER_TYPE_LABELS_DIR = {photographer:'Photographe', videographer:'Vidéaste', marketer:'Marketeur', media:'Médias', community_manager:'Community Manager', graphiste:'Graphiste', developpeur_web:'Développeur Web', pilote_drone:'Pilote Drone', consultant:'Consultant', coworking:'Espace Coworking', animateur_evenementiel:'Animateur / Événementiel'};
+var PARTNER_TYPE_ICONS_DIR = {videographer:'🎥', photographer:'📸', marketer:'📈', graphiste:'🎨', community_manager:'📱', media:'📰', developpeur_web:'💻', pilote_drone:'🚁', coworking:'🏢', animateur_evenementiel:'🎤', consultant:'💡'};
 
 function setDirCategory(cat, el){
   _dirCategory = cat;
-  document.querySelectorAll('#p-dir-cat-filter .p-vis-fpill').forEach(function(b){b.className='p-vis-fpill';});
-  el.className='p-vis-fpill on';
+  document.querySelectorAll('#p-dir-cat-icons .p-cat-icon-pill').forEach(function(b){b.className='p-cat-icon-pill';});
+  el.className='p-cat-icon-pill on';
   loadPartnerDirectory();
+  var target = document.getElementById('p-section-annuaire');
+  if(target) target.scrollIntoView({behavior:'smooth', block:'start'});
 }
 function _dirSearchDebounced(){
   clearTimeout(_dirSearchTimer);
