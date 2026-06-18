@@ -2656,12 +2656,12 @@ function expRecoCard(it, idx){
     +'<div class="p-reco-stars">'+(o.price||'')+'</div>'
     +'</div></div>';
 }
-function recoPartnerCard(p, idx){
+function recoPartnerCard(p, idx, tagOverride){
   var label = PARTNER_TYPE_LABELS_DIR[p.partner_type] || p.partner_type;
   var initials = (((p.prenom||'')[0]||'')+((p.nom||'')[0]||'')).toUpperCase();
   var avatarHtml = p.photo ? '<img src="'+p.photo+'" alt="">' : '<div class="p-reco-initials">'+initials+'</div>';
   var starsLabel = (p.rating && p.rating.count) ? ('★ '+p.rating.average+' ('+p.rating.count+')') : 'Nouveau';
-  var tag = idx===0 ? '<div class="p-reco-tag">Top</div>' : '';
+  var tag = tagOverride ? '<div class="p-reco-tag">'+tagOverride+'</div>' : (idx===0 ? '<div class="p-reco-tag">Top</div>' : '');
   var badgeHtml = tierBadgeHtml(p.badge);
   return '<div class="p-reco-card" onclick="openPartnerDetail(\''+p.id+'\')">'
     +tag
@@ -2747,6 +2747,53 @@ function renderPrestataires(){
   loadFeaturedPartners();
   loadHallOfFame();
   loadTopCategories();
+  loadNewTalents();
+  loadPersonalizedRecommendations();
+  loadFavoritesInExplorer();
+}
+
+// ── NOUVEAUX TALENTS (Explorer) ──────────────────────────────────
+function loadNewTalents(){
+  var wrap = document.getElementById('p-dir-new-talents-wrap');
+  if(!wrap) return;
+  fetch(API+'/api/partners/new?limit=8').then(function(r){return r.json();}).then(function(data){
+    var partners = (data && data.partners) || [];
+    wrap.innerHTML = partners.length
+      ? '<div class="p-section-hdr black p-section-hdr-fit" style="margin:16px 16px 12px;">✨ NOUVEAUX TALENTS</div>'
+        +'<div class="p-reco-row">'+partners.map(function(p,i){return recoPartnerCard(p,i,'Nouveau');}).join('')+'</div>'
+      : '';
+  }).catch(function(){ wrap.innerHTML=''; });
+}
+
+// ── RECOMMANDÉS POUR VOUS (Explorer) ─────────────────────────────
+// Personnalisé via favoris + historique de réservations si le client est connecté,
+// sinon le serveur renvoie un classement générique en repli.
+function loadPersonalizedRecommendations(){
+  var wrap = document.getElementById('p-dir-personalized-wrap');
+  if(!wrap) return;
+  var headers = (USER && !GUEST && USER._token) ? {'Authorization':'Bearer '+USER._token} : {};
+  fetch(API+'/api/partners/recommended?limit=8', {headers:headers}).then(function(r){return r.json();}).then(function(data){
+    var partners = (data && data.partners) || [];
+    wrap.innerHTML = partners.length
+      ? '<div class="p-section-hdr black p-section-hdr-fit" style="margin:16px 16px 12px;">💡 RECOMMANDÉS POUR VOUS</div>'
+        +'<div class="p-reco-row">'+partners.map(function(p,i){return recoPartnerCard(p,i);}).join('')+'</div>'
+      : '';
+  }).catch(function(){ wrap.innerHTML=''; });
+}
+
+// ── VOS FAVORIS (Explorer) ────────────────────────────────────────
+function loadFavoritesInExplorer(){
+  var wrap = document.getElementById('p-dir-favorites-wrap');
+  if(!wrap) return;
+  if(!USER || GUEST || !USER._token){ wrap.innerHTML=''; return; }
+  fetch(API+'/api/users/favorites', {headers:{'Authorization':'Bearer '+USER._token}}).then(function(r){return r.json();}).then(function(data){
+    var partners = (data && data.partners) || [];
+    wrap.innerHTML = partners.length
+      ? '<div class="p-section-hdr black p-section-hdr-fit" style="margin:16px 16px 12px;">❤️ VOS FAVORIS</div>'
+        +'<div class="p-reco-row">'+partners.map(function(p,i){return recoPartnerCard(p,i);}).join('')+'</div>'
+        +'<div style="padding:0 16px 8px;"><button class="p-reco-viewbtn" style="width:auto;padding:8px 16px;" onclick="showFavoris()">Voir tout</button></div>'
+      : '';
+  }).catch(function(){ wrap.innerHTML=''; });
 }
 
 // ── PROFESSIONNELS À LA UNE (Explorer) ──────────────────────────

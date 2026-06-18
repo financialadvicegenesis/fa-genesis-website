@@ -7920,6 +7920,121 @@ app.get('/api/partners/featured', (req, res) => {
     }
 });
 
+function partnerDirectoryShape(p) {
+    return {
+        id: p.id,
+        prenom: p.prenom,
+        nom: p.nom,
+        partner_type: p.partner_type,
+        photo: p.photo || null,
+        city: p.city || '',
+        fromPrice: getPartnerFromPrice(p),
+        rating: getPartnerRatingSummary(p.id),
+        badge: getPartnerBadge(p)
+    };
+}
+
+// Nouveaux Talents : partenaires actifs les plus recemment inscrits
+app.get('/api/partners/new', (req, res) => {
+    try {
+        const { limit } = req.query;
+        const max = Math.max(1, Math.min(parseInt(limit) || 10, 50));
+        const sorted = loadPartners()
+            .filter(p => p.accountStatus === 'active')
+            .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
+            .slice(0, max)
+            .map(partnerDirectoryShape);
+        res.json({ success: true, partners: sorted });
+    } catch (error) {
+        console.error('[PARTNERS-NEW] Erreur:', error);
+        res.status(500).json({ error: 'Erreur lors du chargement des nouveaux talents' });
+    }
+});
+
+// Deduit les categories de partenaires preferees d'un client a partir de ses favoris
+// et des prestations qu'il a deja reservees (dispatches acceptes lies a ses commandes).
+function getClientPreferredCategories(email) {
+    if (!email) return [];
+    var counts = {};
+    try {
+        var lowerEmail = email.toLowerCase();
+        var partners = loadPartners();
+        var users = loadUsers();
+        var user = users.find(function(u) { return (u.email || '').toLowerCase() === lowerEmail; });
+        if (user && user.favoris && user.favoris.length) {
+            user.favoris.forEach(function(pid) {
+                var p = partners.find(function(pp) { return pp.id === pid; });
+                if (p && p.partner_type) counts[p.partner_type] = (counts[p.partner_type] || 0) + 2;
+            });
+        }
+        var orders = loadOrders();
+        var orderIds = orders
+            .filter(function(o) { return o.client_info && (o.client_info.email || '').toLowerCase() === lowerEmail; })
+            .map(function(o) { return o.id; });
+        if (orderIds.length) {
+            loadDispatches()
+                .filter(function(d) { return d.partner_type && d.status === 'accepted' && orderIds.indexOf(d.order_id) !== -1; })
+                .forEach(function(d) { counts[d.partner_type] = (counts[d.partner_type] || 0) + 1; });
+        }
+    } catch (e) { /* signal best-effort, jamais bloquant */ }
+    return Object.keys(counts).sort(function(a, b) { return counts[b] - counts[a]; });
+}
+
+// Recommandes pour vous : partenaires des categories preferees du client (favoris + historique
+// de reservations), completes par le classement "a la une" generique pour remplir la liste.
+app.get('/api/partners/recommended', (req, res) => {
+    try {
+        const { limit } = req.query;
+        const max = Math.max(1, Math.min(parseInt(limit) || 10, 50));
+
+        var email = null;
+        var authHeader = req.headers.authorization || '';
+        if (authHeader.toLowerCase().startsWith('bearer ')) {
+            var token = authHeader.slice(7).trim();
+            var sessionUser = loadUsers().find(function(u) { return u.sessionToken === token; });
+            if (sessionUser) email = sessionUser.email;
+        }
+        var preferredCategories = email ? getClientPreferredCategories(email) : [];
+
+        var ranked = loadPartners()
+            .filter(p => p.accountStatus === 'active')
+            .map(p => ({ partner: p, score: getPartnerCategoryScore(p) }));
+
+        var result = [];
+        var usedIds = {};
+        preferredCategories.forEach(function(cat) {
+            ranked
+                .filter(function(e) { return e.partner.partner_type === cat; })
+                .sort(function(a, b) { return b.score - a.score; })
+                .forEach(function(e) {
+                    if (result.length < max && !usedIds[e.partner.id]) {
+                        result.push(e.partner);
+                        usedIds[e.partner.id] = true;
+                    }
+                });
+        });
+        if (result.length < max) {
+            ranked
+                .sort(function(a, b) { return b.score - a.score; })
+                .forEach(function(e) {
+                    if (result.length < max && !usedIds[e.partner.id]) {
+                        result.push(e.partner);
+                        usedIds[e.partner.id] = true;
+                    }
+                });
+        }
+
+        res.json({
+            success: true,
+            personalized: preferredCategories.length > 0,
+            partners: result.slice(0, max).map(partnerDirectoryShape)
+        });
+    } catch (error) {
+        console.error('[PARTNERS-RECOMMENDED] Erreur:', error);
+        res.status(500).json({ error: 'Erreur lors du chargement des recommandations' });
+    }
+});
+
 // Soumission d'un avis client sur un partenaire (suite a une demande post-paiement solde)
 app.post('/api/partner-reviews', (req, res) => {
     try {
