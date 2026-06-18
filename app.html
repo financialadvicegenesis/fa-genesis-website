@@ -1834,6 +1834,7 @@ a{text-decoration:none;color:inherit}
             <option value="consultant">Consultant</option>
             <option value="coworking">Espace Coworking</option>
           </select>
+          <input class="ptnr-input" id="ptnr-reg-ville" type="text" placeholder="Ville" autocomplete="address-level2">
           <input class="ptnr-input" id="ptnr-reg-entreprise" type="text" placeholder="Entreprise (optionnel)">
           <input class="ptnr-input" id="ptnr-reg-pass" type="password" placeholder="Mot de passe (6 caractères min.)" autocomplete="new-password">
           <input class="ptnr-input" id="ptnr-reg-referral" type="text" placeholder="Code de parrainage (optionnel)">
@@ -4827,7 +4828,7 @@ function _ptnrShowScreen(name){
 }
 
 function _ptnrRegStart(){
-  ['ptnr-reg-prenom','ptnr-reg-nom','ptnr-reg-email','ptnr-reg-tel','ptnr-reg-entreprise','ptnr-reg-pass','ptnr-reg-referral','ptnr-reg-rib-titulaire','ptnr-reg-rib-iban','ptnr-reg-rib-bic'].forEach(function(id){
+  ['ptnr-reg-prenom','ptnr-reg-nom','ptnr-reg-email','ptnr-reg-tel','ptnr-reg-ville','ptnr-reg-entreprise','ptnr-reg-pass','ptnr-reg-referral','ptnr-reg-rib-titulaire','ptnr-reg-rib-iban','ptnr-reg-rib-bic'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.value='';
   });
   var typeEl=document.getElementById('ptnr-reg-type'); if(typeEl) typeEl.value='';
@@ -4842,6 +4843,7 @@ function _ptnrRegSubmit(){
   var nom = (document.getElementById('ptnr-reg-nom')||{}).value || '';
   var email = (document.getElementById('ptnr-reg-email')||{}).value || '';
   var telephone = (document.getElementById('ptnr-reg-tel')||{}).value || '';
+  var ville = (document.getElementById('ptnr-reg-ville')||{}).value || '';
   var partnerType = (document.getElementById('ptnr-reg-type')||{}).value || '';
   var company = (document.getElementById('ptnr-reg-entreprise')||{}).value || '';
   var password = (document.getElementById('ptnr-reg-pass')||{}).value || '';
@@ -4870,7 +4872,7 @@ function _ptnrRegSubmit(){
   fetch(_ptnrApiUrl()+'/api/partner/auth/register',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({prenom:prenom.trim(), nom:nom.trim(), email:email.trim(), telephone:telephone.trim(), password:password, partner_type:partnerType, company:company.trim(), referralCode:referralCode})
+    body:JSON.stringify({prenom:prenom.trim(), nom:nom.trim(), email:email.trim(), telephone:telephone.trim(), city:ville.trim(), password:password, partner_type:partnerType, company:company.trim(), referralCode:referralCode})
   }).then(function(r){return r.text().then(function(t){try{return JSON.parse(t);}catch(e){throw new Error('Erreur serveur');}});})
   .then(function(res){
     if(btnEl){btnEl.disabled=false;btnEl.textContent='CRÉER MON COMPTE';}

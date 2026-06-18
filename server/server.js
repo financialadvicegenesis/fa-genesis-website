@@ -7152,7 +7152,7 @@ app.post('/api/partner/auth/login', async (req, res) => {
 // Inscription partenaire (self-service) — compte créé en 'pending', visible en annuaire seulement après validation admin
 app.post('/api/partner/auth/register', async (req, res) => {
     try {
-        const { prenom, nom, email, telephone, password, partner_type, company, referralCode } = req.body;
+        const { prenom, nom, email, telephone, city, password, partner_type, company, referralCode } = req.body;
         if (!prenom || !nom || !email || !password || !partner_type) {
             return res.status(400).json({ error: 'Champs obligatoires: prenom, nom, email, password, partner_type' });
         }
@@ -7181,6 +7181,7 @@ app.post('/api/partner/auth/register', async (req, res) => {
             nom: nom,
             email: email.toLowerCase(),
             telephone: telephone || '',
+            city: (typeof city === 'string') ? city.trim() : '',
             password: hashedPassword,
             partner_type: partner_type,
             company: company || '',
