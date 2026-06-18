@@ -1527,7 +1527,7 @@ a{text-decoration:none;color:inherit}
 <!-- ══════════ MODAL NOTIFS ══════════ -->
 <div id="notif-overlay">
   <div class="notif-sheet">
-    <div class="ns-ico">🔔</div>
+    <div class="ns-ico"><i class="fa-solid fa-bell"></i></div>
     <div class="ns-title">Restez informé</div>
     <div class="ns-desc">Recevez vos alertes directement sur votre téléphone.</div>
     <ul class="ns-list">
@@ -1545,7 +1545,7 @@ a{text-decoration:none;color:inherit}
 <!-- ══════════ MODAL AVIS PARTENAIRE ══════════ -->
 <div id="review-overlay">
   <div class="notif-sheet">
-    <div class="ns-ico">⭐</div>
+    <div class="ns-ico"><i class="fa-solid fa-star"></i></div>
     <div class="ns-title">Comment était votre expérience ?</div>
     <div class="ns-desc" id="rv-partner-name">Notez votre partenaire</div>
     <div class="rv-stars" id="rv-stars">
@@ -1575,12 +1575,12 @@ a{text-decoration:none;color:inherit}
     </div>
     <div class="hdr-right">
       <button class="hdr-cart-btn" id="cart-icon-btn" onclick="openCart()" title="Panier" style="display:none;">
-        🛒<span class="cart-badge" id="cart-count"></span>
+        <i class="fa-solid fa-cart-shopping"></i><span class="cart-badge" id="cart-count"></span>
       </button>
       <button class="hdr-btn" onclick="openNotifModal()" title="Notifications">
-        🔔<span class="hdr-badge" id="hdrBadge"></span>
+        <i class="fa-solid fa-bell"></i><span class="hdr-badge" id="hdrBadge"></span>
       </button>
-      <div class="hdr-avatar" id="hdrAvatar" onclick="nav('profil')" style="display:none;">👤</div>
+      <div class="hdr-avatar" id="hdrAvatar" onclick="nav('profil')" style="display:none;"><i class="fa-solid fa-user"></i></div>
     </div>
   </div>
 
@@ -1597,7 +1597,7 @@ a{text-decoration:none;color:inherit}
     <!-- ACCUEIL -->
     <div class="tab on" id="tab-home">
       <div class="greet">
-        <div class="greet-hi" id="greetHi">Bonjour 👋</div>
+        <div class="greet-hi" id="greetHi">Bonjour <i class="fa-solid fa-hand"></i></div>
         <div class="greet-name" id="greetName">GENESIS</div>
       </div>
 
@@ -1605,7 +1605,7 @@ a{text-decoration:none;color:inherit}
       <div id="statusCard" class="status-card" style="display:none">
         <div class="status-card-top">
           <span class="status-badge-pill" id="scStatus">En cours</span>
-          <span style="font-size:18px">📦</span>
+          <span style="font-size:18px"><i class="fa-solid fa-box"></i></span>
         </div>
         <div class="status-card-title" id="scName">Votre accompagnement</div>
         <div class="status-card-sub" id="scSub">Suivi de votre commande</div>
@@ -1618,19 +1618,19 @@ a{text-decoration:none;color:inherit}
       <!-- Quick actions -->
       <div class="qa-row">
         <div class="qa" onclick="nav('explorer')">
-          <div class="qa-icon">🏢</div>
+          <div class="qa-icon"><i class="fa-solid fa-building"></i></div>
           <div class="qa-label">Réserver</div>
         </div>
         <div class="qa" onclick="nav('messages')">
-          <div class="qa-icon">💬</div>
+          <div class="qa-icon"><i class="fa-solid fa-comment-dots"></i></div>
           <div class="qa-label">Messages</div>
         </div>
         <div class="qa" onclick="_navToLivrables()">
-          <div class="qa-icon">📂</div>
+          <div class="qa-icon"><i class="fa-solid fa-folder-open"></i></div>
           <div class="qa-label">Livrables</div>
         </div>
         <div class="qa" onclick="_navToSeances()">
-          <div class="qa-icon">📅</div>
+          <div class="qa-icon"><i class="fa-solid fa-calendar-days"></i></div>
           <div class="qa-label">Séances</div>
         </div>
       </div>
@@ -1651,22 +1651,22 @@ a{text-decoration:none;color:inherit}
       <div class="sec-lbl"><h2>Catégories</h2></div>
       <div class="cat-scroll">
         <div class="cat-chip on" onclick="setCat('all',this)">
-          <div class="cat-ico">🏠</div><div class="cat-lbl">Tous</div>
+          <div class="cat-ico"><i class="fa-solid fa-house"></i></div><div class="cat-lbl">Tous</div>
         </div>
         <div class="cat-chip" onclick="setCat('coworking',this)">
-          <div class="cat-ico">💼</div><div class="cat-lbl">Coworking</div>
+          <div class="cat-ico"><i class="fa-solid fa-briefcase"></i></div><div class="cat-lbl">Coworking</div>
         </div>
         <div class="cat-chip" onclick="setCat('etudiant',this)">
-          <div class="cat-ico">🎓</div><div class="cat-lbl">Étudiant</div>
+          <div class="cat-ico"><i class="fa-solid fa-graduation-cap"></i></div><div class="cat-lbl">Étudiant</div>
         </div>
         <div class="cat-chip" onclick="setCat('particulier',this)">
-          <div class="cat-ico">👤</div><div class="cat-lbl">Particulier</div>
+          <div class="cat-ico"><i class="fa-solid fa-user"></i></div><div class="cat-lbl">Particulier</div>
         </div>
         <div class="cat-chip" onclick="setCat('entreprise',this)">
-          <div class="cat-ico">🏢</div><div class="cat-lbl">Entreprise</div>
+          <div class="cat-ico"><i class="fa-solid fa-building"></i></div><div class="cat-lbl">Entreprise</div>
         </div>
         <div class="cat-chip" onclick="setCat('evenement',this)">
-          <div class="cat-ico">🎉</div><div class="cat-lbl">Événement</div>
+          <div class="cat-ico"><i class="fa-solid fa-trophy"></i></div><div class="cat-lbl">Événement</div>
         </div>
       </div>
 
@@ -1686,7 +1686,7 @@ a{text-decoration:none;color:inherit}
         <div class="p-hero-sub">Toutes nos offres et tarifs partenaires, au même endroit.</div>
         <div class="p-hero-search">
           <input type="text" id="p-exp-search" placeholder="Rechercher une offre, une prestation..." oninput="_expSearchDebounced()">
-          <div class="p-hero-loc-btn" onclick="nav('prestataires')" title="Voir les prestataires">👥</div>
+          <div class="p-hero-loc-btn" onclick="nav('prestataires')" title="Voir les prestataires"><i class="fa-solid fa-users"></i></div>
         </div>
         <div class="p-hero-stat" id="p-exp-stat"></div>
       </div>
@@ -1792,7 +1792,7 @@ a{text-decoration:none;color:inherit}
           <div class="ptnr-login-title" style="margin-bottom:10px;">Espace Admin</div>
           <div style="font-size:13px;color:#888;margin-bottom:20px;line-height:1.6;">Vous êtes connecté en tant qu'administrateur FA GENESIS.</div>
           <div class="ptnr-notif-bar" id="admin-notif-bar" style="display:none;text-align:left;margin-bottom:20px;">
-            <div class="ptnr-notif-txt">🔔 Activez les alertes pour recevoir les nouvelles commandes, paiements et messages en temps réel</div>
+            <div class="ptnr-notif-txt"><i class="fa-solid fa-bell"></i> Activez les alertes pour recevoir les nouvelles commandes, paiements et messages en temps réel</div>
             <button class="ptnr-notif-btn" onclick="_adminEnablePush()">Activer</button>
           </div>
           <button class="ptnr-login-btn" onclick="_openAdminPanel()">OUVRIR L'ESPACE ADMIN</button>
@@ -1846,7 +1846,7 @@ a{text-decoration:none;color:inherit}
             </div>
           </div>
           <div style="display:flex;gap:8px;">
-            <button class="ptnr-logout-btn" onclick="_ptnrShowEditProfile()" style="border-color:#FFD700;color:#FFD700;">✏️ Modifier</button>
+            <button class="ptnr-logout-btn" onclick="_ptnrShowEditProfile()" style="border-color:#FFD700;color:#FFD700;"><i class="fa-solid fa-pen"></i> Modifier</button>
             <button class="ptnr-logout-btn" onclick="_ptnrLogout()">Déconnexion</button>
           </div>
         </div>
@@ -1878,30 +1878,30 @@ a{text-decoration:none;color:inherit}
         <!-- Sub-navigation -->
         <div class="ptnr-subnav">
           <button class="ptnr-snbtn on" id="ptnr-sn-home" onclick="_ptnrNav('home')">
-            <span class="pni">🏠</span><span>Accueil</span>
+            <i class="pni fa-solid fa-house"></i><span>Accueil</span>
           </button>
           <button class="ptnr-snbtn" id="ptnr-sn-projets" onclick="_ptnrNav('projets')">
-            <span class="pni">📋</span><span>Projets</span>
+            <i class="pni fa-solid fa-clipboard-list"></i><span>Projets</span>
             <span class="ptnr-badge" id="ptnr-badge-projets"></span>
           </button>
           <button class="ptnr-snbtn" id="ptnr-sn-devis" onclick="_ptnrNav('devis')">
-            <span class="pni">📄</span><span>Devis</span>
+            <i class="pni fa-solid fa-file-lines"></i><span>Devis</span>
             <span class="ptnr-badge" id="ptnr-badge-devis"></span>
           </button>
           <button class="ptnr-snbtn" id="ptnr-sn-seances" onclick="_ptnrNav('seances')">
-            <span class="pni">📅</span><span>Séances</span>
+            <i class="pni fa-solid fa-calendar-days"></i><span>Séances</span>
             <span class="ptnr-badge" id="ptnr-badge-seances"></span>
           </button>
           <button class="ptnr-snbtn" id="ptnr-sn-messages" onclick="_ptnrNav('messages')">
-            <span class="pni">💬</span><span>Messages</span>
+            <i class="pni fa-solid fa-comment-dots"></i><span>Messages</span>
             <span class="ptnr-badge" id="ptnr-badge-messages"></span>
           </button>
           <button class="ptnr-snbtn" id="ptnr-sn-missions" onclick="_ptnrNav('missions')">
-            <span class="pni">⚡</span><span>Missions</span>
+            <i class="pni fa-solid fa-bolt"></i><span>Missions</span>
             <span class="ptnr-badge" id="ptnr-badge-missions"></span>
           </button>
           <button class="ptnr-snbtn" id="ptnr-sn-versements" onclick="_ptnrNav('versements')">
-            <span class="pni">💰</span><span>Versements</span>
+            <i class="pni fa-solid fa-sack-dollar"></i><span>Versements</span>
           </button>
         </div>
 
@@ -2889,7 +2889,7 @@ function openDetail(o, type){ _detailOffer=o; _detailType=type;
     ctaHtml = '<button class="detail-cta" onclick="window.location.href=\''+o.link+'\'">Demander un devis</button>';
   } else if(type==='coworking' && _cwDetailSub!==null){
     ctaHtml = '<button class="detail-cta" onclick="closeDetail();openCwBooking(\''+_cwDetailSub+'\','+_cwDetailIdx+')">Réserver</button>'
-      +'<button class="detail-cta" style="background:#1a1a1a;border:1px solid #2a2a2a;color:#888;margin-top:8px;font-size:11px;padding:12px" onclick="addToCart({id:\'cw-'+_cwDetailSub+'-'+_cwDetailIdx+'\',name:\''+o.name+'\',price:\''+o.price+'\',priceNum:null,type:\'coworking\'});closeDetail()">🛒 Ajouter au panier</button>';
+      +'<button class="detail-cta" style="background:#1a1a1a;border:1px solid #2a2a2a;color:#888;margin-top:8px;font-size:11px;padding:12px" onclick="addToCart({id:\'cw-'+_cwDetailSub+'-'+_cwDetailIdx+'\',name:\''+o.name+'\',price:\''+o.price+'\',priceNum:null,type:\'coworking\'});closeDetail()"><i class="fa-solid fa-cart-shopping"></i> Ajouter au panier</button>';
   } else {
     ctaHtml = '<button class="detail-cta" onclick="_addDetailToCart()">&#128722; Ajouter au panier</button>'
       +'<button class="detail-cta" style="background:#1a1a1a;border:1px solid #2a2a2a;color:#888;margin-top:8px;font-size:11px;padding:12px;" onclick="window.location.href=\'offres.html\'">Voir sur le site</button>';
@@ -2918,13 +2918,13 @@ function closeDetail(){
 function renderResaTab(){
   var c = document.getElementById('resaContent');
   if(!USER||GUEST){ c.innerHTML = locked('Mes réservations','Connectez-vous pour voir vos réservations et leur statut.'); return; }
-  c.innerHTML = '<div class="resa-list" id="resaList"><div class="empty"><div class="e-ico">📅</div><p>Chargement...</p></div></div>';
+  c.innerHTML = '<div class="resa-list" id="resaList"><div class="empty"><div class="e-ico"><i class="fa-solid fa-calendar-days"></i></div><p>Chargement...</p></div></div>';
   fetch(API+'/api/reservations/me',{headers:{'Authorization':'Bearer '+USER._token}})
     .then(function(r){return r.json();})
     .then(function(data){
       var list = Array.isArray(data)?data:[];
       if(list.length===0){
-        document.getElementById('resaList').innerHTML='<div class="empty"><div class="e-ico">📅</div><p>Aucune réservation pour le moment</p></div>';
+        document.getElementById('resaList').innerHTML='<div class="empty"><div class="e-ico"><i class="fa-solid fa-calendar-days"></i></div><p>Aucune réservation pour le moment</p></div>';
         return;
       }
       document.getElementById('resaList').innerHTML = list.map(function(r){
@@ -2934,14 +2934,14 @@ function renderResaTab(){
         return '<div class="resa-card">'
           +'<div class="resa-top"><div class="resa-name">'+(r.product_name||r.product_id||'Réservation')+'</div>'
           +'<span class="resa-status '+sc+'">'+sl+'</span></div>'
-          +(dates?'<div class="resa-date">📅 '+dates+'</div>':'')
+          +(dates?'<div class="resa-date"><i class="fa-solid fa-calendar-days"></i> '+dates+'</div>':'')
           +'<div class="resa-price">'+(r.prix?r.prix+' €':'')+'</div>'
           +'<div class="resa-actions">'
-          +'<button class="resa-action-btn rab-ghost" onclick="nav(\'messages\')">💬 Message</button>'
+          +'<button class="resa-action-btn rab-ghost" onclick="nav(\'messages\')"><i class="fa-solid fa-comment-dots"></i> Message</button>'
           +'</div></div>';
       }).join('');
     }).catch(function(){
-      document.getElementById('resaList').innerHTML='<div class="empty"><div class="e-ico">⚠️</div><p>Impossible de charger les réservations</p></div>';
+      document.getElementById('resaList').innerHTML='<div class="empty"><div class="e-ico"><i class="fa-solid fa-triangle-exclamation"></i></div><p>Impossible de charger les réservations</p></div>';
     });
 }
 
@@ -2950,13 +2950,13 @@ function renderMsgTab(){
   var c = document.getElementById('msgContent');
   if(!USER||GUEST){ c.innerHTML = locked('Messagerie','Connectez-vous pour accéder à vos conversations.'); return; }
   c.innerHTML = '<div class="msg-list">'
-    +'<div class="msg-row" onclick="openConversation(\'FA_GENESIS\',\'GENESIS\',\'⭐\')">'
-    +'<div class="msg-avatar">⭐</div>'
+    +'<div class="msg-row" onclick="openConversation(\'FA_GENESIS\',\'GENESIS\',\'star\')">'
+    +'<div class="msg-avatar"><i class="fa-solid fa-star"></i></div>'
     +'<div class="msg-body"><div class="msg-from">GENESIS</div><div class="msg-preview">Échangez avec l\'équipe</div></div>'
     +'<div class="msg-meta"><div class="msg-time">›</div></div>'
     +'</div>'
-    +'<div class="msg-row" onclick="openConversation(\'COMVISA\',\'COM VISA Coworking\',\'🏢\')">'
-    +'<div class="msg-avatar" style="background:#1a0d18;">🏢</div>'
+    +'<div class="msg-row" onclick="openConversation(\'COMVISA\',\'COM VISA Coworking\',\'building\')">'
+    +'<div class="msg-avatar" style="background:#1a0d18;"><i class="fa-solid fa-building"></i></div>'
     +'<div class="msg-body"><div class="msg-from">COM VISA Coworking</div><div class="msg-preview">Messages avec l\'espace coworking</div></div>'
     +'<div class="msg-meta"><div class="msg-time">›</div></div>'
     +'</div>'
@@ -3020,10 +3020,10 @@ function renderProfil(){
   var params = '<div class="plus-section">'
     +'<div class="plus-section-title">MES PARAMÈTRES</div>'
     +'<div class="plus-group">'
-    +pli('🗂️','#0d0d1a','Gestion des données personnelles',null,'showDonneesMenu()')
-    +pli('🍪','#1a1000','Gestion des cookies',null,'showCookiesMenu()')
-    +(USER && !GUEST ? pli('🔔','#1a0800','Notifications',null,'window.FA_activerNotifications&&window.FA_activerNotifications()') : '')
-    +(USER && !GUEST ? pli('⚙️','#141414','Paramètres du compte','mon-compte.html') : '')
+    +pli('<i class="fa-solid fa-folder-tree"></i>','#0d0d1a','Gestion des données personnelles',null,'showDonneesMenu()')
+    +pli('<i class="fa-solid fa-cookie-bite"></i>','#1a1000','Gestion des cookies',null,'showCookiesMenu()')
+    +(USER && !GUEST ? pli('<i class="fa-solid fa-bell"></i>','#1a0800','Notifications',null,'window.FA_activerNotifications&&window.FA_activerNotifications()') : '')
+    +(USER && !GUEST ? pli('<i class="fa-solid fa-gear"></i>','#141414','Paramètres du compte','mon-compte.html') : '')
     +'</div></div>';
 
   // ── INFORMATIONS GÉNÉRALES ───────────────────────────────────
@@ -3084,13 +3084,13 @@ function showDonneesMenu(){
     +'<div class="plus-group">'
     // ── Politique ──
     +'<a href="'+url+'" target="_blank" rel="noopener noreferrer" onclick="return openInBrowser(this.href)" class="plus-item">'
-    +'<div class="plus-item-ico" style="background:#0d0d1a">📜</div>'
+    +'<div class="plus-item-ico" style="background:#0d0d1a"><i class="fa-solid fa-scroll"></i></div>'
     +'<div class="plus-item-label">Politique de confidentialité</div>'
     +'<div class="plus-item-arrow">›</div>'
     +'</a>'
     // ── Gérer ──
     +'<a href="'+url+'" target="_blank" rel="noopener noreferrer" onclick="return openInBrowser(this.href)" class="plus-item">'
-    +'<div class="plus-item-ico" style="background:#0a1a0a">✏️</div>'
+    +'<div class="plus-item-ico" style="background:#0a1a0a"><i class="fa-solid fa-pen"></i></div>'
     +'<div class="plus-item-label">Gérer mes données personnelles</div>'
     +'<div class="plus-item-arrow">›</div>'
     +'</a>'
@@ -3199,7 +3199,7 @@ function mi(ico,bg,label,href,action){
 }
 
 function locked(title,desc){
-  return '<div class="locked"><div class="lock-ico">🔒</div>'
+  return '<div class="locked"><div class="lock-ico"><i class="fa-solid fa-lock"></i></div>'
     +'<h3>'+title+'</h3><p>'+desc+'</p>'
     +'<button class="lock-btn" onclick="goLogin()">Se connecter</button>'
     +'</div>';
@@ -3319,7 +3319,7 @@ function openConversation(key, name, icon){
   c.innerHTML='<div class="chat-view">'
     +'<div class="chat-back-bar">'
     +'<button class="chat-back-btn" onclick="renderMsgTab()">&#8249;</button>'
-    +'<div style="font-size:16px;line-height:1;margin-right:6px;">'+(icon||'💬')+'</div>'
+    +'<div style="font-size:16px;line-height:1;margin-right:6px;"><i class="fa-solid fa-'+(icon||'comment-dots')+'"></i></div>'
     +'<div class="chat-conv-name">'+name+'</div>'
     +'</div>'
     +'<div class="chat-messages" id="chat-msgs"><div class="chat-empty-state"><span>Chargement...</span></div></div>'
@@ -4020,7 +4020,7 @@ function renderCartBody(){
   var body=document.getElementById('cart-body'); var tr=document.getElementById('cart-total-row'); var cb=document.getElementById('cart-checkout-btn');
   if(!body) return;
   if(APP_CART.length===0){
-    body.innerHTML='<div class="cart-empty"><div class="ce-ico">🛒</div><p>Votre panier est vide.</p></div>';
+    body.innerHTML='<div class="cart-empty"><div class="ce-ico"><i class="fa-solid fa-cart-shopping"></i></div><p>Votre panier est vide.</p></div>';
     if(tr) tr.style.display='none'; if(cb) cb.disabled=true; return;
   }
   if(tr) tr.style.display='flex'; if(cb) cb.disabled=false;
@@ -4659,7 +4659,7 @@ function _ptnrLoadProfileSelector(){
       html += '<div class="ptnr-profile-card" onclick="_ptnrSelectProfile(\''+p.id+'\','+p.hasPin+')">';
       html += '<div class="ptnr-profile-initials">'+p.initials+'</div>';
       html += '<div class="ptnr-profile-info"><div class="ptnr-profile-name">'+p.name+'</div>';
-      html += '<div class="ptnr-profile-sub">'+(p.hasPin?'🔐 Code PIN activé':'Accès direct')+'</div></div>';
+      html += '<div class="ptnr-profile-sub">'+(p.hasPin?'<i class="fa-solid fa-shield-halved"></i> Code PIN activé':'Accès direct')+'</div></div>';
       html += '<div class="ptnr-profile-arrow">›</div></div>';
     });
     if(list) list.innerHTML = html;
@@ -4884,13 +4884,13 @@ function _ptnrLoadHome(){
       html += '<div class="ptnr-folder-row">';
       // Mon dossier (ouvert)
       html += '<div class="ptnr-folder" style="border:1px solid #FFD700;cursor:pointer;" onclick="_ptnrNav(\'projets\')">';
-      html += '<div class="ptnr-folder-ico">📂</div>';
+      html += '<div class="ptnr-folder-ico"><i class="fa-solid fa-folder-open"></i></div>';
       html += '<div class="ptnr-folder-label">'+currentProfile.initials+'</div>';
       html += '<div class="ptnr-folder-sub">Mon espace</div></div>';
       // Dossiers des autres (verrouillés)
       otherProfiles.forEach(function(op){
         html += '<div class="ptnr-folder locked">';
-        html += '<div class="ptnr-folder-ico">🔒</div>';
+        html += '<div class="ptnr-folder-ico"><i class="fa-solid fa-lock"></i></div>';
         html += '<div class="ptnr-folder-label">'+op.initials+'</div>';
         html += '<div class="ptnr-folder-sub">Confidentiel</div></div>';
       });
@@ -4901,7 +4901,7 @@ function _ptnrLoadHome(){
     if(pendingDevis>0) html += '<div class="ptnr-card" style="border-left:3px solid #FFD700;cursor:pointer;" onclick="_ptnrNav(\'devis\')"><div class="ptnr-card-title">'+pendingDevis+' devis en attente</div><div class="ptnr-card-sub">Appuyez pour traiter les devis</div></div>';
     if(inbox.length>0) html += '<div class="ptnr-card" style="border-left:3px solid #3b82f6;cursor:pointer;" onclick="_ptnrNav(\'messages\')"><div class="ptnr-card-title">'+inbox.length+' conversation(s) client</div><div class="ptnr-card-sub">Appuyez pour voir les messages</div></div>';
     if(projets.length>0) html += '<div class="ptnr-card" style="border-left:3px solid #22c55e;cursor:pointer;" onclick="_ptnrNav(\'projets\')"><div class="ptnr-card-title">'+projets.length+' projet(s) assigné(s)</div><div class="ptnr-card-sub">Appuyez pour voir vos projets</div></div>';
-    if(!pendingDevis && !inbox.length && !projets.length) html += '<div class="ptnr-empty"><div class="ptnr-empty-ico">✅</div><div class="ptnr-empty-txt">Tout est à jour !</div></div>';
+    if(!pendingDevis && !inbox.length && !projets.length) html += '<div class="ptnr-empty"><div class="ptnr-empty-ico"><i class="fa-solid fa-circle-check"></i></div><div class="ptnr-empty-txt">Tout est à jour !</div></div>';
     if(list) list.innerHTML = html;
     // Charger le compteur de missions et afficher l'alerte
     _ptnrFetch('/api/partner/dispatches/count').then(function(r){
@@ -4917,10 +4917,10 @@ function _ptnrLoadHome(){
 // ── PROJETS ──
 function _ptnrLoadProjets(){
   var el = document.getElementById('ptnr-projets-list');
-  if(el) el.innerHTML = '<div class="ptnr-empty"><div style="color:#FFD700;font-size:24px;">⏳</div></div>';
+  if(el) el.innerHTML = '<div class="ptnr-empty"><div style="color:#FFD700;font-size:24px;"><i class="fa-solid fa-hourglass-half"></i></div></div>';
   _ptnrFetch('/api/partner/projects').then(function(data){
     var items = Array.isArray(data) ? data : (data.projects||[]);
-    if(!items.length){ if(el) el.innerHTML = '<div class="ptnr-empty"><div class="ptnr-empty-ico">📭</div><div class="ptnr-empty-txt">Aucun projet assigné</div></div>'; return; }
+    if(!items.length){ if(el) el.innerHTML = '<div class="ptnr-empty"><div class="ptnr-empty-ico"><i class="fa-solid fa-inbox"></i></div><div class="ptnr-empty-txt">Aucun projet assigné</div></div>'; return; }
     var html = '';
     items.forEach(function(p){
       var status = p.status||''; var statusLabel = status||'En cours';
@@ -4940,10 +4940,10 @@ function _ptnrLoadProjets(){
 // ── DEVIS ──
 function _ptnrLoadDevis(){
   var el = document.getElementById('ptnr-devis-list');
-  if(el) el.innerHTML = '<div class="ptnr-empty"><div style="color:#FFD700;font-size:24px;">⏳</div></div>';
+  if(el) el.innerHTML = '<div class="ptnr-empty"><div style="color:#FFD700;font-size:24px;"><i class="fa-solid fa-hourglass-half"></i></div></div>';
   _ptnrFetch('/api/partner/quotes').then(function(data){
     var items = Array.isArray(data) ? data : (data.quotes||[]);
-    if(!items.length){ if(el) el.innerHTML = '<div class="ptnr-empty"><div class="ptnr-empty-ico">📭</div><div class="ptnr-empty-txt">Aucun devis en attente</div></div>'; return; }
+    if(!items.length){ if(el) el.innerHTML = '<div class="ptnr-empty"><div class="ptnr-empty-ico"><i class="fa-solid fa-inbox"></i></div><div class="ptnr-empty-txt">Aucun devis en attente</div></div>'; return; }
     var html = '';
     items.forEach(function(q){
       var isPending = q.status==='pending'||q.status==='open'||!q.status;
@@ -4988,10 +4988,10 @@ function _ptnrCancelDevis(id){
 // ── SÉANCES ──
 function _ptnrLoadSeances(){
   var el = document.getElementById('ptnr-seances-list');
-  if(el) el.innerHTML = '<div class="ptnr-empty"><div style="color:#FFD700;font-size:24px;">⏳</div></div>';
+  if(el) el.innerHTML = '<div class="ptnr-empty"><div style="color:#FFD700;font-size:24px;"><i class="fa-solid fa-hourglass-half"></i></div></div>';
   _ptnrFetch('/api/partner/sessions').then(function(data){
     var items = Array.isArray(data) ? data : (data.sessions||[]);
-    if(!items.length){ if(el) el.innerHTML = '<div class="ptnr-empty"><div class="ptnr-empty-ico">📭</div><div class="ptnr-empty-txt">Aucune séance à confirmer</div></div>'; return; }
+    if(!items.length){ if(el) el.innerHTML = '<div class="ptnr-empty"><div class="ptnr-empty-ico"><i class="fa-solid fa-inbox"></i></div><div class="ptnr-empty-txt">Aucune séance à confirmer</div></div>'; return; }
     var html = '';
     items.forEach(function(s){
       var isPending = s.status==='pending'||s.status==='proposed';
@@ -5035,10 +5035,10 @@ function _ptnrCancelSeance(id){
 // ── MESSAGES ──
 function _ptnrLoadMessages(){
   var el = document.getElementById('ptnr-messages-list');
-  if(el) el.innerHTML = '<div class="ptnr-empty"><div style="color:#FFD700;font-size:24px;">⏳</div></div>';
+  if(el) el.innerHTML = '<div class="ptnr-empty"><div style="color:#FFD700;font-size:24px;"><i class="fa-solid fa-hourglass-half"></i></div></div>';
   _ptnrFetch('/api/partner/inbox').then(function(data){
     var threads = Array.isArray(data) ? data : (data.messages||data.inbox||[]);
-    if(!threads.length){ if(el) el.innerHTML = '<div class="ptnr-empty"><div class="ptnr-empty-ico">💬</div><div class="ptnr-empty-txt">Aucun message</div></div>'; return; }
+    if(!threads.length){ if(el) el.innerHTML = '<div class="ptnr-empty"><div class="ptnr-empty-ico"><i class="fa-solid fa-comment-dots"></i></div><div class="ptnr-empty-txt">Aucun message</div></div>'; return; }
     var html = '';
     threads.forEach(function(thread){
       var msgs = thread.messages || [thread];
@@ -5346,7 +5346,7 @@ function openCwBooking(sub, idx){
   var fm=document.getElementById('cwb-form'); if(fm) fm.style.display='';
   var sc=document.getElementById('cwb-success'); if(sc) sc.style.display='none';
   var sb=document.getElementById('cwb-send-btn'); if(sb){sb.disabled=false;sb.textContent='ENVOYER DEMANDE';}
-  var cb2=document.getElementById('cwb-cart-btn'); if(cb2){cb2.disabled=false;cb2.textContent='🛒 Panier';}
+  var cb2=document.getElementById('cwb-cart-btn'); if(cb2){cb2.disabled=false;cb2.innerHTML='<i class="fa-solid fa-cart-shopping"></i> Panier';}
   var qr=document.getElementById('cwb-qty-row'); if(qr) qr.style.display=o.name.indexOf('OPENSPACE')>=0?'':'none';
   overlay.classList.add('open');
   setTimeout(function(){ sheet.classList.add('up'); }, 20);
@@ -5366,7 +5366,7 @@ function cwBookingAddToCart(){
   if(!dt){ if(er){er.textContent='Veuillez choisir une date.';er.classList.add('on');} return; }
   if(er) er.classList.remove('on');
   var o=_cwBookOffer;
-  var sub='📅 '+new Date(dt).toLocaleDateString('fr-FR')+(qty>1?' × '+qty+' postes':'');
+  var sub='<i class="fa-solid fa-calendar-days"></i> '+new Date(dt).toLocaleDateString('fr-FR')+(qty>1?' × '+qty+' postes':'');
   addToCart({id:'cw-'+_cwBookSub+'-'+_cwBookIdx,name:o.name,sub:sub,price:o.price,priceNum:null,quantity:qty,date:dt,notes:nt,type:'coworking'});
   closeCwBooking();
 }
@@ -5760,7 +5760,7 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
 <!-- ── Overlay : Configuration RIB partenaire (à la connexion) ── -->
 <div id="ptnr-rib-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9800;display:none;align-items:center;justify-content:center;padding:16px;">
   <div style="background:#0d0d0d;border:1px solid #2a2a2a;border-radius:20px;width:100%;max-width:420px;padding:28px 24px 24px;">
-    <div style="font-size:22px;font-weight:800;color:#FFD700;margin-bottom:6px;">Configurez votre RIB 🏦</div>
+    <div style="font-size:22px;font-weight:800;color:#FFD700;margin-bottom:6px;">Configurez votre RIB <i class="fa-solid fa-building-columns"></i></div>
     <div style="font-size:13px;color:#888;line-height:1.6;margin-bottom:22px;">Pour recevoir votre part de chaque paiement client directement sur votre compte bancaire, renseignez votre RIB ci-dessous.</div>
 
     <div style="display:flex;flex-direction:column;gap:10px;">
@@ -6242,15 +6242,15 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
         <div class="reg-title">Vous êtes…</div>
         <div class="reg-sub">Pour personnaliser votre expérience GENESIS.</div>
         <button class="reg-profile-tile" onclick="regSelectProfile('etudiant')" type="button">
-          <div class="reg-profile-tile-ico">🎓</div>
+          <div class="reg-profile-tile-ico"><i class="fa-solid fa-graduation-cap"></i></div>
           <div class="reg-profile-tile-txt"><div class="reg-profile-tile-name">Étudiant</div><div class="reg-profile-tile-sub">Offres et tarifs étudiants</div></div>
         </button>
         <button class="reg-profile-tile" onclick="regSelectProfile('particulier')" type="button">
-          <div class="reg-profile-tile-ico">👤</div>
+          <div class="reg-profile-tile-ico"><i class="fa-solid fa-user"></i></div>
           <div class="reg-profile-tile-txt"><div class="reg-profile-tile-name">Particulier</div><div class="reg-profile-tile-sub">Accompagnement individuel</div></div>
         </button>
         <button class="reg-profile-tile" onclick="regSelectProfile('entreprise')" type="button">
-          <div class="reg-profile-tile-ico">🏢</div>
+          <div class="reg-profile-tile-ico"><i class="fa-solid fa-building"></i></div>
           <div class="reg-profile-tile-txt"><div class="reg-profile-tile-name">Entreprise</div><div class="reg-profile-tile-sub">Solutions pour structures</div></div>
         </button>
         <div class="reg-link-row">Déjà un compte ? <a href="#" onclick="closeRegSheet();goLogin();return false;">Se connecter</a></div>
@@ -6530,11 +6530,11 @@ function _ptnrRenderGainBloc(d){
 
 function _ptnrLoadMissions(){
   var el = document.getElementById('ptnr-missions-list');
-  if(el) el.innerHTML = '<div class="ptnr-empty"><div style="color:#FFD700;font-size:24px;">⏳</div></div>';
+  if(el) el.innerHTML = '<div class="ptnr-empty"><div style="color:#FFD700;font-size:24px;"><i class="fa-solid fa-hourglass-half"></i></div></div>';
   _ptnrFetch('/api/partner/dispatches').then(function(data){
     var items = data.dispatches || [];
     if(!items.length){
-      if(el) el.innerHTML = '<div class="ptnr-empty"><div class="ptnr-empty-ico">✅</div><div class="ptnr-empty-txt">Aucune mission disponible</div><div style="font-size:12px;color:#555;margin-top:6px;">Vous serez notifié à chaque nouvelle mission.</div></div>';
+      if(el) el.innerHTML = '<div class="ptnr-empty"><div class="ptnr-empty-ico"><i class="fa-solid fa-circle-check"></i></div><div class="ptnr-empty-txt">Aucune mission disponible</div><div style="font-size:12px;color:#555;margin-top:6px;">Vous serez notifié à chaque nouvelle mission.</div></div>';
       _setBadgeMissions(0); return;
     }
 
@@ -6546,7 +6546,7 @@ function _ptnrLoadMissions(){
     // ── Missions à accepter (acompte déjà payé) ──
     if(pendingItems.length){
       html += '<div style="border-left:4px solid #FFD700;padding-left:12px;margin-bottom:12px;">';
-      html += '<div style="font-size:13px;font-weight:800;color:#FFD700;text-transform:uppercase;letter-spacing:.05em;">⚡ À accepter</div>';
+      html += '<div style="font-size:13px;font-weight:800;color:#FFD700;text-transform:uppercase;letter-spacing:.05em;"><i class="fa-solid fa-bolt"></i> À accepter</div>';
       html += '<div style="font-size:11px;color:#888;margin-top:2px;">Le client a payé son acompte. Acceptez pour recevoir votre part immédiatement.</div>';
       html += '</div>';
       pendingItems.forEach(function(d){
@@ -6591,7 +6591,7 @@ function _ptnrLoadMissions(){
         html += '<strong>Créneau :</strong> '+slot;
         if(notes) html += '<br><strong>Note :</strong> '+notes;
         html += '</div>';
-        html += '<button class="dispatch-claim-btn" onclick="_openDClaimOverlay(\''+d.id+'\',\''+d.client_prenom+'\')">⚡ Prendre en charge</button>';
+        html += '<button class="dispatch-claim-btn" onclick="_openDClaimOverlay(\''+d.id+'\',\''+d.client_prenom+'\')"><i class="fa-solid fa-bolt"></i> Prendre en charge</button>';
         html += '</div>';
       });
     }
@@ -6737,7 +6737,7 @@ function _submitAvailability(){
 function _ptnrLoadVersements(){
   var setupEl = document.getElementById('ptnr-paypal-setup');
   var listEl  = document.getElementById('ptnr-versements-list');
-  if(setupEl) setupEl.innerHTML = '<div class="ptnr-empty"><div style="color:#FFD700;font-size:22px;">⏳</div></div>';
+  if(setupEl) setupEl.innerHTML = '<div class="ptnr-empty"><div style="color:#FFD700;font-size:22px;"><i class="fa-solid fa-hourglass-half"></i></div></div>';
   if(listEl)  listEl.innerHTML  = '';
 
   _ptnrFetch('/api/partner/payouts').then(function(data){
@@ -6791,7 +6791,7 @@ function _ptnrLoadVersements(){
     // ── Liste des versements ──
     if(!listEl) return;
     if(!payouts.length){
-      listEl.innerHTML = '<div class="ptnr-empty"><div class="ptnr-empty-ico">💸</div><div class="ptnr-empty-txt">Aucun versement pour l\'instant</div><div style="font-size:12px;color:#555;margin-top:6px;">Vos versements apparaîtront ici après chaque paiement client.</div></div>';
+      listEl.innerHTML = '<div class="ptnr-empty"><div class="ptnr-empty-ico"><i class="fa-solid fa-money-bill-wave"></i></div><div class="ptnr-empty-txt">Aucun versement pour l\'instant</div><div style="font-size:12px;color:#555;margin-top:6px;">Vos versements apparaîtront ici après chaque paiement client.</div></div>';
       return;
     }
     var totalSent = 0; var totalPending = 0;
@@ -6808,7 +6808,7 @@ function _ptnrLoadVersements(){
       var stageLabel  = p.stage==='deposit'?'Acompte 30 %':(p.stage==='balance'?'Solde 70 %':'Versement');
       var statusColor = p.status==='sent'?'#4caf50':(p.status==='failed'?'#f44336':'#FFD700');
       var statusLabel = p.status==='sent'?'Envoyé':(p.status==='failed'?'Échoué':'En attente');
-      var methodIco   = p.payout_method==='bank_transfer'?'🏦':(p.payout_method==='paypal'?'💳':'⏳');
+      var methodIco   = p.payout_method==='bank_transfer'?'<i class="fa-solid fa-building-columns"></i>':(p.payout_method==='paypal'?'<i class="fa-solid fa-credit-card"></i>':'<i class="fa-solid fa-hourglass-half"></i>');
       listHtml += '<div style="background:#111;border:1px solid #1e1e1e;border-radius:14px;padding:14px 16px;margin-bottom:10px;">';
       listHtml += '<div style="display:flex;justify-content:space-between;align-items:flex-start;">';
       listHtml += '<div>';
@@ -6934,11 +6934,11 @@ function launchConfetti(){
 function _updateGreeting(){
   var el=document.getElementById('greetHi'); if(!el) return;
   var h=new Date().getHours(); var t,e;
-  if(h>=5&&h<12){t='Bonjour';e='☀️';}
-  else if(h>=12&&h<18){t='Bon après-midi';e='⚡';}
-  else if(h>=18&&h<22){t='Bonsoir';e='🌙';}
-  else{t='Bonne nuit';e='✨';}
-  el.textContent=t+' '+e;
+  if(h>=5&&h<12){t='Bonjour';e='<i class="fa-solid fa-sun"></i>';}
+  else if(h>=12&&h<18){t='Bon après-midi';e='<i class="fa-solid fa-bolt"></i>';}
+  else if(h>=18&&h<22){t='Bonsoir';e='<i class="fa-solid fa-moon"></i>';}
+  else{t='Bonne nuit';e='<i class="fa-solid fa-star"></i>';}
+  el.innerHTML=t+' '+e;
 }
 
 // ── 5. Swipe left/right to navigate tabs ──
