@@ -5265,6 +5265,7 @@ app.get('/api/auth/me', (req, res) => {
             activeSubscription: meSubscription,
             pendingReviewPrompts: pendingReviewPrompts,
             badge: clientBadge,
+            badgeProgress: getClientBadgeProgress(completedOrders),
             completedOrders: completedOrders,
             isClientFidele: completedOrders >= 5,
             favoris: user.favoris || [],
@@ -7545,6 +7546,38 @@ function getPartnerBadge(partner, ratingSummary, missionsCompleted) {
     return null;
 }
 
+// Progression vers le palier suivant : deux conditions a remplir (missions ET note), le pourcentage retenu est le plus bas des deux
+function getPartnerBadgeProgress(partner, ratingSummary, missionsCompleted) {
+    const summary = ratingSummary || getPartnerRatingSummary(partner.id);
+    const missions = typeof missionsCompleted === 'number' ? missionsCompleted : getPartnerMissionsCompleted(partner.id);
+    const currentBadge = getPartnerBadge(partner, summary, missions);
+    const tiersAsc = PARTNER_BADGE_TIERS.slice().reverse();
+    for (const tier of tiersAsc) {
+        if (missions < tier.missions || summary.average < tier.rating) {
+            const missionsPercent = Math.min(100, Math.round((missions / tier.missions) * 100));
+            const ratingPercent = Math.min(100, Math.round((summary.average / tier.rating) * 100));
+            return {
+                currentBadge,
+                nextBadge: tier.id,
+                missionsCurrent: missions,
+                missionsTarget: tier.missions,
+                ratingCurrent: summary.average,
+                ratingTarget: tier.rating,
+                percent: Math.min(missionsPercent, ratingPercent)
+            };
+        }
+    }
+    return {
+        currentBadge,
+        nextBadge: null,
+        missionsCurrent: missions,
+        missionsTarget: missions,
+        ratingCurrent: summary.average,
+        ratingTarget: summary.average,
+        percent: 100
+    };
+}
+
 // Parrainage partenaire : un filleul ne compte que s'il a ete active (equivalent partenaire du "premier paiement" client)
 function getPartnerReferralCount(partnerId) {
     if (!partnerId) return 0;
@@ -7580,6 +7613,24 @@ function getClientBadge(completedCount) {
         if (completedCount >= tier.orders) return tier.id;
     }
     return null;
+}
+
+// Progression vers le palier suivant (CLIENT_BADGE_TIERS est trie du plus haut au plus bas)
+function getClientBadgeProgress(completedCount) {
+    const tiersAsc = CLIENT_BADGE_TIERS.slice().reverse();
+    const currentBadge = getClientBadge(completedCount);
+    for (const tier of tiersAsc) {
+        if (completedCount < tier.orders) {
+            return {
+                currentBadge,
+                nextBadge: tier.id,
+                current: completedCount,
+                target: tier.orders,
+                percent: Math.min(100, Math.round((completedCount / tier.orders) * 100))
+            };
+        }
+    }
+    return { currentBadge, nextBadge: null, current: completedCount, target: completedCount, percent: 100 };
 }
 
 // Parrainage client : un filleul ne compte que s'il a effectue son premier paiement (evite les faux comptes)
@@ -8703,6 +8754,7 @@ app.get('/api/partner/reputation', authenticatePartner, function(req, res) {
             success: true,
             rating: summary,
             badge: badge,
+            badgeProgress: getPartnerBadgeProgress(partner, summary, missionsCompleted),
             founderBadge: partner.founderBadge === true,
             missionsCompleted: missionsCompleted,
             revenusGeneres: Math.round(revenusGeneres * 100) / 100,

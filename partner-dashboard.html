@@ -64,6 +64,19 @@
             border: 4px solid black;
             padding: 2rem;
         }
+        .badge-progress-labels{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.3px;margin-bottom:10px;color:black;}
+        .badge-progress-cur{color:#000;}
+        .badge-progress-cur i{margin-right:2px;color:var(--genesis-yellow);}
+        .badge-progress-arrow{color:#999;font-size:9px;}
+        .badge-progress-next{color:#777;display:inline-flex;align-items:center;gap:5px;}
+        .badge-progress-next i{font-size:9px;}
+        .badge-progress-track{position:relative;height:12px;border-radius:6px;background:#000;border:2px solid black;overflow:hidden;}
+        .badge-progress-fill{position:relative;height:100%;border-radius:4px;background:linear-gradient(90deg,#7a5c00,var(--genesis-yellow));background-size:200% 100%;transition:width .6s cubic-bezier(.4,0,.2,1);overflow:hidden;}
+        .badge-progress-fill::after{content:'';position:absolute;top:0;left:0;height:100%;width:40%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.55),transparent);animation:badgeProgressShimmer 1.8s ease-in-out infinite;}
+        @keyframes badgeProgressShimmer{0%{transform:translateX(-100%)}100%{transform:translateX(250%)}}
+        .badge-progress-text{margin-top:9px;font-size:11px;color:#555;font-weight:700;}
+        .badge-progress-max{display:flex;align-items:center;justify-content:center;gap:9px;border:3px solid var(--genesis-yellow);background:linear-gradient(135deg,#1a1a1a,#3a2f00);border-radius:10px;padding:12px 14px;color:var(--genesis-yellow);font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:.3px;}
+        .badge-progress-max i{font-size:16px;}
         .status-badge {
             display: inline-block;
             padding: 0.25rem 0.75rem;
@@ -571,6 +584,10 @@
             <div class="section-card neo-shadow text-center mb-8">
                 <p id="reputationBadge" class="text-2xl font-black mb-2">—</p>
                 <p id="reputationRating" class="text-sm font-bold opacity-70">—</p>
+            </div>
+
+            <div class="section-card neo-shadow mb-8" id="reputationProgressCard" style="display:none;">
+                <div id="reputationProgress"></div>
             </div>
 
             <div class="grid md:grid-cols-3 gap-4 mb-8">
@@ -2418,6 +2435,32 @@
     var REFERRAL_STATUS_LABELS = { batisseur: 'BÂTISSEUR', architecte: 'ARCHITECTE' };
     var REFERRAL_STATUS_COLORS = { batisseur: '#c7c7c7', architecte: '#a855f7' };
 
+    function renderBadgeProgress(progress) {
+        var card = document.getElementById('reputationProgressCard');
+        var box = document.getElementById('reputationProgress');
+        if (!box || !card) return;
+        if (!progress || !progress.nextBadge) {
+            card.style.display = 'block';
+            box.innerHTML = '<div class="badge-progress-max"><i class="fas fa-crown"></i><span>Palier maximum atteint'
+                + (progress && progress.currentBadge && REPUTATION_BADGE_LABELS[progress.currentBadge] ? ' — ' + REPUTATION_BADGE_LABELS[progress.currentBadge] : '')
+                + '</span></div>';
+            return;
+        }
+        card.style.display = 'block';
+        var nextLabel = REPUTATION_BADGE_LABELS[progress.nextBadge] || progress.nextBadge.toUpperCase();
+        var curLabel = REPUTATION_BADGE_LABELS[progress.currentBadge] || 'Pas encore de badge';
+        var missionsPct = Math.max(0, Math.min(100, progress.missionsTarget ? Math.round(progress.missionsCurrent / progress.missionsTarget * 100) : 100));
+        var ratingPct = Math.max(0, Math.min(100, progress.ratingTarget ? Math.round(progress.ratingCurrent / progress.ratingTarget * 100) : 100));
+        var globalPct = Math.max(0, Math.min(100, progress.percent || 0));
+        var ratingCurDisplay = (Number(progress.ratingCurrent) || 0).toFixed(1);
+        box.innerHTML = '<div class="badge-progress-labels"><span class="badge-progress-cur"><i class="fas fa-medal"></i> ' + curLabel + '</span>'
+            + '<i class="fas fa-chevron-right badge-progress-arrow"></i>'
+            + '<span class="badge-progress-next">' + nextLabel + ' <i class="fas fa-lock"></i></span></div>'
+            + '<div class="badge-progress-track"><div class="badge-progress-fill" style="width:' + globalPct + '%"></div></div>'
+            + '<div class="badge-progress-text"><i class="fas fa-briefcase mr-1"></i>' + (progress.missionsCurrent || 0) + '/' + (progress.missionsTarget || 0) + ' missions (' + missionsPct + '%) &nbsp;·&nbsp; '
+            + '<i class="fas fa-star mr-1"></i>' + ratingCurDisplay + '/' + (progress.ratingTarget || 0) + ' note (' + ratingPct + '%)</div>';
+    }
+
     async function loadReputation() {
         var badgeEl = document.getElementById('reputationBadge');
         var ratingEl = document.getElementById('reputationRating');
@@ -2441,7 +2484,9 @@
             if (badgeEl) { badgeEl.textContent = label; badgeEl.style.color = color; }
 
             var rating = data.rating || { average: 0, count: 0 };
-            if (ratingEl) ratingEl.textContent = rating.average.toFixed(1) + ' ★ (' + rating.count + ' avis)';
+            if (ratingEl) ratingEl.innerHTML = rating.average.toFixed(1) + ' <i class="fas fa-star" style="color:var(--genesis-yellow);"></i> (' + rating.count + ' avis)';
+
+            renderBadgeProgress(data.badgeProgress);
 
             if (missionsEl) missionsEl.textContent = data.missionsCompleted || 0;
             if (clientsEl) clientsEl.textContent = data.nombreClients || 0;
@@ -2872,7 +2917,7 @@
             '<div class="flex justify-between items-start flex-wrap gap-3 mb-4">' +
                 '<div>' +
                     '<div class="text-xs font-bold opacity-50 text-white uppercase">' + date + '</div>' +
-                    '<div class="font-black text-white text-lg uppercase mt-1">' + escapeHtml(offerLabel) + (d.priority > 0 ? ' <span style="background:#FFD700;color:#000;font-size:10px;padding:2px 7px;border-radius:6px;text-transform:uppercase;letter-spacing:.3px;">⭐ Prioritaire</span>' : '') + '</div>' +
+                    '<div class="font-black text-white text-lg uppercase mt-1">' + escapeHtml(offerLabel) + (d.priority > 0 ? ' <span style="background:#FFD700;color:#000;font-size:10px;padding:2px 7px;border-radius:6px;text-transform:uppercase;letter-spacing:.3px;"><i class="fas fa-star"></i> Prioritaire</span>' : '') + '</div>' +
                     (clientName ? '<div class="text-sm font-bold text-[var(--genesis-yellow)]"><i class="fas fa-user mr-1"></i>' + clientName + '</div>' : '') +
                 '</div>' +
                 '<div style="text-align:right;">' +

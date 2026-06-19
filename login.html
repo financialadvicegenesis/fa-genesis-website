@@ -157,7 +157,7 @@
                                 placeholder="••••••••"
                                 style="padding-right:52px;"
                             >
-                            <button type="button" id="togglePassword" onclick="togglePasswordVisibility()" aria-label="Afficher/masquer le mot de passe" style="position:absolute;right:0;top:0;bottom:0;width:52px;background:none;border:none;cursor:pointer;font-size:18px;color:#666;display:flex;align-items:center;justify-content:center;transition:color .15s;">👁</button>
+                            <button type="button" id="togglePassword" onclick="togglePasswordVisibility()" aria-label="Afficher/masquer le mot de passe" style="position:absolute;right:0;top:0;bottom:0;width:52px;background:none;border:none;cursor:pointer;font-size:18px;color:#666;display:flex;align-items:center;justify-content:center;transition:color .15s;"><i class="fa-solid fa-eye"></i></button>
                         </div>
                     </div>
 
@@ -650,7 +650,7 @@
             var btn = document.getElementById('togglePassword');
             if (!inp || !btn) return;
             inp.type = inp.type === 'password' ? 'text' : 'password';
-            btn.textContent = inp.type === 'password' ? '👁' : '🙈';
+            btn.innerHTML = inp.type === 'password' ? '<i class="fa-solid fa-eye"></i>' : '<i class="fa-solid fa-eye-slash"></i>';
         }
     </script>
     <script src="panier.js"></script>

@@ -821,6 +821,20 @@ a{text-decoration:none;color:inherit}
 .tier-badge.batisseur{background:#c7c7c7;color:#000}
 .tier-badge.architecte{background:linear-gradient(135deg,#6a11cb,#2575fc);color:#fff;box-shadow:0 0 10px rgba(106,17,203,.45)}
 .client-tier-badge{margin-top:6px}
+.badge-progress{margin-top:12px;border:3px solid var(--bg);background:var(--card);border-radius:14px;padding:12px 14px;box-shadow:0 0 0 1px rgba(255,215,0,.15) inset}
+.badge-progress-labels{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.3px;margin-bottom:8px}
+.badge-progress-cur{color:var(--yellow)}
+.badge-progress-cur i{margin-right:2px}
+.badge-progress-arrow{color:var(--sub);font-size:9px}
+.badge-progress-next{color:var(--muted);display:inline-flex;align-items:center;gap:5px}
+.badge-progress-next i{font-size:9px}
+.badge-progress-track{position:relative;height:10px;border-radius:6px;background:#000;border:1px solid var(--border);overflow:hidden}
+.badge-progress-fill{position:relative;height:100%;border-radius:6px;background:linear-gradient(90deg,#7a5c00,var(--yellow));background-size:200% 100%;transition:width .6s cubic-bezier(.4,0,.2,1);overflow:hidden}
+.badge-progress-fill::after{content:'';position:absolute;top:0;left:0;height:100%;width:40%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.55),transparent);animation:badgeProgressShimmer 1.8s ease-in-out infinite}
+@keyframes badgeProgressShimmer{0%{transform:translateX(-100%)}100%{transform:translateX(250%)}}
+.badge-progress-text{margin-top:7px;font-size:11px;color:var(--muted);font-weight:600}
+.badge-progress-max{margin-top:12px;display:flex;align-items:center;gap:9px;border:3px solid var(--yellow);background:linear-gradient(135deg,#1a1a1a,#3a2f00);border-radius:14px;padding:10px 14px;color:var(--yellow);font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:.3px;box-shadow:0 0 14px rgba(255,215,0,.35)}
+.badge-progress-max i{font-size:16px}
 .p-ref-box{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:14px;margin-top:10px}
 .p-ref-box-title{font-size:11px;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px}
 .p-ref-code-row{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.06);border-radius:8px;padding:8px 10px}
@@ -940,10 +954,11 @@ a{text-decoration:none;color:inherit}
 @keyframes p-hero-pulse{0%,100%{opacity:.55;transform:scale(1)}50%{opacity:1;transform:scale(1.15)}}
 .p-hero-tech .p-hero-title,.p-hero-tech .p-hero-sub{position:relative;z-index:1}
 
-.p-city-search-wrap{padding:0 16px 14px}
+.p-city-search-wrap{padding:0 16px 14px;position:relative}
+.p-city-search-wrap i{position:absolute;left:30px;top:50%;transform:translateY(-50%);color:var(--yellow);font-size:14px;pointer-events:none}
 .p-city-search-input{
   width:100%;background:var(--card);border:2px solid var(--yellow);border-radius:14px;
-  color:var(--text);font-family:inherit;font-size:13px;padding:15px 16px;outline:none;
+  color:var(--text);font-family:inherit;font-size:13px;padding:15px 16px 15px 40px;outline:none;
   box-shadow:4px 4px 0 #000, 0 0 18px rgba(255,215,0,.18);transition:box-shadow .2s;
 }
 .p-city-search-input:focus{box-shadow:4px 4px 0 #000, 0 0 28px rgba(255,215,0,.4)}
@@ -967,10 +982,11 @@ a{text-decoration:none;color:inherit}
   cursor:pointer;font-family:inherit;
 }
 .p-cat-icon-pill.on{background:var(--yellow);border-color:#000}
-.p-cat-icon-emoji{font-size:22px;line-height:1}
+.p-cat-icon-fa{font-size:20px;line-height:1;color:var(--yellow)}
 .p-cat-icon-label{font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.2px;
   color:var(--text);text-align:center;line-height:1.15}
 .p-cat-icon-pill.on .p-cat-icon-label{color:#000}
+.p-cat-icon-pill.on .p-cat-icon-fa{color:#000}
 
 /* Sous-titres de catégorie (Les plus recherchés) */
 .p-subcat-hdr{font-size:13px;font-weight:900;text-transform:uppercase;color:var(--yellow);
@@ -1728,11 +1744,11 @@ a{text-decoration:none;color:inherit}
     <div class="ns-title">Comment était votre expérience ?</div>
     <div class="ns-desc" id="rv-partner-name">Notez votre partenaire</div>
     <div class="rv-stars" id="rv-stars">
-      <button type="button" class="rv-star" data-v="1" onclick="_rvSetStars(1)">★</button>
-      <button type="button" class="rv-star" data-v="2" onclick="_rvSetStars(2)">★</button>
-      <button type="button" class="rv-star" data-v="3" onclick="_rvSetStars(3)">★</button>
-      <button type="button" class="rv-star" data-v="4" onclick="_rvSetStars(4)">★</button>
-      <button type="button" class="rv-star" data-v="5" onclick="_rvSetStars(5)">★</button>
+      <button type="button" class="rv-star" data-v="1" onclick="_rvSetStars(1)"><i class="fa-solid fa-star"></i></button>
+      <button type="button" class="rv-star" data-v="2" onclick="_rvSetStars(2)"><i class="fa-solid fa-star"></i></button>
+      <button type="button" class="rv-star" data-v="3" onclick="_rvSetStars(3)"><i class="fa-solid fa-star"></i></button>
+      <button type="button" class="rv-star" data-v="4" onclick="_rvSetStars(4)"><i class="fa-solid fa-star"></i></button>
+      <button type="button" class="rv-star" data-v="5" onclick="_rvSetStars(5)"><i class="fa-solid fa-star"></i></button>
     </div>
     <textarea class="rv-comment" id="rv-comment" placeholder="Un commentaire (facultatif)..."></textarea>
     <div class="rv-error" id="rv-error">Merci de sélectionner une note.</div>
@@ -1865,7 +1881,8 @@ a{text-decoration:none;color:inherit}
         <div class="p-hero-sub">Offres, prestataires et événements : tout ce qu'il faut pour votre projet.</div>
       </div>
       <div class="p-city-search-wrap">
-        <input type="text" id="p-exp-city-search" class="p-city-search-input" placeholder="📍 Chercher par ville (Paris, Lyon, Marseille…)" oninput="_expCityDebounced()">
+        <i class="fa-solid fa-location-dot"></i>
+        <input type="text" id="p-exp-city-search" class="p-city-search-input" placeholder="Chercher par ville (Paris, Lyon, Marseille…)" oninput="_expCityDebounced()">
       </div>
       <div class="p-hero-search" style="padding:0 16px 14px;margin:0;">
         <input type="text" id="p-exp-search" placeholder="Rechercher un établissement, une offre..." oninput="_expSearchDebounced()">
@@ -1877,8 +1894,8 @@ a{text-decoration:none;color:inherit}
       <div class="p-popular-label">RECHERCHES POPULAIRES</div>
       <div class="p-popular-row" id="p-exp-popular-row"></div>
       <div class="p-explore-tabs">
-        <button class="p-explore-tab on" id="p-exp-toggle-offres" onclick="setExpToggle('offres',this)"><span class="p-explore-tab-icon">🛍️</span>OFFRES</button>
-        <button class="p-explore-tab" id="p-exp-toggle-events" onclick="setExpToggle('evenements',this)"><span class="p-explore-tab-icon">🎉</span>ÉVÉNEMENTS</button>
+        <button class="p-explore-tab on" id="p-exp-toggle-offres" onclick="setExpToggle('offres',this)"><i class="fa-solid fa-bag-shopping p-explore-tab-icon"></i>OFFRES</button>
+        <button class="p-explore-tab" id="p-exp-toggle-events" onclick="setExpToggle('evenements',this)"><i class="fa-solid fa-champagne-glasses p-explore-tab-icon"></i>ÉVÉNEMENTS</button>
       </div>
       <div class="p-exp-panel on" id="p-exp-offres-panel">
         <div class="p-cat-icon-strip" id="p-exp-cat-icons"></div>
@@ -2735,7 +2752,7 @@ function renderExplorerReco(){
 }
 function _renderRecoRow(wrap, cardsHtml){
   wrap.innerHTML = cardsHtml.length
-    ? '<div class="p-section-hdr black p-section-hdr-fit" style="margin:16px 16px 12px;">★ RECOMMANDÉ POUR VOUS</div>'
+    ? '<div class="p-section-hdr black p-section-hdr-fit" style="margin:16px 16px 12px;"><i class="fa-solid fa-star" style="color:var(--yellow)"></i> RECOMMANDÉ POUR VOUS</div>'
       +'<div class="p-reco-row" id="p-exp-reco-row">'+cardsHtml.join('')+'</div>'
     : '';
 }
@@ -2752,7 +2769,7 @@ function expRecoCard(it, idx){
     : it.kind==='cw' ? 'openDetailCW(\''+(_prestSub||'particulier')+'\','+it.idx+')'
     : 'openDetailVis(\''+(it.vtype||'media')+'\','+it.idx+')';
   var photoStyle = o.gradient ? ' style="background:linear-gradient('+o.gradient+')"' : (o.bg ? ' style="background:'+o.bg+'"' : '');
-  var photoInner = o.img ? '<img src="'+o.img+'" alt="">' : '<div class="p-reco-initials">'+((o.name||'★')[0])+'</div>';
+  var photoInner = o.img ? '<img src="'+o.img+'" alt="">' : '<div class="p-reco-initials">'+(o.name ? o.name[0] : '<i class="fa-solid fa-star"></i>')+'</div>';
   var tag = idx===0 ? '<div class="p-reco-tag">Populaire</div>' : '';
   return '<div class="p-reco-card" onclick="'+clickAction+'">'
     +tag
@@ -2767,7 +2784,7 @@ function recoPartnerCard(p, idx, tagOverride){
   var label = PARTNER_TYPE_LABELS_DIR[p.partner_type] || p.partner_type;
   var initials = (((p.prenom||'')[0]||'')+((p.nom||'')[0]||'')).toUpperCase();
   var avatarHtml = p.photo ? '<img src="'+p.photo+'" alt="">' : '<div class="p-reco-initials">'+initials+'</div>';
-  var starsLabel = (p.rating && p.rating.count) ? ('★ '+p.rating.average+' ('+p.rating.count+')') : 'Nouveau';
+  var starsLabel = (p.rating && p.rating.count) ? ('<i class="fa-solid fa-star" style="color:var(--yellow)"></i> '+p.rating.average+' ('+p.rating.count+')') : 'Nouveau';
   var tag = tagOverride ? '<div class="p-reco-tag">'+tagOverride+'</div>' : (idx===0 ? '<div class="p-reco-tag">Top</div>' : '');
   var badgeHtml = tierBadgeHtml(p.badge);
   return '<div class="p-reco-card" onclick="openPartnerDetail(\''+p.id+'\')">'
@@ -2777,7 +2794,7 @@ function recoPartnerCard(p, idx, tagOverride){
     +'<div class="p-reco-body">'
     +'<div class="p-reco-name">'+(p.prenom||'')+' '+(p.nom||'')+(badgeHtml?' '+badgeHtml:'')+'</div>'
     +'<div class="p-reco-cat">'+label+'</div>'
-    +(p.city?'<div class="p-reco-city">📍 '+p.city+'</div>':'')
+    +(p.city?'<div class="p-reco-city"><i class="fa-solid fa-location-dot"></i> '+p.city+'</div>':'')
     +'<div class="p-reco-stars">'+starsLabel+'</div>'
     +'<button class="p-reco-viewbtn" onclick="event.stopPropagation();openPartnerDetail(\''+p.id+'\')">Voir le profil</button>'
     +'</div></div>';
@@ -2786,16 +2803,16 @@ function hofPremiumCard(p, idx){
   var label = PARTNER_TYPE_LABELS_DIR[p.partner_type] || p.partner_type;
   var initials = (((p.prenom||'')[0]||'')+((p.nom||'')[0]||'')).toUpperCase();
   var avatarHtml = p.photo ? '<img src="'+p.photo+'" alt="">' : '<div class="p-reco-initials">'+initials+'</div>';
-  var starsLabel = (p.rating && p.rating.count) ? ('★ '+p.rating.average+' ('+p.rating.count+')') : 'Nouveau';
+  var starsLabel = (p.rating && p.rating.count) ? ('<i class="fa-solid fa-star" style="color:var(--yellow)"></i> '+p.rating.average+' ('+p.rating.count+')') : 'Nouveau';
   var badgeHtml = tierBadgeHtml(p.badge);
   return '<div class="p-hof-card" onclick="openPartnerDetail(\''+p.id+'\')">'
-    +'<div class="p-hof-ribbon">🏆 N°'+(idx+1)+'</div>'
+    +'<div class="p-hof-ribbon"><i class="fa-solid fa-trophy"></i> N°'+(idx+1)+'</div>'
     +favHeartHtml(p.id)
     +'<div class="p-reco-photo">'+avatarHtml+'</div>'
     +'<div class="p-reco-body">'
     +'<div class="p-reco-name">'+(p.prenom||'')+' '+(p.nom||'')+(badgeHtml?' '+badgeHtml:'')+'</div>'
     +'<div class="p-reco-cat">'+label+'</div>'
-    +(p.city?'<div class="p-reco-city">📍 '+p.city+'</div>':'')
+    +(p.city?'<div class="p-reco-city"><i class="fa-solid fa-location-dot"></i> '+p.city+'</div>':'')
     +'<div class="p-reco-stars">'+starsLabel+'</div>'
     +'<button class="p-reco-viewbtn" onclick="event.stopPropagation();openPartnerDetail(\''+p.id+'\')">Voir le profil</button>'
     +'</div></div>';
@@ -2804,7 +2821,7 @@ function bigCategoryCard(p, idx){
   var label = PARTNER_TYPE_LABELS_DIR[p.partner_type] || p.partner_type;
   var initials = (((p.prenom||'')[0]||'')+((p.nom||'')[0]||'')).toUpperCase();
   var avatarHtml = p.photo ? '<img src="'+p.photo+'" alt="">' : '<div class="p-reco-initials">'+initials+'</div>';
-  var starsLabel = (p.rating && p.rating.count) ? ('★ '+p.rating.average+' ('+p.rating.count+')') : 'Nouveau';
+  var starsLabel = (p.rating && p.rating.count) ? ('<i class="fa-solid fa-star" style="color:var(--yellow)"></i> '+p.rating.average+' ('+p.rating.count+')') : 'Nouveau';
   var badgeHtml = tierBadgeHtml(p.badge);
   return '<div class="p-big-card" onclick="openPartnerDetail(\''+p.id+'\')">'
     +favHeartHtml(p.id)
@@ -2819,18 +2836,18 @@ function bigCategoryCard(p, idx){
 
 // ── PRESTATAIRES (annuaire marketplace, onglet dédié "Explorer") ───────────
 var DIR_CATEGORY_ICONS_ORDER = [
-  {id:null, icon:'🔎', label:'Tous'},
-  {id:'videographer', icon:'🎥', label:'Vidéastes'},
-  {id:'photographer', icon:'📸', label:'Photographes'},
-  {id:'marketer', icon:'📈', label:'Marketeurs'},
-  {id:'graphiste', icon:'🎨', label:'Graphistes'},
-  {id:'community_manager', icon:'📱', label:'Community Managers'},
-  {id:'media', icon:'📰', label:'Médias'},
-  {id:'developpeur_web', icon:'💻', label:'Développeurs Web'},
-  {id:'pilote_drone', icon:'🚁', label:'Pilotes Drone'},
-  {id:'coworking', icon:'🏢', label:'Espaces Coworking'},
-  {id:'animateur_evenementiel', icon:'🎤', label:'Animateurs / Événementiel'},
-  {id:'consultant', icon:'💡', label:'Consultants'}
+  {id:null, icon:'fa-magnifying-glass', label:'Tous'},
+  {id:'videographer', icon:'fa-video', label:'Vidéastes'},
+  {id:'photographer', icon:'fa-camera', label:'Photographes'},
+  {id:'marketer', icon:'fa-chart-line', label:'Marketeurs'},
+  {id:'graphiste', icon:'fa-palette', label:'Graphistes'},
+  {id:'community_manager', icon:'fa-mobile-screen', label:'Community Managers'},
+  {id:'media', icon:'fa-newspaper', label:'Médias'},
+  {id:'developpeur_web', icon:'fa-laptop-code', label:'Développeurs Web'},
+  {id:'pilote_drone', icon:'fa-helicopter', label:'Pilotes Drone'},
+  {id:'coworking', icon:'fa-building', label:'Espaces Coworking'},
+  {id:'animateur_evenementiel', icon:'fa-microphone', label:'Animateurs / Événementiel'},
+  {id:'consultant', icon:'fa-lightbulb', label:'Consultants'}
 ];
 var POPULAR_SEARCHES = ['Vidéaste','Photographe','Mariage','Coworking','Drone','Graphiste','Community Manager','Site web'];
 // ── EXPLORER — HUB DE DÉCOUVERTE ────────────────────────────────
@@ -2848,7 +2865,7 @@ function renderExplorer(){
   if(catIcons){
     catIcons.innerHTML = DIR_CATEGORY_ICONS_ORDER.map(function(c,i){
       return '<button class="p-cat-icon-pill'+(i===0?' on':'')+'" onclick="setExpCategory('+(c.id?'\''+c.id+'\'':'null')+',this)">'
-        +'<span class="p-cat-icon-emoji">'+c.icon+'</span><span class="p-cat-icon-label">'+c.label+'</span></button>';
+        +'<i class="fa-solid '+c.icon+' p-cat-icon-fa"></i><span class="p-cat-icon-label">'+c.label+'</span></button>';
     }).join('');
   }
   loadFeaturedPartners();
@@ -2979,7 +2996,7 @@ function renderPrestataires(){
   html += '<div class="p-cat-icon-strip" id="p-rank-cat-icons">'
     +DIR_CATEGORY_ICONS_ORDER.map(function(c,i){
       return '<button class="p-cat-icon-pill'+(i===0?' on':'')+'" onclick="setRankCategory('+(c.id?'\''+c.id+'\'':'null')+',this)">'
-        +'<span class="p-cat-icon-emoji">'+c.icon+'</span><span class="p-cat-icon-label">'+c.label+'</span></button>';
+        +'<i class="fa-solid '+c.icon+' p-cat-icon-fa"></i><span class="p-cat-icon-label">'+c.label+'</span></button>';
     }).join('')
     +'</div>';
   html += '<div class="p-dir-controls">'
@@ -3040,8 +3057,9 @@ function loadRankedDirectory(){
     .catch(function(){ results.innerHTML = '<div class="p-dir-empty">Erreur de chargement. Réessayez.</div>'; });
 }
 function rankedDirectoryCard(p){
-  var medal = p.rank===1?'🥇':p.rank===2?'🥈':p.rank===3?'🥉':'';
-  if(!medal) return directoryCard(p);
+  var medalColor = p.rank===1?'#FFD700':p.rank===2?'#c7c7c7':p.rank===3?'#cd7f32':'';
+  if(!medalColor) return directoryCard(p);
+  var medal = '<i class="fa-solid fa-medal" style="color:'+medalColor+'"></i>';
   return '<div class="p-rank-card-wrap"><span class="p-rank-medal">'+medal+'</span>'+directoryCard(p)+'</div>';
 }
 
@@ -3058,14 +3076,14 @@ function eventDateLabel(iso){
 function eventCard(ev){
   _eventsCache[ev.id] = ev;
   var typeLabel = EVENT_TYPE_LABELS_DIR[ev.type] || ev.type;
-  var photoHtml = ev.image ? '<img src="'+ev.image+'" alt="">' : '🎉';
+  var photoHtml = ev.image ? '<img src="'+ev.image+'" alt="">' : '<i class="fa-solid fa-champagne-glasses"></i>';
   return '<div class="p-event-card" onclick="openEventDetail(\''+ev.id+'\')">'
     +'<div class="p-event-tag">'+typeLabel+'</div>'
     +'<div class="p-event-photo">'+photoHtml+'</div>'
     +'<div class="p-event-body">'
     +'<div class="p-event-date">'+eventDateLabel(ev.date)+'</div>'
     +'<div class="p-event-title">'+(ev.title||'')+'</div>'
-    +(ev.location?'<div class="p-event-loc">📍 '+ev.location+'</div>':'')
+    +(ev.location?'<div class="p-event-loc"><i class="fa-solid fa-location-dot"></i> '+ev.location+'</div>':'')
     +'</div></div>';
 }
 function loadEventsExplorer(){
@@ -3075,7 +3093,7 @@ function loadEventsExplorer(){
     var events = (data && data.events) || [];
     wrap.className = events.length ? 'p-fade-in' : '';
     wrap.innerHTML = events.length
-      ? '<div class="p-section-hdr black p-section-hdr-fit" style="margin:16px 16px 12px;">🎉 ÉVÉNEMENTS FA GENESIS</div>'
+      ? '<div class="p-section-hdr black p-section-hdr-fit" style="margin:16px 16px 12px;"><i class="fa-solid fa-champagne-glasses" style="color:var(--yellow)"></i> ÉVÉNEMENTS FA GENESIS</div>'
         +'<div class="p-reco-row">'+events.map(eventCard).join('')+'</div>'
       : '';
   }).catch(function(){ wrap.innerHTML=''; });
@@ -3091,7 +3109,7 @@ function openEventDetail(eventId){
     +'<div class="detail-name">'+(ev.title||'')+'</div>'
     +'<div class="detail-sub">'+typeLabel+'</div>'
     +'<div class="detail-price">'+eventDateLabel(ev.date)+'</div>'
-    +(ev.location?'<div class="detail-payment">📍 '+ev.location+'</div>':'')
+    +(ev.location?'<div class="detail-payment"><i class="fa-solid fa-location-dot"></i> '+ev.location+'</div>':'')
     +(ev.description?'<div class="p-dir-detail-bio">'+ev.description+'</div>':'')
     +ctaHtml
     +'<button class="detail-close-btn" onclick="closeDetail()">Fermer</button>';
@@ -3106,7 +3124,7 @@ function loadNewTalents(category){
     var partners = (data && data.partners) || [];
     wrap.className = partners.length ? 'p-fade-in' : '';
     wrap.innerHTML = partners.length
-      ? '<div class="p-section-hdr black p-section-hdr-fit" style="margin:16px 16px 12px;">✨ NOUVEAUX TALENTS</div>'
+      ? '<div class="p-section-hdr black p-section-hdr-fit" style="margin:16px 16px 12px;"><i class="fa-solid fa-wand-magic-sparkles" style="color:var(--yellow)"></i> NOUVEAUX TALENTS</div>'
         +'<div class="p-reco-row">'+partners.map(function(p,i){return recoPartnerCard(p,i,'Nouveau');}).join('')+'</div>'
       : '';
   }).catch(function(){ wrap.innerHTML=''; });
@@ -3123,7 +3141,7 @@ function loadPersonalizedRecommendations(){
     var partners = (data && data.partners) || [];
     wrap.className = partners.length ? 'p-fade-in' : '';
     wrap.innerHTML = partners.length
-      ? '<div class="p-section-hdr black p-section-hdr-fit" style="margin:16px 16px 12px;">💡 RECOMMANDÉS POUR VOUS</div>'
+      ? '<div class="p-section-hdr black p-section-hdr-fit" style="margin:16px 16px 12px;"><i class="fa-solid fa-lightbulb" style="color:var(--yellow)"></i> RECOMMANDÉS POUR VOUS</div>'
         +'<div class="p-reco-row">'+partners.map(function(p,i){return recoPartnerCard(p,i);}).join('')+'</div>'
       : '';
   }).catch(function(){ wrap.innerHTML=''; });
@@ -3138,7 +3156,7 @@ function loadFavoritesInExplorer(){
     var partners = (data && data.partners) || [];
     wrap.className = partners.length ? 'p-fade-in' : '';
     wrap.innerHTML = partners.length
-      ? '<div class="p-section-hdr black p-section-hdr-fit" style="margin:16px 16px 12px;">❤️ VOS FAVORIS</div>'
+      ? '<div class="p-section-hdr black p-section-hdr-fit" style="margin:16px 16px 12px;"><i class="fa-solid fa-heart" style="color:var(--pink)"></i> VOS FAVORIS</div>'
         +'<div class="p-reco-row">'+partners.map(function(p,i){return recoPartnerCard(p,i);}).join('')+'</div>'
         +'<div style="padding:0 16px 8px;"><button class="p-reco-viewbtn" style="width:auto;padding:8px 16px;" onclick="showFavoris()">Voir tout</button></div>'
       : '';
@@ -3155,7 +3173,7 @@ function loadFeaturedPartners(category){
     var partners = (data && data.partners) || [];
     wrap.className = partners.length ? 'p-fade-in' : '';
     wrap.innerHTML = partners.length
-      ? '<div class="p-section-hdr black p-section-hdr-fit" style="margin:16px 16px 12px;">⭐ PROFESSIONNELS À LA UNE</div>'
+      ? '<div class="p-section-hdr black p-section-hdr-fit" style="margin:16px 16px 12px;"><i class="fa-solid fa-star" style="color:var(--yellow)"></i> PROFESSIONNELS À LA UNE</div>'
         +'<div class="p-reco-row">'+partners.map(function(p,i){return recoPartnerCard(p,i);}).join('')+'</div>'
       : '';
   }).catch(function(){ wrap.innerHTML=''; });
@@ -3186,7 +3204,7 @@ function loadTopCategories(){
       if(pending===0){
         var html = blocks.join('');
         wrap.className = html ? 'p-fade-in' : '';
-        wrap.innerHTML = html ? '<div class="p-section-hdr black p-section-hdr-fit" style="margin:16px 16px 12px;">🔥 LES PLUS RECHERCHÉS</div>'+html : '';
+        wrap.innerHTML = html ? '<div class="p-section-hdr black p-section-hdr-fit" style="margin:16px 16px 12px;"><i class="fa-solid fa-fire" style="color:var(--yellow)"></i> LES PLUS RECHERCHÉS</div>'+html : '';
       }
     });
   });
@@ -3205,16 +3223,16 @@ function loadHallOfFame(){
   fetch(API+'/api/hall-of-fame').then(function(r){return r.json();}).then(function(data){
     var hof = data && data.hallOfFame;
     if(!hof || (!((hof.bestPartners||[]).length) && !hof.bestClient && !hof.bestReferrer)){ wrap.innerHTML=''; return; }
-    var html = '<div class="p-section-hdr black p-section-hdr-fit" style="margin:16px 16px 12px;">🏆 HALL OF FAME — '+hofMonthLabel(hof.month).toUpperCase()+'</div>';
+    var html = '<div class="p-section-hdr black p-section-hdr-fit" style="margin:16px 16px 12px;"><i class="fa-solid fa-trophy" style="color:var(--yellow)"></i> HALL OF FAME — '+hofMonthLabel(hof.month).toUpperCase()+'</div>';
     if((hof.bestPartners||[]).length){
       html += '<div class="p-reco-row">'+hof.bestPartners.map(function(p,i){return hofPremiumCard(p,i);}).join('')+'</div>';
     }
     var highlights = '';
     if(hof.bestClient){
-      highlights += '<div class="p-ref-box"><div class="p-ref-box-title">🥇 Meilleur client du mois</div><div class="p-ref-count">'+hof.bestClient.name+' · '+hof.bestClient.count+' commande'+(hof.bestClient.count>1?'s':'')+'</div></div>';
+      highlights += '<div class="p-ref-box"><div class="p-ref-box-title"><i class="fa-solid fa-medal" style="color:#FFD700"></i> Meilleur client du mois</div><div class="p-ref-count">'+hof.bestClient.name+' · '+hof.bestClient.count+' commande'+(hof.bestClient.count>1?'s':'')+'</div></div>';
     }
     if(hof.bestReferrer){
-      highlights += '<div class="p-ref-box"><div class="p-ref-box-title">🤝 Meilleur parrain du mois</div><div class="p-ref-count">'+hof.bestReferrer.name+' ('+(hof.bestReferrer.type==='partenaire'?'partenaire':'client')+') · '+hof.bestReferrer.count+' parrainage'+(hof.bestReferrer.count>1?'s':'')+' validé'+(hof.bestReferrer.count>1?'s':'')+'</div></div>';
+      highlights += '<div class="p-ref-box"><div class="p-ref-box-title"><i class="fa-solid fa-handshake" style="color:var(--yellow)"></i> Meilleur parrain du mois</div><div class="p-ref-count">'+hof.bestReferrer.name+' ('+(hof.bestReferrer.type==='partenaire'?'partenaire':'client')+') · '+hof.bestReferrer.count+' parrainage'+(hof.bestReferrer.count>1?'s':'')+' validé'+(hof.bestReferrer.count>1?'s':'')+'</div></div>';
     }
     if(highlights){
       html += '<div style="display:flex;flex-direction:column;gap:8px;margin:0 16px 8px;">'+highlights+'</div>';
@@ -3354,12 +3372,11 @@ function setPrestVisFilter(type,el){
 }
 // ── ANNUAIRE PARTENAIRES ────────────────────────────────────────
 var PARTNER_TYPE_LABELS_DIR = {photographer:'Photographe', videographer:'Vidéaste', marketer:'Marketeur', media:'Médias', community_manager:'Community Manager', graphiste:'Graphiste', developpeur_web:'Développeur Web', pilote_drone:'Pilote Drone', consultant:'Consultant', coworking:'Espace Coworking', animateur_evenementiel:'Animateur / Événementiel'};
-var PARTNER_TYPE_ICONS_DIR = {videographer:'🎥', photographer:'📸', marketer:'📈', graphiste:'🎨', community_manager:'📱', media:'📰', developpeur_web:'💻', pilote_drone:'🚁', coworking:'🏢', animateur_evenementiel:'🎤', consultant:'💡'};
 
 function directoryCard(p){
   var label = PARTNER_TYPE_LABELS_DIR[p.partner_type] || p.partner_type;
   var priceLabel = (p.fromPrice===null||p.fromPrice===undefined) ? 'Sur devis' : ('à partir de '+p.fromPrice+' €');
-  var starsLabel = (p.rating && p.rating.count) ? ('★ '+p.rating.average+' ('+p.rating.count+' avis)') : 'Aucun avis';
+  var starsLabel = (p.rating && p.rating.count) ? ('<i class="fa-solid fa-star" style="color:var(--yellow)"></i> '+p.rating.average+' ('+p.rating.count+' avis)') : 'Aucun avis';
   var initials = (((p.prenom||'')[0]||'')+((p.nom||'')[0]||'')).toUpperCase();
   var avatarHtml = p.photo
     ? '<img src="'+p.photo+'" alt="'+(p.prenom||'')+'">'
@@ -3389,7 +3406,7 @@ function openPartnerDetail(partnerId){
       _dirPartnerCache[p.id] = p;
       var label = PARTNER_TYPE_LABELS_DIR[p.partner_type] || p.partner_type;
       var priceLabel = (p.fromPrice===null||p.fromPrice===undefined) ? 'Sur devis' : ('à partir de '+p.fromPrice+' €');
-      var starsLabel = (p.rating && p.rating.count) ? ('★ '+p.rating.average+' ('+p.rating.count+' avis)') : 'Aucun avis pour le moment';
+      var starsLabel = (p.rating && p.rating.count) ? ('<i class="fa-solid fa-star" style="color:var(--yellow)"></i> '+p.rating.average+' ('+p.rating.count+' avis)') : 'Aucun avis pour le moment';
       var verifiedHtml = p.verified ? '<span class="p-dir-card-verified">✓ Vérifié</span>' : '';
       var badgeHtml = tierBadgeHtml(p.badge);
       var cityHtml = p.city ? '<div class="p-dir-detail-city"><i class="fas fa-location-dot"></i> '+p.city+'</div>' : '';
@@ -3422,7 +3439,7 @@ function openPartnerDetail(partnerId){
           }).join('')
         : '<div class="p-dir-review-empty">Ce partenaire n\'a pas encore publié de prestations.</div>';
       var reviewsHtml = (data.reviews||[]).map(function(r){
-        return '<li><div class="p-dir-review-top"><span>'+'★'.repeat(r.rating||0)+'</span><span class="p-dir-review-name">'+r.userName+'</span></div>'
+        return '<li><div class="p-dir-review-top"><span style="color:var(--yellow)">'+'<i class="fa-solid fa-star"></i>'.repeat(r.rating||0)+'</span><span class="p-dir-review-name">'+r.userName+'</span></div>'
           +(r.comment?'<p class="p-dir-review-comment">'+r.comment+'</p>':'')+'</li>';
       }).join('') || '<li class="p-dir-review-empty">Aucun avis publié pour le moment.</li>';
       document.getElementById('detail-content').innerHTML = ''
@@ -3563,9 +3580,53 @@ function tierBadgeHtml(tier, extraClass){
   if(!meta) return '';
   return '<span class="tier-badge '+meta.cls+(extraClass?' '+extraClass:'')+'">'+meta.label+'</span>';
 }
+function badgeProgressHtml(progress){
+  if(!progress) return '';
+  if(!progress.nextBadge){
+    return '<div class="badge-progress badge-progress-max">'
+      +'<i class="fa-solid fa-crown"></i>'
+      +'<span>Palier maximum atteint'+(progress.currentBadge?' — '+(tierBadgeMeta(progress.currentBadge)||{}).label:'')+'</span>'
+      +'</div>';
+  }
+  var curMeta = tierBadgeMeta(progress.currentBadge) || {label:'—'};
+  var nextMeta = tierBadgeMeta(progress.nextBadge) || {label:'—'};
+  var pct = Math.max(0, Math.min(100, progress.percent||0));
+  return '<div class="badge-progress">'
+    +'<div class="badge-progress-labels">'
+    +'<span class="badge-progress-cur"><i class="fa-solid fa-medal"></i> '+curMeta.label+'</span>'
+    +'<i class="fa-solid fa-chevron-right badge-progress-arrow"></i>'
+    +'<span class="badge-progress-next">'+nextMeta.label+' <i class="fa-solid fa-lock"></i></span>'
+    +'</div>'
+    +'<div class="badge-progress-track"><div class="badge-progress-fill" style="width:'+pct+'%"></div></div>'
+    +'<div class="badge-progress-text">'+(progress.current!=null?progress.current:0)+'/'+(progress.target!=null?progress.target:0)+' commandes pour le palier '+nextMeta.label+' ('+pct+'%)</div>'
+    +'</div>';
+}
+function partnerBadgeProgressHtml(progress){
+  if(!progress) return '';
+  if(!progress.nextBadge){
+    return '<div class="badge-progress badge-progress-max">'
+      +'<i class="fa-solid fa-crown"></i>'
+      +'<span>Palier maximum atteint'+(progress.currentBadge?' — '+(tierBadgeMeta(progress.currentBadge)||{}).label:'')+'</span>'
+      +'</div>';
+  }
+  var curMeta = tierBadgeMeta(progress.currentBadge) || {label:'Pas encore de badge'};
+  var nextMeta = tierBadgeMeta(progress.nextBadge) || {label:'—'};
+  var pct = Math.max(0, Math.min(100, progress.percent||0));
+  var missionsPct = Math.max(0, Math.min(100, progress.missionsTarget?Math.round(progress.missionsCurrent/progress.missionsTarget*100):100));
+  var ratingPct = Math.max(0, Math.min(100, progress.ratingTarget?Math.round(progress.ratingCurrent/progress.ratingTarget*100):100));
+  return '<div class="badge-progress">'
+    +'<div class="badge-progress-labels">'
+    +'<span class="badge-progress-cur"><i class="fa-solid fa-medal"></i> '+curMeta.label+'</span>'
+    +'<i class="fa-solid fa-chevron-right badge-progress-arrow"></i>'
+    +'<span class="badge-progress-next">'+nextMeta.label+' <i class="fa-solid fa-lock"></i></span>'
+    +'</div>'
+    +'<div class="badge-progress-track"><div class="badge-progress-fill" style="width:'+pct+'%"></div></div>'
+    +'<div class="badge-progress-text"><i class="fa-solid fa-briefcase mr-1"></i> '+(progress.missionsCurrent||0)+'/'+(progress.missionsTarget||0)+' missions ('+missionsPct+'%) &nbsp;·&nbsp; <i class="fa-solid fa-star mr-1"></i> '+(Number(progress.ratingCurrent)||0).toFixed(1)+'/'+(progress.ratingTarget||0)+' note ('+ratingPct+'%)</div>'
+    +'</div>';
+}
 function favHeartHtml(partnerId){
   var isFav = !!(USER && USER.favoris && USER.favoris.indexOf(partnerId)!==-1);
-  return '<span class="p-fav-heart'+(isFav?' on':'')+'" data-fav-id="'+partnerId+'" onclick="event.stopPropagation();toggleFavorite(\''+partnerId+'\')">'+(isFav?'♥':'♡')+'</span>';
+  return '<span class="p-fav-heart'+(isFav?' on':'')+'" data-fav-id="'+partnerId+'" onclick="event.stopPropagation();toggleFavorite(\''+partnerId+'\')">'+(isFav?'<i class="fa-solid fa-heart"></i>':'<i class="fa-regular fa-heart"></i>')+'</span>';
 }
 function toggleFavorite(partnerId){
   if(!USER || GUEST){ if(typeof goLogin==='function') goLogin(); return; }
@@ -3575,7 +3636,7 @@ function toggleFavorite(partnerId){
   if(wasFav) USER.favoris.splice(pos,1); else USER.favoris.push(partnerId);
   try{ localStorage.setItem('fa_genesis_session', JSON.stringify(USER)); }catch(e){}
   document.querySelectorAll('[data-fav-id="'+partnerId+'"]').forEach(function(el){
-    el.textContent = wasFav ? '♡' : '♥';
+    el.innerHTML = wasFav ? '<i class="fa-regular fa-heart"></i>' : '<i class="fa-solid fa-heart"></i>';
     el.classList.toggle('on', !wasFav);
   });
   fetch(API+'/api/users/favorites/'+encodeURIComponent(partnerId)+'/toggle', {
@@ -3656,6 +3717,7 @@ function renderProfil(){
       +'<div class="client-tier-badge">'+(USER.badge?tierBadgeHtml(USER.badge):'')+(USER.isCerclePrivilege?tierBadgeHtml('cercle_privilege'):'')+'</div>'
       +'</div>'
       +'</div>'
+      +badgeProgressHtml(USER.badgeProgress)
       +referralBoxHtml()
       +'</div>';
   }
@@ -3902,6 +3964,7 @@ function _syncUserBadge(){
     .then(function(d){
       if(!d || !d.success) return;
       USER.badge = d.badge;
+      USER.badgeProgress = d.badgeProgress;
       USER.completedOrders = d.completedOrders;
       USER.isClientFidele = d.isClientFidele;
       USER.favoris = d.favoris || [];
@@ -7280,7 +7343,7 @@ function _ptnrLoadMissions(){
       pendingItems.forEach(function(d){
         html += '<div class="dispatch-card new-card" id="dispatch-'+d.id+'" style="border-color:#FFD700;">';
         html += '<div class="dispatch-badge" style="background:#FFD700;color:#000;"><span class="dispatch-badge-dot" style="background:#000;"></span>Acompte reçu — en attente</div>';
-        html += '<div class="dispatch-title">'+d.client_prenom+' — '+(d.offer_name||'Mission')+(d.priority>0?'<span class="p-priority-tag">⭐ Prioritaire</span>':'')+'</div>';
+        html += '<div class="dispatch-title">'+d.client_prenom+' — '+(d.offer_name||'Mission')+(d.priority>0?'<span class="p-priority-tag"><i class="fa-solid fa-star"></i> Prioritaire</span>':'')+'</div>';
         html += '<div class="dispatch-meta">Reçue le '+_ptnrFmt(d.created_at)+'</div>';
         html += _ptnrRenderGainBloc(d);
         html += '<div style="display:flex;gap:10px;margin-top:14px;">';
@@ -7310,7 +7373,7 @@ function _ptnrLoadMissions(){
         var notes = avail && avail.notes ? avail.notes : '';
         html += '<div class="dispatch-card new-card" id="dispatch-'+d.id+'">';
         html += '<div class="dispatch-badge"><span class="dispatch-badge-dot"></span>Mission disponible</div>';
-        html += '<div class="dispatch-title">'+d.client_prenom+' — '+(d.offer_name||'Offre')+(d.priority>0?'<span class="p-priority-tag">⭐ Prioritaire</span>':'')+'</div>';
+        html += '<div class="dispatch-title">'+d.client_prenom+' — '+(d.offer_name||'Offre')+(d.priority>0?'<span class="p-priority-tag"><i class="fa-solid fa-star"></i> Prioritaire</span>':'')+'</div>';
         html += '<div class="dispatch-meta">Reçue le '+_ptnrFmt(d.created_at)+'</div>';
         html += _ptnrRenderGainBloc(d);
         html += '<div class="dispatch-avail">';
@@ -7605,7 +7668,8 @@ function _ptnrLoadReputation(){
 
     var html = '<div style="text-align:center;padding:20px 0 16px;">'
       + (tierBadgeHtml(badge) || '<span style="font-size:12px;color:#666;">Pas encore de badge</span>')
-      + '<div style="font-size:13px;color:#999;margin-top:10px;">'+rating.average.toFixed(1)+' ★ ('+rating.count+' avis)</div>'
+      + '<div style="font-size:13px;color:#999;margin-top:10px;">'+rating.average.toFixed(1)+' <i class="fa-solid fa-star" style="color:var(--yellow)"></i> ('+rating.count+' avis)</div>'
+      + partnerBadgeProgressHtml(data.badgeProgress)
       + '</div>';
 
     html += '<div class="ptnr-stat-row">'
@@ -7663,7 +7727,7 @@ function haptic(p){try{if(navigator.vibrate)navigator.vibrate(p||10);}catch(e){}
 function showToast(title,sub,type){
   var stack=document.getElementById('toast-stack'); if(!stack) return;
   type=type||'info';
-  var ico={success:'✓',error:'✕',info:'★'}[type]||'●';
+  var ico={success:'<i class="fa-solid fa-circle-check"></i>',error:'<i class="fa-solid fa-circle-xmark"></i>',info:'<i class="fa-solid fa-circle-info"></i>'}[type]||'<i class="fa-solid fa-bell"></i>';
   var el=document.createElement('div');
   el.className='toast-item';
   el.innerHTML='<div class="toast-ico toast-ico-'+type+'">'+ico+'</div>'
