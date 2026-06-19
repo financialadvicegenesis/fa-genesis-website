@@ -5266,6 +5266,8 @@ app.get('/api/auth/me', (req, res) => {
             pendingReviewPrompts: pendingReviewPrompts,
             badge: clientBadge,
             badgeProgress: getClientBadgeProgress(completedOrders),
+            genesisPoints: getClientGenesisPoints(user, completedOrders),
+            genesisLevel: getGenesisLevel(clientBadge),
             completedOrders: completedOrders,
             isClientFidele: completedOrders >= 5,
             favoris: user.favoris || [],
@@ -7837,6 +7839,79 @@ function maybeComputeHallOfFame() {
 setInterval(maybeComputeHallOfFame, 3600000);
 maybeComputeHallOfFame();
 
+// ============================================================
+// QUOTIENT GENESIS (QG) — Systeme de Fidelisation Genesis, Phase 1
+// Le QG est l'equivalent visible des "points de contribution" du cahier
+// des charges : pas de ledger stocke (les chemins de paiement balance_paid
+// sont multiples et non idempotents — un ledger evenementiel risquerait un
+// double comptage). Le QG est donc calcule a la volee a partir des memes
+// compteurs deja utilises par les badges (missions, avis, parrainages,
+// presence aux evenements), exactement comme getPartnerCategoryScore().
+// ============================================================
+const GENESIS_POINT_VALUES = {
+    prestationRealisee: 20,
+    reservationEffectuee: 20,
+    avisCinqEtoiles: 30,
+    workshop: 50,
+    evenement: 75,
+    parrainage: 100
+};
+
+function getEventAttendancePoints(personId) {
+    if (!personId) return 0;
+    var events = loadEvents();
+    var total = 0;
+    events.forEach(function(ev) {
+        (ev.attendees || []).forEach(function(a) {
+            if (a.id === personId && a.attended === true) {
+                total += ev.type === 'workshop' ? GENESIS_POINT_VALUES.workshop : GENESIS_POINT_VALUES.evenement;
+            }
+        });
+    });
+    return total;
+}
+
+function getPartnerGenesisPoints(partner, missionsCompleted) {
+    if (!partner) return 0;
+    var missions = typeof missionsCompleted === 'number' ? missionsCompleted : getPartnerMissionsCompleted(partner.id);
+    var fiveStars = loadPartnerReviews().filter(function(r) {
+        return r.partnerId === partner.id && r.status === 'published' && r.rating === 5;
+    }).length;
+    var referrals = getPartnerReferralCount(partner.id);
+    return (missions * GENESIS_POINT_VALUES.prestationRealisee)
+        + (fiveStars * GENESIS_POINT_VALUES.avisCinqEtoiles)
+        + (referrals * GENESIS_POINT_VALUES.parrainage)
+        + getEventAttendancePoints(partner.id);
+}
+
+function getClientGenesisPoints(user, completedOrders) {
+    if (!user) return 0;
+    var orders = typeof completedOrders === 'number' ? completedOrders : getClientCompletedOrders(user.email);
+    var referrals = getClientReferralCount(user.id);
+    return (orders * GENESIS_POINT_VALUES.reservationEffectuee)
+        + (referrals * GENESIS_POINT_VALUES.parrainage)
+        + getEventAttendancePoints(user.id);
+}
+
+// Les 5 niveaux d'evolution Genesis (couche d'affichage additive) : les
+// identifiants de badge internes (bronze/argent/or/elite/prestige/fondateur)
+// ne changent pas — trop de call-sites en dependent (score de classement,
+// priorite de dispatch, Hall of Fame). On traduit juste l'identifiant pour
+// l'affichage utilisateur.
+const GENESIS_LEVEL_META = {
+    none:      { id: 'explorateur', label: 'Explorateur', icon: 'fa-seedling', order: 1 },
+    bronze:    { id: 'createur',    label: 'Createur',    icon: 'fa-fire',     order: 2 },
+    argent:    { id: 'batisseur',   label: 'Batisseur',   icon: 'fa-bolt',     order: 3 },
+    or:        { id: 'visionnaire', label: 'Visionnaire', icon: 'fa-crown',    order: 4 },
+    elite:     { id: 'generateur',  label: 'Generateur',  icon: 'fa-infinity', order: 5 },
+    prestige:  { id: 'generateur',  label: 'Generateur',  icon: 'fa-infinity', order: 5 },
+    fondateur: { id: 'generateur',  label: 'Generateur',  icon: 'fa-infinity', order: 5 }
+};
+
+function getGenesisLevel(badgeId) {
+    return GENESIS_LEVEL_META[badgeId || 'none'] || GENESIS_LEVEL_META.none;
+}
+
 // Hall of Fame public : dernier snapshot mensuel calcule
 app.get('/api/hall-of-fame', function(req, res) {
     try {
@@ -7867,6 +7942,186 @@ app.get('/api/hall-of-fame', function(req, res) {
         res.json({ success: true, hallOfFame: snapshot });
     } catch (e) {
         console.error('[HALL_OF_FAME] Erreur lecture:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// ============================================================
+// EVENEMENTS / WORKSHOPS — Systeme de Fidelisation Genesis, Phase 1
+// L'UI admin (admin.html, section #evenementsSection) et l'UI Explorer
+// (app.html, onglet "ÉVÉNEMENTS") existaient déjà et appelaient ces routes —
+// seul le backend manquait (EVENTS_FILE/loadEvents/saveEvents étaient
+// déclarés mais jamais branchés). Contrat conservé tel qu'attendu par ce
+// front existant : POST .../create, GET admin renvoie un tableau brut.
+// La presence reelle (marquee par l'admin apres coup) declenche les points
+// Genesis, pas la simple inscription — voir getEventAttendancePoints().
+// ============================================================
+
+// Admin : creer un evenement/workshop
+app.post('/api/admin/events/create', function(req, res) {
+    try {
+        var body = req.body || {};
+        if (!body.title || !body.date) {
+            return res.status(400).json({ error: 'Titre et date requis' });
+        }
+        var events = loadEvents();
+        var event = {
+            id: uuidv4(),
+            title: body.title,
+            type: body.type || 'workshop',
+            date: body.date,
+            location: body.location || '',
+            image: body.image || '',
+            description: body.description || '',
+            link: body.link || '',
+            published: body.published !== false,
+            createdAt: new Date().toISOString(),
+            attendees: []
+        };
+        events.push(event);
+        saveEvents(events);
+        res.json({ success: true, event: event });
+    } catch (e) {
+        console.error('[EVENTS] Erreur creation:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// Admin : lister tous les evenements (avec liste complete des inscrits)
+app.get('/api/admin/events', function(req, res) {
+    try {
+        var events = loadEvents().sort(function(a, b) { return new Date(b.date) - new Date(a.date); });
+        res.json(events);
+    } catch (e) {
+        console.error('[EVENTS] Erreur lecture admin:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// Admin : modifier un evenement
+app.put('/api/admin/events/:id', function(req, res) {
+    try {
+        var events = loadEvents();
+        var idx = events.findIndex(function(e) { return e.id === req.params.id; });
+        if (idx === -1) return res.status(404).json({ error: 'Evenement non trouve' });
+        var body = req.body || {};
+        ['title', 'description', 'type', 'date', 'location', 'image', 'link', 'published'].forEach(function(field) {
+            if (body[field] !== undefined) events[idx][field] = body[field];
+        });
+        events[idx].updatedAt = new Date().toISOString();
+        saveEvents(events);
+        res.json({ success: true, event: events[idx] });
+    } catch (e) {
+        console.error('[EVENTS] Erreur modification:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// Admin : supprimer un evenement
+app.delete('/api/admin/events/:id', function(req, res) {
+    try {
+        var events = loadEvents();
+        var idx = events.findIndex(function(e) { return e.id === req.params.id; });
+        if (idx === -1) return res.status(404).json({ error: 'Evenement non trouve' });
+        events.splice(idx, 1);
+        saveEvents(events);
+        res.json({ success: true });
+    } catch (e) {
+        console.error('[EVENTS] Erreur suppression:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// Admin : lister les inscrits d'un evenement (pour pointer la presence)
+app.get('/api/admin/events/:id/attendees', function(req, res) {
+    try {
+        var events = loadEvents();
+        var event = events.find(function(e) { return e.id === req.params.id; });
+        if (!event) return res.status(404).json({ error: 'Evenement non trouve' });
+        res.json({ success: true, attendees: event.attendees || [] });
+    } catch (e) {
+        console.error('[EVENTS] Erreur lecture inscrits:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// Admin : marquer la presence d'un inscrit (c'est cette action qui declenche les points Genesis)
+app.post('/api/admin/events/:id/attendance', function(req, res) {
+    try {
+        var events = loadEvents();
+        var idx = events.findIndex(function(e) { return e.id === req.params.id; });
+        if (idx === -1) return res.status(404).json({ error: 'Evenement non trouve' });
+        var attendeeId = (req.body || {}).attendeeId;
+        var attended = (req.body || {}).attended !== false;
+        var attendee = (events[idx].attendees || []).find(function(a) { return a.id === attendeeId; });
+        if (!attendee) return res.status(404).json({ error: 'Inscrit non trouve' });
+        attendee.attended = attended;
+        attendee.attendedAt = attended ? new Date().toISOString() : null;
+        saveEvents(events);
+        res.json({ success: true, event: events[idx] });
+    } catch (e) {
+        console.error('[EVENTS] Erreur presence:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// Liste publique des evenements publies a venir (clients et partenaires)
+app.get('/api/events', function(req, res) {
+    try {
+        var now = Date.now();
+        var events = loadEvents()
+            .filter(function(e) { return e.published !== false && new Date(e.date).getTime() >= now; })
+            .sort(function(a, b) { return new Date(a.date) - new Date(b.date); })
+            .map(function(e) {
+                return {
+                    id: e.id, title: e.title, description: e.description, type: e.type,
+                    date: e.date, location: e.location, image: e.image || '', link: e.link || '',
+                    attendeeCount: (e.attendees || []).length
+                };
+            });
+        res.json({ success: true, events: events });
+    } catch (e) {
+        console.error('[EVENTS] Erreur lecture publique:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// Inscription (RSVP) d'un client ou d'un partenaire connecte a un evenement
+app.post('/api/events/:id/rsvp', function(req, res) {
+    try {
+        var authHeader = req.headers.authorization;
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return res.status(401).json({ error: 'Token d\'authentification requis' });
+        }
+        var token = authHeader.split(' ')[1];
+        var person = null, personType = null;
+        var user = loadUsers().find(function(u) { return u.sessionToken === token; });
+        if (user) { person = user; personType = 'client'; }
+        else {
+            var partner = loadPartners().find(function(p) { return p.sessionToken === token; });
+            if (partner) { person = partner; personType = 'partner'; }
+        }
+        if (!person) return res.status(401).json({ error: 'Session invalide ou expiree' });
+
+        var events = loadEvents();
+        var idx = events.findIndex(function(e) { return e.id === req.params.id; });
+        if (idx === -1) return res.status(404).json({ error: 'Evenement non trouve' });
+        events[idx].attendees = events[idx].attendees || [];
+        var already = events[idx].attendees.find(function(a) { return a.id === person.id; });
+        if (already) return res.json({ success: true, event: events[idx], alreadyRsvp: true });
+
+        events[idx].attendees.push({
+            id: person.id,
+            type: personType,
+            name: ((person.prenom || '') + ' ' + (person.nom || '')).trim() || person.email,
+            rsvpAt: new Date().toISOString(),
+            attended: false,
+            attendedAt: null
+        });
+        saveEvents(events);
+        res.json({ success: true, event: events[idx] });
+    } catch (e) {
+        console.error('[EVENTS] Erreur RSVP:', e);
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });
@@ -8755,6 +9010,8 @@ app.get('/api/partner/reputation', authenticatePartner, function(req, res) {
             rating: summary,
             badge: badge,
             badgeProgress: getPartnerBadgeProgress(partner, summary, missionsCompleted),
+            genesisPoints: getPartnerGenesisPoints(partner, missionsCompleted),
+            genesisLevel: getGenesisLevel(badge),
             founderBadge: partner.founderBadge === true,
             missionsCompleted: missionsCompleted,
             revenusGeneres: Math.round(revenusGeneres * 100) / 100,

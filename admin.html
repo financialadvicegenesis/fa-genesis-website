@@ -3586,14 +3586,53 @@
                             '<span style="background:' + statusColor + ';color:white;padding:4px 10px;border:2px solid black;font-size:11px;font-weight:900;">' + statusLabel + '</span>' +
                         '</div>' +
                         '<div>' +
+                            '<button onclick="toggleAttendance(\'' + ev.id + '\')" class="border-4 border-black bg-white text-black px-4 py-2 text-sm font-black mr-2"><i class="fas fa-user-check mr-1"></i>Présence (' + ((ev.attendees || []).length) + ')</button>' +
                             '<button onclick="editEvent(\'' + ev.id + '\')" class="neo-btn-yellow px-4 py-2 text-sm mr-2"><i class="fas fa-edit mr-1"></i>Modifier</button>' +
                             '<button onclick="deleteEvent(\'' + ev.id + '\')" class="border-4 border-black bg-gray-300 text-black px-4 py-2 text-sm font-black"><i class="fas fa-trash mr-1"></i>Supprimer</button>' +
                         '</div>' +
                     '</div>' +
+                    '<div id="attendance-' + ev.id + '" style="display:none;margin-top:14px;border-top:2px solid black;padding-top:14px;"></div>' +
                 '</div>';
             });
 
             container.innerHTML = html;
+        }
+
+        // Marquer la presence reelle des inscrits : c'est cette action (et non la simple
+        // inscription) qui declenche les points Genesis cote backend (getEventAttendancePoints)
+        function toggleAttendance(eventId) {
+            var box = document.getElementById('attendance-' + eventId);
+            if (!box) return;
+            if (box.style.display === 'block') { box.style.display = 'none'; return; }
+            box.style.display = 'block';
+            var ev = allEvents.find(function(e) { return e.id === eventId; });
+            var attendees = (ev && ev.attendees) || [];
+            if (!attendees.length) {
+                box.innerHTML = '<p class="text-sm opacity-50 font-bold">Aucun inscrit pour le moment.</p>';
+                return;
+            }
+            box.innerHTML = attendees.map(function(a) {
+                return '<label class="flex items-center gap-3 py-2">' +
+                    '<input type="checkbox" data-attendee="' + a.id + '" ' + (a.attended ? 'checked' : '') + ' onchange="markAttendance(\'' + eventId + '\',\'' + a.id + '\',this.checked)">' +
+                    '<span class="font-bold">' + (a.name || a.id) + '</span>' +
+                    '<span class="text-xs opacity-50">(' + (a.type === 'partner' ? 'partenaire' : 'client') + ')</span>' +
+                '</label>';
+            }).join('');
+        }
+
+        async function markAttendance(eventId, attendeeId, attended) {
+            try {
+                var response = await fetch(API_BASE_URL + '/api/admin/events/' + eventId + '/attendance', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ attendeeId: attendeeId, attended: attended })
+                });
+                var result = await response.json();
+                if (!result.success) alert('Erreur: ' + (result.error || 'Erreur inconnue'));
+            } catch (error) {
+                console.error('[ADMIN] Erreur marquage presence:', error);
+                alert('Erreur de connexion');
+            }
         }
 
         async function deleteEvent(eventId) {

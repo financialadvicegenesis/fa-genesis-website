@@ -842,6 +842,10 @@ a{text-decoration:none;color:inherit}
 .p-ref-code{font-size:14px;font-weight:900;color:var(--yellow);letter-spacing:.5px;flex:1;word-break:break-all}
 .p-ref-copy-btn{background:var(--yellow);color:#000;border:none;border-radius:8px;font-size:11px;font-weight:900;padding:6px 10px;cursor:pointer;white-space:nowrap}
 .p-ref-count{font-size:12px;color:var(--muted);margin-top:8px}
+.genesis-qg-box{margin-top:12px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;background:linear-gradient(135deg,#0d0d1a,#1a1430);border:2px solid var(--yellow);border-radius:14px;padding:10px 14px}
+.genesis-level-badge{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:900;color:var(--yellow);text-transform:uppercase;letter-spacing:.3px}
+.genesis-qg-value{font-size:12px;font-weight:800;color:#fff}
+.genesis-qg-value i{color:var(--yellow);margin-right:3px}
 .p-priority-tag{display:inline-block;font-size:10px;font-weight:900;color:#000;background:var(--yellow);border-radius:6px;padding:2px 7px;text-transform:uppercase;letter-spacing:.3px;margin-left:6px}
 .p-fav-heart{display:inline-block;font-size:16px;line-height:1;cursor:pointer;color:#666;user-select:none}
 .p-fav-heart.on{color:#ff2d55}
@@ -3067,7 +3071,8 @@ function openEventDetail(eventId){
   if(!ev) return;
   var typeLabel = EVENT_TYPE_LABELS_DIR[ev.type] || ev.type;
   var photoHtml = ev.image ? '<div class="p-dir-portfolio-item" style="aspect-ratio:16/9;margin-bottom:10px;"><img src="'+ev.image+'" alt=""></div>' : '';
-  var ctaHtml = ev.link ? '<button class="detail-cta" onclick="window.open(\''+ev.link+'\',\'_blank\')">En savoir plus / S\'inscrire</button>' : '';
+  var ctaHtml = ev.link ? '<button class="detail-cta" onclick="window.open(\''+ev.link+'\',\'_blank\')">En savoir plus</button>' : '';
+  var rsvpHtml = (USER && !GUEST) ? '<button class="detail-cta" id="event-rsvp-btn" onclick="rsvpEvent(\''+ev.id+'\')"><i class="fa-solid fa-check"></i> Je participe</button>' : '';
   document.getElementById('detail-content').innerHTML = ''
     +photoHtml
     +'<div class="detail-name">'+(ev.title||'')+'</div>'
@@ -3075,9 +3080,22 @@ function openEventDetail(eventId){
     +'<div class="detail-price">'+eventDateLabel(ev.date)+'</div>'
     +(ev.location?'<div class="detail-payment"><i class="fa-solid fa-location-dot"></i> '+ev.location+'</div>':'')
     +(ev.description?'<div class="p-dir-detail-bio">'+ev.description+'</div>':'')
+    +rsvpHtml
     +ctaHtml
     +'<button class="detail-close-btn" onclick="closeDetail()">Fermer</button>';
   document.getElementById('detail-sheet').className='on';
+}
+function rsvpEvent(eventId){
+  if(!USER || GUEST || !USER._token){ if(typeof goLogin==='function') goLogin(); return; }
+  var btn = document.getElementById('event-rsvp-btn');
+  if(btn){ btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Inscription...'; }
+  fetch(API+'/api/events/'+encodeURIComponent(eventId)+'/rsvp', {
+    method:'POST', headers:{'Authorization':'Bearer '+USER._token}
+  }).then(function(r){return r.json();}).then(function(d){
+    if(btn){ btn.innerHTML = '<i class="fa-solid fa-circle-check"></i> Inscrit'; btn.disabled = true; }
+  }).catch(function(){
+    if(btn){ btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-check"></i> Je participe'; }
+  });
 }
 
 // ── NOUVEAUX TALENTS (Explorer) ──────────────────────────────────
@@ -3483,17 +3501,23 @@ function renderMsgTab(){
 // ── PROFIL ────────────────────────────────────────────────────
 function tierBadgeMeta(tier){
   var map = {
-    bronze:{label:'Bronze',cls:'bronze'},
-    argent:{label:'Argent',cls:'argent'},
-    or:{label:'Or',cls:'or'},
-    elite:{label:'Elite',cls:'elite'},
-    prestige:{label:'Prestige',cls:'prestige'},
-    fondateur:{label:'Fondateur',cls:'fondateur'},
+    bronze:{label:'Créateur',cls:'bronze',icon:'fa-fire'},
+    argent:{label:'Bâtisseur',cls:'argent',icon:'fa-bolt'},
+    or:{label:'Visionnaire',cls:'or',icon:'fa-crown'},
+    elite:{label:'Générateur',cls:'elite',icon:'fa-infinity'},
+    prestige:{label:'Générateur',cls:'prestige',icon:'fa-infinity'},
+    fondateur:{label:'Fondateur',cls:'fondateur',icon:'fa-star'},
     cercle_privilege:{label:'Cercle Privilège',cls:'cercle-privilege'},
     batisseur:{label:'Bâtisseur',cls:'batisseur'},
     architecte:{label:'Architecte',cls:'architecte'}
   };
   return map[tier]||null;
+}
+// Niveau d'evolution Genesis (Explorateur/Createur/Batisseur/Visionnaire/Generateur) :
+// traduction d'affichage du badge existant, cf getGenesisLevel() cote serveur.
+function genesisLevelHtml(level){
+  if(!level) return '';
+  return '<span class="genesis-level-badge"><i class="fa-solid '+level.icon+'"></i> '+level.label+'</span>';
 }
 function tierBadgeHtml(tier, extraClass){
   var meta = tierBadgeMeta(tier);
@@ -3606,6 +3630,12 @@ function showFavoris(){
     });
 }
 
+function goToEventsExplorer(){
+  nav('explorer');
+  var btn = document.getElementById('p-exp-toggle-events');
+  if(btn) btn.click();
+}
+
 function renderProfil(){
   var c = document.getElementById('profilContent');
   var logo = '<img class="plus-logo" src="assets/images/icon-app-192.png" alt="GENESIS" onerror="this.style.display=\'none\'">';
@@ -3637,6 +3667,10 @@ function renderProfil(){
       +'<div class="client-tier-badge">'+(USER.badge?tierBadgeHtml(USER.badge):'')+(USER.isCerclePrivilege?tierBadgeHtml('cercle_privilege'):'')+'</div>'
       +'</div>'
       +'</div>'
+      +'<div class="genesis-qg-box">'
+      +genesisLevelHtml(USER.genesisLevel)
+      +'<div class="genesis-qg-value"><i class="fa-solid fa-chart-line"></i> QG : '+(USER.genesisPoints||0)+'</div>'
+      +'</div>'
       +badgeProgressHtml(USER.badgeProgress)
       +referralBoxHtml()
       +'</div>';
@@ -3653,6 +3687,7 @@ function renderProfil(){
       +pli('','#0a0a1a','Mes réservations',null,'nav(\'reservations\')')
       +pli('','#100a1a','Mes livrables',null,'showLivrables()')
       +pli('','#1a0014','Mes favoris',null,'showFavoris()')
+      +pli('','#0a141a','Événements Genesis',null,'goToEventsExplorer()')
       +pli('','#1a0a00','Mes séances',null,'showSeances()')
       +pli('','#0d1a1a','Messages',null,'nav(\'messages\')')
       +'</div></div>';
@@ -3885,6 +3920,8 @@ function _syncUserBadge(){
       if(!d || !d.success) return;
       USER.badge = d.badge;
       USER.badgeProgress = d.badgeProgress;
+      USER.genesisPoints = d.genesisPoints;
+      USER.genesisLevel = d.genesisLevel;
       USER.completedOrders = d.completedOrders;
       USER.isClientFidele = d.isClientFidele;
       USER.favoris = d.favoris || [];

@@ -586,6 +586,12 @@
                 <p id="reputationRating" class="text-sm font-bold opacity-70">—</p>
             </div>
 
+            <div class="section-card neo-shadow text-center mb-8" style="border-color:var(--genesis-yellow);">
+                <p class="text-xs font-black uppercase opacity-60 mb-2">Quotient Genesis</p>
+                <p id="reputationGenesisLevel" class="text-lg font-black mb-1" style="color:var(--genesis-yellow);">—</p>
+                <p id="reputationGenesisPoints" class="text-3xl font-black text-white">0</p>
+            </div>
+
             <div class="section-card neo-shadow mb-8" id="reputationProgressCard" style="display:none;">
                 <div id="reputationProgress"></div>
             </div>
@@ -2427,7 +2433,7 @@
     // ==============================================
 
     var REPUTATION_BADGE_LABELS = {
-        bronze: 'BRONZE', argent: 'ARGENT', or: 'OR', elite: 'ELITE', fondateur: 'MEMBRE FONDATEUR'
+        bronze: 'CRÉATEUR', argent: 'BÂTISSEUR', or: 'VISIONNAIRE', elite: 'GÉNÉRATEUR', fondateur: 'MEMBRE FONDATEUR'
     };
     var REPUTATION_BADGE_COLORS = {
         bronze: '#cd7f32', argent: '#c7c7c7', or: '#FFD700', elite: '#a855f7', fondateur: '#FFD700'
@@ -2485,6 +2491,11 @@
 
             var rating = data.rating || { average: 0, count: 0 };
             if (ratingEl) ratingEl.innerHTML = rating.average.toFixed(1) + ' <i class="fas fa-star" style="color:var(--genesis-yellow);"></i> (' + rating.count + ' avis)';
+
+            var genesisLevelEl = document.getElementById('reputationGenesisLevel');
+            var genesisPointsEl = document.getElementById('reputationGenesisPoints');
+            if (genesisLevelEl && data.genesisLevel) genesisLevelEl.innerHTML = '<i class="fas ' + data.genesisLevel.icon + '"></i> ' + data.genesisLevel.label;
+            if (genesisPointsEl) genesisPointsEl.textContent = data.genesisPoints || 0;
 
             renderBadgeProgress(data.badgeProgress);
 
