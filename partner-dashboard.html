@@ -28,6 +28,12 @@
         h1, h2, h3, h4, h5 { font-family: 'Unbounded', cursive; }
         .neo-border { border: 4px solid var(--genesis-black); }
         .neo-shadow { box-shadow: 10px 10px 0px 0px var(--genesis-yellow); }
+        .pd-constellation-badge{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:900;padding:5px 12px;border-radius:10px;text-transform:uppercase;letter-spacing:.3px;animation:pdConstellationPulse 2.4s ease-in-out infinite}
+        .pd-constellation-badge.argent{background:linear-gradient(135deg,#9aa5b1,#e6e9ed);color:#000;box-shadow:0 0 12px rgba(200,210,220,.5)}
+        .pd-constellation-badge.or{background:linear-gradient(135deg,#a8780a,#ffd700);color:#000;box-shadow:0 0 14px rgba(255,215,0,.55)}
+        .pd-constellation-badge.diamant{background:linear-gradient(135deg,#0083b0,#00d4ff);color:#fff;box-shadow:0 0 16px rgba(0,212,255,.55)}
+        .pd-constellation-badge.fondateur{background:linear-gradient(135deg,#1a1a1a,#3a2f00);color:var(--genesis-yellow);border:1px solid var(--genesis-yellow);box-shadow:0 0 18px rgba(255,200,0,.6)}
+        @keyframes pdConstellationPulse{0%,100%{box-shadow:0 0 10px rgba(255,215,0,.4)}50%{box-shadow:0 0 20px rgba(255,215,0,.75)}}
         .neo-btn-yellow {
             background: var(--genesis-yellow);
             color: black;
@@ -590,6 +596,7 @@
                 <p class="text-xs font-black uppercase opacity-60 mb-2">Quotient Genesis</p>
                 <p id="reputationGenesisLevel" class="text-lg font-black mb-1" style="color:var(--genesis-yellow);">—</p>
                 <p id="reputationGenesisPoints" class="text-3xl font-black text-white">0</p>
+                <p id="reputationConstellation" style="display:none;margin-top:10px;"></p>
             </div>
 
             <div class="section-card neo-shadow mb-8" id="reputationProgressCard" style="display:none;">
@@ -2553,6 +2560,16 @@
             var genesisPointsEl = document.getElementById('reputationGenesisPoints');
             if (genesisLevelEl && data.genesisLevel) genesisLevelEl.innerHTML = '<i class="fas ' + data.genesisLevel.icon + '"></i> ' + data.genesisLevel.label;
             if (genesisPointsEl) genesisPointsEl.textContent = data.genesisPoints || 0;
+
+            var constellationEl = document.getElementById('reputationConstellation');
+            if (constellationEl) {
+                if (data.constellation) {
+                    constellationEl.style.display = 'block';
+                    constellationEl.innerHTML = '<span class="pd-constellation-badge ' + data.constellation.id + '"><i class="fas ' + data.constellation.icon + '"></i> ' + data.constellation.label + '</span>';
+                } else {
+                    constellationEl.style.display = 'none';
+                }
+            }
 
             renderBadgeProgress(data.badgeProgress);
 

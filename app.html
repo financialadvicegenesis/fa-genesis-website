@@ -821,6 +821,12 @@ a{text-decoration:none;color:inherit}
 .tier-badge.cercle-privilege{background:linear-gradient(135deg,#8a2be2,#ff00aa);color:#fff;box-shadow:0 0 10px rgba(138,43,226,.45)}
 .tier-badge.batisseur{background:#c7c7c7;color:#000}
 .tier-badge.architecte{background:linear-gradient(135deg,#6a11cb,#2575fc);color:#fff;box-shadow:0 0 10px rgba(106,17,203,.45)}
+.constellation-badge{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:900;padding:3px 9px;border-radius:8px;text-transform:uppercase;letter-spacing:.3px;white-space:nowrap;animation:constellationPulse 2.4s ease-in-out infinite}
+.constellation-badge.argent{background:linear-gradient(135deg,#9aa5b1,#e6e9ed);color:#000;box-shadow:0 0 12px rgba(200,210,220,.5)}
+.constellation-badge.or{background:linear-gradient(135deg,#a8780a,#ffd700);color:#000;box-shadow:0 0 14px rgba(255,215,0,.55)}
+.constellation-badge.diamant{background:linear-gradient(135deg,#0083b0,#00d4ff);color:#fff;box-shadow:0 0 16px rgba(0,212,255,.55)}
+.constellation-badge.fondateur{background:linear-gradient(135deg,#1a1a1a,#3a2f00);color:var(--yellow);border:1px solid var(--yellow);box-shadow:0 0 18px rgba(255,200,0,.6)}
+@keyframes constellationPulse{0%,100%{box-shadow:0 0 10px rgba(255,215,0,.4)}50%{box-shadow:0 0 20px rgba(255,215,0,.75)}}
 .client-tier-badge{margin-top:6px}
 .badge-progress{margin-top:12px;border:3px solid var(--bg);background:var(--card);border-radius:14px;padding:12px 14px;box-shadow:0 0 0 1px rgba(255,215,0,.15) inset}
 .badge-progress-labels{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.3px;margin-bottom:8px}
@@ -2787,12 +2793,13 @@ function hofPremiumCard(p, idx){
   var avatarHtml = p.photo ? '<img src="'+p.photo+'" alt="">' : '<div class="p-reco-initials">'+initials+'</div>';
   var starsLabel = (p.rating && p.rating.count) ? ('<i class="fa-solid fa-star" style="color:var(--yellow)"></i> '+p.rating.average+' ('+p.rating.count+')') : 'Nouveau';
   var badgeHtml = tierBadgeHtml(p.badge);
+  var constellationHtml = constellationBadgeHtml(p.constellation);
   return '<div class="p-hof-card" onclick="openPartnerDetail(\''+p.id+'\')">'
     +'<div class="p-hof-ribbon"><i class="fa-solid fa-trophy"></i> N°'+(idx+1)+'</div>'
     +favHeartHtml(p.id)
     +'<div class="p-reco-photo">'+avatarHtml+'</div>'
     +'<div class="p-reco-body">'
-    +'<div class="p-reco-name">'+(p.prenom||'')+' '+(p.nom||'')+(badgeHtml?' '+badgeHtml:'')+'</div>'
+    +'<div class="p-reco-name">'+(p.prenom||'')+' '+(p.nom||'')+(badgeHtml?' '+badgeHtml:'')+(constellationHtml?' '+constellationHtml:'')+'</div>'
     +'<div class="p-reco-cat">'+label+'</div>'
     +(p.city?'<div class="p-reco-city"><i class="fa-solid fa-location-dot"></i> '+p.city+'</div>':'')
     +'<div class="p-reco-stars">'+starsLabel+'</div>'
@@ -3233,7 +3240,7 @@ function loadHallOfFame(){
       highlights += '<div class="p-ref-box"><div class="p-ref-box-title"><i class="fa-solid fa-handshake" style="color:var(--yellow)"></i> Meilleur parrain du mois</div><div class="p-ref-count">'+hof.bestReferrer.name+' ('+(hof.bestReferrer.type==='partenaire'?'partenaire':'client')+') · '+hof.bestReferrer.count+' parrainage'+(hof.bestReferrer.count>1?'s':'')+' validé'+(hof.bestReferrer.count>1?'s':'')+'</div></div>';
     }
     if(hof.bestVisionnaire){
-      highlights += '<div class="p-ref-box"><div class="p-ref-box-title"><i class="fa-solid fa-crown" style="color:var(--yellow)"></i> Visionnaire du mois</div><div class="p-ref-count">'+hof.bestVisionnaire.name+(hof.bestVisionnaire.company?' · '+hof.bestVisionnaire.company:'')+'</div></div>';
+      highlights += '<div class="p-ref-box"><div class="p-ref-box-title"><i class="fa-solid fa-crown" style="color:var(--yellow)"></i> Visionnaire du mois</div><div class="p-ref-count">'+hof.bestVisionnaire.name+(hof.bestVisionnaire.company?' · '+hof.bestVisionnaire.company:'')+(hof.bestVisionnaire.constellation?' '+constellationBadgeHtml(hof.bestVisionnaire.constellation):'')+'</div></div>';
     }
     if(hof.bestBatisseur){
       highlights += '<div class="p-ref-box"><div class="p-ref-box-title"><i class="fa-solid fa-bolt" style="color:var(--yellow)"></i> Bâtisseur du mois</div><div class="p-ref-count">'+hof.bestBatisseur.name+' · '+hof.bestBatisseur.count+' prestation'+(hof.bestBatisseur.count>1?'s':'')+'</div></div>';
@@ -3345,12 +3352,13 @@ function directoryCard(p){
   var cityHtml = p.city ? '<div class="p-dir-card-city"><i class="fas fa-location-dot"></i> '+p.city+'</div>' : '';
   var verifiedHtml = p.verified ? '<span class="p-dir-card-verified">✓ Vérifié</span>' : '';
   var badgeHtml = tierBadgeHtml(p.badge);
+  var constellationHtml = constellationBadgeHtml(p.constellation);
   return '<div class="p-dir-card" onclick="openPartnerDetail(\''+p.id+'\')">'
     +favHeartHtml(p.id)
     +'<div class="p-dir-card-photo">'+photoHtml+'</div>'
     +'<div class="p-dir-card-body">'
     +'<div class="p-dir-card-info">'
-    +'<div class="p-dir-card-name">'+(p.prenom||'')+' '+(p.nom||'')+' '+verifiedHtml+' '+badgeHtml+'</div>'
+    +'<div class="p-dir-card-name">'+(p.prenom||'')+' '+(p.nom||'')+' '+verifiedHtml+' '+badgeHtml+' '+constellationHtml+'</div>'
     +'<div class="p-dir-card-cat">'+label+'</div>'
     +cityHtml
     +'<div class="p-dir-card-stars">'+starsLabel+'</div>'
@@ -3373,6 +3381,7 @@ function openPartnerDetail(partnerId){
       var starsLabel = (p.rating && p.rating.count) ? ('<i class="fa-solid fa-star" style="color:var(--yellow)"></i> '+p.rating.average+' ('+p.rating.count+' avis)') : 'Aucun avis pour le moment';
       var verifiedHtml = p.verified ? '<span class="p-dir-card-verified">✓ Vérifié</span>' : '';
       var badgeHtml = tierBadgeHtml(p.badge);
+      var constellationHtml = constellationBadgeHtml(p.constellation);
       var cityHtml = p.city ? '<div class="p-dir-detail-city"><i class="fas fa-location-dot"></i> '+p.city+'</div>' : '';
       var bioHtml = p.bio ? '<div class="p-dir-detail-bio">'+p.bio+'</div>' : '';
       var cercleHtml = (p.cercleGenesis && p.cercleGenesis.current)
@@ -3410,7 +3419,7 @@ function openPartnerDetail(partnerId){
           +(r.comment?'<p class="p-dir-review-comment">'+r.comment+'</p>':'')+'</li>';
       }).join('') || '<li class="p-dir-review-empty">Aucun avis publié pour le moment.</li>';
       document.getElementById('detail-content').innerHTML = ''
-        +'<div class="detail-name">'+(p.prenom||'')+' '+(p.nom||'')+' '+verifiedHtml+' '+badgeHtml+' '+favHeartHtml(p.id)+'</div>'
+        +'<div class="detail-name">'+(p.prenom||'')+' '+(p.nom||'')+' '+verifiedHtml+' '+badgeHtml+' '+constellationHtml+' '+favHeartHtml(p.id)+'</div>'
         +'<div class="detail-sub">'+label+'</div>'
         +cityHtml
         +'<div class="detail-price">'+priceLabel+'</div>'
@@ -3550,6 +3559,10 @@ function tierBadgeHtml(tier, extraClass){
   var meta = tierBadgeMeta(tier);
   if(!meta) return '';
   return '<span class="tier-badge '+meta.cls+(extraClass?' '+extraClass:'')+'">'+meta.label+'</span>';
+}
+function constellationBadgeHtml(constellation){
+  if(!constellation) return '';
+  return '<span class="constellation-badge '+constellation.id+'"><i class="fa-solid '+constellation.icon+'"></i> '+constellation.label+'</span>';
 }
 function badgeProgressHtml(progress){
   if(!progress) return '';

@@ -5334,6 +5334,7 @@ app.get('/api/users/favorites', (req, res) => {
                 fromPrice: getPartnerFromPrice(p),
                 rating: getPartnerRatingSummary(p.id),
                 badge: getPartnerBadge(p),
+                constellation: getConstellationTier(p),
                 verified: true
             };
         });
@@ -8163,6 +8164,54 @@ function getClientGenesisPoints(user, completedOrders) {
         + getEventAttendancePoints(user.id);
 }
 
+function getEventAttendanceCount(personId) {
+    if (!personId) return 0;
+    var events = loadEvents();
+    var count = 0;
+    events.forEach(function(ev) {
+        (ev.attendees || []).forEach(function(a) {
+            if (a.id === personId && a.attended === true) count++;
+        });
+    });
+    return count;
+}
+
+// ============================================================
+// CONSTELLATION GENESIS (Phase 5) — palier exclusif partenaire, au-dessus
+// des 5 niveaux d'evolution. Le cahier des charges ne precise les seuils
+// que pour le premier palier (Argent) ; Or et Diamant sont construits par
+// extrapolation proportionnelle sur les memes dimensions (QG, note,
+// anciennete, missions, evenements) — choix documente ici car non explicite
+// dans le plan. "Fondateur" reste l'extension du toggle admin existant
+// (partner.founderBadge), independant des autres criteres, et prime sur eux.
+// ============================================================
+const CONSTELLATION_TIERS = [
+    { id: 'diamant', label: 'Constellation Diamant', icon: 'fa-gem', genesisPoints: 5000, rating: 4.9, ancienneteJours: 730, missions: 75, evenements: 3 },
+    { id: 'or', label: 'Constellation Or', icon: 'fa-star', genesisPoints: 2500, rating: 4.7, ancienneteJours: 365, missions: 30, evenements: 2 },
+    { id: 'argent', label: 'Constellation Argent', icon: 'fa-medal', genesisPoints: 1000, rating: 4.5, ancienneteJours: 180, missions: 10, evenements: 1 }
+];
+
+function getConstellationTier(partner) {
+    if (!partner) return null;
+    if (partner.founderBadge === true) {
+        return { id: 'fondateur', label: 'Constellation Fondateur', icon: 'fa-crown' };
+    }
+    var summary = getPartnerRatingSummary(partner.id);
+    var missions = getPartnerMissionsCompleted(partner.id);
+    var genesisPoints = getPartnerGenesisPoints(partner, missions);
+    var ancienneteJours = partner.createdAt ? Math.floor((Date.now() - new Date(partner.createdAt).getTime()) / (1000 * 60 * 60 * 24)) : 0;
+    var evenements = getEventAttendanceCount(partner.id);
+    for (var i = 0; i < CONSTELLATION_TIERS.length; i++) {
+        var tier = CONSTELLATION_TIERS[i];
+        if (genesisPoints >= tier.genesisPoints && summary.average >= tier.rating
+            && ancienneteJours >= tier.ancienneteJours && missions >= tier.missions
+            && evenements >= tier.evenements) {
+            return { id: tier.id, label: tier.label, icon: tier.icon };
+        }
+    }
+    return null;
+}
+
 // ============================================================
 // MISSIONS GENESIS (Phase 3) — catalogue statique, progression calculee a la
 // volee a partir des memes compteurs que le QG (pas de nouveau stockage,
@@ -8261,12 +8310,13 @@ app.get('/api/hall-of-fame', function(req, res) {
                         lat: coords ? coords[0] : null,
                         lng: coords ? coords[1] : null,
                         rating: p ? getPartnerRatingSummary(p.id) : null,
-                        badge: p ? getPartnerBadge(p) : null
+                        badge: p ? getPartnerBadge(p) : null,
+                        constellation: p ? getConstellationTier(p) : null
                     });
                 }),
                 bestVisionnaire: snapshot.bestVisionnaire ? (function() {
                     var p = partners.find(function(pp) { return pp.id === snapshot.bestVisionnaire.partnerId; });
-                    return Object.assign({}, snapshot.bestVisionnaire, { photo: p ? (p.photo || null) : null });
+                    return Object.assign({}, snapshot.bestVisionnaire, { photo: p ? (p.photo || null) : null, constellation: p ? getConstellationTier(p) : null });
                 })() : null
             });
         }
@@ -8513,6 +8563,7 @@ app.get('/api/partners/directory', (req, res) => {
                 fromPrice: fromPrice,
                 rating: getPartnerRatingSummary(p.id),
                 badge: getPartnerBadge(p),
+                constellation: getConstellationTier(p),
                 verified: true,
                 rank: (sortMode === 'score' && idx < 3) ? idx + 1 : null
             };
@@ -8575,6 +8626,7 @@ app.get('/api/partners/:id/reviews', (req, res) => {
                 fromPrice: fromPrice,
                 rating: getPartnerRatingSummary(partner.id),
                 badge: getPartnerBadge(partner),
+                constellation: getConstellationTier(partner),
                 services: activeServices,
                 portfolio: activePortfolio,
                 verified: true,
@@ -8614,7 +8666,8 @@ app.get('/api/partners/top', (req, res) => {
                     lng: coords ? coords[1] : null,
                     fromPrice: getPartnerFromPrice(p),
                     rating: getPartnerRatingSummary(p.id),
-                    badge: getPartnerBadge(p)
+                    badge: getPartnerBadge(p),
+                    constellation: getConstellationTier(p)
                 };
             });
 
@@ -8651,7 +8704,8 @@ app.get('/api/partners/featured', (req, res) => {
                     lng: coords ? coords[1] : null,
                     fromPrice: getPartnerFromPrice(p),
                     rating: getPartnerRatingSummary(p.id),
-                    badge: getPartnerBadge(p)
+                    badge: getPartnerBadge(p),
+                    constellation: getConstellationTier(p)
                 };
             });
 
@@ -8675,7 +8729,8 @@ function partnerDirectoryShape(p) {
         lng: coords ? coords[1] : null,
         fromPrice: getPartnerFromPrice(p),
         rating: getPartnerRatingSummary(p.id),
-        badge: getPartnerBadge(p)
+        badge: getPartnerBadge(p),
+        constellation: getConstellationTier(p)
     };
 }
 
@@ -9357,6 +9412,7 @@ app.get('/api/partner/reputation', authenticatePartner, function(req, res) {
             badgeProgress: getPartnerBadgeProgress(partner, summary, missionsCompleted),
             genesisPoints: getPartnerGenesisPoints(partner, missionsCompleted),
             genesisLevel: getGenesisLevel(badge),
+            constellation: getConstellationTier(partner),
             founderBadge: partner.founderBadge === true,
             missionsCompleted: missionsCompleted,
             revenusGeneres: Math.round(revenusGeneres * 100) / 100,
