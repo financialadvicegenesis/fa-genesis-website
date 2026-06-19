@@ -930,6 +930,32 @@ a{text-decoration:none;color:inherit}
 .p-popular-chip i{color:var(--yellow);font-size:10px}
 .p-popular-chip:active{background:var(--yellow);color:#000}
 
+/* Explorer — style "tech" (Phase 3) */
+.p-hero-tech{position:relative;overflow:hidden}
+.p-hero-tech::before{
+  content:'';position:absolute;top:-60px;right:-60px;width:220px;height:220px;border-radius:50%;
+  background:radial-gradient(circle,rgba(255,215,0,.35),rgba(255,215,0,0) 70%);
+  animation:p-hero-pulse 4s ease-in-out infinite;pointer-events:none;z-index:0;
+}
+@keyframes p-hero-pulse{0%,100%{opacity:.55;transform:scale(1)}50%{opacity:1;transform:scale(1.15)}}
+.p-hero-tech .p-hero-title,.p-hero-tech .p-hero-sub{position:relative;z-index:1}
+
+.p-city-search-wrap{padding:0 16px 14px}
+.p-city-search-input{
+  width:100%;background:var(--card);border:2px solid var(--yellow);border-radius:14px;
+  color:var(--text);font-family:inherit;font-size:13px;padding:15px 16px;outline:none;
+  box-shadow:4px 4px 0 #000, 0 0 18px rgba(255,215,0,.18);transition:box-shadow .2s;
+}
+.p-city-search-input:focus{box-shadow:4px 4px 0 #000, 0 0 28px rgba(255,215,0,.4)}
+.p-city-search-input::placeholder{color:var(--muted)}
+
+.p-map-frame{margin:0 16px 18px;border:3px solid #000;border-radius:16px;overflow:hidden;box-shadow:5px 5px 0 var(--yellow);height:240px;position:relative}
+.p-map-frame .leaflet-container{height:100%;width:100%;background:#111;font-family:inherit}
+.p-map-fallback{display:flex;align-items:center;justify-content:center;height:100%;color:var(--muted);font-size:12px;text-align:center;padding:0 20px}
+
+.p-exp-panel{display:none}
+.p-exp-panel.on{display:block}
+
 /* Catégories en icônes défilantes (Explorer) */
 .p-cat-icon-strip{display:flex;gap:10px;padding:0 16px 16px;overflow-x:auto;scrollbar-width:none}
 .p-cat-icon-strip::-webkit-scrollbar{display:none}
@@ -1623,6 +1649,8 @@ a{text-decoration:none;color:inherit}
 .home-card:active{transform:scale(.96)!important;}
 .presta-card:active{transform:scale(.97)!important;}
 </style>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 </head>
 <body>
 
@@ -1828,39 +1856,61 @@ a{text-decoration:none;color:inherit}
       <div style="height:8px"></div>
     </div>
 
-    <!-- EXPLORER (catalogue général) -->
+    <!-- EXPLORER (hub de découverte) -->
     <div class="tab prest-tab" id="tab-explorer">
-      <div class="p-hero">
+      <div class="p-hero p-hero-tech">
         <div class="p-hero-title">Explorer</div>
-        <div class="p-hero-sub">Toutes nos offres et tarifs partenaires, au même endroit.</div>
-        <div class="p-hero-search">
-          <input type="text" id="p-exp-search" placeholder="Rechercher une offre, une prestation..." oninput="_expSearchDebounced()">
-          <div class="p-hero-loc-btn" onclick="nav('prestataires')" title="Voir les prestataires"><i class="fa-solid fa-users"></i></div>
-        </div>
-        <div class="p-hero-stat" id="p-exp-stat"></div>
+        <div class="p-hero-sub">Offres, prestataires et événements : tout ce qu'il faut pour votre projet.</div>
       </div>
-      <div class="p-tile-grid">
-        <div class="p-tile" style="background:linear-gradient(135deg,#191418,#c400ff)" onclick="_navToPrestation('accompagnement')">
-          <div><div class="p-tile-label">Accompagnement</div><span class="p-tile-sub">Coaching & stratégie</span></div>
-        </div>
-        <div class="p-tile" style="background-image:url('assets/images/Openspace-2.png')" onclick="_navToPrestation('coworking')">
-          <div><div class="p-tile-label">Coworking</div><span class="p-tile-sub">ComVisa Montpellier</span></div>
-        </div>
-        <div class="p-tile" style="background:linear-gradient(135deg,#003274,#2217f4)" onclick="_navToPrestation('visibilite')">
-          <div><div class="p-tile-label">Visibilité</div><span class="p-tile-sub">Photo, vidéo, médias</span></div>
-        </div>
-        <div class="p-tile" style="background:linear-gradient(135deg,#0d3d3d,#021414)" onclick="nav('prestataires')">
-          <div><div class="p-tile-label">Prestataires</div><span class="p-tile-sub">Tout l'annuaire</span></div>
-        </div>
+      <div class="p-city-search-wrap">
+        <input type="text" id="p-exp-city-search" class="p-city-search-input" placeholder="📍 Chercher par ville (Paris, Lyon, Marseille…)" oninput="_expCityDebounced()">
       </div>
-      <div id="p-exp-reco-wrap"></div>
-      <div class="filter-bar">
-        <button class="fpill on" onclick="filterPrestations('all',this)">Toutes</button>
-        <button class="fpill" onclick="filterPrestations('accompagnement',this)">Accompagnement</button>
-        <button class="fpill" onclick="filterPrestations('coworking',this)">Coworking</button>
-        <button class="fpill" onclick="filterPrestations('visibilite',this)">Partenaires</button>
+      <div class="p-hero-search" style="padding:0 16px 14px;margin:0;">
+        <input type="text" id="p-exp-search" placeholder="Rechercher un établissement, une offre..." oninput="_expSearchDebounced()">
+        <div class="p-hero-loc-btn" onclick="nav('prestataires')" title="Voir le classement complet des prestataires"><i class="fa-solid fa-trophy"></i></div>
       </div>
-      <div id="prestList"></div>
+      <div class="p-hero-stat" id="p-exp-stat"></div>
+      <div class="p-map-frame" id="p-exp-map"></div>
+      <div class="p-popular-label">RECHERCHES POPULAIRES</div>
+      <div class="p-popular-row" id="p-exp-popular-row"></div>
+      <div class="p-explore-tabs">
+        <button class="p-explore-tab on" id="p-exp-toggle-offres" onclick="setExpToggle('offres',this)"><span class="p-explore-tab-icon">🛍️</span>OFFRES</button>
+        <button class="p-explore-tab" id="p-exp-toggle-events" onclick="setExpToggle('evenements',this)"><span class="p-explore-tab-icon">🎉</span>ÉVÉNEMENTS</button>
+      </div>
+      <div class="p-exp-panel on" id="p-exp-offres-panel">
+        <div class="p-cat-icon-strip" id="p-exp-cat-icons"></div>
+        <div class="p-tile-grid">
+          <div class="p-tile" style="background:linear-gradient(135deg,#191418,#c400ff)" onclick="_navToPrestation('accompagnement')">
+            <div><div class="p-tile-label">Accompagnement</div><span class="p-tile-sub">Coaching & stratégie</span></div>
+          </div>
+          <div class="p-tile" style="background-image:url('assets/images/Openspace-2.png')" onclick="_navToPrestation('coworking')">
+            <div><div class="p-tile-label">Coworking</div><span class="p-tile-sub">ComVisa Montpellier</span></div>
+          </div>
+          <div class="p-tile" style="background:linear-gradient(135deg,#003274,#2217f4)" onclick="_navToPrestation('visibilite')">
+            <div><div class="p-tile-label">Visibilité</div><span class="p-tile-sub">Photo, vidéo, médias</span></div>
+          </div>
+          <div class="p-tile" style="background:linear-gradient(135deg,#0d3d3d,#021414)" onclick="nav('prestataires')">
+            <div><div class="p-tile-label">Prestataires</div><span class="p-tile-sub">Tout l'annuaire</span></div>
+          </div>
+        </div>
+        <div id="p-exp-reco-wrap"></div>
+        <div class="filter-bar">
+          <button class="fpill on" onclick="filterPrestations('all',this)">Toutes</button>
+          <button class="fpill" onclick="filterPrestations('accompagnement',this)">Accompagnement</button>
+          <button class="fpill" onclick="filterPrestations('coworking',this)">Coworking</button>
+          <button class="fpill" onclick="filterPrestations('visibilite',this)">Partenaires</button>
+        </div>
+        <div id="prestList"></div>
+        <div id="p-dir-featured-wrap"></div>
+        <div id="p-dir-top-categories-wrap"></div>
+        <div id="p-dir-new-talents-wrap"></div>
+        <div id="p-dir-personalized-wrap"></div>
+        <div id="p-dir-favorites-wrap"></div>
+        <div id="p-dir-hall-of-fame-wrap"></div>
+      </div>
+      <div class="p-exp-panel" id="p-exp-events-panel">
+        <div id="p-dir-events-wrap"></div>
+      </div>
     </div>
 
     <!-- PRESTATAIRES (annuaire marketplace) -->
@@ -2288,6 +2338,7 @@ function initApp(){
   }
   renderPrestations('all');
   renderPrestataires();
+  renderExplorer();
   renderResaTab();
   renderMsgTab();
   renderProfil();
@@ -2331,6 +2382,9 @@ function nav(tab){
   if(tab==='partner'){
     var pbb=document.getElementById('ptnrBackStartBtn');
     if(pbb) pbb.style.display = GUEST ? '' : 'none';
+  }
+  if(tab==='explorer' && _expMap){
+    setTimeout(function(){ _expMap.invalidateSize(); }, 80);
   }
 }
 function navExternal(url){
@@ -2775,20 +2829,105 @@ var DIR_CATEGORY_ICONS_ORDER = [
   {id:'consultant', icon:'💡', label:'Consultants'}
 ];
 var POPULAR_SEARCHES = ['Vidéaste','Photographe','Mariage','Coworking','Drone','Graphiste','Community Manager','Site web'];
-function setExploreTab(tab, el){
-  document.querySelectorAll('.p-explore-tab').forEach(function(b){b.className='p-explore-tab';});
-  el.className = 'p-explore-tab on';
-  var targetId = tab==='evenements' ? 'p-dir-events-wrap' : 'p-dir-featured-wrap';
-  var target = document.getElementById(targetId);
-  if(target) target.scrollIntoView({behavior:'smooth', block:'start'});
+// ── EXPLORER — HUB DE DÉCOUVERTE ────────────────────────────────
+var _expCategory = null, _expCity = '', _expCityTimer = null, _expMode = 'offres';
+var _expMap = null, _expMapLayer = null;
+
+function renderExplorer(){
+  var popularRow = document.getElementById('p-exp-popular-row');
+  if(popularRow){
+    popularRow.innerHTML = POPULAR_SEARCHES.map(function(s){
+      return '<button class="p-popular-chip" onclick="quickSearchExplorer(\''+s+'\')"><i class="fas fa-magnifying-glass"></i>'+s+'</button>';
+    }).join('');
+  }
+  var catIcons = document.getElementById('p-exp-cat-icons');
+  if(catIcons){
+    catIcons.innerHTML = DIR_CATEGORY_ICONS_ORDER.map(function(c,i){
+      return '<button class="p-cat-icon-pill'+(i===0?' on':'')+'" onclick="setExpCategory('+(c.id?'\''+c.id+'\'':'null')+',this)">'
+        +'<span class="p-cat-icon-emoji">'+c.icon+'</span><span class="p-cat-icon-label">'+c.label+'</span></button>';
+    }).join('');
+  }
+  loadFeaturedPartners();
+  loadTopCategories();
+  loadNewTalents();
+  loadHallOfFame();
+  loadEventsExplorer();
+  loadPersonalizedRecommendations();
+  loadFavoritesInExplorer();
+  loadExplorerMap(_expMode, _expCity);
 }
-function quickSearch(term){
-  var inp = document.getElementById('p-dir-search');
-  if(inp) inp.value = term;
-  _dirQuery = term;
-  loadPartnerDirectory();
-  var target = document.getElementById('p-section-annuaire');
-  if(target) target.scrollIntoView({behavior:'smooth', block:'start'});
+
+function setExpToggle(which, el){
+  _expMode = which;
+  document.querySelectorAll('#tab-explorer .p-explore-tab').forEach(function(b){b.className='p-explore-tab';});
+  el.className = 'p-explore-tab on';
+  var offresPanel = document.getElementById('p-exp-offres-panel');
+  var eventsPanel = document.getElementById('p-exp-events-panel');
+  if(offresPanel) offresPanel.className = 'p-exp-panel'+(which==='offres'?' on':'');
+  if(eventsPanel) eventsPanel.className = 'p-exp-panel'+(which==='evenements'?' on':'');
+  loadExplorerMap(which, _expCity);
+}
+
+function setExpCategory(cat, el){
+  _expCategory = cat;
+  document.querySelectorAll('#p-exp-cat-icons .p-cat-icon-pill').forEach(function(b){b.className='p-cat-icon-pill';});
+  el.className = 'p-cat-icon-pill on';
+  loadFeaturedPartners(cat);
+  loadNewTalents(cat);
+}
+
+function _expCityDebounced(){
+  clearTimeout(_expCityTimer);
+  _expCityTimer = setTimeout(function(){
+    _expCity = ((document.getElementById('p-exp-city-search')||{}).value || '').trim();
+    loadExplorerMap(_expMode, _expCity);
+  }, 300);
+}
+
+function quickSearchExplorer(term){
+  nav('prestataires');
+  setTimeout(function(){
+    var inp = document.getElementById('p-rank-search');
+    if(inp) inp.value = term;
+    _rankQuery = term;
+    loadRankedDirectory();
+  }, 50);
+}
+
+function loadExplorerMap(mode, cityFilter){
+  var container = document.getElementById('p-exp-map');
+  if(!container) return;
+  if(typeof L === 'undefined'){
+    container.innerHTML = '<div class="p-map-fallback">Carte indisponible hors connexion.</div>';
+    return;
+  }
+  if(!_expMap){
+    container.innerHTML = '';
+    _expMap = L.map(container, {scrollWheelZoom:false}).setView([46.6, 2.4], 5);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors', maxZoom: 18
+    }).addTo(_expMap);
+    _expMapLayer = L.layerGroup().addTo(_expMap);
+  }
+  _expMapLayer.clearLayers();
+  var url = mode === 'evenements'
+    ? API+'/api/events'
+    : API+'/api/partners/directory?sort=score'+(cityFilter?'&city='+encodeURIComponent(cityFilter):'');
+  fetch(url).then(function(r){return r.json();}).then(function(data){
+    var items = mode === 'evenements' ? ((data && data.events) || []) : ((data && data.partners) || []);
+    var pins = [];
+    items.forEach(function(it){
+      if(it.lat==null || it.lng==null) return;
+      var label = mode === 'evenements' ? (it.title||'') : (((it.prenom||'')+' '+(it.nom||'')).trim());
+      L.marker([it.lat, it.lng]).addTo(_expMapLayer).bindPopup(label||'');
+      pins.push([it.lat, it.lng]);
+    });
+    if(pins.length){
+      try{ _expMap.fitBounds(pins, {maxZoom:12, padding:[24,24]}); }catch(e){}
+    } else {
+      _expMap.setView([46.6, 2.4], 5);
+    }
+  }).catch(function(){});
 }
 // ── PRESTATAIRES — ANNUAIRE CLASSÉ ──────────────────────────────
 var _rankCategory = null, _rankQuery = '', _rankCity = '', _rankSort = 'score', _rankSearchTimer = null, _rankCityTimer = null;
@@ -2925,10 +3064,10 @@ function openEventDetail(eventId){
 }
 
 // ── NOUVEAUX TALENTS (Explorer) ──────────────────────────────────
-function loadNewTalents(){
+function loadNewTalents(category){
   var wrap = document.getElementById('p-dir-new-talents-wrap');
   if(!wrap) return;
-  fetch(API+'/api/partners/new?limit=8').then(function(r){return r.json();}).then(function(data){
+  fetch(API+'/api/partners/new?limit=8'+(category?'&category='+encodeURIComponent(category):'')).then(function(r){return r.json();}).then(function(data){
     var partners = (data && data.partners) || [];
     wrap.className = partners.length ? 'p-fade-in' : '';
     wrap.innerHTML = partners.length
@@ -2974,10 +3113,10 @@ function loadFavoritesInExplorer(){
 // ── PROFESSIONNELS À LA UNE (Explorer) ──────────────────────────
 // Meilleurs partenaires toutes catégories confondues, classés par score composite
 // (badge, note moyenne, nombre de prestations, ancienneté, réactivité).
-function loadFeaturedPartners(){
+function loadFeaturedPartners(category){
   var wrap = document.getElementById('p-dir-featured-wrap');
   if(!wrap) return;
-  fetch(API+'/api/partners/featured?limit=8').then(function(r){return r.json();}).then(function(data){
+  fetch(API+'/api/partners/featured?limit=8'+(category?'&category='+encodeURIComponent(category):'')).then(function(r){return r.json();}).then(function(data){
     var partners = (data && data.partners) || [];
     wrap.className = partners.length ? 'p-fade-in' : '';
     wrap.innerHTML = partners.length
@@ -3179,56 +3318,9 @@ function setPrestVisFilter(type,el){
   }
 }
 // ── ANNUAIRE PARTENAIRES ────────────────────────────────────────
-var _dirCategory = null, _dirQuery = '', _dirMaxPrice = '', _dirCity = '', _dirSearchTimer = null, _dirCityTimer = null;
 var PARTNER_TYPE_LABELS_DIR = {photographer:'Photographe', videographer:'Vidéaste', marketer:'Marketeur', media:'Médias', community_manager:'Community Manager', graphiste:'Graphiste', developpeur_web:'Développeur Web', pilote_drone:'Pilote Drone', consultant:'Consultant', coworking:'Espace Coworking', animateur_evenementiel:'Animateur / Événementiel'};
 var PARTNER_TYPE_ICONS_DIR = {videographer:'🎥', photographer:'📸', marketer:'📈', graphiste:'🎨', community_manager:'📱', media:'📰', developpeur_web:'💻', pilote_drone:'🚁', coworking:'🏢', animateur_evenementiel:'🎤', consultant:'💡'};
 
-function setDirCategory(cat, el){
-  _dirCategory = cat;
-  document.querySelectorAll('#p-dir-cat-icons .p-cat-icon-pill').forEach(function(b){b.className='p-cat-icon-pill';});
-  el.className='p-cat-icon-pill on';
-  loadPartnerDirectory();
-  var target = document.getElementById('p-section-annuaire');
-  if(target) target.scrollIntoView({behavior:'smooth', block:'start'});
-}
-function _dirSearchDebounced(){
-  clearTimeout(_dirSearchTimer);
-  _dirSearchTimer = setTimeout(function(){
-    _dirQuery = ((document.getElementById('p-dir-search')||{}).value || '').trim();
-    loadPartnerDirectory();
-  }, 300);
-}
-function onDirPriceChange(){
-  _dirMaxPrice = (document.getElementById('p-dir-price')||{}).value || '';
-  loadPartnerDirectory();
-}
-function _dirCityDebounced(){
-  clearTimeout(_dirCityTimer);
-  _dirCityTimer = setTimeout(function(){
-    _dirCity = ((document.getElementById('p-dir-city')||{}).value || '').trim();
-    loadPartnerDirectory();
-  }, 300);
-}
-function loadPartnerDirectory(){
-  var results = document.getElementById('p-dir-results');
-  if(!results) return;
-  results.innerHTML = '<div class="p-dir-empty">Chargement...</div>';
-  var params = [];
-  if(_dirCategory) params.push('category='+encodeURIComponent(_dirCategory));
-  if(_dirQuery) params.push('q='+encodeURIComponent(_dirQuery));
-  if(_dirMaxPrice) params.push('maxPrice='+encodeURIComponent(_dirMaxPrice));
-  if(_dirCity) params.push('city='+encodeURIComponent(_dirCity));
-  fetch(API+'/api/partners/directory'+(params.length?'?'+params.join('&'):''))
-    .then(function(r){return r.json();})
-    .then(function(data){
-      var partners = (data && data.partners) || [];
-      var statEl = document.getElementById('p-dir-stat');
-      if(statEl) statEl.textContent = partners.length + ' prestataire' + (partners.length===1?'':'s') + ' disponible' + (partners.length===1?'':'s');
-      if(!partners.length){ results.innerHTML = '<div class="p-dir-empty">Aucun partenaire trouvé.</div>'; return; }
-      results.innerHTML = partners.map(function(p){ return directoryCard(p); }).join('');
-    })
-    .catch(function(){ results.innerHTML = '<div class="p-dir-empty">Erreur de chargement. Réessayez.</div>'; });
-}
 function directoryCard(p){
   var label = PARTNER_TYPE_LABELS_DIR[p.partner_type] || p.partner_type;
   var priceLabel = (p.fromPrice===null||p.fromPrice===undefined) ? 'Sur devis' : ('à partir de '+p.fromPrice+' €');
@@ -7079,6 +7171,7 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
         if(typeof updateCartBadge === 'function') updateCartBadge();
       } else if(tabId === 'tab-explorer'){
         if(typeof renderPrestations === 'function') renderPrestations('all');
+        if(typeof renderExplorer === 'function') renderExplorer();
       } else if(tabId === 'tab-prestataires'){
         if(typeof renderPrestataires === 'function') renderPrestataires();
       } else if(tabId === 'tab-reservations'){
