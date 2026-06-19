@@ -632,6 +632,16 @@
                 <div id="reputationCerclesList"></div>
             </div>
 
+            <div id="reputationMissionsGenesisBlock" class="section-card neo-shadow mb-8" style="border-color:var(--genesis-yellow);">
+                <p class="text-xs font-black uppercase opacity-60 mb-3"><i class="fas fa-list-check mr-2"></i>MISSIONS GENESIS</p>
+                <div id="reputationMissionsGenesisList"><p class="text-sm opacity-50 text-white">Chargement...</p></div>
+            </div>
+
+            <div id="reputationPatrimoineBlock" class="section-card neo-shadow mb-8" style="border-color:var(--genesis-yellow);">
+                <p class="text-xs font-black uppercase opacity-60 mb-3"><i class="fas fa-vault mr-2"></i>PATRIMOINE GENESIS</p>
+                <div id="reputationPatrimoineGrid" class="grid grid-cols-2 gap-4"></div>
+            </div>
+
             <div class="section-card neo-shadow text-center">
                 <p class="text-xs font-black uppercase opacity-60 mb-2">Programme de parrainage <span id="reputationReferralBadge"></span></p>
                 <div class="flex items-center justify-center gap-2 mb-2">
@@ -2472,6 +2482,43 @@
             + '<i class="fas fa-star mr-1"></i>' + ratingCurDisplay + '/' + (progress.ratingTarget || 0) + ' note (' + ratingPct + '%)</div>';
     }
 
+    function animatePartnerCounter(el, target) {
+        if (!el) return;
+        var duration = 900, startTime = null;
+        function step(ts) {
+            if (!startTime) startTime = ts;
+            var progress = Math.min(1, (ts - startTime) / duration);
+            el.textContent = Math.round(target * progress);
+            if (progress < 1) requestAnimationFrame(step);
+        }
+        requestAnimationFrame(step);
+    }
+
+    async function loadMissionsGenesis() {
+        var el = document.getElementById('reputationMissionsGenesisList');
+        if (!el) return;
+        try {
+            var response = await partnerAuthenticatedFetch(PARTNER_API_BASE_URL + '/api/genesis/missions');
+            if (!response.ok) throw new Error('Erreur ' + response.status);
+            var data = await response.json();
+            var missions = (data && data.missions) || [];
+            if (!missions.length) { el.innerHTML = '<p class="text-sm opacity-50 text-white">Aucune mission disponible pour le moment.</p>'; return; }
+            el.innerHTML = missions.map(function(m) {
+                return '<div class="mb-4 pb-4" style="border-bottom:1px solid rgba(255,255,255,.08);">' +
+                    '<div class="flex items-center gap-2 font-black text-white uppercase text-sm mb-1"><i class="fas ' + m.icon + '" style="color:var(--genesis-yellow);"></i>' + escapeHtml(m.label) + (m.completed ? ' <i class="fas fa-circle-check" style="color:#51cf66;"></i>' : '') + '</div>' +
+                    '<p class="text-xs opacity-60 text-white mb-2">' + escapeHtml(m.description) + '</p>' +
+                    '<div style="position:relative;height:8px;border-radius:6px;background:#000;border:1px solid rgba(255,255,255,.1);overflow:hidden;">' +
+                        '<div style="height:100%;border-radius:6px;background:linear-gradient(90deg,#7a5c00,var(--genesis-yellow));width:' + m.percent + '%;"></div>' +
+                    '</div>' +
+                    '<p class="text-xs opacity-60 text-white text-right mt-1">' + m.current + ' / ' + m.target + '</p>' +
+                '</div>';
+            }).join('');
+        } catch (error) {
+            console.error('[PARTNER-DASH] Erreur chargement missions Genesis:', error);
+            el.innerHTML = '<p class="text-sm opacity-50 text-white">Erreur de chargement.</p>';
+        }
+    }
+
     async function loadReputation() {
         var badgeEl = document.getElementById('reputationBadge');
         var ratingEl = document.getElementById('reputationRating');
@@ -2542,6 +2589,29 @@
                     cerclesBlock.style.display = 'none';
                 }
             }
+
+            var patrimoineGrid = document.getElementById('reputationPatrimoineGrid');
+            if (patrimoineGrid) {
+                var p = data.patrimoineGenesis || {};
+                var pCards = [
+                    { icon: 'fa-chart-line', label: 'Quotient Genesis', value: data.genesisPoints || 0 },
+                    { icon: 'fa-list-check', label: 'Missions réalisées', value: p.missionsRealisees || 0 },
+                    { icon: 'fa-users', label: 'Clients distincts', value: p.clientsDistincts || 0 },
+                    { icon: 'fa-user-plus', label: 'Parrainages', value: p.parrainages || 0 }
+                ];
+                patrimoineGrid.innerHTML = pCards.map(function(c, idx) {
+                    return '<div class="section-card neo-shadow text-center" style="padding:16px 10px;">' +
+                        '<i class="fas ' + c.icon + ' mb-2" style="color:var(--genesis-yellow);font-size:18px;"></i>' +
+                        '<p id="patrimoine-v' + idx + '" class="text-2xl font-black text-white">0</p>' +
+                        '<p class="text-xs font-bold opacity-60 mt-1">' + c.label + '</p>' +
+                    '</div>';
+                }).join('');
+                pCards.forEach(function(c, idx) {
+                    animatePartnerCounter(document.getElementById('patrimoine-v' + idx), c.value);
+                });
+            }
+
+            loadMissionsGenesis();
 
             var refCodeEl = document.getElementById('reputationReferralCode');
             var refCountEl = document.getElementById('reputationReferralCount');

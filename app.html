@@ -837,6 +837,20 @@ a{text-decoration:none;color:inherit}
 .badge-progress-max{margin-top:12px;display:flex;align-items:center;gap:9px;border:3px solid var(--yellow);background:linear-gradient(135deg,#1a1a1a,#3a2f00);border-radius:14px;padding:10px 14px;color:var(--yellow);font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:.3px;box-shadow:0 0 14px rgba(255,215,0,.35)}
 .badge-progress-max i{font-size:16px}
 .p-ref-box{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:14px;margin-top:10px}
+.genesis-mission-card{border:1px solid var(--border);background:var(--card);border-radius:14px;padding:14px;margin-bottom:12px}
+.genesis-mission-card.done{border-color:#51cf66;box-shadow:0 0 14px rgba(81,207,102,.2)}
+.genesis-mission-top{display:flex;align-items:center;gap:10px;margin-bottom:6px;font-weight:900;font-size:13px;text-transform:uppercase;letter-spacing:.3px}
+.genesis-mission-top i{color:var(--yellow);font-size:16px}
+.genesis-mission-desc{color:var(--muted);font-size:12px;margin-bottom:10px}
+.genesis-mission-count{margin-top:7px;font-size:11px;color:var(--muted);font-weight:700;text-align:right}
+.genesis-patrimoine-level{display:flex;align-items:center;gap:10px;font-weight:900;font-size:16px;text-transform:uppercase;letter-spacing:.3px;color:var(--yellow);border:1px solid var(--border);background:var(--card);border-radius:14px;padding:16px;margin-bottom:16px}
+.genesis-patrimoine-level i{font-size:20px}
+.genesis-patrimoine-anciennete{margin-left:auto;font-size:11px;color:var(--muted);text-transform:none;font-weight:600;letter-spacing:0}
+.genesis-patrimoine-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.genesis-patrimoine-card{border:1px solid var(--border);background:var(--card);border-radius:14px;padding:18px 14px;text-align:center}
+.genesis-patrimoine-card i{font-size:20px;color:var(--yellow);margin-bottom:8px;display:block}
+.genesis-patrimoine-value{font-size:26px;font-weight:900;color:#fff}
+.genesis-patrimoine-label{font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.3px;margin-top:4px}
 .p-ref-box-title{font-size:11px;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px}
 .p-ref-code-row{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.06);border-radius:8px;padding:8px 10px}
 .p-ref-code{font-size:14px;font-weight:900;color:var(--yellow);letter-spacing:.5px;flex:1;word-break:break-all}
@@ -3643,6 +3657,76 @@ function goToEventsExplorer(){
   if(btn) btn.click();
 }
 
+function showGenesisMissions(){
+  var c = document.getElementById('profilContent'); if(!c) return;
+  c.innerHTML = '<div class="espace-view">'
+    +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="renderProfil()">&#8249;</button><div class="espace-title">Missions Genesis</div></div>'
+    +'<div id="genesis-missions-list" style="padding:14px;padding-bottom:80px;overflow-y:auto;flex:1;"><div class="espace-loading">Chargement...</div></div>'
+    +'</div>';
+  if(!USER || GUEST || !USER._token){ document.getElementById('genesis-missions-list').innerHTML = '<div class="espace-empty">Connectez-vous pour suivre vos missions Genesis.</div>'; return; }
+  fetch(API+'/api/genesis/missions', {headers:{'Authorization':'Bearer '+USER._token}})
+    .then(function(r){return r.json();})
+    .then(function(data){
+      var el = document.getElementById('genesis-missions-list'); if(!el) return;
+      var missions = (data && data.missions) || [];
+      if(!missions.length){ el.innerHTML = '<div class="espace-empty">Aucune mission disponible pour le moment.</div>'; return; }
+      el.innerHTML = missions.map(function(m){
+        return '<div class="genesis-mission-card'+(m.completed?' done':'')+'">'
+          +'<div class="genesis-mission-top"><i class="fa-solid '+m.icon+'"></i><div class="genesis-mission-label">'+m.label+(m.completed?' <i class="fa-solid fa-circle-check" style="color:#51cf66;"></i>':'')+'</div></div>'
+          +'<div class="genesis-mission-desc">'+m.description+'</div>'
+          +'<div class="badge-progress-track"><div class="badge-progress-fill" style="width:'+m.percent+'%"></div></div>'
+          +'<div class="genesis-mission-count">'+m.current+' / '+m.target+'</div>'
+          +'</div>';
+      }).join('');
+    }).catch(function(){
+      var el = document.getElementById('genesis-missions-list'); if(el) el.innerHTML = '<div class="espace-empty">Erreur de chargement.</div>';
+    });
+}
+
+function _animateGenesisCounter(el, target){
+  if(!el) return;
+  var start = 0, duration = 900, startTime = null;
+  function step(ts){
+    if(!startTime) startTime = ts;
+    var progress = Math.min(1, (ts - startTime) / duration);
+    el.textContent = Math.round(start + (target - start) * progress);
+    if(progress < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+function showGenesisPatrimoine(){
+  var c = document.getElementById('profilContent'); if(!c) return;
+  if(!USER || GUEST){
+    c.innerHTML = '<div class="espace-view">'
+      +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="renderProfil()">&#8249;</button><div class="espace-title">Patrimoine Genesis</div></div>'
+      +'<div class="espace-empty">Connectez-vous pour consulter votre Patrimoine Genesis.</div>'
+      +'</div>';
+    return;
+  }
+  var p = USER.patrimoineGenesis || {};
+  var level = USER.genesisLevel || {label:'Explorateur',icon:'fa-seedling'};
+  var ancienneteLabel = (p.ancienneteJours||0) >= 30 ? Math.floor((p.ancienneteJours||0)/30)+' mois' : (p.ancienneteJours||0)+' jours';
+  var cards = [
+    {icon:'fa-chart-line', label:'Quotient Genesis', value: USER.genesisPoints||0},
+    {icon:'fa-receipt', label:'Prestations réalisées', value: p.prestationsRealisees||0},
+    {icon:'fa-people-group', label:'Partenaires distincts', value: p.partenairesDistincts||0},
+    {icon:'fa-user-plus', label:'Parrainages', value: p.parrainages||0}
+  ];
+  c.innerHTML = '<div class="espace-view">'
+    +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="renderProfil()">&#8249;</button><div class="espace-title">Patrimoine Genesis</div></div>'
+    +'<div style="padding:14px;padding-bottom:80px;overflow-y:auto;flex:1;">'
+    +'<div class="genesis-patrimoine-level"><i class="fa-solid '+level.icon+'"></i> '+level.label+'<div class="genesis-patrimoine-anciennete">Membre depuis '+ancienneteLabel+'</div></div>'
+    +'<div class="genesis-patrimoine-grid">'
+    +cards.map(function(card, idx){
+      return '<div class="genesis-patrimoine-card"><i class="fa-solid '+card.icon+'"></i>'
+        +'<div class="genesis-patrimoine-value" id="genesis-patrimoine-v'+idx+'">0</div>'
+        +'<div class="genesis-patrimoine-label">'+card.label+'</div></div>';
+    }).join('')
+    +'</div></div></div>';
+  cards.forEach(function(card, idx){ _animateGenesisCounter(document.getElementById('genesis-patrimoine-v'+idx), card.value); });
+}
+
 function renderProfil(){
   var c = document.getElementById('profilContent');
   var logo = '<img class="plus-logo" src="assets/images/icon-app-192.png" alt="GENESIS" onerror="this.style.display=\'none\'">';
@@ -3695,6 +3779,8 @@ function renderProfil(){
       +pli('','#100a1a','Mes livrables',null,'showLivrables()')
       +pli('','#1a0014','Mes favoris',null,'showFavoris()')
       +pli('','#0a141a','Événements Genesis',null,'goToEventsExplorer()')
+      +pli('','#14140a','Missions Genesis',null,'showGenesisMissions()')
+      +pli('','#0a1414','Patrimoine Genesis',null,'showGenesisPatrimoine()')
       +pli('','#1a0a00','Mes séances',null,'showSeances()')
       +pli('','#0d1a1a','Messages',null,'nav(\'messages\')')
       +'</div></div>';
@@ -3935,6 +4021,7 @@ function _syncUserBadge(){
       USER.referralCode = d.referralCode;
       USER.referralCount = d.referralCount;
       USER.isCerclePrivilege = d.isCerclePrivilege;
+      USER.patrimoineGenesis = d.patrimoineGenesis;
       try{ localStorage.setItem('fa_genesis_session', JSON.stringify(USER)); }catch(e){}
       if(document.getElementById('tab-profil') && document.getElementById('tab-profil').classList.contains('on')) renderProfil();
     }).catch(function(){});

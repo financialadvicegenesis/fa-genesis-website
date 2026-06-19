@@ -5276,7 +5276,13 @@ app.get('/api/auth/me', (req, res) => {
             favoris: user.favoris || [],
             referralCode: user.id,
             referralCount: referralCount,
-            isCerclePrivilege: getClientReferralStatus(referralCount) === 'cercle_privilege'
+            isCerclePrivilege: getClientReferralStatus(referralCount) === 'cercle_privilege',
+            patrimoineGenesis: {
+                prestationsRealisees: completedOrders,
+                partenairesDistincts: getClientDistinctPartnerCount(user.email),
+                parrainages: referralCount,
+                ancienneteJours: user.createdAt ? Math.floor((Date.now() - new Date(user.createdAt).getTime()) / (1000 * 60 * 60 * 24)) : 0
+            }
         });
 
     } catch (error) {
@@ -7729,10 +7735,9 @@ function getCercleGenesisProgress(count) {
     return { current, next: null, collabsCurrent: count, collabsTarget: count, percent: 100 };
 }
 
-// Plus haut palier de cercle atteint par ce client, toutes relations partenaires confondues
-// (utilise pour la reservation prioritaire — pas seulement le badge global du client)
-function getClientMaxCercleGenesisTier(clientEmail) {
-    if (!clientEmail) return null;
+// Nombre maximum de collaborations du client avec un seul et meme partenaire
+function getClientMaxCollabCount(clientEmail) {
+    if (!clientEmail) return 0;
     const partnerIds = loadDispatches()
         .map(d => d.claimed_by_partner_id)
         .filter((id, idx, arr) => id && arr.indexOf(id) === idx);
@@ -7741,7 +7746,56 @@ function getClientMaxCercleGenesisTier(clientEmail) {
         const c = getClientPartnerCollabCount(clientEmail, pid);
         if (c > maxCount) maxCount = c;
     });
-    return getCercleGenesisTier(maxCount);
+    return maxCount;
+}
+
+// Plus haut palier de cercle atteint par ce client, toutes relations partenaires confondues
+// (utilise pour la reservation prioritaire — pas seulement le badge global du client)
+function getClientMaxCercleGenesisTier(clientEmail) {
+    return getCercleGenesisTier(getClientMaxCollabCount(clientEmail));
+}
+
+// Nombre de partenaires distincts avec qui ce client a deja collabore (commande payee)
+function getClientDistinctPartnerCount(clientEmail) {
+    if (!clientEmail) return 0;
+    const needle = clientEmail.toLowerCase();
+    const orders = loadOrders();
+    const partnerIds = {};
+    loadDispatches().forEach(d => {
+        if (!d.claimed_by_partner_id) return;
+        const order = orders.find(o => o.id === d.order_id);
+        if (!order || order.balance_paid !== true) return;
+        const oe = (order.client_info && order.client_info.email) || order.email || '';
+        if (oe.toLowerCase() === needle) partnerIds[d.claimed_by_partner_id] = true;
+    });
+    return Object.keys(partnerIds).length;
+}
+
+// Nombre maximum de collaborations d'un partenaire avec un seul et meme client
+function getPartnerMaxCollabCount(partnerId) {
+    const orderIds = loadDispatches().filter(d => d.claimed_by_partner_id === partnerId).map(d => d.order_id);
+    if (orderIds.length === 0) return 0;
+    const emails = loadOrders()
+        .filter(o => orderIds.indexOf(o.id) !== -1 && o.balance_paid === true)
+        .map(o => ((o.client_info && o.client_info.email) || o.email || '').toLowerCase())
+        .filter((e, idx, arr) => e && arr.indexOf(e) === idx);
+    let maxCount = 0;
+    emails.forEach(email => {
+        const c = getClientPartnerCollabCount(email, partnerId);
+        if (c > maxCount) maxCount = c;
+    });
+    return maxCount;
+}
+
+// Nombre de clients distincts d'un partenaire (commande payee)
+function getPartnerDistinctClientCount(partnerId) {
+    const orderIds = loadDispatches().filter(d => d.claimed_by_partner_id === partnerId).map(d => d.order_id);
+    if (orderIds.length === 0) return 0;
+    const emails = loadOrders()
+        .filter(o => orderIds.indexOf(o.id) !== -1 && o.balance_paid === true)
+        .map(o => ((o.client_info && o.client_info.email) || o.email || '').toLowerCase())
+        .filter(Boolean);
+    return emails.filter((e, idx, arr) => arr.indexOf(e) === idx).length;
 }
 
 // Bonus de visibilite pour les partenaires ayant des clients en Cercle Premium/Constellation
@@ -8019,6 +8073,82 @@ const GENESIS_LEVEL_META = {
 function getGenesisLevel(badgeId) {
     return GENESIS_LEVEL_META[badgeId || 'none'] || GENESIS_LEVEL_META.none;
 }
+
+// ============================================================
+// MISSIONS GENESIS (Phase 3) — catalogue statique, progression calculee a la
+// volee a partir des memes compteurs que le QG (pas de nouveau stockage,
+// pas de recompense separee : la mission accomplie est deja comptabilisee
+// dans le QG via les compteurs source qu'elle agrege).
+// ============================================================
+const GENESIS_MISSIONS = [
+    { id: 'multi_collab', audience: 'client', label: 'Collaborer avec 3 professionnels différents', description: 'Travaillez avec au moins 3 partenaires différents pour enrichir votre réseau Genesis.', icon: 'fa-people-group', target: 3 },
+    { id: 'event_participation', audience: 'both', label: 'Participer à un atelier ou événement Genesis', description: 'Inscrivez-vous et soyez présent à un événement ou workshop organisé par FA GENESIS.', icon: 'fa-calendar-check', target: 1 },
+    { id: 'referral', audience: 'both', label: 'Parrainer un nouveau membre', description: 'Invitez un nouveau client ou partenaire à rejoindre FA GENESIS.', icon: 'fa-user-plus', target: 1 },
+    { id: 'alliance_circle', audience: 'client', label: 'Atteindre le palier Alliance avec un partenaire', description: 'Collaborez 5 fois avec le même partenaire pour débloquer le Cercle Alliance.', icon: 'fa-handshake', target: 5 },
+    { id: 'ten_orders', audience: 'client', label: 'Réaliser 10 prestations', description: 'Commandez et finalisez 10 prestations sur la plateforme.', icon: 'fa-receipt', target: 10 },
+    { id: 'multi_clients', audience: 'partner', label: 'Travailler avec 3 clients différents', description: 'Réalisez des prestations pour au moins 3 clients différents.', icon: 'fa-people-group', target: 3 },
+    { id: 'five_star_reviews', audience: 'partner', label: 'Obtenir 10 avis 5 étoiles', description: 'Décrochez 10 avis 5 étoiles de vos clients.', icon: 'fa-star', target: 10 },
+    { id: 'premium_circle', audience: 'partner', label: 'Construire un Cercle Premium avec un client', description: 'Collaborez 10 fois avec le même client pour débloquer le Cercle Premium.', icon: 'fa-gem', target: 10 }
+];
+
+function computeGenesisMissionProgress(mission, person, personType) {
+    var current = 0;
+    switch (mission.id) {
+        case 'multi_collab':
+            current = getClientDistinctPartnerCount(person.email);
+            break;
+        case 'event_participation':
+            current = getEventAttendancePoints(person.id) > 0 ? 1 : 0;
+            break;
+        case 'referral':
+            current = personType === 'client' ? getClientReferralCount(person.id) : getPartnerReferralCount(person.id);
+            break;
+        case 'alliance_circle':
+            current = getClientMaxCollabCount(person.email);
+            break;
+        case 'ten_orders':
+            current = getClientCompletedOrders(person.email);
+            break;
+        case 'multi_clients':
+            current = getPartnerDistinctClientCount(person.id);
+            break;
+        case 'five_star_reviews':
+            current = loadPartnerReviews().filter(function(r) { return r.partnerId === person.id && r.status === 'published' && r.rating === 5; }).length;
+            break;
+        case 'premium_circle':
+            current = getPartnerMaxCollabCount(person.id);
+            break;
+    }
+    var capped = Math.min(current, mission.target);
+    return {
+        id: mission.id, label: mission.label, description: mission.description, icon: mission.icon,
+        current: current, target: mission.target,
+        percent: Math.min(100, Math.round(capped / mission.target * 100)),
+        completed: current >= mission.target
+    };
+}
+
+function getGenesisMissions(person, personType) {
+    return GENESIS_MISSIONS
+        .filter(function(m) { return m.audience === 'both' || m.audience === personType; })
+        .map(function(m) { return computeGenesisMissionProgress(m, person, personType); });
+}
+
+app.get('/api/genesis/missions', function(req, res) {
+    try {
+        var authHeader = req.headers.authorization;
+        if (!authHeader || !authHeader.startsWith('Bearer ')) return res.status(401).json({ error: 'Token requis' });
+        var token = authHeader.slice(7);
+        var user = loadUsers().find(function(u) { return u.sessionToken === token; });
+        if (user) return res.json({ success: true, missions: getGenesisMissions(user, 'client') });
+        var partner = loadPartners().find(function(p) { return p.sessionToken === token; });
+        if (partner) return res.json({ success: true, missions: getGenesisMissions(partner, 'partner') });
+        return res.status(401).json({ error: 'Session invalide ou expiree' });
+    } catch (e) {
+        console.error('[GENESIS-MISSIONS] Erreur:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
 
 // Hall of Fame public : dernier snapshot mensuel calcule
 app.get('/api/hall-of-fame', function(req, res) {
@@ -9144,7 +9274,13 @@ app.get('/api/partner/reputation', authenticatePartner, function(req, res) {
             referralCode: partner.id,
             referralCount: referralCount,
             referralStatus: getPartnerReferralStatus(referralCount),
-            cerclesGenesis: getPartnerCercleClientsList(partner.id, 5)
+            cerclesGenesis: getPartnerCercleClientsList(partner.id, 5),
+            patrimoineGenesis: {
+                missionsRealisees: missionsCompleted,
+                clientsDistincts: nombreClients,
+                parrainages: referralCount,
+                ancienneteJours: partner.createdAt ? Math.floor((Date.now() - new Date(partner.createdAt).getTime()) / (1000 * 60 * 60 * 24)) : 0
+            }
         });
     } catch (e) {
         console.error('[REPUTATION] Erreur:', e);
