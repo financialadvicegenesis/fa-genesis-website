@@ -929,7 +929,7 @@ a{text-decoration:none;color:inherit}
 .p-reco-row::-webkit-scrollbar{display:none}
 .p-reco-card{flex-shrink:0;width:160px;background:var(--card);border:3px solid #000;border-radius:14px;
   overflow:hidden;box-shadow:4px 4px 0 var(--yellow);cursor:pointer;position:relative}
-.p-reco-photo{width:100%;height:120px;background:#1a1a1a;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.p-reco-photo{width:100%;height:160px;background:#1a1a1a;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
 .p-reco-photo img{width:100%;height:100%;object-fit:cover}
 .p-reco-initials{font-size:22px;font-weight:900;color:var(--yellow);font-family:'Unbounded',sans-serif}
 .p-reco-body{padding:10px}
@@ -943,6 +943,10 @@ a{text-decoration:none;color:inherit}
 .p-reco-city{font-size:9px;color:var(--muted);font-weight:700;margin-bottom:4px}
 .p-reco-viewbtn{margin-top:6px;width:100%;background:var(--yellow);color:#000;border:none;border-radius:7px;
   font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.2px;padding:7px 0;cursor:pointer;font-family:inherit}
+.p-reco-rating-badge{position:absolute;bottom:6px;right:6px;z-index:1;background:rgba(0,0,0,.8);color:#fff;
+  font-size:9px;font-weight:900;padding:4px 8px;border-radius:20px;border:2px solid #000;
+  display:flex;align-items:center;gap:3px;white-space:nowrap}
+.p-reco-rating-badge i{color:var(--yellow);font-size:8px}
 
 /* Barre de recherche proéminente (Explorer) */
 .p-explore-search-wrap{padding:0 16px 14px}
@@ -1025,7 +1029,7 @@ a{text-decoration:none;color:inherit}
 /* Grandes cartes modernes (Les plus recherchés) */
 .p-big-card{flex-shrink:0;width:160px;background:var(--card);border:3px solid #000;border-radius:16px;
   overflow:hidden;box-shadow:5px 5px 0 var(--yellow);cursor:pointer;position:relative}
-.p-big-photo{width:100%;height:120px;background:#1a1a1a;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.p-big-photo{width:100%;height:160px;background:#1a1a1a;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
 .p-big-photo img{width:100%;height:100%;object-fit:cover}
 .p-big-body{padding:12px}
 
@@ -2825,54 +2829,48 @@ function recoPartnerCard(p, idx, tagOverride){
   var label = PARTNER_TYPE_LABELS_DIR[p.partner_type] || p.partner_type;
   var initials = (((p.prenom||'')[0]||'')+((p.nom||'')[0]||'')).toUpperCase();
   var avatarHtml = p.photo ? '<img src="'+p.photo+'" alt="">' : '<div class="p-reco-initials">'+initials+'</div>';
-  var starsLabel = (p.rating && p.rating.count) ? ('<i class="fa-solid fa-star" style="color:var(--yellow)"></i> '+p.rating.average+' ('+p.rating.count+')') : 'Nouveau';
+  var ratingBadge = (p.rating && p.rating.count) ? '<div class="p-reco-rating-badge"><i class="fa-solid fa-star"></i> '+p.rating.average+'</div>' : '<div class="p-reco-rating-badge">Nouveau</div>';
   var tag = tagOverride ? '<div class="p-reco-tag">'+tagOverride+'</div>' : (idx===0 ? '<div class="p-reco-tag">Top</div>' : '');
   var badgeHtml = tierBadgeHtml(p.badge);
   return '<div class="p-reco-card" onclick="openPartnerDetail(\''+p.id+'\')">'
     +tag
     +favHeartHtml(p.id)
-    +'<div class="p-reco-photo">'+avatarHtml+'</div>'
+    +'<div class="p-reco-photo">'+avatarHtml+ratingBadge+'</div>'
     +'<div class="p-reco-body">'
     +'<div class="p-reco-name">'+(p.prenom||'')+' '+(p.nom||'')+(badgeHtml?' '+badgeHtml:'')+'</div>'
     +'<div class="p-reco-cat">'+label+'</div>'
     +(p.city?'<div class="p-reco-city"><i class="fa-solid fa-location-dot"></i> '+p.city+'</div>':'')
-    +'<div class="p-reco-stars">'+starsLabel+'</div>'
-    +'<button class="p-reco-viewbtn" onclick="event.stopPropagation();openPartnerDetail(\''+p.id+'\')">Voir le profil</button>'
     +'</div></div>';
 }
 function hofPremiumCard(p, idx){
   var label = PARTNER_TYPE_LABELS_DIR[p.partner_type] || p.partner_type;
   var initials = (((p.prenom||'')[0]||'')+((p.nom||'')[0]||'')).toUpperCase();
   var avatarHtml = p.photo ? '<img src="'+p.photo+'" alt="">' : '<div class="p-reco-initials">'+initials+'</div>';
-  var starsLabel = (p.rating && p.rating.count) ? ('<i class="fa-solid fa-star" style="color:var(--yellow)"></i> '+p.rating.average+' ('+p.rating.count+')') : 'Nouveau';
+  var ratingBadge = (p.rating && p.rating.count) ? '<div class="p-reco-rating-badge"><i class="fa-solid fa-star"></i> '+p.rating.average+'</div>' : '<div class="p-reco-rating-badge">Nouveau</div>';
   var badgeHtml = tierBadgeHtml(p.badge);
   var constellationHtml = constellationBadgeHtml(p.constellation);
   return '<div class="p-hof-card" onclick="openPartnerDetail(\''+p.id+'\')">'
     +'<div class="p-hof-ribbon"><i class="fa-solid fa-trophy"></i> N°'+(idx+1)+'</div>'
     +favHeartHtml(p.id)
-    +'<div class="p-reco-photo">'+avatarHtml+'</div>'
+    +'<div class="p-reco-photo">'+avatarHtml+ratingBadge+'</div>'
     +'<div class="p-reco-body">'
     +'<div class="p-reco-name">'+(p.prenom||'')+' '+(p.nom||'')+(badgeHtml?' '+badgeHtml:'')+(constellationHtml?' '+constellationHtml:'')+'</div>'
     +'<div class="p-reco-cat">'+label+'</div>'
     +(p.city?'<div class="p-reco-city"><i class="fa-solid fa-location-dot"></i> '+p.city+'</div>':'')
-    +'<div class="p-reco-stars">'+starsLabel+'</div>'
-    +'<button class="p-reco-viewbtn" onclick="event.stopPropagation();openPartnerDetail(\''+p.id+'\')">Voir le profil</button>'
     +'</div></div>';
 }
 function bigCategoryCard(p, idx){
   var label = PARTNER_TYPE_LABELS_DIR[p.partner_type] || p.partner_type;
   var initials = (((p.prenom||'')[0]||'')+((p.nom||'')[0]||'')).toUpperCase();
   var avatarHtml = p.photo ? '<img src="'+p.photo+'" alt="">' : '<div class="p-reco-initials">'+initials+'</div>';
-  var starsLabel = (p.rating && p.rating.count) ? ('<i class="fa-solid fa-star" style="color:var(--yellow)"></i> '+p.rating.average+' ('+p.rating.count+')') : 'Nouveau';
+  var ratingBadge = (p.rating && p.rating.count) ? '<div class="p-reco-rating-badge"><i class="fa-solid fa-star"></i> '+p.rating.average+'</div>' : '<div class="p-reco-rating-badge">Nouveau</div>';
   var badgeHtml = tierBadgeHtml(p.badge);
   return '<div class="p-big-card" onclick="openPartnerDetail(\''+p.id+'\')">'
     +favHeartHtml(p.id)
-    +'<div class="p-big-photo">'+avatarHtml+'</div>'
+    +'<div class="p-big-photo">'+avatarHtml+ratingBadge+'</div>'
     +'<div class="p-big-body">'
     +'<div class="p-reco-name">'+(p.prenom||'')+' '+(p.nom||'')+(badgeHtml?' '+badgeHtml:'')+'</div>'
     +'<div class="p-reco-cat">'+label+(p.city?' · '+p.city:'')+'</div>'
-    +'<div class="p-reco-stars">'+starsLabel+'</div>'
-    +'<button class="p-reco-viewbtn" onclick="event.stopPropagation();openPartnerDetail(\''+p.id+'\')">Voir le profil</button>'
     +'</div></div>';
 }
 
