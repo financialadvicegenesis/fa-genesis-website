@@ -855,6 +855,8 @@ a{text-decoration:none;color:inherit}
 .p-reco-card .p-fav-heart{position:absolute;top:8px;right:8px;font-size:16px;z-index:2}
 .p-big-card{position:relative}
 .p-big-card .p-fav-heart{position:absolute;top:10px;right:10px;font-size:18px;z-index:2}
+.p-dir-cercle-badge{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:900;color:var(--yellow);background:rgba(255,215,0,.1);border:1px solid var(--yellow);border-radius:10px;padding:6px 10px;margin:6px 0;text-transform:uppercase;letter-spacing:.2px}
+.p-dir-cercle-count{color:#fff;text-transform:none;font-weight:700;letter-spacing:0}
 .p-dir-detail-city{font-size:11px;color:var(--muted);font-weight:700;margin:2px 0 8px}
 .p-dir-detail-bio{font-size:12px;color:#ccc;line-height:1.5;margin:8px 0}
 .p-dir-detail-social{display:flex;gap:12px;margin:8px 0}
@@ -3339,7 +3341,8 @@ function directoryCard(p){
 }
 var _dirPartnerCache = {};
 function openPartnerDetail(partnerId){
-  fetch(API+'/api/partners/'+encodeURIComponent(partnerId)+'/reviews')
+  var _opdHeaders = (USER && !GUEST && USER._token) ? {'Authorization':'Bearer '+USER._token} : {};
+  fetch(API+'/api/partners/'+encodeURIComponent(partnerId)+'/reviews', {headers:_opdHeaders})
     .then(function(r){return r.json();})
     .then(function(data){
       if(!data || !data.success) return;
@@ -3352,6 +3355,9 @@ function openPartnerDetail(partnerId){
       var badgeHtml = tierBadgeHtml(p.badge);
       var cityHtml = p.city ? '<div class="p-dir-detail-city"><i class="fas fa-location-dot"></i> '+p.city+'</div>' : '';
       var bioHtml = p.bio ? '<div class="p-dir-detail-bio">'+p.bio+'</div>' : '';
+      var cercleHtml = (p.cercleGenesis && p.cercleGenesis.current)
+        ? '<div class="p-dir-cercle-badge"><i class="fa-solid '+p.cercleGenesis.current.icon+'"></i> '+p.cercleGenesis.current.label+' avec ce partenaire <span class="p-dir-cercle-count">('+p.cercleGenesis.collabsCurrent+' collaboration'+(p.cercleGenesis.collabsCurrent>1?'s':'')+')</span></div>'
+        : '';
       var social = p.social || {};
       var socialLinks = [];
       if(social.instagram) socialLinks.push('<a href="'+social.instagram+'" target="_blank" rel="noopener"><i class="fab fa-instagram"></i></a>');
@@ -3389,6 +3395,7 @@ function openPartnerDetail(partnerId){
         +cityHtml
         +'<div class="detail-price">'+priceLabel+'</div>'
         +'<div class="detail-payment">'+starsLabel+'</div>'
+        +cercleHtml
         +bioHtml
         +socialHtml
         +(portfolioHtml ? '<div class="detail-divider"></div><div class="detail-feats-title">Portfolio</div>'+portfolioHtml : '')

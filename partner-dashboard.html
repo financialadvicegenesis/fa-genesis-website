@@ -627,6 +627,11 @@
                 <p id="reputationClassement" class="text-2xl font-black text-white">—</p>
             </div>
 
+            <div id="reputationCerclesBlock" class="section-card neo-shadow mb-8" style="display:none;border-color:var(--genesis-yellow);">
+                <p class="text-xs font-black uppercase opacity-60 mb-3"><i class="fas fa-handshake mr-2"></i>MES CERCLES GENESIS</p>
+                <div id="reputationCerclesList"></div>
+            </div>
+
             <div class="section-card neo-shadow text-center">
                 <p class="text-xs font-black uppercase opacity-60 mb-2">Programme de parrainage <span id="reputationReferralBadge"></span></p>
                 <div class="flex items-center justify-center gap-2 mb-2">
@@ -2519,6 +2524,23 @@
                 if (classementEl) classementEl.textContent = '#' + classement.rank + ' / ' + classement.total;
             } else if (classementBlock) {
                 classementBlock.style.display = 'none';
+            }
+
+            var cerclesBlock = document.getElementById('reputationCerclesBlock');
+            var cerclesList = document.getElementById('reputationCerclesList');
+            var cercles = data.cerclesGenesis || [];
+            if (cerclesBlock && cerclesList) {
+                if (cercles.length > 0) {
+                    cerclesBlock.style.display = 'block';
+                    cerclesList.innerHTML = cercles.map(function(c) {
+                        return '<div class="flex justify-between items-center py-2" style="border-bottom:1px solid rgba(255,255,255,.1);">' +
+                            '<span class="font-bold text-white">' + escapeHtml(c.name) + '</span>' +
+                            '<span style="color:var(--genesis-yellow);font-weight:900;font-size:0.85rem;text-transform:uppercase;"><i class="fas ' + c.tier.icon + ' mr-1"></i>' + c.tier.label + ' <span class="opacity-60">(' + c.collabCount + ')</span></span>' +
+                        '</div>';
+                    }).join('');
+                } else {
+                    cerclesBlock.style.display = 'none';
+                }
             }
 
             var refCodeEl = document.getElementById('reputationReferralCode');

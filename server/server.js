@@ -682,9 +682,12 @@ function createDispatchesForOrder(orderId) {
         var isPartnerTarif = productIds.length > 0 && productIds.every(function(pid) { return PARTNER_TARIF_IDS.indexOf(pid) !== -1; });
         var partnerPct = isPartnerTarif ? 85 : 15;
 
-        // Reservation prioritaire : les clients Or/Prestige sont mis en avant aux partenaires
+        // Reservation prioritaire : les clients Or/Prestige sont mis en avant aux partenaires,
+        // + bonus si le client a deja un Cercle Genesis eleve avec un partenaire (n'importe lequel)
         var clientBadge = clientEmail ? getClientBadge(getClientCompletedOrders(clientEmail)) : null;
-        var dispatchPriority = clientBadge === 'prestige' ? 2 : (clientBadge === 'or' ? 1 : 0);
+        var cercleTier = clientEmail ? getClientMaxCercleGenesisTier(clientEmail) : null;
+        var cercleBonus = cercleTier && cercleTier.id === 'constellation' ? 2 : (cercleTier && cercleTier.id === 'cercle_premium' ? 1 : 0);
+        var dispatchPriority = (clientBadge === 'prestige' ? 2 : (clientBadge === 'or' ? 1 : 0)) + cercleBonus;
 
         var dispatches = loadDispatches();
         var createdTypes = [];
@@ -7667,7 +7670,8 @@ function getPartnerCategoryScore(partner) {
         + (Math.min(seniorityMonths, 36) * 0.3)
         + (satisfaction * 10)
         + responseComponent
-        + (PARTNER_BADGE_SCORE_BONUS[badge] || 0);
+        + (PARTNER_BADGE_SCORE_BONUS[badge] || 0)
+        + getPartnerCercleGenesisBonus(partner.id);
 }
 
 function getPartnerCategoryRank(partner, allPartnersSameCategory) {
@@ -7676,6 +7680,110 @@ function getPartnerCategoryRank(partner, allPartnersSameCategory) {
         .sort((a, b) => b.score - a.score);
     const idx = scored.findIndex(s => s.id === partner.id);
     return { rank: idx === -1 ? null : idx + 1, total: scored.length };
+}
+
+// ============================================================
+// CERCLES GENESIS — relation client x prestataire (Phase 2)
+// Compte les collaborations payees (commandes balance_paid) entre un
+// client precis et un partenaire precis, via les dispatches qui les relient.
+// ============================================================
+const CERCLE_GENESIS_TIERS = [
+    { id: 'constellation', label: 'Cercle Constellation', collabs: 20, icon: 'fa-meteor' },
+    { id: 'cercle_premium', label: 'Cercle Premium', collabs: 10, icon: 'fa-gem' },
+    { id: 'alliance', label: 'Alliance', collabs: 5, icon: 'fa-handshake' },
+    { id: 'decouverte', label: 'Découverte', collabs: 1, icon: 'fa-compass' }
+];
+
+function getClientPartnerCollabCount(clientEmail, partnerId) {
+    if (!clientEmail || !partnerId) return 0;
+    const needle = clientEmail.toLowerCase();
+    const orderIds = loadDispatches()
+        .filter(d => d.claimed_by_partner_id === partnerId)
+        .map(d => d.order_id);
+    if (orderIds.length === 0) return 0;
+    const seen = {};
+    loadOrders().forEach(o => {
+        if (orderIds.indexOf(o.id) === -1 || o.balance_paid !== true) return;
+        const oe = (o.client_info && o.client_info.email) || o.email || '';
+        if (oe.toLowerCase() === needle) seen[o.id] = true;
+    });
+    return Object.keys(seen).length;
+}
+
+function getCercleGenesisTier(count) {
+    for (const tier of CERCLE_GENESIS_TIERS) {
+        if (count >= tier.collabs) return tier;
+    }
+    return null;
+}
+
+// Progression vers le prochain palier de cercle (meme convention que getClientBadgeProgress)
+function getCercleGenesisProgress(count) {
+    const tiersAsc = CERCLE_GENESIS_TIERS.slice().reverse();
+    const current = getCercleGenesisTier(count);
+    for (const tier of tiersAsc) {
+        if (count < tier.collabs) {
+            return { current, next: tier, collabsCurrent: count, collabsTarget: tier.collabs, percent: Math.min(100, Math.round(count / tier.collabs * 100)) };
+        }
+    }
+    return { current, next: null, collabsCurrent: count, collabsTarget: count, percent: 100 };
+}
+
+// Plus haut palier de cercle atteint par ce client, toutes relations partenaires confondues
+// (utilise pour la reservation prioritaire — pas seulement le badge global du client)
+function getClientMaxCercleGenesisTier(clientEmail) {
+    if (!clientEmail) return null;
+    const partnerIds = loadDispatches()
+        .map(d => d.claimed_by_partner_id)
+        .filter((id, idx, arr) => id && arr.indexOf(id) === idx);
+    let maxCount = 0;
+    partnerIds.forEach(pid => {
+        const c = getClientPartnerCollabCount(clientEmail, pid);
+        if (c > maxCount) maxCount = c;
+    });
+    return getCercleGenesisTier(maxCount);
+}
+
+// Bonus de visibilite pour les partenaires ayant des clients en Cercle Premium/Constellation
+function getPartnerCercleGenesisBonus(partnerId) {
+    const orderIds = loadDispatches()
+        .filter(d => d.claimed_by_partner_id === partnerId)
+        .map(d => d.order_id);
+    if (orderIds.length === 0) return 0;
+    const emails = loadOrders()
+        .filter(o => orderIds.indexOf(o.id) !== -1 && o.balance_paid === true)
+        .map(o => ((o.client_info && o.client_info.email) || o.email || '').toLowerCase())
+        .filter((e, idx, arr) => e && arr.indexOf(e) === idx);
+    let bonus = 0;
+    emails.forEach(email => {
+        const count = getClientPartnerCollabCount(email, partnerId);
+        if (count >= 20) bonus += 8;
+        else if (count >= 10) bonus += 4;
+    });
+    return bonus;
+}
+
+// Liste des clients d'un partenaire ayant atteint au moins le palier "Alliance" (5 collaborations)
+function getPartnerCercleClientsList(partnerId, maxResults) {
+    const orderIds = loadDispatches()
+        .filter(d => d.claimed_by_partner_id === partnerId)
+        .map(d => d.order_id);
+    if (orderIds.length === 0) return [];
+    const orders = loadOrders().filter(o => orderIds.indexOf(o.id) !== -1 && o.balance_paid === true);
+    const byEmail = {};
+    orders.forEach(o => {
+        const email = ((o.client_info && o.client_info.email) || o.email || '').toLowerCase();
+        if (!email || byEmail[email]) return;
+        byEmail[email] = (o.client_info && o.client_info.first_name) || 'Client';
+    });
+    const users = loadUsers();
+    return Object.keys(byEmail).map(email => {
+        const count = getClientPartnerCollabCount(email, partnerId);
+        const tier = getCercleGenesisTier(count);
+        const user = users.find(u => (u.email || '').toLowerCase() === email);
+        const name = (user && (user.prenom || user.firstName)) || byEmail[email];
+        return { name, collabCount: count, tier };
+    }).filter(c => c.tier).sort((a, b) => b.collabCount - a.collabCount).slice(0, maxResults || 5);
 }
 
 // ============================================================
@@ -8217,6 +8325,19 @@ app.get('/api/partners/:id/reviews', (req, res) => {
             .filter(r => r.partnerId === partner.id && r.status === 'published')
             .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
             .map(r => ({ rating: r.rating, comment: r.comment || '', userName: r.userName || 'Client GENESIS', createdAt: r.createdAt }));
+
+        // Cercle Genesis : relation de ce client precis avec ce partenaire (si connecte)
+        let cercleGenesis = null;
+        const authHeader = req.headers.authorization;
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            const token = authHeader.slice(7);
+            const clientUser = loadUsers().find(u => u.sessionToken === token);
+            if (clientUser) {
+                const collabCount = getClientPartnerCollabCount(clientUser.email, partner.id);
+                if (collabCount > 0) cercleGenesis = getCercleGenesisProgress(collabCount);
+            }
+        }
+
         res.json({
             success: true,
             partner: {
@@ -8233,7 +8354,8 @@ app.get('/api/partners/:id/reviews', (req, res) => {
                 badge: getPartnerBadge(partner),
                 services: activeServices,
                 portfolio: activePortfolio,
-                verified: true
+                verified: true,
+                cercleGenesis: cercleGenesis
             },
             reviews: reviews
         });
@@ -9021,7 +9143,8 @@ app.get('/api/partner/reputation', authenticatePartner, function(req, res) {
             avgResponseMinutes: typeof partner.avgResponseMinutes === 'number' ? Math.round(partner.avgResponseMinutes) : null,
             referralCode: partner.id,
             referralCount: referralCount,
-            referralStatus: getPartnerReferralStatus(referralCount)
+            referralStatus: getPartnerReferralStatus(referralCount),
+            cerclesGenesis: getPartnerCercleClientsList(partner.id, 5)
         });
     } catch (e) {
         console.error('[REPUTATION] Erreur:', e);
