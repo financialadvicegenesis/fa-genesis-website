@@ -952,14 +952,8 @@ a{text-decoration:none;color:inherit}
 .p-map-frame{margin:0 16px 18px;border:3px solid #000;border-radius:16px;overflow:hidden;box-shadow:5px 5px 0 var(--yellow);height:240px;position:relative}
 .p-map-frame .leaflet-container{height:100%;width:100%;background:#111;font-family:inherit}
 .p-map-fallback{display:flex;align-items:center;justify-content:center;height:100%;color:var(--muted);font-size:12px;text-align:center;padding:0 20px}
-.p-map-symbol-btn{display:flex;align-items:center;gap:12px;width:calc(100% - 32px);margin:0 16px 18px;background:var(--card);border:3px solid #000;border-radius:16px;padding:14px 16px;cursor:pointer;box-shadow:5px 5px 0 var(--yellow);font-family:inherit;text-align:left;-webkit-tap-highlight-color:transparent}
-.p-map-symbol-btn.on{box-shadow:5px 5px 0 #000;border-color:var(--yellow)}
-.p-map-symbol-icon{font-size:26px;flex-shrink:0}
-.p-map-symbol-text{flex:1;min-width:0}
-.p-map-symbol-label{display:block;font-size:13px;font-weight:900;color:#fff;text-transform:uppercase;letter-spacing:.3px}
-.p-map-symbol-sub{display:block;font-size:10px;color:var(--muted);font-weight:700;margin-top:2px}
-.p-map-symbol-chevron{font-size:20px;color:var(--yellow);font-weight:900;transition:transform .2s;flex-shrink:0}
-.p-map-symbol-btn.on .p-map-symbol-chevron{transform:rotate(90deg)}
+#p-exp-map-symbol.on{background:#000;color:var(--yellow);box-shadow:0 0 0 2px var(--yellow) inset}
+#p-exp-map-symbol.on i{color:var(--yellow)}
 
 .p-exp-panel{display:none}
 .p-exp-panel.on{display:block}
@@ -1875,17 +1869,10 @@ a{text-decoration:none;color:inherit}
       </div>
       <div class="p-hero-search" style="padding:0 16px 14px;margin:0;">
         <input type="text" id="p-exp-search" placeholder="Rechercher un établissement, une offre..." oninput="_expSearchDebounced()">
-        <div class="p-hero-loc-btn" onclick="nav('prestataires')" title="Voir le classement complet des prestataires"><i class="fa-solid fa-trophy"></i></div>
+        <div class="p-hero-loc-btn" id="p-exp-map-symbol" onclick="toggleExplorerMap()" title="Afficher la carte"><i class="fa-solid fa-location-dot"></i></div>
       </div>
       <div class="p-hero-stat" id="p-exp-stat"></div>
-      <button type="button" class="p-map-symbol-btn" id="p-exp-map-symbol" onclick="toggleExplorerMap()">
-        <span class="p-map-symbol-icon">🗺️</span>
-        <span class="p-map-symbol-text">
-          <span class="p-map-symbol-label">Voir la carte</span>
-          <span class="p-map-symbol-sub">Prestataires &amp; événements près de vous</span>
-        </span>
-        <span class="p-map-symbol-chevron">›</span>
-      </button>
+      <div class="p-dir-results" id="p-exp-search-results" style="display:none;margin:0 16px 14px;"></div>
       <div class="p-map-frame" id="p-exp-map" style="display:none;"></div>
       <div class="p-popular-label">RECHERCHES POPULAIRES</div>
       <div class="p-popular-row" id="p-exp-popular-row"></div>
@@ -2617,6 +2604,7 @@ function _expSearchDebounced(){
   _expSearchTimer = setTimeout(function(){
     _expSearchQuery = ((document.getElementById('p-exp-search')||{}).value || '').trim().toLowerCase();
     renderPrestations(_prestFilter);
+    loadExplorerSearchResults();
   }, 300);
 }
 function _expMatch(name){
@@ -2896,7 +2884,27 @@ function _expCityDebounced(){
   _expCityTimer = setTimeout(function(){
     _expCity = ((document.getElementById('p-exp-city-search')||{}).value || '').trim();
     if(_expMapVisible) loadExplorerMap(_expMode, _expCity);
+    loadExplorerSearchResults();
   }, 300);
+}
+
+function loadExplorerSearchResults(){
+  var box = document.getElementById('p-exp-search-results');
+  if(!box) return;
+  if(!_expSearchQuery && !_expCity){ box.style.display='none'; box.innerHTML=''; return; }
+  box.style.display='block';
+  box.innerHTML = '<div class="p-dir-empty">Recherche...</div>';
+  var params = ['sort=score'];
+  if(_expSearchQuery) params.push('q='+encodeURIComponent(_expSearchQuery));
+  if(_expCity) params.push('city='+encodeURIComponent(_expCity));
+  fetch(API+'/api/partners/directory?'+params.join('&'))
+    .then(function(r){return r.json();})
+    .then(function(data){
+      var partners = (data && data.partners) || [];
+      box.innerHTML = '<div class="p-section-hdr black p-section-hdr-fit" style="margin:0 0 10px;">ÉTABLISSEMENTS</div>'
+        + (partners.length ? partners.slice(0,6).map(function(p){ return directoryCard(p); }).join('') : '<div class="p-dir-empty">Aucun établissement trouvé.</div>');
+    })
+    .catch(function(){ box.innerHTML=''; box.style.display='none'; });
 }
 
 function toggleExplorerMap(){
