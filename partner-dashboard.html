@@ -34,6 +34,27 @@
         .pd-constellation-badge.diamant{background:linear-gradient(135deg,#0083b0,#00d4ff);color:#fff;box-shadow:0 0 16px rgba(0,212,255,.55)}
         .pd-constellation-badge.fondateur{background:linear-gradient(135deg,#1a1a1a,#3a2f00);color:var(--genesis-yellow);border:1px solid var(--genesis-yellow);box-shadow:0 0 18px rgba(255,200,0,.6)}
         @keyframes pdConstellationPulse{0%,100%{box-shadow:0 0 10px rgba(255,215,0,.4)}50%{box-shadow:0 0 20px rgba(255,215,0,.75)}}
+        .jeremie-fab{position:fixed;bottom:24px;right:24px;width:56px;height:56px;border-radius:50%;background:var(--genesis-yellow);color:#000;border:3px solid #000;box-shadow:6px 6px 0 0 #000;font-size:22px;cursor:pointer;z-index:9300;display:flex;align-items:center;justify-content:center;transition:transform .15s;}
+        .jeremie-fab:active{transform:scale(.92);}
+        #jeremie-overlay{display:none;position:fixed;inset:0;z-index:9650;background:rgba(0,0,0,.75);backdrop-filter:blur(4px);align-items:flex-end;justify-content:center;}
+        #jeremie-overlay.open{display:flex;}
+        #jeremie-sheet{width:100%;max-width:480px;height:78vh;background:#0d0d0d;border-radius:18px 18px 0 0;border-top:4px solid var(--genesis-yellow);display:flex;flex-direction:column;overflow:hidden;transform:translateY(100%);transition:transform .4s cubic-bezier(.34,1.56,.64,1);}
+        #jeremie-sheet.up{transform:translateY(0);}
+        .jeremie-hdr{display:flex;align-items:center;gap:10px;padding:16px 18px;border-bottom:1px solid #1f1f1f;flex-shrink:0;}
+        .jeremie-hdr-ico{width:34px;height:34px;border-radius:50%;background:var(--genesis-yellow);color:#000;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;}
+        .jeremie-hdr-title{font-family:'Unbounded',cursive;font-size:13px;font-weight:900;color:#fff;flex:1;}
+        .jeremie-hdr-sub{font-size:11px;color:#888;margin-top:2px;}
+        .jeremie-close-btn{background:none;border:none;color:#888;font-size:20px;cursor:pointer;padding:4px 6px;line-height:1;}
+        .jeremie-msgs{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px;}
+        .jeremie-bubble{max-width:78%;padding:10px 14px;font-size:13px;line-height:1.6;word-break:break-word;border-radius:4px;}
+        .jeremie-bubble.mine{align-self:flex-end;background:var(--genesis-yellow);color:#000;font-weight:600;}
+        .jeremie-bubble.theirs{align-self:flex-start;background:#1a1a1a;color:#ccc;border:1px solid #262626;}
+        .jeremie-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#555;font-size:13px;text-align:center;gap:8px;padding:24px;}
+        .jeremie-compose{display:flex;gap:8px;padding:10px 12px;border-top:1px solid #1f1f1f;background:#0d0d0d;flex-shrink:0;}
+        .jeremie-input{flex:1;background:#1a1a1a;border:1.5px solid #262626;color:#fff;font-family:'Space Grotesk',sans-serif;font-size:14px;padding:10px 12px;outline:none;border-radius:0;}
+        .jeremie-input:focus{border-color:var(--genesis-yellow);}
+        .jeremie-send-btn{background:var(--genesis-yellow);color:#000;border:none;padding:10px 14px;font-size:16px;cursor:pointer;flex-shrink:0;}
+        .jeremie-send-btn:disabled{opacity:.4;cursor:default;}
         .neo-btn-yellow {
             background: var(--genesis-yellow);
             color: black;
@@ -4100,6 +4121,99 @@
             } catch (err) {
                 alert('Erreur réseau : ' + err.message);
             }
+        }
+    </script>
+
+    <!-- JEREMIE - conseiller IA flottant -->
+    <button class="jeremie-fab" id="jeremie-fab" onclick="openJeremieChat()" aria-label="Parler à Jérémie">
+        <i class="fa-solid fa-robot"></i>
+    </button>
+    <div id="jeremie-overlay" onclick="if(event.target===this)closeJeremieChat()">
+        <div id="jeremie-sheet">
+            <div class="jeremie-hdr">
+                <div class="jeremie-hdr-ico"><i class="fa-solid fa-robot"></i></div>
+                <div>
+                    <div class="jeremie-hdr-title">Jérémie</div>
+                    <div class="jeremie-hdr-sub">Votre coach Genesis</div>
+                </div>
+                <button class="jeremie-close-btn" onclick="closeJeremieChat()" aria-label="Fermer">&#x2715;</button>
+            </div>
+            <div class="jeremie-msgs" id="jeremie-msgs"><div class="jeremie-empty"><span>Chargement...</span></div></div>
+            <div class="jeremie-compose">
+                <input id="jeremie-input" class="jeremie-input" type="text" placeholder="Posez votre question..." onkeydown="if(event.key==='Enter'||event.keyCode===13)sendJeremieMessage()">
+                <button class="jeremie-send-btn" id="jeremie-send-btn" onclick="sendJeremieMessage()">&#8593;</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        function openJeremieChat(){
+            var token = localStorage.getItem('fa_genesis_partner_token');
+            if(!token){ return; }
+            var overlay=document.getElementById('jeremie-overlay'); var sheet=document.getElementById('jeremie-sheet');
+            if(!overlay||!sheet) return;
+            overlay.classList.add('open');
+            setTimeout(function(){ sheet.classList.add('up'); },20);
+            loadJeremieHistory();
+        }
+        function closeJeremieChat(){
+            var sheet=document.getElementById('jeremie-sheet'); var overlay=document.getElementById('jeremie-overlay');
+            if(!sheet||!overlay) return;
+            sheet.classList.remove('up');
+            setTimeout(function(){ overlay.classList.remove('open'); },420);
+        }
+        function _jeremieBubbleHtml(role,text){
+            var isMine=(role==='user');
+            return '<div class="jeremie-bubble '+(isMine?'mine':'theirs')+'"><div>'+text+'</div></div>';
+        }
+        function loadJeremieHistory(){
+            var msgs=document.getElementById('jeremie-msgs'); if(!msgs) return;
+            var token = localStorage.getItem('fa_genesis_partner_token');
+            msgs.innerHTML='<div class="jeremie-empty"><span>Chargement...</span></div>';
+            fetch(PARTNER_API_URL+'/api/jeremie/chat',{
+                headers:{'Authorization':'Bearer '+token}
+            }).then(function(r){return r.json();}).then(function(data){
+                var list=(data&&data.messages)||[];
+                if(!list.length){
+                    msgs.innerHTML='<div class="jeremie-empty"><i class="fa-solid fa-robot" style="font-size:28px;color:var(--genesis-yellow);"></i><span>Bonjour, je suis Jérémie !</span><span style="font-size:12px;color:#444;">Demandez-moi des conseils pour progresser dans le système Genesis.</span></div>';
+                    return;
+                }
+                msgs.innerHTML=list.map(function(m){ return _jeremieBubbleHtml(m.role,m.content); }).join('');
+                msgs.scrollTop=msgs.scrollHeight;
+            }).catch(function(){
+                msgs.innerHTML='<div class="jeremie-empty"><span>Impossible de charger la conversation.</span></div>';
+            });
+        }
+        function sendJeremieMessage(){
+            var inp=document.getElementById('jeremie-input'); var btn=document.getElementById('jeremie-send-btn');
+            if(!inp) return;
+            var text=inp.value.trim(); if(!text) return;
+            var token = localStorage.getItem('fa_genesis_partner_token');
+            if(btn){btn.disabled=true;btn.textContent='...';}
+            inp.value='';
+            var msgs=document.getElementById('jeremie-msgs');
+            if(msgs){
+                var em=msgs.querySelector('.jeremie-empty'); if(em) em.remove();
+                msgs.insertAdjacentHTML('beforeend',_jeremieBubbleHtml('user',text));
+                msgs.scrollTop=msgs.scrollHeight;
+            }
+            fetch(PARTNER_API_URL+'/api/jeremie/chat',{
+                method:'POST',
+                headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+                body:JSON.stringify({message:text})
+            }).then(function(r){return r.json();}).then(function(res){
+                if(btn){btn.disabled=false;btn.textContent='↑';}
+                if(msgs){
+                    if(res&&res.success){
+                        msgs.insertAdjacentHTML('beforeend',_jeremieBubbleHtml('assistant',res.reply));
+                    }else{
+                        msgs.insertAdjacentHTML('beforeend',_jeremieBubbleHtml('assistant',(res&&res.error)||'Jérémie est momentanément indisponible.'));
+                    }
+                    msgs.scrollTop=msgs.scrollHeight;
+                }
+            }).catch(function(){
+                if(btn){btn.disabled=false;btn.textContent='↑';}
+                if(msgs){ msgs.insertAdjacentHTML('beforeend',_jeremieBubbleHtml('assistant','Erreur de connexion. Réessayez.')); msgs.scrollTop=msgs.scrollHeight; }
+            });
         }
     </script>
 

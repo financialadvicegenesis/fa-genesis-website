@@ -55,6 +55,7 @@ const PAYOUTS_FILE    = path.join(__dirname, 'data', 'payouts.json');
 const PARTNER_REVIEWS_FILE = path.join(__dirname, 'data', 'partner_reviews.json');
 const HALL_OF_FAME_FILE = path.join(__dirname, 'data', 'hall_of_fame.json');
 const EVENTS_FILE = path.join(__dirname, 'data', 'events.json');
+const JEREMIE_MEMORY_FILE = path.join(__dirname, 'data', 'jeremie_memory.json');
 
 // Catégories de partenaires marketplace (source unique, partagée par inscription + admin)
 const PARTNER_TYPES = [
@@ -4496,6 +4497,27 @@ function saveMessages(messages) {
     }
 }
 
+// Memoire de Jeremie (IA conversationnelle) : historique de messages par personne
+// ({ [personId]: { messages: [{role, content, date}], updatedAt } }), cle = userId client ou partnerId.
+function loadJeremieMemory() {
+    try {
+        if (fs.existsSync(JEREMIE_MEMORY_FILE)) {
+            return JSON.parse(fs.readFileSync(JEREMIE_MEMORY_FILE, 'utf8'));
+        }
+    } catch (error) {
+        console.error('Erreur lecture jeremie_memory:', error);
+    }
+    return {};
+}
+
+function saveJeremieMemory(memory) {
+    try {
+        fs.writeFileSync(JEREMIE_MEMORY_FILE, JSON.stringify(memory, null, 2), 'utf8');
+    } catch (error) {
+        console.error('Erreur sauvegarde jeremie_memory:', error);
+    }
+}
+
 /**
  * POST /api/contact
  * Recevoir un message du formulaire de contact
@@ -8284,6 +8306,145 @@ app.get('/api/genesis/missions', function(req, res) {
         return res.status(401).json({ error: 'Session invalide ou expiree' });
     } catch (e) {
         console.error('[GENESIS-MISSIONS] Erreur:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// ============================================================
+// JEREMIE - CONSEILLER IA (Phase 6) — prompt systeme ancre dans les
+// vraies donnees de la plateforme (QG, missions, opportunites), memoire
+// de conversation persistee par personne. Inerte tant que ANTHROPIC_API_KEY
+// n'est pas fourni (cf aiService.askJeremie).
+// ============================================================
+
+function buildJeremieSystemPrompt(person, personType) {
+    var lines = [];
+    lines.push('Tu es Jeremie, le conseiller IA de FA GENESIS, une plateforme qui met en relation des clients ' +
+        '(createurs de contenu, entrepreneurs, marques) avec des prestataires (videastes, photographes, graphistes, ' +
+        'marketeurs, etc.). Tu es chaleureux, concret, jamais inventif sur les chiffres : tu utilises uniquement les ' +
+        'donnees ci-dessous, et si tu ne sais pas, tu le dis. Reponses courtes et actionnables, en francais.');
+    lines.push('');
+    lines.push('Le systeme de fidelisation Genesis repose sur : le Quotient Genesis (QG, points de contribution ' +
+        'gagnes par prestation realisee, avis 5 etoiles, parrainage, participation a des evenements), 5 niveaux ' +
+        'd\'evolution (Explorateur < Createur < Batisseur < Visionnaire < Generateur), les Cercles Genesis (relation ' +
+        'privilegiee avec un partenaire specifique apres plusieurs collaborations), les Missions Genesis (objectifs ' +
+        'a debloquer), le Patrimoine Genesis (recapitulatif de parcours), et la Constellation Genesis (palier ' +
+        'exclusif Argent/Or/Diamant/Fondateur reserve aux membres les plus actifs et les mieux notes).');
+
+    try {
+        if (personType === 'client') {
+            var completedOrders = getClientCompletedOrders(person.email);
+            var badge = getClientBadge(completedOrders);
+            var level = getGenesisLevel(badge);
+            var genesisPoints = getClientGenesisPoints(person, completedOrders);
+            var missions = getGenesisMissions(person, 'client');
+            var preferredCategories = getClientPreferredCategories(person.email);
+            var referralCount = getClientReferralCount(person.id);
+
+            lines.push('');
+            lines.push('Donnees de ce client : prenom=' + (person.prenom || '') + ', niveau Genesis=' + level.label +
+                ', QG=' + genesisPoints + ', prestations realisees=' + completedOrders +
+                ', partenaires distincts=' + getClientDistinctPartnerCount(person.email) +
+                ', parrainages=' + referralCount +
+                ', categories preferees=' + (preferredCategories.length ? preferredCategories.join(', ') : 'aucune pour le moment') + '.');
+            lines.push('Missions Genesis en cours : ' + (missions.length ? missions.map(function(m) {
+                return m.label + ' (' + m.current + '/' + m.target + (m.completed ? ', terminee' : '') + ')';
+            }).join(' | ') : 'aucune'));
+            lines.push('Ton role avec ce client : conseiller de projet (l\'aider a clarifier son besoin et choisir le bon ' +
+                'type de prestataire), recommandation intelligente (s\'appuyer sur ses categories preferees et son historique), ' +
+                'detection d\'opportunites (lui suggerer la prochaine mission ou le prochain palier de Cercle Genesis a portee ' +
+                'de main), et explication pedagogique du systeme de fidelisation s\'il pose des questions dessus.');
+        } else {
+            var summary = getPartnerRatingSummary(person.id);
+            var missionsCompleted = getPartnerMissionsCompleted(person.id);
+            var pBadge = getPartnerBadge(person, summary, missionsCompleted);
+            var pLevel = getGenesisLevel(pBadge);
+            var pGenesisPoints = getPartnerGenesisPoints(person, missionsCompleted);
+            var constellation = getConstellationTier(person);
+            var pMissions = getGenesisMissions(person, 'partner');
+            var opportunites = findSharedClientPartners(person.id, 3);
+
+            lines.push('');
+            lines.push('Donnees de ce partenaire : prenom=' + (person.prenom || '') + ', categorie=' + (person.partner_type || '') +
+                ', niveau Genesis=' + pLevel.label + ', QG=' + pGenesisPoints +
+                ', note moyenne=' + (summary && summary.average ? summary.average : 'pas encore note') +
+                ', prestations realisees=' + missionsCompleted +
+                ', Constellation Genesis=' + (constellation ? constellation.label : 'pas encore atteinte') + '.');
+            lines.push('Missions Genesis en cours : ' + (pMissions.length ? pMissions.map(function(m) {
+                return m.label + ' (' + m.current + '/' + m.target + (m.completed ? ', terminee' : '') + ')';
+            }).join(' | ') : 'aucune'));
+            lines.push('Partenaires partageant des clients avec lui (opportunites de collaboration) : ' +
+                (opportunites.length ? opportunites.map(function(o) { return o.name + ' (' + o.sharedClientCount + ' client(s) en commun)'; }).join(', ') : 'aucune pour le moment'));
+            lines.push('Ton role avec ce partenaire : coach de profil et de visibilite (comment progresser de niveau, ' +
+                'comment atteindre la Constellation Genesis), detection d\'opportunites de collaboration avec d\'autres ' +
+                'partenaires, et explication pedagogique du systeme de fidelisation s\'il pose des questions dessus.');
+        }
+    } catch (ctxErr) {
+        console.error('[JEREMIE] Erreur construction contexte:', ctxErr);
+    }
+    return lines.join('\n');
+}
+
+app.post('/api/jeremie/chat', function(req, res) {
+    try {
+        var authHeader = req.headers.authorization;
+        if (!authHeader || !authHeader.startsWith('Bearer ')) return res.status(401).json({ error: 'Token requis' });
+        var token = authHeader.slice(7);
+
+        var message = req.body && typeof req.body.message === 'string' ? req.body.message.trim() : '';
+        if (!message) return res.status(400).json({ error: 'Message requis' });
+
+        var person = loadUsers().find(function(u) { return u.sessionToken === token; });
+        var personType = 'client';
+        if (!person) {
+            person = loadPartners().find(function(p) { return p.sessionToken === token; });
+            personType = 'partner';
+        }
+        if (!person) return res.status(401).json({ error: 'Session invalide ou expiree' });
+
+        var memory = loadJeremieMemory();
+        var entry = memory[person.id] || { messages: [] };
+        var history = (entry.messages || []).slice(-20).map(function(m) { return { role: m.role, content: m.content }; });
+        var systemPrompt = buildJeremieSystemPrompt(person, personType);
+
+        aiService.askJeremie(systemPrompt, history, message).then(function(result) {
+            if (!result.success) {
+                return res.status(503).json({ error: result.error || 'Jeremie est momentanement indisponible.' });
+            }
+            entry.messages = entry.messages || [];
+            entry.messages.push({ role: 'user', content: message, date: new Date().toISOString() });
+            entry.messages.push({ role: 'assistant', content: result.reply, date: new Date().toISOString() });
+            if (entry.messages.length > 60) entry.messages = entry.messages.slice(-60);
+            entry.updatedAt = new Date().toISOString();
+            memory[person.id] = entry;
+            saveJeremieMemory(memory);
+            res.json({ success: true, reply: result.reply });
+        }).catch(function(err) {
+            console.error('[JEREMIE] Erreur askJeremie:', err);
+            res.status(500).json({ error: 'Erreur serveur' });
+        });
+    } catch (e) {
+        console.error('[JEREMIE] Erreur route chat:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// GET /api/jeremie/chat — historique de conversation persiste pour l'utilisateur connecte
+app.get('/api/jeremie/chat', function(req, res) {
+    try {
+        var authHeader = req.headers.authorization;
+        if (!authHeader || !authHeader.startsWith('Bearer ')) return res.status(401).json({ error: 'Token requis' });
+        var token = authHeader.slice(7);
+
+        var person = loadUsers().find(function(u) { return u.sessionToken === token; });
+        if (!person) person = loadPartners().find(function(p) { return p.sessionToken === token; });
+        if (!person) return res.status(401).json({ error: 'Session invalide ou expiree' });
+
+        var memory = loadJeremieMemory();
+        var entry = memory[person.id] || { messages: [] };
+        res.json({ success: true, messages: entry.messages || [], available: aiService.isJeremieAvailable() });
+    } catch (e) {
+        console.error('[JEREMIE] Erreur route history:', e);
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });
