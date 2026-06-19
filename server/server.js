@@ -7626,6 +7626,44 @@ function getPartnerCategoryRank(partner, allPartnersSameCategory) {
 }
 
 // ============================================================
+// GEOLOCALISATION — table statique ville -> [lat, lng]
+// Pas de service de geocodage externe (cohérent avec les conventions
+// défensives du projet : aucune dépendance réseau fragile). Une ville
+// non reconnue retourne simplement null et n'est pas épinglée sur la carte.
+// ============================================================
+const CITY_COORDS = {
+    paris: [48.8566, 2.3522], marseille: [43.2965, 5.3698], lyon: [45.7640, 4.8357],
+    toulouse: [43.6047, 1.4442], nice: [43.7102, 7.2620], nantes: [47.2184, -1.5536],
+    montpellier: [43.6108, 3.8767], strasbourg: [48.5734, 7.7521], bordeaux: [44.8378, -0.5792],
+    lille: [50.6292, 3.0573], rennes: [48.1173, -1.6778], reims: [49.2583, 4.0317],
+    'le havre': [49.4944, 0.1079], 'saint-etienne': [45.4397, 4.3872], toulon: [43.1242, 5.9280],
+    grenoble: [45.1885, 5.7245], dijon: [47.3220, 5.0415], angers: [47.4784, -0.5632],
+    nimes: [43.8367, 4.3601], villeurbanne: [45.7667, 4.8800], 'le mans': [48.0061, 0.1996],
+    'aix-en-provence': [43.5297, 5.4474], 'clermont-ferrand': [45.7772, 3.0870], brest: [48.3904, -4.4861],
+    tours: [47.3941, 0.6848], limoges: [45.8336, 1.2611], amiens: [49.8941, 2.2958],
+    annecy: [45.8992, 6.1294], perpignan: [42.6886, 2.8948], besancon: [47.2380, 6.0243],
+    metz: [49.1193, 6.1757], orleans: [47.9029, 1.9093], mulhouse: [47.7508, 7.3359],
+    caen: [49.1829, -0.3707], nancy: [48.6921, 6.1844], avignon: [43.9493, 4.8055],
+    pau: [43.2951, -0.3708], 'la rochelle': [46.1603, -1.1511], cannes: [43.5528, 7.0174],
+    beziers: [43.3442, 3.2158], narbonne: [43.1839, 3.0036], sete: [43.4022, 3.6967],
+    carcassonne: [43.2130, 2.3491], bruxelles: [50.8503, 4.3517], geneve: [46.2044, 6.1432],
+    lausanne: [46.5197, 6.6323], luxembourg: [49.6116, 6.1319], montreal: [45.5019, -73.5674],
+    casablanca: [33.5731, -7.5898], dakar: [14.7167, -17.4677], abidjan: [5.3600, -4.0083]
+};
+
+function _normalizeCityKey(s) {
+    return (s || '').toString().trim().toLowerCase().normalize('NFD').replace(new RegExp('[\\u0300-\\u036f]', 'g'), '');
+}
+
+function getCityCoords(cityRaw) {
+    const key = _normalizeCityKey(cityRaw);
+    if (!key) return null;
+    if (CITY_COORDS[key]) return CITY_COORDS[key];
+    const found = Object.keys(CITY_COORDS).find(function(k) { return key.indexOf(k) >= 0 || k.indexOf(key) >= 0; });
+    return found ? CITY_COORDS[found] : null;
+}
+
+// ============================================================
 // HALL OF FAME — calcul automatique mensuel (Phase 4)
 // ============================================================
 
@@ -7759,12 +7797,16 @@ app.get('/api/hall-of-fame', function(req, res) {
             snapshot = Object.assign({}, snapshot, {
                 bestPartners: (snapshot.bestPartners || []).map(function(bp) {
                     var p = partners.find(function(pp) { return pp.id === bp.partnerId; });
+                    var coords = p ? getCityCoords(p.city) : null;
                     return Object.assign({}, bp, {
                         id: bp.partnerId,
                         prenom: p ? p.prenom : bp.partnerName.split(' ')[0],
                         nom: p ? p.nom : bp.partnerName.split(' ').slice(1).join(' '),
                         partner_type: bp.category,
                         photo: p ? (p.photo || null) : null,
+                        city: p ? (p.city || '') : '',
+                        lat: coords ? coords[0] : null,
+                        lng: coords ? coords[1] : null,
                         rating: p ? getPartnerRatingSummary(p.id) : null,
                         badge: p ? getPartnerBadge(p) : null
                     });
@@ -7781,7 +7823,7 @@ app.get('/api/hall-of-fame', function(req, res) {
 // Annuaire public des partenaires (recherche, filtre categorie, filtre prix)
 app.get('/api/partners/directory', (req, res) => {
     try {
-        const { category, q, maxPrice, city } = req.query;
+        const { category, q, maxPrice, city, sort } = req.query;
         let partners = loadPartners().filter(p => p.accountStatus === 'active');
 
         if (category) {
@@ -7802,8 +7844,26 @@ app.get('/api/partners/directory', (req, res) => {
             partners = partners.filter(p => (p.city || '').toLowerCase().includes(needleCity));
         }
 
-        let results = partners.map(p => {
+        // Tri applique sur les partenaires bruts (avant la mise en forme) afin de pouvoir
+        // reutiliser le score composite / la note / la date d'inscription le cas echeant.
+        const sortMode = sort || 'score';
+        if (sortMode === 'recent') {
+            partners = partners.slice().sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+        } else if (sortMode === 'rating') {
+            partners = partners.slice().sort((a, b) => {
+                const ra = getPartnerRatingSummary(a.id), rb = getPartnerRatingSummary(b.id);
+                if (rb.average !== ra.average) return rb.average - ra.average;
+                return rb.count - ra.count;
+            });
+        } else if (sortMode === 'alpha') {
+            partners = partners.slice().sort((a, b) => ((a.nom || '') + (a.prenom || '')).localeCompare((b.nom || '') + (b.prenom || '')));
+        } else {
+            partners = partners.slice().sort((a, b) => getPartnerCategoryScore(b) - getPartnerCategoryScore(a));
+        }
+
+        let results = partners.map((p, idx) => {
             const fromPrice = getPartnerFromPrice(p);
+            const coords = getCityCoords(p.city);
             return {
                 id: p.id,
                 prenom: p.prenom,
@@ -7811,10 +7871,13 @@ app.get('/api/partners/directory', (req, res) => {
                 partner_type: p.partner_type,
                 photo: p.photo || null,
                 city: p.city || '',
+                lat: coords ? coords[0] : null,
+                lng: coords ? coords[1] : null,
                 fromPrice: fromPrice,
                 rating: getPartnerRatingSummary(p.id),
                 badge: getPartnerBadge(p),
-                verified: true
+                verified: true,
+                rank: (sortMode === 'score' && idx < 3) ? idx + 1 : null
             };
         });
 
@@ -7888,6 +7951,7 @@ app.get('/api/partners/top', (req, res) => {
             .slice(0, max)
             .map(entry => {
                 const p = entry.partner;
+                const coords = getCityCoords(p.city);
                 return {
                     id: p.id,
                     prenom: p.prenom,
@@ -7895,6 +7959,8 @@ app.get('/api/partners/top', (req, res) => {
                     partner_type: p.partner_type,
                     photo: p.photo || null,
                     city: p.city || '',
+                    lat: coords ? coords[0] : null,
+                    lng: coords ? coords[1] : null,
                     fromPrice: getPartnerFromPrice(p),
                     rating: getPartnerRatingSummary(p.id),
                     badge: getPartnerBadge(p)
@@ -7911,9 +7977,10 @@ app.get('/api/partners/top', (req, res) => {
 // Professionnels a la Une : meilleurs partenaires toutes categories confondues, classes par score composite
 app.get('/api/partners/featured', (req, res) => {
     try {
-        const { limit } = req.query;
+        const { limit, category } = req.query;
         const max = Math.max(1, Math.min(parseInt(limit) || 10, 50));
-        const activePartners = loadPartners().filter(p => p.accountStatus === 'active');
+        let activePartners = loadPartners().filter(p => p.accountStatus === 'active');
+        if (category) activePartners = activePartners.filter(p => p.partner_type === category);
 
         const ranked = activePartners
             .map(p => ({ partner: p, score: getPartnerCategoryScore(p) }))
@@ -7921,6 +7988,7 @@ app.get('/api/partners/featured', (req, res) => {
             .slice(0, max)
             .map(entry => {
                 const p = entry.partner;
+                const coords = getCityCoords(p.city);
                 return {
                     id: p.id,
                     prenom: p.prenom,
@@ -7928,6 +7996,8 @@ app.get('/api/partners/featured', (req, res) => {
                     partner_type: p.partner_type,
                     photo: p.photo || null,
                     city: p.city || '',
+                    lat: coords ? coords[0] : null,
+                    lng: coords ? coords[1] : null,
                     fromPrice: getPartnerFromPrice(p),
                     rating: getPartnerRatingSummary(p.id),
                     badge: getPartnerBadge(p)
@@ -7942,6 +8012,7 @@ app.get('/api/partners/featured', (req, res) => {
 });
 
 function partnerDirectoryShape(p) {
+    const coords = getCityCoords(p.city);
     return {
         id: p.id,
         prenom: p.prenom,
@@ -7949,6 +8020,8 @@ function partnerDirectoryShape(p) {
         partner_type: p.partner_type,
         photo: p.photo || null,
         city: p.city || '',
+        lat: coords ? coords[0] : null,
+        lng: coords ? coords[1] : null,
         fromPrice: getPartnerFromPrice(p),
         rating: getPartnerRatingSummary(p.id),
         badge: getPartnerBadge(p)
@@ -7958,10 +8031,11 @@ function partnerDirectoryShape(p) {
 // Nouveaux Talents : partenaires actifs les plus recemment inscrits
 app.get('/api/partners/new', (req, res) => {
     try {
-        const { limit } = req.query;
+        const { limit, category } = req.query;
         const max = Math.max(1, Math.min(parseInt(limit) || 10, 50));
-        const sorted = loadPartners()
-            .filter(p => p.accountStatus === 'active')
+        let pool = loadPartners().filter(p => p.accountStatus === 'active');
+        if (category) pool = pool.filter(p => p.partner_type === category);
+        const sorted = pool
             .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
             .slice(0, max)
             .map(partnerDirectoryShape);
@@ -8065,7 +8139,11 @@ app.get('/api/events', (req, res) => {
     try {
         var events = loadEvents()
             .filter(function(e) { return e.published === true; })
-            .sort(function(a, b) { return new Date(a.date) - new Date(b.date); });
+            .sort(function(a, b) { return new Date(a.date) - new Date(b.date); })
+            .map(function(e) {
+                var coords = getCityCoords(e.location);
+                return Object.assign({}, e, { lat: coords ? coords[0] : null, lng: coords ? coords[1] : null });
+            });
         res.json({ success: true, events: events });
     } catch (error) {
         console.error('[EVENTS] Erreur liste publique:', error);
