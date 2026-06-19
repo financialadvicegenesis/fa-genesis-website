@@ -1445,28 +1445,53 @@ a{text-decoration:none;color:inherit}
 .chat-send-btn:disabled{opacity:.35;cursor:default;}
 
 /* ── JEREMIE (IA CONSEILLER) ── */
-.jeremie-fab{position:fixed;bottom:calc(var(--nav) + var(--safe) + 18px);right:16px;width:58px;height:58px;border-radius:50%;background:radial-gradient(circle at 65% 70%,rgba(0,0,0,.22) 0 6%,transparent 7%),radial-gradient(circle at 32% 62%,rgba(0,0,0,.16) 0 4%,transparent 5%),radial-gradient(circle at 55% 32%,rgba(0,0,0,.14) 0 5%,transparent 6%),radial-gradient(circle at 30% 26%,#f6f6f1,#d6d6d0 35%,#a3a39a 65%,#6a6a60 100%);color:#000;border:none;box-shadow:0 4px 22px rgba(255,215,0,.5),0 0 0 1px rgba(255,215,0,.35);font-size:22px;cursor:pointer;z-index:9300;display:flex;align-items:center;justify-content:center;transition:transform .15s;animation:jeremieOrbPulse 3.2s ease-in-out infinite;}
+.jeremie-fab{position:fixed;bottom:calc(var(--nav) + var(--safe) + 18px);right:16px;width:58px;height:58px;border-radius:50%;background:none;color:#000;border:none;box-shadow:0 4px 22px rgba(255,215,0,.5),0 0 0 1px rgba(255,215,0,.35);font-size:22px;cursor:pointer;z-index:9300;display:flex;align-items:center;justify-content:center;transition:transform .15s;animation:jeremieOrbPulse 3.2s ease-in-out infinite;}
 .jeremie-fab::before{content:'';position:absolute;inset:-7px;border-radius:50%;border:1.5px solid rgba(255,215,0,.45);animation:jeremieOrbRing 5s linear infinite;}
 .jeremie-fab:active{transform:scale(.9);}
+.jeremie-avatar-clip{width:100%;height:100%;border-radius:50%;overflow:hidden;display:flex;align-items:center;justify-content:center;position:relative;background:radial-gradient(circle at 30% 24%,#1c2c52,#0d1730 60%,#05070f 100%);}
+.jeremie-avatar{animation:jeremieBreathe 4.5s ease-in-out infinite;}
+.jeremie-avatar-head-grp{transform-origin:50% 100%;transform-box:fill-box;animation:jeremieHeadTilt 7s ease-in-out infinite;}
+.jeremie-avatar-eye{transform-origin:center;transform-box:fill-box;animation:jeremieBlink 5.5s ease-in-out infinite;}
+.jeremie-avatar-mouth{transform-origin:center;transform-box:fill-box;}
+.is-talking .jeremie-avatar-mouth{animation:jeremieTalk .24s ease-in-out infinite;}
+.is-listening .jeremie-avatar{animation:jeremieListenGlow 1s ease-in-out infinite,jeremieBreathe 4.5s ease-in-out infinite;}
+.jeremie-emotion-badge{position:absolute;top:-2px;right:-2px;font-size:13px;background:#0d0d0d;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;opacity:0;transform:scale(.5);transition:opacity .25s,transform .25s;border:1.5px solid #FFD700;pointer-events:none;z-index:2;}
+.jeremie-emotion-badge.show{opacity:1;transform:scale(1);}
 #jeremie-overlay{display:none;position:fixed;inset:0;z-index:9650;background:rgba(0,0,0,.72);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);align-items:flex-end;justify-content:center;}
 #jeremie-overlay.open{display:flex;animation:regFadeIn .2s ease;}
-#jeremie-sheet{width:100%;max-width:480px;height:80vh;height:80dvh;background:#0d0d0d;border-radius:20px 20px 0 0;border-top:3px solid #FFD700;display:flex;flex-direction:column;overflow:hidden;transform:translateY(100%);transition:transform .45s cubic-bezier(.34,1.56,.64,1);position:relative;}
+#jeremie-sheet{width:100%;max-width:480px;height:80vh;height:80dvh;background:#0d0d0d;border-radius:20px 20px 0 0;border-top:3px solid #FFD700;display:flex;flex-direction:column;overflow:hidden;transform:translateY(100%);transition:transform .45s cubic-bezier(.34,1.56,.64,1),height .3s ease,border-radius .3s ease;position:relative;}
 #jeremie-sheet.up{transform:translateY(0);}
+#jeremie-sheet.immersive{height:100vh;height:100dvh;border-radius:0;max-width:100%;}
 #jeremie-sheet::before{content:'';position:absolute;inset:0;background-image:radial-gradient(rgba(255,215,0,.35) 1px,transparent 1.5px);background-size:26px 26px;opacity:.12;pointer-events:none;}
 .jeremie-hdr{position:relative;z-index:1;display:flex;align-items:center;gap:10px;padding:16px 18px;border-bottom:1px solid #1a1a1a;flex-shrink:0;}
-.jeremie-hdr-ico{position:relative;width:38px;height:38px;border-radius:50%;background:radial-gradient(circle at 65% 70%,rgba(0,0,0,.22) 0 6%,transparent 7%),radial-gradient(circle at 32% 62%,rgba(0,0,0,.16) 0 4%,transparent 5%),radial-gradient(circle at 55% 32%,rgba(0,0,0,.14) 0 5%,transparent 6%),radial-gradient(circle at 30% 26%,#f6f6f1,#d6d6d0 35%,#a3a39a 65%,#6a6a60 100%);color:#000;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;box-shadow:0 0 14px rgba(255,215,0,.5);animation:jeremieOrbPulse 3.2s ease-in-out infinite;}
+.jeremie-hdr-ico{position:relative;width:38px;height:38px;border-radius:50%;color:#000;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;box-shadow:0 0 14px rgba(255,215,0,.5);animation:jeremieOrbPulse 3.2s ease-in-out infinite;}
 .jeremie-hdr-ico::before{content:'';position:absolute;inset:-5px;border-radius:50%;border:1.5px solid rgba(255,215,0,.4);animation:jeremieOrbRing 5s linear infinite;}
 .jeremie-hdr-title{font-family:'Unbounded',cursive;font-size:13px;font-weight:900;color:#fff;flex:1;}
 .jeremie-hdr-sub{font-size:11px;color:#666;margin-top:2px;}
+.jeremie-hdr-btn{position:relative;z-index:1;background:none;border:none;color:#666;font-size:15px;cursor:pointer;padding:4px 7px;line-height:1;}
+.jeremie-hdr-btn.active{color:#FFD700;}
 .jeremie-close-btn{position:relative;z-index:1;background:none;border:none;color:#666;font-size:20px;cursor:pointer;padding:4px 6px;line-height:1;}
+.jeremie-immersive-avatar{display:none;align-items:center;justify-content:center;padding:18px 0 4px;position:relative;flex-shrink:0;z-index:1;}
+#jeremie-sheet.immersive .jeremie-immersive-avatar{display:flex;}
+.jeremie-avatar-clip-lg{width:140px;height:140px;box-shadow:0 0 30px rgba(255,215,0,.4);}
+.jeremie-emotion-badge-lg{width:30px;height:30px;font-size:20px;}
+.jeremie-greet-avatar{width:64px;height:64px;border-radius:50%;margin:0 auto 12px;overflow:hidden;background:radial-gradient(circle at 30% 24%,#1c2c52,#0d1730 60%,#05070f 100%);box-shadow:0 0 18px rgba(255,215,0,.5),0 0 0 1px rgba(255,215,0,.35);}
 #jeremie-sheet .chat-messages{position:relative;z-index:1;}
 #jeremie-sheet .chat-compose{position:relative;z-index:1;padding-bottom:calc(10px + var(--safe));align-items:flex-end;}
 #jeremie-sheet .chat-text-input{border-radius:22px;padding:11px 16px;resize:none;max-height:120px;min-height:42px;line-height:1.35;overflow-y:auto;}
 #jeremie-sheet .chat-send-btn{width:38px;height:38px;border-radius:50%;padding:0;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.jeremie-mic-btn{width:38px;height:38px;border-radius:50%;padding:0;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:#1a1a1a;border:1.5px solid #262626;color:#aaa;cursor:pointer;font-size:14px;}
+.jeremie-mic-btn.listening{background:#FFD700;color:#000;border-color:#FFD700;animation:jeremieMicPulse 1s ease-in-out infinite;}
 .jeremie-thinking{position:relative;z-index:1;align-self:flex-start;display:flex;align-items:center;gap:8px;background:#1a1a1a;border:1px solid #222;padding:10px 14px;color:#FFD700;font-size:12px;}
 .jeremie-thinking i{animation:jeremieBrainPulse 1.3s ease-in-out infinite;}
 @keyframes jeremieOrbPulse{0%,100%{box-shadow:0 4px 18px rgba(255,215,0,.5),0 0 0 1px rgba(255,215,0,.25);}50%{box-shadow:0 4px 28px rgba(255,215,0,.85),0 0 0 1px rgba(255,215,0,.45);}}
 @keyframes jeremieOrbRing{0%{transform:rotate(0deg);}100%{transform:rotate(360deg);}}
+@keyframes jeremieBreathe{0%,100%{transform:scale(1);}50%{transform:scale(1.04);}}
+@keyframes jeremieHeadTilt{0%,100%{transform:rotate(0deg);}50%{transform:rotate(1.4deg);}}
+@keyframes jeremieBlink{0%,90%,100%{transform:scaleY(1);}93%,96%{transform:scaleY(.08);}}
+@keyframes jeremieTalk{0%,100%{transform:scaleY(1);}50%{transform:scaleY(.4);}}
+@keyframes jeremieListenGlow{0%,100%{filter:drop-shadow(0 0 0 rgba(255,215,0,0));}50%{filter:drop-shadow(0 0 7px rgba(255,215,0,.85));}}
+@keyframes jeremieMicPulse{0%,100%{box-shadow:0 0 0 0 rgba(255,215,0,.6);}50%{box-shadow:0 0 0 6px rgba(255,215,0,0);}}
 @keyframes jeremieBrainPulse{0%,100%{opacity:.45;transform:scale(.9);}50%{opacity:1;transform:scale(1.1);}}
 
 /* ── ESPACE CLIENT IN-APP ── */
@@ -4226,6 +4251,109 @@ function sendChatMessage(){
 }
 
 // ── JEREMIE (CONSEILLER IA) ────────────────────────────────────
+function _jeremieAvatarMarkup(){
+  return '<svg class="jeremie-avatar" viewBox="0 0 100 100" width="100%" height="100%" preserveAspectRatio="xMidYMid slice">'
+    +'<defs><radialGradient id="jHeadGrad" cx="35%" cy="28%" r="80%">'
+    +'<stop offset="0%" stop-color="#fff7e0"/><stop offset="55%" stop-color="#FFD700"/><stop offset="100%" stop-color="#caa200"/>'
+    +'</radialGradient></defs>'
+    +'<path class="jeremie-avatar-collar" d="M14 100 Q50 74 86 100 L86 108 L14 108 Z" fill="#0d1730" stroke="#FFD700" stroke-width="1.4"/>'
+    +'<g class="jeremie-avatar-head-grp">'
+    +'<ellipse class="jeremie-avatar-head" cx="50" cy="40" rx="27" ry="31" fill="url(#jHeadGrad)"/>'
+    +'<path class="jeremie-avatar-brow" d="M28 29 Q36 25 44 28" fill="none" stroke="#0d1730" stroke-width="2.4" stroke-linecap="round"/>'
+    +'<path class="jeremie-avatar-brow" d="M56 28 Q64 25 72 29" fill="none" stroke="#0d1730" stroke-width="2.4" stroke-linecap="round"/>'
+    +'<ellipse class="jeremie-avatar-eye" cx="38" cy="37" rx="4.6" ry="5.6" fill="#0d1730"/>'
+    +'<ellipse class="jeremie-avatar-eye" cx="62" cy="37" rx="4.6" ry="5.6" fill="#0d1730"/>'
+    +'<path class="jeremie-avatar-mouth" d="M37 55 Q50 64 63 55" fill="none" stroke="#0d1730" stroke-width="2.8" stroke-linecap="round"/>'
+    +'</g></svg>';
+}
+function _jeremieInitAvatars(){
+  var ids=['jeremie-fab-avatar','jeremie-hdr-avatar','jeremie-immersive-avatar-inner'];
+  for(var i=0;i<ids.length;i++){
+    var el=document.getElementById(ids[i]);
+    if(el) el.innerHTML=_jeremieAvatarMarkup();
+  }
+  _jeremieUpdateVoiceBtn();
+  _jeremieInitVoiceInput();
+}
+function _jeremieSetEmotion(emoji){
+  var ids=['jeremie-fab-emotion','jeremie-hdr-emotion','jeremie-immersive-emotion'];
+  for(var i=0;i<ids.length;i++){
+    var b=document.getElementById(ids[i]); if(!b) continue;
+    b.textContent=emoji;
+    b.classList.add('show');
+    clearTimeout(b._jHideT);
+    b._jHideT=setTimeout((function(bb){ return function(){ bb.classList.remove('show'); }; })(b),2600);
+  }
+}
+function toggleJeremieImmersive(){
+  var sheet=document.getElementById('jeremie-sheet'); if(!sheet) return;
+  sheet.classList.toggle('immersive');
+  var btn=document.getElementById('jeremie-immersive-toggle');
+  var isImmersive=sheet.classList.contains('immersive');
+  if(btn) btn.innerHTML=isImmersive?'<i class="fa-solid fa-compress"></i>':'<i class="fa-solid fa-expand"></i>';
+}
+// Voix de sortie (Jérémie lit ses réponses) - speechSynthesis, natif navigateur
+var _jeremieVoiceOn=(function(){ try{ return localStorage.getItem('fa_genesis_jeremie_voice')==='1'; }catch(e){ return false; } })();
+function _jeremieUpdateVoiceBtn(){
+  var btn=document.getElementById('jeremie-voice-toggle'); if(!btn) return;
+  if(!('speechSynthesis' in window)){ btn.style.display='none'; return; }
+  btn.innerHTML=_jeremieVoiceOn?'<i class="fa-solid fa-volume-high"></i>':'<i class="fa-solid fa-volume-xmark"></i>';
+  btn.classList.toggle('active',_jeremieVoiceOn);
+}
+function toggleJeremieVoiceOutput(){
+  _jeremieVoiceOn=!_jeremieVoiceOn;
+  try{ localStorage.setItem('fa_genesis_jeremie_voice',_jeremieVoiceOn?'1':'0'); }catch(e){}
+  if(!_jeremieVoiceOn && ('speechSynthesis' in window)) window.speechSynthesis.cancel();
+  _jeremieUpdateVoiceBtn();
+}
+function _jeremieSpeak(text){
+  if(!('speechSynthesis' in window)||!text) return;
+  try{
+    window.speechSynthesis.cancel();
+    var u=new SpeechSynthesisUtterance(text);
+    u.lang='fr-FR';
+    window.speechSynthesis.speak(u);
+  }catch(e){}
+}
+// Voix d'entrée (parler à Jérémie) - SpeechRecognition, non supporté sur Safari/iOS
+var _jeremieRecognition=null, _jeremieListening=false;
+function _jeremieInitVoiceInput(){
+  var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  var btn=document.getElementById('jeremie-mic-btn');
+  if(!SR){ if(btn) btn.style.display='none'; return; }
+  _jeremieRecognition=new SR();
+  _jeremieRecognition.lang='fr-FR';
+  _jeremieRecognition.interimResults=false;
+  _jeremieRecognition.maxAlternatives=1;
+  _jeremieRecognition.onresult=function(e){
+    var text=(e.results&&e.results[0]&&e.results[0][0]&&e.results[0][0].transcript)||'';
+    var inp=document.getElementById('jeremie-input');
+    if(inp&&text){ inp.value=(inp.value?inp.value+' ':'')+text; inp.style.height='auto'; inp.style.height=Math.min(inp.scrollHeight,120)+'px'; inp.focus(); }
+  };
+  _jeremieRecognition.onend=function(){
+    _jeremieListening=false;
+    var b=document.getElementById('jeremie-mic-btn'); if(b) b.classList.remove('listening');
+    var s=document.getElementById('jeremie-sheet'); if(s) s.classList.remove('is-listening');
+  };
+  _jeremieRecognition.onerror=function(){
+    _jeremieListening=false;
+    var b=document.getElementById('jeremie-mic-btn'); if(b) b.classList.remove('listening');
+  };
+}
+function toggleJeremieVoiceInput(){
+  if(!_jeremieRecognition) return;
+  var btn=document.getElementById('jeremie-mic-btn'); var sheet=document.getElementById('jeremie-sheet');
+  if(_jeremieListening){
+    _jeremieRecognition.stop();
+  } else {
+    try{
+      _jeremieRecognition.start();
+      _jeremieListening=true;
+      if(btn) btn.classList.add('listening');
+      if(sheet) sheet.classList.add('is-listening');
+    }catch(e){}
+  }
+}
 function openJeremieChat(){
   if(!USER||!USER._token||GUEST){ if(typeof showLoginSheet==='function') showLoginSheet(); return; }
   var overlay=document.getElementById('jeremie-overlay'); var sheet=document.getElementById('jeremie-sheet');
@@ -4238,6 +4366,8 @@ function closeJeremieChat(){
   var sheet=document.getElementById('jeremie-sheet'); var overlay=document.getElementById('jeremie-overlay');
   if(!sheet||!overlay) return;
   sheet.classList.remove('up');
+  if(_jeremieListening&&_jeremieRecognition) _jeremieRecognition.stop();
+  if('speechSynthesis' in window) window.speechSynthesis.cancel();
   setTimeout(function(){ overlay.classList.remove('open'); },460);
 }
 function _jeremieBubble(role,text,scrollEl){
@@ -4253,8 +4383,10 @@ function _jeremieBubble(role,text,scrollEl){
 function _jeremieTypewriter(el,fullText,scrollEl){
   var chunks=fullText.split(/(\s+)/);
   var i=0;
+  var sheet=document.getElementById('jeremie-sheet'); if(sheet) sheet.classList.add('is-talking');
+  if(_jeremieVoiceOn) _jeremieSpeak(fullText);
   function step(){
-    if(i>=chunks.length) return;
+    if(i>=chunks.length){ if(sheet) sheet.classList.remove('is-talking'); return; }
     el.textContent+=chunks[i];
     i++;
     if(scrollEl) scrollEl.scrollTop=scrollEl.scrollHeight;
@@ -4270,7 +4402,15 @@ function loadJeremieHistory(){
   }).then(function(r){return r.json();}).then(function(data){
     var list=(data&&data.messages)||[];
     if(!list.length){
-      msgs.innerHTML='<div class="chat-empty-state"><i class="fa-solid fa-user-astronaut" style="font-size:28px;color:#FFD700;"></i><span>Bonjour, je suis Jérémie !</span><span style="font-size:12px;color:#222;">Posez-moi une question sur votre projet, vos missions Genesis ou nos partenaires.</span></div>';
+      msgs.innerHTML='';
+      var empty=document.createElement('div'); empty.className='chat-empty-state';
+      var avatarWrap=document.createElement('div'); avatarWrap.className='jeremie-greet-avatar'; avatarWrap.innerHTML=_jeremieAvatarMarkup();
+      var fn=(USER&&USER.prenom)?USER.prenom:'';
+      var greet=document.createElement('span'); greet.textContent='Bonjour'+(fn?' '+fn:'')+' 👋 Je suis Jérémie, votre conseiller intelligent FA GENESIS.';
+      var sub=document.createElement('span'); sub.style.fontSize='12px'; sub.style.color='#222'; sub.textContent='Comment puis-je vous aider aujourd’hui ?';
+      empty.appendChild(avatarWrap); empty.appendChild(greet); empty.appendChild(sub);
+      msgs.appendChild(empty);
+      _jeremieSetEmotion('😊');
       return;
     }
     msgs.innerHTML='';
@@ -4294,6 +4434,7 @@ function sendJeremieMessage(){
     msgs.insertAdjacentHTML('beforeend','<div class="jeremie-thinking" id="jeremie-thinking"><i class="fa-solid fa-brain"></i><span>Jérémie réfléchit...</span></div>');
     msgs.scrollTop=msgs.scrollHeight;
   }
+  _jeremieSetEmotion('🤔');
   fetch((window.FA_GENESIS_API||API)+'/api/jeremie/chat',{
     method:'POST',
     headers:{'Content-Type':'application/json','Authorization':'Bearer '+USER._token},
@@ -4303,6 +4444,7 @@ function sendJeremieMessage(){
     var thinking=document.getElementById('jeremie-thinking'); if(thinking) thinking.remove();
     if(msgs){
       var reply=(res&&res.success)?res.reply:((res&&res.error)||'Jérémie est momentanément indisponible.');
+      _jeremieSetEmotion(res&&res.success?'💡':'🤔');
       var inner=_jeremieBubble('assistant','',msgs);
       _jeremieTypewriter(inner,reply,msgs);
     }
@@ -7308,25 +7450,37 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
 
 <!-- JEREMIE - conseiller IA flottant -->
 <button class="jeremie-fab" id="jeremie-fab" onclick="openJeremieChat()" aria-label="Parler à Jérémie">
-  <i class="fa-solid fa-user-astronaut"></i>
+  <span class="jeremie-avatar-clip" id="jeremie-fab-avatar"></span>
+  <span class="jeremie-emotion-badge" id="jeremie-fab-emotion"></span>
 </button>
 <div id="jeremie-overlay" onclick="if(event.target===this)closeJeremieChat()">
   <div id="jeremie-sheet">
     <div class="jeremie-hdr">
-      <div class="jeremie-hdr-ico"><i class="fa-solid fa-user-astronaut"></i></div>
+      <div class="jeremie-hdr-ico">
+        <span class="jeremie-avatar-clip" id="jeremie-hdr-avatar"></span>
+        <span class="jeremie-emotion-badge" id="jeremie-hdr-emotion"></span>
+      </div>
       <div>
         <div class="jeremie-hdr-title">Jérémie</div>
         <div class="jeremie-hdr-sub">Votre conseiller Genesis</div>
       </div>
+      <button class="jeremie-hdr-btn" id="jeremie-voice-toggle" onclick="toggleJeremieVoiceOutput()" aria-label="Activer la voix"><i class="fa-solid fa-volume-xmark"></i></button>
+      <button class="jeremie-hdr-btn" id="jeremie-immersive-toggle" onclick="toggleJeremieImmersive()" aria-label="Mode immersif"><i class="fa-solid fa-expand"></i></button>
       <button class="jeremie-close-btn" onclick="closeJeremieChat()" aria-label="Fermer">&#x2715;</button>
+    </div>
+    <div class="jeremie-immersive-avatar" id="jeremie-immersive-avatar">
+      <span class="jeremie-avatar-clip jeremie-avatar-clip-lg" id="jeremie-immersive-avatar-inner"></span>
+      <span class="jeremie-emotion-badge jeremie-emotion-badge-lg" id="jeremie-immersive-emotion"></span>
     </div>
     <div class="chat-messages" id="jeremie-msgs"><div class="chat-empty-state"><span>Chargement...</span></div></div>
     <div class="chat-compose">
-      <textarea id="jeremie-input" class="chat-text-input" rows="1" placeholder="Posez votre question..." oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px';" onkeydown="if((event.key==='Enter'||event.keyCode===13)&&!event.shiftKey){event.preventDefault();sendJeremieMessage();}"></textarea>
+      <textarea id="jeremie-input" class="chat-text-input" rows="1" placeholder="Posez votre question..." oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px';" onkeydown="if((event.key==='Enter'||event.keyCode===13)&&!event.shiftKey){event.preventDefault();sendJeremieMessage();}" onfocus="var s=document.getElementById('jeremie-sheet');if(s)s.classList.add('is-listening');" onblur="var s=document.getElementById('jeremie-sheet');if(s)s.classList.remove('is-listening');"></textarea>
+      <button class="jeremie-mic-btn" id="jeremie-mic-btn" onclick="toggleJeremieVoiceInput()" aria-label="Parler à Jérémie"><i class="fa-solid fa-microphone"></i></button>
       <button class="chat-send-btn" id="jeremie-send-btn" onclick="sendJeremieMessage()">&#8593;</button>
     </div>
   </div>
 </div>
+<script>_jeremieInitAvatars();</script>
 
 <!-- Font Awesome async -->
 <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
