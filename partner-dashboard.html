@@ -632,6 +632,11 @@
                 <div id="reputationCerclesList"></div>
             </div>
 
+            <div id="reputationOpportunitesBlock" class="section-card neo-shadow mb-8" style="display:none;border-color:var(--genesis-yellow);">
+                <p class="text-xs font-black uppercase opacity-60 mb-3"><i class="fas fa-lightbulb mr-2"></i>OPPORTUNITÉS INTELLIGENTES</p>
+                <div id="reputationOpportunitesList"></div>
+            </div>
+
             <div id="reputationMissionsGenesisBlock" class="section-card neo-shadow mb-8" style="border-color:var(--genesis-yellow);">
                 <p class="text-xs font-black uppercase opacity-60 mb-3"><i class="fas fa-list-check mr-2"></i>MISSIONS GENESIS</p>
                 <div id="reputationMissionsGenesisList"><p class="text-sm opacity-50 text-white">Chargement...</p></div>
@@ -2587,6 +2592,24 @@
                     }).join('');
                 } else {
                     cerclesBlock.style.display = 'none';
+                }
+            }
+
+            var oppoBlock = document.getElementById('reputationOpportunitesBlock');
+            var oppoList = document.getElementById('reputationOpportunitesList');
+            var opportunites = data.opportunites || [];
+            if (oppoBlock && oppoList) {
+                if (opportunites.length > 0) {
+                    oppoBlock.style.display = 'block';
+                    oppoList.innerHTML = opportunites.map(function(o) {
+                        var typeLabel = PARTNER_TYPE_LABELS[o.partnerType] || o.partnerType || '';
+                        return '<div class="flex justify-between items-center py-2" style="border-bottom:1px solid rgba(255,255,255,.1);">' +
+                            '<span class="font-bold text-white">' + escapeHtml(o.name) + (o.company ? ' · ' + escapeHtml(o.company) : '') + ' <span class="opacity-60 text-xs">(' + typeLabel + ')</span></span>' +
+                            '<span style="color:var(--genesis-yellow);font-weight:900;font-size:0.8rem;">' + o.sharedClientCount + ' client' + (o.sharedClientCount > 1 ? 's' : '') + ' en commun</span>' +
+                        '</div>';
+                    }).join('');
+                } else {
+                    oppoBlock.style.display = 'none';
                 }
             }
 

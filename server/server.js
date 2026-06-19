@@ -7840,6 +7840,45 @@ function getPartnerCercleClientsList(partnerId, maxResults) {
     }).filter(c => c.tier).sort((a, b) => b.collabCount - a.collabCount).slice(0, maxResults || 5);
 }
 
+// Opportunites Intelligentes (Phase 4) : partenaires ayant servi les memes
+// clients que ce partenaire (correlation simple par jointure sur les commandes
+// payees — pas d'IA ici, reservee a Jeremie en Phase 6)
+function findSharedClientPartners(partnerId, maxResults) {
+    const orders = loadOrders();
+    const dispatches = loadDispatches();
+    const partners = loadPartners();
+    function clientEmailsServedBy(pid) {
+        const orderIds = dispatches.filter(d => d.claimed_by_partner_id === pid).map(d => d.order_id);
+        return orders
+            .filter(o => orderIds.indexOf(o.id) !== -1 && o.balance_paid === true)
+            .map(o => ((o.client_info && o.client_info.email) || o.email || '').toLowerCase())
+            .filter((e, idx, arr) => e && arr.indexOf(e) === idx);
+    }
+    const myClients = clientEmailsServedBy(partnerId);
+    if (!myClients.length) return [];
+    const sharedEmailsByPartner = {};
+    dispatches.forEach(d => {
+        if (!d.claimed_by_partner_id || d.claimed_by_partner_id === partnerId) return;
+        const order = orders.find(o => o.id === d.order_id);
+        if (!order || order.balance_paid !== true) return;
+        const email = ((order.client_info && order.client_info.email) || order.email || '').toLowerCase();
+        if (myClients.indexOf(email) === -1) return;
+        sharedEmailsByPartner[d.claimed_by_partner_id] = sharedEmailsByPartner[d.claimed_by_partner_id] || {};
+        sharedEmailsByPartner[d.claimed_by_partner_id][email] = true;
+    });
+    return Object.keys(sharedEmailsByPartner).map(pid => {
+        const p = partners.find(pp => pp.id === pid);
+        if (!p || p.accountStatus !== 'active') return null;
+        return {
+            partnerId: pid,
+            name: ((p.prenom || '') + ' ' + (p.nom || '')).trim(),
+            company: p.company || '',
+            partnerType: p.partner_type,
+            sharedClientCount: Object.keys(sharedEmailsByPartner[pid]).length
+        };
+    }).filter(Boolean).sort((a, b) => b.sharedClientCount - a.sharedClientCount).slice(0, maxResults || 5);
+}
+
 // ============================================================
 // GEOLOCALISATION — table statique ville -> [lat, lng]
 // Pas de service de geocodage externe (cohérent avec les conventions
@@ -7891,6 +7930,28 @@ function getPreviousMonthStr(date) {
     var d = new Date(date.getFullYear(), date.getMonth(), 1);
     d.setMonth(d.getMonth() - 1);
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+}
+
+// Les 5 niveaux d'evolution Genesis (couche d'affichage additive) : les
+// identifiants de badge internes (bronze/argent/or/elite/prestige/fondateur)
+// ne changent pas — trop de call-sites en dependent (score de classement,
+// priorite de dispatch, Hall of Fame). On traduit juste l'identifiant pour
+// l'affichage utilisateur. Definie ici (avant computeHallOfFameForMonth, pas
+// a cote de getClientGenesisPoints) car maybeComputeHallOfFame() s'execute
+// immediatement au chargement du module (cf appel plus bas) — une const
+// definie plus loin dans le fichier ne serait pas encore initialisee.
+const GENESIS_LEVEL_META = {
+    none:      { id: 'explorateur', label: 'Explorateur', icon: 'fa-seedling', order: 1 },
+    bronze:    { id: 'createur',    label: 'Createur',    icon: 'fa-fire',     order: 2 },
+    argent:    { id: 'batisseur',   label: 'Batisseur',   icon: 'fa-bolt',     order: 3 },
+    or:        { id: 'visionnaire', label: 'Visionnaire', icon: 'fa-crown',    order: 4 },
+    elite:     { id: 'generateur',  label: 'Generateur',  icon: 'fa-infinity', order: 5 },
+    prestige:  { id: 'generateur',  label: 'Generateur',  icon: 'fa-infinity', order: 5 },
+    fondateur: { id: 'generateur',  label: 'Generateur',  icon: 'fa-infinity', order: 5 }
+};
+
+function getGenesisLevel(badgeId) {
+    return GENESIS_LEVEL_META[badgeId || 'none'] || GENESIS_LEVEL_META.none;
 }
 
 function computeHallOfFameForMonth(monthStr) {
@@ -7974,12 +8035,59 @@ function computeHallOfFameForMonth(monthStr) {
         }
     });
 
+    // Visionnaire du mois : parmi les partenaires qualifies ce mois-ci (cf bestPartners),
+    // le meilleur score parmi ceux ayant atteint le niveau Genesis "Visionnaire" (badge or+)
+    var bestVisionnaire = null;
+    (function() {
+        var qualifying = partners.filter(function(p) {
+            if (p.accountStatus !== 'active') return false;
+            var badge = getPartnerBadge(p);
+            if (!badge || GENESIS_LEVEL_META[badge].order < GENESIS_LEVEL_META.or.order) return false;
+            return payouts.some(function(pay) {
+                return pay.partner_id === p.id && pay.stage === 'balance' && _hofDateInMonth(pay.created_at, monthStr);
+            });
+        });
+        if (!qualifying.length) return;
+        var winner = qualifying
+            .map(function(p) { return { partner: p, score: getPartnerCategoryScore(p) }; })
+            .sort(function(a, b) { return b.score - a.score; })[0];
+        bestVisionnaire = {
+            partnerId: winner.partner.id,
+            name: ((winner.partner.prenom || '') + ' ' + (winner.partner.nom || '')).trim(),
+            company: winner.partner.company || '',
+            score: Math.round(winner.score * 10) / 10
+        };
+    })();
+
+    // Batisseur du mois : parmi les clients ayant paye une commande ce mois-ci (cf bestClient),
+    // le plus de commandes realisees au total parmi ceux ayant atteint le niveau Genesis "Batisseur" (badge argent+)
+    var bestBatisseur = null;
+    (function() {
+        var candidates = Object.keys(clientCounts).map(function(email) {
+            var completed = getClientCompletedOrders(email);
+            var badge = getClientBadge(completed);
+            return { email: email, completed: completed, badge: badge };
+        }).filter(function(c) {
+            return c.badge && GENESIS_LEVEL_META[c.badge].order >= GENESIS_LEVEL_META.argent.order;
+        });
+        if (!candidates.length) return;
+        var winner = candidates.sort(function(a, b) { return b.completed - a.completed; })[0];
+        var user = users.find(function(u) { return u.email.toLowerCase() === winner.email; });
+        bestBatisseur = {
+            email: winner.email,
+            name: user ? ((user.prenom || '') + ' ' + (user.nom || '')).trim() : winner.email,
+            count: winner.completed
+        };
+    })();
+
     return {
         month: monthStr,
         computedAt: new Date().toISOString(),
         bestPartners: bestPartners,
         bestClient: bestClient,
-        bestReferrer: bestReferrer
+        bestReferrer: bestReferrer,
+        bestVisionnaire: bestVisionnaire,
+        bestBatisseur: bestBatisseur
     };
 }
 
@@ -8053,25 +8161,6 @@ function getClientGenesisPoints(user, completedOrders) {
     return (orders * GENESIS_POINT_VALUES.reservationEffectuee)
         + (referrals * GENESIS_POINT_VALUES.parrainage)
         + getEventAttendancePoints(user.id);
-}
-
-// Les 5 niveaux d'evolution Genesis (couche d'affichage additive) : les
-// identifiants de badge internes (bronze/argent/or/elite/prestige/fondateur)
-// ne changent pas — trop de call-sites en dependent (score de classement,
-// priorite de dispatch, Hall of Fame). On traduit juste l'identifiant pour
-// l'affichage utilisateur.
-const GENESIS_LEVEL_META = {
-    none:      { id: 'explorateur', label: 'Explorateur', icon: 'fa-seedling', order: 1 },
-    bronze:    { id: 'createur',    label: 'Createur',    icon: 'fa-fire',     order: 2 },
-    argent:    { id: 'batisseur',   label: 'Batisseur',   icon: 'fa-bolt',     order: 3 },
-    or:        { id: 'visionnaire', label: 'Visionnaire', icon: 'fa-crown',    order: 4 },
-    elite:     { id: 'generateur',  label: 'Generateur',  icon: 'fa-infinity', order: 5 },
-    prestige:  { id: 'generateur',  label: 'Generateur',  icon: 'fa-infinity', order: 5 },
-    fondateur: { id: 'generateur',  label: 'Generateur',  icon: 'fa-infinity', order: 5 }
-};
-
-function getGenesisLevel(badgeId) {
-    return GENESIS_LEVEL_META[badgeId || 'none'] || GENESIS_LEVEL_META.none;
 }
 
 // ============================================================
@@ -8174,7 +8263,11 @@ app.get('/api/hall-of-fame', function(req, res) {
                         rating: p ? getPartnerRatingSummary(p.id) : null,
                         badge: p ? getPartnerBadge(p) : null
                     });
-                })
+                }),
+                bestVisionnaire: snapshot.bestVisionnaire ? (function() {
+                    var p = partners.find(function(pp) { return pp.id === snapshot.bestVisionnaire.partnerId; });
+                    return Object.assign({}, snapshot.bestVisionnaire, { photo: p ? (p.photo || null) : null });
+                })() : null
             });
         }
         res.json({ success: true, hallOfFame: snapshot });
@@ -9275,6 +9368,7 @@ app.get('/api/partner/reputation', authenticatePartner, function(req, res) {
             referralCount: referralCount,
             referralStatus: getPartnerReferralStatus(referralCount),
             cerclesGenesis: getPartnerCercleClientsList(partner.id, 5),
+            opportunites: findSharedClientPartners(partner.id, 5),
             patrimoineGenesis: {
                 missionsRealisees: missionsCompleted,
                 clientsDistincts: nombreClients,

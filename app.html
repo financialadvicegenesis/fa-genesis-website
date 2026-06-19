@@ -3220,7 +3220,7 @@ function loadHallOfFame(){
   if(!wrap) return;
   fetch(API+'/api/hall-of-fame').then(function(r){return r.json();}).then(function(data){
     var hof = data && data.hallOfFame;
-    if(!hof || (!((hof.bestPartners||[]).length) && !hof.bestClient && !hof.bestReferrer)){ wrap.innerHTML=''; return; }
+    if(!hof || (!((hof.bestPartners||[]).length) && !hof.bestClient && !hof.bestReferrer && !hof.bestVisionnaire && !hof.bestBatisseur)){ wrap.innerHTML=''; return; }
     var html = '<div class="p-section-hdr black p-section-hdr-fit" style="margin:16px 16px 12px;"><i class="fa-solid fa-trophy" style="color:var(--yellow)"></i> HALL OF FAME — '+hofMonthLabel(hof.month).toUpperCase()+'</div>';
     if((hof.bestPartners||[]).length){
       html += '<div class="p-reco-row">'+hof.bestPartners.map(function(p,i){return hofPremiumCard(p,i);}).join('')+'</div>';
@@ -3231,6 +3231,12 @@ function loadHallOfFame(){
     }
     if(hof.bestReferrer){
       highlights += '<div class="p-ref-box"><div class="p-ref-box-title"><i class="fa-solid fa-handshake" style="color:var(--yellow)"></i> Meilleur parrain du mois</div><div class="p-ref-count">'+hof.bestReferrer.name+' ('+(hof.bestReferrer.type==='partenaire'?'partenaire':'client')+') · '+hof.bestReferrer.count+' parrainage'+(hof.bestReferrer.count>1?'s':'')+' validé'+(hof.bestReferrer.count>1?'s':'')+'</div></div>';
+    }
+    if(hof.bestVisionnaire){
+      highlights += '<div class="p-ref-box"><div class="p-ref-box-title"><i class="fa-solid fa-crown" style="color:var(--yellow)"></i> Visionnaire du mois</div><div class="p-ref-count">'+hof.bestVisionnaire.name+(hof.bestVisionnaire.company?' · '+hof.bestVisionnaire.company:'')+'</div></div>';
+    }
+    if(hof.bestBatisseur){
+      highlights += '<div class="p-ref-box"><div class="p-ref-box-title"><i class="fa-solid fa-bolt" style="color:var(--yellow)"></i> Bâtisseur du mois</div><div class="p-ref-count">'+hof.bestBatisseur.name+' · '+hof.bestBatisseur.count+' prestation'+(hof.bestBatisseur.count>1?'s':'')+'</div></div>';
     }
     if(highlights){
       html += '<div style="display:flex;flex-direction:column;gap:8px;margin:0 16px 8px;">'+highlights+'</div>';
