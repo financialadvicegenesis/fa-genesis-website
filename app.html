@@ -846,6 +846,10 @@ a{text-decoration:none;color:inherit}
 .p-dir-portfolio-video{display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--yellow);font-size:22px;text-decoration:none;text-align:center;gap:4px}
 .p-dir-portfolio-video span{font-size:9px;color:var(--muted);padding:0 4px}
 
+/* Médailles classement (annuaire Prestataires) */
+.p-rank-card-wrap{position:relative}
+.p-rank-medal{position:absolute;top:-6px;left:8px;font-size:20px;z-index:2;filter:drop-shadow(2px 2px 0 #000)}
+
 /* Badge Populaire */
 .p-neo-card.featured{border-color:var(--yellow);box-shadow:6px 6px 0 var(--yellow)}
 .p-recommended{
@@ -2786,60 +2790,85 @@ function quickSearch(term){
   var target = document.getElementById('p-section-annuaire');
   if(target) target.scrollIntoView({behavior:'smooth', block:'start'});
 }
+// ── PRESTATAIRES — ANNUAIRE CLASSÉ ──────────────────────────────
+var _rankCategory = null, _rankQuery = '', _rankCity = '', _rankSort = 'score', _rankSearchTimer = null, _rankCityTimer = null;
+
 function renderPrestataires(){
-  _dirCategory = null; _dirQuery = ''; _dirMaxPrice = ''; _dirCity = '';
+  _rankCategory = null; _rankQuery = ''; _rankCity = ''; _rankSort = 'score';
   var html = '<div class="p-hero">'
-    +'<div class="p-hero-title">Explorer</div>'
-    +'<div class="p-hero-sub">Trouvez le bon partenaire, noté et vérifié, pour votre projet.</div>'
+    +'<div class="p-hero-title">Prestataires</div>'
+    +'<div class="p-hero-sub">Le classement complet, mis à jour en continu.</div>'
     +'</div>';
   html += '<div class="p-explore-search-wrap">'
-    +'<input type="text" id="p-dir-search" class="p-explore-search-input" placeholder="Rechercher un vidéaste, photographe, graphiste, espace coworking, média, marketeur…" oninput="_dirSearchDebounced()">'
+    +'<input type="text" id="p-rank-search" class="p-explore-search-input" placeholder="Rechercher un vidéaste, photographe, graphiste, espace coworking, média, marketeur…" oninput="_rankSearchDebounced()">'
     +'</div>';
-  html += '<div class="p-explore-tabs">'
-    +'<button class="p-explore-tab on" onclick="setExploreTab(\'prestataires\',this)"><span class="p-explore-tab-icon">🤝</span>PRESTATAIRES</button>'
-    +'<button class="p-explore-tab" onclick="setExploreTab(\'evenements\',this)"><span class="p-explore-tab-icon">🎉</span>ÉVÉNEMENTS</button>'
-    +'</div>';
-  html += '<div class="p-popular-label">RECHERCHES POPULAIRES</div>';
-  html += '<div class="p-popular-row">'
-    +POPULAR_SEARCHES.map(function(s){
-      return '<button class="p-popular-chip" onclick="quickSearch(\''+s+'\')"><i class="fas fa-magnifying-glass"></i>'+s+'</button>';
-    }).join('')
-    +'</div>';
-  html += '<div class="p-cat-icon-strip" id="p-dir-cat-icons">'
+  html += '<div class="p-cat-icon-strip" id="p-rank-cat-icons">'
     +DIR_CATEGORY_ICONS_ORDER.map(function(c,i){
-      return '<button class="p-cat-icon-pill'+(i===0?' on':'')+'" onclick="setDirCategory('+(c.id?'\''+c.id+'\'':'null')+',this)">'
+      return '<button class="p-cat-icon-pill'+(i===0?' on':'')+'" onclick="setRankCategory('+(c.id?'\''+c.id+'\'':'null')+',this)">'
         +'<span class="p-cat-icon-emoji">'+c.icon+'</span><span class="p-cat-icon-label">'+c.label+'</span></button>';
     }).join('')
     +'</div>';
-  html += '<div id="p-dir-featured-wrap"></div>';
-  html += '<div id="p-dir-top-categories-wrap"></div>';
-  html += '<div id="p-dir-new-talents-wrap"></div>';
-  html += '<div id="p-dir-hall-of-fame-wrap"></div>';
-  html += '<div id="p-dir-events-wrap"></div>';
-  html += '<div id="p-dir-personalized-wrap"></div>';
-  html += '<div id="p-dir-favorites-wrap"></div>';
-  html += '<div class="p-section" style="margin-top:8px;" id="p-section-annuaire">';
-  html += '<div class="p-section-hdr dark p-section-hdr-fit">TROUVER UN PARTENAIRE</div>';
   html += '<div class="p-dir-controls">'
-    +'<input type="text" id="p-dir-city" class="p-dir-search-input" placeholder="Ville..." oninput="_dirCityDebounced()">'
-    +'<select id="p-dir-price" class="p-dir-price-select" onchange="onDirPriceChange()">'
-    +'<option value="">Tous prix</option>'
-    +'<option value="100">Moins de 100 €</option>'
-    +'<option value="300">Moins de 300 €</option>'
+    +'<input type="text" id="p-rank-city" class="p-dir-search-input" placeholder="Ville..." oninput="_rankCityDebounced()">'
+    +'<select id="p-rank-sort" class="p-dir-price-select" onchange="onRankSortChange()">'
+    +'<option value="score">Meilleurs du moment</option>'
+    +'<option value="recent">Plus récents</option>'
+    +'<option value="rating">Mieux notés</option>'
+    +'<option value="alpha">A-Z</option>'
     +'</select>'
     +'</div>';
-  html += '<div class="p-hero-stat" id="p-dir-stat" style="padding:0 16px 6px;">Chargement...</div>';
-  html += '<div id="p-dir-results" class="p-dir-results"><div class="p-dir-empty">Chargement...</div></div>';
-  html += '</div>';
+  html += '<div class="p-hero-stat" id="p-rank-stat" style="padding:0 16px 6px;">Chargement...</div>';
+  html += '<div id="p-rank-results" class="p-dir-results"><div class="p-dir-empty">Chargement...</div></div>';
   document.getElementById('prestatairesList').innerHTML = html;
-  loadPartnerDirectory();
-  loadFeaturedPartners();
-  loadHallOfFame();
-  loadTopCategories();
-  loadNewTalents();
-  loadEventsExplorer();
-  loadPersonalizedRecommendations();
-  loadFavoritesInExplorer();
+  loadRankedDirectory();
+}
+function setRankCategory(cat, el){
+  _rankCategory = cat;
+  document.querySelectorAll('#p-rank-cat-icons .p-cat-icon-pill').forEach(function(b){b.className='p-cat-icon-pill';});
+  el.className='p-cat-icon-pill on';
+  loadRankedDirectory();
+}
+function _rankSearchDebounced(){
+  clearTimeout(_rankSearchTimer);
+  _rankSearchTimer = setTimeout(function(){
+    _rankQuery = ((document.getElementById('p-rank-search')||{}).value || '').trim();
+    loadRankedDirectory();
+  }, 300);
+}
+function _rankCityDebounced(){
+  clearTimeout(_rankCityTimer);
+  _rankCityTimer = setTimeout(function(){
+    _rankCity = ((document.getElementById('p-rank-city')||{}).value || '').trim();
+    loadRankedDirectory();
+  }, 300);
+}
+function onRankSortChange(){
+  _rankSort = (document.getElementById('p-rank-sort')||{}).value || 'score';
+  loadRankedDirectory();
+}
+function loadRankedDirectory(){
+  var results = document.getElementById('p-rank-results');
+  if(!results) return;
+  results.innerHTML = '<div class="p-dir-empty">Chargement...</div>';
+  var params = ['sort='+encodeURIComponent(_rankSort)];
+  if(_rankCategory) params.push('category='+encodeURIComponent(_rankCategory));
+  if(_rankQuery) params.push('q='+encodeURIComponent(_rankQuery));
+  if(_rankCity) params.push('city='+encodeURIComponent(_rankCity));
+  fetch(API+'/api/partners/directory?'+params.join('&'))
+    .then(function(r){return r.json();})
+    .then(function(data){
+      var partners = (data && data.partners) || [];
+      var statEl = document.getElementById('p-rank-stat');
+      if(statEl) statEl.textContent = partners.length + ' prestataire' + (partners.length===1?'':'s') + ' classé' + (partners.length===1?'':'s');
+      if(!partners.length){ results.innerHTML = '<div class="p-dir-empty">Aucun partenaire trouvé.</div>'; return; }
+      results.innerHTML = partners.map(function(p){ return rankedDirectoryCard(p); }).join('');
+    })
+    .catch(function(){ results.innerHTML = '<div class="p-dir-empty">Erreur de chargement. Réessayez.</div>'; });
+}
+function rankedDirectoryCard(p){
+  var medal = p.rank===1?'🥇':p.rank===2?'🥈':p.rank===3?'🥉':'';
+  if(!medal) return directoryCard(p);
+  return '<div class="p-rank-card-wrap"><span class="p-rank-medal">'+medal+'</span>'+directoryCard(p)+'</div>';
 }
 
 // ── ÉVÉNEMENTS FA GENESIS (Explorer) ─────────────────────────────
