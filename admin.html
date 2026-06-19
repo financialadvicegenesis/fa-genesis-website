@@ -1029,7 +1029,22 @@
                             </div>
                             <div>
                                 <label class="block font-black mb-2 uppercase text-sm">Lieu</label>
-                                <input type="text" id="eventLocation" placeholder="Ex: Paris, en ligne...">
+                                <input type="text" id="eventLocation" placeholder="Ex: Paris, en ligne..." list="event-city-hints">
+                                <datalist id="event-city-hints">
+                                    <option value="Paris"><option value="Marseille"><option value="Lyon">
+                                    <option value="Toulouse"><option value="Nice"><option value="Nantes">
+                                    <option value="Montpellier"><option value="Strasbourg"><option value="Bordeaux">
+                                    <option value="Lille"><option value="Rennes"><option value="Reims">
+                                    <option value="Toulon"><option value="Grenoble"><option value="Dijon">
+                                    <option value="Angers"><option value="Nîmes"><option value="Le Mans">
+                                    <option value="Aix-en-Provence"><option value="Clermont-Ferrand"><option value="Brest">
+                                    <option value="Tours"><option value="Limoges"><option value="Amiens">
+                                    <option value="Annecy"><option value="Perpignan"><option value="Besançon">
+                                    <option value="Metz"><option value="Orléans"><option value="Mulhouse">
+                                    <option value="Caen"><option value="Nancy"><option value="Avignon">
+                                    <option value="en ligne">
+                                </datalist>
+                                <p class="text-xs opacity-50 mt-1">Astuce : utilisez le nom d'une ville reconnue pour que l'événement apparaisse sur la carte d'Explorer.</p>
                             </div>
                         </div>
                         <div class="mb-4">
