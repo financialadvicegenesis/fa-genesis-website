@@ -695,74 +695,6 @@ a{text-decoration:none;color:inherit}
   font-family:'Unbounded',sans-serif;
 }
 
-/* Visibilité cards */
-.p-vis-card{
-  flex-shrink:0;width:220px;background:var(--card);border:4px solid #000;
-  box-shadow:6px 6px 0 var(--yellow);padding:20px;display:flex;flex-direction:column;
-}
-.p-vis-type{font-size:10px;font-weight:900;color:var(--yellow);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
-.p-vis-name{font-size:18px;font-weight:900;font-style:italic;color:#fff;text-transform:uppercase;font-family:'Unbounded',sans-serif;margin-bottom:12px}
-.p-vis-price{font-size:22px;font-weight:900;color:var(--yellow);margin-bottom:4px}
-.p-vis-payment{font-size:10px;color:var(--muted);margin-bottom:10px;line-height:1.4}
-.p-vis-feats{list-style:none;flex:1}
-.p-vis-feats li{font-size:9px;color:#bbb;font-weight:700;text-transform:uppercase;padding:2px 0}
-.p-vis-feats li::before{content:'✔ ';color:var(--yellow)}
-.p-vis-cta{
-  margin-top:12px;padding:10px;background:var(--yellow);color:#000;
-  font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:1px;
-  border:3px solid #000;font-family:inherit;cursor:pointer;
-}
-
-/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   VISIBILITÉ SOUS-FILTRES
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-.p-vis-filter{display:flex;gap:8px;padding:0 16px 12px;overflow-x:auto;scrollbar-width:none}
-.p-vis-filter::-webkit-scrollbar{display:none}
-.p-vis-fpill{
-  flex-shrink:0;padding:7px 14px;border-radius:6px;border:2px solid #000;
-  background:var(--card);color:var(--muted);font-size:10px;font-weight:900;
-  text-transform:uppercase;letter-spacing:.5px;transition:all .15s;font-family:inherit;cursor:pointer;
-}
-.p-vis-fpill.on{background:var(--yellow);border-color:#000;color:#000}
-
-/* ━━ TARIFS PARTENAIRES — carte unifiée ━━ */
-.p-partner-card{
-  flex-shrink:0;width:220px;border:4px solid #000;
-  box-shadow:6px 6px 0 #000;padding:20px;display:flex;flex-direction:column;
-}
-.p-partner-card.wide{width:300px}
-.p-partner-name{
-  font-size:20px;font-weight:900;font-style:italic;text-transform:uppercase;
-  font-family:'Unbounded',sans-serif;margin-bottom:10px;line-height:1.1;
-}
-.p-partner-price{
-  font-size:28px;font-weight:900;font-style:italic;
-  font-family:'Unbounded',sans-serif;margin-bottom:4px;
-}
-.p-partner-payment{
-  font-size:9px;font-weight:900;text-transform:uppercase;
-  letter-spacing:.3px;margin-bottom:10px;opacity:.85;line-height:1.4;
-}
-.p-partner-desc{
-  font-size:10px;line-height:1.5;font-weight:500;opacity:.85;
-  padding-top:10px;margin-bottom:10px;text-transform:none;
-  border-top:1px solid rgba(255,255,255,.25);
-}
-.p-partner-desc.dark-border{border-top-color:rgba(0,0,0,.15)}
-.p-partner-feats{list-style:none;flex:1;margin-bottom:14px;padding-top:10px;
-  border-top:1px solid rgba(255,255,255,.25)}
-.p-partner-feats.dark-border{border-top-color:rgba(0,0,0,.15)}
-.p-partner-feats li{
-  font-size:9px;font-weight:900;text-transform:uppercase;
-  padding:3px 0;line-height:1.3;
-}
-.p-partner-cta{
-  padding:11px;background:#000;color:#fff;font-size:10px;font-weight:900;
-  text-transform:uppercase;letter-spacing:1px;
-  border:3px solid rgba(255,255,255,.35);font-family:inherit;cursor:pointer;width:100%;
-}
-.p-partner-cta.dark-cta{background:#000;color:#00ffff;border-color:#000}
-
 /* ━━ ANNUAIRE PARTENAIRES ━━ */
 .p-dir-controls{display:flex;gap:8px;padding:0 16px 14px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;}
 .p-dir-controls::-webkit-scrollbar{display:none}
@@ -2007,9 +1939,6 @@ a{text-decoration:none;color:inherit}
           <div class="p-tile" style="background-image:url('assets/images/Openspace-2.png')" onclick="_navToPrestation('coworking')">
             <div><div class="p-tile-label">Coworking</div><span class="p-tile-sub">ComVisa Montpellier</span></div>
           </div>
-          <div class="p-tile" style="background:linear-gradient(135deg,#003274,#2217f4)" onclick="_navToPrestation('visibilite')">
-            <div><div class="p-tile-label">Visibilité</div><span class="p-tile-sub">Photo, vidéo, médias</span></div>
-          </div>
           <div class="p-tile" style="background:linear-gradient(135deg,#0d3d3d,#021414)" onclick="nav('prestataires')">
             <div><div class="p-tile-label">Prestataires</div><span class="p-tile-sub">Tout l'annuaire</span></div>
           </div>
@@ -2018,7 +1947,6 @@ a{text-decoration:none;color:inherit}
         <div class="filter-bar">
           <button class="fpill on" onclick="filterPrestations('all',this)">Toutes</button>
           <button class="fpill" onclick="filterPrestations('coworking',this)">Coworking</button>
-          <button class="fpill" onclick="filterPrestations('visibilite',this)">Partenaires</button>
         </div>
         <div id="prestList"></div>
         <div id="p-dir-featured-wrap"></div>
@@ -2702,27 +2630,11 @@ var PDATA = {
       {name:'BUREAU PRIVÉ',price:'85 €',unit:'/ journée',img:'assets/images/Bureau-Duo-3.png',feats:['Bureau fermé & privatisé','Café offert','Wi-Fi inclus'],cta:'Réserver'},
       {name:'ÉVÉNEMENT / SOIRÉE',price:'dès 375 €',unit:'Format 4h',img:'assets/images/Soiree-3.png',feats:['Salle événementielle','Équipement inclus','Paiement 3x (dès 125€/mois)'],cta:'Réserver'},
     ]
-  },
-  visibilite: {
-    marketing: [
-      {name:'EXPRESS',  price:'120 €', gradient:'135deg, #4b0505, #fa2a2a, #ff2323', payment:'Paiement possible en 2x dont 1x/mois (60 €/mois)',  feats:['Analyse du projet','Clarification cible & message','Recommandations concrètes']},
-      {name:'STRATEGY', price:'150 €', gradient:'135deg, #4b0505, #fa2a2a, #ff2323', payment:'Paiement possible en 2x dont 1x/mois (75 €/mois)',  feats:['Positionnement','Message central','Branding']},
-      {name:'IMPACT',   price:'350 €', gradient:'135deg, #4b0505, #fa2a2a, #ff2323', payment:'Paiement possible en 2x dont 1x/mois (175 €/mois)', feats:['Diagnostic approfondi','Priorités claires','Storytelling du projet','Plan de publication (30 jours)']},
-      {name:'DIGITALES',price:'70 €',  gradient:'135deg, #4b0505, #fa2a2a, #ff2323', payment:'Paiement possible en 2x dont 1x/mois (35 €/mois)',  feats:['Choix des plateformes','Conseils contenus']},
-    ],
-    media: [
-      {name:'SIMPLE',    price:'55 €',  gradient:'135deg, #003274, #2212a2, #2217f4', payment:'Paiement possible en 2x dont 1x/mois (27,5 €/mois)',    feats:['Accès à 1 média crédible','Publication (1 Post et/ou 1 Story)','Brief en amont pour cadrer le message']},
-      {name:'VISIBILITY',price:'223 €', gradient:'135deg, #003274, #2212a2, #2217f4', payment:'Paiement possible en 2x dont 1x/mois (111,50 €/mois)',  feats:['Accès à 1 média crédible','Publication (4 Post et/ou 4 Story)','Brief en amont pour cadrer le message']},
-      {name:'IMPACT',    price:'420 €', gradient:'135deg, #003274, #2212a2, #2217f4', payment:'Paiement possible en 2x dont 1x/mois (210 €/mois)',    feats:['Accès à 1 média crédible','Publication (6 Post et/ou 6 Story)','Brief en amont pour cadrer le message','Conseils pour réutiliser la publication sur les réseaux sociaux']},
-      {name:'PREMIUM',   price:'590 €', gradient:'135deg, #003274, #2212a2, #2217f4', payment:'Paiement possible en 2x dont 1x/mois (295 €/mois)',    feats:['Accès à 1 média crédible','Publication (8 Post et/ou 8 Story)','Brief en amont pour cadrer le message','Stratégie de visibilité pour avoir une crédibilité sur du long terme']},
-      {name:'PROMOTION', price:'679 €', bg:'#00ffff', textColor:'black',              payment:'Paiement possible en 2x dont 1x/mois (339,50 €/mois)', feats:['Accès à 1 média crédible','Publication (12 Post et/ou 12 Story)','Visibilité auprès d\'une audience ciblée et engagée','Mise en avant de votre contenu (Artiste, marque ou évènement)','Gain de notoriété et de crédibilité grâce à un relais média']},
-    ]
   }
 };
 
 var _prestFilter = 'all';
 var _prestSub = 'etudiant';
-var _prestVisFilter = 'marketing';
 var _expSearchQuery = '', _expSearchTimer = null;
 
 function _expSearchDebounced(){
@@ -2768,26 +2680,6 @@ function renderPrestations(filter){
     }
   }
 
-  // ── VISIBILITÉ ────────────────────────────────────────────────
-  if(_prestFilter==='all'||_prestFilter==='visibilite'){
-    var visHtml = '', visCount = 0;
-    PDATA.visibilite[_prestVisFilter].forEach(function(o,i){
-      if(!_expMatch(o.name)) return;
-      visCount++;
-      visHtml += visCardByType(o, _prestVisFilter, i);
-    });
-    if(visCount || !_expSearchQuery){
-      totalCount += visCount;
-      html += '<div class="p-section" style="margin-top:24px;" id="p-section-visibilite">';
-      html += '<div class="p-section-hdr dark">TARIFS PARTENAIRES</div>';
-      html += '<div class="p-vis-filter" id="p-vis-filter">'
-        +'<button class="p-vis-fpill '+(_prestVisFilter==='marketing'?'on':'')+'" onclick="setPrestVisFilter(\'marketing\',this)">Marketing</button>'
-        +'<button class="p-vis-fpill '+(_prestVisFilter==='media'?'on':'')+'" onclick="setPrestVisFilter(\'media\',this)">Médias</button>'
-        +'</div>';
-      html += '<div class="p-cards-scroll" id="p-vis-cards">'+visHtml+'</div></div>';
-    }
-  }
-
   if(!html && _expSearchQuery){
     html = '<div class="p-dir-empty">Aucun résultat pour "'+_expSearchQuery+'".</div>';
   }
@@ -2812,9 +2704,6 @@ function renderExplorerReco(){
   var items = [];
   if(PDATA.coworking && PDATA.coworking[profil] && PDATA.coworking[profil].length){
     items.push({kind:'cw', o:PDATA.coworking[profil][0], idx:0});
-  }
-  if(PDATA.visibilite && PDATA.visibilite.media && PDATA.visibilite.media.length){
-    items.push({kind:'vis', vtype:'media', o:PDATA.visibilite.media[1] || PDATA.visibilite.media[0], idx: PDATA.visibilite.media[1] ? 1 : 0});
   }
   _renderRecoRow(wrap, items.map(function(it,i){ return expRecoCard(it,i); }));
   fetch(API+'/api/partners/directory').then(function(r){return r.json();}).then(function(data){
@@ -2843,8 +2732,7 @@ function _sortByRating(partners){
 }
 function expRecoCard(it, idx){
   var o = it.o;
-  var clickAction = it.kind==='cw' ? 'openDetailCW(\''+(_prestSub||'particulier')+'\','+it.idx+')'
-    : 'openDetailVis(\''+(it.vtype||'media')+'\','+it.idx+')';
+  var clickAction = 'openDetailCW(\''+(_prestSub||'particulier')+'\','+it.idx+')';
   var photoStyle = o.gradient ? ' style="background:linear-gradient('+o.gradient+')"' : (o.bg ? ' style="background:'+o.bg+'"' : '');
   var photoInner = o.img ? '<img src="'+o.img+'" alt="">' : '<div class="p-reco-initials">'+(o.name ? o.name[0] : '<i class="fa-solid fa-star"></i>')+'</div>';
   var tag = idx===0 ? '<div class="p-reco-tag">Populaire</div>' : '';
@@ -3358,42 +3246,6 @@ function cwCard(o, sub, idx){
     +'</div></div>';
 }
 
-function visCardByType(o, type, idx){ return partnerCard(o, type, idx); }
-function mktCard(o, idx){ return partnerCard(o, 'marketing', idx); }
-function medCard(o, idx){ return partnerCard(o, 'media', idx); }
-
-function partnerCard(o, type, idx){
-  var isPromo = (o.name==='PROMOTION');
-  var isDark = isPromo;
-  var textColor = o.textColor || 'white';
-  var bgStyle = o.bg
-    ? 'background-color:'+o.bg
-    : 'background:linear-gradient('+o.gradient+')';
-  var dividerColor = isDark ? 'rgba(0,0,0,.15)' : 'rgba(255,255,255,.25)';
-  var featsHtml = o.feats.map(function(f){return '<li>✔ '+f+'</li>';}).join('');
-  var ctaAction, ctaLabel, ctaCls;
-  if(o.link){
-    ctaAction = 'window.location.href=\''+o.link+'\'';
-    ctaLabel = o.cta || 'Demander un devis';
-    ctaCls = 'p-partner-cta';
-  } else {
-    ctaAction = 'openDetailVis(\''+type+'\','+idx+')';
-    ctaLabel = 'Voir le détail';
-    ctaCls = isPromo ? 'p-partner-cta dark-cta' : 'p-partner-cta';
-  }
-  return '<div class="p-partner-card'+(o.wide?' wide':'')+'" style="'+bgStyle+';color:'+textColor+';">'
-    +'<div class="p-partner-name">'+o.name+'</div>'
-    +'<div class="p-partner-price">'+o.price+'</div>'
-    +(o.payment?'<div class="p-partner-payment">'+o.payment+'</div>':'')
-    +(o.desc?'<p class="p-partner-desc'+(isDark?' dark-border':'')+'" style="border-top-color:'+dividerColor+'">'+o.desc+'</p>':'')
-    +'<ul class="p-partner-feats'+(isDark?' dark-border':'')+'" style="border-top-color:'+dividerColor+'">'+featsHtml+'</ul>'
-    +(o.link
-      ?'<button class="'+ctaCls+'" onclick="'+ctaAction+'">'+ctaLabel+'</button>'
-      :'<button class="p-partner-cta" style="background:#FFD700;color:#000;border-color:#FFD700;" onclick="_partnerAddCart(\''+type+'\','+idx+')">+ Ajouter au panier</button>'
-    )
-    +'</div>';
-}
-
 function setPrestSubCW(sub,el){
   document.querySelectorAll('#p-cw-filter .p-sub-btn').forEach(function(b){b.className='p-sub-btn';});
   el.className='p-sub-btn on';
@@ -3409,17 +3261,6 @@ function filterPrestations(cat,el){
   document.querySelectorAll('.fpill').forEach(function(p){p.className='fpill';});
   el.className='fpill on';
   renderPrestations(cat==='all'?null:cat);
-}
-function setPrestVisFilter(type,el){
-  _prestVisFilter = type;
-  document.querySelectorAll('#p-vis-filter .p-vis-fpill').forEach(function(b){b.className='p-vis-fpill';});
-  el.className='p-vis-fpill on';
-  var cards = document.getElementById('p-vis-cards');
-  if(cards){
-    var html='';
-    PDATA.visibilite[type].forEach(function(o,i){ if(_expMatch(o.name)) html+=visCardByType(o,type,i); });
-    cards.innerHTML=html;
-  }
 }
 // ── ANNUAIRE PARTENAIRES ────────────────────────────────────────
 var PARTNER_TYPE_LABELS_DIR = {photographer:'Photographe', videographer:'Vidéaste', marketer:'Marketeur', media:'Médias', community_manager:'Community Manager', graphiste:'Graphiste', developpeur_web:'Développeur Web', pilote_drone:'Pilote Drone', consultant:'Consultant', coworking:'Espace Coworking', animateur_evenementiel:'Animateur / Événementiel'};
@@ -3527,9 +3368,6 @@ var _detailOffer = null, _detailType = null;
 function openDetailCW(sub, idx){
   _cwDetailSub = sub; _cwDetailIdx = idx;
   openDetail(PDATA.coworking[sub][idx], 'coworking');
-}
-function openDetailVis(type, idx){
-  openDetail(PDATA.visibilite[type][idx], type);
 }
 function openDetail(o, type){ _detailOffer=o; _detailType=type;
   var badge = o.badge
@@ -4224,10 +4062,6 @@ function _parsePrice(s){
 function _parseEchelons(paymentStr){
   var m=(paymentStr||'').match(/en\s*(\d+)x/i);
   return m?parseInt(m[1]):2;
-}
-function _partnerAddCart(type, idx){
-  var o=PDATA.visibilite[type][idx]; if(!o) return;
-  addToCart({id:'partner-'+type+'-'+idx,name:o.name,price:o.price,priceNum:_parsePrice(o.price),type:type,echelonsPaiement:_parseEchelons(o.payment)||2});
 }
 function _addDetailToCart(){
   if(!_detailOffer) return;
