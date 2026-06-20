@@ -4504,9 +4504,10 @@ function loadJeremieHistory(){
     msgs.innerHTML='';
     var gEmpty=document.createElement('div'); gEmpty.className='chat-empty-state';
     var gAvatarWrap=document.createElement('div'); gAvatarWrap.className='jeremie-greet-avatar'; gAvatarWrap.innerHTML=_jeremieAvatarMarkup();
-    var gGreet=document.createElement('span'); gGreet.textContent='Bonjour 👋 Je suis Jérémie, votre conseiller intelligent FA GENESIS.';
+    var gHello=document.createElement('span'); gHello.style.fontSize='16px'; gHello.style.fontWeight='800'; gHello.textContent='Bonjour 👋';
+    var gGreet=document.createElement('span'); gGreet.textContent='Je suis Jérémie, votre conseiller intelligent FA GENESIS.';
     var gSub=document.createElement('span'); gSub.style.fontSize='12px'; gSub.style.color='#222'; gSub.textContent='Vous naviguez en invité : je peux déjà vous orienter. Créez un compte pour un suivi personnalisé.';
-    gEmpty.appendChild(gAvatarWrap); gEmpty.appendChild(gGreet); gEmpty.appendChild(gSub);
+    gEmpty.appendChild(gAvatarWrap); gEmpty.appendChild(gHello); gEmpty.appendChild(gGreet); gEmpty.appendChild(gSub);
     msgs.appendChild(gEmpty);
     _jeremieSetEmotion('😊');
     return;
@@ -4521,9 +4522,10 @@ function loadJeremieHistory(){
       var empty=document.createElement('div'); empty.className='chat-empty-state';
       var avatarWrap=document.createElement('div'); avatarWrap.className='jeremie-greet-avatar'; avatarWrap.innerHTML=_jeremieAvatarMarkup();
       var fn=(USER&&USER.prenom)?USER.prenom:'';
-      var greet=document.createElement('span'); greet.textContent='Bonjour'+(fn?' '+fn:'')+' 👋 Je suis Jérémie, votre conseiller intelligent FA GENESIS.';
+      var hello=document.createElement('span'); hello.style.fontSize='16px'; hello.style.fontWeight='800'; hello.textContent='Bonjour'+(fn?' '+fn:'')+' 👋';
+      var greet=document.createElement('span'); greet.textContent='Je suis Jérémie, votre conseiller intelligent FA GENESIS.';
       var sub=document.createElement('span'); sub.style.fontSize='12px'; sub.style.color='#222'; sub.textContent='Comment puis-je vous aider aujourd’hui ?';
-      empty.appendChild(avatarWrap); empty.appendChild(greet); empty.appendChild(sub);
+      empty.appendChild(avatarWrap); empty.appendChild(hello); empty.appendChild(greet); empty.appendChild(sub);
       msgs.appendChild(empty);
       _jeremieSetEmotion('😊');
       return;
