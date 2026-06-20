@@ -891,7 +891,9 @@ a{text-decoration:none;color:inherit}
 .p-dir-portfolio-video span{font-size:9px;color:var(--muted);padding:0 4px}
 
 /* Médailles classement (annuaire Prestataires) */
-.p-rank-card-wrap{position:relative}
+.p-rank-card-wrap{position:relative;flex-shrink:0}
+.p-rank-row{display:flex;gap:12px;padding:0 16px 8px;overflow-x:auto;scrollbar-width:none}
+.p-rank-row::-webkit-scrollbar{display:none}
 .p-rank-medal{position:absolute;top:8px;left:8px;font-size:18px;z-index:2;filter:drop-shadow(2px 2px 0 #000)}
 
 /* Badge Populaire */
@@ -3051,7 +3053,7 @@ function renderPrestataires(){
     +'</select>'
     +'</div>';
   html += '<div class="p-hero-stat" id="p-rank-stat" style="padding:0 16px 6px;">Chargement...</div>';
-  html += '<div id="p-rank-results" class="p-dir-results"><div class="p-dir-empty">Chargement...</div></div>';
+  html += '<div id="p-rank-results" class="p-rank-row"><div class="p-dir-empty">Chargement...</div></div>';
   document.getElementById('prestatairesList').innerHTML = html;
   loadRankedDirectory();
 }
@@ -3100,9 +3102,9 @@ function loadRankedDirectory(){
 }
 function rankedDirectoryCard(p){
   var medalColor = p.rank===1?'#FFD700':p.rank===2?'#c7c7c7':p.rank===3?'#cd7f32':'';
-  if(!medalColor) return directoryCard(p);
+  if(!medalColor) return '<div class="p-rank-card-wrap">'+bigCategoryCard(p)+'</div>';
   var medal = '<i class="fa-solid fa-medal" style="color:'+medalColor+'"></i>';
-  return '<div class="p-rank-card-wrap"><span class="p-rank-medal">'+medal+'</span>'+directoryCard(p)+'</div>';
+  return '<div class="p-rank-card-wrap"><span class="p-rank-medal">'+medal+'</span>'+bigCategoryCard(p)+'</div>';
 }
 
 // ── ÉVÉNEMENTS FA GENESIS (Explorer) ─────────────────────────────
