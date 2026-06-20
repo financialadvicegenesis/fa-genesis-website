@@ -2422,6 +2422,7 @@ function showApp(){
   document.getElementById('app').style.display = 'flex';
   document.getElementById('app').className = 'on';
   initApp();
+  if(typeof _jeremieAutoGreet==='function') _jeremieAutoGreet();
 }
 function goLogin(){ showLoginSheet(); }
 function goGuest(){ GUEST = true; showApp(); }
@@ -4416,12 +4417,21 @@ function toggleJeremieVoiceInput(){
   }
 }
 function openJeremieChat(){
-  if(!USER||!USER._token||GUEST){ if(typeof showLoginSheet==='function') showLoginSheet(); return; }
+  if(!USER && !GUEST){ if(typeof showLoginSheet==='function') showLoginSheet(); return; }
   var overlay=document.getElementById('jeremie-overlay'); var sheet=document.getElementById('jeremie-sheet');
   if(!overlay||!sheet) return;
   overlay.classList.add('open');
   setTimeout(function(){ sheet.classList.add('up'); },20);
   loadJeremieHistory();
+}
+// Affiche Jeremie automatiquement, une fois par session, juste apres l'entree dans
+// l'app (inscription, connexion ou mode invite) - cf showApp().
+function _jeremieAutoGreet(){
+  try{
+    if(sessionStorage.getItem('fa_genesis_jeremie_greeted')==='1') return;
+    sessionStorage.setItem('fa_genesis_jeremie_greeted','1');
+  }catch(e){}
+  setTimeout(function(){ if(typeof openJeremieChat==='function') openJeremieChat(); }, 1400);
 }
 function closeJeremieChat(){
   var sheet=document.getElementById('jeremie-sheet'); var overlay=document.getElementById('jeremie-overlay');
@@ -4457,6 +4467,17 @@ function _jeremieTypewriter(el,fullText,scrollEl){
 }
 function loadJeremieHistory(){
   var msgs=document.getElementById('jeremie-msgs'); if(!msgs) return;
+  if(!USER || !USER._token){
+    msgs.innerHTML='';
+    var gEmpty=document.createElement('div'); gEmpty.className='chat-empty-state';
+    var gAvatarWrap=document.createElement('div'); gAvatarWrap.className='jeremie-greet-avatar'; gAvatarWrap.innerHTML=_jeremieAvatarMarkup();
+    var gGreet=document.createElement('span'); gGreet.textContent='Bonjour 👋 Je suis Jérémie, votre conseiller intelligent FA GENESIS.';
+    var gSub=document.createElement('span'); gSub.style.fontSize='12px'; gSub.style.color='#222'; gSub.textContent='Vous naviguez en invité : je peux déjà vous orienter. Créez un compte pour un suivi personnalisé.';
+    gEmpty.appendChild(gAvatarWrap); gEmpty.appendChild(gGreet); gEmpty.appendChild(gSub);
+    msgs.appendChild(gEmpty);
+    _jeremieSetEmotion('😊');
+    return;
+  }
   msgs.innerHTML='<div class="chat-empty-state"><span>Chargement...</span></div>';
   fetch((window.FA_GENESIS_API||API)+'/api/jeremie/chat',{
     headers:{'Authorization':'Bearer '+USER._token}
@@ -4496,9 +4517,11 @@ function sendJeremieMessage(){
     msgs.scrollTop=msgs.scrollHeight;
   }
   _jeremieSetEmotion('🤔');
+  var jHeaders={'Content-Type':'application/json'};
+  if(USER && USER._token) jHeaders['Authorization']='Bearer '+USER._token;
   fetch((window.FA_GENESIS_API||API)+'/api/jeremie/chat',{
     method:'POST',
-    headers:{'Content-Type':'application/json','Authorization':'Bearer '+USER._token},
+    headers:jHeaders,
     body:JSON.stringify({message:text})
   }).then(function(r){return r.json();}).then(function(res){
     if(btn){btn.disabled=false;btn.textContent='↑';}
@@ -5707,12 +5730,14 @@ function _ptnrShowScreen(name){
   if(name === 'admin') setTimeout(_adminCheckPushStatus, 300);
 }
 
+var _ptnrRegOpenedAt = 0;
 function _ptnrRegStart(){
   ['ptnr-reg-prenom','ptnr-reg-nom','ptnr-reg-email','ptnr-reg-tel','ptnr-reg-ville','ptnr-reg-entreprise','ptnr-reg-pass','ptnr-reg-referral','ptnr-reg-rib-titulaire','ptnr-reg-rib-iban','ptnr-reg-rib-bic'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.value='';
   });
   var typeEl=document.getElementById('ptnr-reg-type'); if(typeEl) typeEl.value='';
   var errEl=document.getElementById('ptnr-reg-err'); if(errEl) errEl.className='ptnr-login-err';
+  _ptnrRegOpenedAt = Date.now();
   _ptnrShowScreen('register');
 }
 
@@ -5752,7 +5777,7 @@ function _ptnrRegSubmit(){
   fetch(_ptnrApiUrl()+'/api/partner/auth/register',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({prenom:prenom.trim(), nom:nom.trim(), email:email.trim(), telephone:telephone.trim(), city:ville.trim(), password:password, partner_type:partnerType, company:company.trim(), referralCode:referralCode})
+    body:JSON.stringify({prenom:prenom.trim(), nom:nom.trim(), email:email.trim(), telephone:telephone.trim(), city:ville.trim(), password:password, partner_type:partnerType, company:company.trim(), referralCode:referralCode, _ft:_ptnrRegOpenedAt})
   }).then(function(r){return r.text().then(function(t){try{return JSON.parse(t);}catch(e){throw new Error('Erreur serveur');}});})
   .then(function(res){
     if(btnEl){btnEl.disabled=false;btnEl.textContent='CRÉER MON COMPTE';}
@@ -6738,7 +6763,7 @@ var regData = {};
 
 function showRegisterSheet(){
   regCurrentStep = 1;
-  regData = {};
+  regData = { _ft: Date.now() };
   if(_regStepTimer){ clearTimeout(_regStepTimer); _regStepTimer=null; }
   var overlay = document.getElementById('reg-overlay');
   var sheet = document.getElementById('reg-sheet');

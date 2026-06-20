@@ -5114,6 +5114,13 @@ app.post('/api/auth/login', async (req, res) => {
             return res.status(400).json({ error: 'Email et mot de passe requis' });
         }
 
+        // Anti brute-force : max 10 tentatives par IP+email par 15 minutes
+        var loginClientIp = req.ip || (req.connection && req.connection.remoteAddress) || 'unknown';
+        if (!checkRateLimit(loginClientIp + ':' + email.toLowerCase(), 'login', 10, 900000)) {
+            console.log('[SECURITY] Connexion bloquee (rate limit): ' + email + ' depuis ' + loginClientIp);
+            return res.status(429).json({ error: 'Trop de tentatives de connexion. Veuillez reessayer dans quelques minutes.' });
+        }
+
         // Chercher l'utilisateur
         const users = loadUsers();
         const userIndex = users.findIndex(u => u.email.toLowerCase() === email.toLowerCase());
@@ -7150,6 +7157,13 @@ app.post('/api/partner/auth/login', async (req, res) => {
             return res.status(400).json({ error: 'Email et mot de passe requis' });
         }
 
+        // Anti brute-force : max 10 tentatives par IP+email par 15 minutes
+        var ptnrLoginClientIp = req.ip || (req.connection && req.connection.remoteAddress) || 'unknown';
+        if (!checkRateLimit(ptnrLoginClientIp + ':' + email.toLowerCase(), 'partner_login', 10, 900000)) {
+            console.log('[SECURITY] Connexion partenaire bloquee (rate limit): ' + email + ' depuis ' + ptnrLoginClientIp);
+            return res.status(429).json({ error: 'Trop de tentatives de connexion. Veuillez reessayer dans quelques minutes.' });
+        }
+
         // ── Cas admin : identifiants hardcodés (mêmes que admin.html / admin-system.js) ──
         const ADMIN_ACCOUNTS_LIST = [
             { email: 'admin@fagenesis.com', password: 'FAGenesis2024!' },
@@ -7212,6 +7226,39 @@ app.post('/api/partner/auth/register', async (req, res) => {
         const { prenom, nom, email, telephone, city, password, partner_type, company, referralCode } = req.body;
         if (!prenom || !nom || !email || !password || !partner_type) {
             return res.status(400).json({ error: 'Champs obligatoires: prenom, nom, email, password, partner_type' });
+        }
+
+        // Anti-spam : champ honeypot (les bots remplissent les champs caches)
+        if (req.body._hp && req.body._hp.trim() !== '') {
+            console.log('[SPAM] Inscription partenaire bloquee (honeypot): ' + email);
+            return res.status(400).json({ error: 'Formulaire invalide.' });
+        }
+
+        // Anti-spam : rate limiting (max 3 inscriptions par IP par heure)
+        var ptnrRegClientIp = req.ip || (req.connection && req.connection.remoteAddress) || 'unknown';
+        if (!checkRateLimit(ptnrRegClientIp, 'partner_register', 3, 3600000)) {
+            console.log('[SPAM] Inscription partenaire bloquee (rate limit): ' + ptnrRegClientIp);
+            return res.status(429).json({ error: 'Trop de tentatives. Veuillez reessayer dans 1 heure.' });
+        }
+
+        // Anti-spam : les noms qui ressemblent a des chaines aleatoires sont rejetes
+        if (isSpamName(prenom) || isSpamName(nom)) {
+            console.log('[SPAM] Inscription partenaire bloquee (nom suspect): ' + prenom + ' ' + nom + ' <' + email + '>');
+            return res.status(400).json({ error: 'Veuillez entrer votre vrai prenom et nom.' });
+        }
+
+        // Anti-spam : le formulaire doit avoir ete ouvert depuis au moins 3 secondes
+        if (req.body._ft) {
+            var ptnrRegFormTime = parseInt(req.body._ft, 10);
+            if (!isNaN(ptnrRegFormTime) && Date.now() - ptnrRegFormTime < 3000) {
+                console.log('[SPAM] Inscription partenaire bloquee (soumission trop rapide): ' + email);
+                return res.status(400).json({ error: 'Formulaire soumis trop rapidement.' });
+            }
+        }
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            return res.status(400).json({ error: 'Format d\'email invalide' });
         }
         if (PARTNER_TYPE_VALUES.indexOf(partner_type) === -1) {
             return res.status(400).json({ error: 'partner_type invalide. Valeurs acceptees: ' + PARTNER_TYPE_VALUES.join(', ') });
@@ -8335,6 +8382,17 @@ function buildJeremieSystemPrompt(person, personType) {
         'a debloquer), le Patrimoine Genesis (recapitulatif de parcours), et la Constellation Genesis (palier ' +
         'exclusif Argent/Or/Diamant/Fondateur reserve aux membres les plus actifs et les mieux notes).');
 
+    if (personType === 'guest') {
+        lines.push('');
+        lines.push('Tu parles a un visiteur non connecte (mode invite) : tu n\'as aucune donnee personnelle sur lui ' +
+            'et aucun historique n\'est conserve entre ses messages. Ton role : presenter la plateforme, l\'aider a ' +
+            'clarifier son besoin (type de projet, type de prestataire recherche), repondre a ses questions generales ' +
+            'sur le fonctionnement et le systeme de fidelisation Genesis, et l\'inciter naturellement a creer un compte ' +
+            'ou a parcourir l\'annuaire des prestataires pour aller plus loin. Ne jamais inventer de chiffres personnels ' +
+            'puisqu\'il n\'est pas connecte.');
+        return lines.join('\n');
+    }
+
     try {
         if (personType === 'client') {
             var completedOrders = getClientCompletedOrders(person.email);
@@ -8392,11 +8450,34 @@ function buildJeremieSystemPrompt(person, personType) {
 app.post('/api/jeremie/chat', function(req, res) {
     try {
         var authHeader = req.headers.authorization;
-        if (!authHeader || !authHeader.startsWith('Bearer ')) return res.status(401).json({ error: 'Token requis' });
-        var token = authHeader.slice(7);
-
         var message = req.body && typeof req.body.message === 'string' ? req.body.message.trim() : '';
         if (!message) return res.status(400).json({ error: 'Message requis' });
+        if (message.length > 2000) return res.status(400).json({ error: 'Message trop long' });
+
+        var jeremieClientIp = req.ip || (req.connection && req.connection.remoteAddress) || 'unknown';
+
+        // Mode invite (non authentifie) : pas de memoire persistee, contexte generique,
+        // limite stricte par IP pour eviter qu'un tiers non identifie n'abuse de l'API IA.
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            if (!checkRateLimit(jeremieClientIp, 'jeremie_guest', 15, 3600000)) {
+                return res.status(429).json({ error: 'Trop de messages. Reessayez plus tard ou creez un compte.' });
+            }
+            var guestPrompt = buildJeremieSystemPrompt(null, 'guest');
+            return aiService.askJeremie(guestPrompt, [], message).then(function(result) {
+                if (!result.success) {
+                    return res.status(503).json({ error: result.error || 'Jeremie est momentanement indisponible.' });
+                }
+                res.json({ success: true, reply: result.reply });
+            }).catch(function(err) {
+                console.error('[JEREMIE] Erreur askJeremie (invite):', err);
+                res.status(500).json({ error: 'Erreur serveur' });
+            });
+        }
+        var token = authHeader.slice(7);
+
+        if (!checkRateLimit(jeremieClientIp, 'jeremie', 30, 3600000)) {
+            return res.status(429).json({ error: 'Trop de messages. Reessayez dans quelques minutes.' });
+        }
 
         var person = loadUsers().find(function(u) { return u.sessionToken === token; });
         var personType = 'client';
