@@ -4,40 +4,39 @@
 console.log('🔵 Chargement de admin-system.js');
 
 /**
- * Identifiants admin
- */
-var ADMIN_ACCOUNTS = [
-    { email: 'admin@fagenesis.com', password: 'FAGenesis2024!' },
-    { email: 'tiffenndjambou3@gmail.com', password: 'FAGenesis2024!' }
-];
-
-/**
  * Connexion administrateur
  * @param {string} email
  * @param {string} password
  * @returns {Object}
  */
 function adminLogin(email, password) {
-    var emailLower = (email || '').toLowerCase().trim();
-    var match = null;
-    for (var i = 0; i < ADMIN_ACCOUNTS.length; i++) {
-        if (ADMIN_ACCOUNTS[i].email.toLowerCase() === emailLower &&
-            ADMIN_ACCOUNTS[i].password === password) {
-            match = ADMIN_ACCOUNTS[i];
-            break;
+    // L'identifiant/mot de passe sont desormais verifies cote serveur (route /api/admin/login),
+    // qui delivre un token de session. Ce token est exige par toutes les routes /api/admin/*
+    // pour empecher quiconque d'appeler directement l'API et de recuperer des donnees sensibles
+    // (ex. IBAN/RIB des prestataires) sans etre reellement authentifie.
+    var base = (typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : (window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com'));
+    return fetch(base + '/api/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email, password: password })
+    }).then(function(r) { return r.json().then(function(data) { return { ok: r.ok, data: data }; }); })
+      .then(function(res) {
+        if (!res.ok || !res.data || !res.data.success) {
+            return { success: false, message: (res.data && res.data.error) || 'Email ou mot de passe incorrect.' };
         }
-    }
-    if (match) {
         var adminSession = {
-            email: email,
+            email: res.data.email,
             role: 'admin',
             loginTime: new Date().toISOString()
         };
         localStorage.setItem('adminSession', JSON.stringify(adminSession));
+        localStorage.setItem('adminToken', res.data.token);
         console.log('Admin connecté');
         return { success: true, message: 'Connexion réussie' };
-    }
-    return { success: false, message: 'Email ou mot de passe incorrect.' };
+      })
+      .catch(function() {
+        return { success: false, message: 'Erreur réseau. Réessayez.' };
+      });
 }
 
 /**
@@ -46,16 +45,42 @@ function adminLogin(email, password) {
  */
 function isAdminAuthenticated() {
     const session = localStorage.getItem('adminSession');
-    return session !== null;
+    const token = localStorage.getItem('adminToken');
+    return session !== null && !!token;
 }
 
 /**
  * Déconnexion admin
  */
 function adminLogout() {
+    var base = (typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : (window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com'));
+    var token = localStorage.getItem('adminToken');
+    if (token) {
+        fetch(base + '/api/admin/logout', { method: 'POST', headers: { 'Authorization': 'Bearer ' + token } }).catch(function() {});
+    }
     localStorage.removeItem('adminSession');
+    localStorage.removeItem('adminToken');
     console.log('✅ Admin déconnecté');
 }
+
+// Injecte automatiquement le token de session admin sur tous les appels /api/admin/*
+// (evite de modifier individuellement les ~80 appels fetch() existants dans admin.html)
+(function() {
+    var _origFetch = window.fetch;
+    window.fetch = function(input, init) {
+        try {
+            var url = (typeof input === 'string') ? input : (input && input.url) || '';
+            if (url.indexOf('/api/admin/') !== -1 && url.indexOf('/api/admin/login') === -1) {
+                var token = localStorage.getItem('adminToken');
+                if (token) {
+                    init = init || {};
+                    init.headers = Object.assign({}, init.headers, { 'Authorization': 'Bearer ' + token });
+                }
+            }
+        } catch (e) {}
+        return _origFetch.call(this, input, init);
+    };
+})();
 
 /**
  * Obtenir la session admin

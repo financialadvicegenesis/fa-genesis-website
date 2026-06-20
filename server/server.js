@@ -56,6 +56,7 @@ const PARTNER_REVIEWS_FILE = path.join(__dirname, 'data', 'partner_reviews.json'
 const HALL_OF_FAME_FILE = path.join(__dirname, 'data', 'hall_of_fame.json');
 const EVENTS_FILE = path.join(__dirname, 'data', 'events.json');
 const JEREMIE_MEMORY_FILE = path.join(__dirname, 'data', 'jeremie_memory.json');
+const ADMIN_SESSIONS_FILE = path.join(__dirname, 'data', 'admin_sessions.json');
 
 // Catégories de partenaires marketplace (source unique, partagée par inscription + admin)
 const PARTNER_TYPES = [
@@ -128,6 +129,18 @@ setInterval(function() {
         if (!_rateCache[k].length) delete _rateCache[k];
     });
 }, 3600000);
+
+// Verifie le header x-admin-key contre ADMIN_KEY — echoue FERME si ADMIN_KEY n'est pas configuree
+// (sans ce garde-fou, "undefined === undefined" laisserait passer n'importe quelle requete sans header)
+function isValidAdminKey(req) {
+    var configured = process.env.ADMIN_KEY;
+    var provided = req.headers['x-admin-key'];
+    if (!configured || !provided) return false;
+    var a = Buffer.from(String(configured));
+    var b = Buffer.from(String(provided));
+    if (a.length !== b.length) return false;
+    return crypto.timingSafeEqual(a, b);
+}
 
 // Detecte si un nom ressemble a une chaine aleatoire generee par un bot
 function isSpamName(name) {
@@ -951,6 +964,80 @@ app.use((req, res, next) => {
 });
 
 // ============================================================
+// AUTHENTIFICATION ADMIN — protege TOUTES les routes /api/admin/*
+// (auparavant ces routes n'avaient aucune verification cote serveur :
+//  n'importe qui pouvait appeler /api/admin/partners et recuperer les
+//  IBAN/BIC en clair de tous les prestataires)
+// ============================================================
+var ADMIN_ACCOUNTS = [
+    { email: 'admin@fagenesis.com', password: process.env.ADMIN_PASSWORD || 'FAGenesis2024!' },
+    { email: 'tiffenndjambou3@gmail.com', password: process.env.ADMIN_PASSWORD || 'FAGenesis2024!' }
+];
+
+function loadAdminSessions() {
+    try {
+        if (!fs.existsSync(ADMIN_SESSIONS_FILE)) return [];
+        return JSON.parse(fs.readFileSync(ADMIN_SESSIONS_FILE, 'utf8')) || [];
+    } catch(e) { return []; }
+}
+function saveAdminSessions(sessions) {
+    try { fs.writeFileSync(ADMIN_SESSIONS_FILE, JSON.stringify(sessions, null, 2), 'utf8'); }
+    catch(e) { console.error('[ADMIN-AUTH] Erreur sauvegarde sessions:', e); }
+}
+
+app.post('/api/admin/login', function(req, res) {
+    try {
+        var ip = req.ip || (req.connection && req.connection.remoteAddress) || 'unknown';
+        if (!checkRateLimit(ip, 'admin_login', 10, 900000)) {
+            return res.status(429).json({ error: 'Trop de tentatives. Réessayez dans 15 minutes.' });
+        }
+        var email = (req.body.email || '').toLowerCase().trim();
+        var password = req.body.password || '';
+        var match = ADMIN_ACCOUNTS.find(function(a) { return a.email === email && a.password === password; });
+        if (!match) return res.status(401).json({ error: 'Email ou mot de passe incorrect.' });
+        var token = uuidv4() + uuidv4();
+        var sessions = loadAdminSessions();
+        sessions.push({ token: token, email: match.email, created_at: new Date().toISOString() });
+        saveAdminSessions(sessions);
+        console.log('[ADMIN-AUTH] Connexion admin réussie:', match.email);
+        res.json({ success: true, token: token, email: match.email });
+    } catch(e) {
+        console.error('[ADMIN-AUTH] Erreur login:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+app.post('/api/admin/logout', function(req, res) {
+    try {
+        var token = (req.headers.authorization || '').replace('Bearer ', '');
+        var sessions = loadAdminSessions().filter(function(s) { return s.token !== token; });
+        saveAdminSessions(sessions);
+        res.json({ success: true });
+    } catch(e) {
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+function authenticateAdmin(req, res, next) {
+    try {
+        var authHeader = req.headers.authorization || '';
+        var token = authHeader.indexOf('Bearer ') === 0 ? authHeader.slice(7) : null;
+        if (!token) return res.status(401).json({ error: 'Authentification admin requise' });
+        var sessions = loadAdminSessions();
+        var session = sessions.find(function(s) { return s.token === token; });
+        if (!session) return res.status(401).json({ error: 'Session admin invalide ou expirée' });
+        req.admin = session;
+        next();
+    } catch(e) {
+        res.status(500).json({ error: 'Erreur authentification admin' });
+    }
+}
+
+// Toutes les routes /api/admin/* definies plus bas dans ce fichier exigent desormais
+// une session admin valide (sauf /api/admin/login ci-dessus, enregistree avant ce middleware)
+app.use('/api/admin', authenticateAdmin);
+
+// ============================================================
 // HELPERS - STOCKAGE DES COMMANDES
 // ============================================================
 
@@ -1087,7 +1174,7 @@ app.post('/api/push/subscribe', function(req, res) {
         if (token === partnerToken) {
             role = 'partner';
             email = 'partner';
-        } else if (req.headers['x-admin-key'] === process.env.ADMIN_KEY) {
+        } else if (isValidAdminKey(req)) {
             role = 'admin';
             email = 'admin';
         } else if (token) {
@@ -12516,7 +12603,7 @@ app.post('/api/coworking/blocked-dates', function(req, res) {
     try {
         var token = (req.headers.authorization || '').replace('Bearer ', '');
         var partnerToken = process.env.PARTNER_TOKEN || 'fa-genesis-partner-2024';
-        var isAdmin = req.headers['x-admin-key'] === process.env.ADMIN_KEY;
+        var isAdmin = isValidAdminKey(req);
         if (token !== partnerToken && !isAdmin) {
             return res.status(403).json({ error: 'Non autorisé' });
         }
@@ -12616,7 +12703,7 @@ app.get('/api/reservations/all', function(req, res) {
         // Accès simple par token partenaire ou admin
         var partnerToken = process.env.PARTNER_TOKEN || 'fa-genesis-partner-2024';
         var adminToken = process.env.ADMIN_TOKEN || null;
-        var isAdmin = req.headers['x-admin-key'] === process.env.ADMIN_KEY;
+        var isAdmin = isValidAdminKey(req);
         var isPartner = token === partnerToken;
         if (!isAdmin && !isPartner) {
             var user = authenticateClient(req, res);
@@ -12658,7 +12745,7 @@ app.put('/api/reservations/:id/status', function(req, res) {
     try {
         var partnerToken = process.env.PARTNER_TOKEN || 'fa-genesis-partner-2024';
         var token = (req.headers.authorization || '').replace('Bearer ', '');
-        var isAdmin = req.headers['x-admin-key'] === process.env.ADMIN_KEY;
+        var isAdmin = isValidAdminKey(req);
         if (token !== partnerToken && !isAdmin) {
             return res.status(403).json({ error: 'Non autorisé' });
         }
@@ -13129,7 +13216,7 @@ app.delete('/api/coworking/devis/:id', function(req, res) {
  * Protégé par x-admin-key
  */
 app.post('/api/admin/linkedin/generate-message', async function(req, res) {
-    if (req.headers['x-admin-key'] !== process.env.ADMIN_KEY) {
+    if (!isValidAdminKey(req)) {
         return res.status(401).json({ error: 'Non autorisé' });
     }
 
