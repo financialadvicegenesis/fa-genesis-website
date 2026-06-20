@@ -2704,26 +2704,6 @@ var PDATA = {
     ]
   },
   visibilite: {
-    photo: [
-      {
-        name:'PHOTO', price:'SUR DEVIS', wide:true,
-        gradient:'135deg, #8b5a00, #b5cd63',
-        payment:'Paiement possible en plusieurs fois selon le projet',
-        desc:'FA Genesis collabore avec plusieurs photographes professionnels indépendants. Le tarif dépend du projet, du format, de la durée et du prestataire sélectionné.',
-        feats:['Séance photo personnalisée','Orientation posture & image professionnelle','Format réseaux sociaux','Nombre de photos retouchées adapté'],
-        link:'contact.html?objet=devis&service=photo', cta:'Demander un devis'
-      },
-    ],
-    video: [
-      {
-        name:'VIDÉO', price:'SUR DEVIS', wide:true,
-        gradient:'135deg, #0e6c9b, #5d0069, #e300ff',
-        payment:'Paiement possible en plusieurs fois selon le projet',
-        desc:'Les tarifs sont définis en fonction du format, des objectifs du projet et du vidéaste partenaire.',
-        feats:['Tournage vidéo personnalisé','Nombre de vidéos adapté','Direction narrative & storytelling','Conseils de diffusion','Son & cadrage professionnels','Orientation posture & discours','Format réseaux sociaux'],
-        link:'contact.html?objet=devis&service=video', cta:'Demander un devis'
-      },
-    ],
     marketing: [
       {name:'EXPRESS',  price:'120 €', gradient:'135deg, #4b0505, #fa2a2a, #ff2323', payment:'Paiement possible en 2x dont 1x/mois (60 €/mois)',  feats:['Analyse du projet','Clarification cible & message','Recommandations concrètes']},
       {name:'STRATEGY', price:'150 €', gradient:'135deg, #4b0505, #fa2a2a, #ff2323', payment:'Paiement possible en 2x dont 1x/mois (75 €/mois)',  feats:['Positionnement','Message central','Branding']},
@@ -2742,7 +2722,7 @@ var PDATA = {
 
 var _prestFilter = 'all';
 var _prestSub = 'etudiant';
-var _prestVisFilter = 'photo';
+var _prestVisFilter = 'marketing';
 var _expSearchQuery = '', _expSearchTimer = null;
 
 function _expSearchDebounced(){
@@ -2801,8 +2781,6 @@ function renderPrestations(filter){
       html += '<div class="p-section" style="margin-top:24px;" id="p-section-visibilite">';
       html += '<div class="p-section-hdr dark">TARIFS PARTENAIRES</div>';
       html += '<div class="p-vis-filter" id="p-vis-filter">'
-        +'<button class="p-vis-fpill '+(_prestVisFilter==='photo'?'on':'')+'" onclick="setPrestVisFilter(\'photo\',this)">Photo</button>'
-        +'<button class="p-vis-fpill '+(_prestVisFilter==='video'?'on':'')+'" onclick="setPrestVisFilter(\'video\',this)">Vidéo</button>'
         +'<button class="p-vis-fpill '+(_prestVisFilter==='marketing'?'on':'')+'" onclick="setPrestVisFilter(\'marketing\',this)">Marketing</button>'
         +'<button class="p-vis-fpill '+(_prestVisFilter==='media'?'on':'')+'" onclick="setPrestVisFilter(\'media\',this)">Médias</button>'
         +'</div>';
