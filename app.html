@@ -842,13 +842,31 @@ a{text-decoration:none;color:inherit}
 .badge-progress-text{margin-top:7px;font-size:11px;color:var(--muted);font-weight:600}
 .badge-progress-max{margin-top:12px;display:flex;align-items:center;gap:9px;border:3px solid var(--yellow);background:linear-gradient(135deg,#1a1a1a,#3a2f00);border-radius:14px;padding:10px 14px;color:var(--yellow);font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:.3px;box-shadow:0 0 14px rgba(255,215,0,.35)}
 .badge-progress-max i{font-size:16px}
+
+/* Barre de progression "jeu video" (paliers/checkpoints, inspiree Duolingo) */
+.bp-ladder{position:relative;height:46px;margin:16px 0 8px}
+.bp-ladder-track{position:absolute;top:8px;left:0;right:0;height:8px;border-radius:6px;background:#000;border:1px solid var(--border);overflow:hidden}
+.bp-ladder-fill{position:relative;height:100%;border-radius:6px;background:linear-gradient(90deg,#7a5c00,var(--yellow));background-size:200% 100%;transition:width .8s cubic-bezier(.4,0,.2,1);overflow:hidden}
+.bp-ladder-fill::after{content:'';position:absolute;top:0;left:0;height:100%;width:40%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.55),transparent);animation:badgeProgressShimmer 1.8s ease-in-out infinite}
+.bp-ladder-stop{position:absolute;top:0;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:4px}
+.bp-ladder-dot{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;border:2px solid #000;background:#1a1a1a;color:var(--muted);transition:transform .25s,box-shadow .25s}
+.bp-ladder-stop.done .bp-ladder-dot{background:#51cf66;color:#000;box-shadow:0 0 8px rgba(81,207,102,.55)}
+.bp-ladder-stop.current .bp-ladder-dot{background:var(--yellow);color:#000;box-shadow:0 0 0 4px rgba(255,215,0,.22),0 0 16px rgba(255,215,0,.75);animation:bpDotPulse 1.6s ease-in-out infinite}
+.bp-ladder-label{font-size:7px;font-weight:900;text-transform:uppercase;letter-spacing:.2px;color:var(--muted);white-space:nowrap}
+.bp-ladder-stop.done .bp-ladder-label,.bp-ladder-stop.current .bp-ladder-label{color:var(--text)}
+@keyframes bpDotPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.2)}}
+
 .p-ref-box{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:14px;margin-top:10px}
-.genesis-mission-card{border:1px solid var(--border);background:var(--card);border-radius:14px;padding:14px;margin-bottom:12px}
+.genesis-mission-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.genesis-mission-card{position:relative;border:1px solid var(--border);background:var(--card);border-radius:14px;padding:14px}
 .genesis-mission-card.done{border-color:#51cf66;box-shadow:0 0 14px rgba(81,207,102,.2)}
 .genesis-mission-top{display:flex;align-items:center;gap:10px;margin-bottom:6px;font-weight:900;font-size:13px;text-transform:uppercase;letter-spacing:.3px}
 .genesis-mission-top i{color:var(--yellow);font-size:16px}
 .genesis-mission-desc{color:var(--muted);font-size:12px;margin-bottom:10px}
 .genesis-mission-count{margin-top:7px;font-size:11px;color:var(--muted);font-weight:700;text-align:right}
+.genesis-mission-status{display:inline-flex;align-items:center;gap:4px;font-size:8px;font-weight:900;text-transform:uppercase;letter-spacing:.3px;padding:3px 8px;border-radius:20px;margin-bottom:8px}
+.genesis-mission-status.done{background:#51cf66;color:#000}
+.genesis-mission-status.pending{background:rgba(255,255,255,.08);color:var(--muted)}
 .genesis-patrimoine-level{display:flex;align-items:center;gap:10px;font-weight:900;font-size:16px;text-transform:uppercase;letter-spacing:.3px;color:var(--yellow);border:1px solid var(--border);background:var(--card);border-radius:14px;padding:16px;margin-bottom:16px}
 .genesis-patrimoine-level i{font-size:20px}
 .genesis-patrimoine-anciennete{margin-left:auto;font-size:11px;color:var(--muted);text-transform:none;font-weight:600;letter-spacing:0}
@@ -3602,6 +3620,32 @@ function tierBadgeMeta(tier){
   };
   return map[tier]||null;
 }
+var CLIENT_TIER_ORDER = ['bronze','argent','or','prestige'];
+var PARTNER_TIER_ORDER = ['bronze','argent','or','elite'];
+// Barre de progression "paliers" type Duolingo : pastilles cochees/actives/verrouillees
+// reliees par une barre degradee, calculee uniquement a partir de currentBadge/percent
+// (aucune nouvelle donnee serveur necessaire).
+function tierLadderHtml(order, currentBadge, pct){
+  var n = order.length;
+  var curIdx = order.indexOf(currentBadge);
+  var posOf = function(i){ return n>1 ? (i/(n-1)*100) : 0; };
+  var segStart = curIdx>=0 ? posOf(curIdx) : 0;
+  var segEnd = posOf(Math.min(curIdx+1, n-1));
+  var fillPct = Math.max(0, Math.min(100, segStart + (segEnd-segStart) * (Math.max(0,Math.min(100,pct||0))/100)));
+  var stops = order.map(function(tierId, i){
+    var meta = tierBadgeMeta(tierId) || {label:tierId};
+    var state = i<=curIdx ? 'done' : (i===curIdx+1 ? 'current' : 'locked');
+    var dotIcon = state==='done' ? 'fa-check' : (state==='current' ? 'fa-star' : 'fa-lock');
+    return '<div class="bp-ladder-stop '+state+'" style="left:'+posOf(i)+'%">'
+      +'<div class="bp-ladder-dot"><i class="fa-solid '+dotIcon+'"></i></div>'
+      +'<div class="bp-ladder-label">'+meta.label+'</div>'
+      +'</div>';
+  }).join('');
+  return '<div class="bp-ladder">'
+    +'<div class="bp-ladder-track"><div class="bp-ladder-fill" style="width:'+fillPct+'%"></div></div>'
+    +stops
+    +'</div>';
+}
 // Niveau d'evolution Genesis (Explorateur/Createur/Batisseur/Visionnaire/Generateur) :
 // traduction d'affichage du badge existant, cf getGenesisLevel() cote serveur.
 function genesisLevelHtml(level){
@@ -3628,14 +3672,15 @@ function badgeProgressHtml(progress){
   var curMeta = tierBadgeMeta(progress.currentBadge) || {label:'—'};
   var nextMeta = tierBadgeMeta(progress.nextBadge) || {label:'—'};
   var pct = Math.max(0, Math.min(100, progress.percent||0));
+  var remaining = Math.max(0, (progress.target!=null?progress.target:0) - (progress.current!=null?progress.current:0));
   return '<div class="badge-progress">'
     +'<div class="badge-progress-labels">'
     +'<span class="badge-progress-cur"><i class="fa-solid fa-medal"></i> '+curMeta.label+'</span>'
     +'<i class="fa-solid fa-chevron-right badge-progress-arrow"></i>'
-    +'<span class="badge-progress-next">'+nextMeta.label+' <i class="fa-solid fa-lock"></i></span>'
+    +'<span class="badge-progress-next">Prochain palier : '+nextMeta.label+' <i class="fa-solid fa-lock"></i></span>'
     +'</div>'
-    +'<div class="badge-progress-track"><div class="badge-progress-fill" style="width:'+pct+'%"></div></div>'
-    +'<div class="badge-progress-text">'+(progress.current!=null?progress.current:0)+'/'+(progress.target!=null?progress.target:0)+' commandes pour le palier '+nextMeta.label+' ('+pct+'%)</div>'
+    +tierLadderHtml(CLIENT_TIER_ORDER, progress.currentBadge, pct)
+    +'<div class="badge-progress-text">Encore '+remaining+' commande'+(remaining>1?'s':'')+' pour atteindre le palier '+nextMeta.label+' ('+pct+'%)</div>'
     +'</div>';
 }
 function partnerBadgeProgressHtml(progress){
@@ -3655,9 +3700,9 @@ function partnerBadgeProgressHtml(progress){
     +'<div class="badge-progress-labels">'
     +'<span class="badge-progress-cur"><i class="fa-solid fa-medal"></i> '+curMeta.label+'</span>'
     +'<i class="fa-solid fa-chevron-right badge-progress-arrow"></i>'
-    +'<span class="badge-progress-next">'+nextMeta.label+' <i class="fa-solid fa-lock"></i></span>'
+    +'<span class="badge-progress-next">Prochain palier : '+nextMeta.label+' <i class="fa-solid fa-lock"></i></span>'
     +'</div>'
-    +'<div class="badge-progress-track"><div class="badge-progress-fill" style="width:'+pct+'%"></div></div>'
+    +tierLadderHtml(PARTNER_TIER_ORDER, progress.currentBadge, pct)
     +'<div class="badge-progress-text"><i class="fa-solid fa-briefcase mr-1"></i> '+(progress.missionsCurrent||0)+'/'+(progress.missionsTarget||0)+' missions ('+missionsPct+'%) &nbsp;·&nbsp; <i class="fa-solid fa-star mr-1"></i> '+(Number(progress.ratingCurrent)||0).toFixed(1)+'/'+(progress.ratingTarget||0)+' note ('+ratingPct+'%)</div>'
     +'</div>';
 }
@@ -3742,14 +3787,15 @@ function showGenesisMissions(){
       var el = document.getElementById('genesis-missions-list'); if(!el) return;
       var missions = (data && data.missions) || [];
       if(!missions.length){ el.innerHTML = '<div class="espace-empty">Aucune mission disponible pour le moment.</div>'; return; }
-      el.innerHTML = missions.map(function(m){
+      el.innerHTML = '<div class="genesis-mission-grid">'+missions.map(function(m){
         return '<div class="genesis-mission-card'+(m.completed?' done':'')+'">'
+          +'<div class="genesis-mission-status '+(m.completed?'done':'pending')+'"><i class="fa-solid '+(m.completed?'fa-check':'fa-lock')+'"></i> '+(m.completed?'Accomplie':'En cours')+'</div>'
           +'<div class="genesis-mission-top"><i class="fa-solid '+m.icon+'"></i><div class="genesis-mission-label">'+m.label+(m.completed?' <i class="fa-solid fa-circle-check" style="color:#51cf66;"></i>':'')+'</div></div>'
           +'<div class="genesis-mission-desc">'+m.description+'</div>'
           +'<div class="badge-progress-track"><div class="badge-progress-fill" style="width:'+m.percent+'%"></div></div>'
           +'<div class="genesis-mission-count">'+m.current+' / '+m.target+'</div>'
           +'</div>';
-      }).join('');
+      }).join('')+'</div>';
     }).catch(function(){
       var el = document.getElementById('genesis-missions-list'); if(el) el.innerHTML = '<div class="espace-empty">Erreur de chargement.</div>';
     });

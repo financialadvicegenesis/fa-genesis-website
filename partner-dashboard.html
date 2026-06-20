@@ -135,6 +135,21 @@
         .badge-progress-fill{position:relative;height:100%;border-radius:4px;background:linear-gradient(90deg,#7a5c00,var(--genesis-yellow));background-size:200% 100%;transition:width .6s cubic-bezier(.4,0,.2,1);overflow:hidden;}
         .badge-progress-fill::after{content:'';position:absolute;top:0;left:0;height:100%;width:40%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.55),transparent);animation:badgeProgressShimmer 1.8s ease-in-out infinite;}
         @keyframes badgeProgressShimmer{0%{transform:translateX(-100%)}100%{transform:translateX(250%)}}
+        .bp-ladder{position:relative;height:46px;margin:14px 0 8px;}
+        .bp-ladder-track{position:absolute;top:8px;left:0;right:0;height:8px;border-radius:6px;background:#000;border:1px solid rgba(255,255,255,.15);overflow:hidden;}
+        .bp-ladder-fill{position:relative;height:100%;border-radius:6px;background:linear-gradient(90deg,#7a5c00,var(--genesis-yellow));background-size:200% 100%;transition:width .8s cubic-bezier(.4,0,.2,1);overflow:hidden;}
+        .bp-ladder-fill::after{content:'';position:absolute;top:0;left:0;height:100%;width:40%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.55),transparent);animation:badgeProgressShimmer 1.8s ease-in-out infinite;}
+        .bp-ladder-stop{position:absolute;top:0;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:4px;}
+        .bp-ladder-dot{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;border:2px solid #000;background:#1a1a1a;color:rgba(255,255,255,.5);transition:transform .25s,box-shadow .25s;}
+        .bp-ladder-stop.done .bp-ladder-dot{background:#51cf66;color:#000;box-shadow:0 0 8px rgba(81,207,102,.55);}
+        .bp-ladder-stop.current .bp-ladder-dot{background:var(--genesis-yellow);color:#000;box-shadow:0 0 0 4px rgba(255,215,0,.22),0 0 16px rgba(255,215,0,.75);animation:bpDotPulse 1.6s ease-in-out infinite;}
+        .bp-ladder-label{font-size:7px;font-weight:900;text-transform:uppercase;letter-spacing:.2px;color:rgba(255,255,255,.5);white-space:nowrap;}
+        .bp-ladder-stop.done .bp-ladder-label,.bp-ladder-stop.current .bp-ladder-label{color:#fff;}
+        @keyframes bpDotPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.2)}}
+        .genesis-mission-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+        .genesis-mission-status{display:inline-flex;align-items:center;gap:4px;font-size:8px;font-weight:900;text-transform:uppercase;letter-spacing:.3px;padding:3px 8px;border-radius:20px;margin-bottom:8px;}
+        .genesis-mission-status.done{background:#51cf66;color:#000;}
+        .genesis-mission-status.pending{background:rgba(255,255,255,.08);color:rgba(255,255,255,.6);}
         .badge-progress-text{margin-top:9px;font-size:11px;color:#555;font-weight:700;}
         .badge-progress-max{display:flex;align-items:center;justify-content:center;gap:9px;border:3px solid var(--genesis-yellow);background:linear-gradient(135deg,#1a1a1a,#3a2f00);border-radius:10px;padding:12px 14px;color:var(--genesis-yellow);font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:.3px;}
         .badge-progress-max i{font-size:16px;}
@@ -2522,6 +2537,31 @@
     };
     var REFERRAL_STATUS_LABELS = { batisseur: 'BÂTISSEUR', architecte: 'ARCHITECTE' };
     var REFERRAL_STATUS_COLORS = { batisseur: '#c7c7c7', architecte: '#a855f7' };
+    var PARTNER_TIER_ORDER = ['bronze', 'argent', 'or', 'elite'];
+
+    // Barre de progression "paliers" type Duolingo (pastilles cochees/actives/verrouillees
+    // reliees par une barre degradee), calculee uniquement depuis currentBadge/percent.
+    function partnerTierLadderHtml(order, currentBadge, pct) {
+        var n = order.length;
+        var curIdx = order.indexOf(currentBadge);
+        var posOf = function(i) { return n > 1 ? (i / (n - 1) * 100) : 0; };
+        var segStart = curIdx >= 0 ? posOf(curIdx) : 0;
+        var segEnd = posOf(Math.min(curIdx + 1, n - 1));
+        var fillPct = Math.max(0, Math.min(100, segStart + (segEnd - segStart) * (Math.max(0, Math.min(100, pct || 0)) / 100)));
+        var stops = order.map(function(tierId, i) {
+            var label = REPUTATION_BADGE_LABELS[tierId] || tierId.toUpperCase();
+            var state = i <= curIdx ? 'done' : (i === curIdx + 1 ? 'current' : 'locked');
+            var dotIcon = state === 'done' ? 'fa-check' : (state === 'current' ? 'fa-star' : 'fa-lock');
+            return '<div class="bp-ladder-stop ' + state + '" style="left:' + posOf(i) + '%">'
+                + '<div class="bp-ladder-dot"><i class="fas ' + dotIcon + '"></i></div>'
+                + '<div class="bp-ladder-label">' + label + '</div>'
+                + '</div>';
+        }).join('');
+        return '<div class="bp-ladder">'
+            + '<div class="bp-ladder-track"><div class="bp-ladder-fill" style="width:' + fillPct + '%"></div></div>'
+            + stops
+            + '</div>';
+    }
 
     function renderBadgeProgress(progress) {
         var card = document.getElementById('reputationProgressCard');
@@ -2543,8 +2583,8 @@
         var ratingCurDisplay = (Number(progress.ratingCurrent) || 0).toFixed(1);
         box.innerHTML = '<div class="badge-progress-labels"><span class="badge-progress-cur"><i class="fas fa-medal"></i> ' + curLabel + '</span>'
             + '<i class="fas fa-chevron-right badge-progress-arrow"></i>'
-            + '<span class="badge-progress-next">' + nextLabel + ' <i class="fas fa-lock"></i></span></div>'
-            + '<div class="badge-progress-track"><div class="badge-progress-fill" style="width:' + globalPct + '%"></div></div>'
+            + '<span class="badge-progress-next">Prochain palier : ' + nextLabel + ' <i class="fas fa-lock"></i></span></div>'
+            + partnerTierLadderHtml(PARTNER_TIER_ORDER, progress.currentBadge, globalPct)
             + '<div class="badge-progress-text"><i class="fas fa-briefcase mr-1"></i>' + (progress.missionsCurrent || 0) + '/' + (progress.missionsTarget || 0) + ' missions (' + missionsPct + '%) &nbsp;·&nbsp; '
             + '<i class="fas fa-star mr-1"></i>' + ratingCurDisplay + '/' + (progress.ratingTarget || 0) + ' note (' + ratingPct + '%)</div>';
     }
@@ -2570,8 +2610,9 @@
             var data = await response.json();
             var missions = (data && data.missions) || [];
             if (!missions.length) { el.innerHTML = '<p class="text-sm opacity-50 text-white">Aucune mission disponible pour le moment.</p>'; return; }
-            el.innerHTML = missions.map(function(m) {
-                return '<div class="mb-4 pb-4" style="border-bottom:1px solid rgba(255,255,255,.08);">' +
+            el.innerHTML = '<div class="genesis-mission-grid">' + missions.map(function(m) {
+                return '<div class="pb-3" style="border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:14px;' + (m.completed ? 'box-shadow:0 0 14px rgba(81,207,102,.2);border-color:#51cf66;' : '') + '">' +
+                    '<div class="genesis-mission-status ' + (m.completed ? 'done' : 'pending') + '"><i class="fas ' + (m.completed ? 'fa-check' : 'fa-lock') + '"></i> ' + (m.completed ? 'Accomplie' : 'En cours') + '</div>' +
                     '<div class="flex items-center gap-2 font-black text-white uppercase text-sm mb-1"><i class="fas ' + m.icon + '" style="color:var(--genesis-yellow);"></i>' + escapeHtml(m.label) + (m.completed ? ' <i class="fas fa-circle-check" style="color:#51cf66;"></i>' : '') + '</div>' +
                     '<p class="text-xs opacity-60 text-white mb-2">' + escapeHtml(m.description) + '</p>' +
                     '<div style="position:relative;height:8px;border-radius:6px;background:#000;border:1px solid rgba(255,255,255,.1);overflow:hidden;">' +
@@ -2579,7 +2620,7 @@
                     '</div>' +
                     '<p class="text-xs opacity-60 text-white text-right mt-1">' + m.current + ' / ' + m.target + '</p>' +
                 '</div>';
-            }).join('');
+            }).join('') + '</div>';
         } catch (error) {
             console.error('[PARTNER-DASH] Erreur chargement missions Genesis:', error);
             el.innerHTML = '<p class="text-sm opacity-50 text-white">Erreur de chargement.</p>';
