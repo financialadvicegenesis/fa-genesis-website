@@ -2308,6 +2308,39 @@ a{text-decoration:none;color:inherit}
     </button>
   </div>
 
+  <!-- JEREMIE - conseiller IA flottant (visible uniquement une fois dans l'app, jamais sur l'ecran d'accueil/choix de role) -->
+  <button class="jeremie-fab" id="jeremie-fab" onclick="openJeremieChat()" aria-label="Parler à Jérémie">
+    <span class="jeremie-avatar-clip" id="jeremie-fab-avatar"></span>
+    <span class="jeremie-emotion-badge" id="jeremie-fab-emotion"></span>
+  </button>
+  <div id="jeremie-overlay" onclick="if(event.target===this)closeJeremieChat()">
+    <div id="jeremie-sheet">
+      <div class="jeremie-hdr">
+        <div class="jeremie-hdr-ico">
+          <span class="jeremie-avatar-clip" id="jeremie-hdr-avatar"></span>
+          <span class="jeremie-emotion-badge" id="jeremie-hdr-emotion"></span>
+        </div>
+        <div>
+          <div class="jeremie-hdr-title">Jérémie</div>
+          <div class="jeremie-hdr-sub">Votre conseiller Genesis</div>
+        </div>
+        <button class="jeremie-hdr-btn" id="jeremie-voice-toggle" onclick="toggleJeremieVoiceOutput()" aria-label="Activer la voix"><i class="fa-solid fa-volume-xmark"></i></button>
+        <button class="jeremie-hdr-btn" id="jeremie-immersive-toggle" onclick="toggleJeremieImmersive()" aria-label="Mode immersif"><i class="fa-solid fa-expand"></i></button>
+        <button class="jeremie-close-btn" onclick="closeJeremieChat()" aria-label="Fermer">&#x2715;</button>
+      </div>
+      <div class="jeremie-immersive-avatar" id="jeremie-immersive-avatar">
+        <span class="jeremie-avatar-clip jeremie-avatar-clip-lg" id="jeremie-immersive-avatar-inner"></span>
+        <span class="jeremie-emotion-badge jeremie-emotion-badge-lg" id="jeremie-immersive-emotion"></span>
+      </div>
+      <div class="chat-messages" id="jeremie-msgs"><div class="chat-empty-state"><span>Chargement...</span></div></div>
+      <div class="chat-compose">
+        <textarea id="jeremie-input" class="chat-text-input" rows="1" placeholder="Posez votre question..." oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px';" onkeydown="if((event.key==='Enter'||event.keyCode===13)&&!event.shiftKey){event.preventDefault();sendJeremieMessage();}" onfocus="var s=document.getElementById('jeremie-sheet');if(s)s.classList.add('is-listening');" onblur="var s=document.getElementById('jeremie-sheet');if(s)s.classList.remove('is-listening');"></textarea>
+        <button class="jeremie-mic-btn" id="jeremie-mic-btn" onclick="toggleJeremieVoiceInput()" aria-label="Parler à Jérémie"><i class="fa-solid fa-microphone"></i></button>
+        <button class="chat-send-btn" id="jeremie-send-btn" onclick="sendJeremieMessage()">&#8593;</button>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <script>
@@ -7534,38 +7567,6 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
   <iframe class="dvo-frame" id="dvo-frame" src="about:blank" title="Aper&#231;u document" allow="fullscreen"></iframe>
 </div>
 
-<!-- JEREMIE - conseiller IA flottant -->
-<button class="jeremie-fab" id="jeremie-fab" onclick="openJeremieChat()" aria-label="Parler à Jérémie">
-  <span class="jeremie-avatar-clip" id="jeremie-fab-avatar"></span>
-  <span class="jeremie-emotion-badge" id="jeremie-fab-emotion"></span>
-</button>
-<div id="jeremie-overlay" onclick="if(event.target===this)closeJeremieChat()">
-  <div id="jeremie-sheet">
-    <div class="jeremie-hdr">
-      <div class="jeremie-hdr-ico">
-        <span class="jeremie-avatar-clip" id="jeremie-hdr-avatar"></span>
-        <span class="jeremie-emotion-badge" id="jeremie-hdr-emotion"></span>
-      </div>
-      <div>
-        <div class="jeremie-hdr-title">Jérémie</div>
-        <div class="jeremie-hdr-sub">Votre conseiller Genesis</div>
-      </div>
-      <button class="jeremie-hdr-btn" id="jeremie-voice-toggle" onclick="toggleJeremieVoiceOutput()" aria-label="Activer la voix"><i class="fa-solid fa-volume-xmark"></i></button>
-      <button class="jeremie-hdr-btn" id="jeremie-immersive-toggle" onclick="toggleJeremieImmersive()" aria-label="Mode immersif"><i class="fa-solid fa-expand"></i></button>
-      <button class="jeremie-close-btn" onclick="closeJeremieChat()" aria-label="Fermer">&#x2715;</button>
-    </div>
-    <div class="jeremie-immersive-avatar" id="jeremie-immersive-avatar">
-      <span class="jeremie-avatar-clip jeremie-avatar-clip-lg" id="jeremie-immersive-avatar-inner"></span>
-      <span class="jeremie-emotion-badge jeremie-emotion-badge-lg" id="jeremie-immersive-emotion"></span>
-    </div>
-    <div class="chat-messages" id="jeremie-msgs"><div class="chat-empty-state"><span>Chargement...</span></div></div>
-    <div class="chat-compose">
-      <textarea id="jeremie-input" class="chat-text-input" rows="1" placeholder="Posez votre question..." oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px';" onkeydown="if((event.key==='Enter'||event.keyCode===13)&&!event.shiftKey){event.preventDefault();sendJeremieMessage();}" onfocus="var s=document.getElementById('jeremie-sheet');if(s)s.classList.add('is-listening');" onblur="var s=document.getElementById('jeremie-sheet');if(s)s.classList.remove('is-listening');"></textarea>
-      <button class="jeremie-mic-btn" id="jeremie-mic-btn" onclick="toggleJeremieVoiceInput()" aria-label="Parler à Jérémie"><i class="fa-solid fa-microphone"></i></button>
-      <button class="chat-send-btn" id="jeremie-send-btn" onclick="sendJeremieMessage()">&#8593;</button>
-    </div>
-  </div>
-</div>
 <script>_jeremieInitAvatars();</script>
 
 <!-- Font Awesome async -->
