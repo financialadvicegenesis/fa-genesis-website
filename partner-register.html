@@ -249,6 +249,24 @@
                         </div>
                     </div>
 
+                    <hr class="border-2 border-black my-6">
+                    <h3 class="text-lg font-black uppercase mb-2">RIB — pour recevoir vos paiements (optionnel)</h3>
+                    <p class="text-sm font-bold opacity-60 mb-4">Vous pouvez aussi le renseigner plus tard depuis votre tableau de bord.</p>
+                    <div class="mb-4">
+                        <label for="step3RibTitulaire" class="block text-sm font-black mb-2 uppercase">Titulaire du compte</label>
+                        <input type="text" id="step3RibTitulaire" class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none focus:border-[var(--genesis-yellow)] transition-all" placeholder="Nom du titulaire">
+                    </div>
+                    <div class="grid grid-cols-2 gap-4 mb-2">
+                        <div>
+                            <label for="step3RibIban" class="block text-sm font-black mb-2 uppercase">IBAN</label>
+                            <input type="text" id="step3RibIban" maxlength="34" style="text-transform:uppercase;" class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none focus:border-[var(--genesis-yellow)] transition-all" placeholder="FR76 XXXX XXXX XXXX XXXX XXXX XXX">
+                        </div>
+                        <div>
+                            <label for="step3RibBic" class="block text-sm font-black mb-2 uppercase">BIC / SWIFT</label>
+                            <input type="text" id="step3RibBic" maxlength="11" style="text-transform:uppercase;" class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none focus:border-[var(--genesis-yellow)] transition-all" placeholder="XXXXXXXX">
+                        </div>
+                    </div>
+
                     <div id="step3Message" style="display:none;margin-top:1rem;"></div>
 
                     <div class="flex justify-between items-center mt-8 flex-wrap gap-3">
@@ -469,6 +487,25 @@
             var msgEl = document.getElementById('step3Message');
             var btnEl = document.getElementById('step3NextBtn');
 
+            var ribTitulaire = document.getElementById('step3RibTitulaire').value.trim();
+            var ribIban = document.getElementById('step3RibIban').value.trim().toUpperCase().replace(/\s+/g, '');
+            var ribBic = document.getElementById('step3RibBic').value.trim().toUpperCase().replace(/\s+/g, '');
+            var ribFilledCount = (ribTitulaire ? 1 : 0) + (ribIban ? 1 : 0) + (ribBic ? 1 : 0);
+            if (ribFilledCount > 0 && ribFilledCount < 3) {
+                if (msgEl) {
+                    msgEl.style.display = 'block';
+                    msgEl.innerHTML = '<p class="font-black" style="color:#dc2626;"><i class="fas fa-exclamation-circle mr-2"></i>Merci de renseigner le titulaire, l\'IBAN et le BIC, ou de laisser les 3 champs vides.</p>';
+                }
+                return;
+            }
+            if (ribFilledCount === 3 && (ribIban.length < 14 || ribBic.length < 8)) {
+                if (msgEl) {
+                    msgEl.style.display = 'block';
+                    msgEl.innerHTML = '<p class="font-black" style="color:#dc2626;"><i class="fas fa-exclamation-circle mr-2"></i>IBAN ou BIC invalide.</p>';
+                }
+                return;
+            }
+
             var payload = {
                 bio: document.getElementById('step3Bio').value.trim(),
                 city: document.getElementById('step3City').value.trim(),
@@ -486,6 +523,33 @@
             if (btnEl) { btnEl.disabled = true; btnEl.textContent = 'Enregistrement...'; }
 
             var result = await updatePartnerProfile(payload);
+
+            if (result.success && ribFilledCount === 3) {
+                try {
+                    var ribResponse = await partnerAuthenticatedFetch(PARTNER_API_BASE_URL + '/api/partner/profile/set-rib', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ titulaire: ribTitulaire, iban: ribIban, bic: ribBic })
+                    });
+                    var ribData = await ribResponse.json();
+                    if (!ribResponse.ok || !ribData.success) {
+                        if (btnEl) { btnEl.disabled = false; btnEl.textContent = 'Suivant'; }
+                        if (msgEl) {
+                            msgEl.style.display = 'block';
+                            msgEl.innerHTML = '<p class="font-black" style="color:#dc2626;"><i class="fas fa-exclamation-circle mr-2"></i>' + (ribData.error || 'Erreur lors de l\'enregistrement du RIB') + '</p>';
+                        }
+                        return;
+                    }
+                } catch (error) {
+                    console.error('[PARTNER-REGISTER] Erreur RIB:', error);
+                    if (btnEl) { btnEl.disabled = false; btnEl.textContent = 'Suivant'; }
+                    if (msgEl) {
+                        msgEl.style.display = 'block';
+                        msgEl.innerHTML = '<p class="font-black" style="color:#dc2626;"><i class="fas fa-exclamation-circle mr-2"></i>Erreur de connexion au serveur (RIB)</p>';
+                    }
+                    return;
+                }
+            }
 
             if (btnEl) { btnEl.disabled = false; btnEl.textContent = 'Suivant'; }
 
