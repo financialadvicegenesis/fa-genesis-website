@@ -169,10 +169,15 @@ async function verifyPartnerSession() {
         });
 
         if (!response.ok) {
-            // Session invalide, nettoyer
-            localStorage.removeItem(PARTNER_SESSION_KEY);
-            localStorage.removeItem(PARTNER_TOKEN_KEY);
-            return null;
+            // Ne deconnecter que si le serveur rejette explicitement le token.
+            // Une erreur serveur transitoire (redemarrage apres mise a jour, 5xx...)
+            // ne doit pas faire perdre la session/le compte du partenaire.
+            if (response.status === 401 || response.status === 403) {
+                localStorage.removeItem(PARTNER_SESSION_KEY);
+                localStorage.removeItem(PARTNER_TOKEN_KEY);
+                return null;
+            }
+            return getCurrentPartner();
         }
 
         var data = await response.json();
@@ -183,8 +188,10 @@ async function verifyPartnerSession() {
         return data.partner;
 
     } catch (error) {
+        // Erreur reseau (serveur en cours de redemarrage, deploiement en cours...) :
+        // on garde la session en cache plutot que de deconnecter le partenaire.
         console.error('[PARTNER] Erreur verification session:', error);
-        return null;
+        return getCurrentPartner();
     }
 }
 

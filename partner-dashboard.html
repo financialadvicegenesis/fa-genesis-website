@@ -956,7 +956,18 @@
                 return;
             }
 
-            // Verifier la session serveur
+            // Afficher immediatement depuis le cache local (resilient a un redemarrage
+            // serveur juste apres une mise a jour de l'app : pas de perte de session).
+            currentPartner = getCurrentPartner();
+            var alreadyShown = false;
+            if (currentPartner) {
+                renderPartnerInfo();
+                showSection('projects');
+                alreadyShown = true;
+            }
+
+            // Revalider en arriere-plan ; ne deconnecte que si le serveur rejette
+            // explicitement le token (401/403), pas sur une simple erreur transitoire.
             var partner = await verifyPartnerSession();
             if (!partner) {
                 window.location.href = 'partner-login.html';
@@ -965,11 +976,15 @@
 
             currentPartner = partner;
             renderPartnerInfo();
-            showSection('projects');
+            if (!alreadyShown) {
+                showSection('projects');
+            }
 
         } catch (error) {
             console.error('[PARTNER-DASH] Erreur init:', error);
-            showError('Erreur de chargement. Le serveur est peut-être en cours de démarrage. Rechargez la page dans quelques instants.');
+            if (!currentPartner) {
+                showError('Erreur de chargement. Le serveur est peut-être en cours de démarrage. Rechargez la page dans quelques instants.');
+            }
         }
     })();
 
