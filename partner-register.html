@@ -191,9 +191,42 @@
                     </div>
                 </div>
 
-                <!-- ÉTAPE 3 : PROFIL PROFESSIONNEL -->
+                <!-- ÉTAPE 3 : CONTRAT DE PARTENARIAT (SIGNATURE ÉLECTRONIQUE) -->
                 <div class="wizard-step" data-step="3" style="display:none">
-                    <h2 class="text-2xl font-black uppercase mb-6">Étape 3 — Profil professionnel</h2>
+                    <h2 class="text-2xl font-black uppercase mb-6">Étape 3 — Contrat de partenariat</h2>
+                    <div style="max-height:320px;overflow-y:auto;border:4px solid black;padding:1.25rem;background:#f9f9f9;margin-bottom:1.5rem;font-size:0.9rem;line-height:1.6;">
+                        <p class="font-black uppercase mb-2">Conditions de partenariat FA GENESIS</p>
+                        <p class="mb-3">FA GENESIS agit comme plateforme d'intermédiation entre les partenaires/influenceurs et les clients, sur le même principe que Deliveroo ou Uber Eats avec les restaurants : elle met en relation, sécurise le paiement et assure la visibilité du partenaire, en contrepartie d'une commission sur chaque prestation réalisée.</p>
+                        <p class="mb-3"><strong>1. Commission.</strong> FA GENESIS prélève une commission de <strong>15 %</strong> sur le montant TTC de chaque prestation réservée et payée via la plateforme. Le partenaire perçoit le solde, soit 85 % du montant de la prestation, sauf pour les offres associant plusieurs partenaires, où la répartition est calculée au prorata du nombre d'intervenants.</p>
+                        <p class="mb-3"><strong>2. Versement.</strong> Le montant dû au partenaire est calculé automatiquement après chaque paiement du client et versé via le moyen de paiement renseigné dans son espace partenaire (PayPal ou virement bancaire / IBAN).</p>
+                        <p class="mb-3"><strong>3. Statut indépendant.</strong> Le partenaire intervient en tant que professionnel indépendant (auto-entrepreneur, société ou équivalent) et reste seul responsable de ses obligations fiscales, sociales et légales liées à son activité.</p>
+                        <p class="mb-3"><strong>4. Durée et résiliation.</strong> Ce contrat prend effet à la signature et reste valable tant que le compte partenaire est actif. Le partenaire peut demander la clôture de son compte à tout moment depuis son tableau de bord ou en contactant FA GENESIS.</p>
+                        <p class="mb-0"><strong>5. Acceptation.</strong> La signature électronique ci-dessous (nom complet + case cochée) vaut acceptation pleine et entière des présentes conditions, au même titre qu'une signature manuscrite.</p>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="flex items-start gap-3 cursor-pointer">
+                            <input type="checkbox" id="contractAcceptCheckbox" style="margin-top:4px;width:20px;height:20px;flex-shrink:0;">
+                            <span class="font-bold text-sm">Je certifie avoir lu et j'accepte les conditions de partenariat ci-dessus, notamment la commission de <strong>15 %</strong> prélevée par FA GENESIS sur chaque prestation réalisée.</span>
+                        </label>
+                    </div>
+
+                    <div class="mb-2">
+                        <label for="contractSignatureName" class="block text-sm font-black mb-2 uppercase">Signature électronique (nom complet)</label>
+                        <input type="text" id="contractSignatureName" class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none focus:border-[var(--genesis-yellow)] transition-all" placeholder="Prénom Nom">
+                    </div>
+
+                    <div id="contractMessage" style="display:none;margin-top:1rem;"></div>
+
+                    <div class="flex justify-between items-center mt-8 flex-wrap gap-3">
+                        <button type="button" onclick="showStep(2)" class="px-8 py-4 border-4 border-black font-black uppercase bg-white">Précédent</button>
+                        <button type="button" id="contractSignBtn" onclick="submitContractStep()" class="neo-btn-yellow px-8 py-4 text-xl font-black italic uppercase">Signer et continuer</button>
+                    </div>
+                </div>
+
+                <!-- ÉTAPE 4 : PROFIL PROFESSIONNEL -->
+                <div class="wizard-step" data-step="4" style="display:none">
+                    <h2 class="text-2xl font-black uppercase mb-6">Étape 4 — Profil professionnel</h2>
 
                     <div class="grid grid-cols-2 gap-4 mb-6">
                         <div>
@@ -270,17 +303,17 @@
                     <div id="step3Message" style="display:none;margin-top:1rem;"></div>
 
                     <div class="flex justify-between items-center mt-8 flex-wrap gap-3">
-                        <button type="button" onclick="showStep(2)" class="px-8 py-4 border-4 border-black font-black uppercase bg-white">Précédent</button>
+                        <button type="button" onclick="showStep(3)" class="px-8 py-4 border-4 border-black font-black uppercase bg-white">Précédent</button>
                         <div class="flex gap-3">
-                            <button type="button" onclick="skipToStep(4)" class="px-6 py-4 border-4 border-black font-black uppercase bg-white opacity-70">Passer cette étape</button>
+                            <button type="button" onclick="skipToStep(5)" class="px-6 py-4 border-4 border-black font-black uppercase bg-white opacity-70">Passer cette étape</button>
                             <button type="button" id="step3NextBtn" onclick="submitStep3()" class="neo-btn-yellow px-8 py-4 text-xl font-black italic uppercase">Suivant</button>
                         </div>
                     </div>
                 </div>
 
-                <!-- ÉTAPE 4 : PORTFOLIO -->
-                <div class="wizard-step" data-step="4" style="display:none">
-                    <h2 class="text-2xl font-black uppercase mb-6">Étape 4 — Portfolio</h2>
+                <!-- ÉTAPE 5 : PORTFOLIO -->
+                <div class="wizard-step" data-step="5" style="display:none">
+                    <h2 class="text-2xl font-black uppercase mb-6">Étape 5 — Portfolio</h2>
                     <p class="text-sm font-bold opacity-60 mb-4">Ajoutez vos plus belles réalisations (photos ou vidéos).</p>
 
                     <div id="portfolioItemsContainer" class="mb-4"></div>
@@ -291,17 +324,17 @@
                     <div id="step4Message" style="display:none;margin-top:1rem;"></div>
 
                     <div class="flex justify-between items-center mt-8 flex-wrap gap-3">
-                        <button type="button" onclick="showStep(3)" class="px-8 py-4 border-4 border-black font-black uppercase bg-white">Précédent</button>
+                        <button type="button" onclick="showStep(4)" class="px-8 py-4 border-4 border-black font-black uppercase bg-white">Précédent</button>
                         <div class="flex gap-3">
-                            <button type="button" onclick="skipToStep(5)" class="px-6 py-4 border-4 border-black font-black uppercase bg-white opacity-70">Passer cette étape</button>
+                            <button type="button" onclick="skipToStep(6)" class="px-6 py-4 border-4 border-black font-black uppercase bg-white opacity-70">Passer cette étape</button>
                             <button type="button" id="step4NextBtn" onclick="submitStep4()" class="neo-btn-yellow px-8 py-4 text-xl font-black italic uppercase">Suivant</button>
                         </div>
                     </div>
                 </div>
 
-                <!-- ÉTAPE 5 : TARIFS -->
-                <div class="wizard-step" data-step="5" style="display:none">
-                    <h2 class="text-2xl font-black uppercase mb-6">Étape 5 — Vos tarifs</h2>
+                <!-- ÉTAPE 6 : TARIFS -->
+                <div class="wizard-step" data-step="6" style="display:none">
+                    <h2 class="text-2xl font-black uppercase mb-6">Étape 6 — Vos tarifs</h2>
                     <p class="text-sm font-bold opacity-60 mb-6">Définissez vos offres pour chaque type de client. Vous pouvez en ajouter plusieurs par catégorie.</p>
 
                     <div class="mb-8">
@@ -331,16 +364,16 @@
                     <div id="step5Message" style="display:none;margin-top:1rem;"></div>
 
                     <div class="flex justify-between items-center mt-8 flex-wrap gap-3">
-                        <button type="button" onclick="showStep(4)" class="px-8 py-4 border-4 border-black font-black uppercase bg-white">Précédent</button>
+                        <button type="button" onclick="showStep(5)" class="px-8 py-4 border-4 border-black font-black uppercase bg-white">Précédent</button>
                         <div class="flex gap-3">
-                            <button type="button" onclick="skipToStep(6)" class="px-6 py-4 border-4 border-black font-black uppercase bg-white opacity-70">Passer cette étape</button>
+                            <button type="button" onclick="skipToStep(7)" class="px-6 py-4 border-4 border-black font-black uppercase bg-white opacity-70">Passer cette étape</button>
                             <button type="button" id="step5NextBtn" onclick="submitStep5()" class="neo-btn-yellow px-8 py-4 text-xl font-black italic uppercase">Suivant</button>
                         </div>
                     </div>
                 </div>
 
-                <!-- ÉTAPE 6 : VALIDATION -->
-                <div class="wizard-step" data-step="6" style="display:none">
+                <!-- ÉTAPE 7 : VALIDATION -->
+                <div class="wizard-step" data-step="7" style="display:none">
                     <div class="text-center py-6">
                         <i class="fas fa-circle-check text-6xl mb-6" style="color:#16a34a;"></i>
                         <h2 class="text-2xl font-black uppercase mb-6">Candidature envoyée</h2>
@@ -366,7 +399,7 @@
             window.location.href = 'partner-dashboard.html';
         }
 
-        var WIZARD_STEP_COUNT = 6;
+        var WIZARD_STEP_COUNT = 7;
         var step3PhotoData = '';
         var step3LogoData = '';
 
@@ -449,6 +482,47 @@
                 showStep(3);
             } else {
                 showWizardError(result.message);
+            }
+        }
+
+        async function submitContractStep() {
+            var msgEl = document.getElementById('contractMessage');
+            var btnEl = document.getElementById('contractSignBtn');
+            var accepted = document.getElementById('contractAcceptCheckbox').checked;
+            var signatureName = document.getElementById('contractSignatureName').value.trim();
+
+            if (!accepted || signatureName.length < 2) {
+                if (msgEl) {
+                    msgEl.style.display = 'block';
+                    msgEl.innerHTML = '<p class="font-black" style="color:#dc2626;"><i class="fas fa-exclamation-circle mr-2"></i>Merci de cocher la case d\'acceptation et de saisir votre nom complet pour signer.</p>';
+                }
+                return;
+            }
+
+            if (btnEl) { btnEl.disabled = true; btnEl.textContent = 'Signature en cours...'; }
+
+            try {
+                var response = await partnerAuthenticatedFetch(PARTNER_API_BASE_URL + '/api/partner/contract/sign', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ accepted: true, signatureName: signatureName })
+                });
+                var data = await response.json();
+
+                if (response.ok && data.success) {
+                    showStep(4);
+                } else if (msgEl) {
+                    msgEl.style.display = 'block';
+                    msgEl.innerHTML = '<p class="font-black" style="color:#dc2626;"><i class="fas fa-exclamation-circle mr-2"></i>' + (data.error || 'Erreur lors de la signature') + '</p>';
+                }
+            } catch (error) {
+                console.error('[PARTNER-REGISTER] Erreur signature contrat:', error);
+                if (msgEl) {
+                    msgEl.style.display = 'block';
+                    msgEl.innerHTML = '<p class="font-black" style="color:#dc2626;"><i class="fas fa-exclamation-circle mr-2"></i>Erreur de connexion au serveur</p>';
+                }
+            } finally {
+                if (btnEl) { btnEl.disabled = false; btnEl.textContent = 'Signer et continuer'; }
             }
         }
 
@@ -554,7 +628,7 @@
             if (btnEl) { btnEl.disabled = false; btnEl.textContent = 'Suivant'; }
 
             if (result.success) {
-                showStep(4);
+                showStep(5);
             } else if (msgEl) {
                 msgEl.style.display = 'block';
                 msgEl.innerHTML = '<p class="font-black" style="color:#dc2626;"><i class="fas fa-exclamation-circle mr-2"></i>' + (result.message || 'Erreur lors de l\'enregistrement') + '</p>';
@@ -609,7 +683,7 @@
             var container = document.getElementById('portfolioItemsContainer');
             var msgEl = document.getElementById('step4Message');
             var btnEl = document.getElementById('step4NextBtn');
-            if (!container) { showStep(5); return; }
+            if (!container) { showStep(6); return; }
 
             var rows = container.querySelectorAll('.proposal-item-row');
             var portfolio = [];
@@ -626,7 +700,7 @@
                 });
             }
 
-            if (portfolio.length === 0) { showStep(5); return; }
+            if (portfolio.length === 0) { showStep(6); return; }
 
             if (btnEl) { btnEl.disabled = true; btnEl.textContent = 'Enregistrement...'; }
 
@@ -639,7 +713,7 @@
                 var data = await response.json();
 
                 if (response.ok && data.success) {
-                    showStep(5);
+                    showStep(6);
                 } else if (msgEl) {
                     msgEl.style.display = 'block';
                     msgEl.innerHTML = '<p class="font-black" style="color:#dc2626;"><i class="fas fa-exclamation-circle mr-2"></i>' + (data.error || 'Erreur lors de l\'enregistrement') + '</p>';
@@ -724,7 +798,7 @@
                 .concat(collectWizardTarifs('tarifsParticulierContainer', 'particulier'))
                 .concat(collectWizardTarifs('tarifsEntrepriseContainer', 'entreprise'));
 
-            if (services.length === 0) { showStep(6); return; }
+            if (services.length === 0) { showStep(7); return; }
 
             if (btnEl) { btnEl.disabled = true; btnEl.textContent = 'Enregistrement...'; }
 
@@ -737,7 +811,7 @@
                 var data = await response.json();
 
                 if (response.ok && data.success) {
-                    showStep(6);
+                    showStep(7);
                 } else if (msgEl) {
                     msgEl.style.display = 'block';
                     msgEl.innerHTML = '<p class="font-black" style="color:#dc2626;"><i class="fas fa-exclamation-circle mr-2"></i>' + (data.error || 'Erreur lors de l\'enregistrement') + '</p>';

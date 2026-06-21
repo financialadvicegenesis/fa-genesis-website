@@ -7382,6 +7382,8 @@ app.post('/api/partner/auth/register', async (req, res) => {
             services: (LEGACY_SERVICE_CATALOG[partner_type] || []).map(s => Object.assign({ id: 'SVC-' + uuidv4().split('-')[0] }, s, { active: true })),
             sessionToken: sessionToken,
             accountStatus: 'pending',
+            contract_signed: false,
+            contract_signed_at: null,
             referredBy: referredBy,
             createdAt: now,
             updatedAt: now,
@@ -9686,6 +9688,37 @@ app.post('/api/partner/profile/set-rib', authenticatePartner, function(req, res)
         res.json({ success: true, iban_masked: ibanMasked, bic: bic, titulaire: titulaire });
     } catch(e) {
         console.error('[RIB-SET] Erreur:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// Taux de commission FA GENESIS sur les prestations partenaires (cf. PARTNER_TARIF_IDS / calculateRevenueShares)
+var PARTNER_CONTRACT_VERSION = 'v1-2026';
+var PARTNER_COMMISSION_RATE = 15;
+
+// POST /api/partner/contract/sign — signature électronique du contrat de partenariat (commission FA GENESIS)
+app.post('/api/partner/contract/sign', authenticatePartner, function(req, res) {
+    try {
+        var signatureName = (req.body.signatureName || '').trim();
+        var accepted = req.body.accepted === true;
+        if (!accepted) return res.status(400).json({ error: 'Vous devez accepter les conditions pour continuer.' });
+        if (!signatureName || signatureName.length < 2) return res.status(400).json({ error: 'Merci de saisir votre nom complet pour signer.' });
+        var partners = loadPartners();
+        var idx = partners.findIndex(function(p) { return p.id === req.partner.id; });
+        if (idx === -1) return res.status(404).json({ error: 'Partenaire introuvable' });
+        var signIp = req.ip || (req.connection && req.connection.remoteAddress) || 'unknown';
+        partners[idx].contract_signed = true;
+        partners[idx].contract_signed_at = new Date().toISOString();
+        partners[idx].contract_signature_name = signatureName;
+        partners[idx].contract_version = PARTNER_CONTRACT_VERSION;
+        partners[idx].contract_commission_rate = PARTNER_COMMISSION_RATE;
+        partners[idx].contract_signature_ip = signIp;
+        partners[idx].updatedAt = new Date().toISOString();
+        savePartners(partners);
+        console.log('[CONTRACT] Signature electronique:', req.partner.email, '(' + PARTNER_CONTRACT_VERSION + ')');
+        res.json({ success: true, contract_signed: true, contract_signed_at: partners[idx].contract_signed_at, contract_version: PARTNER_CONTRACT_VERSION });
+    } catch(e) {
+        console.error('[CONTRACT] Erreur signature:', e);
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });
