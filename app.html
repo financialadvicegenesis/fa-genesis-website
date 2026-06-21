@@ -2809,9 +2809,10 @@ var DIR_CATEGORY_ICONS_ORDER = [
   {id:'pilote_drone', icon:'fa-helicopter', label:'Pilotes Drone'},
   {id:'coworking', icon:'fa-building', label:'Espaces Coworking'},
   {id:'animateur_evenementiel', icon:'fa-microphone', label:'Animateurs / Événementiel'},
-  {id:'consultant', icon:'fa-lightbulb', label:'Consultants'}
+  {id:'consultant', icon:'fa-lightbulb', label:'Consultants'},
+  {id:'influencer', icon:'fa-hashtag', label:'Influenceurs / Influenceuses'}
 ];
-var POPULAR_SEARCHES = ['Vidéaste','Photographe','Mariage','Coworking','Drone','Graphiste','Community Manager','Site web'];
+var POPULAR_SEARCHES = ['Vidéaste','Photographe','Mariage','Coworking','Drone','Graphiste','Community Manager','Site web','Influenceur'];
 // ── EXPLORER — HUB DE DÉCOUVERTE ────────────────────────────────
 var _expCategory = null, _expCity = '', _expCityTimer = null, _expMode = 'offres';
 var _expMap = null, _expMapLayer = null, _expMapVisible = false;
@@ -3265,7 +3266,7 @@ function filterPrestations(cat,el){
   renderPrestations(cat==='all'?null:cat);
 }
 // ── ANNUAIRE PARTENAIRES ────────────────────────────────────────
-var PARTNER_TYPE_LABELS_DIR = {photographer:'Photographe', videographer:'Vidéaste', marketer:'Marketeur', media:'Médias', community_manager:'Community Manager', graphiste:'Graphiste', developpeur_web:'Développeur Web', pilote_drone:'Pilote Drone', consultant:'Consultant', coworking:'Espace Coworking', animateur_evenementiel:'Animateur / Événementiel'};
+var PARTNER_TYPE_LABELS_DIR = {photographer:'Photographe', videographer:'Vidéaste', marketer:'Marketeur', media:'Médias', community_manager:'Community Manager', graphiste:'Graphiste', developpeur_web:'Développeur Web', pilote_drone:'Pilote Drone', consultant:'Consultant', coworking:'Espace Coworking', animateur_evenementiel:'Animateur / Événementiel', influencer:'Influenceur / Influenceuse'};
 
 function directoryCard(p){
   var label = PARTNER_TYPE_LABELS_DIR[p.partner_type] || p.partner_type;

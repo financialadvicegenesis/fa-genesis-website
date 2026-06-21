@@ -70,7 +70,8 @@ const PARTNER_TYPES = [
     { value: 'pilote_drone', label: 'Pilote Drone' },
     { value: 'consultant', label: 'Consultant' },
     { value: 'coworking', label: 'Espace Coworking' },
-    { value: 'animateur_evenementiel', label: 'Animateur / Événementiel' }
+    { value: 'animateur_evenementiel', label: 'Animateur / Événementiel' },
+    { value: 'influencer', label: 'Influenceur / Influenceuse' }
 ];
 const PARTNER_TYPE_VALUES = PARTNER_TYPES.map(t => t.value);
 
