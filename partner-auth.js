@@ -56,14 +56,26 @@ async function partnerLogin(email, password) {
  * @returns {Promise<Object>}
  */
 async function partnerRegister(registerData) {
+    // Sur reseau mobile instable, une requete peut rester en attente indefiniment :
+    // on l'annule au bout de 20s pour ne pas bloquer l'inscription pour toujours.
+    var ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+    var timeoutId = setTimeout(function () { if (ctrl) ctrl.abort(); }, 20000);
     try {
         var response = await fetch(PARTNER_API_BASE_URL + '/api/partner/auth/register', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(registerData)
+            body: JSON.stringify(registerData),
+            signal: ctrl ? ctrl.signal : undefined
         });
+        clearTimeout(timeoutId);
 
-        var data = await response.json();
+        var text = await response.text();
+        var data;
+        try { data = JSON.parse(text); }
+        catch (e) {
+            console.error('[PARTNER] Reponse non-JSON a l\'inscription:', text);
+            return { success: false, message: 'Réponse serveur invalide. Veuillez réessayer.' };
+        }
 
         if (!response.ok) {
             return {
@@ -83,10 +95,14 @@ async function partnerRegister(registerData) {
         };
 
     } catch (error) {
+        clearTimeout(timeoutId);
         console.error('[PARTNER] Erreur inscription:', error);
+        var isTimeout = error && error.name === 'AbortError';
         return {
             success: false,
-            message: 'Le serveur est temporairement indisponible. Veuillez réessayer dans quelques instants.'
+            message: isTimeout
+                ? 'La connexion est trop lente. Vérifiez votre connexion internet (Wi-Fi/4G) et réessayez.'
+                : 'Erreur de connexion. Vérifiez votre connexion internet et réessayez.'
         };
     }
 }

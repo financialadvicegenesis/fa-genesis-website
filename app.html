@@ -5641,12 +5641,18 @@ function _ptnrRegSubmit(){
   }
   if(errEl) errEl.className = 'ptnr-login-err';
   if(btnEl){btnEl.disabled=true;btnEl.textContent='Création...';}
+  // Sur reseau mobile instable, une requete peut rester en attente indefiniment :
+  // on l'annule au bout de 20s pour ne pas bloquer le bouton "Création..." pour toujours.
+  var _ptnrRegCtrl = (typeof AbortController!=='undefined') ? new AbortController() : null;
+  var _ptnrRegTimeoutId = setTimeout(function(){ if(_ptnrRegCtrl) _ptnrRegCtrl.abort(); }, 20000);
   fetch(_ptnrApiUrl()+'/api/partner/auth/register',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({prenom:prenom.trim(), nom:nom.trim(), email:email.trim(), telephone:telephone.trim(), city:ville.trim(), password:password, partner_type:partnerType, partner_type_other:partnerTypeOther, company:company.trim(), referralCode:referralCode, _ft:_ptnrRegOpenedAt})
-  }).then(function(r){return r.text().then(function(t){try{return JSON.parse(t);}catch(e){throw new Error('Erreur serveur');}});})
+    body:JSON.stringify({prenom:prenom.trim(), nom:nom.trim(), email:email.trim(), telephone:telephone.trim(), city:ville.trim(), password:password, partner_type:partnerType, partner_type_other:partnerTypeOther, company:company.trim(), referralCode:referralCode, _ft:_ptnrRegOpenedAt}),
+    signal: _ptnrRegCtrl ? _ptnrRegCtrl.signal : undefined
+  }).then(function(r){return r.text().then(function(t){try{return JSON.parse(t);}catch(e){throw new Error('Réponse serveur invalide');}});})
   .then(function(res){
+    clearTimeout(_ptnrRegTimeoutId);
     if(btnEl){btnEl.disabled=false;btnEl.textContent='CRÉER MON COMPTE';}
     if(res.token){
       _ptnrToken = res.token;
@@ -5662,9 +5668,13 @@ function _ptnrRegSubmit(){
       var msg = (res.error || res.message || 'Erreur lors de la création du compte.');
       if(errEl){errEl.textContent=msg;errEl.className='ptnr-login-err on';}
     }
-  }).catch(function(){
+  }).catch(function(err){
+    clearTimeout(_ptnrRegTimeoutId);
     if(btnEl){btnEl.disabled=false;btnEl.textContent='CRÉER MON COMPTE';}
-    if(errEl){errEl.textContent='Erreur de connexion.';errEl.className='ptnr-login-err on';}
+    var connMsg = (err && err.name==='AbortError')
+      ? 'La connexion est trop lente. Vérifiez votre connexion internet (Wi-Fi/4G) et réessayez.'
+      : 'Erreur de connexion. Vérifiez votre connexion internet et réessayez.';
+    if(errEl){errEl.textContent=connMsg;errEl.className='ptnr-login-err on';}
   });
 }
 

@@ -30,6 +30,12 @@ const webpush = require('web-push');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Render (et la plupart des PaaS) place l'app derriere un reverse proxy : sans ce
+// reglage, req.ip renvoie l'IP interne du proxy pour TOUTES les requetes (identique
+// pour tout le monde), ce qui rend le rate-limiting par IP global au lieu d'etre
+// par utilisateur — un seul utilisateur epuise alors le quota de tout le monde.
+app.set('trust proxy', 1);
+
 // ============================================================
 // CONFIGURATION
 // ============================================================
@@ -4656,7 +4662,9 @@ app.post('/api/contact', async (req, res) => {
         // Anti-spam : timing minimum
         if (req.body._ft) {
             var contactFormTime = parseInt(req.body._ft, 10);
-            if (!isNaN(contactFormTime) && Date.now() - contactFormTime < 3000) {
+            var contactFormElapsed = Date.now() - contactFormTime;
+            // elapsed < 0 = horloge du client en avance (frequent sur mobile mal synchronise) : pas du spam, on ignore le check
+            if (!isNaN(contactFormElapsed) && contactFormElapsed >= 0 && contactFormElapsed < 3000) {
                 console.log('[SPAM] Contact bloque (soumission trop rapide): ' + email);
                 return res.status(400).json({ error: 'Formulaire soumis trop rapidement.' });
             }
@@ -5068,7 +5076,9 @@ app.post('/api/auth/register', async (req, res) => {
         // Anti-spam : le formulaire doit avoir ete ouvert depuis au moins 3 secondes
         if (req.body._ft) {
             var regFormTime = parseInt(req.body._ft, 10);
-            if (!isNaN(regFormTime) && Date.now() - regFormTime < 3000) {
+            var regFormElapsed = Date.now() - regFormTime;
+            // elapsed < 0 = horloge du client en avance (frequent sur mobile mal synchronise) : pas du spam, on ignore le check
+            if (!isNaN(regFormElapsed) && regFormElapsed >= 0 && regFormElapsed < 3000) {
                 console.log('[SPAM] Inscription bloquee (soumission trop rapide): ' + email);
                 return res.status(400).json({ error: 'Formulaire soumis trop rapidement.' });
             }
@@ -7344,7 +7354,9 @@ app.post('/api/partner/auth/register', async (req, res) => {
         // Anti-spam : le formulaire doit avoir ete ouvert depuis au moins 3 secondes
         if (req.body._ft) {
             var ptnrRegFormTime = parseInt(req.body._ft, 10);
-            if (!isNaN(ptnrRegFormTime) && Date.now() - ptnrRegFormTime < 3000) {
+            var ptnrRegFormElapsed = Date.now() - ptnrRegFormTime;
+            // elapsed < 0 = horloge du client en avance (frequent sur mobile mal synchronise) : pas du spam, on ignore le check
+            if (!isNaN(ptnrRegFormElapsed) && ptnrRegFormElapsed >= 0 && ptnrRegFormElapsed < 3000) {
                 console.log('[SPAM] Inscription partenaire bloquee (soumission trop rapide): ' + email);
                 return res.status(400).json({ error: 'Formulaire soumis trop rapidement.' });
             }
@@ -13334,6 +13346,33 @@ app.post('/api/admin/linkedin/generate-message', async function(req, res) {
         console.error('[LINKEDIN AI] Erreur:', e);
         res.status(500).json({ error: 'Erreur serveur : ' + e.message });
     }
+});
+
+// ============================================================
+// GESTION D'ERREURS GLOBALE
+// ============================================================
+// Sans ce middleware, une erreur non interceptee (route inconnue, payload
+// trop volumineux, JSON malforme...) tombe sur la page d'erreur HTML par
+// defaut d'Express. Le front-end fait toujours `JSON.parse(reponse)` : une
+// reponse HTML fait donc echouer ce parsing et masque la vraie cause derriere
+// un message generique ("Erreur de connexion"). On garantit ici que TOUTE
+// reponse d'erreur reste du JSON valide.
+
+// Route inconnue (404)
+app.use((req, res) => {
+    res.status(404).json({ error: 'Route introuvable' });
+});
+
+// Erreurs non gerees (payload trop gros, JSON malforme, exception non rattrapee...)
+app.use((err, req, res, next) => {
+    console.error('[ERREUR GLOBALE]', req.method, req.path, err);
+    if (err && err.type === 'entity.too.large') {
+        return res.status(413).json({ error: 'Fichier ou donnees trop volumineux.' });
+    }
+    if (err && (err.type === 'entity.parse.failed' || err instanceof SyntaxError)) {
+        return res.status(400).json({ error: 'Requete invalide.' });
+    }
+    res.status(err && err.status ? err.status : 500).json({ error: 'Erreur serveur inattendue.' });
 });
 
 // ============================================================
