@@ -4513,6 +4513,7 @@ app.get('/api/admin/stats', (req, res) => {
     const orders = loadOrders();
     const messages = loadMessages();
     const settings = loadSettings();
+    const partners = loadPartners();
 
     const grossRevenue = orders.reduce((sum, o) => {
         let revenue = 0;
@@ -4531,7 +4532,8 @@ app.get('/api/admin/stats', (req, res) => {
         totalOrders: orders.length,
         totalRevenue: totalRevenue,
         unreadMessages: messages.filter(m => m.status === 'unread').length,
-        totalMessages: messages.length
+        totalMessages: messages.length,
+        totalPartners: partners.length
     });
 });
 
@@ -7598,7 +7600,8 @@ app.put('/api/partner/services', authenticatePartner, (req, res) => {
                 description: (s.description || '').trim(),
                 price: price,
                 active: s.active !== false,
-                audience: SERVICE_AUDIENCES.indexOf(s.audience) !== -1 ? s.audience : 'particulier'
+                audience: SERVICE_AUDIENCES.indexOf(s.audience) !== -1 ? s.audience : 'particulier',
+                image: typeof s.image === 'string' ? s.image : ''
             });
         }
         const partners = loadPartners();
@@ -11506,49 +11509,21 @@ app.get('/api/quotes/by-order/:orderId', function(req, res) {
 });
 
 // ============================================================
-// INITIALISATION DES COMPTES PARTENAIRES PAR DEFAUT
+// NETTOYAGE DES FAUX COMPTES PARTENAIRES DE DEMARRAGE (system-seed)
 // ============================================================
-
-async function seedPartnerAccounts() {
-    const defaultPartners = [
-        { prenom: 'Photo', nom: 'Graphe', email: 'photographe@fagenesis.com', password: 'FAphoto2024', partner_type: 'photographer' },
-        { prenom: 'Video', nom: 'Aste', email: 'videaste@fagenesis.com', password: 'FAvideo2024', partner_type: 'videographer' },
-        { prenom: 'Market', nom: 'Eur', email: 'marketeur@fagenesis.com', password: 'FAmarket2024', partner_type: 'marketer' },
-        { prenom: 'Media', nom: 'Press', email: 'media@fagenesis.com', password: 'FAmedia2024', partner_type: 'media' }
-    ];
-
+// Ces comptes de demonstration (Photo Graphe, Video Aste, Market Eur, Media
+// Press) etaient auto-crees a chaque demarrage par l'ancienne fonction
+// seedPartnerAccounts(). Ils masquaient les vrais prestataires dans
+// l'annuaire/explorer. On les purge desormais au demarrage au lieu de les
+// recreer.
+async function purgeSeedPartnerAccounts() {
     const partners = loadPartners();
-    let created = 0;
+    const remaining = partners.filter(p => p.createdBy !== 'system-seed');
+    const removed = partners.length - remaining.length;
 
-    for (const def of defaultPartners) {
-        const exists = partners.find(p => p.email.toLowerCase() === def.email.toLowerCase());
-        if (!exists) {
-            const hashedPassword = await bcrypt.hash(def.password, 10);
-            partners.push({
-                id: 'PTR-' + uuidv4().split('-')[0],
-                prenom: def.prenom,
-                nom: def.nom,
-                email: def.email,
-                telephone: '',
-                password: hashedPassword,
-                partner_type: def.partner_type,
-                company: '',
-                sessionToken: null,
-                accountStatus: 'active',
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-                lastLogin: null,
-                createdBy: 'system-seed'
-            });
-            created++;
-        }
-    }
-
-    if (created > 0) {
-        savePartners(partners);
-        console.log('   [SEED] ' + created + ' compte(s) partenaire(s) cree(s) automatiquement');
-    } else {
-        console.log('   [SEED] Comptes partenaires deja presents (' + partners.length + ')');
+    if (removed > 0) {
+        savePartners(remaining);
+        console.log('   [CLEANUP] ' + removed + ' faux compte(s) partenaire(s) de demonstration supprime(s)');
     }
 }
 
@@ -13384,6 +13359,6 @@ app.listen(PORT, async () => {
     console.log('=================================================');
     console.log('');
 
-    // Initialiser les comptes partenaires par defaut
-    await seedPartnerAccounts();
+    // Nettoyer les faux comptes partenaires de demonstration crees par d'anciens demarrages
+    await purgeSeedPartnerAccounts();
 });

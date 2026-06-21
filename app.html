@@ -735,6 +735,8 @@ a{text-decoration:none;color:inherit}
 .p-dir-review-empty{color:var(--muted);font-size:12px;padding:10px 0}
 .p-dir-services-list{display:flex;flex-direction:column;gap:8px}
 .p-dir-service-row{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#111;border:1.5px solid #1e1e1e;border-radius:12px;padding:12px 14px}
+.p-dir-service-img{width:56px;height:56px;border-radius:10px;overflow:hidden;flex-shrink:0;background:#1a1a1a}
+.p-dir-service-img img{width:100%;height:100%;object-fit:cover;display:block}
 .p-dir-service-info{flex:1;min-width:0}
 .p-dir-service-label{font-size:13px;font-weight:900;color:var(--text)}
 .p-dir-service-desc{font-size:11px;color:var(--muted);margin-top:2px;line-height:1.3}
@@ -3330,7 +3332,11 @@ function openPartnerDetail(partnerId){
       var services = p.services || [];
       var servicesHtml = services.length
         ? services.map(function(s){
+            var imgHtml = s.image
+              ? '<div class="p-dir-service-img"><img src="'+s.image+'" alt="'+(s.label||'')+'" loading="lazy"></div>'
+              : '';
             return '<div class="p-dir-service-row">'
+              +imgHtml
               +'<div class="p-dir-service-info"><div class="p-dir-service-label">'+s.label+'</div>'
               +(s.description?'<div class="p-dir-service-desc">'+s.description+'</div>':'')+'</div>'
               +'<div class="p-dir-service-cta"><div class="p-dir-service-price">'+s.price+' €</div>'

@@ -495,6 +495,20 @@
                 </h3>
                 <p class="text-sm opacity-60 mb-4">Ces informations sont visibles par les clients dans l'annuaire des partenaires.</p>
                 <div class="space-y-4 mb-6">
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block font-black mb-1 uppercase text-sm">Prénom</label>
+                            <input type="text" id="profileFirstName" placeholder="Prénom">
+                        </div>
+                        <div>
+                            <label class="block font-black mb-1 uppercase text-sm">Nom</label>
+                            <input type="text" id="profileLastName" placeholder="Nom">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block font-black mb-1 uppercase text-sm">Téléphone</label>
+                        <input type="tel" id="profileTelephone" placeholder="Ex: 06 12 34 56 78">
+                    </div>
                     <div>
                         <label class="block font-black mb-1 uppercase text-sm">Bio / présentation</label>
                         <textarea id="profileBio" rows="3" placeholder="Présentez votre activité, votre expérience..."></textarea>
@@ -1708,6 +1722,12 @@
         renderServicesSection();
         renderPortfolioSection();
 
+        var firstNameEl = document.getElementById('profileFirstName');
+        if (firstNameEl) firstNameEl.value = currentPartner.prenom || '';
+        var lastNameEl = document.getElementById('profileLastName');
+        if (lastNameEl) lastNameEl.value = currentPartner.nom || '';
+        var telephoneEl = document.getElementById('profileTelephone');
+        if (telephoneEl) telephoneEl.value = currentPartner.telephone || '';
         var bioEl = document.getElementById('profileBio');
         if (bioEl) bioEl.value = currentPartner.bio || '';
         var cityEl = document.getElementById('profileCity');
@@ -1747,20 +1767,12 @@
         container.innerHTML =
             '<div class="grid md:grid-cols-2 gap-6">' +
                 '<div>' +
-                    '<p class="text-sm font-bold uppercase opacity-60 mb-1">Nom</p>' +
-                    '<p class="font-black text-lg">' + (currentPartner.prenom || '') + ' ' + (currentPartner.nom || '') + '</p>' +
-                '</div>' +
-                '<div>' +
                     '<p class="text-sm font-bold uppercase opacity-60 mb-1">Email</p>' +
                     '<p class="font-black">' + (currentPartner.email || '') + '</p>' +
                 '</div>' +
                 '<div>' +
                     '<p class="text-sm font-bold uppercase opacity-60 mb-1">Type de partenaire</p>' +
                     '<p class="font-black">' + typeLabel + '</p>' +
-                '</div>' +
-                '<div>' +
-                    '<p class="text-sm font-bold uppercase opacity-60 mb-1">Téléphone</p>' +
-                    '<p class="font-black">' + (currentPartner.telephone || 'Non renseigné') + '</p>' +
                 '</div>' +
                 '<div>' +
                     '<p class="text-sm font-bold uppercase opacity-60 mb-1">Spécialité</p>' +
@@ -1777,6 +1789,9 @@
         var msgEl = document.getElementById('profileShowcaseMessage');
         var btnEl = document.getElementById('saveProfileShowcaseBtn');
         var payload = {
+            prenom: (document.getElementById('profileFirstName') || {}).value || '',
+            nom: (document.getElementById('profileLastName') || {}).value || '',
+            telephone: (document.getElementById('profileTelephone') || {}).value || '',
             bio: (document.getElementById('profileBio') || {}).value || '',
             city: (document.getElementById('profileCity') || {}).value || '',
             interventionZone: (document.getElementById('profileInterventionZone') || {}).value || '',
@@ -1870,7 +1885,7 @@
             var btnEl = document.getElementById('profilePhotoBtn');
             try {
                 if (btnEl) { btnEl.disabled = true; btnEl.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>ENVOI...'; }
-                var dataUri = await fileToBase64(file);
+                var dataUri = await imageFileToCompressedBase64(file, 800, 0.85);
                 var result = await updatePartnerProfile({ photo: dataUri });
                 if (result.success) {
                     currentPartner.photo = dataUri;
@@ -1908,7 +1923,7 @@
             var btnEl = document.getElementById('profileLogoBtn');
             try {
                 if (btnEl) { btnEl.disabled = true; btnEl.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>ENVOI...'; }
-                var dataUri = await fileToBase64(file);
+                var dataUri = await imageFileToCompressedBase64(file, 1000, 0.85);
                 var result = await updatePartnerProfile({ logo: dataUri });
                 if (result.success) {
                     currentPartner.logo = dataUri;
@@ -1970,6 +1985,38 @@
             reader.onload = function() { resolve(reader.result); };
             reader.onerror = function(error) { reject(error); };
             reader.readAsDataURL(file);
+        });
+    }
+
+    // Redimensionne/compresse une image avant envoi pour eviter les echecs
+    // silencieux avec les photos haute resolution des smartphones (souvent
+    // 5-20 Mo en sortie d'appareil photo). En cas d'echec (format non
+    // decodable par le navigateur, etc.) on retombe sur le fichier original.
+    function imageFileToCompressedBase64(file, maxDim, quality) {
+        maxDim = maxDim || 1280;
+        quality = quality || 0.82;
+        return fileToBase64(file).then(function(dataUri) {
+            return new Promise(function(resolve) {
+                var img = new Image();
+                img.onload = function() {
+                    try {
+                        var w = img.naturalWidth, h = img.naturalHeight;
+                        if (!w || !h) { resolve(dataUri); return; }
+                        var scale = Math.min(1, maxDim / Math.max(w, h));
+                        var canvas = document.createElement('canvas');
+                        canvas.width = Math.round(w * scale);
+                        canvas.height = Math.round(h * scale);
+                        var ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        var compressed = canvas.toDataURL('image/jpeg', quality);
+                        resolve(compressed && compressed.length < dataUri.length ? compressed : dataUri);
+                    } catch (e) {
+                        resolve(dataUri);
+                    }
+                };
+                img.onerror = function() { resolve(dataUri); };
+                img.src = dataUri;
+            });
         });
     }
 
@@ -2342,9 +2389,18 @@
     var SERVICE_AUDIENCES = ['etudiant', 'particulier', 'entreprise'];
 
     function renderServiceItemRow(service) {
-        return '<div class="proposal-item-row mb-3 p-3 bg-gray-50 border-2 border-black">' +
+        var imageHtml = service.image
+            ? '<img src="' + service.image + '" alt="" style="width:100%;height:100%;object-fit:cover;">'
+            : '<i class="fas fa-image opacity-30"></i>';
+        return '<div class="proposal-item-row mb-3 p-3 bg-gray-50 border-2 border-black" data-service-id="' + (service.id || '') + '" data-service-image="' + (service.image ? encodeURIComponent(service.image) : '') + '">' +
             '<div class="grid grid-cols-1 md:grid-cols-12 gap-2">' +
-                '<div class="md:col-span-4">' +
+                '<div class="md:col-span-1 flex items-center">' +
+                    '<div class="service-item-photo-preview" style="width:56px;height:56px;background:#1a1a1a;border:2px solid #000;overflow:hidden;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;color:#fff;" onclick="this.nextElementSibling.click()" title="Ajouter une photo">' +
+                        imageHtml +
+                    '</div>' +
+                    '<input type="file" accept="image/*" class="service-item-image-input hidden" onchange="onServiceImageSelected(this)">' +
+                '</div>' +
+                '<div class="md:col-span-3">' +
                     '<label class="block text-xs font-black uppercase mb-1">Prestation</label>' +
                     '<input type="text" class="service-item-label" placeholder="Ex: Shooting photo corporate" value="' + (service.label || '') + '">' +
                 '</div>' +
@@ -2366,6 +2422,23 @@
                 '</div>' +
             '</div>' +
         '</div>';
+    }
+
+    async function onServiceImageSelected(inputEl) {
+        var file = inputEl.files && inputEl.files[0];
+        if (!file) return;
+        var row = inputEl.closest('.proposal-item-row');
+        if (!row) return;
+        try {
+            var dataUri = await imageFileToCompressedBase64(file, 800, 0.8);
+            row.setAttribute('data-service-image', encodeURIComponent(dataUri));
+            var preview = row.querySelector('.service-item-photo-preview');
+            if (preview) preview.innerHTML = '<img src="' + dataUri + '" alt="" style="width:100%;height:100%;object-fit:cover;">';
+        } catch (error) {
+            console.error('[PARTNER-DASH] Erreur upload photo prestation:', error);
+        } finally {
+            inputEl.value = '';
+        }
     }
 
     function renderServicesSection() {
@@ -2405,12 +2478,16 @@
             var label = labelEl ? labelEl.value.trim() : '';
             var price = priceEl ? parseFloat(priceEl.value) : 0;
             if (!label || !price || price <= 0) continue;
+            var serviceId = rows[i].getAttribute('data-service-id') || '';
+            var imageAttr = rows[i].getAttribute('data-service-image') || '';
             services.push({
+                id: serviceId,
                 label: label,
                 description: descEl ? descEl.value.trim() : '',
                 price: price,
                 active: activeEl ? activeEl.checked : true,
-                audience: audience
+                audience: audience,
+                image: imageAttr ? decodeURIComponent(imageAttr) : ''
             });
         }
         return services;
