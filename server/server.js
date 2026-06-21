@@ -71,7 +71,8 @@ const PARTNER_TYPES = [
     { value: 'consultant', label: 'Consultant' },
     { value: 'coworking', label: 'Espace Coworking' },
     { value: 'animateur_evenementiel', label: 'Animateur / Événementiel' },
-    { value: 'influencer', label: 'Influenceur / Influenceuse' }
+    { value: 'influencer', label: 'Influenceur / Influenceuse' },
+    { value: 'other', label: 'Autre' }
 ];
 const PARTNER_TYPE_VALUES = PARTNER_TYPES.map(t => t.value);
 
@@ -7313,9 +7314,12 @@ app.post('/api/partner/auth/login', async (req, res) => {
 // Inscription partenaire (self-service) — compte créé en 'pending', visible en annuaire seulement après validation admin
 app.post('/api/partner/auth/register', async (req, res) => {
     try {
-        const { prenom, nom, email, telephone, city, password, partner_type, company, referralCode } = req.body;
+        const { prenom, nom, email, telephone, city, password, partner_type, partner_type_other, company, referralCode } = req.body;
         if (!prenom || !nom || !email || !password || !partner_type) {
             return res.status(400).json({ error: 'Champs obligatoires: prenom, nom, email, password, partner_type' });
+        }
+        if (partner_type === 'other' && (!partner_type_other || !partner_type_other.trim() || partner_type_other.trim().length < 2)) {
+            return res.status(400).json({ error: 'Merci de preciser votre profil pour la categorie "Autre"' });
         }
 
         // Anti-spam : champ honeypot (les bots remplissent les champs caches)
@@ -7378,6 +7382,7 @@ app.post('/api/partner/auth/register', async (req, res) => {
             city: (typeof city === 'string') ? city.trim() : '',
             password: hashedPassword,
             partner_type: partner_type,
+            partner_type_other: partner_type === 'other' ? partner_type_other.trim() : '',
             company: company || '',
             services: (LEGACY_SERVICE_CATALOG[partner_type] || []).map(s => Object.assign({ id: 'SVC-' + uuidv4().split('-')[0] }, s, { active: true })),
             sessionToken: sessionToken,
@@ -8861,6 +8866,7 @@ app.get('/api/partners/directory', (req, res) => {
                 const typeLabel = (PARTNER_TYPES.find(t => t.value === p.partner_type) || {}).label || '';
                 return ((p.prenom || '') + ' ' + (p.nom || '')).toLowerCase().includes(needle)
                     || typeLabel.toLowerCase().includes(needle)
+                    || (p.partner_type_other || '').toLowerCase().includes(needle)
                     || (p.city || '').toLowerCase().includes(needle)
                     || (p.company || '').toLowerCase().includes(needle);
             });
@@ -8895,6 +8901,7 @@ app.get('/api/partners/directory', (req, res) => {
                 prenom: p.prenom,
                 nom: p.nom,
                 partner_type: p.partner_type,
+                partner_type_other: p.partner_type_other || '',
                 photo: p.photo || null,
                 city: p.city || '',
                 lat: coords ? coords[0] : null,
@@ -8958,6 +8965,7 @@ app.get('/api/partners/:id/reviews', (req, res) => {
                 prenom: partner.prenom,
                 nom: partner.nom,
                 partner_type: partner.partner_type,
+                partner_type_other: partner.partner_type_other || '',
                 photo: partner.photo || null,
                 bio: partner.bio || '',
                 city: partner.city || '',
@@ -8999,6 +9007,7 @@ app.get('/api/partners/top', (req, res) => {
                     prenom: p.prenom,
                     nom: p.nom,
                     partner_type: p.partner_type,
+                    partner_type_other: p.partner_type_other || '',
                     photo: p.photo || null,
                     city: p.city || '',
                     lat: coords ? coords[0] : null,
@@ -9037,6 +9046,7 @@ app.get('/api/partners/featured', (req, res) => {
                     prenom: p.prenom,
                     nom: p.nom,
                     partner_type: p.partner_type,
+                    partner_type_other: p.partner_type_other || '',
                     photo: p.photo || null,
                     city: p.city || '',
                     lat: coords ? coords[0] : null,
@@ -9062,6 +9072,7 @@ function partnerDirectoryShape(p) {
         prenom: p.prenom,
         nom: p.nom,
         partner_type: p.partner_type,
+        partner_type_other: p.partner_type_other || '',
         photo: p.photo || null,
         city: p.city || '',
         lat: coords ? coords[0] : null,
@@ -10125,12 +10136,15 @@ app.post('/api/partner/comments', authenticatePartner, (req, res) => {
 // Creer un partenaire
 app.post('/api/admin/partners/create', async (req, res) => {
     try {
-        const { prenom, nom, email, telephone, password, partner_type, company } = req.body;
+        const { prenom, nom, email, telephone, password, partner_type, partner_type_other, company } = req.body;
         if (!prenom || !nom || !email || !password || !partner_type) {
             return res.status(400).json({ error: 'Champs obligatoires: prenom, nom, email, password, partner_type' });
         }
         if (PARTNER_TYPE_VALUES.indexOf(partner_type) === -1) {
             return res.status(400).json({ error: 'partner_type invalide. Valeurs acceptees: ' + PARTNER_TYPE_VALUES.join(', ') });
+        }
+        if (partner_type === 'other' && (!partner_type_other || !partner_type_other.trim() || partner_type_other.trim().length < 2)) {
+            return res.status(400).json({ error: 'Merci de preciser le profil pour la categorie "Autre"' });
         }
         const existing = getPartnerByEmail(email);
         if (existing) {
@@ -10149,6 +10163,7 @@ app.post('/api/admin/partners/create', async (req, res) => {
             telephone: telephone || '',
             password: hashedPassword,
             partner_type: partner_type,
+            partner_type_other: partner_type === 'other' ? partner_type_other.trim() : '',
             company: company || '',
             sessionToken: null,
             accountStatus: 'active',

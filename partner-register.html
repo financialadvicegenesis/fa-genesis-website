@@ -169,7 +169,7 @@
                     <h2 class="text-2xl font-black uppercase mb-6">Étape 2 — Votre activité</h2>
                     <div>
                         <label for="partner_type" class="block text-sm font-black mb-2 uppercase">Catégorie</label>
-                        <select id="partner_type" name="partner_type" class="fa-select">
+                        <select id="partner_type" name="partner_type" class="fa-select" onchange="document.getElementById('partner_type_other_wrap').style.display = (this.value==='other') ? 'block' : 'none';">
                             <option value="">Choisir une catégorie...</option>
                             <option value="photographer">Photographe</option>
                             <option value="videographer">Vidéaste</option>
@@ -181,8 +181,16 @@
                             <option value="pilote_drone">Pilote Drone</option>
                             <option value="consultant">Consultant</option>
                             <option value="coworking">Espace Coworking</option>
+                            <option value="animateur_evenementiel">Animateur / Événementiel</option>
                             <option value="influencer">Influenceur / Influenceuse</option>
+                            <option value="other">Autre</option>
                         </select>
+                    </div>
+                    <div id="partner_type_other_wrap" style="display:none;margin-top:16px;">
+                        <label for="partner_type_other" class="block text-sm font-black mb-2 uppercase">Précisez votre profil</label>
+                        <input type="text" id="partner_type_other" name="partner_type_other"
+                            class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none focus:border-[var(--genesis-yellow)] transition-all"
+                            placeholder="Ex : Wedding planner, Coach sportif...">
                     </div>
 
                     <div class="flex justify-between mt-8">
@@ -458,11 +466,17 @@
                 showWizardError('Merci de choisir une catégorie.');
                 return;
             }
+            var partnerTypeOther = document.getElementById('partner_type_other').value.trim();
+            if (partnerType === 'other' && partnerTypeOther.length < 2) {
+                showWizardError('Merci de préciser votre profil pour la catégorie "Autre".');
+                return;
+            }
 
             var registerData = {
                 prenom: document.getElementById('prenom').value.trim(),
                 nom: document.getElementById('nom').value.trim(),
                 partner_type: partnerType,
+                partner_type_other: partnerTypeOther,
                 company: document.getElementById('company').value.trim(),
                 email: document.getElementById('email').value.trim(),
                 telephone: document.getElementById('telephone').value.trim(),

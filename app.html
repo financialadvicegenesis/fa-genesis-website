@@ -2010,7 +2010,7 @@ a{text-decoration:none;color:inherit}
           <input class="ptnr-input" id="ptnr-reg-nom" type="text" placeholder="Nom" autocomplete="family-name">
           <input class="ptnr-input" id="ptnr-reg-email" type="email" placeholder="Email" autocomplete="email">
           <input class="ptnr-input" id="ptnr-reg-tel" type="tel" placeholder="Téléphone" autocomplete="tel">
-          <select class="ptnr-input" id="ptnr-reg-type">
+          <select class="ptnr-input" id="ptnr-reg-type" onchange="document.getElementById('ptnr-reg-type-other').style.display = (this.value==='other') ? 'block' : 'none';">
             <option value="">Choisir une catégorie...</option>
             <option value="photographer">Photographe</option>
             <option value="videographer">Vidéaste</option>
@@ -2023,7 +2023,10 @@ a{text-decoration:none;color:inherit}
             <option value="consultant">Consultant</option>
             <option value="coworking">Espace Coworking</option>
             <option value="animateur_evenementiel">Animateur / Événementiel</option>
+            <option value="influencer">Influenceur / Influenceuse</option>
+            <option value="other">Autre</option>
           </select>
+          <input class="ptnr-input" id="ptnr-reg-type-other" type="text" placeholder="Précisez votre profil" style="display:none;">
           <input class="ptnr-input" id="ptnr-reg-ville" type="text" placeholder="Ville" autocomplete="address-level2">
           <input class="ptnr-input" id="ptnr-reg-entreprise" type="text" placeholder="Entreprise (optionnel)">
           <input class="ptnr-input" id="ptnr-reg-pass" type="password" placeholder="Mot de passe (6 caractères min.)" autocomplete="new-password">
@@ -2748,7 +2751,7 @@ function expRecoCard(it, idx){
     +'</div></div>';
 }
 function recoPartnerCard(p, idx, tagOverride){
-  var label = PARTNER_TYPE_LABELS_DIR[p.partner_type] || p.partner_type;
+  var label = partnerTypeLabel(p);
   var initials = (((p.prenom||'')[0]||'')+((p.nom||'')[0]||'')).toUpperCase();
   var avatarHtml = p.photo ? '<img src="'+p.photo+'" alt="">' : '<div class="p-reco-initials">'+initials+'</div>';
   var ratingBadge = (p.rating && p.rating.count) ? '<div class="p-reco-rating-badge"><i class="fa-solid fa-star"></i> '+p.rating.average+'</div>' : '<div class="p-reco-rating-badge">Nouveau</div>';
@@ -2765,7 +2768,7 @@ function recoPartnerCard(p, idx, tagOverride){
     +'</div></div>';
 }
 function hofPremiumCard(p, idx){
-  var label = PARTNER_TYPE_LABELS_DIR[p.partner_type] || p.partner_type;
+  var label = partnerTypeLabel(p);
   var initials = (((p.prenom||'')[0]||'')+((p.nom||'')[0]||'')).toUpperCase();
   var avatarHtml = p.photo ? '<img src="'+p.photo+'" alt="">' : '<div class="p-reco-initials">'+initials+'</div>';
   var ratingBadge = (p.rating && p.rating.count) ? '<div class="p-reco-rating-badge"><i class="fa-solid fa-star"></i> '+p.rating.average+'</div>' : '<div class="p-reco-rating-badge">Nouveau</div>';
@@ -2782,7 +2785,7 @@ function hofPremiumCard(p, idx){
     +'</div></div>';
 }
 function bigCategoryCard(p, idx){
-  var label = PARTNER_TYPE_LABELS_DIR[p.partner_type] || p.partner_type;
+  var label = partnerTypeLabel(p);
   var initials = (((p.prenom||'')[0]||'')+((p.nom||'')[0]||'')).toUpperCase();
   var avatarHtml = p.photo ? '<img src="'+p.photo+'" alt="">' : '<div class="p-reco-initials">'+initials+'</div>';
   var ratingBadge = (p.rating && p.rating.count) ? '<div class="p-reco-rating-badge"><i class="fa-solid fa-star"></i> '+p.rating.average+'</div>' : '<div class="p-reco-rating-badge">Nouveau</div>';
@@ -2810,7 +2813,8 @@ var DIR_CATEGORY_ICONS_ORDER = [
   {id:'coworking', icon:'fa-building', label:'Espaces Coworking'},
   {id:'animateur_evenementiel', icon:'fa-microphone', label:'Animateurs / Événementiel'},
   {id:'consultant', icon:'fa-lightbulb', label:'Consultants'},
-  {id:'influencer', icon:'fa-hashtag', label:'Influenceurs / Influenceuses'}
+  {id:'influencer', icon:'fa-hashtag', label:'Influenceurs / Influenceuses'},
+  {id:'other', icon:'fa-ellipsis', label:'Autres profils'}
 ];
 var POPULAR_SEARCHES = ['Vidéaste','Photographe','Mariage','Coworking','Drone','Graphiste','Community Manager','Site web','Influenceur'];
 // ── EXPLORER — HUB DE DÉCOUVERTE ────────────────────────────────
@@ -3266,10 +3270,14 @@ function filterPrestations(cat,el){
   renderPrestations(cat==='all'?null:cat);
 }
 // ── ANNUAIRE PARTENAIRES ────────────────────────────────────────
-var PARTNER_TYPE_LABELS_DIR = {photographer:'Photographe', videographer:'Vidéaste', marketer:'Marketeur', media:'Médias', community_manager:'Community Manager', graphiste:'Graphiste', developpeur_web:'Développeur Web', pilote_drone:'Pilote Drone', consultant:'Consultant', coworking:'Espace Coworking', animateur_evenementiel:'Animateur / Événementiel', influencer:'Influenceur / Influenceuse'};
+var PARTNER_TYPE_LABELS_DIR = {photographer:'Photographe', videographer:'Vidéaste', marketer:'Marketeur', media:'Médias', community_manager:'Community Manager', graphiste:'Graphiste', developpeur_web:'Développeur Web', pilote_drone:'Pilote Drone', consultant:'Consultant', coworking:'Espace Coworking', animateur_evenementiel:'Animateur / Événementiel', influencer:'Influenceur / Influenceuse', other:'Autre'};
+function partnerTypeLabel(p){
+  if(p.partner_type==='other') return p.partner_type_other || 'Autre';
+  return PARTNER_TYPE_LABELS_DIR[p.partner_type] || p.partner_type;
+}
 
 function directoryCard(p){
-  var label = PARTNER_TYPE_LABELS_DIR[p.partner_type] || p.partner_type;
+  var label = partnerTypeLabel(p);
   var priceLabel = (p.fromPrice===null||p.fromPrice===undefined) ? 'Sur devis' : ('dès '+p.fromPrice+' €');
   var starsLabel = (p.rating && p.rating.count) ? ('<i class="fa-solid fa-star" style="color:var(--yellow)"></i> '+p.rating.average+' ('+p.rating.count+')') : 'Nouveau';
   var initials = (((p.prenom||'')[0]||'')+((p.nom||'')[0]||'')).toUpperCase();
@@ -3303,7 +3311,7 @@ function openPartnerDetail(partnerId){
       if(!data || !data.success) return;
       var p = data.partner;
       _dirPartnerCache[p.id] = p;
-      var label = PARTNER_TYPE_LABELS_DIR[p.partner_type] || p.partner_type;
+      var label = partnerTypeLabel(p);
       var priceLabel = (p.fromPrice===null||p.fromPrice===undefined) ? 'Sur devis' : ('à partir de '+p.fromPrice+' €');
       var starsLabel = (p.rating && p.rating.count) ? ('<i class="fa-solid fa-star" style="color:var(--yellow)"></i> '+p.rating.average+' ('+p.rating.count+' avis)') : 'Aucun avis pour le moment';
       var verifiedHtml = p.verified ? '<span class="p-dir-card-verified">✓ Vérifié</span>' : '';
@@ -5586,9 +5594,10 @@ function _ptnrShowScreen(name){
 
 var _ptnrRegOpenedAt = 0;
 function _ptnrRegStart(){
-  ['ptnr-reg-prenom','ptnr-reg-nom','ptnr-reg-email','ptnr-reg-tel','ptnr-reg-ville','ptnr-reg-entreprise','ptnr-reg-pass','ptnr-reg-referral','ptnr-reg-rib-titulaire','ptnr-reg-rib-iban','ptnr-reg-rib-bic'].forEach(function(id){
+  ['ptnr-reg-prenom','ptnr-reg-nom','ptnr-reg-email','ptnr-reg-tel','ptnr-reg-ville','ptnr-reg-entreprise','ptnr-reg-pass','ptnr-reg-referral','ptnr-reg-rib-titulaire','ptnr-reg-rib-iban','ptnr-reg-rib-bic','ptnr-reg-type-other'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.value='';
   });
+  var typeOtherEl=document.getElementById('ptnr-reg-type-other'); if(typeOtherEl) typeOtherEl.style.display='none';
   var typeEl=document.getElementById('ptnr-reg-type'); if(typeEl) typeEl.value='';
   var errEl=document.getElementById('ptnr-reg-err'); if(errEl) errEl.className='ptnr-login-err';
   _ptnrRegOpenedAt = Date.now();
@@ -5604,6 +5613,7 @@ function _ptnrRegSubmit(){
   var telephone = (document.getElementById('ptnr-reg-tel')||{}).value || '';
   var ville = (document.getElementById('ptnr-reg-ville')||{}).value || '';
   var partnerType = (document.getElementById('ptnr-reg-type')||{}).value || '';
+  var partnerTypeOther = ((document.getElementById('ptnr-reg-type-other')||{}).value || '').trim();
   var company = (document.getElementById('ptnr-reg-entreprise')||{}).value || '';
   var password = (document.getElementById('ptnr-reg-pass')||{}).value || '';
   var referralCode = ((document.getElementById('ptnr-reg-referral')||{}).value || '').trim();
@@ -5614,6 +5624,9 @@ function _ptnrRegSubmit(){
   var btnEl = document.getElementById('ptnr-reg-btn');
   if(!prenom.trim()||!nom.trim()||!email.trim()||!partnerType||!password){
     if(errEl){errEl.textContent='Merci de remplir tous les champs obligatoires.';errEl.className='ptnr-login-err on';} return;
+  }
+  if(partnerType==='other' && partnerTypeOther.length<2){
+    if(errEl){errEl.textContent='Merci de préciser votre profil pour la catégorie "Autre".';errEl.className='ptnr-login-err on';} return;
   }
   if(password.length<6){
     if(errEl){errEl.textContent='Le mot de passe doit faire au moins 6 caractères.';errEl.className='ptnr-login-err on';} return;
@@ -5631,7 +5644,7 @@ function _ptnrRegSubmit(){
   fetch(_ptnrApiUrl()+'/api/partner/auth/register',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({prenom:prenom.trim(), nom:nom.trim(), email:email.trim(), telephone:telephone.trim(), city:ville.trim(), password:password, partner_type:partnerType, company:company.trim(), referralCode:referralCode, _ft:_ptnrRegOpenedAt})
+    body:JSON.stringify({prenom:prenom.trim(), nom:nom.trim(), email:email.trim(), telephone:telephone.trim(), city:ville.trim(), password:password, partner_type:partnerType, partner_type_other:partnerTypeOther, company:company.trim(), referralCode:referralCode, _ft:_ptnrRegOpenedAt})
   }).then(function(r){return r.text().then(function(t){try{return JSON.parse(t);}catch(e){throw new Error('Erreur serveur');}});})
   .then(function(res){
     if(btnEl){btnEl.disabled=false;btnEl.textContent='CRÉER MON COMPTE';}

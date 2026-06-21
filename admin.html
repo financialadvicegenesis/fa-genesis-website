@@ -927,6 +927,7 @@
                                     <option value="coworking">Espace Coworking</option>
                                     <option value="animateur_evenementiel">Animateur / Événementiel</option>
                                     <option value="influencer">Influenceur / Influenceuse</option>
+                                    <option value="other">Autre</option>
                                 </select>
                             </div>
                             <div>
@@ -3128,7 +3129,8 @@
             consultant: 'Consultant',
             coworking: 'Espace Coworking',
             animateur_evenementiel: 'Animateur / Événementiel',
-            influencer: 'Influenceur / Influenceuse'
+            influencer: 'Influenceur / Influenceuse',
+            other: 'Autre'
         };
 
         var allPartners = [];
@@ -3240,6 +3242,7 @@
                     email: document.getElementById('partnerEmail').value,
                     telephone: document.getElementById('partnerTelephone').value,
                     partner_type: document.getElementById('partnerType').value,
+                    partner_type_other: document.getElementById('partnerSpecialite').value,
                     specialite: document.getElementById('partnerSpecialite').value,
                     password: document.getElementById('partnerPassword').value
                 };

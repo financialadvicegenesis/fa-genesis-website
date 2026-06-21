@@ -941,7 +941,8 @@
         consultant: 'Consultant',
         coworking: 'Espace Coworking',
         animateur_evenementiel: 'Animateur / Événementiel',
-        influencer: 'Influenceur / Influenceuse'
+        influencer: 'Influenceur / Influenceuse',
+        other: 'Autre'
     };
 
     // ==============================================
@@ -1095,7 +1096,12 @@
         var badgeEl = document.getElementById('partnerTypeBadge');
 
         if (nameEl) nameEl.textContent = currentPartner.prenom + ' ' + currentPartner.nom;
-        if (badgeEl) badgeEl.textContent = (PARTNER_TYPE_LABELS[currentPartner.partner_type] || currentPartner.partner_type).toUpperCase();
+        if (badgeEl) {
+            var partnerTypeBadgeLabel = (currentPartner.partner_type === 'other')
+                ? (currentPartner.partner_type_other || 'Autre')
+                : (PARTNER_TYPE_LABELS[currentPartner.partner_type] || currentPartner.partner_type);
+            badgeEl.textContent = partnerTypeBadgeLabel.toUpperCase();
+        }
 
         // Configurer le type de fichier accepte
         var typeConfig = PARTNER_ALLOWED_TYPES[currentPartner.partner_type];
@@ -1778,7 +1784,9 @@
                 : '<i class="fas fa-image text-3xl" style="opacity:.3;color:#fff;"></i>';
         }
 
-        var typeLabel = PARTNER_TYPE_LABELS[currentPartner.partner_type] || currentPartner.partner_type;
+        var typeLabel = (currentPartner.partner_type === 'other')
+            ? (currentPartner.partner_type_other || 'Autre')
+            : (PARTNER_TYPE_LABELS[currentPartner.partner_type] || currentPartner.partner_type);
 
         container.innerHTML =
             '<div class="grid md:grid-cols-2 gap-6">' +
