@@ -8159,6 +8159,7 @@ app.post('/api/partner/auth/register', async (req, res) => {
         savePartners(partners);
         const { password: _, ...partnerSafe } = partner;
         console.log('[PARTNER] Inscription self-service:', email, '(' + partner_type + ')');
+        notifyUser(null, 'admin', 'partenaire-pending', 'Nouveau partenaire à valider', prenom + ' ' + nom + ' (' + (PARTNER_TYPE_VALUES.indexOf(partner_type) !== -1 ? partner_type : partner_type_other) + ') attend votre approbation pour apparaître dans l\'annuaire.', '/admin.html#open-partners');
         res.json({ success: true, partner: partnerSafe, token: sessionToken });
     } catch (error) {
         console.error('[PARTNER] Erreur inscription:', error);

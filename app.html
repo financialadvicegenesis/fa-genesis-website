@@ -2229,6 +2229,11 @@ a{text-decoration:none;color:inherit}
           </div>
         </div>
 
+        <!-- Compte en attente de validation admin : invisible des clients tant que non approuvé -->
+        <div class="ptnr-notif-bar" id="ptnr-pending-bar" style="display:none;background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.35);">
+          <div class="ptnr-notif-txt"><i class="fa-solid fa-clock" style="color:#f59e0b;"></i> Votre compte est en attente de validation par notre équipe. Vos prestations et votre profil restent invisibles pour les clients jusqu'à l'approbation (généralement sous 24-48h).</div>
+        </div>
+
         <!-- Push notification bar (shown if not subscribed) -->
         <div class="ptnr-notif-bar" id="ptnr-notif-bar" style="display:none;">
           <div class="ptnr-notif-txt">Activez les notifications pour recevoir vos réservations en temps réel</div>
@@ -6306,6 +6311,7 @@ function _ptnrShowDash(){
     var av = document.getElementById('ptnr-avatar'); if(av) av.innerHTML = p.photo ? '<img src="'+p.photo+'" alt="">' : ini;
     var dn = document.getElementById('ptnr-display-name'); if(dn) dn.textContent = nm;
     var dt = document.getElementById('ptnr-display-type'); if(dt) dt.textContent = p.partner_type ? partnerTypeLabel(p) : (p.type || p.role || '');
+    var pendingBar = document.getElementById('ptnr-pending-bar'); if(pendingBar) pendingBar.style.display = (p.accountStatus === 'pending') ? 'flex' : 'none';
     _ptnrFetch('/api/partner/reputation').then(function(data){
       var badgeEl = document.getElementById('ptnr-header-badge');
       if(badgeEl){ var badge = data.founderBadge ? 'fondateur' : data.badge; badgeEl.innerHTML = tierBadgeHtml(badge); }

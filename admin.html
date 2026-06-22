@@ -698,8 +698,9 @@
                         <button onclick="showSection('commandes')" class="nav-btn" style="color:#aaa;white-space:nowrap;">
                             <i class="fas fa-receipt mr-1"></i>Commandes
                         </button>
-                        <button onclick="showSection('partenaires')" class="nav-btn" style="color:#aaa;white-space:nowrap;">
+                        <button onclick="showSection('partenaires')" class="nav-btn" style="position:relative;color:#aaa;white-space:nowrap;">
                             <i class="fas fa-handshake mr-1"></i>Partenaires
+                            <span id="pendingPartnersBadge" style="display:none;position:absolute;top:-6px;right:-6px;background:#ef4444;color:white;border-radius:50%;width:16px;height:16px;font-size:9px;line-height:16px;text-align:center;"></span>
                         </button>
                         <button onclick="showSection('evenements')" class="nav-btn" style="color:#aaa;white-space:nowrap;">
                             <i class="fas fa-calendar-alt mr-1"></i>Événements
@@ -1441,6 +1442,7 @@
             loadDashboard();
             loadFeedbacksBadge();
             loadAdminNotifInbox();
+            loadPartnersList();
         }
 
         function handleLogout() {
@@ -3343,13 +3345,28 @@
                 return;
             }
 
+            var pendingCount = allPartners.filter(function(p) { return p.accountStatus === 'pending'; }).length;
+            var partnersBadge = document.getElementById('pendingPartnersBadge');
+            if (partnersBadge) {
+                if (pendingCount > 0) { partnersBadge.style.display = 'block'; partnersBadge.textContent = pendingCount; }
+                else { partnersBadge.style.display = 'none'; }
+            }
+
             if (allPartners.length === 0) {
                 container.innerHTML = '<p class="text-center py-8 opacity-50 font-bold">Aucun partenaire</p>';
                 return;
             }
 
+            // Les comptes en attente de validation passent en premier : sans approbation,
+            // leurs prestations/profil restent invisibles des clients (cf. accountStatus === 'pending').
+            var sortedPartners = allPartners.slice().sort(function(a, b) {
+                var aPending = a.accountStatus === 'pending' ? 0 : 1;
+                var bPending = b.accountStatus === 'pending' ? 0 : 1;
+                return aPending - bPending;
+            });
+
             var html = '';
-            allPartners.forEach(function(partner) {
+            sortedPartners.forEach(function(partner) {
                 var typeLabel = PARTNER_TYPE_LABELS[partner.partner_type] || partner.partner_type;
                 var statusColor = partner.accountStatus === 'deactivated' ? '#999' : (partner.accountStatus === 'pending' ? '#ffd43b' : '#51cf66');
                 var statusTextColor = partner.accountStatus === 'pending' ? 'black' : 'white';
@@ -4985,6 +5002,7 @@
             var panel = document.getElementById('adminNotifPanel');
             if (panel) panel.style.display = 'none';
             if (link && link.indexOf('open-disputes') !== -1) { showSection('litiges'); return; }
+            if (link && link.indexOf('open-partners') !== -1) { showSection('partenaires'); return; }
             if (link) window.location.href = link;
         }
         function markAllAdminNotifsRead() {
