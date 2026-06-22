@@ -196,6 +196,21 @@ a{text-decoration:none;color:inherit}
 .hdr-avatar{width:36px;height:36px;border-radius:10px;background:var(--card);
   display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;color:var(--yellow);
   overflow:hidden}
+.notif-inbox-panel{position:fixed;top:60px;right:10px;width:min(340px,calc(100vw - 20px));max-height:70vh;
+  background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:0 12px 30px rgba(0,0,0,.5);
+  z-index:9999;display:none;flex-direction:column;overflow:hidden}
+.notif-inbox-panel.on{display:flex}
+.notif-inbox-head{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;
+  border-bottom:1px solid var(--border);font-weight:900;font-size:13px;color:#fff}
+.notif-inbox-head button{background:none;border:none;color:var(--yellow);font-size:11px;font-weight:700;cursor:pointer}
+.notif-inbox-list{overflow-y:auto;max-height:60vh}
+.notif-inbox-empty{padding:24px 14px;text-align:center;color:#777;font-size:12px}
+.notif-item{padding:11px 14px;border-bottom:1px solid var(--border);cursor:pointer}
+.notif-item:last-child{border-bottom:none}
+.notif-item.unread{background:rgba(255,215,0,.06)}
+.notif-item-title{font-size:12.5px;font-weight:800;color:#fff;margin-bottom:2px}
+.notif-item-body{font-size:11.5px;color:#aaa;line-height:1.4}
+.notif-item-time{font-size:10px;color:#666;margin-top:4px}
 
 /* Scroll content */
 #content{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
@@ -1424,6 +1439,20 @@ a{text-decoration:none;color:inherit}
 .mc-send-btn{width:100%;background:#FFD700;color:#000;font-family:'Unbounded',cursive;font-weight:900;font-size:12px;text-transform:uppercase;letter-spacing:1px;padding:16px;border:none;cursor:pointer;margin-top:4px;transition:opacity .15s;}
 .mc-send-btn:disabled{opacity:.38;cursor:default;}
 
+/* ── LITIGES (Phase 6) ── */
+#dispute-overlay{display:none;position:fixed;inset:0;z-index:9700;background:rgba(0,0,0,.75);backdrop-filter:blur(4px);align-items:flex-end;justify-content:center;}
+#dispute-overlay.open{display:flex;animation:regFadeIn .2s ease;}
+#dispute-sheet{width:100%;max-width:480px;background:#0d0d0d;border-radius:20px 20px 0 0;border-top:3px solid #FFD700;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;transform:translateY(100%);transition:transform .45s cubic-bezier(.34,1.56,.64,1);}
+#dispute-sheet.up{transform:translateY(0);}
+.disp-list-item{background:#111;border:1px solid #1e1e1e;border-radius:12px;padding:12px 14px;margin-bottom:10px;cursor:pointer;}
+.disp-list-status{font-size:10px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;margin-bottom:4px;}
+.disp-msg{margin-bottom:10px;padding:10px 12px;border-radius:10px;max-width:88%;font-size:13px;line-height:1.5;}
+.disp-msg-mine{background:#1a1700;border:1px solid #2a2400;margin-left:auto;color:#fff;}
+.disp-msg-other{background:#141414;border:1px solid #222;color:#ddd;}
+.disp-msg-jeremie{background:#0d1620;border:1px solid #16324a;color:#9ecbe8;}
+.disp-msg-system{background:#1a0e0e;border:1px solid #321515;color:#e89e9e;font-style:italic;}
+.disp-msg-from{font-size:10px;font-weight:800;letter-spacing:.5px;margin-bottom:4px;opacity:.7;text-transform:uppercase;}
+
 /* ── CHAT IN-APP ── */
 .chat-view{display:flex;flex-direction:column;height:100%;overflow:hidden;}
 .chat-back-bar{display:flex;align-items:center;gap:10px;padding:13px 14px;border-bottom:1px solid #1a1a1a;flex-shrink:0;background:#0d0d0d;}
@@ -1851,11 +1880,19 @@ a{text-decoration:none;color:inherit}
       <button class="hdr-cart-btn" id="cart-icon-btn" onclick="openCart()" title="Panier" style="display:none;">
         <i class="fa-solid fa-cart-shopping"></i><span class="cart-badge" id="cart-count"></span>
       </button>
-      <button class="hdr-btn" onclick="openNotifModal()" title="Notifications">
+      <button class="hdr-btn" onclick="toggleNotifInbox()" title="Notifications">
         <i class="fa-solid fa-bell"></i><span class="hdr-badge" id="hdrBadge"></span>
       </button>
       <div class="hdr-avatar" id="hdrAvatar" onclick="nav('profil')" style="display:none;"><i class="fa-solid fa-user"></i></div>
     </div>
+  </div>
+
+  <div id="notif-inbox-panel" class="notif-inbox-panel">
+    <div class="notif-inbox-head">
+      <span>Notifications</span>
+      <button onclick="markAllNotifsRead()">Tout marquer lu</button>
+    </div>
+    <div id="notif-inbox-list" class="notif-inbox-list"><div class="notif-inbox-empty">Aucune notification</div></div>
   </div>
 
   <!-- Content -->
@@ -2487,6 +2524,8 @@ function initApp(){
     loadStatusCard();
     _checkPendingReviews();
     _syncUserBadge();
+    loadNotifInbox();
+    if(!window._notifPollStarted){ window._notifPollStarted = true; setInterval(loadNotifInbox, 60000); }
     setTimeout(function(){
       if(typeof Notification!=='undefined' && Notification.permission==='default' && !sessionStorage.getItem('na')){
         openNotifModal(); sessionStorage.setItem('na','1');
@@ -3625,6 +3664,7 @@ function renderOrderTrackingCard(r){
     +'<span class="resa-status s-confirmed">🟢 Mission en cours</span></div>'
     +'<div class="resa-date"><i class="fa-solid fa-user"></i> '+(r.partner_name||'')+'</div>'
     +'<div id="liv-block-'+r.id+'" style="margin-top:10px;"><div style="color:var(--muted);font-size:12px;">Chargement des livrables…</div></div>'
+    +(r.dispatch_id ? '<button onclick="_openDisputeForm(\''+r.dispatch_id+'\')" style="margin-top:10px;background:none;border:1px solid #333;color:#999;border-radius:8px;padding:6px 10px;font-size:11px;cursor:pointer;"><i class="fa-solid fa-triangle-exclamation"></i> Signaler un problème</button>' : '')
     +'</div>';
 }
 function loadOrderLivrables(requestId, orderId){
@@ -4003,6 +4043,7 @@ function renderProfil(){
       +pli('','#0a1414','Patrimoine Genesis',null,'showGenesisPatrimoine()')
       +pli('','#1a0a00','Mes séances',null,'showSeances()')
       +pli('','#0d1a1a','Messages',null,'nav(\'messages\')')
+      +pli('<i class="fa-solid fa-scale-balanced"></i>','#1a0000','Mes litiges',null,'openMesLitiges()')
       +'</div></div>';
   }
 
@@ -4280,6 +4321,69 @@ function deconnexion(){
 }
 
 // ── NOTIFICATIONS ─────────────────────────────────────────────
+// ── Notifications persistantes (Phase 6) ──
+function _currentAuthToken(){
+  var partnerTab = document.getElementById('tab-partner');
+  if(partnerTab && partnerTab.classList.contains('on') && typeof _ptnrToken!=='undefined' && _ptnrToken) return _ptnrToken;
+  if(USER && USER._token) return USER._token;
+  return (typeof _ptnrToken!=='undefined' && _ptnrToken) || null;
+}
+function toggleNotifInbox(){
+  var panel = document.getElementById('notif-inbox-panel');
+  if(!panel) return;
+  if(panel.classList.contains('on')){ panel.classList.remove('on'); return; }
+  panel.classList.add('on');
+  loadNotifInbox();
+}
+function loadNotifInbox(){
+  var token = _currentAuthToken();
+  if(!token) return;
+  fetch((window.FA_GENESIS_API||API)+'/api/notifications',{headers:{'Authorization':'Bearer '+token}})
+    .then(function(r){return r.json();})
+    .then(function(data){
+      var list = (data&&Array.isArray(data.notifications))?data.notifications:[];
+      var unread = (data&&data.unread_count)||0;
+      var badge = document.getElementById('hdrBadge');
+      if(badge) badge.style.display = unread>0?'block':'none';
+      var listEl = document.getElementById('notif-inbox-list');
+      if(!listEl) return;
+      if(list.length===0){ listEl.innerHTML='<div class="notif-inbox-empty">Aucune notification</div>'; return; }
+      listEl.innerHTML = list.slice(0,30).map(_renderNotifItem).join('');
+    }).catch(function(){});
+}
+function _renderNotifItem(n){
+  return '<div class="notif-item'+(n.read?'':' unread')+'" onclick="openNotifItem(\''+n.id+'\',\''+(n.link||'').replace(/'/g,"\\'")+'\')">'
+    +'<div class="notif-item-title">'+(n.title||'')+'</div>'
+    +'<div class="notif-item-body">'+(n.body||'')+'</div>'
+    +'<div class="notif-item-time">'+_notifRelTime(n.created_at)+'</div>'
+    +'</div>';
+}
+function _notifRelTime(iso){
+  try{
+    var diffMs = Date.now() - new Date(iso).getTime();
+    var mins = Math.floor(diffMs/60000);
+    if(mins<1) return 'à l\'instant';
+    if(mins<60) return mins+' min';
+    var hrs = Math.floor(mins/60);
+    if(hrs<24) return hrs+' h';
+    return Math.floor(hrs/24)+' j';
+  }catch(e){ return ''; }
+}
+function openNotifItem(id, link){
+  var token = _currentAuthToken();
+  if(token) fetch((window.FA_GENESIS_API||API)+'/api/notifications/'+id+'/read',{method:'POST',headers:{'Authorization':'Bearer '+token}}).catch(function(){});
+  var panel = document.getElementById('notif-inbox-panel');
+  if(panel) panel.classList.remove('on');
+  if(link) window.location.href = link;
+  else loadNotifInbox();
+}
+function markAllNotifsRead(){
+  var token = _currentAuthToken();
+  if(!token) return;
+  fetch((window.FA_GENESIS_API||API)+'/api/notifications/read-all',{method:'POST',headers:{'Authorization':'Bearer '+token}})
+    .then(function(){ loadNotifInbox(); }).catch(function(){});
+}
+
 function openNotifModal(){ document.getElementById('notif-overlay').className='on'; }
 function closeNotifModal(){ document.getElementById('notif-overlay').className=''; }
 function activerNotifs(){
@@ -5835,6 +5939,8 @@ function _ptnrInit(){
         _ptnrRefreshBadges();
         _ptnrCheckPushStatus();
       }
+      loadNotifInbox();
+      if(!window._notifPollStarted){ window._notifPollStarted = true; setInterval(loadNotifInbox, 60000); }
     } else { _ptnrClearSession(); }
   }).catch(function(){ _ptnrClearSession(); });
 }
@@ -7081,6 +7187,162 @@ function sendAppMessage(){
   });
 }
 
+// ── LITIGES (Phase 6) ──────────────────────────────────────────
+var _currentDispute = null;
+var _disputePendingDispatchId = null;
+var _disputeListCache = [];
+
+function _disputeViewerRole(){
+  var partnerTab = document.getElementById('tab-partner');
+  return (partnerTab && partnerTab.classList.contains('on')) ? 'partner' : 'client';
+}
+function _disputeStatusLabel(s){
+  return s==='open'?'Ouvert':(s==='jeremie_triage'?'Analyse Jérémie':(s==='escalated_admin'?'Escaladé admin':(s==='resolved'?'Résolu':s)));
+}
+function _disputeStatusColor(s){
+  return s==='resolved'?'#4caf50':(s==='escalated_admin'?'#ff9800':(s==='jeremie_triage'?'#9ecbe8':'#FFD700'));
+}
+function _openDisputeOverlay(){
+  var overlay=document.getElementById('dispute-overlay'); var sheet=document.getElementById('dispute-sheet');
+  if(!overlay||!sheet) return;
+  overlay.classList.add('open');
+  setTimeout(function(){ sheet.classList.add('up'); }, 20);
+}
+function closeDisputeOverlay(){
+  var sheet=document.getElementById('dispute-sheet'); var overlay=document.getElementById('dispute-overlay');
+  if(!sheet||!overlay) return;
+  sheet.classList.remove('up');
+  setTimeout(function(){ overlay.classList.remove('open'); }, 460);
+}
+function _disputeShowScreen(id){
+  ['dispute-list-screen','dispute-new-screen','dispute-thread-screen'].forEach(function(sid){
+    var el=document.getElementById(sid); if(el) el.style.display = (sid===id)?'block':'none';
+  });
+}
+function _openDisputeForm(dispatchId){
+  if(!_currentAuthToken()){ showLoginSheet&&showLoginSheet(); return; }
+  _disputePendingDispatchId = dispatchId;
+  var title=document.getElementById('dispute-hdr-title'); if(title) title.textContent='SIGNALER UN PROBLÈME';
+  var cat=document.getElementById('disp-category'); if(cat) cat.value='livrable';
+  var desc=document.getElementById('disp-description'); if(desc) desc.value='';
+  var err=document.getElementById('disp-new-err'); if(err) err.classList.remove('on');
+  var btn=document.getElementById('disp-new-send-btn'); if(btn){btn.disabled=false;btn.textContent='ENVOYER LE LITIGE';}
+  _disputeShowScreen('dispute-new-screen');
+  _openDisputeOverlay();
+}
+function _submitDispute(){
+  var token=_currentAuthToken(); if(!token) return;
+  var category=((document.getElementById('disp-category')||{}).value||'autre');
+  var description=((document.getElementById('disp-description')||{}).value||'').trim();
+  var err=document.getElementById('disp-new-err'); var btn=document.getElementById('disp-new-send-btn');
+  if(description.length<10){ if(err){err.textContent='Merci de décrire le problème (10 caractères minimum).';err.classList.add('on');} return; }
+  if(err) err.classList.remove('on');
+  if(btn){btn.disabled=true;btn.textContent='Envoi...';}
+  fetch((window.FA_GENESIS_API||API)+'/api/disputes',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+    body:JSON.stringify({dispatch_id:_disputePendingDispatchId,category:category,description:description})
+  }).then(function(r){return r.json();}).then(function(res){
+    if(btn){btn.disabled=false;btn.textContent='ENVOYER LE LITIGE';}
+    if(res&&res.ok&&res.dispute){
+      showToast&&showToast('Litige envoyé','Notre équipe va examiner votre cas','success');
+      _openDisputeThread(res.dispute);
+    } else {
+      if(err){err.textContent=(res&&res.error)||'Erreur lors de l\'envoi.';err.classList.add('on');}
+    }
+  }).catch(function(){
+    if(btn){btn.disabled=false;btn.textContent='ENVOYER LE LITIGE';}
+    if(err){err.textContent='Erreur réseau, réessayez.';err.classList.add('on');}
+  });
+}
+function openMesLitiges(){
+  var token=_currentAuthToken(); if(!token){ showLoginSheet&&showLoginSheet(); return; }
+  var title=document.getElementById('dispute-hdr-title'); if(title) title.textContent='MES LITIGES';
+  _disputeShowScreen('dispute-list-screen');
+  _openDisputeOverlay();
+  var listEl=document.getElementById('dispute-list-content');
+  if(listEl) listEl.innerHTML='<div style="text-align:center;color:#666;font-size:12px;padding:20px 0;">Chargement...</div>';
+  fetch((window.FA_GENESIS_API||API)+'/api/disputes/mine',{headers:{'Authorization':'Bearer '+token}})
+    .then(function(r){return r.json();})
+    .then(function(data){
+      var disputes=(data&&Array.isArray(data.disputes))?data.disputes:[];
+      _disputeListCache = disputes;
+      if(!listEl) return;
+      if(disputes.length===0){ listEl.innerHTML='<div style="text-align:center;color:#666;font-size:12px;padding:20px 0;">Aucun litige en cours.</div>'; return; }
+      listEl.innerHTML = disputes.map(function(d,i){
+        var lastMsg = d.messages&&d.messages.length ? d.messages[d.messages.length-1].content : '';
+        return '<div class="disp-list-item" onclick="_openDisputeThreadByIndex('+i+')">'
+          +'<div class="disp-list-status" style="color:'+_disputeStatusColor(d.status)+';">'+_disputeStatusLabel(d.status).toUpperCase()+' · '+(d.category||'autre').toUpperCase()+'</div>'
+          +'<div style="font-size:12px;color:#999;line-height:1.4;">'+(lastMsg||'').replace(/</g,'&lt;').substring(0,90)+(lastMsg.length>90?'...':'')+'</div>'
+          +'</div>';
+      }).join('');
+    }).catch(function(){
+      if(listEl) listEl.innerHTML='<div style="text-align:center;color:#f44336;font-size:12px;padding:20px 0;">Erreur de chargement.</div>';
+    });
+}
+function _openDisputeThreadByIndex(i){
+  var d=_disputeListCache[i]; if(!d) return;
+  _openDisputeThread(d);
+}
+function _openDisputeThread(dispute){
+  _currentDispute = dispute;
+  var title=document.getElementById('dispute-hdr-title'); if(title) title.textContent='LITIGE '+dispute.id;
+  _disputeShowScreen('dispute-thread-screen');
+  _openDisputeOverlay();
+  _renderDisputeThread();
+}
+function _renderDisputeThread(){
+  var d=_currentDispute; if(!d) return;
+  var statusEl=document.getElementById('dispute-thread-status');
+  if(statusEl) statusEl.innerHTML='<span style="font-size:11px;font-weight:800;letter-spacing:.5px;color:'+_disputeStatusColor(d.status)+';">'+_disputeStatusLabel(d.status).toUpperCase()+'</span>';
+  var viewerRole=_disputeViewerRole();
+  var msgsEl=document.getElementById('dispute-thread-messages');
+  if(msgsEl){
+    msgsEl.innerHTML = (d.messages||[]).map(function(m){
+      var cls = m.from_role==='jeremie' ? 'disp-msg-jeremie' : (m.from_role==='system' ? 'disp-msg-system' : (m.from_role===viewerRole ? 'disp-msg-mine' : 'disp-msg-other'));
+      return '<div class="disp-msg '+cls+'"><div class="disp-msg-from">'+(m.from_name||m.from_role||'')+'</div>'+(m.content||'').replace(/</g,'&lt;')+'</div>';
+    }).join('');
+  }
+  var resolved = d.status==='resolved';
+  var replyInput=document.getElementById('disp-reply-input'); if(replyInput){ replyInput.value=''; replyInput.style.display = resolved?'none':'block'; }
+  var replyBtn=document.getElementById('disp-reply-btn'); if(replyBtn) replyBtn.style.display = resolved?'none':'block';
+  var escBtn=document.getElementById('disp-escalate-btn'); if(escBtn) escBtn.style.display = (resolved||d.status==='escalated_admin')?'none':'block';
+  if(resolved && d.admin_resolution && d.admin_resolution.note && msgsEl){
+    msgsEl.innerHTML += '<div class="disp-msg disp-msg-system"><div class="disp-msg-from">FA GENESIS — Résolution</div>'+d.admin_resolution.note.replace(/</g,'&lt;')+'</div>';
+  }
+}
+function _sendDisputeMessage(){
+  var d=_currentDispute; if(!d) return;
+  var token=_currentAuthToken(); if(!token) return;
+  var content=((document.getElementById('disp-reply-input')||{}).value||'').trim();
+  var err=document.getElementById('disp-reply-err'); var btn=document.getElementById('disp-reply-btn');
+  if(!content){ if(err){err.textContent='Message vide.';err.classList.add('on');} return; }
+  if(err) err.classList.remove('on');
+  if(btn){btn.disabled=true;btn.textContent='Envoi...';}
+  fetch((window.FA_GENESIS_API||API)+'/api/disputes/'+d.id+'/message',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+    body:JSON.stringify({content:content})
+  }).then(function(r){return r.json();}).then(function(res){
+    if(btn){btn.disabled=false;btn.textContent='RÉPONDRE';}
+    if(res&&res.ok&&res.dispute){ _currentDispute=res.dispute; _renderDisputeThread(); }
+    else if(err){ err.textContent=(res&&res.error)||'Erreur.'; err.classList.add('on'); }
+  }).catch(function(){
+    if(btn){btn.disabled=false;btn.textContent='RÉPONDRE';}
+    if(err){err.textContent='Erreur réseau, réessayez.';err.classList.add('on');}
+  });
+}
+function _escalateDispute(){
+  var d=_currentDispute; if(!d) return;
+  var token=_currentAuthToken(); if(!token) return;
+  fetch((window.FA_GENESIS_API||API)+'/api/disputes/'+d.id+'/escalate',{
+    method:'POST',
+    headers:{'Authorization':'Bearer '+token}
+  }).then(function(r){return r.json();}).then(function(res){
+    if(res&&res.ok&&res.dispute){ _currentDispute=res.dispute; _renderDisputeThread(); showToast&&showToast('Demande envoyée','Un administrateur va intervenir','success'); }
+  }).catch(function(){});
+}
+
 // ── INSCRIPTION OVERLAY (style McDonald's) ────────────────────
 var regCurrentStep = 0;
 var regData = {};
@@ -7756,6 +8018,53 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
   </div>
 </div>
 
+<!-- LITIGES OVERLAY (Phase 6) -->
+<div id="dispute-overlay" onclick="if(event.target===this)closeDisputeOverlay()">
+  <div id="dispute-sheet">
+    <div class="mc-hdr">
+      <button class="reg-nav-btn" onclick="closeDisputeOverlay()">&#8249;</button>
+      <div style="font-family:'Unbounded',cursive;font-size:10px;font-weight:900;color:#FFD700;letter-spacing:1.5px;" id="dispute-hdr-title">LITIGES</div>
+      <button class="reg-nav-btn" onclick="closeDisputeOverlay()">&#x2715;</button>
+    </div>
+    <div class="mc-body">
+      <!-- Écran liste -->
+      <div id="dispute-list-screen" style="display:none;">
+        <div id="dispute-list-content"></div>
+      </div>
+      <!-- Écran nouveau litige -->
+      <div id="dispute-new-screen" style="display:none;">
+        <div class="mc-field">
+          <label class="mc-label">Catégorie</label>
+          <select id="disp-category" class="mc-select">
+            <option value="livrable">Livrable non conforme</option>
+            <option value="delai">Retard / délai non respecté</option>
+            <option value="paiement">Problème de paiement</option>
+            <option value="comportement">Comportement / communication</option>
+            <option value="autre">Autre</option>
+          </select>
+        </div>
+        <div class="mc-field">
+          <label class="mc-label">Décrivez le problème *</label>
+          <textarea id="disp-description" class="mc-textarea" placeholder="Expliquez ce qui ne va pas (10 caractères minimum)..."></textarea>
+        </div>
+        <div class="mc-err" id="disp-new-err"></div>
+        <button class="mc-send-btn" id="disp-new-send-btn" onclick="_submitDispute()">ENVOYER LE LITIGE</button>
+      </div>
+      <!-- Écran fil de discussion -->
+      <div id="dispute-thread-screen" style="display:none;">
+        <div id="dispute-thread-status" style="margin-bottom:12px;"></div>
+        <div id="dispute-thread-messages"></div>
+        <div class="mc-field" style="margin-top:6px;">
+          <textarea id="disp-reply-input" class="mc-textarea" style="min-height:70px;" placeholder="Votre réponse..."></textarea>
+        </div>
+        <div class="mc-err" id="disp-reply-err"></div>
+        <button class="mc-send-btn" id="disp-reply-btn" onclick="_sendDisputeMessage()">RÉPONDRE</button>
+        <button class="mc-send-btn" id="disp-escalate-btn" style="background:#1a1a1a;color:#FFD700;border:1px solid #FFD700;margin-top:8px;" onclick="_escalateDispute()">DEMANDER L'INTERVENTION D'UN HUMAIN</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- INSCRIPTION OVERLAY (style McDonald's) -->
 <div id="reg-overlay" onclick="if(event.target===this)closeRegSheet()">
   <div id="reg-sheet">
@@ -8319,10 +8628,11 @@ function _ptnrLoadVersements(){
     listHtml += '<div id="ptnr-total-pending" style="font-size:18px;color:#FFD700;font-weight:800;">0.00 €</div>';
     listHtml += '<div style="font-size:10px;color:#555;margin-top:3px;font-weight:600;">EN ATTENTE</div></div>';
     listHtml += '</div>';
+    listHtml += '<button onclick="openMesLitiges()" style="width:100%;background:none;border:1px solid #333;color:#999;border-radius:10px;padding:10px 14px;font-size:12px;cursor:pointer;margin-bottom:16px;"><i class="fa-solid fa-scale-balanced"></i> Mes litiges</button>';
     payouts.forEach(function(p){
       var stageLabel  = p.stage==='deposit'?'Acompte 30 %':(p.stage==='installment_2'?'Tranche 2 (40 %)':(p.stage==='installment_3'?'Tranche 3 (30 %)':(p.stage==='balance'?'Solde 70 %':'Versement')));
-      var statusColor = p.status==='sent'?'#4caf50':(p.status==='failed'?'#f44336':'#FFD700');
-      var statusLabel = p.status==='sent'?'Envoyé':(p.status==='failed'?'Échoué':'En attente');
+      var statusColor = p.status==='sent'?'#4caf50':(p.status==='failed'?'#f44336':(p.status==='on_hold'?'#ff9800':'#FFD700'));
+      var statusLabel = p.status==='sent'?'Envoyé':(p.status==='failed'?'Échoué':(p.status==='on_hold'?'En litige':'En attente'));
       var methodIco   = p.payout_method==='bank_transfer'?'<i class="fa-solid fa-building-columns"></i>':(p.payout_method==='paypal'?'<i class="fa-solid fa-credit-card"></i>':'<i class="fa-solid fa-hourglass-half"></i>');
       listHtml += '<div style="background:#111;border:1px solid #1e1e1e;border-radius:14px;padding:14px 16px;margin-bottom:10px;">';
       listHtml += '<div style="display:flex;justify-content:space-between;align-items:flex-start;">';
@@ -8338,6 +8648,8 @@ function _ptnrLoadVersements(){
       listHtml += '</div>';
       if(p.payout_method==='pending') listHtml += '<div style="font-size:11px;color:#f44336;margin-top:8px;border-top:1px solid #1e1e1e;padding-top:8px;">Configurez votre PayPal ou votre RIB ci-dessus pour recevoir ce versement.</div>';
       if(p.payout_method==='bank_transfer' && p.status==='pending') listHtml += '<div style="font-size:11px;color:#999;margin-top:8px;border-top:1px solid #1e1e1e;padding-top:8px;"><i class="fa-solid fa-circle-info"></i> Virement en cours de traitement par notre équipe.</div>';
+      if(p.status==='on_hold') listHtml += '<div style="font-size:11px;color:#ff9800;margin-top:8px;border-top:1px solid #1e1e1e;padding-top:8px;"><i class="fa-solid fa-circle-pause"></i> Versement en attente — litige en cours sur cette mission.</div>';
+      if(p.dispatch_id) listHtml += '<div style="margin-top:8px;border-top:1px solid #1e1e1e;padding-top:8px;"><button onclick="_openDisputeForm(\''+p.dispatch_id+'\')" style="background:none;border:1px solid #333;color:#999;border-radius:8px;padding:6px 10px;font-size:11px;cursor:pointer;"><i class="fa-solid fa-triangle-exclamation"></i> Signaler un problème</button></div>';
       listHtml += '</div>';
     });
     listEl.innerHTML = listHtml;

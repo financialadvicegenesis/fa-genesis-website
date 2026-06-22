@@ -64,6 +64,8 @@ const HALL_OF_FAME_FILE = path.join(__dirname, 'data', 'hall_of_fame.json');
 const EVENTS_FILE = path.join(__dirname, 'data', 'events.json');
 const JEREMIE_MEMORY_FILE = path.join(__dirname, 'data', 'jeremie_memory.json');
 const ADMIN_SESSIONS_FILE = path.join(__dirname, 'data', 'admin_sessions.json');
+const NOTIFICATIONS_FILE = path.join(__dirname, 'data', 'notifications.json');
+const DISPUTES_FILE = path.join(__dirname, 'data', 'disputes.json');
 
 // Catégories de partenaires marketplace (source unique, partagée par inscription + admin)
 const PARTNER_TYPES = [
@@ -368,6 +370,30 @@ function savePayouts(data) {
     catch(e) { console.error('[PAYOUT] Erreur sauvegarde:', e); }
 }
 
+// ── Notifications persistantes ──
+function loadNotifications() {
+    try {
+        if (!fs.existsSync(NOTIFICATIONS_FILE)) return [];
+        return JSON.parse(fs.readFileSync(NOTIFICATIONS_FILE, 'utf8')) || [];
+    } catch(e) { return []; }
+}
+function saveNotifications(data) {
+    try { fs.writeFileSync(NOTIFICATIONS_FILE, JSON.stringify(data, null, 2), 'utf8'); }
+    catch(e) { console.error('[NOTIF] Erreur sauvegarde:', e); }
+}
+
+// ── Litiges ──
+function loadDisputes() {
+    try {
+        if (!fs.existsSync(DISPUTES_FILE)) return [];
+        return JSON.parse(fs.readFileSync(DISPUTES_FILE, 'utf8')) || [];
+    } catch(e) { return []; }
+}
+function saveDisputes(data) {
+    try { fs.writeFileSync(DISPUTES_FILE, JSON.stringify(data, null, 2), 'utf8'); }
+    catch(e) { console.error('[DISPUTE] Erreur sauvegarde:', e); }
+}
+
 // IDs de tarifs partenaires (FA GENESIS 15 %, partenaire 85 %)
 var PARTNER_TARIF_IDS = ['photo-devis', 'video-devis'];
 
@@ -624,6 +650,13 @@ async function processDispatchPayout(dispatch, stage) {
         var faAmount = parseFloat((stageTotal - paidAmount).toFixed(2));
 
         var method = (partner.payout_paypal ? 'paypal' : (partner.payout_iban ? 'bank_transfer' : 'pending'));
+
+        // Litige (Phase 6) : tant qu'un litige est ouvert sur ce dispatch, les versements
+        // futurs sont mis en attente (on_hold) au lieu d'être envoyés immédiatement.
+        var hasOpenDispute = loadDisputes().some(function(d) {
+            return d.dispatch_id === dispatch.id && (d.status === 'open' || d.status === 'jeremie_triage' || d.status === 'escalated_admin');
+        });
+
         var newPayout = {
             id: 'PAY-' + Math.random().toString(36).substring(2, 10).toUpperCase(),
             order_id: dispatch.order_id,
@@ -641,7 +674,7 @@ async function processDispatchPayout(dispatch, stage) {
             fa_pct: faPct,
             partner_pct: partnerPct,
             currency: 'EUR',
-            status: 'pending',
+            status: hasOpenDispute ? 'on_hold' : 'pending',
             created_at: new Date().toISOString(),
             sent_at: null,
             payout_batch_id: null,
@@ -651,6 +684,11 @@ async function processDispatchPayout(dispatch, stage) {
         var payouts = loadPayouts();
         payouts.push(newPayout);
         savePayouts(payouts);
+
+        if (hasOpenDispute) {
+            console.log('[PAYOUT] ' + stage + ' mis en attente (on_hold, litige ouvert sur dispatch ' + dispatch.id + ') → ' + partner.email + ' : ' + paidAmount + ' €');
+            return;
+        }
 
         if (method === 'paypal') {
             var result = await triggerPayPalPayouts([{
@@ -676,6 +714,43 @@ async function processDispatchPayout(dispatch, stage) {
     }
 }
 
+// Litige résolu (Phase 6) : déclenche les versements on_hold mis en attente pour ce dispatch
+async function releaseOnHoldPayouts(dispatchId) {
+    try {
+        var payouts = loadPayouts();
+        var toRelease = payouts.filter(function(p) { return p.dispatch_id === dispatchId && p.status === 'on_hold'; });
+        if (toRelease.length === 0) return;
+
+        for (var i = 0; i < toRelease.length; i++) {
+            var p = toRelease[i];
+            if (p.payout_method === 'paypal' && p.partner_paypal) {
+                var result = await triggerPayPalPayouts([{
+                    recipient_email: p.partner_paypal,
+                    amount: p.amount,
+                    currency: 'EUR',
+                    note: 'Versement FA GENESIS — ' + (p.order_id || '') + ' (' + p.stage + ', débloqué après résolution de litige)'
+                }]);
+                var latest = loadPayouts();
+                var pi = latest.findIndex(function(x) { return x.id === p.id; });
+                if (pi !== -1) {
+                    latest[pi].status = result.success ? 'sent' : 'failed';
+                    if (result.success) { latest[pi].sent_at = new Date().toISOString(); latest[pi].payout_batch_id = result.payout_batch_id || null; }
+                    else { latest[pi].error = result.error || 'Erreur PayPal'; }
+                    savePayouts(latest);
+                }
+                console.log('[PAYOUT] Versement débloqué (litige résolu) ' + p.stage + ' PayPal ' + (result.success ? 'envoyé' : 'ÉCHOUÉ') + ' → ' + p.partner_email);
+            } else {
+                var latest2 = loadPayouts();
+                var pi2 = latest2.findIndex(function(x) { return x.id === p.id; });
+                if (pi2 !== -1) { latest2[pi2].status = 'pending'; savePayouts(latest2); }
+                console.log('[PAYOUT] Versement débloqué (litige résolu) ' + p.stage + ' repasse en attente (' + p.payout_method + ') → ' + p.partner_email);
+            }
+        }
+    } catch (e) {
+        console.error('[PAYOUT] Erreur releaseOnHoldPayouts:', e);
+    }
+}
+
 // Demande d'avis client après versement du solde à chaque partenaire ayant accepté sa mission
 function requestPartnerReviews(clientEmail, acceptedDispatches) {
     if (!clientEmail || !acceptedDispatches || acceptedDispatches.length === 0) return;
@@ -689,14 +764,7 @@ function requestPartnerReviews(clientEmail, acceptedDispatches) {
             changed = true;
             var partner = getPartnerById(d.claimed_by_partner_id);
             var partnerName = partner ? (partner.prenom + ' ' + partner.nom) : 'votre partenaire';
-            sendPushToUser(clientEmail, {
-                title: 'Comment était votre expérience ?',
-                body: 'Donnez votre avis sur ' + partnerName,
-                icon: '/assets/images/logo-favicon-192.png',
-                badge: '/assets/images/logo-favicon-32.png',
-                url: '/app.html#client-review-' + d.claimed_by_partner_id + '-' + d.id,
-                tag: 'review-request'
-            });
+            notifyUser(clientEmail, 'client', 'review-request', 'Comment était votre expérience ?', 'Donnez votre avis sur ' + partnerName, '/app.html#client-review-' + d.claimed_by_partner_id + '-' + d.id);
         });
         if (changed) saveDispatches(allDispatches);
     } catch (e) {
@@ -1106,6 +1174,401 @@ function sendPushToRole(role, payload) {
         savePushSubscriptions(cleaned);
     }
 }
+
+// notifyUser : persiste une notification (historique consultable) ET tente un push best-effort
+// (le push best-effort existant n'est pas retire, juste complete par la persistance).
+function notifyUser(email, role, type, title, body, link) {
+    try {
+        var notif = {
+            id: 'NOTIF-' + Math.random().toString(36).substring(2, 10).toUpperCase(),
+            email: email || null,
+            role: role || 'client',
+            type: type || 'info',
+            title: title || '',
+            body: body || '',
+            link: link || null,
+            read: false,
+            created_at: new Date().toISOString()
+        };
+        var all = loadNotifications();
+        all.push(notif);
+        saveNotifications(all);
+
+        var pushPayload = {
+            title: title || 'FA GENESIS',
+            body: body || '',
+            icon: '/assets/images/logo-favicon-192.png',
+            badge: '/assets/images/logo-favicon-32.png',
+            url: link || '/',
+            tag: type || 'notif'
+        };
+        if (email) sendPushToUser(email, pushPayload);
+        else if (role) sendPushToRole(role, pushPayload);
+    } catch(e) {
+        console.error('[NOTIFY] Erreur notifyUser:', e);
+    }
+}
+
+// Identifie l'utilisateur courant (admin JWT, partenaire ou client) a partir du token Bearer,
+// pour les routes communes aux 3 roles (notifications, litiges).
+function resolveCurrentIdentity(req) {
+    var authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
+    var token = authHeader.split(' ')[1];
+
+    try {
+        var jwt = require('jsonwebtoken');
+        var decoded = jwt.verify(token, process.env.JWT_SECRET || 'fa-genesis-secret-key-2024');
+        if (decoded && decoded.role === 'admin') {
+            return { role: 'admin', email: decoded.email || null };
+        }
+    } catch(e) { /* pas un JWT admin valide, on continue */ }
+
+    var partner = loadPartners().find(function(p) { return p.sessionToken === token; });
+    if (partner) return { role: 'partner', email: partner.email, partner: partner };
+
+    var user = loadUsers().find(function(u) { return u.sessionToken === token; });
+    if (user) return { role: 'client', email: user.email, user: user };
+
+    return null;
+}
+
+// GET /api/notifications
+app.get('/api/notifications', function(req, res) {
+    var identity = resolveCurrentIdentity(req);
+    if (!identity) return res.status(401).json({ error: 'Non autorise' });
+
+    var all = loadNotifications();
+    var mine = all.filter(function(n) {
+        if (identity.role === 'admin') return n.role === 'admin';
+        return n.role === identity.role && n.email && n.email.toLowerCase() === identity.email.toLowerCase();
+    }).sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); });
+
+    res.json({ ok: true, notifications: mine, unread_count: mine.filter(function(n) { return !n.read; }).length });
+});
+
+// POST /api/notifications/:id/read
+app.post('/api/notifications/:id/read', function(req, res) {
+    var identity = resolveCurrentIdentity(req);
+    if (!identity) return res.status(401).json({ error: 'Non autorise' });
+
+    var all = loadNotifications();
+    var idx = all.findIndex(function(n) { return n.id === req.params.id; });
+    if (idx === -1) return res.status(404).json({ error: 'Notification non trouvee' });
+    var n = all[idx];
+    var owns = identity.role === 'admin' ? n.role === 'admin' : (n.role === identity.role && n.email && n.email.toLowerCase() === identity.email.toLowerCase());
+    if (!owns) return res.status(403).json({ error: 'Acces non autorise' });
+
+    all[idx].read = true;
+    saveNotifications(all);
+    res.json({ ok: true });
+});
+
+// POST /api/notifications/read-all
+app.post('/api/notifications/read-all', function(req, res) {
+    var identity = resolveCurrentIdentity(req);
+    if (!identity) return res.status(401).json({ error: 'Non autorise' });
+
+    var all = loadNotifications();
+    all.forEach(function(n) {
+        var owns = identity.role === 'admin' ? n.role === 'admin' : (n.role === identity.role && n.email && n.email.toLowerCase() === identity.email.toLowerCase());
+        if (owns) n.read = true;
+    });
+    saveNotifications(all);
+    res.json({ ok: true });
+});
+
+// ── Litiges (Phase 6) ──
+
+function buildDisputeSystemPrompt(dispute) {
+    return 'Tu es Jeremie, mediateur de premier niveau pour la marketplace FA GENESIS. '
+        + 'Un litige a ete ouvert entre un client et un partenaire prestataire au sujet d\'une mission (categorie : ' + (dispute.category || 'non precisee') + '). '
+        + 'Ton role : rester neutre, resumer le differend en une phrase, poser une question de clarification ou proposer une piste de resolution concrete. '
+        + 'Tu n\'as aucun pouvoir de decision financiere (pas de remboursement automatique) — toute decision finale revient a un administrateur humain. '
+        + 'Reponds en francais, de facon breve (5 phrases maximum) et bienveillante.';
+}
+
+// POST /api/disputes — ouverture d'un litige par le client ou le partenaire sur un dispatch
+app.post('/api/disputes', function(req, res) {
+    try {
+        var identity = resolveCurrentIdentity(req);
+        if (!identity || identity.role === 'admin') return res.status(401).json({ error: 'Non autorise' });
+
+        var dispatchId = req.body && req.body.dispatch_id;
+        var category = (req.body && req.body.category || '').trim();
+        var description = (req.body && req.body.description || '').trim();
+        if (!dispatchId) return res.status(400).json({ error: 'dispatch_id requis' });
+        if (description.length < 10) return res.status(400).json({ error: 'Merci de decrire le probleme (10 caracteres minimum).' });
+
+        var dispatch = loadDispatches().find(function(d) { return d.id === dispatchId; });
+        if (!dispatch) return res.status(404).json({ error: 'Mission non trouvee' });
+
+        var isOwner = (identity.role === 'client' && dispatch.client_email && dispatch.client_email.toLowerCase() === identity.email.toLowerCase())
+            || (identity.role === 'partner' && dispatch.claimed_by_partner_id === identity.partner.id);
+        if (!isOwner) return res.status(403).json({ error: 'Acces non autorise a cette mission' });
+
+        var fromName = identity.role === 'partner'
+            ? ((identity.partner.prenom || '') + ' ' + (identity.partner.nom || '')).trim()
+            : (((identity.user && ((identity.user.prenom || '') + ' ' + (identity.user.nom || '')).trim())) || identity.email);
+
+        var dispute = {
+            id: 'DISPUTE-' + Math.random().toString(36).substring(2, 10).toUpperCase(),
+            order_id: dispatch.order_id,
+            dispatch_id: dispatch.id,
+            partner_id: dispatch.claimed_by_partner_id,
+            client_email: dispatch.client_email,
+            opened_by: identity.role,
+            category: category || 'autre',
+            description: description,
+            status: 'open',
+            messages: [{ from_role: identity.role, from_name: fromName, content: description, created_at: new Date().toISOString() }],
+            jeremie_reply_count: 0,
+            admin_resolution: null,
+            created_at: new Date().toISOString()
+        };
+
+        var disputes = loadDisputes();
+        disputes.push(dispute);
+        saveDisputes(disputes);
+
+        var notifyAdminNewDispute = function() {
+            notifyUser(null, 'admin', 'litige', 'Nouveau litige ouvert', fromName + ' a ouvert un litige (' + dispute.category + ')', '/admin.html#open-disputes');
+        };
+
+        if (aiService.isJeremieAvailable()) {
+            var systemPrompt = buildDisputeSystemPrompt(dispute);
+            aiService.askJeremie(systemPrompt, [], description).then(function(result) {
+                var all = loadDisputes();
+                var idx = all.findIndex(function(d) { return d.id === dispute.id; });
+                if (idx !== -1) {
+                    if (result.success) {
+                        all[idx].messages.push({ from_role: 'jeremie', from_name: 'Jeremie (IA)', content: result.reply, created_at: new Date().toISOString() });
+                        all[idx].status = 'jeremie_triage';
+                        all[idx].jeremie_reply_count = 1;
+                        saveDisputes(all);
+                        dispute = all[idx];
+                    } else {
+                        all[idx].messages.push({ from_role: 'system', from_name: 'FA GENESIS', content: 'Notre equipe va examiner votre litige.', created_at: new Date().toISOString() });
+                        saveDisputes(all);
+                        dispute = all[idx];
+                        notifyAdminNewDispute();
+                    }
+                }
+                res.json({ ok: true, dispute: dispute });
+            }).catch(function(err) {
+                console.error('[DISPUTE] Erreur askJeremie:', err);
+                notifyAdminNewDispute();
+                res.json({ ok: true, dispute: dispute });
+            });
+        } else {
+            var all2 = loadDisputes();
+            var idx2 = all2.findIndex(function(d) { return d.id === dispute.id; });
+            if (idx2 !== -1) {
+                all2[idx2].messages.push({ from_role: 'system', from_name: 'FA GENESIS', content: 'Notre equipe va examiner votre litige.', created_at: new Date().toISOString() });
+                saveDisputes(all2);
+                dispute = all2[idx2];
+            }
+            notifyAdminNewDispute();
+            res.json({ ok: true, dispute: dispute });
+        }
+    } catch (err) {
+        console.error('[DISPUTE] Erreur creation:', err);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// GET /api/disputes/mine — liste des litiges du client/partenaire connecte
+app.get('/api/disputes/mine', function(req, res) {
+    try {
+        var identity = resolveCurrentIdentity(req);
+        if (!identity || identity.role === 'admin') return res.status(401).json({ error: 'Non autorise' });
+
+        var disputes = loadDisputes().filter(function(d) {
+            if (identity.role === 'client') return d.client_email && d.client_email.toLowerCase() === identity.email.toLowerCase();
+            return d.partner_id === identity.partner.id;
+        }).sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); });
+
+        res.json({ ok: true, disputes: disputes });
+    } catch (err) {
+        console.error('[DISPUTE] Erreur mine:', err);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// POST /api/disputes/:id/message — ajoute un message au fil du litige (relance Jeremie si en triage)
+app.post('/api/disputes/:id/message', function(req, res) {
+    try {
+        var identity = resolveCurrentIdentity(req);
+        if (!identity) return res.status(401).json({ error: 'Non autorise' });
+
+        var content = (req.body && req.body.content || '').trim();
+        if (content.length < 1) return res.status(400).json({ error: 'Message vide' });
+
+        var disputes = loadDisputes();
+        var idx = disputes.findIndex(function(d) { return d.id === req.params.id; });
+        if (idx === -1) return res.status(404).json({ error: 'Litige non trouve' });
+        var dispute = disputes[idx];
+
+        var isParty = identity.role === 'admin'
+            || (identity.role === 'client' && dispute.client_email && dispute.client_email.toLowerCase() === identity.email.toLowerCase())
+            || (identity.role === 'partner' && dispute.partner_id === identity.partner.id);
+        if (!isParty) return res.status(403).json({ error: 'Acces non autorise' });
+        if (dispute.status === 'resolved') return res.status(409).json({ error: 'Ce litige est deja resolu.' });
+
+        var fromName = identity.role === 'admin'
+            ? 'FA GENESIS (admin)'
+            : identity.role === 'partner'
+                ? ((identity.partner.prenom || '') + ' ' + (identity.partner.nom || '')).trim()
+                : (((identity.user && ((identity.user.prenom || '') + ' ' + (identity.user.nom || '')).trim())) || identity.email);
+
+        dispute.messages.push({ from_role: identity.role, from_name: fromName, content: content, created_at: new Date().toISOString() });
+
+        var shouldAskJeremie = identity.role !== 'admin' && dispute.status === 'jeremie_triage' && dispute.jeremie_reply_count < 3 && aiService.isJeremieAvailable();
+
+        if (!shouldAskJeremie) {
+            if (identity.role !== 'admin' && dispute.status === 'jeremie_triage' && dispute.jeremie_reply_count >= 3) {
+                dispute.status = 'escalated_admin';
+                notifyUser(null, 'admin', 'litige', 'Litige escalade', 'Le litige ' + dispute.id + ' necessite une intervention humaine.', '/admin.html#open-disputes');
+            }
+            disputes[idx] = dispute;
+            saveDisputes(disputes);
+            return res.json({ ok: true, dispute: dispute });
+        }
+
+        disputes[idx] = dispute;
+        saveDisputes(disputes);
+
+        var systemPrompt = buildDisputeSystemPrompt(dispute);
+        var history = dispute.messages.slice(0, -1).map(function(m) { return { role: m.from_role === 'jeremie' ? 'assistant' : 'user', content: m.content }; });
+
+        aiService.askJeremie(systemPrompt, history, content).then(function(result) {
+            var all = loadDisputes();
+            var i2 = all.findIndex(function(d) { return d.id === dispute.id; });
+            if (i2 === -1) return res.json({ ok: true, dispute: dispute });
+            if (result.success) {
+                all[i2].messages.push({ from_role: 'jeremie', from_name: 'Jeremie (IA)', content: result.reply, created_at: new Date().toISOString() });
+                all[i2].jeremie_reply_count = (all[i2].jeremie_reply_count || 0) + 1;
+                if (all[i2].jeremie_reply_count >= 3) {
+                    all[i2].status = 'escalated_admin';
+                    notifyUser(null, 'admin', 'litige', 'Litige escalade', 'Le litige ' + all[i2].id + ' necessite une intervention humaine.', '/admin.html#open-disputes');
+                }
+            }
+            saveDisputes(all);
+            res.json({ ok: true, dispute: all[i2] });
+        }).catch(function(err) {
+            console.error('[DISPUTE] Erreur askJeremie message:', err);
+            res.json({ ok: true, dispute: dispute });
+        });
+    } catch (err) {
+        console.error('[DISPUTE] Erreur message:', err);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// POST /api/disputes/:id/escalate — demande explicite d'intervention humaine
+app.post('/api/disputes/:id/escalate', function(req, res) {
+    try {
+        var identity = resolveCurrentIdentity(req);
+        if (!identity || identity.role === 'admin') return res.status(401).json({ error: 'Non autorise' });
+
+        var disputes = loadDisputes();
+        var idx = disputes.findIndex(function(d) { return d.id === req.params.id; });
+        if (idx === -1) return res.status(404).json({ error: 'Litige non trouve' });
+        var dispute = disputes[idx];
+
+        var isParty = (identity.role === 'client' && dispute.client_email && dispute.client_email.toLowerCase() === identity.email.toLowerCase())
+            || (identity.role === 'partner' && dispute.partner_id === identity.partner.id);
+        if (!isParty) return res.status(403).json({ error: 'Acces non autorise' });
+        if (dispute.status === 'resolved') return res.status(409).json({ error: 'Ce litige est deja resolu.' });
+
+        dispute.status = 'escalated_admin';
+        disputes[idx] = dispute;
+        saveDisputes(disputes);
+        notifyUser(null, 'admin', 'litige', 'Intervention humaine demandee', 'Le litige ' + dispute.id + ' demande l\'intervention d\'un administrateur.', '/admin.html#open-disputes');
+        res.json({ ok: true, dispute: dispute });
+    } catch (err) {
+        console.error('[DISPUTE] Erreur escalate:', err);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// GET /api/admin/disputes — file d'attente admin
+app.get('/api/admin/disputes', function(req, res) {
+    try {
+        var authHeader = req.headers.authorization;
+        if (!authHeader) return res.status(401).json({ error: 'Non autorise' });
+        var token = authHeader.replace('Bearer ', '');
+        var jwt = require('jsonwebtoken');
+        var decoded = jwt.verify(token, process.env.JWT_SECRET || 'fa-genesis-secret-key-2024');
+        if (decoded.role !== 'admin') return res.status(403).json({ error: 'Acces admin requis' });
+
+        var statusOrder = { escalated_admin: 0, jeremie_triage: 1, open: 2, resolved: 3 };
+        var partners = loadPartners();
+        var disputes = loadDisputes().slice().sort(function(a, b) {
+            var sa = statusOrder[a.status] !== undefined ? statusOrder[a.status] : 9;
+            var sb = statusOrder[b.status] !== undefined ? statusOrder[b.status] : 9;
+            if (sa !== sb) return sa - sb;
+            return new Date(b.created_at) - new Date(a.created_at);
+        }).map(function(d) {
+            var partner = partners.find(function(p) { return p.id === d.partner_id; });
+            return Object.assign({}, d, {
+                partner_name: partner ? ((partner.prenom || '') + ' ' + (partner.nom || '')).trim() : null,
+                partner_email: partner ? partner.email : null
+            });
+        });
+
+        res.json({ ok: true, disputes: disputes });
+    } catch (err) {
+        console.error('[DISPUTE] Erreur admin list:', err);
+        res.status(401).json({ error: 'Non autorise' });
+    }
+});
+
+// POST /api/admin/disputes/:id/resolve — verdict admin (ecrit, pas d'action financiere automatisee)
+app.post('/api/admin/disputes/:id/resolve', function(req, res) {
+    try {
+        var authHeader = req.headers.authorization;
+        if (!authHeader) return res.status(401).json({ error: 'Non autorise' });
+        var token = authHeader.replace('Bearer ', '');
+        var jwt = require('jsonwebtoken');
+        var decoded = jwt.verify(token, process.env.JWT_SECRET || 'fa-genesis-secret-key-2024');
+        if (decoded.role !== 'admin') return res.status(403).json({ error: 'Acces admin requis' });
+
+        var verdict = req.body && req.body.verdict;
+        var note = (req.body && req.body.note || '').trim();
+        var validVerdicts = ['partner_favor', 'client_favor', 'split', 'manual_action_required'];
+        if (validVerdicts.indexOf(verdict) === -1) return res.status(400).json({ error: 'Verdict invalide' });
+
+        var disputes = loadDisputes();
+        var idx = disputes.findIndex(function(d) { return d.id === req.params.id; });
+        if (idx === -1) return res.status(404).json({ error: 'Litige non trouve' });
+        var dispute = disputes[idx];
+        if (dispute.status === 'resolved') return res.status(409).json({ error: 'Ce litige est deja resolu.' });
+
+        dispute.status = 'resolved';
+        dispute.admin_resolution = {
+            verdict: verdict,
+            note: note,
+            resolved_by: decoded.email || 'admin',
+            resolved_at: new Date().toISOString()
+        };
+        disputes[idx] = dispute;
+        saveDisputes(disputes);
+
+        var partner = getPartnerById(dispute.partner_id);
+        notifyUser(dispute.client_email, 'client', 'litige-resolu', 'Litige resolu', 'Votre litige a ete resolu par notre equipe.', '/app.html#open-litiges');
+        if (partner && partner.email) {
+            notifyUser(partner.email, 'partner', 'litige-resolu', 'Litige resolu', 'Le litige avec votre client a ete resolu par notre equipe.', '/app.html#open-litiges');
+        }
+
+        releaseOnHoldPayouts(dispute.dispatch_id).catch(function(e) { console.error('[DISPUTE] Erreur releaseOnHoldPayouts:', e); });
+
+        res.json({ ok: true, dispute: dispute });
+    } catch (err) {
+        console.error('[DISPUTE] Erreur resolve:', err);
+        res.status(401).json({ error: 'Non autorise' });
+    }
+});
 
 // GET /api/push/vapid-public-key
 app.get('/api/push/vapid-public-key', function(req, res) {
@@ -1975,8 +2438,8 @@ app.post('/api/orders/create', (req, res) => {
         orders.push(order);
         saveOrders(orders);
 
-        // Push admin : nouvelle commande
-        sendPushToRole('admin', { title: 'FA GENESIS — Nouvelle commande', body: (order.client_info ? order.client_info.first_name + ' ' + order.client_info.last_name : '') + ' — ' + (order.product_name || ''), icon: '/assets/images/logo-favicon-192.png', badge: '/assets/images/logo-favicon-32.png', url: '/app.html#open-admin', tag: 'commande' });
+        // Notif admin : nouvelle commande
+        notifyUser(null, 'admin', 'commande', 'FA GENESIS — Nouvelle commande', (order.client_info ? order.client_info.first_name + ' ' + order.client_info.last_name : '') + ' — ' + (order.product_name || ''), '/app.html#open-admin');
 
         // Envoyer email de notification au partenaire coworking pour chaque réservation
         if (pendingReservations && pendingReservations.length > 0) {
@@ -2754,8 +3217,8 @@ app.post('/api/payments/sumup/webhook', async (req, res) => {
                     : stage === 'installment_2' ? 'Le paiement de la tranche 2 (livrable intermédiaire) a été reçu. Merci !'
                     : 'Votre paiement complet a été confirmé. Merci !';
                 var pushStageLabel = stage === 'deposit' ? 'acompte' : stage === 'installment_2' ? 'tranche 2' : stage === 'installment_3' ? 'tranche 3' : 'solde';
-                sendPushToUser(pushClientEmail, { title: 'Paiement confirmé ✅', body: pushMsgClient, icon: '/assets/images/logo-favicon-192.png', badge: '/assets/images/logo-favicon-32.png', url: '/espace-client.html', tag: 'paiement' });
-                sendPushToRole('admin', { title: 'Paiement reçu', body: (updatedOrder.client_info.first_name || '') + ' — ' + (updatedOrder.product_name || '') + ' — ' + pushStageLabel, icon: '/assets/images/logo-favicon-192.png', badge: '/assets/images/logo-favicon-32.png', url: '/app.html#open-admin', tag: 'paiement-admin' });
+                notifyUser(pushClientEmail, 'client', 'paiement', 'Paiement confirmé ✅', pushMsgClient, '/espace-client.html');
+                notifyUser(null, 'admin', 'paiement-admin', 'Paiement reçu', (updatedOrder.client_info.first_name || '') + ' — ' + (updatedOrder.product_name || '') + ' — ' + pushStageLabel, '/app.html#open-admin');
             }
 
             // Envoyer les emails appropriés
@@ -3734,14 +4197,7 @@ app.post('/api/livrables/:id/validate', (req, res) => {
         if (livrable.owner_partner_id) {
             var partnerForValidation = getPartnerById(livrable.owner_partner_id);
             if (partnerForValidation && partnerForValidation.email) {
-                sendPushToUser(partnerForValidation.email, {
-                    title: 'Livrable validé ✅',
-                    body: (order.client_info.first_name || 'Le client') + ' a validé : ' + (livrable.title || 'votre livrable'),
-                    icon: '/assets/images/logo-favicon-192.png',
-                    badge: '/assets/images/logo-favicon-32.png',
-                    url: '/app.html#open-partner',
-                    tag: 'livrable-valide'
-                });
+                notifyUser(partnerForValidation.email, 'partner', 'livrable-valide', 'Livrable validé ✅', (order.client_info.first_name || 'Le client') + ' a validé : ' + (livrable.title || 'votre livrable'), '/app.html#open-partner');
             }
         }
 
@@ -3797,14 +4253,7 @@ app.post('/api/livrables/:id/request-revision', (req, res) => {
         if (livrable.owner_partner_id) {
             var partnerForRevision = getPartnerById(livrable.owner_partner_id);
             if (partnerForRevision && partnerForRevision.email) {
-                sendPushToUser(partnerForRevision.email, {
-                    title: 'Révision demandée ✏️',
-                    body: (order.client_info.first_name || 'Le client') + ' demande une revision sur : ' + (livrable.title || 'votre livrable'),
-                    icon: '/assets/images/logo-favicon-192.png',
-                    badge: '/assets/images/logo-favicon-32.png',
-                    url: '/app.html#open-partner',
-                    tag: 'livrable-revision'
-                });
+                notifyUser(partnerForRevision.email, 'partner', 'livrable-revision', 'Révision demandée ✏️', (order.client_info.first_name || 'Le client') + ' demande une revision sur : ' + (livrable.title || 'votre livrable'), '/app.html#open-partner');
             }
         }
 
@@ -4135,7 +4584,7 @@ function finalizeSchedule(order) {
                 var confirmOrderName = updatedOrder.product_name || updatedOrder.product_id || 'votre commande';
                 emailService.sendScheduleConfirmedToClient(updatedOrder.client_info.email, confirmClientName, updatedOrder.start_date, confirmOrderName);
                 var dateStr = updatedOrder.start_date ? new Date(updatedOrder.start_date).toLocaleDateString('fr-FR') : '';
-                sendPushToUser(updatedOrder.client_info.email, { title: 'Rendez-vous confirmé 📅', body: confirmOrderName + (dateStr ? ' — ' + dateStr : '') + ' est confirmé !', icon: '/assets/images/logo-favicon-192.png', badge: '/assets/images/logo-favicon-32.png', url: '/espace-client.html', tag: 'rdv' });
+                notifyUser(updatedOrder.client_info.email, 'client', 'rdv', 'Rendez-vous confirmé 📅', confirmOrderName + (dateStr ? ' — ' + dateStr : '') + ' est confirmé !', '/espace-client.html');
             }
         } catch (emailErr) {
             console.error('[SCHEDULE] Erreur email confirmation date client:', emailErr.message);
@@ -5143,7 +5592,7 @@ app.post('/api/admin/messages/:messageId/reply', async (req, res) => {
 
         console.log(`[CONTACT] Reponse envoyee avec succes au message ${msg.id} (${msg.email})`);
         // Push au client : réponse admin reçue
-        sendPushToUser(msg.email, { title: 'FA GENESIS vous a répondu', body: replyMessage.trim().substring(0, 100), icon: '/assets/images/logo-favicon-192.png', badge: '/assets/images/logo-favicon-32.png', url: '/espace-client.html', tag: 'reponse-admin' });
+        notifyUser(msg.email, 'client', 'reponse-admin', 'FA GENESIS vous a répondu', replyMessage.trim().substring(0, 100), '/espace-client.html');
 
         res.json({ success: true, message: 'Reponse envoyee avec succes' });
 
@@ -5333,7 +5782,7 @@ app.post('/api/auth/register', async (req, res) => {
 
         console.log(`[AUTH] Nouvel utilisateur inscrit: ${newUser.id} - ${email}`);
         // Push admin : nouvelle inscription
-        sendPushToRole('admin', { title: 'FA GENESIS — Nouvelle inscription', body: prenom + (nom ? ' ' + nom : '') + ' vient de s\'inscrire.', icon: '/assets/images/logo-favicon-192.png', badge: '/assets/images/logo-favicon-32.png', url: '/app.html#open-admin', tag: 'inscription' });
+        notifyUser(null, 'admin', 'inscription', 'FA GENESIS — Nouvelle inscription', prenom + (nom ? ' ' + nom : '') + ' vient de s\'inscrire.', '/app.html#open-admin');
 
         // Email de bienvenue au client (invitation a decouvrir les offres)
         emailService.sendWelcomeEmail(email, prenom)
@@ -6664,9 +7113,9 @@ app.post('/api/messages', function(req, res) {
         // Push au destinataire
         var senderDisplayName = ((user.prenom || '') + ' ' + (user.nom || '')).trim() || user.email;
         if (toType === 'admin') {
-            sendPushToRole('admin', { title: 'Message de ' + senderDisplayName, body: content.substring(0, 100), icon: '/assets/images/logo-favicon-192.png', badge: '/assets/images/logo-favicon-32.png', url: '/app.html#open-admin', tag: 'message-client' });
+            notifyUser(null, 'admin', 'message-client', 'Message de ' + senderDisplayName, content.substring(0, 100), '/app.html#open-admin');
         } else if (toType === 'partner' && toEmail) {
-            sendPushToUser(toEmail, { title: 'Message de ' + senderDisplayName, body: content.substring(0, 100), icon: '/assets/images/logo-favicon-192.png', badge: '/assets/images/logo-favicon-32.png', url: '/app.html#open-partner', tag: 'message-client' });
+            notifyUser(toEmail, 'partner', 'message-client', 'Message de ' + senderDisplayName, content.substring(0, 100), '/app.html#open-partner');
         }
         res.json({ ok: true, message: newMsg });
     } catch (err) {
@@ -9967,14 +10416,7 @@ app.post('/api/partner-requests', function(req, res) {
         requests.push(newRequest);
         savePartnerRequests(requests);
 
-        sendPushToUser(partner.email, {
-            title: 'Nouvelle demande de mission',
-            body: newRequest.client_name + ' souhaite vous engager pour : ' + service.label,
-            icon: '/assets/images/logo-favicon-192.png',
-            badge: '/assets/images/logo-favicon-32.png',
-            url: '/app.html#open-partner',
-            tag: 'partner-request'
-        });
+        notifyUser(partner.email, 'partner', 'partner-request', 'Nouvelle demande de mission', newRequest.client_name + ' souhaite vous engager pour : ' + service.label, '/app.html#open-partner');
 
         res.json({ success: true, request: newRequest });
     } catch(e) {
@@ -9989,6 +10431,7 @@ app.get('/api/my-requests', function(req, res) {
         var user = authenticateClient(req, res);
         if (!user) return;
 
+        var allDispatchesForRequests = loadDispatches();
         var requests = loadPartnerRequests()
             .filter(function(r) { return r.client_email === user.email; })
             .sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); })
@@ -9996,6 +10439,10 @@ app.get('/api/my-requests', function(req, res) {
                 var partner = getPartnerById(r.partner_id);
                 var out = JSON.parse(JSON.stringify(r));
                 out.partner_name = partner ? (partner.prenom ? (partner.prenom + ' ' + (partner.nom || '')) : partner.company || partner.email) : 'Partenaire';
+                if (r.order_id) {
+                    var dispatchForReq = allDispatchesForRequests.find(function(d) { return d.order_id === r.order_id; });
+                    out.dispatch_id = dispatchForReq ? dispatchForReq.id : null;
+                }
                 return out;
             });
         res.json({ requests: requests });
@@ -10037,14 +10484,7 @@ app.post('/api/partner/requests/:id/accept', authenticatePartner, function(req, 
         savePartnerRequests(requests);
 
         var partnerName = req.partner.prenom || req.partner.email;
-        sendPushToUser(requests[idx].client_email, {
-            title: 'Demande acceptée ✅',
-            body: partnerName + ' a accepté votre demande pour : ' + requests[idx].service_label + '. Vous pouvez payer l\'acompte.',
-            icon: '/assets/images/logo-favicon-192.png',
-            badge: '/assets/images/logo-favicon-32.png',
-            url: '/app.html#open-reservations',
-            tag: 'partner-request'
-        });
+        notifyUser(requests[idx].client_email, 'client', 'partner-request', 'Demande acceptée ✅', partnerName + ' a accepté votre demande pour : ' + requests[idx].service_label + '. Vous pouvez payer l\'acompte.', '/app.html#open-reservations');
 
         res.json({ success: true, message: 'Demande acceptée.' });
     } catch(e) {
@@ -10070,14 +10510,7 @@ app.post('/api/partner/requests/:id/decline', authenticatePartner, function(req,
         requests[idx].responded_at = new Date().toISOString();
         savePartnerRequests(requests);
 
-        sendPushToUser(requests[idx].client_email, {
-            title: 'Demande refusée',
-            body: 'Le partenaire n\'est pas disponible pour : ' + requests[idx].service_label + '. Vous pouvez en choisir un autre dans l\'annuaire.',
-            icon: '/assets/images/logo-favicon-192.png',
-            badge: '/assets/images/logo-favicon-32.png',
-            url: '/app.html#open-prestataires',
-            tag: 'partner-request'
-        });
+        notifyUser(requests[idx].client_email, 'client', 'partner-request', 'Demande refusée', 'Le partenaire n\'est pas disponible pour : ' + requests[idx].service_label + '. Vous pouvez en choisir un autre dans l\'annuaire.', '/app.html#open-prestataires');
 
         res.json({ success: true, message: 'Demande refusée.' });
     } catch(e) {
@@ -10156,14 +10589,7 @@ app.post('/api/partner/requests/:id/propose', authenticatePartner, function(req,
         requests[idx].status = 'proposed';
         savePartnerRequests(requests);
 
-        sendPushToUser(requests[idx].client_email, {
-            title: 'Proposition reçue 📋',
-            body: 'Le partenaire vous a envoyé une proposition pour : ' + requests[idx].service_label + '. Merci de la consulter et de signer le contrat.',
-            icon: '/assets/images/logo-favicon-192.png',
-            badge: '/assets/images/logo-favicon-32.png',
-            url: '/app.html#open-reservations',
-            tag: 'partner-request'
-        });
+        notifyUser(requests[idx].client_email, 'client', 'partner-request', 'Proposition reçue 📋', 'Le partenaire vous a envoyé une proposition pour : ' + requests[idx].service_label + '. Merci de la consulter et de signer le contrat.', '/app.html#open-reservations');
 
         res.json({ success: true, message: 'Proposition envoyée avec succès', request: requests[idx] });
     } catch(e) {

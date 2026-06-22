@@ -727,11 +727,28 @@
                             <i class="fas fa-money-bill-transfer mr-1"></i>Versements
                             <span id="pendingPayoutsBadge" style="display:none;position:absolute;top:-6px;right:-6px;background:#ef4444;color:white;border-radius:50%;width:16px;height:16px;font-size:9px;line-height:16px;text-align:center;"></span>
                         </button>
+                        <button onclick="showSection('litiges')" class="nav-btn" style="position:relative;color:#aaa;white-space:nowrap;">
+                            <i class="fas fa-scale-balanced mr-1"></i>Litiges
+                            <span id="pendingDisputesBadge" style="display:none;position:absolute;top:-6px;right:-6px;background:#ef4444;color:white;border-radius:50%;width:16px;height:16px;font-size:9px;line-height:16px;text-align:center;"></span>
+                        </button>
                     </div>
                 </div>
-                <button onclick="handleLogout()" style="border:1px solid rgba(255,255,255,.2);border-radius:8px;color:#aaa;padding:7px 12px;font-size:11px;font-weight:700;background:transparent;cursor:pointer;letter-spacing:.3px;text-transform:uppercase;transition:all .15s;" onmouseover="this.style.background='rgba(255,255,255,.08)'" onmouseout="this.style.background='transparent'">
-                    <i class="fas fa-sign-out-alt" style="margin-right:4px;"></i><span class="hidden md:inline">DÉCONNEXION</span><span class="md:hidden"></span>
-                </button>
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <button onclick="toggleAdminNotifInbox()" style="position:relative;border:1px solid rgba(255,255,255,.2);border-radius:8px;color:#aaa;padding:7px 10px;font-size:13px;background:transparent;cursor:pointer;">
+                        <i class="fas fa-bell"></i>
+                        <span id="adminNotifBadge" style="display:none;position:absolute;top:-6px;right:-6px;background:#ef4444;color:white;border-radius:50%;width:16px;height:16px;font-size:9px;line-height:16px;text-align:center;"></span>
+                    </button>
+                    <button onclick="handleLogout()" style="border:1px solid rgba(255,255,255,.2);border-radius:8px;color:#aaa;padding:7px 12px;font-size:11px;font-weight:700;background:transparent;cursor:pointer;letter-spacing:.3px;text-transform:uppercase;transition:all .15s;" onmouseover="this.style.background='rgba(255,255,255,.08)'" onmouseout="this.style.background='transparent'">
+                        <i class="fas fa-sign-out-alt" style="margin-right:4px;"></i><span class="hidden md:inline">DÉCONNEXION</span><span class="md:hidden"></span>
+                    </button>
+                </div>
+            </div>
+            <div id="adminNotifPanel" style="display:none;position:absolute;top:60px;right:16px;width:320px;max-height:70vh;overflow-y:auto;background:#111;border:1px solid rgba(255,255,255,.15);border-radius:12px;box-shadow:0 12px 30px rgba(0,0,0,.6);z-index:9999;">
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.1);font-weight:700;font-size:13px;color:#fff;">
+                    <span>Notifications</span>
+                    <button onclick="markAllAdminNotifsRead()" style="background:none;border:none;color:var(--c-gold);font-size:11px;font-weight:700;cursor:pointer;">Tout marquer lu</button>
+                </div>
+                <div id="adminNotifList" style="padding:0;"></div>
             </div>
         </nav>
         <!-- ancienne barre mobile masquée — conservée pour compatibilité JS -->
@@ -1148,6 +1165,22 @@
                 </div>
             </div>
 
+            <!-- ===== SECTION LITIGES ===== -->
+            <div id="litigesSection" class="container mx-auto max-w-7xl" style="display: none;">
+                <h2 class="text-3xl font-black mb-6" style="font-family:'Playfair Display',serif;">
+                    <i class="fas fa-scale-balanced mr-3" style="color:var(--genesis-yellow);"></i>LITIGES
+                </h2>
+                <div id="disputesList" class="space-y-4" style="color:#e0e0e0;">
+                    <p style="color:#aaa;opacity:0.6;font-weight:bold;">Chargement...</p>
+                </div>
+                <div id="disputeDetailView" style="display:none;">
+                    <button onclick="backToDisputesList()" style="background:#262626;border:1px solid rgba(255,215,0,.2);border-radius:8px;color:#e0e0e0;padding:10px 18px;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:1.5rem;display:inline-block;">
+                        <i class="fas fa-arrow-left mr-2"></i>RETOUR A LA LISTE
+                    </button>
+                    <div id="disputeDetailContent"></div>
+                </div>
+            </div>
+
             <div id="workflowSection" class="container mx-auto max-w-7xl" style="display: none;">
                 <h2 class="text-3xl font-black mb-6" style="font-family:'Playfair Display',serif;">
                     <i class="fas fa-tasks mr-3" style="color:var(--genesis-yellow);"></i>LIVRABLES A VALIDER
@@ -1407,6 +1440,7 @@
             document.getElementById('adminPanel').style.display = 'block';
             loadDashboard();
             loadFeedbacksBadge();
+            loadAdminNotifInbox();
         }
 
         function handleLogout() {
@@ -1448,6 +1482,8 @@
             if (feedbacksEl) feedbacksEl.style.display = 'none';
             var payoutsEl = document.getElementById('payoutsSection');
             if (payoutsEl) payoutsEl.style.display = 'none';
+            var litigesEl = document.getElementById('litigesSection');
+            if (litigesEl) litigesEl.style.display = 'none';
 
             if (section === 'dashboard') {
                 document.getElementById('dashboardSection').style.display = 'block';
@@ -1486,6 +1522,9 @@
             } else if (section === 'payouts') {
                 if (payoutsEl) payoutsEl.style.display = 'block';
                 loadPendingPayouts();
+            } else if (section === 'litiges') {
+                if (litigesEl) litigesEl.style.display = 'block';
+                loadAdminDisputes();
             }
         }
 
@@ -4772,6 +4811,190 @@
                     alert('Erreur: ' + (err.error || 'Erreur inconnue'));
                 }
             } catch (e) { alert('Erreur: ' + e.message); }
+        }
+
+        // ============================================================
+        // LITIGES (Phase 6)
+        // ============================================================
+        var _allAdminDisputes = [];
+        var DISPUTE_STATUS_LABELS = { open: 'Ouvert', jeremie_triage: 'Analyse Jérémie', escalated_admin: 'Escaladé', resolved: 'Résolu' };
+        var DISPUTE_STATUS_COLORS = { open: '#ffd43b', jeremie_triage: '#74c0fc', escalated_admin: '#ff6b6b', resolved: '#51cf66' };
+
+        async function loadAdminDisputes() {
+            try {
+                var token = localStorage.getItem('fa_genesis_token');
+                var response = await fetch(API_BASE_URL + '/api/admin/disputes', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (!response.ok) throw new Error('Erreur chargement');
+                var data = await response.json();
+                _allAdminDisputes = data.disputes || [];
+
+                var openCount = _allAdminDisputes.filter(function(d) { return d.status === 'escalated_admin' || d.status === 'open'; }).length;
+                var badge = document.getElementById('pendingDisputesBadge');
+                if (badge) {
+                    if (openCount > 0) { badge.style.display = 'block'; badge.textContent = openCount; }
+                    else { badge.style.display = 'none'; }
+                }
+
+                var listEl = document.getElementById('disputesList');
+                var detailEl = document.getElementById('disputeDetailView');
+                if (listEl) listEl.style.display = 'block';
+                if (detailEl) detailEl.style.display = 'none';
+                if (!listEl) return;
+                if (_allAdminDisputes.length === 0) {
+                    listEl.innerHTML = '<p style="color:#888;">Aucun litige.</p>';
+                    return;
+                }
+                listEl.innerHTML = _allAdminDisputes.map(renderDisputeCard).join('');
+            } catch (e) {
+                console.error('loadAdminDisputes:', e);
+            }
+        }
+
+        function renderDisputeCard(d) {
+            var statusColor = DISPUTE_STATUS_COLORS[d.status] || '#999';
+            var statusLabel = DISPUTE_STATUS_LABELS[d.status] || d.status;
+            var date = d.created_at ? new Date(d.created_at).toLocaleDateString('fr-FR') : '';
+            var lastMsg = (d.messages && d.messages.length) ? d.messages[d.messages.length - 1].content : '';
+            return '<div style="background:#181818;border:1px solid rgba(255,215,0,0.12);border-radius:12px;padding:1rem;margin-bottom:10px;cursor:pointer;" onclick="openDisputeDetail(\'' + d.id + '\')">' +
+                '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">' +
+                '<div>' +
+                '<div style="color:#e0e0e0;font-weight:700;">' + (d.client_email || '') + ' &harr; ' + (d.partner_name || d.partner_email || 'Partenaire') + '</div>' +
+                '<div style="font-size:12px;color:#888;margin-top:2px;">' + (d.category || 'autre') + ' · Commande ' + (d.order_id || '-').toString().substring(0, 12).toUpperCase() + ' · ' + date + '</div>' +
+                '</div>' +
+                '<div style="background:' + statusColor + ';color:#000;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:900;white-space:nowrap;">' + statusLabel + '</div>' +
+                '</div>' +
+                '<div style="font-size:12px;color:#aaa;line-height:1.4;">' + (lastMsg || '').replace(/</g, '&lt;').substring(0, 120) + '</div>' +
+                '</div>';
+        }
+
+        function backToDisputesList() {
+            var listEl = document.getElementById('disputesList');
+            var detailEl = document.getElementById('disputeDetailView');
+            if (listEl) listEl.style.display = 'block';
+            if (detailEl) detailEl.style.display = 'none';
+        }
+
+        function openDisputeDetail(id) {
+            var dispute = _allAdminDisputes.find(function(d) { return d.id === id; });
+            if (!dispute) return;
+            var listEl = document.getElementById('disputesList');
+            var detailEl = document.getElementById('disputeDetailView');
+            var contentEl = document.getElementById('disputeDetailContent');
+            if (listEl) listEl.style.display = 'none';
+            if (detailEl) detailEl.style.display = 'block';
+            if (!contentEl) return;
+
+            var msgsHtml = (dispute.messages || []).map(function(m) {
+                var roleColor = m.from_role === 'jeremie' ? '#74c0fc' : (m.from_role === 'system' ? '#ff8787' : (m.from_role === 'partner' ? '#FFD700' : '#e0e0e0'));
+                return '<div style="background:#111;border-left:3px solid ' + roleColor + ';border-radius:6px;padding:8px 12px;margin-bottom:8px;">' +
+                    '<div style="font-size:11px;font-weight:800;color:' + roleColor + ';margin-bottom:3px;">' + (m.from_name || m.from_role || '') + '</div>' +
+                    '<div style="font-size:13px;color:#ddd;line-height:1.5;">' + (m.content || '').replace(/</g, '&lt;') + '</div>' +
+                    '</div>';
+            }).join('');
+
+            var resolvedBlock = dispute.status === 'resolved' && dispute.admin_resolution
+                ? '<div style="background:#0d1f12;border:1px solid #1e4a2a;border-radius:8px;padding:12px;margin-top:14px;">' +
+                  '<div style="color:#51cf66;font-weight:800;font-size:12px;margin-bottom:4px;">RESOLU — ' + (dispute.admin_resolution.verdict || '') + '</div>' +
+                  '<div style="color:#ccc;font-size:13px;">' + (dispute.admin_resolution.note || '').replace(/</g, '&lt;') + '</div>' +
+                  '</div>'
+                : '<div style="margin-top:14px;background:#181818;border:1px solid rgba(255,215,0,0.12);border-radius:12px;padding:14px;">' +
+                  '<div style="font-weight:800;font-size:12px;margin-bottom:10px;color:#FFD700;">RESOUDRE CE LITIGE</div>' +
+                  '<select id="disp-verdict-' + dispute.id + '" style="width:100%;padding:8px 10px;border-radius:7px;border:1px solid #333;background:#111;color:#fff;font-size:13px;margin-bottom:8px;">' +
+                  '<option value="partner_favor">En faveur du partenaire</option>' +
+                  '<option value="client_favor">En faveur du client</option>' +
+                  '<option value="split">Partagé</option>' +
+                  '<option value="manual_action_required">Action manuelle requise</option>' +
+                  '</select>' +
+                  '<textarea id="disp-note-' + dispute.id + '" placeholder="Note de résolution (visible par les deux parties)" style="width:100%;min-height:70px;padding:8px 10px;border-radius:7px;border:1px solid #333;background:#111;color:#fff;font-size:13px;margin-bottom:8px;"></textarea>' +
+                  '<button onclick="resolveDispute(\'' + dispute.id + '\')" style="background:#22c55e;border:none;border-radius:7px;color:white;padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer;"><i class="fas fa-check mr-1"></i>VALIDER LE VERDICT</button>' +
+                  '</div>';
+
+            contentEl.innerHTML = '<div style="background:#181818;border:1px solid rgba(255,215,0,0.12);border-radius:12px;padding:1rem;margin-bottom:14px;">' +
+                '<div style="color:#e0e0e0;font-weight:700;font-size:15px;">' + (dispute.client_email || '') + ' &harr; ' + (dispute.partner_name || dispute.partner_email || 'Partenaire') + '</div>' +
+                '<div style="font-size:12px;color:#888;margin-top:4px;">' + (dispute.category || 'autre') + ' · Commande ' + (dispute.order_id || '-') + ' · Mission ' + (dispute.dispatch_id || '-') + '</div>' +
+                '</div>' +
+                msgsHtml + resolvedBlock;
+        }
+
+        async function resolveDispute(id) {
+            var verdictEl = document.getElementById('disp-verdict-' + id);
+            var noteEl = document.getElementById('disp-note-' + id);
+            var verdict = verdictEl ? verdictEl.value : 'manual_action_required';
+            var note = noteEl ? noteEl.value.trim() : '';
+            if (!confirm('Confirmer ce verdict ? Les deux parties seront notifiées.')) return;
+            try {
+                var token = localStorage.getItem('fa_genesis_token');
+                var response = await fetch(API_BASE_URL + '/api/admin/disputes/' + id + '/resolve', {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ verdict: verdict, note: note })
+                });
+                if (response.ok) {
+                    loadAdminDisputes();
+                } else {
+                    var err = await response.json();
+                    alert('Erreur: ' + (err.error || 'Erreur inconnue'));
+                }
+            } catch (e) { alert('Erreur: ' + e.message); }
+        }
+
+        // ============================================================
+        // NOTIFICATIONS PERSISTANTES (Phase 6)
+        // ============================================================
+        function toggleAdminNotifInbox() {
+            var panel = document.getElementById('adminNotifPanel');
+            if (!panel) return;
+            if (panel.style.display === 'block') { panel.style.display = 'none'; return; }
+            panel.style.display = 'block';
+            loadAdminNotifInbox();
+        }
+        async function loadAdminNotifInbox() {
+            try {
+                var token = localStorage.getItem('fa_genesis_token');
+                var response = await fetch(API_BASE_URL + '/api/notifications', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (!response.ok) return;
+                var data = await response.json();
+                var list = (data && Array.isArray(data.notifications)) ? data.notifications : [];
+                var unread = (data && data.unread_count) || 0;
+                var badge = document.getElementById('adminNotifBadge');
+                if (badge) {
+                    if (unread > 0) { badge.style.display = 'block'; badge.textContent = unread; }
+                    else { badge.style.display = 'none'; }
+                }
+                var listEl = document.getElementById('adminNotifList');
+                if (!listEl) return;
+                if (list.length === 0) {
+                    listEl.innerHTML = '<p style="padding:16px;color:#888;font-size:12px;text-align:center;">Aucune notification</p>';
+                    return;
+                }
+                listEl.innerHTML = list.slice(0, 30).map(function(n) {
+                    return '<div onclick="openAdminNotifItem(\'' + n.id + '\',\'' + (n.link || '').replace(/'/g, "\\'") + '\')" style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.08);cursor:pointer;' + (n.read ? '' : 'background:rgba(255,215,0,.06);') + '">' +
+                        '<div style="font-size:12.5px;font-weight:800;color:#fff;margin-bottom:2px;">' + (n.title || '') + '</div>' +
+                        '<div style="font-size:11.5px;color:#aaa;">' + (n.body || '') + '</div>' +
+                        '</div>';
+                }).join('');
+            } catch (e) {}
+        }
+        function openAdminNotifItem(id, link) {
+            var token = localStorage.getItem('fa_genesis_token');
+            fetch(API_BASE_URL + '/api/notifications/' + id + '/read', { method: 'POST', headers: { 'Authorization': 'Bearer ' + token } }).catch(function() {});
+            var panel = document.getElementById('adminNotifPanel');
+            if (panel) panel.style.display = 'none';
+            if (link && link.indexOf('open-disputes') !== -1) { showSection('litiges'); return; }
+            if (link) window.location.href = link;
+        }
+        function markAllAdminNotifsRead() {
+            var token = localStorage.getItem('fa_genesis_token');
+            fetch(API_BASE_URL + '/api/notifications/read-all', { method: 'POST', headers: { 'Authorization': 'Bearer ' + token } })
+                .then(function() { loadAdminNotifInbox(); }).catch(function() {});
+        }
+        if (!window._adminNotifPollStarted) {
+            window._adminNotifPollStarted = true;
+            setInterval(loadAdminNotifInbox, 60000);
         }
 
         async function loadPendingDeliverables() {
