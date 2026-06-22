@@ -57,6 +57,7 @@ const CW_MESSAGES_FILE = path.join(__dirname, 'data', 'cw-messages.json');
 const CW_DEVIS_FILE = path.join(__dirname, 'data', 'cw-devis.json');
 const PUSH_SUBSCRIPTIONS_FILE = path.join(__dirname, 'data', 'push-subscriptions.json');
 const DISPATCHES_FILE = path.join(__dirname, 'data', 'dispatches.json');
+const PARTNER_REQUESTS_FILE = path.join(__dirname, 'data', 'partner_requests.json');
 const PAYOUTS_FILE    = path.join(__dirname, 'data', 'payouts.json');
 const PARTNER_REVIEWS_FILE = path.join(__dirname, 'data', 'partner_reviews.json');
 const HALL_OF_FAME_FILE = path.join(__dirname, 'data', 'hall_of_fame.json');
@@ -340,6 +341,20 @@ function saveDispatches(data) {
     catch(e) { console.error('[DISPATCH] Erreur sauvegarde:', e); }
 }
 var _dispatchLocks = {}; // verrou en mémoire contre les race conditions
+
+// ── Demandes directes client → partenaire (marketplace, remplace le dispatch broadcast) ──
+function loadPartnerRequests() {
+    try {
+        if (!fs.existsSync(PARTNER_REQUESTS_FILE)) return [];
+        return JSON.parse(fs.readFileSync(PARTNER_REQUESTS_FILE, 'utf8')) || [];
+    } catch(e) { return []; }
+}
+function savePartnerRequests(data) {
+    try {
+        fs.writeFileSync(PARTNER_REQUESTS_FILE, JSON.stringify(data, null, 2), 'utf8');
+        persistentStore.persistToCloud('partner-requests', data).catch(function(e) {});
+    } catch(e) { console.error('[PARTNER-REQUEST] Erreur sauvegarde:', e); }
+}
 
 // ── Payouts (répartition automatique des revenus) ──
 function loadPayouts() {
@@ -665,98 +680,6 @@ function requestPartnerReviews(clientEmail, acceptedDispatches) {
         if (changed) saveDispatches(allDispatches);
     } catch (e) {
         console.error('[REVIEW] Erreur requestPartnerReviews:', e);
-    }
-}
-
-function createDispatchesForOrder(orderId) {
-    try {
-        var orders = loadOrders();
-        var order = orders.find(function(o) { return o.id === orderId; });
-        if (!order) return;
-
-        var productIds = [];
-        if (order.items && Array.isArray(order.items) && order.items.length > 0) {
-            order.items.forEach(function(item) { if (item.product_id) productIds.push(item.product_id); });
-        } else if (order.product_id) {
-            productIds.push(order.product_id);
-        }
-        if (productIds.length === 0) return;
-
-        var users = loadUsers();
-        var clientEmail = (order.client_info && order.client_info.email) || order.email || '';
-        var user = users.find(function(u) { return u.email === clientEmail; });
-        var clientPrenom = (order.client_info && order.client_info.first_name)
-            || (user && (user.prenom || user.firstName || user.first_name))
-            || 'Client';
-
-        // Calculer les montants du partenaire
-        var totalAmount   = parseFloat(order.total_amount   || 0);
-        var depositAmount = parseFloat(order.deposit_amount || (totalAmount * 0.30));
-        var balanceAmount = parseFloat(order.balance_amount || (totalAmount - depositAmount));
-
-        // Compter les rôles externes distincts sur l'ensemble de la commande
-        var allExternalRoles = [];
-        productIds.forEach(function(pid) {
-            (ASSIGNMENT_RULES[pid] || []).forEach(function(r) {
-                if (r !== 'admin' && allExternalRoles.indexOf(r) === -1) allExternalRoles.push(r);
-            });
-        });
-        var isPartnerTarif = productIds.length > 0 && productIds.every(function(pid) { return PARTNER_TARIF_IDS.indexOf(pid) !== -1; });
-        var partnerPct = isPartnerTarif ? 85 : 15;
-
-        // Reservation prioritaire : les clients Or/Prestige sont mis en avant aux partenaires,
-        // + bonus si le client a deja un Cercle Genesis eleve avec un partenaire (n'importe lequel)
-        var clientBadge = clientEmail ? getClientBadge(getClientCompletedOrders(clientEmail)) : null;
-        var cercleTier = clientEmail ? getClientMaxCercleGenesisTier(clientEmail) : null;
-        var cercleBonus = cercleTier && cercleTier.id === 'constellation' ? 2 : (cercleTier && cercleTier.id === 'cercle_premium' ? 1 : 0);
-        var dispatchPriority = (clientBadge === 'prestige' ? 2 : (clientBadge === 'or' ? 1 : 0)) + cercleBonus;
-
-        var dispatches = loadDispatches();
-        var createdTypes = [];
-
-        productIds.forEach(function(productId) {
-            var roles = ASSIGNMENT_RULES[productId] || [];
-            roles.forEach(function(role) {
-                if (role === 'admin') return;
-                if (createdTypes.indexOf(role) !== -1) return;
-                var existing = dispatches.find(function(d) {
-                    return d.order_id === orderId && d.partner_type === role && d.status !== 'cancelled';
-                });
-                if (existing) return;
-
-                var partnerDeposit = parseFloat((depositAmount * partnerPct / 100).toFixed(2));
-                var partnerTotal   = parseFloat((totalAmount   * partnerPct / 100).toFixed(2));
-
-                dispatches.push({
-                    id: 'DSP-' + uuidv4().split('-')[0],
-                    order_id: orderId,
-                    client_prenom: clientPrenom,
-                    offer_name: productId,
-                    offer_total_price: totalAmount,
-                    partner_type: role,
-                    partner_pct: partnerPct,
-                    partner_deposit_amount: partnerDeposit,
-                    partner_total_amount: partnerTotal,
-                    client_availability: null,
-                    client_badge: clientBadge,
-                    priority: dispatchPriority,
-                    status: 'pending_acceptance',
-                    claimed_by_name: null,
-                    claimed_by_profile: null,
-                    claimed_by_partner_id: null,
-                    claimed_at: null,
-                    claim_message: null,
-                    proposed_start: null,
-                    created_at: new Date().toISOString()
-                });
-                createdTypes.push(role);
-                console.log('[DISPATCH] Mission créée : ' + role + ' pour commande ' + orderId + ' (gain ' + partnerPct + '% = ' + partnerTotal + ' €)');
-            });
-        });
-
-        if (createdTypes.length > 0) saveDispatches(dispatches);
-    } catch(e) {
-        console.error('[DISPATCH] Erreur création missions:', e);
     }
 }
 
@@ -1907,6 +1830,19 @@ app.post('/api/orders/create', (req, res) => {
                 return res.status(404).json({ error: 'Prestation non trouvee' });
             }
 
+            // Le paiement n'est autorisé qu'après acceptation explicite du partenaire :
+            // le client doit d'abord avoir envoyé une demande acceptée pour ce couple partenaire/prestation.
+            var psoRequests = loadPartnerRequests();
+            var psoRequest = psoRequests.find(function(r) {
+                return r.client_email === clientInfo.email &&
+                    r.partner_id === partner.id &&
+                    r.service_id === service.id &&
+                    r.status === 'accepted';
+            });
+            if (!psoRequest) {
+                return res.status(403).json({ error: 'Vous devez d\'abord envoyer une demande et obtenir l\'accord du partenaire avant de payer.' });
+            }
+
             const psoTotal = parseFloat(service.price);
             const psoDeposit = Math.round(psoTotal * 0.30);
             const psoBalance = psoTotal - psoDeposit;
@@ -1918,6 +1854,7 @@ app.post('/api/orders/create', (req, res) => {
                 product_type: 'partner_service',
                 partner_id: partner.id,
                 partner_service_id: service.id,
+                request_id: psoRequest.id,
                 client_info: {
                     email: clientInfo.email,
                     first_name: clientInfo.firstName,
@@ -1942,6 +1879,9 @@ app.post('/api/orders/create', (req, res) => {
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()
             };
+
+            var psoReqIdx = psoRequests.findIndex(function(r) { return r.id === psoRequest.id; });
+            if (psoReqIdx !== -1) { psoRequests[psoReqIdx].order_id = order.id; savePartnerRequests(psoRequests); }
 
             console.log(`[ORDER] Commande prestation partenaire: ${order.id} - ${service.label} (${partner.email}) - ${psoTotal}EUR`);
 
@@ -2787,11 +2727,9 @@ app.post('/api/payments/sumup/webhook', async (req, res) => {
                         }
                         console.log('[WEBHOOK] Mission partenaire créée et acompte versé (commande directe)');
                     } else {
-                        // Assigner les intervenants admin + créer les missions partenaires
+                        // Assigner les intervenants admin (le dispatch broadcast externe a été retiré :
+                        // le client choisit désormais un partenaire précis via une demande directe)
                         assignIntervenantsFromOrder(orderId);
-                        createDispatchesForOrder(orderId);
-                        // Le versement de l'acompte partenaire est déclenché uniquement
-                        // lorsque le partenaire accepte explicitement la mission.
                         console.log('[WEBHOOK] Acompte retenu — en attente acceptation partenaire');
                     }
 
@@ -2989,10 +2927,9 @@ app.post('/api/payments/verify', async (req, res) => {
                             }
                             console.log('[VERIFY] Mission partenaire créée et acompte versé (commande directe)');
                         } else {
-                            // Assigner les intervenants admin + créer les missions partenaires
+                            // Assigner les intervenants admin (le dispatch broadcast externe a été retiré :
+                            // le client choisit désormais un partenaire précis via une demande directe)
                             assignIntervenantsFromOrder(orderId);
-                            createDispatchesForOrder(orderId);
-                            // Le versement de l'acompte partenaire est déclenché à l'acceptation de la mission.
                             console.log('[VERIFY] Acompte retenu — en attente acceptation partenaire');
                         }
 
@@ -6632,6 +6569,37 @@ function authenticateClient(req, res) {
     return user;
 }
 
+// PUT /api/clients/update-profile — le client modifie son propre profil (nom/téléphone/photo)
+app.put('/api/clients/update-profile', function(req, res) {
+    try {
+        var user = authenticateClient(req, res);
+        if (!user) return;
+
+        var prenom = req.body.prenom;
+        var nom = req.body.nom;
+        var telephone = req.body.telephone;
+        var photo = req.body.photo;
+
+        var users = loadUsers();
+        var index = users.findIndex(function(u) { return u.id === user.id; });
+        if (index === -1) return res.status(404).json({ error: 'Utilisateur non trouvé' });
+
+        if (typeof prenom === 'string' && prenom.trim()) users[index].prenom = prenom.trim();
+        if (typeof nom === 'string') users[index].nom = nom.trim();
+        if (typeof telephone === 'string') users[index].telephone = telephone.trim();
+        if (typeof photo === 'string' && photo) users[index].photo = photo;
+        users[index].updatedAt = new Date().toISOString();
+
+        saveUsers(users);
+        var userSafe = JSON.parse(JSON.stringify(users[index]));
+        delete userSafe.password;
+        res.json({ success: true, user: userSafe });
+    } catch (error) {
+        console.error('[CLIENT] Erreur update-profile:', error);
+        res.status(500).json({ error: 'Erreur lors de la mise à jour du profil' });
+    }
+});
+
 // Helper : sanitiser une session pour le client (masquer meet_url si pas CONFIRMED)
 function sanitizeSessionForClient(session) {
     var s = JSON.parse(JSON.stringify(session));
@@ -9611,6 +9579,177 @@ app.post('/api/partner/dispatches/:id/decline', authenticatePartner, function(re
         res.json({ success: true, message: 'Mission refusée.' });
     } catch(e) {
         console.error('[DISPATCH] Erreur decline:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// ============================================================
+//  DEMANDES DIRECTES — Client choisit un partenaire précis,
+//  qui accepte ou refuse librement (remplace le dispatch broadcast)
+// ============================================================
+
+// POST /api/partner-requests — le client envoie une demande à un partenaire précis
+app.post('/api/partner-requests', function(req, res) {
+    try {
+        var user = authenticateClient(req, res);
+        if (!user) return;
+
+        var partnerId = req.body.partnerId;
+        var serviceId = req.body.serviceId;
+        if (!partnerId || !serviceId) {
+            return res.status(400).json({ error: 'partnerId et serviceId requis' });
+        }
+
+        var partner = getPartnerById(partnerId);
+        if (!partner) return res.status(404).json({ error: 'Partenaire non trouvé' });
+        if (partner.accountStatus !== 'active') {
+            return res.status(400).json({ error: 'Ce partenaire n\'est pas disponible actuellement' });
+        }
+        var service = (partner.services || []).find(function(s) { return s.id === serviceId && s.active !== false; });
+        if (!service) return res.status(404).json({ error: 'Prestation non trouvée' });
+
+        var requests = loadPartnerRequests();
+        var alreadyPending = requests.some(function(r) {
+            return r.client_email === user.email && r.partner_id === partnerId && r.service_id === serviceId && r.status === 'pending';
+        });
+        if (alreadyPending) {
+            return res.status(409).json({ error: 'Vous avez déjà une demande en attente pour cette prestation auprès de ce partenaire.' });
+        }
+
+        var newRequest = {
+            id: 'PREQ-' + uuidv4().split('-')[0].toUpperCase(),
+            client_email: user.email,
+            client_name: ((user.prenom || '') + ' ' + (user.nom || '')).trim() || user.email,
+            partner_id: partnerId,
+            service_id: serviceId,
+            service_label: service.label,
+            price: service.price,
+            budget_note: (req.body.budgetNote || '').toString().substring(0, 300),
+            desired_date: req.body.desiredDate || null,
+            location: (req.body.location || '').toString().substring(0, 200),
+            description: (req.body.description || '').toString().substring(0, 1500),
+            files: Array.isArray(req.body.files) ? req.body.files.slice(0, 5) : [],
+            status: 'pending',
+            created_at: new Date().toISOString(),
+            responded_at: null
+        };
+        requests.push(newRequest);
+        savePartnerRequests(requests);
+
+        sendPushToUser(partner.email, {
+            title: 'Nouvelle demande de mission',
+            body: newRequest.client_name + ' souhaite vous engager pour : ' + service.label,
+            icon: '/assets/images/logo-favicon-192.png',
+            badge: '/assets/images/logo-favicon-32.png',
+            url: '/app.html#open-partner',
+            tag: 'partner-request'
+        });
+
+        res.json({ success: true, request: newRequest });
+    } catch(e) {
+        console.error('[PARTNER-REQUEST] Erreur création:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// GET /api/my-requests — le client liste ses demandes envoyées
+app.get('/api/my-requests', function(req, res) {
+    try {
+        var user = authenticateClient(req, res);
+        if (!user) return;
+
+        var requests = loadPartnerRequests()
+            .filter(function(r) { return r.client_email === user.email; })
+            .sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); })
+            .map(function(r) {
+                var partner = getPartnerById(r.partner_id);
+                var out = JSON.parse(JSON.stringify(r));
+                out.partner_name = partner ? (partner.prenom ? (partner.prenom + ' ' + (partner.nom || '')) : partner.company || partner.email) : 'Partenaire';
+                return out;
+            });
+        res.json({ requests: requests });
+    } catch(e) {
+        console.error('[PARTNER-REQUEST] Erreur liste client:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// GET /api/partner/requests — le partenaire liste les demandes en attente le ciblant
+app.get('/api/partner/requests', authenticatePartner, function(req, res) {
+    try {
+        var requests = loadPartnerRequests()
+            .filter(function(r) { return r.partner_id === req.partner.id && r.status === 'pending'; })
+            .sort(function(a, b) { return new Date(a.created_at) - new Date(b.created_at); });
+        res.json({ requests: requests });
+    } catch(e) {
+        console.error('[PARTNER-REQUEST] Erreur liste partenaire:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// POST /api/partner/requests/:id/accept — le partenaire accepte librement la demande
+app.post('/api/partner/requests/:id/accept', authenticatePartner, function(req, res) {
+    try {
+        var requests = loadPartnerRequests();
+        var idx = requests.findIndex(function(r) { return r.id === req.params.id; });
+        if (idx === -1) return res.status(404).json({ error: 'Demande introuvable' });
+        if (requests[idx].partner_id !== req.partner.id) {
+            return res.status(403).json({ error: 'Cette demande ne vous concerne pas.' });
+        }
+        if (requests[idx].status !== 'pending') {
+            return res.status(409).json({ error: 'Cette demande n\'est plus en attente (statut: ' + requests[idx].status + ').' });
+        }
+
+        requests[idx].status = 'accepted';
+        requests[idx].responded_at = new Date().toISOString();
+        savePartnerRequests(requests);
+
+        var partnerName = req.partner.prenom || req.partner.email;
+        sendPushToUser(requests[idx].client_email, {
+            title: 'Demande acceptée ✅',
+            body: partnerName + ' a accepté votre demande pour : ' + requests[idx].service_label + '. Vous pouvez payer l\'acompte.',
+            icon: '/assets/images/logo-favicon-192.png',
+            badge: '/assets/images/logo-favicon-32.png',
+            url: '/app.html#open-reservations',
+            tag: 'partner-request'
+        });
+
+        res.json({ success: true, message: 'Demande acceptée.' });
+    } catch(e) {
+        console.error('[PARTNER-REQUEST] Erreur accept:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// POST /api/partner/requests/:id/decline — le partenaire refuse librement la demande
+app.post('/api/partner/requests/:id/decline', authenticatePartner, function(req, res) {
+    try {
+        var requests = loadPartnerRequests();
+        var idx = requests.findIndex(function(r) { return r.id === req.params.id; });
+        if (idx === -1) return res.status(404).json({ error: 'Demande introuvable' });
+        if (requests[idx].partner_id !== req.partner.id) {
+            return res.status(403).json({ error: 'Cette demande ne vous concerne pas.' });
+        }
+        if (requests[idx].status !== 'pending') {
+            return res.status(409).json({ error: 'Cette demande n\'est plus en attente (statut: ' + requests[idx].status + ').' });
+        }
+
+        requests[idx].status = 'declined';
+        requests[idx].responded_at = new Date().toISOString();
+        savePartnerRequests(requests);
+
+        sendPushToUser(requests[idx].client_email, {
+            title: 'Demande refusée',
+            body: 'Le partenaire n\'est pas disponible pour : ' + requests[idx].service_label + '. Vous pouvez en choisir un autre dans l\'annuaire.',
+            icon: '/assets/images/logo-favicon-192.png',
+            badge: '/assets/images/logo-favicon-32.png',
+            url: '/app.html#open-prestataires',
+            tag: 'partner-request'
+        });
+
+        res.json({ success: true, message: 'Demande refusée.' });
+    } catch(e) {
+        console.error('[PARTNER-REQUEST] Erreur decline:', e);
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });

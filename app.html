@@ -707,25 +707,26 @@ a{text-decoration:none;color:inherit}
   background:var(--card);border:1px solid var(--border);border-radius:8px;
   color:var(--text);font-family:inherit;font-size:12px;padding:10px 8px;outline:none;flex-shrink:0;
 }
-.p-dir-results{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:0 16px 8px;}
+.p-dir-results{display:flex;flex-direction:column;gap:10px;padding:0 16px 8px;}
 .p-dir-card{
+  display:flex;align-items:stretch;
   background:var(--card);border:3px solid #000;border-radius:16px;overflow:hidden;
   box-shadow:4px 4px 0 var(--yellow);cursor:pointer;transition:transform .1s;
 }
 .p-dir-card:active{transform:scale(.97)}
 .p-dir-card-photo{
-  width:100%;aspect-ratio:16/9;flex-shrink:0;overflow:hidden;
+  width:92px;height:92px;aspect-ratio:1/1;flex-shrink:0;overflow:hidden;
   background:#1a1a1a;display:flex;align-items:center;justify-content:center;
 }
 .p-dir-card-photo img{width:100%;height:100%;object-fit:cover}
 .p-dir-card-initials{font-size:22px;font-weight:900;color:var(--yellow);font-family:'Unbounded',sans-serif}
-.p-dir-card-body{padding:10px}
+.p-dir-card-body{padding:10px;flex:1;min-width:0;display:flex;align-items:center}
 .p-dir-card-info{min-width:0}
 .p-dir-card-name{font-size:13px;font-weight:900;color:var(--text);line-height:1.25;display:flex;align-items:center;gap:4px;flex-wrap:wrap}
 .p-dir-card-cat{font-size:9px;color:var(--yellow);font-weight:900;text-transform:uppercase;letter-spacing:.4px;margin:3px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .p-dir-card-stars{font-size:10px;color:var(--muted);font-weight:700}
 .p-dir-card-price{font-size:11px;font-weight:900;color:var(--text);margin-top:6px}
-.p-dir-empty{grid-column:1/-1;padding:30px 16px;color:var(--muted);text-align:center;font-size:13px}
+.p-dir-empty{padding:30px 16px;color:var(--muted);text-align:center;font-size:13px}
 .p-dir-reviews-list{list-style:none}
 .p-dir-reviews-list li{padding:10px 0;border-bottom:1px solid #1c1c1c}
 .p-dir-review-top{display:flex;align-items:center;gap:8px;margin-bottom:4px}
@@ -3430,7 +3431,7 @@ function openPartnerDetail(partnerId){
               +'<div class="p-dir-service-info"><div class="p-dir-service-label">'+s.label+'</div>'
               +(s.description?'<div class="p-dir-service-desc">'+s.description+'</div>':'')+'</div>'
               +'<div class="p-dir-service-cta"><div class="p-dir-service-price">'+s.price+' €</div>'
-              +'<button class="p-dir-service-btn" onclick="openPartnerBooking(\''+p.id+'\',\''+s.id+'\')">Commander</button></div>'
+              +'<button class="p-dir-service-btn" onclick="openPartnerRequest(\''+p.id+'\',\''+s.id+'\')">Demander ce professionnel</button></div>'
               +'</div>';
           }).join('')
         : '<div class="p-dir-review-empty">Ce partenaire n\'a pas encore publié de prestations.</div>';
@@ -3506,7 +3507,29 @@ function closeDetail(){
 function renderResaTab(){
   var c = document.getElementById('resaContent');
   if(!USER||GUEST){ c.innerHTML = locked('Mes réservations','Connectez-vous pour voir vos réservations et leur statut.'); return; }
-  c.innerHTML = '<div class="resa-list" id="resaList"><div class="empty"><div class="e-ico"><i class="fa-solid fa-calendar-days"></i></div><p>Chargement...</p></div></div>';
+  c.innerHTML = '<div class="resa-list" id="myRequestsList"></div><div class="resa-list" id="resaList"><div class="empty"><div class="e-ico"><i class="fa-solid fa-calendar-days"></i></div><p>Chargement...</p></div></div>';
+  fetch((window.FA_GENESIS_API||API)+'/api/my-requests',{headers:{'Authorization':'Bearer '+USER._token}})
+    .then(function(r){return r.json();})
+    .then(function(data){
+      var reqList = (data&&Array.isArray(data.requests))?data.requests:[];
+      var el = document.getElementById('myRequestsList');
+      if(!el) return;
+      if(reqList.length===0){ el.innerHTML=''; return; }
+      el.innerHTML = '<div class="detail-feats-title" style="margin:4px 0 10px;">Mes demandes</div>' + reqList.map(function(r){
+        var sc = r.status==='accepted'?'s-confirmed':r.status==='declined'?'s-refused':'s-pending';
+        var sl = r.status==='accepted'?'🟢 Acceptée':r.status==='declined'?'Refusée':'🟡 Demande envoyée';
+        var actionHtml = r.status==='accepted'
+          ? '<button class="resa-action-btn rab-primary" onclick="payAcceptedRequest(\''+r.partner_id+'\',\''+r.service_id+'\',\''+(r.service_label||'').replace(/'/g,"\\'")+'\','+(parseFloat(r.price)||0)+',\''+(r.partner_name||'').replace(/'/g,"\\'")+'\')">Payer l\'acompte</button>'
+          : '';
+        return '<div class="resa-card">'
+          +'<div class="resa-top"><div class="resa-name">'+(r.service_label||'Demande')+'</div>'
+          +'<span class="resa-status '+sc+'">'+sl+'</span></div>'
+          +'<div class="resa-date"><i class="fa-solid fa-user"></i> '+(r.partner_name||'')+'</div>'
+          +(r.price?'<div class="resa-price">'+r.price+' €</div>':'')
+          +(actionHtml?'<div class="resa-actions">'+actionHtml+'</div>':'')
+          +'</div>';
+      }).join('');
+    }).catch(function(){});
   fetch(API+'/api/reservations/me',{headers:{'Authorization':'Bearer '+USER._token}})
     .then(function(r){return r.json();})
     .then(function(data){
@@ -3861,6 +3884,7 @@ function renderProfil(){
   var params = '<div class="plus-section">'
     +'<div class="plus-section-title">MES PARAMÈTRES</div>'
     +'<div class="plus-group">'
+    +(USER && !GUEST ? pli('<i class="fa-solid fa-user-pen"></i>','#1a1400','Modifier mon profil',null,'showEditProfil()') : '')
     +pli('<i class="fa-solid fa-folder-tree"></i>','#0d0d1a','Gestion des données personnelles',null,'showDonneesMenu()')
     +pli('<i class="fa-solid fa-cookie-bite"></i>','#1a1000','Gestion des cookies',null,'showCookiesMenu()')
     +(USER && !GUEST ? pli('<i class="fa-solid fa-bell"></i>','#1a0800','Notifications',null,'window.FA_activerNotifications&&window.FA_activerNotifications()') : '')
@@ -3889,6 +3913,73 @@ function renderProfil(){
 function openInBrowser(url){
   window.open(url, '_blank', 'noopener,noreferrer');
   return false;
+}
+
+// ── ÉDITION DU PROFIL CLIENT ─────────────────────────────────
+function showEditProfil(){
+  if(!USER||GUEST) return;
+  var c = document.getElementById('profilContent');
+  var photo = USER.photo;
+  c.innerHTML = '<div class="plus-subpage">'
+    +'<div class="plus-back-bar">'
+    +'<button class="plus-back-btn" onclick="renderProfil()">‹</button>'
+    +'<div class="plus-sub-title">Modifier mon profil</div>'
+    +'</div>'
+    +'<div class="plus-section" style="padding-top:20px">'
+    +'<div style="display:flex;flex-direction:column;align-items:center;gap:10px;margin-bottom:18px;">'
+    +'<div id="ep-photo-preview" style="width:84px;height:84px;border-radius:50%;background:#1a1a1a;border:2px solid var(--yellow);display:flex;align-items:center;justify-content:center;font-size:32px;color:#666;overflow:hidden;">'
+    +(photo ? '<img src="'+photo+'" alt="" style="width:100%;height:100%;object-fit:cover;">' : '<i class="fa-solid fa-user"></i>')
+    +'</div>'
+    +'<input type="file" id="ep-photo-input" accept="image/*" style="display:none;" onchange="_epOnPhotoSelected(this)">'
+    +'<button class="ptnr-login-btn" style="margin-top:0;padding:10px 16px;width:auto;" onclick="document.getElementById(\'ep-photo-input\').click()"><i class="fa-solid fa-camera"></i> Changer ma photo</button>'
+    +'</div>'
+    +'<div class="mc-field"><label class="mc-label">Prénom *</label><input id="ep-prenom" class="mc-input" type="text" value="'+(USER.prenom||'').replace(/"/g,'&quot;')+'"></div>'
+    +'<div class="mc-field"><label class="mc-label">Nom</label><input id="ep-nom" class="mc-input" type="text" value="'+(USER.nom||'').replace(/"/g,'&quot;')+'"></div>'
+    +'<div class="mc-field"><label class="mc-label">Téléphone</label><input id="ep-telephone" class="mc-input" type="tel" value="'+(USER.telephone||'').replace(/"/g,'&quot;')+'"></div>'
+    +'<div class="cwb-err" id="ep-err"></div>'
+    +'<button class="cwb-btn cwb-btn-yellow" style="width:100%;margin-top:8px;" id="ep-save-btn" onclick="saveProfilEdits()">ENREGISTRER</button>'
+    +'</div></div>';
+}
+function _epOnPhotoSelected(input){
+  var file = input.files && input.files[0];
+  if(!file) return;
+  _ptnrImageFileToCompressedBase64(file, 600, 0.85).then(function(dataUri){
+    USER._pendingPhoto = dataUri;
+    var preview = document.getElementById('ep-photo-preview');
+    if(preview) preview.innerHTML = '<img src="'+dataUri+'" alt="" style="width:100%;height:100%;object-fit:cover;">';
+  }).catch(function(){});
+}
+function saveProfilEdits(){
+  if(!USER||GUEST) return;
+  var prenom = ((document.getElementById('ep-prenom')||{}).value||'').trim();
+  var er=document.getElementById('ep-err');
+  if(!prenom){ if(er){er.textContent='Le prénom est requis.';er.classList.add('on');} return; }
+  if(er) er.classList.remove('on');
+  var btn=document.getElementById('ep-save-btn'); if(btn){btn.disabled=true;btn.textContent='Enregistrement...';}
+
+  var body = {
+    prenom: prenom,
+    nom: ((document.getElementById('ep-nom')||{}).value||'').trim(),
+    telephone: ((document.getElementById('ep-telephone')||{}).value||'').trim()
+  };
+  if(USER._pendingPhoto) body.photo = USER._pendingPhoto;
+
+  fetch((window.FA_GENESIS_API||API)+'/api/clients/update-profile',{
+    method:'PUT', headers:{'Content-Type':'application/json','Authorization':'Bearer '+USER._token},
+    body:JSON.stringify(body)
+  }).then(function(r){ return r.json().then(function(d){ return {ok:r.ok, data:d}; }); })
+  .then(function(res){
+    if(!res.ok) throw new Error((res.data&&res.data.error)||'Erreur lors de la mise à jour');
+    var u = res.data.user||{};
+    USER.prenom=u.prenom; USER.nom=u.nom; USER.telephone=u.telephone; USER.photo=u.photo;
+    delete USER._pendingPhoto;
+    try{ localStorage.setItem('fa_genesis_session', JSON.stringify(USER)); }catch(e){}
+    showToast('Profil mis à jour','Vos informations ont été enregistrées','success');
+    renderProfil();
+  }).catch(function(err){
+    if(btn){btn.disabled=false;btn.textContent='ENREGISTRER';}
+    if(er){er.textContent=err.message||'Erreur. Réessayez.';er.classList.add('on');}
+  });
 }
 
 function pli(ico, bg, label, href, action){
@@ -6033,11 +6124,11 @@ function _ptnrLoadHome(){
     if(projets.length>0) html += '<div class="ptnr-card" style="border-left:3px solid #22c55e;cursor:pointer;" onclick="_ptnrNav(\'projets\')"><div class="ptnr-card-title">'+projets.length+' projet(s) assigné(s)</div><div class="ptnr-card-sub">Appuyez pour voir vos projets</div></div>';
     if(!pendingDevis && !inbox.length && !projets.length) html += '<div class="ptnr-empty"><div class="ptnr-empty-ico"><i class="fa-solid fa-circle-check"></i></div><div class="ptnr-empty-txt">Tout est à jour !</div></div>';
     if(list) list.innerHTML = html;
-    // Charger le compteur de missions et afficher l'alerte
-    _ptnrFetch('/api/partner/dispatches/count').then(function(r){
-      var cnt = r && r.count ? r.count : 0;
+    // Charger le compteur de demandes en attente et afficher l'alerte
+    _ptnrFetch('/api/partner/requests').then(function(r){
+      var cnt = (r && r.requests && r.requests.length) || 0;
       if(cnt > 0 && list){
-        var alertCard = '<div class="dispatch-card" style="cursor:pointer;margin-bottom:12px;" onclick="_ptnrNav(\'missions\')"><div class="dispatch-badge"><span class="dispatch-badge-dot"></span>'+cnt+' mission(s) disponible(s)</div><div class="ptnr-card-title">Soyez le premier à répondre !</div><div class="ptnr-card-sub">Des clients attendent un partenaire. Appuyez pour voir les missions.</div></div>';
+        var alertCard = '<div class="dispatch-card" style="cursor:pointer;margin-bottom:12px;" onclick="_ptnrNav(\'missions\')"><div class="dispatch-badge"><span class="dispatch-badge-dot"></span>'+cnt+' demande(s) en attente</div><div class="ptnr-card-title">Un client souhaite vous engager !</div><div class="ptnr-card-sub">Appuyez pour accepter ou refuser sa demande.</div></div>';
         list.insertAdjacentHTML('afterbegin', alertCard);
       }
     }).catch(function(){});
@@ -6309,13 +6400,13 @@ function _ptnrRefreshBadges(){
     _ptnrFetch('/api/partner/inbox').catch(function(){return [];}),
     _ptnrFetch('/api/partner/sessions').catch(function(){return [];}),
     _ptnrFetch('/api/partner/projects').catch(function(){return [];}),
-    _ptnrFetch('/api/partner/dispatches/count').catch(function(){return {count:0};})
+    _ptnrFetch('/api/partner/requests').catch(function(){return {requests:[]};})
   ]).then(function(results){
     var devis = Array.isArray(results[0]) ? results[0] : (results[0].quotes||[]);
     var inbox = Array.isArray(results[1]) ? results[1] : (results[1].messages||results[1].inbox||[]);
     var sessions = Array.isArray(results[2]) ? results[2] : (results[2].sessions||[]);
     var projets = Array.isArray(results[3]) ? results[3] : (results[3].projects||[]);
-    var missionCount = (results[4] && results[4].count) || 0;
+    var missionCount = (results[4] && results[4].requests && results[4].requests.length) || 0;
     var pendingDevis = devis.filter(function(q){return q.status==='pending'||q.status==='open'||!q.status;}).length;
     var pendingSeances = sessions.filter(function(s){return s.status==='pending'||s.status==='proposed';}).length;
     var unreadMsg = inbox.filter(function(m){return m.unread||m.isUnread;}).length || inbox.length;
@@ -6572,15 +6663,76 @@ function cwBookingSendRequest(){
 }
 
 // ── PARTNER SERVICE BOOKING (marketplace : commande directe sur un partenaire choisi) ──
-var _pbPartner=null, _pbService=null;
+var _pbPartner=null, _pbService=null, _pbMode='request';
 
+// Ouvre la modal en mode "demande" : le client décrit son besoin, sans payer (le partenaire doit d'abord accepter).
+function openPartnerRequest(partnerId, serviceId){
+  if(!USER||GUEST){ closeDetail(); showLoginSheet(); return; }
+  var p = _dirPartnerCache[partnerId];
+  if(!p) return;
+  var service = (p.services||[]).find(function(s){ return s.id===serviceId; });
+  if(!service) return;
+  _pbPartner = p; _pbService = service; _pbMode = 'request';
+
+  var overlay=document.getElementById('pb-overlay'); var sheet=document.getElementById('pb-sheet');
+  if(!overlay||!sheet) return;
+
+  var nm=document.getElementById('pb-service-name'); if(nm) nm.textContent=service.label;
+  var pn=document.getElementById('pb-partner-name'); if(pn) pn.textContent='Demande à '+(p.prenom||'')+' '+(p.nom||'');
+  var er=document.getElementById('pb-err'); if(er) er.classList.remove('on');
+  var rf=document.getElementById('pb-request-form'); if(rf) rf.style.display='';
+  var fm=document.getElementById('pb-form'); if(fm) fm.style.display='none';
+  var ws=document.getElementById('pb-widget-screen'); if(ws) ws.style.display='none';
+  var sc=document.getElementById('pb-success'); if(sc) sc.style.display='none';
+  ['pbr-budget','pbr-date','pbr-location','pbr-description'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
+  var rb=document.getElementById('pbr-send-btn'); if(rb){rb.disabled=false;rb.textContent='ENVOYER LA DEMANDE';}
+
+  closeDetail();
+  overlay.classList.add('open');
+  setTimeout(function(){ sheet.classList.add('up'); }, 20);
+}
+function sendPartnerRequest(){
+  if(!_pbPartner||!_pbService||!USER||GUEST) return;
+  var description = ((document.getElementById('pbr-description')||{}).value||'').trim();
+  var er=document.getElementById('pb-err');
+  if(!description){ if(er){er.textContent='Merci de décrire votre besoin.';er.classList.add('on');} return; }
+  if(er) er.classList.remove('on');
+  var rb=document.getElementById('pbr-send-btn'); if(rb){rb.disabled=true;rb.textContent='Envoi en cours...';}
+
+  fetch((window.FA_GENESIS_API||API)+'/api/partner-requests',{
+    method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+USER._token},
+    body:JSON.stringify({
+      partnerId:_pbPartner.id, serviceId:_pbService.id,
+      budgetNote:((document.getElementById('pbr-budget')||{}).value||'').trim(),
+      desiredDate:((document.getElementById('pbr-date')||{}).value||'')||null,
+      location:((document.getElementById('pbr-location')||{}).value||'').trim(),
+      description:description
+    })
+  }).then(function(r){ return r.json().then(function(d){ return {ok:r.ok, data:d}; }); })
+  .then(function(res){
+    if(!res.ok) throw new Error((res.data&&res.data.error)||'Erreur lors de l\'envoi de la demande');
+    var rf=document.getElementById('pb-request-form'); if(rf) rf.style.display='none';
+    var sm=document.getElementById('pb-success-msg'); if(sm) sm.textContent='🟡 Demande envoyée ! Vous recevrez une notification dès que le partenaire aura répondu, dans "Mes réservations".';
+    var sc=document.getElementById('pb-success'); if(sc) sc.style.display='';
+    if(typeof renderResaTab==='function') renderResaTab();
+  }).catch(function(err){
+    if(rb){rb.disabled=false;rb.textContent='ENVOYER LA DEMANDE';}
+    if(er){er.textContent=err.message||'Erreur. Réessayez.';er.classList.add('on');}
+  });
+}
+// Ouvre la modal en mode "paiement" : utilisé uniquement après acceptation d'une demande par le partenaire.
 function openPartnerBooking(partnerId, serviceId){
   if(!USER||GUEST){ closeDetail(); showLoginSheet(); return; }
   var p = _dirPartnerCache[partnerId];
   if(!p) return;
   var service = (p.services||[]).find(function(s){ return s.id===serviceId; });
   if(!service) return;
-  _pbPartner = p; _pbService = service;
+  _showPbPayUI(p, service);
+  closeDetail();
+}
+// Affiche l'écran de paiement de l'acompte (commun à la fiche partenaire et à "Mes demandes")
+function _showPbPayUI(partner, service){
+  _pbPartner = partner; _pbService = service; _pbMode = 'pay';
 
   var overlay=document.getElementById('pb-overlay'); var sheet=document.getElementById('pb-sheet');
   if(!overlay||!sheet) return;
@@ -6590,19 +6742,25 @@ function openPartnerBooking(partnerId, serviceId){
   var balance = total-deposit;
 
   var nm=document.getElementById('pb-service-name'); if(nm) nm.textContent=service.label;
-  var pn=document.getElementById('pb-partner-name'); if(pn) pn.textContent='avec '+(p.prenom||'')+' '+(p.nom||'');
+  var pn=document.getElementById('pb-partner-name'); if(pn) pn.textContent='avec '+(partner.prenom||'')+' '+(partner.nom||'');
   var amt=document.getElementById('pb-deposit-amt'); if(amt) amt.textContent=deposit+' €';
   var bal=document.getElementById('pb-balance-amt'); if(bal) bal.textContent=balance+' €';
   var tot=document.getElementById('pb-total-amt'); if(tot) tot.textContent=total+' €';
   var er=document.getElementById('pb-err'); if(er) er.classList.remove('on');
+  var rf=document.getElementById('pb-request-form'); if(rf) rf.style.display='none';
   var fm=document.getElementById('pb-form'); if(fm) fm.style.display='';
   var ws=document.getElementById('pb-widget-screen'); if(ws) ws.style.display='none';
   var sc=document.getElementById('pb-success'); if(sc) sc.style.display='none';
+  var sm=document.getElementById('pb-success-msg'); if(sm) sm.textContent='Acompte payé ! Le partenaire a été notifié et votre commande apparaît dans "Mes réservations".';
   var sb=document.getElementById('pb-pay-btn'); if(sb){sb.disabled=false;sb.textContent='PAYER L\'ACOMPTE';}
 
-  closeDetail();
   overlay.classList.add('open');
   setTimeout(function(){ sheet.classList.add('up'); }, 20);
+}
+// Paiement de l'acompte depuis "Mes demandes", une fois la demande acceptée par le partenaire
+function payAcceptedRequest(partnerId, serviceId, serviceLabel, price, partnerName){
+  if(!USER||GUEST){ showLoginSheet(); return; }
+  _showPbPayUI({id:partnerId, prenom:partnerName||'Partenaire', nom:''}, {id:serviceId, label:serviceLabel, price:price});
 }
 function closePartnerBooking(){
   var sheet=document.getElementById('pb-sheet'); var overlay=document.getElementById('pb-overlay');
@@ -6947,22 +7105,6 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
 
     <button id="rib-onb-btn" onclick="_saveRibOnboarding()" style="width:100%;margin-top:18px;background:#FFD700;color:#000;border:none;border-radius:12px;padding:15px;font-size:14px;font-weight:800;cursor:pointer;letter-spacing:.3px;">ENREGISTRER MON RIB</button>
     <button onclick="_closeRibOnboarding()" style="width:100%;margin-top:10px;background:transparent;border:none;color:#444;font-size:12px;cursor:pointer;padding:8px;">Plus tard</button>
-  </div>
-</div>
-
-<!-- ── Overlay : Prise en charge d'une mission (partenaire) ── -->
-<div id="dispatch-claim-overlay" onclick="if(event.target===this)_closeDClaimOverlay()">
-  <div id="dispatch-claim-sheet">
-    <div class="dclaim-title">Prendre en charge la mission</div>
-    <div class="dclaim-sub" id="dclaim-subtitle">Premier arrivé, premier servi</div>
-    <div class="dclaim-label">Votre prénom / nom *</div>
-    <input class="dclaim-input" id="dclaim-name" placeholder="Ex : Sophie Martin" autocomplete="name">
-    <div class="dclaim-label">Date de démarrage proposée *</div>
-    <input class="dclaim-input" type="date" id="dclaim-date">
-    <div class="dclaim-label">Message pour le client (optionnel)</div>
-    <textarea class="dclaim-input dclaim-textarea" id="dclaim-message" placeholder="Ex : Je suis disponible dès lundi matin…"></textarea>
-    <button class="dclaim-submit-btn" id="dclaim-submit-btn" onclick="_submitClaim()">CONFIRMER LA PRISE EN CHARGE</button>
-    <button class="dclaim-cancel-btn" onclick="_closeDClaimOverlay()">Annuler</button>
   </div>
 </div>
 
@@ -7321,6 +7463,27 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
       <div class="cwb-name" id="pb-service-name">Prestation</div>
       <div class="cwb-price-info" id="pb-partner-name"></div>
       <div class="cwb-err" id="pb-err"></div>
+      <div id="pb-request-form" style="display:none;">
+        <div class="mc-field">
+          <label class="mc-label">Budget envisagé (optionnel)</label>
+          <input id="pbr-budget" class="mc-input" type="text" placeholder="Ex: 200-300 €">
+        </div>
+        <div class="mc-field">
+          <label class="mc-label">Date souhaitée (optionnel)</label>
+          <input id="pbr-date" class="mc-input" type="date">
+        </div>
+        <div class="mc-field">
+          <label class="mc-label">Lieu (optionnel)</label>
+          <input id="pbr-location" class="mc-input" type="text" placeholder="Ville, adresse...">
+        </div>
+        <div class="mc-field">
+          <label class="mc-label">Décrivez votre besoin *</label>
+          <textarea id="pbr-description" class="mc-input" rows="4" placeholder="Expliquez votre projet au partenaire..."></textarea>
+        </div>
+        <div class="cwb-actions" style="grid-template-columns:1fr;">
+          <button class="cwb-btn cwb-btn-yellow" id="pbr-send-btn" onclick="sendPartnerRequest()">ENVOYER LA DEMANDE</button>
+        </div>
+      </div>
       <div id="pb-form">
         <div style="background:#111;border:1.5px solid #1e1e1e;border-radius:14px;overflow:hidden;margin-bottom:14px;">
           <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #1e1e1e;">
@@ -7348,7 +7511,7 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
       </div>
       <div class="cwb-success" id="pb-success" style="display:none;">
         <div class="cwb-success-ico">&#9989;</div>
-        <p>Acompte payé ! Le partenaire a été notifié et votre commande apparaît dans "Mes réservations".</p>
+        <p id="pb-success-msg">Acompte payé ! Le partenaire a été notifié et votre commande apparaît dans "Mes réservations".</p>
         <button class="cwb-btn cwb-btn-yellow" style="width:100%;margin-top:16px;" onclick="closePartnerBooking()">Fermer</button>
       </div>
     </div>
@@ -7678,95 +7841,36 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
    DISPATCH — Système de missions partenaire
 ══════════════════════════════════════════════════ */
 
-var _currentDispatchId = null;
-
-function _ptnrRenderGainBloc(d){
-  var pct = d.partner_pct || 0;
-  var totalGain   = d.partner_total_amount   ? parseFloat(d.partner_total_amount).toFixed(2)   : null;
-  var depositGain = d.partner_deposit_amount ? parseFloat(d.partner_deposit_amount).toFixed(2) : null;
-  var offerPrice  = d.offer_total_price       ? parseFloat(d.offer_total_price).toFixed(2)      : null;
-  if(!totalGain || !depositGain) return '';
-  return '<div style="display:flex;align-items:stretch;gap:8px;margin:10px 0 2px;">' +
-    '<div style="flex:1;background:rgba(255,215,0,.08);border:1px solid rgba(255,215,0,.2);border-radius:12px;padding:10px 12px;text-align:center;">' +
-      '<div style="font-size:10px;color:#888;font-weight:700;letter-spacing:.5px;margin-bottom:3px;">VOTRE GAIN TOTAL</div>' +
-      '<div style="font-size:20px;color:#FFD700;font-weight:800;">'+totalGain+' €</div>' +
-      '<div style="font-size:10px;color:#666;margin-top:2px;">'+pct+'% de '+(offerPrice ? offerPrice+' €' : "l'offre")+'</div>' +
-    '</div>' +
-    '<div style="flex:1;background:#111;border:1px solid #1e1e1e;border-radius:12px;padding:10px 12px;text-align:center;">' +
-      '<div style="font-size:10px;color:#888;font-weight:700;letter-spacing:.5px;margin-bottom:3px;">À L\'ACCEPTATION</div>' +
-      '<div style="font-size:20px;color:#fff;font-weight:800;">'+depositGain+' €</div>' +
-      '<div style="font-size:10px;color:#555;margin-top:2px;">versé dès votre acceptation</div>' +
-    '</div>' +
-  '</div>';
-}
 
 function _ptnrLoadMissions(){
   var el = document.getElementById('ptnr-missions-list');
   if(el) el.innerHTML = _skeletonRows(2);
-  _ptnrFetch('/api/partner/dispatches').then(function(data){
-    var items = data.dispatches || [];
+  _ptnrFetch('/api/partner/requests').then(function(data){
+    var items = data.requests || [];
     if(!items.length){
-      if(el) el.innerHTML = '<div class="ptnr-empty"><div class="ptnr-empty-ico"><i class="fa-solid fa-circle-check"></i></div><div class="ptnr-empty-txt">Aucune mission disponible</div><div style="font-size:12px;color:#555;margin-top:6px;">Vous serez notifié à chaque nouvelle mission.</div></div>';
+      if(el) el.innerHTML = '<div class="ptnr-empty"><div class="ptnr-empty-ico"><i class="fa-solid fa-circle-check"></i></div><div class="ptnr-empty-txt">Aucune demande en attente</div><div style="font-size:12px;color:#555;margin-top:6px;">Vous serez notifié à chaque nouvelle demande de client.</div></div>';
       _setBadgeMissions(0); return;
     }
 
-    // Séparer missions à accepter (paiement reçu) et missions libres
-    var pendingItems = items.filter(function(d){ return d.status === 'pending_acceptance'; });
-    var openItems    = items.filter(function(d){ return d.status !== 'pending_acceptance'; });
-    var html = '';
-
-    // ── Missions à accepter (acompte déjà payé) ──
-    if(pendingItems.length){
-      html += '<div style="border-left:4px solid #FFD700;padding-left:12px;margin-bottom:12px;">';
-      html += '<div style="font-size:13px;font-weight:800;color:#FFD700;text-transform:uppercase;letter-spacing:.05em;"><i class="fa-solid fa-bolt"></i> À accepter</div>';
-      html += '<div style="font-size:11px;color:#888;margin-top:2px;">Le client a payé son acompte. Acceptez pour recevoir votre part immédiatement.</div>';
+    var html = '<div style="font-size:12px;color:#888;margin-bottom:14px;line-height:1.6;">Un client souhaite vous engager directement. Acceptez pour qu\'il puisse payer l\'acompte, ou refusez s\'il vous est impossible de prendre la mission.</div>';
+    items.forEach(function(r){
+      html += '<div class="dispatch-card new-card" id="request-'+r.id+'">';
+      html += '<div class="dispatch-badge"><span class="dispatch-badge-dot"></span>Nouvelle demande</div>';
+      html += '<div class="dispatch-title">'+r.client_name+' — '+r.service_label+'</div>';
+      html += '<div class="dispatch-meta">Reçue le '+_ptnrFmt(r.created_at)+'</div>';
+      html += '<div class="dispatch-avail">';
+      html += '<strong>Prix de la prestation :</strong> '+r.price+' €<br>';
+      if(r.desired_date) html += '<strong>Date souhaitée :</strong> '+_ptnrFmt(r.desired_date)+'<br>';
+      if(r.location) html += '<strong>Lieu :</strong> '+r.location+'<br>';
+      if(r.budget_note) html += '<strong>Budget :</strong> '+r.budget_note+'<br>';
+      if(r.description) html += '<strong>Description :</strong> '+r.description;
       html += '</div>';
-      pendingItems.forEach(function(d){
-        html += '<div class="dispatch-card new-card" id="dispatch-'+d.id+'" style="border-color:#FFD700;">';
-        html += '<div class="dispatch-badge" style="background:#FFD700;color:#000;"><span class="dispatch-badge-dot" style="background:#000;"></span>Acompte reçu — en attente</div>';
-        html += '<div class="dispatch-title">'+d.client_prenom+' — '+(d.offer_name||'Mission')+(d.priority>0?'<span class="p-priority-tag"><i class="fa-solid fa-star"></i> Prioritaire</span>':'')+'</div>';
-        html += '<div class="dispatch-meta">Reçue le '+_ptnrFmt(d.created_at)+'</div>';
-        html += _ptnrRenderGainBloc(d);
-        html += '<div style="display:flex;gap:10px;margin-top:14px;">';
-        html += '<button id="accept-btn-'+d.id+'" class="dispatch-claim-btn" style="flex:1;background:#FFD700;color:#000;" onclick="_acceptDispatch(\''+d.id+'\')">✓ ACCEPTER</button>';
-        html += '<button style="flex:0 0 auto;background:transparent;color:#c00;border:2px solid #c00;padding:10px 16px;font-weight:800;font-size:13px;border-radius:10px;cursor:pointer;" onclick="_declineDispatch(\''+d.id+'\')">✗</button>';
-        html += '</div>';
-        html += '</div>';
-      });
-      if(openItems.length) html += '<div style="height:20px;"></div>';
-    }
-
-    // ── Missions libres (premier arrivé) ──
-    if(openItems.length){
-      if(pendingItems.length){
-        html += '<div style="border-left:4px solid #444;padding-left:12px;margin-bottom:12px;">';
-        html += '<div style="font-size:13px;font-weight:800;color:#888;text-transform:uppercase;letter-spacing:.05em;">Missions libres</div>';
-        html += '<div style="font-size:11px;color:#555;margin-top:2px;">Les demandes prioritaires (clients Or/Prestige) sont affichées en tête.</div>';
-        html += '</div>';
-      } else {
-        html += '<div style="font-size:12px;color:#888;margin-bottom:14px;line-height:1.6;">Confirmez vos disponibilités pour prendre en charge le client. Les demandes prioritaires (clients Or/Prestige) sont affichées en tête.</div>';
-      }
-      openItems.forEach(function(d){
-        var avail = d.client_availability;
-        var days  = avail && avail.days && avail.days.length ? avail.days.join(', ') : 'Non renseigné';
-        var slot  = avail && avail.time_slot ? avail.time_slot : '—';
-        var start = avail && avail.preferred_start ? _ptnrFmt(avail.preferred_start) : 'Non renseigné';
-        var notes = avail && avail.notes ? avail.notes : '';
-        html += '<div class="dispatch-card new-card" id="dispatch-'+d.id+'">';
-        html += '<div class="dispatch-badge"><span class="dispatch-badge-dot"></span>Mission disponible</div>';
-        html += '<div class="dispatch-title">'+d.client_prenom+' — '+(d.offer_name||'Offre')+(d.priority>0?'<span class="p-priority-tag"><i class="fa-solid fa-star"></i> Prioritaire</span>':'')+'</div>';
-        html += '<div class="dispatch-meta">Reçue le '+_ptnrFmt(d.created_at)+'</div>';
-        html += _ptnrRenderGainBloc(d);
-        html += '<div class="dispatch-avail">';
-        html += '<strong>Démarrage souhaité :</strong> '+start+'<br>';
-        html += '<strong>Jours disponibles :</strong> '+days+'<br>';
-        html += '<strong>Créneau :</strong> '+slot;
-        if(notes) html += '<br><strong>Note :</strong> '+notes;
-        html += '</div>';
-        html += '<button class="dispatch-claim-btn" onclick="_openDClaimOverlay(\''+d.id+'\',\''+d.client_prenom+'\')"><i class="fa-solid fa-bolt"></i> Prendre en charge</button>';
-        html += '</div>';
-      });
-    }
+      html += '<div style="display:flex;gap:10px;margin-top:14px;">';
+      html += '<button id="req-accept-btn-'+r.id+'" class="dispatch-claim-btn" style="flex:1;" onclick="_acceptPartnerRequest(\''+r.id+'\')"><i class="fa-solid fa-check"></i> ACCEPTER</button>';
+      html += '<button style="flex:0 0 auto;background:transparent;color:#c00;border:2px solid #c00;padding:10px 16px;font-weight:800;font-size:13px;border-radius:10px;cursor:pointer;" onclick="_declinePartnerRequest(\''+r.id+'\')">✗</button>';
+      html += '</div>';
+      html += '</div>';
+    });
 
     if(el) el.innerHTML = html;
     _setBadgeMissions(items.length);
@@ -7775,30 +7879,30 @@ function _ptnrLoadMissions(){
   });
 }
 
-function _acceptDispatch(id){
-  var btn = document.getElementById('accept-btn-'+id);
+function _acceptPartnerRequest(id){
+  var btn = document.getElementById('req-accept-btn-'+id);
   if(btn){ btn.disabled=true; btn.textContent='En cours...'; }
   haptic(15);
-  _ptnrFetch('/api/partner/dispatches/'+id+'/accept','POST',{}).then(function(res){
+  _ptnrFetch('/api/partner/requests/'+id+'/accept','POST',{}).then(function(res){
     if(res.success){
       launchConfetti();
-      showToast('Mission acceptée !','Votre acompte est en cours de versement.','success');
+      showToast('Demande acceptée !','Le client peut maintenant payer l\'acompte.','success');
       haptic([50,30,100,30,150]);
       _ptnrLoadMissions(); _ptnrRefreshBadges();
     } else {
-      if(btn){ btn.disabled=false; btn.textContent='✓ ACCEPTER'; }
+      if(btn){ btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-check"></i> ACCEPTER'; }
       showToast(res.error||'Erreur','Réessayez','error');
     }
   }).catch(function(){
-    if(btn){ btn.disabled=false; btn.textContent='✓ ACCEPTER'; }
+    if(btn){ btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-check"></i> ACCEPTER'; }
     showToast('Erreur de connexion','Réessayez','error');
   });
 }
 
-function _declineDispatch(id){
-  _ptnrFetch('/api/partner/dispatches/'+id+'/decline','POST',{}).then(function(res){
+function _declinePartnerRequest(id){
+  _ptnrFetch('/api/partner/requests/'+id+'/decline','POST',{}).then(function(res){
     if(res.success){
-      showToast('Mission refusée','Elle reste disponible pour les autres partenaires.','info');
+      showToast('Demande refusée','Le client en sera informé.','info');
       _ptnrLoadMissions(); _ptnrRefreshBadges();
     } else {
       showToast(res.error||'Erreur','Réessayez','error');
@@ -7812,55 +7916,6 @@ function _setBadgeMissions(count){
   var b = document.getElementById('ptnr-badge-missions'); if(!b) return;
   if(count>0){ b.textContent=count; b.className='ptnr-badge on'; }
   else { b.className='ptnr-badge'; }
-}
-
-function _openDClaimOverlay(id, prenom){
-  _currentDispatchId = id;
-  var sub = document.getElementById('dclaim-subtitle');
-  if(sub) sub.textContent = 'Client : '+prenom+' — Premier arrivé, premier servi';
-  var d = document.getElementById('dclaim-date');
-  if(d){ var t = new Date(); t.setDate(t.getDate()+1); d.value = t.toISOString().split('T')[0]; }
-  var n = document.getElementById('dclaim-name');
-  if(n){ var prof = null; try{prof=JSON.parse(localStorage.getItem('fa_genesis_partner_profile_data')||'null');}catch(e){} n.value=(prof&&prof.name)||''; }
-  var ov = document.getElementById('dispatch-claim-overlay');
-  if(ov){ ov.style.display='flex'; } haptic(10);
-}
-function _closeDClaimOverlay(){
-  var ov = document.getElementById('dispatch-claim-overlay');
-  if(ov) ov.style.display='none';
-  _currentDispatchId = null;
-}
-function _submitClaim(){
-  if(!_currentDispatchId) return;
-  var name = (document.getElementById('dclaim-name')||{}).value||'';
-  var date = (document.getElementById('dclaim-date')||{}).value||'';
-  var msg = (document.getElementById('dclaim-message')||{}).value||'';
-  if(!name.trim()){ showToast('Votre nom est requis','','error'); return; }
-  if(!date){ showToast('Indiquez une date de démarrage','','error'); return; }
-  var btn = document.getElementById('dclaim-submit-btn');
-  if(btn){ btn.disabled=true; btn.textContent='En cours...'; }
-  haptic(15);
-  var profileId = localStorage.getItem('fa_genesis_partner_profile')||null;
-  _ptnrFetch('/api/partner/dispatches/'+_currentDispatchId+'/claim','POST',{
-    partner_name:name.trim(), proposed_start:date, claim_message:msg, profile_id:profileId
-  }).then(function(res){
-    if(btn){ btn.disabled=false; btn.textContent='CONFIRMER LA PRISE EN CHARGE'; }
-    if(res.success){
-      _closeDClaimOverlay();
-      launchConfetti();
-      showToast('Mission attribuée !','Le client apparaît dans vos projets.','success');
-      haptic([50,30,100,30,150]);
-      _ptnrLoadMissions(); _ptnrRefreshBadges();
-    } else if(res.taken){
-      showToast('Mission déjà prise','Un autre partenaire a été plus rapide !','error');
-      _closeDClaimOverlay(); _ptnrLoadMissions();
-    } else {
-      showToast(res.error||'Erreur','Réessayez','error');
-    }
-  }).catch(function(){
-    if(btn){ btn.disabled=false; btn.textContent='CONFIRMER LA PRISE EN CHARGE'; }
-    showToast('Erreur de connexion','Réessayez','error');
-  });
 }
 
 function _openAvailOverlay(){
