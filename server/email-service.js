@@ -1450,6 +1450,76 @@ async function sendWelcomeEmail(clientEmail, prenom) {
     }
 }
 
+/**
+ * Compte partenaire approuvé par l'admin : invite a configurer ses prestations
+ */
+async function sendPartnerAccountApprovedEmail(partner) {
+    const transport = initializeTransporter();
+    if (!transport) {
+        console.log('[EMAIL] Transport non configure - Email approbation partenaire non envoye');
+        return { success: false, reason: 'SMTP non configure' };
+    }
+
+    const frontUrl = process.env.FRONT_URL || 'https://fagenesis.com';
+    const prenom = partner.prenom || '';
+
+    const content = `
+        <h2 style="margin: 0 0 20px 0; font-size: 24px; color: #000000; font-weight: 700;">
+            Votre compte partenaire est approuvé !
+        </h2>
+
+        <p style="margin: 0 0 20px 0; font-size: 16px; color: #333333; line-height: 1.6;">
+            Bonjour ${prenom},
+        </p>
+
+        <p style="margin: 0 0 20px 0; font-size: 16px; color: #333333; line-height: 1.6;">
+            Bonne nouvelle : notre équipe vient de valider votre compte partenaire <strong>FA GENESIS</strong>.
+        </p>
+
+        <div style="background-color: #FFF9E6; border-left: 4px solid #FFD700; padding: 20px; margin: 25px 0;">
+            <p style="margin: 0 0 15px 0; font-weight: 700; color: #000; font-size: 16px;">
+                Vous pouvez désormais :
+            </p>
+            <ol style="margin: 0; padding-left: 20px; color: #333; line-height: 2;">
+                <li><strong>Configurer vos prestations</strong> - Libellés, descriptions et tarifs</li>
+                <li><strong>Compléter votre profil</strong> - Photo, bio, zone d'intervention</li>
+                <li><strong>Apparaître dans l'annuaire</strong> - Visible par les clients FA GENESIS dès maintenant</li>
+            </ol>
+        </div>
+
+        <div style="background-color: #000000; color: #ffffff; padding: 20px; border-radius: 4px; margin: 25px 0; text-align: center;">
+            <p style="margin: 0 0 15px 0; font-size: 14px; color: #cccccc;">
+                Accédez à votre espace partenaire pour mettre en ligne vos prestations
+            </p>
+            <a href="${frontUrl}/app.html#open-partner"
+               style="display: inline-block; background-color: #FFD700; color: #000; padding: 15px 30px; text-decoration: none; font-weight: 700; border-radius: 4px; font-size: 16px;">
+                Configurer mes prestations
+            </a>
+        </div>
+
+        <p style="margin: 30px 0 0 0; font-size: 16px; color: #333333;">
+            À très bientôt,<br>
+            <strong style="color: #000000;">L'équipe FA GENESIS</strong>
+        </p>
+    `;
+
+    try {
+        const result = await transport.sendMail({
+            from: `"${process.env.EMAIL_FROM_NAME}" <${process.env.EMAIL_FROM_ADDRESS}>`,
+            to: partner.email,
+            subject: `[FA GENESIS] Votre compte partenaire est approuvé`,
+            html: getEmailTemplate(content, 'Compte partenaire approuvé')
+        });
+
+        console.log(`[EMAIL] Email approbation partenaire envoye a ${partner.email} - ID: ${result.messageId}`);
+        return { success: true, messageId: result.messageId };
+
+    } catch (error) {
+        console.error('[EMAIL] Erreur envoi email approbation partenaire:', error.message);
+        return { success: false, error: error.message };
+    }
+}
+
 // ============================================================
 // EXPORTS
 // ============================================================
@@ -2090,6 +2160,7 @@ module.exports = {
     sendNewDocumentNotification,
     sendQuoteAdminNotification,
     sendQuotePartnerNotification,
+    sendPartnerAccountApprovedEmail,
     sendQuoteToClient,
     sendSessionConfirmedEmail,
     sendSessionRescheduledEmail,

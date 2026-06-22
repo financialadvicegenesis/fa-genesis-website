@@ -11285,6 +11285,7 @@ app.put('/api/admin/partners/:partnerId', (req, res) => {
             return res.status(404).json({ error: 'Partenaire non trouve' });
         }
         const { prenom, nom, telephone, partner_type, company, accountStatus } = req.body;
+        const wasActive = partners[index].accountStatus === 'active';
         if (prenom) partners[index].prenom = prenom;
         if (nom) partners[index].nom = nom;
         if (telephone !== undefined) partners[index].telephone = telephone;
@@ -11298,6 +11299,14 @@ app.put('/api/admin/partners/:partnerId', (req, res) => {
         partners[index].updatedAt = new Date().toISOString();
         savePartners(partners);
         const { password, ...partnerSafe } = partners[index];
+        // Approbation (pending/deactivated -> active) : prevenir le partenaire qu'il peut
+        // desormais configurer ses prestations et qu'il devient visible des clients.
+        if (accountStatus === 'active' && !wasActive) {
+            emailService.sendPartnerAccountApprovedEmail(partnerSafe).catch(function(e) {
+                console.error('[ADMIN] Erreur envoi email approbation partenaire:', e);
+            });
+            notifyUser(partnerSafe.email, 'partner', 'compte-approuve', 'Votre compte est approuvé !', 'Vous pouvez desormais configurer vos prestations, elles seront visibles par les clients.', '/app.html#open-partner');
+        }
         res.json({ success: true, partner: partnerSafe });
     } catch (error) {
         console.error('[ADMIN] Erreur modif partenaire:', error);
