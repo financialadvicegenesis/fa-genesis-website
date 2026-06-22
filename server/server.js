@@ -9679,25 +9679,10 @@ app.get('/api/partners/directory', (req, res) => {
         }
 
         let results = partners.map((p, idx) => {
-            const fromPrice = getPartnerFromPrice(p);
-            const coords = getCityCoords(p.city);
-            return {
-                id: p.id,
-                prenom: p.prenom,
-                nom: p.nom,
-                partner_type: p.partner_type,
-                partner_type_other: p.partner_type_other || '',
-                photo: p.photo || null,
-                city: p.city || '',
-                lat: coords ? coords[0] : null,
-                lng: coords ? coords[1] : null,
-                fromPrice: fromPrice,
-                rating: getPartnerRatingSummary(p.id),
-                badge: getPartnerBadge(p),
-                constellation: getConstellationTier(p),
+            return Object.assign(partnerDirectoryShape(p), {
                 verified: true,
                 rank: (sortMode === 'score' && idx < 3) ? idx + 1 : null
-            };
+            });
         });
 
         if (maxPrice !== undefined && maxPrice !== '') {
@@ -9784,25 +9769,7 @@ app.get('/api/partners/top', (req, res) => {
             .map(p => ({ partner: p, score: getPartnerCategoryScore(p) }))
             .sort((a, b) => b.score - a.score)
             .slice(0, max)
-            .map(entry => {
-                const p = entry.partner;
-                const coords = getCityCoords(p.city);
-                return {
-                    id: p.id,
-                    prenom: p.prenom,
-                    nom: p.nom,
-                    partner_type: p.partner_type,
-                    partner_type_other: p.partner_type_other || '',
-                    photo: p.photo || null,
-                    city: p.city || '',
-                    lat: coords ? coords[0] : null,
-                    lng: coords ? coords[1] : null,
-                    fromPrice: getPartnerFromPrice(p),
-                    rating: getPartnerRatingSummary(p.id),
-                    badge: getPartnerBadge(p),
-                    constellation: getConstellationTier(p)
-                };
-            });
+            .map(entry => partnerDirectoryShape(entry.partner));
 
         res.json({ success: true, category: category, partners: ranked });
     } catch (error) {
@@ -9823,25 +9790,7 @@ app.get('/api/partners/featured', (req, res) => {
             .map(p => ({ partner: p, score: getPartnerCategoryScore(p) }))
             .sort((a, b) => b.score - a.score)
             .slice(0, max)
-            .map(entry => {
-                const p = entry.partner;
-                const coords = getCityCoords(p.city);
-                return {
-                    id: p.id,
-                    prenom: p.prenom,
-                    nom: p.nom,
-                    partner_type: p.partner_type,
-                    partner_type_other: p.partner_type_other || '',
-                    photo: p.photo || null,
-                    city: p.city || '',
-                    lat: coords ? coords[0] : null,
-                    lng: coords ? coords[1] : null,
-                    fromPrice: getPartnerFromPrice(p),
-                    rating: getPartnerRatingSummary(p.id),
-                    badge: getPartnerBadge(p),
-                    constellation: getConstellationTier(p)
-                };
-            });
+            .map(entry => partnerDirectoryShape(entry.partner));
 
         res.json({ success: true, partners: ranked });
     } catch (error) {
@@ -9863,6 +9812,7 @@ function partnerDirectoryShape(p) {
         lat: coords ? coords[0] : null,
         lng: coords ? coords[1] : null,
         fromPrice: getPartnerFromPrice(p),
+        avgResponseMinutes: typeof p.avgResponseMinutes === 'number' ? p.avgResponseMinutes : null,
         rating: getPartnerRatingSummary(p.id),
         badge: getPartnerBadge(p),
         constellation: getConstellationTier(p)

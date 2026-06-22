@@ -750,8 +750,8 @@ a{text-decoration:none;color:inherit}
 .p-dir-review-comment{font-size:12px;color:#999;line-height:1.4}
 .p-dir-review-empty{color:var(--muted);font-size:12px;padding:10px 0}
 .p-dir-services-list{display:flex;flex-direction:column;gap:8px}
-.p-dir-service-row{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#111;border:1.5px solid #1e1e1e;border-radius:12px;padding:12px 14px}
-.p-dir-service-img{width:56px;height:56px;border-radius:10px;overflow:hidden;flex-shrink:0;background:#1a1a1a}
+.p-dir-service-row{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#111;border:1.5px solid #1e1e1e;border-radius:14px;padding:12px 14px}
+.p-dir-service-img{width:72px;height:72px;border-radius:14px;overflow:hidden;flex-shrink:0;background:#1a1a1a}
 .p-dir-service-img img{width:100%;height:100%;object-fit:cover;display:block}
 .p-dir-service-info{flex:1;min-width:0}
 .p-dir-service-label{font-size:13px;font-weight:900;color:var(--text)}
@@ -870,6 +870,11 @@ a{text-decoration:none;color:inherit}
 .p-big-card .p-fav-heart{position:absolute;top:10px;right:10px;font-size:18px;z-index:2}
 .p-dir-cercle-badge{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:900;color:var(--yellow);background:rgba(255,215,0,.1);border:1px solid var(--yellow);border-radius:10px;padding:6px 10px;margin:6px 0;text-transform:uppercase;letter-spacing:.2px}
 .p-dir-cercle-count{color:#fff;text-transform:none;font-weight:700;letter-spacing:0}
+/* Photo de couverture en tête de fiche détail partenaire (bord-à-bord dans la sheet) */
+.p-dir-detail-hero{margin:0 -24px 16px;width:calc(100% + 48px);height:200px;overflow:hidden;background:#1a1a1a}
+.p-dir-detail-hero img{width:100%;height:100%;object-fit:cover;display:block}
+.p-dir-detail-hero-fallback{width:100%;height:100%;display:flex;align-items:center;justify-content:center;
+  font-size:44px;color:var(--yellow);background:linear-gradient(135deg,#1a1a1a,#262200)}
 .p-dir-detail-city{font-size:11px;color:var(--muted);font-weight:700;margin:2px 0 8px}
 .p-dir-detail-bio{font-size:12px;color:#ccc;line-height:1.5;margin:8px 0}
 .p-dir-detail-social{display:flex;gap:12px;margin:8px 0}
@@ -885,6 +890,21 @@ a{text-decoration:none;color:inherit}
 .p-rank-row{display:flex;gap:12px;padding:0 16px 8px;overflow-x:auto;scrollbar-width:none}
 .p-rank-row::-webkit-scrollbar{display:none}
 .p-rank-medal{position:absolute;top:8px;left:8px;font-size:18px;z-index:2;filter:drop-shadow(2px 2px 0 #000)}
+
+/* Liste verticale complète "Prestataires" (façon liste de restaurants Uber Eats/Deliveroo) */
+.p-list-col{display:flex;flex-direction:column;gap:12px;padding:0 16px 16px}
+.p-list-row{display:flex;gap:12px;align-items:center;background:var(--card);border:2px solid #000;
+  border-radius:14px;padding:10px;cursor:pointer;position:relative;box-shadow:3px 3px 0 var(--yellow)}
+.p-list-row .p-fav-heart{position:absolute;top:8px;right:8px;font-size:16px;z-index:2}
+.p-list-photo{width:88px;height:88px;flex-shrink:0;border-radius:12px;background:#1a1a1a;overflow:hidden;
+  display:flex;align-items:center;justify-content:center}
+.p-list-photo img{width:100%;height:100%;object-fit:cover}
+.p-list-body{flex:1;min-width:0}
+.p-list-meta-row{display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap}
+.p-list-meta-row>span{font-size:10.5px;font-weight:700;color:var(--muted);white-space:nowrap}
+.p-list-meta-row i{color:var(--yellow);font-size:9.5px;margin-right:2px}
+.p-list-meta-stars{color:#ddd!important}
+.p-list-meta-stars i{color:var(--yellow)}
 
 /* Badge Populaire */
 .p-neo-card.featured{border-color:var(--yellow);box-shadow:6px 6px 0 var(--yellow)}
@@ -933,6 +953,9 @@ a{text-decoration:none;color:inherit}
 .p-reco-tag{position:absolute;top:6px;left:6px;background:var(--yellow);color:#000;font-size:8px;font-weight:900;
   padding:2px 6px;border:2px solid #000;text-transform:uppercase;z-index:1}
 .p-reco-city{font-size:9px;color:var(--muted);font-weight:700;margin-bottom:4px}
+.p-reco-meta{font-size:9px;color:var(--muted);font-weight:700;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.p-reco-meta i{color:var(--yellow);font-size:8px;margin-right:1px}
+.p-reco-meta-sep{color:#444}
 .p-reco-viewbtn{margin-top:6px;width:100%;background:var(--yellow);color:#000;border:none;border-radius:7px;
   font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.2px;padding:7px 0;cursor:pointer;font-family:inherit}
 .p-reco-rating-badge{position:absolute;bottom:6px;right:6px;z-index:1;background:rgba(0,0,0,.8);color:#fff;
@@ -2898,6 +2921,18 @@ function expRecoCard(it, idx){
     +'<div class="p-reco-stars">'+(o.price||'')+'</div>'
     +'</div></div>';
 }
+function partnerPriceLabel(p){
+  return (p.fromPrice===null||p.fromPrice===undefined) ? 'Sur devis' : ('à partir de '+p.fromPrice+' €');
+}
+function partnerResponseLabel(p){
+  if(typeof p.avgResponseMinutes !== 'number') return '';
+  var m = p.avgResponseMinutes;
+  return 'Répond en ~'+(m<60 ? Math.round(m)+' min' : Math.round(m/60)+' h');
+}
+function partnerMetaLineHtml(p){
+  var resp = partnerResponseLabel(p);
+  return '<div class="p-reco-meta"><i class="fa-solid fa-tag"></i> '+partnerPriceLabel(p)+(resp?' <span class="p-reco-meta-sep">·</span> <i class="fa-solid fa-clock"></i> '+resp:'')+'</div>';
+}
 function recoPartnerCard(p, idx, tagOverride){
   var label = partnerTypeLabel(p);
   var initials = (((p.prenom||'')[0]||'')+((p.nom||'')[0]||'')).toUpperCase();
@@ -2913,6 +2948,7 @@ function recoPartnerCard(p, idx, tagOverride){
     +'<div class="p-reco-name">'+(p.prenom||'')+' '+(p.nom||'')+(badgeHtml?' '+badgeHtml:'')+'</div>'
     +'<div class="p-reco-cat">'+label+'</div>'
     +(p.city?'<div class="p-reco-city"><i class="fa-solid fa-location-dot"></i> '+p.city+'</div>':'')
+    +partnerMetaLineHtml(p)
     +'</div></div>';
 }
 function hofPremiumCard(p, idx){
@@ -2930,6 +2966,7 @@ function hofPremiumCard(p, idx){
     +'<div class="p-reco-name">'+(p.prenom||'')+' '+(p.nom||'')+(badgeHtml?' '+badgeHtml:'')+(constellationHtml?' '+constellationHtml:'')+'</div>'
     +'<div class="p-reco-cat">'+label+'</div>'
     +(p.city?'<div class="p-reco-city"><i class="fa-solid fa-location-dot"></i> '+p.city+'</div>':'')
+    +partnerMetaLineHtml(p)
     +'</div></div>';
 }
 function bigCategoryCard(p, idx){
@@ -2944,6 +2981,7 @@ function bigCategoryCard(p, idx){
     +'<div class="p-big-body">'
     +'<div class="p-reco-name">'+(p.prenom||'')+' '+(p.nom||'')+(badgeHtml?' '+badgeHtml:'')+'</div>'
     +'<div class="p-reco-cat">'+label+(p.city?' · '+p.city:'')+'</div>'
+    +partnerMetaLineHtml(p)
     +'</div></div>';
 }
 
@@ -3126,7 +3164,7 @@ function renderPrestataires(){
     +'</select>'
     +'</div>';
   html += '<div class="p-hero-stat" id="p-rank-stat" style="padding:0 16px 6px;">Chargement...</div>';
-  html += '<div id="p-rank-results" class="p-rank-row"><div class="p-dir-empty">Chargement...</div></div>';
+  html += '<div id="p-rank-results" class="p-list-col"><div class="p-dir-empty">Chargement...</div></div>';
   document.getElementById('prestatairesList').innerHTML = html;
   loadRankedDirectory();
 }
@@ -3173,11 +3211,33 @@ function loadRankedDirectory(){
     })
     .catch(function(){ results.innerHTML = '<div class="p-dir-empty">Erreur de chargement. Réessayez.</div>'; });
 }
+// Carte en ligne horizontale (photo à gauche, infos à droite) pour la liste verticale
+// complète de l'onglet "Prestataires" — façon liste de restaurants Uber Eats/Deliveroo.
+function partnerListRow(p){
+  var label = partnerTypeLabel(p);
+  var initials = (((p.prenom||'')[0]||'')+((p.nom||'')[0]||'')).toUpperCase();
+  var avatarHtml = p.photo ? '<img src="'+p.photo+'" alt="">' : '<div class="p-reco-initials">'+initials+'</div>';
+  var badgeHtml = tierBadgeHtml(p.badge);
+  var starsHtml = (p.rating && p.rating.count) ? ('<i class="fa-solid fa-star"></i> '+p.rating.average+' ('+p.rating.count+')') : 'Nouveau';
+  var resp = partnerResponseLabel(p);
+  return '<div class="p-list-row" onclick="openPartnerDetail(\''+p.id+'\')">'
+    +favHeartHtml(p.id)
+    +'<div class="p-list-photo">'+avatarHtml+'</div>'
+    +'<div class="p-list-body">'
+    +'<div class="p-reco-name">'+(p.prenom||'')+' '+(p.nom||'')+(badgeHtml?' '+badgeHtml:'')+'</div>'
+    +'<div class="p-reco-cat">'+label+(p.city?' · '+p.city:'')+'</div>'
+    +'<div class="p-list-meta-row">'
+      +'<span class="p-list-meta-stars">'+starsHtml+'</span>'
+      +'<span class="p-list-meta-price"><i class="fa-solid fa-tag"></i> '+partnerPriceLabel(p)+'</span>'
+      +(resp?'<span class="p-list-meta-resp"><i class="fa-solid fa-clock"></i> '+resp+'</span>':'')
+    +'</div>'
+    +'</div></div>';
+}
 function rankedDirectoryCard(p){
   var medalColor = p.rank===1?'#FFD700':p.rank===2?'#c7c7c7':p.rank===3?'#cd7f32':'';
-  if(!medalColor) return '<div class="p-rank-card-wrap">'+bigCategoryCard(p)+'</div>';
+  if(!medalColor) return '<div class="p-rank-card-wrap">'+partnerListRow(p)+'</div>';
   var medal = '<i class="fa-solid fa-medal" style="color:'+medalColor+'"></i>';
-  return '<div class="p-rank-card-wrap"><span class="p-rank-medal">'+medal+'</span>'+bigCategoryCard(p)+'</div>';
+  return '<div class="p-rank-card-wrap"><span class="p-rank-medal">'+medal+'</span>'+partnerListRow(p)+'</div>';
 }
 
 // ── ÉVÉNEMENTS FA GENESIS (Explorer) ─────────────────────────────
@@ -3460,7 +3520,8 @@ function openPartnerDetail(partnerId){
       var p = data.partner;
       _dirPartnerCache[p.id] = p;
       var label = partnerTypeLabel(p);
-      var priceLabel = (p.fromPrice===null||p.fromPrice===undefined) ? 'Sur devis' : ('à partir de '+p.fromPrice+' €');
+      var priceLabel = partnerPriceLabel(p);
+      var heroHtml = '<div class="p-dir-detail-hero">'+(p.photo ? '<img src="'+p.photo+'" alt="">' : '<div class="p-dir-detail-hero-fallback"><i class="fa-solid fa-user"></i></div>')+'</div>';
       var starsLabel = (p.rating && p.rating.count) ? ('<i class="fa-solid fa-star" style="color:var(--yellow)"></i> '+p.rating.average+' ('+p.rating.count+' avis)') : 'Aucun avis pour le moment';
       var verifiedHtml = p.verified ? '<span class="p-dir-card-verified">✓ Vérifié</span>' : '';
       var badgeHtml = tierBadgeHtml(p.badge);
@@ -3506,6 +3567,7 @@ function openPartnerDetail(partnerId){
           +(r.comment?'<p class="p-dir-review-comment">'+r.comment+'</p>':'')+'</li>';
       }).join('') || '<li class="p-dir-review-empty">Aucun avis publié pour le moment.</li>';
       document.getElementById('detail-content').innerHTML = ''
+        +heroHtml
         +'<div class="detail-name">'+(p.prenom||'')+' '+(p.nom||'')+' '+verifiedHtml+' '+badgeHtml+' '+constellationHtml+' '+favHeartHtml(p.id)+'</div>'
         +'<div class="detail-sub">'+label+'</div>'
         +cityHtml
