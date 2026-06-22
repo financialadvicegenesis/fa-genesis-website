@@ -9714,7 +9714,7 @@ app.get('/api/partners/:id/reviews', (req, res) => {
         }
         const fromPrice = getPartnerFromPrice(partner);
         const activeServices = (partner.services || []).filter(s => s.active !== false)
-            .map(s => ({ id: s.id, label: s.label, description: s.description || '', price: s.price, audience: s.audience || 'particulier' }));
+            .map(s => ({ id: s.id, label: s.label, description: s.description || '', price: s.price, audience: s.audience || 'particulier', image: s.image || '' }));
         const activePortfolio = (partner.portfolio || [])
             .map(item => ({ id: item.id, type: item.type, url: item.url, caption: item.caption || '' }));
         const reviews = loadPartnerReviews()
