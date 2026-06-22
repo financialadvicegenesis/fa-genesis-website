@@ -1830,16 +1830,26 @@ app.post('/api/orders/create', (req, res) => {
                 return res.status(404).json({ error: 'Prestation non trouvee' });
             }
 
-            // Le paiement n'est autorisé qu'après acceptation explicite du partenaire :
-            // le client doit d'abord avoir envoyé une demande acceptée pour ce couple partenaire/prestation.
+            // Le paiement n'est autorisé qu'après acceptation explicite du partenaire ET signature
+            // du contrat (proposition structurée + signature électronique, GENESIS CONTRACT™) :
+            // le client doit d'abord avoir une demande au statut 'signed' pour ce couple partenaire/prestation.
             var psoRequests = loadPartnerRequests();
             var psoRequest = psoRequests.find(function(r) {
                 return r.client_email === clientInfo.email &&
                     r.partner_id === partner.id &&
                     r.service_id === service.id &&
-                    r.status === 'accepted';
+                    r.status === 'signed';
             });
             if (!psoRequest) {
+                var psoPendingRequest = psoRequests.find(function(r) {
+                    return r.client_email === clientInfo.email &&
+                        r.partner_id === partner.id &&
+                        r.service_id === service.id &&
+                        (r.status === 'accepted' || r.status === 'proposed');
+                });
+                if (psoPendingRequest) {
+                    return res.status(403).json({ error: 'Vous devez d\'abord signer le contrat proposé par le partenaire avant de payer.' });
+                }
                 return res.status(403).json({ error: 'Vous devez d\'abord envoyer une demande et obtenir l\'accord du partenaire avant de payer.' });
             }
 
@@ -9768,11 +9778,12 @@ app.get('/api/my-requests', function(req, res) {
     }
 });
 
-// GET /api/partner/requests — le partenaire liste les demandes en attente le ciblant
+// GET /api/partner/requests — le partenaire liste les demandes en attente d'action de sa part
+// (pending = à accepter/refuser, accepted = à proposer un contrat)
 app.get('/api/partner/requests', authenticatePartner, function(req, res) {
     try {
         var requests = loadPartnerRequests()
-            .filter(function(r) { return r.partner_id === req.partner.id && r.status === 'pending'; })
+            .filter(function(r) { return r.partner_id === req.partner.id && (r.status === 'pending' || r.status === 'accepted'); })
             .sort(function(a, b) { return new Date(a.created_at) - new Date(b.created_at); });
         res.json({ requests: requests });
     } catch(e) {
@@ -9844,6 +9855,129 @@ app.post('/api/partner/requests/:id/decline', authenticatePartner, function(req,
         res.json({ success: true, message: 'Demande refusée.' });
     } catch(e) {
         console.error('[PARTNER-REQUEST] Erreur decline:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// ============================================================
+//  GENESIS CONTRACT™ — proposition structurée du partenaire
+//  + signature électronique simple du client (case + nom + IP)
+// ============================================================
+
+var PARTNER_REQUEST_MILESTONES = [
+    { key: 'kickoff', label: 'Acompte', pct: 30 },
+    { key: 'mid_delivery', label: 'Livrable intermédiaire', pct: 40 },
+    { key: 'final_delivery', label: 'Livraison finale', pct: 30 }
+];
+
+// GET /api/my-requests/:id — détail d'une demande (avec proposition si présente)
+app.get('/api/my-requests/:id', function(req, res) {
+    try {
+        var user = authenticateClient(req, res);
+        if (!user) return;
+
+        var requests = loadPartnerRequests();
+        var found = requests.find(function(r) { return r.id === req.params.id; });
+        if (!found) return res.status(404).json({ error: 'Demande introuvable' });
+        if (found.client_email !== user.email) return res.status(403).json({ error: 'Accès non autorisé' });
+
+        var partner = getPartnerById(found.partner_id);
+        var out = JSON.parse(JSON.stringify(found));
+        out.partner_name = partner ? (partner.prenom ? (partner.prenom + ' ' + (partner.nom || '')) : partner.company || partner.email) : 'Partenaire';
+        res.json({ request: out });
+    } catch(e) {
+        console.error('[PARTNER-REQUEST] Erreur détail client:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// POST /api/partner/requests/:id/propose — le partenaire envoie sa proposition structurée
+app.post('/api/partner/requests/:id/propose', authenticatePartner, function(req, res) {
+    try {
+        var items = req.body.items;
+        var totalPrice = parseFloat(req.body.total_price);
+        var delayDays = parseInt(req.body.delay_days) || 0;
+        var revisionsIncluded = parseInt(req.body.revisions_included) || 0;
+        var notes = (req.body.notes || '').toString().substring(0, 1000);
+
+        if (!items || !Array.isArray(items) || items.length === 0) {
+            return res.status(400).json({ error: 'Au moins une ligne de proposition requise' });
+        }
+        if (!totalPrice || totalPrice <= 0) {
+            return res.status(400).json({ error: 'Le prix total doit être supérieur à 0' });
+        }
+
+        var requests = loadPartnerRequests();
+        var idx = requests.findIndex(function(r) { return r.id === req.params.id; });
+        if (idx === -1) return res.status(404).json({ error: 'Demande introuvable' });
+        if (requests[idx].partner_id !== req.partner.id) {
+            return res.status(403).json({ error: 'Cette demande ne vous concerne pas.' });
+        }
+        if (requests[idx].status !== 'accepted') {
+            return res.status(409).json({ error: 'Cette demande ne peut pas recevoir de proposition (statut: ' + requests[idx].status + ').' });
+        }
+
+        requests[idx].proposal = {
+            items: items.map(function(it) { return { label: (it.label || '').toString().substring(0, 200), amount: parseFloat(it.amount) || 0 }; }),
+            total_price: totalPrice,
+            delay_days: delayDays,
+            revisions_included: revisionsIncluded,
+            notes: notes,
+            milestones: PARTNER_REQUEST_MILESTONES,
+            created_at: new Date().toISOString()
+        };
+        requests[idx].status = 'proposed';
+        savePartnerRequests(requests);
+
+        sendPushToUser(requests[idx].client_email, {
+            title: 'Proposition reçue 📋',
+            body: 'Le partenaire vous a envoyé une proposition pour : ' + requests[idx].service_label + '. Merci de la consulter et de signer le contrat.',
+            icon: '/assets/images/logo-favicon-192.png',
+            badge: '/assets/images/logo-favicon-32.png',
+            url: '/app.html#open-reservations',
+            tag: 'partner-request'
+        });
+
+        res.json({ success: true, message: 'Proposition envoyée avec succès', request: requests[idx] });
+    } catch(e) {
+        console.error('[PARTNER-REQUEST] Erreur propose:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// POST /api/my-requests/:id/sign-contract — signature électronique simple du client (GENESIS CONTRACT™)
+app.post('/api/my-requests/:id/sign-contract', function(req, res) {
+    try {
+        var user = authenticateClient(req, res);
+        if (!user) return;
+
+        var signatureName = (req.body.signatureName || '').trim();
+        var accepted = req.body.accepted === true;
+        if (!accepted) return res.status(400).json({ error: 'Vous devez accepter les conditions pour continuer.' });
+        if (!signatureName || signatureName.length < 2) return res.status(400).json({ error: 'Merci de saisir votre nom complet pour signer.' });
+
+        var requests = loadPartnerRequests();
+        var idx = requests.findIndex(function(r) { return r.id === req.params.id; });
+        if (idx === -1) return res.status(404).json({ error: 'Demande introuvable' });
+        if (requests[idx].client_email !== user.email) {
+            return res.status(403).json({ error: 'Accès non autorisé' });
+        }
+        if (requests[idx].status !== 'proposed') {
+            return res.status(409).json({ error: 'Aucune proposition à signer pour le moment (statut: ' + requests[idx].status + ').' });
+        }
+
+        var signIp = req.ip || (req.connection && req.connection.remoteAddress) || 'unknown';
+        requests[idx].contract_signed = true;
+        requests[idx].contract_signed_at = new Date().toISOString();
+        requests[idx].contract_signature_name = signatureName;
+        requests[idx].contract_signature_ip = signIp;
+        requests[idx].status = 'signed';
+        savePartnerRequests(requests);
+
+        console.log('[CONTRACT] Signature client demande ' + requests[idx].id + ' par ' + user.email + ' (' + signIp + ')');
+        res.json({ success: true, message: 'Contrat signé avec succès', request: requests[idx] });
+    } catch(e) {
+        console.error('[PARTNER-REQUEST] Erreur sign-contract:', e);
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });

@@ -3516,11 +3516,12 @@ function renderResaTab(){
       if(!el) return;
       if(reqList.length===0){ el.innerHTML=''; return; }
       el.innerHTML = '<div class="detail-feats-title" style="margin:4px 0 10px;">Mes demandes</div>' + reqList.map(function(r){
-        var sc = r.status==='accepted'?'s-confirmed':r.status==='declined'?'s-refused':'s-pending';
-        var sl = r.status==='accepted'?'🟢 Acceptée':r.status==='declined'?'Refusée':'🟡 Demande envoyée';
-        var actionHtml = r.status==='accepted'
+        if(r.status==='proposed') return renderProposalCard(r);
+        var sc = (r.status==='accepted'||r.status==='signed')?'s-confirmed':r.status==='declined'?'s-refused':'s-pending';
+        var sl = r.status==='signed'?'🟢 Contrat signé':r.status==='accepted'?'🟢 Acceptée':r.status==='declined'?'Refusée':'🟡 Demande envoyée';
+        var actionHtml = r.status==='signed'
           ? '<button class="resa-action-btn rab-primary" onclick="payAcceptedRequest(\''+r.partner_id+'\',\''+r.service_id+'\',\''+(r.service_label||'').replace(/'/g,"\\'")+'\','+(parseFloat(r.price)||0)+',\''+(r.partner_name||'').replace(/'/g,"\\'")+'\')">Payer l\'acompte</button>'
-          : '';
+          : (r.status==='accepted' ? '<div style="color:var(--muted);font-size:13px;">En attente de la proposition du partenaire…</div>' : '');
         return '<div class="resa-card">'
           +'<div class="resa-top"><div class="resa-name">'+(r.service_label||'Demande')+'</div>'
           +'<span class="resa-status '+sc+'">'+sl+'</span></div>'
@@ -3554,6 +3555,65 @@ function renderResaTab(){
     }).catch(function(){
       document.getElementById('resaList').innerHTML='<div class="empty"><div class="e-ico"><i class="fa-solid fa-triangle-exclamation"></i></div><p>Impossible de charger les réservations</p></div>';
     });
+}
+
+// ── GENESIS CONTRACT™ : récapitulatif contractuel + signature électronique ──
+function renderProposalCard(r){
+  var p = r.proposal || {items:[],total_price:r.price||0,delay_days:0,revisions_included:0,notes:'',milestones:[]};
+  var itemsHtml = (p.items||[]).map(function(it){
+    return '<div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;"><span>'+(it.label||'')+'</span><span>'+(it.amount||0)+' €</span></div>';
+  }).join('');
+  var milestonesHtml = (p.milestones||[]).map(function(m){
+    var amt = Math.round((p.total_price||0)*(m.pct||0)/100);
+    return '<div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;color:var(--muted);"><span>'+(m.label||'')+' ('+(m.pct||0)+'%)</span><span>'+amt+' €</span></div>';
+  }).join('');
+  return '<div class="resa-card" id="prop-card-'+r.id+'">'
+    +'<div class="resa-top"><div class="resa-name">'+(r.service_label||'Demande')+'</div>'
+    +'<span class="resa-status s-pending">📋 Proposition reçue</span></div>'
+    +'<div class="resa-date"><i class="fa-solid fa-user"></i> '+(r.partner_name||'')+'</div>'
+    +'<div class="detail-feats-title" style="margin:10px 0 4px;font-size:13px;">Récapitulatif contractuel</div>'
+    +itemsHtml
+    +'<div style="display:flex;justify-content:space-between;font-weight:700;padding:6px 0;border-top:1px solid var(--border);margin-top:4px;"><span>Total</span><span>'+(p.total_price||0)+' €</span></div>'
+    +(p.delay_days?'<div style="font-size:13px;color:var(--muted);">Délai estimé : '+p.delay_days+' jour(s)</div>':'')
+    +(p.revisions_included?'<div style="font-size:13px;color:var(--muted);">Révisions incluses : '+p.revisions_included+'</div>':'')
+    +(p.notes?'<div style="font-size:13px;color:var(--muted);margin-top:4px;">'+p.notes+'</div>':'')
+    +'<div class="detail-feats-title" style="margin:10px 0 4px;font-size:13px;">Échéancier de paiement sécurisé</div>'
+    +milestonesHtml
+    +'<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);">'
+    +'<label style="display:flex;gap:8px;align-items:flex-start;font-size:13px;cursor:pointer;"><input type="checkbox" id="sign-accept-'+r.id+'" style="margin-top:2px;"> J\'accepte les conditions ci-dessus</label>'
+    +'<input type="text" id="sign-name-'+r.id+'" placeholder="Votre nom complet" style="width:100%;margin-top:8px;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:#fff;">'
+    +'<div id="sign-err-'+r.id+'" style="color:#ef4444;font-size:12px;margin-top:6px;display:none;"></div>'
+    +'<button class="resa-action-btn rab-primary" style="width:100%;margin-top:10px;" onclick="signRequestContract(\''+r.id+'\')">Signer le contrat</button>'
+    +'</div></div>';
+}
+function signRequestContract(requestId){
+  if(!USER||GUEST) return;
+  var chk = document.getElementById('sign-accept-'+requestId);
+  var nameInput = document.getElementById('sign-name-'+requestId);
+  var errEl = document.getElementById('sign-err-'+requestId);
+  var signatureName = nameInput ? nameInput.value.trim() : '';
+  if(errEl) errEl.style.display='none';
+  if(!chk || !chk.checked){
+    if(errEl){ errEl.textContent='Veuillez accepter les conditions pour continuer.'; errEl.style.display=''; }
+    return;
+  }
+  if(!signatureName || signatureName.length<2){
+    if(errEl){ errEl.textContent='Veuillez saisir votre nom complet.'; errEl.style.display=''; }
+    return;
+  }
+  fetch((window.FA_GENESIS_API||API)+'/api/my-requests/'+requestId+'/sign-contract',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+USER._token},
+    body: JSON.stringify({ signatureName: signatureName, accepted: true })
+  }).then(function(r){return r.json();}).then(function(data){
+    if(!data || !data.success){
+      if(errEl){ errEl.textContent=(data&&data.error)||'Erreur lors de la signature.'; errEl.style.display=''; }
+      return;
+    }
+    renderResaTab();
+  }).catch(function(){
+    if(errEl){ errEl.textContent='Erreur de connexion au serveur.'; errEl.style.display=''; }
+  });
 }
 
 // ── MESSAGES ─────────────────────────────────────────────────
@@ -7912,8 +7972,9 @@ function _ptnrLoadMissions(){
       _setBadgeMissions(0); return;
     }
 
-    var html = '<div style="font-size:12px;color:#888;margin-bottom:14px;line-height:1.6;">Un client souhaite vous engager directement. Acceptez pour qu\'il puisse payer l\'acompte, ou refusez s\'il vous est impossible de prendre la mission.</div>';
+    var html = '<div style="font-size:12px;color:#888;margin-bottom:14px;line-height:1.6;">Un client souhaite vous engager directement. Acceptez pour lui envoyer une proposition, ou refusez s\'il vous est impossible de prendre la mission.</div>';
     items.forEach(function(r){
+      if(r.status === 'accepted'){ html += _ptnrRenderProposalForm(r); return; }
       html += '<div class="dispatch-card new-card" id="request-'+r.id+'">';
       html += '<div class="dispatch-badge"><span class="dispatch-badge-dot"></span>Nouvelle demande</div>';
       html += '<div class="dispatch-title">'+r.client_name+' — '+r.service_label+'</div>';
@@ -7946,7 +8007,7 @@ function _acceptPartnerRequest(id){
   _ptnrFetch('/api/partner/requests/'+id+'/accept','POST',{}).then(function(res){
     if(res.success){
       launchConfetti();
-      showToast('Demande acceptée !','Le client peut maintenant payer l\'acompte.','success');
+      showToast('Demande acceptée !','Envoyez maintenant votre proposition au client.','success');
       haptic([50,30,100,30,150]);
       _ptnrLoadMissions(); _ptnrRefreshBadges();
     } else {
@@ -7969,6 +8030,85 @@ function _declinePartnerRequest(id){
     }
   }).catch(function(){
     showToast('Erreur de connexion','Réessayez','error');
+  });
+}
+
+function _ptnrRenderProposalForm(r){
+  var html = '<div class="dispatch-card new-card" id="request-'+r.id+'">';
+  html += '<div class="dispatch-badge"><span class="dispatch-badge-dot"></span>Acceptée — proposition à envoyer</div>';
+  html += '<div class="dispatch-title">'+r.client_name+' — '+r.service_label+'</div>';
+  html += '<div class="dispatch-meta">Acceptée le '+_ptnrFmt(r.responded_at||r.created_at)+'</div>';
+  html += '<div class="dispatch-avail" style="margin-top:10px;">';
+  html += '<div id="prop-lines-'+r.id+'">';
+  html += '<div class="prop-line" style="display:flex;gap:8px;margin-bottom:8px;">';
+  html += '<input type="text" placeholder="Intitulé (ex: Maquette logo)" class="prop-label-input" style="flex:2;padding:8px;border-radius:8px;border:1px solid #ddd;">';
+  html += '<input type="number" placeholder="Montant €" class="prop-amount-input" style="flex:1;padding:8px;border-radius:8px;border:1px solid #ddd;">';
+  html += '</div>';
+  html += '</div>';
+  html += '<button type="button" style="background:transparent;color:#1a73e8;border:none;font-weight:700;font-size:12px;cursor:pointer;padding:4px 0;" onclick="_ptnrAddProposalLine(\''+r.id+'\')"><i class="fa-solid fa-plus"></i> Ajouter une ligne</button>';
+  html += '<div style="display:flex;gap:8px;margin-top:12px;">';
+  html += '<input type="number" id="prop-delay-'+r.id+'" placeholder="Délai (jours)" style="flex:1;padding:8px;border-radius:8px;border:1px solid #ddd;">';
+  html += '<input type="number" id="prop-revisions-'+r.id+'" placeholder="Révisions incluses" style="flex:1;padding:8px;border-radius:8px;border:1px solid #ddd;">';
+  html += '</div>';
+  html += '<textarea id="prop-notes-'+r.id+'" placeholder="Notes complémentaires (optionnel)" style="width:100%;margin-top:8px;padding:8px;border-radius:8px;border:1px solid #ddd;min-height:60px;"></textarea>';
+  html += '<div id="prop-err-'+r.id+'" style="color:#c00;font-size:12px;margin-top:6px;"></div>';
+  html += '</div>';
+  html += '<div style="display:flex;gap:10px;margin-top:14px;">';
+  html += '<button id="prop-submit-btn-'+r.id+'" class="dispatch-claim-btn" style="flex:1;" onclick="_ptnrSubmitProposal(\''+r.id+'\')"><i class="fa-solid fa-paper-plane"></i> ENVOYER LA PROPOSITION</button>';
+  html += '</div>';
+  html += '</div>';
+  return html;
+}
+
+function _ptnrAddProposalLine(id){
+  var container = document.getElementById('prop-lines-'+id);
+  if(!container) return;
+  var line = document.createElement('div');
+  line.className = 'prop-line';
+  line.style.display = 'flex'; line.style.gap = '8px'; line.style.marginBottom = '8px';
+  line.innerHTML = '<input type="text" placeholder="Intitulé" class="prop-label-input" style="flex:2;padding:8px;border-radius:8px;border:1px solid #ddd;">'+
+    '<input type="number" placeholder="Montant €" class="prop-amount-input" style="flex:1;padding:8px;border-radius:8px;border:1px solid #ddd;">';
+  container.appendChild(line);
+}
+
+function _ptnrSubmitProposal(requestId){
+  var errEl = document.getElementById('prop-err-'+requestId);
+  if(errEl) errEl.textContent = '';
+  var container = document.getElementById('prop-lines-'+requestId);
+  var labelInputs = container ? container.querySelectorAll('.prop-label-input') : [];
+  var amountInputs = container ? container.querySelectorAll('.prop-amount-input') : [];
+  var items = [];
+  var totalPrice = 0;
+  for(var i=0; i<labelInputs.length; i++){
+    var label = (labelInputs[i].value||'').trim();
+    var amount = parseFloat(amountInputs[i].value);
+    if(label && amount > 0){ items.push({label: label, amount: amount}); totalPrice += amount; }
+  }
+  if(!items.length || totalPrice <= 0){
+    if(errEl) errEl.textContent = 'Ajoutez au moins une ligne avec un intitulé et un montant valides.';
+    return;
+  }
+  var delayDays = parseInt(document.getElementById('prop-delay-'+requestId).value, 10) || 0;
+  var revisionsIncluded = parseInt(document.getElementById('prop-revisions-'+requestId).value, 10) || 0;
+  var notes = (document.getElementById('prop-notes-'+requestId).value || '').trim();
+
+  var btn = document.getElementById('prop-submit-btn-'+requestId);
+  if(btn){ btn.disabled = true; btn.textContent = 'Envoi...'; }
+  haptic(15);
+  _ptnrFetch('/api/partner/requests/'+requestId+'/propose', 'POST', {
+    items: items, total_price: totalPrice, delay_days: delayDays, revisions_included: revisionsIncluded, notes: notes
+  }).then(function(res){
+    if(res.success){
+      showToast('Proposition envoyée !','Le client va recevoir le récapitulatif à signer.','success');
+      haptic([50,30,100]);
+      _ptnrLoadMissions(); _ptnrRefreshBadges();
+    } else {
+      if(btn){ btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> ENVOYER LA PROPOSITION'; }
+      if(errEl) errEl.textContent = res.error || 'Erreur, réessayez.';
+    }
+  }).catch(function(){
+    if(btn){ btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> ENVOYER LA PROPOSITION'; }
+    if(errEl) errEl.textContent = 'Erreur de connexion, réessayez.';
   });
 }
 
