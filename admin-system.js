@@ -66,8 +66,11 @@ function adminLogout() {
 // Injecte automatiquement le token de session admin sur tous les appels /api/admin/*
 // (evite de modifier individuellement les ~80 appels fetch() existants dans admin.html)
 // Si le serveur repond 401 (session expiree/invalide - ex. apres redemarrage du serveur
-// ou ancien token reste dans le localStorage), on force une reconnexion propre au lieu de
-// laisser chaque ecran afficher silencieusement "Erreur de chargement" sans explication.
+// ou ancien token reste dans le localStorage), on revient proprement a l'ecran de connexion
+// SANS recharger la page : un location.reload() ici peut re-declencher le meme appel
+// /api/admin/* immediatement (showAdminPanel() est rappele au chargement si un vieux
+// token traine encore une fraction de seconde), créant une boucle d'alert() sans fin.
+// On bascule donc l'affichage directement en JS, une seule fois par session expiree.
 (function() {
     var _origFetch = window.fetch;
     var sessionExpiredHandled = false;
@@ -88,8 +91,17 @@ function adminLogout() {
                 sessionExpiredHandled = true;
                 localStorage.removeItem('adminSession');
                 localStorage.removeItem('adminToken');
-                alert('Votre session administrateur a expiré. Merci de vous reconnecter.');
-                location.reload();
+                try {
+                    var panel = document.getElementById('adminPanel');
+                    var login = document.getElementById('loginPage');
+                    if (panel) panel.style.display = 'none';
+                    if (login) login.style.display = 'flex';
+                    var errorDiv = document.getElementById('loginError');
+                    if (errorDiv) {
+                        errorDiv.innerHTML = '<i class="fas fa-exclamation-triangle mr-2"></i>Votre session administrateur a expiré. Merci de vous reconnecter.';
+                        errorDiv.style.display = 'block';
+                    }
+                } catch (e) {}
             }
             return response;
         });
