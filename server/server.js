@@ -18,7 +18,7 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const PDFDocument = require('pdfkit');
 
-const { getProductById, calculatePaymentAmounts, getAmountForStage, generateInstallments } = require('./products');
+const { getProductById, calculatePaymentAmounts, getAmountForStage, generateInstallments, generateGenesisSplit } = require('./products');
 const emailService = require('./email-service');
 const { OFFER_BLUEPRINTS, getOfferBlueprint, getAllOfferKeys } = require('./config/offerBlueprints');
 const { fillTemplate, getAvailableTemplates, getTemplate } = require('./config/documentTemplates');
@@ -577,14 +577,43 @@ async function processDispatchPayout(dispatch, stage) {
 
         var partnerPct = dispatch.partner_pct || 15;
         var faPct = 100 - partnerPct;
-        var paidAmount;
+
+        var orders = loadOrders();
+        var order = orders.find(function(o) { return o.id === dispatch.order_id; });
+
+        var paidAmount, stageTotal;
 
         if (stage === 'deposit') {
             paidAmount = parseFloat((dispatch.partner_deposit_amount || 0).toFixed(2));
+            stageTotal = order ? parseFloat(order.deposit_amount || ((order.total_amount || 0) * 0.30)) : 0;
+        } else if (stage === 'installment_2' || stage === 'installment_3') {
+            // GENESIS SAFE™ : tranches 2 (40%, livrable intermédiaire) et 3 (30%, livraison finale),
+            // calculées sur le montant réel de la tranche (order.installments), pas sur le solde global.
+            var tranche = order && order.installments
+                ? order.installments.find(function(i) { return i.stage === stage; })
+                : null;
+            stageTotal = tranche ? parseFloat(tranche.amount || 0) : 0;
+            paidAmount = parseFloat((stageTotal * partnerPct / 100).toFixed(2));
+        } else if (order && order.installments && order.installments.length === 3) {
+            // 'balance' sur une commande GENESIS SAFE™ : le client a payé tout le solde
+            // restant en un clic (tranches 2+3) au lieu de les régler séparément. On ne verse
+            // au partenaire que les tranches pas encore reversées, pour éviter un double
+            // versement si une tranche avait déjà été payée/reversée individuellement.
+            var existingPayoutsForDispatch = loadPayouts().filter(function(p) { return p.dispatch_id === dispatch.id; });
+            var paidOutStages = existingPayoutsForDispatch.map(function(p) { return p.stage; });
+            var remainingTranches = order.installments.filter(function(i) {
+                return i.stage !== 'deposit' && paidOutStages.indexOf(i.stage) === -1;
+            });
+            stageTotal = remainingTranches.reduce(function(sum, i) { return sum + parseFloat(i.amount || 0); }, 0);
+            paidAmount = parseFloat((stageTotal * partnerPct / 100).toFixed(2));
         } else {
+            // 'balance' : commandes historiques sans split 30/40/30 (solde 70% en un seul versement)
             var pTotal = parseFloat(dispatch.partner_total_amount || 0);
             var pDeposit = parseFloat(dispatch.partner_deposit_amount || 0);
             paidAmount = parseFloat((pTotal - pDeposit).toFixed(2));
+            var orderTotal = order ? parseFloat(order.total_amount || 0) : 0;
+            var depositAmt = order ? parseFloat(order.deposit_amount || (orderTotal * 0.30)) : 0;
+            stageTotal = order ? parseFloat(order.balance_amount || (orderTotal - depositAmt)) : 0;
         }
         if (paidAmount <= 0) return;
 
@@ -592,14 +621,6 @@ async function processDispatchPayout(dispatch, stage) {
         var partner = partners.find(function(p) { return p.id === dispatch.claimed_by_partner_id; });
         if (!partner) return;
 
-        var orders = loadOrders();
-        var order = orders.find(function(o) { return o.id === dispatch.order_id; });
-        var stageTotal = 0;
-        if (order) {
-            var orderTotal = parseFloat(order.total_amount || 0);
-            var depositAmt = parseFloat(order.deposit_amount || (orderTotal * 0.30));
-            stageTotal = stage === 'deposit' ? depositAmt : parseFloat(order.balance_amount || (orderTotal - depositAmt));
-        }
         var faAmount = parseFloat((stageTotal - paidAmount).toFixed(2));
 
         var method = (partner.payout_paypal ? 'paypal' : (partner.payout_iban ? 'bank_transfer' : 'pending'));
@@ -1221,6 +1242,11 @@ function buildActiveSubscription(user, order) {
         }) || null;
     }
 
+    // GENESIS SAFE™ : badge "Paiement sécurisé" tant que la tranche finale n'est pas payee
+    var hasGenesisSplitSub = order.installments && order.installments.length === 3;
+    var tranche3PaidSub = hasGenesisSplitSub ? !!order.installments[2].paid : !!order.balance_paid;
+    var paymentSecured = order.deposit_paid === true && !tranche3PaidSub;
+
     return {
         product_type: order.product_type || 'accompagnement',
         category: category,
@@ -1238,6 +1264,7 @@ function buildActiveSubscription(user, order) {
         installments_count: order.installments_count || 2,
         installments: order.installments || null,
         next_installment: nextInst,
+        payment_secured: paymentSecured,
         status: order.status || 'registered',
         schedule_status: order.schedule_status || null,
         proposed_start_date: order.proposed_start_date || null,
@@ -1760,17 +1787,17 @@ app.post('/api/orders/create', (req, res) => {
                 installCountFinal = 1;
                 installPlanFinal = null;
             } else if (hasCwEvent) {
-                // Acompte 30% obligatoire ; le solde (70%) est payable en 1x ou 3x selon cwInstallsChoice
-                depositAmountFinal = Math.round(totalAmountFinal * 0.30);
-                balanceAmountFinal = totalAmountFinal - depositAmountFinal;
-                installCountFinal = cwInstallsChoice === 3 ? 3 : 1;
-                installPlanFinal = installCountFinal > 1 ? generateInstallments(totalAmountFinal, depositAmountFinal, installCountFinal + 1, new Date()) : null;
+                // GENESIS SAFE™ : split fixe 30/40/30 (acompte / livrable intermédiaire / livraison finale)
+                installPlanFinal = generateGenesisSplit(totalAmountFinal);
+                depositAmountFinal = installPlanFinal[0].amount;
+                balanceAmountFinal = installPlanFinal[1].amount + installPlanFinal[2].amount;
+                installCountFinal = 3;
             } else {
-                depositAmountFinal = stdCalc ? stdCalc.deposit_amount : Math.round(totalAmountFinal * 0.30);
-                balanceAmountFinal = totalAmountFinal - depositAmountFinal;
-                var maxInstFinal = stdCalc ? (stdCalc.installments_count || 2) : 2;
-                installCountFinal = maxInstFinal;
-                installPlanFinal = generateInstallments(totalAmountFinal, depositAmountFinal, installCountFinal, new Date());
+                // GENESIS SAFE™ : split fixe 30/40/30 (acompte / livrable intermédiaire / livraison finale)
+                installPlanFinal = generateGenesisSplit(totalAmountFinal);
+                depositAmountFinal = installPlanFinal[0].amount;
+                balanceAmountFinal = installPlanFinal[1].amount + installPlanFinal[2].amount;
+                installCountFinal = 3;
             }
 
             var orderIdFinal = 'ORD-' + uuidv4().split('-')[0].toUpperCase();
@@ -1854,8 +1881,10 @@ app.post('/api/orders/create', (req, res) => {
             }
 
             const psoTotal = parseFloat(service.price);
-            const psoDeposit = Math.round(psoTotal * 0.30);
-            const psoBalance = psoTotal - psoDeposit;
+            // GENESIS SAFE™ : split fixe 30/40/30 (acompte / livrable intermédiaire / livraison finale)
+            const psoInstallments = generateGenesisSplit(psoTotal);
+            const psoDeposit = psoInstallments[0].amount;
+            const psoBalance = psoInstallments[1].amount + psoInstallments[2].amount;
 
             order = {
                 id: `ORD-${uuidv4().split('-')[0].toUpperCase()}`,
@@ -1876,8 +1905,8 @@ app.post('/api/orders/create', (req, res) => {
                 total_amount: psoTotal,
                 deposit_amount: psoDeposit,
                 balance_amount: psoBalance,
-                installments_count: 1,
-                installments: null,
+                installments_count: 3,
+                installments: psoInstallments,
                 amount_paid: 0,
                 deposit_paid: false,
                 balance_paid: false,
@@ -1902,9 +1931,8 @@ app.post('/api/orders/create', (req, res) => {
                 return res.status(404).json({ error: 'Produit non trouve' });
             }
 
-            const amounts = calculatePaymentAmounts(product.total_price);
-            var legacyInstallCount = product.installments_count || 2;
-            var legacyInstallPlan = generateInstallments(amounts.total_amount, amounts.deposit_amount, legacyInstallCount, new Date());
+            // GENESIS SAFE™ : split fixe 30/40/30 (acompte / livrable intermédiaire / livraison finale)
+            var legacyInstallPlan = generateGenesisSplit(product.total_price);
 
             order = {
                 id: `ORD-${uuidv4().split('-')[0].toUpperCase()}`,
@@ -1919,10 +1947,10 @@ app.post('/api/orders/create', (req, res) => {
                     company: clientInfo.company || null,
                     client_type: clientInfo.clientType || 'particulier'
                 },
-                total_amount: amounts.total_amount,
-                deposit_amount: amounts.deposit_amount,
-                balance_amount: amounts.balance_amount,
-                installments_count: legacyInstallCount,
+                total_amount: product.total_price,
+                deposit_amount: legacyInstallPlan[0].amount,
+                balance_amount: legacyInstallPlan[1].amount + legacyInstallPlan[2].amount,
+                installments_count: 3,
                 installments: legacyInstallPlan,
                 amount_paid: 0,
                 deposit_paid: false,
@@ -1936,7 +1964,7 @@ app.post('/api/orders/create', (req, res) => {
                 updated_at: new Date().toISOString()
             };
 
-            console.log(`[ORDER] Commande creee: ${order.id} - ${product.name} - ${amounts.total_amount}EUR`);
+            console.log(`[ORDER] Commande creee: ${order.id} - ${product.name} - ${product.total_price}EUR`);
 
         } else {
             return res.status(400).json({ error: 'productId, items ou partnerServiceOrder requis' });
@@ -2657,7 +2685,37 @@ app.post('/api/payments/sumup/webhook', async (req, res) => {
             } else if (stage === 'balance') {
                 updates.balance_paid = true;
                 updates.status = 'paid_in_full';
+                // GENESIS SAFE™ : si la commande a un split 3 tranches et que le client a payé
+                // tout le solde restant en un clic, marquer aussi les tranches 2/3 comme payées
+                // (sinon getAccessRights, qui se base sur installments[2].paid, resterait bloqué).
+                if (order.installments && order.installments.length === 3) {
+                    var balUpdatedInstallments = order.installments.map(function(i) {
+                        if (i.paid) return i;
+                        return Object.assign({}, i, { paid: true, paid_at: new Date().toISOString() });
+                    });
+                    updates.installments = balUpdatedInstallments;
+                    updates.amount_paid = balUpdatedInstallments.reduce(function(sum, i) { return sum + (i.paid ? i.amount : 0); }, 0);
+                }
                 console.log(`[WEBHOOK] Solde payé - Commande complète`);
+            } else if (stage === 'installment_2' || stage === 'installment_3') {
+                // GENESIS SAFE™ : tranche 2 (livrable intermédiaire, 40%) ou tranche 3 (livraison finale, 30%)
+                var instIdx = (order.installments || []).findIndex(function(i) { return i.stage === stage; });
+                if (instIdx !== -1) {
+                    var updatedInstallments = order.installments.map(function(i, idx) {
+                        if (idx !== instIdx) return i;
+                        return Object.assign({}, i, { paid: true, paid_at: new Date().toISOString() });
+                    });
+                    updates.installments = updatedInstallments;
+                    updates.amount_paid = updatedInstallments.reduce(function(sum, i) { return sum + (i.paid ? i.amount : 0); }, 0);
+                    if (stage === 'installment_2') {
+                        updates.status = 'mid_delivery_paid';
+                        console.log('[WEBHOOK] Tranche 2 (livrable intermédiaire) payée');
+                    } else {
+                        updates.balance_paid = true;
+                        updates.status = 'paid_in_full';
+                        console.log('[WEBHOOK] Tranche 3 (livraison finale) payée - Commande complète');
+                    }
+                }
             }
 
             const updatedOrder = updateOrder(orderId, updates);
@@ -2670,16 +2728,17 @@ app.post('/api/payments/sumup/webhook', async (req, res) => {
                         return u.email && u.email.toLowerCase() === updatedOrder.client_info.email.toLowerCase();
                     });
                     if (userIdx !== -1) {
-                        if (stage === 'deposit') {
-                            users[userIdx].paymentStatus = 'deposit_paid';
-                            users[userIdx].payment_status = 'deposit_paid';
-                        } else if (stage === 'balance') {
-                            users[userIdx].paymentStatus = 'fully_paid';
-                            users[userIdx].payment_status = 'fully_paid';
+                        var newPaymentStatus = stage === 'deposit' ? 'deposit_paid'
+                            : stage === 'installment_2' ? 'mid_delivery_paid'
+                            : (stage === 'balance' || stage === 'installment_3') ? 'fully_paid'
+                            : null;
+                        if (newPaymentStatus) {
+                            users[userIdx].paymentStatus = newPaymentStatus;
+                            users[userIdx].payment_status = newPaymentStatus;
                         }
                         users[userIdx].activeOrderId = orderId;
                         saveUsers(users);
-                        console.log('[WEBHOOK] users.json mis à jour: ' + updatedOrder.client_info.email + ' → paymentStatus=' + (stage === 'deposit' ? 'deposit_paid' : 'fully_paid'));
+                        console.log('[WEBHOOK] users.json mis à jour: ' + updatedOrder.client_info.email + ' → paymentStatus=' + newPaymentStatus);
                     } else {
                         console.log('[WEBHOOK] Utilisateur non trouvé dans users.json: ' + updatedOrder.client_info.email);
                     }
@@ -2691,9 +2750,12 @@ app.post('/api/payments/sumup/webhook', async (req, res) => {
             // Push notifications paiement
             if (updatedOrder && updatedOrder.client_info && updatedOrder.client_info.email) {
                 var pushClientEmail = updatedOrder.client_info.email;
-                var pushMsgClient = stage === 'deposit' ? 'Votre acompte a été reçu. Votre accompagnement démarre !' : 'Votre paiement complet a été confirmé. Merci !';
+                var pushMsgClient = stage === 'deposit' ? 'Votre acompte a été reçu. Votre accompagnement démarre !'
+                    : stage === 'installment_2' ? 'Le paiement de la tranche 2 (livrable intermédiaire) a été reçu. Merci !'
+                    : 'Votre paiement complet a été confirmé. Merci !';
+                var pushStageLabel = stage === 'deposit' ? 'acompte' : stage === 'installment_2' ? 'tranche 2' : stage === 'installment_3' ? 'tranche 3' : 'solde';
                 sendPushToUser(pushClientEmail, { title: 'Paiement confirmé ✅', body: pushMsgClient, icon: '/assets/images/logo-favicon-192.png', badge: '/assets/images/logo-favicon-32.png', url: '/espace-client.html', tag: 'paiement' });
-                sendPushToRole('admin', { title: 'Paiement reçu', body: (updatedOrder.client_info.first_name || '') + ' — ' + (updatedOrder.product_name || '') + ' — ' + (stage === 'deposit' ? 'acompte' : 'solde'), icon: '/assets/images/logo-favicon-192.png', badge: '/assets/images/logo-favicon-32.png', url: '/app.html#open-admin', tag: 'paiement-admin' });
+                sendPushToRole('admin', { title: 'Paiement reçu', body: (updatedOrder.client_info.first_name || '') + ' — ' + (updatedOrder.product_name || '') + ' — ' + pushStageLabel, icon: '/assets/images/logo-favicon-192.png', badge: '/assets/images/logo-favicon-32.png', url: '/app.html#open-admin', tag: 'paiement-admin' });
             }
 
             // Envoyer les emails appropriés
@@ -2747,23 +2809,28 @@ app.post('/api/payments/sumup/webhook', async (req, res) => {
                     // apres que le client ait choisi une date ET que admin+partenaire aient confirme
                     console.log('[WEBHOOK] Bootstrap reporte - en attente choix date client');
 
-                } else if (stage === 'balance') {
-                    // Après paiement du solde : envoyer la confirmation de paiement complet
-                    emailService.sendPaymentConfirmation(
-                        clientEmail,
-                        clientName,
-                        updatedOrder
-                    ).then(result => {
-                        if (result.success) {
-                            console.log(`[WEBHOOK] Email de paiement envoyé à ${clientEmail}`);
-                        }
-                    }).catch(err => console.error('[WEBHOOK] Erreur envoi email paiement:', err));
+                } else if (stage === 'balance' || stage === 'installment_2' || stage === 'installment_3') {
+                    var isFinalPayment = (stage === 'balance' || stage === 'installment_3');
 
-                    // Verser la part de solde à chaque partenaire ayant accepté sa mission
+                    if (isFinalPayment) {
+                        // Après paiement du solde / de la tranche finale : confirmation de paiement complet
+                        emailService.sendPaymentConfirmation(
+                            clientEmail,
+                            clientName,
+                            updatedOrder
+                        ).then(result => {
+                            if (result.success) {
+                                console.log(`[WEBHOOK] Email de paiement envoyé à ${clientEmail}`);
+                            }
+                        }).catch(err => console.error('[WEBHOOK] Erreur envoi email paiement:', err));
+                    }
+
+                    // Verser la part de cette tranche à chaque partenaire ayant accepté sa mission
+                    // (aucun gate de validation : le versement se déclenche automatiquement à chaque tranche payée)
                     var _acceptedD = loadDispatches().filter(function(d) { return d.order_id === orderId && d.status === 'accepted'; });
-                    _acceptedD.forEach(function(d) { processDispatchPayout(d, 'balance').catch(function(e) { console.error('[PAYOUT] Erreur solde webhook:', e); }); });
-                    if (_acceptedD.length === 0) console.log('[WEBHOOK] Aucun dispatch accepté pour versement solde — commande ' + orderId);
-                    requestPartnerReviews(clientEmail, _acceptedD);
+                    _acceptedD.forEach(function(d) { processDispatchPayout(d, stage).catch(function(e) { console.error('[PAYOUT] Erreur ' + stage + ' webhook:', e); }); });
+                    if (_acceptedD.length === 0) console.log('[WEBHOOK] Aucun dispatch accepté pour versement ' + stage + ' — commande ' + orderId);
+                    if (isFinalPayment) requestPartnerReviews(clientEmail, _acceptedD);
                 }
             }
         }
@@ -2815,6 +2882,7 @@ app.post('/api/payments/verify', async (req, res) => {
 
                 let isNewPayment = false;
                 let paymentStage = null;
+                let payoutStage = null; // stage exact (deposit/installment_2/installment_3/balance) pour le versement partenaire
                 var isInstallVerify = stage && stage.startsWith('installment_');
 
                 if (stage === 'deposit' && !order.deposit_paid) {
@@ -2836,9 +2904,10 @@ app.post('/api/payments/verify', async (req, res) => {
                     }
                     isNewPayment = true;
                     paymentStage = 'deposit';
+                    payoutStage = 'deposit';
 
                 } else if (isInstallVerify && !order.balance_paid) {
-                    // Versement spécifique
+                    // Versement spécifique (GENESIS SAFE™ : installment_2 ou installment_3)
                     var installsCopy2 = order.installments ? JSON.parse(JSON.stringify(order.installments)) : [];
                     var instToMark = installsCopy2.find(function(it) { return it.stage === stage; });
                     if (instToMark && !instToMark.paid) {
@@ -2852,9 +2921,12 @@ app.post('/api/payments/verify', async (req, res) => {
                         if (allPaid || newAmountPaid >= order.total_amount) {
                             updates.balance_paid = true;
                             updates.status = 'paid_in_full';
+                        } else if (stage === 'installment_2') {
+                            updates.status = 'mid_delivery_paid';
                         }
                         isNewPayment = true;
                         paymentStage = allPaid ? 'balance' : 'installment';
+                        payoutStage = stage; // garder le stage exact pour calculer le bon montant de versement
                     }
 
                 } else if (stage === 'balance' && !order.balance_paid) {
@@ -2872,6 +2944,7 @@ app.post('/api/payments/verify', async (req, res) => {
                     }
                     isNewPayment = true;
                     paymentStage = 'balance';
+                    payoutStage = 'balance';
                 }
 
                 const updatedOrder = updateOrder(orderId, updates);
@@ -2884,7 +2957,9 @@ app.post('/api/payments/verify', async (req, res) => {
                             return u.email && u.email.toLowerCase() === updatedOrder.client_info.email.toLowerCase();
                         });
                         if (uIdx !== -1) {
-                            var newStatus = paymentStage === 'deposit' ? 'deposit_paid' : 'fully_paid';
+                            var newStatus = payoutStage === 'deposit' ? 'deposit_paid'
+                                : payoutStage === 'installment_2' ? 'mid_delivery_paid'
+                                : 'fully_paid';
                             allUsers[uIdx].paymentStatus = newStatus;
                             allUsers[uIdx].payment_status = newStatus;
                             allUsers[uIdx].activeOrderId = orderId;
@@ -2947,23 +3022,27 @@ app.post('/api/payments/verify', async (req, res) => {
                         // apres que le client ait choisi une date ET que admin+partenaire aient confirme
                         console.log('[VERIFY] Bootstrap reporte - en attente choix date client');
 
-                    } else if (paymentStage === 'balance') {
-                        // Après paiement du solde : confirmation de paiement complet
-                        emailService.sendPaymentConfirmation(
-                            clientEmail,
-                            clientName,
-                            updatedOrder
-                        ).then(result => {
-                            if (result.success) {
-                                console.log(`[VERIFY] Email de paiement envoyé à ${clientEmail}`);
-                            }
-                        }).catch(err => console.error('[VERIFY] Erreur envoi email paiement:', err));
+                    } else if (paymentStage === 'balance' || paymentStage === 'installment') {
+                        var isFinalVerifyPayment = paymentStage === 'balance';
 
-                        // Verser la part de solde à chaque partenaire ayant accepté sa mission
+                        if (isFinalVerifyPayment) {
+                            // Après paiement du solde / de la tranche finale : confirmation de paiement complet
+                            emailService.sendPaymentConfirmation(
+                                clientEmail,
+                                clientName,
+                                updatedOrder
+                            ).then(result => {
+                                if (result.success) {
+                                    console.log(`[VERIFY] Email de paiement envoyé à ${clientEmail}`);
+                                }
+                            }).catch(err => console.error('[VERIFY] Erreur envoi email paiement:', err));
+                        }
+
+                        // Verser la part de cette tranche à chaque partenaire ayant accepté sa mission
                         var _vAccD = loadDispatches().filter(function(d) { return d.order_id === orderId && d.status === 'accepted'; });
-                        _vAccD.forEach(function(d) { processDispatchPayout(d, 'balance').catch(function(e) { console.error('[PAYOUT] Erreur solde verify:', e); }); });
-                        if (_vAccD.length === 0) console.log('[VERIFY] Aucun dispatch accepté pour versement solde — commande ' + orderId);
-                        requestPartnerReviews(clientEmail, _vAccD);
+                        _vAccD.forEach(function(d) { processDispatchPayout(d, payoutStage).catch(function(e) { console.error('[PAYOUT] Erreur ' + payoutStage + ' verify:', e); }); });
+                        if (_vAccD.length === 0) console.log('[VERIFY] Aucun dispatch accepté pour versement ' + payoutStage + ' — commande ' + orderId);
+                        if (isFinalVerifyPayment) requestPartnerReviews(clientEmail, _vAccD);
                     }
                 }
 
@@ -3346,7 +3425,9 @@ function getAccessRights(order) {
         can_download_livrables: false,
         can_book_sessions: false,
         balance_required: false,
-        balance_message: null
+        balance_message: null,
+        payment_secured: false,
+        mid_delivery_paid: false
     };
 
     // Pas d'acompte paye = pas d'acces
@@ -3358,6 +3439,16 @@ function getAccessRights(order) {
     // Acompte paye = acces au dashboard
     rights.can_access_dashboard = true;
 
+    // GENESIS SAFE™ : split fixe 30/40/30 sur les commandes créées après cette phase
+    // (order.installments contient alors exactement 3 tranches). Les commandes plus
+    // anciennes n'ont pas ces 3 tranches : on garde le comportement acompte/solde 30/70.
+    var hasGenesisSplit = order.installments && order.installments.length === 3;
+    var tranche2Paid = hasGenesisSplit ? !!order.installments[1].paid : false;
+    var tranche3Paid = hasGenesisSplit ? !!order.installments[2].paid : !!order.balance_paid;
+    rights.mid_delivery_paid = tranche2Paid;
+    // "Paiement sécurisé" (cosmétique) : reste affiché tant que la tranche finale n'est pas réglée.
+    rights.payment_secured = !tranche3Paid;
+
     if (order.product_type === 'accompagnement') {
         // CAS A: Offres d'accompagnement
         rights.can_view_parcours = true;
@@ -3368,14 +3459,16 @@ function getAccessRights(order) {
         // (documents journaliers, etc.)
         rights.can_download_livrables = true;
 
-        // Si l'accompagnement est termine mais solde non paye
-        if (order.status === 'completed' && !order.balance_paid) {
+        // Si l'accompagnement est termine mais tranche finale non payee
+        if (order.status === 'completed' && !tranche3Paid) {
             rights.balance_required = true;
-            rights.balance_message = 'Votre accompagnement est termine. Payez le solde de 70% pour finaliser.';
+            rights.balance_message = hasGenesisSplit
+                ? 'Votre accompagnement est termine. Payez la tranche finale (30%) pour finaliser.'
+                : 'Votre accompagnement est termine. Payez le solde de 70% pour finaliser.';
         }
 
         // Si tout est paye
-        if (order.balance_paid) {
+        if (tranche3Paid) {
             rights.balance_message = 'Paiement complet - Acces total a tous vos contenus.';
         }
 
@@ -3387,18 +3480,33 @@ function getAccessRights(order) {
         // Preview toujours possible apres acompte
         rights.can_view_livrables_preview = true;
 
-        // Telechargement uniquement si solde paye
-        rights.can_download_livrables = order.balance_paid;
+        // Telechargement uniquement si tranche finale payee
+        rights.can_download_livrables = tranche3Paid;
 
-        // Si livrables prets mais solde non paye
-        if (order.status === 'delivered' && !order.balance_paid) {
+        // Si livrables prets mais tranche finale non payee
+        if (order.status === 'delivered' && !tranche3Paid) {
             rights.balance_required = true;
-            rights.balance_message = 'Vos livrables sont prêts ! Payez le solde de 70% pour télécharger les fichiers originaux.';
+            rights.balance_message = hasGenesisSplit
+                ? 'Vos livrables sont prêts ! Payez la tranche finale (30%) pour télécharger les fichiers originaux.'
+                : 'Vos livrables sont prêts ! Payez le solde de 70% pour télécharger les fichiers originaux.';
         }
 
         // Si tout est paye
-        if (order.balance_paid) {
+        if (tranche3Paid) {
             rights.balance_message = 'Paiement complet - Telechargement des fichiers originaux disponible.';
+        }
+    } else if (order.product_type === 'partner_service') {
+        // CAS C: Prestation marketplace partenaire (GENESIS CONTRACT™ / GENESIS SAFE™)
+        rights.can_view_parcours = false;
+        rights.can_book_sessions = false;
+        rights.can_view_livrables_preview = true;
+        rights.can_download_livrables = tranche3Paid;
+
+        if (tranche2Paid && !tranche3Paid) {
+            rights.balance_message = 'Livrable intermédiaire en cours. La tranche finale (30%) débloquera le téléchargement.';
+        }
+        if (tranche3Paid) {
+            rights.balance_message = 'Paiement complet - Téléchargement des fichiers disponible.';
         }
     }
 

@@ -256,6 +256,11 @@
                         <div class="text-sm font-black uppercase mb-2 opacity-70">Paiement</div>
                         <div class="text-3xl font-black italic" id="paymentStatus">-</div>
                         <div class="text-xs font-bold uppercase mt-1" id="paymentDetail">-</div>
+                        <div id="paymentSecuredBadge" style="display:none;margin-top:10px;">
+                            <span style="background:#000;color:#fff;padding:4px 10px;font-size:11px;font-weight:900;text-transform:uppercase;border-radius:4px;">
+                                <i class="fas fa-shield-alt mr-1"></i>Paiement sécurisé
+                            </span>
+                        </div>
                     </div>
                 </div>
 
@@ -749,6 +754,10 @@
                     if (payStatusEl) payStatusEl.textContent = 'En attente';
                     if (payDetailEl) payDetailEl.textContent = '-';
                 }
+
+                // Badge GENESIS SAFE™ "Paiement sécurisé" — cosmétique, affiché tant que la tranche finale n'est pas réglée
+                var securedBadgeEl = document.getElementById('paymentSecuredBadge');
+                if (securedBadgeEl) securedBadgeEl.style.display = sub.payment_secured ? '' : 'none';
 
                 // Prochaine étape
                 var nextEl = document.getElementById('nextStepLabel');

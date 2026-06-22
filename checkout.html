@@ -627,22 +627,20 @@
                 if (subtitle) subtitle.textContent = 'Paiement intégral en une seule fois';
                 updatePaymentTermsText('full');
             } else if (cwEventHasItems) {
+                // GENESIS SAFE™ : split fixe 30/40/30, comme les autres offres (acompte / livrable intermédiaire / livraison finale)
                 var evtDeposit = Math.round(totalAmount * 0.30);
                 var evtBalance = totalAmount - evtDeposit;
-                setPaymentDisplay(totalAmount, evtDeposit, evtBalance, 'Acompte (30%)', 'Solde (70%)');
-                if (subtitle) subtitle.textContent = 'ÉVÉNEMENT : acompte 30% obligatoire — solde payable en 1x ou 3x';
-                injectCoworkingEventSelector(evtBalance);
+                setPaymentDisplay(totalAmount, evtDeposit, evtBalance, 'Acompte (30%)', 'Solde (70%, en 2 versements)');
+                if (subtitle) subtitle.textContent = 'ÉVÉNEMENT — Paiement sécurisé GENESIS SAFE™ : 30% aujourd\'hui, 40% au livrable intermédiaire, 30% à la livraison finale';
+                showGenesisSplitSchedule(totalAmount);
                 updatePaymentTermsText('event');
             } else {
+                // GENESIS SAFE™ : split fixe 30/40/30 (acompte / livrable intermédiaire / livraison finale)
                 var depositAmount = Math.round(totalAmount * 0.30);
                 var balanceAmount = totalAmount - depositAmount;
-                setPaymentDisplay(totalAmount, depositAmount, balanceAmount, 'Acompte (30%)', 'Solde (70%)');
-                var maxInstallments = 2;
-                for (var j = 0; j < panier.items.length; j++) {
-                    var offJ = (typeof getOfferById === 'function') ? getOfferById(panier.items[j].id) : null;
-                    if (offJ && offJ.echelonsPaiement && offJ.echelonsPaiement > maxInstallments) maxInstallments = offJ.echelonsPaiement;
-                }
-                showInstallmentSchedule(totalAmount, depositAmount, maxInstallments);
+                setPaymentDisplay(totalAmount, depositAmount, balanceAmount, 'Acompte (30%)', 'Solde (70%, en 2 versements)');
+                if (subtitle) subtitle.textContent = 'Paiement sécurisé GENESIS SAFE™ — 30% aujourd\'hui, 40% au livrable intermédiaire, 30% à la livraison finale';
+                showGenesisSplitSchedule(totalAmount);
             }
 
             if (hasDevis) {
@@ -732,43 +730,6 @@
             }
         }
 
-        // balanceAmount = 70% du total événement (le solde à régler après l'acompte)
-        function injectCoworkingEventSelector(balanceAmount) {
-            var container = document.getElementById('installmentScheduleSection');
-            if (!container) return;
-            var installAmt = Math.ceil(balanceAmount / 3);
-            container.style.display = 'block';
-            var html = '<div class="text-xs font-black uppercase mb-3"><i class="fas fa-calendar-alt mr-1"></i> Paiement du solde (' + formatPrice(balanceAmount) + ')</div>';
-            html += '<div style="display:flex;gap:8px;margin-bottom:8px;">';
-            html += '<button id="cw1xBtn" onclick="setCwInstallments(1,' + balanceAmount + ')" style="flex:1;padding:10px;border:3px solid #000;font-weight:900;font-size:12px;text-transform:uppercase;cursor:pointer;background:#000;color:#FFD700;">1x — ' + formatPrice(balanceAmount) + '</button>';
-            html += '<button id="cw3xBtn" onclick="setCwInstallments(3,' + balanceAmount + ')" style="flex:1;padding:10px;border:3px solid #000;font-weight:900;font-size:12px;text-transform:uppercase;cursor:pointer;background:#fff;color:#000;">3x — ' + formatPrice(installAmt) + '/mois</button>';
-            html += '</div><p id="cwInstallNote" class="text-xs font-bold" style="color:#555;">Solde réglé en 1 fois après l\'acompte</p>';
-            container.innerHTML = html;
-            cwInstallmentsChoice = 1;
-        }
-
-        // n = nb d'échéances pour le SOLDE (pas le total). amountToPay reste l'acompte 30%.
-        window.setCwInstallments = function(n, balanceAmount) {
-            cwInstallmentsChoice = n;
-            var btn1 = document.getElementById('cw1xBtn');
-            var btn3 = document.getElementById('cw3xBtn');
-            var note = document.getElementById('cwInstallNote');
-            if (n === 1) {
-                if (btn1) { btn1.style.background = '#000'; btn1.style.color = '#FFD700'; }
-                if (btn3) { btn3.style.background = '#fff'; btn3.style.color = '#000'; }
-                if (note) note.textContent = 'Solde réglé en 1 fois après l\'acompte';
-            } else {
-                if (btn1) { btn1.style.background = '#fff'; btn1.style.color = '#000'; }
-                if (btn3) { btn3.style.background = '#000'; btn3.style.color = '#FFD700'; }
-                var installAmt = Math.ceil(balanceAmount / 3);
-                if (note) note.textContent = 'Solde en 3 versements de ' + formatPrice(installAmt) + ' (J+30, J+60, J+90)';
-            }
-            for (var k = 0; k < panierItems.length; k++) {
-                if (panierItems[k].coworkingData && panierItems[k].coworkingData.is_event) {
-                    panierItems[k].coworkingData.installments = n;
-                }
-            }
-        };
         // ============================================================
         // MODE LEGACY - Charger un seul produit depuis le backend
         // ============================================================
@@ -1002,6 +963,44 @@
             successDiv.innerHTML = '<i class="fas fa-check-circle mr-2"></i>' + message;
             successDiv.style.display = 'block';
             window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // ============================================================
+        // GENESIS SAFE™ : echeancier fixe 30/40/30 (acompte / livrable intermediaire / livraison finale)
+        // ============================================================
+        function showGenesisSplitSchedule(totalAmount) {
+            var section = document.getElementById('installmentScheduleSection');
+            var list = document.getElementById('installmentScheduleList');
+            if (!section || !list) return;
+
+            var tranche1 = Math.round(totalAmount * 0.30);
+            var tranche2 = Math.round(totalAmount * 0.40);
+            var tranche3 = totalAmount - tranche1 - tranche2;
+
+            var rows = [
+                { label: 'Acompte', sub: '(30%, aujourd\'hui)', amount: tranche1, paidNow: true },
+                { label: 'Tranche 2', sub: '(40%, livrable intermédiaire)', amount: tranche2, paidNow: false },
+                { label: 'Tranche 3', sub: '(30%, livraison finale)', amount: tranche3, paidNow: false }
+            ];
+
+            var html = '';
+            for (var i = 0; i < rows.length; i++) {
+                var r = rows[i];
+                html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;'
+                    + (i < rows.length - 1 ? 'border-bottom:1px solid #ccc;' : '')
+                    + 'font-size:12px;font-weight:700;">'
+                    + '<span><i class="fas fa-' + (r.paidNow ? 'check-circle' : 'clock') + '" style="color:' + (r.paidNow ? 'green' : '#888') + ';margin-right:4px;"></i>'
+                    + r.label + ' <span style="opacity:0.6;font-size:10px;">' + r.sub + '</span></span>'
+                    + '<span style="color:' + (r.paidNow ? '#2c7a2c' : '#000') + ';">' + formatPrice(r.amount) + '</span>'
+                    + '</div>';
+            }
+            html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0 0;font-size:13px;font-weight:900;border-top:2px solid black;margin-top:6px;">'
+                + '<span>Total</span>'
+                + '<span>' + formatPrice(totalAmount) + '</span>'
+                + '</div>';
+
+            list.innerHTML = html;
+            section.style.display = 'block';
         }
 
         // ============================================================

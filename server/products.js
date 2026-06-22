@@ -527,11 +527,61 @@ function generateInstallments(totalAmount, depositAmount, count, refDate) {
     return installments;
 }
 
+/**
+ * Génère le split fixe GENESIS SAFE™ 30/40/30, lié à des jalons de livraison
+ * (remplace le modèle acompte/solde 30/70 sur toutes les offres).
+ *
+ * @param {number} totalAmount - montant total de la commande
+ * @returns {Array} toujours 3 tranches fixes
+ */
+function generateGenesisSplit(totalAmount) {
+    var tranche1 = Math.round(totalAmount * 0.30);
+    var tranche2 = Math.round(totalAmount * 0.40);
+    var tranche3 = totalAmount - tranche1 - tranche2; // reste, pour éviter les erreurs d'arrondi
+
+    return [
+        {
+            number: 1,
+            key: 'kickoff',
+            label: 'Acompte (30%)',
+            amount: tranche1,
+            due_date: null,
+            paid: false,
+            paid_at: null,
+            stage: 'deposit',
+            milestone_required: null
+        },
+        {
+            number: 2,
+            key: 'mid_delivery',
+            label: 'Livrable intermédiaire (40%)',
+            amount: tranche2,
+            due_date: null,
+            paid: false,
+            paid_at: null,
+            stage: 'installment_2',
+            milestone_required: 'mid_delivery'
+        },
+        {
+            number: 3,
+            key: 'final_delivery',
+            label: 'Livraison finale (30%)',
+            amount: tranche3,
+            due_date: null,
+            paid: false,
+            paid_at: null,
+            stage: 'installment_3',
+            milestone_required: 'final_delivery'
+        }
+    ];
+}
+
 module.exports = {
     PRODUCTS,
     getProductById,
     calculatePaymentAmounts,
     calculateMultiItemAmounts,
     getAmountForStage,
-    generateInstallments
+    generateInstallments,
+    generateGenesisSplit
 };

@@ -6857,14 +6857,17 @@ function _showPbPayUI(partner, service){
   var overlay=document.getElementById('pb-overlay'); var sheet=document.getElementById('pb-sheet');
   if(!overlay||!sheet) return;
 
+  // GENESIS SAFE™ : split fixe 30/40/30 (la 3e tranche absorbe l'arrondi, comme generateGenesisSplit côté serveur)
   var total = parseFloat(service.price)||0;
   var deposit = Math.round(total*0.30);
-  var balance = total-deposit;
+  var tranche2 = Math.round(total*0.40);
+  var tranche3 = total-deposit-tranche2;
 
   var nm=document.getElementById('pb-service-name'); if(nm) nm.textContent=service.label;
   var pn=document.getElementById('pb-partner-name'); if(pn) pn.textContent='avec '+(partner.prenom||'')+' '+(partner.nom||'');
   var amt=document.getElementById('pb-deposit-amt'); if(amt) amt.textContent=deposit+' €';
-  var bal=document.getElementById('pb-balance-amt'); if(bal) bal.textContent=balance+' €';
+  var t2=document.getElementById('pb-tranche2-amt'); if(t2) t2.textContent=tranche2+' €';
+  var t3=document.getElementById('pb-tranche3-amt'); if(t3) t3.textContent=tranche3+' €';
   var tot=document.getElementById('pb-total-amt'); if(tot) tot.textContent=total+' €';
   var er=document.getElementById('pb-err'); if(er) er.classList.remove('on');
   var rf=document.getElementById('pb-request-form'); if(rf) rf.style.display='none';
@@ -7605,20 +7608,32 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
         </div>
       </div>
       <div id="pb-form">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;">
+          <span style="background:#000;color:#FFD700;padding:4px 10px;font-size:11px;font-weight:900;text-transform:uppercase;border-radius:4px;border:1px solid #FFD700;">
+            <i class="fas fa-shield-alt" style="margin-right:4px;"></i>Paiement sécurisé GENESIS SAFE™
+          </span>
+        </div>
         <div style="background:#111;border:1.5px solid #1e1e1e;border-radius:14px;overflow:hidden;margin-bottom:14px;">
           <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #1e1e1e;">
             <div>
               <div style="font-size:12px;color:#FFD700;font-weight:700;letter-spacing:.5px;">AUJOURD'HUI — OBLIGATOIRE</div>
-              <div style="font-size:14px;color:#fff;font-weight:700;margin-top:2px;">Acompte 30 %</div>
+              <div style="font-size:14px;color:#fff;font-weight:700;margin-top:2px;">Acompte (30 %)</div>
             </div>
             <div id="pb-deposit-amt" style="font-size:18px;color:#FFD700;font-weight:800;"></div>
           </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #1e1e1e;">
+            <div>
+              <div style="font-size:12px;color:#888;font-weight:700;letter-spacing:.5px;">TRANCHE 2 (40 %)</div>
+              <div style="font-size:13px;color:#aaa;margin-top:2px;">Liée au livrable intermédiaire</div>
+            </div>
+            <div id="pb-tranche2-amt" style="font-size:15px;color:#aaa;font-weight:700;"></div>
+          </div>
           <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;">
             <div>
-              <div style="font-size:12px;color:#888;font-weight:700;letter-spacing:.5px;">SOLDE (70 %)</div>
-              <div style="font-size:13px;color:#aaa;margin-top:2px;">À régler après la prestation</div>
+              <div style="font-size:12px;color:#888;font-weight:700;letter-spacing:.5px;">TRANCHE 3 (30 %)</div>
+              <div style="font-size:13px;color:#aaa;margin-top:2px;">Liée à la livraison finale</div>
             </div>
-            <div id="pb-balance-amt" style="font-size:15px;color:#aaa;font-weight:700;"></div>
+            <div id="pb-tranche3-amt" style="font-size:15px;color:#aaa;font-weight:700;"></div>
           </div>
         </div>
         <p style="font-size:11px;color:#666;font-weight:700;text-align:center;margin-bottom:14px;">Total prestation : <span id="pb-total-amt"></span></p>
@@ -8232,7 +8247,7 @@ function _ptnrLoadVersements(){
     listHtml += '<div style="font-size:10px;color:#555;margin-top:3px;font-weight:600;">EN ATTENTE</div></div>';
     listHtml += '</div>';
     payouts.forEach(function(p){
-      var stageLabel  = p.stage==='deposit'?'Acompte 30 %':(p.stage==='balance'?'Solde 70 %':'Versement');
+      var stageLabel  = p.stage==='deposit'?'Acompte 30 %':(p.stage==='installment_2'?'Tranche 2 (40 %)':(p.stage==='installment_3'?'Tranche 3 (30 %)':(p.stage==='balance'?'Solde 70 %':'Versement')));
       var statusColor = p.status==='sent'?'#4caf50':(p.status==='failed'?'#f44336':'#FFD700');
       var statusLabel = p.status==='sent'?'Envoyé':(p.status==='failed'?'Échoué':'En attente');
       var methodIco   = p.payout_method==='bank_transfer'?'<i class="fa-solid fa-building-columns"></i>':(p.payout_method==='paypal'?'<i class="fa-solid fa-credit-card"></i>':'<i class="fa-solid fa-hourglass-half"></i>');
