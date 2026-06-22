@@ -2162,6 +2162,9 @@ a{text-decoration:none;color:inherit}
           <button class="ptnr-snbtn" id="ptnr-sn-reputation" onclick="_ptnrNav('reputation')">
             <i class="pni fa-solid fa-trophy"></i><span>Réputation</span>
           </button>
+          <button class="ptnr-snbtn" id="ptnr-sn-profil" onclick="_ptnrNav('profil')">
+            <i class="pni fa-solid fa-id-card"></i><span>Profil</span>
+          </button>
         </div>
 
         <!-- Sub-screen: Home / Stats -->
@@ -2215,6 +2218,37 @@ a{text-decoration:none;color:inherit}
         <div class="ptnr-screen" id="ptnr-screen-reputation">
           <div class="ptnr-section-title">Ma réputation</div>
           <div id="ptnr-reputation-content"></div>
+        </div>
+
+        <!-- Sub-screen: Profil (photo + tarifs/prestations) -->
+        <div class="ptnr-screen" id="ptnr-screen-profil">
+          <div class="ptnr-section-title">Ma photo de profil</div>
+          <div class="ptnr-card" style="display:flex;align-items:center;gap:14px;">
+            <div id="ptnr-profil-photo-preview" style="width:64px;height:64px;border-radius:50%;background:#1a1a1a;border:2px solid #FFD700;overflow:hidden;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#FFD700;font-size:22px;"><i class="fa-solid fa-user"></i></div>
+            <div style="flex:1;">
+              <input type="file" id="ptnr-photo-input" accept="image/*" style="display:none;">
+              <button class="ptnr-login-btn" id="ptnr-photo-btn" style="margin-top:0;padding:12px;" onclick="document.getElementById('ptnr-photo-input').click()"><i class="fa-solid fa-camera"></i> Changer ma photo</button>
+              <div class="ptnr-login-err" id="ptnr-photo-msg" style="margin-top:8px;"></div>
+            </div>
+          </div>
+
+          <div class="ptnr-section-title">Mes tarifs &amp; prestations</div>
+          <div class="ptnr-card-sub" style="padding:0 0 4px;">Ajoutez vos prestations avec prix et photo. Elles s'affichent en temps réel sur votre fiche publique.</div>
+
+          <div class="ptnr-card-sub" style="margin-top:14px;font-weight:900;color:#aaa;">Tarif Étudiant</div>
+          <div id="ptnr-services-list-etudiant"></div>
+          <button class="ptnr-btn-no" style="width:100%;margin-bottom:6px;" onclick="_ptnrAddServiceItem('etudiant')"><i class="fa-solid fa-plus"></i> Ajouter une prestation (Étudiant)</button>
+
+          <div class="ptnr-card-sub" style="margin-top:14px;font-weight:900;color:#aaa;">Tarif Particulier</div>
+          <div id="ptnr-services-list-particulier"></div>
+          <button class="ptnr-btn-no" style="width:100%;margin-bottom:6px;" onclick="_ptnrAddServiceItem('particulier')"><i class="fa-solid fa-plus"></i> Ajouter une prestation (Particulier)</button>
+
+          <div class="ptnr-card-sub" style="margin-top:14px;font-weight:900;color:#aaa;">Tarif Entreprise</div>
+          <div id="ptnr-services-list-entreprise"></div>
+          <button class="ptnr-btn-no" style="width:100%;margin-bottom:6px;" onclick="_ptnrAddServiceItem('entreprise')"><i class="fa-solid fa-plus"></i> Ajouter une prestation (Entreprise)</button>
+
+          <div class="ptnr-login-err" id="ptnr-services-msg" style="margin-top:10px;"></div>
+          <button class="ptnr-login-btn" id="ptnr-services-save-btn" onclick="_ptnrSaveServices()"><i class="fa-solid fa-floppy-disk"></i> Enregistrer mes prestations</button>
         </div>
       </div>
     </div>
@@ -5860,7 +5894,7 @@ function _ptnrShowDash(){
     var ini = (savedProfile && savedProfile.initials) || (nm[0]||'P').toUpperCase();
     var av = document.getElementById('ptnr-avatar'); if(av) av.textContent = ini;
     var dn = document.getElementById('ptnr-display-name'); if(dn) dn.textContent = nm;
-    var dt = document.getElementById('ptnr-display-type'); if(dt) dt.textContent = p.partner_type || p.type || p.role || '';
+    var dt = document.getElementById('ptnr-display-type'); if(dt) dt.textContent = p.partner_type ? partnerTypeLabel(p) : (p.type || p.role || '');
   }
   if(!_ptnrRefreshTimer) _ptnrRefreshTimer = setInterval(_ptnrRefreshBadges, 30000);
 }
@@ -5880,6 +5914,7 @@ function _ptnrNav(screen){
   if(screen==='missions') _ptnrLoadMissions();
   if(screen==='versements') _ptnrLoadVersements();
   if(screen==='reputation') _ptnrLoadReputation();
+  if(screen==='profil') _ptnrLoadProfil();
 }
 
 function _ptnrFmt(dateStr){
@@ -8003,6 +8038,194 @@ function _ptnrLoadReputation(){
     if(el) el.innerHTML = '<div class="ptnr-empty"><div class="ptnr-empty-txt">Erreur de chargement</div></div>';
   });
 }
+
+// ── PROFIL PARTENAIRE (photo + tarifs/prestations) ──
+var _ptnrSvcAudiences = ['etudiant','particulier','entreprise'];
+
+function _ptnrFileToBase64(file){
+  return new Promise(function(resolve, reject){
+    var reader = new FileReader();
+    reader.onload = function(){ resolve(reader.result); };
+    reader.onerror = function(err){ reject(err); };
+    reader.readAsDataURL(file);
+  });
+}
+
+// Redimensionne/compresse une image avant envoi (photos smartphone = souvent 5-20 Mo)
+function _ptnrImageFileToCompressedBase64(file, maxDim, quality){
+  maxDim = maxDim || 1280;
+  quality = quality || 0.82;
+  return _ptnrFileToBase64(file).then(function(dataUri){
+    return new Promise(function(resolve){
+      var img = new Image();
+      img.onload = function(){
+        try{
+          var w = img.naturalWidth, h = img.naturalHeight;
+          if(!w || !h){ resolve(dataUri); return; }
+          var scale = Math.min(1, maxDim / Math.max(w, h));
+          var canvas = document.createElement('canvas');
+          canvas.width = Math.round(w * scale);
+          canvas.height = Math.round(h * scale);
+          var ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          var compressed = canvas.toDataURL('image/jpeg', quality);
+          resolve(compressed && compressed.length < dataUri.length ? compressed : dataUri);
+        }catch(e){ resolve(dataUri); }
+      };
+      img.onerror = function(){ resolve(dataUri); };
+      img.src = dataUri;
+    });
+  });
+}
+
+function _ptnrLoadProfil(){
+  var preview = document.getElementById('ptnr-profil-photo-preview');
+  if(preview){
+    var photo = _ptnrSession && _ptnrSession.photo;
+    preview.innerHTML = photo ? '<img src="'+photo+'" alt="" style="width:100%;height:100%;object-fit:cover;">' : '<i class="fa-solid fa-user"></i>';
+  }
+  _ptnrRenderServicesSection();
+}
+
+function _ptnrRenderServiceItemRow(service){
+  var imageHtml = service.image
+    ? '<img src="'+service.image+'" alt="" style="width:100%;height:100%;object-fit:cover;">'
+    : '<i class="fa-solid fa-image" style="opacity:.3;"></i>';
+  return '<div class="ptnr-svc-row" data-service-id="'+(service.id||'')+'" data-service-image="'+(service.image?encodeURIComponent(service.image):'')+'" style="background:#111;border:1px solid #1e1e1e;border-radius:12px;padding:12px;margin-bottom:10px;display:flex;gap:10px;align-items:flex-start;">'
+    + '<div class="ptnr-svc-thumb" onclick="this.nextElementSibling.click()" style="width:48px;height:48px;border-radius:8px;background:#1a1a1a;border:1px solid #2a2a2a;overflow:hidden;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#fff;cursor:pointer;">'
+      + imageHtml
+    + '</div>'
+    + '<input type="file" accept="image/*" class="ptnr-svc-img-input" style="display:none;" onchange="_ptnrOnServiceImageSelected(this)">'
+    + '<div style="flex:1;min-width:0;">'
+      + '<input type="text" class="ptnr-input ptnr-svc-label" placeholder="Ex: Shooting photo corporate" value="'+(service.label||'').replace(/"/g,'&quot;')+'" style="margin-bottom:8px;padding:10px;">'
+      + '<input type="text" class="ptnr-input ptnr-svc-desc" placeholder="Détails (optionnel)" value="'+(service.description||'').replace(/"/g,'&quot;')+'" style="margin-bottom:8px;padding:10px;">'
+      + '<div style="display:flex;gap:8px;align-items:center;">'
+        + '<input type="number" class="ptnr-input ptnr-svc-price" placeholder="Prix (€)" value="'+(service.price||'')+'" min="0" step="0.01" style="margin-bottom:0;padding:10px;flex:1;">'
+        + '<button onclick="_ptnrRemoveServiceItem(this)" style="background:transparent;border:none;color:#ef4444;font-size:16px;padding:8px;cursor:pointer;" title="Supprimer"><i class="fa-solid fa-trash"></i></button>'
+      + '</div>'
+    + '</div>'
+  + '</div>';
+}
+
+function _ptnrRenderServicesSection(){
+  if(!_ptnrSession) return;
+  var services = _ptnrSession.services || [];
+  _ptnrSvcAudiences.forEach(function(audience){
+    var container = document.getElementById('ptnr-services-list-'+audience);
+    if(!container) return;
+    var inAudience = services.filter(function(s){ return (s.audience||'particulier')===audience; });
+    container.innerHTML = inAudience.map(function(s){ return _ptnrRenderServiceItemRow(s); }).join('');
+  });
+}
+
+function _ptnrAddServiceItem(audience){
+  var container = document.getElementById('ptnr-services-list-'+audience);
+  if(!container) return;
+  var wrapper = document.createElement('div');
+  wrapper.innerHTML = _ptnrRenderServiceItemRow({label:'', description:'', price:'', audience:audience});
+  container.appendChild(wrapper.firstChild);
+}
+
+function _ptnrRemoveServiceItem(buttonEl){
+  var row = buttonEl.closest('.ptnr-svc-row');
+  if(row) row.remove();
+}
+
+function _ptnrOnServiceImageSelected(inputEl){
+  var file = inputEl.files && inputEl.files[0];
+  if(!file) return;
+  var row = inputEl.closest('.ptnr-svc-row');
+  if(!row) return;
+  _ptnrImageFileToCompressedBase64(file, 800, 0.8).then(function(dataUri){
+    row.setAttribute('data-service-image', encodeURIComponent(dataUri));
+    var thumb = row.querySelector('.ptnr-svc-thumb');
+    if(thumb) thumb.innerHTML = '<img src="'+dataUri+'" alt="" style="width:100%;height:100%;object-fit:cover;">';
+  }).catch(function(err){
+    console.error('[PTNR] Erreur upload photo prestation:', err);
+  }).finally(function(){ inputEl.value=''; });
+}
+
+function _ptnrCollectServiceItems(audience){
+  var container = document.getElementById('ptnr-services-list-'+audience);
+  if(!container) return [];
+  var rows = container.querySelectorAll('.ptnr-svc-row');
+  var services = [];
+  for(var i=0;i<rows.length;i++){
+    var labelEl = rows[i].querySelector('.ptnr-svc-label');
+    var descEl = rows[i].querySelector('.ptnr-svc-desc');
+    var priceEl = rows[i].querySelector('.ptnr-svc-price');
+    var label = labelEl ? labelEl.value.trim() : '';
+    var price = priceEl ? parseFloat(priceEl.value) : 0;
+    if(!label || !price || price<=0) continue;
+    var serviceId = rows[i].getAttribute('data-service-id') || '';
+    var imageAttr = rows[i].getAttribute('data-service-image') || '';
+    services.push({
+      id: serviceId,
+      label: label,
+      description: descEl ? descEl.value.trim() : '',
+      price: price,
+      active: true,
+      audience: audience,
+      image: imageAttr ? decodeURIComponent(imageAttr) : ''
+    });
+  }
+  return services;
+}
+
+function _ptnrSaveServices(){
+  var msgEl = document.getElementById('ptnr-services-msg');
+  var saveBtn = document.getElementById('ptnr-services-save-btn');
+  var services = _ptnrSvcAudiences.reduce(function(acc, audience){
+    return acc.concat(_ptnrCollectServiceItems(audience));
+  }, []);
+  if(saveBtn){ saveBtn.disabled=true; saveBtn.textContent='Enregistrement...'; }
+  if(msgEl){ msgEl.className='ptnr-login-err'; msgEl.textContent=''; }
+  _ptnrFetch('/api/partner/services', 'PUT', {services: services}).then(function(data){
+    if(data && data.success){
+      _ptnrSession.services = data.services;
+      localStorage.setItem('fa_genesis_partner_data', JSON.stringify(_ptnrSession));
+      _ptnrRenderServicesSection();
+      if(msgEl){ msgEl.style.color='#4caf50'; msgEl.textContent='Prestations enregistrées avec succès.'; msgEl.className='ptnr-login-err on'; }
+    } else if(msgEl){
+      msgEl.style.color='#ef4444'; msgEl.textContent=(data&&data.error)||'Erreur lors de l\'enregistrement'; msgEl.className='ptnr-login-err on';
+    }
+  }).catch(function(){
+    if(msgEl){ msgEl.style.color='#ef4444'; msgEl.textContent='Erreur de connexion au serveur'; msgEl.className='ptnr-login-err on'; }
+  }).finally(function(){
+    if(saveBtn){ saveBtn.disabled=false; saveBtn.innerHTML='<i class="fa-solid fa-floppy-disk"></i> Enregistrer mes prestations'; }
+  });
+}
+
+(function _ptnrWirePhotoInput(){
+  var input = document.getElementById('ptnr-photo-input');
+  if(!input) return;
+  input.addEventListener('change', function(e){
+    var file = e.target.files && e.target.files[0];
+    if(!file) return;
+    var msgEl = document.getElementById('ptnr-photo-msg');
+    var btnEl = document.getElementById('ptnr-photo-btn');
+    if(btnEl){ btnEl.disabled=true; btnEl.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Envoi...'; }
+    if(msgEl){ msgEl.className='ptnr-login-err'; msgEl.textContent=''; }
+    _ptnrImageFileToCompressedBase64(file, 800, 0.85).then(function(dataUri){
+      return _ptnrFetch('/api/partner/auth/update-profile', 'PUT', {photo: dataUri});
+    }).then(function(data){
+      if(data && data.success){
+        _ptnrSession.photo = data.partner.photo;
+        localStorage.setItem('fa_genesis_partner_data', JSON.stringify(_ptnrSession));
+        _ptnrLoadProfil();
+        if(msgEl){ msgEl.style.color='#4caf50'; msgEl.textContent='Photo mise à jour.'; msgEl.className='ptnr-login-err on'; }
+      } else if(msgEl){
+        msgEl.style.color='#ef4444'; msgEl.textContent=(data&&data.error)||'Erreur lors de l\'envoi de la photo'; msgEl.className='ptnr-login-err on';
+      }
+    }).catch(function(err){
+      console.error('[PTNR] Erreur upload photo profil:', err);
+      if(msgEl){ msgEl.style.color='#ef4444'; msgEl.textContent='Erreur de connexion au serveur'; msgEl.className='ptnr-login-err on'; }
+    }).finally(function(){
+      if(btnEl){ btnEl.disabled=false; btnEl.innerHTML='<i class="fa-solid fa-camera"></i> Changer ma photo'; }
+      input.value='';
+    });
+  });
+})();
 
 /* ══════════════════════════════════════════════════
    UX PREMIUM — Expérience inoubliable
