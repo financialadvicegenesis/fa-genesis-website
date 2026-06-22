@@ -28,6 +28,7 @@ var COLLECTIONS = [
     'partner-comments',
     'quotes',
     'sessions',
+    'admin_sessions',
     'projects',
     'livrables',
     'feedbacks',

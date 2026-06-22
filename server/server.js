@@ -1001,7 +1001,10 @@ function loadAdminSessions() {
     } catch(e) { return []; }
 }
 function saveAdminSessions(sessions) {
-    try { fs.writeFileSync(ADMIN_SESSIONS_FILE, JSON.stringify(sessions, null, 2), 'utf8'); }
+    try {
+        fs.writeFileSync(ADMIN_SESSIONS_FILE, JSON.stringify(sessions, null, 2), 'utf8');
+        persistentStore.persistToCloud('admin_sessions', sessions).catch(function(e) {});
+    }
     catch(e) { console.error('[ADMIN-AUTH] Erreur sauvegarde sessions:', e); }
 }
 
