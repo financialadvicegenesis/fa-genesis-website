@@ -230,6 +230,15 @@
                         <textarea id="msgContent" rows="5" placeholder="Écrivez votre message ici..."></textarea>
                     </div>
 
+                    <!-- Pièces jointes -->
+                    <div>
+                        <input type="file" id="msgFileInput" accept=".jpg,.jpeg,.png,.webp,.pdf" multiple style="display:none;" onchange="handleMsgFiles(this.files)">
+                        <button type="button" onclick="document.getElementById('msgFileInput').click()" class="neo-btn-white px-4 py-2 text-xs uppercase font-black">
+                            <i class="fas fa-paperclip mr-1"></i>Joindre un fichier
+                        </button>
+                        <div id="msgAttachPreview" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;"></div>
+                    </div>
+
                     <!-- Bouton envoyer -->
                     <div>
                         <button id="sendMsgBtn" onclick="sendMessage()" class="neo-btn-yellow px-8 py-3 text-sm uppercase font-black">
@@ -399,6 +408,76 @@
         } catch (e) {}
 
         // ============================================================
+        // PIÈCES JOINTES
+        // ============================================================
+        var msgAttachments = [];
+
+        function fileToBase64(file) {
+            return new Promise(function(resolve, reject) {
+                var reader = new FileReader();
+                reader.onload = function() { resolve(reader.result); };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function compressImageFile(file, maxDim, quality) {
+            maxDim = maxDim || 1280;
+            quality = quality || 0.82;
+            return fileToBase64(file).then(function(dataUri) {
+                return new Promise(function(resolve) {
+                    var img = new Image();
+                    img.onload = function() {
+                        try {
+                            var w = img.naturalWidth, h = img.naturalHeight;
+                            if (!w || !h) { resolve(dataUri); return; }
+                            var scale = Math.min(1, maxDim / Math.max(w, h));
+                            var canvas = document.createElement('canvas');
+                            canvas.width = Math.round(w * scale);
+                            canvas.height = Math.round(h * scale);
+                            var ctx = canvas.getContext('2d');
+                            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                            var compressed = canvas.toDataURL('image/jpeg', quality);
+                            resolve(compressed && compressed.length < dataUri.length ? compressed : dataUri);
+                        } catch (e) { resolve(dataUri); }
+                    };
+                    img.onerror = function() { resolve(dataUri); };
+                    img.src = dataUri;
+                });
+            });
+        }
+
+        function handleMsgFiles(fileList) {
+            var files = Array.prototype.slice.call(fileList || []).slice(0, 3);
+            if (!files.length) return;
+            Promise.all(files.map(function(f) {
+                var isImg = f.type && f.type.indexOf('image/') === 0;
+                var p = isImg ? compressImageFile(f, 1280, 0.82) : fileToBase64(f);
+                return p.then(function(dataUrl) { return { name: f.name, type: f.type || '', dataUrl: dataUrl }; });
+            })).then(function(atts) {
+                msgAttachments = atts;
+                var preview = document.getElementById('msgAttachPreview');
+                if (preview) {
+                    preview.innerHTML = '';
+                    atts.forEach(function(a) {
+                        var chip = document.createElement('span');
+                        chip.style.cssText = 'font-size:12px;font-weight:700;background:#222;color:white;padding:4px 10px;border:2px solid var(--genesis-yellow);';
+                        chip.textContent = a.name;
+                        preview.appendChild(chip);
+                    });
+                }
+            });
+        }
+
+        function clearMsgAttachments() {
+            msgAttachments = [];
+            var preview = document.getElementById('msgAttachPreview');
+            if (preview) preview.innerHTML = '';
+            var fileInput = document.getElementById('msgFileInput');
+            if (fileInput) fileInput.value = '';
+        }
+
+        // ============================================================
         // CHARGER LES PARTENAIRES ASSIGNÉS (depuis /api/my-partners)
         // ============================================================
         async function loadAssignedPartners() {
@@ -548,6 +627,29 @@
             content.textContent = msg.content;
             bubble.appendChild(content);
 
+            // Pièces jointes
+            if (msg.attachments && msg.attachments.length) {
+                var attRow = document.createElement('div');
+                attRow.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;';
+                msg.attachments.forEach(function(a) {
+                    var link = document.createElement('a');
+                    link.href = a.dataUrl;
+                    link.target = '_blank';
+                    if (a.type && a.type.indexOf('image/') === 0) {
+                        var img = document.createElement('img');
+                        img.src = a.dataUrl;
+                        img.style.cssText = 'width:72px;height:72px;object-fit:cover;border:2px solid white;';
+                        link.appendChild(img);
+                    } else {
+                        link.setAttribute('download', a.name);
+                        link.style.cssText = 'font-size:11px;font-weight:700;background:#222;color:white;padding:4px 10px;border:2px solid var(--genesis-yellow);';
+                        link.textContent = a.name;
+                    }
+                    attRow.appendChild(link);
+                });
+                bubble.appendChild(attRow);
+            }
+
             // Destinataire info pour messages envoyés
             if (isSent && msg.to_name) {
                 var toInfo = document.createElement('p');
@@ -690,6 +792,7 @@
                     content: content
                 };
                 if (subject) payload.subject = subject;
+                if (msgAttachments.length) payload.attachments = msgAttachments;
 
                 var resp = await fetch(MSG_API + '/api/messages', {
                     method: 'POST',
@@ -706,8 +809,11 @@
                     showSuccess('Message envoyé avec succès !');
                     if (contentInput) contentInput.value = '';
                     if (subjectInput) subjectInput.value = '';
+                    clearMsgAttachments();
                     // Recharger le fil
                     loadMessages();
+                } else if (data.error === 'contournement' || data.error === 'messaging_suspended') {
+                    showError(data.message || 'Le partage de coordonnées personnelles est interdit avant la signature du contrat.');
                 } else {
                     showError(data.error || 'Erreur lors de l\'envoi du message.');
                 }

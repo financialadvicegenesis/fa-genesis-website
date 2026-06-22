@@ -6288,46 +6288,106 @@ function _ptnrCancelSeance(id){
 }
 
 // ── MESSAGES ──
+var _ptnrMsgAttachments = {}; // threadKey -> [{name,type,dataUrl}] en attente d'envoi
+
+function _ptnrThreadKey(email){ return String(email||'').replace(/[^a-z0-9]/gi, '_'); }
+
 function _ptnrLoadMessages(){
   var el = document.getElementById('ptnr-messages-list');
   if(el) el.innerHTML = _skeletonRows(3, true);
   _ptnrFetch('/api/partner/inbox').then(function(data){
-    var threads = Array.isArray(data) ? data : (data.messages||data.inbox||[]);
-    if(!threads.length){ if(el) el.innerHTML = '<div class="ptnr-empty"><div class="ptnr-empty-ico"><i class="fa-solid fa-comment-dots"></i></div><div class="ptnr-empty-txt">Aucun message</div></div>'; return; }
+    var flat = data.messages || [];
+    if(!flat.length){ if(el) el.innerHTML = '<div class="ptnr-empty"><div class="ptnr-empty-ico"><i class="fa-solid fa-comment-dots"></i></div><div class="ptnr-empty-txt">Aucun message</div></div>'; return; }
+    var threadsByEmail = {};
+    flat.forEach(function(m){
+      var counterpartEmail = (m.from_type === 'partner') ? m.to_email : m.from_email;
+      if(!counterpartEmail) return;
+      if(!threadsByEmail[counterpartEmail]) threadsByEmail[counterpartEmail] = { email: counterpartEmail, name: 'Client', messages: [] };
+      if(m.from_type !== 'partner' && m.from_name) threadsByEmail[counterpartEmail].name = m.from_name;
+      else if(m.from_type === 'partner' && m.to_name) threadsByEmail[counterpartEmail].name = m.to_name;
+      threadsByEmail[counterpartEmail].messages.push(m);
+    });
+    var threads = Object.keys(threadsByEmail).map(function(k){ return threadsByEmail[k]; });
+    threads.sort(function(a,b){
+      var la = a.messages[a.messages.length-1], lb = b.messages[b.messages.length-1];
+      return new Date(lb.created_at) - new Date(la.created_at);
+    });
     var html = '';
     threads.forEach(function(thread){
-      var msgs = thread.messages || [thread];
-      var orderId = thread.orderId || thread.order_id || thread.id || '';
-      var clientName = thread.clientName || thread.client_name || thread.from || 'Client';
+      var key = _ptnrThreadKey(thread.email);
       html += '<div class="ptnr-card" style="margin-bottom:16px;">';
-      html += '<div class="ptnr-card-title">'+clientName+'</div>';
-      if(orderId) html += '<div class="ptnr-card-sub" style="margin-bottom:12px;">Réservation #'+(orderId+'').substring(0,8)+'</div>';
-      msgs.forEach(function(m){
-        var isPartner = m.from==='partner'||m.role==='partner'||m.sender==='partner';
+      html += '<div class="ptnr-card-title">'+_escHtml(thread.name)+'</div>';
+      thread.messages.forEach(function(m){
+        var isPartner = m.from_type === 'partner';
         html += '<div class="ptnr-msg-bubble'+(isPartner?' partner':'')+'">';
-        html += '<div class="ptnr-msg-meta">'+(isPartner?'Vous':'Client')+' · '+_ptnrFmt(m.date||m.createdAt||m.timestamp)+'</div>';
-        html += '<div class="ptnr-msg-text">'+(m.message||m.text||m.content||'')+'</div></div>';
+        html += '<div class="ptnr-msg-meta">'+(isPartner?'Vous':_escHtml(thread.name))+' · '+_ptnrFmt(m.created_at)+'</div>';
+        html += '<div class="ptnr-msg-text">'+_escHtml(m.content)+'</div>';
+        if(m.attachments && m.attachments.length){
+          html += '<div class="ptnr-msg-attachments" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">';
+          m.attachments.forEach(function(a){
+            if(a.type && a.type.indexOf('image/')===0){
+              html += '<a href="'+a.dataUrl+'" target="_blank"><img src="'+a.dataUrl+'" style="width:64px;height:64px;object-fit:cover;border-radius:8px;"></a>';
+            }else{
+              html += '<a href="'+a.dataUrl+'" target="_blank" download="'+_escHtml(a.name)+'" style="font-size:12px;background:#f0f0f0;padding:4px 8px;border-radius:6px;"><i class="fa-solid fa-paperclip"></i> '+_escHtml(a.name)+'</a>';
+            }
+          });
+          html += '</div>';
+        }
+        html += '</div>';
       });
+      html += '<div id="ptnr-reply-att-preview-'+key+'" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;"></div>';
       html += '<div class="ptnr-reply-row">';
-      html += '<textarea class="ptnr-reply-input" id="ptnr-reply-'+orderId+'" placeholder="Répondre..." rows="2"></textarea>';
-      html += '<button class="ptnr-reply-send" onclick="_ptnrSendReply(\''+orderId+'\',\''+clientName+'\')">Envoyer</button>';
+      html += '<input type="file" id="ptnr-reply-file-'+key+'" accept=".jpg,.jpeg,.png,.webp,.pdf" multiple style="display:none;" onchange="_ptnrAttachFiles(\''+key+'\',this.files)">';
+      html += '<button type="button" onclick="document.getElementById(\'ptnr-reply-file-'+key+'\').click()" style="flex:0 0 auto;background:transparent;border:none;cursor:pointer;color:#888;font-size:18px;" title="Joindre un fichier"><i class="fa-solid fa-paperclip"></i></button>';
+      html += '<textarea class="ptnr-reply-input" id="ptnr-reply-'+key+'" placeholder="Répondre..." rows="2"></textarea>';
+      html += '<button class="ptnr-reply-send" onclick="_ptnrSendReply(\''+key+'\',\''+thread.email+'\',\''+thread.name.replace(/'/g,"\\'")+'\')">Envoyer</button>';
       html += '</div>';
+      html += '<div id="ptnr-reply-err-'+key+'" style="color:#c00;font-size:12px;margin-top:4px;"></div>';
       html += '</div>';
     });
     if(el) el.innerHTML = html;
   }).catch(function(){ if(el) el.innerHTML='<div class="ptnr-empty"><div class="ptnr-empty-txt">Erreur de chargement</div></div>'; });
 }
 
-function _ptnrSendReply(orderId, clientName){
-  var inp = document.getElementById('ptnr-reply-'+orderId);
+function _ptnrAttachFiles(key, fileList){
+  var files = Array.prototype.slice.call(fileList||[]).slice(0, 3);
+  if(!files.length) return;
+  var preview = document.getElementById('ptnr-reply-att-preview-'+key);
+  Promise.all(files.map(function(f){
+    var isImg = f.type && f.type.indexOf('image/')===0;
+    var p = isImg ? _ptnrImageFileToCompressedBase64(f, 1280, 0.82) : _ptnrFileToBase64(f);
+    return p.then(function(dataUrl){ return { name: f.name, type: f.type||'', dataUrl: dataUrl }; });
+  })).then(function(atts){
+    _ptnrMsgAttachments[key] = atts;
+    if(preview){
+      preview.innerHTML = atts.map(function(a){ return '<span style="font-size:12px;background:#f0f0f0;padding:4px 8px;border-radius:6px;"><i class="fa-solid fa-paperclip"></i> '+_escHtml(a.name)+'</span>'; }).join('');
+    }
+  });
+}
+
+function _ptnrSendReply(key, toEmail, clientName){
+  var inp = document.getElementById('ptnr-reply-'+key);
+  var errEl = document.getElementById('ptnr-reply-err-'+key);
   if(!inp) return;
   var msg = inp.value.trim();
-  if(!msg) return;
+  var atts = _ptnrMsgAttachments[key] || [];
+  if(!msg && !atts.length) return;
+  if(errEl) errEl.textContent = '';
   inp.disabled = true;
-  _ptnrFetch('/api/partner/inbox/reply','POST',{orderId:orderId, message:msg, clientName:clientName}).then(function(){
-    inp.value = ''; inp.disabled = false;
+  _ptnrFetch('/api/partner/inbox/reply','POST',{to_email:toEmail, content:msg, to_name:clientName, attachments:atts}).then(function(data){
+    if(data && data.error){
+      if(errEl) errEl.textContent = data.message || 'Erreur d\'envoi';
+      inp.disabled = false;
+      return;
+    }
+    inp.value = '';
+    delete _ptnrMsgAttachments[key];
+    inp.disabled = false;
     _ptnrLoadMessages();
-  }).catch(function(){ inp.disabled = false; });
+  }).catch(function(){
+    if(errEl) errEl.textContent = 'Erreur de connexion';
+    inp.disabled = false;
+  });
 }
 
 // ── MODIFIER PROFIL ──

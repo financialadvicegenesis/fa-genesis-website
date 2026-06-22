@@ -6213,6 +6213,58 @@ function saveChat(msgs) {
     catch (e) { console.error('[CHAT] Erreur ecriture:', e.message); }
 }
 
+// Détection anti-contournement : téléphone, email, URL, réseaux sociaux dans le contenu d'un message
+var CONTOURNEMENT_PATTERNS = [
+    /\b0[1-9](?:[\s.\-]?\d{2}){4}\b/,
+    /\+\d{1,3}[\s.\-]?(?:\d[\s.\-]?){6,12}/,
+    /[\w.+-]+@[\w-]+\.[a-z]{2,}/i,
+    /https?:\/\/\S+/i,
+    /\bwww\.\S+/i,
+    /@[a-z0-9_.]{3,}/i,
+    /\b(instagram|insta|whatsapp|telegram|snapchat|snap|tiktok|facebook|messenger)\b/i
+];
+
+function detectContournement(text) {
+    if (!text) return false;
+    for (var i = 0; i < CONTOURNEMENT_PATTERNS.length; i++) {
+        if (CONTOURNEMENT_PATTERNS[i].test(text)) return true;
+    }
+    return false;
+}
+
+var CONTOURNEMENT_MESSAGE = 'Le partage de coordonnées personnelles (téléphone, email, réseaux sociaux) est interdit avant la signature du contrat. Merci de rester sur la messagerie FA GENESIS.';
+var MESSAGING_SUSPENDED_MESSAGE = 'Votre messagerie a été suspendue suite à plusieurs tentatives de partage de coordonnées personnelles. Contactez le support FA GENESIS.';
+
+// Pièces jointes (fichiers/images) : même approche base64 inline que partner-uploads.json (pas de multipart)
+var ATTACHMENT_ALLOWED_EXT = ['jpg', 'jpeg', 'png', 'webp', 'pdf'];
+var ATTACHMENT_MAX_COUNT = 3;
+var ATTACHMENT_MAX_TOTAL_CHARS = 6 * 1024 * 1024;
+
+function validateAttachments(attachments) {
+    if (!attachments) return { ok: true, attachments: [] };
+    if (!Array.isArray(attachments)) return { ok: false, error: 'Pièces jointes invalides' };
+    if (attachments.length > ATTACHMENT_MAX_COUNT) return { ok: false, error: 'Maximum ' + ATTACHMENT_MAX_COUNT + ' fichiers par message' };
+    var totalChars = 0;
+    var clean = [];
+    for (var i = 0; i < attachments.length; i++) {
+        var a = attachments[i];
+        if (!a || !a.dataUrl || !a.name) return { ok: false, error: 'Pièce jointe invalide' };
+        var ext = (a.name.split('.').pop() || '').toLowerCase();
+        if (ATTACHMENT_ALLOWED_EXT.indexOf(ext) === -1) return { ok: false, error: 'Type de fichier non autorisé : ' + ext };
+        totalChars += a.dataUrl.length;
+        clean.push({ name: String(a.name).substring(0, 200), type: a.type || '', dataUrl: a.dataUrl });
+    }
+    if (totalChars > ATTACHMENT_MAX_TOTAL_CHARS) return { ok: false, error: 'Pièces jointes trop volumineuses' };
+    return { ok: true, attachments: clean };
+}
+
+// Escalade : avertissement (1-2) puis suspension (3+). Champs ajoutés paresseusement sur le compte (user ou partner).
+function registerContournementViolation(account) {
+    account.messagingWarnings = (account.messagingWarnings || 0) + 1;
+    if (account.messagingWarnings >= 3) account.messagingBlocked = true;
+    return account.messagingWarnings;
+}
+
 /**
  * GET /api/my-partners — Client recupere les partenaires assignes a sa commande
  * Utilise pour alimenter le selecteur de destinataires dans messagerie.html
@@ -6320,8 +6372,24 @@ app.post('/api/messages', function(req, res) {
         var user = users.find(function(u) { return u.sessionToken === token; });
         if (!user) return res.status(401).json({ error: 'Session invalide' });
 
+        if (user.messagingBlocked) {
+            return res.status(403).json({ error: 'messaging_suspended', message: MESSAGING_SUSPENDED_MESSAGE });
+        }
+
         var content = (req.body.content || '').trim();
         if (!content) return res.status(400).json({ error: 'Message vide' });
+
+        if (detectContournement(content)) {
+            var warnings = registerContournementViolation(user);
+            saveUsers(users);
+            if (user.messagingBlocked) {
+                return res.status(403).json({ error: 'messaging_suspended', message: MESSAGING_SUSPENDED_MESSAGE });
+            }
+            return res.status(400).json({ error: 'contournement', message: CONTOURNEMENT_MESSAGE, warnings: warnings });
+        }
+
+        var attResult = validateAttachments(req.body.attachments);
+        if (!attResult.ok) return res.status(400).json({ error: attResult.error });
 
         var toType = req.body.to_type || 'admin';
         var toId = req.body.to_id || null; // email partenaire si partenaire
@@ -6347,6 +6415,7 @@ app.post('/api/messages', function(req, res) {
             to_name: toName.trim(),
             subject: req.body.subject || '',
             content: content,
+            attachments: attResult.attachments,
             created_at: new Date().toISOString(),
             read_at: null
         };
@@ -6407,6 +6476,9 @@ app.post('/api/admin/inbox/reply', function(req, res) {
         var content = (req.body.content || '').trim();
         if (!toEmail || !content) return res.status(400).json({ error: 'to_email et content requis' });
 
+        var attResult = validateAttachments(req.body.attachments);
+        if (!attResult.ok) return res.status(400).json({ error: attResult.error });
+
         var newMsg = {
             id: 'MSG-' + uuidv4().split('-')[0].toUpperCase(),
             from_email: process.env.ADMIN_EMAIL || 'admin@fagenesis.com',
@@ -6418,6 +6490,7 @@ app.post('/api/admin/inbox/reply', function(req, res) {
             to_name: req.body.to_name || '',
             subject: req.body.subject || '',
             content: content,
+            attachments: attResult.attachments,
             created_at: new Date().toISOString(),
             read_at: null
         };
@@ -6456,9 +6529,31 @@ app.get('/api/partner/inbox', authenticatePartner, function(req, res) {
 app.post('/api/partner/inbox/reply', authenticatePartner, function(req, res) {
     try {
         var partner = req.partner;
+        var allPartners = loadPartners();
+        var pIndex = allPartners.findIndex(function(p) { return p.id === partner.id; });
+
+        if (pIndex !== -1 && allPartners[pIndex].messagingBlocked) {
+            return res.status(403).json({ error: 'messaging_suspended', message: MESSAGING_SUSPENDED_MESSAGE });
+        }
+
         var toEmail = req.body.to_email;
         var content = (req.body.content || '').trim();
         if (!toEmail || !content) return res.status(400).json({ error: 'to_email et content requis' });
+
+        if (detectContournement(content)) {
+            if (pIndex !== -1) {
+                var warnings = registerContournementViolation(allPartners[pIndex]);
+                savePartners(allPartners);
+                if (allPartners[pIndex].messagingBlocked) {
+                    return res.status(403).json({ error: 'messaging_suspended', message: MESSAGING_SUSPENDED_MESSAGE });
+                }
+                return res.status(400).json({ error: 'contournement', message: CONTOURNEMENT_MESSAGE, warnings: warnings });
+            }
+            return res.status(400).json({ error: 'contournement', message: CONTOURNEMENT_MESSAGE });
+        }
+
+        var attResult = validateAttachments(req.body.attachments);
+        if (!attResult.ok) return res.status(400).json({ error: attResult.error });
 
         var thread = loadChat().filter(function(m) {
             return (m.from_email === partner.email && m.to_email === toEmail) ||
@@ -6468,8 +6563,6 @@ app.post('/api/partner/inbox/reply', authenticatePartner, function(req, res) {
         if (lastFromClient) {
             var deltaMinutes = (new Date() - new Date(lastFromClient.created_at)) / 60000;
             if (deltaMinutes >= 0 && deltaMinutes < 60 * 24 * 14) {
-                var allPartners = loadPartners();
-                var pIndex = allPartners.findIndex(function(p) { return p.id === partner.id; });
                 if (pIndex !== -1) {
                     var samples = allPartners[pIndex].responseSamples || 0;
                     var prevAvg = allPartners[pIndex].avgResponseMinutes || 0;
@@ -6491,6 +6584,7 @@ app.post('/api/partner/inbox/reply', authenticatePartner, function(req, res) {
             to_name: req.body.to_name || '',
             subject: req.body.subject || '',
             content: content,
+            attachments: attResult.attachments,
             created_at: new Date().toISOString(),
             read_at: null
         };
