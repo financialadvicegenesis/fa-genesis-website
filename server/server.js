@@ -8170,7 +8170,28 @@ app.post('/api/partner/auth/register', async (req, res) => {
 app.get('/api/partner/subprofiles', authenticatePartner, (req, res) => {
     try {
         const all = loadSubProfiles();
-        const mine = all.filter(p => p.partnerId === req.partner.id);
+        let mine = all.filter(p => p.partnerId === req.partner.id);
+        // Compte partenaire déjà inscrit mais sans aucun sous-profil (ancien compte, ou
+        // tout premier accès) : on lui crée automatiquement un profil par défaut à partir
+        // de son propre nom, pour ne jamais lui redemander de "créer un profil" alors qu'il
+        // est déjà un partenaire enregistré.
+        if (mine.length === 0) {
+            const defaultName = ((req.partner.prenom || '') + ' ' + (req.partner.nom || '')).trim() || req.partner.company || 'Mon profil';
+            const defaultInitials = defaultName.split(' ').filter(Boolean).map(w => w[0]).join('').toUpperCase().substring(0, 3) || 'P';
+            const defaultProfile = {
+                id: 'PRF-' + require('crypto').randomBytes(4).toString('hex').toUpperCase(),
+                partnerId: req.partner.id,
+                partnerType: req.partner.partner_type,
+                name: defaultName,
+                initials: defaultInitials,
+                pinHash: null,
+                createdAt: new Date().toISOString()
+            };
+            all.push(defaultProfile);
+            saveSubProfiles(all);
+            mine = [defaultProfile];
+            console.log('[SUBPROFILE] Profil par défaut auto-créé:', defaultProfile.id, 'pour', req.partner.email);
+        }
         res.json({ success: true, profiles: mine.map(p => ({ id: p.id, name: p.name, initials: p.initials, hasPin: !!p.pinHash, createdAt: p.createdAt })) });
     } catch(e) { res.status(500).json({ error: 'Erreur serveur' }); }
 });

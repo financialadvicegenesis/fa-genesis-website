@@ -778,8 +778,8 @@ a{text-decoration:none;color:inherit}
 .constellation-badge.fondateur{background:linear-gradient(135deg,#1a1a1a,#3a2f00);color:var(--yellow);border:1px solid var(--yellow);box-shadow:0 0 18px rgba(255,200,0,.6)}
 @keyframes constellationPulse{0%,100%{box-shadow:0 0 10px rgba(255,215,0,.4)}50%{box-shadow:0 0 20px rgba(255,215,0,.75)}}
 .client-tier-badge{margin-top:6px}
-.badge-progress{margin-top:12px;border:3px solid var(--bg);background:var(--card);border-radius:14px;padding:12px 14px;box-shadow:0 0 0 1px rgba(255,215,0,.15) inset}
-.badge-progress-labels{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.3px;margin-bottom:8px}
+.badge-progress{margin-top:12px;border:3px solid var(--bg);background:var(--card);border-radius:14px;padding:14px;box-shadow:0 0 0 1px rgba(255,215,0,.15) inset}
+.badge-progress-labels{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.3px;margin-bottom:8px}
 .badge-progress-cur{color:var(--yellow)}
 .badge-progress-cur i{margin-right:2px}
 .badge-progress-arrow{color:var(--sub);font-size:9px}
@@ -790,21 +790,43 @@ a{text-decoration:none;color:inherit}
 .badge-progress-fill::after{content:'';position:absolute;top:0;left:0;height:100%;width:40%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.55),transparent);animation:badgeProgressShimmer 1.8s ease-in-out infinite}
 @keyframes badgeProgressShimmer{0%{transform:translateX(-100%)}100%{transform:translateX(250%)}}
 .badge-progress-text{margin-top:7px;font-size:11px;color:var(--muted);font-weight:600}
+.badge-progress-stats{margin-top:10px;display:flex;flex-direction:column;gap:6px}
+.badge-progress-stats>div{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--muted);font-weight:700}
+.badge-progress-stats>div i{color:var(--yellow);width:14px;text-align:center;flex-shrink:0}
+.badge-progress-stats>div b{color:var(--text);font-weight:900;}
 .badge-progress-max{margin-top:12px;display:flex;align-items:center;gap:9px;border:3px solid var(--yellow);background:linear-gradient(135deg,#1a1a1a,#3a2f00);border-radius:14px;padding:10px 14px;color:var(--yellow);font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:.3px;box-shadow:0 0 14px rgba(255,215,0,.35)}
 .badge-progress-max i{font-size:16px}
 
 /* Barre de progression "jeu video" (paliers/checkpoints, inspiree Duolingo) */
-.bp-ladder{position:relative;height:46px;margin:16px 0 8px}
+.bp-ladder{position:relative;height:64px;margin:18px 0 16px}
 .bp-ladder-track{position:absolute;top:8px;left:0;right:0;height:8px;border-radius:6px;background:#000;border:1px solid var(--border);overflow:hidden}
 .bp-ladder-fill{position:relative;height:100%;border-radius:6px;background:linear-gradient(90deg,#7a5c00,var(--yellow));background-size:200% 100%;transition:width .8s cubic-bezier(.4,0,.2,1);overflow:hidden}
 .bp-ladder-fill::after{content:'';position:absolute;top:0;left:0;height:100%;width:40%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.55),transparent);animation:badgeProgressShimmer 1.8s ease-in-out infinite}
-.bp-ladder-stop{position:absolute;top:0;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:4px}
-.bp-ladder-dot{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;border:2px solid #000;background:#1a1a1a;color:var(--muted);transition:transform .25s,box-shadow .25s}
+.bp-ladder-stop{position:absolute;top:0;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:5px;width:54px}
+.bp-ladder-dot{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;border:2px solid #000;background:#1a1a1a;color:var(--muted);transition:transform .25s,box-shadow .25s;flex-shrink:0}
 .bp-ladder-stop.done .bp-ladder-dot{background:#51cf66;color:#000;box-shadow:0 0 8px rgba(81,207,102,.55)}
 .bp-ladder-stop.current .bp-ladder-dot{background:var(--yellow);color:#000;box-shadow:0 0 0 4px rgba(255,215,0,.22),0 0 16px rgba(255,215,0,.75);animation:bpDotPulse 1.6s ease-in-out infinite}
-.bp-ladder-label{font-size:7px;font-weight:900;text-transform:uppercase;letter-spacing:.2px;color:var(--muted);white-space:nowrap}
+.bp-ladder-label{font-size:8px;font-weight:900;text-transform:uppercase;letter-spacing:.2px;color:var(--muted);white-space:nowrap;text-align:center}
 .bp-ladder-stop.done .bp-ladder-label,.bp-ladder-stop.current .bp-ladder-label{color:var(--text)}
 @keyframes bpDotPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.2)}}
+
+/* ── RÉPUTATION PARTENAIRE — style HUD/tech ── */
+.ptnr-rep-hero{position:relative;overflow:hidden;text-align:center;padding:24px 16px 20px;margin:0 16px 16px;border-radius:18px;background:linear-gradient(160deg,#0d0d12,#171019);border:1px solid rgba(255,215,0,.28);box-shadow:0 0 0 1px rgba(255,215,0,.06) inset,0 10px 26px rgba(0,0,0,.5);}
+.ptnr-rep-hero::before{content:'';position:absolute;inset:0;background-image:linear-gradient(rgba(255,215,0,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(255,215,0,.05) 1px,transparent 1px);background-size:18px 18px;opacity:.6;pointer-events:none;}
+.ptnr-rep-hero::after{content:'';position:absolute;top:0;left:-60%;width:40%;height:100%;background:linear-gradient(115deg,transparent,rgba(255,215,0,.14),transparent);animation:genesisQgScan 4.2s ease-in-out infinite;pointer-events:none;}
+.ptnr-rep-hero-inner{position:relative;z-index:1;}
+.ptnr-rep-rating{font-size:13px;color:#ccc;margin-top:10px;font-weight:700;}
+.ptnr-rep-rating i{color:#FFD700;}
+
+.ptnr-rep-finance{display:flex;gap:10px;margin:0 16px 14px;}
+.ptnr-rep-fcard{flex:1;position:relative;overflow:hidden;background:linear-gradient(160deg,#0e0e0e,#161616);border:1px solid #222;border-left:3px solid var(--fc,#FFD700);border-radius:14px;padding:14px 12px;}
+.ptnr-rep-ficon{width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:13px;margin:0 auto 8px;background:rgba(255,255,255,.06);color:var(--fc,#FFD700);}
+.ptnr-rep-fval{font-size:18px;font-weight:900;font-family:'Unbounded',sans-serif;letter-spacing:.2px;text-align:center;}
+.ptnr-rep-flabel{font-size:9.5px;color:#777;margin-top:5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;text-align:center;}
+
+.ptnr-rep-rank{margin:0 16px 14px;text-align:center;position:relative;overflow:hidden;border:1px solid rgba(255,215,0,.32);border-radius:14px;padding:14px;background:linear-gradient(135deg,#1a1a1a,#241c00);}
+.ptnr-rep-rank-val{font-size:15px;font-weight:900;color:var(--yellow);font-family:'Unbounded',sans-serif;}
+.ptnr-rep-rank-sub{font-size:10.5px;color:#888;margin-top:3px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;}
 
 .p-ref-box{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:14px;margin-top:10px}
 .genesis-mission-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
@@ -2143,7 +2165,7 @@ a{text-decoration:none;color:inherit}
           </div>
           <div style="font-size:12px;color:#888;margin-bottom:20px;">Sélectionnez votre profil pour accéder à votre espace personnel.</div>
           <div id="ptnr-profile-list"></div>
-          <button class="ptnr-login-btn" style="margin-top:8px;" onclick="_ptnrShowCreateProfile()">+ Créer mon profil</button>
+          <button class="ptnr-login-btn" id="ptnr-add-profile-btn" style="margin-top:8px;" onclick="_ptnrShowCreateProfile()">+ Créer mon profil</button>
         </div>
         <!-- PIN verify overlay (hidden inside profile screen) -->
         <div id="ptnr-pin-overlay" style="display:none;position:fixed;inset:0;z-index:9700;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;padding:20px;">
@@ -2184,7 +2206,7 @@ a{text-decoration:none;color:inherit}
             </div>
           </div>
           <div class="ptnr-header-actions">
-            <button class="ptnr-logout-btn" onclick="_ptnrShowEditProfile()" style="border-color:#FFD700;color:#FFD700;"><i class="fa-solid fa-pen"></i> Modifier</button>
+            <button class="ptnr-logout-btn" id="ptnr-modifier-btn" onclick="_ptnrShowEditProfile()" style="display:none;border-color:#FFD700;color:#FFD700;"><i class="fa-solid fa-pen"></i> Modifier</button>
             <button class="ptnr-logout-btn" onclick="_ptnrLogout()">Déconnexion</button>
           </div>
         </div>
@@ -3845,7 +3867,10 @@ function partnerBadgeProgressHtml(progress){
     +'<span class="badge-progress-next">Prochain palier : '+nextMeta.label+' <i class="fa-solid fa-lock"></i></span>'
     +'</div>'
     +tierLadderHtml(PARTNER_TIER_ORDER, progress.currentBadge, pct)
-    +'<div class="badge-progress-text"><i class="fa-solid fa-briefcase mr-1"></i> '+(progress.missionsCurrent||0)+'/'+(progress.missionsTarget||0)+' missions ('+missionsPct+'%) &nbsp;·&nbsp; <i class="fa-solid fa-star mr-1"></i> '+(Number(progress.ratingCurrent)||0).toFixed(1)+'/'+(progress.ratingTarget||0)+' note ('+ratingPct+'%)</div>'
+    +'<div class="badge-progress-stats">'
+      +'<div><i class="fa-solid fa-briefcase"></i> <b>'+(progress.missionsCurrent||0)+'/'+(progress.missionsTarget||0)+'</b> missions ('+missionsPct+'%)</div>'
+      +'<div><i class="fa-solid fa-star"></i> <b>'+(Number(progress.ratingCurrent)||0).toFixed(1)+'/'+(progress.ratingTarget||0)+'</b> note ('+ratingPct+'%)</div>'
+    +'</div>'
     +'</div>';
 }
 function favHeartHtml(partnerId){
@@ -6101,6 +6126,11 @@ function _ptnrLoadProfileSelector(){
       if(list) list.innerHTML = '<div style="text-align:center;padding:16px 0 8px;color:#888;font-size:13px;">Bienvenue ! Créez votre profil pour commencer.</div>';
       _ptnrShowCreateProfile(); return;
     }
+    // Un seul profil et pas de PIN → on entre directement dans l'espace, pas besoin
+    // de redemander "qui êtes-vous" à un partenaire déjà inscrit et seul sur son compte.
+    if(profiles.length === 1 && !profiles[0].hasPin){
+      _ptnrEnterDashboard(profiles[0].id); return;
+    }
     var html = '';
     profiles.forEach(function(p){
       html += '<div class="ptnr-profile-card" onclick="_ptnrSelectProfile(\''+p.id+'\','+p.hasPin+')">';
@@ -6155,6 +6185,8 @@ function _ptnrVerifyPin(){
 
 function _ptnrShowCreateProfile(){
   var cpf = document.getElementById('ptnr-create-profile-form'); if(cpf) cpf.style.display='';
+  var addBtn = document.getElementById('ptnr-add-profile-btn'); if(addBtn) addBtn.style.display='none';
+  var list = document.getElementById('ptnr-profile-list'); if(list) list.style.display='none';
   var nm = document.getElementById('ptnr-new-name'); if(nm) nm.value='';
   var ini = document.getElementById('ptnr-new-initials'); if(ini) ini.value='';
   var pin = document.getElementById('ptnr-new-pin'); if(pin) pin.value='';
@@ -6172,6 +6204,8 @@ function _ptnrShowCreateProfile(){
 
 function _ptnrHideCreateProfile(){
   var cpf = document.getElementById('ptnr-create-profile-form'); if(cpf) cpf.style.display='none';
+  var addBtn = document.getElementById('ptnr-add-profile-btn'); if(addBtn) addBtn.style.display='';
+  var list = document.getElementById('ptnr-profile-list'); if(list) list.style.display='';
 }
 
 function _ptnrCreateProfile(){
@@ -6293,6 +6327,8 @@ function _ptnrNav(screen){
   var scr = document.getElementById('ptnr-screen-'+screen);
   if(btn) btn.className = 'ptnr-snbtn on';
   if(scr) scr.className = 'ptnr-screen on';
+  var modifierBtn = document.getElementById('ptnr-modifier-btn');
+  if(modifierBtn) modifierBtn.style.display = (screen==='profil') ? '' : 'none';
   if(screen==='home') _ptnrLoadHome();
   if(screen==='projets') _ptnrLoadProjets();
   if(screen==='devis') _ptnrLoadDevis();
@@ -8703,31 +8739,31 @@ function _ptnrLoadReputation(){
           : Math.round(data.avgResponseMinutes/60) + ' h')
       : '—';
 
-    var html = '<div style="text-align:center;padding:20px 0 16px;">'
-      + (tierBadgeHtml(badge) || '<span style="font-size:12px;color:#666;">Pas encore de badge</span>')
-      + '<div style="font-size:13px;color:#999;margin-top:10px;">'+rating.average.toFixed(1)+' <i class="fa-solid fa-star" style="color:var(--yellow)"></i> ('+rating.count+' avis)</div>'
+    var html = '<div class="ptnr-rep-hero"><div class="ptnr-rep-hero-inner">'
+      + (tierBadgeHtml(badge) || '<span style="font-size:12px;color:#666;font-weight:700;">Pas encore de badge</span>')
+      + '<div class="ptnr-rep-rating">'+rating.average.toFixed(1)+' <i class="fa-solid fa-star"></i> ('+rating.count+' avis)</div>'
       + partnerBadgeProgressHtml(data.badgeProgress)
-      + '</div>';
+      + '</div></div>';
 
     html += '<div class="ptnr-stat-row">'
-      + '<div class="ptnr-stat"><div class="ptnr-stat-val" id="ptnr-rep-missions">—</div><div class="ptnr-stat-label">Missions</div></div>'
-      + '<div class="ptnr-stat"><div class="ptnr-stat-val" id="ptnr-rep-clients">—</div><div class="ptnr-stat-label">Clients</div></div>'
-      + '<div class="ptnr-stat"><div class="ptnr-stat-val">'+responseTxt+'</div><div class="ptnr-stat-label">Réponse moy.</div></div>'
+      + '<div class="ptnr-stat"><div class="ptnr-stat-ico"><i class="fa-solid fa-briefcase"></i></div><div class="ptnr-stat-val" id="ptnr-rep-missions">—</div><div class="ptnr-stat-label">Missions</div></div>'
+      + '<div class="ptnr-stat"><div class="ptnr-stat-ico"><i class="fa-solid fa-users"></i></div><div class="ptnr-stat-val" id="ptnr-rep-clients">—</div><div class="ptnr-stat-label">Clients</div></div>'
+      + '<div class="ptnr-stat"><div class="ptnr-stat-ico"><i class="fa-solid fa-bolt"></i></div><div class="ptnr-stat-val" style="font-size:17px;">'+responseTxt+'</div><div class="ptnr-stat-label">Réponse moy.</div></div>'
       + '</div>';
 
-    html += '<div style="display:flex;gap:8px;margin:14px 0;">';
-    html += '<div style="flex:1;background:#111;border:1px solid #1e1e1e;border-radius:12px;padding:12px 14px;text-align:center;">';
-    html += '<div id="ptnr-rep-revenus" style="font-size:16px;color:#4caf50;font-weight:800;">0.00 €</div>';
-    html += '<div style="font-size:10px;color:#555;margin-top:3px;font-weight:600;">REVENUS GÉNÉRÉS</div></div>';
-    html += '<div style="flex:1;background:#111;border:1px solid #1e1e1e;border-radius:12px;padding:12px 14px;text-align:center;">';
-    html += '<div id="ptnr-rep-commissions" style="font-size:16px;color:#FFD700;font-weight:800;">0.00 €</div>';
-    html += '<div style="font-size:10px;color:#555;margin-top:3px;font-weight:600;">COMMISSIONS VERSÉES</div></div>';
+    html += '<div class="ptnr-rep-finance">';
+    html += '<div class="ptnr-rep-fcard" style="--fc:#4caf50;"><div class="ptnr-rep-ficon"><i class="fa-solid fa-sack-dollar"></i></div>';
+    html += '<div id="ptnr-rep-revenus" class="ptnr-rep-fval" style="color:#4caf50;">0.00 €</div>';
+    html += '<div class="ptnr-rep-flabel">Revenus générés</div></div>';
+    html += '<div class="ptnr-rep-fcard" style="--fc:#FFD700;"><div class="ptnr-rep-ficon"><i class="fa-solid fa-hand-holding-dollar"></i></div>';
+    html += '<div id="ptnr-rep-commissions" class="ptnr-rep-fval" style="color:#FFD700;">0.00 €</div>';
+    html += '<div class="ptnr-rep-flabel">Commissions versées</div></div>';
     html += '</div>';
 
     if(classement.rank && classement.total){
-      html += '<div class="ptnr-card" style="text-align:center;">';
-      html += '<div class="ptnr-card-title">Classement : #'+classement.rank+' / '+classement.total+'</div>';
-      html += '<div class="ptnr-card-sub">dans votre catégorie</div>';
+      html += '<div class="ptnr-rep-rank">';
+      html += '<div class="ptnr-rep-rank-val"><i class="fa-solid fa-ranking-star"></i> Classement #'+classement.rank+' / '+classement.total+'</div>';
+      html += '<div class="ptnr-rep-rank-sub">Dans votre catégorie</div>';
       html += '</div>';
     }
 
@@ -8798,6 +8834,34 @@ function _ptnrImageFileToCompressedBase64(file, maxDim, quality){
         }catch(e){ resolve(dataUri); }
       };
       img.onerror = function(){ resolve(dataUri); };
+      img.src = dataUri;
+    });
+  });
+}
+
+// Recadre en carré (centre) et compresse une photo de profil, façon avatar Instagram.
+function _ptnrImageFileToAvatarBase64(file, size, quality){
+  size = size || 480;
+  quality = quality || 0.85;
+  return _ptnrFileToBase64(file).then(function(dataUri){
+    return new Promise(function(resolve, reject){
+      var img = new Image();
+      img.onload = function(){
+        try{
+          var w = img.naturalWidth, h = img.naturalHeight;
+          if(!w || !h){ reject(new Error('Image invalide')); return; }
+          var side = Math.min(w, h);
+          var sx = (w - side) / 2, sy = (h - side) / 2;
+          var canvas = document.createElement('canvas');
+          canvas.width = size; canvas.height = size;
+          var ctx = canvas.getContext('2d');
+          ctx.drawImage(img, sx, sy, side, side, 0, 0, size, size);
+          var out = canvas.toDataURL('image/jpeg', quality);
+          if(!out || out.length < 100){ reject(new Error('Compression impossible')); return; }
+          resolve(out);
+        }catch(e){ reject(e); }
+      };
+      img.onerror = function(){ reject(new Error('Format d\'image non supporté sur cet appareil')); };
       img.src = dataUri;
     });
   });
@@ -8928,22 +8992,30 @@ function _ptnrSaveServices(){
     if(!file) return;
     var msgEl = document.getElementById('ptnr-photo-msg');
     var btnEl = document.getElementById('ptnr-photo-btn');
+    var preview = document.getElementById('ptnr-profil-photo-preview');
+    if(file.size > 25*1024*1024){
+      if(msgEl){ msgEl.style.color='#ef4444'; msgEl.textContent='Cette photo est trop lourde. Choisissez-en une autre.'; msgEl.className='ptnr-login-err on'; }
+      input.value=''; return;
+    }
     if(btnEl){ btnEl.disabled=true; btnEl.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Envoi...'; }
     if(msgEl){ msgEl.className='ptnr-login-err'; msgEl.textContent=''; }
-    _ptnrImageFileToCompressedBase64(file, 800, 0.85).then(function(dataUri){
+    _ptnrImageFileToAvatarBase64(file, 480, 0.85).then(function(dataUri){
+      // Aperçu instantané (façon Instagram) avant même la fin de l'envoi
+      if(preview) preview.innerHTML = '<img src="'+dataUri+'" alt="" style="width:100%;height:100%;object-fit:cover;">';
       return _ptnrFetch('/api/partner/auth/update-profile', 'PUT', {photo: dataUri});
     }).then(function(data){
       if(data && data.success){
         _ptnrSession.photo = data.partner.photo;
         localStorage.setItem('fa_genesis_partner_data', JSON.stringify(_ptnrSession));
-        _ptnrLoadProfil();
         if(msgEl){ msgEl.style.color='#4caf50'; msgEl.textContent='Photo mise à jour.'; msgEl.className='ptnr-login-err on'; }
       } else if(msgEl){
         msgEl.style.color='#ef4444'; msgEl.textContent=(data&&data.error)||'Erreur lors de l\'envoi de la photo'; msgEl.className='ptnr-login-err on';
       }
     }).catch(function(err){
       console.error('[PTNR] Erreur upload photo profil:', err);
-      if(msgEl){ msgEl.style.color='#ef4444'; msgEl.textContent='Erreur de connexion au serveur'; msgEl.className='ptnr-login-err on'; }
+      var msg = (err && err.message && err.message !== 'Erreur serveur') ? err.message : 'Erreur de connexion au serveur. Réessayez.';
+      if(msgEl){ msgEl.style.color='#ef4444'; msgEl.textContent=msg; msgEl.className='ptnr-login-err on'; }
+      _ptnrLoadProfilPhoto();
     }).finally(function(){
       if(btnEl){ btnEl.disabled=false; btnEl.innerHTML='<i class="fa-solid fa-camera"></i> Changer ma photo'; }
       input.value='';
