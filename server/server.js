@@ -8321,7 +8321,7 @@ app.post('/api/partner/auth/logout', authenticatePartner, (req, res) => {
 // Modifier profil partenaire
 app.put('/api/partner/auth/update-profile', authenticatePartner, async (req, res) => {
     try {
-        const { prenom, nom, telephone, photo, logo, bio, city, interventionZone, social, currentPassword, newPassword } = req.body;
+        const { prenom, nom, telephone, photo, logo, bio, city, interventionZone, social, responseTimeCommitmentMinutes, currentPassword, newPassword } = req.body;
         const partners = loadPartners();
         const index = partners.findIndex(p => p.id === req.partner.id);
         if (index === -1) {
@@ -8335,6 +8335,12 @@ app.put('/api/partner/auth/update-profile', authenticatePartner, async (req, res
         if (typeof bio === 'string') partners[index].bio = bio.trim();
         if (typeof city === 'string') partners[index].city = city.trim();
         if (typeof interventionZone === 'string') partners[index].interventionZone = interventionZone.trim();
+        if (responseTimeCommitmentMinutes !== undefined) {
+            const allowedResponseMinutes = [30, 60, 180, 720, 1440, 2880];
+            partners[index].responseTimeCommitmentMinutes = allowedResponseMinutes.indexOf(responseTimeCommitmentMinutes) !== -1
+                ? responseTimeCommitmentMinutes
+                : null;
+        }
         if (social && typeof social === 'object') {
             const prevSocial = partners[index].social || {};
             const cleanedSocial = {};
@@ -9741,6 +9747,8 @@ app.get('/api/partners/:id/reviews', (req, res) => {
                 city: partner.city || '',
                 social: partner.social || {},
                 fromPrice: fromPrice,
+                avgResponseMinutes: typeof partner.avgResponseMinutes === 'number' ? partner.avgResponseMinutes : null,
+                responseTimeCommitmentMinutes: typeof partner.responseTimeCommitmentMinutes === 'number' ? partner.responseTimeCommitmentMinutes : null,
                 rating: getPartnerRatingSummary(partner.id),
                 badge: getPartnerBadge(partner),
                 constellation: getConstellationTier(partner),
@@ -9813,6 +9821,7 @@ function partnerDirectoryShape(p) {
         lng: coords ? coords[1] : null,
         fromPrice: getPartnerFromPrice(p),
         avgResponseMinutes: typeof p.avgResponseMinutes === 'number' ? p.avgResponseMinutes : null,
+        responseTimeCommitmentMinutes: typeof p.responseTimeCommitmentMinutes === 'number' ? p.responseTimeCommitmentMinutes : null,
         rating: getPartnerRatingSummary(p.id),
         badge: getPartnerBadge(p),
         constellation: getConstellationTier(p)
