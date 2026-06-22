@@ -3516,6 +3516,7 @@ function renderResaTab(){
       if(!el) return;
       if(reqList.length===0){ el.innerHTML=''; return; }
       el.innerHTML = '<div class="detail-feats-title" style="margin:4px 0 10px;">Mes demandes</div>' + reqList.map(function(r){
+        if(r.order_id) return renderOrderTrackingCard(r);
         if(r.status==='proposed') return renderProposalCard(r);
         var sc = (r.status==='accepted'||r.status==='signed')?'s-confirmed':r.status==='declined'?'s-refused':'s-pending';
         var sl = r.status==='signed'?'🟢 Contrat signé':r.status==='accepted'?'🟢 Acceptée':r.status==='declined'?'Refusée':'🟡 Demande envoyée';
@@ -3530,6 +3531,7 @@ function renderResaTab(){
           +(actionHtml?'<div class="resa-actions">'+actionHtml+'</div>':'')
           +'</div>';
       }).join('');
+      reqList.forEach(function(r){ if(r.order_id) loadOrderLivrables(r.id, r.order_id); });
     }).catch(function(){});
   fetch(API+'/api/reservations/me',{headers:{'Authorization':'Bearer '+USER._token}})
     .then(function(r){return r.json();})
@@ -3614,6 +3616,77 @@ function signRequestContract(requestId){
   }).catch(function(){
     if(errEl){ errEl.textContent='Erreur de connexion au serveur.'; errEl.style.display=''; }
   });
+}
+
+// ── GENESIS SAFE™ : suivi de mission payee + validation client des livrables (cosmetique) ──
+function renderOrderTrackingCard(r){
+  return '<div class="resa-card">'
+    +'<div class="resa-top"><div class="resa-name">'+(r.service_label||'Mission')+'</div>'
+    +'<span class="resa-status s-confirmed">🟢 Mission en cours</span></div>'
+    +'<div class="resa-date"><i class="fa-solid fa-user"></i> '+(r.partner_name||'')+'</div>'
+    +'<div id="liv-block-'+r.id+'" style="margin-top:10px;"><div style="color:var(--muted);font-size:12px;">Chargement des livrables…</div></div>'
+    +'</div>';
+}
+function loadOrderLivrables(requestId, orderId){
+  fetch((window.FA_GENESIS_API||API)+'/api/livrables/'+orderId,{headers:{'Authorization':'Bearer '+USER._token}})
+    .then(function(r){return r.json();})
+    .then(function(data){
+      var el = document.getElementById('liv-block-'+requestId);
+      if(!el) return;
+      var list = (data&&Array.isArray(data.livrables))?data.livrables:[];
+      var published = list.filter(function(l){ return l.workflow_status==='PUBLISHED'; });
+      if(published.length===0){ el.innerHTML='<div style="color:var(--muted);font-size:12px;">Aucun livrable publié pour le moment.</div>'; return; }
+      el.innerHTML = published.map(renderLivrableValidationCard).join('');
+    }).catch(function(){
+      var el = document.getElementById('liv-block-'+requestId);
+      if(el) el.innerHTML='';
+    });
+}
+function renderLivrableValidationCard(l){
+  var statusHtml;
+  if(l.client_validation==='validated'){
+    statusHtml = '<div style="color:#22c55e;font-size:12px;margin-top:6px;"><i class="fa-solid fa-circle-check"></i> Validé</div>';
+  } else if(l.client_validation==='revision_requested'){
+    statusHtml = '<div style="color:#f59e0b;font-size:12px;margin-top:6px;"><i class="fa-solid fa-rotate-left"></i> Révision demandée'+(l.client_revision_note?(' : '+_escHtml(l.client_revision_note)):'')+'</div>';
+  } else {
+    statusHtml = '<div class="resa-actions" style="margin-top:8px;">'
+      +'<button class="resa-action-btn rab-primary" onclick="validateLivrable(\''+l.id+'\')"><i class="fa-solid fa-check"></i> Valider</button>'
+      +'<button class="resa-action-btn rab-ghost" onclick="openRevisionPrompt(\''+l.id+'\')"><i class="fa-solid fa-pen"></i> Demander une révision</button>'
+      +'</div>'
+      +'<div id="rev-note-'+l.id+'" style="display:none;margin-top:8px;">'
+      +'<textarea id="rev-input-'+l.id+'" placeholder="Précisez ce qui doit être revu…" style="width:100%;min-height:60px;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:#fff;font-size:13px;"></textarea>'
+      +'<button class="resa-action-btn rab-primary" style="width:100%;margin-top:6px;" onclick="submitRevisionRequest(\''+l.id+'\')">Envoyer la demande</button>'
+      +'</div>';
+  }
+  return '<div style="background:#111;border:1px solid #1e1e1e;border-radius:10px;padding:10px;margin-bottom:8px;">'
+    +'<div style="font-size:13px;font-weight:700;">'+_escHtml(l.title||'Livrable')+'</div>'
+    +(l.description?'<div style="font-size:11px;color:var(--muted);margin-top:2px;">'+_escHtml(l.description)+'</div>':'')
+    +statusHtml
+    +'</div>';
+}
+function validateLivrable(livrableId){
+  fetch((window.FA_GENESIS_API||API)+'/api/livrables/'+livrableId+'/validate',{method:'POST',headers:{'Authorization':'Bearer '+USER._token}})
+    .then(function(r){return r.json();}).then(function(data){
+      if(data&&data.success) renderResaTab();
+      else alert((data&&data.error)||'Erreur lors de la validation.');
+    }).catch(function(){ alert('Erreur de connexion au serveur.'); });
+}
+function openRevisionPrompt(livrableId){
+  var box = document.getElementById('rev-note-'+livrableId);
+  if(box) box.style.display = (box.style.display==='none'?'block':'none');
+}
+function submitRevisionRequest(livrableId){
+  var input = document.getElementById('rev-input-'+livrableId);
+  var note = input ? input.value.trim() : '';
+  if(note.length<5){ alert('Merci de préciser votre demande de révision (5 caractères minimum).'); return; }
+  fetch((window.FA_GENESIS_API||API)+'/api/livrables/'+livrableId+'/request-revision',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+USER._token},
+    body: JSON.stringify({ note: note })
+  }).then(function(r){return r.json();}).then(function(data){
+    if(data&&data.success) renderResaTab();
+    else alert((data&&data.error)||'Erreur lors de l\'envoi.');
+  }).catch(function(){ alert('Erreur de connexion au serveur.'); });
 }
 
 // ── MESSAGES ─────────────────────────────────────────────────
@@ -8264,6 +8337,7 @@ function _ptnrLoadVersements(){
       listHtml += '<div style="font-size:20px;color:'+statusColor+';font-weight:800;">'+p.amount.toFixed(2)+' €</div>';
       listHtml += '</div>';
       if(p.payout_method==='pending') listHtml += '<div style="font-size:11px;color:#f44336;margin-top:8px;border-top:1px solid #1e1e1e;padding-top:8px;">Configurez votre PayPal ou votre RIB ci-dessus pour recevoir ce versement.</div>';
+      if(p.payout_method==='bank_transfer' && p.status==='pending') listHtml += '<div style="font-size:11px;color:#999;margin-top:8px;border-top:1px solid #1e1e1e;padding-top:8px;"><i class="fa-solid fa-circle-info"></i> Virement en cours de traitement par notre équipe.</div>';
       listHtml += '</div>';
     });
     listEl.innerHTML = listHtml;

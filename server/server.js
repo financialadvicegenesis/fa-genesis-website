@@ -3657,6 +3657,11 @@ function ensureLivrableFields(livrable) {
     // Versioning
     if (!livrable.versions) livrable.versions = [];
 
+    // Validation client (Phase 5, cosmetique : ne bloque jamais le paiement)
+    if (!livrable.client_validation) livrable.client_validation = 'pending';
+    if (livrable.client_validated_at === undefined) livrable.client_validated_at = null;
+    if (livrable.client_revision_note === undefined) livrable.client_revision_note = null;
+
     return livrable;
 }
 
@@ -3677,7 +3682,7 @@ app.get('/api/livrables/:orderId', (req, res) => {
     }
 
     const allLivrables = loadLivrables();
-    const orderLivrables = allLivrables.filter(l => l.order_id === req.params.orderId);
+    const orderLivrables = allLivrables.filter(l => l.order_id === req.params.orderId).map(ensureLivrableFields);
 
     // Ajouter l'info si le telechargement est autorise
     const accessRights = getAccessRights(order);
@@ -3694,6 +3699,120 @@ app.get('/api/livrables/:orderId', (req, res) => {
         balance_required: accessRights.balance_required,
         message: accessRights.balance_message
     });
+});
+
+/**
+ * POST /api/livrables/:id/validate
+ * Le client valide un livrable publie. Cosmetique uniquement (Phase 5) :
+ * ne bloque jamais le paiement de la tranche finale.
+ */
+app.post('/api/livrables/:id/validate', (req, res) => {
+    try {
+        var user = authenticateClient(req, res);
+        if (!user) return;
+
+        var livrables = loadLivrables();
+        var idx = livrables.findIndex(function(l) { return l.id === req.params.id; });
+        if (idx === -1) return res.status(404).json({ error: 'Livrable non trouve' });
+
+        var livrable = ensureLivrableFields(livrables[idx]);
+        var order = getOrderById(livrable.order_id);
+        if (!order || !order.client_info || (order.client_info.email || '').toLowerCase() !== user.email.toLowerCase()) {
+            return res.status(403).json({ error: 'Acces non autorise' });
+        }
+        if (livrable.workflow_status !== 'PUBLISHED') {
+            return res.status(409).json({ error: 'Ce livrable n\'est pas encore publie.' });
+        }
+
+        livrable.client_validation = 'validated';
+        livrable.client_validated_at = new Date().toISOString();
+        livrable.client_revision_note = null;
+        livrable.updated_at = new Date().toISOString();
+        livrables[idx] = livrable;
+        saveLivrables(livrables);
+
+        if (livrable.owner_partner_id) {
+            var partnerForValidation = getPartnerById(livrable.owner_partner_id);
+            if (partnerForValidation && partnerForValidation.email) {
+                sendPushToUser(partnerForValidation.email, {
+                    title: 'Livrable validé ✅',
+                    body: (order.client_info.first_name || 'Le client') + ' a validé : ' + (livrable.title || 'votre livrable'),
+                    icon: '/assets/images/logo-favicon-192.png',
+                    badge: '/assets/images/logo-favicon-32.png',
+                    url: '/app.html#open-partner',
+                    tag: 'livrable-valide'
+                });
+            }
+        }
+
+        res.json({ success: true, livrable: livrable });
+    } catch (err) {
+        console.error('[API] Erreur validate livrable:', err);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * POST /api/livrables/:id/request-revision
+ * Le client demande une revision sur un livrable publie. Cosmetique uniquement (Phase 5).
+ */
+app.post('/api/livrables/:id/request-revision', (req, res) => {
+    try {
+        var user = authenticateClient(req, res);
+        if (!user) return;
+
+        var note = (req.body.note || '').trim();
+        if (note.length < 5) return res.status(400).json({ error: 'Merci de preciser votre demande de revision (5 caracteres minimum).' });
+
+        var livrables = loadLivrables();
+        var idx = livrables.findIndex(function(l) { return l.id === req.params.id; });
+        if (idx === -1) return res.status(404).json({ error: 'Livrable non trouve' });
+
+        var livrable = ensureLivrableFields(livrables[idx]);
+        var order = getOrderById(livrable.order_id);
+        if (!order || !order.client_info || (order.client_info.email || '').toLowerCase() !== user.email.toLowerCase()) {
+            return res.status(403).json({ error: 'Acces non autorise' });
+        }
+        if (livrable.workflow_status !== 'PUBLISHED') {
+            return res.status(409).json({ error: 'Ce livrable n\'est pas encore publie.' });
+        }
+
+        livrable.workflow_status = 'REVISION_REQUESTED';
+        livrable.client_validation = 'revision_requested';
+        livrable.client_revision_note = note;
+        livrable.updated_at = new Date().toISOString();
+        if (!livrable.versions) livrable.versions = [];
+        livrable.versions.push({
+            version_number: livrable.versions.length + 1,
+            updated_by_role: 'client',
+            updated_by_id: user.email,
+            content_text: null,
+            file_url: null,
+            change_note: 'Revision demandee par le client: ' + note,
+            created_at: new Date().toISOString()
+        });
+        livrables[idx] = livrable;
+        saveLivrables(livrables);
+
+        if (livrable.owner_partner_id) {
+            var partnerForRevision = getPartnerById(livrable.owner_partner_id);
+            if (partnerForRevision && partnerForRevision.email) {
+                sendPushToUser(partnerForRevision.email, {
+                    title: 'Révision demandée ✏️',
+                    body: (order.client_info.first_name || 'Le client') + ' demande une revision sur : ' + (livrable.title || 'votre livrable'),
+                    icon: '/assets/images/logo-favicon-192.png',
+                    badge: '/assets/images/logo-favicon-32.png',
+                    url: '/app.html#open-partner',
+                    tag: 'livrable-revision'
+                });
+            }
+        }
+
+        res.json({ success: true, livrable: livrable });
+    } catch (err) {
+        console.error('[API] Erreur request-revision livrable:', err);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
 });
 
 /**
@@ -12501,6 +12620,72 @@ app.post('/api/admin/deliverables/:id/request-revision', (req, res) => {
         return res.status(404).json({ error: 'Livrable non trouve' });
     } catch (err) {
         console.error('[API] Erreur request-revision:', err);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * GET /api/admin/payouts/pending
+ * Liste les versements partenaires en attente (Phase 5 : surtout les virements bancaires
+ * sans equivalent automatique cote PayPal).
+ */
+app.get('/api/admin/payouts/pending', (req, res) => {
+    try {
+        var authHeader = req.headers.authorization;
+        if (!authHeader) return res.status(401).json({ error: 'Non autorise' });
+        var token = authHeader.replace('Bearer ', '');
+        var jwt = require('jsonwebtoken');
+        var decoded = jwt.verify(token, process.env.JWT_SECRET || 'fa-genesis-secret-key-2024');
+        if (decoded.role !== 'admin') return res.status(403).json({ error: 'Acces admin requis' });
+
+        var partners = loadPartners();
+        var pending = loadPayouts()
+            .filter(function(p) { return p.status === 'pending'; })
+            .map(function(p) {
+                var partner = partners.find(function(pt) { return pt.id === p.partner_id; });
+                return Object.assign({}, p, {
+                    partner_name: partner ? (partner.prenom ? (partner.prenom + ' ' + (partner.nom || '')) : (partner.company || partner.email)) : (p.partner_email || 'Partenaire'),
+                    partner_iban_masked: p.partner_iban ? ('•••• ' + p.partner_iban.slice(-4)) : null
+                });
+            })
+            .sort(function(a, b) { return (a.partner_name || '').localeCompare(b.partner_name || ''); });
+
+        res.json({ success: true, payouts: pending });
+    } catch (err) {
+        console.error('[API] Erreur payouts pending:', err);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * POST /api/admin/payouts/:id/mark-sent
+ * Cloture manuelle d'un versement par virement bancaire (aucun appel PayPal declenche ici).
+ */
+app.post('/api/admin/payouts/:id/mark-sent', (req, res) => {
+    try {
+        var authHeader = req.headers.authorization;
+        if (!authHeader) return res.status(401).json({ error: 'Non autorise' });
+        var token = authHeader.replace('Bearer ', '');
+        var jwt = require('jsonwebtoken');
+        var decoded = jwt.verify(token, process.env.JWT_SECRET || 'fa-genesis-secret-key-2024');
+        if (decoded.role !== 'admin') return res.status(403).json({ error: 'Acces admin requis' });
+
+        var reference = (req.body.reference || '').trim();
+        var payouts = loadPayouts();
+        var idx = payouts.findIndex(function(p) { return p.id === req.params.id; });
+        if (idx === -1) return res.status(404).json({ error: 'Versement non trouve' });
+        if (payouts[idx].status !== 'pending') {
+            return res.status(409).json({ error: 'Ce versement n\'est pas en attente (statut: ' + payouts[idx].status + ').' });
+        }
+
+        payouts[idx].status = 'sent';
+        payouts[idx].sent_at = new Date().toISOString();
+        if (reference) payouts[idx].reference = reference;
+        savePayouts(payouts);
+
+        res.json({ success: true, payout: payouts[idx] });
+    } catch (err) {
+        console.error('[API] Erreur mark-sent payout:', err);
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });

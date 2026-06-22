@@ -723,6 +723,10 @@
                             <i class="fas fa-star mr-1"></i>Feedbacks
                             <span id="feedbacksBadge" style="display:none;position:absolute;top:-6px;right:-6px;background:#ef4444;color:white;border-radius:50%;width:16px;height:16px;font-size:9px;line-height:16px;text-align:center;"></span>
                         </button>
+                        <button onclick="showSection('payouts')" class="nav-btn" style="position:relative;color:#aaa;white-space:nowrap;">
+                            <i class="fas fa-money-bill-transfer mr-1"></i>Versements
+                            <span id="pendingPayoutsBadge" style="display:none;position:absolute;top:-6px;right:-6px;background:#ef4444;color:white;border-radius:50%;width:16px;height:16px;font-size:9px;line-height:16px;text-align:center;"></span>
+                        </button>
                     </div>
                 </div>
                 <button onclick="handleLogout()" style="border:1px solid rgba(255,255,255,.2);border-radius:8px;color:#aaa;padding:7px 12px;font-size:11px;font-weight:700;background:transparent;cursor:pointer;letter-spacing:.3px;text-transform:uppercase;transition:all .15s;" onmouseover="this.style.background='rgba(255,255,255,.08)'" onmouseout="this.style.background='transparent'">
@@ -1135,6 +1139,15 @@
             </div>
 
             <!-- ===== SECTION A VALIDER ===== -->
+            <div id="payoutsSection" class="container mx-auto max-w-7xl" style="display: none;">
+                <h2 class="text-3xl font-black mb-6" style="font-family:'Playfair Display',serif;">
+                    <i class="fas fa-money-bill-transfer mr-3" style="color:var(--genesis-yellow);"></i>VERSEMENTS EN ATTENTE
+                </h2>
+                <div id="pendingPayoutsList" class="space-y-4" style="color:#e0e0e0;">
+                    <p style="color:#aaa;opacity:0.6;font-weight:bold;">Chargement...</p>
+                </div>
+            </div>
+
             <div id="workflowSection" class="container mx-auto max-w-7xl" style="display: none;">
                 <h2 class="text-3xl font-black mb-6" style="font-family:'Playfair Display',serif;">
                     <i class="fas fa-tasks mr-3" style="color:var(--genesis-yellow);"></i>LIVRABLES A VALIDER
@@ -1433,6 +1446,8 @@
             if (seancesEl) seancesEl.style.display = 'none';
             var feedbacksEl = document.getElementById('feedbacksSection');
             if (feedbacksEl) feedbacksEl.style.display = 'none';
+            var payoutsEl = document.getElementById('payoutsSection');
+            if (payoutsEl) payoutsEl.style.display = 'none';
 
             if (section === 'dashboard') {
                 document.getElementById('dashboardSection').style.display = 'block';
@@ -1468,6 +1483,9 @@
             } else if (section === 'feedbacks') {
                 if (feedbacksEl) feedbacksEl.style.display = 'block';
                 loadAdminFeedbacks();
+            } else if (section === 'payouts') {
+                if (payoutsEl) payoutsEl.style.display = 'block';
+                loadPendingPayouts();
             }
         }
 
@@ -4689,6 +4707,71 @@
                     partnerContainer.style.display = 'block';
                 }
             } catch (e) { console.error('showWorkflowTab:', e); }
+        }
+
+        async function loadPendingPayouts() {
+            try {
+                var token = localStorage.getItem('fa_genesis_token');
+                var response = await fetch(API_BASE_URL + '/api/admin/payouts/pending', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (!response.ok) throw new Error('Erreur chargement');
+                var data = await response.json();
+                var payouts = data.payouts || [];
+
+                var badge = document.getElementById('pendingPayoutsBadge');
+                if (badge) {
+                    if (payouts.length > 0) { badge.style.display = 'block'; badge.textContent = payouts.length; }
+                    else { badge.style.display = 'none'; }
+                }
+
+                var listEl = document.getElementById('pendingPayoutsList');
+                if (!listEl) return;
+                if (payouts.length === 0) {
+                    listEl.innerHTML = '<p style="color:#888;">Aucun versement en attente.</p>';
+                    return;
+                }
+                listEl.innerHTML = payouts.map(renderPayoutCard).join('');
+            } catch (e) {
+                console.error('loadPendingPayouts:', e);
+            }
+        }
+
+        function renderPayoutCard(p) {
+            var methodLabel = p.payout_method === 'bank_transfer' ? 'Virement bancaire' : (p.payout_method === 'paypal' ? 'PayPal' : 'Coordonnées manquantes');
+            var ibanInfo = p.partner_iban_masked ? (' · IBAN ' + p.partner_iban_masked) : '';
+            return '<div style="background:#181818;border:1px solid rgba(255,215,0,0.12);border-radius:12px;padding:1rem;margin-bottom:10px;">' +
+                '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">' +
+                '<div>' +
+                '<div style="color:#e0e0e0;font-weight:700;">' + (p.partner_name || p.partner_email || 'Partenaire') + '</div>' +
+                '<div style="font-size:12px;color:#888;margin-top:2px;">' + methodLabel + ibanInfo + ' · Commande ' + (p.order_id || '-').substring(0, 12).toUpperCase() + '</div>' +
+                '</div>' +
+                '<div style="font-size:20px;color:var(--genesis-yellow);font-weight:800;">' + (parseFloat(p.amount) || 0).toFixed(2) + ' €</div>' +
+                '</div>' +
+                '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px;">' +
+                '<input type="text" id="payout-ref-' + p.id + '" placeholder="Référence de virement (optionnel)" style="flex:1;min-width:160px;padding:7px 10px;border-radius:7px;border:1px solid #333;background:#111;color:#fff;font-size:12px;">' +
+                '<button onclick="markPayoutSent(\'' + p.id + '\')" style="background:#22c55e;border:none;border-radius:7px;color:white;padding:7px 14px;font-size:11px;font-weight:700;cursor:pointer;"><i class="fas fa-check mr-1"></i>MARQUER COMME ENVOYÉ</button>' +
+                '</div>' +
+                '</div>';
+        }
+
+        async function markPayoutSent(id) {
+            try {
+                var token = localStorage.getItem('fa_genesis_token');
+                var refInput = document.getElementById('payout-ref-' + id);
+                var reference = refInput ? refInput.value.trim() : '';
+                var response = await fetch(API_BASE_URL + '/api/admin/payouts/' + id + '/mark-sent', {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ reference: reference })
+                });
+                if (response.ok) {
+                    loadPendingPayouts();
+                } else {
+                    var err = await response.json();
+                    alert('Erreur: ' + (err.error || 'Erreur inconnue'));
+                }
+            } catch (e) { alert('Erreur: ' + e.message); }
         }
 
         async function loadPendingDeliverables() {
