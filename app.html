@@ -1198,21 +1198,32 @@ a{text-decoration:none;color:inherit}
 .avail-skip{width:100%;background:transparent;border:none;color:#555;font-size:12px;padding:12px;cursor:pointer;margin-top:4px;}
 /* ── PARTNER TAB ── */
 #tab-partner{padding:0 0 calc(var(--nav) + var(--safe) + 16px);}
-.ptnr-header{background:linear-gradient(135deg,#0d0d0d 0%,#1a1200 100%);border-bottom:2px solid #FFD700;padding:20px 16px 16px;display:flex;align-items:center;justify-content:space-between;}
-.ptnr-header-left{display:flex;align-items:center;gap:12px;}
-.ptnr-avatar{width:42px;height:42px;border-radius:50%;background:#FFD700;color:#000;font-weight:900;font-size:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-.ptnr-name{font-size:14px;font-weight:900;color:#fff;}
-.ptnr-type{font-size:10px;color:#FFD700;font-weight:700;text-transform:uppercase;letter-spacing:.5px;}
-.ptnr-logout-btn{background:transparent;border:1px solid #333;color:#888;font-size:11px;font-weight:700;padding:6px 12px;border-radius:8px;cursor:pointer;}
-.ptnr-subnav{display:flex;background:#0d0d0d;border-bottom:1px solid #1a1a1a;overflow-x:auto;-webkit-overflow-scrolling:touch;}
+.ptnr-header{position:relative;overflow:hidden;background:linear-gradient(135deg,#0d0d0d 0%,#1a1200 55%,#0d0d0d 100%);background-size:200% 200%;animation:gradientFlow 9s ease infinite;border-bottom:2px solid #FFD700;padding:22px 16px 18px;display:flex;align-items:center;justify-content:space-between;}
+.ptnr-header::before{content:'';position:absolute;top:-50%;right:-8%;width:170px;height:170px;background:radial-gradient(circle,rgba(255,215,0,.16),transparent 70%);pointer-events:none;}
+.ptnr-header-left{display:flex;align-items:center;gap:13px;position:relative;z-index:1;min-width:0;}
+.ptnr-avatar{width:52px;height:52px;border-radius:50%;background:#FFD700;color:#000;font-weight:900;font-size:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;box-shadow:0 0 0 2px #0d0d0d,0 0 0 4px rgba(255,215,0,.5),0 4px 16px rgba(255,215,0,.22);}
+.ptnr-avatar img{width:100%;height:100%;object-fit:cover;}
+.ptnr-name{font-size:15px;font-weight:900;color:#fff;}
+.ptnr-type{font-size:10px;color:#FFD700;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-top:2px;}
+.ptnr-header-meta{display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap;}
+.ptnr-header-rating{font-size:11px;color:#ccc;font-weight:700;display:none;align-items:center;gap:4px;}
+.ptnr-header-rating.on{display:inline-flex;}
+.ptnr-header-rating i{color:#FFD700;font-size:10px;}
+.ptnr-header-actions{display:flex;gap:8px;position:relative;z-index:1;flex-shrink:0;}
+.ptnr-logout-btn{background:rgba(255,255,255,.04);border:1px solid #333;color:#888;font-size:11px;font-weight:700;padding:7px 12px;border-radius:20px;cursor:pointer;transition:transform .15s,border-color .15s,color .15s;}
+.ptnr-logout-btn:active{transform:scale(.93);}
+.ptnr-subnav{display:flex;gap:3px;background:#0d0d0d;border-bottom:1px solid #1a1a1a;overflow-x:auto;-webkit-overflow-scrolling:touch;padding:6px 6px 0;}
 .ptnr-subnav::-webkit-scrollbar{display:none;}
-.ptnr-snbtn{flex:1;min-width:70px;padding:12px 8px 10px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;color:#555;display:flex;flex-direction:column;align-items:center;gap:3px;position:relative;border-bottom:2px solid transparent;}
-.ptnr-snbtn .pni{font-size:18px;}
-.ptnr-snbtn.on{color:#FFD700;border-bottom:2px solid #FFD700;}
+.ptnr-snbtn{flex:1;min-width:68px;padding:10px 6px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;color:#555;display:flex;flex-direction:column;align-items:center;gap:4px;position:relative;border-radius:10px 10px 0 0;background:transparent;border:none;transition:color .2s,background .2s;}
+.ptnr-snbtn .pni{font-size:17px;transition:transform .2s;}
+.ptnr-snbtn.on{color:#FFD700;background:rgba(255,215,0,.08);}
+.ptnr-snbtn.on .pni{transform:translateY(-2px) scale(1.12);}
+.ptnr-snbtn.on::after{content:'';position:absolute;bottom:0;left:20%;right:20%;height:2px;background:#FFD700;border-radius:2px 2px 0 0;animation:tabReveal .25s ease both;}
+.ptnr-snbtn:active{transform:scale(.92);}
 .ptnr-badge{position:absolute;top:6px;right:calc(50% - 20px);min-width:16px;height:16px;background:#ef4444;border-radius:8px;font-size:9px;font-weight:900;color:#fff;display:none;align-items:center;justify-content:center;padding:0 4px;}
 .ptnr-badge.on{display:flex;}
 .ptnr-screen{display:none;padding:0 16px 16px;}
-.ptnr-screen.on{display:block;}
+.ptnr-screen.on{display:block;animation:fadeSlideIn .3s ease both;}
 .ptnr-card{background:#111;border:1px solid #1e1e1e;border-radius:14px;padding:16px;margin-bottom:12px;}
 .ptnr-card-title{font-size:13px;font-weight:900;color:#fff;margin-bottom:4px;}
 .ptnr-card-sub{font-size:11px;color:#888;margin-bottom:10px;}
@@ -1232,8 +1243,11 @@ a{text-decoration:none;color:inherit}
 .ptnr-reply-input{flex:1;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;color:#fff;font-size:13px;padding:10px 12px;font-family:inherit;resize:none;}
 .ptnr-reply-send{background:#FFD700;color:#000;font-weight:900;font-size:11px;padding:10px 14px;border:none;border-radius:8px;cursor:pointer;}
 .ptnr-stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:16px;}
-.ptnr-stat{background:#111;border:1px solid #1e1e1e;border-radius:12px;padding:14px;text-align:center;}
-.ptnr-stat-val{font-size:22px;font-weight:900;color:#FFD700;font-family:'Unbounded',sans-serif;}
+.ptnr-stat{background:#111;border:1px solid #1e1e1e;border-radius:14px;padding:14px 8px;text-align:center;animation:cardFloat .4s cubic-bezier(.34,1.2,.64,1) both;}
+.ptnr-stat:nth-child(2){animation-delay:.05s;}
+.ptnr-stat:nth-child(3){animation-delay:.1s;}
+.ptnr-stat-ico{width:28px;height:28px;border-radius:9px;background:rgba(255,215,0,.12);color:#FFD700;display:flex;align-items:center;justify-content:center;font-size:12px;margin:0 auto 7px;}
+.ptnr-stat-val{font-size:21px;font-weight:900;color:#FFD700;font-family:'Unbounded',sans-serif;}
 .ptnr-stat-label{font-size:10px;color:#888;margin-top:2px;text-transform:uppercase;letter-spacing:.3px;}
 .ptnr-empty{text-align:center;padding:40px 20px;color:#555;}
 .ptnr-empty-ico{font-size:36px;margin-bottom:12px;}
@@ -1290,6 +1304,32 @@ a{text-decoration:none;color:inherit}
 .ptnr-folder-ico{font-size:32px;margin-bottom:8px;}
 .ptnr-folder-label{font-size:11px;font-weight:900;color:#fff;text-transform:uppercase;letter-spacing:.3px;}
 .ptnr-folder-sub{font-size:10px;color:#555;margin-top:3px;}
+
+/* ── Menu / tarifs (style "Uber Eats merchant") ── */
+.ptnr-menu-hero{background:linear-gradient(135deg,#161200 0%,#0d0d0d 70%);border:1px solid rgba(255,215,0,.18);border-radius:16px;padding:16px;margin-bottom:14px;position:relative;overflow:hidden;}
+.ptnr-menu-hero::after{content:'';position:absolute;top:-30%;left:-10%;width:140px;height:140px;background:radial-gradient(circle,rgba(255,215,0,.14),transparent 70%);}
+.ptnr-menu-hero-title{font-family:'Unbounded',sans-serif;font-size:13px;font-weight:900;color:#fff;display:flex;align-items:center;gap:8px;position:relative;z-index:1;}
+.ptnr-menu-hero-title i{color:#FFD700;}
+.ptnr-menu-hero-sub{font-size:11px;color:#999;margin-top:6px;line-height:1.5;position:relative;z-index:1;}
+.ptnr-audience-pills{display:flex;gap:8px;margin:14px 0 12px;overflow-x:auto;-webkit-overflow-scrolling:touch;}
+.ptnr-audience-pills::-webkit-scrollbar{display:none;}
+.ptnr-audience-pill{flex-shrink:0;padding:8px 16px;border-radius:20px;background:#1a1a1a;border:1px solid #2a2a2a;color:#888;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.3px;cursor:pointer;transition:all .2s;}
+.ptnr-audience-pill.on{background:#FFD700;color:#000;border-color:#FFD700;box-shadow:0 0 14px rgba(255,215,0,.3);}
+.ptnr-audience-pill:active{transform:scale(.94);}
+.ptnr-svc-list{display:block;}
+.ptnr-svc-row{background:#111;border:1px solid #1e1e1e;border-radius:14px;padding:12px;margin-bottom:10px;display:flex;gap:12px;align-items:flex-start;animation:cardFloat .35s cubic-bezier(.34,1.2,.64,1) both;transition:border-color .15s;}
+.ptnr-svc-row:focus-within{border-color:rgba(255,215,0,.4);}
+.ptnr-svc-thumb{width:56px;height:56px;border-radius:12px;background:#1a1a1a;border:1px dashed #2a2a2a;overflow:hidden;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#555;cursor:pointer;font-size:18px;transition:border-color .15s;}
+.ptnr-svc-thumb:active{border-color:#FFD700;}
+.ptnr-svc-thumb img{width:100%;height:100%;object-fit:cover;}
+.ptnr-svc-fields{flex:1;min-width:0;}
+.ptnr-svc-fields .ptnr-input{margin-bottom:7px;padding:9px 10px;font-size:12.5px;}
+.ptnr-svc-price-row{display:flex;gap:8px;align-items:center;}
+.ptnr-svc-price-row .ptnr-input{margin-bottom:0;flex:1;color:#FFD700;font-weight:900;}
+.ptnr-svc-del{background:transparent;border:none;color:#ef4444;font-size:14px;padding:9px;cursor:pointer;flex-shrink:0;border-radius:8px;transition:background .15s,transform .15s;}
+.ptnr-svc-del:active{background:rgba(239,68,68,.12);transform:scale(.9);}
+.ptnr-svc-add-btn{width:100%;background:transparent;border:2px dashed #2a2a2a;color:#888;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.3px;padding:13px;border-radius:12px;cursor:pointer;margin-bottom:12px;transition:border-color .2s,color .2s;}
+.ptnr-svc-add-btn:active{border-color:#FFD700;color:#FFD700;}
 #pay-overlay{display:none;position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,.72);backdrop-filter:blur(4px);align-items:flex-end;justify-content:center;}
 #pay-overlay.open{display:flex;animation:regFadeIn .2s ease;}
 #pay-sheet{width:100%;max-width:480px;background:#0d0d0d;border-radius:20px 20px 0 0;border-top:3px solid #FFD700;max-height:92vh;display:flex;flex-direction:column;overflow:hidden;transform:translateY(100%);transition:transform .45s cubic-bezier(.34,1.56,.64,1);}
@@ -2096,12 +2136,16 @@ a{text-decoration:none;color:inherit}
         <div class="ptnr-header">
           <div class="ptnr-header-left">
             <div class="ptnr-avatar" id="ptnr-avatar">P</div>
-            <div>
+            <div style="min-width:0;">
               <div class="ptnr-name" id="ptnr-display-name">Partenaire</div>
               <div class="ptnr-type" id="ptnr-display-type"></div>
+              <div class="ptnr-header-meta">
+                <span id="ptnr-header-badge"></span>
+                <span class="ptnr-header-rating" id="ptnr-header-rating"><i class="fa-solid fa-star"></i> <span id="ptnr-header-rating-val"></span></span>
+              </div>
             </div>
           </div>
-          <div style="display:flex;gap:8px;">
+          <div class="ptnr-header-actions">
             <button class="ptnr-logout-btn" onclick="_ptnrShowEditProfile()" style="border-color:#FFD700;color:#FFD700;"><i class="fa-solid fa-pen"></i> Modifier</button>
             <button class="ptnr-logout-btn" onclick="_ptnrLogout()">Déconnexion</button>
           </div>
@@ -2170,11 +2214,32 @@ a{text-decoration:none;color:inherit}
         <!-- Sub-screen: Home / Stats -->
         <div class="ptnr-screen on" id="ptnr-screen-home">
           <div class="ptnr-stat-row">
-            <div class="ptnr-stat"><div class="ptnr-stat-val" id="ptnr-stat-projets">—</div><div class="ptnr-stat-label">Projets</div></div>
-            <div class="ptnr-stat"><div class="ptnr-stat-val" id="ptnr-stat-devis">—</div><div class="ptnr-stat-label">Devis</div></div>
-            <div class="ptnr-stat"><div class="ptnr-stat-val" id="ptnr-stat-msg">—</div><div class="ptnr-stat-label">Messages</div></div>
+            <div class="ptnr-stat"><div class="ptnr-stat-ico"><i class="fa-solid fa-clipboard-list"></i></div><div class="ptnr-stat-val" id="ptnr-stat-projets">—</div><div class="ptnr-stat-label">Projets</div></div>
+            <div class="ptnr-stat"><div class="ptnr-stat-ico"><i class="fa-solid fa-file-lines"></i></div><div class="ptnr-stat-val" id="ptnr-stat-devis">—</div><div class="ptnr-stat-label">Devis</div></div>
+            <div class="ptnr-stat"><div class="ptnr-stat-ico"><i class="fa-solid fa-comment-dots"></i></div><div class="ptnr-stat-val" id="ptnr-stat-msg">—</div><div class="ptnr-stat-label">Messages</div></div>
           </div>
           <div id="ptnr-home-list" style="padding:0 0 16px;"></div>
+
+          <!-- Mes tarifs & prestations (style menu "Uber Eats / Deliveroo") -->
+          <div class="ptnr-menu-hero">
+            <div class="ptnr-menu-hero-title"><i class="fa-solid fa-bag-shopping"></i> Mes tarifs &amp; prestations</div>
+            <div class="ptnr-menu-hero-sub">Ajoutez vos prestations avec prix et photo. Elles s'affichent en temps réel sur votre fiche publique, comme un menu.</div>
+          </div>
+
+          <div class="ptnr-audience-pills">
+            <button class="ptnr-audience-pill on" id="ptnr-aud-pill-etudiant" onclick="_ptnrSwitchAudience('etudiant')">Étudiant</button>
+            <button class="ptnr-audience-pill" id="ptnr-aud-pill-particulier" onclick="_ptnrSwitchAudience('particulier')">Particulier</button>
+            <button class="ptnr-audience-pill" id="ptnr-aud-pill-entreprise" onclick="_ptnrSwitchAudience('entreprise')">Entreprise</button>
+          </div>
+
+          <div id="ptnr-services-list-etudiant" class="ptnr-svc-list"></div>
+          <div id="ptnr-services-list-particulier" class="ptnr-svc-list" style="display:none;"></div>
+          <div id="ptnr-services-list-entreprise" class="ptnr-svc-list" style="display:none;"></div>
+
+          <button class="ptnr-svc-add-btn" onclick="_ptnrAddServiceItem(_ptnrCurrentAudience)"><i class="fa-solid fa-plus"></i> Ajouter une prestation</button>
+
+          <div class="ptnr-login-err" id="ptnr-services-msg" style="margin-top:0;"></div>
+          <button class="ptnr-login-btn btn-main" id="ptnr-services-save-btn" onclick="_ptnrSaveServices()"><i class="fa-solid fa-floppy-disk"></i> Enregistrer mes prestations</button>
         </div>
 
         <!-- Sub-screen: Projets -->
@@ -2220,7 +2285,7 @@ a{text-decoration:none;color:inherit}
           <div id="ptnr-reputation-content"></div>
         </div>
 
-        <!-- Sub-screen: Profil (photo + tarifs/prestations) -->
+        <!-- Sub-screen: Profil (photo) -->
         <div class="ptnr-screen" id="ptnr-screen-profil">
           <div class="ptnr-section-title">Ma photo de profil</div>
           <div class="ptnr-card" style="display:flex;align-items:center;gap:14px;">
@@ -2231,24 +2296,6 @@ a{text-decoration:none;color:inherit}
               <div class="ptnr-login-err" id="ptnr-photo-msg" style="margin-top:8px;"></div>
             </div>
           </div>
-
-          <div class="ptnr-section-title">Mes tarifs &amp; prestations</div>
-          <div class="ptnr-card-sub" style="padding:0 0 4px;">Ajoutez vos prestations avec prix et photo. Elles s'affichent en temps réel sur votre fiche publique.</div>
-
-          <div class="ptnr-card-sub" style="margin-top:14px;font-weight:900;color:#aaa;">Tarif Étudiant</div>
-          <div id="ptnr-services-list-etudiant"></div>
-          <button class="ptnr-btn-no" style="width:100%;margin-bottom:6px;" onclick="_ptnrAddServiceItem('etudiant')"><i class="fa-solid fa-plus"></i> Ajouter une prestation (Étudiant)</button>
-
-          <div class="ptnr-card-sub" style="margin-top:14px;font-weight:900;color:#aaa;">Tarif Particulier</div>
-          <div id="ptnr-services-list-particulier"></div>
-          <button class="ptnr-btn-no" style="width:100%;margin-bottom:6px;" onclick="_ptnrAddServiceItem('particulier')"><i class="fa-solid fa-plus"></i> Ajouter une prestation (Particulier)</button>
-
-          <div class="ptnr-card-sub" style="margin-top:14px;font-weight:900;color:#aaa;">Tarif Entreprise</div>
-          <div id="ptnr-services-list-entreprise"></div>
-          <button class="ptnr-btn-no" style="width:100%;margin-bottom:6px;" onclick="_ptnrAddServiceItem('entreprise')"><i class="fa-solid fa-plus"></i> Ajouter une prestation (Entreprise)</button>
-
-          <div class="ptnr-login-err" id="ptnr-services-msg" style="margin-top:10px;"></div>
-          <button class="ptnr-login-btn" id="ptnr-services-save-btn" onclick="_ptnrSaveServices()"><i class="fa-solid fa-floppy-disk"></i> Enregistrer mes prestations</button>
         </div>
       </div>
     </div>
@@ -5892,9 +5939,19 @@ function _ptnrShowDash(){
     try { savedProfile = JSON.parse(localStorage.getItem('fa_genesis_partner_profile_data')||'null'); } catch(e){}
     var nm = (savedProfile && savedProfile.name) || p.prenom || p.name || p.email || 'Partenaire';
     var ini = (savedProfile && savedProfile.initials) || (nm[0]||'P').toUpperCase();
-    var av = document.getElementById('ptnr-avatar'); if(av) av.textContent = ini;
+    var av = document.getElementById('ptnr-avatar'); if(av) av.innerHTML = p.photo ? '<img src="'+p.photo+'" alt="">' : ini;
     var dn = document.getElementById('ptnr-display-name'); if(dn) dn.textContent = nm;
     var dt = document.getElementById('ptnr-display-type'); if(dt) dt.textContent = p.partner_type ? partnerTypeLabel(p) : (p.type || p.role || '');
+    _ptnrFetch('/api/partner/reputation').then(function(data){
+      var badgeEl = document.getElementById('ptnr-header-badge');
+      if(badgeEl){ var badge = data.founderBadge ? 'fondateur' : data.badge; badgeEl.innerHTML = tierBadgeHtml(badge); }
+      var ratingWrap = document.getElementById('ptnr-header-rating');
+      var ratingVal = document.getElementById('ptnr-header-rating-val');
+      if(data.rating && data.rating.count > 0 && ratingWrap && ratingVal){
+        ratingVal.textContent = data.rating.average.toFixed(1)+' ('+data.rating.count+')';
+        ratingWrap.className = 'ptnr-header-rating on';
+      }
+    }).catch(function(){});
   }
   if(!_ptnrRefreshTimer) _ptnrRefreshTimer = setInterval(_ptnrRefreshBadges, 30000);
 }
@@ -5914,7 +5971,7 @@ function _ptnrNav(screen){
   if(screen==='missions') _ptnrLoadMissions();
   if(screen==='versements') _ptnrLoadVersements();
   if(screen==='reputation') _ptnrLoadReputation();
-  if(screen==='profil') _ptnrLoadProfil();
+  if(screen==='profil') _ptnrLoadProfilPhoto();
 }
 
 function _ptnrFmt(dateStr){
@@ -5926,6 +5983,7 @@ function _ptnrFmt(dateStr){
 function _ptnrLoadHome(){
   var list = document.getElementById('ptnr-home-list');
   if(list) list.innerHTML = _skeletonRows(2);
+  _ptnrRenderServicesSection();
   Promise.all([
     _ptnrFetch('/api/partner/projects').catch(function(){return [];}),
     _ptnrFetch('/api/partner/quotes').catch(function(){return [];}),
@@ -8039,8 +8097,19 @@ function _ptnrLoadReputation(){
   });
 }
 
-// ── PROFIL PARTENAIRE (photo + tarifs/prestations) ──
+// ── PROFIL PARTENAIRE (photo) + TARIFS/PRESTATIONS (Accueil) ──
 var _ptnrSvcAudiences = ['etudiant','particulier','entreprise'];
+var _ptnrCurrentAudience = 'etudiant';
+
+function _ptnrSwitchAudience(audience){
+  _ptnrCurrentAudience = audience;
+  _ptnrSvcAudiences.forEach(function(aud){
+    var pill = document.getElementById('ptnr-aud-pill-'+aud);
+    if(pill) pill.className = 'ptnr-audience-pill' + (aud===audience ? ' on' : '');
+    var list = document.getElementById('ptnr-services-list-'+aud);
+    if(list) list.style.display = (aud===audience) ? 'block' : 'none';
+  });
+}
 
 function _ptnrFileToBase64(file){
   return new Promise(function(resolve, reject){
@@ -8078,30 +8147,29 @@ function _ptnrImageFileToCompressedBase64(file, maxDim, quality){
   });
 }
 
-function _ptnrLoadProfil(){
+function _ptnrLoadProfilPhoto(){
   var preview = document.getElementById('ptnr-profil-photo-preview');
   if(preview){
     var photo = _ptnrSession && _ptnrSession.photo;
     preview.innerHTML = photo ? '<img src="'+photo+'" alt="" style="width:100%;height:100%;object-fit:cover;">' : '<i class="fa-solid fa-user"></i>';
   }
-  _ptnrRenderServicesSection();
 }
 
 function _ptnrRenderServiceItemRow(service){
   var imageHtml = service.image
-    ? '<img src="'+service.image+'" alt="" style="width:100%;height:100%;object-fit:cover;">'
+    ? '<img src="'+service.image+'" alt="">'
     : '<i class="fa-solid fa-image" style="opacity:.3;"></i>';
-  return '<div class="ptnr-svc-row" data-service-id="'+(service.id||'')+'" data-service-image="'+(service.image?encodeURIComponent(service.image):'')+'" style="background:#111;border:1px solid #1e1e1e;border-radius:12px;padding:12px;margin-bottom:10px;display:flex;gap:10px;align-items:flex-start;">'
-    + '<div class="ptnr-svc-thumb" onclick="this.nextElementSibling.click()" style="width:48px;height:48px;border-radius:8px;background:#1a1a1a;border:1px solid #2a2a2a;overflow:hidden;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#fff;cursor:pointer;">'
+  return '<div class="ptnr-svc-row" data-service-id="'+(service.id||'')+'" data-service-image="'+(service.image?encodeURIComponent(service.image):'')+'">'
+    + '<div class="ptnr-svc-thumb" onclick="this.nextElementSibling.click()">'
       + imageHtml
     + '</div>'
     + '<input type="file" accept="image/*" class="ptnr-svc-img-input" style="display:none;" onchange="_ptnrOnServiceImageSelected(this)">'
-    + '<div style="flex:1;min-width:0;">'
-      + '<input type="text" class="ptnr-input ptnr-svc-label" placeholder="Ex: Shooting photo corporate" value="'+(service.label||'').replace(/"/g,'&quot;')+'" style="margin-bottom:8px;padding:10px;">'
-      + '<input type="text" class="ptnr-input ptnr-svc-desc" placeholder="Détails (optionnel)" value="'+(service.description||'').replace(/"/g,'&quot;')+'" style="margin-bottom:8px;padding:10px;">'
-      + '<div style="display:flex;gap:8px;align-items:center;">'
-        + '<input type="number" class="ptnr-input ptnr-svc-price" placeholder="Prix (€)" value="'+(service.price||'')+'" min="0" step="0.01" style="margin-bottom:0;padding:10px;flex:1;">'
-        + '<button onclick="_ptnrRemoveServiceItem(this)" style="background:transparent;border:none;color:#ef4444;font-size:16px;padding:8px;cursor:pointer;" title="Supprimer"><i class="fa-solid fa-trash"></i></button>'
+    + '<div class="ptnr-svc-fields">'
+      + '<input type="text" class="ptnr-input ptnr-svc-label" placeholder="Ex: Shooting photo corporate" value="'+(service.label||'').replace(/"/g,'&quot;')+'">'
+      + '<input type="text" class="ptnr-input ptnr-svc-desc" placeholder="Détails (optionnel)" value="'+(service.description||'').replace(/"/g,'&quot;')+'">'
+      + '<div class="ptnr-svc-price-row">'
+        + '<input type="number" class="ptnr-input ptnr-svc-price" placeholder="Prix (€)" value="'+(service.price||'')+'" min="0" step="0.01">'
+        + '<button class="ptnr-svc-del" onclick="_ptnrRemoveServiceItem(this)" title="Supprimer"><i class="fa-solid fa-trash"></i></button>'
       + '</div>'
     + '</div>'
   + '</div>';
