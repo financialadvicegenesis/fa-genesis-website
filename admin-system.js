@@ -65,12 +65,17 @@ function adminLogout() {
 
 // Injecte automatiquement le token de session admin sur tous les appels /api/admin/*
 // (evite de modifier individuellement les ~80 appels fetch() existants dans admin.html)
+// Si le serveur repond 401 (session expiree/invalide - ex. apres redemarrage du serveur
+// ou ancien token reste dans le localStorage), on force une reconnexion propre au lieu de
+// laisser chaque ecran afficher silencieusement "Erreur de chargement" sans explication.
 (function() {
     var _origFetch = window.fetch;
+    var sessionExpiredHandled = false;
     window.fetch = function(input, init) {
+        var url = (typeof input === 'string') ? input : (input && input.url) || '';
+        var isAdminApiCall = url.indexOf('/api/admin/') !== -1 && url.indexOf('/api/admin/login') === -1;
         try {
-            var url = (typeof input === 'string') ? input : (input && input.url) || '';
-            if (url.indexOf('/api/admin/') !== -1 && url.indexOf('/api/admin/login') === -1) {
+            if (isAdminApiCall) {
                 var token = localStorage.getItem('adminToken');
                 if (token) {
                     init = init || {};
@@ -78,7 +83,16 @@ function adminLogout() {
                 }
             }
         } catch (e) {}
-        return _origFetch.call(this, input, init);
+        return _origFetch.call(this, input, init).then(function(response) {
+            if (isAdminApiCall && response.status === 401 && !sessionExpiredHandled) {
+                sessionExpiredHandled = true;
+                localStorage.removeItem('adminSession');
+                localStorage.removeItem('adminToken');
+                alert('Votre session administrateur a expiré. Merci de vous reconnecter.');
+                location.reload();
+            }
+            return response;
+        });
     };
 })();
 
