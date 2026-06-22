@@ -3583,7 +3583,6 @@ function openPartnerDetail(partnerId){
       _dirPartnerCache[p.id] = p;
       _partnerDetailId = p.id;
       var label = partnerTypeLabel(p);
-      var priceLabel = (p.fromPrice===null||p.fromPrice===undefined) ? 'Sur devis' : (p.fromPrice+' €');
       var heroHtml = '<div class="p-dir-detail-hero">'+(p.photo ? '<img src="'+p.photo+'" alt="">' : '<div class="p-dir-detail-hero-fallback"><i class="fa-solid fa-user"></i></div>')+'</div>';
       var starsLabel = (p.rating && p.rating.count) ? ('<i class="fa-solid fa-star" style="color:var(--yellow)"></i> '+p.rating.average+' ('+p.rating.count+' avis)') : 'Aucun avis pour le moment';
       var responseLabel = partnerResponseLabel(p);
@@ -3637,7 +3636,6 @@ function openPartnerDetail(partnerId){
         +'<div class="detail-name">'+(p.prenom||'')+' '+(p.nom||'')+' '+verifiedHtml+' '+badgeHtml+' '+constellationHtml+' '+favHeartHtml(p.id)+'</div>'
         +'<div class="detail-sub">'+label+'</div>'
         +cityHtml
-        +'<div class="detail-price">'+priceLabel+'</div>'
         +'<div class="detail-payment">'+starsLabel+'</div>'
         +responseHtml
         +cercleHtml
