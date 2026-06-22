@@ -749,16 +749,18 @@ a{text-decoration:none;color:inherit}
 .p-dir-review-name{font-size:12px;font-weight:700;color:#ccc}
 .p-dir-review-comment{font-size:12px;color:#999;line-height:1.4}
 .p-dir-review-empty{color:var(--muted);font-size:12px;padding:10px 0}
-.p-dir-services-list{display:flex;flex-direction:column;gap:8px}
-.p-dir-service-row{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#111;border:1.5px solid #1e1e1e;border-radius:14px;padding:12px 14px}
-.p-dir-service-img{width:72px;height:72px;border-radius:14px;overflow:hidden;flex-shrink:0;background:#1a1a1a}
+.p-dir-services-list{display:flex;flex-direction:column;gap:10px}
+/* Item de menu façon Uber Eats/Deliveroo : texte à gauche, photo carrée à droite, ligne entière cliquable */
+.p-dir-service-row{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;background:#111;border:1.5px solid #1e1e1e;border-radius:14px;padding:14px;cursor:pointer}
+.p-dir-service-row:active{border-color:rgba(255,215,0,.4)}
+.p-dir-service-img{width:84px;height:84px;border-radius:12px;overflow:hidden;flex-shrink:0;background:#1a1a1a}
 .p-dir-service-img img{width:100%;height:100%;object-fit:cover;display:block}
+.p-dir-service-img-ph{display:flex;align-items:center;justify-content:center;color:var(--yellow);font-size:24px;opacity:.6}
 .p-dir-service-info{flex:1;min-width:0}
-.p-dir-service-label{font-size:13px;font-weight:900;color:var(--text)}
-.p-dir-service-desc{font-size:11px;color:var(--muted);margin-top:2px;line-height:1.3}
-.p-dir-service-cta{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0}
-.p-dir-service-price{font-size:13px;font-weight:900;color:var(--yellow)}
-.p-dir-service-btn{background:var(--yellow);color:#000;border:none;border-radius:8px;font-size:11px;font-weight:900;text-transform:uppercase;padding:7px 12px;cursor:pointer;white-space:nowrap}
+.p-dir-service-label{font-size:14px;font-weight:900;color:var(--text);line-height:1.3}
+.p-dir-service-desc{font-size:11.5px;color:var(--muted);margin-top:3px;line-height:1.4;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.p-dir-service-price{font-size:14px;font-weight:900;color:var(--yellow);margin-top:6px}
 .p-dir-card-city{font-size:10px;color:var(--muted);font-weight:700;margin:2px 0}
 .p-dir-card-verified{font-size:9px;color:#000;background:var(--yellow);font-weight:900;padding:1px 6px;border-radius:6px;text-transform:uppercase;letter-spacing:.3px;white-space:nowrap}
 .tier-badge{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:900;padding:3px 9px;border-radius:8px;text-transform:uppercase;letter-spacing:.3px;white-space:nowrap}
@@ -3545,7 +3547,7 @@ function openPartnerDetail(partnerId){
       var p = data.partner;
       _dirPartnerCache[p.id] = p;
       var label = partnerTypeLabel(p);
-      var priceLabel = partnerPriceLabel(p);
+      var priceLabel = (p.fromPrice===null||p.fromPrice===undefined) ? 'Sur devis' : (p.fromPrice+' €');
       var heroHtml = '<div class="p-dir-detail-hero">'+(p.photo ? '<img src="'+p.photo+'" alt="">' : '<div class="p-dir-detail-hero-fallback"><i class="fa-solid fa-user"></i></div>')+'</div>';
       var starsLabel = (p.rating && p.rating.count) ? ('<i class="fa-solid fa-star" style="color:var(--yellow)"></i> '+p.rating.average+' ('+p.rating.count+' avis)') : 'Aucun avis pour le moment';
       var responseLabel = partnerResponseLabel(p);
@@ -3577,15 +3579,21 @@ function openPartnerDetail(partnerId){
       var services = p.services || [];
       var servicesHtml = services.length
         ? services.map(function(s){
-            var imgHtml = s.image
-              ? '<div class="p-dir-service-img"><img src="'+s.image+'" alt="'+(s.label||'')+'" loading="lazy"></div>'
-              : '';
-            return '<div class="p-dir-service-row">'
+            // Structure "item de menu" façon Uber Eats/Deliveroo : texte (nom, description,
+            // prix) à gauche, photo carrée à droite — toujours une image affichée (celle de
+            // la prestation, sinon la photo du partenaire en repli) pour que la fiche ne
+            // paraisse jamais "sans photo".
+            var imgSrc = s.image || p.photo || '';
+            var imgHtml = imgSrc
+              ? '<div class="p-dir-service-img"><img src="'+imgSrc+'" alt="" loading="lazy"></div>'
+              : '<div class="p-dir-service-img p-dir-service-img-ph"><i class="fa-solid fa-image"></i></div>';
+            return '<div class="p-dir-service-row" onclick="openPartnerRequest(\''+p.id+'\',\''+s.id+'\')">'
+              +'<div class="p-dir-service-info">'
+                +'<div class="p-dir-service-label">'+s.label+'</div>'
+                +(s.description?'<div class="p-dir-service-desc">'+s.description+'</div>':'')
+                +'<div class="p-dir-service-price">'+s.price+' €</div>'
+              +'</div>'
               +imgHtml
-              +'<div class="p-dir-service-info"><div class="p-dir-service-label">'+s.label+'</div>'
-              +(s.description?'<div class="p-dir-service-desc">'+s.description+'</div>':'')+'</div>'
-              +'<div class="p-dir-service-cta"><div class="p-dir-service-price">'+s.price+' €</div>'
-              +'<button class="p-dir-service-btn" onclick="openPartnerRequest(\''+p.id+'\',\''+s.id+'\')">Demander ce professionnel</button></div>'
               +'</div>';
           }).join('')
         : '<div class="p-dir-review-empty">Ce partenaire n\'a pas encore publié de prestations.</div>';
