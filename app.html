@@ -5915,7 +5915,15 @@ function updateCartBadge(){
 }
 
 function addToCart(item){
-  APP_CART.push(item); _saveCart();
+  // Deduplicate by id: same service added again → increment quantity
+  var existingIdx = APP_CART.findIndex(function(c){ return c.id === item.id; });
+  if(existingIdx !== -1){
+    APP_CART[existingIdx].quantity = (APP_CART[existingIdx].quantity||1) + 1;
+  } else {
+    item.quantity = 1;
+    APP_CART.push(item);
+  }
+  _saveCart();
   haptic(10);
   var btn=document.getElementById('cart-icon-btn');
   if(btn){ btn.style.transform='scale(1.4)'; setTimeout(function(){btn.style.transform='';},260); }
@@ -5990,9 +5998,13 @@ function cartCheckout(){
   }
   if(ptnrIdx !== -1){
     var ptnrItem = APP_CART[ptnrIdx];
+    // Somme de TOUTES les entrées du même service partenaire dans le panier
+    // (au cas où d'anciennes données localStorage auraient plusieurs entrées distinctes)
+    var ptnrTotal = APP_CART
+      .filter(function(it){ return it.type==='partner_service' && it.partnerId===ptnrItem.partnerId && it.serviceId===ptnrItem.serviceId; })
+      .reduce(function(sum, it){ return sum + (it.priceNum||0)*(it.quantity||1); }, 0);
     closeCart();
     setTimeout(function(){
-      var ptnrTotal = (ptnrItem.priceNum||0) * (ptnrItem.quantity||1);
       payAcceptedRequest(ptnrItem.partnerId, ptnrItem.serviceId, ptnrItem.serviceLabel, ptnrTotal, ptnrItem.partnerName);
     }, 400);
     return;
