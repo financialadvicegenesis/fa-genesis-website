@@ -5963,17 +5963,12 @@ function renderCartBody(){
   if(tr) tr.style.display='flex'; if(cb) cb.disabled=false;
   body.innerHTML=APP_CART.map(function(item,i){
     var isPtnrSvc = item.type==='partner_service';
-    var isSmallSvc = isPtnrSvc && item.priceNum > 0 && item.priceNum <= 300;
-    var ptnrBtnLabel = isSmallSvc
-      ? '<i class="fa-solid fa-shield-alt"></i> Payer en GENESIS SAFE™'
-      : '<i class="fa-solid fa-lock"></i> Payer en sécurisé';
     return '<div class="cart-item">'
       +'<div class="cart-item-info">'
       +(isPtnrSvc?'<span class="cart-item-ptnr-lbl">PRESTATION</span>':'')
       +'<div class="cart-item-name">'+item.name+'</div>'
       +(item.sub?'<div class="cart-item-sub">'+item.sub+'</div>':'')
       +'<div class="cart-item-price">'+item.price+(item.quantity>1?' × '+item.quantity:'')+'</div>'
-      +(isPtnrSvc?'<button class="cart-item-ptnr-btn" onclick="_cartPayPartnerService('+i+')">'+ptnrBtnLabel+'</button>':'')
       +'</div>'
       +'<button class="cart-item-del" onclick="removeFromCart('+i+')">✕</button>'
       +'</div>';
@@ -5986,6 +5981,22 @@ function renderCartBody(){
 function cartCheckout(){
   if(APP_CART.length===0) return;
   if(!USER){ closeCart(); setTimeout(showLoginSheet, 400); return; }
+
+  // Si le panier contient des prestations partenaires, les traiter via GENESIS SAFE™ / pb-sheet.
+  // On prend la première prestation partenaire (les autres restent dans le panier pour un paiement ultérieur).
+  var ptnrIdx = -1;
+  for(var pi=0; pi<APP_CART.length; pi++){
+    if(APP_CART[pi].type==='partner_service'){ ptnrIdx=pi; break; }
+  }
+  if(ptnrIdx !== -1){
+    var ptnrItem = APP_CART[ptnrIdx];
+    closeCart();
+    setTimeout(function(){
+      payAcceptedRequest(ptnrItem.partnerId, ptnrItem.serviceId, ptnrItem.serviceLabel, ptnrItem.priceNum, ptnrItem.partnerName);
+    }, 400);
+    return;
+  }
+
   var total = cartTotal();
   if(total <= 0){
     closeCart();
