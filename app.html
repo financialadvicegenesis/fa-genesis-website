@@ -5992,7 +5992,8 @@ function cartCheckout(){
     var ptnrItem = APP_CART[ptnrIdx];
     closeCart();
     setTimeout(function(){
-      payAcceptedRequest(ptnrItem.partnerId, ptnrItem.serviceId, ptnrItem.serviceLabel, ptnrItem.priceNum, ptnrItem.partnerName);
+      var ptnrTotal = (ptnrItem.priceNum||0) * (ptnrItem.quantity||1);
+      payAcceptedRequest(ptnrItem.partnerId, ptnrItem.serviceId, ptnrItem.serviceLabel, ptnrTotal, ptnrItem.partnerName);
     }, 400);
     return;
   }
@@ -8568,20 +8569,20 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
         </div>
         <div style="background:#111;border:1.5px solid #1e1e1e;border-radius:14px;overflow:hidden;margin-bottom:14px;">
           <!-- Ligne paiement intégral (small ≤ 300 €) -->
-          <div id="pb-row-small" style="display:none;align-items:center;justify-content:space-between;padding:14px 16px;">
-            <div>
-              <div style="font-size:12px;color:#FFD700;font-weight:700;letter-spacing:.5px;">PAIEMENT INTÉGRAL — RETENU JUSQU'À LIVRAISON</div>
-              <div style="font-size:14px;color:#fff;font-weight:700;margin-top:2px;">100 % sécurisé GENESIS SAFE™</div>
+          <div id="pb-row-small" style="display:none;align-items:center;justify-content:space-between;gap:10px;padding:14px 16px;">
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:11px;color:#FFD700;font-weight:700;letter-spacing:.5px;">PAIEMENT INTÉGRAL</div>
+              <div style="font-size:13px;color:#fff;font-weight:700;margin-top:2px;">100 % sécurisé GENESIS SAFE™</div>
             </div>
-            <div id="pb-deposit-amt" style="font-size:18px;color:#FFD700;font-weight:800;"></div>
+            <div id="pb-deposit-amt" style="font-size:18px;color:#FFD700;font-weight:800;white-space:nowrap;flex-shrink:0;"></div>
           </div>
           <!-- Ligne acompte 30 % (large > 300 €) -->
-          <div id="pb-row-tranche1" style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #1e1e1e;">
-            <div>
-              <div style="font-size:12px;color:#FFD700;font-weight:700;letter-spacing:.5px;">AUJOURD'HUI — OBLIGATOIRE</div>
+          <div id="pb-row-tranche1" style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 16px;border-bottom:1px solid #1e1e1e;">
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:11px;color:#FFD700;font-weight:700;letter-spacing:.5px;">AUJOURD'HUI — OBLIGATOIRE</div>
               <div style="font-size:14px;color:#fff;font-weight:700;margin-top:2px;">Acompte (30 %)</div>
             </div>
-            <div id="pb-deposit-amt-large" style="font-size:18px;color:#FFD700;font-weight:800;"></div>
+            <div id="pb-deposit-amt-large" style="font-size:18px;color:#FFD700;font-weight:800;white-space:nowrap;flex-shrink:0;"></div>
           </div>
           <!-- Tranche 2 et 3 (large > 300 €) -->
           <div id="pb-row-tranche2" style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #1e1e1e;">
