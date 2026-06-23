@@ -8417,8 +8417,9 @@ app.put('/api/partner/services', authenticatePartner, (req, res) => {
             if (!s || !s.label || typeof s.label !== 'string' || !s.label.trim()) {
                 return res.status(400).json({ error: 'Chaque prestation doit avoir un libelle' });
             }
-            const price = Number(s.price);
-            if (!Number.isFinite(price) || price <= 0) {
+            const isQuote = s.pricing_type === 'quote';
+            const price = isQuote ? 0 : Number(s.price);
+            if (!isQuote && (!Number.isFinite(price) || price <= 0)) {
                 return res.status(400).json({ error: 'Chaque prestation doit avoir un prix numerique superieur a 0' });
             }
             cleaned.push({
@@ -8426,6 +8427,7 @@ app.put('/api/partner/services', authenticatePartner, (req, res) => {
                 label: s.label.trim(),
                 description: (s.description || '').trim(),
                 price: price,
+                pricing_type: isQuote ? 'quote' : 'fixed',
                 active: s.active !== false,
                 audience: SERVICE_AUDIENCES.indexOf(s.audience) !== -1 ? s.audience : 'particulier',
                 image: typeof s.image === 'string' ? s.image : ''

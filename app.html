@@ -909,6 +909,46 @@ a{text-decoration:none;color:inherit}
 .p-dir-detail-hero img{width:100%;height:100%;object-fit:cover;display:block}
 .p-dir-detail-hero-fallback{width:100%;height:100%;display:flex;align-items:center;justify-content:center;
   font-size:44px;color:var(--yellow);background:linear-gradient(135deg,#1a1a1a,#262200)}
+/* ── X close button on detail sheet ── */
+.detail-close-x{width:32px;height:32px;border-radius:50%;background:#1e1e1e;border:none;color:#aaa;
+  display:flex;align-items:center;justify-content:center;font-size:14px;cursor:pointer;flex-shrink:0}
+/* ── Centered partner info header ── */
+.p-dir-partner-header{text-align:center}
+.p-dir-partner-header .p-dir-detail-namerow{justify-content:center;flex-wrap:wrap}
+.p-dir-partner-header .p-dir-detail-badgerow{justify-content:center}
+.p-dir-partner-header .detail-sub,.p-dir-partner-header .p-dir-detail-city,
+.p-dir-partner-header .detail-payment,.p-dir-partner-header .p-dir-detail-response{text-align:center}
+/* ── "Sur devis" badge on service card ── */
+.p-svc-quote-tag{font-size:10px;font-weight:900;color:var(--muted);background:#1e1e1e;border:1px solid #333;
+  padding:2px 8px;border-radius:6px;display:inline-block;margin-top:5px;letter-spacing:.5px}
+/* ── Service detail overlay (Deliveroo style) ── */
+.svc-detail-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:6100;align-items:flex-end;justify-content:center}
+.svc-detail-overlay.open{display:flex;animation:svcFadeIn .2s ease}
+@keyframes svcFadeIn{from{opacity:0}to{opacity:1}}
+.svc-detail-panel{background:#141414;border:1px solid #2a2a2a;border-radius:24px 24px 0 0;
+  width:100%;max-width:500px;max-height:84vh;overflow-y:auto;animation:sheetUp .3s cubic-bezier(.34,1.56,.64,1)}
+.svc-detail-panel::-webkit-scrollbar{display:none}
+.svc-detail-topbar{display:flex;align-items:center;justify-content:flex-end;padding:14px 18px 0}
+.svc-detail-hero{width:100%;aspect-ratio:16/9;max-height:220px;overflow:hidden;background:#1a1a1a}
+.svc-detail-hero img{width:100%;height:100%;object-fit:cover}
+.svc-detail-hero-ph{width:100%;height:100%;display:flex;align-items:center;justify-content:center;
+  font-size:40px;color:var(--yellow);background:linear-gradient(135deg,#1a1a1a,#0a0800)}
+.svc-detail-body{padding:20px 24px 32px}
+.svc-detail-name{font-size:18px;font-weight:900;font-style:italic;text-transform:uppercase;
+  font-family:'Unbounded',sans-serif;color:#fff;margin-bottom:6px;line-height:1.2}
+.svc-detail-desc{font-size:13px;color:#aaa;line-height:1.5;margin-bottom:12px}
+.svc-detail-price{font-size:26px;font-weight:900;color:var(--yellow);font-family:'Unbounded',sans-serif;margin-bottom:20px}
+.svc-detail-price.quote{font-size:13px;color:var(--muted);font-family:inherit;font-weight:700;margin-bottom:20px}
+.svc-detail-cta{width:100%;padding:16px;background:var(--yellow);color:#000;border:none;border-radius:12px;
+  font-size:13px;font-weight:900;text-transform:uppercase;letter-spacing:1px;font-family:inherit;cursor:pointer;margin-bottom:10px;display:block;text-align:center}
+.svc-detail-cta.secondary{background:#1e1e1e;color:var(--yellow);border:1.5px solid var(--yellow)}
+.svc-detail-close-btn{width:100%;padding:12px;background:transparent;color:#444;border:none;font-size:13px;font-family:inherit;cursor:pointer}
+/* ── Cart: partner service item ── */
+.cart-item-ptnr-lbl{font-size:9px;font-weight:900;color:#000;background:var(--yellow);
+  padding:1px 6px;border-radius:4px;margin-right:4px;text-transform:uppercase;letter-spacing:.3px;vertical-align:middle}
+.cart-item-ptnr-btn{display:inline-block;margin-top:6px;font-size:10px;font-weight:900;
+  text-transform:uppercase;background:#1e1e1e;color:var(--yellow);border:1px solid var(--yellow);
+  border-radius:7px;padding:5px 11px;cursor:pointer;letter-spacing:.5px}
 .p-dir-detail-response{font-size:11px;color:var(--muted);font-weight:700;margin:-10px 0 8px}
 .p-dir-detail-response i{color:var(--yellow);margin-right:3px}
 .p-dir-detail-city{font-size:11px;color:var(--muted);font-weight:700;margin:2px 0 8px}
@@ -3640,13 +3680,17 @@ function _ptnrRenderServiceCards(services, audience, p){
     var imgHtml = imgSrc
       ? '<img src="'+imgSrc+'" alt="" loading="lazy">'
       : '<div class="p-svc-card-photo-ph"><i class="fa-solid fa-image"></i></div>';
-    var isSelected = !!_partnerCartSelection[s.id];
-    return '<div class="p-svc-card'+(isSelected?' selected':'')+'" onclick="toggleServiceCartSelection(\''+s.id+'\')">'
-      +'<div class="p-svc-card-photo">'+imgHtml+'<div class="p-svc-card-cta"><i class="fa-solid '+(isSelected?'fa-check':'fa-plus')+'"></i></div></div>'
+    var isQuote = s.pricing_type === 'quote';
+    var priceHtml = isQuote
+      ? '<div class="p-svc-quote-tag">Sur devis</div>'
+      : '<div class="p-svc-card-price">'+s.price+' €</div>';
+    return '<div class="p-svc-card" onclick="openServiceDetail(\''+p.id+'\',\''+s.id+'\')">'
+      +'<div class="p-svc-card-photo">'+imgHtml
+      +'<div class="p-svc-card-cta"><i class="fa-solid '+(isQuote?'fa-file-lines':'fa-plus')+'"></i></div></div>'
       +'<div class="p-svc-card-body">'
         +'<div class="p-svc-card-label">'+s.label+'</div>'
         +(s.description?'<div class="p-svc-card-desc">'+s.description+'</div>':'')
-        +'<div class="p-svc-card-price">'+s.price+' €</div>'
+        +priceHtml
       +'</div></div>';
   }).join('');
 }
@@ -3730,7 +3774,7 @@ function openPartnerDetail(partnerId){
           }).join('')+'</div>'
         : '';
       var servicesHtml = services.length
-        ? svcTabsHtml + '<div class="p-svc-grid" id="p-svc-grid">'+_ptnrRenderServiceCards(services, _partnerDetailAudience, p)+'</div>'+'<div class="p-svc-cart-bar" id="p-svc-cart-bar"></div>'
+        ? svcTabsHtml + '<div class="p-svc-grid" id="p-svc-grid">'+_ptnrRenderServiceCards(services, _partnerDetailAudience, p)+'</div>'
         : '<div class="p-dir-review-empty">Ce partenaire n\'a pas encore publié de prestations.</div>';
       var reviewsHtml = (data.reviews||[]).map(function(r){
         return '<li><div class="p-dir-review-top"><span style="color:var(--yellow)">'+'<i class="fa-solid fa-star"></i>'.repeat(r.rating||0)+'</span><span class="p-dir-review-name">'+r.userName+'</span></div>'
@@ -3738,12 +3782,14 @@ function openPartnerDetail(partnerId){
       }).join('') || '<li class="p-dir-review-empty">Aucun avis publié pour le moment.</li>';
       document.getElementById('detail-content').innerHTML = ''
         +heroHtml
+        +'<div class="p-dir-partner-header">'
         +'<div class="p-dir-detail-namerow"><span class="p-dir-detail-name">'+(p.prenom||'')+' '+(p.nom||'')+'</span>'+verifiedHtml+'</div>'
         +'<div class="p-dir-detail-badgerow">'+badgeHtml+' '+constellationHtml+' '+favHeartHtml(p.id)+'</div>'
         +'<div class="detail-sub">'+label+'</div>'
         +cityHtml
         +'<div class="detail-payment">'+starsLabel+'</div>'
         +responseHtml
+        +'</div>'
         +cercleHtml
         +bioHtml
         +socialHtml
@@ -3757,6 +3803,73 @@ function openPartnerDetail(partnerId){
         +'<button class="detail-close-btn" onclick="closeDetail()">Fermer</button>';
       document.getElementById('detail-sheet').className='on';
     }).catch(function(){});
+}
+
+// ── Détail d'une prestation (overlay façon Deliveroo) ──
+function openServiceDetail(partnerId, serviceId){
+  var p = _dirPartnerCache[partnerId];
+  if(!p) return;
+  var service = (p.services||[]).find(function(s){ return s.id===serviceId; });
+  if(!service) return;
+  var isQuote = service.pricing_type === 'quote';
+  var imgSrc = service.image || p.photo || '';
+  var heroHtml = imgSrc
+    ? '<div class="svc-detail-hero"><img src="'+imgSrc+'" alt=""></div>'
+    : '<div class="svc-detail-hero"><div class="svc-detail-hero-ph"><i class="fa-solid fa-image"></i></div></div>';
+  var priceHtml = isQuote
+    ? '<div class="svc-detail-price quote"><i class="fa-solid fa-file-lines"></i> Tarif sur devis — personnalisé selon votre besoin</div>'
+    : '<div class="svc-detail-price">'+service.price+' €</div>';
+  var ctaHtml = isQuote
+    ? '<button class="svc-detail-cta secondary" onclick="closeServiceDetail();openPartnerRequest(\''+partnerId+'\',\''+serviceId+'\')"><i class="fa-solid fa-paper-plane"></i> Demander un devis</button>'
+    : '<button class="svc-detail-cta" onclick="addServiceToMainCart(\''+partnerId+'\',\''+serviceId+'\')"><i class="fa-solid fa-cart-shopping"></i> Ajouter au panier</button>';
+  var content = heroHtml
+    +'<div class="svc-detail-body">'
+    +'<div class="svc-detail-name">'+service.label+'</div>'
+    +'<div style="font-size:11px;color:var(--muted);font-weight:700;margin-bottom:10px">par '+(p.prenom||'')+' '+(p.nom||'')+'</div>'
+    +(service.description?'<div class="svc-detail-desc">'+service.description+'</div>':'')
+    +priceHtml
+    +ctaHtml
+    +'<button class="svc-detail-close-btn" onclick="closeServiceDetail()">Annuler</button>'
+    +'</div>';
+  var el = document.getElementById('svc-detail-content');
+  if(el) el.innerHTML = content;
+  var ov = document.getElementById('svc-detail-overlay');
+  if(ov){ ov.style.display='flex'; setTimeout(function(){ ov.classList.add('open'); }, 20); }
+}
+function closeServiceDetail(){
+  var ov = document.getElementById('svc-detail-overlay');
+  if(!ov) return;
+  ov.classList.remove('open');
+  setTimeout(function(){ ov.style.display='none'; }, 250);
+}
+function addServiceToMainCart(partnerId, serviceId){
+  if(!USER||GUEST){ closeServiceDetail(); closeDetail(); showLoginSheet(); return; }
+  var p = _dirPartnerCache[partnerId];
+  if(!p) return;
+  var service = (p.services||[]).find(function(s){ return s.id===serviceId; });
+  if(!service) return;
+  var partnerName = (p.prenom||'')+' '+(p.nom||'');
+  addToCart({
+    id: 'psvc_'+serviceId,
+    name: service.label,
+    sub: 'Prestation de '+partnerName,
+    price: service.price+' €',
+    priceNum: parseFloat(service.price)||0,
+    type: 'partner_service',
+    partnerId: p.id,
+    partnerName: partnerName,
+    serviceId: serviceId,
+    serviceLabel: service.label
+  });
+  closeServiceDetail();
+}
+function _cartPayPartnerService(idx){
+  var item = APP_CART[idx];
+  if(!item||item.type!=='partner_service') return;
+  closeCart();
+  setTimeout(function(){
+    payAcceptedRequest(item.partnerId, item.serviceId, item.serviceLabel, item.priceNum, item.partnerName);
+  }, 400);
 }
 
 var _cwDetailSub = null, _cwDetailIdx = null;
@@ -5776,11 +5889,14 @@ function renderCartBody(){
   }
   if(tr) tr.style.display='flex'; if(cb) cb.disabled=false;
   body.innerHTML=APP_CART.map(function(item,i){
+    var isPtnrSvc = item.type==='partner_service';
     return '<div class="cart-item">'
       +'<div class="cart-item-info">'
+      +(isPtnrSvc?'<span class="cart-item-ptnr-lbl">PRESTATION</span>':'')
       +'<div class="cart-item-name">'+item.name+'</div>'
       +(item.sub?'<div class="cart-item-sub">'+item.sub+'</div>':'')
       +'<div class="cart-item-price">'+item.price+(item.quantity>1?' × '+item.quantity:'')+'</div>'
+      +(isPtnrSvc?'<button class="cart-item-ptnr-btn" onclick="_cartPayPartnerService('+i+')"><i class="fa-solid fa-lock"></i> Payer en sécurisé</button>':'')
       +'</div>'
       +'<button class="cart-item-del" onclick="removeFromCart('+i+')">✕</button>'
       +'</div>';
@@ -7893,8 +8009,22 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
 <!-- Fiche détail — bottom sheet -->
 <div id="detail-sheet" onclick="if(event.target===this)closeDetail()">
   <div class="detail-panel">
-    <div class="detail-handle"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 0 6px">
+      <div style="width:32px"></div>
+      <div class="detail-handle" style="margin:0"></div>
+      <button class="detail-close-x" onclick="closeDetail()"><i class="fa-solid fa-xmark"></i></button>
+    </div>
     <div id="detail-content"></div>
+  </div>
+</div>
+
+<!-- SERVICE DETAIL — overlay Deliveroo style -->
+<div id="svc-detail-overlay" class="svc-detail-overlay" onclick="if(event.target===this)closeServiceDetail()">
+  <div class="svc-detail-panel">
+    <div class="svc-detail-topbar">
+      <button class="detail-close-x" onclick="closeServiceDetail()"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div id="svc-detail-content"></div>
   </div>
 </div>
 

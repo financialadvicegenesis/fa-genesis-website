@@ -2434,11 +2434,14 @@
                 '</div>' +
                 '<div class="md:col-span-2">' +
                     '<label class="block text-xs font-black uppercase mb-1">Prix (€)</label>' +
-                    '<input type="number" class="service-item-price text-right" value="' + (service.price || 0) + '" min="0" step="0.01">' +
+                    '<input type="number" class="service-item-price text-right" value="' + (service.pricing_type === 'quote' ? '' : (service.price || 0)) + '" min="0" step="0.01"' + (service.pricing_type === 'quote' ? ' disabled style="opacity:.35"' : '') + '>' +
                 '</div>' +
                 '<div class="md:col-span-2 flex items-end gap-3">' +
                     '<label class="flex items-center gap-1 text-xs font-black uppercase">' +
                         '<input type="checkbox" class="service-item-active" ' + (service.active === false ? '' : 'checked') + '> Active' +
+                    '</label>' +
+                    '<label class="flex items-center gap-1 text-xs font-black uppercase" title="Le client devra demander un devis, sans prix fixe affiché">' +
+                        '<input type="checkbox" class="service-item-quote" ' + (service.pricing_type === 'quote' ? 'checked' : '') + ' onchange="toggleServiceQuoteMode(this)"> Sur&nbsp;devis' +
                     '</label>' +
                     '<button onclick="removeServiceItem(this)" class="text-red-600 font-black hover:opacity-70" title="Supprimer">' +
                         '<i class="fas fa-trash"></i>' +
@@ -2476,6 +2479,21 @@
         });
     }
 
+    function toggleServiceQuoteMode(checkbox) {
+        var row = checkbox.closest('.proposal-item-row');
+        if (!row) return;
+        var priceEl = row.querySelector('.service-item-price');
+        if (!priceEl) return;
+        if (checkbox.checked) {
+            priceEl.disabled = true;
+            priceEl.style.opacity = '0.35';
+            priceEl.value = '';
+        } else {
+            priceEl.disabled = false;
+            priceEl.style.opacity = '';
+        }
+    }
+
     function addServiceItem(audience) {
         var container = document.getElementById('servicesItemsContainer_' + audience);
         if (!container) return;
@@ -2500,15 +2518,19 @@
             var priceEl = rows[i].querySelector('.service-item-price');
             var activeEl = rows[i].querySelector('.service-item-active');
             var label = labelEl ? labelEl.value.trim() : '';
+            var quoteEl = rows[i].querySelector('.service-item-quote');
+            var isQuote = quoteEl ? quoteEl.checked : false;
             var price = priceEl ? parseFloat(priceEl.value) : 0;
-            if (!label || !price || price <= 0) continue;
+            if (!label) continue;
+            if (!isQuote && (!price || price <= 0)) continue;
             var serviceId = rows[i].getAttribute('data-service-id') || '';
             var imageAttr = rows[i].getAttribute('data-service-image') || '';
             services.push({
                 id: serviceId,
                 label: label,
                 description: descEl ? descEl.value.trim() : '',
-                price: price,
+                price: isQuote ? 0 : price,
+                pricing_type: isQuote ? 'quote' : 'fixed',
                 active: activeEl ? activeEl.checked : true,
                 audience: audience,
                 image: imageAttr ? decodeURIComponent(imageAttr) : ''
