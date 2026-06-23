@@ -768,6 +768,7 @@ a{text-decoration:none;color:inherit}
 .p-svc-card-price{font-size:13px;font-weight:900;color:var(--yellow);margin-top:6px}
 .p-dir-card-city{font-size:10px;color:var(--muted);font-weight:700;margin:2px 0}
 .p-dir-card-verified{font-size:9px;color:#000;background:var(--yellow);font-weight:900;padding:1px 6px;border-radius:6px;text-transform:uppercase;letter-spacing:.3px;white-space:nowrap}
+.p-verified-badge{color:var(--yellow);font-size:.85em;margin-left:2px;vertical-align:middle}
 .tier-badge{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:900;padding:3px 9px;border-radius:8px;text-transform:uppercase;letter-spacing:.3px;white-space:nowrap}
 .tier-badge.bronze{background:#cd7f32;color:#fff}
 .tier-badge.argent{background:#c7c7c7;color:#000}
@@ -1285,16 +1286,24 @@ a{text-decoration:none;color:inherit}
 .ptnr-header-actions{display:flex;gap:8px;position:relative;z-index:1;flex-shrink:0;}
 .ptnr-logout-btn{background:rgba(255,255,255,.04);border:1px solid #333;color:#888;font-size:11px;font-weight:700;padding:7px 12px;border-radius:20px;cursor:pointer;transition:transform .15s,border-color .15s,color .15s;}
 .ptnr-logout-btn:active{transform:scale(.93);}
-.ptnr-subnav{display:flex;gap:3px;background:#0d0d0d;border-bottom:1px solid #1a1a1a;overflow-x:auto;-webkit-overflow-scrolling:touch;padding:6px 6px 0;}
-.ptnr-subnav::-webkit-scrollbar{display:none;}
-.ptnr-snbtn{flex:1;min-width:68px;padding:10px 6px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;color:#555;display:flex;flex-direction:column;align-items:center;gap:4px;position:relative;border-radius:10px 10px 0 0;background:transparent;border:none;transition:color .2s,background .2s;}
-.ptnr-snbtn .pni{font-size:17px;transition:transform .2s;}
-.ptnr-snbtn.on{color:#FFD700;background:rgba(255,215,0,.08);}
-.ptnr-snbtn.on .pni{transform:translateY(-2px) scale(1.12);}
-.ptnr-snbtn.on::after{content:'';position:absolute;bottom:0;left:20%;right:20%;height:2px;background:#FFD700;border-radius:2px 2px 0 0;animation:tabReveal .25s ease both;}
-.ptnr-snbtn:active{transform:scale(.92);}
-.ptnr-badge{position:absolute;top:6px;right:calc(50% - 20px);min-width:16px;height:16px;background:#ef4444;border-radius:8px;font-size:9px;font-weight:900;color:#fff;display:none;align-items:center;justify-content:center;padding:0 4px;}
+/* Menu de sections vertical (façon Facebook) : grandes lignes pleine largeur, faciles à
+   toucher, au lieu d'onglets horizontaux serrés. Vit dans l'écran Accueil ; chaque autre
+   écran propose un bouton "Retour" pour revenir au menu. */
+.ptnr-subnav{display:flex;flex-direction:column;gap:8px;background:transparent;padding:0;margin-bottom:18px;}
+.ptnr-snbtn{width:100%;padding:14px 16px;font-size:13px;font-weight:700;letter-spacing:.2px;color:#ccc;
+  text-transform:none;display:flex;align-items:center;gap:14px;position:relative;border-radius:14px;
+  background:#111;border:1.5px solid #1e1e1e;transition:color .2s,background .2s,border-color .2s;}
+.ptnr-snbtn .pni{font-size:18px;width:22px;text-align:center;flex-shrink:0;color:#666;transition:color .2s;}
+.ptnr-snbtn span:not(.ptnr-badge){flex:1;text-align:left;}
+.ptnr-snbtn .ptnr-snbtn-arrow{color:#333;font-size:13px;flex-shrink:0;}
+.ptnr-snbtn.on{color:#FFD700;background:rgba(255,215,0,.08);border-color:rgba(255,215,0,.35);}
+.ptnr-snbtn.on .pni{color:#FFD700;}
+.ptnr-snbtn:active{transform:scale(.98);}
+.ptnr-badge{position:static;min-width:18px;height:18px;background:#ef4444;border-radius:9px;font-size:10px;font-weight:900;color:#fff;display:none;align-items:center;justify-content:center;padding:0 5px;flex:0 0 auto;order:1;}
 .ptnr-badge.on{display:flex;}
+.ptnr-back-btn{display:flex;align-items:center;gap:8px;background:none;border:none;color:#888;font-size:12px;font-weight:700;padding:0 0 14px;cursor:pointer;font-family:inherit;}
+.ptnr-back-btn i{font-size:13px;}
+.ptnr-back-btn:active{color:#FFD700;}
 .ptnr-screen{display:none;padding:0 16px 16px;}
 .ptnr-screen.on{display:block;animation:fadeSlideIn .3s ease both;}
 .ptnr-card{background:#111;border:1px solid #1e1e1e;border-radius:14px;padding:16px;margin-bottom:12px;}
@@ -1373,9 +1382,9 @@ a{text-decoration:none;color:inherit}
 .ptnr-profile-arrow{color:#333;font-size:18px;}
 
 /* ── Menu / tarifs (style "Uber Eats merchant") ── */
-.ptnr-menu-hero{background:linear-gradient(135deg,#161200 0%,#0d0d0d 70%);border:1px solid rgba(255,215,0,.18);border-radius:16px;padding:16px;margin-bottom:14px;position:relative;overflow:hidden;}
+.ptnr-menu-hero{background:linear-gradient(135deg,#161200 0%,#0d0d0d 70%);border:1px solid rgba(255,215,0,.18);border-radius:16px;padding:16px;margin-bottom:14px;position:relative;overflow:hidden;text-align:center;}
 .ptnr-menu-hero::after{content:'';position:absolute;top:-30%;left:-10%;width:140px;height:140px;background:radial-gradient(circle,rgba(255,215,0,.14),transparent 70%);}
-.ptnr-menu-hero-title{font-family:'Unbounded',sans-serif;font-size:13px;font-weight:900;color:#fff;display:flex;align-items:center;gap:8px;position:relative;z-index:1;}
+.ptnr-menu-hero-title{font-family:'Unbounded',sans-serif;font-size:13px;font-weight:900;color:#fff;display:flex;align-items:center;justify-content:center;gap:8px;position:relative;z-index:1;}
 .ptnr-menu-hero-title i{color:#FFD700;}
 .ptnr-menu-hero-sub{font-size:11px;color:#999;margin-top:6px;line-height:1.5;position:relative;z-index:1;}
 .ptnr-audience-pills{display:flex;gap:8px;margin:14px 0 12px;overflow-x:auto;-webkit-overflow-scrolling:touch;}
@@ -2269,42 +2278,6 @@ a{text-decoration:none;color:inherit}
           <button class="ptnr-notif-btn" onclick="_ptnrEnablePush()">Activer</button>
         </div>
 
-        <!-- Sub-navigation -->
-        <div class="ptnr-subnav">
-          <button class="ptnr-snbtn on" id="ptnr-sn-home" onclick="_ptnrNav('home')">
-            <i class="pni fa-solid fa-house"></i><span>Accueil</span>
-          </button>
-          <button class="ptnr-snbtn" id="ptnr-sn-projets" onclick="_ptnrNav('projets')">
-            <i class="pni fa-solid fa-clipboard-list"></i><span>Projets</span>
-            <span class="ptnr-badge" id="ptnr-badge-projets"></span>
-          </button>
-          <button class="ptnr-snbtn" id="ptnr-sn-devis" onclick="_ptnrNav('devis')">
-            <i class="pni fa-solid fa-file-lines"></i><span>Devis</span>
-            <span class="ptnr-badge" id="ptnr-badge-devis"></span>
-          </button>
-          <button class="ptnr-snbtn" id="ptnr-sn-seances" onclick="_ptnrNav('seances')">
-            <i class="pni fa-solid fa-calendar-days"></i><span>Séances</span>
-            <span class="ptnr-badge" id="ptnr-badge-seances"></span>
-          </button>
-          <button class="ptnr-snbtn" id="ptnr-sn-messages" onclick="_ptnrNav('messages')">
-            <i class="pni fa-solid fa-comment-dots"></i><span>Messages</span>
-            <span class="ptnr-badge" id="ptnr-badge-messages"></span>
-          </button>
-          <button class="ptnr-snbtn" id="ptnr-sn-missions" onclick="_ptnrNav('missions')">
-            <i class="pni fa-solid fa-bolt"></i><span>Missions</span>
-            <span class="ptnr-badge" id="ptnr-badge-missions"></span>
-          </button>
-          <button class="ptnr-snbtn" id="ptnr-sn-versements" onclick="_ptnrNav('versements')">
-            <i class="pni fa-solid fa-sack-dollar"></i><span>Versements</span>
-          </button>
-          <button class="ptnr-snbtn" id="ptnr-sn-reputation" onclick="_ptnrNav('reputation')">
-            <i class="pni fa-solid fa-trophy"></i><span>Réputation</span>
-          </button>
-          <button class="ptnr-snbtn" id="ptnr-sn-profil" onclick="_ptnrNav('profil')">
-            <i class="pni fa-solid fa-id-card"></i><span>Profil</span>
-          </button>
-        </div>
-
         <!-- Sub-screen: Home / Stats -->
         <div class="ptnr-screen on" id="ptnr-screen-home">
           <div class="ptnr-stat-row">
@@ -2313,6 +2286,47 @@ a{text-decoration:none;color:inherit}
             <div class="ptnr-stat"><div class="ptnr-stat-ico"><i class="fa-solid fa-comment-dots"></i></div><div class="ptnr-stat-val" id="ptnr-stat-msg">—</div><div class="ptnr-stat-label">Messages</div></div>
           </div>
           <div id="ptnr-home-list" style="padding:0 0 16px;"></div>
+
+          <!-- Menu de sections, vertical façon Facebook : grandes lignes faciles à toucher -->
+          <div class="ptnr-subnav">
+            <button class="ptnr-snbtn" id="ptnr-sn-projets" onclick="_ptnrNav('projets')">
+              <i class="pni fa-solid fa-clipboard-list"></i><span>Projets</span>
+              <span class="ptnr-badge" id="ptnr-badge-projets"></span>
+              <i class="fa-solid fa-chevron-right ptnr-snbtn-arrow"></i>
+            </button>
+            <button class="ptnr-snbtn" id="ptnr-sn-devis" onclick="_ptnrNav('devis')">
+              <i class="pni fa-solid fa-file-lines"></i><span>Devis</span>
+              <span class="ptnr-badge" id="ptnr-badge-devis"></span>
+              <i class="fa-solid fa-chevron-right ptnr-snbtn-arrow"></i>
+            </button>
+            <button class="ptnr-snbtn" id="ptnr-sn-seances" onclick="_ptnrNav('seances')">
+              <i class="pni fa-solid fa-calendar-days"></i><span>Séances</span>
+              <span class="ptnr-badge" id="ptnr-badge-seances"></span>
+              <i class="fa-solid fa-chevron-right ptnr-snbtn-arrow"></i>
+            </button>
+            <button class="ptnr-snbtn" id="ptnr-sn-messages" onclick="_ptnrNav('messages')">
+              <i class="pni fa-solid fa-comment-dots"></i><span>Messages</span>
+              <span class="ptnr-badge" id="ptnr-badge-messages"></span>
+              <i class="fa-solid fa-chevron-right ptnr-snbtn-arrow"></i>
+            </button>
+            <button class="ptnr-snbtn" id="ptnr-sn-missions" onclick="_ptnrNav('missions')">
+              <i class="pni fa-solid fa-bolt"></i><span>Missions</span>
+              <span class="ptnr-badge" id="ptnr-badge-missions"></span>
+              <i class="fa-solid fa-chevron-right ptnr-snbtn-arrow"></i>
+            </button>
+            <button class="ptnr-snbtn" id="ptnr-sn-versements" onclick="_ptnrNav('versements')">
+              <i class="pni fa-solid fa-sack-dollar"></i><span>Versements</span>
+              <i class="fa-solid fa-chevron-right ptnr-snbtn-arrow"></i>
+            </button>
+            <button class="ptnr-snbtn" id="ptnr-sn-reputation" onclick="_ptnrNav('reputation')">
+              <i class="pni fa-solid fa-trophy"></i><span>Réputation</span>
+              <i class="fa-solid fa-chevron-right ptnr-snbtn-arrow"></i>
+            </button>
+            <button class="ptnr-snbtn" id="ptnr-sn-profil" onclick="_ptnrNav('profil')">
+              <i class="pni fa-solid fa-id-card"></i><span>Profil</span>
+              <i class="fa-solid fa-chevron-right ptnr-snbtn-arrow"></i>
+            </button>
+          </div>
 
           <!-- Mes tarifs & prestations (style menu "Uber Eats / Deliveroo") -->
           <div class="ptnr-menu-hero">
@@ -2338,6 +2352,7 @@ a{text-decoration:none;color:inherit}
 
         <!-- Sub-screen: Projets -->
         <div class="ptnr-screen" id="ptnr-screen-projets">
+          <button class="ptnr-back-btn" onclick="_ptnrNav('home')"><i class="fa-solid fa-arrow-left"></i> Retour au menu</button>
           <div class="ptnr-section-title">Projets assignés</div>
           <input type="text" class="ptnr-input" id="ptnr-projets-search" placeholder="Rechercher un client (nom, prénom)..." oninput="_ptnrFilterProjets()">
           <div id="ptnr-projets-list"></div>
@@ -2345,30 +2360,35 @@ a{text-decoration:none;color:inherit}
 
         <!-- Sub-screen: Devis -->
         <div class="ptnr-screen" id="ptnr-screen-devis">
+          <button class="ptnr-back-btn" onclick="_ptnrNav('home')"><i class="fa-solid fa-arrow-left"></i> Retour au menu</button>
           <div class="ptnr-section-title">Devis à traiter</div>
           <div id="ptnr-devis-list"></div>
         </div>
 
         <!-- Sub-screen: Séances -->
         <div class="ptnr-screen" id="ptnr-screen-seances">
+          <button class="ptnr-back-btn" onclick="_ptnrNav('home')"><i class="fa-solid fa-arrow-left"></i> Retour au menu</button>
           <div class="ptnr-section-title">Séances à confirmer</div>
           <div id="ptnr-seances-list"></div>
         </div>
 
         <!-- Sub-screen: Messages -->
         <div class="ptnr-screen" id="ptnr-screen-messages">
+          <button class="ptnr-back-btn" onclick="_ptnrNav('home')"><i class="fa-solid fa-arrow-left"></i> Retour au menu</button>
           <div class="ptnr-section-title">Messages clients</div>
           <div id="ptnr-messages-list"></div>
         </div>
 
         <!-- Sub-screen: Missions (dispatch) -->
         <div class="ptnr-screen" id="ptnr-screen-missions">
+          <button class="ptnr-back-btn" onclick="_ptnrNav('home')"><i class="fa-solid fa-arrow-left"></i> Retour au menu</button>
           <div class="ptnr-section-title">Mes missions</div>
           <div id="ptnr-missions-list"></div>
         </div>
 
         <!-- Sub-screen: Versements -->
         <div class="ptnr-screen" id="ptnr-screen-versements">
+          <button class="ptnr-back-btn" onclick="_ptnrNav('home')"><i class="fa-solid fa-arrow-left"></i> Retour au menu</button>
           <div class="ptnr-section-title">Mes versements</div>
           <div id="ptnr-paypal-setup" style="padding:0 0 16px;"></div>
           <div id="ptnr-versements-list"></div>
@@ -2376,12 +2396,14 @@ a{text-decoration:none;color:inherit}
 
         <!-- Sub-screen: Réputation -->
         <div class="ptnr-screen" id="ptnr-screen-reputation">
+          <button class="ptnr-back-btn" onclick="_ptnrNav('home')"><i class="fa-solid fa-arrow-left"></i> Retour au menu</button>
           <div class="ptnr-section-title">Ma réputation</div>
           <div id="ptnr-reputation-content"></div>
         </div>
 
         <!-- Sub-screen: Profil (photo) -->
         <div class="ptnr-screen" id="ptnr-screen-profil">
+          <button class="ptnr-back-btn" onclick="_ptnrNav('home')"><i class="fa-solid fa-arrow-left"></i> Retour au menu</button>
           <div class="ptnr-section-title">Mon identité</div>
           <div class="ptnr-card">
             <input type="text" class="ptnr-input" id="ptnr-identity-prenom" placeholder="Prénom">
@@ -2950,6 +2972,11 @@ function expRecoCard(it, idx){
     +'<div class="p-reco-stars">'+(o.price||'')+'</div>'
     +'</div></div>';
 }
+// Badge de certification (façon Instagram/LinkedIn, en jaune GENESIS) : tout partenaire
+// approuvé par l'admin l'affiche, dès la carte de l'annuaire (pas seulement après clic).
+function verifiedBadgeHtml(p){
+  return p.verified ? '<i class="fa-solid fa-circle-check p-verified-badge" title="Profil approuvé par FA GENESIS"></i>' : '';
+}
 function partnerPriceLabel(p){
   return (p.fromPrice===null||p.fromPrice===undefined) ? 'Sur devis' : ('à partir de '+p.fromPrice+' €');
 }
@@ -2979,7 +3006,7 @@ function recoPartnerCard(p, idx, tagOverride){
     +favHeartHtml(p.id)
     +'<div class="p-reco-photo">'+avatarHtml+ratingBadge+'</div>'
     +'<div class="p-reco-body">'
-    +'<div class="p-reco-name">'+(p.prenom||'')+' '+(p.nom||'')+(badgeHtml?' '+badgeHtml:'')+'</div>'
+    +'<div class="p-reco-name">'+(p.prenom||'')+' '+(p.nom||'')+verifiedBadgeHtml(p)+(badgeHtml?' '+badgeHtml:'')+'</div>'
     +'<div class="p-reco-cat">'+label+'</div>'
     +(p.city?'<div class="p-reco-city"><i class="fa-solid fa-location-dot"></i> '+p.city+'</div>':'')
     +partnerMetaLineHtml(p)
@@ -2997,7 +3024,7 @@ function hofPremiumCard(p, idx){
     +favHeartHtml(p.id)
     +'<div class="p-reco-photo">'+avatarHtml+ratingBadge+'</div>'
     +'<div class="p-reco-body">'
-    +'<div class="p-reco-name">'+(p.prenom||'')+' '+(p.nom||'')+(badgeHtml?' '+badgeHtml:'')+(constellationHtml?' '+constellationHtml:'')+'</div>'
+    +'<div class="p-reco-name">'+(p.prenom||'')+' '+(p.nom||'')+verifiedBadgeHtml(p)+(badgeHtml?' '+badgeHtml:'')+(constellationHtml?' '+constellationHtml:'')+'</div>'
     +'<div class="p-reco-cat">'+label+'</div>'
     +(p.city?'<div class="p-reco-city"><i class="fa-solid fa-location-dot"></i> '+p.city+'</div>':'')
     +partnerMetaLineHtml(p)
@@ -3013,7 +3040,7 @@ function bigCategoryCard(p, idx){
     +favHeartHtml(p.id)
     +'<div class="p-big-photo">'+avatarHtml+ratingBadge+'</div>'
     +'<div class="p-big-body">'
-    +'<div class="p-reco-name">'+(p.prenom||'')+' '+(p.nom||'')+(badgeHtml?' '+badgeHtml:'')+'</div>'
+    +'<div class="p-reco-name">'+(p.prenom||'')+' '+(p.nom||'')+verifiedBadgeHtml(p)+(badgeHtml?' '+badgeHtml:'')+'</div>'
     +'<div class="p-reco-cat">'+label+(p.city?' · '+p.city:'')+'</div>'
     +partnerMetaLineHtml(p)
     +'</div></div>';
@@ -3258,7 +3285,7 @@ function partnerListRow(p){
     +favHeartHtml(p.id)
     +'<div class="p-list-photo">'+avatarHtml+'</div>'
     +'<div class="p-list-body">'
-    +'<div class="p-reco-name">'+(p.prenom||'')+' '+(p.nom||'')+(badgeHtml?' '+badgeHtml:'')+'</div>'
+    +'<div class="p-reco-name">'+(p.prenom||'')+' '+(p.nom||'')+verifiedBadgeHtml(p)+(badgeHtml?' '+badgeHtml:'')+'</div>'
     +'<div class="p-reco-cat">'+label+(p.city?' · '+p.city:'')+'</div>'
     +'<div class="p-list-meta-row">'
       +'<span class="p-list-meta-stars">'+starsHtml+'</span>'
@@ -3527,7 +3554,7 @@ function directoryCard(p){
     ? '<img src="'+p.photo+'" alt="'+(p.prenom||'')+'">'
     : '<div class="p-dir-card-initials">'+initials+'</div>';
   var cityHtml = p.city ? '<div class="p-dir-card-city"><i class="fas fa-location-dot"></i> '+p.city+'</div>' : '';
-  var verifiedHtml = p.verified ? '<span class="p-dir-card-verified">✓ Vérifié</span>' : '';
+  var verifiedHtml = verifiedBadgeHtml(p);
   var badgeHtml = tierBadgeHtml(p.badge);
   var constellationHtml = constellationBadgeHtml(p.constellation);
   return '<div class="p-dir-card" onclick="openPartnerDetail(\''+p.id+'\')">'
@@ -3587,7 +3614,7 @@ function openPartnerDetail(partnerId){
       var starsLabel = (p.rating && p.rating.count) ? ('<i class="fa-solid fa-star" style="color:var(--yellow)"></i> '+p.rating.average+' ('+p.rating.count+' avis)') : 'Aucun avis pour le moment';
       var responseLabel = partnerResponseLabel(p);
       var responseHtml = responseLabel ? '<div class="p-dir-detail-response"><i class="fa-solid fa-clock"></i> '+responseLabel+'</div>' : '';
-      var verifiedHtml = p.verified ? '<span class="p-dir-card-verified">✓ Vérifié</span>' : '';
+      var verifiedHtml = verifiedBadgeHtml(p);
       var badgeHtml = tierBadgeHtml(p.badge);
       var constellationHtml = constellationBadgeHtml(p.constellation);
       var cityHtml = p.city ? '<div class="p-dir-detail-city"><i class="fas fa-location-dot"></i> '+p.city+'</div>' : '';
