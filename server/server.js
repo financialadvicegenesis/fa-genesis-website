@@ -2327,40 +2327,51 @@ app.post('/api/orders/create', (req, res) => {
             // Le paiement n'est autorisé qu'après acceptation explicite du partenaire ET signature
             // du contrat (proposition structurée + signature électronique, GENESIS CONTRACT™) :
             // le client doit d'abord avoir une demande au statut 'signed' pour ce couple partenaire/prestation.
+            const psoTotal = parseFloat(service.price);
+            // GENESIS SAFE™ two-tier :
+            // ≤ 300 € → paiement intégral immédiat, fonds retenus jusqu'à la livraison (payment_tier='small')
+            // > 300 € → acompte 30 % versé au prestataire + solde 70 % à la livraison (payment_tier='large')
+            const psoPaymentTier = psoTotal <= 300 ? 'small' : 'large';
+            const psoInstallments = generateGenesisSplit(psoTotal);
+            const psoDeposit = psoInstallments[0].amount;
+            const psoBalance = psoInstallments.length > 1
+                ? psoInstallments.slice(1).reduce(function(s, i) { return s + i.amount; }, 0)
+                : 0;
+
+            // Vérification de la demande signée uniquement pour les prestations > 300 €
+            // (les petites prestations s'achètent directement, sans demande préalable)
             var psoRequests = loadPartnerRequests();
-            var psoRequest = psoRequests.find(function(r) {
-                return r.client_email === clientInfo.email &&
-                    r.partner_id === partner.id &&
-                    r.service_id === service.id &&
-                    r.status === 'signed';
-            });
-            if (!psoRequest) {
-                var psoPendingRequest = psoRequests.find(function(r) {
+            var psoRequest = null;
+            if (psoPaymentTier === 'large') {
+                psoRequest = psoRequests.find(function(r) {
                     return r.client_email === clientInfo.email &&
                         r.partner_id === partner.id &&
                         r.service_id === service.id &&
-                        (r.status === 'accepted' || r.status === 'proposed');
+                        r.status === 'signed';
                 });
-                if (psoPendingRequest) {
-                    return res.status(403).json({ error: 'Vous devez d\'abord signer le contrat proposé par le partenaire avant de payer.' });
+                if (!psoRequest) {
+                    var psoPendingRequest = psoRequests.find(function(r) {
+                        return r.client_email === clientInfo.email &&
+                            r.partner_id === partner.id &&
+                            r.service_id === service.id &&
+                            (r.status === 'accepted' || r.status === 'proposed');
+                    });
+                    if (psoPendingRequest) {
+                        return res.status(403).json({ error: 'Vous devez d\'abord signer le contrat proposé par le partenaire avant de payer.' });
+                    }
+                    return res.status(403).json({ error: 'Vous devez d\'abord envoyer une demande et obtenir l\'accord du partenaire avant de payer.' });
                 }
-                return res.status(403).json({ error: 'Vous devez d\'abord envoyer une demande et obtenir l\'accord du partenaire avant de payer.' });
             }
-
-            const psoTotal = parseFloat(service.price);
-            // GENESIS SAFE™ : split fixe 30/40/30 (acompte / livrable intermédiaire / livraison finale)
-            const psoInstallments = generateGenesisSplit(psoTotal);
-            const psoDeposit = psoInstallments[0].amount;
-            const psoBalance = psoInstallments[1].amount + psoInstallments[2].amount;
 
             order = {
                 id: `ORD-${uuidv4().split('-')[0].toUpperCase()}`,
                 product_id: null,
                 product_name: service.label,
                 product_type: 'partner_service',
+                payment_tier: psoPaymentTier,
                 partner_id: partner.id,
                 partner_service_id: service.id,
-                request_id: psoRequest.id,
+                request_id: psoRequest ? psoRequest.id : null,
                 client_info: {
                     email: clientInfo.email,
                     first_name: clientInfo.firstName,
@@ -2372,11 +2383,12 @@ app.post('/api/orders/create', (req, res) => {
                 total_amount: psoTotal,
                 deposit_amount: psoDeposit,
                 balance_amount: psoBalance,
-                installments_count: 3,
+                installments_count: psoInstallments.length,
                 installments: psoInstallments,
                 amount_paid: 0,
                 deposit_paid: false,
                 balance_paid: false,
+                delivery_confirmed: false,
                 duration_days: 0,
                 start_date: null,
                 status: 'pending_deposit',
@@ -2386,8 +2398,10 @@ app.post('/api/orders/create', (req, res) => {
                 updated_at: new Date().toISOString()
             };
 
-            var psoReqIdx = psoRequests.findIndex(function(r) { return r.id === psoRequest.id; });
-            if (psoReqIdx !== -1) { psoRequests[psoReqIdx].order_id = order.id; savePartnerRequests(psoRequests); }
+            if (psoRequest) {
+                var psoReqIdx = psoRequests.findIndex(function(r) { return r.id === psoRequest.id; });
+                if (psoReqIdx !== -1) { psoRequests[psoReqIdx].order_id = order.id; savePartnerRequests(psoRequests); }
+            }
 
             console.log(`[ORDER] Commande prestation partenaire: ${order.id} - ${service.label} (${partner.email}) - ${psoTotal}EUR`);
 
@@ -3259,12 +3273,25 @@ app.post('/api/payments/sumup/webhook', async (req, res) => {
                     }).catch(err => console.error('[WEBHOOK] Erreur envoi email bienvenue:', err));
 
                     if (updatedOrder.product_type === 'partner_service') {
-                        // Commande directe sur un partenaire choisi : mission déjà acceptée, acompte versé immédiatement.
                         const psDispatch = createPartnerServiceDispatch(updatedOrder);
                         if (psDispatch) {
-                            await processDispatchPayout(psDispatch, 'deposit');
+                            if (updatedOrder.payment_tier === 'small') {
+                                // GENESIS SAFE™ — ≤ 300 € : fonds retenus jusqu'à la livraison confirmée
+                                console.log('[WEBHOOK] Mission partenaire créée — fonds en GENESIS SAFE™ (small, livraison requise)');
+                                notifyUser(updatedOrder.client_info.email, 'client', 'mission_created',
+                                    'Mission créée — paiement sécurisé',
+                                    'Votre paiement est sécurisé par GENESIS SAFE™. Les fonds seront versés au prestataire après livraison.',
+                                    '/app.html#reservations');
+                            } else {
+                                // GENESIS SAFE™ — > 300 € : acompte 30 % versé immédiatement au prestataire
+                                await processDispatchPayout(psDispatch, 'deposit');
+                                console.log('[WEBHOOK] Mission partenaire créée et acompte 30 % versé (large)');
+                                notifyUser(updatedOrder.client_info.email, 'client', 'mission_created',
+                                    'Mission en cours',
+                                    'Votre acompte a été versé au prestataire. La livraison sera bientôt disponible.',
+                                    '/app.html#reservations');
+                            }
                         }
-                        console.log('[WEBHOOK] Mission partenaire créée et acompte versé (commande directe)');
                     } else {
                         // Assigner les intervenants admin (le dispatch broadcast externe a été retiré :
                         // le client choisit désormais un partenaire précis via une demande directe)
@@ -3472,12 +3499,25 @@ app.post('/api/payments/verify', async (req, res) => {
                         }).catch(err => console.error('[VERIFY] Erreur envoi email bienvenue:', err));
 
                         if (updatedOrder.product_type === 'partner_service') {
-                            // Commande directe sur un partenaire choisi : mission déjà acceptée, acompte versé immédiatement.
                             const psDispatch = createPartnerServiceDispatch(updatedOrder);
                             if (psDispatch) {
-                                await processDispatchPayout(psDispatch, 'deposit');
+                                if (updatedOrder.payment_tier === 'small') {
+                                    // GENESIS SAFE™ — ≤ 300 € : fonds retenus jusqu'à la livraison confirmée
+                                    console.log('[VERIFY] Mission partenaire créée — fonds en GENESIS SAFE™ (small, livraison requise)');
+                                    notifyUser(updatedOrder.client_info.email, 'client', 'mission_created',
+                                        'Mission créée — paiement sécurisé',
+                                        'Votre paiement est sécurisé par GENESIS SAFE™. Les fonds seront versés au prestataire après livraison.',
+                                        '/app.html#reservations');
+                                } else {
+                                    // GENESIS SAFE™ — > 300 € : acompte 30 % versé immédiatement au prestataire
+                                    await processDispatchPayout(psDispatch, 'deposit');
+                                    console.log('[VERIFY] Mission partenaire créée et acompte 30 % versé (large)');
+                                    notifyUser(updatedOrder.client_info.email, 'client', 'mission_created',
+                                        'Mission en cours',
+                                        'Votre acompte a été versé au prestataire. La livraison sera bientôt disponible.',
+                                        '/app.html#reservations');
+                                }
                             }
-                            console.log('[VERIFY] Mission partenaire créée et acompte versé (commande directe)');
                         } else {
                             // Assigner les intervenants admin (le dispatch broadcast externe a été retiré :
                             // le client choisit désormais un partenaire précis via une demande directe)
@@ -3994,13 +4034,26 @@ function getAccessRights(order) {
         rights.can_view_parcours = false;
         rights.can_book_sessions = false;
         rights.can_view_livrables_preview = true;
-        rights.can_download_livrables = tranche3Paid;
 
-        if (tranche2Paid && !tranche3Paid) {
-            rights.balance_message = 'Livrable intermédiaire en cours. La tranche finale (30%) débloquera le téléchargement.';
-        }
-        if (tranche3Paid) {
-            rights.balance_message = 'Paiement complet - Téléchargement des fichiers disponible.';
+        if (order.payment_tier === 'small') {
+            // ≤ 300 € : paiement intégral retenu — accès au téléchargement dès que la livraison est confirmée
+            var deliveryConfirmed = !!order.delivery_confirmed;
+            rights.can_download_livrables = deliveryConfirmed;
+            rights.payment_secured = !deliveryConfirmed;
+            if (!deliveryConfirmed) {
+                rights.balance_message = 'Paiement sécurisé par GENESIS SAFE™. Les livrables seront disponibles dès que le prestataire confirmera la livraison.';
+            } else {
+                rights.balance_message = 'Livraison confirmée — téléchargement disponible.';
+            }
+        } else {
+            // > 300 € : acompte 30 % déjà versé, solde 70 % débloque le téléchargement
+            rights.can_download_livrables = tranche3Paid || (order.balance_paid === true);
+            if (tranche2Paid && !tranche3Paid) {
+                rights.balance_message = 'Paiement partiel reçu. Payez le solde pour débloquer le téléchargement.';
+            }
+            if (tranche3Paid || order.balance_paid) {
+                rights.balance_message = 'Paiement complet — téléchargement des fichiers disponible.';
+            }
         }
     }
 
@@ -10449,6 +10502,63 @@ app.post('/api/partner/dispatches/:id/mark-delivering', authenticatePartner, fun
     }
 });
 
+// GENESIS SAFE™ — le partenaire confirme la livraison d'une mission "small" (≤ 300 €) :
+// libère les fonds retenus et notifie le client.
+app.post('/api/partner/dispatches/:id/mark-delivered', authenticatePartner, async function(req, res) {
+    try {
+        var dispatches = loadDispatches();
+        var idx = dispatches.findIndex(function(d) { return d.id === req.params.id; });
+        if (idx === -1) return res.status(404).json({ error: 'Mission introuvable' });
+        var dispatch = dispatches[idx];
+
+        var partners = loadPartners();
+        var partner = partners.find(function(p) { return p.id === dispatch.partner_id; });
+        if (!partner || partner.email !== req.partnerEmail) {
+            return res.status(403).json({ error: 'Accès refusé' });
+        }
+
+        // Charger la commande liée
+        var orders = loadOrders();
+        var oIdx = orders.findIndex(function(o) { return o.id === dispatch.order_id; });
+        if (oIdx === -1) return res.status(404).json({ error: 'Commande introuvable' });
+        var order = orders[oIdx];
+
+        if (order.payment_tier !== 'small') {
+            return res.status(400).json({ error: 'Cette route s\'applique uniquement aux missions GENESIS SAFE™ ≤ 300 €.' });
+        }
+        if (order.delivery_confirmed) {
+            return res.status(400).json({ error: 'Livraison déjà confirmée.' });
+        }
+
+        // Marquer la livraison sur la commande
+        orders[oIdx] = Object.assign({}, order, {
+            delivery_confirmed: true,
+            delivery_confirmed_at: new Date().toISOString(),
+            status: 'delivered',
+            updated_at: new Date().toISOString()
+        });
+        saveOrders(orders);
+
+        // Libérer les fonds retenus → payout au prestataire
+        await processDispatchPayout(dispatch, 'deposit');
+        console.log('[DISPATCH] GENESIS SAFE™ — livraison confirmée, fonds libérés, acompte versé au prestataire', dispatch.id);
+
+        // Notifier le client que les livrables sont disponibles
+        var clientEmail = order.client_info && order.client_info.email;
+        if (clientEmail) {
+            notifyUser(clientEmail, 'client', 'delivery_ready',
+                'Livrables disponibles',
+                'Votre prestataire a confirmé la livraison. Vous pouvez maintenant télécharger vos fichiers.',
+                '/app.html#reservations');
+        }
+
+        res.json({ success: true, delivery_confirmed: true });
+    } catch(e) {
+        console.error('[DISPATCH] Erreur mark-delivered:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
 // ============================================================
 //  DEMANDES DIRECTES — Client choisit un partenaire précis,
 //  qui accepte ou refuse librement (remplace le dispatch broadcast)
@@ -10604,6 +10714,8 @@ app.get('/api/partner/requests', authenticatePartner, function(req, res) {
                 var hasReviewForReq = !!(dispatchForReq && allReviewsForPtnr.some(function(rv) { return rv.dispatchId === dispatchForReq.id; }));
                 var out = JSON.parse(JSON.stringify(r));
                 out.dispatch_id = dispatchForReq ? dispatchForReq.id : null;
+                out.payment_tier = orderForReq ? (orderForReq.payment_tier || null) : null;
+                out.delivery_confirmed = orderForReq ? (!!orderForReq.delivery_confirmed) : false;
                 out.display_status = computeMissionDisplayStatus(r, dispatchForReq, orderForReq, livrablesForReq, hasReviewForReq);
                 return out;
             });

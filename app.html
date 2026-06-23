@@ -7518,25 +7518,62 @@ function _showPbPayUI(partner, service){
   var overlay=document.getElementById('pb-overlay'); var sheet=document.getElementById('pb-sheet');
   if(!overlay||!sheet) return;
 
-  // GENESIS SAFE™ : split fixe 30/40/30 (la 3e tranche absorbe l'arrondi, comme generateGenesisSplit côté serveur)
   var total = parseFloat(service.price)||0;
-  var deposit = Math.round(total*0.30);
-  var tranche2 = Math.round(total*0.40);
-  var tranche3 = total-deposit-tranche2;
+  // GENESIS SAFE™ two-tier :
+  // ≤ 300 € (small) → paiement intégral retenu jusqu'à livraison
+  // > 300 € (large) → acompte 30 % + solde 70 %
+  var isSmall = total <= 300;
+  var deposit = isSmall ? total : Math.round(total*0.30);
+  var tranche2 = isSmall ? 0 : Math.round(total*0.40);
+  var tranche3 = isSmall ? 0 : total-deposit-tranche2;
 
   var nm=document.getElementById('pb-service-name'); if(nm) nm.textContent=service.label;
   var pn=document.getElementById('pb-partner-name'); if(pn) pn.textContent='avec '+(partner.prenom||'')+' '+(partner.nom||'');
+  // update both deposit amount elements (small row uses pb-deposit-amt, large row uses pb-deposit-amt-large)
   var amt=document.getElementById('pb-deposit-amt'); if(amt) amt.textContent=deposit+' €';
-  var t2=document.getElementById('pb-tranche2-amt'); if(t2) t2.textContent=tranche2+' €';
-  var t3=document.getElementById('pb-tranche3-amt'); if(t3) t3.textContent=tranche3+' €';
+  var amtL=document.getElementById('pb-deposit-amt-large'); if(amtL) amtL.textContent=deposit+' €';
   var tot=document.getElementById('pb-total-amt'); if(tot) tot.textContent=total+' €';
   var er=document.getElementById('pb-err'); if(er) er.classList.remove('on');
   var rf=document.getElementById('pb-request-form'); if(rf) rf.style.display='none';
   var fm=document.getElementById('pb-form'); if(fm) fm.style.display='';
   var ws=document.getElementById('pb-widget-screen'); if(ws) ws.style.display='none';
   var sc=document.getElementById('pb-success'); if(sc) sc.style.display='none';
-  var sm=document.getElementById('pb-success-msg'); if(sm) sm.textContent='Acompte payé ! Le partenaire a été notifié et votre commande apparaît dans "Mes réservations".';
-  var sb=document.getElementById('pb-pay-btn'); if(sb){sb.disabled=false;sb.textContent='PAYER L\'ACOMPTE';}
+
+  // Adapt rows to tier
+  var rowSmall=document.getElementById('pb-row-small');
+  var rowT1=document.getElementById('pb-row-tranche1');
+  var rowT2=document.getElementById('pb-row-tranche2');
+  var rowT3=document.getElementById('pb-row-tranche3');
+  var holdMsg=document.getElementById('pb-hold-msg');
+  if(isSmall){
+    if(rowSmall) rowSmall.style.display='';
+    if(rowT1) rowT1.style.display='none';
+    if(rowT2) rowT2.style.display='none';
+    if(rowT3) rowT3.style.display='none';
+    if(holdMsg) holdMsg.style.display='';
+  } else {
+    if(rowSmall) rowSmall.style.display='none';
+    if(rowT1) rowT1.style.display='';
+    if(rowT2){
+      rowT2.style.display='';
+      var t2el=document.getElementById('pb-tranche2-amt'); if(t2el) t2el.textContent=tranche2+' €';
+    }
+    if(rowT3){
+      rowT3.style.display='';
+      var t3el=document.getElementById('pb-tranche3-amt'); if(t3el) t3el.textContent=tranche3+' €';
+    }
+    if(holdMsg) holdMsg.style.display='none';
+  }
+
+  var sb=document.getElementById('pb-pay-btn');
+  if(sb){
+    sb.disabled=false;
+    sb.textContent = isSmall ? 'PAYER EN SÉCURISÉ (GENESIS SAFE™)' : 'PAYER L\'ACOMPTE';
+  }
+  var sm=document.getElementById('pb-success-msg');
+  if(sm) sm.textContent = isSmall
+    ? 'Paiement sécurisé ! Votre argent est retenu par GENESIS SAFE™ et sera versé au prestataire après livraison.'
+    : 'Acompte payé ! Le partenaire a été notifié et votre commande apparaît dans "Mes réservations".';
 
   overlay.classList.add('open');
   setTimeout(function(){ sheet.classList.add('up'); }, 20);
@@ -8445,27 +8482,41 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
           </span>
         </div>
         <div style="background:#111;border:1.5px solid #1e1e1e;border-radius:14px;overflow:hidden;margin-bottom:14px;">
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #1e1e1e;">
+          <!-- Ligne paiement intégral (small ≤ 300 €) -->
+          <div id="pb-row-small" style="display:none;align-items:center;justify-content:space-between;padding:14px 16px;">
+            <div>
+              <div style="font-size:12px;color:#FFD700;font-weight:700;letter-spacing:.5px;">PAIEMENT INTÉGRAL — RETENU JUSQU'À LIVRAISON</div>
+              <div style="font-size:14px;color:#fff;font-weight:700;margin-top:2px;">100 % sécurisé GENESIS SAFE™</div>
+            </div>
+            <div id="pb-deposit-amt" style="font-size:18px;color:#FFD700;font-weight:800;"></div>
+          </div>
+          <!-- Ligne acompte 30 % (large > 300 €) -->
+          <div id="pb-row-tranche1" style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #1e1e1e;">
             <div>
               <div style="font-size:12px;color:#FFD700;font-weight:700;letter-spacing:.5px;">AUJOURD'HUI — OBLIGATOIRE</div>
               <div style="font-size:14px;color:#fff;font-weight:700;margin-top:2px;">Acompte (30 %)</div>
             </div>
-            <div id="pb-deposit-amt" style="font-size:18px;color:#FFD700;font-weight:800;"></div>
+            <div id="pb-deposit-amt-large" style="font-size:18px;color:#FFD700;font-weight:800;"></div>
           </div>
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #1e1e1e;">
+          <!-- Tranche 2 et 3 (large > 300 €) -->
+          <div id="pb-row-tranche2" style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #1e1e1e;">
             <div>
-              <div style="font-size:12px;color:#888;font-weight:700;letter-spacing:.5px;">TRANCHE 2 (40 %)</div>
-              <div style="font-size:13px;color:#aaa;margin-top:2px;">Liée au livrable intermédiaire</div>
+              <div style="font-size:12px;color:#888;font-weight:700;letter-spacing:.5px;">SOLDE (70 %) — DÉBLOQUÉ À LA LIVRAISON</div>
+              <div style="font-size:13px;color:#aaa;margin-top:2px;">Payable à la livraison</div>
             </div>
             <div id="pb-tranche2-amt" style="font-size:15px;color:#aaa;font-weight:700;"></div>
           </div>
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;">
+          <div id="pb-row-tranche3" style="display:none;align-items:center;justify-content:space-between;padding:14px 16px;">
             <div>
               <div style="font-size:12px;color:#888;font-weight:700;letter-spacing:.5px;">TRANCHE 3 (30 %)</div>
               <div style="font-size:13px;color:#aaa;margin-top:2px;">Liée à la livraison finale</div>
             </div>
             <div id="pb-tranche3-amt" style="font-size:15px;color:#aaa;font-weight:700;"></div>
           </div>
+        </div>
+        <!-- Message rétention GENESIS SAFE™ (affiché uniquement pour small) -->
+        <div id="pb-hold-msg" style="display:none;background:#0a1a0a;border:1px solid #1a3a1a;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:11px;color:#6dbf6d;line-height:1.5;">
+          <i class="fas fa-lock" style="margin-right:6px;"></i>Votre paiement est <strong>retenu en sécurité</strong> par GENESIS SAFE™ et ne sera versé au prestataire qu'après confirmation de la livraison.
         </div>
         <p style="font-size:11px;color:#666;font-weight:700;text-align:center;margin-bottom:14px;">Total prestation : <span id="pb-total-amt"></span></p>
         <div class="cwb-actions" style="grid-template-columns:1fr;">
@@ -9005,14 +9056,22 @@ function _ptnrRenderProposalSentCard(r){
     +'</div>';
 }
 
-// Mission signée et payée : frise de suivi (Phase 8) + action "Marquer livraison en cours"
+// Mission signée et payée : frise de suivi (Phase 8) + actions de livraison
 function _ptnrRenderEngagedMissionCard(r){
-  var canMarkDelivering = r.dispatch_id && r.display_status && r.display_status.key === 'in_progress';
+  var statusKey = r.display_status && r.display_status.key;
+  var canMarkDelivering = r.dispatch_id && statusKey === 'in_progress';
+  // GENESIS SAFE™ : pour les missions small (≤ 300 €) en cours de livraison, le partenaire
+  // peut confirmer la livraison → déclenche le payout retenu
+  var canMarkDelivered = r.dispatch_id && r.payment_tier === 'small' && statusKey === 'delivering' && !r.delivery_confirmed;
   return '<div class="dispatch-card" id="request-'+r.id+'">'
     +'<div class="dispatch-title">'+r.client_name+' — '+r.service_label+'</div>'
+    +(r.payment_tier === 'small' ? '<div style="font-size:11px;color:#6dbf6d;font-weight:700;margin-bottom:6px;"><i class="fas fa-lock" style="margin-right:4px;"></i>GENESIS SAFE™ — fonds retenus jusqu\'à livraison</div>' : '')
     +missionTimelineHtml(r.display_status)
     +(canMarkDelivering
       ? '<button class="dispatch-claim-btn" style="margin-top:10px;width:100%;" onclick="_ptnrMarkDelivering(\''+r.dispatch_id+'\',\''+r.id+'\')"><i class="fa-solid fa-truck-fast"></i> Marquer : livraison en cours</button>'
+      : '')
+    +(canMarkDelivered
+      ? '<button class="dispatch-claim-btn" style="margin-top:8px;width:100%;background:#1a3a1a;border-color:#6dbf6d;color:#6dbf6d;" onclick="_ptnrMarkDelivered(\''+r.dispatch_id+'\')"><i class="fas fa-check-circle"></i> Confirmer la livraison (libère les fonds)</button>'
       : '')
     +'</div>';
 }
@@ -9020,6 +9079,19 @@ function _ptnrMarkDelivering(dispatchId, requestId){
   _ptnrFetch('/api/partner/dispatches/'+dispatchId+'/mark-delivering','POST',{}).then(function(res){
     if(res.success){
       showToast('Mis à jour','Le client est notifié que la livraison est en cours.','success');
+      _ptnrLoadMissions();
+    } else {
+      showToast(res.error||'Erreur','Réessayez','error');
+    }
+  }).catch(function(){
+    showToast('Erreur de connexion','Réessayez','error');
+  });
+}
+function _ptnrMarkDelivered(dispatchId){
+  if(!confirm('Confirmer la livraison ? Les fonds GENESIS SAFE™ seront versés sur votre compte.')) return;
+  _ptnrFetch('/api/partner/dispatches/'+dispatchId+'/mark-delivered','POST',{}).then(function(res){
+    if(res.success){
+      showToast('Livraison confirmée','Les fonds ont été libérés. Merci !','success');
       _ptnrLoadMissions();
     } else {
       showToast(res.error||'Erreur','Réessayez','error');

@@ -534,17 +534,36 @@ function generateInstallments(totalAmount, depositAmount, count, refDate) {
  * @param {number} totalAmount - montant total de la commande
  * @returns {Array} toujours 3 tranches fixes
  */
+var GENESIS_SAFE_THRESHOLD = 300; // Seuil GENESIS SAFE™ : en-dessous = 100 % upfront, au-dessus = 30 % acompte + 70 % solde
+
 function generateGenesisSplit(totalAmount) {
-    var tranche1 = Math.round(totalAmount * 0.30);
-    var tranche2 = Math.round(totalAmount * 0.40);
-    var tranche3 = totalAmount - tranche1 - tranche2; // reste, pour éviter les erreurs d'arrondi
+    // Prestations ≤ 300 € : paiement intégral immédiat, fonds retenus jusqu'à la livraison.
+    if (totalAmount <= GENESIS_SAFE_THRESHOLD) {
+        return [
+            {
+                number: 1,
+                key: 'full_payment',
+                label: 'Paiement intégral (100%) — GENESIS SAFE™',
+                amount: totalAmount,
+                due_date: null,
+                paid: false,
+                paid_at: null,
+                stage: 'deposit',
+                milestone_required: null
+            }
+        ];
+    }
+
+    // Prestations > 300 € : 30 % acompte versé immédiatement au prestataire, 70 % solde à la livraison.
+    var acompte = Math.round(totalAmount * 0.30);
+    var solde = totalAmount - acompte; // reste, évite les erreurs d'arrondi
 
     return [
         {
             number: 1,
-            key: 'kickoff',
-            label: 'Acompte (30%)',
-            amount: tranche1,
+            key: 'acompte',
+            label: 'Acompte (30 %)',
+            amount: acompte,
             due_date: null,
             paid: false,
             paid_at: null,
@@ -553,25 +572,14 @@ function generateGenesisSplit(totalAmount) {
         },
         {
             number: 2,
-            key: 'mid_delivery',
-            label: 'Livrable intermédiaire (40%)',
-            amount: tranche2,
+            key: 'solde',
+            label: 'Solde (70 %) — débloqué à la livraison',
+            amount: solde,
             due_date: null,
             paid: false,
             paid_at: null,
-            stage: 'installment_2',
-            milestone_required: 'mid_delivery'
-        },
-        {
-            number: 3,
-            key: 'final_delivery',
-            label: 'Livraison finale (30%)',
-            amount: tranche3,
-            due_date: null,
-            paid: false,
-            paid_at: null,
-            stage: 'installment_3',
-            milestone_required: 'final_delivery'
+            stage: 'balance',
+            milestone_required: 'livraison'
         }
     ];
 }
