@@ -3882,7 +3882,7 @@ function toggleServiceFav(serviceId){
   var isFav = _svcFavs[serviceId];
   btn.className = 'svc-detail-fav'+(isFav?' on':'');
   btn.innerHTML = isFav ? '<i class="fa-solid fa-heart"></i>' : '<i class="fa-regular fa-heart"></i>';
-  showToast(isFav ? 'Prestation sauvegardée' : 'Retiré des favoris', '', isFav ? 'success' : 'info');
+  if(isFav){ showFavSnackbar(); }
 }
 function closeServiceDetail(){
   var ov = document.getElementById('svc-detail-overlay');
