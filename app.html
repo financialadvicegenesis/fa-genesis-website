@@ -1903,6 +1903,15 @@ a{text-decoration:none;color:inherit}
    UX PREMIUM — Expérience inoubliable
 ══════════════════════════════════════════════════ */
 /* ── Toast stack ── */
+/* ── Favoris snackbar (style Deliveroo) ── */
+#fav-snackbar{position:fixed;bottom:calc(var(--nav) + var(--safe) + 16px);left:50%;transform:translateX(-50%) translateY(80px);z-index:99998;
+  background:#fff;color:#111;border-radius:12px;padding:12px 16px;display:flex;align-items:center;gap:10px;
+  box-shadow:0 8px 32px rgba(0,0,0,.22);font-size:14px;font-weight:700;width:calc(100% - 32px);max-width:370px;
+  transition:transform .35s cubic-bezier(.34,1.56,.64,1),opacity .3s ease;opacity:0;pointer-events:none;}
+#fav-snackbar.on{transform:translateX(-50%) translateY(0);opacity:1;pointer-events:auto;}
+#fav-snackbar .fsb-ico{color:#e31b6d;font-size:18px;flex-shrink:0}
+#fav-snackbar .fsb-txt{flex:1;min-width:0}
+#fav-snackbar .fsb-btn{background:#111;color:#fff;border:none;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:900;cursor:pointer;white-space:nowrap;flex-shrink:0}
 #toast-stack{position:fixed;bottom:calc(var(--nav) + var(--safe) + 16px);left:50%;transform:translateX(-50%);z-index:99999;display:flex;flex-direction:column;gap:8px;pointer-events:none;width:calc(100% - 32px);max-width:370px;}
 .toast-item{display:flex;align-items:flex-start;gap:11px;background:rgba(12,12,12,.97);border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:13px 14px 12px;backdrop-filter:blur(20px);box-shadow:0 12px 44px rgba(0,0,0,.75);transform:translateY(24px) scale(.94);opacity:0;transition:transform .32s cubic-bezier(.34,1.56,.64,1),opacity .28s ease;pointer-events:auto;overflow:hidden;position:relative;}
 .toast-item.t-in{transform:translateY(0) scale(1);opacity:1;}
@@ -3822,8 +3831,7 @@ function openPartnerDetail(partnerId){
         +'<div class="p-dir-services-list">'+servicesHtml+'</div>'
         +'<div class="detail-divider"></div>'
         +'<div class="detail-feats-title">Avis clients</div>'
-        +'<ul class="p-dir-reviews-list">'+reviewsHtml+'</ul>'
-        +'<button class="detail-close-btn" onclick="closeDetail()">Fermer</button>';
+        +'<ul class="p-dir-reviews-list">'+reviewsHtml+'</ul>';
       document.getElementById('detail-sheet').className='on';
     }).catch(function(){});
 }
@@ -4332,11 +4340,19 @@ function toggleFavorite(partnerId){
     el.innerHTML = wasFav ? '<i class="fa-regular fa-heart"></i>' : '<i class="fa-solid fa-heart"></i>';
     el.classList.toggle('on', !wasFav);
   });
+  if(!wasFav){ showFavSnackbar(); }
   fetch(API+'/api/users/favorites/'+encodeURIComponent(partnerId)+'/toggle', {
     method:'POST', headers:{'Authorization':'Bearer '+USER._token}
   }).then(function(r){return r.json();}).then(function(d){
     if(d && d.success){ USER.favoris = d.favoris; try{ localStorage.setItem('fa_genesis_session', JSON.stringify(USER)); }catch(e){} }
   }).catch(function(){});
+}
+function showFavSnackbar(){
+  var sb = document.getElementById('fav-snackbar');
+  if(!sb) return;
+  clearTimeout(sb._hideTimer);
+  sb.classList.add('on');
+  sb._hideTimer = setTimeout(function(){ sb.classList.remove('on'); }, 3200);
 }
 function referralBoxHtml(){
   if(!USER || GUEST || !USER.referralCode) return '';
@@ -8168,6 +8184,12 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
 <!-- ── UX Premium ── -->
 <canvas id="confetti-canvas"></canvas>
 <div id="toast-stack"></div>
+<!-- Snackbar favoris style Deliveroo -->
+<div id="fav-snackbar">
+  <span class="fsb-ico"><i class="fa-solid fa-heart"></i></span>
+  <span class="fsb-txt">Ajouté à vos favoris</span>
+  <button class="fsb-btn" onclick="closeDetail();showFavoris()">Voir tout</button>
+</div>
 
 <!-- ── Overlay : Configuration RIB partenaire (à la connexion) ── -->
 <div id="ptnr-rib-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9800;display:none;align-items:center;justify-content:center;padding:16px;">
