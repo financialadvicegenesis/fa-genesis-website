@@ -818,6 +818,19 @@ a{text-decoration:none;color:inherit}
 .bp-ladder-stop.done .bp-ladder-label,.bp-ladder-stop.current .bp-ladder-label{color:var(--text)}
 @keyframes bpDotPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.2)}}
 
+/* Frise de suivi de mission façon Deliveroo (Phase 8) : 7 statuts fixes, le libellé/emoji du
+   statut courant en texte (pas de label par point pour rester compact dans une carte), une
+   ligne de points reliés indiquant la progression. */
+.mission-status-row{margin-top:10px}
+.mission-status-text{font-size:12.5px;font-weight:900;color:#fff;margin-bottom:8px}
+.mission-ladder{position:relative;height:14px;display:flex;align-items:center}
+.mission-ladder-track{position:absolute;left:5px;right:5px;height:6px;border-radius:4px;background:#000;border:1px solid var(--border);overflow:hidden}
+.mission-ladder-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,#7a5c00,var(--yellow));transition:width .5s ease}
+.mission-ladder-dots{position:relative;width:100%;display:flex;align-items:center;justify-content:space-between;z-index:1}
+.mission-ladder-dot{width:10px;height:10px;border-radius:50%;background:#1a1a1a;border:2px solid #000;flex-shrink:0}
+.mission-ladder-dot.done{background:#51cf66;box-shadow:0 0 6px rgba(81,207,102,.5)}
+.mission-ladder-dot.current{background:var(--yellow);box-shadow:0 0 0 3px rgba(255,215,0,.25),0 0 10px rgba(255,215,0,.75);animation:bpDotPulse 1.6s ease-in-out infinite}
+
 /* ── RÉPUTATION PARTENAIRE — style HUD/tech ── */
 .ptnr-rep-hero{position:relative;overflow:hidden;text-align:center;padding:24px 16px 20px;margin:0 16px 16px;border-radius:18px;background:linear-gradient(160deg,#0d0d12,#171019);border:1px solid rgba(255,215,0,.28);box-shadow:0 0 0 1px rgba(255,215,0,.06) inset,0 10px 26px rgba(0,0,0,.5);}
 .ptnr-rep-hero::before{content:'';position:absolute;inset:0;background-image:linear-gradient(rgba(255,215,0,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(255,215,0,.05) 1px,transparent 1px);background-size:18px 18px;opacity:.6;pointer-events:none;}
@@ -3871,10 +3884,12 @@ function signRequestContract(requestId){
 
 // ── GENESIS SAFE™ : suivi de mission payee + validation client des livrables (cosmetique) ──
 function renderOrderTrackingCard(r){
+  var ds = r.display_status || {emoji:'🟢', label:'Mission en cours'};
   return '<div class="resa-card">'
     +'<div class="resa-top"><div class="resa-name">'+(r.service_label||'Mission')+'</div>'
-    +'<span class="resa-status s-confirmed">🟢 Mission en cours</span></div>'
+    +'<span class="resa-status s-confirmed">'+ds.emoji+' '+ds.label+'</span></div>'
     +'<div class="resa-date"><i class="fa-solid fa-user"></i> '+(r.partner_name||'')+'</div>'
+    +missionTimelineHtml(r.display_status)
     +'<div id="liv-block-'+r.id+'" style="margin-top:10px;"><div style="color:var(--muted);font-size:12px;">Chargement des livrables…</div></div>'
     +(r.dispatch_id ? '<button onclick="_openDisputeForm(\''+r.dispatch_id+'\')" style="margin-top:10px;background:none;border:1px solid #333;color:#999;border-radius:8px;padding:6px 10px;font-size:11px;cursor:pointer;"><i class="fa-solid fa-triangle-exclamation"></i> Signaler un problème</button>' : '')
     +'</div>';
@@ -3979,6 +3994,24 @@ var PARTNER_TIER_ORDER = ['bronze','argent','or','elite'];
 // Barre de progression "paliers" type Duolingo : pastilles cochees/actives/verrouillees
 // reliees par une barre degradee, calculee uniquement a partir de currentBadge/percent
 // (aucune nouvelle donnee serveur necessaire).
+// Frise de suivi de mission (Phase 8) : displayStatus vient du serveur ({key,label,emoji},
+// cf. computeMissionDisplayStatus côté server.js) — le client se contente de positionner
+// les points sur les 7 statuts fixes, sans dupliquer les libellés.
+var MISSION_STATUS_ORDER = ['received','accepted','in_progress','delivering','delivered','completed','reviewed'];
+function missionTimelineHtml(displayStatus){
+  if(!displayStatus || !displayStatus.key) return '';
+  var idx = MISSION_STATUS_ORDER.indexOf(displayStatus.key);
+  if(idx === -1) idx = 0;
+  var pct = (idx/(MISSION_STATUS_ORDER.length-1))*100;
+  var dots = MISSION_STATUS_ORDER.map(function(s,i){
+    return '<div class="mission-ladder-dot'+(i<idx?' done':(i===idx?' current':''))+'"></div>';
+  }).join('');
+  return '<div class="mission-status-row">'
+    +'<div class="mission-status-text">'+(displayStatus.emoji||'')+' '+(displayStatus.label||'')+'</div>'
+    +'<div class="mission-ladder"><div class="mission-ladder-track"><div class="mission-ladder-fill" style="width:'+pct+'%"></div></div>'
+    +'<div class="mission-ladder-dots">'+dots+'</div></div>'
+    +'</div>';
+}
 function tierLadderHtml(order, currentBadge, pct){
   var n = order.length;
   var curIdx = order.indexOf(currentBadge);
@@ -8610,6 +8643,8 @@ function _ptnrLoadMissions(){
     var html = '<div style="font-size:12px;color:#888;margin-bottom:14px;line-height:1.6;">Un client souhaite vous engager directement. Acceptez pour lui envoyer une proposition, ou refusez s\'il vous est impossible de prendre la mission.</div>';
     items.forEach(function(r){
       if(r.status === 'accepted'){ html += _ptnrRenderProposalForm(r); return; }
+      if(r.status === 'proposed'){ html += _ptnrRenderProposalSentCard(r); return; }
+      if(r.status === 'signed'){ html += _ptnrRenderEngagedMissionCard(r); return; }
       html += '<div class="dispatch-card new-card" id="request-'+r.id+'">';
       html += '<div class="dispatch-badge"><span class="dispatch-badge-dot"></span>Nouvelle demande</div>';
       html += '<div class="dispatch-title">'+r.client_name+' — '+r.service_label+'</div>';
@@ -8629,7 +8664,8 @@ function _ptnrLoadMissions(){
     });
 
     if(el) el.innerHTML = html;
-    _setBadgeMissions(items.length);
+    var needsActionCount = items.filter(function(r){ return r.status === 'pending' || r.status === 'accepted'; }).length;
+    _setBadgeMissions(needsActionCount);
   }).catch(function(){
     if(el) el.innerHTML = '<div class="ptnr-empty"><div class="ptnr-empty-txt">Erreur de chargement</div></div>';
   });
@@ -8693,6 +8729,39 @@ function _ptnrRenderProposalForm(r){
   html += '</div>';
   html += '</div>';
   return html;
+}
+
+// Proposition envoyée, en attente de signature du client (rien à faire pour le partenaire)
+function _ptnrRenderProposalSentCard(r){
+  return '<div class="dispatch-card" id="request-'+r.id+'">'
+    +'<div class="dispatch-badge" style="background:#1a1a1a;color:#888;"><span class="dispatch-badge-dot" style="background:#888;"></span>Proposition envoyée</div>'
+    +'<div class="dispatch-title">'+r.client_name+' — '+r.service_label+'</div>'
+    +'<div class="dispatch-meta">En attente de la signature du client…</div>'
+    +'</div>';
+}
+
+// Mission signée et payée : frise de suivi (Phase 8) + action "Marquer livraison en cours"
+function _ptnrRenderEngagedMissionCard(r){
+  var canMarkDelivering = r.dispatch_id && r.display_status && r.display_status.key === 'in_progress';
+  return '<div class="dispatch-card" id="request-'+r.id+'">'
+    +'<div class="dispatch-title">'+r.client_name+' — '+r.service_label+'</div>'
+    +missionTimelineHtml(r.display_status)
+    +(canMarkDelivering
+      ? '<button class="dispatch-claim-btn" style="margin-top:10px;width:100%;" onclick="_ptnrMarkDelivering(\''+r.dispatch_id+'\',\''+r.id+'\')"><i class="fa-solid fa-truck-fast"></i> Marquer : livraison en cours</button>'
+      : '')
+    +'</div>';
+}
+function _ptnrMarkDelivering(dispatchId, requestId){
+  _ptnrFetch('/api/partner/dispatches/'+dispatchId+'/mark-delivering','POST',{}).then(function(res){
+    if(res.success){
+      showToast('Mis à jour','Le client est notifié que la livraison est en cours.','success');
+      _ptnrLoadMissions();
+    } else {
+      showToast(res.error||'Erreur','Réessayez','error');
+    }
+  }).catch(function(){
+    showToast('Erreur de connexion','Réessayez','error');
+  });
 }
 
 function _ptnrAddProposalLine(id){

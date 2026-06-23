@@ -809,6 +809,7 @@ function createPartnerServiceDispatch(order) {
             partner_total_amount: partnerTotal,
             client_availability: null,
             status: 'accepted',
+            mission_status: 'in_progress',
             claimed_by_name: partner ? (partner.prenom + ' ' + partner.nom) : null,
             claimed_by_profile: null,
             claimed_by_partner_id: order.partner_id,
@@ -3879,6 +3880,33 @@ app.get('/api/client/dashboard/:orderId', (req, res) => {
         start_date: order.start_date || null
     });
 });
+
+// Statut de mission unifié (frise de suivi façon Deliveroo, Phase 8) — dérivé des signaux
+// déjà existants plutôt que stocké, sauf mission_status (in_progress/delivering) qui n'a
+// pas d'équivalent ailleurs. request peut être null (mission créée hors flux partner_requests).
+var MISSION_STATUS_META = {
+    received:    { key: 'received',    label: 'Commande reçue',          emoji: '🟡' },
+    accepted:    { key: 'accepted',     label: 'Commande acceptée',       emoji: '🔵' },
+    in_progress: { key: 'in_progress',  label: 'En préparation',          emoji: '🟣' },
+    delivering:  { key: 'delivering',   label: 'Livraison en cours',      emoji: '🟠' },
+    delivered:   { key: 'delivered',    label: 'Livrables disponibles',   emoji: '🟢' },
+    completed:   { key: 'completed',    label: 'Projet terminé',          emoji: '✅' },
+    reviewed:    { key: 'reviewed',     label: 'Évaluation',              emoji: '⭐' }
+};
+function computeMissionDisplayStatus(request, dispatch, order, livrables, hasReview) {
+    if (hasReview) return MISSION_STATUS_META.reviewed;
+    if (order && order.balance_paid === true) return MISSION_STATUS_META.completed;
+    if ((livrables || []).some(function(l) { return l.workflow_status === 'PUBLISHED'; })) {
+        return MISSION_STATUS_META.delivered;
+    }
+    if (dispatch) {
+        return dispatch.mission_status === 'delivering' ? MISSION_STATUS_META.delivering : MISSION_STATUS_META.in_progress;
+    }
+    if (request && (request.status === 'accepted' || request.status === 'proposed' || request.status === 'signed')) {
+        return MISSION_STATUS_META.accepted;
+    }
+    return MISSION_STATUS_META.received;
+}
 
 /**
  * Determiner les droits d'acces selon le statut de la commande
@@ -10347,6 +10375,34 @@ app.post('/api/partner/dispatches/:id/decline', authenticatePartner, function(re
     }
 });
 
+// Le partenaire signale qu'il finalise les fichiers (frise de suivi, Phase 8) —
+// transition manuelle unique, les autres statuts de la frise sont déduits automatiquement.
+app.post('/api/partner/dispatches/:id/mark-delivering', authenticatePartner, function(req, res) {
+    try {
+        var dispatches = loadDispatches();
+        var idx = dispatches.findIndex(function(d) { return d.id === req.params.id; });
+        if (idx === -1) return res.status(404).json({ error: 'Mission introuvable' });
+        if (dispatches[idx].claimed_by_partner_id !== req.partner.id) {
+            return res.status(403).json({ error: 'Cette mission ne vous appartient pas.' });
+        }
+        if (dispatches[idx].mission_status && dispatches[idx].mission_status !== 'in_progress') {
+            return res.status(409).json({ error: 'Cette mission a déjà dépassé cette étape.' });
+        }
+        dispatches[idx].mission_status = 'delivering';
+        saveDispatches(dispatches);
+
+        var order = loadOrders().find(function(o) { return o.id === dispatches[idx].order_id; });
+        var clientEmail = order && order.client_info && order.client_info.email;
+        if (clientEmail) {
+            notifyUser(clientEmail, 'client', 'mission-status', 'Livraison en cours', 'Votre prestataire finalise vos livrables.', '/app.html#open-resa');
+        }
+        res.json({ success: true, mission_status: 'delivering' });
+    } catch(e) {
+        console.error('[DISPATCH] Erreur mark-delivering:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
 // ============================================================
 //  DEMANDES DIRECTES — Client choisit un partenaire précis,
 //  qui accepte ou refuse librement (remplace le dispatch broadcast)
@@ -10416,6 +10472,9 @@ app.get('/api/my-requests', function(req, res) {
         if (!user) return;
 
         var allDispatchesForRequests = loadDispatches();
+        var allOrdersForRequests = loadOrders();
+        var allLivrablesForRequests = loadLivrables();
+        var allReviewsForRequests = loadPartnerReviews();
         var requests = loadPartnerRequests()
             .filter(function(r) { return r.client_email === user.email; })
             .sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); })
@@ -10423,10 +10482,15 @@ app.get('/api/my-requests', function(req, res) {
                 var partner = getPartnerById(r.partner_id);
                 var out = JSON.parse(JSON.stringify(r));
                 out.partner_name = partner ? (partner.prenom ? (partner.prenom + ' ' + (partner.nom || '')) : partner.company || partner.email) : 'Partenaire';
+                var dispatchForReq = null;
                 if (r.order_id) {
-                    var dispatchForReq = allDispatchesForRequests.find(function(d) { return d.order_id === r.order_id; });
+                    dispatchForReq = allDispatchesForRequests.find(function(d) { return d.order_id === r.order_id; });
                     out.dispatch_id = dispatchForReq ? dispatchForReq.id : null;
                 }
+                var orderForReq = r.order_id ? allOrdersForRequests.find(function(o) { return o.id === r.order_id; }) : null;
+                var livrablesForReq = orderForReq ? allLivrablesForRequests.filter(function(l) { return l.order_id === orderForReq.id; }) : [];
+                var hasReviewForReq = !!(dispatchForReq && allReviewsForRequests.some(function(rv) { return rv.dispatchId === dispatchForReq.id; }));
+                out.display_status = computeMissionDisplayStatus(r, dispatchForReq, orderForReq, livrablesForReq, hasReviewForReq);
                 return out;
             });
         res.json({ requests: requests });
@@ -10436,13 +10500,32 @@ app.get('/api/my-requests', function(req, res) {
     }
 });
 
-// GET /api/partner/requests — le partenaire liste les demandes en attente d'action de sa part
-// (pending = à accepter/refuser, accepted = à proposer un contrat)
+// GET /api/partner/requests — le partenaire liste ses demandes actives : celles en attente
+// d'une action de sa part (pending = à accepter/refuser, accepted = à proposer un contrat,
+// proposed = en attente de signature client) ET celles déjà signées/payées (mission engagée,
+// avec la frise de suivi Phase 8) — exclut seulement les demandes closes (declined/expired/cancelled).
 app.get('/api/partner/requests', authenticatePartner, function(req, res) {
     try {
+        var allDispatchesForPtnr = loadDispatches();
+        var allOrdersForPtnr = loadOrders();
+        var allLivrablesForPtnr = loadLivrables();
+        var allReviewsForPtnr = loadPartnerReviews();
         var requests = loadPartnerRequests()
-            .filter(function(r) { return r.partner_id === req.partner.id && (r.status === 'pending' || r.status === 'accepted'); })
-            .sort(function(a, b) { return new Date(a.created_at) - new Date(b.created_at); });
+            .filter(function(r) {
+                return r.partner_id === req.partner.id
+                    && ['pending', 'accepted', 'proposed', 'signed'].indexOf(r.status) !== -1;
+            })
+            .sort(function(a, b) { return new Date(a.created_at) - new Date(b.created_at); })
+            .map(function(r) {
+                var dispatchForReq = r.order_id ? allDispatchesForPtnr.find(function(d) { return d.order_id === r.order_id; }) : null;
+                var orderForReq = r.order_id ? allOrdersForPtnr.find(function(o) { return o.id === r.order_id; }) : null;
+                var livrablesForReq = orderForReq ? allLivrablesForPtnr.filter(function(l) { return l.order_id === orderForReq.id; }) : [];
+                var hasReviewForReq = !!(dispatchForReq && allReviewsForPtnr.some(function(rv) { return rv.dispatchId === dispatchForReq.id; }));
+                var out = JSON.parse(JSON.stringify(r));
+                out.dispatch_id = dispatchForReq ? dispatchForReq.id : null;
+                out.display_status = computeMissionDisplayStatus(r, dispatchForReq, orderForReq, livrablesForReq, hasReviewForReq);
+                return out;
+            });
         res.json({ requests: requests });
     } catch(e) {
         console.error('[PARTNER-REQUEST] Erreur liste partenaire:', e);
