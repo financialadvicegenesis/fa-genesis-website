@@ -3415,7 +3415,12 @@
                     '<input type="text" id="missionEditName" value="' + (d.name || '').replace(/"/g, '&quot;') + '" class="w-full p-2 text-black text-sm border-2 border-black">' +
                     '</div>' +
                     '<div class="mb-3">' +
-                    '<label class="block text-sm mb-1">URL du fichier (Drive, Dropbox, etc.) :</label>' +
+                    '<label class="block text-sm mb-1">Photo (upload direct) :</label>' +
+                    '<input type="file" id="missionUploadPhoto" accept="image/*" class="w-full p-2 text-black text-sm border-2 border-black bg-white" onchange="previewMissionPhoto(this)">' +
+                    '<div id="missionUploadPhotoPreview" style="margin-top:6px;"></div>' +
+                    '</div>' +
+                    '<div class="mb-3">' +
+                    '<label class="block text-sm mb-1">Ou URL du fichier (vidéo, ZIP, Drive, Dropbox...) :</label>' +
                     '<input type="text" id="missionUploadUrl" placeholder="https://..." class="w-full p-2 text-black text-sm border-2 border-black">' +
                     '</div>' +
                     '<div class="mb-3">' +
@@ -3469,13 +3474,29 @@
         } catch (e) { alert('Erreur: ' + e.message); }
     }
 
+    function previewMissionPhoto(inputEl) {
+        var preview = document.getElementById('missionUploadPhotoPreview');
+        var file = inputEl.files && inputEl.files[0];
+        if (!preview || !file) return;
+        imageFileToCompressedBase64(file, 480, 0.85).then(function(dataUri) {
+            preview.innerHTML = '<img src="' + dataUri + '" alt="" style="width:64px;height:64px;object-fit:cover;border:2px solid #fff;">';
+        }).catch(function() {});
+    }
+
     async function uploadMissionVersion(id) {
         try {
+            var photoInput = document.getElementById('missionUploadPhoto');
+            var photoFile = photoInput && photoInput.files && photoInput.files[0];
             var fileUrl = document.getElementById('missionUploadUrl').value.trim();
             var contentText = document.getElementById('missionUploadContent').value.trim();
             var changeNote = document.getElementById('missionChangeNote').value.trim() || 'Nouvelle version';
 
-            if (!fileUrl && !contentText) { alert('Veuillez entrer une URL de fichier ou du contenu texte'); return; }
+            if (!photoFile && !fileUrl && !contentText) { alert('Veuillez choisir une photo, entrer une URL de fichier, ou du contenu texte'); return; }
+
+            // La photo uploadée directement prend la priorité sur l'URL saisie manuellement.
+            if (photoFile) {
+                fileUrl = await imageFileToCompressedBase64(photoFile, 1280, 0.85);
+            }
 
             var token = localStorage.getItem('fa_genesis_partner_token');
             var body = { change_note: changeNote };

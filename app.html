@@ -2439,6 +2439,7 @@ a{text-decoration:none;color:inherit}
         <!-- Sub-screen: Missions (dispatch) -->
         <div class="ptnr-screen" id="ptnr-screen-missions">
           <div class="ptnr-section-title">Mes missions</div>
+          <div id="ptnr-missions-filter"></div>
           <div id="ptnr-missions-list"></div>
         </div>
 
@@ -8724,45 +8725,85 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
 ══════════════════════════════════════════════════ */
 
 
+var _ptnrMissionsCache = [];
+var _ptnrMissionsStatusFilter = 'all';
 function _ptnrLoadMissions(){
   var el = document.getElementById('ptnr-missions-list');
   if(el) el.innerHTML = _skeletonRows(2);
   _ptnrFetch('/api/partner/requests').then(function(data){
-    var items = data.requests || [];
-    if(!items.length){
-      if(el) el.innerHTML = '<div class="ptnr-empty"><div class="ptnr-empty-ico"><i class="fa-solid fa-circle-check"></i></div><div class="ptnr-empty-txt">Aucune demande en attente</div><div style="font-size:12px;color:#555;margin-top:6px;">Vous serez notifié à chaque nouvelle demande de client.</div></div>';
-      _setBadgeMissions(0); return;
-    }
-
-    var html = '<div style="font-size:12px;color:#888;margin-bottom:14px;line-height:1.6;">Un client souhaite vous engager directement. Acceptez pour lui envoyer une proposition, ou refusez s\'il vous est impossible de prendre la mission.</div>';
-    items.forEach(function(r){
-      if(r.status === 'accepted'){ html += _ptnrRenderProposalForm(r); return; }
-      if(r.status === 'proposed'){ html += _ptnrRenderProposalSentCard(r); return; }
-      if(r.status === 'signed'){ html += _ptnrRenderEngagedMissionCard(r); return; }
-      html += '<div class="dispatch-card new-card" id="request-'+r.id+'">';
-      html += '<div class="dispatch-badge"><span class="dispatch-badge-dot"></span>Nouvelle demande</div>';
-      html += '<div class="dispatch-title">'+r.client_name+' — '+r.service_label+'</div>';
-      html += '<div class="dispatch-meta">Reçue le '+_ptnrFmt(r.created_at)+'</div>';
-      html += '<div class="dispatch-avail">';
-      html += '<strong>Prix de la prestation :</strong> '+r.price+' €<br>';
-      if(r.desired_date) html += '<strong>Date souhaitée :</strong> '+_ptnrFmt(r.desired_date)+'<br>';
-      if(r.location) html += '<strong>Lieu :</strong> '+r.location+'<br>';
-      if(r.budget_note) html += '<strong>Budget :</strong> '+r.budget_note+'<br>';
-      if(r.description) html += '<strong>Description :</strong> '+r.description;
-      html += '</div>';
-      html += '<div style="display:flex;gap:10px;margin-top:14px;">';
-      html += '<button id="req-accept-btn-'+r.id+'" class="dispatch-claim-btn" style="flex:1;" onclick="_acceptPartnerRequest(\''+r.id+'\')"><i class="fa-solid fa-check"></i> ACCEPTER</button>';
-      html += '<button style="flex:0 0 auto;background:transparent;color:#c00;border:2px solid #c00;padding:10px 16px;font-weight:800;font-size:13px;border-radius:10px;cursor:pointer;" onclick="_declinePartnerRequest(\''+r.id+'\')">✗</button>';
-      html += '</div>';
-      html += '</div>';
-    });
-
-    if(el) el.innerHTML = html;
-    var needsActionCount = items.filter(function(r){ return r.status === 'pending' || r.status === 'accepted'; }).length;
-    _setBadgeMissions(needsActionCount);
+    _ptnrMissionsCache = data.requests || [];
+    _ptnrMissionsStatusFilter = 'all';
+    _ptnrRenderMissionsList();
   }).catch(function(){
     if(el) el.innerHTML = '<div class="ptnr-empty"><div class="ptnr-empty-txt">Erreur de chargement</div></div>';
   });
+}
+function _ptnrFilterMissions(key){
+  _ptnrMissionsStatusFilter = key;
+  _ptnrRenderMissionsList();
+}
+// Phase 10 : filtre par statut (En préparation/Livraison en cours/Livrables disponibles/
+// Terminé/Évaluation) sur les missions déjà engagées (signées) — les demandes nécessitant
+// une action (pending/accepted/proposed) restent toujours visibles en haut, non filtrées.
+function _ptnrRenderMissionsList(){
+  var el = document.getElementById('ptnr-missions-list');
+  var filterEl = document.getElementById('ptnr-missions-filter');
+  var items = _ptnrMissionsCache;
+  if(!items.length){
+    if(el) el.innerHTML = '<div class="ptnr-empty"><div class="ptnr-empty-ico"><i class="fa-solid fa-circle-check"></i></div><div class="ptnr-empty-txt">Aucune demande en attente</div><div style="font-size:12px;color:#555;margin-top:6px;">Vous serez notifié à chaque nouvelle demande de client.</div></div>';
+    if(filterEl) filterEl.innerHTML = '';
+    _setBadgeMissions(0); return;
+  }
+  var needsAction = items.filter(function(r){ return r.status==='pending'||r.status==='accepted'||r.status==='proposed'; });
+  var engaged = items.filter(function(r){ return r.status==='signed'; });
+
+  if(filterEl){
+    if(!engaged.length){ filterEl.innerHTML = ''; }
+    else {
+      var statusesPresent = [];
+      engaged.forEach(function(r){ var k=r.display_status&&r.display_status.key; if(k && statusesPresent.indexOf(k)===-1) statusesPresent.push(k); });
+      statusesPresent.sort(function(a,b){ return MISSION_STATUS_ORDER.indexOf(a)-MISSION_STATUS_ORDER.indexOf(b); });
+      var pillsHtml = '<button class="p-sub-btn'+(_ptnrMissionsStatusFilter==='all'?' on':'')+'" onclick="_ptnrFilterMissions(\'all\')">Toutes ('+engaged.length+')</button>'
+        + statusesPresent.map(function(k){
+            var sample = engaged.filter(function(r){ return r.display_status && r.display_status.key===k; });
+            var meta = sample[0].display_status;
+            return '<button class="p-sub-btn'+(_ptnrMissionsStatusFilter===k?' on':'')+'" onclick="_ptnrFilterMissions(\''+k+'\')">'+(meta.emoji||'')+' '+meta.label+' ('+sample.length+')</button>';
+          }).join('');
+      filterEl.innerHTML = '<div class="p-sub-filter" style="margin:0 0 14px;overflow-x:auto;">'+pillsHtml+'</div>';
+    }
+  }
+
+  var filteredEngaged = _ptnrMissionsStatusFilter==='all' ? engaged : engaged.filter(function(r){ return r.display_status && r.display_status.key===_ptnrMissionsStatusFilter; });
+
+  var html = needsAction.length ? '<div style="font-size:12px;color:#888;margin-bottom:14px;line-height:1.6;">Un client souhaite vous engager directement. Acceptez pour lui envoyer une proposition, ou refusez s\'il vous est impossible de prendre la mission.</div>' : '';
+  needsAction.forEach(function(r){
+    if(r.status === 'accepted'){ html += _ptnrRenderProposalForm(r); return; }
+    if(r.status === 'proposed'){ html += _ptnrRenderProposalSentCard(r); return; }
+    html += '<div class="dispatch-card new-card" id="request-'+r.id+'">';
+    html += '<div class="dispatch-badge"><span class="dispatch-badge-dot"></span>Nouvelle demande</div>';
+    html += '<div class="dispatch-title">'+r.client_name+' — '+r.service_label+'</div>';
+    html += '<div class="dispatch-meta">Reçue le '+_ptnrFmt(r.created_at)+'</div>';
+    html += '<div class="dispatch-avail">';
+    html += '<strong>Prix de la prestation :</strong> '+r.price+' €<br>';
+    if(r.desired_date) html += '<strong>Date souhaitée :</strong> '+_ptnrFmt(r.desired_date)+'<br>';
+    if(r.location) html += '<strong>Lieu :</strong> '+r.location+'<br>';
+    if(r.budget_note) html += '<strong>Budget :</strong> '+r.budget_note+'<br>';
+    if(r.description) html += '<strong>Description :</strong> '+r.description;
+    html += '</div>';
+    html += '<div style="display:flex;gap:10px;margin-top:14px;">';
+    html += '<button id="req-accept-btn-'+r.id+'" class="dispatch-claim-btn" style="flex:1;" onclick="_acceptPartnerRequest(\''+r.id+'\')"><i class="fa-solid fa-check"></i> ACCEPTER</button>';
+    html += '<button style="flex:0 0 auto;background:transparent;color:#c00;border:2px solid #c00;padding:10px 16px;font-weight:800;font-size:13px;border-radius:10px;cursor:pointer;" onclick="_declinePartnerRequest(\''+r.id+'\')">✗</button>';
+    html += '</div>';
+    html += '</div>';
+  });
+  filteredEngaged.forEach(function(r){ html += _ptnrRenderEngagedMissionCard(r); });
+  if(!needsAction.length && !filteredEngaged.length){
+    html = '<div class="ptnr-empty"><div class="ptnr-empty-txt">Aucune mission dans ce filtre</div></div>';
+  }
+
+  if(el) el.innerHTML = html;
+  var needsActionCount = items.filter(function(r){ return r.status === 'pending' || r.status === 'accepted'; }).length;
+  _setBadgeMissions(needsActionCount);
 }
 
 function _acceptPartnerRequest(id){

@@ -9096,6 +9096,50 @@ function maybeComputeHallOfFame() {
 setInterval(maybeComputeHallOfFame, 3600000);
 maybeComputeHallOfFame();
 
+// Rappels automatiques "Jérémie" par règles (Phase 10) — détecte les missions dont le
+// délai annoncé par le partenaire (proposal.delay_days) est dépassé sans être encore en
+// livraison, et notifie les deux parties une seule fois (delay_reminder_sent évite les
+// rappels en boucle). Volontairement basé sur des règles, pas sur l'API Claude
+// (ANTHROPIC_API_KEY toujours absente — même contrainte que pour les litiges/fidélisation).
+function checkDelayedMissions() {
+    try {
+        var dispatches = loadDispatches();
+        var requests = loadPartnerRequests();
+        var orders = loadOrders();
+        var changed = false;
+        dispatches.forEach(function(d) {
+            if (d.mission_status !== 'in_progress' || d.delay_reminder_sent) return;
+            var req = requests.find(function(r) { return r.order_id === d.order_id; });
+            var delayDays = req && req.proposal && req.proposal.delay_days;
+            if (!delayDays || !d.created_at) return;
+            var daysElapsed = (Date.now() - new Date(d.created_at).getTime()) / (1000 * 60 * 60 * 24);
+            if (daysElapsed <= delayDays) return;
+
+            d.delay_reminder_sent = true;
+            changed = true;
+
+            var partner = getPartnerById(d.claimed_by_partner_id);
+            if (partner) {
+                notifyUser(partner.email, 'partner', 'delay-reminder', 'Délai annoncé dépassé',
+                    'Le délai annoncé pour "' + (d.offer_name || 'une mission') + '" est dépassé. Pensez à informer votre client de l\'avancement.',
+                    '/app.html#open-partner');
+            }
+            var order = orders.find(function(o) { return o.id === d.order_id; });
+            var clientEmail = order && order.client_info && order.client_info.email;
+            if (clientEmail) {
+                notifyUser(clientEmail, 'client', 'delay-reminder', 'Mise à jour de votre commande',
+                    'Votre prestataire travaille toujours sur votre projet. N\'hésitez pas à le contacter via la messagerie pour un point d\'avancement.',
+                    '/app.html#open-resa');
+            }
+        });
+        if (changed) saveDispatches(dispatches);
+    } catch (e) {
+        console.error('[JEREMIE] Erreur checkDelayedMissions:', e);
+    }
+}
+setInterval(checkDelayedMissions, 3600000);
+checkDelayedMissions();
+
 // ============================================================
 // QUOTIENT GENESIS (QG) — Systeme de Fidelisation Genesis, Phase 1
 // Le QG est l'equivalent visible des "points de contribution" du cahier
