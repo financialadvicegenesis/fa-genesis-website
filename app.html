@@ -4354,6 +4354,14 @@ function showFavSnackbar(){
   sb.classList.add('on');
   sb._hideTimer = setTimeout(function(){ sb.classList.remove('on'); }, 3200);
 }
+function navToFavoris(){
+  var sb = document.getElementById('fav-snackbar');
+  if(sb) sb.classList.remove('on');
+  closeDetail();
+  nav('profil');
+  if(!document.getElementById('profilContent') || !document.getElementById('profilContent').innerHTML.trim()) renderProfil();
+  showFavoris();
+}
 function referralBoxHtml(){
   if(!USER || GUEST || !USER.referralCode) return '';
   var count = USER.referralCount || 0;
@@ -8188,7 +8196,7 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
 <div id="fav-snackbar">
   <span class="fsb-ico"><i class="fa-solid fa-heart"></i></span>
   <span class="fsb-txt">Ajouté à vos favoris</span>
-  <button class="fsb-btn" onclick="closeDetail();showFavoris()">Voir tout</button>
+  <button class="fsb-btn" onclick="navToFavoris()">Voir tout</button>
 </div>
 
 <!-- ── Overlay : Configuration RIB partenaire (à la connexion) ── -->
