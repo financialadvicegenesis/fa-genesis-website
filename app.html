@@ -753,14 +753,24 @@ a{text-decoration:none;color:inherit}
 /* Grille "menu" façon Uber Eats/Deliveroo (page d'un établissement) : onglets de
    catégorie puis cartes photo-en-haut, adaptées au catalogue de prestations GENESIS */
 .p-svc-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
-.p-svc-card{background:#111;border:1.5px solid #1e1e1e;border-radius:14px;overflow:hidden;cursor:pointer}
+.p-svc-card{background:#111;border:1.5px solid #1e1e1e;border-radius:14px;overflow:hidden;cursor:pointer;transition:border-color .15s}
 .p-svc-card:active{border-color:rgba(255,215,0,.4)}
+.p-svc-card.selected{border-color:var(--yellow);box-shadow:0 0 0 1px rgba(255,215,0,.25)}
 .p-svc-card-photo{position:relative;width:100%;aspect-ratio:1/1;background:#1a1a1a;overflow:hidden}
 .p-svc-card-photo img{width:100%;height:100%;object-fit:cover;display:block}
 .p-svc-card-photo-ph{width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--yellow);font-size:26px;opacity:.5}
 .p-svc-card-cta{position:absolute;bottom:8px;right:8px;width:28px;height:28px;border-radius:50%;background:var(--yellow);
-  color:#000;display:flex;align-items:center;justify-content:center;font-size:11px;box-shadow:0 2px 8px rgba(0,0,0,.45)}
+  color:#000;display:flex;align-items:center;justify-content:center;font-size:11px;box-shadow:0 2px 8px rgba(0,0,0,.45);transition:background .15s}
+.p-svc-card.selected .p-svc-card-cta{background:#51cf66}
 .p-svc-card-body{padding:10px 12px 12px}
+/* Panier flottant multi-prestations (Phase 9) — façon Uber Eats : compteur + total + Commander */
+.p-svc-cart-bar{position:sticky;bottom:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;
+  gap:12px;background:#000;border:2px solid var(--yellow);border-radius:14px;padding:12px 14px;margin:14px 0 4px;
+  box-shadow:0 6px 20px rgba(0,0,0,.5);z-index:5}
+.p-svc-cart-info{font-size:12px;color:#ccc;font-weight:700;line-height:1.4}
+.p-svc-cart-info b{color:var(--yellow);font-size:14px}
+.p-svc-cart-btn{background:var(--yellow);color:#000;border:none;border-radius:10px;font-size:12px;font-weight:900;
+  text-transform:uppercase;padding:11px 16px;cursor:pointer;white-space:nowrap;font-family:inherit}
 .p-svc-card-label{font-size:12.5px;font-weight:900;color:var(--text);line-height:1.3;
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .p-svc-card-desc{font-size:10.5px;color:var(--muted);margin-top:3px;line-height:1.3;
@@ -3618,6 +3628,9 @@ var _dirPartnerCache = {};
 var _partnerDetailId = null;
 var _partnerDetailAudience = 'particulier';
 var SVC_AUDIENCE_LABELS = {particulier:'Particuliers', entreprise:'Entreprises', etudiant:'Étudiants'};
+// Panier multi-prestations (Phase 9) : sélection de plusieurs prestations du MÊME partenaire
+// avant d'envoyer une seule demande groupée — façon Uber Eats "ajouter au panier".
+var _partnerCartSelection = {};
 function _ptnrRenderServiceCards(services, audience, p){
   var filtered = services.filter(function(s){ return (s.audience||'particulier')===audience; });
   if(!filtered.length) return '<div class="p-dir-review-empty">Aucune prestation dans cette catégorie.</div>';
@@ -3626,14 +3639,34 @@ function _ptnrRenderServiceCards(services, audience, p){
     var imgHtml = imgSrc
       ? '<img src="'+imgSrc+'" alt="" loading="lazy">'
       : '<div class="p-svc-card-photo-ph"><i class="fa-solid fa-image"></i></div>';
-    return '<div class="p-svc-card" onclick="openPartnerRequest(\''+p.id+'\',\''+s.id+'\')">'
-      +'<div class="p-svc-card-photo">'+imgHtml+'<div class="p-svc-card-cta"><i class="fa-solid fa-arrow-right"></i></div></div>'
+    var isSelected = !!_partnerCartSelection[s.id];
+    return '<div class="p-svc-card'+(isSelected?' selected':'')+'" onclick="toggleServiceCartSelection(\''+s.id+'\')">'
+      +'<div class="p-svc-card-photo">'+imgHtml+'<div class="p-svc-card-cta"><i class="fa-solid '+(isSelected?'fa-check':'fa-plus')+'"></i></div></div>'
       +'<div class="p-svc-card-body">'
         +'<div class="p-svc-card-label">'+s.label+'</div>'
         +(s.description?'<div class="p-svc-card-desc">'+s.description+'</div>':'')
         +'<div class="p-svc-card-price">'+s.price+' €</div>'
       +'</div></div>';
   }).join('');
+}
+function toggleServiceCartSelection(serviceId){
+  if(_partnerCartSelection[serviceId]) delete _partnerCartSelection[serviceId];
+  else _partnerCartSelection[serviceId] = true;
+  var grid = document.getElementById('p-svc-grid');
+  var p = _dirPartnerCache[_partnerDetailId];
+  if(grid && p) grid.innerHTML = _ptnrRenderServiceCards(p.services||[], _partnerDetailAudience, p);
+  _ptnrRenderCartBar();
+}
+function _ptnrRenderCartBar(){
+  var bar = document.getElementById('p-svc-cart-bar');
+  if(!bar) return;
+  var p = _dirPartnerCache[_partnerDetailId];
+  var selectedIds = Object.keys(_partnerCartSelection);
+  if(!p || !selectedIds.length){ bar.innerHTML = ''; return; }
+  var selectedServices = (p.services||[]).filter(function(s){ return _partnerCartSelection[s.id]; });
+  var total = selectedServices.reduce(function(sum, s){ return sum + (parseFloat(s.price)||0); }, 0);
+  bar.innerHTML = '<div class="p-svc-cart-info">'+selectedServices.length+' prestation'+(selectedServices.length>1?'s':'')+' sélectionnée'+(selectedServices.length>1?'s':'')+'<br><b>'+total.toFixed(2)+' €</b></div>'
+    +'<button class="p-svc-cart-btn" onclick="openPartnerCartRequest()">Commander</button>';
 }
 function _ptnrDetailSwitchAudience(aud, el){
   _partnerDetailAudience = aud;
@@ -3685,6 +3718,7 @@ function openPartnerDetail(partnerId){
       // catégorie (ici l'audience : Particuliers/Entreprises/Étudiants) puis grille de
       // cartes "item de menu" avec photo systématique — adapté au catalogue GENESIS.
       var services = p.services || [];
+      _partnerCartSelection = {};
       var usedAudiences = ['particulier','entreprise','etudiant'].filter(function(a){
         return services.some(function(s){ return (s.audience||'particulier')===a; });
       });
@@ -3695,7 +3729,7 @@ function openPartnerDetail(partnerId){
           }).join('')+'</div>'
         : '';
       var servicesHtml = services.length
-        ? svcTabsHtml + '<div class="p-svc-grid" id="p-svc-grid">'+_ptnrRenderServiceCards(services, _partnerDetailAudience, p)+'</div>'
+        ? svcTabsHtml + '<div class="p-svc-grid" id="p-svc-grid">'+_ptnrRenderServiceCards(services, _partnerDetailAudience, p)+'</div>'+'<div class="p-svc-cart-bar" id="p-svc-cart-bar"></div>'
         : '<div class="p-dir-review-empty">Ce partenaire n\'a pas encore publié de prestations.</div>';
       var reviewsHtml = (data.reviews||[]).map(function(r){
         return '<li><div class="p-dir-review-top"><span style="color:var(--yellow)">'+'<i class="fa-solid fa-star"></i>'.repeat(r.rating||0)+'</span><span class="p-dir-review-name">'+r.userName+'</span></div>'
@@ -4158,6 +4192,47 @@ function showFavoris(){
     });
 }
 
+var QUOTE_STATUS_META = {
+  DRAFT_REQUESTED:  { label: 'Brief reçu, en cours d\'étude', cls: 's-pending' },
+  ADMIN_REVIEW:     { label: 'En cours de chiffrage',         cls: 's-pending' },
+  PARTNER_PROPOSED: { label: 'En cours de chiffrage',         cls: 's-pending' },
+  SENT_TO_CLIENT:   { label: 'Devis prêt — à accepter',       cls: 's-confirmed' },
+  ACCEPTED:         { label: 'Accepté',                        cls: 's-confirmed' },
+  DEPOSIT_PAID:     { label: 'Accepté — acompte payé',         cls: 's-confirmed' },
+  CANCELLED:        { label: 'Annulé',                         cls: 's-refused' }
+};
+function showMesDevis(){
+  var c = document.getElementById('profilContent'); if(!c) return;
+  c.innerHTML = '<div class="espace-view">'
+    +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="renderProfil()">&#8249;</button><div class="espace-title">Mes devis</div></div>'
+    +'<div id="devis-client-list" style="padding:14px;padding-bottom:80px;overflow-y:auto;flex:1;"><div class="espace-loading">Chargement...</div></div>'
+    +'</div>';
+  if(!USER || GUEST || !USER._token){ document.getElementById('devis-client-list').innerHTML = '<div class="espace-empty">Connectez-vous pour voir vos devis.</div>'; return; }
+  fetch(API+'/api/my-quotes', {headers:{'Authorization':'Bearer '+USER._token}})
+    .then(function(r){return r.json();})
+    .then(function(data){
+      var el = document.getElementById('devis-client-list'); if(!el) return;
+      var quotes = (data && data.quotes) || [];
+      if(!quotes.length){ el.innerHTML = '<div class="espace-empty">Aucun devis pour le moment. Demandez un devis personnalisé depuis le formulaire de contact.</div>'; return; }
+      el.innerHTML = quotes.map(function(q){
+        var meta = QUOTE_STATUS_META[q.status] || { label: q.status, cls: 's-pending' };
+        var priceHtml = (q.pricing && q.pricing.total) ? '<div class="resa-price">'+q.pricing.total+' €</div>' : '';
+        var acceptHtml = q.acceptance_token
+          ? '<div class="resa-actions"><a class="resa-action-btn rab-primary" href="quote-accept.html?token='+q.acceptance_token+'" style="text-decoration:none;text-align:center;">Voir et accepter le devis</a></div>'
+          : '';
+        return '<div class="resa-card">'
+          +'<div class="resa-top"><div class="resa-name">Devis '+(q.quote_number||'')+'</div>'
+          +'<span class="resa-status '+meta.cls+'">'+meta.label+'</span></div>'
+          +(q.brief?'<div class="resa-date"><i class="fa-solid fa-pen"></i> '+q.brief.substring(0,120)+(q.brief.length>120?'…':'')+'</div>':'')
+          +priceHtml
+          +acceptHtml
+          +'</div>';
+      }).join('');
+    }).catch(function(){
+      var el = document.getElementById('devis-client-list'); if(el) el.innerHTML = '<div class="espace-empty">Erreur de chargement.</div>';
+    });
+}
+
 function goToEventsExplorer(){
   nav('explorer');
   var btn = document.getElementById('p-exp-toggle-events');
@@ -4284,6 +4359,7 @@ function renderProfil(){
       +pli('','#1a1000','Tableau de bord',null,'showDashboard()')
       +pli('','#0a1a0a','Mes paiements',null,'showPaiements()')
       +pli('','#0a0a1a','Mes réservations',null,'nav(\'reservations\')')
+      +pli('<i class="fa-solid fa-file-invoice"></i>','#0a0a14','Mes devis',null,'showMesDevis()')
       +pli('','#100a1a','Mes livrables',null,'showLivrables()')
       +pli('','#1a0014','Mes favoris',null,'showFavoris()')
       +pli('','#0a141a','Événements Genesis',null,'goToEventsExplorer()')
@@ -7233,21 +7309,35 @@ function cwBookingSendRequest(){
 }
 
 // ── PARTNER SERVICE BOOKING (marketplace : commande directe sur un partenaire choisi) ──
-var _pbPartner=null, _pbService=null, _pbMode='request';
+var _pbPartner=null, _pbService=null, _pbServices=null, _pbMode='request';
 
 // Ouvre la modal en mode "demande" : le client décrit son besoin, sans payer (le partenaire doit d'abord accepter).
 function openPartnerRequest(partnerId, serviceId){
-  if(!USER||GUEST){ closeDetail(); showLoginSheet(); return; }
   var p = _dirPartnerCache[partnerId];
   if(!p) return;
   var service = (p.services||[]).find(function(s){ return s.id===serviceId; });
   if(!service) return;
-  _pbPartner = p; _pbService = service; _pbMode = 'request';
+  _openPartnerRequestModal(p, [service]);
+}
+// Panier multi-prestations (Phase 9) : ouvre la même modal pour TOUTES les prestations
+// actuellement sélectionnées sur la fiche partenaire.
+function openPartnerCartRequest(){
+  var p = _dirPartnerCache[_partnerDetailId];
+  if(!p) return;
+  var selectedServices = (p.services||[]).filter(function(s){ return _partnerCartSelection[s.id]; });
+  if(!selectedServices.length) return;
+  _openPartnerRequestModal(p, selectedServices);
+}
+function _openPartnerRequestModal(p, services){
+  if(!USER||GUEST){ closeDetail(); showLoginSheet(); return; }
+  _pbPartner = p; _pbServices = services; _pbMode = 'request';
 
   var overlay=document.getElementById('pb-overlay'); var sheet=document.getElementById('pb-sheet');
   if(!overlay||!sheet) return;
 
-  var nm=document.getElementById('pb-service-name'); if(nm) nm.textContent=service.label;
+  var total = services.reduce(function(sum,s){ return sum+(parseFloat(s.price)||0); }, 0);
+  var nm=document.getElementById('pb-service-name');
+  if(nm) nm.textContent = services.length>1 ? (services.length+' prestations · '+total.toFixed(2)+' €') : services[0].label;
   var pn=document.getElementById('pb-partner-name'); if(pn) pn.textContent='Demande à '+(p.prenom||'')+' '+(p.nom||'');
   var er=document.getElementById('pb-err'); if(er) er.classList.remove('on');
   var rf=document.getElementById('pb-request-form'); if(rf) rf.style.display='';
@@ -7262,27 +7352,31 @@ function openPartnerRequest(partnerId, serviceId){
   setTimeout(function(){ sheet.classList.add('up'); }, 20);
 }
 function sendPartnerRequest(){
-  if(!_pbPartner||!_pbService||!USER||GUEST) return;
+  if(!_pbPartner||!_pbServices||!_pbServices.length||!USER||GUEST) return;
   var description = ((document.getElementById('pbr-description')||{}).value||'').trim();
   var er=document.getElementById('pb-err');
   if(!description){ if(er){er.textContent='Merci de décrire votre besoin.';er.classList.add('on');} return; }
   if(er) er.classList.remove('on');
   var rb=document.getElementById('pbr-send-btn'); if(rb){rb.disabled=true;rb.textContent='Envoi en cours...';}
 
-  fetch((window.FA_GENESIS_API||API)+'/api/partner-requests',{
-    method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+USER._token},
-    body:JSON.stringify({
-      partnerId:_pbPartner.id, serviceId:_pbService.id,
-      budgetNote:((document.getElementById('pbr-budget')||{}).value||'').trim(),
-      desiredDate:((document.getElementById('pbr-date')||{}).value||'')||null,
-      location:((document.getElementById('pbr-location')||{}).value||'').trim(),
-      description:description
-    })
-  }).then(function(r){ return r.json().then(function(d){ return {ok:r.ok, data:d}; }); })
-  .then(function(res){
-    if(!res.ok) throw new Error((res.data&&res.data.error)||'Erreur lors de l\'envoi de la demande');
+  var budgetNote = ((document.getElementById('pbr-budget')||{}).value||'').trim();
+  var desiredDate = ((document.getElementById('pbr-date')||{}).value||'')||null;
+  var location = ((document.getElementById('pbr-location')||{}).value||'').trim();
+  var partnerId = _pbPartner.id;
+  var services = _pbServices;
+
+  Promise.all(services.map(function(service){
+    return fetch((window.FA_GENESIS_API||API)+'/api/partner-requests',{
+      method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+USER._token},
+      body:JSON.stringify({ partnerId:partnerId, serviceId:service.id, budgetNote:budgetNote, desiredDate:desiredDate, location:location, description:description })
+    }).then(function(r){ return r.json().then(function(d){ return {ok:r.ok, data:d}; }); });
+  })).then(function(results){
+    var failed = results.filter(function(res){ return !res.ok; });
+    if(failed.length === results.length) throw new Error((failed[0].data&&failed[0].data.error)||'Erreur lors de l\'envoi de la demande');
+    _partnerCartSelection = {};
     var rf=document.getElementById('pb-request-form'); if(rf) rf.style.display='none';
-    var sm=document.getElementById('pb-success-msg'); if(sm) sm.textContent='🟡 Demande envoyée ! Vous recevrez une notification dès que le partenaire aura répondu, dans "Mes réservations".';
+    var sm=document.getElementById('pb-success-msg');
+    if(sm) sm.textContent = (services.length>1 ? '🟡 '+services.length+' demandes envoyées ! ' : '🟡 Demande envoyée ! ')+'Vous recevrez une notification dès que le partenaire aura répondu, dans "Mes réservations".';
     var sc=document.getElementById('pb-success'); if(sc) sc.style.display='';
     if(typeof renderResaTab==='function') renderResaTab();
   }).catch(function(err){

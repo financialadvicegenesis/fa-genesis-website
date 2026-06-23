@@ -10465,6 +10465,41 @@ app.post('/api/partner-requests', function(req, res) {
     }
 });
 
+// GET /api/my-quotes — le client liste ses devis personnalisés (catégorie C), pour les voir
+// sans dépendre uniquement du lien envoyé par email. L'acceptance_token n'est exposé que
+// pour les devis SENT_TO_CLIENT (seul état où on a besoin d'appeler /api/quotes/accept).
+app.get('/api/my-quotes', function(req, res) {
+    try {
+        var user = authenticateClient(req, res);
+        if (!user) return;
+
+        var quotes = loadQuotes()
+            .filter(function(q) { return q.client_email && q.client_email.toLowerCase() === user.email.toLowerCase(); })
+            .sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); })
+            .map(function(q) {
+                return {
+                    id: q.id,
+                    quote_number: q.quote_number,
+                    status: q.status,
+                    service_type: q.service_type,
+                    brief: q.brief,
+                    pricing: q.pricing,
+                    admin_final: q.admin_final,
+                    validity_days: q.validity_days,
+                    sent_at: q.sent_at,
+                    accepted_at: q.accepted_at,
+                    created_at: q.created_at,
+                    order_id: q.order_id,
+                    acceptance_token: q.status === 'SENT_TO_CLIENT' ? q.acceptance_token : null
+                };
+            });
+        res.json({ quotes: quotes });
+    } catch (e) {
+        console.error('[QUOTE] Erreur liste devis client:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
 // GET /api/my-requests — le client liste ses demandes envoyées
 app.get('/api/my-requests', function(req, res) {
     try {
