@@ -912,6 +912,20 @@ a{text-decoration:none;color:inherit}
 /* ── X close button on detail sheet ── */
 .detail-close-x{width:32px;height:32px;border-radius:50%;background:#1e1e1e;border:none;color:#aaa;
   display:flex;align-items:center;justify-content:center;font-size:14px;cursor:pointer;flex-shrink:0}
+/* ── Partner detail action bar (Deliveroo style) ── */
+.p-dir-detail-actionbar{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:0 0 14px}
+.p-dir-action-btn{width:38px;height:38px;border-radius:50%;background:#1e1e1e;border:1.5px solid #2a2a2a;
+  color:#aaa;display:flex;align-items:center;justify-content:center;font-size:15px;cursor:pointer;flex-shrink:0}
+.p-dir-action-btn.fav.on{color:var(--yellow);border-color:var(--yellow)}
+.p-dir-svc-search-wrap{padding:0 0 14px;display:none}
+.p-dir-svc-search-wrap input{width:100%;padding:10px 14px;border-radius:10px;border:1.5px solid #2a2a2a;
+  background:#111;color:#fff;font-size:14px;font-family:inherit;outline:none}
+/* ── Heart on service detail overlay ── */
+.svc-detail-fav{position:absolute;top:14px;right:14px;width:38px;height:38px;border-radius:50%;
+  background:rgba(0,0,0,.55);backdrop-filter:blur(4px);border:none;display:flex;align-items:center;
+  justify-content:center;font-size:18px;cursor:pointer;color:#fff;z-index:2}
+.svc-detail-fav.on{color:var(--yellow)}
+.svc-detail-hero-wrap{position:relative}
 /* ── Centered partner info header ── */
 .p-dir-partner-header{text-align:center}
 .p-dir-partner-header .p-dir-detail-namerow{justify-content:center;flex-wrap:wrap}
@@ -3780,11 +3794,20 @@ function openPartnerDetail(partnerId){
         return '<li><div class="p-dir-review-top"><span style="color:var(--yellow)">'+'<i class="fa-solid fa-star"></i>'.repeat(r.rating||0)+'</span><span class="p-dir-review-name">'+r.userName+'</span></div>'
           +(r.comment?'<p class="p-dir-review-comment">'+r.comment+'</p>':'')+'</li>';
       }).join('') || '<li class="p-dir-review-empty">Aucun avis publié pour le moment.</li>';
+      var isFavPartner = !!(USER && USER.favoris && USER.favoris.indexOf(p.id)!==-1);
       document.getElementById('detail-content').innerHTML = ''
         +heroHtml
+        +'<div class="p-dir-detail-actionbar">'
+        +'<button class="p-dir-action-btn" onclick="sharePartnerProfile(\''+p.id+'\',\''+(p.prenom||'')+' '+(p.nom||'')+'\')"><i class="fas fa-share-nodes"></i></button>'
+        +'<button class="p-dir-action-btn" onclick="togglePartnerServiceSearch(\''+p.id+'\')"><i class="fas fa-magnifying-glass"></i></button>'
+        +'<button class="p-dir-action-btn fav'+(isFavPartner?' on':'')+'" data-fav-id="'+p.id+'" onclick="event.stopPropagation();toggleFavorite(\''+p.id+'\')">'+(isFavPartner?'<i class="fa-solid fa-heart"></i>':'<i class="fa-regular fa-heart"></i>')+'</button>'
+        +'</div>'
+        +'<div class="p-dir-svc-search-wrap" id="svc-search-wrap-'+p.id+'">'
+        +'<input id="svc-search-input-'+p.id+'" type="text" placeholder="Rechercher une prestation..." oninput="filterPartnerServices(\''+p.id+'\')">'
+        +'</div>'
         +'<div class="p-dir-partner-header">'
         +'<div class="p-dir-detail-namerow"><span class="p-dir-detail-name">'+(p.prenom||'')+' '+(p.nom||'')+'</span>'+verifiedHtml+'</div>'
-        +'<div class="p-dir-detail-badgerow">'+badgeHtml+' '+constellationHtml+' '+favHeartHtml(p.id)+'</div>'
+        +'<div class="p-dir-detail-badgerow">'+badgeHtml+' '+constellationHtml+'</div>'
         +'<div class="detail-sub">'+label+'</div>'
         +cityHtml
         +'<div class="detail-payment">'+starsLabel+'</div>'
@@ -3806,6 +3829,7 @@ function openPartnerDetail(partnerId){
 }
 
 // ── Détail d'une prestation (overlay façon Deliveroo) ──
+var _svcFavs = {};
 function openServiceDetail(partnerId, serviceId){
   var p = _dirPartnerCache[partnerId];
   if(!p) return;
@@ -3813,9 +3837,16 @@ function openServiceDetail(partnerId, serviceId){
   if(!service) return;
   var isQuote = service.pricing_type === 'quote';
   var imgSrc = service.image || p.photo || '';
-  var heroHtml = imgSrc
-    ? '<div class="svc-detail-hero"><img src="'+imgSrc+'" alt=""></div>'
-    : '<div class="svc-detail-hero"><div class="svc-detail-hero-ph"><i class="fa-solid fa-image"></i></div></div>';
+  var isSvcFav = !!_svcFavs[serviceId];
+  // Hero with heart button overlaid (Deliveroo style)
+  var heroHtml = '<div class="svc-detail-hero-wrap">'
+    +(imgSrc
+      ? '<div class="svc-detail-hero"><img src="'+imgSrc+'" alt=""></div>'
+      : '<div class="svc-detail-hero"><div class="svc-detail-hero-ph"><i class="fa-solid fa-image"></i></div></div>')
+    +'<button class="svc-detail-fav'+(isSvcFav?' on':'')+'" id="svc-fav-btn-'+serviceId+'" onclick="toggleServiceFav(\''+serviceId+'\')">'
+    +(isSvcFav?'<i class="fa-solid fa-heart"></i>':'<i class="fa-regular fa-heart"></i>')
+    +'</button>'
+    +'</div>';
   var priceHtml = isQuote
     ? '<div class="svc-detail-price quote"><i class="fa-solid fa-file-lines"></i> Tarif sur devis — personnalisé selon votre besoin</div>'
     : '<div class="svc-detail-price">'+service.price+' €</div>';
@@ -3836,11 +3867,53 @@ function openServiceDetail(partnerId, serviceId){
   var ov = document.getElementById('svc-detail-overlay');
   if(ov){ ov.style.display='flex'; setTimeout(function(){ ov.classList.add('open'); }, 20); }
 }
+function toggleServiceFav(serviceId){
+  _svcFavs[serviceId] = !_svcFavs[serviceId];
+  var btn = document.getElementById('svc-fav-btn-'+serviceId);
+  if(!btn) return;
+  var isFav = _svcFavs[serviceId];
+  btn.className = 'svc-detail-fav'+(isFav?' on':'');
+  btn.innerHTML = isFav ? '<i class="fa-solid fa-heart"></i>' : '<i class="fa-regular fa-heart"></i>';
+  showToast(isFav ? 'Prestation sauvegardée' : 'Retiré des favoris', '', isFav ? 'success' : 'info');
+}
 function closeServiceDetail(){
   var ov = document.getElementById('svc-detail-overlay');
   if(!ov) return;
   ov.classList.remove('open');
   setTimeout(function(){ ov.style.display='none'; }, 250);
+}
+// ── Partner detail action bar functions ──
+function sharePartnerProfile(partnerId, partnerName){
+  var url = window.location.origin + window.location.pathname + '#partner-'+partnerId;
+  var title = partnerName + ' — FA GENESIS';
+  if(navigator.share){
+    navigator.share({ title: title, text: 'Découvre le profil de '+partnerName+' sur FA GENESIS', url: url }).catch(function(){});
+  } else if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(url).then(function(){
+      showToast('Lien copié', 'Lien du profil copié dans le presse-papiers', 'success');
+    }).catch(function(){});
+  } else {
+    showToast('Partage', 'Copiez le lien depuis la barre d\'adresse', 'info');
+  }
+}
+function togglePartnerServiceSearch(partnerId){
+  var wrap = document.getElementById('svc-search-wrap-'+partnerId);
+  var inp  = document.getElementById('svc-search-input-'+partnerId);
+  if(!wrap) return;
+  var visible = wrap.style.display === 'block';
+  wrap.style.display = visible ? 'none' : 'block';
+  if(!visible && inp){ inp.value=''; inp.focus(); filterPartnerServices(partnerId); }
+}
+function filterPartnerServices(partnerId){
+  var p = _dirPartnerCache[partnerId];
+  if(!p) return;
+  var inp = document.getElementById('svc-search-input-'+partnerId);
+  var q = inp ? inp.value.trim().toLowerCase() : '';
+  var filtered = (p.services||[]).filter(function(s){
+    return !q || (s.label||'').toLowerCase().indexOf(q)!==-1 || (s.description||'').toLowerCase().indexOf(q)!==-1;
+  });
+  var grid = document.getElementById('p-svc-grid');
+  if(grid) grid.innerHTML = _ptnrRenderServiceCards(filtered, _partnerDetailAudience, p);
 }
 function addServiceToMainCart(partnerId, serviceId){
   if(!USER||GUEST){ closeServiceDetail(); closeDetail(); showLoginSheet(); return; }
@@ -5890,13 +5963,17 @@ function renderCartBody(){
   if(tr) tr.style.display='flex'; if(cb) cb.disabled=false;
   body.innerHTML=APP_CART.map(function(item,i){
     var isPtnrSvc = item.type==='partner_service';
+    var isSmallSvc = isPtnrSvc && item.priceNum > 0 && item.priceNum <= 300;
+    var ptnrBtnLabel = isSmallSvc
+      ? '<i class="fa-solid fa-shield-alt"></i> Payer en GENESIS SAFE™'
+      : '<i class="fa-solid fa-lock"></i> Payer en sécurisé';
     return '<div class="cart-item">'
       +'<div class="cart-item-info">'
       +(isPtnrSvc?'<span class="cart-item-ptnr-lbl">PRESTATION</span>':'')
       +'<div class="cart-item-name">'+item.name+'</div>'
       +(item.sub?'<div class="cart-item-sub">'+item.sub+'</div>':'')
       +'<div class="cart-item-price">'+item.price+(item.quantity>1?' × '+item.quantity:'')+'</div>'
-      +(isPtnrSvc?'<button class="cart-item-ptnr-btn" onclick="_cartPayPartnerService('+i+')"><i class="fa-solid fa-lock"></i> Payer en sécurisé</button>':'')
+      +(isPtnrSvc?'<button class="cart-item-ptnr-btn" onclick="_cartPayPartnerService('+i+')">'+ptnrBtnLabel+'</button>':'')
       +'</div>'
       +'<button class="cart-item-del" onclick="removeFromCart('+i+')">✕</button>'
       +'</div>';
@@ -7535,33 +7612,30 @@ function _showPbPayUI(partner, service){
   var tot=document.getElementById('pb-total-amt'); if(tot) tot.textContent=total+' €';
   var er=document.getElementById('pb-err'); if(er) er.classList.remove('on');
   var rf=document.getElementById('pb-request-form'); if(rf) rf.style.display='none';
-  var fm=document.getElementById('pb-form'); if(fm) fm.style.display='';
+  var fm=document.getElementById('pb-form'); if(fm) fm.style.display='block';
   var ws=document.getElementById('pb-widget-screen'); if(ws) ws.style.display='none';
   var sc=document.getElementById('pb-success'); if(sc) sc.style.display='none';
 
-  // Adapt rows to tier
+  // Adapt rows to tier — use explicit 'flex'/'none' (not '' which can leave wrong CSS defaults)
   var rowSmall=document.getElementById('pb-row-small');
   var rowT1=document.getElementById('pb-row-tranche1');
   var rowT2=document.getElementById('pb-row-tranche2');
   var rowT3=document.getElementById('pb-row-tranche3');
   var holdMsg=document.getElementById('pb-hold-msg');
   if(isSmall){
-    if(rowSmall) rowSmall.style.display='';
+    if(rowSmall) rowSmall.style.display='flex';
     if(rowT1) rowT1.style.display='none';
     if(rowT2) rowT2.style.display='none';
     if(rowT3) rowT3.style.display='none';
-    if(holdMsg) holdMsg.style.display='';
+    if(holdMsg) holdMsg.style.display='block';
   } else {
     if(rowSmall) rowSmall.style.display='none';
-    if(rowT1) rowT1.style.display='';
+    if(rowT1) rowT1.style.display='flex';
     if(rowT2){
-      rowT2.style.display='';
+      rowT2.style.display='flex';
       var t2el=document.getElementById('pb-tranche2-amt'); if(t2el) t2el.textContent=tranche2+' €';
     }
-    if(rowT3){
-      rowT3.style.display='';
-      var t3el=document.getElementById('pb-tranche3-amt'); if(t3el) t3el.textContent=tranche3+' €';
-    }
+    if(rowT3) rowT3.style.display='none';
     if(holdMsg) holdMsg.style.display='none';
   }
 
