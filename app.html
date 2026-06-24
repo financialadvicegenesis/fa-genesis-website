@@ -1004,6 +1004,81 @@ a{text-decoration:none;color:inherit}
 .ptnr-pf-video-popup-sheet{background:#111;border:1.5px solid #FFD700;border-radius:20px 20px 0 0;width:100%;max-width:480px;padding:24px 20px 36px}
 .ptnr-pf-save-msg{font-size:12px;font-weight:700;text-align:center;margin-bottom:8px;min-height:16px}
 
+/* ═══════════════════════════════════════════════════
+   FICHE PRESTATAIRE — DESIGN HUD FUTURISTE GENESIS
+   ═══════════════════════════════════════════════════ */
+/* Hero plein-écran */
+.pf-hero{margin:0 -24px;height:300px;position:relative;overflow:hidden;background:#0d0d0d;background-size:cover;background-position:center top}
+.pf-hero.live{animation:pfHeroZoom 8s ease-out forwards}
+@keyframes pfHeroZoom{from{background-size:120%}to{background-size:108%}}
+.pf-hero-overlay{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.22) 0%,rgba(0,0,0,.0) 30%,rgba(13,13,13,.96) 100%)}
+.pf-scanlines{position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.06) 2px,rgba(0,0,0,.06) 4px);z-index:1}
+/* Brackets HUD dans les coins du héro */
+.pf-corner{position:absolute;width:18px;height:18px;border-color:#FFD700;border-style:solid;opacity:.55;z-index:2}
+.pf-tl{top:52px;left:14px;border-width:2px 0 0 2px}.pf-tr{top:52px;right:14px;border-width:2px 2px 0 0}
+.pf-bl{bottom:68px;left:14px;border-width:0 0 2px 2px}.pf-br{bottom:68px;right:14px;border-width:0 2px 2px 0}
+/* Boutons action sur le héro */
+.pf-hero-actions{position:absolute;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:14px 14px;z-index:3}
+.pf-hero-btn{width:34px;height:34px;border-radius:50%;background:rgba(0,0,0,.52);backdrop-filter:blur(8px);border:1px solid rgba(255,215,0,.18);color:#fff;font-size:14px;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.pf-hero-btn.fav-on{color:#FFD700}
+/* Identité flottante sur le héro */
+.pf-hero-id{position:absolute;bottom:14px;left:16px;right:16px;z-index:2}
+.pf-hero-name{font-family:'Unbounded',sans-serif;font-size:21px;font-weight:900;color:#fff;text-shadow:0 2px 18px rgba(0,0,0,.95),0 0 40px rgba(255,215,0,.1);line-height:1.18;margin-bottom:3px}
+.pf-hero-type{font-size:10px;font-weight:900;color:#FFD700;letter-spacing:2px;text-transform:uppercase;text-shadow:0 0 10px rgba(255,215,0,.35);margin-bottom:7px}
+.pf-hero-badges{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+/* Barre HUD glassmorphism */
+.pf-hud{display:flex;align-items:center;background:rgba(255,255,255,.025);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(255,215,0,.1);border-radius:16px;margin:14px 0;overflow:hidden}
+.pf-hud-cell{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:12px 4px}
+.pf-hud-ico{font-size:11px;color:#FFD700}
+.pf-hud-val{font-family:'Unbounded',sans-serif;font-size:13px;font-weight:900;color:#fff;white-space:nowrap;line-height:1}
+.pf-hud-lbl{font-size:7.5px;font-weight:700;color:#3a3a3a;text-transform:uppercase;letter-spacing:.4px}
+.pf-hud-sep{width:1px;height:36px;background:rgba(255,215,0,.07);flex-shrink:0}
+/* Bio + social */
+.pf-bio{font-size:12.5px;color:#777;line-height:1.68;margin-bottom:12px}
+.pf-social{display:flex;gap:16px;margin-bottom:18px}
+.pf-social a{color:#FFD700;font-size:20px;opacity:.65;transition:opacity .15s,filter .15s;text-decoration:none}
+.pf-social a:hover{opacity:1;filter:drop-shadow(0 0 6px rgba(255,215,0,.6))}
+/* En-têtes de section */
+.pf-sec{display:flex;align-items:center;gap:8px;margin:20px 0 10px;font-size:8.5px;font-weight:900;text-transform:uppercase;letter-spacing:2px;color:#3a3a3a}
+.pf-sec i{color:#FFD700;font-size:10px}
+.pf-sec::after{content:'';flex:1;height:1px;background:linear-gradient(to right,rgba(255,215,0,.18),transparent)}
+/* Cartes prestation neon */
+.pf-svcs{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:4px}
+.pf-svc-card{background:linear-gradient(145deg,#0d0d0d,#100b00);border:1.5px solid rgba(255,215,0,.1);border-radius:16px;overflow:hidden;cursor:pointer;position:relative;transition:border-color .2s,box-shadow .18s,transform .1s}
+.pf-svc-card:active{transform:scale(.97)}
+.pf-svc-card:hover{border-color:rgba(255,215,0,.48);box-shadow:0 0 22px rgba(255,215,0,.1),inset 0 0 28px rgba(255,215,0,.035)}
+.pf-svc-card::before{content:'';position:absolute;inset:0;z-index:0;background:linear-gradient(110deg,transparent 25%,rgba(255,215,0,.065) 50%,transparent 75%);transform:translateX(-120%);transition:transform .5s ease}
+.pf-svc-card:hover::before{transform:translateX(120%)}
+.pf-svc-photo{width:100%;aspect-ratio:1/1;overflow:hidden;background:#0a0a0a;position:relative;z-index:1}
+.pf-svc-photo img{width:100%;height:100%;object-fit:cover;transition:transform .4s;display:block}
+.pf-svc-card:hover .pf-svc-photo img{transform:scale(1.07)}
+.pf-svc-photo-ph{width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:rgba(255,215,0,.12);font-size:28px}
+.pf-svc-body{padding:10px 12px 13px;position:relative;z-index:1}
+.pf-svc-label{font-size:11.5px;font-weight:900;color:#fff;line-height:1.3;margin-bottom:3px}
+.pf-svc-feats{margin:3px 0 4px}
+.pf-svc-feat{font-size:8.5px;color:#444;display:flex;align-items:flex-start;gap:3px;margin-bottom:1px}
+.pf-svc-feat i{color:#FFD700;font-size:7px;margin-top:1px;flex-shrink:0}
+.pf-svc-price{font-size:14px;font-weight:900;color:#FFD700;font-family:'Unbounded',sans-serif}
+.pf-svc-quote{font-size:10px;font-weight:900;color:#FFD700;display:flex;align-items:center;gap:5px;margin-top:4px}
+.pf-svc-cta-dot{position:absolute;bottom:10px;right:10px;width:26px;height:26px;border-radius:50%;background:#FFD700;display:flex;align-items:center;justify-content:center;font-size:10px;color:#000;box-shadow:0 0 10px rgba(255,215,0,.35);z-index:2}
+/* Cercle Genesis */
+.pf-cercle{background:rgba(255,215,0,.04);border:1px solid rgba(255,215,0,.16);border-radius:12px;padding:10px 14px;margin-bottom:14px;font-size:11px;color:#bbb;display:flex;align-items:center;gap:8px}
+.pf-cercle i{color:#FFD700;font-size:13px;flex-shrink:0}
+/* Avis */
+.pf-reviews{list-style:none;margin:0;padding:0}
+.pf-review{padding:12px 0;border-bottom:1px solid #141414}
+.pf-review:last-child{border-bottom:none}
+.pf-review-top{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.pf-review-stars{color:#FFD700;font-size:10px;letter-spacing:1px}
+.pf-review-name{font-size:11px;font-weight:700;color:#777}
+.pf-review-txt{font-size:12px;color:#555;line-height:1.45}
+/* Barre de recherche prestation */
+.pf-svc-search{background:#111;border:1px solid #1e1e1e;color:#fff;border-radius:10px;padding:9px 12px;width:100%;font-size:13px;font-family:inherit;outline:none;margin-bottom:12px;box-sizing:border-box}
+/* Portfolio videos */
+.p-dir-pf-video-upload{background:#000}
+.p-dir-pf-video-upload video{width:100%;height:100%;object-fit:cover;display:block}
+.p-dir-pf-link-thumb{width:100%;height:100%;object-fit:cover;display:block}
+
 /* Médailles classement (annuaire Prestataires) */
 .p-rank-card-wrap{position:relative;flex-shrink:0}
 .p-rank-row{display:flex;gap:12px;padding:0 16px 8px;overflow-x:auto;scrollbar-width:none}
@@ -2592,7 +2667,8 @@ a{text-decoration:none;color:inherit}
         <div id="ptnr-pf-video-popup" onclick="if(event.target===this)_ptnrPfCloseVideoPopup()">
           <div class="ptnr-pf-video-popup-sheet">
             <div style="font-size:13px;font-weight:900;color:#FFD700;font-family:'Unbounded',sans-serif;margin-bottom:14px;"><i class="fa-solid fa-circle-play"></i> Ajouter une vidéo</div>
-            <input type="url" class="ptnr-input" id="ptnr-pf-video-url" placeholder="Lien YouTube, Vimeo, Instagram…" style="margin-bottom:10px;">
+            <input type="url" class="ptnr-input" id="ptnr-pf-video-url" placeholder="Lien YouTube, Vimeo, Instagram…" style="margin-bottom:6px;" oninput="_ptnrPfOnVideoUrlInput()">
+            <div id="ptnr-pf-video-preview" style="margin-bottom:8px;"></div>
             <input type="text" class="ptnr-input" id="ptnr-pf-video-caption" placeholder="Légende (optionnel)" style="margin-bottom:14px;">
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
               <button class="ptnr-login-btn" onclick="_ptnrPfAddVideo()" style="margin-top:0;">Ajouter</button>
@@ -3800,6 +3876,31 @@ function _ptnrRenderServiceCards(services, audience, p){
       +'</div></div>';
   }).join('');
 }
+function _ptnrRenderProfileSvcCards(services, audience, p){
+  var filtered = services.filter(function(s){ return (s.audience||'particulier')===audience; });
+  if(!filtered.length) return '<div class="p-dir-review-empty">Aucune prestation dans cette catégorie.</div>';
+  return filtered.map(function(s){
+    var imgSrc = s.image || p.photo || '';
+    var imgHtml = imgSrc
+      ? '<div class="pf-svc-photo"><img src="'+imgSrc+'" alt="" loading="lazy"></div>'
+      : '<div class="pf-svc-photo pf-svc-photo-ph"><i class="fa-solid fa-bolt"></i></div>';
+    var isQuote = s.pricing_type === 'quote';
+    var priceHtml = isQuote
+      ? '<div class="pf-svc-quote"><i class="fa-solid fa-file-lines"></i> Sur devis</div>'
+      : '<div class="pf-svc-price">'+s.price+' €</div>';
+    var featHtml = (s.features && s.features.length)
+      ? '<div class="pf-svc-feats">'+s.features.slice(0,3).map(function(f){ return '<div class="pf-svc-feat"><i class="fa-solid fa-check"></i>'+f+'</div>'; }).join('')+'</div>'
+      : '';
+    return '<div class="pf-svc-card" onclick="openServiceDetail(\''+p.id+'\',\''+s.id+'\')">'
+      + imgHtml
+      + '<div class="pf-svc-body">'
+        + '<div class="pf-svc-label">'+s.label+'</div>'
+        + featHtml
+        + priceHtml
+      + '</div>'
+    + '</div>';
+  }).join('');
+}
 function toggleServiceCartSelection(serviceId){
   if(_partnerCartSelection[serviceId]) delete _partnerCartSelection[serviceId];
   else _partnerCartSelection[serviceId] = true;
@@ -3825,7 +3926,7 @@ function _ptnrDetailSwitchAudience(aud, el){
   if(el) el.className = 'p-sub-btn on';
   var grid = document.getElementById('p-svc-grid');
   var p = _dirPartnerCache[_partnerDetailId];
-  if(grid && p) grid.innerHTML = _ptnrRenderServiceCards(p.services||[], aud, p);
+  if(grid && p) grid.innerHTML = _ptnrRenderProfileSvcCards(p.services||[], aud, p);
 }
 function openPartnerDetail(partnerId){
   var _opdHeaders = (USER && !GUEST && USER._token) ? {'Authorization':'Bearer '+USER._token} : {};
@@ -3837,46 +3938,99 @@ function openPartnerDetail(partnerId){
       _dirPartnerCache[p.id] = p;
       _partnerDetailId = p.id;
       var label = partnerTypeLabel(p);
-      var heroHtml = '<div class="p-dir-detail-hero">'+(p.photo ? '<img src="'+p.photo+'" alt="">' : '<div class="p-dir-detail-hero-fallback"><i class="fa-solid fa-user"></i></div>')+'</div>';
-      var starsLabel = (p.rating && p.rating.count) ? ('<i class="fa-solid fa-star" style="color:var(--yellow)"></i> '+p.rating.average+' ('+p.rating.count+' avis)') : 'Aucun avis pour le moment';
-      var responseLabel = partnerResponseLabel(p);
-      var responseHtml = responseLabel ? '<div class="p-dir-detail-response"><i class="fa-solid fa-clock"></i> '+responseLabel+'</div>' : '';
+      var isFavPartner = !!(USER && USER.favoris && USER.favoris.indexOf(p.id)!==-1);
       var verifiedHtml = verifiedBadgeHtml(p);
       var badgeHtml = tierBadgeHtml(p.badge);
       var constellationHtml = constellationBadgeHtml(p.constellation);
-      var cityHtml = p.city ? '<div class="p-dir-detail-city"><i class="fas fa-location-dot"></i> '+p.city+'</div>' : '';
-      var bioHtml = p.bio ? '<div class="p-dir-detail-bio">'+p.bio+'</div>' : '';
-      var cercleHtml = (p.cercleGenesis && p.cercleGenesis.current)
-        ? '<div class="p-dir-cercle-badge"><i class="fa-solid '+p.cercleGenesis.current.icon+'"></i> '+p.cercleGenesis.current.label+' avec ce partenaire <span class="p-dir-cercle-count">('+p.cercleGenesis.collabsCurrent+' collaboration'+(p.cercleGenesis.collabsCurrent>1?'s':'')+')</span></div>'
-        : '';
+      var responseLabel = partnerResponseLabel(p);
       var social = p.social || {};
+
+      // ── HERO cinématographique ──
+      var heroBg = p.photo ? 'background-image:url('+p.photo+')' : 'background:#111';
+      var heroHtml = '<div class="pf-hero" id="pf-hero-'+p.id+'" style="'+heroBg+'">'
+        + '<div class="pf-hero-overlay"></div><div class="pf-scanlines"></div>'
+        + '<div class="pf-corner pf-tl"></div><div class="pf-corner pf-tr"></div>'
+        + '<div class="pf-corner pf-bl"></div><div class="pf-corner pf-br"></div>'
+        + '<div class="pf-hero-actions">'
+          + '<button class="pf-hero-btn" onclick="closeDetail()"><i class="fa-solid fa-xmark"></i></button>'
+          + '<div style="display:flex;gap:8px;">'
+            + '<button class="pf-hero-btn" onclick="sharePartnerProfile(\''+p.id+'\',\''+(p.prenom||'')+' '+(p.nom||'')+'\')"><i class="fas fa-share-nodes"></i></button>'
+            + '<button class="pf-hero-btn'+(isFavPartner?' fav-on':'')+'" data-fav-id="'+p.id+'" onclick="event.stopPropagation();toggleFavorite(\''+p.id+'\')">'+(isFavPartner?'<i class="fa-solid fa-heart"></i>':'<i class="fa-regular fa-heart"></i>')+'</button>'
+          + '</div>'
+        + '</div>'
+        + '<div class="pf-hero-id">'
+          + '<div class="pf-hero-name">'+(p.prenom||'')+' '+(p.nom||'')+'</div>'
+          + '<div class="pf-hero-type">'+label+'</div>'
+          + '<div class="pf-hero-badges">'+badgeHtml+' '+constellationHtml+' '+verifiedHtml+'</div>'
+        + '</div>'
+      + '</div>';
+      // Ken Burns au prochain tick
+      setTimeout(function(){ var h=document.getElementById('pf-hero-'+p.id); if(h) h.classList.add('live'); }, 50);
+
+      // ── HUD stats glassmorphism ──
+      var ratingVal = (p.rating && p.rating.count) ? (p.rating.average+'<small style="font-size:9px;font-weight:700;color:#666;margin-left:2px;">('+p.rating.count+')</small>') : '<span style="font-size:11px;color:#333;">—</span>';
+      var hudHtml = '<div class="pf-hud">'
+        + '<div class="pf-hud-cell"><div class="pf-hud-ico"><i class="fa-solid fa-star"></i></div><div class="pf-hud-val">'+ratingVal+'</div><div class="pf-hud-lbl">Note</div></div>'
+        + '<div class="pf-hud-sep"></div>'
+        + '<div class="pf-hud-cell"><div class="pf-hud-ico"><i class="fa-solid fa-clock"></i></div><div class="pf-hud-val">'+(responseLabel||'<span style="font-size:11px;color:#333;">—</span>')+'</div><div class="pf-hud-lbl">Réponse</div></div>'
+        + '<div class="pf-hud-sep"></div>'
+        + '<div class="pf-hud-cell"><div class="pf-hud-ico"><i class="fa-solid fa-location-dot"></i></div><div class="pf-hud-val" style="font-size:11px;">'+(p.city||'<span style="color:#333;">—</span>')+'</div><div class="pf-hud-lbl">Ville</div></div>'
+      + '</div>';
+
+      // ── Cercle Genesis ──
+      var cercleHtml = (p.cercleGenesis && p.cercleGenesis.current)
+        ? '<div class="pf-cercle"><i class="fa-solid '+p.cercleGenesis.current.icon+'"></i>'+p.cercleGenesis.current.label+' avec ce partenaire ('+p.cercleGenesis.collabsCurrent+' colla.)</div>'
+        : '';
+
+      // ── Bio ──
+      var bioHtml = p.bio ? '<div class="pf-bio">'+p.bio+'</div>' : '';
+
+      // ── Social ──
       var socialLinks = [];
       if(social.instagram) socialLinks.push('<a href="'+social.instagram+'" target="_blank" rel="noopener"><i class="fab fa-instagram"></i></a>');
       if(social.facebook) socialLinks.push('<a href="'+social.facebook+'" target="_blank" rel="noopener"><i class="fab fa-facebook"></i></a>');
       if(social.linkedin) socialLinks.push('<a href="'+social.linkedin+'" target="_blank" rel="noopener"><i class="fab fa-linkedin"></i></a>');
       if(social.tiktok) socialLinks.push('<a href="'+social.tiktok+'" target="_blank" rel="noopener"><i class="fab fa-tiktok"></i></a>');
       if(social.website) socialLinks.push('<a href="'+social.website+'" target="_blank" rel="noopener"><i class="fas fa-globe"></i></a>');
-      var socialHtml = socialLinks.length ? '<div class="p-dir-detail-social">'+socialLinks.join('')+'</div>' : '';
+      var socialHtml = socialLinks.length ? '<div class="pf-social">'+socialLinks.join('')+'</div>' : '';
+
+      // ── Portfolio bento ──
       var portfolio = p.portfolio || [];
-      var portfolioHtml = portfolio.length
-        ? '<div class="p-dir-pf-bento">'+portfolio.map(function(item, i){
-            var isHero = (i === 0);
-            var cls = 'p-dir-pf-item' + (isHero ? ' p-dir-pf-hero' : '') + (item.type==='video' ? ' p-dir-pf-video' : '');
-            if(item.type === 'video'){
-              return '<a class="'+cls+'" href="'+item.url+'" target="_blank" rel="noopener">'
-                + '<div class="p-dir-pf-play"><i class="fa-solid fa-circle-play"></i></div>'
+      var portfolioHtml = '';
+      if(portfolio.length){
+        portfolioHtml = '<div class="pf-sec"><i class="fa-solid fa-images"></i> Portfolio</div>'
+          + '<div class="p-dir-pf-bento">'
+          + portfolio.map(function(item, i){
+              var isHero = (i === 0);
+              var extraCls = (isHero ? ' p-dir-pf-hero' : '');
+              if(item.type === 'video_upload'){
+                return '<div class="p-dir-pf-item p-dir-pf-video-upload'+extraCls+'">'
+                  + '<video src="'+item.url+'" autoplay muted loop playsinline></video>'
+                  + (item.caption ? '<div class="p-dir-pf-caption">'+item.caption+'</div>' : '')
+                + '</div>';
+              }
+              if(item.type === 'video'){
+                var thumbContent = item.thumb
+                  ? '<img class="p-dir-pf-link-thumb" src="'+item.thumb+'" alt="" loading="lazy">'
+                  : '';
+                return '<a class="p-dir-pf-item p-dir-pf-video'+extraCls+'" href="'+item.url+'" target="_blank" rel="noopener">'
+                  + thumbContent
+                  + '<div class="p-dir-pf-play"><i class="fa-solid fa-circle-play"></i></div>'
+                  + (item.caption ? '<div class="p-dir-pf-caption">'+item.caption+'</div>' : '')
+                + '</a>';
+              }
+              return '<div class="p-dir-pf-item'+extraCls+'">'
+                + '<img src="'+item.url+'" alt="'+(item.caption||'')+'" loading="lazy">'
                 + (item.caption ? '<div class="p-dir-pf-caption">'+item.caption+'</div>' : '')
-              + '</a>';
-            }
-            return '<div class="'+cls+'">'
-              + '<img src="'+item.url+'" alt="'+(item.caption||'')+'" loading="lazy">'
-              + (item.caption ? '<div class="p-dir-pf-caption">'+item.caption+'</div>' : '')
-            + '</div>';
-          }).join('')+'</div>'
-        : '';
-      // Structure façon Uber Eats/Deliveroo (page d'un établissement) : onglets de
-      // catégorie (ici l'audience : Particuliers/Entreprises/Étudiants) puis grille de
-      // cartes "item de menu" avec photo systématique — adapté au catalogue GENESIS.
+              + '</div>';
+            }).join('')
+          + '</div>';
+      }
+
+      // ── Recherche prestation ──
+      var searchHtml = '<input class="pf-svc-search" id="svc-search-input-'+p.id+'" type="text" placeholder="Rechercher une prestation..." oninput="filterPartnerServices(\''+p.id+'\')">';
+
+      // ── Prestations HUD ──
       var services = p.services || [];
       _partnerCartSelection = {};
       var usedAudiences = ['particulier','entreprise','etudiant'].filter(function(a){
@@ -3889,41 +4043,31 @@ function openPartnerDetail(partnerId){
           }).join('')+'</div>'
         : '';
       var servicesHtml = services.length
-        ? svcTabsHtml + '<div class="p-svc-grid" id="p-svc-grid">'+_ptnrRenderServiceCards(services, _partnerDetailAudience, p)+'</div>'
+        ? svcTabsHtml + '<div class="pf-svcs" id="p-svc-grid">'+_ptnrRenderProfileSvcCards(services, _partnerDetailAudience, p)+'</div>'
         : '<div class="p-dir-review-empty">Ce partenaire n\'a pas encore publié de prestations.</div>';
+
+      // ── Avis ──
       var reviewsHtml = (data.reviews||[]).map(function(r){
-        return '<li><div class="p-dir-review-top"><span style="color:var(--yellow)">'+'<i class="fa-solid fa-star"></i>'.repeat(r.rating||0)+'</span><span class="p-dir-review-name">'+r.userName+'</span></div>'
-          +(r.comment?'<p class="p-dir-review-comment">'+r.comment+'</p>':'')+'</li>';
-      }).join('') || '<li class="p-dir-review-empty">Aucun avis publié pour le moment.</li>';
-      var isFavPartner = !!(USER && USER.favoris && USER.favoris.indexOf(p.id)!==-1);
+        return '<li class="pf-review">'
+          + '<div class="pf-review-top"><span class="pf-review-stars">'+'★'.repeat(r.rating||0)+'</span><span class="pf-review-name">'+r.userName+'</span></div>'
+          + (r.comment?'<div class="pf-review-txt">'+r.comment+'</div>':'')
+        + '</li>';
+      }).join('') || '<li style="color:#333;font-size:12px;padding:10px 0;">Aucun avis publié pour le moment.</li>';
+
       document.getElementById('detail-content').innerHTML = ''
-        +heroHtml
-        +'<div class="p-dir-detail-actionbar">'
-        +'<button class="p-dir-action-btn" onclick="sharePartnerProfile(\''+p.id+'\',\''+(p.prenom||'')+' '+(p.nom||'')+'\')"><i class="fas fa-share-nodes"></i></button>'
-        +'<button class="p-dir-action-btn" onclick="togglePartnerServiceSearch(\''+p.id+'\')"><i class="fas fa-magnifying-glass"></i></button>'
-        +'<button class="p-dir-action-btn fav'+(isFavPartner?' on':'')+'" data-fav-id="'+p.id+'" onclick="event.stopPropagation();toggleFavorite(\''+p.id+'\')">'+(isFavPartner?'<i class="fa-solid fa-heart"></i>':'<i class="fa-regular fa-heart"></i>')+'</button>'
-        +'</div>'
-        +'<div class="p-dir-svc-search-wrap" id="svc-search-wrap-'+p.id+'">'
-        +'<input id="svc-search-input-'+p.id+'" type="text" placeholder="Rechercher une prestation..." oninput="filterPartnerServices(\''+p.id+'\')">'
-        +'</div>'
-        +'<div class="p-dir-partner-header">'
-        +'<div class="p-dir-detail-namerow"><span class="p-dir-detail-name">'+(p.prenom||'')+' '+(p.nom||'')+'</span>'+verifiedHtml+'</div>'
-        +'<div class="p-dir-detail-badgerow">'+badgeHtml+' '+constellationHtml+'</div>'
-        +'<div class="detail-sub">'+label+'</div>'
-        +cityHtml
-        +'<div class="detail-payment">'+starsLabel+'</div>'
-        +responseHtml
-        +'</div>'
-        +cercleHtml
-        +bioHtml
-        +socialHtml
-        +(portfolioHtml ? '<div class="detail-divider"></div><div class="detail-feats-title">Portfolio</div>'+portfolioHtml : '')
-        +'<div class="detail-divider"></div>'
-        +'<div class="detail-feats-title">Prestations</div>'
-        +'<div class="p-dir-services-list">'+servicesHtml+'</div>'
-        +'<div class="detail-divider"></div>'
-        +'<div class="detail-feats-title">Avis clients</div>'
-        +'<ul class="p-dir-reviews-list">'+reviewsHtml+'</ul>';
+        + heroHtml
+        + '<div style="padding:0 0 32px;">'
+          + hudHtml
+          + cercleHtml
+          + bioHtml
+          + socialHtml
+          + portfolioHtml
+          + '<div class="pf-sec"><i class="fa-solid fa-bolt"></i> Prestations</div>'
+          + searchHtml
+          + servicesHtml
+          + '<div class="pf-sec" style="margin-top:22px;"><i class="fa-solid fa-star"></i> Avis clients</div>'
+          + '<ul class="pf-reviews">'+reviewsHtml+'</ul>'
+        + '</div>';
       document.getElementById('detail-sheet').className='on';
     }).catch(function(){});
 }
@@ -4014,7 +4158,7 @@ function filterPartnerServices(partnerId){
     return !q || (s.label||'').toLowerCase().indexOf(q)!==-1 || (s.description||'').toLowerCase().indexOf(q)!==-1;
   });
   var grid = document.getElementById('p-svc-grid');
-  if(grid) grid.innerHTML = _ptnrRenderServiceCards(filtered, _partnerDetailAudience, p);
+  if(grid) grid.innerHTML = _ptnrRenderProfileSvcCards(filtered, _partnerDetailAudience, p);
 }
 function addServiceToMainCart(partnerId, serviceId){
   if(!USER||GUEST){ closeServiceDetail(); closeDetail(); showLoginSheet(); return; }
@@ -9712,11 +9856,18 @@ function _ptnrPfRender(){
     return;
   }
   grid.innerHTML = _ptnrPfItems.map(function(item, idx){
+    if(item.type === 'video_upload'){
+      return '<div class="ptnr-pf-item" data-pf-idx="'+idx+'">'
+        + '<video src="'+item.url+'" muted style="width:100%;height:100%;object-fit:cover;border-radius:10px;"></video>'
+        + '<div class="ptnr-pf-overlay"><span class="ptnr-pf-type-badge"><i class="fa-solid fa-video"></i> Vidéo</span><button class="ptnr-pf-del" type="button" onclick="event.stopPropagation();_ptnrPfDelete('+idx+')"><i class="fa-solid fa-trash-can"></i></button></div>'
+      + '</div>';
+    }
     if(item.type === 'video'){
+      var thumbEl = item.thumb ? '<img src="'+item.thumb+'" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:10px;">' : '';
       return '<div class="ptnr-pf-item ptnr-pf-video-card" data-pf-idx="'+idx+'">'
-        + '<i class="fa-solid fa-circle-play"></i>'
-        + '<span>'+(item.caption || item.url)+'</span>'
-        + '<div class="ptnr-pf-overlay"><span class="ptnr-pf-type-badge"><i class="fa-solid fa-circle-play"></i> Vidéo</span><button class="ptnr-pf-del" type="button" onclick="event.stopPropagation();_ptnrPfDelete('+idx+')"><i class="fa-solid fa-trash-can"></i></button></div>'
+        + thumbEl
+        + '<i class="fa-solid fa-circle-play" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:28px;color:#fff;pointer-events:none;"></i>'
+        + '<div class="ptnr-pf-overlay"><span class="ptnr-pf-type-badge"><i class="fa-solid fa-circle-play"></i> Lien vidéo</span><button class="ptnr-pf-del" type="button" onclick="event.stopPropagation();_ptnrPfDelete('+idx+')"><i class="fa-solid fa-trash-can"></i></button></div>'
       + '</div>';
     }
     return '<div class="ptnr-pf-item" data-pf-idx="'+idx+'">'
@@ -9730,11 +9881,27 @@ function _ptnrPfOnPhotosSelected(input){
   if(!files || !files.length) return;
   var promises = [];
   for(var i=0;i<files.length;i++){
-    promises.push(_ptnrImageFileToCompressedBase64(files[i], 1200, 0.82));
+    (function(file){
+      var isVideo = file.type.indexOf('video/') === 0;
+      if(isVideo){
+        if(file.size > 50*1024*1024){
+          alert('La vidéo "'+file.name+'" dépasse 50 Mo et ne peut pas être uploadée.');
+          return;
+        }
+        promises.push(new Promise(function(resolve){
+          var reader = new FileReader();
+          reader.onload = function(e){ resolve({ type:'video_upload', dataUri: e.target.result }); };
+          reader.readAsDataURL(file);
+        }));
+      } else {
+        promises.push(_ptnrImageFileToCompressedBase64(file, 1200, 0.82).then(function(uri){ return { type:'photo', dataUri: uri }; }));
+      }
+    })(files[i]);
   }
-  Promise.all(promises).then(function(dataUris){
-    dataUris.forEach(function(uri){
-      _ptnrPfItems.push({ id: 'PF-' + Math.random().toString(36).slice(2,8), type: 'photo', url: uri, caption: '' });
+  Promise.all(promises).then(function(results){
+    results.forEach(function(r){
+      if(!r) return;
+      _ptnrPfItems.push({ id: 'PF-' + Math.random().toString(36).slice(2,8), type: r.type, url: r.dataUri, caption: '' });
     });
     _ptnrPfRender();
   }).catch(function(e){ console.error('[PTNR-PF] Erreur upload:', e); });
@@ -9744,20 +9911,41 @@ function _ptnrPfOpenVideoPopup(){
   var p = document.getElementById('ptnr-pf-video-popup');
   var u = document.getElementById('ptnr-pf-video-url');
   var c = document.getElementById('ptnr-pf-video-caption');
+  var prev = document.getElementById('ptnr-pf-video-preview');
   if(u) u.value = '';
   if(c) c.value = '';
+  if(prev) prev.innerHTML = '';
   if(p){ p.className = 'on'; if(u) setTimeout(function(){ u.focus(); }, 80); }
 }
 function _ptnrPfCloseVideoPopup(){
   var p = document.getElementById('ptnr-pf-video-popup');
   if(p) p.className = '';
 }
+function _ptnrPfExtractThumb(url){
+  // YouTube: youtube.com/watch?v=ID, youtu.be/ID, youtube.com/shorts/ID
+  var ytMatch = url.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/);
+  if(ytMatch) return 'https://img.youtube.com/vi/'+ytMatch[1]+'/hqdefault.jpg';
+  return null;
+}
+function _ptnrPfOnVideoUrlInput(){
+  var urlEl = document.getElementById('ptnr-pf-video-url');
+  var prev = document.getElementById('ptnr-pf-video-preview');
+  if(!urlEl || !prev) return;
+  var url = urlEl.value.trim();
+  var thumb = _ptnrPfExtractThumb(url);
+  if(thumb){
+    prev.innerHTML = '<img src="'+thumb+'" alt="Aperçu" style="width:100%;border-radius:10px;margin-top:10px;border:1px solid #222;">';
+  } else {
+    prev.innerHTML = url ? '<div style="font-size:11px;color:#444;margin-top:8px;"><i class="fa-solid fa-circle-info"></i> Aperçu non disponible pour ce lien</div>' : '';
+  }
+}
 function _ptnrPfAddVideo(){
   var urlEl = document.getElementById('ptnr-pf-video-url');
   var capEl = document.getElementById('ptnr-pf-video-caption');
   var url = urlEl ? urlEl.value.trim() : '';
   if(!url){ if(urlEl) urlEl.focus(); return; }
-  _ptnrPfItems.push({ id: 'PF-' + Math.random().toString(36).slice(2,8), type: 'video', url: url, caption: capEl ? capEl.value.trim() : '' });
+  var thumb = _ptnrPfExtractThumb(url) || '';
+  _ptnrPfItems.push({ id: 'PF-' + Math.random().toString(36).slice(2,8), type: 'video', url: url, caption: capEl ? capEl.value.trim() : '', thumb: thumb });
   _ptnrPfRender();
   _ptnrPfCloseVideoPopup();
 }

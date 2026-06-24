@@ -8518,8 +8518,8 @@ app.put('/api/partner/portfolio', authenticatePartner, (req, res) => {
         }
         const cleaned = [];
         for (const item of portfolio) {
-            if (!item || (item.type !== 'photo' && item.type !== 'video')) {
-                return res.status(400).json({ error: 'Chaque element doit avoir un type "photo" ou "video"' });
+            if (!item || (item.type !== 'photo' && item.type !== 'video' && item.type !== 'video_upload')) {
+                return res.status(400).json({ error: 'Chaque element doit avoir un type "photo", "video" ou "video_upload"' });
             }
             if (!item.url || typeof item.url !== 'string' || !item.url.trim()) {
                 return res.status(400).json({ error: 'Chaque element doit avoir une url' });
@@ -8528,7 +8528,8 @@ app.put('/api/partner/portfolio', authenticatePartner, (req, res) => {
                 id: item.id || ('PF-' + uuidv4().split('-')[0]),
                 type: item.type,
                 url: item.url.trim(),
-                caption: (item.caption || '').trim()
+                caption: (item.caption || '').trim(),
+                thumb: (item.thumb || '').trim()
             });
         }
         const partners = loadPartners();
