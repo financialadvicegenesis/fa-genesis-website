@@ -1010,7 +1010,6 @@ a{text-decoration:none;color:inherit}
 /* Hero plein-écran */
 .pf-hero{margin:0 -24px;height:300px;position:relative;overflow:hidden;background:#0d0d0d;background-size:cover;background-position:center top}
 .pf-hero-overlay{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.22) 0%,rgba(0,0,0,.0) 30%,rgba(13,13,13,.96) 100%)}
-.pf-scanlines{position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.06) 2px,rgba(0,0,0,.06) 4px);z-index:1}
 /* Brackets HUD dans les coins du héro */
 .pf-corner{position:absolute;width:18px;height:18px;border-color:#FFD700;border-style:solid;opacity:.55;z-index:2}
 .pf-tl{top:52px;left:14px;border-width:2px 0 0 2px}.pf-tr{top:52px;right:14px;border-width:2px 2px 0 0}
@@ -3946,7 +3945,7 @@ function openPartnerDetail(partnerId){
       // ── HERO cinématographique ──
       var heroBg = p.photo ? 'background-image:url('+p.photo+')' : 'background:#111';
       var heroHtml = '<div class="pf-hero" id="pf-hero-'+p.id+'" style="'+heroBg+'">'
-        + '<div class="pf-hero-overlay"></div><div class="pf-scanlines"></div>'
+        + '<div class="pf-hero-overlay"></div>'
         + '<div class="pf-corner pf-tl"></div><div class="pf-corner pf-tr"></div>'
         + '<div class="pf-corner pf-bl"></div><div class="pf-corner pf-br"></div>'
         + '<div class="pf-hero-actions">'
