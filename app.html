@@ -4061,10 +4061,7 @@ function openPartnerDetail(partnerId){
           + '</div>';
       }
 
-      // ── Recherche prestation ──
-      var searchHtml = '<input class="pf-svc-search" id="svc-search-input-'+p.id+'" type="text" placeholder="Rechercher une prestation..." oninput="filterPartnerServices(\''+p.id+'\')">';
-
-      // ── Prestations HUD ──
+      // ── Prestations ──
       var services = p.services || [];
       _partnerCartSelection = {};
       var usedAudiences = ['particulier','entreprise','etudiant'].filter(function(a){
@@ -4088,22 +4085,27 @@ function openPartnerDetail(partnerId){
         + '</li>';
       }).join('') || '<li style="color:#333;font-size:12px;padding:10px 0;">Aucun avis publié pour le moment.</li>';
 
-      document.getElementById('detail-content').innerHTML = ''
+      var detailEl = document.getElementById('detail-content');
+      var sheetEl = document.getElementById('detail-sheet');
+      if(!detailEl || !sheetEl) return;
+      detailEl.innerHTML = ''
         + heroHtml
         + '<div style="padding:0 0 32px;">'
           + hudHtml
           + cercleHtml
-          + bioHtml
+          + '<div class="pf-sec"><i class="fa-solid fa-bolt"></i> Prestations</div>'
+          + servicesHtml
+          + (bioHtml ? '<div class="pf-sec" style="margin-top:18px;"><i class="fa-solid fa-user"></i> À propos</div>' + bioHtml : '')
           + socialHtml
           + portfolioHtml
-          + '<div class="pf-sec"><i class="fa-solid fa-bolt"></i> Prestations</div>'
-          + searchHtml
-          + servicesHtml
           + '<div class="pf-sec" style="margin-top:22px;"><i class="fa-solid fa-star"></i> Avis clients</div>'
           + '<ul class="pf-reviews">'+reviewsHtml+'</ul>'
         + '</div>';
-      document.getElementById('detail-sheet').className='on';
-    }).catch(function(){});
+      sheetEl.className='on';
+    }).catch(function(e){
+      var t = document.getElementById('toast-stack');
+      if(t){ var d=document.createElement('div'); d.className='toast toast-err'; d.textContent='Impossible de charger ce profil.'; t.appendChild(d); setTimeout(function(){ d.remove(); }, 4000); }
+    });
 }
 
 // ── Détail d'une prestation (overlay façon Deliveroo) ──

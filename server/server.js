@@ -9847,7 +9847,7 @@ app.get('/api/partners/:id/reviews', (req, res) => {
         const activeServices = (partner.services || []).filter(s => s.active !== false)
             .map(s => ({ id: s.id, label: s.label, description: s.description || '', price: s.price, pricing_type: s.pricing_type || 'fixed', features: Array.isArray(s.features) ? s.features : [], audience: s.audience || 'particulier', image: s.image || '' }));
         const activePortfolio = (partner.portfolio || [])
-            .map(item => ({ id: item.id, type: item.type, url: item.url, caption: item.caption || '' }));
+            .map(item => ({ id: item.id, type: item.type, url: item.url, thumb: item.thumb || '', caption: item.caption || '' }));
         const reviews = loadPartnerReviews()
             .filter(r => r.partnerId === partner.id && r.status === 'published')
             .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
