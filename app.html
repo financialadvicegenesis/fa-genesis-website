@@ -3258,8 +3258,8 @@ function _ptnrMinutesToLabel(m){
 function partnerResponseLabel(p){
   // Priorité à l'engagement déclaré par le partenaire lui-même, sinon à la moyenne
   // calculée automatiquement à partir de ses réponses passées.
-  if(typeof p.responseTimeCommitmentMinutes === 'number') return 'Répond sous '+_ptnrMinutesToLabel(p.responseTimeCommitmentMinutes);
-  if(typeof p.avgResponseMinutes === 'number') return 'Répond en ~'+_ptnrMinutesToLabel(p.avgResponseMinutes);
+  if(typeof p.responseTimeCommitmentMinutes === 'number') return 'Sous '+_ptnrMinutesToLabel(p.responseTimeCommitmentMinutes);
+  if(typeof p.avgResponseMinutes === 'number') return 'Sous ~'+_ptnrMinutesToLabel(p.avgResponseMinutes);
   return '';
 }
 function partnerMetaLineHtml(p){
