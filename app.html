@@ -2651,6 +2651,7 @@ a{text-decoration:none;color:inherit}
             </button>
           </div>
           <input type="file" id="ptnr-pf-file-input" accept="image/*" multiple style="display:none;" onchange="_ptnrPfOnPhotosSelected(this)">
+          <input type="file" id="ptnr-pf-video-file-input" accept="video/*" multiple style="display:none;" onchange="_ptnrPfOnPhotosSelected(this)">
           <!-- Grille -->
           <div class="ptnr-pf-grid" id="ptnr-pf-grid"></div>
           <!-- Save -->
@@ -2663,14 +2664,25 @@ a{text-decoration:none;color:inherit}
         <!-- Popup ajout vidéo -->
         <div id="ptnr-pf-video-popup" onclick="if(event.target===this)_ptnrPfCloseVideoPopup()">
           <div class="ptnr-pf-video-popup-sheet">
-            <div style="font-size:13px;font-weight:900;color:#FFD700;font-family:'Unbounded',sans-serif;margin-bottom:14px;"><i class="fa-solid fa-circle-play"></i> Ajouter une vidéo</div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+              <div style="font-size:13px;font-weight:900;color:#FFD700;font-family:'Unbounded',sans-serif;"><i class="fa-solid fa-circle-play"></i> Ajouter une vidéo</div>
+              <button onclick="_ptnrPfCloseVideoPopup()" style="background:none;border:none;color:#555;font-size:18px;cursor:pointer;padding:0;"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <!-- Upload depuis la galerie -->
+            <button type="button" class="ptnr-login-btn" onclick="document.getElementById('ptnr-pf-video-file-input').click()" style="margin-top:0;margin-bottom:16px;display:flex;align-items:center;justify-content:center;gap:10px;background:linear-gradient(135deg,#1a1200,#0d0d0d);border-color:rgba(255,215,0,.4);">
+              <i class="fa-solid fa-photo-film" style="font-size:16px;"></i>
+              Choisir depuis ma galerie / fichiers
+            </button>
+            <!-- Séparateur -->
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+              <div style="flex:1;height:1px;background:#1e1e1e;"></div>
+              <span style="font-size:10px;color:#333;font-weight:700;letter-spacing:1px;">OU COLLER UN LIEN</span>
+              <div style="flex:1;height:1px;background:#1e1e1e;"></div>
+            </div>
             <input type="url" class="ptnr-input" id="ptnr-pf-video-url" placeholder="Lien YouTube, Vimeo, Instagram…" style="margin-bottom:6px;" oninput="_ptnrPfOnVideoUrlInput()">
             <div id="ptnr-pf-video-preview" style="margin-bottom:8px;"></div>
             <input type="text" class="ptnr-input" id="ptnr-pf-video-caption" placeholder="Légende (optionnel)" style="margin-bottom:14px;">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-              <button class="ptnr-login-btn" onclick="_ptnrPfAddVideo()" style="margin-top:0;">Ajouter</button>
-              <button class="ptnr-login-btn" onclick="_ptnrPfCloseVideoPopup()" style="margin-top:0;background:#1a1a1a;color:#888;border-color:#333;">Annuler</button>
-            </div>
+            <button class="ptnr-login-btn" onclick="_ptnrPfAddVideo()" style="margin-top:0;">Ajouter le lien</button>
           </div>
         </div>
 
@@ -9896,6 +9908,8 @@ function _ptnrPfOnPhotosSelected(input){
       }
     })(files[i]);
   }
+  var isVideoInput = input.id === 'ptnr-pf-video-file-input';
+  if(isVideoInput) _ptnrPfCloseVideoPopup();
   Promise.all(promises).then(function(results){
     results.forEach(function(r){
       if(!r) return;
