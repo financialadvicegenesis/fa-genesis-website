@@ -1421,13 +1421,6 @@ a{text-decoration:none;color:inherit}
 .ptnr-reply-row{display:flex;gap:8px;margin-top:10px;}
 .ptnr-reply-input{flex:1;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;color:#fff;font-size:16px;padding:10px 12px;font-family:inherit;resize:none;}
 .ptnr-reply-send{background:#FFD700;color:#000;font-weight:900;font-size:11px;padding:10px 14px;border:none;border-radius:8px;cursor:pointer;}
-.ptnr-stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:16px;}
-.ptnr-stat{background:#111;border:1px solid #1e1e1e;border-radius:14px;padding:14px 8px;text-align:center;animation:cardFloat .4s cubic-bezier(.34,1.2,.64,1) both;}
-.ptnr-stat:nth-child(2){animation-delay:.05s;}
-.ptnr-stat:nth-child(3){animation-delay:.1s;}
-.ptnr-stat-ico{width:28px;height:28px;border-radius:9px;background:rgba(255,215,0,.12);color:#FFD700;display:flex;align-items:center;justify-content:center;font-size:12px;margin:0 auto 7px;}
-.ptnr-stat-val{font-size:21px;font-weight:900;color:#FFD700;font-family:'Unbounded',sans-serif;}
-.ptnr-stat-label{font-size:10px;color:#888;margin-top:2px;text-transform:uppercase;letter-spacing:.3px;}
 .ptnr-empty{text-align:center;padding:40px 20px;color:#555;}
 .ptnr-empty-ico{font-size:36px;margin-bottom:12px;}
 .ptnr-empty-txt{font-size:13px;font-weight:700;}
@@ -2443,13 +2436,8 @@ a{text-decoration:none;color:inherit}
           <button class="ptnr-notif-btn" onclick="_ptnrEnablePush()">Activer</button>
         </div>
 
-        <!-- Sub-screen: Home / Stats -->
+        <!-- Sub-screen: Home -->
         <div class="ptnr-screen on" id="ptnr-screen-home">
-          <div class="ptnr-stat-row">
-            <div class="ptnr-stat"><div class="ptnr-stat-ico"><i class="fa-solid fa-clipboard-list"></i></div><div class="ptnr-stat-val" id="ptnr-stat-projets">—</div><div class="ptnr-stat-label">Projets</div></div>
-            <div class="ptnr-stat"><div class="ptnr-stat-ico"><i class="fa-solid fa-file-lines"></i></div><div class="ptnr-stat-val" id="ptnr-stat-devis">—</div><div class="ptnr-stat-label">Devis</div></div>
-            <div class="ptnr-stat"><div class="ptnr-stat-ico"><i class="fa-solid fa-comment-dots"></i></div><div class="ptnr-stat-val" id="ptnr-stat-msg">—</div><div class="ptnr-stat-label">Messages</div></div>
-          </div>
           <div id="ptnr-home-list" style="padding:0 0 16px;"></div>
 
           <!-- Mes tarifs & prestations (style menu "Uber Eats / Deliveroo") -->
@@ -6918,9 +6906,6 @@ function _ptnrLoadHome(){
 
     var pendingDevis = devis.filter(function(q){return q.status==='pending'||q.status==='open';}).length;
     var unreadMsg = inbox.filter(function(m){return m.unread||m.isUnread;}).length;
-    var sp = document.getElementById('ptnr-stat-projets'); _animateCount(sp, projets.length);
-    var sd = document.getElementById('ptnr-stat-devis'); _animateCount(sd, pendingDevis);
-    var sm = document.getElementById('ptnr-stat-msg'); _animateCount(sm, unreadMsg || inbox.length);
 
     var html = '';
 
@@ -9672,6 +9657,7 @@ function _ptnrSaveResponseTime(){
 }
 
 function _ptnrRenderServiceItemRow(service){
+  var isQuote = service.pricing_type === 'quote';
   var imageHtml = service.image
     ? '<img src="'+service.image+'" alt="">'
     : '<i class="fa-solid fa-image" style="opacity:.3;"></i>';
@@ -9684,11 +9670,32 @@ function _ptnrRenderServiceItemRow(service){
       + '<input type="text" class="ptnr-input ptnr-svc-label" placeholder="Ex: Shooting photo corporate" value="'+(service.label||'').replace(/"/g,'&quot;')+'">'
       + '<input type="text" class="ptnr-input ptnr-svc-desc" placeholder="Détails (optionnel)" value="'+(service.description||'').replace(/"/g,'&quot;')+'">'
       + '<div class="ptnr-svc-price-row">'
-        + '<input type="number" class="ptnr-input ptnr-svc-price" placeholder="Prix (€)" value="'+(service.price||'')+'" min="0" step="0.01">'
+        + '<button type="button" class="ptnr-svc-ptg-btn" data-mode="fixed" onclick="_ptnrSelectPricingMode(this,\'fixed\')" style="padding:6px 10px;font-size:10px;font-weight:900;text-transform:uppercase;border:2px solid #333;cursor:pointer;background:'+(isQuote?'#1a1a1a':'#FFD700')+';color:'+(isQuote?'#666':'#000')+';">Prix fixe</button>'
+        + '<button type="button" class="ptnr-svc-ptg-btn" data-mode="quote" onclick="_ptnrSelectPricingMode(this,\'quote\')" style="padding:6px 10px;font-size:10px;font-weight:900;text-transform:uppercase;border:2px solid #333;border-left:none;cursor:pointer;background:'+(isQuote?'#FFD700':'#1a1a1a')+';color:'+(isQuote?'#000':'#666')+';">Sur devis</button>'
+        + '<input type="number" class="ptnr-input ptnr-svc-price" placeholder="Prix (€)" value="'+(isQuote?'':(service.price||''))+'" min="0" step="0.01" style="flex:1;margin-bottom:0'+(isQuote?';display:none':'')+'">'
+        + '<input type="hidden" class="ptnr-svc-pricing-type" value="'+(isQuote?'quote':'fixed')+'">'
         + '<button class="ptnr-svc-del" onclick="_ptnrRemoveServiceItem(this)" title="Supprimer"><i class="fa-solid fa-trash"></i></button>'
       + '</div>'
     + '</div>'
   + '</div>';
+}
+function _ptnrSelectPricingMode(btn, mode){
+  var row = btn.closest('.ptnr-svc-row');
+  if(!row) return;
+  var priceEl = row.querySelector('.ptnr-svc-price');
+  var typeEl = row.querySelector('.ptnr-svc-pricing-type');
+  var btns = row.querySelectorAll('.ptnr-svc-ptg-btn');
+  if(mode==='quote'){
+    if(priceEl){ priceEl.style.display='none'; priceEl.value=''; }
+    if(typeEl) typeEl.value='quote';
+    btns.forEach(function(b){ b.style.background='#1a1a1a'; b.style.color='#666'; });
+    btn.style.background='#FFD700'; btn.style.color='#000';
+  } else {
+    if(priceEl) priceEl.style.display='';
+    if(typeEl) typeEl.value='fixed';
+    btns.forEach(function(b){ b.style.background='#1a1a1a'; b.style.color='#666'; });
+    btn.style.background='#FFD700'; btn.style.color='#000';
+  }
 }
 
 function _ptnrRenderServicesSection(){
@@ -9738,16 +9745,20 @@ function _ptnrCollectServiceItems(audience){
     var labelEl = rows[i].querySelector('.ptnr-svc-label');
     var descEl = rows[i].querySelector('.ptnr-svc-desc');
     var priceEl = rows[i].querySelector('.ptnr-svc-price');
+    var typeEl = rows[i].querySelector('.ptnr-svc-pricing-type');
     var label = labelEl ? labelEl.value.trim() : '';
+    var isQuote = typeEl ? typeEl.value === 'quote' : false;
     var price = priceEl ? parseFloat(priceEl.value) : 0;
-    if(!label || !price || price<=0) continue;
+    if(!label) continue;
+    if(!isQuote && (!price || price<=0)) continue;
     var serviceId = rows[i].getAttribute('data-service-id') || '';
     var imageAttr = rows[i].getAttribute('data-service-image') || '';
     services.push({
       id: serviceId,
       label: label,
       description: descEl ? descEl.value.trim() : '',
-      price: price,
+      price: isQuote ? 0 : price,
+      pricing_type: isQuote ? 'quote' : 'fixed',
       active: true,
       audience: audience,
       image: imageAttr ? decodeURIComponent(imageAttr) : ''
