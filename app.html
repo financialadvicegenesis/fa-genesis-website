@@ -1482,19 +1482,30 @@ a{text-decoration:none;color:inherit}
 .ptnr-audience-pill{flex-shrink:0;padding:8px 16px;border-radius:20px;background:#1a1a1a;border:1px solid #2a2a2a;color:#888;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.3px;cursor:pointer;transition:all .2s;}
 .ptnr-audience-pill.on{background:#FFD700;color:#000;border-color:#FFD700;box-shadow:0 0 14px rgba(255,215,0,.3);}
 .ptnr-audience-pill:active{transform:scale(.94);}
-.ptnr-svc-list{display:block;}
-.ptnr-svc-row{background:#111;border:1px solid #1e1e1e;border-radius:14px;padding:12px;margin-bottom:10px;display:flex;gap:12px;align-items:flex-start;animation:cardFloat .35s cubic-bezier(.34,1.2,.64,1) both;transition:border-color .15s;}
-.ptnr-svc-row:focus-within{border-color:rgba(255,215,0,.4);}
-.ptnr-svc-thumb{width:56px;height:56px;border-radius:12px;background:#1a1a1a;border:1px dashed #2a2a2a;overflow:hidden;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#555;cursor:pointer;font-size:18px;transition:border-color .15s;}
-.ptnr-svc-thumb:active{border-color:#FFD700;}
-.ptnr-svc-thumb img{width:100%;height:100%;object-fit:cover;}
-.ptnr-svc-fields{flex:1;min-width:0;}
-.ptnr-svc-fields .ptnr-input{margin-bottom:7px;padding:9px 10px;font-size:12.5px;}
-.ptnr-svc-price-row{display:flex;gap:8px;align-items:center;}
-.ptnr-svc-price-row .ptnr-input{margin-bottom:0;flex:1;color:#FFD700;font-weight:900;}
-.ptnr-svc-del{background:transparent;border:none;color:#ef4444;font-size:14px;padding:9px;cursor:pointer;flex-shrink:0;border-radius:8px;transition:background .15s,transform .15s;}
-.ptnr-svc-del:active{background:rgba(239,68,68,.12);transform:scale(.9);}
-.ptnr-svc-add-btn{width:100%;background:transparent;border:2px dashed #2a2a2a;color:#888;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.3px;padding:13px;border-radius:12px;cursor:pointer;margin-bottom:12px;transition:border-color .2s,color .2s;}
+/* ── Grille d'édition des prestations (WYSIWYG — copie le rendu client) ── */
+.ptnr-svc-list{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;padding:0 16px 4px;}
+.ptnr-svc-card{background:#111;border:1.5px solid #1e1e1e;border-radius:14px;overflow:hidden;animation:cardFloat .35s cubic-bezier(.34,1.2,.64,1) both;transition:border-color .15s;}
+.ptnr-svc-card:focus-within{border-color:rgba(255,215,0,.35);}
+.ptnr-svc-card-photo{position:relative;width:100%;aspect-ratio:1/1;background:#1a1a1a;overflow:hidden;cursor:pointer;}
+.ptnr-svc-card-photo img{width:100%;height:100%;object-fit:cover;display:block;}
+.ptnr-svc-card-photo-ph{width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#FFD700;font-size:26px;opacity:.4;}
+.ptnr-svc-card-upload{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.55);opacity:0;transition:opacity .2s;font-size:20px;color:#fff;pointer-events:none;}
+.ptnr-svc-card-photo:hover .ptnr-svc-card-upload,.ptnr-svc-card-photo:active .ptnr-svc-card-upload{opacity:1;}
+.ptnr-svc-card-cta{position:absolute;bottom:7px;right:7px;width:26px;height:26px;border-radius:50%;background:#FFD700;display:flex;align-items:center;justify-content:center;font-size:10px;color:#000;pointer-events:none;}
+.ptnr-svc-card-del{position:absolute;top:7px;right:7px;width:26px;height:26px;border-radius:50%;background:rgba(0,0,0,.78);color:#ef4444;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:10px;z-index:2;transition:background .15s;}
+.ptnr-svc-card-del:active{background:rgba(239,68,68,.25);}
+.ptnr-svc-card-body{padding:9px 11px 11px;}
+.ptnr-svc-label{display:block;width:100%;background:none;border:none;border-bottom:1px dashed #2a2a2a;color:#fff;font-size:12px;font-weight:900;padding:2px 0 5px;margin-bottom:4px;font-family:inherit;outline:none;}
+.ptnr-svc-label::placeholder{color:#444;font-weight:700;}
+.ptnr-svc-desc{display:block;width:100%;background:none;border:none;border-bottom:1px dashed #1e1e1e;color:#888;font-size:10px;padding:2px 0 5px;margin-bottom:6px;font-family:inherit;outline:none;}
+.ptnr-svc-desc::placeholder{color:#333;}
+.ptnr-svc-pricing-row{display:flex;align-items:center;gap:5px;flex-wrap:wrap;}
+.ptnr-svc-price{width:72px;background:none;border:none;color:#FFD700;font-size:13px;font-weight:900;padding:0;font-family:inherit;outline:none;-webkit-appearance:none;-moz-appearance:textfield;}
+.ptnr-svc-price::-webkit-outer-spin-button,.ptnr-svc-price::-webkit-inner-spin-button{-webkit-appearance:none;}
+.ptnr-svc-price::placeholder{color:#3a3000;font-size:11px;}
+.ptnr-svc-ptg-mini{padding:2px 7px;font-size:8.5px;font-weight:900;text-transform:uppercase;border-radius:5px;border:1.5px solid #2a2a2a;cursor:pointer;background:#1a1a1a;color:#555;transition:all .12s;white-space:nowrap;}
+.ptnr-svc-quote-show{font-size:10px;font-weight:900;color:#888;background:#1e1e1e;border:1px solid #2a2a2a;padding:2px 7px;border-radius:4px;}
+.ptnr-svc-add-btn{width:calc(100% - 32px);margin:0 16px 12px;background:transparent;border:2px dashed #2a2a2a;color:#888;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.3px;padding:13px;border-radius:12px;cursor:pointer;transition:border-color .2s,color .2s;display:block;}
 .ptnr-svc-add-btn:active{border-color:#FFD700;color:#FFD700;}
 #pay-overlay{display:none;position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,.72);backdrop-filter:blur(4px);align-items:flex-end;justify-content:center;}
 #pay-overlay.open{display:flex;animation:regFadeIn .2s ease;}
@@ -9658,43 +9669,60 @@ function _ptnrSaveResponseTime(){
 
 function _ptnrRenderServiceItemRow(service){
   var isQuote = service.pricing_type === 'quote';
-  var imageHtml = service.image
-    ? '<img src="'+service.image+'" alt="">'
-    : '<i class="fa-solid fa-image" style="opacity:.3;"></i>';
-  return '<div class="ptnr-svc-row" data-service-id="'+(service.id||'')+'" data-service-image="'+(service.image?encodeURIComponent(service.image):'')+'">'
-    + '<div class="ptnr-svc-thumb" onclick="this.nextElementSibling.click()">'
-      + imageHtml
+  var imgInner = service.image
+    ? '<img src="'+service.image+'" alt="" style="width:100%;height:100%;object-fit:cover;display:block;">'
+    : '<div class="ptnr-svc-card-photo-ph"><i class="fa-solid fa-image"></i></div>';
+  var pricingHtml = isQuote
+    ? '<span class="ptnr-svc-quote-show">Sur devis</span>'
+    : '<input type="number" class="ptnr-svc-price" placeholder="Prix €" value="'+(service.price||'')+'" min="0" step="0.01">';
+  return '<div class="ptnr-svc-card" data-service-id="'+(service.id||'')+'" data-service-image="'+(service.image?encodeURIComponent(service.image):'')+'">'
+    + '<div class="ptnr-svc-card-photo" onclick="this.nextElementSibling.click()" title="Changer la photo">'
+      + imgInner
+      + '<div class="ptnr-svc-card-upload"><i class="fa-solid fa-camera"></i></div>'
+      + '<div class="ptnr-svc-card-cta"><i class="fa-solid '+(isQuote?'fa-file-lines':'fa-plus')+'"></i></div>'
+      + '<button type="button" class="ptnr-svc-card-del" onclick="event.stopPropagation();_ptnrRemoveServiceItem(this)" title="Supprimer"><i class="fa-solid fa-trash"></i></button>'
     + '</div>'
     + '<input type="file" accept="image/*" class="ptnr-svc-img-input" style="display:none;" onchange="_ptnrOnServiceImageSelected(this)">'
-    + '<div class="ptnr-svc-fields">'
-      + '<input type="text" class="ptnr-input ptnr-svc-label" placeholder="Ex: Shooting photo corporate" value="'+(service.label||'').replace(/"/g,'&quot;')+'">'
-      + '<input type="text" class="ptnr-input ptnr-svc-desc" placeholder="Détails (optionnel)" value="'+(service.description||'').replace(/"/g,'&quot;')+'">'
-      + '<div class="ptnr-svc-price-row">'
-        + '<button type="button" class="ptnr-svc-ptg-btn" data-mode="fixed" onclick="_ptnrSelectPricingMode(this,\'fixed\')" style="padding:6px 10px;font-size:10px;font-weight:900;text-transform:uppercase;border:2px solid #333;cursor:pointer;background:'+(isQuote?'#1a1a1a':'#FFD700')+';color:'+(isQuote?'#666':'#000')+';">Prix fixe</button>'
-        + '<button type="button" class="ptnr-svc-ptg-btn" data-mode="quote" onclick="_ptnrSelectPricingMode(this,\'quote\')" style="padding:6px 10px;font-size:10px;font-weight:900;text-transform:uppercase;border:2px solid #333;border-left:none;cursor:pointer;background:'+(isQuote?'#FFD700':'#1a1a1a')+';color:'+(isQuote?'#000':'#666')+';">Sur devis</button>'
-        + '<input type="number" class="ptnr-input ptnr-svc-price" placeholder="Prix (€)" value="'+(isQuote?'':(service.price||''))+'" min="0" step="0.01" style="flex:1;margin-bottom:0'+(isQuote?';display:none':'')+'">'
+    + '<div class="ptnr-svc-card-body">'
+      + '<input type="text" class="ptnr-svc-label" placeholder="Nom de la prestation…" value="'+(service.label||'').replace(/"/g,'&quot;')+'">'
+      + '<input type="text" class="ptnr-svc-desc" placeholder="Détails (optionnel)…" value="'+(service.description||'').replace(/"/g,'&quot;')+'">'
+      + '<div class="ptnr-svc-pricing-row">'
+        + pricingHtml
+        + '<button type="button" class="ptnr-svc-ptg-mini" onclick="_ptnrSelectPricingMode(this,\'fixed\')" style="'+(isQuote?'':'background:#FFD700;color:#000;border-color:#FFD700;')+'">€</button>'
+        + '<button type="button" class="ptnr-svc-ptg-mini" onclick="_ptnrSelectPricingMode(this,\'quote\')" style="'+(isQuote?'background:#FFD700;color:#000;border-color:#FFD700;':'')+'">Devis</button>'
         + '<input type="hidden" class="ptnr-svc-pricing-type" value="'+(isQuote?'quote':'fixed')+'">'
-        + '<button class="ptnr-svc-del" onclick="_ptnrRemoveServiceItem(this)" title="Supprimer"><i class="fa-solid fa-trash"></i></button>'
       + '</div>'
     + '</div>'
   + '</div>';
 }
 function _ptnrSelectPricingMode(btn, mode){
-  var row = btn.closest('.ptnr-svc-row');
-  if(!row) return;
-  var priceEl = row.querySelector('.ptnr-svc-price');
-  var typeEl = row.querySelector('.ptnr-svc-pricing-type');
-  var btns = row.querySelectorAll('.ptnr-svc-ptg-btn');
+  var card = btn.closest('.ptnr-svc-card');
+  if(!card) return;
+  var priceEl = card.querySelector('.ptnr-svc-price');
+  var quoteEl = card.querySelector('.ptnr-svc-quote-show');
+  var typeEl = card.querySelector('.ptnr-svc-pricing-type');
+  var ctaEl = card.querySelector('.ptnr-svc-card-cta i');
+  var btns = card.querySelectorAll('.ptnr-svc-ptg-mini');
+  var pricingRow = card.querySelector('.ptnr-svc-pricing-row');
+  btns.forEach(function(b){ b.style.background=''; b.style.color=''; b.style.borderColor=''; });
+  btn.style.background='#FFD700'; btn.style.color='#000'; btn.style.borderColor='#FFD700';
+  if(typeEl) typeEl.value=mode;
+  if(ctaEl) ctaEl.className='fa-solid '+(mode==='quote'?'fa-file-lines':'fa-plus');
   if(mode==='quote'){
-    if(priceEl){ priceEl.style.display='none'; priceEl.value=''; }
-    if(typeEl) typeEl.value='quote';
-    btns.forEach(function(b){ b.style.background='#1a1a1a'; b.style.color='#666'; });
-    btn.style.background='#FFD700'; btn.style.color='#000';
+    if(priceEl){ priceEl.value=''; priceEl.remove(); }
+    if(!quoteEl && pricingRow){
+      var span = document.createElement('span');
+      span.className='ptnr-svc-quote-show';
+      span.textContent='Sur devis';
+      pricingRow.insertBefore(span, pricingRow.firstChild);
+    }
   } else {
-    if(priceEl) priceEl.style.display='';
-    if(typeEl) typeEl.value='fixed';
-    btns.forEach(function(b){ b.style.background='#1a1a1a'; b.style.color='#666'; });
-    btn.style.background='#FFD700'; btn.style.color='#000';
+    if(quoteEl) quoteEl.remove();
+    if(!priceEl && pricingRow){
+      var inp = document.createElement('input');
+      inp.type='number'; inp.className='ptnr-svc-price'; inp.placeholder='Prix €'; inp.min='0'; inp.step='0.01';
+      pricingRow.insertBefore(inp, pricingRow.firstChild);
+    }
   }
 }
 
@@ -9713,24 +9741,33 @@ function _ptnrAddServiceItem(audience){
   var container = document.getElementById('ptnr-services-list-'+audience);
   if(!container) return;
   var wrapper = document.createElement('div');
-  wrapper.innerHTML = _ptnrRenderServiceItemRow({label:'', description:'', price:'', audience:audience});
+  wrapper.innerHTML = _ptnrRenderServiceItemRow({label:'', description:'', price:'', pricing_type:'fixed', audience:audience});
   container.appendChild(wrapper.firstChild);
 }
 
 function _ptnrRemoveServiceItem(buttonEl){
-  var row = buttonEl.closest('.ptnr-svc-row');
-  if(row) row.remove();
+  var card = buttonEl.closest('.ptnr-svc-card');
+  if(card) card.remove();
 }
 
 function _ptnrOnServiceImageSelected(inputEl){
   var file = inputEl.files && inputEl.files[0];
   if(!file) return;
-  var row = inputEl.closest('.ptnr-svc-row');
-  if(!row) return;
+  var card = inputEl.closest('.ptnr-svc-card');
+  if(!card) return;
   _ptnrImageFileToCompressedBase64(file, 800, 0.8).then(function(dataUri){
-    row.setAttribute('data-service-image', encodeURIComponent(dataUri));
-    var thumb = row.querySelector('.ptnr-svc-thumb');
-    if(thumb) thumb.innerHTML = '<img src="'+dataUri+'" alt="" style="width:100%;height:100%;object-fit:cover;">';
+    card.setAttribute('data-service-image', encodeURIComponent(dataUri));
+    var photoWrap = card.querySelector('.ptnr-svc-card-photo');
+    if(photoWrap){
+      var ph = photoWrap.querySelector('.ptnr-svc-card-photo-ph');
+      if(ph) ph.remove();
+      var existing = photoWrap.querySelector('img');
+      if(existing) existing.remove();
+      var img = document.createElement('img');
+      img.src = dataUri; img.alt = '';
+      img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;';
+      photoWrap.insertBefore(img, photoWrap.firstChild);
+    }
   }).catch(function(err){
     console.error('[PTNR] Erreur upload photo prestation:', err);
   }).finally(function(){ inputEl.value=''; });
@@ -9739,20 +9776,20 @@ function _ptnrOnServiceImageSelected(inputEl){
 function _ptnrCollectServiceItems(audience){
   var container = document.getElementById('ptnr-services-list-'+audience);
   if(!container) return [];
-  var rows = container.querySelectorAll('.ptnr-svc-row');
+  var cards = container.querySelectorAll('.ptnr-svc-card');
   var services = [];
-  for(var i=0;i<rows.length;i++){
-    var labelEl = rows[i].querySelector('.ptnr-svc-label');
-    var descEl = rows[i].querySelector('.ptnr-svc-desc');
-    var priceEl = rows[i].querySelector('.ptnr-svc-price');
-    var typeEl = rows[i].querySelector('.ptnr-svc-pricing-type');
+  for(var i=0;i<cards.length;i++){
+    var labelEl = cards[i].querySelector('.ptnr-svc-label');
+    var descEl = cards[i].querySelector('.ptnr-svc-desc');
+    var priceEl = cards[i].querySelector('.ptnr-svc-price');
+    var typeEl = cards[i].querySelector('.ptnr-svc-pricing-type');
     var label = labelEl ? labelEl.value.trim() : '';
     var isQuote = typeEl ? typeEl.value === 'quote' : false;
     var price = priceEl ? parseFloat(priceEl.value) : 0;
     if(!label) continue;
     if(!isQuote && (!price || price<=0)) continue;
-    var serviceId = rows[i].getAttribute('data-service-id') || '';
-    var imageAttr = rows[i].getAttribute('data-service-image') || '';
+    var serviceId = cards[i].getAttribute('data-service-id') || '';
+    var imageAttr = cards[i].getAttribute('data-service-image') || '';
     services.push({
       id: serviceId,
       label: label,
