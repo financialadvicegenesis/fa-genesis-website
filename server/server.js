@@ -8552,9 +8552,9 @@ app.put('/api/partner/portfolio', authenticatePartner, (req, res) => {
 
 function getPartnerFromPrice(partner) {
     const activePrices = (partner.services || [])
-        .filter(s => s.active !== false)
+        .filter(s => s.active !== false && s.pricing_type !== 'quote')
         .map(s => s.price)
-        .filter(p => typeof p === 'number' && isFinite(p));
+        .filter(p => typeof p === 'number' && isFinite(p) && p > 0);
     return activePrices.length ? Math.min(...activePrices) : null;
 }
 
