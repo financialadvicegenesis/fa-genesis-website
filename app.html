@@ -933,8 +933,7 @@ a{text-decoration:none;color:inherit}
 .p-dir-partner-header .detail-sub,.p-dir-partner-header .p-dir-detail-city,
 .p-dir-partner-header .detail-payment,.p-dir-partner-header .p-dir-detail-response{text-align:center}
 /* ── "Sur devis" badge on service card ── */
-.p-svc-quote-tag{font-size:10px;font-weight:900;color:var(--muted);background:#1e1e1e;border:1px solid #333;
-  padding:2px 8px;border-radius:6px;display:inline-block;margin-top:5px;letter-spacing:.5px}
+.p-svc-quote-tag{font-size:13px;font-weight:900;color:var(--yellow);margin-top:6px;display:flex;align-items:center;gap:5px;}
 /* ── Service detail overlay (Deliveroo style) ── */
 .svc-detail-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:6100;align-items:flex-end;justify-content:center}
 .svc-detail-overlay.open{display:flex;animation:svcFadeIn .2s ease}
@@ -952,7 +951,7 @@ a{text-decoration:none;color:inherit}
   font-family:'Unbounded',sans-serif;color:#fff;margin-bottom:6px;line-height:1.2}
 .svc-detail-desc{font-size:13px;color:#aaa;line-height:1.5;margin-bottom:12px}
 .svc-detail-price{font-size:26px;font-weight:900;color:var(--yellow);font-family:'Unbounded',sans-serif;margin-bottom:20px}
-.svc-detail-price.quote{font-size:13px;color:var(--muted);font-family:inherit;font-weight:700;margin-bottom:20px}
+.svc-detail-price.quote{font-size:20px;color:var(--yellow);font-family:'Unbounded',sans-serif;font-weight:900;margin-bottom:20px;display:flex;align-items:center;gap:10px;}
 .svc-detail-cta{width:100%;padding:16px;background:var(--yellow);color:#000;border:none;border-radius:12px;
   font-size:13px;font-weight:900;text-transform:uppercase;letter-spacing:1px;font-family:inherit;cursor:pointer;margin-bottom:10px;display:block;text-align:center}
 .svc-detail-cta.secondary{background:#1e1e1e;color:var(--yellow);border:1.5px solid var(--yellow)}
@@ -3719,7 +3718,7 @@ function _ptnrRenderServiceCards(services, audience, p){
       : '<div class="p-svc-card-photo-ph"><i class="fa-solid fa-image"></i></div>';
     var isQuote = s.pricing_type === 'quote';
     var priceHtml = isQuote
-      ? '<div class="p-svc-quote-tag">Sur devis</div>'
+      ? '<div class="p-svc-quote-tag"><i class="fa-solid fa-file-lines"></i> Sur devis</div>'
       : '<div class="p-svc-card-price">'+s.price+' €</div>';
     return '<div class="p-svc-card" onclick="openServiceDetail(\''+p.id+'\',\''+s.id+'\')">'
       +'<div class="p-svc-card-photo">'+imgHtml
