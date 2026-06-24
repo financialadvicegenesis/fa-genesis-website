@@ -143,6 +143,39 @@ a{text-decoration:none;color:inherit}
 #welcome.entering .w-btns   ,#roleChoice.entering .w-btns   {animation:wBtnsIn  .6s  cubic-bezier(.34,1.56,.64,1) .58s both}
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   REDUCED MOTION — arrêt des animations décoratives
+   iOS/iPhone : activé si l'utilisateur a "Réduire les animations"
+   dans Réglages > Accessibilité. Stoppe les animations GPU les plus coûteuses.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+@media (prefers-reduced-motion: reduce){
+  .constellation-badge,
+  .badge-progress-fill::after,
+  .bp-ladder-fill::after,
+  .bp-ladder-stop.current .bp-ladder-dot,
+  .mission-ladder-dot.current,
+  .ptnr-rep-hero::after,
+  .genesis-qg-box,
+  .genesis-qg-box::after,
+  .ptnr-pf-add-btn,
+  .dispatch-card.new-card,
+  .dispatch-badge-dot,
+  .ptnr-header,
+  .ptnr-badge.on,
+  .nav-dot.on,
+  .jeremie-fab,
+  .jeremie-fab::before,
+  .jeremie-avatar,
+  .jeremie-hdr-ico,
+  .jeremie-hdr-ico::before,
+  .jeremie-mic-btn.listening,
+  .jeremie-thinking i {
+    animation: none !important;
+  }
+}
+/* Optimisation GPU : limiter le nombre de couches composites */
+.tab:not(.on) { content-visibility: auto; }
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    DESKTOP RESPONSIVE (≥768px)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 @media (min-width:768px){
@@ -252,10 +285,9 @@ a{text-decoration:none;color:inherit}
 /* Status card */
 .status-card{margin:16px;border-radius:16px;overflow:hidden;position:relative;
   background:linear-gradient(135deg,rgba(26,0,38,.75) 0%,rgba(13,0,26,.75) 100%);
-  backdrop-filter:blur(14px) saturate(140%);-webkit-backdrop-filter:blur(14px) saturate(140%);
+  background:rgba(26,0,38,.92);
   border:1px solid #2a1040;padding:20px;
-  box-shadow:0 0 0 1px rgba(255,215,0,.06),0 10px 30px rgba(0,0,0,.4);
-  animation:statusGlow 4s ease-in-out infinite}
+  box-shadow:0 0 0 1px rgba(255,215,0,.06),0 10px 30px rgba(0,0,0,.4)}
 @keyframes statusGlow{0%,100%{box-shadow:0 0 0 1px rgba(255,215,0,.06),0 10px 30px rgba(0,0,0,.4)}50%{box-shadow:0 0 0 1px rgba(255,215,0,.18),0 10px 34px rgba(255,215,0,.1)}}
 .status-card-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 .status-badge-pill{background:rgba(255,215,0,.15);color:var(--yellow);font-size:10px;font-weight:900;
@@ -1025,7 +1057,7 @@ a{text-decoration:none;color:inherit}
 .pf-hero-name{font-family:'Unbounded',sans-serif;font-size:19px;font-weight:900;color:#fff;text-shadow:0 2px 18px rgba(0,0,0,.95),0 0 40px rgba(255,215,0,.1);line-height:1.18}
 .pf-hero-type{font-size:9px;font-weight:900;color:#FFD700;letter-spacing:2px;text-transform:uppercase;text-shadow:0 0 10px rgba(255,215,0,.35)}
 /* Barre HUD glassmorphism */
-.pf-hud{display:flex;align-items:center;background:rgba(255,255,255,.025);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(255,215,0,.1);border-radius:16px;margin:14px 0;overflow:hidden}
+.pf-hud{display:flex;align-items:center;background:rgba(18,18,18,.92);border:1px solid rgba(255,215,0,.1);border-radius:16px;margin:14px 0;overflow:hidden}
 .pf-hud-cell{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:12px 6px}
 .pf-hud-ico{font-size:13px;color:#FFD700}
 .pf-hud-val{font-family:'Unbounded',sans-serif;font-size:11px;font-weight:900;color:#fff;white-space:nowrap;line-height:1;text-align:center}
@@ -1268,7 +1300,7 @@ a{text-decoration:none;color:inherit}
 /* Fiche détail — bottom sheet */
 #detail-sheet{
   display:none;position:fixed;inset:0;z-index:900;
-  background:rgba(0,0,0,.8);backdrop-filter:blur(12px);
+  background:rgba(0,0,0,.88);
   align-items:flex-end;justify-content:center;
 }
 #detail-sheet.on{display:flex}
@@ -1413,7 +1445,7 @@ a{text-decoration:none;color:inherit}
 .cart-toast.on{opacity:1;transform:translateX(-50%) translateY(0);}
 
 /* ── DISPATCH / MISSIONS ── */
-.dispatch-card{background:rgba(17,17,17,.7);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid #1e1e1e;border-radius:16px;padding:16px;margin-bottom:12px;position:relative;overflow:hidden;}
+.dispatch-card{background:#111;border:1px solid #1e1e1e;border-radius:16px;padding:16px;margin-bottom:12px;position:relative;overflow:hidden;}
 .dispatch-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:#FFD700;}
 .dispatch-card.new-card{animation:dispatchPulse 2.4s ease-in-out infinite;}
 @keyframes dispatchPulse{0%,100%{border-color:#1e1e1e;box-shadow:0 0 0 rgba(255,215,0,0)}50%{border-color:#FFD700;box-shadow:0 0 16px rgba(255,215,0,.18)}}
@@ -1458,7 +1490,7 @@ a{text-decoration:none;color:inherit}
 .avail-skip{width:100%;background:transparent;border:none;color:#555;font-size:12px;padding:12px;cursor:pointer;margin-top:4px;}
 /* ── PARTNER TAB ── */
 #tab-partner{padding:0 0 calc(var(--nav) + var(--safe) + 16px);}
-.ptnr-header{position:relative;overflow:hidden;background:linear-gradient(135deg,#0d0d0d 0%,#1a1200 55%,#0d0d0d 100%);background-size:200% 200%;animation:gradientFlow 9s ease infinite;border-bottom:2px solid #FFD700;padding:22px 16px 18px;display:flex;align-items:center;justify-content:space-between;}
+.ptnr-header{position:relative;overflow:hidden;background:linear-gradient(135deg,#0d0d0d 0%,#1a1200 55%,#0d0d0d 100%);border-bottom:2px solid #FFD700;padding:22px 16px 18px;display:flex;align-items:center;justify-content:space-between;}
 .ptnr-header::before{content:'';position:absolute;top:-50%;right:-8%;width:170px;height:170px;background:radial-gradient(circle,rgba(255,215,0,.16),transparent 70%);pointer-events:none;}
 .ptnr-header-left{display:flex;align-items:center;gap:13px;position:relative;z-index:1;min-width:0;}
 .ptnr-avatar{width:52px;height:52px;border-radius:50%;background:#FFD700;color:#000;font-weight:900;font-size:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;box-shadow:0 0 0 2px #0d0d0d,0 0 0 4px rgba(255,215,0,.5),0 4px 16px rgba(255,215,0,.22);}
@@ -1874,19 +1906,15 @@ a{text-decoration:none;color:inherit}
   animation:goldShimmer 4s linear infinite;
 }
 
-/* ── Header glassmorphism ── */
+/* ── Header ── */
 #hdr{
-  background:rgba(10,10,10,.75)!important;
-  backdrop-filter:blur(24px) saturate(1.4);
-  -webkit-backdrop-filter:blur(24px) saturate(1.4);
+  background:rgba(10,10,10,.96)!important;
   border-bottom:1px solid rgba(255,215,0,.1)!important;
 }
 
-/* ── Bottom nav glassmorphism + indicateur lumineux ── */
+/* ── Bottom nav ── */
 #nav{
-  background:rgba(8,8,8,.88)!important;
-  backdrop-filter:blur(20px);
-  -webkit-backdrop-filter:blur(20px);
+  background:rgba(8,8,8,.97)!important;
   border-top:1px solid rgba(255,215,0,.08)!important;
 }
 .nav-btn{position:relative;}
@@ -2855,15 +2883,18 @@ function welcomeBack(){
   showRoleChoice();
 }
 function showApp(){
-  document.getElementById('welcome').style.display = 'none';
+  var welcomeEl = document.getElementById('welcome');
+  if(welcomeEl) welcomeEl.style.display = 'none';
   var rc = document.getElementById('roleChoice');
   if(rc) rc.style.display = 'none';
   var bv = document.getElementById('bgVideo');
   var bo = document.getElementById('bgOverlay');
   if(bv){ try{bv.pause();}catch(e){} bv.style.display='none'; }
   if(bo) bo.style.display='none';
-  document.getElementById('app').style.display = 'flex';
-  document.getElementById('app').className = 'on';
+  var appEl = document.getElementById('app');
+  if(!appEl) return;
+  appEl.style.display = 'flex';
+  appEl.className = 'on';
   initApp();
   if(typeof _jeremieAutoGreet==='function') _jeremieAutoGreet();
 }
@@ -2872,13 +2903,32 @@ function goGuest(){ GUEST = true; showApp(); }
 function goPartner(){ GUEST = true; showApp(); nav('partner'); }
 function exitGuestMode(){ window.location.reload(); }
 
+// ── LAZY LOADING DES ONGLETS ─────────────────────────────────
+// Chaque onglet n'est chargé que lors de sa première ouverture.
+// Évite de lancer 15+ requêtes API simultanées au démarrage.
+var _tabLoaded = {};
+function _loadTab(tab){
+  // Onglets sans données dynamiques ou déjà gérés par nav()
+  var always = { reservations:1, messages:1 }; // toujours rafraîchis
+  if(_tabLoaded[tab] && !always[tab]) return;
+  _tabLoaded[tab] = true;
+  if(tab === 'prestations') renderPrestations('all');
+  else if(tab === 'prestataires') renderPrestataires();
+  else if(tab === 'explorer') renderExplorer();
+  else if(tab === 'reservations') renderResaTab();
+  else if(tab === 'messages') renderMsgTab();
+  else if(tab === 'profil') renderProfil();
+}
+
 // ── APP INIT ─────────────────────────────────────────────────
 function initApp(){
   if(USER){
     var fn = USER.prenom || USER.firstName || USER.first_name || (USER.email||'').split('@')[0];
-    document.getElementById('greetName').textContent = fn;
+    var greetEl = document.getElementById('greetName');
+    if(greetEl) greetEl.textContent = fn;
     var ini = (fn[0]||'U').toUpperCase();
-    document.getElementById('hdrAvatar').textContent = ini;
+    var avatarEl = document.getElementById('hdrAvatar');
+    if(avatarEl) avatarEl.textContent = ini;
     loadStatusCard();
     _checkPendingReviews();
     _syncUserBadge();
@@ -2890,7 +2940,8 @@ function initApp(){
       }
     }, 5000);
   } else {
-    document.getElementById('greetName').textContent = 'Invité';
+    var greetInvEl = document.getElementById('greetName');
+    if(greetInvEl) greetInvEl.textContent = 'Invité';
   }
   updateCartBadge();
   _updateGreeting();
@@ -2902,12 +2953,9 @@ function initApp(){
   } else {
     renderHomeOffers();
   }
-  renderPrestations('all');
-  renderPrestataires();
-  renderExplorer();
-  renderResaTab();
-  renderMsgTab();
-  renderProfil();
+  // Les autres onglets sont chargés en lazy via _loadTab() dans nav()
+  // Pré-charger seulement "Prestations" (premier onglet visible après accueil)
+  setTimeout(function(){ renderPrestations('all'); _tabLoaded['prestations'] = true; }, 300);
   _ptnrInit();
 
   // SW update
@@ -2943,7 +2991,8 @@ function nav(tab){
   var b = document.getElementById('nb-'+tab);
   if(t) t.className='tab on';
   if(b) b.className='nav-btn on';
-  document.getElementById('content').scrollTop = 0;
+  var contentEl = document.getElementById('content');
+  if(contentEl) contentEl.scrollTop = 0;
   var hdr=document.getElementById('hdr'); if(hdr) hdr.classList.remove('hdr-hidden');
   if(tab==='partner'){
     var pbb=document.getElementById('ptnrBackStartBtn');
@@ -2952,6 +3001,8 @@ function nav(tab){
   if(tab==='explorer' && _expMap){
     setTimeout(function(){ _expMap.invalidateSize(); }, 80);
   }
+  // Chargement paresseux : charge l'onglet à la première visite
+  _loadTab(tab);
 }
 function navExternal(url){
   window.location.href = USER ? url : 'login.html?from=app.html';
