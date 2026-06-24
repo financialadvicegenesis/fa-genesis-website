@@ -2430,8 +2430,17 @@
                     '<input type="text" class="service-item-label" placeholder="Ex: Shooting photo corporate" value="' + (service.label || '') + '">' +
                 '</div>' +
                 '<div class="md:col-span-4">' +
-                    '<label class="block text-xs font-black uppercase mb-1">Description</label>' +
-                    '<input type="text" class="service-item-desc" placeholder="Détails..." value="' + (service.description || '') + '">' +
+                    '<label class="block text-xs font-black uppercase mb-1">Détails (optionnel)</label>' +
+                    '<div class="svc-feat-list" style="display:flex;flex-direction:column;gap:3px;margin-bottom:4px;">' +
+                        ((service.features||[]).map(function(f){
+                            return '<div class="svc-feat-item" style="display:flex;align-items:center;gap:5px;">' +
+                                '<i class="fas fa-check" style="color:#FFD700;font-size:10px;flex-shrink:0;"></i>' +
+                                '<input type="text" class="svc-feat-input" value="' + (f||'').replace(/"/g,'&quot;') + '" placeholder="Ex: Wi-Fi inclus" style="flex:1;background:#111;border:1px solid #2a2a2a;color:#fff;border-radius:5px;padding:3px 7px;font-size:11px;font-family:inherit;">' +
+                                '<button type="button" onclick="removeSvcFeature(this)" style="background:none;border:none;color:#e44;cursor:pointer;font-size:11px;"><i class="fas fa-times"></i></button>' +
+                            '</div>';
+                        })).join('') +
+                    '</div>' +
+                    '<button type="button" onclick="addSvcFeature(this)" style="background:none;border:1px dashed #333;color:#999;font-size:10px;font-weight:800;text-transform:uppercase;padding:3px 8px;border-radius:5px;cursor:pointer;font-family:inherit;"><i class="fas fa-check" style="color:#FFD700;font-size:9px;margin-right:3px;"></i>Ajouter un avantage</button>' +
                 '</div>' +
                 '<div class="md:col-span-2">' +
                     '<label class="block text-xs font-black uppercase mb-1">Tarif</label>' +
@@ -2454,16 +2463,6 @@
                     '</button>' +
                 '</div>' +
             '</div>' +
-        '<div class="svc-feat-list" style="margin-top:8px;display:flex;flex-direction:column;gap:4px;">' +
-            ((service.features||[]).map(function(f){
-                return '<div class="svc-feat-item" style="display:flex;align-items:center;gap:6px;">' +
-                    '<i class="fas fa-check" style="color:#4caf50;font-size:11px;flex-shrink:0;"></i>' +
-                    '<input type="text" class="svc-feat-input" value="' + (f||'').replace(/"/g,'&quot;') + '" placeholder="Ex: Wi-Fi inclus" style="flex:1;background:#111;border:1px solid #2a2a2a;color:#fff;border-radius:6px;padding:4px 8px;font-size:12px;font-family:inherit;">' +
-                    '<button type="button" onclick="removeSvcFeature(this)" style="background:none;border:none;color:#e44;cursor:pointer;font-size:12px;"><i class="fas fa-times"></i></button>' +
-                '</div>';
-            })).join('') +
-        '</div>' +
-        '<button type="button" onclick="addSvcFeature(this)" style="margin-top:6px;background:none;border:1.5px dashed #333;color:#888;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.3px;padding:5px 10px;border-radius:6px;cursor:pointer;display:block;font-family:inherit;">+ Ajouter un avantage</button>' +
         '</div>';
     }
 
@@ -2560,7 +2559,6 @@
         var services = [];
         for (var i = 0; i < rows.length; i++) {
             var labelEl = rows[i].querySelector('.service-item-label');
-            var descEl = rows[i].querySelector('.service-item-desc');
             var priceEl = rows[i].querySelector('.service-item-price');
             var activeEl = rows[i].querySelector('.service-item-active');
             var label = labelEl ? labelEl.value.trim() : '';
@@ -2577,7 +2575,7 @@
             services.push({
                 id: serviceId,
                 label: label,
-                description: descEl ? descEl.value.trim() : '',
+                description: '',
                 price: isQuote ? 0 : price,
                 pricing_type: isQuote ? 'quote' : 'fixed',
                 active: activeEl ? activeEl.checked : true,

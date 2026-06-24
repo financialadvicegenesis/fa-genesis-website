@@ -1505,9 +1505,9 @@ a{text-decoration:none;color:inherit}
 .ptnr-svc-price::placeholder{color:#3a3000;font-size:11px;}
 .ptnr-svc-ptg-mini{padding:2px 7px;font-size:8.5px;font-weight:900;text-transform:uppercase;border-radius:5px;border:1.5px solid #2a2a2a;cursor:pointer;background:#1a1a1a;color:#555;transition:all .12s;white-space:nowrap;}
 .ptnr-svc-quote-show{font-size:10px;font-weight:900;color:#888;background:#1e1e1e;border:1px solid #2a2a2a;padding:2px 7px;border-radius:4px;}
-.ptnr-svc-features{margin-top:8px;padding-top:8px;border-top:1px dashed #1e1e1e;}
+.ptnr-svc-features{margin-top:2px;}
 .ptnr-svc-feature-item{display:flex;align-items:center;gap:5px;margin-bottom:5px;}
-.ptnr-svc-feature-ico{color:#4caf50;font-size:9px;flex-shrink:0;}
+.ptnr-svc-feature-ico{color:#FFD700;font-size:9px;flex-shrink:0;}
 .ptnr-svc-feature-input{flex:1;background:none;border:none;border-bottom:1px dashed #1e1e1e;color:#ccc;font-size:10px;padding:2px 0 3px;font-family:inherit;outline:none;min-width:0;}
 .ptnr-svc-feature-input::placeholder{color:#333;}
 .ptnr-svc-feature-del{background:none;border:none;color:#444;font-size:9px;cursor:pointer;flex-shrink:0;padding:2px;line-height:1;}
@@ -1516,10 +1516,10 @@ a{text-decoration:none;color:inherit}
 /* Rendu client des features (dans la carte et dans l'overlay) */
 .p-svc-features{margin-top:6px;padding-top:5px;border-top:1px solid #1e1e1e;}
 .p-svc-feature{display:flex;align-items:flex-start;gap:5px;font-size:9.5px;color:#aaa;line-height:1.3;margin-bottom:3px;}
-.p-svc-feature i{color:#4caf50;font-size:8px;flex-shrink:0;margin-top:2px;}
+.p-svc-feature i{color:#FFD700;font-size:8px;flex-shrink:0;margin-top:2px;}
 .svc-detail-features{margin-bottom:16px;}
 .svc-detail-feature{display:flex;align-items:flex-start;gap:10px;font-size:13px;color:#ccc;line-height:1.4;margin-bottom:10px;}
-.svc-detail-feature i{color:#4caf50;font-size:11px;flex-shrink:0;margin-top:2px;}
+.svc-detail-feature i{color:#FFD700;font-size:11px;flex-shrink:0;margin-top:2px;}
 .ptnr-svc-add-btn{width:calc(100% - 32px);margin:0 16px 12px;background:transparent;border:2px dashed #2a2a2a;color:#888;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.3px;padding:13px;border-radius:12px;cursor:pointer;transition:border-color .2s,color .2s;display:block;}
 .ptnr-svc-add-btn:active{border-color:#FFD700;color:#FFD700;}
 #pay-overlay{display:none;position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,.72);backdrop-filter:blur(4px);align-items:flex-end;justify-content:center;}
@@ -9702,17 +9702,17 @@ function _ptnrRenderServiceItemRow(service){
     + '<input type="file" accept="image/*" class="ptnr-svc-img-input" style="display:none;" onchange="_ptnrOnServiceImageSelected(this)">'
     + '<div class="ptnr-svc-card-body">'
       + '<input type="text" class="ptnr-svc-label" placeholder="Nom de la prestation…" value="'+(service.label||'').replace(/"/g,'&quot;')+'">'
-      + '<input type="text" class="ptnr-svc-desc" placeholder="Détails (optionnel)…" value="'+(service.description||'').replace(/"/g,'&quot;')+'">'
+      + '<div style="font-size:8.5px;font-weight:900;text-transform:uppercase;color:#555;letter-spacing:.4px;margin:6px 0 3px;">Détails (optionnel)</div>'
+      + '<div class="ptnr-svc-features">'
+        + (service.features||[]).map(function(f){ return _ptnrFeatureItemHtml(f); }).join('')
+      + '</div>'
+      + '<button type="button" class="ptnr-svc-add-feature-btn" onclick="_ptnrAddFeature(this)"><i class="fa-solid fa-check" style="color:#FFD700;font-size:8px;"></i> Ajouter un avantage</button>'
       + '<div class="ptnr-svc-pricing-row">'
         + pricingHtml
         + '<button type="button" class="ptnr-svc-ptg-mini" onclick="_ptnrSelectPricingMode(this,\'fixed\')" style="'+(isQuote?'':'background:#FFD700;color:#000;border-color:#FFD700;')+'">€</button>'
         + '<button type="button" class="ptnr-svc-ptg-mini" onclick="_ptnrSelectPricingMode(this,\'quote\')" style="'+(isQuote?'background:#FFD700;color:#000;border-color:#FFD700;':'')+'">Devis</button>'
         + '<input type="hidden" class="ptnr-svc-pricing-type" value="'+(isQuote?'quote':'fixed')+'">'
       + '</div>'
-      + '<div class="ptnr-svc-features">'
-        + (service.features||[]).map(function(f){ return _ptnrFeatureItemHtml(f); }).join('')
-      + '</div>'
-      + '<button type="button" class="ptnr-svc-add-feature-btn" onclick="_ptnrAddFeature(this)"><i class="fa-solid fa-plus"></i> Ajouter un avantage</button>'
     + '</div>'
   + '</div>';
 }
@@ -9823,7 +9823,6 @@ function _ptnrCollectServiceItems(audience){
   var services = [];
   for(var i=0;i<cards.length;i++){
     var labelEl = cards[i].querySelector('.ptnr-svc-label');
-    var descEl = cards[i].querySelector('.ptnr-svc-desc');
     var priceEl = cards[i].querySelector('.ptnr-svc-price');
     var typeEl = cards[i].querySelector('.ptnr-svc-pricing-type');
     var label = labelEl ? labelEl.value.trim() : '';
@@ -9839,7 +9838,7 @@ function _ptnrCollectServiceItems(audience){
     services.push({
       id: serviceId,
       label: label,
-      description: descEl ? descEl.value.trim() : '',
+      description: '',
       price: isQuote ? 0 : price,
       pricing_type: isQuote ? 'quote' : 'fixed',
       features: features,
