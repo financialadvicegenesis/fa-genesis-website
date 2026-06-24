@@ -1505,6 +1505,21 @@ a{text-decoration:none;color:inherit}
 .ptnr-svc-price::placeholder{color:#3a3000;font-size:11px;}
 .ptnr-svc-ptg-mini{padding:2px 7px;font-size:8.5px;font-weight:900;text-transform:uppercase;border-radius:5px;border:1.5px solid #2a2a2a;cursor:pointer;background:#1a1a1a;color:#555;transition:all .12s;white-space:nowrap;}
 .ptnr-svc-quote-show{font-size:10px;font-weight:900;color:#888;background:#1e1e1e;border:1px solid #2a2a2a;padding:2px 7px;border-radius:4px;}
+.ptnr-svc-features{margin-top:8px;padding-top:8px;border-top:1px dashed #1e1e1e;}
+.ptnr-svc-feature-item{display:flex;align-items:center;gap:5px;margin-bottom:5px;}
+.ptnr-svc-feature-ico{color:#4caf50;font-size:9px;flex-shrink:0;}
+.ptnr-svc-feature-input{flex:1;background:none;border:none;border-bottom:1px dashed #1e1e1e;color:#ccc;font-size:10px;padding:2px 0 3px;font-family:inherit;outline:none;min-width:0;}
+.ptnr-svc-feature-input::placeholder{color:#333;}
+.ptnr-svc-feature-del{background:none;border:none;color:#444;font-size:9px;cursor:pointer;flex-shrink:0;padding:2px;line-height:1;}
+.ptnr-svc-add-feature-btn{display:flex;align-items:center;gap:4px;background:none;border:none;color:#444;font-size:9px;font-weight:700;text-transform:uppercase;cursor:pointer;margin-top:4px;padding:0;letter-spacing:.3px;transition:color .15s;}
+.ptnr-svc-add-feature-btn:active{color:#FFD700;}
+/* Rendu client des features (dans la carte et dans l'overlay) */
+.p-svc-features{margin-top:6px;padding-top:5px;border-top:1px solid #1e1e1e;}
+.p-svc-feature{display:flex;align-items:flex-start;gap:5px;font-size:9.5px;color:#aaa;line-height:1.3;margin-bottom:3px;}
+.p-svc-feature i{color:#4caf50;font-size:8px;flex-shrink:0;margin-top:2px;}
+.svc-detail-features{margin-bottom:16px;}
+.svc-detail-feature{display:flex;align-items:flex-start;gap:10px;font-size:13px;color:#ccc;line-height:1.4;margin-bottom:10px;}
+.svc-detail-feature i{color:#4caf50;font-size:11px;flex-shrink:0;margin-top:2px;}
 .ptnr-svc-add-btn{width:calc(100% - 32px);margin:0 16px 12px;background:transparent;border:2px dashed #2a2a2a;color:#888;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.3px;padding:13px;border-radius:12px;cursor:pointer;transition:border-color .2s,color .2s;display:block;}
 .ptnr-svc-add-btn:active{border-color:#FFD700;color:#FFD700;}
 #pay-overlay{display:none;position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,.72);backdrop-filter:blur(4px);align-items:flex-end;justify-content:center;}
@@ -3712,6 +3727,7 @@ function _ptnrRenderServiceCards(services, audience, p){
       +'<div class="p-svc-card-body">'
         +'<div class="p-svc-card-label">'+s.label+'</div>'
         +(s.description?'<div class="p-svc-card-desc">'+s.description+'</div>':'')
+        +(s.features&&s.features.length?'<div class="p-svc-features">'+s.features.map(function(f){ return '<div class="p-svc-feature"><i class="fa-solid fa-check"></i>'+f+'</div>'; }).join('')+'</div>':'')
         +priceHtml
       +'</div></div>';
   }).join('');
@@ -3865,6 +3881,7 @@ function openServiceDetail(partnerId, serviceId){
     +'<div class="svc-detail-name">'+service.label+'</div>'
     +'<div style="font-size:11px;color:var(--muted);font-weight:700;margin-bottom:10px">par '+(p.prenom||'')+' '+(p.nom||'')+'</div>'
     +(service.description?'<div class="svc-detail-desc">'+service.description+'</div>':'')
+    +(service.features&&service.features.length?'<div class="svc-detail-features">'+service.features.map(function(f){ return '<div class="svc-detail-feature"><i class="fa-solid fa-check"></i>'+f+'</div>'; }).join('')+'</div>':'')
     +priceHtml
     +ctaHtml
     +'<button class="svc-detail-close-btn" onclick="closeServiceDetail()">Annuler</button>'
@@ -9692,8 +9709,34 @@ function _ptnrRenderServiceItemRow(service){
         + '<button type="button" class="ptnr-svc-ptg-mini" onclick="_ptnrSelectPricingMode(this,\'quote\')" style="'+(isQuote?'background:#FFD700;color:#000;border-color:#FFD700;':'')+'">Devis</button>'
         + '<input type="hidden" class="ptnr-svc-pricing-type" value="'+(isQuote?'quote':'fixed')+'">'
       + '</div>'
+      + '<div class="ptnr-svc-features">'
+        + (service.features||[]).map(function(f){ return _ptnrFeatureItemHtml(f); }).join('')
+      + '</div>'
+      + '<button type="button" class="ptnr-svc-add-feature-btn" onclick="_ptnrAddFeature(this)"><i class="fa-solid fa-plus"></i> Ajouter un avantage</button>'
     + '</div>'
   + '</div>';
+}
+function _ptnrFeatureItemHtml(text){
+  return '<div class="ptnr-svc-feature-item">'
+    + '<i class="fa-solid fa-check ptnr-svc-feature-ico"></i>'
+    + '<input type="text" class="ptnr-svc-feature-input" placeholder="Ex: Wi-Fi inclus" value="'+(text||'').replace(/"/g,'&quot;')+'">'
+    + '<button type="button" class="ptnr-svc-feature-del" onclick="_ptnrRemoveFeature(this)" title="Supprimer"><i class="fa-solid fa-times"></i></button>'
+  + '</div>';
+}
+function _ptnrAddFeature(btn){
+  var card = btn.closest('.ptnr-svc-card');
+  if(!card) return;
+  var featuresDiv = card.querySelector('.ptnr-svc-features');
+  if(!featuresDiv) return;
+  var wrapper = document.createElement('div');
+  wrapper.innerHTML = _ptnrFeatureItemHtml('');
+  featuresDiv.appendChild(wrapper.firstChild);
+  var inp = featuresDiv.lastElementChild.querySelector('.ptnr-svc-feature-input');
+  if(inp) inp.focus();
+}
+function _ptnrRemoveFeature(btn){
+  var item = btn.closest('.ptnr-svc-feature-item');
+  if(item) item.remove();
 }
 function _ptnrSelectPricingMode(btn, mode){
   var card = btn.closest('.ptnr-svc-card');
@@ -9790,12 +9833,16 @@ function _ptnrCollectServiceItems(audience){
     if(!isQuote && (!price || price<=0)) continue;
     var serviceId = cards[i].getAttribute('data-service-id') || '';
     var imageAttr = cards[i].getAttribute('data-service-image') || '';
+    var featureEls = cards[i].querySelectorAll('.ptnr-svc-feature-input');
+    var features = [];
+    featureEls.forEach(function(el){ var v=el.value.trim(); if(v) features.push(v); });
     services.push({
       id: serviceId,
       label: label,
       description: descEl ? descEl.value.trim() : '',
       price: isQuote ? 0 : price,
       pricing_type: isQuote ? 'quote' : 'fixed',
+      features: features,
       active: true,
       audience: audience,
       image: imageAttr ? decodeURIComponent(imageAttr) : ''

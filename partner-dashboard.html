@@ -2454,7 +2454,39 @@
                     '</button>' +
                 '</div>' +
             '</div>' +
+        '<div class="svc-feat-list" style="margin-top:8px;display:flex;flex-direction:column;gap:4px;">' +
+            ((service.features||[]).map(function(f){
+                return '<div class="svc-feat-item" style="display:flex;align-items:center;gap:6px;">' +
+                    '<i class="fas fa-check" style="color:#4caf50;font-size:11px;flex-shrink:0;"></i>' +
+                    '<input type="text" class="svc-feat-input" value="' + (f||'').replace(/"/g,'&quot;') + '" placeholder="Ex: Wi-Fi inclus" style="flex:1;background:#111;border:1px solid #2a2a2a;color:#fff;border-radius:6px;padding:4px 8px;font-size:12px;font-family:inherit;">' +
+                    '<button type="button" onclick="removeSvcFeature(this)" style="background:none;border:none;color:#e44;cursor:pointer;font-size:12px;"><i class="fas fa-times"></i></button>' +
+                '</div>';
+            })).join('') +
+        '</div>' +
+        '<button type="button" onclick="addSvcFeature(this)" style="margin-top:6px;background:none;border:1.5px dashed #333;color:#888;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.3px;padding:5px 10px;border-radius:6px;cursor:pointer;display:block;font-family:inherit;">+ Ajouter un avantage</button>' +
         '</div>';
+    }
+
+    function addSvcFeature(btn) {
+        var row = btn.closest('.proposal-item-row');
+        if (!row) return;
+        var list = row.querySelector('.svc-feat-list');
+        if (!list) return;
+        if (list.querySelectorAll('.svc-feat-item').length >= 12) return;
+        var item = document.createElement('div');
+        item.className = 'svc-feat-item';
+        item.style.cssText = 'display:flex;align-items:center;gap:6px;';
+        item.innerHTML = '<i class="fas fa-check" style="color:#4caf50;font-size:11px;flex-shrink:0;"></i>' +
+            '<input type="text" class="svc-feat-input" placeholder="Ex: Wi-Fi inclus" style="flex:1;background:#111;border:1px solid #2a2a2a;color:#fff;border-radius:6px;padding:4px 8px;font-size:12px;font-family:inherit;">' +
+            '<button type="button" onclick="removeSvcFeature(this)" style="background:none;border:none;color:#e44;cursor:pointer;font-size:12px;"><i class="fas fa-times"></i></button>';
+        list.appendChild(item);
+        var input = item.querySelector('.svc-feat-input');
+        if (input) input.focus();
+    }
+
+    function removeSvcFeature(btn) {
+        var item = btn.closest('.svc-feat-item');
+        if (item) item.remove();
     }
 
     async function onServiceImageSelected(inputEl) {
@@ -2539,6 +2571,9 @@
             if (!isQuote && (!price || price <= 0)) continue;
             var serviceId = rows[i].getAttribute('data-service-id') || '';
             var imageAttr = rows[i].getAttribute('data-service-image') || '';
+            var featEls = rows[i].querySelectorAll('.svc-feat-input');
+            var features = [];
+            for (var j = 0; j < featEls.length; j++) { var fv = featEls[j].value.trim(); if (fv) features.push(fv); }
             services.push({
                 id: serviceId,
                 label: label,
@@ -2547,7 +2582,8 @@
                 pricing_type: isQuote ? 'quote' : 'fixed',
                 active: activeEl ? activeEl.checked : true,
                 audience: audience,
-                image: imageAttr ? decodeURIComponent(imageAttr) : ''
+                image: imageAttr ? decodeURIComponent(imageAttr) : '',
+                features: features
             });
         }
         return services;

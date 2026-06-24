@@ -8483,7 +8483,10 @@ app.put('/api/partner/services', authenticatePartner, (req, res) => {
                 pricing_type: isQuote ? 'quote' : 'fixed',
                 active: s.active !== false,
                 audience: SERVICE_AUDIENCES.indexOf(s.audience) !== -1 ? s.audience : 'particulier',
-                image: typeof s.image === 'string' ? s.image : ''
+                image: typeof s.image === 'string' ? s.image : '',
+                features: Array.isArray(s.features)
+                    ? s.features.filter(f => typeof f === 'string' && f.trim()).map(f => f.trim()).slice(0, 12)
+                    : []
             });
         }
         const partners = loadPartners();
