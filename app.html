@@ -38,6 +38,7 @@ a{text-decoration:none;color:inherit}
 /* Vidéo fond global */
 #bgVideo{
   position:fixed;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;
+  display:none!important;
 }
 #bgOverlay{
   position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:1;
@@ -2067,10 +2068,9 @@ a{text-decoration:none;color:inherit}
 <body>
 
 <!-- ══════════ VIDÉO FOND ══════════ -->
-<video id="bgVideo" autoplay muted loop playsinline webkit-playsinline preload="auto">
+<video id="bgVideo" muted loop playsinline preload="none">
   <source src="assets/videos/teaser.mp4" type="video/mp4">
 </video>
-<script>(function(){var v=document.getElementById('bgVideo');if(v){v.muted=true;v.play().catch(function(){});}})();</script>
 <div id="bgOverlay"></div>
 <div id="goldFlash"></div>
 
@@ -2781,34 +2781,7 @@ a{text-decoration:none;color:inherit}
 </div>
 
 <script>
-// ── VIDÉO FOND : lecture forcée & persistante ─────────────────
-function _playBgVideo(){
-  var bv = document.getElementById('bgVideo');
-  if(!bv || bv.style.display === 'none') return;
-  bv.muted = true;
-  bv.setAttribute('muted','');
-  bv.setAttribute('playsinline','');
-  bv.setAttribute('webkit-playsinline','');
-  if(bv.paused){ var p = bv.play(); if(p && p.catch) p.catch(function(){}); }
-}
-// Relance dès que la page est entièrement chargée
-window.addEventListener('load', _playBgVideo);
-// Reprise si l'onglet revient au premier plan (retour d'une autre app, écran qui se rallume)
-document.addEventListener('visibilitychange', function(){
-  if(!document.hidden) _playBgVideo();
-});
-// Reprise si la vidéo se met en pause pour une raison quelconque (système, navigateur)
-document.addEventListener('DOMContentLoaded', function(){
-  var bv = document.getElementById('bgVideo');
-  if(bv){
-    bv.addEventListener('pause', function(){
-      if(bv.style.display !== 'none') setTimeout(_playBgVideo, 200);
-    });
-    bv.addEventListener('stalled', _playBgVideo);
-    bv.addEventListener('waiting', _playBgVideo);
-    bv.addEventListener('suspend', _playBgVideo);
-  }
-});
+function _playBgVideo(){ /* vidéo de fond désactivée — fichier trop lourd pour mobile */ }
 
 // ── DATA ─────────────────────────────────────────────────────
 var USER = null, GUEST = false;
@@ -2910,7 +2883,7 @@ function initApp(){
     _checkPendingReviews();
     _syncUserBadge();
     loadNotifInbox();
-    if(!window._notifPollStarted){ window._notifPollStarted = true; setInterval(loadNotifInbox, 60000); }
+    if(!window._notifPollStarted){ window._notifPollStarted = true; setInterval(loadNotifInbox, 120000); }
     setTimeout(function(){
       if(typeof Notification!=='undefined' && Notification.permission==='default' && !sessionStorage.getItem('na')){
         openNotifModal(); sessionStorage.setItem('na','1');
@@ -6722,6 +6695,16 @@ var _ptnrRefreshTimer = null;
 
 function _ptnrApiUrl(){ return window.FA_GENESIS_API || API; }
 
+// Sauvegarde le cache partenaire en LOCAL STORAGE en excluant le portfolio
+// (photos/vidéos base64 = potentiellement plusieurs Mo → dépasse la limite 5Mo)
+function _ptnrSaveToCache(session){
+  try {
+    var slim = {};
+    for(var k in session){ if(k !== 'portfolio' && session.hasOwnProperty(k)) slim[k] = session[k]; }
+    localStorage.setItem('fa_genesis_partner_data', JSON.stringify(slim));
+  } catch(e){}
+}
+
 function _ptnrFetch(path, method, body){
   var opts = {method: method || 'GET', headers: {'Content-Type':'application/json', 'Authorization':'Bearer '+_ptnrToken}};
   if(body) opts.body = JSON.stringify(body);
@@ -6745,7 +6728,7 @@ function _ptnrInit(){
   _ptnrFetch('/api/partner/auth/me').then(function(data){
     if(data && data.partner){
       _ptnrSession = data.partner;
-      localStorage.setItem('fa_genesis_partner_data', JSON.stringify(data.partner));
+      _ptnrSaveToCache(data.partner);
       var savedProfileId = localStorage.getItem('fa_genesis_partner_profile');
       if(savedProfileId){
         _ptnrSession._profileId = savedProfileId;
@@ -6753,7 +6736,7 @@ function _ptnrInit(){
         _ptnrCheckPushStatus();
       }
       loadNotifInbox();
-      if(!window._notifPollStarted){ window._notifPollStarted = true; setInterval(loadNotifInbox, 60000); }
+      if(!window._notifPollStarted){ window._notifPollStarted = true; setInterval(loadNotifInbox, 120000); }
     } else { _ptnrClearSession(); }
   }).catch(function(){ _ptnrClearSession(); });
 }
@@ -6789,7 +6772,7 @@ function _ptnrLogin(){
       _ptnrToken = res.token;
       _ptnrSession = res.partner;
       localStorage.setItem('fa_genesis_partner_token', res.token);
-      localStorage.setItem('fa_genesis_partner_data', JSON.stringify(res.partner));
+      _ptnrSaveToCache(res.partner);
       // Admin case → show admin screen
       if(res.role === 'admin' || (res.partner && res.partner.partner_type === 'admin')){
         _ptnrShowScreen('admin'); return;
@@ -6882,7 +6865,7 @@ function _ptnrRegSubmit(){
       _ptnrToken = res.token;
       _ptnrSession = res.partner;
       localStorage.setItem('fa_genesis_partner_token', res.token);
-      localStorage.setItem('fa_genesis_partner_data', JSON.stringify(res.partner));
+      _ptnrSaveToCache(res.partner);
       if(ribFilledCount===3){
         _ptnrFetch('/api/partner/profile/set-rib','POST',{titulaire:ribTitulaire,iban:ribIban,bic:ribBic}).catch(function(){});
       }
@@ -7106,7 +7089,7 @@ function _ptnrShowDash(){
       }
     }).catch(function(){});
   }
-  if(!_ptnrRefreshTimer) _ptnrRefreshTimer = setInterval(_ptnrRefreshBadges, 30000);
+  if(!_ptnrRefreshTimer) _ptnrRefreshTimer = setInterval(_ptnrRefreshBadges, 90000);
 }
 
 function _ptnrOpenDrawer(){
@@ -9974,7 +9957,7 @@ function _ptnrPfSave(){
     if(data && data.success){
       _ptnrPfItems = data.portfolio || _ptnrPfItems;
       _ptnrSession.portfolio = _ptnrPfItems;
-      localStorage.setItem('fa_genesis_partner_data', JSON.stringify(_ptnrSession));
+      _ptnrSaveToCache(_ptnrSession);
       _ptnrPfRender();
       if(msgEl){ msgEl.style.color = '#FFD700'; msgEl.textContent = 'Portfolio enregistré.'; }
     } else {
@@ -10020,7 +10003,7 @@ function _ptnrSaveIdentity(){
     if(data && data.success){
       _ptnrSession.prenom = data.partner.prenom;
       _ptnrSession.nom = data.partner.nom;
-      localStorage.setItem('fa_genesis_partner_data', JSON.stringify(_ptnrSession));
+      _ptnrSaveToCache(_ptnrSession);
       var dn = document.getElementById('ptnr-display-name'); if(dn) dn.textContent = prenom+' '+nom;
       if(msgEl){ msgEl.style.color='#4caf50'; msgEl.textContent='Identité mise à jour.'; msgEl.className='ptnr-login-err on'; }
     } else if(msgEl){
@@ -10043,7 +10026,7 @@ function _ptnrSaveResponseTime(){
   _ptnrFetch('/api/partner/auth/update-profile', 'PUT', {responseTimeCommitmentMinutes: minutes}).then(function(data){
     if(data && data.success){
       _ptnrSession.responseTimeCommitmentMinutes = data.partner.responseTimeCommitmentMinutes;
-      localStorage.setItem('fa_genesis_partner_data', JSON.stringify(_ptnrSession));
+      _ptnrSaveToCache(_ptnrSession);
       if(msgEl){ msgEl.style.color='#4caf50'; msgEl.textContent='Temps de réponse mis à jour.'; msgEl.className='ptnr-login-err on'; }
     } else if(msgEl){
       msgEl.style.color='#ef4444'; msgEl.textContent=(data&&data.error)||'Erreur lors de l\'enregistrement'; msgEl.className='ptnr-login-err on';
@@ -10232,7 +10215,7 @@ function _ptnrSaveServices(){
   _ptnrFetch('/api/partner/services', 'PUT', {services: services}).then(function(data){
     if(data && data.success){
       _ptnrSession.services = data.services;
-      localStorage.setItem('fa_genesis_partner_data', JSON.stringify(_ptnrSession));
+      _ptnrSaveToCache(_ptnrSession);
       _ptnrRenderServicesSection();
       if(msgEl){ msgEl.style.color='#4caf50'; msgEl.textContent='Prestations enregistrées avec succès.'; msgEl.className='ptnr-login-err on'; }
     } else if(msgEl){
@@ -10267,7 +10250,7 @@ function _ptnrSaveServices(){
     }).then(function(data){
       if(data && data.success){
         _ptnrSession.photo = data.partner.photo;
-        localStorage.setItem('fa_genesis_partner_data', JSON.stringify(_ptnrSession));
+        _ptnrSaveToCache(_ptnrSession);
         if(msgEl){ msgEl.style.color='#4caf50'; msgEl.textContent='Photo mise à jour.'; msgEl.className='ptnr-login-err on'; }
       } else if(msgEl){
         msgEl.style.color='#ef4444'; msgEl.textContent=(data&&data.error)||'Erreur lors de l\'envoi de la photo'; msgEl.className='ptnr-login-err on';
