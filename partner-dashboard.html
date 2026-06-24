@@ -2413,6 +2413,7 @@
     var SERVICE_AUDIENCES = ['etudiant', 'particulier', 'entreprise'];
 
     function renderServiceItemRow(service) {
+        var isQuote = service.pricing_type === 'quote';
         var imageHtml = service.image
             ? '<img src="' + service.image + '" alt="" style="width:100%;height:100%;object-fit:cover;">'
             : '<i class="fas fa-image opacity-30"></i>';
@@ -2433,15 +2434,20 @@
                     '<input type="text" class="service-item-desc" placeholder="Détails..." value="' + (service.description || '') + '">' +
                 '</div>' +
                 '<div class="md:col-span-2">' +
-                    '<label class="block text-xs font-black uppercase mb-1">Prix (€)</label>' +
-                    '<input type="number" class="service-item-price text-right" value="' + (service.pricing_type === 'quote' ? '' : (service.price || 0)) + '" min="0" step="0.01"' + (service.pricing_type === 'quote' ? ' disabled style="opacity:.35"' : '') + '>' +
+                    '<label class="block text-xs font-black uppercase mb-1">Tarif</label>' +
+                    '<div style="display:flex;gap:0;margin-bottom:6px;">' +
+                        '<button type="button" class="svc-ptg-fixed" onclick="selectServicePricingMode(this,\'fixed\')" style="flex:1;padding:5px 0;font-size:10px;font-weight:900;text-transform:uppercase;border:2px solid #000;border-right:1px solid #000;cursor:pointer;background:' + (isQuote ? '#f0f0f0' : '#000') + ';color:' + (isQuote ? '#000' : '#FFD700') + ';">Prix fixe</button>' +
+                        '<button type="button" class="svc-ptg-quote" onclick="selectServicePricingMode(this,\'quote\')" style="flex:1;padding:5px 0;font-size:10px;font-weight:900;text-transform:uppercase;border:2px solid #000;border-left:1px solid #000;cursor:pointer;background:' + (isQuote ? '#000' : '#f0f0f0') + ';color:' + (isQuote ? '#FFD700' : '#000') + ';">Sur devis</button>' +
+                    '</div>' +
+                    '<input type="number" class="service-item-price text-right" placeholder="Ex: 150" value="' + (isQuote ? '' : (service.price || '')) + '" min="0" step="0.01"' + (isQuote ? ' style="display:none"' : '') + '>' +
+                    '<div class="svc-quote-badge" style="' + (isQuote ? '' : 'display:none;') + 'background:#1a1a1a;color:#FFD700;font-size:11px;font-weight:900;padding:8px 10px;text-align:center;border:2px solid #FFD700;">' +
+                        '<i class="fas fa-file-signature mr-1"></i>SUR DEVIS' +
+                    '</div>' +
+                    '<input type="hidden" class="service-item-quote" value="' + (isQuote ? 'quote' : 'fixed') + '">' +
                 '</div>' +
-                '<div class="md:col-span-2 flex items-end gap-3">' +
+                '<div class="md:col-span-2 flex items-end gap-3 pb-1">' +
                     '<label class="flex items-center gap-1 text-xs font-black uppercase">' +
                         '<input type="checkbox" class="service-item-active" ' + (service.active === false ? '' : 'checked') + '> Active' +
-                    '</label>' +
-                    '<label class="flex items-center gap-1 text-xs font-black uppercase" title="Le client devra demander un devis, sans prix fixe affiché">' +
-                        '<input type="checkbox" class="service-item-quote" ' + (service.pricing_type === 'quote' ? 'checked' : '') + ' onchange="toggleServiceQuoteMode(this)"> Sur&nbsp;devis' +
                     '</label>' +
                     '<button onclick="removeServiceItem(this)" class="text-red-600 font-black hover:opacity-70" title="Supprimer">' +
                         '<i class="fas fa-trash"></i>' +
@@ -2479,18 +2485,26 @@
         });
     }
 
-    function toggleServiceQuoteMode(checkbox) {
-        var row = checkbox.closest('.proposal-item-row');
+    function selectServicePricingMode(btn, mode) {
+        var row = btn.closest('.proposal-item-row');
         if (!row) return;
         var priceEl = row.querySelector('.service-item-price');
-        if (!priceEl) return;
-        if (checkbox.checked) {
-            priceEl.disabled = true;
-            priceEl.style.opacity = '0.35';
-            priceEl.value = '';
+        var quoteBadge = row.querySelector('.svc-quote-badge');
+        var hiddenEl = row.querySelector('.service-item-quote');
+        var btnFixed = row.querySelector('.svc-ptg-fixed');
+        var btnQuote = row.querySelector('.svc-ptg-quote');
+        if (mode === 'quote') {
+            if (priceEl) { priceEl.style.display = 'none'; priceEl.value = ''; }
+            if (quoteBadge) quoteBadge.style.display = '';
+            if (hiddenEl) hiddenEl.value = 'quote';
+            if (btnFixed) { btnFixed.style.background = '#f0f0f0'; btnFixed.style.color = '#000'; }
+            if (btnQuote) { btnQuote.style.background = '#000'; btnQuote.style.color = '#FFD700'; }
         } else {
-            priceEl.disabled = false;
-            priceEl.style.opacity = '';
+            if (priceEl) priceEl.style.display = '';
+            if (quoteBadge) quoteBadge.style.display = 'none';
+            if (hiddenEl) hiddenEl.value = 'fixed';
+            if (btnFixed) { btnFixed.style.background = '#000'; btnFixed.style.color = '#FFD700'; }
+            if (btnQuote) { btnQuote.style.background = '#f0f0f0'; btnQuote.style.color = '#000'; }
         }
     }
 
@@ -2519,7 +2533,7 @@
             var activeEl = rows[i].querySelector('.service-item-active');
             var label = labelEl ? labelEl.value.trim() : '';
             var quoteEl = rows[i].querySelector('.service-item-quote');
-            var isQuote = quoteEl ? quoteEl.checked : false;
+            var isQuote = quoteEl ? quoteEl.value === 'quote' : false;
             var price = priceEl ? parseFloat(priceEl.value) : 0;
             if (!label) continue;
             if (!isQuote && (!price || price <= 0)) continue;
