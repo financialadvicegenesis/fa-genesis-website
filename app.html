@@ -1009,8 +1009,6 @@ a{text-decoration:none;color:inherit}
    ═══════════════════════════════════════════════════ */
 /* Hero plein-écran */
 .pf-hero{margin:0 -24px;height:300px;position:relative;overflow:hidden;background:#0d0d0d;background-size:cover;background-position:center top}
-.pf-hero.live{animation:pfHeroZoom 8s ease-out forwards}
-@keyframes pfHeroZoom{from{background-size:120%}to{background-size:108%}}
 .pf-hero-overlay{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.22) 0%,rgba(0,0,0,.0) 30%,rgba(13,13,13,.96) 100%)}
 .pf-scanlines{position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.06) 2px,rgba(0,0,0,.06) 4px);z-index:1}
 /* Brackets HUD dans les coins du héro */
@@ -1022,16 +1020,16 @@ a{text-decoration:none;color:inherit}
 .pf-hero-btn{width:34px;height:34px;border-radius:50%;background:rgba(0,0,0,.52);backdrop-filter:blur(8px);border:1px solid rgba(255,215,0,.18);color:#fff;font-size:14px;display:flex;align-items:center;justify-content:center;cursor:pointer}
 .pf-hero-btn.fav-on{color:#FFD700}
 /* Identité flottante sur le héro */
-.pf-hero-id{position:absolute;bottom:14px;left:16px;right:16px;z-index:2}
-.pf-hero-name{font-family:'Unbounded',sans-serif;font-size:21px;font-weight:900;color:#fff;text-shadow:0 2px 18px rgba(0,0,0,.95),0 0 40px rgba(255,215,0,.1);line-height:1.18;margin-bottom:3px}
-.pf-hero-type{font-size:10px;font-weight:900;color:#FFD700;letter-spacing:2px;text-transform:uppercase;text-shadow:0 0 10px rgba(255,215,0,.35);margin-bottom:7px}
-.pf-hero-badges{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.pf-hero-id{position:absolute;bottom:14px;left:16px;right:16px;z-index:2;text-align:center}
+.pf-hero-namerow{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;margin-bottom:4px}
+.pf-hero-name{font-family:'Unbounded',sans-serif;font-size:19px;font-weight:900;color:#fff;text-shadow:0 2px 18px rgba(0,0,0,.95),0 0 40px rgba(255,215,0,.1);line-height:1.18}
+.pf-hero-type{font-size:9px;font-weight:900;color:#FFD700;letter-spacing:2px;text-transform:uppercase;text-shadow:0 0 10px rgba(255,215,0,.35)}
 /* Barre HUD glassmorphism */
 .pf-hud{display:flex;align-items:center;background:rgba(255,255,255,.025);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(255,215,0,.1);border-radius:16px;margin:14px 0;overflow:hidden}
-.pf-hud-cell{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:12px 4px}
-.pf-hud-ico{font-size:11px;color:#FFD700}
-.pf-hud-val{font-family:'Unbounded',sans-serif;font-size:13px;font-weight:900;color:#fff;white-space:nowrap;line-height:1}
-.pf-hud-lbl{font-size:7.5px;font-weight:700;color:#3a3a3a;text-transform:uppercase;letter-spacing:.4px}
+.pf-hud-cell{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:12px 6px}
+.pf-hud-ico{font-size:13px;color:#FFD700}
+.pf-hud-val{font-family:'Unbounded',sans-serif;font-size:11px;font-weight:900;color:#fff;white-space:nowrap;line-height:1;text-align:center}
+.pf-hud-lbl{font-size:9px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.4px}
 .pf-hud-sep{width:1px;height:36px;background:rgba(255,215,0,.07);flex-shrink:0}
 /* Bio + social */
 .pf-bio{font-size:12.5px;color:#777;line-height:1.68;margin-bottom:12px}
@@ -3256,7 +3254,7 @@ function partnerPriceLabel(p){
   return (p.fromPrice===null||p.fromPrice===undefined) ? 'Sur devis' : ('à partir de '+p.fromPrice+' €');
 }
 function _ptnrMinutesToLabel(m){
-  return m<60 ? Math.round(m)+' min' : Math.round(m/60)+' h';
+  return m<60 ? Math.round(m)+'min' : Math.round(m/60)+'h';
 }
 function partnerResponseLabel(p){
   // Priorité à l'engagement déclaré par le partenaire lui-même, sinon à la moyenne
@@ -3959,13 +3957,14 @@ function openPartnerDetail(partnerId){
           + '</div>'
         + '</div>'
         + '<div class="pf-hero-id">'
-          + '<div class="pf-hero-name">'+(p.prenom||'')+' '+(p.nom||'')+'</div>'
+          + '<div class="pf-hero-namerow">'
+            + '<span class="pf-hero-name">'+(p.prenom||'')+' '+(p.nom||'')+'</span>'
+            + verifiedHtml
+          + '</div>'
           + '<div class="pf-hero-type">'+label+'</div>'
-          + '<div class="pf-hero-badges">'+badgeHtml+' '+constellationHtml+' '+verifiedHtml+'</div>'
+          + (badgeHtml||constellationHtml ? '<div style="display:flex;justify-content:center;gap:6px;flex-wrap:wrap;margin-top:5px;">'+badgeHtml+constellationHtml+'</div>' : '')
         + '</div>'
       + '</div>';
-      // Ken Burns au prochain tick
-      setTimeout(function(){ var h=document.getElementById('pf-hero-'+p.id); if(h) h.classList.add('live'); }, 50);
 
       // ── HUD stats glassmorphism ──
       var ratingVal = (p.rating && p.rating.count) ? (p.rating.average+'<small style="font-size:9px;font-weight:700;color:#666;margin-left:2px;">('+p.rating.count+')</small>') : '<span style="font-size:11px;color:#333;">—</span>';
