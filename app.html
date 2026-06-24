@@ -968,11 +968,41 @@ a{text-decoration:none;color:inherit}
 .p-dir-detail-bio{font-size:12px;color:#ccc;line-height:1.5;margin:8px 0}
 .p-dir-detail-social{display:flex;gap:12px;margin:8px 0}
 .p-dir-detail-social a{color:var(--yellow);font-size:18px}
-.p-dir-portfolio-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
-.p-dir-portfolio-item{aspect-ratio:1;border-radius:10px;overflow:hidden;background:#111;border:1px solid #1e1e1e}
-.p-dir-portfolio-item img{width:100%;height:100%;object-fit:cover}
-.p-dir-portfolio-video{display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--yellow);font-size:22px;text-decoration:none;text-align:center;gap:4px}
-.p-dir-portfolio-video span{font-size:9px;color:var(--muted);padding:0 4px}
+/* ── Portfolio client (bento futuriste) ── */
+.p-dir-pf-bento{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-top:10px}
+.p-dir-pf-item{position:relative;overflow:hidden;border-radius:12px;background:#0d0d0d;aspect-ratio:1/1;cursor:pointer;border:1px solid #1e1e1e;transition:transform .18s,box-shadow .18s}
+.p-dir-pf-item:active{transform:scale(.97)}
+.p-dir-pf-item img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .35s ease}
+.p-dir-pf-item:hover img{transform:scale(1.04)}
+.p-dir-pf-hero{grid-column:span 2;aspect-ratio:16/9}
+.p-dir-pf-video{background:linear-gradient(135deg,#0a0a0a 0%,#1a0d00 100%);border-color:rgba(255,215,0,.18)}
+.p-dir-pf-play{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:38px;color:#FFD700;filter:drop-shadow(0 0 14px rgba(255,215,0,.55));transition:filter .2s}
+.p-dir-pf-hero .p-dir-pf-play{font-size:52px}
+.p-dir-pf-item:hover .p-dir-pf-play{filter:drop-shadow(0 0 22px rgba(255,215,0,.85))}
+.p-dir-pf-caption{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,.78));padding:14px 10px 8px;font-size:10px;color:#ccc;line-height:1.3}
+.p-dir-pf-item::after{content:'';position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(255,255,255,.012) 3px,rgba(255,255,255,.012) 4px)}
+/* ── Portfolio partenaire (éditeur) ── */
+.ptnr-pf-add-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.ptnr-pf-add-btn{display:flex;flex-direction:column;align-items:center;gap:7px;border:2px dashed #252525;border-radius:16px;padding:18px 8px;background:rgba(255,215,0,.018);color:#444;cursor:pointer;font-size:9.5px;font-weight:900;text-transform:uppercase;letter-spacing:.5px;font-family:inherit;transition:border-color .2s,color .2s,background .2s,box-shadow .2s;animation:pfBorderPulse 3s ease-in-out infinite}
+.ptnr-pf-add-btn:hover{border-color:#FFD700;color:#FFD700;background:rgba(255,215,0,.06);box-shadow:0 0 16px rgba(255,215,0,.1);animation:none}
+.ptnr-pf-add-btn i{font-size:24px}
+@keyframes pfBorderPulse{0%,100%{border-color:#252525}50%{border-color:#3a3a3a}}
+.ptnr-pf-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px}
+.ptnr-pf-item{position:relative;aspect-ratio:1/1;border-radius:14px;overflow:hidden;background:#0d0d0d;border:1.5px solid #1e1e1e;transition:border-color .2s,box-shadow .2s}
+.ptnr-pf-item:hover{border-color:rgba(255,215,0,.4);box-shadow:0 0 14px rgba(255,215,0,.12)}
+.ptnr-pf-item img{width:100%;height:100%;object-fit:cover;display:block}
+.ptnr-pf-overlay{position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.72) 0%,transparent 55%);opacity:0;transition:opacity .2s;display:flex;align-items:flex-end;justify-content:space-between;padding:8px 10px}
+.ptnr-pf-item:hover .ptnr-pf-overlay{opacity:1}
+.ptnr-pf-del{background:rgba(200,30,30,.85);border:none;color:#fff;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;cursor:pointer;backdrop-filter:blur(4px);flex-shrink:0}
+.ptnr-pf-type-badge{background:rgba(0,0,0,.6);border:1px solid rgba(255,215,0,.3);color:#FFD700;font-size:8.5px;font-weight:900;padding:2px 7px;border-radius:6px;letter-spacing:.3px;backdrop-filter:blur(4px)}
+.ptnr-pf-video-card{position:relative;aspect-ratio:1/1;border-radius:14px;overflow:hidden;background:linear-gradient(135deg,#0d0d0d,#150a00);border:1.5px solid rgba(255,215,0,.25);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;box-shadow:inset 0 0 20px rgba(255,215,0,.05)}
+.ptnr-pf-video-card i{font-size:30px;color:#FFD700;filter:drop-shadow(0 0 10px rgba(255,215,0,.5))}
+.ptnr-pf-video-card span{font-size:8px;color:#666;text-align:center;padding:0 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+/* Video URL input popup */
+#ptnr-pf-video-popup{display:none;position:fixed;inset:0;z-index:9900;background:rgba(0,0,0,.82);align-items:flex-end;justify-content:center}
+#ptnr-pf-video-popup.on{display:flex}
+.ptnr-pf-video-popup-sheet{background:#111;border:1.5px solid #FFD700;border-radius:20px 20px 0 0;width:100%;max-width:480px;padding:24px 20px 36px}
+.ptnr-pf-save-msg{font-size:12px;font-weight:700;text-align:center;margin-bottom:8px;min-height:16px}
 
 /* Médailles classement (annuaire Prestataires) */
 .p-rank-card-wrap{position:relative;flex-shrink:0}
@@ -2423,6 +2453,10 @@ a{text-decoration:none;color:inherit}
                 <i class="pni fa-solid fa-trophy"></i><span>Réputation</span>
                 <i class="fa-solid fa-chevron-right ptnr-snbtn-arrow"></i>
               </button>
+              <button class="ptnr-snbtn" id="ptnr-sn-portfolio" onclick="_ptnrNav('portfolio')">
+                <i class="pni fa-solid fa-images"></i><span>Portfolio</span>
+                <i class="fa-solid fa-chevron-right ptnr-snbtn-arrow"></i>
+              </button>
               <button class="ptnr-snbtn" id="ptnr-sn-profil" onclick="_ptnrNav('profil')">
                 <i class="pni fa-solid fa-id-card"></i><span>Profil</span>
                 <i class="fa-solid fa-chevron-right ptnr-snbtn-arrow"></i>
@@ -2530,6 +2564,41 @@ a{text-decoration:none;color:inherit}
         <div class="ptnr-screen" id="ptnr-screen-reputation">
           <div class="ptnr-section-title">Ma réputation</div>
           <div id="ptnr-reputation-content"></div>
+        </div>
+
+        <!-- Sub-screen: Portfolio -->
+        <div class="ptnr-screen" id="ptnr-screen-portfolio">
+          <div class="ptnr-section-title">Mon portfolio</div>
+          <!-- Boutons d'ajout -->
+          <div class="ptnr-pf-add-row">
+            <button type="button" class="ptnr-pf-add-btn" onclick="document.getElementById('ptnr-pf-file-input').click()">
+              <i class="fa-solid fa-camera"></i>Photos
+            </button>
+            <button type="button" class="ptnr-pf-add-btn" onclick="_ptnrPfOpenVideoPopup()">
+              <i class="fa-solid fa-circle-play"></i>Vidéo / lien
+            </button>
+          </div>
+          <input type="file" id="ptnr-pf-file-input" accept="image/*" multiple style="display:none;" onchange="_ptnrPfOnPhotosSelected(this)">
+          <!-- Grille -->
+          <div class="ptnr-pf-grid" id="ptnr-pf-grid"></div>
+          <!-- Save -->
+          <div class="ptnr-pf-save-msg" id="ptnr-pf-save-msg"></div>
+          <button class="ptnr-login-btn" id="ptnr-pf-save-btn" onclick="_ptnrPfSave()" style="margin-top:0;">
+            <i class="fa-solid fa-floppy-disk"></i> Enregistrer le portfolio
+          </button>
+        </div>
+
+        <!-- Popup ajout vidéo -->
+        <div id="ptnr-pf-video-popup" onclick="if(event.target===this)_ptnrPfCloseVideoPopup()">
+          <div class="ptnr-pf-video-popup-sheet">
+            <div style="font-size:13px;font-weight:900;color:#FFD700;font-family:'Unbounded',sans-serif;margin-bottom:14px;"><i class="fa-solid fa-circle-play"></i> Ajouter une vidéo</div>
+            <input type="url" class="ptnr-input" id="ptnr-pf-video-url" placeholder="Lien YouTube, Vimeo, Instagram…" style="margin-bottom:10px;">
+            <input type="text" class="ptnr-input" id="ptnr-pf-video-caption" placeholder="Légende (optionnel)" style="margin-bottom:14px;">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+              <button class="ptnr-login-btn" onclick="_ptnrPfAddVideo()" style="margin-top:0;">Ajouter</button>
+              <button class="ptnr-login-btn" onclick="_ptnrPfCloseVideoPopup()" style="margin-top:0;background:#1a1a1a;color:#888;border-color:#333;">Annuler</button>
+            </div>
+          </div>
         </div>
 
         <!-- Sub-screen: Profil (photo) -->
@@ -3790,10 +3859,19 @@ function openPartnerDetail(partnerId){
       var socialHtml = socialLinks.length ? '<div class="p-dir-detail-social">'+socialLinks.join('')+'</div>' : '';
       var portfolio = p.portfolio || [];
       var portfolioHtml = portfolio.length
-        ? '<div class="p-dir-portfolio-grid">'+portfolio.map(function(item){
-            return item.type === 'video'
-              ? '<a class="p-dir-portfolio-item p-dir-portfolio-video" href="'+item.url+'" target="_blank" rel="noopener"><i class="fas fa-circle-play"></i>'+(item.caption?'<span>'+item.caption+'</span>':'')+'</a>'
-              : '<div class="p-dir-portfolio-item"><img src="'+item.url+'" alt="'+(item.caption||'')+'"></div>';
+        ? '<div class="p-dir-pf-bento">'+portfolio.map(function(item, i){
+            var isHero = (i === 0);
+            var cls = 'p-dir-pf-item' + (isHero ? ' p-dir-pf-hero' : '') + (item.type==='video' ? ' p-dir-pf-video' : '');
+            if(item.type === 'video'){
+              return '<a class="'+cls+'" href="'+item.url+'" target="_blank" rel="noopener">'
+                + '<div class="p-dir-pf-play"><i class="fa-solid fa-circle-play"></i></div>'
+                + (item.caption ? '<div class="p-dir-pf-caption">'+item.caption+'</div>' : '')
+              + '</a>';
+            }
+            return '<div class="'+cls+'">'
+              + '<img src="'+item.url+'" alt="'+(item.caption||'')+'" loading="lazy">'
+              + (item.caption ? '<div class="p-dir-pf-caption">'+item.caption+'</div>' : '')
+            + '</div>';
           }).join('')+'</div>'
         : '';
       // Structure façon Uber Eats/Deliveroo (page d'un établissement) : onglets de
@@ -6909,6 +6987,7 @@ function _ptnrNav(screen){
   if(screen==='missions') _ptnrLoadMissions();
   if(screen==='versements') _ptnrLoadVersements();
   if(screen==='reputation') _ptnrLoadReputation();
+  if(screen==='portfolio') _ptnrLoadPortfolio();
   if(screen==='profil') _ptnrLoadProfilPhoto();
 }
 
@@ -9612,6 +9691,99 @@ function _ptnrImageFileToAvatarBase64(file, size, quality){
       img.onerror = function(){ reject(new Error('Format d\'image non supporté sur cet appareil')); };
       img.src = dataUri;
     });
+  });
+}
+
+// ── PORTFOLIO PARTENAIRE ──
+var _ptnrPfItems = [];
+function _ptnrLoadPortfolio(){
+  var grid = document.getElementById('ptnr-pf-grid');
+  if(grid) grid.innerHTML = '<div style="color:#444;font-size:12px;padding:12px 0;">Chargement…</div>';
+  _ptnrFetch('/api/partner/portfolio', 'GET').then(function(data){
+    if(data && data.success){ _ptnrPfItems = data.portfolio || []; }
+    _ptnrPfRender();
+  }).catch(function(){ _ptnrPfRender(); });
+}
+function _ptnrPfRender(){
+  var grid = document.getElementById('ptnr-pf-grid');
+  if(!grid) return;
+  if(!_ptnrPfItems.length){
+    grid.innerHTML = '<div style="grid-column:span 2;text-align:center;color:#333;font-size:12px;padding:28px 0;border:1.5px dashed #1e1e1e;border-radius:14px;"><i class="fa-solid fa-images" style="font-size:28px;color:#2a2a2a;display:block;margin-bottom:8px;"></i>Aucun média pour le moment</div>';
+    return;
+  }
+  grid.innerHTML = _ptnrPfItems.map(function(item, idx){
+    if(item.type === 'video'){
+      return '<div class="ptnr-pf-item ptnr-pf-video-card" data-pf-idx="'+idx+'">'
+        + '<i class="fa-solid fa-circle-play"></i>'
+        + '<span>'+(item.caption || item.url)+'</span>'
+        + '<div class="ptnr-pf-overlay"><span class="ptnr-pf-type-badge"><i class="fa-solid fa-circle-play"></i> Vidéo</span><button class="ptnr-pf-del" type="button" onclick="event.stopPropagation();_ptnrPfDelete('+idx+')"><i class="fa-solid fa-trash-can"></i></button></div>'
+      + '</div>';
+    }
+    return '<div class="ptnr-pf-item" data-pf-idx="'+idx+'">'
+      + '<img src="'+item.url+'" alt="'+(item.caption||'')+'" loading="lazy">'
+      + '<div class="ptnr-pf-overlay"><span class="ptnr-pf-type-badge"><i class="fa-solid fa-image"></i> Photo</span><button class="ptnr-pf-del" type="button" onclick="_ptnrPfDelete('+idx+')"><i class="fa-solid fa-trash-can"></i></button></div>'
+    + '</div>';
+  }).join('');
+}
+function _ptnrPfOnPhotosSelected(input){
+  var files = input.files;
+  if(!files || !files.length) return;
+  var promises = [];
+  for(var i=0;i<files.length;i++){
+    promises.push(_ptnrImageFileToCompressedBase64(files[i], 1200, 0.82));
+  }
+  Promise.all(promises).then(function(dataUris){
+    dataUris.forEach(function(uri){
+      _ptnrPfItems.push({ id: 'PF-' + Math.random().toString(36).slice(2,8), type: 'photo', url: uri, caption: '' });
+    });
+    _ptnrPfRender();
+  }).catch(function(e){ console.error('[PTNR-PF] Erreur upload:', e); });
+  input.value = '';
+}
+function _ptnrPfOpenVideoPopup(){
+  var p = document.getElementById('ptnr-pf-video-popup');
+  var u = document.getElementById('ptnr-pf-video-url');
+  var c = document.getElementById('ptnr-pf-video-caption');
+  if(u) u.value = '';
+  if(c) c.value = '';
+  if(p){ p.className = 'on'; if(u) setTimeout(function(){ u.focus(); }, 80); }
+}
+function _ptnrPfCloseVideoPopup(){
+  var p = document.getElementById('ptnr-pf-video-popup');
+  if(p) p.className = '';
+}
+function _ptnrPfAddVideo(){
+  var urlEl = document.getElementById('ptnr-pf-video-url');
+  var capEl = document.getElementById('ptnr-pf-video-caption');
+  var url = urlEl ? urlEl.value.trim() : '';
+  if(!url){ if(urlEl) urlEl.focus(); return; }
+  _ptnrPfItems.push({ id: 'PF-' + Math.random().toString(36).slice(2,8), type: 'video', url: url, caption: capEl ? capEl.value.trim() : '' });
+  _ptnrPfRender();
+  _ptnrPfCloseVideoPopup();
+}
+function _ptnrPfDelete(idx){
+  _ptnrPfItems.splice(idx, 1);
+  _ptnrPfRender();
+}
+function _ptnrPfSave(){
+  var saveBtn = document.getElementById('ptnr-pf-save-btn');
+  var msgEl = document.getElementById('ptnr-pf-save-msg');
+  if(saveBtn){ saveBtn.disabled = true; saveBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Enregistrement…'; }
+  if(msgEl){ msgEl.style.color = ''; msgEl.textContent = ''; }
+  _ptnrFetch('/api/partner/portfolio', 'PUT', { portfolio: _ptnrPfItems }).then(function(data){
+    if(data && data.success){
+      _ptnrPfItems = data.portfolio || _ptnrPfItems;
+      _ptnrSession.portfolio = _ptnrPfItems;
+      localStorage.setItem('fa_genesis_partner_data', JSON.stringify(_ptnrSession));
+      _ptnrPfRender();
+      if(msgEl){ msgEl.style.color = '#FFD700'; msgEl.textContent = 'Portfolio enregistré.'; }
+    } else {
+      if(msgEl){ msgEl.style.color = '#ef4444'; msgEl.textContent = (data && data.error) || 'Erreur lors de l\'enregistrement'; }
+    }
+  }).catch(function(){
+    if(msgEl){ msgEl.style.color = '#ef4444'; msgEl.textContent = 'Erreur de connexion au serveur'; }
+  }).finally(function(){
+    if(saveBtn){ saveBtn.disabled = false; saveBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Enregistrer le portfolio'; }
   });
 }
 
