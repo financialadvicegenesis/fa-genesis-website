@@ -9963,31 +9963,68 @@ function _ptnrPfCloseVideoPopup(){
   var p = document.getElementById('ptnr-pf-video-popup');
   if(p) p.className = '';
 }
-function _ptnrPfExtractThumb(url){
-  // YouTube: youtube.com/watch?v=ID, youtu.be/ID, youtube.com/shorts/ID
+var _ptnrPfPendingThumb = '';
+function _ptnrPfExtractThumbSync(url){
+  // YouTube : synchrone, URL directe
   var ytMatch = url.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/);
   if(ytMatch) return 'https://img.youtube.com/vi/'+ytMatch[1]+'/hqdefault.jpg';
   return null;
 }
+function _ptnrPfFetchThumbAsync(url, cb){
+  // Vimeo : API publique, pas d'auth nécessaire
+  var vmMatch = url.match(/vimeo\.com\/(\d+)/);
+  if(vmMatch){
+    fetch('https://vimeo.com/api/v2/video/'+vmMatch[1]+'.json')
+      .then(function(r){return r.ok?r.json():null;})
+      .then(function(d){cb(d&&d[0]&&d[0].thumbnail_large?d[0].thumbnail_large:null);})
+      .catch(function(){cb(null);});
+    return;
+  }
+  // Dailymotion : API publique
+  var dmMatch = url.match(/dailymotion\.com\/video\/([a-zA-Z0-9]+)/);
+  if(dmMatch){
+    fetch('https://api.dailymotion.com/video/'+dmMatch[1]+'?fields=thumbnail_720_url')
+      .then(function(r){return r.ok?r.json():null;})
+      .then(function(d){cb(d&&d.thumbnail_720_url?d.thumbnail_720_url:null);})
+      .catch(function(){cb(null);});
+    return;
+  }
+  // Tout le reste (Instagram, TikTok…) : extraction og:image côté serveur
+  _ptnrFetch('/api/partner/fetch-link-thumb','POST',{url:url})
+    .then(function(data){cb(data&&data.thumb?data.thumb:null);})
+    .catch(function(){cb(null);});
+}
 function _ptnrPfOnVideoUrlInput(){
   var urlEl = document.getElementById('ptnr-pf-video-url');
   var prev = document.getElementById('ptnr-pf-video-preview');
-  if(!urlEl || !prev) return;
+  if(!urlEl||!prev) return;
   var url = urlEl.value.trim();
-  var thumb = _ptnrPfExtractThumb(url);
-  if(thumb){
-    prev.innerHTML = '<img src="'+thumb+'" alt="Aperçu" style="width:100%;border-radius:10px;margin-top:10px;border:1px solid #222;">';
-  } else {
-    prev.innerHTML = url ? '<div style="font-size:11px;color:#444;margin-top:8px;"><i class="fa-solid fa-circle-info"></i> Aperçu non disponible pour ce lien</div>' : '';
+  _ptnrPfPendingThumb = '';
+  if(!url){prev.innerHTML='';return;}
+  // Essai synchrone (YouTube)
+  var syncThumb = _ptnrPfExtractThumbSync(url);
+  if(syncThumb){
+    _ptnrPfPendingThumb = syncThumb;
+    prev.innerHTML = '<img src="'+syncThumb+'" alt="Aperçu" style="width:100%;border-radius:10px;margin-top:10px;border:1px solid #222;">';
+    return;
   }
+  // Chargement asynchrone pour les autres plateformes
+  prev.innerHTML = '<div style="font-size:11px;color:#666;margin-top:8px;"><i class="fa-solid fa-spinner fa-spin"></i> Chargement de l\'aperçu…</div>';
+  _ptnrPfFetchThumbAsync(url, function(thumb){
+    if(urlEl.value.trim()!==url) return; // URL changée entre-temps
+    _ptnrPfPendingThumb = thumb||'';
+    prev.innerHTML = thumb
+      ? '<img src="'+thumb+'" alt="Aperçu" style="width:100%;border-radius:10px;margin-top:10px;border:1px solid #222;">'
+      : '<div style="font-size:11px;color:#444;margin-top:8px;"><i class="fa-solid fa-circle-info"></i> Aperçu non disponible pour ce lien</div>';
+  });
 }
 function _ptnrPfAddVideo(){
   var urlEl = document.getElementById('ptnr-pf-video-url');
   var capEl = document.getElementById('ptnr-pf-video-caption');
   var url = urlEl ? urlEl.value.trim() : '';
-  if(!url){ if(urlEl) urlEl.focus(); return; }
-  var thumb = _ptnrPfExtractThumb(url) || '';
-  _ptnrPfItems.push({ id: 'PF-' + Math.random().toString(36).slice(2,8), type: 'video', url: url, caption: capEl ? capEl.value.trim() : '', thumb: thumb });
+  if(!url){if(urlEl) urlEl.focus();return;}
+  var thumb = _ptnrPfPendingThumb || _ptnrPfExtractThumbSync(url) || '';
+  _ptnrPfItems.push({id:'PF-'+Math.random().toString(36).slice(2,8),type:'video',url:url,caption:capEl?capEl.value.trim():'',thumb:thumb});
   _ptnrPfRender();
   _ptnrPfCloseVideoPopup();
 }

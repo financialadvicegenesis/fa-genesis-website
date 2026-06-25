@@ -8504,6 +8504,71 @@ app.put('/api/partner/services', authenticatePartner, (req, res) => {
     }
 });
 
+// Extraction de la miniature OG d'un lien externe (Instagram, TikTok, etc.)
+function fetchOgImage(rawUrl) {
+    return new Promise((resolve) => {
+        let parsed;
+        try { parsed = new URL(rawUrl); } catch { return resolve(null); }
+        if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return resolve(null);
+        // Block private/loopback ranges (SSRF protection)
+        const h = parsed.hostname.toLowerCase();
+        if (/^(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(h)) return resolve(null);
+        const lib = parsed.protocol === 'https:' ? require('https') : require('http');
+        const options = {
+            hostname: parsed.hostname, port: parsed.port || undefined,
+            path: parsed.pathname + parsed.search, method: 'GET',
+            timeout: 6000,
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
+                'Accept': 'text/html,application/xhtml+xml',
+                'Accept-Language': 'fr-FR,fr;q=0.9'
+            }
+        };
+        const req = lib.request(options, (r) => {
+            // Follow one redirect
+            if ([301,302,303,307,308].includes(r.statusCode) && r.headers.location) {
+                try {
+                    const redir = new URL(r.headers.location, rawUrl).href;
+                    return fetchOgImage(redir).then(resolve);
+                } catch { return resolve(null); }
+            }
+            if (r.statusCode !== 200) return resolve(null);
+            let body = '';
+            r.setEncoding('utf8');
+            r.on('data', chunk => { body += chunk; if (body.length > 300000) r.destroy(); });
+            r.on('end', () => {
+                const patterns = [
+                    /<meta[^>]+property=["']og:image(?::secure_url)?["'][^>]+content=["']([^"']+)["']/i,
+                    /<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image(?::secure_url)?["']/i,
+                    /<meta[^>]+name=["']twitter:image(?::src)?["'][^>]+content=["']([^"']+)["']/i,
+                    /<meta[^>]+content=["']([^"']+)["'][^>]+name=["']twitter:image(?::src)?["']/i,
+                ];
+                for (const p of patterns) {
+                    const m = body.match(p);
+                    if (m && m[1] && m[1].startsWith('http')) return resolve(m[1]);
+                }
+                resolve(null);
+            });
+            r.on('error', () => resolve(null));
+        });
+        req.on('timeout', () => { req.destroy(); resolve(null); });
+        req.on('error', () => resolve(null));
+        req.end();
+    });
+}
+
+// Récupère la miniature OG d'un lien externe pour le portfolio
+app.post('/api/partner/fetch-link-thumb', authenticatePartner, async (req, res) => {
+    try {
+        const { url } = req.body;
+        if (!url || typeof url !== 'string' || url.length > 2000) return res.status(400).json({ error: 'url requis' });
+        const thumb = await fetchOgImage(url);
+        res.json({ success: !!thumb, thumb: thumb || '' });
+    } catch (e) {
+        res.json({ success: false, thumb: '' });
+    }
+});
+
 // Lister mon portfolio (partenaire connecté)
 app.get('/api/partner/portfolio', authenticatePartner, (req, res) => {
     res.json({ success: true, portfolio: req.partner.portfolio || [] });
