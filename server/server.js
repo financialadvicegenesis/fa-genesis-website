@@ -2973,13 +2973,112 @@ app.post('/api/payments/paypal/create-order', async (req, res) => {
 });
 
 /**
+ * Logique de confirmation de paiement partagée entre le webhook SumUp et la capture PayPal.
+ * Met à jour le statut de la commande, synchronise users.json, envoie les notifications,
+ * crée le dispatch partenaire et déclenche les versements.
+ */
+async function _applyPaymentConfirmation(orderId, stage, transactionRef) {
+    const order = getOrderById(orderId);
+    if (!order) { console.log('[PAY_CONFIRM] Commande non trouvée:', orderId); return null; }
+
+    const updates = { transaction_id: transactionRef || null };
+
+    if (stage === 'deposit') {
+        updates.deposit_paid = true; updates.status = 'active'; updates.start_date = null;
+        updates.schedule_status = 'awaiting_client_choice'; updates.proposed_start_date = null;
+        updates.schedule_confirmed_by_admin = false; updates.schedule_confirmed_by_partner = false;
+    } else if (stage === 'balance') {
+        updates.balance_paid = true; updates.status = 'paid_in_full';
+        if (order.installments && order.installments.length === 3) {
+            const bInst = order.installments.map(i => i.paid ? i : Object.assign({}, i, { paid: true, paid_at: new Date().toISOString() }));
+            updates.installments = bInst;
+            updates.amount_paid = bInst.reduce((s, i) => s + (i.paid ? i.amount : 0), 0);
+        }
+    } else if (stage === 'installment_2' || stage === 'installment_3') {
+        const idx = (order.installments || []).findIndex(i => i.stage === stage);
+        if (idx !== -1) {
+            const uInst = order.installments.map((i, n) => n !== idx ? i : Object.assign({}, i, { paid: true, paid_at: new Date().toISOString() }));
+            updates.installments = uInst;
+            updates.amount_paid = uInst.reduce((s, i) => s + (i.paid ? i.amount : 0), 0);
+            if (stage === 'installment_2') { updates.status = 'mid_delivery_paid'; }
+            else { updates.balance_paid = true; updates.status = 'paid_in_full'; }
+        }
+    }
+
+    const updatedOrder = updateOrder(orderId, updates);
+    if (!updatedOrder) return null;
+
+    // Sync users.json
+    if (updatedOrder.client_info && updatedOrder.client_info.email) {
+        try {
+            const users = loadUsers();
+            const uIdx = users.findIndex(u => u.email && u.email.toLowerCase() === updatedOrder.client_info.email.toLowerCase());
+            if (uIdx !== -1) {
+                const ps = stage === 'deposit' ? 'deposit_paid' : stage === 'installment_2' ? 'mid_delivery_paid' : (stage === 'balance' || stage === 'installment_3') ? 'fully_paid' : null;
+                if (ps) { users[uIdx].paymentStatus = ps; users[uIdx].payment_status = ps; }
+                users[uIdx].activeOrderId = orderId;
+                saveUsers(users);
+            }
+        } catch(e) { console.error('[PAY_CONFIRM] Sync users:', e.message); }
+    }
+
+    // Notifications
+    if (updatedOrder.client_info && updatedOrder.client_info.email) {
+        const msg = stage === 'deposit' ? 'Votre acompte a été reçu. Votre accompagnement démarre !'
+            : stage === 'installment_2' ? 'Le paiement de la tranche 2 a été reçu. Merci !'
+            : 'Votre paiement complet a été confirmé. Merci !';
+        const lbl = stage === 'deposit' ? 'acompte' : stage === 'installment_2' ? 'tranche 2' : stage === 'installment_3' ? 'tranche 3' : 'solde';
+        notifyUser(updatedOrder.client_info.email, 'client', 'paiement', 'Paiement confirmé ✅', msg, '/espace-client.html');
+        notifyUser(null, 'admin', 'paiement-admin', 'Paiement reçu', (updatedOrder.client_info.first_name || '') + ' — ' + (updatedOrder.product_name || '') + ' — ' + lbl, '/app.html#open-admin');
+    }
+
+    // Emails + dispatch/payout
+    if (updatedOrder.client_info) {
+        const ce = updatedOrder.client_info.email;
+        const cn = (updatedOrder.client_info.first_name || '') + ' ' + (updatedOrder.client_info.last_name || '');
+        if (stage === 'deposit') {
+            try {
+                const { getProductById, calculatePaymentAmounts } = require('./products');
+                const prod = getProductById(updatedOrder.product_id);
+                let offerData = null;
+                if (prod) { const a = calculatePaymentAmounts(prod.total_price); offerData = { name: prod.name, category: prod.category, product_type: prod.product_type, total_price: prod.total_price, duration: prod.duration, deposit_amount: a.deposit_amount, balance_amount: a.balance_amount }; }
+                emailService.sendRegistrationConfirmation(ce, updatedOrder.client_info.first_name, offerData).catch(e => console.error('[PAY_CONFIRM] Email bienvenue:', e));
+            } catch(e) { console.error('[PAY_CONFIRM] Email setup:', e.message); }
+            if (updatedOrder.product_type === 'partner_service') {
+                const disp = createPartnerServiceDispatch(updatedOrder);
+                if (disp) {
+                    if (updatedOrder.payment_tier === 'small') {
+                        notifyUser(ce, 'client', 'mission_created', 'Mission créée — paiement sécurisé', 'Votre paiement est sécurisé par GENESIS SAFE™. Les fonds seront versés au prestataire après livraison.', '/app.html#reservations');
+                    } else {
+                        await processDispatchPayout(disp, 'deposit');
+                        notifyUser(ce, 'client', 'mission_created', 'Mission en cours', 'Votre acompte a été versé au prestataire. La livraison sera bientôt disponible.', '/app.html#reservations');
+                    }
+                }
+            } else {
+                assignIntervenantsFromOrder(orderId);
+            }
+        } else {
+            const isFinal = (stage === 'balance' || stage === 'installment_3');
+            if (isFinal) { try { emailService.sendPaymentConfirmation(ce, cn, updatedOrder).catch(e => console.error('[PAY_CONFIRM] Email paiement:', e)); } catch(e) {} }
+            const acceptedD = loadDispatches().filter(d => d.order_id === orderId && d.status === 'accepted');
+            acceptedD.forEach(d => processDispatchPayout(d, stage).catch(e => console.error('[PAYOUT]', e)));
+            if (isFinal) requestPartnerReviews(ce, acceptedD);
+        }
+    }
+
+    console.log('[PAY_CONFIRM] OK:', orderId, '—', stage, '(ref:', transactionRef + ')');
+    return updatedOrder;
+}
+
+/**
  * POST /api/payments/paypal/capture-order
- * Body: { paypalOrderId }
+ * Body: { paypalOrderId, orderId?, stage? }
+ * orderId + stage sont optionnels : fournis uniquement pour le flux dépôt partenaire (pb-sheet).
  * Response: { success, details }
  */
 app.post('/api/payments/paypal/capture-order', async (req, res) => {
     try {
-        const { paypalOrderId } = req.body;
+        const { paypalOrderId, orderId, stage } = req.body;
         if (!paypalOrderId) return res.status(400).json({ error: 'paypalOrderId requis' });
 
         const token = await getPayPalAccessToken();
@@ -2991,6 +3090,10 @@ app.post('/api/payments/paypal/capture-order', async (req, res) => {
 
         if (result.status === 'COMPLETED') {
             console.log('[PAYPAL] Capturé:', paypalOrderId);
+            // Si un orderId Genesis est fourni, confirmer la commande (flux dépôt partenaire via pb-sheet)
+            if (orderId && stage) {
+                await _applyPaymentConfirmation(orderId, stage, paypalOrderId);
+            }
             res.json({ success: true, details: result });
         } else {
             console.warn('[PAYPAL] Statut inattendu:', result.status);

@@ -1711,6 +1711,9 @@ a{text-decoration:none;color:inherit}
 #pb-overlay.open{display:flex;animation:regFadeIn .2s ease;}
 #pb-sheet{width:100%;max-width:480px;background:#0d0d0d;border-radius:20px 20px 0 0;border-top:3px solid #FFD700;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;transform:translateY(100%);transition:transform .45s cubic-bezier(.34,1.56,.64,1);}
 #pb-sheet.up{transform:translateY(0);}
+.pb-method-pick{display:flex;gap:8px;margin-bottom:14px;}
+.pb-method-btn{flex:1;padding:10px 8px;background:#111;border:1.5px solid #2a2a2a;border-radius:10px;color:#888;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:border-color .2s,color .2s,background .2s;}
+.pb-method-btn.pb-method-active{border-color:#FFD700;color:#FFD700;background:#1a1600;}
 .cwb-hdr{display:flex;align-items:center;justify-content:space-between;padding:18px 20px 0;flex-shrink:0;}
 .cwb-body{flex:1;overflow-y:auto;padding:16px 20px 28px;}
 .cwb-name{font-family:'Unbounded',cursive;font-size:1.05rem;font-weight:900;color:#FFD700;margin-bottom:4px;}
@@ -7833,7 +7836,7 @@ function cwBookingSendRequest(){
 }
 
 // ── PARTNER SERVICE BOOKING (marketplace : commande directe sur un partenaire choisi) ──
-var _pbPartner=null, _pbService=null, _pbServices=null, _pbMode='request';
+var _pbPartner=null, _pbService=null, _pbServices=null, _pbMode='request', _pbSelectedPayMethod='card', _pbDepositAmount=0;
 
 // Ouvre la modal en mode "demande" : le client décrit son besoin, sans payer (le partenaire doit d'abord accepter).
 function openPartnerRequest(partnerId, serviceId){
@@ -7933,6 +7936,11 @@ function _showPbPayUI(partner, service){
   var deposit = isSmall ? total : Math.round(total*0.30);
   var tranche2 = isSmall ? 0 : Math.round(total*0.40);
   var tranche3 = isSmall ? 0 : total-deposit-tranche2;
+  _pbDepositAmount = deposit;
+  _pbSelectedPayMethod = 'card';
+  var mCrd = document.getElementById('pb-method-card'); if(mCrd) mCrd.className='pb-method-btn pb-method-active';
+  var mPp = document.getElementById('pb-method-paypal'); if(mPp) mPp.className='pb-method-btn';
+  var pps = document.getElementById('pb-paypal-screen'); if(pps) pps.style.display='none';
 
   var nm=document.getElementById('pb-service-name'); if(nm) nm.textContent=service.label;
   var pn=document.getElementById('pb-partner-name'); if(pn) pn.textContent='avec '+(partner.prenom||'')+' '+(partner.nom||'');
@@ -7995,6 +8003,7 @@ function closePartnerBooking(){
 }
 function pbPayDeposit(){
   if(!_pbPartner||!_pbService||!USER||GUEST) return;
+  if(_pbSelectedPayMethod==='paypal'){ _pbPayDepositPayPal(); return; }
   var er=document.getElementById('pb-err'); if(er) er.classList.remove('on');
   var sb=document.getElementById('pb-pay-btn'); if(sb){sb.disabled=true;sb.textContent='Création de la commande...';}
 
@@ -8062,6 +8071,89 @@ function _pbMountWidget(checkoutId, orderId){
     script.onerror=function(){ var er=document.getElementById('pb-err'); if(er){er.textContent='Impossible de charger le module de paiement.';er.classList.add('on');} };
     document.head.appendChild(script);
   }
+}
+
+// ── SÉLECTEUR DE MÉTHODE DE PAIEMENT (pb-sheet) ──────────────
+function _pbSelectMethod(method){
+  _pbSelectedPayMethod = method;
+  var cBtn=document.getElementById('pb-method-card'); var pBtn=document.getElementById('pb-method-paypal');
+  if(cBtn) cBtn.className = method==='card' ? 'pb-method-btn pb-method-active' : 'pb-method-btn';
+  if(pBtn) pBtn.className = method==='paypal' ? 'pb-method-btn pb-method-active' : 'pb-method-btn';
+  var payBtn=document.getElementById('pb-pay-btn');
+  if(payBtn) payBtn.textContent = method==='paypal' ? 'PAYER AVEC PAYPAL' : (_pbService&&_pbService.price<=300 ? 'PAYER EN SÉCURISÉ (GENESIS SAFE™)' : 'PAYER L\'ACOMPTE');
+}
+function _pbCancelPayPal(){
+  var pps=document.getElementById('pb-paypal-screen'); if(pps) pps.style.display='none';
+  var fm=document.getElementById('pb-form'); if(fm) fm.style.display='block';
+  var sb=document.getElementById('pb-pay-btn'); if(sb){sb.disabled=false;sb.textContent='PAYER AVEC PAYPAL';}
+}
+function _pbPayDepositPayPal(){
+  var er=document.getElementById('pb-err'); if(er) er.classList.remove('on');
+  var sb=document.getElementById('pb-pay-btn'); if(sb){sb.disabled=true;sb.textContent='Création de la commande...';}
+  var clientInfo={firstName:USER.prenom||USER.firstName||'',lastName:USER.nom||USER.lastName||'',email:USER.email||'',phone:USER.telephone||USER.phone||'',clientType:'particulier'};
+  fetch((window.FA_GENESIS_API||API)+'/api/orders/create',{
+    method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+USER._token},
+    body:JSON.stringify({clientInfo:clientInfo,partnerServiceOrder:{partnerId:_pbPartner.id,serviceId:_pbService.id}})
+  }).then(function(r){return r.json().then(function(d){return{ok:r.ok,data:d};});})
+  .then(function(res){
+    if(!res.ok||!res.data||!res.data.orderId) throw new Error((res.data&&res.data.error)||'Erreur création commande');
+    var orderId=res.data.orderId;
+    if(sb){sb.disabled=false;}
+    var fm=document.getElementById('pb-form'); if(fm) fm.style.display='none';
+    var pps=document.getElementById('pb-paypal-screen'); if(pps) pps.style.display='';
+    var ld=document.getElementById('pb-paypal-loading'); if(ld) ld.style.display='';
+    var cnt=document.getElementById('pb-paypal-container'); if(cnt) cnt.innerHTML='';
+    var ppErr=document.getElementById('pb-paypal-error'); if(ppErr){ppErr.style.display='none';ppErr.textContent='';}
+
+    function renderPbPayPal(){
+      if(ld) ld.style.display='none';
+      try{
+        paypal.Buttons({
+          style:{color:'gold',shape:'rect',label:'pay',height:50},
+          createOrder:function(){
+            return fetch((window.FA_GENESIS_API||API)+'/api/payments/paypal/create-order',{
+              method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+USER._token},
+              body:JSON.stringify({amount:_pbDepositAmount,currency:'EUR',description:('FA GENESIS - '+(_pbService.label||'Prestation')).substring(0,127)})
+            }).then(function(r){return r.json();}).then(function(d){
+              if(!d.orderId) throw new Error(d.error||'Erreur PayPal');
+              return d.orderId;
+            });
+          },
+          onApprove:function(data){
+            if(ld) ld.style.display='';
+            return fetch((window.FA_GENESIS_API||API)+'/api/payments/paypal/capture-order',{
+              method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+USER._token},
+              body:JSON.stringify({paypalOrderId:data.orderID,orderId:orderId,stage:'deposit'})
+            }).then(function(r){return r.json();}).then(function(result){
+              if(ld) ld.style.display='none';
+              if(result.success){
+                if(pps) pps.style.display='none';
+                var sc=document.getElementById('pb-success'); if(sc) sc.style.display='';
+                launchConfetti(); showToast('Paiement réussi !','Votre commande est confirmée','success');
+              } else {
+                if(ppErr){ppErr.textContent=result.error||'Paiement non complété. Réessayez.';ppErr.style.display='';}
+                if(ld) ld.style.display='none';
+              }
+            }).catch(function(e){if(ppErr){ppErr.textContent=e.message||'Erreur réseau';ppErr.style.display='';}if(ld) ld.style.display='none';});
+          },
+          onError:function(){if(ppErr){ppErr.textContent='Erreur PayPal. Réessayez ou choisissez une carte.';ppErr.style.display='';}},
+          onCancel:function(){_pbCancelPayPal();}
+        }).render('#pb-paypal-container');
+      }catch(e){if(ppErr){ppErr.textContent='Impossible d\'initialiser PayPal : '+e.message;ppErr.style.display='';}}
+    }
+    if(typeof paypal!=='undefined'){ renderPbPayPal(); }
+    else{
+      var clientId=window.FA_GENESIS_PAYPAL_CLIENT_ID||'test';
+      var script=document.createElement('script');
+      script.src='https://www.paypal.com/sdk/js?client-id='+clientId+'&currency=EUR&disable-funding=credit,card&locale=fr_FR';
+      script.onload=renderPbPayPal;
+      script.onerror=function(){if(ld)ld.style.display='none';if(ppErr){ppErr.textContent='Impossible de charger PayPal. Vérifiez votre connexion.';ppErr.style.display='';}};
+      document.head.appendChild(script);
+    }
+  }).catch(function(err){
+    if(sb){sb.disabled=false;sb.textContent='Payer avec PayPal';}
+    if(er){er.textContent=err.message||'Erreur. Réessayez.';er.classList.add('on');}
+  });
 }
 
 // ── MESSAGE COMPOSE ───────────────────────────────────────────
@@ -8927,12 +9019,28 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
           <i class="fas fa-lock" style="margin-right:6px;"></i>Votre paiement est <strong>retenu en sécurité</strong> par GENESIS SAFE™ et ne sera versé au prestataire qu'après confirmation de la livraison.
         </div>
         <p style="font-size:11px;color:#666;font-weight:700;text-align:center;margin-bottom:14px;">Total prestation : <span id="pb-total-amt"></span></p>
+        <!-- Sélecteur moyen de paiement -->
+        <p style="font-size:10px;color:#555;font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px;">Moyen de paiement</p>
+        <div class="pb-method-pick">
+          <button id="pb-method-card" class="pb-method-btn pb-method-active" onclick="_pbSelectMethod('card')">
+            <i class="fa-regular fa-credit-card"></i> Carte bancaire
+          </button>
+          <button id="pb-method-paypal" class="pb-method-btn" onclick="_pbSelectMethod('paypal')">
+            <i class="fa-brands fa-paypal"></i> PayPal
+          </button>
+        </div>
         <div class="cwb-actions" style="grid-template-columns:1fr;">
           <button class="cwb-btn cwb-btn-yellow" id="pb-pay-btn" onclick="pbPayDeposit()">PAYER L'ACOMPTE</button>
         </div>
       </div>
       <div id="pb-widget-screen" style="display:none;">
         <div id="pb-widget-container"></div>
+      </div>
+      <div id="pb-paypal-screen" style="display:none;">
+        <div id="pb-paypal-loading" style="text-align:center;padding:24px 0;color:#aaa;font-size:13px;"><i class="fa-solid fa-spinner fa-spin" style="margin-right:6px;"></i>Connexion à PayPal...</div>
+        <div id="pb-paypal-container" style="padding:4px 0;"></div>
+        <div id="pb-paypal-error" style="display:none;background:#1a0000;border:1px solid #3a0000;border-radius:8px;padding:10px 14px;color:#ff6b6b;font-size:12px;margin-top:10px;"></div>
+        <button onclick="_pbCancelPayPal()" style="margin-top:14px;background:none;border:none;color:#555;font-size:12px;font-weight:700;cursor:pointer;width:100%;text-align:center;">← Changer de moyen de paiement</button>
       </div>
       <div class="cwb-success" id="pb-success" style="display:none;">
         <div class="cwb-success-ico">&#9989;</div>
