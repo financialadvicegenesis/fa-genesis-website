@@ -8447,10 +8447,8 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
 <!-- Fiche détail — bottom sheet -->
 <div id="detail-sheet" onclick="if(event.target===this)closeDetail()">
   <div class="detail-panel">
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 0 6px">
-      <div style="width:32px"></div>
+    <div style="display:flex;justify-content:center;padding:10px 0 4px">
       <div class="detail-handle" style="margin:0"></div>
-      <button class="detail-close-x" onclick="closeDetail()"><i class="fa-solid fa-xmark"></i></button>
     </div>
     <div id="detail-content"></div>
   </div>
