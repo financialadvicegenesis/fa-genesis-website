@@ -29,6 +29,11 @@
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);
   font-family:'Space Grotesk','Helvetica Neue',Arial,sans-serif}
+/* Empêche le zoom automatique sur iOS/Android au focus sur un champ de saisie.
+   Le navigateur zoome si font-size < 16px — on force le minimum à 16px sur mobile. */
+@media (hover:none) and (pointer:coarse){
+  input,select,textarea{font-size:max(16px,1em)!important}
+}
 button{cursor:pointer;border:none;background:none;color:inherit;font-family:inherit}
 a{text-decoration:none;color:inherit}
 
