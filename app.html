@@ -1435,6 +1435,12 @@ a{text-decoration:none;color:inherit}
 .cart-item-sub{font-size:11px;color:#555;margin-bottom:4px;line-height:1.4;}
 .cart-item-price{font-size:13px;color:#FFD700;font-weight:700;}
 .cart-item-del{background:none;border:none;color:#444;font-size:16px;cursor:pointer;padding:2px 4px;line-height:1;flex-shrink:0;margin-top:2px;}
+.cart-qty-ctrl{display:flex;align-items:center;gap:2px;flex-shrink:0;align-self:flex-end;}
+.cart-qty-btn{width:30px;height:30px;border-radius:50%;border:1.5px solid #2a2a2a;background:#111;color:#FFD700;font-size:15px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;transition:background .15s,border-color .15s;flex-shrink:0;}
+.cart-qty-btn:hover{background:#1a1a00;border-color:#FFD700;}
+.cart-qty-btn.cart-qty-rm{color:#ff6b6b;border-color:#2a1a1a;}
+.cart-qty-btn.cart-qty-rm:hover{background:#1a0000;border-color:#ff6b6b;}
+.cart-qty-num{min-width:26px;text-align:center;font-size:14px;font-weight:900;color:#fff;}
 .cart-empty{text-align:center;padding:48px 20px;color:#444;}
 .cart-empty .ce-ico{font-size:44px;margin-bottom:12px;}
 .cart-empty p{font-size:13px;}
@@ -6235,6 +6241,12 @@ function addToCart(item){
 }
 
 function removeFromCart(idx){ APP_CART.splice(idx,1); _saveCart(); renderCartBody(); }
+function changeCartQty(idx, delta){
+  if(idx<0||idx>=APP_CART.length) return;
+  var newQty=(APP_CART[idx].quantity||1)+delta;
+  if(newQty<=0){ APP_CART.splice(idx,1); } else { APP_CART[idx].quantity=newQty; }
+  _saveCart(); renderCartBody();
+}
 
 function showCartToast(msg){
   var t=document.getElementById('cart-toast'); if(!t) return;
@@ -6272,14 +6284,20 @@ function renderCartBody(){
   if(tr) tr.style.display='flex'; if(cb) cb.disabled=false;
   body.innerHTML=APP_CART.map(function(item,i){
     var isPtnrSvc = item.type==='partner_service';
+    var qty = item.quantity||1;
+    var isOne = qty===1;
     return '<div class="cart-item">'
       +'<div class="cart-item-info">'
       +(isPtnrSvc?'<span class="cart-item-ptnr-lbl">PRESTATION</span>':'')
       +'<div class="cart-item-name">'+item.name+'</div>'
       +(item.sub?'<div class="cart-item-sub">'+item.sub+'</div>':'')
-      +'<div class="cart-item-price">'+item.price+(item.quantity>1?' × '+item.quantity:'')+'</div>'
+      +'<div class="cart-item-price">'+item.price+(qty>1?' × '+qty:'')+'</div>'
       +'</div>'
-      +'<button class="cart-item-del" onclick="removeFromCart('+i+')">✕</button>'
+      +'<div class="cart-qty-ctrl">'
+      +'<button class="cart-qty-btn'+(isOne?' cart-qty-rm':'')+'" onclick="changeCartQty('+i+',-1)" title="'+(isOne?'Supprimer':'Moins')+'">'+(isOne?'<i class="fa-solid fa-trash-can" style="font-size:11px;"></i>':'<span style="font-size:18px;line-height:1">−</span>')+'</button>'
+      +'<span class="cart-qty-num">'+qty+'</span>'
+      +'<button class="cart-qty-btn" onclick="changeCartQty('+i+',1)" title="Plus"><span style="font-size:18px;line-height:1">+</span></button>'
+      +'</div>'
       +'</div>';
   }).join('');
   var total=cartTotal();
