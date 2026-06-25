@@ -3913,10 +3913,10 @@ function _ptnrRenderProfileSvcCards(services, audience, p){
   var filtered = services.filter(function(s){ return (s.audience||'particulier')===audience; });
   if(!filtered.length) return '<div class="p-dir-review-empty">Aucune prestation dans cette catégorie.</div>';
   return filtered.map(function(s){
-    var imgSrc = s.image || p.photo || '';
+    var imgSrc = s.image || '';
     var imgHtml = imgSrc
       ? '<div class="pf-svc-photo"><img src="'+imgSrc+'" alt="" loading="lazy"></div>'
-      : '<div class="pf-svc-photo pf-svc-photo-ph"><i class="fa-solid fa-bolt"></i></div>';
+      : '<div class="pf-svc-photo"><div class="pf-svc-photo-ph"><i class="fa-solid fa-bolt"></i></div></div>';
     var isQuote = s.pricing_type === 'quote';
     var priceHtml = isQuote
       ? '<div class="pf-svc-quote"><i class="fa-solid fa-file-lines"></i> Sur devis</div>'
