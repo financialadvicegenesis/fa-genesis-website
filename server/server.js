@@ -3297,10 +3297,13 @@ app.get('/api/my-orders', authenticateToken, async (req, res) => {
         var allDispatches = loadDispatches();
         var enriched = orders.map(function(o) {
             var disp = allDispatches.find(function(d) { return d.order_id === o.id; });
+            var ptnr = getPartnerById(o.partner_id);
             return {
                 id: o.id,
                 product_name: o.product_name,
                 partner_id: o.partner_id,
+                partner_name: ptnr ? (ptnr.prenom ? (ptnr.prenom + ' ' + (ptnr.nom || '')) : ptnr.company || ptnr.email) : 'Prestataire',
+                partner_email: ptnr ? (ptnr.email || ptnr.contact_email || null) : null,
                 total_price: o.total_price,
                 deposit_amount: o.deposit_amount,
                 deposit_paid: o.deposit_paid,
@@ -11061,6 +11064,7 @@ app.get('/api/my-requests', function(req, res) {
                 var partner = getPartnerById(r.partner_id);
                 var out = JSON.parse(JSON.stringify(r));
                 out.partner_name = partner ? (partner.prenom ? (partner.prenom + ' ' + (partner.nom || '')) : partner.company || partner.email) : 'Partenaire';
+                out.partner_email = partner ? (partner.email || partner.contact_email || null) : null;
                 var dispatchForReq = null;
                 if (r.order_id) {
                     dispatchForReq = allDispatchesForRequests.find(function(d) { return d.order_id === r.order_id; });
