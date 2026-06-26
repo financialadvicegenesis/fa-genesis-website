@@ -3286,9 +3286,11 @@ app.post('/api/partner/dispatches/:id/decline-mission', authenticatePartner, asy
  * GET /api/my-orders
  * Retourne les commandes partner_service du client avec le statut du dispatch associé.
  */
-app.get('/api/my-orders', authenticateToken, async (req, res) => {
+app.get('/api/my-orders', async function(req, res) {
     try {
-        var userEmail = req.user.email;
+        var user = authenticateClient(req, res);
+        if (!user) return;
+        var userEmail = user.email;
         var orders = loadOrders().filter(function(o) {
             return o.product_type === 'partner_service' &&
                 o.client_info && o.client_info.email &&
