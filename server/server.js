@@ -808,8 +808,8 @@ function createPartnerServiceDispatch(order) {
             partner_deposit_amount: partnerDeposit,
             partner_total_amount: partnerTotal,
             client_availability: null,
-            status: 'accepted',
-            mission_status: 'in_progress',
+            status: 'pending_acceptance',
+            mission_status: null,
             claimed_by_name: partner ? (partner.prenom + ' ' + partner.nom) : null,
             claimed_by_profile: null,
             claimed_by_partner_id: order.partner_id,
@@ -820,7 +820,7 @@ function createPartnerServiceDispatch(order) {
         };
         dispatches.push(dispatch);
         saveDispatches(dispatches);
-        console.log('[DISPATCH] Mission prestation partenaire créée et acceptée directement : ' + order.id + ' → ' + order.partner_id);
+        console.log('[DISPATCH] Mission partenaire créée — en attente acceptation : ' + order.id + ' → ' + order.partner_id);
         return dispatch;
     } catch (e) {
         console.error('[DISPATCH] Erreur createPartnerServiceDispatch:', e);
@@ -2977,11 +2977,12 @@ app.post('/api/payments/paypal/create-order', async (req, res) => {
  * Met à jour le statut de la commande, synchronise users.json, envoie les notifications,
  * crée le dispatch partenaire et déclenche les versements.
  */
-async function _applyPaymentConfirmation(orderId, stage, transactionRef) {
+async function _applyPaymentConfirmation(orderId, stage, transactionRef, paypalCaptureId) {
     const order = getOrderById(orderId);
     if (!order) { console.log('[PAY_CONFIRM] Commande non trouvée:', orderId); return null; }
 
     const updates = { transaction_id: transactionRef || null };
+    if (paypalCaptureId) updates.paypal_capture_id = paypalCaptureId;
 
     if (stage === 'deposit') {
         updates.deposit_paid = true; updates.status = 'active'; updates.start_date = null;
@@ -3047,12 +3048,21 @@ async function _applyPaymentConfirmation(orderId, stage, transactionRef) {
             if (updatedOrder.product_type === 'partner_service') {
                 const disp = createPartnerServiceDispatch(updatedOrder);
                 if (disp) {
-                    if (updatedOrder.payment_tier === 'small') {
-                        notifyUser(ce, 'client', 'mission_created', 'Mission créée — paiement sécurisé', 'Votre paiement est sécurisé par GENESIS SAFE™. Les fonds seront versés au prestataire après livraison.', '/app.html#reservations');
-                    } else {
-                        await processDispatchPayout(disp, 'deposit');
-                        notifyUser(ce, 'client', 'mission_created', 'Mission en cours', 'Votre acompte a été versé au prestataire. La livraison sera bientôt disponible.', '/app.html#reservations');
+                    // Notifier le PRESTATAIRE : nouvelle commande payée, acceptation requise
+                    const psPartner = getPartnerById(updatedOrder.partner_id);
+                    const psPartnerEmail = psPartner ? (psPartner.email || psPartner.contact_email || null) : null;
+                    if (psPartnerEmail) {
+                        notifyUser(psPartnerEmail, 'partner', 'mission_pending',
+                            '🆕 Nouvelle commande !',
+                            ((updatedOrder.client_info && updatedOrder.client_info.first_name) || 'Un client') + ' a payé pour "' + (updatedOrder.product_name || 'votre prestation') + '". Acceptez ou refusez dans les 24h.',
+                            '#partner:missions');
                     }
+                    // Notifier le CLIENT : paiement sécurisé, en attente du prestataire
+                    notifyUser(ce, 'client', 'payment_pending_acceptance',
+                        '🟡 Paiement sécurisé — en attente du prestataire',
+                        'Votre paiement est sécurisé. Le prestataire a 24h pour accepter ou refuser. Vous serez remboursé automatiquement en cas de refus.',
+                        '#tab:resa');
+                    console.log('[PAY_CONFIRM] Mission partenaire créée — en attente d\'acceptation du prestataire');
                 }
             } else {
                 assignIntervenantsFromOrder(orderId);
@@ -3090,9 +3100,12 @@ app.post('/api/payments/paypal/capture-order', async (req, res) => {
 
         if (result.status === 'COMPLETED') {
             console.log('[PAYPAL] Capturé:', paypalOrderId);
+            const ppCaptures = result.purchase_units && result.purchase_units[0] &&
+                result.purchase_units[0].payments && result.purchase_units[0].payments.captures;
+            const ppCaptureId = ppCaptures && ppCaptures[0] ? ppCaptures[0].id : null;
             // Si un orderId Genesis est fourni, confirmer la commande (flux dépôt partenaire via pb-sheet)
             if (orderId && stage) {
-                await _applyPaymentConfirmation(orderId, stage, paypalOrderId);
+                await _applyPaymentConfirmation(orderId, stage, paypalOrderId, ppCaptureId);
             }
             res.json({ success: true, details: result });
         } else {
@@ -3102,6 +3115,210 @@ app.post('/api/payments/paypal/capture-order', async (req, res) => {
     } catch (err) {
         console.error('[PAYPAL] capture-order:', err.message);
         res.status(500).json({ error: 'Erreur capture PayPal', details: err.message });
+    }
+});
+
+// ---------------------------------------------------------------------------
+// Remboursement automatique client (refus prestataire)
+// ---------------------------------------------------------------------------
+async function refundClientOrder(order) {
+    var depositAmount = parseFloat(order.deposit_amount || 0);
+    var refunded = false;
+    // Tentative remboursement PayPal
+    if (order.paypal_capture_id) {
+        try {
+            var ppToken = await getPayPalAccessToken();
+            var ppBody = depositAmount > 0 ? { amount: { value: depositAmount.toFixed(2), currency_code: 'EUR' } } : {};
+            var ppResp = await fetch(PAYPAL_BASE + '/v2/payments/captures/' + order.paypal_capture_id + '/refund', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + ppToken, 'Content-Type': 'application/json' },
+                body: JSON.stringify(ppBody)
+            });
+            var ppResult = await ppResp.json();
+            if (ppResult.status === 'COMPLETED' || ppResult.status === 'PENDING') { refunded = true; }
+            else { console.error('[REFUND] PayPal réponse inattendue:', JSON.stringify(ppResult)); }
+        } catch(e) { console.error('[REFUND] PayPal erreur:', e.message); }
+    }
+    // Tentative remboursement SumUp (seulement si pas PayPal)
+    if (!refunded && order.transaction_id && !order.paypal_capture_id) {
+        try {
+            await callSumUpAPI('/v0.1/me/refunds/' + order.transaction_id, 'PUT', depositAmount > 0 ? { amount: depositAmount } : null);
+            refunded = true;
+        } catch(e) { console.error('[REFUND] SumUp erreur:', e.message); }
+    }
+    updateOrder(order.id, {
+        status: 'refunded',
+        deposit_paid: false,
+        refunded_at: new Date().toISOString(),
+        refund_method: order.paypal_capture_id ? 'paypal' : (order.transaction_id ? 'sumup' : 'manual'),
+        refund_reason: 'Refus prestataire',
+        refund_success: refunded
+    });
+    if (!refunded) {
+        notifyUser(null, 'admin', 'refund_manual', '⚠️ Remboursement manuel requis',
+            'La commande ' + order.id + ' a été refusée mais le remboursement automatique a échoué. Action manuelle requise.',
+            '#admin');
+    }
+    return refunded;
+}
+
+// ---------------------------------------------------------------------------
+// Routes acceptation/refus mission prestataire
+// ---------------------------------------------------------------------------
+
+/**
+ * GET /api/partner/dispatches/pending
+ * Retourne les dispatches en statut pending_acceptance pour le prestataire connecté.
+ */
+app.get('/api/partner/dispatches/pending', authenticatePartner, async (req, res) => {
+    try {
+        var partnerId = req.partner.id || req.partner.partnerId;
+        var dispatches = loadDispatches().filter(function(d) {
+            return d.partner_id === partnerId && d.status === 'pending_acceptance';
+        });
+        // Enrichir avec les infos de la commande
+        var enriched = dispatches.map(function(d) {
+            var order = getOrderById(d.order_id);
+            return Object.assign({}, d, {
+                order: order ? {
+                    product_name: order.product_name,
+                    deposit_amount: order.deposit_amount,
+                    total_price: order.total_price,
+                    client_name: order.client_info ? ((order.client_info.first_name || '') + ' ' + (order.client_info.last_name || '')).trim() : 'Client'
+                } : null
+            });
+        });
+        res.json({ ok: true, dispatches: enriched });
+    } catch(e) {
+        console.error('[PARTNER_PENDING]', e.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * POST /api/partner/dispatches/:id/accept-mission
+ * Le prestataire accepte la mission — déclenche le versement de l'acompte.
+ */
+app.post('/api/partner/dispatches/:id/accept-mission', authenticatePartner, async (req, res) => {
+    try {
+        var partnerId = req.partner.id || req.partner.partnerId;
+        var dispatches = loadDispatches();
+        var idx = dispatches.findIndex(function(d) { return d.id === req.params.id; });
+        if (idx === -1) return res.status(404).json({ error: 'Dispatch introuvable' });
+        var disp = dispatches[idx];
+        if (disp.partner_id !== partnerId) return res.status(403).json({ error: 'Non autorisé' });
+        if (disp.status !== 'pending_acceptance') return res.status(400).json({ error: 'Ce dispatch ne nécessite pas d\'acceptation' });
+
+        dispatches[idx] = Object.assign({}, disp, {
+            status: 'accepted',
+            mission_status: 'in_progress',
+            accepted_at: new Date().toISOString()
+        });
+        saveDispatches(dispatches);
+
+        var order = getOrderById(disp.order_id);
+        // Déclencher le versement de l'acompte (partenaires > 300€ paiement >30%)
+        if (order && order.payment_tier !== 'small') {
+            await processDispatchPayout(dispatches[idx], 'deposit').catch(function(e) {
+                console.error('[ACCEPT_MISSION] Payout erreur:', e.message);
+            });
+        }
+        // Notifier le client
+        if (order && order.client_info && order.client_info.email) {
+            notifyUser(order.client_info.email, 'client', 'mission_accepted',
+                '✅ Mission acceptée !',
+                'Votre prestataire a accepté "' + (order.product_name || 'votre demande') + '". La mission démarre.',
+                '#tab:resa');
+        }
+        console.log('[ACCEPT_MISSION] Dispatch accepté:', disp.id);
+        res.json({ ok: true });
+    } catch(e) {
+        console.error('[ACCEPT_MISSION]', e.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * POST /api/partner/dispatches/:id/decline-mission
+ * Le prestataire refuse la mission — remboursement automatique du client.
+ */
+app.post('/api/partner/dispatches/:id/decline-mission', authenticatePartner, async (req, res) => {
+    try {
+        var partnerId = req.partner.id || req.partner.partnerId;
+        var dispatches = loadDispatches();
+        var idx = dispatches.findIndex(function(d) { return d.id === req.params.id; });
+        if (idx === -1) return res.status(404).json({ error: 'Dispatch introuvable' });
+        var disp = dispatches[idx];
+        if (disp.partner_id !== partnerId) return res.status(403).json({ error: 'Non autorisé' });
+        if (disp.status !== 'pending_acceptance') return res.status(400).json({ error: 'Ce dispatch ne peut plus être refusé' });
+
+        dispatches[idx] = Object.assign({}, disp, {
+            status: 'declined',
+            mission_status: 'declined',
+            declined_at: new Date().toISOString()
+        });
+        saveDispatches(dispatches);
+
+        var order = getOrderById(disp.order_id);
+        var refunded = false;
+        if (order) {
+            refunded = await refundClientOrder(order);
+            // Notifier le client
+            if (order.client_info && order.client_info.email) {
+                var refundMsg = refunded
+                    ? 'Le prestataire n\'a pas pu prendre en charge votre demande. Vous serez remboursé sous 3 à 5 jours ouvrés.'
+                    : 'Le prestataire n\'a pas pu prendre en charge votre demande. Notre équipe vous contactera pour le remboursement.';
+                notifyUser(order.client_info.email, 'client', 'mission_declined',
+                    '❌ Mission refusée',
+                    refundMsg,
+                    '#tab:resa');
+            }
+        }
+        console.log('[DECLINE_MISSION] Dispatch refusé:', disp.id, '— remboursé:', refunded);
+        res.json({ ok: true, refunded: refunded });
+    } catch(e) {
+        console.error('[DECLINE_MISSION]', e.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * GET /api/my-orders
+ * Retourne les commandes partner_service du client avec le statut du dispatch associé.
+ */
+app.get('/api/my-orders', authenticateToken, async (req, res) => {
+    try {
+        var userEmail = req.user.email;
+        var orders = loadOrders().filter(function(o) {
+            return o.product_type === 'partner_service' &&
+                o.client_info && o.client_info.email &&
+                o.client_info.email.toLowerCase() === userEmail.toLowerCase();
+        });
+        var allDispatches = loadDispatches();
+        var enriched = orders.map(function(o) {
+            var disp = allDispatches.find(function(d) { return d.order_id === o.id; });
+            return {
+                id: o.id,
+                product_name: o.product_name,
+                partner_id: o.partner_id,
+                total_price: o.total_price,
+                deposit_amount: o.deposit_amount,
+                deposit_paid: o.deposit_paid,
+                status: o.status,
+                created_at: o.created_at,
+                dispatch: disp ? {
+                    id: disp.id,
+                    status: disp.status,
+                    mission_status: disp.mission_status,
+                    accepted_at: disp.accepted_at,
+                    declined_at: disp.declined_at
+                } : null
+            };
+        }).sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); });
+        res.json({ ok: true, orders: enriched });
+    } catch(e) {
+        console.error('[MY_ORDERS]', e.message);
+        res.status(500).json({ error: 'Erreur serveur' });
     }
 });
 
@@ -3378,22 +3595,21 @@ app.post('/api/payments/sumup/webhook', async (req, res) => {
                     if (updatedOrder.product_type === 'partner_service') {
                         const psDispatch = createPartnerServiceDispatch(updatedOrder);
                         if (psDispatch) {
-                            if (updatedOrder.payment_tier === 'small') {
-                                // GENESIS SAFE™ — ≤ 300 € : fonds retenus jusqu'à la livraison confirmée
-                                console.log('[WEBHOOK] Mission partenaire créée — fonds en GENESIS SAFE™ (small, livraison requise)');
-                                notifyUser(updatedOrder.client_info.email, 'client', 'mission_created',
-                                    'Mission créée — paiement sécurisé',
-                                    'Votre paiement est sécurisé par GENESIS SAFE™. Les fonds seront versés au prestataire après livraison.',
-                                    '/app.html#reservations');
-                            } else {
-                                // GENESIS SAFE™ — > 300 € : acompte 30 % versé immédiatement au prestataire
-                                await processDispatchPayout(psDispatch, 'deposit');
-                                console.log('[WEBHOOK] Mission partenaire créée et acompte 30 % versé (large)');
-                                notifyUser(updatedOrder.client_info.email, 'client', 'mission_created',
-                                    'Mission en cours',
-                                    'Votre acompte a été versé au prestataire. La livraison sera bientôt disponible.',
-                                    '/app.html#reservations');
+                            // Notifier le PRESTATAIRE : nouvelle commande payée, acceptation requise
+                            const psPartner = getPartnerById(updatedOrder.partner_id);
+                            const psPartnerEmail = psPartner ? (psPartner.email || psPartner.contact_email || null) : null;
+                            if (psPartnerEmail) {
+                                notifyUser(psPartnerEmail, 'partner', 'mission_pending',
+                                    '🆕 Nouvelle commande !',
+                                    ((updatedOrder.client_info && updatedOrder.client_info.first_name) || 'Un client') + ' a payé pour "' + (updatedOrder.product_name || 'votre prestation') + '". Acceptez ou refusez dans les 24h.',
+                                    '#partner:missions');
                             }
+                            // Notifier le CLIENT : paiement sécurisé, en attente du prestataire
+                            notifyUser(updatedOrder.client_info.email, 'client', 'payment_pending_acceptance',
+                                '🟡 Paiement sécurisé — en attente du prestataire',
+                                'Votre paiement est sécurisé. Le prestataire a 24h pour accepter ou refuser. Vous serez remboursé automatiquement en cas de refus.',
+                                '#tab:resa');
+                            console.log('[WEBHOOK] Mission partenaire créée — en attente d\'acceptation du prestataire');
                         }
                     } else {
                         // Assigner les intervenants admin (le dispatch broadcast externe a été retiré :

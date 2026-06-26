@@ -4283,7 +4283,26 @@ function closeDetail(){
 function renderResaTab(){
   var c = document.getElementById('resaContent');
   if(!USER||GUEST){ c.innerHTML = locked('Mes réservations','Connectez-vous pour voir vos réservations et leur statut.'); return; }
-  c.innerHTML = '<div class="resa-list" id="myRequestsList"></div><div class="resa-list" id="resaList"><div class="empty"><div class="e-ico"><i class="fa-solid fa-calendar-days"></i></div><p>Chargement...</p></div></div>';
+  c.innerHTML = '<div class="resa-list" id="myOrdersPendingList"></div><div class="resa-list" id="myRequestsList"></div><div class="resa-list" id="resaList"><div class="empty"><div class="e-ico"><i class="fa-solid fa-calendar-days"></i></div><p>Chargement...</p></div></div>';
+  // Commandes prestataires payées en attente d'acceptation
+  fetch((window.FA_GENESIS_API||API)+'/api/my-orders',{headers:{'Authorization':'Bearer '+USER._token}})
+    .then(function(r){return r.json();})
+    .then(function(data){
+      var orders = (data&&Array.isArray(data.orders))?data.orders:[];
+      var pending = orders.filter(function(o){ return o.dispatch && o.dispatch.status==='pending_acceptance'; });
+      var el = document.getElementById('myOrdersPendingList');
+      if(!el||!pending.length){ if(el) el.innerHTML=''; return; }
+      el.innerHTML = '<div class="detail-feats-title" style="margin:4px 0 10px;color:var(--yellow);"><i class="fa-solid fa-circle-exclamation"></i> En attente du prestataire</div>'
+        + pending.map(function(o){
+          return '<div class="resa-card" style="border-color:var(--yellow);">'
+            +'<div class="resa-top"><div class="resa-name">'+(o.product_name||'Commande')+'</div>'
+            +'<span class="resa-status s-pending">🟡 En attente d\'acceptation</span></div>'
+            +'<div class="resa-date"><i class="fa-solid fa-shield-halved"></i> Paiement sécurisé — acompte retenu</div>'
+            +'<div class="resa-price">'+(o.deposit_amount||0)+' €</div>'
+            +'<div style="font-size:12px;color:var(--muted);margin-top:6px;">Le prestataire a 24h pour accepter. Vous serez remboursé automatiquement en cas de refus.</div>'
+            +'</div>';
+        }).join('');
+    }).catch(function(){});
   fetch((window.FA_GENESIS_API||API)+'/api/my-requests',{headers:{'Authorization':'Bearer '+USER._token}})
     .then(function(r){return r.json();})
     .then(function(data){
@@ -5192,8 +5211,24 @@ function openNotifItem(id, link){
   if(token) fetch((window.FA_GENESIS_API||API)+'/api/notifications/'+id+'/read',{method:'POST',headers:{'Authorization':'Bearer '+token}}).catch(function(){});
   var panel = document.getElementById('notif-inbox-panel');
   if(panel) panel.classList.remove('on');
-  if(link) window.location.href = link;
-  else loadNotifInbox();
+  if(!link){ loadNotifInbox(); return; }
+  // Navigation intelligente : liens internes sans rechargement de page
+  if(link.indexOf('#tab:') === 0){
+    var tabName = link.replace('#tab:','');
+    if(typeof nav === 'function') nav(tabName);
+    return;
+  }
+  if(link.indexOf('#partner:') === 0){
+    var pSection = link.replace('#partner:','');
+    // Basculer en vue partenaire et ouvrir la section
+    if(typeof _showPartnerView === 'function') _showPartnerView();
+    if(pSection === 'missions' && typeof _ptnrLoadMissions === 'function'){
+      setTimeout(function(){ _ptnrLoadMissions(); }, 300);
+    }
+    return;
+  }
+  // Lien externe ou page différente
+  window.location.href = link;
 }
 function markAllNotifsRead(){
   var token = _currentAuthToken();
@@ -9441,12 +9476,18 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
 
 
 var _ptnrMissionsCache = [];
+var _ptnrPendingDispatchesCache = [];
 var _ptnrMissionsStatusFilter = 'all';
 function _ptnrLoadMissions(){
   var el = document.getElementById('ptnr-missions-list');
   if(el) el.innerHTML = _skeletonRows(2);
-  _ptnrFetch('/api/partner/requests').then(function(data){
-    _ptnrMissionsCache = data.requests || [];
+  // Charger à la fois les demandes directes ET les dispatches payés en attente d'acceptation
+  Promise.all([
+    _ptnrFetch('/api/partner/requests').catch(function(){ return {requests:[]}; }),
+    _ptnrFetch('/api/partner/dispatches/pending').catch(function(){ return {dispatches:[]}; })
+  ]).then(function(results){
+    _ptnrMissionsCache = (results[0] && results[0].requests) || [];
+    _ptnrPendingDispatchesCache = (results[1] && results[1].dispatches) || [];
     _ptnrMissionsStatusFilter = 'all';
     _ptnrRenderMissionsList();
   }).catch(function(){
@@ -9490,7 +9531,29 @@ function _ptnrRenderMissionsList(){
 
   var filteredEngaged = _ptnrMissionsStatusFilter==='all' ? engaged : engaged.filter(function(r){ return r.display_status && r.display_status.key===_ptnrMissionsStatusFilter; });
 
-  var html = needsAction.length ? '<div style="font-size:12px;color:#888;margin-bottom:14px;line-height:1.6;">Un client souhaite vous engager directement. Acceptez pour lui envoyer une proposition, ou refusez s\'il vous est impossible de prendre la mission.</div>' : '';
+  // Dispatches payés en attente d'acceptation (priorité absolue, en tête de liste)
+  var pendingDispatches = _ptnrPendingDispatchesCache || [];
+  var html = '';
+  if(pendingDispatches.length){
+    html += '<div style="background:rgba(255,200,0,0.08);border:1.5px solid var(--yellow);border-radius:14px;padding:14px 16px;margin-bottom:16px;">';
+    html += '<div style="font-size:13px;font-weight:800;color:var(--yellow);margin-bottom:10px;"><i class="fa-solid fa-circle-exclamation"></i> Commandes payées — action requise</div>';
+    pendingDispatches.forEach(function(d){
+      var orderInfo = d.order || {};
+      html += '<div class="dispatch-card new-card" id="pdisp-'+d.id+'" style="margin-bottom:10px;border:none;background:#1a1a1a;">';
+      html += '<div class="dispatch-badge" style="background:rgba(255,200,0,0.15);color:var(--yellow);"><span class="dispatch-badge-dot" style="background:var(--yellow);"></span>Commande payée</div>';
+      html += '<div class="dispatch-title">'+(orderInfo.client_name||'Client')+' — '+(orderInfo.product_name||'Prestation')+'</div>';
+      html += '<div class="dispatch-meta">Acompte perçu : '+(orderInfo.deposit_amount||'?')+' €</div>';
+      html += '<div style="font-size:12px;color:#aaa;margin:6px 0 12px;">Vous avez 24h pour accepter ou refuser. En cas de refus, le client est automatiquement remboursé.</div>';
+      html += '<div style="display:flex;gap:10px;">';
+      html += '<button class="dispatch-claim-btn" style="flex:1;" onclick="_ptnrAcceptDispatch(\''+d.id+'\',this)"><i class="fa-solid fa-check"></i> ACCEPTER</button>';
+      html += '<button style="flex:0 0 auto;background:transparent;color:#c00;border:2px solid #c00;padding:10px 16px;font-weight:800;font-size:13px;border-radius:10px;cursor:pointer;" onclick="_ptnrDeclineDispatch(\''+d.id+'\',this)">✗ REFUSER</button>';
+      html += '</div>';
+      html += '</div>';
+    });
+    html += '</div>';
+  }
+
+  html += needsAction.length ? '<div style="font-size:12px;color:#888;margin-bottom:14px;line-height:1.6;">Un client souhaite vous engager directement. Acceptez pour lui envoyer une proposition, ou refusez s\'il vous est impossible de prendre la mission.</div>' : '';
   needsAction.forEach(function(r){
     if(r.status === 'accepted'){ html += _ptnrRenderProposalForm(r); return; }
     if(r.status === 'proposed'){ html += _ptnrRenderProposalSentCard(r); return; }
@@ -9517,8 +9580,46 @@ function _ptnrRenderMissionsList(){
   }
 
   if(el) el.innerHTML = html;
-  var needsActionCount = items.filter(function(r){ return r.status === 'pending' || r.status === 'accepted'; }).length;
+  var needsActionCount = items.filter(function(r){ return r.status === 'pending' || r.status === 'accepted'; }).length
+    + (_ptnrPendingDispatchesCache || []).length;
   _setBadgeMissions(needsActionCount);
+}
+
+function _ptnrAcceptDispatch(dispatchId, btn){
+  if(btn){ btn.disabled=true; btn.textContent='En cours...'; }
+  haptic(15);
+  _ptnrFetch('/api/partner/dispatches/'+dispatchId+'/accept-mission','POST',{}).then(function(res){
+    if(res.ok){
+      launchConfetti();
+      showToast('Mission acceptée !','La mission est maintenant en cours. Bon travail !','success');
+      haptic([50,30,100,30,150]);
+      _ptnrLoadMissions(); _ptnrRefreshBadges();
+    } else {
+      if(btn){ btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-check"></i> ACCEPTER'; }
+      showToast('Erreur','Impossible d\'accepter cette mission.','error');
+    }
+  }).catch(function(){
+    if(btn){ btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-check"></i> ACCEPTER'; }
+    showToast('Erreur','Erreur de connexion.','error');
+  });
+}
+
+function _ptnrDeclineDispatch(dispatchId, btn){
+  if(!confirm('Confirmer le refus ? Le client sera automatiquement remboursé.')) return;
+  if(btn){ btn.disabled=true; btn.textContent='En cours...'; }
+  haptic(15);
+  _ptnrFetch('/api/partner/dispatches/'+dispatchId+'/decline-mission','POST',{}).then(function(res){
+    if(res.ok){
+      showToast('Mission refusée','Le client a été notifié et sera remboursé.','info');
+      _ptnrLoadMissions(); _ptnrRefreshBadges();
+    } else {
+      if(btn){ btn.disabled=false; btn.textContent='✗ REFUSER'; }
+      showToast('Erreur','Impossible de refuser cette mission.','error');
+    }
+  }).catch(function(){
+    if(btn){ btn.disabled=false; btn.textContent='✗ REFUSER'; }
+    showToast('Erreur','Erreur de connexion.','error');
+  });
 }
 
 function _acceptPartnerRequest(id){
