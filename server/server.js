@@ -3048,20 +3048,28 @@ async function _applyPaymentConfirmation(orderId, stage, transactionRef, paypalC
             if (updatedOrder.product_type === 'partner_service') {
                 const disp = createPartnerServiceDispatch(updatedOrder);
                 if (disp) {
-                    // Notifier le PRESTATAIRE : nouvelle commande payée, acceptation requise
                     const psPartner = getPartnerById(updatedOrder.partner_id);
                     const psPartnerEmail = psPartner ? (psPartner.email || psPartner.contact_email || null) : null;
+                    const psPartnerName = psPartner ? (psPartner.prenom ? (psPartner.prenom + ' ' + (psPartner.nom || '')) : psPartner.company || 'votre prestataire') : 'votre prestataire';
+                    // Notifier le PRESTATAIRE : nouvelle commande payée, acceptation requise
                     if (psPartnerEmail) {
                         notifyUser(psPartnerEmail, 'partner', 'mission_pending',
                             '🆕 Nouvelle commande !',
                             ((updatedOrder.client_info && updatedOrder.client_info.first_name) || 'Un client') + ' a payé pour "' + (updatedOrder.product_name || 'votre prestation') + '". Acceptez ou refusez dans les 24h.',
                             '#partner:missions');
                     }
-                    // Notifier le CLIENT : paiement sécurisé, en attente du prestataire
-                    notifyUser(ce, 'client', 'payment_pending_acceptance',
-                        '🟡 Paiement sécurisé — en attente du prestataire',
-                        'Votre paiement est sécurisé. Le prestataire a 24h pour accepter ou refuser. Vous serez remboursé automatiquement en cas de refus.',
+                    // Notifier le CLIENT : paiement réussi
+                    notifyUser(ce, 'client', 'payment_success',
+                        '✅ Paiement réussi !',
+                        'Votre paiement a bien été reçu. ' + psPartnerName + ' va prendre en charge votre demande sous 24h.',
                         '#tab:resa');
+                    // Email récapitulatif style Deliveroo
+                    emailService.sendPartnerServiceOrderConfirmation(
+                        ce,
+                        updatedOrder.client_info ? updatedOrder.client_info.first_name : '',
+                        updatedOrder,
+                        psPartnerName
+                    ).catch(function(e){ console.error('[PAY_CONFIRM] Email commande partenaire:', e.message); });
                     console.log('[PAY_CONFIRM] Mission partenaire créée — en attente d\'acceptation du prestataire');
                 }
             } else {
@@ -3600,20 +3608,28 @@ app.post('/api/payments/sumup/webhook', async (req, res) => {
                     if (updatedOrder.product_type === 'partner_service') {
                         const psDispatch = createPartnerServiceDispatch(updatedOrder);
                         if (psDispatch) {
-                            // Notifier le PRESTATAIRE : nouvelle commande payée, acceptation requise
                             const psPartner = getPartnerById(updatedOrder.partner_id);
                             const psPartnerEmail = psPartner ? (psPartner.email || psPartner.contact_email || null) : null;
+                            const psPartnerName = psPartner ? (psPartner.prenom ? (psPartner.prenom + ' ' + (psPartner.nom || '')) : psPartner.company || 'votre prestataire') : 'votre prestataire';
+                            // Notifier le PRESTATAIRE : nouvelle commande payée, acceptation requise
                             if (psPartnerEmail) {
                                 notifyUser(psPartnerEmail, 'partner', 'mission_pending',
                                     '🆕 Nouvelle commande !',
                                     ((updatedOrder.client_info && updatedOrder.client_info.first_name) || 'Un client') + ' a payé pour "' + (updatedOrder.product_name || 'votre prestation') + '". Acceptez ou refusez dans les 24h.',
                                     '#partner:missions');
                             }
-                            // Notifier le CLIENT : paiement sécurisé, en attente du prestataire
-                            notifyUser(updatedOrder.client_info.email, 'client', 'payment_pending_acceptance',
-                                '🟡 Paiement sécurisé — en attente du prestataire',
-                                'Votre paiement est sécurisé. Le prestataire a 24h pour accepter ou refuser. Vous serez remboursé automatiquement en cas de refus.',
+                            // Notifier le CLIENT : paiement réussi
+                            notifyUser(updatedOrder.client_info.email, 'client', 'payment_success',
+                                '✅ Paiement réussi !',
+                                'Votre paiement a bien été reçu. ' + psPartnerName + ' va prendre en charge votre demande sous 24h.',
                                 '#tab:resa');
+                            // Email récapitulatif style Deliveroo
+                            emailService.sendPartnerServiceOrderConfirmation(
+                                updatedOrder.client_info.email,
+                                updatedOrder.client_info ? updatedOrder.client_info.first_name : '',
+                                updatedOrder,
+                                psPartnerName
+                            ).catch(function(e){ console.error('[WEBHOOK] Email commande partenaire:', e.message); });
                             console.log('[WEBHOOK] Mission partenaire créée — en attente d\'acceptation du prestataire');
                         }
                     } else {
