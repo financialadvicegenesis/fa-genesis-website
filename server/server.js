@@ -10897,6 +10897,7 @@ app.post('/api/partner/dispatches/:id/mark-delivering', authenticatePartner, fun
             return res.status(409).json({ error: 'Cette mission a déjà dépassé cette étape.' });
         }
         dispatches[idx].mission_status = 'delivering';
+        dispatches[idx].delivering_at = new Date().toISOString();
         saveDispatches(dispatches);
 
         var order = loadOrders().find(function(o) { return o.id === dispatches[idx].order_id; });
@@ -11092,6 +11093,11 @@ app.get('/api/my-requests', function(req, res) {
                 var livrablesForReq = orderForReq ? allLivrablesForRequests.filter(function(l) { return l.order_id === orderForReq.id; }) : [];
                 var hasReviewForReq = !!(dispatchForReq && allReviewsForRequests.some(function(rv) { return rv.dispatchId === dispatchForReq.id; }));
                 out.display_status = computeMissionDisplayStatus(r, dispatchForReq, orderForReq, livrablesForReq, hasReviewForReq);
+                out.step_timestamps = {
+                    received: r.created_at || null,
+                    accepted: dispatchForReq ? (dispatchForReq.accepted_at || null) : (r.responded_at || null),
+                    delivering: dispatchForReq ? (dispatchForReq.delivering_at || null) : null
+                };
                 return out;
             });
         res.json({ requests: requests });

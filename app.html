@@ -879,6 +879,46 @@ a{text-decoration:none;color:inherit}
 .mission-ladder-dot.done{background:#51cf66;box-shadow:0 0 6px rgba(81,207,102,.5)}
 .mission-ladder-dot.current{background:var(--yellow);box-shadow:0 0 0 3px rgba(255,215,0,.25),0 0 10px rgba(255,215,0,.75);animation:bpDotPulse 1.6s ease-in-out infinite}
 
+/* ── SUIVI COMMANDE DELIVEROO-STYLE ────────────────────── */
+.track-card{background:#111;border:1.5px solid #1e1e1e;border-radius:18px;overflow:hidden;margin-bottom:14px}
+.track-card-header{padding:14px 16px 12px;border-bottom:1px solid #1a1a1a;display:flex;align-items:center;gap:10px}
+.track-card-avatar{width:38px;height:38px;border-radius:50%;background:#1a1a14;border:1.5px solid #333;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.track-card-info{flex:1;min-width:0}
+.track-card-service{font-size:14px;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.track-card-partner{font-size:11px;color:#888;margin-top:2px}
+.track-hero{padding:20px 16px 16px;text-align:center;border-bottom:1px solid #1a1a1a}
+.track-hero-emoji{font-size:36px;line-height:1;margin-bottom:8px}
+.track-hero-label{font-size:20px;font-weight:900;color:#fff;display:flex;align-items:center;justify-content:center;gap:8px}
+.track-pulse{width:10px;height:10px;border-radius:50%;display:inline-block;flex-shrink:0}
+@keyframes trackPulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(2.2);opacity:.35}}
+.track-pulse.col-received{background:#FFD700;animation:trackPulse 1.4s ease-in-out infinite}
+.track-pulse.col-accepted{background:#3b82f6;animation:trackPulse 1.4s ease-in-out infinite}
+.track-pulse.col-in_progress,.track-pulse.col-delivering{background:#a855f7;animation:trackPulse 1.4s ease-in-out infinite}
+.track-pulse.col-delivered{background:#22c55e;animation:trackPulse 1.4s ease-in-out infinite}
+.track-pulse.col-completed,.track-pulse.col-reviewed{background:#FFD700}
+.track-hero-sub{font-size:12px;color:#666;margin-top:6px}
+.track-steps{padding:0;margin:0;list-style:none}
+.track-step{display:flex;align-items:flex-start;gap:14px;padding:12px 16px;position:relative}
+.track-step:not(:last-child)::after{content:'';position:absolute;left:27px;top:42px;width:2px;height:calc(100% - 20px);background:#1e1e1e;z-index:0}
+.track-step.ts-done::after{background:rgba(34,197,94,.25)}
+.track-step-icon{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0;position:relative;z-index:1;border:2px solid #222;margin-top:1px}
+.ts-done .track-step-icon{background:#022c10;border-color:#22c55e;color:#22c55e}
+.ts-active .track-step-icon{background:#1a1600;border-color:#FFD700;color:#FFD700;box-shadow:0 0 0 3px rgba(255,215,0,.15)}
+.ts-next .track-step-icon{background:#151515;border-color:#2a2a2a;color:#333}
+.ts-pending .track-step-icon{background:#111;border-color:#1a1a1a;color:#222}
+.track-step-body{flex:1;padding-top:3px}
+.ts-done .track-step-label{font-size:13px;font-weight:700;color:#22c55e}
+.ts-active .track-step-label{font-size:13px;font-weight:800;color:#fff}
+.ts-next .track-step-label{font-size:13px;font-weight:600;color:#555}
+.ts-pending .track-step-label{font-size:13px;font-weight:600;color:#2a2a2a}
+.track-step-desc{font-size:11px;color:#555;margin-top:2px;line-height:1.4}
+.ts-active .track-step-desc{color:#888}
+.track-step-time{font-size:10px;color:#444;margin-top:2px}
+.ts-done .track-step-time{color:#3a6a4a}
+.ts-active .track-step-time{color:#887700}
+.track-footer{padding:10px 16px 14px;display:flex;gap:8px;border-top:1px solid #1a1a1a}
+.track-refresh{padding:2px 16px 10px;text-align:right;font-size:10px;color:#2a2a2a;font-style:italic}
+
 /* ── RÉPUTATION PARTENAIRE — style HUD/tech ── */
 .ptnr-rep-hero{position:relative;overflow:hidden;text-align:center;padding:24px 16px 20px;margin:0 16px 16px;border-radius:18px;background:linear-gradient(160deg,#0d0d12,#171019);border:1px solid rgba(255,215,0,.28);box-shadow:0 0 0 1px rgba(255,215,0,.06) inset,0 10px 26px rgba(0,0,0,.5);}
 .ptnr-rep-hero::before{content:'';position:absolute;inset:0;background-image:linear-gradient(rgba(255,215,0,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(255,215,0,.05) 1px,transparent 1px);background-size:18px 18px;opacity:.6;pointer-events:none;}
@@ -3013,6 +3053,9 @@ function nav(tab){
   if(tab==='explorer' && _expMap){
     setTimeout(function(){ _expMap.invalidateSize(); }, 80);
   }
+  // Polling temps réel : actif seulement sur l'onglet Réservations
+  if(typeof _stopResaPolling==='function') _stopResaPolling();
+  if(tab==='reservations' && typeof _startResaPolling==='function') _startResaPolling();
   // Chargement paresseux : charge l'onglet à la première visite
   _loadTab(tab);
 }
@@ -4327,6 +4370,11 @@ function renderResaTab(){
           +'</div>';
       }).join('');
       reqList.forEach(function(r){ if(r.order_id) loadOrderLivrables(r.id, r.order_id); });
+      reqList.forEach(function(r){
+        if(r.order_id && r.display_status && r.display_status.key){
+          _resaStatusCache[r.id] = r.display_status.key;
+        }
+      });
     }).catch(function(){});
   fetch(API+'/api/reservations/me',{headers:{'Authorization':'Bearer '+USER._token}})
     .then(function(r){return r.json();})
@@ -4413,17 +4461,147 @@ function signRequestContract(requestId){
   });
 }
 
-// ── GENESIS SAFE™ : suivi de mission payee + validation client des livrables (cosmetique) ──
+// ── GENESIS SAFE™ : suivi de mission en temps réel style Deliveroo ──────────
+var TRACK_STEPS = [
+  { key:'received',    label:'Commande reçue',         icon:'fa-circle-check',        desc:'Paiement confirmé & sécurisé'         },
+  { key:'accepted',    label:'Acceptée',               icon:'fa-handshake',           desc:'Le prestataire prend en charge'        },
+  { key:'in_progress', label:'En préparation',          icon:'fa-screwdriver-wrench',  desc:'Votre prestataire travaille dessus'    },
+  { key:'delivered',   label:'Livrables disponibles',  icon:'fa-box-open',            desc:'Téléchargez et validez vos livrables' },
+  { key:'completed',   label:'Projet terminé',          icon:'fa-flag-checkered',      desc:'Merci pour votre confiance !'         }
+];
+// mapping display_status.key → index dans TRACK_STEPS
+var _trackStepIdx = {received:0,accepted:1,in_progress:2,delivering:2,delivered:3,completed:4,reviewed:4};
+
+function _fmtTrackTime(iso){
+  if(!iso) return '';
+  try{
+    var d=new Date(iso);
+    return d.toLocaleDateString('fr-FR',{day:'numeric',month:'short'})+' à '+d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+  }catch(e){return '';}
+}
+
 function renderOrderTrackingCard(r){
-  var ds = r.display_status || {emoji:'🟢', label:'Mission en cours'};
-  return '<div class="resa-card">'
-    +'<div class="resa-top"><div class="resa-name">'+(r.service_label||'Mission')+'</div>'
-    +'<span class="resa-status s-confirmed">'+ds.emoji+' '+ds.label+'</span></div>'
-    +'<div class="resa-date"><i class="fa-solid fa-user"></i> '+(r.partner_name||'')+'</div>'
-    +missionTimelineHtml(r.display_status)
-    +'<div id="liv-block-'+r.id+'" style="margin-top:10px;"><div style="color:var(--muted);font-size:12px;">Chargement des livrables…</div></div>'
-    +(r.dispatch_id ? '<button onclick="_openDisputeForm(\''+r.dispatch_id+'\')" style="margin-top:10px;background:none;border:1px solid #333;color:#999;border-radius:8px;padding:6px 10px;font-size:11px;cursor:pointer;"><i class="fa-solid fa-triangle-exclamation"></i> Signaler un problème</button>' : '')
+  var ds = r.display_status || {key:'in_progress', emoji:'🟣', label:'En préparation'};
+  var currentIdx = (_trackStepIdx[ds.key] !== undefined) ? _trackStepIdx[ds.key] : 2;
+  var ts = r.step_timestamps || {};
+  var partnerInitial = (r.partner_name||'P')[0].toUpperCase();
+
+  // Timestamps par étape (ce qu'on sait avec certitude)
+  var stepTimes = [
+    ts.received || r.created_at || null,
+    ts.accepted || null,
+    ts.delivering || null,
+    ts.delivered || null,
+    ts.completed || null
+  ];
+
+  // Hero sous-titre contextuel
+  var heroSub = '';
+  if(ds.key==='received')    heroSub='Le prestataire a 24h pour confirmer votre demande.';
+  else if(ds.key==='accepted')heroSub='Votre prestataire a confirmé, la mission démarre !';
+  else if(ds.key==='in_progress')heroSub='Votre prestataire travaille activement sur votre commande.';
+  else if(ds.key==='delivering')heroSub='Les livrables arrivent très bientôt !';
+  else if(ds.key==='delivered')heroSub='Vos livrables sont prêts. Validez-les depuis cette page.';
+  else if(ds.key==='completed'||ds.key==='reviewed')heroSub='Mission accomplie avec succès. Merci !';
+
+  var stepsHtml = TRACK_STEPS.map(function(step, i){
+    var cls = i < currentIdx ? 'ts-done' : (i===currentIdx ? 'ts-active' : (i===currentIdx+1?'ts-next':'ts-pending'));
+    var iconEl = i < currentIdx
+      ? '<i class="fa-solid fa-check"></i>'
+      : (i===currentIdx ? '<i class="fa-solid '+step.icon+'"></i>' : '<i class="fa-solid fa-lock"></i>');
+    var timeHtml = stepTimes[i] && i <= currentIdx ? '<div class="track-step-time">'+_fmtTrackTime(stepTimes[i])+'</div>' : '';
+    var descHtml = (i===currentIdx) ? '<div class="track-step-desc">'+step.desc+'</div>' : '';
+    return '<li class="track-step '+cls+'">'
+      +'<div class="track-step-icon">'+iconEl+'</div>'
+      +'<div class="track-step-body">'
+      +'<div class="track-step-label">'+step.label+(i===currentIdx?'&nbsp;<span style="font-size:9px;background:#FFD700;color:#000;padding:1px 5px;border-radius:4px;font-weight:900;vertical-align:middle;">MAINTENANT</span>':'')+'</div>'
+      +descHtml+timeHtml
+      +'</div>'
+      +'</li>';
+  }).join('');
+
+  var pulseClass = 'col-'+(ds.key||'in_progress');
+  var html = '<div class="track-card" id="track-card-'+r.id+'">';
+
+  // Header : service + prestataire
+  html += '<div class="track-card-header">'
+    +'<div class="track-card-avatar"><span style="font-weight:800;color:var(--yellow);">'+partnerInitial+'</span></div>'
+    +'<div class="track-card-info">'
+    +'<div class="track-card-service">'+(r.service_label||r.service_id||'Prestation')+'</div>'
+    +'<div class="track-card-partner"><i class="fa-solid fa-user-tie" style="font-size:10px;"></i> '+(r.partner_name||'Prestataire')+'</div>'
+    +'</div>'
     +'</div>';
+
+  // Hero : statut actif mis en valeur
+  html += '<div class="track-hero">'
+    +'<div class="track-hero-emoji">'+ds.emoji+'</div>'
+    +'<div class="track-hero-label"><div class="track-pulse '+pulseClass+'"></div>'+ds.label+'</div>'
+    +(heroSub?'<div class="track-hero-sub">'+heroSub+'</div>':'')
+    +'</div>';
+
+  // Steps list
+  html += '<ul class="track-steps">'+stepsHtml+'</ul>';
+
+  // Livrables (injectés après)
+  html += '<div id="liv-block-'+r.id+'"></div>';
+
+  // Footer actions
+  html += '<div class="track-footer">';
+  if(r.partner_email){
+    var safeEmail=(r.partner_email||'').replace(/'/g,"\\'");
+    var safeName=(r.partner_name||'Prestataire').replace(/'/g,"\\'");
+    html+='<button class="resa-action-btn rab-ghost" style="flex:1;font-size:12px;" onclick="openConversation(\''+r.partner_id+'\',\''+safeName+'\',\'user-tie\',\''+safeEmail+'\')"><i class="fa-solid fa-comment-dots"></i> Écrire</button>';
+  }
+  if(r.dispatch_id){
+    html+='<button class="resa-action-btn rab-ghost" style="font-size:12px;color:#c00;border-color:#c00;" onclick="_openDisputeForm(\''+r.dispatch_id+'\')"><i class="fa-solid fa-triangle-exclamation"></i> Problème</button>';
+  }
+  html+='</div>';
+
+  // Dernière MAJ
+  html+='<div class="track-refresh" id="track-refresh-'+r.id+'">Suivi en temps réel</div>';
+
+  html+='</div>';
+  return html;
+}
+
+// ── POLLING SILENCIEUX pour l'onglet Réservations ─────────────────────────
+var _resaPollingTimer = null;
+var _resaStatusCache = {};  // requestId → display_status.key
+
+function _startResaPolling(){
+  if(_resaPollingTimer) return; // déjà actif
+  _resaPollingTimer = setInterval(_silentRefreshResa, 15000);
+}
+function _stopResaPolling(){
+  if(_resaPollingTimer){ clearInterval(_resaPollingTimer); _resaPollingTimer = null; }
+}
+function _silentRefreshResa(){
+  if(!USER || !USER._token) return;
+  fetch((window.FA_GENESIS_API||API)+'/api/my-requests',{headers:{'Authorization':'Bearer '+USER._token}})
+    .then(function(r){return r.json();})
+    .then(function(data){
+      var reqs = (data&&Array.isArray(data.requests))?data.requests:[];
+      var changed = false;
+      reqs.forEach(function(r){
+        if(!r.order_id) return; // seulement les missions payées
+        var newKey = r.display_status && r.display_status.key;
+        var card = document.getElementById('track-card-'+r.id);
+        if(!card) return;
+        if(_resaStatusCache[r.id] && _resaStatusCache[r.id] !== newKey){
+          // Statut changé → remplacer la carte entière
+          var tmp = document.createElement('div');
+          tmp.innerHTML = renderOrderTrackingCard(r);
+          card.replaceWith(tmp.firstChild);
+          loadOrderLivrables(r.id, r.order_id);
+          changed = true;
+        }
+        if(newKey) _resaStatusCache[r.id] = newKey;
+        // Toujours mettre à jour le timestamp
+        var refEl = document.getElementById('track-refresh-'+r.id);
+        if(refEl) refEl.textContent = 'Mis à jour à '+new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+      });
+      if(changed && typeof showToast==='function') showToast('Statut mis à jour','Votre commande a changé de statut.','info');
+    }).catch(function(){});
 }
 function loadOrderLivrables(requestId, orderId){
   fetch((window.FA_GENESIS_API||API)+'/api/livrables/'+orderId,{headers:{'Authorization':'Bearer '+USER._token}})
