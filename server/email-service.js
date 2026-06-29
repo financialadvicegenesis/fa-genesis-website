@@ -1392,53 +1392,60 @@ async function sendWelcomeEmail(clientEmail, prenom) {
     }
 
     const frontUrl = process.env.FRONT_URL || 'https://fagenesis.com';
+    const name = prenom || 'vous';
 
-    const content = `
-        <h2 style="margin: 0 0 20px 0; font-size: 24px; color: #000000; font-weight: 700;">
-            Bienvenue ${prenom} !
-        </h2>
+    const html = '<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Bienvenue sur FA GENESIS !</title></head>'
+        + '<body style="margin:0;padding:0;background:#f5f5f5;font-family:\'Helvetica Neue\',Arial,sans-serif;">'
+        + '<table role="presentation" width="100%" style="border-collapse:collapse;background:#f5f5f5;">'
+        + '<tr><td style="padding:24px 12px;">'
+        + '<table role="presentation" width="100%" style="max-width:600px;margin:0 auto;border-collapse:collapse;">'
 
-        <p style="margin: 0 0 20px 0; font-size: 16px; color: #333333; line-height: 1.6;">
-            Nous sommes ravis de vous accueillir chez <strong>FA GENESIS</strong>. Votre compte a bien été créé avec succès.
-        </p>
+        // Header
+        + '<tr><td style="background:#000;padding:24px 32px;border-radius:12px 12px 0 0;">'
+        + '<span style="font-family:\'Arial Black\',Arial,sans-serif;font-size:22px;font-weight:900;color:#FFD700;letter-spacing:2px;">FA GENESIS</span>'
+        + '<div style="font-size:10px;color:#888;margin-top:2px;letter-spacing:1px;">Groupe FA Industries</div>'
+        + '</td></tr>'
 
-        <div style="background-color: #FFF9E6; border-left: 4px solid #FFD700; padding: 20px; margin: 25px 0;">
-            <p style="margin: 0 0 15px 0; font-weight: 700; color: #000; font-size: 16px;">
-                Pour démarrer votre accompagnement :
-            </p>
-            <ol style="margin: 0; padding-left: 20px; color: #333; line-height: 2;">
-                <li><strong>Découvrez nos prestations</strong> - Consultez notre catalogue d'offres et tarifs</li>
-                <li><strong>Ajoutez au panier</strong> - Sélectionnez les prestations adaptées à vos besoins</li>
-                <li><strong>Lancez votre projet</strong> - Finalisez votre commande et commencez l'aventure</li>
-            </ol>
-        </div>
+        // Hero
+        + '<tr><td style="background:#fff;padding:36px 32px 24px;border-bottom:1px solid #eee;text-align:center;">'
+        + '<div style="font-size:48px;margin-bottom:16px;">🎉</div>'
+        + '<p style="margin:0 0 10px;font-size:24px;font-weight:800;color:#1a1a1a;">Bienvenue, ' + name + ' !</p>'
+        + '<p style="margin:0;font-size:15px;color:#555;line-height:1.6;">Votre compte FA GENESIS est prêt.<br>Découvrez nos prestataires et lancez votre premier projet.</p>'
+        + '</td></tr>'
 
-        <div style="background-color: #000000; color: #ffffff; padding: 20px; border-radius: 4px; margin: 25px 0; text-align: center;">
-            <p style="margin: 0 0 15px 0; font-size: 14px; color: #cccccc;">
-                Découvrez nos offres et tarifs
-            </p>
-            <a href="${frontUrl}/offres.html"
-               style="display: inline-block; background-color: #FFD700; color: #000; padding: 15px 30px; text-decoration: none; font-weight: 700; border-radius: 4px; font-size: 16px;">
-                Voir nos prestations
-            </a>
-        </div>
+        // Comment ça marche
+        + '<tr><td style="background:#fff;padding:28px 32px;border-bottom:1px solid #eee;">'
+        + '<p style="margin:0 0 18px;font-size:13px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.8px;">Comment ça marche ?</p>'
+        + '<table role="presentation" width="100%" style="border-collapse:collapse;">'
+        + _deliverooStep('1', '#FFD700', 'Explorez les prestataires', 'Parcourez notre annuaire de professionnels vérifiés et consultez leurs portfolios.')
+        + _deliverooStep('2', '#00ccbc', 'Faites une demande', 'Choisissez un prestataire, décrivez votre besoin — c\'est gratuit et sans engagement.')
+        + _deliverooStep('3', '#ff9f00', 'Payez après acceptation', 'Votre prestataire confirme sous 24h. L\'acompte n\'est prélevé qu\'à ce moment-là.')
+        + _deliverooStep('4', '#22cc66', 'Suivez en temps réel', 'Comme Deliveroo : suivez l\'avancement de votre mission et recevez vos livrables.', true)
+        + '</table>'
+        + '</td></tr>'
 
-        <p style="margin: 25px 0 15px 0; font-size: 16px; color: #333333; line-height: 1.6;">
-            <strong>Une question ?</strong> Notre équipe est à votre disposition pour vous accompagner. N'hésitez pas à nous contacter par email ou via le formulaire de contact.
-        </p>
+        // CTA
+        + '<tr><td style="background:#fff;padding:28px 32px;border-bottom:1px solid #eee;text-align:center;">'
+        + '<p style="margin:0 0 16px;font-size:15px;color:#1a1a1a;">Prêt(e) à commencer ?</p>'
+        + '<a href="' + frontUrl + '/app.html" style="display:inline-block;background:#FFD700;color:#000;font-weight:900;font-size:15px;text-decoration:none;padding:14px 36px;border-radius:8px;">Explorer les prestataires →</a>'
+        + '</td></tr>'
 
-        <p style="margin: 30px 0 0 0; font-size: 16px; color: #333333;">
-            À très bientôt,<br>
-            <strong style="color: #000000;">L'équipe FA GENESIS</strong>
-        </p>
-    `;
+        // Footer
+        + '<tr><td style="background:#f5f5f5;padding:20px 32px;border-radius:0 0 12px 12px;text-align:center;">'
+        + '<p style="margin:0 0 6px;font-size:12px;color:#999;">Une question ? <a href="mailto:financialadvicegenesis@gmail.com" style="color:#00ccbc;font-weight:600;text-decoration:none;">financialadvicegenesis@gmail.com</a></p>'
+        + '<p style="margin:0;font-size:11px;color:#bbb;">Cet email est envoyé automatiquement lors de la création de votre compte FA GENESIS.</p>'
+        + '</td></tr>'
+
+        + '</table>'
+        + '</td></tr></table>'
+        + '</body></html>';
 
     try {
         const result = await transport.sendMail({
-            from: `"${process.env.EMAIL_FROM_NAME}" <${process.env.EMAIL_FROM_ADDRESS}>`,
+            from: `"FA GENESIS" <${process.env.EMAIL_FROM_ADDRESS || 'contact@fagenesis.com'}>`,
             to: clientEmail,
-            subject: `[FA GENESIS] Bienvenue ${prenom} ! Découvrez nos offres et tarifs`,
-            html: getEmailTemplate(content, 'Bienvenue chez FA GENESIS')
+            subject: `🎉 Bienvenue sur FA GENESIS, ${name} ! Votre compte est prêt`,
+            html: html
         });
 
         console.log(`[EMAIL] Email bienvenue envoye a ${clientEmail} - ID: ${result.messageId}`);
@@ -2203,115 +2210,104 @@ async function sendPartnerServiceOrderConfirmation(clientEmail, clientFirstName,
     }
 
     var frontUrl = process.env.FRONT_URL || 'https://fagenesis.com';
-    var prenom = clientFirstName || 'cher(e) client(e)';
-    var orderRef = (order.id || '').replace('order_', '#').toUpperCase() || '#—';
+    var prenom = clientFirstName || 'vous';
+    var rawRef = (order.id || '').replace('order_', '').toUpperCase();
+    var orderRef = rawRef || '—';
     var serviceName = order.product_name || 'Prestation professionnelle';
     var depositAmt = parseFloat(order.deposit_amount || 0).toFixed(2);
     var totalAmt = parseFloat(order.total_price || 0).toFixed(2);
     var balanceAmt = (parseFloat(totalAmt) - parseFloat(depositAmt)).toFixed(2);
-    var orderDate = order.created_at ? new Date(order.created_at).toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long', year:'numeric' }) : new Date().toLocaleDateString('fr-FR');
+    var orderDate = order.created_at ? new Date(order.created_at).toLocaleDateString('fr-FR', { day:'numeric', month:'long', year:'numeric' }) : new Date().toLocaleDateString('fr-FR');
     var partnerDisplay = partnerName || 'Votre prestataire';
 
-    var html = '<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Commande confirmée — FA GENESIS</title></head>'
-        + '<body style="margin:0;padding:0;background:#f0f0f0;font-family:\'Segoe UI\',Arial,sans-serif;">'
-
-        // Wrapper
-        + '<table role="presentation" width="100%" style="border-collapse:collapse;background:#f0f0f0;">'
-        + '<tr><td style="padding:32px 16px;">'
-        + '<table role="presentation" width="100%" style="max-width:580px;margin:0 auto;border-collapse:collapse;">'
+    var html = '<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>' + partnerDisplay + ' a reçu votre commande !</title></head>'
+        + '<body style="margin:0;padding:0;background:#f5f5f5;font-family:\'Helvetica Neue\',Arial,sans-serif;">'
+        + '<table role="presentation" width="100%" style="border-collapse:collapse;background:#f5f5f5;">'
+        + '<tr><td style="padding:24px 12px;">'
+        + '<table role="presentation" width="100%" style="max-width:600px;margin:0 auto;border-collapse:collapse;">'
 
         // ── HEADER ──────────────────────────────────────────────
-        + '<tr><td style="background:#000;padding:28px 36px;border-radius:12px 12px 0 0;">'
+        + '<tr><td style="background:#00ccbc;padding:20px 32px;border-radius:12px 12px 0 0;">'
         + '<table role="presentation" width="100%"><tr>'
-        + '<td><span style="font-family:\'Arial Black\',Arial,sans-serif;font-size:22px;font-weight:900;color:#FFD700;letter-spacing:2px;">FA GENESIS</span>'
-        + '<div style="font-size:11px;color:#aaa;letter-spacing:1px;margin-top:2px;">Groupe FA Industries</div></td>'
-        + '<td align="right"><span style="font-size:11px;color:#666;letter-spacing:.5px;">Réf. ' + orderRef + '</span></td>'
+        + '<td><span style="font-family:\'Arial Black\',Arial,sans-serif;font-size:20px;font-weight:900;color:#fff;letter-spacing:1.5px;">FA GENESIS</span>'
+        + '<div style="font-size:10px;color:rgba(255,255,255,.75);margin-top:1px;">Groupe FA Industries</div></td>'
+        + '<td align="right" style="font-size:11px;color:rgba(255,255,255,.8);">Réf. ' + orderRef + '</td>'
         + '</tr></table>'
         + '</td></tr>'
 
-        // ── HERO : Paiement confirmé ─────────────────────────────
-        + '<tr><td style="background:#000;padding:32px 36px;border-bottom:3px solid #FFD700;">'
-        + '<div style="background:#0d1a00;border:1.5px solid #3a5a00;border-radius:10px;padding:24px;text-align:center;">'
-        + '<div style="font-size:44px;line-height:1;margin-bottom:10px;">✅</div>'
-        + '<div style="font-size:22px;font-weight:900;color:#fff;margin-bottom:6px;">Paiement confirmé !</div>'
-        + '<div style="font-size:15px;color:#b8ffb8;line-height:1.5;">'
-        + 'Bonjour <strong>' + prenom + '</strong>, votre paiement a bien été reçu.<br>'
-        + '<strong>' + partnerDisplay + '</strong> va prendre en charge votre demande.'
-        + '</div>'
-        + '</div>'
+        // ── HERO ────────────────────────────────────────────────
+        + '<tr><td style="background:#fff;padding:32px 32px 24px;border-bottom:1px solid #eee;">'
+        + '<p style="margin:0 0 20px;font-size:22px;font-weight:800;color:#1a1a1a;line-height:1.3;">' + partnerDisplay + ' a reçu votre commande ! 🎉</p>'
+        + '<p style="margin:0;font-size:16px;color:#555;line-height:1.6;">Excellent choix, <strong>' + prenom + '</strong> —<br>votre acompte est sécurisé et ' + partnerDisplay + ' a 24h pour confirmer la prise en charge.</p>'
         + '</td></tr>'
 
-        // ── RÉCAP COMMANDE ───────────────────────────────────────
-        + '<tr><td style="background:#111;padding:28px 36px;">'
-        + '<div style="font-size:13px;font-weight:800;color:#FFD700;letter-spacing:1px;text-transform:uppercase;margin-bottom:16px;">Récapitulatif de votre commande</div>'
+        // ── SUIVI CTA ───────────────────────────────────────────
+        + '<tr><td style="background:#fff;padding:24px 32px;border-bottom:1px solid #eee;">'
+        + '<p style="margin:0 0 16px;font-size:15px;font-weight:700;color:#1a1a1a;">Suivez votre commande jusqu\'à la livraison</p>'
+        + '<a href="' + frontUrl + '/app.html" style="display:inline-block;background:#00ccbc;color:#fff;font-weight:800;font-size:14px;text-decoration:none;padding:13px 28px;border-radius:8px;">Voir le suivi en temps réel →</a>'
+        + '</td></tr>'
 
-        // Card prestation
-        + '<div style="background:#1a1a1a;border-radius:10px;overflow:hidden;margin-bottom:16px;">'
+        // ── RECAP ───────────────────────────────────────────────
+        + '<tr><td style="background:#fff;padding:24px 32px;border-bottom:1px solid #eee;">'
+        + '<p style="margin:0 0 16px;font-size:13px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.8px;">Détails de votre commande</p>'
+        + '<table role="presentation" width="100%" style="border-collapse:collapse;">'
 
-        // Ligne prestation
-        + '<div style="display:flex;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #2a2a2a;">'
-        + '<table role="presentation" width="100%"><tr>'
-        + '<td style="vertical-align:middle;">'
-        + '<div style="font-size:15px;font-weight:700;color:#fff;">' + serviceName + '</div>'
-        + '<div style="font-size:12px;color:#888;margin-top:3px;">Prestataire : ' + partnerDisplay + '</div>'
-        + '</td>'
-        + '<td align="right" style="vertical-align:middle;">'
-        + '<div style="font-size:16px;font-weight:800;color:#fff;white-space:nowrap;">' + totalAmt + ' €</div>'
-        + '</td>'
-        + '</tr></table>'
-        + '</div>'
+        // Service row
+        + '<tr style="border-bottom:1px solid #f0f0f0;">'
+        + '<td style="padding:12px 0;font-size:14px;color:#1a1a1a;font-weight:600;">' + serviceName + '</td>'
+        + '<td align="right" style="padding:12px 0;font-size:14px;font-weight:700;color:#1a1a1a;white-space:nowrap;">' + totalAmt + ' €</td>'
+        + '</tr>'
 
-        // Acompte payé
-        + '<div style="padding:12px 20px;border-bottom:1px solid #2a2a2a;">'
-        + '<table role="presentation" width="100%"><tr>'
-        + '<td style="font-size:13px;color:#aaa;">Acompte réglé aujourd\'hui (sécurisé GENESIS SAFE™)</td>'
-        + '<td align="right" style="font-size:14px;font-weight:700;color:#FFD700;white-space:nowrap;">' + depositAmt + ' €</td>'
-        + '</tr></table>'
-        + '</div>'
+        // Prestataire row
+        + '<tr style="border-bottom:1px solid #f0f0f0;">'
+        + '<td style="padding:10px 0;font-size:13px;color:#777;">Prestataire</td>'
+        + '<td align="right" style="padding:10px 0;font-size:13px;color:#1a1a1a;">' + partnerDisplay + '</td>'
+        + '</tr>'
 
-        // Solde restant
+        // Acompte row
+        + '<tr style="border-bottom:1px solid #f0f0f0;">'
+        + '<td style="padding:10px 0;font-size:13px;color:#777;">Acompte réglé <span style="background:#e8f8f7;color:#00907e;font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;margin-left:4px;">GENESIS SAFE™</span></td>'
+        + '<td align="right" style="padding:10px 0;font-size:13px;font-weight:700;color:#00907e;white-space:nowrap;">' + depositAmt + ' €</td>'
+        + '</tr>'
+
+        // Solde restant row
         + (parseFloat(balanceAmt) > 0
-            ? '<div style="padding:12px 20px;border-bottom:1px solid #2a2a2a;">'
-              + '<table role="presentation" width="100%"><tr>'
-              + '<td style="font-size:13px;color:#aaa;">Solde restant (après livraison validée)</td>'
-              + '<td align="right" style="font-size:14px;font-weight:700;color:#888;white-space:nowrap;">' + balanceAmt + ' €</td>'
-              + '</tr></table>'
-              + '</div>'
+            ? '<tr style="border-bottom:1px solid #f0f0f0;">'
+              + '<td style="padding:10px 0;font-size:13px;color:#777;">Solde restant (à la livraison)</td>'
+              + '<td align="right" style="padding:10px 0;font-size:13px;color:#aaa;white-space:nowrap;">' + balanceAmt + ' €</td>'
+              + '</tr>'
             : '')
 
-        // Date
-        + '<div style="padding:12px 20px;">'
-        + '<table role="presentation" width="100%"><tr>'
-        + '<td style="font-size:12px;color:#666;">Date de la commande</td>'
-        + '<td align="right" style="font-size:12px;color:#666;">' + orderDate + '</td>'
-        + '</tr></table>'
-        + '</div>'
-        + '</div>' // fin card
+        // Date row
+        + '<tr>'
+        + '<td style="padding:10px 0;font-size:13px;color:#777;">Date de commande</td>'
+        + '<td align="right" style="padding:10px 0;font-size:13px;color:#777;">' + orderDate + '</td>'
+        + '</tr>'
+        + '</table>'
+        + '</td></tr>'
 
-        // ── CE QUI SE PASSE ENSUITE (timeline) ──────────────────
-        + '<div style="font-size:13px;font-weight:800;color:#FFD700;letter-spacing:1px;text-transform:uppercase;margin:24px 0 14px;">Ce qui se passe ensuite</div>'
-        + '<div style="background:#1a1a1a;border-radius:10px;padding:20px 24px;">'
+        // ── QUE SE PASSE-T-IL ENSUITE ───────────────────────────
+        + '<tr><td style="background:#fff;padding:24px 32px;border-bottom:1px solid #eee;">'
+        + '<p style="margin:0 0 16px;font-size:13px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.8px;">Ce qui se passe ensuite</p>'
+        + '<table role="presentation" width="100%" style="border-collapse:collapse;">'
+        + _deliverooStep('1', '#FFD700', 'Commande reçue ✅', 'Votre acompte est sécurisé par GENESIS SAFE™.')
+        + _deliverooStep('2', '#00ccbc', 'Confirmation (sous 24h) 🤝', partnerDisplay + ' confirme ou décline — vous êtes alerté(e) par notification et email.')
+        + _deliverooStep('3', '#ff9f00', 'Mission en cours 🚀', 'Votre prestataire travaille. Échangez directement via la messagerie.')
+        + _deliverooStep('4', '#22cc66', 'Livraison & validation 🏁', 'Recevez vos livrables. Le solde est dû à la livraison.', true)
+        + '</table>'
+        + '</td></tr>'
 
-        + _emailStep('1', '#FFD700', '✅', 'Paiement sécurisé reçu', 'Votre acompte est protégé par GENESIS SAFE™. Il ne sera versé au prestataire qu\'après acceptation.')
-        + _emailStep('2', '#3a8fff', '🔄', partnerDisplay + ' examine votre demande', 'Le prestataire a 24h pour confirmer sa disponibilité. Vous serez notifié(e) immédiatement.')
-        + _emailStep('3', '#ff9f00', '🚀', 'La mission commence', 'Dès acceptation, votre prestataire démarre. Vous pouvez lui écrire directement depuis l\'application.')
-        + _emailStep('4', '#22cc66', '🏁', 'Livraison & validation', 'Recevez vos livrables, validez le travail. Le solde est débloqué uniquement à votre satisfaction.', true)
-
-        + '</div>'
-
-        // ── CTA ─────────────────────────────────────────────────
-        + '<div style="text-align:center;margin:28px 0 8px;">'
-        + '<a href="' + frontUrl + '/app.html" style="display:inline-block;background:#FFD700;color:#000;font-weight:900;font-size:15px;text-decoration:none;padding:14px 36px;border-radius:50px;letter-spacing:.5px;">Suivre ma commande →</a>'
-        + '</div>'
-        + '<p style="text-align:center;font-size:12px;color:#555;margin:10px 0 0;">ou ouvrez l\'application FA GENESIS</p>'
+        // ── QUESTIONS ───────────────────────────────────────────
+        + '<tr><td style="background:#fff;padding:24px 32px;border-bottom:1px solid #eee;">'
+        + '<p style="margin:0 0 8px;font-size:13px;font-weight:700;color:#1a1a1a;">Des questions sur votre commande ?</p>'
+        + '<a href="mailto:financialadvicegenesis@gmail.com" style="font-size:13px;color:#00ccbc;font-weight:600;text-decoration:none;">Contactez-nous par email</a>'
         + '</td></tr>'
 
         // ── FOOTER ──────────────────────────────────────────────
-        + '<tr><td style="background:#000;padding:24px 36px;border-radius:0 0 12px 12px;text-align:center;">'
-        + '<p style="margin:0 0 6px;font-size:13px;color:#888;">Des questions ? Contactez-nous :</p>'
-        + '<a href="mailto:financialadvicegenesis@gmail.com" style="color:#FFD700;font-weight:700;font-size:13px;text-decoration:none;">financialadvicegenesis@gmail.com</a>'
-        + '<p style="margin:14px 0 0;font-size:11px;color:#444;">Cet email est généré automatiquement — merci de ne pas y répondre directement.</p>'
-        + '<p style="margin:10px 0 0;font-size:10px;color:#333;">© FA GENESIS — Groupe FA Industries · fagenesis.com</p>'
+        + '<tr><td style="background:#f5f5f5;padding:20px 32px;border-radius:0 0 12px 12px;text-align:center;">'
+        + '<p style="margin:0 0 6px;font-size:12px;color:#999;">Votre numéro de commande FA GENESIS est <strong>' + orderRef + '</strong>.</p>'
+        + '<p style="margin:0 0 10px;font-size:12px;color:#999;">FA GENESIS — Groupe FA Industries, fagenesis.com</p>'
+        + '<p style="margin:0;font-size:11px;color:#bbb;">Cet email est envoyé automatiquement. Merci de ne pas y répondre directement.</p>'
         + '</td></tr>'
 
         + '</table>'
@@ -2322,7 +2318,7 @@ async function sendPartnerServiceOrderConfirmation(clientEmail, clientFirstName,
         var result = await transport.sendMail({
             from: '"FA GENESIS" <' + (process.env.EMAIL_FROM_ADDRESS || 'financialadvicegenesis@gmail.com') + '>',
             to: clientEmail,
-            subject: '✅ Commande confirmée — ' + partnerDisplay + ' va s\'en occuper !',
+            subject: '🎉 ' + partnerDisplay + ' a reçu votre commande !',
             html: html
         });
         console.log('[EMAIL] Confirmation commande partenaire envoyée à ' + clientEmail);
@@ -2331,6 +2327,19 @@ async function sendPartnerServiceOrderConfirmation(clientEmail, clientFirstName,
         console.error('[EMAIL] Erreur confirmation commande partenaire:', err.message);
         return { success: false, error: err.message };
     }
+}
+
+function _deliverooStep(num, color, title, desc, isLast) {
+    return '<tr>'
+        + '<td style="vertical-align:top;width:32px;padding:0 12px 0 0;">'
+        + '<div style="width:28px;height:28px;border-radius:50%;background:' + color + ';text-align:center;line-height:28px;font-size:12px;font-weight:900;color:#fff;">' + num + '</div>'
+        + (isLast ? '' : '<div style="width:2px;background:#eee;height:24px;margin:4px auto;"></div>')
+        + '</td>'
+        + '<td style="vertical-align:top;padding-bottom:' + (isLast ? '0' : '14') + 'px;">'
+        + '<div style="font-size:14px;font-weight:700;color:#1a1a1a;margin-bottom:3px;">' + title + '</div>'
+        + '<div style="font-size:12px;color:#777;line-height:1.5;">' + desc + '</div>'
+        + '</td>'
+        + '</tr>';
 }
 
 function _emailStep(num, color, icon, title, desc, isLast) {

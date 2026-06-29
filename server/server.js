@@ -3043,7 +3043,9 @@ async function _applyPaymentConfirmation(orderId, stage, transactionRef, paypalC
                 const prod = getProductById(updatedOrder.product_id);
                 let offerData = null;
                 if (prod) { const a = calculatePaymentAmounts(prod.total_price); offerData = { name: prod.name, category: prod.category, product_type: prod.product_type, total_price: prod.total_price, duration: prod.duration, deposit_amount: a.deposit_amount, balance_amount: a.balance_amount }; }
-                emailService.sendRegistrationConfirmation(ce, updatedOrder.client_info.first_name, offerData).catch(e => console.error('[PAY_CONFIRM] Email bienvenue:', e));
+                if (updatedOrder.product_type !== 'partner_service') {
+                    emailService.sendRegistrationConfirmation(ce, updatedOrder.client_info.first_name, offerData).catch(e => console.error('[PAY_CONFIRM] Email bienvenue:', e));
+                }
             } catch(e) { console.error('[PAY_CONFIRM] Email setup:', e.message); }
             if (updatedOrder.product_type === 'partner_service') {
                 const disp = createPartnerServiceDispatch(updatedOrder);
