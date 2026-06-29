@@ -3043,9 +3043,6 @@ async function _applyPaymentConfirmation(orderId, stage, transactionRef, paypalC
                 const prod = getProductById(updatedOrder.product_id);
                 let offerData = null;
                 if (prod) { const a = calculatePaymentAmounts(prod.total_price); offerData = { name: prod.name, category: prod.category, product_type: prod.product_type, total_price: prod.total_price, duration: prod.duration, deposit_amount: a.deposit_amount, balance_amount: a.balance_amount }; }
-                if (updatedOrder.product_type !== 'partner_service') {
-                    emailService.sendRegistrationConfirmation(ce, updatedOrder.client_info.first_name, offerData).catch(e => console.error('[PAY_CONFIRM] Email bienvenue:', e));
-                }
             } catch(e) { console.error('[PAY_CONFIRM] Email setup:', e.message); }
             if (updatedOrder.product_type === 'partner_service') {
                 const disp = createPartnerServiceDispatch(updatedOrder);
@@ -3597,16 +3594,6 @@ app.post('/api/payments/sumup/webhook', async (req, res) => {
                         };
                     }
 
-                    emailService.sendRegistrationConfirmation(
-                        clientEmail,
-                        updatedOrder.client_info.first_name,
-                        offerData
-                    ).then(result => {
-                        if (result.success) {
-                            console.log(`[WEBHOOK] Email de bienvenue envoyé à ${clientEmail}`);
-                        }
-                    }).catch(err => console.error('[WEBHOOK] Erreur envoi email bienvenue:', err));
-
                     if (updatedOrder.product_type === 'partner_service') {
                         const psDispatch = createPartnerServiceDispatch(updatedOrder);
                         if (psDispatch) {
@@ -3829,16 +3816,6 @@ app.post('/api/payments/verify', async (req, res) => {
                                 balance_amount: amounts.balance_amount
                             };
                         }
-
-                        emailService.sendRegistrationConfirmation(
-                            clientEmail,
-                            updatedOrder.client_info.first_name,
-                            offerData
-                        ).then(result => {
-                            if (result.success) {
-                                console.log(`[VERIFY] Email de bienvenue envoyé à ${clientEmail}`);
-                            }
-                        }).catch(err => console.error('[VERIFY] Erreur envoi email bienvenue:', err));
 
                         if (updatedOrder.product_type === 'partner_service') {
                             const psDispatch = createPartnerServiceDispatch(updatedOrder);
