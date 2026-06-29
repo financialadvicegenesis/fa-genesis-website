@@ -50,6 +50,7 @@ async function sendViaBrevo(mailOptions) {
     const data = await response.json();
 
     if (!response.ok) {
+        console.error('[EMAIL] Brevo erreur ' + response.status + ':', JSON.stringify(data));
         throw new Error(data.message || 'Erreur Brevo API: ' + response.status);
     }
 
@@ -2316,7 +2317,7 @@ async function sendPartnerServiceOrderConfirmation(clientEmail, clientFirstName,
 
     try {
         var result = await transport.sendMail({
-            from: '"FA GENESIS" <' + (process.env.EMAIL_FROM_ADDRESS || 'financialadvicegenesis@gmail.com') + '>',
+            from: '"FA GENESIS" <' + (process.env.EMAIL_FROM_ADDRESS || 'contact@fagenesis.com') + '>',
             to: clientEmail,
             subject: '🎉 ' + partnerDisplay + ' a reçu votre commande !',
             html: html

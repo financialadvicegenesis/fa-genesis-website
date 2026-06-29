@@ -1496,6 +1496,33 @@ app.post('/api/disputes/:id/escalate', function(req, res) {
     }
 });
 
+// POST /api/admin/test-email — test direct de l'envoi d'email partenaire service
+app.post('/api/admin/test-email', async function(req, res) {
+    try {
+        var authHeader = req.headers.authorization;
+        if (!authHeader) return res.status(401).json({ error: 'Non autorise' });
+        var token = authHeader.replace('Bearer ', '');
+        var jwt = require('jsonwebtoken');
+        var decoded = jwt.verify(token, process.env.JWT_SECRET || 'fa-genesis-secret-key-2024');
+        if (decoded.role !== 'admin') return res.status(403).json({ error: 'Acces admin requis' });
+
+        var targetEmail = req.body.email || decoded.email || 'financialadvicegenesis@gmail.com';
+        var mockOrder = {
+            id: 'ORD-TEST-DIAG',
+            product_name: 'Test prestation partenaire',
+            deposit_amount: 99,
+            total_price: 330,
+            created_at: new Date().toISOString()
+        };
+        var result = await emailService.sendPartnerServiceOrderConfirmation(
+            targetEmail, 'Admin', mockOrder, 'Prestataire Test'
+        );
+        res.json({ success: true, emailResult: result, sentTo: targetEmail });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
 // GET /api/admin/disputes — file d'attente admin
 app.get('/api/admin/disputes', function(req, res) {
     try {
