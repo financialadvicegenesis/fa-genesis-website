@@ -3073,6 +3073,7 @@ async function _applyPaymentConfirmation(orderId, stage, transactionRef, paypalC
                 }
             } else {
                 assignIntervenantsFromOrder(orderId);
+                emailService.sendPaymentConfirmation(ce, cn, updatedOrder).catch(e => console.error('[PAY_CONFIRM] Email acompte:', e));
             }
         } else {
             const isFinal = (stage === 'balance' || stage === 'installment_3');
@@ -3622,10 +3623,9 @@ app.post('/api/payments/sumup/webhook', async (req, res) => {
                             console.log('[WEBHOOK] Mission partenaire créée — en attente d\'acceptation du prestataire');
                         }
                     } else {
-                        // Assigner les intervenants admin (le dispatch broadcast externe a été retiré :
-                        // le client choisit désormais un partenaire précis via une demande directe)
                         assignIntervenantsFromOrder(orderId);
                         console.log('[WEBHOOK] Acompte retenu — en attente acceptation partenaire');
+                        emailService.sendPaymentConfirmation(clientEmail, clientName, updatedOrder).catch(err => console.error('[WEBHOOK] Email acompte:', err));
                     }
 
                     // NOTE: Le bootstrap projet est maintenant declenche par finalizeSchedule()
@@ -3838,10 +3838,9 @@ app.post('/api/payments/verify', async (req, res) => {
                                 }
                             }
                         } else {
-                            // Assigner les intervenants admin (le dispatch broadcast externe a été retiré :
-                            // le client choisit désormais un partenaire précis via une demande directe)
                             assignIntervenantsFromOrder(orderId);
                             console.log('[VERIFY] Acompte retenu — en attente acceptation partenaire');
+                            emailService.sendPaymentConfirmation(clientEmail, clientName, updatedOrder).catch(err => console.error('[VERIFY] Email acompte:', err));
                         }
 
                         // NOTE: Le bootstrap projet est maintenant declenche par finalizeSchedule()
@@ -10824,7 +10823,10 @@ app.post('/api/partner/dispatches/:id/accept', authenticatePartner, function(req
         });
         savePartnerAssignments(assignments);
 
-        processDispatchPayout(dispatches[idx], 'deposit').catch(function(e) { console.error('[PAYOUT] Erreur acompte accept:', e); });
+        var _claimOrder = loadOrders().find(function(o) { return o.id === dispatch.order_id; });
+        if (!_claimOrder || _claimOrder.payment_tier !== 'small') {
+            processDispatchPayout(dispatches[idx], 'deposit').catch(function(e) { console.error('[PAYOUT] Erreur acompte accept:', e); });
+        }
 
         delete _dispatchLocks[dispatchId];
         res.json({ success: true, message: 'Mission acceptée ! Votre acompte est en cours de versement.' });

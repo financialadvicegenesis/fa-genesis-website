@@ -4542,6 +4542,23 @@ function renderOrderTrackingCard(r){
   // Steps list
   html += '<ul class="track-steps">'+stepsHtml+'</ul>';
 
+  // Bloc GENESIS SAFE™ pour les petites missions (fonds retenus)
+  if(r.payment_tier === 'small' && !r.delivery_confirmed && ds.key !== 'completed' && ds.key !== 'reviewed'){
+    var heldAmt = parseFloat(r.total_amount || r.price || 0).toFixed(2);
+    html += '<div style="background:linear-gradient(135deg,#0d1a00,#1a1200);border:1.5px solid #FFD700;border-radius:12px;padding:14px 16px;margin:12px 0;">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;">'
+      +'<div>'
+      +'<div style="font-size:10px;color:#FFD700;font-weight:800;letter-spacing:1px;margin-bottom:4px;">🔒 GENESIS SAFE™</div>'
+      +'<div style="font-size:12px;color:#aaa;line-height:1.5;">Votre paiement est sécurisé.<br>Il sera versé au prestataire à la livraison.</div>'
+      +'</div>'
+      +'<div style="text-align:right;">'
+      +'<div style="font-size:20px;font-weight:900;color:#FFD700;">'+heldAmt+' €</div>'
+      +'<div style="font-size:9px;color:#666;margin-top:2px;">SÉCURISÉ</div>'
+      +'</div>'
+      +'</div>'
+      +'</div>';
+  }
+
   // Livrables (injectés après)
   html += '<div id="liv-block-'+r.id+'"></div>';
 
@@ -9879,6 +9896,25 @@ function _ptnrDeclineDispatch(dispatchId, btn){
   });
 }
 
+function _ptnrConfirmDelivery(dispatchId, btn){
+  if(!confirm('Confirmer la livraison ? Les fonds GENESIS SAFE™ vous seront versés immédiatement.')) return;
+  if(btn){ btn.disabled=true; btn.textContent='Livraison en cours...'; }
+  haptic([20,10,40]);
+  _ptnrFetch('/api/partner/dispatches/'+dispatchId+'/mark-delivered','POST',{}).then(function(res){
+    if(res && res.ok){
+      launchConfetti();
+      showToast('Livraison confirmée !','Les fonds ont été libérés et votre versement est en cours.','success');
+      _ptnrLoadVersements();
+    } else {
+      if(btn){ btn.disabled=false; btn.textContent='Confirmer la livraison'; }
+      showToast('Erreur',(res && res.error)||'Impossible de confirmer la livraison.','error');
+    }
+  }).catch(function(){
+    if(btn){ btn.disabled=false; btn.textContent='Confirmer la livraison'; }
+    showToast('Erreur','Erreur de connexion.','error');
+  });
+}
+
 function _acceptPartnerRequest(id){
   var btn = document.getElementById('req-accept-btn-'+id);
   if(btn){ btn.disabled=true; btn.textContent='En cours...'; }
@@ -10146,6 +10182,39 @@ function _ptnrLoadVersements(){
       html += '</div></div>';
 
       setupEl.innerHTML = html;
+    }
+
+    // ── Fonds en attente GENESIS SAFE™ (small orders non livrés) ──
+    if(listEl){
+      _ptnrFetch('/api/partner/requests').then(function(rData){
+        var reqs = (rData && Array.isArray(rData.requests)) ? rData.requests : [];
+        var held = reqs.filter(function(r){
+          return r.payment_tier === 'small' && !r.delivery_confirmed && r.dispatch_id &&
+            ['accepted','in_progress','delivering'].indexOf(r.display_status && r.display_status.key) !== -1;
+        });
+        if(!held.length) return;
+        var safeHtml = '<div style="background:linear-gradient(135deg,#1a1200,#0d1a00);border:1.5px solid #FFD700;border-radius:14px;padding:16px;margin-bottom:16px;">';
+        safeHtml += '<div style="font-size:11px;color:#FFD700;font-weight:800;letter-spacing:1px;margin-bottom:10px;">🔒 GENESIS SAFE™ — FONDS SÉCURISÉS EN ATTENTE</div>';
+        held.forEach(function(r){
+          var amt = parseFloat(r.total_amount || r.price || 0).toFixed(2);
+          var clientName = r.client_name || (r.client_email ? r.client_email.split('@')[0] : 'Client');
+          safeHtml += '<div style="background:#0d0d00;border-radius:10px;padding:12px 14px;margin-bottom:8px;">';
+          safeHtml += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">';
+          safeHtml += '<div>';
+          safeHtml += '<div style="font-size:13px;font-weight:700;color:#fff;">'+(r.service_label||r.service_id||'Mission')+'</div>';
+          safeHtml += '<div style="font-size:11px;color:#888;margin-top:2px;">Client : '+clientName+'</div>';
+          safeHtml += '</div>';
+          safeHtml += '<div style="font-size:18px;font-weight:900;color:#FFD700;">'+amt+' €</div>';
+          safeHtml += '</div>';
+          safeHtml += '<div style="font-size:11px;color:#aaa;margin-bottom:10px;">Ces fonds vous seront versés dès que vous confirmerez la livraison.</div>';
+          if(r.dispatch_id){
+            safeHtml += '<button onclick="_ptnrConfirmDelivery(\''+r.dispatch_id+'\',this)" style="width:100%;background:#FFD700;color:#000;border:none;border-radius:10px;padding:10px;font-size:13px;font-weight:800;cursor:pointer;"><i class="fa-solid fa-box-open"></i> Confirmer la livraison → recevoir '+amt+' €</button>';
+          }
+          safeHtml += '</div>';
+        });
+        safeHtml += '</div>';
+        if(listEl) listEl.insertAdjacentHTML('afterbegin', safeHtml);
+      }).catch(function(){});
     }
 
     // ── Liste des versements ──
