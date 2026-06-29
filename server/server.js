@@ -3045,11 +3045,18 @@ async function _applyPaymentConfirmation(orderId, stage, transactionRef, paypalC
                 if (prod) { const a = calculatePaymentAmounts(prod.total_price); offerData = { name: prod.name, category: prod.category, product_type: prod.product_type, total_price: prod.total_price, duration: prod.duration, deposit_amount: a.deposit_amount, balance_amount: a.balance_amount }; }
             } catch(e) { console.error('[PAY_CONFIRM] Email setup:', e.message); }
             if (updatedOrder.product_type === 'partner_service') {
+                const psPartner = getPartnerById(updatedOrder.partner_id);
+                const psPartnerEmail = psPartner ? (psPartner.email || psPartner.contact_email || null) : null;
+                const psPartnerName = psPartner ? (psPartner.prenom ? (psPartner.prenom + ' ' + (psPartner.nom || '')) : psPartner.company || 'votre prestataire') : 'votre prestataire';
+                // Email récapitulatif envoyé immédiatement — indépendamment de la création du dispatch
+                emailService.sendPartnerServiceOrderConfirmation(
+                    ce,
+                    updatedOrder.client_info ? updatedOrder.client_info.first_name : '',
+                    updatedOrder,
+                    psPartnerName
+                ).catch(function(e){ console.error('[PAY_CONFIRM] Email commande partenaire:', e.message); });
                 const disp = createPartnerServiceDispatch(updatedOrder);
                 if (disp) {
-                    const psPartner = getPartnerById(updatedOrder.partner_id);
-                    const psPartnerEmail = psPartner ? (psPartner.email || psPartner.contact_email || null) : null;
-                    const psPartnerName = psPartner ? (psPartner.prenom ? (psPartner.prenom + ' ' + (psPartner.nom || '')) : psPartner.company || 'votre prestataire') : 'votre prestataire';
                     // Notifier le PRESTATAIRE : nouvelle commande payée, acceptation requise
                     if (psPartnerEmail) {
                         notifyUser(psPartnerEmail, 'partner', 'mission_pending',
@@ -3062,13 +3069,6 @@ async function _applyPaymentConfirmation(orderId, stage, transactionRef, paypalC
                         '✅ Paiement réussi !',
                         'Votre paiement a bien été reçu. ' + psPartnerName + ' va prendre en charge votre demande sous 24h.',
                         '#tab:resa');
-                    // Email récapitulatif style Deliveroo
-                    emailService.sendPartnerServiceOrderConfirmation(
-                        ce,
-                        updatedOrder.client_info ? updatedOrder.client_info.first_name : '',
-                        updatedOrder,
-                        psPartnerName
-                    ).catch(function(e){ console.error('[PAY_CONFIRM] Email commande partenaire:', e.message); });
                     console.log('[PAY_CONFIRM] Mission partenaire créée — en attente d\'acceptation du prestataire');
                 }
             } else {
@@ -3596,11 +3596,18 @@ app.post('/api/payments/sumup/webhook', async (req, res) => {
                     }
 
                     if (updatedOrder.product_type === 'partner_service') {
+                        const psPartner = getPartnerById(updatedOrder.partner_id);
+                        const psPartnerEmail = psPartner ? (psPartner.email || psPartner.contact_email || null) : null;
+                        const psPartnerName = psPartner ? (psPartner.prenom ? (psPartner.prenom + ' ' + (psPartner.nom || '')) : psPartner.company || 'votre prestataire') : 'votre prestataire';
+                        // Email récapitulatif envoyé immédiatement — indépendamment de la création du dispatch
+                        emailService.sendPartnerServiceOrderConfirmation(
+                            updatedOrder.client_info.email,
+                            updatedOrder.client_info ? updatedOrder.client_info.first_name : '',
+                            updatedOrder,
+                            psPartnerName
+                        ).catch(function(e){ console.error('[WEBHOOK] Email commande partenaire:', e.message); });
                         const psDispatch = createPartnerServiceDispatch(updatedOrder);
                         if (psDispatch) {
-                            const psPartner = getPartnerById(updatedOrder.partner_id);
-                            const psPartnerEmail = psPartner ? (psPartner.email || psPartner.contact_email || null) : null;
-                            const psPartnerName = psPartner ? (psPartner.prenom ? (psPartner.prenom + ' ' + (psPartner.nom || '')) : psPartner.company || 'votre prestataire') : 'votre prestataire';
                             // Notifier le PRESTATAIRE : nouvelle commande payée, acceptation requise
                             if (psPartnerEmail) {
                                 notifyUser(psPartnerEmail, 'partner', 'mission_pending',
@@ -3613,13 +3620,6 @@ app.post('/api/payments/sumup/webhook', async (req, res) => {
                                 '✅ Paiement réussi !',
                                 'Votre paiement a bien été reçu. ' + psPartnerName + ' va prendre en charge votre demande sous 24h.',
                                 '#tab:resa');
-                            // Email récapitulatif style Deliveroo
-                            emailService.sendPartnerServiceOrderConfirmation(
-                                updatedOrder.client_info.email,
-                                updatedOrder.client_info ? updatedOrder.client_info.first_name : '',
-                                updatedOrder,
-                                psPartnerName
-                            ).catch(function(e){ console.error('[WEBHOOK] Email commande partenaire:', e.message); });
                             console.log('[WEBHOOK] Mission partenaire créée — en attente d\'acceptation du prestataire');
                         }
                     } else {
