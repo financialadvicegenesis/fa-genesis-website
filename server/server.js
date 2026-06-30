@@ -3845,6 +3845,15 @@ app.post('/api/payments/verify', async (req, res) => {
                         }
 
                         if (updatedOrder.product_type === 'partner_service') {
+                            // Email récapitulatif envoyé immédiatement — indépendamment de la création du dispatch
+                            const psVerifyPartner = getPartnerById(updatedOrder.partner_id);
+                            const psVerifyPartnerName = psVerifyPartner ? (psVerifyPartner.prenom ? (psVerifyPartner.prenom + ' ' + (psVerifyPartner.nom || '')) : psVerifyPartner.company || 'votre prestataire') : 'votre prestataire';
+                            emailService.sendPartnerServiceOrderConfirmation(
+                                updatedOrder.client_info.email,
+                                updatedOrder.client_info.first_name || '',
+                                updatedOrder,
+                                psVerifyPartnerName
+                            ).catch(function(e){ console.error('[VERIFY] Email commande partenaire:', e.message); });
                             const psDispatch = createPartnerServiceDispatch(updatedOrder);
                             if (psDispatch) {
                                 if (updatedOrder.payment_tier === 'small') {
