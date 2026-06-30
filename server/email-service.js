@@ -2047,7 +2047,9 @@ async function sendPartnerServiceOrderConfirmation(clientEmail, clientFirstName,
     var orderDate = order.created_at ? new Date(order.created_at).toLocaleDateString('fr-FR', { day:'numeric', month:'long', year:'numeric' }) : new Date().toLocaleDateString('fr-FR');
     var partnerDisplay = partnerName || 'Votre prestataire';
 
-    var html = '<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Commande réussie !</title></head>'
+    var html = '<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Commande réussie !</title>'
+        + '<style>@media only screen and (max-width:480px){.gs-badge{font-size:8px!important;padding:1px 4px!important;}}</style>'
+        + '</head>'
         + '<body style="margin:0;padding:0;background:#f5f5f5;font-family:\'Helvetica Neue\',Arial,sans-serif;">'
         + '<table role="presentation" width="100%" style="border-collapse:collapse;background:#f5f5f5;">'
         + '<tr><td style="padding:24px 12px;">'
@@ -2063,20 +2065,20 @@ async function sendPartnerServiceOrderConfirmation(clientEmail, clientFirstName,
         + '</td></tr>'
 
         // ── HERO ────────────────────────────────────────────────
-        + '<tr><td style="background:#fff;padding:32px 32px 24px;border-bottom:1px solid #eee;">'
+        + '<tr><td style="background:#fff;padding:32px 32px 24px;border-bottom:1px solid #eee;text-align:center;">'
         + '<p style="margin:0 0 20px;font-size:22px;font-weight:800;color:#1a1a1a;line-height:1.3;">Commande réussie ! 🎉</p>'
         + '<p style="margin:0;font-size:16px;color:#555;line-height:1.6;">Excellent choix, <strong>' + prenom + '</strong> —<br>votre paiement est sécurisé sur le portefeuille GENESIS SAFE™ et ' + partnerDisplay + ' a 24h pour confirmer la prise en charge.</p>'
         + '</td></tr>'
 
         // ── SUIVI CTA ───────────────────────────────────────────
-        + '<tr><td style="background:#fff;padding:24px 32px;border-bottom:1px solid #eee;">'
+        + '<tr><td style="background:#fff;padding:24px 32px;border-bottom:1px solid #eee;text-align:center;">'
         + '<p style="margin:0 0 16px;font-size:15px;font-weight:700;color:#1a1a1a;">Suivez votre commande jusqu\'à la livraison</p>'
         + '<a href="' + frontUrl + '/app.html" style="display:inline-block;background:#000;color:#FFD700;font-weight:800;font-size:14px;text-decoration:none;padding:13px 28px;border-radius:8px;">Voir le suivi en temps réel →</a>'
         + '</td></tr>'
 
         // ── RECAP ───────────────────────────────────────────────
         + '<tr><td style="background:#fff;padding:24px 32px;border-bottom:1px solid #eee;">'
-        + '<p style="margin:0 0 16px;font-size:13px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.8px;">Détails de votre commande</p>'
+        + '<p style="margin:0 0 16px;font-size:13px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.8px;text-align:center;">Détails de votre commande</p>'
         + '<table role="presentation" width="100%" style="border-collapse:collapse;">'
 
         // Service row
@@ -2093,7 +2095,7 @@ async function sendPartnerServiceOrderConfirmation(clientEmail, clientFirstName,
 
         // Acompte row
         + '<tr style="border-bottom:1px solid #f0f0f0;">'
-        + '<td style="padding:10px 0;font-size:13px;color:#777;">Paiement réglé <span style="background:#e8f8f7;color:#00907e;font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;margin-left:4px;">GENESIS SAFE™</span></td>'
+        + '<td style="padding:10px 0;font-size:13px;color:#777;">Paiement réglé <span class="gs-badge" style="background:#e8f8f7;color:#00907e;font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;margin-left:4px;">GENESIS SAFE™</span></td>'
         + '<td align="right" style="padding:10px 0;font-size:13px;font-weight:700;color:#FFD700;white-space:nowrap;">' + depositAmt + ' €</td>'
         + '</tr>'
 
@@ -2115,7 +2117,7 @@ async function sendPartnerServiceOrderConfirmation(clientEmail, clientFirstName,
 
         // ── QUE SE PASSE-T-IL ENSUITE ───────────────────────────
         + '<tr><td style="background:#fff;padding:24px 32px;border-bottom:1px solid #eee;">'
-        + '<p style="margin:0 0 16px;font-size:13px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.8px;">Ce qui se passe ensuite</p>'
+        + '<p style="margin:0 0 16px;font-size:13px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.8px;text-align:center;">Ce qui se passe ensuite</p>'
         + '<table role="presentation" width="100%" style="border-collapse:collapse;">'
         + _deliverooStep('1', '#FFD700', 'Commande reçue ✅', 'Votre acompte est sécurisé par GENESIS SAFE™.')
         + _deliverooStep('2', '#00ccbc', 'Confirmation (sous 24h) 🤝', partnerDisplay + ' confirme ou décline — vous êtes alerté(e) par notification et email.')
@@ -2125,9 +2127,9 @@ async function sendPartnerServiceOrderConfirmation(clientEmail, clientFirstName,
         + '</td></tr>'
 
         // ── QUESTIONS ───────────────────────────────────────────
-        + '<tr><td style="background:#fff;padding:24px 32px;border-bottom:1px solid #eee;">'
+        + '<tr><td style="background:#fff;padding:24px 32px;border-bottom:1px solid #eee;text-align:center;">'
         + '<p style="margin:0 0 8px;font-size:13px;font-weight:700;color:#1a1a1a;">Des questions sur votre commande ?</p>'
-        + '<a href="mailto:financialadvicegenesis@gmail.com" style="font-size:13px;color:#1a1a1a;font-weight:600;text-decoration:none;">Contactez-nous par email</a>'
+        + '<a href="mailto:financialadvicegenesis@gmail.com" style="font-size:13px;color:#1a1a1a;font-weight:600;text-decoration:none;">Contactez-nous par email, <span style="color:#FFD700;">financialadvicegenesis@gmail.com</span></a>'
         + '</td></tr>'
 
         // ── FOOTER ──────────────────────────────────────────────
