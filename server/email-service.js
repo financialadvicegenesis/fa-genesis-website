@@ -1260,7 +1260,8 @@ async function sendWelcomeEmail(clientEmail, prenom) {
 
         // Footer
         + '<tr><td style="background:#f5f5f5;padding:20px 32px;border-radius:0 0 12px 12px;text-align:center;">'
-        + '<p style="margin:0 0 6px;font-size:12px;color:#999;">Une question ? <a href="mailto:financialadvicegenesis@gmail.com" style="color:#FFD700;font-weight:600;text-decoration:none;">financialadvicegenesis@gmail.com</a></p>'
+        + '<p style="margin:0 0 8px;font-size:13px;font-weight:700;color:#1a1a1a;">Des questions sur votre commande ?</p>'
+        + '<p style="margin:0 0 6px;font-size:12px;color:#999;"><a href="mailto:financialadvicegenesis@gmail.com" style="font-size:13px;color:#1a1a1a;font-weight:600;text-decoration:none;">Contactez-nous par email, <span style="color:#FFD700;">financialadvicegenesis@gmail.com</span></a></p>'
         + '<p style="margin:0;font-size:11px;color:#bbb;">Cet email est envoyé automatiquement. Merci de ne pas y répondre directement.</p>'
         + '</td></tr>'
 
