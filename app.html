@@ -10253,33 +10253,30 @@ function _ptnrLoadVersements(){
       setupEl.innerHTML = html;
     }
 
-    // ── Fonds en attente GENESIS SAFE™ (small orders non livrés) ──
+    // ── Fonds en attente GENESIS SAFE™ — via /api/partner/wallet (dispatches directs) ──
     if(listEl){
-      _ptnrFetch('/api/partner/requests').then(function(rData){
-        var reqs = (rData && Array.isArray(rData.requests)) ? rData.requests : [];
-        var held = reqs.filter(function(r){
-          return r.payment_tier === 'small' && !r.delivery_confirmed && r.dispatch_id &&
-            ['accepted','in_progress','delivering'].indexOf(r.display_status && r.display_status.key) !== -1;
-        });
-        if(!held.length) return;
-        var heldTotal = held.reduce(function(s,r){ return s+parseFloat(r.total_amount||r.price||0); }, 0);
+      _ptnrFetch('/api/partner/wallet').then(function(wData){
+        var walletOrders = (wData && Array.isArray(wData.orders)) ? wData.orders : [];
+        var heldOrders = walletOrders.filter(function(o){ return o.held_amount > 0; });
+        if(!heldOrders.length) return;
+        var heldTotal = wData.total_held || heldOrders.reduce(function(s,o){ return s+o.held_amount; }, 0);
         var safeHtml = '<div style="background:linear-gradient(135deg,#1a1200,#0d1a00);border:1.5px solid #FFD700;border-radius:14px;padding:16px;margin-bottom:16px;">';
         safeHtml += '<div style="font-size:11px;color:#FFD700;font-weight:800;letter-spacing:1px;margin-bottom:6px;">🔒 GENESIS SAFE™ — SOLDE EN ATTENTE</div>';
         safeHtml += '<div style="font-size:32px;font-weight:900;color:#FFD700;text-align:center;margin:8px 0 14px;">'+heldTotal.toFixed(2)+' €</div>';
-        held.forEach(function(r){
-          var amt = parseFloat(r.total_amount || r.price || 0).toFixed(2);
-          var clientName = r.client_name || (r.client_email ? r.client_email.split('@')[0] : 'Client');
+        heldOrders.forEach(function(o){
+          var amt = o.held_amount.toFixed(2);
+          var clientName = o.client_name || 'Client';
           safeHtml += '<div style="background:#0d0d00;border-radius:10px;padding:12px 14px;margin-bottom:8px;">';
           safeHtml += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">';
           safeHtml += '<div>';
-          safeHtml += '<div style="font-size:13px;font-weight:700;color:#fff;">'+(r.service_label||r.service_id||'Mission')+'</div>';
-          safeHtml += '<div style="font-size:11px;color:#888;margin-top:2px;">Client : '+clientName+'</div>';
+          safeHtml += '<div style="font-size:13px;font-weight:700;color:#fff;">'+(o.service_label||'Mission')+'</div>';
+          safeHtml += '<div style="font-size:11px;color:#888;margin-top:2px;">Client : '+_esc(clientName)+'</div>';
           safeHtml += '</div>';
           safeHtml += '<div style="font-size:18px;font-weight:900;color:#FFD700;">'+amt+' €</div>';
           safeHtml += '</div>';
           safeHtml += '<div style="font-size:11px;color:#aaa;margin-bottom:10px;">Ces fonds vous seront versés dès que vous confirmerez la livraison.</div>';
-          if(r.dispatch_id){
-            safeHtml += '<button onclick="_ptnrConfirmDelivery(\''+r.dispatch_id+'\',this)" style="width:100%;background:#FFD700;color:#000;border:none;border-radius:10px;padding:10px;font-size:13px;font-weight:800;cursor:pointer;"><i class="fa-solid fa-box-open"></i> Confirmer la livraison → recevoir '+amt+' €</button>';
+          if(o.dispatch_id && !o.delivery_confirmed){
+            safeHtml += '<button onclick="_ptnrConfirmDelivery(\''+o.dispatch_id+'\',this)" style="width:100%;background:#FFD700;color:#000;border:none;border-radius:10px;padding:10px;font-size:13px;font-weight:800;cursor:pointer;"><i class="fa-solid fa-box-open"></i> Confirmer la livraison → recevoir '+amt+' €</button>';
           }
           safeHtml += '</div>';
         });

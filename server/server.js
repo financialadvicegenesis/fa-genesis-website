@@ -3438,6 +3438,106 @@ app.get('/api/client/wallet', function(req, res) {
 });
 
 /**
+ * GET /api/partner/wallet
+ * Portefeuille GENESIS SAFE™ du partenaire : fonds retenus en escrow + historique libéré.
+ * Requête les dispatches directement par claimed_by_partner_id (pas via partner_requests).
+ */
+app.get('/api/partner/wallet', authenticatePartner, function(req, res) {
+    try {
+        var partnerId = req.partner.id;
+        var dispatches = loadDispatches();
+        var orders = loadOrders();
+        var payouts = loadPayouts();
+
+        var partnerDispatches = dispatches.filter(function(d) {
+            return d.claimed_by_partner_id === partnerId && d.status !== 'cancelled';
+        });
+
+        var totalHeld = 0;
+        var totalReleased = 0;
+        var orderRows = [];
+
+        partnerDispatches.forEach(function(dispatch) {
+            var order = orders.find(function(o) { return o.id === dispatch.order_id; });
+            if (!order) return;
+
+            var held = 0;
+            var released = 0;
+
+            if (Array.isArray(order.installments) && order.installments.length > 0) {
+                order.installments.forEach(function(inst) {
+                    if (!inst.paid) return;
+                    var payout = payouts.find(function(p) {
+                        return p.order_id === order.id && p.stage === inst.stage && p.status === 'sent';
+                    });
+                    if (payout) {
+                        released += parseFloat(inst.amount) || 0;
+                    } else {
+                        held += parseFloat(inst.amount) || 0;
+                    }
+                });
+            } else {
+                // Fallback for orders without installments array (old model)
+                var depositPaid = !!(order.deposit_paid || order.depositPaid);
+                var balancePaid = !!(order.balance_paid || order.balancePaid || order.fully_paid);
+                if (depositPaid) {
+                    var depPayout = payouts.find(function(p) {
+                        return p.order_id === order.id && (p.stage === 'deposit' || p.stage === 'balance') && p.status === 'sent';
+                    });
+                    var depositAmt = parseFloat(order.deposit_amount || order.depositAmount || order.price || order.total_amount || 0);
+                    var balanceAmt = parseFloat(order.balance_amount || 0);
+                    if (depPayout) {
+                        released += depositAmt + (balancePaid ? balanceAmt : 0);
+                    } else {
+                        held += depositAmt;
+                        if (balancePaid) {
+                            var balPayout = payouts.find(function(p) {
+                                return p.order_id === order.id && p.stage === 'balance' && p.status === 'sent';
+                            });
+                            if (balPayout) released += balanceAmt;
+                            else held += balanceAmt;
+                        }
+                    }
+                }
+            }
+
+            if (held === 0 && released === 0) return;
+            totalHeld += held;
+            totalReleased += released;
+
+            var clientName = (order.client_info && (order.client_info.name || order.client_info.email)) || 'Client';
+            var statusLabel = held > 0 && order.delivery_confirmed ? 'En cours de versement'
+                            : held > 0 ? 'Sécurisé jusqu\'à la livraison'
+                            : 'Versé sur votre compte ✓';
+            orderRows.push({
+                dispatch_id: dispatch.id,
+                order_id: order.id,
+                service_label: order.product_name || order.service_label || 'Prestation',
+                client_name: clientName,
+                payment_tier: order.payment_tier || 'small',
+                held_amount: Math.round(held * 100) / 100,
+                released_amount: Math.round(released * 100) / 100,
+                delivery_confirmed: !!order.delivery_confirmed,
+                status_label: statusLabel,
+                created_at: order.created_at
+            });
+        });
+
+        orderRows.sort(function(a, b) { return new Date(b.created_at || 0) - new Date(a.created_at || 0); });
+
+        res.json({
+            ok: true,
+            total_held: Math.round(totalHeld * 100) / 100,
+            total_released_alltime: Math.round(totalReleased * 100) / 100,
+            orders: orderRows
+        });
+    } catch(e) {
+        console.error('[PARTNER_WALLET]', e.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
  * POST /api/payments/apple-pay/validate
  * Merchant validation for Apple Pay JS API — proxies request to Apple with merchant certificate
  */
