@@ -2074,7 +2074,7 @@ async function sendPartnerServiceOrderConfirmation(clientEmail, clientFirstName,
         // ── SUIVI CTA ───────────────────────────────────────────
         + '<tr><td style="background:#fff;padding:24px 32px;border-bottom:1px solid #eee;text-align:center;">'
         + '<p style="margin:0 0 16px;font-size:15px;font-weight:700;color:#1a1a1a;">Suivez votre commande jusqu\'à la livraison</p>'
-        + '<a href="' + frontUrl + '/app.html" style="display:inline-block;background:#000;color:#FFD700;font-weight:800;font-size:14px;text-decoration:none;padding:13px 28px;border-radius:8px;">Voir le suivi en temps réel →</a>'
+        + '<a href="' + frontUrl + '/app.html#open-suivi" style="display:inline-block;background:#000;color:#FFD700;font-weight:800;font-size:14px;text-decoration:none;padding:13px 28px;border-radius:8px;">Voir le suivi en temps réel →</a>'
         + '</td></tr>'
 
         // ── RECAP ───────────────────────────────────────────────

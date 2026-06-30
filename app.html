@@ -8041,6 +8041,14 @@ if('serviceWorker' in navigator){
         }
       }, 900);
     });
+  } else if(_initHash === '#open-suivi'){
+    document.addEventListener('DOMContentLoaded', function(){
+      setTimeout(function(){
+        history.replaceState(null, '', window.location.pathname);
+        if(!USER){ showLoginSheet(); return; }
+        nav('reservations');
+      }, 900);
+    });
   }
 })();
 
