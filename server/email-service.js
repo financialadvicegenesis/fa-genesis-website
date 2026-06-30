@@ -1248,7 +1248,7 @@ async function sendWelcomeEmail(clientEmail, prenom) {
         + _deliverooStep('1', '#FFD700', 'Explorez les prestataires', 'Parcourez notre annuaire de professionnels vérifiés et consultez leurs portfolios.')
         + _deliverooStep('2', '#00ccbc', 'Faites une demande', 'Choisissez un prestataire, décrivez votre besoin — c\'est gratuit et sans engagement.')
         + _deliverooStep('3', '#ff9f00', 'Payez après acceptation', 'Votre prestataire confirme sous 24h. L\'acompte n\'est prélevé qu\'à ce moment-là.')
-        + _deliverooStep('4', '#22cc66', 'Suivez en temps réel', 'Comme Deliveroo : suivez l\'avancement de votre mission et recevez vos livrables.', true)
+        + _deliverooStep('4', '#22cc66', 'Suivez en temps réel', 'Suivez l\'avancement de votre mission et recevez vos livrables.', true)
         + '</table>'
         + '</td></tr>'
 
@@ -1260,8 +1260,8 @@ async function sendWelcomeEmail(clientEmail, prenom) {
 
         // Footer
         + '<tr><td style="background:#f5f5f5;padding:20px 32px;border-radius:0 0 12px 12px;text-align:center;">'
-        + '<p style="margin:0 0 6px;font-size:12px;color:#999;">Une question ? <a href="mailto:financialadvicegenesis@gmail.com" style="color:#00ccbc;font-weight:600;text-decoration:none;">financialadvicegenesis@gmail.com</a></p>'
-        + '<p style="margin:0;font-size:11px;color:#bbb;">Cet email est envoyé automatiquement lors de la création de votre compte FA GENESIS.</p>'
+        + '<p style="margin:0 0 6px;font-size:12px;color:#999;">Une question ? <a href="mailto:financialadvicegenesis@gmail.com" style="color:#FFD700;font-weight:600;text-decoration:none;">financialadvicegenesis@gmail.com</a></p>'
+        + '<p style="margin:0;font-size:11px;color:#bbb;">Cet email est envoyé automatiquement.</p>'
         + '</td></tr>'
 
         + '</table>'
