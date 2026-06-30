@@ -1261,7 +1261,7 @@ async function sendWelcomeEmail(clientEmail, prenom) {
         // Footer
         + '<tr><td style="background:#f5f5f5;padding:20px 32px;border-radius:0 0 12px 12px;text-align:center;">'
         + '<p style="margin:0 0 8px;font-size:13px;font-weight:700;color:#1a1a1a;">Des questions sur votre commande ?</p>'
-        + '<p style="margin:0 0 6px;font-size:12px;color:#999;"><a href="mailto:financialadvicegenesis@gmail.com" style="font-size:13px;color:#1a1a1a;font-weight:600;text-decoration:none;">Contactez-nous par email, <span style="color:#FFD700;">financialadvicegenesis@gmail.com</span></a></p>'
+        + '<p style="margin:0 0 6px;font-size:12px;color:#999;"><a href="mailto:financialadvicegenesis@gmail.com" style="font-size:13px;color:#1a1a1a;font-weight:600;text-decoration:none;">Contactez-nous par email <span style="color:#FFD700;">financialadvicegenesis@gmail.com</span></a></p>'
         + '<p style="margin:0;font-size:11px;color:#bbb;">Cet email est envoyé automatiquement. Merci de ne pas y répondre directement.</p>'
         + '</td></tr>'
 
@@ -2120,7 +2120,7 @@ async function sendPartnerServiceOrderConfirmation(clientEmail, clientFirstName,
         + '<tr><td style="background:#fff;padding:24px 32px;border-bottom:1px solid #eee;">'
         + '<p style="margin:0 0 16px;font-size:13px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.8px;text-align:center;">Ce qui se passe ensuite</p>'
         + '<table role="presentation" width="100%" style="border-collapse:collapse;">'
-        + _deliverooStep('1', '#FFD700', 'Commande reçue ✅', 'Votre acompte est sécurisé par GENESIS SAFE™.')
+        + _deliverooStep('1', '#FFD700', 'Commande reçue ✅', 'Votre paiement est sécurisé par GENESIS SAFE™.')
         + _deliverooStep('2', '#00ccbc', 'Confirmation (sous 24h) 🤝', partnerDisplay + ' confirme ou décline — vous êtes alerté(e) par notification et email.')
         + _deliverooStep('3', '#ff9f00', 'Mission en cours 🚀', 'Vous et votre prestataire travaillez et échangez directement via la messagerie.')
         + _deliverooStep('4', '#22cc66', 'Livraison & validation 🏁', 'Une fois que vous recevez vos livrables, le prestataire reçoit son argent.', true)
@@ -2130,7 +2130,7 @@ async function sendPartnerServiceOrderConfirmation(clientEmail, clientFirstName,
         // ── QUESTIONS ───────────────────────────────────────────
         + '<tr><td style="background:#fff;padding:24px 32px;border-bottom:1px solid #eee;text-align:center;">'
         + '<p style="margin:0 0 8px;font-size:13px;font-weight:700;color:#1a1a1a;">Des questions sur votre commande ?</p>'
-        + '<a href="mailto:financialadvicegenesis@gmail.com" style="font-size:13px;color:#1a1a1a;font-weight:600;text-decoration:none;">Contactez-nous par email, <span style="color:#FFD700;">financialadvicegenesis@gmail.com</span></a>'
+        + '<a href="mailto:financialadvicegenesis@gmail.com" style="font-size:13px;color:#1a1a1a;font-weight:600;text-decoration:none;">Contactez-nous par email <span style="color:#FFD700;">financialadvicegenesis@gmail.com</span></a>'
         + '</td></tr>'
 
         // ── FOOTER ──────────────────────────────────────────────
