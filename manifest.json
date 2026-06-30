@@ -5,6 +5,7 @@
   "id": "/app.html",
   "start_url": "/app.html",
   "scope": "/app.html",
+  "capture_links": "existing-client-navigate",
   "display": "standalone",
   "display_override": ["standalone", "minimal-ui"],
   "orientation": "portrait",
