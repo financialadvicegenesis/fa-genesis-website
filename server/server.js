@@ -3363,6 +3363,81 @@ app.get('/api/my-orders', async function(req, res) {
 });
 
 /**
+ * GET /api/client/wallet
+ * Portefeuille GENESIS SAFE™ du client : fonds actuellement retenus en escrow + historique libéré.
+ */
+app.get('/api/client/wallet', function(req, res) {
+    try {
+        var token = (req.headers.authorization || '').replace('Bearer ', '');
+        var users = loadUsers();
+        var user = users.find(function(u) { return u.sessionToken === token; });
+        if (!user) return res.status(401).json({ error: 'Non autorisé' });
+
+        var orders = loadOrders();
+        var payouts = loadPayouts();
+        var partners = loadPartners();
+
+        var clientOrders = orders.filter(function(o) {
+            return o.product_type === 'partner_service' &&
+                   o.client_info && o.client_info.email &&
+                   o.client_info.email.toLowerCase() === user.email.toLowerCase() &&
+                   o.status !== 'cancelled' &&
+                   Array.isArray(o.installments) && o.installments.length > 0;
+        });
+
+        var totalHeld = 0;
+        var totalReleased = 0;
+        var orderRows = [];
+
+        clientOrders.forEach(function(order) {
+            var held = 0;
+            var released = 0;
+            order.installments.forEach(function(inst) {
+                if (!inst.paid) return;
+                var payout = payouts.find(function(p) {
+                    return p.order_id === order.id && p.stage === inst.stage;
+                });
+                if (payout && payout.status === 'sent') {
+                    released += parseFloat(inst.amount) || 0;
+                } else {
+                    held += parseFloat(inst.amount) || 0;
+                }
+            });
+            if (held === 0 && released === 0) return;
+            totalHeld += held;
+            totalReleased += released;
+            var partner = partners.find(function(p) { return p.id === order.partner_id; });
+            var partnerName = partner ? ((partner.prenom || partner.firstName || '') + ' ' + (partner.nom || partner.lastName || '')).trim() || partner.email : 'Prestataire';
+            var statusLabel = held > 0 && order.delivery_confirmed ? 'En cours de versement'
+                            : held > 0 ? 'Sécurisé jusqu\'à la livraison'
+                            : 'Versé au prestataire ✓';
+            orderRows.push({
+                order_id: order.id,
+                service_label: order.product_name || 'Prestation',
+                partner_name: partnerName,
+                payment_tier: order.payment_tier || 'small',
+                held_amount: Math.round(held * 100) / 100,
+                released_amount: Math.round(released * 100) / 100,
+                status_label: statusLabel,
+                created_at: order.created_at
+            });
+        });
+
+        orderRows.sort(function(a, b) { return new Date(b.created_at || 0) - new Date(a.created_at || 0); });
+
+        res.json({
+            ok: true,
+            total_held: Math.round(totalHeld * 100) / 100,
+            total_released_alltime: Math.round(totalReleased * 100) / 100,
+            orders: orderRows
+        });
+    } catch(e) {
+        console.error('[CLIENT_WALLET]', e.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
  * POST /api/payments/apple-pay/validate
  * Merchant validation for Apple Pay JS API — proxies request to Apple with merchant certificate
  */

@@ -2596,7 +2596,7 @@ a{text-decoration:none;color:inherit}
                 <i class="fa-solid fa-chevron-right ptnr-snbtn-arrow"></i>
               </button>
               <button class="ptnr-snbtn" id="ptnr-sn-versements" onclick="_ptnrNav('versements')">
-                <i class="pni fa-solid fa-sack-dollar"></i><span>Versements</span>
+                <i class="pni fa-solid fa-sack-dollar"></i><span>Portefeuille</span>
                 <i class="fa-solid fa-chevron-right ptnr-snbtn-arrow"></i>
               </button>
               <button class="ptnr-snbtn" id="ptnr-sn-reputation" onclick="_ptnrNav('reputation')">
@@ -2705,7 +2705,7 @@ a{text-decoration:none;color:inherit}
 
         <!-- Sub-screen: Versements -->
         <div class="ptnr-screen" id="ptnr-screen-versements">
-          <div class="ptnr-section-title">Mes versements</div>
+          <div class="ptnr-section-title">Portefeuille GENESIS SAFE™</div>
           <div id="ptnr-paypal-setup" style="padding:0 0 16px;"></div>
           <div id="ptnr-versements-list"></div>
         </div>
@@ -5117,6 +5117,7 @@ function renderProfil(){
       +'<div class="plus-group">'
       +pli('','#1a1000','Tableau de bord',null,'showDashboard()')
       +pli('','#0a1a0a','Mes paiements',null,'showPaiements()')
+      +pli('<i class="fa-solid fa-shield-halved"></i>','#1a1200','Portefeuille GENESIS SAFE™',null,'showClientWallet()')
       +pli('','#0a0a1a','Mes réservations',null,'nav(\'reservations\')')
       +pli('<i class="fa-solid fa-file-invoice"></i>','#0a0a14','Mes devis',null,'showMesDevis()')
       +pli('','#100a1a','Mes livrables',null,'showLivrables()')
@@ -5979,6 +5980,69 @@ function showPaiements(){
           +'</div>';
       }).join('');
     }).catch(function(){var el=document.getElementById('pmt-list');if(el)el.innerHTML='<div class="espace-empty">Impossible de charger.</div>';});
+}
+
+// ── PORTEFEUILLE GENESIS SAFE™ (client) ─────────────────────────
+function showClientWallet(){
+  var c=document.getElementById('profilContent');if(!c)return;
+  if(!USER||!USER._token){renderProfil();return;}
+  c.innerHTML='<div class="espace-view">'
+    +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="renderProfil()">&#8249;</button><div class="espace-title">Portefeuille GENESIS SAFE™</div></div>'
+    +'<div id="wallet-content" style="padding:14px 16px 80px;overflow-y:auto;flex:1;"><div class="espace-loading">Chargement...</div></div>'
+    +'</div>';
+  fetch((window.FA_GENESIS_API||API)+'/api/client/wallet',{headers:{'Authorization':'Bearer '+USER._token}})
+    .then(function(r){return r.json();})
+    .then(function(data){
+      var el=document.getElementById('wallet-content');if(!el)return;
+      if(!data.ok){el.innerHTML='<div class="espace-empty">Impossible de charger le portefeuille.</div>';return;}
+      var held=data.orders.filter(function(o){return o.held_amount>0;});
+      var released=data.orders.filter(function(o){return o.held_amount===0&&o.released_amount>0;});
+      var html='';
+      // ── Solde en escrow
+      html+='<div style="background:linear-gradient(135deg,#1a1200,#0d1a00);border:1.5px solid #FFD700;border-radius:14px;padding:16px 18px;margin-bottom:20px;">'
+        +'<div style="font-size:11px;color:#FFD700;font-weight:800;letter-spacing:1px;margin-bottom:6px;">🔒 GENESIS SAFE™ — FONDS SÉCURISÉS</div>'
+        +'<div style="font-size:32px;font-weight:900;color:#FFD700;text-align:center;margin:8px 0 4px;">'+data.total_held.toFixed(2)+' €</div>'
+        +'<div style="font-size:11px;color:#a89000;text-align:center;">actuellement retenus en escrow</div>'
+        +'</div>';
+      if(held.length===0&&released.length===0){
+        html+='<div class="espace-empty" style="text-align:center;padding:32px 0;"><div style="font-size:32px;margin-bottom:10px;">🔒</div><div>Aucun paiement GENESIS SAFE actif.<br><span style="color:var(--muted);font-size:13px;">Vos fonds apparaîtront ici dès votre prochaine commande.</span></div></div>';
+        el.innerHTML=html;return;
+      }
+      // ── Fonds en attente de livraison
+      if(held.length>0){
+        html+='<div style="font-size:10px;color:#FFD700;font-weight:800;letter-spacing:1px;margin:0 0 10px;">EN ATTENTE DE LIVRAISON</div>';
+        html+=held.map(function(o){
+          return '<div class="resa-card" style="margin-bottom:10px;border-color:#333;">'
+            +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:4px;">'
+            +'<div style="font-size:14px;font-weight:700;color:#fff;">'+o.service_label+'</div>'
+            +'<div style="font-size:16px;font-weight:900;color:#FFD700;white-space:nowrap;">'+o.held_amount.toFixed(2)+' €</div>'
+            +'</div>'
+            +'<div style="font-size:12px;color:var(--muted);margin-bottom:6px;">Prestataire : '+o.partner_name+'</div>'
+            +'<div style="display:flex;align-items:center;gap:6px;font-size:11px;color:#a89000;">'
+            +'<i class="fa-solid fa-lock" style="font-size:10px;"></i> '+o.status_label
+            +'</div>'
+            +'</div>';
+        }).join('');
+      }
+      // ── Historique libéré
+      if(released.length>0){
+        html+='<div style="font-size:10px;color:#4caf50;font-weight:800;letter-spacing:1px;margin:18px 0 10px;">DÉJÀ VERSÉ AU PRESTATAIRE</div>';
+        html+=released.map(function(o){
+          return '<div class="resa-card" style="margin-bottom:10px;border-color:#1a2e1a;">'
+            +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:4px;">'
+            +'<div style="font-size:14px;font-weight:700;color:#fff;">'+o.service_label+'</div>'
+            +'<div style="font-size:16px;font-weight:900;color:#4caf50;white-space:nowrap;">'+o.released_amount.toFixed(2)+' €</div>'
+            +'</div>'
+            +'<div style="font-size:12px;color:var(--muted);margin-bottom:6px;">Prestataire : '+o.partner_name+'</div>'
+            +'<div style="font-size:11px;color:#4caf50;"><i class="fa-solid fa-circle-check" style="font-size:10px;"></i> Versé au prestataire</div>'
+            +'</div>';
+        }).join('');
+      }
+      el.innerHTML=html;
+    }).catch(function(){
+      var el=document.getElementById('wallet-content');
+      if(el)el.innerHTML='<div class="espace-empty">Impossible de charger le portefeuille.</div>';
+    });
 }
 
 // ── HTML ESCAPE HELPER ───────────────────────────────────────────
@@ -10198,8 +10262,10 @@ function _ptnrLoadVersements(){
             ['accepted','in_progress','delivering'].indexOf(r.display_status && r.display_status.key) !== -1;
         });
         if(!held.length) return;
+        var heldTotal = held.reduce(function(s,r){ return s+parseFloat(r.total_amount||r.price||0); }, 0);
         var safeHtml = '<div style="background:linear-gradient(135deg,#1a1200,#0d1a00);border:1.5px solid #FFD700;border-radius:14px;padding:16px;margin-bottom:16px;">';
-        safeHtml += '<div style="font-size:11px;color:#FFD700;font-weight:800;letter-spacing:1px;margin-bottom:10px;">🔒 GENESIS SAFE™ — FONDS SÉCURISÉS EN ATTENTE</div>';
+        safeHtml += '<div style="font-size:11px;color:#FFD700;font-weight:800;letter-spacing:1px;margin-bottom:6px;">🔒 GENESIS SAFE™ — SOLDE EN ATTENTE</div>';
+        safeHtml += '<div style="font-size:32px;font-weight:900;color:#FFD700;text-align:center;margin:8px 0 14px;">'+heldTotal.toFixed(2)+' €</div>';
         held.forEach(function(r){
           var amt = parseFloat(r.total_amount || r.price || 0).toFixed(2);
           var clientName = r.client_name || (r.client_email ? r.client_email.split('@')[0] : 'Client');
