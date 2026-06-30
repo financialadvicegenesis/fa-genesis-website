@@ -243,7 +243,7 @@
                         <span id="partnerMsgBadge" style="display:none;position:absolute;top:-8px;right:-8px;background:#ff6b6b;color:white;border-radius:50%;width:18px;height:18px;font-size:10px;line-height:18px;text-align:center;"></span>
                     </button>
                     <button onclick="showSection('revenus')" class="nav-tab text-white hover:text-[var(--genesis-yellow)] transition">
-                        <i class="fas fa-coins mr-1"></i>Revenus
+                        <i class="fas fa-shield-halved mr-1"></i>Portefeuille
                     </button>
                     <button onclick="showSection('reputation')" class="nav-tab text-white hover:text-[var(--genesis-yellow)] transition">
                         <i class="fas fa-trophy mr-1"></i>Réputation
@@ -283,7 +283,7 @@
                 <span id="partnerMsgBadgeMobile" style="display:none;position:absolute;top:-6px;right:-6px;background:#ff6b6b;color:white;border-radius:50%;width:16px;height:16px;font-size:9px;line-height:16px;text-align:center;"></span>
             </button>
             <button onclick="showSection('revenus')" class="nav-tab text-white hover:text-[var(--genesis-yellow)] text-xs font-black">
-                <i class="fas fa-coins mr-1"></i>Revenus
+                <i class="fas fa-shield-halved mr-1"></i>Portefeuille
             </button>
             <button onclick="showSection('reputation')" class="nav-tab text-white hover:text-[var(--genesis-yellow)] text-xs font-black">
                 <i class="fas fa-trophy mr-1"></i>Réputation
@@ -641,8 +641,15 @@
         <!-- ===== SECTION REVENUS ===== -->
         <div id="revenusSection" class="container mx-auto max-w-5xl" style="display:none;">
             <h2 class="text-2xl md:text-3xl font-black text-white mb-6" style="font-family:'Playfair Display',serif;">
-                <i class="fas fa-coins mr-3" style="color:var(--genesis-yellow);"></i>MES REVENUS
+                <i class="fas fa-shield-halved mr-3" style="color:var(--genesis-yellow);"></i>Portefeuille GENESIS SAFE™
             </h2>
+
+            <!-- GENESIS SAFE wallet block -->
+            <div id="genesisSafeWalletBlock" style="display:none;background:linear-gradient(135deg,#1a1200,#0d1a00);border:2px solid var(--genesis-yellow);border-radius:16px;padding:20px;margin-bottom:24px;">
+                <div style="font-size:11px;color:var(--genesis-yellow);font-weight:900;letter-spacing:1.5px;margin-bottom:8px;">🔒 GENESIS SAFE™ — SOLDE EN ATTENTE</div>
+                <div id="genesisSafeTotal" style="font-size:36px;font-weight:900;color:var(--genesis-yellow);text-align:center;margin:8px 0 16px;">0.00€</div>
+                <div id="genesisSafeList"></div>
+            </div>
 
             <div class="grid md:grid-cols-3 gap-4 mb-8">
                 <div class="section-card neo-shadow text-center">
@@ -2641,6 +2648,39 @@
         listEl.innerHTML = '<p class="text-center font-bold opacity-50 py-8"><i class="fas fa-spinner fa-spin mr-2"></i>Chargement...</p>';
 
         try {
+            // ── GENESIS SAFE : fonds retenus en escrow (avant confirmation de livraison) ──
+            try {
+                var reqResp = await partnerAuthenticatedFetch(PARTNER_API_BASE_URL + '/api/partner/requests');
+                if (reqResp.ok) {
+                    var reqData = await reqResp.json();
+                    var reqs = Array.isArray(reqData.requests) ? reqData.requests : [];
+                    var held = reqs.filter(function(r) {
+                        return r.payment_tier === 'small' && !r.delivery_confirmed && r.dispatch_id &&
+                            ['accepted','in_progress','delivering'].indexOf(r.display_status && r.display_status.key) !== -1;
+                    });
+                    var safeBlock = document.getElementById('genesisSafeWalletBlock');
+                    var safeTotalEl = document.getElementById('genesisSafeTotal');
+                    var safeListEl = document.getElementById('genesisSafeList');
+                    if (safeBlock && held.length > 0) {
+                        var heldTotal = held.reduce(function(s,r){ return s + parseFloat(r.total_amount||r.price||0); }, 0);
+                        if (safeTotalEl) safeTotalEl.textContent = heldTotal.toFixed(2) + '€';
+                        if (safeListEl) {
+                            safeListEl.innerHTML = held.map(function(r) {
+                                var amt = parseFloat(r.total_amount||r.price||0).toFixed(2);
+                                var clientName = r.client_name || (r.client_email ? r.client_email.split('@')[0] : 'Client');
+                                return '<div style="background:#0d0d00;border-radius:10px;padding:12px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">'
+                                    + '<div><div style="font-size:13px;font-weight:700;color:#fff;">' + escapeHtml(r.service_label||'Mission') + '</div>'
+                                    + '<div style="font-size:11px;color:#888;margin-top:2px;">Client : ' + escapeHtml(clientName) + '</div>'
+                                    + '<div style="font-size:11px;color:#a89000;margin-top:4px;"><i class="fas fa-lock" style="font-size:10px;"></i> Versé dès confirmation de livraison</div></div>'
+                                    + '<div style="font-size:20px;font-weight:900;color:var(--genesis-yellow);">' + amt + '€</div>'
+                                    + '</div>';
+                            }).join('');
+                        }
+                        safeBlock.style.display = 'block';
+                    }
+                }
+            } catch(e) { console.warn('[GENESIS SAFE WALLET]', e); }
+
             var response = await partnerAuthenticatedFetch(PARTNER_API_BASE_URL + '/api/partner/payouts');
             if (!response.ok) throw new Error('Erreur ' + response.status);
             var data = await response.json();
