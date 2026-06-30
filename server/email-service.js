@@ -2042,36 +2042,36 @@ async function sendPartnerServiceOrderConfirmation(clientEmail, clientFirstName,
     var orderRef = rawRef || '—';
     var serviceName = order.product_name || 'Prestation professionnelle';
     var depositAmt = parseFloat(order.deposit_amount || 0).toFixed(2);
-    var totalAmt = parseFloat(order.total_price || 0).toFixed(2);
+    var totalAmt = parseFloat(order.total_amount || order.total_price || 0).toFixed(2);
     var balanceAmt = (parseFloat(totalAmt) - parseFloat(depositAmt)).toFixed(2);
     var orderDate = order.created_at ? new Date(order.created_at).toLocaleDateString('fr-FR', { day:'numeric', month:'long', year:'numeric' }) : new Date().toLocaleDateString('fr-FR');
     var partnerDisplay = partnerName || 'Votre prestataire';
 
-    var html = '<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>' + partnerDisplay + ' a reçu votre commande !</title></head>'
+    var html = '<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Commande réussie !</title></head>'
         + '<body style="margin:0;padding:0;background:#f5f5f5;font-family:\'Helvetica Neue\',Arial,sans-serif;">'
         + '<table role="presentation" width="100%" style="border-collapse:collapse;background:#f5f5f5;">'
         + '<tr><td style="padding:24px 12px;">'
         + '<table role="presentation" width="100%" style="max-width:600px;margin:0 auto;border-collapse:collapse;">'
 
         // ── HEADER ──────────────────────────────────────────────
-        + '<tr><td style="background:#00ccbc;padding:20px 32px;border-radius:12px 12px 0 0;">'
+        + '<tr><td style="background:#000;padding:20px 32px;border-radius:12px 12px 0 0;">'
         + '<table role="presentation" width="100%"><tr>'
-        + '<td><span style="font-family:\'Arial Black\',Arial,sans-serif;font-size:20px;font-weight:900;color:#fff;letter-spacing:1.5px;">FA GENESIS</span>'
-        + '<div style="font-size:10px;color:rgba(255,255,255,.75);margin-top:1px;">Groupe FA Industries</div></td>'
+        + '<td><span style="font-family:\'Arial Black\',Arial,sans-serif;font-size:20px;font-weight:900;color:#FFD700;letter-spacing:1.5px;">FA GENESIS</span>'
+        + '<div style="font-size:10px;color:#FFD700;opacity:.75;margin-top:1px;">Groupe FA Industries</div></td>'
         + '<td align="right" style="font-size:11px;color:rgba(255,255,255,.8);">Réf. ' + orderRef + '</td>'
         + '</tr></table>'
         + '</td></tr>'
 
         // ── HERO ────────────────────────────────────────────────
         + '<tr><td style="background:#fff;padding:32px 32px 24px;border-bottom:1px solid #eee;">'
-        + '<p style="margin:0 0 20px;font-size:22px;font-weight:800;color:#1a1a1a;line-height:1.3;">' + partnerDisplay + ' a reçu votre commande ! 🎉</p>'
-        + '<p style="margin:0;font-size:16px;color:#555;line-height:1.6;">Excellent choix, <strong>' + prenom + '</strong> —<br>votre acompte est sécurisé et ' + partnerDisplay + ' a 24h pour confirmer la prise en charge.</p>'
+        + '<p style="margin:0 0 20px;font-size:22px;font-weight:800;color:#1a1a1a;line-height:1.3;">Commande réussie ! 🎉</p>'
+        + '<p style="margin:0;font-size:16px;color:#555;line-height:1.6;">Excellent choix, <strong>' + prenom + '</strong> —<br>votre paiement est sécurisé sur le portefeuille GENESIS SAFE™ et ' + partnerDisplay + ' a 24h pour confirmer la prise en charge.</p>'
         + '</td></tr>'
 
         // ── SUIVI CTA ───────────────────────────────────────────
         + '<tr><td style="background:#fff;padding:24px 32px;border-bottom:1px solid #eee;">'
         + '<p style="margin:0 0 16px;font-size:15px;font-weight:700;color:#1a1a1a;">Suivez votre commande jusqu\'à la livraison</p>'
-        + '<a href="' + frontUrl + '/app.html" style="display:inline-block;background:#00ccbc;color:#fff;font-weight:800;font-size:14px;text-decoration:none;padding:13px 28px;border-radius:8px;">Voir le suivi en temps réel →</a>'
+        + '<a href="' + frontUrl + '/app.html" style="display:inline-block;background:#000;color:#FFD700;font-weight:800;font-size:14px;text-decoration:none;padding:13px 28px;border-radius:8px;">Voir le suivi en temps réel →</a>'
         + '</td></tr>'
 
         // ── RECAP ───────────────────────────────────────────────
@@ -2093,8 +2093,8 @@ async function sendPartnerServiceOrderConfirmation(clientEmail, clientFirstName,
 
         // Acompte row
         + '<tr style="border-bottom:1px solid #f0f0f0;">'
-        + '<td style="padding:10px 0;font-size:13px;color:#777;">Acompte réglé <span style="background:#e8f8f7;color:#00907e;font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;margin-left:4px;">GENESIS SAFE™</span></td>'
-        + '<td align="right" style="padding:10px 0;font-size:13px;font-weight:700;color:#00907e;white-space:nowrap;">' + depositAmt + ' €</td>'
+        + '<td style="padding:10px 0;font-size:13px;color:#777;">Paiement réglé <span style="background:#e8f8f7;color:#00907e;font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;margin-left:4px;">GENESIS SAFE™</span></td>'
+        + '<td align="right" style="padding:10px 0;font-size:13px;font-weight:700;color:#FFD700;white-space:nowrap;">' + depositAmt + ' €</td>'
         + '</tr>'
 
         // Solde restant row
@@ -2119,15 +2119,15 @@ async function sendPartnerServiceOrderConfirmation(clientEmail, clientFirstName,
         + '<table role="presentation" width="100%" style="border-collapse:collapse;">'
         + _deliverooStep('1', '#FFD700', 'Commande reçue ✅', 'Votre acompte est sécurisé par GENESIS SAFE™.')
         + _deliverooStep('2', '#00ccbc', 'Confirmation (sous 24h) 🤝', partnerDisplay + ' confirme ou décline — vous êtes alerté(e) par notification et email.')
-        + _deliverooStep('3', '#ff9f00', 'Mission en cours 🚀', 'Votre prestataire travaille. Échangez directement via la messagerie.')
-        + _deliverooStep('4', '#22cc66', 'Livraison & validation 🏁', 'Recevez vos livrables. Le solde est dû à la livraison.', true)
+        + _deliverooStep('3', '#ff9f00', 'Mission en cours 🚀', 'Vous et votre prestataire travaillez et échangez directement via la messagerie.')
+        + _deliverooStep('4', '#22cc66', 'Livraison & validation 🏁', 'Une fois que vous recevez vos livrables, le prestataire reçoit son argent.', true)
         + '</table>'
         + '</td></tr>'
 
         // ── QUESTIONS ───────────────────────────────────────────
         + '<tr><td style="background:#fff;padding:24px 32px;border-bottom:1px solid #eee;">'
         + '<p style="margin:0 0 8px;font-size:13px;font-weight:700;color:#1a1a1a;">Des questions sur votre commande ?</p>'
-        + '<a href="mailto:financialadvicegenesis@gmail.com" style="font-size:13px;color:#00ccbc;font-weight:600;text-decoration:none;">Contactez-nous par email</a>'
+        + '<a href="mailto:financialadvicegenesis@gmail.com" style="font-size:13px;color:#1a1a1a;font-weight:600;text-decoration:none;">Contactez-nous par email</a>'
         + '</td></tr>'
 
         // ── FOOTER ──────────────────────────────────────────────
@@ -2145,7 +2145,7 @@ async function sendPartnerServiceOrderConfirmation(clientEmail, clientFirstName,
         var result = await transport.sendMail({
             from: '"FA GENESIS" <' + (process.env.EMAIL_FROM_ADDRESS || 'contact@fagenesis.com') + '>',
             to: clientEmail,
-            subject: '🎉 ' + partnerDisplay + ' a reçu votre commande !',
+            subject: '🎉 Commande réussie !',
             html: html
         });
         console.log('[EMAIL] Confirmation commande partenaire envoyée à ' + clientEmail);
