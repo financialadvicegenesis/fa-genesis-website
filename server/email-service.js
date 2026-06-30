@@ -1261,7 +1261,7 @@ async function sendWelcomeEmail(clientEmail, prenom) {
         // Footer
         + '<tr><td style="background:#f5f5f5;padding:20px 32px;border-radius:0 0 12px 12px;text-align:center;">'
         + '<p style="margin:0 0 6px;font-size:12px;color:#999;">Une question ? <a href="mailto:financialadvicegenesis@gmail.com" style="color:#FFD700;font-weight:600;text-decoration:none;">financialadvicegenesis@gmail.com</a></p>'
-        + '<p style="margin:0;font-size:11px;color:#bbb;">Cet email est envoyé automatiquement.</p>'
+        + '<p style="margin:0;font-size:11px;color:#bbb;">Cet email est envoyé automatiquement. Merci de ne pas y répondre directement.</p>'
         + '</td></tr>'
 
         + '</table>'
