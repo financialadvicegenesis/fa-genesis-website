@@ -43,7 +43,6 @@ a{text-decoration:none;color:inherit}
 /* Vidéo fond global */
 #bgVideo{
   position:fixed;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;
-  display:none!important;
 }
 #bgOverlay{
   position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:1;
@@ -184,10 +183,8 @@ a{text-decoration:none;color:inherit}
    DESKTOP RESPONSIVE (≥768px)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 @media (min-width:768px){
-  #bgVideo{display:none!important}
-  #bgOverlay{display:none!important}
-  #splash{background:#000}
-  #welcome,#roleChoice{background:linear-gradient(180deg,#0a0a0a 0%,#111 100%)}
+  #bgVideo{object-position:center 45%}
+  #bgOverlay{background:rgba(0,0,0,.5)}
   #splash .s-logo{width:120px;height:120px}
   #splash .s-name{font-size:30px;letter-spacing:5px}
   #splash .s-bar{width:72px;margin-top:56px}
@@ -2149,7 +2146,7 @@ a{text-decoration:none;color:inherit}
 <body>
 
 <!-- ══════════ VIDÉO FOND ══════════ -->
-<video id="bgVideo" muted loop playsinline preload="none">
+<video id="bgVideo" autoplay muted loop playsinline preload="auto">
   <source src="assets/videos/teaser.mp4" type="video/mp4">
 </video>
 <div id="bgOverlay"></div>
