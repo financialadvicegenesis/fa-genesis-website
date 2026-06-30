@@ -3701,236 +3701,135 @@ app.post('/api/payments/sumup/webhook', async (req, res) => {
 app.post('/api/payments/verify', async (req, res) => {
     try {
         const { orderId, stage } = req.body;
-
-        if (!orderId || !stage) {
-            return res.status(400).json({ error: 'orderId et stage requis' });
-        }
+        if (!orderId || !stage) return res.status(400).json({ error: 'orderId et stage requis' });
 
         const order = getOrderById(orderId);
-        if (!order) {
-            return res.status(404).json({ error: 'Commande non trouvee' });
-        }
+        if (!order) return res.status(404).json({ error: 'Commande non trouvee' });
 
-        // Si pas de checkout_id, on ne peut pas verifier
-        if (!order.checkout_id) {
-            return res.json({
-                success: false,
-                order: order,
-                message: 'Aucun checkout associe'
-            });
-        }
+        // ── Déterminer si ce stage est un nouveau paiement (idempotent) ──────────────
+        var isNewPayment = false;
+        var paymentStage = null;
+        var payoutStage = null;
+        var updates = {};
+        var isInstallVerify = stage && stage.startsWith('installment_');
 
-        // Verifier le statut aupres de SumUp
-        try {
-            const checkoutStatus = await callSumUpAPI(`/checkouts/${order.checkout_id}`, 'GET');
-
-            if (checkoutStatus.status === 'PAID') {
-                // Mettre a jour la commande
-                const updates = {
-                    transaction_id: checkoutStatus.transaction_id || checkoutStatus.transaction_code
-                };
-
-                let isNewPayment = false;
-                let paymentStage = null;
-                let payoutStage = null; // stage exact (deposit/installment_2/installment_3/balance) pour le versement partenaire
-                var isInstallVerify = stage && stage.startsWith('installment_');
-
-                if (stage === 'deposit' && !order.deposit_paid) {
-                    updates.deposit_paid = true;
-                    updates.deposit_paid_at = new Date().toISOString();
-                    updates.amount_paid = order.deposit_amount || 0;
-                    updates.status = 'active';
-                    updates.start_date = null;
-                    updates.schedule_status = 'awaiting_client_choice';
-                    updates.proposed_start_date = null;
-                    updates.schedule_confirmed_by_admin = false;
-                    updates.schedule_confirmed_by_partner = false;
-                    // Marquer le versement #1 comme payé dans installments si présent
-                    if (order.installments && order.installments.length > 0) {
-                        var installsCopy = JSON.parse(JSON.stringify(order.installments));
-                        var dep = installsCopy.find(function(it) { return it.stage === 'deposit'; });
-                        if (dep) { dep.paid = true; dep.paid_at = new Date().toISOString(); }
-                        updates.installments = installsCopy;
-                    }
-                    isNewPayment = true;
-                    paymentStage = 'deposit';
-                    payoutStage = 'deposit';
-
-                } else if (isInstallVerify && !order.balance_paid) {
-                    // Versement spécifique (GENESIS SAFE™ : installment_2 ou installment_3)
-                    var installsCopy2 = order.installments ? JSON.parse(JSON.stringify(order.installments)) : [];
-                    var instToMark = installsCopy2.find(function(it) { return it.stage === stage; });
-                    if (instToMark && !instToMark.paid) {
-                        instToMark.paid = true;
-                        instToMark.paid_at = new Date().toISOString();
-                        var newAmountPaid = (order.amount_paid || 0) + instToMark.amount;
-                        updates.installments = installsCopy2;
-                        updates.amount_paid = newAmountPaid;
-                        // Vérifier si tous les versements sont payés
-                        var allPaid = installsCopy2.every(function(it) { return it.paid; });
-                        if (allPaid || newAmountPaid >= order.total_amount) {
-                            updates.balance_paid = true;
-                            updates.status = 'paid_in_full';
-                        } else if (stage === 'installment_2') {
-                            updates.status = 'mid_delivery_paid';
-                        }
-                        isNewPayment = true;
-                        paymentStage = allPaid ? 'balance' : 'installment';
-                        payoutStage = stage; // garder le stage exact pour calculer le bon montant de versement
-                    }
-
-                } else if (stage === 'balance' && !order.balance_paid) {
-                    // Paiement total du solde restant (tout payer maintenant)
-                    updates.balance_paid = true;
-                    updates.amount_paid = order.total_amount;
-                    updates.status = 'paid_in_full';
-                    // Marquer tous les versements restants comme payés
-                    if (order.installments && order.installments.length > 0) {
-                        var installsCopy3 = JSON.parse(JSON.stringify(order.installments));
-                        installsCopy3.forEach(function(it) {
-                            if (!it.paid) { it.paid = true; it.paid_at = new Date().toISOString(); }
-                        });
-                        updates.installments = installsCopy3;
-                    }
-                    isNewPayment = true;
-                    paymentStage = 'balance';
-                    payoutStage = 'balance';
-                }
-
-                const updatedOrder = updateOrder(orderId, updates);
-
-                // Synchroniser users.json
-                if (isNewPayment && updatedOrder && updatedOrder.client_info && updatedOrder.client_info.email) {
-                    try {
-                        var allUsers = loadUsers();
-                        var uIdx = allUsers.findIndex(function(u) {
-                            return u.email && u.email.toLowerCase() === updatedOrder.client_info.email.toLowerCase();
-                        });
-                        if (uIdx !== -1) {
-                            var newStatus = payoutStage === 'deposit' ? 'deposit_paid'
-                                : payoutStage === 'installment_2' ? 'mid_delivery_paid'
-                                : 'fully_paid';
-                            allUsers[uIdx].paymentStatus = newStatus;
-                            allUsers[uIdx].payment_status = newStatus;
-                            allUsers[uIdx].activeOrderId = orderId;
-                            saveUsers(allUsers);
-                            console.log('[VERIFY] users.json sync: ' + updatedOrder.client_info.email + ' → ' + newStatus);
-                        }
-                    } catch (syncErr) {
-                        console.error('[VERIFY] Erreur sync users.json:', syncErr.message);
-                    }
-                }
-
-                // Envoyer les emails appropriés si nouveau paiement
-                if (isNewPayment && updatedOrder && updatedOrder.client_info) {
-                    const clientEmail = updatedOrder.client_info.email;
-                    const clientName = `${updatedOrder.client_info.first_name} ${updatedOrder.client_info.last_name}`;
-
-                    if (paymentStage === 'deposit') {
-                        // Après paiement de l'acompte : envoyer l'email de bienvenue
-                        const { getProductById, calculatePaymentAmounts } = require('./products');
-                        const product = getProductById(updatedOrder.product_id);
-                        let offerData = null;
-                        if (product) {
-                            const amounts = calculatePaymentAmounts(product.total_price);
-                            offerData = {
-                                name: product.name,
-                                category: product.category,
-                                product_type: product.product_type,
-                                total_price: product.total_price,
-                                duration: product.duration,
-                                deposit_amount: amounts.deposit_amount,
-                                balance_amount: amounts.balance_amount
-                            };
-                        }
-
-                        if (updatedOrder.product_type === 'partner_service') {
-                            // Email récapitulatif envoyé immédiatement — indépendamment de la création du dispatch
-                            const psVerifyPartner = getPartnerById(updatedOrder.partner_id);
-                            const psVerifyPartnerName = psVerifyPartner ? (psVerifyPartner.prenom ? (psVerifyPartner.prenom + ' ' + (psVerifyPartner.nom || '')) : psVerifyPartner.company || 'votre prestataire') : 'votre prestataire';
-                            emailService.sendPartnerServiceOrderConfirmation(
-                                updatedOrder.client_info.email,
-                                updatedOrder.client_info.first_name || '',
-                                updatedOrder,
-                                psVerifyPartnerName
-                            ).catch(function(e){ console.error('[VERIFY] Email commande partenaire:', e.message); });
-                            const psDispatch = createPartnerServiceDispatch(updatedOrder);
-                            if (psDispatch) {
-                                if (updatedOrder.payment_tier === 'small') {
-                                    // GENESIS SAFE™ — ≤ 300 € : fonds retenus jusqu'à la livraison confirmée
-                                    console.log('[VERIFY] Mission partenaire créée — fonds en GENESIS SAFE™ (small, livraison requise)');
-                                    notifyUser(updatedOrder.client_info.email, 'client', 'mission_created',
-                                        'Mission créée — paiement sécurisé',
-                                        'Votre paiement est sécurisé par GENESIS SAFE™. Les fonds seront versés au prestataire après livraison.',
-                                        '/app.html#reservations');
-                                } else {
-                                    // GENESIS SAFE™ — > 300 € : acompte 30 % versé immédiatement au prestataire
-                                    await processDispatchPayout(psDispatch, 'deposit');
-                                    console.log('[VERIFY] Mission partenaire créée et acompte 30 % versé (large)');
-                                    notifyUser(updatedOrder.client_info.email, 'client', 'mission_created',
-                                        'Mission en cours',
-                                        'Votre acompte a été versé au prestataire. La livraison sera bientôt disponible.',
-                                        '/app.html#reservations');
-                                }
-                            }
-                        } else {
-                            assignIntervenantsFromOrder(orderId);
-                            console.log('[VERIFY] Acompte retenu — en attente acceptation partenaire');
-                            emailService.sendPaymentConfirmation(clientEmail, clientName, updatedOrder).catch(err => console.error('[VERIFY] Email acompte:', err));
-                        }
-
-                        // NOTE: Le bootstrap projet est maintenant declenche par finalizeSchedule()
-                        // apres que le client ait choisi une date ET que admin+partenaire aient confirme
-                        console.log('[VERIFY] Bootstrap reporte - en attente choix date client');
-
-                    } else if (paymentStage === 'balance' || paymentStage === 'installment') {
-                        var isFinalVerifyPayment = paymentStage === 'balance';
-
-                        if (isFinalVerifyPayment) {
-                            // Après paiement du solde / de la tranche finale : confirmation de paiement complet
-                            emailService.sendPaymentConfirmation(
-                                clientEmail,
-                                clientName,
-                                updatedOrder
-                            ).then(result => {
-                                if (result.success) {
-                                    console.log(`[VERIFY] Email de paiement envoyé à ${clientEmail}`);
-                                }
-                            }).catch(err => console.error('[VERIFY] Erreur envoi email paiement:', err));
-                        }
-
-                        // Verser la part de cette tranche à chaque partenaire ayant accepté sa mission
-                        var _vAccD = loadDispatches().filter(function(d) { return d.order_id === orderId && d.status === 'accepted'; });
-                        _vAccD.forEach(function(d) { processDispatchPayout(d, payoutStage).catch(function(e) { console.error('[PAYOUT] Erreur ' + payoutStage + ' verify:', e); }); });
-                        if (_vAccD.length === 0) console.log('[VERIFY] Aucun dispatch accepté pour versement ' + payoutStage + ' — commande ' + orderId);
-                        if (isFinalVerifyPayment) requestPartnerReviews(clientEmail, _vAccD);
-                    }
-                }
-
-                return res.json({
-                    success: true,
-                    paid: true,
-                    order: updatedOrder
-                });
+        if (stage === 'deposit' && !order.deposit_paid) {
+            isNewPayment = true; paymentStage = 'deposit'; payoutStage = 'deposit';
+            updates.deposit_paid = true;
+            updates.deposit_paid_at = new Date().toISOString();
+            updates.amount_paid = order.deposit_amount || 0;
+            updates.status = 'active';
+            updates.start_date = null;
+            updates.schedule_status = 'awaiting_client_choice';
+            updates.proposed_start_date = null;
+            updates.schedule_confirmed_by_admin = false;
+            updates.schedule_confirmed_by_partner = false;
+            if (order.installments && order.installments.length > 0) {
+                var installsCopy = JSON.parse(JSON.stringify(order.installments));
+                var dep = installsCopy.find(function(it) { return it.stage === 'deposit'; });
+                if (dep) { dep.paid = true; dep.paid_at = new Date().toISOString(); }
+                updates.installments = installsCopy;
             }
-
-            return res.json({
-                success: true,
-                paid: false,
-                checkout_status: checkoutStatus.status,
-                order: order
-            });
-
-        } catch (sumupError) {
-            console.error('Erreur verification SumUp:', sumupError);
-
-            // Retourner l'etat actuel de la commande
-            return res.json({
-                success: false,
-                order: order,
-                message: 'Impossible de verifier aupres de SumUp'
-            });
+        } else if (isInstallVerify && !order.balance_paid) {
+            var installsCopy2 = order.installments ? JSON.parse(JSON.stringify(order.installments)) : [];
+            var instToMark = installsCopy2.find(function(it) { return it.stage === stage; });
+            if (instToMark && !instToMark.paid) {
+                instToMark.paid = true; instToMark.paid_at = new Date().toISOString();
+                var newAmountPaid = (order.amount_paid || 0) + instToMark.amount;
+                updates.installments = installsCopy2; updates.amount_paid = newAmountPaid;
+                var allPaid = installsCopy2.every(function(it) { return it.paid; });
+                if (allPaid || newAmountPaid >= order.total_amount) { updates.balance_paid = true; updates.status = 'paid_in_full'; }
+                else if (stage === 'installment_2') { updates.status = 'mid_delivery_paid'; }
+                isNewPayment = true; paymentStage = allPaid ? 'balance' : 'installment'; payoutStage = stage;
+            }
+        } else if (stage === 'balance' && !order.balance_paid) {
+            isNewPayment = true; paymentStage = 'balance'; payoutStage = 'balance';
+            updates.balance_paid = true; updates.amount_paid = order.total_amount; updates.status = 'paid_in_full';
+            if (order.installments && order.installments.length > 0) {
+                var installsCopy3 = JSON.parse(JSON.stringify(order.installments));
+                installsCopy3.forEach(function(it) { if (!it.paid) { it.paid = true; it.paid_at = new Date().toISOString(); } });
+                updates.installments = installsCopy3;
+            }
         }
+
+        if (!isNewPayment) {
+            // Déjà traité (appel dupliqué) — retourner l'état actuel sans rien faire
+            return res.json({ success: true, paid: order.deposit_paid || order.balance_paid, already_processed: true, order });
+        }
+
+        // ── Récupérer le transaction_id depuis SumUp (optionnel — ne bloque pas) ───
+        if (order.checkout_id) {
+            try {
+                var checkoutStatus = await callSumUpAPI('/checkouts/' + order.checkout_id, 'GET');
+                if (checkoutStatus.transaction_id || checkoutStatus.transaction_code) {
+                    updates.transaction_id = checkoutStatus.transaction_id || checkoutStatus.transaction_code;
+                }
+            } catch (sumupErr) {
+                console.log('[VERIFY] SumUp API indisponible pour transaction_id (paiement traité quand même):', sumupErr.message);
+            }
+        }
+
+        var updatedOrder = updateOrder(orderId, updates);
+        console.log('[VERIFY] Paiement confirmé:', orderId, '—', stage);
+
+        // ── Synchroniser users.json ───────────────────────────────────────────────
+        if (updatedOrder && updatedOrder.client_info && updatedOrder.client_info.email) {
+            try {
+                var allUsers = loadUsers();
+                var uIdx = allUsers.findIndex(function(u) { return u.email && u.email.toLowerCase() === updatedOrder.client_info.email.toLowerCase(); });
+                if (uIdx !== -1) {
+                    var newUserStatus = payoutStage === 'deposit' ? 'deposit_paid' : payoutStage === 'installment_2' ? 'mid_delivery_paid' : 'fully_paid';
+                    allUsers[uIdx].paymentStatus = newUserStatus; allUsers[uIdx].payment_status = newUserStatus; allUsers[uIdx].activeOrderId = orderId;
+                    saveUsers(allUsers);
+                    console.log('[VERIFY] users.json sync: ' + updatedOrder.client_info.email + ' → ' + newUserStatus);
+                }
+            } catch (syncErr) { console.error('[VERIFY] Erreur sync users.json:', syncErr.message); }
+        }
+
+        // ── Emails + dispatch/payout ──────────────────────────────────────────────
+        if (updatedOrder && updatedOrder.client_info) {
+            var clientEmail = updatedOrder.client_info.email;
+            var clientName = (updatedOrder.client_info.first_name || '') + ' ' + (updatedOrder.client_info.last_name || '');
+
+            if (paymentStage === 'deposit') {
+                if (updatedOrder.product_type === 'partner_service') {
+                    var psVP = getPartnerById(updatedOrder.partner_id);
+                    var psVPName = psVP ? (psVP.prenom ? (psVP.prenom + ' ' + (psVP.nom || '')) : psVP.company || 'votre prestataire') : 'votre prestataire';
+                    emailService.sendPartnerServiceOrderConfirmation(
+                        clientEmail, updatedOrder.client_info.first_name || '', updatedOrder, psVPName
+                    ).then(function(r){ console.log('[VERIFY] Email partenaire résultat:', JSON.stringify(r)); })
+                     .catch(function(e){ console.error('[VERIFY] Email partenaire exception:', e.message); });
+                    var psDispatch = createPartnerServiceDispatch(updatedOrder);
+                    if (psDispatch) {
+                        if (updatedOrder.payment_tier === 'small') {
+                            console.log('[VERIFY] Mission partenaire — fonds GENESIS SAFE™ (small)');
+                            notifyUser(clientEmail, 'client', 'mission_created', 'Mission créée — paiement sécurisé', 'Votre paiement est sécurisé par GENESIS SAFE™. Les fonds seront versés au prestataire après livraison.', '/app.html#reservations');
+                        } else {
+                            await processDispatchPayout(psDispatch, 'deposit');
+                            console.log('[VERIFY] Mission partenaire — acompte 30% versé (large)');
+                            notifyUser(clientEmail, 'client', 'mission_created', 'Mission en cours', 'Votre acompte a été versé au prestataire. La livraison sera bientôt disponible.', '/app.html#reservations');
+                        }
+                    }
+                } else {
+                    assignIntervenantsFromOrder(orderId);
+                    emailService.sendPaymentConfirmation(clientEmail, clientName, updatedOrder)
+                        .catch(function(err){ console.error('[VERIFY] Email acompte:', err); });
+                }
+                console.log('[VERIFY] Bootstrap reporté — en attente choix date client');
+
+            } else if (paymentStage === 'balance' || paymentStage === 'installment') {
+                if (paymentStage === 'balance') {
+                    emailService.sendPaymentConfirmation(clientEmail, clientName, updatedOrder)
+                        .then(function(r){ if(r.success) console.log('[VERIFY] Email paiement final envoyé à ' + clientEmail); })
+                        .catch(function(err){ console.error('[VERIFY] Erreur email paiement:', err); });
+                }
+                var _vAccD = loadDispatches().filter(function(d) { return d.order_id === orderId && d.status === 'accepted'; });
+                _vAccD.forEach(function(d) { processDispatchPayout(d, payoutStage).catch(function(e){ console.error('[PAYOUT] Erreur ' + payoutStage + ' verify:', e); }); });
+                if (paymentStage === 'balance') requestPartnerReviews(clientEmail, _vAccD);
+            }
+        }
+
+        return res.json({ success: true, paid: true, order: updatedOrder });
 
     } catch (error) {
         console.error('Erreur verification paiement:', error);
