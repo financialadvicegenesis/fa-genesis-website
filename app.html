@@ -2476,6 +2476,14 @@ a{text-decoration:none;color:inherit}
           <input class="ptnr-input" id="ptnr-pass" type="password" placeholder="Mot de passe" autocomplete="current-password" onkeydown="if(event.key==='Enter')_ptnrLogin()">
           <div class="ptnr-login-err" id="ptnr-login-err"></div>
           <button class="ptnr-login-btn" id="ptnr-login-btn" onclick="_ptnrLogin()">SE CONNECTER</button>
+          <button class="ptnr-link-btn" style="font-size:12px;opacity:.75;margin-top:2px;" onclick="_ptnrToggleForgot()">Mot de passe oublié ?</button>
+          <div id="ptnr-forgot-panel" style="display:none;background:#111;border:1.5px solid #FFD700;border-radius:12px;padding:16px;margin-top:4px;text-align:left;">
+            <div style="color:#fff;font-weight:700;font-size:13px;margin-bottom:10px;">Réinitialisation du mot de passe</div>
+            <input class="ptnr-input" id="ptnr-forgot-email" type="email" placeholder="Votre adresse email" style="margin-bottom:8px;">
+            <div id="ptnr-forgot-err" style="display:none;color:#ff4444;font-size:12px;margin-bottom:6px;"></div>
+            <div id="ptnr-forgot-ok" style="display:none;color:#4caf50;font-size:12px;margin-bottom:6px;line-height:1.5;"></div>
+            <button id="ptnr-forgot-btn" class="ptnr-login-btn" style="margin-top:0;font-size:11px;" onclick="_ptnrDoForgot()">ENVOYER LE LIEN</button>
+          </div>
           <button class="ptnr-link-btn" onclick="_ptnrRegStart()">Pas encore prestataire ? Créer un compte</button>
         </div>
       </div>
@@ -7307,6 +7315,38 @@ function _ptnrClearSession(){
 }
 
 var _ptnrPendingProfileId = null; // profile being PIN-verified
+
+function _ptnrToggleForgot(){
+  var panel = document.getElementById('ptnr-forgot-panel');
+  if(!panel) return;
+  panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+}
+
+function _ptnrDoForgot(){
+  var emailEl = document.getElementById('ptnr-forgot-email');
+  var errEl = document.getElementById('ptnr-forgot-err');
+  var okEl = document.getElementById('ptnr-forgot-ok');
+  var btn = document.getElementById('ptnr-forgot-btn');
+  var email = emailEl ? emailEl.value.trim() : '';
+  if(!email){
+    if(errEl){errEl.textContent='Veuillez saisir votre email.';errEl.style.display='block';}
+    return;
+  }
+  if(errEl) errEl.style.display='none';
+  if(okEl) okEl.style.display='none';
+  if(btn){btn.disabled=true;btn.textContent='Envoi...';}
+  fetch(_ptnrApiUrl()+'/api/partner/auth/forgot-password',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({email:email})
+  }).then(function(r){return r.json();}).then(function(){
+    if(btn){btn.disabled=false;btn.textContent='ENVOYER LE LIEN';}
+    if(okEl){okEl.textContent='Si cet email est enregistré, vous allez recevoir un lien de réinitialisation dans quelques minutes.';okEl.style.display='block';}
+  }).catch(function(){
+    if(btn){btn.disabled=false;btn.textContent='ENVOYER LE LIEN';}
+    if(errEl){errEl.textContent='Erreur réseau. Vérifiez votre connexion.';errEl.style.display='block';}
+  });
+}
 
 function _ptnrLogin(){
   var emailEl = document.getElementById('ptnr-email');

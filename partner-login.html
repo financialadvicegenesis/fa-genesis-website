@@ -127,7 +127,14 @@
 
             <div class="mt-8 text-center">
                 <p class="text-white font-bold">Pas encore partenaire ? <a href="partner-register.html" class="text-[var(--genesis-yellow)] underline font-black">Devenir partenaire</a></p>
-                <p class="text-white font-bold mt-4">Mot de passe oublié ? <a href="contact.html" class="text-[var(--genesis-yellow)] underline font-black">Contactez-nous</a></p>
+                <p class="text-white font-bold mt-4">Mot de passe oublié ? <button type="button" onclick="toggleForgot()" class="text-[var(--genesis-yellow)] underline font-black bg-transparent border-0 cursor-pointer p-0" style="font-size:inherit;font-family:inherit;">Réinitialiser</button></p>
+                <div id="forgotSection" style="display:none;margin-top:16px;background:#111;border:1.5px solid #FFD700;border-radius:12px;padding:20px;text-align:left;">
+                  <p style="color:#fff;font-weight:700;margin-bottom:12px;font-size:14px;">Réinitialisation du mot de passe</p>
+                  <input id="forgotEmail" type="email" placeholder="Votre adresse email" style="width:100%;background:#1a1a1a;border:1px solid #333;border-radius:8px;padding:12px 14px;color:#fff;font-size:15px;font-family:inherit;margin-bottom:10px;box-sizing:border-box;">
+                  <div id="forgotErr" style="display:none;color:#ff4444;font-size:13px;margin-bottom:8px;"></div>
+                  <div id="forgotOk" style="display:none;color:#4caf50;font-size:13px;margin-bottom:8px;line-height:1.5;"></div>
+                  <button type="button" id="forgotBtn" onclick="doForgot()" style="width:100%;background:#FFD700;color:#000;border:none;border-radius:8px;padding:13px;font-family:inherit;font-size:12px;font-weight:900;letter-spacing:1.5px;cursor:pointer;text-transform:uppercase;">Envoyer le lien</button>
+                </div>
                 <p class="text-white font-bold mt-4 opacity-60 text-sm">
                     <a href="login.html" class="text-white underline hover:text-[var(--genesis-yellow)]">Espace Client</a>
                 </p>
@@ -138,6 +145,37 @@
     <script src="config.js"></script>
     <script src="partner-auth.js"></script>
     <script>
+        function toggleForgot() {
+            var s = document.getElementById('forgotSection');
+            if (s) s.style.display = s.style.display === 'none' ? 'block' : 'none';
+        }
+
+        function doForgot() {
+            var email = (document.getElementById('forgotEmail') || {}).value || '';
+            var errEl = document.getElementById('forgotErr');
+            var okEl = document.getElementById('forgotOk');
+            var btn = document.getElementById('forgotBtn');
+            if (!email) {
+                if (errEl) { errEl.textContent = 'Veuillez saisir votre email.'; errEl.style.display = 'block'; }
+                return;
+            }
+            if (errEl) errEl.style.display = 'none';
+            if (okEl) okEl.style.display = 'none';
+            if (btn) { btn.disabled = true; btn.textContent = 'Envoi en cours...'; }
+            var API = (window.FA_GENESIS_API) || 'https://fa-genesis-website.onrender.com';
+            fetch(API + '/api/partner/auth/forgot-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: email })
+            }).then(function(r) { return r.json(); }).then(function() {
+                if (btn) { btn.disabled = false; btn.textContent = 'Envoyer le lien'; }
+                if (okEl) { okEl.textContent = 'Si cet email est enregistré, vous allez recevoir un lien de réinitialisation dans quelques minutes.'; okEl.style.display = 'block'; }
+            }).catch(function() {
+                if (btn) { btn.disabled = false; btn.textContent = 'Envoyer le lien'; }
+                if (errEl) { errEl.textContent = 'Erreur réseau. Vérifiez votre connexion et réessayez.'; errEl.style.display = 'block'; }
+            });
+        }
+
         // Verifier si deja connecte
         if (isPartnerAuthenticated()) {
             window.location.href = 'partner-dashboard.html';

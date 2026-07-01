@@ -6862,6 +6862,86 @@ app.post('/api/auth/reset-password', async (req, res) => {
 });
 
 /**
+ * POST /api/partner/auth/forgot-password
+ * Génère un token de réinitialisation et envoie un email au partenaire
+ */
+app.post('/api/partner/auth/forgot-password', async (req, res) => {
+    try {
+        const { email } = req.body;
+        if (!email) return res.status(400).json({ error: 'Email requis' });
+
+        const fpIp = req.ip || (req.connection && req.connection.remoteAddress) || 'unknown';
+        if (!checkRateLimit(fpIp, 'partner_forgot_password', 3, 3600000)) {
+            return res.status(429).json({ error: 'Trop de tentatives. Réessayez dans 1 heure.' });
+        }
+
+        const partners = loadPartners();
+        const partnerIndex = partners.findIndex(p => p.email.toLowerCase() === email.toLowerCase());
+
+        if (partnerIndex !== -1) {
+            const resetToken = crypto.randomBytes(32).toString('hex');
+            partners[partnerIndex].reset_token = resetToken;
+            partners[partnerIndex].reset_token_expires = Date.now() + 86400000;
+            savePartners(partners);
+
+            const partner = partners[partnerIndex];
+            const resetLink = 'https://fagenesis.com/reset-password.html?token=' + resetToken + '&type=partner';
+            try {
+                await emailService.sendPasswordResetEmail(partner.email, partner.prenom || 'Partenaire', resetLink);
+            } catch (emailErr) {
+                console.error('[PARTNER FORGOT PWD] Erreur email:', emailErr.message);
+            }
+            console.log('[PARTNER FORGOT PWD] Token généré: ' + email);
+        } else {
+            console.log('[PARTNER FORGOT PWD] Email inconnu (réponse neutre): ' + email);
+        }
+
+        res.json({ ok: true });
+
+    } catch (error) {
+        console.error('[PARTNER FORGOT PWD]', error);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * POST /api/partner/auth/reset-password
+ * Valide le token et met à jour le mot de passe du partenaire
+ */
+app.post('/api/partner/auth/reset-password', async (req, res) => {
+    try {
+        const { token, newPassword } = req.body;
+        if (!token || !newPassword) return res.status(400).json({ error: 'Token et nouveau mot de passe requis' });
+        if (newPassword.length < 6) return res.status(400).json({ error: 'Le mot de passe doit contenir au moins 6 caractères' });
+
+        const partners = loadPartners();
+        const partnerIndex = partners.findIndex(p =>
+            p.reset_token === token &&
+            p.reset_token_expires &&
+            p.reset_token_expires > Date.now()
+        );
+
+        if (partnerIndex === -1) {
+            return res.status(400).json({ error: 'Lien de réinitialisation invalide ou expiré.' });
+        }
+
+        const salt = await bcrypt.genSalt(10);
+        partners[partnerIndex].password = await bcrypt.hash(newPassword, salt);
+        partners[partnerIndex].reset_token = null;
+        partners[partnerIndex].reset_token_expires = null;
+        partners[partnerIndex].updatedAt = new Date().toISOString();
+        savePartners(partners);
+
+        console.log('[PARTNER RESET PWD] Mot de passe mis à jour: ' + partners[partnerIndex].email);
+        res.json({ ok: true });
+
+    } catch (error) {
+        console.error('[PARTNER RESET PWD]', error);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
  * POST /api/auth/send-otp
  * Génère et envoie un code OTP à 6 chiffres (email ou SMS)
  */
