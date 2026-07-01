@@ -935,6 +935,44 @@ a{text-decoration:none;color:inherit}
 .ptnr-rep-rank-sub{font-size:10.5px;color:#888;margin-top:3px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;}
 
 .p-ref-box{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:14px;margin-top:10px}
+/* ── Tier roadmap (vue globale des paliers client) ── */
+.tier-roadmap{margin-top:14px;padding:14px;background:var(--card);border:1px solid rgba(255,215,0,.15);border-radius:16px;box-shadow:0 0 0 1px rgba(255,215,0,.08) inset}
+.tier-roadmap-title{font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:14px;display:flex;align-items:center;gap:7px}
+.tier-row{display:flex;align-items:flex-start;gap:0;margin-bottom:4px}
+.tier-row:last-child{margin-bottom:0}
+.tier-spine{display:flex;flex-direction:column;align-items:center;width:40px;flex-shrink:0}
+.tier-spine-dot{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;transition:box-shadow .3s}
+.tier-spine-line{width:2px;flex:1;min-height:14px;background:#1c1c1c;border-radius:2px;margin:3px 0}
+.tier-row.done .tier-spine-dot{background:#143014;color:#4caf50;box-shadow:0 0 10px rgba(76,175,80,.3)}
+.tier-row.current .tier-spine-dot{background:linear-gradient(135deg,#3a2800,#2a1a00);color:#FFD700;box-shadow:0 0 0 3px rgba(255,215,0,.2),0 0 14px rgba(255,215,0,.4);animation:bpDotPulse 1.8s ease-in-out infinite}
+.tier-row.locked .tier-spine-dot{background:#111;color:#333}
+.tier-row.done .tier-spine-line{background:linear-gradient(180deg,#4caf50,#1c1c1c)}
+.tier-body{flex:1;padding:4px 0 14px 10px;min-width:0}
+.tier-body-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:3px}
+.tier-body-name{font-size:14px;font-weight:900}
+.tier-row.done .tier-body-name{color:#fff}
+.tier-row.current .tier-body-name{color:#FFD700}
+.tier-row.locked .tier-body-name{color:#444}
+.tier-badge-pill{font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.4px;padding:2px 8px;border-radius:20px;white-space:nowrap}
+.tier-badge-pill.done{background:#1a3a1a;color:#4caf50}
+.tier-badge-pill.current{background:rgba(255,215,0,.12);color:#FFD700;border:1px solid rgba(255,215,0,.3)}
+.tier-badge-pill.locked{background:#1a1a1a;color:#444}
+.tier-bar{height:5px;background:#0d0d0d;border-radius:4px;overflow:hidden;margin:6px 0 3px}
+.tier-bar-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,#7a5c00,#FFD700);transition:width .7s cubic-bezier(.4,0,.2,1);position:relative;overflow:hidden}
+.tier-bar-fill::after{content:'';position:absolute;top:0;left:0;height:100%;width:50%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.5),transparent);animation:badgeProgressShimmer 1.8s ease-in-out infinite}
+.tier-note{font-size:11px;color:var(--muted);font-weight:600}
+.tier-req{font-size:11px;color:#3a3a3a;font-weight:600}
+/* ── Referral box amélioré ── */
+.ref-box-v2{background:linear-gradient(135deg,#0d0d00,#1a1200);border:1.5px solid rgba(255,215,0,.25);border-radius:16px;padding:16px;margin-top:14px}
+.ref-box-v2-title{font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:12px;display:flex;align-items:center;gap:7px}
+.ref-box-v2-code-row{display:flex;align-items:center;gap:8px;background:#0a0a00;border:1px solid rgba(255,215,0,.2);border-radius:10px;padding:10px 12px;margin-bottom:10px}
+.ref-box-v2-code{font-size:15px;font-weight:900;color:#FFD700;flex:1;letter-spacing:.8px;font-family:'Unbounded',monospace}
+.ref-box-v2-copy{background:#FFD700;color:#000;border:none;border-radius:8px;padding:6px 12px;font-size:11px;font-weight:900;cursor:pointer;flex-shrink:0;font-family:inherit}
+.ref-box-v2-share{display:block;width:100%;background:none;border:1px solid rgba(255,215,0,.2);color:#FFD700;border-radius:10px;padding:9px;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;margin-top:6px;letter-spacing:.2px}
+.ref-box-v2-progress{margin-top:10px}
+.ref-box-v2-prog-label{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);font-weight:700;margin-bottom:5px}
+.ref-box-v2-prog-bar{height:5px;background:#0a0a00;border-radius:4px;overflow:hidden}
+.ref-box-v2-prog-fill{height:100%;background:linear-gradient(90deg,#7a5c00,#FFD700);border-radius:4px;transition:width .6s}
 .genesis-mission-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .genesis-mission-card{position:relative;border:1px solid var(--border);background:var(--card);border-radius:14px;padding:14px}
 .genesis-mission-card.done{border-color:#51cf66;box-shadow:0 0 14px rgba(81,207,102,.2)}
@@ -4833,27 +4871,67 @@ function constellationBadgeHtml(constellation){
   if(!constellation) return '';
   return '<span class="constellation-badge '+constellation.id+'"><i class="fa-solid '+constellation.icon+'"></i> '+constellation.label+'</span>';
 }
+// Seuils de commandes par palier (miroir côté client des CLIENT_BADGE_TIERS serveur)
+var _CLIENT_TIER_REQS = {bronze:1, argent:5, or:10, prestige:20};
+var _CLIENT_TIER_ICONS = {bronze:'fa-fire', argent:'fa-bolt', or:'fa-crown', prestige:'fa-infinity'};
 function badgeProgressHtml(progress){
   if(!progress) return '';
-  if(!progress.nextBadge){
+  // Palier maximum atteint
+  if(!progress.nextBadge && progress.currentBadge === CLIENT_TIER_ORDER[CLIENT_TIER_ORDER.length-1]){
     return '<div class="badge-progress badge-progress-max">'
       +'<i class="fa-solid fa-crown"></i>'
-      +'<span>Palier maximum atteint'+(progress.currentBadge?' — '+(tierBadgeMeta(progress.currentBadge)||{}).label:'')+'</span>'
-      +'</div>';
+      +'<span>Palier maximum atteint — '+(tierBadgeMeta(progress.currentBadge)||{label:'Générateur'}).label+'</span>'
+      +'</div>'
+      +_tierRoadmapHtml(progress);
   }
-  var curMeta = tierBadgeMeta(progress.currentBadge) || {label:'—'};
-  var nextMeta = tierBadgeMeta(progress.nextBadge) || {label:'—'};
+  return _tierRoadmapHtml(progress);
+}
+function _tierRoadmapHtml(progress){
+  var curIdx = CLIENT_TIER_ORDER.indexOf(progress.currentBadge);
   var pct = Math.max(0, Math.min(100, progress.percent||0));
-  var remaining = Math.max(0, (progress.target!=null?progress.target:0) - (progress.current!=null?progress.current:0));
-  return '<div class="badge-progress">'
-    +'<div class="badge-progress-labels">'
-    +'<span class="badge-progress-cur"><i class="fa-solid fa-medal"></i> '+curMeta.label+'</span>'
-    +'<i class="fa-solid fa-chevron-right badge-progress-arrow"></i>'
-    +'<span class="badge-progress-next">Prochain palier : '+nextMeta.label+' <i class="fa-solid fa-lock"></i></span>'
-    +'</div>'
-    +tierLadderHtml(CLIENT_TIER_ORDER, progress.currentBadge, pct)
-    +'<div class="badge-progress-text">Encore '+remaining+' commande'+(remaining>1?'s':'')+' pour atteindre le palier '+nextMeta.label+' ('+pct+'%)</div>'
-    +'</div>';
+  var remaining = Math.max(0, (progress.target!=null?progress.target:0)-(progress.current!=null?progress.current:0));
+  var html = '<div class="tier-roadmap">';
+  html += '<div class="tier-roadmap-title"><i class="fa-solid fa-chart-line"></i> Mes paliers Genesis</div>';
+  CLIENT_TIER_ORDER.forEach(function(tierId, i){
+    var meta = tierBadgeMeta(tierId) || {label:tierId, icon:'fa-star'};
+    var icon = _CLIENT_TIER_ICONS[tierId] || (meta.icon || 'fa-star');
+    var req  = _CLIENT_TIER_REQS[tierId] || '?';
+    var isAtteint  = curIdx >= 0 && i <= curIdx;
+    var isEnCours  = i === curIdx + 1;
+    var isVerrouille = !isAtteint && !isEnCours;
+    var state = isAtteint ? 'done' : (isEnCours ? 'current' : 'locked');
+    var isLast = i === CLIENT_TIER_ORDER.length - 1;
+    html += '<div class="tier-row '+state+'">';
+    // Spine (icon + vertical line)
+    html += '<div class="tier-spine">';
+    html += '<div class="tier-spine-dot">';
+    if(isAtteint) html += '<i class="fa-solid fa-check"></i>';
+    else if(isEnCours) html += '<i class="fa-solid '+icon+'"></i>';
+    else html += '<i class="fa-solid fa-lock"></i>';
+    html += '</div>';
+    if(!isLast) html += '<div class="tier-spine-line"></div>';
+    html += '</div>';
+    // Body
+    html += '<div class="tier-body">';
+    html += '<div class="tier-body-top">';
+    html += '<div class="tier-body-name">'+meta.label+'</div>';
+    if(isAtteint)     html += '<span class="tier-badge-pill done"><i class="fa-solid fa-check"></i> Atteint</span>';
+    else if(isEnCours) html += '<span class="tier-badge-pill current"><i class="fa-solid fa-bolt-lightning"></i> En cours</span>';
+    else              html += '<span class="tier-badge-pill locked"><i class="fa-solid fa-lock"></i> '+req+' cmd</span>';
+    html += '</div>';
+    if(isEnCours){
+      html += '<div class="tier-bar"><div class="tier-bar-fill" style="width:'+pct+'%"></div></div>';
+      html += '<div class="tier-note">'+remaining+' commande'+(remaining>1?'s':'')+' restante'+(remaining>1?'s':'')+' · '+pct+'%</div>';
+    } else if(isAtteint && i===curIdx){
+      html += '<div class="tier-note">Palier actuel</div>';
+    } else if(isVerrouille){
+      html += '<div class="tier-req">Nécessite '+req+' commande'+(req>1?'s':'')+' au total</div>';
+    }
+    html += '</div>'; // tier-body
+    html += '</div>'; // tier-row
+  });
+  html += '</div>';
+  return html;
 }
 function partnerBadgeProgressHtml(progress){
   if(!progress) return '';
@@ -4920,15 +4998,26 @@ function navToFavoris(){
 }
 function referralBoxHtml(){
   if(!USER || GUEST || !USER.referralCode) return '';
-  var count = USER.referralCount || 0;
-  return '<div class="p-ref-box">'
-    +'<div class="p-ref-box-title">Programme de parrainage</div>'
-    +'<div class="p-ref-code-row">'
-    +'<span class="p-ref-code" id="p-ref-code-val">'+USER.referralCode+'</span>'
-    +'<button class="p-ref-copy-btn" onclick="copyReferralCode()">Copier</button>'
-    +'</div>'
-    +'<div class="p-ref-count">'+count+' parrainage'+(count>1?'s':'')+' validé'+(count>1?'s':'')+(count<3?' · encore '+(3-count)+' pour le statut Cercle Privilège':'')+'</div>'
-    +'</div>';
+  var count = Math.max(0, USER.referralCount || 0);
+  var target = 3;
+  var progPct = Math.min(100, Math.round(count/target*100));
+  var remaining = Math.max(0, target - count);
+  var html = '<div class="ref-box-v2">';
+  html += '<div class="ref-box-v2-title"><i class="fa-solid fa-user-plus"></i> Programme de parrainage</div>';
+  html += '<div class="ref-box-v2-code-row">';
+  html += '<span class="ref-box-v2-code" id="p-ref-code-val">'+USER.referralCode+'</span>';
+  html += '<button class="ref-box-v2-copy" onclick="copyReferralCode()">Copier</button>';
+  html += '</div>';
+  html += '<button class="ref-box-v2-share" onclick="shareReferralCode()"><i class="fa-solid fa-share-nodes"></i> Inviter un ami</button>';
+  html += '<div class="ref-box-v2-progress">';
+  html += '<div class="ref-box-v2-prog-label">';
+  html += '<span>'+count+' / '+target+' parrainage'+(count>1?'s':'')+' validé'+(count>1?'s':'')+'</span>';
+  html += '<span>'+(remaining>0 ? 'Encore '+remaining+' pour le Cercle Privilège' : '<i class="fa-solid fa-check-circle" style="color:#4caf50"></i> Cercle Privilège atteint !')+'</span>';
+  html += '</div>';
+  html += '<div class="ref-box-v2-prog-bar"><div class="ref-box-v2-prog-fill" style="width:'+progPct+'%"></div></div>';
+  html += '</div>';
+  html += '</div>';
+  return html;
 }
 function copyReferralCode(){
   if(!USER || !USER.referralCode) return;
@@ -4937,9 +5026,23 @@ function copyReferralCode(){
     return Promise.reject();
   };
   doCopy().catch(function(){}).then(function(){
-    var btn = document.querySelector('.p-ref-copy-btn');
+    var btn = document.querySelector('.ref-box-v2-copy,.p-ref-copy-btn');
     if(btn){ var orig = btn.textContent; btn.textContent = 'Copié !'; setTimeout(function(){ btn.textContent = orig; }, 1500); }
   });
+}
+function shareReferralCode(){
+  if(!USER || !USER.referralCode) return;
+  var msg = 'Rejoins GENESIS avec mon code de parrainage : '+USER.referralCode+'\nhttps://fagenesis.com/app.html';
+  if(navigator.share){
+    navigator.share({title:'GENESIS — Code parrainage', text:msg}).catch(function(){});
+  } else {
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(msg).then(function(){
+        var btn = document.querySelector('.ref-box-v2-share');
+        if(btn){ var orig = btn.innerHTML; btn.innerHTML = '<i class="fa-solid fa-check"></i> Lien copié !'; setTimeout(function(){ btn.innerHTML = orig; }, 1600); }
+      });
+    }
+  }
 }
 function showFavoris(){
   var c = document.getElementById('profilContent'); if(!c) return;
