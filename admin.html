@@ -987,6 +987,19 @@
                     </button>
                 </div>
 
+                <!-- Recherche partenaires -->
+                <div class="admin-card neo-shadow mb-6" style="padding:16px 20px;">
+                    <div class="flex gap-3 flex-wrap items-center">
+                        <input type="text" id="partnerSearchInput" placeholder="Rechercher un partenaire (nom, email, type)..." class="flex-1" onkeydown="if(event.key==='Enter')handleSearchPartners()" style="min-width:200px;">
+                        <button onclick="handleSearchPartners()" class="neo-btn-yellow px-6">
+                            <i class="fas fa-search mr-2"></i>Rechercher
+                        </button>
+                        <button onclick="document.getElementById('partnerSearchInput').value='';loadPartnersList()" style="background:#262626;border:1px solid rgba(255,215,0,.2);border-radius:8px;color:#e0e0e0;padding:10px 16px;font-size:12px;font-weight:700;cursor:pointer;">
+                            <i class="fas fa-times mr-1"></i>Réinitialiser
+                        </button>
+                    </div>
+                </div>
+
                 <!-- Liste des partenaires -->
                 <div id="partnersListContainer">
                     <div id="partnersList">
@@ -3331,7 +3344,7 @@
         }
 
         // Charger la liste des partenaires
-        async function loadPartnersList() {
+        async function loadPartnersList(searchQuery) {
             var container = document.getElementById('partnersList');
             if (!container) return;
 
@@ -3352,14 +3365,28 @@
                 else { partnersBadge.style.display = 'none'; }
             }
 
-            if (allPartners.length === 0) {
-                container.innerHTML = '<p class="text-center py-8 opacity-50 font-bold">Aucun partenaire</p>';
+            var partners = allPartners;
+
+            if (searchQuery) {
+                var q = searchQuery.toLowerCase();
+                partners = partners.filter(function(p) {
+                    return (p.prenom && p.prenom.toLowerCase().includes(q)) ||
+                           (p.nom && p.nom.toLowerCase().includes(q)) ||
+                           (p.email && p.email.toLowerCase().includes(q)) ||
+                           (p.partner_type && p.partner_type.toLowerCase().includes(q)) ||
+                           (p.specialite && p.specialite.toLowerCase().includes(q)) ||
+                           (p.telephone && p.telephone.includes(q));
+                });
+            }
+
+            if (partners.length === 0) {
+                container.innerHTML = '<p class="text-center py-8 opacity-50 font-bold">' + (searchQuery ? 'Aucun résultat pour "' + searchQuery + '".' : 'Aucun partenaire') + '</p>';
                 return;
             }
 
             // Les comptes en attente de validation passent en premier : sans approbation,
             // leurs prestations/profil restent invisibles des clients (cf. accountStatus === 'pending').
-            var sortedPartners = allPartners.slice().sort(function(a, b) {
+            var sortedPartners = partners.slice().sort(function(a, b) {
                 var aPending = a.accountStatus === 'pending' ? 0 : 1;
                 var bPending = b.accountStatus === 'pending' ? 0 : 1;
                 return aPending - bPending;
@@ -3367,7 +3394,8 @@
 
             var html = '';
             sortedPartners.forEach(function(partner) {
-                var typeLabel = PARTNER_TYPE_LABELS[partner.partner_type] || partner.partner_type;
+                var typeLabel = PARTNER_TYPE_LABELS[partner.partner_type] || partner.partner_type || 'N/A';
+                var inscritLe = partner.created_at ? new Date(partner.created_at).toLocaleDateString('fr-FR') : 'N/A';
                 var statusColor = partner.accountStatus === 'deactivated' ? '#999' : (partner.accountStatus === 'pending' ? '#ffd43b' : '#51cf66');
                 var statusTextColor = partner.accountStatus === 'pending' ? 'black' : 'white';
                 var statusLabel = partner.accountStatus === 'deactivated' ? 'DÉSACTIVÉ' : (partner.accountStatus === 'pending' ? 'EN ATTENTE' : 'ACTIF');
@@ -3377,6 +3405,7 @@
                         '<div class="flex-1 min-w-[200px]">' +
                             '<div class="font-black text-lg">' + (partner.prenom || '') + ' ' + (partner.nom || '') + '</div>' +
                             '<div class="text-sm font-bold opacity-70">' + partner.email + '</div>' +
+                            '<div class="text-xs font-bold opacity-50 mt-1">Inscrit le ' + inscritLe + (partner.telephone ? ' • ' + partner.telephone : '') + '</div>' +
                         '</div>' +
                         '<div>' +
                             '<span style="background:var(--genesis-yellow);color:black;padding:4px 10px;border:2px solid black;font-size:11px;font-weight:900;">' + typeLabel.toUpperCase() + '</span>' +
@@ -3384,17 +3413,23 @@
                         '<div>' +
                             '<span style="background:' + statusColor + ';color:' + statusTextColor + ';padding:4px 10px;border:2px solid black;font-size:11px;font-weight:900;">' + statusLabel + '</span>' +
                         '</div>' +
-                        '<div onclick="event.stopPropagation();">' +
+                        '<div onclick="event.stopPropagation();" style="display:flex;gap:8px;flex-wrap:wrap;">' +
                             (partner.accountStatus === 'pending'
                                 ? '<button onclick="togglePartnerStatus(\'' + partner.id + '\', \'active\')" class="border-4 border-[#51cf66] bg-[#51cf66] text-black px-4 py-2 text-sm font-black mr-2"><i class="fas fa-check mr-1"></i>Approuver</button>'
                                 : '') +
-                            '<button onclick="openPartnerModal(\'' + partner.id + '\')" class="neo-btn-yellow px-4 py-2 text-sm"><i class="fas fa-folder-open mr-1"></i>Gerer</button>' +
+                            '<button onclick="openPartnerModal(\'' + partner.id + '\')" class="neo-btn-yellow px-4 py-2 text-sm"><i class="fas fa-folder-open mr-1"></i>Gérer</button>' +
+                            '<button onclick="deletePartner('' + partner.id + '')" class="border-4 border-red-600 bg-red-600 text-white px-4 py-2 text-sm font-black"><i class="fas fa-trash mr-1"></i>Supprimer</button>' +
                         '</div>' +
                     '</div>' +
                 '</div>';
             });
 
             container.innerHTML = html;
+        }
+
+        function handleSearchPartners() {
+            var query = (document.getElementById('partnerSearchInput') || {}).value || '';
+            loadPartnersList(query || undefined);
         }
 
         // Modal detail partenaire
@@ -3415,9 +3450,12 @@
             var typeLabel = PARTNER_TYPE_LABELS[partner.partner_type] || partner.partner_type;
 
             var modalHTML =
-                '<h2 class="text-3xl font-black italic uppercase mb-6 text-[var(--genesis-yellow)]">' +
-                    '<i class="fas fa-handshake mr-3"></i>' + (partner.prenom || '') + ' ' + (partner.nom || '') +
-                '</h2>' +
+                '<div class="flex justify-between items-start mb-6">' +
+                    '<h2 class="text-3xl font-black italic uppercase text-[var(--genesis-yellow)]">' +
+                        '<i class="fas fa-handshake mr-3"></i>' + (partner.prenom || '') + ' ' + (partner.nom || '') +
+                    '</h2>' +
+                    '<button onclick="deletePartner('" + partner.id + "')" class="border-4 border-red-600 bg-red-600 text-white px-4 py-2 text-xs font-black"><i class="fas fa-trash mr-1"></i>SUPPRIMER</button>' +
+                '</div>' +
                 '<div class="grid md:grid-cols-2 gap-6 mb-8">' +
                     '<div>' +
                         '<p class="text-sm font-bold uppercase opacity-70 mb-1">Email</p>' +
@@ -3470,10 +3508,7 @@
                 '<i class="fas fa-crown mr-2"></i>' + (partner.founderBadge ? 'RETIRER MEMBRE FONDATEUR' : 'ATTRIBUER MEMBRE FONDATEUR') +
             '</button>';
 
-            modalHTML += '<button onclick="deletePartner(\'' + partner.id + '\')" class="border-4 border-black bg-gray-300 text-black px-6 py-3 text-sm font-black">' +
-                '<i class="fas fa-trash mr-2"></i>SUPPRIMER' +
-            '</button>' +
-            '</div>';
+                        '</div>';
 
             document.getElementById('partnerModalContent').innerHTML = modalHTML;
             document.getElementById('partnerModal').style.display = 'block';
