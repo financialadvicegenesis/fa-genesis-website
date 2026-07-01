@@ -2946,6 +2946,7 @@ function showApp(){
   appEl.style.display = 'flex';
   appEl.className = 'on';
   initApp();
+  setTimeout(function(){ if(typeof _checkTutorial==='function') _checkTutorial(); }, 1200);
 }
 function goLogin(){ showLoginSheet(); }
 function goGuest(){ GUEST = true; showApp(); }
@@ -3046,6 +3047,13 @@ function nav(tab){
   if(tab==='partner'){
     var pbb=document.getElementById('ptnrBackStartBtn');
     if(pbb) pbb.style.display = GUEST ? '' : 'none';
+    setTimeout(function(){
+      if(typeof _TUTO_P!=='undefined' && !localStorage.getItem('fa_tuto_p_done')){
+        _tutoIsPartner=true; _tutoSteps=_TUTO_P; _tutoIdx=0; _tutoRender();
+        var ov=document.getElementById('tuto-overlay');
+        if(ov){ov.classList.add('open');if(typeof haptic==='function')haptic(40);}
+      }
+    }, 1400);
   }
   if(tab==='explorer' && _expMap){
     setTimeout(function(){ _expMap.invalidateSize(); }, 80);
@@ -11132,6 +11140,121 @@ function _updateGreeting(){
     });
   });
 })();
+</script>
+
+<!-- ═══════════════════════════════════════════════════════════
+     TUTORIEL ONBOARDING (client + partenaire)
+════════════════════════════════════════════════════════════ -->
+<style>
+#tuto-overlay{position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:99999;display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .3s;}
+#tuto-overlay.open{opacity:1;pointer-events:all;}
+#tuto-card{width:100%;max-width:480px;background:#0a0a0a;border:1.5px solid #FFD700;border-radius:24px 24px 0 0;padding:28px 24px 36px;position:relative;transform:translateY(100%);transition:transform .38s cubic-bezier(.4,0,.2,1);}
+#tuto-overlay.open #tuto-card{transform:translateY(0);}
+#tuto-skip{position:absolute;top:16px;right:20px;background:none;border:none;color:#555;font-size:13px;font-weight:700;cursor:pointer;padding:4px 0;}
+#tuto-counter{position:absolute;top:18px;left:24px;font-size:11px;color:#444;font-weight:700;letter-spacing:.5px;}
+#tuto-icon{font-size:44px;text-align:center;margin:10px 0 14px;color:#FFD700;}
+#tuto-title{font-size:19px;font-weight:900;color:#fff;text-align:center;margin-bottom:10px;line-height:1.25;}
+#tuto-desc{font-size:13px;color:#aaa;text-align:center;line-height:1.6;margin-bottom:20px;}
+#tuto-dots{display:flex;justify-content:center;gap:6px;margin-bottom:22px;}
+.tuto-dot{width:7px;height:7px;border-radius:50%;background:#2a2a2a;transition:background .2s;}
+.tuto-dot.on{background:#FFD700;width:20px;border-radius:4px;}
+#tuto-next{display:block;width:100%;background:#FFD700;color:#000;border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:900;cursor:pointer;letter-spacing:.3px;}
+#tuto-next:active{opacity:.85;}
+</style>
+
+<div id="tuto-overlay">
+  <div id="tuto-card">
+    <span id="tuto-counter"></span>
+    <button id="tuto-skip" onclick="_tutoSkip()">Passer</button>
+    <div id="tuto-icon"></div>
+    <div id="tuto-title"></div>
+    <div id="tuto-desc"></div>
+    <div id="tuto-dots"></div>
+    <button id="tuto-next" onclick="_tutoNext()">Suivant →</button>
+  </div>
+</div>
+
+<script>
+var _TUTO_C = [
+  {ico:'<i class="fa-solid fa-hand-wave"></i>',  title:'Bienvenue sur GENESIS !',              desc:'Votre espace tout-en-un pour trouver des professionnels de talent et suivre vos missions en temps réel.'},
+  {ico:'<i class="fa-solid fa-magnifying-glass"></i>', title:'Explorer',                       desc:'Découvrez du contenu, des événements et les opportunités de la communauté GENESIS.', nav:'explorer'},
+  {ico:'<i class="fa-solid fa-handshake"></i>',  title:'Prestataires',                         desc:'Parcourez notre annuaire de professionnels et réservez directement celui qui vous correspond.', nav:'prestataires'},
+  {ico:'<i class="fa-solid fa-calendar-check"></i>', title:'Mes réservations',                 desc:'Suivez l\'avancement de toutes vos missions en temps réel depuis votre Profil → Mes réservations.'},
+  {ico:'<i class="fa-solid fa-shield-halved"></i>', title:'Portefeuille GENESIS SAFE™',        desc:'Votre argent est sécurisé jusqu\'à la livraison. Consultez votre portefeuille dans Profil → Portefeuille GENESIS SAFE™.'},
+  {ico:'<i class="fa-solid fa-comment-dots"></i>', title:'Messagerie',                         desc:'Échangez directement avec vos prestataires depuis la messagerie intégrée. Simple et sécurisé.'},
+  {ico:'<i class="fa-solid fa-rocket"></i>',     title:'C\'est parti !',                       desc:'Vous êtes prêt(e) à utiliser GENESIS. N\'hésitez pas à contacter Jérémie si vous avez une question.', last:true}
+];
+var _TUTO_P = [
+  {ico:'<i class="fa-solid fa-hand-wave"></i>',  title:'Bienvenue, prestataire GENESIS !',     desc:'Votre espace pour gérer vos missions, développer votre réputation et recevoir vos versements.'},
+  {ico:'<i class="fa-solid fa-bolt"></i>',       title:'Missions',                             desc:'Recevez et acceptez les nouvelles demandes de clients. Chaque mission acceptée est une opportunité.', pnav:'missions'},
+  {ico:'<i class="fa-solid fa-clipboard-list"></i>', title:'Projets',                         desc:'Suivez toutes vos missions actives, envoyez vos livrables et confirmez les livraisons.', pnav:'projets'},
+  {ico:'<i class="fa-solid fa-shield-halved"></i>', title:'Portefeuille GENESIS SAFE™',        desc:'Visualisez les fonds retenus en escrow et votre historique de versements en un seul endroit.', pnav:'versements'},
+  {ico:'<i class="fa-solid fa-trophy"></i>',     title:'Réputation',                           desc:'Vos badges, avis clients et classement GENESIS. Plus votre réputation est forte, plus vous êtes mis en avant.', pnav:'reputation'},
+  {ico:'<i class="fa-solid fa-images"></i>',     title:'Portfolio',                            desc:'Mettez en valeur vos meilleures réalisations pour attirer de nouveaux clients.', pnav:'portfolio'},
+  {ico:'<i class="fa-solid fa-rocket"></i>',     title:'C\'est parti !',                       desc:'Votre espace est prêt. Complétez votre profil pour apparaître en tête de l\'annuaire GENESIS.', last:true}
+];
+
+var _tutoSteps = [];
+var _tutoIdx   = 0;
+var _tutoIsPartner = false;
+
+function _checkTutorial(){
+  try{
+    if(!USER) return;
+    // Partner tutorial is triggered separately on nav('partner') — only handle client here
+    if(localStorage.getItem('fa_tuto_c_done')) return;
+    _tutoIsPartner = false;
+    _tutoSteps = _TUTO_C;
+    _tutoIdx = 0;
+    _tutoRender();
+    var ov = document.getElementById('tuto-overlay');
+    if(ov){ ov.classList.add('open'); if(typeof haptic==='function') haptic(40); }
+  }catch(e){}
+}
+
+function _tutoRender(){
+  var s = _tutoSteps[_tutoIdx];
+  if(!s) return;
+  var total = _tutoSteps.length;
+  var ico   = document.getElementById('tuto-icon');
+  var title = document.getElementById('tuto-title');
+  var desc  = document.getElementById('tuto-desc');
+  var dots  = document.getElementById('tuto-dots');
+  var next  = document.getElementById('tuto-next');
+  var ctr   = document.getElementById('tuto-counter');
+  var skip  = document.getElementById('tuto-skip');
+  if(ico)   ico.innerHTML   = s.ico;
+  if(title) title.textContent = s.title;
+  if(desc)  desc.textContent  = s.desc;
+  if(ctr)   ctr.textContent   = (_tutoIdx+1)+' / '+total;
+  if(next)  next.textContent  = s.last ? 'Commencer !' : 'Suivant →';
+  if(skip)  skip.style.display = s.last ? 'none' : '';
+  if(dots){
+    var h = '';
+    for(var i=0;i<total;i++) h += '<div class="tuto-dot'+(_tutoIdx===i?' on':'')+'"></div>';
+    dots.innerHTML = h;
+  }
+  if(s.nav && typeof nav === 'function') nav(s.nav);
+  if(s.pnav && typeof _ptnrNav === 'function') _ptnrNav(s.pnav);
+}
+
+function _tutoNext(){
+  _tutoIdx++;
+  if(_tutoIdx >= _tutoSteps.length){ _tutoDone(); return; }
+  _tutoRender();
+}
+
+function _tutoSkip(){ _tutoDone(); }
+
+function _tutoDone(){
+  try{
+    var key = _tutoIsPartner ? 'fa_tuto_p_done' : 'fa_tuto_c_done';
+    localStorage.setItem(key, '1');
+  }catch(e){}
+  var ov = document.getElementById('tuto-overlay');
+  if(ov){ ov.classList.remove('open'); }
+  if(!_tutoIsPartner && typeof nav === 'function') nav('home');
+}
 </script>
 </body>
 </html>

@@ -4692,5 +4692,89 @@
     </script>
 
     <script src="pwa-init.js"></script>
+
+    <!-- ═══════════════ TUTORIEL ONBOARDING PRESTATAIRE ══════════════ -->
+    <style>
+    #pd-tuto-overlay{position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:99999;display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .3s;}
+    #pd-tuto-overlay.open{opacity:1;pointer-events:all;}
+    #pd-tuto-card{width:100%;max-width:520px;background:#0a0a0a;border:2px solid var(--genesis-yellow,#FFD700);border-radius:24px 24px 0 0;padding:28px 24px 40px;position:relative;transform:translateY(100%);transition:transform .38s cubic-bezier(.4,0,.2,1);}
+    #pd-tuto-overlay.open #pd-tuto-card{transform:translateY(0);}
+    #pd-tuto-skip{position:absolute;top:16px;right:20px;background:none;border:none;color:#555;font-size:13px;font-weight:700;cursor:pointer;padding:4px 0;}
+    #pd-tuto-counter{position:absolute;top:18px;left:24px;font-size:11px;color:#444;font-weight:700;letter-spacing:.5px;}
+    #pd-tuto-icon{font-size:44px;text-align:center;margin:10px 0 14px;color:var(--genesis-yellow,#FFD700);}
+    #pd-tuto-title{font-size:20px;font-weight:900;color:#fff;text-align:center;margin-bottom:10px;line-height:1.25;font-family:'Playfair Display',serif;}
+    #pd-tuto-desc{font-size:13px;color:#aaa;text-align:center;line-height:1.65;margin-bottom:20px;}
+    #pd-tuto-dots{display:flex;justify-content:center;gap:6px;margin-bottom:22px;}
+    .pd-tuto-dot{width:7px;height:7px;border-radius:50%;background:#2a2a2a;transition:background .2s,width .2s;}
+    .pd-tuto-dot.on{background:var(--genesis-yellow,#FFD700);width:20px;border-radius:4px;}
+    #pd-tuto-next{display:block;width:100%;background:var(--genesis-yellow,#FFD700);color:#000;border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:900;cursor:pointer;font-family:inherit;}
+    </style>
+
+    <div id="pd-tuto-overlay">
+      <div id="pd-tuto-card">
+        <span id="pd-tuto-counter"></span>
+        <button id="pd-tuto-skip" onclick="_pdTutoSkip()">Passer</button>
+        <div id="pd-tuto-icon"></div>
+        <div id="pd-tuto-title"></div>
+        <div id="pd-tuto-desc"></div>
+        <div id="pd-tuto-dots"></div>
+        <button id="pd-tuto-next" onclick="_pdTutoNext()">Suivant →</button>
+      </div>
+    </div>
+
+    <script>
+    var _PD_TUTO_STEPS = [
+      {ico:'<i class="fas fa-hand-wave" style="color:var(--genesis-yellow)"></i>',  title:'Bienvenue, prestataire GENESIS !',   desc:'Votre espace professionnel pour gérer vos missions, construire votre réputation et recevoir vos versements en toute sécurité.'},
+      {ico:'<i class="fas fa-bolt" style="color:var(--genesis-yellow)"></i>',       title:'Missions',                           desc:'Recevez et répondez aux nouvelles demandes de clients. Chaque acceptation crée une nouvelle mission à votre actif.', section:'missions'},
+      {ico:'<i class="fas fa-clipboard-list" style="color:var(--genesis-yellow)"></i>', title:'Projets',                       desc:'Suivez toutes vos missions actives, envoyez vos livrables et confirmez les livraisons pour déclencher votre versement.', section:'projects'},
+      {ico:'<i class="fas fa-shield-halved" style="color:var(--genesis-yellow)"></i>', title:'Portefeuille GENESIS SAFE™',      desc:'Visualisez les fonds sécurisés en escrow pour vos missions actives. Chaque livraison confirmée libère les fonds vers vous.', section:'revenus'},
+      {ico:'<i class="fas fa-trophy" style="color:var(--genesis-yellow)"></i>',     title:'Réputation',                         desc:'Vos badges, avis clients et votre classement GENESIS. Une bonne réputation vous place en tête de l\'annuaire.', section:'reputation'},
+      {ico:'<i class="fas fa-id-card" style="color:var(--genesis-yellow)"></i>',   title:'Complétez votre profil',              desc:'Un profil complet avec photo, bio et portfolio attire jusqu\'à 3× plus de clients. Commencez par votre section Profil.', section:'profile'},
+      {ico:'<i class="fas fa-rocket" style="color:var(--genesis-yellow)"></i>',    title:'C\'est parti !',                      desc:'Votre espace est prêt. Bonne chance pour vos premières missions GENESIS !', last:true}
+    ];
+    var _pdTutoIdx = 0;
+
+    function _pdTutoRender(){
+      var s = _PD_TUTO_STEPS[_pdTutoIdx];
+      if(!s) return;
+      var total = _PD_TUTO_STEPS.length;
+      document.getElementById('pd-tuto-icon').innerHTML    = s.ico;
+      document.getElementById('pd-tuto-title').textContent = s.title;
+      document.getElementById('pd-tuto-desc').textContent  = s.desc;
+      document.getElementById('pd-tuto-counter').textContent = (_pdTutoIdx+1)+' / '+total;
+      document.getElementById('pd-tuto-next').textContent  = s.last ? 'Commencer !' : 'Suivant →';
+      document.getElementById('pd-tuto-skip').style.display = s.last ? 'none' : '';
+      var h=''; for(var i=0;i<total;i++) h+='<div class="pd-tuto-dot'+(_pdTutoIdx===i?' on':'')+'"></div>';
+      document.getElementById('pd-tuto-dots').innerHTML = h;
+      if(s.section && typeof showSection==='function') showSection(s.section);
+    }
+
+    function _pdTutoNext(){
+      _pdTutoIdx++;
+      if(_pdTutoIdx >= _PD_TUTO_STEPS.length){ _pdTutoDone(); return; }
+      _pdTutoRender();
+    }
+
+    function _pdTutoSkip(){ _pdTutoDone(); }
+
+    function _pdTutoDone(){
+      try{ localStorage.setItem('fa_tuto_pd_done','1'); }catch(e){}
+      var ov = document.getElementById('pd-tuto-overlay');
+      if(ov) ov.classList.remove('open');
+      if(typeof showSection==='function') showSection('home');
+    }
+
+    (function(){
+      try{
+        if(!localStorage.getItem('fa_tuto_pd_done')){
+          setTimeout(function(){
+            _pdTutoRender();
+            var ov = document.getElementById('pd-tuto-overlay');
+            if(ov) ov.classList.add('open');
+          }, 1200);
+        }
+      }catch(e){}
+    })();
+    </script>
 </body>
 </html>
