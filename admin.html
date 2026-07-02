@@ -789,7 +789,16 @@
                     <div id="recentClients"></div>
                 </div>
 
-                <!-- Chat Clients -->
+                
+
+                <!-- Derniers prestataires inscrits -->
+                <div class="admin-card neo-shadow mb-12">
+                    <h3 class="text-2xl font-black italic uppercase mb-6">
+                        <i class="fas fa-handshake mr-2"></i>Derniers prestataires inscrits
+                    </h3>
+                    <div id="recentPartners"></div>
+                </div>
+<!-- Chat Clients -->
                 <div class="admin-card neo-shadow" id="adminInboxCard">
                     <div class="flex justify-between items-center mb-6 flex-wrap gap-4">
                         <h3 class="text-2xl font-black italic uppercase">
@@ -1742,15 +1751,17 @@
 
         async function loadDashboard() {
             try {
-                const [statsResponse, usersResponse] = await Promise.all([
+                const [statsResponse, usersResponse, partnersResponse] = await Promise.all([
                     fetch(API_BASE_URL + '/api/admin/stats'),
-                    fetch(API_BASE_URL + '/api/admin/users')
+                    fetch(API_BASE_URL + '/api/admin/users'),
+                    fetch(API_BASE_URL + '/api/admin/partners')
                 ]);
 
                 if (!statsResponse.ok || !usersResponse.ok) throw new Error('Erreur chargement');
 
                 const stats = await statsResponse.json();
                 const users = await usersResponse.json();
+                const allPartnersData = partnersResponse.ok ? await partnersResponse.json() : [];
 
                 const statsHTML = `
                     <div class="stat-card">
@@ -1809,6 +1820,31 @@
                 });
 
                 document.getElementById('recentClients').innerHTML = recentHTML || '<p class="text-center py-8 opacity-50 font-bold">Aucun client inscrit</p>';
+
+                // Derniers prestataires (5 plus recents)
+                var recentPartnersData = allPartnersData.slice().sort(function(a, b) {
+                    return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+                }).slice(0, 5);
+                var recentPartnersHTML = '';
+                recentPartnersData.forEach(function(partner) {
+                    var typeLabel = (PARTNER_TYPE_LABELS && PARTNER_TYPE_LABELS[partner.partner_type]) || partner.partner_type || 'N/A';
+                    var statusColor = partner.accountStatus === 'deactivated' ? '#999' : (partner.accountStatus === 'pending' ? '#ffd43b' : '#51cf66');
+                    var statusTextColor = partner.accountStatus === 'pending' ? 'black' : 'white';
+                    var statusLabel = partner.accountStatus === 'deactivated' ? 'Désactivé' : (partner.accountStatus === 'pending' ? 'En attente' : 'Actif');
+                    recentPartnersHTML += '<div class="client-row" onclick="openPartnerModal(' + "'" + '" + partner.id + "' + "'" + ')">' +
+                        '<div class="flex justify-between items-center">' +
+                            '<div>' +
+                                '<div class="font-black text-lg">' + (partner.prenom || '') + ' ' + (partner.nom || '') + '</div>' +
+                                '<div class="text-sm font-bold opacity-70">' + partner.email + '</div>' +
+                            '</div>' +
+                            '<div class="text-right">' +
+                                '<span style="background:' + statusColor + ';color:' + statusTextColor + ';padding:4px 10px;border:2px solid black;font-size:11px;font-weight:900;display:inline-block;margin-bottom:4px;">' + statusLabel + '</span>' +
+                                '<div class="text-sm font-bold">' + typeLabel + '</div>' +
+                            '</div>' +
+                        '</div>' +
+                    '</div>';
+                });
+                document.getElementById('recentPartners').innerHTML = recentPartnersHTML || '<p class="text-center py-8 opacity-50 font-bold">Aucun prestataire inscrit</p>';
 
                 // Charger les dates a confirmer
                 loadPendingSchedules();
