@@ -1831,7 +1831,7 @@
                     var statusColor = partner.accountStatus === 'deactivated' ? '#999' : (partner.accountStatus === 'pending' ? '#ffd43b' : '#51cf66');
                     var statusTextColor = partner.accountStatus === 'pending' ? 'black' : 'white';
                     var statusLabel = partner.accountStatus === 'deactivated' ? 'Désactivé' : (partner.accountStatus === 'pending' ? 'En attente' : 'Actif');
-                    recentPartnersHTML += '<div class="client-row" onclick="openPartnerModal(' + "'" + '" + partner.id + "' + "'" + ')">' +
+                    recentPartnersHTML += '<div class="client-row" onclick="openPartnerModal(' + "'" + partner.id + "'" + ')">' +
                         '<div class="flex justify-between items-center">' +
                             '<div>' +
                                 '<div class="font-black text-lg">' + (partner.prenom || '') + ' ' + (partner.nom || '') + '</div>' +
