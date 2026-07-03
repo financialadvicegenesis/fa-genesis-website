@@ -5244,7 +5244,7 @@ function renderProfil(){
       +pli('<i class="fa-solid fa-calendar"></i>','#0a141a','Événements Genesis',null,'goToEventsExplorer()')
       +pli('<i class="fa-solid fa-bullseye"></i>','#14140a','Missions Genesis',null,'showGenesisMissions()')
       +pli('<i class="fa-solid fa-gem"></i>','#0a1414','Patrimoine Genesis',null,'showGenesisPatrimoine()')
-      +pli('<i class="fa-solid fa-video"></i>','#1a0a00','Mes séances',null,'showSeances()')
+      +pli('<i class="fa-solid fa-headset"></i>','#1a0a00','Assistance',null,'showSupport()')
       +pli('<i class="fa-solid fa-comment-dots"></i>','#0d1a1a','Messages',null,'nav(\'messages\')')
       +pli('<i class="fa-solid fa-scale-balanced"></i>','#1a0000','Mes litiges',null,'openMesLitiges()')
       +'</div></div>';
@@ -6283,59 +6283,147 @@ function _renderAppLivrables(API2,token){
 }
 
 // ── SÉANCES IN-APP ───────────────────────────────────────────────
-function showSeances(){
-  var c=document.getElementById('profilContent');if(!c)return;
-  var API2=window.FA_GENESIS_API||API;
-  var token=USER?USER._token:(localStorage.getItem('fa_genesis_token')||'');
-  c.innerHTML='<div class="espace-view">'
-    +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="renderProfil()">&#8249;</button><div class="espace-title">Mes séances</div></div>'
-    +'<div id="sea-main" style="padding:14px 16px 80px;overflow-y:auto;flex:1;">'
-    +'<button onclick="_appShowSeanceForm()" style="width:100%;background:#FFD700;color:#000;border:none;font-family:\'Unbounded\',cursive;font-size:11px;font-weight:900;padding:12px;cursor:pointer;margin-bottom:16px;letter-spacing:.5px;">+ Demander une séance</button>'
-    +'<div id="sea-list"><div class="espace-loading">Chargement...</div></div>'
+var _supportTicketCache = {};
+
+function showSupport(){
+  var el=document.getElementById("profilContent");if(!el)return;
+  if(!USER||GUEST){renderProfil();return;}
+  if(window._supportPoll){clearInterval(window._supportPoll);window._supportPoll=null;}
+  el.innerHTML=
+    '<div class="espace-view">'
+    +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="renderProfil()">&#8249;</button><div class="espace-title">Assistance</div></div>'
+    +'<div style="padding:14px;padding-bottom:80px;overflow-y:auto;flex:1;">'
+    +'<button onclick="showNewTicketForm()" style="width:100%;background:#FFD700;color:#000;border:2px solid #000;font-family:Unbounded,cursive;font-size:13px;font-weight:900;padding:14px;cursor:pointer;margin-bottom:16px;"><i class=\"fa-solid fa-plus\" style=\"margin-right:8px;\"></i>Nouveau message</button>'
+    +'<div id="support-list"><div class="espace-loading">Chargement...</div></div>'
     +'</div></div>';
-  fetch(API2+'/api/sessions/me',{headers:{'Authorization':'Bearer '+token}})
-    .then(function(r){return r.json();}).then(function(data){
-      var list=Array.isArray(data)?data:(data.sessions||[]);
-      var el=document.getElementById('sea-list');if(!el)return;
-      if(!list.length){el.innerHTML='<div class="espace-empty">Aucune séance pour le moment.</div>';return;}
-      var SL={'REQUESTED':'Demandée','PROPOSED':'Créneau proposé','CONFIRMED':'Confirmée','RESCHEDULE_REQUESTED':'Reprogrammation','COMPLETED':'Terminée','CANCELLED':'Annulée','scheduled':'Planifiée','completed':'Terminée','cancelled':'Annulée'};
-      var SC={'REQUESTED':'#FF9800','PROPOSED':'#2196F3','CONFIRMED':'#4CAF50','RESCHEDULE_REQUESTED':'#FF5722','COMPLETED':'#9E9E9E','CANCELLED':'#f44336','scheduled':'#555','completed':'#9E9E9E','cancelled':'#f44336'};
-      var TL={'call':'Appel / Visio','shooting':'Shooting','meeting':'Réunion'};
-      el.innerHTML=list.map(function(s){
-        var status=s.status||'scheduled';
-        var typeLabel=TL[s.session_type]||s.session_type||s.type||'Séance';
-        var dateStr='Date à définir';
-        if(s.datetime_start){var d=new Date(s.datetime_start);dateStr=d.toLocaleDateString('fr-FR',{weekday:'short',day:'2-digit',month:'short'})+' à '+d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});}
-        else if(s.date&&s.heure){dateStr=s.date+' à '+s.heure;}
-        var meetUrl=s.meet_url||s.visioLink||'';
-        var joinBtn='';
-        if((status==='CONFIRMED'||status==='scheduled')&&meetUrl){
-          joinBtn='<button onclick="window.location.href=\''+meetUrl.replace(/\\/g,'\\\\').replace(/'/g,"\\'")+'\'" style="width:100%;background:#4CAF50;color:#fff;border:none;font-family:\'Unbounded\',cursive;font-size:10px;font-weight:900;padding:11px;cursor:pointer;margin-top:10px;">Rejoindre la séance</button>';
+  _loadSupportList();
+}
+
+function _loadSupportList(){
+  var api=window.FA_GENESIS_API||API;
+  fetch(api+"/api/support/mine",{headers:{"Authorization":"Bearer "+USER._token}})
+    .then(function(r){return r.json();})
+    .then(function(data){
+      var el=document.getElementById("support-list");if(!el)return;
+      var list=(data&&data.tickets)||[];
+      if(!list.length){
+        el.innerHTML='<div class="espace-empty">Aucun message. Cliquez sur "Nouveau message" pour contacter le support.</div>';
+        return;
+      }
+      // Cache tickets for click access
+      list.forEach(function(t){_supportTicketCache[t.id]=t;});
+      el.innerHTML=list.map(function(t){
+        var sc=t.status==="replied"?"#22c55e":t.status==="closed"?"#555":"#FFD700";
+        var sl=t.status==="replied"?"Répondu":t.status==="closed"?"Fermé":"En attente";
+        var last=t.messages&&t.messages.length?t.messages[t.messages.length-1].content:"";
+        var safeId=t.id.replace(/"/g,"");
+        return '<div class="espace-card" onclick="showSupportThread(\''+safeId+'\')" style="cursor:pointer;">'
+          +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">'
+          +'<div class="espace-card-name">'+t.subject+'</div>'
+          +'<span style="font-size:11px;font-weight:900;white-space:nowrap;color:'+sc+'">'+sl+'</span></div>'
+          +'<div class="espace-card-sub">'+last.substring(0,80)+'</div></div>';
+      }).join("");
+    }).catch(function(){
+      var el=document.getElementById("support-list");
+      if(el)el.innerHTML='<div class="espace-empty">Erreur de chargement.</div>';
+    });
+}
+
+function showNewTicketForm(){
+  var el=document.getElementById("profilContent");if(!el)return;
+  el.innerHTML=
+    '<div class="espace-view">'
+    +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="showSupport()">&#8249;</button><div class="espace-title">Nouveau message</div></div>'
+    +'<div style="padding:16px;padding-bottom:80px;overflow-y:auto;flex:1;">'
+    +'<div style="margin-bottom:12px;"><label style="font-size:11px;font-weight:900;text-transform:uppercase;color:#aaa;display:block;margin-bottom:6px;">Objet</label>'
+    +'<input id="sup-subject" type="text" placeholder="Ex : Problème avec ma commande..." style="width:100%;background:#111;border:1.5px solid #333;color:#fff;padding:12px;font-family:inherit;font-size:13px;box-sizing:border-box;"></div>'
+    +'<div style="margin-bottom:16px;"><label style="font-size:11px;font-weight:900;text-transform:uppercase;color:#aaa;display:block;margin-bottom:6px;">Message</label>'
+    +'<textarea id="sup-message" rows="6" placeholder="Décrivez votre demande en détail..." style="width:100%;background:#111;border:1.5px solid #333;color:#fff;padding:12px;font-family:inherit;font-size:13px;box-sizing:border-box;resize:vertical;"></textarea></div>'
+    +'<button onclick="_submitSupportTicket()" style="width:100%;background:#FFD700;color:#000;border:2px solid #000;font-family:Unbounded,cursive;font-size:13px;font-weight:900;padding:14px;cursor:pointer;">Envoyer</button>'
+    +'<div id="sup-error" style="color:#f87171;font-size:12px;font-weight:700;margin-top:10px;"></div>'
+    +'</div></div>';
+}
+
+function _submitSupportTicket(){
+  var subj=(document.getElementById("sup-subject")||{}).value||"";
+  var msg=(document.getElementById("sup-message")||{}).value||"";
+  var errEl=document.getElementById("sup-error");
+  if(!subj.trim()||!msg.trim()){if(errEl)errEl.textContent="Veuillez remplir tous les champs.";return;}
+  var api=window.FA_GENESIS_API||API;
+  fetch(api+"/api/support/new",{
+    method:"POST",
+    headers:{"Content-Type":"application/json","Authorization":"Bearer "+USER._token},
+    body:JSON.stringify({subject:subj.trim(),message:msg.trim()})
+  }).then(function(r){return r.json();})
+  .then(function(d){if(d.ok){showSupport();}else{if(errEl)errEl.textContent=d.error||"Erreur.";}})
+  .catch(function(){if(errEl)errEl.textContent="Erreur de connexion.";});
+}
+
+function showSupportThread(ticketId){
+  var ticket=_supportTicketCache[ticketId];
+  if(!ticket){showSupport();return;}
+  _renderSupportThread(ticket);
+  // Poll every 6s for new replies
+  if(window._supportPoll){clearInterval(window._supportPoll);}
+  window._supportPoll=setInterval(function(){
+    if(!document.getElementById("support-thread")){clearInterval(window._supportPoll);return;}
+    var api=window.FA_GENESIS_API||API;
+    fetch(api+"/api/support/mine",{headers:{"Authorization":"Bearer "+USER._token}})
+      .then(function(r){return r.json();})
+      .then(function(data){
+        var t=(data.tickets||[]).find(function(x){return x.id===ticketId;});
+        if(t&&t.messages.length!==(ticket.messages||[]).length){
+          ticket=t;_supportTicketCache[ticketId]=t;_renderSupportThread(t);
         }
-        var actHtml='';
-        if(status==='PROPOSED'){
-          actHtml='<div style="display:flex;gap:6px;margin-top:10px;">'
-            +'<button onclick="_appAcceptSession(\''+s.id+'\')" style="flex:1;background:#4CAF50;color:#fff;border:none;font-size:10px;font-weight:900;padding:9px 4px;cursor:pointer;">Accepter</button>'
-            +'<button onclick="_appRescheduleSession(\''+s.id+'\')" style="flex:1;background:#FF9800;color:#000;border:none;font-size:10px;font-weight:900;padding:9px 4px;cursor:pointer;">Autre créneau</button>'
-            +'<button onclick="_appCancelSession(\''+s.id+'\')" style="flex:1;background:#f44336;color:#fff;border:none;font-size:10px;font-weight:900;padding:9px 4px;cursor:pointer;">Annuler</button>'
-            +'</div>';
-        } else if(status==='REQUESTED'){
-          actHtml='<div style="margin-top:8px;padding:8px;background:#1a1000;font-size:11px;color:#FF9800;font-weight:700;">En attente du partenaire...</div>';
-        } else if(status==='RESCHEDULE_REQUESTED'){
-          actHtml='<div style="margin-top:8px;padding:8px;background:#1a0800;font-size:11px;color:#FF5722;font-weight:700;">Reprogrammation en cours...</div>';
-        }
-        return '<div class="espace-card" style="margin-bottom:10px;">'
-          +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px;">'
-          +'<div class="espace-card-name" style="font-size:12px;">'+_escHtml(typeLabel)+'</div>'
-          +'<span style="font-size:10px;font-weight:900;color:'+(SC[status]||'#555')+';white-space:nowrap;flex-shrink:0;">'+(SL[status]||_escHtml(status))+'</span>'
-          +'</div>'
-          +'<div class="espace-card-sub" style="font-size:11px;">'+_escHtml(dateStr)+'</div>'
-          +(s.partner_name?'<div class="espace-card-detail" style="font-size:10px;margin-top:4px;">Partenaire : '+_escHtml(s.partner_name)+'</div>':'')
-          +(s.notes_partner?'<div style="margin-top:8px;padding:8px;background:#0a1a0a;border-left:3px solid #4CAF50;font-size:11px;color:#88cc88;">'+_escHtml(s.notes_partner)+'</div>':'')
-          +actHtml+joinBtn
-          +'</div>';
-      }).join('');
-    }).catch(function(){var el=document.getElementById('sea-list');if(el)el.innerHTML='<div class="espace-empty">Impossible de charger les séances.</div>';});
+      }).catch(function(){});
+  },6000);
+}
+
+function _renderSupportThread(ticket){
+  var el=document.getElementById("profilContent");if(!el)return;
+  var closed=ticket.status==="closed";
+  var msgsHtml=(ticket.messages||[]).map(function(m){
+    var isAdmin=m.from==="admin";
+    var align=isAdmin?"flex-start":"flex-end";
+    var bg=isAdmin?"#1a1a1a":"#0a1a00";
+    var nameColor=isAdmin?"#FFD700":"#aaa";
+    var dt=new Date(m.created_at).toLocaleString("fr-FR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});
+    return '<div style="display:flex;justify-content:'+align+';margin-bottom:12px;">'
+      +'<div style="max-width:80%;background:'+bg+';border:1px solid rgba(255,255,255,.1);padding:10px 14px;">'
+      +'<div style="font-size:10px;font-weight:900;color:'+nameColor+';margin-bottom:4px;">'+m.from_name+'</div>'
+      +'<div style="font-size:13px;color:#fff;white-space:pre-wrap;">'+m.content+'</div>'
+      +'<div style="font-size:9px;color:#555;margin-top:4px;text-align:right;">'+dt+'</div>'
+      +'</div></div>';
+  }).join("");
+  var replyHtml=closed
+    ?'<div style="text-align:center;color:#555;font-size:12px;font-weight:700;padding:12px;">Ticket fermé</div>'
+    :'<div style="padding:14px;border-top:1px solid rgba(255,255,255,.1);">'
+      +'<textarea id="sup-reply-text" rows="3" placeholder="Votre réponse..." style="width:100%;background:#111;border:1.5px solid #333;color:#fff;padding:10px;font-family:inherit;font-size:13px;box-sizing:border-box;resize:vertical;margin-bottom:10px;"></textarea>'
+      +'<button onclick="_sendSupportReply(\''+ticket.id+'\')" style="width:100%;background:#FFD700;color:#000;border:2px solid #000;font-family:Unbounded,cursive;font-size:12px;font-weight:900;padding:12px;cursor:pointer;">Envoyer</button>'
+      +'</div>';
+  el.innerHTML=
+    '<div class="espace-view">'
+    +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="if(window._supportPoll)clearInterval(window._supportPoll);showSupport();">&#8249;</button><div class="espace-title">'+ticket.subject+'</div></div>'
+    +'<div id="support-thread" style="flex:1;overflow-y:auto;padding:14px;">'+msgsHtml+'</div>'
+    +replyHtml
+    +'</div>';
+  // Scroll to bottom
+  var th=document.getElementById("support-thread");if(th)th.scrollTop=th.scrollHeight;
+}
+
+function _sendSupportReply(ticketId){
+  var msg=(document.getElementById("sup-reply-text")||{}).value||"";
+  if(!msg.trim())return;
+  var api=window.FA_GENESIS_API||API;
+  fetch(api+"/api/support/"+ticketId+"/reply",{
+    method:"POST",
+    headers:{"Content-Type":"application/json","Authorization":"Bearer "+USER._token},
+    body:JSON.stringify({message:msg.trim()})
+  }).then(function(r){return r.json();})
+  .then(function(d){if(d.ok){
+    if(window._supportPoll){clearInterval(window._supportPoll);window._supportPoll=null;}
+    showSupport();
+  }}).catch(function(){});
 }
 function _appAcceptSession(id){
   var API2=window.FA_GENESIS_API||API;var token=USER?USER._token:(localStorage.getItem('fa_genesis_token')||'');

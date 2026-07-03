@@ -7475,6 +7475,7 @@ app.post('/api/admin/orders/:orderId/unlock-balance', function(req, res) {
 // ============================================================
 
 var CHAT_FILE = path.join(__dirname, 'data', 'chat.json');
+var SUPPORT_TICKETS_FILE = path.join(__dirname, 'data', 'support-tickets.json');
 
 function loadChat() {
     try {
@@ -7489,6 +7490,21 @@ function loadChat() {
 function saveChat(msgs) {
     try { fs.writeFileSync(CHAT_FILE, JSON.stringify(msgs, null, 2), 'utf8'); }
     catch (e) { console.error('[CHAT] Erreur ecriture:', e.message); }
+}
+
+function loadSupportTickets() {
+    try {
+        if (fs.existsSync(SUPPORT_TICKETS_FILE)) {
+            var data = fs.readFileSync(SUPPORT_TICKETS_FILE, 'utf8');
+            return JSON.parse(data);
+        }
+    } catch(e) { console.error('[SUPPORT] Erreur lecture:', e.message); }
+    return [];
+}
+
+function saveSupportTickets(tickets) {
+    try { fs.writeFileSync(SUPPORT_TICKETS_FILE, JSON.stringify(tickets, null, 2), 'utf8'); }
+    catch(e) { console.error('[SUPPORT] Erreur ecriture:', e.message); }
 }
 
 // Détection anti-contournement : téléphone, email, URL, réseaux sociaux dans le contenu d'un message
@@ -15320,6 +15336,97 @@ app.use((err, req, res, next) => {
 // ============================================================
 // DEMARRAGE DU SERVEUR
 // ============================================================
+
+
+// ===== SUPPORT CLIENT =====
+
+app.post('/api/support/new', function(req, res) {
+    var user = authenticateClient(req, res);
+    if (!user) return;
+    var subject = (req.body.subject || '').trim();
+    var message = (req.body.message || '').trim();
+    if (!subject || !message) return res.status(400).json({ error: 'Sujet et message requis' });
+    var tickets = loadSupportTickets();
+    var now = new Date().toISOString();
+    var ticket = {
+        id: 'SUP-' + Date.now(),
+        client_email: user.email,
+        client_name: ((user.prenom || '') + ' ' + (user.nom || '')).trim() || user.email,
+        subject: subject,
+        status: 'open',
+        created_at: now,
+        updated_at: now,
+        messages: [{ from: 'client', from_name: user.prenom || user.email, content: message, created_at: now }]
+    };
+    tickets.push(ticket);
+    saveSupportTickets(tickets);
+    try { sendPushToRole('admin', { title: 'Nouveau ticket support', body: subject + ' — ' + (user.prenom || user.email), icon: '/assets/images/logo.png', url: '/admin.html' }); } catch(e){}
+    res.json({ ok: true, ticket: ticket });
+});
+
+app.get('/api/support/mine', function(req, res) {
+    var user = authenticateClient(req, res);
+    if (!user) return;
+    var tickets = loadSupportTickets().filter(function(t) {
+        return t.client_email && t.client_email.toLowerCase() === user.email.toLowerCase();
+    });
+    tickets.sort(function(a, b) { return new Date(b.updated_at) - new Date(a.updated_at); });
+    res.json({ ok: true, tickets: tickets });
+});
+
+app.post('/api/support/:id/reply', function(req, res) {
+    var user = authenticateClient(req, res);
+    if (!user) return;
+    var message = (req.body.message || '').trim();
+    if (!message) return res.status(400).json({ error: 'Message requis' });
+    var tickets = loadSupportTickets();
+    var idx = tickets.findIndex(function(t) { return t.id === req.params.id; });
+    if (idx === -1) return res.status(404).json({ error: 'Ticket introuvable' });
+    if (tickets[idx].client_email.toLowerCase() !== user.email.toLowerCase()) return res.status(403).json({ error: 'Acces refuse' });
+    var now = new Date().toISOString();
+    tickets[idx].messages.push({ from: 'client', from_name: user.prenom || user.email, content: message, created_at: now });
+    tickets[idx].status = 'open';
+    tickets[idx].updated_at = now;
+    saveSupportTickets(tickets);
+    try { sendPushToRole('admin', { title: 'Réponse client support', body: (user.prenom || user.email) + ' a répondu', icon: '/assets/images/logo.png', url: '/admin.html' }); } catch(e){}
+    res.json({ ok: true });
+});
+
+app.get('/api/admin/support', authenticateAdmin, function(req, res) {
+    var tickets = loadSupportTickets();
+    tickets.sort(function(a, b) {
+        var order = { open: 0, replied: 1, closed: 2 };
+        var d = (order[a.status] || 0) - (order[b.status] || 0);
+        if (d !== 0) return d;
+        return new Date(b.updated_at) - new Date(a.updated_at);
+    });
+    res.json({ ok: true, tickets: tickets });
+});
+
+app.post('/api/admin/support/:id/reply', authenticateAdmin, function(req, res) {
+    var message = (req.body.message || '').trim();
+    if (!message) return res.status(400).json({ error: 'Message requis' });
+    var tickets = loadSupportTickets();
+    var idx = tickets.findIndex(function(t) { return t.id === req.params.id; });
+    if (idx === -1) return res.status(404).json({ error: 'Ticket introuvable' });
+    var now = new Date().toISOString();
+    tickets[idx].messages.push({ from: 'admin', from_name: 'FA Genesis', content: message, created_at: now });
+    tickets[idx].status = 'replied';
+    tickets[idx].updated_at = now;
+    saveSupportTickets(tickets);
+    try { sendPushToUser(tickets[idx].client_email, { title: 'Réponse FA Genesis', body: message.substring(0, 80), icon: '/assets/images/logo.png', url: '/app.html' }); } catch(e){}
+    res.json({ ok: true });
+});
+
+app.post('/api/admin/support/:id/close', authenticateAdmin, function(req, res) {
+    var tickets = loadSupportTickets();
+    var idx = tickets.findIndex(function(t) { return t.id === req.params.id; });
+    if (idx === -1) return res.status(404).json({ error: 'Ticket introuvable' });
+    tickets[idx].status = 'closed';
+    tickets[idx].updated_at = new Date().toISOString();
+    saveSupportTickets(tickets);
+    res.json({ ok: true });
+});
 
 app.listen(PORT, async () => {
     // Restaurer les données depuis MongoDB Atlas (si configuré)
