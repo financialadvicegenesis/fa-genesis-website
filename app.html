@@ -5170,7 +5170,7 @@ function showGenesisPatrimoine(){
   var ancienneteLabel = (p.ancienneteJours||0) >= 30 ? Math.floor((p.ancienneteJours||0)/30)+' mois' : (p.ancienneteJours||0)+' jours';
   var cards = [
     {icon:'fa-chart-line', label:'Quotient Genesis', value: USER.genesisPoints||0},
-    {icon:'fa-receipt', label:'Prestations réalisées', value: p.prestationsRealisees||0},
+    {icon:'fa-receipt', label:'Commandes effectuées', value: p.prestationsRealisees||0},
     {icon:'fa-people-group', label:'Partenaires distincts', value: p.partenairesDistincts||0},
     {icon:'fa-user-plus', label:'Parrainages', value: p.parrainages||0}
   ];
@@ -5235,17 +5235,17 @@ function renderProfil(){
       +'<div class="plus-section-title">MON ESPACE</div>'
       +'<div class="plus-group">'
       +pli('<i class="fa-solid fa-basket-shopping"></i>','#1a1000','Mes commandes',null,'showMesCommandes()')
-      +pli('','#0a1a0a','Mes paiements',null,'showPaiements()')
+      +pli('<i class="fa-solid fa-credit-card"></i>','#0a1a0a','Mes paiements',null,'showPaiements()')
       +pli('<i class="fa-solid fa-shield-halved"></i>','#1a1200','Portefeuille GENESIS SAFE™',null,'showClientWallet()')
-      +pli('','#0a0a1a','Mes réservations',null,'nav(\'reservations\')')
+      +pli('<i class="fa-solid fa-calendar-check"></i>','#0a0a1a','Mes réservations',null,'nav(\'reservations\')')
       +pli('<i class="fa-solid fa-file-invoice"></i>','#0a0a14','Mes devis',null,'showMesDevis()')
-      +pli('','#100a1a','Mes livrables',null,'showLivrables()')
-      +pli('','#1a0014','Mes favoris',null,'showFavoris()')
-      +pli('','#0a141a','Événements Genesis',null,'goToEventsExplorer()')
-      +pli('','#14140a','Missions Genesis',null,'showGenesisMissions()')
-      +pli('','#0a1414','Patrimoine Genesis',null,'showGenesisPatrimoine()')
-      +pli('','#1a0a00','Mes séances',null,'showSeances()')
-      +pli('','#0d1a1a','Messages',null,'nav(\'messages\')')
+      +pli('<i class="fa-solid fa-box-open"></i>','#100a1a','Mes livrables',null,'showLivrables()')
+      +pli('<i class="fa-solid fa-heart"></i>','#1a0014','Mes favoris',null,'showFavoris()')
+      +pli('<i class="fa-solid fa-calendar"></i>','#0a141a','Événements Genesis',null,'goToEventsExplorer()')
+      +pli('<i class="fa-solid fa-bullseye"></i>','#14140a','Missions Genesis',null,'showGenesisMissions()')
+      +pli('<i class="fa-solid fa-gem"></i>','#0a1414','Patrimoine Genesis',null,'showGenesisPatrimoine()')
+      +pli('<i class="fa-solid fa-video"></i>','#1a0a00','Mes séances',null,'showSeances()')
+      +pli('<i class="fa-solid fa-comment-dots"></i>','#0d1a1a','Messages',null,'nav(\'messages\')')
       +pli('<i class="fa-solid fa-scale-balanced"></i>','#1a0000','Mes litiges',null,'openMesLitiges()')
       +'</div></div>';
   }
