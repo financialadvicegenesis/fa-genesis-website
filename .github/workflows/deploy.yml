@@ -33,10 +33,23 @@ jobs:
         with:
           path: '.'
 
+      - name: Wait for artifact propagation
+        run: sleep 20
+
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v5
         continue-on-error: true
+
+      - name: Wait before retry
+        if: steps.deployment.outcome == 'failure'
+        run: sleep 45
+
+      - name: Re-upload artifact for retry
+        if: steps.deployment.outcome == 'failure'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'
 
       - name: Retry deploy (if first attempt failed)
         id: deployment_retry
