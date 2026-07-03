@@ -3079,8 +3079,13 @@ function loadStatusCard(){
 }
 
 // ── NAVIGATION ───────────────────────────────────────────────
+var _navCurrentTab = 'home';
+var _prevNav = null;
+
 function nav(tab){
-  haptic(8);
+  _prevNav={tab:_navCurrentTab,scrollTop:(document.getElementById('content')||{}).scrollTop||0};
+  _navCurrentTab=tab;
+    haptic(8);
   document.querySelectorAll('.tab').forEach(function(t){t.className='tab';});
   document.querySelectorAll('.nav-btn').forEach(function(b){b.className='nav-btn';});
   var t = document.getElementById('tab-'+tab);
@@ -3094,7 +3099,7 @@ function nav(tab){
     var pbb=document.getElementById('ptnrBackStartBtn');
     if(pbb){
     if(GUEST){ pbb.innerHTML='&#8249; Retour'; pbb.onclick=exitGuestMode; pbb.style.display=''; }
-    else if(USER){ pbb.innerHTML='&#8249; Profil'; pbb.onclick=function(){nav('profil');}; pbb.style.display=''; }
+    else if(USER){ pbb.innerHTML='&#8249; Profil'; pbb.onclick=function(){navBack();}; pbb.style.display=''; }
     else { pbb.style.display='none'; }
   }
     setTimeout(function(){
@@ -3112,6 +3117,25 @@ function nav(tab){
   if(typeof _stopResaPolling==='function') _stopResaPolling();
   if(tab==='reservations' && typeof _startResaPolling==='function') _startResaPolling();
   // Chargement paresseux : charge l'onglet à la première visite
+  _loadTab(tab);
+}
+
+function navBack(){
+  if(!_prevNav){ nav('profil'); return; }
+  haptic(8);
+  var tab=_prevNav.tab, scrollTop=_prevNav.scrollTop;
+  _prevNav=null;
+  _navCurrentTab=tab;
+  document.querySelectorAll('.tab').forEach(function(t){t.className='tab';});
+  document.querySelectorAll('.nav-btn').forEach(function(b){b.className='nav-btn';});
+  var t=document.getElementById('tab-'+tab);
+  var b=document.getElementById('nb-'+tab);
+  if(t) t.className='tab on';
+  if(b) b.className='nav-btn on';
+  var hdr=document.getElementById('hdr'); if(hdr) hdr.classList.remove('hdr-hidden');
+  // Restore scroll position WITHOUT resetting
+  var contentEl=document.getElementById('content');
+  if(contentEl) setTimeout(function(){ contentEl.scrollTop=scrollTop; }, 30);
   _loadTab(tab);
 }
 function navExternal(url){
@@ -4382,7 +4406,7 @@ function closeDetail(){
 function renderResaTab(){
   var c = document.getElementById('resaContent');
   if(!USER||GUEST){ c.innerHTML = locked('Mes réservations','Connectez-vous pour voir vos réservations et leur statut.'); return; }
-  c.innerHTML = '<div class="espace-back-bar"><button class="espace-back-btn" onclick="nav(\'profil\')">&#8249;</button><div class="espace-title">Mes réservations</div></div>'
+  c.innerHTML = '<div class="espace-back-bar"><button class="espace-back-btn" onclick="navBack()">&#8249;</button><div class="espace-title">Mes réservations</div></div>'
     + '<div class="resa-list" id="myOrdersPendingList"></div><div class="resa-list" id="myRequestsList"></div><div class="resa-list" id="resaList"><div class="empty"><div class="e-ico"><i class="fa-solid fa-calendar-days"></i></div><p>Chargement...</p></div></div>';
   // Commandes prestataires payées en attente d'acceptation
   fetch((window.FA_GENESIS_API||API)+'/api/my-orders',{headers:{'Authorization':'Bearer '+USER._token}})
@@ -4743,11 +4767,11 @@ function submitRevisionRequest(livrableId){
 function renderMsgTab(){
   var el=document.getElementById('msgContent');
   if(!USER||GUEST){
-    el.innerHTML='<div class="espace-back-bar"><button class="espace-back-btn" onclick="nav(\'profil\')">&#8249;</button><div class="espace-title">Messages</div></div>'
+    el.innerHTML='<div class="espace-back-bar"><button class="espace-back-btn" onclick="navBack()">&#8249;</button><div class="espace-title">Messages</div></div>'
       +locked('Messagerie','Connectez-vous pour accéder à vos conversations.');
     return;
   }
-  el.innerHTML='<div class="espace-back-bar"><button class="espace-back-btn" onclick="nav(\'profil\')">&#8249;</button><div class="espace-title">Messages</div></div>'
+  el.innerHTML='<div class="espace-back-bar"><button class="espace-back-btn" onclick="navBack()">&#8249;</button><div class="espace-title">Messages</div></div>'
     +'<div id="msgConvList" style="padding:0 0 80px;"><div class="chat-empty-state"><span>Chargement...</span></div></div>';
   var api=window.FA_GENESIS_API||API;
   var hdrs={'Authorization':'Bearer '+USER._token};
