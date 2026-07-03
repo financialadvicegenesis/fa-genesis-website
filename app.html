@@ -3092,7 +3092,11 @@ function nav(tab){
   var hdr=document.getElementById('hdr'); if(hdr) hdr.classList.remove('hdr-hidden');
   if(tab==='partner'){
     var pbb=document.getElementById('ptnrBackStartBtn');
-    if(pbb) pbb.style.display = GUEST ? '' : 'none';
+    if(pbb){
+    if(GUEST){ pbb.innerHTML='&#8249; Retour'; pbb.onclick=exitGuestMode; pbb.style.display=''; }
+    else if(USER){ pbb.innerHTML='&#8249; Profil'; pbb.onclick=function(){nav('profil');}; pbb.style.display=''; }
+    else { pbb.style.display='none'; }
+  }
     setTimeout(function(){
       if(typeof _TUTO_P!=='undefined' && !localStorage.getItem('fa_tuto_p_done')){
         _tutoIsPartner=true; _tutoSteps=_TUTO_P; _tutoIdx=0; _tutoRender();
@@ -4093,6 +4097,7 @@ function openPartnerDetail(partnerId){
           + '<div style="display:flex;gap:8px;">'
             + '<button class="pf-hero-btn" onclick="sharePartnerProfile(\''+p.id+'\',\''+(p.prenom||'')+' '+(p.nom||'')+'\')"><i class="fas fa-share-nodes"></i></button>'
             + '<button class="pf-hero-btn'+(isFavPartner?' fav-on':'')+'" data-fav-id="'+p.id+'" onclick="event.stopPropagation();toggleFavorite(\''+p.id+'\')">'+(isFavPartner?'<i class="fa-solid fa-heart"></i>':'<i class="fa-regular fa-heart"></i>')+'</button>'
+          + '<button class="pf-hero-btn" onclick="event.stopPropagation();if(USER&&!GUEST){closeDetail();_startMsgWithPartner(\''+p.id+'\',\''+((p.prenom||'')+' '+(p.nom||'')).trim().replace(/\'/g,'')+'\',' +(p.email?'\''+p.email+'\''  :'null')+ ');}else{closeDetail();showLoginSheet();}" title="Envoyer un message"><i class="fa-solid fa-comment-dots"></i></button>'
           + '</div>'
         + '</div>'
         + '<div class="pf-hero-id">'
@@ -4377,7 +4382,8 @@ function closeDetail(){
 function renderResaTab(){
   var c = document.getElementById('resaContent');
   if(!USER||GUEST){ c.innerHTML = locked('Mes réservations','Connectez-vous pour voir vos réservations et leur statut.'); return; }
-  c.innerHTML = '<div class="resa-list" id="myOrdersPendingList"></div><div class="resa-list" id="myRequestsList"></div><div class="resa-list" id="resaList"><div class="empty"><div class="e-ico"><i class="fa-solid fa-calendar-days"></i></div><p>Chargement...</p></div></div>';
+  c.innerHTML = '<div class="espace-back-bar"><button class="espace-back-btn" onclick="nav(\'profil\')">&#8249;</button><div class="espace-title">Mes réservations</div></div>'
+    + '<div class="resa-list" id="myOrdersPendingList"></div><div class="resa-list" id="myRequestsList"></div><div class="resa-list" id="resaList"><div class="empty"><div class="e-ico"><i class="fa-solid fa-calendar-days"></i></div><p>Chargement...</p></div></div>';
   // Commandes prestataires payées en attente d'acceptation
   fetch((window.FA_GENESIS_API||API)+'/api/my-orders',{headers:{'Authorization':'Bearer '+USER._token}})
     .then(function(r){return r.json();})
@@ -4735,76 +4741,80 @@ function submitRevisionRequest(livrableId){
 
 // ── MESSAGES ─────────────────────────────────────────────────
 function renderMsgTab(){
-  var c = document.getElementById('msgContent');
-  if(!USER||GUEST){ c.innerHTML = locked('Messagerie','Connectez-vous pour accéder à vos conversations.'); return; }
-  c.innerHTML = '<div class="msg-list" id="msgConvList"><div class="chat-empty-state"><span>Chargement...</span></div></div>';
-
-  // Charger les partenaires avec qui le client a une relation active
+  var el=document.getElementById('msgContent');
+  if(!USER||GUEST){
+    el.innerHTML='<div class="espace-back-bar"><button class="espace-back-btn" onclick="nav(\'profil\')">&#8249;</button><div class="espace-title">Messages</div></div>'
+      +locked('Messagerie','Connectez-vous pour accéder à vos conversations.');
+    return;
+  }
+  el.innerHTML='<div class="espace-back-bar"><button class="espace-back-btn" onclick="nav(\'profil\')">&#8249;</button><div class="espace-title">Messages</div></div>'
+    +'<div id="msgConvList" style="padding:0 0 80px;"><div class="chat-empty-state"><span>Chargement...</span></div></div>';
+  var api=window.FA_GENESIS_API||API;
+  var hdrs={'Authorization':'Bearer '+USER._token};
   Promise.all([
-    fetch((window.FA_GENESIS_API||API)+'/api/my-requests',{headers:{'Authorization':'Bearer '+USER._token}})
-      .then(function(r){return r.json();}).catch(function(){return {requests:[]};}),
-    fetch((window.FA_GENESIS_API||API)+'/api/my-orders',{headers:{'Authorization':'Bearer '+USER._token}})
-      .then(function(r){return r.json();}).catch(function(){return {orders:[]};})
+    fetch(api+'/api/messages',{headers:hdrs}).then(function(r){return r.json();}).catch(function(){return {messages:[]};}),
+    fetch(api+'/api/my-requests',{headers:hdrs}).then(function(r){return r.json();}).catch(function(){return {requests:[]};}) 
   ]).then(function(results){
-    var el = document.getElementById('msgConvList');
-    if(!el) return;
-
-    var requests = (results[0] && Array.isArray(results[0].requests)) ? results[0].requests : [];
-    var orders   = (results[1] && Array.isArray(results[1].orders))   ? results[1].orders   : [];
-
-    // Construire un dictionnaire partner_id → info, dédupliqué
-    var partnerMap = {};
-    requests.forEach(function(r){
-      if(!r.partner_id || !r.partner_email) return;
-      var activeStatuses = ['accepted','proposed','signed'];
-      if(activeStatuses.indexOf(r.status) === -1) return;
-      if(!partnerMap[r.partner_id]){
-        partnerMap[r.partner_id] = {
-          partnerId: r.partner_id,
-          name: r.partner_name || 'Prestataire',
-          email: r.partner_email,
-          preview: r.service_label || 'Mission en cours'
-        };
-      }
+    var convEl=document.getElementById('msgConvList'); if(!convEl) return;
+    var allMsgs=(results[0]&&results[0].messages)||[];
+    var reqs=(results[1]&&Array.isArray(results[1].requests))?results[1].requests:[];
+    // Name + photo map from requests
+    var nameMap={};
+    reqs.forEach(function(r){ if(r.partner_email) nameMap[r.partner_email.toLowerCase()]={name:r.partner_name||'Prestataire',photo:r.partner_photo||null}; });
+    // Group messages by partner
+    var convMap={};
+    allMsgs.forEach(function(m){
+      var pEmail=null, pName='Prestataire';
+      if(m.to_type==='partner'&&m.to_email){ pEmail=m.to_email.toLowerCase(); pName=m.to_name||'Prestataire'; }
+      else if(m.from_type==='partner'&&m.from_email){ pEmail=m.from_email.toLowerCase(); pName=m.from_name||'Prestataire'; }
+      if(!pEmail) return;
+      if(!convMap[pEmail]){ convMap[pEmail]={email:pEmail,name:pName,msgs:[]}; }
+      convMap[pEmail].msgs.push(m);
     });
-    orders.forEach(function(o){
-      if(!o.partner_id || !o.partner_email) return;
-      if(!o.dispatch || o.dispatch.status !== 'accepted') return;
-      if(!partnerMap[o.partner_id]){
-        partnerMap[o.partner_id] = {
-          partnerId: o.partner_id,
-          name: o.partner_name || 'Prestataire',
-          email: o.partner_email,
-          preview: o.product_name || 'Mission en cours'
-        };
-      }
+    // Override names from request data (more reliable)
+    Object.keys(convMap).forEach(function(email){
+      if(nameMap[email]) convMap[email].name=nameMap[email].name;
     });
-
-    var partners = Object.keys(partnerMap).map(function(k){ return partnerMap[k]; });
-
-    if(!partners.length){
-      el.innerHTML = '<div class="empty"><div class="e-ico"><i class="fa-solid fa-comment-slash"></i></div>'
+    var convs=Object.keys(convMap).map(function(k){return convMap[k];}).sort(function(a,b){
+      var la=a.msgs[a.msgs.length-1], lb=b.msgs[b.msgs.length-1];
+      return new Date(lb.created_at)-new Date(la.created_at);
+    });
+    if(!convs.length){
+      convEl.innerHTML='<div class="empty"><div class="e-ico"><i class="fa-solid fa-comment-slash"></i></div>'
         +'<p>Aucune conversation</p>'
-        +'<p style="font-size:13px;color:#555;">Vos échanges avec les prestataires apparaîtront ici dès qu\'une demande est acceptée.</p></div>';
+        +'<p style="font-size:13px;color:#555;">Vos échanges avec les prestataires apparaîtront ici.</p></div>';
       return;
     }
-
-    el.innerHTML = partners.map(function(p){
-      var safeEmail = (p.email||'').replace(/'/g,"\\'");
-      var safeName  = (p.name||'').replace(/'/g,"\\'");
-      var safePreview = (p.preview||'').replace(/'/g,"\\'");
-      return '<div class="msg-row" onclick="openConversation(\''+p.partnerId+'\',\''+safeName+'\',\'user-tie\',\''+safeEmail+'\')">'
-        +'<div class="msg-avatar" style="background:#0d1a14;"><i class="fa-solid fa-user-tie"></i></div>'
-        +'<div class="msg-body"><div class="msg-from">'+p.name+'</div><div class="msg-preview">'+p.preview+'</div></div>'
-        +'<div class="msg-meta"><div class="msg-time">›</div></div>'
+    convEl.innerHTML=convs.map(function(conv){
+      var last=conv.msgs[conv.msgs.length-1];
+      var initials=(conv.name||'?').split(' ').map(function(w){return w[0]||''}).slice(0,2).join('').toUpperCase();
+      var preview=(last.content||'Photo').substring(0,55);
+      var dt=new Date(last.created_at), now=new Date();
+      var timeStr=(now-dt)<86400000
+        ?dt.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})
+        :dt.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'});
+      var unread=conv.msgs.filter(function(m){return m.from_type==='partner'&&!m.read_at;}).length;
+      var safeEmail=conv.email.replace(/'/g,"\'");
+      var safeName=(conv.name||'Prestataire').replace(/'/g,"\'");
+      return '<div onclick="openConversation(\''+safeEmail+'\',\''+safeName+'\',\'user-tie\',\''+safeEmail+'\')" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.06);cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0);">'
+        +'<div style="width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#1a1200,#2a1f00);border:2px solid #FFD700;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;color:#FFD700;flex-shrink:0;">'+initials+'</div>'
+        +'<div style="flex:1;min-width:0;">'
+          +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">'
+            +'<div style="font-weight:900;font-size:14px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px;">'+conv.name+'</div>'
+            +'<div style="font-size:11px;color:#555;white-space:nowrap;">'+timeStr+'</div>'
+          +'</div>'
+          +'<div style="display:flex;justify-content:space-between;align-items:center;">'
+            +'<div style="font-size:12px;color:#888;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px;">'+preview+'</div>'
+            +(unread?'<span style="background:#FFD700;color:#000;border-radius:50%;min-width:18px;height:18px;font-size:10px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;padding:0 3px;">'+unread+'</span>':'')
+          +'</div>'
+        +'</div>'
         +'</div>';
     }).join('');
   }).catch(function(){
-    var el = document.getElementById('msgConvList');
-    if(el) el.innerHTML = '<div class="empty"><p>Erreur de chargement</p></div>';
+    var convEl=document.getElementById('msgConvList');
+    if(convEl) convEl.innerHTML='<div class="empty"><p>Erreur de chargement</p></div>';
   });
 }
-
 // ── PROFIL ────────────────────────────────────────────────────
 function tierBadgeMeta(tier){
   var map = {
@@ -5736,6 +5746,11 @@ function openConversation(key, name, icon, partnerEmail){
   loadChatMessages(partnerEmail);
 }
 
+function _startMsgWithPartner(partnerId, partnerName, partnerEmail){
+  nav('messages');
+  setTimeout(function(){ openConversation(partnerId,partnerName||'Prestataire','user-tie',partnerEmail||partnerId); }, 80);
+}
+
 function loadChatMessages(partnerEmail){
   var msgs=document.getElementById('chat-msgs'); if(!msgs) return;
   if(!USER||!USER._token){ msgs.innerHTML='<div class="chat-empty-state"><span>Connectez-vous.</span></div>'; return; }
@@ -5795,7 +5810,7 @@ function sendChatMessage(){
   // Corps de la requête selon le type de conversation
   var body;
   if(_chatPartnerEmail){
-    body = { to_type:'partner', to_id:_chatPartnerEmail, content:text };
+    body = { to_type:'partner', to_id:_chatPartnerEmail||_chatKey, content:text };
   } else {
     body = { to_type:'admin', content:text, subject:'Message', body:text };
   }

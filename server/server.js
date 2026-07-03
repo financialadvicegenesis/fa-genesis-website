@@ -7692,7 +7692,7 @@ app.post('/api/messages', function(req, res) {
 
         if (toType === 'partner' && toId) {
             var partners = loadPartners();
-            var targetPartner = partners.find(function(p) { return p.email === toId; });
+            var targetPartner = partners.find(function(p) { return p.email === toId || p.id === toId; });
             if (!targetPartner) return res.status(404).json({ error: 'Partenaire introuvable' });
             toEmail = targetPartner.email;
             toName = ((targetPartner.prenom || '') + ' ' + (targetPartner.nom || '')).trim();
