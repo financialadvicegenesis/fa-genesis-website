@@ -5234,7 +5234,7 @@ function renderProfil(){
     monEspace = '<div class="plus-section">'
       +'<div class="plus-section-title">MON ESPACE</div>'
       +'<div class="plus-group">'
-      +pli('','#1a1000','Tableau de bord',null,'showDashboard()')
+      +pli('<i class="fa-solid fa-basket-shopping"></i>','#1a1000','Mes commandes',null,'showMesCommandes()')
       +pli('','#0a1a0a','Mes paiements',null,'showPaiements()')
       +pli('<i class="fa-solid fa-shield-halved"></i>','#1a1200','Portefeuille GENESIS SAFE™',null,'showClientWallet()')
       +pli('','#0a0a1a','Mes réservations',null,'nav(\'reservations\')')
@@ -6056,26 +6056,44 @@ function sendJeremieMessage(){
 }
 
 // ── ESPACE CLIENT IN-APP ──────────────────────────────────────
-function showDashboard(){
-  var c=document.getElementById('profilContent'); if(!USER||GUEST){renderProfil();return;}
-  var fn=USER.prenom||USER.firstName||''; var ln=USER.nom||USER.lastName||''; var em=USER.email||'';
-  c.innerHTML='<div class="espace-view">'
-    +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="renderProfil()">&#8249;</button><div class="espace-title">Tableau de bord</div></div>'
-    +'<div class="espace-user-card"><div class="espace-user-name">'+((fn+' '+ln).trim()||em)+'</div><div class="espace-user-email">'+em+'</div>'
-    +(USER.activeOfferId||USER.offre?'<div style="font-size:11px;color:#aaa;margin-top:8px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;">Offre : '+(USER.activeOfferId||USER.offre)+'</div>':'')
-    +'</div>'
-    +'<div class="espace-dash-grid" id="db-stats"><div class="espace-loading" style="grid-column:1/-1">Chargement...</div></div>'
-    +'</div>';
-  fetch((window.FA_GENESIS_API||API)+'/api/client/payments-list',{headers:{'Authorization':'Bearer '+USER._token}})
-    .then(function(r){return r.json();}).then(function(data){
+function showMesCommandes(){
+  var c=document.getElementById("profilContent");
+  if(!USER||GUEST){renderProfil();return;}
+  c.innerHTML="<div class='espace-view'>"
+    +"<div class='espace-back-bar'><button class='espace-back-btn' onclick='renderProfil()'>&#8249;</button><div class='espace-title'>Mes commandes</div></div>"
+    +"<div id='cmd-list' style='padding:14px;padding-bottom:80px;overflow-y:auto;flex:1;'><div class='espace-loading'>Chargement...</div></div>"
+    +"</div>";
+  var api=window.FA_GENESIS_API||API;
+  fetch(api+"/api/client/payments-list",{headers:{"Authorization":"Bearer "+USER._token}})
+    .then(function(r){return r.json();})
+    .then(function(data){
       var list=Array.isArray(data)?data:[];
-      var paid=list.filter(function(p){return p.paymentStatus==='fully_paid'||p.status==='paid';}).length;
-      var s=document.getElementById('db-stats');
-      if(s) s.innerHTML='<div class="espace-dash-stat"><div class="espace-dash-num">'+list.length+'</div><div class="espace-dash-lbl">Commandes</div></div>'
-        +'<div class="espace-dash-stat"><div class="espace-dash-num">'+paid+'</div><div class="espace-dash-lbl">Payées</div></div>';
-    }).catch(function(){ var s=document.getElementById('db-stats'); if(s) s.innerHTML=''; });
+      var el=document.getElementById("cmd-list");
+      if(!el) return;
+      if(!list.length){el.innerHTML="<div class='espace-empty'>Aucune commande pour le moment.</div>";return;}
+      el.innerHTML=list.map(function(p){
+        var sl,sc;
+        if(p.paymentStatus==="fully_paid"){sl="Entièrement payé";sc="#22c55e";}
+        else if(p.paymentStatus==="deposit_paid"){sl="Acompte payé";sc="#FFD700";}
+        else if(p.paymentStatus==="delivery_pending_payment"){sl="Solde à payer";sc="#f97316";}
+        else{sl="En cours";sc="#888";}
+        var name=p.offre||p.activeOfferId||p.product_name||"Commande";
+        var dateStr=p.created_at?new Date(p.created_at).toLocaleDateString("fr-FR"):"";
+        return "<div class='espace-card'>"
+          +"<div style='display:flex;justify-content:space-between;align-items:flex-start;gap:8px;'>"
+          +"<div class='espace-card-name'>"+name+"</div>"
+          +"<span style='font-size:11px;font-weight:900;white-space:nowrap;color:'"+sc+"';'>"+sl+"</span>"
+          +"</div>"
+          +(dateStr?"<div class='espace-card-sub'><i class='fa-solid fa-calendar-days'></i> "+dateStr+"</div>":"")
+          +(p.totalPaid?"<div class='espace-card-detail'>Versé : "+Number(p.totalPaid).toLocaleString("fr-FR")+" €</div>":"")
+          +"</div>";
+      }).join("");
+    }).catch(function(){
+      var el=document.getElementById("cmd-list");
+      if(el) el.innerHTML="<div class='espace-empty'>Impossible de charger vos commandes.</div>";
+    });
 }
-
+function showDashboard(){showMesCommandes();}
 function showPaiements(){
   var c=document.getElementById('profilContent');
   c.innerHTML='<div class="espace-view">'
