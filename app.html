@@ -3081,6 +3081,7 @@ function loadStatusCard(){
 // ── NAVIGATION ───────────────────────────────────────────────
 var _navCurrentTab = 'home';
 var _prevNav = null;
+var _profilScrollPos = 0;
 
 function nav(tab){
   _prevNav={tab:_navCurrentTab,scrollTop:(document.getElementById('content')||{}).scrollTop||0};
@@ -3137,6 +3138,19 @@ function navBack(){
   var contentEl=document.getElementById('content');
   if(contentEl) setTimeout(function(){ contentEl.scrollTop=scrollTop; }, 30);
   _loadTab(tab);
+}
+
+function _saveProfilScroll(){
+  var el=document.getElementById('content');
+  _profilScrollPos=el?el.scrollTop:0;
+  if(el) el.scrollTop=0;
+}
+
+function profilBack(){
+  var saved=_profilScrollPos;
+  renderProfil();
+  var el=document.getElementById('content');
+  if(el) setTimeout(function(){ el.scrollTop=saved; },20);
 }
 function navExternal(url){
   window.location.href = USER ? url : 'login.html?from=app.html';
@@ -5088,8 +5102,9 @@ function shareReferralCode(){
 }
 function showFavoris(){
   var c = document.getElementById('profilContent'); if(!c) return;
+  _saveProfilScroll();
   c.innerHTML = '<div class="espace-view">'
-    +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="renderProfil()">&#8249;</button><div class="espace-title">Mes favoris</div></div>'
+    +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Mes favoris</div></div>'
     +'<div id="fav-list" class="p-dir-results" style="padding-top:14px;padding-bottom:80px;overflow-y:auto;flex:1;"><div class="espace-loading">Chargement...</div></div>'
     +'</div>';
   fetch(API+'/api/users/favorites', {headers:{'Authorization':'Bearer '+USER._token}})
@@ -5115,8 +5130,9 @@ var QUOTE_STATUS_META = {
 };
 function showMesDevis(){
   var c = document.getElementById('profilContent'); if(!c) return;
+  _saveProfilScroll();
   c.innerHTML = '<div class="espace-view">'
-    +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="renderProfil()">&#8249;</button><div class="espace-title">Mes devis</div></div>'
+    +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Mes devis</div></div>'
     +'<div id="devis-client-list" style="padding:14px;padding-bottom:80px;overflow-y:auto;flex:1;"><div class="espace-loading">Chargement...</div></div>'
     +'</div>';
   if(!USER || GUEST || !USER._token){ document.getElementById('devis-client-list').innerHTML = '<div class="espace-empty">Connectez-vous pour voir vos devis.</div>'; return; }
@@ -5153,8 +5169,9 @@ function goToEventsExplorer(){
 
 function showGenesisMissions(){
   var c = document.getElementById('profilContent'); if(!c) return;
+  _saveProfilScroll();
   c.innerHTML = '<div class="espace-view">'
-    +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="renderProfil()">&#8249;</button><div class="espace-title">Missions Genesis</div></div>'
+    +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Missions Genesis</div></div>'
     +'<div id="genesis-missions-list" style="padding:14px;padding-bottom:80px;overflow-y:auto;flex:1;"><div class="espace-loading">Chargement...</div></div>'
     +'</div>';
   if(!USER || GUEST || !USER._token){ document.getElementById('genesis-missions-list').innerHTML = '<div class="espace-empty">Connectez-vous pour suivre vos missions Genesis.</div>'; return; }
@@ -5192,9 +5209,10 @@ function _animateGenesisCounter(el, target){
 
 function showGenesisPatrimoine(){
   var c = document.getElementById('profilContent'); if(!c) return;
+  _saveProfilScroll();
   if(!USER || GUEST){
     c.innerHTML = '<div class="espace-view">'
-      +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="renderProfil()">&#8249;</button><div class="espace-title">Patrimoine Genesis</div></div>'
+      +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Patrimoine Genesis</div></div>'
       +'<div class="espace-empty">Connectez-vous pour consulter votre Patrimoine Genesis.</div>'
       +'</div>';
     return;
@@ -5209,7 +5227,7 @@ function showGenesisPatrimoine(){
     {icon:'fa-user-plus', label:'Parrainages', value: p.parrainages||0}
   ];
   c.innerHTML = '<div class="espace-view">'
-    +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="renderProfil()">&#8249;</button><div class="espace-title">Patrimoine Genesis</div></div>'
+    +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Patrimoine Genesis</div></div>'
     +'<div style="padding:14px;padding-bottom:80px;overflow-y:auto;flex:1;">'
     +'<div class="genesis-patrimoine-level"><i class="fa-solid '+level.icon+'"></i> '+level.label+'<div class="genesis-patrimoine-anciennete">Membre depuis '+ancienneteLabel+'</div></div>'
     +'<div class="genesis-patrimoine-grid">'
@@ -5333,7 +5351,7 @@ function showEditProfil(){
   var photo = USER.photo;
   c.innerHTML = '<div class="plus-subpage">'
     +'<div class="plus-back-bar">'
-    +'<button class="plus-back-btn" onclick="renderProfil()">‹</button>'
+    +'<button class="plus-back-btn" onclick="profilBack()">‹</button>'
     +'<div class="plus-sub-title">Modifier mon profil</div>'
     +'</div>'
     +'<div class="plus-section" style="padding-top:20px">'
@@ -5420,7 +5438,7 @@ function showDonneesMenu(){
   var url = 'https://fagenesis.com/confidentialite.html';
   c.innerHTML = '<div class="plus-subpage">'
     +'<div class="plus-back-bar">'
-    +'<button class="plus-back-btn" onclick="renderProfil()">‹</button>'
+    +'<button class="plus-back-btn" onclick="profilBack()">‹</button>'
     +'<div class="plus-sub-title">Données personnelles</div>'
     +'</div>'
     +'<div class="plus-section" style="padding-top:20px">'
@@ -5467,7 +5485,7 @@ function showCookiesMenu(){
 
   c.innerHTML = '<div class="plus-subpage">'
     +'<div class="plus-back-bar">'
-    +'<button class="plus-back-btn" onclick="renderProfil()">‹</button>'
+    +'<button class="plus-back-btn" onclick="profilBack()">‹</button>'
     +'<div class="plus-sub-title">Gestion des cookies</div>'
     +'</div>'
     +'<p class="ck-intro">Nous utilisons des cookies pour améliorer votre expérience. Vous pouvez choisir les cookies que vous acceptez. Certains cookies sont nécessaires au fonctionnement de l\'application et ne peuvent pas être désactivés.</p>'
@@ -6098,8 +6116,9 @@ function sendJeremieMessage(){
 function showMesCommandes(){
   var c=document.getElementById("profilContent");
   if(!USER||GUEST){renderProfil();return;}
+  _saveProfilScroll();
   c.innerHTML="<div class='espace-view'>"
-    +"<div class='espace-back-bar'><button class='espace-back-btn' onclick='renderProfil()'>&#8249;</button><div class='espace-title'>Mes commandes</div></div>"
+    +"<div class='espace-back-bar'><button class='espace-back-btn' onclick='profilBack()'>&#8249;</button><div class='espace-title'>Mes commandes</div></div>"
     +"<div id='cmd-list' style='padding:14px;padding-bottom:80px;overflow-y:auto;flex:1;'><div class='espace-loading'>Chargement...</div></div>"
     +"</div>";
   var api=window.FA_GENESIS_API||API;
@@ -6135,8 +6154,9 @@ function showMesCommandes(){
 function showDashboard(){showMesCommandes();}
 function showPaiements(){
   var c=document.getElementById('profilContent');
+  _saveProfilScroll();
   c.innerHTML='<div class="espace-view">'
-    +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="renderProfil()">&#8249;</button><div class="espace-title">Mes paiements</div></div>'
+    +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Mes paiements</div></div>'
     +'<div id="pmt-list"><div class="espace-loading">Chargement...</div></div></div>';
   fetch((window.FA_GENESIS_API||API)+'/api/client/payments-list',{headers:{'Authorization':'Bearer '+USER._token}})
     .then(function(r){return r.json();}).then(function(data){
@@ -6162,8 +6182,9 @@ function showPaiements(){
 function showClientWallet(){
   var c=document.getElementById('profilContent');if(!c)return;
   if(!USER||!USER._token){renderProfil();return;}
+  _saveProfilScroll();
   c.innerHTML='<div class="espace-view">'
-    +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="renderProfil()">&#8249;</button><div class="espace-title">Portefeuille GENESIS SAFE™</div></div>'
+    +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Portefeuille GENESIS SAFE™</div></div>'
     +'<div id="wallet-content" style="padding:14px 16px 80px;overflow-y:auto;flex:1;"><div class="espace-loading">Chargement...</div></div>'
     +'</div>';
   fetch((window.FA_GENESIS_API||API)+'/api/client/wallet',{headers:{'Authorization':'Bearer '+USER._token}})
@@ -6255,10 +6276,11 @@ function _loadCommonDocs(cb){
 // ── LIVRABLES IN-APP ─────────────────────────────────────────────
 function showLivrables(){
   var c=document.getElementById('profilContent');if(!c)return;
+  _saveProfilScroll();
   var API2=window.FA_GENESIS_API||API;
   var token=USER?USER._token:(localStorage.getItem('fa_genesis_token')||'');
   c.innerHTML='<div class="espace-view">'
-    +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="renderProfil()">&#8249;</button><div class="espace-title">Mes livrables</div></div>'
+    +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Mes livrables</div></div>'
     +'<div id="lvr-main" style="padding:14px 16px 80px;overflow-y:auto;flex:1;"><div class="espace-loading">Chargement...</div></div>'
     +'</div>';
   _loadCommonDocs(function(){_renderAppLivrables(API2,token);});
@@ -6327,10 +6349,11 @@ var _supportTicketCache = {};
 function showSupport(){
   var el=document.getElementById("profilContent");if(!el)return;
   if(!USER||GUEST){renderProfil();return;}
+  _saveProfilScroll();
   if(window._supportPoll){clearInterval(window._supportPoll);window._supportPoll=null;}
   el.innerHTML=
     '<div class="espace-view">'
-    +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="renderProfil()">&#8249;</button><div class="espace-title">Assistance</div></div>'
+    +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Assistance</div></div>'
     +'<div style="padding:14px;padding-bottom:80px;overflow-y:auto;flex:1;">'
     +'<button onclick="showNewTicketForm()" style="width:100%;background:#FFD700;color:#000;border:2px solid #000;font-family:Unbounded,cursive;font-size:13px;font-weight:900;padding:14px;cursor:pointer;margin-bottom:16px;"><i class=\"fa-solid fa-plus\" style=\"margin-right:8px;\"></i>Nouveau message</button>'
     +'<div id="support-list"><div class="espace-loading">Chargement...</div></div>'
