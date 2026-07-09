@@ -3088,7 +3088,7 @@ function nav(tab){
   _prevNav={tab:_navCurrentTab,scrollTop:(document.getElementById('content')||{}).scrollTop||0};
   _navCurrentTab=tab;
   try{sessionStorage.setItem('fa_nav_tab',tab);if(tab!=='profil')sessionStorage.removeItem('fa_nav_section');}catch(e){}
-    haptic(8);
+  haptic(8);
   document.querySelectorAll('.tab').forEach(function(t){t.className='tab';});
   document.querySelectorAll('.nav-btn').forEach(function(b){b.className='nav-btn';});
   var t = document.getElementById('tab-'+tab);
