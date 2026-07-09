@@ -3161,9 +3161,14 @@ function _restoreNavSession(){
   try{
     var tab=sessionStorage.getItem('fa_nav_tab');
     var section=sessionStorage.getItem('fa_nav_section');
+    var ptnrScreen=sessionStorage.getItem('fa_ptnr_screen');
     if(!tab||tab==='home'||tab==='prestations') return;
     nav(tab);
-    if(tab==='profil' && section && typeof window[section]==='function'){
+    if(section==='openMesLitiges' && typeof openMesLitiges==='function'){
+      setTimeout(function(){ openMesLitiges(); }, tab==='partner' ? 400 : 200);
+    } else if(tab==='partner' && ptnrScreen && typeof _ptnrNav==='function'){
+      setTimeout(function(){ _ptnrNav(ptnrScreen); }, 300);
+    } else if(tab==='profil' && section && typeof window[section]==='function'){
       setTimeout(function(){ window[section](); }, 120);
     }
   }catch(e){}
@@ -7837,6 +7842,7 @@ function _closeRibOnboarding(){
 }
 
 function _ptnrLogout(){
+  try{sessionStorage.removeItem('fa_ptnr_screen');sessionStorage.removeItem('fa_nav_tab');}catch(e){}
   if(_ptnrRefreshTimer){ clearInterval(_ptnrRefreshTimer); _ptnrRefreshTimer = null; }
   if(_ptnrToken) _ptnrFetch('/api/partner/auth/logout','POST',{}).catch(function(){});
   _ptnrClearSession();
@@ -7888,6 +7894,7 @@ function _ptnrCloseDrawer(){
   if(ov) ov.className = '';
 }
 function _ptnrNav(screen){
+  try{sessionStorage.setItem('fa_ptnr_screen',screen);}catch(e){}
   _ptnrCloseDrawer();
   document.querySelectorAll('.ptnr-snbtn').forEach(function(b){b.className='ptnr-snbtn';});
   document.querySelectorAll('.ptnr-screen').forEach(function(s){s.className='ptnr-screen';});
@@ -8956,6 +8963,7 @@ function _openDisputeOverlay(){
   setTimeout(function(){ sheet.classList.add('up'); }, 20);
 }
 function closeDisputeOverlay(){
+  try{sessionStorage.removeItem('fa_nav_section');}catch(e){}
   var sheet=document.getElementById('dispute-sheet'); var overlay=document.getElementById('dispute-overlay');
   if(!sheet||!overlay) return;
   sheet.classList.remove('up');
@@ -9004,6 +9012,7 @@ function _submitDispute(){
 }
 function openMesLitiges(){
   var token=_currentAuthToken(); if(!token){ showLoginSheet&&showLoginSheet(); return; }
+  try{sessionStorage.setItem('fa_nav_section','openMesLitiges');}catch(e){}
   var title=document.getElementById('dispute-hdr-title'); if(title) title.textContent='MES LITIGES';
   _disputeShowScreen('dispute-list-screen');
   _openDisputeOverlay();
