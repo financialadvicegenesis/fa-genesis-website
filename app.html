@@ -2992,6 +2992,7 @@ function showApp(){
   appEl.style.display = 'flex';
   appEl.className = 'on';
   initApp();
+  setTimeout(_restoreNavSession, 400);
   setTimeout(function(){ if(typeof _checkTutorial==='function') _checkTutorial(); }, 1200);
 }
 function goLogin(){ showLoginSheet(); }
@@ -3086,6 +3087,7 @@ var _profilScrollPos = 0;
 function nav(tab){
   _prevNav={tab:_navCurrentTab,scrollTop:(document.getElementById('content')||{}).scrollTop||0};
   _navCurrentTab=tab;
+  try{sessionStorage.setItem('fa_nav_tab',tab);if(tab!=='profil')sessionStorage.removeItem('fa_nav_section');}catch(e){}
     haptic(8);
   document.querySelectorAll('.tab').forEach(function(t){t.className='tab';});
   document.querySelectorAll('.nav-btn').forEach(function(b){b.className='nav-btn';});
@@ -3140,17 +3142,31 @@ function navBack(){
   _loadTab(tab);
 }
 
-function _saveProfilScroll(){
+function _saveProfilScroll(sectionName){
   var el=document.getElementById('content');
   _profilScrollPos=el?el.scrollTop:0;
   if(el) el.scrollTop=0;
+  try{ if(sectionName) sessionStorage.setItem('fa_nav_section',sectionName); }catch(e){}
 }
 
 function profilBack(){
+  try{sessionStorage.removeItem('fa_nav_section');}catch(e){}
   var saved=_profilScrollPos;
   renderProfil();
   var el=document.getElementById('content');
   if(el) setTimeout(function(){ el.scrollTop=saved; },20);
+}
+
+function _restoreNavSession(){
+  try{
+    var tab=sessionStorage.getItem('fa_nav_tab');
+    var section=sessionStorage.getItem('fa_nav_section');
+    if(!tab||tab==='home'||tab==='prestations') return;
+    nav(tab);
+    if(tab==='profil' && section && typeof window[section]==='function'){
+      setTimeout(function(){ window[section](); }, 120);
+    }
+  }catch(e){}
 }
 function navExternal(url){
   window.location.href = USER ? url : 'login.html?from=app.html';
@@ -4981,7 +4997,7 @@ function _tierRoadmapHtml(progress){
     } else if(isAtteint && i===curIdx){
       html += '<div class="tier-note">Palier actuel</div>';
     } else if(isVerrouille){
-      html += '<div class="tier-req">Nécessite '+req+' commande'+(req>1?'s':'')+' au total</div>';
+      html += '<div class="tier-req">'+req+' commande'+(req>1?'s':'')+' au total</div>';
     }
     html += '</div>'; // tier-body
     html += '</div>'; // tier-row
@@ -5102,7 +5118,7 @@ function shareReferralCode(){
 }
 function showFavoris(){
   var c = document.getElementById('profilContent'); if(!c) return;
-  _saveProfilScroll();
+  _saveProfilScroll('showFavoris');
   c.innerHTML = '<div class="espace-view">'
     +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Mes favoris</div></div>'
     +'<div id="fav-list" class="p-dir-results" style="padding-top:14px;padding-bottom:80px;overflow-y:auto;flex:1;"><div class="espace-loading">Chargement...</div></div>'
@@ -5130,7 +5146,7 @@ var QUOTE_STATUS_META = {
 };
 function showMesDevis(){
   var c = document.getElementById('profilContent'); if(!c) return;
-  _saveProfilScroll();
+  _saveProfilScroll('showMesDevis');
   c.innerHTML = '<div class="espace-view">'
     +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Mes devis</div></div>'
     +'<div id="devis-client-list" style="padding:14px;padding-bottom:80px;overflow-y:auto;flex:1;"><div class="espace-loading">Chargement...</div></div>'
@@ -5169,7 +5185,7 @@ function goToEventsExplorer(){
 
 function showGenesisMissions(){
   var c = document.getElementById('profilContent'); if(!c) return;
-  _saveProfilScroll();
+  _saveProfilScroll('showGenesisMissions');
   c.innerHTML = '<div class="espace-view">'
     +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Missions Genesis</div></div>'
     +'<div id="genesis-missions-list" style="padding:14px;padding-bottom:80px;overflow-y:auto;flex:1;"><div class="espace-loading">Chargement...</div></div>'
@@ -5209,7 +5225,7 @@ function _animateGenesisCounter(el, target){
 
 function showGenesisPatrimoine(){
   var c = document.getElementById('profilContent'); if(!c) return;
-  _saveProfilScroll();
+  _saveProfilScroll('showGenesisPatrimoine');
   if(!USER || GUEST){
     c.innerHTML = '<div class="espace-view">'
       +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Patrimoine Genesis</div></div>'
@@ -6116,7 +6132,7 @@ function sendJeremieMessage(){
 function showMesCommandes(){
   var c=document.getElementById("profilContent");
   if(!USER||GUEST){renderProfil();return;}
-  _saveProfilScroll();
+  _saveProfilScroll('showMesCommandes');
   c.innerHTML="<div class='espace-view'>"
     +"<div class='espace-back-bar'><button class='espace-back-btn' onclick='profilBack()'>&#8249;</button><div class='espace-title'>Mes commandes</div></div>"
     +"<div id='cmd-list' style='padding:14px;padding-bottom:80px;overflow-y:auto;flex:1;'><div class='espace-loading'>Chargement...</div></div>"
@@ -6154,7 +6170,7 @@ function showMesCommandes(){
 function showDashboard(){showMesCommandes();}
 function showPaiements(){
   var c=document.getElementById('profilContent');
-  _saveProfilScroll();
+  _saveProfilScroll('showPaiements');
   c.innerHTML='<div class="espace-view">'
     +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Mes paiements</div></div>'
     +'<div id="pmt-list"><div class="espace-loading">Chargement...</div></div></div>';
@@ -6182,7 +6198,7 @@ function showPaiements(){
 function showClientWallet(){
   var c=document.getElementById('profilContent');if(!c)return;
   if(!USER||!USER._token){renderProfil();return;}
-  _saveProfilScroll();
+  _saveProfilScroll('showClientWallet');
   c.innerHTML='<div class="espace-view">'
     +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Portefeuille GENESIS SAFE™</div></div>'
     +'<div id="wallet-content" style="padding:14px 16px 80px;overflow-y:auto;flex:1;"><div class="espace-loading">Chargement...</div></div>'
@@ -6276,7 +6292,7 @@ function _loadCommonDocs(cb){
 // ── LIVRABLES IN-APP ─────────────────────────────────────────────
 function showLivrables(){
   var c=document.getElementById('profilContent');if(!c)return;
-  _saveProfilScroll();
+  _saveProfilScroll('showLivrables');
   var API2=window.FA_GENESIS_API||API;
   var token=USER?USER._token:(localStorage.getItem('fa_genesis_token')||'');
   c.innerHTML='<div class="espace-view">'
@@ -6349,7 +6365,7 @@ var _supportTicketCache = {};
 function showSupport(){
   var el=document.getElementById("profilContent");if(!el)return;
   if(!USER||GUEST){renderProfil();return;}
-  _saveProfilScroll();
+  _saveProfilScroll('showSupport');
   if(window._supportPoll){clearInterval(window._supportPoll);window._supportPoll=null;}
   el.innerHTML=
     '<div class="espace-view">'
