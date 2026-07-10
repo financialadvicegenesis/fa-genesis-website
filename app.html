@@ -5334,11 +5334,10 @@ function renderProfil(){
   var params = '<div class="plus-section">'
     +'<div class="plus-section-title">MES PARAMÈTRES</div>'
     +'<div class="plus-group">'
-    +(USER && !GUEST ? pli('<i class="fa-solid fa-user-pen"></i>','#1a1400','Modifier mon profil',null,'showEditProfil()') : '')
     +pli('<i class="fa-solid fa-folder-tree"></i>','#0d0d1a','Gestion des données personnelles',null,'showDonneesMenu()')
     +pli('<i class="fa-solid fa-cookie-bite"></i>','#1a1000','Gestion des cookies',null,'showCookiesMenu()')
     +(USER && !GUEST ? pli('<i class="fa-solid fa-bell"></i>','#1a0800','Notifications',null,'window.FA_activerNotifications&&window.FA_activerNotifications()') : '')
-    +(USER && !GUEST ? pli('<i class="fa-solid fa-gear"></i>','#141414','Paramètres du compte','mon-compte.html') : '')
+    +(USER && !GUEST ? pli('<i class="fa-solid fa-gear"></i>','#141414','Paramètres du compte',null,'showParametresCompte()') : '')
     +'</div></div>';
 
   // ── INFORMATIONS GÉNÉRALES ───────────────────────────────────
@@ -5429,6 +5428,176 @@ function saveProfilEdits(){
   }).catch(function(err){
     if(btn){btn.disabled=false;btn.textContent='ENREGISTRER';}
     if(er){er.textContent=err.message||'Erreur. Réessayez.';er.classList.add('on');}
+  });
+}
+
+function showParametresCompte(){
+  if(!USER||GUEST){ renderProfil(); return; }
+  _saveProfilScroll('showParametresCompte');
+  var c=document.getElementById('profilContent'); if(!c) return;
+  var photo=USER.photo;
+  var prenom=_escHtml(USER.prenom||'');
+  var nom=_escHtml(USER.nom||'');
+  var tel=_escHtml(USER.telephone||'');
+  var email=_escHtml(USER.email||'');
+  c.innerHTML='<div class="espace-view">'
+    +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Paramètres du compte</div></div>'
+    +'<div style="padding:16px 14px 80px;">'
+    +'<div style="font-size:11px;font-weight:900;color:var(--yellow);text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px;">Modifier mon profil</div>'
+    +'<div style="display:flex;flex-direction:column;align-items:center;gap:10px;margin-bottom:18px;">'
+    +'<div id="pc-photo-preview" style="width:84px;height:84px;border-radius:50%;background:#1a1a1a;border:2px solid var(--yellow);display:flex;align-items:center;justify-content:center;font-size:32px;color:#666;overflow:hidden;">'
+    +(photo?'<img src="'+photo+'" alt="" style="width:100%;height:100%;object-fit:cover;">':'<i class="fa-solid fa-user"></i>')
+    +'</div>'
+    +'<input type="file" id="pc-photo-input" accept="image/*" style="display:none;" onchange="_pcOnPhotoSelected(this)">'
+    +'<button class="ptnr-login-btn" style="margin-top:0;padding:10px 16px;width:auto;" onclick="document.getElementById(\'pc-photo-input\').click()"><i class="fa-solid fa-camera"></i> Changer ma photo</button>'
+    +'</div>'
+    +'<div class="mc-field"><label class="mc-label">Prénom *</label><input id="pc-prenom" class="mc-input" type="text" value="'+prenom+'"></div>'
+    +'<div class="mc-field"><label class="mc-label">Nom</label><input id="pc-nom" class="mc-input" type="text" value="'+nom+'"></div>'
+    +'<div class="mc-field"><label class="mc-label">Téléphone</label><input id="pc-telephone" class="mc-input" type="tel" value="'+tel+'"></div>'
+    +'<div class="mc-field"><label class="mc-label">Email</label><div class="mc-input" style="opacity:.5;pointer-events:none;">'+email+'</div></div>'
+    +'<div class="cwb-err" id="pc-err"></div>'
+    +'<button class="cwb-btn cwb-btn-yellow" style="width:100%;margin-top:4px;" id="pc-save-btn" onclick="_pcSaveProfil()">ENREGISTRER</button>'
+    +'<div style="height:1px;background:#1f1f1f;margin:24px 0;"></div>'
+    +'<div style="font-size:11px;font-weight:900;color:var(--yellow);text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px;">Changer mon mot de passe</div>'
+    +'<div class="mc-field"><label class="mc-label">Mot de passe actuel</label><input id="pc-pwd-cur" class="mc-input" type="password" placeholder="••••••••"></div>'
+    +'<div class="mc-field"><label class="mc-label">Nouveau mot de passe</label><input id="pc-pwd-new" class="mc-input" type="password" placeholder="••••••••"></div>'
+    +'<div class="mc-field"><label class="mc-label">Confirmer le nouveau</label><input id="pc-pwd-cfm" class="mc-input" type="password" placeholder="••••••••"></div>'
+    +'<div class="cwb-err" id="pc-pwd-err"></div>'
+    +'<div id="pc-pwd-ok" style="display:none;color:#4caf50;font-size:13px;font-weight:700;margin-bottom:8px;padding:8px 0;"></div>'
+    +'<button class="cwb-btn cwb-btn-yellow" style="width:100%;margin-top:4px;" id="pc-pwd-btn" onclick="_pcChangePassword()">METTRE À JOUR</button>'
+    +'<div style="height:1px;background:#1f1f1f;margin:24px 0;"></div>'
+    +'<div style="font-size:11px;font-weight:900;color:#ff6b6b;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;">Gestion du compte</div>'
+    +'<div style="font-size:12px;color:#888;margin-bottom:14px;line-height:1.5;"><i class="fa-solid fa-triangle-exclamation" style="color:#ff6b6b;margin-right:4px;"></i>Ces actions affectent votre compte définitivement.</div>'
+    +'<button class="cwb-btn" style="width:100%;background:#ffd43b;color:#000;margin-bottom:10px;font-weight:900;" onclick="_pcShowDeactivate()"><i class="fa-solid fa-pause-circle" style="margin-right:6px;"></i>Désactiver temporairement</button>'
+    +'<div id="pc-deact-confirm" style="display:none;background:#1a1200;border-radius:12px;padding:14px;margin-bottom:12px;">'
+    +'<div style="font-size:12px;color:#ccc;line-height:1.5;margin-bottom:12px;">Votre compte sera temporairement suspendu. Vos données sont conservées.</div>'
+    +'<div class="cwb-err" id="pc-deact-err"></div>'
+    +'<div style="display:flex;gap:8px;">'
+    +'<button class="cwb-btn cwb-btn-yellow" style="flex:1;" id="pc-deact-btn" onclick="_pcDeactivate()">Confirmer</button>'
+    +'<button class="cwb-btn" style="flex:1;background:#333;color:#fff;" onclick="document.getElementById(\'pc-deact-confirm\').style.display=\'none\'">Annuler</button>'
+    +'</div></div>'
+    +'<button class="cwb-btn" style="width:100%;background:#ff6b6b;color:#000;font-weight:900;" onclick="_pcShowDelete()"><i class="fa-solid fa-trash-alt" style="margin-right:6px;"></i>Supprimer mon compte</button>'
+    +'<div id="pc-del-confirm" style="display:none;background:#1a0000;border-radius:12px;padding:14px;margin-top:10px;">'
+    +'<div style="font-size:12px;color:#ff9999;line-height:1.5;margin-bottom:12px;">Action irréversible. Toutes vos données seront définitivement supprimées.</div>'
+    +'<div class="mc-field"><label class="mc-label">Confirmez votre mot de passe</label><input id="pc-del-pwd" class="mc-input" type="password" placeholder="Votre mot de passe"></div>'
+    +'<div class="cwb-err" id="pc-del-err"></div>'
+    +'<div style="display:flex;gap:8px;margin-top:8px;">'
+    +'<button class="cwb-btn" style="flex:1;background:#ff6b6b;color:#000;font-weight:900;" id="pc-del-btn" onclick="_pcDelete()">Supprimer</button>'
+    +'<button class="cwb-btn" style="flex:1;background:#333;color:#fff;" onclick="document.getElementById(\'pc-del-confirm\').style.display=\'none\'">Annuler</button>'
+    +'</div></div>'
+    +'</div></div>';
+}
+function _pcOnPhotoSelected(input){
+  var file=input.files&&input.files[0]; if(!file) return;
+  _ptnrImageFileToCompressedBase64(file,600,0.85).then(function(dataUri){
+    USER._pendingPhoto=dataUri;
+    var preview=document.getElementById('pc-photo-preview');
+    if(preview) preview.innerHTML='<img src="'+dataUri+'" alt="" style="width:100%;height:100%;object-fit:cover;">';
+  }).catch(function(){});
+}
+function _pcSaveProfil(){
+  if(!USER||GUEST) return;
+  var prenom=((document.getElementById('pc-prenom')||{}).value||'').trim();
+  var er=document.getElementById('pc-err');
+  if(!prenom){ if(er){er.textContent='Le prénom est requis.';er.classList.add('on');} return; }
+  if(er) er.classList.remove('on');
+  var btn=document.getElementById('pc-save-btn'); if(btn){btn.disabled=true;btn.textContent='Enregistrement...';}
+  var body={prenom:prenom,nom:((document.getElementById('pc-nom')||{}).value||'').trim(),telephone:((document.getElementById('pc-telephone')||{}).value||'').trim()};
+  if(USER._pendingPhoto) body.photo=USER._pendingPhoto;
+  fetch((window.FA_GENESIS_API||API)+'/api/clients/update-profile',{method:'PUT',headers:{'Content-Type':'application/json','Authorization':'Bearer '+USER._token},body:JSON.stringify(body)})
+  .then(function(r){return r.json().then(function(d){return{ok:r.ok,data:d};});})
+  .then(function(res){
+    if(!res.ok) throw new Error((res.data&&res.data.error)||'Erreur');
+    var u=res.data.user||{};
+    USER.prenom=u.prenom;USER.nom=u.nom;USER.telephone=u.telephone;if(u.photo)USER.photo=u.photo;
+    delete USER._pendingPhoto;
+    try{localStorage.setItem('fa_genesis_session',JSON.stringify(USER));}catch(e){}
+    showToast('Profil mis à jour','Vos informations ont été enregistrées','success');
+    if(btn){btn.disabled=false;btn.textContent='ENREGISTRER';}
+  }).catch(function(err){
+    if(btn){btn.disabled=false;btn.textContent='ENREGISTRER';}
+    if(er){er.textContent=err.message||'Erreur. Réessayez.';er.classList.add('on');}
+  });
+}
+function _pcChangePassword(){
+  var cur=((document.getElementById('pc-pwd-cur')||{}).value||'').trim();
+  var np=((document.getElementById('pc-pwd-new')||{}).value||'').trim();
+  var cf=((document.getElementById('pc-pwd-cfm')||{}).value||'').trim();
+  var er=document.getElementById('pc-pwd-err');
+  var okEl=document.getElementById('pc-pwd-ok');
+  var btn=document.getElementById('pc-pwd-btn');
+  if(er) er.classList.remove('on');
+  if(okEl) okEl.style.display='none';
+  if(!cur||!np||!cf){ if(er){er.textContent='Tous les champs sont requis.';er.classList.add('on');} return; }
+  if(np.length<6){ if(er){er.textContent='Minimum 6 caractères.';er.classList.add('on');} return; }
+  if(np!==cf){ if(er){er.textContent='Les mots de passe ne correspondent pas.';er.classList.add('on');} return; }
+  if(btn){btn.disabled=true;btn.textContent='Mise à jour...';}
+  if(typeof changePassword==='function'){
+    try{
+      var result=changePassword(cur,np);
+      if(result&&result.success){
+        if(okEl){okEl.textContent='Mot de passe modifié avec succès !';okEl.style.display='block';}
+        var c1=document.getElementById('pc-pwd-cur');var c2=document.getElementById('pc-pwd-new');var c3=document.getElementById('pc-pwd-cfm');
+        if(c1)c1.value='';if(c2)c2.value='';if(c3)c3.value='';
+      } else { if(er){er.textContent=(result&&result.message)||'Mot de passe actuel incorrect.';er.classList.add('on');} }
+    }catch(e){ if(er){er.textContent='Erreur. Réessayez.';er.classList.add('on');} }
+    if(btn){btn.disabled=false;btn.textContent='METTRE À JOUR';}
+  } else {
+    fetch((window.FA_GENESIS_API||API)+'/api/auth/change-password',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+USER._token},body:JSON.stringify({currentPassword:cur,newPassword:np})})
+    .then(function(r){return r.json().then(function(d){return{ok:r.ok,data:d};});})
+    .then(function(res){
+      if(btn){btn.disabled=false;btn.textContent='METTRE À JOUR';}
+      if(res.ok){
+        if(okEl){okEl.textContent='Mot de passe modifié !';okEl.style.display='block';}
+        var c1=document.getElementById('pc-pwd-cur');var c2=document.getElementById('pc-pwd-new');var c3=document.getElementById('pc-pwd-cfm');
+        if(c1)c1.value='';if(c2)c2.value='';if(c3)c3.value='';
+      } else { if(er){er.textContent=(res.data&&res.data.error)||'Erreur.';er.classList.add('on');} }
+    }).catch(function(){
+      if(btn){btn.disabled=false;btn.textContent='METTRE À JOUR';}
+      if(er){er.textContent='Erreur réseau.';er.classList.add('on');}
+    });
+  }
+}
+function _pcShowDeactivate(){ var d=document.getElementById('pc-deact-confirm'); if(d) d.style.display='block'; }
+function _pcShowDelete(){ var d=document.getElementById('pc-del-confirm'); if(d) d.style.display='block'; }
+function _pcDeactivate(){
+  var btn=document.getElementById('pc-deact-btn');
+  var er=document.getElementById('pc-deact-err');
+  if(btn){btn.disabled=true;btn.textContent='Désactivation...';}
+  fetch((window.FA_GENESIS_API||API)+'/api/auth/deactivate-account',{method:'PUT',headers:{'Authorization':'Bearer '+USER._token}})
+  .then(function(r){return r.json().then(function(d){return{ok:r.ok,data:d};});})
+  .then(function(res){
+    if(res.ok){
+      showToast('Compte désactivé','Vous allez être déconnecté.','success');
+      setTimeout(function(){ if(typeof logout==='function') logout(); },1500);
+    } else {
+      if(btn){btn.disabled=false;btn.textContent='Confirmer';}
+      if(er){er.textContent=(res.data&&res.data.error)||'Erreur.';er.classList.add('on');}
+    }
+  }).catch(function(){
+    if(btn){btn.disabled=false;btn.textContent='Confirmer';}
+    if(er){er.textContent='Erreur réseau.';er.classList.add('on');}
+  });
+}
+function _pcDelete(){
+  var pwd=((document.getElementById('pc-del-pwd')||{}).value||'').trim();
+  var er=document.getElementById('pc-del-err');
+  var btn=document.getElementById('pc-del-btn');
+  if(!pwd){ if(er){er.textContent='Saisissez votre mot de passe.';er.classList.add('on');} return; }
+  if(btn){btn.disabled=true;btn.textContent='Suppression...';}
+  fetch((window.FA_GENESIS_API||API)+'/api/auth/delete-account',{method:'DELETE',headers:{'Content-Type':'application/json','Authorization':'Bearer '+USER._token},body:JSON.stringify({password:pwd})})
+  .then(function(r){return r.json().then(function(d){return{ok:r.ok,data:d};});})
+  .then(function(res){
+    if(res.ok){
+      showToast('Compte supprimé','Redirection en cours...','success');
+      setTimeout(function(){ if(typeof logout==='function') logout(); },1500);
+    } else {
+      if(btn){btn.disabled=false;btn.textContent='Supprimer';}
+      if(er){er.textContent=(res.data&&res.data.error)||'Mot de passe incorrect.';er.classList.add('on');}
+    }
+  }).catch(function(){
+    if(btn){btn.disabled=false;btn.textContent='Supprimer';}
+    if(er){er.textContent='Erreur réseau.';er.classList.add('on');}
   });
 }
 
