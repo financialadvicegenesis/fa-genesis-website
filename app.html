@@ -5336,7 +5336,7 @@ function renderProfil(){
     +'<div class="plus-group">'
     +pli('<i class="fa-solid fa-folder-tree"></i>','#0d0d1a','Gestion des données personnelles',null,'showDonneesMenu()')
     +pli('<i class="fa-solid fa-cookie-bite"></i>','#1a1000','Gestion des cookies',null,'showCookiesMenu()')
-    +(USER && !GUEST ? pli('<i class="fa-solid fa-bell"></i>','#1a0800','Notifications',null,'window.FA_activerNotifications&&window.FA_activerNotifications()') : '')
+    +(USER && !GUEST ? pli('<i class="fa-solid fa-bell"></i>','#1a0800','Notifications',null,'showNotifications()') : '')
     +(USER && !GUEST ? pli('<i class="fa-solid fa-gear"></i>','#141414','Paramètres du compte',null,'showParametresCompte()') : '')
     +'</div></div>';
 
@@ -5843,6 +5843,73 @@ function markAllNotifsRead(){
   if(!token) return;
   fetch((window.FA_GENESIS_API||API)+'/api/notifications/read-all',{method:'POST',headers:{'Authorization':'Bearer '+token}})
     .then(function(){ loadNotifInbox(); }).catch(function(){});
+}
+
+function showNotifications(){
+  if(!USER||GUEST){ renderProfil(); return; }
+  _saveProfilScroll('showNotifications');
+  var c=document.getElementById('profilContent'); if(!c) return;
+  c.innerHTML='<div class="espace-view">'
+    +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Notifications</div></div>'
+    +'<div id="notif-page-wrap" style="padding:0 0 80px;"><div class="espace-loading">Chargement...</div></div>'
+    +'</div>';
+  _loadNotifPage();
+}
+function _loadNotifPage(){
+  var token=_currentAuthToken(); if(!token) return;
+  fetch((window.FA_GENESIS_API||API)+'/api/notifications',{headers:{'Authorization':'Bearer '+token}})
+  .then(function(r){return r.json();})
+  .then(function(data){
+    var el=document.getElementById('notif-page-wrap'); if(!el) return;
+    var list=(data&&Array.isArray(data.notifications))?data.notifications:[];
+    var unread=(data&&data.unread_count)||0;
+    var pushHtml='';
+    if('Notification' in window){
+      var perm=Notification.permission;
+      if(perm==='granted'){
+        pushHtml='<div style="display:flex;align-items:center;gap:10px;padding:14px 16px;background:rgba(76,175,80,.1);border-radius:12px;margin:14px 14px 4px;border:1px solid rgba(76,175,80,.2);">'
+          +'<i class="fa-solid fa-check-circle" style="color:#4caf50;font-size:18px;flex-shrink:0;"></i>'
+          +'<div><div style="font-size:13px;font-weight:700;color:#fff;">Notifications push activées</div>'
+          +'<div style="font-size:11px;color:#888;margin-top:2px;">Vous recevez les alertes en temps réel</div></div>'
+          +'</div>';
+      } else if(perm==='denied'){
+        pushHtml='<div style="display:flex;align-items:center;gap:10px;padding:14px 16px;background:rgba(255,107,107,.08);border-radius:12px;margin:14px 14px 4px;border:1px solid rgba(255,107,107,.2);">'
+          +'<i class="fa-solid fa-bell-slash" style="color:#ff6b6b;font-size:18px;flex-shrink:0;"></i>'
+          +'<div><div style="font-size:13px;font-weight:700;color:#fff;">Notifications bloquées</div>'
+          +'<div style="font-size:11px;color:#888;margin-top:2px;">Autorisez-les dans les réglages de votre navigateur ou téléphone</div></div>'
+          +'</div>';
+      } else {
+        pushHtml='<div style="padding:14px 14px 4px;">'
+          +'<button class="cwb-btn cwb-btn-yellow" style="width:100%;" onclick="_activerPushFromNotifPage()">'
+          +'<i class="fa-solid fa-bell" style="margin-right:6px;"></i>Activer les notifications push</button>'
+          +'<div style="font-size:11px;color:#888;text-align:center;margin-top:8px;line-height:1.5;">Messages, confirmations de commande et alertes en temps réel</div>'
+          +'</div>';
+      }
+    }
+    var markBtn=unread>0
+      ?'<button style="background:none;border:none;color:var(--yellow);font-size:11px;font-weight:700;cursor:pointer;padding:0;" onclick="_markAllAndReload()">Tout marquer comme lu</button>'
+      :'';
+    var headHtml='<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px 8px;">'
+      +'<div style="font-size:11px;font-weight:900;color:#aaa;text-transform:uppercase;letter-spacing:.06em;">'
+      +(unread>0?'<span style="background:var(--yellow);color:#000;border-radius:50%;width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;font-size:10px;margin-right:6px;">'+unread+'</span>':'')
+      +'Récentes</div>'+markBtn+'</div>';
+    var listHtml=list.length===0
+      ?'<div class="espace-empty" style="padding-top:40px;"><i class="fa-regular fa-bell" style="font-size:32px;color:#333;display:block;text-align:center;margin-bottom:12px;"></i><div>Aucune notification pour le moment</div></div>'
+      :list.slice(0,50).map(_renderNotifItem).join('');
+    el.innerHTML=pushHtml+headHtml+listHtml;
+  }).catch(function(){
+    var el=document.getElementById('notif-page-wrap');
+    if(el) el.innerHTML='<div class="espace-empty">Impossible de charger les notifications.</div>';
+  });
+}
+function _markAllAndReload(){
+  markAllNotifsRead();
+  setTimeout(_loadNotifPage, 400);
+}
+function _activerPushFromNotifPage(){
+  if(window.FA_activerNotifications) window.FA_activerNotifications();
+  else if('Notification' in window) Notification.requestPermission();
+  setTimeout(_loadNotifPage, 1500);
 }
 
 function openNotifModal(){ document.getElementById('notif-overlay').className='on'; }
