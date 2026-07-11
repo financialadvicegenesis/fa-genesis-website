@@ -3154,7 +3154,10 @@ function profilBack(){
   var saved=_profilScrollPos;
   renderProfil();
   var el=document.getElementById('content');
-  if(el) setTimeout(function(){ el.scrollTop=saved; },20);
+  if(el){
+    setTimeout(function(){ el.scrollTop=saved; }, 30);
+    setTimeout(function(){ if(saved>0 && el.scrollTop<saved-30) el.scrollTop=saved; }, 150);
+  }
 }
 
 function _restoreNavSession(){
