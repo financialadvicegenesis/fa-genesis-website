@@ -3169,7 +3169,7 @@ function _restoreNavSession(){
     } else if(tab==='partner' && ptnrScreen && typeof _ptnrNav==='function'){
       setTimeout(function(){ _ptnrNav(ptnrScreen); }, 300);
     } else if(tab==='profil' && section && typeof window[section]==='function'){
-      setTimeout(function(){ window[section](); }, 120);
+      setTimeout(function(){ window[section](); }, 200);
     }
   }catch(e){}
 }
@@ -10414,7 +10414,9 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
       } else if(tabId === 'tab-messages'){
         if(typeof renderMsgTab === 'function') renderMsgTab();
       } else if(tabId === 'tab-profil'){
-        if(typeof renderProfil === 'function') renderProfil();
+        var _ptrSection=sessionStorage.getItem('fa_nav_section');
+        if(_ptrSection && typeof window[_ptrSection]==='function') window[_ptrSection]();
+        else if(typeof renderProfil === 'function') renderProfil();
       } else if(tabId === 'tab-partner'){
         if(typeof _ptnrLoadHome === 'function') _ptnrLoadHome();
         if(typeof _ptnrRefreshBadges === 'function') _ptnrRefreshBadges();
