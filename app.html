@@ -5193,32 +5193,43 @@ function goToEventsExplorer(){
 
 function showGenesisMissions(){
   var c = document.getElementById('profilContent'); if(!c) return;
+  if(!USER || GUEST){ renderProfil(); return; }
   _saveProfilScroll('showGenesisMissions');
   c.innerHTML = '<div class="espace-view">'
     +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Missions Genesis</div></div>'
     +'<div id="genesis-missions-list" style="padding:14px;padding-bottom:80px;overflow-y:auto;flex:1;"><div class="espace-loading">Chargement...</div></div>'
     +'</div>';
-  if(!USER || GUEST || !USER._token){ document.getElementById('genesis-missions-list').innerHTML = '<div class="espace-empty">Connectez-vous pour suivre vos missions Genesis.</div>'; return; }
-  fetch(API+'/api/genesis/missions', {headers:{'Authorization':'Bearer '+USER._token}})
-    .then(function(r){return r.json();})
+  if(!USER._token){ document.getElementById('genesis-missions-list').innerHTML = '<div class="espace-empty">Session expirée, reconnectez-vous.</div>'; return; }
+  var _gmUrl = (window.FA_GENESIS_API||API)+'/api/genesis/missions';
+  var _gmTok = USER._token;
+  fetch(_gmUrl, {headers:{'Authorization':'Bearer '+_gmTok}})
+    .then(function(r){
+      if(!r.ok){
+        return r.json().then(function(d){ throw new Error(d.error || ('Erreur '+r.status)); }).catch(function(e){ throw (e && e.message) ? e : new Error('Erreur '+r.status); });
+      }
+      return r.json();
+    })
     .then(function(data){
       var el = document.getElementById('genesis-missions-list'); if(!el) return;
+      if(data.error){ el.innerHTML = '<div class="espace-empty"><i class="fa-solid fa-triangle-exclamation" style="color:#f59f00;"></i> '+data.error+'</div>'; return; }
       var missions = (data && data.missions) || [];
-      if(!missions.length){ el.innerHTML = '<div class="espace-empty">Aucune mission disponible pour le moment.</div>'; return; }
+      if(!missions.length){ el.innerHTML = '<div class="espace-empty">Aucune mission disponible.</div>'; return; }
       el.innerHTML = '<div class="genesis-mission-grid">'+missions.map(function(m){
-        return '<div class="genesis-mission-card'+(m.completed?' done':'')+'">'
-          +'<div class="genesis-mission-status '+(m.completed?'done':'pending')+'"><i class="fa-solid '+(m.completed?'fa-check':'fa-lock')+'"></i> '+(m.completed?'Accomplie':'En cours')+'</div>'
-          +'<div class="genesis-mission-top"><i class="fa-solid '+m.icon+'"></i><div class="genesis-mission-label">'+m.label+(m.completed?' <i class="fa-solid fa-circle-check" style="color:#51cf66;"></i>':'')+'</div></div>'
-          +'<div class="genesis-mission-desc">'+m.description+'</div>'
-          +'<div class="badge-progress-track"><div class="badge-progress-fill" style="width:'+m.percent+'%"></div></div>'
-          +'<div class="genesis-mission-count">'+m.current+' / '+m.target+'</div>'
-          +'</div>';
+        var done = m.completed;
+        var html = '<div class="genesis-mission-card'+(done?' done':'')+'">';
+        html += '<div class="genesis-mission-status '+(done?'done':'pending')+'"><i class="fa-solid '+(done?'fa-check':'fa-lock')+'"></i> '+(done?'Accomplie':'En cours')+'</div>';
+        html += '<div class="genesis-mission-top"><i class="fa-solid '+m.icon+'"></i><div class="genesis-mission-label">'+m.label+(done?' <i class="fa-solid fa-circle-check" style="color:#51cf66;"></i>':'')+'</div></div>';
+        html += '<div class="genesis-mission-desc">'+m.description+'</div>';
+        html += '<div class="badge-progress-track"><div class="badge-progress-fill" style="width:'+m.percent+'%"></div></div>';
+        html += '<div class="genesis-mission-count">'+m.current+' / '+m.target+'</div>';
+        html += '</div>';
+        return html;
       }).join('')+'</div>';
-    }).catch(function(){
-      var el = document.getElementById('genesis-missions-list'); if(el) el.innerHTML = '<div class="espace-empty">Erreur de chargement.</div>';
+    }).catch(function(err){
+      var el = document.getElementById('genesis-missions-list');
+      if(el) el.innerHTML = '<div class="espace-empty"><i class="fa-solid fa-circle-exclamation" style="color:#f03e3e;"></i> '+(err && err.message ? err.message : 'Erreur de connexion')+'</div>';
     });
 }
-
 function _animateGenesisCounter(el, target){
   if(!el) return;
   var start = 0, duration = 900, startTime = null;
@@ -5317,7 +5328,6 @@ function renderProfil(){
       +pli('<i class="fa-solid fa-file-invoice"></i>','#0a0a14','Mes devis',null,'showMesDevis()')
       +pli('<i class="fa-solid fa-box-open"></i>','#100a1a','Mes livrables',null,'showLivrables()')
       +pli('<i class="fa-solid fa-heart"></i>','#1a0014','Mes favoris',null,'showFavoris()')
-      +pli('<i class="fa-solid fa-calendar"></i>','#0a141a','Événements Genesis',null,'goToEventsExplorer()')
       +pli('<i class="fa-solid fa-bullseye"></i>','#14140a','Missions Genesis',null,'showGenesisMissions()')
       +pli('<i class="fa-solid fa-gem"></i>','#0a1414','Patrimoine Genesis',null,'showGenesisPatrimoine()')
       +pli('<i class="fa-solid fa-headset"></i>','#1a0a00','Assistance',null,'showSupport()')
