@@ -215,6 +215,45 @@ function generateSessionToken() {
     return uuidv4() + '-' + Date.now();
 }
 
+// JWT-first token helpers: tokens survive Render redeploys (verified via secret, no DB lookup)
+var _jwt = require('jsonwebtoken');
+var _JWT_SECRET = process.env.JWT_SECRET || 'fa-genesis-secret-key';
+
+function findUserByToken(token) {
+    if (!token) return null;
+    try {
+        var decoded = _jwt.verify(token, _JWT_SECRET);
+        if (decoded && decoded.id) return loadUsers().find(function(u) { return u.id === decoded.id; }) || null;
+        if (decoded && decoded.email) return loadUsers().find(function(u) { return u.email === decoded.email.toLowerCase(); }) || null;
+    } catch(e) {}
+    return loadUsers().find(function(u) { return u.sessionToken === token; }) || null;
+}
+
+function findPartnerByToken(token) {
+    if (!token) return null;
+    try {
+        var decoded = _jwt.verify(token, _JWT_SECRET);
+        if (decoded && decoded.id) return loadPartners().find(function(p) { return p.id === decoded.id; }) || null;
+        if (decoded && decoded.email) return loadPartners().find(function(p) { return p.email === decoded.email.toLowerCase(); }) || null;
+    } catch(e) {}
+    return loadPartners().find(function(p) { return p.sessionToken === token; }) || null;
+}
+
+function findUserIndexByToken(token, usersArr) {
+    var u = findUserByToken(token); if (!u) return -1;
+    return usersArr.findIndex(function(x) { return x.id === u.id; });
+}
+
+function signClientToken(user) {
+    var jwt2 = require('jsonwebtoken');
+    return jwt2.sign({id: user.id, email: user.email, role: 'client'}, _JWT_SECRET, {expiresIn: '90d'});
+}
+
+function signPartnerToken(partner) {
+    var jwt2 = require('jsonwebtoken');
+    return jwt2.sign({id: partner.id, email: partner.email, role: 'partner'}, _JWT_SECRET, {expiresIn: '90d'});
+}
+
 // ============================================================
 // HELPERS - STOCKAGE DES PARTENAIRES
 // ============================================================
@@ -926,7 +965,7 @@ function authenticatePartner(req, res, next) {
         }
         const token = authHeader.split(' ')[1];
         const partners = loadPartners();
-        const partner = partners.find(p => p.sessionToken === token);
+        const partner = findPartnerByToken(token);
         if (!partner) {
             return res.status(401).json({ error: 'Session partenaire invalide ou expirée' });
         }
@@ -1228,10 +1267,10 @@ function resolveCurrentIdentity(req) {
         }
     } catch(e) { /* pas un JWT admin valide, on continue */ }
 
-    var partner = loadPartners().find(function(p) { return p.sessionToken === token; });
+    var partner = findPartnerByToken(token);
     if (partner) return { role: 'partner', email: partner.email, partner: partner };
 
-    var user = loadUsers().find(function(u) { return u.sessionToken === token; });
+    var user = findUserByToken(token);
     if (user) return { role: 'client', email: user.email, user: user };
 
     return null;
@@ -1625,7 +1664,7 @@ app.post('/api/push/subscribe', function(req, res) {
             email = 'admin';
         } else if (token) {
             var users = loadUsers();
-            var u = users.find(function(u) { return u.sessionToken === token; });
+            var u = findUserByToken(token);
             if (u) {
                 email = u.email;
                 // Élever le rôle en 'admin' si l'email est un compte admin
@@ -1975,7 +2014,7 @@ app.get('/api/dashboard', (req, res) => {
         // 2. Trouver l'utilisateur par sessionToken
         var users = loadUsers();
         console.log('[/api/dashboard] Users count: ' + users.length);
-        var user = users.find(function(u) { return u.sessionToken === token; });
+        var user = findUserByToken(token);
         if (!user) {
             console.log('[/api/dashboard] Aucun user avec ce sessionToken - 401');
             return res.status(401).json({ ok: false, error: 'UNAUTHORIZED', message: 'Session invalide ou expiree' });
@@ -2614,7 +2653,7 @@ app.post('/api/orders/:orderId/cancel-start-date', function(req, res) {
             var token = authHeader.split(' ')[1];
             // Essayer client
             var users = loadUsers();
-            var clientUser = users.find(function(u) { return u.sessionToken === token; });
+            var clientUser = findUserByToken(token);
             if (clientUser) {
                 var orderEmail = order.client_info && order.client_info.email ? order.client_info.email.toLowerCase() : '';
                 if (orderEmail !== (clientUser.email || '').toLowerCase()) {
@@ -2624,7 +2663,7 @@ app.post('/api/orders/:orderId/cancel-start-date', function(req, res) {
             } else {
                 // Essayer partenaire
                 var partners = loadPartners();
-                var partner = partners.find(function(p) { return p.sessionToken === token; });
+                var partner = findPartnerByToken(token);
                 if (partner) {
                     callerRole = 'partner';
                 }
@@ -3370,7 +3409,7 @@ app.get('/api/client/wallet', function(req, res) {
     try {
         var token = (req.headers.authorization || '').replace('Bearer ', '');
         var users = loadUsers();
-        var user = users.find(function(u) { return u.sessionToken === token; });
+        var user = findUserByToken(token);
         if (!user) return res.status(401).json({ error: 'Non autorisé' });
 
         var orders = loadOrders();
@@ -4035,7 +4074,7 @@ app.get('/api/payments/history', (req, res) => {
         }
 
         var users = loadUsers();
-        var user = users.find(function(u) { return u.sessionToken === token; });
+        var user = findUserByToken(token);
         if (!user) {
             return res.status(401).json({ ok: false, error: 'Session invalide' });
         }
@@ -4191,7 +4230,7 @@ app.get('/api/client/payments-list', function(req, res) {
     try {
         var token = (req.headers.authorization || '').replace('Bearer ', '');
         var users = loadUsers();
-        var user = users.find(function(u) { return u.sessionToken === token; });
+        var user = findUserByToken(token);
         if (!user) return res.status(401).json({ error: 'Non autorisé' });
 
         var orders = loadOrders();
@@ -5184,7 +5223,7 @@ app.post('/api/orders/:orderId/schedule-start', function(req, res) {
         if (!authHeader) return res.status(401).json({ error: 'Non autorise' });
         var token = authHeader.replace('Bearer ', '');
         var users = loadUsers();
-        var user = users.find(function(u) { return u.sessionToken === token; });
+        var user = findUserByToken(token);
         if (!user) return res.status(401).json({ error: 'Session invalide' });
 
         var order = getOrderById(req.params.orderId);
@@ -5552,7 +5591,7 @@ app.post('/api/orders/:orderId/accept-reschedule', function(req, res) {
         if (!authHeader) return res.status(401).json({ error: 'Non autorise' });
         var token = authHeader.replace('Bearer ', '');
         var users = loadUsers();
-        var user = users.find(function(u) { return u.sessionToken === token; });
+        var user = findUserByToken(token);
         if (!user) return res.status(401).json({ error: 'Session invalide' });
 
         var order = getOrderById(req.params.orderId);
@@ -6234,8 +6273,9 @@ app.post('/api/auth/register', async (req, res) => {
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
 
-        // Generer un token de session
-        const sessionToken = generateSessionToken();
+        // Generer un token de session (JWT, survit aux redéploiements Render)
+        const _regUserId = 'USR-' + uuidv4().split('-')[0].toUpperCase();
+        const sessionToken = signClientToken({id: _regUserId, email: email.trim().toLowerCase()});
 
         // Determiner le type de produit et recuperer les infos de l'offre
         let productType = null;
@@ -6268,7 +6308,7 @@ app.post('/api/auth/register', async (req, res) => {
 
         // Creer l'utilisateur
         const newUser = {
-            id: `USR-${uuidv4().split('-')[0].toUpperCase()}`,
+            id: _regUserId,
             prenom: prenom.trim(),
             nom: nom ? nom.trim() : '',
             email: email.trim().toLowerCase(),
@@ -6401,7 +6441,7 @@ app.post('/api/auth/login', async (req, res) => {
         }
 
         // Appareil de confiance → connexion directe
-        const sessionToken = generateSessionToken();
+        const sessionToken = signClientToken(user);
         users[userIndex].sessionToken = sessionToken;
         users[userIndex].lastLogin = new Date().toISOString();
         users[userIndex].updatedAt = new Date().toISOString();
@@ -6446,7 +6486,7 @@ app.get('/api/auth/me', (req, res) => {
 
         // Chercher l'utilisateur avec ce token
         const users = loadUsers();
-        const user = users.find(u => u.sessionToken === token);
+        const user = findUserByToken(token);
 
         if (!user) {
             return res.status(401).json({ error: 'Session invalide ou expirée' });
@@ -6628,10 +6668,7 @@ app.patch('/api/me', (req, res) => {
         }
 
         var users = loadUsers();
-        var userIdx = -1;
-        for (var i = 0; i < users.length; i++) {
-            if (users[i].sessionToken === token) { userIdx = i; break; }
-        }
+        var userIdx = findUserIndexByToken(token, users);
         if (userIdx === -1) {
             return res.status(401).json({ success: false, error: 'Session invalide' });
         }
@@ -6685,7 +6722,7 @@ app.get('/api/deliverables/mine', (req, res) => {
         }
 
         var users = loadUsers();
-        var user = users.find(function(u) { return u.sessionToken === token; });
+        var user = findUserByToken(token);
         if (!user) {
             return res.status(401).json({ ok: false, error: 'Session invalide' });
         }
@@ -6761,7 +6798,7 @@ app.post('/api/auth/logout', (req, res) => {
 
             // Chercher et invalider le token
             const users = loadUsers();
-            const userIndex = users.findIndex(u => u.sessionToken === token);
+            const userIndex = findUserIndexByToken(token, users);
 
             if (userIndex !== -1) {
                 users[userIndex].sessionToken = null;
@@ -7029,8 +7066,8 @@ app.post('/api/auth/verify-otp', async (req, res) => {
         users[userIndex].pending_token = null;
         users[userIndex].pending_token_expires = null;
 
-        // Générer session
-        const sessionToken = generateSessionToken();
+        // Générer session (JWT, survit aux redéploiements Render)
+        const sessionToken = signClientToken(users[userIndex]);
         users[userIndex].sessionToken = sessionToken;
         users[userIndex].lastLogin = new Date().toISOString();
         users[userIndex].updatedAt = new Date().toISOString();
@@ -7066,7 +7103,7 @@ app.put('/api/auth/update-profile', async (req, res) => {
 
         const token = authHeader.split(' ')[1];
         const users = loadUsers();
-        const userIndex = users.findIndex(u => u.sessionToken === token);
+        const userIndex = findUserIndexByToken(token, users);
 
         if (userIndex === -1) {
             return res.status(401).json({ error: 'Session invalide ou expirée' });
@@ -7130,7 +7167,7 @@ app.put('/api/auth/deactivate-account', async (req, res) => {
 
         const token = authHeader.split(' ')[1];
         const users = loadUsers();
-        const userIndex = users.findIndex(u => u.sessionToken === token);
+        const userIndex = findUserIndexByToken(token, users);
 
         if (userIndex === -1) {
             return res.status(401).json({ error: 'Session invalide' });
@@ -7210,7 +7247,7 @@ app.delete('/api/auth/delete-account', async (req, res) => {
 
         const token = authHeader.split(' ')[1];
         const users = loadUsers();
-        const userIndex = users.findIndex(u => u.sessionToken === token);
+        const userIndex = findUserIndexByToken(token, users);
 
         if (userIndex === -1) {
             return res.status(401).json({ error: 'Session invalide' });
@@ -7569,7 +7606,7 @@ app.get('/api/my-partners', function(req, res) {
         if (!authHeader) return res.status(401).json({ error: 'Non autorise' });
         var token = authHeader.replace('Bearer ', '').trim();
         var users = loadUsers();
-        var user = users.find(function(u) { return u.sessionToken === token; });
+        var user = findUserByToken(token);
         if (!user) return res.status(401).json({ error: 'Session invalide' });
 
         // Trouver la commande payee du client
@@ -7639,7 +7676,7 @@ app.get('/api/messages', function(req, res) {
         if (!authHeader) return res.status(401).json({ error: 'Non autorise' });
         var token = authHeader.replace('Bearer ', '');
         var users = loadUsers();
-        var user = users.find(function(u) { return u.sessionToken === token; });
+        var user = findUserByToken(token);
         if (!user) return res.status(401).json({ error: 'Session invalide' });
 
         var msgs = loadChat();
@@ -7663,7 +7700,7 @@ app.post('/api/messages', function(req, res) {
         if (!authHeader) return res.status(401).json({ error: 'Non autorise' });
         var token = authHeader.replace('Bearer ', '');
         var users = loadUsers();
-        var user = users.find(function(u) { return u.sessionToken === token; });
+        var user = findUserByToken(token);
         if (!user) return res.status(401).json({ error: 'Session invalide' });
 
         if (user.messagingBlocked) {
@@ -7949,7 +7986,7 @@ function authenticateClient(req, res) {
     }
     var token = authHeader.split(' ')[1];
     var users = loadUsers();
-    var user = users.find(function(u) { return u.sessionToken === token; });
+    var user = findUserByToken(token);
     if (!user) {
         res.status(401).json({ error: 'Session invalide ou expiree' });
         return null;
@@ -8636,7 +8673,7 @@ app.post('/api/partner/auth/login', async (req, res) => {
             return a.email === emailNorm && a.password === passwordNorm;
         });
         if (adminMatch) {
-            const sessionToken = generateSessionToken();
+            var jwt3 = require('jsonwebtoken'); const sessionToken = jwt3.sign({id: 'ADMIN', email: emailNorm, role: 'admin'}, _JWT_SECRET, {expiresIn: '90d'});
             console.log('[PARTNER/ADMIN] Connexion admin:', email);
             return res.json({
                 success: true,
@@ -8658,7 +8695,7 @@ app.post('/api/partner/auth/login', async (req, res) => {
         if (!validPassword) {
             return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
         }
-        const sessionToken = generateSessionToken();
+        const sessionToken = signPartnerToken(partner);
         const partners = loadPartners();
         const index = partners.findIndex(p => p.id === partner.id);
         if (index !== -1) {
@@ -8734,7 +8771,10 @@ app.post('/api/partner/auth/register', async (req, res) => {
         }
         const hashedPassword = await bcrypt.hash(password, 10);
         const now = new Date().toISOString();
-        const sessionToken = generateSessionToken();
+        // JWT for new partner (id assigned below in newPartner object)
+        const _pRegEmail = email.trim().toLowerCase();
+        const _pRegId = 'PTR-' + uuidv4().split('-')[0].toUpperCase();
+        const sessionToken = signPartnerToken({id: _pRegId, email: _pRegEmail});
         const partners = loadPartners();
         let referredBy = null;
         if (referralCode && typeof referralCode === 'string') {
@@ -8742,7 +8782,7 @@ app.post('/api/partner/auth/register', async (req, res) => {
             if (referrer) referredBy = referrer.id;
         }
         const partner = {
-            id: 'PTR-' + uuidv4().split('-')[0],
+            id: _pRegId,
             prenom: prenom,
             nom: nom,
             email: email.toLowerCase(),
@@ -9955,9 +9995,9 @@ app.get('/api/genesis/missions', function(req, res) {
         var authHeader = req.headers.authorization;
         if (!authHeader || !authHeader.startsWith('Bearer ')) return res.status(401).json({ error: 'Token requis' });
         var token = authHeader.slice(7);
-        var user = loadUsers().find(function(u) { return u.sessionToken === token; });
+        var user = findUserByToken(token);
         if (user) return res.json({ success: true, missions: getGenesisMissions(user, 'client') });
-        var partner = loadPartners().find(function(p) { return p.sessionToken === token; });
+        var partner = findPartnerByToken(token);
         if (partner) return res.json({ success: true, missions: getGenesisMissions(partner, 'partner') });
         return res.status(401).json({ error: 'Session invalide ou expiree' });
     } catch (e) {
@@ -10088,10 +10128,10 @@ app.post('/api/jeremie/chat', function(req, res) {
             return res.status(429).json({ error: 'Trop de messages. Reessayez dans quelques minutes.' });
         }
 
-        var person = loadUsers().find(function(u) { return u.sessionToken === token; });
+        var person = findUserByToken(token);
         var personType = 'client';
         if (!person) {
-            person = loadPartners().find(function(p) { return p.sessionToken === token; });
+            person = findPartnerByToken(token);
             personType = 'partner';
         }
         if (!person) return res.status(401).json({ error: 'Session invalide ou expiree' });
@@ -10130,8 +10170,8 @@ app.get('/api/jeremie/chat', function(req, res) {
         if (!authHeader || !authHeader.startsWith('Bearer ')) return res.status(401).json({ error: 'Token requis' });
         var token = authHeader.slice(7);
 
-        var person = loadUsers().find(function(u) { return u.sessionToken === token; });
-        if (!person) person = loadPartners().find(function(p) { return p.sessionToken === token; });
+        var person = findUserByToken(token);
+        if (!person) person = findPartnerByToken(token);
         if (!person) return res.status(401).json({ error: 'Session invalide ou expiree' });
 
         var memory = loadJeremieMemory();
@@ -10331,10 +10371,10 @@ app.post('/api/events/:id/rsvp', function(req, res) {
         }
         var token = authHeader.split(' ')[1];
         var person = null, personType = null;
-        var user = loadUsers().find(function(u) { return u.sessionToken === token; });
+        var user = findUserByToken(token);
         if (user) { person = user; personType = 'client'; }
         else {
-            var partner = loadPartners().find(function(p) { return p.sessionToken === token; });
+            var partner = findPartnerByToken(token);
             if (partner) { person = partner; personType = 'partner'; }
         }
         if (!person) return res.status(401).json({ error: 'Session invalide ou expiree' });
@@ -10447,7 +10487,7 @@ app.get('/api/partners/:id/reviews', (req, res) => {
         const authHeader = req.headers.authorization;
         if (authHeader && authHeader.startsWith('Bearer ')) {
             const token = authHeader.slice(7);
-            const clientUser = loadUsers().find(u => u.sessionToken === token);
+            const clientUser = findUserByToken(token);
             if (clientUser) {
                 const collabCount = getClientPartnerCollabCount(clientUser.email, partner.id);
                 if (collabCount > 0) cercleGenesis = getCercleGenesisProgress(collabCount);
@@ -10606,7 +10646,7 @@ app.get('/api/partners/recommended', (req, res) => {
         var authHeader = req.headers.authorization || '';
         if (authHeader.toLowerCase().startsWith('bearer ')) {
             var token = authHeader.slice(7).trim();
-            var sessionUser = loadUsers().find(function(u) { return u.sessionToken === token; });
+            var sessionUser = findUserByToken(token);
             if (sessionUser) email = sessionUser.email;
         }
         var preferredCategories = email ? getClientPreferredCategories(email) : [];
@@ -10768,7 +10808,7 @@ app.post('/api/partner-reviews', (req, res) => {
         if (!token) return res.status(401).json({ success: false, message: 'Token manquant' });
 
         var users = loadUsers();
-        var user = users.find(function(u) { return u.sessionToken === token; });
+        var user = findUserByToken(token);
         if (!user) return res.status(401).json({ success: false, message: 'Session invalide' });
 
         var body = req.body || {};
@@ -12925,7 +12965,7 @@ app.post('/api/quotes/accept', async function(req, res) {
         }
         var authToken = authHeader.split(' ')[1];
         var users = loadUsers();
-        var authUser = users.find(function(u) { return u.sessionToken === authToken; });
+        var authUser = findUserByToken(authToken);
         if (!authUser) {
             return res.status(401).json({ error: 'Session invalide ou expirée' });
         }
@@ -13167,7 +13207,7 @@ app.post('/api/quotes/cancel', function(req, res) {
         }
         var authToken = authHeader.split(' ')[1];
         var users = loadUsers();
-        var authUser = users.find(function(u) { return u.sessionToken === authToken; });
+        var authUser = findUserByToken(authToken);
         if (!authUser) {
             return res.status(401).json({ error: 'Session invalide ou expirée' });
         }
@@ -13377,7 +13417,7 @@ app.get('/api/quotes/my-quote/:token', function(req, res) {
         }
         var authToken = authHeader.split(' ')[1];
         var users = loadUsers();
-        var authUser = users.find(function(u) { return u.sessionToken === authToken; });
+        var authUser = findUserByToken(authToken);
         if (!authUser) {
             return res.status(401).json({ error: 'Session invalide' });
         }
@@ -13433,7 +13473,7 @@ app.get('/api/quotes/by-order/:orderId', function(req, res) {
         }
         var authToken = authHeader.split(' ')[1];
         var users = loadUsers();
-        var authUser = users.find(function(u) { return u.sessionToken === authToken; });
+        var authUser = findUserByToken(authToken);
         if (!authUser) {
             return res.status(401).json({ error: 'Session invalide' });
         }
@@ -14043,7 +14083,7 @@ app.get('/api/partner/deliverables', (req, res) => {
         var authHeader = req.headers.authorization;
         if (!authHeader) return res.status(401).json({ error: 'Non autorise' });
         var token = authHeader.replace('Bearer ', '');
-        var partnerAuth = loadPartners().find(function(p) { return p.sessionToken === token; });
+        var partnerAuth = findPartnerByToken(token);
         if (!partnerAuth) return res.status(401).json({ error: 'Session partenaire invalide ou expirée' });
 
         var partnerId = partnerAuth.id;
@@ -14086,7 +14126,7 @@ app.post('/api/partner/deliverables/:id/upload', (req, res) => {
         var authHeader = req.headers.authorization;
         if (!authHeader) return res.status(401).json({ error: 'Non autorise' });
         var token = authHeader.replace('Bearer ', '');
-        var partnerAuth = loadPartners().find(function(p) { return p.sessionToken === token; });
+        var partnerAuth = findPartnerByToken(token);
         if (!partnerAuth) return res.status(401).json({ error: 'Session partenaire invalide ou expirée' });
 
         var fileUrl = req.body.file_url;
@@ -14146,7 +14186,7 @@ app.patch('/api/partner/deliverables/:id', (req, res) => {
         var authHeader = req.headers.authorization;
         if (!authHeader) return res.status(401).json({ error: 'Non autorise' });
         var token = authHeader.replace('Bearer ', '');
-        var partnerAuth = loadPartners().find(function(p) { return p.sessionToken === token; });
+        var partnerAuth = findPartnerByToken(token);
         if (!partnerAuth) return res.status(401).json({ error: 'Session partenaire invalide ou expirée' });
 
         var livrables = loadLivrables();
@@ -14181,7 +14221,7 @@ app.post('/api/partner/deliverables/:id/submit', (req, res) => {
         var authHeader = req.headers.authorization;
         if (!authHeader) return res.status(401).json({ error: 'Non autorise' });
         var token = authHeader.replace('Bearer ', '');
-        var partnerAuth = loadPartners().find(function(p) { return p.sessionToken === token; });
+        var partnerAuth = findPartnerByToken(token);
         if (!partnerAuth) return res.status(401).json({ error: 'Session partenaire invalide ou expirée' });
 
         var livrables = loadLivrables();
@@ -14379,7 +14419,7 @@ app.post('/api/feedbacks', function(req, res) {
         if (!token) return res.status(401).json({ ok: false, error: 'Token manquant' });
 
         var users = loadUsers();
-        var user = users.find(function(u) { return u.sessionToken === token; });
+        var user = findUserByToken(token);
         if (!user) return res.status(401).json({ ok: false, error: 'Session invalide' });
 
         var body = req.body || {};
@@ -14850,7 +14890,7 @@ app.get('/api/coworking/messages', function(req, res) {
         var isPartner = token === partnerToken;
         if (!isPartner) {
             var users = loadUsers();
-            var cu = users.find(function(u) { return u.sessionToken === token; });
+            var cu = findUserByToken(token);
             if (!cu) return res.status(401).json({ error: 'Non autorise' });
             var myRes = loadReservations().find(function(r) { return r.id === reservationId && r.client_email && r.client_email.toLowerCase() === cu.email.toLowerCase(); });
             if (!myRes) {
@@ -14890,7 +14930,7 @@ app.post('/api/coworking/messages', function(req, res) {
         var senderName = 'COM VISA', senderType = 'partner';
         if (!isPartner) {
             var users = loadUsers();
-            var cu = users.find(function(u) { return u.sessionToken === token; });
+            var cu = findUserByToken(token);
             if (!cu) return res.status(401).json({ error: 'Non autorise' });
             var reservation = loadReservations().find(function(r) { return r.id === reservationId && r.client_email && r.client_email.toLowerCase() === cu.email.toLowerCase(); });
             if (!reservation) {
@@ -14952,7 +14992,7 @@ app.get('/api/coworking/messages/unread', function(req, res) {
             return res.json(byRes);
         }
         var users = loadUsers();
-        var cu = users.find(function(u) { return u.sessionToken === token; });
+        var cu = findUserByToken(token);
         if (!cu) return res.status(401).json({ error: 'Non autorise' });
         var myIds = loadReservations().filter(function(r) { return r.client_email && r.client_email.toLowerCase() === cu.email.toLowerCase(); }).map(function(r) { return r.id; });
         // Inclure aussi les orders coworking
@@ -15058,7 +15098,7 @@ app.get('/api/coworking/devis/me', function(req, res) {
     try {
         var token = (req.headers.authorization || '').replace('Bearer ', '');
         var users = loadUsers();
-        var cu = users.find(function(u) { return u.sessionToken === token; });
+        var cu = findUserByToken(token);
         if (!cu) return res.status(401).json({ error: 'Non autorisé' });
         var all = loadCwDevis().filter(function(d) { return d.client_email && d.client_email.toLowerCase() === cu.email.toLowerCase(); });
         all.sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); });
@@ -15153,7 +15193,7 @@ app.put('/api/coworking/devis/:id/respond', function(req, res) {
     try {
         var token = (req.headers.authorization || '').replace('Bearer ', '');
         var users = loadUsers();
-        var cu = users.find(function(u) { return u.sessionToken === token; });
+        var cu = findUserByToken(token);
         if (!cu) return res.status(401).json({ error: 'Non autorisé' });
         var accepted = req.body.accepted === true || req.body.accepted === 'true';
         var installmentsChoice = parseInt(req.body.installments_choice) || 1;
