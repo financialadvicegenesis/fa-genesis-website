@@ -5204,6 +5204,7 @@ function showGenesisMissions(){
   var _gmTok = USER._token;
   fetch(_gmUrl, {headers:{'Authorization':'Bearer '+_gmTok}})
     .then(function(r){
+      if(r.status===401){ _handleStaleSession(); return null; }
       if(!r.ok){
         return r.json().then(function(d){ throw new Error(d.error || ('Erreur '+r.status)); }).catch(function(e){ throw (e && e.message) ? e : new Error('Erreur '+r.status); });
       }
@@ -5769,6 +5770,17 @@ function locked(title,desc){
     +'</div>';
 }
 
+var _staleSessionHandled=false;
+function _handleStaleSession(){
+  if(_staleSessionHandled) return;
+  _staleSessionHandled=true;
+  showToast('Session expirée','Reconnexion en cours...','info');
+  setTimeout(function(){
+    try{localStorage.removeItem('fa_genesis_session');localStorage.removeItem('fa_genesis_token');localStorage.removeItem('fa_push_subscribed');}catch(e){}
+    window.location.reload();
+  },2000);
+}
+
 function deconnexion(){
   if(confirm('Se déconnecter ?')){
     localStorage.removeItem('fa_genesis_session');
@@ -5978,7 +5990,7 @@ var _rvRating = 0;
 function _syncUserBadge(){
   if(!USER || GUEST || !USER._token) return;
   fetch(API+'/api/auth/me',{headers:{'Authorization':'Bearer '+USER._token}})
-    .then(function(r){ return r.json(); })
+    .then(function(r){ if(r.status===401){_handleStaleSession();return null;} return r.json(); })
     .then(function(d){
       if(!d || !d.success) return;
       USER.badge = d.badge;
