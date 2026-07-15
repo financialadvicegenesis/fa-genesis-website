@@ -6571,28 +6571,67 @@ function showClientWallet(){
 // ── RETRAIT GENESIS SAFE ─────────────────────────────────────────
 function _requestWalletWithdrawal(orderId,partnerName,amount){
   if(!USER||!USER._token)return;
-  var msg='Demander le retrait de '+parseFloat(amount).toFixed(2)+' € sécurisés pour la prestation de '+partnerName+'?\n\nVotre demande sera traitée sous 3-5 jours ouvrés.';
-  if(!confirm(msg))return;
-  var btn=null;
-  try{
-    var btns=document.querySelectorAll('#wallet-content button');
-    for(var i=0;i<btns.length;i++){if(btns[i].onclick&&btns[i].getAttribute('onclick')&&btns[i].getAttribute('onclick').indexOf(orderId)!==-1){btn=btns[i];break;}}
-  }catch(e){}
-  if(btn){btn.disabled=true;btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Traitement...';}
+  var existing=document.getElementById('wd-modal');if(existing)existing.remove();
+  var amtStr=parseFloat(amount).toFixed(2);
+  var overlay=document.createElement('div');
+  overlay.id='wd-modal';
+  overlay.style.cssText='position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.75);z-index:9999;display:flex;align-items:flex-end;justify-content:center;';
+  overlay.innerHTML='<div style="background:var(--card);border-radius:22px 22px 0 0;width:100%;max-width:500px;padding:24px 20px 44px;box-sizing:border-box;">'
+    +'<div style="width:40px;height:4px;background:#444;border-radius:2px;margin:0 auto 20px;"></div>'
+    +'<div style="font-size:16px;font-weight:800;color:#fff;margin-bottom:4px;"><i class="fa-solid fa-shield-halved" style="color:#FFD700;margin-right:8px;"></i>Retrait GENESIS SAFE™</div>'
+    +'<div style="font-size:13px;color:var(--muted);margin-bottom:20px;">Recevez <span style="color:#FFD700;font-weight:700;">'+amtStr+' €</span> — prestation : <span style="color:#ccc;">'+partnerName+'</span></div>'
+    +'<label style="font-size:12px;color:var(--muted);display:block;margin-bottom:5px;">Nom du titulaire du compte *</label>'
+    +'<input id="wd-holder" type="text" placeholder="Prénom NOM" style="width:100%;background:#1a1a1a;border:1.5px solid #333;border-radius:10px;padding:12px 14px;color:#fff;font-size:14px;box-sizing:border-box;margin-bottom:14px;outline:none;" />'
+    +'<label style="font-size:12px;color:var(--muted);display:block;margin-bottom:5px;">IBAN *</label>'
+    +'<input id="wd-iban" type="text" placeholder="FR76 1234 5678 9012 3456 7890 123" style="width:100%;background:#1a1a1a;border:1.5px solid #333;border-radius:10px;padding:12px 14px;color:#fff;font-size:14px;box-sizing:border-box;margin-bottom:14px;outline:none;letter-spacing:0.5px;" />'
+    +'<label style="font-size:12px;color:var(--muted);display:block;margin-bottom:5px;">BIC / SWIFT <span style="font-size:11px;">(optionnel)</span></label>'
+    +'<input id="wd-bic" type="text" placeholder="BNPAFRPP" style="width:100%;background:#1a1a1a;border:1.5px solid #333;border-radius:10px;padding:12px 14px;color:#fff;font-size:14px;box-sizing:border-box;margin-bottom:18px;outline:none;" />'
+    +'<div id="wd-err" style="display:none;color:#f03e3e;font-size:12px;margin-bottom:12px;padding:9px 12px;background:rgba(240,62,62,0.1);border-radius:8px;"><i class="fa-solid fa-circle-exclamation" style="margin-right:6px;"></i><span id="wd-err-msg"></span></div>'
+    +'<button id="wd-confirm-btn" onclick="_executeWalletWithdrawal(\''+orderId+'\')" style="width:100%;background:linear-gradient(135deg,#7b1010,#c62828);border:none;border-radius:12px;padding:14px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:10px;transition:opacity .2s;">'
+    +'<i class="fa-solid fa-rotate-left"></i> Confirmer le retrait</button>'
+    +'<button onclick="_closeWdModal()" style="width:100%;background:transparent;border:1.5px solid #333;border-radius:12px;padding:13px;color:var(--muted);font-size:14px;cursor:pointer;">Annuler</button>'
+    +'</div>';
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click',function(e){if(e.target===overlay)_closeWdModal();});
+  setTimeout(function(){var el=document.getElementById('wd-holder');if(el)el.focus();},100);
+}
+function _closeWdModal(){var m=document.getElementById('wd-modal');if(m)m.remove();}
+function _executeWalletWithdrawal(orderId){
+  if(!USER||!USER._token)return;
+  var holderEl=document.getElementById('wd-holder');
+  var ibanEl=document.getElementById('wd-iban');
+  var bicEl=document.getElementById('wd-bic');
+  var errDiv=document.getElementById('wd-err');
+  var errMsg=document.getElementById('wd-err-msg');
+  var btn=document.getElementById('wd-confirm-btn');
+  if(!holderEl||!ibanEl||!errDiv||!btn)return;
+  var holder=holderEl.value.trim();
+  var iban=ibanEl.value.replace(/\s/g,'').toUpperCase();
+  var bic=bicEl?bicEl.value.trim().toUpperCase():'';
+  function showErr(msg){errMsg.textContent=msg;errDiv.style.display='block';}
+  errDiv.style.display='none';
+  if(!holder){showErr('Veuillez renseigner le nom du titulaire.');return;}
+  if(iban.length<14){showErr('IBAN invalide (trop court). Vérifiez le format.');return;}
+  btn.disabled=true;btn.style.opacity='0.7';
+  btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Traitement en cours...';
   fetch((window.FA_GENESIS_API||API)+'/api/client/wallet/withdraw/'+orderId,{
     method:'POST',
-    headers:{'Authorization':'Bearer '+USER._token,'Content-Type':'application/json'}
+    headers:{'Authorization':'Bearer '+USER._token,'Content-Type':'application/json'},
+    body:JSON.stringify({account_holder:holder,iban:iban,bic:bic})
   }).then(function(r){return r.json();}).then(function(data){
     if(data.ok){
-      showToast('Retrait initié',''+data.message,'success');
-      setTimeout(function(){showClientWallet();},1500);
+      _closeWdModal();
+      showToast('Retrait initié',data.message,'success');
+      setTimeout(function(){showClientWallet();},1800);
     }else{
-      showToast('Erreur',data.error||'Impossible d\'initier le retrait','error');
-      if(btn){btn.disabled=false;btn.innerHTML='<i class="fa-solid fa-rotate-left"></i> Retirer mon argent';}
+      showErr(data.error||'Impossible d\'initier le retrait.');
+      btn.disabled=false;btn.style.opacity='1';
+      btn.innerHTML='<i class="fa-solid fa-rotate-left"></i> Confirmer le retrait';
     }
   }).catch(function(){
-    showToast('Erreur','Erreur de connexion au serveur','error');
-    if(btn){btn.disabled=false;btn.innerHTML='<i class="fa-solid fa-rotate-left"></i> Retirer mon argent';}
+    showErr('Erreur de connexion. Vérifiez votre connexion internet.');
+    btn.disabled=false;btn.style.opacity='1';
+    btn.innerHTML='<i class="fa-solid fa-rotate-left"></i> Confirmer le retrait';
   });
 }
 

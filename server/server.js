@@ -3422,6 +3422,7 @@ app.get('/api/client/wallet', function(req, res) {
                    o.client_info && o.client_info.email &&
                    o.client_info.email.toLowerCase() === user.email.toLowerCase() &&
                    o.status !== 'cancelled' &&
+                   o.status !== 'refunded' &&
                    Array.isArray(o.installments) && o.installments.length > 0;
         });
 
@@ -3518,6 +3519,14 @@ app.post('/api/client/wallet/withdraw/:order_id', async function(req, res) {
             return res.status(400).json({ error: 'Aucun paiement à rembourser' });
         }
 
+        // Lire et valider les coordonnées bancaires du client
+        var bankDetails = req.body || {};
+        var accountHolder = (bankDetails.account_holder || '').trim();
+        var iban = (bankDetails.iban || '').replace(/\s/g, '').toUpperCase();
+        var bic = (bankDetails.bic || '').trim().toUpperCase();
+        if (!accountHolder) return res.status(400).json({ error: 'Veuillez renseigner le nom du titulaire du compte' });
+        if (iban.length < 14) return res.status(400).json({ error: 'IBAN invalide' });
+
         // Vérifier l'éligibilité : prestataire inactif OU n'a pas encore accepté
         var dispatches = loadDispatches();
         var partners = loadPartners();
@@ -3540,25 +3549,32 @@ app.post('/api/client/wallet/withdraw/:order_id', async function(req, res) {
             }
         }
 
-        // Lancer le remboursement
+        // Stocker les coordonnées bancaires + lancer le remboursement
         var reason = partnerInactive ? 'Prestataire inactif' : 'Prestataire n\'a pas répondu';
-        updateOrder(orderId, { refund_reason: reason });
+        updateOrder(orderId, {
+            refund_reason: reason,
+            withdrawal_bank: { account_holder: accountHolder, iban: iban, bic: bic, requested_at: new Date().toISOString() }
+        });
         var refunded = await refundClientOrder(order);
 
-        // Notifier l'admin si le remboursement a échoué (déjà fait dans refundClientOrder)
         if (refunded) {
-            console.log('[WALLET_WITHDRAW] Remboursement réussi pour', orderId);
+            console.log('[WALLET_WITHDRAW] Remboursement auto réussi pour', orderId);
         } else {
-            console.warn('[WALLET_WITHDRAW] Remboursement automatique échoué pour', orderId, '- action manuelle requise');
+            // Le remboursement auto a échoué : notifier l'admin avec les coordonnées bancaires
+            console.warn('[WALLET_WITHDRAW] Remboursement auto échoué pour', orderId, '- virement IBAN requis');
+            var ibanMasked = iban.length > 8 ? iban.substring(0, 4) + '****' + iban.slice(-4) : iban;
+            notifyUser(null, 'admin', 'withdrawal_manual', '💳 Virement IBAN à effectuer',
+                'Retrait GENESIS SAFE – commande ' + orderId + ' – Titulaire : ' + accountHolder + ' – IBAN : ' + ibanMasked + (bic ? ' – BIC : ' + bic : ''),
+                '#admin');
         }
 
         res.json({
             ok: true,
             refund_success: refunded,
             message: refunded
-                ? 'Remboursement initié avec succès. Votre argent sera crédité sous 3-5 jours ouvrés.'
-                : 'Votre demande a été enregistrée. Notre équipe traitera le remboursement manuellement sous 48h.',
-            refund_method: order.paypal_capture_id ? 'paypal' : (order.transaction_id ? 'sumup' : 'manuel')
+                ? 'Remboursement initié. L\'argent sera crédité sur votre mode de paiement d\'origine sous 3-5 jours ouvrés.'
+                : 'Vos coordonnées bancaires ont été transmises à notre équipe. Vous recevrez un virement SEPA sous 24-48h.',
+            refund_method: order.paypal_capture_id ? 'paypal' : (order.transaction_id ? 'sumup' : 'virement_iban')
         });
     } catch(e) {
         console.error('[WALLET_WITHDRAW]', e.message);
