@@ -15462,28 +15462,6 @@ app.post('/api/admin/linkedin/generate-message', async function(req, res) {
 // un message generique ("Erreur de connexion"). On garantit ici que TOUTE
 // reponse d'erreur reste du JSON valide.
 
-// Route inconnue (404)
-app.use((req, res) => {
-    res.status(404).json({ error: 'Route introuvable' });
-});
-
-// Erreurs non gerees (payload trop gros, JSON malforme, exception non rattrapee...)
-app.use((err, req, res, next) => {
-    console.error('[ERREUR GLOBALE]', req.method, req.path, err);
-    if (err && err.type === 'entity.too.large') {
-        return res.status(413).json({ error: 'Fichier ou donnees trop volumineux.' });
-    }
-    if (err && (err.type === 'entity.parse.failed' || err instanceof SyntaxError)) {
-        return res.status(400).json({ error: 'Requete invalide.' });
-    }
-    res.status(err && err.status ? err.status : 500).json({ error: 'Erreur serveur inattendue.' });
-});
-
-// ============================================================
-// DEMARRAGE DU SERVEUR
-// ============================================================
-
-
 // ===== SUPPORT CLIENT =====
 
 app.post('/api/support/new', function(req, res) {
@@ -15573,6 +15551,28 @@ app.post('/api/admin/support/:id/close', authenticateAdmin, function(req, res) {
     saveSupportTickets(tickets);
     res.json({ ok: true });
 });
+
+// Route inconnue (404)
+app.use((req, res) => {
+    res.status(404).json({ error: 'Route introuvable' });
+});
+
+// Erreurs non gerees (payload trop gros, JSON malforme, exception non rattrapee...)
+app.use((err, req, res, next) => {
+    console.error('[ERREUR GLOBALE]', req.method, req.path, err);
+    if (err && err.type === 'entity.too.large') {
+        return res.status(413).json({ error: 'Fichier ou donnees trop volumineux.' });
+    }
+    if (err && (err.type === 'entity.parse.failed' || err instanceof SyntaxError)) {
+        return res.status(400).json({ error: 'Requete invalide.' });
+    }
+    res.status(err && err.status ? err.status : 500).json({ error: 'Erreur serveur inattendue.' });
+});
+
+// ============================================================
+// DEMARRAGE DU SERVEUR
+// ============================================================
+
 
 app.listen(PORT, async () => {
     // Restaurer les données depuis MongoDB Atlas (si configuré)
