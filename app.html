@@ -6528,6 +6528,11 @@ function showClientWallet(){
       if(held.length>0){
         html+='<div style="font-size:10px;color:#FFD700;font-weight:800;letter-spacing:1px;margin:0 0 10px;">EN ATTENTE DE LIVRAISON</div>';
         html+=held.map(function(o){
+          var withdrawBtn='';
+          if(o.can_withdraw){
+            withdrawBtn='<button onclick="_requestWalletWithdrawal(\''+o.order_id+'\',\''+o.partner_name.replace(/'/g,'&#39;')+'\','+o.held_amount+')" style="margin-top:10px;width:100%;background:linear-gradient(135deg,#7b1010,#b71c1c);border:none;border-radius:10px;padding:10px 14px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">'
+              +'<i class="fa-solid fa-rotate-left"></i> Retirer mon argent</button>';
+          }
           return '<div class="resa-card" style="margin-bottom:10px;border-color:#333;">'
             +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:4px;">'
             +'<div style="font-size:14px;font-weight:700;color:#fff;">'+o.service_label+'</div>'
@@ -6537,6 +6542,8 @@ function showClientWallet(){
             +'<div style="display:flex;align-items:center;gap:6px;font-size:11px;color:#a89000;">'
             +'<i class="fa-solid fa-lock" style="font-size:10px;"></i> '+o.status_label
             +'</div>'
+            +(o.can_withdraw?'<div style="font-size:11px;color:#f03e3e;margin-top:6px;"><i class="fa-solid fa-triangle-exclamation" style="font-size:10px;"></i> '+o.withdraw_reason+'</div>':'')
+            +withdrawBtn
             +'</div>';
         }).join('');
       }
@@ -6559,6 +6566,34 @@ function showClientWallet(){
       var el=document.getElementById('wallet-content');
       if(el)el.innerHTML='<div class="espace-empty">Impossible de charger le portefeuille.</div>';
     });
+}
+
+// ── RETRAIT GENESIS SAFE ─────────────────────────────────────────
+function _requestWalletWithdrawal(orderId,partnerName,amount){
+  if(!USER||!USER._token)return;
+  var msg='Demander le retrait de '+parseFloat(amount).toFixed(2)+' € sécurisés pour la prestation de '+partnerName+'?\n\nVotre demande sera traitée sous 3-5 jours ouvrés.';
+  if(!confirm(msg))return;
+  var btn=null;
+  try{
+    var btns=document.querySelectorAll('#wallet-content button');
+    for(var i=0;i<btns.length;i++){if(btns[i].onclick&&btns[i].getAttribute('onclick')&&btns[i].getAttribute('onclick').indexOf(orderId)!==-1){btn=btns[i];break;}}
+  }catch(e){}
+  if(btn){btn.disabled=true;btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Traitement...';}
+  fetch((window.FA_GENESIS_API||API)+'/api/client/wallet/withdraw/'+orderId,{
+    method:'POST',
+    headers:{'Authorization':'Bearer '+USER._token,'Content-Type':'application/json'}
+  }).then(function(r){return r.json();}).then(function(data){
+    if(data.ok){
+      showToast('Retrait initié',''+data.message,'success');
+      setTimeout(function(){showClientWallet();},1500);
+    }else{
+      showToast('Erreur',data.error||'Impossible d\'initier le retrait','error');
+      if(btn){btn.disabled=false;btn.innerHTML='<i class="fa-solid fa-rotate-left"></i> Retirer mon argent';}
+    }
+  }).catch(function(){
+    showToast('Erreur','Erreur de connexion au serveur','error');
+    if(btn){btn.disabled=false;btn.innerHTML='<i class="fa-solid fa-rotate-left"></i> Retirer mon argent';}
+  });
 }
 
 // ── HTML ESCAPE HELPER ───────────────────────────────────────────

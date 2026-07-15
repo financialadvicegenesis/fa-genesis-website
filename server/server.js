@@ -3415,6 +3415,7 @@ app.get('/api/client/wallet', function(req, res) {
         var orders = loadOrders();
         var payouts = loadPayouts();
         var partners = loadPartners();
+        var dispatches = loadDispatches();
 
         var clientOrders = orders.filter(function(o) {
             return o.product_type === 'partner_service' &&
@@ -3450,6 +3451,14 @@ app.get('/api/client/wallet', function(req, res) {
             var statusLabel = held > 0 && order.delivery_confirmed ? 'En cours de versement'
                             : held > 0 ? 'Sécurisé jusqu\'à la livraison'
                             : 'Versé au prestataire ✓';
+            // Éligibilité retrait GENESIS SAFE
+            var dispatch = dispatches.find(function(d) { return d.order_id === order.id; });
+            var partnerInactive = partner && partner.accountStatus && partner.accountStatus !== 'active';
+            var dispatchNotAccepted = !dispatch || dispatch.status === 'pending_acceptance';
+            var canWithdraw = held > 0 && (dispatchNotAccepted || partnerInactive);
+            var withdrawReason = canWithdraw
+                ? (partnerInactive ? 'Le prestataire n\'est pas disponible' : 'Le prestataire n\'a pas encore accepté la mission')
+                : null;
             orderRows.push({
                 order_id: order.id,
                 service_label: order.product_name || 'Prestation',
@@ -3458,6 +3467,8 @@ app.get('/api/client/wallet', function(req, res) {
                 held_amount: Math.round(held * 100) / 100,
                 released_amount: Math.round(released * 100) / 100,
                 status_label: statusLabel,
+                can_withdraw: canWithdraw,
+                withdraw_reason: withdrawReason,
                 created_at: order.created_at
             });
         });
@@ -3473,6 +3484,85 @@ app.get('/api/client/wallet', function(req, res) {
     } catch(e) {
         console.error('[CLIENT_WALLET]', e.message);
         res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * POST /api/client/wallet/withdraw/:order_id
+ * Demande de retrait GENESIS SAFE : rembourse le client si le prestataire n'a pas répondu ou est inactif.
+ */
+app.post('/api/client/wallet/withdraw/:order_id', async function(req, res) {
+    try {
+        var token = (req.headers.authorization || '').replace('Bearer ', '');
+        var user = findUserByToken(token);
+        if (!user) return res.status(401).json({ error: 'Non autorisé' });
+
+        var orderId = req.params.order_id;
+        var orders = loadOrders();
+        var orderIdx = orders.findIndex(function(o) { return o.id === orderId; });
+        if (orderIdx === -1) return res.status(404).json({ error: 'Commande introuvable' });
+        var order = orders[orderIdx];
+
+        // Vérifier que la commande appartient à ce client
+        if (!order.client_info || (order.client_info.email || '').toLowerCase() !== user.email.toLowerCase()) {
+            return res.status(403).json({ error: 'Accès refusé' });
+        }
+        // Vérifier que la commande est une prestation partenaire non remboursée
+        if (order.product_type !== 'partner_service') {
+            return res.status(400).json({ error: 'Ce type de commande ne supporte pas le retrait GENESIS SAFE' });
+        }
+        if (order.status === 'refunded' || order.status === 'cancelled') {
+            return res.status(400).json({ error: 'Cette commande a déjà été remboursée ou annulée' });
+        }
+        if (!order.deposit_paid && !order.balance_paid) {
+            return res.status(400).json({ error: 'Aucun paiement à rembourser' });
+        }
+
+        // Vérifier l'éligibilité : prestataire inactif OU n'a pas encore accepté
+        var dispatches = loadDispatches();
+        var partners = loadPartners();
+        var dispatch = dispatches.find(function(d) { return d.order_id === orderId; });
+        var partner = partners.find(function(p) { return p.id === order.partner_id; });
+        var partnerInactive = partner && partner.accountStatus && partner.accountStatus !== 'active';
+        var dispatchNotAccepted = !dispatch || dispatch.status === 'pending_acceptance';
+        if (!partnerInactive && !dispatchNotAccepted) {
+            return res.status(400).json({ error: 'Le retrait n\'est possible que si le prestataire n\'a pas encore accepté la mission ou est inactif' });
+        }
+
+        // Annuler le dispatch si existant
+        if (dispatch) {
+            var dIdx = dispatches.findIndex(function(d) { return d.id === dispatch.id; });
+            if (dIdx !== -1) {
+                dispatches[dIdx].status = 'cancelled';
+                dispatches[dIdx].cancelled_at = new Date().toISOString();
+                dispatches[dIdx].cancel_reason = 'Retrait client GENESIS SAFE';
+                saveDispatches(dispatches);
+            }
+        }
+
+        // Lancer le remboursement
+        var reason = partnerInactive ? 'Prestataire inactif' : 'Prestataire n\'a pas répondu';
+        updateOrder(orderId, { refund_reason: reason });
+        var refunded = await refundClientOrder(order);
+
+        // Notifier l'admin si le remboursement a échoué (déjà fait dans refundClientOrder)
+        if (refunded) {
+            console.log('[WALLET_WITHDRAW] Remboursement réussi pour', orderId);
+        } else {
+            console.warn('[WALLET_WITHDRAW] Remboursement automatique échoué pour', orderId, '- action manuelle requise');
+        }
+
+        res.json({
+            ok: true,
+            refund_success: refunded,
+            message: refunded
+                ? 'Remboursement initié avec succès. Votre argent sera crédité sous 3-5 jours ouvrés.'
+                : 'Votre demande a été enregistrée. Notre équipe traitera le remboursement manuellement sous 48h.',
+            refund_method: order.paypal_capture_id ? 'paypal' : (order.transaction_id ? 'sumup' : 'manuel')
+        });
+    } catch(e) {
+        console.error('[WALLET_WITHDRAW]', e.message);
+        res.status(500).json({ error: 'Erreur serveur : ' + e.message });
     }
 });
 
