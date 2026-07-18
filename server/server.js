@@ -2393,7 +2393,17 @@ app.post('/api/orders/create', (req, res) => {
             // Le paiement n'est autorisé qu'après acceptation explicite du partenaire ET signature
             // du contrat (proposition structurée + signature électronique, GENESIS CONTRACT™) :
             // le client doit d'abord avoir une demande au statut 'signed' pour ce couple partenaire/prestation.
-            const psoTotal = parseFloat(service.price);
+            var psoTotal = parseFloat(service.price);
+            if (req.body.use_referral_discount === true) {
+                var psoAuthTok = (req.headers.authorization || '').replace('Bearer ', '').trim();
+                var psoActUser = psoAuthTok ? findUserByToken(psoAuthTok) : null;
+                if (psoActUser && psoActUser.referral_discount && !psoActUser.referral_discount.applied) {
+                    var psoDisPct = psoActUser.referral_discount.pct || REFERRAL_FILLEUL_DISCOUNT_PCT;
+                    psoTotal = Math.round(psoTotal * (1 - psoDisPct / 100) * 100) / 100;
+                    var psoUsrs = loadUsers(); var psoUIdx = psoUsrs.findIndex(function(u) { return u.id === psoActUser.id; });
+                    if (psoUIdx !== -1) { psoUsrs[psoUIdx].referral_discount = { pct: psoDisPct, applied: true, applied_at: new Date().toISOString() }; saveUsers(psoUsrs); }
+                }
+            }
             // GENESIS SAFE™ two-tier :
             // ≤ 300 € → paiement intégral immédiat, fonds retenus jusqu'à la livraison (payment_tier='small')
             // > 300 € → acompte 30 % versé au prestataire + solde 70 % à la livraison (payment_tier='large')
@@ -6428,6 +6438,7 @@ app.post('/api/auth/register', async (req, res) => {
             payments: [],
             favoris: [],
             referredBy: referredBy,
+            referral_discount: referredBy ? { pct: REFERRAL_FILLEUL_DISCOUNT_PCT, applied: false } : null,
             sessionToken: sessionToken,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
@@ -6688,6 +6699,7 @@ app.get('/api/auth/me', (req, res) => {
             referralCode: user.id,
             referralCount: referralCount,
             isCerclePrivilege: getClientReferralStatus(referralCount) === 'cercle_privilege',
+            referralDiscount: user.referral_discount || null,
             patrimoineGenesis: {
                 prestationsRealisees: completedOrders,
                 partenairesDistincts: getClientDistinctPartnerCount(user.email),
@@ -6700,6 +6712,21 @@ app.get('/api/auth/me', (req, res) => {
         console.error('Erreur verification session:', error);
         res.status(500).json({ error: 'Erreur lors de la verification' });
     }
+});
+
+app.post('/api/auth/referral-discount/mark-used', function(req, res) {
+    var muUser = authenticateClient(req, res);
+    if (!muUser) return;
+    try {
+        var muUsers = loadUsers();
+        var muIdx = muUsers.findIndex(function(u) { return u.email === muUser.email; });
+        if (muIdx !== -1 && muUsers[muIdx].referral_discount && !muUsers[muIdx].referral_discount.applied) {
+            muUsers[muIdx].referral_discount.applied = true;
+            muUsers[muIdx].referral_discount.applied_at = new Date().toISOString();
+            saveUsers(muUsers);
+        }
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ error: 'Erreur serveur' }); }
 });
 
 // POST /api/users/favorites/:partnerId/toggle — ajoute/retire un partenaire des favoris du client connecte
@@ -9947,10 +9974,12 @@ const GENESIS_POINT_VALUES = {
     prestationRealisee: 20,
     reservationEffectuee: 20,
     avisCinqEtoiles: 30,
+    avisLaisse: 5,
     workshop: 50,
     evenement: 75,
     parrainage: 100
 };
+const REFERRAL_FILLEUL_DISCOUNT_PCT = 10;
 
 function getEventAttendancePoints(personId) {
     if (!personId) return 0;
@@ -9983,7 +10012,9 @@ function getClientGenesisPoints(user, completedOrders) {
     if (!user) return 0;
     var orders = typeof completedOrders === 'number' ? completedOrders : getClientCompletedOrders(user.email);
     var referrals = getClientReferralCount(user.id);
+    var reviewsLeft = loadPartnerReviews().filter(function(r) { return (r.userEmail || '').toLowerCase() === user.email.toLowerCase(); }).length;
     return (orders * GENESIS_POINT_VALUES.reservationEffectuee)
+        + (reviewsLeft * GENESIS_POINT_VALUES.avisLaisse)
         + (referrals * GENESIS_POINT_VALUES.parrainage)
         + getEventAttendancePoints(user.id);
 }
@@ -10957,7 +10988,17 @@ app.post('/api/partner-reviews', (req, res) => {
         dispatches[dIdx].review_submitted = true;
         saveDispatches(dispatches);
 
-        res.json({ success: true, review: review });
+        if (rating === 5 && review.partnerId) {
+            var allPtnrs = loadPartners();
+            var rvPIdx = allPtnrs.findIndex(function(p) { return p.id === review.partnerId; });
+            if (rvPIdx !== -1) {
+                if (!Array.isArray(allPtnrs[rvPIdx].pendingQGGains)) allPtnrs[rvPIdx].pendingQGGains = [];
+                allPtnrs[rvPIdx].pendingQGGains.push({ type: 'avisCinqEtoiles', amount: GENESIS_POINT_VALUES.avisCinqEtoiles, from: review.userName, created_at: review.createdAt });
+                savePartners(allPtnrs);
+            }
+        }
+
+        res.json({ success: true, review: review, client_qg_gain: GENESIS_POINT_VALUES.avisLaisse });
     } catch (error) {
         console.error('[PARTNER-REVIEWS] Erreur soumission avis:', error);
         res.status(500).json({ success: false, message: 'Erreur lors de l\'enregistrement de l\'avis' });
@@ -11827,6 +11868,13 @@ app.get('/api/partner/reputation', authenticatePartner, function(req, res) {
         var classement = getPartnerCategoryRank(partner, categoryPartners);
         var referralCount = getPartnerReferralCount(partner.id);
 
+        var pendingQGGains = Array.isArray(partner.pendingQGGains) ? partner.pendingQGGains.slice() : [];
+        if (pendingQGGains.length > 0) {
+            var repAllPtnrs = loadPartners();
+            var repPIdx = repAllPtnrs.findIndex(function(p) { return p.id === partner.id; });
+            if (repPIdx !== -1) { repAllPtnrs[repPIdx].pendingQGGains = []; savePartners(repAllPtnrs); }
+        }
+
         res.json({
             success: true,
             rating: summary,
@@ -11836,6 +11884,7 @@ app.get('/api/partner/reputation', authenticatePartner, function(req, res) {
             genesisLevel: getGenesisLevel(badge),
             constellation: getConstellationTier(partner),
             founderBadge: partner.founderBadge === true,
+            pendingQGGains: pendingQGGains,
             missionsCompleted: missionsCompleted,
             revenusGeneres: Math.round(revenusGeneres * 100) / 100,
             commissionsVersees: Math.round(commissionsVersees * 100) / 100,

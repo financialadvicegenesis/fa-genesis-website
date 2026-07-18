@@ -285,6 +285,7 @@ a{text-decoration:none;color:inherit}
 .greet-name{font-size:22px;font-weight:900;color:var(--text);margin-top:2px;font-family:'Unbounded',sans-serif}
 
 /* Status card */
+.home-qg-widget{background:linear-gradient(135deg,#1a1200,#0d0d00);border:1.5px solid rgba(255,215,0,.3);border-radius:16px;padding:14px 16px;margin-bottom:12px}
 .status-card{margin:16px;border-radius:16px;overflow:hidden;position:relative;
   background:linear-gradient(135deg,rgba(26,0,38,.75) 0%,rgba(13,0,26,.75) 100%);
   background:rgba(26,0,38,.92);
@@ -2314,6 +2315,9 @@ a{text-decoration:none;color:inherit}
         <div class="greet-name" id="greetName">GENESIS</div>
       </div>
 
+      <!-- Widget progression QG -->
+      <div id="home-qg-widget" style="padding:0 16px 4px"></div>
+
       <!-- Status commande active -->
       <div id="statusCard" class="status-card" style="display:none">
         <div class="status-card-top">
@@ -2693,6 +2697,7 @@ a{text-decoration:none;color:inherit}
 
         <!-- Sub-screen: Home -->
         <div class="ptnr-screen on" id="ptnr-screen-home">
+          <div id="ptnr-home-qg-widget" style="padding:0 16px 12px"></div>
           <div id="ptnr-home-list" style="padding:0 0 16px;"></div>
 
           <!-- Mes tarifs & prestations (style menu "Uber Eats / Deliveroo") -->
@@ -5982,7 +5987,75 @@ function activerNotifs(){
   else if('Notification' in window) Notification.requestPermission();
 }
 
-// ── AVIS PARTENAIRE (post-paiement solde) ────────────────────
+// ── WIDGET PROGRESSION QG ────────────────────────────────────
+var _ptnrLastRepData = null;
+var _payReferralDiscountUsed = false;
+
+var _QG_LEVEL_THRESHOLDS = [
+  { badge: null,      level: 'Explorateur', nextPts: 100,  nextLabel: 'Créateur' },
+  { badge: 'bronze',  level: 'Créateur',    nextPts: 300,  nextLabel: 'Bâtisseur' },
+  { badge: 'argent',  level: 'Bâtisseur',   nextPts: 600,  nextLabel: 'Visionnaire' },
+  { badge: 'or',      level: 'Visionnaire', nextPts: 1000, nextLabel: 'Générateur' },
+  { badge: 'prestige',level: 'Générateur',  nextPts: 0,    nextLabel: '' },
+  { badge: 'elite',   level: 'Générateur',  nextPts: 0,    nextLabel: '' },
+  { badge: 'fondateur',level:'Générateur',  nextPts: 0,    nextLabel: '' }
+];
+
+function _qgWidgetHtml(pts, level, badge, badgeProgress) {
+  try {
+    var tier = null;
+    for(var i=0;i<_QG_LEVEL_THRESHOLDS.length;i++){
+      if(_QG_LEVEL_THRESHOLDS[i].badge === badge){ tier = _QG_LEVEL_THRESHOLDS[i]; break; }
+    }
+    if(!tier) tier = _QG_LEVEL_THRESHOLDS[0];
+    var pct = (badgeProgress && typeof badgeProgress.percent === 'number') ? badgeProgress.percent : (tier.nextPts > 0 ? Math.min(100, Math.round(pts / tier.nextPts * 100)) : 100);
+    var nextInfo = (tier.nextLabel && tier.nextPts > 0) ? '<div style="font-size:11px;color:var(--gray);margin-top:5px;text-align:right">Prochain : ' + tier.nextLabel + ' (' + tier.nextPts + ' QG)</div>' : '';
+    return '<div class="home-qg-widget">'
+      + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">'
+      + '<span style="font-size:12px;color:var(--gray);font-weight:700;letter-spacing:.04em;text-transform:uppercase">Niveau Genesis</span>'
+      + '<span style="font-size:13px;color:#FFD700;font-weight:800"><i class="fa-solid fa-bolt"></i> ' + pts + ' QG</span>'
+      + '</div>'
+      + '<div style="font-size:15px;font-weight:800;color:#fff;margin-bottom:8px">' + (level || tier.level) + '</div>'
+      + '<div style="background:rgba(255,255,255,.1);border-radius:99px;height:6px;overflow:hidden">'
+      + '<div style="background:linear-gradient(90deg,#FFD700,#FFC300);height:100%;width:' + pct + '%;border-radius:99px;transition:width .6s"></div>'
+      + '</div>'
+      + nextInfo
+      + '</div>';
+  } catch(e){ return ''; }
+}
+
+function _renderHomeQGWidget() {
+  var el = document.getElementById('home-qg-widget');
+  if(!el || !USER || GUEST) { if(el) el.innerHTML = ''; return; }
+  try {
+    el.innerHTML = _qgWidgetHtml(
+      parseInt(USER.genesisPoints) || 0,
+      USER.genesisLevel || 'Explorateur',
+      USER.badge || null,
+      USER.badgeProgress || null
+    );
+  } catch(e){}
+}
+
+function _renderPartnerHomeQGWidget(data) {
+  var el = document.getElementById('ptnr-home-qg-widget');
+  if(!el || !data) return;
+  try {
+    if(Array.isArray(data.pendingQGGains) && data.pendingQGGains.length > 0) {
+      data.pendingQGGains.forEach(function(g) {
+        showToast('+' + g.amount + ' QG', 'Avis 5 étoiles de ' + (g.from||'un client'), 'success');
+      });
+    }
+    el.innerHTML = _qgWidgetHtml(
+      parseInt(data.genesisPoints) || 0,
+      data.genesisLevel || 'Explorateur',
+      data.founderBadge ? 'fondateur' : (data.badge || null),
+      data.badgeProgress || null
+    );
+  } catch(e){}
+}
+
+// ── AVIS PARTENAIRE (post-paiement solde) ──────────────���─────
 var _rvQueue = [];
 var _rvCurrent = null;
 var _rvRating = 0;
@@ -6004,7 +6077,9 @@ function _syncUserBadge(){
       USER.referralCount = d.referralCount;
       USER.isCerclePrivilege = d.isCerclePrivilege;
       USER.patrimoineGenesis = d.patrimoineGenesis;
+      USER.referralDiscount = d.referralDiscount || null;
       try{ localStorage.setItem('fa_genesis_session', JSON.stringify(USER)); }catch(e){}
+      _renderHomeQGWidget();
       if(document.getElementById('tab-profil') && document.getElementById('tab-profil').classList.contains('on') && !sessionStorage.getItem('fa_nav_section')) renderProfil();
     }).catch(function(){});
 }
@@ -6060,6 +6135,7 @@ function _rvSubmit(){
   }).then(function(r){ return r.json(); }).then(function(d){
     btn.disabled = false;
     document.getElementById('review-overlay').className = '';
+    if(d && d.client_qg_gain) showToast('+'+d.client_qg_gain+' QG', 'Merci pour votre avis', 'success');
     _rvShowNext();
   }).catch(function(){
     btn.disabled = false;
@@ -7405,11 +7481,19 @@ function openPayOverlay(total, cartItems){
   if(!overlay || !sheet) return;
 
   _payCheckoutId = null; _payCheckoutWaiters = [];
+  _payReferralDiscountUsed = false;
   _payCartSnap = cartItems; _payTotal = total;
 
+  // Réduction filleul parrainage (-10% première commande)
+  var _rdiscount = (USER && !GUEST && USER.referralDiscount && !USER.referralDiscount.applied) ? USER.referralDiscount.pct : 0;
+  if(_rdiscount > 0){
+    _payTotal = Math.round(_payTotal * (1 - _rdiscount / 100) * 100) / 100;
+    _payReferralDiscountUsed = true;
+  }
+
   // Acompte 30 % obligatoire — le client ne choisit pas le plan
-  var deposit = parseFloat((total * 0.30).toFixed(2));
-  var balance  = parseFloat((total - deposit).toFixed(2));
+  var deposit = parseFloat((_payTotal * 0.30).toFixed(2));
+  var balance  = parseFloat((_payTotal - deposit).toFixed(2));
   // Récupère le nombre d'échelons depuis le panier (max des offres du panier)
   var echelons = 2;
   if(cartItems && cartItems.length){
@@ -7422,7 +7506,7 @@ function openPayOverlay(total, cartItems){
   var amtEl = document.getElementById('pay-amount-val');
   var lblEl = document.getElementById('pay-amount-label');
   if(amtEl) amtEl.textContent = deposit.toFixed(2) + ' €';
-  if(lblEl) lblEl.textContent = 'Acompte obligatoire (30 %)';
+  if(lblEl) lblEl.textContent = 'Acompte obligatoire (30 %)' + (_rdiscount > 0 ? ' · -'+_rdiscount+'% parrainage appliqué' : '');
 
   // Device detection
   var ua = navigator.userAgent || '';
@@ -7651,6 +7735,8 @@ function _startNativeApplePay(total){
           var ws3 = document.getElementById('pay-screen-widget'); if(ws3) ws3.style.display = 'none';
           var succ3 = document.getElementById('pay-success'); if(succ3) succ3.style.display = '';
           launchConfetti(); showToast('Paiement réussi !', 'Votre commande est confirmée', 'success');
+          setTimeout(function(){ showToast('+20 QG', 'Mission complétée', 'success'); }, 1600);
+          if(_payReferralDiscountUsed){ _payReferralDiscountUsed=false; fetch((window.FA_GENESIS_API||API)+'/api/auth/referral-discount/mark-used',{method:'POST',headers:{'Authorization':'Bearer '+(USER&&USER._token?USER._token:'')}}).catch(function(){}); }
         } else {
           _showPayError(res.error || 'Paiement Apple Pay refusé.');
         }
@@ -7696,6 +7782,8 @@ function _mountSumUpWidget(checkoutId){
             var ws = document.getElementById('pay-screen-widget'); if(ws) ws.style.display = 'none';
             var succ = document.getElementById('pay-success'); if(succ) succ.style.display = '';
             launchConfetti(); showToast('Paiement réussi !', 'Votre commande est confirmée', 'success');
+            setTimeout(function(){ showToast('+20 QG', 'Mission complétée', 'success'); }, 1600);
+            if(_payReferralDiscountUsed){ _payReferralDiscountUsed=false; fetch((window.FA_GENESIS_API||API)+'/api/auth/referral-discount/mark-used',{method:'POST',headers:{'Authorization':'Bearer '+(USER&&USER._token?USER._token:'')}}).catch(function(){}); }
           } else if(type === 'error'){
             var msg = body && (body.message || body.error) ? (body.message || body.error) : 'Paiement refusé. Vérifiez vos informations.';
             _showPayError(msg);
@@ -7784,6 +7872,8 @@ function _showPayPalScreen(){
               if(pp) pp.style.display = 'none';
               var succ = document.getElementById('pay-success'); if(succ) succ.style.display = '';
               launchConfetti(); showToast('Paiement réussi !', 'Votre commande est confirmée', 'success');
+              setTimeout(function(){ showToast('+20 QG', 'Mission complétée', 'success'); }, 1600);
+              if(_payReferralDiscountUsed){ _payReferralDiscountUsed=false; fetch((window.FA_GENESIS_API||API)+'/api/auth/referral-discount/mark-used',{method:'POST',headers:{'Authorization':'Bearer '+(USER&&USER._token?USER._token:'')}}).catch(function(){}); }
             } else {
               _showPayPalError(result.error||'Paiement non complété');
             }
@@ -8238,6 +8328,8 @@ function _ptnrShowDash(){
     var dt = document.getElementById('ptnr-display-type'); if(dt) dt.textContent = p.partner_type ? partnerTypeLabel(p) : (p.type || p.role || '');
     var pendingBar = document.getElementById('ptnr-pending-bar'); if(pendingBar) pendingBar.style.display = (p.accountStatus === 'pending') ? 'flex' : 'none';
     _ptnrFetch('/api/partner/reputation').then(function(data){
+      _ptnrLastRepData = data;
+      _renderPartnerHomeQGWidget(data);
       var badgeEl = document.getElementById('ptnr-header-badge');
       if(badgeEl){ var badge = data.founderBadge ? 'fondateur' : data.badge; badgeEl.innerHTML = tierBadgeHtml(badge); }
       var ratingWrap = document.getElementById('ptnr-header-rating');
@@ -8295,6 +8387,7 @@ function _ptnrFmt(dateStr){
 
 // ── ACCUEIL PARTENAIRE ──
 function _ptnrLoadHome(){
+  _renderPartnerHomeQGWidget(_ptnrLastRepData);
   var list = document.getElementById('ptnr-home-list');
   if(list) list.innerHTML = _skeletonRows(2);
   _ptnrRenderServicesSection();
@@ -9126,10 +9219,14 @@ function pbPayDeposit(){
     clientType: 'particulier'
   };
 
+  var _pbUseReferral = (USER && USER.referralDiscount && !USER.referralDiscount.applied) ? true : false;
+  var _pbDiscountLabel = _pbUseReferral ? ' · -'+(USER.referralDiscount.pct||10)+'% parrainage' : '';
+  var pbPayBtn2 = document.getElementById('pb-pay-btn');
+  if(pbPayBtn2 && _pbDiscountLabel) pbPayBtn2.textContent = 'PAYER (' + _pbDiscountLabel.trim() + ')';
   fetch((window.FA_GENESIS_API||API)+'/api/orders/create',{
     method:'POST',
     headers:{'Content-Type':'application/json','Authorization':'Bearer '+USER._token},
-    body:JSON.stringify({ clientInfo: clientInfo, partnerServiceOrder:{ partnerId:_pbPartner.id, serviceId:_pbService.id } })
+    body:JSON.stringify({ clientInfo: clientInfo, partnerServiceOrder:{ partnerId:_pbPartner.id, serviceId:_pbService.id }, use_referral_discount: _pbUseReferral })
   }).then(function(r){ return r.json().then(function(d){ return {ok:r.ok, data:d}; }); })
   .then(function(res){
     if(!res.ok || !res.data || !res.data.orderId) throw new Error((res.data&&res.data.error)||'Erreur création commande');
@@ -9164,6 +9261,7 @@ function _pbMountWidget(checkoutId, orderId){
             if(ws) ws.style.display='none';
             var sc=document.getElementById('pb-success'); if(sc) sc.style.display='';
             launchConfetti(); showToast('Paiement réussi !','Votre commande est confirmée','success');
+            setTimeout(function(){ showToast('+20 QG', 'Mission complétée', 'success'); }, 1600);
           } else if(type==='error'){
             var msg = body&&(body.message||body.error) ? (body.message||body.error) : 'Paiement refusé. Vérifiez vos informations.';
             var er=document.getElementById('pb-err'); if(er){er.textContent=msg;er.classList.add('on');}
@@ -9241,6 +9339,7 @@ function _pbPayDepositPayPal(){
                 if(pps) pps.style.display='none';
                 var sc=document.getElementById('pb-success'); if(sc) sc.style.display='';
                 launchConfetti(); showToast('Paiement réussi !','Votre commande est confirmée','success');
+                setTimeout(function(){ showToast('+20 QG', 'Mission complétée', 'success'); }, 1600);
               } else {
                 if(ppErr){ppErr.textContent=result.error||'Paiement non complété. Réessayez.';ppErr.style.display='';}
                 if(ld) ld.style.display='none';
@@ -11095,6 +11194,10 @@ function _ptnrLoadReputation(){
   if(el) el.innerHTML = _skeletonRows(3);
   _ptnrFetch('/api/partner/reputation').then(function(data){
     if(!el) return;
+    _ptnrLastRepData = data;
+    if(Array.isArray(data.pendingQGGains) && data.pendingQGGains.length > 0) {
+      data.pendingQGGains.forEach(function(g){ showToast('+'+g.amount+' QG', 'Avis 5 étoiles de '+(g.from||'un client'), 'success'); });
+    }
     var badge = data.founderBadge ? 'fondateur' : data.badge;
     var rating = data.rating || {average:0, count:0};
     var classement = data.classement || {rank:null, total:0};
