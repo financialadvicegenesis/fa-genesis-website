@@ -5083,7 +5083,7 @@ function referralBoxHtml(){
   var progPct = Math.min(100, Math.round(count/target*100));
   var remaining = Math.max(0, target - count);
   var html = '<div class="ref-box-v2">';
-  html += '<div class="ref-box-v2-title"><i class="fa-solid fa-user-plus"></i> Programme de parrainage</div>';
+  html += '<div class="ref-box-v2-title"><i class="fa-solid fa-user-plus"></i> Parrainage</div>';
   html += '<div class="ref-box-v2-code-row">';
   html += '<span class="ref-box-v2-code" id="p-ref-code-val">'+USER.referralCode+'</span>';
   html += '<button class="ref-box-v2-copy" onclick="copyReferralCode()">Copier</button>';
@@ -11135,7 +11135,7 @@ function _ptnrLoadReputation(){
     if(data.referralCode){
       var refCount = data.referralCount || 0;
       html += '<div class="p-ref-box">'
-        + '<div class="p-ref-box-title">Programme de parrainage' + (data.referralStatus?(' '+tierBadgeHtml(data.referralStatus)):'') + '</div>'
+        + '<div class="p-ref-box-title">Parrainage' + (data.referralStatus?(' '+tierBadgeHtml(data.referralStatus)):'') + '</div>'
         + '<div class="p-ref-code-row">'
         + '<span class="p-ref-code">'+data.referralCode+'</span>'
         + '<button class="p-ref-copy-btn" onclick="navigator.clipboard&&navigator.clipboard.writeText(\''+data.referralCode+'\')">Copier</button>'
