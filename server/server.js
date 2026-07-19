@@ -636,6 +636,9 @@ function assignIntervenantsFromOrder(orderId) {
 
 // Délai avant auto-libération de la tranche intermédiaire GENESIS SAFE™ si le client ne valide pas
 const GENESIS_SAFE_INTERMEDIATE_RELEASE_DAYS = 3;
+// SLA traitement des litiges — affiché aux deux parties et dans les API de litiges
+const GENESIS_DISPUTE_SLA_HOURS = 48;
+const GENESIS_DISPUTE_SLA_LABEL = '48h ouvrées';
 
 // Crée les missions (dispatches) pour les partenaires externes d'une commande
 // Versement unitaire pour un dispatch accepté (acompte ou solde)
@@ -1475,11 +1478,11 @@ app.post('/api/disputes', function(req, res) {
                         notifyAdminNewDispute();
                     }
                 }
-                res.json({ ok: true, dispute: dispute });
+                res.json({ ok: true, dispute: dispute, sla_label: GENESIS_DISPUTE_SLA_LABEL });
             }).catch(function(err) {
                 console.error('[DISPUTE] Erreur askJeremie:', err);
                 notifyAdminNewDispute();
-                res.json({ ok: true, dispute: dispute });
+                res.json({ ok: true, dispute: dispute, sla_label: GENESIS_DISPUTE_SLA_LABEL });
             });
         } else {
             var all2 = loadDisputes();
@@ -1490,7 +1493,7 @@ app.post('/api/disputes', function(req, res) {
                 dispute = all2[idx2];
             }
             notifyAdminNewDispute();
-            res.json({ ok: true, dispute: dispute });
+            res.json({ ok: true, dispute: dispute, sla_label: GENESIS_DISPUTE_SLA_LABEL });
         }
     } catch (err) {
         console.error('[DISPUTE] Erreur creation:', err);
@@ -1509,7 +1512,7 @@ app.get('/api/disputes/mine', function(req, res) {
             return d.partner_id === identity.partner.id;
         }).sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); });
 
-        res.json({ ok: true, disputes: disputes });
+        res.json({ ok: true, disputes: disputes, sla_label: GENESIS_DISPUTE_SLA_LABEL });
     } catch (err) {
         console.error('[DISPUTE] Erreur mine:', err);
         res.status(500).json({ error: 'Erreur serveur' });
@@ -1553,7 +1556,7 @@ app.post('/api/disputes/:id/message', function(req, res) {
             }
             disputes[idx] = dispute;
             saveDisputes(disputes);
-            return res.json({ ok: true, dispute: dispute });
+            return res.json({ ok: true, dispute: dispute, sla_label: GENESIS_DISPUTE_SLA_LABEL });
         }
 
         disputes[idx] = dispute;
@@ -1565,7 +1568,7 @@ app.post('/api/disputes/:id/message', function(req, res) {
         aiService.askJeremie(systemPrompt, history, content).then(function(result) {
             var all = loadDisputes();
             var i2 = all.findIndex(function(d) { return d.id === dispute.id; });
-            if (i2 === -1) return res.json({ ok: true, dispute: dispute });
+            if (i2 === -1) return res.json({ ok: true, dispute: dispute, sla_label: GENESIS_DISPUTE_SLA_LABEL });
             if (result.success) {
                 all[i2].messages.push({ from_role: 'jeremie', from_name: 'Jeremie (IA)', content: result.reply, created_at: new Date().toISOString() });
                 all[i2].jeremie_reply_count = (all[i2].jeremie_reply_count || 0) + 1;
@@ -1578,7 +1581,7 @@ app.post('/api/disputes/:id/message', function(req, res) {
             res.json({ ok: true, dispute: all[i2] });
         }).catch(function(err) {
             console.error('[DISPUTE] Erreur askJeremie message:', err);
-            res.json({ ok: true, dispute: dispute });
+            res.json({ ok: true, dispute: dispute, sla_label: GENESIS_DISPUTE_SLA_LABEL });
         });
     } catch (err) {
         console.error('[DISPUTE] Erreur message:', err);
@@ -1606,7 +1609,7 @@ app.post('/api/disputes/:id/escalate', function(req, res) {
         disputes[idx] = dispute;
         saveDisputes(disputes);
         notifyUser(null, 'admin', 'litige', 'Intervention humaine demandee', 'Le litige ' + dispute.id + ' demande l\'intervention d\'un administrateur.', '/admin.html#open-disputes');
-        res.json({ ok: true, dispute: dispute });
+        res.json({ ok: true, dispute: dispute, sla_label: GENESIS_DISPUTE_SLA_LABEL });
     } catch (err) {
         console.error('[DISPUTE] Erreur escalate:', err);
         res.status(500).json({ error: 'Erreur serveur' });
@@ -1711,7 +1714,7 @@ app.post('/api/admin/disputes/:id/resolve', function(req, res) {
 
         releaseOnHoldPayouts(dispute.dispatch_id).catch(function(e) { console.error('[DISPUTE] Erreur releaseOnHoldPayouts:', e); });
 
-        res.json({ ok: true, dispute: dispute });
+        res.json({ ok: true, dispute: dispute, sla_label: GENESIS_DISPUTE_SLA_LABEL });
     } catch (err) {
         console.error('[DISPUTE] Erreur resolve:', err);
         res.status(401).json({ error: 'Non autorise' });

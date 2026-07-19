@@ -9557,7 +9557,8 @@ function _submitDispute(){
   }).then(function(r){return r.json();}).then(function(res){
     if(btn){btn.disabled=false;btn.textContent='ENVOYER LE LITIGE';}
     if(res&&res.ok&&res.dispute){
-      showToast&&showToast('Litige envoyé','Notre équipe va examiner votre cas','success');
+      var _slaTxt = (res.sla_label)||'48h ouvrées';
+      showToast&&showToast('Litige envoyé','Traitement sous '+_slaTxt+' par notre équipe','success');
       _openDisputeThread(res.dispute);
     } else {
       if(err){err.textContent=(res&&res.error)||'Erreur lors de l\'envoi.';err.classList.add('on');}
@@ -9582,11 +9583,16 @@ function openMesLitiges(){
       _disputeListCache = disputes;
       if(!listEl) return;
       if(disputes.length===0){ listEl.innerHTML='<div style="text-align:center;color:#666;font-size:12px;padding:20px 0;">Aucun litige en cours.</div>'; return; }
+      var _slaLabel = data.sla_label || '48h ouvrées';
       listEl.innerHTML = disputes.map(function(d,i){
         var lastMsg = d.messages&&d.messages.length ? d.messages[d.messages.length-1].content : '';
+        var slaNote = (d.status==='open'||d.status==='jeremie_triage')
+          ? '<div style="font-size:10px;color:#FFD700;margin-top:5px;"><i class="fa-solid fa-clock" style="margin-right:4px;"></i>Traitement sous '+_slaLabel+'</div>'
+          : '';
         return '<div class="disp-list-item" onclick="_openDisputeThreadByIndex('+i+')">'
           +'<div class="disp-list-status" style="color:'+_disputeStatusColor(d.status)+';">'+_disputeStatusLabel(d.status).toUpperCase()+' · '+(d.category||'autre').toUpperCase()+'</div>'
           +'<div style="font-size:12px;color:#999;line-height:1.4;">'+(lastMsg||'').replace(/</g,'&lt;').substring(0,90)+(lastMsg.length>90?'...':'')+'</div>'
+          +slaNote
           +'</div>';
       }).join('');
     }).catch(function(){
@@ -9607,7 +9613,10 @@ function _openDisputeThread(dispute){
 function _renderDisputeThread(){
   var d=_currentDispute; if(!d) return;
   var statusEl=document.getElementById('dispute-thread-status');
-  if(statusEl) statusEl.innerHTML='<span style="font-size:11px;font-weight:800;letter-spacing:.5px;color:'+_disputeStatusColor(d.status)+';">'+_disputeStatusLabel(d.status).toUpperCase()+'</span>';
+  var _slaDispHtml = (d.status==='open'||d.status==='jeremie_triage')
+    ? '&nbsp;&nbsp;<span style="font-size:10px;color:#FFD700;font-weight:600;"><i class="fa-solid fa-clock" style="margin-right:3px;"></i>Traitement sous 48h ouvrées</span>'
+    : '';
+  if(statusEl) statusEl.innerHTML='<span style="font-size:11px;font-weight:800;letter-spacing:.5px;color:'+_disputeStatusColor(d.status)+';">'+_disputeStatusLabel(d.status).toUpperCase()+'</span>'+_slaDispHtml;
   var viewerRole=_disputeViewerRole();
   var msgsEl=document.getElementById('dispute-thread-messages');
   if(msgsEl){
@@ -10406,6 +10415,10 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
         <div class="mc-field">
           <label class="mc-label">Décrivez le problème *</label>
           <textarea id="disp-description" class="mc-textarea" placeholder="Expliquez ce qui ne va pas (10 caractères minimum)..."></textarea>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;background:#111;border:1px solid rgba(255,215,0,0.2);border-radius:8px;padding:8px 12px;margin:10px 0 4px;">
+          <i class="fa-solid fa-clock" style="color:#FFD700;font-size:13px;flex-shrink:0;"></i>
+          <span style="font-size:11px;color:#aaa;line-height:1.4;">Votre litige sera traité par notre équipe sous <strong style="color:#FFD700;">48h ouvrées</strong>.</span>
         </div>
         <div class="mc-err" id="disp-new-err"></div>
         <button class="mc-send-btn" id="disp-new-send-btn" onclick="_submitDispute()">ENVOYER LE LITIGE</button>
