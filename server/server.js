@@ -2320,17 +2320,17 @@ app.post('/api/orders/create', (req, res) => {
                 installCountFinal = 1;
                 installPlanFinal = null;
             } else if (hasCwEvent) {
-                // GENESIS SAFE™ : split fixe 30/40/30 (acompte / livrable intermédiaire / livraison finale)
+                // GENESIS SAFE™ : 1 tranche si ≤ 300 €, split 30/40/30 si > 300 €
                 installPlanFinal = generateGenesisSplit(totalAmountFinal);
                 depositAmountFinal = installPlanFinal[0].amount;
-                balanceAmountFinal = installPlanFinal[1].amount + installPlanFinal[2].amount;
-                installCountFinal = 3;
+                balanceAmountFinal = installPlanFinal.length > 1 ? installPlanFinal.slice(1).reduce(function(s, i) { return s + i.amount; }, 0) : 0;
+                installCountFinal = installPlanFinal.length;
             } else {
-                // GENESIS SAFE™ : split fixe 30/40/30 (acompte / livrable intermédiaire / livraison finale)
+                // GENESIS SAFE™ : 1 tranche si ≤ 300 €, split 30/40/30 si > 300 €
                 installPlanFinal = generateGenesisSplit(totalAmountFinal);
                 depositAmountFinal = installPlanFinal[0].amount;
-                balanceAmountFinal = installPlanFinal[1].amount + installPlanFinal[2].amount;
-                installCountFinal = 3;
+                balanceAmountFinal = installPlanFinal.length > 1 ? installPlanFinal.slice(1).reduce(function(s, i) { return s + i.amount; }, 0) : 0;
+                installCountFinal = installPlanFinal.length;
             }
 
             var orderIdFinal = 'ORD-' + uuidv4().split('-')[0].toUpperCase();
@@ -2519,8 +2519,8 @@ app.post('/api/orders/create', (req, res) => {
                 },
                 total_amount: product.total_price,
                 deposit_amount: legacyInstallPlan[0].amount,
-                balance_amount: legacyInstallPlan[1].amount + legacyInstallPlan[2].amount,
-                installments_count: 3,
+                balance_amount: legacyInstallPlan.length > 1 ? legacyInstallPlan.slice(1).reduce(function(s, i) { return s + i.amount; }, 0) : 0,
+                installments_count: legacyInstallPlan.length,
                 installments: legacyInstallPlan,
                 amount_paid: 0,
                 deposit_paid: false,
