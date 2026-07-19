@@ -11669,6 +11669,22 @@ app.get('/api/my-requests', function(req, res) {
                     accepted: dispatchForReq ? (dispatchForReq.accepted_at || null) : (r.responded_at || null),
                     delivering: dispatchForReq ? (dispatchForReq.delivering_at || null) : null
                 };
+                // Champs GENESIS SAFE™ Phase 3 : bloc de paiement différencié côté client
+                out.payment_tier = orderForReq ? (orderForReq.payment_tier || null) : null;
+                out.delivery_confirmed = orderForReq ? (!!orderForReq.delivery_confirmed) : false;
+                out.total_amount = orderForReq
+                    ? (orderForReq.total_amount || r.total_price || r.price || 0)
+                    : (r.total_price || r.price || 0);
+                out.installments = (orderForReq && Array.isArray(orderForReq.installments))
+                    ? orderForReq.installments.map(function(inst) {
+                        return {
+                            stage: inst.stage,
+                            label: inst.label || inst.key || inst.stage,
+                            amount: inst.amount || 0,
+                            paid: !!inst.paid
+                        };
+                    })
+                    : null;
                 return out;
             });
         res.json({ requests: requests });

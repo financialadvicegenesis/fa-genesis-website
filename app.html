@@ -4670,19 +4670,86 @@ function renderOrderTrackingCard(r){
   // Steps list
   html += '<ul class="track-steps">'+stepsHtml+'</ul>';
 
-  // Bloc GENESIS SAFE™ pour les petites missions (fonds retenus)
-  if(r.payment_tier === 'small' && !r.delivery_confirmed && ds.key !== 'completed' && ds.key !== 'reviewed'){
-    var heldAmt = parseFloat(r.total_amount || r.price || 0).toFixed(2);
-    html += '<div style="background:linear-gradient(135deg,#0d1a00,#1a1200);border:1.5px solid #FFD700;border-radius:12px;padding:14px 16px;margin:12px 0;">'
-      +'<div style="display:flex;justify-content:space-between;align-items:center;">'
+  // Bloc GENESIS SAFE™ — différencié selon le tier de paiement
+  if(r.payment_tier){
+    var _safeTotal = parseFloat(r.total_amount || r.price || 0).toFixed(2);
+    if(r.payment_tier === 'small'){
+      if(ds.key !== 'completed' && ds.key !== 'reviewed'){
+        html += '<div style="background:linear-gradient(135deg,#0d1a00,#1a1200);border:1.5px solid #FFD700;border-radius:12px;padding:14px 16px;margin:12px 0;">'
+          +'<div style="display:flex;justify-content:space-between;align-items:center;">'
+          +'<div>'
+          +'<div style="font-size:10px;color:#FFD700;font-weight:800;letter-spacing:1px;margin-bottom:4px;"><i class="fa-solid fa-lock" style="margin-right:4px;"></i>GENESIS SAFE™ — 100% retenu</div>'
+          +'<div style="font-size:12px;color:#aaa;line-height:1.5;">Paiement intégral sécurisé en escrow.<br>Le prestataire sera payé à la livraison.</div>'
+          +'</div>'
+          +'<div style="text-align:right;">'
+          +'<div style="font-size:20px;font-weight:900;color:#FFD700;">'+_safeTotal+' €</div>'
+          +'<div style="font-size:9px;color:#666;margin-top:2px;">EN ESCROW</div>'
+          +'</div>'
+          +'</div>'
+          +'</div>';
+      }
+    } else {
+      // Tier large : frise des 3 tranches 30/40/30 avec statut individuel
+      var _instList = r.installments;
+      var _safeRows = '';
+      if(_instList && _instList.length > 0){
+        var _firstUnpaidIdx2 = -1;
+        for(var _fui = 0; _fui < _instList.length; _fui++){
+          if(!_instList[_fui].paid){ _firstUnpaidIdx2 = _fui; break; }
+        }
+        for(var _ii = 0; _ii < _instList.length; _ii++){
+          var _inst = _instList[_ii];
+          var _isPaid = !!_inst.paid;
+          var _isCurrent = (_ii === _firstUnpaidIdx2);
+          var _instIcon, _instStatus, _instColor;
+          if(_isPaid){
+            _instIcon = '<i class="fa-solid fa-circle-check" style="color:#22c55e;font-size:12px;"></i>';
+            _instStatus = 'Payé';
+            _instColor = '#22c55e';
+          } else if(_isCurrent){
+            _instIcon = '<i class="fa-solid fa-lock-open" style="color:#FFD700;font-size:12px;"></i>';
+            _instStatus = 'En cours';
+            _instColor = '#FFD700';
+          } else {
+            _instIcon = '<i class="fa-solid fa-lock" style="color:#444;font-size:12px;"></i>';
+            _instStatus = 'À venir';
+            _instColor = '#555';
+          }
+          var _borderTop2 = _ii > 0 ? 'border-top:1px solid rgba(255,255,255,0.06);padding-top:7px;margin-top:7px;' : '';
+          _safeRows += '<div style="display:flex;align-items:center;justify-content:space-between;'+_borderTop2+'">'
+            +'<div style="display:flex;align-items:center;gap:7px;">'+_instIcon
+            +'<span style="font-size:11px;color:#ccc;">'+_escHtml(_inst.label||_inst.stage||'')+'</span></div>'
+            +'<div style="text-align:right;">'
+            +'<span style="font-size:13px;font-weight:700;color:'+_instColor+';">'+parseFloat(_inst.amount||0).toFixed(2)+'&thinsp;€</span>'
+            +'<span style="font-size:9px;color:#888;display:block;margin-top:1px;">'+_instStatus+'</span>'
+            +'</div>'
+            +'</div>';
+        }
+      } else {
+        // Fallback si installments non disponibles — calcul 30/40/30 côté client
+        var _tf = parseFloat(r.total_amount || r.price || 0);
+        var _tf1 = Math.round(_tf*0.30); var _tf2 = Math.round(_tf*0.40); var _tf3 = _tf - _tf1 - _tf2;
+        _safeRows = '<div style="font-size:11px;color:#aaa;">'
+          +'Acompte 30 % &nbsp;·&nbsp; '+_tf1+' € &nbsp;|&nbsp; Livrable inter. 40 % &nbsp;·&nbsp; '+_tf2+' € &nbsp;|&nbsp; Livraison 30 % &nbsp;·&nbsp; '+_tf3+' €'
+          +'</div>';
+      }
+      html += '<div style="background:linear-gradient(135deg,#0d1a00,#1a1200);border:1.5px solid #FFD700;border-radius:12px;padding:14px 16px;margin:12px 0;">'
+        +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">'
+        +'<div style="font-size:10px;color:#FFD700;font-weight:800;letter-spacing:1px;"><i class="fa-solid fa-shield-halved" style="margin-right:4px;"></i>GENESIS SAFE™ — 30/40/30</div>'
+        +'<div style="font-size:14px;font-weight:900;color:#FFD700;">'+_safeTotal+'&thinsp;€</div>'
+        +'</div>'
+        +_safeRows
+        +'</div>';
+    }
+  }
+
+  // Badge QG gagné à l'achèvement de la mission
+  if(ds.key === 'completed' || ds.key === 'reviewed'){
+    html += '<div style="background:linear-gradient(135deg,#1a1200,#0d0d00);border:1px solid rgba(255,215,0,0.25);border-radius:10px;padding:10px 14px;margin:8px 0;display:flex;align-items:center;gap:10px;">'
+      +'<i class="fa-solid fa-bolt" style="color:#FFD700;font-size:18px;"></i>'
       +'<div>'
-      +'<div style="font-size:10px;color:#FFD700;font-weight:800;letter-spacing:1px;margin-bottom:4px;">🔒 GENESIS SAFE™</div>'
-      +'<div style="font-size:12px;color:#aaa;line-height:1.5;">Votre paiement est sécurisé.<br>Il sera versé au prestataire à la livraison.</div>'
-      +'</div>'
-      +'<div style="text-align:right;">'
-      +'<div style="font-size:20px;font-weight:900;color:#FFD700;">'+heldAmt+' €</div>'
-      +'<div style="font-size:9px;color:#666;margin-top:2px;">SÉCURISÉ</div>'
-      +'</div>'
+      +'<div style="font-size:12px;font-weight:800;color:#FFD700;">QG Genesis crédités</div>'
+      +'<div style="font-size:11px;color:#888;">Des points ont été ajoutés à votre compte — merci !</div>'
       +'</div>'
       +'</div>';
   }
