@@ -11489,6 +11489,72 @@ app.post('/api/partner/dispatches/:id/mark-delivering', authenticatePartner, fun
     }
 });
 
+// Partenaire uploade une photo directement depuis sa mission (crée ou met à jour le livrable lié).
+app.post('/api/partner/dispatches/:id/upload-photo', authenticatePartner, function(req, res) {
+    try {
+        var imageDataUrl = req.body.image_data_url;
+        var caption = req.body.caption || '';
+        if (!imageDataUrl || imageDataUrl.indexOf('data:image') !== 0) {
+            return res.status(400).json({ error: 'image_data_url (data URI image) requis' });
+        }
+        var dispatches = loadDispatches();
+        var idx = dispatches.findIndex(function(d) { return d.id === req.params.id; });
+        if (idx === -1) return res.status(404).json({ error: 'Mission introuvable' });
+        if (dispatches[idx].claimed_by_partner_id !== req.partner.id) {
+            return res.status(403).json({ error: 'Cette mission ne vous appartient pas.' });
+        }
+        var orderId = dispatches[idx].order_id;
+        var livrables = loadLivrables();
+        var livIdx = livrables.findIndex(function(l) { return l.order_id === orderId; });
+        var now = new Date().toISOString();
+        if (livIdx === -1) {
+            var newLiv = ensureLivrableFields({
+                id: 'LIV-' + Date.now(),
+                order_id: orderId,
+                file_url: imageDataUrl,
+                download_url: imageDataUrl,
+                title: 'Photo de livrable',
+                caption: caption,
+                workflow_status: 'PENDING_PARTNER',
+                owner_role: 'partner',
+                owner_partner_id: req.partner.id,
+                created_at: now,
+                updated_at: now
+            });
+            livrables.push(newLiv);
+            saveLivrables(livrables);
+            return res.json({ success: true, created: true, livrable: newLiv });
+        } else {
+            var liv = livrables[livIdx];
+            if (liv.workflow_status === 'PUBLISHED') {
+                return res.status(400).json({ error: 'Livrable déjà publié, modification impossible' });
+            }
+            if (!liv.versions) liv.versions = [];
+            liv.versions.push({
+                version_number: liv.versions.length + 1,
+                updated_by_role: 'partner',
+                updated_by_id: req.partner.id,
+                file_url: imageDataUrl,
+                change_note: caption || 'Photo ajoutée',
+                created_at: now
+            });
+            liv.file_url = imageDataUrl;
+            liv.download_url = imageDataUrl;
+            if (caption) liv.caption = caption;
+            liv.workflow_status = 'PENDING_PARTNER';
+            liv.owner_role = 'partner';
+            liv.owner_partner_id = req.partner.id;
+            liv.updated_at = now;
+            livrables[livIdx] = liv;
+            saveLivrables(livrables);
+            return res.json({ success: true, created: false, livrable: ensureLivrableFields(liv) });
+        }
+    } catch(e) {
+        console.error('[DISPATCH] Erreur upload-photo:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
 // GENESIS SAFE™ — le partenaire confirme la livraison d'une mission "small" (≤ 300 €) :
 // libère les fonds retenus et notifie le client.
 app.post('/api/partner/dispatches/:id/mark-delivered', authenticatePartner, async function(req, res) {

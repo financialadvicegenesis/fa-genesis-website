@@ -2727,6 +2727,7 @@ a{text-decoration:none;color:inherit}
         <div class="ptnr-screen" id="ptnr-screen-projets">
           <div class="ptnr-section-title">Projets assignés</div>
           <input type="text" class="ptnr-input" id="ptnr-projets-search" placeholder="Rechercher un client (nom, prénom)..." oninput="_ptnrFilterProjets()">
+          <div id="ptnr-projets-filter"></div>
           <div id="ptnr-projets-list"></div>
         </div>
 
@@ -5337,6 +5338,36 @@ function showMesDevis(){
     });
 }
 
+function showSuiviPrestations(){
+  var c = document.getElementById('profilContent'); if(!c) return;
+  _saveProfilScroll('showSuiviPrestations');
+  c.innerHTML = '<div class="espace-view">'
+    +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Suivi des prestations</div></div>'
+    +'<div id="suivi-prest-list" style="padding:14px;padding-bottom:80px;overflow-y:auto;flex:1;"><div class="espace-loading">Chargement...</div></div>'
+    +'</div>';
+  if(!USER || GUEST || !USER._token){ document.getElementById('suivi-prest-list').innerHTML = '<div class="espace-empty">Connectez-vous pour suivre vos prestations.</div>'; return; }
+  fetch(API+'/api/my-requests', {headers:{'Authorization':'Bearer '+USER._token}})
+    .then(function(r){return r.json();})
+    .then(function(data){
+      var el = document.getElementById('suivi-prest-list'); if(!el) return;
+      var requests = (data && data.requests) || [];
+      var active = requests.filter(function(r){ return r.status==='signed'||r.status==='completed'||r.status==='reviewed'; });
+      if(!active.length){ el.innerHTML = '<div class="espace-empty">Aucune prestation en cours.<br><span style="font-size:12px;color:#555;">Vos missions actives apparaîtront ici une fois la commande confirmée.</span></div>'; return; }
+      el.innerHTML = active.map(function(r){
+        var ds = r.display_status || {};
+        var isDone = ds.key==='completed'||ds.key==='reviewed';
+        return '<div class="resa-card" style="margin-bottom:14px;">'
+          +'<div class="resa-top"><div class="resa-name">'+(r.service_label||'Prestation')+'</div>'
+          +'<span class="resa-status '+(isDone?'s-confirmed':'s-pending')+'">'+((ds.emoji||'')+' '+(ds.label||r.status))+'</span></div>'
+          +'<div class="resa-date"><i class="fa-solid fa-user-tie"></i> '+(r.partner_name||r.partner_id||'Prestataire')+'</div>'
+          +missionTimelineHtml(r.display_status)
+          +'</div>';
+      }).join('');
+    }).catch(function(){
+      var el = document.getElementById('suivi-prest-list'); if(el) el.innerHTML = '<div class="espace-empty">Erreur de chargement.</div>';
+    });
+}
+
 function goToEventsExplorer(){
   nav('explorer');
   var btn = document.getElementById('p-exp-toggle-events');
@@ -5479,6 +5510,7 @@ function renderProfil(){
       +pli('<i class="fa-solid fa-credit-card"></i>','#0a1a0a','Mes paiements',null,'showPaiements()')
       +pli('<i class="fa-solid fa-shield-halved"></i>','#1a1200','Portefeuille GENESIS SAFE™',null,'showClientWallet()')
       +pli('<i class="fa-solid fa-calendar-check"></i>','#0a0a1a','Mes réservations',null,'nav(\'reservations\')')
+      +pli('<i class="fa-solid fa-route"></i>','#0a1200','Suivi des prestations',null,'showSuiviPrestations()')
       +pli('<i class="fa-solid fa-file-invoice"></i>','#0a0a14','Mes devis',null,'showMesDevis()')
       +pli('<i class="fa-solid fa-box-open"></i>','#100a1a','Mes livrables',null,'showLivrables()')
       +pli('<i class="fa-solid fa-heart"></i>','#1a0014','Mes favoris',null,'showFavoris()')
@@ -8671,18 +8703,19 @@ function _animateCount(el, target, opts){
 
 // ── PROJETS ──
 var _ptnrProjetsCache = [];
+var _ptnrProjetsStatusFilter = 'all';
 function _ptnrLoadProjets(){
   var el = document.getElementById('ptnr-projets-list');
   if(el) el.innerHTML = _skeletonRows(3);
   _ptnrFetch('/api/partner/projects').then(function(data){
     var items = Array.isArray(data) ? data : (data.projects||[]);
-    // Classées par défaut par nom/prénom du client, pour retrouver facilement un dossier.
     items = items.slice().sort(function(a, b){
       var an = (a.client_name||a.clientName||'').toLowerCase();
       var bn = (b.client_name||b.clientName||'').toLowerCase();
       return an.localeCompare(bn);
     });
     _ptnrProjetsCache = items;
+    _ptnrProjetsStatusFilter = 'all';
     var searchInp = document.getElementById('ptnr-projets-search');
     if(searchInp) searchInp.value = '';
     _ptnrRenderProjetsList(items);
@@ -8695,12 +8728,41 @@ function _ptnrFilterProjets(){
   });
   _ptnrRenderProjetsList(filtered);
 }
+function _ptnrFilterProjetStatus(key){
+  _ptnrProjetsStatusFilter = key;
+  _ptnrFilterProjets();
+}
 function _ptnrRenderProjetsList(items){
   var el = document.getElementById('ptnr-projets-list');
+  var filterEl = document.getElementById('ptnr-projets-filter');
   if(!el) return;
-  if(!items.length){ el.innerHTML = '<div class="ptnr-empty"><div class="ptnr-empty-ico"><i class="fa-solid fa-inbox"></i></div><div class="ptnr-empty-txt">Aucun projet assigné</div></div>'; return; }
+
+  // Construire les filtres par statut display_status
+  if(filterEl){
+    var withStatus = items.filter(function(p){ return p.display_status && p.display_status.key; });
+    if(!withStatus.length){ filterEl.innerHTML = ''; }
+    else {
+      var statusesPresent = [];
+      withStatus.forEach(function(p){ var k = p.display_status.key; if(statusesPresent.indexOf(k)===-1) statusesPresent.push(k); });
+      statusesPresent.sort(function(a,b){ return MISSION_STATUS_ORDER.indexOf(a)-MISSION_STATUS_ORDER.indexOf(b); });
+      var pillsHtml = '<button class="p-sub-btn'+(_ptnrProjetsStatusFilter==='all'?' on':'')+'" onclick="_ptnrFilterProjetStatus(\'all\')">Tous ('+withStatus.length+')</button>'
+        + statusesPresent.map(function(k){
+            var sample = withStatus.filter(function(p){ return p.display_status && p.display_status.key===k; });
+            var meta = sample[0].display_status;
+            return '<button class="p-sub-btn'+(_ptnrProjetsStatusFilter===k?' on':'')+'" onclick="_ptnrFilterProjetStatus(\''+k+'\')">'+(meta.emoji||'')+' '+meta.label+' ('+sample.length+')</button>';
+          }).join('');
+      filterEl.innerHTML = '<div class="p-sub-filter" style="margin:0 0 14px;overflow-x:auto;">'+pillsHtml+'</div>';
+    }
+  }
+
+  // Appliquer le filtre statut
+  var filtered = (_ptnrProjetsStatusFilter==='all')
+    ? items
+    : items.filter(function(p){ return p.display_status && p.display_status.key===_ptnrProjetsStatusFilter; });
+
+  if(!filtered.length){ el.innerHTML = '<div class="ptnr-empty"><div class="ptnr-empty-ico"><i class="fa-solid fa-inbox"></i></div><div class="ptnr-empty-txt">Aucun projet assigné</div></div>'; return; }
   var html = '';
-  items.forEach(function(p){
+  filtered.forEach(function(p){
     var status = p.status||''; var statusLabel = status||'En cours';
     var statusClass = status==='completed'?'confirmed':(status==='cancelled'?'cancelled':'active');
     html += '<div class="ptnr-card">';
@@ -8708,6 +8770,7 @@ function _ptnrRenderProjetsList(items){
     html += '<div><div class="ptnr-card-title">'+(p.client_name||p.clientName||p.order_id||'Projet')+'</div>';
     html += '<div class="ptnr-card-sub">'+(p.product_name||p.productName||'')+(p.start_date?' · '+ _ptnrFmt(p.start_date):'')+'</div></div>';
     html += '<span class="ptnr-status '+statusClass+'">'+statusLabel+'</span></div>';
+    if(p.display_status && p.display_status.key) html += missionTimelineHtml(p.display_status);
     if(p.notes||p.description) html += '<div style="font-size:12px;color:#aaa;margin-top:8px;line-height:1.5;">'+(p.notes||p.description)+'</div>';
     html += '</div>';
   });
@@ -11113,7 +11176,31 @@ function _ptnrRenderEngagedMissionCard(r){
     +(canMarkDelivered
       ? '<button class="dispatch-claim-btn" style="margin-top:8px;width:100%;background:#1a3a1a;border-color:#6dbf6d;color:#6dbf6d;" onclick="_ptnrMarkDelivered(\''+r.dispatch_id+'\')"><i class="fas fa-check-circle"></i> Confirmer la livraison (libère les fonds)</button>'
       : '')
+    +(r.dispatch_id && (statusKey==='in_progress' || statusKey==='delivering')
+      ? '<div style="margin-top:10px;border-top:1px solid #222;padding-top:10px;">'
+        +'<label style="font-size:12px;color:#888;display:block;margin-bottom:6px;"><i class="fa-solid fa-image" style="color:#FFD700;margin-right:4px;"></i>Ajouter une photo au livrable</label>'
+        +'<input type="file" accept="image/*" id="photo-inp-'+r.dispatch_id+'" style="display:none" onchange="_ptnrUploadLivrablePhoto(\''+r.dispatch_id+'\',this)">'
+        +'<button class="ptnr-btn-outline" onclick="document.getElementById(\'photo-inp-'+r.dispatch_id+'\').click()" style="font-size:12px;padding:7px 14px;"><i class="fa-solid fa-camera"></i> Choisir une photo</button>'
+        +'</div>'
+      : '')
     +'</div>';
+}
+function _ptnrUploadLivrablePhoto(dispatchId, inp){
+  if(!inp || !inp.files || !inp.files[0]) return;
+  var file = inp.files[0];
+  inp.disabled = true;
+  showToast('Compression…','Photo en cours de traitement','info');
+  _ptnrImageFileToCompressedBase64(file, 1280, 0.82).then(function(dataUrl){
+    _ptnrFetch('/api/partner/dispatches/'+dispatchId+'/upload-photo','POST',{image_data_url: dataUrl})
+      .then(function(res){
+        inp.disabled = false;
+        if(res && res.success){
+          showToast('Photo envoyée','Le livrable a été mis à jour.','success');
+        } else {
+          showToast('Erreur',(res&&res.error)||'Impossible d\'uploader la photo','error');
+        }
+      }).catch(function(){ inp.disabled = false; showToast('Erreur de connexion','Réessayez','error'); });
+  }).catch(function(){ inp.disabled = false; showToast('Erreur','Impossible de lire la photo','error'); });
 }
 function _ptnrMarkDelivering(dispatchId, requestId){
   _ptnrFetch('/api/partner/dispatches/'+dispatchId+'/mark-delivering','POST',{}).then(function(res){
