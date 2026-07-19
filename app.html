@@ -4623,6 +4623,58 @@ function signRequestContract(requestId){
   });
 }
 
+// ── Section partenaire réutilisable (carte tracking + Mes commandes) ─────────
+var _BADGE_ICONS   = {bronze:'fa-medal',argent:'fa-medal',or:'fa-medal',elite:'fa-trophy',prestige:'fa-trophy',fondateur:'fa-crown'};
+var _BADGE_COLORS  = {bronze:'#cd7f32',argent:'#c0c0c0',or:'#FFD700',elite:'#FFD700',prestige:'#FFD700',fondateur:'#FFD700'};
+var _BADGE_LABELS  = {bronze:'Bronze',argent:'Argent',or:'Or',elite:'Élite',prestige:'Prestige',fondateur:'Fondateur'};
+
+function _partnerInfoHtml(r){
+  try {
+    var _pPhoto = r.partner_photo;
+    var _pName  = r.partner_name || 'Prestataire';
+    var _pInit  = _pName[0].toUpperCase();
+    var _photoHtml = _pPhoto
+      ? '<img src="'+_pPhoto+'" style="width:56px;height:56px;border-radius:50%;object-fit:cover;flex-shrink:0;" alt="">'
+      : '<div style="width:56px;height:56px;border-radius:50%;background:rgba(255,215,0,.08);border:1.5px solid rgba(255,215,0,.25);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><span style="font-weight:800;color:var(--yellow);font-size:20px;">'+_pInit+'</span></div>';
+
+    var _typeLabel = (r.partner_type && PARTNER_TYPE_LABELS_DIR[r.partner_type]) || r.partner_type || '';
+    var _city = r.partner_city || '';
+    var _metaLine = [_typeLabel, _city].filter(Boolean).join(' · ');
+
+    var _rating = r.partner_rating;
+    var _ratingHtml = (_rating && _rating.count > 0)
+      ? '<span style="color:var(--yellow);font-weight:700;font-size:11px;"><i class="fa-solid fa-star" style="font-size:9px;margin-right:2px;"></i>'+_rating.average+'</span><span style="color:var(--muted);font-size:11px;"> ('+_rating.count+' avis)</span>'
+      : '<span style="color:var(--muted);font-size:11px;">Pas encore d\'avis</span>';
+
+    var _badge = r.partner_badge;
+    var _badgeHtml = _badge
+      ? ' <span style="font-size:10px;font-weight:800;color:'+(_BADGE_COLORS[_badge]||'#FFD700')+';"><i class="fa-solid '+(_BADGE_ICONS[_badge]||'fa-medal')+'" style="margin-right:2px;"></i>'+(_BADGE_LABELS[_badge]||_badge)+'</span>'
+      : '';
+
+    var _profileBtn = r.partner_id
+      ? '<button style="font-size:11px;color:var(--yellow);background:rgba(255,215,0,.08);border:1px solid rgba(255,215,0,.2);border-radius:8px;padding:5px 10px;cursor:pointer;white-space:nowrap;" onclick="openPartnerDetail(\''+r.partner_id+'\')"><i class="fa-solid fa-arrow-up-right-from-square" style="font-size:9px;margin-right:4px;"></i>Profil</button>'
+      : '';
+
+    var _bio = r.partner_bio;
+    var _bioHtml = _bio
+      ? '<div style="font-size:12px;color:var(--muted);margin-top:6px;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">'+_bio+'</div>'
+      : '';
+
+    return '<div style="display:flex;align-items:flex-start;gap:12px;">'
+      +_photoHtml
+      +'<div style="flex:1;min-width:0;">'
+      +'<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">'
+      +'<div style="font-size:14px;font-weight:800;color:#fff;line-height:1.3;">'+_pName+_badgeHtml+'</div>'
+      +_profileBtn
+      +'</div>'
+      +(_metaLine?'<div style="font-size:11px;color:var(--muted);margin-top:3px;">'+_metaLine+'</div>':'')
+      +'<div style="margin-top:4px;">'+_ratingHtml+'</div>'
+      +_bioHtml
+      +'</div>'
+      +'</div>';
+  } catch(_e){ return ''; }
+}
+
 // ── GENESIS SAFE™ : suivi de mission en temps réel style Deliveroo ──────────
 var TRACK_STEPS = [
   { key:'received',    label:'Commande reçue',         icon:'fa-circle-check',        desc:'Paiement confirmé & sécurisé'         },
@@ -4685,16 +4737,13 @@ function renderOrderTrackingCard(r){
   var pulseClass = 'col-'+(ds.key||'in_progress');
   var html = '<div class="track-card" id="track-card-'+r.id+'">';
 
-  // Header : service + prestataire
-  var _avatarInner = r.partner_photo
-    ? '<img src="'+r.partner_photo+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" alt="">'
-    : '<span style="font-weight:800;color:var(--yellow);">'+partnerInitial+'</span>';
-  html += '<div class="track-card-header">'
-    +'<div class="track-card-avatar">'+_avatarInner+'</div>'
-    +'<div class="track-card-info">'
-    +'<div class="track-card-service">'+(r.service_label||r.service_id||'Prestation')+'</div>'
-    +'<div class="track-card-partner"><i class="fa-solid fa-user-tie" style="font-size:10px;"></i> '+(r.partner_name||'Prestataire')+'</div>'
-    +'</div>'
+  // Header : fiche prestataire complète + barre service
+  html += '<div class="track-card-header" style="align-items:flex-start;padding:14px 16px 12px;">'
+    +_partnerInfoHtml(r)
+    +'</div>';
+  html += '<div style="padding:8px 16px 10px;border-bottom:1px solid #1a1a1a;display:flex;align-items:center;gap:7px;">'
+    +'<i class="fa-solid fa-briefcase" style="color:var(--muted);font-size:10px;"></i>'
+    +'<span style="font-size:12px;color:var(--muted);">'+(r.service_label||r.service_id||'Prestation')+'</span>'
     +'</div>';
 
   // Hero : statut actif mis en valeur
@@ -6664,15 +6713,18 @@ function showMesCommandes(){
       html+="<div class='detail-feats-title' style='margin:0 0 10px;'><i class='fa-solid fa-circle-check' style='color:#22c55e;margin-right:5px;'></i>Missions prestataires</div>";
       html+=_completedReqs.map(function(r){
         var dateStr=r.created_at?new Date(r.created_at).toLocaleDateString("fr-FR"):"";
-        var ds=r.display_status||{};
-        return "<div class='espace-card'>"
-          +"<div style='display:flex;justify-content:space-between;align-items:flex-start;gap:8px;'>"
-          +"<div class='espace-card-name'>"+(r.service_label||'Prestation')+"</div>"
-          +"<span style='font-size:11px;font-weight:900;color:#22c55e;white-space:nowrap;'>"+(ds.emoji||'✅')+' Terminée'+"</span>"
+        return "<div class='espace-card' style='padding:0;overflow:hidden;'>"
+          // Section partenaire
+          +"<div style='padding:14px 14px 10px;border-bottom:1px solid rgba(255,255,255,.05);'>"+_partnerInfoHtml(r)+"</div>"
+          // Détails commande
+          +"<div style='padding:10px 14px 14px;'>"
+          +"<div style='display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;'>"
+          +"<div style='font-size:13px;font-weight:700;color:#fff;'>"+(r.service_label||'Prestation')+"</div>"
+          +"<span style='font-size:11px;font-weight:900;color:#22c55e;'>✅ Terminée</span>"
           +"</div>"
-          +(r.partner_name?"<div class='espace-card-sub'><i class='fa-solid fa-user-tie'></i> "+r.partner_name+"</div>":"")
-          +(dateStr?"<div class='espace-card-sub'><i class='fa-solid fa-calendar-days'></i> "+dateStr+"</div>":"")
-          +(r.total_amount?"<div class='espace-card-detail'>Total : "+Number(r.total_amount).toLocaleString("fr-FR")+" €</div>":"")
+          +(dateStr?"<div style='font-size:11px;color:var(--muted);margin-top:4px;'><i class='fa-solid fa-calendar-days' style='margin-right:4px;'></i>"+dateStr+"</div>":"")
+          +(r.total_amount?"<div style='font-size:13px;font-weight:700;color:var(--yellow);margin-top:6px;'>"+Number(r.total_amount).toLocaleString("fr-FR")+" €</div>":"")
+          +"</div>"
           +"</div>";
       }).join("");
     }
