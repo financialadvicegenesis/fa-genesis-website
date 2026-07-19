@@ -2783,26 +2783,25 @@
         var card = document.getElementById('reputationProgressCard');
         var box = document.getElementById('reputationProgress');
         if (!box || !card) return;
-        if (!progress || !progress.nextBadge) {
-            card.style.display = 'block';
-            box.innerHTML = '<div class="badge-progress-max"><i class="fas fa-crown"></i><span>Palier maximum atteint'
-                + (progress && progress.currentBadge && REPUTATION_BADGE_LABELS[progress.currentBadge] ? ' — ' + REPUTATION_BADGE_LABELS[progress.currentBadge] : '')
-                + '</span></div>';
-            return;
-        }
         card.style.display = 'block';
-        var nextLabel = REPUTATION_BADGE_LABELS[progress.nextBadge] || progress.nextBadge.toUpperCase();
+        if (!progress) { box.innerHTML = ''; return; }
         var curLabel = REPUTATION_BADGE_LABELS[progress.currentBadge] || 'Pas encore de badge';
-        var missionsPct = Math.max(0, Math.min(100, progress.missionsTarget ? Math.round(progress.missionsCurrent / progress.missionsTarget * 100) : 100));
-        var ratingPct = Math.max(0, Math.min(100, progress.ratingTarget ? Math.round(progress.ratingCurrent / progress.ratingTarget * 100) : 100));
-        var globalPct = Math.max(0, Math.min(100, progress.percent || 0));
-        var ratingCurDisplay = (Number(progress.ratingCurrent) || 0).toFixed(1);
-        box.innerHTML = '<div class="badge-progress-labels"><span class="badge-progress-cur"><i class="fas fa-medal"></i> ' + curLabel + '</span>'
-            + '<i class="fas fa-chevron-right badge-progress-arrow"></i>'
-            + '<span class="badge-progress-next">Prochain palier : ' + nextLabel + ' <i class="fas fa-lock"></i></span></div>'
-            + partnerTierLadderHtml(PARTNER_TIER_ORDER, progress.currentBadge, globalPct)
-            + '<div class="badge-progress-text"><i class="fas fa-briefcase mr-1"></i>' + (progress.missionsCurrent || 0) + '/' + (progress.missionsTarget || 0) + ' missions (' + missionsPct + '%) &nbsp;·&nbsp; '
-            + '<i class="fas fa-star mr-1"></i>' + ratingCurDisplay + '/' + (progress.ratingTarget || 0) + ' note (' + ratingPct + '%)</div>';
+        var curColor = REPUTATION_BADGE_COLORS[progress.currentBadge] || '#999';
+        var nextLabel = progress.nextBadge ? (REPUTATION_BADGE_LABELS[progress.nextBadge] || progress.nextBadge.toUpperCase()) : null;
+        var missions = progress.missionsCurrent || 0;
+        var ratingDisplay = (Number(progress.ratingCurrent) || 0).toFixed(1);
+        var nextHtml = nextLabel
+            ? '<span style="font-size:11px;color:#555;margin-left:8px"><i class="fas fa-lock" style="font-size:9px"></i> Prochain : ' + nextLabel + '</span>'
+            : '<span style="font-size:11px;color:#4caf50;margin-left:8px"><i class="fas fa-check"></i> Palier maximum</span>';
+        box.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:4px 0;">'
+            + '<div style="font-size:14px;font-weight:800;color:' + curColor + ';display:flex;align-items:center;gap:6px">'
+            + '<i class="fas fa-medal"></i>' + curLabel + nextHtml
+            + '</div>'
+            + '<div style="display:flex;gap:12px;flex-shrink:0;font-size:13px;color:#aaa;">'
+            + '<span><i class="fas fa-briefcase" style="color:var(--genesis-yellow);margin-right:4px"></i>' + missions + '</span>'
+            + '<span><i class="fas fa-star" style="color:var(--genesis-yellow);margin-right:4px"></i>' + ratingDisplay + '</span>'
+            + '</div>'
+            + '</div>';
     }
 
     function animatePartnerCounter(el, target) {
@@ -2827,14 +2826,23 @@
             var missions = (data && data.missions) || [];
             if (!missions.length) { el.innerHTML = '<p class="text-sm opacity-50 text-white">Aucune mission disponible pour le moment.</p>'; return; }
             el.innerHTML = '<div class="genesis-mission-grid">' + missions.map(function(m) {
+                var progressHtml;
+                if (m.id === 'alliance_circle' || m.id === 'premium_circle') {
+                    progressHtml = '<div style="margin-top:8px;padding:8px 10px;background:rgba(255,215,0,.05);border:1px solid rgba(255,215,0,.18);border-radius:10px;display:flex;align-items:center;justify-content:space-between;gap:8px">'
+                        + '<span style="font-size:11px;color:#666;flex:1">Progression visible dans <b style="color:#999">Cercles Genesis</b></span>'
+                        + '<a href="#" onclick="this.closest(\'.pd-tab-content\') && document.querySelector(\'[data-tab=\\\"reputation\\\"]\') && document.querySelector(\'[data-tab=\\\"reputation\\\"]\').click();return false;" style="background:var(--genesis-yellow);color:#000;border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;text-decoration:none;flex-shrink:0">Voir &rarr;</a>'
+                        + '</div>';
+                } else {
+                    progressHtml = '<div style="position:relative;height:8px;border-radius:6px;background:#000;border:1px solid rgba(255,255,255,.1);overflow:hidden;">'
+                        + '<div style="height:100%;border-radius:6px;background:linear-gradient(90deg,#7a5c00,var(--genesis-yellow));width:' + m.percent + '%;"></div>'
+                        + '</div>'
+                        + '<p class="text-xs opacity-60 text-white text-right mt-1">' + m.current + ' / ' + m.target + '</p>';
+                }
                 return '<div class="pb-3" style="border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:14px;' + (m.completed ? 'box-shadow:0 0 14px rgba(81,207,102,.2);border-color:#51cf66;' : '') + '">' +
                     '<div class="genesis-mission-status ' + (m.completed ? 'done' : 'pending') + '"><i class="fas ' + (m.completed ? 'fa-check' : 'fa-lock') + '"></i> ' + (m.completed ? 'Accomplie' : 'En cours') + '</div>' +
                     '<div class="flex items-center gap-2 font-black text-white uppercase text-sm mb-1"><i class="fas ' + m.icon + '" style="color:var(--genesis-yellow);"></i>' + escapeHtml(m.label) + (m.completed ? ' <i class="fas fa-circle-check" style="color:#51cf66;"></i>' : '') + '</div>' +
                     '<p class="text-xs opacity-60 text-white mb-2">' + escapeHtml(m.description) + '</p>' +
-                    '<div style="position:relative;height:8px;border-radius:6px;background:#000;border:1px solid rgba(255,255,255,.1);overflow:hidden;">' +
-                        '<div style="height:100%;border-radius:6px;background:linear-gradient(90deg,#7a5c00,var(--genesis-yellow));width:' + m.percent + '%;"></div>' +
-                    '</div>' +
-                    '<p class="text-xs opacity-60 text-white text-right mt-1">' + m.current + ' / ' + m.target + '</p>' +
+                    progressHtml +
                 '</div>';
             }).join('') + '</div>';
         } catch (error) {

@@ -3987,7 +3987,7 @@ function loadHallOfFame(){
   if(!wrap) return;
   fetch(API+'/api/hall-of-fame').then(function(r){return r.json();}).then(function(data){
     var hof = data && data.hallOfFame;
-    if(!hof || (!((hof.bestPartners||[]).length) && !hof.bestClient && !hof.bestReferrer && !hof.bestVisionnaire && !hof.bestBatisseur)){ wrap.innerHTML=''; return; }
+    if(!hof || (!((hof.bestPartners||[]).length) && !hof.bestClient && !hof.bestReferrer && !hof.bestTopQG && !hof.bestMostProductive)){ wrap.innerHTML=''; return; }
     var html = '<div class="p-section-hdr black p-section-hdr-fit" style="margin:16px 16px 12px;"><i class="fa-solid fa-trophy" style="color:var(--yellow)"></i> HALL OF FAME — '+hofMonthLabel(hof.month).toUpperCase()+'</div>';
     if((hof.bestPartners||[]).length){
       html += '<div class="p-reco-row">'+hof.bestPartners.map(function(p,i){return hofPremiumCard(p,i);}).join('')+'</div>';
@@ -3999,11 +3999,11 @@ function loadHallOfFame(){
     if(hof.bestReferrer){
       highlights += '<div class="p-ref-box"><div class="p-ref-box-title"><i class="fa-solid fa-handshake" style="color:var(--yellow)"></i> Meilleur parrain du mois</div><div class="p-ref-count">'+hof.bestReferrer.name+' ('+(hof.bestReferrer.type==='partenaire'?'partenaire':'client')+') · '+hof.bestReferrer.count+' parrainage'+(hof.bestReferrer.count>1?'s':'')+' validé'+(hof.bestReferrer.count>1?'s':'')+'</div></div>';
     }
-    if(hof.bestVisionnaire){
-      highlights += '<div class="p-ref-box"><div class="p-ref-box-title"><i class="fa-solid fa-crown" style="color:var(--yellow)"></i> Visionnaire du mois</div><div class="p-ref-count">'+hof.bestVisionnaire.name+(hof.bestVisionnaire.company?' · '+hof.bestVisionnaire.company:'')+(hof.bestVisionnaire.constellation?' '+constellationBadgeHtml(hof.bestVisionnaire.constellation):'')+'</div></div>';
+    if(hof.bestTopQG){
+      highlights += '<div class="p-ref-box"><div class="p-ref-box-title"><i class="fa-solid fa-crown" style="color:var(--yellow)"></i> Top QG du mois</div><div class="p-ref-count">'+hof.bestTopQG.name+(hof.bestTopQG.company?' · '+hof.bestTopQG.company:'')+(hof.bestTopQG.constellation?' '+constellationBadgeHtml(hof.bestTopQG.constellation):'')+'</div></div>';
     }
-    if(hof.bestBatisseur){
-      highlights += '<div class="p-ref-box"><div class="p-ref-box-title"><i class="fa-solid fa-bolt" style="color:var(--yellow)"></i> Bâtisseur du mois</div><div class="p-ref-count">'+hof.bestBatisseur.name+' · '+hof.bestBatisseur.count+' prestation'+(hof.bestBatisseur.count>1?'s':'')+'</div></div>';
+    if(hof.bestMostProductive){
+      highlights += '<div class="p-ref-box"><div class="p-ref-box-title"><i class="fa-solid fa-bolt" style="color:var(--yellow)"></i> Plus productif du mois</div><div class="p-ref-count">'+hof.bestMostProductive.name+' · '+hof.bestMostProductive.count+' prestation'+(hof.bestMostProductive.count>1?'s':'')+'</div></div>';
     }
     if(highlights){
       html += '<div style="display:flex;flex-direction:column;gap:8px;margin:0 16px 8px;">'+highlights+'</div>';
@@ -4624,9 +4624,9 @@ function signRequestContract(requestId){
 }
 
 // ── Section partenaire réutilisable (carte tracking + Mes commandes) ─────────
-var _BADGE_ICONS   = {bronze:'fa-medal',argent:'fa-medal',or:'fa-medal',elite:'fa-trophy',prestige:'fa-trophy',fondateur:'fa-crown'};
-var _BADGE_COLORS  = {bronze:'#cd7f32',argent:'#c0c0c0',or:'#FFD700',elite:'#FFD700',prestige:'#FFD700',fondateur:'#FFD700'};
-var _BADGE_LABELS  = {bronze:'Bronze',argent:'Argent',or:'Or',elite:'Élite',prestige:'Prestige',fondateur:'Fondateur'};
+var _BADGE_ICONS   = {bronze:'fa-medal',argent:'fa-medal',or:'fa-medal',elite:'fa-trophy',fondateur:'fa-crown'};
+var _BADGE_COLORS  = {bronze:'#cd7f32',argent:'#c0c0c0',or:'#FFD700',elite:'#FFD700',fondateur:'#FFD700'};
+var _BADGE_LABELS  = {bronze:'Bronze',argent:'Argent',or:'Or',elite:'Élite',fondateur:'Fondateur'};
 
 function _partnerInfoHtml(r){
   try {
@@ -5046,7 +5046,6 @@ function tierBadgeMeta(tier){
     argent:{label:'Bâtisseur',cls:'argent',icon:'fa-bolt'},
     or:{label:'Visionnaire',cls:'or',icon:'fa-crown'},
     elite:{label:'Générateur',cls:'elite',icon:'fa-infinity'},
-    prestige:{label:'Générateur',cls:'prestige',icon:'fa-infinity'},
     fondateur:{label:'Fondateur',cls:'fondateur',icon:'fa-star'},
     cercle_privilege:{label:'Cercle Privilège',cls:'cercle-privilege'},
     batisseur:{label:'Bâtisseur',cls:'batisseur'},
@@ -5054,7 +5053,7 @@ function tierBadgeMeta(tier){
   };
   return map[tier]||null;
 }
-var CLIENT_TIER_ORDER = ['bronze','argent','or','prestige'];
+var CLIENT_TIER_ORDER = ['bronze','argent','or'];
 var PARTNER_TIER_ORDER = ['bronze','argent','or','elite'];
 // Barre de progression "paliers" type Duolingo : pastilles cochees/actives/verrouillees
 // reliees par une barre degradee, calculee uniquement a partir de currentBadge/percent
@@ -5121,8 +5120,8 @@ function genesisUnifiedBadgesHtml(badge, constellation){
   return b + (b && c ? ' ' : '') + c;
 }
 // Seuils de commandes par palier (miroir côté client des CLIENT_BADGE_TIERS serveur)
-var _CLIENT_TIER_REQS = {bronze:1, argent:5, or:10, prestige:20};
-var _CLIENT_TIER_ICONS = {bronze:'fa-fire', argent:'fa-bolt', or:'fa-crown', prestige:'fa-infinity'};
+var _CLIENT_TIER_REQS = {bronze:1, argent:5, or:10};
+var _CLIENT_TIER_ICONS = {bronze:'fa-fire', argent:'fa-bolt', or:'fa-crown'};
 function badgeProgressHtml(progress){
   if(!progress) return '';
   return _tierRoadmapHtml(progress);
@@ -5176,27 +5175,19 @@ function _tierRoadmapHtml(progress){
 }
 function partnerBadgeProgressHtml(progress){
   if(!progress) return '';
-  if(!progress.nextBadge){
-    return '<div class="badge-progress badge-progress-max">'
-      +'<i class="fa-solid fa-crown"></i>'
-      +'<span>Palier maximum atteint'+(progress.currentBadge?' — '+(tierBadgeMeta(progress.currentBadge)||{}).label:'')+'</span>'
-      +'</div>';
-  }
-  var curMeta = tierBadgeMeta(progress.currentBadge) || {label:'Pas encore de badge'};
-  var nextMeta = tierBadgeMeta(progress.nextBadge) || {label:'—'};
-  var pct = Math.max(0, Math.min(100, progress.percent||0));
-  var missionsPct = Math.max(0, Math.min(100, progress.missionsTarget?Math.round(progress.missionsCurrent/progress.missionsTarget*100):100));
-  var ratingPct = Math.max(0, Math.min(100, progress.ratingTarget?Math.round(progress.ratingCurrent/progress.ratingTarget*100):100));
-  return '<div class="badge-progress">'
-    +'<div class="badge-progress-labels">'
-    +'<span class="badge-progress-cur"><i class="fa-solid fa-medal"></i> '+curMeta.label+'</span>'
-    +'<i class="fa-solid fa-chevron-right badge-progress-arrow"></i>'
-    +'<span class="badge-progress-next">Prochain palier : '+nextMeta.label+' <i class="fa-solid fa-lock"></i></span>'
+  var curMeta = tierBadgeMeta(progress.currentBadge) || {label:'Pas encore de badge', icon:'fa-star'};
+  var _missions = progress.missionsCurrent || 0;
+  var _rating = (Number(progress.ratingCurrent)||0).toFixed(1);
+  var _nextHtml = progress.nextBadge
+    ? '<span style="font-size:11px;color:#555;margin-left:8px"><i class="fa-solid fa-lock" style="font-size:9px"></i> '+((tierBadgeMeta(progress.nextBadge)||{label:progress.nextBadge}).label)+'</span>'
+    : '<span style="font-size:11px;color:#4caf50;margin-left:8px"><i class="fa-solid fa-check"></i> Max</span>';
+  return '<div class="badge-progress" style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 0;">'
+    +'<div style="font-size:13px;font-weight:700;color:#ddd;display:flex;align-items:center;gap:6px">'
+    +'<i class="fa-solid '+(curMeta.icon||'fa-medal')+'" style="color:#FFD700"></i>'+curMeta.label+_nextHtml
     +'</div>'
-    +tierLadderHtml(PARTNER_TIER_ORDER, progress.currentBadge, pct)
-    +'<div class="badge-progress-stats">'
-      +'<div><i class="fa-solid fa-briefcase"></i> <b>'+(progress.missionsCurrent||0)+'/'+(progress.missionsTarget||0)+'</b> missions ('+missionsPct+'%)</div>'
-      +'<div><i class="fa-solid fa-star"></i> <b>'+(Number(progress.ratingCurrent)||0).toFixed(1)+'/'+(progress.ratingTarget||0)+'</b> note ('+ratingPct+'%)</div>'
+    +'<div style="display:flex;gap:10px;flex-shrink:0;font-size:12px;color:#888;">'
+    +'<span><i class="fa-solid fa-briefcase" style="color:#FFD700;margin-right:3px"></i>'+_missions+'</span>'
+    +'<span><i class="fa-solid fa-star" style="color:#FFD700;margin-right:3px"></i>'+_rating+'</span>'
     +'</div>'
     +'</div>';
 }
@@ -5382,8 +5373,15 @@ function showGenesisMissions(){
         html += '<div class="genesis-mission-status '+(done?'done':'pending')+'"><i class="fa-solid '+(done?'fa-check':'fa-lock')+'"></i> '+(done?'Accomplie':'En cours')+'</div>';
         html += '<div class="genesis-mission-top"><i class="fa-solid '+m.icon+'"></i><div class="genesis-mission-label">'+m.label+(done?' <i class="fa-solid fa-circle-check" style="color:#51cf66;"></i>':'')+'</div></div>';
         html += '<div class="genesis-mission-desc">'+m.description+'</div>';
-        html += '<div class="badge-progress-track"><div class="badge-progress-fill" style="width:'+m.percent+'%"></div></div>';
-        html += '<div class="genesis-mission-count">'+m.current+' / '+m.target+'</div>';
+        if(m.id === 'alliance_circle' || m.id === 'premium_circle') {
+          html += '<div style="margin-top:8px;padding:8px 10px;background:rgba(255,215,0,.05);border:1px solid rgba(255,215,0,.18);border-radius:10px;display:flex;align-items:center;justify-content:space-between;gap:8px">';
+          html += '<span style="font-size:11px;color:#666;flex:1">Progression visible dans <b style="color:#999">Cercles Genesis</b></span>';
+          html += '<button onclick="profilBack();setTimeout(function(){showGenesisPatrimoine&&showGenesisPatrimoine();},50);" style="background:#FFD700;color:#000;border:none;border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;flex-shrink:0">Voir <i class="fa-solid fa-arrow-right" style="font-size:9px"></i></button>';
+          html += '</div>';
+        } else {
+          html += '<div class="badge-progress-track"><div class="badge-progress-fill" style="width:'+m.percent+'%"></div></div>';
+          html += '<div class="genesis-mission-count">'+m.current+' / '+m.target+'</div>';
+        }
         html += '</div>';
         return html;
       }).join('')+'</div>';
@@ -6146,7 +6144,6 @@ var _QG_LEVEL_THRESHOLDS = [
   { badge: 'bronze',  level: 'Créateur',    nextPts: 300,  nextLabel: 'Bâtisseur' },
   { badge: 'argent',  level: 'Bâtisseur',   nextPts: 600,  nextLabel: 'Visionnaire' },
   { badge: 'or',      level: 'Visionnaire', nextPts: 1000, nextLabel: 'Générateur' },
-  { badge: 'prestige',level: 'Générateur',  nextPts: 0,    nextLabel: '' },
   { badge: 'elite',   level: 'Générateur',  nextPts: 0,    nextLabel: '' },
   { badge: 'fondateur',level:'Générateur',  nextPts: 0,    nextLabel: '' }
 ];
@@ -6163,16 +6160,19 @@ function _qgWidgetHtml(pts, level, badge, badgeProgress, constellation, benefits
     var constHtml = constellation ? '<div style="margin-top:8px;">' + constellationBadgeHtml(constellation) + '</div>' : '';
     var benefitsHtml = '';
     if(benefits) {
-      var payoutLabel = benefits.payout === 'express' ? '<span style="color:#4caf50;font-weight:800">Express</span>'
-        : benefits.payout === 'prioritaire' ? '<span style="color:#FFD700;font-weight:800">Prioritaire</span>'
+      var _bsCr = benefits.commissionReduction || 0;
+      var _bsCommLabel = _bsCr <= 0 ? 'Standard' : (_bsCr <= 2 ? 'Avantageuse' : 'Privilégiée');
+      var _bsSoon = '<span style="font-size:9px;color:#555;background:rgba(255,255,255,.04);border-radius:3px;padding:1px 4px;margin-left:4px;font-weight:500">Bientôt</span>';
+      var payoutLabel = benefits.payout === 'express' ? '<span style="color:#4caf50;font-weight:800">Express</span>'+_bsSoon
+        : benefits.payout === 'prioritaire' ? '<span style="color:#FFD700;font-weight:800">Prioritaire</span>'+_bsSoon
         : '<span style="color:#888">Standard</span>';
       var eventsLabel = benefits.events
-        ? '<span style="color:#4caf50;font-weight:800">Prioritaire</span>'
+        ? '<span style="color:#4caf50;font-weight:800">Prioritaire</span>'+_bsSoon
         : '<span style="color:#888">Standard</span>';
       benefitsHtml = '<div style="margin-top:10px;border-top:1px solid rgba(255,215,0,.15);padding-top:8px;">'
         + '<div style="font-size:10px;color:var(--gray);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Avantages palier</div>'
         + '<div style="display:flex;gap:10px;flex-wrap:wrap;">'
-        + '<div style="font-size:11px;color:#aaa;flex:1;min-width:90px"><i class="fa-solid fa-percent" style="color:#FFD700;margin-right:3px;font-size:10px"></i>Commission : <b style="color:#ddd">' + (benefits.commissionLabel||'Standard') + '</b></div>'
+        + '<div style="font-size:11px;color:#aaa;flex:1;min-width:90px"><i class="fa-solid fa-percent" style="color:#FFD700;margin-right:3px;font-size:10px"></i>Commission : <b style="color:#ddd">'+_bsCommLabel+(_bsCr>0?_bsSoon:'')+'</b></div>'
         + '<div style="font-size:11px;color:#aaa;flex:1;min-width:90px"><i class="fa-solid fa-clock" style="color:#FFD700;margin-right:3px;font-size:10px"></i>Versement : ' + payoutLabel + '</div>'
         + '</div>'
         + '<div style="font-size:11px;color:#aaa;margin-top:4px"><i class="fa-solid fa-calendar-check" style="color:#FFD700;margin-right:3px;font-size:10px"></i>Événements Genesis : ' + eventsLabel + '</div>'
@@ -11441,14 +11441,17 @@ function _ptnrLoadReputation(){
 
     if(data.currentBenefits) {
       var b = data.currentBenefits;
-      var payLbl = b.payout === 'express' ? '<span style="color:#4caf50;font-weight:800">Express</span>'
-        : b.payout === 'prioritaire' ? '<span style="color:#FFD700;font-weight:800">Prioritaire</span>'
+      var _repCr = b.commissionReduction || 0;
+      var _repCommLabel = _repCr <= 0 ? 'Standard' : (_repCr <= 2 ? 'Avantageuse' : 'Privilégiée');
+      var _repSoon = '<span style="font-size:9px;color:#555;background:rgba(255,255,255,.04);border-radius:3px;padding:1px 4px;margin-left:4px;font-weight:500">Bientôt</span>';
+      var payLbl = b.payout === 'express' ? '<span style="color:#4caf50;font-weight:800">Express</span>'+_repSoon
+        : b.payout === 'prioritaire' ? '<span style="color:#FFD700;font-weight:800">Prioritaire</span>'+_repSoon
         : '<span style="color:#888">Standard</span>';
-      var evLbl = b.events ? '<span style="color:#4caf50;font-weight:800">Prioritaire</span>' : '<span style="color:#888">Standard</span>';
+      var evLbl = b.events ? '<span style="color:#4caf50;font-weight:800">Prioritaire</span>'+_repSoon : '<span style="color:#888">Standard</span>';
       html += '<div style="background:linear-gradient(135deg,#1a1200,#0d0d00);border:1px solid rgba(255,215,0,.2);border-radius:14px;padding:12px 14px;margin:0 0 14px;">'
         + '<div style="font-size:10px;color:var(--gray);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px"><i class="fa-solid fa-star" style="color:#FFD700;margin-right:4px;"></i>Avantages de votre palier</div>'
         + '<div style="display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:#aaa;">'
-        + '<div style="flex:1;min-width:110px"><i class="fa-solid fa-percent" style="color:#FFD700;margin-right:4px;font-size:10px"></i>Commission : <b style="color:#eee">'+(b.commissionLabel||'Standard')+'</b></div>'
+        + '<div style="flex:1;min-width:110px"><i class="fa-solid fa-percent" style="color:#FFD700;margin-right:4px;font-size:10px"></i>Commission : <b style="color:#eee">'+_repCommLabel+(_repCr>0?_repSoon:'')+'</b></div>'
         + '<div style="flex:1;min-width:110px"><i class="fa-solid fa-clock" style="color:#FFD700;margin-right:4px;font-size:10px"></i>Versement : '+payLbl+'</div>'
         + '</div>'
         + '<div style="font-size:12px;color:#aaa;margin-top:6px"><i class="fa-solid fa-calendar-check" style="color:#FFD700;margin-right:4px;font-size:10px"></i>Événements Genesis : '+evLbl+'</div>'

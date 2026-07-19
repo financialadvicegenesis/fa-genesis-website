@@ -6855,7 +6855,9 @@ app.get('/api/tier-benefits', function(req, res) {
     try {
         var tiers = Object.keys(GENESIS_TIER_BENEFITS).map(function(badge) {
             var b = GENESIS_TIER_BENEFITS[badge];
-            return { badge: badge, commissionLabel: b.commissionLabel, payout: b.payout, events: b.events };
+            var _cr = b.commissionReduction || 0;
+            var _cl = _cr <= 0 ? 'Standard' : (_cr <= 2 ? 'Avantageuse' : 'Privilégiée');
+            return { badge: badge, commissionLabel: _cl, commissionReduction: _cr, payout: b.payout, events: b.events };
         });
         res.json({ ok: true, tiers: tiers });
     } catch (e) { res.status(500).json({ error: 'Erreur serveur' }); }
@@ -9980,9 +9982,9 @@ function computeHallOfFameForMonth(monthStr) {
         }
     });
 
-    // Visionnaire du mois : parmi les partenaires qualifies ce mois-ci (cf bestPartners),
+    // Top QG du mois : parmi les partenaires qualifies ce mois-ci (cf bestPartners),
     // le meilleur score parmi ceux ayant atteint le niveau Genesis "Visionnaire" (badge or+)
-    var bestVisionnaire = null;
+    var bestTopQG = null;
     (function() {
         var qualifying = partners.filter(function(p) {
             if (p.accountStatus !== 'active') return false;
@@ -9996,7 +9998,7 @@ function computeHallOfFameForMonth(monthStr) {
         var winner = qualifying
             .map(function(p) { return { partner: p, score: getPartnerCategoryScore(p) }; })
             .sort(function(a, b) { return b.score - a.score; })[0];
-        bestVisionnaire = {
+        bestTopQG = {
             partnerId: winner.partner.id,
             name: ((winner.partner.prenom || '') + ' ' + (winner.partner.nom || '')).trim(),
             company: winner.partner.company || '',
@@ -10004,9 +10006,9 @@ function computeHallOfFameForMonth(monthStr) {
         };
     })();
 
-    // Batisseur du mois : parmi les clients ayant paye une commande ce mois-ci (cf bestClient),
+    // Plus productif du mois : parmi les clients ayant paye une commande ce mois-ci (cf bestClient),
     // le plus de commandes realisees au total parmi ceux ayant atteint le niveau Genesis "Batisseur" (badge argent+)
-    var bestBatisseur = null;
+    var bestMostProductive = null;
     (function() {
         var candidates = Object.keys(clientCounts).map(function(email) {
             var completed = getClientCompletedOrders(email);
@@ -10018,7 +10020,7 @@ function computeHallOfFameForMonth(monthStr) {
         if (!candidates.length) return;
         var winner = candidates.sort(function(a, b) { return b.completed - a.completed; })[0];
         var user = users.find(function(u) { return u.email.toLowerCase() === winner.email; });
-        bestBatisseur = {
+        bestMostProductive = {
             email: winner.email,
             name: user ? ((user.prenom || '') + ' ' + (user.nom || '')).trim() : winner.email,
             count: winner.completed
@@ -10031,8 +10033,8 @@ function computeHallOfFameForMonth(monthStr) {
         bestPartners: bestPartners,
         bestClient: bestClient,
         bestReferrer: bestReferrer,
-        bestVisionnaire: bestVisionnaire,
-        bestBatisseur: bestBatisseur
+        bestTopQG: bestTopQG,
+        bestMostProductive: bestMostProductive
     };
 }
 
@@ -10119,14 +10121,14 @@ const GENESIS_POINT_VALUES = {
 const REFERRAL_FILLEUL_DISCOUNT_PCT = 10;
 
 // Structure de configuration des avantages par palier — valeurs ajustables
+// commissionLabel retiré : dérivé à l'affichage depuis commissionReduction (0→Standard, 1-2→Avantageuse, 3+→Privilégiée)
 const GENESIS_TIER_BENEFITS = {
-    null:     { commissionLabel: 'Standard',     commissionReduction: 0, payout: 'standard',    events: false },
-    bronze:   { commissionLabel: 'Standard',     commissionReduction: 0, payout: 'standard',    events: false },
-    argent:   { commissionLabel: 'Avantageuse',  commissionReduction: 1, payout: 'prioritaire', events: false },
-    or:       { commissionLabel: 'Avantageuse',  commissionReduction: 2, payout: 'prioritaire', events: true  },
-    prestige: { commissionLabel: 'Privilégiée',  commissionReduction: 3, payout: 'express',     events: true  },
-    elite:    { commissionLabel: 'Privilégiée',  commissionReduction: 4, payout: 'express',     events: true  },
-    fondateur:{ commissionLabel: 'Privilégiée',  commissionReduction: 5, payout: 'express',     events: true  }
+    null:     { commissionReduction: 0, payout: 'standard',    events: false },
+    bronze:   { commissionReduction: 0, payout: 'standard',    events: false },
+    argent:   { commissionReduction: 1, payout: 'prioritaire', events: false },
+    or:       { commissionReduction: 2, payout: 'prioritaire', events: true  },
+    elite:    { commissionReduction: 4, payout: 'express',     events: true  },
+    fondateur:{ commissionReduction: 5, payout: 'express',     events: true  }
 };
 
 function getBenefitsForBadge(badge) {
@@ -10141,8 +10143,7 @@ const GENESIS_QG_THRESHOLDS = [
     { badge: null,     nextPts: 100,  nextLabel: 'Créateur' },
     { badge: 'bronze', nextPts: 300,  nextLabel: 'Bâtisseur' },
     { badge: 'argent', nextPts: 600,  nextLabel: 'Visionnaire' },
-    { badge: 'or',     nextPts: 1000, nextLabel: 'Générateur' },
-    { badge: 'prestige', nextPts: 0,  nextLabel: '' }
+    { badge: 'or',     nextPts: 1000, nextLabel: 'Générateur' }
 ];
 
 // Réduction fidélité pour les paires ayant atteint un palier Cercle Genesis
@@ -10541,9 +10542,9 @@ app.get('/api/hall-of-fame', function(req, res) {
                         constellation: p ? getConstellationTier(p) : null
                     });
                 }),
-                bestVisionnaire: snapshot.bestVisionnaire ? (function() {
-                    var p = partners.find(function(pp) { return pp.id === snapshot.bestVisionnaire.partnerId; });
-                    return Object.assign({}, snapshot.bestVisionnaire, { photo: p ? (p.photo || null) : null, constellation: p ? getConstellationTier(p) : null });
+                bestTopQG: snapshot.bestTopQG ? (function() {
+                    var p = partners.find(function(pp) { return pp.id === snapshot.bestTopQG.partnerId; });
+                    return Object.assign({}, snapshot.bestTopQG, { photo: p ? (p.photo || null) : null, constellation: p ? getConstellationTier(p) : null });
                 })() : null
             });
         }
