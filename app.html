@@ -4972,62 +4972,54 @@ var _CLIENT_TIER_REQS = {bronze:1, argent:5, or:10, prestige:20};
 var _CLIENT_TIER_ICONS = {bronze:'fa-fire', argent:'fa-bolt', or:'fa-crown', prestige:'fa-infinity'};
 function badgeProgressHtml(progress){
   if(!progress) return '';
-  // Palier maximum atteint
-  if(!progress.nextBadge && progress.currentBadge === CLIENT_TIER_ORDER[CLIENT_TIER_ORDER.length-1]){
-    return '<div class="badge-progress badge-progress-max">'
-      +'<i class="fa-solid fa-crown"></i>'
-      +'<span>Palier maximum atteint — '+(tierBadgeMeta(progress.currentBadge)||{label:'Générateur'}).label+'</span>'
-      +'</div>'
-      +_tierRoadmapHtml(progress);
-  }
   return _tierRoadmapHtml(progress);
 }
 function _tierRoadmapHtml(progress){
-  var curIdx = CLIENT_TIER_ORDER.indexOf(progress.currentBadge);
-  var pct = Math.max(0, Math.min(100, progress.percent||0));
-  var remaining = Math.max(0, (progress.target!=null?progress.target:0)-(progress.current!=null?progress.current:0));
-  var html = '<div class="tier-roadmap">';
-  html += '<div class="tier-roadmap-title"><i class="fa-solid fa-chart-line"></i> Mes paliers Genesis</div>';
-  CLIENT_TIER_ORDER.forEach(function(tierId, i){
-    var meta = tierBadgeMeta(tierId) || {label:tierId, icon:'fa-star'};
-    var icon = _CLIENT_TIER_ICONS[tierId] || (meta.icon || 'fa-star');
-    var req  = _CLIENT_TIER_REQS[tierId] || '?';
-    var isAtteint  = curIdx >= 0 && i <= curIdx;
-    var isEnCours  = i === curIdx + 1;
-    var isVerrouille = !isAtteint && !isEnCours;
-    var state = isAtteint ? 'done' : (isEnCours ? 'current' : 'locked');
-    var isLast = i === CLIENT_TIER_ORDER.length - 1;
-    html += '<div class="tier-row '+state+'">';
-    // Spine (icon + vertical line)
-    html += '<div class="tier-spine">';
-    html += '<div class="tier-spine-dot">';
-    if(isAtteint) html += '<i class="fa-solid fa-check"></i>';
-    else if(isEnCours) html += '<i class="fa-solid '+icon+'"></i>';
-    else html += '<i class="fa-solid fa-lock"></i>';
-    html += '</div>';
-    if(!isLast) html += '<div class="tier-spine-line"></div>';
-    html += '</div>';
-    // Body
-    html += '<div class="tier-body">';
-    html += '<div class="tier-body-top">';
-    html += '<div class="tier-body-name">'+meta.label+'</div>';
-    if(isAtteint)     html += '<span class="tier-badge-pill done"><i class="fa-solid fa-check"></i> Atteint</span>';
-    else if(isEnCours) html += '<span class="tier-badge-pill current"><i class="fa-solid fa-bolt-lightning"></i> En cours</span>';
-    else              html += '<span class="tier-badge-pill locked"><i class="fa-solid fa-lock"></i> '+req+' cmd</span>';
-    html += '</div>';
-    if(isEnCours){
-      html += '<div class="tier-bar"><div class="tier-bar-fill" style="width:'+pct+'%"></div></div>';
-      html += '<div class="tier-note">'+remaining+' commande'+(remaining>1?'s':'')+' restante'+(remaining>1?'s':'')+' · '+pct+'%</div>';
-    } else if(isAtteint && i===curIdx){
-      html += '<div class="tier-note">Palier actuel</div>';
-    } else if(isVerrouille){
-      html += '<div class="tier-req">'+req+' commande'+(req>1?'s':'')+' au total</div>';
+  try {
+    // Source unique : _QG_LEVEL_THRESHOLDS (pas de compteur de commandes)
+    var pts = (typeof USER !== 'undefined' && USER && USER.genesisPoints) ? (parseInt(USER.genesisPoints) || 0) : 0;
+    var curBadge = (progress && progress.currentBadge) ? progress.currentBadge : null;
+    var uniqueTiers = _QG_LEVEL_THRESHOLDS.slice(0, 5); // Explorateur, Créateur, Bâtisseur, Visionnaire, Générateur
+    var curIdx = 0;
+    for (var _ti = 0; _ti < uniqueTiers.length; _ti++) {
+      if (uniqueTiers[_ti].badge === curBadge) { curIdx = _ti; break; }
     }
-    html += '</div>'; // tier-body
-    html += '</div>'; // tier-row
-  });
-  html += '</div>';
-  return html;
+    var curTier = uniqueTiers[curIdx];
+    var html = '<div class="tier-roadmap">';
+    html += '<div class="tier-roadmap-title"><i class="fa-solid fa-chart-line"></i> Mes paliers Genesis</div>';
+    if (curTier.nextPts > 0) {
+      var remaining = Math.max(0, curTier.nextPts - pts);
+      var pct = Math.min(100, Math.round(pts / curTier.nextPts * 100));
+      html += '<div style="margin-bottom:10px">';
+      html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">';
+      html += '<span style="font-size:12px;font-weight:700;color:#ddd"><i class="fa-solid fa-bolt" style="color:#FFD700;font-size:10px;margin-right:4px"></i>Prochain : ' + curTier.nextLabel + '</span>';
+      html += '<span style="font-size:11px;color:var(--gray)">encore ' + remaining + ' QG</span>';
+      html += '</div>';
+      html += '<div class="tier-bar"><div class="tier-bar-fill" style="width:' + pct + '%"></div></div>';
+      html += '</div>';
+    } else {
+      html += '<div style="color:#4caf50;font-size:12px;font-weight:700;padding:6px 0"><i class="fa-solid fa-check-circle" style="margin-right:5px"></i>Niveau maximum atteint</div>';
+    }
+    var futureItems = '';
+    var seenLevels = {};
+    seenLevels[curTier.level] = true;
+    if (curTier.nextLabel) seenLevels[curTier.nextLabel] = true;
+    for (var _fi = curIdx + 2; _fi < uniqueTiers.length; _fi++) {
+      var _ft = uniqueTiers[_fi];
+      if (!seenLevels[_ft.level]) {
+        seenLevels[_ft.level] = true;
+        futureItems += '<div style="display:flex;align-items:center;gap:6px;padding:3px 0;border-top:1px solid rgba(255,255,255,.05)">'
+          + '<i class="fa-solid fa-lock" style="font-size:10px;color:#444"></i>'
+          + '<span style="color:#555;font-size:12px">' + _ft.level + '</span>'
+          + '</div>';
+      }
+    }
+    if (futureItems) {
+      html += '<div style="margin-top:6px">' + futureItems + '</div>';
+    }
+    html += '</div>';
+    return html;
+  } catch(_e) { return ''; }
 }
 function partnerBadgeProgressHtml(progress){
   if(!progress) return '';
@@ -6019,7 +6011,7 @@ function _qgWidgetHtml(pts, level, badge, badgeProgress, constellation, benefits
       if(_QG_LEVEL_THRESHOLDS[i].badge === badge){ tier = _QG_LEVEL_THRESHOLDS[i]; break; }
     }
     if(!tier) tier = _QG_LEVEL_THRESHOLDS[0];
-    var pct = (badgeProgress && typeof badgeProgress.percent === 'number') ? badgeProgress.percent : (tier.nextPts > 0 ? Math.min(100, Math.round(pts / tier.nextPts * 100)) : 100);
+    var pct = tier.nextPts > 0 ? Math.min(100, Math.round(pts / tier.nextPts * 100)) : 100;
     var nextInfo = (tier.nextLabel && tier.nextPts > 0) ? '<div style="font-size:11px;color:var(--gray);margin-top:5px;text-align:right">Prochain : ' + tier.nextLabel + ' (' + tier.nextPts + ' QG)</div>' : '';
     var constHtml = constellation ? '<div style="margin-top:8px;">' + constellationBadgeHtml(constellation) + '</div>' : '';
     var benefitsHtml = '';
@@ -6044,7 +6036,7 @@ function _qgWidgetHtml(pts, level, badge, badgeProgress, constellation, benefits
       + '<span style="font-size:12px;color:var(--gray);font-weight:700;letter-spacing:.04em;text-transform:uppercase">Niveau Genesis</span>'
       + '<span style="font-size:13px;color:#FFD700;font-weight:800"><i class="fa-solid fa-bolt"></i> ' + pts + ' QG</span>'
       + '</div>'
-      + '<div style="font-size:15px;font-weight:800;color:#fff;margin-bottom:8px">' + (level || tier.level) + '</div>'
+      + '<div style="font-size:15px;font-weight:800;color:#fff;margin-bottom:8px">' + tier.level + '</div>'
       + '<div style="background:rgba(255,255,255,.1);border-radius:99px;height:6px;overflow:hidden">'
       + '<div style="background:linear-gradient(90deg,#FFD700,#FFC300);height:100%;width:' + pct + '%;border-radius:99px;transition:width .6s"></div>'
       + '</div>'
