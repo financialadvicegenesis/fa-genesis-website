@@ -4461,7 +4461,9 @@ app.get('/api/client/payments-list', function(req, res) {
         var clientOrders = orders.filter(function(o) {
             return o.client_info && o.client_info.email &&
                    o.client_info.email.toLowerCase() === user.email.toLowerCase() &&
-                   o.status !== 'cancelled';
+                   o.status !== 'cancelled' &&
+                   o.status !== 'completed' &&
+                   o.status !== 'fully_paid';
         });
         clientOrders.sort(function(a, b) { return new Date(b.created_at || 0) - new Date(a.created_at || 0); });
 

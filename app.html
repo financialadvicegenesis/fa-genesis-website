@@ -3074,12 +3074,23 @@ function loadStatusCard(){
     .then(function(r){return r.json();})
     .then(function(d){
       var payments = d.payments || [];
-      var active = payments.find(function(p){return p.status!=='fully_paid'&&p.status!=='cancelled';});
-      if(active){
-        document.getElementById('statusCard').style.display = 'block';
-        document.getElementById('scName').textContent = active.product_name||'Votre commande';
-        document.getElementById('scStatus').textContent = active.status_label||'En cours';
-        document.getElementById('scSub').textContent = 'Commande #'+(active.order_id||'').substring(0,8);
+      // Carte active uniquement si une tranche est réellement en attente d'action
+      // (exclut 'paid', 'fully_paid', 'cancelled' — évite les commandes terminées ou fantômes)
+      var active = payments.find(function(p){
+        return p.status==='due' || p.status==='accepted_unpaid' || p.status==='pending';
+      });
+      var scCard = document.getElementById('statusCard');
+      if(active && scCard){
+        scCard.style.display = 'block';
+        var _scLabels = {due:'Solde à régler',accepted_unpaid:'En attente de paiement',pending:'En cours'};
+        var scName = document.getElementById('scName');
+        var scStatus = document.getElementById('scStatus');
+        var scSub = document.getElementById('scSub');
+        if(scName) scName.textContent = active.label||active.product_name||'Votre commande';
+        if(scStatus) scStatus.textContent = _scLabels[active.status]||'En cours';
+        if(scSub) scSub.textContent = 'Commande #'+(active.order_id||'').substring(0,8);
+      } else if(scCard){
+        scCard.style.display = 'none';
       }
     }).catch(function(){});
 }
