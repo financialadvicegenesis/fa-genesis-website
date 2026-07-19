@@ -2404,6 +2404,19 @@ app.post('/api/orders/create', (req, res) => {
                     if (psoUIdx !== -1) { psoUsrs[psoUIdx].referral_discount = { pct: psoDisPct, applied: true, applied_at: new Date().toISOString() }; saveUsers(psoUsrs); }
                 }
             }
+            // Tâche 8 : réduction fidélité Cercle Alliance (si paire client-partenaire a un cercle actif)
+            if (req.body.use_cercle_discount === true) {
+                var _caTok = (req.headers.authorization || '').replace('Bearer ', '').trim();
+                var _caUser = _caTok ? findUserByToken(_caTok) : null;
+                if (_caUser) {
+                    var _caCount = getClientPartnerCollabCount(_caUser.email, req.body.partner_id || '');
+                    var _caTier = getCercleGenesisTier(_caCount);
+                    if (_caTier) {
+                        psoTotal = Math.round(psoTotal * (1 - CERCLE_ALLIANCE_DISCOUNT_PCT / 100) * 100) / 100;
+                        console.log('[CERCLE] Réduction fidélité ' + CERCLE_ALLIANCE_DISCOUNT_PCT + '% pour', _caUser.email, '+', req.body.partner_id);
+                    }
+                }
+            }
             // GENESIS SAFE™ two-tier :
             // ≤ 300 € → paiement intégral immédiat, fonds retenus jusqu'à la livraison (payment_tier='small')
             // > 300 € → acompte 30 % versé au prestataire + solde 70 % à la livraison (payment_tier='large')
@@ -4010,7 +4023,20 @@ app.post('/api/payments/sumup/webhook', async (req, res) => {
                     var _acceptedD = loadDispatches().filter(function(d) { return d.order_id === orderId && d.status === 'accepted'; });
                     _acceptedD.forEach(function(d) { processDispatchPayout(d, stage).catch(function(e) { console.error('[PAYOUT] Erreur ' + stage + ' webhook:', e); }); });
                     if (_acceptedD.length === 0) console.log('[WEBHOOK] Aucun dispatch accepté pour versement ' + stage + ' — commande ' + orderId);
-                    if (isFinalPayment) requestPartnerReviews(clientEmail, _acceptedD);
+                    if (isFinalPayment) {
+                        requestPartnerReviews(clientEmail, _acceptedD);
+                        // Tâche 7 : Jérémie proactif après paiement final
+                        try {
+                            var _wUser = loadUsers().find(function(u){ return (u.email||'')===(clientEmail||''); });
+                            if (_wUser) checkAndSendProactiveQGNotif(_wUser.email, 'client', getClientGenesisPoints(_wUser));
+                            _acceptedD.forEach(function(d){
+                                if (d.claimed_by_partner_id) {
+                                    var _wPtnr = loadPartners().find(function(p){ return p.id === d.claimed_by_partner_id; });
+                                    if (_wPtnr) checkAndSendProactiveQGNotif(_wPtnr.email, 'partner', getPartnerGenesisPoints(_wPtnr));
+                                }
+                            });
+                        } catch(_e) {}
+                    }
                 }
             }
         }
@@ -9490,13 +9516,18 @@ function getPartnerCategoryScore(partner) {
     // Reponse rapide = bonus ; pas encore de donnee = neutre (ni bonus ni malus)
     const responseComponent = avgResponseMinutes === null ? 0 : Math.max(0, 10 - Math.min(avgResponseMinutes, 600) / 60);
 
+    // Tâche 6 : boost temporaire pour les nouveaux partenaires sans historique
+    var _ancJours = seniorityMonths * 30;
+    var _nouveauVenuBoost = (_ancJours < 30 && missions < 3) ? NOUVEAU_VENU_BOOST : 0;
+
     return (ratingComponent * 10)
         + (missions * 0.5)
         + (Math.min(seniorityMonths, 36) * 0.3)
         + (satisfaction * 10)
         + responseComponent
         + (PARTNER_BADGE_SCORE_BONUS[badge] || 0)
-        + getPartnerCercleGenesisBonus(partner.id);
+        + getPartnerCercleGenesisBonus(partner.id)
+        + _nouveauVenuBoost;
 }
 
 function getPartnerCategoryRank(partner, allPartnersSameCategory) {
@@ -10005,6 +10036,49 @@ const GENESIS_TIER_BENEFITS = {
 
 function getBenefitsForBadge(badge) {
     return GENESIS_TIER_BENEFITS[badge] || GENESIS_TIER_BENEFITS[null];
+}
+
+// Boost de visibilité annuaire pour les nouveaux partenaires (< 30 j, < 3 missions)
+const NOUVEAU_VENU_BOOST = 15;
+
+// Seuils QG pour les notifications proactives (miroir de _QG_LEVEL_THRESHOLDS côté client)
+const GENESIS_QG_THRESHOLDS = [
+    { badge: null,     nextPts: 100,  nextLabel: 'Créateur' },
+    { badge: 'bronze', nextPts: 300,  nextLabel: 'Bâtisseur' },
+    { badge: 'argent', nextPts: 600,  nextLabel: 'Visionnaire' },
+    { badge: 'or',     nextPts: 1000, nextLabel: 'Générateur' },
+    { badge: 'prestige', nextPts: 0,  nextLabel: '' }
+];
+
+// Réduction fidélité pour les paires ayant atteint un palier Cercle Genesis
+const CERCLE_ALLIANCE_DISCOUNT_PCT = 5;
+
+// Retourne le prochain seuil QG à atteindre (ou null si palier max)
+function getNextQGThreshold(pts) {
+    for (var _ti = 0; _ti < GENESIS_QG_THRESHOLDS.length; _ti++) {
+        if (GENESIS_QG_THRESHOLDS[_ti].nextPts > 0 && pts < GENESIS_QG_THRESHOLDS[_ti].nextPts) {
+            return GENESIS_QG_THRESHOLDS[_ti];
+        }
+    }
+    return null;
+}
+
+// Envoie une notification proactive si l'utilisateur est à 1 action du prochain palier
+function checkAndSendProactiveQGNotif(email, role, pts) {
+    try {
+        var _next = getNextQGThreshold(pts);
+        if (!_next) return;
+        var _gap = _next.nextPts - pts;
+        if (_gap <= GENESIS_POINT_VALUES.reservationEffectuee) {
+            var _msg = _gap <= GENESIS_POINT_VALUES.avisLaisse
+                ? 'Plus qu\'un avis pour atteindre le niveau ' + _next.nextLabel + ' !'
+                : 'Plus qu\'une mission pour atteindre le niveau ' + _next.nextLabel + ' !';
+            notifyUser(email, role, 'jeremie_proactif',
+                'Palier ' + _next.nextLabel + ' en vue !' ,
+                _msg + ' (' + pts + '/' + _next.nextPts + ' QG)',
+                '/app.html');
+        }
+    } catch(_e) {}
 }
 
 function getEventAttendancePoints(personId) {
@@ -10678,7 +10752,8 @@ app.get('/api/partners/:id/reviews', (req, res) => {
                 services: activeServices,
                 portfolio: activePortfolio,
                 verified: true,
-                cercleGenesis: cercleGenesis
+                cercleGenesis: cercleGenesis,
+                cercleDiscountPct: (cercleGenesis && cercleGenesis.current) ? CERCLE_ALLIANCE_DISCOUNT_PCT : 0
             },
             reviews: reviews
         });
@@ -11023,6 +11098,12 @@ app.post('/api/partner-reviews', (req, res) => {
                 savePartners(allPtnrs);
             }
         }
+
+        // Tâche 7 : Jérémie proactif — vérifier si le client approche un palier
+        try {
+            var _rvClientUser = loadUsers().find(function(u) { return (u.email||'')===(review.userEmail||''); });
+            if (_rvClientUser) checkAndSendProactiveQGNotif(_rvClientUser.email, 'client', getClientGenesisPoints(_rvClientUser));
+        } catch(_e) {}
 
         res.json({ success: true, review: review, client_qg_gain: GENESIS_POINT_VALUES.avisLaisse });
     } catch (error) {
