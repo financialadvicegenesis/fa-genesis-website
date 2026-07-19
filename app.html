@@ -5315,11 +5315,6 @@ function renderProfil(){
       +'<div class="client-tier-badge">'+(USER.badge?tierBadgeHtml(USER.badge):'')+(USER.isCerclePrivilege?tierBadgeHtml('cercle_privilege'):'')+'</div>'
       +'</div>'
       +'</div>'
-      +'<div class="genesis-qg-box">'
-      +genesisLevelHtml(USER.genesisLevel)
-      +'<div class="genesis-qg-value"><i class="fa-solid fa-chart-line"></i> QG : '+(USER.genesisPoints||0)+'</div>'
-      +'</div>'
-      +referralBoxHtml()
       +'</div>';
   }
 
@@ -5376,7 +5371,7 @@ function renderProfil(){
   var logout = (USER && !GUEST)
     ? '<button class="plus-logout" onclick="deconnexion()">Déconnexion</button>' : '';
 
-  c.innerHTML = header + monEspace + espacePartenaire + params + infos + logout
+  c.innerHTML = header + monEspace + espacePartenaire + params + infos + (USER && !GUEST ? referralBoxHtml() : '') + logout
     +'<div class="plus-version">Version 1.1</div>';
 }
 
