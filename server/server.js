@@ -634,6 +634,9 @@ function assignIntervenantsFromOrder(orderId) {
     }
 }
 
+// Délai avant auto-libération de la tranche intermédiaire GENESIS SAFE™ si le client ne valide pas
+const GENESIS_SAFE_INTERMEDIATE_RELEASE_DAYS = 3;
+
 // Crée les missions (dispatches) pour les partenaires externes d'une commande
 // Versement unitaire pour un dispatch accepté (acompte ou solde)
 async function processDispatchPayout(dispatch, stage) {
@@ -696,6 +699,10 @@ async function processDispatchPayout(dispatch, stage) {
             return d.dispatch_id === dispatch.id && (d.status === 'open' || d.status === 'jeremie_triage' || d.status === 'escalated_admin');
         });
 
+        var _autoReleaseAt = (!hasOpenDispute && stage === 'installment_2')
+            ? new Date(Date.now() + GENESIS_SAFE_INTERMEDIATE_RELEASE_DAYS * 24 * 3600 * 1000).toISOString()
+            : null;
+
         var newPayout = {
             id: 'PAY-' + Math.random().toString(36).substring(2, 10).toUpperCase(),
             order_id: dispatch.order_id,
@@ -713,7 +720,8 @@ async function processDispatchPayout(dispatch, stage) {
             fa_pct: faPct,
             partner_pct: partnerPct,
             currency: 'EUR',
-            status: hasOpenDispute ? 'on_hold' : 'pending',
+            status: hasOpenDispute ? 'on_hold' : (stage === 'installment_2' ? 'awaiting_validation' : 'pending'),
+            auto_release_at: _autoReleaseAt,
             created_at: new Date().toISOString(),
             sent_at: null,
             payout_batch_id: null,
@@ -726,6 +734,12 @@ async function processDispatchPayout(dispatch, stage) {
 
         if (hasOpenDispute) {
             console.log('[PAYOUT] ' + stage + ' mis en attente (on_hold, litige ouvert sur dispatch ' + dispatch.id + ') → ' + partner.email + ' : ' + paidAmount + ' €');
+            return;
+        }
+
+        // GENESIS SAFE™ : tranche intermédiaire (40%) retenue jusqu'à validation du livrable intermédiaire par le client
+        if (stage === 'installment_2') {
+            console.log('[PAYOUT] installment_2 retenu — auto-libération dans ' + GENESIS_SAFE_INTERMEDIATE_RELEASE_DAYS + ' j (le ' + (_autoReleaseAt || '').substring(0, 10) + ') → ' + partner.email + ' : ' + paidAmount + ' €');
             return;
         }
 
@@ -788,6 +802,70 @@ async function releaseOnHoldPayouts(dispatchId) {
     } catch (e) {
         console.error('[PAYOUT] Erreur releaseOnHoldPayouts:', e);
     }
+}
+
+// GENESIS SAFE™ Phase 2 : libère la tranche intermédiaire (40%) retenue pour l'order donné
+async function releaseIntermediatePayoutsForOrder(orderId) {
+    try {
+        var _riPayouts = loadPayouts();
+        var _riToRelease = _riPayouts.filter(function(p) {
+            return p.order_id === orderId && p.stage === 'installment_2' && p.status === 'awaiting_validation';
+        });
+        if (_riToRelease.length === 0) return;
+
+        for (var _riIdx = 0; _riIdx < _riToRelease.length; _riIdx++) {
+            var _riP = _riToRelease[_riIdx];
+            var _riPartner = loadPartners().find(function(pt) { return pt.id === _riP.partner_id; });
+
+            var _riPouts = loadPayouts();
+            var _riPi = _riPouts.findIndex(function(p) { return p.id === _riP.id; });
+            if (_riPi === -1) continue;
+            _riPouts[_riPi].status = 'pending';
+            _riPouts[_riPi].validation_released_at = new Date().toISOString();
+            savePayouts(_riPouts);
+
+            if (_riPartner && _riPartner.payout_paypal) {
+                var _riResult = await triggerPayPalPayouts([{
+                    recipient_email: _riPartner.payout_paypal,
+                    amount: _riP.amount,
+                    currency: 'EUR',
+                    note: 'GENESIS SAFE™ — livrable intermédiaire validé (' + _riP.order_id + ')'
+                }]);
+                var _riPouts2 = loadPayouts();
+                var _riPi2 = _riPouts2.findIndex(function(p) { return p.id === _riP.id; });
+                if (_riPi2 !== -1) {
+                    _riPouts2[_riPi2].status = _riResult.success ? 'sent' : 'failed';
+                    if (_riResult.success) { _riPouts2[_riPi2].sent_at = new Date().toISOString(); _riPouts2[_riPi2].payout_batch_id = _riResult.payout_batch_id || null; }
+                    else { _riPouts2[_riPi2].error = _riResult.error || 'Erreur PayPal'; }
+                    savePayouts(_riPouts2);
+                }
+                console.log('[PAYOUT] installment_2 libéré PayPal ' + (_riResult.success ? 'envoyé' : 'ÉCHOUÉ') + ' → ' + (_riPartner.email || '') + ' : ' + _riP.amount + ' €');
+            } else {
+                console.log('[PAYOUT] installment_2 libéré en attente virement → ' + _riP.partner_email + ' : ' + _riP.amount + ' €');
+            }
+        }
+    } catch(e) {
+        console.error('[PAYOUT] Erreur releaseIntermediatePayoutsForOrder:', e);
+    }
+}
+
+// GENESIS SAFE™ Phase 2 : auto-libère les tranches intermédiaires dont le délai de validation est dépassé
+function checkAutoReleaseIntermediatePayouts() {
+    try {
+        var _carNow = Date.now();
+        var _carPayouts = loadPayouts();
+        var _carOrderIds = {};
+        _carPayouts.forEach(function(p) {
+            if (p.status === 'awaiting_validation' && p.auto_release_at && new Date(p.auto_release_at).getTime() <= _carNow) {
+                _carOrderIds[p.order_id] = true;
+            }
+        });
+        Object.keys(_carOrderIds).forEach(function(orderId) {
+            releaseIntermediatePayoutsForOrder(orderId).catch(function(e) {
+                console.error('[PAYOUT] Erreur auto-libération tranche intermédiaire order ' + orderId + ':', e);
+            });
+        });
+    } catch(_e) {}
 }
 
 // Demande d'avis client après versement du solde à chaque partenaire ayant accepté sa mission
@@ -4018,8 +4096,9 @@ app.post('/api/payments/sumup/webhook', async (req, res) => {
                         }).catch(err => console.error('[WEBHOOK] Erreur envoi email paiement:', err));
                     }
 
-                    // Verser la part de cette tranche à chaque partenaire ayant accepté sa mission
-                    // (aucun gate de validation : le versement se déclenche automatiquement à chaque tranche payée)
+                    // Vérifier si des tranches intermédiaires en attente doivent être auto-libérées
+                    checkAutoReleaseIntermediatePayouts();
+                    // Verser la part de cette tranche (installment_2 retenu jusqu'à validation livrable ou auto-libération)
                     var _acceptedD = loadDispatches().filter(function(d) { return d.order_id === orderId && d.status === 'accepted'; });
                     _acceptedD.forEach(function(d) { processDispatchPayout(d, stage).catch(function(e) { console.error('[PAYOUT] Erreur ' + stage + ' webhook:', e); }); });
                     if (_acceptedD.length === 0) console.log('[WEBHOOK] Aucun dispatch accepté pour versement ' + stage + ' — commande ' + orderId);
@@ -4813,6 +4892,9 @@ function ensureLivrableFields(livrable) {
     // Versioning
     if (!livrable.versions) livrable.versions = [];
 
+    // Jalon de paiement GENESIS SAFE™ : 'intermediaire' | 'final' | null (Phase 2)
+    if (livrable.genesis_stage === undefined) livrable.genesis_stage = null;
+
     // Validation client (Phase 5, cosmetique : ne bloque jamais le paiement)
     if (!livrable.client_validation) livrable.client_validation = 'pending';
     if (livrable.client_validated_at === undefined) livrable.client_validated_at = null;
@@ -4892,6 +4974,14 @@ app.post('/api/livrables/:id/validate', (req, res) => {
             if (partnerForValidation && partnerForValidation.email) {
                 notifyUser(partnerForValidation.email, 'partner', 'livrable-valide', 'Livrable validé ✅', (order.client_info.first_name || 'Le client') + ' a validé : ' + (livrable.title || 'votre livrable'), '/app.html#open-partner');
             }
+        }
+
+        // GENESIS SAFE™ Phase 2 : si le livrable est de type intermédiaire, libérer la tranche 40%
+        if ((livrable.genesis_stage || '') === 'intermediaire' && order.status === 'mid_delivery_paid') {
+            checkAutoReleaseIntermediatePayouts();
+            releaseIntermediatePayoutsForOrder(order.id).catch(function(e) {
+                console.error('[PAYOUT] Erreur libération tranche intermédiaire sur validation:', e);
+            });
         }
 
         res.json({ success: true, livrable: livrable });
