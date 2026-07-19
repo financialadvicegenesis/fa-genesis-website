@@ -3520,7 +3520,7 @@ function bigCategoryCard(p, idx){
   var initials = (((p.prenom||'')[0]||'')+((p.nom||'')[0]||'')).toUpperCase();
   var avatarHtml = p.photo ? '<img src="'+p.photo+'" alt="">' : '<div class="p-reco-initials">'+initials+'</div>';
   var ratingBadge = (p.rating && p.rating.count) ? '<div class="p-reco-rating-badge"><i class="fa-solid fa-star"></i> '+p.rating.average+'</div>' : '<div class="p-reco-rating-badge">Nouveau</div>';
-  var badgeHtml = tierBadgeHtml(p.badge);
+  var badgeHtml = genesisUnifiedBadgesHtml(p.badge, p.constellation);
   return '<div class="p-big-card" onclick="openPartnerDetail(\''+p.id+'\')">'
     +favHeartHtml(p.id)
     +'<div class="p-big-photo">'+avatarHtml+ratingBadge+'</div>'
@@ -3763,7 +3763,7 @@ function partnerListRow(p){
   var label = partnerTypeLabel(p);
   var initials = (((p.prenom||'')[0]||'')+((p.nom||'')[0]||'')).toUpperCase();
   var avatarHtml = p.photo ? '<img src="'+p.photo+'" alt="">' : '<div class="p-reco-initials">'+initials+'</div>';
-  var badgeHtml = tierBadgeHtml(p.badge);
+  var badgeHtml = genesisUnifiedBadgesHtml(p.badge, p.constellation);
   var starsHtml = (p.rating && p.rating.count) ? ('<i class="fa-solid fa-star"></i> '+p.rating.average+' ('+p.rating.count+')') : 'Nouveau';
   var resp = partnerResponseLabel(p);
   return '<div class="p-list-row" onclick="openPartnerDetail(\''+p.id+'\')">'
@@ -4956,6 +4956,13 @@ function constellationBadgeHtml(constellation){
   if(!constellation) return '';
   return '<span class="constellation-badge '+constellation.id+'"><i class="fa-solid '+constellation.icon+'"></i> '+constellation.label+'</span>';
 }
+// Affiche badge tier + constellation en un seul bloc unifié
+function genesisUnifiedBadgesHtml(badge, constellation){
+  var b = tierBadgeHtml(badge);
+  var c = constellationBadgeHtml(constellation);
+  if(!b && !c) return '';
+  return b + (b && c ? ' ' : '') + c;
+}
 // Seuils de commandes par palier (miroir côté client des CLIENT_BADGE_TIERS serveur)
 var _CLIENT_TIER_REQS = {bronze:1, argent:5, or:10, prestige:20};
 var _CLIENT_TIER_ICONS = {bronze:'fa-fire', argent:'fa-bolt', or:'fa-crown', prestige:'fa-infinity'};
@@ -6001,7 +6008,7 @@ var _QG_LEVEL_THRESHOLDS = [
   { badge: 'fondateur',level:'Générateur',  nextPts: 0,    nextLabel: '' }
 ];
 
-function _qgWidgetHtml(pts, level, badge, badgeProgress) {
+function _qgWidgetHtml(pts, level, badge, badgeProgress, constellation, benefits) {
   try {
     var tier = null;
     for(var i=0;i<_QG_LEVEL_THRESHOLDS.length;i++){
@@ -6010,6 +6017,24 @@ function _qgWidgetHtml(pts, level, badge, badgeProgress) {
     if(!tier) tier = _QG_LEVEL_THRESHOLDS[0];
     var pct = (badgeProgress && typeof badgeProgress.percent === 'number') ? badgeProgress.percent : (tier.nextPts > 0 ? Math.min(100, Math.round(pts / tier.nextPts * 100)) : 100);
     var nextInfo = (tier.nextLabel && tier.nextPts > 0) ? '<div style="font-size:11px;color:var(--gray);margin-top:5px;text-align:right">Prochain : ' + tier.nextLabel + ' (' + tier.nextPts + ' QG)</div>' : '';
+    var constHtml = constellation ? '<div style="margin-top:8px;">' + constellationBadgeHtml(constellation) + '</div>' : '';
+    var benefitsHtml = '';
+    if(benefits) {
+      var payoutLabel = benefits.payout === 'express' ? '<span style="color:#4caf50;font-weight:800">Express</span>'
+        : benefits.payout === 'prioritaire' ? '<span style="color:#FFD700;font-weight:800">Prioritaire</span>'
+        : '<span style="color:#888">Standard</span>';
+      var eventsLabel = benefits.events
+        ? '<span style="color:#4caf50;font-weight:800">Prioritaire</span>'
+        : '<span style="color:#888">Standard</span>';
+      benefitsHtml = '<div style="margin-top:10px;border-top:1px solid rgba(255,215,0,.15);padding-top:8px;">'
+        + '<div style="font-size:10px;color:var(--gray);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Avantages palier</div>'
+        + '<div style="display:flex;gap:10px;flex-wrap:wrap;">'
+        + '<div style="font-size:11px;color:#aaa;flex:1;min-width:90px"><i class="fa-solid fa-percent" style="color:#FFD700;margin-right:3px;font-size:10px"></i>Commission : <b style="color:#ddd">' + (benefits.commissionLabel||'Standard') + '</b></div>'
+        + '<div style="font-size:11px;color:#aaa;flex:1;min-width:90px"><i class="fa-solid fa-clock" style="color:#FFD700;margin-right:3px;font-size:10px"></i>Versement : ' + payoutLabel + '</div>'
+        + '</div>'
+        + '<div style="font-size:11px;color:#aaa;margin-top:4px"><i class="fa-solid fa-calendar-check" style="color:#FFD700;margin-right:3px;font-size:10px"></i>Événements Genesis : ' + eventsLabel + '</div>'
+        + '</div>';
+    }
     return '<div class="home-qg-widget">'
       + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">'
       + '<span style="font-size:12px;color:var(--gray);font-weight:700;letter-spacing:.04em;text-transform:uppercase">Niveau Genesis</span>'
@@ -6020,6 +6045,8 @@ function _qgWidgetHtml(pts, level, badge, badgeProgress) {
       + '<div style="background:linear-gradient(90deg,#FFD700,#FFC300);height:100%;width:' + pct + '%;border-radius:99px;transition:width .6s"></div>'
       + '</div>'
       + nextInfo
+      + constHtml
+      + benefitsHtml
       + '</div>';
   } catch(e){ return ''; }
 }
@@ -6050,7 +6077,9 @@ function _renderPartnerHomeQGWidget(data) {
       parseInt(data.genesisPoints) || 0,
       data.genesisLevel || 'Explorateur',
       data.founderBadge ? 'fondateur' : (data.badge || null),
-      data.badgeProgress || null
+      data.badgeProgress || null,
+      data.constellation || null,
+      data.currentBenefits || null
     );
   } catch(e){}
 }
@@ -11208,10 +11237,26 @@ function _ptnrLoadReputation(){
       : '—';
 
     var html = '<div class="ptnr-rep-hero"><div class="ptnr-rep-hero-inner">'
-      + (tierBadgeHtml(badge) || '<span style="font-size:12px;color:#666;font-weight:700;">Pas encore de badge</span>')
+      + (genesisUnifiedBadgesHtml(badge, data.constellation) || '<span style="font-size:12px;color:#666;font-weight:700;">Pas encore de badge</span>')
       + '<div class="ptnr-rep-rating">'+rating.average.toFixed(1)+' <i class="fa-solid fa-star"></i> ('+rating.count+' avis)</div>'
       + partnerBadgeProgressHtml(data.badgeProgress)
       + '</div></div>';
+
+    if(data.currentBenefits) {
+      var b = data.currentBenefits;
+      var payLbl = b.payout === 'express' ? '<span style="color:#4caf50;font-weight:800">Express</span>'
+        : b.payout === 'prioritaire' ? '<span style="color:#FFD700;font-weight:800">Prioritaire</span>'
+        : '<span style="color:#888">Standard</span>';
+      var evLbl = b.events ? '<span style="color:#4caf50;font-weight:800">Prioritaire</span>' : '<span style="color:#888">Standard</span>';
+      html += '<div style="background:linear-gradient(135deg,#1a1200,#0d0d00);border:1px solid rgba(255,215,0,.2);border-radius:14px;padding:12px 14px;margin:0 0 14px;">'
+        + '<div style="font-size:10px;color:var(--gray);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px"><i class="fa-solid fa-star" style="color:#FFD700;margin-right:4px;"></i>Avantages de votre palier</div>'
+        + '<div style="display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:#aaa;">'
+        + '<div style="flex:1;min-width:110px"><i class="fa-solid fa-percent" style="color:#FFD700;margin-right:4px;font-size:10px"></i>Commission : <b style="color:#eee">'+(b.commissionLabel||'Standard')+'</b></div>'
+        + '<div style="flex:1;min-width:110px"><i class="fa-solid fa-clock" style="color:#FFD700;margin-right:4px;font-size:10px"></i>Versement : '+payLbl+'</div>'
+        + '</div>'
+        + '<div style="font-size:12px;color:#aaa;margin-top:6px"><i class="fa-solid fa-calendar-check" style="color:#FFD700;margin-right:4px;font-size:10px"></i>Événements Genesis : '+evLbl+'</div>'
+        + '</div>';
+    }
 
     html += '<div class="ptnr-stat-row">'
       + '<div class="ptnr-stat"><div class="ptnr-stat-ico"><i class="fa-solid fa-briefcase"></i></div><div class="ptnr-stat-val" id="ptnr-rep-missions">—</div><div class="ptnr-stat-label">Missions</div></div>'

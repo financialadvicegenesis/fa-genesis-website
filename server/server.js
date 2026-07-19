@@ -6729,6 +6729,17 @@ app.post('/api/auth/referral-discount/mark-used', function(req, res) {
     } catch (e) { res.status(500).json({ error: 'Erreur serveur' }); }
 });
 
+// GET /api/tier-benefits — configuration publique des avantages par palier
+app.get('/api/tier-benefits', function(req, res) {
+    try {
+        var tiers = Object.keys(GENESIS_TIER_BENEFITS).map(function(badge) {
+            var b = GENESIS_TIER_BENEFITS[badge];
+            return { badge: badge, commissionLabel: b.commissionLabel, payout: b.payout, events: b.events };
+        });
+        res.json({ ok: true, tiers: tiers });
+    } catch (e) { res.status(500).json({ error: 'Erreur serveur' }); }
+});
+
 // POST /api/users/favorites/:partnerId/toggle — ajoute/retire un partenaire des favoris du client connecte
 app.post('/api/users/favorites/:partnerId/toggle', (req, res) => {
     var user = authenticateClient(req, res);
@@ -9981,6 +9992,21 @@ const GENESIS_POINT_VALUES = {
 };
 const REFERRAL_FILLEUL_DISCOUNT_PCT = 10;
 
+// Structure de configuration des avantages par palier — valeurs ajustables
+const GENESIS_TIER_BENEFITS = {
+    null:     { commissionLabel: 'Standard',     commissionReduction: 0, payout: 'standard',    events: false },
+    bronze:   { commissionLabel: 'Standard',     commissionReduction: 0, payout: 'standard',    events: false },
+    argent:   { commissionLabel: 'Avantageuse',  commissionReduction: 1, payout: 'prioritaire', events: false },
+    or:       { commissionLabel: 'Avantageuse',  commissionReduction: 2, payout: 'prioritaire', events: true  },
+    prestige: { commissionLabel: 'Privilégiée',  commissionReduction: 3, payout: 'express',     events: true  },
+    elite:    { commissionLabel: 'Privilégiée',  commissionReduction: 4, payout: 'express',     events: true  },
+    fondateur:{ commissionLabel: 'Privilégiée',  commissionReduction: 5, payout: 'express',     events: true  }
+};
+
+function getBenefitsForBadge(badge) {
+    return GENESIS_TIER_BENEFITS[badge] || GENESIS_TIER_BENEFITS[null];
+}
+
 function getEventAttendancePoints(personId) {
     if (!personId) return 0;
     var events = loadEvents();
@@ -11885,6 +11911,7 @@ app.get('/api/partner/reputation', authenticatePartner, function(req, res) {
             constellation: getConstellationTier(partner),
             founderBadge: partner.founderBadge === true,
             pendingQGGains: pendingQGGains,
+            currentBenefits: getBenefitsForBadge(badge),
             missionsCompleted: missionsCompleted,
             revenusGeneres: Math.round(revenusGeneres * 100) / 100,
             commissionsVersees: Math.round(commissionsVersees * 100) / 100,
