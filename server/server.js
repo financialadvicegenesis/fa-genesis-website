@@ -11674,6 +11674,8 @@ app.get('/api/my-requests', function(req, res) {
                     accepted: dispatchForReq ? (dispatchForReq.accepted_at || null) : (r.responded_at || null),
                     delivering: dispatchForReq ? (dispatchForReq.delivering_at || null) : null
                 };
+                // Photo du partenaire pour la carte de suivi et le widget accueil
+                out.partner_photo = partner ? (partner.photo || null) : null;
                 // Champs GENESIS SAFE™ Phase 3 : bloc de paiement différencié côté client
                 out.payment_tier = orderForReq ? (orderForReq.payment_tier || null) : null;
                 out.delivery_confirmed = orderForReq ? (!!orderForReq.delivery_confirmed) : false;

@@ -2322,12 +2322,13 @@ a{text-decoration:none;color:inherit}
       <div id="statusCard" class="status-card" style="display:none">
         <div class="status-card-top">
           <span class="status-badge-pill" id="scStatus">En cours</span>
-          <span style="font-size:18px"><i class="fa-solid fa-box"></i></span>
+          <div id="scAvatarWrap" style="width:38px;height:38px;border-radius:50%;overflow:hidden;background:rgba(255,215,0,.1);border:1.5px solid rgba(255,215,0,.3);display:flex;align-items:center;justify-content:center;flex-shrink:0;"></div>
         </div>
-        <div class="status-card-title" id="scName">Votre accompagnement</div>
-        <div class="status-card-sub" id="scSub">Suivi de votre commande</div>
+        <div class="status-card-title" id="scName">Votre commande</div>
+        <div id="scPartnerName" class="status-card-sub" style="margin-bottom:2px;font-weight:600;"></div>
+        <div class="status-card-sub" id="scSub"></div>
         <div class="status-card-action">
-          <button class="sc-btn sc-btn-primary" onclick="nav('reservations')">Voir →</button>
+          <button class="sc-btn sc-btn-primary" id="scSeeBtn" onclick="nav('reservations')">Voir →</button>
           <button class="sc-btn sc-btn-ghost" onclick="nav('messages')">Messages</button>
         </div>
       </div>
@@ -3070,25 +3071,41 @@ function initApp(){
 
 function loadStatusCard(){
   if(!USER||!USER._token) return;
-  fetch(API+'/api/client/payments-list',{headers:{'Authorization':'Bearer '+USER._token}})
+  fetch((window.FA_GENESIS_API||API)+'/api/my-requests',{headers:{'Authorization':'Bearer '+USER._token}})
     .then(function(r){return r.json();})
     .then(function(d){
-      var payments = d.payments || [];
-      // Carte active uniquement si une tranche est réellement en attente d'action
-      // (exclut 'paid', 'fully_paid', 'cancelled' — évite les commandes terminées ou fantômes)
-      var active = payments.find(function(p){
-        return p.status==='due' || p.status==='accepted_unpaid' || p.status==='pending';
+      var reqs = (d&&Array.isArray(d.requests))?d.requests:[];
+      // N'afficher que les missions actives (pas encore terminées)
+      var active = reqs.find(function(r){
+        if(!r.order_id) return false;
+        var dsKey = (r.display_status&&r.display_status.key)||'';
+        return dsKey!=='completed' && dsKey!=='reviewed';
       });
       var scCard = document.getElementById('statusCard');
       if(active && scCard){
         scCard.style.display = 'block';
-        var _scLabels = {due:'Solde à régler',accepted_unpaid:'En attente de paiement',pending:'En cours'};
-        var scName = document.getElementById('scName');
+        var ds = active.display_status||{label:'En cours',key:'in_progress'};
         var scStatus = document.getElementById('scStatus');
+        var scName = document.getElementById('scName');
+        var scPartnerName = document.getElementById('scPartnerName');
         var scSub = document.getElementById('scSub');
-        if(scName) scName.textContent = active.label||active.product_name||'Votre commande';
-        if(scStatus) scStatus.textContent = _scLabels[active.status]||'En cours';
+        var scAvatarWrap = document.getElementById('scAvatarWrap');
+        var scSeeBtn = document.getElementById('scSeeBtn');
+        if(scStatus) scStatus.textContent = ds.label||'En cours';
+        if(scName) scName.textContent = active.service_label||'Votre commande';
+        if(scPartnerName) scPartnerName.textContent = active.partner_name ? active.partner_name : '';
         if(scSub) scSub.textContent = 'Commande #'+(active.order_id||'').substring(0,8);
+        if(scAvatarWrap){
+          if(active.partner_photo){
+            scAvatarWrap.innerHTML='<img src="'+active.partner_photo+'" style="width:100%;height:100%;object-fit:cover;" alt="">';
+          } else {
+            var _ini=(active.partner_name||'P')[0].toUpperCase();
+            scAvatarWrap.innerHTML='<span style="font-weight:800;color:var(--yellow);font-size:15px;">'+_ini+'</span>';
+          }
+        }
+        if(scSeeBtn){
+          scSeeBtn.onclick=function(){ nav('reservations'); };
+        }
       } else if(scCard){
         scCard.style.display = 'none';
       }
@@ -4491,8 +4508,14 @@ function renderResaTab(){
       var reqList = (data&&Array.isArray(data.requests))?data.requests:[];
       var el = document.getElementById('myRequestsList');
       if(!el) return;
-      if(reqList.length===0){ el.innerHTML=''; return; }
-      el.innerHTML = '<div class="detail-feats-title" style="margin:4px 0 10px;">Mes demandes</div>' + reqList.map(function(r){
+      // Exclure les missions terminées de l'onglet Réservations — elles vont dans "Mes commandes"
+      var _activeReqs = reqList.filter(function(r){
+        if(!r.order_id) return true;
+        var _dk = (r.display_status&&r.display_status.key)||'';
+        return _dk!=='completed' && _dk!=='reviewed';
+      });
+      if(_activeReqs.length===0){ el.innerHTML=''; return; }
+      el.innerHTML = '<div class="detail-feats-title" style="margin:4px 0 10px;">Mes demandes</div>' + _activeReqs.map(function(r){
         if(r.order_id) return renderOrderTrackingCard(r);
         if(r.status==='proposed') return renderProposalCard(r);
         var sc = (r.status==='accepted'||r.status==='signed')?'s-confirmed':r.status==='declined'?'s-refused':'s-pending';
@@ -4508,7 +4531,7 @@ function renderResaTab(){
           +(actionHtml?'<div class="resa-actions">'+actionHtml+'</div>':'')
           +'</div>';
       }).join('');
-      reqList.forEach(function(r){ if(r.order_id) loadOrderLivrables(r.id, r.order_id); });
+      _activeReqs.forEach(function(r){ if(r.order_id) loadOrderLivrables(r.id, r.order_id); });
       reqList.forEach(function(r){
         if(r.order_id && r.display_status && r.display_status.key){
           _resaStatusCache[r.id] = r.display_status.key;
@@ -4663,8 +4686,11 @@ function renderOrderTrackingCard(r){
   var html = '<div class="track-card" id="track-card-'+r.id+'">';
 
   // Header : service + prestataire
+  var _avatarInner = r.partner_photo
+    ? '<img src="'+r.partner_photo+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" alt="">'
+    : '<span style="font-weight:800;color:var(--yellow);">'+partnerInitial+'</span>';
   html += '<div class="track-card-header">'
-    +'<div class="track-card-avatar"><span style="font-weight:800;color:var(--yellow);">'+partnerInitial+'</span></div>'
+    +'<div class="track-card-avatar">'+_avatarInner+'</div>'
     +'<div class="track-card-info">'
     +'<div class="track-card-service">'+(r.service_label||r.service_id||'Prestation')+'</div>'
     +'<div class="track-card-partner"><i class="fa-solid fa-user-tie" style="font-size:10px;"></i> '+(r.partner_name||'Prestataire')+'</div>'
@@ -6614,34 +6640,72 @@ function showMesCommandes(){
     +"<div id='cmd-list' style='padding:14px;padding-bottom:80px;overflow-y:auto;flex:1;'><div class='espace-loading'>Chargement...</div></div>"
     +"</div>";
   var api=window.FA_GENESIS_API||API;
-  fetch(api+"/api/client/payments-list",{headers:{"Authorization":"Bearer "+USER._token}})
-    .then(function(r){return r.json();})
-    .then(function(data){
-      var list=Array.isArray(data)?data:[];
-      var el=document.getElementById("cmd-list");
-      if(!el) return;
-      if(!list.length){el.innerHTML="<div class='espace-empty'>Aucune commande pour le moment.</div>";return;}
-      el.innerHTML=list.map(function(p){
+  // Charger les missions terminées depuis /api/my-requests (partner_service)
+  // + commandes catalogue depuis /api/client/payments-list
+  var _reqs=[], _pmts=[];
+  var _done=0;
+  function _renderCmdList(){
+    _done++;
+    if(_done<2) return;
+    var el=document.getElementById("cmd-list"); if(!el) return;
+    // Missions partner_service terminées
+    var _completedReqs=_reqs.filter(function(r){
+      var dk=(r.display_status&&r.display_status.key)||'';
+      return r.order_id && (dk==='completed'||dk==='reviewed');
+    });
+    // Commandes catalogue (accompagnement / prestation_individuelle)
+    var _catalogPmts=_pmts;
+    if(!_completedReqs.length && !_catalogPmts.length){
+      el.innerHTML="<div class='espace-empty'>Aucune commande pour le moment.</div>";
+      return;
+    }
+    var html='';
+    if(_completedReqs.length){
+      html+="<div class='detail-feats-title' style='margin:0 0 10px;'><i class='fa-solid fa-circle-check' style='color:#22c55e;margin-right:5px;'></i>Missions prestataires</div>";
+      html+=_completedReqs.map(function(r){
+        var dateStr=r.created_at?new Date(r.created_at).toLocaleDateString("fr-FR"):"";
+        var ds=r.display_status||{};
+        return "<div class='espace-card'>"
+          +"<div style='display:flex;justify-content:space-between;align-items:flex-start;gap:8px;'>"
+          +"<div class='espace-card-name'>"+(r.service_label||'Prestation')+"</div>"
+          +"<span style='font-size:11px;font-weight:900;color:#22c55e;white-space:nowrap;'>"+(ds.emoji||'✅')+' Terminée'+"</span>"
+          +"</div>"
+          +(r.partner_name?"<div class='espace-card-sub'><i class='fa-solid fa-user-tie'></i> "+r.partner_name+"</div>":"")
+          +(dateStr?"<div class='espace-card-sub'><i class='fa-solid fa-calendar-days'></i> "+dateStr+"</div>":"")
+          +(r.total_amount?"<div class='espace-card-detail'>Total : "+Number(r.total_amount).toLocaleString("fr-FR")+" €</div>":"")
+          +"</div>";
+      }).join("");
+    }
+    if(_catalogPmts.length){
+      if(_completedReqs.length) html+="<div class='detail-feats-title' style='margin:14px 0 10px;'>Abonnements & accompagnements</div>";
+      html+=_catalogPmts.map(function(p){
         var sl,sc;
-        if(p.paymentStatus==="fully_paid"){sl="Entièrement payé";sc="#22c55e";}
+        if(p.paymentStatus==="fully_paid"){sl="Payé";sc="#22c55e";}
         else if(p.paymentStatus==="deposit_paid"){sl="Acompte payé";sc="#FFD700";}
         else if(p.paymentStatus==="delivery_pending_payment"){sl="Solde à payer";sc="#f97316";}
         else{sl="En cours";sc="#888";}
-        var name=p.offre||p.activeOfferId||p.product_name||"Commande";
+        var name=p.offre||p.activeOfferId||p.label||"Commande";
         var dateStr=p.created_at?new Date(p.created_at).toLocaleDateString("fr-FR"):"";
         return "<div class='espace-card'>"
           +"<div style='display:flex;justify-content:space-between;align-items:flex-start;gap:8px;'>"
           +"<div class='espace-card-name'>"+name+"</div>"
-          +"<span style='font-size:11px;font-weight:900;white-space:nowrap;color:'"+sc+"';'>"+sl+"</span>"
+          +"<span style='font-size:11px;font-weight:900;white-space:nowrap;color:"+sc+"'>"+sl+"</span>"
           +"</div>"
           +(dateStr?"<div class='espace-card-sub'><i class='fa-solid fa-calendar-days'></i> "+dateStr+"</div>":"")
           +(p.totalPaid?"<div class='espace-card-detail'>Versé : "+Number(p.totalPaid).toLocaleString("fr-FR")+" €</div>":"")
           +"</div>";
       }).join("");
-    }).catch(function(){
-      var el=document.getElementById("cmd-list");
-      if(el) el.innerHTML="<div class='espace-empty'>Impossible de charger vos commandes.</div>";
-    });
+    }
+    el.innerHTML=html;
+  }
+  fetch(api+"/api/my-requests",{headers:{"Authorization":"Bearer "+USER._token}})
+    .then(function(r){return r.json();})
+    .then(function(data){ _reqs=(data&&Array.isArray(data.requests))?data.requests:[]; _renderCmdList(); })
+    .catch(function(){ _renderCmdList(); });
+  fetch(api+"/api/client/payments-list",{headers:{"Authorization":"Bearer "+USER._token}})
+    .then(function(r){return r.json();})
+    .then(function(data){ _pmts=(data&&data.payments)?data.payments:[]; _renderCmdList(); })
+    .catch(function(){ _renderCmdList(); });
 }
 function showDashboard(){showMesCommandes();}
 function showPaiements(){
