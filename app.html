@@ -6680,6 +6680,8 @@ function sendJeremieMessage(){
 }
 
 // ── ESPACE CLIENT IN-APP ──────────────────────────────────────
+var _mesCommandesReqs = []; // cache pour la vue détail
+
 function showMesCommandes(){
   var c=document.getElementById("profilContent");
   if(!USER||GUEST){renderProfil();return;}
@@ -6688,76 +6690,74 @@ function showMesCommandes(){
     +"<div class='espace-back-bar'><button class='espace-back-btn' onclick='profilBack()'>&#8249;</button><div class='espace-title'>Mes commandes</div></div>"
     +"<div id='cmd-list' style='padding:14px;padding-bottom:80px;overflow-y:auto;flex:1;'><div class='espace-loading'>Chargement...</div></div>"
     +"</div>";
-  var api=window.FA_GENESIS_API||API;
-  // Charger les missions terminées depuis /api/my-requests (partner_service)
-  // + commandes catalogue depuis /api/client/payments-list
-  var _reqs=[], _pmts=[];
-  var _done=0;
-  function _renderCmdList(){
-    _done++;
-    if(_done<2) return;
-    var el=document.getElementById("cmd-list"); if(!el) return;
-    // Missions partner_service terminées
-    var _completedReqs=_reqs.filter(function(r){
-      var dk=(r.display_status&&r.display_status.key)||'';
-      return r.order_id && (dk==='completed'||dk==='reviewed');
+  fetch((window.FA_GENESIS_API||API)+"/api/my-requests",{headers:{"Authorization":"Bearer "+USER._token}})
+    .then(function(r){return r.json();})
+    .then(function(data){
+      // Toutes les commandes partenaire (en cours + livrées), triées par date desc
+      var allReqs=((data&&Array.isArray(data.requests))?data.requests:[])
+        .filter(function(r){ return !!r.order_id; });
+      _mesCommandesReqs = allReqs;
+      var el=document.getElementById("cmd-list"); if(!el) return;
+      if(!allReqs.length){
+        el.innerHTML="<div class='espace-empty'><i class='fa-solid fa-box-open' style='font-size:32px;color:var(--muted);display:block;margin-bottom:10px;'></i>Aucune commande pour le moment.</div>";
+        return;
+      }
+      el.innerHTML = allReqs.map(function(r){
+        var ds = r.display_status||{key:'in_progress',label:'En préparation',emoji:'🟣'};
+        var _statusColor = ds.key==='completed'||ds.key==='reviewed' ? '#22c55e'
+          : ds.key==='delivered' ? '#60a5fa'
+          : ds.key==='delivering' ? '#f97316'
+          : '#FFD700';
+        var _photo = r.partner_photo;
+        var _pInit = (r.partner_name||'P')[0].toUpperCase();
+        var _avatarHtml = _photo
+          ? "<img src='"+_photo+"' style='width:44px;height:44px;border-radius:50%;object-fit:cover;flex-shrink:0;' alt=''>"
+          : "<div style='width:44px;height:44px;border-radius:50%;background:rgba(255,215,0,.08);border:1.5px solid rgba(255,215,0,.25);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-weight:800;color:var(--yellow);font-size:16px;'>"+_pInit+"</div>";
+        var dateStr = r.created_at ? new Date(r.created_at).toLocaleDateString("fr-FR") : "";
+        var _amtHtml = r.total_amount
+          ? "<span style='font-size:12px;font-weight:700;color:var(--yellow);'>"+Number(r.total_amount).toLocaleString("fr-FR")+" €</span>"
+          : "";
+        return "<div class='espace-card' style='padding:12px 14px;cursor:pointer;display:flex;align-items:center;gap:12px;' onclick='showOrderDetail(\""+r.id+"\")'>"
+          +_avatarHtml
+          +"<div style='flex:1;min-width:0;'>"
+          +"<div style='display:flex;align-items:center;justify-content:space-between;gap:6px;'>"
+          +"<div style='font-size:13px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px;'>"+(r.service_label||'Prestation')+"</div>"
+          +"<span style='font-size:10px;font-weight:800;color:"+_statusColor+";white-space:nowrap;'>"+ds.emoji+" "+ds.label+"</span>"
+          +"</div>"
+          +"<div style='font-size:11px;color:var(--muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'>"+(r.partner_name||'')+(dateStr?" · "+dateStr:"")+"</div>"
+          +(_amtHtml?"<div style='margin-top:4px;'>"+_amtHtml+"</div>":"")
+          +"</div>"
+          +"<i class='fa-solid fa-chevron-right' style='color:#444;font-size:12px;flex-shrink:0;'></i>"
+          +"</div>";
+      }).join("");
+    })
+    .catch(function(){
+      var el=document.getElementById("cmd-list");
+      if(el) el.innerHTML="<div class='espace-empty'>Impossible de charger vos commandes.</div>";
     });
-    // Commandes catalogue (accompagnement / prestation_individuelle)
-    var _catalogPmts=_pmts;
-    if(!_completedReqs.length && !_catalogPmts.length){
-      el.innerHTML="<div class='espace-empty'>Aucune commande pour le moment.</div>";
-      return;
+}
+
+function showOrderDetail(requestId){
+  try {
+    var r = null;
+    for(var _i=0;_i<_mesCommandesReqs.length;_i++){
+      if(_mesCommandesReqs[_i].id===requestId){ r=_mesCommandesReqs[_i]; break; }
     }
-    var html='';
-    if(_completedReqs.length){
-      html+="<div class='detail-feats-title' style='margin:0 0 10px;'><i class='fa-solid fa-circle-check' style='color:#22c55e;margin-right:5px;'></i>Missions prestataires</div>";
-      html+=_completedReqs.map(function(r){
-        var dateStr=r.created_at?new Date(r.created_at).toLocaleDateString("fr-FR"):"";
-        return "<div class='espace-card' style='padding:0;overflow:hidden;'>"
-          // Section partenaire
-          +"<div style='padding:14px 14px 10px;border-bottom:1px solid rgba(255,255,255,.05);'>"+_partnerInfoHtml(r)+"</div>"
-          // Détails commande
-          +"<div style='padding:10px 14px 14px;'>"
-          +"<div style='display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;'>"
-          +"<div style='font-size:13px;font-weight:700;color:#fff;'>"+(r.service_label||'Prestation')+"</div>"
-          +"<span style='font-size:11px;font-weight:900;color:#22c55e;'>✅ Terminée</span>"
-          +"</div>"
-          +(dateStr?"<div style='font-size:11px;color:var(--muted);margin-top:4px;'><i class='fa-solid fa-calendar-days' style='margin-right:4px;'></i>"+dateStr+"</div>":"")
-          +(r.total_amount?"<div style='font-size:13px;font-weight:700;color:var(--yellow);margin-top:6px;'>"+Number(r.total_amount).toLocaleString("fr-FR")+" €</div>":"")
-          +"</div>"
-          +"</div>";
-      }).join("");
-    }
-    if(_catalogPmts.length){
-      if(_completedReqs.length) html+="<div class='detail-feats-title' style='margin:14px 0 10px;'>Abonnements & accompagnements</div>";
-      html+=_catalogPmts.map(function(p){
-        var sl,sc;
-        if(p.paymentStatus==="fully_paid"){sl="Payé";sc="#22c55e";}
-        else if(p.paymentStatus==="deposit_paid"){sl="Acompte payé";sc="#FFD700";}
-        else if(p.paymentStatus==="delivery_pending_payment"){sl="Solde à payer";sc="#f97316";}
-        else{sl="En cours";sc="#888";}
-        var name=p.offre||p.activeOfferId||p.label||"Commande";
-        var dateStr=p.created_at?new Date(p.created_at).toLocaleDateString("fr-FR"):"";
-        return "<div class='espace-card'>"
-          +"<div style='display:flex;justify-content:space-between;align-items:flex-start;gap:8px;'>"
-          +"<div class='espace-card-name'>"+name+"</div>"
-          +"<span style='font-size:11px;font-weight:900;white-space:nowrap;color:"+sc+"'>"+sl+"</span>"
-          +"</div>"
-          +(dateStr?"<div class='espace-card-sub'><i class='fa-solid fa-calendar-days'></i> "+dateStr+"</div>":"")
-          +(p.totalPaid?"<div class='espace-card-detail'>Versé : "+Number(p.totalPaid).toLocaleString("fr-FR")+" €</div>":"")
-          +"</div>";
-      }).join("");
-    }
-    el.innerHTML=html;
-  }
-  fetch(api+"/api/my-requests",{headers:{"Authorization":"Bearer "+USER._token}})
-    .then(function(r){return r.json();})
-    .then(function(data){ _reqs=(data&&Array.isArray(data.requests))?data.requests:[]; _renderCmdList(); })
-    .catch(function(){ _renderCmdList(); });
-  fetch(api+"/api/client/payments-list",{headers:{"Authorization":"Bearer "+USER._token}})
-    .then(function(r){return r.json();})
-    .then(function(data){ _pmts=(data&&data.payments)?data.payments:[]; _renderCmdList(); })
-    .catch(function(){ _renderCmdList(); });
+    if(!r) return;
+    var overlay = document.createElement('div');
+    overlay.id = 'order-detail-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;background:#000;z-index:9999;overflow-y:auto;padding-bottom:80px;';
+    overlay.innerHTML = '<div class="espace-back-bar" style="position:sticky;top:0;z-index:10;background:#000;">'
+      +'<button class="espace-back-btn" onclick="document.getElementById(\'order-detail-overlay\').remove()">&#8249;</button>'
+      +'<div class="espace-title">Détail de la commande</div>'
+      +'</div>'
+      +'<div style="padding:14px;">'
+      +renderOrderTrackingCard(r)
+      +'</div>';
+    document.body.appendChild(overlay);
+    // Charger les livrables dans le contexte de cet overlay
+    if(r.order_id) loadOrderLivrables(r.id, r.order_id);
+  } catch(_e){}
 }
 function showDashboard(){showMesCommandes();}
 function showPaiements(){
