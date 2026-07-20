@@ -15953,6 +15953,7 @@ app.post('/api/support/new', function(req, res) {
     tickets.push(ticket);
     saveSupportTickets(tickets);
     try { sendPushToRole('admin', { title: 'Nouveau ticket support', body: subject + ' — ' + (user.prenom || user.email), icon: '/assets/images/logo.png', url: '/admin.html' }); } catch(e){}
+    emailService.sendSupportTicketAdminEmail(ticket, message).catch(function(e){ console.error('[SUPPORT] Email admin:', e.message); });
     res.json({ ok: true, ticket: ticket });
 });
 
@@ -15981,6 +15982,7 @@ app.post('/api/support/:id/reply', function(req, res) {
     tickets[idx].updated_at = now;
     saveSupportTickets(tickets);
     try { sendPushToRole('admin', { title: 'Réponse client support', body: (user.prenom || user.email) + ' a répondu', icon: '/assets/images/logo.png', url: '/admin.html' }); } catch(e){}
+    emailService.sendSupportTicketAdminEmail(tickets[idx], message).catch(function(e){ console.error('[SUPPORT] Email admin reply:', e.message); });
     res.json({ ok: true });
 });
 

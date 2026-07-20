@@ -2015,8 +2015,73 @@ module.exports = {
     sendPasswordResetEmail,
     sendOtpEmail,
     sendOtpSms,
-    sendPartnerServiceOrderConfirmation
+    sendPartnerServiceOrderConfirmation,
+    sendSupportTicketAdminEmail
 };
+
+// ============================================================
+// EMAIL NOTIFICATION SUPPORT TICKET → ADMIN
+// ============================================================
+
+/**
+ * Envoie un email à l'admin quand un client crée ou répond à un ticket support.
+ * Le CTA du mail pointe directement vers admin.html#support-{ticketId}.
+ * @param {Object} ticket  - L'objet ticket complet (id, subject, client_name, client_email, messages)
+ * @param {string} messageContent - Le contenu du nouveau message (pour la preview)
+ */
+async function sendSupportTicketAdminEmail(ticket, messageContent) {
+    var transport = initializeTransporter();
+    if (!transport) {
+        console.log('[EMAIL] Transport non configuré - Notification support admin ignorée');
+        return { success: false, reason: 'transport non configuré' };
+    }
+
+    var adminUrl = 'https://fagenesis.com/admin.html#support-' + ticket.id;
+    var isNewTicket = ticket.messages.length <= 1;
+    var label = isNewTicket ? 'Nouveau ticket support' : 'Réponse client — ticket en cours';
+    var preview = (messageContent || '').substring(0, 300) + ((messageContent || '').length > 300 ? '…' : '');
+
+    var html = '<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">'
+        + '<div style="background:#000;padding:20px;text-align:center;">'
+        + '<h1 style="color:#FFD700;font-size:22px;margin:0;letter-spacing:3px;">FA GENESIS</h1>'
+        + '</div>'
+        + '<div style="background:#FFD700;padding:14px;text-align:center;">'
+        + '<h2 style="margin:0;color:#000;font-size:15px;font-weight:900;text-transform:uppercase;">' + escapeHtml(label) + '</h2>'
+        + '</div>'
+        + '<div style="background:#fff;padding:28px;border:1px solid #ddd;">'
+        + '<table style="width:100%;border-collapse:collapse;">'
+        + '<tr><td style="padding:9px 8px;font-weight:700;color:#555;width:35%;border-bottom:1px solid #eee;">Client</td><td style="padding:9px 8px;border-bottom:1px solid #eee;">' + escapeHtml(ticket.client_name) + '</td></tr>'
+        + '<tr style="background:#fafafa;"><td style="padding:9px 8px;font-weight:700;color:#555;border-bottom:1px solid #eee;">Email</td><td style="padding:9px 8px;border-bottom:1px solid #eee;"><a href="mailto:' + escapeHtml(ticket.client_email) + '" style="color:#000;font-weight:700;">' + escapeHtml(ticket.client_email) + '</a></td></tr>'
+        + '<tr><td style="padding:9px 8px;font-weight:700;color:#555;border-bottom:1px solid #eee;">Sujet</td><td style="padding:9px 8px;border-bottom:1px solid #eee;">' + escapeHtml(ticket.subject) + '</td></tr>'
+        + '<tr style="background:#fafafa;"><td style="padding:9px 8px;font-weight:700;color:#555;">Référence</td><td style="padding:9px 8px;font-size:11px;color:#888;">' + escapeHtml(ticket.id) + '</td></tr>'
+        + '</table>'
+        + '<div style="background:#FFF9E6;border-left:4px solid #FFD700;padding:16px 20px;margin:22px 0;border-radius:0 6px 6px 0;">'
+        + '<p style="margin:0 0 8px;font-weight:700;color:#000;font-size:13px;">Message du client :</p>'
+        + '<p style="margin:0;color:#333;white-space:pre-wrap;line-height:1.7;font-size:14px;">' + escapeHtml(preview) + '</p>'
+        + '</div>'
+        + '<div style="text-align:center;margin-top:28px;">'
+        + '<a href="' + adminUrl + '" style="display:inline-block;background:#FFD700;color:#000;padding:15px 36px;font-weight:900;font-size:14px;text-decoration:none;border:2px solid #000;letter-spacing:1px;">RÉPONDRE DANS L\'ESPACE ADMIN →</a>'
+        + '</div>'
+        + '<p style="margin:20px 0 0;font-size:12px;color:#aaa;text-align:center;">Ce lien vous connecte directement au ticket pour répondre en temps réel.</p>'
+        + '</div>'
+        + '<div style="background:#111;padding:12px;text-align:center;">'
+        + '<p style="color:#666;font-size:11px;margin:0;">FA GENESIS — Support client | ' + new Date().toLocaleString('fr-FR') + '</p>'
+        + '</div></div>';
+
+    try {
+        var result = await transport.sendMail({
+            from: '"FA GENESIS Support" <' + (process.env.EMAIL_FROM_ADDRESS || 'financialadvicegenesis@gmail.com') + '>',
+            to: process.env.EMAIL_ADMIN_ADDRESS || 'financialadvicegenesis@gmail.com',
+            subject: '[Support] ' + (isNewTicket ? 'Nouveau' : 'Réponse') + ' — ' + ticket.subject + ' (' + ticket.client_name + ')',
+            html: html
+        });
+        console.log('[EMAIL] Notification support admin envoyée - ID: ' + (result.messageId || 'N/A'));
+        return { success: true, messageId: result.messageId };
+    } catch (error) {
+        console.error('[EMAIL] Erreur envoi notification support admin:', error.message);
+        return { success: false, error: error.message };
+    }
+}
 
 // ============================================================
 // EMAIL CONFIRMATION COMMANDE PRESTATAIRE (style Deliveroo)
