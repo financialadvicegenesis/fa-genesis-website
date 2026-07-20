@@ -2475,15 +2475,26 @@ app.post('/api/orders/create', (req, res) => {
             // du contrat (proposition structurée + signature électronique, GENESIS CONTRACT™) :
             // le client doit d'abord avoir une demande au statut 'signed' pour ce couple partenaire/prestation.
             var psoTotal = parseFloat(service.price);
-            if (req.body.use_referral_discount === true) {
-                var psoAuthTok = (req.headers.authorization || '').replace('Bearer ', '').trim();
-                var psoActUser = psoAuthTok ? findUserByToken(psoAuthTok) : null;
-                if (psoActUser && psoActUser.referral_discount && !psoActUser.referral_discount.applied) {
-                    var psoDisPct = psoActUser.referral_discount.pct || REFERRAL_FILLEUL_DISCOUNT_PCT;
-                    psoTotal = Math.round(psoTotal * (1 - psoDisPct / 100) * 100) / 100;
+            var psoFullPrice = psoTotal;
+            var psoWelcomeDiscountAmount = 0;
+            // Avantage bienvenue -10% : s'applique automatiquement à toute première commande,
+            // avec ou sans code de parrainage. Absorbé par la commission GENESIS.
+            var psoAuthTok = (req.headers.authorization || '').replace('Bearer ', '').trim();
+            var psoActUser = psoAuthTok ? findUserByToken(psoAuthTok) : null;
+            var psoClientEmail = (clientInfo && clientInfo.email) || (psoActUser && psoActUser.email) || '';
+            if (psoClientEmail && isClientFirstPaidOrder(psoClientEmail)) {
+                psoTotal = Math.round(psoFullPrice * (1 - WELCOME_DISCOUNT_PCT / 100) * 100) / 100;
+                psoWelcomeDiscountAmount = Math.round((psoFullPrice - psoTotal) * 100) / 100;
+                // Marquer le champ legacy comme appliqué (rétrocompatibilité frontend)
+                if (psoActUser) {
                     var psoUsrs = loadUsers(); var psoUIdx = psoUsrs.findIndex(function(u) { return u.id === psoActUser.id; });
-                    if (psoUIdx !== -1) { psoUsrs[psoUIdx].referral_discount = { pct: psoDisPct, applied: true, applied_at: new Date().toISOString() }; saveUsers(psoUsrs); }
+                    if (psoUIdx !== -1 && psoUsrs[psoUIdx].referral_discount && !psoUsrs[psoUIdx].referral_discount.applied) {
+                        psoUsrs[psoUIdx].referral_discount.applied = true;
+                        psoUsrs[psoUIdx].referral_discount.applied_at = new Date().toISOString();
+                        saveUsers(psoUsrs);
+                    }
                 }
+                console.log('[WELCOME] Avantage bienvenue -' + WELCOME_DISCOUNT_PCT + '% appliqué pour ' + psoClientEmail + ' : ' + psoFullPrice + ' → ' + psoTotal + ' €');
             }
             // Tâche 8 : réduction fidélité Cercle Alliance (si paire client-partenaire a un cercle actif)
             if (req.body.use_cercle_discount === true) {
@@ -2551,6 +2562,8 @@ app.post('/api/orders/create', (req, res) => {
                     client_type: clientInfo.clientType || 'particulier'
                 },
                 total_amount: psoTotal,
+                welcome_discount_pct: psoWelcomeDiscountAmount > 0 ? WELCOME_DISCOUNT_PCT : 0,
+                welcome_discount_amount: psoWelcomeDiscountAmount,
                 deposit_amount: psoDeposit,
                 balance_amount: psoBalance,
                 installments_count: psoInstallments.length,
@@ -6559,7 +6572,7 @@ app.post('/api/auth/register', async (req, res) => {
             payments: [],
             favoris: [],
             referredBy: referredBy,
-            referral_discount: referredBy ? { pct: REFERRAL_FILLEUL_DISCOUNT_PCT, applied: false } : null,
+            referral_discount: { pct: WELCOME_DISCOUNT_PCT, applied: false },
             sessionToken: sessionToken,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
@@ -6821,6 +6834,7 @@ app.get('/api/auth/me', (req, res) => {
             referralCount: referralCount,
             isCerclePrivilege: getClientReferralStatus(referralCount) === 'cercle_privilege',
             referralDiscount: user.referral_discount || null,
+            welcomeDiscountEligible: isClientFirstPaidOrder(user.email),
             patrimoineGenesis: {
                 prestationsRealisees: completedOrders,
                 partenairesDistincts: getClientDistinctPartnerCount(user.email),
@@ -9552,6 +9566,17 @@ const CLIENT_BADGE_TIERS = [
 ];
 
 // Une commande "realisee" = solde paye (convention deja utilisee dans /api/auth/me, cf paymentStatus 'fully_paid')
+// Renvoie true si le client n'a encore jamais effectué de premier paiement (acompte)
+// → éligible à l'avantage bienvenue -10%
+function isClientFirstPaidOrder(email) {
+    if (!email) return false;
+    var needle = email.toLowerCase();
+    return !loadOrders().some(function(o) {
+        var oe = (o.client_info && o.client_info.email) || o.email || '';
+        return oe.toLowerCase() === needle && o.deposit_paid === true;
+    });
+}
+
 function getClientCompletedOrders(email) {
     if (!email) return 0;
     const needle = email.toLowerCase();
@@ -10118,7 +10143,9 @@ const GENESIS_POINT_VALUES = {
     evenement: 75,
     parrainage: 100
 };
-const REFERRAL_FILLEUL_DISCOUNT_PCT = 10;
+// Avantage de bienvenue : -10% sur la première commande, absorbé par GENESIS (indépendant du parrainage)
+const WELCOME_DISCOUNT_PCT = 10;
+const REFERRAL_FILLEUL_DISCOUNT_PCT = WELCOME_DISCOUNT_PCT; // alias backwards-compat
 
 // Structure de configuration des avantages par palier — valeurs ajustables
 // commissionLabel retiré : dérivé à l'affichage depuis commissionReduction (0→Standard, 1-2→Avantageuse, 3+→Privilégiée)
