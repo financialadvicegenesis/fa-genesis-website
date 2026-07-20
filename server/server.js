@@ -11821,6 +11821,29 @@ app.get('/api/my-requests', function(req, res) {
     }
 });
 
+// GET /api/my-partner-collabs — liste des IDs partenaires avec qui le client a collaboré
+// (commande entièrement payée), utilisé par l'annuaire pour le filtre "Déjà travaillé avec vous".
+app.get('/api/my-partner-collabs', function(req, res) {
+    try {
+        var user = authenticateClient(req, res);
+        if (!user) return;
+        var needle = user.email.toLowerCase();
+        var paidOrderIds = {};
+        loadOrders().forEach(function(o) {
+            var oe = (o.client_info && o.client_info.email) || o.email || '';
+            if (oe.toLowerCase() === needle && o.balance_paid === true) paidOrderIds[o.id] = true;
+        });
+        var collabIds = {};
+        loadDispatches().forEach(function(d) {
+            if (d.claimed_by_partner_id && paidOrderIds[d.order_id]) collabIds[d.claimed_by_partner_id] = true;
+        });
+        res.json({ partner_ids: Object.keys(collabIds) });
+    } catch(e) {
+        console.error('[MY-COLLABS]', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
 // GET /api/partner/requests — le partenaire liste ses demandes actives : celles en attente
 // d'une action de sa part (pending = à accepter/refuser, accepted = à proposer un contrat,
 // proposed = en attente de signature client) ET celles déjà signées/payées (mission engagée,

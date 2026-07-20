@@ -1209,6 +1209,19 @@ a{text-decoration:none;color:inherit}
 .p-list-meta-row i{color:var(--yellow);font-size:9.5px;margin-right:2px}
 .p-list-meta-stars{color:#ddd!important}
 .p-list-meta-stars i{color:var(--yellow)}
+/* Chips de filtre contextuel (annuaire / favoris) */
+.p-dir-chip{padding:7px 14px;border-radius:99px;border:1.5px solid var(--border);background:var(--card);
+  color:var(--text);font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;
+  gap:6px;transition:background .18s,border-color .18s,color .18s}
+.p-dir-chip.on{background:var(--yellow);border-color:var(--yellow);color:#000}
+/* Tag promo bienvenue sur les cartes partenaire */
+.p-list-promo-tag{display:inline-flex;align-items:center;gap:4px;background:#0d2900;
+  border:1px solid var(--yellow);color:var(--yellow);
+  font-size:9.5px;font-weight:800;padding:2px 8px;border-radius:6px;letter-spacing:.3px;text-transform:uppercase}
+/* Badge "Déjà travaillé" sur les cartes partenaire */
+.p-list-collab-badge{display:inline-flex;align-items:center;gap:4px;background:#001a2c;
+  border:1px solid #29b6f6;color:#29b6f6;
+  font-size:9.5px;font-weight:800;padding:2px 8px;border-radius:6px;letter-spacing:.3px}
 
 /* Badge Populaire */
 .p-neo-card.featured{border-color:var(--yellow);box-shadow:6px 6px 0 var(--yellow)}
@@ -3036,6 +3049,7 @@ function initApp(){
     loadStatusCard();
     _checkPendingReviews();
     _syncUserBadge();
+    _loadClientCollabPartnerIds();
     loadNotifInbox();
     if(!window._notifPollStarted){ window._notifPollStarted = true; setInterval(loadNotifInbox, 120000); }
     setTimeout(function(){
@@ -3713,9 +3727,12 @@ function loadExplorerMap(mode, cityFilter){
 }
 // ── PRESTATAIRES — ANNUAIRE CLASSÉ ──────────────────────────────
 var _rankCategory = null, _rankQuery = '', _rankCity = '', _rankSort = 'score', _rankSearchTimer = null, _rankCityTimer = null;
+var _dirCollabFilter = false;
+var _clientCollabPartnerIds = [];
+var _favPartnersCache = [], _favCollabFilter = false;
 
 function renderPrestataires(){
-  _rankCategory = null; _rankQuery = ''; _rankCity = ''; _rankSort = 'score';
+  _rankCategory = null; _rankQuery = ''; _rankCity = ''; _rankSort = 'score'; _dirCollabFilter = false;
   var html = '<div class="p-hero">'
     +'<div class="p-hero-title">Prestataires</div>'
     +'<div class="p-hero-sub">Le classement complet, mis à jour en continu.</div>'
@@ -3739,8 +3756,10 @@ function renderPrestataires(){
     +'</select>'
     +'</div>';
   html += '<div class="p-hero-stat" id="p-rank-stat" style="padding:0 16px 6px;">Chargement...</div>';
+  html += '<div id="p-rank-signal-chips" style="padding:4px 16px 6px;display:flex;gap:8px;flex-wrap:wrap;"></div>';
   html += '<div id="p-rank-results" class="p-list-col"><div class="p-dir-empty">Chargement...</div></div>';
   document.getElementById('prestatairesList').innerHTML = html;
+  _renderDirSignalChips();
   loadRankedDirectory();
 }
 function setRankCategory(cat, el){
@@ -3779,6 +3798,7 @@ function loadRankedDirectory(){
     .then(function(r){return r.json();})
     .then(function(data){
       var partners = (data && data.partners) || [];
+      if(_dirCollabFilter) partners = partners.filter(function(p){ return _isCollabPartner(p.id); });
       var statEl = document.getElementById('p-rank-stat');
       if(statEl) statEl.textContent = partners.length + ' prestataire' + (partners.length===1?'':'s') + ' classé' + (partners.length===1?'':'s');
       if(!partners.length){ results.innerHTML = '<div class="p-dir-empty">Aucun partenaire trouvé.</div>'; return; }
@@ -3795,6 +3815,13 @@ function partnerListRow(p){
   var badgeHtml = genesisUnifiedBadgesHtml(p.badge, p.constellation);
   var starsHtml = (p.rating && p.rating.count) ? ('<i class="fa-solid fa-star"></i> '+p.rating.average+' ('+p.rating.count+')') : 'Nouveau';
   var resp = partnerResponseLabel(p);
+  var promoPct = (USER && USER.referralDiscount && USER.referralDiscount.pct) ? USER.referralDiscount.pct : 15;
+  var promoTag = (USER && !GUEST && USER.welcomeDiscountEligible)
+    ? '<span class="p-list-promo-tag"><i class="fa-solid fa-tag"></i> -'+promoPct+'% 1&#232;re commande</span>' : '';
+  var collabBadge = _isCollabPartner(p.id)
+    ? '<span class="p-list-collab-badge"><i class="fa-solid fa-handshake"></i> D&#233;j&#224; travaill&#233;</span>' : '';
+  var signalRow = (promoTag || collabBadge)
+    ? '<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:6px;">'+promoTag+collabBadge+'</div>' : '';
   return '<div class="p-list-row" onclick="openPartnerDetail(\''+p.id+'\')">'
     +favHeartHtml(p.id)
     +'<div class="p-list-photo">'+avatarHtml+'</div>'
@@ -3806,6 +3833,7 @@ function partnerListRow(p){
       +'<span class="p-list-meta-price"><i class="fa-solid fa-tag"></i> '+partnerPriceLabel(p)+'</span>'
       +(resp?'<span class="p-list-meta-resp"><i class="fa-solid fa-clock"></i> '+resp+'</span>':'')
     +'</div>'
+    +signalRow
     +'</div></div>';
 }
 function rankedDirectoryCard(p){
@@ -4071,6 +4099,11 @@ function directoryCard(p){
   var verifiedHtml = verifiedBadgeHtml(p);
   var badgeHtml = tierBadgeHtml(p.badge);
   var constellationHtml = constellationBadgeHtml(p.constellation);
+  var promoPct = (USER && USER.referralDiscount && USER.referralDiscount.pct) ? USER.referralDiscount.pct : 15;
+  var promoTag = (USER && !GUEST && USER.welcomeDiscountEligible)
+    ? '<div style="margin-top:5px;"><span class="p-list-promo-tag"><i class="fa-solid fa-tag"></i> -'+promoPct+'% 1&#232;re commande</span></div>' : '';
+  var collabBadge = _isCollabPartner(p.id)
+    ? '<div style="margin-top:4px;"><span class="p-list-collab-badge"><i class="fa-solid fa-handshake"></i> D&#233;j&#224; travaill&#233;</span></div>' : '';
   return '<div class="p-dir-card" onclick="openPartnerDetail(\''+p.id+'\')">'
     +favHeartHtml(p.id)
     +'<div class="p-dir-card-photo">'+photoHtml+'</div>'
@@ -4081,6 +4114,8 @@ function directoryCard(p){
     +cityHtml
     +'<div class="p-dir-card-stars">'+starsLabel+'</div>'
     +'<div class="p-dir-card-price">'+priceLabel+'</div>'
+    +promoTag
+    +collabBadge
     +'</div>'
     +'</div>'
     +'</div>';
@@ -5280,17 +5315,18 @@ function shareReferralCode(){
 function showFavoris(){
   var c = document.getElementById('profilContent'); if(!c) return;
   _saveProfilScroll('showFavoris');
+  _favCollabFilter = false;
   c.innerHTML = '<div class="espace-view">'
     +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Mes favoris</div></div>'
+    +'<div id="fav-chips" style="padding:8px 16px 4px;display:flex;gap:8px;flex-wrap:wrap;"></div>'
     +'<div id="fav-list" class="p-dir-results" style="padding-top:14px;padding-bottom:80px;overflow-y:auto;flex:1;"><div class="espace-loading">Chargement...</div></div>'
     +'</div>';
+  _renderFavChips();
   fetch(API+'/api/users/favorites', {headers:{'Authorization':'Bearer '+USER._token}})
     .then(function(r){return r.json();})
     .then(function(data){
-      var el = document.getElementById('fav-list'); if(!el) return;
-      var partners = (data && data.partners) || [];
-      if(!partners.length){ el.innerHTML = '<div class="espace-empty">Aucun favori pour le moment. Touchez le cœur sur un profil partenaire pour l\'ajouter ici.</div>'; return; }
-      el.innerHTML = partners.map(function(p){ return directoryCard(p); }).join('');
+      _favPartnersCache = (data && data.partners) || [];
+      _renderFavList();
     }).catch(function(){
       var el = document.getElementById('fav-list'); if(el) el.innerHTML = '<div class="espace-empty">Erreur de chargement.</div>';
     });
@@ -6257,6 +6293,57 @@ function _renderPartnerHomeQGWidget(data) {
       data.currentBenefits || null
     );
   } catch(e){}
+}
+
+// ── SIGNAUX ANNUAIRE (collab / promo bienvenue) ──────────
+function _loadClientCollabPartnerIds(){
+  if(!USER || GUEST || !USER._token) return;
+  fetch(API+'/api/my-partner-collabs',{headers:{'Authorization':'Bearer '+USER._token}})
+    .then(function(r){return r.json();})
+    .then(function(d){ if(d && Array.isArray(d.partner_ids)) _clientCollabPartnerIds = d.partner_ids; })
+    .catch(function(){});
+}
+function _isCollabPartner(id){ return _clientCollabPartnerIds.indexOf(id) !== -1; }
+
+// Chips de filtre pour l'annuaire "Prestataires"
+function _renderDirSignalChips(){
+  var el = document.getElementById('p-rank-signal-chips'); if(!el) return;
+  if(!USER || GUEST || !_clientCollabPartnerIds.length){ el.innerHTML=''; return; }
+  el.innerHTML = '<button class="p-dir-chip'+(_dirCollabFilter?' on':'')+'" onclick="_toggleDirCollabFilter()">'
+    +'<i class="fa-solid fa-handshake"></i> Déjà travaillé avec vous</button>';
+}
+function _toggleDirCollabFilter(){
+  _dirCollabFilter = !_dirCollabFilter;
+  _renderDirSignalChips();
+  loadRankedDirectory();
+}
+
+// Chips de filtre pour l'écran Favoris
+function _renderFavChips(){
+  var el = document.getElementById('fav-chips'); if(!el) return;
+  if(!USER || GUEST || !_clientCollabPartnerIds.length){ el.innerHTML=''; return; }
+  el.innerHTML = '<button class="p-dir-chip'+(_favCollabFilter?' on':'')+'" onclick="_toggleFavCollabFilter()">'
+    +'<i class="fa-solid fa-handshake"></i> Déjà travaillé avec vous</button>';
+}
+function _toggleFavCollabFilter(){
+  _favCollabFilter = !_favCollabFilter;
+  _renderFavChips();
+  _renderFavList();
+}
+function _renderFavList(){
+  var el = document.getElementById('fav-list'); if(!el) return;
+  var partners = _favCollabFilter
+    ? _favPartnersCache.filter(function(p){ return _isCollabPartner(p.id); })
+    : _favPartnersCache;
+  if(!partners.length){
+    el.innerHTML = '<div class="espace-empty">'
+      +(_favCollabFilter
+        ? 'Aucun partenaire avec qui vous avez déjà travaillé parmi vos favoris.'
+        : 'Aucun favori pour le moment. Touchez le cœur sur un profil partenaire pour l\'ajouter ici.')
+      +'</div>';
+    return;
+  }
+  el.innerHTML = partners.map(function(p){ return directoryCard(p); }).join('');
 }
 
 // ── AVIS PARTENAIRE (post-paiement solde) ──────────────���─────
