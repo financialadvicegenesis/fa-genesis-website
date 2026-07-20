@@ -6282,6 +6282,7 @@ function _syncUserBadge(){
       USER.isCerclePrivilege = d.isCerclePrivilege;
       USER.patrimoineGenesis = d.patrimoineGenesis;
       USER.referralDiscount = d.referralDiscount || null;
+      USER.welcomeDiscountEligible = d.welcomeDiscountEligible === true;
       try{ localStorage.setItem('fa_genesis_session', JSON.stringify(USER)); }catch(e){}
       _renderHomeQGWidget();
       if(document.getElementById('tab-profil') && document.getElementById('tab-profil').classList.contains('on') && !sessionStorage.getItem('fa_nav_section')) renderProfil();
@@ -7729,8 +7730,8 @@ function openPayOverlay(total, cartItems){
   _payReferralDiscountUsed = false;
   _payCartSnap = cartItems; _payTotal = total;
 
-  // Réduction filleul parrainage (-10% première commande)
-  var _rdiscount = (USER && !GUEST && USER.referralDiscount && !USER.referralDiscount.applied) ? USER.referralDiscount.pct : 0;
+  // Avantage bienvenue -10% sur la première commande (sans condition de parrainage)
+  var _rdiscount = (USER && !GUEST && (USER.welcomeDiscountEligible === true || (USER.referralDiscount && !USER.referralDiscount.applied))) ? 10 : 0;
   if(_rdiscount > 0){
     _payTotal = Math.round(_payTotal * (1 - _rdiscount / 100) * 100) / 100;
     _payReferralDiscountUsed = true;
@@ -7751,7 +7752,7 @@ function openPayOverlay(total, cartItems){
   var amtEl = document.getElementById('pay-amount-val');
   var lblEl = document.getElementById('pay-amount-label');
   if(amtEl) amtEl.textContent = deposit.toFixed(2) + ' €';
-  if(lblEl) lblEl.textContent = 'Acompte obligatoire (30 %)' + (_rdiscount > 0 ? ' · -'+_rdiscount+'% parrainage appliqué' : '');
+  if(lblEl) lblEl.textContent = 'Acompte obligatoire (30 %)' + (_rdiscount > 0 ? ' · -'+_rdiscount+'% bienvenue appliqué' : '');
 
   // Device detection
   var ua = navigator.userAgent || '';
@@ -9495,8 +9496,8 @@ function pbPayDeposit(){
     clientType: 'particulier'
   };
 
-  var _pbUseReferral = (USER && USER.referralDiscount && !USER.referralDiscount.applied) ? true : false;
-  var _pbDiscountLabel = _pbUseReferral ? ' · -'+(USER.referralDiscount.pct||10)+'% parrainage' : '';
+  var _pbUseReferral = (USER && (USER.welcomeDiscountEligible === true || (USER.referralDiscount && !USER.referralDiscount.applied))) ? true : false;
+  var _pbDiscountLabel = _pbUseReferral ? ' · -10% bienvenue' : '';
   var pbPayBtn2 = document.getElementById('pb-pay-btn');
   if(pbPayBtn2 && _pbDiscountLabel) pbPayBtn2.textContent = 'PAYER (' + _pbDiscountLabel.trim() + ')';
   fetch((window.FA_GENESIS_API||API)+'/api/orders/create',{
