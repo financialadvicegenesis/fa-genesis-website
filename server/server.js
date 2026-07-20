@@ -664,19 +664,28 @@ async function processDispatchPayout(dispatch, stage) {
                 ? order.installments.find(function(i) { return i.stage === stage; })
                 : null;
             stageTotal = tranche ? parseFloat(tranche.amount || 0) : 0;
-            paidAmount = parseFloat((stageTotal * partnerPct / 100).toFixed(2));
+            // Si avantage bienvenue : le partenaire est payé sur le prix plein (gross-up).
+            var _wdaInst = order ? parseFloat(order.welcome_discount_amount || 0) : 0;
+            var _grossUpInst = (_wdaInst > 0 && order && parseFloat(order.total_amount) > 0)
+                ? (parseFloat(order.total_amount) + _wdaInst) / parseFloat(order.total_amount)
+                : 1;
+            paidAmount = parseFloat((stageTotal * partnerPct / 100 * _grossUpInst).toFixed(2));
         } else if (order && order.installments && order.installments.length === 3) {
             // 'balance' sur une commande GENESIS SAFE™ : le client a payé tout le solde
             // restant en un clic (tranches 2+3) au lieu de les régler séparément. On ne verse
             // au partenaire que les tranches pas encore reversées, pour éviter un double
-            // versement si une tranche avait déjà été payée/reversée individuellement.
+            // versement si une tranche avait déjà été payée/versée individuellement.
             var existingPayoutsForDispatch = loadPayouts().filter(function(p) { return p.dispatch_id === dispatch.id; });
             var paidOutStages = existingPayoutsForDispatch.map(function(p) { return p.stage; });
             var remainingTranches = order.installments.filter(function(i) {
                 return i.stage !== 'deposit' && paidOutStages.indexOf(i.stage) === -1;
             });
             stageTotal = remainingTranches.reduce(function(sum, i) { return sum + parseFloat(i.amount || 0); }, 0);
-            paidAmount = parseFloat((stageTotal * partnerPct / 100).toFixed(2));
+            var _wdaBal = order ? parseFloat(order.welcome_discount_amount || 0) : 0;
+            var _grossUpBal = (_wdaBal > 0 && order && parseFloat(order.total_amount) > 0)
+                ? (parseFloat(order.total_amount) + _wdaBal) / parseFloat(order.total_amount)
+                : 1;
+            paidAmount = parseFloat((stageTotal * partnerPct / 100 * _grossUpBal).toFixed(2));
         } else {
             // 'balance' : commandes historiques sans split 30/40/30 (solde 70% en un seul versement)
             var pTotal = parseFloat(dispatch.partner_total_amount || 0);
@@ -903,9 +912,14 @@ function createPartnerServiceDispatch(order) {
         if (existing) return existing;
 
         var partnerPct = 85;
-        var totalAmount = parseFloat(order.total_amount || 0);
+        // Si une réduction bienvenue a été absorbée par GENESIS, le partenaire est payé
+        // sur le prix plein (avant réduction). La différence est à la charge de GENESIS.
+        var discountedTotal = parseFloat(order.total_amount || 0);
+        var welcomeDiscount = parseFloat(order.welcome_discount_amount || 0);
+        var totalAmount = discountedTotal + welcomeDiscount;     // prix plein
         var depositAmount = parseFloat(order.deposit_amount || 0);
-        var partnerDeposit = parseFloat((depositAmount * partnerPct / 100).toFixed(2));
+        var fullDeposit = welcomeDiscount > 0 ? parseFloat((totalAmount * 0.30).toFixed(2)) : depositAmount;
+        var partnerDeposit = parseFloat((fullDeposit * partnerPct / 100).toFixed(2));
         var partnerTotal = parseFloat((totalAmount * partnerPct / 100).toFixed(2));
 
         var users = loadUsers();
