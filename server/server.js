@@ -2497,7 +2497,11 @@ app.post('/api/orders/create', (req, res) => {
             var psoActUser = psoAuthTok ? findUserByToken(psoAuthTok) : null;
             var psoClientEmail = (clientInfo && clientInfo.email) || (psoActUser && psoActUser.email) || '';
             if (psoClientEmail && isClientFirstPaidOrder(psoClientEmail)) {
-                psoTotal = Math.round(psoFullPrice * (1 - WELCOME_DISCOUNT_PCT / 100) * 100) / 100;
+                // Taux selon l'origine du client : avec parrainage → 10%, sans parrainage → 15%
+                var psoDiePct = (psoActUser && psoActUser.referral_discount && psoActUser.referral_discount.pct)
+                    ? psoActUser.referral_discount.pct
+                    : (psoActUser && psoActUser.referredBy ? WELCOME_DISCOUNT_PCT_WITH_REFERRAL : WELCOME_DISCOUNT_PCT_NO_REFERRAL);
+                psoTotal = Math.round(psoFullPrice * (1 - psoDiePct / 100) * 100) / 100;
                 psoWelcomeDiscountAmount = Math.round((psoFullPrice - psoTotal) * 100) / 100;
                 // Marquer le champ legacy comme appliqué (rétrocompatibilité frontend)
                 if (psoActUser) {
@@ -2508,7 +2512,7 @@ app.post('/api/orders/create', (req, res) => {
                         saveUsers(psoUsrs);
                     }
                 }
-                console.log('[WELCOME] Avantage bienvenue -' + WELCOME_DISCOUNT_PCT + '% appliqué pour ' + psoClientEmail + ' : ' + psoFullPrice + ' → ' + psoTotal + ' €');
+                console.log('[WELCOME] Avantage bienvenue -' + psoDiePct + '% appliqué pour ' + psoClientEmail + ' : ' + psoFullPrice + ' → ' + psoTotal + ' €');
             }
             // Tâche 8 : réduction fidélité Cercle Alliance (si paire client-partenaire a un cercle actif)
             if (req.body.use_cercle_discount === true) {
@@ -2576,7 +2580,7 @@ app.post('/api/orders/create', (req, res) => {
                     client_type: clientInfo.clientType || 'particulier'
                 },
                 total_amount: psoTotal,
-                welcome_discount_pct: psoWelcomeDiscountAmount > 0 ? WELCOME_DISCOUNT_PCT : 0,
+                welcome_discount_pct: psoWelcomeDiscountAmount > 0 ? psoDiePct : 0,
                 welcome_discount_amount: psoWelcomeDiscountAmount,
                 deposit_amount: psoDeposit,
                 balance_amount: psoBalance,
@@ -6586,7 +6590,7 @@ app.post('/api/auth/register', async (req, res) => {
             payments: [],
             favoris: [],
             referredBy: referredBy,
-            referral_discount: { pct: WELCOME_DISCOUNT_PCT, applied: false },
+            referral_discount: { pct: referredBy ? WELCOME_DISCOUNT_PCT_WITH_REFERRAL : WELCOME_DISCOUNT_PCT_NO_REFERRAL, applied: false },
             sessionToken: sessionToken,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
@@ -10157,9 +10161,12 @@ const GENESIS_POINT_VALUES = {
     evenement: 75,
     parrainage: 100
 };
-// Avantage de bienvenue : -10% sur la première commande, absorbé par GENESIS (indépendant du parrainage)
-const WELCOME_DISCOUNT_PCT = 10;
-const REFERRAL_FILLEUL_DISCOUNT_PCT = WELCOME_DISCOUNT_PCT; // alias backwards-compat
+// Avantage bienvenue : absorbé par GENESIS. Taux selon l'origine :
+//   sans code de parrainage → -15%  |  avec code de parrainage → -10%
+const WELCOME_DISCOUNT_PCT_NO_REFERRAL  = 15;
+const WELCOME_DISCOUNT_PCT_WITH_REFERRAL = 10;
+const WELCOME_DISCOUNT_PCT = WELCOME_DISCOUNT_PCT_WITH_REFERRAL; // alias backwards-compat
+const REFERRAL_FILLEUL_DISCOUNT_PCT     = WELCOME_DISCOUNT_PCT_WITH_REFERRAL; // alias legacy
 
 // Structure de configuration des avantages par palier — valeurs ajustables
 // commissionLabel retiré : dérivé à l'affichage depuis commissionReduction (0→Standard, 1-2→Avantageuse, 3+→Privilégiée)

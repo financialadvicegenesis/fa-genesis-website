@@ -7730,8 +7730,9 @@ function openPayOverlay(total, cartItems){
   _payReferralDiscountUsed = false;
   _payCartSnap = cartItems; _payTotal = total;
 
-  // Avantage bienvenue -10% sur la première commande (sans condition de parrainage)
-  var _rdiscount = (USER && !GUEST && (USER.welcomeDiscountEligible === true || (USER.referralDiscount && !USER.referralDiscount.applied))) ? 10 : 0;
+  // Avantage bienvenue sur la première commande : 15% sans parrainage, 10% avec parrainage
+  var _rwelcomePct = (USER && USER.referralDiscount && USER.referralDiscount.pct) ? USER.referralDiscount.pct : 15;
+  var _rdiscount = (USER && !GUEST && (USER.welcomeDiscountEligible === true || (USER.referralDiscount && !USER.referralDiscount.applied))) ? _rwelcomePct : 0;
   if(_rdiscount > 0){
     _payTotal = Math.round(_payTotal * (1 - _rdiscount / 100) * 100) / 100;
     _payReferralDiscountUsed = true;
@@ -9497,7 +9498,8 @@ function pbPayDeposit(){
   };
 
   var _pbUseReferral = (USER && (USER.welcomeDiscountEligible === true || (USER.referralDiscount && !USER.referralDiscount.applied))) ? true : false;
-  var _pbDiscountLabel = _pbUseReferral ? ' · -10% bienvenue' : '';
+  var _pbWelcomePct = (USER && USER.referralDiscount && USER.referralDiscount.pct) ? USER.referralDiscount.pct : 15;
+  var _pbDiscountLabel = _pbUseReferral ? ' · -' + _pbWelcomePct + '% bienvenue' : '';
   var pbPayBtn2 = document.getElementById('pb-pay-btn');
   if(pbPayBtn2 && _pbDiscountLabel) pbPayBtn2.textContent = 'PAYER (' + _pbDiscountLabel.trim() + ')';
   fetch((window.FA_GENESIS_API||API)+'/api/orders/create',{
