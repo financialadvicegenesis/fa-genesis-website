@@ -1200,17 +1200,21 @@
                 <div id="disputesList" class="space-y-4" style="color:#e0e0e0;">
                     <p style="color:#aaa;opacity:0.6;font-weight:bold;">Chargement...</p>
                 </div>
-            <div id="supportSection" class="container mx-auto max-w-7xl" style="display: none;">
-                <h2 style="color:#fff;font-size:18px;font-weight:900;margin-bottom:16px;"><i class="fas fa-headset mr-2"></i>Support Client</h2>
-                <div id="supportTicketsList"></div>
-                <div id="supportTicketDetail" style="display:none;"></div>
-            </div>
                 <div id="disputeDetailView" style="display:none;">
                     <button onclick="backToDisputesList()" style="background:#262626;border:1px solid rgba(255,215,0,.2);border-radius:8px;color:#e0e0e0;padding:10px 18px;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:1.5rem;display:inline-block;">
                         <i class="fas fa-arrow-left mr-2"></i>RETOUR A LA LISTE
                     </button>
                     <div id="disputeDetailContent"></div>
                 </div>
+            </div>
+
+            <!-- ===== SECTION SUPPORT ===== (doit être HORS de litigesSection) -->
+            <div id="supportSection" class="container mx-auto max-w-7xl" style="display: none;">
+                <h2 class="text-3xl font-black mb-6" style="font-family:'Playfair Display',serif;">
+                    <i class="fas fa-headset mr-3" style="color:var(--genesis-yellow);"></i>SUPPORT CLIENT
+                </h2>
+                <div id="supportTicketsList"></div>
+                <div id="supportTicketDetail" style="display:none;"></div>
             </div>
 
             <div id="workflowSection" class="container mx-auto max-w-7xl" style="display: none;">
@@ -5664,85 +5668,150 @@
             if (emptyEl) emptyEl.style.display = 'none';
             if (listEl) listEl.style.display = 'none';
 
+            var adminToken = localStorage.getItem('fa_genesis_admin_token') || '';
+
             try {
-                var resp = await fetch(API_BASE_URL + '/api/admin/inbox');
+                // Charger chat ET tickets support en parallèle
+                var results = await Promise.all([
+                    fetch(API_BASE_URL + '/api/admin/inbox'),
+                    adminToken ? fetch(API_BASE_URL + '/api/admin/support', { headers: { 'Authorization': 'Bearer ' + adminToken } }) : Promise.resolve(null)
+                ]);
+                var resp = results[0];
+                var suppResp = results[1];
+
                 if (!resp.ok) throw new Error('Erreur ' + resp.status);
                 var data = await resp.json();
                 allChatMessages = (data.messages || []);
 
+                var supportTickets = [];
+                if (suppResp && suppResp.ok) {
+                    var suppData = await suppResp.json();
+                    // Ne montrer que les tickets non fermés dans le dashboard
+                    supportTickets = (suppData.tickets || []).filter(function(t) { return t.status !== 'closed'; });
+                    // Mettre à jour le badge du tab Support
+                    var sBadge = document.getElementById('supportBadge');
+                    if (sBadge) {
+                        var openCount = (suppData.tickets || []).filter(function(t) { return t.status === 'open'; }).length;
+                        if (openCount > 0) { sBadge.textContent = openCount; sBadge.style.display = ''; }
+                        else { sBadge.style.display = 'none'; }
+                    }
+                }
+
                 if (loader) loader.style.display = 'none';
 
-                if (allChatMessages.length === 0) {
+                var hasContent = allChatMessages.length > 0 || supportTickets.length > 0;
+                if (!hasContent) {
                     if (emptyEl) emptyEl.style.display = '';
                     return;
                 }
 
-                // Badge non lus
-                var unreadCount = allChatMessages.filter(function(m) { return m.from_type === 'client' && !m.read_at; }).length;
-                var badge = document.getElementById('adminInboxBadge');
-                if (badge) {
-                    if (unreadCount > 0) { badge.textContent = unreadCount + ' non lu' + (unreadCount > 1 ? 's' : ''); badge.style.display = ''; }
-                    else { badge.style.display = 'none'; }
-                }
-
-                // Grouper par client (from_email si client, to_email si admin)
-                var threads = {};
-                allChatMessages.forEach(function(m) {
-                    var clientEmail = m.from_type === 'client' ? m.from_email : m.to_email;
-                    var clientName = m.from_type === 'client' ? m.from_name : m.to_name;
-                    if (!threads[clientEmail]) threads[clientEmail] = { email: clientEmail, name: clientName, msgs: [] };
-                    threads[clientEmail].msgs.push(m);
-                });
-
                 var html = '';
-                Object.keys(threads).forEach(function(email) {
-                    var t = threads[email];
-                    var unread = t.msgs.filter(function(m) { return m.from_type === 'client' && !m.read_at; }).length;
-                    html += '<div style="border:3px solid ' + (unread > 0 ? '#f44336' : '#ddd') + ';margin-bottom:1rem;background:#fafafa;">';
-                    html += '<div style="background:' + (unread > 0 ? '#fff3f3' : '#f5f5f5') + ';border-bottom:2px solid #ddd;padding:0.75rem 1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">';
-                    html += '<div><span style="font-weight:900;font-size:15px;">' + (t.name || email) + '</span>';
-                    html += '<span style="font-size:12px;color:#888;margin-left:8px;">' + email + '</span>';
-                    if (unread > 0) html += '<span style="background:#f44336;color:#fff;font-size:10px;font-weight:900;padding:1px 6px;border:1px solid black;margin-left:8px;">' + unread + ' non lu</span>';
-                    html += '</div>';
-                    html += '<button onclick="toggleAdminThread(\'' + email + '\')" style="background:var(--genesis-yellow);border:2px solid black;padding:4px 10px;font-size:11px;font-weight:900;cursor:pointer;text-transform:uppercase;">Voir / Répondre</button>';
-                    html += '</div>';
 
-                    html += '<div id="thread-' + email.replace(/[^a-z0-9]/gi, '_') + '" style="display:none;padding:1rem;">';
-                    // Fil de messages
-                    html += '<div style="max-height:300px;overflow-y:auto;display:flex;flex-direction:column;gap:0.5rem;margin-bottom:1rem;padding:0.5rem;background:#fff;border:2px solid #eee;" id="thread-msgs-' + email.replace(/[^a-z0-9]/gi, '_') + '">';
-                    t.msgs.forEach(function(m) {
-                        var isSent = m.from_type !== 'client';
-                        var bg = isSent ? 'var(--genesis-yellow)' : '#e8e8e8';
-                        var align = isSent ? 'flex-end' : 'flex-start';
-                        var time = '';
-                        try { time = new Date(m.created_at).toLocaleString('fr-FR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }); } catch(e) {}
-                        html += '<div style="display:flex;flex-direction:column;align-items:' + align + ';">';
-                        html += '<div style="background:' + bg + ';border:2px solid black;padding:8px 12px;max-width:75%;font-size:13px;white-space:pre-wrap;">';
-                        if (m.subject) html += '<p style="font-weight:900;font-size:11px;text-transform:uppercase;margin-bottom:4px;">' + m.subject + '</p>';
-                        html += m.content;
+                // ── TICKETS SUPPORT ──
+                if (supportTickets.length > 0) {
+                    html += '<div style="margin-bottom:20px;">';
+                    html += '<div style="font-size:11px;font-weight:900;text-transform:uppercase;color:#888;letter-spacing:1px;margin-bottom:10px;border-bottom:2px solid #eee;padding-bottom:6px;">'
+                          + '<i class="fas fa-headset mr-1" style="color:#f44336;"></i>'
+                          + 'Tickets Support — ' + supportTickets.length + ' ouvert' + (supportTickets.length > 1 ? 's' : '')
+                          + '</div>';
+                    supportTickets.forEach(function(t) {
+                        var isWaiting = t.status === 'open';
+                        var lastMsg = (t.messages || []).slice(-1)[0] || {};
+                        var preview = (lastMsg.content || '').replace(/</g,'&lt;').substring(0, 90) + ((lastMsg.content || '').length > 90 ? '…' : '');
+                        var dt = '';
+                        try { dt = new Date(t.updated_at).toLocaleString('fr-FR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }); } catch(e){}
+                        var safeId = (t.id || '').replace(/'/g, '');
+                        html += '<div style="border:3px solid ' + (isWaiting ? '#f44336' : '#ddd') + ';margin-bottom:10px;background:#fafafa;">';
+                        html += '<div style="background:' + (isWaiting ? '#fff3f3' : '#f5f5f5') + ';border-bottom:2px solid #ddd;padding:0.65rem 1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">';
+                        html += '<div>';
+                        html += '<span style="font-weight:900;font-size:14px;">' + (t.client_name || t.client_email || '').replace(/</g,'&lt;') + '</span>';
+                        html += '<span style="font-size:11px;color:#888;margin-left:8px;">' + (t.client_email || '') + '</span>';
+                        if (isWaiting) html += '<span style="background:#f44336;color:#fff;font-size:10px;font-weight:900;padding:1px 6px;border:1px solid black;margin-left:6px;">En attente de réponse</span>';
                         html += '</div>';
-                        html += '<span style="font-size:10px;color:#999;font-weight:900;margin-top:2px;">' + (isSent ? 'FA GENESIS' : m.from_name) + ' · ' + time + '</span>';
+                        html += '<button onclick="showSection(\'support\');setTimeout(function(){openSupportTicket(\'' + safeId + '\');},300);" style="background:var(--genesis-yellow);border:2px solid black;padding:5px 12px;font-size:11px;font-weight:900;cursor:pointer;text-transform:uppercase;white-space:nowrap;"><i class="fas fa-reply mr-1"></i>Répondre</button>';
+                        html += '</div>';
+                        html += '<div style="padding:8px 16px 10px;">';
+                        html += '<div style="font-size:12px;font-weight:900;color:#333;margin-bottom:3px;">' + (t.subject || '').replace(/</g,'&lt;') + '</div>';
+                        html += '<div style="font-size:12px;color:#666;line-height:1.4;">' + preview + '</div>';
+                        html += '<div style="font-size:10px;color:#aaa;margin-top:5px;">' + dt + ' · ' + (t.messages || []).length + ' message' + ((t.messages || []).length > 1 ? 's' : '') + '</div>';
+                        html += '</div>';
                         html += '</div>';
                     });
                     html += '</div>';
+                }
 
-                    // Formulaire de réponse
-                    html += '<div>';
-                    html += '<textarea id="reply-' + email.replace(/[^a-z0-9]/gi, '_') + '" rows="3" style="width:100%;border:3px solid black;padding:8px;font-family:inherit;font-size:13px;resize:vertical;" placeholder="Votre réponse..."></textarea>';
-                    html += '<div style="margin-top:8px;">';
-                    html += '<button onclick="sendAdminInboxReply(\'' + email + '\', \'' + (t.name || '').replace(/'/g, "\\'") + '\')" style="background:var(--genesis-yellow);border:3px solid black;padding:8px 16px;font-weight:900;font-size:12px;cursor:pointer;text-transform:uppercase;">';
-                    html += '<i class="fas fa-paper-plane mr-1"></i>Envoyer</button>';
-                    html += '</div>';
-                    html += '</div>';
-                    html += '</div>';
-                    html += '</div>';
-                });
+                // ── MESSAGES DIRECTS (chat.json) ──
+                if (allChatMessages.length > 0) {
+                    // Badge non lus
+                    var unreadCount = allChatMessages.filter(function(m) { return m.from_type === 'client' && !m.read_at; }).length;
+                    var badge = document.getElementById('adminInboxBadge');
+                    if (badge) {
+                        if (unreadCount > 0) { badge.textContent = unreadCount + ' non lu' + (unreadCount > 1 ? 's' : ''); badge.style.display = ''; }
+                        else { badge.style.display = 'none'; }
+                    }
+
+                    if (supportTickets.length > 0) {
+                        html += '<div style="font-size:11px;font-weight:900;text-transform:uppercase;color:#888;letter-spacing:1px;margin-bottom:10px;border-bottom:2px solid #eee;padding-bottom:6px;">'
+                              + '<i class="fas fa-comments mr-1" style="color:var(--genesis-yellow);"></i>Messages Directs'
+                              + '</div>';
+                    }
+
+                    // Grouper par client
+                    var threads = {};
+                    allChatMessages.forEach(function(m) {
+                        var clientEmail = m.from_type === 'client' ? m.from_email : m.to_email;
+                        var clientName = m.from_type === 'client' ? m.from_name : m.to_name;
+                        if (!threads[clientEmail]) threads[clientEmail] = { email: clientEmail, name: clientName, msgs: [] };
+                        threads[clientEmail].msgs.push(m);
+                    });
+
+                    Object.keys(threads).forEach(function(email) {
+                        var t = threads[email];
+                        var unread = t.msgs.filter(function(m) { return m.from_type === 'client' && !m.read_at; }).length;
+                        html += '<div style="border:3px solid ' + (unread > 0 ? '#f44336' : '#ddd') + ';margin-bottom:1rem;background:#fafafa;">';
+                        html += '<div style="background:' + (unread > 0 ? '#fff3f3' : '#f5f5f5') + ';border-bottom:2px solid #ddd;padding:0.75rem 1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">';
+                        html += '<div><span style="font-weight:900;font-size:15px;">' + (t.name || email) + '</span>';
+                        html += '<span style="font-size:12px;color:#888;margin-left:8px;">' + email + '</span>';
+                        if (unread > 0) html += '<span style="background:#f44336;color:#fff;font-size:10px;font-weight:900;padding:1px 6px;border:1px solid black;margin-left:8px;">' + unread + ' non lu</span>';
+                        html += '</div>';
+                        html += '<button onclick="toggleAdminThread(\'' + email + '\')" style="background:var(--genesis-yellow);border:2px solid black;padding:4px 10px;font-size:11px;font-weight:900;cursor:pointer;text-transform:uppercase;">Voir / Répondre</button>';
+                        html += '</div>';
+
+                        html += '<div id="thread-' + email.replace(/[^a-z0-9]/gi, '_') + '" style="display:none;padding:1rem;">';
+                        html += '<div style="max-height:300px;overflow-y:auto;display:flex;flex-direction:column;gap:0.5rem;margin-bottom:1rem;padding:0.5rem;background:#fff;border:2px solid #eee;" id="thread-msgs-' + email.replace(/[^a-z0-9]/gi, '_') + '">';
+                        t.msgs.forEach(function(m) {
+                            var isSent = m.from_type !== 'client';
+                            var bg = isSent ? 'var(--genesis-yellow)' : '#e8e8e8';
+                            var align = isSent ? 'flex-end' : 'flex-start';
+                            var time = '';
+                            try { time = new Date(m.created_at).toLocaleString('fr-FR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }); } catch(e) {}
+                            html += '<div style="display:flex;flex-direction:column;align-items:' + align + ';">';
+                            html += '<div style="background:' + bg + ';border:2px solid black;padding:8px 12px;max-width:75%;font-size:13px;white-space:pre-wrap;">';
+                            if (m.subject) html += '<p style="font-weight:900;font-size:11px;text-transform:uppercase;margin-bottom:4px;">' + m.subject + '</p>';
+                            html += (m.content || '').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+                            html += '</div>';
+                            html += '<span style="font-size:10px;color:#999;font-weight:900;margin-top:2px;">' + (isSent ? 'FA GENESIS' : (m.from_name || '')) + ' · ' + time + '</span>';
+                            html += '</div>';
+                        });
+                        html += '</div>';
+
+                        html += '<div>';
+                        html += '<textarea id="reply-' + email.replace(/[^a-z0-9]/gi, '_') + '" rows="3" style="width:100%;border:3px solid black;padding:8px;font-family:inherit;font-size:13px;resize:vertical;" placeholder="Votre réponse..."></textarea>';
+                        html += '<div style="margin-top:8px;">';
+                        html += '<button onclick="sendAdminInboxReply(\'' + email + '\', \'' + (t.name || '').replace(/'/g, "\\'") + '\')" style="background:var(--genesis-yellow);border:3px solid black;padding:8px 16px;font-weight:900;font-size:12px;cursor:pointer;text-transform:uppercase;">';
+                        html += '<i class="fas fa-paper-plane mr-1"></i>Envoyer</button>';
+                        html += '</div>';
+                        html += '</div>';
+                        html += '</div>';
+                        html += '</div>';
+                    });
+                }
 
                 if (listEl) { listEl.innerHTML = html; listEl.style.display = ''; }
 
             } catch (e) {
                 if (loader) loader.style.display = 'none';
-                if (listEl) { listEl.innerHTML = '<p style="color:#f44336;font-weight:900;padding:1rem;">Erreur : ' + e.message + '</p>'; listEl.style.display = ''; }
+                if (listEl) { listEl.innerHTML = '<p style="color:#f44336;font-weight:900;padding:1rem;">Erreur chargement : ' + e.message + '</p>'; listEl.style.display = ''; }
             }
         }
 
