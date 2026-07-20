@@ -1356,7 +1356,7 @@ function resolveCurrentIdentity(req) {
 
     try {
         var jwt = require('jsonwebtoken');
-        var decoded = jwt.verify(token, process.env.JWT_SECRET || 'fa-genesis-secret-key-2024');
+        var decoded = jwt.verify(token, _JWT_SECRET);
         if (decoded && decoded.role === 'admin') {
             return { role: 'admin', email: decoded.email || null };
         }
@@ -1637,7 +1637,7 @@ app.post('/api/admin/test-email', async function(req, res) {
         if (!authHeader) return res.status(401).json({ error: 'Non autorise' });
         var token = authHeader.replace('Bearer ', '');
         var jwt = require('jsonwebtoken');
-        var decoded = jwt.verify(token, process.env.JWT_SECRET || 'fa-genesis-secret-key-2024');
+        var decoded = jwt.verify(token, _JWT_SECRET);
         if (decoded.role !== 'admin') return res.status(403).json({ error: 'Acces admin requis' });
 
         var targetEmail = req.body.email || decoded.email || 'financialadvicegenesis@gmail.com';
@@ -1664,7 +1664,7 @@ app.get('/api/admin/disputes', function(req, res) {
         if (!authHeader) return res.status(401).json({ error: 'Non autorise' });
         var token = authHeader.replace('Bearer ', '');
         var jwt = require('jsonwebtoken');
-        var decoded = jwt.verify(token, process.env.JWT_SECRET || 'fa-genesis-secret-key-2024');
+        var decoded = jwt.verify(token, _JWT_SECRET);
         if (decoded.role !== 'admin') return res.status(403).json({ error: 'Acces admin requis' });
 
         var statusOrder = { escalated_admin: 0, jeremie_triage: 1, open: 2, resolved: 3 };
@@ -1696,7 +1696,7 @@ app.post('/api/admin/disputes/:id/resolve', function(req, res) {
         if (!authHeader) return res.status(401).json({ error: 'Non autorise' });
         var token = authHeader.replace('Bearer ', '');
         var jwt = require('jsonwebtoken');
-        var decoded = jwt.verify(token, process.env.JWT_SECRET || 'fa-genesis-secret-key-2024');
+        var decoded = jwt.verify(token, _JWT_SECRET);
         if (decoded.role !== 'admin') return res.status(403).json({ error: 'Acces admin requis' });
 
         var verdict = req.body && req.body.verdict;
@@ -7449,6 +7449,38 @@ app.put('/api/auth/update-profile', async (req, res) => {
     }
 });
 
+/**
+ * POST /api/auth/change-password
+ * Changer uniquement le mot de passe (appelé depuis app.html mon-compte).
+ * Alias vers la logique de changement déjà dans PUT /api/auth/update-profile.
+ */
+app.post('/api/auth/change-password', async (req, res) => {
+    try {
+        var user = authenticateClient(req, res);
+        if (!user) return;
+        var { currentPassword, newPassword } = req.body;
+        if (!currentPassword || !newPassword) {
+            return res.status(400).json({ error: 'currentPassword et newPassword requis' });
+        }
+        if (newPassword.length < 6) {
+            return res.status(400).json({ error: 'Le nouveau mot de passe doit contenir au moins 6 caractères' });
+        }
+        var users = loadUsers();
+        var idx = users.findIndex(function(u) { return u.email && u.email.toLowerCase() === user.email.toLowerCase(); });
+        if (idx === -1) return res.status(404).json({ error: 'Utilisateur introuvable' });
+        var valid = await bcrypt.compare(currentPassword, users[idx].password);
+        if (!valid) return res.status(400).json({ error: 'Mot de passe actuel incorrect' });
+        var salt = await bcrypt.genSalt(10);
+        users[idx].password = await bcrypt.hash(newPassword, salt);
+        users[idx].updatedAt = new Date().toISOString();
+        saveUsers(users);
+        res.json({ success: true, message: 'Mot de passe modifié avec succès' });
+    } catch(e) {
+        console.error('[CHANGE-PWD]', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
 // ============================================================
 // ROUTES - GESTION DU COMPTE (Desactivation / Suppression)
 // ============================================================
@@ -12055,7 +12087,7 @@ app.post('/api/client/set-availability', function(req, res) {
         if (!authHeader) return res.status(401).json({ error: 'Non autorisé' });
         var token = authHeader.replace('Bearer ', '');
         var jwt = require('jsonwebtoken');
-        var decoded = jwt.verify(token, process.env.JWT_SECRET || 'fa-genesis-secret-key-2024');
+        var decoded = jwt.verify(token, _JWT_SECRET);
 
         var preferredStart = req.body.preferred_start;
         var days = req.body.days || [];
@@ -14054,7 +14086,7 @@ app.post('/api/ai/bootstrap-project', (req, res) => {
         if (!authHeader) return res.status(401).json({ error: 'Non autorise' });
         var token = authHeader.replace('Bearer ', '');
         var jwt = require('jsonwebtoken');
-        var decoded = jwt.verify(token, process.env.JWT_SECRET || 'fa-genesis-secret-key-2024');
+        var decoded = jwt.verify(token, _JWT_SECRET);
         if (decoded.role !== 'admin') return res.status(403).json({ error: 'Acces admin requis' });
 
         var orderId = req.body.order_id;
@@ -14096,7 +14128,7 @@ app.post('/api/ai/client-submit', (req, res) => {
         if (!authHeader) return res.status(401).json({ error: 'Non autorise' });
         var token = authHeader.replace('Bearer ', '');
         var jwt = require('jsonwebtoken');
-        var decoded = jwt.verify(token, process.env.JWT_SECRET || 'fa-genesis-secret-key-2024');
+        var decoded = jwt.verify(token, _JWT_SECRET);
 
         var projectId = req.body.project_id;
         var responses = req.body.responses; // texte des reponses client
@@ -14251,7 +14283,7 @@ app.post('/api/admin/session-completed', (req, res) => {
         if (!authHeader) return res.status(401).json({ error: 'Non autorise' });
         var token = authHeader.replace('Bearer ', '');
         var jwt = require('jsonwebtoken');
-        var decoded = jwt.verify(token, process.env.JWT_SECRET || 'fa-genesis-secret-key-2024');
+        var decoded = jwt.verify(token, _JWT_SECRET);
         if (decoded.role !== 'admin') return res.status(403).json({ error: 'Acces admin requis' });
 
         var projectId = req.body.project_id;
@@ -14389,7 +14421,7 @@ app.post('/api/admin/deliverables/:id/approve', (req, res) => {
         if (!authHeader) return res.status(401).json({ error: 'Non autorise' });
         var token = authHeader.replace('Bearer ', '');
         var jwt = require('jsonwebtoken');
-        var decoded = jwt.verify(token, process.env.JWT_SECRET || 'fa-genesis-secret-key-2024');
+        var decoded = jwt.verify(token, _JWT_SECRET);
         if (decoded.role !== 'admin') return res.status(403).json({ error: 'Acces admin requis' });
 
         var livrables = loadLivrables();
@@ -14420,7 +14452,7 @@ app.post('/api/admin/deliverables/:id/publish', (req, res) => {
         if (!authHeader) return res.status(401).json({ error: 'Non autorise' });
         var token = authHeader.replace('Bearer ', '');
         var jwt = require('jsonwebtoken');
-        var decoded = jwt.verify(token, process.env.JWT_SECRET || 'fa-genesis-secret-key-2024');
+        var decoded = jwt.verify(token, _JWT_SECRET);
         if (decoded.role !== 'admin') return res.status(403).json({ error: 'Acces admin requis' });
 
         var livrables = loadLivrables();
@@ -14450,7 +14482,7 @@ app.post('/api/admin/deliverables/:id/request-revision', (req, res) => {
         if (!authHeader) return res.status(401).json({ error: 'Non autorise' });
         var token = authHeader.replace('Bearer ', '');
         var jwt = require('jsonwebtoken');
-        var decoded = jwt.verify(token, process.env.JWT_SECRET || 'fa-genesis-secret-key-2024');
+        var decoded = jwt.verify(token, _JWT_SECRET);
         if (decoded.role !== 'admin') return res.status(403).json({ error: 'Acces admin requis' });
 
         var note = req.body.note || 'Revision demandee';
@@ -14488,13 +14520,6 @@ app.post('/api/admin/deliverables/:id/request-revision', (req, res) => {
  */
 app.get('/api/admin/payouts/pending', (req, res) => {
     try {
-        var authHeader = req.headers.authorization;
-        if (!authHeader) return res.status(401).json({ error: 'Non autorise' });
-        var token = authHeader.replace('Bearer ', '');
-        var jwt = require('jsonwebtoken');
-        var decoded = jwt.verify(token, process.env.JWT_SECRET || 'fa-genesis-secret-key-2024');
-        if (decoded.role !== 'admin') return res.status(403).json({ error: 'Acces admin requis' });
-
         var partners = loadPartners();
         var pending = loadPayouts()
             .filter(function(p) { return p.status === 'pending'; })
@@ -14520,13 +14545,6 @@ app.get('/api/admin/payouts/pending', (req, res) => {
  */
 app.post('/api/admin/payouts/:id/mark-sent', (req, res) => {
     try {
-        var authHeader = req.headers.authorization;
-        if (!authHeader) return res.status(401).json({ error: 'Non autorise' });
-        var token = authHeader.replace('Bearer ', '');
-        var jwt = require('jsonwebtoken');
-        var decoded = jwt.verify(token, process.env.JWT_SECRET || 'fa-genesis-secret-key-2024');
-        if (decoded.role !== 'admin') return res.status(403).json({ error: 'Acces admin requis' });
-
         var reference = (req.body.reference || '').trim();
         var payouts = loadPayouts();
         var idx = payouts.findIndex(function(p) { return p.id === req.params.id; });
@@ -14821,7 +14839,7 @@ app.get('/api/projects/:id/deliverables', (req, res) => {
         if (!authHeader) return res.status(401).json({ error: 'Non autorise' });
         var token = authHeader.replace('Bearer ', '');
         var jwt = require('jsonwebtoken');
-        var decoded = jwt.verify(token, process.env.JWT_SECRET || 'fa-genesis-secret-key-2024');
+        var decoded = jwt.verify(token, _JWT_SECRET);
 
         var project = getProjectById(req.params.id);
         if (!project) return res.status(404).json({ error: 'Projet non trouve' });
@@ -14864,7 +14882,7 @@ app.get('/api/projects/by-order/:orderId', (req, res) => {
         if (!authHeader) return res.status(401).json({ error: 'Non autorise' });
         var token = authHeader.replace('Bearer ', '');
         var jwt = require('jsonwebtoken');
-        var decoded = jwt.verify(token, process.env.JWT_SECRET || 'fa-genesis-secret-key-2024');
+        var decoded = jwt.verify(token, _JWT_SECRET);
 
         var project = getProjectByOrderId(req.params.orderId);
         if (!project) return res.status(404).json({ error: 'Projet non trouve pour cette commande' });
@@ -14891,7 +14909,7 @@ app.get('/api/admin/deliverables/pending', (req, res) => {
         if (!authHeader) return res.status(401).json({ error: 'Non autorise' });
         var token = authHeader.replace('Bearer ', '');
         var jwt = require('jsonwebtoken');
-        var decoded = jwt.verify(token, process.env.JWT_SECRET || 'fa-genesis-secret-key-2024');
+        var decoded = jwt.verify(token, _JWT_SECRET);
         if (decoded.role !== 'admin') return res.status(403).json({ error: 'Acces admin requis' });
 
         var allLivrables = loadLivrables();
@@ -15206,6 +15224,43 @@ app.post('/api/coworking/blocked-dates', function(req, res) {
 // ============================================================
 // RESERVATIONS COWORKING
 // ============================================================
+
+/**
+ * POST /api/reservations
+ * Créer une réservation coworking (depuis le formulaire de réservation client).
+ */
+app.post('/api/reservations', function(req, res) {
+    try {
+        var user = authenticateClient(req, res);
+        if (!user) return;
+        var body = req.body || {};
+        if (!body.dates || !body.dates.length) {
+            return res.status(400).json({ error: 'Au moins une date est requise' });
+        }
+        var reservations = loadReservations();
+        var newResa = {
+            id: 'RSV-' + require('crypto').randomBytes(4).toString('hex').toUpperCase(),
+            client_email: user.email,
+            client_name: (user.prenom || '') + ' ' + (user.nom || ''),
+            product_id: body.product_id || 'coworking',
+            product_name: body.product_name || 'Coworking',
+            dates: body.dates,
+            quantity: body.quantity || 1,
+            notes: body.notes || '',
+            prix: body.prix || null,
+            status: 'pending',
+            created_at: new Date().toISOString()
+        };
+        reservations.push(newResa);
+        saveReservations(reservations);
+        notifyUser(user.email, 'client', 'reservation_created', 'Réservation envoyée',
+            'Votre demande de réservation pour ' + newResa.product_name + ' a bien été reçue.', '/app.html');
+        res.json({ success: true, id: newResa.id, reservation: newResa });
+    } catch(e) {
+        console.error('[RESERVATIONS POST]', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
 
 /**
  * GET /api/reservations/me

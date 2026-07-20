@@ -4537,7 +4537,7 @@ function renderResaTab(){
             +'<div style="font-size:12px;color:var(--muted);margin-top:6px;">Le prestataire a 24h pour accepter. Vous serez remboursé automatiquement en cas de refus.</div>'
             +'</div>';
         }).join('');
-    }).catch(function(){});
+    }).catch(function(){ var el=document.getElementById('myOrdersPendingList'); if(el) el.innerHTML=''; });
   fetch((window.FA_GENESIS_API||API)+'/api/my-requests',{headers:{'Authorization':'Bearer '+USER._token}})
     .then(function(r){return r.json();})
     .then(function(data){
@@ -4573,7 +4573,7 @@ function renderResaTab(){
           _resaStatusCache[r.id] = r.display_status.key;
         }
       });
-    }).catch(function(){});
+    }).catch(function(){ var el=document.getElementById('myRequestsList'); if(el) el.innerHTML=''; });
   fetch(API+'/api/reservations/me',{headers:{'Authorization':'Bearer '+USER._token}})
     .then(function(r){return r.json();})
     .then(function(data){
@@ -4978,8 +4978,8 @@ function validateLivrable(livrableId){
   fetch((window.FA_GENESIS_API||API)+'/api/livrables/'+livrableId+'/validate',{method:'POST',headers:{'Authorization':'Bearer '+USER._token}})
     .then(function(r){return r.json();}).then(function(data){
       if(data&&data.success) renderResaTab();
-      else alert((data&&data.error)||'Erreur lors de la validation.');
-    }).catch(function(){ alert('Erreur de connexion au serveur.'); });
+      else showToast('Erreur',(data&&data.error)||'Erreur lors de la validation.','error');
+    }).catch(function(){ showToast('Erreur','Erreur de connexion au serveur.','error'); });
 }
 function openRevisionPrompt(livrableId){
   var box = document.getElementById('rev-note-'+livrableId);
@@ -4988,15 +4988,15 @@ function openRevisionPrompt(livrableId){
 function submitRevisionRequest(livrableId){
   var input = document.getElementById('rev-input-'+livrableId);
   var note = input ? input.value.trim() : '';
-  if(note.length<5){ alert('Merci de préciser votre demande de révision (5 caractères minimum).'); return; }
+  if(note.length<5){ showToast('Champ requis','Merci de préciser votre demande de révision (5 caractères minimum).','warning'); return; }
   fetch((window.FA_GENESIS_API||API)+'/api/livrables/'+livrableId+'/request-revision',{
     method:'POST',
     headers:{'Content-Type':'application/json','Authorization':'Bearer '+USER._token},
     body: JSON.stringify({ note: note })
   }).then(function(r){return r.json();}).then(function(data){
     if(data&&data.success) renderResaTab();
-    else alert((data&&data.error)||'Erreur lors de l\'envoi.');
-  }).catch(function(){ alert('Erreur de connexion au serveur.'); });
+    else showToast('Erreur',(data&&data.error)||'Erreur lors de l\'envoi.','error');
+  }).catch(function(){ showToast('Erreur','Erreur de connexion au serveur.','error'); });
 }
 
 // ── MESSAGES ─────────────────────────────────────────────────
@@ -6002,13 +6002,30 @@ function _handleStaleSession(){
   },2000);
 }
 
+function _showFloatingConfirm(msg, onOk){
+  var prev = document.getElementById('_fc-overlay');
+  if(prev) prev.remove();
+  var overlay = document.createElement('div');
+  overlay.id = '_fc-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9999;display:flex;align-items:center;justify-content:center;padding:24px;';
+  overlay.innerHTML = '<div style="background:#1e1e1e;border:1.5px solid #333;border-radius:18px;padding:28px 24px;max-width:340px;width:100%;text-align:center;">'
+    +'<p style="color:#f0f0f0;font-size:15px;margin:0 0 22px;line-height:1.5;">'+msg+'</p>'
+    +'<div style="display:flex;gap:12px;">'
+    +'<button id="_fc-cancel" style="flex:1;padding:13px;border:1.5px solid #555;background:transparent;color:#aaa;border-radius:12px;font-size:14px;cursor:pointer;">Annuler</button>'
+    +'<button id="_fc-ok" style="flex:1;padding:13px;border:none;background:#FFD700;color:#111;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;">Confirmer</button>'
+    +'</div></div>';
+  document.body.appendChild(overlay);
+  document.getElementById('_fc-cancel').onclick = function(){ overlay.remove(); };
+  document.getElementById('_fc-ok').onclick = function(){ overlay.remove(); onOk(); };
+}
+
 function deconnexion(){
-  if(confirm('Se déconnecter ?')){
+  _showFloatingConfirm('Se déconnecter de votre compte ?', function(){
     localStorage.removeItem('fa_genesis_session');
     localStorage.removeItem('fa_genesis_token');
     localStorage.removeItem('fa_push_subscribed');
     window.location.reload();
-  }
+  });
 }
 
 // ── NOTIFICATIONS ─────────────────────────────────────────────
@@ -7146,6 +7163,53 @@ function _renderAppLivrables(API2,token){
 }
 
 // ── SÉANCES IN-APP ───────────────────────────────────────────────
+function showSeances(){
+  var c=document.getElementById('profilContent');if(!c)return;
+  if(!USER||GUEST){renderProfil();return;}
+  _saveProfilScroll('showSeances');
+  var API2=window.FA_GENESIS_API||API;
+  var token=USER?USER._token:(localStorage.getItem('fa_genesis_token')||'');
+  c.innerHTML='<div class="espace-view">'
+    +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Mes séances</div></div>'
+    +'<div id="sea-main" style="padding:14px 16px 80px;overflow-y:auto;flex:1;"><div class="espace-loading">Chargement...</div></div>'
+    +'</div>';
+  fetch(API2+'/api/sessions/me',{headers:{'Authorization':'Bearer '+token}})
+    .then(function(r){return r.json();})
+    .then(function(sessions){
+      var el=document.getElementById('sea-main');if(!el)return;
+      var STATUS_LABELS={'REQUESTED':'En attente de confirmation','CONFIRMED':'Confirmée','COMPLETED':'Terminée','CANCELLED':'Annulée','RESCHEDULING':'Reprogrammation en cours'};
+      var STATUS_CLS={'REQUESTED':'s-pending','CONFIRMED':'s-confirmed','COMPLETED':'s-confirmed','CANCELLED':'s-refused','RESCHEDULING':'s-pending'};
+      if(!sessions||!sessions.length){
+        el.innerHTML='<div class="espace-empty">Aucune séance pour le moment.</div>'
+          +'<div style="text-align:center;margin-top:20px;">'
+          +'<button onclick="_appShowSeanceForm()" style="background:#FFD700;color:#000;border:none;font-family:\'Unbounded\',cursive;font-size:11px;font-weight:900;padding:12px 24px;cursor:pointer;border-radius:6px;">Demander une séance</button>'
+          +'</div>';
+        return;
+      }
+      var h='';
+      sessions.forEach(function(s){
+        var status=s.status||'REQUESTED';
+        var lbl=STATUS_LABELS[status]||status;
+        var cls=STATUS_CLS[status]||'s-pending';
+        var dateStr=s.datetime_start?new Date(s.datetime_start).toLocaleString('fr-FR',{dateStyle:'short',timeStyle:'short'}):(s.date||'');
+        h+='<div class="resa-card" style="margin-bottom:14px;">'
+          +'<div class="resa-top"><div class="resa-name"><i class="fa-solid fa-calendar-check"></i> '+(s.session_type_label||s.session_type||'Séance')+'</div>'
+          +'<span class="resa-status '+cls+'">'+lbl+'</span></div>'
+          +(dateStr?'<div class="resa-date"><i class="fa-solid fa-clock"></i> '+dateStr+'</div>':'')
+          +(s.notes_client?'<div class="resa-date" style="color:#888;">'+_escHtml(s.notes_client)+'</div>':'')
+          +(s.meet_url&&status==='CONFIRMED'?'<div style="margin-top:8px;"><a href="'+s.meet_url+'" target="_blank" style="color:#FFD700;font-weight:700;font-size:12px;"><i class="fa-solid fa-video"></i> Rejoindre la séance</a></div>':'')
+          +'<div class="resa-actions" style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">'
+          +(status==='REQUESTED'||status==='CONFIRMED'?'<button class="resa-action-btn" onclick="_appRescheduleSession(\''+s.id+'\')">Reprogrammer</button>':'')
+          +(status!=='CANCELLED'&&status!=='COMPLETED'?'<button class="resa-action-btn" style="background:#1a0808;border-color:#c00;color:#c00;" onclick="_appCancelSession(\''+s.id+'\')">Annuler</button>':'')
+          +'</div></div>';
+      });
+      h+='<div style="text-align:center;margin-top:16px;">'
+        +'<button onclick="_appShowSeanceForm()" style="background:#FFD700;color:#000;border:none;font-family:\'Unbounded\',cursive;font-size:11px;font-weight:900;padding:12px 24px;cursor:pointer;border-radius:6px;"><i class="fa-solid fa-plus"></i> Nouvelle séance</button>'
+        +'</div>';
+      el.innerHTML=h;
+    }).catch(function(){ var el=document.getElementById('sea-main'); if(el) el.innerHTML='<div class="espace-empty">Erreur de chargement. Réessayez.</div>'; });
+}
+
 var _supportTicketCache = {};
 
 function showSupport(){
@@ -7292,19 +7356,54 @@ function _sendSupportReply(ticketId){
 function _appAcceptSession(id){
   var API2=window.FA_GENESIS_API||API;var token=USER?USER._token:(localStorage.getItem('fa_genesis_token')||'');
   fetch(API2+'/api/sessions/'+id+'/accept',{method:'POST',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'}})
-    .then(function(r){return r.json();}).then(function(d){if(d.success||d.ok)showSeances();else alert(d.error||'Erreur');}).catch(function(e){alert('Erreur: '+e.message);});
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(d.success||d.ok){ showSeances(); showToast('Séance acceptée','La séance a été confirmée.','success'); }
+      else showToast('Erreur',d.error||'Impossible d\'accepter cette séance.','error');
+    }).catch(function(){ showToast('Erreur réseau','Réessayez dans un instant.','error'); });
 }
 function _appRescheduleSession(id){
-  var notes=prompt('Précisez vos disponibilités pour un nouveau créneau :');if(notes===null)return;
+  var el=document.getElementById('sea-main');if(!el)return;
+  el.insertAdjacentHTML('afterbegin',
+    '<div id="sea-reschedule-form" style="background:#141414;border:1.5px solid #333;border-radius:12px;padding:16px;margin-bottom:16px;">'
+    +'<div style="font-size:11px;font-weight:900;color:#FFD700;margin-bottom:10px;text-transform:uppercase;">Demande de reprogrammation</div>'
+    +'<textarea id="sea-rsch-notes" rows="3" placeholder="Précisez vos disponibilités..." style="width:100%;padding:10px;background:#0d0d0d;border:1px solid #333;color:#fff;font-size:14px;resize:vertical;box-sizing:border-box;border-radius:8px;"></textarea>'
+    +'<div style="display:flex;gap:8px;margin-top:10px;">'
+    +'<button onclick="_appSubmitReschedule(\''+id+'\')" style="flex:1;background:#FFD700;color:#000;border:none;font-family:\'Unbounded\',cursive;font-size:10px;font-weight:900;padding:10px;cursor:pointer;border-radius:6px;">Envoyer</button>'
+    +'<button onclick="document.getElementById(\'sea-reschedule-form\').remove()" style="flex:1;background:transparent;color:#888;border:1px solid #333;font-family:\'Unbounded\',cursive;font-size:10px;font-weight:900;padding:10px;cursor:pointer;border-radius:6px;">Annuler</button>'
+    +'</div></div>');
+  var ta=document.getElementById('sea-rsch-notes');if(ta)ta.focus();
+}
+function _appSubmitReschedule(id){
+  var ta=document.getElementById('sea-rsch-notes');
+  var notes=(ta&&ta.value.trim())||'';
   var API2=window.FA_GENESIS_API||API;var token=USER?USER._token:(localStorage.getItem('fa_genesis_token')||'');
   fetch(API2+'/api/sessions/'+id+'/reschedule',{method:'POST',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({notes_client:notes})})
-    .then(function(r){return r.json();}).then(function(d){if(d.success||d.ok)showSeances();else alert(d.error||'Erreur');}).catch(function(e){alert('Erreur: '+e.message);});
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(d.success||d.ok){ showSeances(); showToast('Demande envoyée','Votre demande de reprogrammation a été transmise.','success'); }
+      else showToast('Erreur',d.error||'Impossible de reprogrammer.','error');
+    }).catch(function(){ showToast('Erreur réseau','Réessayez dans un instant.','error'); });
 }
 function _appCancelSession(id){
-  if(!confirm('Annuler cette séance ?'))return;
+  var el=document.getElementById('sea-main');if(!el)return;
+  var existing=document.getElementById('sea-cancel-confirm');if(existing)existing.remove();
+  el.insertAdjacentHTML('afterbegin',
+    '<div id="sea-cancel-confirm" style="background:#1a0808;border:1.5px solid #c00;border-radius:12px;padding:16px;margin-bottom:16px;">'
+    +'<div style="font-size:12px;font-weight:700;color:#ff5555;margin-bottom:10px;">Confirmer l\'annulation de cette séance ?</div>'
+    +'<div style="display:flex;gap:8px;">'
+    +'<button onclick="_appConfirmCancelSession(\''+id+'\')" style="flex:1;background:#c00;color:#fff;border:none;font-family:\'Unbounded\',cursive;font-size:10px;font-weight:900;padding:10px;cursor:pointer;border-radius:6px;">Oui, annuler</button>'
+    +'<button onclick="document.getElementById(\'sea-cancel-confirm\').remove()" style="flex:1;background:transparent;color:#888;border:1px solid #333;font-family:\'Unbounded\',cursive;font-size:10px;font-weight:900;padding:10px;cursor:pointer;border-radius:6px;">Non, garder</button>'
+    +'</div></div>');
+}
+function _appConfirmCancelSession(id){
   var API2=window.FA_GENESIS_API||API;var token=USER?USER._token:(localStorage.getItem('fa_genesis_token')||'');
   fetch(API2+'/api/sessions/'+id+'/cancel',{method:'POST',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'}})
-    .then(function(r){return r.json();}).then(function(d){if(d.success||d.ok)showSeances();else alert(d.error||'Erreur');}).catch(function(e){alert('Erreur: '+e.message);});
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(d.success||d.ok){ showSeances(); showToast('Séance annulée','Votre séance a bien été annulée.','success'); }
+      else showToast('Erreur',d.error||'Impossible d\'annuler.','error');
+    }).catch(function(){ showToast('Erreur réseau','Réessayez dans un instant.','error'); });
 }
 function _appShowSeanceForm(){
   var main=document.getElementById('sea-main');if(!main)return;
@@ -7432,12 +7531,16 @@ function doForgotPassword(){
   fetch((window.FA_GENESIS_API||API)+'/api/auth/forgot-password',{
     method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({email:email})
-  }).then(function(r){return r.json();}).then(function(){
+  }).then(function(r){return r.json();}).then(function(data){
     if(btn){btn.disabled=false;btn.textContent='ENVOYER LE LIEN';}
-    var emailStep=document.getElementById('lo-fp-email-step');
-    var successStep=document.getElementById('lo-fp-success-step');
-    if(emailStep) emailStep.style.display='none';
-    if(successStep) successStep.style.display='';
+    if(data&&data.success){
+      var emailStep=document.getElementById('lo-fp-email-step');
+      var successStep=document.getElementById('lo-fp-success-step');
+      if(emailStep) emailStep.style.display='none';
+      if(successStep) successStep.style.display='';
+    } else {
+      if(errEl){errEl.textContent=(data&&data.error)||'Aucun compte trouvé avec cet email.';errEl.classList.add('on');}
+    }
   }).catch(function(){
     if(btn){btn.disabled=false;btn.textContent='ENVOYER LE LIEN';}
     if(errEl){errEl.textContent='Erreur réseau. Vérifiez votre connexion.';errEl.classList.add('on');}
@@ -8069,7 +8172,7 @@ function _startNativeApplePay(total){
           var ws3 = document.getElementById('pay-screen-widget'); if(ws3) ws3.style.display = 'none';
           var succ3 = document.getElementById('pay-success'); if(succ3) succ3.style.display = '';
           launchConfetti(); showToast('Paiement réussi !', 'Votre commande est confirmée', 'success');
-          setTimeout(function(){ showToast('+20 QG', 'Mission complétée', 'success'); }, 1600);
+          setTimeout(function(){ showToast('+20 QG', 'Mission lancée !', 'success'); }, 1600);
           if(_payReferralDiscountUsed){ _payReferralDiscountUsed=false; fetch((window.FA_GENESIS_API||API)+'/api/auth/referral-discount/mark-used',{method:'POST',headers:{'Authorization':'Bearer '+(USER&&USER._token?USER._token:'')}}).catch(function(){}); }
         } else {
           _showPayError(res.error || 'Paiement Apple Pay refusé.');
@@ -8116,7 +8219,7 @@ function _mountSumUpWidget(checkoutId){
             var ws = document.getElementById('pay-screen-widget'); if(ws) ws.style.display = 'none';
             var succ = document.getElementById('pay-success'); if(succ) succ.style.display = '';
             launchConfetti(); showToast('Paiement réussi !', 'Votre commande est confirmée', 'success');
-            setTimeout(function(){ showToast('+20 QG', 'Mission complétée', 'success'); }, 1600);
+            setTimeout(function(){ showToast('+20 QG', 'Mission lancée !', 'success'); }, 1600);
             if(_payReferralDiscountUsed){ _payReferralDiscountUsed=false; fetch((window.FA_GENESIS_API||API)+'/api/auth/referral-discount/mark-used',{method:'POST',headers:{'Authorization':'Bearer '+(USER&&USER._token?USER._token:'')}}).catch(function(){}); }
           } else if(type === 'error'){
             var msg = body && (body.message || body.error) ? (body.message || body.error) : 'Paiement refusé. Vérifiez vos informations.';
@@ -8206,7 +8309,7 @@ function _showPayPalScreen(){
               if(pp) pp.style.display = 'none';
               var succ = document.getElementById('pay-success'); if(succ) succ.style.display = '';
               launchConfetti(); showToast('Paiement réussi !', 'Votre commande est confirmée', 'success');
-              setTimeout(function(){ showToast('+20 QG', 'Mission complétée', 'success'); }, 1600);
+              setTimeout(function(){ showToast('+20 QG', 'Mission lancée !', 'success'); }, 1600);
               if(_payReferralDiscountUsed){ _payReferralDiscountUsed=false; fetch((window.FA_GENESIS_API||API)+'/api/auth/referral-discount/mark-used',{method:'POST',headers:{'Authorization':'Bearer '+(USER&&USER._token?USER._token:'')}}).catch(function(){}); }
             } else {
               _showPayPalError(result.error||'Paiement non complété');
@@ -9627,7 +9730,7 @@ function _pbMountWidget(checkoutId, orderId){
             if(ws) ws.style.display='none';
             var sc=document.getElementById('pb-success'); if(sc) sc.style.display='';
             launchConfetti(); showToast('Paiement réussi !','Votre commande est confirmée','success');
-            setTimeout(function(){ showToast('+20 QG', 'Mission complétée', 'success'); }, 1600);
+            setTimeout(function(){ showToast('+20 QG', 'Mission lancée !', 'success'); }, 1600);
           } else if(type==='error'){
             var msg = body&&(body.message||body.error) ? (body.message||body.error) : 'Paiement refusé. Vérifiez vos informations.';
             var er=document.getElementById('pb-err'); if(er){er.textContent=msg;er.classList.add('on');}
@@ -9705,7 +9808,7 @@ function _pbPayDepositPayPal(){
                 if(pps) pps.style.display='none';
                 var sc=document.getElementById('pb-success'); if(sc) sc.style.display='';
                 launchConfetti(); showToast('Paiement réussi !','Votre commande est confirmée','success');
-                setTimeout(function(){ showToast('+20 QG', 'Mission complétée', 'success'); }, 1600);
+                setTimeout(function(){ showToast('+20 QG', 'Mission lancée !', 'success'); }, 1600);
               } else {
                 if(ppErr){ppErr.textContent=result.error||'Paiement non complété. Réessayez.';ppErr.style.display='';}
                 if(ld) ld.style.display='none';
@@ -11144,39 +11247,41 @@ function _ptnrAcceptDispatch(dispatchId, btn){
 }
 
 function _ptnrDeclineDispatch(dispatchId, btn){
-  if(!confirm('Confirmer le refus ? Le client sera automatiquement remboursé.')) return;
-  if(btn){ btn.disabled=true; btn.textContent='En cours...'; }
-  haptic(15);
-  _ptnrFetch('/api/partner/dispatches/'+dispatchId+'/decline-mission','POST',{}).then(function(res){
-    if(res.ok){
-      showToast('Mission refusée','Le client a été notifié et sera remboursé.','info');
-      _ptnrLoadMissions(); _ptnrRefreshBadges();
-    } else {
+  _showFloatingConfirm('Confirmer le refus de cette mission ?', function(){
+    if(btn){ btn.disabled=true; btn.textContent='En cours...'; }
+    haptic(15);
+    _ptnrFetch('/api/partner/dispatches/'+dispatchId+'/decline-mission','POST',{}).then(function(res){
+      if(res.ok){
+        showToast('Mission refusée','Le client a été notifié et sera remboursé.','info');
+        _ptnrLoadMissions(); _ptnrRefreshBadges();
+      } else {
+        if(btn){ btn.disabled=false; btn.textContent='✗ REFUSER'; }
+        showToast('Erreur','Impossible de refuser cette mission.','error');
+      }
+    }).catch(function(){
       if(btn){ btn.disabled=false; btn.textContent='✗ REFUSER'; }
-      showToast('Erreur','Impossible de refuser cette mission.','error');
-    }
-  }).catch(function(){
-    if(btn){ btn.disabled=false; btn.textContent='✗ REFUSER'; }
-    showToast('Erreur','Erreur de connexion.','error');
+      showToast('Erreur','Erreur de connexion.','error');
+    });
   });
 }
 
 function _ptnrConfirmDelivery(dispatchId, btn){
-  if(!confirm('Confirmer la livraison ? Les fonds GENESIS SAFE™ vous seront versés immédiatement.')) return;
-  if(btn){ btn.disabled=true; btn.textContent='Livraison en cours...'; }
-  haptic([20,10,40]);
-  _ptnrFetch('/api/partner/dispatches/'+dispatchId+'/mark-delivered','POST',{}).then(function(res){
-    if(res && res.ok){
-      launchConfetti();
-      showToast('Livraison confirmée !','Les fonds ont été libérés et votre versement est en cours.','success');
-      _ptnrLoadVersements();
-    } else {
+  _showFloatingConfirm('Confirmer la livraison ? Les fonds GENESIS SAFE™ vous seront versés immédiatement.', function(){
+    if(btn){ btn.disabled=true; btn.textContent='Livraison en cours...'; }
+    haptic([20,10,40]);
+    _ptnrFetch('/api/partner/dispatches/'+dispatchId+'/mark-delivered','POST',{}).then(function(res){
+      if(res && res.ok){
+        launchConfetti();
+        showToast('Livraison confirmée !','Les fonds ont été libérés et votre versement est en cours.','success');
+        _ptnrLoadVersements();
+      } else {
+        if(btn){ btn.disabled=false; btn.textContent='Confirmer la livraison'; }
+        showToast('Erreur',(res && res.error)||'Impossible de confirmer la livraison.','error');
+      }
+    }).catch(function(){
       if(btn){ btn.disabled=false; btn.textContent='Confirmer la livraison'; }
-      showToast('Erreur',(res && res.error)||'Impossible de confirmer la livraison.','error');
-    }
-  }).catch(function(){
-    if(btn){ btn.disabled=false; btn.textContent='Confirmer la livraison'; }
-    showToast('Erreur','Erreur de connexion.','error');
+      showToast('Erreur','Erreur de connexion.','error');
+    });
   });
 }
 
@@ -11305,16 +11410,17 @@ function _ptnrMarkDelivering(dispatchId, requestId){
   });
 }
 function _ptnrMarkDelivered(dispatchId){
-  if(!confirm('Confirmer la livraison ? Les fonds GENESIS SAFE™ seront versés sur votre compte.')) return;
-  _ptnrFetch('/api/partner/dispatches/'+dispatchId+'/mark-delivered','POST',{}).then(function(res){
-    if(res.success){
-      showToast('Livraison confirmée','Les fonds ont été libérés. Merci !','success');
-      _ptnrLoadMissions();
-    } else {
-      showToast(res.error||'Erreur','Réessayez','error');
-    }
-  }).catch(function(){
-    showToast('Erreur de connexion','Réessayez','error');
+  _showFloatingConfirm('Confirmer la livraison ? Les fonds GENESIS SAFE™ seront versés sur votre compte.', function(){
+    _ptnrFetch('/api/partner/dispatches/'+dispatchId+'/mark-delivered','POST',{}).then(function(res){
+      if(res.success){
+        showToast('Livraison confirmée','Les fonds ont été libérés. Merci !','success');
+        _ptnrLoadMissions();
+      } else {
+        showToast(res.error||'Erreur','Réessayez','error');
+      }
+    }).catch(function(){
+      showToast('Erreur de connexion','Réessayez','error');
+    });
   });
 }
 
@@ -11804,7 +11910,7 @@ function _ptnrPfOnPhotosSelected(input){
       var isVideo = file.type.indexOf('video/') === 0;
       if(isVideo){
         if(file.size > 50*1024*1024){
-          alert('La vidéo "'+file.name+'" dépasse 50 Mo et ne peut pas être uploadée.');
+          showToast('Fichier trop lourd','La vidéo "'+file.name+'" dépasse 50 Mo et ne peut pas être uploadée.','warning');
           return;
         }
         promises.push(new Promise(function(resolve){

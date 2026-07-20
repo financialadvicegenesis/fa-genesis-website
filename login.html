@@ -206,7 +206,15 @@
                 </div>
 
                 <div class="mt-8 text-center">
-                    <p class="text-sm font-bold">Mot de passe oublié ? <a href="contact.html" class="text-black underline font-black">Contactez-nous</a></p>
+                    <p class="text-sm font-bold">Mot de passe oublié ? <button type="button" onclick="document.getElementById('fp-section').style.display=document.getElementById('fp-section').style.display==='none'?'block':'none'" class="text-black underline font-black bg-transparent border-0 cursor-pointer">Réinitialiser</button></p>
+                </div>
+                <!-- Réinitialisation mot de passe -->
+                <div id="fp-section" style="display:none;margin-top:16px;padding:16px;background:#fff9e6;border:3px solid #FFD700;">
+                    <p class="text-sm font-black uppercase mb-3">Réinitialiser le mot de passe</p>
+                    <div id="fp-success" style="display:none;padding:10px;background:#f0fff0;border:2px solid #22c55e;margin-bottom:10px;font-size:13px;font-weight:700;">Un email de réinitialisation vous a été envoyé.</div>
+                    <div id="fp-error" style="display:none;padding:10px;background:#fff0f0;border:2px solid #e53e3e;margin-bottom:10px;font-size:13px;font-weight:700;"></div>
+                    <input type="email" id="fp-email" placeholder="votre@email.com" class="w-full p-3 border-4 border-black font-bold outline-none mb-3" style="font-size:14px;">
+                    <button type="button" id="fp-btn" onclick="doLoginForgotPassword()" class="w-full py-3 neo-btn-yellow font-black uppercase text-sm">Envoyer le lien</button>
                 </div>
             </div>
 
@@ -401,8 +409,8 @@
             var errorMessage = document.getElementById('errorMessage');
             var btn = document.getElementById('otpVerifyBtn');
 
-            if (!otp || otp.length < 4) {
-                errorMessage.textContent = 'Veuillez saisir le code reçu par email.';
+            if (!otp || otp.length < 6) {
+                errorMessage.textContent = 'Veuillez saisir les 6 chiffres du code reçu par email.';
                 errorMessage.classList.add('show');
                 return;
             }
@@ -455,6 +463,37 @@
             document.getElementById('loginForm').style.display = '';
             var errorMessage = document.getElementById('errorMessage');
             errorMessage.classList.remove('show');
+        }
+
+        function doLoginForgotPassword() {
+            var emailEl = document.getElementById('fp-email');
+            var btn = document.getElementById('fp-btn');
+            var errEl = document.getElementById('fp-error');
+            var sucEl = document.getElementById('fp-success');
+            var email = (emailEl ? emailEl.value : '').trim();
+            if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+                errEl.textContent = 'Adresse email invalide.';
+                errEl.style.display = 'block'; sucEl.style.display = 'none'; return;
+            }
+            errEl.style.display = 'none'; sucEl.style.display = 'none';
+            if (btn) { btn.disabled = true; btn.textContent = 'Envoi en cours…'; }
+            var apiUrl = window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com';
+            fetch(apiUrl + '/api/auth/forgot-password', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: email })
+            }).then(function(r) { return r.json(); }).then(function(data) {
+                if (btn) { btn.disabled = false; btn.textContent = 'Envoyer le lien'; }
+                if (data && data.success) {
+                    sucEl.style.display = 'block';
+                } else {
+                    errEl.textContent = (data && data.error) || 'Aucun compte trouvé avec cet email.';
+                    errEl.style.display = 'block';
+                }
+            }).catch(function() {
+                if (btn) { btn.disabled = false; btn.textContent = 'Envoyer le lien'; }
+                errEl.textContent = 'Erreur réseau. Vérifiez votre connexion.';
+                errEl.style.display = 'block';
+            });
         }
 
         // Fonction de reactivation de compte
