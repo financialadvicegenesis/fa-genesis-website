@@ -2720,9 +2720,36 @@
             if (filter) currentFilter = filter;
 
             try {
-                const response = await fetch(API_BASE_URL + '/api/admin/messages');
-                if (!response.ok) throw new Error('Erreur chargement messages');
-                allMessages = await response.json();
+                var results = await Promise.all([
+                    fetch(API_BASE_URL + '/api/admin/messages'),
+                    fetch(API_BASE_URL + '/api/admin/support')
+                ]);
+                var msgs = results[0].ok ? await results[0].json() : [];
+                var ticketsResp = results[1].ok ? await results[1].json() : {};
+                var tickets = ticketsResp.tickets || [];
+
+                // Mapper les tickets Assistance au format message unifi\u00e9
+                var supportStatusMap = { open: 'unread', replied: 'replied', closed: 'archived' };
+                var mappedTickets = tickets.map(function(t) {
+                    var lastMsg = t.messages && t.messages.length > 0 ? t.messages[t.messages.length - 1] : null;
+                    return {
+                        id: t.id,
+                        name: t.client_name,
+                        email: t.client_email,
+                        subject: t.subject,
+                        message: lastMsg ? lastMsg.content : t.subject,
+                        status: supportStatusMap[t.status] || 'unread',
+                        created_at: t.created_at,
+                        updated_at: t.updated_at || t.created_at,
+                        _type: 'support',
+                        _ticket: t
+                    };
+                });
+
+                // Fusion et tri par date d\u00e9croissante
+                allMessages = msgs.concat(mappedTickets).sort(function(a, b) {
+                    return new Date(b.created_at) - new Date(a.created_at);
+                });
             } catch (error) {
                 console.error('[ADMIN] Erreur chargement messages:', error);
                 document.getElementById('messagesList').innerHTML = '<p class="text-center py-8 font-bold">Erreur de chargement. <button onclick="loadMessages()" style="border:2px solid black;padding:4px 12px;font-weight:900;cursor:pointer;">R\u00e9essayer</button></p>';
@@ -2730,8 +2757,8 @@
             }
 
             // Stats
-            const unread = allMessages.filter(function(m) { return m.status === 'unread'; }).length;
-            const total = allMessages.length;
+            var unread = allMessages.filter(function(m) { return m.status === 'unread'; }).length;
+            var total = allMessages.length;
             document.getElementById('messagesStats').innerHTML =
                 '<span class="text-[#ff6b6b] font-black text-2xl">' + unread + '</span>' +
                 '<span class="text-sm font-bold opacity-70"> non lu' + (unread > 1 ? 's' : '') + ' / ' + total + ' total</span>';
@@ -2770,6 +2797,7 @@
             filtered.forEach(function(msg) {
                 var date = new Date(msg.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
                 var isUnread = msg.status === 'unread';
+                var isSupport = msg._type === 'support';
                 var isChecked = selectedMsgIds.has(msg.id);
                 var statusColors = { unread: '#ff6b6b', read: '#4dabf7', replied: '#51cf66', archived: '#999' };
                 var statusLabels = { unread: 'NON LU', read: 'LU', replied: 'RÉPONDU', archived: 'ARCHIVÉ' };
@@ -2782,9 +2810,10 @@
                     partenariat: 'PARTENARIAT',
                     autre: 'AUTRE'
                 };
-                var subjectLabel = subjectLabels[msg.subject] || msg.subject;
+                var subjectLabel = isSupport ? msg.subject : (subjectLabels[msg.subject] || msg.subject);
+                var borderColor = isUnread ? (isSupport ? '#e87c2a' : '#ff6b6b') : 'transparent';
 
-                html += '<div class="admin-card neo-shadow mb-4" style="' + (isUnread ? 'border-left:6px solid #ff6b6b;' : '') + (isChecked ? 'outline:3px solid #FFD700;' : '') + '">' +
+                html += '<div class="admin-card neo-shadow mb-4" style="' + (isUnread ? 'border-left:6px solid ' + borderColor + ';' : '') + (isChecked ? 'outline:3px solid #FFD700;' : '') + '">' +
                     '<div class="flex items-start gap-4">' +
                         '<div style="padding-top:4px;flex-shrink:0;" onclick="event.stopPropagation()">' +
                             '<input type="checkbox" id="msgcb_' + msg.id + '" ' + (isChecked ? 'checked' : '') + ' onchange="toggleMsgSelection(\'' + msg.id + '\', this.checked, event)" style="width:20px;height:20px;cursor:pointer;accent-color:black;" title="Sélectionner">' +
@@ -2792,10 +2821,11 @@
                         '<div class="flex-1" style="cursor:pointer;" onclick="openMessage(\'' + msg.id + '\')">' +
                             '<div class="flex justify-between items-start flex-wrap gap-4">' +
                                 '<div class="flex-1 min-w-[250px]">' +
+                                    (isSupport ? '<div style="display:inline-flex;align-items:center;gap:5px;background:#e87c2a;color:white;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:900;margin-bottom:6px;"><i class="fas fa-headset"></i> ASSISTANCE</div>' : '') +
                                     '<div class="font-black text-lg' + (isUnread ? ' text-[var(--genesis-yellow)]' : '') + '">' + msg.name + '</div>' +
                                     '<div class="text-sm font-bold opacity-70">' + msg.email + '</div>' +
-                                    (msg.profil ? '<div class="text-xs font-bold opacity-50 mt-1">Profil: ' + msg.profil.toUpperCase() + '</div>' : '') +
-                                    '<div class="mt-2"><span style="background:#FFD700;color:black;padding:2px 8px;border:2px solid black;font-size:11px;font-weight:900;">' + subjectLabel + '</span></div>' +
+                                    (!isSupport && msg.profil ? '<div class="text-xs font-bold opacity-50 mt-1">Profil: ' + msg.profil.toUpperCase() + '</div>' : '') +
+                                    '<div class="mt-2"><span style="background:' + (isSupport ? '#e87c2a' : '#FFD700') + ';color:' + (isSupport ? 'white' : 'black') + ';padding:2px 8px;border:2px solid ' + (isSupport ? '#c96a1a' : 'black') + ';font-size:11px;font-weight:900;">' + subjectLabel + '</span></div>' +
                                 '</div>' +
                                 '<div class="flex-1 min-w-[200px]">' +
                                     '<p class="text-sm font-bold opacity-80" style="max-height:40px;overflow:hidden;">' + msg.message.substring(0, 100) + (msg.message.length > 100 ? '...' : '') + '</p>' +
@@ -2815,13 +2845,19 @@
         }
 
         async function openMessage(messageId) {
-            // Marquer comme lu
+            var msg = allMessages.find(function(m) { return m.id === messageId; });
+            if (!msg) return;
+
+            // Ticket Assistance → vue fil de conversation dédiée
+            if (msg._type === 'support') {
+                openSupportInMessages(msg);
+                return;
+            }
+
+            // Marquer comme lu (message contact classique)
             try {
                 await fetch(API_BASE_URL + '/api/admin/messages/' + messageId);
             } catch (e) {}
-
-            var msg = allMessages.find(function(m) { return m.id === messageId; });
-            if (!msg) return;
 
             var date = new Date(msg.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
@@ -2957,6 +2993,152 @@
                 alert('Erreur de connexion au serveur. Veuillez r\u00e9essayer.');
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fas fa-paper-plane mr-2"></i>ENVOYER';
+            }
+        }
+
+        // --- Helpers tickets Assistance dans la section Messages ---
+
+        function _escHtml(s) {
+            return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+
+        function openSupportInMessages(msg) {
+            var ticket = msg._ticket;
+            if (!ticket) return;
+
+            // Marquer localement comme lu (transition visuelle unread→read)
+            msg.status = 'read';
+            renderMessages();
+            var unread = allMessages.filter(function(m) { return m.status === 'unread'; }).length;
+            var badge = document.getElementById('unreadBadge');
+            if (unread > 0) { badge.style.display = 'block'; badge.textContent = unread; } else { badge.style.display = 'none'; }
+
+            // Construire le fil de messages
+            var threadHtml = '';
+            (ticket.messages || []).forEach(function(m) {
+                var isAdminMsg = m.from === 'admin';
+                var dateStr = new Date(m.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+                threadHtml +=
+                    '<div style="margin-bottom:10px;display:flex;justify-content:' + (isAdminMsg ? 'flex-end' : 'flex-start') + ';">' +
+                        '<div style="max-width:78%;background:' + (isAdminMsg ? '#FFD700' : '#f0f0f0') + ';color:#111;padding:10px 14px;border-radius:14px;border:1.5px solid ' + (isAdminMsg ? '#c9a800' : '#ddd') + ';">' +
+                            '<div style="font-size:11px;font-weight:900;opacity:0.65;margin-bottom:4px;">' + _escHtml(isAdminMsg ? 'FA GENESIS' : m.from_name) + ' &middot; ' + dateStr + '</div>' +
+                            '<div style="font-size:14px;line-height:1.5;white-space:pre-wrap;">' + _escHtml(m.content) + '</div>' +
+                        '</div>' +
+                    '</div>';
+            });
+            if (!threadHtml) threadHtml = '<p style="text-align:center;opacity:0.5;padding:20px;">Aucun message</p>';
+
+            var isClosed = ticket.status === 'closed';
+            var replyHtml = isClosed
+                ? '<div style="background:#e8f5e9;border:3px solid #4caf50;padding:12px 16px;border-radius:8px;text-align:center;margin-top:12px;">' +
+                      '<i class="fas fa-check-circle" style="color:#4caf50;margin-right:6px;"></i>' +
+                      '<span class="font-black" style="color:#2e7d32;">Ticket clôturé</span>' +
+                  '</div>'
+                : '<div style="margin-top:12px;">' +
+                      '<label class="text-sm font-black uppercase opacity-60 block mb-2"><i class="fas fa-pen mr-1"></i>Votre réponse :</label>' +
+                      '<textarea id="replyTextarea" rows="5" style="width:100%;padding:12px;border:3px solid black;font-size:14px;font-family:inherit;resize:vertical;background:#fff;color:#111;" placeholder="Écrivez votre réponse au client..."></textarea>' +
+                      '<div class="flex gap-3 mt-3 flex-wrap">' +
+                          '<button onclick="sendSupportReply(\'' + _escHtml(ticket.id) + '\')" class="neo-btn-yellow px-6 py-3 text-sm" id="sendReplyBtn">' +
+                              '<i class="fas fa-paper-plane mr-2"></i>ENVOYER' +
+                          '</button>' +
+                          '<button onclick="closeSupportTicketFromMessages(\'' + _escHtml(ticket.id) + '\')" class="border-4 border-black bg-gray-300 text-black px-6 py-3 text-sm font-black">' +
+                              '<i class="fas fa-times-circle mr-2"></i>CLORE LE TICKET' +
+                          '</button>' +
+                      '</div>' +
+                  '</div>';
+
+            var modalHTML =
+                '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">' +
+                    '<div style="background:#e87c2a;color:white;padding:4px 12px;border-radius:6px;font-size:11px;font-weight:900;flex-shrink:0;"><i class="fas fa-headset mr-1"></i>ASSISTANCE</div>' +
+                    '<h2 class="text-xl font-black italic uppercase text-[var(--genesis-yellow)]" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + _escHtml(ticket.subject) + '</h2>' +
+                '</div>' +
+                '<div style="background:#1a1a1a;border:1.5px solid #333;border-radius:10px;padding:12px 16px;margin-bottom:14px;">' +
+                    '<div class="font-black">' + _escHtml(ticket.client_name) + '</div>' +
+                    '<div class="text-sm opacity-60">' + _escHtml(ticket.client_email) + '</div>' +
+                '</div>' +
+                '<div id="supportThread" style="max-height:300px;overflow-y:auto;padding:12px;border:1.5px solid #333;border-radius:10px;background:#fafafa;">' +
+                    threadHtml +
+                '</div>' +
+                replyHtml;
+
+            document.getElementById('clientModalContent').innerHTML = modalHTML;
+            document.getElementById('clientModal').style.display = 'flex';
+
+            setTimeout(function() {
+                var thread = document.getElementById('supportThread');
+                if (thread) thread.scrollTop = thread.scrollHeight;
+            }, 50);
+        }
+
+        async function sendSupportReply(ticketId) {
+            var textarea = document.getElementById('replyTextarea');
+            var replyMessage = textarea ? textarea.value.trim() : '';
+
+            if (!replyMessage) {
+                alert('Veuillez écrire une réponse avant d\'envoyer.');
+                if (textarea) textarea.focus();
+                return;
+            }
+
+            var btn = document.getElementById('sendReplyBtn');
+            if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>ENVOI EN COURS...'; }
+
+            try {
+                var response = await fetch(API_BASE_URL + '/api/admin/support/' + ticketId + '/reply', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: replyMessage })
+                });
+                var data = await response.json();
+
+                if (response.ok && data.ok) {
+                    // Mettre à jour l'état local
+                    var msg = allMessages.find(function(m) { return m.id === ticketId; });
+                    if (msg) {
+                        msg.status = 'replied';
+                        if (msg._ticket) {
+                            msg._ticket.status = 'replied';
+                            msg._ticket.messages.push({ from: 'admin', from_name: 'FA Genesis', content: replyMessage, created_at: new Date().toISOString() });
+                            msg.message = replyMessage;
+                        }
+                    }
+                    renderMessages();
+
+                    if (textarea) { textarea.disabled = true; textarea.style.background = '#f0f0f0'; }
+                    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-check mr-2"></i>ENVOYÉ'; }
+
+                    var confirmDiv = document.createElement('div');
+                    confirmDiv.style.cssText = 'background:#e8f5e9;border:3px solid #4caf50;padding:12px 16px;border-radius:8px;text-align:center;margin-top:12px;';
+                    confirmDiv.innerHTML = '<i class="fas fa-check-circle" style="color:#4caf50;margin-right:6px;"></i><span class="font-black" style="color:#2e7d32;">Réponse envoyée ! Le client a été notifié.</span>';
+                    if (btn && btn.parentNode && btn.parentNode.parentNode) btn.parentNode.parentNode.appendChild(confirmDiv);
+                } else {
+                    alert('Erreur : ' + (data.error || 'Impossible d\'envoyer la réponse'));
+                    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane mr-2"></i>ENVOYER'; }
+                }
+            } catch (e) {
+                console.error('[ADMIN] Erreur réponse support:', e);
+                alert('Erreur de connexion au serveur. Veuillez réessayer.');
+                if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane mr-2"></i>ENVOYER'; }
+            }
+        }
+
+        async function closeSupportTicketFromMessages(ticketId) {
+            if (!confirm('Clore ce ticket d\'assistance ?')) return;
+            try {
+                await fetch(API_BASE_URL + '/api/admin/support/' + ticketId + '/close', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                var msg = allMessages.find(function(m) { return m.id === ticketId; });
+                if (msg) {
+                    msg.status = 'archived';
+                    if (msg._ticket) msg._ticket.status = 'closed';
+                }
+                closeClientModal();
+                renderMessages();
+            } catch (e) {
+                console.error('[ADMIN] Erreur clôture ticket:', e);
+                alert('Erreur de connexion au serveur.');
             }
         }
 
