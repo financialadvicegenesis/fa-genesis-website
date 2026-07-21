@@ -3135,7 +3135,7 @@ var _profilScrollPos = 0;
 function nav(tab){
   _prevNav={tab:_navCurrentTab,scrollTop:(document.getElementById('content')||{}).scrollTop||0};
   _navCurrentTab=tab;
-  try{sessionStorage.setItem('fa_nav_tab',tab);if(tab!=='profil')sessionStorage.removeItem('fa_nav_section');}catch(e){}
+  try{sessionStorage.setItem('fa_nav_tab',tab);if(tab!=='profil'){sessionStorage.removeItem('fa_nav_section');sessionStorage.removeItem('fa_support_thread');}}catch(e){}
   haptic(8);
   document.querySelectorAll('.tab').forEach(function(t){t.className='tab';});
   document.querySelectorAll('.nav-btn').forEach(function(b){b.className='nav-btn';});
@@ -3222,9 +3222,16 @@ function _restoreNavSession(){
     var tab=sessionStorage.getItem('fa_nav_tab');
     var section=sessionStorage.getItem('fa_nav_section');
     var ptnrScreen=sessionStorage.getItem('fa_ptnr_screen');
+    var savedThread=null;
+    try{savedThread=sessionStorage.getItem('fa_support_thread');}catch(e){}
     if(!tab||tab==='home'||tab==='prestations') return;
     nav(tab);
-    if(section==='openMesLitiges' && typeof openMesLitiges==='function'){
+    // Priorité : restaurer le fil de conversation Assistance si l'utilisateur
+    // était dessus avant d'actualiser la page
+    if(tab==='profil' && savedThread){
+      try{sessionStorage.removeItem('fa_support_thread');}catch(e){}
+      setTimeout(function(){ showSupportThreadDirect(savedThread); }, 200);
+    } else if(section==='openMesLitiges' && typeof openMesLitiges==='function'){
       setTimeout(function(){ openMesLitiges(); }, tab==='partner' ? 400 : 200);
     } else if(tab==='partner' && ptnrScreen && typeof _ptnrNav==='function'){
       setTimeout(function(){ _ptnrNav(ptnrScreen); }, 300);
@@ -5512,6 +5519,7 @@ function showGenesisPatrimoine(){
 }
 
 function renderProfil(){
+  try{sessionStorage.removeItem('fa_support_thread');}catch(e){}
   var c = document.getElementById('profilContent');
   var logo = '<img class="plus-logo" src="assets/images/icon-app-192.png" alt="GENESIS" onerror="this.style.display=\'none\'">';
 
@@ -7224,6 +7232,7 @@ var _supportTicketCache = {};
 function showSupport(){
   var el=document.getElementById("profilContent");if(!el)return;
   if(!USER||GUEST){renderProfil();return;}
+  try{sessionStorage.removeItem('fa_support_thread');}catch(e){}
   _saveProfilScroll('showSupport');
   if(window._supportPoll){clearInterval(window._supportPoll);window._supportPoll=null;}
   el.innerHTML=
@@ -7340,6 +7349,8 @@ function showSupportThread(ticketId){
 
 function _renderSupportThread(ticket){
   var el=document.getElementById("profilContent");if(!el)return;
+  // Persister l'ID du fil pour que l'actualisation revienne ici
+  try{sessionStorage.setItem('fa_support_thread', ticket.id);}catch(e){}
   var closed=ticket.status==="closed";
   var msgsHtml=(ticket.messages||[]).map(function(m){
     var isAdmin=m.from==="admin";
