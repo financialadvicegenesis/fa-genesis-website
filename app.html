@@ -9353,42 +9353,52 @@ function _adminSubscribePush(){
   }).catch(function(e){ console.log('[ADMIN PUSH]', e); });
 }
 
-// ── SW MESSAGE HANDLER : routing des clics de notification ──
+// ── SW MESSAGE HANDLER : routing des clics de notification ──────────────────
+// Appelé quand l'app est déjà ouverte et que l'utilisateur clique sur une notif
+function _handleNotifHash(hash){
+  if(!hash) return;
+  if(hash === 'open-admin'){
+    nav('partner'); setTimeout(function(){ if(typeof _openAdminPanel==='function') _openAdminPanel(); }, 400);
+  } else if(hash === 'open-partner'){
+    nav('partner');
+  } else if(hash === 'open-reservations' || hash === 'reservations' || hash === 'open-suivi'){
+    nav('reservations');
+  } else if(hash === 'open-prestataires' || hash === 'prestataires'){
+    nav('prestataires');
+  } else if(hash === 'open-litiges' || hash === 'litiges'){
+    nav('profil'); setTimeout(function(){ if(typeof openMesLitiges==='function') openMesLitiges(); }, 500);
+  } else if(hash === 'messages' || hash === 'open-messages'){
+    nav('messages');
+  } else if(hash === 'explorer'){
+    nav('explorer');
+  }
+}
+
 if('serviceWorker' in navigator){
   navigator.serviceWorker.addEventListener('message', function(event){
     if(!event.data) return;
-    if(event.data.action === 'open-admin-panel'){
+    var action = event.data.action;
+    var hash = event.data.hash || '';
+    if(action === 'open-admin-panel'){
+      nav('partner'); setTimeout(_openAdminPanel, 300);
+    } else if(action === 'open-partner-tab'){
       nav('partner');
-      setTimeout(_openAdminPanel, 300);
-    } else if(event.data.action === 'open-partner-tab'){
-      nav('partner');
+    } else if(action === 'deep-link'){
+      _handleNotifHash(hash);
     }
   });
 }
 
 // Hash routing : quand l'appli était fermée au moment du clic sur la notification
 (function(){
-  var _initHash = window.location.hash;
-  if(_initHash === '#open-admin' || _initHash === '#open-partner'){
-    document.addEventListener('DOMContentLoaded', function(){
-      setTimeout(function(){
-        history.replaceState(null, '', window.location.pathname);
-        nav('partner');
-        if(_initHash === '#open-admin'){
-          var isAdmin = _ptnrSession && (_ptnrSession.role==='admin'||_ptnrSession.partner_type==='admin');
-          if(isAdmin) setTimeout(_openAdminPanel, 500);
-        }
-      }, 900);
-    });
-  } else if(_initHash === '#open-suivi'){
-    document.addEventListener('DOMContentLoaded', function(){
-      setTimeout(function(){
-        history.replaceState(null, '', window.location.pathname);
-        if(!USER){ showLoginSheet(); return; }
-        nav('reservations');
-      }, 900);
-    });
-  }
+  var _initHash = window.location.hash ? window.location.hash.slice(1) : '';
+  if(!_initHash) return;
+  document.addEventListener('DOMContentLoaded', function(){
+    setTimeout(function(){
+      history.replaceState(null, '', window.location.pathname);
+      _handleNotifHash(_initHash);
+    }, 900);
+  });
 })();
 
 // Extend nav() to handle partner tab logic

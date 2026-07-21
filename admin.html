@@ -1478,13 +1478,23 @@
             loadFeedbacksBadge();
             loadAdminNotifInbox();
             loadPartnersList();
-            // Deep-link depuis l'email : admin.html#support-SUP-XXXXXXXX
+            // Deep-link depuis notification ou email
             var hash = window.location.hash || '';
-            var supportMatch = hash.match(/^#support-(SUP-\d+)$/);
-            if (supportMatch) {
+            if (hash) {
                 history.replaceState(null, '', window.location.pathname);
-                showSection('support');
-                openSupportTicket(supportMatch[1]);
+                var supportMatch = hash.match(/^#support-(SUP-[\d]+)$/);
+                if (supportMatch) {
+                    showSection('support');
+                    openSupportTicket(supportMatch[1]);
+                } else if (hash === '#open-disputes' || hash === '#litiges') {
+                    showSection('litiges');
+                } else if (hash === '#open-partners' || hash === '#partenaires') {
+                    showSection('partenaires');
+                } else if (hash === '#messages' || hash === '#open-messages') {
+                    showSection('messages');
+                } else if (hash === '#commandes' || hash === '#open-commandes') {
+                    showSection('commandes');
+                }
             }
         }
 
@@ -6159,6 +6169,28 @@
     </script>
     <script src="pwa-init.js"></script>
     <script>
+    // SW message handler : navigation par notification quand l'admin est déjà connecté
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.addEventListener('message', function(event) {
+            if (!event.data || event.data.action !== 'deep-link') return;
+            var hash = event.data.hash || '';
+            if (!hash || typeof showSection !== 'function') return;
+            if (hash.indexOf('open-disputes') !== -1 || hash === 'litiges') {
+                showSection('litiges');
+            } else if (hash.indexOf('open-partners') !== -1 || hash === 'partenaires') {
+                showSection('partenaires');
+            } else if (hash === 'messages' || hash === 'open-messages') {
+                showSection('messages');
+            } else if (hash === 'commandes' || hash === 'open-commandes') {
+                showSection('commandes');
+            } else if (/^support-(SUP-\d+)$/.test(hash)) {
+                var id = hash.replace('support-', '');
+                showSection('support');
+                setTimeout(function() { if (typeof openSupportTicket === 'function') openSupportTicket(id); }, 300);
+            }
+        });
+    }
+
     function toggleAdminMobileMenu() { /* legacy no-op */ }
 
     /* Sections dans la bottom nav principale */

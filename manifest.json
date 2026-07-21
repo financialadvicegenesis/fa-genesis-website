@@ -4,7 +4,7 @@
   "description": "Pôle d'incubation stratégique — Accompagnement étudiants, particuliers et entreprises.",
   "id": "/app.html",
   "start_url": "/app.html",
-  "scope": "/app.html",
+  "scope": "/",
   "capture_links": "existing-client-navigate",
   "display": "standalone",
   "display_override": ["standalone", "minimal-ui"],

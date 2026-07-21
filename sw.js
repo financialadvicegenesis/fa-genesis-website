@@ -1,5 +1,5 @@
-// FA GENESIS — Service Worker v4
-var CACHE_NAME = 'fa-genesis-v4';
+// FA GENESIS — Service Worker v5
+var CACHE_NAME = 'fa-genesis-v5';
 
 // Pages critiques : jamais mises en cache (toujours réseau)
 var NO_CACHE = ['/app.html', '/home.html', '/sw.js'];
@@ -37,7 +37,7 @@ self.addEventListener('activate', function(event) {
         return caches.delete(key);
       }));
     }).then(function() {
-      console.log('[SW] Tous les caches supprimés - v3 actif');
+      console.log('[SW] Tous les caches supprimés - v5 actif');
       return self.clients.claim();
     })
   );
@@ -95,7 +95,7 @@ self.addEventListener('fetch', function(event) {
   );
 });
 
-// Push notifications
+// ── Push : afficher la notification ──────────────────────────────────────────
 self.addEventListener('push', function(event) {
   var data = {};
   try { data = event.data ? event.data.json() : {}; } catch(e) {}
@@ -105,39 +105,50 @@ self.addEventListener('push', function(event) {
     badge: data.badge || '/assets/images/logo-favicon-32.png',
     tag: data.tag || 'fa-genesis',
     renotify: true,
-    data: { url: data.url || '/' },
+    data: { url: data.url || '/app.html' },
     vibrate: [200, 100, 200]
   }));
 });
 
+// ── Clic sur notification → naviguer vers la bonne page ─────────────────────
 self.addEventListener('notificationclick', function(event) {
   event.notification.close();
-  var targetUrl = (event.notification.data && event.notification.data.url) || '/';
-  var isAdmin = targetUrl.indexOf('admin') !== -1;
-  var isPartner = targetUrl.indexOf('partner') !== -1;
+
+  var data = event.notification.data || {};
+  var rawUrl = data.url || '/app.html';
+
+  // URL absolue pour clients.openWindow()
+  var fullUrl = rawUrl.startsWith('http') ? rawUrl : (self.location.origin + rawUrl);
+
+  // Extraire chemin et hash
+  var hashIdx = rawUrl.indexOf('#');
+  var targetPath = hashIdx !== -1 ? rawUrl.slice(0, hashIdx) : rawUrl;
+  var targetHash = hashIdx !== -1 ? rawUrl.slice(hashIdx + 1) : '';
 
   event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(list) {
-      // Chercher une fenêtre app.html déjà ouverte
-      var appClient = null;
-      for (var i = 0; i < list.length; i++) {
-        var cu = list[i].url || '';
-        if (cu.indexOf('/app') !== -1 || cu.indexOf('app.html') !== -1) {
-          appClient = list[i]; break;
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clientList) {
+      // Chercher une fenêtre déjà ouverte sur la bonne page
+      var bestClient = null;
+      for (var i = 0; i < clientList.length; i++) {
+        var cu = clientList[i].url || '';
+        if (cu.indexOf(targetPath) !== -1) {
+          bestClient = clientList[i];
+          break;
         }
       }
-      if (appClient) {
-        if ('focus' in appClient) appClient.focus();
-        if (isAdmin) appClient.postMessage({ action: 'open-admin-panel' });
-        else if (isPartner) appClient.postMessage({ action: 'open-partner-tab' });
+
+      if (bestClient) {
+        // Page déjà ouverte → focus + navigation interne via postMessage
+        if ('focus' in bestClient) bestClient.focus();
+        if (targetHash) {
+          bestClient.postMessage({ action: 'deep-link', hash: targetHash, url: rawUrl });
+        }
         return;
       }
-      // Aucune fenêtre app ouverte — en ouvrir une avec le hash d'action
+
+      // Page fermée → ouvrir directement à la bonne URL (avec hash inclus)
       if (clients.openWindow) {
-        var openUrl = '/app.html';
-        if (isAdmin) openUrl = '/app.html#open-admin';
-        else if (isPartner) openUrl = '/app.html#open-partner';
-        return clients.openWindow(openUrl);
+        return clients.openWindow(fullUrl);
       }
     })
   );
