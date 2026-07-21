@@ -16008,7 +16008,7 @@ app.post('/api/admin/support/:id/reply', authenticateAdmin, function(req, res) {
     tickets[idx].status = 'replied';
     tickets[idx].updated_at = now;
     saveSupportTickets(tickets);
-    try { sendPushToUser(tickets[idx].client_email, { title: 'Réponse FA Genesis', body: message.substring(0, 80), icon: '/assets/images/logo.png', url: '/app.html' }); } catch(e){}
+    try { sendPushToUser(tickets[idx].client_email, { title: 'Réponse FA Genesis', body: message.substring(0, 80), icon: '/assets/images/logo-favicon-192.png', url: '/app.html#support-reply-' + tickets[idx].id }); } catch(e){}
     res.json({ ok: true });
 });
 
