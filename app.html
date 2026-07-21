@@ -3210,6 +3210,15 @@ function profilBack(){
 
 function _restoreNavSession(){
   try{
+    // Priorité absolue : notification deep-link en attente (app était fermée au clic).
+    // Consommer le ticket ici garantit que la navigation arrive APRÈS showApp(),
+    // donc rien ne peut l'écraser ensuite.
+    if(window._pendingNotifTicket){
+      var _ptid = window._pendingNotifTicket;
+      window._pendingNotifTicket = null;
+      showSupportThreadDirect(_ptid);
+      return;
+    }
     var tab=sessionStorage.getItem('fa_nav_tab');
     var section=sessionStorage.getItem('fa_nav_section');
     var ptnrScreen=sessionStorage.getItem('fa_ptnr_screen');
@@ -9382,7 +9391,15 @@ function _handleNotifHash(hash){
   // Réponse admin à un ticket Assistance → ouvrir directement le fil de conversation
   var supportReplyMatch = hash.match(/^support-reply-(SUP-\d+)$/);
   if(supportReplyMatch){
-    showSupportThreadDirect(supportReplyMatch[1]);
+    var _tid = supportReplyMatch[1];
+    // Si l'app est déjà initialisée (USER dispo), naviguer directement.
+    // Sinon, stocker l'ID et laisser _restoreNavSession() gérer ça APRÈS showApp(),
+    // pour éviter que la restauration de session n'écrase le fil de conversation.
+    if(USER && USER._token){
+      showSupportThreadDirect(_tid);
+    } else {
+      window._pendingNotifTicket = _tid;
+    }
     return;
   }
   if(hash === 'open-admin'){
