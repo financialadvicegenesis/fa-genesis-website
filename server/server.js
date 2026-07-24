@@ -66,6 +66,7 @@ const JEREMIE_MEMORY_FILE = path.join(__dirname, 'data', 'jeremie_memory.json');
 const ADMIN_SESSIONS_FILE = path.join(__dirname, 'data', 'admin_sessions.json');
 const NOTIFICATIONS_FILE = path.join(__dirname, 'data', 'notifications.json');
 const DISPUTES_FILE = path.join(__dirname, 'data', 'disputes.json');
+const PROSPECTS_FILE = path.join(__dirname, 'data', 'prospects.json');
 
 // Catégories de partenaires marketplace (source unique, partagée par inscription + admin)
 const PARTNER_TYPES = [
@@ -419,6 +420,18 @@ function loadNotifications() {
 function saveNotifications(data) {
     try { fs.writeFileSync(NOTIFICATIONS_FILE, JSON.stringify(data, null, 2), 'utf8'); }
     catch(e) { console.error('[NOTIF] Erreur sauvegarde:', e); }
+}
+
+// ── Prospects B2B ──
+function loadProspects() {
+    try {
+        if (!fs.existsSync(PROSPECTS_FILE)) return [];
+        return JSON.parse(fs.readFileSync(PROSPECTS_FILE, 'utf8')) || [];
+    } catch(e) { return []; }
+}
+function saveProspects(data) {
+    try { fs.writeFileSync(PROSPECTS_FILE, JSON.stringify(data, null, 2), 'utf8'); }
+    catch(e) { console.error('[PROSPECTS] Erreur sauvegarde:', e); }
 }
 
 // ── Litiges ──
@@ -14561,6 +14574,230 @@ app.post('/api/admin/payouts/:id/mark-sent', (req, res) => {
         res.json({ success: true, payout: payouts[idx] });
     } catch (err) {
         console.error('[API] Erreur mark-sent payout:', err);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// ============================================================
+// PROSPECTS — Outil de repérage B2B Montpellier
+// ============================================================
+
+async function extractEmailFromWebsite(websiteUrl) {
+    var emailRegex = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
+    var blocked = ['example', 'test', 'domain', 'noreply', 'no-reply', 'sentry', '.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp', '.ico'];
+
+    async function fetchPage(url) {
+        try {
+            var r = await fetch(url, {
+                headers: { 'User-Agent': 'Mozilla/5.0 (compatible; FetchBot/1.0)' },
+                redirect: 'follow',
+                timeout: 8000
+            });
+            if (!r.ok) return null;
+            return await r.text();
+        } catch(e) { return null; }
+    }
+
+    function extractFromHtml(html, pageUrl) {
+        var mailtoRe = /href=["']mailto:([^"'?&\s<>]+)/gi;
+        var m;
+        while ((m = mailtoRe.exec(html)) !== null) {
+            var email = m[1].split('?')[0].toLowerCase().trim();
+            if (email.indexOf('@') !== -1 && !blocked.some(function(b) { return email.indexOf(b) !== -1; })) {
+                return { email: email, source: pageUrl };
+            }
+        }
+        var emails = html.match(emailRegex) || [];
+        for (var i = 0; i < emails.length; i++) {
+            var e = emails[i].toLowerCase();
+            if (!blocked.some(function(b) { return e.indexOf(b) !== -1; })) {
+                return { email: e, source: pageUrl };
+            }
+        }
+        return null;
+    }
+
+    var base = websiteUrl.replace(/\/$/, '');
+    var pages = [base, base + '/contact', base + '/nous-contacter', base + '/contactez-nous'];
+    for (var i = 0; i < pages.length; i++) {
+        var html = await fetchPage(pages[i]);
+        if (html) {
+            var found = extractFromHtml(html, pages[i]);
+            if (found) return found;
+        }
+    }
+    return null;
+}
+
+/**
+ * GET /api/admin/prospects
+ */
+app.get('/api/admin/prospects', (req, res) => {
+    try {
+        var prospects = loadProspects();
+        prospects.sort(function(a, b) { return (b.score || 0) - (a.score || 0); });
+        res.json({ success: true, prospects: prospects });
+    } catch (err) {
+        console.error('[API] Erreur admin/prospects:', err);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * POST /api/admin/prospects/search
+ * Lance une recherche Google Places et importe les nouveaux résultats scorés.
+ * Body: { category: "restaurant", zone: "Montpellier" }
+ */
+app.post('/api/admin/prospects/search', async (req, res) => {
+    try {
+        var category = (req.body.category || '').trim();
+        var zone = (req.body.zone || 'Montpellier').trim();
+        if (!category) return res.status(400).json({ error: 'category requise' });
+
+        var apiKey = process.env.GOOGLE_PLACES_API_KEY;
+        if (!apiKey) {
+            return res.status(503).json({ error: 'GOOGLE_PLACES_API_KEY non configurée dans .env — voir guide de configuration', results: [] });
+        }
+
+        var r = await fetch('https://places.googleapis.com/v1/places:searchText', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Goog-Api-Key': apiKey,
+                'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.websiteUri,places.photos,places.rating,places.userRatingCount'
+            },
+            body: JSON.stringify({
+                textQuery: category + ' ' + zone,
+                locationBias: { circle: { center: { latitude: 43.6117, longitude: 3.8767 }, radius: 15000.0 } },
+                maxResultCount: 20,
+                languageCode: 'fr'
+            })
+        });
+
+        var data = await r.json();
+        if (!r.ok) {
+            console.error('[PROSPECTS] Google Places error:', JSON.stringify(data));
+            return res.status(502).json({ error: 'Erreur Google Places: ' + ((data.error && data.error.message) || r.status) });
+        }
+
+        var places = data.places || [];
+        var prospects = loadProspects();
+        var existingIds = {};
+        prospects.forEach(function(p) { existingIds[p.place_id] = true; });
+        var newCount = 0;
+
+        places.forEach(function(pl) {
+            if (existingIds[pl.id]) return;
+            var photos = pl.photos ? pl.photos.length : 0;
+            var website = pl.websiteUri || null;
+            var reviews = pl.userRatingCount || 0;
+            var rating = pl.rating || 0;
+
+            var score = 0;
+            if (photos === 0) score += 3;
+            else if (photos <= 3) score += 2;
+            else if (photos <= 8) score += 1;
+            if (!website) score += 2;
+            if (reviews < 10) score += 1;
+            if (rating > 0 && rating < 3.5) score += 1;
+
+            prospects.push({
+                id: uuidv4(),
+                place_id: pl.id,
+                name: (pl.displayName && pl.displayName.text) || 'Inconnu',
+                address: pl.formattedAddress || '',
+                category: category,
+                phone: pl.nationalPhoneNumber || null,
+                website: website,
+                photos_count: photos,
+                rating: rating,
+                reviews_count: reviews,
+                score: score,
+                status: 'new',
+                notes: '',
+                email: null,
+                email_source: null,
+                found_at: new Date().toISOString(),
+                searched_zone: zone
+            });
+            newCount++;
+        });
+
+        saveProspects(prospects);
+        res.json({ success: true, added: newCount, total_found: places.length });
+    } catch (err) {
+        console.error('[API] Erreur prospects/search:', err);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * PATCH /api/admin/prospects/:id
+ * Met à jour le statut et/ou les notes d'un prospect.
+ */
+app.patch('/api/admin/prospects/:id', (req, res) => {
+    try {
+        var prospects = loadProspects();
+        var idx = prospects.findIndex(function(p) { return p.id === req.params.id; });
+        if (idx === -1) return res.status(404).json({ error: 'Prospect non trouvé' });
+        var valid = ['new', 'to_contact', 'contacted', 'converted', 'dismissed'];
+        if (req.body.status !== undefined) {
+            if (!valid.includes(req.body.status)) return res.status(400).json({ error: 'Statut invalide' });
+            prospects[idx].status = req.body.status;
+        }
+        if (req.body.notes !== undefined) {
+            prospects[idx].notes = String(req.body.notes).slice(0, 2000);
+        }
+        saveProspects(prospects);
+        res.json({ success: true, prospect: prospects[idx] });
+    } catch (err) {
+        console.error('[API] Erreur PATCH prospect:', err);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * POST /api/admin/prospects/:id/find-email
+ * Cherche un email publié sur le site web du prospect (uniquement mailto: et emails visibles).
+ */
+app.post('/api/admin/prospects/:id/find-email', async (req, res) => {
+    try {
+        var prospects = loadProspects();
+        var idx = prospects.findIndex(function(p) { return p.id === req.params.id; });
+        if (idx === -1) return res.status(404).json({ error: 'Prospect non trouvé' });
+        var website = prospects[idx].website;
+        if (!website) return res.status(400).json({ error: 'Ce prospect n\'a pas de site web' });
+        if (!website.startsWith('http')) website = 'https://' + website;
+
+        var result = await extractEmailFromWebsite(website);
+        if (result) {
+            prospects[idx].email = result.email;
+            prospects[idx].email_source = result.source;
+            saveProspects(prospects);
+            res.json({ success: true, email: result.email, source: result.source });
+        } else {
+            res.json({ success: false, message: 'Aucun email publié trouvé sur ce site' });
+        }
+    } catch (err) {
+        console.error('[API] Erreur find-email:', err);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * DELETE /api/admin/prospects/:id
+ * Supprime un prospect de la table.
+ */
+app.delete('/api/admin/prospects/:id', (req, res) => {
+    try {
+        var prospects = loadProspects();
+        var idx = prospects.findIndex(function(p) { return p.id === req.params.id; });
+        if (idx === -1) return res.status(404).json({ error: 'Prospect non trouvé' });
+        prospects.splice(idx, 1);
+        saveProspects(prospects);
+        res.json({ success: true });
+    } catch (err) {
+        console.error('[API] Erreur DELETE prospect:', err);
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });

@@ -743,6 +743,9 @@
                 <div class="sheet-item" onclick="showSectionMobile('devis');closeAdminSheet()">
                     <i class="fas fa-file-invoice"></i><span>Devis</span>
                 </div>
+                <div class="sheet-item" onclick="showSectionMobile('prospects');closeAdminSheet()">
+                    <i class="fas fa-crosshairs"></i><span>Prospects</span>
+                </div>
             </div>
             <button class="sheet-logout" onclick="handleLogout()">
                 <i class="fas fa-sign-out-alt" style="margin-right:8px;"></i>Déconnexion
@@ -829,6 +832,10 @@
                 <button class="sidebar-btn" data-section="support" onclick="showSection('support')">
                     <i class="fas fa-headset"></i><span>Support</span>
                     <span id="supportBadge" class="sidebar-badge" style="display:none;"></span>
+                </button>
+                <div class="sidebar-divider"></div>
+                <button class="sidebar-btn" data-section="prospects" onclick="showSection('prospects')">
+                    <i class="fas fa-crosshairs"></i><span>Prospects</span>
                 </button>
             </nav>
         </aside>
@@ -1286,6 +1293,87 @@
                 <div id="supportTicketDetail" style="display:none;"></div>
             </div>
 
+            <!-- ===== SECTION PROSPECTS ===== -->
+            <div id="prospectsSection" class="container mx-auto max-w-7xl" style="display: none;">
+                <h2 class="text-3xl font-black mb-2" style="font-family:'Playfair Display',serif;">
+                    <i class="fas fa-crosshairs mr-3" style="color:var(--genesis-yellow);"></i>PROSPECTS B2B — MONTPELLIER
+                </h2>
+                <p style="color:#888;font-size:13px;margin-bottom:20px;">Repérage d'entreprises à faible présence visuelle. Score /7 : plus élevé = plus d'opportunité.</p>
+
+                <!-- Formulaire de recherche -->
+                <div class="admin-card neo-shadow mb-6" style="background:#0d0d0d;border:1px solid rgba(255,215,0,.15);">
+                    <h3 style="font-size:14px;font-weight:900;text-transform:uppercase;color:var(--genesis-yellow);margin-bottom:14px;letter-spacing:.5px;">
+                        <i class="fas fa-search mr-2"></i>Nouvelle recherche Google Places
+                    </h3>
+                    <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;">
+                        <div>
+                            <label style="display:block;font-size:11px;color:#aaa;font-weight:700;text-transform:uppercase;margin-bottom:4px;">Catégorie</label>
+                            <select id="prospectCategoryInput" style="background:#1a1a1a;border:2px solid #333;color:#fff;padding:8px 12px;font-size:13px;font-weight:700;min-width:200px;border-radius:4px;cursor:pointer;">
+                                <option value="">-- Choisir une catégorie --</option>
+                                <option value="restaurant">Restaurant</option>
+                                <option value="boulangerie">Boulangerie</option>
+                                <option value="coiffeur">Coiffeur</option>
+                                <option value="salon de beauté">Salon de beauté</option>
+                                <option value="artisan">Artisan</option>
+                                <option value="comptable">Comptable</option>
+                                <option value="avocat">Avocat</option>
+                                <option value="médecin">Médecin</option>
+                                <option value="pharmacie">Pharmacie</option>
+                                <option value="auto-école">Auto-école</option>
+                                <option value="fleuriste">Fleuriste</option>
+                                <option value="bar">Bar</option>
+                                <option value="boutique">Boutique</option>
+                                <option value="agence immobilière">Agence immobilière</option>
+                                <option value="kinésithérapeute">Kinésithérapeute</option>
+                                <option value="dentiste">Dentiste</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="display:block;font-size:11px;color:#aaa;font-weight:700;text-transform:uppercase;margin-bottom:4px;">Zone</label>
+                            <input id="prospectZoneInput" type="text" value="Montpellier" style="background:#1a1a1a;border:2px solid #333;color:#fff;padding:8px 12px;font-size:13px;width:180px;border-radius:4px;" placeholder="Montpellier">
+                        </div>
+                        <button id="prospectSearchBtn" onclick="searchProspects()" style="background:var(--genesis-yellow);border:2px solid black;color:#000;padding:9px 20px;font-weight:900;font-size:13px;cursor:pointer;text-transform:uppercase;letter-spacing:.5px;border-radius:4px;">
+                            <i class="fas fa-search mr-2"></i>Lancer la recherche
+                        </button>
+                        <span id="prospectSearchStatus" style="font-size:12px;font-weight:700;align-self:center;"></span>
+                    </div>
+                    <p style="margin-top:10px;font-size:11px;color:#555;font-style:italic;">Nécessite <code style="color:#888;font-size:11px;">GOOGLE_PLACES_API_KEY</code> dans <code style="color:#888;font-size:11px;">server/.env</code></p>
+                </div>
+
+                <!-- Filtres par statut -->
+                <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;align-items:center;">
+                    <span style="font-size:12px;font-weight:700;text-transform:uppercase;color:#666;">Filtrer :</span>
+                    <button id="prospectFilter-all" class="prospect-filter-btn" onclick="filterProspectsByStatus('')" style="background:var(--genesis-yellow);color:#000;border:1px solid #000;padding:4px 12px;font-size:12px;font-weight:900;cursor:pointer;border-radius:3px;">Tous</button>
+                    <button id="prospectFilter-new" class="prospect-filter-btn" onclick="filterProspectsByStatus('new')" style="background:transparent;color:#aaa;border:1px solid #444;padding:4px 12px;font-size:12px;font-weight:700;cursor:pointer;border-radius:3px;">Nouveaux</button>
+                    <button id="prospectFilter-to_contact" class="prospect-filter-btn" onclick="filterProspectsByStatus('to_contact')" style="background:transparent;color:#aaa;border:1px solid #444;padding:4px 12px;font-size:12px;font-weight:700;cursor:pointer;border-radius:3px;">À contacter</button>
+                    <button id="prospectFilter-contacted" class="prospect-filter-btn" onclick="filterProspectsByStatus('contacted')" style="background:transparent;color:#aaa;border:1px solid #444;padding:4px 12px;font-size:12px;font-weight:700;cursor:pointer;border-radius:3px;">Contactés</button>
+                    <button id="prospectFilter-converted" class="prospect-filter-btn" onclick="filterProspectsByStatus('converted')" style="background:transparent;color:#aaa;border:1px solid #444;padding:4px 12px;font-size:12px;font-weight:700;cursor:pointer;border-radius:3px;">Convertis</button>
+                    <button id="prospectFilter-dismissed" class="prospect-filter-btn" onclick="filterProspectsByStatus('dismissed')" style="background:transparent;color:#aaa;border:1px solid #444;padding:4px 12px;font-size:12px;font-weight:700;cursor:pointer;border-radius:3px;">Écartés</button>
+                    <span id="prospectsCount" style="margin-left:auto;font-size:12px;color:#666;font-weight:700;"></span>
+                </div>
+
+                <!-- Table des prospects -->
+                <div style="overflow-x:auto;">
+                    <table style="width:100%;border-collapse:collapse;font-size:13px;">
+                        <thead>
+                            <tr style="border-bottom:2px solid rgba(255,215,0,.3);">
+                                <th style="padding:10px 8px;text-align:left;font-size:11px;font-weight:900;text-transform:uppercase;color:var(--genesis-yellow);white-space:nowrap;">Entreprise</th>
+                                <th style="padding:10px 8px;text-align:left;font-size:11px;font-weight:900;text-transform:uppercase;color:var(--genesis-yellow);white-space:nowrap;">Catégorie</th>
+                                <th style="padding:10px 8px;text-align:center;font-size:11px;font-weight:900;text-transform:uppercase;color:var(--genesis-yellow);white-space:nowrap;">Score</th>
+                                <th style="padding:10px 8px;text-align:left;font-size:11px;font-weight:900;text-transform:uppercase;color:var(--genesis-yellow);white-space:nowrap;">Site web</th>
+                                <th style="padding:10px 8px;text-align:left;font-size:11px;font-weight:900;text-transform:uppercase;color:var(--genesis-yellow);white-space:nowrap;">Email</th>
+                                <th style="padding:10px 8px;text-align:left;font-size:11px;font-weight:900;text-transform:uppercase;color:var(--genesis-yellow);white-space:nowrap;">Statut</th>
+                                <th style="padding:10px 8px;text-align:left;font-size:11px;font-weight:900;text-transform:uppercase;color:var(--genesis-yellow);white-space:nowrap;">Notes</th>
+                                <th style="padding:10px 8px;text-align:left;font-size:11px;font-weight:900;text-transform:uppercase;color:var(--genesis-yellow);white-space:nowrap;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="prospectsTableBody">
+                            <tr><td colspan="8" style="text-align:center;padding:3rem;color:#555;font-weight:700;">Chargement...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
         </div>
     </div>
 
@@ -1413,8 +1501,10 @@
             if (payoutsEl) payoutsEl.style.display = 'none';
             var litigesEl = document.getElementById('litigesSection');
             var supportEl = document.getElementById('supportSection');
+            var prospectsEl = document.getElementById('prospectsSection');
             if (litigesEl) litigesEl.style.display = 'none';
             if (supportEl) supportEl.style.display = 'none';
+            if (prospectsEl) prospectsEl.style.display = 'none';
 
             if (section === 'dashboard') {
                 document.getElementById('dashboardSection').style.display = 'block';
@@ -1447,6 +1537,9 @@
             } else if (section === 'support') {
                 if (supportEl) supportEl.style.display = 'block';
                 loadAdminSupport();
+            } else if (section === 'prospects') {
+                if (prospectsEl) prospectsEl.style.display = 'block';
+                loadAdminProspects();
             }
             // Mettre à jour l'élément actif dans la sidebar
             document.querySelectorAll('.sidebar-btn').forEach(function(b) {
@@ -5081,6 +5174,232 @@
             }).then(function(r) { return r.json(); })
             .then(function(d) { if (d.ok) { loadAdminSupport(); } })
             .catch(function() { alert('Erreur.'); });
+        }
+
+        // ============================================================
+        // PROSPECTS B2B — Outil de repérage visuel Montpellier
+        // ============================================================
+
+        var _prospectsData = [];
+        var _prospectsStatusFilter = '';
+
+        var PROSPECT_STATUSES = {
+            'new':        { label: 'Nouveau',     color: '#888' },
+            'to_contact': { label: 'À contacter', color: '#FFD700' },
+            'contacted':  { label: 'Contacté',    color: '#2196F3' },
+            'converted':  { label: 'Converti',    color: '#4CAF50' },
+            'dismissed':  { label: 'Écarté',      color: '#555' }
+        };
+
+        function escHtml(str) {
+            return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+
+        function loadAdminProspects() {
+            var tbody = document.getElementById('prospectsTableBody');
+            var countEl = document.getElementById('prospectsCount');
+            if (tbody) tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:2.5rem;color:#aaa;"><i class="fas fa-spinner fa-spin"></i> Chargement...</td></tr>';
+
+            fetch(API_BASE_URL + '/api/admin/prospects')
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    _prospectsData = data.prospects || [];
+                    if (countEl) countEl.textContent = _prospectsData.length + ' prospect(s) au total';
+                    renderProspectsTable();
+                })
+                .catch(function() {
+                    if (tbody) tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#ff6b6b;padding:2rem;font-weight:700;">Erreur de chargement</td></tr>';
+                });
+        }
+
+        function renderProspectsTable() {
+            var tbody = document.getElementById('prospectsTableBody');
+            if (!tbody) return;
+
+            var list = _prospectsData.filter(function(p) {
+                return !_prospectsStatusFilter || p.status === _prospectsStatusFilter;
+            });
+
+            if (list.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:3rem;color:#555;font-weight:900;text-transform:uppercase;letter-spacing:1px;">Aucun prospect</td></tr>';
+                return;
+            }
+
+            var html = '';
+            list.forEach(function(p) {
+                var st = PROSPECT_STATUSES[p.status] || { label: p.status, color: '#888' };
+                var scoreColor = p.score >= 5 ? '#FF6B35' : (p.score >= 3 ? '#FFD700' : '#4CAF50');
+                var scoreTitle = 'Photos:' + p.photos_count + ' | Site:' + (p.website ? 'oui' : 'non') + ' | Avis:' + p.reviews_count + ' | Note:' + (p.rating || '?');
+
+                var websiteHtml = p.website
+                    ? '<a href="' + escHtml(p.website) + '" target="_blank" rel="noopener noreferrer" style="color:#4FC3F7;font-size:11px;word-break:break-all;">' + escHtml(p.website.replace(/^https?:\/\//, '').slice(0, 28)) + (p.website.length > 30 ? '…' : '') + '</a>'
+                    : '<span style="color:#444;font-size:11px;">—</span>';
+
+                var emailCellHtml;
+                if (p.email) {
+                    emailCellHtml = '<a href="mailto:' + escHtml(p.email) + '" style="color:#4CAF50;font-size:11px;">' + escHtml(p.email) + '</a>';
+                } else if (p.website) {
+                    emailCellHtml = '<button onclick="findProspectEmail(\'' + p.id + '\')" id="find-email-btn-' + p.id + '" style="background:#1a1a1a;border:1px solid #333;color:#aaa;padding:4px 9px;font-size:11px;cursor:pointer;border-radius:3px;white-space:nowrap;"><i class="fas fa-search mr-1"></i>Chercher</button>';
+                } else {
+                    emailCellHtml = '<span style="color:#333;font-size:11px;">—</span>';
+                }
+
+                var statusOptions = '';
+                Object.keys(PROSPECT_STATUSES).forEach(function(key) {
+                    var s = PROSPECT_STATUSES[key];
+                    statusOptions += '<option value="' + key + '"' + (p.status === key ? ' selected' : '') + '>' + s.label + '</option>';
+                });
+
+                var nameParts = encodeURIComponent(p.name);
+                var actionHtml = '<div style="display:flex;flex-direction:column;gap:3px;">';
+                actionHtml += '<a href="https://www.instagram.com/explore/search/?q=' + nameParts + '" target="_blank" rel="noopener noreferrer" style="color:#C13584;font-size:11px;white-space:nowrap;"><i class="fab fa-instagram mr-1"></i>Instagram</a>';
+                actionHtml += '<a href="https://www.tiktok.com/search?q=' + nameParts + '" target="_blank" rel="noopener noreferrer" style="color:#69C9D0;font-size:11px;white-space:nowrap;"><i class="fab fa-tiktok mr-1"></i>TikTok</a>';
+                if (p.email) {
+                    var mailSubject = encodeURIComponent('FA GENESIS — Améliorons votre présence visuelle');
+                    var mailBody = encodeURIComponent('Bonjour,\n\nNous avons repéré ' + p.name + ' et pensons pouvoir renforcer votre présence visuelle en ligne.\n\nCordialement,\nL\'équipe FA GENESIS');
+                    actionHtml += '<a href="mailto:' + escHtml(p.email) + '?subject=' + mailSubject + '&body=' + mailBody + '" style="background:var(--genesis-yellow);color:#000;font-size:11px;font-weight:900;padding:3px 8px;text-decoration:none;display:inline-block;border-radius:3px;border:1px solid rgba(0,0,0,.3);margin-top:2px;white-space:nowrap;"><i class="fas fa-envelope mr-1"></i>Contacter</a>';
+                }
+                actionHtml += '<button onclick="deleteProspect(\'' + p.id + '\')" style="background:transparent;border:none;color:#555;font-size:11px;cursor:pointer;text-align:left;padding:0;margin-top:2px;" title="Supprimer ce prospect"><i class="fas fa-trash mr-1"></i>Retirer</button>';
+                actionHtml += '</div>';
+
+                html += '<tr style="border-bottom:1px solid rgba(255,255,255,.04);">';
+                html += '<td style="padding:10px 8px;min-width:160px;">';
+                html += '<div style="font-weight:900;font-size:13px;color:#fff;">' + escHtml(p.name) + '</div>';
+                html += '<div style="font-size:11px;color:#666;margin-top:2px;">' + escHtml((p.address || '').slice(0, 50)) + '</div>';
+                if (p.phone) html += '<div style="font-size:11px;color:#aaa;margin-top:1px;"><i class="fas fa-phone" style="font-size:9px;margin-right:3px;"></i>' + escHtml(p.phone) + '</div>';
+                html += '</td>';
+                html += '<td style="padding:10px 8px;font-size:12px;color:#ccc;white-space:nowrap;">' + escHtml(p.category || '') + '</td>';
+                html += '<td style="padding:10px 8px;text-align:center;white-space:nowrap;">';
+                html += '<span title="' + scoreTitle + '" style="font-size:22px;font-weight:900;color:' + scoreColor + ';cursor:help;">' + (p.score || 0) + '</span>';
+                html += '<span style="font-size:10px;color:#444;">/7</span>';
+                html += '</td>';
+                html += '<td style="padding:10px 8px;">' + websiteHtml + '</td>';
+                html += '<td style="padding:10px 8px;min-width:130px;">' + emailCellHtml + '</td>';
+                html += '<td style="padding:10px 8px;">';
+                html += '<select onchange="updateProspectStatus(\'' + p.id + '\', this.value)" style="background:#0a0a0a;border:1px solid #333;color:' + st.color + ';padding:5px 8px;font-size:12px;font-weight:700;cursor:pointer;border-radius:3px;min-width:110px;">' + statusOptions + '</select>';
+                html += '</td>';
+                html += '<td style="padding:10px 8px;min-width:150px;">';
+                html += '<textarea onblur="updateProspectNotes(\'' + p.id + '\', this.value)" style="background:#0a0a0a;border:1px solid #333;color:#ddd;padding:5px 7px;font-size:11px;width:150px;height:52px;resize:vertical;border-radius:3px;">' + escHtml(p.notes || '') + '</textarea>';
+                html += '</td>';
+                html += '<td style="padding:10px 8px;">' + actionHtml + '</td>';
+                html += '</tr>';
+            });
+            tbody.innerHTML = html;
+        }
+
+        function searchProspects() {
+            var category = (document.getElementById('prospectCategoryInput') || {}).value || '';
+            var zone = ((document.getElementById('prospectZoneInput') || {}).value || 'Montpellier').trim();
+            if (!category) { alert('Choisissez une catégorie avant de lancer la recherche.'); return; }
+
+            var btn = document.getElementById('prospectSearchBtn');
+            var statusEl = document.getElementById('prospectSearchStatus');
+            if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Recherche...'; }
+            if (statusEl) statusEl.textContent = '';
+
+            fetch(API_BASE_URL + '/api/admin/prospects/search', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ category: category, zone: zone })
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-search mr-2"></i>Lancer la recherche'; }
+                if (data.error) {
+                    if (statusEl) statusEl.innerHTML = '<span style="color:#ff6b6b;"><i class="fas fa-exclamation-triangle mr-1"></i>' + escHtml(data.error) + '</span>';
+                    return;
+                }
+                if (statusEl) statusEl.innerHTML = '<span style="color:#4CAF50;"><i class="fas fa-check mr-1"></i>' + data.added + ' nouveau(x) ajouté(s) sur ' + data.total_found + ' résultat(s).</span>';
+                loadAdminProspects();
+            })
+            .catch(function() {
+                if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-search mr-2"></i>Lancer la recherche'; }
+                if (statusEl) statusEl.innerHTML = '<span style="color:#ff6b6b;">Erreur réseau.</span>';
+            });
+        }
+
+        function updateProspectStatus(id, status) {
+            fetch(API_BASE_URL + '/api/admin/prospects/' + id, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: status })
+            }).then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    var idx = _prospectsData.findIndex(function(p) { return p.id === id; });
+                    if (idx !== -1) _prospectsData[idx].status = status;
+                }
+            }).catch(function() {});
+        }
+
+        function updateProspectNotes(id, notes) {
+            fetch(API_BASE_URL + '/api/admin/prospects/' + id, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ notes: notes })
+            }).then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    var idx = _prospectsData.findIndex(function(p) { return p.id === id; });
+                    if (idx !== -1) _prospectsData[idx].notes = notes;
+                }
+            }).catch(function() {});
+        }
+
+        function findProspectEmail(id) {
+            var btn = document.getElementById('find-email-btn-' + id);
+            if (btn) { btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; btn.disabled = true; }
+
+            fetch(API_BASE_URL + '/api/admin/prospects/' + id + '/find-email', { method: 'POST' })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.success && data.email) {
+                    var idx = _prospectsData.findIndex(function(p) { return p.id === id; });
+                    if (idx !== -1) {
+                        _prospectsData[idx].email = data.email;
+                        _prospectsData[idx].email_source = data.source;
+                    }
+                    renderProspectsTable();
+                } else {
+                    if (btn) {
+                        btn.innerHTML = '<i class="fas fa-times mr-1"></i>Introuvable';
+                        btn.disabled = false;
+                        btn.style.color = '#ff6b6b';
+                    }
+                }
+            }).catch(function() {
+                if (btn) { btn.innerHTML = '<i class="fas fa-exclamation"></i> Erreur'; btn.disabled = false; }
+            });
+        }
+
+        function deleteProspect(id) {
+            if (!confirm('Retirer ce prospect de la liste ?')) return;
+            fetch(API_BASE_URL + '/api/admin/prospects/' + id, { method: 'DELETE' })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    _prospectsData = _prospectsData.filter(function(p) { return p.id !== id; });
+                    var countEl = document.getElementById('prospectsCount');
+                    if (countEl) countEl.textContent = _prospectsData.length + ' prospect(s) au total';
+                    renderProspectsTable();
+                }
+            }).catch(function() {});
+        }
+
+        function filterProspectsByStatus(status) {
+            _prospectsStatusFilter = status;
+            renderProspectsTable();
+            document.querySelectorAll('.prospect-filter-btn').forEach(function(b) {
+                b.style.background = 'transparent';
+                b.style.color = '#aaa';
+                b.style.border = '1px solid #444';
+            });
+            var activeBtn = document.getElementById('prospectFilter-' + (status || 'all'));
+            if (activeBtn) {
+                activeBtn.style.background = 'var(--genesis-yellow)';
+                activeBtn.style.color = '#000';
+                activeBtn.style.border = '1px solid #000';
+            }
         }
 </script>
 </body>
