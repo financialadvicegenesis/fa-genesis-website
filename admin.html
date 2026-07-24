@@ -2871,7 +2871,15 @@
                         (order.balance_payment_ready && !order.balance_paid ?
                             '<span style="background:#fff3cd;border:2px solid #ff922b;color:#b35900;padding:4px 10px;font-weight:900;font-size:11px;display:inline-block;">' +
                                 '<i class="fas fa-clock mr-1"></i>Attente paiement solde</span>' : '') +
-                        '<button onclick="        // Supprimer une commande
+                        '<button onclick="deleteOrder(\'' + order.id + '\')" style="background:#ff6b6b;border:2px solid black;color:black;padding:4px 12px;font-weight:900;font-size:12px;cursor:pointer;text-transform:uppercase;" title="Supprimer cette commande">' +
+                            '<i class="fas fa-trash mr-1"></i>Supprimer</button>' +
+                    '</div>' +
+                '</div>';
+            });
+            return html;
+        }
+
+        // Supprimer une commande
         async function deleteOrder(orderId) {
             if (!confirm('Supprimer définitivement la commande ' + orderId + ' ?\n\nCette action est irréversible.')) return;
             try {
