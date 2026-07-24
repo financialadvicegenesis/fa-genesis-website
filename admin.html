@@ -2837,34 +2837,11 @@
             if (filter) currentFilter = filter;
 
             try {
-                var results = await Promise.all([
-                    fetch(API_BASE_URL + '/api/admin/messages'),
-                    fetch(API_BASE_URL + '/api/admin/support')
-                ]);
-                var msgs = results[0].ok ? await results[0].json() : [];
-                var ticketsResp = results[1].ok ? await results[1].json() : {};
-                var tickets = ticketsResp.tickets || [];
+                var resp = await fetch(API_BASE_URL + '/api/admin/messages');
+                var msgs = resp.ok ? await resp.json() : [];
 
-                // Mapper les tickets Assistance au format message unifi\u00e9
-                var supportStatusMap = { open: 'unread', replied: 'replied', closed: 'archived' };
-                var mappedTickets = tickets.map(function(t) {
-                    var lastMsg = t.messages && t.messages.length > 0 ? t.messages[t.messages.length - 1] : null;
-                    return {
-                        id: t.id,
-                        name: t.client_name,
-                        email: t.client_email,
-                        subject: t.subject,
-                        message: lastMsg ? lastMsg.content : t.subject,
-                        status: supportStatusMap[t.status] || 'unread',
-                        created_at: t.created_at,
-                        updated_at: t.updated_at || t.created_at,
-                        _type: 'support',
-                        _ticket: t
-                    };
-                });
-
-                // Fusion et tri par date d\u00e9croissante
-                allMessages = msgs.concat(mappedTickets).sort(function(a, b) {
+                // Tri par date d\u00e9croissante (messages de contact uniquement)
+                allMessages = msgs.sort(function(a, b) {
                     return new Date(b.created_at) - new Date(a.created_at);
                 });
             } catch (error) {
@@ -2914,7 +2891,6 @@
             filtered.forEach(function(msg) {
                 var date = new Date(msg.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
                 var isUnread = msg.status === 'unread';
-                var isSupport = msg._type === 'support';
                 var isChecked = selectedMsgIds.has(msg.id);
                 var statusColors = { unread: '#ff6b6b', read: '#4dabf7', replied: '#51cf66', archived: '#999' };
                 var statusLabels = { unread: 'NON LU', read: 'LU', replied: 'RÉPONDU', archived: 'ARCHIVÉ' };
@@ -2927,10 +2903,9 @@
                     partenariat: 'PARTENARIAT',
                     autre: 'AUTRE'
                 };
-                var subjectLabel = isSupport ? msg.subject : (subjectLabels[msg.subject] || msg.subject);
-                var borderColor = isUnread ? (isSupport ? '#e87c2a' : '#ff6b6b') : 'transparent';
+                var subjectLabel = subjectLabels[msg.subject] || msg.subject;
 
-                html += '<div class="admin-card neo-shadow mb-4" style="' + (isUnread ? 'border-left:6px solid ' + borderColor + ';' : '') + (isChecked ? 'outline:3px solid #FFD700;' : '') + '">' +
+                html += '<div class="admin-card neo-shadow mb-4" style="' + (isUnread ? 'border-left:6px solid #ff6b6b;' : '') + (isChecked ? 'outline:3px solid #FFD700;' : '') + '">' +
                     '<div class="flex items-start gap-4">' +
                         '<div style="padding-top:4px;flex-shrink:0;" onclick="event.stopPropagation()">' +
                             '<input type="checkbox" id="msgcb_' + msg.id + '" ' + (isChecked ? 'checked' : '') + ' onchange="toggleMsgSelection(\'' + msg.id + '\', this.checked, event)" style="width:20px;height:20px;cursor:pointer;accent-color:black;" title="Sélectionner">' +
@@ -2938,11 +2913,10 @@
                         '<div class="flex-1" style="cursor:pointer;" onclick="openMessage(\'' + msg.id + '\')">' +
                             '<div class="flex justify-between items-start flex-wrap gap-4">' +
                                 '<div class="flex-1 min-w-[250px]">' +
-                                    (isSupport ? '<div style="display:inline-flex;align-items:center;gap:5px;background:#e87c2a;color:white;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:900;margin-bottom:6px;"><i class="fas fa-headset"></i> ASSISTANCE</div>' : '') +
                                     '<div class="font-black text-lg' + (isUnread ? ' text-[var(--genesis-yellow)]' : '') + '">' + msg.name + '</div>' +
                                     '<div class="text-sm font-bold opacity-70">' + msg.email + '</div>' +
-                                    (!isSupport && msg.profil ? '<div class="text-xs font-bold opacity-50 mt-1">Profil: ' + msg.profil.toUpperCase() + '</div>' : '') +
-                                    '<div class="mt-2"><span style="background:' + (isSupport ? '#e87c2a' : '#FFD700') + ';color:' + (isSupport ? 'white' : 'black') + ';padding:2px 8px;border:2px solid ' + (isSupport ? '#c96a1a' : 'black') + ';font-size:11px;font-weight:900;">' + subjectLabel + '</span></div>' +
+                                    (msg.profil ? '<div class="text-xs font-bold opacity-50 mt-1">Profil: ' + msg.profil.toUpperCase() + '</div>' : '') +
+                                    '<div class="mt-2"><span style="background:#FFD700;color:black;padding:2px 8px;border:2px solid black;font-size:11px;font-weight:900;">' + subjectLabel + '</span></div>' +
                                 '</div>' +
                                 '<div class="flex-1 min-w-[200px]">' +
                                     '<p class="text-sm font-bold opacity-80" style="max-height:40px;overflow:hidden;">' + msg.message.substring(0, 100) + (msg.message.length > 100 ? '...' : '') + '</p>' +
@@ -2965,13 +2939,7 @@
             var msg = allMessages.find(function(m) { return m.id === messageId; });
             if (!msg) return;
 
-            // Ticket Assistance → vue fil de conversation dédiée
-            if (msg._type === 'support') {
-                openSupportInMessages(msg);
-                return;
-            }
-
-            // Marquer comme lu (message contact classique)
+            // Marquer comme lu
             try {
                 await fetch(API_BASE_URL + '/api/admin/messages/' + messageId);
             } catch (e) {}
