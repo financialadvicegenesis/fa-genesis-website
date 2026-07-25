@@ -5466,15 +5466,8 @@ function showGenesisMissions(){
         html += '</div>';
         html += '<div class="genesis-mission-top"><i class="fa-solid '+m.icon+'"></i><div class="genesis-mission-label">'+m.label+'</div></div>';
         html += '<div class="genesis-mission-desc">'+m.description+'</div>';
-        if(m.id === 'alliance_circle' || m.id === 'premium_circle') {
-          html += '<div style="margin-top:8px;padding:8px 10px;background:rgba(255,215,0,.05);border:1px solid rgba(255,215,0,.18);border-radius:10px;display:flex;align-items:center;justify-content:space-between;gap:8px">';
-          html += '<span style="font-size:11px;color:#666;flex:1">Progression visible dans <b style="color:#999">Cercles Genesis</b></span>';
-          html += '<button onclick="profilBack();setTimeout(function(){showGenesisPatrimoine&&showGenesisPatrimoine();},50);" style="background:#FFD700;color:#000;border:none;border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;flex-shrink:0">Voir <i class="fa-solid fa-arrow-right" style="font-size:9px"></i></button>';
-          html += '</div>';
-        } else {
-          html += '<div class="badge-progress-track"><div class="badge-progress-fill" style="width:'+m.percent+'%"></div></div>';
-          html += '<div class="genesis-mission-count">'+m.current+' / '+m.target+'</div>';
-        }
+        html += '<div class="badge-progress-track"><div class="badge-progress-fill" style="width:'+m.percent+'%"></div></div>';
+        html += '<div class="genesis-mission-count">'+m.current+' / '+m.target+'</div>';
         html += '</div>';
         return html;
       }).join('')+'</div>';
