@@ -6280,12 +6280,14 @@ function _qgWidgetHtml(pts, level, badge, badgeProgress, constellation, benefits
         + '<div style="font-size:11px;color:#aaa;margin-top:4px"><i class="fa-solid fa-calendar-check" style="color:#FFD700;margin-right:3px;font-size:10px"></i>Événements Genesis : ' + eventsLabel + '</div>'
         + '</div>';
     }
+    var _levelDisplayName = badge ? tier.level : 'Pas encore de niveau';
+    var _levelDisplayColor = badge ? '#fff' : '#555';
     return '<div class="home-qg-widget">'
       + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">'
       + '<span style="font-size:12px;color:var(--gray);font-weight:700;letter-spacing:.04em;text-transform:uppercase">Niveau Genesis</span>'
       + '<span style="font-size:13px;color:#FFD700;font-weight:800"><i class="fa-solid fa-bolt"></i> ' + pts + ' QG</span>'
       + '</div>'
-      + '<div style="font-size:15px;font-weight:800;color:#fff;margin-bottom:8px">' + tier.level + '</div>'
+      + '<div style="font-size:15px;font-weight:800;color:' + _levelDisplayColor + ';margin-bottom:8px">' + _levelDisplayName + '</div>'
       + '<div style="background:rgba(255,255,255,.1);border-radius:99px;height:6px;overflow:hidden">'
       + '<div style="background:linear-gradient(90deg,#FFD700,#FFC300);height:100%;width:' + pct + '%;border-radius:99px;transition:width .6s"></div>'
       + '</div>'
