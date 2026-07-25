@@ -5453,9 +5453,18 @@ function showGenesisMissions(){
       if(!missions.length){ el.innerHTML = '<div class="espace-empty">Aucune mission disponible.</div>'; return; }
       el.innerHTML = '<div class="genesis-mission-grid">'+missions.map(function(m){
         var done = m.completed;
+        var qgBadge = m.qgReward
+          ? '<span style="display:inline-flex;align-items:center;gap:4px;background:' + (done?'rgba(81,207,102,.12)':'rgba(255,215,0,.1)') + ';border:1px solid ' + (done?'rgba(81,207,102,.3)':'rgba(255,215,0,.3)') + ';border-radius:20px;padding:3px 9px;font-size:11px;font-weight:800;color:' + (done?'#51cf66':'#FFD700') + ';white-space:nowrap;">'
+            + '<i class="fa-solid fa-bolt" style="font-size:9px;"></i> +' + m.qgReward + ' QG'
+            + (done ? ' <i class="fa-solid fa-check" style="font-size:9px;"></i>' : '')
+            + '</span>'
+          : '';
         var html = '<div class="genesis-mission-card'+(done?' done':'')+'">';
-        html += '<div class="genesis-mission-status '+(done?'done':'pending')+'"><i class="fa-solid '+(done?'fa-check':'fa-lock')+'"></i> '+(done?'Accomplie':'En cours')+'</div>';
-        html += '<div class="genesis-mission-top"><i class="fa-solid '+m.icon+'"></i><div class="genesis-mission-label">'+m.label+(done?' <i class="fa-solid fa-circle-check" style="color:#51cf66;"></i>':'')+'</div></div>';
+        html += '<div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:8px;">';
+        html += '<div class="genesis-mission-status '+(done?'done':'pending')+'" style="margin-bottom:0;"><i class="fa-solid '+(done?'fa-check':'fa-hourglass-half')+'"></i> '+(done?'Accomplie':'En cours')+'</div>';
+        html += qgBadge;
+        html += '</div>';
+        html += '<div class="genesis-mission-top"><i class="fa-solid '+m.icon+'"></i><div class="genesis-mission-label">'+m.label+'</div></div>';
         html += '<div class="genesis-mission-desc">'+m.description+'</div>';
         if(m.id === 'alliance_circle' || m.id === 'premium_circle') {
           html += '<div style="margin-top:8px;padding:8px 10px;background:rgba(255,215,0,.05);border:1px solid rgba(255,215,0,.18);border-radius:10px;display:flex;align-items:center;justify-content:space-between;gap:8px">';
@@ -7136,7 +7145,10 @@ function showClientLevels() {
           html += '<div style="display:flex;align-items:flex-start;gap:8px;font-size:12px;">';
           if (adv.available) {
             html += '<i class="fa-solid fa-circle-check" style="color:#4caf50;margin-top:1px;flex-shrink:0;font-size:12px;"></i>';
-            html += '<span style="color:#ccc;">' + adv.label + '</span>';
+            html += '<span style="color:#ccc;flex:1;">' + adv.label + '</span>';
+            if (adv.id === 'defis_qg') {
+              html += '<button onclick="profilBack();setTimeout(showGenesisMissions,50);" style="background:rgba(255,215,0,.12);border:1px solid rgba(255,215,0,.3);border-radius:8px;padding:3px 8px;font-size:10px;font-weight:700;color:#FFD700;cursor:pointer;flex-shrink:0;white-space:nowrap;"><i class="fa-solid fa-arrow-right" style="font-size:9px;"></i> Voir</button>';
+            }
           } else {
             html += '<i class="fa-solid fa-lock" style="color:#2e2e2e;margin-top:1px;flex-shrink:0;font-size:12px;"></i>';
             html += '<span style="color:#2e2e2e;">' + adv.label + '</span>';

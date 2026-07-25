@@ -10560,14 +10560,14 @@ function getConstellationTier(partner) {
 // dans le QG via les compteurs source qu'elle agrege).
 // ============================================================
 const GENESIS_MISSIONS = [
-    { id: 'multi_collab', audience: 'client', label: 'Collaborer avec 3 professionnels différents', description: 'Travaillez avec au moins 3 partenaires différents pour enrichir votre réseau Genesis.', icon: 'fa-people-group', target: 3 },
-    { id: 'event_participation', audience: 'both', label: 'Participer à un atelier ou événement Genesis', description: 'Inscrivez-vous et soyez présent à un événement ou workshop organisé par FA GENESIS.', icon: 'fa-calendar-check', target: 1 },
-    { id: 'referral', audience: 'both', label: 'Parrainer un nouveau membre', description: 'Invitez un nouveau client ou partenaire à rejoindre FA GENESIS.', icon: 'fa-user-plus', target: 1 },
-    { id: 'alliance_circle', audience: 'client', label: 'Atteindre le palier Alliance avec un partenaire', description: 'Collaborez 5 fois avec le même partenaire pour débloquer le Cercle Alliance.', icon: 'fa-handshake', target: 5 },
-    { id: 'ten_orders', audience: 'client', label: 'Réaliser 10 prestations', description: 'Commandez et finalisez 10 prestations sur la plateforme.', icon: 'fa-receipt', target: 10 },
-    { id: 'multi_clients', audience: 'partner', label: 'Travailler avec 3 clients différents', description: 'Réalisez des prestations pour au moins 3 clients différents.', icon: 'fa-people-group', target: 3 },
-    { id: 'five_star_reviews', audience: 'partner', label: 'Obtenir 10 avis 5 étoiles', description: 'Décrochez 10 avis 5 étoiles de vos clients.', icon: 'fa-star', target: 10 },
-    { id: 'premium_circle', audience: 'partner', label: 'Construire un Cercle Premium avec un client', description: 'Collaborez 10 fois avec le même client pour débloquer le Cercle Premium.', icon: 'fa-gem', target: 10 }
+    { id: 'multi_collab',      audience: 'client',  label: 'Collaborer avec 3 professionnels différents',       description: 'Travaillez avec au moins 3 partenaires différents pour enrichir votre réseau Genesis.',          icon: 'fa-people-group',   target: 3,  qgReward: 75  },
+    { id: 'event_participation',audience: 'both',   label: 'Participer à un atelier ou événement Genesis',       description: 'Inscrivez-vous et soyez présent à un événement ou workshop organisé par FA GENESIS.',          icon: 'fa-calendar-check', target: 1,  qgReward: 50  },
+    { id: 'referral',           audience: 'both',   label: 'Parrainer un nouveau membre',                        description: 'Invitez un nouveau client ou partenaire à rejoindre FA GENESIS.',                              icon: 'fa-user-plus',      target: 1,  qgReward: 100 },
+    { id: 'alliance_circle',    audience: 'client', label: 'Atteindre le palier Alliance avec un partenaire',    description: 'Collaborez 5 fois avec le même partenaire pour débloquer le Cercle Alliance.',                icon: 'fa-handshake',      target: 5,  qgReward: 100 },
+    { id: 'ten_orders',         audience: 'client', label: 'Réaliser 10 prestations',                            description: 'Commandez et finalisez 10 prestations sur la plateforme.',                                   icon: 'fa-receipt',        target: 10, qgReward: 200 },
+    { id: 'multi_clients',      audience: 'partner',label: 'Travailler avec 3 clients différents',               description: 'Réalisez des prestations pour au moins 3 clients différents.',                                icon: 'fa-people-group',   target: 3,  qgReward: 75  },
+    { id: 'five_star_reviews',  audience: 'partner',label: 'Obtenir 10 avis 5 étoiles',                          description: 'Décrochez 10 avis 5 étoiles de vos clients.',                                                 icon: 'fa-star',           target: 10, qgReward: 150 },
+    { id: 'premium_circle',     audience: 'partner',label: 'Construire un Cercle Premium avec un client',         description: 'Collaborez 10 fois avec le même client pour débloquer le Cercle Premium.',                    icon: 'fa-gem',            target: 10, qgReward: 150 }
 ];
 
 function computeGenesisMissionProgress(mission, person, personType) {
@@ -10603,7 +10603,8 @@ function computeGenesisMissionProgress(mission, person, personType) {
         id: mission.id, label: mission.label, description: mission.description, icon: mission.icon,
         current: current, target: mission.target,
         percent: Math.min(100, Math.round(capped / mission.target * 100)),
-        completed: current >= mission.target
+        completed: current >= mission.target,
+        qgReward: mission.qgReward || 0
     };
 }
 
