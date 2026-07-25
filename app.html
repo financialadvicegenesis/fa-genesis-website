@@ -7019,22 +7019,39 @@ function showClientLevels() {
       var levels = data.levels || [];
       var meta = data.currentLevel || {};
       // ── Hero card
-      var heroIcon = meta.icon || 'fa-seedling';
-      var heroLabel = meta.label || 'Explorateur';
       var pct = (progress.percent != null) ? progress.percent : (qg >= 1000 ? 100 : Math.min(100, Math.round(qg / (progress.target || 100) * 100)));
-      var html = '<div style="background:linear-gradient(135deg,#1a1200,#0d0d00);border:2px solid #FFD700;border-radius:18px;padding:20px 18px 16px;margin-bottom:20px;text-align:center;">'
-        + '<div style="font-size:11px;color:#a89000;letter-spacing:1.5px;font-weight:800;text-transform:uppercase;margin-bottom:10px;">Mon niveau actuel</div>'
-        + '<i class="fa-solid ' + heroIcon + '" style="font-size:36px;color:#FFD700;display:block;margin-bottom:8px;"></i>'
-        + '<div style="font-size:26px;font-weight:900;color:#FFD700;margin-bottom:4px;">' + heroLabel + '</div>'
-        + '<div style="font-size:13px;color:#aaa;margin-bottom:14px;">' + qg + ' <span style="color:#FFD700;font-weight:700;">QG</span> (Quotient Genesis)</div>'
-        + (progress.nextBadge
-          ? '<div style="background:rgba(255,215,0,.07);border-radius:10px;padding:10px 12px;">'
-            + '<div style="display:flex;justify-content:space-between;font-size:11px;color:#888;margin-bottom:6px;"><span>Progression</span><span style="color:#FFD700;font-weight:700;">' + pct + '%</span></div>'
-            + '<div style="height:8px;background:rgba(255,255,255,.08);border-radius:4px;overflow:hidden;"><div style="height:100%;width:' + pct + '%;background:linear-gradient(90deg,#FFD700,#e6c200);border-radius:4px;transition:width .6s ease;"></div></div>'
-            + '<div style="font-size:11px;color:#888;margin-top:6px;text-align:right;">Prochain niveau : <span style="color:#FFD700;font-weight:700;">' + (progress.target - qg) + ' QG</span> restants</div>'
-            + '</div>'
-          : '<div style="font-size:12px;color:#4caf50;font-weight:700;"><i class="fa-solid fa-check-circle"></i> Niveau maximum atteint !</div>')
-        + '</div>';
+      var html;
+      if (!curBadge) {
+        // Aucun niveau atteint (< 100 QG) — pas d'Explorateur, juste un état neutre
+        var _qgToFirst = Math.max(0, 100 - qg);
+        var _pctToFirst = Math.min(100, Math.round(qg / 100 * 100));
+        html = '<div style="background:linear-gradient(135deg,#111,#0a0a0a);border:2px solid #222;border-radius:18px;padding:20px 18px 16px;margin-bottom:20px;text-align:center;">'
+          + '<i class="fa-solid fa-seedling" style="font-size:36px;color:#2a2a2a;display:block;margin-bottom:8px;"></i>'
+          + '<div style="font-size:16px;font-weight:800;color:#444;margin-bottom:4px;">Pas encore de niveau</div>'
+          + '<div style="font-size:13px;color:#383838;margin-bottom:16px;">' + qg + ' <span style="font-weight:700;">QG</span> · encore ' + _qgToFirst + ' QG pour débloquer votre premier niveau</div>'
+          + '<div style="background:rgba(255,255,255,.03);border-radius:10px;padding:10px 12px;">'
+          + '<div style="display:flex;justify-content:space-between;font-size:11px;color:#444;margin-bottom:6px;"><span>Vers Créateur</span><span style="font-weight:700;">' + _pctToFirst + '%</span></div>'
+          + '<div style="height:8px;background:rgba(255,255,255,.05);border-radius:4px;overflow:hidden;"><div style="height:100%;width:' + _pctToFirst + '%;background:linear-gradient(90deg,#444,#2a2a2a);border-radius:4px;transition:width .6s ease;"></div></div>'
+          + '<div style="font-size:11px;color:#383838;margin-top:6px;text-align:right;">Prochain niveau : <span style="font-weight:700;">Créateur (100 QG)</span></div>'
+          + '</div></div>';
+      } else {
+        // Niveau actuel
+        var heroIcon = meta.icon || 'fa-fire';
+        var heroLabel = meta.label || curBadge;
+        html = '<div style="background:linear-gradient(135deg,#1a1200,#0d0d00);border:2px solid #FFD700;border-radius:18px;padding:20px 18px 16px;margin-bottom:20px;text-align:center;">'
+          + '<div style="font-size:11px;color:#a89000;letter-spacing:1.5px;font-weight:800;text-transform:uppercase;margin-bottom:10px;">Mon niveau actuel</div>'
+          + '<i class="fa-solid ' + heroIcon + '" style="font-size:36px;color:#FFD700;display:block;margin-bottom:8px;"></i>'
+          + '<div style="font-size:26px;font-weight:900;color:#FFD700;margin-bottom:4px;">' + heroLabel + '</div>'
+          + '<div style="font-size:13px;color:#aaa;margin-bottom:14px;">' + qg + ' <span style="color:#FFD700;font-weight:700;">QG</span> (Quotient Genesis)</div>'
+          + (progress.nextBadge
+            ? '<div style="background:rgba(255,215,0,.07);border-radius:10px;padding:10px 12px;">'
+              + '<div style="display:flex;justify-content:space-between;font-size:11px;color:#888;margin-bottom:6px;"><span>Progression</span><span style="color:#FFD700;font-weight:700;">' + pct + '%</span></div>'
+              + '<div style="height:8px;background:rgba(255,255,255,.08);border-radius:4px;overflow:hidden;"><div style="height:100%;width:' + pct + '%;background:linear-gradient(90deg,#FFD700,#e6c200);border-radius:4px;transition:width .6s ease;"></div></div>'
+              + '<div style="font-size:11px;color:#888;margin-top:6px;text-align:right;">Prochain niveau : <span style="color:#FFD700;font-weight:700;">' + (progress.target - qg) + ' QG</span> restants</div>'
+              + '</div>'
+            : '<div style="font-size:12px;color:#4caf50;font-weight:700;"><i class="fa-solid fa-check-circle"></i> Niveau maximum atteint !</div>')
+          + '</div>';
+      }
       // ── Comment gagner des QG
       html += '<div style="background:#111;border-radius:14px;padding:14px 16px;margin-bottom:20px;">'
         + '<div style="font-size:10px;color:#FFD700;font-weight:800;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;"><i class="fa-solid fa-bolt" style="margin-right:5px;"></i>Comment gagner des QG ?</div>'
