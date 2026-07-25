@@ -5608,7 +5608,19 @@ function renderProfil(){
   var logout = (USER && !GUEST)
     ? '<button class="plus-logout" onclick="deconnexion()">Déconnexion</button>' : '';
 
-  c.innerHTML = header + monEspace + espacePartenaire + params + infos + (USER && !GUEST ? referralBoxHtml() : '') + logout
+  var _referralSection = '';
+  if (USER && !GUEST) {
+    if (USER.badge) {
+      _referralSection = referralBoxHtml();
+    } else {
+      _referralSection = '<div class="ref-box-v2" style="opacity:.55;pointer-events:none;user-select:none;">'
+        + '<div class="ref-box-v2-title"><i class="fa-solid fa-lock" style="color:#333;"></i> Parrainage</div>'
+        + '<div style="font-size:12px;color:#444;text-align:center;padding:8px 0 4px;">&#128274; Atteignez le niveau <strong style="color:#555;">Créateur</strong> (100 QG) pour débloquer le programme de parrainage.</div>'
+        + '<button class="ref-box-v2-share" onclick="showClientLevels()" style="background:#1a1a1a;color:#555;border-color:#1e1e1e;pointer-events:auto;"><i class="fa-solid fa-crown"></i> Voir mes niveaux</button>'
+        + '</div>';
+    }
+  }
+  c.innerHTML = header + monEspace + espacePartenaire + params + infos + _referralSection + logout
     +'<div class="plus-version">Version 1.1</div>';
 }
 
@@ -6415,7 +6427,8 @@ function _syncUserBadge(){
         if (newOrder > prevOrder && d.badge && typeof _triggerLevelUp === 'function') {
           var levelMeta = { bronze: { label: 'Créateur', icon: 'fa-fire' }, argent: { label: 'Bâtisseur', icon: 'fa-bolt' }, or: { label: 'Visionnaire', icon: 'fa-crown' }, elite: { label: 'Générateur', icon: 'fa-infinity' } };
           var meta = levelMeta[d.badge] || { label: d.badge, icon: 'fa-star' };
-          setTimeout(function() { _triggerLevelUp(meta.label, meta.icon); }, 400);
+          var _luBadgeId = d.badge;
+          setTimeout(function() { _triggerLevelUp(meta.label, _luBadgeId); }, 400);
         }
       } catch(e) {}
       try{ localStorage.setItem('fa_genesis_session', JSON.stringify(USER)); }catch(e){}
@@ -6981,11 +6994,26 @@ function _triggerLevelUp(levelLabel, levelIcon) {
     // Level-up card
     var card = document.createElement('div');
     card.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) scale(.7);background:linear-gradient(135deg,#1a1200,#0d0d00);border:2px solid #FFD700;border-radius:20px;padding:28px 32px;text-align:center;pointer-events:auto;animation:luCardIn .45s cubic-bezier(.34,1.56,.64,1) forwards;min-width:220px;max-width:86vw;box-shadow:0 0 40px rgba(255,215,0,.35);';
+    var _luAdvMap = {
+      bronze: ['Programme de parrainage','Défis QG','Suggestions personnalisées Jérémie IA','Résumé mensuel personnalisé'],
+      argent: ['Avantages partenaires FA GENESIS','Webinaires & ateliers','Alertes intelligentes','Jérémie IA Plus'],
+      or:     ['Événements privés & networking','Accès bêta & avant-première','Offres Premium partenaires','Jérémie IA Pro'],
+      elite:  ['Invitations VIP','Conseil Communautaire FA GENESIS','Fonctionnalités expérimentales','Jérémie IA Expert']
+    };
+    var _luAdvs = (_luAdvMap[levelIcon] || []);
+    var _luAdvHtml = _luAdvs.length ? '<div style="text-align:left;margin:0 0 16px;">'
+      + '<div style="font-size:10px;color:#a89000;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin-bottom:7px;">Nouvellement débloqué :</div>'
+      + _luAdvs.map(function(a){ return '<div style="font-size:12px;color:#ccc;display:flex;align-items:center;gap:7px;margin-bottom:4px;"><i class="fa-solid fa-circle-check" style="color:#4caf50;font-size:11px;flex-shrink:0;"></i>'+a+'</div>'; }).join('')
+      + '</div>' : '';
     card.innerHTML = '<div style="font-size:36px;margin-bottom:8px;"><i class="fa-solid '+(levelIcon||'fa-crown')+'" style="color:#FFD700;"></i></div>'
       + '<div style="font-size:11px;color:#a89000;letter-spacing:1.5px;font-weight:800;text-transform:uppercase;margin-bottom:6px;">Nouveau niveau !</div>'
-      + '<div style="font-size:24px;font-weight:900;color:#FFD700;margin-bottom:10px;">'+levelLabel+'</div>'
-      + '<div style="font-size:12px;color:#aaa;margin-bottom:18px;">Félicitations, vous avez atteint un nouveau niveau GENESIS !</div>'
-      + '<button onclick="document.getElementById(\'levelup-overlay\').innerHTML=\'\'" style="background:linear-gradient(135deg,#FFD700,#e6c200);border:none;border-radius:10px;padding:10px 24px;font-size:14px;font-weight:800;color:#1a1200;cursor:pointer;">Super !</button>';
+      + '<div style="font-size:24px;font-weight:900;color:#FFD700;margin-bottom:6px;">'+levelLabel+'</div>'
+      + '<div style="font-size:12px;color:#888;margin-bottom:14px;">Félicitations, vous avez atteint un nouveau niveau GENESIS !</div>'
+      + _luAdvHtml
+      + '<div style="display:flex;gap:8px;">'
+      + '<button onclick="document.getElementById(\'levelup-overlay\').innerHTML=\'\'" style="flex:1;background:rgba(255,255,255,.06);border:1px solid #333;border-radius:10px;padding:10px 14px;font-size:13px;font-weight:700;color:#aaa;cursor:pointer;">Fermer</button>'
+      + '<button onclick="document.getElementById(\'levelup-overlay\').innerHTML=\'\';showClientLevels();" style="flex:2;background:linear-gradient(135deg,#FFD700,#e6c200);border:none;border-radius:10px;padding:10px 14px;font-size:13px;font-weight:800;color:#1a1200;cursor:pointer;"><i class="fa-solid fa-crown"></i> Voir mes avantages</button>'
+      + '</div>';
     overlay.appendChild(card);
     // Inject animation keyframes once
     if (!document.getElementById('levelup-styles')) {
@@ -7054,6 +7082,14 @@ function showClientLevels() {
             : '<div style="font-size:12px;color:#4caf50;font-weight:700;"><i class="fa-solid fa-check-circle"></i> Niveau maximum atteint !</div>')
           + '</div>';
       }
+      // ── Fonctionnalités disponibles dès 0 QG
+      html += '<div style="background:#0a120a;border:1px solid #1a2e1a;border-radius:14px;padding:14px 16px;margin-bottom:20px;">'
+        + '<div style="font-size:10px;color:#4caf50;font-weight:800;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;"><i class="fa-solid fa-circle-check" style="margin-right:5px;"></i>Disponible dès votre inscription</div>'
+        + '<div style="display:flex;flex-direction:column;gap:6px;">'
+        + ['Recherche & consultation de tous les prestataires','Consultation des profils et portfolios','Demande de devis, réservation et paiement','Historique des commandes, devis et paiements','Messagerie avec les prestataires','Notifications et suivi en temps réel','Ajout et gestion des favoris','Avis et évaluations','Jérémie IA Essentiel — Recherche & recommandations de base'].map(function(f){
+            return '<div style="display:flex;align-items:center;gap:7px;font-size:12px;color:#7ec87e;"><i class="fa-solid fa-check" style="font-size:10px;flex-shrink:0;"></i>' + f + '</div>';
+          }).join('')
+        + '</div></div>';
       // ── Comment gagner des QG
       html += '<div style="background:#111;border-radius:14px;padding:14px 16px;margin-bottom:20px;">'
         + '<div style="font-size:10px;color:#FFD700;font-weight:800;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;"><i class="fa-solid fa-bolt" style="margin-right:5px;"></i>Comment gagner des QG ?</div>'
@@ -7068,7 +7104,7 @@ function showClientLevels() {
       // ── Niveaux avec avantages
       var levelOrder = [null, 'bronze', 'argent', 'or', 'elite'];
       var curOrder = levelOrder.indexOf(curBadge);
-      html += '<div style="font-size:10px;color:#FFD700;font-weight:800;letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;"><i class="fa-solid fa-layer-group" style="margin-right:5px;"></i>Tous les niveaux</div>';
+      html += '<div style="font-size:10px;color:#FFD700;font-weight:800;letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;"><i class="fa-solid fa-layer-group" style="margin-right:5px;"></i>Niveaux & avantages exclusifs</div>';
       levels.forEach(function(lvl) {
         var lOrder = levelOrder.indexOf(lvl.id);
         var unlocked = curOrder >= lOrder && lOrder >= 1;
@@ -7077,14 +7113,21 @@ function showClientLevels() {
         var titleColor = isCurrent ? '#FFD700' : (unlocked ? '#4caf50' : '#444');
         var iconForLvl = { bronze: 'fa-fire', argent: 'fa-bolt', or: 'fa-crown', elite: 'fa-infinity' }[lvl.id] || 'fa-seedling';
         html += '<div style="background:#0e0e0e;border:1.5px solid ' + borderColor + ';border-radius:14px;padding:14px 15px;margin-bottom:12px;' + (isCurrent ? 'box-shadow:0 0 14px rgba(255,215,0,.18);' : '') + '">';
-        html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">';
+        // Header
+        html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">';
         html += '<div style="width:38px;height:38px;border-radius:50%;background:' + (unlocked ? 'rgba(255,215,0,.12)' : '#111') + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;">';
         html += '<i class="fa-solid ' + iconForLvl + '" style="font-size:17px;color:' + titleColor + ';"></i></div>';
-        html += '<div style="flex:1;"><div style="font-size:15px;font-weight:800;color:' + titleColor + ';">' + lvl.label + '</div>';
-        html += '<div style="font-size:11px;color:#555;">' + lvl.pts + ' QG minimum' + (isCurrent ? ' <span style="color:#FFD700;font-weight:700;">— actuel</span>' : '') + '</div></div>';
+        html += '<div style="flex:1;">';
+        html += '<div style="font-size:15px;font-weight:800;color:' + titleColor + ';">' + lvl.label + (isCurrent ? ' <span style="font-size:10px;color:#FFD700;font-weight:700;">● actuel</span>' : '') + '</div>';
+        html += '<div style="font-size:11px;color:#555;">' + lvl.pts + ' QG minimum</div>';
+        html += '</div>';
         if (!unlocked) html += '<div style="font-size:18px;color:#2a2a2a;">&#128274;</div>';
         else html += '<i class="fa-solid fa-check-circle" style="font-size:18px;color:#4caf50;"></i>';
         html += '</div>';
+        // Description
+        if (lvl.description) {
+          html += '<div style="font-size:11px;color:' + (unlocked ? '#888' : '#333') + ';font-style:italic;margin-bottom:10px;padding-left:48px;">' + lvl.description + '</div>';
+        }
         // Advantages list
         var advs = lvl.advantages || [];
         html += '<div style="display:flex;flex-direction:column;gap:5px;">';
@@ -7095,10 +7138,19 @@ function showClientLevels() {
             html += '<span style="color:#ccc;">' + adv.label + '</span>';
           } else {
             html += '<i class="fa-solid fa-lock" style="color:#2e2e2e;margin-top:1px;flex-shrink:0;font-size:12px;"></i>';
-            html += '<span style="color:#333;">' + adv.label + '</span>';
+            html += '<span style="color:#2e2e2e;">' + adv.label + '</span>';
           }
           html += '</div>';
         });
+        // Gate message for locked levels
+        if (!unlocked) {
+          var qgNeeded = lvl.pts - qg;
+          html += '<div style="margin-top:10px;background:rgba(255,215,0,.04);border:1px solid #252500;border-radius:8px;padding:8px 10px;font-size:11px;color:#555;text-align:center;">'
+            + '<i class="fa-solid fa-lock" style="margin-right:5px;color:#333;"></i>'
+            + 'Débloquez le niveau <strong style="color:#444;">' + lvl.label + '</strong> pour accéder à ces avantages'
+            + (qgNeeded > 0 ? ' — encore <strong style="color:#555;">' + qgNeeded + ' QG</strong>' : '')
+            + '</div>';
+        }
         html += '</div></div>';
       });
       el.innerHTML = html;

@@ -6934,36 +6934,41 @@ app.get('/api/client/level-progress', function(req, res) {
 
         var clientLevelAdvantages = {
             bronze: [
-                { id: 'acces_categories', label: 'Accès complet aux catégories de prestations' },
-                { id: 'favoris', label: 'Création de favoris' },
-                { id: 'historique_commandes', label: 'Historique des commandes et devis' },
-                { id: 'suivi_commandes', label: 'Suivi des commandes et paiements' },
-                { id: 'notifications', label: 'Notifications personnalisées' },
-                { id: 'parrainage', label: 'Programme de parrainage' },
-                { id: 'jeremie_essentiel', label: 'Jérémie IA — Recommandations & recherche intelligente' }
+                { id: 'profil_perso',      label: 'Personnalisation du profil (thème, bannière, bio enrichie)' },
+                { id: 'parrainage',        label: 'Programme de parrainage' },
+                { id: 'defis_qg',          label: 'Défis QG pour gagner davantage de points' },
+                { id: 'suggestions_ia',    label: 'Jérémie IA — Suggestions personnalisées selon vos habitudes' },
+                { id: 'resume_mensuel',    label: 'Résumé mensuel personnalisé de votre activité' }
             ],
             argent: [
-                { id: 'events_priority', label: 'Priorité d\'inscription aux événements FA GENESIS' },
-                { id: 'webinaires', label: 'Invitations aux webinaires' },
-                { id: 'acces_anticipe', label: 'Accès anticipé aux nouveaux prestataires et catégories' },
-                { id: 'offres_partenaires', label: 'Offres partenaires (coworkings, restaurants, espaces…)' },
-                { id: 'historique_enrichi', label: 'Historique enrichi & Favoris avancés (Collections)' },
-                { id: 'jeremie_plus', label: 'Jérémie IA Plus — Analyse personnalisée de vos habitudes' }
+                { id: 'avantages_ptnr',    label: 'Accès aux avantages partenaires négociés par FA GENESIS' },
+                { id: 'webinaires',        label: 'Invitations aux webinaires et ateliers FA GENESIS' },
+                { id: 'alertes_ia',        label: 'Alertes intelligentes — nouveau prestataire correspondant à vos préférences' },
+                { id: 'campagnes',         label: 'Accès prioritaire aux campagnes, concours et opérations promotionnelles' },
+                { id: 'jeremie_plus',      label: 'Jérémie IA Plus — Analyse des habitudes & recommandations automatiques' }
             ],
             or: [
-                { id: 'evenements_prives', label: 'Invitations aux événements privés & soirées networking' },
-                { id: 'avant_premiere', label: 'Accès en avant-première aux nouvelles fonctionnalités' },
-                { id: 'offres_exclusives', label: 'Offres exclusives partenaires' },
-                { id: 'beta', label: 'Tests Beta & accès prioritaire aux nouveautés' },
-                { id: 'jeremie_pro', label: 'Jérémie IA Pro — Comparaison & analyse qualité/prix' }
+                { id: 'events_prives',     label: 'Invitations aux événements privés & soirées networking FA GENESIS' },
+                { id: 'avant_premiere',    label: 'Accès anticipé aux nouvelles fonctionnalités de l\'application' },
+                { id: 'beta',              label: 'Accès aux versions bêta des nouveautés' },
+                { id: 'offres_premium',    label: 'Accès aux offres Premium des partenaires' },
+                { id: 'priority_events',   label: 'Priorité d\'inscription aux événements à capacité limitée' },
+                { id: 'jeremie_pro',       label: 'Jérémie IA Pro — Comparaison multicritères & préparation de projet' }
             ],
             elite: [
-                { id: 'vip', label: 'Invitations VIP & accès privilégié aux partenaires Premium' },
-                { id: 'cadeau_annuel', label: 'Cadeau annuel de fidélité' },
-                { id: 'tests_prives', label: 'Participation aux tests privés & fonctionnalités expérimentales' },
-                { id: 'conseil_communautaire', label: 'Participation au Conseil Communautaire FA GENESIS' },
-                { id: 'jeremie_expert', label: 'Jérémie IA Expert — Assistant projet avancé & prévisions' }
+                { id: 'vip',               label: 'Invitations VIP aux événements FA GENESIS' },
+                { id: 'fonct_exp',         label: 'Accès aux fonctionnalités expérimentales avant leur lancement' },
+                { id: 'conseil_com',       label: 'Participation au Conseil Communautaire FA GENESIS' },
+                { id: 'cadeau_annuel',     label: 'Cadeau annuel de fidélité' },
+                { id: 'ptnr_strategiques', label: 'Accès aux avantages Premium des partenaires stratégiques' },
+                { id: 'jeremie_expert',    label: 'Jérémie IA Expert — Assistant personnel multi-projets & conseils continus' }
             ]
+        };
+        var clientLevelDescriptions = {
+            bronze: 'Vous venez de réaliser vos premières actions significatives sur FA GENESIS.',
+            argent: 'Vous êtes un utilisateur régulier — bienvenue dans le cercle des Bâtisseurs.',
+            or:     'Vous entrez dans un cercle privilégié réservé aux membres les plus engagés.',
+            elite:  'Le plus haut niveau de fidélité. Vous faites partie de l\'élite FA GENESIS.'
         };
 
         var levelOrder = ['bronze', 'argent', 'or', 'elite'];
@@ -6976,6 +6981,7 @@ app.get('/api/client/level-progress', function(req, res) {
             return {
                 id: tier.id,
                 label: tier.label,
+                description: clientLevelDescriptions[tier.id] || '',
                 pts: tier.pts,
                 unlocked: unlocked,
                 icon: getGenesisLevel(tier.id).icon,
