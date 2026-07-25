@@ -2527,19 +2527,7 @@ app.post('/api/orders/create', (req, res) => {
                 }
                 console.log('[WELCOME] Avantage bienvenue -' + psoDiePct + '% appliqué pour ' + psoClientEmail + ' : ' + psoFullPrice + ' → ' + psoTotal + ' €');
             }
-            // Tâche 8 : réduction fidélité Cercle Alliance (si paire client-partenaire a un cercle actif)
-            if (req.body.use_cercle_discount === true) {
-                var _caTok = (req.headers.authorization || '').replace('Bearer ', '').trim();
-                var _caUser = _caTok ? findUserByToken(_caTok) : null;
-                if (_caUser) {
-                    var _caCount = getClientPartnerCollabCount(_caUser.email, req.body.partner_id || '');
-                    var _caTier = getCercleGenesisTier(_caCount);
-                    if (_caTier) {
-                        psoTotal = Math.round(psoTotal * (1 - CERCLE_ALLIANCE_DISCOUNT_PCT / 100) * 100) / 100;
-                        console.log('[CERCLE] Réduction fidélité ' + CERCLE_ALLIANCE_DISCOUNT_PCT + '% pour', _caUser.email, '+', req.body.partner_id);
-                    }
-                }
-            }
+            // Réduction Cercle Alliance supprimée dans la refonte fidélisation v2
             // GENESIS SAFE™ two-tier :
             // ≤ 300 € → paiement intégral immédiat, fonds retenus jusqu'à la livraison (payment_tier='small')
             // > 300 € → acompte 30 % versé au prestataire + solde 70 % à la livraison (payment_tier='large')
@@ -6846,8 +6834,33 @@ app.get('/api/auth/me', (req, res) => {
         }
 
         var completedOrders = getClientCompletedOrders(user.email);
-        var clientBadge = getClientBadge(completedOrders);
+        var clientQGPoints = getClientGenesisPoints(user, completedOrders);
+        var clientBadge = getClientQGBadge(clientQGPoints); // Niveau basé sur QG, non sur les commandes
         var referralCount = getClientReferralCount(user.id);
+
+        // Détection level-up : notifier + email si le niveau a changé depuis la dernière visite
+        var prevBadge = user.lastKnownClientBadge !== undefined ? user.lastKnownClientBadge : '__init__';
+        if (prevBadge !== '__init__' && prevBadge !== clientBadge && clientBadge) {
+            var newLevel = getGenesisLevel(clientBadge);
+            notifyUser(user.email, 'client', 'level_up',
+                '🎉 Vous avez atteint le niveau ' + newLevel.label + ' !',
+                'Félicitations ! De nouveaux avantages sont maintenant débloqués.',
+                '/app.html');
+            try {
+                emailService.sendLevelUpEmail(user.email, (user.prenom || user.email), newLevel.label)
+                    .catch(function(e) { console.warn('[LEVEL_UP_EMAIL]', e.message); });
+            } catch(_) {}
+        }
+        if (prevBadge !== clientBadge) {
+            try {
+                var usersForLU = loadUsers();
+                var uIdxLU = usersForLU.findIndex(function(u) { return u.email === user.email; });
+                if (uIdxLU !== -1) {
+                    usersForLU[uIdxLU].lastKnownClientBadge = clientBadge;
+                    saveUsers(usersForLU);
+                }
+            } catch(_) {}
+        }
 
         res.json({
             success: true,
@@ -6855,8 +6868,8 @@ app.get('/api/auth/me', (req, res) => {
             activeSubscription: meSubscription,
             pendingReviewPrompts: pendingReviewPrompts,
             badge: clientBadge,
-            badgeProgress: getClientBadgeProgress(completedOrders),
-            genesisPoints: getClientGenesisPoints(user, completedOrders),
+            badgeProgress: getClientQGBadgeProgress(clientQGPoints),
+            genesisPoints: clientQGPoints,
             genesisLevel: getGenesisLevel(clientBadge),
             completedOrders: completedOrders,
             isClientFidele: completedOrders >= 5,
@@ -6902,10 +6915,173 @@ app.get('/api/tier-benefits', function(req, res) {
             var b = GENESIS_TIER_BENEFITS[badge];
             var _cr = b.commissionReduction || 0;
             var _cl = _cr <= 0 ? 'Standard' : (_cr <= 2 ? 'Avantageuse' : 'Privilégiée');
-            return { badge: badge, commissionLabel: _cl, commissionReduction: _cr, payout: b.payout, events: b.events };
+            return { badge: badge, commissionLabel: _cl, commissionReduction: _cr, commissionPct: b.commissionPct || 15, payout: b.payout, events: b.events, monthlyBoosts: b.monthlyBoosts || 0 };
         });
         res.json({ ok: true, tiers: tiers });
     } catch (e) { res.status(500).json({ error: 'Erreur serveur' }); }
+});
+
+// GET /api/client/level-progress — progression niveaux GENESIS du client connecté
+app.get('/api/client/level-progress', function(req, res) {
+    var user = authenticateClient(req, res);
+    if (!user) return;
+    try {
+        var completedOrders = getClientCompletedOrders(user.email);
+        var qgPoints = getClientGenesisPoints(user, completedOrders);
+        var currentBadge = getClientQGBadge(qgPoints);
+        var progress = getClientQGBadgeProgress(qgPoints);
+        var levelMeta = getGenesisLevel(currentBadge);
+
+        var clientLevelAdvantages = {
+            bronze: [
+                { id: 'acces_categories', label: 'Accès complet aux catégories de prestations' },
+                { id: 'favoris', label: 'Création de favoris' },
+                { id: 'historique_commandes', label: 'Historique des commandes et devis' },
+                { id: 'suivi_commandes', label: 'Suivi des commandes et paiements' },
+                { id: 'notifications', label: 'Notifications personnalisées' },
+                { id: 'parrainage', label: 'Programme de parrainage' },
+                { id: 'jeremie_essentiel', label: 'Jérémie IA — Recommandations & recherche intelligente' }
+            ],
+            argent: [
+                { id: 'events_priority', label: 'Priorité d\'inscription aux événements FA GENESIS' },
+                { id: 'webinaires', label: 'Invitations aux webinaires' },
+                { id: 'acces_anticipe', label: 'Accès anticipé aux nouveaux prestataires et catégories' },
+                { id: 'offres_partenaires', label: 'Offres partenaires (coworkings, restaurants, espaces…)' },
+                { id: 'historique_enrichi', label: 'Historique enrichi & Favoris avancés (Collections)' },
+                { id: 'jeremie_plus', label: 'Jérémie IA Plus — Analyse personnalisée de vos habitudes' }
+            ],
+            or: [
+                { id: 'evenements_prives', label: 'Invitations aux événements privés & soirées networking' },
+                { id: 'avant_premiere', label: 'Accès en avant-première aux nouvelles fonctionnalités' },
+                { id: 'offres_exclusives', label: 'Offres exclusives partenaires' },
+                { id: 'beta', label: 'Tests Beta & accès prioritaire aux nouveautés' },
+                { id: 'jeremie_pro', label: 'Jérémie IA Pro — Comparaison & analyse qualité/prix' }
+            ],
+            elite: [
+                { id: 'vip', label: 'Invitations VIP & accès privilégié aux partenaires Premium' },
+                { id: 'cadeau_annuel', label: 'Cadeau annuel de fidélité' },
+                { id: 'tests_prives', label: 'Participation aux tests privés & fonctionnalités expérimentales' },
+                { id: 'conseil_communautaire', label: 'Participation au Conseil Communautaire FA GENESIS' },
+                { id: 'jeremie_expert', label: 'Jérémie IA Expert — Assistant projet avancé & prévisions' }
+            ]
+        };
+
+        var levelOrder = ['bronze', 'argent', 'or', 'elite'];
+        var currentOrder = levelOrder.indexOf(currentBadge);
+
+        var levels = CLIENT_QG_LEVEL_TIERS.slice().reverse().map(function(tier) {
+            var tierOrder = levelOrder.indexOf(tier.id);
+            var unlocked = tierOrder <= currentOrder;
+            var advantages = clientLevelAdvantages[tier.id] || [];
+            return {
+                id: tier.id,
+                label: tier.label,
+                pts: tier.pts,
+                unlocked: unlocked,
+                icon: getGenesisLevel(tier.id).icon,
+                advantages: advantages.map(function(adv) {
+                    return { id: adv.id, label: adv.label, available: unlocked };
+                })
+            };
+        });
+
+        res.json({
+            ok: true,
+            qgPoints: qgPoints,
+            currentBadge: currentBadge,
+            currentLevel: levelMeta,
+            progress: progress,
+            levels: levels,
+            completedOrders: completedOrders,
+            referralCount: getClientReferralCount(user.id)
+        });
+    } catch(e) {
+        console.error('[LEVEL_PROGRESS]', e.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// GET /api/partner/badge-progress-full — progression badge prestataire avec avantages
+app.get('/api/partner/badge-progress-full', function(req, res) {
+    var partner = authenticatePartner(req, res);
+    if (!partner) return;
+    try {
+        var summary = getPartnerRatingSummary(partner.id);
+        var missions = getPartnerMissionsCompleted(partner.id);
+        var badge = getPartnerBadge(partner, summary, missions);
+        var progress = getPartnerBadgeProgress(partner, summary, missions);
+
+        var badgeOrder = [null, 'bronze', 'argent', 'or', 'elite'];
+        var currentOrder = badgeOrder.indexOf(badge);
+
+        var badgeAdvantages = {
+            bronze: [
+                { id: 'presence_annuaire', label: 'Présence dans l\'annuaire' },
+                { id: 'dashboard', label: 'Tableau de bord professionnel' },
+                { id: 'commission', label: 'Commission standard (15%)' },
+                { id: 'formations', label: 'Accès aux formations FA GENESIS' },
+                { id: 'boost_bienvenue', label: 'Boost de visibilité de bienvenue (30 jours)' },
+                { id: 'jeremie_essentiel', label: 'Jérémie IA Essentiel — Optimisation profil & annonces' }
+            ],
+            argent: [
+                { id: 'commission_14', label: 'Commission réduite (14%)' },
+                { id: 'stats_avancees', label: 'Statistiques avancées de performance' },
+                { id: 'meilleur_classement', label: 'Meilleur classement dans l\'annuaire' },
+                { id: 'boosts_2', label: '2 boosts mensuels de visibilité' },
+                { id: 'ateliers', label: 'Accès prioritaire aux ateliers professionnels' },
+                { id: 'jeremie_plus', label: 'Jérémie IA Plus — Analyse des avis & taux de conversion' }
+            ],
+            or: [
+                { id: 'commission_13', label: 'Commission réduite (13%)' },
+                { id: 'classement_renforce', label: 'Classement renforcé dans l\'annuaire' },
+                { id: 'boosts_4', label: '4 boosts mensuels de visibilité' },
+                { id: 'outils_anticipes', label: 'Accès anticipé aux nouveaux outils' },
+                { id: 'events', label: 'Accès aux événements FA GENESIS' },
+                { id: 'jeremie_pro', label: 'Jérémie IA Pro — Conseils marketing & optimisation revenus' }
+            ],
+            elite: [
+                { id: 'commission_11', label: 'Commission réduite (11%)' },
+                { id: 'badge_premium', label: 'Badge premium affiché dans l\'annuaire' },
+                { id: 'priorite_classement', label: 'Priorité de classement (à profil équivalent)' },
+                { id: 'boosts_8', label: '8 boosts mensuels de visibilité' },
+                { id: 'events_pro', label: 'Invitations aux événements professionnels exclusifs' },
+                { id: 'jeremie_expert', label: 'Jérémie IA Expert — Assistant stratégique & prévisions d\'activité' }
+            ]
+        };
+
+        var badges = ['bronze', 'argent', 'or', 'elite'].map(function(b) {
+            var bOrder = badgeOrder.indexOf(b);
+            var unlocked = currentOrder >= bOrder && bOrder > 0;
+            var tier = PARTNER_BADGE_TIERS.find(function(t) { return t.id === b; });
+            var benefits = GENESIS_TIER_BENEFITS[b] || GENESIS_TIER_BENEFITS[null];
+            var advantages = badgeAdvantages[b] || [];
+            return {
+                id: b,
+                label: b.charAt(0).toUpperCase() + b.slice(1),
+                missions: tier ? tier.missions : 0,
+                rating: tier ? tier.rating : 0,
+                unlocked: unlocked,
+                commissionPct: benefits.commissionPct,
+                monthlyBoosts: benefits.monthlyBoosts,
+                events: benefits.events,
+                advantages: advantages.map(function(adv) {
+                    return { id: adv.id, label: adv.label, available: unlocked };
+                })
+            };
+        });
+
+        res.json({
+            ok: true,
+            badge: badge,
+            progress: progress,
+            missionsCurrent: missions,
+            ratingCurrent: summary.average,
+            badges: badges
+        });
+    } catch(e) {
+        console.error('[BADGE_PROGRESS_FULL]', e.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
 });
 
 // POST /api/users/favorites/:partnerId/toggle — ajoute/retire un partenaire des favoris du client connecte
@@ -9621,12 +9797,45 @@ function getPartnerReferralStatus(count) {
     return null;
 }
 
-const CLIENT_BADGE_TIERS = [
-    { id: 'prestige', orders: 20 },
-    { id: 'or', orders: 10 },
-    { id: 'argent', orders: 5 },
-    { id: 'bronze', orders: 1 }
+// Niveaux client basés sur les QG (Quotient Genesis) — séparés des badges prestataires
+const CLIENT_QG_LEVEL_TIERS = [
+    { id: 'elite',  label: 'Générateur',  pts: 1000 },
+    { id: 'or',     label: 'Visionnaire', pts: 600  },
+    { id: 'argent', label: 'Bâtisseur',   pts: 300  },
+    { id: 'bronze', label: 'Créateur',    pts: 100  }
 ];
+
+function getClientQGBadge(points) {
+    var p = parseInt(points) || 0;
+    for (var i = 0; i < CLIENT_QG_LEVEL_TIERS.length; i++) {
+        if (p >= CLIENT_QG_LEVEL_TIERS[i].pts) return CLIENT_QG_LEVEL_TIERS[i].id;
+    }
+    return null;
+}
+
+function getClientQGBadgeProgress(points) {
+    var p = parseInt(points) || 0;
+    var currentBadge = getClientQGBadge(p);
+    var tiersAsc = CLIENT_QG_LEVEL_TIERS.slice().reverse();
+    for (var i = 0; i < tiersAsc.length; i++) {
+        if (p < tiersAsc[i].pts) {
+            var prev = tiersAsc[i - 1] ? tiersAsc[i - 1].pts : 0;
+            return {
+                currentBadge: currentBadge,
+                nextBadge: tiersAsc[i].id,
+                current: p,
+                target: tiersAsc[i].pts,
+                prevTarget: prev,
+                percent: Math.min(100, Math.round(((p - prev) / (tiersAsc[i].pts - prev)) * 100))
+            };
+        }
+    }
+    return { currentBadge: currentBadge, nextBadge: null, current: p, target: p, prevTarget: 0, percent: 100 };
+}
+
+// Aliases backward-compat — anciens appels à getClientBadge/getClientBadgeProgress
+function getClientBadge(completedOrdersOrPoints) { return getClientQGBadge(completedOrdersOrPoints); }
+function getClientBadgeProgress(completedOrders) { return getClientQGBadgeProgress(completedOrders); }
 
 // Une commande "realisee" = solde paye (convention deja utilisee dans /api/auth/me, cf paymentStatus 'fully_paid')
 // Renvoie true si le client n'a encore jamais effectué de premier paiement (acompte)
@@ -9976,13 +10185,12 @@ function getPreviousMonthStr(date) {
 // immediatement au chargement du module (cf appel plus bas) — une const
 // definie plus loin dans le fichier ne serait pas encore initialisee.
 const GENESIS_LEVEL_META = {
-    none:      { id: 'explorateur', label: 'Explorateur', icon: 'fa-seedling', order: 1 },
-    bronze:    { id: 'createur',    label: 'Createur',    icon: 'fa-fire',     order: 2 },
-    argent:    { id: 'batisseur',   label: 'Batisseur',   icon: 'fa-bolt',     order: 3 },
-    or:        { id: 'visionnaire', label: 'Visionnaire', icon: 'fa-crown',    order: 4 },
-    elite:     { id: 'generateur',  label: 'Generateur',  icon: 'fa-infinity', order: 5 },
-    prestige:  { id: 'generateur',  label: 'Generateur',  icon: 'fa-infinity', order: 5 },
-    fondateur: { id: 'generateur',  label: 'Generateur',  icon: 'fa-infinity', order: 5 }
+    none:      { id: 'explorateur', label: 'Explorateur', icon: 'fa-seedling', order: 0 },
+    bronze:    { id: 'createur',    label: 'Créateur',    icon: 'fa-fire',     order: 1 },
+    argent:    { id: 'batisseur',   label: 'Bâtisseur',   icon: 'fa-bolt',     order: 2 },
+    or:        { id: 'visionnaire', label: 'Visionnaire', icon: 'fa-crown',    order: 3 },
+    elite:     { id: 'generateur',  label: 'Générateur',  icon: 'fa-infinity', order: 4 },
+    fondateur: { id: 'generateur',  label: 'Générateur',  icon: 'fa-infinity', order: 4 }
 };
 
 function getGenesisLevel(badgeId) {
@@ -10213,15 +10421,14 @@ const WELCOME_DISCOUNT_PCT_WITH_REFERRAL = 10;
 const WELCOME_DISCOUNT_PCT = WELCOME_DISCOUNT_PCT_WITH_REFERRAL; // alias backwards-compat
 const REFERRAL_FILLEUL_DISCOUNT_PCT     = WELCOME_DISCOUNT_PCT_WITH_REFERRAL; // alias legacy
 
-// Structure de configuration des avantages par palier — valeurs ajustables
-// commissionLabel retiré : dérivé à l'affichage depuis commissionReduction (0→Standard, 1-2→Avantageuse, 3+→Privilégiée)
+// Avantages par badge prestataire — commissions explicites (Bronze 15%, Argent 14%, Or 13%, Élite 11%)
 const GENESIS_TIER_BENEFITS = {
-    null:     { commissionReduction: 0, payout: 'standard',    events: false },
-    bronze:   { commissionReduction: 0, payout: 'standard',    events: false },
-    argent:   { commissionReduction: 1, payout: 'prioritaire', events: false },
-    or:       { commissionReduction: 2, payout: 'prioritaire', events: true  },
-    elite:    { commissionReduction: 4, payout: 'express',     events: true  },
-    fondateur:{ commissionReduction: 5, payout: 'express',     events: true  }
+    null:      { commissionPct: 15, commissionReduction: 0, payout: 'standard',    events: false, monthlyBoosts: 0 },
+    bronze:    { commissionPct: 15, commissionReduction: 0, payout: 'standard',    events: false, monthlyBoosts: 0 },
+    argent:    { commissionPct: 14, commissionReduction: 1, payout: 'prioritaire', events: false, monthlyBoosts: 2 },
+    or:        { commissionPct: 13, commissionReduction: 2, payout: 'prioritaire', events: true,  monthlyBoosts: 4 },
+    elite:     { commissionPct: 11, commissionReduction: 4, payout: 'express',     events: true,  monthlyBoosts: 8 },
+    fondateur: { commissionPct: 10, commissionReduction: 5, payout: 'express',     events: true,  monthlyBoosts: 8 }
 };
 
 function getBenefitsForBadge(badge) {
@@ -10336,23 +10543,7 @@ const CONSTELLATION_TIERS = [
 ];
 
 function getConstellationTier(partner) {
-    if (!partner) return null;
-    if (partner.founderBadge === true) {
-        return { id: 'fondateur', label: 'Constellation Fondateur', icon: 'fa-crown' };
-    }
-    var summary = getPartnerRatingSummary(partner.id);
-    var missions = getPartnerMissionsCompleted(partner.id);
-    var genesisPoints = getPartnerGenesisPoints(partner, missions);
-    var ancienneteJours = partner.createdAt ? Math.floor((Date.now() - new Date(partner.createdAt).getTime()) / (1000 * 60 * 60 * 24)) : 0;
-    var evenements = getEventAttendanceCount(partner.id);
-    for (var i = 0; i < CONSTELLATION_TIERS.length; i++) {
-        var tier = CONSTELLATION_TIERS[i];
-        if (genesisPoints >= tier.genesisPoints && summary.average >= tier.rating
-            && ancienneteJours >= tier.ancienneteJours && missions >= tier.missions
-            && evenements >= tier.evenements) {
-            return { id: tier.id, label: tier.label, icon: tier.icon };
-        }
-    }
+    // Constellation Genesis supprimée dans la refonte v2 — toujours null
     return null;
 }
 

@@ -2014,6 +2014,30 @@ async function sendProspectContactEmail(prospect, subject, bodyText) {
     }
 }
 
+async function sendLevelUpEmail(clientEmail, prenom, levelLabel) {
+    try {
+        if (!transporter) { initializeTransporter(); }
+        var adminEmail = process.env.EMAIL_ADMIN_ADDRESS || process.env.EMAIL_FROM_ADDRESS || process.env.SMTP_USER;
+        var content = '<h2 style="color:#FFD700;font-size:22px;margin:0 0 12px;">🎉 Félicitations ' + (prenom || '') + ' !</h2>'
+            + '<p style="color:#ccc;font-size:15px;line-height:1.7;margin:0 0 16px;">Vous venez d\'atteindre le niveau <strong style="color:#FFD700;">' + levelLabel + '</strong> sur FA GENESIS.</p>'
+            + '<p style="color:#ccc;font-size:15px;line-height:1.7;margin:0 0 16px;">De nouveaux avantages exclusifs sont maintenant débloqués pour vous. Connectez-vous à l\'application pour les découvrir.</p>'
+            + '<a href="https://fagenesis.com/app.html" style="display:inline-block;background:#FFD700;color:#000;font-weight:800;font-size:14px;padding:12px 28px;border-radius:8px;text-decoration:none;margin-top:8px;">Voir mes avantages →</a>';
+        var html = getEmailTemplate(content, 'Nouveau niveau GENESIS atteint !');
+        var mailOptions = {
+            from: '"FA GENESIS" <' + (process.env.EMAIL_FROM_ADDRESS || process.env.SMTP_USER) + '>',
+            to: clientEmail,
+            replyTo: adminEmail,
+            subject: '🎉 Vous êtes maintenant ' + levelLabel + ' sur FA GENESIS !',
+            html: html
+        };
+        var result = await transporter.sendMail(mailOptions);
+        return { success: true, messageId: result.messageId };
+    } catch(e) {
+        console.warn('[LEVEL_UP_EMAIL] Échec envoi:', e.message);
+        return { success: false, error: e.message };
+    }
+}
+
 module.exports = {
     initializeTransporter,
     sendContactConfirmation,
@@ -2046,7 +2070,8 @@ module.exports = {
     sendOtpSms,
     sendPartnerServiceOrderConfirmation,
     sendSupportTicketAdminEmail,
-    sendProspectContactEmail
+    sendProspectContactEmail,
+    sendLevelUpEmail
 };
 
 // ============================================================

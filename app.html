@@ -5569,6 +5569,7 @@ function renderProfil(){
       +pli('<i class="fa-solid fa-heart"></i>','#1a0014','Mes favoris',null,'showFavoris()')
       +pli('<i class="fa-solid fa-bullseye"></i>','#14140a','Missions Genesis',null,'showGenesisMissions()')
       +pli('<i class="fa-solid fa-gem"></i>','#0a1414','Patrimoine Genesis',null,'showGenesisPatrimoine()')
+      +pli('<i class="fa-solid fa-crown"></i>','#0a0014','Mes Niveaux GENESIS',null,'showClientLevels()')
       +pli('<i class="fa-solid fa-headset"></i>','#1a0a00','Assistance',null,'showSupport()')
       +pli('<i class="fa-solid fa-comment-dots"></i>','#0d1a1a','Messages',null,'nav(\'messages\')')
       +pli('<i class="fa-solid fa-scale-balanced"></i>','#1a0000','Mes litiges',null,'openMesLitiges()')
@@ -6242,12 +6243,11 @@ var _ptnrLastRepData = null;
 var _payReferralDiscountUsed = false;
 
 var _QG_LEVEL_THRESHOLDS = [
-  { badge: null,      level: 'Explorateur', nextPts: 100,  nextLabel: 'Créateur' },
-  { badge: 'bronze',  level: 'Créateur',    nextPts: 300,  nextLabel: 'Bâtisseur' },
-  { badge: 'argent',  level: 'Bâtisseur',   nextPts: 600,  nextLabel: 'Visionnaire' },
-  { badge: 'or',      level: 'Visionnaire', nextPts: 1000, nextLabel: 'Générateur' },
-  { badge: 'elite',   level: 'Générateur',  nextPts: 0,    nextLabel: '' },
-  { badge: 'fondateur',level:'Générateur',  nextPts: 0,    nextLabel: '' }
+  { badge: null,     level: 'Explorateur', nextPts: 100,  nextLabel: 'Créateur',    icon: 'fa-seedling' },
+  { badge: 'bronze', level: 'Créateur',    nextPts: 300,  nextLabel: 'Bâtisseur',   icon: 'fa-fire'     },
+  { badge: 'argent', level: 'Bâtisseur',   nextPts: 600,  nextLabel: 'Visionnaire', icon: 'fa-bolt'     },
+  { badge: 'or',     level: 'Visionnaire', nextPts: 1000, nextLabel: 'Générateur',  icon: 'fa-crown'    },
+  { badge: 'elite',  level: 'Générateur',  nextPts: 0,    nextLabel: '',            icon: 'fa-infinity' }
 ];
 
 function _qgWidgetHtml(pts, level, badge, badgeProgress, constellation, benefits) {
@@ -6391,6 +6391,7 @@ function _syncUserBadge(){
     .then(function(r){ if(r.status===401){_handleStaleSession();return null;} return r.json(); })
     .then(function(d){
       if(!d || !d.success) return;
+      var prevBadge = USER.badge || null;
       USER.badge = d.badge;
       USER.badgeProgress = d.badgeProgress;
       USER.genesisPoints = d.genesisPoints;
@@ -6404,6 +6405,17 @@ function _syncUserBadge(){
       USER.patrimoineGenesis = d.patrimoineGenesis;
       USER.referralDiscount = d.referralDiscount || null;
       USER.welcomeDiscountEligible = d.welcomeDiscountEligible === true;
+      // Level-up detection: show confetti if badge improved
+      try {
+        var levelOrder = [null, 'bronze', 'argent', 'or', 'elite'];
+        var prevOrder = levelOrder.indexOf(prevBadge);
+        var newOrder = levelOrder.indexOf(d.badge);
+        if (newOrder > prevOrder && d.badge && typeof _triggerLevelUp === 'function') {
+          var levelMeta = { bronze: { label: 'Créateur', icon: 'fa-fire' }, argent: { label: 'Bâtisseur', icon: 'fa-bolt' }, or: { label: 'Visionnaire', icon: 'fa-crown' }, elite: { label: 'Générateur', icon: 'fa-infinity' } };
+          var meta = levelMeta[d.badge] || { label: d.badge, icon: 'fa-star' };
+          setTimeout(function() { _triggerLevelUp(meta.label, meta.icon); }, 400);
+        }
+      } catch(e) {}
       try{ localStorage.setItem('fa_genesis_session', JSON.stringify(USER)); }catch(e){}
       _renderHomeQGWidget();
       if(document.getElementById('tab-profil') && document.getElementById('tab-profil').classList.contains('on') && !sessionStorage.getItem('fa_nav_section')) renderProfil();
@@ -6938,6 +6950,152 @@ function showPaiements(){
           +'</div>';
       }).join('');
     }).catch(function(){var el=document.getElementById('pmt-list');if(el)el.innerHTML='<div class="espace-empty">Impossible de charger.</div>';});
+}
+
+// ── CONFETTI LEVEL-UP ────────────────────────────────────────────
+function _triggerLevelUp(levelLabel, levelIcon) {
+  try {
+    var overlay = document.getElementById('levelup-overlay');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'levelup-overlay';
+      overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:99999;pointer-events:none;overflow:hidden;';
+      document.body.appendChild(overlay);
+    }
+    overlay.innerHTML = '';
+    // Confetti particles
+    var colors = ['#FFD700','#FFC300','#fff','#ff9800','#ffd54f','#ffe57f','#4caf50'];
+    for (var ci = 0; ci < 60; ci++) {
+      var p = document.createElement('div');
+      var size = 6 + Math.random() * 8;
+      var left = Math.random() * 100;
+      var delay = Math.random() * 0.8;
+      var dur = 1.4 + Math.random() * 1.2;
+      var color = colors[Math.floor(Math.random() * colors.length)];
+      var rot = Math.random() * 360;
+      p.style.cssText = 'position:absolute;width:'+size+'px;height:'+size+'px;background:'+color+';top:-10px;left:'+left+'%;border-radius:'+(Math.random()>0.5?'50%':'2px')+';opacity:1;transform:rotate('+rot+'deg);animation:confettiFall '+dur+'s ease-in forwards '+delay+'s;';
+      overlay.appendChild(p);
+    }
+    // Level-up card
+    var card = document.createElement('div');
+    card.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) scale(.7);background:linear-gradient(135deg,#1a1200,#0d0d00);border:2px solid #FFD700;border-radius:20px;padding:28px 32px;text-align:center;pointer-events:auto;animation:luCardIn .45s cubic-bezier(.34,1.56,.64,1) forwards;min-width:220px;max-width:86vw;box-shadow:0 0 40px rgba(255,215,0,.35);';
+    card.innerHTML = '<div style="font-size:36px;margin-bottom:8px;"><i class="fa-solid '+(levelIcon||'fa-crown')+'" style="color:#FFD700;"></i></div>'
+      + '<div style="font-size:11px;color:#a89000;letter-spacing:1.5px;font-weight:800;text-transform:uppercase;margin-bottom:6px;">Nouveau niveau !</div>'
+      + '<div style="font-size:24px;font-weight:900;color:#FFD700;margin-bottom:10px;">'+levelLabel+'</div>'
+      + '<div style="font-size:12px;color:#aaa;margin-bottom:18px;">Félicitations, vous avez atteint un nouveau niveau GENESIS !</div>'
+      + '<button onclick="document.getElementById(\'levelup-overlay\').innerHTML=\'\'" style="background:linear-gradient(135deg,#FFD700,#e6c200);border:none;border-radius:10px;padding:10px 24px;font-size:14px;font-weight:800;color:#1a1200;cursor:pointer;">Super !</button>';
+    overlay.appendChild(card);
+    // Inject animation keyframes once
+    if (!document.getElementById('levelup-styles')) {
+      var style = document.createElement('style');
+      style.id = 'levelup-styles';
+      style.textContent = '@keyframes confettiFall{to{top:110%;transform:rotate(720deg);opacity:0;}} @keyframes luCardIn{to{transform:translate(-50%,-50%) scale(1);opacity:1;}}';
+      document.head.appendChild(style);
+    }
+    // Auto-dismiss after 5s
+    setTimeout(function(){ if(overlay) overlay.innerHTML = ''; }, 5000);
+  } catch(e) {}
+}
+
+// ── NIVEAUX GENESIS CLIENT ────────────────────────────────────────
+function showClientLevels() {
+  var c = document.getElementById('profilContent');
+  if (!c) return;
+  if (!USER || GUEST) { renderProfil(); return; }
+  _saveProfilScroll('showClientLevels');
+  c.innerHTML = '<div class="espace-view">'
+    + '<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Mes Niveaux GENESIS</div></div>'
+    + '<div id="client-levels-content" style="padding:14px 16px 80px;overflow-y:auto;flex:1;"><div class="espace-loading">Chargement...</div></div>'
+    + '</div>';
+  fetch((window.FA_GENESIS_API || API) + '/api/client/level-progress', { headers: { 'Authorization': 'Bearer ' + USER._token } })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      var el = document.getElementById('client-levels-content');
+      if (!el) return;
+      if (!data.ok) { el.innerHTML = '<div class="espace-empty">Impossible de charger.</div>'; return; }
+      var qg = data.qgPoints || 0;
+      var curBadge = data.currentBadge;
+      var progress = data.progress || {};
+      var levels = data.levels || [];
+      var meta = data.currentLevel || {};
+      // ── Hero card
+      var heroIcon = meta.icon || 'fa-seedling';
+      var heroLabel = meta.label || 'Explorateur';
+      var pct = (progress.percent != null) ? progress.percent : (qg >= 1000 ? 100 : Math.min(100, Math.round(qg / (progress.target || 100) * 100)));
+      var html = '<div style="background:linear-gradient(135deg,#1a1200,#0d0d00);border:2px solid #FFD700;border-radius:18px;padding:20px 18px 16px;margin-bottom:20px;text-align:center;">'
+        + '<div style="font-size:11px;color:#a89000;letter-spacing:1.5px;font-weight:800;text-transform:uppercase;margin-bottom:10px;">Mon niveau actuel</div>'
+        + '<i class="fa-solid ' + heroIcon + '" style="font-size:36px;color:#FFD700;display:block;margin-bottom:8px;"></i>'
+        + '<div style="font-size:26px;font-weight:900;color:#FFD700;margin-bottom:4px;">' + heroLabel + '</div>'
+        + '<div style="font-size:13px;color:#aaa;margin-bottom:14px;">' + qg + ' <span style="color:#FFD700;font-weight:700;">QG</span> (Quotient Genesis)</div>'
+        + (progress.nextBadge
+          ? '<div style="background:rgba(255,215,0,.07);border-radius:10px;padding:10px 12px;">'
+            + '<div style="display:flex;justify-content:space-between;font-size:11px;color:#888;margin-bottom:6px;"><span>Progression</span><span style="color:#FFD700;font-weight:700;">' + pct + '%</span></div>'
+            + '<div style="height:8px;background:rgba(255,255,255,.08);border-radius:4px;overflow:hidden;"><div style="height:100%;width:' + pct + '%;background:linear-gradient(90deg,#FFD700,#e6c200);border-radius:4px;transition:width .6s ease;"></div></div>'
+            + '<div style="font-size:11px;color:#888;margin-top:6px;text-align:right;">Prochain niveau : <span style="color:#FFD700;font-weight:700;">' + (progress.target - qg) + ' QG</span> restants</div>'
+            + '</div>'
+          : '<div style="font-size:12px;color:#4caf50;font-weight:700;"><i class="fa-solid fa-check-circle"></i> Niveau maximum atteint !</div>')
+        + '</div>';
+      // ── Comment gagner des QG
+      html += '<div style="background:#111;border-radius:14px;padding:14px 16px;margin-bottom:20px;">'
+        + '<div style="font-size:10px;color:#FFD700;font-weight:800;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;"><i class="fa-solid fa-bolt" style="margin-right:5px;"></i>Comment gagner des QG ?</div>'
+        + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">'
+        + _qgActionRow('fa-briefcase', 'Prestation terminée', '20 QG')
+        + _qgActionRow('fa-star', 'Avis déposé', '5 QG')
+        + _qgActionRow('fa-crown', 'Avis 5 étoiles', '30 QG')
+        + _qgActionRow('fa-chalkboard-user', 'Atelier / formation', '50 QG')
+        + _qgActionRow('fa-calendar-days', 'Événement Genesis', '75 QG')
+        + _qgActionRow('fa-user-plus', 'Parrainage validé', '100 QG')
+        + '</div></div>';
+      // ── Niveaux avec avantages
+      var levelOrder = [null, 'bronze', 'argent', 'or', 'elite'];
+      var curOrder = levelOrder.indexOf(curBadge);
+      html += '<div style="font-size:10px;color:#FFD700;font-weight:800;letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;"><i class="fa-solid fa-layer-group" style="margin-right:5px;"></i>Tous les niveaux</div>';
+      levels.forEach(function(lvl) {
+        var lOrder = levelOrder.indexOf(lvl.id);
+        var unlocked = curOrder >= lOrder && lOrder >= 1;
+        var isCurrent = lvl.id === curBadge;
+        var borderColor = isCurrent ? '#FFD700' : (unlocked ? '#4caf50' : '#1e1e1e');
+        var titleColor = isCurrent ? '#FFD700' : (unlocked ? '#4caf50' : '#444');
+        var iconForLvl = { bronze: 'fa-fire', argent: 'fa-bolt', or: 'fa-crown', elite: 'fa-infinity' }[lvl.id] || 'fa-seedling';
+        html += '<div style="background:#0e0e0e;border:1.5px solid ' + borderColor + ';border-radius:14px;padding:14px 15px;margin-bottom:12px;' + (isCurrent ? 'box-shadow:0 0 14px rgba(255,215,0,.18);' : '') + '">';
+        html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">';
+        html += '<div style="width:38px;height:38px;border-radius:50%;background:' + (unlocked ? 'rgba(255,215,0,.12)' : '#111') + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;">';
+        html += '<i class="fa-solid ' + iconForLvl + '" style="font-size:17px;color:' + titleColor + ';"></i></div>';
+        html += '<div style="flex:1;"><div style="font-size:15px;font-weight:800;color:' + titleColor + ';">' + lvl.label + '</div>';
+        html += '<div style="font-size:11px;color:#555;">' + lvl.pts + ' QG minimum' + (isCurrent ? ' <span style="color:#FFD700;font-weight:700;">— actuel</span>' : '') + '</div></div>';
+        if (!unlocked) html += '<div style="font-size:18px;color:#2a2a2a;">&#128274;</div>';
+        else html += '<i class="fa-solid fa-check-circle" style="font-size:18px;color:#4caf50;"></i>';
+        html += '</div>';
+        // Advantages list
+        var advs = lvl.advantages || [];
+        html += '<div style="display:flex;flex-direction:column;gap:5px;">';
+        advs.forEach(function(adv) {
+          html += '<div style="display:flex;align-items:flex-start;gap:8px;font-size:12px;">';
+          if (adv.available) {
+            html += '<i class="fa-solid fa-circle-check" style="color:#4caf50;margin-top:1px;flex-shrink:0;font-size:12px;"></i>';
+            html += '<span style="color:#ccc;">' + adv.label + '</span>';
+          } else {
+            html += '<i class="fa-solid fa-lock" style="color:#2e2e2e;margin-top:1px;flex-shrink:0;font-size:12px;"></i>';
+            html += '<span style="color:#333;">' + adv.label + '</span>';
+          }
+          html += '</div>';
+        });
+        html += '</div></div>';
+      });
+      el.innerHTML = html;
+    })
+    .catch(function() {
+      var el = document.getElementById('client-levels-content');
+      if (el) el.innerHTML = '<div class="espace-empty">Impossible de charger les niveaux.</div>';
+    });
+}
+
+function _qgActionRow(icon, label, pts) {
+  return '<div style="background:#1a1a1a;border-radius:9px;padding:9px 10px;display:flex;align-items:center;gap:7px;">'
+    + '<i class="fa-solid ' + icon + '" style="font-size:14px;color:#FFD700;width:16px;text-align:center;flex-shrink:0;"></i>'
+    + '<div style="flex:1;font-size:11px;color:#888;">' + label + '</div>'
+    + '<div style="font-size:12px;font-weight:800;color:#FFD700;white-space:nowrap;">' + pts + '</div>'
+    + '</div>';
 }
 
 // ── PORTEFEUILLE GENESIS SAFE™ (client) ─────────────────────────
@@ -11788,23 +11946,65 @@ function _ptnrLoadReputation(){
       + partnerBadgeProgressHtml(data.badgeProgress)
       + '</div></div>';
 
+    // Avantages par badge (locked/unlocked)
     if(data.currentBenefits) {
       var b = data.currentBenefits;
       var _repCr = b.commissionReduction || 0;
-      var _repCommLabel = _repCr <= 0 ? 'Standard' : (_repCr <= 2 ? 'Avantageuse' : 'Privilégiée');
-      var _repSoon = '<span style="font-size:9px;color:#555;background:rgba(255,255,255,.04);border-radius:3px;padding:1px 4px;margin-left:4px;font-weight:500">Bientôt</span>';
-      var payLbl = b.payout === 'express' ? '<span style="color:#4caf50;font-weight:800">Express</span>'+_repSoon
-        : b.payout === 'prioritaire' ? '<span style="color:#FFD700;font-weight:800">Prioritaire</span>'+_repSoon
+      var _repSoon = '<span style="font-size:9px;color:#555;background:rgba(255,255,255,.04);border-radius:3px;padding:1px 4px;margin-left:4px;">Bientôt</span>';
+      var commLbl = b.commissionPct ? (b.commissionPct + '%') : '15%';
+      var payLbl = b.payout === 'express' ? '<span style="color:#4caf50;font-weight:800">Express</span>'
+        : b.payout === 'prioritaire' ? '<span style="color:#FFD700;font-weight:800">Prioritaire</span>'
         : '<span style="color:#888">Standard</span>';
-      var evLbl = b.events ? '<span style="color:#4caf50;font-weight:800">Prioritaire</span>'+_repSoon : '<span style="color:#888">Standard</span>';
-      html += '<div style="background:linear-gradient(135deg,#1a1200,#0d0d00);border:1px solid rgba(255,215,0,.2);border-radius:14px;padding:12px 14px;margin:0 0 14px;">'
-        + '<div style="font-size:10px;color:var(--gray);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px"><i class="fa-solid fa-star" style="color:#FFD700;margin-right:4px;"></i>Avantages de votre palier</div>'
-        + '<div style="display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:#aaa;">'
-        + '<div style="flex:1;min-width:110px"><i class="fa-solid fa-percent" style="color:#FFD700;margin-right:4px;font-size:10px"></i>Commission : <b style="color:#eee">'+_repCommLabel+(_repCr>0?_repSoon:'')+'</b></div>'
-        + '<div style="flex:1;min-width:110px"><i class="fa-solid fa-clock" style="color:#FFD700;margin-right:4px;font-size:10px"></i>Versement : '+payLbl+'</div>'
-        + '</div>'
-        + '<div style="font-size:12px;color:#aaa;margin-top:6px"><i class="fa-solid fa-calendar-check" style="color:#FFD700;margin-right:4px;font-size:10px"></i>Événements Genesis : '+evLbl+'</div>'
-        + '</div>';
+      var boostLbl = (b.monthlyBoosts || 0) > 0 ? '<span style="color:#FFD700;font-weight:800">' + b.monthlyBoosts + ' / mois</span>' : '<span style="color:#888">Aucun</span>';
+      var evLbl = b.events ? '<span style="color:#4caf50;font-weight:800">Inclus</span>'+_repSoon : '<span style="color:#888">Non inclus</span>';
+      html += '<div style="background:linear-gradient(135deg,#1a1200,#0d0d00);border:1px solid rgba(255,215,0,.2);border-radius:14px;padding:14px 15px;margin:0 0 14px;">'
+        + '<div style="font-size:10px;color:#FFD700;font-weight:800;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px"><i class="fa-solid fa-star" style="margin-right:4px;"></i>Avantages de votre palier</div>'
+        + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;">'
+        + '<div style="background:rgba(255,255,255,.03);border-radius:9px;padding:8px 10px;"><div style="font-size:10px;color:#666;margin-bottom:3px;"><i class="fa-solid fa-percent" style="color:#FFD700;margin-right:4px;font-size:9px"></i>Commission</div><span style="color:#eee;font-weight:800;">'+commLbl+'</span></div>'
+        + '<div style="background:rgba(255,255,255,.03);border-radius:9px;padding:8px 10px;"><div style="font-size:10px;color:#666;margin-bottom:3px;"><i class="fa-solid fa-clock" style="color:#FFD700;margin-right:4px;font-size:9px"></i>Versement</div>'+payLbl+'</div>'
+        + '<div style="background:rgba(255,255,255,.03);border-radius:9px;padding:8px 10px;"><div style="font-size:10px;color:#666;margin-bottom:3px;"><i class="fa-solid fa-rocket" style="color:#FFD700;margin-right:4px;font-size:9px"></i>Boosts</div>'+boostLbl+'</div>'
+        + '<div style="background:rgba(255,255,255,.03);border-radius:9px;padding:8px 10px;"><div style="font-size:10px;color:#666;margin-bottom:3px;"><i class="fa-solid fa-calendar-check" style="color:#FFD700;margin-right:4px;font-size:9px"></i>Événements</div>'+evLbl+'</div>'
+        + '</div></div>';
+      // Badge progression détaillée avec avantages verrouillés
+      var _ptnrBadgeOrder = [null, 'bronze', 'argent', 'or', 'elite'];
+      var _ptnrCurOrder = _ptnrBadgeOrder.indexOf(badge);
+      var _ptnrBadgeDefs = [
+        { id: 'bronze', label: 'Bronze', icon: 'fa-fire',     missions: 5,   rating: 4.0,
+          advs: ['Présence dans l\'annuaire','Commission 15%','Tableau de bord professionnel','Accès aux formations FA GENESIS','Jérémie IA Essentiel'] },
+        { id: 'argent', label: 'Argent', icon: 'fa-bolt',     missions: 20,  rating: 4.3,
+          advs: ['Commission réduite (14%)','Statistiques avancées','Boosts mensuels ×2','Priorité classement annuaire','Jérémie IA Plus — Analyse des avis'] },
+        { id: 'or',     label: 'Or',     icon: 'fa-crown',    missions: 50,  rating: 4.5,
+          advs: ['Commission réduite (13%)','Boosts mensuels ×4','Accès aux événements FA GENESIS','Classement renforcé annuaire','Jérémie IA Pro — Conseils marketing'] },
+        { id: 'elite',  label: 'Élite',  icon: 'fa-infinity', missions: 100, rating: 5.0,
+          advs: ['Commission réduite (11%)','Badge premium affiché','Priorité classement (profil équivalent)','Boosts mensuels ×8','Jérémie IA Expert — Assistant stratégique'] }
+      ];
+      html += '<div style="font-size:10px;color:#FFD700;font-weight:800;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;"><i class="fa-solid fa-layer-group" style="margin-right:4px;"></i>Progression des badges</div>';
+      _ptnrBadgeDefs.forEach(function(bDef) {
+        var bOrder = _ptnrBadgeOrder.indexOf(bDef.id);
+        var unlocked = _ptnrCurOrder >= bOrder && bOrder > 0;
+        var isCur = bDef.id === badge;
+        var borderClr = isCur ? '#FFD700' : (unlocked ? '#4caf50' : '#1a1a1a');
+        var titleClr  = isCur ? '#FFD700' : (unlocked ? '#4caf50' : '#333');
+        html += '<div style="background:#0e0e0e;border:1.5px solid '+borderClr+';border-radius:13px;padding:12px 14px;margin-bottom:10px;">';
+        html += '<div style="display:flex;align-items:center;gap:9px;margin-bottom:8px;">'
+          + '<i class="fa-solid '+bDef.icon+'" style="font-size:16px;color:'+titleClr+';width:20px;text-align:center;flex-shrink:0;"></i>'
+          + '<div style="flex:1;"><span style="font-size:14px;font-weight:800;color:'+titleClr+';">'+bDef.label+'</span>'
+          + '<span style="font-size:11px;color:#444;margin-left:7px;">'+bDef.missions+' missions · '+bDef.rating.toFixed(1)+'★ min.</span>'
+          + (isCur ? '<span style="font-size:10px;color:#FFD700;font-weight:800;margin-left:8px;">● actuel</span>' : '')+'</div>'
+          + (unlocked ? '<i class="fa-solid fa-check-circle" style="font-size:16px;color:#4caf50;"></i>' : '<span style="font-size:16px;color:#252525;">&#128274;</span>')
+          + '</div>';
+        html += '<div style="display:flex;flex-direction:column;gap:4px;">';
+        bDef.advs.forEach(function(adv) {
+          html += '<div style="display:flex;align-items:flex-start;gap:7px;font-size:11px;">';
+          if (unlocked) {
+            html += '<i class="fa-solid fa-circle-check" style="color:#4caf50;font-size:11px;margin-top:1px;flex-shrink:0;"></i><span style="color:#bbb;">'+adv+'</span>';
+          } else {
+            html += '<i class="fa-solid fa-lock" style="color:#222;font-size:11px;margin-top:1px;flex-shrink:0;"></i><span style="color:#2e2e2e;">'+adv+'</span>';
+          }
+          html += '</div>';
+        });
+        html += '</div></div>';
+      });
     }
 
     html += '<div class="ptnr-stat-row">'
