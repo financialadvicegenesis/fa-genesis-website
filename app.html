@@ -7144,11 +7144,9 @@ function showClientLevels() {
         });
         // Gate message for locked levels
         if (!unlocked) {
-          var qgNeeded = lvl.pts - qg;
           html += '<div style="margin-top:10px;background:rgba(255,215,0,.04);border:1px solid #252500;border-radius:8px;padding:8px 10px;font-size:11px;color:#555;text-align:center;">'
             + '<i class="fa-solid fa-lock" style="margin-right:5px;color:#333;"></i>'
             + 'Débloquez le niveau <strong style="color:#444;">' + lvl.label + '</strong> pour accéder à ces avantages'
-            + (qgNeeded > 0 ? ' — encore <strong style="color:#555;">' + qgNeeded + ' QG</strong>' : '')
             + '</div>';
         }
         html += '</div></div>';
