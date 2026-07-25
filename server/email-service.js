@@ -1985,6 +1985,35 @@ async function sendOtpSms(phone, otpCode) {
     console.log('[SMS] OTP envoyé via Brevo à ' + phone);
 }
 
+/**
+ * Envoi d'un email de prospection B2B depuis l'admin vers un prospect repéré.
+ */
+async function sendProspectContactEmail(prospect, subject, bodyText) {
+    try {
+        if (!transporter) {
+            initializeTransporter();
+            if (!transporter) return { success: false, reason: 'no_transporter' };
+        }
+        var bodyHtml = String(bodyText).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g, '<br>');
+        var content = '<p style="color:#333333;font-size:15px;line-height:1.8;">' + bodyHtml + '</p>';
+        var html = getEmailTemplate(content, subject);
+        var adminEmail = process.env.EMAIL_ADMIN_ADDRESS || process.env.EMAIL_FROM_ADDRESS || process.env.SMTP_USER;
+        var mailOptions = {
+            from: '"FA GENESIS" <' + (process.env.EMAIL_FROM_ADDRESS || process.env.SMTP_USER) + '>',
+            to: prospect.email,
+            replyTo: adminEmail,
+            subject: subject,
+            html: html
+        };
+        var result = await transporter.sendMail(mailOptions);
+        console.log('[EMAIL] Prospect contacté : ' + prospect.email + ' | sujet : ' + subject);
+        return { success: true, messageId: result.messageId };
+    } catch (error) {
+        console.error('[EMAIL] Erreur envoi prospect:', error.message);
+        return { success: false, error: error.message };
+    }
+}
+
 module.exports = {
     initializeTransporter,
     sendContactConfirmation,
@@ -2016,7 +2045,8 @@ module.exports = {
     sendOtpEmail,
     sendOtpSms,
     sendPartnerServiceOrderConfirmation,
-    sendSupportTicketAdminEmail
+    sendSupportTicketAdminEmail,
+    sendProspectContactEmail
 };
 
 // ============================================================

@@ -1393,6 +1393,38 @@
         </div>
     </div>
 
+    <!-- MODAL COMPOSER EMAIL PROSPECT -->
+    <div id="prospectComposeModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:none;align-items:center;justify-content:center;padding:16px;">
+        <div style="background:#111;border:1px solid rgba(255,215,0,.3);border-radius:12px;width:100%;max-width:580px;box-shadow:0 20px 60px rgba(0,0,0,.8);">
+            <!-- En-tête -->
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid rgba(255,255,255,.08);">
+                <div>
+                    <div style="font-size:14px;font-weight:900;text-transform:uppercase;color:var(--genesis-yellow);letter-spacing:.5px;"><i class="fas fa-envelope mr-2"></i>Rédiger un email</div>
+                    <div id="prospectComposeRecipient" style="font-size:12px;color:#888;margin-top:2px;"></div>
+                </div>
+                <button onclick="closeProspectCompose()" style="background:none;border:none;color:#666;font-size:18px;cursor:pointer;padding:4px 8px;border-radius:4px;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#666'">&times;</button>
+            </div>
+            <!-- Corps -->
+            <div style="padding:20px 22px;">
+                <div style="margin-bottom:14px;">
+                    <label style="display:block;font-size:11px;color:#888;font-weight:700;text-transform:uppercase;margin-bottom:5px;">Objet</label>
+                    <input id="prospectComposeSubject" type="text" style="width:100%;background:#0a0a0a;border:1px solid #333;color:#fff;padding:10px 12px;font-size:13px;border-radius:6px;box-sizing:border-box;" placeholder="Objet de l'email...">
+                </div>
+                <div style="margin-bottom:18px;">
+                    <label style="display:block;font-size:11px;color:#888;font-weight:700;text-transform:uppercase;margin-bottom:5px;">Message</label>
+                    <textarea id="prospectComposeBody" rows="10" style="width:100%;background:#0a0a0a;border:1px solid #333;color:#fff;padding:10px 12px;font-size:13px;border-radius:6px;resize:vertical;box-sizing:border-box;line-height:1.6;" placeholder="Rédigez votre message..."></textarea>
+                </div>
+                <div id="prospectComposeFeedback" style="display:none;margin-bottom:14px;padding:10px 14px;border-radius:6px;font-size:13px;font-weight:700;"></div>
+                <div style="display:flex;gap:10px;justify-content:flex-end;">
+                    <button onclick="closeProspectCompose()" style="background:transparent;border:1px solid #444;color:#aaa;padding:10px 20px;font-size:13px;font-weight:700;cursor:pointer;border-radius:6px;">Annuler</button>
+                    <button id="prospectComposeSendBtn" onclick="sendProspectEmail()" style="background:var(--genesis-yellow);border:2px solid #000;color:#000;padding:10px 24px;font-size:13px;font-weight:900;cursor:pointer;border-radius:6px;text-transform:uppercase;letter-spacing:.5px;">
+                        <i class="fas fa-paper-plane mr-2"></i>Envoyer
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="config.js"></script>
     <script src="auth.js"></script>
     <script src="offers-config.js"></script>
@@ -5255,9 +5287,7 @@
                 actionHtml += '<a href="https://www.instagram.com/explore/search/?q=' + nameParts + '" target="_blank" rel="noopener noreferrer" style="color:#C13584;font-size:11px;white-space:nowrap;"><i class="fab fa-instagram mr-1"></i>Instagram</a>';
                 actionHtml += '<a href="https://www.tiktok.com/search?q=' + nameParts + '" target="_blank" rel="noopener noreferrer" style="color:#69C9D0;font-size:11px;white-space:nowrap;"><i class="fab fa-tiktok mr-1"></i>TikTok</a>';
                 if (p.email) {
-                    var mailSubject = encodeURIComponent('FA GENESIS — Améliorons votre présence visuelle');
-                    var mailBody = encodeURIComponent('Bonjour,\n\nNous avons repéré ' + p.name + ' et pensons pouvoir renforcer votre présence visuelle en ligne.\n\nCordialement,\nL\'équipe FA GENESIS');
-                    actionHtml += '<a href="mailto:' + escHtml(p.email) + '?subject=' + mailSubject + '&body=' + mailBody + '" style="background:var(--genesis-yellow);color:#000;font-size:11px;font-weight:900;padding:3px 8px;text-decoration:none;display:inline-block;border-radius:3px;border:1px solid rgba(0,0,0,.3);margin-top:2px;white-space:nowrap;"><i class="fas fa-envelope mr-1"></i>Contacter</a>';
+                    actionHtml += '<button onclick="openProspectCompose(\'' + p.id + '\')" style="background:var(--genesis-yellow);color:#000;font-size:11px;font-weight:900;padding:4px 10px;cursor:pointer;border-radius:3px;border:1px solid rgba(0,0,0,.3);margin-top:2px;white-space:nowrap;"><i class="fas fa-envelope mr-1"></i>Rédiger</button>';
                 }
                 actionHtml += '<button onclick="deleteProspect(\'' + p.id + '\')" style="background:transparent;border:none;color:#555;font-size:11px;cursor:pointer;text-align:left;padding:0;margin-top:2px;" title="Supprimer ce prospect"><i class="fas fa-trash mr-1"></i>Retirer</button>';
                 actionHtml += '</div>';
@@ -5400,6 +5430,85 @@
                 activeBtn.style.color = '#000';
                 activeBtn.style.border = '1px solid #000';
             }
+        }
+
+        var _prospectComposeId = null;
+
+        function openProspectCompose(id) {
+            var prospect = _prospectsData.find(function(p) { return p.id === id; });
+            if (!prospect || !prospect.email) return;
+            _prospectComposeId = id;
+
+            var recipientEl = document.getElementById('prospectComposeRecipient');
+            var subjectEl = document.getElementById('prospectComposeSubject');
+            var bodyEl = document.getElementById('prospectComposeBody');
+            var feedbackEl = document.getElementById('prospectComposeFeedback');
+            var sendBtn = document.getElementById('prospectComposeSendBtn');
+            var modal = document.getElementById('prospectComposeModal');
+
+            if (recipientEl) recipientEl.textContent = 'À : ' + prospect.name + ' <' + prospect.email + '>';
+            if (subjectEl) subjectEl.value = 'FA GENESIS — Améliorons votre présence visuelle';
+            if (bodyEl) bodyEl.value = 'Bonjour,\n\nNous avons repéré ' + prospect.name + ' et pensons que nous pouvons vous aider à renforcer votre présence visuelle en ligne.\n\nNous accompagnons les entreprises de Montpellier dans leur développement digital : identité visuelle, photos professionnelles, vidéos, stratégie réseaux sociaux.\n\nSeriez-vous disponible pour un échange rapide ?\n\nCordialement,\nL\'équipe FA GENESIS\nFinancialadvicegenesis@gmail.com';
+            if (feedbackEl) { feedbackEl.style.display = 'none'; feedbackEl.textContent = ''; }
+            if (sendBtn) { sendBtn.disabled = false; sendBtn.innerHTML = '<i class="fas fa-paper-plane mr-2"></i>Envoyer'; }
+            if (modal) { modal.style.display = 'flex'; }
+        }
+
+        function closeProspectCompose() {
+            _prospectComposeId = null;
+            var modal = document.getElementById('prospectComposeModal');
+            if (modal) modal.style.display = 'none';
+        }
+
+        function sendProspectEmail() {
+            if (!_prospectComposeId) return;
+            var subject = (document.getElementById('prospectComposeSubject') || {}).value || '';
+            var body    = (document.getElementById('prospectComposeBody')    || {}).value || '';
+            var feedbackEl = document.getElementById('prospectComposeFeedback');
+            var sendBtn    = document.getElementById('prospectComposeSendBtn');
+
+            if (!subject.trim()) { showProspectComposeFeedback('Veuillez saisir un objet.', false); return; }
+            if (!body.trim())    { showProspectComposeFeedback('Veuillez saisir un message.', false); return; }
+
+            if (sendBtn) { sendBtn.disabled = true; sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Envoi...'; }
+            if (feedbackEl) feedbackEl.style.display = 'none';
+
+            fetch(API_BASE_URL + '/api/admin/prospects/' + _prospectComposeId + '/send-email', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ subject: subject.trim(), body: body.trim() })
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    showProspectComposeFeedback('Email envoyé avec succès !', true);
+                    if (sendBtn) { sendBtn.disabled = true; sendBtn.innerHTML = '<i class="fas fa-check mr-2"></i>Envoyé'; }
+                    // Mettre à jour statut local si besoin
+                    var idx = _prospectsData.findIndex(function(p) { return p.id === _prospectComposeId; });
+                    if (idx !== -1 && (_prospectsData[idx].status === 'new' || _prospectsData[idx].status === 'to_contact')) {
+                        _prospectsData[idx].status = 'contacted';
+                        renderProspectsTable();
+                    }
+                    setTimeout(closeProspectCompose, 1800);
+                } else {
+                    showProspectComposeFeedback(data.error || 'Erreur d\'envoi.', false);
+                    if (sendBtn) { sendBtn.disabled = false; sendBtn.innerHTML = '<i class="fas fa-paper-plane mr-2"></i>Envoyer'; }
+                }
+            })
+            .catch(function() {
+                showProspectComposeFeedback('Erreur réseau. Vérifiez la connexion au serveur.', false);
+                if (sendBtn) { sendBtn.disabled = false; sendBtn.innerHTML = '<i class="fas fa-paper-plane mr-2"></i>Envoyer'; }
+            });
+        }
+
+        function showProspectComposeFeedback(msg, success) {
+            var el = document.getElementById('prospectComposeFeedback');
+            if (!el) return;
+            el.textContent = msg;
+            el.style.display = 'block';
+            el.style.background = success ? 'rgba(76,175,80,.15)' : 'rgba(255,107,107,.15)';
+            el.style.color = success ? '#4CAF50' : '#ff6b6b';
+            el.style.border = '1px solid ' + (success ? 'rgba(76,175,80,.3)' : 'rgba(255,107,107,.3)');
         }
 </script>
 </body>

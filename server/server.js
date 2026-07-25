@@ -14785,6 +14785,42 @@ app.post('/api/admin/prospects/:id/find-email', async (req, res) => {
 });
 
 /**
+ * POST /api/admin/prospects/:id/send-email
+ * Envoie un email de prospection à l'entreprise via le service SMTP/Brevo existant.
+ * Body: { subject, body }
+ */
+app.post('/api/admin/prospects/:id/send-email', async (req, res) => {
+    try {
+        var prospects = loadProspects();
+        var idx = prospects.findIndex(function(p) { return p.id === req.params.id; });
+        if (idx === -1) return res.status(404).json({ error: 'Prospect non trouvé' });
+        var prospect = prospects[idx];
+        if (!prospect.email) return res.status(400).json({ error: 'Aucun email renseigné pour ce prospect' });
+
+        var subject = (req.body.subject || '').trim();
+        var body    = (req.body.body    || '').trim();
+        if (!subject) return res.status(400).json({ error: 'Objet requis' });
+        if (!body)    return res.status(400).json({ error: 'Corps du message requis' });
+
+        var result = await emailService.sendProspectContactEmail(prospect, subject, body);
+        if (!result.success) {
+            return res.status(500).json({ error: 'Erreur d\'envoi : ' + (result.error || result.reason || 'inconnu') });
+        }
+
+        // Passer automatiquement en statut "Contacté"
+        if (prospects[idx].status === 'new' || prospects[idx].status === 'to_contact') {
+            prospects[idx].status = 'contacted';
+        }
+        prospects[idx].last_contact_at = new Date().toISOString();
+        saveProspects(prospects);
+        res.json({ success: true });
+    } catch (err) {
+        console.error('[API] Erreur send-email prospect:', err);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
  * DELETE /api/admin/prospects/:id
  * Supprime un prospect de la table.
  */
