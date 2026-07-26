@@ -63,6 +63,7 @@ const PARTNER_REVIEWS_FILE = path.join(__dirname, 'data', 'partner_reviews.json'
 const HALL_OF_FAME_FILE = path.join(__dirname, 'data', 'hall_of_fame.json');
 const EVENTS_FILE = path.join(__dirname, 'data', 'events.json');
 const JEREMIE_MEMORY_FILE = path.join(__dirname, 'data', 'jeremie_memory.json');
+const PROMOTIONS_FILE     = path.join(__dirname, 'data', 'promotions.json');
 const ADMIN_SESSIONS_FILE = path.join(__dirname, 'data', 'admin_sessions.json');
 const NOTIFICATIONS_FILE = path.join(__dirname, 'data', 'notifications.json');
 const DISPUTES_FILE = path.join(__dirname, 'data', 'disputes.json');
@@ -408,6 +409,30 @@ function loadPayouts() {
 function savePayouts(data) {
     try { fs.writeFileSync(PAYOUTS_FILE, JSON.stringify(data, null, 2), 'utf8'); }
     catch(e) { console.error('[PAYOUT] Erreur sauvegarde:', e); }
+}
+
+function loadPromotions() {
+    try {
+        if (!fs.existsSync(PROMOTIONS_FILE)) return [];
+        return JSON.parse(fs.readFileSync(PROMOTIONS_FILE, 'utf8')) || [];
+    } catch(e) { return []; }
+}
+function savePromotions(data) {
+    try { fs.writeFileSync(PROMOTIONS_FILE, JSON.stringify(data, null, 2), 'utf8'); }
+    catch(e) { console.error('[PROMO] Erreur sauvegarde:', e); }
+}
+
+// Types de promotion prévus — seul 'merchant' est utilisable en V1
+var PROMO_TYPES_ALL   = ['percentage','fixed','free_service','bonus','free_consultation','free_travel','promo_code'];
+// Financeurs prévus dans l'architecture — seul 'merchant' est activé en V1
+var FUNDING_TYPES_ALL = ['merchant','platform','partner','shared','loyalty','referral','seasonal'];
+
+function isPromoActive(promo) {
+    if (!promo || promo.status !== 'active' || promo.funding_type !== 'merchant') return false;
+    var now = new Date();
+    if (new Date(promo.start_date) > now || new Date(promo.end_date) < now) return false;
+    if (promo.max_uses && promo.current_uses >= promo.max_uses) return false;
+    return true;
 }
 
 // ── Notifications persistantes ──
@@ -11028,7 +11053,8 @@ app.post('/api/events/:id/rsvp', function(req, res) {
 // Annuaire public des partenaires (recherche, filtre categorie, filtre prix)
 app.get('/api/partners/directory', (req, res) => {
     try {
-        const { category, q, maxPrice, city, sort } = req.query;
+        const { category, q, maxPrice, city, sort, promo } = req.query;
+        const allPromos = loadPromotions();
         let partners = loadPartners().filter(p => p.accountStatus === 'active');
 
         if (category) {
@@ -11050,6 +11076,11 @@ app.get('/api/partners/directory', (req, res) => {
             partners = partners.filter(p => (p.city || '').toLowerCase().includes(needleCity));
         }
 
+        // Filtre "en promotion" : ne garder que les partenaires avec une promo active
+        if (promo === 'true') {
+            partners = partners.filter(p => allPromos.some(pr => pr.partner_id === p.id && isPromoActive(pr)));
+        }
+
         // Tri applique sur les partenaires bruts (avant la mise en forme) afin de pouvoir
         // reutiliser le score composite / la note / la date d'inscription le cas echeant.
         const sortMode = sort || 'score';
@@ -11068,7 +11099,7 @@ app.get('/api/partners/directory', (req, res) => {
         }
 
         let results = partners.map((p, idx) => {
-            return Object.assign(partnerDirectoryShape(p), {
+            return Object.assign(partnerDirectoryShape(p, allPromos), {
                 verified: true,
                 rank: (sortMode === 'score' && idx < 3) ? idx + 1 : null
             });
@@ -11191,7 +11222,9 @@ app.get('/api/partners/featured', (req, res) => {
     }
 });
 
-function partnerDirectoryShape(p) {
+function partnerDirectoryShape(p, allPromos) {
+    var promos = allPromos || loadPromotions();
+    var ap = promos.find(function(pr) { return pr.partner_id === p.id && isPromoActive(pr); }) || null;
     const coords = getCityCoords(p.city);
     return {
         id: p.id,
@@ -11208,7 +11241,8 @@ function partnerDirectoryShape(p) {
         responseTimeCommitmentMinutes: typeof p.responseTimeCommitmentMinutes === 'number' ? p.responseTimeCommitmentMinutes : null,
         rating: getPartnerRatingSummary(p.id),
         badge: getPartnerBadge(p),
-        constellation: getConstellationTier(p)
+        constellation: getConstellationTier(p),
+        activePromo: ap ? { id: ap.id, title: ap.title, type: ap.type, value: ap.value, end_date: ap.end_date } : null
     };
 }
 
@@ -16584,4 +16618,159 @@ app.listen(PORT, async () => {
 
     // Nettoyer les faux comptes partenaires de demonstration crees par d'anciens demarrages
     await purgeSeedPartnerAccounts();
+
+// ── PROMOTIONS ────────────────────────────────────────────────────────────────
+
+// GET /api/partner/promotions — liste des promotions du partenaire connecté
+app.get('/api/partner/promotions', authenticatePartner, (req, res) => {
+    try {
+        var pid = req.partner.id;
+        var promos = loadPromotions().filter(function(p) { return p.partner_id === pid; });
+        res.json({ ok: true, promotions: promos });
+    } catch(e) {
+        console.error('[PROMO GET]', e.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// POST /api/partner/promotions — créer une promotion
+app.post('/api/partner/promotions', authenticatePartner, (req, res) => {
+    try {
+        var pid = req.partner.id;
+        var b = req.body;
+        var title = (b.title || '').trim();
+        var type  = b.type || '';
+        if (!title)                             return res.status(400).json({ error: 'Titre requis' });
+        if (!PROMO_TYPES_ALL.includes(type))    return res.status(400).json({ error: 'Type invalide' });
+        if (!b.start_date || !b.end_date)       return res.status(400).json({ error: 'Dates requises' });
+        if (new Date(b.end_date) <= new Date(b.start_date)) return res.status(400).json({ error: 'La date de fin doit être après la date de début' });
+        if ((type === 'percentage' || type === 'fixed') && (b.value === null || b.value === undefined || isNaN(parseFloat(b.value)))) {
+            return res.status(400).json({ error: 'Valeur numérique requise pour ce type' });
+        }
+        if (type === 'percentage' && (parseFloat(b.value) <= 0 || parseFloat(b.value) > 99)) {
+            return res.status(400).json({ error: 'Le pourcentage doit être entre 1 et 99' });
+        }
+        var promo = {
+            id: 'promo_' + Date.now() + '_' + Math.random().toString(36).slice(2,6),
+            partner_id: pid,
+            title: title,
+            description: (b.description || '').trim(),
+            type: type,
+            value: (type === 'percentage' || type === 'fixed') ? parseFloat(b.value) : null,
+            start_date: new Date(b.start_date).toISOString(),
+            end_date: new Date(b.end_date).toISOString(),
+            max_uses: b.max_uses ? parseInt(b.max_uses) : null,
+            current_uses: 0,
+            min_amount: b.min_amount ? parseFloat(b.min_amount) : null,
+            categories: Array.isArray(b.categories) ? b.categories : [],
+            services: Array.isArray(b.services) ? b.services : [],
+            status: 'active',
+            funding_type: 'merchant',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            bookings_generated: 0,
+            revenue_generated: 0
+        };
+        var all = loadPromotions();
+        all.push(promo);
+        savePromotions(all);
+        res.json({ ok: true, promotion: promo });
+    } catch(e) {
+        console.error('[PROMO CREATE]', e.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// PUT /api/partner/promotions/:id — modifier une promotion
+app.put('/api/partner/promotions/:id', authenticatePartner, (req, res) => {
+    try {
+        var pid = req.partner.id;
+        var all = loadPromotions();
+        var idx = all.findIndex(function(p) { return p.id === req.params.id && p.partner_id === pid; });
+        if (idx === -1) return res.status(404).json({ error: 'Promotion introuvable' });
+        var pr = all[idx];
+        var b  = req.body;
+        if (b.title       !== undefined) pr.title       = b.title.trim();
+        if (b.description !== undefined) pr.description = b.description.trim();
+        if (b.type        !== undefined && PROMO_TYPES_ALL.includes(b.type)) pr.type = b.type;
+        if (b.value       !== undefined) pr.value       = b.value !== null ? parseFloat(b.value) : null;
+        if (b.start_date  !== undefined) pr.start_date  = new Date(b.start_date).toISOString();
+        if (b.end_date    !== undefined) pr.end_date    = new Date(b.end_date).toISOString();
+        if (b.max_uses    !== undefined) pr.max_uses    = b.max_uses ? parseInt(b.max_uses) : null;
+        if (b.min_amount  !== undefined) pr.min_amount  = b.min_amount ? parseFloat(b.min_amount) : null;
+        if (b.categories  !== undefined) pr.categories  = Array.isArray(b.categories) ? b.categories : [];
+        if (b.services    !== undefined) pr.services    = Array.isArray(b.services) ? b.services : [];
+        pr.updated_at = new Date().toISOString();
+        all[idx] = pr;
+        savePromotions(all);
+        res.json({ ok: true, promotion: pr });
+    } catch(e) {
+        console.error('[PROMO UPDATE]', e.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// POST /api/partner/promotions/:id/suspend — suspendre / réactiver (bascule)
+app.post('/api/partner/promotions/:id/suspend', authenticatePartner, (req, res) => {
+    try {
+        var pid = req.partner.id;
+        var all = loadPromotions();
+        var idx = all.findIndex(function(p) { return p.id === req.params.id && p.partner_id === pid; });
+        if (idx === -1) return res.status(404).json({ error: 'Promotion introuvable' });
+        all[idx].status     = all[idx].status === 'suspended' ? 'active' : 'suspended';
+        all[idx].updated_at = new Date().toISOString();
+        savePromotions(all);
+        res.json({ ok: true, status: all[idx].status });
+    } catch(e) {
+        console.error('[PROMO SUSPEND]', e.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// DELETE /api/partner/promotions/:id — supprimer
+app.delete('/api/partner/promotions/:id', authenticatePartner, (req, res) => {
+    try {
+        var pid = req.partner.id;
+        var all = loadPromotions();
+        var idx = all.findIndex(function(p) { return p.id === req.params.id && p.partner_id === pid; });
+        if (idx === -1) return res.status(404).json({ error: 'Promotion introuvable' });
+        all.splice(idx, 1);
+        savePromotions(all);
+        res.json({ ok: true });
+    } catch(e) {
+        console.error('[PROMO DELETE]', e.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// GET /api/promotions — promotions actives publiques (client)
+app.get('/api/promotions', (req, res) => {
+    try {
+        var partner_id = req.query.partner_id || null;
+        var category   = req.query.category   || null;
+        var type       = req.query.type       || null;
+        var max        = Math.min(parseInt(req.query.limit) || 50, 100);
+        var all = loadPromotions().filter(function(pr) {
+            if (!isPromoActive(pr)) return false;
+            if (partner_id && pr.partner_id !== partner_id) return false;
+            if (category && pr.categories.length > 0 && !pr.categories.includes(category)) return false;
+            if (type && pr.type !== type) return false;
+            return true;
+        });
+        var partners = loadPartners();
+        var enriched = all.slice(0, max).map(function(pr) {
+            var p = partners.find(function(x) { return x.id === pr.partner_id; });
+            return Object.assign({}, pr, {
+                partner_name: p ? ((p.prenom || '') + ' ' + (p.nom || '')).trim() : '',
+                partner_photo: p ? (p.photo || null) : null,
+                partner_type: p ? (p.partner_type || '') : ''
+            });
+        });
+        enriched.sort(function(a, b) { return new Date(a.end_date) - new Date(b.end_date); });
+        res.json({ ok: true, promotions: enriched });
+    } catch(e) {
+        console.error('[PROMOS PUBLIC]', e.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
 });

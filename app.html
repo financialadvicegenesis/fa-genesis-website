@@ -2668,6 +2668,10 @@ a{text-decoration:none;color:inherit}
                 <i class="pni fa-solid fa-trophy"></i><span>Réputation</span>
                 <i class="fa-solid fa-chevron-right ptnr-snbtn-arrow"></i>
               </button>
+              <button class="ptnr-snbtn" id="ptnr-sn-promotions" onclick="_ptnrNav('promotions')">
+                <i class="pni fa-solid fa-tag"></i><span>Promotions</span>
+                <i class="fa-solid fa-chevron-right ptnr-snbtn-arrow"></i>
+              </button>
               <button class="ptnr-snbtn" id="ptnr-sn-portfolio" onclick="_ptnrNav('portfolio')">
                 <i class="pni fa-solid fa-images"></i><span>Portfolio</span>
                 <i class="fa-solid fa-chevron-right ptnr-snbtn-arrow"></i>
@@ -2781,6 +2785,12 @@ a{text-decoration:none;color:inherit}
         <div class="ptnr-screen" id="ptnr-screen-reputation">
           <div class="ptnr-section-title">Ma réputation</div>
           <div id="ptnr-reputation-content"></div>
+        </div>
+
+        <!-- Sub-screen: Promotions -->
+        <div class="ptnr-screen" id="ptnr-screen-promotions">
+          <div class="ptnr-section-title">Mes promotions</div>
+          <div id="ptnr-promotions-content"></div>
         </div>
 
         <!-- Sub-screen: Portfolio -->
@@ -3537,7 +3547,13 @@ function partnerResponseLabel(p){
 }
 function partnerMetaLineHtml(p){
   var resp = partnerResponseLabel(p);
-  return '<div class="p-reco-meta"><i class="fa-solid fa-tag"></i> '+partnerPriceLabel(p)+(resp?' <span class="p-reco-meta-sep">·</span> <i class="fa-solid fa-clock"></i> '+resp:'')+'</div>';
+  var promoBadge = '';
+  if (p.activePromo) {
+    var _pt = p.activePromo.type; var _pv = p.activePromo.value;
+    var _pl = _pt==='percentage'?('-'+_pv+'%') : _pt==='fixed'?('-'+_pv+'€') : '🔥 Promo';
+    promoBadge = ' <span style="display:inline-flex;align-items:center;background:rgba(255,59,48,.13);border:1px solid rgba(255,59,48,.35);border-radius:10px;padding:2px 7px;font-size:10px;font-weight:800;color:#ff4d4d;">'+_pl+'</span>';
+  }
+  return '<div class="p-reco-meta"><i class="fa-solid fa-tag"></i> '+partnerPriceLabel(p)+(resp?' <span class="p-reco-meta-sep">·</span> <i class="fa-solid fa-clock"></i> '+resp:'')+promoBadge+'</div>';
 }
 function recoPartnerCard(p, idx, tagOverride){
   var label = partnerTypeLabel(p);
@@ -3744,12 +3760,13 @@ function loadExplorerMap(mode, cityFilter){
 }
 // ── PRESTATAIRES — ANNUAIRE CLASSÉ ──────────────────────────────
 var _rankCategory = null, _rankQuery = '', _rankCity = '', _rankSort = 'score', _rankSearchTimer = null, _rankCityTimer = null;
+var _rankPromoFilter = false;
 var _dirCollabFilter = false;
 var _clientCollabPartnerIds = [];
 var _favPartnersCache = [], _favCollabFilter = false;
 
 function renderPrestataires(){
-  _rankCategory = null; _rankQuery = ''; _rankCity = ''; _rankSort = 'score'; _dirCollabFilter = false;
+  _rankCategory = null; _rankQuery = ''; _rankCity = ''; _rankSort = 'score'; _rankPromoFilter = false; _dirCollabFilter = false;
   var html = '<div class="p-hero">'
     +'<div class="p-hero-title">Prestataires</div>'
     +'<div class="p-hero-sub">Le classement complet, mis à jour en continu.</div>'
@@ -3811,6 +3828,7 @@ function loadRankedDirectory(){
   if(_rankCategory) params.push('category='+encodeURIComponent(_rankCategory));
   if(_rankQuery) params.push('q='+encodeURIComponent(_rankQuery));
   if(_rankCity) params.push('city='+encodeURIComponent(_rankCity));
+  if(_rankPromoFilter) params.push('promo=true');
   fetch(API+'/api/partners/directory?'+params.join('&'))
     .then(function(r){return r.json();})
     .then(function(data){
@@ -6363,9 +6381,16 @@ function _isCollabPartner(id){ return _clientCollabPartnerIds.indexOf(id) !== -1
 // Chips de filtre pour l'annuaire "Prestataires"
 function _renderDirSignalChips(){
   var el = document.getElementById('p-rank-signal-chips'); if(!el) return;
-  if(!USER || GUEST || !_clientCollabPartnerIds.length){ el.innerHTML=''; return; }
-  el.innerHTML = '<button class="p-dir-chip'+(_dirCollabFilter?' on':'')+'" onclick="_toggleDirCollabFilter()">'
-    +'<i class="fa-solid fa-handshake"></i> Déjà travaillé avec vous</button>';
+  var chips = '<button class="p-dir-chip'+(_rankPromoFilter?' on':'')+'" onclick="_toggleDirPromoFilter()" style="'+(_rankPromoFilter?'background:rgba(255,59,48,.2);border-color:rgba(255,59,48,.5);color:#ff4d4d;':'')+'"><i class="fa-solid fa-tag"></i> En promotion</button>';
+  if(USER && !GUEST && _clientCollabPartnerIds.length){
+    chips += ' <button class="p-dir-chip'+(_dirCollabFilter?' on':'')+'" onclick="_toggleDirCollabFilter()"><i class="fa-solid fa-handshake"></i> Déjà travaillé avec vous</button>';
+  }
+  el.innerHTML = chips;
+}
+function _toggleDirPromoFilter(){
+  _rankPromoFilter = !_rankPromoFilter;
+  _renderDirSignalChips();
+  loadRankedDirectory();
 }
 function _toggleDirCollabFilter(){
   _dirCollabFilter = !_dirCollabFilter;
@@ -9087,8 +9112,9 @@ function _ptnrNav(screen){
   if(screen==='messages') _ptnrLoadMessages();
   if(screen==='missions') _ptnrLoadMissions();
   if(screen==='versements') _ptnrLoadVersements();
-  if(screen==='reputation') _ptnrLoadReputation();
-  if(screen==='portfolio') _ptnrLoadPortfolio();
+  if(screen==='reputation')  _ptnrLoadReputation();
+  if(screen==='promotions')  _ptnrLoadPromotions();
+  if(screen==='portfolio')   _ptnrLoadPortfolio();
   if(screen==='profil') _ptnrLoadProfilPhoto();
 }
 
@@ -12201,6 +12227,150 @@ function _ptnrImageFileToAvatarBase64(file, size, quality){
       img.onerror = function(){ reject(new Error('Format d\'image non supporté sur cet appareil')); };
       img.src = dataUri;
     });
+  });
+}
+
+// ── PROMOTIONS PARTENAIRE ──────────────────────────────────────────────────
+var _ptnrPromoFormOpen = false;
+var _ptnrPromoEditId   = null;
+
+var _PROMO_TYPE_LABELS = {
+  percentage:'Réduction en %', fixed:'Réduction montant fixe (€)',
+  free_service:'Prestation offerte', bonus:'Bonus offert',
+  free_consultation:'Consultation gratuite', free_travel:'Déplacement offert',
+  promo_code:'Code promotionnel'
+};
+
+function _ptnrLoadPromotions(){
+  var el = document.getElementById('ptnr-promotions-content');
+  if(!el) return;
+  el.innerHTML = _skeletonRows(2);
+  _ptnrFetch('/api/partner/promotions').then(function(data){
+    var promos = (data && data.promotions) || [];
+    var html = '<button onclick="_ptnrOpenPromoForm()" style="width:100%;background:linear-gradient(135deg,#FFD700,#e6c200);color:#1a1200;border:none;border-radius:14px;padding:14px;font-size:13px;font-weight:900;cursor:pointer;margin-bottom:16px;display:flex;align-items:center;justify-content:center;gap:8px;"><i class="fa-solid fa-plus"></i> Créer une promotion</button>';
+    if(!promos.length){
+      html += '<div class="ptnr-empty"><div class="ptnr-empty-ico"><i class="fa-solid fa-tag"></i></div><div class="ptnr-empty-txt">Aucune promotion créée</div><div class="ptnr-empty-sub">Vos promotions apparaîtront ici et seront visibles dans l\'annuaire.</div></div>';
+    } else {
+      promos.forEach(function(pr){
+        var now = new Date(); var end = new Date(pr.end_date);
+        var expired = end < now;
+        var statusColor = pr.status==='active' && !expired ? '#4caf50' : pr.status==='suspended' ? '#FFD700' : '#666';
+        var statusLabel = expired ? 'Expirée' : pr.status==='active' ? 'Active' : 'Suspendue';
+        var typeLabel   = _PROMO_TYPE_LABELS[pr.type] || pr.type;
+        var valueStr    = pr.type==='percentage'?(' — -'+pr.value+'%') : pr.type==='fixed'?(' — -'+pr.value+'€') : '';
+        var daysLeft    = expired ? '' : Math.ceil((end-now)/(1000*60*60*24))+' j restant'+(Math.ceil((end-now)/(1000*60*60*24))>1?'s':'');
+        html += '<div class="ptnr-card" style="border-left:3px solid '+statusColor+';margin-bottom:12px;">';
+        html += '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;">';
+        html += '<span style="font-size:13px;font-weight:800;color:#fff;flex:1;">'+pr.title+'</span>';
+        html += '<span style="font-size:10px;font-weight:700;color:'+statusColor+';background:rgba(255,255,255,.04);border:1px solid '+statusColor+'40;border-radius:8px;padding:2px 8px;">'+statusLabel+'</span>';
+        html += '</div>';
+        html += '<div style="font-size:11px;color:#888;margin-bottom:4px;">'+typeLabel+valueStr+'</div>';
+        if(pr.description) html += '<div style="font-size:11px;color:#666;margin-bottom:6px;">'+pr.description+'</div>';
+        html += '<div style="font-size:11px;color:#555;margin-bottom:8px;">Du '+_ptnrFmt(pr.start_date)+' au '+_ptnrFmt(pr.end_date)+(daysLeft?' <span style="color:#FFD700;font-weight:700;">('+daysLeft+')</span>':'')+'</div>';
+        html += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">';
+        html += '<div style="background:#111;border:1px solid #1e1e1e;border-radius:10px;padding:6px 10px;font-size:11px;color:#aaa;"><i class="fa-solid fa-users" style="color:#666;"></i> '+pr.current_uses+(pr.max_uses?'/'+pr.max_uses:'')+' utilisation'+(pr.current_uses!==1?'s':'')+'</div>';
+        html += '<div style="background:#111;border:1px solid #1e1e1e;border-radius:10px;padding:6px 10px;font-size:11px;color:#aaa;"><i class="fa-solid fa-calendar-check" style="color:#666;"></i> '+pr.bookings_generated+' réservation'+(pr.bookings_generated!==1?'s':'')+'</div>';
+        html += '<div style="background:#111;border:1px solid #1e1e1e;border-radius:10px;padding:6px 10px;font-size:11px;color:#aaa;"><i class="fa-solid fa-euro-sign" style="color:#666;"></i> '+Number(pr.revenue_generated||0).toFixed(0)+' € CA généré</div>';
+        html += '</div>';
+        if(!expired){
+          html += '<div style="display:flex;gap:8px;">';
+          html += '<button onclick="_ptnrOpenPromoForm(\''+pr.id+'\')" style="flex:1;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:10px;padding:9px;font-size:11px;font-weight:700;color:#aaa;cursor:pointer;"><i class="fa-solid fa-pen"></i> Modifier</button>';
+          html += '<button onclick="_ptnrTogglePromo(\''+pr.id+'\')" style="flex:1;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:10px;padding:9px;font-size:11px;font-weight:700;color:'+(pr.status==='suspended'?'#4caf50':'#FFD700')+';cursor:pointer;">'+(pr.status==='suspended'?'<i class="fa-solid fa-play"></i> Réactiver':'<i class="fa-solid fa-pause"></i> Suspendre')+'</button>';
+          html += '<button onclick="_ptnrDeletePromo(\''+pr.id+'\')" style="flex:0 0 auto;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:10px;padding:9px 12px;font-size:11px;font-weight:700;color:#ef4444;cursor:pointer;"><i class="fa-solid fa-trash"></i></button>';
+          html += '</div>';
+        }
+        html += '</div>';
+      });
+    }
+    el.innerHTML = html;
+  }).catch(function(){ el.innerHTML = '<div class="ptnr-empty"><div class="ptnr-empty-txt">Erreur de chargement</div></div>'; });
+}
+
+function _ptnrOpenPromoForm(editId){
+  _ptnrPromoEditId = editId || null;
+  var el = document.getElementById('ptnr-promotions-content'); if(!el) return;
+  var today = new Date().toISOString().slice(0,10);
+  var endDefault = new Date(Date.now()+30*864e5).toISOString().slice(0,10);
+  var typeOpts = Object.keys(_PROMO_TYPE_LABELS).map(function(k){
+    return '<option value="'+k+'">'+_PROMO_TYPE_LABELS[k]+'</option>';
+  }).join('');
+  var html = '<div class="ptnr-card" style="border:1.5px solid #FFD700;margin-bottom:16px;">';
+  html += '<div style="font-size:13px;font-weight:900;color:#FFD700;margin-bottom:14px;">'+(editId?'Modifier la promotion':'Nouvelle promotion')+'</div>';
+  html += '<input class="ptnr-input" id="pf-promo-title" type="text" placeholder="Titre de la promotion (ex : -20% sur le tournage)" style="margin-bottom:8px;">';
+  html += '<textarea class="ptnr-input" id="pf-promo-desc" placeholder="Description (optionnel)" rows="2" style="resize:none;margin-bottom:8px;"></textarea>';
+  html += '<select class="ptnr-input" id="pf-promo-type" onchange="_ptnrPromoTypeChange()" style="margin-bottom:8px;">'+typeOpts+'</select>';
+  html += '<div id="pf-promo-value-row" style="margin-bottom:8px;"><input class="ptnr-input" id="pf-promo-value" type="number" min="1" max="99" placeholder="Valeur (ex : 20 pour 20%)" style="margin:0;"></div>';
+  html += '<div style="display:flex;gap:8px;margin-bottom:8px;">';
+  html += '<div style="flex:1;"><div style="font-size:10px;color:#666;font-weight:700;margin-bottom:4px;">DATE DÉBUT</div><input class="ptnr-input" id="pf-promo-start" type="date" value="'+today+'" style="margin:0;"></div>';
+  html += '<div style="flex:1;"><div style="font-size:10px;color:#666;font-weight:700;margin-bottom:4px;">DATE FIN</div><input class="ptnr-input" id="pf-promo-end" type="date" value="'+endDefault+'" style="margin:0;"></div>';
+  html += '</div>';
+  html += '<div style="display:flex;gap:8px;margin-bottom:12px;">';
+  html += '<div style="flex:1;"><div style="font-size:10px;color:#666;font-weight:700;margin-bottom:4px;">MAX. UTILISATIONS (laisser vide = illimité)</div><input class="ptnr-input" id="pf-promo-maxuses" type="number" min="1" placeholder="ex : 50" style="margin:0;"></div>';
+  html += '<div style="flex:1;"><div style="font-size:10px;color:#666;font-weight:700;margin-bottom:4px;">MONTANT MINIMUM (€)</div><input class="ptnr-input" id="pf-promo-minamount" type="number" min="0" step="0.01" placeholder="ex : 100" style="margin:0;"></div>';
+  html += '</div>';
+  html += '<div id="pf-promo-err" style="display:none;color:#ef4444;font-size:12px;margin-bottom:8px;"></div>';
+  html += '<div style="display:flex;gap:8px;">';
+  html += '<button onclick="_ptnrSubmitPromo()" id="pf-promo-submit-btn" class="ptnr-login-btn" style="flex:2;margin:0;">PUBLIER LA PROMOTION</button>';
+  html += '<button onclick="_ptnrLoadPromotions()" style="flex:1;background:transparent;border:1px solid #2a2a2a;border-radius:12px;padding:10px;font-size:12px;font-weight:700;color:#555;cursor:pointer;">Annuler</button>';
+  html += '</div></div>';
+  el.innerHTML = html;
+}
+
+function _ptnrPromoTypeChange(){
+  var t = (document.getElementById('pf-promo-type')||{}).value;
+  var row = document.getElementById('pf-promo-value-row');
+  if(row) row.style.display = (t==='percentage'||t==='fixed') ? '' : 'none';
+}
+
+function _ptnrSubmitPromo(){
+  var title    = ((document.getElementById('pf-promo-title')||{}).value||'').trim();
+  var desc     = ((document.getElementById('pf-promo-desc')||{}).value||'').trim();
+  var type     = ((document.getElementById('pf-promo-type')||{}).value||'');
+  var value    = ((document.getElementById('pf-promo-value')||{}).value||'');
+  var start    = ((document.getElementById('pf-promo-start')||{}).value||'');
+  var end      = ((document.getElementById('pf-promo-end')||{}).value||'');
+  var maxUses  = ((document.getElementById('pf-promo-maxuses')||{}).value||'');
+  var minAmt   = ((document.getElementById('pf-promo-minamount')||{}).value||'');
+  var errEl    = document.getElementById('pf-promo-err');
+  var btn      = document.getElementById('pf-promo-submit-btn');
+  function showErr(msg){ if(errEl){errEl.style.display='';errEl.textContent=msg;} }
+  if(!title)         return showErr('Le titre est requis.');
+  if(!start||!end)   return showErr('Les dates sont requises.');
+  if(end <= start)   return showErr('La date de fin doit être après la date de début.');
+  if((type==='percentage'||type==='fixed') && !value) return showErr('La valeur est requise pour ce type.');
+  if(errEl) errEl.style.display='none';
+  if(btn){ btn.disabled=true; btn.textContent='Enregistrement...'; }
+  var body = { title:title, description:desc, type:type, start_date:start, end_date:end };
+  if(value) body.value = parseFloat(value);
+  if(maxUses) body.max_uses = parseInt(maxUses);
+  if(minAmt) body.min_amount = parseFloat(minAmt);
+  var url = _ptnrPromoEditId ? '/api/partner/promotions/'+_ptnrPromoEditId : '/api/partner/promotions';
+  var method = _ptnrPromoEditId ? 'PUT' : 'POST';
+  _ptnrFetch(url, method, body).then(function(data){
+    if(data && data.ok){
+      showToast('Promotion enregistrée','','success');
+      _ptnrLoadPromotions();
+    } else {
+      showErr((data&&data.error)||'Erreur serveur');
+      if(btn){ btn.disabled=false; btn.textContent='PUBLIER LA PROMOTION'; }
+    }
+  }).catch(function(){
+    showErr('Erreur de connexion');
+    if(btn){ btn.disabled=false; btn.textContent='PUBLIER LA PROMOTION'; }
+  });
+}
+
+function _ptnrTogglePromo(promoId){
+  _ptnrFetch('/api/partner/promotions/'+promoId+'/suspend','POST',{}).then(function(){
+    _ptnrLoadPromotions();
+  });
+}
+
+function _ptnrDeletePromo(promoId){
+  if(!confirm('Supprimer cette promotion ?')) return;
+  _ptnrFetch('/api/partner/promotions/'+promoId,'DELETE',null).then(function(){
+    showToast('Promotion supprimée','','info');
+    _ptnrLoadPromotions();
   });
 }
 
