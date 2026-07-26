@@ -6913,6 +6913,9 @@ app.get('/api/auth/me', (req, res) => {
             welcomeDiscountEligible: isClientFirstPaidOrder(user.email),
             referralBonusQG: user.referralBonusQG || 0,
             missionBonuses: user.missionBonuses || {},
+            profile_bio: user.profile_bio || '',
+            profile_theme: user.profile_theme || 'genesis',
+            profile_banner: user.profile_banner || null,
             patrimoineGenesis: {
                 prestationsRealisees: completedOrders,
                 partenairesDistincts: getClientDistinctPartnerCount(user.email),
@@ -8555,6 +8558,66 @@ function authenticateClient(req, res) {
     }
     return user;
 }
+
+// PUT /api/clients/update-personalization — thème, bannière, bio enrichie (Créateur+)
+app.put('/api/clients/update-personalization', function(req, res) {
+    try {
+        var user = authenticateClient(req, res);
+        if (!user) return;
+
+        var completedOrders = getClientCompletedOrders(user.email);
+        var qgPoints = getClientGenesisPoints(user, completedOrders);
+        var badge = getClientQGBadge(qgPoints);
+        if (!badge) return res.status(403).json({ error: 'Niveau Créateur requis pour personnaliser votre profil' });
+
+        var VALID_THEMES = ['genesis','blue','green','purple','red'];
+        var VALID_GENESIS_BANNERS = ['genesis:bronze','genesis:argent','genesis:or','genesis:elite'];
+        var LEVEL_ORDER = { bronze:1, argent:2, or:3, elite:4 };
+
+        var users = loadUsers();
+        var idx = users.findIndex(function(u) { return u.id === user.id; });
+        if (idx === -1) return res.status(404).json({ error: 'Utilisateur non trouvé' });
+
+        var profile_bio    = req.body.profile_bio;
+        var profile_theme  = req.body.profile_theme;
+        var profile_banner = req.body.profile_banner;
+
+        if (typeof profile_bio === 'string') {
+            users[idx].profile_bio = profile_bio.slice(0, 500);
+        }
+        if (typeof profile_theme === 'string' && VALID_THEMES.indexOf(profile_theme) !== -1) {
+            users[idx].profile_theme = profile_theme;
+        }
+        if (profile_banner === null || profile_banner === undefined) {
+            users[idx].profile_banner = null;
+        } else if (typeof profile_banner === 'string' && VALID_GENESIS_BANNERS.indexOf(profile_banner) !== -1) {
+            var bannerLevelId = profile_banner.split(':')[1];
+            var userLevelOrd  = LEVEL_ORDER[badge] || 0;
+            var bannerLevelOrd = LEVEL_ORDER[bannerLevelId] || 0;
+            if (bannerLevelOrd > userLevelOrd) {
+                return res.status(403).json({ error: 'Niveau insuffisant pour cette bannière' });
+            }
+            users[idx].profile_banner = profile_banner;
+        } else if (typeof profile_banner === 'string' && profile_banner.startsWith('data:image/')) {
+            if (!/^data:image\/(jpeg|png|webp);base64,/.test(profile_banner)) {
+                return res.status(400).json({ error: 'Format d\'image non supporté' });
+            }
+            if (profile_banner.length > 300000) {
+                return res.status(400).json({ error: 'Image trop volumineuse après compression' });
+            }
+            users[idx].profile_banner = profile_banner;
+        } else if (typeof profile_banner === 'string') {
+            return res.status(400).json({ error: 'Format de bannière invalide' });
+        }
+
+        users[idx].updatedAt = new Date().toISOString();
+        saveUsers(users);
+        res.json({ success: true });
+    } catch (error) {
+        console.error('[CLIENT] Erreur update-personalization:', error);
+        res.status(500).json({ error: 'Erreur lors de la mise à jour' });
+    }
+});
 
 // PUT /api/clients/update-profile — le client modifie son propre profil (nom/téléphone/photo)
 app.put('/api/clients/update-profile', function(req, res) {

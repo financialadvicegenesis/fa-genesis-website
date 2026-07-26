@@ -6487,6 +6487,9 @@ function _syncUserBadge(){
       USER.welcomeDiscountEligible = d.welcomeDiscountEligible === true;
       USER.referralBonusQG = d.referralBonusQG || 0;
       USER.missionBonuses = d.missionBonuses || {};
+      USER.profile_bio    = d.profile_bio    || '';
+      USER.profile_theme  = d.profile_theme  || 'genesis';
+      USER.profile_banner = d.profile_banner || null;
       // Level-up detection: show confetti if badge improved
       try {
         var levelOrder = [null, 'bronze', 'argent', 'or', 'elite'];
@@ -7313,49 +7316,338 @@ function _alSavePrefs(){
 }
 
 // ── PERSONNALISATION DU PROFIL (avantage Créateur) ────────────────
+// State et constantes module-level
+var _ppDraft = null;
+var PP_THEMES = [
+  { id:'genesis', label:'Genesis Gold',    color:'#FFD700', dark:'#1a1200' },
+  { id:'blue',    label:'Nuit Bleue',       color:'#60a5fa', dark:'#0c1628' },
+  { id:'green',   label:'Vert Emeraude',    color:'#4ade80', dark:'#0a1a0a' },
+  { id:'purple',  label:'Violet Mystique',  color:'#c084fc', dark:'#1a0a28' },
+  { id:'red',     label:'Rouge Passion',    color:'#f87171', dark:'#1a0808' }
+];
+var PP_GENESIS_BANNERS = [
+  { id:'genesis:bronze', level:'bronze', label:'Créateur',   css:'linear-gradient(135deg,#134e00,#166534 40%,#22c55e 70%,#4ade80)' },
+  { id:'genesis:argent', level:'argent', label:'Bâtisseur',  css:'linear-gradient(135deg,#0c1a3a,#1d4ed8 40%,#3b82f6 70%,#93c5fd)' },
+  { id:'genesis:or',     level:'or',     label:'Visionnaire',css:'linear-gradient(135deg,#2e1065,#7c3aed 40%,#a855f7 70%,#d8b4fe)' },
+  { id:'genesis:elite',  level:'elite',  label:'Générateur', css:'linear-gradient(135deg,#431407,#b45309 40%,#d97706 70%,#fbbf24)' }
+];
+var PP_LEVEL_ORDER = ['bronze','argent','or','elite'];
+
 function showProfilPersonnalisation() {
   var c = document.getElementById('profilContent'); if(!c) return;
-  if(!USER || GUEST || !USER.badge){ showClientLevels(); return; }
+  if(!USER || GUEST){ showClientLevels(); return; }
   _saveProfilScroll('showProfilPersonnalisation');
-  var _ppKey = 'fa_genesis_profil_perso';
-  var saved = {}; try{saved=JSON.parse(localStorage.getItem(_ppKey)||'{}');}catch(e){}
+
+  // Verrou niveau Créateur
+  if(!USER.badge) {
+    c.innerHTML = '<div class="espace-view">'
+      +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Personnalisation du profil</div></div>'
+      +'<div style="padding:14px;padding-bottom:80px;overflow-y:auto;flex:1;">'
+      +'<div style="background:rgba(255,215,0,.06);border:1.5px solid rgba(255,215,0,.2);border-radius:16px;padding:24px;text-align:center;margin-top:20px;">'
+      +'<i class="fa-solid fa-lock" style="color:#FFD700;font-size:28px;margin-bottom:12px;display:block;"></i>'
+      +'<div style="font-size:14px;font-weight:900;color:#FFD700;margin-bottom:8px;">Niveau Créateur requis</div>'
+      +'<div style="font-size:12px;color:#777;line-height:1.6;">La personnalisation du profil est disponible à partir de <strong style="color:#FFD700;">100 Points QG</strong>.</div>'
+      +'<button onclick="showClientLevels()" style="margin-top:16px;background:linear-gradient(135deg,#FFD700,#e6c200);color:#1a1200;border:none;border-radius:12px;padding:10px 22px;font-size:12px;font-weight:900;cursor:pointer;"><i class="fa-solid fa-crown"></i> Voir mes niveaux</button>'
+      +'</div></div></div>';
+    return;
+  }
+
+  // Init draft depuis les valeurs sauvegardées
+  _ppDraft = {
+    bio:    USER.profile_bio    || '',
+    theme:  USER.profile_theme  || 'genesis',
+    banner: USER.profile_banner || null
+  };
+
   c.innerHTML = '<div class="espace-view">'
     +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Personnalisation du profil</div></div>'
-    +'<div style="padding:14px;padding-bottom:80px;overflow-y:auto;flex:1;">'
-    +'<div style="font-size:11px;color:#555;margin-bottom:14px;line-height:1.5;">Personnalisez votre présentation sur FA GENESIS. Ces informations seront visibles par les prestataires lors de vos échanges.</div>'
-    +'<div style="font-size:10px;color:#555;font-weight:800;letter-spacing:.8px;margin-bottom:6px;">BIO ENRICHIE</div>'
-    +'<textarea id="pp-bio" class="ptnr-input" rows="4" placeholder="Décrivez votre activité, vos besoins, ce qui vous passionne… (max 500 caractères)" maxlength="500" style="resize:none;margin-bottom:4px;">'+(saved.bio||'')+'</textarea>'
-    +'<div style="font-size:10px;color:#444;text-align:right;margin-bottom:14px;" id="pp-bio-count">'+(saved.bio||'').length+'/500</div>'
-    +'<div style="font-size:10px;color:#555;font-weight:800;letter-spacing:.8px;margin-bottom:8px;">THÈME DE COULEUR</div>'
-    +'<div style="display:flex;gap:8px;margin-bottom:16px;" id="pp-theme-row">'
-    +['#FFD700','#3b82f6','#22c55e','#a855f7','#ef4444'].map(function(col,i){
-        var sel=(saved.theme||'#FFD700')===col;
-        return '<div onclick="_ppPickTheme(\''+col+'\')" id="pp-theme-'+i+'" style="width:36px;height:36px;border-radius:50%;background:'+col+';cursor:pointer;border:2.5px solid '+(sel?'#fff':'transparent')+';transition:border-color .2s;flex-shrink:0;"></div>';
-      }).join('')
+    +'<div id="pp-scroll" style="padding:14px;padding-bottom:90px;overflow-y:auto;flex:1;">'
+    // ── Section : aperçu
+    +'<div style="font-size:10px;color:#555;font-weight:800;letter-spacing:.8px;margin-bottom:10px;display:flex;align-items:center;gap:6px;"><i class="fa-solid fa-eye" style="color:#555;"></i> APERÇU DE VOTRE CARTE GENESIS</div>'
+    +'<div id="pp-preview-card" style="margin-bottom:6px;"></div>'
+    +'<div style="font-size:10px;color:#444;text-align:center;margin-bottom:20px;"><i class="fa-solid fa-circle-info" style="margin-right:3px;"></i>Aperçu en temps réel · modifications non encore enregistrées</div>'
+    // ── Section : thème
+    +'<div style="font-size:10px;color:#555;font-weight:800;letter-spacing:.8px;margin-bottom:10px;display:flex;align-items:center;gap:6px;"><i class="fa-solid fa-palette" style="color:#555;"></i> THÈME</div>'
+    +'<div id="pp-theme-grid" style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:22px;"></div>'
+    // ── Section : bannière Genesis
+    +'<div style="font-size:10px;color:#555;font-weight:800;letter-spacing:.8px;margin-bottom:10px;display:flex;align-items:center;gap:6px;"><i class="fa-solid fa-image" style="color:#555;"></i> BANNIÈRE</div>'
+    +'<div style="font-size:11px;color:#666;font-weight:600;margin-bottom:8px;">Bannières officielles FA GENESIS</div>'
+    +'<div id="pp-genesis-banners" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;"></div>'
+    // ── Upload image perso
+    +'<div style="font-size:11px;color:#666;font-weight:600;margin-bottom:8px;">Importer votre propre bannière</div>'
+    +'<div id="pp-upload-zone" style="border:2px dashed #222;border-radius:14px;padding:22px 16px;text-align:center;cursor:pointer;background:#0d0d0d;transition:border-color .25s;" onclick="document.getElementById(\'pp-file-input\').click()" ondragover="event.preventDefault();this.style.borderColor=\'#FFD700\';" ondragleave="this.style.borderColor=\'#222\';" ondrop="_ppHandleDrop(event)">'
+    +'<i class="fa-solid fa-cloud-arrow-up" style="font-size:24px;color:#2a2a2a;margin-bottom:6px;display:block;"></i>'
+    +'<div style="font-size:12px;color:#444;">Cliquer ou déposer une image</div>'
+    +'<div style="font-size:10px;color:#2a2a2a;margin-top:4px;">JPEG · PNG · WebP · max 10 Mo · recadrage automatique 4:1</div>'
     +'</div>'
-    +'<div id="pp-save-msg" style="display:none;color:#4caf50;font-size:12px;margin-bottom:8px;text-align:center;"></div>'
-    +'<button onclick="_ppSave()" style="width:100%;background:linear-gradient(135deg,#FFD700,#e6c200);color:#1a1200;border:none;border-radius:14px;padding:13px;font-size:13px;font-weight:900;cursor:pointer;"><i class="fa-solid fa-floppy-disk"></i> Enregistrer</button>'
+    +'<input type="file" id="pp-file-input" accept="image/jpeg,image/png,image/webp" style="display:none;">'
+    +'<div id="pp-upload-preview" style="display:none;margin-top:10px;position:relative;border-radius:12px;overflow:hidden;">'
+    +'<img id="pp-upload-img" style="width:100%;height:80px;object-fit:cover;display:block;">'
+    +'<div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,.7));padding:6px 10px;display:flex;align-items:center;justify-content:space-between;">'
+    +'<span style="font-size:10px;color:#ccc;"><i class="fa-solid fa-check-circle" style="color:#4caf50;"></i> Bannière personnalisée</span>'
+    +'<button onclick="_ppClearBanner()" style="background:rgba(255,59,48,.8);border:none;border-radius:8px;color:#fff;padding:3px 8px;font-size:10px;cursor:pointer;font-weight:700;"><i class="fa-solid fa-xmark"></i> Supprimer</button>'
+    +'</div></div>'
+    +'<div id="pp-upload-err" style="display:none;font-size:11px;color:#f03e3e;margin-top:6px;"></div>'
+    +'<div style="margin-bottom:22px;"></div>'
+    // ── Section : bio
+    +'<div style="font-size:10px;color:#555;font-weight:800;letter-spacing:.8px;margin-bottom:10px;display:flex;align-items:center;gap:6px;"><i class="fa-solid fa-pen-to-square" style="color:#555;"></i> BIO ENRICHIE</div>'
+    +'<textarea id="pp-bio" rows="5" placeholder="Présentez-vous : activité, projets, centres d\'intérêt, ce que vous recherchez… (500 caractères max)" maxlength="500" style="width:100%;background:#111;border:1.5px solid #1e1e1e;border-radius:12px;color:#fff;font-size:13px;padding:12px;resize:none;font-family:inherit;line-height:1.6;box-sizing:border-box;transition:border-color .2s;outline:none;" onfocus="this.style.borderColor=\'rgba(255,215,0,.3)\'" onblur="this.style.borderColor=\'#1e1e1e\'">'
+    +(_ppDraft.bio||'').replace(/</g,'&lt;')+'</textarea>'
+    +'<div style="font-size:10px;color:#444;text-align:right;margin-top:4px;margin-bottom:22px;" id="pp-bio-count">'+(_ppDraft.bio||'').length+'/500</div>'
+    // ── Bouton sauvegarder
+    +'<div id="pp-save-msg" style="display:none;font-size:12px;text-align:center;margin-bottom:10px;padding:10px 14px;border-radius:12px;"></div>'
+    +'<button onclick="_ppSave()" id="pp-save-btn" style="width:100%;background:linear-gradient(135deg,#FFD700,#e6c200);color:#1a1200;border:none;border-radius:14px;padding:14px;font-size:13px;font-weight:900;cursor:pointer;letter-spacing:.3px;"><i class="fa-solid fa-floppy-disk"></i> Enregistrer les modifications</button>'
     +'</div></div>';
-  var bioEl = document.getElementById('pp-bio');
-  if(bioEl) bioEl.oninput = function(){ var cnt=document.getElementById('pp-bio-count'); if(cnt) cnt.textContent=this.value.length+'/500'; };
+
+  _ppRenderPreviewCard();
+  _ppRenderThemeGrid();
+  _ppRenderGenesisBanners();
+  _ppInitUpload();
+  _ppInitBioCounter();
+
+  if(_ppDraft.banner && _ppDraft.banner.indexOf('data:') === 0) {
+    var _prev = document.getElementById('pp-upload-preview');
+    var _img  = document.getElementById('pp-upload-img');
+    if(_prev && _img){ _img.src = _ppDraft.banner; _prev.style.display = ''; }
+  }
 }
-function _ppPickTheme(col){
-  var _ppKey='fa_genesis_profil_perso'; var saved={};
-  try{saved=JSON.parse(localStorage.getItem(_ppKey)||'{}');}catch(e){}
-  saved.theme=col; try{localStorage.setItem(_ppKey,JSON.stringify(saved));}catch(e){}
-  var colors=['#FFD700','#3b82f6','#22c55e','#a855f7','#ef4444'];
-  colors.forEach(function(c,i){
-    var el=document.getElementById('pp-theme-'+i);
-    if(el) el.style.borderColor=(c===col?'#fff':'transparent');
+
+// ── Rendu de la carte de prévisualisation ──
+function _ppRenderPreviewCard() {
+  var el = document.getElementById('pp-preview-card'); if(!el || !_ppDraft) return;
+  var theme = null;
+  for(var ti=0; ti<PP_THEMES.length; ti++){ if(PP_THEMES[ti].id===_ppDraft.theme){ theme=PP_THEMES[ti]; break; } }
+  if(!theme) theme = PP_THEMES[0];
+  var col  = theme.color;
+  var dark = theme.dark;
+
+  // Bannière
+  var bannerHtml = '';
+  if(_ppDraft.banner && _ppDraft.banner.indexOf('data:') === 0) {
+    bannerHtml = '<div style="height:110px;border-radius:16px 16px 0 0;overflow:hidden;"><img src="'+_ppDraft.banner+'" style="width:100%;height:100%;object-fit:cover;display:block;"></div>';
+  } else if(_ppDraft.banner && _ppDraft.banner.indexOf('genesis:') === 0) {
+    var gb = null;
+    for(var bi=0; bi<PP_GENESIS_BANNERS.length; bi++){ if(PP_GENESIS_BANNERS[bi].id===_ppDraft.banner){ gb=PP_GENESIS_BANNERS[bi]; break; } }
+    if(gb) bannerHtml = '<div style="height:110px;background:'+gb.css+';border-radius:16px 16px 0 0;"></div>';
+  }
+  if(!bannerHtml) {
+    bannerHtml = '<div style="height:80px;background:linear-gradient(135deg,'+dark+','+col+'18);border-radius:16px 16px 0 0;"></div>';
+  }
+
+  // Photo de profil
+  var photo = USER.photo || '';
+  var photoHtml = photo
+    ? '<img src="'+photo+'" style="width:60px;height:60px;border-radius:50%;object-fit:cover;border:3px solid '+col+';flex-shrink:0;">'
+    : '<div style="width:60px;height:60px;border-radius:50%;background:'+col+'18;border:3px solid '+col+';display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;color:'+col+';flex-shrink:0;">'
+      +(USER.prenom ? USER.prenom.charAt(0).toUpperCase() : '?')+'</div>';
+
+  // Badge de niveau
+  var lvlLabels = {bronze:'Créateur',argent:'Bâtisseur',or:'Visionnaire',elite:'Générateur'};
+  var badgeHtml = USER.badge
+    ? '<span style="background:'+col+'18;border:1px solid '+col+'44;border-radius:20px;padding:3px 10px;font-size:10px;font-weight:900;color:'+col+';letter-spacing:.3px;">'+lvlLabels[USER.badge]+'</span>'
+    : '';
+
+  // Bio (preview live depuis textarea si ouvert)
+  var bioEl = document.getElementById('pp-bio');
+  var bioText = bioEl ? bioEl.value : (_ppDraft.bio || '');
+  var bioSafe = bioText.trim().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+
+  el.innerHTML = '<div style="background:'+dark+';border:1.5px solid '+col+'28;border-radius:16px;overflow:hidden;margin-bottom:2px;">'
+    +bannerHtml
+    +'<div style="padding:0 16px 16px;">'
+    +'<div style="display:flex;align-items:flex-end;justify-content:space-between;margin-top:-30px;margin-bottom:10px;">'
+    +photoHtml
+    +badgeHtml
+    +'</div>'
+    +'<div style="font-size:15px;font-weight:900;color:#fff;margin-bottom:3px;">'+(USER.prenom||'')+(USER.nom?' '+USER.nom:'')+'</div>'
+    +'<div style="font-size:11px;font-weight:700;color:'+col+';margin-bottom:'+(bioSafe?'10':'0')+'px;"><i class="fa-solid fa-bolt" style="font-size:9px;"></i> '+(USER.genesisPoints||0)+' QG</div>'
+    +(bioSafe ? '<div style="font-size:12px;color:#aaa;line-height:1.55;border-top:1px solid '+col+'14;padding-top:10px;">'+bioSafe+'</div>' : '')
+    +'</div></div>';
+}
+
+// ── ThemeSelector ──
+function _ppRenderThemeGrid() {
+  var el = document.getElementById('pp-theme-grid'); if(!el || !_ppDraft) return;
+  el.innerHTML = PP_THEMES.map(function(t) {
+    var sel = _ppDraft.theme === t.id;
+    return '<div onclick="_ppPickTheme(\''+t.id+'\')" style="text-align:center;cursor:pointer;-webkit-tap-highlight-color:transparent;" id="pp-titem-'+t.id+'">'
+      +'<div style="width:100%;aspect-ratio:1;border-radius:14px;background:'+t.color+';border:2.5px solid '+(sel?'#fff':'transparent')+';box-shadow:'+(sel?'0 0 10px '+t.color+'66':'')+';transition:border-color .2s,box-shadow .2s;"></div>'
+      +'<div style="font-size:9px;margin-top:4px;color:'+(sel?'#fff':'#555')+';font-weight:'+(sel?'800':'500')+';line-height:1.3;transition:color .2s;">'+t.label+'</div>'
+      +'</div>';
+  }).join('');
+}
+
+// ── GenesisBannerSelector ──
+function _ppRenderGenesisBanners() {
+  var el = document.getElementById('pp-genesis-banners'); if(!el || !_ppDraft) return;
+  var userIdx = PP_LEVEL_ORDER.indexOf(USER.badge);
+  el.innerHTML = PP_GENESIS_BANNERS.map(function(b) {
+    var bannerIdx = PP_LEVEL_ORDER.indexOf(b.level);
+    var locked    = bannerIdx > userIdx;
+    var selected  = _ppDraft.banner === b.id;
+    return '<div id="pp-gbanner-'+b.level+'" '+(locked?'':'onclick="_ppPickGenesisBanner(\''+b.id+'\')"')
+      +' style="border-radius:12px;overflow:hidden;cursor:'+(locked?'default':'pointer')+';border:2px solid '+(selected?'#fff':'transparent')+';transition:border-color .2s;opacity:'+(locked?'.45':'1')+';position:relative;">'
+      +'<div style="height:52px;background:'+b.css+';"></div>'
+      +'<div style="padding:6px 8px;background:#111;display:flex;align-items:center;justify-content:space-between;">'
+      +'<span style="font-size:11px;font-weight:700;color:'+(locked?'#333':'#fff')+';">'+b.label+'</span>'
+      +(locked ? '<i class="fa-solid fa-lock" style="color:#333;font-size:10px;"></i>'
+               : (selected ? '<i class="fa-solid fa-check" style="color:#4caf50;font-size:10px;"></i>' : ''))
+      +'</div></div>';
+  }).join('');
+}
+
+// ── Upload initialiseur ──
+function _ppInitUpload() {
+  var input = document.getElementById('pp-file-input'); if(!input) return;
+  input.onchange = function(e) {
+    var file = e.target.files && e.target.files[0];
+    if(!file){ return; }
+    _ppHandleFile(file);
+    input.value = '';
+  };
+}
+function _ppHandleDrop(e) {
+  e.preventDefault();
+  var zone = document.getElementById('pp-upload-zone');
+  if(zone) zone.style.borderColor = '#222';
+  var file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+  if(file) _ppHandleFile(file);
+}
+function _ppHandleFile(file) {
+  var errEl = document.getElementById('pp-upload-err');
+  var hide = function(){ if(errEl) errEl.style.display='none'; };
+  var show = function(msg){ if(errEl){ errEl.textContent=msg; errEl.style.display=''; } };
+  hide();
+  if(['image/jpeg','image/png','image/webp'].indexOf(file.type) === -1) {
+    show('Format non supporté. Utilisez JPEG, PNG ou WebP.'); return;
+  }
+  if(file.size > 10 * 1024 * 1024) {
+    show('Image trop volumineuse. Maximum 10 Mo.'); return;
+  }
+  var zone = document.getElementById('pp-upload-zone');
+  if(zone) { zone.style.borderColor='#FFD700'; }
+  _ppCompressBannerImage(file, function(err, dataUrl) {
+    if(zone) zone.style.borderColor='#222';
+    if(err) { show('Erreur lors du traitement de l\'image.'); return; }
+    _ppDraft.banner = dataUrl;
+    var prev = document.getElementById('pp-upload-preview');
+    var img  = document.getElementById('pp-upload-img');
+    if(prev && img){ img.src=dataUrl; prev.style.display=''; }
+    _ppRenderGenesisBanners();
+    _ppRenderPreviewCard();
   });
 }
-function _ppSave(){
-  var _ppKey='fa_genesis_profil_perso'; var saved={};
-  try{saved=JSON.parse(localStorage.getItem(_ppKey)||'{}');}catch(e){}
-  var bioEl=document.getElementById('pp-bio'); if(bioEl) saved.bio=bioEl.value.slice(0,500);
-  try{localStorage.setItem(_ppKey,JSON.stringify(saved));}catch(e){}
-  var msg=document.getElementById('pp-save-msg');
-  if(msg){msg.style.display='';msg.textContent='Profil mis à jour !';setTimeout(function(){if(msg)msg.style.display='none';},2500);}
+
+// ── Compression & recadrage bannière (canvas 800×200) ──
+function _ppCompressBannerImage(file, callback) {
+  try {
+    var reader = new FileReader();
+    reader.onload = function(ev) {
+      var img = new Image();
+      img.onload = function() {
+        var W=800, H=200;
+        var canvas = document.createElement('canvas');
+        canvas.width=W; canvas.height=H;
+        var ctx = canvas.getContext('2d');
+        var srcRatio = img.width / img.height;
+        var dstRatio = W / H;
+        var sx, sy, sw, sh;
+        if(srcRatio > dstRatio) {
+          sh=img.height; sw=sh*dstRatio; sy=0; sx=(img.width-sw)/2;
+        } else {
+          sw=img.width; sh=sw/dstRatio; sx=0; sy=(img.height-sh)/2;
+        }
+        ctx.drawImage(img, sx, sy, sw, sh, 0, 0, W, H);
+        try { callback(null, canvas.toDataURL('image/jpeg', 0.78)); }
+        catch(e2){ callback('export_error'); }
+      };
+      img.onerror = function(){ callback('load_error'); };
+      img.src = ev.target.result;
+    };
+    reader.onerror = function(){ callback('read_error'); };
+    reader.readAsDataURL(file);
+  } catch(e){ callback(e.message); }
+}
+
+// ── Bio counter ──
+function _ppInitBioCounter() {
+  var bio = document.getElementById('pp-bio'); if(!bio) return;
+  bio.oninput = function() {
+    var cnt = document.getElementById('pp-bio-count');
+    if(cnt) cnt.textContent = this.value.length+'/500';
+    if(_ppDraft) _ppDraft.bio = this.value;
+    _ppRenderPreviewCard();
+  };
+}
+
+// ── Handlers sélection ──
+function _ppPickTheme(themeId) {
+  if(!_ppDraft) return;
+  _ppDraft.theme = themeId;
+  _ppRenderThemeGrid();
+  _ppRenderPreviewCard();
+}
+function _ppPickGenesisBanner(bannerId) {
+  if(!_ppDraft) return;
+  _ppDraft.banner = bannerId;
+  _ppRenderGenesisBanners();
+  var prev = document.getElementById('pp-upload-preview');
+  if(prev) prev.style.display = 'none';
+  _ppRenderPreviewCard();
+}
+function _ppClearBanner() {
+  if(!_ppDraft) return;
+  _ppDraft.banner = null;
+  var prev = document.getElementById('pp-upload-preview');
+  if(prev) prev.style.display = 'none';
+  _ppRenderGenesisBanners();
+  _ppRenderPreviewCard();
+}
+
+// ── Sauvegarde (API) ──
+function _ppSave() {
+  if(!USER || !USER._token || !_ppDraft) return;
+  var btn = document.getElementById('pp-save-btn');
+  var msg = document.getElementById('pp-save-msg');
+  if(btn){ btn.disabled=true; btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Enregistrement…'; }
+  if(msg){ msg.style.display='none'; }
+
+  var bioEl = document.getElementById('pp-bio');
+  if(bioEl) _ppDraft.bio = bioEl.value;
+
+  var banner = _ppDraft.banner;
+  if(banner && banner.indexOf('data:') === 0 && banner.length > 300000) {
+    if(msg){ msg.style.display=''; msg.style.color='#f03e3e'; msg.style.background='rgba(240,62,62,.06)'; msg.innerHTML='<i class="fa-solid fa-circle-exclamation"></i> Image trop volumineuse après compression.'; }
+    if(btn){ btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-floppy-disk"></i> Enregistrer les modifications'; }
+    return;
+  }
+
+  fetch((window.FA_GENESIS_API||API)+'/api/clients/update-personalization', {
+    method:'PUT',
+    headers:{'Authorization':'Bearer '+USER._token,'Content-Type':'application/json'},
+    body:JSON.stringify({ profile_bio: _ppDraft.bio||'', profile_theme: _ppDraft.theme||'genesis', profile_banner: _ppDraft.banner||null })
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(d){
+    if(btn){ btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-floppy-disk"></i> Enregistrer les modifications'; }
+    if(d && d.success) {
+      USER.profile_bio    = _ppDraft.bio    || '';
+      USER.profile_theme  = _ppDraft.theme  || 'genesis';
+      USER.profile_banner = _ppDraft.banner || null;
+      try{ localStorage.setItem('fa_genesis_session', JSON.stringify(USER)); }catch(e){}
+      if(msg){
+        msg.style.display=''; msg.style.color='#4caf50'; msg.style.background='rgba(76,175,80,.07)'; msg.style.border='1px solid rgba(76,175,80,.2)'; msg.style.borderRadius='10px';
+        msg.innerHTML='<i class="fa-solid fa-check-circle"></i> Profil mis à jour avec succès !';
+        setTimeout(function(){ if(msg) msg.style.display='none'; }, 3500);
+      }
+    } else {
+      if(msg){ msg.style.display=''; msg.style.color='#f03e3e'; msg.style.background='rgba(240,62,62,.06)'; msg.style.border='1px solid rgba(240,62,62,.2)'; msg.style.borderRadius='10px'; msg.innerHTML='<i class="fa-solid fa-circle-exclamation"></i> '+(d&&d.error?d.error:'Erreur, veuillez réessayer.'); }
+    }
+  })
+  .catch(function() {
+    if(btn){ btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-floppy-disk"></i> Enregistrer les modifications'; }
+    if(msg){ msg.style.display=''; msg.style.color='#f03e3e'; msg.style.background='rgba(240,62,62,.06)'; msg.style.border='1px solid rgba(240,62,62,.2)'; msg.style.borderRadius='10px'; msg.innerHTML='<i class="fa-solid fa-circle-exclamation"></i> Erreur de connexion.'; }
+  });
 }
 
 // ── NIVEAUX GENESIS CLIENT ────────────────────────────────────────
