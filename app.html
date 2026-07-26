@@ -5449,6 +5449,18 @@ function showGenesisMissions(){
   var c = document.getElementById('profilContent'); if(!c) return;
   if(!USER || GUEST){ renderProfil(); return; }
   _saveProfilScroll('showGenesisMissions');
+  // Verrouillé derrière le niveau Créateur (100 QG)
+  if(!USER.badge){
+    c.innerHTML = '<div class="espace-view">'
+      +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Missions Genesis</div></div>'
+      +'<div style="padding:32px 20px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:16px;">'
+      +'<div style="width:64px;height:64px;border-radius:50%;background:rgba(255,215,0,.06);border:1.5px solid #2a2a2a;display:flex;align-items:center;justify-content:center;font-size:28px;"><i class="fa-solid fa-lock" style="color:#333;"></i></div>'
+      +'<div style="font-size:15px;font-weight:900;color:#555;">Missions Genesis</div>'
+      +'<div style="font-size:13px;color:#444;line-height:1.6;max-width:280px;">Atteignez le niveau <strong style="color:#666;">Créateur</strong> (100 QG) pour débloquer les Missions Genesis et gagner davantage de points.</div>'
+      +'<button onclick="showClientLevels()" style="background:linear-gradient(135deg,#FFD700,#e6c200);color:#1a1200;border:none;border-radius:14px;padding:12px 24px;font-size:13px;font-weight:900;cursor:pointer;"><i class="fa-solid fa-crown"></i> Voir mes niveaux</button>'
+      +'</div></div>';
+    return;
+  }
   c.innerHTML = '<div class="espace-view">'
     +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Missions Genesis</div></div>'
     +'<div id="genesis-missions-list" style="padding:14px;padding-bottom:80px;overflow-y:auto;flex:1;"><div class="espace-loading">Chargement...</div></div>'
@@ -7027,7 +7039,7 @@ function _triggerLevelUp(levelLabel, levelIcon) {
     var card = document.createElement('div');
     card.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) scale(.7);background:linear-gradient(135deg,#1a1200,#0d0d00);border:2px solid #FFD700;border-radius:20px;padding:28px 32px;text-align:center;pointer-events:auto;animation:luCardIn .45s cubic-bezier(.34,1.56,.64,1) forwards;min-width:220px;max-width:86vw;box-shadow:0 0 40px rgba(255,215,0,.35);';
     var _luAdvMap = {
-      bronze: ['Programme de parrainage','Défis QG','Suggestions personnalisées Jérémie IA','Résumé mensuel personnalisé'],
+      bronze: ['Programme de parrainage','Missions Genesis','Suggestions personnalisées Jérémie IA','Résumé mensuel personnalisé'],
       argent: ['Avantages partenaires FA GENESIS','Webinaires & ateliers','Alertes intelligentes','Jérémie IA Plus'],
       or:     ['Événements privés & networking','Accès bêta & avant-première','Offres Premium partenaires','Jérémie IA Pro'],
       elite:  ['Invitations VIP','Conseil Communautaire FA GENESIS','Fonctionnalités expérimentales','Jérémie IA Expert']

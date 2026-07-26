@@ -6961,7 +6961,7 @@ app.get('/api/client/level-progress', function(req, res) {
             bronze: [
                 { id: 'profil_perso',      label: 'Personnalisation du profil (thème, bannière, bio enrichie)' },
                 { id: 'parrainage',        label: 'Programme de parrainage' },
-                { id: 'defis_qg',          label: 'Défis QG pour gagner davantage de points' },
+                { id: 'defis_qg',          label: 'Missions Genesis pour gagner davantage de points' },
                 { id: 'suggestions_ia',    label: 'Jérémie IA — Suggestions personnalisées selon vos habitudes' },
                 { id: 'resume_mensuel',    label: 'Résumé mensuel personnalisé de votre activité' }
             ],
