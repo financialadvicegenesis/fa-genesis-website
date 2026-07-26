@@ -5449,21 +5449,22 @@ function showGenesisMissions(){
   var c = document.getElementById('profilContent'); if(!c) return;
   if(!USER || GUEST){ renderProfil(); return; }
   _saveProfilScroll('showGenesisMissions');
-  // Verrouillé derrière le niveau Créateur (100 QG)
-  if(!USER.badge){
-    c.innerHTML = '<div class="espace-view">'
-      +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Missions Genesis</div></div>'
-      +'<div style="padding:32px 20px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:16px;">'
-      +'<div style="width:64px;height:64px;border-radius:50%;background:rgba(255,215,0,.06);border:1.5px solid #2a2a2a;display:flex;align-items:center;justify-content:center;font-size:28px;"><i class="fa-solid fa-lock" style="color:#333;"></i></div>'
-      +'<div style="font-size:15px;font-weight:900;color:#555;">Missions Genesis</div>'
-      +'<div style="font-size:13px;color:#444;line-height:1.6;max-width:280px;">Atteignez le niveau <strong style="color:#666;">Créateur</strong> (100 QG) pour débloquer les Missions Genesis et gagner davantage de points.</div>'
-      +'<button onclick="showClientLevels()" style="background:linear-gradient(135deg,#FFD700,#e6c200);color:#1a1200;border:none;border-radius:14px;padding:12px 24px;font-size:13px;font-weight:900;cursor:pointer;"><i class="fa-solid fa-crown"></i> Voir mes niveaux</button>'
-      +'</div></div>';
-    return;
-  }
+  var _gmLocked = !USER.badge;
   c.innerHTML = '<div class="espace-view">'
     +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Missions Genesis</div></div>'
-    +'<div id="genesis-missions-list" style="padding:14px;padding-bottom:80px;overflow-y:auto;flex:1;"><div class="espace-loading">Chargement...</div></div>'
+    +(_gmLocked
+      ? '<div style="margin:12px 14px 0;background:rgba(255,215,0,.06);border:1.5px solid rgba(255,215,0,.2);border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:12px;">'
+        +'<i class="fa-solid fa-lock" style="color:#FFD700;font-size:16px;flex-shrink:0;"></i>'
+        +'<div style="flex:1;">'
+        +'<div style="font-size:12px;font-weight:800;color:#ccc;margin-bottom:2px;">Niveau Créateur requis</div>'
+        +'<div style="font-size:11px;color:#666;line-height:1.4;">Atteignez 100 QG pour participer aux missions.</div>'
+        +'</div>'
+        +'<button onclick="showClientLevels()" style="background:linear-gradient(135deg,#FFD700,#e6c200);color:#1a1200;border:none;border-radius:10px;padding:8px 12px;font-size:11px;font-weight:900;cursor:pointer;flex-shrink:0;"><i class="fa-solid fa-crown"></i></button>'
+        +'</div>'
+      : '')
+    +'<div id="genesis-missions-list" style="padding:14px;padding-bottom:80px;overflow-y:auto;flex:1;'
+    +(_gmLocked ? 'opacity:.35;pointer-events:none;user-select:none;' : '')
+    +'"><div class="espace-loading">Chargement...</div></div>'
     +'</div>';
   if(!USER._token){ document.getElementById('genesis-missions-list').innerHTML = '<div class="espace-empty">Session expirée, reconnectez-vous.</div>'; return; }
   var _gmUrl = (window.FA_GENESIS_API||API)+'/api/genesis/missions';
