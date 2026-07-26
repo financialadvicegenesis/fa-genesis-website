@@ -3307,7 +3307,10 @@ async function _applyPaymentConfirmation(orderId, stage, transactionRef, paypalC
             if (isFinal) { try { emailService.sendPaymentConfirmation(ce, cn, updatedOrder).catch(e => console.error('[PAY_CONFIRM] Email paiement:', e)); } catch(e) {} }
             const acceptedD = loadDispatches().filter(d => d.order_id === orderId && d.status === 'accepted');
             acceptedD.forEach(d => processDispatchPayout(d, stage).catch(e => console.error('[PAYOUT]', e)));
-            if (isFinal) requestPartnerReviews(ce, acceptedD);
+            if (isFinal) {
+                requestPartnerReviews(ce, acceptedD);
+                checkReferralAndMissionRewards(ce);
+            }
         }
     }
 
@@ -4164,6 +4167,7 @@ app.post('/api/payments/sumup/webhook', async (req, res) => {
                     if (_acceptedD.length === 0) console.log('[WEBHOOK] Aucun dispatch accepté pour versement ' + stage + ' — commande ' + orderId);
                     if (isFinalPayment) {
                         requestPartnerReviews(clientEmail, _acceptedD);
+                        checkReferralAndMissionRewards(clientEmail);
                         // Tâche 7 : Jérémie proactif après paiement final
                         try {
                             var _wUser = loadUsers().find(function(u){ return (u.email||'')===(clientEmail||''); });
@@ -4320,7 +4324,10 @@ app.post('/api/payments/verify', async (req, res) => {
                 }
                 var _vAccD = loadDispatches().filter(function(d) { return d.order_id === orderId && d.status === 'accepted'; });
                 _vAccD.forEach(function(d) { processDispatchPayout(d, payoutStage).catch(function(e){ console.error('[PAYOUT] Erreur ' + payoutStage + ' verify:', e); }); });
-                if (paymentStage === 'balance') requestPartnerReviews(clientEmail, _vAccD);
+                if (paymentStage === 'balance') {
+                    requestPartnerReviews(clientEmail, _vAccD);
+                    checkReferralAndMissionRewards(clientEmail);
+                }
             }
         }
 
@@ -6904,6 +6911,8 @@ app.get('/api/auth/me', (req, res) => {
             isCerclePrivilege: getClientReferralStatus(referralCount) === 'cercle_privilege',
             referralDiscount: user.referral_discount || null,
             welcomeDiscountEligible: isClientFirstPaidOrder(user.email),
+            referralBonusQG: user.referralBonusQG || 0,
+            missionBonuses: user.missionBonuses || {},
             patrimoineGenesis: {
                 prestationsRealisees: completedOrders,
                 partenairesDistincts: getClientDistinctPartnerCount(user.email),
@@ -6951,6 +6960,9 @@ app.get('/api/client/level-progress', function(req, res) {
     var user = authenticateClient(req, res);
     if (!user) return;
     try {
+        // Rétroactivité : attribuer les bonus non encore accordés aux utilisateurs existants
+        var _retroUpdated = checkReferralAndMissionRewards(user.email);
+        if (_retroUpdated) user = _retroUpdated;
         var completedOrders = getClientCompletedOrders(user.email);
         var qgPoints = getClientGenesisPoints(user, completedOrders);
         var currentBadge = getClientQGBadge(qgPoints);
@@ -10442,7 +10454,9 @@ const GENESIS_POINT_VALUES = {
     avisLaisse: 5,
     workshop: 50,
     evenement: 75,
-    parrainage: 100
+    parrainage: 100,
+    filleulPremierPrestation: 50,
+    missionMultiCollab: 75
 };
 // Avantage bienvenue : absorbé par GENESIS. Taux selon l'origine :
 //   sans code de parrainage → -15%  |  avec code de parrainage → -10%
@@ -10507,6 +10521,69 @@ function checkAndSendProactiveQGNotif(email, role, pts) {
     } catch(_e) {}
 }
 
+// Vérifie et attribue les récompenses de parrainage et de mission multi_collab.
+// Appelée après chaque paiement final (balance_paid). Retourne l'objet user mis à jour
+// ou null si aucun changement. Idempotente : les gardes referralBonusQG / missionBonuses.multi_collab
+// empêchent tout double-crédit.
+function checkReferralAndMissionRewards(clientEmail) {
+    try {
+        if (!clientEmail) return null;
+        var users = loadUsers();
+        var uIdx = users.findIndex(function(u) { return (u.email || '').toLowerCase() === clientEmail.toLowerCase(); });
+        if (uIdx === -1) return null;
+        var user = users[uIdx];
+        var dirty = false;
+
+        // 1. FILLEUL : bonus première prestation (+50 QG)
+        if (user.referredBy && !user.referralBonusQG) {
+            var completedCount = getClientCompletedOrders(clientEmail);
+            if (completedCount >= 1) {
+                users[uIdx].referralBonusQG = GENESIS_POINT_VALUES.filleulPremierPrestation;
+                dirty = true;
+                // Notification filleul
+                notifyUser(clientEmail, 'client', 'referral_bonus',
+                    '🎁 +50 Points QG débloqués !',
+                    'Félicitations pour votre première prestation ! Vous gagnez 50 Points QG et débloquez la Mission GENESIS « Collaborer avec 3 professionnels différents ».',
+                    '/app.html');
+                // Notification parrain (+100 QG via formule, pas de stockage supplémentaire)
+                var parrain = users.find(function(u) { return u.id === user.referredBy; });
+                if (parrain) {
+                    notifyUser(parrain.email, 'client', 'referral_reward',
+                        '🎉 Récompense parrainage !',
+                        'Votre filleul ' + (users[uIdx].prenom || 'votre filleul') + ' vient de réaliser sa première prestation. Vous gagnez +100 Points QG !',
+                        '/app.html');
+                    try { checkAndSendProactiveQGNotif(parrain.email, 'client', getClientGenesisPoints(parrain)); } catch(_) {}
+                }
+            }
+        }
+
+        // 2. MISSION multi_collab : +75 QG à la 3e collaboration distincte
+        if (!(user.missionBonuses && user.missionBonuses.multi_collab)) {
+            var distinctCount = getClientDistinctPartnerCount(clientEmail);
+            if (distinctCount >= 3) {
+                if (!users[uIdx].missionBonuses) users[uIdx].missionBonuses = {};
+                users[uIdx].missionBonuses.multi_collab = true;
+                dirty = true;
+                notifyUser(clientEmail, 'client', 'mission_complete',
+                    '🏆 Mission accomplie !',
+                    'Vous avez collaboré avec 3 professionnels différents et gagnez +75 Points QG ! Votre progression GENESIS est mise à jour.',
+                    '/app.html');
+            }
+        }
+
+        if (dirty) {
+            saveUsers(users);
+            var updated = users[uIdx];
+            try { checkAndSendProactiveQGNotif(clientEmail, 'client', getClientGenesisPoints(updated)); } catch(_) {}
+            return updated;
+        }
+        return null;
+    } catch (e) {
+        console.error('[REFERRAL_REWARDS] Erreur:', e.message);
+        return null;
+    }
+}
+
 function getEventAttendancePoints(personId) {
     if (!personId) return 0;
     var events = loadEvents();
@@ -10542,7 +10619,9 @@ function getClientGenesisPoints(user, completedOrders) {
     return (orders * GENESIS_POINT_VALUES.reservationEffectuee)
         + (reviewsLeft * GENESIS_POINT_VALUES.avisLaisse)
         + (referrals * GENESIS_POINT_VALUES.parrainage)
-        + getEventAttendancePoints(user.id);
+        + getEventAttendancePoints(user.id)
+        + (user.referralBonusQG || 0)
+        + ((user.missionBonuses && user.missionBonuses.multi_collab) ? GENESIS_POINT_VALUES.missionMultiCollab : 0);
 }
 
 function getEventAttendanceCount(personId) {

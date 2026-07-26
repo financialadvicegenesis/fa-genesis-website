@@ -5482,12 +5482,32 @@ function showGenesisMissions(){
       if(data.error){ el.innerHTML = '<div class="espace-empty"><i class="fa-solid fa-triangle-exclamation" style="color:#f59f00;"></i> '+data.error+'</div>'; return; }
       var missions = (data && data.missions) || [];
       if(!missions.length){ el.innerHTML = '<div class="espace-empty">Aucune mission disponible.</div>'; return; }
-      el.innerHTML = '<div class="genesis-mission-grid">'+missions.map(function(m){
+      // Bannière de félicitations si multi_collab vient d'être complétée
+      var _mcBonusGranted = USER.missionBonuses && USER.missionBonuses.multi_collab;
+      var _celebBanner = '';
+      var _multiCollabDone = missions.some(function(m){ return m.id === 'multi_collab' && m.completed; });
+      if(_multiCollabDone && _mcBonusGranted) {
+        _celebBanner = '<div style="background:linear-gradient(135deg,rgba(76,175,80,.12),rgba(76,175,80,.05));border:1.5px solid rgba(76,175,80,.4);border-radius:16px;padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px;">'
+          +'<span style="font-size:24px;">🏆</span>'
+          +'<div><div style="font-size:13px;font-weight:900;color:#4caf50;margin-bottom:2px;">Mission accomplie !</div>'
+          +'<div style="font-size:11px;color:#aaa;">3 collaborations réalisées · +75 Points QG crédités</div></div>'
+          +'</div>';
+      }
+      // Bannière d'invitation pour les filleuls sans niveau Créateur
+      var _filleulUnlock = USER.referralBonusQG && !USER.badge;
+      var _filleulBanner = _filleulUnlock
+        ? '<div style="background:rgba(255,215,0,.05);border:1px solid rgba(255,215,0,.2);border-radius:14px;padding:12px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px;">'
+          +'<i class="fa-solid fa-gift" style="color:#FFD700;font-size:16px;flex-shrink:0;"></i>'
+          +'<div style="font-size:11px;color:#ccc;line-height:1.5;"><strong style="color:#FFD700;">Mission débloquée pour vous !</strong><br>Atteignez le niveau Créateur (100 QG) pour démarrer votre progression.</div>'
+          +'</div>'
+        : '';
+      el.innerHTML = _celebBanner + _filleulBanner + '<div class="genesis-mission-grid">'+missions.map(function(m){
         var done = m.completed;
+        var rewardClaimed = done && m.id === 'multi_collab' && _mcBonusGranted;
         var qgBadge = m.qgReward
           ? '<span style="display:inline-flex;align-items:center;gap:4px;background:' + (done?'rgba(81,207,102,.12)':'rgba(255,215,0,.1)') + ';border:1px solid ' + (done?'rgba(81,207,102,.3)':'rgba(255,215,0,.3)') + ';border-radius:20px;padding:3px 9px;font-size:11px;font-weight:800;color:' + (done?'#51cf66':'#FFD700') + ';white-space:nowrap;">'
             + '<i class="fa-solid fa-bolt" style="font-size:9px;"></i> +' + m.qgReward + ' QG'
-            + (done ? ' <i class="fa-solid fa-check" style="font-size:9px;"></i>' : '')
+            + (rewardClaimed ? ' <i class="fa-solid fa-check" style="font-size:9px;"></i>' : (done ? ' <i class="fa-solid fa-check" style="font-size:9px;"></i>' : ''))
             + '</span>'
           : '';
         var html = '<div class="genesis-mission-card'+(done?' done':'')+'">';
@@ -5499,6 +5519,7 @@ function showGenesisMissions(){
         html += '<div class="genesis-mission-desc">'+m.description+'</div>';
         html += '<div class="badge-progress-track"><div class="badge-progress-fill" style="width:'+m.percent+'%"></div></div>';
         html += '<div class="genesis-mission-count">'+m.current+' / '+m.target+'</div>';
+        if(rewardClaimed) html += '<div style="font-size:10px;color:#4caf50;font-weight:700;margin-top:6px;text-align:center;"><i class="fa-solid fa-gift"></i> +75 QG crédités</div>';
         html += '</div>';
         return html;
       }).join('')+'</div>';
@@ -6464,6 +6485,8 @@ function _syncUserBadge(){
       USER.patrimoineGenesis = d.patrimoineGenesis;
       USER.referralDiscount = d.referralDiscount || null;
       USER.welcomeDiscountEligible = d.welcomeDiscountEligible === true;
+      USER.referralBonusQG = d.referralBonusQG || 0;
+      USER.missionBonuses = d.missionBonuses || {};
       // Level-up detection: show confetti if badge improved
       try {
         var levelOrder = [null, 'bronze', 'argent', 'or', 'elite'];
@@ -7143,6 +7166,10 @@ function showResumeMensuel() {
         {icon:'fa-calendar-check',label:'Participation événement',pts:75},
         {icon:'fa-user-plus',label:'Parrainage validé',pts:100}
       ];
+      // Bonus obtenus
+      var bonusEarned = [];
+      if(USER.referralBonusQG) bonusEarned.push({icon:'fa-gift',label:'Bonus première prestation (filleul)',pts:USER.referralBonusQG,earned:true});
+      if(USER.missionBonuses && USER.missionBonuses.multi_collab) bonusEarned.push({icon:'fa-people-group',label:'Mission : 3 collaborations',pts:75,earned:true});
       html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;">';
       qgActions.forEach(function(a){
         html += '<div style="background:#111;border:1px solid #1e1e1e;border-radius:12px;padding:10px;display:flex;align-items:center;gap:8px;">';
@@ -7151,6 +7178,19 @@ function showResumeMensuel() {
         html += '<div style="font-size:12px;font-weight:800;color:#FFD700;">+'+a.pts+' QG</div></div></div>';
       });
       html += '</div>';
+      if(bonusEarned.length) {
+        html += '<div style="font-size:11px;font-weight:800;color:#4caf50;letter-spacing:.8px;margin-bottom:10px;display:flex;align-items:center;gap:6px;"><i class="fa-solid fa-check-circle"></i> BONUS OBTENUS</div>';
+        html += '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;">';
+        bonusEarned.forEach(function(b){
+          html += '<div style="background:rgba(76,175,80,.08);border:1px solid rgba(76,175,80,.25);border-radius:12px;padding:10px;display:flex;align-items:center;gap:10px;">';
+          html += '<i class="fa-solid '+b.icon+'" style="color:#4caf50;font-size:14px;flex-shrink:0;"></i>';
+          html += '<div style="flex:1"><div style="font-size:11px;color:#aaa;line-height:1.3;">'+b.label+'</div>';
+          html += '<div style="font-size:12px;font-weight:800;color:#4caf50;">+'+b.pts+' QG</div></div>';
+          html += '<span style="font-size:10px;color:#4caf50;font-weight:700;background:rgba(76,175,80,.15);border-radius:20px;padding:2px 8px;">Obtenu</span>';
+          html += '</div>';
+        });
+        html += '</div>';
+      }
       html += '<button onclick="showClientLevels()" style="width:100%;background:rgba(255,215,0,.08);border:1px solid rgba(255,215,0,.2);border-radius:14px;padding:12px;font-size:12px;font-weight:700;color:#FFD700;cursor:pointer;"><i class="fa-solid fa-crown"></i> Voir mes niveaux & avantages</button>';
       el.innerHTML = html;
     })
