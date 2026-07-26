@@ -5451,7 +5451,7 @@ function showGenesisMissions(){
   _saveProfilScroll('showGenesisMissions');
   var _gmLocked = !USER.badge;
   c.innerHTML = '<div class="espace-view">'
-    +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Missions Genesis</div></div>'
+    +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Missions GENESIS</div></div>'
     +(_gmLocked
       ? '<div style="margin:12px 14px 0;background:rgba(255,215,0,.06);border:1.5px solid rgba(255,215,0,.2);border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:12px;">'
         +'<i class="fa-solid fa-lock" style="color:#FFD700;font-size:16px;flex-shrink:0;"></i>'
@@ -5524,8 +5524,8 @@ function showGenesisPatrimoine(){
   _saveProfilScroll('showGenesisPatrimoine');
   if(!USER || GUEST){
     c.innerHTML = '<div class="espace-view">'
-      +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Patrimoine Genesis</div></div>'
-      +'<div class="espace-empty">Connectez-vous pour consulter votre Patrimoine Genesis.</div>'
+      +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Patrimoine GENESIS</div></div>'
+      +'<div class="espace-empty">Connectez-vous pour consulter votre Patrimoine GENESIS.</div>'
       +'</div>';
     return;
   }
@@ -5539,7 +5539,7 @@ function showGenesisPatrimoine(){
     {icon:'fa-user-plus', label:'Parrainages', value: p.parrainages||0}
   ];
   c.innerHTML = '<div class="espace-view">'
-    +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Patrimoine Genesis</div></div>'
+    +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Patrimoine GENESIS</div></div>'
     +'<div style="padding:14px;padding-bottom:80px;overflow-y:auto;flex:1;">'
     +'<div class="genesis-patrimoine-level"><i class="fa-solid '+level.icon+'"></i> '+level.label+'<div class="genesis-patrimoine-anciennete">Membre depuis '+ancienneteLabel+'</div></div>'
     +'<div class="genesis-patrimoine-grid">'
@@ -5601,8 +5601,8 @@ function renderProfil(){
       +pli('<i class="fa-solid fa-file-invoice"></i>','#0a0a14','Mes devis',null,'showMesDevis()')
       +pli('<i class="fa-solid fa-box-open"></i>','#100a1a','Mes livrables',null,'showLivrables()')
       +pli('<i class="fa-solid fa-heart"></i>','#1a0014','Mes favoris',null,'showFavoris()')
-      +pli('<i class="fa-solid fa-bullseye"></i>','#14140a','Missions Genesis',null,'showGenesisMissions()')
-      +pli('<i class="fa-solid fa-gem"></i>','#0a1414','Patrimoine Genesis',null,'showGenesisPatrimoine()')
+      +pli('<i class="fa-solid fa-bullseye"></i>','#14140a','Missions GENESIS',null,'showGenesisMissions()')
+      +pli('<i class="fa-solid fa-gem"></i>','#0a1414','Patrimoine GENESIS',null,'showGenesisPatrimoine()')
       +pli('<i class="fa-solid fa-crown"></i>','#0a0014','Mes Niveaux GENESIS',null,'showClientLevels()')
       +pli('<i class="fa-solid fa-headset"></i>','#1a0a00','Assistance',null,'showSupport()')
       +pli('<i class="fa-solid fa-comment-dots"></i>','#0d1a1a','Messages',null,'nav(\'messages\')')
@@ -7040,7 +7040,7 @@ function _triggerLevelUp(levelLabel, levelIcon) {
     var card = document.createElement('div');
     card.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) scale(.7);background:linear-gradient(135deg,#1a1200,#0d0d00);border:2px solid #FFD700;border-radius:20px;padding:28px 32px;text-align:center;pointer-events:auto;animation:luCardIn .45s cubic-bezier(.34,1.56,.64,1) forwards;min-width:220px;max-width:86vw;box-shadow:0 0 40px rgba(255,215,0,.35);';
     var _luAdvMap = {
-      bronze: ['Programme de parrainage','Missions Genesis','Suggestions personnalisées Jérémie IA','Résumé mensuel personnalisé'],
+      bronze: ['Programme de parrainage','Missions GENESIS','Suggestions personnalisées Jérémie IA','Résumé mensuel personnalisé'],
       argent: ['Avantages partenaires FA GENESIS','Webinaires & ateliers','Alertes intelligentes','Jérémie IA Plus'],
       or:     ['Événements privés & networking','Accès bêta & avant-première','Offres Premium partenaires','Jérémie IA Pro'],
       elite:  ['Invitations VIP','Conseil Communautaire FA GENESIS','Fonctionnalités expérimentales','Jérémie IA Expert']
