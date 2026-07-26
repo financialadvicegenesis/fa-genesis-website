@@ -7072,6 +7072,252 @@ function _triggerLevelUp(levelLabel, levelIcon) {
   } catch(e) {}
 }
 
+// ── ROUTING DES AVANTAGES DE NIVEAU ──────────────────────────────
+// Retourne l'action onclick pour un avantage débloqué, ou null si géré manuellement par FA GENESIS
+function _profilAdvOnclick(id) {
+  var map = {
+    profil_perso:    'showProfilPersonnalisation()',
+    parrainage:      'profilBack()',
+    defis_qg:        'profilBack();setTimeout(showGenesisMissions,50);',
+    suggestions_ia:  '_profilOpenJeremie()',
+    resume_mensuel:  'showResumeMensuel()',
+    avantages_ptnr:  'showAvantagesPartenaires()',
+    webinaires:      'profilBack();setTimeout(goToEventsExplorer,100);',
+    alertes_ia:      'showAlertesIA()',
+    campagnes:       'profilBack();setTimeout(function(){_rankPromoFilter=true;nav("prestataires");},100);',
+    jeremie_plus:    '_profilOpenJeremie()',
+    events_prives:   'profilBack();setTimeout(goToEventsExplorer,100);',
+    offres_premium:  'profilBack();setTimeout(function(){_rankPromoFilter=true;nav("prestataires");},100);',
+    priority_events: 'profilBack();setTimeout(goToEventsExplorer,100);',
+    jeremie_pro:     '_profilOpenJeremie()',
+    jeremie_expert:  '_profilOpenJeremie()'
+  };
+  return map[id] || null;
+}
+// Avantages gérés manuellement par l'équipe FA GENESIS (pas de bouton)
+function _profilAdvIsManaged(id) {
+  return ['avant_premiere','vip','fonct_exp','conseil_com','cadeau_annuel','ptnr_strategiques'].indexOf(id) !== -1;
+}
+function _profilOpenJeremie() {
+  profilBack();
+  setTimeout(function(){ if(typeof openJeremieChat==='function') openJeremieChat(); }, 150);
+}
+
+// ── RÉSUMÉ GENESIS (avantage Créateur) ───────────────────────────
+function showResumeMensuel() {
+  var c = document.getElementById('profilContent'); if(!c) return;
+  if(!USER || GUEST || !USER.badge){ showClientLevels(); return; }
+  _saveProfilScroll('showResumeMensuel');
+  c.innerHTML = '<div class="espace-view">'
+    +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Mon Résumé GENESIS</div></div>'
+    +'<div id="resume-content" style="padding:14px;padding-bottom:80px;overflow-y:auto;flex:1;"><div class="espace-loading">Chargement...</div></div>'
+    +'</div>';
+  fetch((window.FA_GENESIS_API||API)+'/api/client/level-progress',{headers:{'Authorization':'Bearer '+USER._token}})
+    .then(function(r){return r.json();})
+    .then(function(data){
+      var el = document.getElementById('resume-content'); if(!el) return;
+      var qg = data.qgPoints || 0;
+      var lvl = data.currentLevel || 'Créateur';
+      var prog = data.progress || {};
+      var levelColors = {bronze:'#cd7f32',argent:'#c0c0c0',or:'#FFD700',elite:'#a78bfa'};
+      var col = levelColors[data.currentBadge] || '#FFD700';
+      var html = '<div style="background:linear-gradient(135deg,#1a1200,#0d0d00);border:1.5px solid '+col+';border-radius:18px;padding:20px;margin-bottom:16px;text-align:center;">';
+      html += '<div style="font-size:11px;color:#888;font-weight:700;letter-spacing:1px;margin-bottom:6px;">VOTRE NIVEAU</div>';
+      html += '<div style="font-size:22px;font-weight:900;color:'+col+';">'+lvl+'</div>';
+      html += '<div style="font-size:28px;font-weight:900;color:#fff;margin:8px 0;">'+qg+' <span style="font-size:14px;color:#888;">QG</span></div>';
+      if(prog.nextLevel) {
+        var pct = prog.progressPercent || 0;
+        html += '<div style="background:#1a1a1a;border-radius:20px;height:6px;margin:8px 0 4px;">';
+        html += '<div style="background:'+col+';width:'+pct+'%;height:100%;border-radius:20px;transition:width .8s;"></div></div>';
+        html += '<div style="font-size:11px;color:#555;">'+prog.pointsToNext+' QG pour atteindre <strong style="color:#888;">'+prog.nextLevel+'</strong></div>';
+      } else {
+        html += '<div style="font-size:11px;color:#4caf50;margin-top:4px;"><i class="fa-solid fa-trophy"></i> Niveau maximum atteint</div>';
+      }
+      html += '</div>';
+      html += '<div style="font-size:11px;font-weight:800;color:#555;letter-spacing:.8px;margin-bottom:10px;">COMMENT GAGNER DES QG</div>';
+      var qgActions = [
+        {icon:'fa-briefcase',label:'Prestation réalisée',pts:20},
+        {icon:'fa-star',label:'Avis laissé',pts:5},
+        {icon:'fa-star',label:'Avis 5 étoiles',pts:30,extra:true},
+        {icon:'fa-chalkboard-teacher',label:'Atelier ou formation',pts:50},
+        {icon:'fa-calendar-check',label:'Participation événement',pts:75},
+        {icon:'fa-user-plus',label:'Parrainage validé',pts:100}
+      ];
+      html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;">';
+      qgActions.forEach(function(a){
+        html += '<div style="background:#111;border:1px solid #1e1e1e;border-radius:12px;padding:10px;display:flex;align-items:center;gap:8px;">';
+        html += '<i class="fa-solid '+a.icon+'" style="color:#FFD700;font-size:14px;flex-shrink:0;"></i>';
+        html += '<div><div style="font-size:10px;color:#888;line-height:1.3;">'+a.label+'</div>';
+        html += '<div style="font-size:12px;font-weight:800;color:#FFD700;">+'+a.pts+' QG</div></div></div>';
+      });
+      html += '</div>';
+      html += '<button onclick="showClientLevels()" style="width:100%;background:rgba(255,215,0,.08);border:1px solid rgba(255,215,0,.2);border-radius:14px;padding:12px;font-size:12px;font-weight:700;color:#FFD700;cursor:pointer;"><i class="fa-solid fa-crown"></i> Voir mes niveaux & avantages</button>';
+      el.innerHTML = html;
+    })
+    .catch(function(){
+      var el=document.getElementById('resume-content');
+      if(el) el.innerHTML='<div class="espace-empty">Erreur de chargement.</div>';
+    });
+}
+
+// ── AVANTAGES PARTENAIRES (avantage Bâtisseur) ────────────────────
+function showAvantagesPartenaires() {
+  var c = document.getElementById('profilContent'); if(!c) return;
+  _saveProfilScroll('showAvantagesPartenaires');
+  c.innerHTML = '<div class="espace-view">'
+    +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Avantages Partenaires</div></div>'
+    +'<div id="avantages-ptnr-content" style="padding:14px;padding-bottom:80px;overflow-y:auto;flex:1;"><div class="espace-loading">Chargement...</div></div>'
+    +'</div>';
+  fetch((window.FA_GENESIS_API||API)+'/api/promotions?limit=30')
+    .then(function(r){return r.json();})
+    .then(function(data){
+      var el = document.getElementById('avantages-ptnr-content'); if(!el) return;
+      var promos = (data && data.promotions) || [];
+      var html = '<div style="background:rgba(255,215,0,.05);border:1px solid rgba(255,215,0,.15);border-radius:14px;padding:14px;margin-bottom:16px;">';
+      html += '<div style="font-size:12px;color:#ccc;line-height:1.6;">Les prestataires FA GENESIS proposent des avantages exclusifs réservés aux membres Bâtisseur et plus. Ces offres sont mises à jour régulièrement.</div>';
+      html += '</div>';
+      if(!promos.length) {
+        html += '<div class="espace-empty"><i class="fa-solid fa-tag" style="font-size:28px;color:#2a2a2a;margin-bottom:8px;"></i><div>Aucune offre disponible pour le moment.</div><div style="font-size:11px;color:#444;margin-top:4px;">Revenez régulièrement — les partenaires publient de nouvelles offres.</div></div>';
+      } else {
+        var typeLabels = {percentage:'Réduction',fixed:'Réduction',free_service:'Prestation offerte',bonus:'Bonus',free_consultation:'Consultation gratuite',free_travel:'Déplacement offert',promo_code:'Code promo'};
+        promos.forEach(function(pr){
+          var val = pr.type==='percentage'?('-'+pr.value+'%') : pr.type==='fixed'?('-'+pr.value+'€') : (typeLabels[pr.type]||'Offre');
+          var daysLeft = Math.ceil((new Date(pr.end_date)-new Date())/(1000*60*60*24));
+          html += '<div style="background:#111;border:1px solid #1e1e1e;border-radius:14px;padding:14px;margin-bottom:10px;display:flex;gap:12px;align-items:flex-start;">';
+          if(pr.partner_photo) html += '<img src="'+pr.partner_photo+'" style="width:44px;height:44px;border-radius:10px;object-fit:cover;flex-shrink:0;">';
+          else html += '<div style="width:44px;height:44px;border-radius:10px;background:#1a1a1a;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="fa-solid fa-user" style="color:#333;"></i></div>';
+          html += '<div style="flex:1;min-width:0;">';
+          html += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">';
+          html += '<span style="font-size:13px;font-weight:800;color:#fff;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+pr.title+'</span>';
+          html += '<span style="background:rgba(255,59,48,.13);border:1px solid rgba(255,59,48,.35);border-radius:8px;padding:2px 8px;font-size:11px;font-weight:800;color:#ff4d4d;flex-shrink:0;">'+val+'</span>';
+          html += '</div>';
+          if(pr.description) html += '<div style="font-size:11px;color:#666;margin-bottom:4px;">'+pr.description+'</div>';
+          html += '<div style="font-size:11px;color:#555;">'+pr.partner_name+(daysLeft>0?' · <span style="color:#FFD700;">'+daysLeft+' j restant'+(daysLeft>1?'s':'')+'</span>':'')+'</div>';
+          html += '</div></div>';
+        });
+      }
+      el.innerHTML = html;
+    })
+    .catch(function(){
+      var el=document.getElementById('avantages-ptnr-content');
+      if(el) el.innerHTML='<div class="espace-empty">Erreur de chargement.</div>';
+    });
+}
+
+// ── ALERTES INTELLIGENTES (avantage Bâtisseur) ────────────────────
+function showAlertesIA() {
+  var c = document.getElementById('profilContent'); if(!c) return;
+  _saveProfilScroll('showAlertesIA');
+  var _alKey = 'fa_genesis_alerts_prefs';
+  var _alPrefs = {};
+  try{ _alPrefs = JSON.parse(localStorage.getItem(_alKey)||'{}'); }catch(e){}
+  var _alCats = [
+    {id:'photographe',label:'Photographe',icon:'fa-camera'},
+    {id:'videaste',label:'Vidéaste',icon:'fa-video'},
+    {id:'graphiste',label:'Graphiste',icon:'fa-pen-nib'},
+    {id:'marketeur',label:'Marketeur',icon:'fa-chart-line'},
+    {id:'redacteur',label:'Rédacteur',icon:'fa-file-pen'},
+    {id:'developpeur',label:'Développeur',icon:'fa-code'},
+    {id:'consultant',label:'Consultant',icon:'fa-briefcase'},
+    {id:'formateur',label:'Formateur',icon:'fa-chalkboard-teacher'},
+    {id:'coworking',label:'Espace coworking',icon:'fa-building'}
+  ];
+  c.innerHTML = '<div class="espace-view">'
+    +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Alertes Intelligentes</div></div>'
+    +'<div style="padding:14px;padding-bottom:80px;overflow-y:auto;flex:1;" id="alertes-ia-body"></div>'
+    +'</div>';
+  var el = document.getElementById('alertes-ia-body'); if(!el) return;
+  var html = '<div style="background:rgba(59,130,246,.06);border:1px solid rgba(59,130,246,.2);border-radius:14px;padding:14px;margin-bottom:16px;">';
+  html += '<div style="font-size:12px;color:#9ecbe8;line-height:1.6;"><i class="fa-solid fa-bell" style="margin-right:6px;"></i>Sélectionnez les catégories pour lesquelles vous souhaitez être alerté lorsqu\'un nouveau prestataire s\'inscrit sur FA GENESIS.</div>';
+  html += '</div>';
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:20px;">';
+  _alCats.forEach(function(cat){
+    var on = !!_alPrefs[cat.id];
+    html += '<div id="al-cat-'+cat.id+'" onclick="_alToggleCat(\''+cat.id+'\')" style="background:#111;border:1.5px solid '+(on?'rgba(59,130,246,.5)':'#1e1e1e')+';border-radius:12px;padding:12px;display:flex;align-items:center;gap:8px;cursor:pointer;transition:border-color .2s;">';
+    html += '<i class="fa-solid '+cat.icon+'" style="color:'+(on?'#3b82f6':'#333')+';font-size:16px;flex-shrink:0;"></i>';
+    html += '<span style="font-size:12px;font-weight:700;color:'+(on?'#9ecbe8':'#555')+';">'+cat.label+'</span>';
+    if(on) html += '<i class="fa-solid fa-circle-check" style="color:#3b82f6;margin-left:auto;font-size:12px;"></i>';
+    html += '</div>';
+  });
+  html += '</div>';
+  html += '<div id="al-save-msg" style="display:none;color:#4caf50;font-size:12px;text-align:center;margin-bottom:8px;"></div>';
+  html += '<button onclick="_alSavePrefs()" style="width:100%;background:linear-gradient(135deg,#3b82f6,#1d4ed8);border:none;border-radius:14px;padding:13px;font-size:13px;font-weight:900;color:#fff;cursor:pointer;"><i class="fa-solid fa-bell"></i> Enregistrer mes préférences</button>';
+  el.innerHTML = html;
+}
+function _alToggleCat(catId){
+  var _alKey = 'fa_genesis_alerts_prefs';
+  var prefs={};try{prefs=JSON.parse(localStorage.getItem(_alKey)||'{}');}catch(e){}
+  prefs[catId] = !prefs[catId];
+  try{localStorage.setItem(_alKey,JSON.stringify(prefs));}catch(e){}
+  var el = document.getElementById('al-cat-'+catId); if(!el) return;
+  var on = !!prefs[catId];
+  el.style.borderColor = on?'rgba(59,130,246,.5)':'#1e1e1e';
+  var ico = el.querySelector('i:first-child');
+  if(ico) ico.style.color = on?'#3b82f6':'#333';
+  var lbl = el.querySelector('span');
+  if(lbl) lbl.style.color = on?'#9ecbe8':'#555';
+  var chk = el.querySelector('i.fa-circle-check');
+  if(on && !chk){
+    var c2=document.createElement('i');c2.className='fa-solid fa-circle-check';
+    c2.style.cssText='color:#3b82f6;margin-left:auto;font-size:12px;';el.appendChild(c2);
+  } else if(!on && chk){ chk.remove(); }
+}
+function _alSavePrefs(){
+  var msg = document.getElementById('al-save-msg'); if(!msg) return;
+  var _alKey = 'fa_genesis_alerts_prefs';
+  var prefs={};try{prefs=JSON.parse(localStorage.getItem(_alKey)||'{}');}catch(e){}
+  var count = Object.keys(prefs).filter(function(k){return prefs[k];}).length;
+  msg.style.display='';
+  msg.textContent = count ? count+' catégorie'+(count>1?'s':'')+' sélectionnée'+(count>1?'s':'')+' — vous serez alerté lors des nouvelles inscriptions.' : 'Aucune catégorie sélectionnée — alertes désactivées.';
+  setTimeout(function(){if(msg)msg.style.display='none';},3000);
+}
+
+// ── PERSONNALISATION DU PROFIL (avantage Créateur) ────────────────
+function showProfilPersonnalisation() {
+  var c = document.getElementById('profilContent'); if(!c) return;
+  if(!USER || GUEST || !USER.badge){ showClientLevels(); return; }
+  _saveProfilScroll('showProfilPersonnalisation');
+  var _ppKey = 'fa_genesis_profil_perso';
+  var saved = {}; try{saved=JSON.parse(localStorage.getItem(_ppKey)||'{}');}catch(e){}
+  c.innerHTML = '<div class="espace-view">'
+    +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Personnalisation du profil</div></div>'
+    +'<div style="padding:14px;padding-bottom:80px;overflow-y:auto;flex:1;">'
+    +'<div style="font-size:11px;color:#555;margin-bottom:14px;line-height:1.5;">Personnalisez votre présentation sur FA GENESIS. Ces informations seront visibles par les prestataires lors de vos échanges.</div>'
+    +'<div style="font-size:10px;color:#555;font-weight:800;letter-spacing:.8px;margin-bottom:6px;">BIO ENRICHIE</div>'
+    +'<textarea id="pp-bio" class="ptnr-input" rows="4" placeholder="Décrivez votre activité, vos besoins, ce qui vous passionne… (max 500 caractères)" maxlength="500" style="resize:none;margin-bottom:4px;">'+(saved.bio||'')+'</textarea>'
+    +'<div style="font-size:10px;color:#444;text-align:right;margin-bottom:14px;" id="pp-bio-count">'+(saved.bio||'').length+'/500</div>'
+    +'<div style="font-size:10px;color:#555;font-weight:800;letter-spacing:.8px;margin-bottom:8px;">THÈME DE COULEUR</div>'
+    +'<div style="display:flex;gap:8px;margin-bottom:16px;" id="pp-theme-row">'
+    +['#FFD700','#3b82f6','#22c55e','#a855f7','#ef4444'].map(function(col,i){
+        var sel=(saved.theme||'#FFD700')===col;
+        return '<div onclick="_ppPickTheme(\''+col+'\')" id="pp-theme-'+i+'" style="width:36px;height:36px;border-radius:50%;background:'+col+';cursor:pointer;border:2.5px solid '+(sel?'#fff':'transparent')+';transition:border-color .2s;flex-shrink:0;"></div>';
+      }).join('')
+    +'</div>'
+    +'<div id="pp-save-msg" style="display:none;color:#4caf50;font-size:12px;margin-bottom:8px;text-align:center;"></div>'
+    +'<button onclick="_ppSave()" style="width:100%;background:linear-gradient(135deg,#FFD700,#e6c200);color:#1a1200;border:none;border-radius:14px;padding:13px;font-size:13px;font-weight:900;cursor:pointer;"><i class="fa-solid fa-floppy-disk"></i> Enregistrer</button>'
+    +'</div></div>';
+  var bioEl = document.getElementById('pp-bio');
+  if(bioEl) bioEl.oninput = function(){ var cnt=document.getElementById('pp-bio-count'); if(cnt) cnt.textContent=this.value.length+'/500'; };
+}
+function _ppPickTheme(col){
+  var _ppKey='fa_genesis_profil_perso'; var saved={};
+  try{saved=JSON.parse(localStorage.getItem(_ppKey)||'{}');}catch(e){}
+  saved.theme=col; try{localStorage.setItem(_ppKey,JSON.stringify(saved));}catch(e){}
+  var colors=['#FFD700','#3b82f6','#22c55e','#a855f7','#ef4444'];
+  colors.forEach(function(c,i){
+    var el=document.getElementById('pp-theme-'+i);
+    if(el) el.style.borderColor=(c===col?'#fff':'transparent');
+  });
+}
+function _ppSave(){
+  var _ppKey='fa_genesis_profil_perso'; var saved={};
+  try{saved=JSON.parse(localStorage.getItem(_ppKey)||'{}');}catch(e){}
+  var bioEl=document.getElementById('pp-bio'); if(bioEl) saved.bio=bioEl.value.slice(0,500);
+  try{localStorage.setItem(_ppKey,JSON.stringify(saved));}catch(e){}
+  var msg=document.getElementById('pp-save-msg');
+  if(msg){msg.style.display='';msg.textContent='Profil mis à jour !';setTimeout(function(){if(msg)msg.style.display='none';},2500);}
+}
+
 // ── NIVEAUX GENESIS CLIENT ────────────────────────────────────────
 function showClientLevels() {
   var c = document.getElementById('profilContent');
@@ -7175,13 +7421,16 @@ function showClientLevels() {
         advs.forEach(function(adv) {
           html += '<div style="display:flex;align-items:flex-start;gap:8px;font-size:12px;">';
           if (adv.available) {
-            html += '<i class="fa-solid fa-circle-check" style="color:#4caf50;margin-top:1px;flex-shrink:0;font-size:12px;"></i>';
-            html += '<span style="color:#ccc;flex:1;">' + adv.label + '</span>';
-            if (adv.id === 'defis_qg') {
-              html += '<button onclick="profilBack();setTimeout(showGenesisMissions,50);" style="background:rgba(255,215,0,.12);border:1px solid rgba(255,215,0,.3);border-radius:8px;padding:3px 8px;font-size:10px;font-weight:700;color:#FFD700;cursor:pointer;flex-shrink:0;white-space:nowrap;"><i class="fa-solid fa-arrow-right" style="font-size:9px;"></i> Voir</button>';
+            html += '<i class="fa-solid fa-circle-check" style="color:#4caf50;margin-top:2px;flex-shrink:0;font-size:11px;"></i>';
+            html += '<span style="color:#ccc;flex:1;line-height:1.4;">' + adv.label + '</span>';
+            var _aOc = _profilAdvOnclick(adv.id);
+            if (_aOc) {
+              html += '<button onclick="'+_aOc+'" style="background:rgba(255,215,0,.1);border:1px solid rgba(255,215,0,.25);border-radius:8px;padding:3px 8px;font-size:10px;font-weight:700;color:#FFD700;cursor:pointer;flex-shrink:0;"><i class="fa-solid fa-arrow-right" style="font-size:9px;"></i></button>';
+            } else if (_profilAdvIsManaged(adv.id)) {
+              html += '<span style="font-size:9px;color:#444;flex-shrink:0;text-align:right;line-height:1.3;">FA<br>GENESIS</span>';
             }
           } else {
-            html += '<i class="fa-solid fa-lock" style="color:#2e2e2e;margin-top:1px;flex-shrink:0;font-size:12px;"></i>';
+            html += '<i class="fa-solid fa-lock" style="color:#2e2e2e;margin-top:2px;flex-shrink:0;font-size:11px;"></i>';
             html += '<span style="color:#2e2e2e;">' + adv.label + '</span>';
           }
           html += '</div>';

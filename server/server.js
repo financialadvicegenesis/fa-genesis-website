@@ -6966,7 +6966,7 @@ app.get('/api/client/level-progress', function(req, res) {
                 { id: 'resume_mensuel',    label: 'Résumé mensuel personnalisé de votre activité' }
             ],
             argent: [
-                { id: 'avantages_ptnr',    label: 'Accès aux avantages partenaires négociés par FA GENESIS' },
+                { id: 'avantages_ptnr',    label: 'Accès à des avantages exclusifs proposés par les partenaires FA GENESIS' },
                 { id: 'webinaires',        label: 'Invitations aux webinaires et ateliers FA GENESIS' },
                 { id: 'alertes_ia',        label: 'Alertes intelligentes — nouveau prestataire correspondant à vos préférences' },
                 { id: 'campagnes',         label: 'Accès prioritaire aux campagnes, concours et opérations promotionnelles' },
