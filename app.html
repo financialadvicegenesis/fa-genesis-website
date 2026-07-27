@@ -7123,7 +7123,7 @@ function _profilAdvOnclick(id) {
     avantages_ptnr:  'showAvantagesPartenaires()',
     webinaires:      'profilBack();setTimeout(goToEventsExplorer,100);',
     alertes_ia:      'showAlertesIA()',
-    campagnes:       'profilBack();setTimeout(function(){_rankPromoFilter=true;nav("prestataires");},100);',
+    campagnes:       'showCampagnesJeux()',
     jeremie_plus:    '_profilOpenJeremie()',
     events_prives:   'profilBack();setTimeout(goToEventsExplorer,100);',
     offres_premium:  'profilBack();setTimeout(function(){_rankPromoFilter=true;nav("prestataires");},100);',
@@ -7326,6 +7326,91 @@ function _alSavePrefs(){
   msg.style.display='';
   msg.textContent = count ? count+' catégorie'+(count>1?'s':'')+' sélectionnée'+(count>1?'s':'')+' — vous serez alerté lors des nouvelles inscriptions.' : 'Aucune catégorie sélectionnée — alertes désactivées.';
   setTimeout(function(){if(msg)msg.style.display='none';},3000);
+}
+
+// ── CAMPAGNES & JEUX CONCOURS (avantage Bâtisseur) ───────────────
+function showCampagnesJeux() {
+  var c = document.getElementById('profilContent'); if(!c) return;
+  if(!USER || GUEST){ renderProfil(); return; }
+  _saveProfilScroll('showCampagnesJeux');
+  var _argentBadges = ['argent','or','elite'];
+  if(_argentBadges.indexOf(USER.badge) === -1){
+    c.innerHTML = '<div class="espace-view">'
+      +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Campagnes & Jeux concours</div></div>'
+      +'<div style="padding:14px;padding-bottom:80px;overflow-y:auto;flex:1;">'
+      +'<div style="background:rgba(59,130,246,.06);border:1.5px solid rgba(59,130,246,.2);border-radius:16px;padding:28px 20px;text-align:center;margin-top:20px;">'
+      +'<i class="fa-solid fa-lock" style="color:#60a5fa;font-size:28px;margin-bottom:12px;display:block;"></i>'
+      +'<div style="font-size:14px;font-weight:900;color:#60a5fa;margin-bottom:8px;">Niveau Bâtisseur requis</div>'
+      +'<div style="font-size:12px;color:#555;line-height:1.6;">Les campagnes et jeux concours sont accessibles à partir de <strong style="color:#60a5fa;">300 Points QG</strong>.</div>'
+      +'<button onclick="showClientLevels()" style="margin-top:18px;background:linear-gradient(135deg,#3b82f6,#1d4ed8);color:#fff;border:none;border-radius:12px;padding:10px 22px;font-size:12px;font-weight:900;cursor:pointer;"><i class="fa-solid fa-bolt"></i> Voir mes niveaux</button>'
+      +'</div></div></div>';
+    return;
+  }
+  c.innerHTML = '<div class="espace-view">'
+    +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Campagnes & Jeux concours</div></div>'
+    +'<div style="padding:14px;padding-bottom:80px;overflow-y:auto;flex:1;">'
+    // Bandeau Bâtisseur+
+    +'<div style="background:linear-gradient(135deg,#0c1a3a,#1d4ed8 60%,#3b82f6);border-radius:16px;padding:16px 18px;margin-bottom:20px;display:flex;align-items:center;gap:12px;">'
+    +'<i class="fa-solid fa-bolt" style="font-size:22px;color:#fff;flex-shrink:0;"></i>'
+    +'<div>'
+    +'<div style="font-size:13px;font-weight:900;color:#fff;margin-bottom:2px;">Avantage Bâtisseur</div>'
+    +'<div style="font-size:11px;color:rgba(255,255,255,.7);">Accès prioritaire aux campagnes et aux jeux concours GENESIS</div>'
+    +'</div></div>'
+    // Section campagnes en cours
+    +'<div style="font-size:10px;color:#555;font-weight:800;letter-spacing:.8px;margin-bottom:12px;display:flex;align-items:center;gap:6px;"><i class="fa-solid fa-bullhorn"></i> CAMPAGNES EN COURS</div>'
+    +'<div id="campagnes-liste" style="margin-bottom:24px;"></div>'
+    // Section jeux concours
+    +'<div style="font-size:10px;color:#555;font-weight:800;letter-spacing:.8px;margin-bottom:12px;display:flex;align-items:center;gap:6px;"><i class="fa-solid fa-trophy"></i> JEUX CONCOURS</div>'
+    +'<div id="jeux-liste"></div>'
+    +'</div></div>';
+  _campagnesLoadContent();
+}
+function _campagnesLoadContent(){
+  var campEl = document.getElementById('campagnes-liste');
+  var jeuxEl = document.getElementById('jeux-liste');
+  // Contenu chargé depuis le backend si disponible, sinon état vide
+  fetch((window.FA_GENESIS_API||API)+'/api/campagnes', {headers: USER&&USER._token?{'Authorization':'Bearer '+USER._token}:{}})
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(d){
+      var campagnes = (d && d.campagnes) || [];
+      var jeux = (d && d.jeux) || [];
+      if(campEl){
+        if(campagnes.length === 0){
+          campEl.innerHTML = '<div style="background:#111;border:1px solid #1e1e1e;border-radius:14px;padding:24px;text-align:center;">'
+            +'<i class="fa-solid fa-calendar-xmark" style="font-size:24px;color:#222;margin-bottom:8px;display:block;"></i>'
+            +'<div style="font-size:12px;color:#444;">Aucune campagne en cours.<br><span style="font-size:11px;color:#333;">Revenez bientôt — les prochaines opérations seront annoncées ici.</span></div>'
+            +'</div>';
+        } else {
+          campEl.innerHTML = campagnes.map(function(item){
+            return '<div style="background:#111;border:1px solid #1e1e1e;border-radius:14px;padding:14px 16px;margin-bottom:10px;">'
+              +'<div style="font-size:13px;font-weight:900;color:#fff;margin-bottom:4px;">'+item.titre+'</div>'
+              +'<div style="font-size:11px;color:#666;margin-bottom:8px;">'+item.description+'</div>'
+              +(item.lien ? '<a href="'+item.lien+'" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:6px;background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.3);border-radius:8px;padding:6px 12px;font-size:11px;font-weight:700;color:#60a5fa;text-decoration:none;"><i class="fa-solid fa-arrow-up-right-from-square" style="font-size:9px;"></i> Participer</a>' : '')
+              +'</div>';
+          }).join('');
+        }
+      }
+      if(jeuxEl){
+        if(jeux.length === 0){
+          jeuxEl.innerHTML = '<div style="background:#111;border:1px solid #1e1e1e;border-radius:14px;padding:24px;text-align:center;">'
+            +'<i class="fa-solid fa-dice" style="font-size:24px;color:#222;margin-bottom:8px;display:block;"></i>'
+            +'<div style="font-size:12px;color:#444;">Aucun jeu concours actif.<br><span style="font-size:11px;color:#333;">En tant que Bâtisseur, vous serez notifié en priorité dès l\'ouverture.</span></div>'
+            +'</div>';
+        } else {
+          jeuxEl.innerHTML = jeux.map(function(item){
+            return '<div style="background:#111;border:1px solid #1e1e1e;border-radius:14px;padding:14px 16px;margin-bottom:10px;">'
+              +'<div style="font-size:13px;font-weight:900;color:#FFD700;margin-bottom:4px;"><i class="fa-solid fa-trophy" style="font-size:11px;margin-right:5px;"></i>'+item.titre+'</div>'
+              +'<div style="font-size:11px;color:#666;margin-bottom:8px;">'+item.description+'</div>'
+              +(item.lien ? '<a href="'+item.lien+'" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:6px;background:rgba(255,215,0,.1);border:1px solid rgba(255,215,0,.25);border-radius:8px;padding:6px 12px;font-size:11px;font-weight:700;color:#FFD700;text-decoration:none;"><i class="fa-solid fa-arrow-up-right-from-square" style="font-size:9px;"></i> Participer</a>' : '')
+              +'</div>';
+          }).join('');
+        }
+      }
+    })
+    .catch(function(){
+      if(campEl) campEl.innerHTML='<div style="background:#111;border:1px solid #1e1e1e;border-radius:14px;padding:20px;text-align:center;"><div style="font-size:12px;color:#444;">Aucune campagne en cours.</div></div>';
+      if(jeuxEl) jeuxEl.innerHTML='<div style="background:#111;border:1px solid #1e1e1e;border-radius:14px;padding:20px;text-align:center;"><div style="font-size:12px;color:#444;">Aucun jeu concours actif.</div></div>';
+    });
 }
 
 // ── PERSONNALISATION DU PROFIL (avantage Créateur) ────────────────

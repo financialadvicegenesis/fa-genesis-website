@@ -3565,6 +3565,14 @@ app.get('/api/my-orders', async function(req, res) {
     }
 });
 
+// GET /api/campagnes — campagnes et jeux concours actifs (Bâtisseur+)
+app.get('/api/campagnes', function(req, res) {
+    // Données gérées manuellement par l'équipe FA GENESIS via ce tableau
+    var campagnes = [];
+    var jeux = [];
+    res.json({ ok: true, campagnes: campagnes, jeux: jeux });
+});
+
 /**
  * GET /api/client/wallet
  * Portefeuille GENESIS SAFE™ du client : fonds actuellement retenus en escrow + historique libéré.
@@ -6981,10 +6989,10 @@ app.get('/api/client/level-progress', function(req, res) {
                 { id: 'patrimoine_genesis', label: 'Patrimoine GENESIS' }
             ],
             argent: [
-                { id: 'avantages_ptnr',    label: 'Accès à des avantages exclusifs proposés par les partenaires FA GENESIS' },
-                { id: 'webinaires',        label: 'Invitations aux webinaires et ateliers FA GENESIS' },
+                { id: 'avantages_ptnr',    label: 'Accès à des avantages exclusifs proposés par les prestataires GENESIS' },
+                { id: 'webinaires',        label: 'Invitations aux webinaires et ateliers GENESIS' },
                 { id: 'alertes_ia',        label: 'Alertes intelligentes — nouveau prestataire correspondant à vos préférences' },
-                { id: 'campagnes',         label: 'Accès prioritaire aux campagnes, concours et opérations promotionnelles' },
+                { id: 'campagnes',         label: 'Accès prioritaire aux campagnes et aux jeux concours' },
                 { id: 'jeremie_plus',      label: 'Jérémie IA Plus — Analyse des habitudes & recommandations automatiques' }
             ],
             or: [
