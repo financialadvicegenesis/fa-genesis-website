@@ -6998,7 +6998,6 @@ app.get('/api/client/level-progress', function(req, res) {
             or: [
                 { id: 'events_prives',     label: 'Invitations aux événements privés & soirées networking GENESIS' },
                 { id: 'avant_premiere',    label: 'Accès anticipé aux nouvelles fonctionnalités de l\'application' },
-                { id: 'offres_premium',    label: 'Accès aux offres premium des prestataires' },
                 { id: 'priority_events',   label: 'Priorité d\'inscription aux événements à capacité limitée' },
                 { id: 'jeremie_pro',       label: 'Jérémie IA Pro — Comparaison multicritères & préparation de projet' }
             ],
