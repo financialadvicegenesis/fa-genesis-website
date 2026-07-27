@@ -6996,9 +6996,9 @@ app.get('/api/client/level-progress', function(req, res) {
                 { id: 'jeremie_plus',      label: 'Jérémie IA Plus — Analyse des habitudes & recommandations automatiques' }
             ],
             or: [
-                { id: 'events_prives',     label: 'Invitations aux événements privés & soirées networking FA GENESIS' },
+                { id: 'events_prives',     label: 'Invitations aux événements privés & soirées networking GENESIS' },
                 { id: 'avant_premiere',    label: 'Accès anticipé aux nouvelles fonctionnalités de l\'application' },
-                { id: 'offres_premium',    label: 'Accès aux offres Premium des partenaires' },
+                { id: 'offres_premium',    label: 'Accès aux offres premium des prestataires' },
                 { id: 'priority_events',   label: 'Priorité d\'inscription aux événements à capacité limitée' },
                 { id: 'jeremie_pro',       label: 'Jérémie IA Pro — Comparaison multicritères & préparation de projet' }
             ],
