@@ -5550,6 +5550,18 @@ function showGenesisPatrimoine(){
       +'</div>';
     return;
   }
+  if(!USER.badge){
+    c.innerHTML = '<div class="espace-view">'
+      +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Patrimoine GENESIS</div></div>'
+      +'<div style="padding:14px;padding-bottom:80px;overflow-y:auto;flex:1;">'
+      +'<div style="background:rgba(255,215,0,.06);border:1.5px solid rgba(255,215,0,.2);border-radius:16px;padding:28px 20px;text-align:center;margin-top:20px;">'
+      +'<i class="fa-solid fa-lock" style="color:#FFD700;font-size:28px;margin-bottom:12px;display:block;"></i>'
+      +'<div style="font-size:14px;font-weight:900;color:#FFD700;margin-bottom:8px;">Niveau Créateur requis</div>'
+      +'<div style="font-size:12px;color:#666;line-height:1.6;">Le Patrimoine GENESIS est accessible à partir de <strong style="color:#FFD700;">100 Points QG</strong>.</div>'
+      +'<button onclick="showClientLevels()" style="margin-top:18px;background:linear-gradient(135deg,#FFD700,#e6c200);color:#1a1200;border:none;border-radius:12px;padding:10px 22px;font-size:12px;font-weight:900;cursor:pointer;"><i class="fa-solid fa-crown"></i> Voir mes niveaux</button>'
+      +'</div></div></div>';
+    return;
+  }
   var p = USER.patrimoineGenesis || {};
   var level = USER.genesisLevel || {label:'Explorateur',icon:'fa-seedling'};
   var ancienneteLabel = (p.ancienneteJours||0) >= 30 ? Math.floor((p.ancienneteJours||0)/30)+' mois' : (p.ancienneteJours||0)+' jours';
@@ -7066,7 +7078,7 @@ function _triggerLevelUp(levelLabel, levelIcon) {
     var card = document.createElement('div');
     card.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) scale(.7);background:linear-gradient(135deg,#1a1200,#0d0d00);border:2px solid #FFD700;border-radius:20px;padding:28px 32px;text-align:center;pointer-events:auto;animation:luCardIn .45s cubic-bezier(.34,1.56,.64,1) forwards;min-width:220px;max-width:86vw;box-shadow:0 0 40px rgba(255,215,0,.35);';
     var _luAdvMap = {
-      bronze: ['Programme de parrainage','Missions GENESIS','Suggestions personnalisées Jérémie IA','Résumé mensuel personnalisé'],
+      bronze: ['Programme de parrainage','Missions GENESIS','Suggestions personnalisées Jérémie IA','Patrimoine GENESIS'],
       argent: ['Avantages partenaires FA GENESIS','Webinaires & ateliers','Alertes intelligentes','Jérémie IA Plus'],
       or:     ['Événements privés & networking','Accès bêta & avant-première','Offres Premium partenaires','Jérémie IA Pro'],
       elite:  ['Invitations VIP','Conseil Communautaire FA GENESIS','Fonctionnalités expérimentales','Jérémie IA Expert']
@@ -7105,8 +7117,9 @@ function _profilAdvOnclick(id) {
     profil_perso:    'showProfilPersonnalisation()',
     parrainage:      'profilBack()',
     defis_qg:        'profilBack();setTimeout(showGenesisMissions,50);',
-    suggestions_ia:  '_profilOpenJeremie()',
-    resume_mensuel:  'showResumeMensuel()',
+    suggestions_ia:       '_profilOpenJeremie()',
+    resume_mensuel:       'showResumeMensuel()',
+    patrimoine_genesis:   'showGenesisPatrimoine()',
     avantages_ptnr:  'showAvantagesPartenaires()',
     webinaires:      'profilBack();setTimeout(goToEventsExplorer,100);',
     alertes_ia:      'showAlertesIA()',

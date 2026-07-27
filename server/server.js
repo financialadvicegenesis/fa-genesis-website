@@ -6977,8 +6977,8 @@ app.get('/api/client/level-progress', function(req, res) {
                 { id: 'profil_perso',      label: 'Personnalisation du profil (thème, bannière, bio enrichie)' },
                 { id: 'parrainage',        label: 'Programme de parrainage' },
                 { id: 'defis_qg',          label: 'Missions GENESIS pour gagner davantage de points' },
-                { id: 'suggestions_ia',    label: 'Jérémie IA — Suggestions personnalisées selon vos habitudes' },
-                { id: 'resume_mensuel',    label: 'Résumé mensuel personnalisé de votre activité' }
+                { id: 'suggestions_ia',      label: 'Jérémie IA — Suggestions personnalisées selon vos habitudes' },
+                { id: 'patrimoine_genesis', label: 'Patrimoine GENESIS' }
             ],
             argent: [
                 { id: 'avantages_ptnr',    label: 'Accès à des avantages exclusifs proposés par les partenaires FA GENESIS' },
