@@ -7166,6 +7166,96 @@ function _triggerLevelUp(levelLabel, levelIcon) {
   } catch(e) {}
 }
 
+// ── ONBOARDING QG — overlay affiché une seule fois après inscription ──
+function _showWelcomeQGOverlay() {
+  try {
+    if (localStorage.getItem('fa_genesis_welcome_shown')) return;
+    localStorage.setItem('fa_genesis_welcome_shown', '1');
+
+    var overlay = document.createElement('div');
+    overlay.id = 'welcome-qg-overlay';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:99998;background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;';
+
+    overlay.innerHTML = ''
+      + '<div style="background:linear-gradient(135deg,#1a1200,#0d0d00);border:2px solid var(--yellow);border-radius:22px;padding:24px 22px 20px;max-width:350px;width:100%;box-shadow:0 0 50px rgba(var(--yellow-rgb),.3);animation:welcomeCardIn .45s cubic-bezier(.34,1.56,.64,1) forwards;">'
+
+      // Header
+      + '<div style="text-align:center;margin-bottom:16px;">'
+      + '<div style="font-size:30px;margin-bottom:7px;"><i class="fa-solid fa-hand-sparkles" style="color:var(--yellow);"></i></div>'
+      + '<div style="font-size:10px;color:#a89000;letter-spacing:1.5px;font-weight:800;text-transform:uppercase;margin-bottom:4px;">Bienvenue dans</div>'
+      + '<div style="font-size:20px;font-weight:900;color:#fff;margin-bottom:3px;">GENESIS</div>'
+      + '<div style="font-size:12px;color:#888;">Voici comment gagner vos premiers QG</div>'
+      + '</div>'
+
+      // Welcome bonus badge
+      + '<div style="background:rgba(var(--yellow-rgb),.1);border:1px solid rgba(var(--yellow-rgb),.25);border-radius:12px;padding:11px 13px;margin-bottom:13px;display:flex;align-items:center;gap:10px;">'
+      + '<i class="fa-solid fa-gift" style="font-size:18px;color:var(--yellow);flex-shrink:0;"></i>'
+      + '<div>'
+      + '<div style="font-size:10px;color:#a89000;font-weight:700;text-transform:uppercase;letter-spacing:.8px;">Bonus de bienvenue crédité</div>'
+      + '<div style="font-size:18px;font-weight:900;color:var(--yellow);line-height:1.2;">+40 QG</div>'
+      + '</div>'
+      + '</div>'
+
+      // Progress bar 40/100
+      + '<div style="margin-bottom:14px;">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">'
+      + '<span style="font-size:10px;color:#aaa;font-weight:600;">Progression vers Créateur</span>'
+      + '<span style="font-size:10px;font-weight:900;color:var(--yellow);">40 / 100 QG</span>'
+      + '</div>'
+      + '<div style="height:7px;background:#222;border-radius:6px;overflow:hidden;">'
+      + '<div style="height:100%;width:40%;background:var(--yellow);border-radius:6px;"></div>'
+      + '</div>'
+      + '<div style="font-size:10px;color:#555;margin-top:4px;text-align:center;">60 QG restants pour débloquer le niveau Créateur</div>'
+      + '</div>'
+
+      // Available actions
+      + '<div style="margin-bottom:13px;">'
+      + '<div style="font-size:10px;color:#a89000;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin-bottom:7px;">Actions disponibles maintenant :</div>'
+      + '<div style="display:flex;flex-direction:column;gap:6px;">'
+      + '<div style="background:#1a1a1a;border-radius:10px;padding:9px 11px;display:flex;align-items:center;gap:9px;">'
+      + '<i class="fa-solid fa-handshake" style="font-size:13px;color:var(--yellow);width:16px;text-align:center;flex-shrink:0;"></i>'
+      + '<div style="flex:1;">'
+      + '<div style="font-size:12px;color:#fff;font-weight:700;">Prestation terminée</div>'
+      + '<div style="font-size:10px;color:#555;">Commandez une prestation et recevez-la</div>'
+      + '</div>'
+      + '<div style="font-size:12px;font-weight:900;color:var(--yellow);white-space:nowrap;">+20 QG</div>'
+      + '</div>'
+      + '<div style="background:#1a1a1a;border-radius:10px;padding:9px 11px;display:flex;align-items:center;gap:9px;">'
+      + '<i class="fa-solid fa-star" style="font-size:13px;color:var(--yellow);width:16px;text-align:center;flex-shrink:0;"></i>'
+      + '<div style="flex:1;">'
+      + '<div style="font-size:12px;color:#fff;font-weight:700;">Avis déposé</div>'
+      + '<div style="font-size:10px;color:#555;">Notez un prestataire après votre commande</div>'
+      + '</div>'
+      + '<div style="font-size:12px;font-weight:900;color:var(--yellow);white-space:nowrap;">+5 QG</div>'
+      + '</div>'
+      + '</div>'
+      + '</div>'
+
+      // Tip
+      + '<div style="background:rgba(34,197,94,.07);border:1px solid rgba(34,197,94,.18);border-radius:10px;padding:9px 12px;margin-bottom:15px;font-size:11px;color:#aaa;text-align:center;">'
+      + '<i class="fa-solid fa-lightbulb" style="color:#22c55e;margin-right:5px;"></i>'
+      + '3 prestations terminées = <strong style="color:#22c55e;">niveau Créateur débloqué !</strong>'
+      + '</div>'
+
+      // CTA
+      + '<button onclick="var el=document.getElementById(\'welcome-qg-overlay\');if(el)el.remove();" style="width:100%;background:linear-gradient(135deg,var(--yellow),#e6c200);border:none;border-radius:12px;padding:13px;font-size:14px;font-weight:900;color:#1a1200;cursor:pointer;letter-spacing:.3px;">'
+      + '<i class="fa-solid fa-rocket" style="margin-right:6px;"></i>C\'est parti !'
+      + '</button>'
+      + '</div>';
+
+    document.body.appendChild(overlay);
+
+    if (typeof launchConfetti === 'function') launchConfetti();
+
+    if (!document.getElementById('welcome-qg-styles')) {
+      var st = document.createElement('style');
+      st.id = 'welcome-qg-styles';
+      st.textContent = '@keyframes welcomeCardIn{from{transform:scale(.85);opacity:0;}to{transform:scale(1);opacity:1;}}';
+      document.head.appendChild(st);
+    }
+  } catch(e) {}
+}
+
 // ── ROUTING DES AVANTAGES DE NIVEAU ──────────────────────────────
 // Retourne l'action onclick pour un avantage débloqué, ou null si géré manuellement par FA GENESIS
 function _profilAdvOnclick(id) {
@@ -11334,9 +11424,8 @@ function regShowSuccess(prenom){
     setTimeout(function(){
       if(hdr) hdr.style.opacity='';
       var welcome=document.getElementById('welcome');
-      if(welcome&&welcome.style.display!=='none'){ showApp(); nav('profil'); return; }
-      if(typeof renderProfil==='function') renderProfil();
-      if(typeof nav==='function') nav('profil');
+      if(welcome&&welcome.style.display!=='none'){ showApp(); nav('profil'); } else { if(typeof renderProfil==='function') renderProfil(); if(typeof nav==='function') nav('profil'); }
+      setTimeout(_showWelcomeQGOverlay, 400);
     }, 500);
   }, 2800);
 }
