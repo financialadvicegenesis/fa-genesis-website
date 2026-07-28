@@ -7998,14 +7998,18 @@ function showClientLevels() {
             : '<div style="font-size:12px;color:#4caf50;font-weight:700;"><i class="fa-solid fa-check-circle"></i> Niveau maximum atteint !</div>')
           + '</div>';
       }
-      // ── Fonctionnalités disponibles dès 0 QG
-      html += '<div style="background:#0a120a;border:1px solid #1a2e1a;border-radius:14px;padding:14px 16px;margin-bottom:20px;">'
-        + '<div style="font-size:10px;color:#4caf50;font-weight:800;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;"><i class="fa-solid fa-circle-check" style="margin-right:5px;"></i>Disponible dès votre inscription</div>'
-        + '<div style="display:flex;flex-direction:column;gap:6px;">'
-        + ['Recherche & consultation de tous les prestataires','Consultation des profils et portfolios','Demande de devis, réservation et paiement','Historique des commandes, devis et paiements','Messagerie avec les prestataires','Notifications et suivi en temps réel','Ajout et gestion des favoris','Avis et évaluations','Jérémie IA Essentiel — Recherche & recommandations de base'].map(function(f){
-            return '<div style="display:flex;align-items:center;gap:7px;font-size:12px;color:#7ec87e;"><i class="fa-solid fa-check" style="font-size:10px;flex-shrink:0;"></i>' + f + '</div>';
-          }).join('')
-        + '</div></div>';
+      // ── Intro niveaux
+      html += '<div style="background:#0a120a;border:1px solid #1a2e1a;border-radius:14px;padding:13px 15px;margin-bottom:18px;">'
+        + '<div style="font-size:12px;color:#7ec87e;font-weight:700;line-height:1.5;margin-bottom:8px;">'
+        + '<i class="fa-solid fa-circle-check" style="color:#22c55e;margin-right:7px;font-size:11px;"></i>'
+        + 'Tous les utilisateurs disposent dès leur inscription de l\'ensemble des fonctionnalités essentielles de FA GENESIS.'
+        + '</div>'
+        + '<div style="height:1px;background:#1a2e1a;margin-bottom:8px;"></div>'
+        + '<div style="font-size:11px;color:#888;line-height:1.5;">'
+        + '<i class="fa-solid fa-bolt" style="color:var(--yellow);margin-right:6px;font-size:10px;"></i>'
+        + 'Les niveaux GENESIS vous permettent de débloquer des avantages exclusifs au fur et à mesure de votre progression.'
+        + '</div>'
+        + '</div>';
       // ── Comment gagner des QG
       var _qgLvlMap = {bronze:1, argent:2, or:3, elite:4};
       var _qgCurLvl = _qgLvlMap[curBadge] || 0;
@@ -13921,7 +13925,7 @@ function _updateGreeting(){
 <style>
 #tuto-overlay{position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:99999;display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .3s;}
 #tuto-overlay.open{opacity:1;pointer-events:all;}
-#tuto-card{width:100%;max-width:480px;background:#0a0a0a;border:1.5px solid #FFD700;border-radius:24px 24px 0 0;padding:28px 24px 36px;position:relative;transform:translateY(100%);transition:transform .38s cubic-bezier(.4,0,.2,1);}
+#tuto-card{width:100%;max-width:480px;background:#0a0a0a;border:1.5px solid #FFD700;border-radius:24px 24px 0 0;padding:28px 24px 36px;position:relative;transform:translateY(100%);transition:transform .38s cubic-bezier(.4,0,.2,1);max-height:90vh;overflow-y:auto;}
 #tuto-overlay.open #tuto-card{transform:translateY(0);}
 #tuto-skip{position:absolute;top:16px;right:20px;background:none;border:none;color:#555;font-size:13px;font-weight:700;cursor:pointer;padding:4px 0;}
 #tuto-counter{position:absolute;top:18px;left:24px;font-size:11px;color:#444;font-weight:700;letter-spacing:.5px;}
@@ -13950,6 +13954,12 @@ function _updateGreeting(){
 <script>
 var _TUTO_C = [
   {ico:'<i class="fa-solid fa-hand-wave"></i>',  title:'Bienvenue sur GENESIS !',              desc:'Votre espace tout-en-un pour trouver des professionnels de talent et suivre vos missions en temps réel.'},
+  {ico:'<i class="fa-solid fa-layer-group"></i>', title:'Bienvenue sur FA GENESIS',
+   html:'<div style="font-size:11px;color:#888;text-align:center;margin-bottom:11px;">Dès votre inscription, profitez de toutes les fonctionnalités essentielles de la plateforme.</div>'
+     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:11px;">'
+     +[['fa-magnifying-glass','Rechercher des prestataires'],['fa-user','Profils & portfolios'],['fa-calendar-check','Demander un devis'],['fa-credit-card','Réserver & payer'],['fa-comment-dots','Messagerie'],['fa-heart','Favoris'],['fa-star','Avis & évaluations'],['fa-list','Historique'],['fa-bell','Notifications'],['fa-robot','Jérémie IA Essentiel']].map(function(f){return '<div style="background:#151515;border-radius:7px;padding:7px 8px;display:flex;align-items:center;gap:6px;"><i class="fa-solid '+f[0]+'" style="font-size:11px;color:#FFD700;flex-shrink:0;"></i><span style="font-size:10px;color:#ccc;">'+f[1]+'</span></div>';}).join('')
+     +'</div>'
+     +'<div style="font-size:10px;color:#888;text-align:center;padding:8px 10px;background:rgba(255,215,0,.06);border-radius:8px;border:1px solid rgba(255,215,0,.1);">Gagnez des <strong style="color:#FFD700;">Points QG</strong> pour débloquer progressivement des avantages exclusifs grâce aux <strong style="color:#FFD700;">niveaux GENESIS</strong>.</div>'},
   {ico:'<i class="fa-solid fa-magnifying-glass"></i>', title:'Explorer',                       desc:'Découvrez du contenu, des événements et les opportunités de la communauté GENESIS.', nav:'explorer'},
   {ico:'<i class="fa-solid fa-handshake"></i>',  title:'Prestataires',                         desc:'Parcourez notre annuaire de professionnels et réservez directement celui qui vous correspond.', nav:'prestataires'},
   {ico:'<i class="fa-solid fa-calendar-check"></i>', title:'Mes réservations',                 desc:'Suivez l\'avancement de toutes vos missions en temps réel depuis votre Profil → Mes réservations.'},
@@ -13998,7 +14008,7 @@ function _tutoRender(){
   var skip  = document.getElementById('tuto-skip');
   if(ico)   ico.innerHTML   = s.ico;
   if(title) title.textContent = s.title;
-  if(desc)  desc.textContent  = s.desc;
+  if(desc){ if(s.html) desc.innerHTML = s.html; else desc.textContent = s.desc || ''; }
   if(ctr)   ctr.textContent   = (_tutoIdx+1)+' / '+total;
   if(next)  next.textContent  = s.last ? 'Commencer !' : 'Suivant →';
   if(skip)  skip.style.display = s.last ? 'none' : '';
