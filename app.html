@@ -7889,11 +7889,21 @@ function showClientLevels() {
           + '<div style="font-size:26px;font-weight:900;color:#FFD700;margin-bottom:4px;">' + heroLabel + '</div>'
           + '<div style="font-size:13px;color:#aaa;margin-bottom:14px;">' + qg + ' <span style="color:#FFD700;font-weight:700;">QG</span> (Quotient Genesis)</div>'
           + (progress.nextBadge
-            ? '<div style="background:rgba(255,215,0,.07);border-radius:10px;padding:10px 12px;">'
-              + '<div style="display:flex;justify-content:space-between;font-size:11px;color:#888;margin-bottom:6px;"><span>Progression</span><span style="color:#FFD700;font-weight:700;">' + pct + '%</span></div>'
-              + '<div style="height:8px;background:rgba(255,255,255,.08);border-radius:4px;overflow:hidden;"><div style="height:100%;width:' + pct + '%;background:linear-gradient(90deg,#FFD700,#e6c200);border-radius:4px;transition:width .6s ease;"></div></div>'
-              + '<div style="font-size:11px;color:#888;margin-top:6px;text-align:right;">Prochain niveau : <span style="color:#FFD700;font-weight:700;">' + (progress.target - qg) + ' QG</span> restants</div>'
-              + '</div>'
+            ? (function(){
+                var _qgDone = Math.max(0, qg - (progress.prevTarget || 0));
+                var _qgTotal = (progress.target || 1) - (progress.prevTarget || 0);
+                var _barW = pct === 0 ? 2 : pct;
+                var _pctLabel = pct === 0 ? 'Niveau atteint !' : (pct + '%');
+                var _sub = pct === 0
+                  ? '<div style="font-size:11px;color:#888;margin-top:6px;">Continuez à accumuler des QG pour progresser vers <span style="color:#FFD700;font-weight:700;">' + (progress.target - qg) + ' QG</span> restants</div>'
+                  : '<div style="font-size:11px;color:#888;margin-top:6px;text-align:right;">Prochain niveau : <span style="color:#FFD700;font-weight:700;">' + (progress.target - qg) + ' QG</span> restants</div>';
+                return '<div style="background:rgba(255,215,0,.07);border-radius:10px;padding:10px 12px;">'
+                  + '<div style="display:flex;justify-content:space-between;font-size:11px;color:#888;margin-bottom:6px;"><span>Progression</span><span style="color:#FFD700;font-weight:700;">' + _pctLabel + '</span></div>'
+                  + '<div style="height:8px;background:rgba(255,255,255,.08);border-radius:4px;overflow:hidden;"><div style="height:100%;width:' + _barW + '%;background:linear-gradient(90deg,#FFD700,#e6c200);border-radius:4px;transition:width .6s ease;"></div></div>'
+                  + '<div style="font-size:10px;color:#666;margin-top:4px;">' + _qgDone + ' / ' + _qgTotal + ' QG vers le prochain niveau</div>'
+                  + _sub
+                  + '</div>';
+              })()
             : '<div style="font-size:12px;color:#4caf50;font-weight:700;"><i class="fa-solid fa-check-circle"></i> Niveau maximum atteint !</div>')
           + '</div>';
       }
