@@ -6631,6 +6631,7 @@ app.post('/api/auth/register', async (req, res) => {
             payments: [],
             favoris: [],
             referredBy: referredBy,
+            referralBonusQG: referredBy ? 0 : 50,
             referral_discount: { pct: referredBy ? WELCOME_DISCOUNT_PCT_WITH_REFERRAL : WELCOME_DISCOUNT_PCT_NO_REFERRAL, applied: false },
             sessionToken: sessionToken,
             createdAt: new Date().toISOString(),
