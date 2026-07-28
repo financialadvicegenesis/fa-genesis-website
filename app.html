@@ -3230,6 +3230,8 @@ function _restoreNavSession(){
       showSupportThreadDirect(_ptid);
       return;
     }
+    // Nouvel utilisateur : ne jamais écraser l'accueil avant le prompt tutoriel
+    if(USER && !localStorage.getItem(_tutoKey('c_done'))) return;
     var tab=sessionStorage.getItem('fa_nav_tab');
     var section=sessionStorage.getItem('fa_nav_section');
     var ptnrScreen=sessionStorage.getItem('fa_ptnr_screen');
@@ -8852,6 +8854,7 @@ function _loOnLoginSuccess(res){
   var greet=document.getElementById('greetName'); if(greet) greet.textContent=fn;
   var av=document.getElementById('hdrAvatar'); if(av) av.textContent=(fn[0]||'U').toUpperCase();
   loadStatusCard(); renderResaTab(); renderMsgTab(); renderProfil();
+  setTimeout(function(){ if(typeof _checkTutoPrompt==='function') _checkTutoPrompt(); }, 800);
 }
 // OTP functions
 function toggleSmsInput(){
@@ -13981,13 +13984,23 @@ var _tutoSteps = [];
 var _tutoIdx   = 0;
 var _tutoIsPartner = false;
 
+// ── CLÉ DE SUIVI TUTORIEL PAR UTILISATEUR ────────────────────────
+// Chaque compte a sa propre clé ; évite qu'une session précédente (autre compte)
+// masque le tutoriel pour un nouvel inscrit dans le même navigateur.
+function _tutoKey(type){
+  var uid = (USER && (USER.id || USER.email)) || 'anon';
+  return 'fa_tuto_' + type + '_' + uid;
+}
+
 // ── PANNEAU DE CHOIX TUTORIEL (première connexion) ───────────────
 function _checkTutoPrompt(){
   try{
     if(!USER||GUEST) return;
-    if(localStorage.getItem('fa_tuto_c_done')) return;
+    if(localStorage.getItem(_tutoKey('c_done'))) return;
     // Si l'overlay QG de bienvenue est encore affiché, attendre qu'il soit fermé
     if(document.getElementById('welcome-qg-overlay')) return;
+    // Toujours ramener l'utilisateur sur l'accueil avant d'afficher le choix
+    if(typeof nav === 'function') nav('home');
     _showTutoChoiceOverlay();
   }catch(e){}
 }
@@ -14022,7 +14035,7 @@ function _tutoChoiceYes(){
 }
 
 function _tutoChoiceNo(){
-  try{ localStorage.setItem('fa_tuto_c_done','1'); localStorage.setItem('fa_tuto_choice_done','1'); }catch(e){}
+  try{ localStorage.setItem(_tutoKey('c_done'),'1'); }catch(e){}
   var el = document.getElementById('tuto-choice-overlay');
   if(el){ el.style.opacity='0'; el.style.pointerEvents='none'; setTimeout(function(){ if(el.parentNode) el.parentNode.removeChild(el); }, 300); }
 }
@@ -14031,7 +14044,7 @@ function _checkTutorial(){
   try{
     if(!USER) return;
     // Partner tutorial is triggered separately on nav('partner') — only handle client here
-    if(localStorage.getItem('fa_tuto_c_done')) return;
+    if(localStorage.getItem(_tutoKey('c_done'))) return;
     _tutoIsPartner = false;
     _tutoSteps = _TUTO_C;
     _tutoIdx = 0;
@@ -14077,7 +14090,7 @@ function _tutoSkip(){ _tutoDone(); }
 
 function _tutoDone(){
   try{
-    var key = _tutoIsPartner ? 'fa_tuto_p_done' : 'fa_tuto_c_done';
+    var key = _tutoIsPartner ? 'fa_tuto_p_done' : _tutoKey('c_done');
     localStorage.setItem(key, '1');
   }catch(e){}
   var ov = document.getElementById('tuto-overlay');
