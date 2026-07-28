@@ -7078,10 +7078,10 @@ function _triggerLevelUp(levelLabel, levelIcon) {
     var card = document.createElement('div');
     card.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) scale(.7);background:linear-gradient(135deg,#1a1200,#0d0d00);border:2px solid #FFD700;border-radius:20px;padding:28px 32px;text-align:center;pointer-events:auto;animation:luCardIn .45s cubic-bezier(.34,1.56,.64,1) forwards;min-width:220px;max-width:86vw;box-shadow:0 0 40px rgba(255,215,0,.35);';
     var _luAdvMap = {
-      bronze: ['Programme de parrainage','Missions GENESIS','Suggestions personnalisées Jérémie IA','Patrimoine GENESIS'],
-      argent: ['Avantages partenaires FA GENESIS','Webinaires & ateliers','Alertes intelligentes','Jérémie IA Plus'],
-      or:     ['Événements privés & networking','Accès bêta & avant-première','Offres Premium partenaires','Jérémie IA Pro'],
-      elite:  ['Invitations VIP','Conseil Communautaire FA GENESIS','Fonctionnalités expérimentales','Jérémie IA Expert']
+      bronze: ['Programme de parrainage','Missions GENESIS','Patrimoine GENESIS','Offres promotionnelles prestataires'],
+      argent: ['Webinaires & ateliers GENESIS','Alertes intelligentes','Campagnes & jeux concours','Jérémie IA Plus'],
+      or:     ['Événements privés & networking GENESIS','Accès bêta & avant-première','Priorité événements','Jérémie IA Pro'],
+      elite:  ['Invitations VIP aux événements GENESIS','Fonctionnalités expérimentales','Cadeau annuel fidélité','Jérémie IA Expert']
     };
     var _luAdvs = (_luAdvMap[levelIcon] || []);
     var _luAdvHtml = _luAdvs.length ? '<div style="text-align:left;margin:0 0 16px;">'
@@ -7216,12 +7216,12 @@ function showResumeMensuel() {
     });
 }
 
-// ── AVANTAGES PARTENAIRES (avantage Bâtisseur) ────────────────────
+// ── OFFRES PROMOTIONNELLES PRESTATAIRES (avantage Créateur+) ──────
 function showAvantagesPartenaires() {
   var c = document.getElementById('profilContent'); if(!c) return;
   _saveProfilScroll('showAvantagesPartenaires');
   c.innerHTML = '<div class="espace-view">'
-    +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Avantages Partenaires</div></div>'
+    +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Offres promotionnelles</div></div>'
     +'<div id="avantages-ptnr-content" style="padding:14px;padding-bottom:80px;overflow-y:auto;flex:1;"><div class="espace-loading">Chargement...</div></div>'
     +'</div>';
   fetch((window.FA_GENESIS_API||API)+'/api/promotions?limit=30')
