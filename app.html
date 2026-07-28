@@ -14111,7 +14111,13 @@ function _tutoDone(){
   }catch(e){}
   var ov = document.getElementById('tuto-overlay');
   if(ov){ ov.classList.remove('open'); }
-  if(!_tutoIsPartner && typeof nav === 'function') nav('home');
+  if(!_tutoIsPartner){
+    // Le tutoriel a pu passer par showClientWallet() (étape Portefeuille).
+    // On réinitialise le flag lazy-load du profil pour que le prochain
+    // nav('profil') déclenche bien renderProfil() et non le wallet.
+    try{ if(typeof _tabLoaded !== 'undefined') _tabLoaded['profil'] = false; }catch(e){}
+    if(typeof nav === 'function') nav('home');
+  }
 }
 </script>
 </body>
