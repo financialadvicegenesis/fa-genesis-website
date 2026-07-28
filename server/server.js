@@ -6986,10 +6986,10 @@ app.get('/api/client/level-progress', function(req, res) {
                 { id: 'parrainage',         label: 'Programme de parrainage' },
                 { id: 'defis_qg',           label: 'Missions GENESIS pour gagner davantage de points' },
                 { id: 'suggestions_ia',     label: 'Jérémie IA — Suggestions personnalisées selon vos habitudes' },
-                { id: 'patrimoine_genesis', label: 'Patrimoine GENESIS' },
-                { id: 'avantages_ptnr',     label: 'Offres promotionnelles proposées par les prestataires' }
+                { id: 'patrimoine_genesis', label: 'Patrimoine GENESIS' }
             ],
             argent: [
+                { id: 'avantages_ptnr',    label: 'Offres promotionnelles proposées par les prestataires' },
                 { id: 'webinaires',        label: 'Invitations aux webinaires et ateliers GENESIS' },
                 { id: 'alertes_ia',        label: 'Alertes intelligentes — nouveau prestataire correspondant à vos préférences' },
                 { id: 'campagnes',         label: 'Accès prioritaire aux campagnes et aux jeux concours' },

@@ -7078,8 +7078,8 @@ function _triggerLevelUp(levelLabel, levelIcon) {
     var card = document.createElement('div');
     card.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) scale(.7);background:linear-gradient(135deg,#1a1200,#0d0d00);border:2px solid #FFD700;border-radius:20px;padding:28px 32px;text-align:center;pointer-events:auto;animation:luCardIn .45s cubic-bezier(.34,1.56,.64,1) forwards;min-width:220px;max-width:86vw;box-shadow:0 0 40px rgba(255,215,0,.35);';
     var _luAdvMap = {
-      bronze: ['Programme de parrainage','Missions GENESIS','Patrimoine GENESIS','Offres promotionnelles prestataires'],
-      argent: ['Webinaires & ateliers GENESIS','Alertes intelligentes','Campagnes & jeux concours','Jérémie IA Plus'],
+      bronze: ['Programme de parrainage','Missions GENESIS','Patrimoine GENESIS','Jérémie IA personnalisé'],
+      argent: ['Offres promo prestataires','Webinaires & ateliers GENESIS','Alertes intelligentes','Campagnes & jeux concours'],
       or:     ['Événements privés & networking GENESIS','Accès bêta & avant-première','Priorité événements','Jérémie IA Pro'],
       elite:  ['Invitations VIP aux événements GENESIS','Fonctionnalités expérimentales','Cadeau annuel fidélité','Jérémie IA Expert']
     };
@@ -7216,10 +7216,23 @@ function showResumeMensuel() {
     });
 }
 
-// ── OFFRES PROMOTIONNELLES PRESTATAIRES (avantage Créateur+) ──────
+// ── OFFRES PROMOTIONNELLES PRESTATAIRES (avantage Bâtisseur+) ──────
 function showAvantagesPartenaires() {
   var c = document.getElementById('profilContent'); if(!c) return;
   _saveProfilScroll('showAvantagesPartenaires');
+  var _argentBadges = ['argent','or','elite'];
+  if(!USER || GUEST || _argentBadges.indexOf(USER.badge) === -1){
+    c.innerHTML = '<div class="espace-view">'
+      +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Offres promotionnelles</div></div>'
+      +'<div style="padding:14px;padding-bottom:80px;overflow-y:auto;flex:1;">'
+      +'<div style="background:rgba(59,130,246,.06);border:1.5px solid rgba(59,130,246,.2);border-radius:16px;padding:28px 20px;text-align:center;margin-top:20px;">'
+      +'<i class="fa-solid fa-lock" style="color:#60a5fa;font-size:28px;margin-bottom:12px;display:block;"></i>'
+      +'<div style="font-size:14px;font-weight:900;color:#60a5fa;margin-bottom:8px;">Niveau Bâtisseur requis</div>'
+      +'<div style="font-size:12px;color:#555;line-height:1.6;">Les offres promotionnelles sont accessibles à partir de <strong style="color:#60a5fa;">300 Points QG</strong>.</div>'
+      +'<button onclick="showClientLevels()" style="margin-top:18px;background:linear-gradient(135deg,#3b82f6,#1d4ed8);color:#fff;border:none;border-radius:12px;padding:10px 22px;font-size:12px;font-weight:900;cursor:pointer;"><i class="fa-solid fa-bolt"></i> Voir mes niveaux</button>'
+      +'</div></div></div>';
+    return;
+  }
   c.innerHTML = '<div class="espace-view">'
     +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Offres promotionnelles</div></div>'
     +'<div id="avantages-ptnr-content" style="padding:14px;padding-bottom:80px;overflow-y:auto;flex:1;"><div class="espace-loading">Chargement...</div></div>'
