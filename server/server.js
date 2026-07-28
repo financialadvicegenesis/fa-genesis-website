@@ -16691,6 +16691,50 @@ app.use((err, req, res, next) => {
 });
 
 // ============================================================
+// COMPTES DE TEST INTERNES (initialisation au démarrage)
+// ============================================================
+var TEST_ACCOUNTS_GENESIS = [
+    { email: 'test-createur@fagenesis.com',    password: 'TestCreateur2026!',    prenom: 'Test', nom: 'Createur',    referralBonusQG: 100  },
+    { email: 'test-batisseur@fagenesis.com',   password: 'TestBatisseur2026!',   prenom: 'Test', nom: 'Batisseur',   referralBonusQG: 300  },
+    { email: 'test-visionnaire@fagenesis.com', password: 'TestVisionnaire2026!', prenom: 'Test', nom: 'Visionnaire', referralBonusQG: 600  },
+    { email: 'test-generateur@fagenesis.com',  password: 'TestGenerateur2026!',  prenom: 'Test', nom: 'Generateur',  referralBonusQG: 1000 }
+];
+async function initTestAccounts() {
+    try {
+        var users = loadUsers();
+        var dirty = false;
+        for (var i = 0; i < TEST_ACCOUNTS_GENESIS.length; i++) {
+            var acc = TEST_ACCOUNTS_GENESIS[i];
+            var idx = users.findIndex(function(u) { return (u.email || '').toLowerCase() === acc.email; });
+            if (idx !== -1) {
+                if (users[idx].referralBonusQG !== acc.referralBonusQG) {
+                    users[idx].referralBonusQG = acc.referralBonusQG;
+                    dirty = true;
+                }
+            } else {
+                var hash = await bcrypt.hash(acc.password, 10);
+                users.push({
+                    id: 'USR-TEST-' + acc.nom.toUpperCase(),
+                    prenom: acc.prenom, nom: acc.nom,
+                    email: acc.email, telephone: null,
+                    password: hash, accountType: 'particulier',
+                    offre: null, activeOfferId: null, productType: null,
+                    paymentStatus: 'registered',
+                    referralBonusQG: acc.referralBonusQG,
+                    missionBonuses: {}, profile_bio: '', profile_theme: 'genesis', profile_banner: null,
+                    createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
+                });
+                dirty = true;
+                console.log('[TEST] Compte créé : ' + acc.email + ' (' + acc.referralBonusQG + ' QG)');
+            }
+        }
+        if (dirty) saveUsers(users);
+    } catch (e) {
+        console.error('[TEST] Erreur initTestAccounts:', e.message);
+    }
+}
+
+// ============================================================
 // DEMARRAGE DU SERVEUR
 // ============================================================
 
@@ -16765,6 +16809,9 @@ app.listen(PORT, async () => {
 
     // Nettoyer les faux comptes partenaires de demonstration crees par d'anciens demarrages
     await purgeSeedPartnerAccounts();
+
+    // Créer / mettre à jour les comptes de test internes par niveau GENESIS
+    await initTestAccounts();
 
 // ── PROMOTIONS ────────────────────────────────────────────────────────────────
 
