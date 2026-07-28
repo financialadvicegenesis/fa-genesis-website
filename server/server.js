@@ -68,6 +68,7 @@ const ADMIN_SESSIONS_FILE = path.join(__dirname, 'data', 'admin_sessions.json');
 const NOTIFICATIONS_FILE = path.join(__dirname, 'data', 'notifications.json');
 const DISPUTES_FILE = path.join(__dirname, 'data', 'disputes.json');
 const PROSPECTS_FILE = path.join(__dirname, 'data', 'prospects.json');
+const CAMPAGNES_FILE = path.join(__dirname, 'data', 'campagnes.json');
 
 // Catégories de partenaires marketplace (source unique, partagée par inscription + admin)
 const PARTNER_TYPES = [
@@ -317,6 +318,25 @@ function saveEvents(events) {
         persistentStore.persistToCloud('events', events).catch(function(e) {});
     } catch (error) {
         console.error('[EVENTS] Erreur sauvegarde events:', error);
+    }
+}
+
+function loadCampagnes() {
+    try {
+        if (fs.existsSync(CAMPAGNES_FILE)) {
+            return JSON.parse(fs.readFileSync(CAMPAGNES_FILE, 'utf8'));
+        }
+    } catch (error) {
+        console.error('[CAMPAGNES] Erreur lecture campagnes:', error);
+    }
+    return [];
+}
+
+function saveCampagnes(campagnes) {
+    try {
+        fs.writeFileSync(CAMPAGNES_FILE, JSON.stringify(campagnes, null, 2), 'utf8');
+    } catch (error) {
+        console.error('[CAMPAGNES] Erreur sauvegarde campagnes:', error);
     }
 }
 
@@ -1348,6 +1368,34 @@ function sendPushToRole(role, payload) {
     if (toRemove.length > 0) {
         var cleaned = loadPushSubscriptions().filter(function(s) { return toRemove.indexOf(s.id) === -1; });
         savePushSubscriptions(cleaned);
+    }
+}
+
+// Alerte Bâtisseur+ : notifie les clients de niveau argent/or/elite dont les préférences
+// correspondent au type du nouveau partenaire venant d'être approuvé.
+function alertBatisseurPlusOnNewPartner(partner) {
+    try {
+        var batisseurBadges = ['argent', 'or', 'elite'];
+        var partnerName = ((partner.prenom || '') + ' ' + (partner.nom || '')).trim();
+        var partnerType = partner.partner_type || '';
+        loadUsers().forEach(function(user) {
+            var qg = getClientGenesisPoints(user);
+            var badge = getClientQGBadge(qg);
+            if (batisseurBadges.indexOf(badge) === -1) return;
+            var preferred = getClientPreferredCategories(user.email);
+            // Si le client a des préférences enregistrées, filtrer par correspondance de type
+            if (preferred.length > 0 && preferred.indexOf(partnerType) === -1) return;
+            notifyUser(
+                user.email,
+                'client',
+                'nouveau-prestataire',
+                'Nouveau prestataire disponible',
+                partnerName + ' vient de rejoindre GENESIS et correspond à vos préférences.',
+                '/app.html'
+            );
+        });
+    } catch(e) {
+        console.error('[ALERT] alertBatisseurPlusOnNewPartner erreur:', e);
     }
 }
 
@@ -3567,10 +3615,14 @@ app.get('/api/my-orders', async function(req, res) {
 
 // GET /api/campagnes — campagnes et jeux concours actifs (Bâtisseur+)
 app.get('/api/campagnes', function(req, res) {
-    // Données gérées manuellement par l'équipe FA GENESIS via ce tableau
-    var campagnes = [];
-    var jeux = [];
-    res.json({ ok: true, campagnes: campagnes, jeux: jeux });
+    try {
+        var all = loadCampagnes().filter(function(c) { return c.active !== false; });
+        var campagnes = all.filter(function(c) { return c.type === 'campagne'; });
+        var jeux = all.filter(function(c) { return c.type === 'jeu'; });
+        res.json({ ok: true, campagnes: campagnes, jeux: jeux });
+    } catch(e) {
+        res.json({ ok: true, campagnes: [], jeux: [] });
+    }
 });
 
 /**
@@ -9651,7 +9703,7 @@ app.get('/api/partner/services', authenticatePartner, (req, res) => {
 });
 
 // Segments client pour les prestations (tarifs differencies)
-const SERVICE_AUDIENCES = ['etudiant', 'particulier', 'entreprise'];
+const SERVICE_AUDIENCES = ['etudiant', 'particulier', 'entreprise', 'promo'];
 
 // Remplacer la liste de mes prestations (partenaire connecté)
 app.put('/api/partner/services', authenticatePartner, (req, res) => {
@@ -10861,6 +10913,25 @@ function buildJeremieSystemPrompt(person, personType) {
                 'type de prestataire), recommandation intelligente (s\'appuyer sur ses categories preferees et son historique), ' +
                 'detection d\'opportunites (lui suggerer la prochaine mission ou le prochain palier de Cercle Genesis a portee ' +
                 'de main), et explication pedagogique du systeme de fidelisation s\'il pose des questions dessus.');
+            // Jérémie IA Plus : analyse des habitudes pour les clients Bâtisseur+ (argent/or/elite)
+            var argBadge = getClientQGBadge(genesisPoints);
+            if (['argent','or','elite'].indexOf(argBadge) !== -1) {
+                var habits = buildClientHabitAnalysis(person.email);
+                if (habits) {
+                    lines.push('');
+                    lines.push('Jeremie IA Plus — Analyse des habitudes (niveau Batisseur+) :');
+                    lines.push('- ' + habits.totalOrders + ' prestation(s) commandee(s) au total' +
+                        (habits.recentCount > 0 ? ', dont ' + habits.recentCount + ' au cours des 90 derniers jours' : '') + '.');
+                    lines.push('- Derniere commande il y a ' + habits.daysSinceLast + ' jour' + (habits.daysSinceLast > 1 ? 's' : '') + '.');
+                    if (habits.avgGapDays !== null) lines.push('- Rythme moyen : une nouvelle prestation toutes les environ ' + habits.avgGapDays + ' jours.');
+                    if (habits.avgValue) lines.push('- Panier moyen : ' + habits.avgValue + ' EUR.');
+                    if (habits.topCategories.length) lines.push('- Categories les plus utilisees : ' + habits.topCategories.join(', ') + '.');
+                    lines.push('Utilise ces habitudes pour emettre des recommandations proactives personnalisees : si le rythme ' +
+                        'est irregulier, suggere de planifier la prochaine prestation ; si le client revient souvent sur les memes ' +
+                        'categories, propose de decouvrir des prestataires complementaires ou les offres Promo disponibles ; ' +
+                        'si le panier est eleve, signale les offres groupees ou les partenaires avec un excellent rapport qualite/prix.');
+                }
+            }
         } else {
             var summary = getPartnerRatingSummary(person.id);
             var missionsCompleted = getPartnerMissionsCompleted(person.id);
@@ -10890,6 +10961,38 @@ function buildJeremieSystemPrompt(person, personType) {
         console.error('[JEREMIE] Erreur construction contexte:', ctxErr);
     }
     return lines.join('\n');
+}
+
+// Jérémie IA Plus (Bâtisseur+) : analyse des habitudes de commande du client
+function buildClientHabitAnalysis(email) {
+    try {
+        var clientOrders = loadOrders().filter(function(o) {
+            return o.client_info && (o.client_info.email || '').toLowerCase() === email.toLowerCase() && o.deposit_paid;
+        });
+        if (!clientOrders.length) return null;
+        clientOrders.sort(function(a, b) { return new Date(a.created_at) - new Date(b.created_at); });
+        var now = Date.now();
+        var ninetyDaysAgo = now - 90 * 24 * 60 * 60 * 1000;
+        var recentCount = clientOrders.filter(function(o) { return new Date(o.created_at).getTime() > ninetyDaysAgo; }).length;
+        var lastOrder = clientOrders[clientOrders.length - 1];
+        var daysSinceLast = Math.round((now - new Date(lastOrder.created_at).getTime()) / (24 * 60 * 60 * 1000));
+        var avgGapDays = null;
+        if (clientOrders.length >= 2) {
+            var gaps = [];
+            for (var gi = 1; gi < clientOrders.length; gi++) {
+                gaps.push((new Date(clientOrders[gi].created_at) - new Date(clientOrders[gi - 1].created_at)) / (24 * 60 * 60 * 1000));
+            }
+            avgGapDays = Math.round(gaps.reduce(function(s, g) { return s + g; }, 0) / gaps.length);
+        }
+        var avgValue = Math.round(clientOrders.reduce(function(s, o) { return s + (parseFloat(o.total_price) || 0); }, 0) / clientOrders.length);
+        var orderIds = clientOrders.map(function(o) { return o.id; });
+        var catCounts = {};
+        loadDispatches().filter(function(d) { return orderIds.indexOf(d.order_id) !== -1 && d.partner_type; }).forEach(function(d) {
+            catCounts[d.partner_type] = (catCounts[d.partner_type] || 0) + 1;
+        });
+        var topCats = Object.keys(catCounts).sort(function(a, b) { return catCounts[b] - catCounts[a]; }).slice(0, 3);
+        return { totalOrders: clientOrders.length, recentCount: recentCount, daysSinceLast: daysSinceLast, avgGapDays: avgGapDays, avgValue: avgValue, topCategories: topCats };
+    } catch(e) { return null; }
 }
 
 // ── SUGGESTION DE PRESTATAIRES PAR JÉRÉMIE (Bâtisseur+) ──────────────────────
@@ -11606,6 +11709,41 @@ app.get('/api/partners/recommended', (req, res) => {
     }
 });
 
+// Offres promotionnelles publiques : toutes les prestations audience=promo des partenaires actifs
+app.get('/api/partners/promo-services', (req, res) => {
+    try {
+        var results = [];
+        loadPartners()
+            .filter(function(p){ return p.published && (p.services || []).some(function(s){ return s.audience === 'promo' && s.active !== false; }); })
+            .forEach(function(p){
+                var partnerName = ((p.prenom || '') + ' ' + (p.nom || '')).trim();
+                (p.services || [])
+                    .filter(function(s){ return s.audience === 'promo' && s.active !== false; })
+                    .forEach(function(s){
+                        results.push({
+                            partner_id: p.id,
+                            partner_name: partnerName,
+                            partner_photo: p.photo || null,
+                            partner_type: p.type || null,
+                            partner_rating: typeof p.rating === 'number' ? p.rating : null,
+                            service_id: s.id,
+                            label: s.label,
+                            description: s.description || '',
+                            price: s.price,
+                            pricing_type: s.pricing_type,
+                            image: s.image || null,
+                            features: s.features || []
+                        });
+                    });
+            });
+        results.sort(function(a, b){ return (b.partner_rating || 0) - (a.partner_rating || 0); });
+        res.json({ promo_services: results.slice(0, 24) });
+    } catch (error) {
+        console.error('[PROMO-SERVICES] Erreur:', error);
+        res.status(500).json({ error: 'Erreur chargement offres promo' });
+    }
+});
+
 // ============================================================
 // EVENEMENTS ET WORKSHOPS
 // ============================================================
@@ -11713,6 +11851,78 @@ app.delete('/api/admin/events/:eventId', (req, res) => {
     } catch (error) {
         console.error('[ADMIN] Erreur suppression evenement:', error);
         res.status(500).json({ error: 'Erreur suppression evenement' });
+    }
+});
+
+// ── ADMIN CAMPAGNES & JEUX CONCOURS ──────────────────────────────────────────
+
+// Liste toutes les campagnes/jeux (admin)
+app.get('/api/admin/campagnes', function(req, res) {
+    try { res.json({ ok: true, campagnes: loadCampagnes() }); }
+    catch(e) { res.status(500).json({ error: 'Erreur lecture campagnes' }); }
+});
+
+// Créer une campagne ou un jeu concours
+app.post('/api/admin/campagnes', function(req, res) {
+    try {
+        var body = req.body || {};
+        var titre = (body.titre || '').trim();
+        if (!titre) return res.status(400).json({ error: 'Le titre est obligatoire' });
+        if (['campagne','jeu'].indexOf(body.type) === -1) return res.status(400).json({ error: 'type doit être campagne ou jeu' });
+        var now = new Date().toISOString();
+        var item = {
+            id: 'CAM-' + uuidv4().split('-')[0].toUpperCase(),
+            type: body.type,
+            titre: titre,
+            description: (body.description || '').trim(),
+            lien: (body.lien || '').trim(),
+            active: body.active !== false,
+            created_at: now,
+            updated_at: now
+        };
+        var all = loadCampagnes();
+        all.push(item);
+        saveCampagnes(all);
+        res.json({ success: true, item: item });
+    } catch(e) {
+        console.error('[ADMIN] Erreur creation campagne:', e);
+        res.status(500).json({ error: 'Erreur création campagne' });
+    }
+});
+
+// Modifier une campagne ou un jeu
+app.put('/api/admin/campagnes/:id', function(req, res) {
+    try {
+        var all = loadCampagnes();
+        var idx = all.findIndex(function(c) { return c.id === req.params.id; });
+        if (idx === -1) return res.status(404).json({ error: 'Entrée non trouvée' });
+        var body = req.body || {};
+        if (body.titre !== undefined) all[idx].titre = body.titre.trim();
+        if (body.description !== undefined) all[idx].description = body.description.trim();
+        if (body.lien !== undefined) all[idx].lien = body.lien.trim();
+        if (body.active !== undefined) all[idx].active = body.active === true;
+        if (body.type !== undefined && ['campagne','jeu'].indexOf(body.type) !== -1) all[idx].type = body.type;
+        all[idx].updated_at = new Date().toISOString();
+        saveCampagnes(all);
+        res.json({ success: true, item: all[idx] });
+    } catch(e) {
+        console.error('[ADMIN] Erreur modif campagne:', e);
+        res.status(500).json({ error: 'Erreur modification campagne' });
+    }
+});
+
+// Supprimer une campagne ou un jeu
+app.delete('/api/admin/campagnes/:id', function(req, res) {
+    try {
+        var all = loadCampagnes();
+        var idx = all.findIndex(function(c) { return c.id === req.params.id; });
+        if (idx === -1) return res.status(404).json({ error: 'Entrée non trouvée' });
+        all.splice(idx, 1);
+        saveCampagnes(all);
+        res.json({ success: true });
+    } catch(e) {
+        console.error('[ADMIN] Erreur suppression campagne:', e);
+        res.status(500).json({ error: 'Erreur suppression campagne' });
     }
 });
 
@@ -13237,6 +13447,8 @@ app.put('/api/admin/partners/:partnerId', (req, res) => {
                 console.error('[ADMIN] Erreur envoi email approbation partenaire:', e);
             });
             notifyUser(partnerSafe.email, 'partner', 'compte-approuve', 'Votre compte est approuvé !', 'Vous pouvez desormais configurer vos prestations, elles seront visibles par les clients.', '/app.html#open-partner');
+            // Alertes intelligentes : notifier les clients Bâtisseur+ dont les préférences correspondent
+            setTimeout(function() { alertBatisseurPlusOnNewPartner(partnerSafe); }, 0);
         }
         res.json({ success: true, partner: partnerSafe });
     } catch (error) {

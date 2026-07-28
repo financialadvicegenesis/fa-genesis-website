@@ -816,6 +816,9 @@
                 <button class="sidebar-btn" data-section="evenements" onclick="showSection('evenements')">
                     <i class="fas fa-calendar-alt"></i><span>Événements</span>
                 </button>
+                <button class="sidebar-btn" data-section="campagnes" onclick="showSection('campagnes')">
+                    <i class="fas fa-bullhorn"></i><span>Campagnes</span>
+                </button>
                 <button class="sidebar-btn" data-section="devis" onclick="showSection('devis')">
                     <i class="fas fa-file-invoice"></i><span>Devis</span>
                     <span id="pendingQuotesBadge" class="sidebar-badge" style="display:none;"></span>
@@ -1142,6 +1145,8 @@
                                 <label class="block font-black mb-2 uppercase text-sm">Type</label>
                                 <select id="eventType" required>
                                     <option value="workshop">Workshop</option>
+                                    <option value="webinaire">Webinaire</option>
+                                    <option value="atelier">Atelier</option>
                                     <option value="conference">Conférence</option>
                                     <option value="soiree">Soirée</option>
                                     <option value="masterclass">Masterclass</option>
@@ -1204,6 +1209,54 @@
                 <div id="eventsList">
                     <p class="text-center py-8 opacity-50 font-bold">Chargement...</p>
                 </div>
+            </div>
+
+            <!-- SECTION CAMPAGNES & JEUX CONCOURS -->
+            <div id="campagnesSection" class="container mx-auto max-w-4xl" style="display:none;">
+                <div class="flex justify-between items-center mb-8 flex-wrap gap-4">
+                    <h2 class="text-4xl font-black italic uppercase text-[var(--genesis-yellow)]">
+                        <i class="fas fa-bullhorn mr-4"></i>CAMPAGNES & JEUX CONCOURS
+                    </h2>
+                </div>
+
+                <!-- Formulaire création/édition -->
+                <div class="admin-card neo-shadow mb-8">
+                    <h3 class="text-xl font-black uppercase mb-4">Nouvelle entrée</h3>
+                    <input type="hidden" id="campagneId" value="">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block font-black mb-2 uppercase text-sm">Type</label>
+                            <select id="campagneType">
+                                <option value="campagne">Campagne</option>
+                                <option value="jeu">Jeu concours</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block font-black mb-2 uppercase text-sm">Titre *</label>
+                            <input type="text" id="campagneTitre" placeholder="Titre de la campagne ou du jeu...">
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block font-black mb-2 uppercase text-sm">Description</label>
+                        <textarea id="campagneDescription" rows="3" placeholder="Décrivez la campagne ou le jeu concours..."></textarea>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block font-black mb-2 uppercase text-sm">Lien (optionnel)</label>
+                        <input type="url" id="campagneLien" placeholder="https://...">
+                    </div>
+                    <div class="mb-6 flex items-center gap-3">
+                        <input type="checkbox" id="campagneActive" checked style="width:18px;height:18px;accent-color:var(--genesis-yellow);">
+                        <label for="campagneActive" class="font-black uppercase text-sm">Actif (visible pour les Bâtisseur+)</label>
+                    </div>
+                    <div class="flex gap-3">
+                        <button onclick="saveCampagne()" class="neo-btn-yellow px-6 py-3 font-black uppercase text-sm"><i class="fas fa-save mr-2"></i>Enregistrer</button>
+                        <button onclick="resetCampagneForm()" class="border-4 border-gray-400 bg-transparent text-gray-400 px-6 py-3 font-black uppercase text-sm">Annuler</button>
+                    </div>
+                    <div id="campagneMsg" style="margin-top:10px;font-size:12px;font-weight:700;"></div>
+                </div>
+
+                <!-- Liste -->
+                <div id="campagnesList"></div>
             </div>
 
             <!-- SECTION DEVIS -->
@@ -1534,9 +1587,11 @@
             var litigesEl = document.getElementById('litigesSection');
             var supportEl = document.getElementById('supportSection');
             var prospectsEl = document.getElementById('prospectsSection');
+            var campagnesEl = document.getElementById('campagnesSection');
             if (litigesEl) litigesEl.style.display = 'none';
             if (supportEl) supportEl.style.display = 'none';
             if (prospectsEl) prospectsEl.style.display = 'none';
+            if (campagnesEl) campagnesEl.style.display = 'none';
 
             if (section === 'dashboard') {
                 document.getElementById('dashboardSection').style.display = 'block';
@@ -1572,6 +1627,9 @@
             } else if (section === 'prospects') {
                 if (prospectsEl) prospectsEl.style.display = 'block';
                 loadAdminProspects();
+            } else if (section === 'campagnes') {
+                if (campagnesEl) campagnesEl.style.display = 'block';
+                loadCampagnesAdmin();
             }
             // Mettre à jour l'élément actif dans la sidebar
             document.querySelectorAll('.sidebar-btn').forEach(function(b) {
@@ -3495,7 +3553,7 @@
         // EVENEMENTS ET WORKSHOPS
         // ============================================================
 
-        var EVENT_TYPE_LABELS = { workshop: 'Workshop', conference: 'Conférence', soiree: 'Soirée', masterclass: 'Masterclass' };
+        var EVENT_TYPE_LABELS = { workshop: 'Workshop', webinaire: 'Webinaire', atelier: 'Atelier', conference: 'Conférence', soiree: 'Soirée', masterclass: 'Masterclass' };
         var allEvents = [];
 
         function showCreateEventForm() {
@@ -3680,6 +3738,99 @@
                 console.error('[ADMIN] Erreur suppression evenement:', error);
                 alert('Erreur de connexion');
             }
+        }
+
+        // ============================================================
+        // CAMPAGNES & JEUX CONCOURS
+        // ============================================================
+
+        async function loadCampagnesAdmin() {
+            var container = document.getElementById('campagnesList');
+            if (!container) return;
+            container.innerHTML = '<p class="text-center py-8 opacity-50 font-bold">Chargement...</p>';
+            try {
+                var r = await fetch(API_BASE_URL + '/api/admin/campagnes');
+                var data = await r.json();
+                var all = data.campagnes || [];
+                if (!all.length) { container.innerHTML = '<p class="text-center py-8 opacity-50 font-bold">Aucune campagne ni jeu concours</p>'; return; }
+                container.innerHTML = all.map(function(c) {
+                    var typeLabel = c.type === 'jeu' ? '<span style="background:#FFD700;color:#000;padding:2px 8px;font-size:10px;font-weight:900;border:2px solid #000;">JEU CONCOURS</span>' : '<span style="background:#3b82f6;color:#fff;padding:2px 8px;font-size:10px;font-weight:900;border:2px solid #000;">CAMPAGNE</span>';
+                    var activeLabel = c.active ? '<span style="background:#51cf66;color:#000;padding:2px 8px;font-size:10px;font-weight:900;border:2px solid #000;">ACTIF</span>' : '<span style="background:#999;color:#fff;padding:2px 8px;font-size:10px;font-weight:900;border:2px solid #000;">INACTIF</span>';
+                    return '<div class="client-row">'
+                        +'<div class="flex justify-between items-center flex-wrap gap-3">'
+                        +'<div class="flex-1 min-w-[200px]">'
+                        +'<div class="font-black text-base">'+c.titre+'</div>'
+                        +'<div class="text-sm opacity-60 mt-1">'+c.description+'</div>'
+                        +(c.lien ? '<a href="'+c.lien+'" target="_blank" class="text-xs opacity-50" style="word-break:break-all;">'+c.lien+'</a>' : '')
+                        +'</div>'
+                        +'<div class="flex gap-2 flex-wrap items-center">'+typeLabel+' '+activeLabel+'</div>'
+                        +'<div class="flex gap-2">'
+                        +'<button onclick="editCampagne(\''+c.id+'\')" class="neo-btn-yellow px-3 py-2 text-xs"><i class="fas fa-edit mr-1"></i>Modifier</button>'
+                        +'<button onclick="deleteCampagne(\''+c.id+'\')" class="border-4 border-black bg-gray-200 text-black px-3 py-2 text-xs font-black"><i class="fas fa-trash mr-1"></i>Suppr.</button>'
+                        +'</div></div></div>';
+                }).join('');
+            } catch(e) {
+                container.innerHTML = '<p class="text-center py-8 font-bold text-red-500">Erreur de chargement</p>';
+            }
+        }
+
+        function resetCampagneForm() {
+            document.getElementById('campagneId').value = '';
+            document.getElementById('campagneTitre').value = '';
+            document.getElementById('campagneType').value = 'campagne';
+            document.getElementById('campagneDescription').value = '';
+            document.getElementById('campagneLien').value = '';
+            document.getElementById('campagneActive').checked = true;
+            document.getElementById('campagneMsg').textContent = '';
+        }
+
+        function editCampagne(id) {
+            fetch(API_BASE_URL + '/api/admin/campagnes').then(function(r){ return r.json(); }).then(function(data) {
+                var c = (data.campagnes || []).find(function(x){ return x.id === id; });
+                if (!c) return;
+                document.getElementById('campagneId').value = c.id;
+                document.getElementById('campagneTitre').value = c.titre || '';
+                document.getElementById('campagneType').value = c.type || 'campagne';
+                document.getElementById('campagneDescription').value = c.description || '';
+                document.getElementById('campagneLien').value = c.lien || '';
+                document.getElementById('campagneActive').checked = c.active !== false;
+                document.getElementById('campagnesSection').scrollTop = 0;
+                window.scrollTo(0, 0);
+            });
+        }
+
+        async function saveCampagne() {
+            var msgEl = document.getElementById('campagneMsg');
+            var id = document.getElementById('campagneId').value;
+            var body = {
+                titre: document.getElementById('campagneTitre').value.trim(),
+                type: document.getElementById('campagneType').value,
+                description: document.getElementById('campagneDescription').value.trim(),
+                lien: document.getElementById('campagneLien').value.trim(),
+                active: document.getElementById('campagneActive').checked
+            };
+            if (!body.titre) { msgEl.style.color='#ff6b6b'; msgEl.textContent='Le titre est obligatoire.'; return; }
+            try {
+                var url = id ? API_BASE_URL+'/api/admin/campagnes/'+id : API_BASE_URL+'/api/admin/campagnes';
+                var method = id ? 'PUT' : 'POST';
+                var r = await fetch(url, { method: method, headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+                var d = await r.json();
+                if (d.success) {
+                    msgEl.style.color='#51cf66'; msgEl.textContent = id ? 'Mis à jour !' : 'Créé !';
+                    resetCampagneForm();
+                    loadCampagnesAdmin();
+                } else {
+                    msgEl.style.color='#ff6b6b'; msgEl.textContent = d.error || 'Erreur';
+                }
+            } catch(e) { msgEl.style.color='#ff6b6b'; msgEl.textContent='Erreur de connexion'; }
+        }
+
+        async function deleteCampagne(id) {
+            if (!confirm('Supprimer cette entrée ?')) return;
+            try {
+                await fetch(API_BASE_URL+'/api/admin/campagnes/'+id, { method: 'DELETE' });
+                loadCampagnesAdmin();
+            } catch(e) { alert('Erreur de connexion'); }
         }
 
         // ============================================================

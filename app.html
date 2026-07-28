@@ -1365,6 +1365,27 @@ a{text-decoration:none;color:inherit}
 .p-big-photo img{width:100%;height:100%;object-fit:cover}
 .p-big-body{padding:12px}
 
+/* Promo pill partenaire */
+.ptnr-aud-promo{color:#FFD700 !important;border-color:#FFD700 !important}
+.ptnr-aud-promo.on{background:#FFD700 !important;color:#000 !important}
+
+/* Offres Promo (Explorer) */
+.p-dir-promo-row{display:flex;flex-wrap:wrap;gap:10px;padding:0 16px 16px}
+.p-promo-card{display:flex;align-items:center;gap:10px;background:var(--card);border:1.5px solid #FFD700;
+  border-radius:14px;padding:10px;cursor:pointer;width:calc(50% - 5px);box-sizing:border-box;transition:transform .15s}
+.p-promo-card:active{transform:scale(.97)}
+.p-promo-card-photo{flex-shrink:0;width:56px;height:56px;border-radius:10px;overflow:hidden;background:#1a1a1a}
+.p-promo-card-photo img{width:100%;height:100%;object-fit:cover}
+.p-promo-card-img-ph{width:100%;height:100%;display:flex;align-items:center;justify-content:center;
+  background:#261f00;color:#FFD700;font-size:20px}
+.p-promo-card-body{flex:1;min-width:0}
+.p-promo-badge{font-size:9px;font-weight:800;color:#000;background:#FFD700;border-radius:4px;
+  padding:1px 6px;display:inline-flex;align-items:center;gap:3px;margin-bottom:3px;letter-spacing:.4px}
+.p-promo-card-label{font-size:12px;font-weight:600;color:var(--txt);line-height:1.3;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:2px}
+.p-promo-card-partner{font-size:10px;color:var(--muted);margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.p-promo-card-price{font-size:13px;font-weight:700;color:#FFD700}
+
 /* Événements et Workshops (Explorer) */
 .p-event-card{flex-shrink:0;width:220px;background:var(--card);border:3px solid #000;border-radius:16px;
   overflow:hidden;box-shadow:5px 5px 0 var(--yellow);cursor:pointer;position:relative}
@@ -2455,6 +2476,7 @@ a{text-decoration:none;color:inherit}
         <div id="p-dir-new-talents-wrap"></div>
         <div id="p-dir-personalized-wrap"></div>
         <div id="p-dir-favorites-wrap"></div>
+        <div id="p-dir-promo-wrap"></div>
         <div id="p-dir-hall-of-fame-wrap"></div>
       </div>
       <div class="p-exp-panel" id="p-exp-events-panel">
@@ -2729,11 +2751,13 @@ a{text-decoration:none;color:inherit}
             <button class="ptnr-audience-pill on" id="ptnr-aud-pill-etudiant" onclick="_ptnrSwitchAudience('etudiant')">Étudiant</button>
             <button class="ptnr-audience-pill" id="ptnr-aud-pill-particulier" onclick="_ptnrSwitchAudience('particulier')">Particulier</button>
             <button class="ptnr-audience-pill" id="ptnr-aud-pill-entreprise" onclick="_ptnrSwitchAudience('entreprise')">Entreprise</button>
+            <button class="ptnr-audience-pill ptnr-aud-promo" id="ptnr-aud-pill-promo" onclick="_ptnrSwitchAudience('promo')"><i class="fa-solid fa-tag"></i> Promo</button>
           </div>
 
           <div id="ptnr-services-list-etudiant" class="ptnr-svc-list"></div>
           <div id="ptnr-services-list-particulier" class="ptnr-svc-list" style="display:none;"></div>
           <div id="ptnr-services-list-entreprise" class="ptnr-svc-list" style="display:none;"></div>
+          <div id="ptnr-services-list-promo" class="ptnr-svc-list" style="display:none;"></div>
 
           <button class="ptnr-svc-add-btn" onclick="_ptnrAddServiceItem(_ptnrCurrentAudience)"><i class="fa-solid fa-plus"></i> Ajouter une prestation</button>
 
@@ -3652,6 +3676,7 @@ function renderExplorer(){
   loadEventsExplorer();
   loadPersonalizedRecommendations();
   loadFavoritesInExplorer();
+  loadPromoServices();
 }
 
 function setExpToggle(which, el){
@@ -3881,7 +3906,7 @@ function rankedDirectoryCard(p){
 }
 
 // ── ÉVÉNEMENTS FA GENESIS (Explorer) ─────────────────────────────
-var EVENT_TYPE_LABELS_DIR = {workshop:'Workshop', conference:'Conférence', soiree:'Soirée', masterclass:'Masterclass'};
+var EVENT_TYPE_LABELS_DIR = {workshop:'Workshop', webinaire:'Webinaire', atelier:'Atelier', conference:'Conférence', soiree:'Soirée', masterclass:'Masterclass'};
 var _eventsCache = {};
 function eventDateLabel(iso){
   if(!iso) return '';
@@ -4079,6 +4104,39 @@ function loadHallOfFame(){
   }).catch(function(){ wrap.innerHTML=''; });
 }
 
+// ── OFFRES PROMO (Explorer) ────────────────────────────────────────
+function loadPromoServices(){
+  var wrap = document.getElementById('p-dir-promo-wrap');
+  if(!wrap) return;
+  var base = (window.FA_GENESIS_API || '').replace(/\/$/, '');
+  fetch(base+'/api/partners/promo-services').then(function(r){return r.json();}).then(function(data){
+    var services = data.promo_services || [];
+    if(!services.length){ wrap.innerHTML=''; return; }
+    var html = '<div class="p-section-hdr black p-section-hdr-fit" style="margin:16px 16px 10px;">'
+      +'<i class="fa-solid fa-tag" style="color:#FFD700"></i> OFFRES PROMOTIONNELLES</div>'
+      +'<div class="p-dir-promo-row">';
+    services.forEach(function(s){
+      var imgHtml = s.image
+        ? '<img src="'+s.image+'" alt="" loading="lazy">'
+        : (s.partner_photo ? '<img src="'+s.partner_photo+'" alt="" loading="lazy">' : '<div class="p-promo-card-img-ph"><i class="fa-solid fa-tag"></i></div>');
+      var priceHtml = s.pricing_type === 'quote'
+        ? '<div class="p-promo-card-price">Sur devis</div>'
+        : '<div class="p-promo-card-price">'+Number(s.price).toFixed(2)+' <span style="font-size:10px;font-weight:500">€</span></div>';
+      html += '<div class="p-promo-card" onclick="openPartnerDetail(\''+s.partner_id+'\')">'
+        +'<div class="p-promo-card-photo">'+imgHtml+'</div>'
+        +'<div class="p-promo-card-body">'
+        +'<div class="p-promo-badge"><i class="fa-solid fa-tag"></i> PROMO</div>'
+        +'<div class="p-promo-card-label">'+s.label+'</div>'
+        +'<div class="p-promo-card-partner">'+s.partner_name+'</div>'
+        +priceHtml
+        +'</div></div>';
+    });
+    html += '</div>';
+    wrap.className = 'p-fade-in';
+    wrap.innerHTML = html;
+  }).catch(function(){ wrap.innerHTML=''; });
+}
+
 // Card builders
 function cwCard(o, sub, idx){
   var featsHtml = o.feats.map(function(f){return '<li>'+f+'</li>';}).join('');
@@ -4160,7 +4218,7 @@ function directoryCard(p){
 var _dirPartnerCache = {};
 var _partnerDetailId = null;
 var _partnerDetailAudience = 'particulier';
-var SVC_AUDIENCE_LABELS = {particulier:'Particuliers', entreprise:'Entreprises', etudiant:'Étudiants'};
+var SVC_AUDIENCE_LABELS = {particulier:'Particuliers', entreprise:'Entreprises', etudiant:'Étudiants', promo:'Offres Promo'};
 // Panier multi-prestations (Phase 9) : sélection de plusieurs prestations du MÊME partenaire
 // avant d'envoyer une seule demande groupée — façon Uber Eats "ajouter au panier".
 var _partnerCartSelection = {};
@@ -4345,7 +4403,7 @@ function openPartnerDetail(partnerId){
       // ── Prestations ──
       var services = p.services || [];
       _partnerCartSelection = {};
-      var usedAudiences = ['particulier','entreprise','etudiant'].filter(function(a){
+      var usedAudiences = ['particulier','entreprise','etudiant','promo'].filter(function(a){
         return services.some(function(s){ return (s.audience||'particulier')===a; });
       });
       _partnerDetailAudience = usedAudiences[0] || 'particulier';
@@ -13092,7 +13150,7 @@ function _ptnrLoadReputation(){
 }
 
 // ── PROFIL PARTENAIRE (photo) + TARIFS/PRESTATIONS (Accueil) ──
-var _ptnrSvcAudiences = ['etudiant','particulier','entreprise'];
+var _ptnrSvcAudiences = ['etudiant','particulier','entreprise','promo'];
 var _ptnrCurrentAudience = 'etudiant';
 
 function _ptnrSwitchAudience(audience){
