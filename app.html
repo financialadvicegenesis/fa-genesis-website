@@ -8007,15 +8007,29 @@ function showClientLevels() {
           }).join('')
         + '</div></div>';
       // ── Comment gagner des QG
+      var _qgLvlMap = {bronze:1, argent:2, or:3, elite:4};
+      var _qgCurLvl = _qgLvlMap[curBadge] || 0;
       html += '<div style="background:#111;border-radius:14px;padding:14px 16px;margin-bottom:20px;">'
-        + '<div style="font-size:10px;color:var(--yellow);font-weight:800;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;"><i class="fa-solid fa-bolt" style="margin-right:5px;"></i>Comment gagner des QG ?</div>'
-        + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">'
+        + '<div style="font-size:10px;color:var(--yellow);font-weight:800;letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;"><i class="fa-solid fa-bolt" style="margin-right:5px;"></i>Comment gagner des QG ?</div>'
+        + '<div style="font-size:10px;color:#4caf50;font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:7px;display:flex;align-items:center;gap:5px;"><i class="fa-solid fa-circle-check" style="font-size:9px;"></i>Disponibles maintenant</div>'
+        + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:7px;">'
         + _qgActionRow('fa-briefcase', 'Prestation terminée', '20 QG')
         + _qgActionRow('fa-star', 'Avis déposé', '5 QG')
+        + '</div>'
+        + '<div style="margin-bottom:' + (!curBadge ? '10px' : '12px') + ';">'
         + _qgActionRow('fa-crown', 'Avis 5 étoiles', '30 QG')
-        + _qgActionRow('fa-chalkboard-user', 'Atelier / formation', '50 QG')
-        + _qgActionRow('fa-calendar-days', 'Événement Genesis', '75 QG')
-        + _qgActionRow('fa-user-plus', 'Parrainage validé', '100 QG')
+        + '</div>'
+        + (!curBadge
+          ? '<div style="font-size:10px;color:#555;text-align:center;padding:7px 10px;margin-bottom:12px;background:#0d0d0d;border-radius:8px;border:1px solid #1a1a1a;">'
+            + '<i class="fa-solid fa-info-circle" style="color:#a89000;margin-right:4px;"></i>'
+            + 'Ces 3 actions suffisent pour atteindre <strong style="color:#a89000;">Créateur</strong> !'
+            + '</div>'
+          : '')
+        + '<div style="font-size:10px;color:#444;font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:7px;display:flex;align-items:center;gap:5px;"><i class="fa-solid fa-lock" style="font-size:9px;"></i>Débloqués avec les niveaux</div>'
+        + '<div style="display:flex;flex-direction:column;gap:6px;">'
+        + _qgActionRowGated('fa-user-plus', 'Parrainage validé', '100 QG', _qgCurLvl >= 1, 'Créateur', '#cd7f32')
+        + _qgActionRowGated('fa-chalkboard-user', 'Atelier / formation', '50 QG', _qgCurLvl >= 2, 'Bâtisseur', '#b0b0b0')
+        + _qgActionRowGated('fa-calendar-days', 'Événement Genesis', '75 QG', _qgCurLvl >= 3, 'Visionnaire', '#FFD700')
         + '</div></div>';
       // ── Niveaux avec avantages
       var levelOrder = [null, 'bronze', 'argent', 'or', 'elite'];
@@ -8082,6 +8096,27 @@ function _qgActionRow(icon, label, pts) {
     + '<i class="fa-solid ' + icon + '" style="font-size:14px;color:var(--yellow);width:16px;text-align:center;flex-shrink:0;"></i>'
     + '<div style="flex:1;font-size:11px;color:#888;">' + label + '</div>'
     + '<div style="font-size:12px;font-weight:800;color:var(--yellow);white-space:nowrap;">' + pts + '</div>'
+    + '</div>';
+}
+
+function _qgActionRowGated(icon, label, pts, unlocked, levelLabel, levelColor) {
+  if (unlocked) {
+    return '<div style="background:#1a1a1a;border-radius:9px;padding:9px 10px;display:flex;align-items:center;gap:7px;">'
+      + '<i class="fa-solid ' + icon + '" style="font-size:14px;color:var(--yellow);width:16px;text-align:center;flex-shrink:0;"></i>'
+      + '<div style="flex:1;">'
+      + '<div style="font-size:11px;color:#ccc;">' + label + '</div>'
+      + '<div style="font-size:9px;color:#4caf50;font-weight:700;margin-top:1px;"><i class="fa-solid fa-circle-check" style="font-size:8px;margin-right:3px;"></i>Débloqué</div>'
+      + '</div>'
+      + '<div style="font-size:12px;font-weight:800;color:var(--yellow);white-space:nowrap;">' + pts + '</div>'
+      + '</div>';
+  }
+  return '<div style="background:#0f0f0f;border-radius:9px;padding:9px 10px;display:flex;align-items:center;gap:7px;border:1px solid #1a1a1a;">'
+    + '<i class="fa-solid fa-lock" style="font-size:12px;color:#333;width:16px;text-align:center;flex-shrink:0;"></i>'
+    + '<div style="flex:1;">'
+    + '<div style="font-size:11px;color:#555;">' + label + '</div>'
+    + '<div style="font-size:9px;font-weight:700;opacity:.9;margin-top:2px;color:' + levelColor + ';">Disponible dès <strong>' + levelLabel + '</strong></div>'
+    + '</div>'
+    + '<div style="font-size:12px;font-weight:800;color:#3a3a3a;white-space:nowrap;">' + pts + '</div>'
     + '</div>';
 }
 
