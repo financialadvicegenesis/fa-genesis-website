@@ -3166,6 +3166,7 @@ function loadStatusCard(){
 var _navCurrentTab = 'home';
 var _prevNav = null;
 var _profilScrollPos = 0;
+var _profilBackTarget = null;
 
 function nav(tab){
   _prevNav={tab:_navCurrentTab,scrollTop:(document.getElementById('content')||{}).scrollTop||0};
@@ -3234,9 +3235,12 @@ function _saveProfilScroll(sectionName){
 
 function profilBack(){
   try{sessionStorage.removeItem('fa_nav_section');}catch(e){}
-  var saved=_profilScrollPos;
+  var saved = _profilScrollPos;
+  var customFn = _profilBackTarget;
+  _profilBackTarget = null;
+  if(customFn){ customFn(); return; }
   renderProfil();
-  var el=document.getElementById('content');
+  var el = document.getElementById('content');
   if(el){
     setTimeout(function(){ el.scrollTop=saved; }, 30);
     setTimeout(function(){ if(saved>0 && el.scrollTop<saved-30) el.scrollTop=saved; }, 150);
@@ -5407,6 +5411,21 @@ function shareReferralCode(){
     }
   }
 }
+function showParrainageScreen(){
+  var c = document.getElementById('profilContent'); if(!c) return;
+  if(!USER || GUEST){ renderProfil(); return; }
+  _saveProfilScroll('showParrainageScreen');
+  c.innerHTML = '<div class="espace-view">'
+    +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Programme de parrainage</div></div>'
+    +'<div style="padding:14px 16px 80px;overflow-y:auto;flex:1;">'
+    +(USER.badge ? referralBoxHtml() :
+      '<div style="background:rgba(59,130,246,.06);border:1.5px solid rgba(59,130,246,.2);border-radius:16px;padding:24px;text-align:center;">'
+      +'<i class="fa-solid fa-user-plus" style="font-size:36px;color:#555;margin-bottom:12px;display:block;"></i>'
+      +'<div style="font-size:14px;font-weight:800;color:#888;margin-bottom:8px;">Programme de parrainage</div>'
+      +'<div style="font-size:12px;color:#555;line-height:1.7;">Atteignez le niveau <strong style="color:#9ecbe8;">Créateur</strong> (100 QG) pour débloquer votre code de parrainage et inviter des amis.</div>'
+      +'</div>')
+    +'</div></div>';
+}
 function showFavoris(){
   var c = document.getElementById('profilContent'); if(!c) return;
   _saveProfilScroll('showFavoris');
@@ -7320,22 +7339,22 @@ function _showWelcomeQGOverlay() {
 // Retourne l'action onclick pour un avantage débloqué, ou null si géré manuellement par FA GENESIS
 function _profilAdvOnclick(id) {
   var map = {
-    profil_perso:    'showProfilPersonnalisation()',
-    parrainage:      'profilBack()',
-    defis_qg:        'profilBack();setTimeout(showGenesisMissions,50);',
+    profil_perso:         '_profilBackTarget=showClientLevels;showProfilPersonnalisation()',
+    parrainage:           '_profilBackTarget=showClientLevels;showParrainageScreen()',
+    defis_qg:             '_profilBackTarget=showClientLevels;showGenesisMissions()',
     suggestions_ia:       '_profilOpenJeremie()',
-    resume_mensuel:       'showResumeMensuel()',
-    patrimoine_genesis:   'showGenesisPatrimoine()',
-    avantages_ptnr:  'showAvantagesPartenaires()',
-    webinaires:      'profilBack();setTimeout(goToEventsExplorer,100);',
-    alertes_ia:      'showAlertesIA()',
-    campagnes:       'showCampagnesJeux()',
-    jeremie_plus:    '_profilOpenJeremie()',
-    events_prives:   'profilBack();setTimeout(goToEventsExplorer,100);',
-    offres_premium:  'profilBack();setTimeout(function(){_rankPromoFilter=true;nav("prestataires");},100);',
-    priority_events: 'profilBack();setTimeout(goToEventsExplorer,100);',
-    jeremie_pro:     '_profilOpenJeremie()',
-    jeremie_expert:  '_profilOpenJeremie()'
+    resume_mensuel:       '_profilBackTarget=showClientLevels;showResumeMensuel()',
+    patrimoine_genesis:   '_profilBackTarget=showClientLevels;showGenesisPatrimoine()',
+    avantages_ptnr:       '_profilBackTarget=showClientLevels;showAvantagesPartenaires()',
+    webinaires:           'profilBack();setTimeout(goToEventsExplorer,100);',
+    alertes_ia:           '_profilBackTarget=showClientLevels;showAlertesIA()',
+    campagnes:            '_profilBackTarget=showClientLevels;showCampagnesJeux()',
+    jeremie_plus:         '_profilOpenJeremie()',
+    events_prives:        'profilBack();setTimeout(goToEventsExplorer,100);',
+    offres_premium:       'profilBack();setTimeout(function(){_rankPromoFilter=true;nav("prestataires");},100);',
+    priority_events:      'profilBack();setTimeout(goToEventsExplorer,100);',
+    jeremie_pro:          '_profilOpenJeremie()',
+    jeremie_expert:       '_profilOpenJeremie()'
   };
   return map[id] || null;
 }
