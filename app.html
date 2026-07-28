@@ -3024,7 +3024,7 @@ function showApp(){
   appEl.className = 'on';
   initApp();
   setTimeout(_restoreNavSession, 400);
-  setTimeout(function(){ if(typeof _checkTutorial==='function') _checkTutorial(); }, 1200);
+  setTimeout(function(){ if(typeof _checkTutoPrompt==='function') _checkTutoPrompt(); }, 1200);
 }
 function goLogin(){ showLoginSheet(); }
 function goGuest(){ GUEST = true; showApp(); }
@@ -7238,7 +7238,7 @@ function _showWelcomeQGOverlay() {
       + '</div>'
 
       // CTA
-      + '<button onclick="var el=document.getElementById(\'welcome-qg-overlay\');if(el)el.remove();" style="width:100%;background:linear-gradient(135deg,var(--yellow),#e6c200);border:none;border-radius:12px;padding:13px;font-size:14px;font-weight:900;color:#1a1200;cursor:pointer;letter-spacing:.3px;">'
+      + '<button onclick="var el=document.getElementById(\'welcome-qg-overlay\');if(el)el.remove();setTimeout(function(){if(typeof _checkTutoPrompt===\'function\')_checkTutoPrompt();},250);" style="width:100%;background:linear-gradient(135deg,var(--yellow),#e6c200);border:none;border-radius:12px;padding:13px;font-size:14px;font-weight:900;color:#1a1200;cursor:pointer;letter-spacing:.3px;">'
       + '<i class="fa-solid fa-rocket" style="margin-right:6px;"></i>C\'est parti !'
       + '</button>'
       + '</div>';
@@ -13980,6 +13980,52 @@ var _TUTO_P = [
 var _tutoSteps = [];
 var _tutoIdx   = 0;
 var _tutoIsPartner = false;
+
+// ── PANNEAU DE CHOIX TUTORIEL (première connexion) ───────────────
+function _checkTutoPrompt(){
+  try{
+    if(!USER||GUEST) return;
+    if(localStorage.getItem('fa_tuto_c_done')) return;
+    // Si l'overlay QG de bienvenue est encore affiché, attendre qu'il soit fermé
+    if(document.getElementById('welcome-qg-overlay')) return;
+    _showTutoChoiceOverlay();
+  }catch(e){}
+}
+
+function _showTutoChoiceOverlay(){
+  try{
+    if(document.getElementById('tuto-choice-overlay')) return;
+    var fn = USER && (USER.prenom||USER.firstName||(USER.email||'').split('@')[0]||'');
+    var greeting = fn ? ('Bienvenue ' + fn + ' !') : 'Bienvenue !';
+    var el = document.createElement('div');
+    el.id = 'tuto-choice-overlay';
+    el.style.cssText = 'position:fixed;inset:0;z-index:99997;background:rgba(0,0,0,.82);display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .3s;';
+    el.innerHTML = '<div style="width:100%;max-width:480px;background:#0a0a0a;border:1.5px solid var(--yellow);border-radius:24px 24px 0 0;padding:30px 24px 44px;text-align:center;">'
+      + '<div style="font-size:40px;margin-bottom:12px;"><i class="fa-solid fa-hand-sparkles" style="color:var(--yellow);"></i></div>'
+      + '<div style="font-size:21px;font-weight:900;color:#fff;margin-bottom:8px;">' + greeting + '</div>'
+      + '<div style="font-size:13px;color:#888;line-height:1.65;margin-bottom:26px;">Souhaitez-vous être guidé par notre tutoriel interactif ? Il vous présentera les fonctionnalités essentielles de la plateforme en quelques étapes.</div>'
+      + '<div style="display:flex;gap:10px;">'
+      + '<button onclick="_tutoChoiceNo()" style="flex:1;background:rgba(255,255,255,.06);border:1px solid #333;border-radius:12px;padding:14px;font-size:13px;font-weight:700;color:#888;cursor:pointer;">Explorer seul(e)</button>'
+      + '<button onclick="_tutoChoiceYes()" style="flex:2;background:linear-gradient(135deg,var(--yellow),#e6c200);border:none;border-radius:12px;padding:14px;font-size:14px;font-weight:900;color:#1a1200;cursor:pointer;"><i class="fa-solid fa-map" style="margin-right:6px;"></i>Me guider</button>'
+      + '</div>'
+      + '</div>';
+    document.body.appendChild(el);
+    setTimeout(function(){ el.style.opacity='1'; el.style.pointerEvents='all'; }, 10);
+  }catch(e){}
+}
+
+function _tutoChoiceYes(){
+  try{ localStorage.setItem('fa_tuto_choice_done','1'); }catch(e){}
+  var el = document.getElementById('tuto-choice-overlay');
+  if(el){ el.style.opacity='0'; el.style.pointerEvents='none'; setTimeout(function(){ if(el.parentNode) el.parentNode.removeChild(el); }, 300); }
+  setTimeout(_checkTutorial, 350);
+}
+
+function _tutoChoiceNo(){
+  try{ localStorage.setItem('fa_tuto_c_done','1'); localStorage.setItem('fa_tuto_choice_done','1'); }catch(e){}
+  var el = document.getElementById('tuto-choice-overlay');
+  if(el){ el.style.opacity='0'; el.style.pointerEvents='none'; setTimeout(function(){ if(el.parentNode) el.parentNode.removeChild(el); }, 300); }
+}
 
 function _checkTutorial(){
   try{
