@@ -8849,7 +8849,14 @@ function _loOnLoginSuccess(res){
   USER=res.user||res; USER._token=res.token; GUEST=false;
   // Réinitialise le tutoriel à chaque connexion pour les comptes de test
   if(USER.email && USER.email.toLowerCase()==='test-nouveau@fagenesis.com'){
-    try{ localStorage.removeItem(_tutoKey('c_done')); }catch(e){}
+    try{ localStorage.removeItem(_tutoKey('c_done')); localStorage.removeItem(_tutoKey('first_login')); }catch(e){}
+  } else {
+    // Le tutoriel ne s'affiche qu'à la première connexion après inscription.
+    // Si first_login est déjà posé, l'overlay a déjà été proposé une fois : on supprime
+    // définitivement le tutoriel pour toutes les connexions suivantes.
+    if(localStorage.getItem(_tutoKey('first_login'))){
+      try{ if(!localStorage.getItem(_tutoKey('c_done'))) localStorage.setItem(_tutoKey('c_done'),'1'); }catch(e){}
+    }
   }
   closeLoginSheet();
   var welcome=document.getElementById('welcome');
@@ -14013,6 +14020,9 @@ function _checkTutoPrompt(){
 function _showTutoChoiceOverlay(){
   try{
     if(document.getElementById('tuto-choice-overlay')) return;
+    // Marque que le tutoriel a été proposé à cette première connexion.
+    // Toute connexion ultérieure détectera ce flag et supprimera le tutoriel.
+    try{ localStorage.setItem(_tutoKey('first_login'),'1'); }catch(e){}
     var fn = USER && (USER.prenom||USER.firstName||(USER.email||'').split('@')[0]||'');
     var greeting = fn ? ('Bienvenue ' + fn + ' !') : 'Bienvenue !';
     var el = document.createElement('div');
