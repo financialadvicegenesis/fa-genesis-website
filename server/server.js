@@ -69,6 +69,7 @@ const NOTIFICATIONS_FILE = path.join(__dirname, 'data', 'notifications.json');
 const DISPUTES_FILE = path.join(__dirname, 'data', 'disputes.json');
 const PROSPECTS_FILE = path.join(__dirname, 'data', 'prospects.json');
 const CAMPAGNES_FILE = path.join(__dirname, 'data', 'campagnes.json');
+const SCHEDULED_NOTIFS_FILE = path.join(__dirname, 'data', 'scheduled_notifs.json');
 
 // Catégories de partenaires marketplace (source unique, partagée par inscription + admin)
 const PARTNER_TYPES = [
@@ -338,6 +339,35 @@ function saveCampagnes(campagnes) {
     } catch (error) {
         console.error('[CAMPAGNES] Erreur sauvegarde campagnes:', error);
     }
+}
+
+function loadScheduledNotifs() {
+    try {
+        if (fs.existsSync(SCHEDULED_NOTIFS_FILE)) return JSON.parse(fs.readFileSync(SCHEDULED_NOTIFS_FILE, 'utf8'));
+    } catch(e) { console.error('[SCHED_NOTIF] Lecture:', e); }
+    return [];
+}
+function saveScheduledNotifs(notifs) {
+    try { fs.writeFileSync(SCHEDULED_NOTIFS_FILE, JSON.stringify(notifs, null, 2), 'utf8'); } catch(e) { console.error('[SCHED_NOTIF] Sauvegarde:', e); }
+}
+function processScheduledNotifs() {
+    try {
+        var now = Date.now();
+        var notifs = loadScheduledNotifs();
+        var updated = false;
+        notifs.forEach(function(n) {
+            if (!n.sent && new Date(n.sendAt).getTime() <= now) {
+                notifyUser(n.email, n.role, n.type, n.title, n.body, n.link);
+                n.sent = true;
+                updated = true;
+            }
+        });
+        if (updated) {
+            var cutoff = now - 7 * 24 * 3600 * 1000;
+            notifs = notifs.filter(function(n) { return !n.sent || new Date(n.sendAt).getTime() > cutoff; });
+            saveScheduledNotifs(notifs);
+        }
+    } catch(e) { console.error('[SCHED_NOTIF] Process:', e); }
 }
 
 function loadPartnerReviews() {
@@ -7054,7 +7084,7 @@ app.get('/api/client/level-progress', function(req, res) {
             ],
             or: [
                 { id: 'events_prives',     label: 'Invitations aux événements privés & soirées networking GENESIS' },
-                { id: 'avant_premiere',    label: 'Accès anticipé aux nouvelles fonctionnalités de l\'application' },
+                { id: 'avant_premiere',    label: 'Accès anticipé aux nouvelles fonctionnalités de l\'application GENESIS' },
                 { id: 'priority_events',   label: 'Priorité d\'inscription aux événements à capacité limitée' },
                 { id: 'jeremie_pro',       label: 'Jérémie IA Pro — Comparaison multicritères & préparation de projet' }
             ],
@@ -10957,6 +10987,20 @@ function buildJeremieSystemPrompt(person, personType) {
                         'si le panier est eleve, signale les offres groupees ou les partenaires avec un excellent rapport qualite/prix.');
                 }
             }
+            // Jérémie IA Pro — comparaison multicritères & préparation de projet pour Visionnaire+ (or/elite)
+            if (['or','elite'].indexOf(argBadge) !== -1) {
+                lines.push('');
+                lines.push('Jeremie IA Pro — Mode Visionnaire (comparaison multicriteres & preparation de projet) :');
+                lines.push('Tu as des capacites enrichies pour ce client de niveau Visionnaire ou superieur :');
+                lines.push('1. Comparaison multicriteres : si le client demande a comparer des types de prestataires ou des offres, ' +
+                    'structure une analyse sur au moins 3 criteres (budget, delai de livraison, specialite, note moyenne GENESIS). ' +
+                    'Base-toi uniquement sur les donnees reelles de la plateforme ; ne pas inventer de chiffres.');
+                lines.push('2. Preparation de projet : aide a construire un brief complet (objectif du projet, cible, budget global, ' +
+                    'calendrier, indicateurs de reussite, types de prestataires GENESIS requis et dans quel ordre les mobiliser). ' +
+                    'Si le projet mobilise plusieurs types de prestataires, propose un sequencage logique des etapes.');
+                lines.push('3. Recommandations networking : signale systematiquement les evenements prives GENESIS, webinaires et ' +
+                    'sessions reseau disponibles qui correspondent au secteur ou aux projets du client.');
+            }
         } else {
             var summary = getPartnerRatingSummary(person.id);
             var missionsCompleted = getPartnerMissionsCompleted(person.id);
@@ -11285,6 +11329,8 @@ app.post('/api/admin/events/create', function(req, res) {
             description: body.description || '',
             link: body.link || '',
             published: body.published !== false,
+            capacity_limited: body.capacity_limited === true || body.capacity_limited === 'true',
+            capacity: body.capacity ? parseInt(body.capacity, 10) : null,
             createdAt: new Date().toISOString(),
             attendees: []
         };
@@ -11318,6 +11364,8 @@ app.put('/api/admin/events/:id', function(req, res) {
         ['title', 'description', 'type', 'date', 'location', 'image', 'link', 'published'].forEach(function(field) {
             if (body[field] !== undefined) events[idx][field] = body[field];
         });
+        if (body.capacity_limited !== undefined) events[idx].capacity_limited = body.capacity_limited === true || body.capacity_limited === 'true';
+        if (body.capacity !== undefined) events[idx].capacity = body.capacity ? parseInt(body.capacity, 10) : null;
         events[idx].updatedAt = new Date().toISOString();
         saveEvents(events);
         res.json({ success: true, event: events[idx] });
@@ -11383,10 +11431,14 @@ app.get('/api/events', function(req, res) {
             .filter(function(e) { return e.published !== false && new Date(e.date).getTime() >= now; })
             .sort(function(a, b) { return new Date(a.date) - new Date(b.date); })
             .map(function(e) {
+                var rsvpCount = (e.attendees || []).length;
                 return {
                     id: e.id, title: e.title, description: e.description, type: e.type,
                     date: e.date, location: e.location, image: e.image || '', link: e.link || '',
-                    attendeeCount: (e.attendees || []).length
+                    attendeeCount: rsvpCount,
+                    capacity_limited: e.capacity_limited || false,
+                    capacity: e.capacity || null,
+                    spots_left: (e.capacity_limited && e.capacity) ? Math.max(0, e.capacity - rsvpCount) : null
                 };
             });
         res.json({ success: true, events: events });
@@ -11419,6 +11471,24 @@ app.post('/api/events/:id/rsvp', function(req, res) {
         events[idx].attendees = events[idx].attendees || [];
         var already = events[idx].attendees.find(function(a) { return a.id === person.id; });
         if (already) return res.json({ success: true, event: events[idx], alreadyRsvp: true });
+
+        // Vérification capacité limitée
+        if (events[idx].capacity_limited && events[idx].capacity) {
+            var rsvpCount = events[idx].attendees.length;
+            if (rsvpCount >= events[idx].capacity) {
+                // Visionnaire+ (or/elite) ont la priorité — ils peuvent toujours s'inscrire
+                var isPriority = false;
+                if (personType === 'client') {
+                    var qgForPriority = getClientGenesisPoints(person, getClientCompletedOrders(person.email));
+                    var badgeForPriority = getClientQGBadge(qgForPriority);
+                    isPriority = ['or', 'elite'].indexOf(badgeForPriority) !== -1;
+                }
+                if (!isPriority) {
+                    return res.status(409).json({ error: 'Complet', full: true, spots_left: 0,
+                        message: 'Cet événement est complet. Les membres Visionnaire+ ont un accès prioritaire.' });
+                }
+            }
+        }
 
         events[idx].attendees.push({
             id: person.id,
@@ -11948,6 +12018,54 @@ app.delete('/api/admin/campagnes/:id', function(req, res) {
     } catch(e) {
         console.error('[ADMIN] Erreur suppression campagne:', e);
         res.status(500).json({ error: 'Erreur suppression campagne' });
+    }
+});
+
+// ── ANNONCES DE NOUVELLES FONCTIONNALITÉS ──────────────────────────
+// Bâtisseur+ (argent/or/elite) reçoivent la notification immédiatement.
+// Créateur (bronze) et sans niveau : notification différée de 24h via processScheduledNotifs().
+app.post('/api/admin/feature-announcement', function(req, res) {
+    try {
+        var adminToken = req.headers.authorization || '';
+        if (adminToken.startsWith('Bearer ')) adminToken = adminToken.slice(7).trim();
+        var adminSessions = [];
+        try { adminSessions = JSON.parse(fs.readFileSync(ADMIN_SESSIONS_FILE, 'utf8')); } catch(e) {}
+        var isAdmin = adminSessions.some(function(s) { return s.token === adminToken && (!s.expiresAt || Date.now() < new Date(s.expiresAt).getTime()); });
+        if (!isAdmin) return res.status(403).json({ error: 'Accès réservé aux administrateurs' });
+
+        var body = req.body || {};
+        if (!body.title) return res.status(400).json({ error: 'Titre requis' });
+
+        var title = String(body.title).substring(0, 120);
+        var description = body.description ? String(body.description).substring(0, 400) : 'Découvrez la nouvelle fonctionnalité de l\'application GENESIS.';
+        var link = body.link || '/app.html';
+        var immediateCount = 0;
+        var scheduledCount = 0;
+        var later24h = new Date(Date.now() + 24 * 3600 * 1000).toISOString();
+        var scheduled = loadScheduledNotifs();
+
+        loadUsers().forEach(function(user) {
+            if (!user.email) return;
+            var qg = getClientGenesisPoints(user, getClientCompletedOrders(user.email));
+            var badge = getClientQGBadge(qg);
+            if (['argent', 'or', 'elite'].indexOf(badge) !== -1) {
+                notifyUser(user.email, 'client', 'nouvelle_fonctionnalite', title, description, link);
+                immediateCount++;
+            } else {
+                scheduled.push({
+                    id: uuidv4(), email: user.email, role: 'client',
+                    type: 'nouvelle_fonctionnalite', title: title, body: description, link: link,
+                    sendAt: later24h, sent: false, createdAt: new Date().toISOString()
+                });
+                scheduledCount++;
+            }
+        });
+
+        saveScheduledNotifs(scheduled);
+        res.json({ success: true, immediate: immediateCount, scheduled: scheduledCount });
+    } catch(e) {
+        console.error('[FEATURE_ANNONCE] Erreur:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
     }
 });
 
@@ -17086,6 +17204,10 @@ async function initTestAccounts() {
 // DEMARRAGE DU SERVEUR
 // ============================================================
 
+
+// Traitement des notifications différées (toutes les 5 min)
+processScheduledNotifs();
+setInterval(processScheduledNotifs, 5 * 60 * 1000);
 
 app.listen(PORT, async () => {
     // Restaurer les données depuis MongoDB Atlas (si configuré)

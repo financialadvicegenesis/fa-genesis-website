@@ -3923,7 +3923,16 @@ function eventCard(ev){
   _eventsCache[ev.id] = ev;
   var typeLabel = EVENT_TYPE_LABELS_DIR[ev.type] || ev.type;
   var photoHtml = ev.image ? '<img src="'+ev.image+'" alt="">' : '<i class="fa-solid fa-champagne-glasses"></i>';
-  return '<div class="p-event-card" onclick="openEventDetail(\''+ev.id+'\')">'
+  var capacityBadge = '';
+  if(ev.capacity_limited && ev.capacity){
+    var spotsLeft = ev.spots_left != null ? ev.spots_left : Math.max(0, ev.capacity - (ev.attendeeCount||0));
+    var badgeColor = spotsLeft <= 0 ? '#ff6b6b' : (spotsLeft <= 3 ? '#ff922b' : '#4caf50');
+    capacityBadge = spotsLeft <= 0
+      ? '<div style="position:absolute;top:4px;right:4px;background:#ff6b6b;color:#fff;font-size:9px;font-weight:800;border-radius:6px;padding:2px 6px;letter-spacing:.5px;">COMPLET</div>'
+      : '<div style="position:absolute;top:4px;right:4px;background:'+badgeColor+';color:#fff;font-size:9px;font-weight:800;border-radius:6px;padding:2px 6px;">'+spotsLeft+' place'+(spotsLeft>1?'s':'')+'</div>';
+  }
+  return '<div class="p-event-card" onclick="openEventDetail(\''+ev.id+'\')" style="position:relative;">'
+    +capacityBadge
     +'<div class="p-event-tag">'+typeLabel+'</div>'
     +'<div class="p-event-photo">'+photoHtml+'</div>'
     +'<div class="p-event-body">'
@@ -3939,7 +3948,7 @@ function loadEventsExplorer(){
     var events = (data && data.events) || [];
     wrap.className = events.length ? 'p-fade-in' : '';
     wrap.innerHTML = events.length
-      ? '<div class="p-section-hdr black p-section-hdr-fit" style="margin:16px 16px 12px;"><i class="fa-solid fa-champagne-glasses" style="color:var(--yellow)"></i> ÉVÉNEMENTS FA GENESIS</div>'
+      ? '<div class="p-section-hdr black p-section-hdr-fit" style="margin:16px 16px 12px;"><i class="fa-solid fa-champagne-glasses" style="color:var(--yellow)"></i> ÉVÉNEMENTS GENESIS</div>'
         +'<div class="p-reco-row">'+events.map(eventCard).join('')+'</div>'
       : '';
   }).catch(function(){ wrap.innerHTML=''; });
@@ -3950,13 +3959,41 @@ function openEventDetail(eventId){
   var typeLabel = EVENT_TYPE_LABELS_DIR[ev.type] || ev.type;
   var photoHtml = ev.image ? '<div class="p-dir-portfolio-item" style="aspect-ratio:16/9;margin-bottom:10px;"><img src="'+ev.image+'" alt=""></div>' : '';
   var ctaHtml = ev.link ? '<button class="detail-cta" onclick="window.open(\''+ev.link+'\',\'_blank\')">En savoir plus</button>' : '';
-  var rsvpHtml = (USER && !GUEST) ? '<button class="detail-cta" id="event-rsvp-btn" onclick="rsvpEvent(\''+ev.id+'\')"><i class="fa-solid fa-check"></i> Je participe</button>' : '';
+  // Capacité
+  var spotsLeft = ev.spots_left != null ? ev.spots_left : (ev.capacity_limited && ev.capacity ? Math.max(0, ev.capacity - (ev.attendeeCount||0)) : null);
+  var isFull = ev.capacity_limited && ev.capacity && spotsLeft !== null && spotsLeft <= 0;
+  var userBadge = USER && USER.badge ? USER.badge : (USER && USER.currentBadge ? USER.currentBadge : null);
+  var isVisionnaire = userBadge && ['or','elite'].indexOf(userBadge) !== -1;
+  var capacityInfo = '';
+  if(ev.capacity_limited && ev.capacity){
+    if(isFull){
+      capacityInfo = '<div style="background:rgba(255,107,107,.08);border:1px solid rgba(255,107,107,.25);border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:12px;font-weight:700;color:#ff6b6b;display:flex;align-items:center;gap:8px;">'
+        +'<i class="fa-solid fa-circle-xmark"></i>Événement complet ('+ev.capacity+'/'+ev.capacity+' inscrits)'
+        +(isVisionnaire ? '<span style="color:#FFD700;font-size:11px;"> — Priorité Visionnaire+</span>' : '')
+        +'</div>';
+    } else {
+      var spotsColor = spotsLeft <= 3 ? '#ff922b' : '#4caf50';
+      capacityInfo = '<div style="background:rgba(76,175,80,.06);border:1px solid rgba(76,175,80,.2);border-radius:10px;padding:8px 12px;margin-bottom:10px;font-size:12px;color:'+spotsColor+';font-weight:700;">'
+        +'<i class="fa-solid fa-ticket"></i> '+spotsLeft+' place'+(spotsLeft>1?'s':'')+'  disponible'+(spotsLeft>1?'s':'')+' sur '+ev.capacity
+        +'</div>';
+    }
+  }
+  var rsvpHtml = '';
+  if(USER && !GUEST){
+    if(isFull && !isVisionnaire){
+      rsvpHtml = '<button class="detail-cta" disabled style="opacity:.4;cursor:not-allowed;"><i class="fa-solid fa-circle-xmark"></i> Complet</button>';
+    } else {
+      var rsvpLabel = isFull && isVisionnaire ? '<i class="fa-solid fa-crown"></i> Inscription prioritaire' : '<i class="fa-solid fa-check"></i> Je participe';
+      rsvpHtml = '<button class="detail-cta" id="event-rsvp-btn" onclick="rsvpEvent(\''+ev.id+'\')">'+rsvpLabel+'</button>';
+    }
+  }
   document.getElementById('detail-content').innerHTML = ''
     +photoHtml
     +'<div class="detail-name">'+(ev.title||'')+'</div>'
     +'<div class="detail-sub">'+typeLabel+'</div>'
     +'<div class="detail-price">'+eventDateLabel(ev.date)+'</div>'
     +(ev.location?'<div class="detail-payment"><i class="fa-solid fa-location-dot"></i> '+ev.location+'</div>':'')
+    +capacityInfo
     +(ev.description?'<div class="p-dir-detail-bio">'+ev.description+'</div>':'')
     +rsvpHtml
     +ctaHtml
@@ -3969,8 +4006,15 @@ function rsvpEvent(eventId){
   if(btn){ btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Inscription...'; }
   fetch(API+'/api/events/'+encodeURIComponent(eventId)+'/rsvp', {
     method:'POST', headers:{'Authorization':'Bearer '+USER._token}
-  }).then(function(r){return r.json();}).then(function(d){
-    if(btn){ btn.innerHTML = '<i class="fa-solid fa-circle-check"></i> Inscrit'; btn.disabled = true; }
+  }).then(function(r){ return r.json().then(function(d){ return {status:r.status, data:d}; }); })
+  .then(function(res){
+    if(res.status === 409 && res.data.full){
+      if(btn){ btn.disabled = false; btn.style.background='rgba(255,107,107,.15)'; btn.style.color='#ff6b6b'; btn.style.borderColor='rgba(255,107,107,.3)'; btn.innerHTML = '<i class="fa-solid fa-circle-xmark"></i> Complet'; btn.disabled = true; }
+    } else if(res.data.success || res.data.alreadyRsvp){
+      if(btn){ btn.innerHTML = '<i class="fa-solid fa-circle-check"></i> Inscrit'; btn.disabled = true; }
+    } else {
+      if(btn){ btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-check"></i> Je participe'; }
+    }
   }).catch(function(){
     if(btn){ btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-check"></i> Je participe'; }
   });
@@ -7346,6 +7390,7 @@ function _profilAdvOnclick(id) {
     resume_mensuel:       '_profilBackTarget=showClientLevels;showResumeMensuel()',
     patrimoine_genesis:   '_profilBackTarget=showClientLevels;showGenesisPatrimoine()',
     avantages_ptnr:       '_profilBackTarget=showClientLevels;showAvantagesPartenaires()',
+    avant_premiere:       '_profilBackTarget=showClientLevels;showAvantPremiere()',
     webinaires:           'profilBack();setTimeout(goToEventsExplorer,100);',
     alertes_ia:           '_profilBackTarget=showClientLevels;showAlertesIA()',
     campagnes:            '_profilBackTarget=showClientLevels;showCampagnesJeux()',
@@ -7360,7 +7405,7 @@ function _profilAdvOnclick(id) {
 }
 // Avantages gérés manuellement par l'équipe FA GENESIS (pas de bouton)
 function _profilAdvIsManaged(id) {
-  return ['avant_premiere','vip','fonct_exp','conseil_com','cadeau_annuel','ptnr_strategiques'].indexOf(id) !== -1;
+  return ['vip','fonct_exp','conseil_com','cadeau_annuel','ptnr_strategiques'].indexOf(id) !== -1;
 }
 function _profilOpenJeremie() {
   profilBack();
@@ -7589,6 +7634,35 @@ function _alSavePrefs(){
     msg.style.color='#ff6b6b'; msg.textContent='Erreur de connexion. Réessayez.';
     setTimeout(function(){if(msg)msg.style.display='none';},3000);
   });
+}
+
+// ── ACCÈS ANTICIPÉ — NOUVELLES FONCTIONNALITÉS (avantage Visionnaire) ───
+function showAvantPremiere() {
+  var c = document.getElementById('profilContent'); if(!c) return;
+  if(!USER || GUEST){ renderProfil(); return; }
+  _saveProfilScroll('showAvantPremiere');
+  c.innerHTML = '<div class="espace-view">'
+    +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Accès Anticipé</div></div>'
+    +'<div style="padding:14px 16px 80px;overflow-y:auto;flex:1;">'
+    +'<div style="background:rgba(var(--yellow-rgb),.06);border:1.5px solid rgba(var(--yellow-rgb),.2);border-radius:16px;padding:18px;margin-bottom:16px;text-align:center;">'
+    +'<i class="fa-solid fa-rocket" style="font-size:32px;color:var(--yellow);margin-bottom:10px;display:block;"></i>'
+    +'<div style="font-size:14px;font-weight:800;color:var(--yellow);margin-bottom:6px;">Accès Anticipé GENESIS</div>'
+    +'<div style="font-size:12px;color:#888;line-height:1.7;">En tant que membre <strong style="color:#FFD700;">Visionnaire</strong>, vous êtes parmi les premiers informés des nouvelles fonctionnalités GENESIS. Dès qu\'une nouveauté est disponible, vous recevez une notification en avant-première, avant tous les autres utilisateurs.</div>'
+    +'</div>'
+    +'<div style="background:#111;border:1px solid #1e1e1e;border-radius:14px;padding:14px;">'
+    +'<div style="font-size:10px;color:var(--yellow);font-weight:800;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;"><i class="fa-solid fa-bell" style="margin-right:5px;"></i>Comment ça marche ?</div>'
+    +'<div style="display:flex;flex-direction:column;gap:10px;">'
+    +'<div style="display:flex;gap:10px;align-items:flex-start;font-size:12px;color:#aaa;">'
+    +'<i class="fa-solid fa-circle-check" style="color:#4caf50;margin-top:2px;flex-shrink:0;"></i>'
+    +'<span>Dès qu\'une nouvelle fonctionnalité GENESIS est lancée, vous recevez une <strong style="color:#ccc;">notification push</strong> immédiate.</span></div>'
+    +'<div style="display:flex;gap:10px;align-items:flex-start;font-size:12px;color:#aaa;">'
+    +'<i class="fa-solid fa-circle-check" style="color:#4caf50;margin-top:2px;flex-shrink:0;"></i>'
+    +'<span>Les membres sans niveau ou au niveau Créateur reçoivent la même notification <strong style="color:#ccc;">24h plus tard</strong>.</span></div>'
+    +'<div style="display:flex;gap:10px;align-items:flex-start;font-size:12px;color:#aaa;">'
+    +'<i class="fa-solid fa-circle-check" style="color:#4caf50;margin-top:2px;flex-shrink:0;"></i>'
+    +'<span>Assurez-vous d\'avoir activé les <strong style="color:#ccc;">notifications push</strong> sur votre appareil pour ne rien rater.</span></div>'
+    +'</div></div>'
+    +'</div></div>';
 }
 
 // ── CAMPAGNES & JEUX CONCOURS (avantage Bâtisseur) ───────────────
