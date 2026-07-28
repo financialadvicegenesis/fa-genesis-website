@@ -10892,6 +10892,101 @@ function buildJeremieSystemPrompt(person, personType) {
     return lines.join('\n');
 }
 
+// ── SUGGESTION DE PRESTATAIRES PAR JÉRÉMIE (Bâtisseur+) ──────────────────────
+
+function detectPartnerSearchIntent(message) {
+    var lc = (message || '').toLowerCase();
+    var keywords = [
+        'trouv', 'cherch', 'besoin d', 'recherch', 'recommand', 'suggér',
+        'prestataire', 'professionnel', 'expert', 'spécialiste', 'qui peut',
+        'photographe', 'photo', 'shooting',
+        'vidéaste', 'videoaste', 'vidéo', 'video', 'montage', 'réalisation', 'clip',
+        'graphiste', 'graphism', 'logo', 'branding', 'charte', 'identité visuelle', 'illustration',
+        'marketing', 'marketeur', 'community', 'social media', 'réseaux sociaux',
+        'rédact', 'redact', 'copywriting', 'contenu', 'article',
+        'développ', 'devlopp', 'site web', 'application mobile',
+        'podcast', 'coach', 'formateur', 'formation', 'atelier'
+    ];
+    return keywords.some(function(kw) { return lc.indexOf(kw) !== -1; });
+}
+
+function buildPartnerContextForJeremie(message) {
+    try {
+        var allPartners = loadPartners().filter(function(p) {
+            return p.isActive !== false && p.partner_type;
+        });
+        if (!allPartners.length) return '';
+
+        var lc = (message || '').toLowerCase();
+        var categoryMatches = {
+            photo:         ['photo', 'photographe', 'shooting', 'portrait', 'reportage'],
+            video:         ['vidéo', 'video', 'vidéaste', 'videoaste', 'montage', 'réalisation', 'film', 'clip'],
+            graphisme:     ['graphist', 'logo', 'branding', 'charte', 'design', 'identité visuelle', 'illustration'],
+            marketing:     ['marketing', 'marketeur', 'community', 'social media', 'réseaux', 'instagram', 'tiktok', 'campagne'],
+            redaction:     ['rédact', 'redact', 'texte', 'contenu', 'article', 'copywriting', 'seo'],
+            developpement: ['développ', 'devlopp', 'site web', 'application', 'web', 'app'],
+            coaching:      ['coach', 'formateur', 'formation', 'atelier', 'accompagnement']
+        };
+
+        var detectedCats = [];
+        Object.keys(categoryMatches).forEach(function(cat) {
+            if (categoryMatches[cat].some(function(kw) { return lc.indexOf(kw) !== -1; })) {
+                detectedCats.push(cat);
+            }
+        });
+
+        var filtered = allPartners;
+        if (detectedCats.length) {
+            var byType = allPartners.filter(function(p) {
+                var pt = (p.partner_type || '').toLowerCase();
+                return detectedCats.some(function(cat) { return pt.indexOf(cat) !== -1; });
+            });
+            if (byType.length >= 2) filtered = byType;
+        }
+
+        // Trier par note décroissante
+        filtered = filtered.slice().sort(function(a, b) {
+            var ra = getPartnerRatingSummary(a.id);
+            var rb = getPartnerRatingSummary(b.id);
+            var diff = (rb.average || 0) - (ra.average || 0);
+            if (diff !== 0) return diff;
+            return (rb.count || 0) - (ra.count || 0);
+        });
+
+        var top = filtered.slice(0, 8);
+        if (!top.length) return '';
+
+        var lines = [
+            'PRESTATAIRES GENESIS DISPONIBLES (données temps réel — utilise cette liste pour tes recommandations) :',
+            'Instruction : recommande uniquement des prestataires présents dans cette liste. Explique brièvement pourquoi chacun correspond au besoin exprimé. Ne communique jamais leur email ni téléphone ; invite toujours à consulter leur profil dans l\'onglet Prestataires de l\'application FA GENESIS.',
+            ''
+        ];
+
+        top.forEach(function(p) {
+            var rating  = getPartnerRatingSummary(p.id);
+            var price   = getPartnerFromPrice(p);
+            var name    = ((p.prenom || '') + ' ' + (p.nom || '')).trim();
+            var type    = p.partner_type_other || p.partner_type || '';
+            var city    = p.city || '';
+            var ratingStr = rating.count
+                ? (parseFloat(rating.average || 0).toFixed(1) + '/5 (' + rating.count + ' avis)')
+                : 'pas encore noté';
+            var priceStr = price ? ('à partir de ' + price + ' €') : '';
+
+            var parts = [name, type];
+            if (city)     parts.push(city);
+            if (priceStr) parts.push(priceStr);
+            parts.push('note : ' + ratingStr);
+            lines.push('• ' + parts.join(' | '));
+        });
+
+        return lines.join('\n');
+    } catch (e) {
+        console.error('[JEREMIE] Erreur buildPartnerContextForJeremie:', e);
+        return '';
+    }
+}
+
 app.post('/api/jeremie/chat', function(req, res) {
     try {
         var authHeader = req.headers.authorization;
@@ -10936,6 +11031,21 @@ app.post('/api/jeremie/chat', function(req, res) {
         var entry = memory[person.id] || { messages: [] };
         var history = (entry.messages || []).slice(-20).map(function(m) { return { role: m.role, content: m.content }; });
         var systemPrompt = buildJeremieSystemPrompt(person, personType);
+
+        // Suggestion de prestataires : disponible à partir du niveau Bâtisseur (argent+)
+        if (personType === 'client' && detectPartnerSearchIntent(message)) {
+            try {
+                var _cOrders = getClientCompletedOrders(person.email);
+                var _cPoints = getClientGenesisPoints(person, _cOrders);
+                var _cBadge  = getClientQGBadge(_cPoints);
+                if (['argent', 'or', 'elite'].indexOf(_cBadge) !== -1) {
+                    var _pCtx = buildPartnerContextForJeremie(message);
+                    if (_pCtx) systemPrompt += '\n\n' + _pCtx;
+                }
+            } catch (pCtxErr) {
+                console.error('[JEREMIE] Erreur injection prestataires:', pCtxErr);
+            }
+        }
 
         aiService.askJeremie(systemPrompt, history, message).then(function(result) {
             if (!result.success) {
