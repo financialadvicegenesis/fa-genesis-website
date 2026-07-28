@@ -8847,6 +8847,10 @@ function _loOnLoginSuccess(res){
   }catch(e){}
   if(res.deviceToken){try{localStorage.setItem('fa_genesis_device',res.deviceToken);}catch(e){}}
   USER=res.user||res; USER._token=res.token; GUEST=false;
+  // Réinitialise le tutoriel à chaque connexion pour les comptes de test
+  if(USER.email && USER.email.toLowerCase()==='test-nouveau@fagenesis.com'){
+    try{ localStorage.removeItem(_tutoKey('c_done')); }catch(e){}
+  }
   closeLoginSheet();
   var welcome=document.getElementById('welcome');
   if(welcome&&welcome.style.display!=='none'){showApp();return;}
