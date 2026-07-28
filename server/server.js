@@ -1382,8 +1382,11 @@ function alertBatisseurPlusOnNewPartner(partner) {
             var qg = getClientGenesisPoints(user);
             var badge = getClientQGBadge(qg);
             if (batisseurBadges.indexOf(badge) === -1) return;
-            var preferred = getClientPreferredCategories(user.email);
-            // Si le client a des préférences enregistrées, filtrer par correspondance de type
+            // Priorité aux préférences explicitement renseignées par le client ; sinon, dérivées des favoris/historique
+            var preferred = (user.preferred_partner_types && user.preferred_partner_types.length)
+                ? user.preferred_partner_types
+                : getClientPreferredCategories(user.email);
+            // Si des préférences sont connues, ne notifier que si le type du partenaire correspond
             if (preferred.length > 0 && preferred.indexOf(partnerType) === -1) return;
             notifyUser(
                 user.email,
@@ -6974,6 +6977,7 @@ app.get('/api/auth/me', (req, res) => {
             welcomeDiscountEligible: isClientFirstPaidOrder(user.email),
             referralBonusQG: user.referralBonusQG || 0,
             missionBonuses: user.missionBonuses || {},
+            preferred_partner_types: user.preferred_partner_types || [],
             profile_bio: user.profile_bio || '',
             profile_theme: user.profile_theme || 'genesis',
             profile_banner: user.profile_banner || null,
@@ -8674,6 +8678,27 @@ app.put('/api/clients/update-personalization', function(req, res) {
     } catch (error) {
         console.error('[CLIENT] Erreur update-personalization:', error);
         res.status(500).json({ error: 'Erreur lors de la mise à jour' });
+    }
+});
+
+// PUT /api/clients/preferences — préférences de types de prestataires (Alertes intelligentes Bâtisseur+)
+app.put('/api/clients/preferences', function(req, res) {
+    try {
+        var user = authenticateClient(req, res);
+        if (!user) return;
+        var preferred = req.body.preferred_partner_types;
+        if (!Array.isArray(preferred)) return res.status(400).json({ error: 'preferred_partner_types doit etre un tableau' });
+        var validTypes = preferred.filter(function(t) { return PARTNER_TYPE_VALUES.indexOf(t) !== -1; });
+        var users = loadUsers();
+        var idx = users.findIndex(function(u) { return u.id === user.id; });
+        if (idx === -1) return res.status(404).json({ error: 'Utilisateur non trouvé' });
+        users[idx].preferred_partner_types = validTypes;
+        users[idx].updatedAt = new Date().toISOString();
+        saveUsers(users);
+        res.json({ success: true, preferred_partner_types: validTypes });
+    } catch(e) {
+        console.error('[CLIENT] Erreur update preferences:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
     }
 });
 

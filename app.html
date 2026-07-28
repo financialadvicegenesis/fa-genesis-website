@@ -7480,71 +7480,96 @@ function showAvantagesPartenaires() {
 }
 
 // ── ALERTES INTELLIGENTES (avantage Bâtisseur) ────────────────────
+var _alPrefsCache = {};
+var _alCatsList = [
+  {id:'photographer',        label:'Photographe',              icon:'fa-camera'},
+  {id:'videographer',        label:'Vidéaste',                 icon:'fa-video'},
+  {id:'graphiste',           label:'Graphiste',                icon:'fa-pen-nib'},
+  {id:'marketer',            label:'Marketeur',                icon:'fa-chart-line'},
+  {id:'community_manager',   label:'Community Manager',        icon:'fa-users'},
+  {id:'media',               label:'Média',                    icon:'fa-newspaper'},
+  {id:'developpeur_web',     label:'Développeur Web',          icon:'fa-code'},
+  {id:'consultant',          label:'Consultant',               icon:'fa-briefcase'},
+  {id:'pilote_drone',        label:'Pilote Drone',             icon:'fa-paper-plane'},
+  {id:'animateur_evenementiel',label:'Animateur / Événementiel',icon:'fa-star'},
+  {id:'influencer',          label:'Influenceur',              icon:'fa-crown'},
+  {id:'coworking',           label:'Espace coworking',         icon:'fa-building'}
+];
 function showAlertesIA() {
   var c = document.getElementById('profilContent'); if(!c) return;
   _saveProfilScroll('showAlertesIA');
-  var _alKey = 'fa_genesis_alerts_prefs';
-  var _alPrefs = {};
-  try{ _alPrefs = JSON.parse(localStorage.getItem(_alKey)||'{}'); }catch(e){}
-  var _alCats = [
-    {id:'photographe',label:'Photographe',icon:'fa-camera'},
-    {id:'videaste',label:'Vidéaste',icon:'fa-video'},
-    {id:'graphiste',label:'Graphiste',icon:'fa-pen-nib'},
-    {id:'marketeur',label:'Marketeur',icon:'fa-chart-line'},
-    {id:'redacteur',label:'Rédacteur',icon:'fa-file-pen'},
-    {id:'developpeur',label:'Développeur',icon:'fa-code'},
-    {id:'consultant',label:'Consultant',icon:'fa-briefcase'},
-    {id:'formateur',label:'Formateur',icon:'fa-chalkboard-teacher'},
-    {id:'coworking',label:'Espace coworking',icon:'fa-building'}
-  ];
+  // Charger depuis USER.preferred_partner_types (source serveur) ou localStorage en secours
+  _alPrefsCache = {};
+  var serverTypes = (USER && Array.isArray(USER.preferred_partner_types)) ? USER.preferred_partner_types : [];
+  if(serverTypes.length){
+    serverTypes.forEach(function(t){ _alPrefsCache[t] = true; });
+  } else {
+    try{ var stored = JSON.parse(localStorage.getItem('fa_genesis_alerts_prefs_v2')||'{}'); _alPrefsCache = stored; }catch(e){}
+  }
   c.innerHTML = '<div class="espace-view">'
     +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Alertes Intelligentes</div></div>'
     +'<div style="padding:14px;padding-bottom:80px;overflow-y:auto;flex:1;" id="alertes-ia-body"></div>'
     +'</div>';
   var el = document.getElementById('alertes-ia-body'); if(!el) return;
-  var html = '<div style="background:rgba(59,130,246,.06);border:1px solid rgba(59,130,246,.2);border-radius:14px;padding:14px;margin-bottom:16px;">';
-  html += '<div style="font-size:12px;color:#9ecbe8;line-height:1.6;"><i class="fa-solid fa-bell" style="margin-right:6px;"></i>Sélectionnez les catégories pour lesquelles vous souhaitez être alerté lorsqu\'un nouveau prestataire s\'inscrit sur FA GENESIS.</div>';
-  html += '</div>';
+  var html = '<div style="background:rgba(59,130,246,.06);border:1px solid rgba(59,130,246,.2);border-radius:14px;padding:14px;margin-bottom:16px;">'
+    +'<div style="font-size:12px;color:#9ecbe8;line-height:1.6;">'
+    +'<i class="fa-solid fa-bell" style="margin-right:6px;"></i>'
+    +'Choisissez les types de prestataires qui vous intéressent. Vous serez alerté en priorité dès qu\'un nouveau prestataire de ces catégories rejoint GENESIS.'
+    +'</div></div>';
   html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:20px;">';
-  _alCats.forEach(function(cat){
-    var on = !!_alPrefs[cat.id];
-    html += '<div id="al-cat-'+cat.id+'" onclick="_alToggleCat(\''+cat.id+'\')" style="background:#111;border:1.5px solid '+(on?'rgba(59,130,246,.5)':'#1e1e1e')+';border-radius:12px;padding:12px;display:flex;align-items:center;gap:8px;cursor:pointer;transition:border-color .2s;">';
-    html += '<i class="fa-solid '+cat.icon+'" style="color:'+(on?'#3b82f6':'#333')+';font-size:16px;flex-shrink:0;"></i>';
-    html += '<span style="font-size:12px;font-weight:700;color:'+(on?'#9ecbe8':'#555')+';">'+cat.label+'</span>';
-    if(on) html += '<i class="fa-solid fa-circle-check" style="color:#3b82f6;margin-left:auto;font-size:12px;"></i>';
-    html += '</div>';
+  _alCatsList.forEach(function(cat){
+    var on = !!_alPrefsCache[cat.id];
+    html += '<div id="al-cat-'+cat.id+'" onclick="_alToggleCat(\''+cat.id+'\')" style="background:#111;border:1.5px solid '+(on?'rgba(59,130,246,.5)':'#1e1e1e')+';border-radius:12px;padding:12px;display:flex;align-items:center;gap:8px;cursor:pointer;transition:border-color .2s;">'
+      +'<i class="fa-solid '+cat.icon+'" style="color:'+(on?'#3b82f6':'#333')+';font-size:16px;flex-shrink:0;"></i>'
+      +'<span style="font-size:12px;font-weight:700;color:'+(on?'#9ecbe8':'#555')+'">'+cat.label+'</span>'
+      +(on?'<i class="fa-solid fa-circle-check" style="color:#3b82f6;margin-left:auto;font-size:12px;"></i>':'')
+      +'</div>';
   });
-  html += '</div>';
-  html += '<div id="al-save-msg" style="display:none;color:#4caf50;font-size:12px;text-align:center;margin-bottom:8px;"></div>';
-  html += '<button onclick="_alSavePrefs()" style="width:100%;background:linear-gradient(135deg,#3b82f6,#1d4ed8);border:none;border-radius:14px;padding:13px;font-size:13px;font-weight:900;color:#fff;cursor:pointer;"><i class="fa-solid fa-bell"></i> Enregistrer mes préférences</button>';
+  html += '</div>'
+    +'<div id="al-save-msg" style="display:none;font-size:12px;text-align:center;margin-bottom:8px;color:#4caf50;"></div>'
+    +'<button onclick="_alSavePrefs()" style="width:100%;background:linear-gradient(135deg,#3b82f6,#1d4ed8);border:none;border-radius:14px;padding:13px;font-size:13px;font-weight:900;color:#fff;cursor:pointer;">'
+    +'<i class="fa-solid fa-bell"></i> Enregistrer mes préférences</button>';
   el.innerHTML = html;
 }
 function _alToggleCat(catId){
-  var _alKey = 'fa_genesis_alerts_prefs';
-  var prefs={};try{prefs=JSON.parse(localStorage.getItem(_alKey)||'{}');}catch(e){}
-  prefs[catId] = !prefs[catId];
-  try{localStorage.setItem(_alKey,JSON.stringify(prefs));}catch(e){}
+  _alPrefsCache[catId] = !_alPrefsCache[catId];
+  try{ localStorage.setItem('fa_genesis_alerts_prefs_v2', JSON.stringify(_alPrefsCache)); }catch(e){}
   var el = document.getElementById('al-cat-'+catId); if(!el) return;
-  var on = !!prefs[catId];
+  var on = !!_alPrefsCache[catId];
   el.style.borderColor = on?'rgba(59,130,246,.5)':'#1e1e1e';
   var ico = el.querySelector('i:first-child');
   if(ico) ico.style.color = on?'#3b82f6':'#333';
   var lbl = el.querySelector('span');
   if(lbl) lbl.style.color = on?'#9ecbe8':'#555';
   var chk = el.querySelector('i.fa-circle-check');
-  if(on && !chk){
-    var c2=document.createElement('i');c2.className='fa-solid fa-circle-check';
-    c2.style.cssText='color:#3b82f6;margin-left:auto;font-size:12px;';el.appendChild(c2);
-  } else if(!on && chk){ chk.remove(); }
+  if(on && !chk){ var c2=document.createElement('i'); c2.className='fa-solid fa-circle-check'; c2.style.cssText='color:#3b82f6;margin-left:auto;font-size:12px;'; el.appendChild(c2); }
+  else if(!on && chk){ chk.remove(); }
 }
 function _alSavePrefs(){
   var msg = document.getElementById('al-save-msg'); if(!msg) return;
-  var _alKey = 'fa_genesis_alerts_prefs';
-  var prefs={};try{prefs=JSON.parse(localStorage.getItem(_alKey)||'{}');}catch(e){}
-  var count = Object.keys(prefs).filter(function(k){return prefs[k];}).length;
-  msg.style.display='';
-  msg.textContent = count ? count+' catégorie'+(count>1?'s':'')+' sélectionnée'+(count>1?'s':'')+' — vous serez alerté lors des nouvelles inscriptions.' : 'Aucune catégorie sélectionnée — alertes désactivées.';
-  setTimeout(function(){if(msg)msg.style.display='none';},3000);
+  var selected = Object.keys(_alPrefsCache).filter(function(k){ return _alPrefsCache[k]; });
+  var token = USER&&USER._token?USER._token:'';
+  var base = (window.FA_GENESIS_API||'').replace(/\/$/,'');
+  msg.style.display=''; msg.style.color='#9ecbe8'; msg.textContent='Enregistrement...';
+  fetch(base+'/api/clients/preferences',{
+    method:'PUT',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+    body:JSON.stringify({preferred_partner_types:selected})
+  }).then(function(r){return r.json();}).then(function(d){
+    if(d.success){
+      if(USER) USER.preferred_partner_types = selected;
+      msg.style.color='#4caf50';
+      msg.textContent = selected.length
+        ? selected.length+' catégorie'+(selected.length>1?'s':'')+' enregistrée'+(selected.length>1?'s':'')+' — vous serez alerté des nouveaux prestataires.'
+        : 'Aucune préférence — vous recevrez les alertes pour tous les types.';
+    } else {
+      msg.style.color='#ff6b6b'; msg.textContent = d.error||'Erreur de sauvegarde.';
+    }
+    setTimeout(function(){if(msg)msg.style.display='none';},3500);
+  }).catch(function(){
+    msg.style.color='#ff6b6b'; msg.textContent='Erreur de connexion. Réessayez.';
+    setTimeout(function(){if(msg)msg.style.display='none';},3000);
+  });
 }
 
 // ── CAMPAGNES & JEUX CONCOURS (avantage Bâtisseur) ───────────────
