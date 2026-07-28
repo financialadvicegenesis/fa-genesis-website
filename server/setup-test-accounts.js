@@ -25,6 +25,14 @@ function genId() {
 
 var TEST_ACCOUNTS = [
   {
+    label:    'Nouvel utilisateur (40 QG — bonus bienvenue uniquement)',
+    email:    'test-nouveau@fagenesis.com',
+    password: 'TestNouveau2026!',
+    prenom:   'Test',
+    nom:      'Nouveau',
+    referralBonusQG: 40    // 40 QG → bonus bienvenue seul, aucun niveau
+  },
+  {
     label:    'Créateur (100 QG)',
     email:    'test-createur@fagenesis.com',
     password: 'TestCreateur2026!',
