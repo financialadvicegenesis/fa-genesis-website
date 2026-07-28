@@ -5608,7 +5608,26 @@ function renderProfil(){
     var ln  = USER.nom||USER.lastName||'';
     var em  = USER.email||'';
     var ini = ((fn||em)[0]||'U').toUpperCase();
-    header = '<div class="plus-header">'
+    // Bannière personnalisée
+    var _hBanner = '';
+    if(USER.profile_banner) {
+      if(USER.profile_banner.indexOf('data:') === 0) {
+        _hBanner = '<div style="width:100%;height:90px;overflow:hidden;border-radius:0;margin-bottom:-24px;"><img src="'+USER.profile_banner+'" style="width:100%;height:100%;object-fit:cover;display:block;"></div>';
+      } else if(USER.profile_banner.indexOf('genesis:') === 0 && typeof PP_GENESIS_BANNERS !== 'undefined') {
+        var _hGb = null;
+        for(var _hBi=0; _hBi<PP_GENESIS_BANNERS.length; _hBi++){ if(PP_GENESIS_BANNERS[_hBi].id===USER.profile_banner){ _hGb=PP_GENESIS_BANNERS[_hBi]; break; } }
+        if(_hGb) _hBanner = '<div style="width:100%;height:90px;background:'+_hGb.css+';margin-bottom:-24px;"></div>';
+      }
+    }
+    // Bio
+    var _hBio = '';
+    if(USER.profile_bio && USER.profile_bio.trim()) {
+      var _hBioSafe = USER.profile_bio.trim().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+      _hBio = '<div style="font-size:12px;color:#888;line-height:1.55;margin-top:8px;padding:0 2px;border-top:1px solid #1a1a1a;padding-top:8px;">'+_hBioSafe+'</div>';
+    }
+    header = '<div class="plus-header" style="padding-top:0;overflow:hidden;">'
+      +_hBanner
+      +'<div style="padding:14px 14px 10px;">'
       +logo
       +'<div class="plus-user-row">'
       +'<div class="plus-user-ava">'+ini+'</div>'
@@ -5616,6 +5635,8 @@ function renderProfil(){
       +'<div class="plus-user-email">'+em+'</div>'
       +'<div class="client-tier-badge">'+(USER.badge?tierBadgeHtml(USER.badge):'')+(USER.isCerclePrivilege?tierBadgeHtml('cercle_privilege'):'')+'</div>'
       +'</div>'
+      +'</div>'
+      +_hBio
       +'</div>'
       +'</div>';
   }
@@ -6502,6 +6523,7 @@ function _syncUserBadge(){
       USER.profile_bio    = d.profile_bio    || '';
       USER.profile_theme  = d.profile_theme  || 'genesis';
       USER.profile_banner = d.profile_banner || null;
+      try{ _applyUserTheme(USER.profile_theme); }catch(e){}
       // Level-up detection: show confetti if badge improved
       try {
         var levelOrder = [null, 'bronze', 'argent', 'or', 'elite'];
@@ -7426,6 +7448,29 @@ function _campagnesLoadContent(){
     });
 }
 
+// ── THÈME UTILISATEUR — application globale ───────────────────────
+function _hexToRgbStr(hex) {
+  hex = (hex||'').replace('#','');
+  if(hex.length===3) hex=hex[0]+hex[0]+hex[1]+hex[1]+hex[2]+hex[2];
+  return parseInt(hex.substring(0,2),16)+','+parseInt(hex.substring(2,4),16)+','+parseInt(hex.substring(4,6),16);
+}
+function _applyUserTheme(themeId) {
+  var theme = null;
+  for(var _ti=0; _ti<PP_THEMES.length; _ti++){ if(PP_THEMES[_ti].id===themeId){ theme=PP_THEMES[_ti]; break; } }
+  if(!theme) theme = PP_THEMES[0];
+  var col = theme.color;
+  var rgb = _hexToRgbStr(col);
+  // 1. Variable CSS --yellow : propage vers nav, boutons, badges, etc.
+  try{ document.documentElement.style.setProperty('--yellow', col); }catch(e){}
+  // 2. Overrides ciblés pour les éléments avec couleur hardcodée (Jérémie FAB)
+  try{
+    var el = document.getElementById('fa-theme-overrides');
+    if(!el){ el=document.createElement('style'); el.id='fa-theme-overrides'; document.head.appendChild(el); }
+    el.textContent = '.jeremie-fab{box-shadow:0 4px 22px rgba('+rgb+',.5),0 0 0 1px rgba('+rgb+',.35)!important;}'
+      +'.jeremie-fab::before{border-color:rgba('+rgb+',.45)!important;}';
+  }catch(e){}
+}
+
 // ── PERSONNALISATION DU PROFIL (avantage Créateur) ────────────────
 // State et constantes module-level
 var _ppDraft = null;
@@ -7697,6 +7742,7 @@ function _ppPickTheme(themeId) {
   _ppDraft.theme = themeId;
   _ppRenderThemeGrid();
   _ppRenderPreviewCard();
+  try{ _applyUserTheme(themeId); }catch(e){}
 }
 function _ppPickGenesisBanner(bannerId) {
   if(!_ppDraft) return;
@@ -7745,6 +7791,7 @@ function _ppSave() {
       USER.profile_bio    = _ppDraft.bio    || '';
       USER.profile_theme  = _ppDraft.theme  || 'genesis';
       USER.profile_banner = _ppDraft.banner || null;
+      try{ _applyUserTheme(USER.profile_theme); }catch(e){}
       try{ localStorage.setItem('fa_genesis_session', JSON.stringify(USER)); }catch(e){}
       if(msg){
         msg.style.display=''; msg.style.color='#4caf50'; msg.style.background='rgba(76,175,80,.07)'; msg.style.border='1px solid rgba(76,175,80,.2)'; msg.style.borderRadius='10px';
