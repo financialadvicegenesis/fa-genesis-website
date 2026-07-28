@@ -5585,6 +5585,74 @@ function showGenesisPatrimoine(){
   cards.forEach(function(card, idx){ _animateGenesisCounter(document.getElementById('genesis-patrimoine-v'+idx), card.value); });
 }
 
+function _genesisCardHtml() {
+  var hasBadge = !!(USER && USER.badge);
+  var col, dark;
+  if (hasBadge && typeof PP_THEMES !== 'undefined') {
+    var _gcThemeId = USER.profile_theme || 'genesis';
+    var _gcTheme = null;
+    for (var _gcTi = 0; _gcTi < PP_THEMES.length; _gcTi++) {
+      if (PP_THEMES[_gcTi].id === _gcThemeId) { _gcTheme = PP_THEMES[_gcTi]; break; }
+    }
+    if (!_gcTheme) _gcTheme = PP_THEMES[0];
+    col = _gcTheme.color;
+    dark = _gcTheme.dark;
+  } else {
+    col = '#555';
+    dark = '#0d0d0d';
+  }
+
+  var bannerHtml = '';
+  if (USER.profile_banner) {
+    if (USER.profile_banner.indexOf('data:') === 0) {
+      bannerHtml = '<div style="height:90px;border-radius:16px 16px 0 0;overflow:hidden;"><img src="'+USER.profile_banner+'" style="width:100%;height:100%;object-fit:cover;display:block;"></div>';
+    } else if (USER.profile_banner.indexOf('genesis:') === 0 && typeof PP_GENESIS_BANNERS !== 'undefined') {
+      var _gcGb = null;
+      for (var _gcBi = 0; _gcBi < PP_GENESIS_BANNERS.length; _gcBi++) {
+        if (PP_GENESIS_BANNERS[_gcBi].id === USER.profile_banner) { _gcGb = PP_GENESIS_BANNERS[_gcBi]; break; }
+      }
+      if (_gcGb) bannerHtml = '<div style="height:90px;background:'+_gcGb.css+';border-radius:16px 16px 0 0;"></div>';
+    }
+  }
+  if (!bannerHtml) {
+    bannerHtml = '<div style="height:70px;background:linear-gradient(135deg,'+dark+','+col+'18);border-radius:16px 16px 0 0;"></div>';
+  }
+
+  var fn = USER.prenom || USER.firstName || '';
+  var ln = USER.nom || USER.lastName || '';
+  var em = USER.email || '';
+  var ini = ((fn || em)[0] || 'U').toUpperCase();
+  var photo = USER.photo || '';
+  var photoHtml = photo
+    ? '<img src="'+photo+'" style="width:62px;height:62px;border-radius:50%;object-fit:cover;border:3px solid '+col+';flex-shrink:0;">'
+    : '<div style="width:62px;height:62px;border-radius:50%;background:'+col+'18;border:3px solid '+col+';display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:900;color:'+col+';flex-shrink:0;">'+ini+'</div>';
+
+  var _gcLvl = {bronze:'Créateur', argent:'Bâtisseur', or:'Visionnaire', elite:'Générateur'};
+  var badgeHtml = USER.badge
+    ? '<span style="background:'+col+'18;border:1px solid '+col+'44;border-radius:20px;padding:3px 10px;font-size:10px;font-weight:900;color:'+col+';letter-spacing:.3px;">'+_gcLvl[USER.badge]+'</span>'
+    : '';
+
+  var bioSafe = '';
+  if (USER.profile_bio && USER.profile_bio.trim()) {
+    bioSafe = USER.profile_bio.trim().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+  }
+
+  var qg = parseInt(USER.genesisPoints) || 0;
+
+  return '<div style="background:'+dark+';border:1.5px solid '+col+'28;border-radius:16px;overflow:hidden;margin:20px 16px 4px;">'
+    +bannerHtml
+    +'<div style="padding:0 16px 16px;">'
+    +'<div style="display:flex;align-items:flex-end;justify-content:space-between;margin-top:-31px;margin-bottom:10px;">'
+    +photoHtml
+    +badgeHtml
+    +'</div>'
+    +'<div style="font-size:15px;font-weight:900;color:#fff;margin-bottom:2px;">'+(fn+(ln?' '+ln:''))+'</div>'
+    +'<div style="font-size:11px;color:'+col+';font-weight:700;margin-bottom:4px;"><i class="fa-solid fa-bolt" style="font-size:9px;"></i> '+qg+' QG</div>'
+    +'<div style="font-size:11px;color:#888;margin-bottom:'+(bioSafe?'10':'0')+'px;">'+em+'</div>'
+    +(bioSafe ? '<div style="font-size:12px;color:#aaa;line-height:1.55;border-top:1px solid '+col+'14;padding-top:10px;">'+bioSafe+'</div>' : '')
+    +'</div></div>';
+}
+
 function renderProfil(){
   try{sessionStorage.removeItem('fa_support_thread');}catch(e){}
   var c = document.getElementById('profilContent');
@@ -5604,41 +5672,7 @@ function renderProfil(){
       +'<button class="plus-guest-exit" onclick="exitGuestMode()">&#8249; Retour à l\'écran de démarrage</button>'
       +'</div>';
   } else {
-    var fn  = USER.prenom||USER.firstName||'';
-    var ln  = USER.nom||USER.lastName||'';
-    var em  = USER.email||'';
-    var ini = ((fn||em)[0]||'U').toUpperCase();
-    // Bannière personnalisée
-    var _hBanner = '';
-    if(USER.profile_banner) {
-      if(USER.profile_banner.indexOf('data:') === 0) {
-        _hBanner = '<div style="width:100%;height:90px;overflow:hidden;border-radius:0;margin-bottom:-24px;"><img src="'+USER.profile_banner+'" style="width:100%;height:100%;object-fit:cover;display:block;"></div>';
-      } else if(USER.profile_banner.indexOf('genesis:') === 0 && typeof PP_GENESIS_BANNERS !== 'undefined') {
-        var _hGb = null;
-        for(var _hBi=0; _hBi<PP_GENESIS_BANNERS.length; _hBi++){ if(PP_GENESIS_BANNERS[_hBi].id===USER.profile_banner){ _hGb=PP_GENESIS_BANNERS[_hBi]; break; } }
-        if(_hGb) _hBanner = '<div style="width:100%;height:90px;background:'+_hGb.css+';margin-bottom:-24px;"></div>';
-      }
-    }
-    // Bio
-    var _hBio = '';
-    if(USER.profile_bio && USER.profile_bio.trim()) {
-      var _hBioSafe = USER.profile_bio.trim().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
-      _hBio = '<div style="font-size:12px;color:#888;line-height:1.55;margin-top:8px;padding:0 2px;border-top:1px solid #1a1a1a;padding-top:8px;">'+_hBioSafe+'</div>';
-    }
-    header = '<div class="plus-header" style="padding-top:0;overflow:hidden;">'
-      +_hBanner
-      +'<div style="padding:14px 14px 10px;width:100%;display:flex;flex-direction:column;align-items:center;">'
-      +logo
-      +'<div class="plus-user-row">'
-      +'<div class="plus-user-ava">'+ini+'</div>'
-      +'<div><div class="plus-user-name">'+fn+' '+ln+'</div>'
-      +'<div class="plus-user-email">'+em+'</div>'
-      +'<div class="client-tier-badge">'+(USER.badge?tierBadgeHtml(USER.badge):'')+(USER.isCerclePrivilege?tierBadgeHtml('cercle_privilege'):'')+'</div>'
-      +'</div>'
-      +'</div>'
-      +_hBio
-      +'</div>'
-      +'</div>';
+    header = _genesisCardHtml();
   }
 
   // ── MON ESPACE (connecté seulement) ─────────────────────────
