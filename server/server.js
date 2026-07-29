@@ -12070,6 +12070,8 @@ app.post('/api/admin/feature-announcement', function(req, res) {
         var title = String(body.title).substring(0, 120);
         var description = body.description ? String(body.description).substring(0, 400) : 'Découvrez la nouvelle fonctionnalité de l\'application GENESIS.';
         var link = body.link || '/app.html';
+        var experimental = body.experimental === true;
+        var notifType = experimental ? 'fonctionnalite_experimentale' : 'nouvelle_fonctionnalite';
         var immediateCount = 0;
         var scheduledCount = 0;
         var later24h = new Date(Date.now() + 24 * 3600 * 1000).toISOString();
@@ -12079,13 +12081,14 @@ app.post('/api/admin/feature-announcement', function(req, res) {
             if (!user.email) return;
             var qg = getClientGenesisPoints(user, getClientCompletedOrders(user.email));
             var badge = getClientQGBadge(qg);
-            if (['argent', 'or', 'elite'].indexOf(badge) !== -1) {
-                notifyUser(user.email, 'client', 'nouvelle_fonctionnalite', title, description, link);
+            var isImmediate = experimental ? (badge === 'elite') : (['argent', 'or', 'elite'].indexOf(badge) !== -1);
+            if (isImmediate) {
+                notifyUser(user.email, 'client', notifType, title, description, link);
                 immediateCount++;
             } else {
                 scheduled.push({
                     id: uuidv4(), email: user.email, role: 'client',
-                    type: 'nouvelle_fonctionnalite', title: title, body: description, link: link,
+                    type: notifType, title: title, body: description, link: link,
                     sendAt: later24h, sent: false, createdAt: new Date().toISOString()
                 });
                 scheduledCount++;
@@ -12093,7 +12096,7 @@ app.post('/api/admin/feature-announcement', function(req, res) {
         });
 
         saveScheduledNotifs(scheduled);
-        res.json({ success: true, immediate: immediateCount, scheduled: scheduledCount });
+        res.json({ success: true, immediate: immediateCount, scheduled: scheduledCount, experimental: experimental });
     } catch(e) {
         console.error('[FEATURE_ANNONCE] Erreur:', e);
         res.status(500).json({ error: 'Erreur serveur' });

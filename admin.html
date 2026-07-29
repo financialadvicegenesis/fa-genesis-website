@@ -1289,10 +1289,16 @@
                 </div>
                 <div class="admin-card neo-shadow mb-6">
                     <h3 class="text-xl font-black uppercase mb-4"><i class="fas fa-bell mr-2"></i>Envoyer une annonce</h3>
-                    <p style="font-size:13px;color:#aaa;margin-bottom:16px;line-height:1.6;">
-                        <strong style="color:#FFD700;">Bâtisseur+</strong> (argent/or/elite — 300+ QG) recevront la notification immédiatement.<br>
-                        <strong style="color:#cd7f32;">Créateur</strong> (bronze) et clients sans niveau recevront la notification <strong>24h plus tard</strong>.
-                    </p>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+                        <div style="background:#1a1200;border:1px solid #3a2e00;border-radius:10px;padding:12px 14px;">
+                            <div style="font-size:11px;color:#FFD700;font-weight:800;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;"><i class="fas fa-rocket mr-1"></i>Standard</div>
+                            <div style="font-size:11px;color:#888;line-height:1.5;"><strong style="color:#FFD700;">Bâtisseur+</strong> (argent/or/elite) : immédiat<br><strong style="color:#cd7f32;">Créateur/sans niveau</strong> : 24h plus tard</div>
+                        </div>
+                        <div style="background:#1a0000;border:1px solid #3a0000;border-radius:10px;padding:12px 14px;">
+                            <div style="font-size:11px;color:#a855f7;font-weight:800;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;"><i class="fas fa-flask mr-1"></i>Expérimental</div>
+                            <div style="font-size:11px;color:#888;line-height:1.5;"><strong style="color:#a855f7;">Générateur</strong> (elite) : immédiat<br><strong style="color:#666;">Tous les autres</strong> : 24h plus tard</div>
+                        </div>
+                    </div>
                     <div class="mb-4">
                         <label class="block font-black mb-2 uppercase text-sm">Titre *</label>
                         <input type="text" id="nfTitle" placeholder="Ex: Nouveau : Portefeuille GENESIS SAFE™ disponible" maxlength="120">
@@ -1304,6 +1310,15 @@
                     <div class="mb-4">
                         <label class="block font-black mb-2 uppercase text-sm">Lien (optionnel)</label>
                         <input type="text" id="nfLink" placeholder="/app.html ou https://...">
+                    </div>
+                    <div class="mb-4">
+                        <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;padding:12px 14px;background:#120012;border:1px solid #2e0036;border-radius:10px;">
+                            <input type="checkbox" id="nfExperimental" style="width:17px;height:17px;margin-top:1px;cursor:pointer;flex-shrink:0;">
+                            <div>
+                                <div style="font-size:12px;font-weight:900;color:#c084fc;text-transform:uppercase;letter-spacing:.5px;"><i class="fas fa-flask mr-1"></i>Fonctionnalité expérimentale</div>
+                                <div style="font-size:11px;color:#666;margin-top:3px;line-height:1.5;">Réservé aux <strong style="color:#c084fc;">Générateurs</strong> en avant-première. Tous les autres membres recevront la notification 24h plus tard.</div>
+                            </div>
+                        </label>
                     </div>
                     <div id="nfFeedback" style="display:none;margin-bottom:12px;padding:10px;border-radius:8px;font-size:13px;font-weight:700;"></div>
                     <button onclick="sendFeatureAnnouncement()" class="neo-btn-yellow px-8 py-3 text-sm">
@@ -1649,24 +1664,32 @@
             if (!title.trim()) { alert('Titre requis'); return; }
             var description = (document.getElementById('nfDescription') || {}).value || '';
             var link = (document.getElementById('nfLink') || {}).value || '/app.html';
+            var experimental = !!(document.getElementById('nfExperimental') || {}).checked;
             var fb = document.getElementById('nfFeedback');
             if (fb) { fb.style.display = ''; fb.style.background = '#1a1a1a'; fb.style.color = '#aaa'; fb.textContent = 'Envoi en cours...'; }
             try {
                 var resp = await fetch(API_BASE_URL + '/api/admin/feature-announcement', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + adminToken },
-                    body: JSON.stringify({ title: title.trim(), description: description.trim(), link: link.trim() })
+                    body: JSON.stringify({ title: title.trim(), description: description.trim(), link: link.trim(), experimental: experimental })
                 });
                 var result = await resp.json();
                 if (result.success) {
                     if (fb) {
                         fb.style.background = 'rgba(76,175,80,.15)'; fb.style.color = '#4caf50';
-                        fb.textContent = '✓ Envoyé immédiatement à ' + result.immediate + ' client(s) Bâtisseur+. '
-                            + result.scheduled + ' client(s) Créateur/sans niveau recevront la notification dans 24h.';
+                        if (experimental) {
+                            fb.textContent = '🔬 Expérimental · Envoyé immédiatement à ' + result.immediate + ' Générateur(s). '
+                                + result.scheduled + ' autre(s) client(s) recevront la notification dans 24h.';
+                        } else {
+                            fb.textContent = '✓ Envoyé immédiatement à ' + result.immediate + ' client(s) Bâtisseur+. '
+                                + result.scheduled + ' client(s) Créateur/sans niveau recevront la notification dans 24h.';
+                        }
                     }
                     document.getElementById('nfTitle').value = '';
                     document.getElementById('nfDescription').value = '';
                     document.getElementById('nfLink').value = '';
+                    var nfExp = document.getElementById('nfExperimental');
+                    if (nfExp) nfExp.checked = false;
                 } else {
                     if (fb) { fb.style.background = 'rgba(255,0,0,.1)'; fb.style.color = '#ff6b6b'; fb.textContent = 'Erreur : ' + (result.error || 'Inconnue'); }
                 }

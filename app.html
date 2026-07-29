@@ -7260,7 +7260,7 @@ function _triggerLevelUp(levelLabel, levelIcon) {
       bronze: ['Programme de parrainage','Missions GENESIS','Patrimoine GENESIS','Jérémie IA personnalisé'],
       argent: ['Offres promo prestataires','Webinaires & ateliers GENESIS','Alertes intelligentes','Campagnes & jeux concours'],
       or:     ['Événements privés & networking GENESIS','Accès bêta & avant-première','Priorité événements','Jérémie IA Pro'],
-      elite:  ['Invitations VIP aux événements GENESIS','Fonctionnalités expérimentales','Cadeau annuel fidélité','Jérémie IA Expert']
+      elite:  ['Invitations VIP aux événements GENESIS','Accès aux fonctionnalités expérimentales avant leur lancement','Cadeau annuel de fidélité','Jérémie IA Expert']
     };
     var _luAdvs = (_luAdvMap[levelIcon] || []);
     var _luAdvHtml = _luAdvs.length ? '<div style="text-align:left;margin:0 0 16px;">'
@@ -7707,26 +7707,71 @@ function showInvitationsVIP() {
 function showFonctExperimentales() {
   var c = document.getElementById('profilContent'); if(!c) return;
   if(!USER || GUEST){ renderProfil(); return; }
+  if(USER.badge !== 'elite') {
+    _saveProfilScroll('showFonctExperimentales');
+    c.innerHTML = '<div class="espace-view">'
+      +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Fonctionnalités Expérimentales</div></div>'
+      +'<div style="padding:40px 24px;text-align:center;">'
+      +'<i class="fa-solid fa-lock" style="font-size:40px;color:#444;margin-bottom:16px;display:block;"></i>'
+      +'<div style="font-size:14px;font-weight:800;color:#666;margin-bottom:8px;">Réservé aux Générateurs</div>'
+      +'<div style="font-size:12px;color:#555;line-height:1.7;max-width:280px;margin:0 auto;">Atteignez <strong style="color:#FFD700;">1000 QG</strong> pour accéder en avant-première aux nouvelles fonctionnalités de la plateforme.</div>'
+      +'</div></div>';
+    return;
+  }
   _saveProfilScroll('showFonctExperimentales');
   c.innerHTML = '<div class="espace-view">'
     +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Fonctionnalités Expérimentales</div></div>'
     +'<div style="padding:14px 16px 80px;overflow-y:auto;flex:1;">'
-    +'<div style="background:rgba(var(--yellow-rgb),.06);border:1.5px solid rgba(var(--yellow-rgb),.2);border-radius:16px;padding:18px;margin-bottom:16px;text-align:center;">'
-    +'<i class="fa-solid fa-flask" style="font-size:32px;color:var(--yellow);display:block;margin-bottom:10px;"></i>'
-    +'<div style="font-size:14px;font-weight:800;color:var(--yellow);margin-bottom:6px;">Accès Expérimental GENESIS</div>'
-    +'<div style="font-size:12px;color:#888;line-height:1.7;">En tant que <strong style="color:#FFD700;">Générateur</strong>, vous êtes les premiers à tester les nouvelles fonctionnalités de la plateforme avant leur lancement officiel.</div>'
+    +'<div style="background:linear-gradient(135deg,#120012,#0d0d00);border:2px solid #a855f7;border-radius:18px;padding:20px 18px 16px;margin-bottom:16px;text-align:center;">'
+    +'<i class="fa-solid fa-flask" style="font-size:34px;color:#c084fc;display:block;margin-bottom:10px;"></i>'
+    +'<div style="font-size:14px;font-weight:900;color:#c084fc;margin-bottom:6px;">Accès Avant-Première GENESIS</div>'
+    +'<div style="font-size:12px;color:#888;line-height:1.7;">En tant que <strong style="color:#c084fc;">Générateur</strong>, vous testez les nouvelles fonctionnalités avant tout le monde.</div>'
+    +'</div>'
+    +'<div style="margin-bottom:18px;">'
+    +'<div style="font-size:11px;color:#a855f7;font-weight:800;text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px;"><i class="fa-solid fa-flask" style="margin-right:6px;"></i>Fonctionnalités disponibles pour vous</div>'
+    +'<div id="fe-list"><div style="text-align:center;padding:20px 0;"><i class="fa-solid fa-spinner fa-spin" style="color:#555;font-size:20px;"></i></div></div>'
     +'</div>'
     +'<div style="display:flex;flex-direction:column;gap:9px;margin-bottom:16px;">'
-    +_gAdvRow('fa-bolt','Avant tout le monde','Accès aux nouvelles fonctionnalités en version bêta, bien avant les niveaux Visionnaire et Bâtisseur.')
-    +_gAdvRow('fa-comment-dots','Votre avis compte','Votre retour sur les fonctionnalités expérimentales est pris en compte par l\'équipe GENESIS pour améliorer l\'expérience.')
-    +_gAdvRow('fa-bell','Notification dédiée','Vous recevez une notification push et un email spécifique dès qu\'une fonctionnalité expérimentale est disponible pour vous.')
-    +_gAdvRow('fa-infinity','Accès permanent','Une fois activée pour vous, la fonctionnalité reste accessible en continu — pas besoin de la ré-activer à chaque mise à jour.')
-    +'</div>'
-    +'<div style="background:#111;border:1px solid #1e1e1e;border-radius:12px;padding:13px 15px;">'
-    +'<div style="font-size:11px;color:var(--yellow);font-weight:700;margin-bottom:8px;"><i class="fa-solid fa-info-circle" style="margin-right:6px;"></i>Comment ça marche ?</div>'
-    +'<div style="font-size:12px;color:#888;line-height:1.6;">L\'équipe GENESIS active les fonctionnalités expérimentales progressivement. Vous êtes dans le premier groupe à y avoir accès. Assurez-vous d\'avoir activé les <strong style="color:#aaa;">notifications push</strong> pour être alerté dès qu\'une nouveauté est disponible.</div>'
+    +_gAdvRow('fa-bolt','Avant tout le monde','Vous accédez aux nouvelles fonctionnalités bien avant les niveaux Visionnaire, Bâtisseur et Créateur.')
+    +_gAdvRow('fa-comment-dots','Votre avis compte','Votre retour est pris en compte par l\'équipe GENESIS pour améliorer l\'expérience avant le lancement officiel.')
+    +_gAdvRow('fa-bell','Notification dédiée','Vous recevez une notification spécifique dès qu\'une fonctionnalité expérimentale est disponible pour vous.')
+    +_gAdvRow('fa-infinity','Accès permanent','Une fois activée, la fonctionnalité reste disponible en continu — pas besoin de la ré-activer.')
     +'</div>'
     +'</div></div>';
+  var token = USER._token || (window.FA_GENESIS_API ? '' : '');
+  fetch((window.FA_GENESIS_API||API)+'/api/notifications',{headers:{'Authorization':'Bearer '+token}})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      var el = document.getElementById('fe-list'); if(!el) return;
+      var all = d.notifications||[];
+      var exps = all.filter(function(n){return n.type==='fonctionnalite_experimentale';});
+      if(!exps.length){
+        el.innerHTML = '<div style="background:#111;border:1px dashed #2a0035;border-radius:12px;padding:20px;text-align:center;">'
+          +'<i class="fa-solid fa-clock" style="font-size:22px;color:#3a0050;margin-bottom:8px;display:block;"></i>'
+          +'<div style="font-size:12px;color:#555;line-height:1.6;">Aucune fonctionnalité expérimentale disponible pour le moment.<br>Vous serez les premiers notifiés dès qu\'une nouveauté est prête.</div>'
+          +'</div>';
+        return;
+      }
+      el.innerHTML = exps.map(function(n){
+        var dt = '';
+        try{ dt = new Date(n.created_at).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'}); }catch(e){}
+        return '<div style="background:#120012;border:1px solid #3a0050;border-radius:12px;padding:13px 15px;margin-bottom:9px;">'
+          +'<div style="display:flex;align-items:flex-start;gap:10px;">'
+          +'<div style="width:34px;height:34px;border-radius:9px;background:#1e0028;display:flex;align-items:center;justify-content:center;flex-shrink:0;">'
+          +'<i class="fa-solid fa-flask" style="color:#c084fc;font-size:15px;"></i></div>'
+          +'<div style="flex:1;">'
+          +'<div style="font-size:13px;font-weight:700;color:#e8d5ff;margin-bottom:3px;">'+String(n.title||'').substring(0,80)+'</div>'
+          +(n.body?'<div style="font-size:11px;color:#888;line-height:1.5;">'+String(n.body||'').substring(0,200)+'</div>':'')
+          +(dt?'<div style="font-size:10px;color:#555;margin-top:5px;">'+dt+'</div>':'')
+          +'</div></div>'
+          +(n.link&&n.link!=='/app.html'?'<div style="margin-top:8px;"><a href="'+n.link+'" style="font-size:11px;color:#a855f7;font-weight:700;text-decoration:none;"><i class="fa-solid fa-arrow-right" style="margin-right:4px;"></i>Accéder à la fonctionnalité</a></div>':'')
+          +'</div>';
+      }).join('');
+    })
+    .catch(function(){
+      var el = document.getElementById('fe-list'); if(!el) return;
+      el.innerHTML = '<div style="font-size:12px;color:#555;text-align:center;padding:16px;">Impossible de charger les données.</div>';
+    });
 }
 
 function showCadeauAnnuel() {
