@@ -5518,6 +5518,89 @@ function showParrainageScreen(){
     +rankBtn
     +'</div></div>';
 }
+function showHallOfFameProfil(){
+  var c = document.getElementById('profilContent'); if(!c) return;
+  if(USER && !GUEST) _saveProfilScroll('showHallOfFameProfil');
+  c.innerHTML = '<div class="espace-view">'
+    +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Hall of Fame GENESIS</div></div>'
+    +'<div style="padding:14px 16px 80px;overflow-y:auto;flex:1;">'
+    // Boutons de navigation entre les deux classements
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px;">'
+    +'<button onclick="_hofTab(\'ambassadeurs\')" id="hof-btn-amb" style="padding:12px 8px;border-radius:12px;border:2px solid #FFD700;background:rgba(255,215,0,.1);color:#FFD700;font-size:12px;font-weight:900;cursor:pointer;">'
+    +'<i class="fa-solid fa-user-plus" style="display:block;font-size:18px;margin-bottom:4px;"></i>Top Ambassadeurs</button>'
+    +'<button onclick="_hofTab(\'mensuel\')" id="hof-btn-men" style="padding:12px 8px;border-radius:12px;border:1px solid #2a2a2a;background:#111;color:#666;font-size:12px;font-weight:900;cursor:pointer;">'
+    +'<i class="fa-solid fa-calendar-star" style="display:block;font-size:18px;margin-bottom:4px;"></i>Palmarès du mois</button>'
+    +'</div>'
+    +'<div id="hof-panel-ambassadeurs"></div>'
+    +'<div id="hof-panel-mensuel" style="display:none;"></div>'
+    +'</div></div>';
+  _hofTab('ambassadeurs');
+}
+function _hofTab(tab){
+  var btnAmb = document.getElementById('hof-btn-amb');
+  var btnMen = document.getElementById('hof-btn-men');
+  var panAmb = document.getElementById('hof-panel-ambassadeurs');
+  var panMen = document.getElementById('hof-panel-mensuel');
+  if(!panAmb || !panMen) return;
+  var activeStyle = 'padding:12px 8px;border-radius:12px;border:2px solid #FFD700;background:rgba(255,215,0,.1);color:#FFD700;font-size:12px;font-weight:900;cursor:pointer;';
+  var inactStyle = 'padding:12px 8px;border-radius:12px;border:1px solid #2a2a2a;background:#111;color:#666;font-size:12px;font-weight:900;cursor:pointer;';
+  if(tab === 'ambassadeurs'){
+    if(btnAmb) btnAmb.style.cssText = activeStyle;
+    if(btnMen) btnMen.style.cssText = inactStyle;
+    panAmb.style.display=''; panMen.style.display='none';
+    if(!panAmb.dataset.loaded){ panAmb.dataset.loaded='1'; _hofLoadAmbassadeurs(panAmb); }
+  } else {
+    if(btnAmb) btnAmb.style.cssText = inactStyle;
+    if(btnMen) btnMen.style.cssText = activeStyle;
+    panAmb.style.display='none'; panMen.style.display='';
+    if(!panMen.dataset.loaded){ panMen.dataset.loaded='1'; _hofLoadMensuel(panMen); }
+  }
+}
+function _hofLoadAmbassadeurs(container){
+  container.innerHTML = '<div class="espace-loading">Chargement...</div>';
+  _taPage = 0; _taSearch = '';
+  fetch((window.FA_GENESIS_API||API)+'/api/hall-of-fame/ambassadeurs?limit=100')
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      _taAllData = d.ambassadeurs || [];
+      // Remplace le conteneur de showTopAmbassadeurs pour réutiliser le rendu
+      container.innerHTML = '<div id="ta-podium" style="margin-bottom:4px;"></div>'
+        +'<div style="margin-bottom:8px;"><input id="ta-search" type="text" placeholder="Rechercher un ambassadeur..." oninput="_taOnSearch()" style="width:100%;background:#111;border:1px solid #2a2a2a;border-radius:10px;padding:9px 12px;font-size:13px;color:#ccc;box-sizing:border-box;outline:none;"></div>'
+        +'<div id="ta-list"></div>'
+        +'<div id="ta-pagination" style="display:flex;gap:8px;justify-content:center;margin-top:8px;"></div>';
+      _taRenderAll();
+    }).catch(function(){
+      container.innerHTML = '<div class="espace-empty">Erreur de chargement.</div>';
+    });
+}
+function _hofLoadMensuel(container){
+  container.innerHTML = '<div class="espace-loading">Chargement...</div>';
+  fetch((window.FA_GENESIS_API||API)+'/api/hall-of-fame')
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      var hof = data && data.hallOfFame;
+      if(!hof || (!((hof.bestPartners||[]).length) && !hof.bestClient && !hof.bestReferrer && !hof.bestTopQG && !hof.bestMostProductive)){
+        container.innerHTML = '<div class="espace-empty">Aucun palmarès disponible pour le moment.</div>'; return;
+      }
+      var html = '<div style="font-size:11px;color:#888;font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:12px;">'
+        +'<i class="fa-solid fa-calendar-days" style="color:#FFD700;margin-right:6px;"></i>'+hofMonthLabel(hof.month).toUpperCase()+'</div>';
+      if((hof.bestPartners||[]).length){
+        html += '<div style="font-size:11px;color:#555;font-weight:700;text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;">Meilleurs prestataires</div>';
+        html += '<div class="p-reco-row" style="margin:0 -16px;padding:0 16px 12px;">'+hof.bestPartners.map(function(p,i){return hofPremiumCard(p,i);}).join('')+'</div>';
+      }
+      var items = [];
+      if(hof.bestClient) items.push({icon:'fa-medal',color:'#FFD700',label:'Meilleur client du mois',value:hof.bestClient.name+' · '+hof.bestClient.count+' commande'+(hof.bestClient.count>1?'s':'')});
+      if(hof.bestReferrer) items.push({icon:'fa-handshake',color:'#FFD700',label:'Meilleur parrain du mois',value:hof.bestReferrer.name+' · '+hof.bestReferrer.count+' parrainage'+(hof.bestReferrer.count>1?'s':'')+' validé'+(hof.bestReferrer.count>1?'s':'')});
+      if(hof.bestTopQG) items.push({icon:'fa-crown',color:'#FFD700',label:'Top QG du mois',value:hof.bestTopQG.name+(hof.bestTopQG.company?' · '+hof.bestTopQG.company:'')});
+      if(hof.bestMostProductive) items.push({icon:'fa-bolt',color:'#FFD700',label:'Plus productif du mois',value:hof.bestMostProductive.name+' · '+hof.bestMostProductive.count+' prestation'+(hof.bestMostProductive.count>1?'s':'')});
+      if(items.length) html += '<div style="display:flex;flex-direction:column;gap:9px;">'+items.map(function(it){
+        return '<div class="p-ref-box"><div class="p-ref-box-title"><i class="fa-solid '+it.icon+'" style="color:'+it.color+';margin-right:7px;"></i>'+it.label+'</div><div class="p-ref-count">'+it.value+'</div></div>';
+      }).join('')+'</div>';
+      container.innerHTML = html;
+    }).catch(function(){
+      container.innerHTML = '<div class="espace-empty">Erreur de chargement.</div>';
+    });
+}
 var _taPage = 0; var _taAllData = []; var _taSearch = '';
 function showTopAmbassadeurs(){
   var c = document.getElementById('profilContent'); if(!c) return;
@@ -5989,6 +6072,7 @@ function renderProfil(){
       +pli('<i class="fa-solid fa-box-open"></i>','#100a1a','Mes livrables',null,'showLivrables()')
       +pli('<i class="fa-solid fa-heart"></i>','#1a0014','Mes favoris',null,'showFavoris()')
       +pli('<i class="fa-solid fa-bullseye"></i>','#14140a','Missions GENESIS',null,'showGenesisMissions()')
+      +pli('<i class="fa-solid fa-trophy"></i>','#1a1400','Hall of Fame',null,'showHallOfFameProfil()')
       +pli('<i class="fa-solid fa-gem"></i>','#0a1414','Patrimoine GENESIS',null,'showGenesisPatrimoine()')
       +pli('<i class="fa-solid fa-crown"></i>','#0a0014','Mes Niveaux GENESIS',null,'showClientLevels()')
       +pli('<i class="fa-solid fa-headset"></i>','#1a0a00','Assistance',null,'showSupport()')
