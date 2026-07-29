@@ -358,6 +358,11 @@ function processScheduledNotifs() {
         notifs.forEach(function(n) {
             if (!n.sent && new Date(n.sendAt).getTime() <= now) {
                 notifyUser(n.email, n.role, n.type, n.title, n.body, n.link);
+                if (n.emailType === 'capacity_limited_event') {
+                    emailService.sendCapacityLimitedEventEmail(n.email, n.userPrenom, n.emailEventTitle, n.link).catch(function(e) {
+                        console.warn('[SCHED_NOTIF] Email event capacite:', e.message);
+                    });
+                }
                 n.sent = true;
                 updated = true;
             }
@@ -11336,6 +11341,9 @@ app.post('/api/admin/events/create', function(req, res) {
         };
         events.push(event);
         saveEvents(events);
+        if (event.published && event.capacity_limited) {
+            try { notifyCapacityLimitedEvent(event); } catch(ne) { console.error('[EVENT_NOTIFY] Create:', ne); }
+        }
         res.json({ success: true, event: event });
     } catch (e) {
         console.error('[EVENTS] Erreur creation:', e);
@@ -11361,6 +11369,7 @@ app.put('/api/admin/events/:id', function(req, res) {
         var idx = events.findIndex(function(e) { return e.id === req.params.id; });
         if (idx === -1) return res.status(404).json({ error: 'Evenement non trouve' });
         var body = req.body || {};
+        var wasPublished = !!events[idx].published;
         ['title', 'description', 'type', 'date', 'location', 'image', 'link', 'published'].forEach(function(field) {
             if (body[field] !== undefined) events[idx][field] = body[field];
         });
@@ -11368,6 +11377,9 @@ app.put('/api/admin/events/:id', function(req, res) {
         if (body.capacity !== undefined) events[idx].capacity = body.capacity ? parseInt(body.capacity, 10) : null;
         events[idx].updatedAt = new Date().toISOString();
         saveEvents(events);
+        if (!wasPublished && events[idx].published && events[idx].capacity_limited) {
+            try { notifyCapacityLimitedEvent(events[idx]); } catch(ne) { console.error('[EVENT_NOTIFY] Update:', ne); }
+        }
         res.json({ success: true, event: events[idx] });
     } catch (e) {
         console.error('[EVENTS] Erreur modification:', e);
@@ -12065,6 +12077,98 @@ app.post('/api/admin/feature-announcement', function(req, res) {
         res.json({ success: true, immediate: immediateCount, scheduled: scheduledCount });
     } catch(e) {
         console.error('[FEATURE_ANNONCE] Erreur:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// Notifie les clients quand un evenement a capacite limitee est publie
+// Visionnaire (or) + Generateur (elite) : notification immediate + email
+// Createur (bronze), sans niveau (null), Batisseur (argent) : 24h plus tard
+function notifyCapacityLimitedEvent(event) {
+    try {
+        var title = 'Événement exclusif : ' + event.title;
+        var body = 'Un événement à places limitées est disponible dans Événements. Réservez vite !';
+        var link = '/app.html';
+        var later24h = new Date(Date.now() + 24 * 3600 * 1000).toISOString();
+        var scheduled = loadScheduledNotifs();
+        loadUsers().forEach(function(user) {
+            if (!user.email) return;
+            var qg = getClientGenesisPoints(user, getClientCompletedOrders(user.email));
+            var badge = getClientQGBadge(qg);
+            if (['or', 'elite'].indexOf(badge) !== -1) {
+                notifyUser(user.email, 'client', 'evenement_capacite_limitee', title, body, link);
+                emailService.sendCapacityLimitedEventEmail(user.email, user.prenom, event.title, link).catch(function(e) {
+                    console.warn('[EVENT_NOTIFY] Email prioritaire:', e.message);
+                });
+            } else {
+                scheduled.push({
+                    id: uuidv4(),
+                    email: user.email,
+                    role: 'client',
+                    type: 'evenement_capacite_limitee',
+                    title: title,
+                    body: body,
+                    link: link,
+                    emailType: 'capacity_limited_event',
+                    emailEventTitle: event.title,
+                    userPrenom: user.prenom || null,
+                    sendAt: later24h,
+                    sent: false,
+                    createdAt: new Date().toISOString()
+                });
+            }
+        });
+        saveScheduledNotifs(scheduled);
+        console.log('[EVENT_NOTIFY] notifyCapacityLimitedEvent planifie pour:', event.title);
+    } catch(e) {
+        console.error('[EVENT_NOTIFY] notifyCapacityLimitedEvent:', e);
+    }
+}
+
+// Admin : utilisateurs par niveau QG en temps reel
+app.get('/api/admin/users-by-level', function(req, res) {
+    try {
+        var adminToken = req.headers.authorization || '';
+        if (adminToken.startsWith('Bearer ')) adminToken = adminToken.slice(7).trim();
+        var adminSessions = [];
+        try { adminSessions = JSON.parse(fs.readFileSync(ADMIN_SESSIONS_FILE, 'utf8')); } catch(e) {}
+        var isAdmin = adminSessions.some(function(s) { return s.token === adminToken && (!s.expiresAt || Date.now() < new Date(s.expiresAt).getTime()); });
+        if (!isAdmin) return res.status(403).json({ error: 'Accès réservé aux administrateurs' });
+
+        var tiers = [
+            { id: 'elite',  label: 'Générateur',  pts: 1000 },
+            { id: 'or',     label: 'Visionnaire',  pts: 600  },
+            { id: 'argent', label: 'Bâtisseur',    pts: 300  },
+            { id: 'bronze', label: 'Créateur',     pts: 100  },
+            { id: null,     label: 'Sans niveau',  pts: 0    }
+        ];
+        var buckets = {};
+        tiers.forEach(function(t) { buckets[t.id || 'none'] = { label: t.label, pts: t.pts, count: 0, users: [] }; });
+
+        var allUsers = loadUsers();
+        allUsers.forEach(function(user) {
+            if (!user.email) return;
+            var qg = getClientGenesisPoints(user, getClientCompletedOrders(user.email));
+            var badge = getClientQGBadge(qg);
+            var key = badge || 'none';
+            if (!buckets[key]) key = 'none';
+            buckets[key].count++;
+            buckets[key].users.push({
+                email: user.email,
+                nom: ((user.prenom || '') + ' ' + (user.nom || '')).trim(),
+                qg: qg,
+                createdAt: user.createdAt || null
+            });
+        });
+
+        var ordered = tiers.map(function(t) {
+            var key = t.id || 'none';
+            return { id: t.id, key: key, label: t.label, pts: t.pts, count: buckets[key].count, users: buckets[key].users };
+        });
+
+        res.json({ success: true, tiers: ordered, total: allUsers.length });
+    } catch(e) {
+        console.error('[ADMIN] users-by-level:', e);
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });

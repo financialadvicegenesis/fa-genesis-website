@@ -2038,6 +2038,34 @@ async function sendLevelUpEmail(clientEmail, prenom, levelLabel) {
     }
 }
 
+async function sendCapacityLimitedEventEmail(clientEmail, prenom, eventTitle, eventLink) {
+    try {
+        if (!transporter) { initializeTransporter(); }
+        var adminEmail = process.env.EMAIL_ADMIN_ADDRESS || process.env.EMAIL_FROM_ADDRESS || process.env.SMTP_USER;
+        var name = prenom || 'membre';
+        var link = eventLink || 'https://fagenesis.com/app.html';
+        var safeTitle = String(eventTitle || 'Événement GENESIS').substring(0, 120);
+        var content = '<h2 style="color:#FFD700;font-size:22px;margin:0 0 12px;">🎫 Événement exclusif disponible, ' + name + ' !</h2>'
+            + '<p style="color:#ccc;font-size:15px;line-height:1.7;margin:0 0 16px;">Un nouvel événement à capacité limitée vient d\'être publié sur FA GENESIS :</p>'
+            + '<p style="color:#FFD700;font-size:17px;font-weight:800;margin:0 0 16px;">' + safeTitle + '</p>'
+            + '<p style="color:#ccc;font-size:14px;line-height:1.7;margin:0 0 20px;">Les places sont limitées — réservez rapidement depuis la section <strong style="color:#fff;">Événements</strong> de l\'application.</p>'
+            + '<a href="' + link + '" style="display:inline-block;background:#FFD700;color:#000;font-weight:800;font-size:14px;padding:12px 28px;border-radius:8px;text-decoration:none;margin-top:8px;">Voir l\'événement →</a>';
+        var html = getEmailTemplate(content, 'Événement à capacité limitée');
+        var mailOptions = {
+            from: '"FA GENESIS" <' + (process.env.EMAIL_FROM_ADDRESS || process.env.SMTP_USER) + '>',
+            to: clientEmail,
+            replyTo: adminEmail,
+            subject: '🎫 Événement exclusif : ' + safeTitle + ' — Places limitées !',
+            html: html
+        };
+        var result = await transporter.sendMail(mailOptions);
+        return { success: true, messageId: result.messageId };
+    } catch(e) {
+        console.warn('[EVENT_EMAIL] Échec envoi:', e.message);
+        return { success: false, error: e.message };
+    }
+}
+
 module.exports = {
     initializeTransporter,
     sendContactConfirmation,
@@ -2071,7 +2099,8 @@ module.exports = {
     sendPartnerServiceOrderConfirmation,
     sendSupportTicketAdminEmail,
     sendProspectContactEmail,
-    sendLevelUpEmail
+    sendLevelUpEmail,
+    sendCapacityLimitedEventEmail
 };
 
 // ============================================================
