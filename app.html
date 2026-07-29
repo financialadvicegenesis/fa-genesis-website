@@ -7380,7 +7380,7 @@ function _showWelcomeQGOverlay() {
 }
 
 // ── ROUTING DES AVANTAGES DE NIVEAU ──────────────────────────────
-// Retourne l'action onclick pour un avantage débloqué, ou null si géré manuellement par FA GENESIS
+// Retourne l'action onclick pour un avantage débloqué, ou null si géré manuellement par GENESIS
 function _profilAdvOnclick(id) {
   var map = {
     profil_perso:         '_profilBackTarget=showClientLevels;showProfilPersonnalisation()',
@@ -7399,13 +7399,16 @@ function _profilAdvOnclick(id) {
     offres_premium:       'profilBack();setTimeout(function(){_rankPromoFilter=true;nav("prestataires");},100);',
     priority_events:      'profilBack();setTimeout(goToEventsExplorer,100);',
     jeremie_pro:          '_profilOpenJeremie()',
+    vip:                  '_profilBackTarget=showClientLevels;showInvitationsVIP()',
+    fonct_exp:            '_profilBackTarget=showClientLevels;showFonctExperimentales()',
+    cadeau_annuel:        '_profilBackTarget=showClientLevels;showCadeauAnnuel()',
     jeremie_expert:       '_profilOpenJeremie()'
   };
   return map[id] || null;
 }
-// Avantages gérés manuellement par l'équipe FA GENESIS (pas de bouton)
+// Avantages gérés manuellement par l'équipe GENESIS (pas de bouton)
 function _profilAdvIsManaged(id) {
-  return ['vip','fonct_exp','conseil_com','cadeau_annuel','ptnr_strategiques'].indexOf(id) !== -1;
+  return ['conseil_com','ptnr_strategiques'].indexOf(id) !== -1;
 }
 function _profilOpenJeremie() {
   profilBack();
@@ -7662,6 +7665,113 @@ function showAvantPremiere() {
     +'<i class="fa-solid fa-circle-check" style="color:#4caf50;margin-top:2px;flex-shrink:0;"></i>'
     +'<span>Assurez-vous d\'avoir activé les <strong style="color:#ccc;">notifications push</strong> sur votre appareil pour ne rien rater.</span></div>'
     +'</div></div>'
+    +'</div></div>';
+}
+
+// ── AVANTAGES GÉNÉRATEUR ─────────────────────────────────────────
+
+function _gAdvRow(icon, title, desc) {
+  return '<div style="display:flex;gap:11px;align-items:flex-start;background:#1a1a1a;border-radius:12px;padding:11px 13px;">'
+    +'<i class="fa-solid '+icon+'" style="font-size:15px;color:#FFD700;flex-shrink:0;margin-top:1px;"></i>'
+    +'<div><div style="font-size:12px;font-weight:700;color:#ddd;margin-bottom:2px;">'+title+'</div>'
+    +'<div style="font-size:11px;color:#777;line-height:1.5;">'+desc+'</div></div>'
+    +'</div>';
+}
+
+function showInvitationsVIP() {
+  var c = document.getElementById('profilContent'); if(!c) return;
+  if(!USER || GUEST){ renderProfil(); return; }
+  _saveProfilScroll('showInvitationsVIP');
+  c.innerHTML = '<div class="espace-view">'
+    +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Invitations VIP</div></div>'
+    +'<div style="padding:14px 16px 80px;overflow-y:auto;flex:1;">'
+    +'<div style="background:linear-gradient(135deg,#1a0800,#0d0d00);border:2px solid #FFD700;border-radius:18px;padding:20px 18px 16px;margin-bottom:16px;text-align:center;">'
+    +'<i class="fa-solid fa-star" style="font-size:36px;color:#FFD700;display:block;margin-bottom:10px;"></i>'
+    +'<div style="font-size:14px;font-weight:900;color:#FFD700;margin-bottom:6px;">Invitations VIP GENESIS</div>'
+    +'<div style="font-size:12px;color:#888;line-height:1.7;">Avantage exclusif réservé aux membres <strong style="color:#FFD700;">Générateur</strong> — le niveau le plus élevé de la plateforme.</div>'
+    +'</div>'
+    +'<div style="display:flex;flex-direction:column;gap:9px;margin-bottom:16px;">'
+    +_gAdvRow('fa-crown','Accès VIP garanti','Votre place est réservée en priorité absolue à tous les événements GENESIS, même lorsque les places sont épuisées.')
+    +_gAdvRow('fa-users','Espaces Générateur','Accès aux espaces et sessions réservés exclusivement aux membres Générateur lors des soirées et événements GENESIS.')
+    +_gAdvRow('fa-envelope','Invitation personnalisée','Vous recevez les invitations directement par email et notification, bien avant que l\'événement ne soit annoncé publiquement.')
+    +_gAdvRow('fa-handshake','Networking de haut niveau','Rencontres en petit comité avec d\'autres Générateurs, partenaires premium et intervenants exclusifs de la plateforme.')
+    +'</div>'
+    +'<div style="background:#0a120a;border:1px solid #1a2e1a;border-radius:12px;padding:13px 15px;margin-bottom:16px;">'
+    +'<div style="font-size:11px;color:#4caf50;font-weight:700;margin-bottom:8px;"><i class="fa-solid fa-circle-check" style="margin-right:6px;"></i>Comment ça marche ?</div>'
+    +'<div style="font-size:12px;color:#888;line-height:1.6;">Dès qu\'un événement GENESIS est programmé, vous êtes notifié en premier par email et notification push. Pour les événements à capacité limitée, votre inscription est prioritaire — aucune place ne vous sera refusée.</div>'
+    +'</div>'
+    +'<button onclick="profilBack();setTimeout(goToEventsExplorer,100);" style="width:100%;background:linear-gradient(135deg,#FFD700,#e6c200);border:none;border-radius:12px;padding:14px;font-size:14px;font-weight:800;color:#1a1200;cursor:pointer;"><i class="fa-solid fa-calendar-days"></i> Voir les événements GENESIS</button>'
+    +'</div></div>';
+}
+
+function showFonctExperimentales() {
+  var c = document.getElementById('profilContent'); if(!c) return;
+  if(!USER || GUEST){ renderProfil(); return; }
+  _saveProfilScroll('showFonctExperimentales');
+  c.innerHTML = '<div class="espace-view">'
+    +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Fonctionnalités Expérimentales</div></div>'
+    +'<div style="padding:14px 16px 80px;overflow-y:auto;flex:1;">'
+    +'<div style="background:rgba(var(--yellow-rgb),.06);border:1.5px solid rgba(var(--yellow-rgb),.2);border-radius:16px;padding:18px;margin-bottom:16px;text-align:center;">'
+    +'<i class="fa-solid fa-flask" style="font-size:32px;color:var(--yellow);display:block;margin-bottom:10px;"></i>'
+    +'<div style="font-size:14px;font-weight:800;color:var(--yellow);margin-bottom:6px;">Accès Expérimental GENESIS</div>'
+    +'<div style="font-size:12px;color:#888;line-height:1.7;">En tant que <strong style="color:#FFD700;">Générateur</strong>, vous êtes les premiers à tester les nouvelles fonctionnalités de la plateforme avant leur lancement officiel.</div>'
+    +'</div>'
+    +'<div style="display:flex;flex-direction:column;gap:9px;margin-bottom:16px;">'
+    +_gAdvRow('fa-bolt','Avant tout le monde','Accès aux nouvelles fonctionnalités en version bêta, bien avant les niveaux Visionnaire et Bâtisseur.')
+    +_gAdvRow('fa-comment-dots','Votre avis compte','Votre retour sur les fonctionnalités expérimentales est pris en compte par l\'équipe GENESIS pour améliorer l\'expérience.')
+    +_gAdvRow('fa-bell','Notification dédiée','Vous recevez une notification push et un email spécifique dès qu\'une fonctionnalité expérimentale est disponible pour vous.')
+    +_gAdvRow('fa-infinity','Accès permanent','Une fois activée pour vous, la fonctionnalité reste accessible en continu — pas besoin de la ré-activer à chaque mise à jour.')
+    +'</div>'
+    +'<div style="background:#111;border:1px solid #1e1e1e;border-radius:12px;padding:13px 15px;">'
+    +'<div style="font-size:11px;color:var(--yellow);font-weight:700;margin-bottom:8px;"><i class="fa-solid fa-info-circle" style="margin-right:6px;"></i>Comment ça marche ?</div>'
+    +'<div style="font-size:12px;color:#888;line-height:1.6;">L\'équipe GENESIS active les fonctionnalités expérimentales progressivement. Vous êtes dans le premier groupe à y avoir accès. Assurez-vous d\'avoir activé les <strong style="color:#aaa;">notifications push</strong> pour être alerté dès qu\'une nouveauté est disponible.</div>'
+    +'</div>'
+    +'</div></div>';
+}
+
+function showCadeauAnnuel() {
+  var c = document.getElementById('profilContent'); if(!c) return;
+  if(!USER || GUEST){ renderProfil(); return; }
+  _saveProfilScroll('showCadeauAnnuel');
+  // Calcul de l'anniversaire d'inscription
+  var anniversaireHtml = '';
+  try {
+    var createdAt = USER.createdAt;
+    if(createdAt) {
+      var d = new Date(createdAt);
+      var now = new Date();
+      var thisYear = now.getFullYear();
+      var anniv = new Date(thisYear, d.getMonth(), d.getDate());
+      if(anniv < now) anniv = new Date(thisYear + 1, d.getMonth(), d.getDate());
+      var daysDiff = Math.ceil((anniv - now) / (1000 * 60 * 60 * 24));
+      var memberSince = d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+      var nextDateStr = anniv.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+      anniversaireHtml = '<div style="background:rgba(var(--yellow-rgb),.07);border:1px solid rgba(var(--yellow-rgb),.2);border-radius:12px;padding:14px;margin-bottom:16px;">'
+        +'<div style="font-size:10px;color:#a89000;font-weight:800;letter-spacing:.8px;text-transform:uppercase;margin-bottom:8px;"><i class="fa-solid fa-calendar-days" style="margin-right:5px;"></i>Votre cadeau</div>'
+        +'<div style="font-size:12px;color:#888;margin-bottom:6px;">Membre depuis le <strong style="color:#ccc;">'+memberSince+'</strong></div>'
+        +'<div style="font-size:13px;color:#FFD700;font-weight:700;">Prochain cadeau : <span style="color:#fff;">'+nextDateStr+'</span></div>'
+        +(daysDiff <= 30 ? '<div style="font-size:11px;color:#4caf50;margin-top:6px;font-weight:700;"><i class="fa-solid fa-circle-check" style="margin-right:4px;"></i>Bientôt ! Dans '+daysDiff+' jour'+(daysDiff > 1 ? 's' : '')+'</div>' : '<div style="font-size:11px;color:#555;margin-top:6px;">Dans <strong style="color:#888;">'+daysDiff+'</strong> jour'+(daysDiff > 1 ? 's' : '')+'</div>')
+        +'</div>';
+    }
+  } catch(e) {}
+  c.innerHTML = '<div class="espace-view">'
+    +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Cadeau Annuel</div></div>'
+    +'<div style="padding:14px 16px 80px;overflow-y:auto;flex:1;">'
+    +'<div style="background:linear-gradient(135deg,#1a0800,#0d0d00);border:2px solid #FFD700;border-radius:18px;padding:20px 18px 16px;margin-bottom:16px;text-align:center;">'
+    +'<i class="fa-solid fa-gift" style="font-size:36px;color:#FFD700;display:block;margin-bottom:10px;"></i>'
+    +'<div style="font-size:14px;font-weight:900;color:#FFD700;margin-bottom:6px;">Cadeau Annuel de Fidélité</div>'
+    +'<div style="font-size:12px;color:#888;line-height:1.7;">Chaque année à la date anniversaire de votre inscription, l\'équipe GENESIS vous offre un cadeau exclusif en remerciement de votre fidélité.</div>'
+    +'</div>'
+    + anniversaireHtml
+    +'<div style="display:flex;flex-direction:column;gap:9px;margin-bottom:16px;">'
+    +_gAdvRow('fa-star','Cadeau personnalisé','Chaque cadeau est sélectionné par l\'équipe GENESIS selon votre profil et votre activité sur la plateforme.')
+    +_gAdvRow('fa-envelope','Livraison par email','Vous recevez votre cadeau directement par email à la date anniversaire de votre inscription.')
+    +_gAdvRow('fa-crown','Réservé aux Générateurs','Cet avantage est exclusivement réservé aux membres ayant atteint le niveau Générateur (1 000 QG).')
+    +'</div>'
+    +'<div style="background:#111;border:1px solid #1e1e1e;border-radius:12px;padding:13px 15px;">'
+    +'<div style="font-size:11px;color:var(--yellow);font-weight:700;margin-bottom:8px;"><i class="fa-solid fa-info-circle" style="margin-right:6px;"></i>Comment ça marche ?</div>'
+    +'<div style="font-size:12px;color:#888;line-height:1.6;">L\'équipe GENESIS vous contactera par email à la date anniversaire de votre inscription pour vous offrir votre cadeau annuel. Assurez-vous que votre adresse email est à jour dans votre profil.</div>'
+    +'</div>'
     +'</div></div>';
 }
 
@@ -8248,7 +8358,7 @@ function showClientLevels() {
             if (_aOc) {
               html += '<button onclick="'+_aOc+'" style="background:rgba(var(--yellow-rgb),.1);border:1px solid rgba(var(--yellow-rgb),.25);border-radius:8px;padding:3px 8px;font-size:10px;font-weight:700;color:var(--yellow);cursor:pointer;flex-shrink:0;"><i class="fa-solid fa-arrow-right" style="font-size:9px;"></i></button>';
             } else if (_profilAdvIsManaged(adv.id)) {
-              html += '<span style="font-size:9px;color:#444;flex-shrink:0;text-align:right;line-height:1.3;">FA<br>GENESIS</span>';
+              html += '<span style="font-size:9px;color:#444;flex-shrink:0;text-align:right;line-height:1.3;">GENESIS</span>';
             }
           } else {
             html += '<i class="fa-solid fa-lock" style="color:#2e2e2e;margin-top:2px;flex-shrink:0;font-size:11px;"></i>';

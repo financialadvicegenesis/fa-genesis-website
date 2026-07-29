@@ -7104,7 +7104,7 @@ app.get('/api/client/level-progress', function(req, res) {
             bronze: 'Vous venez de réaliser vos premières actions significatives sur FA GENESIS.',
             argent: 'Vous êtes un utilisateur régulier — bienvenue dans le cercle des Bâtisseurs.',
             or:     'Vous entrez dans un cercle privilégié réservé aux membres les plus engagés.',
-            elite:  'Le plus haut niveau de fidélité. Vous faites partie de l\'élite FA GENESIS.'
+            elite:  'Le plus haut niveau de fidélité. Vous faites partie de l\'élite GENESIS.'
         };
 
         var levelOrder = ['bronze', 'argent', 'or', 'elite'];
@@ -11005,6 +11005,25 @@ function buildJeremieSystemPrompt(person, personType) {
                     'Si le projet mobilise plusieurs types de prestataires, propose un sequencage logique des etapes.');
                 lines.push('3. Recommandations networking : signale systematiquement les evenements prives GENESIS, webinaires et ' +
                     'sessions reseau disponibles qui correspondent au secteur ou aux projets du client.');
+            }
+            // Jérémie IA Expert — assistant personnel multi-projets & conseils continus pour Générateur (elite uniquement)
+            if (argBadge === 'elite') {
+                lines.push('');
+                lines.push('Jeremie IA Expert — Mode Generateur (assistant personnel multi-projets & conseils continus) :');
+                lines.push('Ce client est au niveau GENERATEUR, le niveau le plus eleve de GENESIS. Tu es son assistant personnel IA ' +
+                    'avec des capacites etendues :');
+                lines.push('1. Suivi multi-projets : ce client peut avoir plusieurs projets actifs en parallele. Aide-le a les prioriser, ' +
+                    'a identifier les dependances entre eux, et a orchestrer ses prestataires de maniere coherente. Si les donnees le ' +
+                    'permettent, rappelle-lui l\'etat de ses engagements en cours.');
+                lines.push('2. Conseils continus personnalises : base-toi sur l\'integralite de ses donnees d\'usage (historique, ' +
+                    'categories preferees, rythme, panier moyen, partenaires habituels) pour formuler des recommandations proactives ' +
+                    'avant meme qu\'il ne te pose une question. Anticipe ses besoins selon ses cycles habituels.');
+                lines.push('3. Vision strategique : aide-le a structurer une roadmap de contenu ou de croissance sur plusieurs mois. ' +
+                    'Identifie les types de prestataires GENESIS a mobiliser selon les etapes, les budgets a prevoir, et les ' +
+                    'indicateurs a surveiller. Va au-dela de la prestation unitaire : pense en termes de strategie globale.');
+                lines.push('4. Acces VIP et experimental : rappelle-lui proactivement les evenements VIP GENESIS disponibles, les ' +
+                    'fonctionnalites experimentales auxquelles il a acces en avant-premiere, et les opportunites exclusives de la ' +
+                    'plateforme reservees aux Generateurs. Sois son conseiller de reference, pas seulement un assistant de commande.');
             }
         } else {
             var summary = getPartnerRatingSummary(person.id);
