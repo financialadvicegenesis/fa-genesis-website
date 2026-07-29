@@ -7095,7 +7095,7 @@ app.get('/api/client/level-progress', function(req, res) {
             ],
             elite: [
                 { id: 'vip',            label: 'Invitations VIP aux événements GENESIS' },
-                { id: 'fonct_exp',      label: 'Accès aux fonctionnalités expérimentales avant leur lancement' },
+                { id: 'fonct_exp',      label: 'Accès anticipé aux nouvelles fonctionnalités de l\'application GENESIS' },
                 { id: 'cadeau_annuel',  label: 'Cadeau annuel de fidélité' },
                 { id: 'jeremie_expert', label: 'Jérémie IA Expert — Assistant personnel multi-projets & conseils continus' }
             ]
