@@ -7007,7 +7007,6 @@ app.get('/api/auth/me', (req, res) => {
             favoris: user.favoris || [],
             referralCode: user.id,
             referralCount: referralCount,
-            isCerclePrivilege: getClientReferralStatus(referralCount) === 'cercle_privilege',
             referralDiscount: user.referral_discount || null,
             welcomeDiscountEligible: isClientFirstPaidOrder(user.email),
             referralBonusQG: user.referralBonusQG || 0,
@@ -10113,9 +10112,6 @@ function getClientReferralCount(userId) {
         return u.referredBy === userId && getClientCompletedOrders(u.email) >= 1;
     }).length;
 }
-function getClientReferralStatus(count) {
-    return count >= 3 ? 'cercle_privilege' : null;
-}
 
 const PARTNER_BADGE_SCORE_BONUS = { fondateur: 40, elite: 30, or: 20, argent: 10, bronze: 5 };
 
@@ -10637,7 +10633,12 @@ const GENESIS_POINT_VALUES = {
     evenement: 75,
     parrainage: 100,
     filleulPremierPrestation: 50,
-    missionMultiCollab: 75
+    missionMultiCollab: 75,
+    missionRef1:  100,
+    missionRef5:  300,
+    missionRef10: 500,
+    missionRef25: 1000,
+    missionRef50: 2000
 };
 // Avantage bienvenue : absorbé par GENESIS. Taux selon l'origine :
 //   sans code de parrainage → -15%  |  avec code de parrainage → -10%
@@ -10729,10 +10730,52 @@ function checkReferralAndMissionRewards(clientEmail) {
                 // Notification parrain (+100 QG via formule, pas de stockage supplémentaire)
                 var parrain = users.find(function(u) { return u.id === user.referredBy; });
                 if (parrain) {
+                    var parrainIdx = users.findIndex(function(u) { return u.id === user.referredBy; });
                     notifyUser(parrain.email, 'client', 'referral_reward',
                         '🎉 Récompense parrainage !',
                         'Votre filleul ' + (users[uIdx].prenom || 'votre filleul') + ' vient de réaliser sa première prestation. Vous gagnez +100 Points QG !',
                         '/app.html');
+                    // Missions de parrainage progressives (parrain) — 5 paliers
+                    if (parrainIdx !== -1) {
+                        var parrainRefCount = getClientReferralCount(users[parrainIdx].id);
+                        if (!users[parrainIdx].missionBonuses) users[parrainIdx].missionBonuses = {};
+                        var _refMilestones = [
+                            { key: 'ref1',  target: 1,  qg: GENESIS_POINT_VALUES.missionRef1  },
+                            { key: 'ref5',  target: 5,  qg: GENESIS_POINT_VALUES.missionRef5  },
+                            { key: 'ref10', target: 10, qg: GENESIS_POINT_VALUES.missionRef10 },
+                            { key: 'ref25', target: 25, qg: GENESIS_POINT_VALUES.missionRef25 },
+                            { key: 'ref50', target: 50, qg: GENESIS_POINT_VALUES.missionRef50 }
+                        ];
+                        _refMilestones.forEach(function(m) {
+                            if (parrainRefCount >= m.target && !users[parrainIdx].missionBonuses[m.key]) {
+                                users[parrainIdx].missionBonuses[m.key] = true;
+                                dirty = true;
+                                notifyUser(users[parrainIdx].email, 'client', 'mission_complete',
+                                    '🏆 Mission communauté accomplie !',
+                                    'Vous avez invité ' + m.target + ' membre' + (m.target > 1 ? 's actifs' : ' actif') + ' dans GENESIS. +' + m.qg + ' Points QG crédités !',
+                                    '/app.html');
+                            }
+                        });
+                        // Notification de classement Top Ambassadeurs
+                        try {
+                            var _orders = loadOrders();
+                            var _refMap = {};
+                            users.forEach(function(u) {
+                                if (u.referredBy && _orders.some(function(o) {
+                                    var em = (o.client_email || (o.client_info && o.client_info.email) || '').toLowerCase();
+                                    return em === (u.email || '').toLowerCase() && o.balance_paid;
+                                })) { _refMap[u.referredBy] = (_refMap[u.referredBy] || 0) + 1; }
+                            });
+                            var _sorted = Object.keys(_refMap).sort(function(a,b){ return _refMap[b] - _refMap[a]; });
+                            var _newRank = _sorted.indexOf(users[parrainIdx].id) + 1;
+                            var _rankMsgs = { 1: ['🥇 1ère place !', 'Vous venez de prendre la tête du Top Ambassadeurs GENESIS !'], 2: ['🥈 2ᵉ place !', 'Vous êtes maintenant 2ᵉ du Top Ambassadeurs GENESIS.'], 3: ['🥉 3ᵉ place !', 'Vous êtes maintenant 3ᵉ du Top Ambassadeurs GENESIS.'] };
+                            if (_rankMsgs[_newRank]) {
+                                notifyUser(users[parrainIdx].email, 'client', 'ambassadeur_rank', _rankMsgs[_newRank][0], _rankMsgs[_newRank][1] + ' (' + parrainRefCount + ' parrainage' + (parrainRefCount > 1 ? 's' : '') + ' validé' + (parrainRefCount > 1 ? 's' : '') + ')', '/app.html');
+                            } else if (_newRank > 0 && _newRank <= 10) {
+                                notifyUser(users[parrainIdx].email, 'client', 'ambassadeur_rank', '🏆 Top 10 Ambassadeurs !', 'Vous occupez la ' + _newRank + 'ᵉ place du Top Ambassadeurs GENESIS.', '/app.html');
+                            }
+                        } catch(_rankErr) { console.warn('[HOF_RANK]', _rankErr.message); }
+                    }
                     try { checkAndSendProactiveQGNotif(parrain.email, 'client', getClientGenesisPoints(parrain)); } catch(_) {}
                 }
             }
@@ -10797,12 +10840,18 @@ function getClientGenesisPoints(user, completedOrders) {
     var orders = typeof completedOrders === 'number' ? completedOrders : getClientCompletedOrders(user.email);
     var referrals = getClientReferralCount(user.id);
     var reviewsLeft = loadPartnerReviews().filter(function(r) { return (r.userEmail || '').toLowerCase() === user.email.toLowerCase(); }).length;
+    var mb = user.missionBonuses || {};
     return (orders * GENESIS_POINT_VALUES.reservationEffectuee)
         + (reviewsLeft * GENESIS_POINT_VALUES.avisLaisse)
         + (referrals * GENESIS_POINT_VALUES.parrainage)
         + getEventAttendancePoints(user.id)
         + (user.referralBonusQG || 0)
-        + ((user.missionBonuses && user.missionBonuses.multi_collab) ? GENESIS_POINT_VALUES.missionMultiCollab : 0);
+        + (mb.multi_collab ? GENESIS_POINT_VALUES.missionMultiCollab : 0)
+        + (mb.ref1  ? GENESIS_POINT_VALUES.missionRef1  : 0)
+        + (mb.ref5  ? GENESIS_POINT_VALUES.missionRef5  : 0)
+        + (mb.ref10 ? GENESIS_POINT_VALUES.missionRef10 : 0)
+        + (mb.ref25 ? GENESIS_POINT_VALUES.missionRef25 : 0)
+        + (mb.ref50 ? GENESIS_POINT_VALUES.missionRef50 : 0);
 }
 
 function getEventAttendanceCount(personId) {
@@ -10846,7 +10895,11 @@ function getConstellationTier(partner) {
 const GENESIS_MISSIONS = [
     { id: 'multi_collab',      audience: 'client',  label: 'Collaborer avec 3 professionnels différents',       description: 'Travaillez avec au moins 3 partenaires différents pour enrichir votre réseau Genesis.',          icon: 'fa-people-group',   target: 3,  qgReward: 75  },
     { id: 'event_participation',audience: 'both',   label: 'Participer à un atelier ou événement Genesis',       description: 'Inscrivez-vous et soyez présent à un événement ou workshop organisé par FA GENESIS.',          icon: 'fa-calendar-check', target: 1,  qgReward: 50  },
-    { id: 'referral',           audience: 'both',   label: 'Parrainer un nouveau membre',                        description: 'Invitez un nouveau client ou partenaire à rejoindre FA GENESIS.',                              icon: 'fa-user-plus',      target: 1,  qgReward: 100 },
+    { id: 'ref1',  category: 'communaute', audience: 'client', label: 'Inviter 1 nouveau membre actif',    description: 'Votre filleul doit réaliser sa première prestation pour que le parrainage soit validé.',  icon: 'fa-user-plus',      target: 1,  qgReward: 100  },
+    { id: 'ref5',  category: 'communaute', audience: 'client', label: 'Inviter 5 nouveaux membres actifs',  description: 'Chacun doit avoir réalisé au moins une prestation.',                                    icon: 'fa-users',          target: 5,  qgReward: 300  },
+    { id: 'ref10', category: 'communaute', audience: 'client', label: 'Inviter 10 nouveaux membres actifs', description: 'Chacun doit avoir réalisé au moins une prestation.',                                    icon: 'fa-people-arrows',  target: 10, qgReward: 500  },
+    { id: 'ref25', category: 'communaute', audience: 'client', label: 'Inviter 25 nouveaux membres actifs', description: 'Chacun doit avoir réalisé au moins une prestation.',                                    icon: 'fa-globe',          target: 25, qgReward: 1000 },
+    { id: 'ref50', category: 'communaute', audience: 'client', label: 'Inviter 50 nouveaux membres actifs', description: 'Chacun doit avoir réalisé au moins une prestation.',                                    icon: 'fa-earth-americas', target: 50, qgReward: 2000 },
     { id: 'alliance_circle',    audience: 'client', label: 'Atteindre le palier Alliance avec un partenaire',    description: 'Collaborez 5 fois avec le même partenaire pour débloquer le Cercle Alliance.',                icon: 'fa-handshake',      target: 5,  qgReward: 100 },
     { id: 'ten_orders',         audience: 'client', label: 'Réaliser 10 prestations',                            description: 'Commandez et finalisez 10 prestations sur la plateforme.',                                   icon: 'fa-receipt',        target: 10, qgReward: 200 },
     { id: 'multi_clients',      audience: 'partner',label: 'Travailler avec 3 clients différents',               description: 'Réalisez des prestations pour au moins 3 clients différents.',                                icon: 'fa-people-group',   target: 3,  qgReward: 75  },
@@ -10863,8 +10916,8 @@ function computeGenesisMissionProgress(mission, person, personType) {
         case 'event_participation':
             current = getEventAttendancePoints(person.id) > 0 ? 1 : 0;
             break;
-        case 'referral':
-            current = personType === 'client' ? getClientReferralCount(person.id) : getPartnerReferralCount(person.id);
+        case 'ref1': case 'ref5': case 'ref10': case 'ref25': case 'ref50':
+            current = getClientReferralCount(person.id);
             break;
         case 'alliance_circle':
             current = getClientMaxCollabCount(person.email);
@@ -10884,7 +10937,7 @@ function computeGenesisMissionProgress(mission, person, personType) {
     }
     var capped = Math.min(current, mission.target);
     return {
-        id: mission.id, label: mission.label, description: mission.description, icon: mission.icon,
+        id: mission.id, category: mission.category || null, label: mission.label, description: mission.description, icon: mission.icon,
         current: current, target: mission.target,
         percent: Math.min(100, Math.round(capped / mission.target * 100)),
         completed: current >= mission.target,
@@ -10904,7 +10957,15 @@ app.get('/api/genesis/missions', function(req, res) {
         if (!authHeader || !authHeader.startsWith('Bearer ')) return res.status(401).json({ error: 'Token requis' });
         var token = authHeader.slice(7);
         var user = findUserByToken(token);
-        if (user) return res.json({ success: true, missions: getGenesisMissions(user, 'client') });
+        if (user) {
+            var mb = user.missionBonuses || {};
+            var _claimedKeys = { multi_collab: mb.multi_collab, ref1: mb.ref1, ref5: mb.ref5, ref10: mb.ref10, ref25: mb.ref25, ref50: mb.ref50 };
+            var missions = getGenesisMissions(user, 'client').map(function(m) {
+                m.rewardClaimed = _claimedKeys[m.id] === true || (m.completed && !['multi_collab','ref1','ref5','ref10','ref25','ref50'].includes(m.id));
+                return m;
+            });
+            return res.json({ success: true, missions: missions });
+        }
         var partner = findPartnerByToken(token);
         if (partner) return res.json({ success: true, missions: getGenesisMissions(partner, 'partner') });
         return res.status(401).json({ error: 'Session invalide ou expiree' });
@@ -11320,6 +11381,58 @@ app.get('/api/hall-of-fame', function(req, res) {
         res.json({ success: true, hallOfFame: snapshot });
     } catch (e) {
         console.error('[HALL_OF_FAME] Erreur lecture:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// ============================================================
+// TOP AMBASSADEURS GENESIS — classement cumulatif (tous les temps) basé sur
+// le nombre de filleuls ayant réalisé leur première prestation (balance_paid).
+// Calculé dynamiquement à la volée en un seul passage sur users + orders.
+// ============================================================
+app.get('/api/hall-of-fame/ambassadeurs', function(req, res) {
+    try {
+        var limitParam = parseInt(req.query.limit) || 20;
+        var limit = Math.max(1, Math.min(limitParam, 100));
+        var users = loadUsers();
+        var orders = loadOrders();
+        // Marque les filleuls qui ont au moins une prestation payée (balance_paid)
+        var filleulsActifs = new Set();
+        orders.forEach(function(o) {
+            if (o.balance_paid) {
+                var em = (o.client_email || (o.client_info && o.client_info.email) || '').toLowerCase();
+                if (em) filleulsActifs.add(em);
+            }
+        });
+        // Compte les filleuls actifs par parrain (O(n), un seul passage)
+        var refMap = {};
+        users.forEach(function(u) {
+            if (u.referredBy && u.email && filleulsActifs.has(u.email.toLowerCase())) {
+                refMap[u.referredBy] = (refMap[u.referredBy] || 0) + 1;
+            }
+        });
+        var totalAmbassadeurs = Object.keys(refMap).length;
+        // Construit le classement
+        var leaderboard = users
+            .filter(function(u) { return (refMap[u.id] || 0) > 0; })
+            .map(function(u) {
+                var count = refMap[u.id] || 0;
+                var qg = getClientGenesisPoints(u);
+                return {
+                    id: u.id,
+                    name: ((u.prenom || '') + ' ' + (u.nom || '')).trim() || 'Membre GENESIS',
+                    prenom: u.prenom || '',
+                    photo: u.photo || null,
+                    badge: getClientQGBadge(qg),
+                    genesisPoints: qg,
+                    referralCount: count
+                };
+            })
+            .sort(function(a, b) { return b.referralCount - a.referralCount || b.genesisPoints - a.genesisPoints; })
+            .slice(0, limit);
+        res.json({ success: true, ambassadeurs: leaderboard, total: totalAmbassadeurs });
+    } catch (e) {
+        console.error('[HOF_AMBASSADEURS] Erreur:', e);
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });

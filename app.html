@@ -4148,7 +4148,38 @@ function loadHallOfFame(){
       html += '<div style="display:flex;flex-direction:column;gap:8px;margin:0 16px 8px;">'+highlights+'</div>';
     }
     wrap.className = 'p-fade-in';
-    wrap.innerHTML = html;
+    // Top Ambassadeurs (classement cumulatif)
+    fetch(API+'/api/hall-of-fame/ambassadeurs?limit=5').then(function(r2){return r2.json();}).then(function(d2){
+      var top5 = d2.ambassadeurs || [];
+      if(top5.length) {
+        var medals = ['🥇','🥈','🥉'];
+        var aHtml = '<div class="p-section-hdr black p-section-hdr-fit" style="margin:16px 16px 12px;">'
+          +'<i class="fa-solid fa-trophy" style="color:var(--yellow)"></i> TOP AMBASSADEURS GENESIS</div>'
+          +'<div style="padding:0 16px 8px;display:flex;flex-direction:column;gap:8px;">'
+          +top5.map(function(u, i){
+            var rank = i+1;
+            var badgeMeta = tierBadgeMeta(u.badge)||{};
+            var av = u.photo?'<img src="'+u.photo+'" alt="" style="width:38px;height:38px;border-radius:50%;object-fit:cover;flex-shrink:0;">'
+              :'<div style="width:38px;height:38px;border-radius:50%;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:#888;flex-shrink:0;">'+((u.prenom||'?').charAt(0).toUpperCase())+'</div>';
+            return '<div style="display:flex;align-items:center;gap:10px;background:#111;border:1px solid #1e1e1e;border-radius:12px;padding:10px 12px;">'
+              +'<div style="font-size:'+(rank<=3?'17px':'12px')+';font-weight:900;color:'+(rank<=3?'#FFD700':'#555')+';min-width:26px;text-align:center;">'+(rank<=3?medals[rank-1]:rank+'.')+'</div>'
+              +av+'<div style="flex:1;min-width:0;">'
+              +'<div style="font-size:12px;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+u.name+'</div>'
+              +(badgeMeta.label?'<span class="tier-badge '+(badgeMeta.cls||'')+'" style="font-size:9px;padding:1px 6px;margin-top:2px;display:inline-block;">'+badgeMeta.label+'</span>':'')
+              +'</div>'
+              +'<div style="text-align:right;flex-shrink:0;">'
+              +'<div style="font-size:14px;font-weight:900;color:#FFD700;">'+u.referralCount+'</div>'
+              +'<div style="font-size:9px;color:#666;">parr.</div>'
+              +'</div></div>';
+          }).join('')
+          +'<button onclick="showTopAmbassadeurs()" style="width:100%;margin-top:6px;background:#111;border:1px solid #2a2a2a;color:#888;border-radius:10px;padding:9px;font-size:11px;font-weight:700;cursor:pointer;">'
+          +'<i class="fa-solid fa-ranking-star" style="color:#FFD700;margin-right:6px;"></i>Voir le classement complet</button>'
+          +'</div>';
+        wrap.innerHTML = html + aHtml;
+      } else {
+        wrap.innerHTML = html;
+      }
+    }).catch(function(){ wrap.innerHTML = html; });
   }).catch(function(){ wrap.innerHTML=''; });
 }
 
@@ -5226,7 +5257,6 @@ function tierBadgeMeta(tier){
     or:{label:'Visionnaire',cls:'or',icon:'fa-crown'},
     elite:{label:'Générateur',cls:'elite',icon:'fa-infinity'},
     fondateur:{label:'Fondateur',cls:'fondateur',icon:'fa-star'},
-    cercle_privilege:{label:'Cercle Privilège',cls:'cercle-privilege'},
     batisseur:{label:'Bâtisseur',cls:'batisseur'},
     architecte:{label:'Architecte',cls:'architecte'}
   };
@@ -5409,26 +5439,41 @@ function navToFavoris(){
 }
 function referralBoxHtml(){
   if(!USER || GUEST || !USER.referralCode) return '';
+  var code = USER.referralCode;
+  var link = 'https://fagenesis.com/ref/' + code;
   var count = Math.max(0, USER.referralCount || 0);
-  var target = 3;
-  var progPct = Math.min(100, Math.round(count/target*100));
-  var remaining = Math.max(0, target - count);
-  var html = '<div class="ref-box-v2">';
-  html += '<div class="ref-box-v2-title"><i class="fa-solid fa-user-plus"></i> Parrainage</div>';
-  html += '<div class="ref-box-v2-code-row">';
-  html += '<span class="ref-box-v2-code" id="p-ref-code-val">'+USER.referralCode+'</span>';
-  html += '<button class="ref-box-v2-copy" onclick="copyReferralCode()">Copier</button>';
-  html += '</div>';
-  html += '<button class="ref-box-v2-share" onclick="shareReferralCode()"><i class="fa-solid fa-share-nodes"></i> Inviter un ami</button>';
-  html += '<div class="ref-box-v2-progress">';
-  html += '<div class="ref-box-v2-prog-label">';
-  html += '<span>'+count+' / '+target+' parrainage'+(count>1?'s':'')+' validé'+(count>1?'s':'')+'</span>';
-  html += '<span>'+(remaining>0 ? 'Encore '+remaining+' pour le Cercle Privilège' : '<i class="fa-solid fa-check-circle" style="color:#4caf50"></i> Cercle Privilège atteint !')+'</span>';
-  html += '</div>';
-  html += '<div class="ref-box-v2-prog-bar"><div class="ref-box-v2-prog-fill" style="width:'+progPct+'%"></div></div>';
-  html += '</div>';
-  html += '</div>';
-  return html;
+  return '<div class="ref-box-v2">'
+    + '<div style="margin-bottom:16px;">'
+    + '<div style="font-size:10px;color:#888;font-weight:800;text-transform:uppercase;letter-spacing:.8px;margin-bottom:7px;">Votre code de parrainage</div>'
+    + '<div style="display:flex;align-items:center;gap:8px;">'
+    + '<span class="ref-box-v2-code" id="p-ref-code-val">'+code+'</span>'
+    + '<button class="ref-box-v2-copy" onclick="copyReferralCode()">Copier</button>'
+    + '</div></div>'
+    + '<div style="margin-bottom:16px;">'
+    + '<div style="font-size:10px;color:#888;font-weight:800;text-transform:uppercase;letter-spacing:.8px;margin-bottom:7px;">Votre lien de parrainage</div>'
+    + '<div style="display:flex;align-items:center;gap:8px;">'
+    + '<span id="p-ref-link-val" style="font-size:11px;color:#aaa;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+link+'</span>'
+    + '<button class="ref-box-v2-copy" onclick="copyReferralLink()">Copier</button>'
+    + '</div></div>'
+    + '<button class="ref-box-v2-share" onclick="shareReferralCode()"><i class="fa-solid fa-share-nodes"></i> Inviter un ami</button>'
+    + '<div style="background:rgba(255,215,0,.06);border:1px solid rgba(255,215,0,.15);border-radius:14px;padding:16px;margin-top:16px;">'
+    + '<div style="font-size:10px;color:#888;font-weight:800;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px;">Parrainages validés</div>'
+    + '<div style="font-size:44px;font-weight:900;color:#FFD700;line-height:1;margin-bottom:10px;">'+count+'</div>'
+    + '<div style="font-size:11px;color:#888;margin-bottom:5px;">Chaque parrainage validé vous rapporte :</div>'
+    + '<div style="font-size:13px;color:#4caf50;font-weight:800;"><i class="fa-solid fa-circle-check" style="margin-right:5px;"></i>+100 Points QG</div>'
+    + '</div></div>';
+}
+function copyReferralLink(){
+  if(!USER || !USER.referralCode) return;
+  var link = 'https://fagenesis.com/ref/' + USER.referralCode;
+  var doCopy = function(){
+    if(navigator.clipboard && navigator.clipboard.writeText){ return navigator.clipboard.writeText(link); }
+    return Promise.reject();
+  };
+  doCopy().catch(function(){}).then(function(){
+    var btn = document.querySelector('[onclick="copyReferralLink()"]');
+    if(btn){ var orig = btn.textContent; btn.textContent = 'Copié !'; setTimeout(function(){ btn.textContent = orig; }, 1500); }
+  });
 }
 function copyReferralCode(){
   if(!USER || !USER.referralCode) return;
@@ -5459,17 +5504,119 @@ function showParrainageScreen(){
   var c = document.getElementById('profilContent'); if(!c) return;
   if(!USER || GUEST){ renderProfil(); return; }
   _saveProfilScroll('showParrainageScreen');
+  var lockedHtml = '<div style="background:rgba(255,215,0,.04);border:1.5px solid rgba(255,215,0,.15);border-radius:16px;padding:24px;text-align:center;">'
+    +'<i class="fa-solid fa-user-plus" style="font-size:36px;color:#555;margin-bottom:12px;display:block;"></i>'
+    +'<div style="font-size:14px;font-weight:800;color:#888;margin-bottom:8px;">Programme de parrainage</div>'
+    +'<div style="font-size:12px;color:#555;line-height:1.7;">Atteignez le niveau <strong style="color:#FFD700;">Créateur</strong> (100 QG) pour débloquer votre code et inviter des amis.</div>'
+    +'</div>';
+  var rankBtn = '<button onclick="showTopAmbassadeurs()" style="width:100%;margin-top:16px;background:#111;border:1px solid #2a2a2a;color:#888;border-radius:12px;padding:11px;font-size:12px;font-weight:700;cursor:pointer;">'
+    +'<i class="fa-solid fa-trophy" style="color:#FFD700;margin-right:7px;"></i>Voir le classement Top Ambassadeurs</button>';
   c.innerHTML = '<div class="espace-view">'
-    +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Programme de parrainage</div></div>'
+    +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Parrainage</div></div>'
     +'<div style="padding:14px 16px 80px;overflow-y:auto;flex:1;">'
-    +(USER.badge ? referralBoxHtml() :
-      '<div style="background:rgba(59,130,246,.06);border:1.5px solid rgba(59,130,246,.2);border-radius:16px;padding:24px;text-align:center;">'
-      +'<i class="fa-solid fa-user-plus" style="font-size:36px;color:#555;margin-bottom:12px;display:block;"></i>'
-      +'<div style="font-size:14px;font-weight:800;color:#888;margin-bottom:8px;">Programme de parrainage</div>'
-      +'<div style="font-size:12px;color:#555;line-height:1.7;">Atteignez le niveau <strong style="color:#9ecbe8;">Créateur</strong> (100 QG) pour débloquer votre code de parrainage et inviter des amis.</div>'
-      +'</div>')
+    +(USER.badge ? referralBoxHtml() : lockedHtml)
+    +rankBtn
     +'</div></div>';
 }
+var _taPage = 0; var _taAllData = []; var _taSearch = '';
+function showTopAmbassadeurs(){
+  var c = document.getElementById('profilContent'); if(!c) return;
+  if(USER && !GUEST) _saveProfilScroll('showTopAmbassadeurs');
+  _profilBackTarget = showParrainageScreen;
+  c.innerHTML = '<div class="espace-view">'
+    +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Top Ambassadeurs GENESIS</div></div>'
+    +'<div style="padding:0 0 80px;overflow-y:auto;flex:1;">'
+    +'<div id="ta-podium" style="padding:16px 16px 0;"></div>'
+    +'<div style="padding:0 16px 8px;"><input id="ta-search" type="text" placeholder="Rechercher un ambassadeur..." oninput="_taOnSearch()" style="width:100%;background:#111;border:1px solid #2a2a2a;border-radius:10px;padding:9px 12px;font-size:13px;color:#ccc;box-sizing:border-box;outline:none;"></div>'
+    +'<div id="ta-list" style="padding:0 16px 16px;"><div class="espace-loading">Chargement...</div></div>'
+    +'<div id="ta-pagination" style="padding:0 16px 8px;display:flex;gap:8px;justify-content:center;"></div>'
+    +'</div></div>';
+  _taPage = 0; _taSearch = '';
+  fetch((window.FA_GENESIS_API||API)+'/api/hall-of-fame/ambassadeurs?limit=100')
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      _taAllData = d.ambassadeurs || [];
+      _taRenderAll();
+    }).catch(function(){
+      var el = document.getElementById('ta-list'); if(el) el.innerHTML = '<div class="espace-empty">Erreur de chargement.</div>';
+    });
+}
+function _taOnSearch(){
+  var el = document.getElementById('ta-search'); if(!el) return;
+  _taSearch = (el.value||'').toLowerCase().trim();
+  _taPage = 0;
+  _taRenderAll();
+}
+function _taRenderAll(){
+  var filtered = _taAllData.filter(function(u){ return !_taSearch || u.name.toLowerCase().indexOf(_taSearch) !== -1; });
+  var PAGE_SIZE = 20;
+  var totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  if(_taPage >= totalPages) _taPage = totalPages - 1;
+  // Podium (top 3 de la liste NON filtrée, si page=0 et pas de recherche)
+  var podiumEl = document.getElementById('ta-podium');
+  if(podiumEl && !_taSearch && _taPage === 0 && _taAllData.length >= 1){
+    var top3 = _taAllData.slice(0, 3);
+    var medals = ['🥇','🥈','🥉'];
+    var podOrder = top3.length >= 3 ? [1,0,2] : (top3.length === 2 ? [0,1] : [0]);
+    var podHtml = '<div style="background:linear-gradient(180deg,rgba(255,215,0,.08),transparent);border-radius:16px;padding:18px 12px 14px;margin-bottom:16px;">'
+      +'<div style="text-align:center;font-size:10px;color:#888;font-weight:800;text-transform:uppercase;letter-spacing:.8px;margin-bottom:16px;"><i class="fa-solid fa-trophy" style="color:#FFD700;margin-right:6px;"></i>Top Ambassadeurs GENESIS — Classement général</div>'
+      +'<div style="display:flex;align-items:flex-end;justify-content:center;gap:8px;">';
+    podOrder.forEach(function(idx){
+      if(idx >= top3.length) return;
+      var u = top3[idx];
+      var rank = idx + 1;
+      var heights = ['70px','80px','60px'];
+      var h = heights[rank-1] || '60px';
+      var badgeMeta = tierBadgeMeta(u.badge) || {};
+      var avatarHtml = u.photo
+        ? '<img src="'+u.photo+'" alt="" style="width:'+(rank===1?'56px':'48px')+';height:'+(rank===1?'56px':'48px')+';border-radius:50%;object-fit:cover;border:2px solid '+(rank===1?'#FFD700':rank===2?'#C0C0C0':'#cd7f32')+';">'
+        : '<div style="width:'+(rank===1?'56px':'48px')+';height:'+(rank===1?'56px':'48px')+';border-radius:50%;background:#1a1a1a;border:2px solid '+(rank===1?'#FFD700':rank===2?'#C0C0C0':'#cd7f32')+';display:flex;align-items:center;justify-content:center;font-size:'+(rank===1?'20px':'17px')+';font-weight:900;color:#888;">'+((u.prenom||'?').charAt(0).toUpperCase())+'</div>';
+      podHtml += '<div style="display:flex;flex-direction:column;align-items:center;gap:6px;flex:1;max-width:100px;">'
+        +'<div style="font-size:'+(rank===1?'22px':'18px')+';">'+medals[rank-1]+'</div>'
+        +avatarHtml
+        +'<div style="font-size:'+(rank===1?'12px':'11px')+';font-weight:900;color:#fff;text-align:center;line-height:1.2;">'+u.name.split(' ')[0]+'</div>'
+        +(badgeMeta.label?'<div class="tier-badge '+(badgeMeta.cls||'')+'" style="font-size:9px;padding:2px 7px;">'+badgeMeta.label+'</div>':'')
+        +'<div style="font-size:11px;color:#FFD700;font-weight:800;">'+u.referralCount+' parrainage'+(u.referralCount>1?'s':'')+'</div>'
+        +'<div style="background:'+(rank===1?'#FFD700':rank===2?'#C0C0C0':'#cd7f32')+';width:100%;height:'+h+';border-radius:8px 8px 0 0;margin-top:4px;"></div>'
+        +'</div>';
+    });
+    podHtml += '</div></div>';
+    podiumEl.innerHTML = podHtml;
+  } else if(podiumEl) { podiumEl.innerHTML = ''; }
+  // Liste
+  var listEl = document.getElementById('ta-list'); if(!listEl) return;
+  var page = filtered.slice(_taPage * PAGE_SIZE, (_taPage + 1) * PAGE_SIZE);
+  if(!page.length){ listEl.innerHTML = '<div class="espace-empty">Aucun ambassadeur trouvé.</div>'; document.getElementById('ta-pagination').innerHTML=''; return; }
+  var offset = _taPage * PAGE_SIZE;
+  listEl.innerHTML = '<div style="display:flex;flex-direction:column;gap:9px;">'+page.map(function(u, i){
+    var rank = offset + i + 1;
+    var badgeMeta = tierBadgeMeta(u.badge) || {};
+    var avatarHtml = u.photo
+      ? '<img src="'+u.photo+'" alt="" style="width:42px;height:42px;border-radius:50%;object-fit:cover;flex-shrink:0;">'
+      : '<div style="width:42px;height:42px;border-radius:50%;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;color:#888;flex-shrink:0;">'+((u.prenom||'?').charAt(0).toUpperCase())+'</div>';
+    var medal = rank<=3 ? ['🥇','🥈','🥉'][rank-1]+' ' : rank+'. ';
+    return '<div style="display:flex;align-items:center;gap:12px;background:#111;border:1px solid #1e1e1e;border-radius:12px;padding:11px 13px;">'
+      +'<div style="font-size:'+(rank<=3?'18px':'13px')+';font-weight:900;color:'+(rank<=3?'#FFD700':'#555')+';min-width:32px;text-align:center;">'+medal+'</div>'
+      +avatarHtml
+      +'<div style="flex:1;min-width:0;">'
+      +'<div style="font-size:13px;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+u.name+'</div>'
+      +(badgeMeta.label?'<div class="tier-badge '+(badgeMeta.cls||'')+'" style="font-size:9px;padding:2px 7px;margin-top:3px;display:inline-block;">'+badgeMeta.label+'</div>':'')
+      +'</div>'
+      +'<div style="text-align:right;flex-shrink:0;">'
+      +'<div style="font-size:15px;font-weight:900;color:#FFD700;">'+u.referralCount+'</div>'
+      +'<div style="font-size:9px;color:#666;">parrainage'+(u.referralCount>1?'s':'')+'</div>'
+      +'</div></div>';
+  }).join('')+'</div>';
+  // Pagination
+  var pagEl = document.getElementById('ta-pagination'); if(!pagEl) return;
+  if(totalPages <= 1){ pagEl.innerHTML = ''; return; }
+  var pagHtml = '';
+  if(_taPage > 0) pagHtml += '<button onclick="_taGo('+(_taPage-1)+')" style="background:#111;border:1px solid #2a2a2a;color:#888;border-radius:8px;padding:7px 14px;font-size:12px;cursor:pointer;">‹ Précédent</button>';
+  pagHtml += '<span style="font-size:12px;color:#555;padding:7px 4px;">'+(_taPage+1)+' / '+totalPages+'</span>';
+  if(_taPage < totalPages-1) pagHtml += '<button onclick="_taGo('+(_taPage+1)+')" style="background:#111;border:1px solid #2a2a2a;color:#888;border-radius:8px;padding:7px 14px;font-size:12px;cursor:pointer;">Suivant ›</button>';
+  pagEl.innerHTML = pagHtml;
+}
+function _taGo(page){ _taPage = page; _taRenderAll(); var el=document.getElementById('ta-list'); if(el) el.scrollIntoView({behavior:'smooth'}); }
 function showFavoris(){
   var c = document.getElementById('profilContent'); if(!c) return;
   _saveProfilScroll('showFavoris');
@@ -5624,28 +5771,57 @@ function showGenesisMissions(){
           +'<div style="font-size:11px;color:#ccc;line-height:1.5;"><strong style="color:#FFD700;">Mission débloquée pour vous !</strong><br>Atteignez le niveau Créateur (100 QG) pour démarrer votre progression.</div>'
           +'</div>'
         : '';
-      el.innerHTML = _celebBanner + _filleulBanner + '<div class="genesis-mission-grid">'+missions.map(function(m){
+      var communauteMissions = missions.filter(function(m){ return m.category === 'communaute'; });
+      var otherMissions = missions.filter(function(m){ return m.category !== 'communaute'; });
+      // Index de la première mission communauté non complétée (pour highlight)
+      var firstActiveCommunIdx = communauteMissions.findIndex(function(m){ return !m.completed; });
+      function _missionCard(m, isCommunaute, isActive) {
         var done = m.completed;
-        var rewardClaimed = done && m.id === 'multi_collab' && _mcBonusGranted;
+        var rewardClaimed = m.rewardClaimed === true;
         var qgBadge = m.qgReward
           ? '<span style="display:inline-flex;align-items:center;gap:4px;background:' + (done?'rgba(81,207,102,.12)':'rgba(255,215,0,.1)') + ';border:1px solid ' + (done?'rgba(81,207,102,.3)':'rgba(255,215,0,.3)') + ';border-radius:20px;padding:3px 9px;font-size:11px;font-weight:800;color:' + (done?'#51cf66':'#FFD700') + ';white-space:nowrap;">'
             + '<i class="fa-solid fa-bolt" style="font-size:9px;"></i> +' + m.qgReward + ' QG'
-            + (rewardClaimed ? ' <i class="fa-solid fa-check" style="font-size:9px;"></i>' : (done ? ' <i class="fa-solid fa-check" style="font-size:9px;"></i>' : ''))
+            + (done ? ' <i class="fa-solid fa-check" style="font-size:9px;"></i>' : '')
             + '</span>'
           : '';
-        var html = '<div class="genesis-mission-card'+(done?' done':'')+'">';
+        var statusLabel = done ? 'Accomplie' : (isActive ? 'En cours' : 'À venir');
+        var statusClass = done ? 'done' : (isActive ? 'pending' : 'pending');
+        var statusIcon  = done ? 'fa-check' : (isActive ? 'fa-hourglass-half' : 'fa-lock');
+        var cardStyle = isCommunaute && !done && !isActive ? 'opacity:.55;' : '';
+        var html = '<div class="genesis-mission-card'+(done?' done':'')+'" style="'+cardStyle+'">';
         html += '<div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:8px;">';
-        html += '<div class="genesis-mission-status '+(done?'done':'pending')+'" style="margin-bottom:0;"><i class="fa-solid '+(done?'fa-check':'fa-hourglass-half')+'"></i> '+(done?'Accomplie':'En cours')+'</div>';
+        html += '<div class="genesis-mission-status '+statusClass+'" style="margin-bottom:0;"><i class="fa-solid '+statusIcon+'"></i> '+statusLabel+'</div>';
         html += qgBadge;
         html += '</div>';
         html += '<div class="genesis-mission-top"><i class="fa-solid '+m.icon+'"></i><div class="genesis-mission-label">'+m.label+'</div></div>';
         html += '<div class="genesis-mission-desc">'+m.description+'</div>';
         html += '<div class="badge-progress-track"><div class="badge-progress-fill" style="width:'+m.percent+'%"></div></div>';
         html += '<div class="genesis-mission-count">'+m.current+' / '+m.target+'</div>';
-        if(rewardClaimed) html += '<div style="font-size:10px;color:#4caf50;font-weight:700;margin-top:6px;text-align:center;"><i class="fa-solid fa-gift"></i> +75 QG crédités</div>';
+        if(rewardClaimed && done) html += '<div style="font-size:10px;color:#4caf50;font-weight:700;margin-top:6px;text-align:center;"><i class="fa-solid fa-gift"></i> +'+m.qgReward+' QG crédités</div>';
         html += '</div>';
         return html;
-      }).join('')+'</div>';
+      }
+      var communauteHtml = '';
+      if(communauteMissions.length) {
+        communauteHtml = '<div style="margin-bottom:20px;">'
+          +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">'
+          +'<div style="width:36px;height:36px;background:linear-gradient(135deg,#FFD700,#e6a800);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">'
+          +'<i class="fa-solid fa-globe" style="color:#1a1200;font-size:16px;"></i></div>'
+          +'<div><div style="font-size:13px;font-weight:900;color:#FFD700;">Développer la communauté GENESIS</div>'
+          +'<div style="font-size:11px;color:#666;">'+communauteMissions.filter(function(m){return m.completed;}).length+' / '+communauteMissions.length+' mission'+(communauteMissions.length>1?'s':'')+'</div></div>'
+          +'</div>'
+          +'<div style="display:flex;flex-direction:column;gap:9px;">'
+          +communauteMissions.map(function(m, i){ return _missionCard(m, true, i === firstActiveCommunIdx); }).join('')
+          +'</div>'
+          +'<button onclick="showTopAmbassadeurs()" style="width:100%;margin-top:12px;background:#111;border:1px solid #2a2a2a;color:#888;border-radius:12px;padding:10px;font-size:11px;font-weight:700;cursor:pointer;">'
+          +'<i class="fa-solid fa-trophy" style="color:#FFD700;margin-right:6px;"></i>Voir le Top Ambassadeurs GENESIS</button>'
+          +'</div>';
+      }
+      var otherHtml = otherMissions.length
+        ? '<div style="margin-bottom:12px;"><div style="font-size:10px;color:#555;font-weight:800;text-transform:uppercase;letter-spacing:.8px;margin-bottom:12px;">Autres missions</div>'
+          +'<div class="genesis-mission-grid">'+otherMissions.map(function(m){ return _missionCard(m, false, !m.completed); }).join('')+'</div></div>'
+        : '';
+      el.innerHTML = _celebBanner + _filleulBanner + communauteHtml + otherHtml;
     }).catch(function(err){
       var el = document.getElementById('genesis-missions-list');
       if(el) el.innerHTML = '<div class="espace-empty"><i class="fa-solid fa-circle-exclamation" style="color:#f03e3e;"></i> '+(err && err.message ? err.message : 'Erreur de connexion')+'</div>';
@@ -6671,7 +6847,6 @@ function _syncUserBadge(){
       USER.favoris = d.favoris || [];
       USER.referralCode = d.referralCode;
       USER.referralCount = d.referralCount;
-      USER.isCerclePrivilege = d.isCerclePrivilege;
       USER.patrimoineGenesis = d.patrimoineGenesis;
       USER.referralDiscount = d.referralDiscount || null;
       USER.welcomeDiscountEligible = d.welcomeDiscountEligible === true;
