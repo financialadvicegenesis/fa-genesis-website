@@ -24,6 +24,7 @@ const { OFFER_BLUEPRINTS, getOfferBlueprint, getAllOfferKeys } = require('./conf
 const { fillTemplate, getAvailableTemplates, getTemplate } = require('./config/documentTemplates');
 const aiService = require('./services/aiService');
 const bootstrapService = require('./services/bootstrapService');
+const mps = require('./services/marketplace-payment-service');
 const persistentStore = require('./persistent-store');
 const webpush = require('web-push');
 
@@ -1201,6 +1202,81 @@ app.use(cors({
     credentials: true,
     allowedHeaders: ['Content-Type', 'Authorization', 'x-admin-key']
 }));
+
+// Stripe webhooks nécessitent le raw body pour vérifier la signature.
+// Ces routes doivent être déclarées AVANT express.json().
+app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), async (req, res) => {
+    var sig    = req.headers['stripe-signature'];
+    var secret = process.env.STRIPE_WEBHOOK_SECRET;
+    if (!secret) return res.status(500).json({ error: 'STRIPE_WEBHOOK_SECRET non configuré' });
+    var event;
+    try { event = mps.handleWebhookRaw(req.body, sig, secret); }
+    catch(e) { console.error('[STRIPE-WH] Signature invalide:', e.message); return res.status(400).send('Webhook Error: ' + e.message); }
+
+    try {
+        if (event.type === 'payment_intent.succeeded') {
+            var pi = event.data.object;
+            mps.markPaymentSucceeded(pi.id);
+            var orderId = pi.metadata && pi.metadata.order_id;
+            var stage   = pi.metadata && pi.metadata.stage;
+            console.log('[STRIPE-WH] Paiement réussi:', pi.id, orderId, stage);
+            if (orderId && stage) {
+                var orders = loadOrders();
+                var oIdx = orders.findIndex(function(o){ return o.id === orderId; });
+                if (oIdx !== -1) {
+                    if (stage === 'deposit' || stage === 'installment_1') {
+                        orders[oIdx].deposit_paid    = true;
+                        orders[oIdx].deposit_paid_at = new Date().toISOString();
+                        orders[oIdx].paymentStatus   = 'deposit_paid';
+                        orders[oIdx].payment_method  = 'stripe';
+                    } else {
+                        orders[oIdx].balance_paid    = true;
+                        orders[oIdx].balance_paid_at = new Date().toISOString();
+                        orders[oIdx].paymentStatus   = 'fully_paid';
+                    }
+                    orders[oIdx].updatedAt = new Date().toISOString();
+                    saveOrders(orders);
+                    try { await processDispatchPayout(orders[oIdx], stage); } catch(pe){ console.error('[STRIPE-WH] Payout error:', pe.message); }
+                }
+            }
+        } else if (event.type === 'payment_intent.payment_failed') {
+            mps.markPaymentFailed(event.data.object.id);
+            console.log('[STRIPE-WH] Paiement échoué:', event.data.object.id);
+        } else if (event.type === 'account.updated') {
+            // Mise à jour statut KYC d'un prestataire Connect
+            var acct = event.data.object;
+            var partners = loadPartners();
+            var pIdx = partners.findIndex(function(p){ return p.stripeAccountId === acct.id; });
+            if (pIdx !== -1) {
+                var newStatus = (acct.charges_enabled && acct.payouts_enabled)    ? 'active'
+                              : (!acct.details_submitted)                          ? 'pending'
+                              : (acct.requirements && acct.requirements.disabled_reason && acct.requirements.disabled_reason.indexOf('rejected') !== -1) ? 'rejected'
+                              : (acct.requirements && acct.requirements.currently_due && acct.requirements.currently_due.length > 0) ? 'requires_info'
+                              : 'pending';
+                partners[pIdx].stripeAccountStatus  = newStatus;
+                partners[pIdx].stripeChargesEnabled = acct.charges_enabled;
+                partners[pIdx].stripePayoutsEnabled = acct.payouts_enabled;
+                partners[pIdx].stripeDetailsSubmitted = acct.details_submitted;
+                partners[pIdx].updatedAt = new Date().toISOString();
+                savePartners(partners);
+                var pEmail = partners[pIdx].email;
+                var notifMap = {
+                    active:       { t: 'Compte de paiement vérifié ✓',                    b: 'Vous pouvez désormais recevoir vos rémunérations automatiquement.' },
+                    pending:      { t: 'Vérification de votre compte en cours',            b: 'Stripe examine vos informations. Vous serez notifié dès validation.' },
+                    requires_info:{ t: 'Informations complémentaires requises',            b: 'Connectez-vous à votre espace paiements pour fournir les documents manquants.' },
+                    rejected:     { t: 'Compte de paiement refusé',                       b: 'Contactez le support FA GENESIS pour régulariser votre situation.' }
+                };
+                var nm = notifMap[newStatus];
+                if (nm) notifyUser(pEmail, 'partner', 'stripe_account_' + newStatus, nm.t, nm.b, null);
+                console.log('[STRIPE-WH] account.updated', acct.id, '→', newStatus);
+            }
+        } else if (event.type === 'payout.paid') {
+            console.log('[STRIPE-WH] Payout versé au prestataire:', event.data.object.id);
+        }
+    } catch(we) { console.error('[STRIPE-WH] Erreur traitement event:', we.message); }
+
+    res.json({ received: true });
+});
 
 // Parser JSON (limite augmentee pour supporter les fichiers base64)
 app.use(express.json({ limit: '50mb' }));
@@ -17438,6 +17514,312 @@ async function initTestAccounts() {
         console.error('[TEST] Erreur initTestAccounts:', e.message);
     }
 }
+
+// ============================================================
+// STRIPE CONNECT — MARKETPLACE PAYMENT MODULE
+// ============================================================
+
+// ── Config publique (publishable key + commission) ────────────────────────────
+app.get('/api/payments/stripe/config', function(req, res) {
+    var cfg = mps.getConfig();
+    res.json({
+        publishableKey:    process.env.STRIPE_PUBLISHABLE_KEY || null,
+        globalCommission:  cfg.globalCommissionRate,
+        currency:          cfg.currency || 'eur',
+        paymentsEnabled:   cfg.paymentsEnabled !== false,
+        stripeEnabled:     !!(process.env.STRIPE_SECRET_KEY && process.env.STRIPE_PUBLISHABLE_KEY)
+    });
+});
+
+// ── Onboarding prestataire — étape 1 : créer le compte Connect ───────────────
+app.post('/api/partner/stripe/setup', authenticatePartner, async function(req, res) {
+    try {
+        var partner = req.partner;
+        if (partner.stripeAccountId) {
+            // Compte déjà créé → renvoyer un nouveau lien d'onboarding
+            var baseUrl = process.env.FRONT_URL || 'https://fagenesis.com';
+            var url = await mps.getPartnerOnboardingLink(partner.stripeAccountId, baseUrl);
+            return res.json({ ok: true, url: url, accountId: partner.stripeAccountId });
+        }
+
+        var b = req.body || {};
+        var entityType = b.entityType || 'particulier';
+
+        if (entityType !== 'particulier' && entityType !== 'entreprise') {
+            return res.status(400).json({ error: 'entityType invalide (particulier|entreprise)' });
+        }
+        if (entityType === 'entreprise' && !(b.raisonSociale || '').trim()) {
+            return res.status(400).json({ error: 'Raison sociale requise' });
+        }
+
+        var accountData = {
+            email:              partner.email,
+            country:            (b.country || 'FR').toUpperCase(),
+            entityType:         entityType,
+            prenom:             b.prenom             || partner.prenom || '',
+            nom:                b.nom                || partner.nom   || '',
+            raisonSociale:      b.raisonSociale      || '',
+            registrationNumber: b.registrationNumber || '',
+            representantPrenom: b.representantPrenom || b.prenom || '',
+            representantNom:    b.representantNom    || b.nom    || '',
+            partnerId:          partner.id
+        };
+
+        var account = await mps.setupPartnerStripeAccount(accountData);
+
+        // Persister les infos Stripe sur le partenaire
+        var partners = loadPartners();
+        var idx = partners.findIndex(function(p){ return p.id === partner.id; });
+        if (idx !== -1) {
+            partners[idx].stripeAccountId      = account.id;
+            partners[idx].stripeAccountStatus  = 'pending';
+            partners[idx].stripeChargesEnabled = false;
+            partners[idx].stripePayoutsEnabled = false;
+            partners[idx].stripeDetailsSubmitted = false;
+            partners[idx].entityType           = entityType;
+            partners[idx].updatedAt            = new Date().toISOString();
+            savePartners(partners);
+        }
+
+        var baseUrl = process.env.FRONT_URL || 'https://fagenesis.com';
+        var onboardingUrl = await mps.getPartnerOnboardingLink(account.id, baseUrl);
+
+        notifyUser(partner.email, 'partner', 'stripe_account_created',
+            'Compte de paiement créé',
+            'Complétez la configuration Stripe pour recevoir vos rémunérations.',
+            null);
+
+        res.json({ ok: true, url: onboardingUrl, accountId: account.id });
+    } catch(e) {
+        console.error('[STRIPE SETUP]', e.message);
+        res.status(500).json({ error: e.message || 'Erreur lors de la création du compte Stripe' });
+    }
+});
+
+// ── Nouveau lien d'onboarding (si le premier a expiré — 1h TTL Stripe) ───────
+app.get('/api/partner/stripe/onboarding-link', authenticatePartner, async function(req, res) {
+    try {
+        var partner = req.partner;
+        if (!partner.stripeAccountId) {
+            return res.status(400).json({ error: 'Aucun compte Stripe associé. Faites /setup d\'abord.' });
+        }
+        var baseUrl = process.env.FRONT_URL || 'https://fagenesis.com';
+        var url = await mps.getPartnerOnboardingLink(partner.stripeAccountId, baseUrl);
+        res.json({ ok: true, url: url });
+    } catch(e) {
+        console.error('[STRIPE LINK]', e.message);
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// ── Statut du compte Stripe du prestataire ────────────────────────────────────
+app.get('/api/partner/stripe/status', authenticatePartner, async function(req, res) {
+    try {
+        var partner = req.partner;
+        if (!partner.stripeAccountId) {
+            return res.json({ ok: true, configured: false, statusLabel: 'not_configured' });
+        }
+        var status = await mps.getPartnerStripeStatus(partner.stripeAccountId);
+        res.json({ ok: true, configured: true, accountId: partner.stripeAccountId, entityType: partner.entityType || null, ...status });
+    } catch(e) {
+        console.error('[STRIPE STATUS]', e.message);
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// ── Configuration du calendrier de versements ─────────────────────────────────
+app.post('/api/partner/stripe/payout-schedule', authenticatePartner, async function(req, res) {
+    try {
+        var partner = req.partner;
+        if (!partner.stripeAccountId || !partner.stripeChargesEnabled) {
+            return res.status(400).json({ error: 'Compte Stripe non encore vérifié' });
+        }
+        var b = req.body || {};
+        var interval = b.interval || 'daily';
+        if (['daily','weekly','monthly'].indexOf(interval) === -1) {
+            return res.status(400).json({ error: 'interval invalide (daily|weekly|monthly)' });
+        }
+        await mps.provider.updatePayoutSchedule(partner.stripeAccountId, {
+            interval:      interval,
+            weeklyAnchor:  b.weeklyAnchor  || undefined,
+            monthlyAnchor: b.monthlyAnchor || undefined
+        });
+        res.json({ ok: true, interval: interval });
+    } catch(e) {
+        console.error('[STRIPE SCHEDULE]', e.message);
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// ── Historique paiements Stripe du prestataire ────────────────────────────────
+app.get('/api/partner/stripe/payments', authenticatePartner, function(req, res) {
+    try {
+        var partner  = req.partner;
+        var payments = mps.loadStripePayments()
+            .filter(function(p){ return p.partnerId === partner.id; })
+            .sort(function(a,b){ return new Date(b.createdAt) - new Date(a.createdAt); });
+        res.json({ ok: true, payments: payments });
+    } catch(e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// ── Créer un PaymentIntent (appelé par le front client avant affichage du form) ─
+app.post('/api/payments/stripe/create-intent', async function(req, res) {
+    try {
+        // Auth client (même pattern que /api/my-orders)
+        var token = (req.headers.authorization || '').replace('Bearer ', '').trim();
+        if (!token) return res.status(401).json({ error: 'Token requis' });
+        var jwt = require('jsonwebtoken');
+        var payload;
+        try { payload = jwt.verify(token, process.env.JWT_SECRET); }
+        catch(e) { return res.status(401).json({ error: 'Token invalide' }); }
+        var users = loadUsers();
+        var user = users.find(function(u){ return u.email === payload.email; });
+        if (!user) return res.status(401).json({ error: 'Utilisateur introuvable' });
+
+        var b = req.body || {};
+        if (!b.partnerId || !b.amountEuros) {
+            return res.status(400).json({ error: 'partnerId et amountEuros requis' });
+        }
+
+        var partners = loadPartners();
+        var partner  = partners.find(function(p){ return p.id === b.partnerId; });
+        if (!partner || !partner.stripeAccountId || !partner.stripeChargesEnabled) {
+            return res.status(400).json({ error: 'Ce prestataire n\'a pas encore configuré ses paiements Stripe.' });
+        }
+
+        // S'assurer que le client a un Stripe Customer ID
+        var stripeCustomerId = user.stripeCustomerId || null;
+        if (!stripeCustomerId) {
+            stripeCustomerId = await mps.ensureStripeCustomer({ email: user.email, prenom: user.prenom, nom: user.nom, id: user.id });
+            var uIdx = users.findIndex(function(u){ return u.id === user.id; });
+            if (uIdx !== -1) { users[uIdx].stripeCustomerId = stripeCustomerId; saveUsers(users); }
+        }
+
+        var result = await mps.createClientPaymentIntent({
+            amountEuros:            parseFloat(b.amountEuros),
+            partnerType:            partner.partner_type || 'other',
+            partnerId:              partner.id,
+            stripeConnectedAccountId: partner.stripeAccountId,
+            clientStripeCustomerId: stripeCustomerId,
+            clientEmail:            user.email,
+            orderId:                b.orderId  || null,
+            stage:                  b.stage    || 'deposit',
+            description:            b.description || ('FA GENESIS — ' + (b.label || 'Prestation'))
+        });
+
+        res.json({ ok: true, clientSecret: result.clientSecret, paymentIntentId: result.paymentIntentId, split: result.split });
+    } catch(e) {
+        console.error('[STRIPE INTENT]', e.message);
+        res.status(500).json({ error: e.message || 'Erreur lors de la création du paiement' });
+    }
+});
+
+// ── Admin : statistiques marketplace ─────────────────────────────────────────
+app.get('/api/admin/marketplace/stats', function(req, res) {
+    if (!isValidAdminKey(req)) return res.status(403).json({ error: 'Accès refusé' });
+    try {
+        var stats = mps.getMarketplaceStats();
+        // Statuts des comptes prestataires
+        var partners = loadPartners().filter(function(p){ return p.accountStatus === 'active'; });
+        var stripeVerified  = partners.filter(function(p){ return p.stripeAccountStatus === 'active'; }).length;
+        var stripePending   = partners.filter(function(p){ return p.stripeAccountId && p.stripeAccountStatus !== 'active'; }).length;
+        var stripeNone      = partners.filter(function(p){ return !p.stripeAccountId; }).length;
+        res.json(Object.assign({}, stats, {
+            partnerStats: { verified: stripeVerified, pending: stripePending, notConfigured: stripeNone }
+        }));
+    } catch(e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// ── Admin : configuration des commissions ─────────────────────────────────────
+app.get('/api/admin/marketplace/config', function(req, res) {
+    if (!isValidAdminKey(req)) return res.status(403).json({ error: 'Accès refusé' });
+    res.json({ ok: true, config: mps.getConfig() });
+});
+
+app.put('/api/admin/marketplace/config', function(req, res) {
+    if (!isValidAdminKey(req)) return res.status(403).json({ error: 'Accès refusé' });
+    try {
+        var b = req.body || {};
+        var patch = {};
+        if (typeof b.globalCommissionRate === 'number') {
+            if (b.globalCommissionRate < 0 || b.globalCommissionRate > 0.5) {
+                return res.status(400).json({ error: 'Commission globale entre 0 et 50 %' });
+            }
+            patch.globalCommissionRate = b.globalCommissionRate;
+        }
+        if (b.categoryCommissions && typeof b.categoryCommissions === 'object') {
+            var cats = {};
+            Object.keys(b.categoryCommissions).forEach(function(k){
+                var v = parseFloat(b.categoryCommissions[k]);
+                if (!isNaN(v) && v >= 0 && v <= 0.5) cats[k] = v;
+            });
+            patch.categoryCommissions = cats;
+        }
+        if (typeof b.paymentsEnabled === 'boolean') patch.paymentsEnabled = b.paymentsEnabled;
+        if (['daily','weekly','monthly'].indexOf(b.payoutSchedule) !== -1) patch.payoutSchedule = b.payoutSchedule;
+        if (typeof b.payoutDelayDays === 'number' && b.payoutDelayDays >= 0) patch.payoutDelayDays = b.payoutDelayDays;
+        var cfg = mps.updateConfig(patch);
+        res.json({ ok: true, config: cfg });
+    } catch(e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// ── Admin : liste des comptes partenaires Stripe ──────────────────────────────
+app.get('/api/admin/marketplace/partners', function(req, res) {
+    if (!isValidAdminKey(req)) return res.status(403).json({ error: 'Accès refusé' });
+    try {
+        var partners = loadPartners().filter(function(p){ return p.accountStatus === 'active'; });
+        var list = partners.map(function(p) {
+            return {
+                id:                  p.id,
+                prenom:              p.prenom,
+                nom:                 p.nom,
+                email:               p.email,
+                partner_type:        p.partner_type,
+                entityType:          p.entityType        || null,
+                stripeAccountId:     p.stripeAccountId   || null,
+                stripeAccountStatus: p.stripeAccountStatus || 'not_configured',
+                stripeChargesEnabled:p.stripeChargesEnabled || false,
+                stripePayoutsEnabled:p.stripePayoutsEnabled || false
+            };
+        });
+        res.json({ ok: true, partners: list });
+    } catch(e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// ── Admin : remboursement ─────────────────────────────────────────────────────
+app.post('/api/admin/marketplace/refund', async function(req, res) {
+    if (!isValidAdminKey(req)) return res.status(403).json({ error: 'Accès refusé' });
+    try {
+        var b = req.body || {};
+        if (!b.paymentIntentId) return res.status(400).json({ error: 'paymentIntentId requis' });
+        var refund = await mps.refundPayment(b.paymentIntentId, b.amountEuros || null, b.reason || 'requested_by_customer');
+        res.json({ ok: true, refundId: refund.id, amountCents: refund.amount, status: refund.status });
+    } catch(e) {
+        console.error('[STRIPE REFUND]', e.message);
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// ── Admin : liste des paiements Stripe ───────────────────────────────────────
+app.get('/api/admin/marketplace/payments', function(req, res) {
+    if (!isValidAdminKey(req)) return res.status(403).json({ error: 'Accès refusé' });
+    try {
+        var payments = mps.loadStripePayments()
+            .sort(function(a,b){ return new Date(b.createdAt) - new Date(a.createdAt); });
+        var limit = parseInt(req.query.limit) || 100;
+        res.json({ ok: true, payments: payments.slice(0, limit), total: payments.length });
+    } catch(e) {
+        res.status(500).json({ error: e.message });
+    }
+});
 
 // ============================================================
 // DEMARRAGE DU SERVEUR

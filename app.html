@@ -2798,9 +2798,12 @@ a{text-decoration:none;color:inherit}
           <div id="ptnr-missions-list"></div>
         </div>
 
-        <!-- Sub-screen: Versements -->
+        <!-- Sub-screen: Versements / Paiements Stripe Connect -->
         <div class="ptnr-screen" id="ptnr-screen-versements">
           <div class="ptnr-section-title">Portefeuille GENESIS SAFE™</div>
+          <!-- Stripe Connect onboarding -->
+          <div id="ptnr-stripe-setup" style="padding:0 0 12px;"></div>
+          <!-- PayPal / IBAN (fallback legacy) -->
           <div id="ptnr-paypal-setup" style="padding:0 0 16px;"></div>
           <div id="ptnr-versements-list"></div>
         </div>
@@ -11528,12 +11531,23 @@ function closePartnerBooking(){
   sheet.classList.remove('up');
   setTimeout(function(){ overlay.classList.remove('open'); }, 460);
 }
+var _stripeInstance = null;  // Stripe.js instance
+var _stripeElements = null;  // Stripe Elements instance
+var _stripePaymentEl = null; // Payment Element
+var _pbStripeIntentId = null;
+
 function pbPayDeposit(){
   if(!_pbPartner||!_pbService||!USER||GUEST) return;
   if(_pbSelectedPayMethod==='paypal'){ _pbPayDepositPayPal(); return; }
   var er=document.getElementById('pb-err'); if(er) er.classList.remove('on');
-  var sb=document.getElementById('pb-pay-btn'); if(sb){sb.disabled=true;sb.textContent='Création de la commande...';}
 
+  // ── Stripe Connect disponible pour ce partenaire → paiement Stripe ─────────
+  if(_pbPartner.stripeAccountId && _pbPartner.stripeChargesEnabled){
+    _pbPayDepositStripe(); return;
+  }
+
+  // ── Fallback SumUp ─────────────────────────────────────────────────────────
+  var sb=document.getElementById('pb-pay-btn'); if(sb){sb.disabled=true;sb.textContent='Création de la commande...';}
   var clientInfo = {
     firstName: USER.prenom||USER.firstName||'',
     lastName: USER.nom||USER.lastName||'',
@@ -11541,7 +11555,6 @@ function pbPayDeposit(){
     phone: USER.telephone||USER.phone||'',
     clientType: 'particulier'
   };
-
   var _pbUseReferral = (USER && (USER.welcomeDiscountEligible === true || (USER.referralDiscount && !USER.referralDiscount.applied))) ? true : false;
   var _pbWelcomePct = (USER && USER.referralDiscount && USER.referralDiscount.pct) ? USER.referralDiscount.pct : 15;
   var _pbDiscountLabel = _pbUseReferral ? ' · -' + _pbWelcomePct + '% bienvenue' : '';
@@ -11566,6 +11579,110 @@ function pbPayDeposit(){
     if(sb){sb.disabled=false;sb.textContent='Réessayer le paiement';}
     if(er){er.textContent=err.message||'Erreur. Réessayez.';er.classList.add('on');}
   });
+}
+
+function _pbPayDepositStripe(){
+  var er=document.getElementById('pb-err'); if(er) er.classList.remove('on');
+  var sb=document.getElementById('pb-pay-btn'); if(sb){sb.disabled=true;sb.textContent='Initialisation du paiement…';}
+  var clientInfo={firstName:USER.prenom||'',lastName:USER.nom||'',email:USER.email||'',phone:USER.telephone||'',clientType:'particulier'};
+
+  // 1. Créer la commande
+  fetch((window.FA_GENESIS_API||API)+'/api/orders/create',{
+    method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+USER._token},
+    body:JSON.stringify({ clientInfo:clientInfo, partnerServiceOrder:{partnerId:_pbPartner.id,serviceId:_pbService.id} })
+  }).then(function(r){ return r.json().then(function(d){ return {ok:r.ok,data:d}; }); })
+  .then(function(res){
+    if(!res.ok||!res.data||!res.data.orderId) throw new Error((res.data&&res.data.error)||'Erreur création commande');
+    var orderId = res.data.orderId;
+    // 2. Créer le PaymentIntent Stripe
+    return fetch((window.FA_GENESIS_API||API)+'/api/payments/stripe/create-intent',{
+      method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+USER._token},
+      body:JSON.stringify({
+        partnerId: _pbPartner.id,
+        amountEuros: _pbDepositAmount,
+        orderId: orderId, stage:'deposit',
+        label: _pbService.label||'Prestation',
+        description: 'FA GENESIS — '+(_pbService.label||'Prestation')+' (acompte)'
+      })
+    }).then(function(r2){ return r2.json().then(function(d2){ return {ok:r2.ok,data:d2,orderId:orderId}; }); });
+  }).then(function(res2){
+    if(!res2.ok||!res2.data||!res2.data.clientSecret) throw new Error((res2.data&&res2.data.error)||'Erreur initialisation paiement Stripe');
+    _pbStripeIntentId = res2.data.paymentIntentId;
+    _pbMountStripeElements(res2.data.clientSecret);
+    if(sb){sb.disabled=false;sb.textContent='PAYER L\'ACOMPTE';}
+  }).catch(function(err){
+    if(sb){sb.disabled=false;sb.textContent='PAYER L\'ACOMPTE';}
+    if(er){er.textContent=err.message||'Erreur. Réessayez.';er.classList.add('on');}
+  });
+}
+
+function _pbMountStripeElements(clientSecret){
+  var fm=document.getElementById('pb-form'); if(fm) fm.style.display='none';
+  var ss=document.getElementById('pb-stripe-screen'); if(ss) ss.style.display='block';
+  var container=document.getElementById('pb-stripe-elements-container');
+  if(!container) return;
+  container.innerHTML='<div id="pb-stripe-payment-element"></div>';
+
+  // Initialiser Stripe.js avec la clé publique (récupérée depuis /api/payments/stripe/config)
+  function mountElements(pubKey){
+    try{
+      _stripeInstance = Stripe(pubKey);
+      _stripeElements = _stripeInstance.elements({ clientSecret: clientSecret, appearance: { theme:'night', variables:{ colorPrimary:'#FFD700', colorBackground:'#0d0d0d', colorText:'#ffffff', colorDanger:'#ef4444', borderRadius:'10px' } } });
+      _stripePaymentEl = _stripeElements.create('payment');
+      _stripePaymentEl.mount('#pb-stripe-payment-element');
+    } catch(e){
+      var errEl=document.getElementById('pb-stripe-err-msg'); if(errEl){errEl.textContent='Erreur Stripe.js : '+e.message;errEl.style.display='block';}
+    }
+  }
+
+  if(window._stripePublishableKey){
+    mountElements(window._stripePublishableKey);
+  } else {
+    fetch((window.FA_GENESIS_API||API)+'/api/payments/stripe/config')
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if(!d.publishableKey) throw new Error('Clé Stripe non configurée');
+      window._stripePublishableKey = d.publishableKey;
+      mountElements(d.publishableKey);
+    }).catch(function(e){
+      var errEl=document.getElementById('pb-stripe-err-msg'); if(errEl){errEl.textContent='Impossible de charger Stripe. '+e.message;errEl.style.display='block';}
+    });
+  }
+}
+
+async function _pbConfirmStripePayment(){
+  var btn=document.getElementById('pb-stripe-pay-btn');
+  var errEl=document.getElementById('pb-stripe-err-msg');
+  if(errEl){errEl.style.display='none';errEl.textContent='';}
+  if(btn){btn.disabled=true;btn.textContent='Traitement en cours…';}
+  if(!_stripeInstance||!_stripeElements){ if(btn){btn.disabled=false;btn.textContent='PAYER EN SÉCURISÉ';} return; }
+  try{
+    var result = await _stripeInstance.confirmPayment({
+      elements: _stripeElements,
+      confirmParams: { return_url: window.location.origin+'/app.html?stripe_payment=1', receipt_email: USER&&USER.email||undefined },
+      redirect: 'if_required'
+    });
+    if(result.error){
+      if(errEl){errEl.textContent=result.error.message||'Paiement refusé.';errEl.style.display='block';}
+      if(btn){btn.disabled=false;btn.textContent='RÉESSAYER LE PAIEMENT';}
+    } else if(result.paymentIntent && result.paymentIntent.status==='succeeded'){
+      var ss=document.getElementById('pb-stripe-screen'); if(ss) ss.style.display='none';
+      var sc=document.getElementById('pb-success'); if(sc) sc.style.display='';
+      var sm=document.getElementById('pb-success-msg'); if(sm) sm.textContent='🎉 Paiement confirmé ! Votre acompte est sécurisé par GENESIS SAFE™ et votre commande est confirmée.';
+      launchConfetti(); showToast('Paiement réussi !','Commande confirmée','success');
+      setTimeout(function(){ showToast('+20 QG','Mission lancée !','success'); }, 1600);
+    }
+  } catch(e){
+    if(errEl){errEl.textContent=e.message||'Erreur paiement.';errEl.style.display='block';}
+    if(btn){btn.disabled=false;btn.textContent='RÉESSAYER LE PAIEMENT';}
+  }
+}
+
+function _pbCancelStripe(){
+  var ss=document.getElementById('pb-stripe-screen'); if(ss) ss.style.display='none';
+  var fm=document.getElementById('pb-form'); if(fm) fm.style.display='block';
+  var sb=document.getElementById('pb-pay-btn'); if(sb){sb.disabled=false;sb.textContent='PAYER L\'ACOMPTE';}
+  _stripeElements=null; _stripePaymentEl=null; _stripeInstance=null;
 }
 function _pbMountWidget(checkoutId, orderId){
   var fm=document.getElementById('pb-form'); if(fm) fm.style.display='none';
@@ -12580,6 +12697,15 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
       <div id="pb-widget-screen" style="display:none;">
         <div id="pb-widget-container"></div>
       </div>
+      <div id="pb-stripe-screen" style="display:none;padding:4px 0 8px;">
+        <div id="pb-stripe-elements-container"></div>
+        <div id="pb-stripe-err-msg" style="display:none;background:#1a0000;border:1px solid #3a0000;border-radius:8px;padding:10px 14px;color:#ff6b6b;font-size:12px;margin:10px 0;"></div>
+        <div style="display:flex;gap:8px;margin-top:12px;">
+          <button onclick="_pbCancelStripe()" style="flex:1;background:none;border:1.5px solid #333;border-radius:10px;color:#888;font-size:12px;font-weight:700;padding:10px;cursor:pointer;">← Retour</button>
+          <button id="pb-stripe-pay-btn" onclick="_pbConfirmStripePayment()" style="flex:2;background:linear-gradient(135deg,#635BFF,#8B5CF6);color:#fff;border:none;border-radius:10px;padding:10px;font-size:13px;font-weight:800;cursor:pointer;"><i class="fa-solid fa-lock" style="margin-right:6px;"></i>PAYER EN SÉCURISÉ</button>
+        </div>
+        <div style="font-size:10px;color:#444;text-align:center;margin-top:8px;">Paiement sécurisé par Stripe • FA GENESIS ne stocke pas vos données bancaires</div>
+      </div>
       <div id="pb-paypal-screen" style="display:none;">
         <div id="pb-paypal-loading" style="text-align:center;padding:24px 0;color:#aaa;font-size:13px;"><i class="fa-solid fa-spinner fa-spin" style="margin-right:6px;"></i>Connexion à PayPal...</div>
         <div id="pb-paypal-container" style="padding:4px 0;"></div>
@@ -12800,6 +12926,7 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
 <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
   onload="this.onload=null;this.rel='stylesheet'">
 
+<script src="https://js.stripe.com/v3/"></script>
 <script src="config.js" defer></script>
 <script src="pwa-init.js" defer></script>
 
@@ -13378,12 +13505,173 @@ function _submitAvailability(){
   });
 }
 
+// ── Stripe Connect Setup ──────────────────────────────────────────────────────
+var _stripeSetupEl = null;
+var _stripeStatusCache = null;
+
+function _loadStripeSetup(){
+  var el = document.getElementById('ptnr-stripe-setup');
+  if(!el) return;
+  _stripeSetupEl = el;
+  el.innerHTML = _skeletonRows(1);
+  fetch((window.FA_GENESIS_API||API)+'/api/partner/stripe/status',{headers:{'Authorization':'Bearer '+(USER&&USER._token||'')}})
+  .then(function(r){ return r.json(); })
+  .then(function(d){
+    _stripeStatusCache = d;
+    _renderStripeSetup(d);
+  })
+  .catch(function(){ el.innerHTML=''; });
+}
+
+function _renderStripeSetup(d){
+  var el = _stripeSetupEl || document.getElementById('ptnr-stripe-setup');
+  if(!el) return;
+  var statusLabel = (d && d.statusLabel) || 'not_configured';
+  var configured  = !!(d && d.configured);
+  var labelMap = {
+    not_configured: { txt:'Non configuré',                          cls:'#888',    ico:'fa-circle-xmark' },
+    pending:        { txt:'Vérification en cours',                  cls:'#f59e0b', ico:'fa-clock' },
+    active:         { txt:'Vérifié — paiements actifs',             cls:'#22c55e', ico:'fa-circle-check' },
+    requires_info:  { txt:'Documents complémentaires requis',       cls:'#ef4444', ico:'fa-triangle-exclamation' },
+    rejected:       { txt:'Compte refusé — contactez le support',  cls:'#ef4444', ico:'fa-ban' }
+  };
+  var lbl = labelMap[statusLabel] || labelMap.not_configured;
+
+  var html = '<div style="background:linear-gradient(135deg,#0d1020,#10081a);border:1.5px solid '+(statusLabel==='active'?'#22c55e':'#FFD700')+';border-radius:14px;padding:16px;margin-bottom:12px;">';
+  html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">';
+  html += '<div style="font-size:12px;font-weight:800;letter-spacing:.8px;color:#FFD700;"><i class="fa-brands fa-stripe" style="margin-right:6px;font-size:15px;"></i>STRIPE CONNECT</div>';
+  html += '<div style="font-size:11px;font-weight:700;color:'+lbl.cls+'"><i class="fa-solid '+lbl.ico+'" style="margin-right:4px;"></i>'+lbl.txt+'</div>';
+  html += '</div>';
+
+  if(statusLabel === 'active'){
+    html += '<div style="font-size:12px;color:#aaa;line-height:1.5;margin-bottom:12px;">Vos rémunérations sont versées automatiquement par Stripe après chaque paiement client. FA GENESIS ne stocke aucune donnée bancaire.</div>';
+    // Calendrier de versements
+    html += '<div style="background:#0a0a0a;border-radius:10px;padding:10px 12px;margin-bottom:10px;">';
+    html += '<div style="font-size:11px;color:#888;margin-bottom:6px;font-weight:700;">FRÉQUENCE DES VERSEMENTS</div>';
+    html += '<div style="display:flex;gap:6px;">';
+    ['daily','weekly','monthly'].forEach(function(iv){
+      var lbIv = {daily:'Quotidien',weekly:'Hebdo',monthly:'Mensuel'}[iv];
+      html += '<button onclick="_ptnrSetStripeSchedule(\''+iv+'\')" style="flex:1;padding:8px 4px;border-radius:8px;border:1.5px solid #333;background:#111;color:#ccc;font-size:11px;font-weight:700;cursor:pointer;">'+lbIv+'</button>';
+    });
+    html += '</div></div>';
+    html += '<div style="font-size:11px;color:#555;">Compte ID : '+_esc(d.accountId||'')+'</div>';
+  } else if(!configured){
+    // Wizard de configuration
+    html += '<div style="font-size:13px;color:#ccc;line-height:1.5;margin-bottom:14px;">Configurez vos paiements pour recevoir vos rémunérations automatiquement via Stripe. Stripe collecte et sécurise toutes vos données bancaires — FA GENESIS n\'y accède jamais.</div>';
+    // Sélecteur type de prestataire
+    html += '<div style="margin-bottom:10px;">';
+    html += '<div style="font-size:11px;color:#888;font-weight:700;margin-bottom:6px;">VOUS ÊTES</div>';
+    html += '<div style="display:flex;gap:8px;">';
+    html += '<button id="ptnr-et-particulier" onclick="_ptnrSelectEntityType(\'particulier\')" style="flex:1;padding:10px;border-radius:10px;border:1.5px solid #FFD700;background:#1a1200;color:#FFD700;font-size:12px;font-weight:800;cursor:pointer;"><i class="fa-solid fa-user" style="margin-right:6px;"></i>Particulier</button>';
+    html += '<button id="ptnr-et-entreprise" onclick="_ptnrSelectEntityType(\'entreprise\')" style="flex:1;padding:10px;border-radius:10px;border:1.5px solid #333;background:#111;color:#888;font-size:12px;font-weight:800;cursor:pointer;"><i class="fa-solid fa-building" style="margin-right:6px;"></i>Entreprise</button>';
+    html += '</div></div>';
+    // Formulaire particulier
+    html += '<div id="ptnr-et-form-particulier" style="display:block;">';
+    html += '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;">';
+    html += '<input id="ptnr-stripe-prenom" type="text" placeholder="Prénom" style="background:#1a1a1a;border:1px solid #333;border-radius:10px;color:#fff;padding:10px 12px;font-size:14px;">';
+    html += '<input id="ptnr-stripe-nom" type="text" placeholder="Nom" style="background:#1a1a1a;border:1px solid #333;border-radius:10px;color:#fff;padding:10px 12px;font-size:14px;">';
+    html += '<select id="ptnr-stripe-country" style="background:#1a1a1a;border:1px solid #333;border-radius:10px;color:#fff;padding:10px 12px;font-size:14px;">';
+    html += '<option value="FR">France</option><option value="BE">Belgique</option><option value="CH">Suisse</option><option value="LU">Luxembourg</option><option value="MC">Monaco</option>';
+    html += '</select>';
+    html += '</div></div>';
+    // Formulaire entreprise
+    html += '<div id="ptnr-et-form-entreprise" style="display:none;">';
+    html += '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;">';
+    html += '<input id="ptnr-stripe-raison" type="text" placeholder="Raison sociale *" style="background:#1a1a1a;border:1px solid #333;border-radius:10px;color:#fff;padding:10px 12px;font-size:14px;">';
+    html += '<input id="ptnr-stripe-reg" type="text" placeholder="Numéro SIRET / immatriculation" style="background:#1a1a1a;border:1px solid #333;border-radius:10px;color:#fff;padding:10px 12px;font-size:14px;">';
+    html += '<input id="ptnr-stripe-rep-prenom" type="text" placeholder="Prénom du représentant légal" style="background:#1a1a1a;border:1px solid #333;border-radius:10px;color:#fff;padding:10px 12px;font-size:14px;">';
+    html += '<input id="ptnr-stripe-rep-nom" type="text" placeholder="Nom du représentant légal" style="background:#1a1a1a;border:1px solid #333;border-radius:10px;color:#fff;padding:10px 12px;font-size:14px;">';
+    html += '<select id="ptnr-stripe-country-ent" style="background:#1a1a1a;border:1px solid #333;border-radius:10px;color:#fff;padding:10px 12px;font-size:14px;">';
+    html += '<option value="FR">France</option><option value="BE">Belgique</option><option value="CH">Suisse</option><option value="LU">Luxembourg</option><option value="MC">Monaco</option>';
+    html += '</select>';
+    html += '</div></div>';
+    html += '<div id="ptnr-stripe-err" style="font-size:12px;color:#ef4444;margin-bottom:8px;display:none;"></div>';
+    html += '<button onclick="_ptnrLaunchStripeOnboarding()" style="width:100%;background:linear-gradient(135deg,#635BFF,#8B5CF6);color:#fff;border:none;border-radius:12px;padding:13px;font-size:14px;font-weight:800;cursor:pointer;letter-spacing:.5px;"><i class="fa-brands fa-stripe" style="margin-right:8px;"></i>CONTINUER AVEC STRIPE</button>';
+    html += '<div style="font-size:10px;color:#444;margin-top:8px;text-align:center;">Connexion sécurisée — FA GENESIS ne stocke aucune donnée bancaire</div>';
+  } else {
+    // Pending ou requires_info → proposer un nouveau lien
+    html += '<div style="font-size:12px;color:#aaa;line-height:1.5;margin-bottom:12px;">';
+    if(statusLabel==='requires_info') html += 'Des informations complémentaires sont nécessaires pour activer vos paiements.';
+    else html += 'Votre compte est en cours de vérification par Stripe. Complétez votre profil si ce n\'est pas encore fait.';
+    html += '</div>';
+    html += '<button onclick="_ptnrRefreshStripeLink()" style="width:100%;background:linear-gradient(135deg,#635BFF,#8B5CF6);color:#fff;border:none;border-radius:12px;padding:12px;font-size:13px;font-weight:800;cursor:pointer;"><i class="fa-solid fa-arrow-up-right-from-square" style="margin-right:6px;"></i>REPRENDRE LA CONFIGURATION</button>';
+  }
+
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+var _ptnrStripeEntityType = 'particulier';
+function _ptnrSelectEntityType(type){
+  _ptnrStripeEntityType = type;
+  var fP = document.getElementById('ptnr-et-form-particulier');
+  var fE = document.getElementById('ptnr-et-form-entreprise');
+  var bP = document.getElementById('ptnr-et-particulier');
+  var bE = document.getElementById('ptnr-et-entreprise');
+  if(fP) fP.style.display = type==='particulier' ? 'block' : 'none';
+  if(fE) fE.style.display = type==='entreprise'  ? 'block' : 'none';
+  var activeStyle = 'border:1.5px solid #FFD700;background:#1a1200;color:#FFD700;';
+  var inactStyle  = 'border:1.5px solid #333;background:#111;color:#888;';
+  if(bP) bP.style.cssText += type==='particulier' ? activeStyle : inactStyle;
+  if(bE) bE.style.cssText += type==='entreprise'  ? activeStyle : inactStyle;
+}
+
+function _ptnrLaunchStripeOnboarding(){
+  var errEl = document.getElementById('ptnr-stripe-err');
+  if(errEl){ errEl.style.display='none'; errEl.textContent=''; }
+  var body = { entityType: _ptnrStripeEntityType };
+  if(_ptnrStripeEntityType === 'particulier'){
+    body.prenom  = ((document.getElementById('ptnr-stripe-prenom')||{}).value||'').trim();
+    body.nom     = ((document.getElementById('ptnr-stripe-nom')||{}).value||'').trim();
+    body.country = ((document.getElementById('ptnr-stripe-country')||{}).value)||'FR';
+    if(!body.prenom||!body.nom){ if(errEl){errEl.textContent='Prénom et nom requis.';errEl.style.display='block';} return; }
+  } else {
+    body.raisonSociale      = ((document.getElementById('ptnr-stripe-raison')||{}).value||'').trim();
+    body.registrationNumber = ((document.getElementById('ptnr-stripe-reg')||{}).value||'').trim();
+    body.representantPrenom = ((document.getElementById('ptnr-stripe-rep-prenom')||{}).value||'').trim();
+    body.representantNom    = ((document.getElementById('ptnr-stripe-rep-nom')||{}).value||'').trim();
+    body.country            = ((document.getElementById('ptnr-stripe-country-ent')||{}).value)||'FR';
+    if(!body.raisonSociale){ if(errEl){errEl.textContent='Raison sociale requise.';errEl.style.display='block';} return; }
+  }
+  var btn = document.querySelector('#ptnr-stripe-setup button[onclick="_ptnrLaunchStripeOnboarding()"]');
+  if(btn){ btn.disabled=true; btn.textContent='Connexion à Stripe…'; }
+  fetch((window.FA_GENESIS_API||API)+'/api/partner/stripe/setup',{
+    method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+(USER&&USER._token||'')},
+    body:JSON.stringify(body)
+  }).then(function(r){ return r.json(); }).then(function(d){
+    if(d.ok && d.url){ window.location.href = d.url; }
+    else { if(errEl){errEl.textContent=d.error||'Erreur. Réessayez.';errEl.style.display='block';} if(btn){btn.disabled=false;btn.textContent='CONTINUER AVEC STRIPE';} }
+  }).catch(function(){ if(errEl){errEl.textContent='Erreur réseau.';errEl.style.display='block';} if(btn){btn.disabled=false;btn.textContent='CONTINUER AVEC STRIPE';} });
+}
+
+function _ptnrRefreshStripeLink(){
+  var btn = event && event.target;
+  if(btn){ btn.disabled=true; btn.textContent='Chargement…'; }
+  fetch((window.FA_GENESIS_API||API)+'/api/partner/stripe/onboarding-link',{headers:{'Authorization':'Bearer '+(USER&&USER._token||'')}})
+  .then(function(r){ return r.json(); }).then(function(d){
+    if(d.ok && d.url) window.location.href = d.url;
+    else if(btn){ btn.disabled=false; btn.textContent='REPRENDRE LA CONFIGURATION'; }
+  }).catch(function(){ if(btn){ btn.disabled=false; btn.textContent='REPRENDRE LA CONFIGURATION'; } });
+}
+
+function _ptnrSetStripeSchedule(interval){
+  fetch((window.FA_GENESIS_API||API)+'/api/partner/stripe/payout-schedule',{
+    method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+(USER&&USER._token||'')},
+    body:JSON.stringify({interval:interval})
+  }).then(function(r){ return r.json(); }).then(function(d){
+    if(d.ok){ var t = {daily:'Versements quotidiens activés',weekly:'Versements hebdomadaires activés',monthly:'Versements mensuels activés'}[interval]; _showToast(t||'Mis à jour'); }
+  });
+}
+
 // ── Versements (répartition automatique des revenus) ──
 function _ptnrLoadVersements(){
+  var stripeEl= document.getElementById('ptnr-stripe-setup');
   var setupEl = document.getElementById('ptnr-paypal-setup');
   var listEl  = document.getElementById('ptnr-versements-list');
+  if(stripeEl) stripeEl.innerHTML = _skeletonRows(1);
   if(setupEl) setupEl.innerHTML = _skeletonRows(2);
   if(listEl)  listEl.innerHTML  = '';
+  _loadStripeSetup();
 
   _ptnrFetch('/api/partner/payouts').then(function(data){
     var paypalEmail = data.paypal_email || null;

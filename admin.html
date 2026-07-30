@@ -830,6 +830,9 @@
                     <span id="pendingQuotesBadge" class="sidebar-badge" style="display:none;"></span>
                 </button>
                 <div class="sidebar-divider"></div>
+                <button class="sidebar-btn" data-section="marketplace" onclick="showSection('marketplace')">
+                    <i class="fa-brands fa-stripe"></i><span>Marketplace</span>
+                </button>
                 <button class="sidebar-btn" data-section="payouts" onclick="showSection('payouts')">
                     <i class="fas fa-money-bill-transfer"></i><span>Versements</span>
                     <span id="pendingPayoutsBadge" class="sidebar-badge" style="display:none;"></span>
@@ -1397,6 +1400,55 @@
                 </div>
             </div>
 
+            <!-- ===== SECTION MARKETPLACE / STRIPE CONNECT ===== -->
+            <div id="marketplaceSection" class="container mx-auto max-w-7xl" style="display: none;">
+                <h2 class="text-3xl font-black mb-6" style="font-family:'Playfair Display',serif;">
+                    <i class="fa-brands fa-stripe mr-3" style="color:var(--genesis-yellow);"></i>MARKETPLACE — PAIEMENTS
+                </h2>
+
+                <!-- Stats -->
+                <div id="mkt-stats-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:28px;">
+                    <div style="background:#111;border:1.5px solid #252510;border-radius:14px;padding:16px;text-align:center;"><div style="font-size:11px;color:#888;font-weight:700;margin-bottom:4px;">CA TRAITÉ</div><div id="mkt-stat-gross" style="font-size:24px;font-weight:900;color:#FFD700;">—</div></div>
+                    <div style="background:#111;border:1.5px solid #252510;border-radius:14px;padding:16px;text-align:center;"><div style="font-size:11px;color:#888;font-weight:700;margin-bottom:4px;">COMMISSIONS FA</div><div id="mkt-stat-comm" style="font-size:24px;font-weight:900;color:#22c55e;">—</div></div>
+                    <div style="background:#111;border:1.5px solid #252510;border-radius:14px;padding:16px;text-align:center;"><div style="font-size:11px;color:#888;font-weight:700;margin-bottom:4px;">VERSÉ PRESTATAIRES</div><div id="mkt-stat-ptnr" style="font-size:24px;font-weight:900;color:#60a5fa;">—</div></div>
+                    <div style="background:#111;border:1.5px solid #252510;border-radius:14px;padding:16px;text-align:center;"><div style="font-size:11px;color:#888;font-weight:700;margin-bottom:4px;">PAIEMENTS</div><div id="mkt-stat-count" style="font-size:24px;font-weight:900;color:#fff;">—</div></div>
+                    <div style="background:#111;border:1.5px solid #252510;border-radius:14px;padding:16px;text-align:center;"><div style="font-size:11px;color:#888;font-weight:700;margin-bottom:4px;">REMBOURSEMENTS</div><div id="mkt-stat-refunds" style="font-size:24px;font-weight:900;color:#f59e0b;">—</div></div>
+                    <div style="background:#111;border:1.5px solid #252510;border-radius:14px;padding:16px;text-align:center;"><div style="font-size:11px;color:#888;font-weight:700;margin-bottom:4px;">COMPTES VÉRIFIÉS</div><div id="mkt-stat-verified" style="font-size:24px;font-weight:900;color:#22c55e;">—</div></div>
+                    <div style="background:#111;border:1.5px solid #252510;border-radius:14px;padding:16px;text-align:center;"><div style="font-size:11px;color:#888;font-weight:700;margin-bottom:4px;">EN ATTENTE</div><div id="mkt-stat-pending" style="font-size:24px;font-weight:900;color:#f59e0b;">—</div></div>
+                    <div style="background:#111;border:1.5px solid #252510;border-radius:14px;padding:16px;text-align:center;"><div style="font-size:11px;color:#888;font-weight:700;margin-bottom:4px;">NON CONFIGURÉS</div><div id="mkt-stat-none" style="font-size:24px;font-weight:900;color:#888;">—</div></div>
+                </div>
+
+                <!-- Commission settings -->
+                <div style="background:#111;border:1.5px solid #252510;border-radius:14px;padding:20px;margin-bottom:24px;">
+                    <div style="font-size:14px;font-weight:800;color:#FFD700;margin-bottom:16px;"><i class="fa-solid fa-percent" style="margin-right:8px;"></i>PARAMÈTRES DE COMMISSION</div>
+                    <div id="mkt-config-content">Chargement…</div>
+                </div>
+
+                <!-- Remboursement -->
+                <div style="background:#111;border:1.5px solid #252510;border-radius:14px;padding:20px;margin-bottom:24px;">
+                    <div style="font-size:14px;font-weight:800;color:#ef4444;margin-bottom:14px;"><i class="fa-solid fa-rotate-left" style="margin-right:8px;"></i>ÉMETTRE UN REMBOURSEMENT</div>
+                    <div style="display:flex;flex-direction:column;gap:10px;">
+                        <input id="mkt-refund-pi" type="text" placeholder="PaymentIntent ID (pi_xxxxx)" style="background:#1a1a1a;border:1px solid #333;border-radius:10px;color:#fff;padding:10px 14px;font-size:13px;font-family:monospace;">
+                        <div style="display:flex;gap:8px;">
+                            <input id="mkt-refund-amount" type="number" step="0.01" placeholder="Montant (€ · vide = total)" style="flex:1;background:#1a1a1a;border:1px solid #333;border-radius:10px;color:#fff;padding:10px 14px;font-size:13px;">
+                            <select id="mkt-refund-reason" style="flex:1;background:#1a1a1a;border:1px solid #333;border-radius:10px;color:#fff;padding:10px 14px;font-size:13px;">
+                                <option value="requested_by_customer">Demande client</option>
+                                <option value="duplicate">Doublon</option>
+                                <option value="fraudulent">Fraude</option>
+                            </select>
+                        </div>
+                        <div id="mkt-refund-err" style="font-size:12px;color:#ef4444;display:none;"></div>
+                        <button onclick="adminIssueRefund()" style="background:#ef4444;color:#fff;border:none;border-radius:10px;padding:11px;font-size:13px;font-weight:800;cursor:pointer;">REMBOURSER</button>
+                    </div>
+                </div>
+
+                <!-- Comptes partenaires Stripe -->
+                <div style="background:#111;border:1.5px solid #252510;border-radius:14px;padding:20px;">
+                    <div style="font-size:14px;font-weight:800;color:#FFD700;margin-bottom:14px;"><i class="fa-solid fa-users" style="margin-right:8px;"></i>COMPTES STRIPE PRESTATAIRES</div>
+                    <div id="mkt-partners-list">Chargement…</div>
+                </div>
+            </div>
+
             <!-- ===== SECTION A VALIDER ===== -->
             <div id="payoutsSection" class="container mx-auto max-w-7xl" style="display: none;">
                 <h2 class="text-3xl font-black mb-6" style="font-family:'Playfair Display',serif;">
@@ -1763,6 +1815,8 @@
             document.getElementById('devisSection').style.display = 'none';
             var payoutsEl = document.getElementById('payoutsSection');
             if (payoutsEl) payoutsEl.style.display = 'none';
+            var marketplaceEl = document.getElementById('marketplaceSection');
+            if (marketplaceEl) marketplaceEl.style.display = 'none';
             var litigesEl = document.getElementById('litigesSection');
             var supportEl = document.getElementById('supportSection');
             var prospectsEl = document.getElementById('prospectsSection');
@@ -1798,6 +1852,9 @@
             } else if (section === 'devis') {
                 document.getElementById('devisSection').style.display = 'block';
                 loadAdminQuotes();
+            } else if (section === 'marketplace') {
+                if (marketplaceEl) marketplaceEl.style.display = 'block';
+                loadMarketplaceDashboard();
             } else if (section === 'payouts') {
                 if (payoutsEl) payoutsEl.style.display = 'block';
                 loadPendingPayouts();
@@ -5876,6 +5933,134 @@
             el.style.color = success ? '#4CAF50' : '#ff6b6b';
             el.style.border = '1px solid ' + (success ? 'rgba(76,175,80,.3)' : 'rgba(255,107,107,.3)');
         }
+
+        // ── MARKETPLACE / STRIPE CONNECT ──────────────────────────────────────
+        var _mktConfig = null;
+
+        async function loadMarketplaceDashboard() {
+            try {
+                var [statsRes, configRes, partnersRes] = await Promise.all([
+                    fetch(API + '/api/admin/marketplace/stats', { headers: { 'x-admin-key': adminKey } }),
+                    fetch(API + '/api/admin/marketplace/config', { headers: { 'x-admin-key': adminKey } }),
+                    fetch(API + '/api/admin/marketplace/partners', { headers: { 'x-admin-key': adminKey } })
+                ]);
+                var stats    = await statsRes.json();
+                var config   = await configRes.json();
+                var partners = await partnersRes.json();
+                _mktConfig   = config.config;
+
+                // Stats
+                var fmt = function(v){ return typeof v==='number' ? v.toFixed(2)+' €' : '—'; };
+                document.getElementById('mkt-stat-gross').textContent    = fmt(stats.totalGross);
+                document.getElementById('mkt-stat-comm').textContent     = fmt(stats.totalCommission);
+                document.getElementById('mkt-stat-ptnr').textContent     = fmt(stats.totalToPartners);
+                document.getElementById('mkt-stat-count').textContent    = stats.paymentsCount || 0;
+                document.getElementById('mkt-stat-refunds').textContent  = stats.refundsCount  || 0;
+                document.getElementById('mkt-stat-verified').textContent = (stats.partnerStats&&stats.partnerStats.verified) || 0;
+                document.getElementById('mkt-stat-pending').textContent  = (stats.partnerStats&&stats.partnerStats.pending)  || 0;
+                document.getElementById('mkt-stat-none').textContent     = (stats.partnerStats&&stats.partnerStats.notConfigured) || 0;
+
+                // Commission config
+                _renderCommissionConfig(_mktConfig);
+
+                // Partenaires Stripe
+                _renderStripePartners(partners.partners || []);
+            } catch(e) {
+                document.getElementById('mkt-config-content').textContent = 'Erreur : ' + e.message;
+            }
+        }
+
+        function _renderCommissionConfig(cfg) {
+            var el = document.getElementById('mkt-config-content');
+            if (!el || !cfg) return;
+            var PTNR_TYPES = ['photographer','videographer','marketer','media','community_manager','graphiste','developpeur_web','pilote_drone','consultant','coworking','animateur_evenementiel','influencer','other'];
+            var LABELS = {photographer:'Photographe',videographer:'Vidéaste',marketer:'Marketeur',media:'Média',community_manager:'Community Manager',graphiste:'Graphiste',developpeur_web:'Développeur Web',pilote_drone:'Pilote Drone',consultant:'Consultant',coworking:'Coworking',animateur_evenementiel:'Animateur/Événementiel',influencer:'Influenceur',other:'Autre'};
+            var html = '<div style="margin-bottom:16px;">';
+            html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;"><span style="font-size:12px;color:#888;font-weight:700;">COMMISSION GLOBALE</span><input id="mkt-global-comm" type="number" step="0.1" min="0" max="50" value="'+(cfg.globalCommissionRate*100).toFixed(1)+'" style="width:80px;background:#1a1a1a;border:1px solid #333;border-radius:8px;color:#FFD700;padding:6px 10px;font-size:14px;font-weight:700;"><span style="color:#888;font-size:13px;">%</span></div>';
+            html += '</div>';
+            html += '<div style="font-size:11px;color:#888;font-weight:700;margin-bottom:8px;">PAR CATÉGORIE</div>';
+            html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;margin-bottom:14px;">';
+            PTNR_TYPES.forEach(function(k){
+                var val = cfg.categoryCommissions && cfg.categoryCommissions[k] !== undefined ? (cfg.categoryCommissions[k]*100).toFixed(1) : (cfg.globalCommissionRate*100).toFixed(1);
+                html += '<div style="display:flex;align-items:center;justify-content:space-between;background:#0d0d0d;border-radius:8px;padding:8px 12px;"><span style="font-size:12px;color:#ccc;">'+LABELS[k]+'</span><div style="display:flex;align-items:center;gap:4px;"><input data-cat="'+k+'" type="number" step="0.1" min="0" max="50" value="'+val+'" style="width:60px;background:#1a1a1a;border:1px solid #333;border-radius:6px;color:#FFD700;padding:4px 8px;font-size:12px;text-align:right;"><span style="color:#888;font-size:11px;">%</span></div></div>';
+            });
+            html += '</div>';
+            html += '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">';
+            html += '<div style="display:flex;align-items:center;gap:8px;"><span style="font-size:12px;color:#888;font-weight:700;">PAIEMENTS</span><select id="mkt-payments-enabled" style="background:#1a1a1a;border:1px solid #333;border-radius:8px;color:#fff;padding:6px 10px;font-size:12px;"><option value="true"'+(cfg.paymentsEnabled?' selected':'')+'>Activés</option><option value="false"'+(!cfg.paymentsEnabled?' selected':'')+'>Désactivés</option></select></div>';
+            html += '<div style="display:flex;align-items:center;gap:8px;"><span style="font-size:12px;color:#888;font-weight:700;">VERSEMENTS</span><select id="mkt-payout-schedule" style="background:#1a1a1a;border:1px solid #333;border-radius:8px;color:#fff;padding:6px 10px;font-size:12px;"><option value="daily"'+(cfg.payoutSchedule==='daily'?' selected':'')+'>Quotidiens</option><option value="weekly"'+(cfg.payoutSchedule==='weekly'?' selected':'')+'>Hebdomadaires</option><option value="monthly"'+(cfg.payoutSchedule==='monthly'?' selected':'')+'>Mensuels</option></select></div>';
+            html += '</div>';
+            html += '<div id="mkt-save-feedback" style="display:none;padding:8px 12px;border-radius:8px;font-size:12px;margin-top:10px;"></div>';
+            html += '<button onclick="adminSaveCommission()" style="margin-top:14px;background:#FFD700;color:#000;border:none;border-radius:10px;padding:10px 20px;font-size:13px;font-weight:800;cursor:pointer;">ENREGISTRER</button>';
+            el.innerHTML = html;
+        }
+
+        async function adminSaveCommission() {
+            var globalPct = parseFloat((document.getElementById('mkt-global-comm')||{}).value||'15') / 100;
+            var enabled   = (document.getElementById('mkt-payments-enabled')||{}).value !== 'false';
+            var schedule  = (document.getElementById('mkt-payout-schedule')||{}).value || 'daily';
+            var catComms  = {};
+            document.querySelectorAll('[data-cat]').forEach(function(inp){
+                var cat = inp.getAttribute('data-cat');
+                var val = parseFloat(inp.value) / 100;
+                if (!isNaN(val)) catComms[cat] = val;
+            });
+            var fb = document.getElementById('mkt-save-feedback');
+            if(fb){ fb.style.display='block'; fb.textContent='Enregistrement…'; fb.style.color='#aaa'; }
+            try {
+                var r = await fetch(API + '/api/admin/marketplace/config', {
+                    method: 'PUT', headers: { 'Content-Type':'application/json', 'x-admin-key': adminKey },
+                    body: JSON.stringify({ globalCommissionRate: globalPct, categoryCommissions: catComms, paymentsEnabled: enabled, payoutSchedule: schedule })
+                });
+                var d = await r.json();
+                if (d.ok) { if(fb){ fb.textContent='✓ Configuration enregistrée'; fb.style.color='#22c55e'; } _mktConfig = d.config; }
+                else { if(fb){ fb.textContent='Erreur : '+(d.error||'Échec'); fb.style.color='#ef4444'; } }
+            } catch(e) { if(fb){ fb.textContent='Erreur réseau'; fb.style.color='#ef4444'; } }
+        }
+
+        async function adminIssueRefund() {
+            var pi      = ((document.getElementById('mkt-refund-pi')||{}).value||'').trim();
+            var amount  = ((document.getElementById('mkt-refund-amount')||{}).value||'').trim();
+            var reason  = ((document.getElementById('mkt-refund-reason')||{}).value)||'requested_by_customer';
+            var errEl   = document.getElementById('mkt-refund-err');
+            if (!pi) { if(errEl){ errEl.textContent='PaymentIntent ID requis'; errEl.style.display='block'; } return; }
+            if(errEl) errEl.style.display='none';
+            var body = { paymentIntentId: pi, reason: reason };
+            if (amount) body.amountEuros = parseFloat(amount);
+            try {
+                var r = await fetch(API + '/api/admin/marketplace/refund', {
+                    method: 'POST', headers: { 'Content-Type':'application/json', 'x-admin-key': adminKey },
+                    body: JSON.stringify(body)
+                });
+                var d = await r.json();
+                if (d.ok) { if(errEl){ errEl.textContent='✓ Remboursement émis : '+d.refundId; errEl.style.color='#22c55e'; errEl.style.display='block'; } }
+                else { if(errEl){ errEl.textContent='Erreur : '+(d.error||'Échec'); errEl.style.color='#ef4444'; errEl.style.display='block'; } }
+            } catch(e) { if(errEl){ errEl.textContent='Erreur réseau : '+e.message; errEl.style.color='#ef4444'; errEl.style.display='block'; } }
+        }
+
+        function _renderStripePartners(list) {
+            var el = document.getElementById('mkt-partners-list');
+            if (!el) return;
+            if (!list.length) { el.innerHTML = '<p style="color:#555;">Aucun prestataire actif.</p>'; return; }
+            var statusStyle = {
+                active:         { cls:'#22c55e', txt:'Vérifié' },
+                pending:        { cls:'#f59e0b', txt:'En attente' },
+                requires_info:  { cls:'#ef4444', txt:'Docs requis' },
+                rejected:       { cls:'#ef4444', txt:'Refusé' },
+                not_configured: { cls:'#555',    txt:'Non configuré' }
+            };
+            var html = '<div style="display:flex;flex-direction:column;gap:8px;">';
+            list.forEach(function(p){
+                var s = statusStyle[p.stripeAccountStatus] || statusStyle.not_configured;
+                html += '<div style="background:#0d0d0d;border-radius:10px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;">';
+                html += '<div><div style="font-size:13px;font-weight:700;color:#fff;">'+_escHtml(p.prenom+' '+p.nom)+'</div><div style="font-size:11px;color:#666;">'+_escHtml(p.email)+' · '+_escHtml(p.partner_type||'')+'</div>'+(p.stripeAccountId?'<div style="font-size:10px;color:#444;font-family:monospace;">'+p.stripeAccountId+'</div>':'')+'</div>';
+                html += '<div style="font-size:11px;font-weight:800;color:'+s.cls+';">'+s.txt+'</div>';
+                html += '</div>';
+            });
+            html += '</div>';
+            el.innerHTML = html;
+        }
+
+        function _escHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 </script>
 </body>
 </html>
