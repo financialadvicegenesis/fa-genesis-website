@@ -6862,14 +6862,6 @@ function _renderPartnerHomeQGWidget(data) {
       + '<div style="background:' + badgeColor + ';height:100%;width:' + pct + '%;border-radius:99px;transition:width .6s"></div>'
       + '</div>'
       + nextInfo
-      + '<div style="margin-top:10px;border-top:1px solid rgba(var(--yellow-rgb),.15);padding-top:8px;">'
-      + '<div style="font-size:10px;color:var(--gray);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Avantages palier</div>'
-      + '<div style="display:flex;gap:10px;flex-wrap:wrap;">'
-      + '<div style="font-size:11px;color:#aaa;flex:1;min-width:90px"><i class="fa-solid fa-percent" style="color:var(--yellow);margin-right:3px;font-size:10px"></i>Commission : <b style="color:#ddd">' + commLbl + '</b></div>'
-      + '<div style="font-size:11px;color:#aaa;flex:1;min-width:90px"><i class="fa-solid fa-clock" style="color:var(--yellow);margin-right:3px;font-size:10px"></i>Versement : ' + payLbl + '</div>'
-      + '</div>'
-      + '<div style="font-size:11px;color:#aaa;margin-top:4px"><i class="fa-solid fa-calendar-check" style="color:var(--yellow);margin-right:3px;font-size:10px"></i>Événements Genesis : ' + evLbl + '</div>'
-      + '</div>'
       + '<button onclick="_ptnrNav(\'reputation\')" style="width:100%;margin-top:12px;background:rgba(255,215,0,.07);border:1px solid rgba(255,215,0,.2);border-radius:10px;color:#FFD700;padding:9px;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:.03em;"><i class="fa-solid fa-trophy" style="margin-right:6px;"></i>Voir mes badges et avantages</button>'
       + '</div>';
   } catch(e){ el.innerHTML = ''; }
@@ -14355,8 +14347,7 @@ function _ptnrLoadProfil(){
   var monProfil = '<div class="plus-section">'
     +'<div class="plus-section-title">MON PROFIL</div>'
     +'<div class="plus-group">'
-    +pli('<i class="fa-solid fa-id-card"></i>',           '#1a1a00','Mon identité',         null,'_ptnrProfilEditIdentity()')
-    +pli('<i class="fa-solid fa-camera"></i>',            '#001414','Ma photo de profil',   null,'_ptnrProfilEditPhoto()')
+    +pli('<i class="fa-solid fa-circle-user"></i>',       '#1a1a00','Paramètres du profil', null,'_ptnrProfilEditParams()')
     +pli('<i class="fa-solid fa-clock"></i>',             '#14000a','Temps de réponse',     null,'_ptnrProfilEditResponseTime()')
     +'</div></div>';
 
@@ -14374,34 +14365,19 @@ function _ptnrLoadProfil(){
 // ── SOUS-FORMULAIRES PROFIL ──────────────────────────────────
 function _ptnrProfilBack(){ _ptnrLoadProfil(); }
 
-function _ptnrProfilEditIdentity(){
+function _ptnrProfilEditParams(){
   var c = document.getElementById('ptnr-profil-content');
   if(!c) return;
   var p = _ptnrSession || {};
+  var photo = p.photo;
   c.innerHTML = '<div class="plus-subpage">'
     +'<div class="plus-back-bar">'
     +'<button class="plus-back-btn" onclick="_ptnrProfilBack()">&#8249;</button>'
-    +'<div class="plus-sub-title">Mon identité</div>'
+    +'<div class="plus-sub-title">Paramètres du profil</div>'
     +'</div>'
+    // ── Photo ──
     +'<div class="plus-section" style="padding-top:20px;">'
-    +'<div class="ptnr-card">'
-    +'<input type="text" class="ptnr-input" id="ptnr-identity-prenom" placeholder="Prénom" value="'+(p.prenom||'').replace(/"/g,'&quot;')+'">'
-    +'<input type="text" class="ptnr-input" id="ptnr-identity-nom" placeholder="Nom" value="'+(p.nom||'').replace(/"/g,'&quot;')+'">'
-    +'<button class="ptnr-login-btn" id="ptnr-identity-btn" style="margin-top:4px;" onclick="_ptnrSaveIdentity()">Enregistrer</button>'
-    +'<div class="ptnr-login-err" id="ptnr-identity-msg" style="margin-top:8px;"></div>'
-    +'</div></div></div>';
-}
-
-function _ptnrProfilEditPhoto(){
-  var c = document.getElementById('ptnr-profil-content');
-  if(!c) return;
-  var photo = _ptnrSession && _ptnrSession.photo;
-  c.innerHTML = '<div class="plus-subpage">'
-    +'<div class="plus-back-bar">'
-    +'<button class="plus-back-btn" onclick="_ptnrProfilBack()">&#8249;</button>'
-    +'<div class="plus-sub-title">Ma photo de profil</div>'
-    +'</div>'
-    +'<div class="plus-section" style="padding-top:20px;">'
+    +'<div class="plus-section-title">PHOTO DE PROFIL</div>'
     +'<div class="ptnr-card" style="display:flex;align-items:center;gap:14px;">'
     +'<div id="ptnr-profil-photo-preview" style="width:64px;height:64px;border-radius:50%;background:#1a1a1a;border:2px solid #FFD700;overflow:hidden;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#FFD700;font-size:22px;">'
     +(photo ? '<img src="'+photo+'" alt="" style="width:100%;height:100%;object-fit:cover;">' : '<i class="fa-solid fa-user"></i>')
@@ -14410,9 +14386,26 @@ function _ptnrProfilEditPhoto(){
     +'<input type="file" id="ptnr-photo-input" accept="image/*" style="display:none;">'
     +'<button class="ptnr-login-btn" id="ptnr-photo-btn" style="margin-top:0;padding:12px;" onclick="document.getElementById(\'ptnr-photo-input\').click()"><i class="fa-solid fa-camera"></i> Changer ma photo</button>'
     +'<div class="ptnr-login-err" id="ptnr-photo-msg" style="margin-top:8px;"></div>'
-    +'</div></div></div></div>';
+    +'</div></div></div>'
+    // ── Identité ──
+    +'<div class="plus-section">'
+    +'<div class="plus-section-title">IDENTITÉ</div>'
+    +'<div class="ptnr-card">'
+    +'<input type="text" class="ptnr-input" id="ptnr-identity-prenom" placeholder="Prénom" value="'+(p.prenom||'').replace(/"/g,'&quot;')+'">'
+    +'<input type="text" class="ptnr-input" id="ptnr-identity-nom" placeholder="Nom" value="'+(p.nom||'').replace(/"/g,'&quot;')+'">'
+    +'<button class="ptnr-login-btn" id="ptnr-identity-btn" style="margin-top:4px;" onclick="_ptnrSaveIdentity()">Enregistrer</button>'
+    +'<div class="ptnr-login-err" id="ptnr-identity-msg" style="margin-top:8px;"></div>'
+    +'</div></div></div>';
   var inp = document.getElementById('ptnr-photo-input');
   if(inp) inp.onchange = function(){ _ptnrHandlePhotoUpload(this); };
+}
+
+function _ptnrProfilEditIdentity(){
+  _ptnrProfilEditParams(); // redirige vers l'écran combiné
+}
+
+function _ptnrProfilEditPhoto(){
+  _ptnrProfilEditParams(); // redirige vers l'écran combiné
 }
 
 function _ptnrProfilEditResponseTime(){
