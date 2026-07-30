@@ -2868,39 +2868,14 @@ a{text-decoration:none;color:inherit}
           </div>
         </div>
 
-        <!-- Sub-screen: Profil (photo) -->
+        <!-- Sub-screen: Profil (hub dynamique) -->
         <div class="ptnr-screen" id="ptnr-screen-profil">
-          <div class="ptnr-section-title">Mon identité</div>
-          <div class="ptnr-card">
-            <input type="text" class="ptnr-input" id="ptnr-identity-prenom" placeholder="Prénom">
-            <input type="text" class="ptnr-input" id="ptnr-identity-nom" placeholder="Nom">
-            <button class="ptnr-login-btn" id="ptnr-identity-btn" style="margin-top:0;" onclick="_ptnrSaveIdentity()">Enregistrer</button>
-            <div class="ptnr-login-err" id="ptnr-identity-msg" style="margin-top:8px;"></div>
-          </div>
-          <div class="ptnr-section-title" style="margin-top:20px;">Ma photo de profil</div>
-          <div class="ptnr-card" style="display:flex;align-items:center;gap:14px;">
-            <div id="ptnr-profil-photo-preview" style="width:64px;height:64px;border-radius:50%;background:#1a1a1a;border:2px solid #FFD700;overflow:hidden;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#FFD700;font-size:22px;"><i class="fa-solid fa-user"></i></div>
-            <div style="flex:1;">
-              <input type="file" id="ptnr-photo-input" accept="image/*" style="display:none;">
-              <button class="ptnr-login-btn" id="ptnr-photo-btn" style="margin-top:0;padding:12px;" onclick="document.getElementById('ptnr-photo-input').click()"><i class="fa-solid fa-camera"></i> Changer ma photo</button>
-              <div class="ptnr-login-err" id="ptnr-photo-msg" style="margin-top:8px;"></div>
-            </div>
-          </div>
-          <div class="ptnr-section-title" style="margin-top:20px;">Temps de réponse habituel</div>
-          <div class="ptnr-card">
-            <div style="font-size:12px;color:#888;margin-bottom:12px;line-height:1.5;">Indiquez votre délai de réponse habituel aux clients. Il sera affiché sur votre profil et dans l'annuaire.</div>
-            <select class="ptnr-input" id="ptnr-response-time-select">
-              <option value="">Non renseigné</option>
-              <option value="30">Quelques minutes</option>
-              <option value="60">Moins d'1h</option>
-              <option value="180">1 à 3h</option>
-              <option value="720">Sous 12h</option>
-              <option value="1440">Sous 24h</option>
-              <option value="2880">Sous 48h</option>
-            </select>
-            <button class="ptnr-login-btn" id="ptnr-response-time-btn" style="margin-top:0;" onclick="_ptnrSaveResponseTime()">Enregistrer</button>
-            <div class="ptnr-login-err" id="ptnr-response-time-msg" style="margin-top:8px;"></div>
-          </div>
+          <div id="ptnr-profil-content" style="padding-bottom:80px;"></div>
+        </div>
+
+        <!-- Sub-screen: Collègues (messagerie P2P même catégorie) -->
+        <div class="ptnr-screen" id="ptnr-screen-collegues">
+          <div id="ptnr-collegues-content" style="padding-bottom:80px;"></div>
         </div>
       </div>
     </div>
@@ -10658,8 +10633,10 @@ function _ptnrNav(screen){
   document.querySelectorAll('.ptnr-snbtn').forEach(function(b){b.className='ptnr-snbtn';});
   document.querySelectorAll('.ptnr-screen').forEach(function(s){s.className='ptnr-screen';});
   // Mettre à jour le bouton actif dans la nav bas partenaire
+  // Les sous-sections (collegues, etc.) gardent l'onglet "profil" actif
+  var _ptnrNavBottomTab = (screen === 'collegues') ? 'profil' : screen;
   document.querySelectorAll('.ptnr-nav').forEach(function(b){b.className='nav-btn ptnr-nav';});
-  var pnb = document.getElementById('pnb-'+screen);
+  var pnb = document.getElementById('pnb-'+_ptnrNavBottomTab);
   if(pnb) pnb.className = 'nav-btn ptnr-nav on';
   var btn = document.getElementById('ptnr-sn-'+screen);
   var scr = document.getElementById('ptnr-screen-'+screen);
@@ -10677,7 +10654,8 @@ function _ptnrNav(screen){
   if(screen==='reputation')  _ptnrLoadReputation();
   if(screen==='promotions')  _ptnrLoadPromotions();
   if(screen==='portfolio')   _ptnrLoadPortfolio();
-  if(screen==='profil') _ptnrLoadProfilPhoto();
+  if(screen==='profil')      _ptnrLoadProfil();
+  if(screen==='collegues')   _ptnrLoadCollegues();
 }
 
 function _ptnrFmt(dateStr){
@@ -14334,20 +14312,292 @@ function _ptnrPfSave(){
 }
 
 function _ptnrLoadProfilPhoto(){
-  var preview = document.getElementById('ptnr-profil-photo-preview');
-  if(preview){
-    var photo = _ptnrSession && _ptnrSession.photo;
-    preview.innerHTML = photo ? '<img src="'+photo+'" alt="" style="width:100%;height:100%;object-fit:cover;">' : '<i class="fa-solid fa-user"></i>';
-  }
-  var respSel = document.getElementById('ptnr-response-time-select');
-  if(respSel){
-    var current = _ptnrSession && _ptnrSession.responseTimeCommitmentMinutes;
-    respSel.value = (typeof current === 'number') ? String(current) : '';
-  }
-  var prenomInp = document.getElementById('ptnr-identity-prenom');
-  if(prenomInp) prenomInp.value = (_ptnrSession && _ptnrSession.prenom) || '';
-  var nomInp = document.getElementById('ptnr-identity-nom');
-  if(nomInp) nomInp.value = (_ptnrSession && _ptnrSession.nom) || '';
+  // Ancien point d'entrée — redirige vers le hub profil dynamique
+  _ptnrLoadProfil();
+}
+
+// ── HUB PROFIL PARTENAIRE ────────────────────────────────────
+function _ptnrLoadProfil(){
+  var c = document.getElementById('ptnr-profil-content');
+  if(!c) return;
+  var p = _ptnrSession || {};
+  var prenom = p.prenom || '';
+  var nom    = p.nom    || '';
+  var nm     = (prenom + (nom ? ' '+nom : '')).trim() || 'Partenaire';
+  var typeLabel = (typeof partnerTypeLabel === 'function' && p.partner_type)
+    ? partnerTypeLabel(p) : (p.partner_type || 'Prestataire');
+
+  // Badge
+  var _repData = _ptnrLastRepData || {};
+  var missions  = parseInt(_repData.totalMissions||0);
+  var avg       = parseFloat(_repData.averageRating||0);
+  var badgeName = 'Nouveau prestataire';
+  var badgeCol  = '#666';
+  if(missions>=100 && avg>=5.0){ badgeName='Élite';  badgeCol='#a855f7'; }
+  else if(missions>=50 && avg>=4.5){ badgeName='Or';   badgeCol='#f59e0b'; }
+  else if(missions>=20 && avg>=4.3){ badgeName='Argent'; badgeCol='#94a3b8'; }
+  else if(missions>=5  && avg>=4.0){ badgeName='Bronze'; badgeCol='#b45309'; }
+  var badgeHtml = '<span style="background:'+badgeCol+'18;border:1px solid '+badgeCol+'44;border-radius:20px;padding:3px 10px;font-size:10px;font-weight:900;color:'+badgeCol+';letter-spacing:.3px;">'+badgeName+'</span>';
+
+  // Avatar
+  var photo = p.photo;
+  var ini   = (nm[0]||'P').toUpperCase();
+  var avatarHtml = photo
+    ? '<img src="'+photo+'" style="width:62px;height:62px;border-radius:50%;object-fit:cover;border:3px solid #FFD700;flex-shrink:0;">'
+    : '<div style="width:62px;height:62px;border-radius:50%;background:#1a1200;border:3px solid #FFD700;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:900;color:#FFD700;flex-shrink:0;">'+ini+'</div>';
+
+  var headerHtml = '<div style="background:#111;border:1.5px solid #FFD70028;border-radius:16px;overflow:hidden;margin:20px 16px 4px;">'
+    +'<div style="height:70px;background:linear-gradient(135deg,#1a1200,#0d0d0d);"></div>'
+    +'<div style="padding:0 16px 16px;">'
+    +'<div style="display:flex;align-items:flex-end;justify-content:space-between;margin-top:-31px;margin-bottom:10px;">'
+    +avatarHtml
+    +badgeHtml
+    +'</div>'
+    +'<div style="font-size:15px;font-weight:900;color:#fff;margin-bottom:2px;">'+nm+'</div>'
+    +'<div style="font-size:11px;color:#FFD700;font-weight:700;margin-bottom:4px;"><i class="fa-solid fa-briefcase" style="font-size:9px;"></i> '+typeLabel+'</div>'
+    +'<div style="font-size:11px;color:#888;">'+( p.email||'')+'</div>'
+    +'</div></div>';
+
+  var activite = '<div class="plus-section">'
+    +'<div class="plus-section-title">MON ACTIVITÉ</div>'
+    +'<div class="plus-group">'
+    +pli('<i class="fa-solid fa-house"></i>',             '#1a1200','Accueil',             null,"_ptnrNav('home')")
+    +pli('<i class="fa-solid fa-folder-open"></i>',       '#0a1400','Mes projets',          null,"_ptnrNav('projets')")
+    +pli('<i class="fa-solid fa-file-invoice"></i>',      '#0a0a1a','Mes devis',            null,"_ptnrNav('devis')")
+    +pli('<i class="fa-solid fa-calendar-days"></i>',     '#0a1a0a','Mes séances',          null,"_ptnrNav('seances')")
+    +pli('<i class="fa-solid fa-comment-dots"></i>',      '#0d1a1a','Messages clients',     null,"_ptnrNav('messages')")
+    +pli('<i class="fa-solid fa-bolt"></i>',              '#1a0a00','Mes missions',         null,"_ptnrNav('missions')")
+    +pli('<i class="fa-solid fa-wallet"></i>',            '#001a0a','Portefeuille',         null,"_ptnrNav('versements')")
+    +pli('<i class="fa-solid fa-trophy"></i>',            '#1a1400','Réputation & badges',  null,"_ptnrNav('reputation')")
+    +pli('<i class="fa-solid fa-tag"></i>',               '#1a0014','Promotions',           null,"_ptnrNav('promotions')")
+    +pli('<i class="fa-solid fa-images"></i>',            '#001a14','Mon portfolio',        null,"_ptnrNav('portfolio')")
+    +'</div></div>';
+
+  var monProfil = '<div class="plus-section">'
+    +'<div class="plus-section-title">MON PROFIL</div>'
+    +'<div class="plus-group">'
+    +pli('<i class="fa-solid fa-id-card"></i>',           '#1a1a00','Mon identité',         null,'_ptnrProfilEditIdentity()')
+    +pli('<i class="fa-solid fa-camera"></i>',            '#001414','Ma photo de profil',   null,'_ptnrProfilEditPhoto()')
+    +pli('<i class="fa-solid fa-clock"></i>',             '#14000a','Temps de réponse',     null,'_ptnrProfilEditResponseTime()')
+    +'</div></div>';
+
+  var colleguesLabel = typeLabel.replace(/teur$/,'teurs').replace(/ste$/,'stes').replace(/er$/,'ers');
+  var reseau = '<div class="plus-section">'
+    +'<div class="plus-section-title">MON RÉSEAU</div>'
+    +'<div class="plus-group">'
+    +pli('<i class="fa-solid fa-users-between-lines"></i>','#001a1a','Mes collègues '+colleguesLabel,null,"_ptnrNav('collegues')")
+    +'</div></div>';
+
+  var logoutBtn = '<button class="plus-logout" onclick="_ptnrLogout()"><i class="fa-solid fa-arrow-right-from-bracket"></i> Déconnexion</button>';
+  c.innerHTML = headerHtml + activite + monProfil + reseau + logoutBtn + '<div class="plus-version">Version 1.1</div>';
+}
+
+// ── SOUS-FORMULAIRES PROFIL ──────────────────────────────────
+function _ptnrProfilBack(){ _ptnrLoadProfil(); }
+
+function _ptnrProfilEditIdentity(){
+  var c = document.getElementById('ptnr-profil-content');
+  if(!c) return;
+  var p = _ptnrSession || {};
+  c.innerHTML = '<div class="plus-subpage">'
+    +'<div class="plus-back-bar">'
+    +'<button class="plus-back-btn" onclick="_ptnrProfilBack()">&#8249;</button>'
+    +'<div class="plus-sub-title">Mon identité</div>'
+    +'</div>'
+    +'<div class="plus-section" style="padding-top:20px;">'
+    +'<div class="ptnr-card">'
+    +'<input type="text" class="ptnr-input" id="ptnr-identity-prenom" placeholder="Prénom" value="'+(p.prenom||'').replace(/"/g,'&quot;')+'">'
+    +'<input type="text" class="ptnr-input" id="ptnr-identity-nom" placeholder="Nom" value="'+(p.nom||'').replace(/"/g,'&quot;')+'">'
+    +'<button class="ptnr-login-btn" id="ptnr-identity-btn" style="margin-top:4px;" onclick="_ptnrSaveIdentity()">Enregistrer</button>'
+    +'<div class="ptnr-login-err" id="ptnr-identity-msg" style="margin-top:8px;"></div>'
+    +'</div></div></div>';
+}
+
+function _ptnrProfilEditPhoto(){
+  var c = document.getElementById('ptnr-profil-content');
+  if(!c) return;
+  var photo = _ptnrSession && _ptnrSession.photo;
+  c.innerHTML = '<div class="plus-subpage">'
+    +'<div class="plus-back-bar">'
+    +'<button class="plus-back-btn" onclick="_ptnrProfilBack()">&#8249;</button>'
+    +'<div class="plus-sub-title">Ma photo de profil</div>'
+    +'</div>'
+    +'<div class="plus-section" style="padding-top:20px;">'
+    +'<div class="ptnr-card" style="display:flex;align-items:center;gap:14px;">'
+    +'<div id="ptnr-profil-photo-preview" style="width:64px;height:64px;border-radius:50%;background:#1a1a1a;border:2px solid #FFD700;overflow:hidden;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#FFD700;font-size:22px;">'
+    +(photo ? '<img src="'+photo+'" alt="" style="width:100%;height:100%;object-fit:cover;">' : '<i class="fa-solid fa-user"></i>')
+    +'</div>'
+    +'<div style="flex:1;">'
+    +'<input type="file" id="ptnr-photo-input" accept="image/*" style="display:none;">'
+    +'<button class="ptnr-login-btn" id="ptnr-photo-btn" style="margin-top:0;padding:12px;" onclick="document.getElementById(\'ptnr-photo-input\').click()"><i class="fa-solid fa-camera"></i> Changer ma photo</button>'
+    +'<div class="ptnr-login-err" id="ptnr-photo-msg" style="margin-top:8px;"></div>'
+    +'</div></div></div></div>';
+  var inp = document.getElementById('ptnr-photo-input');
+  if(inp) inp.onchange = function(){ _ptnrHandlePhotoUpload(this); };
+}
+
+function _ptnrProfilEditResponseTime(){
+  var c = document.getElementById('ptnr-profil-content');
+  if(!c) return;
+  var current = _ptnrSession && _ptnrSession.responseTimeCommitmentMinutes;
+  c.innerHTML = '<div class="plus-subpage">'
+    +'<div class="plus-back-bar">'
+    +'<button class="plus-back-btn" onclick="_ptnrProfilBack()">&#8249;</button>'
+    +'<div class="plus-sub-title">Temps de réponse</div>'
+    +'</div>'
+    +'<div class="plus-section" style="padding-top:20px;">'
+    +'<div class="ptnr-card">'
+    +'<div style="font-size:12px;color:#888;margin-bottom:12px;line-height:1.5;">Indiquez votre délai de réponse habituel. Il sera affiché sur votre profil et dans l\'annuaire.</div>'
+    +'<select class="ptnr-input" id="ptnr-response-time-select">'
+    +'<option value="">Non renseigné</option>'
+    +'<option value="30">Quelques minutes</option>'
+    +'<option value="60">Moins d\'1h</option>'
+    +'<option value="180">1 à 3h</option>'
+    +'<option value="720">Sous 12h</option>'
+    +'<option value="1440">Sous 24h</option>'
+    +'<option value="2880">Sous 48h</option>'
+    +'</select>'
+    +'<button class="ptnr-login-btn" id="ptnr-response-time-btn" style="margin-top:4px;" onclick="_ptnrSaveResponseTime()">Enregistrer</button>'
+    +'<div class="ptnr-login-err" id="ptnr-response-time-msg" style="margin-top:8px;"></div>'
+    +'</div></div></div>';
+  var sel = document.getElementById('ptnr-response-time-select');
+  if(sel && typeof current === 'number') sel.value = String(current);
+}
+
+// ── MESSAGERIE COLLÈGUES (P2P même catégorie) ────────────────
+function _ptnrLoadCollegues(){
+  var c = document.getElementById('ptnr-collegues-content');
+  if(!c) return;
+  var p = _ptnrSession || {};
+  var typeLabel = (typeof partnerTypeLabel === 'function' && p.partner_type) ? partnerTypeLabel(p) : 'collègues';
+  c.innerHTML = '<div style="padding:16px 16px 8px;">'
+    +'<div style="font-size:13px;font-weight:900;color:#FFD700;margin-bottom:4px;"><i class="fa-solid fa-users-between-lines"></i> Mes collègues '+typeLabel+'s</div>'
+    +'<div style="font-size:11px;color:#555;line-height:1.5;">Échangez avec des prestataires de votre catégorie — renvoyez un client vers un collègue en cas d\'indisponibilité.</div>'
+    +'</div>'
+    +'<div id="ptnr-collegues-list" style="padding:0 16px;"></div>';
+
+  var listEl = document.getElementById('ptnr-collegues-list');
+  if(listEl) listEl.innerHTML = '<div style="color:#555;font-size:12px;padding:12px 0;">Chargement…</div>';
+
+  Promise.all([
+    _ptnrFetch('/api/partner/peers'),
+    _ptnrFetch('/api/partner/peer-inbox')
+  ]).then(function(results){
+    var peers = (results[0] && results[0].peers) || [];
+    var msgs  = (results[1] && results[1].messages) || [];
+    if(!listEl) return;
+    if(!peers.length){
+      listEl.innerHTML = '<div style="text-align:center;color:#444;font-size:13px;padding:32px 0;"><i class="fa-solid fa-user-group" style="font-size:28px;color:#2a2a2a;display:block;margin-bottom:10px;"></i>Aucun autre prestataire actif dans votre catégorie pour l\'instant.</div>';
+      return;
+    }
+    // Grouper les messages par pair
+    var partner = _ptnrSession || {};
+    var lastMsgByPeer = {};
+    msgs.forEach(function(m){
+      var peerEmail = (m.from_email === partner.email) ? m.to_email : m.from_email;
+      if(!lastMsgByPeer[peerEmail] || new Date(m.created_at) > new Date(lastMsgByPeer[peerEmail].created_at)){
+        lastMsgByPeer[peerEmail] = m;
+      }
+    });
+
+    var html = '';
+    peers.forEach(function(peer){
+      var nm = ((peer.prenom||'')+ ' '+(peer.nom||'')).trim() || 'Collègue';
+      var ini = (nm[0]||'?').toUpperCase();
+      var avatarHtml = peer.photo
+        ? '<img src="'+peer.photo+'" style="width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid #2a2a2a;flex-shrink:0;">'
+        : '<div style="width:44px;height:44px;border-radius:50%;background:#1a1a1a;border:2px solid #2a2a2a;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;color:#FFD700;flex-shrink:0;">'+ini+'</div>';
+      var last = lastMsgByPeer[peer.email];
+      var previewHtml = last
+        ? '<div style="font-size:11px;color:#555;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px;">'+last.content.slice(0,50)+'</div>'
+        : '<div style="font-size:11px;color:#333;margin-top:2px;font-style:italic;">Aucun échange</div>';
+      html += '<div onclick="_ptnrCollegueThread(\''+peer.id+'\',\''+nm.replace(/'/g,'\\\'').replace(/"/g,'&quot;')+'\',\''+peer.email+'\')" style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #1a1a1a;cursor:pointer;">'
+        +avatarHtml
+        +'<div style="flex:1;min-width:0;">'
+        +'<div style="font-size:13px;font-weight:900;color:#fff;">'+nm+'</div>'
+        +( peer.city ? '<div style="font-size:10px;color:#555;margin-top:1px;"><i class="fa-solid fa-location-dot" style="font-size:8px;"></i> '+peer.city+'</div>' : '')
+        +previewHtml
+        +'</div>'
+        +'<i class="fa-solid fa-chevron-right" style="color:#333;font-size:14px;"></i>'
+        +'</div>';
+    });
+    listEl.innerHTML = html;
+  }).catch(function(){
+    if(listEl) listEl.innerHTML = '<div style="color:#ef4444;font-size:12px;padding:12px 0;">Erreur de chargement. Vérifiez votre connexion.</div>';
+  });
+}
+
+function _ptnrCollegueThread(peerId, peerName, peerEmail){
+  var c = document.getElementById('ptnr-collegues-content');
+  if(!c) return;
+  c.innerHTML = '<div class="plus-back-bar" style="margin-bottom:0;">'
+    +'<button class="plus-back-btn" onclick="_ptnrLoadCollegues()">&#8249;</button>'
+    +'<div class="plus-sub-title">'+peerName+'</div>'
+    +'</div>'
+    +'<div id="ptnr-peer-thread" style="padding:12px 16px;display:flex;flex-direction:column;gap:8px;min-height:200px;"></div>'
+    +'<div style="display:flex;gap:8px;padding:10px 16px;border-top:1px solid #1a1a1a;position:sticky;bottom:0;background:#0d0d0d;">'
+    +'<input type="text" id="ptnr-peer-msg-input" class="ptnr-input" placeholder="Votre message…" style="flex:1;margin:0;" onkeydown="if(event.key===\'Enter\'&&!event.shiftKey){event.preventDefault();_ptnrSendCollegueMsg(\''+peerId+'\',\''+peerEmail+'\',\''+peerName.replace(/'/g,'\\\'').replace(/"/g,'&quot;')+'\');}">'
+    +'<button onclick="_ptnrSendCollegueMsg(\''+peerId+'\',\''+peerEmail+'\',\''+peerName.replace(/'/g,'\\\'').replace(/"/g,'&quot;')+'\')" style="background:#FFD700;border:none;border-radius:12px;padding:0 16px;color:#000;font-weight:900;font-size:18px;cursor:pointer;flex-shrink:0;"><i class="fa-solid fa-paper-plane"></i></button>'
+    +'</div>';
+
+  _ptnrFetch('/api/partner/peer-inbox').then(function(data){
+    var msgs  = (data && data.messages) || [];
+    var partner = _ptnrSession || {};
+    var thread  = msgs.filter(function(m){
+      return (m.from_email===partner.email && m.to_email===peerEmail) ||
+             (m.from_email===peerEmail && m.to_email===partner.email);
+    });
+    var threadEl = document.getElementById('ptnr-peer-thread');
+    if(!threadEl) return;
+    if(!thread.length){
+      threadEl.innerHTML = '<div style="text-align:center;color:#333;font-size:12px;padding:24px 0;font-style:italic;">Commencez la conversation…</div>';
+      return;
+    }
+    threadEl.innerHTML = thread.map(function(m){
+      var isMe = m.from_email === partner.email;
+      return '<div style="display:flex;flex-direction:'+(isMe?'row-reverse':'row')+';gap:8px;align-items:flex-end;">'
+        +'<div style="max-width:78%;background:'+(isMe?'#FFD700':'#1a1a1a')+';color:'+(isMe?'#000':'#fff')+';border-radius:'+(isMe?'16px 16px 4px 16px':'16px 16px 16px 4px')+';padding:10px 14px;font-size:13px;line-height:1.45;">'+m.content.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</div>'
+        +'</div>';
+    }).join('');
+    threadEl.scrollTop = threadEl.scrollHeight;
+  }).catch(function(){});
+
+  var inp = document.getElementById('ptnr-peer-msg-input');
+  if(inp) inp.focus();
+}
+
+function _ptnrSendCollegueMsg(peerId, toEmail, toName){
+  var inp = document.getElementById('ptnr-peer-msg-input');
+  if(!inp) return;
+  var content = inp.value.trim();
+  if(!content) return;
+  inp.value = '';
+  inp.disabled = true;
+
+  _ptnrFetch('/api/partner/peer-message','POST',{to_partner_id: peerId, content: content}).then(function(data){
+    inp.disabled = false;
+    if(data && data.ok){
+      // Ajouter la bulle localement
+      var threadEl = document.getElementById('ptnr-peer-thread');
+      if(threadEl){
+        var ghost = threadEl.querySelector('[style*="font-style:italic"]');
+        if(ghost) ghost.remove();
+        var bbl = document.createElement('div');
+        bbl.style.cssText = 'display:flex;flex-direction:row-reverse;gap:8px;align-items:flex-end;';
+        bbl.innerHTML = '<div style="max-width:78%;background:#FFD700;color:#000;border-radius:16px 16px 4px 16px;padding:10px 14px;font-size:13px;line-height:1.45;">'+content.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</div>';
+        threadEl.appendChild(bbl);
+        threadEl.scrollTop = threadEl.scrollHeight;
+      }
+    } else {
+      inp.value = content;
+      var errMsg = (data && data.message) || 'Erreur d\'envoi.';
+      showToast('Envoi impossible', errMsg, 'error');
+    }
+  }).catch(function(){
+    inp.disabled = false;
+    inp.value = content;
+    showToast('Erreur','Connexion au serveur impossible.','error');
+  });
 }
 function _ptnrSaveIdentity(){
   var prenomInp = document.getElementById('ptnr-identity-prenom');
@@ -14368,13 +14618,14 @@ function _ptnrSaveIdentity(){
       _ptnrSession.nom = data.partner.nom;
       _ptnrSaveToCache(_ptnrSession);
       var dn = document.getElementById('ptnr-display-name'); if(dn) dn.textContent = prenom+' '+nom;
-      if(msgEl){ msgEl.style.color='#4caf50'; msgEl.textContent='Identité mise à jour.'; msgEl.className='ptnr-login-err on'; }
-    } else if(msgEl){
-      msgEl.style.color='#ef4444'; msgEl.textContent=(data&&data.error)||'Erreur lors de l\'enregistrement'; msgEl.className='ptnr-login-err on';
+      showToast('Identité mise à jour', prenom+' '+nom, 'success');
+      setTimeout(_ptnrProfilBack, 600);
+    } else {
+      if(msgEl){ msgEl.style.color='#ef4444'; msgEl.textContent=(data&&data.error)||'Erreur lors de l\'enregistrement'; msgEl.className='ptnr-login-err on'; }
+      if(btnEl){ btnEl.disabled=false; btnEl.textContent='Enregistrer'; }
     }
   }).catch(function(){
     if(msgEl){ msgEl.style.color='#ef4444'; msgEl.textContent='Erreur de connexion au serveur'; msgEl.className='ptnr-login-err on'; }
-  }).finally(function(){
     if(btnEl){ btnEl.disabled=false; btnEl.textContent='Enregistrer'; }
   });
 }
@@ -14390,13 +14641,14 @@ function _ptnrSaveResponseTime(){
     if(data && data.success){
       _ptnrSession.responseTimeCommitmentMinutes = data.partner.responseTimeCommitmentMinutes;
       _ptnrSaveToCache(_ptnrSession);
-      if(msgEl){ msgEl.style.color='#4caf50'; msgEl.textContent='Temps de réponse mis à jour.'; msgEl.className='ptnr-login-err on'; }
-    } else if(msgEl){
-      msgEl.style.color='#ef4444'; msgEl.textContent=(data&&data.error)||'Erreur lors de l\'enregistrement'; msgEl.className='ptnr-login-err on';
+      showToast('Temps de réponse mis à jour', '', 'success');
+      setTimeout(_ptnrProfilBack, 600);
+    } else {
+      if(msgEl){ msgEl.style.color='#ef4444'; msgEl.textContent=(data&&data.error)||'Erreur lors de l\'enregistrement'; msgEl.className='ptnr-login-err on'; }
+      if(btnEl){ btnEl.disabled=false; btnEl.textContent='Enregistrer'; }
     }
   }).catch(function(){
     if(msgEl){ msgEl.style.color='#ef4444'; msgEl.textContent='Erreur de connexion au serveur'; msgEl.className='ptnr-login-err on'; }
-  }).finally(function(){
     if(btnEl){ btnEl.disabled=false; btnEl.textContent='Enregistrer'; }
   });
 }
@@ -14591,44 +14843,39 @@ function _ptnrSaveServices(){
   });
 }
 
-(function _ptnrWirePhotoInput(){
-  var input = document.getElementById('ptnr-photo-input');
-  if(!input) return;
-  input.addEventListener('change', function(e){
-    var file = e.target.files && e.target.files[0];
-    if(!file) return;
-    var msgEl = document.getElementById('ptnr-photo-msg');
-    var btnEl = document.getElementById('ptnr-photo-btn');
-    var preview = document.getElementById('ptnr-profil-photo-preview');
-    if(file.size > 25*1024*1024){
-      if(msgEl){ msgEl.style.color='#ef4444'; msgEl.textContent='Cette photo est trop lourde. Choisissez-en une autre.'; msgEl.className='ptnr-login-err on'; }
-      input.value=''; return;
+function _ptnrHandlePhotoUpload(input){
+  var file = input && input.files && input.files[0];
+  if(!file) return;
+  var msgEl   = document.getElementById('ptnr-photo-msg');
+  var btnEl   = document.getElementById('ptnr-photo-btn');
+  var preview = document.getElementById('ptnr-profil-photo-preview');
+  if(file.size > 25*1024*1024){
+    if(msgEl){ msgEl.style.color='#ef4444'; msgEl.textContent='Cette photo est trop lourde. Choisissez-en une autre.'; msgEl.className='ptnr-login-err on'; }
+    input.value=''; return;
+  }
+  if(btnEl){ btnEl.disabled=true; btnEl.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Envoi...'; }
+  if(msgEl){ msgEl.className='ptnr-login-err'; msgEl.textContent=''; }
+  _ptnrImageFileToAvatarBase64(file, 480, 0.85).then(function(dataUri){
+    if(preview) preview.innerHTML = '<img src="'+dataUri+'" alt="" style="width:100%;height:100%;object-fit:cover;">';
+    return _ptnrFetch('/api/partner/auth/update-profile', 'PUT', {photo: dataUri});
+  }).then(function(data){
+    if(data && data.success){
+      _ptnrSession.photo = data.partner.photo;
+      _ptnrSaveToCache(_ptnrSession);
+      showToast('Photo mise à jour', '', 'success');
+      setTimeout(_ptnrProfilBack, 900);
+    } else if(msgEl){
+      msgEl.style.color='#ef4444'; msgEl.textContent=(data&&data.error)||'Erreur lors de l\'envoi de la photo'; msgEl.className='ptnr-login-err on';
     }
-    if(btnEl){ btnEl.disabled=true; btnEl.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Envoi...'; }
-    if(msgEl){ msgEl.className='ptnr-login-err'; msgEl.textContent=''; }
-    _ptnrImageFileToAvatarBase64(file, 480, 0.85).then(function(dataUri){
-      // Aperçu instantané (façon Instagram) avant même la fin de l'envoi
-      if(preview) preview.innerHTML = '<img src="'+dataUri+'" alt="" style="width:100%;height:100%;object-fit:cover;">';
-      return _ptnrFetch('/api/partner/auth/update-profile', 'PUT', {photo: dataUri});
-    }).then(function(data){
-      if(data && data.success){
-        _ptnrSession.photo = data.partner.photo;
-        _ptnrSaveToCache(_ptnrSession);
-        if(msgEl){ msgEl.style.color='#4caf50'; msgEl.textContent='Photo mise à jour.'; msgEl.className='ptnr-login-err on'; }
-      } else if(msgEl){
-        msgEl.style.color='#ef4444'; msgEl.textContent=(data&&data.error)||'Erreur lors de l\'envoi de la photo'; msgEl.className='ptnr-login-err on';
-      }
-    }).catch(function(err){
-      console.error('[PTNR] Erreur upload photo profil:', err);
-      var msg = (err && err.message && err.message !== 'Erreur serveur') ? err.message : 'Erreur de connexion au serveur. Réessayez.';
-      if(msgEl){ msgEl.style.color='#ef4444'; msgEl.textContent=msg; msgEl.className='ptnr-login-err on'; }
-      _ptnrLoadProfilPhoto();
-    }).finally(function(){
-      if(btnEl){ btnEl.disabled=false; btnEl.innerHTML='<i class="fa-solid fa-camera"></i> Changer ma photo'; }
-      input.value='';
-    });
+  }).catch(function(err){
+    console.error('[PTNR] Erreur upload photo profil:', err);
+    var msg = (err && err.message && err.message !== 'Erreur serveur') ? err.message : 'Erreur de connexion au serveur. Réessayez.';
+    if(msgEl){ msgEl.style.color='#ef4444'; msgEl.textContent=msg; msgEl.className='ptnr-login-err on'; }
+  }).finally(function(){
+    if(btnEl){ btnEl.disabled=false; btnEl.innerHTML='<i class="fa-solid fa-camera"></i> Changer ma photo'; }
+    input.value='';
   });
-})();
+}
 
 /* ══════════════════════════════════════════════════
    UX PREMIUM — Expérience inoubliable

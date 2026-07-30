@@ -8675,6 +8675,98 @@ app.post('/api/partner/inbox/reply', authenticatePartner, function(req, res) {
 });
 
 // ============================================================
+// ROUTES - MESSAGERIE ENTRE COLLÈGUES PARTENAIRES (P2P)
+// ============================================================
+
+/**
+ * GET /api/partner/peers — Partenaires actifs de même catégorie (hors soi-même)
+ */
+app.get('/api/partner/peers', authenticatePartner, function(req, res) {
+    try {
+        var partner = req.partner;
+        var peers = loadPartners().filter(function(p) {
+            return p.id !== partner.id &&
+                   p.partner_type === partner.partner_type &&
+                   p.accountStatus === 'active';
+        }).map(function(p) {
+            return {
+                id:           p.id,
+                prenom:       p.prenom || '',
+                nom:          p.nom || '',
+                email:        p.email || '',
+                photo:        p.photo || null,
+                city:         p.city || '',
+                bio:          (p.bio || '').slice(0, 120),
+                partner_type: p.partner_type || ''
+            };
+        });
+        res.json({ ok: true, peers: peers });
+    } catch(err) {
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * GET /api/partner/peer-inbox — Conversations P2P impliquant ce partenaire
+ */
+app.get('/api/partner/peer-inbox', authenticatePartner, function(req, res) {
+    try {
+        var partner = req.partner;
+        var msgs = loadChat().filter(function(m) {
+            return m.from_type === 'partner' && m.to_type === 'partner' &&
+                   (m.from_email === partner.email || m.to_email === partner.email);
+        });
+        msgs.sort(function(a, b) { return new Date(a.created_at) - new Date(b.created_at); });
+        res.json({ ok: true, messages: msgs });
+    } catch(err) {
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * POST /api/partner/peer-message — Envoyer un message à un collègue de même catégorie
+ */
+app.post('/api/partner/peer-message', authenticatePartner, function(req, res) {
+    try {
+        var partner = req.partner;
+        var toPartnerId = (req.body.to_partner_id || '').trim();
+        var content     = (req.body.content || '').trim();
+        if (!toPartnerId || !content) {
+            return res.status(400).json({ error: 'to_partner_id et content requis' });
+        }
+        if (detectContournement(content)) {
+            return res.status(400).json({ error: 'contournement', message: CONTOURNEMENT_MESSAGE });
+        }
+        var allPartners = loadPartners();
+        var toPeer = allPartners.find(function(p) { return p.id === toPartnerId; });
+        if (!toPeer) return res.status(404).json({ error: 'Collègue introuvable' });
+        if (toPeer.partner_type !== partner.partner_type) {
+            return res.status(403).json({ error: 'Messagerie disponible uniquement entre partenaires de même catégorie' });
+        }
+        var msg = {
+            id:           'MSG-' + uuidv4().split('-')[0].toUpperCase(),
+            from_email:   partner.email,
+            from_name:    ((partner.prenom || '') + ' ' + (partner.nom || '')).trim(),
+            from_type:    'partner',
+            to_type:      'partner',
+            to_email:     toPeer.email,
+            to_name:      ((toPeer.prenom || '') + ' ' + (toPeer.nom || '')).trim(),
+            to_partner_id: toPartnerId,
+            content:      content,
+            attachments:  [],
+            created_at:   new Date().toISOString(),
+            read_at:      null
+        };
+        var msgs = loadChat();
+        msgs.push(msg);
+        saveChat(msgs);
+        res.json({ ok: true, message: msg });
+    } catch(err) {
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// ============================================================
 // ROUTES - GESTION DES SEANCES (Admin)
 // ============================================================
 
