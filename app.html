@@ -2738,7 +2738,7 @@ a{text-decoration:none;color:inherit}
 
         <!-- Sub-screen: Home -->
         <div class="ptnr-screen on" id="ptnr-screen-home">
-          <div id="ptnr-home-qg-widget" style="padding:0 16px 12px"></div>
+          <div id="ptnr-home-qg-widget" style="padding:16px 16px 4px"></div>
           <div id="ptnr-home-list" style="padding:0 0 16px;"></div>
 
           <!-- Mes tarifs & prestations (style menu "Uber Eats / Deliveroo") -->
@@ -6893,6 +6893,7 @@ function _renderPartnerHomeQGWidget(data) {
       + '</div>'
       + '<div style="font-size:11px;color:#aaa;margin-top:4px"><i class="fa-solid fa-calendar-check" style="color:var(--yellow);margin-right:3px;font-size:10px"></i>Événements Genesis : ' + evLbl + '</div>'
       + '</div>'
+      + '<button onclick="_ptnrNav(\'reputation\')" style="width:100%;margin-top:12px;background:rgba(255,215,0,.07);border:1px solid rgba(255,215,0,.2);border-radius:10px;color:#FFD700;padding:9px;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:.03em;"><i class="fa-solid fa-trophy" style="margin-right:6px;"></i>Voir mes badges et avantages</button>'
       + '</div>';
   } catch(e){ el.innerHTML = ''; }
 }
