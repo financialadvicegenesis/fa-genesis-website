@@ -2909,20 +2909,37 @@ a{text-decoration:none;color:inherit}
 
   <!-- Bottom nav -->
   <div id="nav">
-    <button class="nav-btn on" id="nb-home" onclick="nav('home')">
+    <!-- Nav client (visible par défaut) -->
+    <button class="nav-btn client-nav on" id="nb-home" onclick="nav('home')">
       <i class="ni fa-solid fa-house"></i><span>Accueil</span>
     </button>
-    <button class="nav-btn" id="nb-explorer" onclick="nav('explorer')">
+    <button class="nav-btn client-nav" id="nb-explorer" onclick="nav('explorer')">
       <i class="ni fa-solid fa-magnifying-glass"></i><span>Explorer</span>
     </button>
-    <button class="nav-btn" id="nb-prestataires" onclick="nav('prestataires')">
+    <button class="nav-btn client-nav" id="nb-prestataires" onclick="nav('prestataires')">
       <i class="ni fa-solid fa-handshake"></i><span>Prestataires</span>
     </button>
-    <button class="nav-btn" id="nb-panier" onclick="openCart()" style="position:relative">
+    <button class="nav-btn client-nav" id="nb-panier" onclick="openCart()" style="position:relative">
       <i class="ni fa-solid fa-cart-shopping"></i><span>Panier</span>
       <span class="nav-cart-badge" id="cart-count-nav"></span>
     </button>
-    <button class="nav-btn" id="nb-profil" onclick="nav('profil')">
+    <button class="nav-btn client-nav" id="nb-profil" onclick="nav('profil')">
+      <i class="ni fa-solid fa-user"></i><span>Profil</span>
+    </button>
+    <!-- Nav partenaire (visible uniquement dans l'espace prestataire) -->
+    <button class="nav-btn ptnr-nav on" id="pnb-home" onclick="_ptnrNav('home')" style="display:none">
+      <i class="ni fa-solid fa-house"></i><span>Accueil</span>
+    </button>
+    <button class="nav-btn ptnr-nav" id="pnb-projets" onclick="_ptnrNav('projets')" style="display:none">
+      <i class="ni fa-solid fa-briefcase"></i><span>Projets</span>
+    </button>
+    <button class="nav-btn ptnr-nav" id="pnb-messages" onclick="_ptnrNav('messages')" style="display:none">
+      <i class="ni fa-solid fa-comment"></i><span>Messages</span>
+    </button>
+    <button class="nav-btn ptnr-nav" id="pnb-versements" onclick="_ptnrNav('versements')" style="display:none">
+      <i class="ni fa-solid fa-sack-dollar"></i><span>Portefeuille</span>
+    </button>
+    <button class="nav-btn ptnr-nav" id="pnb-profil" onclick="_ptnrNav('profil')" style="display:none">
       <i class="ni fa-solid fa-user"></i><span>Profil</span>
     </button>
   </div>
@@ -3197,6 +3214,10 @@ function nav(tab){
   var contentEl = document.getElementById('content');
   if(contentEl) contentEl.scrollTop = 0;
   var hdr=document.getElementById('hdr'); if(hdr) hdr.classList.remove('hdr-hidden');
+  // Basculer la nav bas : client ↔ partenaire
+  document.querySelectorAll('.client-nav').forEach(function(b){ b.style.display = tab==='partner' ? 'none' : ''; });
+  document.querySelectorAll('.ptnr-nav').forEach(function(b){ b.style.display = tab==='partner' ? '' : 'none'; });
+
   if(tab==='partner'){
     var pbb=document.getElementById('ptnrBackStartBtn');
     if(pbb){
@@ -10675,6 +10696,10 @@ function _ptnrNav(screen){
   _ptnrCloseDrawer();
   document.querySelectorAll('.ptnr-snbtn').forEach(function(b){b.className='ptnr-snbtn';});
   document.querySelectorAll('.ptnr-screen').forEach(function(s){s.className='ptnr-screen';});
+  // Mettre à jour le bouton actif dans la nav bas partenaire
+  document.querySelectorAll('.ptnr-nav').forEach(function(b){b.className='nav-btn ptnr-nav';});
+  var pnb = document.getElementById('pnb-'+screen);
+  if(pnb) pnb.className = 'nav-btn ptnr-nav on';
   var btn = document.getElementById('ptnr-sn-'+screen);
   var scr = document.getElementById('ptnr-screen-'+screen);
   if(btn) btn.className = 'ptnr-snbtn on';
