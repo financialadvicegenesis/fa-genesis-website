@@ -10651,6 +10651,10 @@ function _ptnrLogout(){
 
 function _ptnrShowDash(){
   _ptnrShowScreen('dash');
+  // Activer la nav bas partenaire (Accueil actif par défaut)
+  document.querySelectorAll('.client-nav').forEach(function(b){ b.style.display='none'; });
+  document.querySelectorAll('.ptnr-nav').forEach(function(b){ b.style.display=''; b.className='nav-btn ptnr-nav'; });
+  var pnbH = document.getElementById('pnb-home'); if(pnbH) pnbH.className='nav-btn ptnr-nav on';
   if(_ptnrSession){
     var p = _ptnrSession;
     var savedProfile = null;
