@@ -2622,25 +2622,6 @@ a{text-decoration:none;color:inherit}
       <!-- Dashboard (shown when authenticated) -->
       <div id="ptnr-dash-screen" style="display:none;">
         <!-- Header with partner info -->
-        <div class="ptnr-header">
-          <div class="ptnr-header-left">
-            <button class="ptnr-hamburger-btn" onclick="_ptnrOpenDrawer()" aria-label="Menu"><i class="fa-solid fa-bars"></i></button>
-            <div class="ptnr-avatar" id="ptnr-avatar">P</div>
-            <div style="min-width:0;">
-              <div class="ptnr-name" id="ptnr-display-name">Partenaire</div>
-              <div class="ptnr-type" id="ptnr-display-type"></div>
-              <div class="ptnr-header-meta">
-                <span id="ptnr-header-badge"></span>
-                <span class="ptnr-header-rating" id="ptnr-header-rating"><i class="fa-solid fa-star"></i> <span id="ptnr-header-rating-val"></span></span>
-              </div>
-            </div>
-          </div>
-          <div class="ptnr-header-actions">
-            <button class="ptnr-logout-btn" id="ptnr-modifier-btn" onclick="_ptnrShowEditProfile()" style="display:none;border-color:#FFD700;color:#FFD700;"><i class="fa-solid fa-pen"></i> Modifier</button>
-            <button class="ptnr-logout-btn" onclick="_ptnrLogout()">Déconnexion</button>
-          </div>
-        </div>
-
         <!-- Tiroir de navigation (façon Instagram/LinkedIn/Facebook) : icône 3 lignes → liste des sections -->
         <div id="ptnr-drawer-overlay" onclick="_ptnrCloseDrawer()">
           <div id="ptnr-drawer-panel" onclick="event.stopPropagation()">
@@ -10642,8 +10623,6 @@ function _ptnrNav(screen){
   var scr = document.getElementById('ptnr-screen-'+screen);
   if(btn) btn.className = 'ptnr-snbtn on';
   if(scr) scr.className = 'ptnr-screen on';
-  var modifierBtn = document.getElementById('ptnr-modifier-btn');
-  if(modifierBtn) modifierBtn.style.display = (screen==='profil') ? '' : 'none';
   if(screen==='home') _ptnrLoadHome();
   if(screen==='projets') _ptnrLoadProjets();
   if(screen==='devis') _ptnrLoadDevis();
