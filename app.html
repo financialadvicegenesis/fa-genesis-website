@@ -6855,34 +6855,45 @@ function _renderPartnerHomeQGWidget(data) {
     var badge = data.founderBadge ? 'fondateur' : (data.badge || null);
     var rating = data.rating || {average: 0, count: 0};
     var b = data.currentBenefits || {};
+    var bp = data.badgeProgress || {};
     var badgeLabels = {bronze:'Bronze',argent:'Argent',or:'Or',elite:'Élite',fondateur:'Fondateur'};
     var badgeColors = {bronze:'#cd7f32',argent:'#c0c0c0',or:'#FFD700',elite:'#a78bfa',fondateur:'#22c55e'};
-    var badgeName = badge ? (badgeLabels[badge] || badge) : null;
-    var badgeColor = badge ? (badgeColors[badge] || '#888') : '#555';
+    var badgeName   = badge ? (badgeLabels[badge] || badge) : 'Nouveau prestataire';
+    var badgeColor  = badge ? (badgeColors[badge] || '#FFD700') : '#555';
     var commLbl = b.commissionPct ? b.commissionPct + '%' : '15%';
-    var payLbl = b.payout === 'express' ? 'Express' : b.payout === 'prioritaire' ? 'Prioritaire' : 'Standard';
-    var bp = data.badgeProgress || {};
-    var html = '<div style="background:linear-gradient(135deg,#111,#1a1a00);border:1.5px solid '+(badge?badgeColor:'#333')+';border-radius:14px;padding:14px 16px;margin-bottom:4px;">';
-    html += '<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">';
-    html += genesisUnifiedBadgesHtml(badge, data.constellation) || '<span style="font-size:13px;color:#555;font-weight:700;"><i class="fa-solid fa-medal"></i> Pas encore de badge</span>';
-    html += '<div style="flex:1;">';
-    html += '<div style="font-size:15px;font-weight:900;color:'+(badge?badgeColor:'#888')+'">'+(badgeName || 'Nouveau prestataire')+'</div>';
-    html += '<div style="font-size:12px;color:#888;margin-top:2px;"><i class="fa-solid fa-star" style="color:#FFD700;font-size:10px;margin-right:3px;"></i>'+rating.average.toFixed(1)+' ('+rating.count+' avis)</div>';
-    html += '</div>';
-    html += '<div style="text-align:right;">';
-    html += '<div style="font-size:10px;color:#555;margin-bottom:3px;">Commission</div>';
-    html += '<div style="font-size:14px;font-weight:900;color:#FFD700;">'+commLbl+'</div>';
-    html += '<div style="font-size:10px;color:#555;margin-top:4px;">Versement</div>';
-    html += '<div style="font-size:12px;font-weight:700;color:'+(b.payout==='express'?'#4caf50':b.payout==='prioritaire'?'#FFD700':'#888')+'">'+payLbl+'</div>';
-    html += '</div></div>';
-    if(bp && bp.nextBadge){
-      var pct = Math.min(100, Math.round((bp.progressPct || 0)));
-      html += '<div style="font-size:10px;color:#555;margin-bottom:5px;">Prochain badge : <strong style="color:'+(badgeColors[bp.nextBadge]||'#FFD700')+'">'+( badgeLabels[bp.nextBadge]||bp.nextBadge)+'</strong></div>';
-      html += '<div style="background:#1a1a1a;border-radius:6px;height:6px;overflow:hidden;">';
-      html += '<div style="height:100%;width:'+pct+'%;background:linear-gradient(90deg,'+(badgeColors[bp.nextBadge]||'#FFD700')+',#fff2);border-radius:6px;transition:width .5s;"></div></div>';
-    }
-    html += '</div>';
-    el.innerHTML = html;
+    var _bsSoon = '<span style="font-size:9px;color:#555;background:rgba(255,255,255,.04);border-radius:3px;padding:1px 4px;margin-left:4px;font-weight:500">Bientôt</span>';
+    var payLbl  = b.payout === 'express'     ? '<span style="color:#4caf50;font-weight:800">Express</span>' + _bsSoon
+                : b.payout === 'prioritaire' ? '<span style="color:#FFD700;font-weight:800">Prioritaire</span>' + _bsSoon
+                : '<span style="color:#888">Standard</span>';
+    var evLbl   = b.events ? '<span style="color:#4caf50;font-weight:800">Prioritaire</span>' + _bsSoon
+                           : '<span style="color:#888">Standard</span>';
+    var pct = bp.nextBadge ? Math.min(100, Math.round(bp.progressPct || 0)) : 100;
+    var nextInfo = bp.nextBadge
+      ? '<div style="font-size:11px;color:var(--gray);margin-top:5px;text-align:right">Prochain : '
+        + '<strong style="color:'+(badgeColors[bp.nextBadge]||'#FFD700')+'">'+(badgeLabels[bp.nextBadge]||bp.nextBadge)+'</strong>'
+        + '</div>'
+      : '';
+
+    el.innerHTML = '<div class="home-qg-widget">'
+      + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">'
+      + '<span style="font-size:12px;color:var(--gray);font-weight:700;letter-spacing:.04em;text-transform:uppercase">Badge prestataire</span>'
+      + '<span style="font-size:13px;color:var(--yellow);font-weight:800"><i class="fa-solid fa-star"></i> '
+        + rating.average.toFixed(1) + ' <span style="color:#555;font-weight:500;font-size:11px">(' + rating.count + ' avis)</span></span>'
+      + '</div>'
+      + '<div style="font-size:15px;font-weight:800;color:' + badgeColor + ';margin-bottom:8px">' + badgeName + '</div>'
+      + '<div style="background:rgba(255,255,255,.1);border-radius:99px;height:6px;overflow:hidden">'
+      + '<div style="background:' + badgeColor + ';height:100%;width:' + pct + '%;border-radius:99px;transition:width .6s"></div>'
+      + '</div>'
+      + nextInfo
+      + '<div style="margin-top:10px;border-top:1px solid rgba(var(--yellow-rgb),.15);padding-top:8px;">'
+      + '<div style="font-size:10px;color:var(--gray);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Avantages palier</div>'
+      + '<div style="display:flex;gap:10px;flex-wrap:wrap;">'
+      + '<div style="font-size:11px;color:#aaa;flex:1;min-width:90px"><i class="fa-solid fa-percent" style="color:var(--yellow);margin-right:3px;font-size:10px"></i>Commission : <b style="color:#ddd">' + commLbl + '</b></div>'
+      + '<div style="font-size:11px;color:#aaa;flex:1;min-width:90px"><i class="fa-solid fa-clock" style="color:var(--yellow);margin-right:3px;font-size:10px"></i>Versement : ' + payLbl + '</div>'
+      + '</div>'
+      + '<div style="font-size:11px;color:#aaa;margin-top:4px"><i class="fa-solid fa-calendar-check" style="color:var(--yellow);margin-right:3px;font-size:10px"></i>Événements Genesis : ' + evLbl + '</div>'
+      + '</div>'
+      + '</div>';
   } catch(e){ el.innerHTML = ''; }
 }
 
