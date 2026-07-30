@@ -3052,6 +3052,18 @@ function showApp(){
   initApp();
   setTimeout(_restoreNavSession, 400);
   setTimeout(function(){ if(typeof _checkTutoPrompt==='function') _checkTutoPrompt(); }, 1200);
+  // Retour depuis l'onboarding Stripe : ouvrir directement le Portefeuille partenaire
+  try {
+    var _urlParams = new URLSearchParams(window.location.search);
+    if(_urlParams.get('stripe_return') === '1' || _urlParams.get('stripe_refresh') === '1'){
+      // Nettoyer l'URL sans recharger la page
+      window.history.replaceState(null, '', window.location.pathname);
+      setTimeout(function(){
+        nav('partner');
+        setTimeout(function(){ _ptnrNav('versements'); }, 500);
+      }, 800);
+    }
+  } catch(e){}
 }
 function goLogin(){ showLoginSheet(); }
 function goGuest(){ GUEST = true; showApp(); }
