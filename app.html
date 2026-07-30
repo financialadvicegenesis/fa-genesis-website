@@ -13693,20 +13693,6 @@ function _ptnrLoadVersements(){
     if(setupEl){
       var html = '';
 
-      // ── Bloc PayPal ──
-      var paypalOk = !!paypalEmail;
-      html += '<div style="background:#111;border:1.5px solid '+(paypalOk?'#1a3a1a':'#252510')+';border-radius:14px;padding:16px;margin-bottom:12px;">';
-      html += '<div style="font-size:12px;color:'+(paypalOk?'#4caf50':'#888')+';font-weight:700;letter-spacing:.5px;margin-bottom:8px;">'+(paypalOk?'✓ PAYPAL CONFIGURÉ':'PAYPAL (versement automatique)')+'</div>';
-      if(paypalOk){
-        html += '<div style="font-size:13px;color:#ccc;margin-bottom:10px;">Email : <strong style="color:#fff;">'+paypalEmail+'</strong></div>';
-        html += '<div style="font-size:11px;color:#555;margin-bottom:10px;">Vos versements sont envoyés automatiquement à cette adresse après chaque paiement client.</div>';
-      } else {
-        html += '<div style="font-size:12px;color:#666;margin-bottom:10px;line-height:1.5;">Renseignez votre email PayPal pour recevoir vos versements automatiquement.</div>';
-      }
-      html += '<div style="display:flex;gap:8px;flex-wrap:wrap;">';
-      html += '<input id="ptnr-paypal-input" type="email" placeholder="votre@paypal.com" value="'+(paypalEmail||'')+'" style="flex:1;min-width:160px;background:#1a1a1a;border:1px solid #333;border-radius:10px;color:#fff;padding:10px 12px;font-size:16px;">';
-      html += '<button onclick="_savePartnerPaypal()" style="background:#FFD700;color:#000;border:none;border-radius:10px;padding:10px 14px;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap;">'+(paypalOk?'MODIFIER':'ENREGISTRER')+'</button>';
-      html += '</div></div>';
 
       // ── Bloc RIB / IBAN — masqué si Stripe actif (IBAN géré par Stripe) ──
       var stripeActive = (_ptnrSession && _ptnrSession.stripeChargesEnabled) ||
