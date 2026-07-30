@@ -3206,11 +3206,11 @@ function nav(tab){
   try{sessionStorage.setItem('fa_nav_tab',tab);if(tab!=='profil'){sessionStorage.removeItem('fa_nav_section');sessionStorage.removeItem('fa_support_thread');}}catch(e){}
   haptic(8);
   document.querySelectorAll('.tab').forEach(function(t){t.className='tab';});
-  document.querySelectorAll('.nav-btn').forEach(function(b){b.className='nav-btn';});
+  document.querySelectorAll('.nav-btn').forEach(function(b){ b.classList.remove('on'); });
   var t = document.getElementById('tab-'+tab);
   var b = document.getElementById('nb-'+tab);
   if(t) t.className='tab on';
-  if(b) b.className='nav-btn on';
+  if(b) b.classList.add('on');
   var contentEl = document.getElementById('content');
   if(contentEl) contentEl.scrollTop = 0;
   var hdr=document.getElementById('hdr'); if(hdr) hdr.classList.remove('hdr-hidden');
@@ -3250,11 +3250,11 @@ function navBack(){
   _prevNav=null;
   _navCurrentTab=tab;
   document.querySelectorAll('.tab').forEach(function(t){t.className='tab';});
-  document.querySelectorAll('.nav-btn').forEach(function(b){b.className='nav-btn';});
+  document.querySelectorAll('.nav-btn').forEach(function(b){ b.classList.remove('on'); });
   var t=document.getElementById('tab-'+tab);
   var b=document.getElementById('nb-'+tab);
   if(t) t.className='tab on';
-  if(b) b.className='nav-btn on';
+  if(b) b.classList.add('on');
   var hdr=document.getElementById('hdr'); if(hdr) hdr.classList.remove('hdr-hidden');
   // Restore scroll position WITHOUT resetting
   var contentEl=document.getElementById('content');
