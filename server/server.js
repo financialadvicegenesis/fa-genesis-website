@@ -17461,11 +17461,6 @@ app.post('/api/admin/support/:id/close', authenticateAdmin, function(req, res) {
     res.json({ ok: true });
 });
 
-// Route inconnue (404)
-app.use((req, res) => {
-    res.status(404).json({ error: 'Route introuvable' });
-});
-
 // Erreurs non gerees (payload trop gros, JSON malforme, exception non rattrapee...)
 app.use((err, req, res, next) => {
     console.error('[ERREUR GLOBALE]', req.method, req.path, err);
@@ -17826,6 +17821,11 @@ app.get('/api/admin/marketplace/payments', function(req, res) {
     } catch(e) {
         res.status(500).json({ error: e.message });
     }
+});
+
+// Route inconnue (404) — doit rester APRÈS toutes les routes app.get/post/put/delete
+app.use((req, res) => {
+    res.status(404).json({ error: 'Route introuvable' });
 });
 
 // ============================================================
