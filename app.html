@@ -10591,51 +10591,8 @@ function _ptnrEnterDashboard(profileId){
   _ptnrNav('home');
   _ptnrRefreshBadges();
   _ptnrCheckPushStatus();
-  // Vérifier si le RIB est configuré — sinon afficher l'overlay d'onboarding
-  _ptnrCheckRibOnboarding();
 }
 
-function _ptnrCheckRibOnboarding(){
-  _ptnrFetch('/api/partner/payouts').then(function(data){
-    if(!data.rib){
-      var ov = document.getElementById('ptnr-rib-overlay');
-      if(ov){ ov.style.display='flex'; haptic(15); }
-    }
-  }).catch(function(){}); // silencieux — ne pas bloquer l'accès en cas d'erreur réseau
-}
-
-function _saveRibOnboarding(){
-  var titulaire = ((document.getElementById('rib-onb-titulaire')||{}).value||'').trim();
-  var iban      = ((document.getElementById('rib-onb-iban')||{}).value||'').replace(/\s/g,'').toUpperCase();
-  var bic       = ((document.getElementById('rib-onb-bic')||{}).value||'').replace(/\s/g,'').toUpperCase();
-  var errEl     = document.getElementById('rib-onb-err');
-  var btnEl     = document.getElementById('rib-onb-btn');
-  var showErr   = function(msg){ if(errEl){errEl.textContent=msg;errEl.style.display='';} };
-  if(!titulaire){ showErr('Veuillez saisir le titulaire du compte.'); return; }
-  if(!iban||iban.length<14){ showErr('IBAN invalide — vérifiez le format (ex : FR76…).'); return; }
-  if(!bic||bic.length<8){ showErr('BIC invalide — vérifiez votre code BIC / SWIFT.'); return; }
-  if(errEl) errEl.style.display='none';
-  if(btnEl){btnEl.disabled=true;btnEl.textContent='Enregistrement...';}
-  _ptnrFetch('/api/partner/profile/set-rib','POST',{titulaire:titulaire,iban:iban,bic:bic}).then(function(res){
-    if(btnEl){btnEl.disabled=false;btnEl.textContent='ENREGISTRER MON RIB';}
-    if(res.success){
-      _closeRibOnboarding();
-      launchConfetti();
-      showToast('RIB enregistré !','Vous recevrez vos versements directement sur votre compte bancaire.','success');
-      haptic([30,20,60]);
-    } else {
-      showErr(res.error||'Erreur lors de l\'enregistrement. Réessayez.');
-    }
-  }).catch(function(){
-    if(btnEl){btnEl.disabled=false;btnEl.textContent='ENREGISTRER MON RIB';}
-    showErr('Erreur de connexion. Réessayez.');
-  });
-}
-
-function _closeRibOnboarding(){
-  var ov = document.getElementById('ptnr-rib-overlay');
-  if(ov) ov.style.display='none';
-}
 
 function _ptnrLogout(){
   try{sessionStorage.removeItem('fa_ptnr_screen');sessionStorage.removeItem('fa_nav_tab');}catch(e){}
@@ -12302,34 +12259,6 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
   <span class="fsb-ico"><i class="fa-solid fa-heart"></i></span>
   <span class="fsb-txt">Ajouté à vos favoris</span>
   <button class="fsb-btn" onclick="navToFavoris()">Voir tout</button>
-</div>
-
-<!-- ── Overlay : Configuration RIB partenaire (à la connexion) ── -->
-<div id="ptnr-rib-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9800;display:none;align-items:center;justify-content:center;padding:16px;">
-  <div style="background:#0d0d0d;border:1px solid #2a2a2a;border-radius:20px;width:100%;max-width:420px;padding:28px 24px 24px;">
-    <div style="font-size:22px;font-weight:800;color:#FFD700;margin-bottom:6px;">Configurez votre RIB <i class="fa-solid fa-building-columns"></i></div>
-    <div style="font-size:13px;color:#888;line-height:1.6;margin-bottom:22px;">Pour recevoir votre part de chaque paiement client directement sur votre compte bancaire, renseignez votre RIB ci-dessous.</div>
-
-    <div style="display:flex;flex-direction:column;gap:10px;">
-      <div>
-        <div style="font-size:10px;color:#555;font-weight:700;letter-spacing:.6px;margin-bottom:5px;">TITULAIRE DU COMPTE</div>
-        <input id="rib-onb-titulaire" type="text" placeholder="Prénom Nom" autocomplete="name" style="width:100%;box-sizing:border-box;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;color:#fff;padding:13px 14px;font-size:16px;">
-      </div>
-      <div>
-        <div style="font-size:10px;color:#555;font-weight:700;letter-spacing:.6px;margin-bottom:5px;">IBAN</div>
-        <input id="rib-onb-iban" type="text" placeholder="FR76 XXXX XXXX XXXX XXXX XXXX XXX" maxlength="34" autocomplete="off" style="width:100%;box-sizing:border-box;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;color:#fff;padding:13px 14px;font-size:16px;letter-spacing:1px;" oninput="this.value=this.value.toUpperCase()">
-      </div>
-      <div>
-        <div style="font-size:10px;color:#555;font-weight:700;letter-spacing:.6px;margin-bottom:5px;">BIC / SWIFT</div>
-        <input id="rib-onb-bic" type="text" placeholder="Ex : BNPAFRPPXXX" maxlength="11" autocomplete="off" style="width:100%;box-sizing:border-box;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;color:#fff;padding:13px 14px;font-size:16px;" oninput="this.value=this.value.toUpperCase()">
-      </div>
-    </div>
-
-    <div id="rib-onb-err" style="font-size:12px;color:#ef4444;margin-top:10px;display:none;"></div>
-
-    <button id="rib-onb-btn" onclick="_saveRibOnboarding()" style="width:100%;margin-top:18px;background:#FFD700;color:#000;border:none;border-radius:12px;padding:15px;font-size:14px;font-weight:800;cursor:pointer;letter-spacing:.3px;">ENREGISTRER MON RIB</button>
-    <button onclick="_closeRibOnboarding()" style="width:100%;margin-top:10px;background:transparent;border:none;color:#444;font-size:12px;cursor:pointer;padding:8px;">Plus tard</button>
-  </div>
 </div>
 
 <!-- ── Overlay : Disponibilités client (après paiement) ── -->
