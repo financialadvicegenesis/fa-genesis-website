@@ -1206,12 +1206,19 @@ app.use(cors({
 // Stripe webhooks nécessitent le raw body pour vérifier la signature.
 // Ces routes doivent être déclarées AVANT express.json().
 app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), async (req, res) => {
-    var sig    = req.headers['stripe-signature'];
-    var secret = process.env.STRIPE_WEBHOOK_SECRET;
-    if (!secret) return res.status(500).json({ error: 'STRIPE_WEBHOOK_SECRET non configuré' });
+    var sig     = req.headers['stripe-signature'];
+    var secret1 = process.env.STRIPE_WEBHOOK_SECRET;
+    var secret2 = process.env.STRIPE_WEBHOOK_SECRET_CONNECT;
+    if (!secret1 && !secret2) return res.status(500).json({ error: 'STRIPE_WEBHOOK_SECRET non configuré' });
     var event;
-    try { event = mps.handleWebhookRaw(req.body, sig, secret); }
-    catch(e) { console.error('[STRIPE-WH] Signature invalide:', e.message); return res.status(400).send('Webhook Error: ' + e.message); }
+    // Essayer les deux secrets (Destination 1 = paiements, Destination 2 = comptes connectés)
+    var lastErr;
+    var secrets = [secret1, secret2].filter(Boolean);
+    for (var si = 0; si < secrets.length; si++) {
+        try { event = mps.handleWebhookRaw(req.body, sig, secrets[si]); break; }
+        catch(e) { lastErr = e; }
+    }
+    if (!event) { console.error('[STRIPE-WH] Signature invalide:', lastErr && lastErr.message); return res.status(400).send('Webhook Error: ' + (lastErr && lastErr.message)); }
 
     try {
         if (event.type === 'payment_intent.succeeded') {
