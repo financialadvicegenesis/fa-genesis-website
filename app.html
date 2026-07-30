@@ -13694,31 +13694,6 @@ function _ptnrLoadVersements(){
       var html = '';
 
 
-      // ── Bloc RIB / IBAN — masqué si Stripe actif (IBAN géré par Stripe) ──
-      var stripeActive = (_ptnrSession && _ptnrSession.stripeChargesEnabled) ||
-                         (_stripeStatusCache && _stripeStatusCache.statusLabel === 'active');
-      if(!stripeActive){
-        var ribOk = rib && rib.iban_masked;
-        html += '<div style="background:#111;border:1.5px solid '+(ribOk?'#1a3a1a':'#252510')+';border-radius:14px;padding:16px;margin-bottom:16px;">';
-        html += '<div style="font-size:12px;color:'+(ribOk?'#4caf50':'#888')+';font-weight:700;letter-spacing:.5px;margin-bottom:8px;">'+(ribOk?'✓ RIB CONFIGURÉ':'RIB / VIREMENT BANCAIRE (sans Stripe)')+'</div>';
-        if(ribOk){
-          html += '<div style="font-size:13px;color:#ccc;margin-bottom:4px;">Titulaire : <strong style="color:#fff;">'+rib.titulaire+'</strong></div>';
-          html += '<div style="font-size:13px;color:#ccc;margin-bottom:4px;">IBAN : <strong style="color:#fff;">'+rib.iban_masked+'</strong></div>';
-          html += '<div style="font-size:13px;color:#ccc;margin-bottom:10px;">BIC : <strong style="color:#fff;">'+rib.bic+'</strong></div>';
-          html += '<div style="font-size:11px;color:#555;margin-bottom:10px;">Les virements bancaires sont traités sous 2–3 jours ouvrés.</div>';
-        } else {
-          html += '<div style="font-size:12px;color:#666;margin-bottom:10px;line-height:1.5;">Renseignez votre IBAN pour recevoir vos versements par virement bancaire (alternative à Stripe).</div>';
-        }
-        html += '<div style="display:flex;flex-direction:column;gap:8px;">';
-        html += '<input id="ptnr-rib-titulaire" type="text" placeholder="Titulaire du compte" value="'+(ribOk?rib.titulaire:'')+'" style="background:#1a1a1a;border:1px solid #333;border-radius:10px;color:#fff;padding:10px 12px;font-size:16px;">';
-        html += '<input id="ptnr-rib-iban" type="text" placeholder="FR76 XXXX XXXX XXXX XXXX XXXX XXX" value="" maxlength="34" style="background:#1a1a1a;border:1px solid #333;border-radius:10px;color:#fff;padding:10px 12px;font-size:16px;letter-spacing:1px;" oninput="this.value=this.value.toUpperCase()">';
-        html += '<div style="display:flex;gap:8px;">';
-        html += '<input id="ptnr-rib-bic" type="text" placeholder="BIC / SWIFT" value="" maxlength="11" style="flex:1;background:#1a1a1a;border:1px solid #333;border-radius:10px;color:#fff;padding:10px 12px;font-size:16px;" oninput="this.value=this.value.toUpperCase()">';
-        html += '<button onclick="_savePartnerRib()" style="background:#FFD700;color:#000;border:none;border-radius:10px;padding:10px 14px;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap;">'+(ribOk?'MODIFIER':'ENREGISTRER')+'</button>';
-        html += '</div>';
-        if(ribOk) html += '<div style="font-size:11px;color:#444;">Pour modifier, saisissez le nouvel IBAN et BIC puis cliquez Modifier.</div>';
-        html += '</div></div>';
-      }
 
       setupEl.innerHTML = html;
     }
