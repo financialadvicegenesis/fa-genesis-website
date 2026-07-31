@@ -14092,7 +14092,7 @@ app.post('/api/admin/partners/create', async (req, res) => {
     }
 });
 
-// Creer les comptes de test parrainage (parrain + filleul) en une seule requete admin
+// Creer les comptes de test partenaires complets (parrain + filleul) — apercu complet de l'espace prestataire
 app.post('/api/admin/setup-test-parrainage', async function(req, res) {
     try {
         var tok = (req.headers.authorization || '').replace('Bearer ', '').trim();
@@ -14100,47 +14100,121 @@ app.post('/api/admin/setup-test-parrainage', async function(req, res) {
         try { sessions = JSON.parse(fs.readFileSync(ADMIN_SESSIONS_FILE, 'utf8')); } catch(e) {}
         var isAdmin = sessions.some(function(s) { return s.token === tok && (!s.expiresAt || Date.now() < new Date(s.expiresAt).getTime()); });
         if (!isAdmin) return res.status(403).json({ error: 'Accès réservé aux administrateurs' });
-        var partners = loadPartners();
-        // Supprimer les anciens comptes de test parrainage
-        partners = partners.filter(function(p) {
-            return p.email !== 'test-parrain@fagenesis.com' && p.email !== 'test-filleul@fagenesis.com';
-        });
+
+        var TEST_EMAILS = ['test-parrain@fagenesis.com', 'test-filleul@fagenesis.com'];
         var nowStr = new Date().toISOString();
+        var daysAgo = function(n) { return new Date(Date.now() - n * 24 * 3600 * 1000).toISOString(); };
         var daysFromNow = function(n) { return new Date(Date.now() + n * 24 * 3600 * 1000).toISOString(); };
-        var parrainId = 'PTR-TEST-PAR-' + require('crypto').randomBytes(4).toString('hex').toUpperCase();
-        var filleulId = 'PTR-TEST-FIL-' + require('crypto').randomBytes(4).toString('hex').toUpperCase();
+        var uid = function(prefix) { return prefix + require('crypto').randomBytes(4).toString('hex').toUpperCase(); };
+
+        // ── IDs stables pour les relations cross-fichiers ──
+        var parrainId = 'PTR-TEST-PAR-A1B2';
+        var filleulId = 'PTR-TEST-FIL-C3D4';
+
         var hashP = await bcrypt.hash('TestParrain2026!', 10);
         var hashF = await bcrypt.hash('TestFilleul2026!', 10);
+
+        // ── 1. Partners ──
+        var partners = loadPartners().filter(function(p) { return TEST_EMAILS.indexOf(p.email) === -1; });
         partners.push({
-            id: parrainId, prenom: 'Alexandre', nom: 'Parrain',
-            email: 'test-parrain@fagenesis.com', telephone: '', city: 'Paris',
-            password: hashP, partner_type: 'photographer', partner_type_other: '', company: '',
-            bio: 'Compte test — Ambassadeur GENESIS.',
-            services: [{ id: 'SVC-PAR-01', label: 'Shooting portrait', price: 150, description: '', active: true }],
-            sessionToken: null, accountStatus: 'active', contract_signed: true, contract_signed_at: nowStr,
+            id: parrainId, prenom: 'Alexandre', nom: 'Martin',
+            email: 'test-parrain@fagenesis.com', telephone: '+33 6 12 34 56 78', city: 'Paris',
+            password: hashP, partner_type: 'photographer', partner_type_other: '', company: 'AM Visuel',
+            bio: 'Photographe professionnel spécialisé en portraits corporate, événements d\'entreprise et shooting produit. 8 ans d\'expérience, matériel haut de gamme.',
+            services: [
+                { id: 'SVC-PAR-01', label: 'Shooting portrait corporate', price: 290, description: 'Séance photo professionnelle en studio ou extérieur. Retouches incluses. Livraison sous 5 jours.', active: true },
+                { id: 'SVC-PAR-02', label: 'Reportage événementiel', price: 480, description: 'Couverture complète de vos événements d\'entreprise, conférences, soirées. Galerie en ligne incluse.', active: true },
+                { id: 'SVC-PAR-03', label: 'Shooting produit / e-commerce', price: 190, description: 'Photos produits sur fond blanc ou ambiance. Idéal pour sites e-commerce et fiches produits.', active: true }
+            ],
+            payout_iban: 'FR76 3000 4000 0300 0000 0000 456', payout_bic: 'BNPAFRPPXXX', payout_titulaire: 'Alexandre Martin',
+            payout_paypal: null,
+            sessionToken: null, accountStatus: 'active', contract_signed: true, contract_signed_at: daysAgo(60),
             referredBy: null, founderBadge: false,
-            distinctions: [{ id: 'ambassador', granted_at: nowStr, expires_at: null }],
+            distinctions: [{ id: 'ambassador', granted_at: daysAgo(15), expires_at: null }],
             referred_active_count: 1, profile_boost_until: daysFromNow(7),
-            createdAt: nowStr, updatedAt: nowStr, lastLogin: null
+            first_mission_completed_at: daysAgo(45),
+            createdAt: daysAgo(90), updatedAt: daysAgo(2), lastLogin: daysAgo(1)
         });
         partners.push({
-            id: filleulId, prenom: 'Camille', nom: 'Filleul',
-            email: 'test-filleul@fagenesis.com', telephone: '', city: 'Lyon',
+            id: filleulId, prenom: 'Camille', nom: 'Dubois',
+            email: 'test-filleul@fagenesis.com', telephone: '+33 6 98 76 54 32', city: 'Lyon',
             password: hashF, partner_type: 'videographer', partner_type_other: '', company: '',
-            bio: 'Compte test — Nouveau Talent.',
-            services: [{ id: 'SVC-FIL-01', label: 'Vidéo courte', price: 200, description: '', active: true }],
-            sessionToken: null, accountStatus: 'active', contract_signed: true, contract_signed_at: nowStr,
+            bio: 'Vidéaste et motion designer freelance. Je crée des contenus vidéo percutants pour les marques : teasers, interviews, reels réseaux sociaux et vidéos institutionnelles.',
+            services: [
+                { id: 'SVC-FIL-01', label: 'Vidéo courte (Reels / TikTok)', price: 250, description: 'Création de vidéos courtes percutantes pour vos réseaux sociaux. Montage + sous-titres + musique inclus.', active: true },
+                { id: 'SVC-FIL-02', label: 'Vidéo institutionnelle', price: 750, description: 'Présentation de votre entreprise, de vos valeurs et de votre équipe. Format 2-3 min, habillage graphique inclus.', active: true }
+            ],
+            payout_iban: 'FR76 1027 8060 0001 7816 1016 086', payout_bic: 'CMCIFR2A', payout_titulaire: 'Camille Dubois',
+            payout_paypal: null,
+            sessionToken: null, accountStatus: 'active', contract_signed: true, contract_signed_at: daysAgo(30),
             referredBy: parrainId, founderBadge: false,
-            distinctions: [{ id: 'new_talent', granted_at: nowStr, expires_at: null }],
-            first_mission_completed_at: nowStr, profile_boost_until: daysFromNow(4),
-            referred_active_count: 0, createdAt: nowStr, updatedAt: nowStr, lastLogin: null
+            distinctions: [{ id: 'new_talent', granted_at: daysAgo(10), expires_at: null }],
+            first_mission_completed_at: daysAgo(8), profile_boost_until: daysFromNow(4),
+            referred_active_count: 0,
+            createdAt: daysAgo(35), updatedAt: daysAgo(1), lastLogin: daysAgo(0)
         });
         savePartners(partners);
-        console.log('[ADMIN] Comptes test parrainage créés:', parrainId, filleulId);
+
+        // ── 2. Payouts (missions realisees = stage 'balance') pour le calcul des badges ──
+        var payouts = loadPayouts().filter(function(p) {
+            return p.partner_id !== parrainId && p.partner_id !== filleulId;
+        });
+        // Parrain : 6 missions realisees → badge Bronze (seuil 5)
+        for (var i = 0; i < 6; i++) {
+            payouts.push({
+                id: uid('PAY-TST-PAR-'),
+                partner_id: parrainId, partner_email: 'test-parrain@fagenesis.com',
+                order_id: uid('ORD-DEMO-'), stage: 'balance',
+                amount: [290, 480, 190, 380, 240, 320][i] * 0.85,
+                currency: 'EUR', status: 'sent', payout_method: 'bank_transfer',
+                created_at: daysAgo(80 - i * 10), sent_at: daysAgo(79 - i * 10)
+            });
+        }
+        // Filleul : 1 mission realisee → premiere mission accomplie
+        payouts.push({
+            id: uid('PAY-TST-FIL-'),
+            partner_id: filleulId, partner_email: 'test-filleul@fagenesis.com',
+            order_id: uid('ORD-DEMO-'), stage: 'balance',
+            amount: 250 * 0.85, currency: 'EUR', status: 'sent', payout_method: 'bank_transfer',
+            created_at: daysAgo(8), sent_at: daysAgo(7)
+        });
+        savePayouts(payouts);
+
+        // ── 3. Avis clients (pour la note moyenne) ──
+        var reviews = loadPartnerReviews().filter(function(r) {
+            return r.partnerId !== parrainId && r.partnerId !== filleulId;
+        });
+        var parrainRatings = [5, 4, 5, 5, 4, 5];
+        var parrainComments = [
+            'Excellent professionnel, photos magnifiques et livraison rapide. Je recommande !',
+            'Très bon shooting, Alexandre est à l\'écoute et les retouches sont soignées.',
+            'Reportage parfait pour notre séminaire, il a su capter l\'essentiel.',
+            'Qualité remarquable, ponctuel et très agréable. Travail au top.',
+            'Photos de produits superbes, exactement ce que je voulais.',
+            'Collaboration parfaite du début à la fin. On refait appel à lui sans hésiter !'
+        ];
+        parrainRatings.forEach(function(rating, i) {
+            reviews.push({
+                id: uid('REV-PAR-'), partnerId: parrainId,
+                orderId: uid('ORD-DEMO-'), clientEmail: 'client-demo-' + (i+1) + '@example.com',
+                rating: rating, comment: parrainComments[i],
+                status: 'published', createdAt: daysAgo(75 - i * 8)
+            });
+        });
+        // Filleul : 1 avis
+        reviews.push({
+            id: uid('REV-FIL-'), partnerId: filleulId,
+            orderId: uid('ORD-DEMO-'), clientEmail: 'client-demo-7@example.com',
+            rating: 5, comment: 'Super vidéo, Camille a été très créative et réactive. Résultat bluffant !',
+            status: 'published', createdAt: daysAgo(7)
+        });
+        savePartnerReviews(reviews);
+
+        console.log('[ADMIN] Comptes test partenaires complets créés:', parrainId, filleulId);
         res.json({
             success: true,
-            parrain: { id: parrainId, email: 'test-parrain@fagenesis.com', password: 'TestParrain2026!' },
-            filleul: { id: filleulId, email: 'test-filleul@fagenesis.com', password: 'TestFilleul2026!', referredBy: parrainId }
+            parrain: { id: parrainId, email: 'test-parrain@fagenesis.com', password: 'TestParrain2026!', badge: 'bronze', missions: 6, rating: 4.8, distinctions: ['ambassador'] },
+            filleul: { id: filleulId, email: 'test-filleul@fagenesis.com', password: 'TestFilleul2026!', badge: null, missions: 1, rating: 5, distinctions: ['new_talent'], referredBy: parrainId }
         });
     } catch (e) {
         console.error('[ADMIN] Erreur setup-test-parrainage:', e);
