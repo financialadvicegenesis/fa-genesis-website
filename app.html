@@ -1703,6 +1703,9 @@ a{text-decoration:none;color:inherit}
 .nav-dot.on{animation:liveBadgePulse 1.6s ease-in-out infinite;}
 @keyframes liveBadgePulse{0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,.55)}50%{box-shadow:0 0 0 4px rgba(239,68,68,0)}}
 .ptnr-section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#555;padding:16px 0 8px;border-bottom:1px solid #1a1a1a;margin-bottom:12px;}
+.ptnr-back-bar{display:flex;align-items:center;gap:10px;padding:12px 0 8px;border-bottom:1px solid #1a1a1a;margin-bottom:12px;}
+.ptnr-back-btn{background:none;border:none;color:#888;font-size:28px;font-weight:300;cursor:pointer;padding:0;line-height:1;flex-shrink:0;}
+.ptnr-back-bar-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#555;}
 .ptnr-login-wrap{padding:24px 16px;}
 .ptnr-login-logo{font-family:'Unbounded',sans-serif;font-size:11px;font-weight:900;color:#FFD700;letter-spacing:2px;margin-bottom:24px;text-align:center;}
 .ptnr-login-title{font-family:'Unbounded',sans-serif;font-size:18px;font-weight:900;color:#fff;margin-bottom:6px;text-align:center;white-space:nowrap;}
@@ -2748,7 +2751,7 @@ a{text-decoration:none;color:inherit}
 
         <!-- Sub-screen: Projets -->
         <div class="ptnr-screen" id="ptnr-screen-projets">
-          <div class="ptnr-section-title">Projets assignés</div>
+          <div class="ptnr-back-bar"><button class="ptnr-back-btn" onclick="_ptnrNav('profil')">&#8249;</button><span class="ptnr-back-bar-title">Projets assignés</span></div>
           <input type="text" class="ptnr-input" id="ptnr-projets-search" placeholder="Rechercher un client (nom, prénom)..." oninput="_ptnrFilterProjets()">
           <div id="ptnr-projets-filter"></div>
           <div id="ptnr-projets-list"></div>
@@ -2756,32 +2759,32 @@ a{text-decoration:none;color:inherit}
 
         <!-- Sub-screen: Devis -->
         <div class="ptnr-screen" id="ptnr-screen-devis">
-          <div class="ptnr-section-title">Devis à traiter</div>
+          <div class="ptnr-back-bar"><button class="ptnr-back-btn" onclick="_ptnrNav('profil')">&#8249;</button><span class="ptnr-back-bar-title">Devis à traiter</span></div>
           <div id="ptnr-devis-list"></div>
         </div>
 
         <!-- Sub-screen: Séances -->
         <div class="ptnr-screen" id="ptnr-screen-seances">
-          <div class="ptnr-section-title">Séances à confirmer</div>
+          <div class="ptnr-back-bar"><button class="ptnr-back-btn" onclick="_ptnrNav('profil')">&#8249;</button><span class="ptnr-back-bar-title">Séances à confirmer</span></div>
           <div id="ptnr-seances-list"></div>
         </div>
 
         <!-- Sub-screen: Messages -->
         <div class="ptnr-screen" id="ptnr-screen-messages">
-          <div class="ptnr-section-title">Messages clients</div>
+          <div class="ptnr-back-bar"><button class="ptnr-back-btn" onclick="_ptnrNav('profil')">&#8249;</button><span class="ptnr-back-bar-title">Messages clients</span></div>
           <div id="ptnr-messages-list"></div>
         </div>
 
         <!-- Sub-screen: Missions (dispatch) -->
         <div class="ptnr-screen" id="ptnr-screen-missions">
-          <div class="ptnr-section-title">Mes missions</div>
+          <div class="ptnr-back-bar"><button class="ptnr-back-btn" onclick="_ptnrNav('profil')">&#8249;</button><span class="ptnr-back-bar-title">Mes missions</span></div>
           <div id="ptnr-missions-filter"></div>
           <div id="ptnr-missions-list"></div>
         </div>
 
         <!-- Sub-screen: Versements / Paiements Stripe Connect -->
         <div class="ptnr-screen" id="ptnr-screen-versements">
-          <div class="ptnr-section-title">Portefeuille GENESIS SAFE™</div>
+          <div class="ptnr-back-bar"><button class="ptnr-back-btn" onclick="_ptnrNav('profil')">&#8249;</button><span class="ptnr-back-bar-title">Portefeuille GENESIS SAFE™</span></div>
           <!-- Stripe Connect onboarding -->
           <div id="ptnr-stripe-setup" style="padding:0 0 12px;"></div>
           <!-- PayPal / IBAN (fallback legacy) -->
@@ -2791,25 +2794,25 @@ a{text-decoration:none;color:inherit}
 
         <!-- Sub-screen: Mes badges -->
         <div class="ptnr-screen" id="ptnr-screen-reputation">
-          <div class="ptnr-section-title">Mes badges</div>
+          <div class="ptnr-back-bar"><button class="ptnr-back-btn" onclick="_ptnrNav('profil')">&#8249;</button><span class="ptnr-back-bar-title">Mes badges</span></div>
           <div id="ptnr-reputation-content"></div>
         </div>
 
         <!-- Sub-screen: Palmarès -->
         <div class="ptnr-screen" id="ptnr-screen-palmares">
-          <div class="ptnr-section-title">Mon palmarès</div>
+          <div class="ptnr-back-bar"><button class="ptnr-back-btn" onclick="_ptnrNav('profil')">&#8249;</button><span class="ptnr-back-bar-title">Mon palmarès</span></div>
           <div id="ptnr-palmares-content"></div>
         </div>
 
         <!-- Sub-screen: Promotions -->
         <div class="ptnr-screen" id="ptnr-screen-promotions">
-          <div class="ptnr-section-title">Mes promotions</div>
+          <div class="ptnr-back-bar"><button class="ptnr-back-btn" onclick="_ptnrNav('profil')">&#8249;</button><span class="ptnr-back-bar-title">Mes promotions</span></div>
           <div id="ptnr-promotions-content"></div>
         </div>
 
         <!-- Sub-screen: Portfolio -->
         <div class="ptnr-screen" id="ptnr-screen-portfolio">
-          <div class="ptnr-section-title">Mon portfolio</div>
+          <div class="ptnr-back-bar"><button class="ptnr-back-btn" onclick="_ptnrNav('profil')">&#8249;</button><span class="ptnr-back-bar-title">Mon portfolio</span></div>
           <!-- Boutons d'ajout -->
           <div class="ptnr-pf-add-row">
             <button type="button" class="ptnr-pf-add-btn" onclick="document.getElementById('ptnr-pf-file-input').click()">
@@ -5382,15 +5385,18 @@ function _tierRoadmapHtml(progress){
 }
 function partnerBadgeProgressHtml(progress){
   if(!progress) return '';
-  var curMeta = tierBadgeMeta(progress.currentBadge) || {label:'Pas encore de badge', icon:'fa-star'};
+  var _pbl = {bronze:'Bronze',argent:'Argent',or:'Or',elite:'Élite',fondateur:'Fondateur'};
+  var _pbi = {bronze:'fa-fire',argent:'fa-bolt',or:'fa-crown',elite:'fa-infinity',fondateur:'fa-star'};
+  var curLabel = progress.currentBadge ? (_pbl[progress.currentBadge]||progress.currentBadge) : 'Nouveau prestataire';
+  var curIcon  = progress.currentBadge ? (_pbi[progress.currentBadge]||'fa-medal') : 'fa-user';
   var _missions = progress.missionsCurrent || 0;
   var _rating = (Number(progress.ratingCurrent)||0).toFixed(1);
   var _nextHtml = progress.nextBadge
-    ? '<span style="font-size:11px;color:#555;margin-left:8px"><i class="fa-solid fa-lock" style="font-size:9px"></i> '+((tierBadgeMeta(progress.nextBadge)||{label:progress.nextBadge}).label)+'</span>'
+    ? '<span style="font-size:11px;color:#555;margin-left:8px"><i class="fa-solid fa-lock" style="font-size:9px"></i> '+(_pbl[progress.nextBadge]||progress.nextBadge)+'</span>'
     : '<span style="font-size:11px;color:#4caf50;margin-left:8px"><i class="fa-solid fa-check"></i> Max</span>';
   return '<div class="badge-progress" style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 0;">'
     +'<div style="font-size:13px;font-weight:700;color:#ddd;display:flex;align-items:center;gap:6px">'
-    +'<i class="fa-solid '+(curMeta.icon||'fa-medal')+'" style="color:#FFD700"></i>'+curMeta.label+_nextHtml
+    +'<i class="fa-solid '+curIcon+'" style="color:#FFD700"></i>'+curLabel+_nextHtml
     +'</div>'
     +'<div style="display:flex;gap:10px;flex-shrink:0;font-size:12px;color:#888;">'
     +'<span><i class="fa-solid fa-briefcase" style="color:#FFD700;margin-right:3px"></i>'+_missions+'</span>'
@@ -14479,7 +14485,14 @@ function _ptnrLoadProfil(){
     +'</div></div>';
 
   var logoutBtn = '<button class="plus-logout" onclick="_ptnrLogout()"><i class="fa-solid fa-arrow-right-from-bracket"></i> Déconnexion</button>';
-  c.innerHTML = headerHtml + activite + monProfil + reseau + logoutBtn + '<div class="plus-version">Version 1.1</div>';
+  var _pr = _ptnrSession || {};
+  var _ptnrRefBlockHtml = _pr.id ? '<div class="p-ref-box" style="margin:20px 0 0;">'
+    + '<div class="p-ref-box-title"><i class="fa-solid fa-user-plus" style="color:#FFD700;margin-right:6px;font-size:10px;"></i>Mon code de parrainage</div>'
+    + '<div class="p-ref-code-row"><span class="p-ref-code">'+_pr.id+'</span>'
+    + '<button class="p-ref-copy-btn" onclick="navigator.clipboard&&navigator.clipboard.writeText(\''+_pr.id+'\')" style="cursor:pointer;">Copier</button></div>'
+    + '<div class="p-ref-count">Invitez vos collègues prestataires à rejoindre FA GENESIS</div>'
+    + '</div>' : '';
+  c.innerHTML = headerHtml + activite + monProfil + reseau + logoutBtn + _ptnrRefBlockHtml + '<div class="plus-version">Version 1.1</div>';
 }
 
 // ── SOUS-FORMULAIRES PROFIL ──────────────────────────────────
