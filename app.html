@@ -13847,13 +13847,13 @@ function _ptnrLoadReputation(){
     var _ptnrCurOrder = _ptnrBadgeOrder.indexOf(badge);
     var _ptnrBadgeDefs = [
       { id: 'bronze', label: 'Bronze', icon: 'fa-fire',     missions: 5,   rating: 4.0,
-        advs: ['Priorité d\'affichage dans les résultats de recherche','Badge Bronze visible sur le profil public','Accès à Jérémie IA — Essentiel'] },
+        advs: ['Priorité d\'affichage dans les résultats de recherche','Badge Bronze visible sur le profil public',{label:'Accès à Jérémie IA — Essentiel',sub:'Posez vos questions à Jérémie, votre conseiller IA GENESIS.'}] },
       { id: 'argent', label: 'Argent', icon: 'fa-bolt',     missions: 20,  rating: 4.3,
-        advs: ['Commission réduite (14%)','Priorité d\'affichage renforcée dans les résultats de recherche','Badge Argent visible sur le profil public','Accès à Jérémie IA Plus'] },
+        advs: ['Commission réduite (14%)','Priorité d\'affichage renforcée dans les résultats de recherche','Badge Argent visible sur le profil public',{label:'Accès à Jérémie IA Plus',sub:'Analyses de vos retours clients et conseils pour améliorer vos prestations.'}] },
       { id: 'or',     label: 'Or',     icon: 'fa-crown',    missions: 50,  rating: 4.5,
-        advs: ['Commission réduite (13%)','Visibilité maximale dans les résultats de recherche','Inscription prioritaire aux événements FA GENESIS','Badge Or visible sur le profil public','Accès à Jérémie IA Pro'] },
+        advs: ['Commission réduite (13%)','Visibilité maximale dans les résultats de recherche','Inscription prioritaire aux événements FA GENESIS','Badge Or visible sur le profil public',{label:'Accès à Jérémie IA Pro',sub:'Recommandations personnalisées et stratégies pour développer votre activité.'}] },
       { id: 'elite',  label: 'Élite',  icon: 'fa-infinity', missions: 100, rating: 5.0,
-        advs: ['Commission réduite (11%)','Priorité d\'affichage maximale à profil équivalent','Badge Élite Premium visible sur le profil public','Accès à Jérémie IA Expert'] }
+        advs: ['Commission réduite (11%)','Priorité d\'affichage maximale à profil équivalent','Badge Élite Premium visible sur le profil public',{label:'Accès à Jérémie IA Expert',sub:'Accompagnement IA complet : conseils prioritaires, suivi de carrière et analyses avancées.'}] }
     ];
     html += '<div style="font-size:10px;color:#FFD700;font-weight:800;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;"><i class="fa-solid fa-layer-group" style="margin-right:4px;"></i>Badges & avantages</div>';
     _ptnrBadgeDefs.forEach(function(bDef) {
@@ -13872,11 +13872,16 @@ function _ptnrLoadReputation(){
         + '</div>';
       html += '<div style="display:flex;flex-direction:column;gap:4px;">';
       bDef.advs.forEach(function(adv) {
+        var advLabel = typeof adv === 'string' ? adv : adv.label;
+        var advSub   = typeof adv === 'object' ? adv.sub : null;
         html += '<div style="display:flex;align-items:flex-start;gap:7px;font-size:11px;">';
         if (unlocked) {
-          html += '<i class="fa-solid fa-circle-check" style="color:#4caf50;font-size:11px;margin-top:1px;flex-shrink:0;"></i><span style="color:#bbb;">'+adv+'</span>';
+          html += '<i class="fa-solid fa-circle-check" style="color:#4caf50;font-size:11px;margin-top:1px;flex-shrink:0;"></i>'
+            +'<div style="flex:1;"><span style="color:#bbb;">'+advLabel+'</span>'
+            +(advSub ? '<div style="font-size:10px;color:#555;margin-top:2px;line-height:1.4;">'+advSub+'</div>' : '')
+            +'</div>';
         } else {
-          html += '<i class="fa-solid fa-lock" style="color:#222;font-size:11px;margin-top:1px;flex-shrink:0;"></i><span style="color:#2e2e2e;">'+adv+'</span>';
+          html += '<i class="fa-solid fa-lock" style="color:#222;font-size:11px;margin-top:1px;flex-shrink:0;"></i><span style="color:#2e2e2e;">'+advLabel+'</span>';
         }
         html += '</div>';
       });
@@ -14396,7 +14401,7 @@ function _ptnrLoadProfil(){
   var reseau = '<div class="plus-section">'
     +'<div class="plus-section-title">MON RÉSEAU</div>'
     +'<div class="plus-group">'
-    +pli('<i class="fa-solid fa-users-between-lines"></i>','#001a1a','Mes collègues '+colleguesLabel,null,"_ptnrNav('collegues')")
+    +pli('<i class="fa-solid fa-compass"></i>','#001a1a','Explorer GENESIS',null,"_ptnrNav('collegues')")
     +'</div></div>';
 
   var logoutBtn = '<button class="plus-logout" onclick="_ptnrLogout()"><i class="fa-solid fa-arrow-right-from-bracket"></i> Déconnexion</button>';
@@ -14501,17 +14506,43 @@ function _ptnrProfilEditResponseTime(){
 function _ptnrLoadCollegues(){
   var c = document.getElementById('ptnr-collegues-content');
   if(!c) return;
-  var p = _ptnrSession || {};
-  var typeLabel = (typeof partnerTypeLabel === 'function' && p.partner_type) ? partnerTypeLabel(p) : 'collègues';
-  c.innerHTML = '<div style="padding:16px 16px 8px;">'
-    +'<div style="font-size:13px;font-weight:900;color:#FFD700;margin-bottom:4px;"><i class="fa-solid fa-users-between-lines"></i> Mes collègues '+typeLabel+'s</div>'
-    +'<div style="font-size:11px;color:#555;line-height:1.5;">Échangez avec des prestataires de votre catégorie — renvoyez un client vers un collègue en cas d\'indisponibilité.</div>'
+  c.innerHTML = '<div class="ptnr-back-bar" style="margin-bottom:0;">'
+    +'<button class="ptnr-back-btn" onclick="_ptnrNav(\'profil\')">&#8249;</button>'
+    +'<span class="ptnr-back-bar-title">Explorer</span>'
     +'</div>'
-    +'<div id="ptnr-collegues-list" style="padding:0 16px;"></div>';
+    +'<div style="display:flex;border-bottom:1px solid #1a1a1a;margin-bottom:12px;">'
+    +'<button id="ptnr-exp-tab-collegues" onclick="_ptnrExplorerTab(\'collegues\')" style="flex:1;background:none;border:none;border-bottom:2px solid #FFD700;padding:12px 4px;font-size:12px;font-weight:700;color:#FFD700;cursor:pointer;"><i class="fa-solid fa-users-between-lines" style="margin-right:5px;"></i>Collègues</button>'
+    +'<button id="ptnr-exp-tab-events" onclick="_ptnrExplorerTab(\'events\')" style="flex:1;background:none;border:none;border-bottom:2px solid transparent;padding:12px 4px;font-size:12px;font-weight:700;color:#444;cursor:pointer;"><i class="fa-solid fa-champagne-glasses" style="margin-right:5px;"></i>Événements</button>'
+    +'</div>'
+    +'<div id="ptnr-exp-content-collegues" style="padding-bottom:80px;"></div>'
+    +'<div id="ptnr-exp-content-events" style="display:none;padding-bottom:80px;"></div>';
+  _ptnrLoadColleguesList();
+}
 
+function _ptnrExplorerTab(tab){
+  var tabC = document.getElementById('ptnr-exp-tab-collegues');
+  var tabE = document.getElementById('ptnr-exp-tab-events');
+  var conC = document.getElementById('ptnr-exp-content-collegues');
+  var conE = document.getElementById('ptnr-exp-content-events');
+  if(!tabC||!tabE||!conC||!conE) return;
+  var onStyle  = 'flex:1;background:none;border:none;border-bottom:2px solid #FFD700;padding:12px 4px;font-size:12px;font-weight:700;color:#FFD700;cursor:pointer;';
+  var offStyle = 'flex:1;background:none;border:none;border-bottom:2px solid transparent;padding:12px 4px;font-size:12px;font-weight:700;color:#444;cursor:pointer;';
+  if(tab === 'collegues'){
+    tabC.style.cssText = onStyle; tabE.style.cssText = offStyle;
+    conC.style.display = 'block'; conE.style.display = 'none';
+  } else {
+    tabC.style.cssText = offStyle; tabE.style.cssText = onStyle;
+    conC.style.display = 'none'; conE.style.display = 'block';
+    if(!conE.dataset.loaded){ conE.dataset.loaded = '1'; _ptnrLoadEventsList(); }
+  }
+}
+
+function _ptnrLoadColleguesList(){
+  var listWrap = document.getElementById('ptnr-exp-content-collegues');
+  if(!listWrap) return;
+  listWrap.innerHTML = '<div style="font-size:11px;color:#555;line-height:1.5;margin-bottom:12px;">Échangez avec des prestataires de votre catégorie — renvoyez un client vers un collègue en cas d\'indisponibilité.</div>'
+    +'<div id="ptnr-collegues-list"><div style="color:#555;font-size:12px;padding:12px 0;">Chargement…</div></div>';
   var listEl = document.getElementById('ptnr-collegues-list');
-  if(listEl) listEl.innerHTML = '<div style="color:#555;font-size:12px;padding:12px 0;">Chargement…</div>';
-
   Promise.all([
     _ptnrFetch('/api/partner/peers'),
     _ptnrFetch('/api/partner/peer-inbox')
@@ -14523,7 +14554,6 @@ function _ptnrLoadCollegues(){
       listEl.innerHTML = '<div style="text-align:center;color:#444;font-size:13px;padding:32px 0;"><i class="fa-solid fa-user-group" style="font-size:28px;color:#2a2a2a;display:block;margin-bottom:10px;"></i>Aucun autre prestataire actif dans votre catégorie pour l\'instant.</div>';
       return;
     }
-    // Grouper les messages par pair
     var partner = _ptnrSession || {};
     var lastMsgByPeer = {};
     msgs.forEach(function(m){
@@ -14532,7 +14562,6 @@ function _ptnrLoadCollegues(){
         lastMsgByPeer[peerEmail] = m;
       }
     });
-
     var html = '';
     peers.forEach(function(peer){
       var nm = ((peer.prenom||'')+ ' '+(peer.nom||'')).trim() || 'Collègue';
@@ -14548,7 +14577,7 @@ function _ptnrLoadCollegues(){
         +avatarHtml
         +'<div style="flex:1;min-width:0;">'
         +'<div style="font-size:13px;font-weight:900;color:#fff;">'+nm+'</div>'
-        +( peer.city ? '<div style="font-size:10px;color:#555;margin-top:1px;"><i class="fa-solid fa-location-dot" style="font-size:8px;"></i> '+peer.city+'</div>' : '')
+        +(peer.city ? '<div style="font-size:10px;color:#555;margin-top:1px;"><i class="fa-solid fa-location-dot" style="font-size:8px;"></i> '+peer.city+'</div>' : '')
         +previewHtml
         +'</div>'
         +'<i class="fa-solid fa-chevron-right" style="color:#333;font-size:14px;"></i>'
@@ -14557,6 +14586,71 @@ function _ptnrLoadCollegues(){
     listEl.innerHTML = html;
   }).catch(function(){
     if(listEl) listEl.innerHTML = '<div style="color:#ef4444;font-size:12px;padding:12px 0;">Erreur de chargement. Vérifiez votre connexion.</div>';
+  });
+}
+
+function _ptnrLoadEventsList(){
+  var el = document.getElementById('ptnr-exp-content-events');
+  if(!el) return;
+  el.innerHTML = '<div style="color:#555;font-size:12px;padding:24px 0;text-align:center;">Chargement…</div>';
+  fetch(_ptnrApiUrl()+'/api/events').then(function(r){ return r.json(); })
+  .then(function(data){
+    var events = (data && data.events) || [];
+    if(!events.length){
+      el.innerHTML = '<div style="text-align:center;color:#444;font-size:13px;padding:40px 0;"><i class="fa-solid fa-champagne-glasses" style="font-size:32px;color:#2a2a2a;display:block;margin-bottom:12px;"></i>Aucun événement à venir pour le moment.</div>';
+      return;
+    }
+    var html = '<div style="font-size:11px;color:#555;line-height:1.5;margin-bottom:12px;">Inscrivez-vous aux événements GENESIS pour élargir votre réseau et rencontrer la communauté.</div>';
+    events.forEach(function(ev){
+      var dateStr = '';
+      if(ev.date){ try{ dateStr = new Date(ev.date).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'}); }catch(e){} }
+      var spotsHtml = '';
+      if(ev.capacity_limited && ev.capacity){
+        var attendeeCount = (ev.attendees && ev.attendees.length) || 0;
+        var sl = ev.spots_left != null ? ev.spots_left : Math.max(0, ev.capacity - attendeeCount);
+        var spotsColor = sl === 0 ? '#ef4444' : sl <= 3 ? '#ff922b' : '#4caf50';
+        spotsHtml = '<div style="font-size:10px;color:'+spotsColor+';font-weight:700;margin-top:4px;">'
+          +(sl === 0 ? '<i class="fa-solid fa-circle-xmark"></i> Complet' : '<i class="fa-solid fa-ticket"></i> '+sl+' place'+(sl>1?'s':'')+' disponible'+(sl>1?'s':''))
+          +'</div>';
+      }
+      var desc = ev.description ? ev.description.slice(0,130)+(ev.description.length>130?'…':'') : '';
+      html += '<div style="background:#111;border-radius:12px;padding:13px 14px;margin-bottom:10px;border:1px solid #1e1e1e;">'
+        +'<div style="font-size:13px;font-weight:800;color:#fff;margin-bottom:5px;">'+ev.title+'</div>'
+        +(dateStr?'<div style="font-size:11px;color:#555;margin-bottom:2px;"><i class="fa-solid fa-calendar-days" style="font-size:9px;margin-right:4px;color:#FFD700;"></i>'+dateStr+'</div>':'')
+        +(ev.location?'<div style="font-size:11px;color:#555;margin-bottom:3px;"><i class="fa-solid fa-location-dot" style="font-size:9px;margin-right:4px;color:#FFD700;"></i>'+ev.location+'</div>':'')
+        +(desc?'<div style="font-size:11px;color:#444;margin:5px 0;line-height:1.5;">'+desc+'</div>':'')
+        +spotsHtml
+        +'<button id="ptnr-rsvp-'+ev.id+'" onclick="_ptnrRsvpEvent(\''+ev.id+'\')" style="margin-top:10px;width:100%;background:rgba(255,215,0,.1);border:1px solid rgba(255,215,0,.3);border-radius:8px;padding:8px;font-size:12px;font-weight:700;color:#FFD700;cursor:pointer;"><i class="fa-solid fa-check" style="margin-right:5px;"></i>Je participe</button>'
+        +'</div>';
+    });
+    el.innerHTML = html;
+  }).catch(function(){
+    el.innerHTML = '<div style="color:#ef4444;font-size:12px;padding:20px 0;text-align:center;">Erreur de chargement.</div>';
+  });
+}
+
+function _ptnrRsvpEvent(eventId){
+  var btn = document.getElementById('ptnr-rsvp-'+eventId);
+  if(btn){ btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Inscription...'; }
+  _ptnrFetch('/api/events/'+encodeURIComponent(eventId)+'/rsvp','POST',{})
+  .then(function(data){
+    if(!btn) return;
+    if(data && data.full){
+      btn.innerHTML = '<i class="fa-solid fa-circle-xmark"></i> Complet';
+      btn.style.cssText = 'margin-top:10px;width:100%;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.3);border-radius:8px;padding:8px;font-size:12px;font-weight:700;color:#ef4444;cursor:not-allowed;';
+      btn.disabled = true;
+    } else if(data && (data.success || data.alreadyRsvp)){
+      btn.innerHTML = '<i class="fa-solid fa-circle-check"></i> Inscrit';
+      btn.style.cssText = 'margin-top:10px;width:100%;background:rgba(76,175,80,.08);border:1px solid rgba(76,175,80,.3);border-radius:8px;padding:8px;font-size:12px;font-weight:700;color:#4caf50;cursor:not-allowed;';
+      btn.disabled = true;
+    } else {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fa-solid fa-check" style="margin-right:5px;"></i>Je participe';
+    }
+  }).catch(function(){
+    if(!btn) return;
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-check" style="margin-right:5px;"></i>Je participe';
   });
 }
 
