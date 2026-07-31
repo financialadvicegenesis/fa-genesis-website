@@ -13574,6 +13574,71 @@ app.get('/api/partner/reputation', authenticatePartner, function(req, res) {
     }
 });
 
+// ── PALMARÈS ──
+app.get('/api/partner/palmares', authenticatePartner, function(req, res) {
+    try {
+        var partner = req.partner;
+        var summary = getPartnerRatingSummary(partner.id);
+        var missionsCompleted = getPartnerMissionsCompleted(partner.id);
+
+        var myPayouts = loadPayouts().filter(function(p) { return p.partner_id === partner.id && p.status === 'sent'; });
+        var revenusGeneres = myPayouts.reduce(function(sum, p) { return sum + (parseFloat(p.amount) || 0); }, 0);
+        var commissionsVersees = myPayouts.reduce(function(sum, p) { return sum + (parseFloat(p.fa_amount) || 0); }, 0);
+
+        var orders = loadOrders();
+        var orderIds = myPayouts.map(function(p) { return p.order_id; }).filter(Boolean);
+        var uniqueOrderIds = orderIds.filter(function(id, idx) { return orderIds.indexOf(id) === idx; });
+        var clientEmails = uniqueOrderIds.map(function(id) {
+            var o = orders.find(function(o) { return o.id === id; });
+            return o && o.client_info ? (o.client_info.email || '').toLowerCase() : '';
+        }).filter(Boolean);
+        var nombreClients = clientEmails.filter(function(e, idx) { return clientEmails.indexOf(e) === idx; }).length;
+
+        var missionsList = myPayouts.slice(-30).reverse().map(function(p) {
+            var o = orders.find(function(o) { return o.id === p.order_id; });
+            return {
+                id: p.id,
+                order_id: p.order_id,
+                service_label: o ? (o.product_name || o.service_label || 'Prestation') : 'Prestation',
+                client_name: o && o.client_info ? (o.client_info.first_name || 'Client') : 'Client',
+                amount: parseFloat(p.amount) || 0,
+                sent_at: p.sent_at || p.created_at || ''
+            };
+        });
+
+        var reviewsList = loadPartnerReviews()
+            .filter(function(r) { return r.partnerId === partner.id && r.status === 'published'; })
+            .sort(function(a, b) { return new Date(b.createdAt) - new Date(a.createdAt); });
+
+        var allPartners = loadPartners();
+        var referralsList = allPartners
+            .filter(function(p) { return p.referredBy === partner.id; })
+            .map(function(p) { return { prenom: p.prenom, nom: p.nom, partner_type: p.partner_type, createdAt: p.createdAt }; });
+        var referralCount = referralsList.length;
+
+        var categoryPartners = allPartners.filter(function(p) { return p.partner_type === partner.partner_type && p.accountStatus === 'active'; });
+        var classement = getPartnerCategoryRank(partner, categoryPartners);
+
+        res.json({
+            ok: true,
+            missionsCompleted: missionsCompleted,
+            nombreClients: nombreClients,
+            revenusGeneres: Math.round(revenusGeneres * 100) / 100,
+            commissionsVersees: Math.round(commissionsVersees * 100) / 100,
+            classement: classement,
+            missions: missionsList,
+            reviews: reviewsList,
+            referralCode: partner.id,
+            referralCount: referralCount,
+            referralStatus: getPartnerReferralStatus(referralCount),
+            referrals: referralsList
+        });
+    } catch (e) {
+        console.error('[PALMARES] Erreur:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
 // Detail d'un projet assigne
 app.get('/api/partner/projects/:orderId', authenticatePartner, (req, res) => {
     try {

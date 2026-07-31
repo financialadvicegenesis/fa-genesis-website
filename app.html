@@ -2789,10 +2789,16 @@ a{text-decoration:none;color:inherit}
           <div id="ptnr-versements-list"></div>
         </div>
 
-        <!-- Sub-screen: Réputation -->
+        <!-- Sub-screen: Mes badges -->
         <div class="ptnr-screen" id="ptnr-screen-reputation">
-          <div class="ptnr-section-title">Ma réputation</div>
+          <div class="ptnr-section-title">Mes badges</div>
           <div id="ptnr-reputation-content"></div>
+        </div>
+
+        <!-- Sub-screen: Palmarès -->
+        <div class="ptnr-screen" id="ptnr-screen-palmares">
+          <div class="ptnr-section-title">Mon palmarès</div>
+          <div id="ptnr-palmares-content"></div>
         </div>
 
         <!-- Sub-screen: Promotions -->
@@ -6850,6 +6856,15 @@ function _renderPartnerHomeQGWidget(data) {
         + '<strong style="color:'+(badgeColors[bp.nextBadge]||'#FFD700')+'">'+(badgeLabels[bp.nextBadge]||bp.nextBadge)+'</strong>'
         + '</div>'
       : '';
+    var _pBadgePhrases = {
+      'null':      'Complétez 5 missions avec une note ≥ 4.0 pour décrocher votre premier badge !',
+      'bronze':    'Bien joué ! Continuez jusqu\'à 20 missions (note ≥ 4.3) pour atteindre l\'Argent.',
+      'argent':    'Excellent travail ! Encore quelques missions pour décrocher le badge Or.',
+      'or':        'Vous excellez — le badge Élite vous attend : 100 missions et une note ≥ 5.0.',
+      'elite':     'Félicitations ! Vous avez atteint le sommet — prestataire Élite GENESIS.',
+      'fondateur': 'Statut Fondateur — merci de faire partie de l\'aventure GENESIS !'
+    };
+    var _pMotivPhrase = _pBadgePhrases[badge ? badge : 'null'] || _pBadgePhrases['null'];
 
     el.innerHTML = '<div class="home-qg-widget">'
       + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">'
@@ -6862,7 +6877,7 @@ function _renderPartnerHomeQGWidget(data) {
       + '<div style="background:' + badgeColor + ';height:100%;width:' + pct + '%;border-radius:99px;transition:width .6s"></div>'
       + '</div>'
       + nextInfo
-      + '<button onclick="_ptnrNav(\'reputation\')" style="width:100%;margin-top:12px;background:rgba(255,215,0,.07);border:1px solid rgba(255,215,0,.2);border-radius:10px;color:#FFD700;padding:9px;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:.03em;"><i class="fa-solid fa-trophy" style="margin-right:6px;"></i>Voir mes badges et avantages</button>'
+      + '<div style="font-size:11px;color:#666;font-style:italic;margin-top:8px;line-height:1.5;">' + _pMotivPhrase + '</div>'
       + '</div>';
   } catch(e){ el.innerHTML = ''; }
 }
@@ -10607,7 +10622,7 @@ function _ptnrNav(screen){
   document.querySelectorAll('.ptnr-screen').forEach(function(s){s.className='ptnr-screen';});
   // Mettre à jour le bouton actif dans la nav bas partenaire
   // Les sous-sections (collegues, etc.) gardent l'onglet "profil" actif
-  var _ptnrNavBottomTab = (screen === 'collegues') ? 'profil' : screen;
+  var _ptnrNavBottomTab = (['collegues','reputation','palmares','projets','devis','seances','messages','missions','versements','promotions','portfolio'].indexOf(screen) !== -1) ? 'profil' : screen;
   document.querySelectorAll('.ptnr-nav').forEach(function(b){b.className='nav-btn ptnr-nav';});
   var pnb = document.getElementById('pnb-'+_ptnrNavBottomTab);
   if(pnb) pnb.className = 'nav-btn ptnr-nav on';
@@ -10623,6 +10638,7 @@ function _ptnrNav(screen){
   if(screen==='missions') _ptnrLoadMissions();
   if(screen==='versements') _ptnrLoadVersements();
   if(screen==='reputation')  _ptnrLoadReputation();
+  if(screen==='palmares')    _ptnrLoadPalmares();
   if(screen==='promotions')  _ptnrLoadPromotions();
   if(screen==='portfolio')   _ptnrLoadPortfolio();
   if(screen==='profil')      _ptnrLoadProfil();
@@ -13754,7 +13770,7 @@ function _savePartnerRib(){
   }).catch(function(){ showToast('Erreur réseau','Réessayez plus tard','error'); });
 }
 
-// ── RÉPUTATION ──
+// ── MES BADGES ──
 function _ptnrLoadReputation(){
   var el = document.getElementById('ptnr-reputation-content');
   if(el) el.innerHTML = _skeletonRows(3);
@@ -13766,12 +13782,6 @@ function _ptnrLoadReputation(){
     }
     var badge = data.founderBadge ? 'fondateur' : data.badge;
     var rating = data.rating || {average:0, count:0};
-    var classement = data.classement || {rank:null, total:0};
-    var responseTxt = (typeof data.avgResponseMinutes === 'number')
-      ? (data.avgResponseMinutes < 60
-          ? Math.round(data.avgResponseMinutes) + ' min'
-          : Math.round(data.avgResponseMinutes/60) + ' h')
-      : '—';
 
     var html = '<div class="ptnr-rep-hero"><div class="ptnr-rep-hero-inner">'
       + (genesisUnifiedBadgesHtml(badge, data.constellation) || '<span style="font-size:12px;color:#666;font-weight:700;">Pas encore de badge</span>')
@@ -13779,106 +13789,215 @@ function _ptnrLoadReputation(){
       + partnerBadgeProgressHtml(data.badgeProgress)
       + '</div></div>';
 
-    // Avantages par badge (locked/unlocked)
-    if(data.currentBenefits) {
-      var b = data.currentBenefits;
-      var _repCr = b.commissionReduction || 0;
-      var _repSoon = '<span style="font-size:9px;color:#555;background:rgba(255,255,255,.04);border-radius:3px;padding:1px 4px;margin-left:4px;">Bientôt</span>';
-      var commLbl = b.commissionPct ? (b.commissionPct + '%') : '15%';
-      var payLbl = b.payout === 'express' ? '<span style="color:#4caf50;font-weight:800">Express</span>'
-        : b.payout === 'prioritaire' ? '<span style="color:#FFD700;font-weight:800">Prioritaire</span>'
-        : '<span style="color:#888">Standard</span>';
-      var boostLbl = (b.monthlyBoosts || 0) > 0 ? '<span style="color:#FFD700;font-weight:800">' + b.monthlyBoosts + ' / mois</span>' : '<span style="color:#888">Aucun</span>';
-      var evLbl = b.events ? '<span style="color:#4caf50;font-weight:800">Inclus</span>'+_repSoon : '<span style="color:#888">Non inclus</span>';
-      html += '<div style="background:linear-gradient(135deg,#1a1200,#0d0d00);border:1px solid rgba(255,215,0,.2);border-radius:14px;padding:14px 15px;margin:0 0 14px;">'
-        + '<div style="font-size:10px;color:#FFD700;font-weight:800;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px"><i class="fa-solid fa-star" style="margin-right:4px;"></i>Avantages de votre palier</div>'
-        + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;">'
-        + '<div style="background:rgba(255,255,255,.03);border-radius:9px;padding:8px 10px;"><div style="font-size:10px;color:#666;margin-bottom:3px;"><i class="fa-solid fa-percent" style="color:#FFD700;margin-right:4px;font-size:9px"></i>Commission</div><span style="color:#eee;font-weight:800;">'+commLbl+'</span></div>'
-        + '<div style="background:rgba(255,255,255,.03);border-radius:9px;padding:8px 10px;"><div style="font-size:10px;color:#666;margin-bottom:3px;"><i class="fa-solid fa-clock" style="color:#FFD700;margin-right:4px;font-size:9px"></i>Versement</div>'+payLbl+'</div>'
-        + '<div style="background:rgba(255,255,255,.03);border-radius:9px;padding:8px 10px;"><div style="font-size:10px;color:#666;margin-bottom:3px;"><i class="fa-solid fa-rocket" style="color:#FFD700;margin-right:4px;font-size:9px"></i>Boosts</div>'+boostLbl+'</div>'
-        + '<div style="background:rgba(255,255,255,.03);border-radius:9px;padding:8px 10px;"><div style="font-size:10px;color:#666;margin-bottom:3px;"><i class="fa-solid fa-calendar-check" style="color:#FFD700;margin-right:4px;font-size:9px"></i>Événements</div>'+evLbl+'</div>'
-        + '</div></div>';
-      // Badge progression détaillée avec avantages verrouillés
-      var _ptnrBadgeOrder = [null, 'bronze', 'argent', 'or', 'elite'];
-      var _ptnrCurOrder = _ptnrBadgeOrder.indexOf(badge);
-      var _ptnrBadgeDefs = [
-        { id: 'bronze', label: 'Bronze', icon: 'fa-fire',     missions: 5,   rating: 4.0,
-          advs: ['Présence dans l\'annuaire','Commission 15%','Tableau de bord professionnel','Accès aux formations FA GENESIS','Jérémie IA Essentiel'] },
-        { id: 'argent', label: 'Argent', icon: 'fa-bolt',     missions: 20,  rating: 4.3,
-          advs: ['Commission réduite (14%)','Statistiques avancées','Boosts mensuels ×2','Priorité classement annuaire','Jérémie IA Plus — Analyse des avis'] },
-        { id: 'or',     label: 'Or',     icon: 'fa-crown',    missions: 50,  rating: 4.5,
-          advs: ['Commission réduite (13%)','Boosts mensuels ×4','Accès aux événements FA GENESIS','Classement renforcé annuaire','Jérémie IA Pro — Conseils marketing'] },
-        { id: 'elite',  label: 'Élite',  icon: 'fa-infinity', missions: 100, rating: 5.0,
-          advs: ['Commission réduite (11%)','Badge premium affiché','Priorité classement (profil équivalent)','Boosts mensuels ×8','Jérémie IA Expert — Assistant stratégique'] }
-      ];
-      html += '<div style="font-size:10px;color:#FFD700;font-weight:800;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;"><i class="fa-solid fa-layer-group" style="margin-right:4px;"></i>Progression des badges</div>';
-      _ptnrBadgeDefs.forEach(function(bDef) {
-        var bOrder = _ptnrBadgeOrder.indexOf(bDef.id);
-        var unlocked = _ptnrCurOrder >= bOrder && bOrder > 0;
-        var isCur = bDef.id === badge;
-        var borderClr = isCur ? '#FFD700' : (unlocked ? '#4caf50' : '#1a1a1a');
-        var titleClr  = isCur ? '#FFD700' : (unlocked ? '#4caf50' : '#333');
-        html += '<div style="background:#0e0e0e;border:1.5px solid '+borderClr+';border-radius:13px;padding:12px 14px;margin-bottom:10px;">';
-        html += '<div style="display:flex;align-items:center;gap:9px;margin-bottom:8px;">'
-          + '<i class="fa-solid '+bDef.icon+'" style="font-size:16px;color:'+titleClr+';width:20px;text-align:center;flex-shrink:0;"></i>'
-          + '<div style="flex:1;"><span style="font-size:14px;font-weight:800;color:'+titleClr+';">'+bDef.label+'</span>'
-          + '<span style="font-size:11px;color:#444;margin-left:7px;">'+bDef.missions+' missions · '+bDef.rating.toFixed(1)+'★ min.</span>'
-          + (isCur ? '<span style="font-size:10px;color:#FFD700;font-weight:800;margin-left:8px;">● actuel</span>' : '')+'</div>'
-          + (unlocked ? '<i class="fa-solid fa-check-circle" style="font-size:16px;color:#4caf50;"></i>' : '<span style="font-size:16px;color:#252525;">&#128274;</span>')
+    // ── Comment progresser ? ──
+    var _repBadgeOrder = [null, 'bronze', 'argent', 'or', 'elite'];
+    var _repBadgeDefs = [
+      { id: 'bronze', label: 'Bronze', missions: 5,   rating: 4.0 },
+      { id: 'argent', label: 'Argent', missions: 20,  rating: 4.3 },
+      { id: 'or',     label: 'Or',     missions: 50,  rating: 4.5 },
+      { id: 'elite',  label: 'Élite',  missions: 100, rating: 5.0 }
+    ];
+    var _repCurOrder = _repBadgeOrder.indexOf(badge);
+    var _repMissions = data.missionsCompleted || 0;
+    var _repAvg = rating.average;
+
+    if (badge !== 'elite' && badge !== 'fondateur') {
+      var _repNext = null;
+      for (var _rbi = 0; _rbi < _repBadgeDefs.length; _rbi++) {
+        if (_repBadgeOrder.indexOf(_repBadgeDefs[_rbi].id) > _repCurOrder) { _repNext = _repBadgeDefs[_rbi]; break; }
+      }
+      if (_repNext) {
+        var _repMissRem = Math.max(0, _repNext.missions - _repMissions);
+        var _repRatingOk = _repAvg >= _repNext.rating;
+        html += '<div style="background:#111;border-radius:14px;padding:14px 16px;margin-bottom:16px;">'
+          + '<div style="font-size:10px;color:var(--yellow);font-weight:800;letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;"><i class="fa-solid fa-bolt" style="margin-right:5px;"></i>Comment progresser ?</div>'
+          + '<div style="background:#0e0e0e;border-radius:10px;padding:10px 12px;margin-bottom:10px;display:flex;justify-content:space-between;">'
+          + '<div style="text-align:center;flex:1;">'
+          + '<div style="font-size:18px;font-weight:900;color:#fff;">'+_repMissions+'</div>'
+          + '<div style="font-size:10px;color:#555;text-transform:uppercase;letter-spacing:.5px;">missions</div>'
+          + '</div><div style="width:1px;background:#1a1a1a;"></div>'
+          + '<div style="text-align:center;flex:1;">'
+          + '<div style="font-size:18px;font-weight:900;color:'+(_repRatingOk?'#4caf50':'#FFD700')+';">'+_repAvg.toFixed(1)+'<i class="fa-solid fa-star" style="font-size:12px;"></i></div>'
+          + '<div style="font-size:10px;color:#555;text-transform:uppercase;letter-spacing:.5px;">note moy.</div>'
+          + '</div><div style="width:1px;background:#1a1a1a;"></div>'
+          + '<div style="text-align:center;flex:1;">'
+          + '<div style="font-size:18px;font-weight:900;color:'+(_repMissRem===0?'#4caf50':'#FFD700')+';">'+_repMissRem+'</div>'
+          + '<div style="font-size:10px;color:#555;text-transform:uppercase;letter-spacing:.5px;">restantes</div>'
+          + '</div></div>'
+          + '<div style="display:flex;flex-direction:column;gap:7px;">'
+          + '<div style="display:flex;align-items:center;gap:9px;font-size:12px;padding:9px 11px;background:#0a0a0a;border-radius:9px;border:1px solid '+(_repMissRem===0?'#1a3a1a':'#1a1a00')+';">'
+          + '<i class="fa-solid fa-briefcase" style="color:'+(_repMissRem===0?'#4caf50':'#FFD700')+';font-size:13px;flex-shrink:0;"></i>'
+          + '<div style="flex:1;"><div style="color:#ccc;font-weight:700;">Compléter des missions</div>'
+          + '<div style="color:#555;font-size:10px;margin-top:1px;">'+(_repMissRem===0?'<span style="color:#4caf50;">Objectif atteint !</span>':_repMissRem+' mission(s) avant le badge '+_repNext.label)+'</div></div>'
+          + (_repMissRem===0?'<i class="fa-solid fa-check-circle" style="color:#4caf50;flex-shrink:0;"></i>':'')
+          + '</div>'
+          + '<div style="display:flex;align-items:center;gap:9px;font-size:12px;padding:9px 11px;background:#0a0a0a;border-radius:9px;border:1px solid '+(_repRatingOk?'#1a3a1a':'#1a1a00')+';">'
+          + '<i class="fa-solid fa-star" style="color:'+(_repRatingOk?'#4caf50':'#FFD700')+';font-size:13px;flex-shrink:0;"></i>'
+          + '<div style="flex:1;"><div style="color:#ccc;font-weight:700;">Maintenir une note ≥ '+_repNext.rating.toFixed(1)+'★</div>'
+          + '<div style="color:#555;font-size:10px;margin-top:1px;">'+(_repRatingOk?'<span style="color:#4caf50;">Note suffisante !</span>':'Note actuelle : '+_repAvg.toFixed(1)+'★ — visez des avis 5 étoiles')+'</div></div>'
+          + (_repRatingOk?'<i class="fa-solid fa-check-circle" style="color:#4caf50;flex-shrink:0;"></i>':'')
+          + '</div></div>'
+          + (_repMissRem===0 && _repRatingOk
+            ? '<div style="margin-top:10px;background:rgba(76,175,80,.08);border:1px solid #1a3a1a;border-radius:9px;padding:8px 12px;font-size:11px;color:#4caf50;text-align:center;"><i class="fa-solid fa-trophy" style="margin-right:5px;"></i>Objectifs atteints — badge <strong>'+_repNext.label+'</strong> en cours de validation !</div>'
+            : '')
           + '</div>';
-        html += '<div style="display:flex;flex-direction:column;gap:4px;">';
-        bDef.advs.forEach(function(adv) {
-          html += '<div style="display:flex;align-items:flex-start;gap:7px;font-size:11px;">';
-          if (unlocked) {
-            html += '<i class="fa-solid fa-circle-check" style="color:#4caf50;font-size:11px;margin-top:1px;flex-shrink:0;"></i><span style="color:#bbb;">'+adv+'</span>';
-          } else {
-            html += '<i class="fa-solid fa-lock" style="color:#222;font-size:11px;margin-top:1px;flex-shrink:0;"></i><span style="color:#2e2e2e;">'+adv+'</span>';
-          }
-          html += '</div>';
-        });
-        html += '</div></div>';
-      });
-    }
-
-    html += '<div class="ptnr-stat-row">'
-      + '<div class="ptnr-stat"><div class="ptnr-stat-ico"><i class="fa-solid fa-briefcase"></i></div><div class="ptnr-stat-val" id="ptnr-rep-missions">—</div><div class="ptnr-stat-label">Missions</div></div>'
-      + '<div class="ptnr-stat"><div class="ptnr-stat-ico"><i class="fa-solid fa-users"></i></div><div class="ptnr-stat-val" id="ptnr-rep-clients">—</div><div class="ptnr-stat-label">Clients</div></div>'
-      + '<div class="ptnr-stat"><div class="ptnr-stat-ico"><i class="fa-solid fa-bolt"></i></div><div class="ptnr-stat-val" style="font-size:17px;">'+responseTxt+'</div><div class="ptnr-stat-label">Réponse moy.</div></div>'
-      + '</div>';
-
-    html += '<div class="ptnr-rep-finance">';
-    html += '<div class="ptnr-rep-fcard" style="--fc:#4caf50;"><div class="ptnr-rep-ficon"><i class="fa-solid fa-sack-dollar"></i></div>';
-    html += '<div id="ptnr-rep-revenus" class="ptnr-rep-fval" style="color:#4caf50;">0.00 €</div>';
-    html += '<div class="ptnr-rep-flabel">Revenus générés</div></div>';
-    html += '<div class="ptnr-rep-fcard" style="--fc:#FFD700;"><div class="ptnr-rep-ficon"><i class="fa-solid fa-hand-holding-dollar"></i></div>';
-    html += '<div id="ptnr-rep-commissions" class="ptnr-rep-fval" style="color:#FFD700;">0.00 €</div>';
-    html += '<div class="ptnr-rep-flabel">Commissions versées</div></div>';
-    html += '</div>';
-
-    if(classement.rank && classement.total){
-      html += '<div class="ptnr-rep-rank">';
-      html += '<div class="ptnr-rep-rank-val"><i class="fa-solid fa-ranking-star"></i> Classement #'+classement.rank+' / '+classement.total+'</div>';
-      html += '<div class="ptnr-rep-rank-sub">Dans votre catégorie</div>';
-      html += '</div>';
-    }
-
-    if(data.referralCode){
-      var refCount = data.referralCount || 0;
-      html += '<div class="p-ref-box">'
-        + '<div class="p-ref-box-title">Parrainage' + (data.referralStatus?(' '+tierBadgeHtml(data.referralStatus)):'') + '</div>'
-        + '<div class="p-ref-code-row">'
-        + '<span class="p-ref-code">'+data.referralCode+'</span>'
-        + '<button class="p-ref-copy-btn" onclick="navigator.clipboard&&navigator.clipboard.writeText(\''+data.referralCode+'\')">Copier</button>'
-        + '</div>'
-        + '<div class="p-ref-count">'+refCount+' partenaire'+(refCount>1?'s':'')+' parrainé'+(refCount>1?'s':'')+(refCount<3?' · encore '+(3-refCount)+' pour le statut Bâtisseur':'')+'</div>'
+      }
+    } else if (badge === 'elite') {
+      html += '<div style="background:linear-gradient(135deg,#1a001a,#0d0d0d);border:1px solid rgba(167,139,250,.2);border-radius:14px;padding:14px 16px;margin-bottom:16px;text-align:center;">'
+        + '<i class="fa-solid fa-infinity" style="font-size:24px;color:#a78bfa;margin-bottom:8px;display:block;"></i>'
+        + '<div style="font-size:13px;color:#a78bfa;font-weight:800;margin-bottom:4px;">Niveau Élite atteint !</div>'
+        + '<div style="font-size:11px;color:#555;">Vous avez atteint le sommet — continuez à exceller pour inspirer vos collègues.</div>'
         + '</div>';
     }
 
+    // ── Badges & avantages (locked/unlocked) ──
+    var _ptnrBadgeOrder = [null, 'bronze', 'argent', 'or', 'elite'];
+    var _ptnrCurOrder = _ptnrBadgeOrder.indexOf(badge);
+    var _ptnrBadgeDefs = [
+      { id: 'bronze', label: 'Bronze', icon: 'fa-fire',     missions: 5,   rating: 4.0,
+        advs: ['Présence dans l\'annuaire','Commission 15%','Tableau de bord professionnel','Accès aux formations FA GENESIS','Jérémie IA Essentiel'] },
+      { id: 'argent', label: 'Argent', icon: 'fa-bolt',     missions: 20,  rating: 4.3,
+        advs: ['Commission réduite (14%)','Statistiques avancées','Boosts mensuels ×2','Priorité classement annuaire','Jérémie IA Plus — Analyse des avis'] },
+      { id: 'or',     label: 'Or',     icon: 'fa-crown',    missions: 50,  rating: 4.5,
+        advs: ['Commission réduite (13%)','Boosts mensuels ×4','Accès aux événements FA GENESIS','Classement renforcé annuaire','Jérémie IA Pro — Conseils marketing'] },
+      { id: 'elite',  label: 'Élite',  icon: 'fa-infinity', missions: 100, rating: 5.0,
+        advs: ['Commission réduite (11%)','Badge premium affiché','Priorité classement (profil équivalent)','Boosts mensuels ×8','Jérémie IA Expert — Assistant stratégique'] }
+    ];
+    html += '<div style="font-size:10px;color:#FFD700;font-weight:800;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;"><i class="fa-solid fa-layer-group" style="margin-right:4px;"></i>Badges & avantages</div>';
+    _ptnrBadgeDefs.forEach(function(bDef) {
+      var bOrder = _ptnrBadgeOrder.indexOf(bDef.id);
+      var unlocked = _ptnrCurOrder >= bOrder && bOrder > 0;
+      var isCur = bDef.id === badge;
+      var borderClr = isCur ? '#FFD700' : (unlocked ? '#4caf50' : '#1a1a1a');
+      var titleClr  = isCur ? '#FFD700' : (unlocked ? '#4caf50' : '#333');
+      html += '<div style="background:#0e0e0e;border:1.5px solid '+borderClr+';border-radius:13px;padding:12px 14px;margin-bottom:10px;">';
+      html += '<div style="display:flex;align-items:center;gap:9px;margin-bottom:8px;">'
+        + '<i class="fa-solid '+bDef.icon+'" style="font-size:16px;color:'+titleClr+';width:20px;text-align:center;flex-shrink:0;"></i>'
+        + '<div style="flex:1;"><span style="font-size:14px;font-weight:800;color:'+titleClr+';">'+bDef.label+'</span>'
+        + '<span style="font-size:11px;color:#444;margin-left:7px;">'+bDef.missions+' missions · '+bDef.rating.toFixed(1)+'★ min.</span>'
+        + (isCur ? '<span style="font-size:10px;color:#FFD700;font-weight:800;margin-left:8px;">● actuel</span>' : '')+'</div>'
+        + (unlocked ? '<i class="fa-solid fa-check-circle" style="font-size:16px;color:#4caf50;"></i>' : '<span style="font-size:16px;color:#252525;">&#128274;</span>')
+        + '</div>';
+      html += '<div style="display:flex;flex-direction:column;gap:4px;">';
+      bDef.advs.forEach(function(adv) {
+        html += '<div style="display:flex;align-items:flex-start;gap:7px;font-size:11px;">';
+        if (unlocked) {
+          html += '<i class="fa-solid fa-circle-check" style="color:#4caf50;font-size:11px;margin-top:1px;flex-shrink:0;"></i><span style="color:#bbb;">'+adv+'</span>';
+        } else {
+          html += '<i class="fa-solid fa-lock" style="color:#222;font-size:11px;margin-top:1px;flex-shrink:0;"></i><span style="color:#2e2e2e;">'+adv+'</span>';
+        }
+        html += '</div>';
+      });
+      if (!unlocked) {
+        html += '<div style="margin-top:10px;background:rgba(255,215,0,.04);border:1px solid #252500;border-radius:8px;padding:8px 10px;font-size:11px;color:#555;text-align:center;">'
+          + '<i class="fa-solid fa-lock" style="margin-right:5px;color:#333;"></i>'
+          + 'Débloquez le badge <strong style="color:#444;">'+bDef.label+'</strong> pour accéder à ces avantages'
+          + '</div>';
+      }
+      html += '</div></div>';
+    });
+
     el.innerHTML = html;
-    _animateCount(document.getElementById('ptnr-rep-missions'), data.missionsCompleted || 0);
-    _animateCount(document.getElementById('ptnr-rep-clients'), data.nombreClients || 0);
-    _animateCount(document.getElementById('ptnr-rep-revenus'), data.revenusGeneres || 0, {decimals:2, suffix:' €', duration:900});
-    _animateCount(document.getElementById('ptnr-rep-commissions'), data.commissionsVersees || 0, {decimals:2, suffix:' €', duration:900});
+  }).catch(function(){
+    if(el) el.innerHTML = '<div class="ptnr-empty"><div class="ptnr-empty-txt">Erreur de chargement</div></div>';
+  });
+}
+
+// ── PALMARÈS ──
+function _ptnrLoadPalmares(){
+  var el = document.getElementById('ptnr-palmares-content');
+  if(el) el.innerHTML = _skeletonRows(3);
+  _ptnrFetch('/api/partner/palmares').then(function(data){
+    if(!el) return;
+    var html = '';
+
+    // Stats overview
+    var reviewCount = (data.reviews && data.reviews.length) || 0;
+    html += '<div class="ptnr-stat-row">'
+      + '<div class="ptnr-stat"><div class="ptnr-stat-ico"><i class="fa-solid fa-briefcase"></i></div><div class="ptnr-stat-val" id="plm-missions">0</div><div class="ptnr-stat-label">Missions</div></div>'
+      + '<div class="ptnr-stat"><div class="ptnr-stat-ico"><i class="fa-solid fa-users"></i></div><div class="ptnr-stat-val" id="plm-clients">0</div><div class="ptnr-stat-label">Clients</div></div>'
+      + '<div class="ptnr-stat"><div class="ptnr-stat-ico"><i class="fa-solid fa-star"></i></div><div class="ptnr-stat-val">'+reviewCount+'</div><div class="ptnr-stat-label">Avis reçus</div></div>'
+      + '</div>';
+
+    // Finance
+    html += '<div class="ptnr-rep-finance">'
+      + '<div class="ptnr-rep-fcard" style="--fc:#4caf50;"><div class="ptnr-rep-ficon"><i class="fa-solid fa-sack-dollar"></i></div>'
+      + '<div id="plm-revenus" class="ptnr-rep-fval" style="color:#4caf50;">0.00 €</div>'
+      + '<div class="ptnr-rep-flabel">Revenus générés</div></div>'
+      + '<div class="ptnr-rep-fcard" style="--fc:#FFD700;"><div class="ptnr-rep-ficon"><i class="fa-solid fa-hand-holding-dollar"></i></div>'
+      + '<div id="plm-commissions" class="ptnr-rep-fval" style="color:#FFD700;">0.00 €</div>'
+      + '<div class="ptnr-rep-flabel">Commissions versées</div></div>'
+      + '</div>';
+
+    // Classement
+    var cl = data.classement || {};
+    if(cl.rank && cl.total){
+      html += '<div class="ptnr-rep-rank"><div class="ptnr-rep-rank-val"><i class="fa-solid fa-ranking-star"></i> Classement #'+cl.rank+' / '+cl.total+'</div>'
+        + '<div class="ptnr-rep-rank-sub">Dans votre catégorie</div></div>';
+    }
+
+    // Prestations terminées
+    html += '<div style="font-size:10px;color:#FFD700;font-weight:800;letter-spacing:1px;text-transform:uppercase;margin:16px 0 10px;"><i class="fa-solid fa-briefcase" style="margin-right:5px;"></i>Mes prestations</div>';
+    if(data.missions && data.missions.length > 0){
+      data.missions.forEach(function(m){
+        var dStr = m.sent_at ? new Date(m.sent_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'}) : '';
+        html += '<div style="background:#0e0e0e;border:1px solid #1a1a1a;border-radius:11px;padding:11px 13px;margin-bottom:8px;display:flex;align-items:center;gap:10px;">'
+          + '<div style="width:36px;height:36px;background:rgba(76,175,80,.08);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="fa-solid fa-check" style="color:#4caf50;font-size:14px;"></i></div>'
+          + '<div style="flex:1;min-width:0;"><div style="font-size:12px;font-weight:700;color:#ddd;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+(m.service_label||'Prestation')+'</div>'
+          + '<div style="font-size:10px;color:#555;margin-top:2px;">'+(m.client_name||'Client')+(dStr?' · '+dStr:'')+'</div></div>'
+          + '<div style="font-size:13px;font-weight:800;color:#4caf50;flex-shrink:0;">'+(parseFloat(m.amount)||0).toFixed(2)+' €</div>'
+          + '</div>';
+      });
+    } else {
+      html += '<div style="background:#0a0a0a;border-radius:11px;padding:16px;text-align:center;color:#333;font-size:12px;margin-bottom:16px;">Aucune prestation terminée pour le moment</div>';
+    }
+
+    // Avis reçus
+    html += '<div style="font-size:10px;color:#FFD700;font-weight:800;letter-spacing:1px;text-transform:uppercase;margin:16px 0 10px;"><i class="fa-solid fa-star" style="margin-right:5px;"></i>Avis reçus</div>';
+    if(data.reviews && data.reviews.length > 0){
+      data.reviews.slice(0,15).forEach(function(r){
+        var stars = '';
+        for(var si=0;si<5;si++) stars += '<i class="fa-solid fa-star" style="font-size:10px;color:'+(si<r.rating?'#FFD700':'#222')+'"></i>';
+        var dStr = r.createdAt ? new Date(r.createdAt).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'}) : '';
+        html += '<div style="background:#0e0e0e;border:1px solid #1a1a1a;border-radius:11px;padding:11px 13px;margin-bottom:8px;">'
+          + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;"><div>'+stars+'</div><div style="font-size:10px;color:#444;">'+dStr+'</div></div>'
+          + (r.comment ? '<div style="font-size:12px;color:#888;font-style:italic;line-height:1.4;">'+r.comment+'</div>' : '')
+          + '</div>';
+      });
+    } else {
+      html += '<div style="background:#0a0a0a;border-radius:11px;padding:16px;text-align:center;color:#333;font-size:12px;margin-bottom:16px;">Aucun avis reçu pour le moment</div>';
+    }
+
+    // Parrainages
+    html += '<div style="font-size:10px;color:#FFD700;font-weight:800;letter-spacing:1px;text-transform:uppercase;margin:16px 0 10px;"><i class="fa-solid fa-user-plus" style="margin-right:5px;"></i>Mes parrainages</div>';
+    var refCount = data.referralCount || 0;
+    if(data.referralCode){
+      html += '<div class="p-ref-box">'
+        + '<div class="p-ref-box-title">Mon code de parrainage'+(data.referralStatus?(' '+tierBadgeHtml(data.referralStatus)):'')+'</div>'
+        + '<div class="p-ref-code-row"><span class="p-ref-code">'+data.referralCode+'</span>'
+        + '<button class="p-ref-copy-btn" onclick="navigator.clipboard&&navigator.clipboard.writeText(\''+data.referralCode+'\')" style="cursor:pointer;">Copier</button></div>'
+        + '<div class="p-ref-count">'+refCount+' prestataire'+(refCount>1?'s':'')+' parrainé'+(refCount>1?'s':'')+(refCount<3?' · encore '+(3-refCount)+' pour le statut Bâtisseur':'')+'</div>'
+        + '</div>';
+    }
+    if(data.referrals && data.referrals.length > 0){
+      data.referrals.forEach(function(ref){
+        var dStr = ref.createdAt ? new Date(ref.createdAt).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'}) : '';
+        html += '<div style="background:#0e0e0e;border:1px solid #1a1a1a;border-radius:11px;padding:10px 13px;margin-top:6px;display:flex;align-items:center;gap:9px;">'
+          + '<div style="width:32px;height:32px;background:rgba(255,215,0,.07);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="fa-solid fa-user" style="color:#FFD700;font-size:12px;"></i></div>'
+          + '<div style="flex:1;"><div style="font-size:12px;font-weight:700;color:#ddd;">'+(ref.prenom||'')+' '+(ref.nom||'')+'</div>'
+          + '<div style="font-size:10px;color:#555;">'+(ref.partner_type||'')+(dStr?' · '+dStr:'')+'</div></div>'
+          + '<i class="fa-solid fa-check-circle" style="color:#4caf50;font-size:14px;flex-shrink:0;"></i>'
+          + '</div>';
+      });
+    } else if(refCount === 0){
+      html += '<div style="background:#0a0a0a;border-radius:11px;padding:14px;text-align:center;color:#333;font-size:12px;margin-top:8px;">Pas encore de parrainage — partagez votre code avec des collègues !</div>';
+    }
+
+    el.innerHTML = html;
+    _animateCount(document.getElementById('plm-missions'), data.missionsCompleted||0);
+    _animateCount(document.getElementById('plm-clients'), data.nombreClients||0);
+    _animateCount(document.getElementById('plm-revenus'), data.revenusGeneres||0, {decimals:2, suffix:' €', duration:900});
+    _animateCount(document.getElementById('plm-commissions'), data.commissionsVersees||0, {decimals:2, suffix:' €', duration:900});
   }).catch(function(){
     if(el) el.innerHTML = '<div class="ptnr-empty"><div class="ptnr-empty-txt">Erreur de chargement</div></div>';
   });
@@ -14339,7 +14458,8 @@ function _ptnrLoadProfil(){
     +pli('<i class="fa-solid fa-comment-dots"></i>',      '#0d1a1a','Messages clients',     null,"_ptnrNav('messages')")
     +pli('<i class="fa-solid fa-bolt"></i>',              '#1a0a00','Mes missions',         null,"_ptnrNav('missions')")
     +pli('<i class="fa-solid fa-wallet"></i>',            '#001a0a','Portefeuille',         null,"_ptnrNav('versements')")
-    +pli('<i class="fa-solid fa-trophy"></i>',            '#1a1400','Réputation & badges',  null,"_ptnrNav('reputation')")
+    +pli('<i class="fa-solid fa-trophy"></i>',            '#1a1400','Mes badges',           null,"_ptnrNav('reputation')")
+    +pli('<i class="fa-solid fa-medal"></i>',             '#1a0a14','Palmarès',             null,"_ptnrNav('palmares')")
     +pli('<i class="fa-solid fa-tag"></i>',               '#1a0014','Promotions',           null,"_ptnrNav('promotions')")
     +pli('<i class="fa-solid fa-images"></i>',            '#001a14','Mon portfolio',        null,"_ptnrNav('portfolio')")
     +'</div></div>';
