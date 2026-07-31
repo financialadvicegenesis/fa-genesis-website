@@ -15189,27 +15189,68 @@ function _updateGreeting(){
 
 <script>
 var _TUTO_C = [
-  {ico:'<i class="fa-solid fa-hand-wave"></i>',  title:'Bienvenue sur GENESIS !',              desc:'Votre espace tout-en-un pour trouver des professionnels de talent et suivre vos missions en temps réel.'},
-  {ico:'<i class="fa-solid fa-layer-group"></i>', title:'Bienvenue sur FA GENESIS',
-   html:'<div style="font-size:11px;color:#888;text-align:center;margin-bottom:11px;">Dès votre inscription, profitez de toutes les fonctionnalités essentielles de la plateforme.</div>'
+  {ico:'<i class="fa-solid fa-hand-wave"></i>', title:'Bienvenue sur GENESIS !',
+   desc:'Votre espace tout-en-un pour trouver des professionnels de talent et suivre vos missions en temps réel.'},
+  {ico:'<i class="fa-solid fa-layer-group"></i>', title:'Ce qui est inclus dès l\'inscription',
+   html:'<div style="font-size:11px;color:#888;text-align:center;margin-bottom:11px;">Profitez de toutes les fonctionnalités essentielles dès votre premier jour.</div>'
      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:11px;">'
-     +[['fa-magnifying-glass','Rechercher des prestataires'],['fa-user','Profils & portfolios'],['fa-calendar-check','Demander un devis'],['fa-credit-card','Réserver & payer'],['fa-comment-dots','Messagerie'],['fa-heart','Favoris'],['fa-star','Avis & évaluations'],['fa-list','Historique'],['fa-bell','Notifications'],['fa-robot','Jérémie IA Essentiel']].map(function(f){return '<div style="background:#151515;border-radius:7px;padding:7px 8px;display:flex;align-items:center;gap:6px;"><i class="fa-solid '+f[0]+'" style="font-size:11px;color:#FFD700;flex-shrink:0;"></i><span style="font-size:10px;color:#ccc;">'+f[1]+'</span></div>';}).join('')
+     +[['fa-magnifying-glass','Rechercher des prestataires'],['fa-user','Profils & portfolios'],['fa-calendar-check','Demander un devis'],['fa-credit-card','Réserver & payer'],['fa-comment-dots','Messagerie'],['fa-heart','Favoris'],['fa-star','Avis & évaluations'],['fa-list','Historique'],['fa-bell','Notifications'],['fa-robot','Jérémie IA']].map(function(f){return '<div style="background:#151515;border-radius:7px;padding:7px 8px;display:flex;align-items:center;gap:6px;"><i class="fa-solid '+f[0]+'" style="font-size:11px;color:#FFD700;flex-shrink:0;"></i><span style="font-size:10px;color:#ccc;">'+f[1]+'</span></div>';}).join('')
+     +'</div>'},
+  {ico:'<i class="fa-solid fa-magnifying-glass"></i>', title:'Explorer',
+   desc:'Découvrez du contenu, des événements et les opportunités de la communauté GENESIS.', nav:'explorer'},
+  {ico:'<i class="fa-solid fa-handshake"></i>', title:'Prestataires',
+   desc:'Parcourez notre annuaire de professionnels et réservez directement celui qui vous correspond.', nav:'prestataires'},
+  {ico:'<i class="fa-solid fa-calendar-check"></i>', title:'Mes réservations',
+   nav:'reservations', desc:'Retrouvez ici toutes vos missions actives et leur progression en temps réel.'},
+  {ico:'<i class="fa-solid fa-comment-dots"></i>', title:'Messagerie',
+   nav:'messages', desc:'Échangez directement avec vos prestataires depuis la messagerie intégrée. Simple et sécurisé.'},
+  {ico:'<i class="fa-solid fa-bolt"></i>', title:'Comment progresser ?',
+   html:'<div style="font-size:12px;color:#888;text-align:center;margin-bottom:10px;">Gagnez des <strong style="color:#FFD700;">Points QG</strong> à chaque action pour débloquer des niveaux et avantages exclusifs.</div>'
+     +'<div style="display:flex;flex-direction:column;gap:5px;margin-bottom:10px;">'
+     +'<div style="background:#151515;border-radius:9px;padding:8px 12px;display:flex;align-items:center;justify-content:space-between;"><div style="display:flex;align-items:center;gap:7px;"><i class="fa-solid fa-briefcase" style="color:#FFD700;font-size:11px;width:14px;text-align:center;"></i><span style="font-size:11px;color:#ccc;">Prestation terminée</span></div><span style="font-size:12px;font-weight:800;color:#FFD700;">+20 QG</span></div>'
+     +'<div style="background:#151515;border-radius:9px;padding:8px 12px;display:flex;align-items:center;justify-content:space-between;"><div style="display:flex;align-items:center;gap:7px;"><i class="fa-solid fa-star" style="color:#FFD700;font-size:11px;width:14px;text-align:center;"></i><span style="font-size:11px;color:#ccc;">Avis déposé</span></div><span style="font-size:12px;font-weight:800;color:#FFD700;">+30 QG</span></div>'
+     +'<div style="background:#151515;border-radius:9px;padding:8px 12px;display:flex;align-items:center;justify-content:space-between;"><div style="display:flex;align-items:center;gap:7px;"><i class="fa-solid fa-champagne-glasses" style="color:#FFD700;font-size:11px;width:14px;text-align:center;"></i><span style="font-size:11px;color:#ccc;">Événement GENESIS</span></div><span style="font-size:12px;font-weight:800;color:#FFD700;">+75 QG</span></div>'
+     +'<div style="background:#151515;border-radius:9px;padding:8px 12px;display:flex;align-items:center;justify-content:space-between;"><div style="display:flex;align-items:center;gap:7px;"><i class="fa-solid fa-user-plus" style="color:#FFD700;font-size:11px;width:14px;text-align:center;"></i><span style="font-size:11px;color:#ccc;">Parrainage validé</span></div><span style="font-size:12px;font-weight:800;color:#FFD700;">+100 QG</span></div>'
      +'</div>'
-     +'<div style="font-size:10px;color:#888;text-align:center;padding:8px 10px;background:rgba(255,215,0,.06);border-radius:8px;border:1px solid rgba(255,215,0,.1);">Gagnez des <strong style="color:#FFD700;">Points QG</strong> pour débloquer progressivement des avantages exclusifs grâce aux <strong style="color:#FFD700;">niveaux GENESIS</strong>.</div>'},
-  {ico:'<i class="fa-solid fa-magnifying-glass"></i>', title:'Explorer',                       desc:'Découvrez du contenu, des événements et les opportunités de la communauté GENESIS.', nav:'explorer'},
-  {ico:'<i class="fa-solid fa-handshake"></i>',  title:'Prestataires',                         desc:'Parcourez notre annuaire de professionnels et réservez directement celui qui vous correspond.', nav:'prestataires'},
-  {ico:'<i class="fa-solid fa-calendar-check"></i>', title:'Mes réservations',                 nav:'reservations', desc:'Retrouvez ici toutes vos missions actives et leur progression en temps réel.'},
-  {ico:'<i class="fa-solid fa-shield-halved"></i>', title:'Portefeuille GENESIS SAFE™',        nav:'profil', fn:function(){setTimeout(function(){if(typeof showClientWallet==='function')showClientWallet();},450);}, desc:'Votre argent est sécurisé jusqu\'à la livraison. Suivez les fonds retenus et l\'historique de vos versements.'},
-  {ico:'<i class="fa-solid fa-comment-dots"></i>', title:'Messagerie',                         nav:'messages', desc:'Échangez directement avec vos prestataires depuis la messagerie intégrée. Simple et sécurisé.'},
-  {ico:'<i class="fa-solid fa-rocket"></i>',     title:'C\'est parti !',                       desc:'Vous êtes prêt(e) à utiliser GENESIS. N\'hésitez pas à contacter Jérémie si vous avez une question.', last:true}
+     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;">'
+     +'<div style="background:#1a1200;border:1px solid #2a2000;border-radius:8px;padding:8px;text-align:center;"><div style="font-size:10px;font-weight:800;color:#cd7f32;">Créateur</div><div style="font-size:9px;color:#555;margin-top:1px;">100 QG</div></div>'
+     +'<div style="background:#161616;border:1px solid #222;border-radius:8px;padding:8px;text-align:center;"><div style="font-size:10px;font-weight:800;color:#b0b0b0;">Bâtisseur</div><div style="font-size:9px;color:#555;margin-top:1px;">300 QG</div></div>'
+     +'<div style="background:#1a1200;border:1px solid #252500;border-radius:8px;padding:8px;text-align:center;"><div style="font-size:10px;font-weight:800;color:#FFD700;">Visionnaire</div><div style="font-size:9px;color:#555;margin-top:1px;">600 QG</div></div>'
+     +'<div style="background:#14001a;border:1px solid #200025;border-radius:8px;padding:8px;text-align:center;"><div style="font-size:10px;font-weight:800;color:#a78bfa;">Générateur</div><div style="font-size:9px;color:#555;margin-top:1px;">1 000 QG</div></div>'
+     +'</div>'
+     +'<div style="font-size:10px;color:#555;text-align:center;margin-top:8px;padding:7px;background:rgba(255,215,0,.04);border-radius:8px;border:1px solid rgba(255,215,0,.1);">Suivez votre progression dans <strong style="color:#FFD700;">Mes Niveaux GENESIS</strong> (onglet Profil).</div>'},
+  {ico:'<i class="fa-solid fa-rocket"></i>', title:'C\'est parti !',
+   desc:'Vous êtes prêt(e) à utiliser GENESIS. N\'hésitez pas à contacter Jérémie si vous avez une question.', last:true}
 ];
 var _TUTO_P = [
-  {ico:'<i class="fa-solid fa-hand-wave"></i>',  title:'Bienvenue, prestataire GENESIS !',     desc:'Votre espace pour gérer vos missions, développer votre réputation et recevoir vos versements.'},
-  {ico:'<i class="fa-solid fa-bolt"></i>',       title:'Missions',                             desc:'Recevez et acceptez les nouvelles demandes de clients. Chaque mission acceptée est une opportunité.', pnav:'missions'},
-  {ico:'<i class="fa-solid fa-shield-halved"></i>', title:'Portefeuille GENESIS SAFE™',        desc:'Visualisez les fonds retenus en escrow et votre historique de versements en un seul endroit.', pnav:'versements'},
-  {ico:'<i class="fa-solid fa-trophy"></i>',     title:'Réputation',                           desc:'Vos badges, avis clients et classement GENESIS. Plus votre réputation est forte, plus vous êtes mis en avant.', pnav:'reputation'},
-  {ico:'<i class="fa-solid fa-images"></i>',     title:'Portfolio',                            desc:'Mettez en valeur vos meilleures réalisations pour attirer de nouveaux clients.', pnav:'portfolio'},
-  {ico:'<i class="fa-solid fa-rocket"></i>',     title:'C\'est parti !',                       desc:'Votre espace est prêt. Complétez votre profil pour apparaître en tête de l\'annuaire GENESIS.', last:true}
+  {ico:'<i class="fa-solid fa-hand-wave"></i>', title:'Bienvenue, prestataire GENESIS !',
+   desc:'Votre espace professionnel pour gérer vos missions, développer votre réputation et recevoir vos versements en toute sécurité.'},
+  {ico:'<i class="fa-solid fa-map"></i>', title:'Votre espace en un coup d\'œil',
+   html:'<div style="font-size:12px;color:#888;text-align:center;margin-bottom:10px;">Naviguez entre vos 5 onglets depuis la barre du bas.</div>'
+     +'<div style="display:flex;flex-direction:column;gap:5px;">'
+     +'<div style="background:#151515;border-radius:9px;padding:8px 12px;display:flex;align-items:center;gap:10px;"><i class="fa-solid fa-house" style="color:#FFD700;font-size:13px;width:16px;text-align:center;flex-shrink:0;"></i><div><span style="font-size:11px;color:#ccc;font-weight:700;">Accueil</span><div style="font-size:10px;color:#555;">Alertes, revenus générés, commissions versées</div></div></div>'
+     +'<div style="background:#151515;border-radius:9px;padding:8px 12px;display:flex;align-items:center;gap:10px;"><i class="fa-solid fa-bolt" style="color:#FFD700;font-size:13px;width:16px;text-align:center;flex-shrink:0;"></i><div><span style="font-size:11px;color:#ccc;font-weight:700;">Missions</span><div style="font-size:10px;color:#555;">Demandes clients, acceptation, suivi</div></div></div>'
+     +'<div style="background:#151515;border-radius:9px;padding:8px 12px;display:flex;align-items:center;gap:10px;"><i class="fa-solid fa-comment" style="color:#FFD700;font-size:13px;width:16px;text-align:center;flex-shrink:0;"></i><div><span style="font-size:11px;color:#ccc;font-weight:700;">Messages</span><div style="font-size:10px;color:#555;">Messagerie sécurisée avec vos clients</div></div></div>'
+     +'<div style="background:#151515;border-radius:9px;padding:8px 12px;display:flex;align-items:center;gap:10px;"><i class="fa-solid fa-sack-dollar" style="color:#FFD700;font-size:13px;width:16px;text-align:center;flex-shrink:0;"></i><div><span style="font-size:11px;color:#ccc;font-weight:700;">Portefeuille</span><div style="font-size:10px;color:#555;">Fonds GENESIS SAFE™ et versements</div></div></div>'
+     +'<div style="background:#151515;border-radius:9px;padding:8px 12px;display:flex;align-items:center;gap:10px;"><i class="fa-solid fa-user" style="color:#FFD700;font-size:13px;width:16px;text-align:center;flex-shrink:0;"></i><div><span style="font-size:11px;color:#ccc;font-weight:700;">Profil</span><div style="font-size:10px;color:#555;">Infos, portfolio, badges, Explorer GENESIS</div></div></div>'
+     +'</div>'},
+  {ico:'<i class="fa-solid fa-bolt"></i>', title:'Missions',
+   desc:'Recevez les demandes de clients, acceptez ou déclinez. Chaque mission complétée avec une bonne note renforce votre réputation.', pnav:'missions'},
+  {ico:'<i class="fa-solid fa-sack-dollar"></i>', title:'Portefeuille GENESIS SAFE™',
+   desc:'Vos fonds sont sécurisés en escrow jusqu\'à la livraison, puis versés sur votre compte. Configurez PayPal ou virement bancaire dans cet espace.', pnav:'versements'},
+  {ico:'<i class="fa-solid fa-compass"></i>', title:'Explorer GENESIS',
+   desc:'Retrouvez vos collègues prestataires pour les référer à des clients indisponibles, et inscrivez-vous aux événements FA GENESIS.', pnav:'collegues'},
+  {ico:'<i class="fa-solid fa-arrow-trend-up"></i>', title:'Comment progresser ?',
+   html:'<div style="font-size:12px;color:#888;text-align:center;margin-bottom:10px;">Complétez des missions et obtenez de bonnes notes pour débloquer des badges et des avantages.</div>'
+     +'<div style="display:flex;flex-direction:column;gap:5px;">'
+     +'<div style="background:#151515;border-radius:9px;padding:8px 12px;display:flex;align-items:center;gap:10px;"><i class="fa-solid fa-fire" style="color:#cd7f32;font-size:13px;width:16px;text-align:center;flex-shrink:0;"></i><div><span style="font-size:11px;color:#ccc;font-weight:700;">Bronze</span><div style="font-size:10px;color:#555;">5 missions · ≥ 4.0★ — Affichage prioritaire</div></div></div>'
+     +'<div style="background:#151515;border-radius:9px;padding:8px 12px;display:flex;align-items:center;gap:10px;"><i class="fa-solid fa-bolt" style="color:#b0b0b0;font-size:13px;width:16px;text-align:center;flex-shrink:0;"></i><div><span style="font-size:11px;color:#ccc;font-weight:700;">Argent</span><div style="font-size:10px;color:#555;">20 missions · ≥ 4.3★ — Commission réduite 14%</div></div></div>'
+     +'<div style="background:#151515;border-radius:9px;padding:8px 12px;display:flex;align-items:center;gap:10px;"><i class="fa-solid fa-crown" style="color:#FFD700;font-size:13px;width:16px;text-align:center;flex-shrink:0;"></i><div><span style="font-size:11px;color:#ccc;font-weight:700;">Or</span><div style="font-size:10px;color:#555;">50 missions · ≥ 4.5★ — Visibilité max + événements prioritaires</div></div></div>'
+     +'<div style="background:#151515;border-radius:9px;padding:8px 12px;display:flex;align-items:center;gap:10px;"><i class="fa-solid fa-infinity" style="color:#a78bfa;font-size:13px;width:16px;text-align:center;flex-shrink:0;"></i><div><span style="font-size:11px;color:#ccc;font-weight:700;">Élite</span><div style="font-size:10px;color:#555;">100 missions · ≥ 5.0★ — Commission 11% + Jérémie IA Expert</div></div></div>'
+     +'</div>'
+     +'<div style="font-size:10px;color:#555;text-align:center;margin-top:8px;padding:7px;background:rgba(255,215,0,.04);border-radius:8px;border:1px solid rgba(255,215,0,.1);">Suivez votre progression dans <strong style="color:#FFD700;">Mes badges</strong> (onglet Profil).</div>'},
+  {ico:'<i class="fa-solid fa-rocket"></i>', title:'C\'est parti !',
+   desc:'Votre espace est prêt. Complétez votre profil et portfolio pour apparaître en tête de l\'annuaire GENESIS.', last:true}
 ];
 
 var _tutoSteps = [];
