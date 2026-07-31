@@ -13775,10 +13775,7 @@ function _ptnrLoadReputation(){
     var badge = data.founderBadge ? 'fondateur' : data.badge;
     var rating = data.rating || {average:0, count:0};
 
-    var html = '<div class="ptnr-rep-hero"><div class="ptnr-rep-hero-inner">'
-      + (genesisUnifiedBadgesHtml(badge, data.constellation) || '<span style="font-size:12px;color:#666;font-weight:700;">Pas encore de badge</span>')
-      + '<div class="ptnr-rep-rating">'+rating.average.toFixed(1)+' <i class="fa-solid fa-star"></i> ('+rating.count+' avis)</div>'
-      + '</div></div>';
+    var html = '';
 
     // ── Comment progresser ? ──
     var _repBadgeOrder = [null, 'bronze', 'argent', 'or', 'elite'];
