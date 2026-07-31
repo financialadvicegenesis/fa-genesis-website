@@ -2641,11 +2641,6 @@ a{text-decoration:none;color:inherit}
                 <i class="pni fa-solid fa-house"></i><span>Accueil</span>
                 <i class="fa-solid fa-chevron-right ptnr-snbtn-arrow"></i>
               </button>
-              <button class="ptnr-snbtn" id="ptnr-sn-projets" onclick="_ptnrNav('projets')">
-                <i class="pni fa-solid fa-clipboard-list"></i><span>Projets</span>
-                <span class="ptnr-badge" id="ptnr-badge-projets"></span>
-                <i class="fa-solid fa-chevron-right ptnr-snbtn-arrow"></i>
-              </button>
               <button class="ptnr-snbtn" id="ptnr-sn-devis" onclick="_ptnrNav('devis')">
                 <i class="pni fa-solid fa-file-lines"></i><span>Devis</span>
                 <span class="ptnr-badge" id="ptnr-badge-devis"></span>
@@ -2750,12 +2745,6 @@ a{text-decoration:none;color:inherit}
         </div>
 
         <!-- Sub-screen: Projets -->
-        <div class="ptnr-screen" id="ptnr-screen-projets">
-          <div class="ptnr-back-bar"><button class="ptnr-back-btn" onclick="_ptnrNav('profil')">&#8249;</button><span class="ptnr-back-bar-title">Projets assignés</span></div>
-          <input type="text" class="ptnr-input" id="ptnr-projets-search" placeholder="Rechercher un client (nom, prénom)..." oninput="_ptnrFilterProjets()">
-          <div id="ptnr-projets-filter"></div>
-          <div id="ptnr-projets-list"></div>
-        </div>
 
         <!-- Sub-screen: Devis -->
         <div class="ptnr-screen" id="ptnr-screen-devis">
@@ -2895,8 +2884,8 @@ a{text-decoration:none;color:inherit}
     <button class="nav-btn ptnr-nav on" id="pnb-home" onclick="_ptnrNav('home')" style="display:none">
       <i class="ni fa-solid fa-house"></i><span>Accueil</span>
     </button>
-    <button class="nav-btn ptnr-nav" id="pnb-projets" onclick="_ptnrNav('projets')" style="display:none">
-      <i class="ni fa-solid fa-briefcase"></i><span>Projets</span>
+    <button class="nav-btn ptnr-nav" id="pnb-missions" onclick="_ptnrNav('missions')" style="display:none">
+      <i class="ni fa-solid fa-bolt"></i><span>Missions</span>
     </button>
     <button class="nav-btn ptnr-nav" id="pnb-messages" onclick="_ptnrNav('messages')" style="display:none">
       <i class="ni fa-solid fa-comment"></i><span>Messages</span>
@@ -10598,7 +10587,7 @@ function _ptnrNav(screen){
   _ptnrCloseDrawer();
   // Gestion du scroll : sauvegarder depuis le hub profil, restaurer au retour
   var _cEl = document.getElementById('content');
-  var _ptnrSubScreens = ['collegues','reputation','palmares','projets','devis','seances','messages','missions','versements','promotions','portfolio'];
+  var _ptnrSubScreens = ['collegues','reputation','palmares','devis','seances','messages','versements','promotions','portfolio'];
   if(_ptnrSubScreens.indexOf(screen) !== -1 && _cEl){
     _ptnrProfilScrollPos = _cEl.scrollTop;
     _cEl.scrollTop = 0;
@@ -10616,7 +10605,6 @@ function _ptnrNav(screen){
   if(btn) btn.className = 'ptnr-snbtn on';
   if(scr) scr.className = 'ptnr-screen on';
   if(screen==='home') _ptnrLoadHome();
-  if(screen==='projets') _ptnrLoadProjets();
   if(screen==='devis') _ptnrLoadDevis();
   if(screen==='seances') _ptnrLoadSeances();
   if(screen==='messages') _ptnrLoadMessages();
@@ -10665,7 +10653,7 @@ function _ptnrLoadHome(){
     // ── Alertes ──
     if(pendingDevis>0) html += '<div class="ptnr-card" style="border-left:3px solid #FFD700;cursor:pointer;" onclick="_ptnrNav(\'devis\')"><div class="ptnr-card-title">'+pendingDevis+' devis en attente</div><div class="ptnr-card-sub">Appuyez pour traiter les devis</div></div>';
     if(inbox.length>0) html += '<div class="ptnr-card" style="border-left:3px solid #3b82f6;cursor:pointer;" onclick="_ptnrNav(\'messages\')"><div class="ptnr-card-title">'+inbox.length+' conversation(s) client</div><div class="ptnr-card-sub">Appuyez pour voir les messages</div></div>';
-    if(projets.length>0) html += '<div class="ptnr-card" style="border-left:3px solid #22c55e;cursor:pointer;" onclick="_ptnrNav(\'projets\')"><div class="ptnr-card-title">'+projets.length+' projet(s) assigné(s)</div><div class="ptnr-card-sub">Appuyez pour voir vos projets</div></div>';
+    if(projets.length>0) html += '<div class="ptnr-card" style="border-left:3px solid #22c55e;cursor:pointer;" onclick="_ptnrNav(\'missions\')"><div class="ptnr-card-title">'+projets.length+' projet(s) assigné(s)</div><div class="ptnr-card-sub">Appuyez pour voir vos missions</div></div>';
     if(!pendingDevis && !inbox.length && !projets.length) html += '<div class="ptnr-empty"><div class="ptnr-empty-ico"><i class="fa-solid fa-circle-check"></i></div><div class="ptnr-empty-txt">Tout est à jour !</div></div>';
     if(list) list.innerHTML = html;
     // Charger le compteur de demandes en attente et afficher l'alerte
@@ -11056,14 +11044,12 @@ function _ptnrRefreshBadges(){
     _ptnrFetch('/api/partner/quotes').catch(function(){return [];}),
     _ptnrFetch('/api/partner/inbox').catch(function(){return [];}),
     _ptnrFetch('/api/partner/sessions').catch(function(){return [];}),
-    _ptnrFetch('/api/partner/projects').catch(function(){return [];}),
     _ptnrFetch('/api/partner/requests').catch(function(){return {requests:[]};})
   ]).then(function(results){
     var devis = Array.isArray(results[0]) ? results[0] : (results[0].quotes||[]);
     var inbox = Array.isArray(results[1]) ? results[1] : (results[1].messages||results[1].inbox||[]);
     var sessions = Array.isArray(results[2]) ? results[2] : (results[2].sessions||[]);
-    var projets = Array.isArray(results[3]) ? results[3] : (results[3].projects||[]);
-    var missionCount = (results[4] && results[4].requests && results[4].requests.length) || 0;
+    var missionCount = (results[3] && results[3].requests && results[3].requests.length) || 0;
     var pendingDevis = devis.filter(function(q){return q.status==='pending'||q.status==='open'||!q.status;}).length;
     var pendingSeances = sessions.filter(function(s){return s.status==='pending'||s.status==='proposed';}).length;
     var unreadMsg = inbox.filter(function(m){return m.unread||m.isUnread;}).length || inbox.length;
@@ -11075,7 +11061,6 @@ function _ptnrRefreshBadges(){
     _setBadge('ptnr-badge-devis', pendingDevis);
     _setBadge('ptnr-badge-seances', pendingSeances);
     _setBadge('ptnr-badge-messages', unreadMsg);
-    _setBadge('ptnr-badge-projets', 0);
     _setBadgeMissions(missionCount);
     var hasAny = pendingDevis > 0 || pendingSeances > 0 || unreadMsg > 0 || missionCount > 0;
     var dot = document.getElementById('dot-partner'); if(dot) dot.style.display = hasAny ? '' : 'none';
@@ -14382,7 +14367,6 @@ function _ptnrLoadProfil(){
   var activite = '<div class="plus-section">'
     +'<div class="plus-section-title">MON ACTIVITÉ</div>'
     +'<div class="plus-group">'
-    +pli('<i class="fa-solid fa-folder-open"></i>',       '#0a1400','Mes projets',          null,"_ptnrNav('projets')")
     +pli('<i class="fa-solid fa-file-invoice"></i>',      '#0a0a1a','Mes devis',            null,"_ptnrNav('devis')")
     +pli('<i class="fa-solid fa-calendar-days"></i>',     '#0a1a0a','Mes séances',          null,"_ptnrNav('seances')")
     +pli('<i class="fa-solid fa-comment-dots"></i>',      '#0d1a1a','Messages clients',     null,"_ptnrNav('messages')")
@@ -15118,7 +15102,6 @@ var _TUTO_C = [
 var _TUTO_P = [
   {ico:'<i class="fa-solid fa-hand-wave"></i>',  title:'Bienvenue, prestataire GENESIS !',     desc:'Votre espace pour gérer vos missions, développer votre réputation et recevoir vos versements.'},
   {ico:'<i class="fa-solid fa-bolt"></i>',       title:'Missions',                             desc:'Recevez et acceptez les nouvelles demandes de clients. Chaque mission acceptée est une opportunité.', pnav:'missions'},
-  {ico:'<i class="fa-solid fa-clipboard-list"></i>', title:'Projets',                         desc:'Suivez toutes vos missions actives, envoyez vos livrables et confirmez les livraisons.', pnav:'projets'},
   {ico:'<i class="fa-solid fa-shield-halved"></i>', title:'Portefeuille GENESIS SAFE™',        desc:'Visualisez les fonds retenus en escrow et votre historique de versements en un seul endroit.', pnav:'versements'},
   {ico:'<i class="fa-solid fa-trophy"></i>',     title:'Réputation',                           desc:'Vos badges, avis clients et classement GENESIS. Plus votre réputation est forte, plus vous êtes mis en avant.', pnav:'reputation'},
   {ico:'<i class="fa-solid fa-images"></i>',     title:'Portfolio',                            desc:'Mettez en valeur vos meilleures réalisations pour attirer de nouveaux clients.', pnav:'portfolio'},
