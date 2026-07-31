@@ -2517,7 +2517,10 @@ a{text-decoration:none;color:inherit}
           <div class="ptnr-login-title">Espace Prestataire</div>
           <div class="ptnr-login-sub">Connectez-vous pour gérer vos projets, devis et messages directement depuis l'application.</div>
           <input class="ptnr-input" id="ptnr-email" type="email" placeholder="Email" autocomplete="email">
-          <input class="ptnr-input" id="ptnr-pass" type="password" placeholder="Mot de passe" autocomplete="current-password" onkeydown="if(event.key==='Enter')_ptnrLogin()">
+          <div class="reg-pw-wrap">
+            <input class="ptnr-input" id="ptnr-pass" type="password" placeholder="Mot de passe" autocomplete="current-password" style="padding-right:48px;margin-bottom:0;" onkeydown="if(event.key==='Enter')_ptnrLogin()">
+            <button class="reg-eye" id="ptnr-pass-eye" onclick="_ptnrTogglePass()" type="button"></button>
+          </div>
           <div class="ptnr-login-err" id="ptnr-login-err"></div>
           <button class="ptnr-login-btn" id="ptnr-login-btn" onclick="_ptnrLogin()">SE CONNECTER</button>
           <button class="ptnr-link-btn" style="font-size:12px;opacity:.75;margin-top:2px;" onclick="_ptnrToggleForgot()">Mot de passe oublié ?</button>
@@ -10314,6 +10317,13 @@ function _ptnrLogin(){
   });
 }
 
+function _ptnrTogglePass(){
+  var inp=document.getElementById('ptnr-pass'); var btn=document.getElementById('ptnr-pass-eye');
+  if(!inp) return;
+  inp.type=inp.type==='password'?'text':'password';
+  if(btn) btn.innerHTML=inp.type==='password'?EYE_OPEN_SVG:EYE_OFF_SVG;
+}
+
 function _ptnrShowScreen(name){
   // name: 'login' | 'register' | 'admin' | 'profiles' | 'dash'
   var screens = ['ptnr-login-screen','ptnr-register-screen','ptnr-admin-screen','ptnr-profile-screen','ptnr-dash-screen'];
@@ -10321,6 +10331,10 @@ function _ptnrShowScreen(name){
   var show = name==='login'?'ptnr-login-screen':name==='register'?'ptnr-register-screen':name==='admin'?'ptnr-admin-screen':name==='profiles'?'ptnr-profile-screen':'ptnr-dash-screen';
   var el = document.getElementById(show); if(el) el.style.display='';
   if(name === 'admin') setTimeout(_adminCheckPushStatus, 300);
+  if(name === 'login'){
+    var eye=document.getElementById('ptnr-pass-eye'); if(eye) eye.innerHTML=EYE_OPEN_SVG;
+    var p=document.getElementById('ptnr-pass'); if(p){p.value='';p.type='password';}
+  }
 }
 
 var _ptnrRegOpenedAt = 0;
