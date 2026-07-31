@@ -2718,6 +2718,7 @@ a{text-decoration:none;color:inherit}
         <!-- Sub-screen: Home -->
         <div class="ptnr-screen on" id="ptnr-screen-home">
           <div id="ptnr-home-qg-widget" style="padding:16px 16px 4px"></div>
+          <div id="ptnr-home-finance" style="padding:0 16px 4px;"></div>
           <div id="ptnr-home-list" style="padding:0 0 16px;"></div>
 
           <!-- Mes tarifs & prestations (style menu "Uber Eats / Deliveroo") -->
@@ -10665,6 +10666,24 @@ function _ptnrLoadHome(){
       }
     }).catch(function(){});
   });
+  // Finance cards
+  var finDiv = document.getElementById('ptnr-home-finance');
+  if(finDiv){
+    _ptnrFetch('/api/partner/palmares').then(function(data){
+      var rev = data.revenusGeneres || 0;
+      var com = data.commissionsVersees || 0;
+      finDiv.innerHTML = '<div class="ptnr-rep-finance">'
+        + '<div class="ptnr-rep-fcard" style="--fc:#4caf50;"><div class="ptnr-rep-ficon"><i class="fa-solid fa-sack-dollar"></i></div>'
+        + '<div id="home-revenus" class="ptnr-rep-fval" style="color:#4caf50;">0.00 €</div>'
+        + '<div class="ptnr-rep-flabel">Revenus générés</div></div>'
+        + '<div class="ptnr-rep-fcard" style="--fc:#FFD700;"><div class="ptnr-rep-ficon"><i class="fa-solid fa-hand-holding-dollar"></i></div>'
+        + '<div id="home-commissions" class="ptnr-rep-fval" style="color:#FFD700;">0.00 €</div>'
+        + '<div class="ptnr-rep-flabel">Commissions versées</div></div>'
+        + '</div>';
+      _animateCount(document.getElementById('home-revenus'), rev, {decimals:2, suffix:' €', duration:900});
+      _animateCount(document.getElementById('home-commissions'), com, {decimals:2, suffix:' €', duration:900});
+    }).catch(function(){});
+  }
 }
 
 // ── Skeleton loaders & compteurs animés (effet "data live") ──
@@ -13892,16 +13911,6 @@ function _ptnrLoadPalmares(){
       + '<div class="genesis-patrimoine-card" style="grid-column:1/-1;"><i class="fa-solid fa-star"></i><div class="genesis-patrimoine-value">'+reviewCount+'</div><div class="genesis-patrimoine-label">Avis reçus</div></div>'
       + '</div>';
 
-    // Finance
-    html += '<div class="ptnr-rep-finance">'
-      + '<div class="ptnr-rep-fcard" style="--fc:#4caf50;"><div class="ptnr-rep-ficon"><i class="fa-solid fa-sack-dollar"></i></div>'
-      + '<div id="plm-revenus" class="ptnr-rep-fval" style="color:#4caf50;">0.00 €</div>'
-      + '<div class="ptnr-rep-flabel">Revenus générés</div></div>'
-      + '<div class="ptnr-rep-fcard" style="--fc:#FFD700;"><div class="ptnr-rep-ficon"><i class="fa-solid fa-hand-holding-dollar"></i></div>'
-      + '<div id="plm-commissions" class="ptnr-rep-fval" style="color:#FFD700;">0.00 €</div>'
-      + '<div class="ptnr-rep-flabel">Commissions versées</div></div>'
-      + '</div>';
-
     // Classement
     var cl = data.classement || {};
     if(cl.rank && cl.total){
@@ -13912,8 +13921,6 @@ function _ptnrLoadPalmares(){
     el.innerHTML = html;
     _animateCount(document.getElementById('plm-missions'), data.missionsCompleted||0);
     _animateCount(document.getElementById('plm-clients'), data.nombreClients||0);
-    _animateCount(document.getElementById('plm-revenus'), data.revenusGeneres||0, {decimals:2, suffix:' €', duration:900});
-    _animateCount(document.getElementById('plm-commissions'), data.commissionsVersees||0, {decimals:2, suffix:' €', duration:900});
   }).catch(function(){
     if(el) el.innerHTML = '<div class="ptnr-empty"><div class="ptnr-empty-txt">Erreur de chargement</div></div>';
   });
