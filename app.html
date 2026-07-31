@@ -1705,7 +1705,7 @@ a{text-decoration:none;color:inherit}
 .ptnr-section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#555;padding:16px 0 8px;border-bottom:1px solid #1a1a1a;margin-bottom:12px;}
 .ptnr-back-bar{display:flex;align-items:center;gap:10px;padding:12px 0 8px;border-bottom:1px solid #1a1a1a;margin-bottom:12px;}
 .ptnr-back-btn{background:none;border:none;color:#888;font-size:28px;font-weight:300;cursor:pointer;padding:0;line-height:1;flex-shrink:0;}
-.ptnr-back-bar-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#555;}
+.ptnr-back-bar-title{font-size:11px;font-weight:700;letter-spacing:.5px;color:#555;}
 .ptnr-login-wrap{padding:24px 16px;}
 .ptnr-login-logo{font-family:'Unbounded',sans-serif;font-size:11px;font-weight:900;color:#FFD700;letter-spacing:2px;margin-bottom:24px;text-align:center;}
 .ptnr-login-title{font-family:'Unbounded',sans-serif;font-size:18px;font-weight:900;color:#fff;margin-bottom:6px;text-align:center;white-space:nowrap;}
@@ -2789,13 +2789,13 @@ a{text-decoration:none;color:inherit}
 
         <!-- Sub-screen: Palmarès -->
         <div class="ptnr-screen" id="ptnr-screen-palmares">
-          <div class="ptnr-back-bar"><button class="ptnr-back-btn" onclick="_ptnrNav('profil')">&#8249;</button><span class="ptnr-back-bar-title">Mon Palmarès</span></div>
+          <div class="ptnr-back-bar"><button class="ptnr-back-btn" onclick="_ptnrNav('profil')">&#8249;</button><span class="ptnr-back-bar-title">Mon palmarès</span></div>
           <div id="ptnr-palmares-content"></div>
         </div>
 
         <!-- Sub-screen: Promotions -->
         <div class="ptnr-screen" id="ptnr-screen-promotions">
-          <div class="ptnr-back-bar"><button class="ptnr-back-btn" onclick="_ptnrNav('profil')">&#8249;</button><span class="ptnr-back-bar-title">Mes Promotions</span></div>
+          <div class="ptnr-back-bar"><button class="ptnr-back-btn" onclick="_ptnrNav('profil')">&#8249;</button><span class="ptnr-back-bar-title">Mes promotions</span></div>
           <div id="ptnr-promotions-content"></div>
         </div>
 
@@ -6083,7 +6083,7 @@ function renderProfil(){
       +pli('<i class="fa-solid fa-box-open"></i>','#100a1a','Mes livrables',null,'showLivrables()')
       +pli('<i class="fa-solid fa-heart"></i>','#1a0014','Mes favoris',null,'showFavoris()')
       +pli('<i class="fa-solid fa-bullseye"></i>','#14140a','Missions GENESIS',null,'showGenesisMissions()')
-      +pli('<i class="fa-solid fa-trophy"></i>','#1a1400','Hall of Fame',null,'showHallOfFameProfil()')
+      +pli('<i class="fa-solid fa-trophy"></i>','#1a1400','Hall of Fame GENESIS',null,'showHallOfFameProfil()')
       +pli('<i class="fa-solid fa-gem"></i>','#0a1414','Patrimoine GENESIS',null,'showGenesisPatrimoine()')
       +pli('<i class="fa-solid fa-crown"></i>','#0a0014','Mes Niveaux GENESIS',null,'showClientLevels()')
       +pli('<i class="fa-solid fa-headset"></i>','#1a0a00','Assistance',null,'showSupport()')
@@ -14371,10 +14371,10 @@ function _ptnrLoadProfil(){
     +pli('<i class="fa-solid fa-calendar-days"></i>',     '#0a1a0a','Mes séances',          null,"_ptnrNav('seances')")
     +pli('<i class="fa-solid fa-comment-dots"></i>',      '#0d1a1a','Messages clients',     null,"_ptnrNav('messages')")
     +pli('<i class="fa-solid fa-bolt"></i>',              '#1a0a00','Mes missions',         null,"_ptnrNav('missions')")
-    +pli('<i class="fa-solid fa-wallet"></i>',            '#001a0a','Portefeuille',         null,"_ptnrNav('versements')")
+    +pli('<i class="fa-solid fa-wallet"></i>',            '#001a0a','Portefeuille GENESIS SAFE™',null,"_ptnrNav('versements')")
     +pli('<i class="fa-solid fa-trophy"></i>',            '#1a1400','Mes badges',           null,"_ptnrNav('reputation')")
-    +pli('<i class="fa-solid fa-medal"></i>',             '#1a0a14','Palmarès',             null,"_ptnrNav('palmares')")
-    +pli('<i class="fa-solid fa-tag"></i>',               '#1a0014','Promotions',           null,"_ptnrNav('promotions')")
+    +pli('<i class="fa-solid fa-medal"></i>',             '#1a0a14','Mon palmarès',         null,"_ptnrNav('palmares')")
+    +pli('<i class="fa-solid fa-tag"></i>',               '#1a0014','Mes promotions',       null,"_ptnrNav('promotions')")
     +pli('<i class="fa-solid fa-images"></i>',            '#001a14','Mon portfolio',        null,"_ptnrNav('portfolio')")
     +'</div></div>';
 
