@@ -4381,6 +4381,7 @@ function openPartnerDetail(partnerId){
       var verifiedHtml = verifiedBadgeHtml(p);
       var badgeHtml = tierBadgeHtml(p.badge);
       var constellationHtml = constellationBadgeHtml(p.constellation);
+      var distinctionHtml = _partnerDistinctionBadges(p.distinctions || []);
       var responseLabel = partnerResponseLabel(p);
       var social = p.social || {};
 
@@ -4402,7 +4403,8 @@ function openPartnerDetail(partnerId){
             + verifiedHtml
           + '</div>'
           + '<div class="pf-hero-type">'+label+'</div>'
-          + (badgeHtml||constellationHtml ? '<div style="display:flex;justify-content:center;gap:6px;flex-wrap:wrap;margin-top:5px;">'+badgeHtml+constellationHtml+'</div>' : '')
+          + (badgeHtml||constellationHtml||distinctionHtml ? '<div style="display:flex;justify-content:center;gap:6px;flex-wrap:wrap;margin-top:5px;">'+badgeHtml+constellationHtml+'</div>' : '')
+          + (distinctionHtml ? '<div style="display:flex;justify-content:center;gap:5px;flex-wrap:wrap;margin-top:4px;">'+distinctionHtml+'</div>' : '')
         + '</div>'
       + '</div>';
 
@@ -5318,6 +5320,15 @@ function genesisUnifiedBadgesHtml(badge, constellation){
   var c = constellationBadgeHtml(constellation);
   if(!b && !c) return '';
   return b + (b && c ? ' ' : '') + c;
+}
+function _partnerDistinctionBadges(distinctions) {
+  if (!distinctions || !distinctions.length) return '';
+  return distinctions.map(function(d) {
+    var icon = d.icon || 'fa-medal';
+    var color = d.color || '#FFD700';
+    return '<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(255,215,0,.08);border:1px solid rgba(255,215,0,.2);border-radius:20px;padding:3px 9px;font-size:10px;font-weight:700;color:'+color+';">'
+      +'<i class="fa-solid '+icon+'" style="font-size:9px;"></i>'+d.label+'</span>';
+  }).join(' ');
 }
 // Seuils de commandes par palier (miroir côté client des CLIENT_BADGE_TIERS serveur)
 var _CLIENT_TIER_REQS = {bronze:1, argent:5, or:10};
@@ -10666,12 +10677,13 @@ function _ptnrLoadHome(){
       }
     }).catch(function(){});
   });
-  // Finance cards
+  // Finance cards + Prestataires parrainés
   var finDiv = document.getElementById('ptnr-home-finance');
   if(finDiv){
     _ptnrFetch('/api/partner/palmares').then(function(data){
       var rev = data.revenusGeneres || 0;
       var com = data.commissionsVersees || 0;
+      var activeReferrals = data.referredActiveCount || 0;
       finDiv.innerHTML = '<div class="ptnr-rep-finance">'
         + '<div class="ptnr-rep-fcard" style="--fc:#4caf50;"><div class="ptnr-rep-ficon"><i class="fa-solid fa-sack-dollar"></i></div>'
         + '<div id="home-revenus" class="ptnr-rep-fval" style="color:#4caf50;">0.00 €</div>'
@@ -10679,9 +10691,19 @@ function _ptnrLoadHome(){
         + '<div class="ptnr-rep-fcard" style="--fc:#FFD700;"><div class="ptnr-rep-ficon"><i class="fa-solid fa-hand-holding-dollar"></i></div>'
         + '<div id="home-commissions" class="ptnr-rep-fval" style="color:#FFD700;">0.00 €</div>'
         + '<div class="ptnr-rep-flabel">Commissions versées</div></div>'
-        + '</div>';
+        + '</div>'
+        + (activeReferrals > 0
+          ? '<div style="background:linear-gradient(135deg,#1a1200,#0d0d0d);border:1px solid rgba(255,215,0,.25);border-radius:13px;padding:13px 16px;margin:8px 16px 0;display:flex;align-items:center;gap:12px;">'
+            + '<i class="fa-solid fa-medal" style="font-size:22px;color:#FFD700;flex-shrink:0;"></i>'
+            + '<div style="flex:1;">'
+            + '<div style="font-size:11px;color:#FFD700;font-weight:800;text-transform:uppercase;letter-spacing:.5px;">Prestataires parrainés</div>'
+            + '<div style="font-size:26px;font-weight:900;color:#fff;line-height:1.1;" id="home-parrainages">0</div>'
+            + '<div style="font-size:10px;color:#555;margin-top:1px;">professionnel'+(activeReferrals>1?'s':'')+'actif'+(activeReferrals>1?'s':'')+' via votre parrainage</div>'
+            + '</div></div>'
+          : '');
       _animateCount(document.getElementById('home-revenus'), rev, {decimals:2, suffix:' €', duration:900});
       _animateCount(document.getElementById('home-commissions'), com, {decimals:2, suffix:' €', duration:900});
+      if(activeReferrals > 0) _animateCount(document.getElementById('home-parrainages'), activeReferrals, {duration:700});
     }).catch(function(){});
   }
 }
@@ -13855,7 +13877,7 @@ function _ptnrLoadReputation(){
       { id: 'elite',  label: 'Élite',  icon: 'fa-infinity', missions: 100, rating: 5.0,
         advs: ['Commission réduite (11%)','Priorité d\'affichage maximale à profil équivalent','Badge Élite Premium visible sur le profil public','Jérémie IA Expert — Accompagnement IA complet, conseils prioritaires, suivi de carrière et analyses avancées.'] }
     ];
-    html += '<div style="font-size:10px;color:#FFD700;font-weight:800;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;"><i class="fa-solid fa-layer-group" style="margin-right:4px;"></i>Badges & avantages</div>';
+    html += '<div style="font-size:10px;color:#FFD700;font-weight:800;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;"><i class="fa-solid fa-trophy" style="margin-right:4px;"></i>Badges professionnels</div>';
     _ptnrBadgeDefs.forEach(function(bDef) {
       var bOrder = _ptnrBadgeOrder.indexOf(bDef.id);
       var unlocked = _ptnrCurOrder >= bOrder && bOrder > 0;
@@ -13897,6 +13919,38 @@ function _ptnrLoadReputation(){
       html += '</div></div>';
     });
 
+    // ── Distinctions ──
+    var _dists = data.distinctions || [];
+    html += '<div style="font-size:10px;color:#FFD700;font-weight:800;letter-spacing:1px;text-transform:uppercase;margin:18px 0 10px;"><i class="fa-solid fa-handshake" style="margin-right:4px;"></i>Distinctions</div>';
+    var _DIST_DEFS = [
+      { id: 'ambassador', label: 'Ambassadeur GENESIS', icon: 'fa-medal',    color: '#FFD700',
+        desc: 'Attribuée quand un prestataire que vous avez parrainé réalise sa première prestation validée sur FA GENESIS.',
+        how: 'Partagez votre code de parrainage et accompagnez votre filleul jusqu\'à sa première mission.' },
+      { id: 'new_talent', label: 'Nouveau Talent',       icon: 'fa-seedling', color: '#a78bfa',
+        desc: 'Distingue les nouveaux professionnels ayant réalisé leur première prestation. Visible jusqu\'à l\'obtention du badge Bronze.',
+        how: 'Réalisez votre première prestation validée sur FA GENESIS.' }
+    ];
+    _DIST_DEFS.forEach(function(def) {
+      var owned = _dists.some(function(d) { return d.id === def.id; });
+      var ownedDist = _dists.find(function(d) { return d.id === def.id; });
+      html += '<div style="background:#0e0e0e;border:1.5px solid '+(owned?def.color:'#1a1a1a')+';border-radius:13px;padding:12px 14px;margin-bottom:10px;">';
+      html += '<div style="display:flex;align-items:center;gap:9px;margin-bottom:8px;">'
+        +'<i class="fa-solid '+def.icon+'" style="font-size:16px;color:'+(owned?def.color:'#333')+';width:20px;text-align:center;flex-shrink:0;"></i>'
+        +'<div style="flex:1;"><span style="font-size:14px;font-weight:800;color:'+(owned?def.color:'#444')+';">'+def.label+'</span>'
+        +(owned && ownedDist && ownedDist.granted_at ? '<span style="font-size:10px;color:#555;margin-left:8px;">obtenue le '+new Date(ownedDist.granted_at).toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'numeric'})+'</span>' : '')
+        +'</div>'
+        +(owned ? '<i class="fa-solid fa-circle-check" style="font-size:16px;color:'+def.color+';"></i>' : '<span style="font-size:16px;color:#252525;">&#128274;</span>')
+        +'</div>';
+      html += '<div style="font-size:11px;color:'+(owned?'#bbb':'#444')+';line-height:1.5;margin-bottom:'+(owned?'0':'6px')+';">'+def.desc+'</div>';
+      if (!owned) {
+        html += '<div style="margin-top:6px;background:rgba(255,215,0,.04);border:1px solid #252500;border-radius:8px;padding:8px 10px;font-size:10px;color:#555;">'
+          +'<i class="fa-solid fa-circle-info" style="margin-right:4px;color:#333;"></i>'
+          +def.how
+          +'</div>';
+      }
+      html += '</div>';
+    });
+
     el.innerHTML = html;
   }).catch(function(){
     if(el) el.innerHTML = '<div class="ptnr-empty"><div class="ptnr-empty-txt">Erreur de chargement</div></div>';
@@ -13913,11 +13967,19 @@ function _ptnrLoadPalmares(){
 
     // Stats overview — grille style Patrimoine GENESIS
     var reviewCount = (data.reviews && data.reviews.length) || 0;
+    var activeReferralCount = data.referredActiveCount || 0;
     html += '<div class="genesis-patrimoine-grid" style="margin-bottom:16px;">'
       + '<div class="genesis-patrimoine-card"><i class="fa-solid fa-briefcase"></i><div class="genesis-patrimoine-value" id="plm-missions">0</div><div class="genesis-patrimoine-label">Missions</div></div>'
       + '<div class="genesis-patrimoine-card"><i class="fa-solid fa-users"></i><div class="genesis-patrimoine-value" id="plm-clients">0</div><div class="genesis-patrimoine-label">Clients</div></div>'
       + '<div class="genesis-patrimoine-card" style="grid-column:1/-1;"><i class="fa-solid fa-star"></i><div class="genesis-patrimoine-value">'+reviewCount+'</div><div class="genesis-patrimoine-label">Avis reçus</div></div>'
       + '</div>';
+
+    // Prestataires parrainés
+    html += '<div style="background:linear-gradient(135deg,#1a1200,#0d0d0d);border:1px solid rgba(255,215,0,.25);border-radius:13px;padding:14px 16px;margin-bottom:14px;">'
+      +'<div style="font-size:10px;color:#FFD700;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;"><i class="fa-solid fa-medal" style="margin-right:5px;"></i>Prestataires parrainés</div>'
+      +'<div style="font-size:34px;font-weight:900;color:#fff;line-height:1;" id="plm-parrainages">0</div>'
+      +'<div style="font-size:11px;color:#555;margin-top:4px;">Vous avez contribué à l\'arrivée de <strong style="color:#888;">'+activeReferralCount+'</strong> professionnel'+(activeReferralCount!==1?'s':'')+' actif'+(activeReferralCount!==1?'s':'')+' sur FA GENESIS.</div>'
+      +'</div>';
 
     // Classement
     var cl = data.classement || {};
@@ -13929,6 +13991,7 @@ function _ptnrLoadPalmares(){
     el.innerHTML = html;
     _animateCount(document.getElementById('plm-missions'), data.missionsCompleted||0);
     _animateCount(document.getElementById('plm-clients'), data.nombreClients||0);
+    _animateCount(document.getElementById('plm-parrainages'), activeReferralCount, {duration:700});
   }).catch(function(){
     if(el) el.innerHTML = '<div class="ptnr-empty"><div class="ptnr-empty-txt">Erreur de chargement</div></div>';
   });

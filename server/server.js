@@ -734,6 +734,73 @@ const GENESIS_SAFE_INTERMEDIATE_RELEASE_DAYS = 3;
 const GENESIS_DISPUTE_SLA_HOURS = 48;
 const GENESIS_DISPUTE_SLA_LABEL = '48h ouvrées';
 
+// ── Distinctions prestataires ──────────────────────────────────────────────────
+var PARTNER_DISTINCTIONS_DEF = [
+    { id: 'ambassador', label: 'Ambassadeur GENESIS', icon: 'fa-medal',    color: '#FFD700', permanent: true },
+    { id: 'new_talent', label: 'Nouveau Talent',       icon: 'fa-seedling', color: '#a78bfa', permanent: false, expires_on_badge: 'bronze' }
+];
+var PROFILE_BOOST_DAYS_PARRAIN = 7;
+var PROFILE_BOOST_DAYS_FILLEUL = 4;
+
+function getPartnerActiveDistinctions(partner, badge) {
+    var dists = partner.distinctions || [];
+    var badgeOrder = ['bronze', 'argent', 'or', 'elite'];
+    return dists.filter(function(d) {
+        var def = PARTNER_DISTINCTIONS_DEF.find(function(dd) { return dd.id === d.id; });
+        if (!def) return false;
+        if (d.expires_at && new Date(d.expires_at) < new Date()) return false;
+        if (def.expires_on_badge) {
+            var expIdx = badgeOrder.indexOf(def.expires_on_badge);
+            var curIdx = badge ? badgeOrder.indexOf(badge) : -1;
+            if (curIdx >= expIdx && expIdx >= 0) return false;
+        }
+        return true;
+    });
+}
+
+function grantDistinction(partner, id) {
+    if (!partner.distinctions) partner.distinctions = [];
+    if (partner.distinctions.some(function(d) { return d.id === id; })) return false;
+    partner.distinctions.push({ id: id, granted_at: new Date().toISOString(), expires_at: null });
+    return true;
+}
+
+function _serializeDistinctions(dists) {
+    return dists.map(function(d) {
+        var def = PARTNER_DISTINCTIONS_DEF.find(function(dd) { return dd.id === d.id; });
+        return { id: d.id, label: def ? def.label : d.id, icon: def ? def.icon : 'fa-medal', color: def ? def.color : '#FFD700', granted_at: d.granted_at };
+    });
+}
+
+async function _handleFirstMissionCompleted(partner, allPartners) {
+    try {
+        partner.first_mission_completed_at = new Date().toISOString();
+        grantDistinction(partner, 'new_talent');
+        partner.profile_boost_until = new Date(Date.now() + PROFILE_BOOST_DAYS_FILLEUL * 24 * 3600 * 1000).toISOString();
+        notifyUser(partner.email, 'partner', 'first_mission_completed',
+            '🎉 Félicitations !',
+            'Votre première prestation est terminée. Votre profil bénéficie d\'une mise en avant pendant ' + PROFILE_BOOST_DAYS_FILLEUL + ' jours. Vous obtenez la distinction Nouveau Talent.',
+            '/app.html');
+        if (partner.referredBy) {
+            var parrain = allPartners.find(function(p) { return p.id === partner.referredBy; });
+            if (parrain) {
+                grantDistinction(parrain, 'ambassador');
+                var newBoostDate = new Date(Date.now() + PROFILE_BOOST_DAYS_PARRAIN * 24 * 3600 * 1000);
+                var curBoostDate = parrain.profile_boost_until ? new Date(parrain.profile_boost_until) : new Date(0);
+                if (newBoostDate > curBoostDate) parrain.profile_boost_until = newBoostDate.toISOString();
+                parrain.referred_active_count = (parrain.referred_active_count || 0) + 1;
+                notifyUser(parrain.email, 'partner', 'ambassador_earned',
+                    '🎉 Félicitations !',
+                    'Votre filleul a réalisé sa première prestation. Vous obtenez la distinction Ambassadeur GENESIS. Votre profil bénéficie d\'une mise en avant pendant ' + PROFILE_BOOST_DAYS_PARRAIN + ' jours.',
+                    '/app.html');
+            }
+        }
+        savePartners(allPartners);
+    } catch(e) {
+        console.error('[FIRST-MISSION] Erreur:', e);
+    }
+}
+
 // Crée les missions (dispatches) pour les partenaires externes d'une commande
 // Versement unitaire pour un dispatch accepté (acompte ou solde)
 async function processDispatchPayout(dispatch, stage) {
@@ -837,6 +904,14 @@ async function processDispatchPayout(dispatch, stage) {
         var payouts = loadPayouts();
         payouts.push(newPayout);
         savePayouts(payouts);
+
+        // ── Première mission complète → récompenses parrainage/distinctions ──
+        var _isFinalStage = (stage === 'balance' || stage === 'installment_3') ||
+            (stage === 'deposit' && dispatch.partner_deposit_amount != null && dispatch.partner_total_amount != null &&
+             Math.abs((dispatch.partner_deposit_amount || 0) - (dispatch.partner_total_amount || 0)) < 0.01);
+        if (_isFinalStage && !partner.first_mission_completed_at) {
+            _handleFirstMissionCompleted(partner, partners);
+        }
 
         if (hasOpenDispute) {
             console.log('[PAYOUT] ' + stage + ' mis en attente (on_hold, litige ouvert sur dispatch ' + dispatch.id + ') → ' + partner.email + ' : ' + paidAmount + ' €');
@@ -10308,6 +10383,9 @@ function getPartnerCategoryScore(partner) {
     var _ancJours = seniorityMonths * 30;
     var _nouveauVenuBoost = (_ancJours < 30 && missions < 3) ? NOUVEAU_VENU_BOOST : 0;
 
+    // Boost temporaire parrainage/Nouveau Talent (7j parrain, 4j filleul)
+    var _profileBoost = (partner.profile_boost_until && new Date(partner.profile_boost_until) > new Date()) ? 15 : 0;
+
     return (ratingComponent * 10)
         + (missions * 0.5)
         + (Math.min(seniorityMonths, 36) * 0.3)
@@ -10315,7 +10393,8 @@ function getPartnerCategoryScore(partner) {
         + responseComponent
         + (PARTNER_BADGE_SCORE_BONUS[badge] || 0)
         + getPartnerCercleGenesisBonus(partner.id)
-        + _nouveauVenuBoost;
+        + _nouveauVenuBoost
+        + _profileBoost;
 }
 
 function getPartnerCategoryRank(partner, allPartnersSameCategory) {
@@ -12001,6 +12080,8 @@ function partnerDirectoryShape(p, allPromos) {
     var promos = allPromos || loadPromotions();
     var ap = promos.find(function(pr) { return pr.partner_id === p.id && isPromoActive(pr); }) || null;
     const coords = getCityCoords(p.city);
+    var badge = getPartnerBadge(p);
+    var activeDists = getPartnerActiveDistinctions(p, badge);
     return {
         id: p.id,
         prenom: p.prenom,
@@ -12015,7 +12096,9 @@ function partnerDirectoryShape(p, allPromos) {
         avgResponseMinutes: typeof p.avgResponseMinutes === 'number' ? p.avgResponseMinutes : null,
         responseTimeCommitmentMinutes: typeof p.responseTimeCommitmentMinutes === 'number' ? p.responseTimeCommitmentMinutes : null,
         rating: getPartnerRatingSummary(p.id),
-        badge: getPartnerBadge(p),
+        badge: badge,
+        distinctions: _serializeDistinctions(activeDists),
+        profile_boost_active: !!(p.profile_boost_until && new Date(p.profile_boost_until) > new Date()),
         constellation: getConstellationTier(p),
         activePromo: ap ? { id: ap.id, title: ap.title, type: ap.type, value: ap.value, end_date: ap.end_date } : null
     };
@@ -13559,6 +13642,10 @@ app.get('/api/partner/reputation', authenticatePartner, function(req, res) {
             referralCode: partner.id,
             referralCount: referralCount,
             referralStatus: getPartnerReferralStatus(referralCount),
+            referredActiveCount: partner.referred_active_count || 0,
+            distinctions: _serializeDistinctions(getPartnerActiveDistinctions(partner, badge)),
+            profile_boost_active: !!(partner.profile_boost_until && new Date(partner.profile_boost_until) > new Date()),
+            profile_boost_until: partner.profile_boost_until || null,
             cerclesGenesis: getPartnerCercleClientsList(partner.id, 5),
             opportunites: findSharedClientPartners(partner.id, 5),
             patrimoineGenesis: {
@@ -13631,6 +13718,7 @@ app.get('/api/partner/palmares', authenticatePartner, function(req, res) {
             referralCode: partner.id,
             referralCount: referralCount,
             referralStatus: getPartnerReferralStatus(referralCount),
+            referredActiveCount: partner.referred_active_count || 0,
             referrals: referralsList
         });
     } catch (e) {
