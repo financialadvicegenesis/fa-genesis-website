@@ -10210,6 +10210,7 @@ function _showPayPalError(msg){
 // ── ESPACE PARTENAIRE ─────────────────────────────────────────
 var _ptnrToken = null;
 var _ptnrSession = null;
+var _ptnrProfilScrollPos = 0;
 var _ptnrRefreshTimer = null;
 
 function _ptnrApiUrl(){ return window.FA_GENESIS_API || API; }
@@ -10624,11 +10625,18 @@ function _ptnrCloseDrawer(){
 function _ptnrNav(screen){
   try{sessionStorage.setItem('fa_ptnr_screen',screen);}catch(e){}
   _ptnrCloseDrawer();
+  // Gestion du scroll : sauvegarder depuis le hub profil, restaurer au retour
+  var _cEl = document.getElementById('content');
+  var _ptnrSubScreens = ['collegues','reputation','palmares','projets','devis','seances','messages','missions','versements','promotions','portfolio'];
+  if(_ptnrSubScreens.indexOf(screen) !== -1 && _cEl){
+    _ptnrProfilScrollPos = _cEl.scrollTop;
+    _cEl.scrollTop = 0;
+  }
   document.querySelectorAll('.ptnr-snbtn').forEach(function(b){b.className='ptnr-snbtn';});
   document.querySelectorAll('.ptnr-screen').forEach(function(s){s.className='ptnr-screen';});
   // Mettre à jour le bouton actif dans la nav bas partenaire
   // Les sous-sections (collegues, etc.) gardent l'onglet "profil" actif
-  var _ptnrNavBottomTab = (['collegues','reputation','palmares','projets','devis','seances','messages','missions','versements','promotions','portfolio'].indexOf(screen) !== -1) ? 'profil' : screen;
+  var _ptnrNavBottomTab = (_ptnrSubScreens.indexOf(screen) !== -1) ? 'profil' : screen;
   document.querySelectorAll('.ptnr-nav').forEach(function(b){b.className='nav-btn ptnr-nav';});
   var pnb = document.getElementById('pnb-'+_ptnrNavBottomTab);
   if(pnb) pnb.className = 'nav-btn ptnr-nav on';
@@ -10647,7 +10655,14 @@ function _ptnrNav(screen){
   if(screen==='palmares')    _ptnrLoadPalmares();
   if(screen==='promotions')  _ptnrLoadPromotions();
   if(screen==='portfolio')   _ptnrLoadPortfolio();
-  if(screen==='profil')      _ptnrLoadProfil();
+  if(screen==='profil'){
+    _ptnrLoadProfil();
+    var _savedScroll = _ptnrProfilScrollPos;
+    if(_savedScroll > 0 && _cEl){
+      setTimeout(function(){ _cEl.scrollTop = _savedScroll; }, 30);
+      setTimeout(function(){ if(_cEl.scrollTop < _savedScroll - 30) _cEl.scrollTop = _savedScroll; }, 150);
+    }
+  }
   if(screen==='collegues')   _ptnrLoadCollegues();
 }
 
@@ -13917,12 +13932,12 @@ function _ptnrLoadPalmares(){
     if(!el) return;
     var html = '';
 
-    // Stats overview
+    // Stats overview — grille style Patrimoine GENESIS
     var reviewCount = (data.reviews && data.reviews.length) || 0;
-    html += '<div class="ptnr-stat-row">'
-      + '<div class="ptnr-stat"><div class="ptnr-stat-ico"><i class="fa-solid fa-briefcase"></i></div><div class="ptnr-stat-val" id="plm-missions">0</div><div class="ptnr-stat-label">Missions</div></div>'
-      + '<div class="ptnr-stat"><div class="ptnr-stat-ico"><i class="fa-solid fa-users"></i></div><div class="ptnr-stat-val" id="plm-clients">0</div><div class="ptnr-stat-label">Clients</div></div>'
-      + '<div class="ptnr-stat"><div class="ptnr-stat-ico"><i class="fa-solid fa-star"></i></div><div class="ptnr-stat-val">'+reviewCount+'</div><div class="ptnr-stat-label">Avis reçus</div></div>'
+    html += '<div class="genesis-patrimoine-grid" style="margin-bottom:16px;">'
+      + '<div class="genesis-patrimoine-card"><i class="fa-solid fa-briefcase"></i><div class="genesis-patrimoine-value" id="plm-missions">0</div><div class="genesis-patrimoine-label">Missions</div></div>'
+      + '<div class="genesis-patrimoine-card"><i class="fa-solid fa-users"></i><div class="genesis-patrimoine-value" id="plm-clients">0</div><div class="genesis-patrimoine-label">Clients</div></div>'
+      + '<div class="genesis-patrimoine-card" style="grid-column:1/-1;"><i class="fa-solid fa-star"></i><div class="genesis-patrimoine-value">'+reviewCount+'</div><div class="genesis-patrimoine-label">Avis reçus</div></div>'
       + '</div>';
 
     // Finance
@@ -14490,13 +14505,26 @@ function _ptnrLoadProfil(){
     + '<div class="p-ref-box-title"><i class="fa-solid fa-user-plus" style="color:#FFD700;margin-right:6px;font-size:10px;"></i>Mon code de parrainage</div>'
     + '<div class="p-ref-code-row"><span class="p-ref-code">'+_pr.id+'</span>'
     + '<button class="p-ref-copy-btn" onclick="navigator.clipboard&&navigator.clipboard.writeText(\''+_pr.id+'\')" style="cursor:pointer;">Copier</button></div>'
-    + '<div class="p-ref-count">Invitez vos collègues prestataires à rejoindre FA GENESIS</div>'
+    + '<div class="p-ref-count">Invitez vos collègues prestataires à rejoindre GENESIS</div>'
+    + '<button onclick="_ptnrShareRef(\''+_pr.id+'\')" style="margin-top:12px;width:100%;background:linear-gradient(135deg,#FFD700,#e6c200);color:#1a1200;border:none;border-radius:12px;padding:11px 0;font-size:13px;font-weight:900;cursor:pointer;letter-spacing:.3px;"><i class="fa-solid fa-share-nodes" style="margin-right:7px;"></i>Inviter un ami</button>'
     + '</div>' : '';
   c.innerHTML = headerHtml + activite + monProfil + reseau + logoutBtn + _ptnrRefBlockHtml + '<div class="plus-version">Version 1.1</div>';
 }
 
 // ── SOUS-FORMULAIRES PROFIL ──────────────────────────────────
 function _ptnrProfilBack(){ _ptnrLoadProfil(); }
+
+function _ptnrShareRef(code){
+  var msg = 'Rejoins GENESIS en tant que prestataire avec mon code de parrainage : ' + code + '\nhttps://fagenesis.com';
+  if(navigator.share){
+    navigator.share({ title: 'Rejoins GENESIS', text: msg }).catch(function(){});
+  } else if(navigator.clipboard){
+    navigator.clipboard.writeText(msg).then(function(){
+      var btn = document.querySelector('.p-ref-box button[onclick*="_ptnrShareRef"]');
+      if(btn){ var orig=btn.innerHTML; btn.innerHTML='<i class="fa-solid fa-check" style="margin-right:7px;"></i>Lien copié !'; setTimeout(function(){ btn.innerHTML=orig; },2000); }
+    }).catch(function(){});
+  }
+}
 
 function _ptnrProfilEditParams(){
   var c = document.getElementById('ptnr-profil-content');
