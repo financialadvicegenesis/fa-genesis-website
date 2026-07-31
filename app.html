@@ -5479,12 +5479,6 @@ function referralBoxHtml(){
     + '<span class="ref-box-v2-code" id="p-ref-code-val">'+code+'</span>'
     + '<button class="ref-box-v2-copy" onclick="copyReferralCode()">Copier</button>'
     + '</div></div>'
-    + '<div style="margin-bottom:16px;">'
-    + '<div style="font-size:10px;color:#888;font-weight:800;text-transform:uppercase;letter-spacing:.8px;margin-bottom:7px;">Votre lien de parrainage</div>'
-    + '<div style="display:flex;align-items:center;gap:8px;">'
-    + '<span id="p-ref-link-val" style="font-size:11px;color:#aaa;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+link+'</span>'
-    + '<button class="ref-box-v2-copy" onclick="copyReferralLink()">Copier</button>'
-    + '</div></div>'
     + '<button class="ref-box-v2-share" onclick="shareReferralCode()"><i class="fa-solid fa-share-nodes"></i> Inviter un ami</button>'
     + '<div style="background:rgba(255,215,0,.06);border:1px solid rgba(255,215,0,.15);border-radius:14px;padding:16px;margin-top:16px;">'
     + '<div style="font-size:10px;color:#888;font-weight:800;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px;">Parrainages validés</div>'
@@ -5518,16 +5512,14 @@ function copyReferralCode(){
 }
 function shareReferralCode(){
   if(!USER || !USER.referralCode) return;
-  var msg = 'Rejoins GENESIS avec mon code de parrainage : '+USER.referralCode+'\nhttps://fagenesis.com/app.html';
+  var link = 'https://fagenesis.com/ref/' + USER.referralCode;
   if(navigator.share){
-    navigator.share({title:'GENESIS — Code parrainage', text:msg}).catch(function(){});
-  } else {
-    if(navigator.clipboard && navigator.clipboard.writeText){
-      navigator.clipboard.writeText(msg).then(function(){
-        var btn = document.querySelector('.ref-box-v2-share');
-        if(btn){ var orig = btn.innerHTML; btn.innerHTML = '<i class="fa-solid fa-check"></i> Lien copié !'; setTimeout(function(){ btn.innerHTML = orig; }, 1600); }
-      });
-    }
+    navigator.share({title:'GENESIS — Parrainage', text:'Rejoins GENESIS avec mon lien de parrainage !', url:link}).catch(function(){});
+  } else if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(link).then(function(){
+      var btn = document.querySelector('.ref-box-v2-share');
+      if(btn){ var orig = btn.innerHTML; btn.innerHTML = '<i class="fa-solid fa-check"></i> Lien copié !'; setTimeout(function(){ btn.innerHTML = orig; }, 1600); }
+    });
   }
 }
 function showParrainageScreen(){
@@ -14493,11 +14485,11 @@ function _ptnrLoadProfil(){
 function _ptnrProfilBack(){ _ptnrLoadProfil(); }
 
 function _ptnrShareRef(code){
-  var msg = 'Rejoins GENESIS en tant que prestataire avec mon code de parrainage : ' + code + '\nhttps://fagenesis.com';
+  var link = 'https://fagenesis.com/ref/' + code;
   if(navigator.share){
-    navigator.share({ title: 'Rejoins GENESIS', text: msg }).catch(function(){});
+    navigator.share({ title: 'GENESIS — Parrainage prestataire', text: 'Rejoins GENESIS en tant que prestataire avec mon lien !', url: link }).catch(function(){});
   } else if(navigator.clipboard){
-    navigator.clipboard.writeText(msg).then(function(){
+    navigator.clipboard.writeText(link).then(function(){
       var btn = document.querySelector('.p-ref-box button[onclick*="_ptnrShareRef"]');
       if(btn){ var orig=btn.innerHTML; btn.innerHTML='<i class="fa-solid fa-check" style="margin-right:7px;"></i>Lien copié !'; setTimeout(function(){ btn.innerHTML=orig; },2000); }
     }).catch(function(){});
