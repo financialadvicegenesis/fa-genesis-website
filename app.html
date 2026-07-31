@@ -13924,63 +13924,6 @@ function _ptnrLoadPalmares(){
         + '<div class="ptnr-rep-rank-sub">Dans votre catégorie</div></div>';
     }
 
-    // Prestations terminées
-    html += '<div style="font-size:10px;color:#FFD700;font-weight:800;letter-spacing:1px;text-transform:uppercase;margin:16px 0 10px;"><i class="fa-solid fa-briefcase" style="margin-right:5px;"></i>Mes prestations</div>';
-    if(data.missions && data.missions.length > 0){
-      data.missions.forEach(function(m){
-        var dStr = m.sent_at ? new Date(m.sent_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'}) : '';
-        html += '<div style="background:#0e0e0e;border:1px solid #1a1a1a;border-radius:11px;padding:11px 13px;margin-bottom:8px;display:flex;align-items:center;gap:10px;">'
-          + '<div style="width:36px;height:36px;background:rgba(76,175,80,.08);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="fa-solid fa-check" style="color:#4caf50;font-size:14px;"></i></div>'
-          + '<div style="flex:1;min-width:0;"><div style="font-size:12px;font-weight:700;color:#ddd;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+(m.service_label||'Prestation')+'</div>'
-          + '<div style="font-size:10px;color:#555;margin-top:2px;">'+(m.client_name||'Client')+(dStr?' · '+dStr:'')+'</div></div>'
-          + '<div style="font-size:13px;font-weight:800;color:#4caf50;flex-shrink:0;">'+(parseFloat(m.amount)||0).toFixed(2)+' €</div>'
-          + '</div>';
-      });
-    } else {
-      html += '<div style="background:#0a0a0a;border-radius:11px;padding:16px;text-align:center;color:#333;font-size:12px;margin-bottom:16px;">Aucune prestation terminée pour le moment</div>';
-    }
-
-    // Avis reçus
-    html += '<div style="font-size:10px;color:#FFD700;font-weight:800;letter-spacing:1px;text-transform:uppercase;margin:16px 0 10px;"><i class="fa-solid fa-star" style="margin-right:5px;"></i>Avis reçus</div>';
-    if(data.reviews && data.reviews.length > 0){
-      data.reviews.slice(0,15).forEach(function(r){
-        var stars = '';
-        for(var si=0;si<5;si++) stars += '<i class="fa-solid fa-star" style="font-size:10px;color:'+(si<r.rating?'#FFD700':'#222')+'"></i>';
-        var dStr = r.createdAt ? new Date(r.createdAt).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'}) : '';
-        html += '<div style="background:#0e0e0e;border:1px solid #1a1a1a;border-radius:11px;padding:11px 13px;margin-bottom:8px;">'
-          + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;"><div>'+stars+'</div><div style="font-size:10px;color:#444;">'+dStr+'</div></div>'
-          + (r.comment ? '<div style="font-size:12px;color:#888;font-style:italic;line-height:1.4;">'+r.comment+'</div>' : '')
-          + '</div>';
-      });
-    } else {
-      html += '<div style="background:#0a0a0a;border-radius:11px;padding:16px;text-align:center;color:#333;font-size:12px;margin-bottom:16px;">Aucun avis reçu pour le moment</div>';
-    }
-
-    // Parrainages
-    html += '<div style="font-size:10px;color:#FFD700;font-weight:800;letter-spacing:1px;text-transform:uppercase;margin:16px 0 10px;"><i class="fa-solid fa-user-plus" style="margin-right:5px;"></i>Mes parrainages</div>';
-    var refCount = data.referralCount || 0;
-    if(data.referralCode){
-      html += '<div class="p-ref-box">'
-        + '<div class="p-ref-box-title">Mon code de parrainage'+(data.referralStatus?(' '+tierBadgeHtml(data.referralStatus)):'')+'</div>'
-        + '<div class="p-ref-code-row"><span class="p-ref-code">'+data.referralCode+'</span>'
-        + '<button class="p-ref-copy-btn" onclick="navigator.clipboard&&navigator.clipboard.writeText(\''+data.referralCode+'\')" style="cursor:pointer;">Copier</button></div>'
-        + '<div class="p-ref-count">'+refCount+' prestataire'+(refCount>1?'s':'')+' parrainé'+(refCount>1?'s':'')+(refCount<3?' · encore '+(3-refCount)+' pour le statut Bâtisseur':'')+'</div>'
-        + '</div>';
-    }
-    if(data.referrals && data.referrals.length > 0){
-      data.referrals.forEach(function(ref){
-        var dStr = ref.createdAt ? new Date(ref.createdAt).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'}) : '';
-        html += '<div style="background:#0e0e0e;border:1px solid #1a1a1a;border-radius:11px;padding:10px 13px;margin-top:6px;display:flex;align-items:center;gap:9px;">'
-          + '<div style="width:32px;height:32px;background:rgba(255,215,0,.07);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="fa-solid fa-user" style="color:#FFD700;font-size:12px;"></i></div>'
-          + '<div style="flex:1;"><div style="font-size:12px;font-weight:700;color:#ddd;">'+(ref.prenom||'')+' '+(ref.nom||'')+'</div>'
-          + '<div style="font-size:10px;color:#555;">'+(ref.partner_type||'')+(dStr?' · '+dStr:'')+'</div></div>'
-          + '<i class="fa-solid fa-check-circle" style="color:#4caf50;font-size:14px;flex-shrink:0;"></i>'
-          + '</div>';
-      });
-    } else if(refCount === 0){
-      html += '<div style="background:#0a0a0a;border-radius:11px;padding:14px;text-align:center;color:#333;font-size:12px;margin-top:8px;">Pas encore de parrainage — partagez votre code avec des collègues !</div>';
-    }
-
     el.innerHTML = html;
     _animateCount(document.getElementById('plm-missions'), data.missionsCompleted||0);
     _animateCount(document.getElementById('plm-clients'), data.nombreClients||0);
