@@ -13881,7 +13881,10 @@ function _ptnrLoadReputation(){
             +(advSub ? '<div style="font-size:10px;color:#555;margin-top:2px;line-height:1.4;">'+advSub+'</div>' : '')
             +'</div>';
         } else {
-          html += '<i class="fa-solid fa-lock" style="color:#222;font-size:11px;margin-top:1px;flex-shrink:0;"></i><span style="color:#2e2e2e;">'+advLabel+'</span>';
+          html += '<i class="fa-solid fa-lock" style="color:#222;font-size:11px;margin-top:1px;flex-shrink:0;"></i>'
+            +'<div style="flex:1;"><span style="color:#2e2e2e;">'+advLabel+'</span>'
+            +(advSub ? '<div style="font-size:10px;color:#252525;margin-top:2px;line-height:1.4;">'+advSub+'</div>' : '')
+            +'</div>';
         }
         html += '</div>';
       });
