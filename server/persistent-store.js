@@ -26,6 +26,7 @@ var COLLECTIONS = [
     'partner-assignments',
     'partner-uploads',
     'partner-comments',
+    'partner_reviews',
     'quotes',
     'sessions',
     'admin_sessions',
@@ -33,7 +34,8 @@ var COLLECTIONS = [
     'livrables',
     'feedbacks',
     'settings',
-    'push-subscriptions'
+    'push-subscriptions',
+    'payouts'
 ];
 
 /**
