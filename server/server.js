@@ -10803,7 +10803,7 @@ const GENESIS_POINT_VALUES = {
     prestationRealisee: 20,
     reservationEffectuee: 20,
     avisCinqEtoiles: 30,
-    avisLaisse: 5,
+    avisLaisse: 30,
     workshop: 50,
     evenement: 75,
     parrainage: 100,

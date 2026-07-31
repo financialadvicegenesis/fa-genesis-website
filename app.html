@@ -5390,17 +5390,43 @@ function partnerBadgeProgressHtml(progress){
   var curLabel = progress.currentBadge ? (_pbl[progress.currentBadge]||progress.currentBadge) : 'Nouveau prestataire';
   var curIcon  = progress.currentBadge ? (_pbi[progress.currentBadge]||'fa-medal') : 'fa-user';
   var _missions = progress.missionsCurrent || 0;
-  var _rating = (Number(progress.ratingCurrent)||0).toFixed(1);
-  var _nextHtml = progress.nextBadge
-    ? '<span style="font-size:11px;color:#555;margin-left:8px"><i class="fa-solid fa-lock" style="font-size:9px"></i> '+(_pbl[progress.nextBadge]||progress.nextBadge)+'</span>'
-    : '<span style="font-size:11px;color:#4caf50;margin-left:8px"><i class="fa-solid fa-check"></i> Max</span>';
-  return '<div class="badge-progress" style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 0;">'
-    +'<div style="font-size:13px;font-weight:700;color:#ddd;display:flex;align-items:center;gap:6px">'
-    +'<i class="fa-solid '+curIcon+'" style="color:#FFD700"></i>'+curLabel+_nextHtml
+  var _mTarget  = progress.missionsTarget  || 0;
+  var _rating   = (Number(progress.ratingCurrent)||0).toFixed(1);
+  var _rTarget  = progress.ratingTarget ? progress.ratingTarget.toFixed(1) : '—';
+  var pct       = progress.percent || 0;
+  var _pBadgePhrases = {
+    'null':      'Complétez 5 missions avec une note ≥ 4.0 pour décrocher votre premier badge !',
+    'bronze':    'Continuez jusqu\'à 20 missions (note ≥ 4.3) pour atteindre l\'Argent.',
+    'argent':    'Excellent ! Encore quelques missions pour décrocher le badge Or.',
+    'or':        'Vous excellez — le badge Élite vous attend : 100 missions et note ≥ 5.0.',
+    'elite':     'Félicitations ! Vous avez atteint le sommet — prestataire Élite GENESIS.',
+    'fondateur': 'Statut Fondateur — merci de faire partie de l\'aventure GENESIS !'
+  };
+  var phrase = _pBadgePhrases[progress.currentBadge ? progress.currentBadge : 'null'] || '';
+  if(!progress.nextBadge){
+    return '<div class="badge-progress-max" style="text-align:left;">'
+      +'<i class="fa-solid '+curIcon+'"></i>'
+      +'<div><div>'+curLabel+'</div>'
+      +'<div style="font-size:10px;font-weight:600;text-transform:none;letter-spacing:0;margin-top:3px;opacity:.85;">'+phrase+'</div></div>'
+      +'</div>';
+  }
+  var nextLabel = _pbl[progress.nextBadge]||progress.nextBadge;
+  var nextIcon  = _pbi[progress.nextBadge]||'fa-medal';
+  var _missOk   = _mTarget > 0 && _missions >= _mTarget;
+  var _ratingOk = progress.ratingTarget > 0 && Number(progress.ratingCurrent) >= progress.ratingTarget;
+  return '<div class="badge-progress" style="text-align:left;">'
+    +'<div class="badge-progress-labels">'
+    +'<span class="badge-progress-cur"><i class="fa-solid '+curIcon+'"></i> '+curLabel+'</span>'
+    +'<span class="badge-progress-arrow"><i class="fa-solid fa-arrow-right"></i></span>'
+    +'<span class="badge-progress-next"><i class="fa-solid fa-lock"></i> <i class="fa-solid '+nextIcon+'"></i> '+nextLabel+'</span>'
     +'</div>'
-    +'<div style="display:flex;gap:10px;flex-shrink:0;font-size:12px;color:#888;">'
-    +'<span><i class="fa-solid fa-briefcase" style="color:#FFD700;margin-right:3px"></i>'+_missions+'</span>'
-    +'<span><i class="fa-solid fa-star" style="color:#FFD700;margin-right:3px"></i>'+_rating+'</span>'
+    +'<div class="badge-progress-track"><div class="badge-progress-fill" style="width:'+pct+'%"></div></div>'
+    +'<div class="badge-progress-text">'+phrase+'</div>'
+    +'<div class="badge-progress-stats">'
+    +'<div><i class="fa-solid fa-briefcase"></i><span>Missions : <b>'+_missions+' / '+_mTarget+'</b></span>'
+    +(_missOk ? '&nbsp;<i class="fa-solid fa-check-circle" style="color:#4caf50;font-size:11px;"></i>' : '')+'</div>'
+    +'<div><i class="fa-solid fa-star"></i><span>Note : <b>'+_rating+'★</b> (seuil '+_rTarget+'★)</span>'
+    +(_ratingOk ? '&nbsp;<i class="fa-solid fa-check-circle" style="color:#4caf50;font-size:11px;"></i>' : '')+'</div>'
     +'</div>'
     +'</div>';
 }
@@ -8644,17 +8670,14 @@ function showClientLevels() {
       html += '<div style="background:#111;border-radius:14px;padding:14px 16px;margin-bottom:20px;">'
         + '<div style="font-size:10px;color:var(--yellow);font-weight:800;letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;"><i class="fa-solid fa-bolt" style="margin-right:5px;"></i>Comment gagner des QG ?</div>'
         + '<div style="font-size:10px;color:#4caf50;font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:7px;display:flex;align-items:center;gap:5px;"><i class="fa-solid fa-circle-check" style="font-size:9px;"></i>Disponibles maintenant</div>'
-        + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:7px;">'
+        + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:' + (!curBadge ? '10px' : '12px') + ';">'
         + _qgActionRow('fa-briefcase', 'Prestation terminée', '20 QG')
-        + _qgActionRow('fa-star', 'Avis déposé', '5 QG')
-        + '</div>'
-        + '<div style="margin-bottom:' + (!curBadge ? '10px' : '12px') + ';">'
-        + _qgActionRow('fa-crown', 'Avis 5 étoiles', '30 QG')
+        + _qgActionRow('fa-star', 'Avis déposé', '30 QG')
         + '</div>'
         + (!curBadge
           ? '<div style="font-size:10px;color:#555;text-align:center;padding:7px 10px;margin-bottom:12px;background:#0d0d0d;border-radius:8px;border:1px solid #1a1a1a;">'
             + '<i class="fa-solid fa-info-circle" style="color:#a89000;margin-right:4px;"></i>'
-            + 'Ces 3 actions suffisent pour atteindre <strong style="color:#a89000;">Créateur</strong> !'
+            + 'Ces 2 actions suffisent pour atteindre <strong style="color:#a89000;">Créateur</strong> !'
             + '</div>'
           : '')
         + '<div style="font-size:10px;color:#444;font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:7px;display:flex;align-items:center;gap:5px;"><i class="fa-solid fa-lock" style="font-size:9px;"></i>Débloqués avec les niveaux</div>'
