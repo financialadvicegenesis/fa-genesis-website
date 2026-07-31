@@ -14093,11 +14093,8 @@ app.post('/api/admin/partners/create', async (req, res) => {
 });
 
 // Creer les comptes de test partenaires complets (parrain + filleul) — apercu complet de l'espace prestataire
-// Route /api/internal/ pour echapper au middleware authenticateAdmin global
-app.post('/api/internal/setup-test-parrainage', async function(req, res) {
+app.post('/api/admin/setup-test-parrainage', async function(req, res) {
     try {
-        var tok = (req.headers.authorization || '').replace('Bearer ', '').trim();
-        if (tok !== 'FA-GENESIS-SETUP-7K2M9Q') return res.status(403).json({ error: 'Token invalide' });
 
         var TEST_EMAILS = ['test-parrain@fagenesis.com', 'test-filleul@fagenesis.com'];
         var nowStr = new Date().toISOString();
