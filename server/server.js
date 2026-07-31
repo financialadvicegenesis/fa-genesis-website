@@ -14092,6 +14092,62 @@ app.post('/api/admin/partners/create', async (req, res) => {
     }
 });
 
+// Creer les comptes de test parrainage (parrain + filleul) en une seule requete admin
+app.post('/api/admin/setup-test-parrainage', async function(req, res) {
+    try {
+        var tok = (req.headers.authorization || '').replace('Bearer ', '').trim();
+        var sessions = [];
+        try { sessions = JSON.parse(fs.readFileSync(ADMIN_SESSIONS_FILE, 'utf8')); } catch(e) {}
+        var isAdmin = sessions.some(function(s) { return s.token === tok && (!s.expiresAt || Date.now() < new Date(s.expiresAt).getTime()); });
+        if (!isAdmin) return res.status(403).json({ error: 'Accès réservé aux administrateurs' });
+        var partners = loadPartners();
+        // Supprimer les anciens comptes de test parrainage
+        partners = partners.filter(function(p) {
+            return p.email !== 'test-parrain@fagenesis.com' && p.email !== 'test-filleul@fagenesis.com';
+        });
+        var nowStr = new Date().toISOString();
+        var daysFromNow = function(n) { return new Date(Date.now() + n * 24 * 3600 * 1000).toISOString(); };
+        var parrainId = 'PTR-TEST-PAR-' + require('crypto').randomBytes(4).toString('hex').toUpperCase();
+        var filleulId = 'PTR-TEST-FIL-' + require('crypto').randomBytes(4).toString('hex').toUpperCase();
+        var hashP = await bcrypt.hash('TestParrain2026!', 10);
+        var hashF = await bcrypt.hash('TestFilleul2026!', 10);
+        partners.push({
+            id: parrainId, prenom: 'Alexandre', nom: 'Parrain',
+            email: 'test-parrain@fagenesis.com', telephone: '', city: 'Paris',
+            password: hashP, partner_type: 'photographer', partner_type_other: '', company: '',
+            bio: 'Compte test — Ambassadeur GENESIS.',
+            services: [{ id: 'SVC-PAR-01', label: 'Shooting portrait', price: 150, description: '', active: true }],
+            sessionToken: null, accountStatus: 'active', contract_signed: true, contract_signed_at: nowStr,
+            referredBy: null, founderBadge: false,
+            distinctions: [{ id: 'ambassador', granted_at: nowStr, expires_at: null }],
+            referred_active_count: 1, profile_boost_until: daysFromNow(7),
+            createdAt: nowStr, updatedAt: nowStr, lastLogin: null
+        });
+        partners.push({
+            id: filleulId, prenom: 'Camille', nom: 'Filleul',
+            email: 'test-filleul@fagenesis.com', telephone: '', city: 'Lyon',
+            password: hashF, partner_type: 'videographer', partner_type_other: '', company: '',
+            bio: 'Compte test — Nouveau Talent.',
+            services: [{ id: 'SVC-FIL-01', label: 'Vidéo courte', price: 200, description: '', active: true }],
+            sessionToken: null, accountStatus: 'active', contract_signed: true, contract_signed_at: nowStr,
+            referredBy: parrainId, founderBadge: false,
+            distinctions: [{ id: 'new_talent', granted_at: nowStr, expires_at: null }],
+            first_mission_completed_at: nowStr, profile_boost_until: daysFromNow(4),
+            referred_active_count: 0, createdAt: nowStr, updatedAt: nowStr, lastLogin: null
+        });
+        savePartners(partners);
+        console.log('[ADMIN] Comptes test parrainage créés:', parrainId, filleulId);
+        res.json({
+            success: true,
+            parrain: { id: parrainId, email: 'test-parrain@fagenesis.com', password: 'TestParrain2026!' },
+            filleul: { id: filleulId, email: 'test-filleul@fagenesis.com', password: 'TestFilleul2026!', referredBy: parrainId }
+        });
+    } catch (e) {
+        console.error('[ADMIN] Erreur setup-test-parrainage:', e);
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // Lister tous les partenaires
 app.get('/api/admin/partners', (req, res) => {
     try {
