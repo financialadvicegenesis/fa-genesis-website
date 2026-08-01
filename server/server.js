@@ -550,7 +550,7 @@ function saveDisputes(data) {
     catch(e) { console.error('[DISPUTE] Erreur sauvegarde:', e); }
 }
 
-// IDs de tarifs partenaires (FA GENESIS 15 %, partenaire 85 %)
+// IDs de tarifs partenaires (taux variable selon badge : standard 25% FA, réduit pour Argent/Or/Élite)
 var PARTNER_TARIF_IDS = ['photo-devis', 'video-devis'];
 
 function calculateRevenueShares(order, paidAmount) {
@@ -568,22 +568,33 @@ function calculateRevenueShares(order, paidAmount) {
     var partners = loadPartners();
     var shares = [];
     if (isPartnerTarif) {
-        // Tarif partenaire : FA GENESIS 25 %, partenaire 75 %
+        // Tarif partenaire : taux selon badge du partenaire (Bronze 25%, Argent 22%, Or 19%, Élite 15%)
         assignments.forEach(function(a) {
             var partner = partners.find(function(p) { return p.id === a.partner_id; }) || {};
-            var partnerAmount = parseFloat((paidAmount * 0.75).toFixed(2));
+            var _badge = getPartnerBadge(partner);
+            var _faPct = getBenefitsForBadge(_badge).commissionPct;
+            var _partnerPct = 100 - _faPct;
+            var partnerAmount = parseFloat((paidAmount * _partnerPct / 100).toFixed(2));
             var faAmount      = parseFloat((paidAmount - partnerAmount).toFixed(2));
-            shares.push({ partner_id: a.partner_id, partner_email: a.partner_email, partner_paypal: partner.payout_paypal_email || null, partner_iban: partner.payout_iban || null, partner_bic: partner.payout_bic || null, partner_titulaire: partner.payout_titulaire || null, partner_amount: partnerAmount, fa_amount: faAmount, partner_pct: 75, fa_pct: 25, type: 'tarif_partenaire' });
+            shares.push({ partner_id: a.partner_id, partner_email: a.partner_email, partner_paypal: partner.payout_paypal_email || null, partner_iban: partner.payout_iban || null, partner_bic: partner.payout_bic || null, partner_titulaire: partner.payout_titulaire || null, partner_amount: partnerAmount, fa_amount: faAmount, partner_pct: _partnerPct, fa_pct: _faPct, type: 'tarif_partenaire' });
         });
     } else {
-        // Offre multi-service : chaque partenaire 25 %, FA GENESIS prend le reste
+        // Offre multi-service : taux selon badge de chaque partenaire, FA prend le reste
+        var _multiShares = [];
+        var _totalPartnerAmount = 0;
         var n = assignments.length;
-        var faPct      = 100 - n * 25;
-        var faAmount   = parseFloat((paidAmount * faPct / 100).toFixed(2));
-        var perPartner = parseFloat(((paidAmount - faAmount) / n).toFixed(2));
-        assignments.forEach(function(a, i) {
+        assignments.forEach(function(a) {
             var partner = partners.find(function(p) { return p.id === a.partner_id; }) || {};
-            shares.push({ partner_id: a.partner_id, partner_email: a.partner_email, partner_paypal: partner.payout_paypal_email || null, partner_iban: partner.payout_iban || null, partner_bic: partner.payout_bic || null, partner_titulaire: partner.payout_titulaire || null, partner_amount: perPartner, fa_amount: i === 0 ? faAmount : 0, partner_pct: 25, fa_pct: faPct, type: 'offre_multi_service' });
+            var _badge = getPartnerBadge(partner);
+            var _faPct = getBenefitsForBadge(_badge).commissionPct;
+            var _partnerPct = 100 - _faPct;
+            var _perPartner = parseFloat((paidAmount / n * _partnerPct / 100).toFixed(2));
+            _totalPartnerAmount += _perPartner;
+            _multiShares.push({ a: a, partner: partner, amount: _perPartner, partnerPct: _partnerPct, faPct: _faPct });
+        });
+        var _faTotal = parseFloat((paidAmount - _totalPartnerAmount).toFixed(2));
+        _multiShares.forEach(function(ms, i) {
+            shares.push({ partner_id: ms.a.partner_id, partner_email: ms.a.partner_email, partner_paypal: ms.partner.payout_paypal_email || null, partner_iban: ms.partner.payout_iban || null, partner_bic: ms.partner.payout_bic || null, partner_titulaire: ms.partner.payout_titulaire || null, partner_amount: ms.amount, fa_amount: i === 0 ? _faTotal : 0, partner_pct: ms.partnerPct, fa_pct: ms.faPct, type: 'offre_multi_service' });
         });
     }
     return shares;
@@ -1103,7 +1114,11 @@ function createPartnerServiceDispatch(order) {
         var existing = dispatches.find(function(d) { return d.order_id === order.id; });
         if (existing) return existing;
 
-        var partnerPct = 75;
+        // Taux selon badge du partenaire (Bronze 25% FA → 75% partenaire, Argent 22%, Or 19%, Élite 15%)
+        var partner = getPartnerById(order.partner_id);
+        var _partnerBadge = getPartnerBadge(partner);
+        var _faPct = getBenefitsForBadge(_partnerBadge).commissionPct;
+        var partnerPct = 100 - _faPct;
         // Si une réduction bienvenue a été absorbée par GENESIS, le partenaire est payé
         // sur le prix plein (avant réduction). La différence est à la charge de GENESIS.
         var discountedTotal = parseFloat(order.total_amount || 0);
@@ -1120,8 +1135,6 @@ function createPartnerServiceDispatch(order) {
         var clientPrenom = (order.client_info && order.client_info.first_name)
             || (user && (user.prenom || user.firstName || user.first_name))
             || 'Client';
-
-        var partner = getPartnerById(order.partner_id);
 
         var dispatch = {
             id: 'DSP-' + uuidv4().split('-')[0],
