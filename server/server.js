@@ -568,22 +568,22 @@ function calculateRevenueShares(order, paidAmount) {
     var partners = loadPartners();
     var shares = [];
     if (isPartnerTarif) {
-        // Tarif partenaire : FA GENESIS 15 %, partenaire 85 %
+        // Tarif partenaire : FA GENESIS 25 %, partenaire 75 %
         assignments.forEach(function(a) {
             var partner = partners.find(function(p) { return p.id === a.partner_id; }) || {};
-            var partnerAmount = parseFloat((paidAmount * 0.85).toFixed(2));
+            var partnerAmount = parseFloat((paidAmount * 0.75).toFixed(2));
             var faAmount      = parseFloat((paidAmount - partnerAmount).toFixed(2));
-            shares.push({ partner_id: a.partner_id, partner_email: a.partner_email, partner_paypal: partner.payout_paypal_email || null, partner_iban: partner.payout_iban || null, partner_bic: partner.payout_bic || null, partner_titulaire: partner.payout_titulaire || null, partner_amount: partnerAmount, fa_amount: faAmount, partner_pct: 85, fa_pct: 15, type: 'tarif_partenaire' });
+            shares.push({ partner_id: a.partner_id, partner_email: a.partner_email, partner_paypal: partner.payout_paypal_email || null, partner_iban: partner.payout_iban || null, partner_bic: partner.payout_bic || null, partner_titulaire: partner.payout_titulaire || null, partner_amount: partnerAmount, fa_amount: faAmount, partner_pct: 75, fa_pct: 25, type: 'tarif_partenaire' });
         });
     } else {
-        // Offre multi-service : chaque partenaire 15 %, FA GENESIS prend le reste
+        // Offre multi-service : chaque partenaire 25 %, FA GENESIS prend le reste
         var n = assignments.length;
-        var faPct      = 100 - n * 15;
+        var faPct      = 100 - n * 25;
         var faAmount   = parseFloat((paidAmount * faPct / 100).toFixed(2));
         var perPartner = parseFloat(((paidAmount - faAmount) / n).toFixed(2));
         assignments.forEach(function(a, i) {
             var partner = partners.find(function(p) { return p.id === a.partner_id; }) || {};
-            shares.push({ partner_id: a.partner_id, partner_email: a.partner_email, partner_paypal: partner.payout_paypal_email || null, partner_iban: partner.payout_iban || null, partner_bic: partner.payout_bic || null, partner_titulaire: partner.payout_titulaire || null, partner_amount: perPartner, fa_amount: i === 0 ? faAmount : 0, partner_pct: 15, fa_pct: faPct, type: 'offre_multi_service' });
+            shares.push({ partner_id: a.partner_id, partner_email: a.partner_email, partner_paypal: partner.payout_paypal_email || null, partner_iban: partner.payout_iban || null, partner_bic: partner.payout_bic || null, partner_titulaire: partner.payout_titulaire || null, partner_amount: perPartner, fa_amount: i === 0 ? faAmount : 0, partner_pct: 25, fa_pct: faPct, type: 'offre_multi_service' });
         });
     }
     return shares;
@@ -830,7 +830,7 @@ async function processDispatchPayout(dispatch, stage) {
     try {
         if (!dispatch || !dispatch.claimed_by_partner_id) return;
 
-        var partnerPct = dispatch.partner_pct || 15;
+        var partnerPct = dispatch.partner_pct || 75;
         var faPct = 100 - partnerPct;
 
         var orders = loadOrders();
@@ -1103,7 +1103,7 @@ function createPartnerServiceDispatch(order) {
         var existing = dispatches.find(function(d) { return d.order_id === order.id; });
         if (existing) return existing;
 
-        var partnerPct = 85;
+        var partnerPct = 75;
         // Si une réduction bienvenue a été absorbée par GENESIS, le partenaire est payé
         // sur le prix plein (avant réduction). La différence est à la charge de GENESIS.
         var discountedTotal = parseFloat(order.total_amount || 0);
@@ -7844,13 +7844,13 @@ app.get('/api/partner/badge-progress-full', function(req, res) {
             bronze: [
                 { id: 'presence_annuaire', label: 'Présence dans l\'annuaire' },
                 { id: 'dashboard', label: 'Tableau de bord professionnel' },
-                { id: 'commission', label: 'Commission standard (15%)' },
+                { id: 'commission', label: 'Commission standard (25%)' },
                 { id: 'formations', label: 'Accès aux formations FA GENESIS' },
                 { id: 'boost_bienvenue', label: 'Boost de visibilité de bienvenue (30 jours)' },
                 { id: 'jeremie_essentiel', label: 'Jérémie IA Essentiel — Optimisation profil & annonces' }
             ],
             argent: [
-                { id: 'commission_14', label: 'Commission réduite (14%)' },
+                { id: 'commission_22', label: 'Commission réduite (22%)' },
                 { id: 'stats_avancees', label: 'Statistiques avancées de performance' },
                 { id: 'meilleur_classement', label: 'Meilleur classement dans l\'annuaire' },
                 { id: 'boosts_2', label: '2 boosts mensuels de visibilité' },
@@ -7858,7 +7858,7 @@ app.get('/api/partner/badge-progress-full', function(req, res) {
                 { id: 'jeremie_plus', label: 'Jérémie IA Plus — Analyse des avis & taux de conversion' }
             ],
             or: [
-                { id: 'commission_13', label: 'Commission réduite (13%)' },
+                { id: 'commission_19', label: 'Commission réduite (19%)' },
                 { id: 'classement_renforce', label: 'Classement renforcé dans l\'annuaire' },
                 { id: 'boosts_4', label: '4 boosts mensuels de visibilité' },
                 { id: 'outils_anticipes', label: 'Accès anticipé aux nouveaux outils' },
@@ -7866,7 +7866,7 @@ app.get('/api/partner/badge-progress-full', function(req, res) {
                 { id: 'jeremie_pro', label: 'Jérémie IA Pro — Conseils marketing & optimisation revenus' }
             ],
             elite: [
-                { id: 'commission_11', label: 'Commission réduite (11%)' },
+                { id: 'commission_15', label: 'Commission réduite (15%)' },
                 { id: 'badge_premium', label: 'Badge premium affiché dans l\'annuaire' },
                 { id: 'priorite_classement', label: 'Priorité de classement (à profil équivalent)' },
                 { id: 'boosts_8', label: '8 boosts mensuels de visibilité' },
@@ -11437,14 +11437,14 @@ const WELCOME_DISCOUNT_PCT_WITH_REFERRAL = 10;
 const WELCOME_DISCOUNT_PCT = WELCOME_DISCOUNT_PCT_WITH_REFERRAL; // alias backwards-compat
 const REFERRAL_FILLEUL_DISCOUNT_PCT     = WELCOME_DISCOUNT_PCT_WITH_REFERRAL; // alias legacy
 
-// Avantages par badge prestataire — commissions explicites (Bronze 15%, Argent 14%, Or 13%, Élite 11%)
+// Avantages par badge prestataire — commissions explicites (Bronze 25%, Argent 22%, Or 19%, Élite 15%)
 const GENESIS_TIER_BENEFITS = {
-    null:      { commissionPct: 15, commissionReduction: 0, payout: 'standard',    events: false, monthlyBoosts: 0 },
-    bronze:    { commissionPct: 15, commissionReduction: 0, payout: 'standard',    events: false, monthlyBoosts: 0 },
-    argent:    { commissionPct: 14, commissionReduction: 1, payout: 'prioritaire', events: false, monthlyBoosts: 2 },
-    or:        { commissionPct: 13, commissionReduction: 2, payout: 'prioritaire', events: true,  monthlyBoosts: 4 },
-    elite:     { commissionPct: 11, commissionReduction: 4, payout: 'express',     events: true,  monthlyBoosts: 8 },
-    fondateur: { commissionPct: 10, commissionReduction: 5, payout: 'express',     events: true,  monthlyBoosts: 8 }
+    null:      { commissionPct: 25, commissionReduction: 0,  payout: 'standard',    events: false, monthlyBoosts: 0 },
+    bronze:    { commissionPct: 25, commissionReduction: 0,  payout: 'standard',    events: false, monthlyBoosts: 0 },
+    argent:    { commissionPct: 22, commissionReduction: 3,  payout: 'prioritaire', events: false, monthlyBoosts: 2 },
+    or:        { commissionPct: 19, commissionReduction: 6,  payout: 'prioritaire', events: true,  monthlyBoosts: 4 },
+    elite:     { commissionPct: 15, commissionReduction: 10, payout: 'express',     events: true,  monthlyBoosts: 8 },
+    fondateur: { commissionPct: 10, commissionReduction: 15, payout: 'express',     events: true,  monthlyBoosts: 8 }
 };
 
 function getBenefitsForBadge(badge) {
