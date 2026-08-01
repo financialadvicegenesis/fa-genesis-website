@@ -14648,7 +14648,9 @@ function _ptnrLoadColleguesList(){
         lastMsgByPeer[peerEmail] = m;
       }
     });
-    var html = '';
+    var _badgeLbl = {bronze:'Bronze',argent:'Argent',or:'Or',elite:'Élite',fondateur:'Fondateur'};
+    var _badgeClr = {bronze:'#cd7f32',argent:'#aaa',or:'#FFD700',elite:'#a78bfa',fondateur:'#FFD700'};
+    var html = '<div style="font-size:11px;color:#555;margin-bottom:10px;">'+peers.length+' collègue'+(peers.length>1?'s':'')+' actif'+(peers.length>1?'s':'')+' dans votre catégorie</div>';
     peers.forEach(function(peer){
       var nm = ((peer.prenom||'')+ ' '+(peer.nom||'')).trim() || 'Collègue';
       var ini = (nm[0]||'?').toUpperCase();
@@ -14657,13 +14659,26 @@ function _ptnrLoadColleguesList(){
         : '<div style="width:44px;height:44px;border-radius:50%;background:#1a1a1a;border:2px solid #2a2a2a;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;color:#FFD700;flex-shrink:0;">'+ini+'</div>';
       var last = lastMsgByPeer[peer.email];
       var previewHtml = last
-        ? '<div style="font-size:11px;color:#555;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px;">'+last.content.slice(0,50)+'</div>'
-        : '<div style="font-size:11px;color:#333;margin-top:2px;font-style:italic;">Aucun échange</div>';
-      html += '<div onclick="_ptnrCollegueThread(\''+peer.id+'\',\''+nm.replace(/'/g,'\\\'').replace(/"/g,'&quot;')+'\',\''+peer.email+'\')" style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #1a1a1a;cursor:pointer;">'
+        ? '<div style="font-size:11px;color:#555;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px;">'+last.content.slice(0,50)+'</div>'
+        : '<div style="font-size:11px;color:#333;margin-top:3px;font-style:italic;">Aucun échange</div>';
+      var badgeKey = peer.founderBadge ? 'fondateur' : peer.badge;
+      var badgeHtml = badgeKey
+        ? '<span style="font-size:9px;font-weight:800;color:'+(_badgeClr[badgeKey]||'#888')+';background:rgba(255,255,255,.04);border:1px solid '+(_badgeClr[badgeKey]||'#333')+'33;border-radius:20px;padding:1px 6px;margin-left:5px;">'+(_badgeLbl[badgeKey]||badgeKey)+'</span>'
+        : '';
+      var ratingHtml = (peer.rating && peer.rating.count > 0)
+        ? '<span style="font-size:10px;color:#FFD700;font-weight:700;margin-left:4px;"><i class="fa-solid fa-star" style="font-size:8px;"></i> '+peer.rating.average.toFixed(1)+'</span>'
+        : '';
+      var svcHtml = (peer.services && peer.services.length)
+        ? '<div style="font-size:10px;color:#444;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+peer.services.map(function(s){ return s.label+(s.price?' ('+s.price+'€)':''); }).join(' · ')+'</div>'
+        : '';
+      html += '<div onclick="_ptnrCollegueThread(\''+peer.id+'\',\''+nm.replace(/'/g,'\\\'').replace(/"/g,'&quot;')+'\',\''+peer.email+'\')" style="display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid #1a1a1a;cursor:pointer;">'
         +avatarHtml
         +'<div style="flex:1;min-width:0;">'
-        +'<div style="font-size:13px;font-weight:900;color:#fff;">'+nm+'</div>'
+        +'<div style="display:flex;align-items:center;flex-wrap:wrap;gap:2px;">'
+        +'<span style="font-size:13px;font-weight:900;color:#fff;">'+nm+'</span>'+badgeHtml+ratingHtml
+        +'</div>'
         +(peer.city ? '<div style="font-size:10px;color:#555;margin-top:1px;"><i class="fa-solid fa-location-dot" style="font-size:8px;"></i> '+peer.city+'</div>' : '')
+        +svcHtml
         +previewHtml
         +'</div>'
         +'<i class="fa-solid fa-chevron-right" style="color:#333;font-size:14px;"></i>'

@@ -8764,17 +8764,26 @@ app.get('/api/partner/peers', authenticatePartner, function(req, res) {
         var peers = loadPartners().filter(function(p) {
             return p.id !== partner.id &&
                    p.partner_type === partner.partner_type &&
-                   p.accountStatus === 'active';
+                   p.accountStatus === 'active' &&
+                   p.contract_signed === true;
         }).map(function(p) {
+            var ratingSummary = getPartnerRatingSummary(p.id);
+            var badge = getPartnerBadge(p, ratingSummary);
+            var missionsCompleted = getPartnerMissionsCompleted(p.id);
             return {
-                id:           p.id,
-                prenom:       p.prenom || '',
-                nom:          p.nom || '',
-                email:        p.email || '',
-                photo:        p.photo || null,
-                city:         p.city || '',
-                bio:          (p.bio || '').slice(0, 120),
-                partner_type: p.partner_type || ''
+                id:                p.id,
+                prenom:            p.prenom || '',
+                nom:               p.nom || '',
+                email:             p.email || '',
+                photo:             p.photo || null,
+                city:              p.city || '',
+                bio:               (p.bio || '').slice(0, 120),
+                partner_type:      p.partner_type || '',
+                badge:             badge,
+                founderBadge:      p.founderBadge || false,
+                rating:            ratingSummary,
+                missionsCompleted: missionsCompleted,
+                services:          (p.services || []).filter(function(s){ return s.active !== false; }).slice(0,3).map(function(s){ return { label: s.label, price: s.price }; })
             };
         });
         res.json({ ok: true, peers: peers });
