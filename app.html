@@ -4710,12 +4710,19 @@ function renderResaTab(){
           var barPct = proj.progress_pct||0;
           var prestHtml = (proj.prestations||[]).map(function(p){
             var sl = _prestStatusLabel[p.status]||p.status;
-            return '<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.06);">'
+            var canPay = p.status==='pending_deposit' && !p.deposit_paid;
+            var payBtn = canPay
+              ? '<button onclick="_openPbPayForExistingOrder(\''+p.order_id+'\',\''+p.partner_id+'\',\''+p.service_label.replace(/'/g,"\\'")+'\',' + (p.deposit_amount||p.total_amount) + ',\''+p.partner_name.replace(/'/g,"\\'")+'\');" style="font-size:10px;font-weight:800;color:#000;background:var(--yellow);border:none;border-radius:7px;padding:4px 10px;cursor:pointer;margin-top:4px;display:block;">Payer l\'acompte →</button>'
+              : '';
+            return '<div style="padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.06);">'
+              +'<div style="display:flex;align-items:center;justify-content:space-between;">'
               +'<div><div style="font-size:12px;font-weight:600;color:#e5e5e5;">'+p.partner_name+'</div>'
               +'<div style="font-size:11px;color:var(--muted);margin-top:1px;">'+p.service_label+'</div></div>'
               +'<div style="text-align:right;">'
               +'<div style="font-size:11px;color:'+(_prestStatusColor[p.status]||'var(--muted)')+';font-weight:700;">'+sl+'</div>'
               +'<div style="font-size:11px;color:var(--muted);">'+p.total_amount+' €</div></div>'
+              +'</div>'
+              +payBtn
               +'</div>';
           }).join('');
           return '<div class="resa-card" style="border-color:var(--yellow);background:rgba(250,204,21,0.04);padding:14px 14px 10px;">'
@@ -11596,9 +11603,10 @@ function openPartnerBooking(partnerId, serviceId){
   closeDetail();
 }
 // Affiche l'écran de paiement de l'acompte (commun à la fiche partenaire et à "Mes demandes")
-function _showPbPayUI(partner, service){
+function _showPbPayUI(partner, service, existingOrderId){
   _pbPartner = partner; _pbService = service; _pbMode = 'pay';
   _pbSelectedInstallments = 1;
+  _pbExistingOrderId = existingOrderId || null;
 
   var overlay=document.getElementById('pb-overlay'); var sheet=document.getElementById('pb-sheet');
   if(!overlay||!sheet) return;
@@ -11667,6 +11675,18 @@ function _pbSetInstallments(n, total){
   _pbRenderBreakdown(n, total);
 }
 // Paiement de l'acompte depuis "Mes demandes", une fois la demande acceptée par le partenaire
+// Ouvre le pb-sheet pour payer l'acompte d'une commande Projet GENESIS déjà créée
+function _openPbPayForExistingOrder(orderId, partnerId, serviceLabel, depositAmt, partnerName){
+  if(!USER||GUEST){ showLoginSheet(); return; }
+  // Utiliser le cache si disponible pour les infos Stripe Connect du partenaire
+  var partner = (_dirPartnerCache && _dirPartnerCache[partnerId])
+    ? Object.assign({}, _dirPartnerCache[partnerId])
+    : {id: partnerId, prenom: partnerName||'Prestataire', nom: ''};
+  // Fake service : price = depositAmt (montant à payer maintenant)
+  var service = {id: null, label: serviceLabel, price: depositAmt, max_installments: 1};
+  _showPbPayUI(partner, service, orderId);
+}
+
 function payAcceptedRequest(partnerId, serviceId, serviceLabel, price, partnerName){
   if(!USER||GUEST){ showLoginSheet(); return; }
   _showPbPayUI({id:partnerId, prenom:partnerName||'Partenaire', nom:''}, {id:serviceId, label:serviceLabel, price:price});
@@ -11682,6 +11702,7 @@ var _stripeElements = null;  // Stripe Elements instance
 var _stripePaymentEl = null; // Payment Element
 var _pbStripeIntentId = null;
 var _pbSelectedInstallments = 1; // Nombre de mensualités sélectionné dans pb-sheet
+var _pbExistingOrderId = null;   // Si set, l'ordre existe déjà (Projet GENESIS) — on saute la création
 
 function _pbGetClientTypeMax(){
   var _oid = (USER && (USER.activeOfferId||USER.offre||'')).toLowerCase();
@@ -11763,6 +11784,21 @@ function pbPayDeposit(){
     phone: USER.telephone||USER.phone||'',
     clientType: 'particulier'
   };
+  // Commande Projet GENESIS existante → aller directement au checkout
+  if(_pbExistingOrderId){
+    fetch((window.FA_GENESIS_API||API)+'/api/payments/sumup/create-checkout',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({orderId:_pbExistingOrderId, stage:'deposit'})
+    }).then(function(r){ return r.json().then(function(d){ return {ok:r.ok, data:d}; }); })
+    .then(function(res){
+      if(!res.ok||!res.data||!res.data.checkout_id) throw new Error((res.data&&res.data.error)||'Erreur création paiement');
+      _pbMountWidget(res.data.checkout_id, _pbExistingOrderId);
+    }).catch(function(err){
+      if(sb){sb.disabled=false;sb.textContent='Réessayer le paiement';}
+      if(er){er.textContent=err.message||'Erreur. Réessayez.';er.classList.add('on');}
+    });
+    return;
+  }
   var _pbUseReferral = (USER && (USER.welcomeDiscountEligible === true || (USER.referralDiscount && !USER.referralDiscount.applied))) ? true : false;
   var _pbWelcomePct = (USER && USER.referralDiscount && USER.referralDiscount.pct) ? USER.referralDiscount.pct : 15;
   var _pbDiscountLabel = _pbUseReferral ? ' · -' + _pbWelcomePct + '% bienvenue' : '';
@@ -11794,15 +11830,7 @@ function _pbPayDepositStripe(){
   var sb=document.getElementById('pb-pay-btn'); if(sb){sb.disabled=true;sb.textContent='Initialisation du paiement…';}
   var clientInfo={firstName:USER.prenom||'',lastName:USER.nom||'',email:USER.email||'',phone:USER.telephone||'',clientType:'particulier'};
 
-  // 1. Créer la commande
-  fetch((window.FA_GENESIS_API||API)+'/api/orders/create',{
-    method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+USER._token},
-    body:JSON.stringify({ clientInfo:clientInfo, partnerServiceOrder:{partnerId:_pbPartner.id,serviceId:_pbService.id, requestedInstallments:_pbSelectedInstallments||1} })
-  }).then(function(r){ return r.json().then(function(d){ return {ok:r.ok,data:d}; }); })
-  .then(function(res){
-    if(!res.ok||!res.data||!res.data.orderId) throw new Error((res.data&&res.data.error)||'Erreur création commande');
-    var orderId = res.data.orderId;
-    // 2. Créer le PaymentIntent Stripe
+  function _mountStripeIntent(orderId){
     return fetch((window.FA_GENESIS_API||API)+'/api/payments/stripe/create-intent',{
       method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+USER._token},
       body:JSON.stringify({
@@ -11813,7 +11841,21 @@ function _pbPayDepositStripe(){
         description: 'FA GENESIS — '+(_pbService.label||'Prestation')+' (acompte)'
       })
     }).then(function(r2){ return r2.json().then(function(d2){ return {ok:r2.ok,data:d2,orderId:orderId}; }); });
-  }).then(function(res2){
+  }
+
+  // Commande Projet GENESIS existante → sauter la création de commande
+  var _stripeFlow = _pbExistingOrderId
+    ? _mountStripeIntent(_pbExistingOrderId)
+    : fetch((window.FA_GENESIS_API||API)+'/api/orders/create',{
+        method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+USER._token},
+        body:JSON.stringify({ clientInfo:clientInfo, partnerServiceOrder:{partnerId:_pbPartner.id,serviceId:_pbService.id, requestedInstallments:_pbSelectedInstallments||1} })
+      }).then(function(r){ return r.json().then(function(d){ return {ok:r.ok,data:d}; }); })
+      .then(function(res){
+        if(!res.ok||!res.data||!res.data.orderId) throw new Error((res.data&&res.data.error)||'Erreur création commande');
+        return _mountStripeIntent(res.data.orderId);
+      });
+
+  _stripeFlow.then(function(res2){
     if(!res2.ok||!res2.data||!res2.data.clientSecret) throw new Error((res2.data&&res2.data.error)||'Erreur initialisation paiement Stripe');
     _pbStripeIntentId = res2.data.paymentIntentId;
     _pbMountStripeElements(res2.data.clientSecret);

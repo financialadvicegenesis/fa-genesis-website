@@ -2114,7 +2114,44 @@ function updateOrder(orderId, updates) {
 
     orders[index] = { ...orders[index], ...updates, updated_at: new Date().toISOString() };
     saveOrders(orders);
+    // Si la commande fait partie d'un Projet GENESIS, vérifier si toutes les prestations sont terminées
+    if (updates.status === 'completed' && orders[index].project_id) {
+        checkAndCompleteGenesisProject(orders[index].project_id, orders);
+    }
     return orders[index];
+}
+
+function checkAndCompleteGenesisProject(projectId, allOrders) {
+    try {
+        var projects = loadGenesisProjects();
+        var projIdx = projects.findIndex(function(p) { return p.id === projectId; });
+        if (projIdx === -1) return;
+        var proj = projects[projIdx];
+        var ordersToCheck = allOrders || loadOrders();
+        var subOrders = ordersToCheck.filter(function(o) { return o.project_id === projectId; });
+        if (!subOrders.length) return;
+        var allCompleted = subOrders.every(function(o) { return o.status === 'completed'; });
+        var completedCount = subOrders.filter(function(o) { return o.status === 'completed'; }).length;
+        var progressPct = Math.round((completedCount / subOrders.length) * 100);
+        var newStatus = allCompleted ? 'completed' : (completedCount > 0 ? 'in_progress' : 'pending_deposit');
+        projects[projIdx] = Object.assign({}, proj, {
+            status: newStatus,
+            progress_pct: progressPct,
+            updated_at: new Date().toISOString(),
+            completed_at: allCompleted ? new Date().toISOString() : (proj.completed_at || null)
+        });
+        // Mettre à jour les statuts de prestation
+        if (Array.isArray(projects[projIdx].prestations)) {
+            projects[projIdx].prestations = projects[projIdx].prestations.map(function(prest) {
+                var subOrd = subOrders.find(function(o) { return o.id === prest.order_id; });
+                return Object.assign({}, prest, { status: subOrd ? subOrd.status : prest.status });
+            });
+        }
+        saveGenesisProjects(projects);
+        if (allCompleted) {
+            console.log('[GENESIS-PROJECT] Projet ' + projectId + ' terminé — toutes les prestations livrées.');
+        }
+    } catch(e) { console.error('[GENESIS-PROJECT] Erreur checkAndComplete:', e.message); }
 }
 
 // ============================================================
@@ -4097,6 +4134,81 @@ app.get('/api/projects/:projectId', function(req, res) {
         }
         res.json({ ok: true, project: proj });
     } catch(e) {
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * GET /api/admin/genesis-projects
+ * Liste tous les Projets GENESIS (admin)
+ */
+app.get('/api/admin/genesis-projects', function(req, res) {
+    try {
+        var projects = loadGenesisProjects();
+        var allOrders = loadOrders();
+        var allDispatches = loadDispatches();
+        var users = loadUsers();
+
+        var enriched = projects.map(function(proj) {
+            var completedCount = 0;
+            var inProgressCount = 0;
+            var prestations = (proj.prestations || []).map(function(prest) {
+                var ord = allOrders.find(function(o) { return o.id === prest.order_id; });
+                var disp = allDispatches.find(function(d) { return d.order_id === prest.order_id; });
+                var ptnr = getPartnerById(prest.partner_id);
+                var prestStatus = 'pending_deposit';
+                if (ord) {
+                    prestStatus = ord.status;
+                    if (disp) {
+                        if (disp.status === 'completed' || ord.status === 'completed') {
+                            prestStatus = 'completed'; completedCount++;
+                        } else if (disp.status === 'accepted' || disp.status === 'in_progress') {
+                            prestStatus = 'in_progress'; inProgressCount++;
+                        }
+                    } else if (ord.status === 'completed') {
+                        prestStatus = 'completed'; completedCount++;
+                    }
+                }
+                return {
+                    order_id: prest.order_id,
+                    partner_id: prest.partner_id,
+                    partner_name: ptnr ? ((ptnr.prenom || '') + ' ' + (ptnr.nom || '')).trim() : (prest.partner_name || 'Prestataire'),
+                    service_label: prest.service_label,
+                    total_amount: prest.total_amount,
+                    deposit_amount: prest.deposit_amount || 0,
+                    deposit_paid: ord ? (ord.deposit_paid || false) : false,
+                    balance_paid: ord ? (ord.balance_paid || false) : false,
+                    status: prestStatus
+                };
+            });
+
+            var totalPrest = prestations.length;
+            var progressPct = totalPrest > 0 ? Math.round((completedCount / totalPrest) * 100) : 0;
+            var projStatus = completedCount === totalPrest && totalPrest > 0 ? 'completed' : (inProgressCount > 0 || completedCount > 0 ? 'in_progress' : 'pending_deposit');
+
+            var clientUser = users.find(function(u) { return u.email && u.email.toLowerCase() === (proj.client_email || '').toLowerCase(); });
+            var clientName = clientUser ? ((clientUser.prenom || '') + ' ' + (clientUser.nom || '')).trim() : (proj.client_name || proj.client_email || 'Client inconnu');
+
+            return {
+                id: proj.id,
+                title: proj.title,
+                client_email: proj.client_email,
+                client_name: clientName,
+                total_amount: proj.total_amount,
+                deposit_total: proj.deposit_total,
+                status: projStatus,
+                progress_pct: progressPct,
+                completed_count: completedCount,
+                total_count: totalPrest,
+                prestations: prestations,
+                created_at: proj.created_at,
+                completed_at: proj.completed_at || null
+            };
+        }).sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); });
+
+        res.json({ ok: true, projects: enriched });
+    } catch(e) {
+        console.error('[ADMIN_GENESIS_PROJECTS]', e.message);
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });

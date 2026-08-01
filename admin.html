@@ -960,19 +960,36 @@
 
             <!-- SECTION COMMANDES -->
             <div id="commandesSection" class="container mx-auto max-w-7xl" style="display: none;">
-                <h2 class="text-5xl font-black italic uppercase mb-12 text-[var(--genesis-yellow)]">
+                <h2 class="text-5xl font-black italic uppercase mb-8 text-[var(--genesis-yellow)]">
                     <i class="fas fa-receipt mr-4"></i>COMMANDES
                 </h2>
-                <div id="ordersLoader" style="display:none;padding:30px;background:#222;border:2px solid var(--genesis-yellow);margin-bottom:20px;">
-                    <div style="display:flex;align-items:center;gap:12px;">
-                        <i class="fas fa-spinner fa-spin" style="color:var(--genesis-yellow);font-size:24px;"></i>
-                        <div>
-                            <div style="font-weight:900;color:white;font-size:15px;" id="ordersLoaderMsg">Chargement des commandes...</div>
-                            <div style="font-size:12px;color:#aaa;margin-top:4px;" id="ordersLoaderSub"></div>
+                <!-- Onglets -->
+                <div style="display:flex;gap:0;border-bottom:4px solid black;margin-bottom:24px;">
+                    <button id="cmdTabOrders" onclick="switchCmdTab('orders')" style="padding:10px 24px;font-weight:900;font-size:13px;text-transform:uppercase;border:4px solid black;border-bottom:none;background:var(--genesis-yellow);color:black;cursor:pointer;margin-right:4px;">
+                        <i class="fas fa-receipt mr-2"></i>Commandes
+                    </button>
+                    <button id="cmdTabGenesis" onclick="switchCmdTab('genesis')" style="padding:10px 24px;font-weight:900;font-size:13px;text-transform:uppercase;border:4px solid black;border-bottom:none;background:#222;color:white;cursor:pointer;">
+                        <i class="fas fa-project-diagram mr-2"></i>Projets GENESIS
+                        <span id="genesisProjectsBadge" style="display:none;background:var(--genesis-yellow);color:black;font-size:11px;font-weight:900;padding:2px 7px;border-radius:20px;margin-left:6px;"></span>
+                    </button>
+                </div>
+                <!-- Panneau commandes classiques -->
+                <div id="cmdPanelOrders">
+                    <div id="ordersLoader" style="display:none;padding:30px;background:#222;border:2px solid var(--genesis-yellow);margin-bottom:20px;">
+                        <div style="display:flex;align-items:center;gap:12px;">
+                            <i class="fas fa-spinner fa-spin" style="color:var(--genesis-yellow);font-size:24px;"></i>
+                            <div>
+                                <div style="font-weight:900;color:white;font-size:15px;" id="ordersLoaderMsg">Chargement des commandes...</div>
+                                <div style="font-size:12px;color:#aaa;margin-top:4px;" id="ordersLoaderSub"></div>
+                            </div>
                         </div>
                     </div>
+                    <div id="ordersList"></div>
                 </div>
-                <div id="ordersList"></div>
+                <!-- Panneau Projets GENESIS -->
+                <div id="cmdPanelGenesis" style="display:none;">
+                    <div id="genesisProjectsList"></div>
+                </div>
             </div>
 
             <!-- SECTION CLIENTS -->
@@ -1841,7 +1858,7 @@
                 loadMessages();
             } else if (section === 'commandes') {
                 document.getElementById('commandesSection').style.display = 'block';
-                loadOrders();
+                switchCmdTab('orders');
             } else if (section === 'partenaires') {
                 document.getElementById('partenairesSection').style.display = 'block';
                 loadPartnersList();
@@ -3225,6 +3242,141 @@
         // ============================================================
 
         var _ORDERS_CACHE_KEY = 'fa_genesis_admin_orders_v1';
+        var _cmdActiveTab = 'orders';
+
+        function switchCmdTab(tab) {
+            _cmdActiveTab = tab;
+            var tabOrders = document.getElementById('cmdTabOrders');
+            var tabGenesis = document.getElementById('cmdTabGenesis');
+            var panelOrders = document.getElementById('cmdPanelOrders');
+            var panelGenesis = document.getElementById('cmdPanelGenesis');
+            if (!tabOrders || !tabGenesis || !panelOrders || !panelGenesis) return;
+            if (tab === 'orders') {
+                tabOrders.style.background = 'var(--genesis-yellow)'; tabOrders.style.color = 'black';
+                tabGenesis.style.background = '#222'; tabGenesis.style.color = 'white';
+                panelOrders.style.display = 'block'; panelGenesis.style.display = 'none';
+                loadOrders();
+            } else {
+                tabOrders.style.background = '#222'; tabOrders.style.color = 'white';
+                tabGenesis.style.background = 'var(--genesis-yellow)'; tabGenesis.style.color = 'black';
+                panelOrders.style.display = 'none'; panelGenesis.style.display = 'block';
+                loadAdminGenesisProjects();
+            }
+        }
+
+        async function loadOrders() {
+            var loaderEl = document.getElementById('ordersLoader');
+            var loaderMsg = document.getElementById('ordersLoaderMsg');
+            var listEl = document.getElementById('ordersList');
+            if (!listEl) return;
+
+            // Afficher le cache d'abord (UX rapide)
+            var cached = getCachedOrders();
+            if (cached && cached.orders) {
+                listEl.innerHTML = buildOrdersHtml(cached.orders);
+                if (loaderMsg) loaderMsg.textContent = 'Actualisation en cours...';
+            }
+            if (loaderEl) loaderEl.style.display = 'block';
+
+            try {
+                var resp = await fetch(API_BASE_URL + '/api/orders/all', {
+                    headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('fa_genesis_admin_token') || '') }
+                });
+                if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                var orders = await resp.json();
+                // Ne montrer que les commandes classiques (pas les sous-commandes de Projets GENESIS)
+                var standaloneOrders = orders.filter(function(o) { return !o.project_id; });
+                standaloneOrders.sort(function(a, b) { return new Date(b.created_at || 0) - new Date(a.created_at || 0); });
+                setCachedOrders(standaloneOrders);
+                listEl.innerHTML = buildOrdersHtml(standaloneOrders);
+                if (loaderEl) loaderEl.style.display = 'none';
+            } catch(e) {
+                console.error('[ADMIN] Erreur chargement commandes:', e);
+                if (!cached) listEl.innerHTML = '<div style="padding:20px;background:#ff6b6b20;border:2px solid #ff6b6b;color:white;font-weight:900;">Erreur de chargement — <button onclick="loadOrders()" style="border:2px solid black;padding:4px 10px;font-weight:900;cursor:pointer;background:var(--genesis-yellow);color:black;">Réessayer</button></div>';
+                if (loaderEl) loaderEl.style.display = 'none';
+            }
+        }
+
+        async function loadAdminGenesisProjects() {
+            var listEl = document.getElementById('genesisProjectsList');
+            var badgeEl = document.getElementById('genesisProjectsBadge');
+            if (!listEl) return;
+            listEl.innerHTML = '<div style="padding:20px;text-align:center;color:#aaa;"><i class="fas fa-spinner fa-spin mr-2"></i>Chargement des projets...</div>';
+            try {
+                var resp = await fetch(API_BASE_URL + '/api/admin/genesis-projects', {
+                    headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('fa_genesis_admin_token') || '') }
+                });
+                if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                var data = await resp.json();
+                var projects = data.projects || [];
+                if (badgeEl) { badgeEl.textContent = projects.length; badgeEl.style.display = projects.length ? 'inline-block' : 'none'; }
+                listEl.innerHTML = buildGenesisProjectsHtml(projects);
+            } catch(e) {
+                console.error('[ADMIN] Erreur chargement projets GENESIS:', e);
+                listEl.innerHTML = '<div style="padding:20px;background:#ff6b6b20;border:2px solid #ff6b6b;color:white;font-weight:900;">Erreur de chargement — <button onclick="loadAdminGenesisProjects()" style="border:2px solid black;padding:4px 10px;font-weight:900;cursor:pointer;background:var(--genesis-yellow);color:black;">Réessayer</button></div>';
+            }
+        }
+
+        function buildGenesisProjectsHtml(projects) {
+            if (!projects || projects.length === 0) {
+                return '<p class="text-center py-12 font-bold" style="color:#aaa;font-size:16px;"><i class="fas fa-project-diagram mr-2"></i>Aucun Projet GENESIS pour le moment</p>';
+            }
+            var projStatusColors = { pending_deposit: '#ff6b6b', in_progress: '#ffd43b', completed: '#51cf66', cancelled: '#999' };
+            var projStatusLabels = { pending_deposit: 'ACOMPTE EN ATTENTE', in_progress: 'EN COURS', completed: 'TERMINÉ', cancelled: 'ANNULÉ' };
+            var prestStatusColors = { pending_deposit: '#ff6b6b', active: '#51cf66', in_progress: '#ffd43b', completed: '#51cf66', delivered: '#4dabf7', cancelled: '#999' };
+            var prestStatusLabels = { pending_deposit: 'Acompte en attente', active: 'Actif', in_progress: 'En cours', completed: 'Terminé', delivered: 'Livré', cancelled: 'Annulé' };
+            var html = '';
+            projects.forEach(function(proj) {
+                var date = proj.created_at ? new Date(proj.created_at).toLocaleDateString('fr-FR') : '';
+                var statusColor = projStatusColors[proj.status] || '#999';
+                var statusLabel = projStatusLabels[proj.status] || proj.status;
+                var pct = proj.progress_pct || 0;
+                var prestHtml = '';
+                (proj.prestations || []).forEach(function(p) {
+                    var pColor = prestStatusColors[p.status] || '#999';
+                    var pLabel = prestStatusLabels[p.status] || p.status;
+                    var depositIcon = p.deposit_paid ? '<i class="fas fa-check" style="color:#51cf66;"></i>' : '<i class="fas fa-times" style="color:#ff6b6b;"></i>';
+                    var balanceIcon = p.balance_paid ? '<i class="fas fa-check" style="color:#51cf66;"></i>' : '<i class="fas fa-times" style="color:#ff6b6b;"></i>';
+                    prestHtml += '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:rgba(255,255,255,.04);border-left:3px solid ' + pColor + ';margin-bottom:6px;flex-wrap:wrap;gap:8px;">'
+                        + '<div><div style="font-weight:900;font-size:13px;">' + (p.service_label || 'Prestation') + '</div>'
+                        + '<div style="font-size:11px;color:#aaa;margin-top:2px;">' + (p.partner_name || '') + '</div></div>'
+                        + '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">'
+                        + '<span style="font-size:11px;font-weight:900;">' + (p.total_amount || 0) + '€</span>'
+                        + '<span style="font-size:10px;">Acompte ' + depositIcon + ' Solde ' + balanceIcon + '</span>'
+                        + '<span style="background:' + pColor + ';color:black;font-size:10px;font-weight:900;padding:2px 8px;border:1px solid black;">' + pLabel + '</span>'
+                        + '<span style="font-size:10px;color:#666;">' + (p.order_id || '') + '</span>'
+                        + '</div></div>';
+                });
+                html += '<div class="admin-card neo-shadow mb-6">'
+                    + '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:12px;">'
+                        + '<div>'
+                            + '<div style="font-size:11px;font-weight:900;color:#aaa;margin-bottom:2px;">' + (proj.id || '') + ' · ' + date + '</div>'
+                            + '<div style="font-size:18px;font-weight:900;">' + (proj.title || 'Projet GENESIS') + '</div>'
+                            + '<div style="font-size:13px;font-weight:700;color:#aaa;margin-top:2px;"><i class="fas fa-user mr-1"></i>' + (proj.client_name || '') + ' — ' + (proj.client_email || '') + '</div>'
+                        + '</div>'
+                        + '<div style="text-align:right;">'
+                            + '<div style="background:' + statusColor + ';color:black;padding:4px 12px;border:2px solid black;font-size:11px;font-weight:900;display:inline-block;margin-bottom:6px;">' + statusLabel + '</div>'
+                            + '<div style="font-size:20px;font-weight:900;color:var(--genesis-yellow);">' + (proj.total_amount || 0) + '€</div>'
+                            + '<div style="font-size:11px;color:#aaa;">Acompte: ' + (proj.deposit_total || 0) + '€</div>'
+                        + '</div>'
+                    + '</div>'
+                    + '<div style="margin-bottom:12px;">'
+                        + '<div style="display:flex;justify-content:space-between;margin-bottom:4px;">'
+                            + '<span style="font-size:12px;font-weight:900;color:#aaa;text-transform:uppercase;">Avancement</span>'
+                            + '<span style="font-size:12px;font-weight:900;">' + proj.completed_count + '/' + proj.total_count + ' prestations</span>'
+                        + '</div>'
+                        + '<div style="height:8px;background:#333;border:1px solid #555;border-radius:4px;overflow:hidden;">'
+                            + '<div style="height:100%;width:' + pct + '%;background:' + (pct === 100 ? '#51cf66' : 'var(--genesis-yellow)') + ';transition:width .3s;"></div>'
+                        + '</div>'
+                    + '</div>'
+                    + '<div style="border-top:2px solid rgba(255,255,255,.08);padding-top:12px;">'
+                        + '<div style="font-size:11px;font-weight:900;color:#aaa;text-transform:uppercase;margin-bottom:8px;"><i class="fas fa-list-check mr-1"></i>Prestations (' + (proj.prestations || []).length + ')</div>'
+                        + prestHtml
+                    + '</div>'
+                + '</div>';
+            });
+            return html;
+        }
 
         function getCachedOrders() {
             try { return JSON.parse(localStorage.getItem(_ORDERS_CACHE_KEY) || 'null'); } catch(e) { return null; }
