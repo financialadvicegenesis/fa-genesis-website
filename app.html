@@ -13878,6 +13878,13 @@ function _ptnrLoadReputation(){
         + '</div>';
     }
 
+    // ── Barre de progression badge ──
+    if(data.badgeProgress && badge !== 'elite' && badge !== 'fondateur') {
+      html += '<div style="background:#111;border-radius:14px;padding:14px 16px;margin-bottom:16px;">'
+        + partnerBadgeProgressHtml(data.badgeProgress)
+        + '</div>';
+    }
+
     // ── Badges & avantages (locked/unlocked) ──
     var _ptnrBadgeOrder = [null, 'bronze', 'argent', 'or', 'elite'];
     var _ptnrCurOrder = _ptnrBadgeOrder.indexOf(badge);
