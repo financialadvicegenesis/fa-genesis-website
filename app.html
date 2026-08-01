@@ -2507,6 +2507,11 @@ a{text-decoration:none;color:inherit}
       <div id="profilContent"></div>
     </div>
 
+    <!-- MES CONTRATS -->
+    <div class="tab" id="tab-mes-contrats">
+      <div id="mesContratsContent"></div>
+    </div>
+
     <!-- PARTENAIRE -->
     <div class="tab" id="tab-partner">
       <!-- Login screen (shown when not authenticated as partner) -->
@@ -3051,7 +3056,7 @@ function exitGuestMode(){ window.location.reload(); }
 var _tabLoaded = {};
 function _loadTab(tab){
   // Onglets sans données dynamiques ou déjà gérés par nav()
-  var always = { reservations:1, messages:1 }; // toujours rafraîchis
+  var always = { reservations:1, messages:1, 'mes-contrats':1 }; // toujours rafraîchis
   if(_tabLoaded[tab] && !always[tab]) return;
   _tabLoaded[tab] = true;
   if(tab === 'prestations') renderPrestations('all');
@@ -3060,6 +3065,7 @@ function _loadTab(tab){
   else if(tab === 'reservations') renderResaTab();
   else if(tab === 'messages') renderMsgTab();
   else if(tab === 'profil') renderProfil();
+  else if(tab === 'mes-contrats') renderMesContrats();
 }
 
 // ── APP INIT ─────────────────────────────────────────────────
@@ -6151,6 +6157,7 @@ function renderProfil(){
       +pli('<i class="fa-solid fa-credit-card"></i>','#0a1a0a','Mes paiements',null,'showPaiements()')
       +pli('<i class="fa-solid fa-shield-halved"></i>','#1a1200','Portefeuille GENESIS SAFE™',null,'showClientWallet()')
       +pli('<i class="fa-solid fa-calendar-check"></i>','#0a0a1a','Mes réservations',null,'nav(\'reservations\')')
+      +pli('<i class="fa-solid fa-file-contract"></i>','#0a1a12','Mes contrats',null,'nav(\'mes-contrats\')')
       +pli('<i class="fa-solid fa-route"></i>','#0a1200','Suivi des prestations',null,'showSuiviPrestations()')
       +pli('<i class="fa-solid fa-file-invoice"></i>','#0a0a14','Mes devis',null,'showMesDevis()')
       +pli('<i class="fa-solid fa-box-open"></i>','#100a1a','Mes livrables',null,'showLivrables()')
@@ -15813,6 +15820,230 @@ function _tutoDone(){
     try{ if(typeof _tabLoaded !== 'undefined') _tabLoaded['profil'] = false; }catch(e){}
     if(typeof nav === 'function') nav('home');
   }
+}
+</script>
+
+<!-- ══════════════════════════════════════════════════════
+     MES CONTRATS — rendu + modal signature client
+══════════════════════════════════════════════════════ -->
+<script>
+var _clientContracts = [];
+var _cvClientCurrentId = null;
+var _cvClientCanvas = null, _cvClientCtx = null, _cvClientDrawing = false, _cvClientHasSignature = false;
+
+async function renderMesContrats() {
+    var c = document.getElementById('mesContratsContent');
+    if (!c) return;
+    if (!USER || GUEST) {
+        c.innerHTML = '<div style="padding:32px;text-align:center;color:#888;font-size:14px;font-family:sans-serif;"><i class="fas fa-lock" style="font-size:28px;margin-bottom:10px;display:block;"></i>Connectez-vous pour voir vos contrats.</div>';
+        return;
+    }
+    c.innerHTML = '<div style="padding:32px;text-align:center;"><i class="fas fa-spinner fa-spin" style="font-size:24px;color:#FFD700;"></i></div>';
+    try {
+        var resp = await fetch((window.FA_GENESIS_API || API) + '/api/client/contracts', {
+            headers: { 'Authorization': 'Bearer ' + (USER._token || '') }
+        });
+        var contracts = await resp.json();
+        _clientContracts = Array.isArray(contracts) ? contracts : [];
+        _renderClientContractsList(c);
+    } catch(e) {
+        c.innerHTML = '<div style="padding:24px;color:#e44;font-size:13px;font-family:sans-serif;"><i class="fas fa-exclamation-triangle mr-1"></i>Erreur de chargement des contrats.</div>';
+    }
+}
+
+function _renderClientContractsList(c) {
+    var pending = _clientContracts.filter(function(ct) { return ct.status === 'pending_client_signature'; });
+    var signed  = _clientContracts.filter(function(ct) { return ct.status === 'signed'; });
+    var refused = _clientContracts.filter(function(ct) { return ct.status === 'refused'; });
+
+    var html = '<div class="espace-back-bar"><button class="espace-back-btn" onclick="navBack()">&#8249;</button><div class="espace-title">Mes contrats</div></div>';
+
+    if (_clientContracts.length === 0) {
+        html += '<div style="padding:48px;text-align:center;color:#888;font-size:13px;font-family:sans-serif;">' +
+            '<i class="fas fa-file-contract" style="font-size:36px;margin-bottom:12px;display:block;opacity:.4;"></i>' +
+            'Aucun contrat pour le moment.</div>';
+        c.innerHTML = html;
+        return;
+    }
+
+    function contractCard(ct) {
+        var statusBg = ct.status === 'signed' ? '#dcfce7' : ct.status === 'refused' ? '#fef2f2' : '#fef9c3';
+        var statusColor = ct.status === 'signed' ? '#166534' : ct.status === 'refused' ? '#dc2626' : '#854d0e';
+        var statusLbl = ct.status === 'signed' ? '<i class="fas fa-check-circle mr-1"></i>Signé' : ct.status === 'refused' ? '<i class="fas fa-times-circle mr-1"></i>Refusé' : '<i class="fas fa-clock mr-1"></i>En attente de signature';
+        var actions = '';
+        if (ct.status === 'pending_client_signature') {
+            actions += '<button onclick="openClientContractSigner(\'' + ct.id + '\')" style="background:#FFD700;border:2px solid #000;font-weight:900;font-size:11px;padding:7px 14px;cursor:pointer;text-transform:uppercase;font-family:sans-serif;margin-right:6px;">' +
+                '<i class="fas fa-signature mr-1"></i>Signer</button>';
+            actions += '<button onclick="_clientRefuseContract(\'' + ct.id + '\')" style="background:#fff;border:2px solid #dc2626;color:#dc2626;font-weight:900;font-size:11px;padding:7px 14px;cursor:pointer;text-transform:uppercase;font-family:sans-serif;">' +
+                '<i class="fas fa-times mr-1"></i>Refuser</button>';
+        } else if (ct.status === 'signed') {
+            actions += '<button onclick="_downloadClientContractPdf(\'' + ct.id + '\')" style="background:#fff;border:2px solid #000;font-weight:900;font-size:11px;padding:7px 14px;cursor:pointer;text-transform:uppercase;font-family:sans-serif;">' +
+                '<i class="fas fa-download mr-1"></i>PDF</button>';
+        }
+        return '<div style="background:#fff;border:2px solid #e0e0e0;margin-bottom:12px;padding:16px;">' +
+            '<div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:8px;">' +
+                '<div>' +
+                    '<div style="font-weight:900;font-size:14px;font-family:sans-serif;">' + (ct.service_name || '—') + '</div>' +
+                    '<div style="font-size:12px;color:#666;margin-top:3px;">Prestataire : <strong>' + (ct.partner_name || ct.partner_email || '—') + '</strong></div>' +
+                    '<div style="font-size:12px;color:#666;">Commande : ' + (ct.order_id || '—') + ' · ' + parseFloat(ct.service_price || 0).toFixed(2) + ' €</div>' +
+                    '<div style="font-size:11px;color:#999;margin-top:2px;">' + new Date(ct.created_at).toLocaleDateString('fr-FR', { day:'2-digit', month:'long', year:'numeric' }) + '</div>' +
+                '</div>' +
+                '<span style="font-size:11px;font-weight:900;padding:4px 10px;background:' + statusBg + ';color:' + statusColor + ';border:1px solid ' + statusColor + ';white-space:nowrap;">' + statusLbl + '</span>' +
+            '</div>' +
+            (actions ? '<div style="margin-top:12px;">' + actions + '</div>' : '') +
+        '</div>';
+    }
+
+    if (pending.length > 0) {
+        html += '<div style="padding:4px 0 8px;font-weight:900;font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:#854d0e;font-family:sans-serif;"><i class="fas fa-clock mr-1"></i>À signer (' + pending.length + ')</div>';
+        html += pending.map(contractCard).join('');
+    }
+    if (signed.length > 0) {
+        html += '<div style="padding:12px 0 8px;font-weight:900;font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:#166534;font-family:sans-serif;"><i class="fas fa-check-circle mr-1"></i>Signés (' + signed.length + ')</div>';
+        html += signed.map(contractCard).join('');
+    }
+    if (refused.length > 0) {
+        html += '<div style="padding:12px 0 8px;font-weight:900;font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:#dc2626;font-family:sans-serif;"><i class="fas fa-times-circle mr-1"></i>Refusés (' + refused.length + ')</div>';
+        html += refused.map(contractCard).join('');
+    }
+    c.innerHTML = html;
+}
+
+// ── Modal signature client ────────────────────────────────────────────────────
+async function openClientContractSigner(contractId) {
+    _cvClientCurrentId = contractId;
+    // Créer overlay dynamiquement
+    var ov = document.getElementById('clientContractSignerOverlay');
+    if (!ov) {
+        ov = document.createElement('div');
+        ov.id = 'clientContractSignerOverlay';
+        ov.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;overflow-y:auto;padding:20px;';
+        ov.innerHTML = '<div style="max-width:860px;margin:0 auto;background:#fff;border:3px solid #FFD700;">' +
+            '<div style="background:#1a1a1a;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;">' +
+                '<div style="color:#FFD700;font-family:\'Unbounded\',cursive;font-size:12px;font-weight:900;"><i class="fas fa-file-contract mr-2"></i>CONTRAT DE PRESTATION</div>' +
+                '<button onclick="closeClientContractSigner()" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer;"><i class="fas fa-times"></i></button>' +
+            '</div>' +
+            '<div id="ccsContractBody" style="padding:24px;max-height:50vh;overflow-y:auto;font-family:Georgia,serif;font-size:13px;line-height:1.7;"></div>' +
+            '<div style="padding:20px 24px;background:#f9f9f9;border-top:2px solid #eee;">' +
+                '<div style="margin-bottom:14px;">' +
+                    '<label style="font-size:12px;font-weight:900;text-transform:uppercase;display:block;margin-bottom:6px;font-family:sans-serif;"><i class="fas fa-pen-fancy mr-1" style="color:#FFD700;"></i>Signature manuscrite</label>' +
+                    '<div style="position:relative;background:#fff;border:2px solid #1a1a1a;">' +
+                        '<canvas id="ccsCanvas" width="780" height="100" style="width:100%;height:100px;cursor:crosshair;display:block;touch-action:none;"></canvas>' +
+                        '<button onclick="_ccsClearCanvas()" style="position:absolute;top:6px;right:6px;background:#f0f0f0;border:1px solid #ccc;font-size:10px;font-weight:900;padding:3px 8px;cursor:pointer;font-family:sans-serif;"><i class="fas fa-eraser mr-1"></i>Effacer</button>' +
+                    '</div>' +
+                '</div>' +
+                '<div style="margin-bottom:14px;"><label style="font-size:12px;font-weight:900;text-transform:uppercase;display:block;margin-bottom:6px;font-family:sans-serif;"><i class="fas fa-keyboard mr-1" style="color:#FFD700;"></i>Nom complet</label><input id="ccsName" type="text" placeholder="Prénom Nom" style="width:100%;padding:10px;border:2px solid #1a1a1a;font-family:sans-serif;font-size:14px;box-sizing:border-box;"></div>' +
+                '<div style="margin-bottom:16px;"><label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-family:sans-serif;font-size:12px;line-height:1.5;"><input type="checkbox" id="ccsAccept" style="margin-top:2px;flex-shrink:0;"><span>J\'ai lu le contrat et j\'accepte ses conditions. Je reconnais que ma signature électronique a valeur d\'engagement contractuel.</span></label></div>' +
+                '<div id="ccsError" style="display:none;background:#fef2f2;border:1px solid #fca5a5;color:#dc2626;padding:8px 12px;font-size:12px;margin-bottom:12px;font-family:sans-serif;border-radius:2px;"></div>' +
+                '<button onclick="_submitClientContractSign()" id="ccsSignBtn" style="width:100%;padding:14px;background:#FFD700;color:#000;border:3px solid #000;font-weight:900;font-size:14px;text-transform:uppercase;cursor:pointer;font-family:sans-serif;letter-spacing:1px;"><i class="fas fa-signature mr-2"></i>SIGNER LE CONTRAT</button>' +
+            '</div>' +
+        '</div>';
+        document.body.appendChild(ov);
+    }
+    ov.style.display = 'block';
+    document.body.style.overflow = 'hidden';
+
+    var body = document.getElementById('ccsContractBody');
+    if (body) body.innerHTML = '<div style="text-align:center;padding:24px;"><i class="fas fa-spinner fa-spin" style="font-size:24px;color:#FFD700;"></i></div>';
+
+    setTimeout(_initCcsCanvas, 100);
+
+    try {
+        var contract = _clientContracts.find(function(ct) { return ct.id === contractId; });
+        if (!contract) return;
+        var resp = await fetch((window.FA_GENESIS_API || API) + '/api/contracts/service/preview/' + (contract.order_id || contractId), {
+            headers: { 'Authorization': 'Bearer ' + (USER._token || '') }
+        });
+        var data = await resp.json();
+        if (body) body.innerHTML = data.html || '<p style="font-family:sans-serif;color:#e44;">Impossible de charger le contrat.</p>';
+        // Pré-remplir le nom
+        var nameEl = document.getElementById('ccsName');
+        if (nameEl && USER) nameEl.value = ((USER.prenom || USER.firstName || '') + ' ' + (USER.nom || USER.lastName || '')).trim();
+    } catch(e) {
+        if (body) body.innerHTML = '<p style="padding:16px;font-family:sans-serif;color:#e44;">Erreur de chargement.</p>';
+    }
+}
+
+function closeClientContractSigner() {
+    var ov = document.getElementById('clientContractSignerOverlay');
+    if (ov) ov.style.display = 'none';
+    document.body.style.overflow = '';
+}
+
+function _initCcsCanvas() {
+    _cvClientCanvas = document.getElementById('ccsCanvas');
+    if (!_cvClientCanvas) return;
+    _cvClientCtx = _cvClientCanvas.getContext('2d');
+    _cvClientCtx.strokeStyle = '#1a1a1a'; _cvClientCtx.lineWidth = 2; _cvClientCtx.lineCap = 'round'; _cvClientCtx.lineJoin = 'round';
+    function pos(e) { var r = _cvClientCanvas.getBoundingClientRect(), sx = _cvClientCanvas.width / r.width, sy = _cvClientCanvas.height / r.height, s = e.touches ? e.touches[0] : e; return { x: (s.clientX - r.left) * sx, y: (s.clientY - r.top) * sy }; }
+    _cvClientCanvas.addEventListener('mousedown', function(e) { _cvClientDrawing=true; var p=pos(e); _cvClientCtx.beginPath(); _cvClientCtx.moveTo(p.x,p.y); });
+    _cvClientCanvas.addEventListener('mousemove', function(e) { if(!_cvClientDrawing) return; var p=pos(e); _cvClientCtx.lineTo(p.x,p.y); _cvClientCtx.stroke(); _cvClientHasSignature=true; });
+    _cvClientCanvas.addEventListener('mouseup', function(){_cvClientDrawing=false;});
+    _cvClientCanvas.addEventListener('mouseleave', function(){_cvClientDrawing=false;});
+    _cvClientCanvas.addEventListener('touchstart', function(e){e.preventDefault();_cvClientDrawing=true;var p=pos(e);_cvClientCtx.beginPath();_cvClientCtx.moveTo(p.x,p.y);},{passive:false});
+    _cvClientCanvas.addEventListener('touchmove', function(e){e.preventDefault();if(!_cvClientDrawing) return;var p=pos(e);_cvClientCtx.lineTo(p.x,p.y);_cvClientCtx.stroke();_cvClientHasSignature=true;},{passive:false});
+    _cvClientCanvas.addEventListener('touchend', function(){_cvClientDrawing=false;});
+}
+
+function _ccsClearCanvas() {
+    if (_cvClientCtx && _cvClientCanvas) { _cvClientCtx.clearRect(0,0,_cvClientCanvas.width,_cvClientCanvas.height); _cvClientHasSignature=false; }
+}
+
+async function _submitClientContractSign() {
+    var name = (document.getElementById('ccsName') || {}).value || '';
+    var accepted = (document.getElementById('ccsAccept') || {}).checked || false;
+    var errEl = document.getElementById('ccsError');
+    var btn = document.getElementById('ccsSignBtn');
+    var sig = (_cvClientCanvas && _cvClientHasSignature) ? _cvClientCanvas.toDataURL('image/png') : null;
+    name = name.trim();
+    if (!accepted) { if(errEl){errEl.style.display='block';errEl.textContent='Veuillez cocher la case d\'acceptation.';} return; }
+    if (name.length < 2) { if(errEl){errEl.style.display='block';errEl.textContent='Merci de saisir votre nom complet.';} return; }
+    if (!sig) { if(errEl){errEl.style.display='block';errEl.textContent='Veuillez apposer votre signature dans le cadre prévu.';} return; }
+    if (errEl) errEl.style.display = 'none';
+    if (btn) { btn.disabled=true; btn.textContent='Signature en cours…'; }
+    try {
+        var r = await fetch((window.FA_GENESIS_API || API) + '/api/contracts/' + _cvClientCurrentId + '/client-sign', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (USER._token || '') },
+            body: JSON.stringify({ signatureName: name, accepted: true, signatureData: sig })
+        });
+        var d = await r.json();
+        if (r.ok && d.success) {
+            closeClientContractSigner();
+            renderMesContrats();
+            // Toast
+            var t=document.createElement('div'); t.textContent='Contrat signé avec succès !'; t.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1a1a;color:#FFD700;padding:12px 24px;font-weight:900;font-size:13px;font-family:sans-serif;z-index:99999;border:2px solid #FFD700;'; document.body.appendChild(t); setTimeout(function(){if(t.parentNode)t.parentNode.removeChild(t);},3500);
+        } else {
+            if(errEl){errEl.style.display='block';errEl.textContent=d.error||'Erreur lors de la signature.';}
+        }
+    } catch(e) {
+        if(errEl){errEl.style.display='block';errEl.textContent='Erreur de connexion au serveur.';}
+    } finally {
+        if(btn){btn.disabled=false;btn.innerHTML='<i class="fas fa-signature mr-2"></i>SIGNER LE CONTRAT';}
+    }
+}
+
+async function _clientRefuseContract(contractId) {
+    if (!confirm('Êtes-vous sûr de vouloir refuser ce contrat ? Le prestataire sera informé.')) return;
+    var reason = prompt('Motif du refus (optionnel) :') || '';
+    try {
+        var r = await fetch((window.FA_GENESIS_API || API) + '/api/contracts/' + contractId + '/client-refuse', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (USER._token || '') },
+            body: JSON.stringify({ reason: reason })
+        });
+        var d = await r.json();
+        if (r.ok && d.success) { renderMesContrats(); }
+        else { alert(d.error || 'Erreur lors du refus.'); }
+    } catch(e) { alert('Erreur de connexion.'); }
+}
+
+function _downloadClientContractPdf(contractId) {
+    var link = document.createElement('a');
+    link.href = (window.FA_GENESIS_API || API) + '/api/contracts/' + contractId + '/pdf';
+    link.download = 'contrat-' + contractId + '.pdf';
+    link.target = '_blank';
+    document.body.appendChild(link); link.click(); document.body.removeChild(link);
 }
 </script>
 </body>

@@ -19,6 +19,7 @@ const crypto = require('crypto');
 const PDFDocument = require('pdfkit');
 
 const { getProductById, calculatePaymentAmounts, getAmountForStage, generateInstallments, generateGenesisSplit, generateUserInstallmentPlan, validateInstallments, CLIENT_TYPE_MAX_INSTALLMENTS } = require('./products');
+const contractService = require('./contracts');
 const emailService = require('./email-service');
 const { OFFER_BLUEPRINTS, getOfferBlueprint, getAllOfferKeys } = require('./config/offerBlueprints');
 const { fillTemplate, getAvailableTemplates, getTemplate } = require('./config/documentTemplates');
@@ -2134,6 +2135,57 @@ function updateOrder(orderId, updates) {
     // Si la commande fait partie d'un Projet GENESIS, vérifier si toutes les prestations sont terminées
     if (updates.status === 'completed' && orders[index].project_id) {
         checkAndCompleteGenesisProject(orders[index].project_id, orders);
+    }
+    // Générer automatiquement le contrat de prestation si require_contract=true et acompte payé
+    if (updates.deposit_paid === true && orders[index].require_contract === true) {
+        var _existingCtr = contractService.loadContracts().find(function(c) { return c.order_id === orders[index].id && c.type === 'service'; });
+        if (!_existingCtr) {
+            setTimeout(function() {
+                try {
+                    var _order = orders[index];
+                    var _partner = getPartnerById(_order.partner_id);
+                    var _users = loadUsers();
+                    var _clientEmail = _order.client_info && _order.client_info.email;
+                    var _clientUser = _users.find(function(u) { return u.email === _clientEmail; });
+                    var _clientName = _clientUser
+                        ? ((_clientUser.prenom || _clientUser.firstName || '') + ' ' + (_clientUser.nom || _clientUser.lastName || '')).trim()
+                        : ((_order.client_info && _order.client_info.first_name || '') + ' ' + (_order.client_info && _order.client_info.last_name || '')).trim();
+                    var _now = new Date().toISOString();
+                    var _cId = 'CTR-SVC-' + uuidv4().split('-')[0].toUpperCase();
+                    var _newCtr = {
+                        id: _cId, type: 'service', status: 'pending_client_signature',
+                        order_id: _order.id, service_name: _order.product_name || '',
+                        service_price: parseFloat(_order.total_amount || 0),
+                        client_type: (_order.client_info && _order.client_info.client_type) || 'particulier',
+                        partner_id: _partner ? _partner.id : null,
+                        partner_email: _partner ? _partner.email : '',
+                        partner_name: _partner ? ((_partner.prenom || '') + ' ' + (_partner.nom || '')).trim() : '',
+                        partner_type: _partner ? _partner.partner_type : null,
+                        client_email: _clientEmail || '', client_name: _clientName,
+                        custom_conditions: _order.service_custom_conditions || '',
+                        signed_at: null, signed_ip: null, signature_name: null, signature_data: null,
+                        refused_at: null,
+                        events: [{ type: 'generated', at: _now, detail: 'Contrat généré automatiquement après paiement acompte' }],
+                        contract_version: contractService.CONTRACT_VERSION,
+                        created_at: _now, updated_at: _now
+                    };
+                    var _contracts = contractService.loadContracts();
+                    _contracts.push(_newCtr);
+                    contractService.saveContracts(_contracts);
+                    if (_clientEmail) {
+                        notifyUser(_clientEmail, 'client', 'contract_ready', 'Contrat prêt à signer',
+                            'Votre contrat de prestation avec ' + _newCtr.partner_name + ' est disponible. Signez-le pour démarrer la mission.',
+                            '/app.html#mes-contrats');
+                    }
+                    if (_partner) {
+                        notifyUser(_partner.email, 'partner', 'contract_sent', 'Contrat envoyé au client',
+                            'Le contrat pour la commande ' + _order.id + ' a été envoyé à ' + (_clientName || _clientEmail) + '.',
+                            '/partner-dashboard.html#documents');
+                    }
+                    console.log('[CONTRACT] Contrat prestation auto-généré:', _cId);
+                } catch(_e) { console.error('[CONTRACT] Erreur auto-génération:', _e); }
+            }, 500);
+        }
     }
     return orders[index];
 }
@@ -14081,30 +14133,79 @@ app.post('/api/partner/profile/set-rib', authenticatePartner, function(req, res)
 });
 
 // Taux de commission FA GENESIS sur les prestations partenaires (cf. PARTNER_TARIF_IDS / calculateRevenueShares)
-var PARTNER_CONTRACT_VERSION = 'v1-2026';
-var PARTNER_COMMISSION_RATE = 15;
+var PARTNER_CONTRACT_VERSION = contractService.CONTRACT_VERSION;
+// Taux standard lu dynamiquement depuis GENESIS_TIER_BENEFITS (bronze = taux de base)
+var PARTNER_COMMISSION_RATE = (GENESIS_TIER_BENEFITS['bronze'] || GENESIS_TIER_BENEFITS['null'] || { commissionPct: 25 }).commissionPct;
 
-// POST /api/partner/contract/sign — signature électronique du contrat de partenariat (commission FA GENESIS)
+// POST /api/partner/contract/sign — signature électronique du contrat de partenariat (version enrichie)
 app.post('/api/partner/contract/sign', authenticatePartner, function(req, res) {
     try {
         var signatureName = (req.body.signatureName || '').trim();
         var accepted = req.body.accepted === true;
+        var signatureData = req.body.signatureData || null; // base64 canvas
         if (!accepted) return res.status(400).json({ error: 'Vous devez accepter les conditions pour continuer.' });
         if (!signatureName || signatureName.length < 2) return res.status(400).json({ error: 'Merci de saisir votre nom complet pour signer.' });
+
         var partners = loadPartners();
         var idx = partners.findIndex(function(p) { return p.id === req.partner.id; });
         if (idx === -1) return res.status(404).json({ error: 'Partenaire introuvable' });
+        var partner = partners[idx];
         var signIp = req.ip || (req.connection && req.connection.remoteAddress) || 'unknown';
+        var now = new Date().toISOString();
+
+        // Construire le barème de badges pour archivage snapshot
+        var badgeTableSnapshot = Object.keys(GENESIS_TIER_BENEFITS)
+            .filter(function(k) { return k !== 'null'; })
+            .map(function(k) {
+                var b = GENESIS_TIER_BENEFITS[k];
+                return { badge: k.charAt(0).toUpperCase() + k.slice(1), commissionPct: b.commissionPct };
+            });
+
+        // Créer l'enregistrement dans contracts.json
+        var contracts = contractService.loadContracts();
+        var existing = contracts.find(function(c) { return c.type === 'partnership' && c.partner_id === partner.id && c.status === 'signed'; });
+        var contractId = existing ? existing.id : ('CTR-PRTN-' + uuidv4().split('-')[0].toUpperCase());
+        var contractRecord = {
+            id: contractId,
+            type: 'partnership',
+            status: 'signed',
+            partner_id: partner.id,
+            partner_email: partner.email,
+            partner_name: ((partner.prenom || '') + ' ' + (partner.nom || '')).trim(),
+            partner_type: partner.partner_type || null,
+            partner_company: partner.company || null,
+            partner_country: partner.country || 'France',
+            signed_at: now,
+            signed_ip: signIp,
+            signature_name: signatureName,
+            signature_data: signatureData,
+            badge_table: badgeTableSnapshot,
+            commission_rate: PARTNER_COMMISSION_RATE,
+            contract_version: PARTNER_CONTRACT_VERSION,
+            events: [{ type: 'signed', at: now, ip: signIp, detail: 'Signature partenaire' }],
+            created_at: now,
+            updated_at: now
+        };
+        if (existing) {
+            contracts[contracts.indexOf(existing)] = contractRecord;
+        } else {
+            contracts.push(contractRecord);
+        }
+        contractService.saveContracts(contracts);
+
+        // Mettre à jour le partenaire
         partners[idx].contract_signed = true;
-        partners[idx].contract_signed_at = new Date().toISOString();
+        partners[idx].contract_signed_at = now;
         partners[idx].contract_signature_name = signatureName;
         partners[idx].contract_version = PARTNER_CONTRACT_VERSION;
         partners[idx].contract_commission_rate = PARTNER_COMMISSION_RATE;
         partners[idx].contract_signature_ip = signIp;
-        partners[idx].updatedAt = new Date().toISOString();
+        partners[idx].contract_id = contractId;
+        partners[idx].updatedAt = now;
         savePartners(partners);
-        console.log('[CONTRACT] Signature electronique:', req.partner.email, '(' + PARTNER_CONTRACT_VERSION + ')');
-        res.json({ success: true, contract_signed: true, contract_signed_at: partners[idx].contract_signed_at, contract_version: PARTNER_CONTRACT_VERSION });
+
+        console.log('[CONTRACT] Signature electronique partenariat:', partner.email, '(' + contractId + ')');
+        res.json({ success: true, contract_signed: true, contract_signed_at: now, contract_version: PARTNER_CONTRACT_VERSION, contract_id: contractId });
     } catch(e) {
         console.error('[CONTRACT] Erreur signature:', e);
         res.status(500).json({ error: 'Erreur serveur' });
@@ -14984,6 +15085,320 @@ app.get('/api/admin/partner-uploads', (req, res) => {
     } catch (error) {
         console.error('[ADMIN] Erreur partner-uploads:', error);
         res.status(500).json({ error: 'Erreur chargement uploads' });
+    }
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// SYSTÈME DE CONTRATS NUMÉRIQUES GENESIS
+// ═══════════════════════════════════════════════════════════════════════
+
+// Barème pour injection dans les contrats
+function _contractBadgeTable() {
+    return Object.keys(GENESIS_TIER_BENEFITS)
+        .filter(function(k) { return k !== 'null'; })
+        .map(function(k) {
+            var b = GENESIS_TIER_BENEFITS[k];
+            return { badge: k.charAt(0).toUpperCase() + k.slice(1), commissionPct: b.commissionPct };
+        });
+}
+
+// GET /api/partner/contract/partnership — contenu HTML du contrat de partenariat (non signé)
+app.get('/api/partner/contract/partnership', authenticatePartner, function(req, res) {
+    try {
+        var partner = req.partner;
+        var html = contractService.generatePartnershipContractHtml(partner, _contractBadgeTable());
+        res.json({ html: html, already_signed: partner.contract_signed === true, contract_version: contractService.CONTRACT_VERSION });
+    } catch(e) {
+        console.error('[CONTRACT] Erreur génération contrat partenariat:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// GET /api/partner/contracts — liste des contrats du partenaire connecté
+app.get('/api/partner/contracts', authenticatePartner, function(req, res) {
+    try {
+        var contracts = contractService.loadContracts().filter(function(c) { return c.partner_id === req.partner.id; });
+        contracts.sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); });
+        res.json(contracts);
+    } catch(e) {
+        console.error('[CONTRACT] Erreur liste contrats partenaire:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// GET /api/client/contracts — liste des contrats du client connecté
+app.get('/api/client/contracts', function(req, res) {
+    try {
+        var user = authenticateClient(req, res);
+        if (!user) return;
+        var contracts = contractService.loadContracts().filter(function(c) { return c.client_email === user.email; });
+        contracts.sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); });
+        res.json(contracts);
+    } catch(e) {
+        console.error('[CONTRACT] Erreur liste contrats client:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// GET /api/contracts/:id — détail d'un contrat (partenaire ou client propriétaire)
+app.get('/api/contracts/:id', function(req, res) {
+    try {
+        var contracts = contractService.loadContracts();
+        var contract = contracts.find(function(c) { return c.id === req.params.id; });
+        if (!contract) return res.status(404).json({ error: 'Contrat introuvable' });
+
+        // Vérif accès : partenaire ou client concerné, ou admin
+        var tokenHeader = req.headers['authorization'] || req.headers['x-partner-token'] || '';
+        var isAdmin = req.headers['x-admin-key'] === process.env.ADMIN_KEY;
+        var accessOk = isAdmin;
+        if (!accessOk) {
+            // Essayer auth partenaire
+            try {
+                var jwt = require('jsonwebtoken');
+                var tok = tokenHeader.replace('Bearer ', '');
+                var decoded = jwt.verify(tok, process.env.JWT_SECRET || 'genesis-secret');
+                if (decoded && (decoded.partnerId || decoded.id)) {
+                    var pid = decoded.partnerId || decoded.id;
+                    accessOk = contract.partner_id === pid;
+                } else if (decoded && decoded.email) {
+                    accessOk = contract.client_email === decoded.email || contract.partner_email === decoded.email;
+                }
+            } catch(e2) { /* token invalide */ }
+        }
+        if (!accessOk) {
+            // Essayer session client
+            try {
+                var sessions = loadSessions ? loadSessions() : [];
+                var tok2 = req.headers['x-session-token'] || (req.cookies && req.cookies['fa_session']) || '';
+                var sess = sessions.find(function(s) { return s.token === tok2 && s.active; });
+                if (sess) accessOk = contract.client_email === sess.email || contract.partner_email === sess.email;
+            } catch(e3) { /* sessions indisponibles */ }
+        }
+        if (!accessOk) return res.status(403).json({ error: 'Accès non autorisé' });
+
+        res.json(contract);
+    } catch(e) {
+        console.error('[CONTRACT] Erreur get contract:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// GET /api/contracts/:id/pdf — téléchargement PDF
+app.get('/api/contracts/:id/pdf', function(req, res) {
+    try {
+        var contracts = contractService.loadContracts();
+        var contract = contracts.find(function(c) { return c.id === req.params.id; });
+        if (!contract) return res.status(404).json({ error: 'Contrat introuvable' });
+
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', 'attachment; filename="contrat-' + contract.id + '.pdf"');
+        contractService.generatePdfBuffer(contract, function(err, buf) {
+            if (err) { console.error('[CONTRACT] Erreur PDF:', err); return res.status(500).end(); }
+            res.end(buf);
+        });
+    } catch(e) {
+        console.error('[CONTRACT] Erreur PDF endpoint:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// POST /api/contracts/service/generate — génère un contrat de prestation après paiement
+// Appelé automatiquement lorsque la commande est créée et que le service a require_contract=true
+app.post('/api/contracts/service/generate', function(req, res) {
+    try {
+        var orderId = req.body.orderId;
+        if (!orderId) return res.status(400).json({ error: 'orderId requis' });
+
+        var orders = loadOrders();
+        var order = orders.find(function(o) { return o.id === orderId; });
+        if (!order) return res.status(404).json({ error: 'Commande introuvable' });
+
+        // Vérifier qu'un contrat n'existe pas déjà
+        var contracts = contractService.loadContracts();
+        var existing = contracts.find(function(c) { return c.order_id === orderId && c.type === 'service'; });
+        if (existing) return res.json({ contract: existing, already_exists: true });
+
+        // Charger partenaire et client
+        var partner = order.partner_id ? getPartnerById(order.partner_id) : null;
+        if (!partner) return res.status(400).json({ error: 'Partenaire introuvable sur cette commande' });
+
+        var users = loadUsers();
+        var clientEmail = order.client_info && order.client_info.email;
+        var clientUser = users.find(function(u) { return u.email === clientEmail; });
+        var clientName = clientUser
+            ? ((clientUser.prenom || clientUser.firstName || '') + ' ' + (clientUser.nom || clientUser.lastName || '')).trim()
+            : ((order.client_info && order.client_info.first_name || '') + ' ' + (order.client_info && order.client_info.last_name || '')).trim();
+
+        var customConditions = order.service_custom_conditions || '';
+        var now = new Date().toISOString();
+        var contractId = 'CTR-SVC-' + uuidv4().split('-')[0].toUpperCase();
+
+        var newContract = {
+            id: contractId,
+            type: 'service',
+            status: 'pending_client_signature',
+            order_id: order.id,
+            service_name: order.product_name || '',
+            service_price: parseFloat(order.total_amount || 0),
+            client_type: (order.client_info && order.client_info.client_type) || 'particulier',
+            partner_id: partner.id,
+            partner_email: partner.email,
+            partner_name: ((partner.prenom || '') + ' ' + (partner.nom || '')).trim(),
+            partner_type: partner.partner_type || null,
+            client_email: clientEmail || '',
+            client_name: clientName,
+            custom_conditions: customConditions,
+            signed_at: null,
+            signed_ip: null,
+            signature_name: null,
+            signature_data: null,
+            refused_at: null,
+            events: [{ type: 'generated', at: now, detail: 'Contrat généré automatiquement après paiement' }],
+            contract_version: contractService.CONTRACT_VERSION,
+            created_at: now,
+            updated_at: now
+        };
+
+        contracts.push(newContract);
+        contractService.saveContracts(contracts);
+
+        // Notifier le client
+        if (clientEmail) {
+            notifyUser(clientEmail, 'client', 'contract_ready',
+                'Contrat prêt à signer',
+                'Votre contrat de prestation avec ' + newContract.partner_name + ' est disponible. Signez-le pour démarrer la mission.',
+                '/app.html#mes-contrats');
+        }
+        // Notifier le partenaire
+        notifyUser(partner.email, 'partner', 'contract_sent',
+            'Contrat envoyé au client',
+            'Le contrat pour la commande ' + order.id + ' a été envoyé à ' + (clientName || clientEmail) + '.',
+            '/partner-dashboard.html#documents');
+
+        console.log('[CONTRACT] Contrat prestation généré:', contractId, '→', clientEmail);
+        res.json({ success: true, contract: newContract });
+    } catch(e) {
+        console.error('[CONTRACT] Erreur génération contrat prestation:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// GET /api/contracts/service/preview/:orderId — HTML preview du contrat pour le client avant signature
+app.get('/api/contracts/service/preview/:orderId', function(req, res) {
+    try {
+        var user = authenticateClient(req, res);
+        if (!user) return;
+
+        var contracts = contractService.loadContracts();
+        var contract = contracts.find(function(c) { return c.order_id === req.params.orderId && c.type === 'service'; });
+        if (!contract) return res.status(404).json({ error: 'Contrat introuvable' });
+        if (contract.client_email !== user.email) return res.status(403).json({ error: 'Accès refusé' });
+
+        var orders = loadOrders();
+        var order = orders.find(function(o) { return o.id === contract.order_id; });
+        var partner = getPartnerById(contract.partner_id);
+        var users = loadUsers();
+        var clientUser = users.find(function(u) { return u.email === user.email; });
+        var html = contractService.generateServiceContractHtml(order || { id: contract.order_id, product_name: contract.service_name, total_amount: contract.service_price, client_info: { client_type: contract.client_type } }, partner || {}, clientUser, contract.custom_conditions);
+        res.json({ html: html, contract: contract });
+    } catch(e) {
+        console.error('[CONTRACT] Erreur preview:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// POST /api/contracts/:id/client-sign — client signe le contrat de prestation
+app.post('/api/contracts/:id/client-sign', function(req, res) {
+    try {
+        var user = authenticateClient(req, res);
+        if (!user) return;
+
+        var signatureName = (req.body.signatureName || '').trim();
+        var accepted = req.body.accepted === true;
+        var signatureData = req.body.signatureData || null;
+        if (!accepted) return res.status(400).json({ error: 'Vous devez accepter les conditions pour continuer.' });
+        if (!signatureName || signatureName.length < 2) return res.status(400).json({ error: 'Merci de saisir votre nom complet pour signer.' });
+
+        var contracts = contractService.loadContracts();
+        var idx = contracts.findIndex(function(c) { return c.id === req.params.id; });
+        if (idx === -1) return res.status(404).json({ error: 'Contrat introuvable' });
+        var contract = contracts[idx];
+        if (contract.client_email !== user.email) return res.status(403).json({ error: 'Accès refusé' });
+        if (contract.status === 'signed') return res.status(409).json({ error: 'Ce contrat est déjà signé.' });
+        if (contract.status === 'refused') return res.status(409).json({ error: 'Ce contrat a été refusé.' });
+
+        var signIp = req.ip || (req.connection && req.connection.remoteAddress) || 'unknown';
+        var now = new Date().toISOString();
+
+        contracts[idx].status = 'signed';
+        contracts[idx].signed_at = now;
+        contracts[idx].signed_ip = signIp;
+        contracts[idx].signature_name = signatureName;
+        contracts[idx].signature_data = signatureData;
+        contracts[idx].updated_at = now;
+        contracts[idx].events = (contracts[idx].events || []).concat([{ type: 'signed', at: now, ip: signIp, detail: 'Signature client : ' + signatureName }]);
+        contractService.saveContracts(contracts);
+
+        // Mettre à jour la commande
+        var orders = loadOrders();
+        var oIdx = orders.findIndex(function(o) { return o.id === contract.order_id; });
+        if (oIdx !== -1) {
+            orders[oIdx].service_contract_signed = true;
+            orders[oIdx].service_contract_signed_at = now;
+            orders[oIdx].service_contract_id = contract.id;
+            orders[oIdx].updated_at = now;
+            saveOrders(orders);
+        }
+
+        // Notifier le partenaire
+        notifyUser(contract.partner_email, 'partner', 'contract_signed',
+            'Contrat signé ✅',
+            contract.client_name + ' a signé le contrat pour la commande ' + contract.order_id + '. La prestation peut commencer.',
+            '/partner-dashboard.html#documents');
+
+        console.log('[CONTRACT] Client a signé le contrat:', contract.id, '→', user.email);
+        res.json({ success: true, contract: contracts[idx] });
+    } catch(e) {
+        console.error('[CONTRACT] Erreur signature client:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// POST /api/contracts/:id/client-refuse — client refuse le contrat
+app.post('/api/contracts/:id/client-refuse', function(req, res) {
+    try {
+        var user = authenticateClient(req, res);
+        if (!user) return;
+
+        var contracts = contractService.loadContracts();
+        var idx = contracts.findIndex(function(c) { return c.id === req.params.id; });
+        if (idx === -1) return res.status(404).json({ error: 'Contrat introuvable' });
+        var contract = contracts[idx];
+        if (contract.client_email !== user.email) return res.status(403).json({ error: 'Accès refusé' });
+        if (contract.status !== 'pending_client_signature') return res.status(409).json({ error: 'Statut incompatible.' });
+
+        var reason = (req.body.reason || '').trim();
+        var signIp = req.ip || (req.connection && req.connection.remoteAddress) || 'unknown';
+        var now = new Date().toISOString();
+
+        contracts[idx].status = 'refused';
+        contracts[idx].refused_at = now;
+        contracts[idx].refuse_reason = reason || null;
+        contracts[idx].updated_at = now;
+        contracts[idx].events = (contracts[idx].events || []).concat([{ type: 'refused', at: now, ip: signIp, detail: reason || 'Refus client sans motif' }]);
+        contractService.saveContracts(contracts);
+
+        // Notifier le partenaire
+        notifyUser(contract.partner_email, 'partner', 'contract_refused',
+            'Contrat refusé ❌',
+            contract.client_name + ' a refusé le contrat pour la commande ' + contract.order_id + (reason ? ' — Motif : ' + reason : '') + '.',
+            '/partner-dashboard.html#documents');
+
+        console.log('[CONTRACT] Client a refusé le contrat:', contract.id);
+        res.json({ success: true, contract: contracts[idx] });
+    } catch(e) {
+        console.error('[CONTRACT] Erreur refus client:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
     }
 });
 

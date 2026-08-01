@@ -248,6 +248,10 @@
                     <button onclick="showSection('reputation')" class="nav-tab text-white hover:text-[var(--genesis-yellow)] transition">
                         <i class="fas fa-trophy mr-1"></i>Réputation
                     </button>
+                    <button onclick="showSection('documents')" class="nav-tab text-white hover:text-[var(--genesis-yellow)] transition" style="position:relative;">
+                        <i class="fas fa-file-contract mr-1"></i>Documents
+                        <span id="contractsBadge" style="display:none;position:absolute;top:-8px;right:-8px;background:#FFD700;color:#000;border-radius:50%;width:18px;height:18px;font-size:10px;line-height:18px;text-align:center;"></span>
+                    </button>
                     <button onclick="showSection('profile')" class="nav-tab text-white hover:text-[var(--genesis-yellow)] transition">
                         <i class="fas fa-user mr-1"></i>Profil
                     </button>
@@ -287,6 +291,10 @@
             </button>
             <button onclick="showSection('reputation')" class="nav-tab text-white hover:text-[var(--genesis-yellow)] text-xs font-black">
                 <i class="fas fa-trophy mr-1"></i>Réputation
+            </button>
+            <button onclick="showSection('documents')" class="nav-tab text-white hover:text-[var(--genesis-yellow)] text-xs font-black" style="position:relative;">
+                <i class="fas fa-file-contract mr-1"></i>Docs
+                <span id="contractsBadgeMobile" style="display:none;position:absolute;top:-6px;right:-6px;background:#FFD700;color:#000;border-radius:50%;width:16px;height:16px;font-size:9px;line-height:16px;text-align:center;"></span>
             </button>
             <button onclick="showSection('profile')" class="nav-tab text-white hover:text-[var(--genesis-yellow)] text-xs font-black">
                 <i class="fas fa-user mr-1"></i>Profil
@@ -452,6 +460,57 @@
                         <i class="fas fa-paper-plane"></i>
                     </button>
                 </form>
+            </div>
+        </div>
+
+        <!-- SECTION DOCUMENTS -->
+        <div id="documentsSection" class="container mx-auto max-w-4xl" style="display:none;">
+            <h2 class="text-2xl md:text-3xl font-black text-white mb-6" style="font-family:'Playfair Display',serif;">
+                <i class="fas fa-file-contract mr-3" style="color:var(--genesis-yellow);"></i>MES DOCUMENTS
+            </h2>
+
+            <!-- Contrat de partenariat -->
+            <div class="section-card neo-shadow mb-8">
+                <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px;">
+                    <h3 class="text-lg font-black italic uppercase" style="margin:0;">
+                        <i class="fas fa-handshake mr-2" style="color:var(--genesis-yellow);"></i>Contrat de partenariat
+                    </h3>
+                    <span id="partnershipContractStatus" class="text-xs px-3 py-1 font-black uppercase border-2 border-black">—</span>
+                </div>
+                <p class="text-sm opacity-70 mb-4">Votre contrat de partenariat avec FA GENESIS définit les conditions de votre collaboration, la commission applicable et vos droits et obligations.</p>
+                <div id="partnershipContractInfo" class="mb-4" style="display:none;">
+                    <div style="background:#1a1a1a;color:#fff;padding:14px;border-left:4px solid #FFD700;font-size:12px;line-height:1.6;">
+                        <div><strong>Signé le :</strong> <span id="pcSignedAt">—</span></div>
+                        <div><strong>Signataire :</strong> <span id="pcSignedName">—</span></div>
+                        <div><strong>Version :</strong> <span id="pcVersion">—</span></div>
+                        <div><strong>Référence :</strong> <span id="pcId">—</span></div>
+                    </div>
+                </div>
+                <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                    <button onclick="openPartnershipContractModal()" class="neo-btn-yellow px-4 py-2 text-xs">
+                        <i class="fas fa-eye mr-1"></i>Consulter
+                    </button>
+                    <button id="downloadPartnershipPdfBtn" onclick="downloadContractPdf(_partnershipContractId)" class="px-4 py-2 text-xs font-black uppercase border-2 border-black bg-white" style="display:none;">
+                        <i class="fas fa-download mr-1"></i>Télécharger PDF
+                    </button>
+                </div>
+            </div>
+
+            <!-- Contrats de prestation -->
+            <div class="section-card neo-shadow">
+                <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px;">
+                    <h3 class="text-lg font-black italic uppercase" style="margin:0;">
+                        <i class="fas fa-file-signature mr-2" style="color:var(--genesis-yellow);"></i>Contrats de prestation
+                    </h3>
+                    <span id="serviceContractsCount" class="text-xs opacity-60 font-black">—</span>
+                </div>
+                <p class="text-sm opacity-70 mb-4">Contrats générés automatiquement pour chaque commande avec signature de contrat activée.</p>
+                <div id="serviceContractsList">
+                    <div style="text-align:center;padding:24px;opacity:.5;font-size:13px;">
+                        <i class="fas fa-file-contract" style="font-size:28px;margin-bottom:8px;display:block;"></i>
+                        Aucun contrat de prestation pour le moment
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -998,6 +1057,10 @@
             if (!alreadyShown) {
                 showSection('projects');
             }
+            // Gate contrat de partenariat : obligatoire avant toute utilisation
+            if (!partner.contract_signed) {
+                setTimeout(openPartnershipContractModal, 400);
+            }
 
         } catch (error) {
             console.error('[PARTNER-DASH] Erreur init:', error);
@@ -1023,6 +1086,7 @@
         var messaging = document.getElementById('messagingSection');
         var revenus = document.getElementById('revenusSection');
         var reputation = document.getElementById('reputationSection');
+        var documents = document.getElementById('documentsSection');
 
         if (loading) loading.style.display = 'none';
         if (projects) projects.style.display = 'none';
@@ -1035,6 +1099,7 @@
         if (messaging) messaging.style.display = 'none';
         if (revenus) revenus.style.display = 'none';
         if (reputation) reputation.style.display = 'none';
+        if (documents) documents.style.display = 'none';
 
         if (section === 'projects') {
             if (projects) projects.style.display = 'block';
@@ -1062,6 +1127,9 @@
         } else if (section === 'reputation') {
             if (reputation) reputation.style.display = 'block';
             loadReputation();
+        } else if (section === 'documents') {
+            if (documents) documents.style.display = 'block';
+            loadDocuments();
         }
     }
 
@@ -2472,13 +2540,19 @@
                     '</div>' +
                     '<input type="hidden" class="service-item-quote" value="' + (isQuote ? 'quote' : 'fixed') + '">' +
                 '</div>' +
-                '<div class="md:col-span-2 flex items-end gap-3 pb-1">' +
-                    '<label class="flex items-center gap-1 text-xs font-black uppercase">' +
-                        '<input type="checkbox" class="service-item-active" ' + (service.active === false ? '' : 'checked') + '> Active' +
+                '<div class="md:col-span-2 flex flex-col gap-2 pb-1">' +
+                    '<div class="flex items-center gap-3">' +
+                        '<label class="flex items-center gap-1 text-xs font-black uppercase">' +
+                            '<input type="checkbox" class="service-item-active" ' + (service.active === false ? '' : 'checked') + '> Active' +
+                        '</label>' +
+                        '<button onclick="removeServiceItem(this)" class="text-red-600 font-black hover:opacity-70" title="Supprimer">' +
+                            '<i class="fas fa-trash"></i>' +
+                        '</button>' +
+                    '</div>' +
+                    '<label class="flex items-center gap-1 text-xs font-black uppercase cursor-pointer" title="Le client devra signer un contrat avant le début de la prestation">' +
+                        '<input type="checkbox" class="service-item-require-contract" ' + (service.require_contract ? 'checked' : '') + '>' +
+                        '<span style="color:var(--genesis-yellow);"><i class="fas fa-file-contract mr-1"></i>Contrat</span>' +
                     '</label>' +
-                    '<button onclick="removeServiceItem(this)" class="text-red-600 font-black hover:opacity-70" title="Supprimer">' +
-                        '<i class="fas fa-trash"></i>' +
-                    '</button>' +
                 '</div>' +
             '</div>' +
         '</div>';
@@ -2579,6 +2653,7 @@
             var labelEl = rows[i].querySelector('.service-item-label');
             var priceEl = rows[i].querySelector('.service-item-price');
             var activeEl = rows[i].querySelector('.service-item-active');
+            var requireContractEl = rows[i].querySelector('.service-item-require-contract');
             var label = labelEl ? labelEl.value.trim() : '';
             var quoteEl = rows[i].querySelector('.service-item-quote');
             var isQuote = quoteEl ? quoteEl.value === 'quote' : false;
@@ -2597,6 +2672,7 @@
                 price: isQuote ? 0 : price,
                 pricing_type: isQuote ? 'quote' : 'fixed',
                 active: activeEl ? activeEl.checked : true,
+                require_contract: requireContractEl ? requireContractEl.checked : false,
                 audience: audience,
                 image: imageAttr ? decodeURIComponent(imageAttr) : '',
                 features: features
@@ -4832,6 +4908,345 @@
         }
       }catch(e){}
     })();
+    </script>
+
+    <!-- ══════════════════════════════════════════════════════
+         MODALS CONTRATS NUMÉRIQUES
+    ══════════════════════════════════════════════════════ -->
+
+    <!-- Overlay contrat partenariat -->
+    <div id="partnershipContractOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;overflow-y:auto;padding:20px;">
+        <div style="max-width:860px;margin:0 auto;background:#fff;padding:0;border:3px solid #FFD700;position:relative;">
+            <div style="background:#1a1a1a;padding:16px 24px;display:flex;align-items:center;justify-content:space-between;">
+                <div style="color:#FFD700;font-family:'Unbounded',cursive;font-size:13px;font-weight:900;letter-spacing:1px;">
+                    <i class="fas fa-file-contract mr-2"></i>CONTRAT DE PARTENARIAT FA GENESIS
+                </div>
+                <div id="pcCloseBtn" style="display:none;">
+                    <button onclick="closePartnershipContractModal()" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer;"><i class="fas fa-times"></i></button>
+                </div>
+            </div>
+            <div id="pcRequiredBanner" style="background:#FFD700;color:#000;padding:10px 20px;font-size:12px;font-weight:900;text-align:center;display:flex;align-items:center;justify-content:center;gap:8px;">
+                <i class="fas fa-exclamation-triangle"></i>
+                Signature obligatoire avant d'accéder au tableau de bord — Lisez et signez le contrat ci-dessous
+            </div>
+            <div id="pcContractBody" style="padding:24px;max-height:55vh;overflow-y:auto;font-family:Georgia,serif;font-size:13px;line-height:1.7;color:#1a1a1a;">
+                <div style="text-align:center;padding:32px;"><i class="fas fa-spinner fa-spin" style="font-size:28px;color:#FFD700;"></i><br><p style="margin-top:8px;font-family:sans-serif;">Chargement du contrat…</p></div>
+            </div>
+            <!-- Zone signature -->
+            <div id="pcSignatureZone" style="padding:20px 24px;background:#f9f9f9;border-top:2px solid #eee;">
+                <div style="margin-bottom:14px;">
+                    <label style="font-size:12px;font-weight:900;text-transform:uppercase;display:block;margin-bottom:6px;font-family:sans-serif;">
+                        <i class="fas fa-pen-fancy mr-1" style="color:#FFD700;"></i>Signature manuscrite
+                    </label>
+                    <div style="position:relative;background:#fff;border:2px solid #1a1a1a;">
+                        <canvas id="pcSignatureCanvas" width="780" height="110" style="width:100%;height:110px;cursor:crosshair;display:block;touch-action:none;"></canvas>
+                        <button onclick="_pcClearCanvas()" style="position:absolute;top:6px;right:6px;background:#f0f0f0;border:1px solid #ccc;font-size:10px;font-weight:900;padding:3px 8px;cursor:pointer;font-family:sans-serif;">
+                            <i class="fas fa-eraser mr-1"></i>Effacer
+                        </button>
+                    </div>
+                </div>
+                <div style="margin-bottom:14px;">
+                    <label style="font-size:12px;font-weight:900;text-transform:uppercase;display:block;margin-bottom:6px;font-family:sans-serif;">
+                        <i class="fas fa-keyboard mr-1" style="color:#FFD700;"></i>Nom complet (confirmation)
+                    </label>
+                    <input id="pcSignatureName" type="text" placeholder="Prénom Nom" style="width:100%;padding:10px;border:2px solid #1a1a1a;font-family:sans-serif;font-size:14px;box-sizing:border-box;">
+                </div>
+                <div style="margin-bottom:16px;">
+                    <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-family:sans-serif;font-size:12px;line-height:1.5;">
+                        <input type="checkbox" id="pcAcceptCheckbox" style="margin-top:2px;flex-shrink:0;">
+                        <span>J'ai lu et j'accepte les termes du présent contrat de partenariat FA GENESIS. Je reconnais que ma signature électronique a la même valeur juridique qu'une signature manuscrite.</span>
+                    </label>
+                </div>
+                <div id="pcSignError" style="display:none;background:#fef2f2;border:1px solid #fca5a5;color:#dc2626;padding:8px 12px;font-size:12px;margin-bottom:12px;font-family:sans-serif;border-radius:2px;"></div>
+                <button onclick="_signPartnershipContract()" id="pcSignBtn" style="width:100%;padding:14px;background:#FFD700;color:#000;border:3px solid #000;font-weight:900;font-size:14px;text-transform:uppercase;cursor:pointer;font-family:sans-serif;letter-spacing:1px;">
+                    <i class="fas fa-signature mr-2"></i>SIGNER LE CONTRAT
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Overlay viewer contrat (lecture seule / prestation) -->
+    <div id="contractViewerOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9998;overflow-y:auto;padding:20px;">
+        <div style="max-width:860px;margin:0 auto;background:#fff;border:3px solid #FFD700;">
+            <div style="background:#1a1a1a;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;">
+                <div id="cvTitle" style="color:#FFD700;font-family:'Unbounded',cursive;font-size:12px;font-weight:900;">CONTRAT</div>
+                <button onclick="closeContractViewer()" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer;"><i class="fas fa-times"></i></button>
+            </div>
+            <div id="cvBody" style="padding:24px;max-height:65vh;overflow-y:auto;font-size:13px;line-height:1.7;"></div>
+            <div style="padding:16px 20px;background:#f9f9f9;border-top:1px solid #eee;display:flex;gap:10px;flex-wrap:wrap;">
+                <button id="cvDownloadBtn" onclick="downloadContractPdf(_cvCurrentId)" style="background:#FFD700;border:2px solid #000;font-weight:900;font-size:12px;padding:10px 20px;cursor:pointer;text-transform:uppercase;font-family:sans-serif;">
+                    <i class="fas fa-download mr-1"></i>Télécharger PDF
+                </button>
+                <button onclick="closeContractViewer()" style="background:#fff;border:2px solid #000;font-weight:900;font-size:12px;padding:10px 20px;cursor:pointer;text-transform:uppercase;font-family:sans-serif;">Fermer</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // ── Variables globales contrats ──────────────────────────────────────────
+    var _partnershipContractId = null;
+    var _cvCurrentId = null;
+    var _pcCanvas = null, _pcCtx = null, _pcDrawing = false, _pcHasSignature = false;
+
+    // ── Canvas signature (pad) ───���───────────────────────────────────────────
+    function _initPcCanvas() {
+        _pcCanvas = document.getElementById('pcSignatureCanvas');
+        if (!_pcCanvas) return;
+        _pcCtx = _pcCanvas.getContext('2d');
+        _pcCtx.strokeStyle = '#1a1a1a';
+        _pcCtx.lineWidth = 2;
+        _pcCtx.lineCap = 'round';
+        _pcCtx.lineJoin = 'round';
+
+        function getPos(e) {
+            var r = _pcCanvas.getBoundingClientRect();
+            var scaleX = _pcCanvas.width / r.width;
+            var scaleY = _pcCanvas.height / r.height;
+            var src = e.touches ? e.touches[0] : e;
+            return { x: (src.clientX - r.left) * scaleX, y: (src.clientY - r.top) * scaleY };
+        }
+        _pcCanvas.addEventListener('mousedown', function(e) { _pcDrawing = true; var p = getPos(e); _pcCtx.beginPath(); _pcCtx.moveTo(p.x, p.y); });
+        _pcCanvas.addEventListener('mousemove', function(e) { if (!_pcDrawing) return; var p = getPos(e); _pcCtx.lineTo(p.x, p.y); _pcCtx.stroke(); _pcHasSignature = true; });
+        _pcCanvas.addEventListener('mouseup', function() { _pcDrawing = false; });
+        _pcCanvas.addEventListener('mouseleave', function() { _pcDrawing = false; });
+        _pcCanvas.addEventListener('touchstart', function(e) { e.preventDefault(); _pcDrawing = true; var p = getPos(e); _pcCtx.beginPath(); _pcCtx.moveTo(p.x, p.y); }, { passive: false });
+        _pcCanvas.addEventListener('touchmove', function(e) { e.preventDefault(); if (!_pcDrawing) return; var p = getPos(e); _pcCtx.lineTo(p.x, p.y); _pcCtx.stroke(); _pcHasSignature = true; }, { passive: false });
+        _pcCanvas.addEventListener('touchend', function() { _pcDrawing = false; });
+    }
+
+    function _pcClearCanvas() {
+        if (!_pcCtx || !_pcCanvas) return;
+        _pcCtx.clearRect(0, 0, _pcCanvas.width, _pcCanvas.height);
+        _pcHasSignature = false;
+    }
+
+    // ── Ouverture du modal contrat partenariat ───────────────────────────────
+    async function openPartnershipContractModal() {
+        var overlay = document.getElementById('partnershipContractOverlay');
+        if (!overlay) return;
+        overlay.style.display = 'block';
+        document.body.style.overflow = 'hidden';
+
+        var alreadySigned = currentPartner && currentPartner.contract_signed;
+        var banner = document.getElementById('pcRequiredBanner');
+        var closeBtn = document.getElementById('pcCloseBtn');
+        var sigZone = document.getElementById('pcSignatureZone');
+
+        if (alreadySigned) {
+            if (banner) banner.style.display = 'none';
+            if (closeBtn) closeBtn.style.display = 'block';
+            if (sigZone) sigZone.style.display = 'none';
+        } else {
+            if (banner) banner.style.display = 'flex';
+            if (closeBtn) closeBtn.style.display = 'none';
+            if (sigZone) sigZone.style.display = 'block';
+        }
+
+        try {
+            var resp = await partnerAuthenticatedFetch(PARTNER_API_BASE_URL + '/api/partner/contract/partnership');
+            var data = await resp.json();
+            var body = document.getElementById('pcContractBody');
+            if (body) body.innerHTML = data.html || '<p style="padding:20px;font-family:sans-serif;color:#e44;">Impossible de charger le contrat.</p>';
+            setTimeout(_initPcCanvas, 100);
+
+            // Pré-remplir le nom si déjà signé
+            if (alreadySigned && currentPartner) {
+                var nameEl = document.getElementById('pcSignatureName');
+                if (nameEl) nameEl.value = currentPartner.contract_signature_name || '';
+            }
+        } catch(e) {
+            var body2 = document.getElementById('pcContractBody');
+            if (body2) body2.innerHTML = '<p style="padding:20px;font-family:sans-serif;color:#e44;">Erreur de chargement du contrat.</p>';
+        }
+    }
+
+    function closePartnershipContractModal() {
+        var overlay = document.getElementById('partnershipContractOverlay');
+        if (overlay) overlay.style.display = 'none';
+        document.body.style.overflow = '';
+    }
+
+    // ── Signature du contrat partenariat ─────���──────────────────────────────
+    async function _signPartnershipContract() {
+        var nameEl = document.getElementById('pcSignatureName');
+        var checkEl = document.getElementById('pcAcceptCheckbox');
+        var errEl = document.getElementById('pcSignError');
+        var btn = document.getElementById('pcSignBtn');
+
+        var name = nameEl ? nameEl.value.trim() : '';
+        var accepted = checkEl ? checkEl.checked : false;
+        var signatureData = (_pcCanvas && _pcHasSignature) ? _pcCanvas.toDataURL('image/png') : null;
+
+        if (!accepted) { if (errEl) { errEl.style.display='block'; errEl.textContent='Veuillez cocher la case d\'acceptation.'; } return; }
+        if (name.length < 2) { if (errEl) { errEl.style.display='block'; errEl.textContent='Merci de saisir votre nom complet.'; } return; }
+        if (!signatureData) { if (errEl) { errEl.style.display='block'; errEl.textContent='Veuillez apposer votre signature dans le cadre prévu.'; } return; }
+        if (errEl) errEl.style.display = 'none';
+
+        if (btn) { btn.disabled = true; btn.textContent = 'Signature en cours…'; }
+
+        try {
+            var resp = await partnerAuthenticatedFetch(PARTNER_API_BASE_URL + '/api/partner/contract/sign', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ signatureName: name, accepted: true, signatureData: signatureData })
+            });
+            var data = await resp.json();
+            if (resp.ok && data.success) {
+                if (currentPartner) {
+                    currentPartner.contract_signed = true;
+                    currentPartner.contract_signed_at = data.contract_signed_at;
+                    currentPartner.contract_signature_name = name;
+                    currentPartner.contract_id = data.contract_id;
+                    _partnershipContractId = data.contract_id;
+                }
+                closePartnershipContractModal();
+                _showToast('Contrat signé avec succès ! Bienvenue sur FA GENESIS.', 'success');
+            } else {
+                if (errEl) { errEl.style.display='block'; errEl.textContent = data.error || 'Erreur lors de la signature.'; }
+            }
+        } catch(e) {
+            if (errEl) { errEl.style.display='block'; errEl.textContent='Erreur de connexion au serveur.'; }
+        } finally {
+            if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-signature mr-2"></i>SIGNER LE CONTRAT'; }
+        }
+    }
+
+    // ── Chargement de la section Documents ──��───────────────────────────────
+    async function loadDocuments() {
+        _updatePartnershipContractCard();
+        _loadServiceContracts();
+    }
+
+    function _updatePartnershipContractCard() {
+        var statusEl = document.getElementById('partnershipContractStatus');
+        var infoEl = document.getElementById('partnershipContractInfo');
+        var downloadBtn = document.getElementById('downloadPartnershipPdfBtn');
+
+        if (currentPartner && currentPartner.contract_signed) {
+            if (statusEl) { statusEl.textContent = 'Signé'; statusEl.style.background = '#dcfce7'; statusEl.style.color = '#166534'; statusEl.style.borderColor = '#166534'; }
+            if (infoEl) {
+                infoEl.style.display = 'block';
+                var d = document.getElementById('pcSignedAt');
+                var n = document.getElementById('pcSignedName');
+                var v = document.getElementById('pcVersion');
+                var id = document.getElementById('pcId');
+                if (d) d.textContent = currentPartner.contract_signed_at ? new Date(currentPartner.contract_signed_at).toLocaleString('fr-FR') : '—';
+                if (n) n.textContent = currentPartner.contract_signature_name || '—';
+                if (v) v.textContent = currentPartner.contract_version || '—';
+                if (id) id.textContent = currentPartner.contract_id || '—';
+                _partnershipContractId = currentPartner.contract_id || null;
+            }
+            if (downloadBtn && currentPartner.contract_id) downloadBtn.style.display = 'inline-block';
+        } else {
+            if (statusEl) { statusEl.textContent = 'Non signé'; statusEl.style.background = '#fef2f2'; statusEl.style.color = '#dc2626'; statusEl.style.borderColor = '#dc2626'; }
+            if (infoEl) infoEl.style.display = 'none';
+            if (downloadBtn) downloadBtn.style.display = 'none';
+        }
+    }
+
+    async function _loadServiceContracts() {
+        var list = document.getElementById('serviceContractsList');
+        var count = document.getElementById('serviceContractsCount');
+        if (!list) return;
+        try {
+            var resp = await partnerAuthenticatedFetch(PARTNER_API_BASE_URL + '/api/partner/contracts');
+            var contracts = await resp.json();
+            var svcContracts = Array.isArray(contracts) ? contracts.filter(function(c) { return c.type === 'service'; }) : [];
+            if (count) count.textContent = svcContracts.length + ' contrat' + (svcContracts.length > 1 ? 's' : '');
+            if (svcContracts.length === 0) {
+                list.innerHTML = '<div style="text-align:center;padding:24px;opacity:.5;font-size:13px;"><i class="fas fa-file-contract" style="font-size:28px;margin-bottom:8px;display:block;"></i>Aucun contrat de prestation</div>';
+                return;
+            }
+            list.innerHTML = svcContracts.map(function(c) {
+                var statusCls = c.status === 'signed' ? 'background:#dcfce7;color:#166534;border-color:#166534;'
+                    : c.status === 'refused' ? 'background:#fef2f2;color:#dc2626;border-color:#dc2626;'
+                    : 'background:#fef9c3;color:#854d0e;border-color:#854d0e;';
+                var statusLbl = c.status === 'signed' ? 'Signé' : c.status === 'refused' ? 'Refusé' : 'En attente';
+                return '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;padding:14px;border-bottom:1px solid #f0f0f0;">' +
+                    '<div>' +
+                        '<div style="font-weight:900;font-size:13px;font-family:sans-serif;">' + (c.service_name || '—') + '</div>' +
+                        '<div style="font-size:11px;color:#666;margin-top:2px;">' + (c.client_name || c.client_email || '—') + ' · ' + (c.order_id || '') + '</div>' +
+                        '<div style="font-size:11px;color:#666;">' + new Date(c.created_at).toLocaleDateString('fr-FR') + (c.signed_at ? ' · Signé le ' + new Date(c.signed_at).toLocaleDateString('fr-FR') : '') + '</div>' +
+                    '</div>' +
+                    '<div style="display:flex;gap:8px;align-items:center;">' +
+                        '<span style="font-size:10px;font-weight:900;padding:3px 8px;border:2px solid;text-transform:uppercase;' + statusCls + '">' + statusLbl + '</span>' +
+                        '<button onclick="openContractViewer(\'' + c.id + '\',\'Contrat prestation — ' + (c.service_name || '').replace(/'/g, '') + '\')" style="background:#FFD700;border:2px solid #000;font-size:10px;font-weight:900;padding:5px 10px;cursor:pointer;text-transform:uppercase;font-family:sans-serif;"><i class="fas fa-eye mr-1"></i>Voir</button>' +
+                        (c.status === 'signed' ? '<button onclick="downloadContractPdf(\'' + c.id + '\')" style="background:#fff;border:2px solid #000;font-size:10px;font-weight:900;padding:5px 10px;cursor:pointer;text-transform:uppercase;font-family:sans-serif;"><i class="fas fa-download mr-1"></i>PDF</button>' : '') +
+                    '</div>' +
+                '</div>';
+            }).join('');
+        } catch(e) {
+            list.innerHTML = '<p style="padding:16px;font-size:12px;color:#e44;font-family:sans-serif;">Erreur de chargement des contrats.</p>';
+        }
+    }
+
+    // ── Viewer contrat (lecture) ────���────────────────────────────────────────
+    async function openContractViewer(contractId, title) {
+        _cvCurrentId = contractId;
+        var overlay = document.getElementById('contractViewerOverlay');
+        var titleEl = document.getElementById('cvTitle');
+        var body = document.getElementById('cvBody');
+        if (!overlay) return;
+        if (titleEl) titleEl.textContent = title || 'CONTRAT';
+        if (body) body.innerHTML = '<div style="text-align:center;padding:32px;"><i class="fas fa-spinner fa-spin" style="font-size:24px;color:#FFD700;"></i></div>';
+        overlay.style.display = 'block';
+        document.body.style.overflow = 'hidden';
+        try {
+            var resp = await partnerAuthenticatedFetch(PARTNER_API_BASE_URL + '/api/contracts/' + contractId);
+            var contract = await resp.json();
+            // Afficher les infos de signature si signé
+            var signedBlock = '';
+            if (contract.signed_at) {
+                signedBlock = '<div style="background:#1a1a1a;color:#fff;padding:14px 18px;margin-top:16px;font-size:11px;border-left:4px solid #FFD700;">' +
+                    '<div style="font-weight:900;color:#FFD700;font-size:12px;margin-bottom:8px;font-family:sans-serif;"><i class="fas fa-check-circle mr-1"></i>SIGNATURE ENREGISTRÉE</div>' +
+                    '<div><strong>Signataire :</strong> ' + (contract.signature_name || '—') + '</div>' +
+                    '<div><strong>Date :</strong> ' + new Date(contract.signed_at).toLocaleString('fr-FR') + '</div>' +
+                    (contract.signed_ip ? '<div><strong>IP :</strong> ' + contract.signed_ip + '</div>' : '') +
+                    '<div><strong>Référence :</strong> ' + contract.id + '</div>' +
+                    (contract.signature_data ? '<div style="margin-top:8px;"><img src="' + contract.signature_data + '" style="background:#fff;padding:4px;max-width:180px;height:50px;object-fit:contain;" alt="Signature"></div>' : '') +
+                '</div>';
+            }
+            if (body) body.innerHTML = '<div style="font-family:Georgia,serif;padding:8px;">' +
+                '<h3 style="font-family:sans-serif;font-weight:900;font-size:14px;text-transform:uppercase;border-bottom:2px solid #FFD700;padding-bottom:8px;margin-bottom:16px;">' + (title || 'Contrat') + '</h3>' +
+                '<table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:16px;">' +
+                    '<tr><td style="padding:6px 8px;font-weight:700;">Référence</td><td style="padding:6px 8px;">' + contract.id + '</td></tr>' +
+                    (contract.service_name ? '<tr style="background:#f9f9f9;"><td style="padding:6px 8px;font-weight:700;">Prestation</td><td style="padding:6px 8px;">' + contract.service_name + '</td></tr>' : '') +
+                    (contract.service_price ? '<tr><td style="padding:6px 8px;font-weight:700;">Montant</td><td style="padding:6px 8px;font-weight:900;">' + parseFloat(contract.service_price).toFixed(2) + ' €</td></tr>' : '') +
+                    (contract.client_name ? '<tr style="background:#f9f9f9;"><td style="padding:6px 8px;font-weight:700;">Client</td><td style="padding:6px 8px;">' + contract.client_name + '</td></tr>' : '') +
+                '</table>' +
+                signedBlock +
+                '</div>';
+        } catch(e) {
+            if (body) body.innerHTML = '<p style="padding:16px;color:#e44;font-family:sans-serif;">Impossible de charger le contrat.</p>';
+        }
+    }
+
+    function closeContractViewer() {
+        var overlay = document.getElementById('contractViewerOverlay');
+        if (overlay) overlay.style.display = 'none';
+        document.body.style.overflow = '';
+        _cvCurrentId = null;
+    }
+
+    // ── Téléchargement PDF ���──────────────────────────────────────────────────
+    function downloadContractPdf(contractId) {
+        if (!contractId) return;
+        var link = document.createElement('a');
+        link.href = PARTNER_API_BASE_URL + '/api/contracts/' + contractId + '/pdf';
+        link.download = 'contrat-' + contractId + '.pdf';
+        link.target = '_blank';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    function _showToast(msg, type) {
+        var t = document.createElement('div');
+        t.textContent = msg;
+        t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:' + (type === 'success' ? '#1a1a1a' : '#dc2626') + ';color:' + (type === 'success' ? '#FFD700' : '#fff') + ';padding:12px 24px;font-weight:900;font-size:13px;font-family:sans-serif;z-index:99999;border:2px solid ' + (type === 'success' ? '#FFD700' : '#fff') + ';max-width:90vw;text-align:center;';
+        document.body.appendChild(t);
+        setTimeout(function() { if (t.parentNode) t.parentNode.removeChild(t); }, 4000);
+    }
     </script>
 </body>
 </html>
