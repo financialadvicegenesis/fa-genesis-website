@@ -160,6 +160,16 @@ function isValidAdminKey(req) {
     return crypto.timingSafeEqual(a, b);
 }
 
+// Vérifie si la requête vient d'un admin (session admin OU JWT admin OU x-admin-key)
+function _isAdminRequest(req) {
+    if (isValidAdminKey(req)) return true;
+    var tok = (req.headers.authorization || '').replace('Bearer ', '').trim();
+    if (!tok) return false;
+    try { var dec = _jwt.verify(tok, _JWT_SECRET); if (dec && dec.role === 'admin') return true; } catch(e) {}
+    try { var sessions = loadAdminSessions(); if (sessions.find(function(s) { return s.token === tok; })) return true; } catch(e) {}
+    return false;
+}
+
 // Detecte si un nom ressemble a une chaine aleatoire generee par un bot
 function isSpamName(name) {
     if (!name || name.length < 2) return false;
@@ -1303,8 +1313,7 @@ function validateFileType(partnerType, fileName) {
 // CORS - Autoriser le frontend
 app.use(cors({
     origin: [
-        'http://127.0.0.1:5500',
-        'http://localhost:5500',
+        ...(process.env.NODE_ENV !== 'production' ? ['http://127.0.0.1:5500', 'http://localhost:5500'] : []),
         'https://fagenesis.com',
         'https://www.fagenesis.com',
         'https://financialadvicegenesis.github.io',
@@ -2582,11 +2591,8 @@ app.get('/api/dashboard', (req, res) => {
             return res.status(401).json({ ok: false, error: 'UNAUTHORIZED', message: 'Token manquant' });
         }
 
-        console.log('[/api/dashboard] Token parsed: ' + token.substring(0, 8) + '...');
-
         // 2. Trouver l'utilisateur par sessionToken
         var users = loadUsers();
-        console.log('[/api/dashboard] Users count: ' + users.length);
         var user = findUserByToken(token);
         if (!user) {
             console.log('[/api/dashboard] Aucun user avec ce sessionToken - 401');
@@ -3324,23 +3330,30 @@ app.post('/api/orders/create', (req, res) => {
  * Recuperer toutes les commandes
  * DOIT etre avant /api/orders/:orderId pour eviter le conflit de route
  */
-app.get('/api/orders/all', (req, res) => {
+app.get('/api/orders/all', function(req, res) {
+    if (!_isAdminRequest(req)) return res.status(403).json({ error: 'Admin requis' });
     const orders = loadOrders();
     res.json(orders);
 });
 
 /**
  * GET /api/orders/:orderId
- * Recuperer une commande par son ID
+ * Recuperer une commande par son ID — accessible au propriétaire (client/partenaire) ou admin
  */
-app.get('/api/orders/:orderId', (req, res) => {
-    const order = getOrderById(req.params.orderId);
+app.get('/api/orders/:orderId', function(req, res) {
+    var order = getOrderById(req.params.orderId);
+    if (!order) return res.status(404).json({ error: 'Commande non trouvee' });
 
-    if (!order) {
-        return res.status(404).json({ error: 'Commande non trouvee' });
+    if (_isAdminRequest(req)) return res.json(order);
+
+    var tok = (req.headers.authorization || '').replace('Bearer ', '').trim();
+    if (tok) {
+        var user = findUserByToken(tok);
+        if (user && order.client_info && (order.client_info.email || '').toLowerCase() === user.email.toLowerCase()) return res.json(order);
+        var partner = findPartnerByToken(tok);
+        if (partner && order.partner_id === partner.id) return res.json(order);
     }
-
-    res.json(order);
+    return res.status(403).json({ error: 'Acces non autorise' });
 });
 
 /**
@@ -3538,9 +3551,11 @@ app.post('/api/orders/:orderId/cancel-start-date', function(req, res) {
 
 /**
  * DELETE /api/orders/:orderId
- * Supprimer une commande (admin seulement, sans token requis)
+ * Supprimer une commande (admin seulement)
  */
 app.delete('/api/orders/:orderId', function(req, res) {
+    if (!_isAdminRequest(req)) return res.status(403).json({ error: 'Admin requis' });
+
     try {
         var orderId = req.params.orderId;
         var order = getOrderById(orderId);
@@ -10261,7 +10276,7 @@ app.post('/api/partner/auth/login', async (req, res) => {
         }
         const emailNorm = email.toLowerCase().trim();
         const passwordNorm = password.trim();
-        console.log('[PARTNER/ADMIN] Tentative login:', emailNorm, '| admin list:', ADMIN_ACCOUNTS_LIST.map(a => a.email));
+        console.log('[PARTNER/ADMIN] Tentative login:', emailNorm);
         const adminMatch = ADMIN_ACCOUNTS_LIST.find(function(a) {
             return a.email === emailNorm && a.password === passwordNorm;
         });
@@ -14857,8 +14872,8 @@ app.post('/api/admin/setup-test-parrainage', async function(req, res) {
         console.log('[ADMIN] Comptes test partenaires complets créés:', parrainId, filleulId);
         res.json({
             success: true,
-            parrain: { id: parrainId, email: 'test-parrain@fagenesis.com', password: 'TestParrain2026!', badge: 'bronze', missions: 6, rating: 4.8, distinctions: ['ambassador'] },
-            filleul: { id: filleulId, email: 'test-filleul@fagenesis.com', password: 'TestFilleul2026!', badge: null, missions: 1, rating: 5, distinctions: ['new_talent'], referredBy: parrainId }
+            parrain: { id: parrainId, email: 'test-parrain@fagenesis.com', badge: 'bronze', missions: 6, rating: 4.8, distinctions: ['ambassador'] },
+            filleul: { id: filleulId, email: 'test-filleul@fagenesis.com', badge: null, missions: 1, rating: 5, distinctions: ['new_talent'], referredBy: parrainId }
         });
     } catch (e) {
         console.error('[ADMIN] Erreur setup-test-parrainage:', e);
@@ -15149,14 +15164,14 @@ app.get('/api/contracts/:id', function(req, res) {
 
         // Vérif accès : partenaire ou client concerné, ou admin
         var tokenHeader = req.headers['authorization'] || req.headers['x-partner-token'] || '';
-        var isAdmin = req.headers['x-admin-key'] === process.env.ADMIN_KEY;
+        var isAdmin = isValidAdminKey(req);
         var accessOk = isAdmin;
         if (!accessOk) {
             // Essayer auth partenaire
             try {
                 var jwt = require('jsonwebtoken');
                 var tok = tokenHeader.replace('Bearer ', '');
-                var decoded = jwt.verify(tok, process.env.JWT_SECRET || 'genesis-secret');
+                var decoded = jwt.verify(tok, _JWT_SECRET);
                 if (decoded && (decoded.partnerId || decoded.id)) {
                     var pid = decoded.partnerId || decoded.id;
                     accessOk = contract.partner_id === pid;
@@ -16574,12 +16589,17 @@ app.get('/api/quotes/by-order/:orderId', function(req, res) {
 // recreer.
 async function purgeSeedPartnerAccounts() {
     const partners = loadPartners();
-    const remaining = partners.filter(p => p.createdBy !== 'system-seed');
+    const remaining = partners.filter(function(p) {
+        return p.createdBy !== 'system-seed' &&
+               p.createdBy !== 'setup-test-partners' &&
+               p.createdBy !== 'setup-test-parrainage' &&
+               !/^test-/.test((p.email || '').toLowerCase());
+    });
     const removed = partners.length - remaining.length;
 
     if (removed > 0) {
         savePartners(remaining);
-        console.log('   [CLEANUP] ' + removed + ' faux compte(s) partenaire(s) de demonstration supprime(s)');
+        console.log('   [CLEANUP] ' + removed + ' compte(s) partenaire(s) de test supprime(s) au demarrage');
     }
 }
 
@@ -19241,8 +19261,10 @@ app.listen(PORT, async () => {
     // Nettoyer les faux comptes partenaires de demonstration crees par d'anciens demarrages
     await purgeSeedPartnerAccounts();
 
-    // Créer / mettre à jour les comptes de test internes par niveau GENESIS
-    await initTestAccounts();
+    // Comptes de test internes : uniquement en dehors de la production
+    if (process.env.NODE_ENV !== 'production') {
+        await initTestAccounts();
+    }
 
 // ── PROMOTIONS ────────────────────────────────────────────────────────────────
 
