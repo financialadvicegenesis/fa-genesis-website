@@ -14695,7 +14695,7 @@ app.post('/api/admin/setup-test-parrainage', async function(req, res) {
                 id: uid('PAY-TST-PAR-'),
                 partner_id: parrainId, partner_email: 'test-parrain@fagenesis.com',
                 order_id: uid('ORD-DEMO-'), stage: 'balance',
-                amount: [290, 480, 190, 380, 240, 320][i] * 0.85,
+                amount: [290, 480, 190, 380, 240, 320][i] * 0.75,
                 currency: 'EUR', status: 'sent', payout_method: 'bank_transfer',
                 created_at: daysAgo(80 - i * 10), sent_at: daysAgo(79 - i * 10)
             });
@@ -14705,7 +14705,7 @@ app.post('/api/admin/setup-test-parrainage', async function(req, res) {
             id: uid('PAY-TST-FIL-'),
             partner_id: filleulId, partner_email: 'test-filleul@fagenesis.com',
             order_id: uid('ORD-DEMO-'), stage: 'balance',
-            amount: 250 * 0.85, currency: 'EUR', status: 'sent', payout_method: 'bank_transfer',
+            amount: 250 * 0.75, currency: 'EUR', status: 'sent', payout_method: 'bank_transfer',
             created_at: daysAgo(8), sent_at: daysAgo(7)
         });
         savePayouts(payouts);
