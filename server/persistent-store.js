@@ -35,7 +35,8 @@ var COLLECTIONS = [
     'feedbacks',
     'settings',
     'push-subscriptions',
-    'payouts'
+    'payouts',
+    'genesis_projects'
 ];
 
 /**

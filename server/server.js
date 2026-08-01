@@ -71,6 +71,7 @@ const DISPUTES_FILE = path.join(__dirname, 'data', 'disputes.json');
 const PROSPECTS_FILE = path.join(__dirname, 'data', 'prospects.json');
 const CAMPAGNES_FILE = path.join(__dirname, 'data', 'campagnes.json');
 const SCHEDULED_NOTIFS_FILE = path.join(__dirname, 'data', 'scheduled_notifs.json');
+const GENESIS_PROJECTS_FILE = path.join(__dirname, 'data', 'genesis_projects.json');
 
 // Catégories de partenaires marketplace (source unique, partagée par inscription + admin)
 const PARTNER_TYPES = [
@@ -395,6 +396,26 @@ function savePartnerReviews(reviews) {
     } catch (error) {
         console.error('[PARTNER-REVIEWS] Erreur sauvegarde partner_reviews:', error);
     }
+}
+
+function loadGenesisProjects() {
+    try {
+        if (fs.existsSync(GENESIS_PROJECTS_FILE)) {
+            return JSON.parse(fs.readFileSync(GENESIS_PROJECTS_FILE, 'utf8')) || [];
+        }
+    } catch (e) { console.error('[GENESIS-PROJECTS] Erreur lecture:', e); }
+    return [];
+}
+
+function saveGenesisProjects(data) {
+    try {
+        fs.writeFileSync(GENESIS_PROJECTS_FILE, JSON.stringify(data, null, 2), 'utf8');
+        persistentStore.persistToCloud('genesis_projects', data).catch(function(e) {});
+    } catch (e) { console.error('[GENESIS-PROJECTS] Erreur sauvegarde:', e); }
+}
+
+function getGenesisProjectById(id) {
+    return loadGenesisProjects().find(function(p) { return p.id === id; }) || null;
 }
 
 function getPartnerByEmail(email) {
@@ -2569,7 +2590,9 @@ app.get('/api/products/:productId', (req, res) => {
  */
 app.post('/api/orders/create', (req, res) => {
     try {
-        const { productId, items, clientInfo, partnerServiceOrder } = req.body;
+        const { productId, items, clientInfo, partnerServiceOrder: _psoRaw, partnerServiceItems } = req.body;
+        // 1 seul item dans partnerServiceItems → traité comme partnerServiceOrder classique
+        const partnerServiceOrder = _psoRaw || (partnerServiceItems && partnerServiceItems.length === 1 ? { partnerId: partnerServiceItems[0].partnerId, serviceId: partnerServiceItems[0].serviceId } : null);
 
         if (!clientInfo || !clientInfo.email || !clientInfo.firstName || !clientInfo.lastName) {
             return res.status(400).json({ error: 'Informations client incompletes (email, firstName, lastName requis)' });
@@ -2753,6 +2776,162 @@ app.post('/api/orders/create', (req, res) => {
             }
             console.log('[ORDER] Commande multi: ' + order.id + ' - ' + allOrderItems.length + ' items - ' + totalAmountFinal + 'EUR');
 
+        // ---- FORMAT PROJET GENESIS (multi-prestataires) ----
+        } else if (partnerServiceItems && Array.isArray(partnerServiceItems) && partnerServiceItems.length > 1) {
+            // Valider chaque item
+            var psiAuthTok = (req.headers.authorization || '').replace('Bearer ', '').trim();
+            var psiActUser = psiAuthTok ? findUserByToken(psiAuthTok) : null;
+            var psiClientEmail = (clientInfo && clientInfo.email) || (psiActUser && psiActUser.email) || '';
+            var psiIsFirstOrder = psiClientEmail ? isClientFirstPaidOrder(psiClientEmail) : false;
+            var psiWelcomeApplied = false;
+
+            var psiValidated = [];
+            for (var psiIdx = 0; psiIdx < partnerServiceItems.length; psiIdx++) {
+                var psiItem = partnerServiceItems[psiIdx];
+                if (!psiItem.partnerId || !psiItem.serviceId) {
+                    return res.status(400).json({ error: 'Chaque prestation doit avoir partnerId et serviceId' });
+                }
+                var psiPartner = getPartnerById(psiItem.partnerId);
+                if (!psiPartner) return res.status(404).json({ error: 'Partenaire ' + psiItem.partnerId + ' non trouvé' });
+                if (psiPartner.accountStatus !== 'active') return res.status(400).json({ error: 'Le partenaire ' + (psiPartner.prenom||'') + ' n\'est pas disponible' });
+                var psiService = (psiPartner.services || []).find(function(s) { return s.id === psiItem.serviceId && s.active !== false; });
+                if (!psiService) return res.status(404).json({ error: 'Prestation non trouvée chez ' + (psiPartner.prenom||'') });
+
+                var psiTotal = parseFloat(psiService.price);
+                var psiFullPrice = psiTotal;
+                var psiWelcomeAmt = 0;
+                // Avantage bienvenue : s'applique sur la première commande, une seule fois au total
+                if (psiIsFirstOrder && !psiWelcomeApplied) {
+                    var psiDiePct = (psiActUser && psiActUser.referral_discount && psiActUser.referral_discount.pct)
+                        ? psiActUser.referral_discount.pct
+                        : (psiActUser && psiActUser.referredBy ? WELCOME_DISCOUNT_PCT_WITH_REFERRAL : WELCOME_DISCOUNT_PCT_NO_REFERRAL);
+                    psiTotal = Math.round(psiFullPrice * (1 - psiDiePct / 100) * 100) / 100;
+                    psiWelcomeAmt = Math.round((psiFullPrice - psiTotal) * 100) / 100;
+                    psiWelcomeApplied = true;
+                }
+                var psiPaymentTier = psiTotal <= 300 ? 'small' : 'large';
+                var psiInstalls = generateGenesisSplit(psiTotal);
+                var psiDeposit = psiInstalls[0].amount;
+                var psiBalance = psiInstalls.length > 1 ? psiInstalls.slice(1).reduce(function(s, i) { return s + i.amount; }, 0) : 0;
+
+                psiValidated.push({
+                    partner: psiPartner,
+                    service: psiService,
+                    total: psiTotal,
+                    fullPrice: psiFullPrice,
+                    welcomeAmt: psiWelcomeAmt,
+                    paymentTier: psiPaymentTier,
+                    installments: psiInstalls,
+                    deposit: psiDeposit,
+                    balance: psiBalance
+                });
+            }
+
+            // Appliquer la remise bienvenue sur le compte si applicable
+            if (psiWelcomeApplied && psiActUser) {
+                var psiUsrs = loadUsers(); var psiUIdx = psiUsrs.findIndex(function(u) { return u.id === psiActUser.id; });
+                if (psiUIdx !== -1 && psiUsrs[psiUIdx].referral_discount && !psiUsrs[psiUIdx].referral_discount.applied) {
+                    psiUsrs[psiUIdx].referral_discount.applied = true;
+                    psiUsrs[psiUIdx].referral_discount.applied_at = new Date().toISOString();
+                    saveUsers(psiUsrs);
+                }
+            }
+
+            // Créer le Projet GENESIS
+            var projId = 'PROJ-' + uuidv4().split('-')[0].toUpperCase();
+            var projTotalAmount = psiValidated.reduce(function(s, v) { return s + v.total; }, 0);
+            var projDepositTotal = psiValidated.reduce(function(s, v) { return s + v.deposit; }, 0);
+            var projClientInfo = {
+                email: clientInfo.email,
+                first_name: clientInfo.firstName,
+                last_name: clientInfo.lastName,
+                phone: clientInfo.phone || null,
+                company: clientInfo.company || null,
+                client_type: clientInfo.clientType || 'particulier'
+            };
+
+            var projOrderIds = [];
+            var projPrestations = [];
+            var nowIso = new Date().toISOString();
+            var allOrders = loadOrders();
+
+            psiValidated.forEach(function(v) {
+                var subOrderId = 'ORD-' + uuidv4().split('-')[0].toUpperCase();
+                projOrderIds.push(subOrderId);
+                var subOrder = {
+                    id: subOrderId,
+                    product_id: null,
+                    product_name: v.service.label,
+                    product_type: 'partner_service',
+                    project_id: projId,
+                    payment_tier: v.paymentTier,
+                    partner_id: v.partner.id,
+                    partner_service_id: v.service.id,
+                    request_id: null,
+                    client_info: projClientInfo,
+                    total_amount: v.total,
+                    welcome_discount_amount: v.welcomeAmt,
+                    deposit_amount: v.deposit,
+                    balance_amount: v.balance,
+                    installments_count: v.installments.length,
+                    installments: v.installments,
+                    amount_paid: 0,
+                    deposit_paid: false,
+                    balance_paid: false,
+                    delivery_confirmed: false,
+                    duration_days: 0,
+                    start_date: null,
+                    status: 'pending_deposit',
+                    checkout_id: null,
+                    transaction_id: null,
+                    created_at: nowIso,
+                    updated_at: nowIso
+                };
+                allOrders.push(subOrder);
+                projPrestations.push({
+                    order_id: subOrderId,
+                    partner_id: v.partner.id,
+                    partner_name: (v.partner.prenom || '') + ' ' + (v.partner.nom || ''),
+                    service_label: v.service.label,
+                    total_amount: v.total,
+                    deposit_amount: v.deposit,
+                    status: 'pending_deposit'
+                });
+            });
+
+            saveOrders(allOrders);
+
+            var genesisProject = {
+                id: projId,
+                title: 'Projet GENESIS — ' + projPrestations.map(function(p) { return p.service_label; }).join(' + '),
+                client_info: projClientInfo,
+                client_email: clientInfo.email,
+                order_ids: projOrderIds,
+                prestations: projPrestations,
+                total_amount: projTotalAmount,
+                deposit_total: projDepositTotal,
+                status: 'pending_deposit',
+                progress_pct: 0,
+                created_at: nowIso,
+                updated_at: nowIso
+            };
+            var gProjects = loadGenesisProjects();
+            gProjects.push(genesisProject);
+            saveGenesisProjects(gProjects);
+
+            notifyUser(null, 'admin', 'commande', 'FA GENESIS — Nouveau Projet GENESIS', (projClientInfo.first_name + ' ' + projClientInfo.last_name) + ' — ' + psiValidated.length + ' prestations — ' + projTotalAmount + ' €', '/app.html#open-admin');
+
+            console.log('[ORDER] Projet GENESIS créé: ' + projId + ' - ' + psiValidated.length + ' prestations - ' + projTotalAmount + ' EUR');
+
+            return res.json({
+                success: true,
+                projectId: projId,
+                order_ids: projOrderIds,
+                total_amount: projTotalAmount,
+                deposit_total: projDepositTotal,
+                prestations: projPrestations.length
+            });
+
         // ---- FORMAT PRESTATION PARTENAIRE (marketplace, commande directe) ----
         } else if (partnerServiceOrder && partnerServiceOrder.partnerId && partnerServiceOrder.serviceId) {
             const partner = getPartnerById(partnerServiceOrder.partnerId);
@@ -2921,7 +3100,7 @@ app.post('/api/orders/create', (req, res) => {
             console.log(`[ORDER] Commande creee: ${order.id} - ${product.name} - ${product.total_price}EUR`);
 
         } else {
-            return res.status(400).json({ error: 'productId, items ou partnerServiceOrder requis' });
+            return res.status(400).json({ error: 'productId, items, partnerServiceOrder ou partnerServiceItems requis' });
         }
 
         // Sauvegarder
@@ -3777,6 +3956,7 @@ app.get('/api/my-orders', async function(req, res) {
         var userEmail = user.email;
         var orders = loadOrders().filter(function(o) {
             return o.product_type === 'partner_service' &&
+                !o.project_id &&  // Les commandes d'un Projet GENESIS apparaissent dans /api/my-projects
                 o.client_info && o.client_info.email &&
                 o.client_info.email.toLowerCase() === userEmail.toLowerCase();
         });
@@ -3807,6 +3987,105 @@ app.get('/api/my-orders', async function(req, res) {
         res.json({ ok: true, orders: enriched });
     } catch(e) {
         console.error('[MY_ORDERS]', e.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * GET /api/my-projects
+ * Projets GENESIS du client (commandes multi-prestataires)
+ */
+app.get('/api/my-projects', function(req, res) {
+    try {
+        var user = authenticateClient(req, res);
+        if (!user) return;
+        var userEmail = user.email.toLowerCase();
+        var projects = loadGenesisProjects().filter(function(p) {
+            return p.client_email && p.client_email.toLowerCase() === userEmail;
+        });
+        var allOrders = loadOrders();
+        var allDispatches = loadDispatches();
+
+        var enriched = projects.map(function(proj) {
+            var completedCount = 0;
+            var inProgressCount = 0;
+            var prestations = (proj.prestations || []).map(function(prest) {
+                var ord = allOrders.find(function(o) { return o.id === prest.order_id; });
+                var disp = allDispatches.find(function(d) { return d.order_id === prest.order_id; });
+                var ptnr = getPartnerById(prest.partner_id);
+                var prestStatus = 'pending_deposit';
+                if (ord) {
+                    prestStatus = ord.status;
+                    if (disp) {
+                        if (disp.status === 'completed' || ord.status === 'completed') {
+                            prestStatus = 'completed';
+                            completedCount++;
+                        } else if (disp.status === 'accepted' || disp.status === 'in_progress') {
+                            prestStatus = 'in_progress';
+                            inProgressCount++;
+                        }
+                    } else if (ord.status === 'completed') {
+                        prestStatus = 'completed';
+                        completedCount++;
+                    }
+                }
+                return {
+                    order_id: prest.order_id,
+                    partner_id: prest.partner_id,
+                    partner_name: ptnr ? ((ptnr.prenom || '') + ' ' + (ptnr.nom || '')).trim() : (prest.partner_name || 'Prestataire'),
+                    partner_photo: ptnr ? (ptnr.photo || null) : null,
+                    service_label: prest.service_label,
+                    total_amount: prest.total_amount,
+                    deposit_amount: prest.deposit_amount || 0,
+                    deposit_paid: ord ? (ord.deposit_paid || false) : false,
+                    status: prestStatus,
+                    dispatch_status: disp ? disp.status : null
+                };
+            });
+
+            var totalPrest = prestations.length;
+            var progressPct = totalPrest > 0 ? Math.round((completedCount / totalPrest) * 100) : 0;
+            var projStatus = completedCount === totalPrest ? 'completed' : (inProgressCount > 0 || completedCount > 0 ? 'in_progress' : 'pending_deposit');
+
+            return {
+                id: proj.id,
+                title: proj.title,
+                total_amount: proj.total_amount,
+                deposit_total: proj.deposit_total,
+                status: projStatus,
+                progress_pct: progressPct,
+                completed_count: completedCount,
+                total_count: totalPrest,
+                prestations: prestations,
+                created_at: proj.created_at
+            };
+        }).sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); });
+
+        res.json({ ok: true, projects: enriched });
+    } catch(e) {
+        console.error('[MY_PROJECTS]', e.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * GET /api/projects/:projectId
+ * Détail d'un Projet GENESIS (client ou admin)
+ */
+app.get('/api/projects/:projectId', function(req, res) {
+    try {
+        var tok = (req.headers.authorization || '').replace('Bearer ', '').trim();
+        var user = findUserByToken(tok);
+        var isAdminReq = tok && loadAdminSessions().some(function(s) {
+            return s.token === tok && (!s.expires_at || new Date(s.expires_at) > new Date());
+        });
+        var proj = getGenesisProjectById(req.params.projectId);
+        if (!proj) return res.status(404).json({ error: 'Projet non trouvé' });
+        if (!isAdminReq && (!user || user.email.toLowerCase() !== (proj.client_email || '').toLowerCase())) {
+            return res.status(403).json({ error: 'Accès refusé' });
+        }
+        res.json({ ok: true, project: proj });
+    } catch(e) {
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });

@@ -4688,7 +4688,55 @@ function renderResaTab(){
   var c = document.getElementById('resaContent');
   if(!USER||GUEST){ c.innerHTML = locked('Mes réservations','Connectez-vous pour voir vos réservations et leur statut.'); return; }
   c.innerHTML = '<div class="espace-back-bar"><button class="espace-back-btn" onclick="navBack()">&#8249;</button><div class="espace-title">Mes réservations</div></div>'
+    + '<div class="resa-list" id="myProjectsList"></div>'
     + '<div class="resa-list" id="myOrdersPendingList"></div><div class="resa-list" id="myRequestsList"></div><div class="resa-list" id="resaList"><div class="empty"><div class="e-ico"><i class="fa-solid fa-calendar-days"></i></div><p>Chargement...</p></div></div>';
+  // Projets GENESIS (multi-prestataires)
+  fetch((window.FA_GENESIS_API||API)+'/api/my-projects',{headers:{'Authorization':'Bearer '+USER._token}})
+    .then(function(r){return r.json();})
+    .then(function(data){
+      var projects = (data&&Array.isArray(data.projects))?data.projects:[];
+      var el = document.getElementById('myProjectsList');
+      if(!el||!projects.length){ if(el) el.innerHTML=''; return; }
+      var _pStatusLabel = {pending_deposit:'En attente de paiement',in_progress:'En cours',completed:'Terminé'};
+      var _pStatusColor = {pending_deposit:'var(--yellow)',in_progress:'#60a5fa',completed:'#4ade80'};
+      var _prestStatusLabel = {pending_deposit:'⏳ En attente',in_progress:'🔵 En cours',completed:'✅ Terminé'};
+      var _prestStatusColor = {pending_deposit:'var(--muted)',in_progress:'#60a5fa',completed:'#4ade80'};
+      el.innerHTML = '<div class="detail-feats-title" style="margin:4px 0 10px;color:var(--yellow);"><i class="fa-solid fa-layer-group"></i> Projets GENESIS</div>'
+        + projects.map(function(proj){
+          var statusColor = _pStatusColor[proj.status]||'var(--muted)';
+          var statusLabel = _pStatusLabel[proj.status]||proj.status;
+          var barPct = proj.progress_pct||0;
+          var prestHtml = (proj.prestations||[]).map(function(p){
+            var sl = _prestStatusLabel[p.status]||p.status;
+            return '<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.06);">'
+              +'<div><div style="font-size:12px;font-weight:600;color:#e5e5e5;">'+p.partner_name+'</div>'
+              +'<div style="font-size:11px;color:var(--muted);margin-top:1px;">'+p.service_label+'</div></div>'
+              +'<div style="text-align:right;">'
+              +'<div style="font-size:11px;color:'+(_prestStatusColor[p.status]||'var(--muted)')+';font-weight:700;">'+sl+'</div>'
+              +'<div style="font-size:11px;color:var(--muted);">'+p.total_amount+' €</div></div>'
+              +'</div>';
+          }).join('');
+          return '<div class="resa-card" style="border-color:var(--yellow);background:rgba(250,204,21,0.04);padding:14px 14px 10px;">'
+            +'<div class="resa-top" style="margin-bottom:8px;">'
+            +'<div class="resa-name" style="font-size:13px;"><i class="fa-solid fa-layer-group" style="color:var(--yellow);margin-right:6px;"></i>'+proj.title.replace('Projet GENESIS — ','')+'</div>'
+            +'<span class="resa-status" style="background:rgba(250,204,21,0.12);color:'+statusColor+';border:1px solid '+statusColor+'22;font-size:10px;">'+statusLabel+'</span>'
+            +'</div>'
+            // Barre de progression globale
+            +'<div style="margin-bottom:10px;">'
+            +'<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:4px;">'
+            +'<span>Avancement global</span><span>'+proj.completed_count+'/'+proj.total_count+' prestations</span></div>'
+            +'<div style="height:6px;background:rgba(255,255,255,0.08);border-radius:4px;overflow:hidden;">'
+            +'<div style="height:100%;width:'+barPct+'%;background:linear-gradient(90deg,var(--yellow),#fbbf24);border-radius:4px;transition:width .4s;"></div>'
+            +'</div></div>'
+            // Liste des prestations
+            +'<div style="margin:0 -2px;">'+prestHtml+'</div>'
+            +'<div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;">'
+            +'<div style="font-size:11px;color:var(--muted);">Total projet</div>'
+            +'<div style="font-size:14px;font-weight:800;color:var(--yellow);">'+proj.total_amount+' €</div>'
+            +'</div>'
+            +'</div>';
+        }).join('');
+    }).catch(function(){ var el=document.getElementById('myProjectsList'); if(el) el.innerHTML=''; });
   // Commandes prestataires payées en attente d'acceptation
   fetch((window.FA_GENESIS_API||API)+'/api/my-orders',{headers:{'Authorization':'Bearer '+USER._token}})
     .then(function(r){return r.json();})
