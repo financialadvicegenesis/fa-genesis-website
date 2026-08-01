@@ -18,7 +18,7 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const PDFDocument = require('pdfkit');
 
-const { getProductById, calculatePaymentAmounts, getAmountForStage, generateInstallments, generateGenesisSplit } = require('./products');
+const { getProductById, calculatePaymentAmounts, getAmountForStage, generateInstallments, generateGenesisSplit, generateUserInstallmentPlan, validateInstallments, CLIENT_TYPE_MAX_INSTALLMENTS } = require('./products');
 const emailService = require('./email-service');
 const { OFFER_BLUEPRINTS, getOfferBlueprint, getAllOfferKeys } = require('./config/offerBlueprints');
 const { fillTemplate, getAvailableTemplates, getTemplate } = require('./config/documentTemplates');
@@ -2810,7 +2810,12 @@ app.post('/api/orders/create', (req, res) => {
                     psiWelcomeApplied = true;
                 }
                 var psiPaymentTier = psiTotal <= 300 ? 'small' : 'large';
-                var psiInstalls = generateGenesisSplit(psiTotal);
+                var psiRequestedInstallments = parseInt(psiItem.requestedInstallments) || 1;
+                var psiClientType = (clientInfo && clientInfo.clientType) || 'particulier';
+                var psiValidatedN = validateInstallments(psiRequestedInstallments, psiService.max_installments || 1, psiClientType);
+                var psiInstalls = psiValidatedN > 1
+                    ? generateUserInstallmentPlan(psiTotal, psiValidatedN)
+                    : generateGenesisSplit(psiTotal);
                 var psiDeposit = psiInstalls[0].amount;
                 var psiBalance = psiInstalls.length > 1 ? psiInstalls.slice(1).reduce(function(s, i) { return s + i.amount; }, 0) : 0;
 
@@ -2982,7 +2987,13 @@ app.post('/api/orders/create', (req, res) => {
             // ≤ 300 € → paiement intégral immédiat, fonds retenus jusqu'à la livraison (payment_tier='small')
             // > 300 € → acompte 30 % versé au prestataire + solde 70 % à la livraison (payment_tier='large')
             const psoPaymentTier = psoTotal <= 300 ? 'small' : 'large';
-            const psoInstallments = generateGenesisSplit(psoTotal);
+            // Paiement en plusieurs fois : si le client demande N mensualités et que le service le permet
+            var psoRequestedInstallments = parseInt(partnerServiceOrder.requestedInstallments) || 1;
+            var psoClientType = (clientInfo && clientInfo.clientType) || 'particulier';
+            var psoValidatedInstallments = validateInstallments(psoRequestedInstallments, service.max_installments || 1, psoClientType);
+            const psoInstallments = psoValidatedInstallments > 1
+                ? generateUserInstallmentPlan(psoTotal, psoValidatedInstallments)
+                : generateGenesisSplit(psoTotal);
             const psoDeposit = psoInstallments[0].amount;
             const psoBalance = psoInstallments.length > 1
                 ? psoInstallments.slice(1).reduce(function(s, i) { return s + i.amount; }, 0)

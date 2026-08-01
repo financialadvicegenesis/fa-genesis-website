@@ -597,12 +597,61 @@ function generateGenesisSplit(totalAmount) {
     ];
 }
 
+// Limites de mensualités par type de client
+var CLIENT_TYPE_MAX_INSTALLMENTS = {
+    etudiant: 8,
+    particulier: 2,
+    entreprise: 1
+};
+
+/**
+ * Génère un plan en N mensualités égales choisi par le client.
+ * La première tranche est toujours l'acompte (stage=deposit).
+ * Utilisé pour le paiement en plusieurs fois (Phase 2).
+ */
+function generateUserInstallmentPlan(totalAmount, numInstallments) {
+    var n = Math.max(1, Math.min(8, parseInt(numInstallments) || 1));
+    if (n <= 1) return generateGenesisSplit(totalAmount);
+
+    var perInstall = Math.floor(totalAmount / n * 100) / 100;
+    var lastInstall = Math.round((totalAmount - perInstall * (n - 1)) * 100) / 100;
+    var plan = [];
+    for (var i = 0; i < n; i++) {
+        var amt = (i === n - 1) ? lastInstall : perInstall;
+        plan.push({
+            number: i + 1,
+            key: i === 0 ? 'acompte' : 'mensualite_' + (i + 1),
+            label: 'Mensualité ' + (i + 1) + '/' + n,
+            amount: amt,
+            due_date: null,
+            paid: false,
+            paid_at: null,
+            stage: i === 0 ? 'deposit' : 'balance',
+            milestone_required: null
+        });
+    }
+    return plan;
+}
+
+/**
+ * Valide et retourne le nombre de mensualités pour un client/service donné.
+ */
+function validateInstallments(requested, serviceMaxInstallments, clientType) {
+    var n = Math.max(1, parseInt(requested) || 1);
+    var clientMax = CLIENT_TYPE_MAX_INSTALLMENTS[clientType] || CLIENT_TYPE_MAX_INSTALLMENTS['particulier'];
+    var svcMax = Math.max(1, parseInt(serviceMaxInstallments) || 1);
+    return Math.min(n, clientMax, svcMax);
+}
+
 module.exports = {
     PRODUCTS,
+    CLIENT_TYPE_MAX_INSTALLMENTS,
     getProductById,
     calculatePaymentAmounts,
     calculateMultiItemAmounts,
     getAmountForStage,
     generateInstallments,
-    generateGenesisSplit
+    generateGenesisSplit,
+    generateUserInstallmentPlan,
+    validateInstallments
 };

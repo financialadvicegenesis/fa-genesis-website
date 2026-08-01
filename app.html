@@ -4627,7 +4627,9 @@ function addServiceToMainCart(partnerId, serviceId){
     partnerId: p.id,
     partnerName: partnerName,
     serviceId: serviceId,
-    serviceLabel: service.label
+    serviceLabel: service.label,
+    maxInstallments: service.max_installments || 1,
+    selectedInstallments: 1
   });
   closeServiceDetail();
 }
@@ -9734,16 +9736,41 @@ function renderCartBody(){
     if(tr) tr.style.display='none'; if(cb) cb.disabled=true; return;
   }
   if(tr) tr.style.display='flex'; if(cb) cb.disabled=false;
+  // Dériver le type client depuis l'offre de l'utilisateur
+  var _cartClientType = 'particulier';
+  if(USER && (USER.activeOfferId||USER.offre)){
+    var _oid = (USER.activeOfferId||USER.offre||'').toLowerCase();
+    if(_oid.indexOf('etudiant')!==-1) _cartClientType='etudiant';
+    else if(_oid.indexOf('entreprise')!==-1) _cartClientType='entreprise';
+  }
+  var _cartMaxByType = {etudiant:8, particulier:2, entreprise:1};
+  var _clientMax = _cartMaxByType[_cartClientType]||2;
+
   body.innerHTML=APP_CART.map(function(item,i){
     var isPtnrSvc = item.type==='partner_service';
     var qty = item.quantity||1;
     var isOne = qty===1;
+    var installHtml = '';
+    if(isPtnrSvc && (item.maxInstallments||1) > 1 && _clientMax > 1){
+      var maxOpts = Math.min(item.maxInstallments||1, _clientMax);
+      var selOpts = '';
+      for(var ni=1;ni<=maxOpts;ni++){
+        var nl=ni===1?'Comptant':ni+'× en mensualités';
+        selOpts+='<option value="'+ni+'"'+(((item.selectedInstallments||1)===ni)?' selected':'')+'>'+nl+'</option>';
+      }
+      installHtml = '<div style="margin-top:5px;">'
+        +'<select style="font-size:10px;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:6px;color:#FFD700;padding:3px 7px;font-weight:700;font-family:inherit;outline:none;" onchange="APP_CART['+i+'].selectedInstallments=parseInt(this.value)||1;renderCartBody();">'
+        +selOpts
+        +'</select>'
+        +'</div>';
+    }
     return '<div class="cart-item">'
       +'<div class="cart-item-info">'
       +(isPtnrSvc?'<span class="cart-item-ptnr-lbl">PRESTATION</span>':'')
       +'<div class="cart-item-name">'+item.name+'</div>'
       +(item.sub?'<div class="cart-item-sub">'+item.sub+'</div>':'')
       +'<div class="cart-item-price">'+item.price+(qty>1?' × '+qty:'')+'</div>'
+      +installHtml
       +'</div>'
       +'<div class="cart-qty-ctrl">'
       +'<button class="cart-qty-btn'+(isOne?' cart-qty-rm':'')+'" onclick="changeCartQty('+i+',-1)" title="'+(isOne?'Supprimer':'Moins')+'">'+(isOne?'<i class="fa-solid fa-trash-can" style="font-size:11px;"></i>':'<span style="font-size:18px;line-height:1">−</span>')+'</button>'
@@ -9761,23 +9788,31 @@ function cartCheckout(){
   if(APP_CART.length===0) return;
   if(!USER){ closeCart(); setTimeout(showLoginSheet, 400); return; }
 
-  // Si le panier contient des prestations partenaires, les traiter via GENESIS SAFE™ / pb-sheet.
-  // On prend la première prestation partenaire (les autres restent dans le panier pour un paiement ultérieur).
-  var ptnrIdx = -1;
-  for(var pi=0; pi<APP_CART.length; pi++){
-    if(APP_CART[pi].type==='partner_service'){ ptnrIdx=pi; break; }
-  }
-  if(ptnrIdx !== -1){
-    var ptnrItem = APP_CART[ptnrIdx];
-    // Somme de TOUTES les entrées du même service partenaire dans le panier
-    // (au cas où d'anciennes données localStorage auraient plusieurs entrées distinctes)
-    var ptnrTotal = APP_CART
-      .filter(function(it){ return it.type==='partner_service' && it.partnerId===ptnrItem.partnerId && it.serviceId===ptnrItem.serviceId; })
-      .reduce(function(sum, it){ return sum + (it.priceNum||0)*(it.quantity||1); }, 0);
-    closeCart();
-    setTimeout(function(){
-      payAcceptedRequest(ptnrItem.partnerId, ptnrItem.serviceId, ptnrItem.serviceLabel, ptnrTotal, ptnrItem.partnerName);
-    }, 400);
+  // Prestations partenaires dans le panier → GENESIS SAFE™ / pb-sheet
+  var ptnrItems = APP_CART.filter(function(it){ return it.type==='partner_service'; });
+  if(ptnrItems.length > 0){
+    // Dédupliquer par partnerId+serviceId
+    var _seen = {};
+    var uniquePtnrItems = ptnrItems.filter(function(it){
+      var k = it.partnerId+'|'+it.serviceId;
+      if(_seen[k]) return false; _seen[k]=true; return true;
+    });
+    if(uniquePtnrItems.length === 1){
+      // Flux normal : ouvre la pb-sheet pour 1 prestation
+      var ptnrItem = uniquePtnrItems[0];
+      var ptnrTotal = ptnrItems
+        .filter(function(it){ return it.partnerId===ptnrItem.partnerId && it.serviceId===ptnrItem.serviceId; })
+        .reduce(function(sum,it){ return sum+(it.priceNum||0)*(it.quantity||1); }, 0);
+      closeCart();
+      setTimeout(function(){
+        _pbSelectedInstallments = ptnrItem.selectedInstallments||1;
+        payAcceptedRequest(ptnrItem.partnerId, ptnrItem.serviceId, ptnrItem.serviceLabel, ptnrTotal, ptnrItem.partnerName);
+      }, 400);
+    } else {
+      // Multi-prestataires → Projet GENESIS
+      closeCart();
+      setTimeout(function(){ _checkoutGenesisProject(uniquePtnrItems); }, 400);
+    }
     return;
   }
 
@@ -9790,6 +9825,41 @@ function cartCheckout(){
   var cartSnap = APP_CART.slice();
   closeCart();
   setTimeout(function(){ openPayOverlay(total, cartSnap); }, 450);
+}
+
+// ── CHECKOUT PROJET GENESIS (multi-prestataires) ─────────────
+function _checkoutGenesisProject(ptnrItems){
+  if(!USER||GUEST){ showLoginSheet(); return; }
+  var clientInfo = {
+    firstName: USER.prenom||USER.firstName||'',
+    lastName: USER.nom||USER.lastName||'',
+    email: USER.email||'',
+    phone: USER.telephone||USER.phone||'',
+    clientType: (function(){ var oid=(USER.activeOfferId||USER.offre||'').toLowerCase(); if(oid.indexOf('etudiant')!==-1)return'etudiant'; if(oid.indexOf('entreprise')!==-1)return'entreprise'; return'particulier'; })()
+  };
+  var partnerServiceItems = ptnrItems.map(function(it){
+    return { partnerId: it.partnerId, serviceId: it.serviceId, requestedInstallments: it.selectedInstallments||1 };
+  });
+  var totalEst = ptnrItems.reduce(function(s,it){ return s+(it.priceNum||0)*(it.quantity||1); },0);
+  // Demander confirmation avant de créer le projet
+  var names = ptnrItems.map(function(it){ return it.serviceLabel; }).join(' + ');
+  if(!confirm('Créer un Projet GENESIS ?\n\n'+names+'\n\nTotal estimé : '+totalEst+' €\n\nVous serez redirigé vers le paiement de chaque prestation.')) return;
+
+  fetch((window.FA_GENESIS_API||API)+'/api/orders/create',{
+    method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+USER._token},
+    body:JSON.stringify({ clientInfo: clientInfo, partnerServiceItems: partnerServiceItems })
+  }).then(function(r){ return r.json().then(function(d){ return {ok:r.ok,data:d}; }); })
+  .then(function(res){
+    if(!res.ok||!res.data||!res.data.projectId) throw new Error((res.data&&res.data.error)||'Erreur création projet');
+    // Vider le panier des prestations
+    APP_CART = APP_CART.filter(function(it){ return it.type!=='partner_service'; });
+    _saveCart(); renderCartBody();
+    showToast('Projet GENESIS créé !', res.data.prestations+' prestations • Total '+totalEst+' €', 'success');
+    // Naviguer vers Mes réservations
+    setTimeout(function(){ nav('resa'); }, 800);
+  }).catch(function(err){
+    showToast('Erreur', err.message||'Impossible de créer le projet', 'error');
+  });
 }
 
 // ── PAYMENT OVERLAY ──────────────────────────────────────────
@@ -11528,19 +11598,12 @@ function openPartnerBooking(partnerId, serviceId){
 // Affiche l'écran de paiement de l'acompte (commun à la fiche partenaire et à "Mes demandes")
 function _showPbPayUI(partner, service){
   _pbPartner = partner; _pbService = service; _pbMode = 'pay';
+  _pbSelectedInstallments = 1;
 
   var overlay=document.getElementById('pb-overlay'); var sheet=document.getElementById('pb-sheet');
   if(!overlay||!sheet) return;
 
   var total = parseFloat(service.price)||0;
-  // GENESIS SAFE™ two-tier :
-  // ≤ 300 € (small) → paiement intégral retenu jusqu'à livraison
-  // > 300 € (large) → acompte 30 % + solde 70 %
-  var isSmall = total <= 300;
-  var deposit = isSmall ? total : Math.round(total*0.30);
-  var tranche2 = isSmall ? 0 : Math.round(total*0.40);
-  var tranche3 = isSmall ? 0 : total-deposit-tranche2;
-  _pbDepositAmount = deposit;
   _pbSelectedPayMethod = 'card';
   var mCrd = document.getElementById('pb-method-card'); if(mCrd) mCrd.className='pb-method-btn pb-method-active';
   var mPp = document.getElementById('pb-method-paypal'); if(mPp) mPp.className='pb-method-btn';
@@ -11548,9 +11611,6 @@ function _showPbPayUI(partner, service){
 
   var nm=document.getElementById('pb-service-name'); if(nm) nm.textContent=service.label;
   var pn=document.getElementById('pb-partner-name'); if(pn) pn.textContent='avec '+(partner.prenom||'')+' '+(partner.nom||'');
-  // update both deposit amount elements (small row uses pb-deposit-amt, large row uses pb-deposit-amt-large)
-  var amt=document.getElementById('pb-deposit-amt'); if(amt) amt.textContent=deposit+' €';
-  var amtL=document.getElementById('pb-deposit-amt-large'); if(amtL) amtL.textContent=deposit+' €';
   var tot=document.getElementById('pb-total-amt'); if(tot) tot.textContent=total+' €';
   var er=document.getElementById('pb-err'); if(er) er.classList.remove('on');
   var rf=document.getElementById('pb-request-form'); if(rf) rf.style.display='none';
@@ -11558,41 +11618,53 @@ function _showPbPayUI(partner, service){
   var ws=document.getElementById('pb-widget-screen'); if(ws) ws.style.display='none';
   var sc=document.getElementById('pb-success'); if(sc) sc.style.display='none';
 
-  // Adapt rows to tier — use explicit 'flex'/'none' (not '' which can leave wrong CSS defaults)
-  var rowSmall=document.getElementById('pb-row-small');
-  var rowT1=document.getElementById('pb-row-tranche1');
-  var rowT2=document.getElementById('pb-row-tranche2');
-  var rowT3=document.getElementById('pb-row-tranche3');
-  var holdMsg=document.getElementById('pb-hold-msg');
-  if(isSmall){
-    if(rowSmall) rowSmall.style.display='flex';
-    if(rowT1) rowT1.style.display='none';
-    if(rowT2) rowT2.style.display='none';
-    if(rowT3) rowT3.style.display='none';
-    if(holdMsg) holdMsg.style.display='block';
-  } else {
-    if(rowSmall) rowSmall.style.display='none';
-    if(rowT1) rowT1.style.display='flex';
-    if(rowT2){
-      rowT2.style.display='flex';
-      var t2el=document.getElementById('pb-tranche2-amt'); if(t2el) t2el.textContent=tranche2+' €';
+  // ── Installments selector ─────────────────────────────────────
+  var svcMaxInstall = Math.max(1, parseInt(service.max_installments)||1);
+  var clientMax = _pbGetClientTypeMax();
+  var maxAvail = Math.min(svcMaxInstall, clientMax);
+  var installRow = document.getElementById('pb-installments-row');
+  var installBtns = document.getElementById('pb-installments-btns');
+  var installNote = document.getElementById('pb-installments-note');
+  if(maxAvail > 1 && installRow && installBtns){
+    installRow.style.display = 'block';
+    var btnsHtml = '';
+    for(var ni=1;ni<=maxAvail;ni++){
+      var lbl = ni===1 ? 'Comptant' : ni+'×';
+      btnsHtml += '<button onclick="_pbSetInstallments('+ni+','+total+')" id="pb-install-btn-'+ni+'" style="font-size:11px;font-weight:800;padding:5px 12px;border-radius:8px;border:1.5px solid '+(ni===1?'#FFD700':'#2a2a2a')+';background:'+(ni===1?'#FFD700':'#1a1a1a')+';color:'+(ni===1?'#000':'#666')+';cursor:pointer;transition:all .15s;">'+lbl+'</button>';
     }
-    if(rowT3) rowT3.style.display='none';
-    if(holdMsg) holdMsg.style.display='none';
+    installBtns.innerHTML = btnsHtml;
+    if(installNote) installNote.textContent = clientMax === 8 ? 'Disponible jusqu\'à 8× (offre Étudiant)' : clientMax === 2 ? 'Jusqu\'à 2× (Particulier)' : '';
+  } else {
+    if(installRow) installRow.style.display = 'none';
   }
 
-  var sb=document.getElementById('pb-pay-btn');
-  if(sb){
-    sb.disabled=false;
-    sb.textContent = isSmall ? 'PAYER EN SÉCURISÉ (GENESIS SAFE™)' : 'PAYER L\'ACOMPTE';
-  }
+  // Initial breakdown render (1× = GENESIS SAFE™)
+  _pbRenderBreakdown(1, total);
+
   var sm=document.getElementById('pb-success-msg');
-  if(sm) sm.textContent = isSmall
+  if(sm) sm.textContent = total<=300
     ? 'Paiement sécurisé ! Votre argent est retenu par GENESIS SAFE™ et sera versé au prestataire après livraison.'
     : 'Acompte payé ! Le partenaire a été notifié et votre commande apparaît dans "Mes réservations".';
 
   overlay.classList.add('open');
   setTimeout(function(){ sheet.classList.add('up'); }, 20);
+}
+
+function _pbSetInstallments(n, total){
+  _pbSelectedInstallments = n;
+  var maxAvail = Math.min(
+    Math.max(1, parseInt((_pbService&&_pbService.max_installments)||1)),
+    _pbGetClientTypeMax()
+  );
+  for(var i=1;i<=maxAvail;i++){
+    var btn = document.getElementById('pb-install-btn-'+i);
+    if(btn){
+      btn.style.background = (i===n)?'#FFD700':'#1a1a1a';
+      btn.style.borderColor = (i===n)?'#FFD700':'#2a2a2a';
+      btn.style.color = (i===n)?'#000':'#666';
+    }
+  }
+  _pbRenderBreakdown(n, total);
 }
 // Paiement de l'acompte depuis "Mes demandes", une fois la demande acceptée par le partenaire
 function payAcceptedRequest(partnerId, serviceId, serviceLabel, price, partnerName){
@@ -11609,6 +11681,68 @@ var _stripeInstance = null;  // Stripe.js instance
 var _stripeElements = null;  // Stripe Elements instance
 var _stripePaymentEl = null; // Payment Element
 var _pbStripeIntentId = null;
+var _pbSelectedInstallments = 1; // Nombre de mensualités sélectionné dans pb-sheet
+
+function _pbGetClientTypeMax(){
+  var _oid = (USER && (USER.activeOfferId||USER.offre||'')).toLowerCase();
+  if(_oid.indexOf('etudiant')!==-1) return 8;
+  if(_oid.indexOf('entreprise')!==-1) return 1;
+  return 2; // particulier par défaut
+}
+
+function _pbRenderBreakdown(n, total){
+  var rowSmall=document.getElementById('pb-row-small');
+  var rowT1=document.getElementById('pb-row-tranche1');
+  var rowT2=document.getElementById('pb-row-tranche2');
+  var rowT3=document.getElementById('pb-row-tranche3');
+  var holdMsg=document.getElementById('pb-hold-msg');
+  var sb=document.getElementById('pb-pay-btn');
+
+  if(n <= 1){
+    // GENESIS SAFE™ split classique
+    var isSmall = total <= 300;
+    var deposit = isSmall ? total : Math.round(total*0.30);
+    var tranche2 = isSmall ? 0 : Math.round(total*0.40);
+    _pbDepositAmount = deposit;
+    var amt=document.getElementById('pb-deposit-amt'); if(amt) amt.textContent=deposit+' €';
+    var amtL=document.getElementById('pb-deposit-amt-large'); if(amtL) amtL.textContent=deposit+' €';
+    if(isSmall){
+      if(rowSmall) rowSmall.style.display='flex';
+      if(rowT1) rowT1.style.display='none';
+      if(rowT2) rowT2.style.display='none';
+      if(rowT3) rowT3.style.display='none';
+      if(holdMsg) holdMsg.style.display='block';
+    } else {
+      if(rowSmall) rowSmall.style.display='none';
+      if(rowT1) rowT1.style.display='flex';
+      if(rowT2){ rowT2.style.display='flex'; var t2el=document.getElementById('pb-tranche2-amt'); if(t2el) t2el.textContent=tranche2+' €'; }
+      if(rowT3) rowT3.style.display='none';
+      if(holdMsg) holdMsg.style.display='none';
+    }
+    if(sb) sb.textContent = isSmall ? 'PAYER EN SÉCURISÉ (GENESIS SAFE™)' : 'PAYER L\'ACOMPTE';
+  } else {
+    // Plan N mensualités égales
+    var perInstall = Math.floor(total / n * 100) / 100;
+    var lastInstall = Math.round((total - perInstall * (n - 1)) * 100) / 100;
+    _pbDepositAmount = perInstall;
+    var balanceTotal = Math.round((total - perInstall) * 100) / 100;
+    if(rowSmall){ rowSmall.style.display='flex';
+      var amtE=document.getElementById('pb-deposit-amt'); if(amtE) amtE.textContent=perInstall+' €';
+      // Update label inline
+      var lbl=rowSmall.querySelector('div>div:first-child'); if(lbl) lbl.textContent='MENSUALITÉ 1/'+n+' — AUJOURD\'HUI';
+      var lbl2=rowSmall.querySelector('div>div:last-child'); if(lbl2) lbl2.textContent=n+'× de ~'+perInstall+' €';
+    }
+    if(rowT1) rowT1.style.display='none';
+    if(rowT2){ rowT2.style.display='flex';
+      var t2Lbl=rowT2.querySelector('div>div:first-child'); if(t2Lbl) t2Lbl.textContent='MENSUALITÉS RESTANTES ('+( n-1)+'×)';
+      var t2Sub=rowT2.querySelector('div>div:last-child'); if(t2Sub) t2Sub.textContent='Débités automatiquement chaque mois';
+      var t2a=document.getElementById('pb-tranche2-amt'); if(t2a) t2a.textContent=balanceTotal+' €';
+    }
+    if(rowT3) rowT3.style.display='none';
+    if(holdMsg) holdMsg.style.display='none';
+    if(sb) sb.textContent = 'PAYER LA 1ÈRE MENSUALITÉ';
+  }
+}
 
 function pbPayDeposit(){
   if(!_pbPartner||!_pbService||!USER||GUEST) return;
@@ -11637,7 +11771,7 @@ function pbPayDeposit(){
   fetch((window.FA_GENESIS_API||API)+'/api/orders/create',{
     method:'POST',
     headers:{'Content-Type':'application/json','Authorization':'Bearer '+USER._token},
-    body:JSON.stringify({ clientInfo: clientInfo, partnerServiceOrder:{ partnerId:_pbPartner.id, serviceId:_pbService.id }, use_referral_discount: _pbUseReferral })
+    body:JSON.stringify({ clientInfo: clientInfo, partnerServiceOrder:{ partnerId:_pbPartner.id, serviceId:_pbService.id, requestedInstallments: _pbSelectedInstallments||1 }, use_referral_discount: _pbUseReferral })
   }).then(function(r){ return r.json().then(function(d){ return {ok:r.ok, data:d}; }); })
   .then(function(res){
     if(!res.ok || !res.data || !res.data.orderId) throw new Error((res.data&&res.data.error)||'Erreur création commande');
@@ -11663,7 +11797,7 @@ function _pbPayDepositStripe(){
   // 1. Créer la commande
   fetch((window.FA_GENESIS_API||API)+'/api/orders/create',{
     method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+USER._token},
-    body:JSON.stringify({ clientInfo:clientInfo, partnerServiceOrder:{partnerId:_pbPartner.id,serviceId:_pbService.id} })
+    body:JSON.stringify({ clientInfo:clientInfo, partnerServiceOrder:{partnerId:_pbPartner.id,serviceId:_pbService.id, requestedInstallments:_pbSelectedInstallments||1} })
   }).then(function(r){ return r.json().then(function(d){ return {ok:r.ok,data:d}; }); })
   .then(function(res){
     if(!res.ok||!res.data||!res.data.orderId) throw new Error((res.data&&res.data.error)||'Erreur création commande');
@@ -11817,7 +11951,7 @@ function _pbPayDepositPayPal(){
   var clientInfo={firstName:USER.prenom||USER.firstName||'',lastName:USER.nom||USER.lastName||'',email:USER.email||'',phone:USER.telephone||USER.phone||'',clientType:'particulier'};
   fetch((window.FA_GENESIS_API||API)+'/api/orders/create',{
     method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+USER._token},
-    body:JSON.stringify({clientInfo:clientInfo,partnerServiceOrder:{partnerId:_pbPartner.id,serviceId:_pbService.id}})
+    body:JSON.stringify({clientInfo:clientInfo,partnerServiceOrder:{partnerId:_pbPartner.id,serviceId:_pbService.id,requestedInstallments:_pbSelectedInstallments||1}})
   }).then(function(r){return r.json().then(function(d){return{ok:r.ok,data:d};});})
   .then(function(res){
     if(!res.ok||!res.data||!res.data.orderId) throw new Error((res.data&&res.data.error)||'Erreur création commande');
@@ -12683,6 +12817,12 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
         </div>
       </div>
       <div id="pb-form">
+        <!-- Sélecteur paiement en plusieurs fois (affiché si service le permet) -->
+        <div id="pb-installments-row" style="display:none;margin-bottom:12px;">
+          <div style="font-size:10px;font-weight:800;text-transform:uppercase;color:#555;letter-spacing:.5px;margin-bottom:6px;"><i class="fa-solid fa-credit-card" style="color:#FFD700;margin-right:4px;"></i>Paiement en plusieurs fois</div>
+          <div id="pb-installments-btns" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+          <div id="pb-installments-note" style="font-size:10px;color:#555;margin-top:5px;"></div>
+        </div>
         <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;">
           <span style="background:#000;color:#FFD700;padding:4px 10px;font-size:11px;font-weight:900;text-transform:uppercase;border-radius:4px;border:1px solid #FFD700;">
             <i class="fas fa-shield-alt" style="margin-right:4px;"></i>Paiement sécurisé GENESIS SAFE™
@@ -14958,6 +15098,18 @@ function _ptnrRenderServiceItemRow(service){
         + '<button type="button" class="ptnr-svc-ptg-mini" onclick="_ptnrSelectPricingMode(this,\'quote\')" style="'+(isQuote?'background:#FFD700;color:#000;border-color:#FFD700;':'')+'">Devis</button>'
         + '<input type="hidden" class="ptnr-svc-pricing-type" value="'+(isQuote?'quote':'fixed')+'">'
       + '</div>'
+      + (isQuote ? '' :
+        '<div style="margin-top:8px;">'
+        +'<div style="font-size:8px;font-weight:900;text-transform:uppercase;color:#444;letter-spacing:.4px;margin-bottom:4px;"><i class="fa-solid fa-credit-card" style="color:#666;margin-right:3px;"></i>Paiement en plusieurs fois</div>'
+        +'<select class="ptnr-svc-installments" style="width:100%;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:7px;color:#888;font-size:10px;font-weight:700;padding:5px 8px;outline:none;font-family:inherit;">'
+        +'<option value="1"'+((!service.max_installments||service.max_installments<=1)?' selected':'')+'>Comptant uniquement (1×)</option>'
+        +'<option value="2"'+(service.max_installments>=2?' selected':'')+'>Jusqu\'à 2× (Particulier)</option>'
+        +'<option value="3"'+(service.max_installments>=3?' selected':'')+'>Jusqu\'à 3× (Étudiant)</option>'
+        +'<option value="4"'+(service.max_installments>=4?' selected':'')+'>Jusqu\'à 4× (Étudiant)</option>'
+        +'<option value="6"'+(service.max_installments>=6?' selected':'')+'>Jusqu\'à 6× (Étudiant)</option>'
+        +'<option value="8"'+(service.max_installments>=8?' selected':'')+'>Jusqu\'à 8× (Étudiant)</option>'
+        +'</select>'
+        +'</div>')
     + '</div>'
   + '</div>';
 }
@@ -15080,12 +15232,15 @@ function _ptnrCollectServiceItems(audience){
     var featureEls = cards[i].querySelectorAll('.ptnr-svc-feature-input');
     var features = [];
     featureEls.forEach(function(el){ var v=el.value.trim(); if(v) features.push(v); });
+    var installEl = cards[i].querySelector('.ptnr-svc-installments');
+    var maxInstallments = installEl ? (parseInt(installEl.value)||1) : 1;
     services.push({
       id: serviceId,
       label: label,
       description: '',
       price: isQuote ? 0 : price,
       pricing_type: isQuote ? 'quote' : 'fixed',
+      max_installments: maxInstallments,
       features: features,
       active: true,
       audience: audience,
