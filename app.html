@@ -4743,6 +4743,7 @@ function renderResaTab(){
             +'<div style="font-size:11px;color:var(--muted);">Total projet</div>'
             +'<div style="font-size:14px;font-weight:800;color:var(--yellow);">'+proj.total_amount+' €</div>'
             +'</div>'
+            +'<button onclick="_openGenesisDetail(\''+proj.id+'\')" style="margin-top:10px;width:100%;background:rgba(250,204,21,0.1);border:1px solid rgba(250,204,21,0.3);border-radius:8px;padding:8px;font-size:12px;font-weight:800;color:var(--yellow);cursor:pointer;text-align:center;"><i class="fa-solid fa-calendar-days mr-1"></i>Voir le calendrier des mensualités →</button>'
             +'</div>';
         }).join('');
     }).catch(function(){ var el=document.getElementById('myProjectsList'); if(el) el.innerHTML=''; });
@@ -11687,6 +11688,85 @@ function _openPbPayForExistingOrder(orderId, partnerId, serviceLabel, depositAmt
   _showPbPayUI(partner, service, orderId);
 }
 
+function _openGenesisDetail(projId){
+  if(!USER||GUEST){ showLoginSheet(); return; }
+  var modal = document.getElementById('genesisDetailModal');
+  var body  = document.getElementById('gdModalBody');
+  var titleEl = document.getElementById('gdModalTitle');
+  if(!modal||!body) return;
+  body.innerHTML = '<div style="text-align:center;padding:30px;color:var(--muted);"><i class="fa-solid fa-spinner fa-spin" style="font-size:24px;"></i></div>';
+  modal.style.display = 'block';
+  document.body.style.overflow = 'hidden';
+  fetch((window.FA_GENESIS_API||API)+'/api/projects/'+encodeURIComponent(projId),{headers:{'Authorization':'Bearer '+USER._token}})
+    .then(function(r){return r.json();})
+    .then(function(data){
+      if(!data.ok||!data.project){body.innerHTML='<div style="color:#f87171;text-align:center;padding:20px;">Erreur de chargement.</div>';return;}
+      var proj=data.project;
+      if(titleEl) titleEl.textContent=(proj.title||'Détail Projet').replace('Projet GENESIS — ','');
+      var _pSL={pending_deposit:'En attente',in_progress:'En cours',completed:'Terminé'};
+      var _pSC={pending_deposit:'var(--yellow)',in_progress:'#60a5fa',completed:'#4ade80'};
+      var barPct=proj.progress_pct||0;
+      var html='<div style="margin-bottom:16px;">'
+        +'<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:4px;">'
+        +'<span>Avancement global</span><span>'+proj.completed_count+'/'+proj.total_count+' prestations</span></div>'
+        +'<div style="height:8px;background:rgba(255,255,255,0.08);border-radius:4px;overflow:hidden;">'
+        +'<div style="height:100%;width:'+barPct+'%;background:linear-gradient(90deg,var(--yellow),#fbbf24);border-radius:4px;transition:width .4s;"></div></div>'
+        +'<div style="display:flex;justify-content:space-between;margin-top:10px;">'
+        +'<span style="font-size:13px;font-weight:700;color:'+(_pSC[proj.status]||'var(--muted)')+';">'+(_pSL[proj.status]||proj.status)+'</span>'
+        +'<span style="font-size:14px;font-weight:900;color:var(--yellow);">'+(proj.total_amount||0)+' €</span>'
+        +'</div></div>'
+        +'<div style="border-top:1px solid rgba(255,255,255,0.08);padding-top:14px;">';
+      (proj.prestations||[]).forEach(function(p){
+        var installs=p.installments||[];
+        var instHtml='';
+        if(installs.length>1){
+          instHtml='<div style="margin-top:10px;padding:10px;background:rgba(255,255,255,0.03);border-radius:8px;">'
+            +'<div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;"><i class="fa-solid fa-calendar-days mr-1"></i>Calendrier des mensualités</div>';
+          installs.forEach(function(inst){
+            var isDepPaid=inst.stage==='deposit'&&p.deposit_paid;
+            var isPaid=inst.paid||isDepPaid;
+            var dueFr=inst.due_date?new Date(inst.due_date).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'}):(inst.stage==='deposit'?'À payer':'Date à fixer');
+            var isOD=inst.due_date&&!isPaid&&new Date(inst.due_date)<new Date();
+            var dot=isPaid?'#4ade80':(isOD?'#f87171':'rgba(255,255,255,0.2)');
+            var canPay=inst.stage==='deposit'&&!p.deposit_paid;
+            instHtml+='<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.05);">'
+              +'<div style="width:9px;height:9px;border-radius:50%;background:'+dot+';flex-shrink:0;"></div>'
+              +'<div style="flex:1;"><div style="font-size:12px;font-weight:600;color:#e5e5e5;">'+inst.label+'</div>'
+              +'<div style="font-size:10px;color:var(--muted);">'+dueFr+'</div></div>'
+              +'<div style="font-size:13px;font-weight:800;color:var(--yellow);">'+inst.amount+' €'
+              +(isPaid?'<i class="fa-solid fa-check" style="color:#4ade80;font-size:9px;margin-left:4px;"></i>':'')
+              +(isOD&&!isPaid?'<i class="fa-solid fa-triangle-exclamation" style="color:#f87171;font-size:9px;margin-left:4px;"></i>':'')+'</div>'
+              +(canPay?'<button onclick="_openPbPayForExistingOrder(\''+p.order_id+'\',\''+p.partner_id+'\',\''+p.service_label.replace(/'/g,"\\'")+'\','+inst.amount+',\''+p.partner_name.replace(/'/g,"\\'")+'\');closeGenesisDetail();" style="background:var(--yellow);border:none;border-radius:6px;padding:3px 10px;font-size:10px;font-weight:900;color:#000;cursor:pointer;">Payer</button>':'')
+              +'</div>';
+          });
+          instHtml+='</div>';
+        } else {
+          var canPaySingle=!p.deposit_paid;
+          instHtml=canPaySingle
+            ?'<button onclick="_openPbPayForExistingOrder(\''+p.order_id+'\',\''+p.partner_id+'\',\''+p.service_label.replace(/'/g,"\\'")+'\','+(p.deposit_amount||p.total_amount)+',\''+p.partner_name.replace(/'/g,"\\'")+'\');closeGenesisDetail();" style="margin-top:8px;background:var(--yellow);border:none;border-radius:8px;padding:6px 14px;font-size:11px;font-weight:900;color:#000;cursor:pointer;display:block;">Payer l\'acompte →</button>'
+            :'<div style="font-size:11px;color:#4ade80;margin-top:6px;"><i class="fa-solid fa-check mr-1"></i>Acompte payé</div>';
+        }
+        var sc=_pSC[p.status]||'var(--muted)';
+        html+='<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:12px;margin-bottom:10px;">'
+          +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">'
+          +'<div><div style="font-size:13px;font-weight:700;color:#e5e5e5;">'+p.service_label+'</div>'
+          +'<div style="font-size:11px;color:var(--muted);">'+p.partner_name+'</div></div>'
+          +'<div style="text-align:right;">'
+          +'<div style="font-size:11px;color:'+sc+';font-weight:700;">'+(_pSL[p.status]||p.status)+'</div>'
+          +'<div style="font-size:12px;font-weight:800;color:var(--yellow);">'+p.total_amount+' €</div></div></div>'
+          +instHtml+'</div>';
+      });
+      html+='</div>';
+      body.innerHTML=html;
+    })
+    .catch(function(){body.innerHTML='<div style="color:#f87171;text-align:center;padding:20px;">Erreur de connexion.</div>';});
+}
+function closeGenesisDetail(){
+  var modal=document.getElementById('genesisDetailModal');
+  if(modal) modal.style.display='none';
+  document.body.style.overflow='';
+}
+
 function payAcceptedRequest(partnerId, serviceId, serviceLabel, price, partnerName){
   if(!USER||GUEST){ showLoginSheet(); return; }
   _showPbPayUI({id:partnerId, prenom:partnerName||'Partenaire', nom:''}, {id:serviceId, label:serviceLabel, price:price});
@@ -12822,6 +12902,17 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
         <button class="cwb-btn cwb-btn-yellow" style="width:100%;margin-top:16px;" onclick="closeCwBooking()">Fermer</button>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- GENESIS PROJECT DETAIL MODAL -->
+<div id="genesisDetailModal" onclick="if(event.target===this)closeGenesisDetail()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:9990;overflow-y:auto;padding:16px 12px 40px;">
+  <div style="max-width:520px;margin:0 auto;background:var(--card);border:2px solid var(--yellow);border-radius:14px;padding:20px 18px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <div style="font-size:13px;font-weight:900;color:var(--yellow);font-family:'Unbounded',cursive;" id="gdModalTitle">Détail Projet</div>
+      <button onclick="closeGenesisDetail()" style="background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;line-height:1;">&#x2715;</button>
+    </div>
+    <div id="gdModalBody"><div style="text-align:center;padding:30px;color:var(--muted);">Chargement…</div></div>
   </div>
 </div>
 

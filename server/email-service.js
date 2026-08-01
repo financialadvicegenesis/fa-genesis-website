@@ -2100,7 +2100,8 @@ module.exports = {
     sendSupportTicketAdminEmail,
     sendProspectContactEmail,
     sendLevelUpEmail,
-    sendCapacityLimitedEventEmail
+    sendCapacityLimitedEventEmail,
+    sendInstallmentReminderEmail
 };
 
 // ============================================================
@@ -2385,5 +2386,51 @@ async function sendUrgentFeedbackNotification(feedback) {
         console.log('[EMAIL] Feedback urgent envoye pour:', feedback.userEmail);
     } catch (err) {
         console.error('[EMAIL] Erreur envoi feedback urgent:', err.message);
+    }
+}
+
+// ============================================================
+// RAPPEL MENSUALITÉ → CLIENT
+// ============================================================
+
+async function sendInstallmentReminderEmail(clientEmail, clientFirstName, order, installment, isOverdue) {
+    var transport = initializeTransporter();
+    if (!transport) return;
+    try {
+        var isOD = isOverdue === true;
+        var dueDateFr = installment.due_date
+            ? new Date(installment.due_date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })
+            : 'N/A';
+        var accentColor = isOD ? '#ef4444' : '#FFD700';
+        var icon = isOD ? '⚠️' : '📅';
+        var headline = isOD ? 'Mensualité en retard' : 'Rappel de mensualité';
+        var subline = isOD
+            ? 'Une mensualité était due le <strong>' + dueDateFr + '</strong> et n\'a pas encore été réglée.'
+            : 'Une mensualité arrive à échéance le <strong>' + dueDateFr + '</strong>.';
+        var html = getEmailTemplate(
+            '<div style="text-align:center;font-size:52px;margin-bottom:16px;">' + icon + '</div>'
+            + '<h2 style="color:' + accentColor + ';font-size:20px;font-weight:900;text-transform:uppercase;text-align:center;margin:0 0 24px;">' + headline + '</h2>'
+            + '<p style="color:#fff;font-size:15px;margin:0 0 8px;">Bonjour <strong>' + (clientFirstName || 'Client') + '</strong>,</p>'
+            + '<p style="color:#ccc;font-size:14px;margin:0 0 24px;">' + subline + '</p>'
+            + '<div style="background:#1a1a1a;border:2px solid ' + accentColor + ';padding:20px;margin-bottom:24px;">'
+            +   '<div style="font-size:13px;font-weight:900;color:' + accentColor + ';text-transform:uppercase;margin-bottom:8px;">' + (installment.label || 'Mensualité') + '</div>'
+            +   '<div style="font-size:32px;font-weight:900;color:#fff;">' + installment.amount + ' €</div>'
+            +   '<div style="font-size:12px;color:#888;margin-top:6px;">Prestation : ' + (order.product_name || '') + '</div>'
+            + '</div>'
+            + '<div style="text-align:center;margin-bottom:24px;">'
+            +   '<a href="' + (process.env.SITE_URL || 'https://fagenesis.com') + '/app.html#open-reservations" style="display:inline-block;background:' + accentColor + ';color:#000;font-weight:900;font-size:14px;padding:14px 36px;text-decoration:none;text-transform:uppercase;border:2px solid #000;">Régler maintenant →</a>'
+            + '</div>'
+            + '<p style="color:#555;font-size:12px;text-align:center;margin:0;">Rendez-vous dans votre espace <strong>Réservations</strong>.</p>',
+            headline + ' — FA GENESIS'
+        );
+        await transport.sendMail({
+            from: '"FA GENESIS" <' + (process.env.EMAIL_FROM_ADDRESS || 'financialadvicegenesis@gmail.com') + '>',
+            to: clientEmail,
+            subject: (isOD ? '⚠️ ' : '📅 ') + headline + ' — ' + (installment.amount || '') + ' € (' + (installment.label || '') + ')',
+            html: html
+        });
+        console.log('[EMAIL] Rappel mensualité envoyé à', clientEmail, '(' + (isOD ? 'retard' : 'à venir') + ')');
+    } catch(err) {
+        console.error('[EMAIL] sendInstallmentReminderEmail:', err.message);
     }
 }

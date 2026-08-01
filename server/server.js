@@ -2113,12 +2113,33 @@ function updateOrder(orderId, updates) {
     if (index === -1) return null;
 
     orders[index] = { ...orders[index], ...updates, updated_at: new Date().toISOString() };
+    // Dès que l'acompte est payé : fixer les dates d'échéance des mensualités suivantes
+    if (updates.deposit_paid === true && orders[index].installments && orders[index].installments.length > 1) {
+        orders[index] = setInstallmentDueDates(orders[index]);
+    }
     saveOrders(orders);
     // Si la commande fait partie d'un Projet GENESIS, vérifier si toutes les prestations sont terminées
     if (updates.status === 'completed' && orders[index].project_id) {
         checkAndCompleteGenesisProject(orders[index].project_id, orders);
     }
     return orders[index];
+}
+
+// Assigner les dates d'échéance mensuelles aux mensualités restantes dès le paiement de l'acompte
+function setInstallmentDueDates(order) {
+    if (!order || !order.installments || order.installments.length <= 1) return order;
+    var depositDate = new Date();
+    var month = 1;
+    order.installments = order.installments.map(function(inst) {
+        if (inst.stage === 'deposit') return inst;
+        var due = new Date(depositDate.getTime() + month * 30 * 24 * 60 * 60 * 1000);
+        month++;
+        return Object.assign({}, inst, {
+            due_date: due.toISOString(),
+            due_date_set_at: depositDate.toISOString()
+        });
+    });
+    return order;
 }
 
 function checkAndCompleteGenesisProject(projectId, allOrders) {
@@ -2153,6 +2174,56 @@ function checkAndCompleteGenesisProject(projectId, allOrders) {
         }
     } catch(e) { console.error('[GENESIS-PROJECT] Erreur checkAndComplete:', e.message); }
 }
+
+// ============================================================
+// RAPPELS MENSUALITÉS — job quotidien
+// ============================================================
+
+function checkInstallmentReminders() {
+    try {
+        var now = new Date();
+        var todayStr = now.toISOString().slice(0, 10);
+        var in3DaysStr = new Date(now.getTime() + 3 * 86400000).toISOString().slice(0, 10);
+        var orders = loadOrders();
+        var modified = false;
+        orders.forEach(function(order) {
+            if (!order.installments || order.installments.length <= 1) return;
+            if (!order.deposit_paid) return;
+            var clientEmail = order.client_info && order.client_info.email;
+            if (!clientEmail) return;
+            var clientFirstName = (order.client_info && order.client_info.first_name) || 'Client';
+            order.installments.forEach(function(inst) {
+                if (inst.paid || inst.stage === 'deposit') return;
+                if (!inst.due_date) return;
+                var dueStr = inst.due_date.slice(0, 10);
+                var isUpcoming = dueStr <= in3DaysStr && dueStr >= todayStr;
+                var isOverdue = dueStr < todayStr;
+                if (!isUpcoming && !isOverdue) return;
+                var lastReminded = inst.last_reminded_at ? inst.last_reminded_at.slice(0, 10) : null;
+                if (lastReminded === todayStr) return;
+                inst.last_reminded_at = now.toISOString();
+                modified = true;
+                var dueDateFr = new Date(inst.due_date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
+                if (isOverdue) {
+                    notifyUser(clientEmail, 'client', 'installment-overdue', 'Mensualité en retard ⚠️',
+                        (inst.label || 'Mensualité') + ' de ' + inst.amount + ' € était due le ' + dueDateFr + '. Connectez-vous pour régler.',
+                        '/app.html#open-reservations');
+                    try { emailService.sendInstallmentReminderEmail && emailService.sendInstallmentReminderEmail(clientEmail, clientFirstName, order, inst, true).catch(function(e) { console.error('[INSTALLMENT-REMINDER]', e.message); }); } catch(e2) {}
+                } else {
+                    notifyUser(clientEmail, 'client', 'installment-reminder', 'Mensualité à venir 📅',
+                        (inst.label || 'Mensualité') + ' de ' + inst.amount + ' € est due le ' + dueDateFr + '.',
+                        '/app.html#open-reservations');
+                    try { emailService.sendInstallmentReminderEmail && emailService.sendInstallmentReminderEmail(clientEmail, clientFirstName, order, inst, false).catch(function(e) { console.error('[INSTALLMENT-REMINDER]', e.message); }); } catch(e2) {}
+                }
+            });
+        });
+        if (modified) saveOrders(orders);
+        console.log('[INSTALLMENT-REMINDER] Vérification terminée —', new Date().toLocaleString('fr-FR'));
+    } catch(e) { console.error('[INSTALLMENT-REMINDER] Erreur:', e.message); }
+}
+// Lancer au démarrage puis toutes les 24h
+setTimeout(checkInstallmentReminders, 60000); // premier passage 1 min après le démarrage
+setInterval(checkInstallmentReminders, 24 * 60 * 60 * 1000);
 
 // ============================================================
 // HELPERS - CALCUL JOUR COURANT (ACCOMPAGNEMENT)
@@ -4132,8 +4203,60 @@ app.get('/api/projects/:projectId', function(req, res) {
         if (!isAdminReq && (!user || user.email.toLowerCase() !== (proj.client_email || '').toLowerCase())) {
             return res.status(403).json({ error: 'Accès refusé' });
         }
-        res.json({ ok: true, project: proj });
+        // Enrichir avec installements et statuts live de chaque sous-commande
+        var allOrd = loadOrders();
+        var enrichedProj = Object.assign({}, proj);
+        if (Array.isArray(enrichedProj.prestations)) {
+            enrichedProj.prestations = enrichedProj.prestations.map(function(prest) {
+                var ord = allOrd.find(function(o) { return o.id === prest.order_id; });
+                return Object.assign({}, prest, {
+                    deposit_paid: ord ? (ord.deposit_paid || false) : false,
+                    balance_paid: ord ? (ord.balance_paid || false) : false,
+                    status: ord ? ord.status : prest.status,
+                    installments: ord ? (ord.installments || []) : [],
+                    installments_count: ord ? (ord.installments_count || 1) : 1,
+                    payment_tier: ord ? (ord.payment_tier || 'large') : 'large'
+                });
+            });
+        }
+        res.json({ ok: true, project: enrichedProj });
     } catch(e) {
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * GET /api/partner/genesis-sub-orders
+ * Sous-commandes GENESIS du partenaire connecté
+ */
+app.get('/api/partner/genesis-sub-orders', authenticatePartner, function(req, res) {
+    try {
+        var partnerId = req.partner.id;
+        var allOrders = loadOrders();
+        var projects = loadGenesisProjects();
+        var subOrders = allOrders.filter(function(o) {
+            return o.partner_id === partnerId && o.project_id && o.product_type === 'partner_service';
+        });
+        var enriched = subOrders.map(function(o) {
+            var proj = projects.find(function(p) { return p.id === o.project_id; });
+            return {
+                order_id: o.id,
+                project_id: o.project_id,
+                project_title: proj ? proj.title : 'Projet GENESIS',
+                service_label: o.product_name,
+                client_name: o.client_info ? ((o.client_info.first_name || '') + ' ' + (o.client_info.last_name ? o.client_info.last_name.charAt(0) + '.' : '')) : 'Client',
+                total_amount: o.total_amount,
+                deposit_amount: o.deposit_amount,
+                deposit_paid: o.deposit_paid || false,
+                balance_paid: o.balance_paid || false,
+                status: o.status,
+                installments_count: o.installments_count || 1,
+                created_at: o.created_at
+            };
+        }).sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); });
+        res.json({ ok: true, sub_orders: enriched });
+    } catch(e) {
+        console.error('[PARTNER/GENESIS-SUB-ORDERS]', e.message);
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });

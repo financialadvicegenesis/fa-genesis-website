@@ -763,6 +763,15 @@
                 <i class="fas fa-tasks mr-3" style="color:var(--genesis-yellow);"></i>MES MISSIONS
             </h2>
 
+            <!-- Sous-section : Projets GENESIS (sub-orders) -->
+            <div id="genesisSubOrdersBlock" style="display:none;margin-bottom:32px;">
+                <div style="border-left:5px solid #FFD700;padding-left:16px;margin-bottom:16px;">
+                    <h3 class="text-lg font-black italic uppercase text-[var(--genesis-yellow)]"><i class="fas fa-layer-group mr-2"></i>MES PRESTATIONS GENESIS</h3>
+                    <p class="text-sm font-bold opacity-60 text-white">Commandes faisant partie d'un Projet GENESIS multi-prestataires.</p>
+                </div>
+                <div id="genesisSubOrdersContainer"></div>
+            </div>
+
             <!-- Sous-section : missions à accepter (dispatches pending_acceptance) -->
             <div id="pendingDispatchesBlock" style="display:none;margin-bottom:32px;">
                 <div style="border-left:5px solid #FFD700;padding-left:16px;margin-bottom:16px;">
@@ -3312,11 +3321,51 @@
         try {
             var token = localStorage.getItem('fa_genesis_partner_token');
 
-            // Charger en parallèle : livrables + dispatches en attente
-            var [delResp, dispResp] = await Promise.all([
+            // Charger en parallèle : livrables + dispatches en attente + sous-commandes GENESIS
+            var [delResp, dispResp, genResp] = await Promise.all([
                 fetch(PARTNER_API_URL + '/api/partner/deliverables', { headers: { 'Authorization': 'Bearer ' + token } }),
-                fetch(PARTNER_API_URL + '/api/partner/dispatches', { headers: { 'Authorization': 'Bearer ' + token } })
+                fetch(PARTNER_API_URL + '/api/partner/dispatches', { headers: { 'Authorization': 'Bearer ' + token } }),
+                fetch(PARTNER_API_URL + '/api/partner/genesis-sub-orders', { headers: { 'Authorization': 'Bearer ' + token } })
             ]);
+
+            // Sous-commandes GENESIS
+            var genesisBlock = document.getElementById('genesisSubOrdersBlock');
+            var genesisContainer = document.getElementById('genesisSubOrdersContainer');
+            if (genResp && genResp.ok && genesisBlock && genesisContainer) {
+                var genData = await genResp.json();
+                var subOrders = genData.sub_orders || [];
+                if (subOrders.length > 0) {
+                    genesisBlock.style.display = 'block';
+                    var _gStatusColors = { pending_deposit: '#ff6b6b', active: '#51cf66', in_progress: '#ffd43b', completed: '#51cf66', delivered: '#4dabf7', cancelled: '#999' };
+                    var _gStatusLabels = { pending_deposit: 'Acompte en attente', active: 'Actif', in_progress: 'En cours', completed: 'Terminé', delivered: 'Livré', cancelled: 'Annulé' };
+                    var gHtml = subOrders.map(function(so) {
+                        var sc = _gStatusColors[so.status] || '#999';
+                        var sl = _gStatusLabels[so.status] || so.status;
+                        var depositIcon = so.deposit_paid ? '<span style="color:#51cf66;"><i class="fas fa-check mr-1"></i>Acompte reçu</span>' : '<span style="color:#ff6b6b;"><i class="fas fa-clock mr-1"></i>Acompte en attente</span>';
+                        var projTitle = (so.project_title || 'Projet GENESIS').replace('Projet GENESIS — ', '');
+                        var dateStr = so.created_at ? new Date(so.created_at).toLocaleDateString('fr-FR') : '';
+                        var installBadge = so.installments_count > 1 ? '<span style="background:#1a1a1a;border:1px solid #FFD700;color:#FFD700;font-size:10px;font-weight:900;padding:2px 8px;border-radius:10px;margin-left:6px;">' + so.installments_count + '× mensualités</span>' : '';
+                        return '<div style="background:#111;border:3px solid #333;padding:16px;margin-bottom:12px;border-left:4px solid #FFD700;">'
+                            + '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:10px;">'
+                            +   '<div>'
+                            +     '<div style="font-size:10px;font-weight:900;color:#FFD700;text-transform:uppercase;margin-bottom:2px;"><i class="fas fa-layer-group mr-1"></i>' + escapeHtml(projTitle) + '</div>'
+                            +     '<div style="font-size:14px;font-weight:900;color:#fff;">' + escapeHtml(so.service_label || 'Prestation') + installBadge + '</div>'
+                            +     '<div style="font-size:12px;color:#aaa;margin-top:2px;"><i class="fas fa-user mr-1"></i>' + escapeHtml(so.client_name) + ' · ' + dateStr + '</div>'
+                            +   '</div>'
+                            +   '<div style="text-align:right;">'
+                            +     '<div style="background:' + sc + ';color:#000;font-size:10px;font-weight:900;padding:3px 10px;border-radius:3px;display:inline-block;">' + sl + '</div>'
+                            +     '<div style="font-size:18px;font-weight:900;color:#FFD700;margin-top:4px;">' + (so.total_amount || 0) + ' €</div>'
+                            +   '</div>'
+                            + '</div>'
+                            + '<div style="font-size:12px;font-weight:700;">' + depositIcon + '</div>'
+                            + '<div style="font-size:10px;color:#555;margin-top:6px;">Réf. commande : ' + so.order_id + '</div>'
+                            + '</div>';
+                    }).join('');
+                    genesisContainer.innerHTML = gHtml;
+                } else {
+                    genesisBlock.style.display = 'none';
+                }
+            }
 
             var deliverables = [];
             if (delResp.ok) { var dd = await delResp.json(); deliverables = dd.deliverables || []; }
