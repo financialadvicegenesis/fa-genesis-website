@@ -11443,8 +11443,7 @@ const GENESIS_TIER_BENEFITS = {
     bronze:    { commissionPct: 25, commissionReduction: 0,  payout: 'standard',    events: false, monthlyBoosts: 0 },
     argent:    { commissionPct: 22, commissionReduction: 3,  payout: 'prioritaire', events: false, monthlyBoosts: 2 },
     or:        { commissionPct: 19, commissionReduction: 6,  payout: 'prioritaire', events: true,  monthlyBoosts: 4 },
-    elite:     { commissionPct: 15, commissionReduction: 10, payout: 'express',     events: true,  monthlyBoosts: 8 },
-    fondateur: { commissionPct: 10, commissionReduction: 15, payout: 'express',     events: true,  monthlyBoosts: 8 }
+    elite:     { commissionPct: 15, commissionReduction: 10, payout: 'express',     events: true,  monthlyBoosts: 8 }
 };
 
 function getBenefitsForBadge(badge) {
