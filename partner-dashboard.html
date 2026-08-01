@@ -5248,5 +5248,15 @@
         setTimeout(function() { if (t.parentNode) t.parentNode.removeChild(t); }, 4000);
     }
     </script>
+
+<!-- Pont natif (Android / iOS) -->
+<script>
+document.addEventListener('fagmobile:ready', function(e) {
+    if (window.PARTNER && window.PARTNER.id && window.FAGMobile) {
+        window.FAGMobile.initPushNotifications(window.PARTNER.id);
+    }
+});
+</script>
+<script src="mobile-bridge.js"></script>
 </body>
 </html>
