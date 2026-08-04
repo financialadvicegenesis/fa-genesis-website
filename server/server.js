@@ -19182,6 +19182,195 @@ app.use((req, res) => {
 });
 
 // ============================================================
+// ─── DEMO SCREENSHOT ACCOUNT ─────────────────────────────────────────────────
+// Crée un compte démo réaliste pour les captures Play Store (admin only)
+app.post('/api/admin/setup-screenshot-demo', async function(req, res) {
+    try {
+        if (!_isAdminRequest(req)) return res.status(403).json({ error: 'Forbidden' });
+
+        var bcrypt = require('bcrypt');
+        var crypto = require('crypto');
+        var uid = function(p) { return p + crypto.randomBytes(4).toString('hex').toUpperCase(); };
+        var daysAgo = function(n) { return new Date(Date.now() - n * 24 * 3600 * 1000).toISOString(); };
+        var daysFromNow = function(n) { return new Date(Date.now() + n * 24 * 3600 * 1000).toISOString(); };
+
+        var DEMO_EMAIL = 'demo.screenshot@fagenesis.com';
+        var DEMO_PASS  = 'DemoGenesis2026!';
+        var DEMO_PARTNER_EMAIL = 'demo.prestataire@fagenesis.com';
+
+        // ── Partner démo ──────────────────────────────────────────────────────
+        var partners = loadPartners();
+        var demoPartner = partners.find(function(p) { return p.email === DEMO_PARTNER_EMAIL; });
+        if (!demoPartner) {
+            var phash = await bcrypt.hash('DemoPartner2026!', 10);
+            demoPartner = {
+                id: uid('PTN'),
+                email: DEMO_PARTNER_EMAIL,
+                password: phash,
+                name: 'Marie Dubois',
+                prenom: 'Marie',
+                nom: 'Dubois',
+                category: 'Design & Création',
+                bio: 'Designeuse UI/UX passionnée avec 7 ans d\'expérience. Spécialisée en identité visuelle, applications mobiles et design de marque. J\'accompagne les startups et PME dans leur transformation digitale.',
+                city: 'Paris',
+                phone: '+33 6 12 34 56 78',
+                website: 'https://marie-design.fr',
+                instagram: '@marie.design',
+                rating: 4.9,
+                reviewCount: 47,
+                tier: 'or',
+                constellationBadge: 'Étoile Montante',
+                verified: true,
+                isActive: true,
+                responseTime: '< 2h',
+                services: [
+                    { id: uid('SVC'), label: 'Logo & Identité visuelle', price: 450, duration: '5 jours', description: 'Création de votre logo, charte graphique complète et guide de style.' },
+                    { id: uid('SVC'), label: 'Design d\'application mobile', price: 1200, duration: '10 jours', description: 'Maquettes UI/UX complètes pour iOS et Android, prototype interactif inclus.' },
+                    { id: uid('SVC'), label: 'Refonte de site web', price: 800, duration: '7 jours', description: 'Redesign complet de votre site : wireframes, design final et assets exportés.' },
+                    { id: uid('SVC'), label: 'Pack réseaux sociaux', price: 280, duration: '3 jours', description: '10 templates Canva/Figma personnalisés à votre charte graphique.' }
+                ],
+                portfolio: [],
+                qgPoints: 1240,
+                missionsCount: 47,
+                createdBy: 'setup-screenshot-demo',
+                created_at: daysAgo(180)
+            };
+            partners.push(demoPartner);
+            savePartners(partners);
+        }
+
+        // ── Utilisateur démo client ────────────────────────────────────────────
+        var users = loadUsers();
+        var demoUser = users.find(function(u) { return u.email === DEMO_EMAIL; });
+        if (!demoUser) {
+            var uhash = await bcrypt.hash(DEMO_PASS, 10);
+            demoUser = {
+                id: uid('USR'),
+                email: DEMO_EMAIL,
+                password: uhash,
+                prenom: 'Sophie',
+                nom: 'Martin',
+                phone: '+33 6 98 76 54 32',
+                badge: 'or',
+                qgPoints: 980,
+                missionsCount: 12,
+                referralCode: 'SOPHIE2026',
+                createdBy: 'setup-screenshot-demo',
+                created_at: daysAgo(210)
+            };
+            users.push(demoUser);
+            saveUsers(users);
+        }
+
+        // ── Commandes démo ────────────────────────────────────────────────────
+        var orders = loadOrders();
+        var existingDemo = orders.filter(function(o) { return o.client_email === DEMO_EMAIL; });
+
+        var demoOrders = [];
+
+        if (!existingDemo.find(function(o) { return o.status === 'in_progress'; })) {
+            // Mission active : Design d'app mobile
+            var ordId1 = uid('ORD'), reqId1 = uid('REQ');
+            var ord1 = {
+                id: ordId1,
+                request_id: reqId1,
+                client_id: demoUser.id,
+                client_email: DEMO_EMAIL,
+                client_name: 'Sophie Martin',
+                partner_id: demoPartner.id,
+                partner_email: DEMO_PARTNER_EMAIL,
+                partner_name: 'Marie Dubois',
+                service_label: 'Design d\'application mobile',
+                total_amount: 1200,
+                deposit_amount: 600,
+                balance_amount: 600,
+                paymentStatus: 'deposit_paid',
+                status: 'in_progress',
+                acceptedByPartner: true,
+                started_at: daysAgo(8),
+                delivery_date: daysFromNow(2),
+                created_at: daysAgo(12),
+                updated_at: daysAgo(1),
+                createdBy: 'setup-screenshot-demo'
+            };
+            orders.push(ord1);
+            demoOrders.push(ord1);
+        }
+
+        if (!existingDemo.find(function(o) { return o.status === 'delivering'; })) {
+            // Mission en livraison : Logo & charte
+            var ordId2 = uid('ORD'), reqId2 = uid('REQ');
+            var ord2 = {
+                id: ordId2,
+                request_id: reqId2,
+                client_id: demoUser.id,
+                client_email: DEMO_EMAIL,
+                client_name: 'Sophie Martin',
+                partner_id: demoPartner.id,
+                partner_email: DEMO_PARTNER_EMAIL,
+                partner_name: 'Marie Dubois',
+                service_label: 'Logo & Identité visuelle',
+                total_amount: 450,
+                deposit_amount: 225,
+                balance_amount: 225,
+                paymentStatus: 'deposit_paid',
+                status: 'delivering',
+                acceptedByPartner: true,
+                started_at: daysAgo(5),
+                delivery_date: daysFromNow(0),
+                created_at: daysAgo(7),
+                updated_at: daysAgo(0),
+                createdBy: 'setup-screenshot-demo'
+            };
+            orders.push(ord2);
+            demoOrders.push(ord2);
+        }
+
+        if (!existingDemo.find(function(o) { return o.status === 'completed'; })) {
+            // Mission terminée : Pack réseaux sociaux
+            var ordId3 = uid('ORD'), reqId3 = uid('REQ');
+            var ord3 = {
+                id: ordId3,
+                request_id: reqId3,
+                client_id: demoUser.id,
+                client_email: DEMO_EMAIL,
+                client_name: 'Sophie Martin',
+                partner_id: demoPartner.id,
+                partner_email: DEMO_PARTNER_EMAIL,
+                partner_name: 'Marie Dubois',
+                service_label: 'Pack réseaux sociaux',
+                total_amount: 280,
+                deposit_amount: 280,
+                balance_amount: 0,
+                paymentStatus: 'fully_paid',
+                status: 'completed',
+                rating: 5,
+                review: 'Travail exceptionnel, délais respectés, communication parfaite. Je recommande vivement !',
+                acceptedByPartner: true,
+                completed_at: daysAgo(20),
+                created_at: daysAgo(30),
+                updated_at: daysAgo(20),
+                createdBy: 'setup-screenshot-demo'
+            };
+            orders.push(ord3);
+            demoOrders.push(ord3);
+        }
+
+        saveOrders(orders);
+
+        res.json({
+            success: true,
+            demo_client: { email: DEMO_EMAIL, password: DEMO_PASS },
+            demo_partner_email: DEMO_PARTNER_EMAIL,
+            orders_created: demoOrders.length,
+            message: 'Compte démo screenshot créé. Connectez-vous avec demo.screenshot@fagenesis.com'
+        });
+    } catch (e) {
+        console.error('[DEMO] Erreur setup-screenshot-demo:', e.message);
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // DEMARRAGE DU SERVEUR
 // ============================================================
 
