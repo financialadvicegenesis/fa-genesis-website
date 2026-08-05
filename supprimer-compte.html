@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/images/logo-favicon-32.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="assets/images/logo-favicon-192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="assets/images/logo-favicon.png">
+    <link rel="apple-touch-icon" sizes="192x192" href="assets/images/logo-favicon-192.png">
+    <title>Supprimer mon compte - GENESIS</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;900&family=Space+Grotesk:wght@300;700&display=swap">
+    <link rel="stylesheet" href="tailwind.min.css">
+    <style>
+        body { background: #ffffff; color: #0b0b0b; font-family: 'Space Grotesk', sans-serif; margin: 0; }
+        h1, h2, h3 { font-family: 'Unbounded', cursive; }
+        .top-bar { background: #000; border-bottom: 4px solid #FFD700; padding: 18px 32px; display: flex; align-items: center; gap: 16px; }
+        .top-bar img { height: 36px; }
+        .top-bar span { color: #FFD700; font-family: 'Unbounded', cursive; font-weight: 900; font-size: 18px; }
+        .container { max-width: 740px; margin: 0 auto; padding: 48px 24px 80px; }
+        .badge { display: inline-flex; align-items: center; gap: 8px; background: #fff3cd; border: 1px solid #FFD700; color: #856404; padding: 8px 16px; border-radius: 24px; font-size: 13px; font-weight: 700; margin-bottom: 32px; }
+        h1 { font-size: clamp(22px, 4vw, 32px); margin-bottom: 12px; }
+        .lead { color: #444; font-size: 16px; line-height: 1.7; margin-bottom: 40px; }
+        .section { background: #f9f9f9; border-left: 4px solid #FFD700; border-radius: 0 12px 12px 0; padding: 24px 28px; margin-bottom: 28px; }
+        .section h2 { font-size: 16px; margin-bottom: 12px; }
+        .section p, .section li { font-size: 15px; color: #333; line-height: 1.7; }
+        .section ul { padding-left: 20px; margin-top: 8px; }
+        .section ul li { margin-bottom: 6px; }
+        .deleted { color: #dc2626; font-weight: 700; }
+        .kept { color: #059669; font-weight: 700; }
+        .steps { counter-reset: step; list-style: none; padding: 0; }
+        .steps li { counter-increment: step; display: flex; gap: 16px; margin-bottom: 20px; align-items: flex-start; }
+        .steps li::before { content: counter(step); background: #FFD700; color: #000; font-family: 'Unbounded', cursive; font-weight: 900; font-size: 14px; min-width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .steps li div { padding-top: 6px; font-size: 15px; line-height: 1.6; }
+        .steps li strong { display: block; font-weight: 700; margin-bottom: 2px; }
+        .cta-box { background: #000; color: #fff; border-radius: 16px; padding: 32px; text-align: center; margin-top: 40px; }
+        .cta-box h2 { color: #FFD700; font-size: 18px; margin-bottom: 12px; }
+        .cta-box p { color: #aaa; font-size: 14px; margin-bottom: 20px; }
+        .btn-delete { display: inline-block; background: #dc2626; color: #fff; font-family: 'Unbounded', cursive; font-weight: 900; font-size: 14px; padding: 14px 32px; border-radius: 10px; text-decoration: none; border: none; cursor: pointer; }
+        .btn-login { display: inline-block; background: #FFD700; color: #000; font-family: 'Unbounded', cursive; font-weight: 900; font-size: 14px; padding: 14px 32px; border-radius: 10px; text-decoration: none; margin-bottom: 12px; }
+        .email-alt { margin-top: 24px; font-size: 13px; color: #aaa; }
+        .email-alt a { color: #FFD700; }
+        .warning { background: #fef2f2; border: 1px solid #fca5a5; border-radius: 10px; padding: 16px 20px; font-size: 14px; color: #7f1d1d; margin-top: 16px; }
+        footer { background: #000; color: #555; text-align: center; padding: 24px; font-size: 13px; margin-top: 60px; }
+        footer a { color: #FFD700; text-decoration: none; }
+    </style>
+</head>
+<body>
+
+<div class="top-bar">
+    <a href="index.html"><img src="assets/images/logo-genesis-couleur.png" alt="GENESIS" onerror="this.style.display='none'"></a>
+    <span>GENESIS</span>
+</div>
+
+<div class="container">
+
+    <div class="badge">🗑️ Suppression de compte</div>
+    <h1>Supprimer mon compte GENESIS</h1>
+    <p class="lead">
+        Vous pouvez demander la suppression de votre compte GENESIS et de toutes les données associées à tout moment. Cette page vous explique la procédure, les données supprimées et celles éventuellement conservées.
+    </p>
+
+    <div class="section">
+        <h2>Comment supprimer votre compte ?</h2>
+        <ul class="steps">
+            <li>
+                <div>
+                    <strong>Connectez-vous à votre compte</strong>
+                    Rendez-vous sur <a href="login.html">fagenesis.com/login</a> et connectez-vous avec vos identifiants.
+                </div>
+            </li>
+            <li>
+                <div>
+                    <strong>Accédez aux paramètres</strong>
+                    Dans l'application, allez dans <em>Mon compte → Paramètres → Supprimer mon compte</em>.
+                </div>
+            </li>
+            <li>
+                <div>
+                    <strong>Confirmez la suppression</strong>
+                    Lisez les informations, puis confirmez votre demande. La suppression est définitive et irréversible.
+                </div>
+            </li>
+        </ul>
+    </div>
+
+    <div class="section">
+        <h2>Données supprimées</h2>
+        <p>Lors de la suppression de votre compte, les données suivantes sont <span class="deleted">définitivement supprimées</span> :</p>
+        <ul>
+            <li>Nom, prénom, adresse e-mail, numéro de téléphone</li>
+            <li>Historique des messages et conversations</li>
+            <li>Profil, photo de profil et préférences</li>
+            <li>Données de fidélité (badges, niveaux, QG)</li>
+            <li>Listes de favoris et partenaires sauvegardés</li>
+        </ul>
+    </div>
+
+    <div class="section">
+        <h2>Données conservées</h2>
+        <p>Certaines données peuvent être <span class="kept">conservées</span> pour des raisons légales ou comptables :</p>
+        <ul>
+            <li>Historique des transactions financières — conservé <strong>10 ans</strong> (obligation légale comptable, article L123-22 du Code de commerce)</li>
+            <li>Données nécessaires à la résolution de litiges en cours</li>
+            <li>Données anonymisées à des fins statistiques (non liées à votre identité)</li>
+        </ul>
+        <div class="warning">
+            ⚠️ Si vous avez des commandes en cours ou des litiges ouverts, la suppression ne pourra être finalisée qu'à leur clôture.
+        </div>
+    </div>
+
+    <div class="cta-box">
+        <h2>Demander la suppression de votre compte</h2>
+        <p>Connectez-vous pour accéder à l'option de suppression dans vos paramètres, ou contactez-nous par e-mail.</p>
+        <a href="login.html" class="btn-login">Se connecter à mon compte</a>
+        <div class="email-alt">
+            Vous ne pouvez pas vous connecter ? Envoyez votre demande à <a href="mailto:contact@fagenesis.com">contact@fagenesis.com</a> depuis l'adresse e-mail liée à votre compte.
+        </div>
+    </div>
+
+</div>
+
+<footer>
+    <p>© 2025 GENESIS — FA Genesis · <a href="confidentialite.html">Politique de confidentialité</a> · <a href="conditions-generales.html">CGU</a> · <a href="contact.html">Contact</a></p>
+</footer>
+
+</body>
+</html>
