@@ -1,5 +1,8 @@
 // FA GENESIS — PWA Init + Push Notifications
 (function() {
+  // Dans l'app native Capacitor : aucune fonctionnalité PWA (déjà installé)
+  if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) return;
+
   // L'installation PWA ne s'affiche QUE sur app.html
   var _isAppPage = /\/app\.html$|\/app$/.test(window.location.pathname) ||
                    window.location.pathname === '/';

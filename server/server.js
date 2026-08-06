@@ -1317,6 +1317,10 @@ app.use(cors({
         'https://fagenesis.com',
         'https://www.fagenesis.com',
         'https://financialadvicegenesis.github.io',
+        // Capacitor mobile app (Android = https://localhost, iOS = capacitor://localhost)
+        'https://localhost',
+        'capacitor://localhost',
+        'ionic://localhost',
         process.env.FRONT_URL
     ].filter(Boolean),
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],

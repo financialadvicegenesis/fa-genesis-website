@@ -12,10 +12,13 @@
 <meta name="apple-mobile-web-app-title" content="GENESIS">
 <link rel="apple-touch-icon" href="assets/images/apple-touch-icon.png">
 <link rel="icon" href="assets/images/icon-app-192.png">
-<!-- Fonts async — ne bloquent pas le rendu -->
+<!-- Fonts + Icons async — chargés dès le head pour éviter le rendu sans icônes -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
 <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@700;900&family=Space+Grotesk:wght@400;700&display=swap" onload="this.onload=null;this.rel='stylesheet'">
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@700;900&family=Space+Grotesk:wght@400;700&display=swap"></noscript>
+<link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"></noscript>
 <style>
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    BASE
@@ -2971,7 +2974,7 @@ setTimeout(function(){
     if(s && t){ USER = JSON.parse(s); USER._token = t; _exitSplash(showApp); }
     else { _exitSplash(showRoleChoice); }
   } catch(e){ _exitSplash(showRoleChoice); }
-}, 2500);
+}, 1500);
 
 function _exitSplash(callback){
   var splash = document.getElementById('splash');
@@ -13399,9 +13402,6 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
 
 <script>_jeremieInitAvatars();</script>
 
-<!-- Font Awesome async -->
-<link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
-  onload="this.onload=null;this.rel='stylesheet'">
 
 <script src="https://js.stripe.com/v3/"></script>
 <script src="config.js" defer></script>
