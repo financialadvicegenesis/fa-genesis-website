@@ -4233,7 +4233,7 @@ function cwCard(o, sub, idx){
         +'<button class="p-cw-cta" style="flex:1;background:#FFD700;color:#000;" onclick="'+bookAction+'">Réserver</button>'
         +(detailAction?'<button class="p-cw-cta" style="flex:0 0 60px;background:#1a1a1a;color:#888;border:1px solid #2a2a2a;font-size:10px;" onclick="'+detailAction+'">Détail</button>':'')
         +'</div>'
-      :'<button class="p-cw-cta" onclick="window.location.href=\'offres.html\'">'+o.cta+'</button>'
+      :'<button class="p-cw-cta" onclick="window.open(\'mailto:contact@fagenesis.com?subject=Demande%20de%20devis\')">'+o.cta+'</button>'
     )
     +'</div></div>';
 }
@@ -4663,13 +4663,13 @@ function openDetail(o, type){ _detailOffer=o; _detailType=type;
       :type||'');
   var ctaHtml;
   if(o.link){
-    ctaHtml = '<button class="detail-cta" onclick="window.location.href=\''+o.link+'\'">Demander un devis</button>';
+    ctaHtml = '<button class="detail-cta" onclick="window.open(\'mailto:contact@fagenesis.com?subject=Demande%20de%20devis%20-%20'+encodeURIComponent(o.name||\'Sur%20Mesure\')+'\')">Demander un devis</button>';
   } else if(type==='coworking' && _cwDetailSub!==null){
     ctaHtml = '<button class="detail-cta" onclick="closeDetail();openCwBooking(\''+_cwDetailSub+'\','+_cwDetailIdx+')">Réserver</button>'
       +'<button class="detail-cta" style="background:#1a1a1a;border:1px solid #2a2a2a;color:#888;margin-top:8px;font-size:11px;padding:12px" onclick="addToCart({id:\'cw-'+_cwDetailSub+'-'+_cwDetailIdx+'\',name:\''+o.name+'\',price:\''+o.price+'\',priceNum:null,type:\'coworking\'});closeDetail()"><i class="fa-solid fa-cart-shopping"></i> Ajouter au panier</button>';
   } else {
     ctaHtml = '<button class="detail-cta" onclick="_addDetailToCart()">&#128722; Ajouter au panier</button>'
-      +'<button class="detail-cta" style="background:#1a1a1a;border:1px solid #2a2a2a;color:#888;margin-top:8px;font-size:11px;padding:12px;" onclick="window.location.href=\'offres.html\'">Voir sur le site</button>';
+      ;
   }
   document.getElementById('detail-content').innerHTML = ''
     +(badge?'<div class="detail-badge">'+badge+'</div>':'')
@@ -6194,7 +6194,7 @@ function renderProfil(){
   var infos = '<div class="plus-section">'
     +'<div class="plus-section-title">INFORMATIONS GÉNÉRALES</div>'
     +'<div class="plus-group">'
-    +pli('<i class="fa-solid fa-circle-question"></i>','#0a1a0a','Aide','https://fagenesis.com/index.html#faq')
+
     +pli('<i class="fa-solid fa-file-lines"></i>','#141414','Mentions légales','https://fagenesis.com/mentions-legales.html')
     +pli('<i class="fa-solid fa-scroll"></i>','#0a0a1a','CGU','https://fagenesis.com/conditions-generales.html#cgu')
     +pli('<i class="fa-solid fa-receipt"></i>','#0a0a1a','CGV','https://fagenesis.com/conditions-generales.html#cgv')
