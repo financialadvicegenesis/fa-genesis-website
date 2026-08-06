@@ -76,8 +76,19 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="FA GENESIS">
+    <style>
+        .capacitor-app nav,
+        .capacitor-app #mobileMenu,
+        .capacitor-app #mobileMenuBtn { display: none !important; }
+        .capacitor-app section.pt-32 { padding-top: 1.5rem !important; }
+    </style>
 </head>
 <body>
+    <script>
+        if (window.Capacitor && window.Capacitor.isNativePlatform()) {
+            document.body.classList.add('capacitor-app');
+        }
+    </script>
 
     <!-- NAVIGATION -->
     <nav class="fixed top-0 w-full z-50 bg-black/95 backdrop-blur-md border-b-4 border-[var(--genesis-yellow)] px-4 md:px-6 py-3 md:py-4 flex justify-between items-center text-white text-xs font-black uppercase">
