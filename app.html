@@ -5839,8 +5839,11 @@ function showMesDevis(){
       el.innerHTML = quotes.map(function(q){
         var meta = QUOTE_STATUS_META[q.status] || { label: q.status, cls: 's-pending' };
         var priceHtml = (q.pricing && q.pricing.total) ? '<div class="resa-price">'+q.pricing.total+' €</div>' : '';
+        var _qBase = (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform())
+          ? 'https://fagenesis.com/quote-accept.html'
+          : 'quote-accept.html';
         var acceptHtml = q.acceptance_token
-          ? '<div class="resa-actions"><a class="resa-action-btn rab-primary" href="quote-accept.html?token='+q.acceptance_token+'" style="text-decoration:none;text-align:center;">Voir et accepter le devis</a></div>'
+          ? '<div class="resa-actions"><a class="resa-action-btn rab-primary" href="'+_qBase+'?token='+q.acceptance_token+'" target="_blank" style="text-decoration:none;text-align:center;">Voir et accepter le devis</a></div>'
           : '';
         return '<div class="resa-card">'
           +'<div class="resa-top"><div class="resa-name">Devis '+(q.quote_number||'')+'</div>'
@@ -6846,6 +6849,11 @@ function openNotifModal(){ document.getElementById('notif-overlay').className='o
 function closeNotifModal(){ document.getElementById('notif-overlay').className=''; }
 function activerNotifs(){
   closeNotifModal();
+  // App native Capacitor : utiliser le plugin push natif
+  if(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()){
+    if(window.FAGMobile && window.USER && window.USER.id) window.FAGMobile.initPushNotifications(window.USER.id);
+    return;
+  }
   if(window.FA_activerNotifications) window.FA_activerNotifications();
   else if('Notification' in window) Notification.requestPermission();
 }
@@ -11412,6 +11420,10 @@ function _ptnrRefreshBadges(){
 
 // ── NOTIFICATIONS PUSH ──
 function _ptnrCheckPushStatus(){
+  // Dans l'app native, les notifs sont gérées par le plugin Capacitor — masquer la barre web
+  if(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()){
+    var barN = document.getElementById('ptnr-notif-bar'); if(barN) barN.style.display = 'none'; return;
+  }
   if(!('Notification' in window) || !('serviceWorker' in navigator)){
     var bar = document.getElementById('ptnr-notif-bar'); if(bar) bar.style.display = 'none'; return;
   }
