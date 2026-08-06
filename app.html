@@ -55,13 +55,13 @@ a{text-decoration:none;color:inherit}
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;
 }
 #splash .s-logo{width:88px;height:88px;border-radius:50%;object-fit:cover;
-  animation:sPop .7s cubic-bezier(.34,1.56,.64,1) .2s both}
+  animation:sPop .4s cubic-bezier(.34,1.56,.64,1) 0s both}
 #splash .s-name{font-size:22px;font-weight:900;color:var(--yellow);letter-spacing:3px;
-  text-transform:uppercase;margin-top:22px;animation:sUp .5s ease .7s both}
+  text-transform:uppercase;margin-top:22px;animation:sUp .3s ease .15s both}
 #splash .s-bar{width:48px;height:2px;background:#1a1a1a;border-radius:9px;overflow:hidden;
-  margin-top:40px;animation:sUp .3s ease 1s both}
+  margin-top:40px;animation:sUp .2s ease .1s both}
 #splash .s-fill{height:100%;background:var(--yellow);border-radius:9px;
-  animation:sFill 1.8s ease 1.1s both}
+  animation:sFill .5s ease .2s both}
 @keyframes sPop{from{opacity:0;transform:scale(.5)}to{opacity:1;transform:scale(1)}}
 @keyframes sUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 @keyframes sFill{from{width:0}to{width:100%}}
@@ -107,7 +107,7 @@ a{text-decoration:none;color:inherit}
   100%{opacity:0;transform:scale(1.22) translateY(-6%);filter:brightness(5);pointer-events:none}
 }
 #splash.exiting{
-  animation:splashExit .85s cubic-bezier(.4,0,.6,1) forwards;
+  animation:splashExit .5s cubic-bezier(.4,0,.6,1) forwards;
   pointer-events:none;
 }
 
@@ -2974,7 +2974,7 @@ setTimeout(function(){
     if(s && t){ USER = JSON.parse(s); USER._token = t; _exitSplash(showApp); }
     else { _exitSplash(showRoleChoice); }
   } catch(e){ _exitSplash(showRoleChoice); }
-}, 1500);
+}, 800);
 
 function _exitSplash(callback){
   var splash = document.getElementById('splash');
@@ -2988,7 +2988,7 @@ function _exitSplash(callback){
     if(splash){ splash.style.display='none'; splash.className=''; }
     if(flash) { flash.style.display='none';  flash.className=''; }
     callback();
-  }, 820);
+  }, 480);
 }
 
 function showRoleChoice(){
