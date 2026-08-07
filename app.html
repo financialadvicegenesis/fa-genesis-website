@@ -12,13 +12,10 @@
 <meta name="apple-mobile-web-app-title" content="GENESIS">
 <link rel="apple-touch-icon" href="assets/images/apple-touch-icon.png">
 <link rel="icon" href="assets/images/icon-app-192.png">
-<!-- Fonts + Icons async — chargés dès le head pour éviter le rendu sans icônes -->
+<!-- Fonts async — ne bloquent pas le rendu -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
 <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@700;900&family=Space+Grotesk:wght@400;700&display=swap" onload="this.onload=null;this.rel='stylesheet'">
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@700;900&family=Space+Grotesk:wght@400;700&display=swap"></noscript>
-<link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" onload="this.onload=null;this.rel='stylesheet'">
-<noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"></noscript>
 <style>
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    BASE
@@ -31,7 +28,7 @@
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);
-  font-family:'Space Grotesk','Helvetica Neue',Arial,sans-serif;}
+  font-family:'Space Grotesk','Helvetica Neue',Arial,sans-serif}
 /* Empêche le zoom automatique sur iOS/Android au focus sur un champ de saisie.
    Le navigateur zoome si font-size < 16px — on force le minimum à 16px sur mobile. */
 @media (hover:none) and (pointer:coarse){
@@ -104,12 +101,18 @@ a{text-decoration:none;color:inherit}
 @keyframes splashExit{
   0%  {opacity:1;transform:scale(1);filter:brightness(1)}
   20% {opacity:1;transform:scale(1.06);filter:brightness(2.5)}
-  100%{opacity:0;transform:scale(1.22) translateY(-6%);pointer-events:none}
+  100%{opacity:0;transform:scale(1.22) translateY(-6%);filter:brightness(5);pointer-events:none}
 }
 #splash.exiting{
   animation:splashExit .5s cubic-bezier(.4,0,.6,1) forwards;
   pointer-events:none;
 }
+/* Fallback CSS pur : si JS ne démarre pas, le splash disparaît à 3.5s */
+@keyframes splashAutoHide{
+  0%,99%{opacity:1;pointer-events:auto}
+  100%  {opacity:0;pointer-events:none;visibility:hidden}
+}
+#splash{animation:splashAutoHide 0.4s ease 3.5s forwards}
 
 /* Flash doré central */
 #goldFlash{
@@ -2241,7 +2244,7 @@ a{text-decoration:none;color:inherit}
 </div>
 
 <!-- ══════════ CHOIX DE RÔLE ══════════ -->
-<div id="roleChoice" style="display:none">
+<div id="roleChoice">
   <div class="w-hero">
     <img class="w-logo" src="assets/images/icon-app-192.png" alt="GENESIS"
       onerror="this.style.display='none'">
@@ -2946,6 +2949,9 @@ a{text-decoration:none;color:inherit}
 </div>
 
 <script>
+// Masquer roleChoice dès que JS démarre (il est visible par défaut pour le fallback CSS)
+(function(){ var r=document.getElementById('roleChoice'); if(r) r.style.display='none'; })();
+
 function _playBgVideo(){ /* vidéo de fond désactivée — fichier trop lourd pour mobile */ }
 
 // ── DATA ─────────────────────────────────────────────────────
@@ -2974,13 +2980,16 @@ setTimeout(function(){
     if(s && t){ USER = JSON.parse(s); USER._token = t; _exitSplash(showApp); }
     else { _exitSplash(showRoleChoice); }
   } catch(e){ _exitSplash(showRoleChoice); }
-}, 1500);
+}, 2500);
 
 function _exitSplash(callback){
   var splash = document.getElementById('splash');
   var flash  = document.getElementById('goldFlash');
+  // Déclenche le flash doré
   if(flash){ flash.className='on'; }
+  // Splash s'envole
   if(splash){ splash.className='exiting'; }
+  // Après la transition, cache définitivement le splash et appelle callback
   setTimeout(function(){
     if(splash){ splash.style.display='none'; splash.className=''; }
     if(flash) { flash.style.display='none';  flash.className=''; }
@@ -4234,7 +4243,7 @@ function cwCard(o, sub, idx){
         +'<button class="p-cw-cta" style="flex:1;background:#FFD700;color:#000;" onclick="'+bookAction+'">Réserver</button>'
         +(detailAction?'<button class="p-cw-cta" style="flex:0 0 60px;background:#1a1a1a;color:#888;border:1px solid #2a2a2a;font-size:10px;" onclick="'+detailAction+'">Détail</button>':'')
         +'</div>'
-      :'<button class="p-cw-cta" onclick="window.open(\'mailto:contact@fagenesis.com?subject=Demande%20de%20devis\')">'+o.cta+'</button>'
+      :'<button class="p-cw-cta" onclick="window.location.href=\'offres.html\'">'+o.cta+'</button>'
     )
     +'</div></div>';
 }
@@ -4664,13 +4673,13 @@ function openDetail(o, type){ _detailOffer=o; _detailType=type;
       :type||'');
   var ctaHtml;
   if(o.link){
-    ctaHtml = '<button class="detail-cta" onclick="window.open(\'mailto:contact@fagenesis.com?subject=Demande%20de%20devis%20-%20'+encodeURIComponent(o.name||\'Sur%20Mesure\')+'\')">Demander un devis</button>';
+    ctaHtml = '<button class="detail-cta" onclick="window.location.href=\''+o.link+'\'">Demander un devis</button>';
   } else if(type==='coworking' && _cwDetailSub!==null){
     ctaHtml = '<button class="detail-cta" onclick="closeDetail();openCwBooking(\''+_cwDetailSub+'\','+_cwDetailIdx+')">Réserver</button>'
       +'<button class="detail-cta" style="background:#1a1a1a;border:1px solid #2a2a2a;color:#888;margin-top:8px;font-size:11px;padding:12px" onclick="addToCart({id:\'cw-'+_cwDetailSub+'-'+_cwDetailIdx+'\',name:\''+o.name+'\',price:\''+o.price+'\',priceNum:null,type:\'coworking\'});closeDetail()"><i class="fa-solid fa-cart-shopping"></i> Ajouter au panier</button>';
   } else {
     ctaHtml = '<button class="detail-cta" onclick="_addDetailToCart()">&#128722; Ajouter au panier</button>'
-      ;
+      +'<button class="detail-cta" style="background:#1a1a1a;border:1px solid #2a2a2a;color:#888;margin-top:8px;font-size:11px;padding:12px;" onclick="window.location.href=\'offres.html\'">Voir sur le site</button>';
   }
   document.getElementById('detail-content').innerHTML = ''
     +(badge?'<div class="detail-badge">'+badge+'</div>':'')
@@ -5837,11 +5846,8 @@ function showMesDevis(){
       el.innerHTML = quotes.map(function(q){
         var meta = QUOTE_STATUS_META[q.status] || { label: q.status, cls: 's-pending' };
         var priceHtml = (q.pricing && q.pricing.total) ? '<div class="resa-price">'+q.pricing.total+' €</div>' : '';
-        var _qBase = (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform())
-          ? 'https://fagenesis.com/quote-accept.html'
-          : 'quote-accept.html';
         var acceptHtml = q.acceptance_token
-          ? '<div class="resa-actions"><a class="resa-action-btn rab-primary" href="'+_qBase+'?token='+q.acceptance_token+'" target="_blank" style="text-decoration:none;text-align:center;">Voir et accepter le devis</a></div>'
+          ? '<div class="resa-actions"><a class="resa-action-btn rab-primary" href="quote-accept.html?token='+q.acceptance_token+'" style="text-decoration:none;text-align:center;">Voir et accepter le devis</a></div>'
           : '';
         return '<div class="resa-card">'
           +'<div class="resa-top"><div class="resa-name">Devis '+(q.quote_number||'')+'</div>'
@@ -6157,7 +6163,6 @@ function renderProfil(){
     monEspace = '<div class="plus-section">'
       +'<div class="plus-section-title">MON ESPACE</div>'
       +'<div class="plus-group">'
-      +pli('<i class="fa-solid fa-chart-line"></i>','#0a1a0a','Tableau de bord',null,'showClientDashboard()')
       +pli('<i class="fa-solid fa-basket-shopping"></i>','#1a1000','Mes commandes',null,'showMesCommandes()')
       +pli('<i class="fa-solid fa-credit-card"></i>','#0a1a0a','Mes paiements',null,'showPaiements()')
       +pli('<i class="fa-solid fa-shield-halved"></i>','#1a1200','Portefeuille GENESIS SAFE™',null,'showClientWallet()')
@@ -6198,7 +6203,7 @@ function renderProfil(){
   var infos = '<div class="plus-section">'
     +'<div class="plus-section-title">INFORMATIONS GÉNÉRALES</div>'
     +'<div class="plus-group">'
-
+    +pli('<i class="fa-solid fa-circle-question"></i>','#0a1a0a','Aide','https://fagenesis.com/index.html#faq')
     +pli('<i class="fa-solid fa-file-lines"></i>','#141414','Mentions légales','https://fagenesis.com/mentions-legales.html')
     +pli('<i class="fa-solid fa-scroll"></i>','#0a0a1a','CGU','https://fagenesis.com/conditions-generales.html#cgu')
     +pli('<i class="fa-solid fa-receipt"></i>','#0a0a1a','CGV','https://fagenesis.com/conditions-generales.html#cgv')
@@ -6847,11 +6852,6 @@ function openNotifModal(){ document.getElementById('notif-overlay').className='o
 function closeNotifModal(){ document.getElementById('notif-overlay').className=''; }
 function activerNotifs(){
   closeNotifModal();
-  // App native Capacitor : utiliser le plugin push natif
-  if(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()){
-    if(window.FAGMobile && window.USER && window.USER.id) window.FAGMobile.initPushNotifications(window.USER.id);
-    return;
-  }
   if(window.FA_activerNotifications) window.FA_activerNotifications();
   else if('Notification' in window) Notification.requestPermission();
 }
@@ -7594,157 +7594,7 @@ function showOrderDetail(requestId){
     if(r.order_id) loadOrderLivrables(r.id, r.order_id);
   } catch(_e){}
 }
-function showDashboard(){showClientDashboard();}
-
-function showClientDashboard(){
-  var c=document.getElementById('profilContent');
-  if(!USER||GUEST){renderProfil();return;}
-  _saveProfilScroll('showClientDashboard');
-  c.innerHTML='<div class="espace-view">'
-    +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Tableau de bord</div></div>'
-    +'<div id="dashboard-content" style="padding:14px;padding-bottom:90px;overflow-y:auto;flex:1;">'
-    +'<div class="espace-loading">Chargement...</div></div></div>';
-
-  var token=USER._token;
-  var apiBase=window.FA_GENESIS_API||API;
-  var p1=fetch(apiBase+'/api/my-requests',{headers:{'Authorization':'Bearer '+token}}).then(function(r){return r.json();}).catch(function(){return {};});
-  var p2=fetch(apiBase+'/api/client/level-progress',{headers:{'Authorization':'Bearer '+token}}).then(function(r){return r.json();}).catch(function(){return {};});
-
-  Promise.all([p1,p2]).then(function(results){
-    var ordersData=results[0]||{};
-    var levelData=results[1]||{};
-    var allReqs=Array.isArray(ordersData.requests)?ordersData.requests:[];
-    var missions=allReqs.filter(function(r){return !!r.order_id;});
-    var actives=missions.filter(function(r){
-      var k=r.display_status&&r.display_status.key;
-      return k&&k!=='completed'&&k!=='reviewed'&&k!=='cancelled';
-    });
-    var terminees=missions.filter(function(r){
-      var k=r.display_status&&r.display_status.key;
-      return k==='completed'||k==='reviewed';
-    });
-    var totalDepense=missions.reduce(function(sum,r){return sum+(Number(r.total_amount)||0);},0);
-
-    var qg=levelData.qgPoints||0;
-    var lvl=levelData.currentLevel||'Créateur';
-    var badge=levelData.currentBadge||'';
-    var prog=levelData.progress||{};
-    var pct=prog.progressPercent||0;
-    var levelColors={bronze:'#cd7f32',argent:'#c0c0c0',or:'#FFD700',elite:'#a78bfa'};
-    var lvlCol=levelColors[badge]||'#FFD700';
-
-    var html='';
-
-    // ── Carte niveau GENESIS ──────────────────────
-    html+='<div style="background:linear-gradient(135deg,#1a1200,#0d0d00);border:1.5px solid '+lvlCol+';border-radius:18px;padding:16px 18px;margin-bottom:14px;cursor:pointer;" onclick="showResumeMensuel()">'
-      +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">'
-      +'<div>'
-      +'<div style="font-size:10px;color:#555;font-weight:700;letter-spacing:1px;margin-bottom:3px;">NIVEAU GENESIS</div>'
-      +'<div style="font-size:20px;font-weight:900;color:'+lvlCol+';">'+lvl+'</div>'
-      +'</div>'
-      +'<div style="text-align:right;">'
-      +'<div style="font-size:10px;color:#555;font-weight:700;letter-spacing:1px;margin-bottom:3px;">POINTS QG</div>'
-      +'<div style="font-size:24px;font-weight:900;color:#fff;">'+qg+'</div>'
-      +'</div>'
-      +'</div>';
-    if(prog.nextLevel){
-      html+='<div style="background:#111;border-radius:20px;height:5px;margin-bottom:5px;">'
-        +'<div style="background:'+lvlCol+';width:'+pct+'%;height:100%;border-radius:20px;transition:width .8s;"></div></div>'
-        +'<div style="font-size:10px;color:#444;">'+prog.pointsToNext+' QG pour <strong style="color:#666;">'+prog.nextLevel+'</strong></div>';
-    } else {
-      html+='<div style="font-size:10px;color:#4caf50;"><i class="fa-solid fa-trophy"></i> Niveau maximum atteint</div>';
-    }
-    html+='</div>';
-
-    // ── KPIs ──────────────────────────────────────
-    var kpis=[
-      {icon:'fa-briefcase',label:'Missions actives',val:actives.length,col:'#FFD700'},
-      {icon:'fa-check-circle',label:'Terminées',val:terminees.length,col:'#22c55e'},
-      {icon:'fa-euro-sign',label:'Total investi',val:totalDepense>0?Number(totalDepense.toFixed(0)).toLocaleString('fr-FR')+' €':'0 €',col:'#60a5fa'}
-    ];
-    html+='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;">';
-    kpis.forEach(function(k){
-      html+='<div style="background:#111;border:1px solid #1e1e1e;border-radius:14px;padding:12px 8px;text-align:center;">'
-        +'<i class="fa-solid '+k.icon+'" style="color:'+k.col+';font-size:18px;margin-bottom:6px;display:block;"></i>'
-        +'<div style="font-size:15px;font-weight:900;color:#fff;">'+k.val+'</div>'
-        +'<div style="font-size:9px;color:#555;margin-top:2px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;">'+k.label+'</div>'
-        +'</div>';
-    });
-    html+='</div>';
-
-    // ── Accès rapides ─────────────────────────────
-    html+='<div style="font-size:10px;font-weight:800;color:#444;letter-spacing:1px;margin-bottom:8px;">ACCÈS RAPIDES</div>';
-    html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;">';
-    var shortcuts=[
-      {icon:'fa-route',label:'Suivi prestations',col:'#FFD700',fn:'showSuiviPrestations()'},
-      {icon:'fa-file-contract',label:'Mes contrats',col:'#60a5fa',fn:'nav(\'mes-contrats\')'},
-      {icon:'fa-box-open',label:'Mes livrables',col:'#a78bfa',fn:'showLivrables()'},
-      {icon:'fa-robot',label:'Jérémie IA',col:'#22c55e',fn:'openJeremie()'}
-    ];
-    shortcuts.forEach(function(s){
-      html+='<button onclick="'+s.fn+'" style="background:#111;border:1px solid #1e1e1e;border-radius:14px;padding:12px;display:flex;align-items:center;gap:10px;cursor:pointer;text-align:left;width:100%;">'
-        +'<i class="fa-solid '+s.icon+'" style="color:'+s.col+';font-size:16px;flex-shrink:0;"></i>'
-        +'<span style="font-size:12px;font-weight:700;color:#ddd;">'+s.label+'</span>'
-        +'</button>';
-    });
-    html+='</div>';
-
-    // ── Missions actives ──────────────────────────
-    html+='<div style="font-size:10px;font-weight:800;color:#444;letter-spacing:1px;margin-bottom:8px;">MISSIONS EN COURS</div>';
-    if(!actives.length){
-      html+='<div class="espace-empty" style="margin-bottom:14px;"><i class="fa-solid fa-inbox" style="font-size:28px;color:#222;display:block;margin-bottom:8px;"></i>Aucune mission active.</div>';
-    } else {
-      actives.slice(0,5).forEach(function(r){
-        var ds=r.display_status||{key:'in_progress',label:'En cours',emoji:'🟣'};
-        var sc=ds.key==='delivered'?'#60a5fa':ds.key==='delivering'?'#f97316':'#FFD700';
-        var _init=(r.partner_name||'P')[0].toUpperCase();
-        var _avatar=r.partner_photo
-          ?'<img src="'+r.partner_photo+'" style="width:40px;height:40px;border-radius:50%;object-fit:cover;flex-shrink:0;" alt="">'
-          :'<div style="width:40px;height:40px;border-radius:50%;background:rgba(255,215,0,.08);border:1.5px solid rgba(255,215,0,.2);display:flex;align-items:center;justify-content:center;font-weight:800;color:#FFD700;font-size:15px;flex-shrink:0;">'+_init+'</div>';
-        var amt=r.total_amount?Number(r.total_amount).toLocaleString('fr-FR')+' €':'';
-        html+='<div class="espace-card" style="display:flex;align-items:center;gap:12px;padding:12px;cursor:pointer;margin-bottom:8px;" onclick="showOrderDetail(\''+r.id+'\')">'
-          +_avatar
-          +'<div style="flex:1;min-width:0;">'
-          +'<div style="display:flex;align-items:center;justify-content:space-between;gap:4px;">'
-          +'<div style="font-size:13px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px;">'+(r.service_label||'Prestation')+'</div>'
-          +'<span style="font-size:10px;font-weight:800;color:'+sc+';white-space:nowrap;">'+ds.emoji+' '+ds.label+'</span>'
-          +'</div>'
-          +'<div style="font-size:11px;color:#555;margin-top:2px;">'+(r.partner_name||'')+(amt?' · <span style="color:#FFD700;font-weight:700;">'+amt+'</span>':'')+'</div>'
-          +'</div>'
-          +'<i class="fa-solid fa-chevron-right" style="color:#333;font-size:11px;flex-shrink:0;"></i>'
-          +'</div>';
-      });
-    }
-
-    // ── Historique récent ─────────────────────────
-    if(terminees.length){
-      html+='<div style="font-size:10px;font-weight:800;color:#444;letter-spacing:1px;margin:14px 0 8px;">RÉCEMMENT TERMINÉES</div>';
-      terminees.slice(0,3).forEach(function(r){
-        var amt=r.total_amount?Number(r.total_amount).toLocaleString('fr-FR')+' €':'';
-        var _init=(r.partner_name||'P')[0].toUpperCase();
-        html+='<div class="espace-card" style="display:flex;align-items:center;gap:12px;padding:11px;cursor:pointer;opacity:.75;margin-bottom:8px;" onclick="showOrderDetail(\''+r.id+'\')">'
-          +(r.partner_photo
-            ?'<img src="'+r.partner_photo+'" style="width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0;" alt="">'
-            :'<div style="width:36px;height:36px;border-radius:50%;background:#1a1a1a;border:1px solid #222;display:flex;align-items:center;justify-content:center;font-weight:800;color:#555;font-size:13px;flex-shrink:0;">'+_init+'</div>')
-          +'<div style="flex:1;min-width:0;">'
-          +'<div style="font-size:12px;font-weight:700;color:#bbb;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+(r.service_label||'Prestation')+'</div>'
-          +'<div style="font-size:11px;color:#444;">'+(r.partner_name||'')+(amt?' · '+amt:'')+'</div>'
-          +'</div>'
-          +'<i class="fa-solid fa-check-circle" style="color:#22c55e;font-size:13px;flex-shrink:0;"></i>'
-          +'</div>';
-      });
-    }
-
-    // ── Voir tout ─────────────────────────────────
-    html+='<button onclick="showMesCommandes()" style="width:100%;background:rgba(255,215,0,.06);border:1px solid rgba(255,215,0,.15);border-radius:14px;padding:12px;font-size:12px;font-weight:700;color:#FFD700;cursor:pointer;margin-top:4px;"><i class="fa-solid fa-list"></i> Voir toutes mes commandes</button>';
-
-    var el=document.getElementById('dashboard-content');
-    if(el) el.innerHTML=html;
-  }).catch(function(){
-    var el=document.getElementById('dashboard-content');
-    if(el) el.innerHTML='<div class="espace-empty">Impossible de charger le tableau de bord.</div>';
-  });
-}
+function showDashboard(){showMesCommandes();}
 function showPaiements(){
   var c=document.getElementById('profilContent');
   _saveProfilScroll('showPaiements');
@@ -11418,10 +11268,6 @@ function _ptnrRefreshBadges(){
 
 // ── NOTIFICATIONS PUSH ──
 function _ptnrCheckPushStatus(){
-  // Dans l'app native, les notifs sont gérées par le plugin Capacitor — masquer la barre web
-  if(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()){
-    var barN = document.getElementById('ptnr-notif-bar'); if(barN) barN.style.display = 'none'; return;
-  }
   if(!('Notification' in window) || !('serviceWorker' in navigator)){
     var bar = document.getElementById('ptnr-notif-bar'); if(bar) bar.style.display = 'none'; return;
   }
@@ -13412,6 +13258,9 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
 
 <script>_jeremieInitAvatars();</script>
 
+<!-- Font Awesome async -->
+<link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+  onload="this.onload=null;this.rel='stylesheet'">
 
 <script src="https://js.stripe.com/v3/"></script>
 <script src="config.js" defer></script>
@@ -16207,64 +16056,5 @@ function _downloadClientContractPdf(contractId) {
     document.body.appendChild(link); link.click(); document.body.removeChild(link);
 }
 </script>
-
-<!-- ══════════════════════════════════════════════
-     PONT NATIF (Android / iOS via Capacitor)
-     Chargé après tout le reste pour être sûr que
-     window.Capacitor est injecté par le bridge natif
-══════════════════════════════════════════════ -->
-<script>
-// Initialisation du pont mobile après connexion utilisateur réussie
-document.addEventListener('fagmobile:ready', function(e) {
-    console.log('[App] FAG Mobile bridge prêt sur', e.detail.platform);
-
-    // Push notifications — s'il y a un user connecté
-    if (window.USER && window.USER.id && window.FAGMobile) {
-        window.FAGMobile.initPushNotifications(window.USER.id);
-    }
-
-    // Biométrie — proposer si disponible et identifiants sauvegardés
-    _initBiometricAutoLogin();
-});
-
-async function _initBiometricAutoLogin() {
-    if (!window.FAGMobile || !window.FAGMobile.getBiometricCredentials) return;
-    try {
-        var creds = await window.FAGMobile.getBiometricCredentials();
-        if (!creds || !creds.password) return;
-        // Déjà connecté ? Ne pas reproposer
-        if (window.USER && !window.GUEST) return;
-        // Proposer la connexion biométrique
-        var banner = document.createElement('div');
-        banner.id = 'bioBanner';
-        banner.style.cssText = 'position:fixed;bottom:80px;left:16px;right:16px;background:#1a1a1a;border:2px solid #FFD700;padding:14px 16px;display:flex;align-items:center;gap:12px;z-index:9999;border-radius:4px;';
-        banner.innerHTML = '<i class="fas fa-fingerprint" style="color:#FFD700;font-size:22px;flex-shrink:0;"></i>' +
-            '<div style="flex:1;"><div style="color:#fff;font-size:13px;font-weight:900;font-family:sans-serif;">Connexion rapide</div>' +
-            '<div style="color:#aaa;font-size:11px;font-family:sans-serif;">Utilisez Face ID / empreinte</div></div>' +
-            '<button onclick="_doBiometricLogin()" style="background:#FFD700;border:none;color:#000;font-weight:900;font-size:12px;padding:8px 14px;cursor:pointer;font-family:sans-serif;text-transform:uppercase;">OUVRIR</button>' +
-            '<button onclick="this.parentNode.remove()" style="background:none;border:none;color:#888;font-size:18px;cursor:pointer;line-height:1;">×</button>';
-        document.body.appendChild(banner);
-        setTimeout(function() { if (banner.parentNode) banner.parentNode.removeChild(banner); }, 8000);
-    } catch(e) {}
-}
-
-async function _doBiometricLogin() {
-    var banner = document.getElementById('bioBanner');
-    if (banner) banner.parentNode.removeChild(banner);
-    if (!window.FAGMobile) return;
-    try {
-        var bio = await window.FAGMobile.biometricLogin();
-        if (!bio.success) { alert(bio.error || 'Biométrie échouée'); return; }
-        var creds = await window.FAGMobile.getBiometricCredentials();
-        if (!creds || !creds.password) return;
-        // Restaurer la session avec le token sauvegardé
-        localStorage.setItem('fa_genesis_token', creds.password);
-        localStorage.setItem('fa_genesis_session', creds.password);
-        if (typeof loadUserSession === 'function') loadUserSession();
-        else window.location.reload();
-    } catch(e) { console.warn('[Bio] Erreur:', e.message); }
-}
-</script>
-<script src="mobile-bridge.js"></script>
 </body>
 </html>
