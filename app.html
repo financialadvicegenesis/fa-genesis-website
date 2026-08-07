@@ -31,7 +31,8 @@
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);
-  font-family:'Space Grotesk','Helvetica Neue',Arial,sans-serif}
+  font-family:'Space Grotesk','Helvetica Neue',Arial,sans-serif;
+  position:fixed;width:100%;}
 /* Empêche le zoom automatique sur iOS/Android au focus sur un champ de saisie.
    Le navigateur zoome si font-size < 16px — on force le minimum à 16px sur mobile. */
 @media (hover:none) and (pointer:coarse){
@@ -72,6 +73,8 @@ a{text-decoration:none;color:inherit}
 #welcome,#roleChoice{
   display:flex;flex-direction:column;align-items:center;justify-content:flex-end;
   position:fixed;inset:0;z-index:100;overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  -webkit-transform:translateZ(0);transform:translateZ(0);
   background:transparent;
   padding:0 24px calc(40px + var(--safe));
 }
@@ -2221,7 +2224,7 @@ a{text-decoration:none;color:inherit}
 .presta-card:active{transform:scale(.97)!important;}
 </style>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer crossorigin=""></script>
 </head>
 <body>
 
@@ -2974,7 +2977,7 @@ setTimeout(function(){
     if(s && t){ USER = JSON.parse(s); USER._token = t; _exitSplash(showApp); }
     else { _exitSplash(showRoleChoice); }
   } catch(e){ _exitSplash(showRoleChoice); }
-}, 800);
+}, 1200);
 
 function _exitSplash(callback){
   var splash = document.getElementById('splash');
@@ -2986,19 +2989,25 @@ function _exitSplash(callback){
   // Après la transition, cache définitivement le splash et appelle callback
   setTimeout(function(){
     if(splash){ splash.style.display='none'; splash.className=''; }
-    if(flash) { flash.style.display='none';  flash.className=''; }
+    if(flash) { flash.style.opacity='0'; flash.style.display='none'; flash.className=''; }
+    // Force repaint on iOS Safari avant d'afficher le contenu
+    document.body.offsetHeight;
     callback();
   }, 480);
 }
 
 function showRoleChoice(){
   var r = document.getElementById('roleChoice');
+  if(!r) return;
   r.style.opacity = '0';
   r.style.display = 'flex';
+  void r.offsetWidth; // flush layout, force iOS repaint
   setTimeout(function(){
+    r.style.webkitTransition = 'opacity .35s ease';
     r.style.transition = 'opacity .35s ease';
     r.style.opacity = '1';
     r.className = 'entering';
+    void r.offsetWidth; // second flush for iOS
   }, 30);
 }
 function showWelcome(){
