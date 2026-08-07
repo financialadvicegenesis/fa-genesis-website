@@ -2522,8 +2522,8 @@ a{text-decoration:none;color:inherit}
     <div class="tab" id="tab-partner">
       <!-- Login screen (shown when not authenticated as partner) -->
       <div id="ptnr-login-screen">
+        <button class="w-back-btn" id="ptnrBackStartBtn" onclick="exitGuestMode()" aria-label="Retour" style="display:none;">&#8249;</button>
         <div class="ptnr-login-wrap">
-          <button class="plus-guest-exit" id="ptnrBackStartBtn" style="display:none;margin-bottom:20px;" onclick="exitGuestMode()">&#8249; Retour à l'écran de démarrage</button>
           <div class="ptnr-login-logo">GENESIS</div>
           <div class="ptnr-login-title">Espace Prestataire</div>
           <div class="ptnr-login-sub">Connectez-vous pour gérer vos projets, devis et messages directement depuis l'application.</div>
@@ -2548,8 +2548,8 @@ a{text-decoration:none;color:inherit}
 
       <!-- Register screen (in-app, no redirect to website) -->
       <div id="ptnr-register-screen" style="display:none;">
+        <button class="w-back-btn" onclick="_ptnrRegBackToLogin()" aria-label="Retour">&#8249;</button>
         <div class="ptnr-login-wrap">
-          <button class="plus-guest-exit" onclick="_ptnrRegBackToLogin()" style="margin-bottom:20px;">&#8249; Retour</button>
           <div class="ptnr-login-logo">GENESIS</div>
           <div class="ptnr-login-title">Devenir Prestataire</div>
           <div class="ptnr-login-sub">Créez votre compte prestataire pour proposer vos services directement depuis l'application</div>
@@ -3192,8 +3192,7 @@ function nav(tab){
   if(tab==='partner'){
     var pbb=document.getElementById('ptnrBackStartBtn');
     if(pbb){
-    if(GUEST){ pbb.innerHTML='&#8249; Retour'; pbb.onclick=exitGuestMode; pbb.style.display=''; }
-    else if(USER){ pbb.innerHTML='&#8249; Profil'; pbb.onclick=function(){navBack();}; pbb.style.display=''; }
+    if(GUEST){ pbb.onclick=exitGuestMode; pbb.style.display=''; }
     else { pbb.style.display='none'; }
     }
   }
