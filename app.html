@@ -2530,7 +2530,7 @@ a{text-decoration:none;color:inherit}
           <input class="ptnr-input" id="ptnr-email" type="email" placeholder="Email" autocomplete="email">
           <div class="reg-pw-wrap">
             <input class="ptnr-input" id="ptnr-pass" type="password" placeholder="Mot de passe" autocomplete="current-password" style="padding-right:48px;margin-bottom:0;" onkeydown="if(event.key==='Enter')_ptnrLogin()">
-            <button class="reg-eye" id="ptnr-pass-eye" onclick="_ptnrTogglePass()" type="button"></button>
+            <button class="reg-eye" id="ptnr-pass-eye" onclick="_ptnrTogglePass()" type="button"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
           </div>
           <div class="ptnr-login-err" id="ptnr-login-err"></div>
           <button class="ptnr-login-btn" id="ptnr-login-btn" onclick="_ptnrLogin()">SE CONNECTER</button>
@@ -2576,7 +2576,10 @@ a{text-decoration:none;color:inherit}
           <input class="ptnr-input" id="ptnr-reg-type-other" type="text" placeholder="Précisez votre profil" style="display:none;">
           <input class="ptnr-input" id="ptnr-reg-ville" type="text" placeholder="Ville" autocomplete="address-level2">
           <input class="ptnr-input" id="ptnr-reg-entreprise" type="text" placeholder="Entreprise (optionnel)">
-          <input class="ptnr-input" id="ptnr-reg-pass" type="password" placeholder="Mot de passe (6 caractères min.)" autocomplete="new-password">
+          <div class="reg-pw-wrap">
+            <input class="ptnr-input" id="ptnr-reg-pass" type="password" placeholder="Mot de passe (6 caractères min.)" autocomplete="new-password" style="padding-right:48px;margin-bottom:0;">
+            <button class="reg-eye" id="ptnr-reg-pass-eye" onclick="regTogglePwd('ptnr-reg-pass','ptnr-reg-pass-eye')" type="button"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+          </div>
           <input class="ptnr-input" id="ptnr-reg-referral" type="text" placeholder="Code de parrainage (optionnel)" onkeydown="if(event.key==='Enter')_ptnrRegSubmit()">
           <div class="ptnr-login-err" id="ptnr-reg-err"></div>
           <button class="ptnr-login-btn" id="ptnr-reg-btn" onclick="_ptnrRegSubmit()">CRÉER MON COMPTE</button>
