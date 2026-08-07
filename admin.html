@@ -3800,23 +3800,28 @@
 
         // Modal detail partenaire
         async function openPartnerModal(partnerId) {
-            var partner = allPartners.find(function(p) { return p.id === partnerId; });
-            if (!partner) {
-                try {
-                    var resp = await fetch(API_BASE_URL + '/api/admin/partners/' + partnerId);
-                    if (resp.ok) {
-                        var raw = await resp.json();
-                        partner = raw.partner || raw; // endpoint retourne { partner, assignments }
-                    }
-                } catch (e) {}
+          try {
+            // Toujours fetcher depuis le serveur pour avoir les données fraîches
+            var partner = null;
+            try {
+                var resp = await fetch(API_BASE_URL + '/api/admin/partners/' + encodeURIComponent(partnerId));
+                if (resp.ok) {
+                    var raw = await resp.json();
+                    partner = raw.partner || raw;
+                }
+            } catch (fetchErr) {}
+
+            // Fallback : chercher dans le cache local
+            if (!partner || !partner.email) {
+                partner = allPartners.find(function(p) { return p.id === partnerId; }) || null;
             }
 
-            if (!partner) {
-                alert('Partenaire non trouvé');
+            if (!partner || !partner.email) {
+                alert('Partenaire non trouvé (id: ' + partnerId + ')');
                 return;
             }
 
-            var typeLabel = PARTNER_TYPE_LABELS[partner.partner_type] || partner.partner_type;
+            var typeLabel = (PARTNER_TYPE_LABELS && PARTNER_TYPE_LABELS[partner.partner_type]) || partner.partner_type || 'N/A';
 
             var modalHTML =
                 '<div class="flex justify-between items-start mb-6">' +
@@ -3879,8 +3884,14 @@
 
             modalHTML += '</div>';
 
-            document.getElementById('partnerModalContent').innerHTML = modalHTML;
-            document.getElementById('partnerModal').style.display = 'block';
+            var contentEl = document.getElementById('partnerModalContent');
+            var modalEl = document.getElementById('partnerModal');
+            if (!contentEl || !modalEl) throw new Error('Éléments modal introuvables dans le DOM');
+            contentEl.innerHTML = modalHTML;
+            modalEl.style.display = 'block';
+          } catch(err) {
+            alert('Erreur ouverture modal partenaire : ' + (err && err.message ? err.message : err));
+          }
         }
 
         function closePartnerModal() {
