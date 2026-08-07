@@ -104,7 +104,7 @@ a{text-decoration:none;color:inherit}
 @keyframes splashExit{
   0%  {opacity:1;transform:scale(1);filter:brightness(1)}
   20% {opacity:1;transform:scale(1.06);filter:brightness(2.5)}
-  100%{opacity:0;transform:scale(1.22) translateY(-6%);filter:brightness(5);pointer-events:none}
+  100%{opacity:0;transform:scale(1.22) translateY(-6%);pointer-events:none}
 }
 #splash.exiting{
   animation:splashExit .5s cubic-bezier(.4,0,.6,1) forwards;
@@ -2221,7 +2221,7 @@ a{text-decoration:none;color:inherit}
 .presta-card:active{transform:scale(.97)!important;}
 </style>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer crossorigin=""></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 </head>
 <body>
 
@@ -2976,60 +2976,43 @@ setTimeout(function(){
   } catch(e){ _exitSplash(showRoleChoice); }
 }, 1500);
 
-// Failsafe iOS : si après 4s le roleChoice n'est toujours pas visible, on le force
-setTimeout(function(){
-  var splash = document.getElementById('splash');
-  var rc = document.getElementById('roleChoice');
-  var appEl = document.getElementById('app');
-  var isAppVisible = appEl && appEl.classList && appEl.classList.contains('on');
-  if(!isAppVisible && rc && (rc.style.display === 'none' || !rc.style.display)){
-    if(splash){ splash.style.display='none'; }
-    rc.style.opacity = '1';
-    rc.style.display = 'flex';
-  }
-}, 4000);
-
 function _exitSplash(callback){
   var splash = document.getElementById('splash');
   var flash  = document.getElementById('goldFlash');
+  // Déclenche le flash doré
   if(flash){ flash.className='on'; }
+  // Splash s'envole
   if(splash){ splash.className='exiting'; }
+  // Après la transition, cache définitivement le splash et appelle callback
   setTimeout(function(){
     if(splash){ splash.style.display='none'; splash.className=''; }
-    if(flash) { flash.style.opacity='0'; flash.style.display='none'; flash.className=''; }
+    if(flash) { flash.style.display='none';  flash.className=''; }
     callback();
-  }, 480);
+  }, 820);
 }
 
 function showRoleChoice(){
   var r = document.getElementById('roleChoice');
-  if(!r) return;
-  // Pattern double-rAF : obligatoire sur iOS Safari pour garantir que
-  // display:flex est peint avant de déclencher la transition opacity
   r.style.opacity = '0';
   r.style.display = 'flex';
-  requestAnimationFrame(function(){
-    requestAnimationFrame(function(){
-      r.style.webkitTransition = 'opacity .4s ease';
-      r.style.transition = 'opacity .4s ease';
-      r.style.opacity = '1';
-    });
-  });
+  setTimeout(function(){
+    r.style.transition = 'opacity .35s ease';
+    r.style.opacity = '1';
+    r.className = 'entering';
+  }, 30);
 }
 function showWelcome(){
   var rc = document.getElementById('roleChoice');
   if(rc) rc.style.display = 'none';
   var w = document.getElementById('welcome');
-  if(!w) return;
   w.style.opacity = '0';
   w.style.display = 'flex';
-  requestAnimationFrame(function(){
-    requestAnimationFrame(function(){
-      w.style.webkitTransition = 'opacity .4s ease';
-      w.style.transition = 'opacity .4s ease';
-      w.style.opacity = '1';
-    });
-  });
+  // Petit délai pour que le navigateur applique opacity:0 avant la transition
+  setTimeout(function(){
+    w.style.transition = 'opacity .35s ease';
+    w.style.opacity = '1';
+    w.className = 'entering';
+  }, 30);
 }
 function welcomeBack(){
   var w = document.getElementById('welcome');
