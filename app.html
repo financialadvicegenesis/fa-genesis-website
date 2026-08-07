@@ -2229,7 +2229,7 @@ a{text-decoration:none;color:inherit}
 .presta-card:active{transform:scale(.97)!important;}
 </style>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer crossorigin=""></script>
 </head>
 <body>
 
@@ -2984,17 +2984,25 @@ setTimeout(function(){
   } catch(e){ _exitSplash(showRoleChoice); }
 }, 1500);
 
+// Failsafe absolu : si le splash est encore là à 4s, on force l'affichage
+setTimeout(function(){
+  var sp = document.getElementById('splash');
+  if(!sp || sp.style.display === 'none') return;
+  sp.style.display = 'none';
+  var appEl = document.getElementById('app');
+  if(appEl && appEl.classList && appEl.classList.contains('on')) return;
+  var rc = document.getElementById('roleChoice');
+  if(rc){ rc.style.display='flex'; rc.style.opacity='1'; }
+}, 4000);
+
 function _exitSplash(callback){
   var splash = document.getElementById('splash');
   var flash  = document.getElementById('goldFlash');
-  // Déclenche le flash doré
   if(flash){ flash.className='on'; }
-  // Splash s'envole
   if(splash){ splash.className='exiting'; }
-  // Après la transition, cache définitivement le splash et appelle callback
   setTimeout(function(){
     if(splash){ splash.style.display='none'; splash.className=''; }
-    if(flash) { flash.style.display='none';  flash.className=''; }
+    if(flash) { flash.style.display='none'; flash.className=''; }
     callback();
   }, 820);
 }
@@ -3002,28 +3010,23 @@ function _exitSplash(callback){
 function showRoleChoice(){
   var r = document.getElementById('roleChoice');
   if(!r) return;
-  r.style.display = 'flex';
+  // Affichage direct sans animation d'entrée — les enfants sont toujours visibles
   r.style.opacity = '0';
-  void r.offsetWidth; // force reflow iOS : garantit que display:flex est peint
-  setTimeout(function(){
-    r.style.transition = 'opacity .35s ease';
-    r.style.opacity = '1';
-    r.className = 'entering';
-  }, 50);
+  r.style.display = 'flex';
+  void r.offsetHeight;                    // force repaint iOS avant transition
+  r.style.transition = 'opacity .3s ease';
+  r.style.opacity = '1';
 }
 function showWelcome(){
   var rc = document.getElementById('roleChoice');
   if(rc) rc.style.display = 'none';
   var w = document.getElementById('welcome');
   if(!w) return;
-  w.style.display = 'flex';
   w.style.opacity = '0';
-  void w.offsetWidth; // force reflow iOS
-  setTimeout(function(){
-    w.style.transition = 'opacity .35s ease';
-    w.style.opacity = '1';
-    w.className = 'entering';
-  }, 50);
+  w.style.display = 'flex';
+  void w.offsetHeight;
+  w.style.transition = 'opacity .3s ease';
+  w.style.opacity = '1';
 }
 function welcomeBack(){
   var w = document.getElementById('welcome');
