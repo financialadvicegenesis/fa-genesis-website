@@ -130,26 +130,18 @@ a{text-decoration:none;color:inherit}
 #goldFlash.on{animation:goldBurst 1s cubic-bezier(.2,0,.3,1) forwards}
 
 /* Welcome : éléments cachés initialement puis en cascade spring */
-/* Éléments enfants toujours visibles — les animations ne modifient QUE le transform,
-   jamais l'opacité, pour éviter le bug iOS Safari (fill-mode:both + display:none→flex
-   = enfants bloqués à opacity:0 si l'animation ne se déclenche pas) */
 #welcome.entering,#roleChoice.entering{opacity:1!important}
-#welcome.entering .w-logo,#roleChoice.entering .w-logo,
-#welcome.entering .w-title,#roleChoice.entering .w-title,
-#welcome.entering .w-desc,#roleChoice.entering .w-desc,
-#welcome.entering .w-features,
-#welcome.entering .w-btns,#roleChoice.entering .w-btns{opacity:1!important}
 @keyframes wLogoIn{
-  from{transform:scale(2) rotate(-15deg) translateY(-20px)}
-  to  {transform:scale(1)  rotate(0deg)  translateY(0)}
+  from{opacity:0;transform:scale(2) rotate(-15deg) translateY(-20px)}
+  to  {opacity:1;transform:scale(1)  rotate(0deg)  translateY(0)}
 }
 @keyframes wSlideUp{
-  from{transform:translateY(30px)}
-  to  {transform:translateY(0)}
+  from{opacity:0;transform:translateY(38px)}
+  to  {opacity:1;transform:translateY(0)}
 }
 @keyframes wBtnsIn{
-  from{transform:translateY(40px) scale(.96)}
-  to  {transform:translateY(0)    scale(1)}
+  from{opacity:0;transform:translateY(50px) scale(.94)}
+  to  {opacity:1;transform:translateY(0)    scale(1)}
 }
 #welcome.entering .w-logo   ,#roleChoice.entering .w-logo   {animation:wLogoIn  .65s cubic-bezier(.34,1.56,.64,1) .05s both}
 #welcome.entering .w-title  ,#roleChoice.entering .w-title  {animation:wSlideUp .55s cubic-bezier(.34,1.56,.64,1) .22s both}
@@ -2975,46 +2967,54 @@ var OFFERS = [
 ];
 
 // ── SPLASH → APP ─────────────────────────────────────────────
-// Approche ultra-défensive : AUCUNE animation CSS, tout en JS pur.
-// iOS Safari PWA peut bloquer les transitions/animations au moment critique.
-var _splashGone = false;
-function _doExitSplash(){
-  if(_splashGone) return;
-  _splashGone = true;
-  // Cache le splash et goldFlash instantanément — pas de classe CSS
-  var sp = document.getElementById('splash');
-  var fl = document.getElementById('goldFlash');
-  if(fl) fl.style.display = 'none';
-  if(sp) sp.style.display = 'none';
-  // Détermine quoi afficher
+setTimeout(function(){
   try{
     var s = localStorage.getItem('fa_genesis_session');
     var t = localStorage.getItem('fa_genesis_token');
-    if(s && t){ USER = JSON.parse(s); USER._token = t; showApp(); }
-    else { showRoleChoice(); }
-  } catch(e){ showRoleChoice(); }
+    if(s && t){ USER = JSON.parse(s); USER._token = t; _exitSplash(showApp); }
+    else { _exitSplash(showRoleChoice); }
+  } catch(e){ _exitSplash(showRoleChoice); }
+}, 1500);
+
+function _exitSplash(callback){
+  var splash = document.getElementById('splash');
+  var flash  = document.getElementById('goldFlash');
+  if(flash){ flash.className='on'; }
+  if(splash){ splash.className='exiting'; }
+  setTimeout(function(){
+    if(splash){ splash.style.display='none'; splash.className=''; }
+    if(flash) { flash.style.display='none';  flash.className=''; }
+    callback();
+  }, 820);
 }
-// Déclenchement principal à 1.5s (barre jaune remplie)
-setTimeout(_doExitSplash, 1500);
-// Failsafe : 3.5s — garanti même si le premier timer échoue
-setTimeout(_doExitSplash, 3500);
 
 function showRoleChoice(){
   var r = document.getElementById('roleChoice');
   if(!r) return;
-  // setAttribute écrase tout le style inline en une seule opération atomique
-  r.setAttribute('style','display:flex;opacity:1;');
+  r.style.opacity = '0';
+  r.style.display = 'flex';
+  setTimeout(function(){
+    r.style.transition = 'opacity .35s ease';
+    r.style.opacity = '1';
+    r.className = 'entering';
+  }, 30);
 }
 function showWelcome(){
   var rc = document.getElementById('roleChoice');
-  if(rc) rc.setAttribute('style','display:none;');
+  if(rc) rc.style.display = 'none';
   var w = document.getElementById('welcome');
   if(!w) return;
-  w.setAttribute('style','display:flex;opacity:1;');
+  w.style.opacity = '0';
+  w.style.display = 'flex';
+  setTimeout(function(){
+    w.style.transition = 'opacity .35s ease';
+    w.style.opacity = '1';
+    w.className = 'entering';
+  }, 30);
 }
 function welcomeBack(){
   var w = document.getElementById('welcome');
-  if(w) w.setAttribute('style','display:none;');
+  if(w) w.style.display = 'none';
   showRoleChoice();
 }
 function showApp(){
