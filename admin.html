@@ -1915,6 +1915,9 @@
                 const stats = await statsResponse.json();
                 const users = await usersResponse.json();
                 const allPartnersData = partnersResponse.ok ? await partnersResponse.json() : [];
+                // Peupler les globales pour que les modals fonctionnent depuis le dashboard
+                allBackendClients = users;
+                allPartners = allPartnersData;
 
                 const statsHTML = `
                     <div class="stat-card">
@@ -3801,7 +3804,10 @@
             if (!partner) {
                 try {
                     var resp = await fetch(API_BASE_URL + '/api/admin/partners/' + partnerId);
-                    if (resp.ok) partner = await resp.json();
+                    if (resp.ok) {
+                        var raw = await resp.json();
+                        partner = raw.partner || raw; // endpoint retourne { partner, assignments }
+                    }
                 } catch (e) {}
             }
 
@@ -3937,6 +3943,7 @@
                     alert('Partenaire supprimé');
                     closePartnerModal();
                     loadPartnersList();
+                    loadDashboard();
                 } else {
                     alert('Erreur: ' + (result.error || 'Erreur inconnue'));
                 }
