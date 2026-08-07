@@ -2975,62 +2975,46 @@ var OFFERS = [
 ];
 
 // ── SPLASH → APP ─────────────────────────────────────────────
-setTimeout(function(){
+// Approche ultra-défensive : AUCUNE animation CSS, tout en JS pur.
+// iOS Safari PWA peut bloquer les transitions/animations au moment critique.
+var _splashGone = false;
+function _doExitSplash(){
+  if(_splashGone) return;
+  _splashGone = true;
+  // Cache le splash et goldFlash instantanément — pas de classe CSS
+  var sp = document.getElementById('splash');
+  var fl = document.getElementById('goldFlash');
+  if(fl) fl.style.display = 'none';
+  if(sp) sp.style.display = 'none';
+  // Détermine quoi afficher
   try{
     var s = localStorage.getItem('fa_genesis_session');
     var t = localStorage.getItem('fa_genesis_token');
-    if(s && t){ USER = JSON.parse(s); USER._token = t; _exitSplash(showApp); }
-    else { _exitSplash(showRoleChoice); }
-  } catch(e){ _exitSplash(showRoleChoice); }
-}, 1500);
-
-// Failsafe absolu : si le splash est encore là à 4s, on force l'affichage
-setTimeout(function(){
-  var sp = document.getElementById('splash');
-  if(!sp || sp.style.display === 'none') return;
-  sp.style.display = 'none';
-  var appEl = document.getElementById('app');
-  if(appEl && appEl.classList && appEl.classList.contains('on')) return;
-  var rc = document.getElementById('roleChoice');
-  if(rc){ rc.style.display='flex'; rc.style.opacity='1'; }
-}, 4000);
-
-function _exitSplash(callback){
-  var splash = document.getElementById('splash');
-  var flash  = document.getElementById('goldFlash');
-  if(flash){ flash.className='on'; }
-  if(splash){ splash.className='exiting'; }
-  setTimeout(function(){
-    if(splash){ splash.style.display='none'; splash.className=''; }
-    if(flash) { flash.style.display='none'; flash.className=''; }
-    callback();
-  }, 820);
+    if(s && t){ USER = JSON.parse(s); USER._token = t; showApp(); }
+    else { showRoleChoice(); }
+  } catch(e){ showRoleChoice(); }
 }
+// Déclenchement principal à 1.5s (barre jaune remplie)
+setTimeout(_doExitSplash, 1500);
+// Failsafe : 3.5s — garanti même si le premier timer échoue
+setTimeout(_doExitSplash, 3500);
 
 function showRoleChoice(){
   var r = document.getElementById('roleChoice');
   if(!r) return;
-  // Affichage direct sans animation d'entrée — les enfants sont toujours visibles
-  r.style.opacity = '0';
-  r.style.display = 'flex';
-  void r.offsetHeight;                    // force repaint iOS avant transition
-  r.style.transition = 'opacity .3s ease';
-  r.style.opacity = '1';
+  // setAttribute écrase tout le style inline en une seule opération atomique
+  r.setAttribute('style','display:flex;opacity:1;');
 }
 function showWelcome(){
   var rc = document.getElementById('roleChoice');
-  if(rc) rc.style.display = 'none';
+  if(rc) rc.setAttribute('style','display:none;');
   var w = document.getElementById('welcome');
   if(!w) return;
-  w.style.opacity = '0';
-  w.style.display = 'flex';
-  void w.offsetHeight;
-  w.style.transition = 'opacity .3s ease';
-  w.style.opacity = '1';
+  w.setAttribute('style','display:flex;opacity:1;');
 }
 function welcomeBack(){
   var w = document.getElementById('welcome');
-  if(w) w.style.display = 'none';
+  if(w) w.setAttribute('style','display:none;');
   showRoleChoice();
 }
 function showApp(){
