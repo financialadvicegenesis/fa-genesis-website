@@ -1,5 +1,5 @@
-// FA GENESIS — Service Worker v6
-var CACHE_NAME = 'fa-genesis-v6';
+// FA GENESIS — Service Worker v7
+var CACHE_NAME = 'fa-genesis-v7';
 
 // Pages critiques : jamais mises en cache (toujours réseau)
 var NO_CACHE = ['/app.html', '/home.html', '/sw.js'];
@@ -37,8 +37,15 @@ self.addEventListener('activate', function(event) {
         return caches.delete(key);
       }));
     }).then(function() {
-      console.log('[SW] Tous les caches supprimés - v6 actif');
+      console.log('[SW] Tous les caches supprimés - v7 actif');
       return self.clients.claim();
+    }).then(function() {
+      // Signaler à tous les onglets ouverts qu'une nouvelle version est disponible
+      return self.clients.matchAll({ includeUncontrolled: true, type: 'window' });
+    }).then(function(clients) {
+      clients.forEach(function(client) {
+        client.postMessage({ type: 'SW_ACTIVATED' });
+      });
     })
   );
 });

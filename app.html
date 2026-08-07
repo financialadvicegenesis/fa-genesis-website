@@ -3116,11 +3116,26 @@ function initApp(){
   setTimeout(function(){ renderPrestations('all'); _tabLoaded['prestations'] = true; }, 300);
   _ptnrInit();
 
-  // SW update
+  // SW update : vérifier immédiatement + toutes les 10 min
   if('serviceWorker' in navigator){
-    navigator.serviceWorker.getRegistrations().then(function(r){
-      r.forEach(function(reg){ reg.update(); });
-    });
+    var _swUpdateCheck = function(){
+      navigator.serviceWorker.getRegistrations().then(function(r){
+        r.forEach(function(reg){
+          reg.update();
+          reg.addEventListener('updatefound', function(){
+            var nw = reg.installing;
+            if(!nw) return;
+            nw.addEventListener('statechange', function(){
+              if(nw.state === 'installed' && navigator.serviceWorker.controller){
+                _showUpdateBanner();
+              }
+            });
+          });
+        });
+      });
+    };
+    _swUpdateCheck();
+    setInterval(_swUpdateCheck, 600000); // re-check toutes les 10 min
   }
 }
 
@@ -10693,6 +10708,34 @@ function _ptnrLogout(){
   nav('home');
 }
 
+// ── Polling statut prestataire (compte en attente de validation) ──────────────
+var _ptnrStatusPollTimer = null;
+function _ptnrStartStatusPoll(){
+  if(_ptnrStatusPollTimer) return;
+  _ptnrStatusPollTimer = setInterval(_ptnrPollAccountStatus, 30000);
+}
+function _ptnrStopStatusPoll(){
+  if(_ptnrStatusPollTimer){ clearInterval(_ptnrStatusPollTimer); _ptnrStatusPollTimer = null; }
+}
+function _ptnrPollAccountStatus(){
+  if(!_ptnrToken){ _ptnrStopStatusPoll(); return; }
+  _ptnrFetch('/api/partner/auth/me').then(function(data){
+    if(!data || !data.partner) return;
+    if(data.partner.accountStatus === 'active' && _ptnrSession && _ptnrSession.accountStatus === 'pending'){
+      _ptnrSession.accountStatus = 'active';
+      _ptnrStopStatusPoll();
+      var bar = document.getElementById('ptnr-pending-bar');
+      if(bar) bar.style.display = 'none';
+      // Toast de confirmation
+      var t = document.createElement('div');
+      t.style.cssText = 'position:fixed;top:calc(20px + var(--safe,0px));left:50%;transform:translateX(-50%);z-index:99999;background:#0a0a0a;border:2px solid #FFD700;color:#fff;padding:14px 20px;border-radius:14px;font-weight:700;font-size:13px;text-align:center;max-width:320px;box-shadow:0 4px 24px rgba(0,0,0,.8);white-space:normal;';
+      t.innerHTML = '<i class="fa-solid fa-circle-check" style="color:#FFD700;margin-right:8px;"></i>Votre compte est approuvé ! Vous êtes maintenant visible dans l\'annuaire GENESIS.';
+      document.body.appendChild(t);
+      setTimeout(function(){ if(t.parentNode) t.parentNode.removeChild(t); }, 7000);
+    }
+  }).catch(function(){});
+}
+
 function _ptnrShowDash(){
   _ptnrShowScreen('dash');
   // Activer la nav bas partenaire (Accueil actif par défaut)
@@ -10709,6 +10752,7 @@ function _ptnrShowDash(){
     var dn = document.getElementById('ptnr-display-name'); if(dn) dn.textContent = nm;
     var dt = document.getElementById('ptnr-display-type'); if(dt) dt.textContent = p.partner_type ? partnerTypeLabel(p) : (p.type || p.role || '');
     var pendingBar = document.getElementById('ptnr-pending-bar'); if(pendingBar) pendingBar.style.display = (p.accountStatus === 'pending') ? 'flex' : 'none';
+    if(p.accountStatus === 'pending') _ptnrStartStatusPoll(); else _ptnrStopStatusPoll();
     _ptnrFetch('/api/partner/reputation').then(function(data){
       _ptnrLastRepData = data;
       _renderPartnerHomeQGWidget(data);
@@ -11379,9 +11423,22 @@ function _handleNotifHash(hash){
   }
 }
 
+function _showUpdateBanner(){
+  if(document.getElementById('sw-update-banner')) return;
+  var b = document.createElement('div');
+  b.id = 'sw-update-banner';
+  b.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#FFD700;color:#000;display:flex;align-items:center;justify-content:center;gap:10px;padding:11px 16px;font-weight:700;font-size:13px;box-shadow:0 2px 12px rgba(0,0,0,.4);';
+  b.innerHTML = '<i class="fa-solid fa-arrows-rotate"></i> Mise à jour disponible'
+    + '<button onclick="window.location.reload()" style="background:#000;color:#FFD700;border:none;border-radius:8px;padding:5px 14px;font-weight:900;font-size:12px;cursor:pointer;">Actualiser</button>'
+    + '<button onclick="document.getElementById(\'sw-update-banner\').remove()" style="background:none;border:none;color:#555;font-size:20px;cursor:pointer;line-height:1;padding:0 4px;">×</button>';
+  document.body.insertBefore(b, document.body.firstChild);
+}
+
 if('serviceWorker' in navigator){
   navigator.serviceWorker.addEventListener('message', function(event){
     if(!event.data) return;
+    // Nouvelle version SW installée
+    if(event.data.type === 'SW_ACTIVATED'){ _showUpdateBanner(); return; }
     var action = event.data.action;
     var hash = event.data.hash || '';
     if(action === 'open-admin-panel'){
