@@ -3185,7 +3185,8 @@ function nav(tab){
   var hdr=document.getElementById('hdr'); if(hdr) hdr.classList.remove('hdr-hidden');
   // Basculer la nav bas : client ↔ partenaire
   document.querySelectorAll('.client-nav').forEach(function(b){ b.style.display = tab==='partner' ? 'none' : ''; });
-  document.querySelectorAll('.ptnr-nav').forEach(function(b){ b.style.display = tab==='partner' ? '' : 'none'; });
+  // Partner nav : visible uniquement depuis _ptnrShowDash(), jamais sur la connexion/inscription
+  if(tab !== 'partner') document.querySelectorAll('.ptnr-nav').forEach(function(b){ b.style.display='none'; });
 
   if(tab==='partner'){
     var pbb=document.getElementById('ptnrBackStartBtn');
@@ -10461,6 +10462,8 @@ function _ptnrShowScreen(name){
   screens.forEach(function(id){ var el=document.getElementById(id); if(el) el.style.display='none'; });
   var show = name==='login'?'ptnr-login-screen':name==='register'?'ptnr-register-screen':name==='admin'?'ptnr-admin-screen':name==='profiles'?'ptnr-profile-screen':'ptnr-dash-screen';
   var el = document.getElementById(show); if(el) el.style.display='';
+  // Masquer la nav partenaire sur tous les écrans sauf le dashboard authentifié
+  if(name !== 'dash') document.querySelectorAll('.ptnr-nav').forEach(function(b){ b.style.display='none'; });
   if(name === 'admin') setTimeout(_adminCheckPushStatus, 300);
   if(name === 'login'){
     var eye=document.getElementById('ptnr-pass-eye'); if(eye) eye.innerHTML=EYE_OPEN_SVG;
