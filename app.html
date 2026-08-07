@@ -3198,14 +3198,7 @@ function nav(tab){
     if(GUEST){ pbb.innerHTML='&#8249; Retour'; pbb.onclick=exitGuestMode; pbb.style.display=''; }
     else if(USER){ pbb.innerHTML='&#8249; Profil'; pbb.onclick=function(){navBack();}; pbb.style.display=''; }
     else { pbb.style.display='none'; }
-  }
-    setTimeout(function(){
-      if(typeof _TUTO_P!=='undefined' && !localStorage.getItem('fa_tuto_p_done')){
-        _tutoIsPartner=true; _tutoSteps=_TUTO_P; _tutoIdx=0; _tutoRender();
-        var ov=document.getElementById('tuto-overlay');
-        if(ov){ov.classList.add('open');if(typeof haptic==='function')haptic(40);}
-      }
-    }, 1400);
+    }
   }
   if(tab==='explorer' && _expMap){
     setTimeout(function(){ _expMap.invalidateSize(); }, 80);
@@ -10690,6 +10683,14 @@ function _ptnrEnterDashboard(profileId){
   _ptnrNav('home');
   _ptnrRefreshBadges();
   _ptnrCheckPushStatus();
+  // Tutoriel : uniquement à la première vraie connexion, jamais en mode invité
+  setTimeout(function(){
+    if(typeof _TUTO_P!=='undefined' && !localStorage.getItem(_ptnrTutoKey())){
+      _tutoIsPartner=true; _tutoSteps=_TUTO_P; _tutoIdx=0; _tutoRender();
+      var ov=document.getElementById('tuto-overlay');
+      if(ov){ov.classList.add('open');if(typeof haptic==='function')haptic(40);}
+    }
+  }, 1400);
 }
 
 
@@ -15715,6 +15716,10 @@ function _tutoKey(type){
   var uid = (USER && (USER.id || USER.email)) || 'anon';
   return 'fa_tuto_' + type + '_' + uid;
 }
+function _ptnrTutoKey(){
+  var pid = (_ptnrSession && (_ptnrSession.id || _ptnrSession.email)) || 'anon';
+  return 'fa_tuto_p_done_' + pid;
+}
 
 // ── PANNEAU DE CHOIX TUTORIEL (première connexion) ───────────────
 function _checkTutoPrompt(){
@@ -15770,7 +15775,7 @@ function _tutoChoiceNo(){
 function _checkTutorial(){
   try{
     if(!USER) return;
-    // Partner tutorial is triggered separately on nav('partner') — only handle client here
+    // Partner tutorial is triggered in _ptnrEnterDashboard() — only handle client here
     if(localStorage.getItem(_tutoKey('c_done'))) return;
     _tutoIsPartner = false;
     _tutoSteps = _TUTO_C;
@@ -15818,7 +15823,7 @@ function _tutoSkip(){ _tutoDone(); }
 
 function _tutoDone(){
   try{
-    var key = _tutoIsPartner ? 'fa_tuto_p_done' : _tutoKey('c_done');
+    var key = _tutoIsPartner ? _ptnrTutoKey() : _tutoKey('c_done');
     localStorage.setItem(key, '1');
   }catch(e){}
   var ov = document.getElementById('tuto-overlay');
