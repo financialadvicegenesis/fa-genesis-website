@@ -31,8 +31,7 @@
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);
-  font-family:'Space Grotesk','Helvetica Neue',Arial,sans-serif;
-  position:fixed;width:100%;}
+  font-family:'Space Grotesk','Helvetica Neue',Arial,sans-serif;}
 /* Empêche le zoom automatique sur iOS/Android au focus sur un champ de saisie.
    Le navigateur zoome si font-size < 16px — on force le minimum à 16px sur mobile. */
 @media (hover:none) and (pointer:coarse){
@@ -73,8 +72,6 @@ a{text-decoration:none;color:inherit}
 #welcome,#roleChoice{
   display:flex;flex-direction:column;align-items:center;justify-content:flex-end;
   position:fixed;inset:0;z-index:100;overflow-y:auto;
-  -webkit-overflow-scrolling:touch;
-  -webkit-transform:translateZ(0);transform:translateZ(0);
   background:transparent;
   padding:0 24px calc(40px + var(--safe));
 }
@@ -2977,21 +2974,29 @@ setTimeout(function(){
     if(s && t){ USER = JSON.parse(s); USER._token = t; _exitSplash(showApp); }
     else { _exitSplash(showRoleChoice); }
   } catch(e){ _exitSplash(showRoleChoice); }
-}, 1200);
+}, 1500);
+
+// Failsafe iOS : si après 4s le roleChoice n'est toujours pas visible, on le force
+setTimeout(function(){
+  var splash = document.getElementById('splash');
+  var rc = document.getElementById('roleChoice');
+  var appEl = document.getElementById('app');
+  var isAppVisible = appEl && appEl.classList && appEl.classList.contains('on');
+  if(!isAppVisible && rc && (rc.style.display === 'none' || !rc.style.display)){
+    if(splash){ splash.style.display='none'; }
+    rc.style.opacity = '1';
+    rc.style.display = 'flex';
+  }
+}, 4000);
 
 function _exitSplash(callback){
   var splash = document.getElementById('splash');
   var flash  = document.getElementById('goldFlash');
-  // Déclenche le flash doré
   if(flash){ flash.className='on'; }
-  // Splash s'envole
   if(splash){ splash.className='exiting'; }
-  // Après la transition, cache définitivement le splash et appelle callback
   setTimeout(function(){
     if(splash){ splash.style.display='none'; splash.className=''; }
     if(flash) { flash.style.opacity='0'; flash.style.display='none'; flash.className=''; }
-    // Force repaint on iOS Safari avant d'afficher le contenu
-    document.body.offsetHeight;
     callback();
   }, 480);
 }
@@ -2999,29 +3004,32 @@ function _exitSplash(callback){
 function showRoleChoice(){
   var r = document.getElementById('roleChoice');
   if(!r) return;
+  // Pattern double-rAF : obligatoire sur iOS Safari pour garantir que
+  // display:flex est peint avant de déclencher la transition opacity
   r.style.opacity = '0';
   r.style.display = 'flex';
-  void r.offsetWidth; // flush layout, force iOS repaint
-  setTimeout(function(){
-    r.style.webkitTransition = 'opacity .35s ease';
-    r.style.transition = 'opacity .35s ease';
-    r.style.opacity = '1';
-    r.className = 'entering';
-    void r.offsetWidth; // second flush for iOS
-  }, 30);
+  requestAnimationFrame(function(){
+    requestAnimationFrame(function(){
+      r.style.webkitTransition = 'opacity .4s ease';
+      r.style.transition = 'opacity .4s ease';
+      r.style.opacity = '1';
+    });
+  });
 }
 function showWelcome(){
   var rc = document.getElementById('roleChoice');
   if(rc) rc.style.display = 'none';
   var w = document.getElementById('welcome');
+  if(!w) return;
   w.style.opacity = '0';
   w.style.display = 'flex';
-  // Petit délai pour que le navigateur applique opacity:0 avant la transition
-  setTimeout(function(){
-    w.style.transition = 'opacity .35s ease';
-    w.style.opacity = '1';
-    w.className = 'entering';
-  }, 30);
+  requestAnimationFrame(function(){
+    requestAnimationFrame(function(){
+      w.style.webkitTransition = 'opacity .4s ease';
+      w.style.transition = 'opacity .4s ease';
+      w.style.opacity = '1';
+    });
+  });
 }
 function welcomeBack(){
   var w = document.getElementById('welcome');
