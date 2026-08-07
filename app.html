@@ -15800,7 +15800,9 @@ function _tutoDone(){
   }catch(e){}
   var ov = document.getElementById('tuto-overlay');
   if(ov){ ov.classList.remove('open'); }
-  if(!_tutoIsPartner){
+  if(_tutoIsPartner){
+    if(typeof _ptnrNav === 'function') _ptnrNav('accueil');
+  } else {
     // Le tutoriel a pu passer par showClientWallet() (étape Portefeuille).
     // On réinitialise le flag lazy-load du profil pour que le prochain
     // nav('profil') déclenche bien renderProfil() et non le wallet.
