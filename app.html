@@ -11577,7 +11577,8 @@ function _pbBuildAndShowContract(){
   var ref='FA-CONT-'+today.getFullYear()+pad(today.getMonth()+1)+pad(today.getDate())+'-'+rand;
 
   var ptLabel=(window.PARTNER_TYPE_LABELS&&window.PARTNER_TYPE_LABELS[partner.partner_type])||partner.partner_type||'Prestataire';
-  var priceStr=service.price||(service.priceNum?service.priceNum+' €':'Selon devis');
+  var rawPrice=service.price||(service.priceNum?service.priceNum:'');
+  var priceStr=rawPrice?(String(rawPrice).replace(/\s*€\s*$/,'').trim()+' €'):'Selon devis';
   var depositEur=(_pbDepositAmount||0).toFixed(2)+' €';
   var balEur=((parseFloat(service.price||service.priceNum||0)-(_pbDepositAmount||0))||0).toFixed(2)+' €';
 
