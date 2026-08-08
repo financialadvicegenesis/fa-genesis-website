@@ -2066,6 +2066,63 @@ async function sendCapacityLimitedEventEmail(clientEmail, prenom, eventTitle, ev
     }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// CONTRAT SIGNÉ → EMAIL AU PRESTATAIRE
+// ─────────────────────────────────────────────────────────────────────────────
+async function sendContractSignedToPartnerEmail(partnerEmail, partnerPrenom, clientName, serviceName, contractRef) {
+    var transport = initializeTransporter();
+    if (!transport) {
+        console.log('[EMAIL] Transport non configuré - email contrat signé non envoyé');
+        return { success: false, reason: 'SMTP non configuré' };
+    }
+    var frontUrl = process.env.FRONT_URL || 'https://fagenesis.com';
+    var html = '<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Contrat signé !</title></head>'
+        + '<body style="margin:0;padding:0;background:#f5f5f5;font-family:\'Helvetica Neue\',Arial,sans-serif;">'
+        + '<table role="presentation" width="100%" style="border-collapse:collapse;background:#f5f5f5;">'
+        + '<tr><td style="padding:24px 12px;">'
+        + '<table role="presentation" width="100%" style="max-width:600px;margin:0 auto;border-collapse:collapse;">'
+        + '<tr><td style="background:#000;padding:20px 32px;border-radius:12px 12px 0 0;">'
+        + '<span style="font-family:\'Arial Black\',Arial,sans-serif;font-size:20px;font-weight:900;color:#FFD700;letter-spacing:1.5px;">FA GENESIS</span>'
+        + '<div style="font-size:10px;color:#FFD700;opacity:.75;margin-top:1px;">Groupe FA Industries</div>'
+        + '</td></tr>'
+        + '<tr><td style="background:#fff;padding:32px 32px 24px;border-bottom:1px solid #eee;text-align:center;">'
+        + '<p style="margin:0 0 12px;font-size:24px;">✍️</p>'
+        + '<p style="margin:0 0 16px;font-size:21px;font-weight:800;color:#1a1a1a;line-height:1.3;">Contrat signé !</p>'
+        + '<p style="margin:0;font-size:15px;color:#555;line-height:1.6;">Bonjour <strong>' + (partnerPrenom || 'Prestataire') + '</strong>,<br>'
+        + '<strong>' + (clientName || 'Un client') + '</strong> vient de signer le contrat pour votre prestation :<br>'
+        + '<strong style="color:#1a1a1a;">' + (serviceName || 'Prestation') + '</strong></p>'
+        + '</td></tr>'
+        + '<tr><td style="background:#fff;padding:20px 32px;border-bottom:1px solid #eee;">'
+        + '<table role="presentation" width="100%" style="border-collapse:collapse;font-size:13px;">'
+        + '<tr><td style="padding:8px 0;color:#666;">Référence contrat</td><td style="padding:8px 0;font-weight:700;text-align:right;">' + (contractRef || '—') + '</td></tr>'
+        + '<tr style="background:#f9f9f9;"><td style="padding:8px 0;color:#666;">Prestation</td><td style="padding:8px 0;font-weight:700;text-align:right;">' + (serviceName || '—') + '</td></tr>'
+        + '<tr><td style="padding:8px 0;color:#666;">Client</td><td style="padding:8px 0;font-weight:700;text-align:right;">' + (clientName || '—') + '</td></tr>'
+        + '</table>'
+        + '</td></tr>'
+        + '<tr><td style="background:#fff;padding:24px 32px;text-align:center;border-bottom:1px solid #eee;">'
+        + '<p style="margin:0 0 16px;font-size:14px;color:#555;">Retrouvez et téléchargez ce contrat dans votre espace Documents.</p>'
+        + '<a href="' + frontUrl + '/partner-dashboard.html" style="display:inline-block;background:#FFD700;color:#000;font-weight:900;font-size:14px;text-decoration:none;padding:13px 28px;border-radius:8px;">Voir mes documents →</a>'
+        + '</td></tr>'
+        + '<tr><td style="background:#1a1a1a;padding:16px 32px;border-radius:0 0 12px 12px;text-align:center;">'
+        + '<p style="margin:0;font-size:11px;color:#888;">FA GENESIS · Plateforme de services créatifs et professionnels</p>'
+        + '</td></tr>'
+        + '</table></td></tr></table></body></html>';
+
+    try {
+        var mailOptions = {
+            from: '"FA GENESIS" <' + (process.env.SMTP_FROM || process.env.SMTP_USER || 'noreply@fagenesis.com') + '>',
+            to: partnerEmail,
+            subject: '✍️ Contrat signé — ' + (serviceName || 'Prestation'),
+            html: html
+        };
+        var result = await transport.sendMail(mailOptions);
+        return { success: true, messageId: result.messageId };
+    } catch(e) {
+        console.warn('[EMAIL] Erreur envoi email contrat signé prestataire:', e.message);
+        return { success: false, error: e.message };
+    }
+}
+
 module.exports = {
     initializeTransporter,
     sendContactConfirmation,
@@ -2101,7 +2158,8 @@ module.exports = {
     sendProspectContactEmail,
     sendLevelUpEmail,
     sendCapacityLimitedEventEmail,
-    sendInstallmentReminderEmail
+    sendInstallmentReminderEmail,
+    sendContractSignedToPartnerEmail
 };
 
 // ============================================================

@@ -3865,6 +3865,26 @@ app.post('/api/contracts/sign', function(req, res) {
         });
         saveContracts(contracts);
 
+        // Notifier le prestataire (in-app + email)
+        try {
+            var _partner = loadPartners().find(function(p) { return p.id === b.partnerId; });
+            if (_partner) {
+                var _clientDisplayName = b.signatureName || payload.email;
+                notifyUser(_partner.email, 'partner', 'contract_signed',
+                    'Contrat signé par un client',
+                    _clientDisplayName + ' a signé le contrat pour : ' + b.serviceLabel + '. Téléchargez-le dans vos Documents.',
+                    '/partner-dashboard.html#documents'
+                );
+                emailService.sendContractSignedToPartnerEmail(
+                    _partner.email,
+                    _partner.prenom || _partner.firstName || '',
+                    _clientDisplayName,
+                    b.serviceLabel,
+                    b.contractRef
+                ).catch(function(e) { console.warn('[CONTRACT] Email prestataire non envoyé:', e.message); });
+            }
+        } catch(_ne) { console.warn('[CONTRACT] Erreur notification prestataire:', _ne.message); }
+
         console.log('[CONTRACT] Signé:', contractId, payload.email, b.serviceLabel);
         res.json({ ok: true, contractId: contractId });
     } catch(e) {
