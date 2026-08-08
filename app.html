@@ -1345,6 +1345,52 @@ a{text-decoration:none;color:inherit}
 .p-exp-panel{display:none}
 .p-exp-panel.on{display:block}
 
+/* ── ACCUEIL — RECHERCHE RAPIDE ─────────────────────────── */
+.home-search-wrap{display:flex;align-items:center;gap:10px;margin:12px 16px 16px;background:var(--card);border:2px solid var(--border);border-radius:14px;padding:0 14px;transition:border-color .2s;}
+.home-search-wrap:focus-within{border-color:var(--yellow);}
+.home-search-wrap i{color:var(--muted);font-size:14px;flex-shrink:0;}
+#home-search-input{flex:1;background:transparent;border:none;outline:none;color:var(--text);font-size:13px;font-weight:500;padding:14px 0;font-family:'Space Grotesk',sans-serif;}
+#home-search-input::placeholder{color:var(--muted);}
+/* ── ACCUEIL — CATÉGORIES POPULAIRES ──────────────────── */
+.home-cat-chip{display:inline-flex;align-items:center;gap:6px;background:var(--card);border:1.5px solid var(--border);border-radius:20px;padding:8px 14px;cursor:pointer;font-size:12px;font-weight:700;color:var(--muted);white-space:nowrap;font-family:inherit;transition:border-color .15s,color .15s;}
+.home-cat-chip:hover,.home-cat-chip:active{border-color:var(--yellow);color:var(--yellow);}
+/* ── ACCUEIL — COMPOSEZ VOTRE PROJET ─────────────────── */
+.home-compose-box{margin:8px 16px 16px;padding:20px;background:linear-gradient(135deg,#0f0f0f,#1a1a1a);border:1.5px solid #2a2a2a;border-radius:16px;}
+.home-compose-eyebrow{font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:1.5px;color:var(--yellow);margin-bottom:6px;}
+.home-compose-title{font-size:15px;font-weight:900;color:#fff;margin-bottom:6px;line-height:1.3;}
+.home-compose-sub{font-size:12px;color:#888;margin-bottom:14px;line-height:1.5;}
+.home-compose-roles{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:16px;}
+.home-compose-role{display:inline-flex;align-items:center;gap:5px;background:#1a1a1a;border:1px solid #333;border-radius:20px;padding:6px 12px;font-size:11px;font-weight:700;color:#ddd;}
+.home-compose-cta{width:100%;background:var(--yellow);color:#000;font-weight:900;font-size:13px;text-transform:uppercase;letter-spacing:.5px;border:none;border-radius:10px;padding:13px;cursor:pointer;font-family:inherit;}
+/* ── EXPLORER — CARTE / LISTE / FILTRES ──────────────── */
+.exp-view-row{display:flex;align-items:center;gap:8px;padding:0 16px 10px;}
+.exp-view-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;background:var(--card);border:2px solid var(--border);border-radius:10px;padding:10px;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer;font-family:inherit;transition:all .15s;}
+.exp-view-btn.on{background:#1a1600;border-color:var(--yellow);color:var(--yellow);}
+.exp-filter-btn{display:flex;align-items:center;gap:6px;background:var(--card);border:2px solid var(--border);border-radius:10px;padding:10px 14px;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer;white-space:nowrap;font-family:inherit;transition:all .15s;}
+.exp-filter-btn.on{border-color:var(--yellow);color:var(--yellow);background:#1a1600;}
+/* ── EXPLORER — PANNEAU FILTRES ─────────────────────── */
+.exp-filters-panel{display:none;padding:14px 16px 8px;border-top:1px solid var(--border);border-bottom:1px solid var(--border);background:var(--card);margin-bottom:4px;}
+.exp-filters-panel.on{display:block;}
+.exp-filter-group{margin-bottom:12px;}
+.exp-filter-group-label{font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:7px;}
+.exp-filter-pills{display:flex;flex-wrap:wrap;gap:6px;}
+.exp-filter-pill{background:var(--bg);border:1.5px solid var(--border);border-radius:20px;padding:6px 12px;font-size:11px;font-weight:700;color:var(--muted);cursor:pointer;font-family:inherit;transition:all .15s;}
+.exp-filter-pill.on{border-color:var(--yellow);color:var(--yellow);background:rgba(255,208,0,.08);}
+.exp-filter-apply{width:100%;background:var(--yellow);color:#000;font-weight:900;font-size:13px;border:none;border-radius:10px;padding:12px;cursor:pointer;margin-top:8px;font-family:inherit;}
+/* ── EXPLORER — CARTE ENRICHIE ──────────────────────── */
+.exp-map-wrap{position:relative;}
+.exp-map-controls{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);z-index:1000;display:flex;gap:8px;pointer-events:none;}
+.exp-map-btn{pointer-events:auto;background:rgba(0,0,0,.88);color:#fff;border:1.5px solid #444;border-radius:20px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:6px;font-family:inherit;backdrop-filter:blur(4px);}
+.exp-map-btn.primary{background:var(--yellow);color:#000;border-color:var(--yellow);}
+#exp-zone-btn{display:none;}
+#exp-zone-btn.visible{display:flex;}
+/* Popups Leaflet */
+.p-map-popup{font-family:'Space Grotesk',sans-serif;min-width:150px;max-width:200px;}
+.p-map-popup-name{font-size:13px;font-weight:800;color:#111;margin-bottom:2px;}
+.p-map-popup-cat{font-size:11px;color:#666;margin-bottom:4px;}
+.p-map-popup-price{font-size:12px;font-weight:700;color:#b81a6e;margin-bottom:6px;}
+.p-map-popup-btn{display:block;width:100%;background:#000;color:#fff;border:none;border-radius:6px;padding:7px;font-size:11px;font-weight:700;cursor:pointer;text-align:center;}
+
 /* Catégories en icônes défilantes (Explorer) */
 .p-cat-icon-strip{display:flex;gap:10px;padding:0 16px 16px;overflow-x:auto;scrollbar-width:none}
 .p-cat-icon-strip::-webkit-scrollbar{display:none}
@@ -2239,6 +2285,9 @@ a{text-decoration:none;color:inherit}
 </style>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer crossorigin=""></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" crossorigin="">
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" crossorigin="">
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js" defer crossorigin=""></script>
 </head>
 <body>
 
@@ -2411,48 +2460,102 @@ a{text-decoration:none;color:inherit}
         </div>
       </div>
 
+      <!-- Barre de recherche Accueil -->
+      <div class="home-search-wrap">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" id="home-search-input" class="home-search-input"
+          placeholder="Que recherchez-vous ?"
+          onkeydown="_homeSearchKeydown(event)">
+      </div>
+
+      <!-- Sections découverte dynamiques -->
+      <div id="home-offres-decouvrir"></div>
+      <div id="home-pros-une"></div>
+      <div id="home-populaires"></div>
+      <div id="home-nouveaux-talents"></div>
+      <div id="home-recommandes"></div>
+      <div id="home-composer-projet"></div>
+      <div id="home-promos"></div>
+      <div style="height:24px"></div>
+
     </div>
 
-    <!-- EXPLORER (hub de découverte) -->
+    <!-- EXPLORER — Moteur de recherche et d'exploration -->
     <div class="tab prest-tab" id="tab-explorer">
-      <div class="p-hero p-hero-tech">
-        <div class="p-hero-title">Explorer</div>
-        <div class="p-hero-sub">Offres, prestataires et événements : tout ce qu'il faut pour votre projet.</div>
+      <!-- En-tête -->
+      <div style="padding:20px 16px 4px;">
+        <div style="font-family:'Unbounded',cursive;font-size:22px;font-weight:900;color:var(--text);margin-bottom:4px;">Explorer</div>
+        <div style="font-size:12px;color:var(--muted);">Trouvez le bon professionnel ou la bonne prestation.</div>
       </div>
+      <!-- Recherche principale -->
+      <div class="p-hero-search" style="padding:12px 16px 10px;margin:0;">
+        <input type="text" id="p-exp-search" placeholder="Photographe, vidéaste, graphiste…" oninput="_expSearchDebounced()">
+        <div class="p-hero-loc-btn" id="p-exp-map-symbol" onclick="_toggleExpMap()" title="Afficher la carte"><i class="fa-solid fa-map"></i></div>
+      </div>
+      <!-- Carte / Liste + Filtres -->
+      <div class="exp-view-row">
+        <button class="exp-view-btn on" id="exp-btn-liste" onclick="_setExpView('liste',this)"><i class="fa-solid fa-list"></i> Liste</button>
+        <button class="exp-view-btn" id="exp-btn-carte" onclick="_setExpView('carte',this)"><i class="fa-solid fa-map-location-dot"></i> Carte</button>
+        <button class="exp-filter-btn" id="exp-filter-toggle" onclick="_toggleExpFilters(this)"><i class="fa-solid fa-sliders"></i> Filtres</button>
+      </div>
+      <!-- Panneau Filtres -->
+      <div class="exp-filters-panel" id="exp-filters-panel">
+        <div class="exp-filter-group">
+          <div class="exp-filter-group-label">Profil client</div>
+          <div class="exp-filter-pills">
+            <button class="exp-filter-pill" data-filter="profil" data-val="etudiant" onclick="_toggleFilterPill(this)">Étudiant</button>
+            <button class="exp-filter-pill" data-filter="profil" data-val="particulier" onclick="_toggleFilterPill(this)">Particulier</button>
+            <button class="exp-filter-pill" data-filter="profil" data-val="entreprise" onclick="_toggleFilterPill(this)">Entreprise</button>
+          </div>
+        </div>
+        <div class="exp-filter-group">
+          <div class="exp-filter-group-label">Note minimale</div>
+          <div class="exp-filter-pills">
+            <button class="exp-filter-pill" data-filter="rating" data-val="4" onclick="_toggleFilterPill(this)">4+ ★</button>
+            <button class="exp-filter-pill" data-filter="rating" data-val="4.5" onclick="_toggleFilterPill(this)">4,5+ ★</button>
+            <button class="exp-filter-pill" data-filter="rating" data-val="4.8" onclick="_toggleFilterPill(this)">4,8+ ★</button>
+          </div>
+        </div>
+        <div class="exp-filter-group">
+          <div class="exp-filter-group-label">Format</div>
+          <div class="exp-filter-pills">
+            <button class="exp-filter-pill" data-filter="avail" data-val="remote" onclick="_toggleFilterPill(this)">À distance</button>
+            <button class="exp-filter-pill" data-filter="avail" data-val="presential" onclick="_toggleFilterPill(this)">Présentiel</button>
+          </div>
+        </div>
+        <button class="exp-filter-apply" onclick="_applyExpFilters()"><i class="fa-solid fa-check" style="margin-right:6px;"></i>Appliquer les filtres</button>
+      </div>
+      <!-- Catégories horizontales -->
+      <div class="p-cat-icon-strip" id="p-exp-cat-icons"></div>
+      <!-- Ville -->
       <div class="p-city-search-wrap">
         <i class="fa-solid fa-location-dot"></i>
         <input type="text" id="p-exp-city-search" class="p-city-search-input" placeholder="Chercher par ville (Paris, Lyon, Marseille…)" oninput="_expCityDebounced()">
       </div>
-      <div class="p-hero-search" style="padding:0 16px 14px;margin:0;">
-        <input type="text" id="p-exp-search" placeholder="Rechercher un établissement, une offre..." oninput="_expSearchDebounced()">
-        <div class="p-hero-loc-btn" id="p-exp-map-symbol" onclick="toggleExplorerMap()" title="Afficher la carte"><i class="fa-solid fa-location-dot"></i></div>
-      </div>
+      <!-- Stat -->
       <div class="p-hero-stat" id="p-exp-stat"></div>
-      <div id="p-exp-search-results" style="display:none;margin:0 16px 14px;"></div>
-      <div class="p-map-frame" id="p-exp-map" style="display:none;"></div>
-      <div class="p-popular-label">RECHERCHES POPULAIRES</div>
-      <div class="p-popular-row" id="p-exp-popular-row"></div>
-      <div class="p-explore-tabs">
-        <button class="p-explore-tab on" id="p-exp-toggle-offres" onclick="setExpToggle('offres',this)"><i class="fa-solid fa-bag-shopping p-explore-tab-icon"></i>OFFRES</button>
-        <button class="p-explore-tab" id="p-exp-toggle-events" onclick="setExpToggle('evenements',this)"><i class="fa-solid fa-champagne-glasses p-explore-tab-icon"></i>ÉVÉNEMENTS</button>
-      </div>
-      <div class="p-exp-panel on" id="p-exp-offres-panel">
-        <div class="p-cat-icon-strip" id="p-exp-cat-icons"></div>
-        <div class="p-tile-grid">
-          <div class="p-tile" style="background:linear-gradient(135deg,#0d3d3d,#021414)" onclick="nav('prestataires')">
-            <div><div class="p-tile-label">Prestataires</div><span class="p-tile-sub">Tout l'annuaire</span></div>
+      <!-- Carte -->
+      <div class="exp-map-wrap">
+        <div class="p-map-frame" id="p-exp-map" style="display:none;">
+          <div class="exp-map-controls" id="exp-map-controls">
+            <button class="exp-map-btn primary" onclick="_expGeolocate()"><i class="fa-solid fa-location-crosshairs"></i> Autour de moi</button>
+            <button class="exp-map-btn" id="exp-zone-btn" onclick="_expSearchInZone()"><i class="fa-solid fa-magnifying-glass"></i> Rechercher ici</button>
           </div>
         </div>
-        <div id="p-exp-reco-wrap"></div>
-        <div id="prestList"></div>
-        <div id="p-dir-featured-wrap"></div>
+      </div>
+      <!-- Onglets Prestataires / Événements -->
+      <div class="p-explore-tabs">
+        <button class="p-explore-tab on" id="p-exp-toggle-offres" onclick="setExpToggle('offres',this)"><i class="fa-solid fa-users p-explore-tab-icon"></i>PRESTATAIRES</button>
+        <button class="p-explore-tab" id="p-exp-toggle-events" onclick="setExpToggle('evenements',this)"><i class="fa-solid fa-champagne-glasses p-explore-tab-icon"></i>ÉVÉNEMENTS</button>
+      </div>
+      <!-- Panneau PRESTATAIRES -->
+      <div class="p-exp-panel on" id="p-exp-offres-panel">
+        <div id="p-exp-dir-results"></div>
         <div id="p-dir-top-categories-wrap"></div>
-        <div id="p-dir-new-talents-wrap"></div>
-        <div id="p-dir-personalized-wrap"></div>
         <div id="p-dir-favorites-wrap"></div>
-        <div id="p-dir-promo-wrap"></div>
         <div id="p-dir-hall-of-fame-wrap"></div>
       </div>
+      <!-- Panneau ÉVÉNEMENTS -->
       <div class="p-exp-panel" id="p-exp-events-panel">
         <div id="p-dir-events-wrap"></div>
       </div>
@@ -3068,17 +3171,9 @@ function initApp(){
   }
   updateCartBadge();
   _updateGreeting();
-  if(USER && USER.accountType){
-    renderHomeOffers(USER.accountType);
-    document.querySelectorAll('.cat-chip').forEach(function(c){
-      c.classList.toggle('on', c.getAttribute('onclick')==="setCat('"+USER.accountType+"',this)");
-    });
-  } else {
-    renderHomeOffers();
-  }
-  // Les autres onglets sont chargés en lazy via _loadTab() dans nav()
-  // Pré-charger seulement "Prestations" (premier onglet visible après accueil)
-  setTimeout(function(){ renderPrestations('all'); _tabLoaded['prestations'] = true; }, 300);
+  // Charger toutes les sections de l'accueil (data réelle)
+  setTimeout(function(){ loadAccueilSections(); }, 100);
+  // Autres onglets : lazy loading via _loadTab() dans nav()
   _ptnrInit();
 
   // SW update : vérifier immédiatement + toutes les 10 min
@@ -3431,12 +3526,343 @@ var _prestFilter = 'all';
 var _prestSub = 'etudiant';
 var _expSearchQuery = '', _expSearchTimer = null;
 
+// ══════════════════════════════════════════════════════
+//  ACCUEIL — SECTIONS DÉCOUVERTE
+// ══════════════════════════════════════════════════════
+
+function loadAccueilSections(){
+  _loadHomeOffrresDecouvrir();
+  _loadHomeProsUne();
+  _loadHomePopulaires();
+  _loadHomeNouveauxTalents();
+  _loadHomeRecommandes();
+  _renderHomeComposerProjet();
+  _loadHomePromos();
+}
+
+function _homeSearchKeydown(e){
+  if(e.key==='Enter'){
+    var q=((document.getElementById('home-search-input')||{}).value||'').trim();
+    if(q) _navToExplorerSearch(q);
+  }
+}
+
+function _navToExplorerSearch(q){
+  nav('explorer');
+  setTimeout(function(){
+    var inp=document.getElementById('p-exp-search');
+    if(inp){inp.value=q;_expSearchQuery=q;}
+    loadExplorerDirectory();
+  },200);
+}
+
+function _loadHomeOffrresDecouvrir(){
+  var wrap=document.getElementById('home-offres-decouvrir');
+  if(!wrap)return;
+  fetch((window.FA_GENESIS_API||API)+'/api/partners/directory?sort=score&limit=12')
+    .then(function(r){return r.json();})
+    .then(function(data){
+      var partners=(data&&data.partners)||[];
+      var svcs=[];
+      partners.forEach(function(p){
+        if(p.services&&p.services.length){
+          p.services.slice(0,2).forEach(function(svc){
+            if(svc.label||svc.name) svcs.push({partner:p,service:svc});
+          });
+        }
+      });
+      svcs=svcs.slice(0,8);
+      if(!svcs.length){wrap.innerHTML='';return;}
+      wrap.className='p-fade-in';
+      wrap.innerHTML='<div class="p-section-hdr black p-section-hdr-fit" style="margin:16px 16px 10px;">'
+        +'<i class="fa-solid fa-bolt" style="color:var(--yellow)"></i> OFFRES À DÉCOUVRIR</div>'
+        +'<div class="p-reco-row" style="padding:0 0 0 16px;">'
+        +svcs.map(function(item){return _homeServiceCard(item.partner,item.service);}).join('')
+        +'<div style="min-width:16px;"></div></div>';
+    }).catch(function(){wrap.innerHTML='';});
+}
+
+function _homeServiceCard(p,svc){
+  var priceStr=(svc.price!==undefined&&svc.price!==null&&svc.price!=='')?(svc.price+'€'):'Sur devis';
+  var catLabel=partnerTypeLabel(p)||'Prestataire';
+  var initials=(((p.prenom||'')[0]||'')+((p.nom||'')[0]||'')).toUpperCase();
+  var avatarHtml=p.photo?'<img src="'+p.photo+'" alt="" style="width:100%;height:100%;object-fit:cover;">'
+    :'<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:22px;font-weight:900;color:var(--yellow);">'+initials+'</div>';
+  var ratingBadge=(p.rating&&p.rating.count)
+    ?'<div class="p-reco-rating-badge"><i class="fa-solid fa-star"></i> '+p.rating.average+'</div>'
+    :'<div class="p-reco-rating-badge">Nouveau</div>';
+  return '<div class="p-reco-card" onclick="openPartnerDetail(\''+p.id+'\')" style="cursor:pointer;">'
+    +'<div class="p-reco-photo" style="background:#1a1a1a;">'+avatarHtml+ratingBadge+'</div>'
+    +'<div class="p-reco-body">'
+    +'<div style="font-size:9px;color:var(--muted);font-weight:900;text-transform:uppercase;letter-spacing:.3px;margin-bottom:2px;">'+catLabel+'</div>'
+    +'<div class="p-reco-name" style="font-size:12px;">'+(svc.label||svc.name||'Prestation')+'</div>'
+    +'<div class="p-reco-cat">'+(p.prenom||'')+' '+(p.nom||'')+'</div>'
+    +'<div class="p-reco-meta"><i class="fa-solid fa-tag"></i> '+priceStr+'</div>'
+    +'</div></div>';
+}
+
+function _loadHomeProsUne(){
+  var wrap=document.getElementById('home-pros-une');
+  if(!wrap)return;
+  fetch((window.FA_GENESIS_API||API)+'/api/partners/featured?limit=6')
+    .then(function(r){return r.json();})
+    .then(function(data){
+      var partners=(data&&(data.partners||data))||[];
+      if(!partners.length){wrap.innerHTML='';return;}
+      wrap.className='p-fade-in';
+      wrap.innerHTML='<div class="p-section-hdr black p-section-hdr-fit" style="margin:16px 16px 10px;">'
+        +'<i class="fa-solid fa-star" style="color:var(--yellow)"></i> PROFESSIONNELS À LA UNE</div>'
+        +'<div class="p-reco-row" style="padding:0 0 0 16px;">'
+        +partners.map(function(p,i){return recoPartnerCard(p,i);}).join('')
+        +'<div style="min-width:16px;"></div></div>';
+    }).catch(function(){wrap.innerHTML='';});
+}
+
+function _loadHomePopulaires(){
+  var wrap=document.getElementById('home-populaires');
+  if(!wrap)return;
+  var cats=[
+    {id:'videographer',label:'Vidéo',icon:'fa-video'},
+    {id:'photographer',label:'Photo',icon:'fa-camera'},
+    {id:'marketer',label:'Marketing',icon:'fa-chart-line'},
+    {id:'media',label:'Médias',icon:'fa-newspaper'},
+    {id:'graphiste',label:'Design',icon:'fa-palette'},
+    {id:'developpeur_web',label:'Dev Web',icon:'fa-laptop-code'},
+    {id:'community_manager',label:'CM',icon:'fa-mobile-screen'},
+    {id:'pilote_drone',label:'Drone',icon:'fa-helicopter'},
+    {id:'animateur_evenementiel',label:'Événementiel',icon:'fa-microphone'},
+  ];
+  wrap.innerHTML='<div class="p-section-hdr black p-section-hdr-fit" style="margin:16px 16px 10px;">'
+    +'<i class="fa-solid fa-fire" style="color:var(--yellow)"></i> LES PLUS RECHERCHÉS</div>'
+    +'<div style="display:flex;flex-wrap:wrap;gap:7px;padding:0 16px 16px;">'
+    +cats.map(function(c){
+      return '<button class="home-cat-chip" onclick="_navToExplorerCat(\''+c.id+'\')">'
+        +'<i class="fa-solid '+c.icon+'" style="color:var(--yellow);font-size:12px;"></i>'+c.label+'</button>';
+    }).join('')
+    +'</div>';
+}
+
+function _navToExplorerCat(catId){
+  nav('explorer');
+  setTimeout(function(){
+    _expCategory=catId;
+    document.querySelectorAll('#p-exp-cat-icons .p-cat-icon-pill').forEach(function(p){
+      p.classList.remove('on');
+      if(p.getAttribute('onclick')&&p.getAttribute('onclick').indexOf("'"+catId+"'")>=0) p.classList.add('on');
+    });
+    loadExplorerDirectory();
+  },200);
+}
+
+function _loadHomeNouveauxTalents(){
+  var wrap=document.getElementById('home-nouveaux-talents');
+  if(!wrap)return;
+  fetch((window.FA_GENESIS_API||API)+'/api/partners/new?limit=6')
+    .then(function(r){return r.json();})
+    .then(function(data){
+      var partners=(data&&(data.partners||data))||[];
+      if(!partners.length){wrap.innerHTML='';return;}
+      wrap.className='p-fade-in';
+      wrap.innerHTML='<div class="p-section-hdr black p-section-hdr-fit" style="margin:16px 16px 10px;">'
+        +'<i class="fa-solid fa-wand-magic-sparkles" style="color:var(--yellow)"></i> NOUVEAUX TALENTS</div>'
+        +'<div class="p-reco-row" style="padding:0 0 0 16px;">'
+        +partners.map(function(p,i){return recoPartnerCard(p,i,'Nouveau');}).join('')
+        +'<div style="min-width:16px;"></div></div>';
+    }).catch(function(){wrap.innerHTML='';});
+}
+
+function _loadHomeRecommandes(){
+  var wrap=document.getElementById('home-recommandes');
+  if(!wrap)return;
+  var hdrs=(USER&&!GUEST&&USER._token)?{'Authorization':'Bearer '+USER._token}:{};
+  fetch((window.FA_GENESIS_API||API)+'/api/partners/recommended?limit=6',{headers:hdrs})
+    .then(function(r){return r.json();})
+    .then(function(data){
+      var partners=(data&&(data.partners||data))||[];
+      if(!partners.length){
+        return fetch((window.FA_GENESIS_API||API)+'/api/partners/directory?sort=score&limit=6')
+          .then(function(r2){return r2.json();})
+          .then(function(d){
+            var fb=((d&&d.partners)||[]).slice(0,6);
+            if(!fb.length){wrap.innerHTML='';return;}
+            wrap.className='p-fade-in';
+            wrap.innerHTML='<div class="p-section-hdr black p-section-hdr-fit" style="margin:16px 16px 10px;">'
+              +'<i class="fa-solid fa-thumbs-up" style="color:var(--yellow)"></i> RECOMMANDÉS POUR VOUS</div>'
+              +'<div class="p-reco-row" style="padding:0 0 0 16px;">'
+              +fb.map(function(p,i){return recoPartnerCard(p,i);}).join('')
+              +'<div style="min-width:16px;"></div></div>';
+          });
+      }
+      wrap.className='p-fade-in';
+      wrap.innerHTML='<div class="p-section-hdr black p-section-hdr-fit" style="margin:16px 16px 10px;">'
+        +'<i class="fa-solid fa-thumbs-up" style="color:var(--yellow)"></i> RECOMMANDÉS POUR VOUS</div>'
+        +'<div class="p-reco-row" style="padding:0 0 0 16px;">'
+        +partners.map(function(p,i){return recoPartnerCard(p,i);}).join('')
+        +'<div style="min-width:16px;"></div></div>';
+    }).catch(function(){wrap.innerHTML='';});
+}
+
+function _renderHomeComposerProjet(){
+  var wrap=document.getElementById('home-composer-projet');
+  if(!wrap)return;
+  wrap.innerHTML='<div class="home-compose-box">'
+    +'<div class="home-compose-eyebrow"><i class="fa-solid fa-layer-group" style="margin-right:5px;"></i>Composez votre projet</div>'
+    +'<div class="home-compose-title">Plusieurs experts, un seul projet.</div>'
+    +'<div class="home-compose-sub">Besoin de plusieurs professionnels ? Construisez votre projet GENESIS en quelques clics.</div>'
+    +'<div class="home-compose-roles">'
+    +'<span class="home-compose-role"><i class="fa-solid fa-video" style="color:var(--yellow);"></i>Vidéaste</span>'
+    +'<span class="home-compose-role"><i class="fa-solid fa-camera" style="color:var(--yellow);"></i>Photographe</span>'
+    +'<span class="home-compose-role"><i class="fa-solid fa-chart-line" style="color:var(--yellow);"></i>Marketeur</span>'
+    +'<span class="home-compose-role"><i class="fa-solid fa-newspaper" style="color:var(--yellow);"></i>Média</span>'
+    +'</div>'
+    +'<button class="home-compose-cta" onclick="nav(\'explorer\')">'
+    +'<i class="fa-solid fa-magnifying-glass" style="margin-right:6px;"></i>Explorer les prestations</button>'
+    +'</div>';
+}
+
+function _loadHomePromos(){
+  var wrap=document.getElementById('home-promos');
+  if(!wrap)return;
+  fetch((window.FA_GENESIS_API||API)+'/api/partners/promo-services')
+    .then(function(r){return r.json();})
+    .then(function(data){
+      var promos=(data&&(data.services||data))||[];
+      if(!promos.length){wrap.innerHTML='';return;}
+      wrap.className='p-fade-in';
+      wrap.innerHTML='<div class="p-section-hdr black p-section-hdr-fit" style="margin:16px 16px 10px;">'
+        +'<i class="fa-solid fa-tag" style="color:var(--yellow)"></i> OFFRES DU MOMENT</div>'
+        +'<div class="p-dir-promo-row">'
+        +promos.slice(0,6).map(function(item){
+          var p=item.partner||{};
+          var svc=item.service||item;
+          var promoLabel=item.promoPercent?('-'+item.promoPercent+'%'):item.promoFixed?('-'+item.promoFixed+'€'):'Promo';
+          var pName=(p.prenom||'')+' '+(p.nom||'');
+          return '<div class="p-promo-card" onclick="openPartnerDetail(\''+(p.id||'')+'\''+')">'
+            +'<div class="p-promo-card-photo"><div class="p-promo-card-img-ph"><i class="fa-solid fa-tag"></i></div></div>'
+            +'<div class="p-promo-card-body">'
+            +'<div class="p-promo-badge">'+promoLabel+'</div>'
+            +'<div class="p-promo-card-label">'+(svc.label||svc.name||'')+'</div>'
+            +'<div class="p-promo-card-partner" style="font-size:10px;color:var(--muted);margin-top:2px;">par '+pName+'</div>'
+            +'</div></div>';
+        }).join('')
+        +'</div>';
+    }).catch(function(){wrap.innerHTML='';});
+}
+
+// ══════════════════════════════════════════════════════
+//  EXPLORER — VUE CARTE / LISTE + FILTRES
+// ══════════════════════════════════════════════════════
+
+var _expFilters = {profil:null, rating:null, avail:null};
+
+function _setExpView(mode, el){
+  document.querySelectorAll('.exp-view-btn').forEach(function(b){b.classList.remove('on');});
+  el.classList.add('on');
+  var mapEl = document.getElementById('p-exp-map');
+  var mapSymbol = document.getElementById('p-exp-map-symbol');
+  if(mode==='carte'){
+    if(mapEl) mapEl.style.display='block';
+    _expMapVisible=true;
+    if(mapSymbol) mapSymbol.classList.add('on');
+    loadExplorerMap(_expMode,_expCity);
+    setTimeout(function(){if(_expMap)_expMap.invalidateSize();},80);
+  } else {
+    if(mapEl) mapEl.style.display='none';
+    _expMapVisible=false;
+    if(mapSymbol) mapSymbol.classList.remove('on');
+  }
+}
+
+function _toggleExpFilters(btn){
+  var panel=document.getElementById('exp-filters-panel');
+  if(!panel)return;
+  var isOn=panel.classList.toggle('on');
+  btn.classList.toggle('on',isOn);
+}
+
+function _toggleFilterPill(el){
+  var filter=el.dataset.filter;
+  document.querySelectorAll('.exp-filter-pill[data-filter="'+filter+'"]').forEach(function(p){p.classList.remove('on');});
+  if(_expFilters[filter]===el.dataset.val){
+    _expFilters[filter]=null;
+  } else {
+    el.classList.add('on');
+    _expFilters[filter]=el.dataset.val;
+  }
+}
+
+function _applyExpFilters(){
+  var panel=document.getElementById('exp-filters-panel');
+  if(panel)panel.classList.remove('on');
+  var btn=document.getElementById('exp-filter-toggle');
+  var hasFilters=Object.keys(_expFilters).some(function(k){return _expFilters[k]!==null;});
+  if(btn)btn.classList.toggle('on',hasFilters);
+  loadExplorerDirectory();
+}
+
+// ── EXPLORER — ANNUAIRE (résultats principaux) ───────────
+function loadExplorerDirectory(){
+  var wrap=document.getElementById('p-exp-dir-results');
+  if(!wrap)return;
+  wrap.innerHTML='<div class="p-dir-empty" style="padding:20px 16px;">Chargement...</div>';
+  var params=['sort=score'];
+  if(_expSearchQuery)params.push('q='+encodeURIComponent(_expSearchQuery));
+  if(_expCity)params.push('city='+encodeURIComponent(_expCity));
+  if(_expCategory)params.push('category='+encodeURIComponent(_expCategory));
+  if(_expFilters.rating)params.push('minRating='+_expFilters.rating);
+  fetch((window.FA_GENESIS_API||API)+'/api/partners/directory?'+params.join('&'))
+    .then(function(r){return r.json();})
+    .then(function(data){
+      var partners=(data&&data.partners)||[];
+      var statEl=document.getElementById('p-exp-stat');
+      if(statEl) statEl.textContent=partners.length+' prestataire'+(partners.length===1?'':'s')+' trouvé'+(partners.length===1?'':'s');
+      if(!partners.length){
+        wrap.innerHTML='<div class="p-dir-empty" style="padding:32px 16px;text-align:center;">'
+          +'<i class="fa-solid fa-user-slash" style="font-size:32px;color:var(--muted);display:block;margin-bottom:12px;"></i>'
+          +'<div style="font-weight:700;margin-bottom:6px;">Aucun professionnel trouvé</div>'
+          +'<div style="font-size:12px;color:var(--muted);">Essayez d\'élargir votre recherche ou de changer de zone.</div>'
+          +'</div>';
+        return;
+      }
+      wrap.innerHTML='<div class="p-section-hdr black p-section-hdr-fit" style="margin:16px 16px 10px;">PRESTATAIRES'
+        +(_expCategory?(' · '+(PARTNER_TYPE_LABELS_DIR[_expCategory]||_expCategory)):'')+'</div>'
+        +'<div class="p-dir-results" style="padding:0 16px 16px;">'
+        +partners.slice(0,20).map(function(p){return directoryCard(p);}).join('')
+        +'</div>';
+    }).catch(function(){
+      wrap.innerHTML='<div class="p-dir-empty" style="padding:20px 16px;">Erreur de chargement. Vérifiez votre connexion.</div>';
+    });
+}
+
+// ── EXPLORER — GÉOLOCALISATION ─────────────────────────
+function _expGeolocate(){
+  if(!navigator.geolocation){showToast('Géolocalisation non disponible sur cet appareil.');return;}
+  navigator.geolocation.getCurrentPosition(function(pos){
+    if(!_expMap)return;
+    _expMap.setView([pos.coords.latitude,pos.coords.longitude],13);
+    var zoneBtn=document.getElementById('exp-zone-btn');
+    if(zoneBtn)zoneBtn.classList.add('visible');
+  },function(){
+    showToast('Localisation refusée ou indisponible.');
+  });
+}
+
+// ── EXPLORER — RECHERCHER DANS CETTE ZONE ─────────────
+function _expSearchInZone(){
+  if(!_expMap)return;
+  var center=_expMap.getCenter();
+  _expCity=center.lat.toFixed(4)+','+center.lng.toFixed(4);
+  loadExplorerDirectory();
+  var zoneBtn=document.getElementById('exp-zone-btn');
+  if(zoneBtn)zoneBtn.classList.remove('visible');
+}
+
 function _expSearchDebounced(){
   clearTimeout(_expSearchTimer);
   _expSearchTimer = setTimeout(function(){
-    _expSearchQuery = ((document.getElementById('p-exp-search')||{}).value || '').trim().toLowerCase();
-    renderPrestations(_prestFilter);
-    loadExplorerSearchResults();
+    _expSearchQuery = ((document.getElementById('p-exp-search')||{}).value || '').trim();
+    loadExplorerDirectory();
+    if(_expMapVisible) loadExplorerMap(_expMode, _expCity);
   }, 300);
 }
 function _expMatch(name){
@@ -3599,24 +4025,17 @@ var DIR_CATEGORY_ICONS_ORDER = [
   {id:'media', icon:'fa-newspaper', label:'Médias'},
   {id:'developpeur_web', icon:'fa-laptop-code', label:'Développeurs Web'},
   {id:'pilote_drone', icon:'fa-helicopter', label:'Pilotes Drone'},
-  {id:'coworking', icon:'fa-building', label:'Espaces Coworking'},
   {id:'animateur_evenementiel', icon:'fa-microphone', label:'Animateurs / Événementiel'},
   {id:'consultant', icon:'fa-lightbulb', label:'Consultants'},
   {id:'influencer', icon:'fa-hashtag', label:'Influenceurs / Influenceuses'},
   {id:'other', icon:'fa-ellipsis', label:'Autres profils'}
 ];
-var POPULAR_SEARCHES = ['Vidéaste','Photographe','Mariage','Coworking','Drone','Graphiste','Community Manager','Site web','Influenceur'];
+var POPULAR_SEARCHES = ['Vidéaste','Photographe','Mariage','Drone','Graphiste','Community Manager','Site web','Influenceur','Marketeur'];
 // ── EXPLORER — HUB DE DÉCOUVERTE ────────────────────────────────
 var _expCategory = null, _expCity = '', _expCityTimer = null, _expMode = 'offres';
 var _expMap = null, _expMapLayer = null, _expMapVisible = false;
 
 function renderExplorer(){
-  var popularRow = document.getElementById('p-exp-popular-row');
-  if(popularRow){
-    popularRow.innerHTML = POPULAR_SEARCHES.map(function(s){
-      return '<button class="p-popular-chip" onclick="quickSearchExplorer(\''+s+'\')"><i class="fas fa-magnifying-glass"></i>'+s+'</button>';
-    }).join('');
-  }
   var catIcons = document.getElementById('p-exp-cat-icons');
   if(catIcons){
     catIcons.innerHTML = DIR_CATEGORY_ICONS_ORDER.map(function(c,i){
@@ -3624,14 +4043,11 @@ function renderExplorer(){
         +'<i class="fa-solid '+c.icon+' p-cat-icon-fa"></i><span class="p-cat-icon-label">'+c.label+'</span></button>';
     }).join('');
   }
-  loadFeaturedPartners();
+  loadExplorerDirectory();
   loadTopCategories();
-  loadNewTalents();
   loadHallOfFame();
   loadEventsExplorer();
-  loadPersonalizedRecommendations();
   loadFavoritesInExplorer();
-  loadPromoServices();
 }
 
 function setExpToggle(which, el){
@@ -3649,8 +4065,7 @@ function setExpCategory(cat, el){
   _expCategory = cat;
   document.querySelectorAll('#p-exp-cat-icons .p-cat-icon-pill').forEach(function(b){b.className='p-cat-icon-pill';});
   el.className = 'p-cat-icon-pill on';
-  loadFeaturedPartners(cat);
-  loadNewTalents(cat);
+  loadExplorerDirectory();
 }
 
 function _expCityDebounced(){
@@ -3694,6 +4109,13 @@ function toggleExplorerMap(){
     setTimeout(function(){ if(_expMap) _expMap.invalidateSize(); }, 80);
   }
 }
+function _toggleExpMap(){
+  toggleExplorerMap();
+  var carteBtn = document.getElementById('exp-btn-carte');
+  var listeBtn = document.getElementById('exp-btn-liste');
+  if(carteBtn) carteBtn.classList.toggle('on', _expMapVisible);
+  if(listeBtn) listeBtn.classList.toggle('on', !_expMapVisible);
+}
 
 function quickSearchExplorer(term){
   nav('prestataires');
@@ -3713,24 +4135,52 @@ function loadExplorerMap(mode, cityFilter){
     return;
   }
   if(!_expMap){
+    // Insérer les contrôles hors du conteneur Leaflet pour qu'ils restent visibles
+    var ctrlWrap = document.getElementById('exp-map-controls');
     container.innerHTML = '';
     _expMap = L.map(container, {scrollWheelZoom:false}).setView([46.6, 2.4], 5);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; OpenStreetMap contributors', maxZoom: 18
     }).addTo(_expMap);
-    _expMapLayer = L.layerGroup().addTo(_expMap);
+    // Utiliser markercluster si disponible, sinon layerGroup
+    _expMapLayer = (typeof L.markerClusterGroup === 'function')
+      ? L.markerClusterGroup({maxClusterRadius:60, showCoverageOnHover:false}).addTo(_expMap)
+      : L.layerGroup().addTo(_expMap);
+    // "Rechercher dans cette zone" après déplacement
+    _expMap.on('moveend', function(){
+      var zoneBtn = document.getElementById('exp-zone-btn');
+      if(zoneBtn) zoneBtn.classList.add('visible');
+    });
   }
   _expMapLayer.clearLayers();
   var url = mode === 'evenements'
     ? API+'/api/events'
-    : API+'/api/partners/directory?sort=score'+(cityFilter?'&city='+encodeURIComponent(cityFilter):'');
+    : API+'/api/partners/directory?sort=score'
+        +(cityFilter?'&city='+encodeURIComponent(cityFilter):'')
+        +(_expCategory?'&category='+encodeURIComponent(_expCategory):'')
+        +(_expSearchQuery?'&q='+encodeURIComponent(_expSearchQuery):'');
   fetch(url).then(function(r){return r.json();}).then(function(data){
     var items = mode === 'evenements' ? ((data && data.events) || []) : ((data && data.partners) || []);
     var pins = [];
     items.forEach(function(it){
       if(it.lat==null || it.lng==null) return;
-      var label = mode === 'evenements' ? (it.title||'') : (((it.prenom||'')+' '+(it.nom||'')).trim());
-      L.marker([it.lat, it.lng]).addTo(_expMapLayer).bindPopup(label||'');
+      var popupHtml;
+      if(mode === 'evenements'){
+        popupHtml = '<div class="p-map-popup"><div class="p-map-popup-name">'+(it.title||'Événement')+'</div>'
+          +'<div class="p-map-popup-cat">'+(it.date||'')+'</div></div>';
+      } else {
+        var catLabel = partnerTypeLabel(it)||'Prestataire';
+        var priceLabel = partnerPriceLabel(it);
+        var ratingStr = (it.rating&&it.rating.count) ? ('<i class="fa-solid fa-star" style="color:#FFD700;font-size:10px;"></i> '+it.rating.average) : '';
+        popupHtml = '<div class="p-map-popup">'
+          +'<div class="p-map-popup-name">'+(it.prenom||'')+' '+(it.nom||'')+'</div>'
+          +'<div class="p-map-popup-cat">'+catLabel+(it.city?' · '+it.city:'')+'</div>'
+          +(ratingStr?'<div style="font-size:10px;margin-bottom:4px;">'+ratingStr+'</div>':'')
+          +'<div class="p-map-popup-price">'+priceLabel+'</div>'
+          +'<button class="p-map-popup-btn" onclick="openPartnerDetail(\''+it.id+'\')">Voir le profil</button>'
+          +'</div>';
+      }
+      L.marker([it.lat, it.lng]).addTo(_expMapLayer).bindPopup(popupHtml, {maxWidth:220});
       pins.push([it.lat, it.lng]);
     });
     if(pins.length){
@@ -4037,9 +4487,9 @@ function loadFeaturedPartners(category){
 var TOP_CATEGORIES = [
   {id:'videographer', label:'Vidéastes'},
   {id:'photographer', label:'Photographes'},
-  {id:'coworking', label:'Espaces Coworking'},
   {id:'marketer', label:'Marketeurs'},
-  {id:'media', label:'Médias'}
+  {id:'media', label:'Médias'},
+  {id:'graphiste', label:'Graphistes'}
 ];
 function loadTopCategories(){
   var wrap = document.getElementById('p-dir-top-categories-wrap');
