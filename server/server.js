@@ -3717,9 +3717,8 @@ app.post('/api/payments/cart/stripe-intent', async function(req, res) {
     try {
         var token = (req.headers.authorization || '').replace('Bearer ', '').trim();
         if (!token) return res.status(401).json({ error: 'Token requis' });
-        var jwt = require('jsonwebtoken');
         var payload;
-        try { payload = jwt.verify(token, process.env.JWT_SECRET); }
+        try { payload = _jwt.verify(token, _JWT_SECRET); }
         catch(e) { return res.status(401).json({ error: 'Token invalide' }); }
 
         var b = req.body || {};
@@ -3759,9 +3758,8 @@ app.post('/api/payments/order/stripe-direct', async function(req, res) {
     try {
         var token = (req.headers.authorization || '').replace('Bearer ', '').trim();
         if (!token) return res.status(401).json({ error: 'Token requis' });
-        var jwt = require('jsonwebtoken');
         var payload;
-        try { payload = jwt.verify(token, process.env.JWT_SECRET); }
+        try { payload = _jwt.verify(token, _JWT_SECRET); }
         catch(e) { return res.status(401).json({ error: 'Token invalide' }); }
 
         var b = req.body || {};
