@@ -1823,7 +1823,6 @@ a{text-decoration:none;color:inherit}
 .pay-plan-badge{display:inline-block;background:rgba(255,215,0,.15);color:#FFD700;font-size:9px;font-weight:900;padding:2px 7px;border-radius:99px;letter-spacing:.5px;text-transform:uppercase;margin-left:6px;vertical-align:middle;}
 .pay-plan-right{font-family:'Unbounded',cursive;font-size:14px;font-weight:900;color:#FFD700;white-space:nowrap;}
 .pay-plan-note{padding:0 20px 20px;font-size:11px;color:#555;text-align:center;}
-.pay-ico-paypal{background:#ffffff;border:1.5px solid #e0e0e0;padding:3px;border-radius:13px;overflow:hidden;}
 
 /* ── COWORKING BOOKING ── */
 #cw-booking-overlay{display:none;position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,.75);backdrop-filter:blur(4px);align-items:flex-end;justify-content:center;}
@@ -1836,7 +1835,6 @@ a{text-decoration:none;color:inherit}
 #pb-overlay.open{display:flex;animation:regFadeIn .2s ease;}
 #pb-sheet{width:100%;max-width:480px;background:#0d0d0d;border-radius:20px 20px 0 0;border-top:3px solid #FFD700;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;transform:translateY(100%);transition:transform .45s cubic-bezier(.34,1.56,.64,1);}
 #pb-sheet.up{transform:translateY(0);}
-.pb-method-pick{display:flex;gap:8px;margin-bottom:14px;}
 /* ── Contract screen ── */
 #pb-contract-screen{display:none;}
 .pb-ctr-doc{background:#070707;border:1px solid #1e1e1e;border-radius:12px;padding:18px 16px;max-height:290px;overflow-y:auto;font-size:11px;line-height:1.75;color:#c0c0c0;margin-bottom:14px;scrollbar-width:thin;scrollbar-color:#2a2a2a transparent;}
@@ -9963,10 +9961,8 @@ function openPayOverlay(total, cartItems){
   var ps = document.getElementById('pay-screen-plan');
   var ms = document.getElementById('pay-screen-methods');
   var ws = document.getElementById('pay-screen-widget');
-  var pp = document.getElementById('pay-screen-paypal');
   var succ = document.getElementById('pay-success');
   if(ws) ws.style.display = 'none';
-  if(pp) pp.style.display = 'none';
   if(succ) succ.style.display = 'none';
   if(ms) ms.style.display = 'none';
 
@@ -10057,8 +10053,6 @@ function _startCartStripeFlow(){
 }
 
 function _selectPayMethod(method){
-  if(method === 'paypal'){ _showPayPalScreen(); return; }
-  // Carte bancaire, Apple Pay, Google Pay → Stripe (Payment Element gère les wallets nativement)
   _startCartStripeFlow();
 }
 
@@ -10066,7 +10060,6 @@ function _payGoBack(){
   var ps = document.getElementById('pay-screen-plan');
   var ms = document.getElementById('pay-screen-methods');
   var ws = document.getElementById('pay-screen-widget');
-  var pp = document.getElementById('pay-screen-paypal');
   var succ = document.getElementById('pay-success');
   if(succ && succ.style.display !== 'none'){ closePayOverlay(); return; }
   if(ws && ws.style.display !== 'none'){
@@ -10076,11 +10069,6 @@ function _payGoBack(){
     _stripeCartInstance = null; _stripeCartElements = null;
     if(errEl) errEl.style.display = 'none';
     ws.style.display = 'none';
-    if(ms) ms.style.display = ''; return;
-  }
-  if(pp && pp.style.display !== 'none'){
-    pp.style.display = 'none';
-    document.getElementById('paypal-btn-container').innerHTML = '';
     if(ms) ms.style.display = ''; return;
   }
   if(ms && ms.style.display !== 'none'){
@@ -10167,90 +10155,6 @@ function closePayOverlay(){
   if(!sheet || !overlay) return;
   sheet.classList.remove('up');
   setTimeout(function(){ overlay.classList.remove('open'); }, 450);
-}
-
-// ── PAYPAL ──────────────────────────────────────────────────
-function _showPayPalScreen(){
-  var ms = document.getElementById('pay-screen-methods');
-  var pp = document.getElementById('pay-screen-paypal');
-  var ld = document.getElementById('pay-paypal-loading');
-  var cnt = document.getElementById('paypal-btn-container');
-  var err = document.getElementById('pay-paypal-error');
-  if(ms) ms.style.display = 'none';
-  if(pp) pp.style.display = '';
-  if(ld) ld.style.display = '';
-  if(cnt) cnt.innerHTML = '';
-  if(err){ err.style.display = 'none'; err.textContent = ''; }
-
-  var amountToCharge = _payInstallmentAmount > 0 ? _payInstallmentAmount : _payTotal;
-
-  function renderPayPalBtns(){
-    if(ld) ld.style.display = 'none';
-    if(!cnt) return;
-    try {
-      paypal.Buttons({
-        style:{color:'gold',shape:'rect',label:'pay',height:50},
-        createOrder: function(){
-          var token = USER ? USER._token : (localStorage.getItem('fa_genesis_token')||'');
-          return fetch((window.FA_GENESIS_API||API)+'/api/payments/paypal/create-order',{
-            method:'POST',
-            headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
-            body:JSON.stringify({
-              amount: amountToCharge,
-              currency:'EUR',
-              description: ('FA GENESIS - '+_payCartSnap.map(function(i){return i.name;}).join(', ')).substring(0,127),
-              installments: _payInstallments,
-              totalAmount: _payTotal
-            })
-          }).then(function(r){return r.json();}).then(function(d){
-            if(!d.orderId) throw new Error(d.error||'Erreur création commande PayPal');
-            return d.orderId;
-          });
-        },
-        onApprove: function(data){
-          if(ld) ld.style.display = '';
-          var token = USER ? USER._token : (localStorage.getItem('fa_genesis_token')||'');
-          return fetch((window.FA_GENESIS_API||API)+'/api/payments/paypal/capture-order',{
-            method:'POST',
-            headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
-            body:JSON.stringify({paypalOrderId:data.orderID})
-          }).then(function(r){return r.json();}).then(function(result){
-            if(ld) ld.style.display = 'none';
-            if(result.success){
-              APP_CART = []; _saveCart();
-              if(pp) pp.style.display = 'none';
-              var succ = document.getElementById('pay-success'); if(succ) succ.style.display = '';
-              launchConfetti(); showToast('Paiement réussi !', 'Votre commande est confirmée', 'success');
-              setTimeout(function(){ showToast('+20 QG', 'Mission lancée !', 'success'); }, 1600);
-              if(_payReferralDiscountUsed){ _payReferralDiscountUsed=false; fetch((window.FA_GENESIS_API||API)+'/api/auth/referral-discount/mark-used',{method:'POST',headers:{'Authorization':'Bearer '+(USER&&USER._token?USER._token:'')}}).catch(function(){}); }
-            } else {
-              _showPayPalError(result.error||'Paiement non complété');
-            }
-          }).catch(function(e){ _showPayPalError(e.message||'Erreur réseau'); });
-        },
-        onError: function(err){ _showPayPalError('Erreur PayPal. Réessayez ou choisissez un autre moyen.'); },
-        onCancel: function(){ _payGoBack(); }
-      }).render('#paypal-btn-container');
-    } catch(e){ _showPayPalError('Impossible d\'initialiser PayPal : '+e.message); }
-  }
-
-  if(typeof paypal !== 'undefined'){
-    renderPayPalBtns();
-  } else {
-    var clientId = window.FA_GENESIS_PAYPAL_CLIENT_ID || 'test';
-    var script = document.createElement('script');
-    script.src = 'https://www.paypal.com/sdk/js?client-id='+clientId+'&currency=EUR&disable-funding=credit,card&locale=fr_FR';
-    script.onload = renderPayPalBtns;
-    script.onerror = function(){ _showPayPalError('Impossible de charger PayPal. Vérifiez votre connexion.'); };
-    document.head.appendChild(script);
-  }
-}
-
-function _showPayPalError(msg){
-  var ld = document.getElementById('pay-paypal-loading');
-  var err = document.getElementById('pay-paypal-error');
-  if(ld) ld.style.display = 'none';
-  if(err){ err.textContent = msg; err.style.display = ''; }
 }
 
 // ── ESPACE PARTENAIRE ─────────────────────────────────────────
@@ -11501,7 +11405,7 @@ function cwBookingSendRequest(){
 }
 
 // ── PARTNER SERVICE BOOKING (marketplace : commande directe sur un partenaire choisi) ──
-var _pbPartner=null, _pbService=null, _pbServices=null, _pbMode='request', _pbSelectedPayMethod='card', _pbDepositAmount=0;
+var _pbPartner=null, _pbService=null, _pbServices=null, _pbMode='request', _pbDepositAmount=0;
 
 // Ouvre la modal en mode "demande" : le client décrit son besoin, sans payer (le partenaire doit d'abord accepter).
 function openPartnerRequest(partnerId, serviceId){
@@ -11596,10 +11500,6 @@ function _showPbPayUI(partner, service, existingOrderId){
   if(!overlay||!sheet) return;
 
   var total = parseFloat(service.price)||0;
-  _pbSelectedPayMethod = 'card';
-  var mCrd = document.getElementById('pb-method-card'); if(mCrd) mCrd.className='pb-method-btn pb-method-active';
-  var mPp = document.getElementById('pb-method-paypal'); if(mPp) mPp.className='pb-method-btn';
-  var pps = document.getElementById('pb-paypal-screen'); if(pps) pps.style.display='none';
 
   var nm=document.getElementById('pb-service-name'); if(nm) nm.textContent=service.label;
   var pn=document.getElementById('pb-partner-name'); if(pn) pn.textContent='avec '+(partner.prenom||'')+' '+(partner.nom||'');
@@ -11961,7 +11861,6 @@ function _pbRenderBreakdown(n, total){
 
 function pbPayDeposit(){
   if(!_pbPartner||!_pbService||!USER||GUEST) return;
-  if(_pbSelectedPayMethod==='paypal'){ _pbPayDepositPayPal(); return; }
   var er=document.getElementById('pb-err'); if(er) er.classList.remove('on');
 
   // Stripe Connect disponible → paiement Connect (commission FA GENESIS)
@@ -12117,92 +12016,6 @@ function _pbCancelStripe(){
   var sb=document.getElementById('pb-pay-btn'); if(sb){sb.disabled=false;sb.textContent='PAYER L\'ACOMPTE';}
   _stripeElements=null; _stripePaymentEl=null; _stripeInstance=null;
 }
-// _pbMountWidget (SumUp) supprimé — tout passe par _pbMountStripeElements
-
-// ── SÉLECTEUR DE MÉTHODE DE PAIEMENT (pb-sheet) ──────────────
-function _pbSelectMethod(method){
-  _pbSelectedPayMethod = method;
-  var cBtn=document.getElementById('pb-method-card'); var pBtn=document.getElementById('pb-method-paypal');
-  if(cBtn) cBtn.className = method==='card' ? 'pb-method-btn pb-method-active' : 'pb-method-btn';
-  if(pBtn) pBtn.className = method==='paypal' ? 'pb-method-btn pb-method-active' : 'pb-method-btn';
-  var payBtn=document.getElementById('pb-pay-btn');
-  if(payBtn) payBtn.textContent = method==='paypal' ? 'PAYER AVEC PAYPAL' : (_pbService&&_pbService.price<=300 ? 'PAYER EN SÉCURISÉ (GENESIS SAFE™)' : 'PAYER L\'ACOMPTE');
-}
-function _pbCancelPayPal(){
-  var pps=document.getElementById('pb-paypal-screen'); if(pps) pps.style.display='none';
-  var fm=document.getElementById('pb-form'); if(fm) fm.style.display='block';
-  var sb=document.getElementById('pb-pay-btn'); if(sb){sb.disabled=false;sb.textContent='PAYER AVEC PAYPAL';}
-}
-function _pbPayDepositPayPal(){
-  var er=document.getElementById('pb-err'); if(er) er.classList.remove('on');
-  var sb=document.getElementById('pb-pay-btn'); if(sb){sb.disabled=true;sb.textContent='Création de la commande...';}
-  var clientInfo={firstName:USER.prenom||USER.firstName||'',lastName:USER.nom||USER.lastName||'',email:USER.email||'',phone:USER.telephone||USER.phone||'',clientType:'particulier'};
-  fetch((window.FA_GENESIS_API||API)+'/api/orders/create',{
-    method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+USER._token},
-    body:JSON.stringify({clientInfo:clientInfo,partnerServiceOrder:{partnerId:_pbPartner.id,serviceId:_pbService.id,requestedInstallments:_pbSelectedInstallments||1}})
-  }).then(function(r){return r.json().then(function(d){return{ok:r.ok,data:d};});})
-  .then(function(res){
-    if(!res.ok||!res.data||!res.data.orderId) throw new Error((res.data&&res.data.error)||'Erreur création commande');
-    var orderId=res.data.orderId;
-    if(sb){sb.disabled=false;}
-    var fm=document.getElementById('pb-form'); if(fm) fm.style.display='none';
-    var pps=document.getElementById('pb-paypal-screen'); if(pps) pps.style.display='';
-    var ld=document.getElementById('pb-paypal-loading'); if(ld) ld.style.display='';
-    var cnt=document.getElementById('pb-paypal-container'); if(cnt) cnt.innerHTML='';
-    var ppErr=document.getElementById('pb-paypal-error'); if(ppErr){ppErr.style.display='none';ppErr.textContent='';}
-
-    function renderPbPayPal(){
-      if(ld) ld.style.display='none';
-      try{
-        paypal.Buttons({
-          style:{color:'gold',shape:'rect',label:'pay',height:50},
-          createOrder:function(){
-            return fetch((window.FA_GENESIS_API||API)+'/api/payments/paypal/create-order',{
-              method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+USER._token},
-              body:JSON.stringify({amount:_pbDepositAmount,currency:'EUR',description:('FA GENESIS - '+(_pbService.label||'Prestation')).substring(0,127)})
-            }).then(function(r){return r.json();}).then(function(d){
-              if(!d.orderId) throw new Error(d.error||'Erreur PayPal');
-              return d.orderId;
-            });
-          },
-          onApprove:function(data){
-            if(ld) ld.style.display='';
-            return fetch((window.FA_GENESIS_API||API)+'/api/payments/paypal/capture-order',{
-              method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+USER._token},
-              body:JSON.stringify({paypalOrderId:data.orderID,orderId:orderId,stage:'deposit'})
-            }).then(function(r){return r.json();}).then(function(result){
-              if(ld) ld.style.display='none';
-              if(result.success){
-                if(pps) pps.style.display='none';
-                var sc=document.getElementById('pb-success'); if(sc) sc.style.display='';
-                launchConfetti(); showToast('Paiement réussi !','Votre commande est confirmée','success');
-                setTimeout(function(){ showToast('+20 QG', 'Mission lancée !', 'success'); }, 1600);
-              } else {
-                if(ppErr){ppErr.textContent=result.error||'Paiement non complété. Réessayez.';ppErr.style.display='';}
-                if(ld) ld.style.display='none';
-              }
-            }).catch(function(e){if(ppErr){ppErr.textContent=e.message||'Erreur réseau';ppErr.style.display='';}if(ld) ld.style.display='none';});
-          },
-          onError:function(){if(ppErr){ppErr.textContent='Erreur PayPal. Réessayez ou choisissez une carte.';ppErr.style.display='';}},
-          onCancel:function(){_pbCancelPayPal();}
-        }).render('#pb-paypal-container');
-      }catch(e){if(ppErr){ppErr.textContent='Impossible d\'initialiser PayPal : '+e.message;ppErr.style.display='';}}
-    }
-    if(typeof paypal!=='undefined'){ renderPbPayPal(); }
-    else{
-      var clientId=window.FA_GENESIS_PAYPAL_CLIENT_ID||'test';
-      var script=document.createElement('script');
-      script.src='https://www.paypal.com/sdk/js?client-id='+clientId+'&currency=EUR&disable-funding=credit,card&locale=fr_FR';
-      script.onload=renderPbPayPal;
-      script.onerror=function(){if(ld)ld.style.display='none';if(ppErr){ppErr.textContent='Impossible de charger PayPal. Vérifiez votre connexion.';ppErr.style.display='';}};
-      document.head.appendChild(script);
-    }
-  }).catch(function(err){
-    if(sb){sb.disabled=false;sb.textContent='Payer avec PayPal';}
-    if(er){er.textContent=err.message||'Erreur. Réessayez.';er.classList.add('on');}
-  });
-}
-
 // ── MESSAGE COMPOSE ───────────────────────────────────────────
 function openMsgCompose(){
   if(!USER||GUEST){ showLoginSheet(); return; }
@@ -12849,19 +12662,6 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
           <div class="pay-method-arr">&#8250;</div>
         </button>
 
-        <!-- PayPal (toujours visible) -->
-        <button class="pay-method-row" onclick="_selectPayMethod('paypal')">
-          <div class="pay-method-ico pay-ico-paypal">
-            <img src="assets/images/paypal-icon.png"
-                 alt="PayPal" style="height:38px;width:38px;object-fit:contain;" loading="lazy">
-          </div>
-          <div class="pay-method-info">
-            <div class="pay-method-name">PayPal</div>
-            <div class="pay-method-sub">Compte PayPal · Paiement sécurisé</div>
-          </div>
-          <div class="pay-method-arr">&#8250;</div>
-        </button>
-
         <!-- Carte bancaire (toujours visible) -->
         <button class="pay-method-row" onclick="_selectPayMethod('card')">
           <div class="pay-method-ico pay-ico-card">
@@ -12882,22 +12682,8 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;flex-shrink:0;">
             <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
           </svg>
-          Paiement 100&nbsp;% sécurisé · Stripe &amp; PayPal
+          Paiement 100&nbsp;% sécurisé · Stripe
         </div>
-      </div>
-
-      <!-- Screen 2b : PayPal -->
-      <div id="pay-screen-paypal" style="display:none;">
-        <div style="text-align:center;padding:20px 20px 10px;font-size:13px;color:#aaa;line-height:1.7;">
-          Finalisez votre paiement via PayPal.<br>
-          <span style="font-size:11px;color:#555;">Vous pouvez payer avec votre compte PayPal ou une carte bancaire.</span>
-        </div>
-        <div id="paypal-btn-container" style="padding:8px 16px 8px;"></div>
-        <div id="pay-paypal-loading" style="text-align:center;padding:30px;color:#888;font-size:13px;">
-          <div class="pay-spinner"></div>
-          <p style="margin-top:14px;font-size:12px;">Chargement PayPal&hellip;</p>
-        </div>
-        <div id="pay-paypal-error" style="display:none;margin:0 16px 16px;background:#160000;border:1px solid #5a1111;border-radius:12px;padding:14px;color:#ff7777;font-size:13px;line-height:1.6;"></div>
       </div>
 
       <!-- Screen 2 : Stripe carte bancaire -->
@@ -13089,16 +12875,6 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
           <i class="fas fa-lock" style="margin-right:6px;"></i>Votre paiement est <strong>retenu en sécurité</strong> par GENESIS SAFE™ et ne sera versé au prestataire qu'après confirmation de la livraison.
         </div>
         <p style="font-size:11px;color:#666;font-weight:700;text-align:center;margin-bottom:14px;">Total prestation : <span id="pb-total-amt"></span></p>
-        <!-- Sélecteur moyen de paiement -->
-        <p style="font-size:10px;color:#555;font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px;">Moyen de paiement</p>
-        <div class="pb-method-pick">
-          <button id="pb-method-card" class="pb-method-btn pb-method-active" onclick="_pbSelectMethod('card')">
-            <i class="fa-regular fa-credit-card"></i> Carte bancaire
-          </button>
-          <button id="pb-method-paypal" class="pb-method-btn" onclick="_pbSelectMethod('paypal')">
-            <i class="fa-brands fa-paypal"></i> PayPal
-          </button>
-        </div>
         <div class="cwb-actions" style="grid-template-columns:1fr;">
           <button class="cwb-btn cwb-btn-yellow" id="pb-pay-btn" onclick="pbPayDeposit()">PAYER L'ACOMPTE</button>
         </div>
@@ -13111,12 +12887,6 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
           <button id="pb-stripe-pay-btn" onclick="_pbConfirmStripePayment()" style="flex:2;background:linear-gradient(135deg,#635BFF,#8B5CF6);color:#fff;border:none;border-radius:10px;padding:10px;font-size:13px;font-weight:800;cursor:pointer;"><i class="fa-solid fa-lock" style="margin-right:6px;"></i>PAYER EN SÉCURISÉ</button>
         </div>
         <div style="font-size:10px;color:#444;text-align:center;margin-top:8px;">Paiement sécurisé par Stripe • FA GENESIS ne stocke pas vos données bancaires</div>
-      </div>
-      <div id="pb-paypal-screen" style="display:none;">
-        <div id="pb-paypal-loading" style="text-align:center;padding:24px 0;color:#aaa;font-size:13px;"><i class="fa-solid fa-spinner fa-spin" style="margin-right:6px;"></i>Connexion à PayPal...</div>
-        <div id="pb-paypal-container" style="padding:4px 0;"></div>
-        <div id="pb-paypal-error" style="display:none;background:#1a0000;border:1px solid #3a0000;border-radius:8px;padding:10px 14px;color:#ff6b6b;font-size:12px;margin-top:10px;"></div>
-        <button onclick="_pbCancelPayPal()" style="margin-top:14px;background:none;border:none;color:#555;font-size:12px;font-weight:700;cursor:pointer;width:100%;text-align:center;">← Changer de moyen de paiement</button>
       </div>
       <div class="cwb-success" id="pb-success" style="display:none;">
         <div class="cwb-success-ico">&#9989;</div>
