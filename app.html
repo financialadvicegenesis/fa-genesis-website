@@ -2411,48 +2411,6 @@ a{text-decoration:none;color:inherit}
         </div>
       </div>
 
-      <!-- Hero banner -->
-      <div class="sec-lbl"><h2>À la une</h2></div>
-      <div class="hero-banner" onclick="navToCwPrestations()">
-        <img class="hero-img" src="assets/images/Openspace-1.png" alt=""
-          onerror="this.style.display='none'">
-        <div class="hero-body">
-          <div class="hero-tag">Offre du moment</div>
-          <div class="hero-title">Espace coworking<br>professionnel</div>
-          <div class="hero-cta">Réserver →</div>
-        </div>
-      </div>
-
-      <!-- Catégories -->
-      <div class="sec-lbl"><h2>Catégories</h2></div>
-      <div class="cat-scroll">
-        <div class="cat-chip on" onclick="setCat('all',this)">
-          <div class="cat-ico"><i class="fa-solid fa-house"></i></div><div class="cat-lbl">Tous</div>
-        </div>
-        <div class="cat-chip" onclick="setCat('coworking',this)">
-          <div class="cat-ico"><i class="fa-solid fa-briefcase"></i></div><div class="cat-lbl">Coworking</div>
-        </div>
-        <div class="cat-chip" onclick="setCat('etudiant',this)">
-          <div class="cat-ico"><i class="fa-solid fa-graduation-cap"></i></div><div class="cat-lbl">Étudiant</div>
-        </div>
-        <div class="cat-chip" onclick="setCat('particulier',this)">
-          <div class="cat-ico"><i class="fa-solid fa-user"></i></div><div class="cat-lbl">Particulier</div>
-        </div>
-        <div class="cat-chip" onclick="setCat('entreprise',this)">
-          <div class="cat-ico"><i class="fa-solid fa-building"></i></div><div class="cat-lbl">Entreprise</div>
-        </div>
-        <div class="cat-chip" onclick="setCat('evenement',this)">
-          <div class="cat-ico"><i class="fa-solid fa-trophy"></i></div><div class="cat-lbl">Événement</div>
-        </div>
-      </div>
-
-      <!-- Offres populaires -->
-      <div class="sec-lbl" style="margin-top:8px">
-        <h2 id="homeOffersTitle">Prestations populaires</h2>
-        <a onclick="nav('explorer')">Tout voir</a>
-      </div>
-      <div class="offer-scroll" id="homeOffers"></div>
-      <div style="height:8px"></div>
     </div>
 
     <!-- EXPLORER (hub de découverte) -->
@@ -2481,18 +2439,11 @@ a{text-decoration:none;color:inherit}
       <div class="p-exp-panel on" id="p-exp-offres-panel">
         <div class="p-cat-icon-strip" id="p-exp-cat-icons"></div>
         <div class="p-tile-grid">
-          <div class="p-tile" style="background-image:url('assets/images/Openspace-2.png')" onclick="_navToPrestation('coworking')">
-            <div><div class="p-tile-label">Coworking</div><span class="p-tile-sub">Espace de travail</span></div>
-          </div>
           <div class="p-tile" style="background:linear-gradient(135deg,#0d3d3d,#021414)" onclick="nav('prestataires')">
             <div><div class="p-tile-label">Prestataires</div><span class="p-tile-sub">Tout l'annuaire</span></div>
           </div>
         </div>
         <div id="p-exp-reco-wrap"></div>
-        <div class="filter-bar">
-          <button class="fpill on" onclick="filterPrestations('all',this)">Toutes</button>
-          <button class="fpill" onclick="filterPrestations('coworking',this)">Coworking</button>
-        </div>
         <div id="prestList"></div>
         <div id="p-dir-featured-wrap"></div>
         <div id="p-dir-top-categories-wrap"></div>
@@ -3497,29 +3448,6 @@ function renderPrestations(filter){
   var html = '';
   var totalCount = 0;
 
-  // ── COWORKING ─────────────────────────────────────────────────
-  if(_prestFilter==='all'||_prestFilter==='coworking'){
-    var cwSub = _prestSub==='accompagnement'?'etudiant':_prestSub;
-    var cwHtml = '', cwCount = 0;
-    PDATA.coworking[cwSub].forEach(function(o,i){
-      if(!_expMatch(o.name)) return;
-      cwCount++;
-      cwHtml += cwCard(o, cwSub, i);
-    });
-    if(cwCount || !_expSearchQuery){
-      totalCount += cwCount;
-      html += '<div class="p-section" style="margin-top:24px;">';
-      html += '<div class="p-section-hdr black">Coworking</div>';
-      // Sub-filter
-      html += '<div class="p-sub-filter" id="p-cw-filter">'
-        +'<button class="p-sub-btn '+(cwSub==='etudiant'?'on':'')+'" onclick="setPrestSubCW(\'etudiant\',this)">Étudiant</button>'
-        +'<button class="p-sub-btn '+(cwSub==='particulier'?'on':'')+'" onclick="setPrestSubCW(\'particulier\',this)">Particulier</button>'
-        +'<button class="p-sub-btn '+(cwSub==='entreprise'?'on':'')+'" onclick="setPrestSubCW(\'entreprise\',this)">Entreprise</button>'
-        +'</div>';
-      html += '<div class="p-cards-scroll" id="p-cw-cards">'+cwHtml+'</div></div>';
-    }
-  }
-
   if(!html && _expSearchQuery){
     html = '<div class="p-dir-empty">Aucun résultat pour "'+_expSearchQuery+'".</div>';
   }
@@ -3540,12 +3468,7 @@ function renderPrestations(filter){
 function renderExplorerReco(){
   var wrap = document.getElementById('p-exp-reco-wrap');
   if(!wrap) return;
-  var profil = _prestSub || 'particulier';
-  var items = [];
-  if(PDATA.coworking && PDATA.coworking[profil] && PDATA.coworking[profil].length){
-    items.push({kind:'cw', o:PDATA.coworking[profil][0], idx:0});
-  }
-  _renderRecoRow(wrap, items.map(function(it,i){ return expRecoCard(it,i); }));
+  _renderRecoRow(wrap, []);
   fetch(API+'/api/partners/directory').then(function(r){return r.json();}).then(function(data){
     var partners = _sortByRating((data && data.partners) || []).slice(0,2);
     if(!partners.length) return;
@@ -9367,18 +9290,6 @@ function _appSubmitSeanceForm(){
     }).catch(function(e){if(errEl){errEl.textContent='Erreur réseau : '+e.message;errEl.style.display='';}});
 }
 
-// ── NAVIGATION VERS COWORKING ────────────────────────────────
-function navToCwPrestations(){
-  nav('explorer');
-  setTimeout(function(){
-    var pills = document.querySelectorAll('#tab-explorer .fpill');
-    pills.forEach(function(p){ p.className='fpill'; });
-    var cwPill = null;
-    pills.forEach(function(p){ if(p.getAttribute('onclick')&&p.getAttribute('onclick').indexOf('coworking')>=0) cwPill=p; });
-    if(cwPill){ cwPill.className='fpill on'; renderPrestations('coworking'); }
-    var tab = document.getElementById('tab-explorer'); if(tab) tab.scrollTop=0;
-  }, 200);
-}
 
 // ── REGISTER (fallback direct API pour app.html) ──────────────
 function register(userData){
