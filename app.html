@@ -2482,7 +2482,7 @@ a{text-decoration:none;color:inherit}
         <div class="p-cat-icon-strip" id="p-exp-cat-icons"></div>
         <div class="p-tile-grid">
           <div class="p-tile" style="background-image:url('assets/images/Openspace-2.png')" onclick="_navToPrestation('coworking')">
-            <div><div class="p-tile-label">Coworking</div><span class="p-tile-sub">ComVisa Montpellier</span></div>
+            <div><div class="p-tile-label">Coworking</div><span class="p-tile-sub">Espace de travail</span></div>
           </div>
           <div class="p-tile" style="background:linear-gradient(135deg,#0d3d3d,#021414)" onclick="nav('prestataires')">
             <div><div class="p-tile-label">Prestataires</div><span class="p-tile-sub">Tout l'annuaire</span></div>
@@ -3509,10 +3509,7 @@ function renderPrestations(filter){
     if(cwCount || !_expSearchQuery){
       totalCount += cwCount;
       html += '<div class="p-section" style="margin-top:24px;">';
-      html += '<div class="p-section-hdr black">COM VISA — Coworking</div>';
-      html += '<div style="padding:0 16px 8px;">'
-        +'<div style="font-size:11px;color:#888;font-weight:700;margin-bottom:4px;">23 Rue Saint-Guilhem, Montpellier</div>'
-        +'</div>';
+      html += '<div class="p-section-hdr black">Coworking</div>';
       // Sub-filter
       html += '<div class="p-sub-filter" id="p-cw-filter">'
         +'<button class="p-sub-btn '+(cwSub==='etudiant'?'on':'')+'" onclick="setPrestSubCW(\'etudiant\',this)">Étudiant</button>'

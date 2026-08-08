@@ -1834,7 +1834,7 @@ async function sendCwReservationToPartner(reservation, order) {
         return { success: false, reason: 'no_transporter' };
     }
 
-    var partnerEmail = process.env.CW_PARTNER_EMAIL || 'comvisaformation@gmail.com';
+    var partnerEmail = process.env.CW_PARTNER_EMAIL || '';
     var apiUrl = process.env.API_URL || 'https://fa-genesis-website.onrender.com';
     var confirmUrl = apiUrl + '/api/reservations/' + reservation.id + '/email-respond?action=confirmed&token=' + reservation.email_token;
     var refuseUrl  = apiUrl + '/api/reservations/' + reservation.id + '/email-respond?action=refused&token=' + reservation.email_token;

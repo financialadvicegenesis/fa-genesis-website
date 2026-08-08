@@ -18571,8 +18571,8 @@ app.post('/api/coworking/auth/login', function(req, res) {
     try {
         var email = (req.body.email || '').trim().toLowerCase();
         var password = (req.body.password || '').trim();
-        var validEmail = (process.env.CW_PARTNER_EMAIL || 'partenaire@comvisa.com').toLowerCase();
-        var validPassword = process.env.CW_PARTNER_PASSWORD || 'ComVisa@2024';
+        var validEmail = (process.env.CW_PARTNER_EMAIL || '').toLowerCase();
+        var validPassword = process.env.CW_PARTNER_PASSWORD || '';
         if (!email || !password) return res.status(400).json({ error: 'Identifiant et mot de passe requis' });
         if (email !== validEmail || password !== validPassword) {
             return res.status(401).json({ error: 'Identifiants incorrects' });
