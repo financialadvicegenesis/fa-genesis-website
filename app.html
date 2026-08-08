@@ -1837,6 +1837,22 @@ a{text-decoration:none;color:inherit}
 #pb-sheet{width:100%;max-width:480px;background:#0d0d0d;border-radius:20px 20px 0 0;border-top:3px solid #FFD700;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;transform:translateY(100%);transition:transform .45s cubic-bezier(.34,1.56,.64,1);}
 #pb-sheet.up{transform:translateY(0);}
 .pb-method-pick{display:flex;gap:8px;margin-bottom:14px;}
+/* ── Contract screen ── */
+#pb-contract-screen{display:none;}
+.pb-ctr-doc{background:#070707;border:1px solid #1e1e1e;border-radius:12px;padding:18px 16px;max-height:290px;overflow-y:auto;font-size:11px;line-height:1.75;color:#c0c0c0;margin-bottom:14px;scrollbar-width:thin;scrollbar-color:#2a2a2a transparent;}
+.pb-ctr-doc::-webkit-scrollbar{width:4px;}.pb-ctr-doc::-webkit-scrollbar-track{background:transparent;}.pb-ctr-doc::-webkit-scrollbar-thumb{background:#2a2a2a;border-radius:4px;}
+.pb-ctr-title{font-family:'Unbounded',cursive;font-size:9px;font-weight:900;color:#FFD700;letter-spacing:2px;text-align:center;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid #1e1e1e;}
+.pb-ctr-ref{text-align:center;color:#444;font-size:10px;margin-bottom:14px;}
+.pb-ctr-section{margin-bottom:13px;}
+.pb-ctr-sh{font-size:9px;font-weight:900;color:#FFD700;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px;padding-bottom:3px;border-bottom:1px solid #181818;}
+.pb-ctr-party{background:#111;border:1px solid #1e1e1e;border-radius:8px;padding:8px 12px;margin-bottom:5px;font-size:11px;}
+.pb-ctr-c{padding:2px 0 2px 16px;color:#aaa;position:relative;font-size:11px;}
+.pb-ctr-c::before{content:'✓';position:absolute;left:0;color:#FFD700;font-weight:700;}
+.pb-sign-wrap{padding:2px 0 6px;}
+.pb-sign-lbl{font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:1px;color:#FFD700;margin-bottom:6px;}
+.pb-sign-hint{font-size:11px;color:#666;margin-bottom:8px;}
+.pb-sign-chk{display:flex;align-items:flex-start;gap:8px;margin:10px 0;font-size:11px;color:#888;line-height:1.5;cursor:pointer;}
+.pb-sign-chk input[type=checkbox]{accent-color:#FFD700;width:16px;height:16px;flex-shrink:0;margin-top:1px;cursor:pointer;}
 .pb-method-btn{flex:1;padding:10px 8px;background:#111;border:1.5px solid #2a2a2a;border-radius:10px;color:#888;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:border-color .2s,color .2s,background .2s;}
 .pb-method-btn.pb-method-active{border-color:#FFD700;color:#FFD700;background:#1a1600;}
 .cwb-hdr{display:flex;align-items:center;justify-content:space-between;padding:18px 20px 0;flex-shrink:0;}
@@ -11590,9 +11606,11 @@ function _showPbPayUI(partner, service, existingOrderId){
   var tot=document.getElementById('pb-total-amt'); if(tot) tot.textContent=total+' €';
   var er=document.getElementById('pb-err'); if(er) er.classList.remove('on');
   var rf=document.getElementById('pb-request-form'); if(rf) rf.style.display='none';
-  var fm=document.getElementById('pb-form'); if(fm) fm.style.display='block';
+  var fm=document.getElementById('pb-form'); if(fm) fm.style.display='none';
+  var ctrs=document.getElementById('pb-contract-screen'); if(ctrs) ctrs.style.display='none';
   var ws=document.getElementById('pb-widget-screen'); if(ws) ws.style.display='none';
   var sc=document.getElementById('pb-success'); if(sc) sc.style.display='none';
+  _pbContractId = null;
 
   // ── Installments selector ─────────────────────────────────────
   var svcMaxInstall = Math.max(1, parseInt(service.max_installments)||1);
@@ -11622,9 +11640,137 @@ function _showPbPayUI(partner, service, existingOrderId){
     ? 'Paiement sécurisé ! Votre argent est retenu par GENESIS SAFE™ et sera versé au prestataire après livraison.'
     : 'Acompte payé ! Le partenaire a été notifié et votre commande apparaît dans "Mes réservations".';
 
+  // Commande existante → contrat déjà signé lors de la demande initiale, passer au paiement
+  if(existingOrderId){
+    _pbContractId = 'existing-order';
+    if(fm) fm.style.display='block';
+  } else {
+    // Nouvelle réservation → afficher le contrat avant paiement
+    _pbBuildAndShowContract();
+  }
+
   overlay.classList.add('open');
   setTimeout(function(){ sheet.classList.add('up'); }, 20);
 }
+
+// ── CONTRAT AUTOMATIQUE ──────────────────────────────────────────────────────
+var _PB_TYPE_COMMITS = {
+  'photographe':        ['Réaliser la séance photo dans les conditions et lieux convenus','Livrer les photos retouchées en haute résolution (JPEG + RAW sur demande)','Conserver les fichiers originaux 30 jours après livraison','Respecter la confidentialité des images jusqu\'à validation client'],
+  'videaste':           ['Réaliser le tournage selon le brief validé avec le client','Livrer le montage final aux formats convenus (MP4 4K/HD)','Accorder les droits d\'utilisation pour l\'usage défini dans la commande','Remettre les fichiers bruts sur demande explicite du client'],
+  'developpeur':        ['Développer la solution conformément aux spécifications convenues','Livrer un code source propre, commenté et testé','Assurer une garantie de correction de bugs de 30 jours après livraison','Respecter la confidentialité du code source et des données'],
+  'designer':           ['Créer les visuels selon le brief et les retours du client','Livrer les fichiers sources modifiables (Figma / PSD / AI / SVG)','Accorder les droits de propriété intellectuelle pleine sur les livrables','Inclure 2 séries de corrections dans le prix convenu'],
+  'consultant':         ['Réaliser la mission avec rigueur et expertise professionnelle','Remettre un rapport écrit détaillant analyses et recommandations','Assurer une session de restitution orale des résultats','Maintenir la stricte confidentialité des informations partagées'],
+  'community_manager':  ['Gérer la présence digitale selon la charte éditoriale définie','Produire et publier les contenus aux fréquences convenues','Fournir un rapport mensuel de performance (reach, engagement, croissance)','Répondre aux commentaires et messages dans les délais standards'],
+  'coach':              ['Animer les séances de manière professionnelle et bienveillante','Adapter le programme aux besoins et au niveau du client','Assurer la confidentialité des échanges et informations personnelles','Fournir un suivi écrit des séances et des objectifs atteints'],
+  'traducteur':         ['Réaliser la traduction avec précision et fluidité stylistique','Livrer le document traduit dans le format source d\'origine','Garantir la confidentialité des documents fournis','Intégrer les retours client dans un délai de 5 jours ouvrés'],
+  'redacteur':          ['Produire le contenu selon le brief et les consignes éditoriales','Livrer dans les délais convenus avec une correction orthographique complète','Accepter jusqu\'à 2 séries de corrections incluses dans le tarif','Respecter les droits d\'auteur et l\'originalité du contenu'],
+  'formateur':          ['Dispenser la formation selon le programme validé avec le client','Adapter le contenu au niveau et aux besoins réels des participants','Fournir les supports pédagogiques en format numérique','Évaluer les acquis en fin de formation et remettre une attestation']
+};
+var _PB_DEFAULT_COMMITS = ['Réaliser la prestation dans les meilleures conditions professionnelles','Livrer les éléments convenus dans les délais fixés','Informer le client de toute difficulté susceptible d\'impacter la livraison','Maintenir la confidentialité des informations communiquées par le client'];
+
+function _pbBuildAndShowContract(){
+  var partner=_pbPartner; var service=_pbService; var client=USER;
+  var today=new Date();
+  var pad=function(n){return n<10?'0'+n:''+n;};
+  var dateStr=pad(today.getDate())+'/'+pad(today.getMonth()+1)+'/'+today.getFullYear();
+  var rand=Math.random().toString(36).substr(2,6).toUpperCase();
+  var ref='FA-CONT-'+today.getFullYear()+pad(today.getMonth()+1)+pad(today.getDate())+'-'+rand;
+
+  var ptLabel=(window.PARTNER_TYPE_LABELS&&window.PARTNER_TYPE_LABELS[partner.partner_type])||partner.partner_type||'Prestataire';
+  var priceStr=service.price||(service.priceNum?service.priceNum+' €':'Selon devis');
+  var depositEur=(_pbDepositAmount||0).toFixed(2)+' €';
+  var balEur=((parseFloat(service.price||service.priceNum||0)-(_pbDepositAmount||0))||0).toFixed(2)+' €';
+
+  var commits=_PB_TYPE_COMMITS[(partner.partner_type||'').toLowerCase()]||_PB_DEFAULT_COMMITS;
+  var cHtml=commits.map(function(c){return '<div class="pb-ctr-c">'+c+'</div>';}).join('');
+
+  var html=
+    '<div class="pb-ctr-title">CONTRAT DE PRESTATION DE SERVICE</div>'+
+    '<div class="pb-ctr-ref">Réf. '+ref+' &nbsp;·&nbsp; '+dateStr+'</div>'+
+
+    '<div class="pb-ctr-section">'+
+    '<div class="pb-ctr-sh">Parties</div>'+
+    '<div class="pb-ctr-party"><strong style="color:#FFD700;">Prestataire</strong><br>'+(partner.prenom||'')+' '+(partner.nom||'')+'<br><span style="color:#555;font-size:10px;">'+ptLabel+'</span></div>'+
+    '<div class="pb-ctr-party"><strong style="color:#FFD700;">Client</strong><br>'+(client.prenom||'')+' '+(client.nom||'')+'<br><span style="color:#555;font-size:10px;">'+client.email+'</span></div>'+
+    '</div>'+
+
+    '<div class="pb-ctr-section">'+
+    '<div class="pb-ctr-sh">Objet de la prestation</div>'+
+    '<div class="pb-ctr-party"><strong style="color:#fff;">'+service.label+'</strong>'+
+    (service.description?'<br><span style="color:#888;font-size:10px;">'+service.description+'</span>':'')+
+    '<br><span style="color:#FFD700;font-weight:700;">'+priceStr+'</span>'+
+    (service.duration?' &nbsp;·&nbsp; <span style="color:#555;font-size:10px;">'+service.duration+'</span>':'')+
+    '</div></div>'+
+
+    '<div class="pb-ctr-section">'+
+    '<div class="pb-ctr-sh">Engagements du prestataire</div>'+cHtml+'</div>'+
+
+    '<div class="pb-ctr-section">'+
+    '<div class="pb-ctr-sh">Engagements du client</div>'+
+    '<div class="pb-ctr-c">Fournir toutes les informations et éléments nécessaires à la réalisation de la prestation</div>'+
+    '<div class="pb-ctr-c">Verser l\'acompte de <strong style="color:#FFD700;">'+depositEur+'</strong> à la commande, puis le solde de <strong style="color:#FFD700;">'+balEur+'</strong> après livraison</div>'+
+    '<div class="pb-ctr-c">Valider la livraison ou formuler des retours précis dans un délai de 7 jours calendaires</div>'+
+    '<div class="pb-ctr-c">Respecter la propriété intellectuelle du prestataire avant règlement intégral du solde</div>'+
+    '</div>'+
+
+    '<div class="pb-ctr-section">'+
+    '<div class="pb-ctr-sh">Paiement sécurisé — GENESIS SAFE™</div>'+
+    '<div style="font-size:11px;color:#aaa;line-height:1.7;">L\'acompte de <strong style="color:#FFD700;">'+depositEur+'</strong> est versé à la signature. Le solde est retenu par FA GENESIS et débloqué au prestataire uniquement après confirmation de livraison par le client. En cas de litige, FA GENESIS intervient comme médiateur neutre.</div>'+
+    '</div>'+
+
+    '<div style="border-top:1px solid #181818;padding-top:10px;font-size:10px;color:#444;line-height:1.6;">'+
+    'Ce contrat est conclu conformément au droit français et aux CGU de FA GENESIS. La signature électronique ci-dessous a valeur juridique conformément au règlement eIDAS (UE) n°910/2014. Tout litige sera soumis à la juridiction compétente du lieu du prestataire.'+
+    '</div>';
+
+  var body=document.getElementById('pb-ctr-body'); if(body) body.innerHTML=html;
+  // Stocker la ref pour l'envoi serveur
+  if(body) body.dataset.ref=ref;
+  // Reset champs signature
+  var si=document.getElementById('pb-sign-input'); if(si) si.value='';
+  var sc=document.getElementById('pb-sign-check'); if(sc) sc.checked=false;
+  var se=document.getElementById('pb-sign-err'); if(se){se.style.display='none';se.textContent='';}
+  var sb=document.getElementById('pb-sign-btn'); if(sb){sb.disabled=false;sb.innerHTML='<i class="fa-solid fa-pen-nib" style="margin-right:6px;"></i>SIGNER ET PAYER →';}
+  var cs=document.getElementById('pb-contract-screen'); if(cs) cs.style.display='block';
+}
+
+function _pbSignAndProceed(){
+  var si=document.getElementById('pb-sign-input');
+  var sc=document.getElementById('pb-sign-check');
+  var se=document.getElementById('pb-sign-err');
+  var sb=document.getElementById('pb-sign-btn');
+  var name=(si&&si.value||'').trim();
+  if(!name){if(se){se.textContent='Merci de saisir votre prénom et nom.';se.style.display='block';} return;}
+  if(!sc||!sc.checked){if(se){se.textContent='Merci de cocher la case pour accepter le contrat.';se.style.display='block';} return;}
+  if(se) se.style.display='none';
+  if(sb){sb.disabled=true;sb.textContent='Enregistrement…';}
+
+  var body=document.getElementById('pb-ctr-body');
+  var ref=(body&&body.dataset.ref)||('FA-CONT-'+Date.now());
+
+  fetch((window.FA_GENESIS_API||API)+'/api/contracts/sign',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+(USER&&USER._token||'')},
+    body:JSON.stringify({
+      contractRef:ref,
+      partnerId:_pbPartner.id,
+      partnerName:(_pbPartner.prenom||'')+' '+(_pbPartner.nom||''),
+      serviceLabel:_pbService.label,
+      servicePrice:parseFloat(_pbService.price||_pbService.priceNum||0),
+      depositAmount:_pbDepositAmount||0,
+      signatureName:name
+    })
+  }).then(function(r){return r.json();}).then(function(res){
+    if(!res.ok) throw new Error(res.error||'Erreur enregistrement contrat');
+    _pbContractId = res.contractId;
+    // Masquer contrat, afficher paiement
+    var cs=document.getElementById('pb-contract-screen'); if(cs) cs.style.display='none';
+    var fm=document.getElementById('pb-form'); if(fm) fm.style.display='block';
+  }).catch(function(err){
+    if(sb){sb.disabled=false;sb.innerHTML='<i class="fa-solid fa-pen-nib" style="margin-right:6px;"></i>SIGNER ET PAYER →';}
+    if(se){se.textContent=err.message||'Erreur. Réessayez.';se.style.display='block';}
+  });
+}
+// ── FIN CONTRAT ──────────────────────────────────────────────────────────────
 
 function _pbSetInstallments(n, total){
   _pbSelectedInstallments = n;
@@ -11750,6 +11896,7 @@ var _stripePaymentEl = null; // Payment Element
 var _pbStripeIntentId = null;
 var _pbSelectedInstallments = 1; // Nombre de mensualités sélectionné dans pb-sheet
 var _pbExistingOrderId = null;   // Si set, l'ordre existe déjà (Projet GENESIS) — on saute la création
+var _pbContractId = null;        // ID du contrat signé (rempli après signature)
 
 function _pbGetClientTypeMax(){
   var _oid = (USER && (USER.activeOfferId||USER.offre||'')).toLowerCase();
@@ -12871,6 +13018,27 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
           <button class="cwb-btn cwb-btn-yellow" id="pbr-send-btn" onclick="sendPartnerRequest()">ENVOYER LA DEMANDE</button>
         </div>
       </div>
+      <!-- ── Écran contrat (avant paiement) ── -->
+      <div id="pb-contract-screen" style="display:none;">
+        <div class="pb-ctr-doc" id="pb-ctr-body"></div>
+        <div class="pb-sign-wrap">
+          <div class="pb-sign-lbl"><i class="fa-solid fa-file-signature" style="margin-right:6px;"></i>Signature électronique</div>
+          <div class="pb-sign-hint">Tapez votre prénom et nom pour signer</div>
+          <input class="ptnr-input" id="pb-sign-input" type="text" placeholder="Prénom Nom" autocomplete="name" style="margin-bottom:8px;">
+          <label class="pb-sign-chk" for="pb-sign-check">
+            <input type="checkbox" id="pb-sign-check">
+            J'ai lu et j'accepte l'ensemble des termes du contrat ci-dessus
+          </label>
+          <div id="pb-sign-err" style="display:none;background:#1a0000;border:1px solid #3a0000;border-radius:8px;padding:8px 12px;color:#ff7070;font-size:11px;margin-bottom:8px;"></div>
+          <div class="cwb-actions" style="grid-template-columns:1fr;margin-bottom:6px;">
+            <button class="cwb-btn cwb-btn-yellow" id="pb-sign-btn" onclick="_pbSignAndProceed()">
+              <i class="fa-solid fa-pen-nib" style="margin-right:6px;"></i>SIGNER ET PAYER →
+            </button>
+          </div>
+          <div style="font-size:10px;color:#333;text-align:center;line-height:1.5;">Signature électronique valide · Règlement eIDAS (UE) n°910/2014</div>
+        </div>
+      </div>
+
       <div id="pb-form">
         <!-- Sélecteur paiement en plusieurs fois (affiché si service le permet) -->
         <div id="pb-installments-row" style="display:none;margin-bottom:12px;">

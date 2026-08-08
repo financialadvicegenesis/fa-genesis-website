@@ -73,6 +73,7 @@ const PROSPECTS_FILE = path.join(__dirname, 'data', 'prospects.json');
 const CAMPAGNES_FILE = path.join(__dirname, 'data', 'campagnes.json');
 const SCHEDULED_NOTIFS_FILE = path.join(__dirname, 'data', 'scheduled_notifs.json');
 const GENESIS_PROJECTS_FILE = path.join(__dirname, 'data', 'genesis_projects.json');
+const CONTRACTS_FILE = path.join(__dirname, 'data', 'contracts.json');
 
 // Catégories de partenaires marketplace (source unique, partagée par inscription + admin)
 const PARTNER_TYPES = [
@@ -1519,6 +1520,16 @@ function saveOrders(orders) {
     } catch (error) {
         console.error('Erreur sauvegarde orders:', error);
     }
+}
+
+function loadContracts() {
+    try { if (fs.existsSync(CONTRACTS_FILE)) return JSON.parse(fs.readFileSync(CONTRACTS_FILE, 'utf8')); }
+    catch(e) { console.error('Erreur lecture contracts:', e); }
+    return [];
+}
+function saveContracts(contracts) {
+    try { fs.writeFileSync(CONTRACTS_FILE, JSON.stringify(contracts, null, 2), 'utf8'); }
+    catch(e) { console.error('Erreur sauvegarde contracts:', e); }
 }
 
 function loadBlockedDates() {
@@ -3808,6 +3819,48 @@ app.post('/api/payments/order/stripe-direct', async function(req, res) {
     } catch(error) {
         console.error('[STRIPE ORDER DIRECT] Erreur:', error.message);
         res.status(500).json({ error: error.message || 'Erreur création paiement' });
+    }
+});
+
+/**
+ * POST /api/contracts/sign
+ * Enregistre la signature électronique d'un contrat de prestation
+ */
+app.post('/api/contracts/sign', function(req, res) {
+    try {
+        var token = (req.headers.authorization || '').replace('Bearer ', '').trim();
+        if (!token) return res.status(401).json({ error: 'Token requis' });
+        var payload;
+        try { payload = _jwt.verify(token, _JWT_SECRET); }
+        catch(e) { return res.status(401).json({ error: 'Token invalide' }); }
+
+        var b = req.body || {};
+        if (!b.contractRef || !b.partnerId || !b.serviceLabel || !b.signatureName) {
+            return res.status(400).json({ error: 'Champs requis manquants' });
+        }
+
+        var contracts = loadContracts();
+        var contractId = 'CTR-' + Date.now() + '-' + Math.random().toString(36).substr(2,5).toUpperCase();
+        contracts.push({
+            id:            contractId,
+            ref:           b.contractRef,
+            signedAt:      new Date().toISOString(),
+            clientEmail:   payload.email,
+            clientName:    b.signatureName,
+            partnerId:     b.partnerId,
+            partnerName:   b.partnerName || '',
+            serviceLabel:  b.serviceLabel,
+            servicePrice:  parseFloat(b.servicePrice) || 0,
+            depositAmount: parseFloat(b.depositAmount) || 0,
+            signatureName: b.signatureName
+        });
+        saveContracts(contracts);
+
+        console.log('[CONTRACT] Signé:', contractId, payload.email, b.serviceLabel);
+        res.json({ ok: true, contractId: contractId });
+    } catch(e) {
+        console.error('[CONTRACT] Erreur:', e.message);
+        res.status(500).json({ error: e.message || 'Erreur enregistrement contrat' });
     }
 });
 
