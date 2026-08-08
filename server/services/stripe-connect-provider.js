@@ -139,6 +139,21 @@ class StripeConnectProvider extends PaymentProvider {
         return await getStripe().paymentIntents.list(params || { limit: 100 });
     }
 
+    // Crée un PaymentIntent direct (sans Connect) pour le panier FA GENESIS.
+    async createDirectPaymentIntent(data) {
+        var s = getStripe();
+        var amountCents = Math.round(parseFloat(data.amountEuros) * 100);
+        var params = {
+            amount: amountCents,
+            currency: data.currency || 'eur',
+            metadata: data.metadata || {},
+            automatic_payment_methods: { enabled: true }
+        };
+        if (data.description)  params.description   = data.description;
+        if (data.receiptEmail) params.receipt_email  = data.receiptEmail;
+        return await s.paymentIntents.create(params);
+    }
+
     // Vérifie la signature webhook Stripe et retourne l'événement.
     constructWebhookEvent(rawBody, signature, secret) {
         return getStripe().webhooks.constructEvent(rawBody, signature, secret);

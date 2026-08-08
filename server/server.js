@@ -3710,40 +3710,44 @@ app.post('/api/payments/sumup/create-checkout', async (req, res) => {
 });
 
 /**
- * POST /api/payments/cart/checkout
- * Créer un checkout SumUp directement depuis le panier de l'application
+ * POST /api/payments/cart/stripe-intent
+ * Crée un PaymentIntent Stripe direct pour le panier FA GENESIS (sans Connect)
  */
-app.post('/api/payments/cart/checkout', async (req, res) => {
+app.post('/api/payments/cart/stripe-intent', async function(req, res) {
     try {
-        const { items, total, currency } = req.body;
-        if (!items || !Array.isArray(items) || items.length === 0) {
-            return res.status(400).json({ error: 'Panier vide' });
-        }
-        const amount = parseFloat(total);
+        var token = (req.headers.authorization || '').replace('Bearer ', '').trim();
+        if (!token) return res.status(401).json({ error: 'Token requis' });
+        var jwt = require('jsonwebtoken');
+        var payload;
+        try { payload = jwt.verify(token, process.env.JWT_SECRET); }
+        catch(e) { return res.status(401).json({ error: 'Token invalide' }); }
+
+        var b = req.body || {};
+        var items = b.items || [];
+        var amount = parseFloat(b.total);
         if (!amount || isNaN(amount) || amount <= 0) {
             return res.status(400).json({ error: 'Montant invalide' });
         }
 
-        const checkoutRef = 'APP-CART-' + Date.now() + '-' + Math.random().toString(36).substr(2, 6).toUpperCase();
-        const description = ('FA GENESIS - ' + items.map(function(i) { return i.name; }).join(', ')).substring(0, 100);
+        var description = ('FA GENESIS — ' + items.map(function(i){ return i.name; }).join(', ')).substring(0, 250);
 
-        const checkoutData = {
-            checkout_reference: checkoutRef,
-            amount: parseFloat(amount.toFixed(2)),
-            currency: currency || 'EUR',
-            description: description
-        };
-        if (process.env.SUMUP_PAY_TO_EMAIL) {
-            checkoutData.pay_to_email = process.env.SUMUP_PAY_TO_EMAIL;
-        }
+        var scp = require('./services/stripe-connect-provider');
+        var pi = await scp.createDirectPaymentIntent({
+            amountEuros: amount,
+            currency: 'eur',
+            description: description,
+            receiptEmail: payload.email || undefined,
+            metadata: {
+                user_email: payload.email || '',
+                items_count: String(items.length)
+            }
+        });
 
-        console.log('[SUMUP CART] Création checkout:', checkoutRef, amount + ' EUR');
-        const checkoutResponse = await callSumUpAPI('/checkouts', 'POST', checkoutData);
-
-        res.json({ success: true, checkout_id: checkoutResponse.id, amount: amount });
-    } catch (error) {
-        console.error('[SUMUP CART] Erreur:', error.message);
-        res.status(500).json({ error: 'Erreur lors de la création du paiement', details: error.message });
+        console.log('[STRIPE CART] PaymentIntent créé:', pi.id, amount + ' EUR', payload.email);
+        res.json({ ok: true, clientSecret: pi.client_secret, paymentIntentId: pi.id });
+    } catch(error) {
+        console.error('[STRIPE CART] Erreur:', error.message);
+        res.status(500).json({ error: error.message || 'Erreur création paiement' });
     }
 });
 

@@ -9895,19 +9895,18 @@ function _checkoutGenesisProject(ptnrItems){
 }
 
 // ── PAYMENT OVERLAY ──────────────────────────────────────────
-var _payCheckoutId = null;
-var _payCheckoutWaiters = [];
 var _payCartSnap = [];
 var _payTotal = 0;
 var _payInstallments = 1;
 var _payInstallmentAmount = 0;
+var _stripeCartInstance = null;
+var _stripeCartElements = null;
 
 function openPayOverlay(total, cartItems){
   var overlay = document.getElementById('pay-overlay');
   var sheet = document.getElementById('pay-sheet');
   if(!overlay || !sheet) return;
 
-  _payCheckoutId = null; _payCheckoutWaiters = [];
   _payReferralDiscountUsed = false;
   _payCartSnap = cartItems; _payTotal = total;
 
@@ -9960,9 +9959,6 @@ function openPayOverlay(total, cartItems){
 
   // Toujours afficher le plan screen d'abord
   if(ps) ps.style.display = '';
-
-  // Pré-créer le checkout SumUp en arrière-plan pour le montant de l'acompte
-  _createCartCheckout(deposit);
 
   overlay.classList.add('open'); void overlay.offsetHeight;
   setTimeout(function(){ sheet.classList.add('up'); }, 20);
@@ -10017,65 +10013,37 @@ function _proceedToPayment(){
   if(ms) ms.style.display = '';
 }
 
-function _createCartCheckout(amount){
-  _payCheckoutId = null; _payCheckoutWaiters = [];
+function _createCartStripeIntent(amount){
   var token = USER ? USER._token : (localStorage.getItem('fa_genesis_token') || '');
   var itemsPayload = _payCartSnap.map(function(item){ return {name: item.name, priceNum: item.priceNum}; });
-  fetch((window.FA_GENESIS_API || API) + '/api/payments/cart/checkout', {
+  return fetch((window.FA_GENESIS_API || API) + '/api/payments/cart/stripe-intent', {
     method: 'POST',
     headers: {'Content-Type':'application/json', 'Authorization':'Bearer ' + token},
-    body: JSON.stringify({
-      items: itemsPayload,
-      total: amount,
-      currency: 'EUR',
-      installments: _payInstallments,
-      totalAmount: _payTotal
-    })
-  }).then(function(r){
-    var st = r.status;
-    return r.text().then(function(txt){
-      try { return JSON.parse(txt); }
-      catch(e){ throw new Error('Erreur serveur (' + st + '). Réessayez.'); }
-    });
-  }).then(function(res){
-    var cid = res.checkout_id ? res.checkout_id : ('ERROR:' + (res.details || res.error || 'Erreur de création'));
-    _payCheckoutId = cid;
-    _payCheckoutWaiters.forEach(function(fn){ fn(cid); }); _payCheckoutWaiters = [];
-  }).catch(function(e){
-    var cid = 'ERROR:' + (e.message || 'Erreur de connexion');
-    _payCheckoutId = cid;
-    _payCheckoutWaiters.forEach(function(fn){ fn(cid); }); _payCheckoutWaiters = [];
+    body: JSON.stringify({ items: itemsPayload, total: amount, currency: 'eur' })
+  }).then(function(r){ return r.json(); }).then(function(res){
+    if(!res.clientSecret) throw new Error(res.error || 'Erreur paiement');
+    return res.clientSecret;
   });
 }
 
-function _selectPayMethod(method){
-  // Apple Pay: start native session IMMEDIATELY (user gesture requirement — no async allowed before begin())
-  if(method === 'apple' && window.ApplePaySession){
-    _startNativeApplePay(_payInstallmentAmount || _payTotal);
-    return;
-  }
-
-  // PayPal
-  if(method === 'paypal'){
-    _showPayPalScreen();
-    return;
-  }
-
+function _startCartStripeFlow(){
   var ms = document.getElementById('pay-screen-methods');
   var ws = document.getElementById('pay-screen-widget');
   var ldEl = document.getElementById('pay-loading');
-  var wc = document.getElementById('sumup-widget-container');
+  var sc = document.getElementById('stripe-cart-container');
   var errEl = document.getElementById('pay-error-msg');
   if(ms) ms.style.display = 'none'; if(ws) ws.style.display = '';
-  if(ldEl) ldEl.style.display = ''; if(wc){ wc.style.display = 'none'; wc.innerHTML = ''; }
+  if(ldEl) ldEl.style.display = ''; if(sc) sc.style.display = 'none';
   if(errEl) errEl.style.display = 'none';
+  _stripeCartInstance = null; _stripeCartElements = null;
+  var amount = _payInstallmentAmount || _payTotal;
+  _createCartStripeIntent(amount).then(function(cs){ _mountCartStripeElements(cs); }).catch(function(e){ _showPayError(e.message || 'Erreur de création du paiement'); });
+}
 
-  function onReady(cid){
-    if(cid.indexOf('ERROR:') === 0){ _showPayError(cid.slice(6)); return; }
-    _mountSumUpWidget(cid);
-  }
-  if(_payCheckoutId !== null){ onReady(_payCheckoutId); }
-  else { _payCheckoutWaiters.push(onReady); }
+function _selectPayMethod(method){
+  if(method === 'paypal'){ _showPayPalScreen(); return; }
+  // Carte bancaire, Apple Pay, Google Pay → Stripe (Payment Element gère les wallets nativement)
+  _startCartStripeFlow();
 }
 
 function _payGoBack(){
@@ -10086,9 +10054,10 @@ function _payGoBack(){
   var succ = document.getElementById('pay-success');
   if(succ && succ.style.display !== 'none'){ closePayOverlay(); return; }
   if(ws && ws.style.display !== 'none'){
-    var wc = document.getElementById('sumup-widget-container');
+    var sc = document.getElementById('stripe-cart-container');
     var errEl = document.getElementById('pay-error-msg');
-    if(wc){ wc.style.display = 'none'; wc.innerHTML = ''; }
+    if(sc) sc.style.display = 'none';
+    _stripeCartInstance = null; _stripeCartElements = null;
     if(errEl) errEl.style.display = 'none';
     ws.style.display = 'none';
     if(ms) ms.style.display = ''; return;
@@ -10105,134 +10074,70 @@ function _payGoBack(){
   closePayOverlay();
 }
 
-function _startNativeApplePay(total){
-  var request = {
-    countryCode: 'FR',
-    currencyCode: 'EUR',
-    supportedNetworks: ['visa', 'masterCard', 'amex', 'maestro'],
-    merchantCapabilities: ['supports3DS'],
-    total: { label: 'FA GENESIS', amount: total.toFixed(2), type: 'final' }
-  };
-  var session;
-  try { session = new ApplePaySession(3, request); }
-  catch(e){
-    // Fallback to SumUp widget (domain not registered for Apple Pay)
-    var ms2 = document.getElementById('pay-screen-methods');
-    var ws2 = document.getElementById('pay-screen-widget');
-    var ldEl2 = document.getElementById('pay-loading');
-    var wc2 = document.getElementById('sumup-widget-container');
-    var errEl2 = document.getElementById('pay-error-msg');
-    if(ms2) ms2.style.display = 'none'; if(ws2) ws2.style.display = '';
-    if(ldEl2) ldEl2.style.display = ''; if(wc2){ wc2.style.display = 'none'; wc2.innerHTML = ''; }
-    if(errEl2) errEl2.style.display = 'none';
-    if(_payCheckoutId !== null){ if(_payCheckoutId.indexOf('ERROR:') === 0){ _showPayError(_payCheckoutId.slice(6)); } else { _mountSumUpWidget(_payCheckoutId); } }
-    else { _payCheckoutWaiters.push(function(cid){ if(cid.indexOf('ERROR:') === 0){ _showPayError(cid.slice(6)); } else { _mountSumUpWidget(cid); } }); }
-    return;
+// Apple Pay natif retiré — Stripe Payment Element gère Apple Pay en natif sur les appareils compatibles.
+
+function _mountCartStripeElements(clientSecret){
+  var ldEl = document.getElementById('pay-loading');
+  var sc = document.getElementById('stripe-cart-container');
+  if(!sc) return;
+
+  function doMount(pubKey){
+    try{
+      _stripeCartInstance = Stripe(pubKey);
+      _stripeCartElements = _stripeCartInstance.elements({
+        clientSecret: clientSecret,
+        appearance: { theme: 'night', labels: 'floating', variables: { colorPrimary: '#FFD700', fontFamily: 'system-ui,sans-serif', borderRadius: '10px' } }
+      });
+      var payEl = _stripeCartElements.create('payment', { layout: 'tabs' });
+      payEl.mount('#stripe-cart-payment-el');
+      payEl.on('ready', function(){
+        if(ldEl) ldEl.style.display = 'none';
+        var btn = document.getElementById('stripe-cart-pay-btn');
+        var amtLabel = (_payInstallmentAmount > 0 ? _payInstallmentAmount : _payTotal).toFixed(2);
+        if(btn) btn.textContent = 'PAYER L\'ACOMPTE ' + amtLabel + ' € →';
+        sc.style.display = '';
+      });
+    } catch(e){ _showPayError('Erreur chargement paiement : ' + e.message); }
   }
 
-  session.onvalidatemerchant = function(event){
-    var authToken = USER ? USER._token : (localStorage.getItem('fa_genesis_token') || '');
-    fetch((window.FA_GENESIS_API || API) + '/api/payments/apple-pay/validate', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json', 'Authorization':'Bearer ' + authToken},
-      body: JSON.stringify({validationURL: event.validationURL})
-    }).then(function(r){ return r.json(); }).then(function(ms){
-      session.completeMerchantValidation(ms);
-    }).catch(function(err){
-      session.abort();
-      _showPayError('Validation marchande Apple Pay échouée. Vérifiez votre connexion.');
-    });
-  };
+  function withPubKey(pk){ if(window.Stripe){ doMount(pk); } else { var s=document.createElement('script'); s.src='https://js.stripe.com/v3/'; s.onload=function(){ doMount(pk); }; s.onerror=function(){ _showPayError('Impossible de charger Stripe.'); }; document.head.appendChild(s); } }
 
-  session.onpaymentauthorized = function(event){
-    var payToken = event.payment.token;
-    function completeWithCheckout(cid){
-      if(cid.indexOf('ERROR:') === 0){
-        session.completePayment(ApplePaySession.STATUS_FAILURE);
-        _showPayError(cid.slice(6)); return;
-      }
-      var authToken2 = USER ? USER._token : (localStorage.getItem('fa_genesis_token') || '');
-      fetch((window.FA_GENESIS_API || API) + '/api/payments/apple-pay/complete', {
-        method: 'POST',
-        headers: {'Content-Type':'application/json', 'Authorization':'Bearer ' + authToken2},
-        body: JSON.stringify({checkoutId: cid, paymentToken: payToken})
-      }).then(function(r){ return r.text().then(function(txt){ try{ return JSON.parse(txt); }catch(e){ throw new Error('Erreur serveur'); } }); }).then(function(res){
-        session.completePayment(res.success ? ApplePaySession.STATUS_SUCCESS : ApplePaySession.STATUS_FAILURE);
-        if(res.success){
-          APP_CART = []; _saveCart();
-          var ws3 = document.getElementById('pay-screen-widget'); if(ws3) ws3.style.display = 'none';
-          var succ3 = document.getElementById('pay-success'); if(succ3) succ3.style.display = '';
-          launchConfetti(); showToast('Paiement réussi !', 'Votre commande est confirmée', 'success');
-          setTimeout(function(){ showToast('+20 QG', 'Mission lancée !', 'success'); }, 1600);
-          if(_payReferralDiscountUsed){ _payReferralDiscountUsed=false; fetch((window.FA_GENESIS_API||API)+'/api/auth/referral-discount/mark-used',{method:'POST',headers:{'Authorization':'Bearer '+(USER&&USER._token?USER._token:'')}}).catch(function(){}); }
-        } else {
-          _showPayError(res.error || 'Paiement Apple Pay refusé.');
-        }
-      }).catch(function(){
-        session.completePayment(ApplePaySession.STATUS_FAILURE);
-        _showPayError('Erreur de connexion pendant le paiement Apple Pay.');
-      });
-    }
-    if(_payCheckoutId !== null){ completeWithCheckout(_payCheckoutId); }
-    else { _payCheckoutWaiters.push(completeWithCheckout); }
-  };
-
-  session.oncancel = function(){ _payGoBack(); };
-
-  try { session.begin(); }
-  catch(e){
-    // Domain not verified for Apple Pay — fallback to SumUp widget
-    var ms3 = document.getElementById('pay-screen-methods');
-    var ws3b = document.getElementById('pay-screen-widget');
-    var ldEl3 = document.getElementById('pay-loading');
-    var wc3 = document.getElementById('sumup-widget-container');
-    var errEl3 = document.getElementById('pay-error-msg');
-    if(ms3) ms3.style.display = 'none'; if(ws3b) ws3b.style.display = '';
-    if(ldEl3) ldEl3.style.display = ''; if(wc3){ wc3.style.display = 'none'; wc3.innerHTML = ''; }
-    if(errEl3) errEl3.style.display = 'none';
-    if(_payCheckoutId !== null){ if(_payCheckoutId.indexOf('ERROR:') === 0){ _showPayError(_payCheckoutId.slice(6)); } else { _mountSumUpWidget(_payCheckoutId); } }
-    else { _payCheckoutWaiters.push(function(cid){ if(cid.indexOf('ERROR:') === 0){ _showPayError(cid.slice(6)); } else { _mountSumUpWidget(cid); } }); }
+  if(window._stripePublishableKey){ withPubKey(window._stripePublishableKey); }
+  else {
+    fetch((window.FA_GENESIS_API||API)+'/api/payments/stripe/config')
+    .then(function(r){ return r.json(); })
+    .then(function(d){ if(!d.publishableKey) throw new Error('Clé Stripe non configurée'); window._stripePublishableKey=d.publishableKey; withPubKey(d.publishableKey); })
+    .catch(function(e){ _showPayError(e.message||'Stripe non disponible'); });
   }
 }
 
-function _mountSumUpWidget(checkoutId){
-  var ldEl = document.getElementById('pay-loading'); if(ldEl) ldEl.style.display = 'none';
-  var container = document.getElementById('sumup-widget-container'); if(!container) return;
-  container.style.display = ''; container.innerHTML = '<div id="sumup-card-div"></div>';
-  function doMount(){
-    try {
-      SumUpCard.mount({
-        id: 'sumup-card-div', checkoutId: checkoutId, locale: 'fr-FR', showSubmitButton: true,
-        onResponse: function(type, body){
-          if(type === 'success'){
-            APP_CART = []; _saveCart();
-            var wc = document.getElementById('sumup-widget-container'); if(wc) wc.style.display = 'none';
-            var ws = document.getElementById('pay-screen-widget'); if(ws) ws.style.display = 'none';
-            var succ = document.getElementById('pay-success'); if(succ) succ.style.display = '';
-            launchConfetti(); showToast('Paiement réussi !', 'Votre commande est confirmée', 'success');
-            setTimeout(function(){ showToast('+20 QG', 'Mission lancée !', 'success'); }, 1600);
-            if(_payReferralDiscountUsed){ _payReferralDiscountUsed=false; fetch((window.FA_GENESIS_API||API)+'/api/auth/referral-discount/mark-used',{method:'POST',headers:{'Authorization':'Bearer '+(USER&&USER._token?USER._token:'')}}).catch(function(){}); }
-          } else if(type === 'error'){
-            var msg = body && (body.message || body.error) ? (body.message || body.error) : 'Paiement refusé. Vérifiez vos informations.';
-            _showPayError(msg);
-          }
-        }
-      });
-    } catch(e){ _showPayError('Erreur module de paiement : ' + e.message); }
-  }
-  if(typeof SumUpCard !== 'undefined'){ doMount(); }
-  else {
-    var script = document.createElement('script');
-    script.src = 'https://gateway.sumup.com/gateway/ecom/card/v2/sdk.js';
-    script.onload = doMount;
-    script.onerror = function(){ _showPayError('Impossible de charger le module de paiement.'); };
-    document.head.appendChild(script);
-  }
+function _cartConfirmStripePayment(){
+  if(!_stripeCartElements||!_stripeCartInstance) return;
+  var btn = document.getElementById('stripe-cart-pay-btn');
+  if(btn){ btn.disabled=true; btn.textContent='Traitement…'; }
+  _stripeCartInstance.confirmPayment({ elements: _stripeCartElements, redirect: 'if_required', confirmParams: { return_url: window.location.href } })
+  .then(function(result){
+    if(result.error){
+      if(btn){ btn.disabled=false; var al=(_payInstallmentAmount>0?_payInstallmentAmount:_payTotal).toFixed(2); btn.textContent='PAYER L\'ACOMPTE '+al+' € →'; }
+      _showPayError(result.error.message);
+    } else {
+      APP_CART=[]; _saveCart();
+      var sc=document.getElementById('stripe-cart-container'); if(sc) sc.style.display='none';
+      var ws=document.getElementById('pay-screen-widget'); if(ws) ws.style.display='none';
+      var succ=document.getElementById('pay-success'); if(succ) succ.style.display='';
+      launchConfetti(); showToast('Paiement réussi !','Votre commande est confirmée','success');
+      setTimeout(function(){ showToast('+20 QG','Mission lancée !','success'); },1600);
+      if(_payReferralDiscountUsed){ _payReferralDiscountUsed=false; fetch((window.FA_GENESIS_API||API)+'/api/auth/referral-discount/mark-used',{method:'POST',headers:{'Authorization':'Bearer '+(USER&&USER._token?USER._token:'')}}).catch(function(){}); }
+    }
+  }).catch(function(e){
+    if(btn){ btn.disabled=false; btn.textContent='PAYER →'; }
+    _showPayError('Erreur : '+(e.message||'Réessayez.'));
+  });
 }
 
 function _showPayError(msg){
   var ldEl = document.getElementById('pay-loading'); if(ldEl) ldEl.style.display = 'none';
-  var wc = document.getElementById('sumup-widget-container'); if(wc) wc.style.display = 'none';
+  var sc = document.getElementById('stripe-cart-container'); if(sc) sc.style.display = 'none';
   var ws = document.getElementById('pay-screen-widget'); if(ws) ws.style.display = '';
   var errEl = document.getElementById('pay-error-msg');
   var errTxt = document.getElementById('pay-error-text');
@@ -12878,7 +12783,7 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;flex-shrink:0;">
             <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
           </svg>
-          Paiement 100&nbsp;% sécurisé · SumUp &amp; PayPal
+          Paiement 100&nbsp;% sécurisé · Stripe &amp; PayPal
         </div>
       </div>
 
@@ -12896,13 +12801,16 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
         <div id="pay-paypal-error" style="display:none;margin:0 16px 16px;background:#160000;border:1px solid #5a1111;border-radius:12px;padding:14px;color:#ff7777;font-size:13px;line-height:1.6;"></div>
       </div>
 
-      <!-- Screen 2 : widget SumUp -->
+      <!-- Screen 2 : Stripe carte bancaire -->
       <div id="pay-screen-widget" style="display:none;">
         <div id="pay-loading" style="text-align:center;padding:44px 20px;color:#888;font-size:14px;">
           <div class="pay-spinner"></div>
           <p style="margin-top:18px;font-size:13px;">Initialisation du paiement&hellip;</p>
         </div>
-        <div id="sumup-widget-container" style="display:none;padding-bottom:28px;"></div>
+        <div id="stripe-cart-container" style="display:none;padding:0 16px 28px;">
+          <div id="stripe-cart-payment-el" style="margin-bottom:16px;"></div>
+          <button id="stripe-cart-pay-btn" onclick="_cartConfirmStripePayment()" style="width:100%;background:#FFD700;color:#000;border:none;border-radius:10px;padding:15px;font-family:'Unbounded',cursive;font-size:11px;font-weight:900;cursor:pointer;letter-spacing:1px;">PAYER →</button>
+        </div>
         <div id="pay-error-msg" class="pay-error-box" style="display:none;">
           <div id="pay-error-text"></div>
           <button class="pay-retry-btn" onclick="_payGoBack()">&#8592; Choisir un autre moyen</button>
