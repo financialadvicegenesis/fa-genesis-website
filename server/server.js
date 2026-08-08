@@ -3840,19 +3840,28 @@ app.post('/api/contracts/sign', function(req, res) {
         }
 
         var contracts = loadContracts();
+        var now = new Date().toISOString();
         var contractId = 'CTR-' + Date.now() + '-' + Math.random().toString(36).substr(2,5).toUpperCase();
         contracts.push({
-            id:            contractId,
-            ref:           b.contractRef,
-            signedAt:      new Date().toISOString(),
-            clientEmail:   payload.email,
-            clientName:    b.signatureName,
-            partnerId:     b.partnerId,
-            partnerName:   b.partnerName || '',
-            serviceLabel:  b.serviceLabel,
-            servicePrice:  parseFloat(b.servicePrice) || 0,
-            depositAmount: parseFloat(b.depositAmount) || 0,
-            signatureName: b.signatureName
+            id:               contractId,
+            ref:              b.contractRef,
+            type:             'service',
+            status:           'signed',
+            client_email:     payload.email,
+            client_name:      b.signatureName,
+            client_type:      'particulier',
+            partner_id:       b.partnerId,
+            partner_name:     b.partnerName || '',
+            partner_type:     b.partnerType || '',
+            service_name:     b.serviceLabel,
+            service_price:    parseFloat(b.servicePrice) || 0,
+            deposit_amount:   parseFloat(b.depositAmount) || 0,
+            signature_name:   b.signatureName,
+            signed_at:        now,
+            created_at:       now,
+            order_id:         null,
+            contract_version: 'v2-2026',
+            events:           [{ type: 'signed', at: now, detail: 'Signature client : ' + b.signatureName }]
         });
         saveContracts(contracts);
 
@@ -3861,6 +3870,29 @@ app.post('/api/contracts/sign', function(req, res) {
     } catch(e) {
         console.error('[CONTRACT] Erreur:', e.message);
         res.status(500).json({ error: e.message || 'Erreur enregistrement contrat' });
+    }
+});
+
+/**
+ * PATCH /api/contracts/:id/set-order
+ * Lie un contrat signé à une commande créée juste après
+ */
+app.patch('/api/contracts/:id/set-order', function(req, res) {
+    try {
+        var token = (req.headers.authorization || '').replace('Bearer ', '').trim();
+        if (!token) return res.status(401).json({ error: 'Token requis' });
+        var payload;
+        try { payload = _jwt.verify(token, _JWT_SECRET); }
+        catch(e) { return res.status(401).json({ error: 'Token invalide' }); }
+        var contracts = loadContracts();
+        var idx = contracts.findIndex(function(c) { return c.id === req.params.id && c.client_email === payload.email; });
+        if (idx === -1) return res.status(404).json({ error: 'Contrat introuvable' });
+        contracts[idx].order_id = req.body.orderId || null;
+        contracts[idx].updated_at = new Date().toISOString();
+        saveContracts(contracts);
+        res.json({ ok: true });
+    } catch(e) {
+        res.status(500).json({ error: e.message });
     }
 });
 
