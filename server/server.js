@@ -3752,6 +3752,68 @@ app.post('/api/payments/cart/stripe-intent', async function(req, res) {
 });
 
 /**
+ * POST /api/payments/order/stripe-direct
+ * Crée un PaymentIntent Stripe direct pour une commande (prestataire sans Stripe Connect)
+ */
+app.post('/api/payments/order/stripe-direct', async function(req, res) {
+    try {
+        var token = (req.headers.authorization || '').replace('Bearer ', '').trim();
+        if (!token) return res.status(401).json({ error: 'Token requis' });
+        var jwt = require('jsonwebtoken');
+        var payload;
+        try { payload = jwt.verify(token, process.env.JWT_SECRET); }
+        catch(e) { return res.status(401).json({ error: 'Token invalide' }); }
+
+        var b = req.body || {};
+        var orderId = b.orderId;
+        var stage   = b.stage || 'deposit';
+        if (!orderId) return res.status(400).json({ error: 'orderId requis' });
+
+        var order = getOrderById(orderId);
+        if (!order) return res.status(404).json({ error: 'Commande introuvable' });
+
+        // Résoudre le montant selon le stage (identique à la logique SumUp)
+        var amount, stageLabel;
+        var isInstallment = stage && stage.startsWith('installment_');
+        if (isInstallment) {
+            var instItem = (order.installments || []).find(function(it){ return it.stage === stage; });
+            if (!instItem) return res.status(400).json({ error: 'Versement introuvable : ' + stage });
+            if (instItem.paid) return res.status(400).json({ error: 'Ce versement est déjà réglé' });
+            amount = instItem.amount; stageLabel = instItem.label;
+        } else if (stage === 'balance') {
+            if (order.installments && order.installments.length > 0) {
+                var alreadyPaid = order.amount_paid || order.deposit_amount || 0;
+                amount = order.total_amount - alreadyPaid;
+                if (amount <= 0) return res.status(400).json({ error: 'Aucun solde restant' });
+            } else {
+                amount = order.balance_amount;
+            }
+            stageLabel = 'Solde restant';
+        } else {
+            if (order.deposit_paid) return res.status(400).json({ error: 'Acompte déjà payé' });
+            amount = order.deposit_amount;
+            stageLabel = 'Acompte';
+        }
+
+        var description = (b.description || ('FA GENESIS — ' + (order.product_name || 'Prestation') + ' (' + stageLabel + ')')).substring(0, 250);
+        var scp = require('./services/stripe-connect-provider');
+        var pi = await scp.createDirectPaymentIntent({
+            amountEuros: amount,
+            currency: 'eur',
+            description: description,
+            receiptEmail: payload.email || undefined,
+            metadata: { order_id: orderId, stage: stage, user_email: payload.email || '' }
+        });
+
+        console.log('[STRIPE ORDER DIRECT] PI:', pi.id, amount + ' EUR', orderId, stage);
+        res.json({ ok: true, clientSecret: pi.client_secret, paymentIntentId: pi.id });
+    } catch(error) {
+        console.error('[STRIPE ORDER DIRECT] Erreur:', error.message);
+        res.status(500).json({ error: error.message || 'Erreur création paiement' });
+    }
+});
+
+/**
  * ══════════════════════════════════════════════════════
  *  PAYPAL
  * ══════════════════════════════════════════════════════

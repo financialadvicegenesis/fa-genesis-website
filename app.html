@@ -11817,57 +11817,46 @@ function pbPayDeposit(){
   if(_pbSelectedPayMethod==='paypal'){ _pbPayDepositPayPal(); return; }
   var er=document.getElementById('pb-err'); if(er) er.classList.remove('on');
 
-  // ── Stripe Connect disponible pour ce partenaire → paiement Stripe ─────────
+  // Stripe Connect disponible → paiement Connect (commission FA GENESIS)
   if(_pbPartner.stripeAccountId && _pbPartner.stripeChargesEnabled){
     _pbPayDepositStripe(); return;
   }
 
-  // ── Fallback SumUp ─────────────────────────────────────────────────────────
-  var sb=document.getElementById('pb-pay-btn'); if(sb){sb.disabled=true;sb.textContent='Création de la commande...';}
-  var clientInfo = {
-    firstName: USER.prenom||USER.firstName||'',
-    lastName: USER.nom||USER.lastName||'',
-    email: USER.email||'',
-    phone: USER.telephone||USER.phone||'',
-    clientType: 'particulier'
-  };
-  // Commande Projet GENESIS existante → aller directement au checkout
-  if(_pbExistingOrderId){
-    fetch((window.FA_GENESIS_API||API)+'/api/payments/sumup/create-checkout',{
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({orderId:_pbExistingOrderId, stage:'deposit'})
-    }).then(function(r){ return r.json().then(function(d){ return {ok:r.ok, data:d}; }); })
-    .then(function(res){
-      if(!res.ok||!res.data||!res.data.checkout_id) throw new Error((res.data&&res.data.error)||'Erreur création paiement');
-      _pbMountWidget(res.data.checkout_id, _pbExistingOrderId);
-    }).catch(function(err){
-      if(sb){sb.disabled=false;sb.textContent='Réessayer le paiement';}
-      if(er){er.textContent=err.message||'Erreur. Réessayez.';er.classList.add('on');}
-    });
-    return;
+  // Stripe direct (prestataire sans Connect) — FA GENESIS collecte, redistribue manuellement
+  _pbPayDepositStripeDirect();
+}
+
+function _pbPayDepositStripeDirect(){
+  var er=document.getElementById('pb-err'); if(er) er.classList.remove('on');
+  var sb=document.getElementById('pb-pay-btn'); if(sb){sb.disabled=true;sb.textContent='Initialisation du paiement…';}
+  var clientInfo={firstName:USER.prenom||USER.firstName||'',lastName:USER.nom||USER.lastName||'',email:USER.email||'',phone:USER.telephone||USER.phone||'',clientType:'particulier'};
+  var useReferral=(USER&&(USER.welcomeDiscountEligible===true||(USER.referralDiscount&&!USER.referralDiscount.applied)))?true:false;
+
+  function _createDirectIntent(orderId){
+    return fetch((window.FA_GENESIS_API||API)+'/api/payments/order/stripe-direct',{
+      method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+USER._token},
+      body:JSON.stringify({ orderId:orderId, stage:'deposit', description:'FA GENESIS — '+(_pbService&&_pbService.label||'Prestation')+' (acompte)' })
+    }).then(function(r2){ return r2.json().then(function(d2){ return {ok:r2.ok,data:d2,orderId:orderId}; }); });
   }
-  var _pbUseReferral = (USER && (USER.welcomeDiscountEligible === true || (USER.referralDiscount && !USER.referralDiscount.applied))) ? true : false;
-  var _pbWelcomePct = (USER && USER.referralDiscount && USER.referralDiscount.pct) ? USER.referralDiscount.pct : 15;
-  var _pbDiscountLabel = _pbUseReferral ? ' · -' + _pbWelcomePct + '% bienvenue' : '';
-  var pbPayBtn2 = document.getElementById('pb-pay-btn');
-  if(pbPayBtn2 && _pbDiscountLabel) pbPayBtn2.textContent = 'PAYER (' + _pbDiscountLabel.trim() + ')';
-  fetch((window.FA_GENESIS_API||API)+'/api/orders/create',{
-    method:'POST',
-    headers:{'Content-Type':'application/json','Authorization':'Bearer '+USER._token},
-    body:JSON.stringify({ clientInfo: clientInfo, partnerServiceOrder:{ partnerId:_pbPartner.id, serviceId:_pbService.id, requestedInstallments: _pbSelectedInstallments||1 }, use_referral_discount: _pbUseReferral })
-  }).then(function(r){ return r.json().then(function(d){ return {ok:r.ok, data:d}; }); })
-  .then(function(res){
-    if(!res.ok || !res.data || !res.data.orderId) throw new Error((res.data&&res.data.error)||'Erreur création commande');
-    var orderId = res.data.orderId;
-    return fetch((window.FA_GENESIS_API||API)+'/api/payments/sumup/create-checkout',{
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({orderId:orderId, stage:'deposit'})
-    }).then(function(r2){ return r2.json().then(function(d2){ return {ok:r2.ok, data:d2, orderId:orderId}; }); });
-  }).then(function(res2){
-    if(!res2.ok || !res2.data || !res2.data.checkout_id) throw new Error((res2.data&&res2.data.error)||'Erreur création paiement');
-    _pbMountWidget(res2.data.checkout_id, res2.orderId);
+
+  var _flow = _pbExistingOrderId
+    ? _createDirectIntent(_pbExistingOrderId)
+    : fetch((window.FA_GENESIS_API||API)+'/api/orders/create',{
+        method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+USER._token},
+        body:JSON.stringify({ clientInfo:clientInfo, partnerServiceOrder:{partnerId:_pbPartner.id,serviceId:_pbService.id,requestedInstallments:_pbSelectedInstallments||1}, use_referral_discount:useReferral })
+      }).then(function(r){ return r.json().then(function(d){ return {ok:r.ok,data:d}; }); })
+      .then(function(res){
+        if(!res.ok||!res.data||!res.data.orderId) throw new Error((res.data&&res.data.error)||'Erreur création commande');
+        return _createDirectIntent(res.data.orderId);
+      });
+
+  _flow.then(function(res2){
+    if(!res2.ok||!res2.data||!res2.data.clientSecret) throw new Error((res2.data&&res2.data.error)||'Erreur initialisation paiement');
+    _pbStripeIntentId = res2.data.paymentIntentId;
+    _pbMountStripeElements(res2.data.clientSecret);
+    if(sb){sb.disabled=false;sb.textContent='PAYER L\'ACOMPTE';}
   }).catch(function(err){
-    if(sb){sb.disabled=false;sb.textContent='Réessayer le paiement';}
+    if(sb){sb.disabled=false;sb.textContent='PAYER L\'ACOMPTE';}
     if(er){er.textContent=err.message||'Erreur. Réessayez.';er.classList.add('on');}
   });
 }
@@ -11981,44 +11970,7 @@ function _pbCancelStripe(){
   var sb=document.getElementById('pb-pay-btn'); if(sb){sb.disabled=false;sb.textContent='PAYER L\'ACOMPTE';}
   _stripeElements=null; _stripePaymentEl=null; _stripeInstance=null;
 }
-function _pbMountWidget(checkoutId, orderId){
-  var fm=document.getElementById('pb-form'); if(fm) fm.style.display='none';
-  var ws=document.getElementById('pb-widget-screen'); if(ws) ws.style.display='';
-  var container=document.getElementById('pb-widget-container');
-  if(container) container.innerHTML='<div id="pb-card-div"></div>';
-  function doMount(){
-    try{
-      SumUpCard.mount({
-        id:'pb-card-div', checkoutId:checkoutId, locale:'fr-FR', showSubmitButton:true,
-        onResponse:function(type, body){
-          if(type==='success'){
-            fetch((window.FA_GENESIS_API||API)+'/api/payments/verify',{
-              method:'POST', headers:{'Content-Type':'application/json'},
-              body:JSON.stringify({orderId:orderId, stage:'deposit'})
-            }).catch(function(){});
-            if(ws) ws.style.display='none';
-            var sc=document.getElementById('pb-success'); if(sc) sc.style.display='';
-            launchConfetti(); showToast('Paiement réussi !','Votre commande est confirmée','success');
-            setTimeout(function(){ showToast('+20 QG', 'Mission lancée !', 'success'); }, 1600);
-          } else if(type==='error'){
-            var msg = body&&(body.message||body.error) ? (body.message||body.error) : 'Paiement refusé. Vérifiez vos informations.';
-            var er=document.getElementById('pb-err'); if(er){er.textContent=msg;er.classList.add('on');}
-          }
-        }
-      });
-    } catch(e){
-      var er=document.getElementById('pb-err'); if(er){er.textContent='Erreur module de paiement : '+e.message;er.classList.add('on');}
-    }
-  }
-  if(typeof SumUpCard!=='undefined'){ doMount(); }
-  else {
-    var script=document.createElement('script');
-    script.src='https://gateway.sumup.com/gateway/ecom/card/v2/sdk.js';
-    script.onload=doMount;
-    script.onerror=function(){ var er=document.getElementById('pb-err'); if(er){er.textContent='Impossible de charger le module de paiement.';er.classList.add('on');} };
-    document.head.appendChild(script);
-  }
-}
+// _pbMountWidget (SumUp) supprimé — tout passe par _pbMountStripeElements
 
 // ── SÉLECTEUR DE MÉTHODE DE PAIEMENT (pb-sheet) ──────────────
 function _pbSelectMethod(method){
@@ -12982,9 +12934,6 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
         <div class="cwb-actions" style="grid-template-columns:1fr;">
           <button class="cwb-btn cwb-btn-yellow" id="pb-pay-btn" onclick="pbPayDeposit()">PAYER L'ACOMPTE</button>
         </div>
-      </div>
-      <div id="pb-widget-screen" style="display:none;">
-        <div id="pb-widget-container"></div>
       </div>
       <div id="pb-stripe-screen" style="display:none;padding:4px 0 8px;">
         <div id="pb-stripe-elements-container"></div>
