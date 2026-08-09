@@ -3611,7 +3611,7 @@ function _loadHomeProsUne(){
       if(!partners.length){wrap.innerHTML='';return;}
       wrap.className='p-fade-in';
       wrap.innerHTML='<div class="p-section-hdr black p-section-hdr-fit" style="margin:16px 16px 10px;">'
-        +'<i class="fa-solid fa-star" style="color:var(--yellow)"></i> PROFESSIONNELS À LA UNE</div>'
+        +'Professionnels à la une</div>'
         +'<div class="p-reco-row" style="padding:0 0 0 16px;">'
         +partners.map(function(p,i){return recoPartnerCard(p,i);}).join('')
         +'<div style="min-width:16px;"></div></div>';
@@ -3633,7 +3633,7 @@ function _loadHomePopulaires(){
     {id:'animateur_evenementiel',label:'Événementiel',icon:'fa-microphone'},
   ];
   wrap.innerHTML='<div class="p-section-hdr black p-section-hdr-fit" style="margin:16px 16px 10px;">'
-    +'<i class="fa-solid fa-fire" style="color:var(--yellow)"></i> LES PLUS RECHERCHÉS</div>'
+    +'Les plus recherchés</div>'
     +'<div style="display:flex;flex-wrap:wrap;gap:7px;padding:0 16px 16px;">'
     +cats.map(function(c){
       return '<button class="home-cat-chip" onclick="_navToExplorerCat(\''+c.id+'\')">'
@@ -3664,7 +3664,7 @@ function _loadHomeNouveauxTalents(){
       if(!partners.length){wrap.innerHTML='';return;}
       wrap.className='p-fade-in';
       wrap.innerHTML='<div class="p-section-hdr black p-section-hdr-fit" style="margin:16px 16px 10px;">'
-        +'<i class="fa-solid fa-wand-magic-sparkles" style="color:var(--yellow)"></i> NOUVEAUX TALENTS</div>'
+        +'Nouveaux talents</div>'
         +'<div class="p-reco-row" style="padding:0 0 0 16px;">'
         +partners.map(function(p,i){return recoPartnerCard(p,i,'Nouveau');}).join('')
         +'<div style="min-width:16px;"></div></div>';
@@ -3687,7 +3687,7 @@ function _loadHomeRecommandes(){
             if(!fb.length){wrap.innerHTML='';return;}
             wrap.className='p-fade-in';
             wrap.innerHTML='<div class="p-section-hdr black p-section-hdr-fit" style="margin:16px 16px 10px;">'
-              +'<i class="fa-solid fa-thumbs-up" style="color:var(--yellow)"></i> RECOMMANDÉS POUR VOUS</div>'
+              +'Recommandés pour vous</div>'
               +'<div class="p-reco-row" style="padding:0 0 0 16px;">'
               +fb.map(function(p,i){return recoPartnerCard(p,i);}).join('')
               +'<div style="min-width:16px;"></div></div>';
@@ -3695,7 +3695,7 @@ function _loadHomeRecommandes(){
       }
       wrap.className='p-fade-in';
       wrap.innerHTML='<div class="p-section-hdr black p-section-hdr-fit" style="margin:16px 16px 10px;">'
-        +'<i class="fa-solid fa-thumbs-up" style="color:var(--yellow)"></i> RECOMMANDÉS POUR VOUS</div>'
+        +'Recommandés pour vous</div>'
         +'<div class="p-reco-row" style="padding:0 0 0 16px;">'
         +partners.map(function(p,i){return recoPartnerCard(p,i);}).join('')
         +'<div style="min-width:16px;"></div></div>';
