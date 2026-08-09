@@ -808,8 +808,8 @@ a{text-decoration:none;color:inherit}
 .exp2-geo-btn{width:46px;height:46px;background:var(--yellow);border:2.5px solid #000;border-radius:50%;color:#000;font-size:18px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.5),2px 2px 0 #000;}
 /* Heatmap toggle bas gauche */
 .exp2-heat-wrap{position:absolute;bottom:28px;left:14px;z-index:500;}
-/* Carte/Liste événements bas gauche */
-.exp2-ev-view-wrap{position:absolute;bottom:28px;left:14px;z-index:500;display:flex;gap:4px;background:rgba(17,17,17,.88);border:1.5px solid #333;border-radius:10px;padding:3px;backdrop-filter:blur(4px);}
+/* Carte/Liste événements — dans le header, entre search et onglets */
+#exp2-ev-view-row{display:none;gap:4px;margin:8px 0 6px;}
 /* "Rechercher ici" — centre haut */
 .exp2-zone-wrap{position:absolute;top:130px;left:50%;transform:translateX(-50%);z-index:500;}
 .exp2-zone-btn{background:rgba(20,20,20,.9);border:1.5px solid #444;border-radius:20px;color:var(--text);font-size:12px;font-weight:700;padding:8px 16px;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:6px;white-space:nowrap;backdrop-filter:blur(4px);}
@@ -2596,6 +2596,17 @@ a{text-decoration:none;color:inherit}
             <i class="fa-solid fa-sliders"></i>
           </button>
         </div>
+        <!-- Carte/Liste Événements — visible seulement quand onglet Événements actif -->
+        <div id="exp2-ev-view-row" style="display:none;gap:4px;margin:8px 0 6px;">
+          <div class="exp2-view-btns" style="width:100%;">
+            <button class="exp2-view-btn on" id="exp2-ev-carte-btn" onclick="exp2SetEvView('carte',this)">
+              <i class="fa-solid fa-map"></i> Carte
+            </button>
+            <button class="exp2-view-btn" id="exp2-ev-liste-btn" onclick="exp2SetEvView('liste',this)">
+              <i class="fa-solid fa-list"></i> Liste
+            </button>
+          </div>
+        </div>
         <div class="exp2-tabs-row">
           <button class="exp2-main-tab on" id="exp2-tab-offres" onclick="exp2SetTab('offres',this)">
             <i class="fa-solid fa-briefcase"></i> Offres
@@ -2628,15 +2639,6 @@ a{text-decoration:none;color:inherit}
       <div class="exp2-panel" id="exp2-panel-events">
         <!-- Carte Leaflet événements -->
         <div id="exp2-ev-map"></div>
-        <!-- Toggle Carte/Liste — bas gauche -->
-        <div class="exp2-ev-view-wrap">
-          <button class="exp2-view-btn on" id="exp2-ev-carte-btn" onclick="exp2SetEvView('carte',this)">
-            <i class="fa-solid fa-map"></i> Carte
-          </button>
-          <button class="exp2-view-btn" id="exp2-ev-liste-btn" onclick="exp2SetEvView('liste',this)">
-            <i class="fa-solid fa-list"></i> Liste
-          </button>
-        </div>
         <!-- Zoom + Géolocalisation — bas droite -->
         <div class="exp2-map-br-wrap">
           <button class="exp2-zoom-btn" onclick="if(_exp2EvMap)_exp2EvMap.zoomIn()"><i class="fa-solid fa-plus"></i></button>
@@ -4168,6 +4170,9 @@ function exp2SetTab(tab, el){
   var evPanel     = document.getElementById('exp2-panel-events');
   if(offresPanel) offresPanel.className = 'exp2-panel'+(tab==='offres'?' on':'');
   if(evPanel)     evPanel.className     = 'exp2-panel'+(tab==='evenements'?' on':'');
+  // Afficher le toggle Carte/Liste uniquement sur Événements
+  var evViewRow = document.getElementById('exp2-ev-view-row');
+  if(evViewRow) evViewRow.style.display = (tab==='evenements') ? 'flex' : 'none';
   if(tab === 'evenements'){
     exp2LoadEventsMap();
     exp2LoadEventsList();
