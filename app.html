@@ -755,6 +755,17 @@ a{text-decoration:none;color:inherit}
 /* ━━ ANNUAIRE PARTENAIRES ━━ */
 .p-dir-controls{display:flex;gap:8px;padding:0 16px 14px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;}
 .p-dir-controls::-webkit-scrollbar{display:none}
+/* ── PRESTATAIRES — vitrine boutique ─────────────── */
+.prst-search-wrap{display:flex;align-items:center;gap:10px;margin:14px 16px 12px;background:var(--card);border:2.5px solid var(--yellow);border-radius:14px;padding:0 14px;box-shadow:4px 4px 0 #000;}
+.prst-search-wrap i{color:var(--yellow);font-size:15px;flex-shrink:0;}
+.prst-search-input{flex:1;background:transparent;border:none;outline:none;color:var(--text);font-size:14px;font-weight:500;padding:15px 0;font-family:'Space Grotesk',sans-serif;}
+.prst-search-input::placeholder{color:var(--muted);}
+.prst-sort-row{display:flex;align-items:center;gap:8px;padding:4px 16px 10px;overflow-x:auto;scrollbar-width:none;}
+.prst-sort-row::-webkit-scrollbar{display:none;}
+.prst-sort-select{flex-shrink:0;margin-left:auto;background:var(--card);border:1.5px solid var(--border);border-radius:20px;padding:7px 12px;font-size:11px;font-weight:700;color:var(--muted);cursor:pointer;font-family:inherit;outline:none;-webkit-appearance:none;appearance:none;}
+.prst-geoloc-btn{display:flex;align-items:center;justify-content:center;gap:8px;background:var(--card);border:2px solid var(--border);border-radius:12px;padding:14px 16px;font-size:13px;font-weight:700;color:var(--muted);cursor:pointer;font-family:inherit;width:100%;transition:border-color .15s,color .15s;}
+.prst-geoloc-btn:active,.prst-geoloc-btn:hover{border-color:var(--yellow);color:var(--yellow);}
+#prst-search-results .p-hero-stat{padding:4px 16px 8px;}
 .p-dir-search-input{
   flex:0 0 180px;background:var(--card);border:1px solid var(--border);border-radius:8px;
   color:var(--text);font-family:inherit;font-size:16px;padding:10px 12px;outline:none;
@@ -4313,50 +4324,175 @@ var _dirCollabFilter = false;
 var _clientCollabPartnerIds = [];
 var _favPartnersCache = [], _favCollabFilter = false;
 
+// ══════════════════════════════════════════════════════
+//  PRESTATAIRES — VITRINE BOUTIQUE
+// ══════════════════════════════════════════════════════
+
+function _prstSetMode(mode){
+  var disc = document.getElementById('prst-discovery');
+  var res  = document.getElementById('prst-search-results');
+  if(mode === 'discovery'){
+    if(disc) disc.style.display = '';
+    if(res)  res.style.display  = 'none';
+  } else {
+    if(disc) disc.style.display = 'none';
+    if(res)  res.style.display  = '';
+    loadRankedDirectory();
+  }
+}
+
+function _loadPrstSection(url, wrapId, title, tagOverride, filterFn){
+  var wrap = document.getElementById(wrapId);
+  if(!wrap) return;
+  fetch(url).then(function(r){ return r.json(); }).then(function(data){
+    var partners = (data && (data.partners || data)) || [];
+    if(filterFn) partners = partners.filter(filterFn);
+    if(!partners.length){ wrap.innerHTML = ''; return; }
+    wrap.innerHTML = '<div class="p-section-hdr black p-section-hdr-fit" style="margin:16px 16px 10px;">'+title+'</div>'
+      +'<div class="p-reco-row" style="padding:0 0 0 16px;">'
+      +partners.slice(0,8).map(function(p,i){ return recoPartnerCard(p, i, tagOverride||null); }).join('')
+      +'<div style="min-width:16px;"></div></div>';
+  }).catch(function(){ wrap.innerHTML = ''; });
+}
+
+function _loadPrstAudience(audience, wrapId, title){
+  var wrap = document.getElementById(wrapId);
+  if(!wrap) return;
+  fetch((window.FA_GENESIS_API||API)+'/api/partners/directory?sort=score&limit=60')
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      var all = (data && data.partners) || [];
+      var filtered = all.filter(function(p){
+        return p.services && p.services.some(function(s){
+          if(!s.audience) return false;
+          if(Array.isArray(s.audience)) return s.audience.indexOf(audience) >= 0;
+          return s.audience === audience;
+        });
+      }).slice(0, 8);
+      if(!filtered.length){ wrap.innerHTML = ''; return; }
+      wrap.innerHTML = '<div class="p-section-hdr black p-section-hdr-fit" style="margin:16px 16px 10px;">'+title+'</div>'
+        +'<div class="p-reco-row" style="padding:0 0 0 16px;">'
+        +filtered.map(function(p,i){ return recoPartnerCard(p, i); }).join('')
+        +'<div style="min-width:16px;"></div></div>';
+    }).catch(function(){ wrap.innerHTML = ''; });
+}
+
+function _loadPrstNearby(){
+  var wrap = document.getElementById('prst-nearby-wrap');
+  if(!wrap) return;
+  if(!navigator.geolocation){ wrap.innerHTML = ''; return; }
+  navigator.geolocation.getCurrentPosition(
+    function(pos){
+      var coords = pos.coords.latitude.toFixed(4)+','+pos.coords.longitude.toFixed(4);
+      _loadPrstSection(
+        (window.FA_GENESIS_API||API)+'/api/partners/directory?sort=score&limit=8&city='+encodeURIComponent(coords),
+        'prst-nearby-wrap', 'Près de vous'
+      );
+    },
+    function(){
+      wrap.innerHTML = '<div class="p-section-hdr black p-section-hdr-fit" style="margin:16px 16px 10px;">Près de vous</div>'
+        +'<div style="padding:0 16px 16px;">'
+        +'<button class="prst-geoloc-btn" onclick="_prstActivateGeoloc()">'
+        +'<i class="fa-solid fa-location-crosshairs"></i> Activer ma localisation</button>'
+        +'</div>';
+    },
+    { timeout: 6000 }
+  );
+}
+
+function _prstActivateGeoloc(){
+  var wrap = document.getElementById('prst-nearby-wrap');
+  if(wrap) wrap.innerHTML = '<div style="padding:8px 16px;color:var(--muted);font-size:12px;">Localisation en cours…</div>';
+  _loadPrstNearby();
+}
+
 function renderPrestataires(){
-  _rankCategory = null; _rankQuery = ''; _rankCity = ''; _rankSort = 'score'; _rankPromoFilter = false; _dirCollabFilter = false;
-  var html = '<div class="p-hero">'
-    +'<div class="p-hero-title">Prestataires</div>'
-    +'<div class="p-hero-sub">Le classement complet, mis à jour en continu.</div>'
+  _rankCategory = null; _rankQuery = ''; _rankCity = ''; _rankSort = 'score';
+  _rankPromoFilter = false; _dirCollabFilter = false;
+
+  var html = '';
+  // Barre de recherche
+  html += '<div class="prst-search-wrap">'
+    +'<i class="fa-solid fa-magnifying-glass"></i>'
+    +'<input type="text" id="p-rank-search" class="prst-search-input" '
+    +'placeholder="Rechercher un photographe, vidéaste, marketeur…" oninput="_rankSearchDebounced()">'
     +'</div>';
-  html += '<div class="p-explore-search-wrap">'
-    +'<input type="text" id="p-rank-search" class="p-explore-search-input" placeholder="Rechercher un vidéaste, photographe, graphiste, espace coworking, média, marketeur…" oninput="_rankSearchDebounced()">'
-    +'</div>';
-  html += '<div class="p-cat-icon-strip" id="p-rank-cat-icons">'
-    +DIR_CATEGORY_ICONS_ORDER.map(function(c,i){
-      return '<button class="p-cat-icon-pill'+(i===0?' on':'')+'" onclick="setRankCategory('+(c.id?'\''+c.id+'\'':'null')+',this)">'
-        +'<i class="fa-solid '+c.icon+' p-cat-icon-fa"></i><span class="p-cat-icon-label">'+c.label+'</span></button>';
-    }).join('')
-    +'</div>';
-  html += '<div class="p-dir-controls">'
-    +'<input type="text" id="p-rank-city" class="p-dir-search-input" placeholder="Ville..." oninput="_rankCityDebounced()">'
-    +'<select id="p-rank-sort" class="p-dir-price-select" onchange="onRankSortChange()">'
+  // Strip catégories
+  html += '<div class="p-cat-icon-strip" id="p-rank-cat-icons"></div>';
+  // Ligne tri + chips
+  html += '<div class="prst-sort-row">'
+    +'<div id="p-rank-signal-chips" style="display:flex;gap:8px;flex-wrap:wrap;flex:1;"></div>'
+    +'<select id="p-rank-sort" class="prst-sort-select" onchange="onRankSortChange()">'
     +'<option value="score">Meilleurs du moment</option>'
-    +'<option value="recent">Plus récents</option>'
     +'<option value="rating">Mieux notés</option>'
+    +'<option value="recent">Plus récents</option>'
     +'<option value="alpha">A-Z</option>'
     +'</select>'
     +'</div>';
-  html += '<div class="p-hero-stat" id="p-rank-stat" style="padding:0 16px 6px;">Chargement...</div>';
-  html += '<div id="p-rank-signal-chips" style="padding:4px 16px 6px;display:flex;gap:8px;flex-wrap:wrap;"></div>';
-  html += '<div id="p-rank-results" class="p-list-col"><div class="p-dir-empty">Chargement...</div></div>';
+  // Mode découverte (par défaut)
+  html += '<div id="prst-discovery">'
+    +'<div id="prst-featured-wrap"></div>'
+    +'<div id="prst-best-rated-wrap"></div>'
+    +'<div id="prst-new-wrap"></div>'
+    +'<div id="prst-etudiant-wrap"></div>'
+    +'<div id="prst-particulier-wrap"></div>'
+    +'<div id="prst-entreprise-wrap"></div>'
+    +'<div id="prst-nearby-wrap"></div>'
+    +'<div style="height:24px;"></div>'
+    +'</div>';
+  // Mode recherche (masqué par défaut)
+  html += '<div id="prst-search-results" style="display:none;">'
+    +'<div class="p-hero-stat" id="p-rank-stat"></div>'
+    +'<div id="p-rank-results" class="p-list-col"><div class="p-dir-empty">Chargement…</div></div>'
+    +'</div>';
+
   document.getElementById('prestatairesList').innerHTML = html;
+
+  // Catégories
+  var catEl = document.getElementById('p-rank-cat-icons');
+  if(catEl) catEl.innerHTML = DIR_CATEGORY_ICONS_ORDER.map(function(c,i){
+    return '<button class="p-cat-icon-pill'+(i===0?' on':'')+'" onclick="setRankCategory('
+      +(c.id?'\''+c.id+'\'':'null')+',this)">'
+      +'<i class="fa-solid '+c.icon+' p-cat-icon-fa"></i>'
+      +'<span class="p-cat-icon-label">'+c.label+'</span></button>';
+  }).join('');
+
   _renderDirSignalChips();
-  loadRankedDirectory();
+
+  // Chargement des sections découverte
+  var base = window.FA_GENESIS_API || API;
+  _loadPrstSection(base+'/api/partners/featured?limit=8',              'prst-featured-wrap',   'Professionnels à la une');
+  _loadPrstSection(base+'/api/partners/directory?sort=rating&limit=8', 'prst-best-rated-wrap', 'Les mieux notés', null, function(p){ return p.rating && p.rating.count > 0; });
+  _loadPrstSection(base+'/api/partners/new?limit=8',                   'prst-new-wrap',        'Nouveaux talents', 'Nouveau');
+  _loadPrstAudience('etudiant',    'prst-etudiant-wrap',    'Pour les étudiants');
+  _loadPrstAudience('particulier', 'prst-particulier-wrap', 'Pour les particuliers');
+  _loadPrstAudience('entreprise',  'prst-entreprise-wrap',  'Pour les entreprises');
+  _loadPrstNearby();
 }
+
 function setRankCategory(cat, el){
   _rankCategory = cat;
-  document.querySelectorAll('#p-rank-cat-icons .p-cat-icon-pill').forEach(function(b){b.className='p-cat-icon-pill';});
-  el.className='p-cat-icon-pill on';
-  loadRankedDirectory();
+  document.querySelectorAll('#p-rank-cat-icons .p-cat-icon-pill').forEach(function(b){ b.className = 'p-cat-icon-pill'; });
+  el.className = 'p-cat-icon-pill on';
+  if(cat === null && !_rankQuery && !_rankPromoFilter){
+    _prstSetMode('discovery');
+  } else {
+    _prstSetMode('search');
+  }
 }
+
 function _rankSearchDebounced(){
   clearTimeout(_rankSearchTimer);
   _rankSearchTimer = setTimeout(function(){
     _rankQuery = ((document.getElementById('p-rank-search')||{}).value || '').trim();
-    loadRankedDirectory();
+    if(_rankQuery || _rankCategory || _rankPromoFilter){
+      _prstSetMode('search');
+    } else {
+      _prstSetMode('discovery');
+    }
   }, 300);
 }
+
 function _rankCityDebounced(){
   clearTimeout(_rankCityTimer);
   _rankCityTimer = setTimeout(function(){
@@ -4364,9 +4500,10 @@ function _rankCityDebounced(){
     loadRankedDirectory();
   }, 300);
 }
+
 function onRankSortChange(){
   _rankSort = (document.getElementById('p-rank-sort')||{}).value || 'score';
-  loadRankedDirectory();
+  _prstSetMode('search');
 }
 function loadRankedDirectory(){
   var results = document.getElementById('p-rank-results');
@@ -7514,12 +7651,12 @@ function _renderDirSignalChips(){
 function _toggleDirPromoFilter(){
   _rankPromoFilter = !_rankPromoFilter;
   _renderDirSignalChips();
-  loadRankedDirectory();
+  _prstSetMode('search');
 }
 function _toggleDirCollabFilter(){
   _dirCollabFilter = !_dirCollabFilter;
   _renderDirSignalChips();
-  loadRankedDirectory();
+  _prstSetMode('search');
 }
 
 // Chips de filtre pour l'écran Favoris
