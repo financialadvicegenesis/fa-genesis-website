@@ -1336,7 +1336,7 @@ a{text-decoration:none;color:inherit}
 .p-city-search-input:focus{box-shadow:4px 4px 0 #000, 0 0 28px rgba(255,215,0,.4)}
 .p-city-search-input::placeholder{color:var(--muted)}
 
-.p-map-frame{margin:0 16px 18px;border:3px solid #000;border-radius:16px;overflow:hidden;box-shadow:5px 5px 0 var(--yellow);height:240px;position:relative}
+.p-map-frame{margin:0 16px 18px;border:3px solid #000;border-radius:16px;overflow:hidden;box-shadow:5px 5px 0 var(--yellow);height:54vh;min-height:320px;position:relative;transition:height .3s ease}
 .p-map-frame .leaflet-container{height:100%;width:100%;background:#111;font-family:inherit}
 .p-map-fallback{display:flex;align-items:center;justify-content:center;height:100%;color:var(--muted);font-size:12px;text-align:center;padding:0 20px}
 #p-exp-map-symbol.on{background:#000;color:var(--yellow);box-shadow:0 0 0 2px var(--yellow) inset}
@@ -1384,12 +1384,29 @@ a{text-decoration:none;color:inherit}
 .exp-map-btn.primary{background:var(--yellow);color:#000;border-color:var(--yellow);}
 #exp-zone-btn{display:none;}
 #exp-zone-btn.visible{display:flex;}
-/* Popups Leaflet */
-.p-map-popup{font-family:'Space Grotesk',sans-serif;min-width:150px;max-width:200px;}
-.p-map-popup-name{font-size:13px;font-weight:800;color:#111;margin-bottom:2px;}
-.p-map-popup-cat{font-size:11px;color:#666;margin-bottom:4px;}
-.p-map-popup-price{font-size:12px;font-weight:700;color:#b81a6e;margin-bottom:6px;}
-.p-map-popup-btn{display:block;width:100%;background:#000;color:#fff;border:none;border-radius:6px;padding:7px;font-size:11px;font-weight:700;cursor:pointer;text-align:center;}
+/* ── GENESIS MAP — marqueurs + cluster + heatmap ─── */
+.gen-pin{width:34px;height:34px;background:#111;border:2.5px solid var(--yellow);border-radius:50% 50% 50% 0;display:flex;align-items:center;justify-content:center;box-shadow:2px 2px 0 #000;transform:rotate(-45deg);cursor:pointer;}
+.gen-pin i{transform:rotate(45deg);font-size:12px;color:var(--yellow);}
+.gen-cluster-icon{background:var(--yellow);border:2.5px solid #000;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:12px;color:#000;box-shadow:2px 2px 0 #000;font-family:'Space Grotesk',sans-serif;}
+/* bouton Heatmap */
+.exp-heat-btn{pointer-events:auto;background:rgba(0,0,0,.88);color:var(--muted);border:1.5px solid #444;border-radius:20px;padding:8px 14px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:6px;font-family:inherit;backdrop-filter:blur(4px);transition:all .15s;}
+.exp-heat-btn.on{background:#1a0a00;border-color:#ff6600;color:#ff6600;}
+/* ── GENESIS MAP — quick preview sheet ──────────── */
+#exp-quick-sheet{display:none;position:fixed;inset:0;z-index:870;align-items:flex-end;justify-content:center;}
+#exp-quick-sheet.on{display:flex;animation:regFadeIn .18s ease;}
+.exp-quick-panel{background:#141414;border:1px solid #222;border-top:3px solid var(--yellow);border-radius:22px 22px 0 0;width:100%;max-width:500px;padding:0 0 calc(20px + env(safe-area-inset-bottom));animation:sheetUp .32s cubic-bezier(.34,1.56,.64,1);}
+.exp-quick-handle{width:40px;height:4px;background:#2a2a2a;border-radius:2px;margin:12px auto 16px;}
+.exp-q-hero{display:flex;align-items:flex-start;gap:14px;padding:0 20px 16px;}
+.exp-q-avatar{width:60px;height:60px;border-radius:12px;background:#1a1a1a;border:2px solid #2a2a2a;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:900;color:var(--yellow);}
+.exp-q-info{flex:1;min-width:0;}
+.exp-q-badge-row{margin-bottom:5px;}
+.exp-q-name{font-size:15px;font-weight:900;color:#fff;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.exp-q-cat{font-size:10px;color:var(--muted);font-weight:900;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;}
+.exp-q-chips{display:flex;flex-wrap:wrap;gap:8px;}
+.exp-q-chip{display:flex;align-items:center;gap:4px;font-size:11px;color:#aaa;}
+.exp-q-chip i{color:var(--yellow);font-size:10px;}
+.exp-q-close{background:none;border:none;color:var(--muted);font-size:17px;cursor:pointer;padding:2px 4px;flex-shrink:0;margin-top:-2px;}
+.exp-q-cta{display:block;width:calc(100% - 40px);margin:0 20px;background:var(--yellow);color:#000;font-weight:900;font-size:13px;border:none;border-radius:12px;padding:13px;cursor:pointer;letter-spacing:.3px;font-family:inherit;}
 
 /* Catégories en icônes défilantes (Explorer) */
 .p-cat-icon-strip{display:flex;gap:10px;padding:0 16px 16px;overflow-x:auto;scrollbar-width:none}
@@ -2288,6 +2305,7 @@ a{text-decoration:none;color:inherit}
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" crossorigin="">
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" crossorigin="">
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js" defer crossorigin=""></script>
+<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js" defer crossorigin=""></script>
 </head>
 <body>
 
@@ -2538,8 +2556,9 @@ a{text-decoration:none;color:inherit}
       <div class="exp-map-wrap">
         <div class="p-map-frame" id="p-exp-map" style="display:none;">
           <div class="exp-map-controls" id="exp-map-controls">
-            <button class="exp-map-btn primary" onclick="_expGeolocate()"><i class="fa-solid fa-location-crosshairs"></i> Autour de moi</button>
+            <button class="exp-map-btn primary" onclick="_expGeolocate()"><i class="fa-solid fa-location-crosshairs"></i> Ma position</button>
             <button class="exp-map-btn" id="exp-zone-btn" onclick="_expSearchInZone()"><i class="fa-solid fa-magnifying-glass"></i> Rechercher ici</button>
+            <button class="exp-heat-btn" id="exp-heat-btn" onclick="_toggleHeatmap(this)"><i class="fa-solid fa-fire"></i> Heatmap</button>
           </div>
         </div>
       </div>
@@ -4034,6 +4053,7 @@ var POPULAR_SEARCHES = ['Vidéaste','Photographe','Mariage','Drone','Graphiste',
 // ── EXPLORER — HUB DE DÉCOUVERTE ────────────────────────────────
 var _expCategory = null, _expCity = '', _expCityTimer = null, _expMode = 'offres';
 var _expMap = null, _expMapLayer = null, _expMapVisible = false;
+var _expHeatLayer = null, _expHeatVisible = false;
 
 function renderExplorer(){
   var catIcons = document.getElementById('p-exp-cat-icons');
@@ -4073,7 +4093,7 @@ function _expCityDebounced(){
   _expCityTimer = setTimeout(function(){
     _expCity = ((document.getElementById('p-exp-city-search')||{}).value || '').trim();
     if(_expMapVisible) loadExplorerMap(_expMode, _expCity);
-    loadExplorerSearchResults();
+    loadExplorerDirectory();
   }, 300);
 }
 
@@ -4127,67 +4147,165 @@ function quickSearchExplorer(term){
   }, 50);
 }
 
+// ══════════════════════════════════════════════════════
+//  GENESIS MAP — marqueurs, heatmap, fiche rapide
+// ══════════════════════════════════════════════════════
+
+var _PARTNER_ICONS = {
+  photographer:'fa-camera', videographer:'fa-video', marketer:'fa-chart-line',
+  media:'fa-newspaper', graphiste:'fa-palette', developpeur_web:'fa-laptop-code',
+  community_manager:'fa-mobile-screen', pilote_drone:'fa-helicopter',
+  animateur_evenementiel:'fa-microphone', consultant:'fa-briefcase',
+  influencer:'fa-star', other:'fa-user'
+};
+
+function _makePartnerIcon(partnerType){
+  var ic = _PARTNER_ICONS[partnerType] || 'fa-user';
+  return L.divIcon({
+    html: '<div class="gen-pin"><i class="fa-solid '+ic+'"></i></div>',
+    className: '',
+    iconSize: [34, 34],
+    iconAnchor: [17, 34],
+    popupAnchor: [0, -38]
+  });
+}
+
+function _openMapQuickPreview(p){
+  var sheet = document.getElementById('exp-quick-sheet');
+  var content = document.getElementById('exp-quick-content');
+  if(!sheet || !content) return;
+  var catLabel = (PARTNER_TYPE_LABELS_DIR && PARTNER_TYPE_LABELS_DIR[p.partner_type]) || p.partner_type || 'Prestataire';
+  var initials = (((p.prenom||'')[0]||'') + ((p.nom||'')[0]||'')).toUpperCase();
+  var avatarHtml = p.photo
+    ? '<img src="'+p.photo+'" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:10px;">'
+    : initials;
+  var ratingHtml = (p.rating && p.rating.count)
+    ? '<span class="exp-q-chip"><i class="fa-solid fa-star"></i> '+p.rating.average+' ('+p.rating.count+')</span>'
+    : '<span class="exp-q-chip" style="color:#666;">Pas encore d\'avis</span>';
+  var badgeMap = {bronze:'Créateur',argent:'Bâtisseur',or:'Visionnaire',elite:'Générateur',fondateur:'Fondateur'};
+  var badgeHtml = (p.badge && badgeMap[p.badge])
+    ? '<span class="exp-q-badge tier-badge '+p.badge+'" style="font-size:9px;padding:3px 8px;border-radius:12px;display:inline-block;margin-bottom:6px;">'+badgeMap[p.badge]+'</span>'
+    : '';
+  var priceHtml = (p.fromPrice != null && p.fromPrice !== '' && p.fromPrice !== undefined)
+    ? '<span class="exp-q-chip"><i class="fa-solid fa-tag"></i> À partir de '+p.fromPrice+' €</span>'
+    : '<span class="exp-q-chip"><i class="fa-solid fa-tag"></i> Sur devis</span>';
+  var cityHtml = p.city ? '<span class="exp-q-chip"><i class="fa-solid fa-location-dot"></i> '+p.city+'</span>' : '';
+  content.innerHTML = '<div class="exp-q-hero">'
+    +'<div class="exp-q-avatar">'+avatarHtml+'</div>'
+    +'<div class="exp-q-info">'
+    +'<div class="exp-q-badge-row">'+badgeHtml+'</div>'
+    +'<div class="exp-q-name">'+(p.prenom||'')+' '+(p.nom||'')+'</div>'
+    +'<div class="exp-q-cat">'+catLabel+'</div>'
+    +'<div class="exp-q-chips">'+ratingHtml+priceHtml+cityHtml+'</div>'
+    +'</div>'
+    +'<button class="exp-q-close" onclick="_closeMapQuickPreview()"><i class="fa-solid fa-xmark"></i></button>'
+    +'</div>'
+    +'<button class="exp-q-cta" onclick="_closeMapQuickPreview();openPartnerDetail(\''+p.id+'\')"><i class="fa-solid fa-user" style="margin-right:7px;"></i>Voir le profil</button>';
+  sheet.classList.add('on');
+}
+
+function _closeMapQuickPreview(){
+  var sheet = document.getElementById('exp-quick-sheet');
+  if(sheet) sheet.classList.remove('on');
+}
+
+function _toggleHeatmap(btn){
+  _expHeatVisible = !_expHeatVisible;
+  if(btn) btn.classList.toggle('on', _expHeatVisible);
+  if(!_expMap){ if(_expHeatVisible) loadExplorerMap(_expMode, _expCity); return; }
+  if(_expHeatVisible && _expHeatLayer){ _expHeatLayer.addTo(_expMap); }
+  else if(_expHeatLayer){ _expMap.removeLayer(_expHeatLayer); }
+  else if(_expHeatVisible){ loadExplorerMap(_expMode, _expCity); }
+}
+
 function loadExplorerMap(mode, cityFilter){
   var container = document.getElementById('p-exp-map');
   if(!container) return;
   if(typeof L === 'undefined'){
-    container.innerHTML = '<div class="p-map-fallback">Carte indisponible hors connexion.</div>';
+    container.innerHTML = '<div class="p-map-fallback">Carte indisponible (vérifiez votre connexion).</div>';
     return;
   }
   if(!_expMap){
-    // Insérer les contrôles hors du conteneur Leaflet pour qu'ils restent visibles
-    var ctrlWrap = document.getElementById('exp-map-controls');
     container.innerHTML = '';
-    _expMap = L.map(container, {scrollWheelZoom:false}).setView([46.6, 2.4], 5);
+    _expMap = L.map(container, {scrollWheelZoom: false, tap: true, zoomControl: true})
+      .setView([46.6, 2.4], 6);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap contributors', maxZoom: 18
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      maxZoom: 18
     }).addTo(_expMap);
-    // Utiliser markercluster si disponible, sinon layerGroup
-    _expMapLayer = (typeof L.markerClusterGroup === 'function')
-      ? L.markerClusterGroup({maxClusterRadius:60, showCoverageOnHover:false}).addTo(_expMap)
-      : L.layerGroup().addTo(_expMap);
-    // "Rechercher dans cette zone" après déplacement
+    // Cluster GENESIS avec icône personnalisée
+    if(typeof L.markerClusterGroup === 'function'){
+      _expMapLayer = L.markerClusterGroup({
+        maxClusterRadius: 60,
+        showCoverageOnHover: false,
+        iconCreateFunction: function(cluster){
+          var n = cluster.getChildCount();
+          var sz = n < 10 ? 34 : n < 100 ? 42 : 50;
+          return L.divIcon({
+            html: '<div class="gen-cluster-icon" style="width:'+sz+'px;height:'+sz+'px;font-size:'+(n<10?13:11)+'px;">'+n+'</div>',
+            className: '', iconSize: L.point(sz, sz)
+          });
+        }
+      }).addTo(_expMap);
+    } else {
+      _expMapLayer = L.layerGroup().addTo(_expMap);
+    }
+    // Contrôles : ré-injecter dans le container Leaflet pour qu'ils restent visibles
+    var ctrlWrap = document.getElementById('exp-map-controls');
+    if(ctrlWrap) container.appendChild(ctrlWrap);
     _expMap.on('moveend', function(){
-      var zoneBtn = document.getElementById('exp-zone-btn');
-      if(zoneBtn) zoneBtn.classList.add('visible');
+      var zb = document.getElementById('exp-zone-btn');
+      if(zb) zb.classList.add('visible');
     });
   }
   _expMapLayer.clearLayers();
+  if(_expHeatLayer){ try{ _expMap.removeLayer(_expHeatLayer); }catch(e){} _expHeatLayer = null; }
+  var base = window.FA_GENESIS_API || API;
   var url = mode === 'evenements'
-    ? API+'/api/events'
-    : API+'/api/partners/directory?sort=score'
-        +(cityFilter?'&city='+encodeURIComponent(cityFilter):'')
-        +(_expCategory?'&category='+encodeURIComponent(_expCategory):'')
-        +(_expSearchQuery?'&q='+encodeURIComponent(_expSearchQuery):'');
-  fetch(url).then(function(r){return r.json();}).then(function(data){
-    var items = mode === 'evenements' ? ((data && data.events) || []) : ((data && data.partners) || []);
-    var pins = [];
+    ? base+'/api/events'
+    : base+'/api/partners/directory?sort=score&limit=200'
+        +(cityFilter ? '&city='+encodeURIComponent(cityFilter) : '')
+        +(_expCategory ? '&category='+encodeURIComponent(_expCategory) : '')
+        +(_expSearchQuery ? '&q='+encodeURIComponent(_expSearchQuery) : '');
+  fetch(url).then(function(r){ return r.json(); }).then(function(data){
+    var items = mode === 'evenements' ? ((data&&data.events)||[]) : ((data&&data.partners)||[]);
+    var pins = [], heatPts = [];
     items.forEach(function(it){
-      if(it.lat==null || it.lng==null) return;
-      var popupHtml;
+      var lat = parseFloat(it.lat), lng = parseFloat(it.lng);
+      if(isNaN(lat) || isNaN(lng)) return;
+      var marker;
       if(mode === 'evenements'){
-        popupHtml = '<div class="p-map-popup"><div class="p-map-popup-name">'+(it.title||'Événement')+'</div>'
-          +'<div class="p-map-popup-cat">'+(it.date||'')+'</div></div>';
+        marker = L.marker([lat, lng]);
+        marker.bindPopup('<div class="p-map-popup"><div class="p-map-popup-name">'+(it.title||'Événement')+'</div>'
+          +'<div class="p-map-popup-cat">'+(it.date||'')+'</div></div>', {maxWidth:220});
       } else {
-        var catLabel = partnerTypeLabel(it)||'Prestataire';
-        var priceLabel = partnerPriceLabel(it);
-        var ratingStr = (it.rating&&it.rating.count) ? ('<i class="fa-solid fa-star" style="color:#FFD700;font-size:10px;"></i> '+it.rating.average) : '';
-        popupHtml = '<div class="p-map-popup">'
-          +'<div class="p-map-popup-name">'+(it.prenom||'')+' '+(it.nom||'')+'</div>'
-          +'<div class="p-map-popup-cat">'+catLabel+(it.city?' · '+it.city:'')+'</div>'
-          +(ratingStr?'<div style="font-size:10px;margin-bottom:4px;">'+ratingStr+'</div>':'')
-          +'<div class="p-map-popup-price">'+priceLabel+'</div>'
-          +'<button class="p-map-popup-btn" onclick="openPartnerDetail(\''+it.id+'\')">Voir le profil</button>'
-          +'</div>';
+        marker = L.marker([lat, lng], {icon: _makePartnerIcon(it.partner_type)});
+        // Stocker les données partenaire directement sur le marker
+        marker._genesisPartner = it;
+        marker.on('click', function(){ _openMapQuickPreview(this._genesisPartner); });
       }
-      L.marker([it.lat, it.lng]).addTo(_expMapLayer).bindPopup(popupHtml, {maxWidth:220});
-      pins.push([it.lat, it.lng]);
+      _expMapLayer.addLayer(marker);
+      pins.push([lat, lng]);
+      // Intensité heatmap = densité pondérée par services + avis
+      var intensity = 0.25;
+      if(it.rating && it.rating.count) intensity += Math.min(it.rating.count / 40, 0.45);
+      if(it.services && it.services.length) intensity += Math.min(it.services.length / 8, 0.3);
+      heatPts.push([lat, lng, Math.min(intensity, 1)]);
     });
-    if(pins.length){
-      try{ _expMap.fitBounds(pins, {maxZoom:12, padding:[24,24]}); }catch(e){}
-    } else {
-      _expMap.setView([46.6, 2.4], 5);
+    // Heatmap — calculée sur les données réelles
+    if(typeof L.heatLayer === 'function' && heatPts.length){
+      _expHeatLayer = L.heatLayer(heatPts, {
+        radius: 38, blur: 22, maxZoom: 13,
+        gradient: {0.2: '#ffd700', 0.5: '#ff9500', 0.75: '#ff4400', 1: '#cc0000'}
+      });
+      if(_expHeatVisible) _expHeatLayer.addTo(_expMap);
     }
+    if(pins.length){
+      try{ _expMap.fitBounds(pins, {maxZoom: 13, padding: [28, 28]}); }catch(e){}
+    } else {
+      _expMap.setView([46.6, 2.4], 6);
+    }
+    setTimeout(function(){ if(_expMap) _expMap.invalidateSize(); }, 80);
   }).catch(function(){});
 }
 // ── PRESTATAIRES — ANNUAIRE CLASSÉ ──────────────────────────────
@@ -12785,6 +12903,14 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
 </script>
 
 <!-- Fiche détail — bottom sheet -->
+<!-- ── GENESIS MAP — fiche rapide prestataire ── -->
+<div id="exp-quick-sheet" onclick="if(event.target===this)_closeMapQuickPreview()">
+  <div class="exp-quick-panel">
+    <div class="exp-quick-handle"></div>
+    <div id="exp-quick-content"></div>
+  </div>
+</div>
+
 <div id="detail-sheet" onclick="if(event.target===this)closeDetail()">
   <div class="detail-panel">
     <div style="display:flex;justify-content:center;padding:10px 0 4px">
