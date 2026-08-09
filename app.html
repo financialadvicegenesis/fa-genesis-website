@@ -2587,8 +2587,6 @@ a{text-decoration:none;color:inherit}
             <input type="text" id="p-exp-search" placeholder="Photographe, vidéaste, graphiste…" oninput="_expSearchDebounced()">
           </div>
         </div>
-        <!-- Catégories horizontales -->
-        <div class="p-cat-icon-strip" id="p-exp-cat-icons"></div>
         <!-- Carte / Liste + stat -->
         <div class="exp2-view-bar">
           <div class="exp2-view-btns">
@@ -4141,13 +4139,6 @@ var _exp2EvQuery = '', _exp2EvSearchTimer = null;
 var _exp2FilterCity = '';
 
 function renderExplorer(){
-  var catIcons = document.getElementById('p-exp-cat-icons');
-  if(catIcons){
-    catIcons.innerHTML = DIR_CATEGORY_ICONS_ORDER.map(function(c,i){
-      return '<button class="p-cat-icon-pill'+(i===0?' on':'')+'" onclick="setExpCategory('+(c.id?'\''+c.id+'\'':'null')+',this)">'
-        +'<i class="fa-solid '+c.icon+' p-cat-icon-fa"></i><span class="p-cat-icon-label">'+c.label+'</span></button>';
-    }).join('');
-  }
   // Carte visible par défaut — charger la map offres immédiatement
   _expMapVisible = true;
   _exp2OffresView = 'carte';
