@@ -15878,6 +15878,9 @@ function _updateGreeting(){
   c.addEventListener('touchstart',function(e){
     sx=e.touches[0].clientX; sy=e.touches[0].clientY; moved=false;
     inHScroll=false;
+    // Bloquer le swipe si le touch est dans la carte Leaflet (overflow:hidden → non détecté ci-dessous)
+    var te=e.target; while(te&&te!==c){ if(te.id==='p-exp-map'){inHScroll=true;break;} te=te.parentElement; }
+    if(inHScroll) return;
     var el=e.target;
     while(el&&el!==c){
       if(el.scrollWidth>el.clientWidth+2){
