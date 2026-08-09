@@ -755,6 +755,54 @@ a{text-decoration:none;color:inherit}
 /* ━━ ANNUAIRE PARTENAIRES ━━ */
 .p-dir-controls{display:flex;gap:8px;padding:0 16px 14px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;}
 .p-dir-controls::-webkit-scrollbar{display:none}
+/* ═══ EXPLORER v2 — STRUCTURE ════════════════════════════ */
+.exp2-header{padding:16px 16px 0;}
+.exp2-top-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.exp2-title{font-family:'Unbounded',cursive;font-size:22px;font-weight:900;color:var(--text);}
+.exp2-filter-icon{background:var(--card);border:2px solid var(--border);border-radius:12px;width:42px;height:42px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;font-size:15px;color:var(--muted);}
+.exp2-filter-icon.on{border-color:var(--yellow);color:var(--yellow);background:#1a1600;}
+.exp2-tabs-row{display:flex;gap:4px;background:var(--card);border:2px solid var(--border);border-radius:14px;padding:4px;margin-bottom:2px;}
+.exp2-main-tab{flex:1;display:flex;align-items:center;justify-content:center;gap:7px;padding:10px;border:none;border-radius:10px;font-size:12px;font-weight:800;color:var(--muted);cursor:pointer;font-family:inherit;background:transparent;transition:all .2s;}
+.exp2-main-tab.on{background:var(--yellow);color:#000;}
+.exp2-panel{display:none;}
+.exp2-panel.on{display:block;}
+.exp2-search-row{padding:12px 16px 8px;}
+.exp2-search-wrap{display:flex;align-items:center;gap:10px;background:var(--card);border:2px solid var(--border);border-radius:14px;padding:0 14px;transition:border-color .2s;}
+.exp2-search-wrap:focus-within{border-color:var(--yellow);}
+.exp2-search-wrap .exp2-search-icon{color:var(--muted);font-size:14px;flex-shrink:0;}
+.exp2-search-wrap input{flex:1;background:transparent;border:none;outline:none;color:var(--text);font-size:14px;font-weight:500;padding:14px 0;font-family:'Space Grotesk',sans-serif;}
+.exp2-search-wrap input::placeholder{color:var(--muted);}
+.exp2-view-bar{display:flex;align-items:center;gap:10px;padding:4px 16px 10px;}
+.exp2-view-btns{display:flex;gap:3px;background:var(--card);border:1.5px solid var(--border);border-radius:10px;padding:3px;}
+.exp2-view-btn{display:flex;align-items:center;gap:5px;padding:7px 14px;border:none;border-radius:7px;font-size:11px;font-weight:700;color:var(--muted);cursor:pointer;font-family:inherit;background:transparent;transition:all .15s;white-space:nowrap;}
+.exp2-view-btn.on{background:var(--yellow);color:#000;}
+/* ═══ FILTER BOTTOM SHEET ═══════════════════════════════ */
+#exp2-filter-sheet{display:none;position:fixed;inset:0;z-index:890;background:rgba(0,0,0,.6);align-items:flex-end;justify-content:center;}
+#exp2-filter-sheet.on{display:flex;animation:regFadeIn .2s ease;}
+.exp2-filter-panel{background:#141414;border:1px solid #222;border-top:3px solid var(--yellow);border-radius:22px 22px 0 0;width:100%;max-width:500px;padding:0 0 calc(20px + env(safe-area-inset-bottom));max-height:88vh;overflow-y:auto;animation:sheetUp .32s cubic-bezier(.34,1.56,.64,1);}
+.exp2-filter-handle{width:40px;height:4px;background:#2a2a2a;border-radius:2px;margin:12px auto 0;}
+.exp2-filter-hdr{display:flex;align-items:center;justify-content:space-between;padding:16px 20px 14px;border-bottom:1px solid #222;}
+.exp2-filter-hdr-title{font-size:16px;font-weight:900;color:var(--text);}
+.exp2-filter-reset-btn{background:none;border:none;color:var(--muted);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;}
+.exp2-filter-sect{padding:16px 20px 0;}
+.exp2-filter-sect-title{font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:10px;}
+.exp2-filter-pills{display:flex;flex-wrap:wrap;gap:7px;}
+.exp2-filter-pill{background:var(--bg);border:1.5px solid var(--border);border-radius:20px;padding:7px 14px;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer;font-family:inherit;transition:all .15s;}
+.exp2-filter-pill.on{border-color:var(--yellow);color:var(--yellow);background:rgba(255,208,0,.08);}
+.exp2-filter-city-wrap{display:flex;align-items:center;gap:8px;background:var(--card);border:1.5px solid var(--border);border-radius:10px;padding:0 12px;margin-top:6px;transition:border-color .2s;}
+.exp2-filter-city-wrap:focus-within{border-color:var(--yellow);}
+.exp2-filter-city-wrap i{color:var(--yellow);font-size:13px;}
+.exp2-filter-city-input{flex:1;background:transparent;border:none;outline:none;color:var(--text);font-size:13px;padding:11px 0;font-family:inherit;}
+.exp2-filter-city-input::placeholder{color:var(--muted);}
+.exp2-filter-apply{display:block;width:calc(100% - 40px);margin:20px 20px 0;background:var(--yellow);color:#000;font-weight:900;font-size:14px;border:none;border-radius:12px;padding:14px;cursor:pointer;font-family:inherit;}
+/* ═══ EVENTS LIST CARDS ══════════════════════════════════ */
+.exp2-ev-list-card{display:flex;align-items:center;gap:12px;background:var(--card);border:2px solid #000;border-radius:14px;padding:10px;cursor:pointer;box-shadow:3px 3px 0 var(--yellow);margin:0 16px 12px;}
+.exp2-ev-list-photo{width:72px;height:72px;border-radius:10px;background:#1a0040;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:24px;color:#a855f7;}
+.exp2-ev-list-photo img{width:100%;height:100%;object-fit:cover;}
+.exp2-ev-list-body{flex:1;min-width:0;}
+.exp2-ev-list-title{font-size:13px;font-weight:900;color:var(--text);margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.exp2-ev-list-date{font-size:11px;color:var(--yellow);font-weight:700;margin-bottom:3px;}
+.exp2-ev-list-loc{font-size:10px;color:var(--muted);}
 /* ── PRESTATAIRES — vitrine boutique ─────────────── */
 .prst-search-wrap{display:flex;align-items:center;gap:10px;margin:14px 16px 12px;background:var(--card);border:2.5px solid var(--yellow);border-radius:14px;padding:0 14px;box-shadow:4px 4px 0 #000;}
 .prst-search-wrap i{color:var(--yellow);font-size:15px;flex-shrink:0;}
@@ -2509,84 +2557,104 @@ a{text-decoration:none;color:inherit}
 
     </div>
 
-    <!-- EXPLORER — Moteur de recherche et d'exploration -->
+    <!-- EXPLORER v2 — OFFRES + ÉVÉNEMENTS -->
     <div class="tab prest-tab" id="tab-explorer">
-      <!-- En-tête -->
-      <div style="padding:20px 16px 4px;">
-        <div style="font-family:'Unbounded',cursive;font-size:22px;font-weight:900;color:var(--text);margin-bottom:4px;">Explorer</div>
-        <div style="font-size:12px;color:var(--muted);">Trouvez le bon professionnel ou la bonne prestation.</div>
-      </div>
-      <!-- Recherche principale -->
-      <div class="p-hero-search" style="padding:12px 16px 10px;margin:0;">
-        <input type="text" id="p-exp-search" placeholder="Photographe, vidéaste, graphiste…" oninput="_expSearchDebounced()">
-        <div class="p-hero-loc-btn" id="p-exp-map-symbol" onclick="_toggleExpMap()" title="Afficher la carte"><i class="fa-solid fa-map"></i></div>
-      </div>
-      <!-- Carte / Liste + Filtres -->
-      <div class="exp-view-row">
-        <button class="exp-view-btn on" id="exp-btn-liste" onclick="_setExpView('liste',this)"><i class="fa-solid fa-list"></i> Liste</button>
-        <button class="exp-view-btn" id="exp-btn-carte" onclick="_setExpView('carte',this)"><i class="fa-solid fa-map-location-dot"></i> Carte</button>
-        <button class="exp-filter-btn" id="exp-filter-toggle" onclick="_toggleExpFilters(this)"><i class="fa-solid fa-sliders"></i> Filtres</button>
-      </div>
-      <!-- Panneau Filtres -->
-      <div class="exp-filters-panel" id="exp-filters-panel">
-        <div class="exp-filter-group">
-          <div class="exp-filter-group-label">Profil client</div>
-          <div class="exp-filter-pills">
-            <button class="exp-filter-pill" data-filter="profil" data-val="etudiant" onclick="_toggleFilterPill(this)">Étudiant</button>
-            <button class="exp-filter-pill" data-filter="profil" data-val="particulier" onclick="_toggleFilterPill(this)">Particulier</button>
-            <button class="exp-filter-pill" data-filter="profil" data-val="entreprise" onclick="_toggleFilterPill(this)">Entreprise</button>
-          </div>
+      <!-- En-tête : titre + icône filtre -->
+      <div class="exp2-header">
+        <div class="exp2-top-row">
+          <div class="exp2-title">Explorer</div>
+          <button class="exp2-filter-icon" id="exp2-filter-icon" onclick="exp2ToggleFilterSheet()">
+            <i class="fa-solid fa-sliders"></i>
+          </button>
         </div>
-        <div class="exp-filter-group">
-          <div class="exp-filter-group-label">Note minimale</div>
-          <div class="exp-filter-pills">
-            <button class="exp-filter-pill" data-filter="rating" data-val="4" onclick="_toggleFilterPill(this)">4+ ★</button>
-            <button class="exp-filter-pill" data-filter="rating" data-val="4.5" onclick="_toggleFilterPill(this)">4,5+ ★</button>
-            <button class="exp-filter-pill" data-filter="rating" data-val="4.8" onclick="_toggleFilterPill(this)">4,8+ ★</button>
-          </div>
-        </div>
-        <div class="exp-filter-group">
-          <div class="exp-filter-group-label">Format</div>
-          <div class="exp-filter-pills">
-            <button class="exp-filter-pill" data-filter="avail" data-val="remote" onclick="_toggleFilterPill(this)">À distance</button>
-            <button class="exp-filter-pill" data-filter="avail" data-val="presential" onclick="_toggleFilterPill(this)">Présentiel</button>
-          </div>
-        </div>
-        <button class="exp-filter-apply" onclick="_applyExpFilters()"><i class="fa-solid fa-check" style="margin-right:6px;"></i>Appliquer les filtres</button>
-      </div>
-      <!-- Catégories horizontales -->
-      <div class="p-cat-icon-strip" id="p-exp-cat-icons"></div>
-      <!-- Ville -->
-      <div class="p-city-search-wrap">
-        <i class="fa-solid fa-location-dot"></i>
-        <input type="text" id="p-exp-city-search" class="p-city-search-input" placeholder="Chercher par ville (Paris, Lyon, Marseille…)" oninput="_expCityDebounced()">
-      </div>
-      <!-- Stat -->
-      <div class="p-hero-stat" id="p-exp-stat"></div>
-      <!-- Carte -->
-      <div class="exp-map-wrap">
-        <div class="p-map-frame" id="p-exp-map" style="display:none;">
-          <div class="exp-map-controls" id="exp-map-controls">
-            <button class="exp-map-btn primary" onclick="_expGeolocate()"><i class="fa-solid fa-location-crosshairs"></i> Ma position</button>
-            <button class="exp-map-btn" id="exp-zone-btn" onclick="_expSearchInZone()"><i class="fa-solid fa-magnifying-glass"></i> Rechercher ici</button>
-            <button class="exp-heat-btn" id="exp-heat-btn" onclick="_toggleHeatmap(this)"><i class="fa-solid fa-fire"></i> Heatmap</button>
-          </div>
+        <!-- Onglets principaux OFFRES / ÉVÉNEMENTS -->
+        <div class="exp2-tabs-row">
+          <button class="exp2-main-tab on" id="exp2-tab-offres" onclick="exp2SetTab('offres',this)">
+            <i class="fa-solid fa-briefcase"></i> Offres
+          </button>
+          <button class="exp2-main-tab" id="exp2-tab-events" onclick="exp2SetTab('evenements',this)">
+            <i class="fa-solid fa-champagne-glasses"></i> Événements
+          </button>
         </div>
       </div>
-      <!-- Onglets Prestataires / Événements -->
-      <div class="p-explore-tabs">
-        <button class="p-explore-tab on" id="p-exp-toggle-offres" onclick="setExpToggle('offres',this)"><i class="fa-solid fa-users p-explore-tab-icon"></i>PRESTATAIRES</button>
-        <button class="p-explore-tab" id="p-exp-toggle-events" onclick="setExpToggle('evenements',this)"><i class="fa-solid fa-champagne-glasses p-explore-tab-icon"></i>ÉVÉNEMENTS</button>
+
+      <!-- ════ PANEL OFFRES ════════════════════════════════ -->
+      <div class="exp2-panel on" id="exp2-panel-offres">
+        <!-- Barre de recherche -->
+        <div class="exp2-search-row">
+          <div class="exp2-search-wrap">
+            <i class="fa-solid fa-magnifying-glass exp2-search-icon"></i>
+            <input type="text" id="p-exp-search" placeholder="Photographe, vidéaste, graphiste…" oninput="_expSearchDebounced()">
+          </div>
+        </div>
+        <!-- Catégories horizontales -->
+        <div class="p-cat-icon-strip" id="p-exp-cat-icons"></div>
+        <!-- Carte / Liste + stat -->
+        <div class="exp2-view-bar">
+          <div class="exp2-view-btns">
+            <button class="exp2-view-btn on" id="exp2-offres-carte-btn" onclick="exp2SetOffresView('carte',this)">
+              <i class="fa-solid fa-map"></i> Carte
+            </button>
+            <button class="exp2-view-btn" id="exp2-offres-liste-btn" onclick="exp2SetOffresView('liste',this)">
+              <i class="fa-solid fa-list"></i> Liste
+            </button>
+          </div>
+          <div class="p-hero-stat" id="p-exp-stat" style="padding-left:8px;"></div>
+        </div>
+        <!-- Vue CARTE (visible par défaut) -->
+        <div id="exp2-offres-carte">
+          <div class="exp-map-wrap">
+            <div class="p-map-frame" id="p-exp-map">
+              <div class="exp-map-controls" id="exp-map-controls">
+                <button class="exp-map-btn primary" onclick="_expGeolocate()"><i class="fa-solid fa-location-crosshairs"></i> Ma position</button>
+                <button class="exp-map-btn" id="exp-zone-btn" onclick="_expSearchInZone()"><i class="fa-solid fa-magnifying-glass"></i> Rechercher ici</button>
+                <button class="exp-heat-btn" id="exp-heat-btn" onclick="_toggleHeatmap(this)"><i class="fa-solid fa-fire"></i> Heatmap</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Vue LISTE (cachée par défaut) -->
+        <div id="exp2-offres-liste" style="display:none;">
+          <div id="p-exp-dir-results"></div>
+          <div id="p-dir-favorites-wrap"></div>
+          <div id="p-dir-hall-of-fame-wrap"></div>
+        </div>
       </div>
-      <!-- Panneau PRESTATAIRES -->
-      <div class="p-exp-panel on" id="p-exp-offres-panel">
-        <div id="p-exp-dir-results"></div>
-        <div id="p-dir-favorites-wrap"></div>
-        <div id="p-dir-hall-of-fame-wrap"></div>
-      </div>
-      <!-- Panneau ÉVÉNEMENTS -->
-      <div class="p-exp-panel" id="p-exp-events-panel">
-        <div id="p-dir-events-wrap"></div>
+
+      <!-- ════ PANEL ÉVÉNEMENTS ════════════════════════════ -->
+      <div class="exp2-panel" id="exp2-panel-events">
+        <!-- Recherche événements -->
+        <div class="exp2-search-row">
+          <div class="exp2-search-wrap">
+            <i class="fa-solid fa-magnifying-glass exp2-search-icon"></i>
+            <input type="text" id="exp2-ev-search" placeholder="Rechercher un événement, une ville…" oninput="exp2EvSearchDebounced()">
+          </div>
+        </div>
+        <!-- Carte / Liste -->
+        <div class="exp2-view-bar">
+          <div class="exp2-view-btns">
+            <button class="exp2-view-btn on" id="exp2-ev-carte-btn" onclick="exp2SetEvView('carte',this)">
+              <i class="fa-solid fa-map"></i> Carte
+            </button>
+            <button class="exp2-view-btn" id="exp2-ev-liste-btn" onclick="exp2SetEvView('liste',this)">
+              <i class="fa-solid fa-list"></i> Liste
+            </button>
+          </div>
+        </div>
+        <!-- Vue CARTE événements (visible par défaut) -->
+        <div id="exp2-ev-carte">
+          <div class="exp-map-wrap">
+            <div class="p-map-frame" id="exp2-ev-map">
+              <div class="exp-map-controls" id="exp2-ev-map-controls">
+                <button class="exp-map-btn primary" onclick="exp2EvGeolocate()"><i class="fa-solid fa-location-crosshairs"></i> Ma position</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Vue LISTE événements (cachée par défaut) -->
+        <div id="exp2-ev-liste" style="display:none;">
+          <div id="p-dir-events-wrap" style="padding:4px 0 24px;"></div>
+        </div>
       </div>
     </div>
 
@@ -4064,6 +4132,13 @@ var POPULAR_SEARCHES = ['Vidéaste','Photographe','Mariage','Drone','Graphiste',
 var _expCategory = null, _expCity = '', _expCityTimer = null, _expMode = 'offres';
 var _expMap = null, _expMapLayer = null, _expMapVisible = false;
 var _expHeatLayer = null, _expHeatVisible = false;
+// ── EXPLORER v2 — state ──
+var _exp2Tab = 'offres';
+var _exp2OffresView = 'carte';
+var _exp2EvView = 'carte';
+var _exp2EvMap = null, _exp2EvMapLayer = null;
+var _exp2EvQuery = '', _exp2EvSearchTimer = null;
+var _exp2FilterCity = '';
 
 function renderExplorer(){
   var catIcons = document.getElementById('p-exp-cat-icons');
@@ -4073,21 +4148,247 @@ function renderExplorer(){
         +'<i class="fa-solid '+c.icon+' p-cat-icon-fa"></i><span class="p-cat-icon-label">'+c.label+'</span></button>';
     }).join('');
   }
+  // Carte visible par défaut — charger la map offres immédiatement
+  _expMapVisible = true;
+  _exp2OffresView = 'carte';
+  loadExplorerMap(_expMode, _expCity);
+  // Pré-charger la liste en arrière-plan
   loadExplorerDirectory();
   loadHallOfFame();
-  loadEventsExplorer();
   loadFavoritesInExplorer();
 }
 
+// ── EXPLORER v2 — onglets OFFRES / ÉVÉNEMENTS ────────────────
+function exp2SetTab(tab, el){
+  _exp2Tab = tab;
+  document.querySelectorAll('.exp2-main-tab').forEach(function(b){ b.classList.remove('on'); });
+  el.classList.add('on');
+  var offresPanel = document.getElementById('exp2-panel-offres');
+  var evPanel     = document.getElementById('exp2-panel-events');
+  if(offresPanel) offresPanel.className = 'exp2-panel'+(tab==='offres'?' on':'');
+  if(evPanel)     evPanel.className     = 'exp2-panel'+(tab==='evenements'?' on':'');
+  if(tab === 'evenements'){
+    exp2LoadEventsMap();
+    exp2LoadEventsList();
+  } else {
+    if(_expMap){
+      setTimeout(function(){ _expMap.invalidateSize(); }, 80);
+    }
+  }
+}
+
+function exp2SetOffresView(mode, el){
+  _exp2OffresView = mode;
+  var ids = ['exp2-offres-carte-btn','exp2-offres-liste-btn'];
+  ids.forEach(function(id){ var b=document.getElementById(id); if(b) b.classList.remove('on'); });
+  el.classList.add('on');
+  var carteDiv = document.getElementById('exp2-offres-carte');
+  var listeDiv = document.getElementById('exp2-offres-liste');
+  if(mode === 'carte'){
+    if(carteDiv) carteDiv.style.display = '';
+    if(listeDiv) listeDiv.style.display = 'none';
+    _expMapVisible = true;
+    loadExplorerMap(_expMode, _expCity);
+    setTimeout(function(){ if(_expMap) _expMap.invalidateSize(); }, 80);
+  } else {
+    if(carteDiv) carteDiv.style.display = 'none';
+    if(listeDiv) listeDiv.style.display = '';
+    _expMapVisible = false;
+    loadExplorerDirectory();
+  }
+}
+
+function exp2SetEvView(mode, el){
+  _exp2EvView = mode;
+  var ids = ['exp2-ev-carte-btn','exp2-ev-liste-btn'];
+  ids.forEach(function(id){ var b=document.getElementById(id); if(b) b.classList.remove('on'); });
+  el.classList.add('on');
+  var carteDiv = document.getElementById('exp2-ev-carte');
+  var listeDiv = document.getElementById('exp2-ev-liste');
+  if(mode === 'carte'){
+    if(carteDiv) carteDiv.style.display = '';
+    if(listeDiv) listeDiv.style.display = 'none';
+    exp2LoadEventsMap();
+    setTimeout(function(){ if(_exp2EvMap) _exp2EvMap.invalidateSize(); }, 80);
+  } else {
+    if(carteDiv) carteDiv.style.display = 'none';
+    if(listeDiv) listeDiv.style.display = '';
+    exp2LoadEventsList();
+  }
+}
+
+// ── FILTER BOTTOM SHEET ───────────────────────────────────────
+function exp2ToggleFilterSheet(){
+  var sheet = document.getElementById('exp2-filter-sheet');
+  var icon  = document.getElementById('exp2-filter-icon');
+  if(!sheet) return;
+  var isOn = sheet.classList.toggle('on');
+  if(icon) icon.classList.toggle('on', isOn);
+}
+
+function exp2CloseFilterSheet(){
+  var sheet = document.getElementById('exp2-filter-sheet');
+  var icon  = document.getElementById('exp2-filter-icon');
+  if(sheet) sheet.classList.remove('on');
+  if(icon)  icon.classList.remove('on');
+}
+
+function exp2ToggleFilterPill(el){
+  var filter = el.dataset.filter;
+  var val    = el.dataset.val;
+  if(_expFilters[filter] === val){
+    _expFilters[filter] = null;
+    el.classList.remove('on');
+  } else {
+    document.querySelectorAll('#exp2-filter-sheet .exp2-filter-pill[data-filter="'+filter+'"]').forEach(function(p){
+      p.classList.remove('on');
+    });
+    el.classList.add('on');
+    _expFilters[filter] = val;
+  }
+}
+
+function exp2ApplyFilters(){
+  var cityInput = document.getElementById('exp2-filter-city');
+  _expCity = cityInput ? cityInput.value.trim() : '';
+  var hasFilters = _expFilters.profil || _expFilters.rating || _expFilters.avail || _expCity;
+  var icon = document.getElementById('exp2-filter-icon');
+  if(icon) icon.classList.toggle('on', !!hasFilters);
+  exp2CloseFilterSheet();
+  loadExplorerDirectory();
+  if(_expMapVisible && _exp2OffresView === 'carte') loadExplorerMap(_expMode, _expCity);
+}
+
+function exp2ResetFilters(){
+  _expFilters = {profil:null, rating:null, avail:null};
+  _expCity = '';
+  var cityInput = document.getElementById('exp2-filter-city');
+  if(cityInput) cityInput.value = '';
+  document.querySelectorAll('#exp2-filter-sheet .exp2-filter-pill').forEach(function(p){ p.classList.remove('on'); });
+  var icon = document.getElementById('exp2-filter-icon');
+  if(icon) icon.classList.remove('on');
+}
+
+function exp2FilterCityDebounced(){
+  clearTimeout(_expCityTimer);
+  _expCityTimer = setTimeout(function(){
+    _exp2FilterCity = ((document.getElementById('exp2-filter-city')||{}).value || '').trim();
+  }, 200);
+}
+
+// ── EVENTS MAP ────────────────────────────────────────────────
+function exp2LoadEventsMap(){
+  var container = document.getElementById('exp2-ev-map');
+  if(!container) return;
+  if(typeof L === 'undefined') return;
+  var ctrlWrap = document.getElementById('exp2-ev-map-controls');
+  if(!_exp2EvMap){
+    container.innerHTML = '';
+    _exp2EvMap = L.map(container, {scrollWheelZoom:false, tap:true}).setView([46.6, 2.4], 6);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+      attribution:'&copy; OpenStreetMap contributors', maxZoom:18
+    }).addTo(_exp2EvMap);
+    if(typeof L.markerClusterGroup === 'function'){
+      _exp2EvMapLayer = L.markerClusterGroup({
+        maxClusterRadius: 60,
+        showCoverageOnHover: false,
+        iconCreateFunction: function(cluster){
+          var n  = cluster.getChildCount();
+          var sz = n < 10 ? 34 : n < 100 ? 42 : 50;
+          var fs = n < 10 ? 13 : 11;
+          return L.divIcon({
+            html: '<div class="gen-cluster-icon" style="width:'+sz+'px;height:'+sz+'px;background:#6a11cb;border-color:#fff;color:#fff;font-size:'+fs+'px;">'+n+'</div>',
+            className:'', iconSize:L.point(sz,sz)
+          });
+        }
+      }).addTo(_exp2EvMap);
+    } else {
+      _exp2EvMapLayer = L.layerGroup().addTo(_exp2EvMap);
+    }
+    if(ctrlWrap) container.appendChild(ctrlWrap);
+  }
+  _exp2EvMapLayer.clearLayers();
+  fetch((window.FA_GENESIS_API||API)+'/api/events').then(function(r){ return r.json(); }).then(function(data){
+    var events = (data && data.events) || [];
+    events.forEach(function(ev){ _eventsCache[ev.id] = ev; });
+    var bounds = [];
+    events.forEach(function(ev){
+      var lat = parseFloat(ev.lat), lng = parseFloat(ev.lng);
+      if(isNaN(lat)||isNaN(lng)) return;
+      var icon = L.divIcon({
+        html:'<div class="gen-pin" style="background:#1a0040;border-color:#6a11cb;"><i class="fa-solid fa-champagne-glasses" style="color:#a855f7;"></i></div>',
+        className:'', iconSize:[34,34], iconAnchor:[17,34]
+      });
+      var marker = L.marker([lat,lng],{icon:icon});
+      marker._genesisEv = ev;
+      marker.on('click',function(){ openEventDetail(this._genesisEv.id); });
+      _exp2EvMapLayer.addLayer(marker);
+      bounds.push([lat,lng]);
+    });
+    if(bounds.length){ try{ _exp2EvMap.fitBounds(bounds,{maxZoom:13,padding:[28,28]}); }catch(e){} }
+    setTimeout(function(){ if(_exp2EvMap) _exp2EvMap.invalidateSize(); }, 80);
+  }).catch(function(){});
+}
+
+function exp2LoadEventsList(){
+  var wrap = document.getElementById('p-dir-events-wrap');
+  if(!wrap) return;
+  wrap.innerHTML = '<div style="padding:24px 16px;text-align:center;color:var(--muted);font-size:13px;">Chargement…</div>';
+  fetch((window.FA_GENESIS_API||API)+'/api/events').then(function(r){ return r.json(); }).then(function(data){
+    var events = (data && data.events) || [];
+    events.forEach(function(ev){ _eventsCache[ev.id] = ev; });
+    if(_exp2EvQuery){
+      var q = _exp2EvQuery.toLowerCase();
+      events = events.filter(function(ev){
+        return (ev.title||'').toLowerCase().indexOf(q) >= 0
+            || (ev.location||'').toLowerCase().indexOf(q) >= 0
+            || (ev.city||'').toLowerCase().indexOf(q) >= 0
+            || (ev.type||'').toLowerCase().indexOf(q) >= 0;
+      });
+    }
+    if(!events.length){
+      wrap.innerHTML = '<div style="padding:32px 16px;text-align:center;color:var(--muted);">Aucun événement trouvé.</div>';
+      return;
+    }
+    wrap.innerHTML = events.map(function(ev){
+      var photo = ev.coverPhoto
+        ? '<img src="'+ev.coverPhoto+'" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display=\'none\'">'
+        : '<i class="fa-solid fa-champagne-glasses"></i>';
+      var dateStr = '';
+      if(ev.date){ try{ dateStr = new Date(ev.date).toLocaleDateString('fr-FR',{day:'numeric',month:'long'}); }catch(e){ dateStr = ev.date; } }
+      return '<div class="exp2-ev-list-card" onclick="openEventDetail(\''+ev.id+'\')">'
+        +'<div class="exp2-ev-list-photo">'+photo+'</div>'
+        +'<div class="exp2-ev-list-body">'
+        +'<div class="exp2-ev-list-title">'+(ev.title||'Événement')+'</div>'
+        +(dateStr ? '<div class="exp2-ev-list-date"><i class="fa-regular fa-calendar" style="margin-right:4px;"></i>'+dateStr+'</div>' : '')
+        +'<div class="exp2-ev-list-loc"><i class="fa-solid fa-location-dot" style="margin-right:4px;color:var(--yellow);"></i>'+(ev.city||ev.location||'')+'</div>'
+        +'</div></div>';
+    }).join('');
+  }).catch(function(){
+    wrap.innerHTML = '<div style="padding:16px;text-align:center;color:var(--muted);">Erreur de chargement.</div>';
+  });
+}
+
+function exp2EvGeolocate(){
+  if(!navigator.geolocation || !_exp2EvMap){ showToast('Géolocalisation non disponible.'); return; }
+  navigator.geolocation.getCurrentPosition(function(pos){
+    _exp2EvMap.setView([pos.coords.latitude, pos.coords.longitude], 12);
+  }, function(){
+    showToast('Localisation refusée ou indisponible.');
+  });
+}
+
+function exp2EvSearchDebounced(){
+  clearTimeout(_exp2EvSearchTimer);
+  _exp2EvSearchTimer = setTimeout(function(){
+    _exp2EvQuery = ((document.getElementById('exp2-ev-search')||{}).value || '').trim();
+    if(_exp2EvView === 'liste') exp2LoadEventsList();
+  }, 300);
+}
+
+// ── Garde la compatibilité ascendante de setExpToggle ─────────
 function setExpToggle(which, el){
   _expMode = which;
-  document.querySelectorAll('#tab-explorer .p-explore-tab').forEach(function(b){b.className='p-explore-tab';});
-  el.className = 'p-explore-tab on';
-  var offresPanel = document.getElementById('p-exp-offres-panel');
-  var eventsPanel = document.getElementById('p-exp-events-panel');
-  if(offresPanel) offresPanel.className = 'p-exp-panel'+(which==='offres'?' on':'');
-  if(eventsPanel) eventsPanel.className = 'p-exp-panel'+(which==='evenements'?' on':'');
-  if(_expMapVisible) loadExplorerMap(which, _expCity);
 }
 
 function setExpCategory(cat, el){
@@ -4095,6 +4396,7 @@ function setExpCategory(cat, el){
   document.querySelectorAll('#p-exp-cat-icons .p-cat-icon-pill').forEach(function(b){b.className='p-cat-icon-pill';});
   el.className = 'p-cat-icon-pill on';
   loadExplorerDirectory();
+  if(_expMapVisible && _exp2OffresView === 'carte') loadExplorerMap(_expMode, _expCity);
 }
 
 function _expCityDebounced(){
@@ -13038,6 +13340,54 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
 </script>
 
 <!-- Fiche détail — bottom sheet -->
+<!-- ── EXPLORER v2 — Filtre bottom sheet ── -->
+<div id="exp2-filter-sheet" onclick="if(event.target===this)exp2CloseFilterSheet()">
+  <div class="exp2-filter-panel">
+    <div class="exp2-filter-handle"></div>
+    <div class="exp2-filter-hdr">
+      <span class="exp2-filter-hdr-title">Filtres</span>
+      <button class="exp2-filter-reset-btn" onclick="exp2ResetFilters()">Réinitialiser</button>
+    </div>
+    <!-- Type de client -->
+    <div class="exp2-filter-sect">
+      <div class="exp2-filter-sect-title">Type de client</div>
+      <div class="exp2-filter-pills">
+        <button class="exp2-filter-pill" data-filter="profil" data-val="etudiant" onclick="exp2ToggleFilterPill(this)">Étudiant</button>
+        <button class="exp2-filter-pill" data-filter="profil" data-val="particulier" onclick="exp2ToggleFilterPill(this)">Particulier</button>
+        <button class="exp2-filter-pill" data-filter="profil" data-val="entreprise" onclick="exp2ToggleFilterPill(this)">Entreprise</button>
+      </div>
+    </div>
+    <!-- Note minimale -->
+    <div class="exp2-filter-sect">
+      <div class="exp2-filter-sect-title">Note minimale</div>
+      <div class="exp2-filter-pills">
+        <button class="exp2-filter-pill" data-filter="rating" data-val="4" onclick="exp2ToggleFilterPill(this)">4+ ★</button>
+        <button class="exp2-filter-pill" data-filter="rating" data-val="4.5" onclick="exp2ToggleFilterPill(this)">4,5+ ★</button>
+        <button class="exp2-filter-pill" data-filter="rating" data-val="4.8" onclick="exp2ToggleFilterPill(this)">4,8+ ★</button>
+      </div>
+    </div>
+    <!-- Format -->
+    <div class="exp2-filter-sect">
+      <div class="exp2-filter-sect-title">Format</div>
+      <div class="exp2-filter-pills">
+        <button class="exp2-filter-pill" data-filter="avail" data-val="remote" onclick="exp2ToggleFilterPill(this)">À distance</button>
+        <button class="exp2-filter-pill" data-filter="avail" data-val="presential" onclick="exp2ToggleFilterPill(this)">Présentiel</button>
+      </div>
+    </div>
+    <!-- Ville -->
+    <div class="exp2-filter-sect">
+      <div class="exp2-filter-sect-title">Ville</div>
+      <div class="exp2-filter-city-wrap">
+        <i class="fa-solid fa-location-dot"></i>
+        <input type="text" id="exp2-filter-city" class="exp2-filter-city-input" placeholder="Paris, Lyon, Marseille…" oninput="exp2FilterCityDebounced()">
+      </div>
+    </div>
+    <!-- Bouton Appliquer -->
+    <button class="exp2-filter-apply" onclick="exp2ApplyFilters()">
+      <i class="fa-solid fa-check" style="margin-right:6px;"></i>Appliquer les filtres
+    </button>
+  </div>
+</div>
 <!-- ── GENESIS MAP — fiche rapide prestataire ── -->
 <div id="exp-quick-sheet" onclick="if(event.target===this)_closeMapQuickPreview()">
   <div class="exp-quick-panel">
@@ -16014,7 +16364,7 @@ function _updateGreeting(){
     sx=e.touches[0].clientX; sy=e.touches[0].clientY; moved=false;
     inHScroll=false;
     // Bloquer le swipe si le touch est dans la carte Leaflet (overflow:hidden → non détecté ci-dessous)
-    var te=e.target; while(te&&te!==c){ if(te.id==='p-exp-map'){inHScroll=true;break;} te=te.parentElement; }
+    var te=e.target; while(te&&te!==c){ if(te.id==='p-exp-map'||te.id==='exp2-ev-map'){inHScroll=true;break;} te=te.parentElement; }
     if(inHScroll) return;
     var el=e.target;
     while(el&&el!==c){
