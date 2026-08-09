@@ -757,8 +757,7 @@ a{text-decoration:none;color:inherit}
 .p-dir-controls::-webkit-scrollbar{display:none}
 /* ═══ EXPLORER v2 — STRUCTURE ════════════════════════════ */
 .exp2-header{padding:16px 16px 0;}
-.exp2-top-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
-.exp2-title{font-family:'Unbounded',cursive;font-size:22px;font-weight:900;color:var(--text);}
+.exp2-top-row{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
 .exp2-filter-icon{background:var(--card);border:2px solid var(--border);border-radius:12px;width:42px;height:42px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;font-size:15px;color:var(--muted);}
 .exp2-filter-icon.on{border-color:var(--yellow);color:var(--yellow);background:#1a1600;}
 .exp2-tabs-row{display:flex;gap:4px;background:var(--card);border:2px solid var(--border);border-radius:14px;padding:4px;margin-bottom:2px;}
@@ -2559,10 +2558,13 @@ a{text-decoration:none;color:inherit}
 
     <!-- EXPLORER v2 — OFFRES + ÉVÉNEMENTS -->
     <div class="tab prest-tab" id="tab-explorer">
-      <!-- En-tête : titre + icône filtre -->
+      <!-- En-tête : recherche + icône filtre + onglets -->
       <div class="exp2-header">
         <div class="exp2-top-row">
-          <div class="exp2-title">Explorer</div>
+          <div class="exp2-search-wrap" style="flex:1;">
+            <i class="fa-solid fa-magnifying-glass exp2-search-icon"></i>
+            <input type="text" id="p-exp-search" placeholder="Photographe, vidéaste, graphiste…" oninput="_expSearchDebounced()">
+          </div>
           <button class="exp2-filter-icon" id="exp2-filter-icon" onclick="exp2ToggleFilterSheet()">
             <i class="fa-solid fa-sliders"></i>
           </button>
@@ -2580,13 +2582,6 @@ a{text-decoration:none;color:inherit}
 
       <!-- ════ PANEL OFFRES ════════════════════════════════ -->
       <div class="exp2-panel on" id="exp2-panel-offres">
-        <!-- Barre de recherche -->
-        <div class="exp2-search-row">
-          <div class="exp2-search-wrap">
-            <i class="fa-solid fa-magnifying-glass exp2-search-icon"></i>
-            <input type="text" id="p-exp-search" placeholder="Photographe, vidéaste, graphiste…" oninput="_expSearchDebounced()">
-          </div>
-        </div>
         <!-- Carte / Liste + stat -->
         <div class="exp2-view-bar">
           <div class="exp2-view-btns">
