@@ -794,6 +794,27 @@ a{text-decoration:none;color:inherit}
 .exp2-filter-city-input{flex:1;background:transparent;border:none;outline:none;color:var(--text);font-size:13px;padding:11px 0;font-family:inherit;}
 .exp2-filter-city-input::placeholder{color:var(--muted);}
 .exp2-filter-apply{display:block;width:calc(100% - 40px);margin:20px 20px 0;background:var(--yellow);color:#000;font-weight:900;font-size:14px;border:none;border-radius:12px;padding:14px;cursor:pointer;font-family:inherit;}
+/* ═══ EXPLORER v2 — PLEIN ÉCRAN ══════════════════════════ */
+#tab-explorer{position:relative !important;overflow:hidden !important;padding:0 !important;}
+.exp2-header{position:absolute;top:0;left:0;right:0;z-index:500;background:linear-gradient(to bottom,rgba(0,0,0,.82) 55%,transparent);padding:16px 16px 14px;pointer-events:none;}
+.exp2-header>*{pointer-events:auto;}
+.exp2-top-row{margin-bottom:10px;}
+.exp2-tabs-row{margin-bottom:0;}
+#exp2-panel-offres.on,#exp2-panel-events.on{position:absolute;inset:0;overflow:hidden;}
+#p-exp-map,#exp2-ev-map{position:absolute !important;inset:0 !important;width:100% !important;height:100% !important;border:none !important;border-radius:0 !important;box-shadow:none !important;margin:0 !important;min-height:unset !important;}
+/* Contrôles bas droite (zoom + géo) */
+.exp2-map-br-wrap{position:absolute;bottom:28px;right:14px;z-index:500;display:flex;flex-direction:column;align-items:center;gap:8px;}
+.exp2-zoom-btn{width:40px;height:40px;background:rgba(17,17,17,.92);border:1.5px solid #444;border-radius:10px;color:#fff;font-size:17px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.5);font-family:inherit;}
+.exp2-geo-btn{width:46px;height:46px;background:var(--yellow);border:2.5px solid #000;border-radius:50%;color:#000;font-size:18px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.5),2px 2px 0 #000;}
+/* Heatmap toggle bas gauche */
+.exp2-heat-wrap{position:absolute;bottom:28px;left:14px;z-index:500;}
+/* Carte/Liste événements bas gauche */
+.exp2-ev-view-wrap{position:absolute;bottom:28px;left:14px;z-index:500;display:flex;gap:4px;background:rgba(17,17,17,.88);border:1.5px solid #333;border-radius:10px;padding:3px;backdrop-filter:blur(4px);}
+/* "Rechercher ici" — centre haut */
+.exp2-zone-wrap{position:absolute;top:130px;left:50%;transform:translateX(-50%);z-index:500;}
+.exp2-zone-btn{background:rgba(20,20,20,.9);border:1.5px solid #444;border-radius:20px;color:var(--text);font-size:12px;font-weight:700;padding:8px 16px;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:6px;white-space:nowrap;backdrop-filter:blur(4px);}
+/* Marqueur photo prestataire */
+.gen-pin-photo{width:42px;height:42px;border-radius:50%;border:3px solid var(--yellow);background-size:cover;background-position:center;box-shadow:0 2px 8px rgba(0,0,0,.6),2px 2px 0 #000;cursor:pointer;}
 /* ═══ EVENTS LIST CARDS ══════════════════════════════════ */
 .exp2-ev-list-card{display:flex;align-items:center;gap:12px;background:var(--card);border:2px solid #000;border-radius:14px;padding:10px;cursor:pointer;box-shadow:3px 3px 0 var(--yellow);margin:0 16px 12px;}
 .exp2-ev-list-photo{width:72px;height:72px;border-radius:10px;background:#1a0040;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:24px;color:#a855f7;}
@@ -2558,18 +2579,18 @@ a{text-decoration:none;color:inherit}
 
     <!-- EXPLORER v2 — OFFRES + ÉVÉNEMENTS -->
     <div class="tab prest-tab" id="tab-explorer">
-      <!-- En-tête : recherche + icône filtre + onglets -->
+
+      <!-- En-tête flottant sur la carte -->
       <div class="exp2-header">
         <div class="exp2-top-row">
           <div class="exp2-search-wrap" style="flex:1;">
             <i class="fa-solid fa-magnifying-glass exp2-search-icon"></i>
-            <input type="text" id="p-exp-search" placeholder="Photographe, vidéaste, graphiste…" oninput="_expSearchDebounced()">
+            <input type="text" id="p-exp-search" placeholder="Rechercher" oninput="_expSearchDebounced()">
           </div>
           <button class="exp2-filter-icon" id="exp2-filter-icon" onclick="exp2ToggleFilterSheet()">
             <i class="fa-solid fa-sliders"></i>
           </button>
         </div>
-        <!-- Onglets principaux OFFRES / ÉVÉNEMENTS -->
         <div class="exp2-tabs-row">
           <button class="exp2-main-tab on" id="exp2-tab-offres" onclick="exp2SetTab('offres',this)">
             <i class="fa-solid fa-briefcase"></i> Offres
@@ -2580,75 +2601,61 @@ a{text-decoration:none;color:inherit}
         </div>
       </div>
 
-      <!-- ════ PANEL OFFRES ════════════════════════════════ -->
+      <!-- ════ PANEL OFFRES — carte plein écran ════════════ -->
       <div class="exp2-panel on" id="exp2-panel-offres">
-        <!-- Carte / Liste + stat -->
-        <div class="exp2-view-bar">
-          <div class="exp2-view-btns">
-            <button class="exp2-view-btn on" id="exp2-offres-carte-btn" onclick="exp2SetOffresView('carte',this)">
-              <i class="fa-solid fa-map"></i> Carte
-            </button>
-            <button class="exp2-view-btn" id="exp2-offres-liste-btn" onclick="exp2SetOffresView('liste',this)">
-              <i class="fa-solid fa-list"></i> Liste
-            </button>
-          </div>
-          <div class="p-hero-stat" id="p-exp-stat" style="padding-left:8px;"></div>
+        <!-- Carte Leaflet (plein écran) -->
+        <div id="p-exp-map"></div>
+        <!-- "Rechercher ici" — apparaît après déplacement -->
+        <div class="exp2-zone-wrap" id="exp2-zone-wrap">
+          <button id="exp-zone-btn" class="exp2-zone-btn" onclick="_expSearchInZone()" style="display:none;">
+            <i class="fa-solid fa-magnifying-glass"></i> Rechercher ici
+          </button>
         </div>
-        <!-- Vue CARTE (visible par défaut) -->
-        <div id="exp2-offres-carte">
-          <div class="exp-map-wrap">
-            <div class="p-map-frame" id="p-exp-map">
-              <div class="exp-map-controls" id="exp-map-controls">
-                <button class="exp-map-btn primary" onclick="_expGeolocate()"><i class="fa-solid fa-location-crosshairs"></i> Ma position</button>
-                <button class="exp-map-btn" id="exp-zone-btn" onclick="_expSearchInZone()"><i class="fa-solid fa-magnifying-glass"></i> Rechercher ici</button>
-                <button class="exp-heat-btn on" id="exp-heat-btn" onclick="_toggleHeatmap(this)"><i class="fa-solid fa-fire"></i> Heatmap</button>
-              </div>
-            </div>
-          </div>
+        <!-- Heatmap toggle — bas gauche -->
+        <div class="exp2-heat-wrap">
+          <button class="exp-heat-btn on" id="exp-heat-btn" onclick="_toggleHeatmap(this)">
+            <i class="fa-solid fa-fire"></i> Heatmap
+          </button>
         </div>
-        <!-- Vue LISTE (cachée par défaut) -->
-        <div id="exp2-offres-liste" style="display:none;">
+        <!-- Zoom + Géolocalisation — bas droite -->
+        <div class="exp2-map-br-wrap">
+          <button class="exp2-zoom-btn" onclick="_expZoomIn()"><i class="fa-solid fa-plus"></i></button>
+          <button class="exp2-zoom-btn" onclick="_expZoomOut()"><i class="fa-solid fa-minus"></i></button>
+          <button class="exp2-geo-btn" onclick="_expGeolocate()"><i class="fa-solid fa-location-crosshairs"></i></button>
+        </div>
+        <!-- Liste cachée (accessible via code si besoin) -->
+        <div id="exp2-offres-liste" style="display:none;position:absolute;inset:0;background:var(--bg);overflow-y:auto;padding-top:130px;padding-bottom:24px;">
           <div id="p-exp-dir-results"></div>
           <div id="p-dir-favorites-wrap"></div>
           <div id="p-dir-hall-of-fame-wrap"></div>
         </div>
       </div>
 
-      <!-- ════ PANEL ÉVÉNEMENTS ════════════════════════════ -->
+      <!-- ════ PANEL ÉVÉNEMENTS — carte plein écran ════════ -->
       <div class="exp2-panel" id="exp2-panel-events">
-        <!-- Recherche événements -->
-        <div class="exp2-search-row">
-          <div class="exp2-search-wrap">
-            <i class="fa-solid fa-magnifying-glass exp2-search-icon"></i>
-            <input type="text" id="exp2-ev-search" placeholder="Rechercher un événement, une ville…" oninput="exp2EvSearchDebounced()">
-          </div>
+        <!-- Carte Leaflet événements -->
+        <div id="exp2-ev-map"></div>
+        <!-- Toggle Carte/Liste — bas gauche -->
+        <div class="exp2-ev-view-wrap">
+          <button class="exp2-view-btn on" id="exp2-ev-carte-btn" onclick="exp2SetEvView('carte',this)">
+            <i class="fa-solid fa-map"></i> Carte
+          </button>
+          <button class="exp2-view-btn" id="exp2-ev-liste-btn" onclick="exp2SetEvView('liste',this)">
+            <i class="fa-solid fa-list"></i> Liste
+          </button>
         </div>
-        <!-- Carte / Liste -->
-        <div class="exp2-view-bar">
-          <div class="exp2-view-btns">
-            <button class="exp2-view-btn on" id="exp2-ev-carte-btn" onclick="exp2SetEvView('carte',this)">
-              <i class="fa-solid fa-map"></i> Carte
-            </button>
-            <button class="exp2-view-btn" id="exp2-ev-liste-btn" onclick="exp2SetEvView('liste',this)">
-              <i class="fa-solid fa-list"></i> Liste
-            </button>
-          </div>
+        <!-- Zoom + Géolocalisation — bas droite -->
+        <div class="exp2-map-br-wrap">
+          <button class="exp2-zoom-btn" onclick="if(_exp2EvMap)_exp2EvMap.zoomIn()"><i class="fa-solid fa-plus"></i></button>
+          <button class="exp2-zoom-btn" onclick="if(_exp2EvMap)_exp2EvMap.zoomOut()"><i class="fa-solid fa-minus"></i></button>
+          <button class="exp2-geo-btn" onclick="exp2EvGeolocate()"><i class="fa-solid fa-location-crosshairs"></i></button>
         </div>
-        <!-- Vue CARTE événements (visible par défaut) -->
-        <div id="exp2-ev-carte">
-          <div class="exp-map-wrap">
-            <div class="p-map-frame" id="exp2-ev-map">
-              <div class="exp-map-controls" id="exp2-ev-map-controls">
-                <button class="exp-map-btn primary" onclick="exp2EvGeolocate()"><i class="fa-solid fa-location-crosshairs"></i> Ma position</button>
-              </div>
-            </div>
-          </div>
-        </div>
-        <!-- Vue LISTE événements (cachée par défaut) -->
-        <div id="exp2-ev-liste" style="display:none;">
+        <!-- Vue LISTE événements -->
+        <div id="exp2-ev-liste" style="display:none;position:absolute;inset:0;background:var(--bg);overflow-y:auto;padding-top:130px;padding-bottom:24px;">
           <div id="p-dir-events-wrap" style="padding:4px 0 24px;"></div>
         </div>
       </div>
+
     </div>
 
     <!-- PRESTATAIRES (annuaire marketplace) -->
@@ -3931,7 +3938,7 @@ function _expGeolocate(){
     if(!_expMap)return;
     _expMap.setView([pos.coords.latitude,pos.coords.longitude],13);
     var zoneBtn=document.getElementById('exp-zone-btn');
-    if(zoneBtn)zoneBtn.classList.add('visible');
+    if(zoneBtn)zoneBtn.style.display='flex';
   },function(){
     showToast('Localisation refusée ou indisponible.');
   });
@@ -3944,7 +3951,7 @@ function _expSearchInZone(){
   _expCity=center.lat.toFixed(4)+','+center.lng.toFixed(4);
   loadExplorerDirectory();
   var zoneBtn=document.getElementById('exp-zone-btn');
-  if(zoneBtn)zoneBtn.classList.remove('visible');
+  if(zoneBtn)zoneBtn.style.display='none';
 }
 
 function _expSearchDebounced(){
@@ -4456,7 +4463,18 @@ var _PARTNER_ICONS = {
   influencer:'fa-star', other:'fa-user'
 };
 
-function _makePartnerIcon(partnerType){
+function _makePartnerIcon(p){
+  var partnerType = (p && typeof p === 'object') ? (p.partner_type || 'other') : (p || 'other');
+  // Photo de profil disponible → marqueur circulaire avec la photo
+  if(p && p.photo){
+    return L.divIcon({
+      html: '<div class="gen-pin-photo" style="background-image:url(\''+p.photo+'\');"></div>',
+      className: '',
+      iconSize: [42, 42],
+      iconAnchor: [21, 42],
+      popupAnchor: [0, -44]
+    });
+  }
   var ic = _PARTNER_ICONS[partnerType] || 'fa-user';
   return L.divIcon({
     html: '<div class="gen-pin"><i class="fa-solid '+ic+'"></i></div>',
@@ -4466,6 +4484,9 @@ function _makePartnerIcon(partnerType){
     popupAnchor: [0, -38]
   });
 }
+
+function _expZoomIn(){ if(_expMap) _expMap.zoomIn(); }
+function _expZoomOut(){ if(_expMap) _expMap.zoomOut(); }
 
 function _openMapQuickPreview(p){
   var sheet = document.getElementById('exp-quick-sheet');
@@ -4524,7 +4545,7 @@ function loadExplorerMap(mode, cityFilter){
   }
   if(!_expMap){
     container.innerHTML = '';
-    _expMap = L.map(container, {scrollWheelZoom: false, tap: true, zoomControl: true})
+    _expMap = L.map(container, {scrollWheelZoom: false, tap: true, zoomControl: false})
       .setView([46.6, 2.4], 6);
     L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
       attribution: '&copy; OpenStreetMap &copy; CARTO',
@@ -4548,12 +4569,9 @@ function loadExplorerMap(mode, cityFilter){
     } else {
       _expMapLayer = L.layerGroup().addTo(_expMap);
     }
-    // Contrôles : ré-injecter dans le container Leaflet pour qu'ils restent visibles
-    var ctrlWrap = document.getElementById('exp-map-controls');
-    if(ctrlWrap) container.appendChild(ctrlWrap);
     _expMap.on('moveend', function(){
       var zb = document.getElementById('exp-zone-btn');
-      if(zb) zb.classList.add('visible');
+      if(zb) zb.style.display = 'flex';
     });
   }
   _expMapLayer.clearLayers();
@@ -4577,7 +4595,7 @@ function loadExplorerMap(mode, cityFilter){
         marker.bindPopup('<div class="p-map-popup"><div class="p-map-popup-name">'+(it.title||'Événement')+'</div>'
           +'<div class="p-map-popup-cat">'+(it.date||'')+'</div></div>', {maxWidth:220});
       } else {
-        marker = L.marker([lat, lng], {icon: _makePartnerIcon(it.partner_type)});
+        marker = L.marker([lat, lng], {icon: _makePartnerIcon(it)});
         // Stocker les données partenaire directement sur le marker
         marker._genesisPartner = it;
         marker.on('click', function(){ _openMapQuickPreview(this._genesisPartner); });
