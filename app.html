@@ -3928,13 +3928,27 @@ function loadExplorerDirectory(){
 function _expGeolocate(){
   if(!navigator.geolocation){showToast('Géolocalisation non disponible sur cet appareil.');return;}
   navigator.geolocation.getCurrentPosition(function(pos){
-    if(!_expMap)return;
-    _expMap.setView([pos.coords.latitude,pos.coords.longitude],13);
-    var zoneBtn=document.getElementById('exp-zone-btn');
-    if(zoneBtn)zoneBtn.style.display='flex';
+    if(!_expMap) return;
+    var lat = pos.coords.latitude, lng = pos.coords.longitude;
+    // Supprimer les anciens marqueurs
+    if(_expGeoMarker){ try{_expMap.removeLayer(_expGeoMarker);}catch(e){} _expGeoMarker=null; }
+    if(_expGeoCircle){ try{_expMap.removeLayer(_expGeoCircle);}catch(e){} _expGeoCircle=null; }
+    // Cercle de précision translucide bleu
+    if(pos.coords.accuracy){
+      _expGeoCircle = L.circle([lat,lng],{
+        radius:pos.coords.accuracy, color:'#4285f4',
+        fillColor:'#4285f4', fillOpacity:0.1, weight:1
+      }).addTo(_expMap);
+    }
+    // Point bleu central (style Google Maps)
+    _expGeoMarker = L.circleMarker([lat,lng],{
+      radius:9, color:'#fff', weight:3,
+      fillColor:'#4285f4', fillOpacity:1
+    }).addTo(_expMap);
+    _expMap.setView([lat,lng],14);
   },function(){
     showToast('Localisation refusée ou indisponible.');
-  });
+  },{enableHighAccuracy:true,timeout:8000});
 }
 
 // ── EXPLORER — RECHERCHER DANS CETTE ZONE ─────────────
@@ -4125,6 +4139,7 @@ var POPULAR_SEARCHES = ['Vidéaste','Photographe','Mariage','Drone','Graphiste',
 var _expCategory = null, _expCity = '', _expCityTimer = null, _expMode = 'offres';
 var _expMap = null, _expMapLayer = null, _expMapVisible = false;
 var _expHeatLayer = null, _expHeatVisible = true;
+var _expGeoMarker = null, _expGeoCircle = null;
 // ── EXPLORER v2 — state ──
 var _exp2Tab = 'offres';
 var _exp2OffresView = 'carte';
@@ -4263,27 +4278,27 @@ function exp2FilterCityDebounced(){
 }
 
 // ── EVENTS MAP ────────────────────────────────────────────────
+var _exp2EvHeatLayer = null;
 function exp2LoadEventsMap(){
   var container = document.getElementById('exp2-ev-map');
   if(!container) return;
   if(typeof L === 'undefined') return;
-  var ctrlWrap = document.getElementById('exp2-ev-map-controls');
   if(!_exp2EvMap){
     container.innerHTML = '';
-    _exp2EvMap = L.map(container, {scrollWheelZoom:false, tap:true}).setView([46.6, 2.4], 6);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
-      attribution:'&copy; OpenStreetMap contributors', maxZoom:18
+    _exp2EvMap = L.map(container, {
+      scrollWheelZoom:false, tap:true, zoomControl:false,
+      attributionControl:false, minZoom:1
+    }).setView([46.6, 2.4], 5);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{
+      subdomains:'abcd', maxZoom:19
     }).addTo(_exp2EvMap);
     if(typeof L.markerClusterGroup === 'function'){
       _exp2EvMapLayer = L.markerClusterGroup({
-        maxClusterRadius: 60,
-        showCoverageOnHover: false,
-        iconCreateFunction: function(cluster){
-          var n  = cluster.getChildCount();
-          var sz = n < 10 ? 34 : n < 100 ? 42 : 50;
-          var fs = n < 10 ? 13 : 11;
+        maxClusterRadius:60, showCoverageOnHover:false,
+        iconCreateFunction:function(cluster){
+          var n=cluster.getChildCount(), sz=n<10?34:n<100?42:50, fs=n<10?13:11;
           return L.divIcon({
-            html: '<div class="gen-cluster-icon" style="width:'+sz+'px;height:'+sz+'px;background:#6a11cb;border-color:#fff;color:#fff;font-size:'+fs+'px;">'+n+'</div>',
+            html:'<div class="gen-cluster-icon" style="width:'+sz+'px;height:'+sz+'px;background:#6a11cb;border-color:#fff;color:#fff;font-size:'+fs+'px;">'+n+'</div>',
             className:'', iconSize:L.point(sz,sz)
           });
         }
@@ -4291,29 +4306,52 @@ function exp2LoadEventsMap(){
     } else {
       _exp2EvMapLayer = L.layerGroup().addTo(_exp2EvMap);
     }
-    if(ctrlWrap) container.appendChild(ctrlWrap);
   }
   _exp2EvMapLayer.clearLayers();
+  if(_exp2EvHeatLayer){ try{_exp2EvMap.removeLayer(_exp2EvHeatLayer);}catch(e){} _exp2EvHeatLayer=null; }
   fetch((window.FA_GENESIS_API||API)+'/api/events').then(function(r){ return r.json(); }).then(function(data){
     var events = (data && data.events) || [];
     events.forEach(function(ev){ _eventsCache[ev.id] = ev; });
-    var bounds = [];
+    var bounds = [], heatPts = [];
     events.forEach(function(ev){
       var lat = parseFloat(ev.lat), lng = parseFloat(ev.lng);
       if(isNaN(lat)||isNaN(lng)) return;
+      // Marqueur rond violet
       var icon = L.divIcon({
-        html:'<div class="gen-pin" style="background:#1a0040;border-color:#6a11cb;"><i class="fa-solid fa-champagne-glasses" style="color:#a855f7;"></i></div>',
-        className:'', iconSize:[34,34], iconAnchor:[17,34]
+        html:'<div style="width:26px;height:26px;border-radius:50%;background:#a855f7;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.5);cursor:pointer;"></div>',
+        className:'', iconSize:[26,26], iconAnchor:[13,13]
       });
       var marker = L.marker([lat,lng],{icon:icon});
       marker._genesisEv = ev;
       marker.on('click',function(){ openEventDetail(this._genesisEv.id); });
       _exp2EvMapLayer.addLayer(marker);
       bounds.push([lat,lng]);
+      heatPts.push([lat,lng,0.7]);
     });
-    if(bounds.length){ try{ _exp2EvMap.fitBounds(bounds,{maxZoom:13,padding:[28,28]}); }catch(e){} }
+    // Heatmap événements — même gradient WeCheers
+    if(typeof L.heatLayer === 'function' && heatPts.length){
+      _exp2EvHeatLayer = L.heatLayer(heatPts,{
+        radius:42, blur:26, maxZoom:14,
+        gradient:{0.1:'#1a52ff',0.3:'#00ccff',0.5:'#00ff88',0.65:'#ffff00',0.82:'#ff7700',1:'#ff1100'}
+      }).addTo(_exp2EvMap);
+    }
+    if(bounds.length){ try{_exp2EvMap.fitBounds(bounds,{maxZoom:10,padding:[40,40]});}catch(e){} }
     setTimeout(function(){ if(_exp2EvMap) _exp2EvMap.invalidateSize(); }, 80);
   }).catch(function(){});
+}
+
+// Afficher un événement sur la carte
+function exp2ShowEvOnMap(evId){
+  var ev = _eventsCache[evId];
+  if(!ev) return;
+  var carteBtn = document.getElementById('exp2-ev-carte-btn');
+  if(carteBtn) exp2SetEvView('carte', carteBtn);
+  var lat = parseFloat(ev.lat), lng = parseFloat(ev.lng);
+  if(!isNaN(lat) && !isNaN(lng)){
+    setTimeout(function(){
+      if(_exp2EvMap){ _exp2EvMap.setView([lat,lng],13); }
+    }, 180);
+  }
 }
 
 function exp2LoadEventsList(){
@@ -4342,13 +4380,16 @@ function exp2LoadEventsList(){
         : '<i class="fa-solid fa-champagne-glasses"></i>';
       var dateStr = '';
       if(ev.date){ try{ dateStr = new Date(ev.date).toLocaleDateString('fr-FR',{day:'numeric',month:'long'}); }catch(e){ dateStr = ev.date; } }
-      return '<div class="exp2-ev-list-card" onclick="openEventDetail(\''+ev.id+'\')">'
-        +'<div class="exp2-ev-list-photo">'+photo+'</div>'
-        +'<div class="exp2-ev-list-body">'
+      var hasCoords = !isNaN(parseFloat(ev.lat)) && !isNaN(parseFloat(ev.lng));
+      return '<div class="exp2-ev-list-card">'
+        +'<div class="exp2-ev-list-photo" onclick="openEventDetail(\''+ev.id+'\')">'+photo+'</div>'
+        +'<div class="exp2-ev-list-body" onclick="openEventDetail(\''+ev.id+'\')">'
         +'<div class="exp2-ev-list-title">'+(ev.title||'Événement')+'</div>'
         +(dateStr ? '<div class="exp2-ev-list-date"><i class="fa-regular fa-calendar" style="margin-right:4px;"></i>'+dateStr+'</div>' : '')
         +'<div class="exp2-ev-list-loc"><i class="fa-solid fa-location-dot" style="margin-right:4px;color:var(--yellow);"></i>'+(ev.city||ev.location||'')+'</div>'
-        +'</div></div>';
+        +'</div>'
+        +(hasCoords ? '<button onclick="event.stopPropagation();exp2ShowEvOnMap(\''+ev.id+'\')" style="flex-shrink:0;background:rgba(168,85,247,.15);border:1.5px solid #a855f7;border-radius:10px;padding:8px;color:#a855f7;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;" title="Voir sur la carte"><i class="fa-solid fa-map-location-dot"></i></button>' : '')
+        +'</div>';
     }).join('');
   }).catch(function(){
     wrap.innerHTML = '<div style="padding:16px;text-align:center;color:var(--muted);">Erreur de chargement.</div>';
@@ -4538,8 +4579,8 @@ function loadExplorerMap(mode, cityFilter){
   }
   if(!_expMap){
     container.innerHTML = '';
-    _expMap = L.map(container, {scrollWheelZoom: false, tap: true, zoomControl: false, attributionControl: false})
-      .setView([46.6, 2.4], 6);
+    _expMap = L.map(container, {scrollWheelZoom: false, tap: true, zoomControl: false, attributionControl: false, minZoom: 1})
+      .setView([46.6, 2.4], 5);
     L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
       attribution: '&copy; OpenStreetMap &copy; CARTO',
       subdomains: 'abcd',
@@ -4604,8 +4645,8 @@ function loadExplorerMap(mode, cityFilter){
     // Heatmap — calculée sur les données réelles
     if(typeof L.heatLayer === 'function' && heatPts.length){
       _expHeatLayer = L.heatLayer(heatPts, {
-        radius: 38, blur: 22, maxZoom: 13,
-        gradient: {0.2: '#ffd700', 0.5: '#ff9500', 0.75: '#ff4400', 1: '#cc0000'}
+        radius: 42, blur: 26, maxZoom: 14,
+        gradient: {0.1:'#1a52ff', 0.3:'#00ccff', 0.5:'#00ff88', 0.65:'#ffff00', 0.82:'#ff7700', 1:'#ff1100'}
       });
       if(_expHeatVisible) _expHeatLayer.addTo(_expMap);
     }
@@ -8333,27 +8374,33 @@ function toggleJeremieVoiceInput(){
     }catch(e){}
   }
 }
-// ── JÉRÉMIE FAB — DRAGGABLE ──────────────────────────────────
+// ── JÉRÉMIE FAB — DRAGGABLE (top/left, plein écran) ─────────
 var _jerMoved = false;
 function _initJeremieDrag(){
   var fab = document.getElementById('jeremie-fab');
   if(!fab) return;
-  // Restaurer la position sauvegardée
+  // Restaurer position sauvegardée (top/left)
   try{
-    var saved = JSON.parse(localStorage.getItem('jer_pos') || 'null');
-    if(saved && saved.b != null && saved.r != null){
-      fab.style.bottom = saved.b + 'px';
-      fab.style.right  = saved.r + 'px';
+    var saved = JSON.parse(localStorage.getItem('jer_pos2') || 'null');
+    if(saved && saved.t != null && saved.l != null){
+      fab.style.top    = saved.t + 'px';
+      fab.style.left   = saved.l + 'px';
+      fab.style.bottom = 'auto';
+      fab.style.right  = 'auto';
     }
   }catch(e){}
-  var startX, startY, startR, startB, dragging = false;
+  var startX, startY, startL, startT, dragging = false;
   function getXY(e){ return e.touches ? {x:e.touches[0].clientX,y:e.touches[0].clientY} : {x:e.clientX,y:e.clientY}; }
   function onStart(e){
     var c = getXY(e);
     startX = c.x; startY = c.y;
     var rect = fab.getBoundingClientRect();
-    startR = window.innerWidth  - rect.right;
-    startB = window.innerHeight - rect.bottom;
+    // Basculer sur top/left dès le premier contact
+    fab.style.top    = rect.top  + 'px';
+    fab.style.left   = rect.left + 'px';
+    fab.style.bottom = 'auto';
+    fab.style.right  = 'auto';
+    startL = rect.left; startT = rect.top;
     dragging = true; _jerMoved = false;
     fab.classList.add('dragging');
   }
@@ -8364,17 +8411,18 @@ function _initJeremieDrag(){
     if(Math.abs(dx) > 5 || Math.abs(dy) > 5) _jerMoved = true;
     if(!_jerMoved) return;
     e.preventDefault();
-    var nr = Math.max(8, Math.min(window.innerWidth  - 66, startR - dx));
-    var nb = Math.max(8, Math.min(window.innerHeight - 66, startB + dy));
-    fab.style.right = nr + 'px';
-    fab.style.bottom = nb + 'px';
+    // Libre de haut en bas, contraint juste pour ne pas sortir de l'écran
+    var nl = Math.max(-10, Math.min(window.innerWidth  - 48, startL + dx));
+    var nt = Math.max(-10, Math.min(window.innerHeight - 48, startT + dy));
+    fab.style.left = nl + 'px';
+    fab.style.top  = nt + 'px';
   }
   function onEnd(){
     if(!dragging) return;
     dragging = false;
     fab.classList.remove('dragging');
     if(_jerMoved){
-      try{ localStorage.setItem('jer_pos', JSON.stringify({r:parseFloat(fab.style.right),b:parseFloat(fab.style.bottom)})); }catch(e){}
+      try{ localStorage.setItem('jer_pos2', JSON.stringify({l:parseFloat(fab.style.left),t:parseFloat(fab.style.top)})); }catch(e){}
     }
   }
   fab.addEventListener('touchstart', onStart, {passive:true});
@@ -8384,7 +8432,6 @@ function _initJeremieDrag(){
   document.addEventListener('mousemove', function(e){ if(dragging) onMove(e); });
   document.addEventListener('mouseup',   function(){ if(dragging) onEnd(); });
 }
-// Appel après chargement du DOM
 if(document.readyState === 'loading'){ document.addEventListener('DOMContentLoaded', _initJeremieDrag); }
 else { setTimeout(_initJeremieDrag, 0); }
 
