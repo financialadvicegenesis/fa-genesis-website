@@ -815,6 +815,11 @@ a{text-decoration:none;color:inherit}
 .exp2-zone-btn{background:rgba(20,20,20,.9);border:1.5px solid #444;border-radius:20px;color:var(--text);font-size:12px;font-weight:700;padding:8px 16px;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:6px;white-space:nowrap;backdrop-filter:blur(4px);}
 /* Marqueur photo prestataire */
 .gen-pin-photo{width:42px;height:42px;border-radius:50%;border:3px solid var(--yellow);background-size:cover;background-position:center;box-shadow:0 2px 8px rgba(0,0,0,.6),2px 2px 0 #000;cursor:pointer;}
+/* Marqueur rond simple (sans photo) */
+.gen-pin-dot{width:28px;height:28px;border-radius:50%;background:var(--yellow);border:3px solid #000;box-shadow:0 2px 6px rgba(0,0,0,.55);cursor:pointer;}
+/* Jérémie FAB — draggable */
+.jeremie-fab{cursor:grab !important;}
+.jeremie-fab.dragging{cursor:grabbing !important;transition:none !important;}
 /* ═══ EVENTS LIST CARDS ══════════════════════════════════ */
 .exp2-ev-list-card{display:flex;align-items:center;gap:12px;background:var(--card);border:2px solid #000;border-radius:14px;padding:10px;cursor:pointer;box-shadow:3px 3px 0 var(--yellow);margin:0 16px 12px;}
 .exp2-ev-list-photo{width:72px;height:72px;border-radius:10px;background:#1a0040;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:24px;color:#a855f7;}
@@ -2605,18 +2610,6 @@ a{text-decoration:none;color:inherit}
       <div class="exp2-panel on" id="exp2-panel-offres">
         <!-- Carte Leaflet (plein écran) -->
         <div id="p-exp-map"></div>
-        <!-- "Rechercher ici" — apparaît après déplacement -->
-        <div class="exp2-zone-wrap" id="exp2-zone-wrap">
-          <button id="exp-zone-btn" class="exp2-zone-btn" onclick="_expSearchInZone()" style="display:none;">
-            <i class="fa-solid fa-magnifying-glass"></i> Rechercher ici
-          </button>
-        </div>
-        <!-- Heatmap toggle — bas gauche -->
-        <div class="exp2-heat-wrap">
-          <button class="exp-heat-btn on" id="exp-heat-btn" onclick="_toggleHeatmap(this)">
-            <i class="fa-solid fa-fire"></i> Heatmap
-          </button>
-        </div>
         <!-- Zoom + Géolocalisation — bas droite -->
         <div class="exp2-map-br-wrap">
           <button class="exp2-zoom-btn" onclick="_expZoomIn()"><i class="fa-solid fa-plus"></i></button>
@@ -4471,17 +4464,17 @@ function _makePartnerIcon(p){
       html: '<div class="gen-pin-photo" style="background-image:url(\''+p.photo+'\');"></div>',
       className: '',
       iconSize: [42, 42],
-      iconAnchor: [21, 42],
-      popupAnchor: [0, -44]
+      iconAnchor: [21, 21],
+      popupAnchor: [0, -24]
     });
   }
-  var ic = _PARTNER_ICONS[partnerType] || 'fa-user';
+  // Sans photo → rond simple jaune
   return L.divIcon({
-    html: '<div class="gen-pin"><i class="fa-solid '+ic+'"></i></div>',
+    html: '<div class="gen-pin-dot"></div>',
     className: '',
-    iconSize: [34, 34],
-    iconAnchor: [17, 34],
-    popupAnchor: [0, -38]
+    iconSize: [28, 28],
+    iconAnchor: [14, 14],
+    popupAnchor: [0, -18]
   });
 }
 
@@ -4545,7 +4538,7 @@ function loadExplorerMap(mode, cityFilter){
   }
   if(!_expMap){
     container.innerHTML = '';
-    _expMap = L.map(container, {scrollWheelZoom: false, tap: true, zoomControl: false})
+    _expMap = L.map(container, {scrollWheelZoom: false, tap: true, zoomControl: false, attributionControl: false})
       .setView([46.6, 2.4], 6);
     L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
       attribution: '&copy; OpenStreetMap &copy; CARTO',
@@ -8340,7 +8333,63 @@ function toggleJeremieVoiceInput(){
     }catch(e){}
   }
 }
+// ── JÉRÉMIE FAB — DRAGGABLE ──────────────────────────────────
+var _jerMoved = false;
+function _initJeremieDrag(){
+  var fab = document.getElementById('jeremie-fab');
+  if(!fab) return;
+  // Restaurer la position sauvegardée
+  try{
+    var saved = JSON.parse(localStorage.getItem('jer_pos') || 'null');
+    if(saved && saved.b != null && saved.r != null){
+      fab.style.bottom = saved.b + 'px';
+      fab.style.right  = saved.r + 'px';
+    }
+  }catch(e){}
+  var startX, startY, startR, startB, dragging = false;
+  function getXY(e){ return e.touches ? {x:e.touches[0].clientX,y:e.touches[0].clientY} : {x:e.clientX,y:e.clientY}; }
+  function onStart(e){
+    var c = getXY(e);
+    startX = c.x; startY = c.y;
+    var rect = fab.getBoundingClientRect();
+    startR = window.innerWidth  - rect.right;
+    startB = window.innerHeight - rect.bottom;
+    dragging = true; _jerMoved = false;
+    fab.classList.add('dragging');
+  }
+  function onMove(e){
+    if(!dragging) return;
+    var c = getXY(e);
+    var dx = c.x - startX, dy = c.y - startY;
+    if(Math.abs(dx) > 5 || Math.abs(dy) > 5) _jerMoved = true;
+    if(!_jerMoved) return;
+    e.preventDefault();
+    var nr = Math.max(8, Math.min(window.innerWidth  - 66, startR - dx));
+    var nb = Math.max(8, Math.min(window.innerHeight - 66, startB + dy));
+    fab.style.right = nr + 'px';
+    fab.style.bottom = nb + 'px';
+  }
+  function onEnd(){
+    if(!dragging) return;
+    dragging = false;
+    fab.classList.remove('dragging');
+    if(_jerMoved){
+      try{ localStorage.setItem('jer_pos', JSON.stringify({r:parseFloat(fab.style.right),b:parseFloat(fab.style.bottom)})); }catch(e){}
+    }
+  }
+  fab.addEventListener('touchstart', onStart, {passive:true});
+  fab.addEventListener('touchmove',  onMove,  {passive:false});
+  fab.addEventListener('touchend',   onEnd,   {passive:true});
+  fab.addEventListener('mousedown',  onStart);
+  document.addEventListener('mousemove', function(e){ if(dragging) onMove(e); });
+  document.addEventListener('mouseup',   function(){ if(dragging) onEnd(); });
+}
+// Appel après chargement du DOM
+if(document.readyState === 'loading'){ document.addEventListener('DOMContentLoaded', _initJeremieDrag); }
+else { setTimeout(_initJeremieDrag, 0); }
+
 function openJeremieChat(){
+  if(_jerMoved){ _jerMoved = false; return; }
   if(!USER && !GUEST){ if(typeof showLoginSheet==='function') showLoginSheet(); return; }
   var overlay=document.getElementById('jeremie-overlay'); var sheet=document.getElementById('jeremie-sheet');
   if(!overlay||!sheet) return;
