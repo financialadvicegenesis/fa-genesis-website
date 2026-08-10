@@ -4426,39 +4426,41 @@ function exp2LoadEventsMap(){
     _exp2EvMap = new maplibregl.Map({
       container: 'exp2-ev-map',
       style: _mlGlobeStyle(),
-      center: [10, 30], zoom: 1.5,
+      center: [10, 30], zoom: 1.0,
       minZoom: 0, maxZoom: 19,
       projection: 'globe',
       renderWorldCopies: false,
       attributionControl: false,
       touchZoomRotate: true,
-      dragRotate: true
+      dragRotate: true,
+      pitchWithRotate: false
     });
-    _exp2EvMap.on('load', function(){
+    try{ _exp2EvMap.setProjection('globe'); }catch(e){}
+    _exp2EvMap.on('style.load', function(){
       try{ _exp2EvMap.setProjection('globe'); }catch(e){}
       try{
         _exp2EvMap.setFog({
-          'range': [0.8, 10],
-          'color': 'rgba(20,60,160,0.15)',
-          'high-color': '#0a1e5a',
-          'space-color': '#000',
-          'star-intensity': 0.7,
-          'horizon-blend': 0.06
+          'range':[0.8,10], 'color':'rgba(20,60,160,0.12)',
+          'high-color':'#0a1e5a', 'space-color':'#000',
+          'star-intensity':0.8, 'horizon-blend':0.05
         });
       }catch(e){}
       _mlApplyGlobeTheme(_exp2EvMap);
-      _exp2EvMap.addSource('ev-heat-src', {type:'geojson', data:{type:'FeatureCollection',features:[]}});
-      _exp2EvMap.addLayer({
-        id:'ev-heat-layer', type:'heatmap', source:'ev-heat-src', maxzoom:14,
-        paint:{
-          'heatmap-weight':1, 'heatmap-intensity':1,
-          'heatmap-radius':42, 'heatmap-opacity':0.82,
-          'heatmap-color':['interpolate',['linear'],['heatmap-density'],
-            0,'rgba(0,0,0,0)',0.1,'#1a52ff',0.3,'#00ccff',0.5,'#00ff88',
-            0.65,'#ffff00',0.82,'#ff7700',1,'#ff1100']
-        }
-      });
+      if(!_exp2EvMap.getSource('ev-heat-src')){
+        _exp2EvMap.addSource('ev-heat-src',{type:'geojson',data:{type:'FeatureCollection',features:[]}});
+        _exp2EvMap.addLayer({
+          id:'ev-heat-layer',type:'heatmap',source:'ev-heat-src',maxzoom:14,
+          paint:{
+            'heatmap-weight':1,'heatmap-intensity':1,
+            'heatmap-radius':42,'heatmap-opacity':0.82,
+            'heatmap-color':['interpolate',['linear'],['heatmap-density'],
+              0,'rgba(0,0,0,0)',0.1,'#1a52ff',0.3,'#00ccff',0.5,'#00ff88',
+              0.65,'#ffff00',0.82,'#ff7700',1,'#ff1100']
+          }
+        });
+      }
       _loadExp2EvMarkers();
+      [80,300,700].forEach(function(d){ setTimeout(function(){ if(_exp2EvMap) _exp2EvMap.resize(); },d); });
     });
   } else if(_exp2EvMap.loaded()){
     _loadExp2EvMarkers();
@@ -4755,39 +4757,43 @@ function loadExplorerMap(mode, cityFilter){
     _expMap = new maplibregl.Map({
       container: 'p-exp-map',
       style: _mlGlobeStyle(),
-      center: [10, 30], zoom: 1.5,
+      center: [10, 30], zoom: 1.0,
       minZoom: 0, maxZoom: 19,
       projection: 'globe',
       renderWorldCopies: false,
       attributionControl: false,
       touchZoomRotate: true,
-      dragRotate: true
+      dragRotate: true,
+      pitchWithRotate: false
     });
-    _expMap.on('load', function(){
+    // Appliquer la projection immédiatement (avant on('load') qui peut tarder sur iOS)
+    try{ _expMap.setProjection('globe'); }catch(e){}
+    // style.load : se déclenche dès que le style est parsé (avant les tuiles)
+    _expMap.on('style.load', function(){
       try{ _expMap.setProjection('globe'); }catch(e){}
       try{
         _expMap.setFog({
-          'range': [0.8, 10],
-          'color': 'rgba(20,60,160,0.15)',
-          'high-color': '#0a1e5a',
-          'space-color': '#000',
-          'star-intensity': 0.7,
-          'horizon-blend': 0.06
+          'range':[0.8,10], 'color':'rgba(20,60,160,0.12)',
+          'high-color':'#0a1e5a', 'space-color':'#000',
+          'star-intensity':0.8, 'horizon-blend':0.05
         });
       }catch(e){}
       _mlApplyGlobeTheme(_expMap);
-      _expMap.addSource('exp-heat-src', {type:'geojson', data:{type:'FeatureCollection',features:[]}});
-      _expMap.addLayer({
-        id:'exp-heat-layer', type:'heatmap', source:'exp-heat-src', maxzoom:14,
-        paint:{
-          'heatmap-weight':['coalesce',['get','intensity'],0.5],
-          'heatmap-intensity':1, 'heatmap-radius':42, 'heatmap-opacity':0.82,
-          'heatmap-color':['interpolate',['linear'],['heatmap-density'],
-            0,'rgba(0,0,0,0)',0.1,'#1a52ff',0.3,'#00ccff',0.5,'#00ff88',
-            0.65,'#ffff00',0.82,'#ff7700',1,'#ff1100']
-        }
-      });
+      if(!_expMap.getSource('exp-heat-src')){
+        _expMap.addSource('exp-heat-src',{type:'geojson',data:{type:'FeatureCollection',features:[]}});
+        _expMap.addLayer({
+          id:'exp-heat-layer',type:'heatmap',source:'exp-heat-src',maxzoom:14,
+          paint:{
+            'heatmap-weight':['coalesce',['get','intensity'],0.5],
+            'heatmap-intensity':1,'heatmap-radius':42,'heatmap-opacity':0.82,
+            'heatmap-color':['interpolate',['linear'],['heatmap-density'],
+              0,'rgba(0,0,0,0)',0.1,'#1a52ff',0.3,'#00ccff',0.5,'#00ff88',
+              0.65,'#ffff00',0.82,'#ff7700',1,'#ff1100']
+          }
+        });
+      }
       _loadExpPartners(mode, cityFilter);
+      [80,300,700].forEach(function(d){ setTimeout(function(){ if(_expMap) _expMap.resize(); },d); });
     });
   } else {
     _loadExpPartners(mode, cityFilter);
