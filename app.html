@@ -4186,55 +4186,55 @@ var _GEN_OCEAN_GJ = {type:'FeatureCollection',features:[
 // Style globe : URL OpenFreeMap dark (tuiles vectorielles fiables)
 function _mlGlobeStyle(){ return 'https://tiles.openfreemap.org/styles/dark'; }
 function _mlCartoDark(){ return _mlGlobeStyle(); }
-// Applique thème planète bleue : couleurs, labels FR, noms d'océans garantis
+// Thème globe identique WeCheers
 function _mlApplyGlobeTheme(map){
-  // Continents → bleu moyen, océans → bleu très sombre (fort contraste)
-  try{ map.setPaintProperty('background','background-color','#1e3f78'); }catch(e){}
-  try{ map.setPaintProperty('water','fill-color','#061525'); }catch(e){}
-  // Labels français + override zoom noms d'océans dans le style vectoriel
+  // Continents #1c3460 / Océans #0b1a35 (contraste subtil, fidèle WeCheers)
+  try{ map.setPaintProperty('background','background-color','#1c3460'); }catch(e){}
+  try{ map.setPaintProperty('water','fill-color','#0b1a35'); }catch(e){}
   try{
     (map.getStyle().layers||[]).forEach(function(layer){
       if(layer.type !== 'symbol') return;
       var lid = layer.id||'', sl = layer['source-layer']||'';
+      // Labels en français
       try{ map.setLayoutProperty(lid,'text-field',
         ['coalesce',['get','name:fr'],['get','name:latin'],['get','name']]); }catch(e){}
+      // Noms de pays : blanc/bleu très clair, petite taille
+      if(sl === 'place' || sl === 'place_label'){
+        try{ map.setPaintProperty(lid,'text-color','#ccd8f0'); }catch(e){}
+        try{ map.setPaintProperty(lid,'text-halo-color','rgba(0,5,20,0.7)'); }catch(e){}
+        try{ map.setPaintProperty(lid,'text-halo-width',1); }catch(e){}
+      }
+      // Noms d'océans/mers du style vectoriel : visibles dès zoom 0, italique clair
       if(sl === 'water_name'){
         try{ map.setLayerZoomRange(lid,0,20); }catch(e){}
         try{ map.setLayoutProperty(lid,'text-size',
           ['interpolate',['linear'],['zoom'],0,11,2,14,5,18]); }catch(e){}
-        try{ map.setPaintProperty(lid,'text-color','#7ac8ff'); }catch(e){}
-        try{ map.setPaintProperty(lid,'text-halo-color','rgba(0,0,0,0.8)'); }catch(e){}
+        try{ map.setPaintProperty(lid,'text-color','#7ab8e8'); }catch(e){}
+        try{ map.setPaintProperty(lid,'text-halo-color','rgba(0,5,20,0.75)'); }catch(e){}
         try{ map.setPaintProperty(lid,'text-halo-width',1.5); }catch(e){}
       }
     });
   }catch(e){}
-  // Noms d'océans injectés en GeoJSON (indépendants du style — toujours visibles)
+  // Noms d'océans GeoJSON (garantis même si water_name absent du style)
   try{
     if(!map.getSource('gen-oceans')){
-      // Récupérer une police existante du style pour compatibilité
-      var styleLayers = map.getStyle().layers||[];
-      var fontStack = ['Noto Sans Regular'];
-      for(var fi=0;fi<styleLayers.length;fi++){
-        var fl = styleLayers[fi];
-        if(fl.type==='symbol' && fl.layout && fl.layout['text-font']){
-          fontStack = fl.layout['text-font']; break;
-        }
+      var sls = map.getStyle().layers||[], fk = ['Noto Sans Regular'];
+      for(var i=0;i<sls.length;i++){
+        if(sls[i].type==='symbol'&&sls[i].layout&&sls[i].layout['text-font']){fk=sls[i].layout['text-font'];break;}
       }
       map.addSource('gen-oceans',{type:'geojson',data:_GEN_OCEAN_GJ});
       map.addLayer({
         id:'gen-ocean-labels',type:'symbol',source:'gen-oceans',
         layout:{
           'text-field':['get','n'],
-          'text-font':fontStack,
+          'text-font':fk,
           'text-size':['interpolate',['linear'],['zoom'],0,11,1,13,3,16,6,22],
-          'text-letter-spacing':0.12,
-          'text-anchor':'center',
-          'text-max-width':10
+          'text-letter-spacing':0.15,'text-anchor':'center','text-max-width':10
         },
         paint:{
-          'text-color':'#8dd4ff',
-          'text-halo-color':'rgba(0,0,20,0.85)',
-          'text-halo-width':1.8
+          'text-color':'#7ab8e8',
+          'text-halo-color':'rgba(0,5,20,0.8)',
+          'text-halo-width':1.5
         }
       });
     }
@@ -4481,9 +4481,9 @@ function exp2LoadEventsMap(){
       try{ _exp2EvMap.setProjection('globe'); }catch(e){}
       try{
         _exp2EvMap.setFog({
-          'range':[0.5,10],'color':'rgba(10,40,120,0.08)',
-          'high-color':'#081840','space-color':'#000',
-          'star-intensity':0.9,'horizon-blend':0.04
+          'range':[0.5,10],'color':'rgba(8,30,90,0.10)',
+          'high-color':'#06112a','space-color':'#000000',
+          'star-intensity':0.85,'horizon-blend':0.07
         });
       }catch(e){}
       _mlApplyGlobeTheme(_exp2EvMap);
@@ -4816,9 +4816,9 @@ function loadExplorerMap(mode, cityFilter){
       try{ _expMap.setProjection('globe'); }catch(e){}
       try{
         _expMap.setFog({
-          'range':[0.5,10],'color':'rgba(10,40,120,0.08)',
-          'high-color':'#081840','space-color':'#000',
-          'star-intensity':0.9,'horizon-blend':0.04
+          'range':[0.5,10],'color':'rgba(8,30,90,0.10)',
+          'high-color':'#06112a','space-color':'#000000',
+          'star-intensity':0.85,'horizon-blend':0.07
         });
       }catch(e){}
       _mlApplyGlobeTheme(_expMap);
