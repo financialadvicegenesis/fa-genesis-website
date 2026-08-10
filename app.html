@@ -4173,22 +4173,22 @@ var _exp2Tab = 'offres';
 var _exp2OffresView = 'carte';
 var _exp2EvView = 'carte';
 var _exp2EvMap = null, _exp2EvMarkers = [], _exp2EvGeoMarker = null;
-// Style MapLibre CartoDB Dark Matter (partagé par les deux cartes)
+// Style vectoriel OpenFreeMap dark — supporte les labels multilingues + globe MapLibre
 function _mlCartoDark(){
-  return {
-    version:8,
-    sources:{carto:{
-      type:'raster',
-      tiles:[
-        'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
-        'https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
-        'https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
-        'https://d.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png'
-      ],
-      tileSize:256, attribution:''
-    }},
-    layers:[{id:'carto-tiles',type:'raster',source:'carto',minzoom:0,maxzoom:19}]
-  };
+  return 'https://tiles.openfreemap.org/styles/dark';
+}
+// Applique les labels français sur toutes les couches symbol d'une carte MapLibre
+function _mlSetFrenchLabels(map){
+  try{
+    var layers = map.getStyle().layers || [];
+    layers.forEach(function(layer){
+      if(layer.type !== 'symbol') return;
+      try{
+        map.setLayoutProperty(layer.id, 'text-field',
+          ['coalesce', ['get','name:fr'], ['get','name:latin'], ['get','name']]);
+      }catch(e){}
+    });
+  }catch(e){}
 }
 var _exp2EvQuery = '', _exp2EvSearchTimer = null;
 var _exp2EvFilters = {type: null, period: null, city: ''};
@@ -4404,6 +4404,11 @@ function exp2LoadEventsMap(){
   var container = document.getElementById('exp2-ev-map');
   if(!container) return;
   if(typeof maplibregl === 'undefined') return;
+  // Attendre que le container ait des dimensions (iOS Safari finalise le layout en async)
+  if(!container.offsetWidth || !container.offsetHeight){
+    setTimeout(function(){ exp2LoadEventsMap(); }, 150);
+    return;
+  }
   if(!_exp2EvMap){
     container.innerHTML = '';
     _exp2EvMap = new maplibregl.Map({
@@ -4414,10 +4419,12 @@ function exp2LoadEventsMap(){
       projection: 'globe',
       renderWorldCopies: false,
       attributionControl: false,
-      scrollZoom: false
+      touchZoomRotate: true,
+      dragRotate: false
     });
     _exp2EvMap.on('load', function(){
       try{ _exp2EvMap.setProjection('globe'); }catch(e){}
+      try{ _exp2EvMap.touchZoomRotate.disableRotation(); }catch(e){}
       try{
         _exp2EvMap.setFog({
           'range': [0.5, 10],
@@ -4428,6 +4435,7 @@ function exp2LoadEventsMap(){
           'horizon-blend': 0.08
         });
       }catch(e){}
+      _mlSetFrenchLabels(_exp2EvMap);
       _exp2EvMap.addSource('ev-heat-src', {type:'geojson', data:{type:'FeatureCollection',features:[]}});
       _exp2EvMap.addLayer({
         id:'ev-heat-layer', type:'heatmap', source:'ev-heat-src', maxzoom:14,
@@ -4726,6 +4734,11 @@ function loadExplorerMap(mode, cityFilter){
     container.innerHTML = '<div class="p-map-fallback">Carte indisponible (vérifiez votre connexion).</div>';
     return;
   }
+  // Attendre que le container ait des dimensions (iOS Safari finalise le layout en async)
+  if(!container.offsetWidth || !container.offsetHeight){
+    setTimeout(function(){ loadExplorerMap(mode, cityFilter); }, 150);
+    return;
+  }
   if(!_expMap){
     container.innerHTML = '';
     _expMap = new maplibregl.Map({
@@ -4736,10 +4749,12 @@ function loadExplorerMap(mode, cityFilter){
       projection: 'globe',
       renderWorldCopies: false,
       attributionControl: false,
-      scrollZoom: false
+      touchZoomRotate: true,
+      dragRotate: false
     });
     _expMap.on('load', function(){
       try{ _expMap.setProjection('globe'); }catch(e){}
+      try{ _expMap.touchZoomRotate.disableRotation(); }catch(e){}
       try{
         _expMap.setFog({
           'range': [0.5, 10],
@@ -4750,6 +4765,7 @@ function loadExplorerMap(mode, cityFilter){
           'horizon-blend': 0.08
         });
       }catch(e){}
+      _mlSetFrenchLabels(_expMap);
       _expMap.addSource('exp-heat-src', {type:'geojson', data:{type:'FeatureCollection',features:[]}});
       _expMap.addLayer({
         id:'exp-heat-layer', type:'heatmap', source:'exp-heat-src', maxzoom:14,
