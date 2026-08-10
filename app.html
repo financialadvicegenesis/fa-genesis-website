@@ -809,7 +809,10 @@ a{text-decoration:none;color:inherit}
 /* Heatmap toggle bas gauche */
 .exp2-heat-wrap{position:absolute;bottom:28px;left:14px;z-index:500;}
 /* Carte/Liste événements — dans le header, entre search et onglets */
-#exp2-ev-view-row{display:none;gap:4px;margin:8px 0 6px;}
+#exp2-ev-view-row{display:none;margin:10px 0 8px;}
+#exp2-ev-view-row .exp2-view-btns{width:100%;border-radius:14px;border:2px solid var(--border);padding:4px;gap:0;background:var(--card);}
+#exp2-ev-view-row .exp2-view-btn{flex:1;justify-content:center;padding:12px 10px;font-size:13px;font-weight:800;border-radius:10px;gap:8px;letter-spacing:.01em;}
+#exp2-ev-view-row .exp2-view-btn.on{background:var(--yellow);color:#000;box-shadow:none;}
 /* "Rechercher ici" — centre haut */
 .exp2-zone-wrap{position:absolute;top:130px;left:50%;transform:translateX(-50%);z-index:500;}
 .exp2-zone-btn{background:rgba(20,20,20,.9);border:1.5px solid #444;border-radius:20px;color:var(--text);font-size:12px;font-weight:700;padding:8px 16px;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:6px;white-space:nowrap;backdrop-filter:blur(4px);}
@@ -2598,7 +2601,7 @@ a{text-decoration:none;color:inherit}
         </div>
         <!-- Carte/Liste Événements — visible seulement quand onglet Événements actif -->
         <div id="exp2-ev-view-row" style="display:none;gap:4px;margin:8px 0 6px;">
-          <div class="exp2-view-btns" style="width:100%;">
+          <div class="exp2-view-btns">
             <button class="exp2-view-btn on" id="exp2-ev-carte-btn" onclick="exp2SetEvView('carte',this)">
               <i class="fa-solid fa-map"></i> Carte
             </button>
