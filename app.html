@@ -813,6 +813,12 @@ a{text-decoration:none;color:inherit}
 #exp2-ev-view-row .exp2-view-btns{width:100%;border-radius:14px;border:2px solid var(--border);padding:4px;gap:0;background:var(--card);}
 #exp2-ev-view-row .exp2-view-btn{flex:1;justify-content:center;padding:12px 10px;font-size:13px;font-weight:800;border-radius:10px;gap:8px;letter-spacing:.01em;}
 #exp2-ev-view-row .exp2-view-btn.on{background:var(--yellow);color:#000;box-shadow:none;}
+/* Header sticky vue Liste événements */
+.exp2-ev-list-hdr{position:sticky;top:0;z-index:10;background:var(--bg);padding:16px 16px 0;border-bottom:1px solid var(--border);}
+.exp2-ev-list-hdr .exp2-top-row{margin-bottom:8px;}
+.exp2-ev-list-hdr .exp2-view-btns{width:100%;border-radius:14px;border:2px solid var(--border);padding:4px;gap:0;background:var(--card);display:flex;margin:0 0 12px;}
+.exp2-ev-list-hdr .exp2-view-btn{flex:1;justify-content:center;padding:12px 10px;font-size:13px;font-weight:800;border-radius:10px;gap:8px;letter-spacing:.01em;display:flex;align-items:center;}
+.exp2-ev-list-hdr .exp2-view-btn.on{background:var(--yellow);color:#000;box-shadow:none;}
 /* "Rechercher ici" — centre haut */
 .exp2-zone-wrap{position:absolute;top:130px;left:50%;transform:translateX(-50%);z-index:500;}
 .exp2-zone-btn{background:rgba(20,20,20,.9);border:1.5px solid #444;border-radius:20px;color:var(--text);font-size:12px;font-weight:700;padding:8px 16px;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:6px;white-space:nowrap;backdrop-filter:blur(4px);}
@@ -2608,10 +2614,10 @@ a{text-decoration:none;color:inherit}
         <!-- Carte/Liste Événements — visible seulement quand onglet Événements actif -->
         <div id="exp2-ev-view-row" style="display:none;gap:4px;margin:8px 0 6px;">
           <div class="exp2-view-btns">
-            <button class="exp2-view-btn on" id="exp2-ev-carte-btn" onclick="exp2SetEvView('carte',this)">
+            <button class="exp2-view-btn on" id="exp2-ev-carte-btn" onclick="exp2SetEvView('carte')">
               <i class="fa-solid fa-map"></i> Carte
             </button>
-            <button class="exp2-view-btn" id="exp2-ev-liste-btn" onclick="exp2SetEvView('liste',this)">
+            <button class="exp2-view-btn" id="exp2-ev-liste-btn" onclick="exp2SetEvView('liste')">
               <i class="fa-solid fa-list"></i> Liste
             </button>
           </div>
@@ -2655,8 +2661,28 @@ a{text-decoration:none;color:inherit}
           <button class="exp2-geo-btn" onclick="exp2EvGeolocate()"><i class="fa-solid fa-location-crosshairs"></i></button>
         </div>
         <!-- Vue LISTE événements -->
-        <div id="exp2-ev-liste" style="display:none;position:absolute;inset:0;z-index:600;background:var(--bg);overflow-y:auto;padding-top:185px;padding-bottom:24px;">
-          <div id="p-dir-events-wrap" style="padding:4px 0 24px;"></div>
+        <div id="exp2-ev-liste" style="display:none;position:absolute;inset:0;z-index:600;background:var(--bg);overflow-y:auto;padding-bottom:24px;">
+          <!-- Header sticky : search + Carte/Liste -->
+          <div class="exp2-ev-list-hdr">
+            <div class="exp2-top-row">
+              <div class="exp2-search-wrap" style="flex:1;">
+                <i class="fa-solid fa-magnifying-glass exp2-search-icon"></i>
+                <input type="text" id="exp2-ev-search" placeholder="Rechercher un événement" oninput="exp2EvSearchDebounced()">
+              </div>
+              <button class="exp2-filter-icon" onclick="exp2ToggleFilterSheet()">
+                <i class="fa-solid fa-sliders"></i>
+              </button>
+            </div>
+            <div class="exp2-view-btns">
+              <button class="exp2-view-btn" id="exp2-ev-list-carte-btn" onclick="exp2SetEvView('carte')">
+                <i class="fa-solid fa-map"></i> Carte
+              </button>
+              <button class="exp2-view-btn on" id="exp2-ev-list-liste-btn" onclick="exp2SetEvView('liste')">
+                <i class="fa-solid fa-list"></i> Liste
+              </button>
+            </div>
+          </div>
+          <div id="p-dir-events-wrap" style="padding:4px 16px 24px;"></div>
         </div>
       </div>
 
@@ -4216,20 +4242,21 @@ function exp2SetOffresView(mode, el){
   }
 }
 
-function exp2SetEvView(mode, el){
+function exp2SetEvView(mode){
   _exp2EvView = mode;
-  var ids = ['exp2-ev-carte-btn','exp2-ev-liste-btn'];
-  ids.forEach(function(id){ var b=document.getElementById(id); if(b) b.classList.remove('on'); });
-  el.classList.add('on');
-  var carteDiv = document.getElementById('exp2-ev-carte');
+  // Sync les deux jeux de boutons (header principal + header liste interne)
+  ['exp2-ev-carte-btn','exp2-ev-list-carte-btn'].forEach(function(id){
+    var b = document.getElementById(id); if(b) b.classList.toggle('on', mode === 'carte');
+  });
+  ['exp2-ev-liste-btn','exp2-ev-list-liste-btn'].forEach(function(id){
+    var b = document.getElementById(id); if(b) b.classList.toggle('on', mode === 'liste');
+  });
   var listeDiv = document.getElementById('exp2-ev-liste');
   if(mode === 'carte'){
-    if(carteDiv) carteDiv.style.display = '';
     if(listeDiv) listeDiv.style.display = 'none';
     exp2LoadEventsMap();
     setTimeout(function(){ if(_exp2EvMap) _exp2EvMap.invalidateSize(); }, 80);
   } else {
-    if(carteDiv) carteDiv.style.display = 'none';
     if(listeDiv) listeDiv.style.display = '';
     exp2LoadEventsList();
   }
@@ -4361,8 +4388,7 @@ function exp2LoadEventsMap(){
 function exp2ShowEvOnMap(evId){
   var ev = _eventsCache[evId];
   if(!ev) return;
-  var carteBtn = document.getElementById('exp2-ev-carte-btn');
-  if(carteBtn) exp2SetEvView('carte', carteBtn);
+  exp2SetEvView('carte');
   var lat = parseFloat(ev.lat), lng = parseFloat(ev.lng);
   if(!isNaN(lat) && !isNaN(lng)){
     setTimeout(function(){
