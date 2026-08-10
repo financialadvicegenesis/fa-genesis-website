@@ -800,8 +800,11 @@ a{text-decoration:none;color:inherit}
 .exp2-header>*{pointer-events:auto;}
 .exp2-top-row{margin-bottom:10px;}
 .exp2-tabs-row{margin-bottom:0;}
-#exp2-panel-offres.on,#exp2-panel-events.on{position:absolute;inset:0;overflow:hidden;}
-#p-exp-map,#exp2-ev-map{position:absolute !important;inset:0 !important;width:100% !important;height:100% !important;border:none !important;border-radius:0 !important;box-shadow:none !important;margin:0 !important;min-height:unset !important;}
+#exp2-panel-offres.on,#exp2-panel-events.on{position:absolute;top:0;left:0;right:0;bottom:0;overflow:hidden;}
+#p-exp-map,#exp2-ev-map{position:absolute !important;top:0 !important;left:0 !important;right:0 !important;bottom:0 !important;width:100% !important;height:100% !important;border:none !important;border-radius:0 !important;box-shadow:none !important;margin:0 !important;min-height:unset !important;}
+/* MapLibre canvas doit remplir son conteneur */
+#p-exp-map .maplibregl-canvas-container,#p-exp-map .maplibregl-canvas,
+#exp2-ev-map .maplibregl-canvas-container,#exp2-ev-map .maplibregl-canvas{width:100% !important;height:100% !important;}
 /* Contrôles bas droite (zoom + géo) */
 .exp2-map-br-wrap{position:absolute;bottom:28px;right:14px;z-index:500;display:flex;flex-direction:column;align-items:center;gap:8px;}
 .exp2-zoom-btn{width:40px;height:40px;background:rgba(17,17,17,.92);border:1.5px solid #444;border-radius:10px;color:#fff;font-size:17px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.5);font-family:inherit;}
@@ -4191,11 +4194,13 @@ var _exp2EvFilters = {type: null, period: null, city: ''};
 var _exp2FilterCity = '';
 
 function renderExplorer(){
-  // Carte visible par défaut — charger la map offres immédiatement
   _expMapVisible = true;
   _exp2OffresView = 'carte';
   loadExplorerMap(_expMode, _expCity);
-  // Pré-charger la liste en arrière-plan
+  // resize retardé pour iOS (Safari finalise le layout de manière asynchrone)
+  [100, 400, 900].forEach(function(d){
+    setTimeout(function(){ if(_expMap) _expMap.resize(); }, d);
+  });
   loadExplorerDirectory();
   loadHallOfFame();
   loadFavoritesInExplorer();
@@ -4406,9 +4411,20 @@ function exp2LoadEventsMap(){
       center: [2.4, 46.6], zoom: 5,
       minZoom: 0, maxZoom: 19,
       projection: 'globe',
-      attributionControl: false
+      attributionControl: false,
+      scrollZoom: false
     });
     _exp2EvMap.on('load', function(){
+      try{
+        _exp2EvMap.setFog({
+          'range': [0.5, 8],
+          'color': 'rgba(186,210,235,0.35)',
+          'high-color': '#1a4db5',
+          'space-color': '#07071c',
+          'star-intensity': 0.25,
+          'horizon-blend': 0.06
+        });
+      }catch(e){}
       _exp2EvMap.addSource('ev-heat-src', {type:'geojson', data:{type:'FeatureCollection',features:[]}});
       _exp2EvMap.addLayer({
         id:'ev-heat-layer', type:'heatmap', source:'ev-heat-src', maxzoom:14,
@@ -4449,7 +4465,7 @@ function _loadExp2EvMarkers(){
     var src = _exp2EvMap.getSource('ev-heat-src');
     if(src) src.setData({type:'FeatureCollection',features:heatFeatures});
     if(!bounds.isEmpty()){ try{_exp2EvMap.fitBounds(bounds,{maxZoom:10,padding:40});}catch(e){} }
-    setTimeout(function(){ if(_exp2EvMap) _exp2EvMap.resize(); }, 80);
+    [80,300,600].forEach(function(d){ setTimeout(function(){ if(_exp2EvMap) _exp2EvMap.resize(); }, d); });
   }).catch(function(){});
 }
 
@@ -4715,9 +4731,21 @@ function loadExplorerMap(mode, cityFilter){
       center: [2.4, 46.6], zoom: 5,
       minZoom: 0, maxZoom: 19,
       projection: 'globe',
-      attributionControl: false
+      attributionControl: false,
+      scrollZoom: false
     });
     _expMap.on('load', function(){
+      // Atmosphère globe — fond espace sombre + halo bleu (identique WeCheers)
+      try{
+        _expMap.setFog({
+          'range': [0.5, 8],
+          'color': 'rgba(186,210,235,0.35)',
+          'high-color': '#1a4db5',
+          'space-color': '#07071c',
+          'star-intensity': 0.25,
+          'horizon-blend': 0.06
+        });
+      }catch(e){}
       _expMap.addSource('exp-heat-src', {type:'geojson', data:{type:'FeatureCollection',features:[]}});
       _expMap.addLayer({
         id:'exp-heat-layer', type:'heatmap', source:'exp-heat-src', maxzoom:14,
@@ -4775,7 +4803,7 @@ function _loadExpPartners(mode, cityFilter){
     if(!_expHeatVisible) try{_expMap.setLayoutProperty('exp-heat-layer','visibility','none');}catch(e){}
     if(!bounds.isEmpty()){ try{_expMap.fitBounds(bounds,{maxZoom:13,padding:28});}catch(e){} }
     else { _expMap.flyTo({center:[2.4,46.6],zoom:6}); }
-    setTimeout(function(){ if(_expMap) _expMap.resize(); }, 80);
+    [80,300,600].forEach(function(d){ setTimeout(function(){ if(_expMap) _expMap.resize(); }, d); });
   }).catch(function(){});
 }
 // ── PRESTATAIRES — ANNUAIRE CLASSÉ ──────────────────────────────
