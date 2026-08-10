@@ -2655,7 +2655,7 @@ a{text-decoration:none;color:inherit}
           <button class="exp2-geo-btn" onclick="exp2EvGeolocate()"><i class="fa-solid fa-location-crosshairs"></i></button>
         </div>
         <!-- Vue LISTE événements -->
-        <div id="exp2-ev-liste" style="display:none;position:absolute;inset:0;background:var(--bg);overflow-y:auto;padding-top:130px;padding-bottom:24px;">
+        <div id="exp2-ev-liste" style="display:none;position:absolute;inset:0;z-index:600;background:var(--bg);overflow-y:auto;padding-top:185px;padding-bottom:24px;">
           <div id="p-dir-events-wrap" style="padding:4px 0 24px;"></div>
         </div>
       </div>
@@ -4357,7 +4357,7 @@ function exp2LoadEventsMap(){
   }).catch(function(){});
 }
 
-// Afficher un événement sur la carte
+// Depuis la liste : basculer en carte, centrer sur l'événement, puis ouvrir le détail
 function exp2ShowEvOnMap(evId){
   var ev = _eventsCache[evId];
   if(!ev) return;
@@ -4369,6 +4369,7 @@ function exp2ShowEvOnMap(evId){
       if(_exp2EvMap){ _exp2EvMap.setView([lat,lng],13); }
     }, 180);
   }
+  setTimeout(function(){ openEventDetail(evId); }, 280);
 }
 
 function exp2LoadEventsList(){
@@ -4397,7 +4398,7 @@ function exp2LoadEventsList(){
         : '<i class="fa-solid fa-champagne-glasses"></i>';
       var dateStr = '';
       if(ev.date){ try{ dateStr = new Date(ev.date).toLocaleDateString('fr-FR',{day:'numeric',month:'long'}); }catch(e){ dateStr = ev.date; } }
-      return '<div class="exp2-ev-list-card" onclick="openEventDetail(\''+ev.id+'\')">'
+      return '<div class="exp2-ev-list-card" onclick="exp2ShowEvOnMap(\''+ev.id+'\')">'
         +'<div class="exp2-ev-list-photo">'+photo+'</div>'
         +'<div class="exp2-ev-list-body">'
         +'<div class="exp2-ev-list-title">'+(ev.title||'Événement')+'</div>'
