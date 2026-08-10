@@ -800,7 +800,7 @@ a{text-decoration:none;color:inherit}
 .exp2-header>*{pointer-events:auto;}
 .exp2-top-row{margin-bottom:10px;}
 .exp2-tabs-row{margin-bottom:0;}
-#exp2-panel-offres.on,#exp2-panel-events.on{position:absolute;top:0;left:0;right:0;bottom:0;overflow:hidden;}
+#exp2-panel-offres.on,#exp2-panel-events.on{position:absolute;top:0;left:0;right:0;bottom:0;overflow:visible;}
 #p-exp-map,#exp2-ev-map{position:absolute !important;top:0 !important;left:0 !important;right:0 !important;bottom:0 !important;width:100% !important;height:100% !important;border:none !important;border-radius:0 !important;box-shadow:none !important;margin:0 !important;min-height:unset !important;touch-action:none !important;-webkit-tap-highlight-color:transparent !important;}
 /* MapLibre canvas — plein écran + fond espace pour le globe */
 #p-exp-map .maplibregl-canvas-container,#p-exp-map .maplibregl-canvas,
@@ -4173,41 +4173,71 @@ var _exp2Tab = 'offres';
 var _exp2OffresView = 'carte';
 var _exp2EvView = 'carte';
 var _exp2EvMap = null, _exp2EvMarkers = [], _exp2EvGeoMarker = null;
+// Données GeoJSON des noms d'océans (injectées directement sur le globe)
+var _GEN_OCEAN_GJ = {type:'FeatureCollection',features:[
+  {type:'Feature',geometry:{type:'Point',coordinates:[-30,5]},  properties:{n:'Océan\nAtlantique'}},
+  {type:'Feature',geometry:{type:'Point',coordinates:[-155,0]}, properties:{n:'Océan\nPacifique'}},
+  {type:'Feature',geometry:{type:'Point',coordinates:[75,-20]}, properties:{n:'Océan\nIndien'}},
+  {type:'Feature',geometry:{type:'Point',coordinates:[0,85]},   properties:{n:'Océan\nArctique'}},
+  {type:'Feature',geometry:{type:'Point',coordinates:[0,-60]},  properties:{n:'Océan\nAntarctique'}},
+  {type:'Feature',geometry:{type:'Point',coordinates:[25,37]},  properties:{n:'Mer\nMéditerranée'}},
+  {type:'Feature',geometry:{type:'Point',coordinates:[125,15]}, properties:{n:'Mer de Chine\nméridionale'}}
+]};
 // Style globe : URL OpenFreeMap dark (tuiles vectorielles fiables)
-// Les couleurs "planète bleue" sont appliquées au runtime après chargement.
-function _mlGlobeStyle(){
-  return 'https://tiles.openfreemap.org/styles/dark';
-}
+function _mlGlobeStyle(){ return 'https://tiles.openfreemap.org/styles/dark'; }
 function _mlCartoDark(){ return _mlGlobeStyle(); }
-// Applique le thème "planète bleue" : couleurs, noms FR, noms d'océans visibles
+// Applique thème planète bleue : couleurs, labels FR, noms d'océans garantis
 function _mlApplyGlobeTheme(map){
-  // Continents → bleu moyen
-  try{ map.setPaintProperty('background','background-color','#1a3a6a'); }catch(e){}
-  // Océans → bleu marine profond (visible mais plus sombre que les terres)
-  try{ map.setPaintProperty('water','fill-color','#0c2040'); }catch(e){}
+  // Continents → bleu moyen, océans → bleu très sombre (fort contraste)
+  try{ map.setPaintProperty('background','background-color','#1e3f78'); }catch(e){}
+  try{ map.setPaintProperty('water','fill-color','#061525'); }catch(e){}
+  // Labels français + override zoom noms d'océans dans le style vectoriel
   try{
-    var layers = map.getStyle().layers || [];
-    layers.forEach(function(layer){
+    (map.getStyle().layers||[]).forEach(function(layer){
       if(layer.type !== 'symbol') return;
-      var lid = layer.id || '';
-      var sl  = (layer['source-layer'] || '');
-      // Labels français sur toutes les couches
-      try{
-        map.setLayoutProperty(lid,'text-field',
-          ['coalesce',['get','name:fr'],['get','name:latin'],['get','name']]);
-      }catch(e){}
-      // Noms d'océans et de mers (source-layer = water_name dans OpenMapTiles)
-      // → visibles dès zoom 0, texte plus grand et plus lumineux
+      var lid = layer.id||'', sl = layer['source-layer']||'';
+      try{ map.setLayoutProperty(lid,'text-field',
+        ['coalesce',['get','name:fr'],['get','name:latin'],['get','name']]); }catch(e){}
       if(sl === 'water_name'){
-        try{ map.setLayerZoomRange(lid, 0, 20); }catch(e){}
+        try{ map.setLayerZoomRange(lid,0,20); }catch(e){}
         try{ map.setLayoutProperty(lid,'text-size',
-          ['interpolate',['linear'],['zoom'],0,12,2,14,5,18]); }catch(e){}
-        try{ map.setLayoutProperty(lid,'text-letter-spacing',0.05); }catch(e){}
+          ['interpolate',['linear'],['zoom'],0,11,2,14,5,18]); }catch(e){}
         try{ map.setPaintProperty(lid,'text-color','#7ac8ff'); }catch(e){}
-        try{ map.setPaintProperty(lid,'text-halo-color','rgba(0,0,0,0.75)'); }catch(e){}
+        try{ map.setPaintProperty(lid,'text-halo-color','rgba(0,0,0,0.8)'); }catch(e){}
         try{ map.setPaintProperty(lid,'text-halo-width',1.5); }catch(e){}
       }
     });
+  }catch(e){}
+  // Noms d'océans injectés en GeoJSON (indépendants du style — toujours visibles)
+  try{
+    if(!map.getSource('gen-oceans')){
+      // Récupérer une police existante du style pour compatibilité
+      var styleLayers = map.getStyle().layers||[];
+      var fontStack = ['Noto Sans Regular'];
+      for(var fi=0;fi<styleLayers.length;fi++){
+        var fl = styleLayers[fi];
+        if(fl.type==='symbol' && fl.layout && fl.layout['text-font']){
+          fontStack = fl.layout['text-font']; break;
+        }
+      }
+      map.addSource('gen-oceans',{type:'geojson',data:_GEN_OCEAN_GJ});
+      map.addLayer({
+        id:'gen-ocean-labels',type:'symbol',source:'gen-oceans',
+        layout:{
+          'text-field':['get','n'],
+          'text-font':fontStack,
+          'text-size':['interpolate',['linear'],['zoom'],0,11,1,13,3,16,6,22],
+          'text-letter-spacing':0.12,
+          'text-anchor':'center',
+          'text-max-width':10
+        },
+        paint:{
+          'text-color':'#8dd4ff',
+          'text-halo-color':'rgba(0,0,20,0.85)',
+          'text-halo-width':1.8
+        }
+      });
+    }
   }catch(e){}
 }
 function _mlSetFrenchLabels(map){ _mlApplyGlobeTheme(map); }
@@ -4435,7 +4465,7 @@ function exp2LoadEventsMap(){
     _exp2EvMap = new maplibregl.Map({
       container: 'exp2-ev-map',
       style: _mlGlobeStyle(),
-      center: [10, 30], zoom: 1.0,
+      center: [10, 20], zoom: 0.5,
       minZoom: 0, maxZoom: 19,
       projection: 'globe',
       renderWorldCopies: false,
@@ -4445,13 +4475,16 @@ function exp2LoadEventsMap(){
       pitchWithRotate: false
     });
     try{ _exp2EvMap.setProjection('globe'); }catch(e){}
-    _exp2EvMap.on('style.load', function(){
+    var _evMapThemeApplied = false;
+    function _evApplyTheme(){
+      if(_evMapThemeApplied) return;
+      _evMapThemeApplied = true;
       try{ _exp2EvMap.setProjection('globe'); }catch(e){}
       try{
         _exp2EvMap.setFog({
-          'range':[0.8,10], 'color':'rgba(20,60,160,0.12)',
-          'high-color':'#0a1e5a', 'space-color':'#000',
-          'star-intensity':0.8, 'horizon-blend':0.05
+          'range':[0.5,10],'color':'rgba(10,40,120,0.08)',
+          'high-color':'#081840','space-color':'#000',
+          'star-intensity':0.9,'horizon-blend':0.04
         });
       }catch(e){}
       _mlApplyGlobeTheme(_exp2EvMap);
@@ -4470,7 +4503,9 @@ function exp2LoadEventsMap(){
       }
       _loadExp2EvMarkers();
       [80,300,700].forEach(function(d){ setTimeout(function(){ if(_exp2EvMap) _exp2EvMap.resize(); },d); });
-    });
+    }
+    _exp2EvMap.on('style.load', _evApplyTheme);
+    _exp2EvMap.on('load', _evApplyTheme);
   } else if(_exp2EvMap.loaded()){
     _loadExp2EvMarkers();
   }
@@ -4766,7 +4801,7 @@ function loadExplorerMap(mode, cityFilter){
     _expMap = new maplibregl.Map({
       container: 'p-exp-map',
       style: _mlGlobeStyle(),
-      center: [10, 30], zoom: 1.0,
+      center: [10, 20], zoom: 0.5,
       minZoom: 0, maxZoom: 19,
       projection: 'globe',
       renderWorldCopies: false,
@@ -4775,16 +4810,17 @@ function loadExplorerMap(mode, cityFilter){
       dragRotate: true,
       pitchWithRotate: false
     });
-    // Appliquer la projection immédiatement (avant on('load') qui peut tarder sur iOS)
     try{ _expMap.setProjection('globe'); }catch(e){}
-    // style.load : se déclenche dès que le style est parsé (avant les tuiles)
-    _expMap.on('style.load', function(){
+    var _expMapThemeApplied = false;
+    function _expApplyTheme(){
+      if(_expMapThemeApplied) return;
+      _expMapThemeApplied = true;
       try{ _expMap.setProjection('globe'); }catch(e){}
       try{
         _expMap.setFog({
-          'range':[0.8,10], 'color':'rgba(20,60,160,0.12)',
-          'high-color':'#0a1e5a', 'space-color':'#000',
-          'star-intensity':0.8, 'horizon-blend':0.05
+          'range':[0.5,10],'color':'rgba(10,40,120,0.08)',
+          'high-color':'#081840','space-color':'#000',
+          'star-intensity':0.9,'horizon-blend':0.04
         });
       }catch(e){}
       _mlApplyGlobeTheme(_expMap);
@@ -4803,7 +4839,9 @@ function loadExplorerMap(mode, cityFilter){
       }
       _loadExpPartners(mode, cityFilter);
       [80,300,700].forEach(function(d){ setTimeout(function(){ if(_expMap) _expMap.resize(); },d); });
-    });
+    }
+    _expMap.on('style.load', _expApplyTheme);
+    _expMap.on('load', _expApplyTheme);
   } else {
     _loadExpPartners(mode, cityFilter);
   }
