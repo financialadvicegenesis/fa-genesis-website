@@ -4186,15 +4186,21 @@ var _GEN_OCEAN_GJ = {type:'FeatureCollection',features:[
 // Style globe : URL OpenFreeMap dark (tuiles vectorielles fiables)
 function _mlGlobeStyle(){ return 'https://tiles.openfreemap.org/styles/dark'; }
 function _mlCartoDark(){ return _mlGlobeStyle(); }
-// Thème globe identique WeCheers — itération robuste de tous les layers
+// Thème globe identique WeCheers
 function _mlApplyGlobeTheme(map){
-  var LAND   = '#1c3460'; // continents (bleu marine moyen)
-  var OCEAN  = '#0b1a35'; // océans (bleu très sombre)
-  var LABEL  = '#ffffff'; // labels pays : blanc pur comme WeCheers
-  var OLABEL = '#7ab8e8'; // labels océans : bleu clair
-  var layers = map.getStyle().layers || [];
+  var LAND   = '#1c3460';
+  var OCEAN  = '#0b1a35';
+  var LABEL  = '#ffffff';
+  var OLABEL = '#7ab8e8';
+  // ── 1. IDs connus OpenFreeMap (belt-and-suspenders)
+  try{ map.setPaintProperty('background','background-color',LAND); }catch(e){}
+  try{ map.setPaintProperty('water','fill-color',OCEAN); }catch(e){}
+  try{ map.setPaintProperty('water','fill-outline-color',OCEAN); }catch(e){}
+  try{ map.setPaintProperty('water-shadow','fill-color',OCEAN); }catch(e){}
+  // ── 2. Itération complète de tous les layers
+  var layers = [];
+  try{ layers = map.getStyle().layers || []; }catch(e){}
   var fontStack = ['Noto Sans Regular'];
-  // Récupérer la police du style pour les layers GeoJSON
   for(var fi=0;fi<layers.length;fi++){
     if(layers[fi].type==='symbol'&&layers[fi].layout&&layers[fi].layout['text-font']){
       fontStack=layers[fi].layout['text-font']; break;
@@ -4204,42 +4210,27 @@ function _mlApplyGlobeTheme(map){
     var lid = lyr.id||'';
     var sl  = (lyr['source-layer']||'').toLowerCase();
     var typ = lyr.type||'';
-    // ── Background : couleur de base = continents
     if(typ === 'background'){
       try{ map.setPaintProperty(lid,'background-color',LAND); }catch(e){}
-    }
-    // ── Fills : eau → OCEAN, terre visible → LAND
-    else if(typ === 'fill'){
-      var isWater = sl.indexOf('water')!==-1||lid.indexOf('water')!==-1;
-      if(isWater){
+    } else if(typ === 'fill'){
+      if(sl.indexOf('water')!==-1||lid.indexOf('water')!==-1){
         try{ map.setPaintProperty(lid,'fill-color',OCEAN); }catch(e){}
         try{ map.setPaintProperty(lid,'fill-outline-color',OCEAN); }catch(e){}
       }
-    }
-    // ── Lignes : frontières subtiles, routes/bâtiments masqués
-    else if(typ === 'line'){
-      var isBound = sl.indexOf('boundary')!==-1||lid.indexOf('boundary')!==-1;
-      if(isBound){
-        // Frontières pays visibles comme sur WeCheers (ligne très subtile)
+    } else if(typ === 'line'){
+      // Seules les frontières sont retouchées — les côtes/autres restent intactes
+      if(sl.indexOf('boundary')!==-1||lid.indexOf('boundary')!==-1){
         try{ map.setPaintProperty(lid,'line-color','rgba(120,160,220,0.30)'); }catch(e){}
         try{ map.setPaintProperty(lid,'line-width',0.6); }catch(e){}
-      } else {
-        // Routes, bâtiments etc. → transparents sur le globe
-        try{ map.setPaintProperty(lid,'line-opacity',0); }catch(e){}
       }
-    }
-    // ── Symbols : labels FR, couleurs blanches/bleues
-    else if(typ === 'symbol'){
-      // Toujours afficher en français
+    } else if(typ === 'symbol'){
       try{ map.setLayoutProperty(lid,'text-field',
         ['coalesce',['get','name:fr'],['get','name:latin'],['get','name']]); }catch(e){}
-      // Labels pays/continents → blanc pur (comme WeCheers)
       if(sl==='place'||sl==='place_label'||sl==='country_label'){
         try{ map.setPaintProperty(lid,'text-color',LABEL); }catch(e){}
         try{ map.setPaintProperty(lid,'text-halo-color','rgba(0,5,25,0.75)'); }catch(e){}
         try{ map.setPaintProperty(lid,'text-halo-width',1); }catch(e){}
       }
-      // Noms océans/mers du style vectoriel → bleu clair, visibles dès zoom 0
       if(sl==='water_name'||sl==='waterway_label'){
         try{ map.setLayerZoomRange(lid,0,20); }catch(e){}
         try{ map.setLayoutProperty(lid,'text-size',
@@ -4250,19 +4241,16 @@ function _mlApplyGlobeTheme(map){
       }
     }
   });
-  // ── Noms d'océans GeoJSON (affichés même sans water_name dans le style)
+  // ── 3. Noms d'océans GeoJSON
   try{
     if(!map.getSource('gen-oceans')){
       map.addSource('gen-oceans',{type:'geojson',data:_GEN_OCEAN_GJ});
       map.addLayer({
         id:'gen-ocean-labels',type:'symbol',source:'gen-oceans',
         layout:{
-          'text-field':['get','n'],
-          'text-font':fontStack,
+          'text-field':['get','n'],'text-font':fontStack,
           'text-size':['interpolate',['linear'],['zoom'],0,12,1,14,3,17,6,22],
-          'text-letter-spacing':0.18,
-          'text-anchor':'center',
-          'text-max-width':10
+          'text-letter-spacing':0.18,'text-anchor':'center','text-max-width':10
         },
         paint:{
           'text-color':OLABEL,
@@ -4538,7 +4526,9 @@ function exp2LoadEventsMap(){
     }
     _exp2EvMap.on('style.load', _evApplyTheme);
     _exp2EvMap.on('load', _evApplyTheme);
-  } else if(_exp2EvMap.loaded()){
+  } else {
+    // Réappliquer le thème à chaque retour sur la carte événements
+    try{ if(_exp2EvMap.loaded()) _mlApplyGlobeTheme(_exp2EvMap); }catch(e){}
     _loadExp2EvMarkers();
   }
 }
@@ -4874,6 +4864,8 @@ function loadExplorerMap(mode, cityFilter){
     _expMap.on('style.load', _expApplyTheme);
     _expMap.on('load', _expApplyTheme);
   } else {
+    // Réappliquer le thème à chaque retour (corrige le bug "rien n'a changé" après re-navigation)
+    try{ if(_expMap.loaded()) _mlApplyGlobeTheme(_expMap); }catch(e){}
     _loadExpPartners(mode, cityFilter);
   }
 }
