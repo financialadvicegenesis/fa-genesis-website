@@ -3402,6 +3402,19 @@ function nav(tab){
     else { pbb.style.display='none'; }
     }
   }
+  // iOS fix : désactiver le scroll natif de #content quand Explorer est actif
+  // (sinon -webkit-overflow-scrolling:touch intercepte pinch/rotation avant le canvas)
+  if(contentEl){
+    if(tab === 'explorer'){
+      contentEl.style.overflow = 'hidden';
+      contentEl.style.webkitOverflowScrolling = 'auto';
+      contentEl.style.overscrollBehavior = 'none';
+    } else {
+      contentEl.style.overflow = '';
+      contentEl.style.webkitOverflowScrolling = '';
+      contentEl.style.overscrollBehavior = '';
+    }
+  }
   if(tab==='explorer' && _expMap){
     setTimeout(function(){ _expMap.resize(); }, 80);
   }
@@ -3427,7 +3440,18 @@ function navBack(){
   var hdr=document.getElementById('hdr'); if(hdr) hdr.classList.remove('hdr-hidden');
   // Restore scroll position WITHOUT resetting
   var contentEl=document.getElementById('content');
-  if(contentEl) setTimeout(function(){ contentEl.scrollTop=scrollTop; }, 30);
+  if(contentEl){
+    if(tab === 'explorer'){
+      contentEl.style.overflow = 'hidden';
+      contentEl.style.webkitOverflowScrolling = 'auto';
+      contentEl.style.overscrollBehavior = 'none';
+    } else {
+      contentEl.style.overflow = '';
+      contentEl.style.webkitOverflowScrolling = '';
+      contentEl.style.overscrollBehavior = '';
+    }
+    setTimeout(function(){ contentEl.scrollTop=scrollTop; }, 30);
+  }
   _loadTab(tab);
 }
 
@@ -4186,12 +4210,12 @@ var _GEN_OCEAN_GJ = {type:'FeatureCollection',features:[
 // Style globe : URL OpenFreeMap dark (tuiles vectorielles fiables)
 function _mlGlobeStyle(){ return 'https://tiles.openfreemap.org/styles/dark'; }
 function _mlCartoDark(){ return _mlGlobeStyle(); }
-// Thème globe identique WeCheers
+// Thème globe — tons sombres désaturés (moins bleus)
 function _mlApplyGlobeTheme(map){
-  var LAND   = '#1c3460';
-  var OCEAN  = '#0b1a35';
-  var LABEL  = '#ffffff';
-  var OLABEL = '#7ab8e8';
+  var LAND   = '#1b2c3e';   // bleu-ardoise foncé (moins saturé que #1c3460)
+  var OCEAN  = '#070f1a';   // quasi-noir avec légère teinte bleue
+  var LABEL  = '#e8e8e8';
+  var OLABEL = '#5fa8d3';
   // ── 1. IDs connus OpenFreeMap (belt-and-suspenders)
   try{ map.setPaintProperty('background','background-color',LAND); }catch(e){}
   try{ map.setPaintProperty('water','fill-color',OCEAN); }catch(e){}
@@ -4507,9 +4531,9 @@ function exp2LoadEventsMap(){
       try{ _exp2EvMap.setProjection({ type: 'globe' }); }catch(e){}
       try{
         _exp2EvMap.setFog({
-          'range':[0.5,10],'color':'rgba(8,30,90,0.12)',
-          'high-color':'#06112a','space-color':'#000000',
-          'star-intensity':0.85,'horizon-blend':0.07
+          'range':[0.5,10],'color':'rgba(5,12,25,0.07)',
+          'high-color':'#030a14','space-color':'#000000',
+          'star-intensity':0.9,'horizon-blend':0.05
         });
       }catch(e){}
       _mlApplyGlobeTheme(_exp2EvMap);
@@ -4862,11 +4886,11 @@ function loadExplorerMap(mode, cityFilter){
       try{
         _expMap.setFog({
           'range':[0.5,10],
-          'color':'rgba(8,30,90,0.12)',
-          'high-color':'#06112a',
+          'color':'rgba(5,12,25,0.07)',
+          'high-color':'#030a14',
           'space-color':'#000000',
-          'star-intensity':0.85,
-          'horizon-blend':0.07
+          'star-intensity':0.9,
+          'horizon-blend':0.05
         });
       }catch(e){}
       _mlApplyGlobeTheme(_expMap);
