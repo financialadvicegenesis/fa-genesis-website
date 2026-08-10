@@ -5107,12 +5107,12 @@ function _makePartnerIcon(p){
 function _expZoomIn(){
   if(!_expMap) return;
   _expAutoRotating = false;
-  try{ _expMap.zoomIn({duration:350}); }catch(e){}
+  try{ _expMap.zoomIn({duration:300}); }catch(e){}
 }
 function _expZoomOut(){
   if(!_expMap) return;
   _expAutoRotating = false;
-  try{ _expMap.zoomOut({duration:350}); }catch(e){}
+  try{ _expMap.zoomOut({duration:300}); }catch(e){}
 }
 
 function _openMapQuickPreview(p){
@@ -5182,82 +5182,90 @@ function loadExplorerMap(mode, cityFilter){
     try{
       _expMap = new maplibregl.Map({
         container: container,
-        // Style CARTO Dark Matter : sombre, rues, pays, océans, continents
         style: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
         center: [10, 20],
         zoom: 2,
         minZoom: 1,
         maxZoom: 20,
-        projection: 'globe',
         attributionControl: false,
-        logoPosition: 'bottom-left',
-        touchZoomRotate: true,
         dragRotate: true,
-        touchPitch: false
+        touchZoomRotate: true
       });
 
-      // ── Brouillard atmosphérique (effet "espace") ──────────
-      _expMap.on('style.load', function(){
+      // ── Événement load (fiable, remplace style.load) ───────
+      _expMap.on('load', function(){
+
+        // Forcer projection globe après chargement du style
+        try{ _expMap.setProjection('globe'); }catch(e){}
+
+        // Brouillard atmosphérique effet espace
         try{
           _expMap.setFog({
-            'color': 'rgb(10,15,30)',
-            'high-color': 'rgb(60,90,160)',
-            'horizon-blend': 0.08,
+            color: 'rgb(8,12,28)',
+            'high-color': 'rgb(50,80,150)',
+            'horizon-blend': 0.06,
             'space-color': '#000005',
-            'star-intensity': 0.18
+            'star-intensity': 0.20
           });
         }catch(e){}
 
-        // ── Source + Layer : marqueurs partenaires ──────────
-        _expMap.addSource('genesis-partners', {
-          type: 'geojson',
-          data: {type:'FeatureCollection', features:[]}
-        });
-        _expMap.addLayer({
-          id: 'genesis-partners-halo',
-          type: 'circle',
-          source: 'genesis-partners',
-          paint: {
-            'circle-radius': ['*', ['get','radius'], 2.4],
-            'circle-color': ['get','color'],
-            'circle-opacity': 0.18,
-            'circle-blur': 1
-          }
-        });
-        _expMap.addLayer({
-          id: 'genesis-partners-dot',
-          type: 'circle',
-          source: 'genesis-partners',
-          paint: {
-            'circle-radius': ['get','radius'],
-            'circle-color': ['get','color'],
-            'circle-stroke-width': 1.8,
-            'circle-stroke-color': '#fff',
-            'circle-opacity': 0.92
-          }
-        });
-        // Label du prestataire (nom) au-dessus du point
-        _expMap.addLayer({
-          id: 'genesis-partners-label',
-          type: 'symbol',
-          source: 'genesis-partners',
-          layout: {
-            'text-field': ['get','name'],
-            'text-font': ['Open Sans Semibold','Arial Unicode MS Bold'],
-            'text-size': 11,
-            'text-offset': [0, -1.8],
-            'text-anchor': 'bottom',
-            'text-allow-overlap': false,
-            'text-optional': true
-          },
-          paint: {
-            'text-color': '#FFD700',
-            'text-halo-color': 'rgba(0,0,0,0.85)',
-            'text-halo-width': 1.5
-          }
-        });
+        // ── Source + Layers partenaires ─────────────────────
+        if(!_expMap.getSource('genesis-partners')){
+          _expMap.addSource('genesis-partners', {
+            type: 'geojson',
+            data: {type:'FeatureCollection', features:[]}
+          });
+        }
+        if(!_expMap.getLayer('genesis-partners-halo')){
+          _expMap.addLayer({
+            id: 'genesis-partners-halo',
+            type: 'circle',
+            source: 'genesis-partners',
+            paint: {
+              'circle-radius': ['*', ['get','radius'], 2.2],
+              'circle-color': ['get','color'],
+              'circle-opacity': 0.16,
+              'circle-blur': 1
+            }
+          });
+        }
+        if(!_expMap.getLayer('genesis-partners-dot')){
+          _expMap.addLayer({
+            id: 'genesis-partners-dot',
+            type: 'circle',
+            source: 'genesis-partners',
+            paint: {
+              'circle-radius': ['get','radius'],
+              'circle-color': ['get','color'],
+              'circle-stroke-width': 1.8,
+              'circle-stroke-color': '#fff',
+              'circle-opacity': 0.92
+            }
+          });
+        }
+        if(!_expMap.getLayer('genesis-partners-label')){
+          _expMap.addLayer({
+            id: 'genesis-partners-label',
+            type: 'symbol',
+            source: 'genesis-partners',
+            layout: {
+              'text-field': ['get','name'],
+              'text-font': ['Open Sans Semibold','Arial Unicode MS Bold'],
+              'text-size': 11,
+              'text-offset': [0, -1.6],
+              'text-anchor': 'bottom',
+              'text-allow-overlap': false,
+              'text-optional': true
+            },
+            paint: {
+              'text-color': '#FFD700',
+              'text-halo-color': 'rgba(0,0,0,0.9)',
+              'text-halo-width': 1.5
+            }
+          });
+        }
 
-        // ── Click sur un point partenaire ──────────────────
+        // Interactions partenaires
         _expMap.on('click', 'genesis-partners-dot', function(e){
           if(!e.features || !e.features[0]) return;
           var id = e.features[0].properties.id;
@@ -5267,49 +5275,46 @@ function loadExplorerMap(mode, cityFilter){
         _expMap.on('mouseenter','genesis-partners-dot',function(){ _expMap.getCanvas().style.cursor='pointer'; });
         _expMap.on('mouseleave','genesis-partners-dot',function(){ _expMap.getCanvas().style.cursor=''; });
 
-        // ── "Rechercher ici" au déplacement ───────────────
-        _expMap.on('moveend', function(){
+        // "Rechercher ici" — seulement sur interaction utilisateur réelle
+        _expMap.on('dragend', function(){
           var zoneBtn = document.getElementById('exp-zone-btn');
           if(zoneBtn && _expMapVisible) zoneBtn.style.display = 'flex';
         });
 
-        // ── Stop auto-rotation sur interaction utilisateur ─
-        _expMap.on('mousedown', function(){ _expAutoRotating = false; });
-        _expMap.on('touchstart', function(){ _expAutoRotating = false; });
-        _expMap.on('wheel', function(){ _expAutoRotating = false; });
+        // Auto-rotation lente — setInterval 200ms (pas de RAF pour éviter le blocage)
+        _startGlobeAutoRotate();
 
         // Charger les partenaires
         _loadExpPartners(mode, cityFilter);
-
-        // Démarrer l'auto-rotation douce
-        _startGlobeAutoRotate();
       });
 
       _expMap.on('error', function(e){
-        // Globe projection échoue → repasser en mercator plat
-        console.warn('[GENESIS] map error', e.error && e.error.message);
+        console.warn('[GENESIS] map error:', e.error && e.error.message);
       });
 
     }catch(err){
-      console.error('[GENESIS] Map init error', err);
+      console.error('[GENESIS] Map init error:', err);
     }
 
   } else {
     _loadExpPartners(mode, cityFilter);
-    _expAutoRotating = true;
   }
 }
 
-// Auto-rotation douce du globe (MapLibre)
+// Auto-rotation lente (setInterval 200ms → ~2.5°/sec, pas de blocage d'interaction)
 function _startGlobeAutoRotate(){
-  if(_expAutoRotateRAF) cancelAnimationFrame(_expAutoRotateRAF);
-  (function tick(){
-    if(_expMap && _expAutoRotating && !_expMap.isMoving()){
-      var c = _expMap.getCenter();
-      _expMap.jumpTo({center:[c.lng + 0.04, c.lat]});
-    }
-    _expAutoRotateRAF = requestAnimationFrame(tick);
-  })();
+  if(_expAutoRotateRAF){ clearInterval(_expAutoRotateRAF); _expAutoRotateRAF = null; }
+  _expAutoRotating = true;
+  // Arrêter sur toute interaction utilisateur
+  function _stopRot(){ _expAutoRotating = false; }
+  _expMap.once('mousedown', _stopRot);
+  _expMap.once('touchstart', _stopRot);
+  _expMap.once('wheel', _stopRot);
+  _expAutoRotateRAF = setInterval(function(){
+    if(!_expMap || !_expAutoRotating || _expMap.isMoving()) return;
+    var c = _expMap.getCenter();
+    _expMap.setCenter([c.lng + 0.5, c.lat]);
+  }, 200);
 }
 
 function _loadExpPartners(mode, cityFilter){
