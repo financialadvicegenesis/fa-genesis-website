@@ -4397,15 +4397,13 @@ function exp2LoadEventsList(){
         : '<i class="fa-solid fa-champagne-glasses"></i>';
       var dateStr = '';
       if(ev.date){ try{ dateStr = new Date(ev.date).toLocaleDateString('fr-FR',{day:'numeric',month:'long'}); }catch(e){ dateStr = ev.date; } }
-      var hasCoords = !isNaN(parseFloat(ev.lat)) && !isNaN(parseFloat(ev.lng));
-      return '<div class="exp2-ev-list-card">'
-        +'<div class="exp2-ev-list-photo" onclick="openEventDetail(\''+ev.id+'\')">'+photo+'</div>'
-        +'<div class="exp2-ev-list-body" onclick="openEventDetail(\''+ev.id+'\')">'
+      return '<div class="exp2-ev-list-card" onclick="openEventDetail(\''+ev.id+'\')">'
+        +'<div class="exp2-ev-list-photo">'+photo+'</div>'
+        +'<div class="exp2-ev-list-body">'
         +'<div class="exp2-ev-list-title">'+(ev.title||'Événement')+'</div>'
         +(dateStr ? '<div class="exp2-ev-list-date"><i class="fa-regular fa-calendar" style="margin-right:4px;"></i>'+dateStr+'</div>' : '')
         +'<div class="exp2-ev-list-loc"><i class="fa-solid fa-location-dot" style="margin-right:4px;color:var(--yellow);"></i>'+(ev.city||ev.location||'')+'</div>'
         +'</div>'
-        +(hasCoords ? '<button onclick="event.stopPropagation();exp2ShowEvOnMap(\''+ev.id+'\')" style="flex-shrink:0;background:rgba(168,85,247,.15);border:1.5px solid #a855f7;border-radius:10px;padding:8px;color:#a855f7;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;" title="Voir sur la carte"><i class="fa-solid fa-map-location-dot"></i></button>' : '')
         +'</div>';
     }).join('');
   }).catch(function(){
