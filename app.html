@@ -806,6 +806,12 @@ a{text-decoration:none;color:inherit}
 #p-exp-map .maplibregl-canvas-container,#p-exp-map .maplibregl-canvas,
 #exp2-ev-map .maplibregl-canvas-container,#exp2-ev-map .maplibregl-canvas{width:100% !important;height:100% !important;touch-action:none !important;}
 #p-exp-map,#exp2-ev-map{background:#000 !important;}
+/* Vue rue (MapLibre 2D) — overlay sur le globe, activé à la géolocalisation */
+#exp-street-map{position:absolute;inset:0;opacity:0;pointer-events:none;transition:opacity .45s ease;z-index:20;background:#000;touch-action:none !important;}
+#exp-street-map.on{opacity:1;pointer-events:auto;}
+#exp-street-map .maplibregl-canvas-container,#exp-street-map .maplibregl-canvas{width:100% !important;height:100% !important;touch-action:none !important;}
+/* Bouton retour au globe */
+#exp-globe-back-btn{position:absolute;top:82px;left:12px;z-index:650;background:rgba(10,10,10,.92);border:1.5px solid var(--yellow);color:var(--yellow);border-radius:20px;padding:8px 16px;font-size:13px;font-weight:800;display:none;align-items:center;gap:8px;cursor:pointer;font-family:inherit;box-shadow:0 2px 10px rgba(0,0,0,.6);backdrop-filter:blur(4px);}
 /* Contrôles bas droite (zoom + géo) */
 .exp2-map-br-wrap{position:absolute;bottom:28px;right:14px;z-index:500;display:flex;flex-direction:column;align-items:center;gap:8px;}
 .exp2-zoom-btn{width:40px;height:40px;background:rgba(17,17,17,.92);border:1.5px solid #444;border-radius:10px;color:#fff;font-size:17px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.5);font-family:inherit;}
@@ -2635,10 +2641,16 @@ a{text-decoration:none;color:inherit}
         </div>
       </div>
 
-      <!-- ════ PANEL OFFRES — carte plein écran ════════════ -->
+      <!-- ════ PANEL OFFRES — globe 3D + vue rue ════════════ -->
       <div class="exp2-panel on" id="exp2-panel-offres">
-        <!-- Carte Leaflet (plein écran) -->
+        <!-- Globe 3D (Globe.gl / WebGL) -->
         <div id="p-exp-map"></div>
+        <!-- Vue rue MapLibre (s'active sur géolocalisation) -->
+        <div id="exp-street-map"></div>
+        <!-- Bouton retour au globe -->
+        <button id="exp-globe-back-btn" onclick="_hideExpStreetMap()">
+          <i class="fa-solid fa-globe"></i> Globe
+        </button>
         <!-- Zoom + Géolocalisation — bas droite -->
         <div class="exp2-map-br-wrap">
           <button class="exp2-zoom-btn" onclick="_expZoomIn()"><i class="fa-solid fa-plus"></i></button>
@@ -3993,16 +4005,77 @@ function loadExplorerDirectory(){
 function _expGeolocate(){
   if(!navigator.geolocation){showToast('Géolocalisation non disponible sur cet appareil.');return;}
   navigator.geolocation.getCurrentPosition(function(pos){
-    if(!_expMap) return;
     var lat = pos.coords.latitude, lng = pos.coords.longitude;
-    _expGeoMarker = [{lat:lat,lng:lng}];
-    try{
-      _expMap.ringsData(_expGeoMarker);
-      _expMap.pointOfView({lat:lat,lng:lng,altitude:0.5},1500);
-    }catch(e){}
+    // 1. Anneaux sur le globe + zoom vers la position
+    if(_expMap){
+      _expGeoMarker = [{lat:lat,lng:lng}];
+      try{ _expMap.ringsData(_expGeoMarker); }catch(e){}
+      try{ _expMap.pointOfView({lat:lat,lng:lng,altitude:0.5},1200); }catch(e){}
+    }
+    // 2. Après animation → basculer vers vue rue avec noms de rues
+    setTimeout(function(){ _showExpStreetMap(lat, lng); }, 1400);
   },function(){
     showToast('Localisation refusée ou indisponible.');
   },{enableHighAccuracy:true,timeout:8000});
+}
+
+function _showExpStreetMap(lat, lng){
+  var overlay = document.getElementById('exp-street-map');
+  var backBtn = document.getElementById('exp-globe-back-btn');
+  if(!overlay) return;
+  // Stopper l'auto-rotation du globe pendant la vue rue
+  if(_expMap){ try{ _expMap.controls().autoRotate = false; }catch(e){} }
+  // Afficher l'overlay
+  overlay.style.display = 'block';
+  requestAnimationFrame(function(){ overlay.classList.add('on'); });
+  if(backBtn) backBtn.style.display = 'flex';
+  if(typeof maplibregl === 'undefined'){ return; }
+  if(!_expStreetMap){
+    // Initialiser la carte rue MapLibre
+    _expStreetMap = new maplibregl.Map({
+      container: 'exp-street-map',
+      style: 'https://tiles.openfreemap.org/styles/dark',
+      center: [lng, lat],
+      zoom: 16,
+      minZoom: 2,
+      maxZoom: 22,
+      attributionControl: false,
+      failIfMajorPerformanceCaveat: false
+    });
+    _expStreetMap.on('load', function(){
+      _addStreetUserMarker(lat, lng);
+      // Étiquettes en français
+      try{
+        _expStreetMap.getStyle().layers.forEach(function(lyr){
+          if(lyr.type==='symbol'&&lyr.layout&&lyr.layout['text-field']){
+            try{ _expStreetMap.setLayoutProperty(lyr.id,'text-field',
+              ['coalesce',['get','name:fr'],['get','name:latin'],['get','name']]); }catch(e){}
+          }
+        });
+      }catch(e){}
+    });
+  } else {
+    _expStreetMap.flyTo({center:[lng,lat],zoom:16});
+    _addStreetUserMarker(lat, lng);
+  }
+}
+
+function _addStreetUserMarker(lat, lng){
+  if(!_expStreetMap) return;
+  if(_expStreetMarker){ try{_expStreetMarker.remove();}catch(e){} _expStreetMarker=null; }
+  var dotEl = document.createElement('div');
+  dotEl.className = 'gen-geo-dot';
+  dotEl.innerHTML = '<div class="gen-geo-dot-ring"></div><div class="gen-geo-dot-inner"></div>';
+  _expStreetMarker = new maplibregl.Marker({element:dotEl,anchor:'center'}).setLngLat([lng,lat]).addTo(_expStreetMap);
+}
+
+function _hideExpStreetMap(){
+  var overlay = document.getElementById('exp-street-map');
+  var backBtn = document.getElementById('exp-globe-back-btn');
+  if(overlay){ overlay.classList.remove('on'); setTimeout(function(){ overlay.style.display='none'; },460); }
+  if(backBtn) backBtn.style.display = 'none';
+  // Reprendre l'auto-rotation du globe
+  if(_expMap){ try{ _expMap.controls().autoRotate = true; }catch(e){} }
 }
 
 // ── EXPLORER — RECHERCHER DANS CETTE ZONE ─────────────
@@ -4197,6 +4270,86 @@ var _expMap = null, _expMapVisible = false;
 var _expMarkers = [], _expGeoMarker = null;
 var _expHeatVisible = true;
 var _expGlobePoints = []; // cache points Globe.gl
+var _expStreetMap = null, _expStreetMarker = null; // vue rue MapLibre
+
+// ── Labels Globe.gl : pays, continents, océans ─────────────────
+var _GEN_GLOBE_LABELS = [
+  // Continents
+  {n:'EUROPE',lat:54,lng:15,s:2.0,c:'#d8e4f0'},
+  {n:'ASIE',lat:50,lng:100,s:2.2,c:'#d8e4f0'},
+  {n:'AFRIQUE',lat:5,lng:22,s:2.2,c:'#d8e4f0'},
+  {n:'AMÉRIQUE\nDU NORD',lat:52,lng:-100,s:1.9,c:'#d8e4f0'},
+  {n:'AMÉRIQUE\nDU SUD',lat:-15,lng:-58,s:1.9,c:'#d8e4f0'},
+  {n:'OCÉANIE',lat:-25,lng:133,s:1.9,c:'#d8e4f0'},
+  {n:'ANTARCTIQUE',lat:-82,lng:0,s:1.6,c:'#d8e4f0'},
+  // Océans
+  {n:'Océan\nPacifique',lat:0,lng:-155,s:1.7,c:'#7ab8e8'},
+  {n:'Océan\nAtlantique',lat:5,lng:-28,s:1.6,c:'#7ab8e8'},
+  {n:'Océan\nIndien',lat:-20,lng:75,s:1.6,c:'#7ab8e8'},
+  {n:'Océan\nArctique',lat:85,lng:0,s:1.3,c:'#7ab8e8'},
+  {n:'Océan\nAntarctique',lat:-62,lng:30,s:1.3,c:'#7ab8e8'},
+  {n:'Mer\nMéditerranée',lat:36,lng:16,s:0.95,c:'#7ab8e8'},
+  {n:'Mer de Chine\nméridionale',lat:15,lng:116,s:0.9,c:'#7ab8e8'},
+  {n:'Mer des\nCaraïbes',lat:15,lng:-74,s:0.9,c:'#7ab8e8'},
+  {n:'Golfe\ndu Mexique',lat:25,lng:-90,s:0.85,c:'#7ab8e8'},
+  // Pays
+  {n:'RUSSIE',lat:61,lng:100,s:1.4,c:'#c0cfe0'},
+  {n:'CANADA',lat:60,lng:-96,s:1.3,c:'#c0cfe0'},
+  {n:'ÉTATS-UNIS',lat:38,lng:-96,s:1.3,c:'#c0cfe0'},
+  {n:'MEXIQUE',lat:23,lng:-102,s:1.0,c:'#c0cfe0'},
+  {n:'BRÉSIL',lat:-10,lng:-52,s:1.3,c:'#c0cfe0'},
+  {n:'ARGENTINE',lat:-35,lng:-65,s:1.0,c:'#c0cfe0'},
+  {n:'CHILI',lat:-35,lng:-71,s:0.8,c:'#c0cfe0'},
+  {n:'COLOMBIE',lat:4,lng:-73,s:0.9,c:'#c0cfe0'},
+  {n:'VENEZUELA',lat:8,lng:-66,s:0.8,c:'#c0cfe0'},
+  {n:'PÉROU',lat:-10,lng:-75,s:0.9,c:'#c0cfe0'},
+  {n:'FRANCE',lat:46,lng:2,s:1.0,c:'#c0cfe0'},
+  {n:'ESPAGNE',lat:40,lng:-3,s:1.0,c:'#c0cfe0'},
+  {n:'ROYAUME-UNI',lat:54,lng:-2,s:0.95,c:'#c0cfe0'},
+  {n:'ALLEMAGNE',lat:51,lng:10,s:1.0,c:'#c0cfe0'},
+  {n:'ITALIE',lat:42,lng:12,s:0.95,c:'#c0cfe0'},
+  {n:'UKRAINE',lat:49,lng:32,s:0.9,c:'#c0cfe0'},
+  {n:'POLOGNE',lat:52,lng:20,s:0.85,c:'#c0cfe0'},
+  {n:'SUÈDE',lat:62,lng:15,s:0.85,c:'#c0cfe0'},
+  {n:'NORVÈGE',lat:65,lng:13,s:0.85,c:'#c0cfe0'},
+  {n:'TURQUIE',lat:39,lng:35,s:1.0,c:'#c0cfe0'},
+  {n:'IRAN',lat:33,lng:54,s:1.0,c:'#c0cfe0'},
+  {n:'ARABIE\nSAOUDITE',lat:24,lng:45,s:0.95,c:'#c0cfe0'},
+  {n:'INDE',lat:21,lng:79,s:1.3,c:'#c0cfe0'},
+  {n:'CHINE',lat:36,lng:103,s:1.4,c:'#c0cfe0'},
+  {n:'JAPON',lat:37,lng:137,s:1.0,c:'#c0cfe0'},
+  {n:'CORÉE\nDU SUD',lat:36,lng:128,s:0.85,c:'#c0cfe0'},
+  {n:'INDONÉSIE',lat:-5,lng:118,s:1.1,c:'#c0cfe0'},
+  {n:'AUSTRALIE',lat:-25,lng:132,s:1.3,c:'#c0cfe0'},
+  {n:'NOUVELLE-\nZÉLANDE',lat:-42,lng:172,s:0.8,c:'#c0cfe0'},
+  {n:'PAKISTAN',lat:30,lng:68,s:1.0,c:'#c0cfe0'},
+  {n:'BANGLADESH',lat:23,lng:90,s:0.8,c:'#c0cfe0'},
+  {n:'THAÏLANDE',lat:15,lng:100,s:0.85,c:'#c0cfe0'},
+  {n:'VIETNAM',lat:16,lng:106,s:0.85,c:'#c0cfe0'},
+  {n:'MALAISIE',lat:4,lng:109,s:0.85,c:'#c0cfe0'},
+  {n:'ÉGYPTE',lat:26,lng:30,s:1.0,c:'#c0cfe0'},
+  {n:'ALGÉRIE',lat:28,lng:3,s:1.0,c:'#c0cfe0'},
+  {n:'MAROC',lat:32,lng:-6,s:0.95,c:'#c0cfe0'},
+  {n:'TUNISIE',lat:34,lng:9,s:0.8,c:'#c0cfe0'},
+  {n:'LIBYE',lat:27,lng:17,s:0.85,c:'#c0cfe0'},
+  {n:'NIGERIA',lat:9,lng:8,s:1.1,c:'#c0cfe0'},
+  {n:'AFRIQUE\nDU SUD',lat:-29,lng:25,s:1.1,c:'#c0cfe0'},
+  {n:'KENYA',lat:1,lng:37,s:0.85,c:'#c0cfe0'},
+  {n:'ÉTHIOPIE',lat:9,lng:40,s:0.9,c:'#c0cfe0'},
+  {n:'GHANA',lat:8,lng:-1,s:0.85,c:'#c0cfe0'},
+  {n:'SÉNÉGAL',lat:14,lng:-14,s:0.85,c:'#c0cfe0'},
+  {n:'CÔTE\nD\'IVOIRE',lat:7,lng:-5,s:0.85,c:'#c0cfe0'},
+  {n:'CAMEROUN',lat:5,lng:13,s:0.85,c:'#c0cfe0'},
+  {n:'MADAGASCAR',lat:-20,lng:47,s:0.85,c:'#c0cfe0'},
+  {n:'MOZAMBIQUE',lat:-18,lng:35,s:0.8,c:'#c0cfe0'},
+  {n:'ANGOLA',lat:-12,lng:18,s:0.85,c:'#c0cfe0'},
+  {n:'TANZANIE',lat:-6,lng:35,s:0.8,c:'#c0cfe0'},
+  {n:'SOUDAN',lat:15,lng:30,s:0.85,c:'#c0cfe0'},
+  {n:'CONGO',lat:-4,lng:23,s:0.9,c:'#c0cfe0'},
+  {n:'GROENLAND',lat:72,lng:-40,s:1.1,c:'#c0cfe0'},
+  {n:'KAZAKHSTAN',lat:48,lng:68,s:1.0,c:'#c0cfe0'},
+  {n:'MONGOLIE',lat:47,lng:104,s:0.9,c:'#c0cfe0'}
+];
 // ── EXPLORER v2 — state ──
 var _exp2Tab = 'offres';
 var _exp2OffresView = 'carte';
@@ -4903,6 +5056,16 @@ function loadExplorerMap(mode, cityFilter){
       .ringMaxRadius(3)
       .ringPropagationSpeed(3)
       .ringRepeatPeriod(900)
+      // Labels : pays, continents, océans
+      .labelsData(_GEN_GLOBE_LABELS)
+      .labelLat('lat')
+      .labelLng('lng')
+      .labelText('n')
+      .labelSize(function(d){ return d.s||1.0; })
+      .labelDotRadius(0)
+      .labelColor(function(d){ return d.c||'#ffffff'; })
+      .labelAltitude(0.001)
+      .labelResolution(3)
       .enablePointerInteraction(true);
     // ── Contrôles caméra ──────────────────────────────────────
     var ctrl = _expMap.controls();
