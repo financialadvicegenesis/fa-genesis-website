@@ -4173,47 +4173,35 @@ var _exp2Tab = 'offres';
 var _exp2OffresView = 'carte';
 var _exp2EvView = 'carte';
 var _exp2EvMap = null, _exp2EvMarkers = [], _exp2EvGeoMarker = null;
-// Style globe minimal : fond noir / océan sombre / continents bleus / frontières / noms FR
+// Style globe : URL OpenFreeMap dark (tuiles vectorielles fiables)
+// Les couleurs "planète bleue" sont appliquées au runtime après chargement.
 function _mlGlobeStyle(){
-  return {
-    version:8, name:'genesis-globe',
-    glyphs:'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf',
-    sources:{ofm:{type:'vector',url:'https://tiles.openfreemap.org/planet'}},
-    layers:[
-      // Continents (background = terre)
-      {id:'bg',type:'background',paint:{'background-color':'#13316b'}},
-      // Océans, mers, lacs
-      {id:'water',type:'fill',source:'ofm','source-layer':'water',
-       paint:{'fill-color':'#051120','fill-opacity':1}},
-      // Glace / pôles
-      {id:'ice',type:'fill',source:'ofm','source-layer':'landcover',
-       filter:['==','class','ice'],
-       paint:{'fill-color':'#c8dcff','fill-opacity':0.8}},
-      // Frontières de pays
-      {id:'country-border',type:'line',source:'ofm','source-layer':'boundary',
-       filter:['all',['==','admin_level',2],['!=','maritime',1]],
-       paint:{
-         'line-color':'#2e5fc8',
-         'line-width':['interpolate',['linear'],['zoom'],0,0.5,4,1,8,1.8],
-         'line-opacity':0.9
-       }},
-      // Noms de pays (français en priorité)
-      {id:'country-label',type:'symbol',source:'ofm','source-layer':'place',
-       filter:['==','class','country'],
-       layout:{
-         'text-field':['coalesce',['get','name:fr'],['get','name:latin'],['get','name']],
-         'text-font':['Noto Sans Regular'],
-         'text-size':['interpolate',['linear'],['zoom'],1,9,4,12,7,15],
-         'text-max-width':7,'text-anchor':'center',
-         'symbol-sort-key':['get','rank']
-       },
-       paint:{'text-color':'#9ec4ff','text-halo-color':'#020c1d','text-halo-width':1.5}}
-    ]
-  };
+  return 'https://tiles.openfreemap.org/styles/dark';
 }
-// Compatibilité ascendante (appelée depuis renderExplorer, etc.)
 function _mlCartoDark(){ return _mlGlobeStyle(); }
-function _mlSetFrenchLabels(map){ /* labels FR intégrés dans le style, rien à faire */ }
+// Applique les labels français et les couleurs "planète bleue" sur la carte
+function _mlApplyGlobeTheme(map){
+  try{
+    // Continents → bleu profond
+    map.setPaintProperty('background','background-color','#152d5a');
+  }catch(e){}
+  try{
+    // Océans / mers → quasi-noir
+    map.setPaintProperty('water','fill-color','#06111f');
+  }catch(e){}
+  // Labels français sur toutes les couches symbol
+  try{
+    var layers = map.getStyle().layers || [];
+    layers.forEach(function(layer){
+      if(layer.type !== 'symbol') return;
+      try{
+        map.setLayoutProperty(layer.id,'text-field',
+          ['coalesce',['get','name:fr'],['get','name:latin'],['get','name']]);
+      }catch(e){}
+    });
+  }catch(e){}
+}
+function _mlSetFrenchLabels(map){ _mlApplyGlobeTheme(map); }
 var _exp2EvQuery = '', _exp2EvSearchTimer = null;
 var _exp2EvFilters = {type: null, period: null, city: ''};
 var _exp2FilterCity = '';
@@ -4446,20 +4434,8 @@ function exp2LoadEventsMap(){
       touchZoomRotate: true,
       dragRotate: true
     });
-    // iOS Safari : capturer le pinch AVANT que le browser en fasse un page-zoom
-    try{
-      document.getElementById('exp2-ev-map').addEventListener('touchstart', function(e){
-        if(e.touches.length > 1) e.preventDefault();
-      }, {passive:false, capture:true});
-    }catch(e){}
     _exp2EvMap.on('load', function(){
       try{ _exp2EvMap.setProjection('globe'); }catch(e){}
-      // Forcer touch-action:none sur le canvas MapLibre pour iOS
-      try{
-        var cv2 = _exp2EvMap.getCanvas();
-        cv2.style.touchAction = 'none';
-        if(cv2.parentElement) cv2.parentElement.style.touchAction = 'none';
-      }catch(e){}
       try{
         _exp2EvMap.setFog({
           'range': [0.8, 10],
@@ -4470,6 +4446,7 @@ function exp2LoadEventsMap(){
           'horizon-blend': 0.06
         });
       }catch(e){}
+      _mlApplyGlobeTheme(_exp2EvMap);
       _exp2EvMap.addSource('ev-heat-src', {type:'geojson', data:{type:'FeatureCollection',features:[]}});
       _exp2EvMap.addLayer({
         id:'ev-heat-layer', type:'heatmap', source:'ev-heat-src', maxzoom:14,
@@ -4786,20 +4763,8 @@ function loadExplorerMap(mode, cityFilter){
       touchZoomRotate: true,
       dragRotate: true
     });
-    // iOS Safari : capturer le pinch AVANT que le browser en fasse un page-zoom
-    try{
-      document.getElementById('p-exp-map').addEventListener('touchstart', function(e){
-        if(e.touches.length > 1) e.preventDefault();
-      }, {passive:false, capture:true});
-    }catch(e){}
     _expMap.on('load', function(){
       try{ _expMap.setProjection('globe'); }catch(e){}
-      // Forcer touch-action:none sur le canvas MapLibre pour iOS
-      try{
-        var cv = _expMap.getCanvas();
-        cv.style.touchAction = 'none';
-        if(cv.parentElement) cv.parentElement.style.touchAction = 'none';
-      }catch(e){}
       try{
         _expMap.setFog({
           'range': [0.8, 10],
@@ -4810,6 +4775,7 @@ function loadExplorerMap(mode, cityFilter){
           'horizon-blend': 0.06
         });
       }catch(e){}
+      _mlApplyGlobeTheme(_expMap);
       _expMap.addSource('exp-heat-src', {type:'geojson', data:{type:'FeatureCollection',features:[]}});
       _expMap.addLayer({
         id:'exp-heat-layer', type:'heatmap', source:'exp-heat-src', maxzoom:14,
