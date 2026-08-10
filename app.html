@@ -4420,11 +4420,10 @@ function exp2LoadEventsMap(){
       renderWorldCopies: false,
       attributionControl: false,
       touchZoomRotate: true,
-      dragRotate: false
+      dragRotate: true
     });
     _exp2EvMap.on('load', function(){
       try{ _exp2EvMap.setProjection('globe'); }catch(e){}
-      try{ _exp2EvMap.touchZoomRotate.disableRotation(); }catch(e){}
       try{
         _exp2EvMap.setFog({
           'range': [0.5, 10],
@@ -4750,11 +4749,10 @@ function loadExplorerMap(mode, cityFilter){
       renderWorldCopies: false,
       attributionControl: false,
       touchZoomRotate: true,
-      dragRotate: false
+      dragRotate: true
     });
     _expMap.on('load', function(){
       try{ _expMap.setProjection('globe'); }catch(e){}
-      try{ _expMap.touchZoomRotate.disableRotation(); }catch(e){}
       try{
         _expMap.setFog({
           'range': [0.5, 10],
