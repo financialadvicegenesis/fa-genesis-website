@@ -5185,18 +5185,17 @@ function loadExplorerMap(mode, cityFilter){
     _expMap = Globe({waitForGlobeReady:true, animateIn:true})(container)
       // Fond transparent → montre le ciel étoilé CSS
       .backgroundColor('rgba(0,0,0,0)')
-      // Atmosphère lumineuse (halo bleu-blanc = "planète vue de l'espace")
+      // Atmosphère forte (halo bleu = "planète dans l'espace")
       .showAtmosphere(true)
-      .atmosphereColor('#4488ff')
-      .atmosphereAltitude(0.38)
-      // Texture Terre nocturne (lumières des villes)
-      .globeImageUrl('https://unpkg.com/three-globe/example/img/earth-night.jpg')
-      .bumpImageUrl('https://unpkg.com/three-globe/example/img/earth-topology.png')
-      // Polygones pays (bordures) — remplis après chargement topojson
+      .atmosphereColor('#55aaff')
+      .atmosphereAltitude(0.45)
+      // PAS de texture → globe transparent
+      .globeImageUrl(null)
+      // Polygones pays (bordures bien visibles sur globe transparent)
       .polygonsData([])
       .polygonCapColor(function(){ return 'rgba(0,0,0,0)'; })
       .polygonSideColor(function(){ return 'rgba(0,0,0,0)'; })
-      .polygonStrokeColor(function(){ return 'rgba(180,210,255,0.28)'; })
+      .polygonStrokeColor(function(){ return 'rgba(130,200,255,0.65)'; })
       .polygonAltitude(0.001)
       // Points partenaires
       .pointsData([])
@@ -5221,6 +5220,29 @@ function loadExplorerMap(mode, cityFilter){
       .labelColor(function(d){ return d.c||'#ffffff'; })
       .labelAltitude(0.001).labelResolution(3)
       .enablePointerInteraction(true);
+
+    // ── Globe transparent : modifier le matériau Three.js interne ─
+    _expMap.onGlobeReady(function(){
+      try{
+        _expMap.scene().traverse(function(obj){
+          if(!obj.isMesh || !obj.material) return;
+          var geom = obj.geometry;
+          if(!geom) return;
+          // Identifier la sphère du globe (nombreux segments)
+          var ws = geom.parameters && geom.parameters.widthSegments;
+          if(!ws || ws < 32) return;
+          var mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+          mats.forEach(function(m){
+            if(m.map) m.map = null;       // supprimer texture
+            m.transparent = true;
+            m.opacity = 0.10;             // quasi transparent
+            if(m.color) m.color.setRGB(0.01, 0.06, 0.18); // teinte bleu nuit
+            m.depthWrite = false;
+            m.needsUpdate = true;
+          });
+        });
+      }catch(e){}
+    });
 
     // ── Contrôles caméra (OrbitControls Three.js) ─────────
     var ctrl = _expMap.controls();
