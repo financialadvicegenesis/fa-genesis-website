@@ -802,9 +802,10 @@ a{text-decoration:none;color:inherit}
 .exp2-tabs-row{margin-bottom:0;}
 #exp2-panel-offres.on,#exp2-panel-events.on{position:absolute;top:0;left:0;right:0;bottom:0;overflow:hidden;}
 #p-exp-map,#exp2-ev-map{position:absolute !important;top:0 !important;left:0 !important;right:0 !important;bottom:0 !important;width:100% !important;height:100% !important;border:none !important;border-radius:0 !important;box-shadow:none !important;margin:0 !important;min-height:unset !important;}
-/* MapLibre canvas doit remplir son conteneur */
+/* MapLibre canvas — plein écran + fond espace pour le globe */
 #p-exp-map .maplibregl-canvas-container,#p-exp-map .maplibregl-canvas,
 #exp2-ev-map .maplibregl-canvas-container,#exp2-ev-map .maplibregl-canvas{width:100% !important;height:100% !important;}
+#p-exp-map,#exp2-ev-map{background:#08112a !important;}
 /* Contrôles bas droite (zoom + géo) */
 .exp2-map-br-wrap{position:absolute;bottom:28px;right:14px;z-index:500;display:flex;flex-direction:column;align-items:center;gap:8px;}
 .exp2-zoom-btn{width:40px;height:40px;background:rgba(17,17,17,.92);border:1.5px solid #444;border-radius:10px;color:#fff;font-size:17px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.5);font-family:inherit;}
@@ -4408,21 +4409,23 @@ function exp2LoadEventsMap(){
     _exp2EvMap = new maplibregl.Map({
       container: 'exp2-ev-map',
       style: _mlCartoDark(),
-      center: [2.4, 46.6], zoom: 5,
+      center: [10, 30], zoom: 1.5,
       minZoom: 0, maxZoom: 19,
       projection: 'globe',
+      renderWorldCopies: false,
       attributionControl: false,
       scrollZoom: false
     });
     _exp2EvMap.on('load', function(){
+      try{ _exp2EvMap.setProjection('globe'); }catch(e){}
       try{
         _exp2EvMap.setFog({
-          'range': [0.5, 8],
-          'color': 'rgba(186,210,235,0.35)',
+          'range': [0.5, 10],
+          'color': 'rgba(130,170,220,0.4)',
           'high-color': '#1a4db5',
-          'space-color': '#07071c',
-          'star-intensity': 0.25,
-          'horizon-blend': 0.06
+          'space-color': '#08112a',
+          'star-intensity': 0.3,
+          'horizon-blend': 0.08
         });
       }catch(e){}
       _exp2EvMap.addSource('ev-heat-src', {type:'geojson', data:{type:'FeatureCollection',features:[]}});
@@ -4728,22 +4731,23 @@ function loadExplorerMap(mode, cityFilter){
     _expMap = new maplibregl.Map({
       container: 'p-exp-map',
       style: _mlCartoDark(),
-      center: [2.4, 46.6], zoom: 5,
+      center: [10, 30], zoom: 1.5,
       minZoom: 0, maxZoom: 19,
       projection: 'globe',
+      renderWorldCopies: false,
       attributionControl: false,
       scrollZoom: false
     });
     _expMap.on('load', function(){
-      // Atmosphère globe — fond espace sombre + halo bleu (identique WeCheers)
+      try{ _expMap.setProjection('globe'); }catch(e){}
       try{
         _expMap.setFog({
-          'range': [0.5, 8],
-          'color': 'rgba(186,210,235,0.35)',
+          'range': [0.5, 10],
+          'color': 'rgba(130,170,220,0.4)',
           'high-color': '#1a4db5',
-          'space-color': '#07071c',
-          'star-intensity': 0.25,
-          'horizon-blend': 0.06
+          'space-color': '#08112a',
+          'star-intensity': 0.3,
+          'horizon-blend': 0.08
         });
       }catch(e){}
       _expMap.addSource('exp-heat-src', {type:'geojson', data:{type:'FeatureCollection',features:[]}});
@@ -4801,8 +4805,8 @@ function _loadExpPartners(mode, cityFilter){
     var src = _expMap.getSource('exp-heat-src');
     if(src) src.setData({type:'FeatureCollection',features:heatFeatures});
     if(!_expHeatVisible) try{_expMap.setLayoutProperty('exp-heat-layer','visibility','none');}catch(e){}
-    if(!bounds.isEmpty()){ try{_expMap.fitBounds(bounds,{maxZoom:13,padding:28});}catch(e){} }
-    else { _expMap.flyTo({center:[2.4,46.6],zoom:6}); }
+    // Ne pas auto-zoomer : laisser le globe visible au démarrage
+    // L'utilisateur zoome manuellement pour trouver des prestataires proches
     [80,300,600].forEach(function(d){ setTimeout(function(){ if(_expMap) _expMap.resize(); }, d); });
   }).catch(function(){});
 }
