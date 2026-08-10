@@ -776,8 +776,8 @@ a{text-decoration:none;color:inherit}
 .exp2-view-btn{display:flex;align-items:center;gap:5px;padding:7px 14px;border:none;border-radius:7px;font-size:11px;font-weight:700;color:var(--muted);cursor:pointer;font-family:inherit;background:transparent;transition:all .15s;white-space:nowrap;}
 .exp2-view-btn.on{background:var(--yellow);color:#000;}
 /* ═══ FILTER BOTTOM SHEET ═══════════════════════════════ */
-#exp2-filter-sheet{display:none;position:fixed;inset:0;z-index:890;background:rgba(0,0,0,.6);align-items:flex-end;justify-content:center;}
-#exp2-filter-sheet.on{display:flex;animation:regFadeIn .2s ease;}
+#exp2-filter-sheet,#exp2-ev-filter-sheet{display:none;position:fixed;inset:0;z-index:890;background:rgba(0,0,0,.6);align-items:flex-end;justify-content:center;}
+#exp2-filter-sheet.on,#exp2-ev-filter-sheet.on{display:flex;animation:regFadeIn .2s ease;}
 .exp2-filter-panel{background:#141414;border:1px solid #222;border-top:3px solid var(--yellow);border-radius:22px 22px 0 0;width:100%;max-width:500px;padding:0 0 calc(20px + env(safe-area-inset-bottom));max-height:88vh;overflow-y:auto;animation:sheetUp .32s cubic-bezier(.34,1.56,.64,1);}
 .exp2-filter-handle{width:40px;height:4px;background:#2a2a2a;border-radius:2px;margin:12px auto 0;}
 .exp2-filter-hdr{display:flex;align-items:center;justify-content:space-between;padding:16px 20px 14px;border-bottom:1px solid #222;}
@@ -2669,7 +2669,7 @@ a{text-decoration:none;color:inherit}
                 <i class="fa-solid fa-magnifying-glass exp2-search-icon"></i>
                 <input type="text" id="exp2-ev-search" placeholder="Rechercher un événement" oninput="exp2EvSearchDebounced()">
               </div>
-              <button class="exp2-filter-icon" onclick="exp2ToggleFilterSheet()">
+              <button class="exp2-filter-icon" id="exp2-ev-filter-icon" onclick="exp2ToggleEvFilterSheet()">
                 <i class="fa-solid fa-sliders"></i>
               </button>
             </div>
@@ -4186,6 +4186,7 @@ var _exp2OffresView = 'carte';
 var _exp2EvView = 'carte';
 var _exp2EvMap = null, _exp2EvMapLayer = null;
 var _exp2EvQuery = '', _exp2EvSearchTimer = null;
+var _exp2EvFilters = {type: null, period: null, city: ''};
 var _exp2FilterCity = '';
 
 function renderExplorer(){
@@ -4321,6 +4322,76 @@ function exp2FilterCityDebounced(){
   }, 200);
 }
 
+// ── FILTRE ÉVÉNEMENTS ─────────────────────────────────────────
+function exp2ToggleEvFilterSheet(){
+  var sheet = document.getElementById('exp2-ev-filter-sheet');
+  var icon  = document.getElementById('exp2-ev-filter-icon');
+  if(!sheet) return;
+  var isOn = sheet.classList.toggle('on');
+  if(icon) icon.classList.toggle('on', isOn);
+}
+function exp2CloseEvFilterSheet(){
+  var sheet = document.getElementById('exp2-ev-filter-sheet');
+  var icon  = document.getElementById('exp2-ev-filter-icon');
+  if(sheet) sheet.classList.remove('on');
+  if(icon)  icon.classList.remove('on');
+}
+function exp2ToggleEvFilterPill(el){
+  var filter = el.getAttribute('data-filter');
+  var val    = el.getAttribute('data-val');
+  if(_exp2EvFilters[filter] === val){
+    _exp2EvFilters[filter] = null;
+    el.classList.remove('on');
+  } else {
+    document.querySelectorAll('#exp2-ev-filter-sheet .exp2-filter-pill[data-filter="'+filter+'"]').forEach(function(p){
+      p.classList.remove('on');
+    });
+    _exp2EvFilters[filter] = val;
+    el.classList.add('on');
+  }
+}
+function exp2ApplyEvFilters(){
+  var cityInput = document.getElementById('exp2-ev-filter-city');
+  _exp2EvFilters.city = cityInput ? cityInput.value.trim() : '';
+  var hasFilters = _exp2EvFilters.type || _exp2EvFilters.period || _exp2EvFilters.city;
+  var icon = document.getElementById('exp2-ev-filter-icon');
+  if(icon) icon.classList.toggle('on', !!hasFilters);
+  exp2CloseEvFilterSheet();
+  exp2LoadEventsList();
+}
+function exp2ResetEvFilters(){
+  _exp2EvFilters = {type: null, period: null, city: ''};
+  var cityInput = document.getElementById('exp2-ev-filter-city');
+  if(cityInput) cityInput.value = '';
+  document.querySelectorAll('#exp2-ev-filter-sheet .exp2-filter-pill').forEach(function(p){ p.classList.remove('on'); });
+  var icon = document.getElementById('exp2-ev-filter-icon');
+  if(icon) icon.classList.remove('on');
+}
+function _evMatchesPeriod(ev, period){
+  if(!ev.date) return false;
+  try{
+    var d = new Date(ev.date);
+    var now = new Date();
+    if(period === 'weekend'){
+      // prochain samedi/dimanche
+      var day = now.getDay();
+      var daysToSat = (6 - day + 7) % 7 || 7;
+      var sat = new Date(now); sat.setDate(now.getDate() + daysToSat); sat.setHours(0,0,0,0);
+      var sun = new Date(sat); sun.setDate(sat.getDate() + 1); sun.setHours(23,59,59,999);
+      return d >= sat && d <= sun;
+    }
+    if(period === 'week'){
+      var startW = new Date(now); startW.setHours(0,0,0,0);
+      var endW = new Date(now); endW.setDate(now.getDate() + 7); endW.setHours(23,59,59,999);
+      return d >= startW && d <= endW;
+    }
+    if(period === 'month'){
+      return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+    }
+  }catch(e){}
+  return false;
+}
+
 // ── EVENTS MAP ────────────────────────────────────────────────
 var _exp2EvHeatLayer = null;
 function exp2LoadEventsMap(){
@@ -4412,6 +4483,20 @@ function exp2LoadEventsList(){
             || (ev.location||'').toLowerCase().indexOf(q) >= 0
             || (ev.city||'').toLowerCase().indexOf(q) >= 0
             || (ev.type||'').toLowerCase().indexOf(q) >= 0;
+      });
+    }
+    // Filtres événements
+    if(_exp2EvFilters.type){
+      events = events.filter(function(ev){ return ev.type === _exp2EvFilters.type; });
+    }
+    if(_exp2EvFilters.period){
+      events = events.filter(function(ev){ return _evMatchesPeriod(ev, _exp2EvFilters.period); });
+    }
+    if(_exp2EvFilters.city){
+      var fc = _exp2EvFilters.city.toLowerCase();
+      events = events.filter(function(ev){
+        return (ev.city||'').toLowerCase().indexOf(fc) >= 0
+            || (ev.location||'').toLowerCase().indexOf(fc) >= 0;
       });
     }
     if(!events.length){
@@ -13529,6 +13614,48 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
     </div>
     <!-- Bouton Appliquer -->
     <button class="exp2-filter-apply" onclick="exp2ApplyFilters()">
+      <i class="fa-solid fa-check" style="margin-right:6px;"></i>Appliquer les filtres
+    </button>
+  </div>
+</div>
+<!-- ── EXPLORER v2 — Filtre Événements bottom sheet ── -->
+<div id="exp2-ev-filter-sheet" onclick="if(event.target===this)exp2CloseEvFilterSheet()">
+  <div class="exp2-filter-panel">
+    <div class="exp2-filter-handle"></div>
+    <div class="exp2-filter-hdr">
+      <span class="exp2-filter-hdr-title">Filtrer les événements</span>
+      <button class="exp2-filter-reset-btn" onclick="exp2ResetEvFilters()">Réinitialiser</button>
+    </div>
+    <!-- Type d'événement -->
+    <div class="exp2-filter-sect">
+      <div class="exp2-filter-sect-title">Type d'événement</div>
+      <div class="exp2-filter-pills">
+        <button class="exp2-filter-pill" data-filter="type" data-val="soiree" onclick="exp2ToggleEvFilterPill(this)">Soirée</button>
+        <button class="exp2-filter-pill" data-filter="type" data-val="workshop" onclick="exp2ToggleEvFilterPill(this)">Workshop</button>
+        <button class="exp2-filter-pill" data-filter="type" data-val="conference" onclick="exp2ToggleEvFilterPill(this)">Conférence</button>
+        <button class="exp2-filter-pill" data-filter="type" data-val="masterclass" onclick="exp2ToggleEvFilterPill(this)">Masterclass</button>
+        <button class="exp2-filter-pill" data-filter="type" data-val="webinaire" onclick="exp2ToggleEvFilterPill(this)">Webinaire</button>
+        <button class="exp2-filter-pill" data-filter="type" data-val="atelier" onclick="exp2ToggleEvFilterPill(this)">Atelier</button>
+      </div>
+    </div>
+    <!-- Période -->
+    <div class="exp2-filter-sect">
+      <div class="exp2-filter-sect-title">Période</div>
+      <div class="exp2-filter-pills">
+        <button class="exp2-filter-pill" data-filter="period" data-val="weekend" onclick="exp2ToggleEvFilterPill(this)">Ce week-end</button>
+        <button class="exp2-filter-pill" data-filter="period" data-val="week" onclick="exp2ToggleEvFilterPill(this)">Cette semaine</button>
+        <button class="exp2-filter-pill" data-filter="period" data-val="month" onclick="exp2ToggleEvFilterPill(this)">Ce mois</button>
+      </div>
+    </div>
+    <!-- Ville -->
+    <div class="exp2-filter-sect">
+      <div class="exp2-filter-sect-title">Ville / Lieu</div>
+      <div class="exp2-filter-city-wrap">
+        <i class="fa-solid fa-location-dot"></i>
+        <input type="text" id="exp2-ev-filter-city" class="exp2-filter-city-input" placeholder="Montpellier, Paris, Lyon…">
+      </div>
+    </div>
+    <button class="exp2-filter-apply" onclick="exp2ApplyEvFilters()">
       <i class="fa-solid fa-check" style="margin-right:6px;"></i>Appliquer les filtres
     </button>
   </div>
