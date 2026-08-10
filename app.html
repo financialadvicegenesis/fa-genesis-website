@@ -4483,26 +4483,31 @@ function exp2LoadEventsMap(){
   }
   if(!_exp2EvMap){
     container.innerHTML = '';
+    try{ maplibregl.prewarm(); }catch(e){}
     _exp2EvMap = new maplibregl.Map({
       container: 'exp2-ev-map',
       style: _mlGlobeStyle(),
-      center: [10, 20], zoom: 0.5,
-      minZoom: 0, maxZoom: 19,
-      projection: 'globe',
+      center: [10, 20],
+      zoom: 1,
+      minZoom: -2,
+      maxZoom: 19,
+      projection: { type: 'globe' },
       renderWorldCopies: false,
+      failIfMajorPerformanceCaveat: false,
       attributionControl: false,
       touchZoomRotate: true,
-      dragRotate: true
+      dragRotate: true,
+      touchPitch: true
     });
-    try{ _exp2EvMap.setProjection('globe'); }catch(e){}
+    try{ _exp2EvMap.setProjection({ type: 'globe' }); }catch(e){}
     var _evMapThemeApplied = false;
     function _evApplyTheme(){
       if(_evMapThemeApplied) return;
       _evMapThemeApplied = true;
-      try{ _exp2EvMap.setProjection('globe'); }catch(e){}
+      try{ _exp2EvMap.setProjection({ type: 'globe' }); }catch(e){}
       try{
         _exp2EvMap.setFog({
-          'range':[0.5,10],'color':'rgba(8,30,90,0.10)',
+          'range':[0.5,10],'color':'rgba(8,30,90,0.12)',
           'high-color':'#06112a','space-color':'#000000',
           'star-intensity':0.85,'horizon-blend':0.07
         });
@@ -4524,10 +4529,20 @@ function exp2LoadEventsMap(){
       _loadExp2EvMarkers();
       [80,300,700].forEach(function(d){ setTimeout(function(){ if(_exp2EvMap) _exp2EvMap.resize(); },d); });
     }
-    _exp2EvMap.on('style.load', _evApplyTheme);
-    _exp2EvMap.on('load', _evApplyTheme);
+    _exp2EvMap.once('style.load', _evApplyTheme);
+    _exp2EvMap.once('load', _evApplyTheme);
+    setTimeout(function(){
+      if(!_evMapThemeApplied && _exp2EvMap){ _evApplyTheme(); }
+    }, 3000);
   } else {
-    // Réappliquer le thème à chaque retour sur la carte événements
+    try{ _exp2EvMap.setProjection({ type: 'globe' }); }catch(e){}
+    try{
+      _exp2EvMap.setFog({
+        'range':[0.5,10],'color':'rgba(8,30,90,0.12)',
+        'high-color':'#06112a','space-color':'#000000',
+        'star-intensity':0.85,'horizon-blend':0.07
+      });
+    }catch(e){}
     try{ if(_exp2EvMap.loaded()) _mlApplyGlobeTheme(_exp2EvMap); }catch(e){}
     _loadExp2EvMarkers();
   }
@@ -4820,28 +4835,36 @@ function loadExplorerMap(mode, cityFilter){
   }
   if(!_expMap){
     container.innerHTML = '';
+    try{ maplibregl.prewarm(); }catch(e){}
     _expMap = new maplibregl.Map({
       container: 'p-exp-map',
       style: _mlGlobeStyle(),
-      center: [10, 20], zoom: 0.5,
-      minZoom: 0, maxZoom: 19,
-      projection: 'globe',
+      center: [10, 20],
+      zoom: 1,
+      minZoom: -2,   // Dezoom illimité — sphère flottante dans l'espace
+      maxZoom: 19,
+      projection: { type: 'globe' },
       renderWorldCopies: false,
+      failIfMajorPerformanceCaveat: false,
       attributionControl: false,
       touchZoomRotate: true,
-      dragRotate: true
+      dragRotate: true,
+      touchPitch: true   // Rotation 3D libre sur touch
     });
-    try{ _expMap.setProjection('globe'); }catch(e){}
+    try{ _expMap.setProjection({ type: 'globe' }); }catch(e){}
     var _expMapThemeApplied = false;
     function _expApplyTheme(){
       if(_expMapThemeApplied) return;
       _expMapThemeApplied = true;
-      try{ _expMap.setProjection('globe'); }catch(e){}
+      try{ _expMap.setProjection({ type: 'globe' }); }catch(e){}
       try{
         _expMap.setFog({
-          'range':[0.5,10],'color':'rgba(8,30,90,0.10)',
-          'high-color':'#06112a','space-color':'#000000',
-          'star-intensity':0.85,'horizon-blend':0.07
+          'range':[0.5,10],
+          'color':'rgba(8,30,90,0.12)',
+          'high-color':'#06112a',
+          'space-color':'#000000',
+          'star-intensity':0.85,
+          'horizon-blend':0.07
         });
       }catch(e){}
       _mlApplyGlobeTheme(_expMap);
@@ -4861,10 +4884,22 @@ function loadExplorerMap(mode, cityFilter){
       _loadExpPartners(mode, cityFilter);
       [80,300,700].forEach(function(d){ setTimeout(function(){ if(_expMap) _expMap.resize(); },d); });
     }
-    _expMap.on('style.load', _expApplyTheme);
-    _expMap.on('load', _expApplyTheme);
+    _expMap.once('style.load', _expApplyTheme);
+    _expMap.once('load', _expApplyTheme);
+    // Fallback : appliquer le thème après 3s si les events ne se déclenchent pas
+    setTimeout(function(){
+      if(!_expMapThemeApplied && _expMap){ _expApplyTheme(); }
+    }, 3000);
   } else {
-    // Réappliquer le thème à chaque retour (corrige le bug "rien n'a changé" après re-navigation)
+    // Ré-appliquer projection + fog + thème à chaque retour
+    try{ _expMap.setProjection({ type: 'globe' }); }catch(e){}
+    try{
+      _expMap.setFog({
+        'range':[0.5,10],'color':'rgba(8,30,90,0.12)',
+        'high-color':'#06112a','space-color':'#000000',
+        'star-intensity':0.85,'horizon-blend':0.07
+      });
+    }catch(e){}
     try{ if(_expMap.loaded()) _mlApplyGlobeTheme(_expMap); }catch(e){}
     _loadExpPartners(mode, cityFilter);
   }
