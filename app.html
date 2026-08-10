@@ -4489,7 +4489,7 @@ function exp2LoadEventsMap(){
       style: _mlGlobeStyle(),
       center: [10, 20],
       zoom: 1,
-      minZoom: -2,
+      minZoom: -20,
       maxZoom: 19,
       projection: { type: 'globe' },
       renderWorldCopies: false,
@@ -4535,7 +4535,7 @@ function exp2LoadEventsMap(){
       if(!_evMapThemeApplied && _exp2EvMap){ _evApplyTheme(); }
     }, 3000);
   } else {
-    try{ _exp2EvMap.setMinZoom(-2); }catch(e){}
+    try{ _exp2EvMap.setMinZoom(-20); }catch(e){}
     try{ _exp2EvMap.setMaxZoom(19); }catch(e){}
     try{ _exp2EvMap.setProjection({ type: 'globe' }); }catch(e){}
     try{
@@ -4843,7 +4843,7 @@ function loadExplorerMap(mode, cityFilter){
       style: _mlGlobeStyle(),
       center: [10, 20],
       zoom: 0,         // Zoom 0 = globe entier visible comme sphère dès l'ouverture
-      minZoom: -2,
+      minZoom: -20,
       maxZoom: 19,
       projection: { type: 'globe' },
       renderWorldCopies: false,
@@ -4894,7 +4894,7 @@ function loadExplorerMap(mode, cityFilter){
     }, 3000);
   } else {
     // Corriger les réglages de l'instance existante (minZoom, projection, fog, thème)
-    try{ _expMap.setMinZoom(-2); }catch(e){}
+    try{ _expMap.setMinZoom(-20); }catch(e){}
     try{ _expMap.setMaxZoom(19); }catch(e){}
     try{ _expMap.setProjection({ type: 'globe' }); }catch(e){}
     try{
