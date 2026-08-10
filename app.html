@@ -4179,25 +4179,34 @@ function _mlGlobeStyle(){
   return 'https://tiles.openfreemap.org/styles/dark';
 }
 function _mlCartoDark(){ return _mlGlobeStyle(); }
-// Applique les labels français et les couleurs "planète bleue" sur la carte
+// Applique le thème "planète bleue" : couleurs, noms FR, noms d'océans visibles
 function _mlApplyGlobeTheme(map){
-  try{
-    // Continents → bleu profond
-    map.setPaintProperty('background','background-color','#152d5a');
-  }catch(e){}
-  try{
-    // Océans / mers → quasi-noir
-    map.setPaintProperty('water','fill-color','#06111f');
-  }catch(e){}
-  // Labels français sur toutes les couches symbol
+  // Continents → bleu moyen
+  try{ map.setPaintProperty('background','background-color','#1a3a6a'); }catch(e){}
+  // Océans → bleu marine profond (visible mais plus sombre que les terres)
+  try{ map.setPaintProperty('water','fill-color','#0c2040'); }catch(e){}
   try{
     var layers = map.getStyle().layers || [];
     layers.forEach(function(layer){
       if(layer.type !== 'symbol') return;
+      var lid = layer.id || '';
+      var sl  = (layer['source-layer'] || '');
+      // Labels français sur toutes les couches
       try{
-        map.setLayoutProperty(layer.id,'text-field',
+        map.setLayoutProperty(lid,'text-field',
           ['coalesce',['get','name:fr'],['get','name:latin'],['get','name']]);
       }catch(e){}
+      // Noms d'océans et de mers (source-layer = water_name dans OpenMapTiles)
+      // → visibles dès zoom 0, texte plus grand et plus lumineux
+      if(sl === 'water_name'){
+        try{ map.setLayerZoomRange(lid, 0, 20); }catch(e){}
+        try{ map.setLayoutProperty(lid,'text-size',
+          ['interpolate',['linear'],['zoom'],0,12,2,14,5,18]); }catch(e){}
+        try{ map.setLayoutProperty(lid,'text-letter-spacing',0.05); }catch(e){}
+        try{ map.setPaintProperty(lid,'text-color','#7ac8ff'); }catch(e){}
+        try{ map.setPaintProperty(lid,'text-halo-color','rgba(0,0,0,0.75)'); }catch(e){}
+        try{ map.setPaintProperty(lid,'text-halo-width',1.5); }catch(e){}
+      }
     });
   }catch(e){}
 }
