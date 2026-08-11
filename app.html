@@ -5177,9 +5177,33 @@ function _toggleHeatmap(btn){
   }catch(e){}
 }
 
+// ── Style satellite inline (pas de dépendance URL externe) ────────────────────
+// Tuiles ESRI : satellite HD + labels/frontières overlay. CORS open, fiables, pas de clé API.
+var _EXP_SAT_STYLE = {
+  version: 8,
+  name: 'GENESIS Globe Terrestre',
+  glyphs: 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf',
+  sources: {
+    sat: {
+      type: 'raster',
+      tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+      tileSize: 256, maxzoom: 18,
+      attribution: '© Esri, Maxar, GeoEye'
+    },
+    ref: {
+      type: 'raster',
+      tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}'],
+      tileSize: 256, maxzoom: 18
+    }
+  },
+  layers: [
+    { id:'bg',    type:'background', paint:{'background-color':'#000008'} },
+    { id:'sat',   type:'raster',     source:'sat', paint:{'raster-fade-duration':150} },
+    { id:'ref',   type:'raster',     source:'ref', paint:{'raster-fade-duration':150,'raster-opacity':0.88} }
+  ]
+};
+
 // ── EXPLORER — CARTE OFFRES (MapLibre GL + projection globe + espace) ──────────
-// Même approche que la carte Événements : setFog donne le fond "planète dans l'espace",
-// _mlApplyGlobeTheme applique les couleurs sombres + labels français + noms d'océans.
 function loadExplorerMap(mode, cityFilter){
   var container = document.getElementById('p-exp-map');
   if(!container) return;
@@ -5198,9 +5222,9 @@ function loadExplorerMap(mode, cityFilter){
 
     _expMap = new maplibregl.Map({
       container: container,
-      style: 'https://tiles.openfreemap.org/styles/bright',
+      style: _EXP_SAT_STYLE,
       center: [10, 20],
-      zoom: 0.5,
+      zoom: 0,
       minZoom: -2,
       maxZoom: 19,
       projection: { type: 'globe' },
@@ -5217,50 +5241,35 @@ function loadExplorerMap(mode, cityFilter){
       if(_offresThemeApplied) return;
       _offresThemeApplied = true;
 
-      // Globe terrestre : projection globe + atmosphère bleue + étoiles dans l'espace
+      // Projection globe + atmosphère terrestre réaliste + étoiles dans l'espace
       try{ _expMap.setProjection({ type: 'globe' }); }catch(e){}
       try{
         _expMap.setFog({
-          'range': [0.8, 8],
-          'color': 'rgba(200,225,255,0.55)',
-          'high-color': '#0c2040',
+          'range': [1.0, 12],
+          'color': 'rgba(190,220,255,0.45)',
+          'high-color': '#07152a',
           'space-color': '#000008',
-          'star-intensity': 0.85,
-          'horizon-blend': 0.07
+          'star-intensity': 0.88,
+          'horizon-blend': 0.06
         });
       }catch(e){}
 
-      // Labels en français (sans toucher aux couleurs naturelles du style bright)
-      try{
-        var layers = _expMap.getStyle().layers || [];
-        layers.forEach(function(lyr){
-          if(lyr.type==='symbol' && lyr.layout && lyr.layout['text-field']){
-            try{ _expMap.setLayoutProperty(lyr.id,'text-field',
-              ['coalesce',['get','name:fr'],['get','name:latin'],['get','name']]); }catch(e){}
-          }
-        });
-      }catch(e){}
-
-      // Noms d'océans GeoJSON (non couverts par le style bright)
+      // Noms d'océans en italique bleu (vecteur GeoJSON sur fond satellite)
       try{
         if(!_expMap.getSource('gen-oceans-offres')){
-          var fontStack = ['Noto Sans Italic'];
-          try{
-            var ls = (_expMap.getStyle().layers||[]).filter(function(l){ return l.type==='symbol' && l.layout && l.layout['text-font']; });
-            if(ls.length) fontStack = ls[0].layout['text-font'];
-          }catch(e){}
           _expMap.addSource('gen-oceans-offres',{type:'geojson',data:_GEN_OCEAN_GJ});
           _expMap.addLayer({
             id:'gen-ocean-labels-offres',type:'symbol',source:'gen-oceans-offres',
             layout:{
-              'text-field':['get','n'],'text-font':fontStack,
-              'text-size':['interpolate',['linear'],['zoom'],0,11,1,14,3,17,6,22],
-              'text-letter-spacing':0.18,'text-anchor':'center','text-max-width':10
+              'text-field':['get','n'],
+              'text-font':['Open Sans Italic','Noto Sans Italic'],
+              'text-size':['interpolate',['linear'],['zoom'],0,10,1,13,3,16,6,20],
+              'text-letter-spacing':0.15,'text-anchor':'center','text-max-width':9
             },
             paint:{
-              'text-color':'#3a78c4',
-              'text-halo-color':'rgba(255,255,255,0.6)',
-              'text-halo-width':1.2
+              'text-color':'rgba(160,200,255,0.9)',
+              'text-halo-color':'rgba(0,0,15,0.7)',
+              'text-halo-width':1.4
             }
           });
         }
