@@ -4030,8 +4030,6 @@ function _expGeolocate(){
       try{ _expMap.flyTo({center:[lng,lat], zoom:15, duration:1800, essential:true}); }catch(e){}
       // Marqueur pulsant
       _expPlaceGeoMarker(lng, lat);
-      // Adresse une seule fois
-      _expFetchAddress(lat, lng);
       // Suivi continu silencieux : déplace juste le marqueur
       _expWatchId = navigator.geolocation.watchPosition(
         function(newPos){
@@ -5200,7 +5198,7 @@ function loadExplorerMap(mode, cityFilter){
 
     _expMap = new maplibregl.Map({
       container: container,
-      style: _mlGlobeStyle(),
+      style: 'https://tiles.openfreemap.org/styles/bright',
       center: [10, 20],
       zoom: 1.5,
       minZoom: 0.5,
@@ -5219,21 +5217,54 @@ function loadExplorerMap(mode, cityFilter){
       if(_offresThemeApplied) return;
       _offresThemeApplied = true;
 
-      // Globe : forcer projection globe + étoiles + fond espace
+      // Globe terrestre : projection globe + atmosphère bleue + étoiles dans l'espace
       try{ _expMap.setProjection({ type: 'globe' }); }catch(e){}
       try{
         _expMap.setFog({
-          'range': [0.5, 10],
-          'color': 'rgba(5,12,25,0.07)',
-          'high-color': '#030a14',
-          'space-color': '#000005',
-          'star-intensity': 0.95,
-          'horizon-blend': 0.04
+          'range': [0.8, 8],
+          'color': 'rgba(200,225,255,0.55)',
+          'high-color': '#0c2040',
+          'space-color': '#000008',
+          'star-intensity': 0.85,
+          'horizon-blend': 0.07
         });
       }catch(e){}
 
-      // Couleurs sombres + labels français + noms d'océans (réutilise la fonction Events)
-      _mlApplyGlobeTheme(_expMap);
+      // Labels en français (sans toucher aux couleurs naturelles du style bright)
+      try{
+        var layers = _expMap.getStyle().layers || [];
+        layers.forEach(function(lyr){
+          if(lyr.type==='symbol' && lyr.layout && lyr.layout['text-field']){
+            try{ _expMap.setLayoutProperty(lyr.id,'text-field',
+              ['coalesce',['get','name:fr'],['get','name:latin'],['get','name']]); }catch(e){}
+          }
+        });
+      }catch(e){}
+
+      // Noms d'océans GeoJSON (non couverts par le style bright)
+      try{
+        if(!_expMap.getSource('gen-oceans-offres')){
+          var fontStack = ['Noto Sans Italic'];
+          try{
+            var ls = (_expMap.getStyle().layers||[]).filter(function(l){ return l.type==='symbol' && l.layout && l.layout['text-font']; });
+            if(ls.length) fontStack = ls[0].layout['text-font'];
+          }catch(e){}
+          _expMap.addSource('gen-oceans-offres',{type:'geojson',data:_GEN_OCEAN_GJ});
+          _expMap.addLayer({
+            id:'gen-ocean-labels-offres',type:'symbol',source:'gen-oceans-offres',
+            layout:{
+              'text-field':['get','n'],'text-font':fontStack,
+              'text-size':['interpolate',['linear'],['zoom'],0,11,1,14,3,17,6,22],
+              'text-letter-spacing':0.18,'text-anchor':'center','text-max-width':10
+            },
+            paint:{
+              'text-color':'#3a78c4',
+              'text-halo-color':'rgba(255,255,255,0.6)',
+              'text-halo-width':1.2
+            }
+          });
+        }
+      }catch(e){}
 
       // Source GeoJSON partenaires
       if(!_expMap.getSource('genesis-partners')){
