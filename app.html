@@ -810,9 +810,14 @@ a{text-decoration:none;color:inherit}
 /* MapLibre canvas Offres — fond transparent (setFog gère le fond espace) */
 #p-exp-map canvas{background:transparent !important;}
 /* Contrôles bas droite (zoom + géo) */
-.exp2-map-br-wrap{position:absolute;bottom:28px;right:14px;z-index:500;display:flex;flex-direction:column;align-items:center;gap:8px;}
-.exp2-zoom-btn{width:40px;height:40px;background:rgba(17,17,17,.92);border:1.5px solid #444;border-radius:10px;color:#fff;font-size:17px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.5);font-family:inherit;}
-.exp2-geo-btn{width:46px;height:46px;background:var(--yellow);border:2.5px solid #000;border-radius:50%;color:#000;font-size:18px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.5),2px 2px 0 #000;}
+.exp2-map-br-wrap{position:absolute;bottom:28px;right:14px;z-index:500;display:flex;flex-direction:column;align-items:center;gap:12px;}
+/* Pill zoom WeCheers (+ et − dans un seul conteneur arrondi) */
+.exp-wc-zoom-pill{display:flex;flex-direction:column;align-items:center;background:rgba(18,20,30,0.94);border:1px solid rgba(255,255,255,0.10);border-radius:50px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.55);}
+.exp2-zoom-btn{width:52px;height:52px;background:none;border:none;color:#fff;font-size:20px;font-weight:300;display:flex;align-items:center;justify-content:center;cursor:pointer;font-family:inherit;}
+.exp-wc-zoom-divider{width:28px;height:1px;background:rgba(255,255,255,0.12);}
+/* Bouton GPS — grand cercle rose WeCheers */
+.exp2-geo-btn{width:58px;height:58px;background:#FF2D78;border:none;border-radius:50%;color:#fff;font-size:21px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 22px rgba(255,45,120,0.55);}
+.exp2-geo-btn.geo-active{background:#cc2260;box-shadow:0 4px 22px rgba(255,45,120,0.8);}
 /* Heatmap toggle bas gauche */
 .exp2-heat-wrap{position:absolute;bottom:28px;left:14px;z-index:500;}
 /* Carte/Liste événements — dans le header, entre search et onglets */
@@ -2647,13 +2652,15 @@ a{text-decoration:none;color:inherit}
 
       <!-- ════ PANEL OFFRES — globe 3D ════════════ -->
       <div class="exp2-panel on" id="exp2-panel-offres">
-        <!-- Globe 3D (Globe.gl / WebGL) -->
         <div id="p-exp-map"></div>
-        <!-- Zoom + Géolocalisation — bas droite -->
+        <!-- Contrôles style WeCheers — bas droite -->
         <div class="exp2-map-br-wrap">
-          <button class="exp2-zoom-btn" onclick="_expZoomIn()"><i class="fa-solid fa-plus"></i></button>
-          <button class="exp2-zoom-btn" onclick="_expZoomOut()"><i class="fa-solid fa-minus"></i></button>
-          <button class="exp2-geo-btn" onclick="_expGeolocate()"><i class="fa-solid fa-location-crosshairs"></i></button>
+          <div class="exp-wc-zoom-pill">
+            <button class="exp2-zoom-btn" onclick="_expZoomIn()"><i class="fa-solid fa-plus"></i></button>
+            <div class="exp-wc-zoom-divider"></div>
+            <button class="exp2-zoom-btn" onclick="_expZoomOut()"><i class="fa-solid fa-minus"></i></button>
+          </div>
+          <button class="exp2-geo-btn" onclick="_expGeolocate()"><i class="fa-solid fa-location-arrow"></i></button>
         </div>
         <!-- Liste cachée (accessible via code si besoin) -->
         <div id="exp2-offres-liste" style="display:none;position:absolute;inset:0;background:var(--bg);overflow-y:auto;padding-top:130px;padding-bottom:24px;">
@@ -5171,39 +5178,19 @@ function _toggleHeatmap(btn){
   _expHeatVisible = !_expHeatVisible;
   if(btn) btn.classList.toggle('on', _expHeatVisible);
   if(!_expMap) return;
-  try{
-    var src = _expMap.getSource('genesis-partners');
-    if(src) src.setData({type:'FeatureCollection', features: _expHeatVisible ? _expPartnerFeatures : []});
-  }catch(e){}
+  // Afficher/masquer les marqueurs photo HTML
+  _expPhotoMarkers.forEach(function(m){
+    try{ m.getElement().style.display = _expHeatVisible ? '' : 'none'; }catch(e){}
+  });
+  if(_expHeatVisible && _expPhotoMarkers.length === 0){
+    _loadExpPartners(_expMode, _expCity);
+  }
 }
 
-// ── Style satellite inline (pas de dépendance URL externe) ────────────────────
-// Tuiles ESRI : satellite HD + labels/frontières overlay. CORS open, fiables, pas de clé API.
-var _EXP_SAT_STYLE = {
-  version: 8,
-  name: 'GENESIS Globe Terrestre',
-  glyphs: 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf',
-  sources: {
-    sat: {
-      type: 'raster',
-      tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
-      tileSize: 256, maxzoom: 18,
-      attribution: '© Esri, Maxar, GeoEye'
-    },
-    ref: {
-      type: 'raster',
-      tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}'],
-      tileSize: 256, maxzoom: 18
-    }
-  },
-  layers: [
-    { id:'bg',    type:'background', paint:{'background-color':'#000008'} },
-    { id:'sat',   type:'raster',     source:'sat', paint:{'raster-fade-duration':150} },
-    { id:'ref',   type:'raster',     source:'ref', paint:{'raster-fade-duration':150,'raster-opacity':0.88} }
-  ]
-};
+// ── EXPLORER — CARTE OFFRES (MapLibre GL + style sombre vectoriel + globe) ─────
+// Style vectoriel sombre identique à la carte Événements (OpenFreeMap dark)
+var _expPhotoMarkers = []; // marqueurs HTML photo circulaires (style WeCheers)
 
-// ── EXPLORER — CARTE OFFRES (MapLibre GL + projection globe + espace) ──────────
 function loadExplorerMap(mode, cityFilter){
   var container = document.getElementById('p-exp-map');
   if(!container) return;
@@ -5222,7 +5209,7 @@ function loadExplorerMap(mode, cityFilter){
 
     _expMap = new maplibregl.Map({
       container: container,
-      style: _EXP_SAT_STYLE,
+      style: 'https://tiles.openfreemap.org/styles/dark',
       center: [10, 20],
       zoom: 0,
       minZoom: -2,
@@ -5241,80 +5228,23 @@ function loadExplorerMap(mode, cityFilter){
       if(_offresThemeApplied) return;
       _offresThemeApplied = true;
 
-      // Projection globe + atmosphère terrestre réaliste + étoiles dans l'espace
+      // Globe projection
       try{ _expMap.setProjection({ type: 'globe' }); }catch(e){}
+
+      // Couleurs terres/mer sombres + labels français (même fonction que Événements)
+      _mlApplyGlobeTheme(_expMap);
+
+      // Fond espace noir pur autour du globe (style WeCheers : pas d'étoiles, quasi-noir)
       try{
         _expMap.setFog({
-          'range': [1.0, 12],
-          'color': 'rgba(190,220,255,0.45)',
-          'high-color': '#07152a',
-          'space-color': '#000008',
-          'star-intensity': 0.88,
-          'horizon-blend': 0.06
+          'range':          [0.5, 10],
+          'color':          'rgba(15,25,60,0.22)',
+          'high-color':     '#040810',
+          'space-color':    '#000000',
+          'star-intensity': 0.06,
+          'horizon-blend':  0.03
         });
       }catch(e){}
-
-      // Noms d'océans en italique bleu (vecteur GeoJSON sur fond satellite)
-      try{
-        if(!_expMap.getSource('gen-oceans-offres')){
-          _expMap.addSource('gen-oceans-offres',{type:'geojson',data:_GEN_OCEAN_GJ});
-          _expMap.addLayer({
-            id:'gen-ocean-labels-offres',type:'symbol',source:'gen-oceans-offres',
-            layout:{
-              'text-field':['get','n'],
-              'text-font':['Open Sans Italic','Noto Sans Italic'],
-              'text-size':['interpolate',['linear'],['zoom'],0,10,1,13,3,16,6,20],
-              'text-letter-spacing':0.15,'text-anchor':'center','text-max-width':9
-            },
-            paint:{
-              'text-color':'rgba(160,200,255,0.9)',
-              'text-halo-color':'rgba(0,0,15,0.7)',
-              'text-halo-width':1.4
-            }
-          });
-        }
-      }catch(e){}
-
-      // Source GeoJSON partenaires
-      if(!_expMap.getSource('genesis-partners')){
-        _expMap.addSource('genesis-partners', {
-          type: 'geojson',
-          data: {type:'FeatureCollection', features:[]}
-        });
-        // Halo doux derrière le cercle
-        _expMap.addLayer({
-          id: 'partners-glow',
-          type: 'circle',
-          source: 'genesis-partners',
-          paint: {
-            'circle-radius': ['*', ['get','radius'], 2.2],
-            'circle-color': ['get','color'],
-            'circle-opacity': 0.18,
-            'circle-blur': 1
-          }
-        });
-        // Cercle principal
-        _expMap.addLayer({
-          id: 'partners-circles',
-          type: 'circle',
-          source: 'genesis-partners',
-          paint: {
-            'circle-radius': ['get','radius'],
-            'circle-color': ['get','color'],
-            'circle-opacity': 0.92,
-            'circle-stroke-width': 1.5,
-            'circle-stroke-color': 'rgba(0,0,0,0.55)'
-          }
-        });
-        // Clic partenaire → aperçu rapide
-        _expMap.on('click', 'partners-circles', function(e){
-          if(!e.features||!e.features.length) return;
-          var raw = e.features[0].properties._p;
-          if(raw){ try{ _openMapQuickPreview(JSON.parse(raw)); }catch(ex){} }
-        });
-        _expMap.on('mouseenter','partners-circles',function(){ _expMap.getCanvas().style.cursor='pointer'; });
-        _expMap.on('mouseleave','partners-circles',function(){ _expMap.getCanvas().style.cursor=''; });
-      }
 
       _loadExpPartners(mode, cityFilter);
       [80,300,700].forEach(function(d){ setTimeout(function(){ if(_expMap) _expMap.resize(); },d); });
@@ -5337,28 +5267,38 @@ function _loadExpPartners(mode, cityFilter){
     +(_expSearchQuery ? '&q='+encodeURIComponent(_expSearchQuery) : '');
   fetch(url).then(function(r){ return r.json(); }).then(function(data){
     var partners = (data && data.partners) || [];
-    var features = [];
+
+    // Supprimer les anciens marqueurs photo
+    _expPhotoMarkers.forEach(function(m){ try{ m.remove(); }catch(e){} });
+    _expPhotoMarkers = [];
+
+    if(!_expHeatVisible) return;
+
+    // Créer des marqueurs HTML circulaires avec photo (style WeCheers)
+    var shown = 0;
     partners.forEach(function(p){
+      if(shown >= 40) return;
       var lat = parseFloat(p.lat), lng = parseFloat(p.lng);
       if(isNaN(lat)||isNaN(lng)) return;
-      var score = 0.25;
-      if(p.rating && p.rating.count) score += Math.min(p.rating.count/40, 0.45);
-      if(p.services && p.services.length) score += Math.min(p.services.length/8, 0.3);
-      features.push({
-        type: 'Feature',
-        geometry: {type:'Point', coordinates:[lng, lat]},
-        properties: {
-          radius: Math.round(6 + score * 8),
-          color: score > 0.6 ? '#FF6B35' : '#FFD700',
-          _p: JSON.stringify(p)
-        }
-      });
+
+      var el = document.createElement('div');
+      el.className = 'gen-map-marker';
+      if(p.photo){
+        el.innerHTML = '<img src="'+p.photo+'" alt="">';
+        el.style.background = 'transparent';
+      } else {
+        var initials = (((p.prenom||'')[0]||'')+((p.nom||'')[0]||'')).toUpperCase();
+        el.innerHTML = '<span style="font-size:14px;font-weight:900;color:rgba(255,255,255,0.85);">'+initials+'</span>';
+      }
+      el.addEventListener('click', function(){ try{ _openMapQuickPreview(p); }catch(e){} });
+
+      var marker = new maplibregl.Marker({element: el, anchor:'center'})
+        .setLngLat([lng, lat])
+        .addTo(_expMap);
+      _expPhotoMarkers.push(marker);
+      shown++;
     });
-    _expPartnerFeatures = features;
-    try{
-      var src = _expMap.getSource('genesis-partners');
-      if(src) src.setData({type:'FeatureCollection', features: _expHeatVisible ? features : []});
-    }catch(e){}
+    _expPartnerFeatures = partners; // conserver pour d'autres usages
   }).catch(function(){});
 }
 // ── PRESTATAIRES — ANNUAIRE CLASSÉ ──────────────────────────────
