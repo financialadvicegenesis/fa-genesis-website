@@ -850,58 +850,6 @@ a{text-decoration:none;color:inherit}
 /* Jérémie FAB — draggable */
 .jeremie-fab{cursor:grab !important;}
 .jeremie-fab.dragging{cursor:grabbing !important;transition:none !important;}
-/* ══ EXPLORER DISCOVERY — style WeCheers ══════════════════════ */
-#exp-discovery-wrap{position:absolute;inset:0;background:#08080f;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-top:72px;padding-bottom:120px;z-index:10;}
-/* Header title */
-.exp-disc-hdr{padding:22px 18px 12px;}
-.exp-disc-hdr h2{font-size:30px;font-weight:900;color:#fff;margin:0 0 4px;letter-spacing:-0.5px;}
-.exp-disc-hdr p{font-size:14px;color:rgba(255,255,255,0.42);margin:0;}
-/* Search bar */
-.exp-disc-search{display:flex;align-items:center;gap:8px;margin:0 16px 14px;background:#16162a;border:1.5px solid rgba(255,255,255,0.08);border-radius:50px;padding:10px 14px;}
-.exp-disc-search i.search-ic{color:rgba(255,255,255,0.35);font-size:15px;flex-shrink:0;}
-.exp-disc-search input{flex:1;background:none;border:none;color:#fff;font-size:15px;outline:none;font-family:inherit;min-width:0;}
-.exp-disc-search input::placeholder{color:rgba(255,255,255,0.32);}
-.exp-disc-filter-btn{width:30px;height:30px;border-radius:50%;background:transparent;border:none;color:rgba(255,255,255,0.45);font-size:14px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;}
-.exp-disc-geo-btn{width:32px;height:32px;border-radius:50%;background:rgba(255,215,0,0.12);border:1.5px solid rgba(255,215,0,0.3);color:#FFD700;font-size:14px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:all .18s;}
-.exp-disc-geo-btn.geo-active{background:#FFD700;color:#000;border-color:#FFD700;}
-/* Toggle OFFRES / GLOBE */
-.exp-disc-toggle{display:flex;gap:5px;margin:0 16px 20px;background:#16162a;border-radius:14px;padding:4px;}
-.exp-disc-tog-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:7px;padding:12px 8px;border:none;border-radius:10px;font-size:12px;font-weight:800;color:rgba(255,255,255,0.36);cursor:pointer;font-family:inherit;background:transparent;transition:all .22s;text-transform:uppercase;letter-spacing:0.6px;}
-.exp-disc-tog-btn.on{background:#FFD700;color:#000;}
-/* Popular searches */
-.exp-disc-pop-label{padding:0 18px 10px;font-size:10px;font-weight:900;color:rgba(255,255,255,0.32);letter-spacing:1px;text-transform:uppercase;}
-.exp-disc-chips{display:flex;gap:8px;overflow-x:auto;padding:0 16px 18px;scrollbar-width:none;-webkit-overflow-scrolling:touch;}
-.exp-disc-chips::-webkit-scrollbar{display:none;}
-.exp-disc-chip{white-space:nowrap;display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border:1.5px solid rgba(255,255,255,0.12);border-radius:20px;background:transparent;color:rgba(255,255,255,0.8);font-size:13px;font-family:inherit;cursor:pointer;transition:all .18s;flex-shrink:0;}
-.exp-disc-chip.on,.exp-disc-chip:active{border-color:#FFD700;color:#FFD700;background:rgba(255,215,0,0.08);}
-/* Category grid 2-col */
-.exp-disc-cat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 16px 20px;}
-.exp-disc-cat-card{position:relative;border-radius:16px;overflow:hidden;height:115px;cursor:pointer;transition:transform .15s;-webkit-tap-highlight-color:transparent;}
-.exp-disc-cat-card:active{transform:scale(0.96);}
-.exp-disc-cat-bg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;}
-.exp-disc-cat-bg i{font-size:42px;opacity:0.20;color:#fff;}
-.exp-disc-cat-overlay{position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,0.90) 0%,rgba(0,0,0,0.12) 100%);display:flex;flex-direction:column;justify-content:flex-end;padding:13px;}
-.exp-disc-cat-title{font-size:14px;font-weight:800;color:#fff;display:block;margin-bottom:1px;}
-.exp-disc-cat-sub{font-size:11px;color:rgba(255,255,255,0.50);}
-.exp-disc-cat-card.sel{outline:2.5px solid #FFD700;outline-offset:-2px;}
-/* Count row */
-.exp-disc-count{padding:4px 18px 14px;font-size:13px;color:rgba(255,255,255,0.42);}
-/* Partner photo-card grid — WeCheers style */
-.exp-disc-pgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 16px 16px;}
-.exp-wc-card{position:relative;border-radius:16px;overflow:hidden;height:200px;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform .15s;}
-.exp-wc-card:active{transform:scale(0.97);}
-.exp-wc-card-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
-.exp-wc-card-grad{position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,0.92) 0%,rgba(0,0,0,0.10) 55%,rgba(0,0,0,0) 100%);}
-.exp-wc-card-badge{position:absolute;top:10px;left:10px;background:rgba(0,0,0,0.62);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);border-radius:20px;padding:4px 10px;font-size:10px;color:rgba(255,255,255,0.88);display:flex;align-items:center;gap:5px;font-weight:600;}
-.exp-wc-card-body{position:absolute;bottom:0;left:0;right:0;padding:12px 11px;}
-.exp-wc-card-name{font-size:14px;font-weight:800;color:#fff;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.exp-wc-card-meta{font-size:11px;color:rgba(255,255,255,0.52);display:flex;align-items:center;gap:4px;margin-top:1px;}
-.exp-wc-card-stars{font-size:11px;color:#FFD700;margin-top:4px;display:flex;align-items:center;gap:3px;}
-.exp-wc-avatar{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:900;color:rgba(255,255,255,0.32);}
-/* Map back button */
-.exp-map-back-btn{position:absolute;top:80px;left:16px;z-index:600;display:flex;align-items:center;gap:8px;background:rgba(10,10,20,0.82);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.18);color:#fff;font-size:13px;font-weight:700;font-family:inherit;padding:9px 15px;border-radius:22px;cursor:pointer;box-shadow:0 2px 12px rgba(0,0,0,0.5);}
-/* exp2-header réduit : fond plein (plus de gradient transparent) */
-.exp2-header{background:#08080f !important;padding:14px 16px 12px !important;}
 /* ═══ EVENTS LIST CARDS ══════════════════════════════════ */
 .exp2-ev-list-card{display:flex;align-items:center;gap:12px;background:var(--card);border:2px solid #000;border-radius:14px;padding:10px;cursor:pointer;box-shadow:3px 3px 0 var(--yellow);margin:0 16px 12px;}
 .exp2-ev-list-photo{width:72px;height:72px;border-radius:10px;background:#1a0040;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:24px;color:#a855f7;}
@@ -2665,10 +2613,19 @@ a{text-decoration:none;color:inherit}
     <!-- EXPLORER v2 — OFFRES + ÉVÉNEMENTS -->
     <div class="tab prest-tab" id="tab-explorer">
 
-      <!-- En-tête fixe (tabs seulement) -->
-      <div class="exp2-header" id="exp2-header-main">
+      <!-- En-tête flottant sur la carte -->
+      <div class="exp2-header">
+        <div class="exp2-top-row">
+          <div class="exp2-search-wrap" style="flex:1;">
+            <i class="fa-solid fa-magnifying-glass exp2-search-icon"></i>
+            <input type="text" id="p-exp-search" placeholder="Rechercher" oninput="_expSearchDebounced()">
+          </div>
+          <button class="exp2-filter-icon" id="exp2-filter-icon" onclick="exp2ToggleFilterSheet()">
+            <i class="fa-solid fa-sliders"></i>
+          </button>
+        </div>
         <!-- Carte/Liste Événements — visible seulement quand onglet Événements actif -->
-        <div id="exp2-ev-view-row" style="display:none;gap:4px;margin:0 0 6px;">
+        <div id="exp2-ev-view-row" style="display:none;gap:4px;margin:8px 0 6px;">
           <div class="exp2-view-btns">
             <button class="exp2-view-btn on" id="exp2-ev-carte-btn" onclick="exp2SetEvView('carte')">
               <i class="fa-solid fa-map"></i> Carte
@@ -2678,7 +2635,7 @@ a{text-decoration:none;color:inherit}
             </button>
           </div>
         </div>
-        <div class="exp2-tabs-row" style="margin:0;">
+        <div class="exp2-tabs-row">
           <button class="exp2-main-tab on" id="exp2-tab-offres" onclick="exp2SetTab('offres',this)">
             <i class="fa-solid fa-briefcase"></i> Offres
           </button>
@@ -2688,77 +2645,23 @@ a{text-decoration:none;color:inherit}
         </div>
       </div>
 
-      <!-- ════ PANEL OFFRES — Discovery + Globe ════════════ -->
+      <!-- ════ PANEL OFFRES — globe 3D ════════════ -->
       <div class="exp2-panel on" id="exp2-panel-offres">
-
-        <!-- ── VUE DISCOVERY (défaut, style WeCheers) ── -->
-        <div id="exp-discovery-wrap">
-
-          <!-- Titre -->
-          <div class="exp-disc-hdr">
-            <h2>Explorer</h2>
-            <p>Trouvez le prestataire idéal pour votre projet</p>
-          </div>
-
-          <!-- Barre de recherche pill -->
-          <div class="exp-disc-search">
-            <i class="fa-solid fa-magnifying-glass search-ic"></i>
-            <input type="text" id="p-exp-search" placeholder="Rechercher un prestataire..." oninput="_expSearchDebounced()">
-            <button class="exp-disc-filter-btn" onclick="exp2ToggleFilterSheet()"><i class="fa-solid fa-sliders"></i></button>
-            <button class="exp-disc-geo-btn" id="exp-disc-geo-btn" onclick="_expDiscGeolocate()"><i class="fa-solid fa-location-crosshairs"></i></button>
-          </div>
-
-          <!-- Toggle OFFRES / GLOBE -->
-          <div class="exp-disc-toggle">
-            <button class="exp-disc-tog-btn on" id="exp-tog-offres" onclick="expSetOffresView('offres')">
-              <i class="fa-solid fa-briefcase"></i> Prestataires
-            </button>
-            <button class="exp-disc-tog-btn" id="exp-tog-globe" onclick="expSetOffresView('globe')">
-              <i class="fa-solid fa-globe"></i> Globe
-            </button>
-          </div>
-
-          <!-- Chips populaires -->
-          <div class="exp-disc-pop-label">Populaire</div>
-          <div class="exp-disc-chips" id="exp-disc-chips-wrap">
-            <button class="exp-disc-chip on" onclick="_expChipSearch('',this)"><i class="fa-solid fa-star"></i> Tous</button>
-            <button class="exp-disc-chip" onclick="_expChipSearch('Vidéaste',this)"><i class="fa-solid fa-video"></i> Vidéastes</button>
-            <button class="exp-disc-chip" onclick="_expChipSearch('Photographe',this)"><i class="fa-solid fa-camera"></i> Photo</button>
-            <button class="exp-disc-chip" onclick="_expChipSearch('Graphiste',this)"><i class="fa-solid fa-pen-nib"></i> Graphisme</button>
-            <button class="exp-disc-chip" onclick="_expChipSearch('Marketing',this)"><i class="fa-solid fa-chart-line"></i> Marketing</button>
-            <button class="exp-disc-chip" onclick="_expChipSearch('Community Manager',this)"><i class="fa-brands fa-instagram"></i> Social</button>
-          </div>
-
-          <!-- Catégories grille 2-col -->
-          <div class="exp-disc-cat-grid" id="exp-disc-cat-grid"></div>
-
-          <!-- Nombre de résultats -->
-          <div class="exp-disc-count" id="exp-disc-count"></div>
-
-          <!-- Grille photo-cards partenaires -->
-          <div class="exp-disc-pgrid" id="p-exp-dir-results"></div>
-          <div style="padding:0 16px;" id="p-dir-favorites-wrap"></div>
-          <div style="padding:0 16px;" id="p-dir-hall-of-fame-wrap"></div>
-
-        </div><!-- /#exp-discovery-wrap -->
-
-        <!-- ── VUE GLOBE (cachée par défaut) ── -->
-        <div id="exp-globe-wrap" style="display:none;position:absolute;inset:0;z-index:20;">
-          <!-- Bouton retour -->
-          <button class="exp-map-back-btn" onclick="expSetOffresView('offres')">
-            <i class="fa-solid fa-arrow-left"></i> Retour
-          </button>
-          <!-- Globe MapLibre -->
-          <div id="p-exp-map" style="position:absolute;inset:0;"></div>
-          <!-- Zoom + Géolocalisation — bas droite -->
-          <div class="exp2-map-br-wrap">
-            <button class="exp2-zoom-btn" onclick="_expZoomIn()"><i class="fa-solid fa-plus"></i></button>
-            <button class="exp2-zoom-btn" onclick="_expZoomOut()"><i class="fa-solid fa-minus"></i></button>
-            <button class="exp2-geo-btn" id="exp-globe-geo-btn" onclick="_expGeolocate()"><i class="fa-solid fa-location-crosshairs"></i></button>
-          </div>
-        </div><!-- /#exp-globe-wrap -->
-
-      </div><!-- /#exp2-panel-offres -->
+        <!-- Globe 3D (Globe.gl / WebGL) -->
+        <div id="p-exp-map"></div>
+        <!-- Zoom + Géolocalisation — bas droite -->
+        <div class="exp2-map-br-wrap">
+          <button class="exp2-zoom-btn" onclick="_expZoomIn()"><i class="fa-solid fa-plus"></i></button>
+          <button class="exp2-zoom-btn" onclick="_expZoomOut()"><i class="fa-solid fa-minus"></i></button>
+          <button class="exp2-geo-btn" onclick="_expGeolocate()"><i class="fa-solid fa-location-crosshairs"></i></button>
+        </div>
+        <!-- Liste cachée (accessible via code si besoin) -->
+        <div id="exp2-offres-liste" style="display:none;position:absolute;inset:0;background:var(--bg);overflow-y:auto;padding-top:130px;padding-bottom:24px;">
+          <div id="p-exp-dir-results"></div>
+          <div id="p-dir-favorites-wrap"></div>
+          <div id="p-dir-hall-of-fame-wrap"></div>
+        </div>
+      </div>
 
       <!-- ════ PANEL ÉVÉNEMENTS — carte plein écran ════════ -->
       <div class="exp2-panel" id="exp2-panel-events">
@@ -4063,39 +3966,35 @@ function _applyExpFilters(){
 
 // ── EXPLORER — ANNUAIRE (résultats principaux) ───────────
 function loadExplorerDirectory(){
-  var wrap = document.getElementById('p-exp-dir-results');
-  if(!wrap) return;
-  wrap.innerHTML = '<div style="grid-column:1/-1;padding:20px 0;text-align:center;color:rgba(255,255,255,0.38);font-size:13px;">Chargement...</div>';
-  var params = ['sort=score'];
-  if(_expSearchQuery) params.push('q='+encodeURIComponent(_expSearchQuery));
-  if(_expCity)        params.push('city='+encodeURIComponent(_expCity));
-  if(_expCategory)    params.push('category='+encodeURIComponent(_expCategory));
-  if(_expFilters.rating) params.push('minRating='+_expFilters.rating);
+  var wrap=document.getElementById('p-exp-dir-results');
+  if(!wrap)return;
+  wrap.innerHTML='<div class="p-dir-empty" style="padding:20px 16px;">Chargement...</div>';
+  var params=['sort=score'];
+  if(_expSearchQuery)params.push('q='+encodeURIComponent(_expSearchQuery));
+  if(_expCity)params.push('city='+encodeURIComponent(_expCity));
+  if(_expCategory)params.push('category='+encodeURIComponent(_expCategory));
+  if(_expFilters.rating)params.push('minRating='+_expFilters.rating);
   fetch((window.FA_GENESIS_API||API)+'/api/partners/directory?'+params.join('&'))
-    .then(function(r){ return r.json(); })
+    .then(function(r){return r.json();})
     .then(function(data){
-      var partners = (data && data.partners) || [];
-      var countEl = document.getElementById('exp-disc-count');
-      if(countEl) countEl.textContent = partners.length
-        ? partners.length+' prestataire'+(partners.length===1?'':'s')
-            +(_expCategory?' en '+(_expCategory):'')
-        : '';
-      // Aussi sync l'ancien élément si présent
-      var statEl = document.getElementById('p-exp-stat');
-      if(statEl) statEl.textContent = partners.length+' prestataire'+(partners.length===1?'':'s')+' trouvé'+(partners.length===1?'':'s');
+      var partners=(data&&data.partners)||[];
+      var statEl=document.getElementById('p-exp-stat');
+      if(statEl) statEl.textContent=partners.length+' prestataire'+(partners.length===1?'':'s')+' trouvé'+(partners.length===1?'':'s');
       if(!partners.length){
-        wrap.innerHTML = '<div style="grid-column:1/-1;padding:32px 16px;text-align:center;">'
-          +'<i class="fa-solid fa-user-slash" style="font-size:28px;color:rgba(255,255,255,0.2);display:block;margin-bottom:12px;"></i>'
-          +'<div style="font-weight:700;color:rgba(255,255,255,0.7);margin-bottom:6px;">Aucun professionnel trouvé</div>'
-          +'<div style="font-size:12px;color:rgba(255,255,255,0.35);">Essayez d\'élargir votre recherche.</div>'
+        wrap.innerHTML='<div class="p-dir-empty" style="padding:32px 16px;text-align:center;">'
+          +'<i class="fa-solid fa-user-slash" style="font-size:32px;color:var(--muted);display:block;margin-bottom:12px;"></i>'
+          +'<div style="font-weight:700;margin-bottom:6px;">Aucun professionnel trouvé</div>'
+          +'<div style="font-size:12px;color:var(--muted);">Essayez d\'élargir votre recherche ou de changer de zone.</div>'
           +'</div>';
         return;
       }
-      wrap.innerHTML = partners.slice(0,20).map(function(p){ return wcPartnerCard(p); }).join('');
-      // Charger les partenaires sur le globe aussi (si map initialisée)
-      _loadExpPartners('offres', _expCity);
+      wrap.innerHTML='<div class="p-section-hdr black p-section-hdr-fit" style="margin:16px 16px 10px;">PRESTATAIRES'
+        +(_expCategory?(' · '+(PARTNER_TYPE_LABELS_DIR[_expCategory]||_expCategory)):'')+'</div>'
+        +'<div class="p-dir-results" style="padding:0 16px 16px;">'
+        +partners.slice(0,20).map(function(p){return directoryCard(p);}).join('')
+        +'</div>';
     }).catch(function(){
-      wrap.innerHTML = '<div style="grid-column:1/-1;padding:20px 0;text-align:center;color:rgba(255,255,255,0.38);font-size:13px;">Erreur de chargement.</div>';
+      wrap.innerHTML='<div class="p-dir-empty" style="padding:20px 16px;">Erreur de chargement. Vérifiez votre connexion.</div>';
     });
 }
 
@@ -4108,8 +4007,8 @@ function _expGeolocate(){
     showToast('Géolocalisation non disponible sur cet appareil.');
     return;
   }
-  var geoBtn = document.getElementById('exp-globe-geo-btn');
-  if(!geoBtn) geoBtn = document.querySelector('.exp2-geo-btn');
+  var geoBtn = document.querySelector('#exp2-panel-offres .exp2-geo-btn');
+  if(!geoBtn) geoBtn = document.querySelectorAll('.exp2-geo-btn')[0];
 
   if(_expWatchId !== null){
     // Arrêter le suivi
@@ -4720,126 +4619,10 @@ var _exp2EvQuery = '', _exp2EvSearchTimer = null;
 var _exp2EvFilters = {type: null, period: null, city: ''};
 var _exp2FilterCity = '';
 
-// ══ EXPLORER DISCOVERY — WeCheers style ════════════════════════
-var _EXP_CATS = [
-  { key:'Vidéaste',         label:'Vidéastes',         icon:'fa-video',        grad:'linear-gradient(135deg,#0d3d4a 0%,#1a1040 100%)' },
-  { key:'Photographe',      label:'Photographes',       icon:'fa-camera',       grad:'linear-gradient(135deg,#2d1b3d 0%,#1a0a1a 100%)' },
-  { key:'Graphiste',        label:'Graphistes',         icon:'fa-pen-nib',      grad:'linear-gradient(135deg,#3d1a40 0%,#1f0530 100%)' },
-  { key:'Community Manager',label:'Community Mgr',      icon:'fa-hashtag',      grad:'linear-gradient(135deg,#3d2010 0%,#1a0800 100%)' },
-  { key:'Développeur',      label:'Développeurs',       icon:'fa-code',         grad:'linear-gradient(135deg,#0a1e40 0%,#000d2e 100%)' },
-  { key:'Marketing',        label:'Marketing',          icon:'fa-chart-line',   grad:'linear-gradient(135deg,#0d3020 0%,#001a0a 100%)' }
-];
-
-function _renderExpCategories(){
-  var grid = document.getElementById('exp-disc-cat-grid');
-  if(!grid) return;
-  grid.innerHTML = _EXP_CATS.map(function(c){
-    return '<div class="exp-disc-cat-card" onclick="_expCatClick(\''+c.key+'\',this)" style="background:'+c.grad+';">'
-      +'<div class="exp-disc-cat-bg"><i class="fa-solid '+c.icon+'"></i></div>'
-      +'<div class="exp-disc-cat-overlay">'
-        +'<span class="exp-disc-cat-title">'+c.label+'</span>'
-        +'<span class="exp-disc-cat-sub">Voir les profils</span>'
-      +'</div>'
-    +'</div>';
-  }).join('');
-}
-
-function _expCatClick(key, el){
-  var cards = document.querySelectorAll('.exp-disc-cat-card');
-  cards.forEach(function(c){ c.classList.remove('sel'); });
-  if(_expCategory === key){
-    _expCategory = '';
-  } else {
-    el.classList.add('sel');
-    _expCategory = key;
-  }
-  var chips = document.querySelectorAll('.exp-disc-chip');
-  chips.forEach(function(c){ c.classList.remove('on'); });
-  if(!_expCategory){
-    var allChip = document.querySelector('.exp-disc-chip');
-    if(allChip) allChip.classList.add('on');
-  }
-  loadExplorerDirectory();
-}
-
-function expSetOffresView(view){
-  var discWrap  = document.getElementById('exp-discovery-wrap');
-  var globeWrap = document.getElementById('exp-globe-wrap');
-  var togOffres = document.getElementById('exp-tog-offres');
-  var togGlobe  = document.getElementById('exp-tog-globe');
-  if(view === 'globe'){
-    if(discWrap)  discWrap.style.display  = 'none';
-    if(globeWrap) globeWrap.style.display = '';
-    if(togOffres) togOffres.classList.remove('on');
-    if(togGlobe)  togGlobe.classList.add('on');
-    _expMapVisible = true;
-    loadExplorerMap(_expMode, _expCity);
-  } else {
-    if(discWrap)  discWrap.style.display  = '';
-    if(globeWrap) globeWrap.style.display = 'none';
-    if(togOffres) togOffres.classList.add('on');
-    if(togGlobe)  togGlobe.classList.remove('on');
-    _expMapVisible = false;
-    if(_expMap){ try{ _expMap.resize(); }catch(e){} }
-  }
-}
-
-function _expChipSearch(term, el){
-  var chips = document.querySelectorAll('.exp-disc-chip');
-  chips.forEach(function(c){ c.classList.remove('on'); });
-  if(el) el.classList.add('on');
-  // Désélectionner les catégories
-  document.querySelectorAll('.exp-disc-cat-card').forEach(function(c){ c.classList.remove('sel'); });
-  _expCategory = term;
-  _expSearchQuery = '';
-  var input = document.getElementById('p-exp-search');
-  if(input) input.value = '';
-  loadExplorerDirectory();
-}
-
-function _expDiscGeolocate(){
-  // Basculer sur le globe puis géolocaliser
-  expSetOffresView('globe');
-  setTimeout(function(){
-    _expGeolocate();
-    // Sync le bouton discovery
-    var discGeoBtn = document.getElementById('exp-disc-geo-btn');
-    if(discGeoBtn) discGeoBtn.classList.add('geo-active');
-  }, 400);
-}
-
-// Carte photo-card style WeCheers (2-col grid)
-function wcPartnerCard(p){
-  var label = partnerTypeLabel(p);
-  var initials = (((p.prenom||'')[0]||'')+((p.nom||'')[0]||'')).toUpperCase();
-  var hasPhoto = !!(p.photo);
-  var imgHtml = hasPhoto
-    ? '<img class="exp-wc-card-img" src="'+p.photo+'" alt="'+(p.prenom||'')+'" loading="lazy">'
-    : '<div class="exp-wc-avatar">'+initials+'</div>';
-  var starsHtml = (p.rating && p.rating.count)
-    ? '<i class="fa-solid fa-star"></i> '+p.rating.average
-    : '';
-  var priceLabel = (p.fromPrice===null||p.fromPrice===undefined) ? 'Sur devis' : 'dès '+p.fromPrice+' €';
-  var cityHtml = p.city
-    ? '<i class="fa-solid fa-location-dot"></i> '+p.city
-    : label;
-  var verBadge = p.verified ? '<i class="fa-solid fa-circle-check"></i> Vérifié' : label;
-  return '<div class="exp-wc-card" onclick="openPartnerDetail(\''+p.id+'\')">'
-    + imgHtml
-    + (hasPhoto ? '<div class="exp-wc-card-grad"></div>' : '')
-    + '<div class="exp-wc-card-badge">'+verBadge+'</div>'
-    + '<div class="exp-wc-card-body">'
-      + '<div class="exp-wc-card-name">'+(p.prenom||'')+' '+(p.nom||'')+'</div>'
-      + '<div class="exp-wc-card-meta">'+cityHtml+'</div>'
-      + (starsHtml ? '<div class="exp-wc-card-stars">'+starsHtml+' <span style="color:rgba(255,255,255,0.45);font-size:10px;margin-left:2px;">'+priceLabel+'</span></div>' : '<div class="exp-wc-card-stars" style="color:rgba(255,255,255,0.45);font-size:10px;">'+priceLabel+'</div>')
-    + '</div>'
-  + '</div>';
-}
-
 function renderExplorer(){
-  _expMapVisible = false;
-  _exp2OffresView = 'offres';
-  _renderExpCategories();
+  _expMapVisible = true;
+  _exp2OffresView = 'carte';
+  loadExplorerMap(_expMode, _expCity);
   loadExplorerDirectory();
   loadHallOfFame();
   loadFavoritesInExplorer();
