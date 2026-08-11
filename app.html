@@ -815,9 +815,9 @@ a{text-decoration:none;color:inherit}
 .exp-wc-zoom-pill{display:flex;flex-direction:column;align-items:center;background:rgba(18,20,30,0.94);border:1px solid rgba(255,255,255,0.10);border-radius:50px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.55);}
 .exp2-zoom-btn{width:52px;height:52px;background:none;border:none;color:#fff;font-size:20px;font-weight:300;display:flex;align-items:center;justify-content:center;cursor:pointer;font-family:inherit;}
 .exp-wc-zoom-divider{width:28px;height:1px;background:rgba(255,255,255,0.12);}
-/* Bouton GPS — grand cercle rose WeCheers */
-.exp2-geo-btn{width:58px;height:58px;background:#FF2D78;border:none;border-radius:50%;color:#fff;font-size:21px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 22px rgba(255,45,120,0.55);}
-.exp2-geo-btn.geo-active{background:#cc2260;box-shadow:0 4px 22px rgba(255,45,120,0.8);}
+/* Bouton GPS — grand cercle jaune/magenta */
+.exp2-geo-btn{width:58px;height:58px;background:linear-gradient(135deg,#FFD700 0%,#FF2D78 100%);border:none;border-radius:50%;color:#fff;font-size:21px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 22px rgba(255,100,100,0.5);}
+.exp2-geo-btn.geo-active{background:linear-gradient(135deg,#e6c200 0%,#cc2260 100%);box-shadow:0 4px 22px rgba(255,100,100,0.8);}
 /* Heatmap toggle bas gauche */
 .exp2-heat-wrap{position:absolute;bottom:28px;left:14px;z-index:500;}
 /* Carte/Liste événements — dans le header, entre search et onglets */
@@ -2674,11 +2674,14 @@ a{text-decoration:none;color:inherit}
       <div class="exp2-panel" id="exp2-panel-events">
         <!-- Carte Leaflet événements -->
         <div id="exp2-ev-map"></div>
-        <!-- Zoom + Géolocalisation — bas droite -->
+        <!-- Contrôles style WeCheers — bas droite -->
         <div class="exp2-map-br-wrap">
-          <button class="exp2-zoom-btn" onclick="if(_exp2EvMap)_exp2EvMap.zoomIn()"><i class="fa-solid fa-plus"></i></button>
-          <button class="exp2-zoom-btn" onclick="if(_exp2EvMap)_exp2EvMap.zoomOut()"><i class="fa-solid fa-minus"></i></button>
-          <button class="exp2-geo-btn" onclick="exp2EvGeolocate()"><i class="fa-solid fa-location-crosshairs"></i></button>
+          <div class="exp-wc-zoom-pill">
+            <button class="exp2-zoom-btn" onclick="if(_exp2EvMap)_exp2EvMap.zoomIn()"><i class="fa-solid fa-plus"></i></button>
+            <div class="exp-wc-zoom-divider"></div>
+            <button class="exp2-zoom-btn" onclick="if(_exp2EvMap)_exp2EvMap.zoomOut()"><i class="fa-solid fa-minus"></i></button>
+          </div>
+          <button class="exp2-geo-btn" onclick="exp2EvGeolocate()"><i class="fa-solid fa-location-arrow"></i></button>
         </div>
         <!-- Vue LISTE événements -->
         <div id="exp2-ev-liste" style="display:none;position:absolute;inset:0;z-index:600;background:var(--bg);overflow-y:auto;padding-bottom:24px;">
