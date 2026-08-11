@@ -807,10 +807,8 @@ a{text-decoration:none;color:inherit}
 #exp2-ev-map .maplibregl-canvas-container,#exp2-ev-map .maplibregl-canvas{width:100% !important;height:100% !important;touch-action:none !important;}
 #p-exp-map{background:radial-gradient(ellipse at 50% 45%,#050a1a 0%,#000005 55%,#000000 100%) !important;}
 #exp2-ev-map{background:#000 !important;}
-/* Globe.gl canvas transparent → étoiles CSS + atmosphère visible */
+/* MapLibre canvas Offres — fond transparent (setFog gère le fond espace) */
 #p-exp-map canvas{background:transparent !important;}
-/* Étoiles générées par JS en canvas derrière le globe */
-#exp-stars-canvas{position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;}
 /* Contrôles bas droite (zoom + géo) */
 .exp2-map-br-wrap{position:absolute;bottom:28px;right:14px;z-index:500;display:flex;flex-direction:column;align-items:center;gap:8px;}
 .exp2-zoom-btn{width:40px;height:40px;background:rgba(17,17,17,.92);border:1.5px solid #444;border-radius:10px;color:#fff;font-size:17px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.5);font-family:inherit;}
@@ -2419,8 +2417,7 @@ a{text-decoration:none;color:inherit}
 <!-- MapLibre GL JS — carte Événements uniquement -->
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" crossorigin="">
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js" defer crossorigin=""></script>
-<!-- Globe.gl — globe 3D WebGL flottant dans l'espace (onglet Offres) -->
-<script src="https://unpkg.com/globe.gl@2.31.0/dist/globe.gl.min.js" defer crossorigin=""></script>
+<!-- Globe.gl retiré : remplacé par MapLibre + projection globe + setFog (même approche que la carte Événements) -->
 </head>
 <body>
 
@@ -4002,44 +3999,69 @@ function loadExplorerDirectory(){
 }
 
 // ── EXPLORER — GÉOLOCALISATION TEMPS RÉEL (Globe.gl) ────────────
+// ── GÉOLOCALISATION style WeCheers ─────────────────────────────
+// 1. getCurrentPosition → flyTo + marqueur pulsant + adresse (une seule fois)
+// 2. watchPosition silencieux → déplace juste le marqueur, pas de toast répété
 function _expGeolocate(){
   if(!navigator.geolocation){
     showToast('Géolocalisation non disponible sur cet appareil.');
     return;
   }
-  var geoBtn = document.querySelector('.exp2-geo-btn');
+  var geoBtn = document.querySelector('#exp2-panel-offres .exp2-geo-btn');
+  if(!geoBtn) geoBtn = document.querySelectorAll('.exp2-geo-btn')[0];
+
   if(_expWatchId !== null){
+    // Arrêter le suivi
     navigator.geolocation.clearWatch(_expWatchId);
     _expWatchId = null;
-    _expGeoMarker = null;
     if(geoBtn) geoBtn.classList.remove('geo-active');
-    if(_expMap){ try{ _expMap.ringsData([]); _expMap.controls().autoRotate=true; }catch(e){} }
-    showToast('Géolocalisation arrêtée.');
+    if(_expGeoMarkerML){ try{ _expGeoMarkerML.remove(); }catch(e){} _expGeoMarkerML = null; }
     return;
   }
-  showToast('Localisation en cours…');
+
   if(geoBtn) geoBtn.classList.add('geo-active');
-  var firstFix = true;
-  _expWatchId = navigator.geolocation.watchPosition(
-    function(pos){ _expGeoUpdatePosition(pos, firstFix); firstFix = false; },
-    function(){ showToast('Localisation refusée ou indisponible.'); _expWatchId = null; if(geoBtn) geoBtn.classList.remove('geo-active'); },
-    {enableHighAccuracy:true, timeout:12000, maximumAge:5000}
+
+  // Premier fix : rapide, avec feedback d'erreur
+  navigator.geolocation.getCurrentPosition(
+    function(pos){
+      var lat = pos.coords.latitude, lng = pos.coords.longitude;
+      if(!_expMap){ if(geoBtn) geoBtn.classList.remove('geo-active'); return; }
+      // Zoomer sur la position
+      try{ _expMap.flyTo({center:[lng,lat], zoom:15, duration:1800, essential:true}); }catch(e){}
+      // Marqueur pulsant
+      _expPlaceGeoMarker(lng, lat);
+      // Adresse une seule fois
+      _expFetchAddress(lat, lng);
+      // Suivi continu silencieux : déplace juste le marqueur
+      _expWatchId = navigator.geolocation.watchPosition(
+        function(newPos){
+          var nlng = newPos.coords.longitude, nlat = newPos.coords.latitude;
+          if(_expGeoMarkerML){ try{ _expGeoMarkerML.setLngLat([nlng,nlat]); }catch(e){} }
+        },
+        function(){},
+        {enableHighAccuracy:true, maximumAge:15000, timeout:30000}
+      );
+    },
+    function(){
+      showToast('Localisation refusée ou indisponible.');
+      if(geoBtn) geoBtn.classList.remove('geo-active');
+    },
+    {enableHighAccuracy:true, timeout:12000}
   );
 }
 
-function _expGeoUpdatePosition(pos, doZoom){
-  var lat = pos.coords.latitude, lng = pos.coords.longitude;
-  if(!_expMap) return;
-  // Arrêter la rotation
-  try{ _expMap.controls().autoRotate = false; }catch(e){}
-  // Anneaux pulsants cyan à la position
-  _expGeoMarker = [{lat:lat, lng:lng}];
-  try{ _expMap.ringsData(_expGeoMarker); }catch(e){}
-  // Zoom sur la position (seulement au premier fix)
-  if(doZoom){
-    try{ _expMap.pointOfView({lat:lat, lng:lng, altitude:0.09}, 1700); }catch(e){}
-  }
-  // Reverse geocoding Nominatim → toast avec adresse
+function _expPlaceGeoMarker(lng, lat){
+  if(_expGeoMarkerML){ try{ _expGeoMarkerML.remove(); }catch(e){} _expGeoMarkerML = null; }
+  if(!_expMap || typeof maplibregl === 'undefined') return;
+  var el = document.createElement('div');
+  el.className = 'gen-geo-dot';
+  el.innerHTML = '<div class="gen-geo-dot-ring"></div><div class="gen-geo-dot-ring gen-geo-dot-ring2"></div><div class="gen-geo-dot-inner"></div>';
+  _expGeoMarkerML = new maplibregl.Marker({element:el, anchor:'center'})
+    .setLngLat([lng, lat])
+    .addTo(_expMap);
+}
+
+function _expFetchAddress(lat, lng){
   fetch('https://nominatim.openstreetmap.org/reverse?lat='+lat+'&lon='+lng+'&format=json&accept-language=fr&addressdetails=1',{headers:{'Accept':'application/json'}})
     .then(function(r){ return r.json(); })
     .then(function(data){
@@ -4060,8 +4082,8 @@ function _expGeoUpdatePosition(pos, doZoom){
 function _expSearchInZone(){
   if(!_expMap) return;
   try{
-    var pov = _expMap.pointOfView();
-    _expCity = pov.lat.toFixed(4)+','+pov.lng.toFixed(4);
+    var c = _expMap.getCenter();
+    _expCity = c.lat.toFixed(4)+','+c.lng.toFixed(4);
     loadExplorerDirectory();
   }catch(e){}
   var zoneBtn = document.getElementById('exp-zone-btn');
@@ -4245,14 +4267,13 @@ var POPULAR_SEARCHES = ['Vidéaste','Photographe','Mariage','Drone','Graphiste',
 // ── EXPLORER — HUB DE DÉCOUVERTE ────────────────────────────────
 var _expCategory = null, _expCity = '', _expCityTimer = null, _expMode = 'offres';
 var _expMap = null, _expMapVisible = false;
-var _expGeoMarker = null; // anneaux géoloc Globe.gl
+var _expGeoMarkerML = null; // marqueur géoloc MapLibre
 var _expHeatVisible = true;
-var _expGlobePoints = []; // points Globe.gl des partenaires
+var _expPartnerFeatures = []; // GeoJSON features des partenaires
 var _expWatchId = null;   // watchPosition id
-var _expBordersLoaded = false; // polygones pays chargés
 
-// ── Labels (conservés en mémoire — non utilisés dans MapLibre, labels viennent des tuiles) ──
-var _GEN_GLOBE_LABELS = [
+// _GEN_GLOBE_LABELS supprimé — les noms de lieux viennent directement des tuiles MapLibre
+var _UNUSED_GL = [
   {n:'EUROPE',lat:54,lng:15,s:2.0,c:'#d8e4f0'},
   {n:'ASIE',lat:50,lng:100,s:2.2,c:'#d8e4f0'},
   {n:'AFRIQUE',lat:5,lng:22,s:2.2,c:'#d8e4f0'},
@@ -4604,7 +4625,6 @@ function renderExplorer(){
   _expMapVisible = true;
   _exp2OffresView = 'carte';
   loadExplorerMap(_expMode, _expCity);
-  // Globe.gl se redimensionne automatiquement (ResizeObserver)
   loadExplorerDirectory();
   loadHallOfFame();
   loadFavoritesInExplorer();
@@ -5103,17 +5123,11 @@ function _makePartnerIcon(p){
 
 function _expZoomIn(){
   if(!_expMap) return;
-  try{
-    var pov=_expMap.pointOfView();
-    _expMap.pointOfView({lat:pov.lat,lng:pov.lng,altitude:Math.max(0.05,pov.altitude*0.58)},320);
-  }catch(e){}
+  try{ _expMap.zoomIn({duration:320}); }catch(e){}
 }
 function _expZoomOut(){
   if(!_expMap) return;
-  try{
-    var pov=_expMap.pointOfView();
-    _expMap.pointOfView({lat:pov.lat,lng:pov.lng,altitude:Math.min(8,pov.altitude*1.68)},320);
-  }catch(e){}
+  try{ _expMap.zoomOut({duration:320}); }catch(e){}
 }
 
 function _openMapQuickPreview(p){
@@ -5159,10 +5173,15 @@ function _toggleHeatmap(btn){
   _expHeatVisible = !_expHeatVisible;
   if(btn) btn.classList.toggle('on', _expHeatVisible);
   if(!_expMap) return;
-  try{ _expMap.pointsData(_expHeatVisible ? _expGlobePoints : []); }catch(e){}
+  try{
+    var src = _expMap.getSource('genesis-partners');
+    if(src) src.setData({type:'FeatureCollection', features: _expHeatVisible ? _expPartnerFeatures : []});
+  }catch(e){}
 }
 
-// ── EXPLORER — GLOBE 3D FLOTTANT (Globe.gl / WebGL) ─────────────
+// ── EXPLORER — CARTE OFFRES (MapLibre GL + projection globe + espace) ──────────
+// Même approche que la carte Événements : setFog donne le fond "planète dans l'espace",
+// _mlApplyGlobeTheme applique les couleurs sombres + labels français + noms d'océans.
 function loadExplorerMap(mode, cityFilter){
   var container = document.getElementById('p-exp-map');
   if(!container) return;
@@ -5170,158 +5189,103 @@ function loadExplorerMap(mode, cityFilter){
     setTimeout(function(){ loadExplorerMap(mode, cityFilter); }, 150);
     return;
   }
-  if(typeof Globe === 'undefined'){
+  if(typeof maplibregl === 'undefined'){
     setTimeout(function(){ loadExplorerMap(mode, cityFilter); }, 400);
     return;
   }
 
   if(!_expMap){
     container.innerHTML = '';
+    try{ maplibregl.prewarm(); }catch(e){}
 
-    // ── Étoiles canvas derrière le globe ──────────────────
-    _drawSpaceStars(container);
-
-    // ── Globe.gl ──────────────────────────────────────────
-    _expMap = Globe({waitForGlobeReady:true, animateIn:true})(container)
-      // Fond transparent → montre le ciel étoilé CSS
-      .backgroundColor('rgba(0,0,0,0)')
-      // Atmosphère forte (halo bleu = "planète dans l'espace")
-      .showAtmosphere(true)
-      .atmosphereColor('#55aaff')
-      .atmosphereAltitude(0.45)
-      // PAS de texture → globe transparent
-      .globeImageUrl(null)
-      // Polygones pays (bordures bien visibles sur globe transparent)
-      .polygonsData([])
-      .polygonCapColor(function(){ return 'rgba(0,0,0,0)'; })
-      .polygonSideColor(function(){ return 'rgba(0,0,0,0)'; })
-      .polygonStrokeColor(function(){ return 'rgba(130,200,255,0.65)'; })
-      .polygonAltitude(0.001)
-      // Points partenaires
-      .pointsData([])
-      .pointLat('lat').pointLng('lng')
-      .pointColor(function(p){ return p.c||'#FFD700'; })
-      .pointAltitude(0.01)
-      .pointRadius(function(p){ return p.r||0.4; })
-      .pointLabel(function(p){
-        return '<div style="font:700 12px/1.3 inherit;background:rgba(0,0,0,.85);color:#FFD700;padding:5px 10px;border-radius:8px;border:1px solid #FFD700;white-space:nowrap;">'+(p.name||'')+'</div>';
-      })
-      .onPointClick(function(p){ if(p._p) _openMapQuickPreview(p._p); })
-      // Anneaux géolocalisation
-      .ringsData([])
-      .ringLat('lat').ringLng('lng')
-      .ringColor(function(){ return function(t){ return 'rgba(0,229,255,'+(1-t)+')'; }; })
-      .ringMaxRadius(4).ringPropagationSpeed(3).ringRepeatPeriod(800)
-      // Labels : pays, continents, océans, villes
-      .labelsData(_GEN_GLOBE_LABELS)
-      .labelLat('lat').labelLng('lng').labelText('n')
-      .labelSize(function(d){ return d.s||1.0; })
-      .labelDotRadius(0)
-      .labelColor(function(d){ return d.c||'#ffffff'; })
-      .labelAltitude(0.001).labelResolution(3)
-      .enablePointerInteraction(true);
-
-    // ── Globe transparent : modifier le matériau Three.js interne ─
-    _expMap.onGlobeReady(function(){
-      try{
-        _expMap.scene().traverse(function(obj){
-          if(!obj.isMesh || !obj.material) return;
-          var geom = obj.geometry;
-          if(!geom) return;
-          // Identifier la sphère du globe (nombreux segments)
-          var ws = geom.parameters && geom.parameters.widthSegments;
-          if(!ws || ws < 32) return;
-          var mats = Array.isArray(obj.material) ? obj.material : [obj.material];
-          mats.forEach(function(m){
-            if(m.map) m.map = null;       // supprimer texture
-            m.transparent = true;
-            m.opacity = 0.10;             // quasi transparent
-            if(m.color) m.color.setRGB(0.01, 0.06, 0.18); // teinte bleu nuit
-            m.depthWrite = false;
-            m.needsUpdate = true;
-          });
-        });
-      }catch(e){}
+    _expMap = new maplibregl.Map({
+      container: container,
+      style: _mlGlobeStyle(),
+      center: [10, 20],
+      zoom: 1.5,
+      minZoom: 0.5,
+      maxZoom: 19,
+      projection: { type: 'globe' },
+      renderWorldCopies: false,
+      failIfMajorPerformanceCaveat: false,
+      attributionControl: false,
+      touchZoomRotate: true,
+      dragRotate: true,
+      touchPitch: false
     });
 
-    // ── Contrôles caméra (OrbitControls Three.js) ─────────
-    var ctrl = _expMap.controls();
-    ctrl.autoRotate      = true;
-    ctrl.autoRotateSpeed = 0.45;
-    ctrl.enableDamping   = true;
-    ctrl.dampingFactor   = 0.07;
-    ctrl.enableZoom      = true;
-    ctrl.minDistance     = 102;
-    ctrl.maxDistance     = 8000;
-    ctrl.rotateSpeed     = 0.8;
-    ctrl.zoomSpeed       = 1.0;
+    var _offresThemeApplied = false;
+    function _offresApplyTheme(){
+      if(_offresThemeApplied) return;
+      _offresThemeApplied = true;
 
-    // Vue initiale : globe entier visible
-    _expMap.pointOfView({lat:20, lng:10, altitude:2.4});
+      // Globe : forcer projection globe + étoiles + fond espace
+      try{ _expMap.setProjection({ type: 'globe' }); }catch(e){}
+      try{
+        _expMap.setFog({
+          'range': [0.5, 10],
+          'color': 'rgba(5,12,25,0.07)',
+          'high-color': '#030a14',
+          'space-color': '#000005',
+          'star-intensity': 0.95,
+          'horizon-blend': 0.04
+        });
+      }catch(e){}
 
-    // Charger partenaires + bordures pays
-    _loadExpPartners(mode, cityFilter);
-    _loadGlobeBorders();
+      // Couleurs sombres + labels français + noms d'océans (réutilise la fonction Events)
+      _mlApplyGlobeTheme(_expMap);
+
+      // Source GeoJSON partenaires
+      if(!_expMap.getSource('genesis-partners')){
+        _expMap.addSource('genesis-partners', {
+          type: 'geojson',
+          data: {type:'FeatureCollection', features:[]}
+        });
+        // Halo doux derrière le cercle
+        _expMap.addLayer({
+          id: 'partners-glow',
+          type: 'circle',
+          source: 'genesis-partners',
+          paint: {
+            'circle-radius': ['*', ['get','radius'], 2.2],
+            'circle-color': ['get','color'],
+            'circle-opacity': 0.18,
+            'circle-blur': 1
+          }
+        });
+        // Cercle principal
+        _expMap.addLayer({
+          id: 'partners-circles',
+          type: 'circle',
+          source: 'genesis-partners',
+          paint: {
+            'circle-radius': ['get','radius'],
+            'circle-color': ['get','color'],
+            'circle-opacity': 0.92,
+            'circle-stroke-width': 1.5,
+            'circle-stroke-color': 'rgba(0,0,0,0.55)'
+          }
+        });
+        // Clic partenaire → aperçu rapide
+        _expMap.on('click', 'partners-circles', function(e){
+          if(!e.features||!e.features.length) return;
+          var raw = e.features[0].properties._p;
+          if(raw){ try{ _openMapQuickPreview(JSON.parse(raw)); }catch(ex){} }
+        });
+        _expMap.on('mouseenter','partners-circles',function(){ _expMap.getCanvas().style.cursor='pointer'; });
+        _expMap.on('mouseleave','partners-circles',function(){ _expMap.getCanvas().style.cursor=''; });
+      }
+
+      _loadExpPartners(mode, cityFilter);
+      [80,300,700].forEach(function(d){ setTimeout(function(){ if(_expMap) _expMap.resize(); },d); });
+    }
+
+    _expMap.once('style.load', _offresApplyTheme);
+    _expMap.once('load', _offresApplyTheme);
 
   } else {
     _loadExpPartners(mode, cityFilter);
-    try{ _expMap.controls().autoRotate = true; }catch(e){}
   }
-}
-
-// ── Étoiles canvas (fond espace) ──────────────────────────────
-function _drawSpaceStars(container){
-  var old = document.getElementById('exp-stars-canvas');
-  if(old) old.remove();
-  var c = document.createElement('canvas');
-  c.id = 'exp-stars-canvas';
-  c.width  = container.offsetWidth  || 400;
-  c.height = container.offsetHeight || 700;
-  container.insertBefore(c, container.firstChild);
-  var ctx = c.getContext('2d');
-  ctx.fillStyle = '#000005';
-  ctx.fillRect(0, 0, c.width, c.height);
-  // Nébuleuse subtile
-  var g = ctx.createRadialGradient(c.width*.5,c.height*.45,0,c.width*.5,c.height*.45,c.width*.55);
-  g.addColorStop(0,'rgba(20,40,100,0.18)');
-  g.addColorStop(1,'rgba(0,0,0,0)');
-  ctx.fillStyle = g;
-  ctx.fillRect(0,0,c.width,c.height);
-  // Étoiles
-  for(var i=0;i<320;i++){
-    var x=Math.random()*c.width, y=Math.random()*c.height;
-    var r=Math.random()<0.04?1.4:Math.random()*0.8+0.2;
-    var op=Math.random()*0.6+0.3;
-    ctx.beginPath();
-    ctx.arc(x,y,r,0,Math.PI*2);
-    ctx.fillStyle='rgba(255,255,255,'+op+')';
-    ctx.fill();
-  }
-}
-
-// ── Bordures pays (topojson world-atlas) ──────────────────────
-function _loadGlobeBorders(){
-  if(_expBordersLoaded || !_expMap) return;
-  // Charger topojson-client
-  var s=document.createElement('script');
-  s.src='https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js';
-  s.onload=function(){
-    fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json')
-      .then(function(r){ return r.json(); })
-      .then(function(world){
-        if(typeof topojson==='undefined'||!_expMap) return;
-        var countries=topojson.feature(world,world.objects.countries);
-        _expMap
-          .polygonsData(countries.features)
-          .polygonCapColor(function(){ return 'rgba(0,0,0,0)'; })
-          .polygonSideColor(function(){ return 'rgba(0,0,0,0)'; })
-          .polygonStrokeColor(function(){ return 'rgba(180,210,255,0.28)'; })
-          .polygonAltitude(0.001);
-        _expBordersLoaded=true;
-      }).catch(function(){});
-  };
-  s.onerror=function(){};
-  document.head.appendChild(s);
 }
 
 function _loadExpPartners(mode, cityFilter){
@@ -5333,23 +5297,28 @@ function _loadExpPartners(mode, cityFilter){
     +(_expSearchQuery ? '&q='+encodeURIComponent(_expSearchQuery) : '');
   fetch(url).then(function(r){ return r.json(); }).then(function(data){
     var partners = (data && data.partners) || [];
-    var pts = [];
+    var features = [];
     partners.forEach(function(p){
       var lat = parseFloat(p.lat), lng = parseFloat(p.lng);
       if(isNaN(lat)||isNaN(lng)) return;
       var score = 0.25;
       if(p.rating && p.rating.count) score += Math.min(p.rating.count/40, 0.45);
       if(p.services && p.services.length) score += Math.min(p.services.length/8, 0.3);
-      pts.push({
-        lat:lat, lng:lng,
-        name:((p.prenom||'')+' '+(p.nom||'')).trim(),
-        c:score>0.6?'#FF6B35':'#FFD700',
-        r:0.3+score*0.3,
-        _p:p
+      features.push({
+        type: 'Feature',
+        geometry: {type:'Point', coordinates:[lng, lat]},
+        properties: {
+          radius: Math.round(6 + score * 8),
+          color: score > 0.6 ? '#FF6B35' : '#FFD700',
+          _p: JSON.stringify(p)
+        }
       });
     });
-    _expGlobePoints = pts;
-    try{ _expMap.pointsData(_expHeatVisible ? pts : []); }catch(e){}
+    _expPartnerFeatures = features;
+    try{
+      var src = _expMap.getSource('genesis-partners');
+      if(src) src.setData({type:'FeatureCollection', features: _expHeatVisible ? features : []});
+    }catch(e){}
   }).catch(function(){});
 }
 // ── PRESTATAIRES — ANNUAIRE CLASSÉ ──────────────────────────────

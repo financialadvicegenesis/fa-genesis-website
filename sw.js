@@ -1,5 +1,5 @@
-// FA GENESIS — Service Worker v14
-var CACHE_NAME = 'fa-genesis-v14';
+// FA GENESIS — Service Worker v15
+var CACHE_NAME = 'fa-genesis-v15';
 
 // Pages critiques : jamais mises en cache (toujours réseau)
 var NO_CACHE = ['/app.html', '/home.html', '/sw.js'];
