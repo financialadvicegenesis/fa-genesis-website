@@ -12618,13 +12618,17 @@ app.get('/api/events', function(req, res) {
             .sort(function(a, b) { return new Date(a.date) - new Date(b.date); })
             .map(function(e) {
                 var rsvpCount = (e.attendees || []).length;
+                var coords = getCityCoords(e.location);
                 return {
                     id: e.id, title: e.title, description: e.description, type: e.type,
                     date: e.date, location: e.location, image: e.image || '', link: e.link || '',
                     attendeeCount: rsvpCount,
                     capacity_limited: e.capacity_limited || false,
                     capacity: e.capacity || null,
-                    spots_left: (e.capacity_limited && e.capacity) ? Math.max(0, e.capacity - rsvpCount) : null
+                    spots_left: (e.capacity_limited && e.capacity) ? Math.max(0, e.capacity - rsvpCount) : null,
+                    lat: coords ? coords[0] : (e.lat || null),
+                    lng: coords ? coords[1] : (e.lng || null),
+                    city: e.city || e.location || null
                 };
             });
         res.json({ success: true, events: events });
