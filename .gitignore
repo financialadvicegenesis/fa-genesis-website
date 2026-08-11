@@ -27,6 +27,11 @@ node_modules/
 .vscode/
 .idea/
 
+# Capacitor — générés automatiquement par Codemagic (ne pas committer)
+ios/
+android/
+dist/
+
 # Logs
 *.log
 npm-debug.log*

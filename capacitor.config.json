@@ -1,0 +1,21 @@
+{
+  "appId": "com.fagenesis.app",
+  "appName": "GENESIS",
+  "webDir": ".",
+  "server": {
+    "url": "https://fagenesis.com/app.html",
+    "cleartext": false,
+    "androidScheme": "https"
+  },
+  "ios": {
+    "contentInset": "automatic",
+    "allowsLinkPreview": false,
+    "scrollEnabled": true,
+    "limitsNavigationsToAppBoundDomains": true,
+    "backgroundColor": "#000000"
+  },
+  "android": {
+    "backgroundColor": "#000000",
+    "allowMixedContent": false
+  }
+}

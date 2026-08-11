@@ -1,0 +1,58 @@
+workflows:
+  ios-app-store:
+    name: GENESIS iOS App Store
+    max_build_duration: 60
+    environment:
+      node: 20.0.0
+      xcode: 15.4
+      cocoapods: default
+      vars:
+        APP_STORE_APP_ID: Env:APP_STORE_APP_ID
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.fagenesis.app
+    cache:
+      cache_paths:
+        - $HOME/Library/Caches/CocoaPods
+        - node_modules
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: main
+          include: true
+          source: true
+    scripts:
+      - name: Install Node dependencies
+        script: |
+          npm install
+      - name: Add iOS platform
+        script: |
+          if [ ! -d "ios" ]; then
+            npx cap add ios
+          fi
+      - name: Sync Capacitor
+        script: |
+          npx cap sync ios
+      - name: Set bundle version from build number
+        script: |
+          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString 1.0.0" ios/App/App/Info.plist
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" ios/App/App/Info.plist
+      - name: Install CocoaPods
+        script: |
+          cd ios/App && pod install
+      - name: Build iOS
+        script: |
+          xcode-project use-profiles
+          xcode-project build-ipa \
+            --workspace ios/App/App.xcworkspace \
+            --scheme App
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+      - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.dSYM
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        submit_to_app_store: false
