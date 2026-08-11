@@ -805,7 +805,7 @@ a{text-decoration:none;color:inherit}
 /* MapLibre canvas — plein écran + fond espace pour le globe */
 #p-exp-map .maplibregl-canvas-container,#p-exp-map .maplibregl-canvas,
 #exp2-ev-map .maplibregl-canvas-container,#exp2-ev-map .maplibregl-canvas{width:100% !important;height:100% !important;touch-action:none !important;}
-#p-exp-map{background:radial-gradient(ellipse at 50% 45%,#050a1a 0%,#000005 55%,#000000 100%) !important;}
+#p-exp-map{background:#000008 !important;}
 #exp2-ev-map{background:#000 !important;}
 /* MapLibre canvas Offres — fond transparent (setFog gère le fond espace) */
 #p-exp-map canvas{background:transparent !important;}
@@ -5200,8 +5200,8 @@ function loadExplorerMap(mode, cityFilter){
       container: container,
       style: 'https://tiles.openfreemap.org/styles/bright',
       center: [10, 20],
-      zoom: 1.5,
-      minZoom: 0.5,
+      zoom: 0.5,
+      minZoom: -2,
       maxZoom: 19,
       projection: { type: 'globe' },
       renderWorldCopies: false,
