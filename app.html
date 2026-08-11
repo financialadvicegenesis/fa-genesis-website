@@ -4846,8 +4846,8 @@ function exp2LoadEventsMap(){
       container: 'exp2-ev-map',
       style: _mlGlobeStyle(),
       center: [10, 20],
-      zoom: 1,
-      minZoom: -20,
+      zoom: 0,
+      minZoom: -2,
       maxZoom: 19,
       projection: { type: 'globe' },
       renderWorldCopies: false,
@@ -4865,9 +4865,12 @@ function exp2LoadEventsMap(){
       try{ _exp2EvMap.setProjection({ type: 'globe' }); }catch(e){}
       try{
         _exp2EvMap.setFog({
-          'range':[0.5,10],'color':'rgba(5,12,25,0.07)',
-          'high-color':'#030a14','space-color':'#000000',
-          'star-intensity':0.9,'horizon-blend':0.05
+          'range':          [0.5, 10],
+          'color':          'rgba(15,25,60,0.22)',
+          'high-color':     '#040810',
+          'space-color':    '#000000',
+          'star-intensity': 0.06,
+          'horizon-blend':  0.03
         });
       }catch(e){}
       _mlApplyGlobeTheme(_exp2EvMap);
@@ -4893,14 +4896,17 @@ function exp2LoadEventsMap(){
       if(!_evMapThemeApplied && _exp2EvMap){ _evApplyTheme(); }
     }, 3000);
   } else {
-    try{ _exp2EvMap.setMinZoom(-20); }catch(e){}
+    try{ _exp2EvMap.setMinZoom(-2); }catch(e){}
     try{ _exp2EvMap.setMaxZoom(19); }catch(e){}
     try{ _exp2EvMap.setProjection({ type: 'globe' }); }catch(e){}
     try{
       _exp2EvMap.setFog({
-        'range':[0.5,10],'color':'rgba(8,30,90,0.12)',
-        'high-color':'#06112a','space-color':'#000000',
-        'star-intensity':0.85,'horizon-blend':0.07
+        'range':          [0.5, 10],
+        'color':          'rgba(15,25,60,0.22)',
+        'high-color':     '#040810',
+        'space-color':    '#000000',
+        'star-intensity': 0.06,
+        'horizon-blend':  0.03
       });
     }catch(e){}
     try{ if(_exp2EvMap.loaded()) _mlApplyGlobeTheme(_exp2EvMap); }catch(e){}
