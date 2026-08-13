@@ -3,6 +3,6 @@
   "target": {
     "namespace": "android_app",
     "package_name": "com.fagenesis.app",
-    "sha256_cert_fingerprints": ["REMPLACER_PAR_SHA256_DE_PWABUILDER"]
+    "sha256_cert_fingerprints": ["90:78:38:B0:EC:9B:B9:F5:00:3C:E3:54:0A:EB:05:0E:34:36:71:B2:0B:8E:BF:9C:CB:4A:0A:E5:A1:4A:36:09"]
   }
 }]
