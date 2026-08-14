@@ -2,7 +2,7 @@
   "relation": ["delegate_permission/common.handle_all_urls"],
   "target": {
     "namespace": "android_app",
-    "package_name": "com.fagenesis.app",
-    "sha256_cert_fingerprints": ["90:78:38:B0:EC:9B:B9:F5:00:3C:E3:54:0A:EB:05:0E:34:36:71:B2:0B:8E:BF:9C:CB:4A:0A:E5:A1:4A:36:09"]
+    "package_name": "com.fagenesis.genesis",
+    "sha256_cert_fingerprints": ["EE:99:F7:1C:5D:D0:E9:55:44:99:2C:21:B0:01:6B:8E:47:26:1B:6F:21:B2:6F:4F:CC:86:EA:4E:DC:4E:4C:2C"]
   }
 }]
