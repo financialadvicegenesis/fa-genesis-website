@@ -5,7 +5,12 @@
   "server": {
     "url": "https://fagenesis.com/app.html",
     "cleartext": false,
-    "androidScheme": "https"
+    "androidScheme": "https",
+    "allowNavigation": [
+      "*.stripe.com",
+      "*.stripe.network",
+      "fagenesis.com"
+    ]
   },
   "ios": {
     "contentInset": "automatic",

@@ -534,6 +534,16 @@
                         <i class="fas fa-arrow-right" style="margin-right:6px;"></i><span id="stripeOnboardingBtnLabel">Configurer</span>
                     </button>
                 </div>
+                <!-- Bandeau retour Stripe réussi -->
+                <div id="stripeReturnBanner" style="display:none;align-items:center;gap:10px;background:#0a1f0a;padding:.9rem 1.5rem;border-top:2px solid #2a6a2a;font-size:13px;font-weight:700;color:#5cb85c;">
+                    <i class="fas fa-check-circle" style="font-size:18px;flex-shrink:0;"></i>
+                    <span>Configuration Stripe complétée ! Vos informations sont en cours de vérification.</span>
+                </div>
+                <!-- Bandeau lien Stripe expiré -->
+                <div id="stripeRefreshBanner" style="display:none;align-items:center;gap:10px;background:#1a0f00;padding:.9rem 1.5rem;border-top:2px solid #8a5a00;font-size:13px;font-weight:700;color:#f0a000;">
+                    <i class="fas fa-exclamation-triangle" style="font-size:18px;flex-shrink:0;"></i>
+                    <span>Lien expiré. Cliquez à nouveau sur "Configurer" pour obtenir un nouveau lien.</span>
+                </div>
                 <div id="stripeOnboardingInfo" style="display:none;background:#0a0a0a;padding:1rem 1.5rem;font-size:12px;color:#888;border-top:1px solid #252510;">
                     <i class="fas fa-info-circle" style="color:#ffd700;margin-right:6px;"></i>
                     Stripe est notre système de paiement sécurisé. Vous devez configurer votre compte pour recevoir vos rémunérations. Vos informations sont collectées directement par Stripe.
@@ -1147,6 +1157,27 @@
             // Gate contrat de partenariat : obligatoire avant toute utilisation
             if (!partner.contract_signed) {
                 setTimeout(openPartnershipContractModal, 400);
+            }
+
+            // Retour depuis Stripe onboarding (Android / Web)
+            var _urlParams = new URLSearchParams(window.location.search);
+            if (_urlParams.get('stripe_return') === '1') {
+                // Nettoyer l'URL sans recharger la page
+                history.replaceState({}, '', window.location.pathname);
+                setTimeout(function() {
+                    showSection('profile');
+                    loadStripeStatus();
+                    var banner = document.getElementById('stripeReturnBanner');
+                    if (banner) banner.style.display = 'flex';
+                }, 300);
+            } else if (_urlParams.get('stripe_refresh') === '1') {
+                history.replaceState({}, '', window.location.pathname);
+                setTimeout(function() {
+                    showSection('profile');
+                    loadStripeStatus();
+                    var banner = document.getElementById('stripeRefreshBanner');
+                    if (banner) banner.style.display = 'flex';
+                }, 300);
             }
 
         } catch (error) {

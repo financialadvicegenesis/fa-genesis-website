@@ -88,8 +88,8 @@ async function setupPartnerStripeAccount(partnerData) {
 }
 
 async function getPartnerOnboardingLink(stripeAccountId, baseUrl) {
-    var returnUrl  = (baseUrl || 'https://fagenesis.com') + '/app.html?stripe_return=1#open-partner';
-    var refreshUrl = (baseUrl || 'https://fagenesis.com') + '/app.html?stripe_refresh=1#open-partner';
+    var returnUrl  = (baseUrl || 'https://fagenesis.com') + '/partner-dashboard.html?stripe_return=1';
+    var refreshUrl = (baseUrl || 'https://fagenesis.com') + '/partner-dashboard.html?stripe_refresh=1';
     var link = await stripeProvider.getAccountLink(stripeAccountId, returnUrl, refreshUrl);
     return link.url;
 }
