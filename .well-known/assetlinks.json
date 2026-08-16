@@ -1,11 +1,10 @@
-[
-  {
+[{
     "relation": ["delegate_permission/common.handle_all_urls"],
     "target": {
-      "namespace": "android_app",
-      "package_name": "com.fagenesis.genesis",
-      "sha256_cert_fingerprints":
-        ["68:07:5E:7A:66:62:8A:F9:56:DB:75:F3:38:D6:D9:5B:E2:72:A0:43:DD:67:EC:06:8D:C9:0E:BB:C0:26:9F:57"]
+        "namespace": "android_app",
+        "package_name": "com.fagenesis.genesis",
+        "sha256_cert_fingerprints": [
+            "REMPLACER_PAR_SHA256_PLAY_CONSOLE"
+        ]
     }
-  }
-]
+}]

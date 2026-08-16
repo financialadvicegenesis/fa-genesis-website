@@ -644,6 +644,9 @@ async function sendNewDocumentNotification(clientEmail, clientName, documentName
                 Voir mes livrables
             </a>
         </div>
+        <p style="text-align:center;font-size:12px;color:#999;margin-top:8px;">
+            Si ce bouton n'ouvre pas l'application, ouvrez directement l'app GENESIS sur votre téléphone.
+        </p>
     `;
 
     try {
@@ -767,10 +770,13 @@ async function sendQuotePartnerNotification(quote, partner) {
                 Connectez-vous à votre espace partenaire pour soumettre votre proposition.
             </p>
             <div style="text-align: center; margin: 30px 0;">
-                <a href="${frontUrl}/partner-dashboard.html" style="display: inline-block; background: #FFD700; color: #000; padding: 14px 30px; text-decoration: none; font-weight: 900; font-size: 14px; border: 3px solid #000;">
-                    ACCÉDER À MON ESPACE
+                <a href="${frontUrl}/partner-dashboard.html?section=quotes" style="display: inline-block; background: #FFD700; color: #000; padding: 14px 30px; text-decoration: none; font-weight: 900; font-size: 14px; border: 3px solid #000;">
+                    VOIR LE DEVIS
                 </a>
             </div>
+            <p style="text-align:center;font-size:12px;color:#999;margin-top:8px;">
+                Si ce bouton n'ouvre pas l'application, ouvrez directement l'app GENESIS sur votre téléphone.
+            </p>
         `;
 
         var html = getEmailTemplate(content, 'Devis assigné - FA GENESIS');
@@ -806,7 +812,7 @@ async function sendQuoteToClient(quote) {
         }
 
         var frontUrl = process.env.FRONT_URL || 'https://fagenesis.com';
-        var acceptUrl = frontUrl + '/login.html?quote_token=' + quote.acceptance_token;
+        var acceptUrl = frontUrl + '/app.html?quote_token=' + quote.acceptance_token;
 
         var serviceLabels = { photo: 'Photo', video: 'Vidéo', media: 'Média', marketing: 'Marketing', other: 'Prestation sur mesure' };
         var serviceLabel = serviceLabels[quote.service_type] || 'Prestation sur mesure';
@@ -1012,7 +1018,7 @@ async function sendSessionRescheduledEmail(clientEmail, clientName, sessionData)
         + '<p style="margin:5px 0 0 0;color:#666;">Durée : ' + (sessionData.duration_minutes || 45) + ' min</p>'
         + '</div>'
         + '<div style="text-align:center;margin:25px 0;">'
-        + '<a href="https://fagenesis.com/seances.html" target="_blank" '
+        + '<a href="' + (process.env.FRONT_URL || 'https://fagenesis.com') + '/seances.html" target="_blank" '
         + 'style="display:inline-block;background:#FFD700;color:#000;padding:16px 32px;font-weight:700;'
         + 'text-transform:uppercase;text-decoration:none;font-size:14px;border:3px solid #000;">'
         + 'Voir mes séances</a></div>'

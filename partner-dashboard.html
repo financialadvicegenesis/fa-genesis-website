@@ -547,7 +547,21 @@
                 <div id="stripeOnboardingInfo" style="display:none;background:#0a0a0a;padding:1rem 1.5rem;font-size:12px;color:#888;border-top:1px solid #252510;">
                     <i class="fas fa-info-circle" style="color:#ffd700;margin-right:6px;"></i>
                     Stripe est notre système de paiement sécurisé. Vous devez configurer votre compte pour recevoir vos rémunérations. Vos informations sont collectées directement par Stripe.
-                    <div style="margin-top:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                    <div style="margin-top:12px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+                        <label style="font-size:11px;font-weight:900;color:#ffd700;white-space:nowrap;">STATUT :</label>
+                        <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:#fff;cursor:pointer;">
+                            <input type="radio" name="stripeEntityType" value="particulier" checked onchange="document.getElementById('stripeRaisonSocialeWrap').style.display='none'" style="accent-color:#ffd700;">
+                            Particulier
+                        </label>
+                        <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:#fff;cursor:pointer;">
+                            <input type="radio" name="stripeEntityType" value="entreprise" onchange="document.getElementById('stripeRaisonSocialeWrap').style.display='block'" style="accent-color:#ffd700;">
+                            Entreprise
+                        </label>
+                    </div>
+                    <div id="stripeRaisonSocialeWrap" style="display:none;margin-top:10px;">
+                        <input type="text" id="stripeRaisonSociale" placeholder="Raison sociale (obligatoire)" style="width:100%;box-sizing:border-box;background:#1a1a1a;color:#fff;border:1px solid #444;border-radius:6px;padding:8px 14px;font-size:13px;font-weight:700;">
+                    </div>
+                    <div style="margin-top:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
                         <label style="font-size:11px;font-weight:900;color:#ffd700;white-space:nowrap;">VOTRE PAYS :</label>
                         <select id="stripeCountrySelect" style="background:#1a1a1a;color:#fff;border:1px solid #444;border-radius:6px;padding:7px 14px;font-size:13px;font-weight:700;cursor:pointer;max-width:260px;">
                             <optgroup label="── Europe ──">
@@ -1159,8 +1173,15 @@
                 setTimeout(openPartnershipContractModal, 400);
             }
 
-            // Retour depuis Stripe onboarding (Android / Web)
+            // Deep link depuis email (Android App Links)
             var _urlParams = new URLSearchParams(window.location.search);
+            var _deepSection = _urlParams.get('section');
+            if (_deepSection && ['quotes', 'missions', 'seances', 'revenus', 'profile', 'documents', 'messaging'].indexOf(_deepSection) !== -1) {
+                history.replaceState({}, '', window.location.pathname);
+                setTimeout(function() { showSection(_deepSection); }, 300);
+            }
+
+            // Retour depuis Stripe onboarding (Android / Web)
             if (_urlParams.get('stripe_return') === '1') {
                 // Nettoyer l'URL sans recharger la page
                 history.replaceState({}, '', window.location.pathname);
@@ -1987,7 +2008,16 @@
             var resp = await fetch(API_BASE_URL + '/api/partner/stripe/setup', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('partner_token') },
-                body: JSON.stringify({ entityType: 'particulier', country: (document.getElementById('stripeCountrySelect') ? document.getElementById('stripeCountrySelect').value : 'FR') })
+                body: (function() {
+                    var entityRadio = document.querySelector('input[name="stripeEntityType"]:checked');
+                    var entityType = entityRadio ? entityRadio.value : 'particulier';
+                    var raisonSociale = (document.getElementById('stripeRaisonSociale') || {}).value || '';
+                    var country = (document.getElementById('stripeCountrySelect') || {}).value || 'FR';
+                    if (entityType === 'entreprise' && !raisonSociale.trim()) {
+                        throw new Error('Veuillez saisir votre raison sociale.');
+                    }
+                    return JSON.stringify({ entityType: entityType, country: country, raisonSociale: raisonSociale.trim() });
+                })()
             });
             var data = await resp.json();
             if (data.ok && data.url) {
