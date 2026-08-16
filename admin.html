@@ -3714,83 +3714,92 @@
             var container = document.getElementById('partnersList');
             if (!container) return;
 
+            container.innerHTML = '<p class="text-center py-8 opacity-50 font-bold"><i class="fas fa-spinner fa-spin mr-2" style="color:var(--genesis-yellow);"></i>Chargement des partenaires...</p>';
+
             try {
                 var response = await fetch(API_BASE_URL + '/api/admin/partners');
-                if (!response.ok) throw new Error('Erreur chargement');
+                if (!response.ok) throw new Error('Erreur ' + response.status);
                 allPartners = await response.json();
+                if (!Array.isArray(allPartners)) throw new Error('R\u00e9ponse invalide');
             } catch (error) {
                 console.error('[ADMIN] Erreur chargement partenaires:', error);
-                container.innerHTML = '<p class="text-center py-8 font-bold">Erreur de chargement. <button onclick="loadPartnersList()" style="border:2px solid black;padding:4px 12px;font-weight:900;cursor:pointer;">R\u00e9essayer</button></p>';
+                container.innerHTML = '<p class="text-center py-8 font-bold" style="color:#ef4444;"><i class="fas fa-exclamation-triangle mr-2"></i>Erreur : ' + error.message + '. <button onclick="loadPartnersList()" style="border:2px solid #ffd700;padding:4px 12px;font-weight:900;cursor:pointer;color:#ffd700;background:transparent;">R\u00e9essayer</button></p>';
                 return;
             }
 
-            var pendingCount = allPartners.filter(function(p) { return p.accountStatus === 'pending'; }).length;
-            var partnersBadge = document.getElementById('pendingPartnersBadge');
-            if (partnersBadge) {
-                if (pendingCount > 0) { partnersBadge.style.display = 'block'; partnersBadge.textContent = pendingCount; }
-                else { partnersBadge.style.display = 'none'; }
-            }
+            try {
+                var pendingCount = allPartners.filter(function(p) { return p.accountStatus === 'pending'; }).length;
+                var partnersBadge = document.getElementById('pendingPartnersBadge');
+                if (partnersBadge) {
+                    if (pendingCount > 0) { partnersBadge.style.display = 'block'; partnersBadge.textContent = pendingCount; }
+                    else { partnersBadge.style.display = 'none'; }
+                }
 
-            var partners = allPartners;
+                var partners = allPartners;
 
-            if (searchQuery) {
-                var q = searchQuery.toLowerCase();
-                partners = partners.filter(function(p) {
-                    return (p.prenom && p.prenom.toLowerCase().includes(q)) ||
-                           (p.nom && p.nom.toLowerCase().includes(q)) ||
-                           (p.email && p.email.toLowerCase().includes(q)) ||
-                           (p.partner_type && p.partner_type.toLowerCase().includes(q)) ||
-                           (p.specialite && p.specialite.toLowerCase().includes(q)) ||
-                           (p.telephone && p.telephone.includes(q));
+                if (searchQuery) {
+                    var q = searchQuery.toLowerCase();
+                    partners = partners.filter(function(p) {
+                        return (p.prenom && p.prenom.toLowerCase().includes(q)) ||
+                               (p.nom && p.nom.toLowerCase().includes(q)) ||
+                               (p.email && p.email.toLowerCase().includes(q)) ||
+                               (p.partner_type && p.partner_type.toLowerCase().includes(q)) ||
+                               (p.specialite && p.specialite.toLowerCase().includes(q)) ||
+                               (p.telephone && p.telephone.includes(q));
+                    });
+                }
+
+                if (partners.length === 0) {
+                    container.innerHTML = '<p class="text-center py-8 opacity-50 font-bold">' + (searchQuery ? 'Aucun résultat pour "' + searchQuery + '".' : 'Aucun partenaire inscrit pour le moment.') + '</p>';
+                    return;
+                }
+
+                // Les comptes en attente de validation passent en premier : sans approbation,
+                // leurs prestations/profil restent invisibles des clients (cf. accountStatus === 'pending').
+                var sortedPartners = partners.slice().sort(function(a, b) {
+                    var aPending = a.accountStatus === 'pending' ? 0 : 1;
+                    var bPending = b.accountStatus === 'pending' ? 0 : 1;
+                    return aPending - bPending;
                 });
+
+                var html = '';
+                sortedPartners.forEach(function(partner) {
+                    var safeId = (partner.id || '').replace(/'/g, "\\'");
+                    var typeLabel = (PARTNER_TYPE_LABELS && PARTNER_TYPE_LABELS[partner.partner_type]) || partner.partner_type || 'N/A';
+                    var inscritLe = partner.created_at ? new Date(partner.created_at).toLocaleDateString('fr-FR') : 'N/A';
+                    var statusColor = partner.accountStatus === 'deactivated' ? '#999' : (partner.accountStatus === 'pending' ? '#ffd43b' : '#51cf66');
+                    var statusTextColor = partner.accountStatus === 'pending' ? 'black' : 'white';
+                    var statusLabel = partner.accountStatus === 'deactivated' ? 'DÉSACTIVÉ' : (partner.accountStatus === 'pending' ? 'EN ATTENTE' : 'ACTIF');
+
+                    html += '<div class="client-row" onclick="openPartnerModal(\'' + safeId + '\')">' +
+                        '<div class="flex justify-between items-center flex-wrap gap-4">' +
+                            '<div class="flex-1 min-w-[200px]">' +
+                                '<div class="font-black text-lg">' + (partner.prenom || '') + ' ' + (partner.nom || '') + '</div>' +
+                                '<div class="text-sm font-bold opacity-70">' + (partner.email || '') + '</div>' +
+                                '<div class="text-xs font-bold opacity-50 mt-1">Inscrit le ' + inscritLe + (partner.telephone ? ' • ' + partner.telephone : '') + '</div>' +
+                            '</div>' +
+                            '<div>' +
+                                '<span style="background:var(--genesis-yellow);color:black;padding:4px 10px;border:2px solid black;font-size:11px;font-weight:900;">' + typeLabel.toUpperCase() + '</span>' +
+                            '</div>' +
+                            '<div>' +
+                                '<span style="background:' + statusColor + ';color:' + statusTextColor + ';padding:4px 10px;border:2px solid black;font-size:11px;font-weight:900;">' + statusLabel + '</span>' +
+                            '</div>' +
+                            '<div onclick="event.stopPropagation();" style="display:flex;gap:8px;flex-wrap:wrap;">' +
+                                (partner.accountStatus === 'pending'
+                                    ? '<button onclick="togglePartnerStatus(\'' + safeId + '\', \'active\')" class="border-4 border-[#51cf66] bg-[#51cf66] text-black px-4 py-2 text-sm font-black mr-2"><i class="fas fa-check mr-1"></i>Approuver</button>'
+                                    : '') +
+                                '<button onclick="openPartnerModal(\'' + safeId + '\')" class="neo-btn-yellow px-4 py-2 text-sm"><i class="fas fa-folder-open mr-1"></i>Gérer</button>' +
+                                '<button onclick="deletePartner(\'' + safeId + '\')" class="border-4 border-red-600 bg-red-600 text-white px-4 py-2 text-sm font-black"><i class="fas fa-trash mr-1"></i>Supprimer</button>' +
+                            '</div>' +
+                        '</div>' +
+                    '</div>';
+                });
+
+                container.innerHTML = html;
+            } catch (renderError) {
+                console.error('[ADMIN] Erreur affichage partenaires:', renderError);
+                container.innerHTML = '<p class="text-center py-8 font-bold" style="color:#ef4444;"><i class="fas fa-exclamation-triangle mr-2"></i>Erreur d\'affichage. <button onclick="loadPartnersList()" style="border:2px solid #ffd700;padding:4px 12px;font-weight:900;cursor:pointer;color:#ffd700;background:transparent;">Réessayer</button></p>';
             }
-
-            if (partners.length === 0) {
-                container.innerHTML = '<p class="text-center py-8 opacity-50 font-bold">' + (searchQuery ? 'Aucun résultat pour "' + searchQuery + '".' : 'Aucun partenaire') + '</p>';
-                return;
-            }
-
-            // Les comptes en attente de validation passent en premier : sans approbation,
-            // leurs prestations/profil restent invisibles des clients (cf. accountStatus === 'pending').
-            var sortedPartners = partners.slice().sort(function(a, b) {
-                var aPending = a.accountStatus === 'pending' ? 0 : 1;
-                var bPending = b.accountStatus === 'pending' ? 0 : 1;
-                return aPending - bPending;
-            });
-
-            var html = '';
-            sortedPartners.forEach(function(partner) {
-                var typeLabel = PARTNER_TYPE_LABELS[partner.partner_type] || partner.partner_type || 'N/A';
-                var inscritLe = partner.created_at ? new Date(partner.created_at).toLocaleDateString('fr-FR') : 'N/A';
-                var statusColor = partner.accountStatus === 'deactivated' ? '#999' : (partner.accountStatus === 'pending' ? '#ffd43b' : '#51cf66');
-                var statusTextColor = partner.accountStatus === 'pending' ? 'black' : 'white';
-                var statusLabel = partner.accountStatus === 'deactivated' ? 'DÉSACTIVÉ' : (partner.accountStatus === 'pending' ? 'EN ATTENTE' : 'ACTIF');
-
-                html += '<div class="client-row" onclick="openPartnerModal(\'' + partner.id + '\')">' +
-                    '<div class="flex justify-between items-center flex-wrap gap-4">' +
-                        '<div class="flex-1 min-w-[200px]">' +
-                            '<div class="font-black text-lg">' + (partner.prenom || '') + ' ' + (partner.nom || '') + '</div>' +
-                            '<div class="text-sm font-bold opacity-70">' + partner.email + '</div>' +
-                            '<div class="text-xs font-bold opacity-50 mt-1">Inscrit le ' + inscritLe + (partner.telephone ? ' • ' + partner.telephone : '') + '</div>' +
-                        '</div>' +
-                        '<div>' +
-                            '<span style="background:var(--genesis-yellow);color:black;padding:4px 10px;border:2px solid black;font-size:11px;font-weight:900;">' + typeLabel.toUpperCase() + '</span>' +
-                        '</div>' +
-                        '<div>' +
-                            '<span style="background:' + statusColor + ';color:' + statusTextColor + ';padding:4px 10px;border:2px solid black;font-size:11px;font-weight:900;">' + statusLabel + '</span>' +
-                        '</div>' +
-                        '<div onclick="event.stopPropagation();" style="display:flex;gap:8px;flex-wrap:wrap;">' +
-                            (partner.accountStatus === 'pending'
-                                ? '<button onclick="togglePartnerStatus(\'' + partner.id + '\', \'active\')" class="border-4 border-[#51cf66] bg-[#51cf66] text-black px-4 py-2 text-sm font-black mr-2"><i class="fas fa-check mr-1"></i>Approuver</button>'
-                                : '') +
-                            '<button onclick="openPartnerModal(\'' + partner.id + '\')" class="neo-btn-yellow px-4 py-2 text-sm"><i class="fas fa-folder-open mr-1"></i>Gérer</button>' +
-                            '<button onclick="deletePartner(' + "'" + partner.id + "'" + ')" class="border-4 border-red-600 bg-red-600 text-white px-4 py-2 text-sm font-black"><i class="fas fa-trash mr-1"></i>Supprimer</button>' +
-                        '</div>' +
-                    '</div>' +
-                '</div>';
-            });
-
-            container.innerHTML = html;
         }
 
         function handleSearchPartners() {

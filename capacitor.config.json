@@ -1,7 +1,7 @@
 {
-  "appId": "com.fagenesis.app",
+  "appId": "com.fagenesis.genesis",
   "appName": "GENESIS",
-  "webDir": ".",
+  "webDir": "www",
   "server": {
     "url": "https://fagenesis.com/app.html",
     "cleartext": false,
