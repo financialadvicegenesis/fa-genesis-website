@@ -15166,7 +15166,7 @@ app.post('/api/admin/partners/:partnerId/stripe-onboarding-link', async (req, re
 
         if (!partner.stripeAccountId) {
             // Créer le compte Stripe minimal + générer le lien
-            var accountData = { email: partner.email, country: 'FR', entityType: 'particulier', partnerId: partner.id };
+            var accountData = { email: partner.email, country: partner.stripeCountry || 'FR', entityType: partner.entityType || 'particulier', partnerId: partner.id };
             var account = await mps.setupPartnerStripeAccount(accountData);
             var partners = loadPartners();
             var idx = partners.findIndex(p => p.id === partner.id);
@@ -15175,6 +15175,7 @@ app.post('/api/admin/partners/:partnerId/stripe-onboarding-link', async (req, re
                 partners[idx].stripeAccountStatus  = 'pending';
                 partners[idx].stripeChargesEnabled = false;
                 partners[idx].stripePayoutsEnabled = false;
+                partners[idx].stripeCountry        = accountData.country;
                 partners[idx].updatedAt            = new Date().toISOString();
                 savePartners(partners);
             }
@@ -19160,6 +19161,7 @@ app.post('/api/partner/stripe/setup', authenticatePartner, async function(req, r
             partners[idx].stripePayoutsEnabled = false;
             partners[idx].stripeDetailsSubmitted = false;
             partners[idx].entityType           = entityType;
+            partners[idx].stripeCountry        = accountData.country;
             partners[idx].updatedAt            = new Date().toISOString();
             savePartners(partners);
         }

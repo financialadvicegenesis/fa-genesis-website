@@ -536,7 +536,18 @@
                 </div>
                 <div id="stripeOnboardingInfo" style="display:none;background:#0a0a0a;padding:1rem 1.5rem;font-size:12px;color:#888;border-top:1px solid #252510;">
                     <i class="fas fa-info-circle" style="color:#ffd700;margin-right:6px;"></i>
-                    Stripe est notre système de paiement sécurisé. Vous devez configurer votre compte pour recevoir vos rémunérations. Vos informations sont collectées directement par Stripe (réglementation française).
+                    Stripe est notre système de paiement sécurisé. Vous devez configurer votre compte pour recevoir vos rémunérations. Vos informations sont collectées directement par Stripe.
+                    <div style="margin-top:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                        <label style="font-size:11px;font-weight:900;color:#ffd700;white-space:nowrap;">VOTRE PAYS :</label>
+                        <select id="stripeCountrySelect" style="background:#1a1a1a;color:#fff;border:1px solid #444;border-radius:6px;padding:7px 14px;font-size:13px;font-weight:700;cursor:pointer;">
+                            <option value="FR">🇫🇷 France</option>
+                            <option value="MA">🇲🇦 Maroc</option>
+                            <option value="BE">🇧🇪 Belgique</option>
+                            <option value="CH">🇨🇭 Suisse</option>
+                            <option value="SN">🇸🇳 Sénégal</option>
+                            <option value="CI">🇨🇮 Côte d'Ivoire</option>
+                        </select>
+                    </div>
                 </div>
             </div>
 
@@ -1887,7 +1898,7 @@
             var resp = await fetch(API_BASE_URL + '/api/partner/stripe/setup', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('partner_token') },
-                body: JSON.stringify({ entityType: 'particulier', country: 'FR' })
+                body: JSON.stringify({ entityType: 'particulier', country: (document.getElementById('stripeCountrySelect') ? document.getElementById('stripeCountrySelect').value : 'FR') })
             });
             var data = await resp.json();
             if (data.ok && data.url) {
