@@ -522,6 +522,24 @@
             <div id="partnerPendingBanner" style="display:none;background:var(--genesis-yellow);color:black;border:4px solid black;padding:1rem 1.5rem;font-weight:900;margin-bottom:1.5rem;">
                 <i class="fas fa-clock mr-2"></i>Compte en attente de validation — vous serez visible dans l'annuaire après validation par l'équipe FA GENESIS. Vous pouvez dès maintenant configurer votre profil et vos prestations.
             </div>
+
+            <!-- BLOC STRIPE ONBOARDING -->
+            <div id="stripeOnboardingBlock" style="margin-bottom:1.5rem;border-radius:14px;border:2px solid #252510;overflow:hidden;">
+                <div style="background:#111;padding:1.25rem 1.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+                    <div>
+                        <div style="font-size:13px;font-weight:900;color:#ffd700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;"><i class="fas fa-credit-card" style="margin-right:8px;"></i>Compte de paiement (Stripe)</div>
+                        <div id="stripeStatusLabel" style="font-size:12px;color:#aaa;font-weight:700;">Chargement…</div>
+                    </div>
+                    <button id="stripeOnboardingBtn" onclick="startStripeOnboarding()" style="display:none;background:#ffd700;color:#000;border:none;border-radius:8px;padding:10px 20px;font-weight:900;font-size:13px;cursor:pointer;">
+                        <i class="fas fa-arrow-right" style="margin-right:6px;"></i><span id="stripeOnboardingBtnLabel">Configurer</span>
+                    </button>
+                </div>
+                <div id="stripeOnboardingInfo" style="display:none;background:#0a0a0a;padding:1rem 1.5rem;font-size:12px;color:#888;border-top:1px solid #252510;">
+                    <i class="fas fa-info-circle" style="color:#ffd700;margin-right:6px;"></i>
+                    Stripe est notre système de paiement sécurisé. Vous devez configurer votre compte pour recevoir vos rémunérations. Vos informations sont collectées directement par Stripe (réglementation française).
+                </div>
+            </div>
+
             <div class="section-card neo-shadow">
                 <div class="flex items-center gap-6 mb-4 flex-wrap">
                     <div id="profilePhotoPreview" style="width:96px;height:96px;border-radius:50%;background:#1a1a1a;border:3px solid #000;overflow:hidden;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
@@ -1109,6 +1127,7 @@
         } else if (section === 'profile') {
             if (profile) profile.style.display = 'block';
             renderProfileSection();
+            loadStripeStatus();
         } else if (section === 'quotes') {
             if (quotes) quotes.style.display = 'block';
             loadPartnerQuotes();
@@ -1814,6 +1833,79 @@
             }
         } catch (error) {
             console.error('[PARTNER-DASH] Erreur reload commentaires:', error);
+        }
+    }
+
+    // ==============================================
+    // STRIPE ONBOARDING
+    // ==============================================
+
+    async function loadStripeStatus() {
+        var statusLabel = document.getElementById('stripeStatusLabel');
+        var btn = document.getElementById('stripeOnboardingBtn');
+        var btnLabel = document.getElementById('stripeOnboardingBtnLabel');
+        var info = document.getElementById('stripeOnboardingInfo');
+        if (!statusLabel) return;
+        try {
+            var resp = await fetch(API_BASE_URL + '/api/partner/stripe/status', {
+                headers: { 'Authorization': 'Bearer ' + localStorage.getItem('partner_token') }
+            });
+            var data = await resp.json();
+            if (!data.ok) throw new Error('Erreur');
+            if (!data.configured) {
+                statusLabel.textContent = 'Non configuré — requis pour recevoir vos paiements';
+                statusLabel.style.color = '#ef4444';
+                if (btn) { btn.style.display = 'block'; btnLabel.textContent = 'Configurer mon compte'; }
+                if (info) info.style.display = 'block';
+            } else if (data.chargesEnabled && data.payoutsEnabled) {
+                statusLabel.innerHTML = '<i class="fas fa-check-circle" style="color:#22c55e;margin-right:6px;"></i>Vérifié — vous pouvez recevoir des paiements';
+                statusLabel.style.color = '#22c55e';
+                if (btn) { btn.style.display = 'block'; btn.style.background = '#1a1a1a'; btn.style.color = '#ffd700'; btn.style.border = '1px solid #333'; btnLabel.textContent = 'Tableau de bord Stripe'; }
+                if (info) info.style.display = 'none';
+            } else if (data.detailsSubmitted) {
+                statusLabel.innerHTML = '<i class="fas fa-hourglass-half" style="color:#f59e0b;margin-right:6px;"></i>En cours de vérification par Stripe';
+                statusLabel.style.color = '#f59e0b';
+                if (btn) { btn.style.display = 'none'; }
+            } else {
+                statusLabel.innerHTML = '<i class="fas fa-exclamation-triangle" style="color:#f59e0b;margin-right:6px;"></i>Informations incomplètes — cliquez pour continuer';
+                statusLabel.style.color = '#f59e0b';
+                if (btn) { btn.style.display = 'block'; btnLabel.textContent = 'Continuer la configuration'; }
+                if (info) info.style.display = 'block';
+            }
+        } catch (e) {
+            if (statusLabel) statusLabel.textContent = 'Impossible de vérifier le statut Stripe.';
+        }
+    }
+
+    async function startStripeOnboarding() {
+        var btn = document.getElementById('stripeOnboardingBtn');
+        var btnLabel = document.getElementById('stripeOnboardingBtnLabel');
+        var originalLabel = btnLabel ? btnLabel.textContent : '';
+        if (btn) btn.disabled = true;
+        if (btnLabel) btnLabel.textContent = 'Chargement…';
+        try {
+            var resp = await fetch(API_BASE_URL + '/api/partner/stripe/setup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('partner_token') },
+                body: JSON.stringify({ entityType: 'particulier', country: 'FR' })
+            });
+            var data = await resp.json();
+            if (data.ok && data.url) {
+                window.location.href = data.url;
+            } else if (data.accountId) {
+                var resp2 = await fetch(API_BASE_URL + '/api/partner/stripe/onboarding-link', {
+                    headers: { 'Authorization': 'Bearer ' + localStorage.getItem('partner_token') }
+                });
+                var data2 = await resp2.json();
+                if (data2.ok && data2.url) { window.location.href = data2.url; }
+                else throw new Error(data2.error || 'Lien indisponible');
+            } else {
+                throw new Error(data.error || 'Erreur');
+            }
+        } catch (e) {
+            alert('Erreur lors de la connexion à Stripe : ' + e.message);
+            if (btn) btn.disabled = false;
+            if (btnLabel) btnLabel.textContent = originalLabel;
         }
     }
 

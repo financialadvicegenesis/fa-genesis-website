@@ -15155,6 +15155,53 @@ app.put('/api/admin/partners/:partnerId/founder-badge', (req, res) => {
     }
 });
 
+// Envoyer le lien Stripe onboarding à un partenaire (admin)
+app.post('/api/admin/partners/:partnerId/stripe-onboarding-link', async (req, res) => {
+    try {
+        const partner = getPartnerById(req.params.partnerId);
+        if (!partner) return res.status(404).json({ error: 'Partenaire non trouvé' });
+
+        var baseUrl = process.env.FRONT_URL || 'https://fagenesis.com';
+        var onboardingUrl;
+
+        if (!partner.stripeAccountId) {
+            // Créer le compte Stripe minimal + générer le lien
+            var accountData = { email: partner.email, country: 'FR', entityType: 'particulier', partnerId: partner.id };
+            var account = await mps.setupPartnerStripeAccount(accountData);
+            var partners = loadPartners();
+            var idx = partners.findIndex(p => p.id === partner.id);
+            if (idx !== -1) {
+                partners[idx].stripeAccountId      = account.id;
+                partners[idx].stripeAccountStatus  = 'pending';
+                partners[idx].stripeChargesEnabled = false;
+                partners[idx].stripePayoutsEnabled = false;
+                partners[idx].updatedAt            = new Date().toISOString();
+                savePartners(partners);
+            }
+            onboardingUrl = await mps.getPartnerOnboardingLink(account.id, baseUrl);
+        } else {
+            onboardingUrl = await mps.getPartnerOnboardingLink(partner.stripeAccountId, baseUrl);
+        }
+
+        // Envoyer le lien par email
+        var transport = emailService.initializeTransporter();
+        await transport.sendMail({
+            from: '"FA GENESIS" <' + (process.env.EMAIL_FROM_ADDRESS || process.env.SMTP_USER) + '>',
+            to: partner.email,
+            subject: 'Configurez votre compte de paiement GENESIS',
+            html: '<p>Bonjour ' + (partner.prenom || '') + ',</p>' +
+                  '<p>Pour recevoir vos rémunérations sur la plateforme FA GENESIS, vous devez configurer votre compte de paiement Stripe.</p>' +
+                  '<p style="margin:24px 0;"><a href="' + onboardingUrl + '" style="background:#ffd700;color:#000;padding:12px 24px;font-weight:900;text-decoration:none;border-radius:8px;display:inline-block;">Configurer mon compte Stripe</a></p>' +
+                  '<p><small>Ce lien est valable 1 heure. Si vous rencontrez un problème, contactez contact@fagenesis.com</small></p>'
+        });
+
+        res.json({ ok: true });
+    } catch (e) {
+        console.error('[ADMIN] Erreur envoi lien Stripe:', e.message);
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // Supprimer un partenaire
 app.delete('/api/admin/partners/:partnerId', (req, res) => {
     try {

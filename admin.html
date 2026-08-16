@@ -3888,6 +3888,11 @@
                 '</button>';
             }
 
+            if (!partner.stripeAccountId || partner.stripeAccountStatus === 'not_configured') {
+                modalHTML += '<button onclick="sendStripeOnboardingLink(\'' + partner.id + '\')" style="background:#635bff;color:#fff;border:none;border-radius:8px;padding:12px 20px;font-size:13px;font-weight:900;cursor:pointer;">' +
+                    '<i class="fab fa-stripe mr-2"></i>ENVOYER LIEN STRIPE</button>';
+            }
+
             modalHTML += '<button onclick="toggleFounderBadge(\'' + partner.id + '\', ' + (!partner.founderBadge) + ')" class="border-4 border-[#FFD700] ' + (partner.founderBadge ? 'bg-[#FFD700] text-black' : 'bg-transparent text-[#FFD700]') + ' px-6 py-3 text-sm font-black">' +
                 '<i class="fas fa-crown mr-2"></i>' + (partner.founderBadge ? 'RETIRER MEMBRE FONDATEUR' : 'ATTRIBUER MEMBRE FONDATEUR') +
             '</button>';
@@ -3906,6 +3911,23 @@
 
         function closePartnerModal() {
             document.getElementById('partnerModal').style.display = 'none';
+        }
+
+        async function sendStripeOnboardingLink(partnerId) {
+            if (!confirm('Envoyer un email au partenaire avec le lien Stripe pour configurer son compte de paiement ?')) return;
+            try {
+                var resp = await fetch(API_BASE_URL + '/api/admin/partners/' + partnerId + '/stripe-onboarding-link', {
+                    method: 'POST'
+                });
+                var result = await resp.json();
+                if (result.ok) {
+                    alert('Lien Stripe envoyé par email au partenaire.');
+                } else {
+                    alert('Erreur : ' + (result.error || 'Impossible d\'envoyer le lien'));
+                }
+            } catch(e) {
+                alert('Erreur de connexion : ' + e.message);
+            }
         }
 
         async function togglePartnerStatus(partnerId, newStatus) {

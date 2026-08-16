@@ -17,7 +17,10 @@ function getStripe() {
 class StripeConnectProvider extends PaymentProvider {
 
     // Crée un compte Connect Express pour un prestataire.
-    // entityType : 'particulier' → individual, 'entreprise' → company
+    // Stripe France exige que toutes les données KYC soient collectées via l'outil
+    // d'inscription hébergé (accountLinks). On crée donc un compte MINIMAL ici
+    // (type, country, email, capabilities) sans pré-remplir individual/company —
+    // Stripe collecte ces infos lors du flow d'onboarding.
     async createConnectedAccount(data) {
         var s = getStripe();
         var params = {
@@ -35,24 +38,6 @@ class StripeConnectProvider extends PaymentProvider {
                 platform:     'fa-genesis'
             }
         };
-
-        if (data.entityType === 'entreprise') {
-            params.company = {
-                name: data.raisonSociale || '',
-                ...(data.registrationNumber ? { registration_number: data.registrationNumber } : {})
-            };
-            if (data.representantPrenom || data.representantNom) {
-                params.individual = {
-                    first_name: data.representantPrenom || '',
-                    last_name:  data.representantNom   || ''
-                };
-            }
-        } else {
-            params.individual = {
-                first_name: data.prenom || '',
-                last_name:  data.nom    || ''
-            };
-        }
 
         return await s.accounts.create(params);
     }
