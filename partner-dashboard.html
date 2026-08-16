@@ -539,13 +539,71 @@
                     Stripe est notre système de paiement sécurisé. Vous devez configurer votre compte pour recevoir vos rémunérations. Vos informations sont collectées directement par Stripe.
                     <div style="margin-top:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
                         <label style="font-size:11px;font-weight:900;color:#ffd700;white-space:nowrap;">VOTRE PAYS :</label>
-                        <select id="stripeCountrySelect" style="background:#1a1a1a;color:#fff;border:1px solid #444;border-radius:6px;padding:7px 14px;font-size:13px;font-weight:700;cursor:pointer;">
-                            <option value="FR">🇫🇷 France</option>
-                            <option value="MA">🇲🇦 Maroc</option>
-                            <option value="BE">🇧🇪 Belgique</option>
-                            <option value="CH">🇨🇭 Suisse</option>
-                            <option value="SN">🇸🇳 Sénégal</option>
-                            <option value="CI">🇨🇮 Côte d'Ivoire</option>
+                        <select id="stripeCountrySelect" style="background:#1a1a1a;color:#fff;border:1px solid #444;border-radius:6px;padding:7px 14px;font-size:13px;font-weight:700;cursor:pointer;max-width:260px;">
+                            <optgroup label="── Europe ──">
+                                <option value="FR" selected>🇫🇷 France</option>
+                                <option value="BE">🇧🇪 Belgique</option>
+                                <option value="CH">🇨🇭 Suisse</option>
+                                <option value="LU">🇱🇺 Luxembourg</option>
+                                <option value="DE">🇩🇪 Allemagne</option>
+                                <option value="ES">🇪🇸 Espagne</option>
+                                <option value="IT">🇮🇹 Italie</option>
+                                <option value="PT">🇵🇹 Portugal</option>
+                                <option value="NL">🇳🇱 Pays-Bas</option>
+                                <option value="GB">🇬🇧 Royaume-Uni</option>
+                                <option value="IE">🇮🇪 Irlande</option>
+                                <option value="AT">🇦🇹 Autriche</option>
+                                <option value="PL">🇵🇱 Pologne</option>
+                                <option value="SE">🇸🇪 Suède</option>
+                                <option value="NO">🇳🇴 Norvège</option>
+                                <option value="DK">🇩🇰 Danemark</option>
+                                <option value="FI">🇫🇮 Finlande</option>
+                                <option value="CZ">🇨🇿 République tchèque</option>
+                                <option value="RO">🇷🇴 Roumanie</option>
+                                <option value="BG">🇧🇬 Bulgarie</option>
+                                <option value="GR">🇬🇷 Grèce</option>
+                                <option value="HR">🇭🇷 Croatie</option>
+                                <option value="HU">🇭🇺 Hongrie</option>
+                                <option value="SK">🇸🇰 Slovaquie</option>
+                                <option value="SI">🇸🇮 Slovénie</option>
+                                <option value="EE">🇪🇪 Estonie</option>
+                                <option value="LV">🇱🇻 Lettonie</option>
+                                <option value="LT">🇱🇹 Lituanie</option>
+                                <option value="MT">🇲🇹 Malte</option>
+                                <option value="CY">🇨🇾 Chypre</option>
+                                <option value="LI">🇱🇮 Liechtenstein</option>
+                            </optgroup>
+                            <optgroup label="── Afrique ──">
+                                <option value="MA">🇲🇦 Maroc</option>
+                                <option value="SN">🇸🇳 Sénégal</option>
+                                <option value="CI">🇨🇮 Côte d'Ivoire</option>
+                                <option value="GH">🇬🇭 Ghana</option>
+                                <option value="NG">🇳🇬 Nigeria</option>
+                                <option value="KE">🇰🇪 Kenya</option>
+                                <option value="ZA">🇿🇦 Afrique du Sud</option>
+                                <option value="EG">🇪🇬 Égypte</option>
+                                <option value="RW">🇷🇼 Rwanda</option>
+                                <option value="TZ">🇹🇿 Tanzanie</option>
+                                <option value="UG">🇺🇬 Ouganda</option>
+                            </optgroup>
+                            <optgroup label="── Amériques ──">
+                                <option value="US">🇺🇸 États-Unis</option>
+                                <option value="CA">🇨🇦 Canada</option>
+                                <option value="MX">🇲🇽 Mexique</option>
+                                <option value="BR">🇧🇷 Brésil</option>
+                            </optgroup>
+                            <optgroup label="── Moyen-Orient & Asie-Pacifique ──">
+                                <option value="AE">🇦🇪 Émirats arabes unis</option>
+                                <option value="SG">🇸🇬 Singapour</option>
+                                <option value="HK">🇭🇰 Hong Kong</option>
+                                <option value="AU">🇦🇺 Australie</option>
+                                <option value="NZ">🇳🇿 Nouvelle-Zélande</option>
+                                <option value="JP">🇯🇵 Japon</option>
+                                <option value="IN">🇮🇳 Inde</option>
+                                <option value="MY">🇲🇾 Malaisie</option>
+                                <option value="TH">🇹🇭 Thaïlande</option>
+                                <option value="ID">🇮🇩 Indonésie</option>
+                            </optgroup>
                         </select>
                     </div>
                 </div>
