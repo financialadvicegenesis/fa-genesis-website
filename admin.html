@@ -3766,7 +3766,8 @@
                 sortedPartners.forEach(function(partner) {
                     var safeId = (partner.id || '').replace(/'/g, "\\'");
                     var typeLabel = (PARTNER_TYPE_LABELS && PARTNER_TYPE_LABELS[partner.partner_type]) || partner.partner_type || 'N/A';
-                    var inscritLe = partner.created_at ? new Date(partner.created_at).toLocaleDateString('fr-FR') : 'N/A';
+                    var _pDate = partner.created_at || partner.createdAt || null;
+                    var inscritLe = _pDate ? new Date(_pDate).toLocaleDateString('fr-FR') : 'N/A';
                     var statusColor = partner.accountStatus === 'deactivated' ? '#999' : (partner.accountStatus === 'pending' ? '#ffd43b' : '#51cf66');
                     var statusTextColor = partner.accountStatus === 'pending' ? 'black' : 'white';
                     var statusLabel = partner.accountStatus === 'deactivated' ? 'DÉSACTIVÉ' : (partner.accountStatus === 'pending' ? 'EN ATTENTE' : 'ACTIF');
@@ -3862,7 +3863,7 @@
                     '</div>' +
                     '<div>' +
                         '<p class="text-sm font-bold uppercase opacity-70 mb-1">Créé le</p>' +
-                        '<p class="font-black">' + (partner.created_at ? new Date(partner.created_at).toLocaleDateString('fr-FR') : 'N/A') + '</p>' +
+                        '<p class="font-black">' + ((partner.created_at || partner.createdAt) ? new Date(partner.created_at || partner.createdAt).toLocaleDateString('fr-FR') : 'N/A') + '</p>' +
                     '</div>' +
                     '<div>' +
                         '<p class="text-sm font-bold uppercase opacity-70 mb-1">Membre Fondateur</p>' +

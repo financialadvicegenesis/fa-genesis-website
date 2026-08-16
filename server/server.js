@@ -15063,6 +15063,10 @@ app.get('/api/admin/partners', (req, res) => {
     try {
         const partners = loadPartners().map(p => {
             const { password, ...safe } = p;
+            // Normalise la date d'inscription : certains enregistrements utilisent createdAt,
+            // d'autres created_at selon la route d'inscription. On expose les deux pour le front.
+            if (!safe.created_at && safe.createdAt) safe.created_at = safe.createdAt;
+            if (!safe.createdAt && safe.created_at) safe.createdAt = safe.created_at;
             return safe;
         });
         const assignments = loadPartnerAssignments();
