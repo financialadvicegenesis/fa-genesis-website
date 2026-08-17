@@ -26,6 +26,8 @@ const { fillTemplate, getAvailableTemplates, getTemplate } = require('./config/d
 const aiService = require('./services/aiService');
 const bootstrapService = require('./services/bootstrapService');
 const mps = require('./services/marketplace-payment-service');
+const payoutRouting = require('./services/payout-routing-service');
+const payoneerProvider = require('./services/payoneer-provider');
 const persistentStore = require('./persistent-store');
 const webpush = require('web-push');
 
@@ -10498,7 +10500,7 @@ app.post('/api/partner/auth/login', async (req, res) => {
 // Inscription partenaire (self-service) — compte créé en 'pending', visible en annuaire seulement après validation admin
 app.post('/api/partner/auth/register', async (req, res) => {
     try {
-        const { prenom, nom, email, telephone, city, password, partner_type, partner_type_other, company, referralCode } = req.body;
+        const { prenom, nom, email, telephone, city, country, password, partner_type, partner_type_other, company, referralCode } = req.body;
         if (!prenom || !nom || !email || !password || !partner_type) {
             return res.status(400).json({ error: 'Champs obligatoires: prenom, nom, email, password, partner_type' });
         }
@@ -10569,6 +10571,7 @@ app.post('/api/partner/auth/register', async (req, res) => {
             email: email.toLowerCase(),
             telephone: telephone || '',
             city: (typeof city === 'string') ? city.trim() : '',
+            country: (typeof country === 'string' && country.length === 2) ? country.trim().toUpperCase() : '',
             password: hashedPassword,
             partner_type: partner_type,
             partner_type_other: partner_type === 'other' ? partner_type_other.trim() : '',
@@ -19403,6 +19406,118 @@ app.get('/api/admin/marketplace/payments', function(req, res) {
         res.json({ ok: true, payments: payments.slice(0, limit), total: payments.length });
     } catch(e) {
         res.status(500).json({ error: e.message });
+    }
+});
+
+// ============================================================
+// ─── PAYOUT ROUTING — GENESIS PAYMENT ORCHESTRATION ─────────
+// ============================================================
+
+// GET /api/payout/routing/:countryCode — Meilleur fournisseur de payout pour un pays
+app.get('/api/payout/routing/:countryCode', function(req, res) {
+    try {
+        var code   = (req.params.countryCode || '').toUpperCase().slice(0, 2);
+        var result = payoutRouting.getBestPayoutProvider(code);
+        res.json({ ok: true, countryCode: code, routing: result });
+    } catch(e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
+// GET /api/partner/payout/routing — Routage basé sur le pays du prestataire connecté
+app.get('/api/partner/payout/routing', authenticatePartner, function(req, res) {
+    try {
+        var partners = loadPartners();
+        var partner  = partners.find(function(p) { return p.id === req.partner.id; });
+        if (!partner) return res.status(404).json({ ok: false, error: 'Partenaire introuvable' });
+        var code     = partner.country || '';
+        var result   = payoutRouting.getBestPayoutProvider(code);
+        res.json({ ok: true, countryCode: code, countryName: result.countryName, routing: result, payoutProvider: partner.payoutProvider || null, payoutStatus: partner.payoutStatus || 'not_configured', payoneerEmail: partner.payoneerEmail || null });
+    } catch(e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
+// POST /api/partner/payout/setup-payoneer — Enregistrer les infos Payoneer du prestataire
+app.post('/api/partner/payout/setup-payoneer', authenticatePartner, function(req, res) {
+    try {
+        var partners = loadPartners();
+        var idx      = partners.findIndex(function(p) { return p.id === req.partner.id; });
+        if (idx === -1) return res.status(404).json({ ok: false, error: 'Partenaire introuvable' });
+        var data = payoneerProvider.setupPayoneerAccount({ payoneerEmail: req.body.payoneerEmail, payoneerAccountId: req.body.payoneerAccountId });
+        partners[idx].payoutProvider   = 'payoneer';
+        partners[idx].payoutStatus     = 'pending_verification';
+        partners[idx].payoneerEmail    = data.payoneerEmail;
+        if (data.payoneerAccountId) partners[idx].payoneerAccountId = data.payoneerAccountId;
+        partners[idx].updatedAt        = new Date().toISOString();
+        savePartners(partners);
+        res.json({ ok: true, payoutProvider: 'payoneer', payoutStatus: 'pending_verification', payoneerEmail: data.payoneerEmail });
+    } catch(e) {
+        res.status(400).json({ ok: false, error: e.message });
+    }
+});
+
+// GET /api/partner/earnings/summary — Résumé des revenus du prestataire
+app.get('/api/partner/earnings/summary', authenticatePartner, function(req, res) {
+    try {
+        var payouts   = loadPayouts().filter(function(p) { return p.partner_id === req.partner.id; });
+        var available = 0;
+        var pending   = 0;
+        var totalEarned  = 0;
+        var totalPaidOut = 0;
+
+        payouts.forEach(function(p) {
+            var amt = parseFloat(p.amount || 0);
+            if (p.status === 'sent') {
+                totalPaidOut += amt;
+                totalEarned  += amt;
+            } else if (p.status === 'pending' || p.status === 'awaiting_validation') {
+                pending     += amt;
+                totalEarned += amt;
+            } else if (p.status === 'on_hold') {
+                pending     += amt;
+                totalEarned += amt;
+            }
+        });
+
+        var stripePayments = [];
+        try { stripePayments = mps.loadStripePayments().filter(function(p) { return p.partnerId === req.partner.id && p.status === 'succeeded'; }); } catch(e) {}
+        stripePayments.forEach(function(p) {
+            var partnerCents = p.partnerCents || 0;
+            totalEarned  += partnerCents / 100;
+        });
+
+        res.json({ ok: true, available: parseFloat(available.toFixed(2)), pending: parseFloat(pending.toFixed(2)), totalEarned: parseFloat(totalEarned.toFixed(2)), totalPaidOut: parseFloat(totalPaidOut.toFixed(2)), currency: 'EUR' });
+    } catch(e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
+// GET /api/admin/payout/providers — Liste des fournisseurs de payout (admin)
+app.get('/api/admin/payout/providers', function(req, res) {
+    if (!isValidAdminKey(req)) return res.status(403).json({ error: 'Accès refusé' });
+    var table = payoutRouting.loadCountryTable();
+    var providers = [
+        { id: 'stripe',    name: 'Stripe Connect', active: true,  note: 'Credentials actifs via STRIPE_SECRET_KEY' },
+        { id: 'payoneer',  name: 'Payoneer',        active: true,  note: payoneerProvider.isConfigured() ? 'API configurée' : 'Payout manuel — PAYONEER_PARTNER_ID / PAYONEER_API_KEY non configurés' },
+        { id: 'airwallex', name: 'Airwallex',       active: false, note: 'Non configuré' },
+        { id: 'adyen',     name: 'Adyen',           active: false, note: 'Non configuré' }
+    ];
+    res.json({ ok: true, providers: providers, countryTable: table });
+});
+
+// PUT /api/admin/payout/country/:code — Modifier la disponibilité d'un fournisseur pour un pays (admin)
+app.put('/api/admin/payout/country/:code', function(req, res) {
+    if (!isValidAdminKey(req)) return res.status(403).json({ error: 'Accès refusé' });
+    try {
+        var code     = req.params.code.toUpperCase();
+        var provider = req.body.provider;
+        var enabled  = !!req.body.enabled;
+        var updated  = payoutRouting.updateCountryProvider(code, provider, enabled);
+        if (!updated) return res.status(400).json({ ok: false, error: 'Pays ou fournisseur invalide' });
+        res.json({ ok: true, countryCode: code, provider: provider, enabled: enabled });
+    } catch(e) {
+        res.status(500).json({ ok: false, error: e.message });
     }
 });
 

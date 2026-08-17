@@ -1,0 +1,29 @@
+{
+  "globalCommissionRate": 0.25,
+  "badgeCommission": {
+    "none":   0.25,
+    "bronze": 0.25,
+    "argent": 0.22,
+    "or":     0.19,
+    "elite":  0.15
+  },
+  "categoryCommissions": {
+    "photographer":           0.25,
+    "videographer":           0.25,
+    "marketer":               0.25,
+    "media":                  0.25,
+    "community_manager":      0.25,
+    "graphiste":              0.25,
+    "developpeur_web":        0.25,
+    "pilote_drone":           0.25,
+    "consultant":             0.25,
+    "coworking":              0.25,
+    "animateur_evenementiel": 0.25,
+    "influencer":             0.25,
+    "other":                  0.25
+  },
+  "payoutSchedule":  "daily",
+  "payoutDelayDays": 2,
+  "paymentsEnabled": true,
+  "currency":        "eur"
+}

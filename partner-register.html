@@ -152,6 +152,77 @@
                         </div>
 
                         <div>
+                            <label for="country" class="block text-sm font-black mb-2 uppercase">Pays de résidence <span style="color:#c00">*</span></label>
+                            <select id="country" name="country" class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none focus:border-[var(--genesis-yellow)] transition-all">
+                                <option value="">Choisir votre pays...</option>
+                                <optgroup label="── Europe ──">
+                                    <option value="FR">🇫🇷 France</option>
+                                    <option value="BE">🇧🇪 Belgique</option>
+                                    <option value="CH">🇨🇭 Suisse</option>
+                                    <option value="LU">🇱🇺 Luxembourg</option>
+                                    <option value="DE">🇩🇪 Allemagne</option>
+                                    <option value="ES">🇪🇸 Espagne</option>
+                                    <option value="IT">🇮🇹 Italie</option>
+                                    <option value="PT">🇵🇹 Portugal</option>
+                                    <option value="NL">🇳🇱 Pays-Bas</option>
+                                    <option value="GB">🇬🇧 Royaume-Uni</option>
+                                    <option value="IE">🇮🇪 Irlande</option>
+                                    <option value="AT">🇦🇹 Autriche</option>
+                                    <option value="PL">🇵🇱 Pologne</option>
+                                    <option value="SE">🇸🇪 Suède</option>
+                                    <option value="NO">🇳🇴 Norvège</option>
+                                    <option value="DK">🇩🇰 Danemark</option>
+                                    <option value="FI">🇫🇮 Finlande</option>
+                                    <option value="CZ">🇨🇿 République tchèque</option>
+                                    <option value="RO">🇷🇴 Roumanie</option>
+                                    <option value="BG">🇧🇬 Bulgarie</option>
+                                    <option value="GR">🇬🇷 Grèce</option>
+                                    <option value="HR">🇭🇷 Croatie</option>
+                                    <option value="HU">🇭🇺 Hongrie</option>
+                                    <option value="SK">🇸🇰 Slovaquie</option>
+                                    <option value="SI">🇸🇮 Slovénie</option>
+                                    <option value="EE">🇪🇪 Estonie</option>
+                                    <option value="LV">🇱🇻 Lettonie</option>
+                                    <option value="LT">🇱🇹 Lituanie</option>
+                                    <option value="MT">🇲🇹 Malte</option>
+                                    <option value="CY">🇨🇾 Chypre</option>
+                                    <option value="LI">🇱🇮 Liechtenstein</option>
+                                </optgroup>
+                                <optgroup label="── Afrique ──">
+                                    <option value="MA">🇲🇦 Maroc</option>
+                                    <option value="SN">🇸🇳 Sénégal</option>
+                                    <option value="CI">🇨🇮 Côte d'Ivoire</option>
+                                    <option value="GH">🇬🇭 Ghana</option>
+                                    <option value="NG">🇳🇬 Nigeria</option>
+                                    <option value="KE">🇰🇪 Kenya</option>
+                                    <option value="ZA">🇿🇦 Afrique du Sud</option>
+                                    <option value="EG">🇪🇬 Égypte</option>
+                                    <option value="RW">🇷🇼 Rwanda</option>
+                                    <option value="TZ">🇹🇿 Tanzanie</option>
+                                    <option value="UG">🇺🇬 Ouganda</option>
+                                </optgroup>
+                                <optgroup label="── Amériques ──">
+                                    <option value="US">🇺🇸 États-Unis</option>
+                                    <option value="CA">🇨🇦 Canada</option>
+                                    <option value="MX">🇲🇽 Mexique</option>
+                                    <option value="BR">🇧🇷 Brésil</option>
+                                </optgroup>
+                                <optgroup label="── Moyen-Orient &amp; Asie-Pacifique ──">
+                                    <option value="AE">🇦🇪 Émirats arabes unis</option>
+                                    <option value="SG">🇸🇬 Singapour</option>
+                                    <option value="HK">🇭🇰 Hong Kong</option>
+                                    <option value="AU">🇦🇺 Australie</option>
+                                    <option value="NZ">🇳🇿 Nouvelle-Zélande</option>
+                                    <option value="JP">🇯🇵 Japon</option>
+                                    <option value="IN">🇮🇳 Inde</option>
+                                    <option value="MY">🇲🇾 Malaisie</option>
+                                    <option value="TH">🇹🇭 Thaïlande</option>
+                                    <option value="ID">🇮🇩 Indonésie</option>
+                                </optgroup>
+                            </select>
+                        </div>
+
+                        <div>
                             <label for="company" class="block text-sm font-black mb-2 uppercase">Entreprise (optionnel)</label>
                             <input type="text" id="company" name="company"
                                 class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none focus:border-[var(--genesis-yellow)] transition-all"
@@ -447,9 +518,14 @@
             var nom = document.getElementById('nom').value.trim();
             var email = document.getElementById('email').value.trim();
             var password = document.getElementById('password').value;
+            var country = document.getElementById('country').value;
 
             if (!prenom || !nom || !email || !password || password.length < 6) {
                 showWizardError('Merci de renseigner prénom, nom, email et un mot de passe de 6 caractères minimum.');
+                return;
+            }
+            if (!country) {
+                showWizardError('Merci de sélectionner votre pays de résidence.');
                 return;
             }
             showStep(2);
@@ -480,7 +556,8 @@
                 company: document.getElementById('company').value.trim(),
                 email: document.getElementById('email').value.trim(),
                 telephone: document.getElementById('telephone').value.trim(),
-                password: document.getElementById('password').value
+                password: document.getElementById('password').value,
+                country: document.getElementById('country').value
             };
 
             submitBtn.disabled = true;

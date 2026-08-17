@@ -3003,10 +3003,12 @@ a{text-decoration:none;color:inherit}
           <div id="ptnr-missions-list"></div>
         </div>
 
-        <!-- Sub-screen: Versements / Paiements Stripe Connect -->
+        <!-- Sub-screen: Versements / Paiements -->
         <div class="ptnr-screen" id="ptnr-screen-versements">
-          <div class="ptnr-back-bar"><button class="ptnr-back-btn" onclick="_ptnrNav('profil')">&#8249;</button><span class="ptnr-back-bar-title">Portefeuille GENESIS SAFE™</span></div>
-          <!-- Stripe Connect onboarding -->
+          <div class="ptnr-back-bar"><button class="ptnr-back-btn" onclick="_ptnrNav('profil')">&#8249;</button><span class="ptnr-back-bar-title">Mes revenus</span></div>
+          <!-- Résumé des revenus -->
+          <div id="ptnr-earnings-summary" style="padding:12px 12px 0;"></div>
+          <!-- Méthode de versement (Stripe Connect ou Payoneer selon pays) -->
           <div id="ptnr-stripe-setup" style="padding:0 0 12px;"></div>
           <!-- PayPal / IBAN (fallback legacy) -->
           <div id="ptnr-paypal-setup" style="padding:0 0 16px;"></div>
@@ -15465,7 +15467,7 @@ function _submitAvailability(){
   });
 }
 
-// ── Stripe Connect Setup ──────────────────────────────────────────────────────
+// ── Méthode de versement — GENESIS Payment Orchestration ─────────────────────
 var _stripeSetupEl = null;
 var _stripeStatusCache = null;
 
@@ -15474,13 +15476,130 @@ function _loadStripeSetup(){
   if(!el) return;
   _stripeSetupEl = el;
   el.innerHTML = _skeletonRows(1);
-  fetch((window.FA_GENESIS_API||API)+'/api/partner/stripe/status',{headers:{'Authorization':'Bearer '+(_ptnrToken||'')}})
+  // Charger résumé des revenus en parallèle
+  _loadEarningsSummary();
+  // Charger d'abord le routage payout (détermine Stripe ou Payoneer)
+  fetch((window.FA_GENESIS_API||API)+'/api/partner/payout/routing',{headers:{'Authorization':'Bearer '+(_ptnrToken||'')}})
+  .then(function(r){ return r.json(); })
+  .then(function(routingData){
+    if(!routingData.ok) throw new Error('routing error');
+    var provider = routingData.routing && routingData.routing.provider;
+    if(provider === 'stripe'){
+      // Stripe Connect disponible pour ce pays
+      fetch((window.FA_GENESIS_API||API)+'/api/partner/stripe/status',{headers:{'Authorization':'Bearer '+(_ptnrToken||'')}})
+      .then(function(r2){ return r2.json(); })
+      .then(function(d){
+        _stripeStatusCache = d;
+        _renderStripeSetup(d);
+      })
+      .catch(function(){ el.innerHTML=''; });
+    } else if(provider === 'payoneer'){
+      // Stripe Connect non disponible pour ce pays → Payoneer
+      _renderPayoneerSetup(routingData);
+    } else {
+      // Aucun fournisseur disponible
+      _renderNoPayoutAvailable(routingData);
+    }
+  })
+  .catch(function(){
+    // Fallback : tenter Stripe (ancien comportement si le backend est < v.actuelle)
+    fetch((window.FA_GENESIS_API||API)+'/api/partner/stripe/status',{headers:{'Authorization':'Bearer '+(_ptnrToken||'')}})
+    .then(function(r){ return r.json(); })
+    .then(function(d){ _stripeStatusCache=d; _renderStripeSetup(d); })
+    .catch(function(){ el.innerHTML=''; });
+  });
+}
+
+function _loadEarningsSummary(){
+  var el = document.getElementById('ptnr-earnings-summary');
+  if(!el) return;
+  fetch((window.FA_GENESIS_API||API)+'/api/partner/earnings/summary',{headers:{'Authorization':'Bearer '+(_ptnrToken||'')}})
   .then(function(r){ return r.json(); })
   .then(function(d){
-    _stripeStatusCache = d;
-    _renderStripeSetup(d);
+    if(!d.ok) return;
+    var fmt = function(n){ return Number(n).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2}); };
+    el.innerHTML = '<div style="background:linear-gradient(135deg,#0d0d1a,#10081a);border:1.5px solid #2a2a3a;border-radius:14px;padding:16px;margin-bottom:12px;">'
+      +'<div style="font-size:11px;font-weight:800;letter-spacing:.8px;color:#FFD700;margin-bottom:12px;"><i class="fa-solid fa-chart-line" style="margin-right:6px;"></i>MES REVENUS</div>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">'
+      +'<div style="background:#0a0a0a;border-radius:10px;padding:10px;"><div style="font-size:10px;color:#666;font-weight:700;margin-bottom:4px;">DISPONIBLE</div><div style="font-size:18px;font-weight:900;color:#22c55e;">'+fmt(d.available)+' €</div></div>'
+      +'<div style="background:#0a0a0a;border-radius:10px;padding:10px;"><div style="font-size:10px;color:#666;font-weight:700;margin-bottom:4px;">EN ATTENTE</div><div style="font-size:18px;font-weight:900;color:#f59e0b;">'+fmt(d.pending)+' €</div></div>'
+      +'<div style="background:#0a0a0a;border-radius:10px;padding:10px;"><div style="font-size:10px;color:#666;font-weight:700;margin-bottom:4px;">TOTAL GAGNÉ</div><div style="font-size:16px;font-weight:800;color:#fff;">'+fmt(d.totalEarned)+' €</div></div>'
+      +'<div style="background:#0a0a0a;border-radius:10px;padding:10px;"><div style="font-size:10px;color:#666;font-weight:700;margin-bottom:4px;">TOTAL VERSÉ</div><div style="font-size:16px;font-weight:800;color:#fff;">'+fmt(d.totalPaidOut)+' €</div></div>'
+      +'</div></div>';
   })
-  .catch(function(){ el.innerHTML=''; });
+  .catch(function(){});
+}
+
+function _renderPayoneerSetup(routingData){
+  var el = _stripeSetupEl || document.getElementById('ptnr-stripe-setup');
+  if(!el) return;
+  var countryName = (routingData.countryName) || routingData.countryCode || '';
+  var payoneerStatus = routingData.payoutStatus || 'not_configured';
+  var payoneerEmail  = routingData.payoneerEmail || '';
+
+  var statusHtml = '';
+  if(payoneerStatus === 'pending_verification'){
+    statusHtml = '<div style="display:flex;align-items:center;gap:8px;background:#1a1200;border-radius:8px;padding:8px 12px;margin-bottom:10px;">'
+      +'<i class="fa-solid fa-hourglass-half" style="color:#f59e0b;"></i>'
+      +'<span style="font-size:12px;color:#f59e0b;font-weight:700;">Votre compte Payoneer est en cours de vérification.<br><span style="color:#888;font-weight:500;">Email : '+payoneerEmail+'</span></span></div>';
+  } else if(payoneerStatus === 'verified' || payoneerStatus === 'ready'){
+    statusHtml = '<div style="display:flex;align-items:center;gap:8px;background:#0a1a0a;border-radius:8px;padding:8px 12px;margin-bottom:10px;">'
+      +'<i class="fa-solid fa-check-circle" style="color:#22c55e;"></i>'
+      +'<span style="font-size:12px;color:#22c55e;font-weight:700;">Payoneer vérifié — vous pouvez recevoir vos paiements.<br><span style="color:#888;font-weight:500;">'+payoneerEmail+'</span></span></div>';
+  }
+
+  var html = '<div style="background:linear-gradient(135deg,#0d1020,#0a0a18);border:1.5px solid #FFD700;border-radius:14px;padding:16px;margin-bottom:12px;">';
+  html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">';
+  html += '<div style="font-size:12px;font-weight:800;letter-spacing:.8px;color:#FFD700;"><i class="fa-solid fa-money-bill-transfer" style="margin-right:6px;font-size:15px;"></i>VERSEMENT — PAYONEER</div>';
+  html += '<div style="font-size:10px;color:#888;font-weight:700;">'+countryName+'</div></div>';
+  html += '<div style="font-size:12px;color:#aaa;line-height:1.6;margin-bottom:12px;">Stripe Connect n\'est pas disponible dans votre pays. GENESIS vous permet de recevoir vos revenus via <strong style="color:#fff;">Payoneer</strong>, disponible dans 190+ pays.</div>';
+  html += statusHtml;
+
+  if(payoneerStatus === 'not_configured'){
+    html += '<div style="margin-bottom:12px;">';
+    html += '<div style="font-size:11px;color:#888;font-weight:700;margin-bottom:6px;">ÉTAPE 1 — Créer votre compte Payoneer</div>';
+    html += '<a href="https://www.payoneer.com/accounts/signup/" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:8px;width:100%;background:#FF4800;color:#fff;border:none;border-radius:10px;padding:11px;font-size:13px;font-weight:800;cursor:pointer;text-decoration:none;justify-content:center;margin-bottom:10px;"><i class="fa-solid fa-arrow-up-right-from-square" style="margin-right:6px;"></i>CRÉER MON COMPTE PAYONEER</a>';
+    html += '<div style="font-size:11px;color:#555;text-align:center;">Puis revenez ici pour renseigner votre email Payoneer.</div></div>';
+    html += '<div>';
+    html += '<div style="font-size:11px;color:#888;font-weight:700;margin-bottom:6px;">ÉTAPE 2 — Enregistrer mon email Payoneer</div>';
+    html += '<input id="ptnr-payoneer-email-input" type="email" placeholder="votre@email-payoneer.com" style="width:100%;box-sizing:border-box;background:#1a1a1a;border:1px solid #333;border-radius:10px;color:#fff;padding:10px 12px;font-size:13px;margin-bottom:8px;">';
+    html += '<div id="ptnr-payoneer-err" style="font-size:12px;color:#ef4444;margin-bottom:6px;display:none;"></div>';
+    html += '<button onclick="_ptnrSavePayoneerEmail()" style="width:100%;background:linear-gradient(135deg,#FF4800,#ff6a00);color:#fff;border:none;border-radius:10px;padding:11px;font-size:13px;font-weight:800;cursor:pointer;">ENREGISTRER MON COMPTE PAYONEER</button>';
+    html += '</div>';
+  } else {
+    html += '<button onclick="_ptnrSavePayoneerEmail()" style="width:100%;background:#1a1a1a;color:#FFD700;border:1px solid #333;border-radius:10px;padding:10px;font-size:12px;font-weight:700;cursor:pointer;margin-top:4px;">Modifier mon email Payoneer</button>';
+  }
+  html += '<div style="font-size:10px;color:#444;margin-top:8px;text-align:center;">GENESIS ne stocke jamais vos données bancaires. Payoneer gère l\'intégralité de la sécurité de votre compte.</div>';
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+function _renderNoPayoutAvailable(routingData){
+  var el = _stripeSetupEl || document.getElementById('ptnr-stripe-setup');
+  if(!el) return;
+  var countryName = (routingData && routingData.countryName) || 'votre pays';
+  el.innerHTML = '<div style="background:#0d0d0d;border:1.5px solid #333;border-radius:14px;padding:16px;margin-bottom:12px;">'
+    +'<div style="font-size:12px;font-weight:800;color:#888;margin-bottom:8px;"><i class="fa-solid fa-triangle-exclamation" style="margin-right:6px;color:#f59e0b;"></i>VERSEMENT NON CONFIGURÉ</div>'
+    +'<div style="font-size:12px;color:#666;line-height:1.6;">Nous ne pouvons pas encore effectuer de versement automatique vers '+countryName+' avec les méthodes actuellement disponibles sur GENESIS. Votre compte peut recevoir des commandes. Nous vous informerons dès qu\'une solution est disponible.</div>'
+    +'</div>';
+}
+
+function _ptnrSavePayoneerEmail(){
+  var input = document.getElementById('ptnr-payoneer-email-input');
+  var errEl = document.getElementById('ptnr-payoneer-err');
+  var email = input ? input.value.trim() : '';
+  if(errEl){ errEl.style.display='none'; errEl.textContent=''; }
+  if(!email || !email.includes('@')){
+    if(errEl){ errEl.textContent='Veuillez saisir un email Payoneer valide.'; errEl.style.display='block'; }
+    return;
+  }
+  fetch((window.FA_GENESIS_API||API)+'/api/partner/payout/setup-payoneer',{
+    method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+(_ptnrToken||'')},
+    body:JSON.stringify({payoneerEmail:email})
+  }).then(function(r){ return r.json(); }).then(function(d){
+    if(d.ok){ _loadStripeSetup(); }
+    else{ if(errEl){ errEl.textContent=d.error||'Erreur. Réessayez.'; errEl.style.display='block'; } }
+  }).catch(function(){ if(errEl){ errEl.textContent='Erreur réseau.'; errEl.style.display='block'; } });
 }
 
 function _renderStripeSetup(d){

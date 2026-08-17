@@ -633,6 +633,40 @@
                 </div>
             </div>
 
+            <!-- Bloc Payoneer (affiché si Stripe Connect non disponible dans le pays du prestataire) -->
+            <div id="payoneerOnboardingBlock" style="display:none;margin-bottom:1.5rem;border-radius:14px;border:2px solid #FF4800;overflow:hidden;">
+                <div style="background:#111;padding:1.25rem 1.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+                    <div>
+                        <div style="font-size:13px;font-weight:900;color:#FF4800;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;"><i class="fas fa-money-bill-transfer" style="margin-right:8px;"></i>Compte de versement (Payoneer)</div>
+                        <div id="payoneerStatusLabel" style="font-size:12px;color:#aaa;font-weight:700;">Chargement…</div>
+                    </div>
+                </div>
+                <div id="payoneerOnboardingInfo" style="background:#0a0a0a;padding:1rem 1.5rem;font-size:12px;color:#888;border-top:1px solid #1a0a00;">
+                    <i class="fas fa-info-circle" style="color:#FF4800;margin-right:6px;"></i>
+                    Stripe Connect n'est pas disponible dans votre pays. GENESIS vous permet de recevoir vos revenus via <strong style="color:#fff;">Payoneer</strong> — disponible dans 190+ pays.
+                    <div id="payoneerSetupForm" style="margin-top:14px;">
+                        <div style="margin-bottom:10px;">
+                            <a href="https://www.payoneer.com/accounts/signup/" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;background:#FF4800;color:#fff;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:800;text-decoration:none;margin-bottom:10px;"><i class="fas fa-arrow-up-right-from-square"></i>Créer mon compte Payoneer</a>
+                            <div style="font-size:11px;color:#555;">Puis renseignez votre email Payoneer ci-dessous.</div>
+                        </div>
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                            <input type="email" id="payoneerEmailInput" placeholder="votre@email-payoneer.com" style="flex:1;min-width:200px;background:#1a1a1a;color:#fff;border:1px solid #444;border-radius:6px;padding:8px 14px;font-size:13px;font-weight:700;">
+                            <button onclick="savePayoneerEmail()" style="background:#FF4800;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap;">Enregistrer</button>
+                        </div>
+                        <div id="payoneerErr" style="font-size:12px;color:#ef4444;margin-top:6px;display:none;"></div>
+                    </div>
+                    <div id="payoneerVerifiedInfo" style="display:none;margin-top:12px;"></div>
+                </div>
+            </div>
+
+            <!-- Bloc "aucun fournisseur disponible" -->
+            <div id="noPayoutBlock" style="display:none;margin-bottom:1.5rem;border-radius:14px;border:2px solid #333;overflow:hidden;">
+                <div style="background:#111;padding:1.25rem 1.5rem;">
+                    <div style="font-size:13px;font-weight:900;color:#888;margin-bottom:8px;"><i class="fas fa-triangle-exclamation" style="color:#f59e0b;margin-right:8px;"></i>Versement non configuré</div>
+                    <div id="noPayoutMsg" style="font-size:12px;color:#666;line-height:1.6;">Nous ne pouvons pas encore effectuer de versement automatique vers votre pays. Vous serez notifié dès qu'une solution est disponible.</div>
+                </div>
+            </div>
+
             <div class="section-card neo-shadow">
                 <div class="flex items-center gap-6 mb-4 flex-wrap">
                     <div id="profilePhotoPreview" style="width:96px;height:96px;border-radius:50%;background:#1a1a1a;border:3px solid #000;overflow:hidden;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
@@ -1187,7 +1221,7 @@
                 history.replaceState({}, '', window.location.pathname);
                 setTimeout(function() {
                     showSection('profile');
-                    loadStripeStatus();
+                    loadPayoutRouting();
                     var banner = document.getElementById('stripeReturnBanner');
                     if (banner) banner.style.display = 'flex';
                 }, 300);
@@ -1195,7 +1229,7 @@
                 history.replaceState({}, '', window.location.pathname);
                 setTimeout(function() {
                     showSection('profile');
-                    loadStripeStatus();
+                    loadPayoutRouting();
                     var banner = document.getElementById('stripeRefreshBanner');
                     if (banner) banner.style.display = 'flex';
                 }, 300);
@@ -1248,7 +1282,7 @@
         } else if (section === 'profile') {
             if (profile) profile.style.display = 'block';
             renderProfileSection();
-            loadStripeStatus();
+            loadPayoutRouting();
         } else if (section === 'quotes') {
             if (quotes) quotes.style.display = 'block';
             loadPartnerQuotes();
@@ -1958,8 +1992,91 @@
     }
 
     // ==============================================
-    // STRIPE ONBOARDING
+    // MÉTHODE DE VERSEMENT — ROUTING AUTOMATIQUE
     // ==============================================
+
+    async function loadPayoutRouting() {
+        try {
+            var routingResp = await fetch(API_BASE_URL + '/api/partner/payout/routing', {
+                headers: { 'Authorization': 'Bearer ' + localStorage.getItem('partner_token') }
+            });
+            var routingData = await routingResp.json();
+            var provider = routingData.ok && routingData.routing ? routingData.routing.provider : null;
+
+            var stripeBlock   = document.getElementById('stripeOnboardingBlock');
+            var payoneerBlock = document.getElementById('payoneerOnboardingBlock');
+            var noPayoutBlock = document.getElementById('noPayoutBlock');
+
+            if (provider === 'stripe' || !provider) {
+                // Stripe ou pas de country renseigné → comportement par défaut Stripe
+                if (stripeBlock)   stripeBlock.style.display   = '';
+                if (payoneerBlock) payoneerBlock.style.display = 'none';
+                if (noPayoutBlock) noPayoutBlock.style.display = 'none';
+                await loadStripeStatus();
+            } else if (provider === 'payoneer') {
+                if (stripeBlock)   stripeBlock.style.display   = 'none';
+                if (payoneerBlock) payoneerBlock.style.display = '';
+                if (noPayoutBlock) noPayoutBlock.style.display = 'none';
+                loadPayoneerStatus(routingData);
+            } else {
+                if (stripeBlock)   stripeBlock.style.display   = 'none';
+                if (payoneerBlock) payoneerBlock.style.display = 'none';
+                if (noPayoutBlock) noPayoutBlock.style.display = '';
+                var msg = document.getElementById('noPayoutMsg');
+                if (msg) msg.textContent = 'Nous ne pouvons pas encore effectuer de versement automatique vers ' + (routingData.countryName || 'votre pays') + '. Votre compte peut recevoir des commandes. Nous vous informerons dès qu\'une solution est disponible.';
+            }
+        } catch(e) {
+            // Fallback : afficher Stripe (comportement historique)
+            await loadStripeStatus();
+        }
+    }
+
+    function loadPayoneerStatus(routingData) {
+        var statusLabel = document.getElementById('payoneerStatusLabel');
+        var verifiedInfo = document.getElementById('payoneerVerifiedInfo');
+        var setupForm    = document.getElementById('payoneerSetupForm');
+        var payoutStatus = routingData.payoutStatus || 'not_configured';
+        var payoneerEmail = routingData.payoneerEmail || '';
+        var countryName  = routingData.countryName || '';
+
+        if (!statusLabel) return;
+
+        if (payoutStatus === 'pending_verification') {
+            statusLabel.innerHTML = '<i class="fas fa-hourglass-half" style="color:#f59e0b;margin-right:4px;"></i>En attente de vérification — ' + payoneerEmail;
+            if (setupForm) setupForm.style.display = 'none';
+            if (verifiedInfo) { verifiedInfo.style.display='block'; verifiedInfo.innerHTML='<div style="color:#f59e0b;font-size:12px;font-weight:700;">Email Payoneer enregistré : ' + payoneerEmail + '</div><button onclick="document.getElementById(\'payoneerSetupForm\').style.display=\'block\';this.style.display=\'none\'" style="margin-top:6px;background:transparent;color:#888;border:1px solid #333;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;">Modifier</button>'; }
+        } else if (payoutStatus === 'verified' || payoutStatus === 'ready') {
+            statusLabel.innerHTML = '<i class="fas fa-check-circle" style="color:#22c55e;margin-right:4px;"></i>Vérifié — vous pouvez recevoir vos paiements';
+            if (setupForm) setupForm.style.display = 'none';
+            if (verifiedInfo) { verifiedInfo.style.display='block'; verifiedInfo.innerHTML='<div style="color:#22c55e;font-size:12px;font-weight:700;"><i class="fas fa-check-circle" style="margin-right:4px;"></i>' + payoneerEmail + '</div>'; }
+        } else {
+            statusLabel.textContent = 'Non configuré — requis pour recevoir vos paiements';
+            if (setupForm)    setupForm.style.display    = 'block';
+            if (verifiedInfo) verifiedInfo.style.display = 'none';
+        }
+    }
+
+    async function savePayoneerEmail() {
+        var input = document.getElementById('payoneerEmailInput');
+        var errEl = document.getElementById('payoneerErr');
+        var email = input ? input.value.trim() : '';
+        if (errEl) { errEl.style.display='none'; errEl.textContent=''; }
+        if (!email || !email.includes('@')) {
+            if (errEl) { errEl.textContent='Email Payoneer invalide.'; errEl.style.display='block'; }
+            return;
+        }
+        try {
+            var resp = await fetch(API_BASE_URL + '/api/partner/payout/setup-payoneer', {
+                method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+localStorage.getItem('partner_token')},
+                body: JSON.stringify({ payoneerEmail: email })
+            });
+            var data = await resp.json();
+            if (data.ok) { loadPayoutRouting(); }
+            else { if (errEl) { errEl.textContent=data.error||'Erreur. Réessayez.'; errEl.style.display='block'; } }
+        } catch(e) {
+            if (errEl) { errEl.textContent='Erreur réseau.'; errEl.style.display='block'; }
+        }
+    }
 
     async function loadStripeStatus() {
         var statusLabel = document.getElementById('stripeStatusLabel');
