@@ -2775,6 +2775,73 @@ a{text-decoration:none;color:inherit}
           <input class="ptnr-input" id="ptnr-reg-nom" type="text" placeholder="Nom" autocomplete="family-name">
           <input class="ptnr-input" id="ptnr-reg-email" type="email" placeholder="Email" autocomplete="email">
           <input class="ptnr-input" id="ptnr-reg-tel" type="tel" placeholder="Téléphone" autocomplete="tel">
+          <select class="ptnr-input" id="ptnr-reg-country" autocomplete="country">
+            <option value="">Pays de résidence *</option>
+            <optgroup label="── Europe ──">
+              <option value="FR">🇫🇷 France</option>
+              <option value="BE">🇧🇪 Belgique</option>
+              <option value="CH">🇨🇭 Suisse</option>
+              <option value="LU">🇱🇺 Luxembourg</option>
+              <option value="DE">🇩🇪 Allemagne</option>
+              <option value="ES">🇪🇸 Espagne</option>
+              <option value="IT">🇮🇹 Italie</option>
+              <option value="PT">🇵🇹 Portugal</option>
+              <option value="NL">🇳🇱 Pays-Bas</option>
+              <option value="GB">🇬🇧 Royaume-Uni</option>
+              <option value="IE">🇮🇪 Irlande</option>
+              <option value="AT">🇦🇹 Autriche</option>
+              <option value="PL">🇵🇱 Pologne</option>
+              <option value="SE">🇸🇪 Suède</option>
+              <option value="NO">🇳🇴 Norvège</option>
+              <option value="DK">🇩🇰 Danemark</option>
+              <option value="FI">🇫🇮 Finlande</option>
+              <option value="CZ">🇨🇿 République tchèque</option>
+              <option value="RO">🇷🇴 Roumanie</option>
+              <option value="BG">🇧🇬 Bulgarie</option>
+              <option value="GR">🇬🇷 Grèce</option>
+              <option value="HR">🇭🇷 Croatie</option>
+              <option value="HU">🇭🇺 Hongrie</option>
+              <option value="SK">🇸🇰 Slovaquie</option>
+              <option value="SI">🇸🇮 Slovénie</option>
+              <option value="EE">🇪🇪 Estonie</option>
+              <option value="LV">🇱🇻 Lettonie</option>
+              <option value="LT">🇱🇹 Lituanie</option>
+              <option value="MT">🇲🇹 Malte</option>
+              <option value="CY">🇨🇾 Chypre</option>
+              <option value="LI">🇱🇮 Liechtenstein</option>
+            </optgroup>
+            <optgroup label="── Afrique ──">
+              <option value="MA">🇲🇦 Maroc</option>
+              <option value="SN">🇸🇳 Sénégal</option>
+              <option value="CI">🇨🇮 Côte d'Ivoire</option>
+              <option value="GH">🇬🇭 Ghana</option>
+              <option value="NG">🇳🇬 Nigeria</option>
+              <option value="KE">🇰🇪 Kenya</option>
+              <option value="ZA">🇿🇦 Afrique du Sud</option>
+              <option value="EG">🇪🇬 Égypte</option>
+              <option value="RW">🇷🇼 Rwanda</option>
+              <option value="TZ">🇹🇿 Tanzanie</option>
+              <option value="UG">🇺🇬 Ouganda</option>
+            </optgroup>
+            <optgroup label="── Amériques ──">
+              <option value="US">🇺🇸 États-Unis</option>
+              <option value="CA">🇨🇦 Canada</option>
+              <option value="MX">🇲🇽 Mexique</option>
+              <option value="BR">🇧🇷 Brésil</option>
+            </optgroup>
+            <optgroup label="── Moyen-Orient &amp; Asie-Pacifique ──">
+              <option value="AE">🇦🇪 Émirats arabes unis</option>
+              <option value="SG">🇸🇬 Singapour</option>
+              <option value="HK">🇭🇰 Hong Kong</option>
+              <option value="AU">🇦🇺 Australie</option>
+              <option value="NZ">🇳🇿 Nouvelle-Zélande</option>
+              <option value="JP">🇯🇵 Japon</option>
+              <option value="IN">🇮🇳 Inde</option>
+              <option value="MY">🇲🇾 Malaisie</option>
+              <option value="TH">🇹🇭 Thaïlande</option>
+              <option value="ID">🇮🇩 Indonésie</option>
+            </optgroup>
+          </select>
           <select class="ptnr-input" id="ptnr-reg-type" onchange="document.getElementById('ptnr-reg-type-other').style.display = (this.value==='other') ? 'block' : 'none';">
             <option value="">Choisir une catégorie...</option>
             <option value="photographer">Photographe</option>
@@ -12002,6 +12069,7 @@ function _ptnrRegSubmit(){
   var email = (document.getElementById('ptnr-reg-email')||{}).value || '';
   var telephone = (document.getElementById('ptnr-reg-tel')||{}).value || '';
   var ville = (document.getElementById('ptnr-reg-ville')||{}).value || '';
+  var country = (document.getElementById('ptnr-reg-country')||{}).value || '';
   var partnerType = (document.getElementById('ptnr-reg-type')||{}).value || '';
   var partnerTypeOther = ((document.getElementById('ptnr-reg-type-other')||{}).value || '').trim();
   var company = (document.getElementById('ptnr-reg-entreprise')||{}).value || '';
@@ -12011,6 +12079,9 @@ function _ptnrRegSubmit(){
   var btnEl = document.getElementById('ptnr-reg-btn');
   if(!prenom.trim()||!nom.trim()||!email.trim()||!partnerType||!password){
     if(errEl){errEl.textContent='Merci de remplir tous les champs obligatoires.';errEl.className='ptnr-login-err on';} return;
+  }
+  if(!country){
+    if(errEl){errEl.textContent='Merci de sélectionner votre pays de résidence.';errEl.className='ptnr-login-err on';} return;
   }
   if(partnerType==='other' && partnerTypeOther.length<2){
     if(errEl){errEl.textContent='Merci de préciser votre profil pour la catégorie "Autre".';errEl.className='ptnr-login-err on';} return;
@@ -12027,7 +12098,7 @@ function _ptnrRegSubmit(){
   fetch(_ptnrApiUrl()+'/api/partner/auth/register',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({prenom:prenom.trim(), nom:nom.trim(), email:email.trim(), telephone:telephone.trim(), city:ville.trim(), password:password, partner_type:partnerType, partner_type_other:partnerTypeOther, company:company.trim(), referralCode:referralCode, _ft:_ptnrRegOpenedAt}),
+    body:JSON.stringify({prenom:prenom.trim(), nom:nom.trim(), email:email.trim(), telephone:telephone.trim(), city:ville.trim(), country:country, password:password, partner_type:partnerType, partner_type_other:partnerTypeOther, company:company.trim(), referralCode:referralCode, _ft:_ptnrRegOpenedAt}),
     signal: _ptnrRegCtrl ? _ptnrRegCtrl.signal : undefined
   }).then(function(r){return r.text().then(function(t){try{return JSON.parse(t);}catch(e){throw new Error('Réponse serveur invalide');}});})
   .then(function(res){
