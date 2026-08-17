@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>Configurer Payoneer — GENESIS</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background: #0a0a0a;
+            color: #fff;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding: 0;
+        }
+        .header {
+            width: 100%;
+            background: #000;
+            border-bottom: 2px solid #FFD700;
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .header-logo {
+            font-size: 18px;
+            font-weight: 900;
+            color: #FFD700;
+            letter-spacing: 1px;
+        }
+        .header-sub {
+            font-size: 12px;
+            color: #888;
+            font-weight: 700;
+        }
+        .container {
+            width: 100%;
+            max-width: 480px;
+            padding: 24px 20px;
+        }
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: #1a0a00;
+            border: 1px solid #FF4800;
+            border-radius: 20px;
+            padding: 5px 12px;
+            font-size: 11px;
+            font-weight: 800;
+            color: #FF4800;
+            letter-spacing: .5px;
+            margin-bottom: 20px;
+        }
+        h1 {
+            font-size: 22px;
+            font-weight: 900;
+            color: #fff;
+            margin-bottom: 8px;
+            line-height: 1.2;
+        }
+        .subtitle {
+            font-size: 13px;
+            color: #888;
+            line-height: 1.6;
+            margin-bottom: 28px;
+        }
+        .step-card {
+            background: #111;
+            border: 1.5px solid #222;
+            border-radius: 14px;
+            padding: 18px;
+            margin-bottom: 14px;
+            position: relative;
+        }
+        .step-card.active {
+            border-color: #FF4800;
+        }
+        .step-num {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            background: #FF4800;
+            color: #fff;
+            font-size: 13px;
+            font-weight: 900;
+            border-radius: 50%;
+            margin-bottom: 10px;
+        }
+        .step-title {
+            font-size: 14px;
+            font-weight: 800;
+            color: #fff;
+            margin-bottom: 6px;
+        }
+        .step-desc {
+            font-size: 12px;
+            color: #888;
+            line-height: 1.6;
+            margin-bottom: 14px;
+        }
+        .btn-payoneer {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            background: linear-gradient(135deg, #FF4800, #ff6a00);
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            padding: 14px;
+            font-size: 14px;
+            font-weight: 800;
+            cursor: pointer;
+            text-decoration: none;
+            letter-spacing: .3px;
+        }
+        .btn-payoneer:hover { opacity: .9; }
+        .btn-return {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            background: #FFD700;
+            color: #000;
+            border: none;
+            border-radius: 10px;
+            padding: 14px;
+            font-size: 14px;
+            font-weight: 800;
+            cursor: pointer;
+            text-decoration: none;
+            letter-spacing: .3px;
+        }
+        .btn-return:hover { opacity: .9; }
+        .arrow-indicator {
+            text-align: center;
+            font-size: 20px;
+            color: #333;
+            margin: 4px 0;
+        }
+        .info-box {
+            background: #0a0a0a;
+            border: 1px solid #1a1a1a;
+            border-radius: 10px;
+            padding: 12px 14px;
+            font-size: 11px;
+            color: #555;
+            line-height: 1.6;
+            margin-top: 20px;
+            text-align: center;
+        }
+        .info-box i { color: #FFD700; margin-right: 4px; }
+        .step-done-badge {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            display: none;
+            align-items: center;
+            gap: 4px;
+            background: #0a1a0a;
+            border: 1px solid #22c55e;
+            border-radius: 20px;
+            padding: 3px 10px;
+            font-size: 10px;
+            font-weight: 800;
+            color: #22c55e;
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <div>
+        <div class="header-logo">⚡ GENESIS</div>
+        <div class="header-sub">Configuration de votre compte de versement</div>
+    </div>
+</div>
+
+<div class="container">
+    <div class="badge"><i class="fas fa-money-bill-transfer"></i>PAYONEER — VERSEMENT INTERNATIONAL</div>
+    <h1>Recevez vos revenus<br>via Payoneer</h1>
+    <p class="subtitle">Stripe Connect n'est pas disponible dans votre pays. Payoneer vous permet de recevoir vos paiements GENESIS dans 190+ pays.</p>
+
+    <!-- Étape 1 -->
+    <div class="step-card active" id="card-step1">
+        <div class="step-done-badge" id="done-step1"><i class="fas fa-check"></i>Fait</div>
+        <div class="step-num">1</div>
+        <div class="step-title">Créer votre compte Payoneer</div>
+        <div class="step-desc">Cliquez ci-dessous pour ouvrir le site Payoneer et créer votre compte gratuitement. Revenez ensuite sur cette page.</div>
+        <a href="https://www.payoneer.com/accounts/signup/" target="_blank" rel="noopener" class="btn-payoneer" onclick="markStep1Done()">
+            <i class="fas fa-arrow-up-right-from-square"></i>
+            CRÉER MON COMPTE PAYONEER
+        </a>
+    </div>
+
+    <div class="arrow-indicator">↓</div>
+
+    <!-- Étape 2 -->
+    <div class="step-card" id="card-step2">
+        <div class="step-num" style="background:#444;">2</div>
+        <div class="step-title">Retourner dans GENESIS</div>
+        <div class="step-desc">Une fois votre compte Payoneer créé, appuyez sur le bouton ci-dessous pour revenir dans GENESIS et enregistrer votre email Payoneer.</div>
+        <a href="partner-dashboard.html?payoneer_return=1" class="btn-return" id="btn-return" style="opacity:.4;pointer-events:none;">
+            <i class="fas fa-arrow-left"></i>
+            RETOURNER DANS GENESIS
+        </a>
+    </div>
+
+    <div class="info-box">
+        <i class="fas fa-shield-halved"></i>
+        GENESIS ne stocke jamais vos données bancaires. Payoneer gère l'intégralité de la sécurité et de la conformité de votre compte.
+    </div>
+</div>
+
+<script>
+    function markStep1Done() {
+        setTimeout(function() {
+            var done = document.getElementById('done-step1');
+            var card2 = document.getElementById('card-step2');
+            var btnReturn = document.getElementById('btn-return');
+            var numStep2 = card2 ? card2.querySelector('.step-num') : null;
+            if (done) { done.style.display = 'flex'; }
+            if (card2) { card2.style.borderColor = '#FFD700'; }
+            if (numStep2) { numStep2.style.background = '#FFD700'; numStep2.style.color = '#000'; }
+            if (btnReturn) { btnReturn.style.opacity = '1'; btnReturn.style.pointerEvents = ''; }
+        }, 1500);
+    }
+
+    // Détecter si l'utilisateur revient sur cette page (après Payoneer)
+    document.addEventListener('visibilitychange', function() {
+        if (document.visibilityState === 'visible') {
+            markStep1Done();
+        }
+    });
+    window.addEventListener('focus', function() {
+        markStep1Done();
+    });
+</script>
+
+</body>
+</html>
