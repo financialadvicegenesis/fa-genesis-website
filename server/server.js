@@ -8879,6 +8879,34 @@ app.delete('/api/auth/delete-account', async (req, res) => {
     }
 });
 
+/**
+ * DELETE /api/partner/account
+ * Suppression définitive du compte prestataire (auth + confirmation mot de passe)
+ */
+app.delete('/api/partner/account', authenticatePartner, async (req, res) => {
+    try {
+        const { password } = req.body;
+        if (!password) {
+            return res.status(400).json({ error: 'Mot de passe requis pour confirmer la suppression' });
+        }
+        const partners = loadPartners();
+        const idx = partners.findIndex(p => p.id === req.partner.id);
+        if (idx === -1) return res.status(404).json({ error: 'Compte introuvable' });
+
+        const partner = partners[idx];
+        const isValid = await bcrypt.compare(password, partner.password);
+        if (!isValid) return res.status(401).json({ error: 'Mot de passe incorrect' });
+
+        const deletedEmail = partner.email;
+        partners.splice(idx, 1);
+        savePartners(partners);
+        console.log(`[PARTNER] Compte supprimé définitivement: ${deletedEmail}`);
+        res.json({ ok: true, message: 'Compte supprimé définitivement' });
+    } catch(e) {
+        res.status(500).json({ error: 'Erreur lors de la suppression' });
+    }
+});
+
 // ============================================================
 // ROUTES - GESTION DES STATUTS (Admin)
 // ============================================================

@@ -16579,6 +16579,45 @@ function _ptnrPfSave(){
   });
 }
 
+function _ptnrShowDeleteConfirm(){
+  var box = document.getElementById('ptnr-del-confirm');
+  if(box) box.style.display = box.style.display === 'none' ? 'block' : 'none';
+  var errEl = document.getElementById('ptnr-del-err');
+  if(errEl){ errEl.style.display='none'; errEl.textContent=''; }
+  var pwdEl = document.getElementById('ptnr-del-pwd');
+  if(pwdEl){ pwdEl.value=''; pwdEl.focus(); }
+}
+
+function _ptnrDeleteAccount(){
+  var pwd   = ((document.getElementById('ptnr-del-pwd')||{}).value||'').trim();
+  var errEl = document.getElementById('ptnr-del-err');
+  var btn   = document.getElementById('ptnr-del-btn');
+  if(!pwd){
+    if(errEl){ errEl.textContent='Saisissez votre mot de passe.'; errEl.style.display='block'; }
+    return;
+  }
+  if(btn){ btn.disabled=true; btn.textContent='Suppression…'; }
+  fetch((window.FA_GENESIS_API||API)+'/api/partner/account',{
+    method:'DELETE',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+(_ptnrToken||'')},
+    body:JSON.stringify({password:pwd})
+  })
+  .then(function(r){ return r.json().then(function(d){ return {ok:r.ok, data:d}; }); })
+  .then(function(res){
+    if(res.ok){
+      showToast('Compte supprimé','À bientôt.','success');
+      setTimeout(function(){ if(typeof _ptnrLogout==='function') _ptnrLogout(); }, 1500);
+    } else {
+      if(btn){ btn.disabled=false; btn.textContent='Supprimer'; }
+      if(errEl){ errEl.textContent=(res.data&&res.data.error)||'Mot de passe incorrect.'; errEl.style.display='block'; }
+    }
+  })
+  .catch(function(){
+    if(btn){ btn.disabled=false; btn.textContent='Supprimer'; }
+    if(errEl){ errEl.textContent='Erreur réseau. Réessayez.'; errEl.style.display='block'; }
+  });
+}
+
 function _ptnrLoadProfilPhoto(){
   // Ancien point d'entrée — redirige vers le hub profil dynamique
   _ptnrLoadProfil();
@@ -16654,6 +16693,17 @@ function _ptnrLoadProfil(){
     +pli('<i class="fa-solid fa-compass"></i>','#001a1a','Explorer GENESIS',null,"_ptnrNav('collegues')")
     +'</div></div>';
 
+  var deleteBtn = '<div style="margin:0 16px 4px;">'
+    +'<button style="width:100%;background:transparent;border:1px solid #3a0000;color:#ef4444;font-size:12px;font-weight:700;padding:13px;border-radius:12px;cursor:pointer;" onclick="_ptnrShowDeleteConfirm()">'
+    +'<i class="fa-solid fa-trash-alt" style="margin-right:6px;"></i>Supprimer mon compte</button>'
+    +'<div id="ptnr-del-confirm" style="display:none;background:#1a0000;border:1px solid #3a0000;border-radius:12px;padding:14px;margin-top:10px;">'
+    +'<div style="font-size:12px;color:#ff9999;line-height:1.5;margin-bottom:12px;"><i class="fa-solid fa-triangle-exclamation" style="margin-right:6px;"></i>Action irréversible. Toutes vos données seront définitivement supprimées.</div>'
+    +'<input id="ptnr-del-pwd" class="ptnr-input" type="password" placeholder="Confirmez votre mot de passe" style="margin-bottom:8px;">'
+    +'<div id="ptnr-del-err" style="font-size:12px;color:#ef4444;margin-bottom:8px;display:none;"></div>'
+    +'<div style="display:flex;gap:8px;">'
+    +'<button style="flex:1;background:#ef4444;color:#fff;border:none;border-radius:10px;padding:12px;font-size:13px;font-weight:800;cursor:pointer;" id="ptnr-del-btn" onclick="_ptnrDeleteAccount()">Supprimer</button>'
+    +'<button style="flex:1;background:#1a1a1a;color:#aaa;border:1px solid #333;border-radius:10px;padding:12px;font-size:13px;font-weight:700;cursor:pointer;" onclick="document.getElementById(\'ptnr-del-confirm\').style.display=\'none\'">Annuler</button>'
+    +'</div></div></div>';
   var logoutBtn = '<button class="plus-logout" onclick="_ptnrLogout()"><i class="fa-solid fa-arrow-right-from-bracket"></i> Déconnexion</button>';
   var _pr = _ptnrSession || {};
   var _ptnrRefBlockHtml = _pr.id ? '<div class="p-ref-box" style="margin:20px 0 0;">'
@@ -16663,7 +16713,7 @@ function _ptnrLoadProfil(){
     + '<div class="p-ref-count">Invitez vos collègues prestataires à rejoindre GENESIS</div>'
     + '<button onclick="_ptnrShareRef(\''+_pr.id+'\')" style="margin-top:12px;width:100%;background:linear-gradient(135deg,#FFD700,#e6c200);color:#1a1200;border:none;border-radius:12px;padding:11px 0;font-size:13px;font-weight:900;cursor:pointer;letter-spacing:.3px;"><i class="fa-solid fa-share-nodes" style="margin-right:7px;"></i>Inviter un ami</button>'
     + '</div>' : '';
-  c.innerHTML = headerHtml + activite + monProfil + reseau + logoutBtn + _ptnrRefBlockHtml + '<div class="plus-version">Version 1.1</div>';
+  c.innerHTML = headerHtml + activite + monProfil + reseau + deleteBtn + logoutBtn + _ptnrRefBlockHtml + '<div class="plus-version">Version 1.1</div>';
 }
 
 // ── SOUS-FORMULAIRES PROFIL ──────────────────────────────────
