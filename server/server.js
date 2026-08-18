@@ -76,6 +76,7 @@ const CAMPAGNES_FILE = path.join(__dirname, 'data', 'campagnes.json');
 const SCHEDULED_NOTIFS_FILE = path.join(__dirname, 'data', 'scheduled_notifs.json');
 const GENESIS_PROJECTS_FILE = path.join(__dirname, 'data', 'genesis_projects.json');
 const CONTRACTS_FILE = path.join(__dirname, 'data', 'contracts.json');
+const ACTUALITES_FILE = path.join(__dirname, 'data', 'actualites.json');
 
 // Catégories de partenaires marketplace (source unique, partagée par inscription + admin)
 const PARTNER_TYPES = [
@@ -327,6 +328,16 @@ function loadEvents() {
         console.error('[EVENTS] Erreur lecture events:', error);
     }
     return [];
+}
+
+function loadActualites() {
+    try {
+        if (fs.existsSync(ACTUALITES_FILE)) return JSON.parse(fs.readFileSync(ACTUALITES_FILE, 'utf8'));
+    } catch(e) { console.error('[ACTUALITES] Lecture:', e.message); }
+    return [];
+}
+function saveActualites(list) {
+    try { fs.writeFileSync(ACTUALITES_FILE, JSON.stringify(list, null, 2), 'utf8'); } catch(e) { console.error('[ACTUALITES] Sauvegarde:', e.message); }
 }
 
 function saveEvents(events) {
@@ -19612,6 +19623,99 @@ app.put('/api/admin/payout/country/:code', function(req, res) {
         res.json({ ok: true, countryCode: code, provider: provider, enabled: enabled });
     } catch(e) {
         res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
+// ── ACTUALITÉS (partenariats / événements publics) ──────────────
+// GET public — lecture de toutes les actualités publiées
+app.get('/api/actualites', function(req, res) {
+    try {
+        var list = loadActualites();
+        var published = list.filter(function(a) { return a.published !== false; });
+        published.sort(function(a, b) { return new Date(b.date) - new Date(a.date); });
+        res.json({ ok: true, actualites: published });
+    } catch(e) {
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// GET admin — toutes les actualités (y compris brouillons)
+app.get('/api/admin/actualites', function(req, res) {
+    try {
+        if (!_isAdminRequest(req)) return res.status(403).json({ error: 'Forbidden' });
+        var list = loadActualites();
+        list.sort(function(a, b) { return new Date(b.date) - new Date(a.date); });
+        res.json({ ok: true, actualites: list });
+    } catch(e) {
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// POST admin — créer une actualité
+app.post('/api/admin/actualites', function(req, res) {
+    try {
+        if (!_isAdminRequest(req)) return res.status(403).json({ error: 'Forbidden' });
+        var b = req.body;
+        if (!b.title || !b.description) return res.status(400).json({ error: 'Titre et description requis' });
+        var crypto = require('crypto');
+        var actu = {
+            id: 'actu_' + Date.now() + '_' + crypto.randomBytes(3).toString('hex'),
+            title: (b.title || '').substring(0, 200),
+            description: (b.description || '').substring(0, 2000),
+            category: b.category || 'partenariat',
+            location: (b.location || '').substring(0, 100),
+            date: b.date || new Date().toISOString(),
+            image: (b.image || '').substring(0, 500000), // base64 ou URL
+            published: b.published !== false,
+            created_at: new Date().toISOString()
+        };
+        var list = loadActualites();
+        list.push(actu);
+        saveActualites(list);
+        res.json({ ok: true, actualite: actu });
+    } catch(e) {
+        console.error('[ACTUALITES POST]', e.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// PUT admin — modifier une actualité
+app.put('/api/admin/actualites/:id', function(req, res) {
+    try {
+        if (!_isAdminRequest(req)) return res.status(403).json({ error: 'Forbidden' });
+        var list = loadActualites();
+        var idx = list.findIndex(function(a) { return a.id === req.params.id; });
+        if (idx === -1) return res.status(404).json({ error: 'Actualité introuvable' });
+        var b = req.body;
+        var actu = list[idx];
+        if (b.title !== undefined) actu.title = (b.title || '').substring(0, 200);
+        if (b.description !== undefined) actu.description = (b.description || '').substring(0, 2000);
+        if (b.category !== undefined) actu.category = b.category;
+        if (b.location !== undefined) actu.location = (b.location || '').substring(0, 100);
+        if (b.date !== undefined) actu.date = b.date;
+        if (b.image !== undefined) actu.image = (b.image || '').substring(0, 500000);
+        if (b.published !== undefined) actu.published = !!b.published;
+        actu.updated_at = new Date().toISOString();
+        list[idx] = actu;
+        saveActualites(list);
+        res.json({ ok: true, actualite: actu });
+    } catch(e) {
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// DELETE admin — supprimer une actualité
+app.delete('/api/admin/actualites/:id', function(req, res) {
+    try {
+        if (!_isAdminRequest(req)) return res.status(403).json({ error: 'Forbidden' });
+        var list = loadActualites();
+        var idx = list.findIndex(function(a) { return a.id === req.params.id; });
+        if (idx === -1) return res.status(404).json({ error: 'Actualité introuvable' });
+        list.splice(idx, 1);
+        saveActualites(list);
+        res.json({ ok: true });
+    } catch(e) {
+        res.status(500).json({ error: 'Erreur serveur' });
     }
 });
 

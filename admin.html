@@ -746,6 +746,9 @@
                 <div class="sheet-item" onclick="showSectionMobile('prospects');closeAdminSheet()">
                     <i class="fas fa-crosshairs"></i><span>Prospects</span>
                 </div>
+                <div class="sheet-item" onclick="showSectionMobile('actualites');closeAdminSheet()">
+                    <i class="fas fa-newspaper"></i><span>Actualités</span>
+                </div>
             </div>
             <button class="sheet-logout" onclick="handleLogout()">
                 <i class="fas fa-sign-out-alt" style="margin-right:8px;"></i>Déconnexion
@@ -848,6 +851,9 @@
                 <div class="sidebar-divider"></div>
                 <button class="sidebar-btn" data-section="prospects" onclick="showSection('prospects')">
                     <i class="fas fa-crosshairs"></i><span>Prospects</span>
+                </button>
+                <button class="sidebar-btn" data-section="actualites" onclick="showSection('actualites')">
+                    <i class="fas fa-newspaper"></i><span>Actualités</span>
                 </button>
             </nav>
         </aside>
@@ -1585,6 +1591,119 @@
         </div>
     </div>
 
+    <!-- ===== SECTION ACTUALITÉS ===== -->
+    <div id="actualitesSection" class="container mx-auto max-w-7xl" style="display:none;padding:0 0 40px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:32px;flex-wrap:wrap;gap:12px;">
+            <h2 style="font-family:'Unbounded',cursive;font-size:clamp(22px,4vw,36px);font-weight:900;text-transform:uppercase;color:var(--c-gold);display:flex;align-items:center;gap:12px;">
+                <i class="fas fa-newspaper"></i>ACTUALITÉS
+            </h2>
+            <button onclick="openActualiteForm()" style="background:linear-gradient(135deg,var(--c-gold),#e6c200);color:#000;border:none;border-radius:10px;padding:12px 22px;font-weight:900;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:8px;letter-spacing:.3px;">
+                <i class="fas fa-plus"></i>Nouvelle actualité
+            </button>
+        </div>
+
+        <!-- Sous-onglets Publiées / Brouillons -->
+        <div style="display:flex;gap:4px;background:var(--c-surface2);border:1px solid var(--c-border);border-radius:10px;padding:4px;width:fit-content;margin-bottom:24px;">
+            <button id="actu-tab-published" onclick="filterActualites('published')" style="font-size:12px;font-weight:700;padding:8px 20px;border-radius:7px;border:none;cursor:pointer;background:linear-gradient(135deg,var(--c-gold),#e6c200);color:#000;">Publiées</button>
+            <button id="actu-tab-draft" onclick="filterActualites('draft')" style="font-size:12px;font-weight:700;padding:8px 20px;border-radius:7px;border:none;cursor:pointer;background:transparent;color:var(--c-muted);">Brouillons</button>
+            <button id="actu-tab-all" onclick="filterActualites('all')" style="font-size:12px;font-weight:700;padding:8px 20px;border-radius:7px;border:none;cursor:pointer;background:transparent;color:var(--c-muted);">Toutes</button>
+        </div>
+
+        <!-- Loader -->
+        <div id="actu-admin-loader" style="display:flex;align-items:center;justify-content:center;gap:12px;padding:48px;color:var(--c-muted);">
+            <i class="fas fa-circle-notch fa-spin" style="color:var(--c-gold);font-size:20px;"></i>
+            <span>Chargement…</span>
+        </div>
+
+        <!-- Liste -->
+        <div id="actu-admin-list" style="display:none;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;"></div>
+
+        <!-- Vide -->
+        <div id="actu-admin-empty" style="display:none;text-align:center;padding:64px 24px;background:var(--c-surface);border:1px solid var(--c-border);border-radius:14px;">
+            <i class="fas fa-newspaper" style="font-size:40px;color:var(--c-muted);display:block;margin-bottom:14px;"></i>
+            <p style="font-size:14px;color:var(--c-muted);font-weight:700;">Aucune actualité pour l'instant.</p>
+            <button onclick="openActualiteForm()" style="margin-top:14px;background:linear-gradient(135deg,var(--c-gold),#e6c200);color:#000;border:none;border-radius:8px;padding:10px 20px;font-weight:900;font-size:13px;cursor:pointer;">
+                <i class="fas fa-plus mr-1"></i>Créer la première actualité
+            </button>
+        </div>
+    </div>
+
+    <!-- MODAL ACTUALITÉ (créer / éditer) -->
+    <div id="actualite-modal" style="display:none;position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,.88);backdrop-filter:blur(12px);align-items:center;justify-content:center;padding:16px;">
+        <div style="background:var(--c-surface);border:1.5px solid rgba(255,215,0,.18);border-radius:20px;width:100%;max-width:560px;max-height:90vh;overflow-y:auto;box-shadow:0 40px 80px rgba(0,0,0,.8);">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:22px 24px;border-bottom:1px solid var(--c-border);">
+                <div style="font-family:'Unbounded',cursive;font-size:14px;font-weight:900;color:var(--c-gold);" id="actu-modal-title">Nouvelle actualité</div>
+                <button onclick="closeActualiteForm()" style="background:none;border:none;color:var(--c-muted);font-size:20px;cursor:pointer;padding:4px;">&times;</button>
+            </div>
+            <div style="padding:24px;">
+                <input type="hidden" id="actu-edit-id">
+                <!-- Titre -->
+                <div style="margin-bottom:16px;">
+                    <label style="display:block;font-size:11px;font-weight:700;color:var(--c-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Titre *</label>
+                    <input id="actu-form-title" type="text" placeholder="Titre de l'actualité…" style="width:100%;background:var(--c-surface2);border:1.5px solid var(--c-border);border-radius:10px;color:var(--c-text);font-family:'Space Grotesk',sans-serif;font-size:14px;padding:11px 14px;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='rgba(255,215,0,.4)'" onblur="this.style.borderColor='var(--c-border)'">
+                </div>
+                <!-- Catégorie + Date -->
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+                    <div>
+                        <label style="display:block;font-size:11px;font-weight:700;color:var(--c-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Catégorie</label>
+                        <select id="actu-form-category" style="width:100%;background:var(--c-surface2);border:1.5px solid var(--c-border);border-radius:10px;color:var(--c-text);font-family:'Space Grotesk',sans-serif;font-size:14px;padding:11px 14px;outline:none;box-sizing:border-box;">
+                            <option value="partenariat">Partenariat</option>
+                            <option value="evenement">Événement</option>
+                            <option value="media">Médias</option>
+                            <option value="collaboration">Collaboration</option>
+                            <option value="conference">Conférence</option>
+                            <option value="award">Récompense</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="display:block;font-size:11px;font-weight:700;color:var(--c-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Date</label>
+                        <input id="actu-form-date" type="date" style="width:100%;background:var(--c-surface2);border:1.5px solid var(--c-border);border-radius:10px;color:var(--c-text);font-family:'Space Grotesk',sans-serif;font-size:14px;padding:11px 14px;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='rgba(255,215,0,.4)'" onblur="this.style.borderColor='var(--c-border)'">
+                    </div>
+                </div>
+                <!-- Lieu -->
+                <div style="margin-bottom:16px;">
+                    <label style="display:block;font-size:11px;font-weight:700;color:var(--c-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Lieu</label>
+                    <input id="actu-form-location" type="text" placeholder="Ex: Paris, en ligne, Dakar…" style="width:100%;background:var(--c-surface2);border:1.5px solid var(--c-border);border-radius:10px;color:var(--c-text);font-family:'Space Grotesk',sans-serif;font-size:14px;padding:11px 14px;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='rgba(255,215,0,.4)'" onblur="this.style.borderColor='var(--c-border)'">
+                </div>
+                <!-- Description -->
+                <div style="margin-bottom:16px;">
+                    <label style="display:block;font-size:11px;font-weight:700;color:var(--c-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Description *</label>
+                    <textarea id="actu-form-desc" rows="4" placeholder="Décrivez l'actualité, l'événement ou le partenariat…" style="width:100%;background:var(--c-surface2);border:1.5px solid var(--c-border);border-radius:10px;color:var(--c-text);font-family:'Space Grotesk',sans-serif;font-size:14px;padding:11px 14px;outline:none;resize:vertical;box-sizing:border-box;" onfocus="this.style.borderColor='rgba(255,215,0,.4)'" onblur="this.style.borderColor='var(--c-border)'"></textarea>
+                </div>
+                <!-- Photo -->
+                <div style="margin-bottom:16px;">
+                    <label style="display:block;font-size:11px;font-weight:700;color:var(--c-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Photo</label>
+                    <div style="border:1.5px dashed rgba(255,215,0,.25);border-radius:10px;padding:16px;text-align:center;cursor:pointer;transition:border-color .2s;" id="actu-drop-zone" onclick="document.getElementById('actu-form-file').click()" ondragover="event.preventDefault();this.style.borderColor='rgba(255,215,0,.6)'" ondragleave="this.style.borderColor='rgba(255,215,0,.25)'" ondrop="_actuDropImage(event)">
+                        <i class="fas fa-cloud-upload-alt" style="font-size:28px;color:var(--c-gold);display:block;margin-bottom:8px;"></i>
+                        <p style="font-size:13px;color:var(--c-muted);margin-bottom:4px;">Cliquez pour choisir une image</p>
+                        <p style="font-size:11px;color:var(--c-muted);opacity:.6;">ou glissez-déposez — JPG, PNG, WebP (max 5 Mo)</p>
+                        <input type="file" id="actu-form-file" accept="image/*" style="display:none;" onchange="_actuFileSelected(this)">
+                    </div>
+                    <!-- Aperçu -->
+                    <div id="actu-img-preview" style="display:none;margin-top:10px;position:relative;">
+                        <img id="actu-img-preview-img" src="" alt="Aperçu" style="width:100%;max-height:200px;object-fit:cover;border-radius:10px;border:1px solid var(--c-border);">
+                        <button onclick="_actuClearImage()" style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,.7);border:none;color:#fff;width:28px;height:28px;border-radius:50%;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;">&times;</button>
+                    </div>
+                    <input type="hidden" id="actu-form-image">
+                </div>
+                <!-- Publié -->
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;background:var(--c-surface2);border:1px solid var(--c-border);border-radius:10px;padding:12px 14px;">
+                    <input type="checkbox" id="actu-form-published" checked style="width:18px;height:18px;cursor:pointer;accent-color:var(--c-gold);">
+                    <label for="actu-form-published" style="font-size:13px;font-weight:700;cursor:pointer;">Publier immédiatement sur le site</label>
+                </div>
+                <!-- Erreur -->
+                <div id="actu-form-err" style="display:none;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.3);border-radius:8px;padding:10px 14px;font-size:13px;color:#ef4444;margin-bottom:14px;"></div>
+                <!-- Boutons -->
+                <div style="display:flex;gap:10px;justify-content:flex-end;">
+                    <button onclick="closeActualiteForm()" style="background:transparent;border:1px solid var(--c-border);color:var(--c-muted);padding:11px 20px;border-radius:9px;font-weight:700;font-size:13px;cursor:pointer;">Annuler</button>
+                    <button id="actu-form-submit" onclick="submitActualite()" style="background:linear-gradient(135deg,var(--c-gold),#e6c200);color:#000;border:none;border-radius:9px;padding:11px 24px;font-weight:900;font-size:13px;cursor:pointer;letter-spacing:.3px;">
+                        <i class="fas fa-check" style="margin-right:6px;"></i>Enregistrer
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- MODAL PARTENAIRE DETAIL -->
     <div id="partnerModal" class="modal">
         <div class="modal-content">
@@ -1837,6 +1956,8 @@
             var litigesEl = document.getElementById('litigesSection');
             var supportEl = document.getElementById('supportSection');
             var prospectsEl = document.getElementById('prospectsSection');
+            var actualitesEl = document.getElementById('actualitesSection');
+            if (actualitesEl) actualitesEl.style.display = 'none';
             var campagnesEl = document.getElementById('campagnesSection');
             var nouvfonctEl = document.getElementById('nouvfonctSection');
             var niveauxEl = document.getElementById('niveauxSection');
@@ -1892,6 +2013,9 @@
             } else if (section === 'niveaux') {
                 if (niveauxEl) niveauxEl.style.display = 'block';
                 loadUsersByLevel();
+            } else if (section === 'actualites') {
+                if (actualitesEl) actualitesEl.style.display = 'block';
+                loadAdminActualites();
             }
             // Mettre à jour l'élément actif dans la sidebar
             document.querySelectorAll('.sidebar-btn').forEach(function(b) {
@@ -6263,6 +6387,239 @@
         }
 
         function _escHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+        /* ══════════════════════════════════════════
+           ACTUALITÉS — gestion admin
+        ══════════════════════════════════════════ */
+        var _actuAll = [];
+        var _actuFilter = 'published';
+
+        function loadAdminActualites() {
+            var loader = document.getElementById('actu-admin-loader');
+            var listEl = document.getElementById('actu-admin-list');
+            var emptyEl = document.getElementById('actu-admin-empty');
+            if (loader) loader.style.display = 'flex';
+            if (listEl) listEl.style.display = 'none';
+            if (emptyEl) emptyEl.style.display = 'none';
+            fetch(API_BASE_URL + '/api/admin/actualites', { headers: { 'x-admin-key': adminKey || '' } })
+                .then(function(r){ return r.json(); })
+                .then(function(d){
+                    if (loader) loader.style.display = 'none';
+                    if (!d.ok) { if (emptyEl) emptyEl.style.display = 'block'; return; }
+                    _actuAll = d.actualites || [];
+                    _renderActualitesAdmin(_actuFilter);
+                })
+                .catch(function(){
+                    if (loader) loader.style.display = 'none';
+                    if (emptyEl) emptyEl.style.display = 'block';
+                });
+        }
+
+        function filterActualites(f) {
+            _actuFilter = f;
+            ['published','draft','all'].forEach(function(k){
+                var btn = document.getElementById('actu-tab-'+k);
+                if (!btn) return;
+                if (k === f) {
+                    btn.style.background = 'linear-gradient(135deg,var(--c-gold),#e6c200)';
+                    btn.style.color = '#000';
+                } else {
+                    btn.style.background = 'transparent';
+                    btn.style.color = 'var(--c-muted)';
+                }
+            });
+            _renderActualitesAdmin(f);
+        }
+
+        function _renderActualitesAdmin(filter) {
+            var listEl = document.getElementById('actu-admin-list');
+            var emptyEl = document.getElementById('actu-admin-empty');
+            if (!listEl) return;
+            var items = _actuAll.filter(function(a){
+                if (filter === 'published') return a.published !== false;
+                if (filter === 'draft') return a.published === false;
+                return true;
+            });
+            if (!items.length) {
+                listEl.style.display = 'none';
+                if (emptyEl) emptyEl.style.display = 'block';
+                return;
+            }
+            if (emptyEl) emptyEl.style.display = 'none';
+            listEl.style.display = 'grid';
+            var html = '';
+            items.forEach(function(a) {
+                var imgHtml = a.image
+                    ? '<img src="'+_escHtml(a.image)+'" alt="'+_escHtml(a.title)+'" style="width:100%;aspect-ratio:16/9;object-fit:cover;display:block;" onerror="this.style.display=\'none\'">'
+                    : '<div style="width:100%;aspect-ratio:16/9;background:var(--c-surface2);display:flex;align-items:center;justify-content:center;"><i class="fas fa-image" style="font-size:24px;color:var(--c-muted);"></i></div>';
+                var pubBadge = a.published !== false
+                    ? '<span style="font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#22c55e;background:rgba(34,197,94,.1);padding:3px 8px;border-radius:20px;border:1px solid rgba(34,197,94,.25);">Publié</span>'
+                    : '<span style="font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#f59e0b;background:rgba(245,158,11,.1);padding:3px 8px;border-radius:20px;border:1px solid rgba(245,158,11,.25);">Brouillon</span>';
+                var dateStr = '';
+                if (a.date) { try { dateStr = new Date(a.date).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'}); } catch(e){} }
+                html += '<div style="background:var(--c-surface);border:1.5px solid var(--c-border);border-radius:14px;overflow:hidden;transition:border-color .2s;" onmouseenter="this.style.borderColor=\'rgba(255,215,0,.3)\'" onmouseleave="this.style.borderColor=\'var(--c-border)\'">';
+                html += imgHtml;
+                html += '<div style="padding:16px;">';
+                html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:8px;">'+pubBadge+'</div>';
+                html += '<div style="font-family:\'Unbounded\',cursive;font-size:13px;font-weight:900;color:var(--c-text);margin-bottom:6px;line-height:1.3;">'+_escHtml(a.title)+'</div>';
+                html += '<div style="font-size:12px;color:var(--c-muted);line-height:1.6;margin-bottom:10px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">'+_escHtml(a.description)+'</div>';
+                if (dateStr || a.location) {
+                    html += '<div style="font-size:11px;color:#555;display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;">';
+                    if (dateStr) html += '<span><i class="fas fa-calendar-days" style="color:var(--c-gold);margin-right:4px;font-size:10px;"></i>'+dateStr+'</span>';
+                    if (a.location) html += '<span><i class="fas fa-location-dot" style="color:var(--c-gold);margin-right:4px;font-size:10px;"></i>'+_escHtml(a.location)+'</span>';
+                    html += '</div>';
+                }
+                html += '<div style="display:flex;gap:8px;">';
+                html += '<button onclick="editActualite(\''+a.id+'\')" style="flex:1;background:rgba(255,215,0,.08);border:1px solid rgba(255,215,0,.2);border-radius:8px;color:var(--c-gold);font-size:12px;font-weight:700;padding:8px;cursor:pointer;transition:background .2s;" onmouseenter="this.style.background=\'rgba(255,215,0,.15)\'" onmouseleave="this.style.background=\'rgba(255,215,0,.08)\'"><i class="fas fa-pen-to-square" style="margin-right:5px;"></i>Modifier</button>';
+                html += '<button onclick="deleteActualite(\''+a.id+'\')" style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:8px;color:#ef4444;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer;transition:background .2s;" onmouseenter="this.style.background=\'rgba(239,68,68,.15)\'" onmouseleave="this.style.background=\'rgba(239,68,68,.08)\'"><i class="fas fa-trash-can"></i></button>';
+                html += '</div></div></div>';
+            });
+            listEl.innerHTML = html;
+        }
+
+        function openActualiteForm(id) {
+            var modal = document.getElementById('actualite-modal');
+            document.getElementById('actu-edit-id').value = '';
+            document.getElementById('actu-form-title').value = '';
+            document.getElementById('actu-form-category').value = 'partenariat';
+            document.getElementById('actu-form-date').value = '';
+            document.getElementById('actu-form-location').value = '';
+            document.getElementById('actu-form-desc').value = '';
+            document.getElementById('actu-form-image').value = '';
+            document.getElementById('actu-form-published').checked = true;
+            document.getElementById('actu-img-preview').style.display = 'none';
+            document.getElementById('actu-form-err').style.display = 'none';
+            document.getElementById('actu-modal-title').textContent = 'Nouvelle actualité';
+            document.getElementById('actu-form-submit').textContent = 'Publier';
+            if (modal) { modal.style.display = 'flex'; document.body.style.overflow = 'hidden'; }
+        }
+
+        function editActualite(id) {
+            var a = _actuAll.find(function(x){ return x.id === id; });
+            if (!a) return;
+            document.getElementById('actu-edit-id').value = a.id;
+            document.getElementById('actu-form-title').value = a.title || '';
+            document.getElementById('actu-form-category').value = a.category || 'partenariat';
+            document.getElementById('actu-form-date').value = a.date ? a.date.substring(0,10) : '';
+            document.getElementById('actu-form-location').value = a.location || '';
+            document.getElementById('actu-form-desc').value = a.description || '';
+            document.getElementById('actu-form-image').value = a.image || '';
+            document.getElementById('actu-form-published').checked = a.published !== false;
+            document.getElementById('actu-form-err').style.display = 'none';
+            document.getElementById('actu-modal-title').textContent = 'Modifier l\'actualité';
+            document.getElementById('actu-form-submit').textContent = 'Enregistrer';
+            var prev = document.getElementById('actu-img-preview');
+            var prevImg = document.getElementById('actu-img-preview-img');
+            if (a.image) { prevImg.src = a.image; prev.style.display = 'block'; } else { prev.style.display = 'none'; }
+            var modal = document.getElementById('actualite-modal');
+            if (modal) { modal.style.display = 'flex'; document.body.style.overflow = 'hidden'; }
+        }
+
+        function closeActualiteForm() {
+            var modal = document.getElementById('actualite-modal');
+            if (modal) modal.style.display = 'none';
+            document.body.style.overflow = '';
+        }
+
+        function _actuFileSelected(input) {
+            var file = input.files[0];
+            if (!file) return;
+            if (file.size > 5 * 1024 * 1024) { alert('Image trop volumineuse (max 5 Mo)'); return; }
+            var reader = new FileReader();
+            reader.onload = function(e){
+                document.getElementById('actu-form-image').value = e.target.result;
+                var prev = document.getElementById('actu-img-preview');
+                var prevImg = document.getElementById('actu-img-preview-img');
+                prevImg.src = e.target.result;
+                prev.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function _actuDropImage(e) {
+            e.preventDefault();
+            document.getElementById('actu-drop-zone').style.borderColor = 'rgba(255,215,0,.25)';
+            var files = e.dataTransfer.files;
+            if (!files.length) return;
+            var dummy = document.getElementById('actu-form-file');
+            dummy.files = files;
+            _actuFileSelected(dummy);
+        }
+
+        function _actuClearImage() {
+            document.getElementById('actu-form-image').value = '';
+            document.getElementById('actu-img-preview').style.display = 'none';
+            document.getElementById('actu-img-preview-img').src = '';
+            document.getElementById('actu-form-file').value = '';
+        }
+
+        function submitActualite() {
+            var id = document.getElementById('actu-edit-id').value;
+            var title = (document.getElementById('actu-form-title').value || '').trim();
+            var desc = (document.getElementById('actu-form-desc').value || '').trim();
+            var errEl = document.getElementById('actu-form-err');
+            if (!title || !desc) {
+                errEl.textContent = 'Le titre et la description sont requis.';
+                errEl.style.display = 'block';
+                return;
+            }
+            var payload = {
+                title: title,
+                description: desc,
+                category: (document.getElementById('actu-form-category').value || 'partenariat'),
+                date: document.getElementById('actu-form-date').value || new Date().toISOString(),
+                location: (document.getElementById('actu-form-location').value || '').trim(),
+                image: document.getElementById('actu-form-image').value || '',
+                published: document.getElementById('actu-form-published').checked
+            };
+            var btn = document.getElementById('actu-form-submit');
+            btn.disabled = true; btn.textContent = 'Enregistrement…';
+            errEl.style.display = 'none';
+            var url = id ? (API_BASE_URL + '/api/admin/actualites/' + id) : (API_BASE_URL + '/api/admin/actualites');
+            var method = id ? 'PUT' : 'POST';
+            fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json', 'x-admin-key': adminKey || '' },
+                body: JSON.stringify(payload)
+            })
+            .then(function(r){ return r.json(); })
+            .then(function(d){
+                if (d.ok) {
+                    closeActualiteForm();
+                    loadAdminActualites();
+                } else {
+                    errEl.textContent = d.error || 'Erreur serveur';
+                    errEl.style.display = 'block';
+                    btn.disabled = false; btn.textContent = 'Enregistrer';
+                }
+            })
+            .catch(function(){
+                errEl.textContent = 'Erreur de connexion.';
+                errEl.style.display = 'block';
+                btn.disabled = false; btn.textContent = 'Enregistrer';
+            });
+        }
+
+        function deleteActualite(id) {
+            if (!confirm('Supprimer cette actualité ? Cette action est irréversible.')) return;
+            fetch(API_BASE_URL + '/api/admin/actualites/' + id, {
+                method: 'DELETE',
+                headers: { 'x-admin-key': adminKey || '' }
+            })
+            .then(function(r){ return r.json(); })
+            .then(function(d){
+                if (d.ok) loadAdminActualites();
+                else alert('Erreur : ' + (d.error || 'inconnue'));
+            })
+            .catch(function(){ alert('Erreur de connexion.'); });
+        }
+
+        document.addEventListener('keydown', function(e){
+            if (e.key === 'Escape') {
+                var modal = document.getElementById('actualite-modal');
+                if (modal && modal.style.display !== 'none') closeActualiteForm();
+            }
+        });
 </script>
 </body>
 </html>

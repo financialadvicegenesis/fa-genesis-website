@@ -313,8 +313,9 @@ footer{background:var(--s1);border-top:1px solid var(--gold-border);padding:64px
     </a>
     <div class="nav-links">
       <a href="#espaces">Espaces</a>
-      <a href="#comment">Comment ça marche</a>
       <a href="#fonctionnalites">Fonctionnalités</a>
+      <a href="#actualites">Actualités</a>
+      <a href="#apropos">À propos</a>
       <a href="#telecharger">Télécharger</a>
     </div>
     <div class="nav-ctas">
@@ -332,8 +333,9 @@ footer{background:var(--s1);border-top:1px solid var(--gold-border);padding:64px
     <i class="fa-solid fa-xmark"></i>
   </button>
   <a href="#espaces" onclick="document.getElementById('mobile-menu').classList.remove('open')">Espaces</a>
-  <a href="#comment" onclick="document.getElementById('mobile-menu').classList.remove('open')">Comment ça marche</a>
   <a href="#fonctionnalites" onclick="document.getElementById('mobile-menu').classList.remove('open')">Fonctionnalités</a>
+  <a href="#actualites" onclick="document.getElementById('mobile-menu').classList.remove('open')">Actualités</a>
+  <a href="#apropos" onclick="document.getElementById('mobile-menu').classList.remove('open')">À propos</a>
   <a href="#telecharger" onclick="document.getElementById('mobile-menu').classList.remove('open')">Télécharger</a>
   <button onclick="openLogin('client');document.getElementById('mobile-menu').classList.remove('open')">Se connecter</button>
   <button onclick="openLogin('partner');document.getElementById('mobile-menu').classList.remove('open')" style="color:var(--orange)">Devenir prestataire</button>
@@ -711,6 +713,135 @@ footer{background:var(--s1);border-top:1px solid var(--gold-border);padding:64px
   </div>
 </section>
 
+<!-- ── À PROPOS ───────────────────────────────────────────── -->
+<section id="apropos" style="padding:120px 0;background:var(--s1);position:relative;overflow:hidden;">
+  <div style="position:absolute;top:-20%;right:-5%;width:50vw;height:50vw;background:radial-gradient(ellipse,rgba(255,215,0,.03),transparent 65%);pointer-events:none;"></div>
+  <div class="wrap">
+    <div style="text-align:center;margin-bottom:72px;" class="reveal">
+      <span class="sec-label">Notre histoire</span>
+      <h2 style="font-family:var(--font-d);font-size:clamp(28px,3.5vw,52px);font-weight:900;line-height:1.1;margin-bottom:16px;">L'écosystème <span class="grad-text">FA GENESIS</span></h2>
+      <p style="font-size:16px;color:var(--t2);font-weight:300;max-width:560px;margin:0 auto;line-height:1.7;">FA Genesis est le pôle d'incubation stratégique dédié à la transformation des idées en projets structurés, crédibles et visibles — au sein du groupe FA Industries.</p>
+    </div>
+
+    <!-- Président + Quote -->
+    <div style="display:grid;grid-template-columns:300px 1fr;gap:48px;align-items:center;margin-bottom:80px;" class="apropos-president-grid reveal">
+      <div style="position:relative;">
+        <div style="position:absolute;inset:-8px;background:linear-gradient(135deg,rgba(255,215,0,.15),transparent);border-radius:24px;"></div>
+        <img src="assets/images/president-fa-genesis.jpg"
+             onerror="this.onerror=null;this.src='assets/images/president-fa-genesis.png'"
+             alt="Tiffen NDJAMBOU — Président FA Genesis"
+             style="width:100%;aspect-ratio:3/4;object-fit:cover;object-position:top;border-radius:20px;border:1.5px solid rgba(255,215,0,.2);box-shadow:0 40px 80px rgba(0,0,0,.6);position:relative;z-index:1;">
+      </div>
+      <div>
+        <div style="position:relative;margin-bottom:32px;">
+          <div style="position:absolute;top:-8px;left:-4px;font-size:80px;line-height:1;color:rgba(255,215,0,.08);font-family:Georgia,serif;pointer-events:none;">"</div>
+          <blockquote style="font-family:var(--font-d);font-size:clamp(18px,2vw,26px);font-weight:900;line-height:1.35;color:var(--white);padding-top:16px;position:relative;z-index:1;">
+            Nous sommes le catalyseur qui donne un cadre, une méthode et un réseau à ceux qui osent bâtir leur avenir.
+          </blockquote>
+        </div>
+        <div style="display:flex;align-items:center;gap:16px;margin-bottom:40px;">
+          <div style="width:40px;height:2px;background:linear-gradient(90deg,var(--gold),transparent);"></div>
+          <div>
+            <div style="font-family:var(--font-d);font-size:13px;font-weight:900;color:var(--white);">Tiffen NDJAMBOU</div>
+            <div style="font-size:12px;color:var(--t2);margin-top:2px;">Président, FA Genesis · Groupe FA Industries</div>
+          </div>
+        </div>
+        <!-- Piliers BUILD / LAUNCH / IMPACT -->
+        <div style="display:flex;flex-direction:column;gap:16px;">
+          <div style="display:flex;align-items:center;gap:16px;background:var(--s2);border:1.5px solid var(--gold-border);border-radius:12px;padding:16px 20px;">
+            <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--gold),#e6c200);display:flex;align-items:center;justify-content:center;font-family:var(--font-d);font-size:13px;font-weight:900;color:#0a0800;flex-shrink:0;">B</div>
+            <div><div style="font-family:var(--font-d);font-size:12px;font-weight:900;color:var(--white);margin-bottom:3px;">BUILD</div><div style="font-size:13px;color:var(--t2);font-weight:300;">Structurer l'idée, la vision et le positionnement.</div></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:16px;background:var(--s2);border:1.5px solid var(--gold-border);border-radius:12px;padding:16px 20px;">
+            <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--orange),#ff6a00);display:flex;align-items:center;justify-content:center;font-family:var(--font-d);font-size:13px;font-weight:900;color:#fff;flex-shrink:0;">L</div>
+            <div><div style="font-family:var(--font-d);font-size:12px;font-weight:900;color:var(--white);margin-bottom:3px;">LAUNCH</div><div style="font-size:13px;color:var(--t2);font-weight:300;">Créer une image pro et une visibilité cohérente.</div></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:16px;background:var(--s2);border:1.5px solid var(--gold-border);border-radius:12px;padding:16px 20px;">
+            <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#a0a0a0,#d0d0d0);display:flex;align-items:center;justify-content:center;font-family:var(--font-d);font-size:13px;font-weight:900;color:#0a0800;flex-shrink:0;">I</div>
+            <div><div style="font-family:var(--font-d);font-size:12px;font-weight:900;color:var(--white);margin-bottom:3px;">IMPACT</div><div style="font-size:13px;color:var(--t2);font-weight:300;">Générer des résultats concrets et durables.</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Valeurs -->
+    <h3 style="font-family:var(--font-d);font-size:clamp(20px,2.5vw,36px);font-weight:900;text-align:center;margin-bottom:40px;" class="reveal"><span class="grad-text">Notre vision</span></h3>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px;" class="apropos-values-grid">
+      <div style="background:var(--s2);border:1.5px solid var(--gold-border);border-radius:16px;overflow:hidden;transition:border-color .3s,transform .3s;" class="reveal apropos-val-card">
+        <div style="height:180px;background:linear-gradient(135deg,rgba(255,215,0,.1),rgba(255,72,0,.06));display:flex;align-items:center;justify-content:center;border-bottom:1px solid var(--gold-border);">
+          <i class="fa-solid fa-lightbulb" style="font-size:52px;color:var(--gold);"></i>
+        </div>
+        <div style="padding:24px;">
+          <div style="font-family:var(--font-d);font-size:14px;font-weight:900;color:var(--white);margin-bottom:10px;">Innovation</div>
+          <p style="font-size:13px;color:var(--t2);line-height:1.7;font-weight:300;">Nous croyons en l'innovation comme moteur de transformation. Chaque projet est une opportunité de repousser les limites.</p>
+        </div>
+      </div>
+      <div style="background:var(--s2);border:1.5px solid var(--gold-border);border-radius:16px;overflow:hidden;transition:border-color .3s,transform .3s;" class="reveal reveal-delay-1 apropos-val-card">
+        <div style="height:180px;background:linear-gradient(135deg,rgba(255,72,0,.08),rgba(255,215,0,.06));display:flex;align-items:center;justify-content:center;border-bottom:1px solid var(--gold-border);">
+          <i class="fa-solid fa-fingerprint" style="font-size:52px;color:var(--orange);"></i>
+        </div>
+        <div style="padding:24px;">
+          <div style="font-family:var(--font-d);font-size:14px;font-weight:900;color:var(--white);margin-bottom:10px;">Authenticité</div>
+          <p style="font-size:13px;color:var(--t2);line-height:1.7;font-weight:300;">Votre identité unique est au cœur de notre approche, pour un positionnement sincère et différenciant sur votre marché.</p>
+        </div>
+      </div>
+      <div style="background:var(--s2);border:1.5px solid var(--gold-border);border-radius:16px;overflow:hidden;transition:border-color .3s,transform .3s;" class="reveal reveal-delay-2 apropos-val-card">
+        <div style="height:180px;background:linear-gradient(135deg,rgba(160,160,255,.06),rgba(255,215,0,.06));display:flex;align-items:center;justify-content:center;border-bottom:1px solid var(--gold-border);">
+          <i class="fa-solid fa-rocket" style="font-size:52px;color:#a0a0ff;"></i>
+        </div>
+        <div style="padding:24px;">
+          <div style="font-family:var(--font-d);font-size:14px;font-weight:900;color:var(--white);margin-bottom:10px;">Ambition</div>
+          <p style="font-size:13px;color:var(--t2);line-height:1.7;font-weight:300;">Nous accompagnons les visionnaires qui osent voir grand. Ensemble, les ambitions les plus audacieuses deviennent réalité.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <style>
+  .apropos-president-grid{grid-template-columns:300px 1fr!important;}
+  .apropos-values-grid{grid-template-columns:repeat(3,1fr)!important;}
+  .apropos-val-card:hover{border-color:rgba(255,215,0,.3)!important;transform:translateY(-4px)!important;}
+  @media(max-width:900px){.apropos-president-grid{grid-template-columns:1fr!important;}.apropos-values-grid{grid-template-columns:1fr!important;}}
+  </style>
+</section>
+
+<!-- ── ACTUALITÉS ─────────────────────────────────────────── -->
+<section id="actualites" style="padding:120px 0;background:var(--bg);">
+  <div class="wrap">
+    <div style="text-align:center;margin-bottom:64px;" class="reveal">
+      <span class="sec-label">Présence &amp; partenariats</span>
+      <h2 style="font-family:var(--font-d);font-size:clamp(28px,3.5vw,52px);font-weight:900;line-height:1.1;margin-bottom:16px;">Actualités <span class="grad-text">GENESIS</span></h2>
+      <p style="font-size:16px;color:var(--t2);font-weight:300;max-width:520px;margin:0 auto;line-height:1.7;">Événements, partenariats et moments clés qui jalonnent le développement de la plateforme.</p>
+    </div>
+    <!-- Grid des actualités — chargées dynamiquement -->
+    <div id="actu-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:24px;" class="actu-grid-resp"></div>
+    <!-- Loading -->
+    <div id="actu-loader" style="display:flex;align-items:center;justify-content:center;gap:12px;padding:48px;color:var(--t2);">
+      <i class="fa-solid fa-circle-notch fa-spin" style="color:var(--gold);font-size:20px;"></i>
+      <span style="font-size:14px;">Chargement des actualités…</span>
+    </div>
+    <!-- Vide -->
+    <div id="actu-empty" style="display:none;text-align:center;padding:64px 24px;">
+      <i class="fa-solid fa-newspaper" style="font-size:48px;color:var(--t3);margin-bottom:16px;display:block;"></i>
+      <p style="font-size:15px;color:var(--t2);font-weight:500;">Les actualités arrivent bientôt.</p>
+    </div>
+  </div>
+  <style>
+  .actu-grid-resp{grid-template-columns:repeat(3,1fr);}
+  @media(max-width:900px){.actu-grid-resp{grid-template-columns:repeat(2,1fr)!important;}}
+  @media(max-width:600px){.actu-grid-resp{grid-template-columns:1fr!important;}}
+  .actu-card{background:var(--s1);border:1.5px solid var(--gold-border);border-radius:16px;overflow:hidden;transition:border-color .3s,transform .3s;cursor:default;}
+  .actu-card:hover{border-color:rgba(255,215,0,.3);transform:translateY(-4px);}
+  .actu-card-img{width:100%;aspect-ratio:16/10;object-fit:cover;display:block;background:var(--s2);}
+  .actu-card-img-placeholder{width:100%;aspect-ratio:16/10;background:linear-gradient(135deg,var(--s2),var(--s3));display:flex;align-items:center;justify-content:center;}
+  .actu-card-body{padding:20px;}
+  .actu-card-cat{display:inline-block;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--gold);background:var(--gold-dim);padding:3px 10px;border-radius:20px;margin-bottom:10px;}
+  .actu-card-title{font-family:var(--font-d);font-size:14px;font-weight:900;color:var(--white);line-height:1.35;margin-bottom:8px;}
+  .actu-card-desc{font-size:13px;color:var(--t2);line-height:1.65;font-weight:300;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+  .actu-card-meta{display:flex;align-items:center;gap:12px;margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,.06);font-size:11px;color:var(--t3);}
+  .actu-card-meta i{color:var(--gold);font-size:10px;}
+  </style>
+</section>
+
 <!-- ── FOOTER ─────────────────────────────────────────────── -->
 <footer>
   <div class="wrap">
@@ -736,7 +867,8 @@ footer{background:var(--s1);border-top:1px solid var(--gold-border);padding:64px
       <div>
         <div class="footer-col-title">Entreprise</div>
         <div class="footer-links">
-          <a href="a-propos.html">À propos</a>
+          <a href="#apropos">À propos</a>
+          <a href="#actualites">Actualités</a>
           <a href="contact.html">Contact</a>
           <a href="faq.html">FAQ</a>
         </div>
@@ -906,6 +1038,57 @@ function doLogin(role){
     if(btn){btn.disabled=false;btn.textContent='Se connecter';}
   });
 }
+
+/* ── Actualités ── */
+function _actu_fmt_date(iso){
+  try{
+    var d=new Date(iso);
+    return d.toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'});
+  }catch(e){return iso||'';}
+}
+function _actu_cat_label(c){
+  var m={'partenariat':'Partenariat','evenement':'Événement','media':'Médias','collaboration':'Collaboration','conference':'Conférence','award':'Récompense'};
+  return m[c]||c||'Actualité';
+}
+function _render_actualites(list){
+  var grid=document.getElementById('actu-grid');
+  var empty=document.getElementById('actu-empty');
+  if(!grid)return;
+  if(!list||!list.length){if(empty)empty.style.display='block';return;}
+  var html='';
+  list.forEach(function(a){
+    var img='';
+    if(a.image){
+      img='<img class="actu-card-img" src="'+a.image+'" alt="'+a.title+'" loading="lazy" onerror="this.parentElement.innerHTML=\'<div class=actu-card-img-placeholder><i class=\\\"fa-solid fa-image\\\" style=\\\"font-size:36px;color:var(--t3);\\\"></i></div>\'">';
+    }else{
+      img='<div class="actu-card-img-placeholder"><i class="fa-solid fa-image" style="font-size:36px;color:var(--t3);"></i></div>';
+    }
+    var meta='';
+    if(a.date) meta+='<span><i class="fa-solid fa-calendar-days"></i>'+_actu_fmt_date(a.date)+'</span>';
+    if(a.location) meta+='<span><i class="fa-solid fa-location-dot"></i>'+a.location+'</span>';
+    html+='<div class="actu-card">'+img+'<div class="actu-card-body"><span class="actu-card-cat">'+_actu_cat_label(a.category)+'</span><div class="actu-card-title">'+a.title+'</div><div class="actu-card-desc">'+a.description+'</div>'+(meta?'<div class="actu-card-meta">'+meta+'</div>':'')+'</div></div>';
+  });
+  grid.innerHTML=html;
+  grid.style.display='grid';
+  /* reveal */
+  document.querySelectorAll('.actu-card').forEach(function(el,i){
+    el.style.opacity='0';el.style.transform='translateY(24px)';el.style.transition='opacity .6s ease '+(i*.08)+'s,transform .6s ease '+(i*.08)+'s';
+    setTimeout(function(){el.style.opacity='1';el.style.transform='none';},60);
+  });
+}
+function _load_actualites(){
+  var loader=document.getElementById('actu-loader');
+  var empty=document.getElementById('actu-empty');
+  fetch(_API+'/api/actualites').then(function(r){return r.json();}).then(function(d){
+    if(loader)loader.style.display='none';
+    if(d.ok&&d.actualites){_render_actualites(d.actualites);}
+    else if(empty)empty.style.display='block';
+  }).catch(function(){
+    if(loader)loader.style.display='none';
+    if(empty)empty.style.display='block';
+  });
+}
+_load_actualites();
 </script>
 </body>
 </html>
