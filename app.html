@@ -17707,12 +17707,11 @@ function _tutoDone(){
   var ov = document.getElementById('tuto-overlay');
   if(ov){ ov.classList.remove('open'); }
   if(_tutoIsPartner){
-    if(typeof _ptnrNav === 'function') _ptnrNav('accueil');
+    // 'accueil' ne correspond à aucun écran — le bon identifiant est 'home'
+    if(typeof _ptnrNav === 'function') _ptnrNav('home');
   } else {
-    // Le tutoriel a pu passer par showClientWallet() (étape Portefeuille).
-    // On réinitialise le flag lazy-load du profil pour que le prochain
-    // nav('profil') déclenche bien renderProfil() et non le wallet.
-    try{ if(typeof _tabLoaded !== 'undefined') _tabLoaded['profil'] = false; }catch(e){}
+    // Réinitialise le flag lazy-load pour que nav('home') recharge bien l'accueil
+    try{ if(typeof _tabLoaded !== 'undefined'){ _tabLoaded['home'] = false; _tabLoaded['profil'] = false; } }catch(e){}
     if(typeof nav === 'function') nav('home');
   }
 }
