@@ -19438,22 +19438,84 @@ app.get('/api/partner/payout/routing', authenticatePartner, function(req, res) {
     }
 });
 
-// POST /api/partner/payout/setup-payoneer — Enregistrer les infos Payoneer du prestataire
+// POST /api/partner/payout/payoneer-link — Générer un lien d'inscription Payoneer personnalisé
+app.post('/api/partner/payout/payoneer-link', authenticatePartner, async function(req, res) {
+    try {
+        var partners = loadPartners();
+        var partner  = partners.find(function(p) { return p.id === req.partner.id; });
+        if (!partner) return res.status(404).json({ ok: false, error: 'Partenaire introuvable' });
+
+        var result = await payoneerProvider.generateRegistrationLink({
+            id:      partner.id,
+            email:   partner.email,
+            prenom:  partner.prenom || '',
+            nom:     partner.nom    || '',
+            country: partner.country || ''
+        });
+
+        if (result.ok) {
+            return res.json({ ok: true, url: result.url });
+        }
+        // Fallback : Payoneer non configuré → retourner la page intermédiaire
+        if (result.fallback) {
+            return res.json({ ok: true, url: 'https://fagenesis.com/payoneer-setup.html', fallback: true });
+        }
+        res.status(500).json({ ok: false, error: result.error });
+    } catch(e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
+// POST /api/partner/payout/setup-payoneer — Sauvegarder l'email Payoneer (flow manuel / fallback)
 app.post('/api/partner/payout/setup-payoneer', authenticatePartner, function(req, res) {
     try {
         var partners = loadPartners();
         var idx      = partners.findIndex(function(p) { return p.id === req.partner.id; });
         if (idx === -1) return res.status(404).json({ ok: false, error: 'Partenaire introuvable' });
-        var data = payoneerProvider.setupPayoneerAccount({ payoneerEmail: req.body.payoneerEmail, payoneerAccountId: req.body.payoneerAccountId });
-        partners[idx].payoutProvider   = 'payoneer';
-        partners[idx].payoutStatus     = 'pending_verification';
-        partners[idx].payoneerEmail    = data.payoneerEmail;
-        if (data.payoneerAccountId) partners[idx].payoneerAccountId = data.payoneerAccountId;
-        partners[idx].updatedAt        = new Date().toISOString();
+        var email = (req.body.payoneerEmail || '').trim().toLowerCase();
+        if (!email || !email.includes('@')) return res.status(400).json({ ok: false, error: 'Email Payoneer invalide.' });
+        partners[idx].payoutProvider = 'payoneer';
+        partners[idx].payoutStatus   = 'pending_verification';
+        partners[idx].payoneerEmail  = email;
+        partners[idx].updatedAt      = new Date().toISOString();
         savePartners(partners);
-        res.json({ ok: true, payoutProvider: 'payoneer', payoutStatus: 'pending_verification', payoneerEmail: data.payoneerEmail });
+        res.json({ ok: true, payoutProvider: 'payoneer', payoutStatus: 'pending_verification', payoneerEmail: email });
     } catch(e) {
         res.status(400).json({ ok: false, error: e.message });
+    }
+});
+
+// POST /api/webhooks/payoneer — Notifications Payoneer (approbation bénéficiaire, paiement, etc.)
+app.post('/api/webhooks/payoneer', function(req, res) {
+    try {
+        var event   = req.body;
+        var type    = event.type || event.event_type || '';
+        var payeeId = event.payee_id || (event.payee && event.payee.payee_id) || '';
+
+        if (!payeeId) return res.json({ ok: true, ignored: true });
+
+        var partners = loadPartners();
+        var idx      = partners.findIndex(function(p) { return p.email === payeeId; });
+        if (idx === -1) return res.json({ ok: true, ignored: true });
+
+        // Compte approuvé → activer le payout
+        if (type === 'PAYEE_REGISTRATION_APPROVED' || type === 'payee_approved' || (event.status && event.status.toLowerCase() === 'active')) {
+            partners[idx].payoutStatus  = 'active';
+            partners[idx].payoneerEmail = partners[idx].payoneerEmail || payeeId;
+            partners[idx].updatedAt     = new Date().toISOString();
+            savePartners(partners);
+        }
+
+        // Compte refusé
+        if (type === 'PAYEE_REGISTRATION_DECLINED' || type === 'payee_declined') {
+            partners[idx].payoutStatus = 'declined';
+            partners[idx].updatedAt   = new Date().toISOString();
+            savePartners(partners);
+        }
+
+        res.json({ ok: true });
+    } catch(e) {
+        res.status(500).json({ ok: false, error: e.message });
     }
 });
 

@@ -15628,7 +15628,7 @@ function _renderPayoneerSetup(routingData){
 
   if(payoneerStatus === 'not_configured'){
     html += '<div style="margin-bottom:12px;">';
-    html += '<a href="https://fagenesis.com/payoneer-setup.html" style="display:flex;align-items:center;gap:8px;width:100%;background:linear-gradient(135deg,#FF4800,#ff6a00);color:#fff;border:none;border-radius:10px;padding:13px;font-size:14px;font-weight:800;cursor:pointer;text-decoration:none;justify-content:center;"><i class="fa-solid fa-money-bill-transfer" style="margin-right:6px;"></i>CONFIGURER MON COMPTE PAYONEER</a>';
+    html += '<button onclick="_ptnrOpenPayoneerLink()" style="display:flex;align-items:center;gap:8px;width:100%;background:linear-gradient(135deg,#FF4800,#ff6a00);color:#fff;border:none;border-radius:10px;padding:13px;font-size:14px;font-weight:800;cursor:pointer;justify-content:center;"><i class="fa-solid fa-money-bill-transfer" style="margin-right:6px;"></i>CONFIGURER MON COMPTE PAYONEER</button>';
     html += '<div style="font-size:11px;color:#555;text-align:center;margin-top:8px;">Guide pas-à-pas — revenez ici pour finaliser.</div></div>';
     html += '<div>';
     html += '<div style="font-size:11px;color:#888;font-weight:700;margin-bottom:6px;">ÉTAPE 2 — Enregistrer mon email Payoneer</div>';
@@ -15642,6 +15642,25 @@ function _renderPayoneerSetup(routingData){
   html += '<div style="font-size:10px;color:#444;margin-top:8px;text-align:center;">GENESIS ne stocke jamais vos données bancaires. Payoneer gère l\'intégralité de la sécurité de votre compte.</div>';
   html += '</div>';
   el.innerHTML = html;
+}
+
+function _ptnrOpenPayoneerLink(){
+  var btn = document.querySelector('[onclick="_ptnrOpenPayoneerLink()"]');
+  if(btn){ btn.textContent='Chargement…'; btn.disabled=true; }
+  _ptnrFetch('/api/partner/payout/payoneer-link', {method:'POST'})
+  .then(function(d){
+    if(d.ok && d.url){
+      window.open(d.url, '_blank');
+    } else {
+      // fallback
+      window.open('https://fagenesis.com/payoneer-setup.html', '_blank');
+    }
+    if(btn){ btn.innerHTML='<i class="fa-solid fa-money-bill-transfer" style="margin-right:6px;"></i>CONFIGURER MON COMPTE PAYONEER'; btn.disabled=false; }
+  })
+  .catch(function(){
+    window.open('https://fagenesis.com/payoneer-setup.html', '_blank');
+    if(btn){ btn.innerHTML='<i class="fa-solid fa-money-bill-transfer" style="margin-right:6px;"></i>CONFIGURER MON COMPTE PAYONEER'; btn.disabled=false; }
+  });
 }
 
 function _renderNoPayoutAvailable(routingData){

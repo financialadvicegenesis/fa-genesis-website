@@ -1,74 +1,240 @@
 'use strict';
 
 /**
- * PayoneerProvider — fournisseur de payout Payoneer.
+ * PayoneerProvider — intégration API Mass Payouts Payoneer.
  *
- * Couverture annoncée : 190+ pays / 70 devises.
- * API marketplace : https://developer.payoneer.com
+ * Variables d'environnement requises :
+ *   PAYONEER_PROGRAM_ID   — program_id fourni par Payoneer (ex: "100xxxxxx")
+ *   PAYONEER_CLIENT_ID    — client_id OAuth Payoneer
+ *   PAYONEER_SECRET       — client_secret OAuth Payoneer
  *
- * État d'intégration :
- *   - Onboarding prestataire : redirigé vers payoneer.com + stockage Payoneer email
- *   - Payouts automatiques via API : nécessite PAYONEER_PARTNER_ID + PAYONEER_API_KEY (env vars)
- *   - Tant que les credentials ne sont pas configurés, les payouts sont marqués
- *     payout_method='payoneer_manual' et traités manuellement par l'admin GENESIS.
+ * Environnements :
+ *   sandbox    : api.sandbox.payoneer.com  (tests)
+ *   production : api.payoneer.com          (réel)
  */
 
-var PAYONEER_SIGNUP_URL = 'https://www.payoneer.com/accounts/signup/?provId=394760';
+var https = require('https');
+
+var SANDBOX_BASE    = 'https://api.sandbox.payoneer.com';
+var PRODUCTION_BASE = 'https://api.payoneer.com';
+var REDIRECT_URL    = 'https://fagenesis.com/partner-dashboard.html?payoneer_return=1';
+
+function _baseUrl() {
+    return process.env.PAYONEER_ENV === 'production' ? PRODUCTION_BASE : SANDBOX_BASE;
+}
+
+function _programId() {
+    return process.env.PAYONEER_PROGRAM_ID || '';
+}
 
 function isConfigured() {
-    return !!(process.env.PAYONEER_PARTNER_ID && process.env.PAYONEER_API_KEY);
+    return !!(process.env.PAYONEER_PROGRAM_ID && process.env.PAYONEER_CLIENT_ID && process.env.PAYONEER_SECRET);
 }
 
-/**
- * Retourne le lien d'inscription Payoneer pour un prestataire.
- * Le prestataire crée/connecte son compte Payoneer, puis renseigne son email Payoneer dans GENESIS.
- */
-function getSignupUrl() {
-    return PAYONEER_SIGNUP_URL;
+// ── OAuth2 : obtenir un Bearer token ──────────────────────────────────────────
+
+var _tokenCache = null;
+var _tokenExpiry = 0;
+
+async function _getBearerToken() {
+    if (_tokenCache && Date.now() < _tokenExpiry) return _tokenCache;
+
+    var clientId = process.env.PAYONEER_CLIENT_ID;
+    var secret   = process.env.PAYONEER_SECRET;
+    var base64   = Buffer.from(clientId + ':' + secret).toString('base64');
+    var base     = _baseUrl();
+
+    var body = 'grant_type=client_credentials&scope=read%20write';
+    var result = await _httpRequest({
+        method:  'POST',
+        url:     base + '/v2/oauth2/token',
+        headers: {
+            'Authorization': 'Basic ' + base64,
+            'Content-Type':  'application/x-www-form-urlencoded'
+        },
+        body: body
+    });
+
+    if (!result.access_token) throw new Error('Payoneer OAuth failed: ' + JSON.stringify(result));
+    _tokenCache  = result.access_token;
+    _tokenExpiry = Date.now() + ((result.expires_in || 3600) - 60) * 1000;
+    return _tokenCache;
 }
 
-/**
- * Valide et enregistre les informations Payoneer d'un prestataire.
- * @param {{ payoneerEmail: string, payoneerAccountId?: string }} data
- * @returns {{ ok: boolean, payoutProvider: string, payoutStatus: string, payoneerEmail: string }}
- */
-function setupPayoneerAccount(data) {
-    if (!data.payoneerEmail || !data.payoneerEmail.includes('@')) {
-        throw new Error('Email Payoneer invalide.');
-    }
-    return {
-        ok:              true,
-        payoutProvider:  'payoneer',
-        payoutStatus:    'pending_verification',
-        payoneerEmail:   data.payoneerEmail.trim().toLowerCase(),
-        payoneerAccountId: data.payoneerAccountId || null
-    };
+// ── HTTP helper ───────────────────────────────────────────────────────────────
+
+function _httpRequest(opts) {
+    return new Promise(function(resolve, reject) {
+        var url  = new URL(opts.url);
+        var data = opts.body ? (typeof opts.body === 'string' ? opts.body : JSON.stringify(opts.body)) : null;
+        var reqOpts = {
+            hostname: url.hostname,
+            path:     url.pathname + url.search,
+            method:   opts.method || 'GET',
+            headers:  opts.headers || {}
+        };
+        if (data) {
+            reqOpts.headers['Content-Length'] = Buffer.byteLength(data);
+        }
+        var req = https.request(reqOpts, function(res) {
+            var chunks = [];
+            res.on('data', function(c) { chunks.push(c); });
+            res.on('end', function() {
+                try { resolve(JSON.parse(Buffer.concat(chunks).toString())); }
+                catch(e) { resolve({}); }
+            });
+        });
+        req.on('error', reject);
+        if (data) req.write(data);
+        req.end();
+    });
 }
 
+// ── Créer un lien d'inscription bénéficiaire ─────────────────────────────────
+
 /**
- * Déclenche un payout vers le compte Payoneer du prestataire.
- * Nécessite PAYONEER_PARTNER_ID et PAYONEER_API_KEY dans les variables d'environnement.
- * Sans ces credentials, retourne un payout à traitement manuel.
+ * Génère un lien d'inscription Payoneer personnalisé pour un prestataire.
+ * Les données du prestataire sont pré-remplies dans le formulaire Payoneer.
  *
- * @param {{ payoneerEmail: string, amountCents: number, currency: string, referenceId: string }} data
+ * @param {{ id: string, email: string, prenom: string, nom: string, country: string }} partner
+ * @returns {{ ok: boolean, url: string }}
+ */
+async function generateRegistrationLink(partner) {
+    if (!isConfigured()) {
+        return { ok: false, error: 'Payoneer non configuré — credentials manquants.', fallback: true };
+    }
+
+    try {
+        var token = await _getBearerToken();
+        var programId = _programId();
+
+        var requestBody = {
+            payee_id:     partner.email,
+            redirect_url: REDIRECT_URL,
+            payee: {
+                contact: {
+                    first_name: partner.prenom || '',
+                    last_name:  partner.nom    || '',
+                    email:      partner.email  || ''
+                },
+                address: {
+                    country: (partner.country || '').toUpperCase()
+                }
+            }
+        };
+
+        var result = await _httpRequest({
+            method: 'POST',
+            url:    _baseUrl() + '/v4/programs/' + programId + '/payees/registration-link',
+            headers: {
+                'Authorization': 'Bearer ' + token,
+                'Content-Type':  'application/json',
+                'Accept':        'application/json'
+            },
+            body: requestBody
+        });
+
+        if (result.registration_link || result.url) {
+            return { ok: true, url: result.registration_link || result.url };
+        }
+        return { ok: false, error: JSON.stringify(result) };
+
+    } catch(e) {
+        return { ok: false, error: e.message };
+    }
+}
+
+// ── Statut d'un bénéficiaire ──────────────────────────────────────────────────
+
+/**
+ * Vérifie si le compte Payoneer du prestataire est actif (approuvé).
+ * @param {string} payeeEmail — l'email utilisé comme payee_id
+ */
+async function getPayeeStatus(payeeEmail) {
+    if (!isConfigured()) return { ok: false, status: 'unconfigured' };
+
+    try {
+        var token = await _getBearerToken();
+        var programId = _programId();
+
+        var result = await _httpRequest({
+            method: 'GET',
+            url:    _baseUrl() + '/v4/programs/' + programId + '/payees/' + encodeURIComponent(payeeEmail) + '/status',
+            headers: {
+                'Authorization': 'Bearer ' + token,
+                'Accept':        'application/json'
+            }
+        });
+
+        return { ok: true, status: result.status || 'unknown', raw: result };
+    } catch(e) {
+        return { ok: false, status: 'error', error: e.message };
+    }
+}
+
+// ── Déclencher un payout ──────────────────────────────────────────────────────
+
+/**
+ * Envoie un paiement vers le compte Payoneer d'un prestataire.
+ * @param {{ payeeEmail: string, amountCents: number, currency: string, referenceId: string, description: string }} data
  */
 async function sendPayout(data) {
     if (!isConfigured()) {
         return {
-            ok:            true,
-            method:        'payoneer_manual',
-            status:        'pending',
-            note:          'Credentials Payoneer API non configurés. Payout à traiter manuellement.',
-            referenceId:   data.referenceId,
-            payoneerEmail: data.payoneerEmail,
-            amountCents:   data.amountCents,
-            currency:      data.currency || 'EUR'
+            ok:          true,
+            method:      'payoneer_manual',
+            status:      'pending',
+            note:        'Credentials Payoneer non configurés — payout à traiter manuellement.',
+            referenceId: data.referenceId,
+            payeeEmail:  data.payeeEmail,
+            amountCents: data.amountCents,
+            currency:    data.currency || 'EUR'
         };
     }
 
-    // TODO: intégration API Payoneer (nécessite PAYONEER_PARTNER_ID + PAYONEER_API_KEY)
-    // Endpoint: POST https://api.payoneer.com/v4/programs/{partner_id}/payouts
-    throw new Error('Payoneer API non encore configurée. Contacter l\'administrateur GENESIS.');
+    try {
+        var token     = await _getBearerToken();
+        var programId = _programId();
+        var amount    = (data.amountCents / 100).toFixed(2);
+
+        var requestBody = {
+            payee_id:    data.payeeEmail,
+            amount:      parseFloat(amount),
+            currency:    data.currency || 'EUR',
+            description: data.description || 'Versement GENESIS',
+            client_reference_id: data.referenceId || ('genesis-' + Date.now())
+        };
+
+        var result = await _httpRequest({
+            method: 'POST',
+            url:    _baseUrl() + '/v4/programs/' + programId + '/payees/' + encodeURIComponent(data.payeeEmail) + '/payments',
+            headers: {
+                'Authorization': 'Bearer ' + token,
+                'Content-Type':  'application/json',
+                'Accept':        'application/json'
+            },
+            body: requestBody
+        });
+
+        if (result.payment_id || result.status) {
+            return {
+                ok:          true,
+                method:      'payoneer_api',
+                status:      result.status || 'submitted',
+                paymentId:   result.payment_id,
+                referenceId: data.referenceId
+            };
+        }
+        return { ok: false, error: JSON.stringify(result) };
+
+    } catch(e) {
+        return { ok: false, error: e.message };
+    }
 }
 
-module.exports = { getSignupUrl, setupPayoneerAccount, sendPayout, isConfigured };
+module.exports = {
+    isConfigured,
+    generateRegistrationLink,
+    getPayeeStatus,
+    sendPayout
+};

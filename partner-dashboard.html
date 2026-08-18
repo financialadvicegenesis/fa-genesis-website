@@ -646,7 +646,7 @@
                     Stripe Connect n'est pas disponible dans votre pays. GENESIS vous permet de recevoir vos revenus via <strong style="color:#fff;">Payoneer</strong> — disponible dans 190+ pays.
                     <div id="payoneerSetupForm" style="margin-top:14px;">
                         <div style="margin-bottom:10px;">
-                            <a href="https://fagenesis.com/payoneer-setup.html" style="display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,#FF4800,#ff6a00);color:#fff;border-radius:8px;padding:10px 18px;font-size:13px;font-weight:800;text-decoration:none;margin-bottom:10px;"><i class="fas fa-money-bill-transfer"></i>Configurer mon compte Payoneer</a>
+                            <button onclick="openPayoneerRegistrationLink()" id="btnOpenPayoneer" style="display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,#FF4800,#ff6a00);color:#fff;border-radius:8px;padding:10px 18px;font-size:13px;font-weight:800;border:none;cursor:pointer;margin-bottom:10px;"><i class="fas fa-money-bill-transfer"></i>Configurer mon compte Payoneer</button>
                             <div style="font-size:11px;color:#555;">Guide pas-à-pas — vous serez ramené ici automatiquement.</div>
                         </div>
                         <div style="display:flex;gap:8px;flex-wrap:wrap;">
@@ -2050,6 +2050,27 @@
             // Fallback : afficher Stripe (comportement historique)
             await loadStripeStatus();
         }
+    }
+
+    async function openPayoneerRegistrationLink() {
+        var btn = document.getElementById('btnOpenPayoneer');
+        if (btn) { btn.textContent = 'Chargement…'; btn.disabled = true; }
+        try {
+            var token = localStorage.getItem('fa_genesis_token') || '';
+            var resp  = await fetch((window.FA_GENESIS_API || '') + '/api/partner/payout/payoneer-link', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            var data = await resp.json();
+            if (data.ok && data.url) {
+                window.open(data.url, '_blank');
+            } else {
+                window.open('https://fagenesis.com/payoneer-setup.html', '_blank');
+            }
+        } catch(e) {
+            window.open('https://fagenesis.com/payoneer-setup.html', '_blank');
+        }
+        if (btn) { btn.innerHTML = '<i class="fas fa-money-bill-transfer"></i> Configurer mon compte Payoneer'; btn.disabled = false; }
     }
 
     function loadPayoneerStatus(routingData) {
