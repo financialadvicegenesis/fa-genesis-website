@@ -178,51 +178,59 @@ async function getPayeeStatus(payeeEmail) {
  * Envoie un paiement vers le compte Payoneer d'un prestataire.
  * @param {{ payeeEmail: string, amountCents: number, currency: string, referenceId: string, description: string }} data
  */
-async function sendPayout(data) {
+/**
+ * Envoie un ou plusieurs payouts via l'API Mass Payouts Payoneer.
+ * Endpoint : POST /v4/programs/{program_id}/masspayouts
+ *
+ * @param {Array<{ payeeId: string, amountCents: number, currency: string, referenceId: string, description: string }>} payments
+ *   payeeId = identifiant Payoneer du bénéficiaire (stocké lors de l'onboarding)
+ */
+async function sendPayout(payments) {
+    // Normaliser : accepte un objet unique ou un tableau
+    var list = Array.isArray(payments) ? payments : [payments];
+
     if (!isConfigured()) {
         return {
-            ok:          true,
-            method:      'payoneer_manual',
-            status:      'pending',
-            note:        'Credentials Payoneer non configurés — payout à traiter manuellement.',
-            referenceId: data.referenceId,
-            payeeEmail:  data.payeeEmail,
-            amountCents: data.amountCents,
-            currency:    data.currency || 'EUR'
+            ok:     true,
+            method: 'payoneer_manual',
+            status: 'pending',
+            note:   'Credentials Payoneer non configurés — payout à traiter manuellement.',
+            items:  list
         };
     }
 
     try {
         var token     = await _getBearerToken();
         var programId = _programId();
-        var amount    = (data.amountCents / 100).toFixed(2);
 
-        var requestBody = {
-            payee_id:    data.payeeEmail,
-            amount:      parseFloat(amount),
-            currency:    data.currency || 'EUR',
-            description: data.description || 'Versement GENESIS',
-            client_reference_id: data.referenceId || ('genesis-' + Date.now())
-        };
+        var paymentItems = list.map(function(p) {
+            return {
+                client_reference_id: p.referenceId || ('genesis-' + Date.now() + '-' + Math.random().toString(36).slice(2)),
+                payee_id:            p.payeeId,
+                description:         p.description || 'Versement GENESIS',
+                currency:            p.currency || 'EUR',
+                amount:              (p.amountCents / 100).toFixed(2)
+            };
+        });
 
         var result = await _httpRequest({
             method: 'POST',
-            url:    _baseUrl() + '/v4/programs/' + programId + '/payees/' + encodeURIComponent(data.payeeEmail) + '/payments',
+            url:    _baseUrl() + '/v4/programs/' + programId + '/masspayouts',
             headers: {
                 'Authorization': 'Bearer ' + token,
                 'Content-Type':  'application/json',
                 'Accept':        'application/json'
             },
-            body: requestBody
+            body: { Payments: paymentItems }
         });
 
-        if (result.payment_id || result.status) {
+        if (result.payout_id || result.status || result.Payments) {
             return {
-                ok:          true,
-                method:      'payoneer_api',
-                status:      result.status || 'submitted',
-                paymentId:   result.payment_id,
-                referenceId: data.referenceId
+                ok:       true,
+                method:   'payoneer_api',
+                status:   result.status || 'submitted',
+                payoutId: result.payout_id,
+                raw:      result
             };
         }
         return { ok: false, error: JSON.stringify(result) };

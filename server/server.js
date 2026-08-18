@@ -19500,9 +19500,13 @@ app.post('/api/webhooks/payoneer', function(req, res) {
 
         // Compte approuvé → activer le payout
         if (type === 'PAYEE_REGISTRATION_APPROVED' || type === 'payee_approved' || (event.status && event.status.toLowerCase() === 'active')) {
-            partners[idx].payoutStatus  = 'active';
-            partners[idx].payoneerEmail = partners[idx].payoneerEmail || payeeId;
-            partners[idx].updatedAt     = new Date().toISOString();
+            partners[idx].payoutStatus     = 'active';
+            partners[idx].payoneerEmail    = partners[idx].payoneerEmail || payeeId;
+            // Stocker l'ID numérique Payoneer utilisé pour les appels Mass Payouts
+            if (event.payoneer_id || event.payee_payoneer_id) {
+                partners[idx].payoneerPayeeId = event.payoneer_id || event.payee_payoneer_id;
+            }
+            partners[idx].updatedAt        = new Date().toISOString();
             savePartners(partners);
         }
 
