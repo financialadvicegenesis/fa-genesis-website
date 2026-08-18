@@ -2062,13 +2062,11 @@
                 headers: { 'Authorization': 'Bearer ' + token }
             });
             var data = await resp.json();
-            if (data.ok && data.url) {
-                window.open(data.url, '_blank');
-            } else {
-                window.open('https://fagenesis.com/payoneer-setup.html', '_blank');
-            }
+            var fallback = 'https://myaccount.payoneer.com/ma/signup/';
+            var url = (data.ok && data.url && !data.fallback) ? data.url : fallback;
+            window.open(url, '_blank');
         } catch(e) {
-            window.open('https://fagenesis.com/payoneer-setup.html', '_blank');
+            window.open('https://myaccount.payoneer.com/ma/signup/', '_blank');
         }
         if (btn) { btn.innerHTML = '<i class="fas fa-money-bill-transfer"></i> Configurer mon compte Payoneer'; btn.disabled = false; }
     }

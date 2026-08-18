@@ -3332,7 +3332,13 @@ function showApp(){
   try {
     var _urlParams = new URLSearchParams(window.location.search);
     if(_urlParams.get('stripe_return') === '1' || _urlParams.get('stripe_refresh') === '1'){
-      // Nettoyer l'URL sans recharger la page
+      window.history.replaceState(null, '', window.location.pathname);
+      setTimeout(function(){
+        nav('partner');
+        setTimeout(function(){ _ptnrNav('versements'); }, 500);
+      }, 800);
+    }
+    if(_urlParams.get('payoneer_return') === '1'){
       window.history.replaceState(null, '', window.location.pathname);
       setTimeout(function(){
         nav('partner');
@@ -15647,18 +15653,15 @@ function _renderPayoneerSetup(routingData){
 function _ptnrOpenPayoneerLink(){
   var btn = document.querySelector('[onclick="_ptnrOpenPayoneerLink()"]');
   if(btn){ btn.textContent='Chargement…'; btn.disabled=true; }
+  var fallbackUrl = 'https://myaccount.payoneer.com/ma/signup/';
   _ptnrFetch('/api/partner/payout/payoneer-link', {method:'POST'})
   .then(function(d){
-    if(d.ok && d.url){
-      window.open(d.url, '_blank');
-    } else {
-      // fallback
-      window.open('https://fagenesis.com/payoneer-setup.html', '_blank');
-    }
+    var url = (d.ok && d.url && !d.fallback) ? d.url : fallbackUrl;
+    window.open(url, '_blank');
     if(btn){ btn.innerHTML='<i class="fa-solid fa-money-bill-transfer" style="margin-right:6px;"></i>CONFIGURER MON COMPTE PAYONEER'; btn.disabled=false; }
   })
   .catch(function(){
-    window.open('https://fagenesis.com/payoneer-setup.html', '_blank');
+    window.open(fallbackUrl, '_blank');
     if(btn){ btn.innerHTML='<i class="fa-solid fa-money-bill-transfer" style="margin-right:6px;"></i>CONFIGURER MON COMPTE PAYONEER'; btn.disabled=false; }
   });
 }
