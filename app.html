@@ -12352,7 +12352,7 @@ function _ptnrNav(screen){
   _ptnrCloseDrawer();
   // Gestion du scroll : sauvegarder depuis le hub profil, restaurer au retour
   var _cEl = document.getElementById('content');
-  var _ptnrSubScreens = ['collegues','reputation','palmares','devis','seances','messages','versements','promotions','portfolio'];
+  var _ptnrSubScreens = ['collegues','reputation','palmares','devis','seances','promotions','portfolio'];
   if(_ptnrSubScreens.indexOf(screen) !== -1 && _cEl){
     _ptnrProfilScrollPos = _cEl.scrollTop;
     _cEl.scrollTop = 0;
