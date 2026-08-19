@@ -1222,7 +1222,7 @@ footer{background:var(--s1);border-top:1px solid var(--gold-border);padding:64px
   .actu-grid-resp{grid-template-columns:repeat(3,1fr);}
   @media(max-width:900px){.actu-grid-resp{grid-template-columns:repeat(2,1fr)!important;}}
   @media(max-width:600px){.actu-grid-resp{grid-template-columns:1fr!important;}}
-  .actu-card{background:var(--s2);border:1.5px solid var(--gold-border);border-radius:16px;overflow:hidden;transition:border-color .3s,transform .3s;cursor:default;}
+  .actu-card{background:var(--s2);border:1.5px solid var(--gold-border);border-radius:16px;overflow:hidden;transition:border-color .3s,transform .3s;cursor:pointer;}
   .actu-card:hover{border-color:rgba(255,215,0,.3);transform:translateY(-4px);}
   .actu-card-img{width:100%;aspect-ratio:16/10;object-fit:cover;display:block;background:var(--s3);}
   .actu-card-img-placeholder{width:100%;aspect-ratio:16/10;background:linear-gradient(135deg,var(--s2),var(--s3));display:flex;align-items:center;justify-content:center;}
@@ -1231,7 +1231,14 @@ footer{background:var(--s1);border-top:1px solid var(--gold-border);padding:64px
   .actu-card-title{font-family:var(--font-d);font-size:14px;font-weight:900;color:var(--white);line-height:1.35;margin-bottom:8px;}
   .actu-card-desc{font-size:13px;color:var(--t2);line-height:1.65;font-weight:300;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
   .actu-card-meta{display:flex;align-items:center;gap:12px;margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,.06);font-size:11px;color:var(--t3);}
+  .actu-card-meta span{display:inline-flex;align-items:center;gap:5px;}
   .actu-card-meta i{color:var(--gold);font-size:10px;}
+  .actu-card-readmore{margin-top:14px;font-size:12px;font-weight:700;color:var(--gold);display:inline-flex;align-items:center;gap:6px;transition:gap .2s;}
+  .actu-card:hover .actu-card-readmore{gap:10px;}
+  /* Modal article complet */
+  #actu-modal{scrollbar-width:thin;scrollbar-color:var(--gold-border) transparent;}
+  #actu-modal-inner{animation:actu-modal-in .28s cubic-bezier(.22,1,.36,1);}
+  @keyframes actu-modal-in{from{opacity:0;transform:translateY(28px);}to{opacity:1;transform:none;}}
   </style>
 </section>
 
@@ -1589,6 +1596,17 @@ function doLogin(role){
 }
 
 /* ── Actualités ── */
+var _actuDataCache = {};
+
+function _actuImgErr(img) {
+  try {
+    var ph = document.createElement('div');
+    ph.className = 'actu-card-img-placeholder';
+    ph.innerHTML = '<i class="fa-solid fa-image" style="font-size:36px;color:var(--t3);"></i>';
+    if (img && img.parentNode) { img.parentNode.insertBefore(ph, img); img.style.display = 'none'; }
+  } catch(e) {}
+}
+
 function _actu_fmt_date(iso){
   try{
     var d=new Date(iso);
@@ -1606,25 +1624,80 @@ function _render_actualites(list){
   if(!list||!list.length){if(empty)empty.style.display='block';return;}
   var html='';
   list.forEach(function(a){
-    var img='';
-    if(a.image){
-      img='<img class="actu-card-img" src="'+a.image+'" alt="'+a.title+'" loading="lazy" onerror="this.parentElement.innerHTML=\'<div class=actu-card-img-placeholder><i class=\\\"fa-solid fa-image\\\" style=\\\"font-size:36px;color:var(--t3);\\\"></i></div>\'">';
+    if(a.id) _actuDataCache[a.id]=a;
+    var imgHtml;
+    if(a.image&&a.image.length>10){
+      imgHtml='<img class="actu-card-img" src="'+a.image+'" alt="" loading="lazy" onerror="_actuImgErr(this)">';
     }else{
-      img='<div class="actu-card-img-placeholder"><i class="fa-solid fa-image" style="font-size:36px;color:var(--t3);"></i></div>';
+      imgHtml='<div class="actu-card-img-placeholder"><i class="fa-solid fa-image" style="font-size:36px;color:var(--t3);"></i></div>';
     }
     var meta='';
     if(a.date) meta+='<span><i class="fa-solid fa-calendar-days"></i>'+_actu_fmt_date(a.date)+'</span>';
     if(a.location) meta+='<span><i class="fa-solid fa-location-dot"></i>'+a.location+'</span>';
-    html+='<div class="actu-card">'+img+'<div class="actu-card-body"><span class="actu-card-cat">'+_actu_cat_label(a.category)+'</span><div class="actu-card-title">'+a.title+'</div><div class="actu-card-desc">'+a.description+'</div>'+(meta?'<div class="actu-card-meta">'+meta+'</div>':'')+'</div></div>';
+    var clickFn=a.id?(' onclick="openActuDetail(\''+a.id+'\')"'):'';
+    html+='<div class="actu-card"'+clickFn+'>'+imgHtml+'<div class="actu-card-body">';
+    html+='<span class="actu-card-cat">'+_actu_cat_label(a.category)+'</span>';
+    html+='<div class="actu-card-title">'+a.title+'</div>';
+    html+='<div class="actu-card-desc">'+a.description+'</div>';
+    if(meta) html+='<div class="actu-card-meta">'+meta+'</div>';
+    html+='<div class="actu-card-readmore">Lire la suite&nbsp;<i class="fa-solid fa-arrow-right" style="font-size:10px;"></i></div>';
+    html+='</div></div>';
   });
   grid.innerHTML=html;
   grid.style.display='grid';
-  /* reveal */
   document.querySelectorAll('.actu-card').forEach(function(el,i){
     el.style.opacity='0';el.style.transform='translateY(24px)';el.style.transition='opacity .6s ease '+(i*.08)+'s,transform .6s ease '+(i*.08)+'s';
     setTimeout(function(){el.style.opacity='1';el.style.transform='none';},60);
   });
 }
+
+function _fillActuModal(a){
+  var imgWrap=document.getElementById('actu-modal-img-wrap');
+  if(imgWrap){
+    if(a.image&&a.image.length>10){
+      imgWrap.innerHTML='<img src="'+a.image+'" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="this.style.display=\'none\'">';
+      imgWrap.style.display='block';
+    }else{
+      imgWrap.style.display='none';
+    }
+  }
+  var catEl=document.getElementById('actu-modal-cat');
+  if(catEl) catEl.textContent=_actu_cat_label(a.category);
+  var titleEl=document.getElementById('actu-modal-title');
+  if(titleEl) titleEl.textContent=a.title||'';
+  var descEl=document.getElementById('actu-modal-desc');
+  if(descEl) descEl.textContent=a.description||'';
+  var metaEl=document.getElementById('actu-modal-meta');
+  if(metaEl){
+    var meta='';
+    if(a.date) meta+='<span><i class="fa-solid fa-calendar-days"></i>'+_actu_fmt_date(a.date)+'</span>';
+    if(a.location) meta+='<span><i class="fa-solid fa-location-dot"></i>'+a.location+'</span>';
+    metaEl.innerHTML=meta;
+  }
+}
+
+function openActuDetail(id){
+  var modal=document.getElementById('actu-modal');
+  if(!modal) return;
+  var a=_actuDataCache[id];
+  modal.style.display='flex';
+  document.body.style.overflow='hidden';
+  if(a){ _fillActuModal(a); return; }
+  var titleEl=document.getElementById('actu-modal-title');
+  if(titleEl) titleEl.textContent='Chargement…';
+  var imgWrap=document.getElementById('actu-modal-img-wrap');
+  if(imgWrap) imgWrap.style.display='none';
+  fetch(_API+'/api/actualites/'+encodeURIComponent(id)).then(function(r){return r.json();}).then(function(d){
+    if(d.ok&&d.actualite){_actuDataCache[id]=d.actualite;_fillActuModal(d.actualite);}
+  }).catch(function(){});
+}
+
+function closeActuDetail(){
+  var modal=document.getElementById('actu-modal');
+  if(modal) modal.style.display='none';
+  document.body.style.overflow='';
+}
+
 function _load_actualites(){
   var loader=document.getElementById('actu-loader');
   var empty=document.getElementById('actu-empty');
@@ -1639,6 +1712,20 @@ function _load_actualites(){
 }
 _load_actualites();
 </script>
+
+<!-- ── MODAL ARTICLE ACTUALITÉ ── -->
+<div id="actu-modal" style="display:none;position:fixed;inset:0;z-index:5000;background:rgba(0,0,0,.88);backdrop-filter:blur(16px);align-items:flex-start;justify-content:center;padding:24px 16px;overflow-y:auto;" onclick="if(event.target===this)closeActuDetail()">
+  <div id="actu-modal-inner" style="width:100%;max-width:720px;background:var(--s1);border:1.5px solid var(--gold-border);border-radius:20px;overflow:hidden;position:relative;margin:auto;">
+    <button onclick="closeActuDetail()" aria-label="Fermer" style="position:absolute;top:14px;right:14px;z-index:2;background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.15);color:var(--t1);width:38px;height:38px;border-radius:50%;font-size:17px;cursor:pointer;display:flex;align-items:center;justify-content:center;"><i class="fa-solid fa-xmark"></i></button>
+    <div id="actu-modal-img-wrap" style="width:100%;aspect-ratio:16/9;background:var(--s3);overflow:hidden;display:none;"></div>
+    <div style="padding:28px 28px 36px;">
+      <span id="actu-modal-cat" class="actu-card-cat" style="margin-bottom:16px;display:inline-block;"></span>
+      <div id="actu-modal-title" style="font-family:var(--font-d);font-size:clamp(17px,2.8vw,26px);font-weight:900;color:var(--white);line-height:1.3;margin-bottom:16px;"></div>
+      <div id="actu-modal-meta" class="actu-card-meta" style="padding-top:14px;padding-bottom:14px;border-top:1px solid rgba(255,255,255,.06);border-bottom:1px solid rgba(255,255,255,.06);margin-bottom:22px;font-size:12px;"></div>
+      <div id="actu-modal-desc" style="font-size:14.5px;color:var(--t2);line-height:1.85;font-weight:300;white-space:pre-wrap;"></div>
+    </div>
+  </div>
+</div>
 
 <!-- ── INSCRIPTION OVERLAY ── -->
 <div id="insc-overlay">

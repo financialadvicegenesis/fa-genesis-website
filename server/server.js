@@ -19735,6 +19735,18 @@ app.get('/api/actualites', function(req, res) {
     }
 });
 
+// GET public — une actualité par ID (avec image complète, pour le modal)
+app.get('/api/actualites/:id', function(req, res) {
+    try {
+        var list = loadActualites();
+        var a = list.find(function(x) { return x.id === req.params.id && x.published !== false; });
+        if (!a) return res.status(404).json({ error: 'Actualité introuvable' });
+        res.json({ ok: true, actualite: a });
+    } catch(e) {
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
 // GET admin — toutes les actualités (y compris brouillons)
 app.get('/api/admin/actualites', function(req, res) {
     try {
