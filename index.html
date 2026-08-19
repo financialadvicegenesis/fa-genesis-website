@@ -303,6 +303,12 @@ footer{background:var(--s1);border-top:1px solid var(--gold-border);padding:64px
   .hero-inner{padding:60px 16px;}
   .wrap{padding:0 16px;}
 }
+/* ── Inscription Overlay ── */
+#insc-overlay{position:fixed;inset:0;z-index:9998;background:#050505;visibility:hidden;opacity:0;transition:opacity .32s,visibility .32s;}
+#insc-overlay.open{visibility:visible;opacity:1;}
+#insc-ov-close{position:fixed;top:18px;right:24px;z-index:9999;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);color:var(--white);border-radius:50%;width:36px;height:36px;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;transition:background .2s,border-color .2s,color .2s;}
+#insc-ov-close:hover{background:rgba(255,215,0,.15);border-color:rgba(255,215,0,.35);color:var(--gold);}
+#insc-frame{width:100%;height:100%;border:none;display:block;}
 </style>
 </head>
 <body>
@@ -323,7 +329,7 @@ footer{background:var(--s1);border-top:1px solid var(--gold-border);padding:64px
     </div>
     <div class="nav-ctas">
       <button class="btn-ghost" onclick="openLogin('client')">Se connecter</button>
-      <a href="inscription.html" class="btn-primary" style="display:inline-flex;align-items:center;gap:6px;">Inscription</a>
+      <a href="inscription.html" class="btn-primary" style="display:inline-flex;align-items:center;gap:6px;" onclick="openInscriptionOverlay();return false;">Inscription</a>
     </div>
     <button class="nav-hamburger" onclick="document.getElementById('mobile-menu').classList.add('open')">
       <i class="fa-solid fa-bars"></i>
@@ -341,7 +347,7 @@ footer{background:var(--s1);border-top:1px solid var(--gold-border);padding:64px
   <a href="a-propos.html" onclick="document.getElementById('mobile-menu').classList.remove('open')">À propos</a>
   <a href="#telecharger" onclick="document.getElementById('mobile-menu').classList.remove('open')">Télécharger</a>
   <button onclick="openLogin('client');document.getElementById('mobile-menu').classList.remove('open')">Se connecter</button>
-  <a href="inscription.html" onclick="document.getElementById('mobile-menu').classList.remove('open')" style="font-family:var(--font-d);font-size:18px;font-weight:700;color:var(--gold);">Inscription</a>
+  <a href="inscription.html" onclick="openInscriptionOverlay();document.getElementById('mobile-menu').classList.remove('open');return false;" style="font-family:var(--font-d);font-size:18px;font-weight:700;color:var(--gold);">Inscription</a>
 </div>
 
 <!-- ── HERO ───────────────────────────────────────────────── -->
@@ -1518,7 +1524,23 @@ function switchModal(role){
   document.getElementById('mtab-client').className  = 'modal-tab' + (isP ? '' : ' active');
   document.getElementById('mtab-partner').className = 'modal-tab modal-tab-partner' + (isP ? ' active' : '');
 }
-document.addEventListener('keydown', function(e){ if(e.key==='Escape') closeLogin(); });
+document.addEventListener('keydown', function(e){ if(e.key==='Escape'){ closeLogin(); closeInscriptionOverlay(); } });
+
+/* ── Inscription Overlay ── */
+function openInscriptionOverlay(){
+  var ov = document.getElementById('insc-overlay');
+  if(!ov) return;
+  var fr = document.getElementById('insc-frame');
+  if(fr && !fr.src) fr.src = 'inscription.html';
+  document.body.style.overflow = 'hidden';
+  ov.classList.add('open');
+}
+function closeInscriptionOverlay(){
+  var ov = document.getElementById('insc-overlay');
+  if(!ov) return;
+  ov.classList.remove('open');
+  document.body.style.overflow = '';
+}
 
 /* ── Auth ── */
 function doLogin(role){
@@ -1617,5 +1639,11 @@ function _load_actualites(){
 }
 _load_actualites();
 </script>
+
+<!-- ── INSCRIPTION OVERLAY ── -->
+<div id="insc-overlay">
+  <button id="insc-ov-close" onclick="closeInscriptionOverlay()" aria-label="Fermer"><i class="fa-solid fa-xmark"></i></button>
+  <iframe id="insc-frame" src="" title="Inscription FA GENESIS"></iframe>
+</div>
 </body>
 </html>

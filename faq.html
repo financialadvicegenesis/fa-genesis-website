@@ -1,449 +1,576 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" type="image/png" sizes="32x32" href="assets/images/logo-favicon-32.png">
-    <link rel="icon" type="image/png" sizes="192x192" href="assets/images/logo-favicon-192.png">
-    <link rel="icon" type="image/png" sizes="512x512" href="assets/images/logo-favicon.png">
-    <link rel="apple-touch-icon" sizes="192x192" href="assets/images/logo-favicon-192.png">
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="https://fagenesis.com/faq.html">
-    <meta property="og:title" content="FAQ – FA GENESIS | Questions fréquentes">
-    <meta property="og:description" content="Toutes les réponses à vos questions sur les offres, le processus et l'accompagnement FA Genesis.">
-    <meta property="og:image" content="https://fagenesis.com/assets/images/logo-og.png">
-    <meta property="og:image:width" content="1200">
-    <meta property="og:image:height" content="630">
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:image" content="https://fagenesis.com/assets/images/logo-og.png">
-    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
-    <title>FAQ - FA GENESIS</title>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;900&family=Space+Grotesk:wght@300;700&display=swap">
-    <link rel="stylesheet" href="tailwind.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" media="print" onload="this.media='all'">
-    <style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FAQ — FA GENESIS</title>
+<link rel="icon" type="image/png" sizes="32x32" href="assets/images/logo-favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="assets/images/logo-favicon-192.png">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://fagenesis.com/faq.html">
+<meta property="og:title" content="FAQ – FA GENESIS | Questions fréquentes">
+<meta property="og:description" content="Toutes les réponses à vos questions sur les offres, le processus et l'accompagnement FA Genesis.">
+<meta property="og:image" content="https://fagenesis.com/assets/images/logo-og.png">
+<meta name="description" content="Questions fréquentes sur FA GENESIS — offres, paiement, accompagnement, espace client.">
+<link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700;900&family=Space+Grotesk:wght@300;400;500;700&display=swap" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700;900&family=Space+Grotesk:wght@300;400;500;700&display=swap"></noscript>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"></noscript>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --black:#050505;--s1:#0a0a0a;--s2:#111;--s3:#161616;
+  --gold:#FFD700;--gold-dim:rgba(255,215,0,.12);--gold-border:rgba(255,215,0,.18);
+  --orange:#FF4800;--white:#fff;
+  --t1:rgba(255,255,255,.92);--t2:rgba(255,255,255,.6);--t3:rgba(255,255,255,.35);
+  --font-d:'Unbounded',sans-serif;--font-b:'Space Grotesk',sans-serif;
+  --nav-h:72px;--max:860px;
+}
+html{scroll-behavior:smooth;}
+body{background:var(--black);color:var(--t1);font-family:var(--font-b);overflow-x:hidden;-webkit-font-smoothing:antialiased;}
+a{text-decoration:none;color:inherit;}
+.wrap{max-width:1200px;margin:0 auto;padding:0 24px;}
+.content-wrap{max-width:var(--max);margin:0 auto;padding:0 24px;}
+.grad-text{background:linear-gradient(135deg,var(--gold),var(--orange));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.sec-label{font-family:var(--font-d);font-size:10px;font-weight:700;letter-spacing:4px;text-transform:uppercase;color:var(--gold);}
 
-        :root {
-            --genesis-yellow: #FFD700;
-            --genesis-black: #000000;
-            --genesis-white: #FFFFFF;
-        }
+/* ── NAV ── */
+nav{position:fixed;top:0;left:0;right:0;z-index:1000;height:var(--nav-h);transition:background .3s,border-color .3s;border-bottom:1px solid transparent;}
+nav.scrolled{background:rgba(5,5,5,.92);backdrop-filter:blur(20px);border-color:var(--gold-border);}
+.nav-inner{display:flex;align-items:center;justify-content:space-between;height:var(--nav-h);}
+.nav-logo{font-family:var(--font-d);font-size:15px;font-weight:900;letter-spacing:1px;color:var(--gold);display:flex;align-items:center;gap:10px;}
+.nav-logo-img{height:36px;width:auto;object-fit:contain;flex-shrink:0;mix-blend-mode:screen;}
+.nav-links{display:flex;align-items:center;gap:36px;}
+.nav-links a{font-size:13px;font-weight:500;color:var(--t2);transition:color .2s;}
+.nav-links a:hover,.nav-links a.active{color:var(--white);}
+.nav-ctas{display:flex;align-items:center;gap:12px;}
+.btn-ghost{background:none;border:1px solid rgba(255,255,255,.2);color:var(--white);padding:8px 18px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;transition:border-color .2s,color .2s;font-family:var(--font-b);}
+.btn-ghost:hover{border-color:var(--gold);color:var(--gold);}
+.btn-primary{background:linear-gradient(135deg,var(--orange),#ff6a00);color:var(--white);font-family:var(--font-b);font-size:13px;font-weight:700;padding:9px 20px;border-radius:8px;border:none;cursor:pointer;transition:opacity .2s;display:inline-flex;align-items:center;gap:6px;}
+.btn-primary:hover{opacity:.88;}
+.nav-hamburger{display:none;background:none;border:none;color:var(--white);font-size:20px;cursor:pointer;}
+.nav-mobile{display:none;position:fixed;inset:0;background:rgba(5,5,5,.98);z-index:999;flex-direction:column;align-items:center;justify-content:center;gap:32px;}
+.nav-mobile.open{display:flex;}
+.nav-mobile a,.nav-mobile button{font-family:var(--font-d);font-size:18px;font-weight:700;color:var(--white);background:none;border:none;cursor:pointer;transition:color .2s;}
+.nav-mobile a:hover{color:var(--gold);}
+.nav-mobile-close{position:absolute;top:24px;right:24px;background:none;border:none;color:var(--white);font-size:24px;cursor:pointer;}
 
-        body {
-            background-color: var(--genesis-black);
-            color: var(--genesis-white);
-            font-family: 'Space Grotesk', sans-serif;
-            overflow-x: hidden;
-        }
+/* ── HERO ── */
+.faq-hero{padding:calc(var(--nav-h) + 60px) 0 48px;text-align:center;position:relative;overflow:hidden;}
+.faq-hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 70% 60% at 50% -10%,rgba(255,215,0,.05),transparent 65%);}
+.faq-hero h1{font-family:var(--font-d);font-size:clamp(36px,6vw,80px);font-weight:900;line-height:1.05;letter-spacing:-3px;margin-bottom:16px;position:relative;}
+.faq-hero-sub{font-size:clamp(14px,1.5vw,16px);color:var(--t2);max-width:460px;margin:0 auto;line-height:1.7;font-weight:300;position:relative;}
 
-        h1, h2, h3, h4, h5, .nav-link { font-family: 'Unbounded', cursive; }
+/* ── SEARCH BAR ── */
+.faq-search-wrap{position:relative;max-width:480px;margin:32px auto 0;position:relative;}
+.faq-search{width:100%;background:var(--s1);border:1.5px solid var(--gold-border);border-radius:12px;padding:13px 48px 13px 18px;font-family:var(--font-b);font-size:14px;color:var(--white);outline:none;transition:border-color .2s;}
+.faq-search::placeholder{color:var(--t3);}
+.faq-search:focus{border-color:var(--gold);}
+.faq-search-icon{position:absolute;right:16px;top:50%;transform:translateY(-50%);color:var(--t3);pointer-events:none;}
 
-        .neo-border { border: 4px solid var(--genesis-black); }
-        .neo-shadow { box-shadow: 10px 10px 0px 0px var(--genesis-yellow); }
+/* ── CATEGORY TABS ── */
+.faq-cats{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin:48px 0 40px;}
+.faq-cat{padding:8px 18px;background:var(--s1);border:1.5px solid var(--gold-border);border-radius:40px;font-size:12px;font-weight:600;color:var(--t2);cursor:pointer;transition:all .2s;font-family:var(--font-b);}
+.faq-cat:hover,.faq-cat.active{background:var(--gold-dim);border-color:rgba(255,215,0,.4);color:var(--white);}
 
-        .neo-btn-yellow {
-            background: var(--genesis-yellow);
-            color: black;
-            border: 4px solid black;
-            box-shadow: 6px 6px 0px black;
-            font-weight: 900;
-            transition: 0.1s;
-        }
-        .neo-btn-yellow:active {
-            transform: translate(4px, 4px);
-            box-shadow: 0px 0px 0px black;
-        }
+/* ── ACCORDION ── */
+.faq-group{margin-bottom:40px;display:none;}
+.faq-group.visible{display:block;}
+.faq-group-header{display:flex;align-items:center;gap:12px;margin-bottom:16px;}
+.faq-group-icon{width:36px;height:36px;border-radius:9px;background:rgba(255,215,0,.1);display:flex;align-items:center;justify-content:center;color:var(--gold);font-size:15px;flex-shrink:0;}
+.faq-group-title{font-family:var(--font-d);font-size:13px;font-weight:900;letter-spacing:1px;text-transform:uppercase;color:var(--gold);}
 
-        .faq-item {
-            background: white;
-            color: black;
-            border: 4px solid black;
-            padding: 1.25rem 1.5rem;
-            margin-bottom: 0.75rem;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        .faq-item:hover {
-            transform: translate(-2px, -2px);
-            box-shadow: 6px 6px 0px var(--genesis-yellow);
-        }
-        .faq-answer {
-            display: none;
-            margin-top: 0.75rem;
-            padding-top: 0.75rem;
-            border-top: 2px solid #eee;
-        }
-        .faq-chevron {
-            transition: transform 0.2s;
-        }
-    </style>
-    <meta name="theme-color" content="#FFD700">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="FA GENESIS">
+.faq-item{background:var(--s1);border:1.5px solid var(--gold-border);border-radius:12px;margin-bottom:8px;overflow:hidden;transition:border-color .2s;}
+.faq-item.open,.faq-item:hover{border-color:rgba(255,215,0,.32);}
+.faq-q{display:flex;align-items:center;justify-content:space-between;padding:18px 20px;cursor:pointer;gap:16px;user-select:none;}
+.faq-q-text{font-size:14px;font-weight:600;color:var(--t1);line-height:1.4;}
+.faq-chevron{color:var(--t3);font-size:12px;flex-shrink:0;transition:transform .25s,color .2s;}
+.faq-item.open .faq-chevron{transform:rotate(180deg);color:var(--gold);}
+.faq-a{max-height:0;overflow:hidden;transition:max-height .32s ease;}
+.faq-a-inner{padding:0 20px 18px;font-size:14px;color:var(--t2);line-height:1.75;border-top:1px solid var(--gold-border);}
+.faq-a-inner strong{color:var(--t1);}
+.faq-a-inner a{color:var(--gold);text-decoration:underline;text-underline-offset:2px;}
+
+/* ── CTA BOTTOM ── */
+.faq-cta{text-align:center;padding:64px 24px;background:var(--s1);border-radius:20px;margin:64px 0;}
+.faq-cta h2{font-family:var(--font-d);font-size:clamp(18px,3vw,28px);font-weight:900;margin-bottom:12px;letter-spacing:-1px;}
+.faq-cta p{font-size:14px;color:var(--t2);margin-bottom:28px;}
+.faq-cta-btn{display:inline-flex;align-items:center;gap:8px;padding:14px 32px;background:linear-gradient(135deg,var(--gold),#e6c200);color:#0a0800;font-family:var(--font-d);font-size:12px;font-weight:900;border-radius:10px;border:none;cursor:pointer;transition:opacity .2s,transform .2s;letter-spacing:.5px;}
+.faq-cta-btn:hover{opacity:.9;transform:translateY(-1px);}
+
+/* ── FOOTER ── */
+footer{background:var(--s1);border-top:1px solid var(--gold-border);padding:64px 0 32px;}
+.footer-grid{display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr;gap:48px;margin-bottom:48px;}
+@media(max-width:900px){.footer-grid{grid-template-columns:1fr 1fr;}}
+@media(max-width:600px){.footer-grid{grid-template-columns:1fr;}}
+.footer-brand-name{font-family:var(--font-d);font-size:14px;font-weight:900;color:var(--gold);margin-bottom:12px;display:flex;align-items:center;gap:8px;}
+.footer-brand-img{height:30px;width:auto;object-fit:contain;mix-blend-mode:screen;}
+.footer-brand-desc{font-size:13px;color:var(--t3);line-height:1.6;margin-bottom:20px;}
+.footer-social{display:flex;gap:12px;}
+.footer-social a{width:34px;height:34px;border-radius:8px;border:1px solid var(--gold-border);display:flex;align-items:center;justify-content:center;color:var(--t2);font-size:13px;transition:border-color .2s,color .2s;}
+.footer-social a:hover{border-color:var(--gold);color:var(--gold);}
+.footer-col-title{font-family:var(--font-d);font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--t3);margin-bottom:20px;}
+.footer-col a{display:block;font-size:13px;color:var(--t2);margin-bottom:12px;transition:color .2s;}
+.footer-col a:hover{color:var(--white);}
+.footer-bottom{border-top:1px solid var(--gold-border);padding-top:28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;}
+.footer-copy{font-size:12px;color:var(--t3);}
+
+/* ── Inscription Overlay ── */
+#insc-overlay{position:fixed;inset:0;z-index:9998;background:#050505;visibility:hidden;opacity:0;transition:opacity .32s,visibility .32s;}
+#insc-overlay.open{visibility:visible;opacity:1;}
+#insc-ov-close{position:fixed;top:18px;right:24px;z-index:9999;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);color:var(--white);border-radius:50%;width:36px;height:36px;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;transition:background .2s,border-color .2s,color .2s;}
+#insc-ov-close:hover{background:rgba(255,215,0,.15);border-color:rgba(255,215,0,.35);color:var(--gold);}
+#insc-frame{width:100%;height:100%;border:none;display:block;}
+
+@media(max-width:768px){
+  .nav-links,.nav-ctas{display:none;}
+  .nav-hamburger{display:block;}
+}
+</style>
 </head>
 <body>
 
-    <!-- NAVIGATION -->
-    <nav class="fixed top-0 w-full z-50 bg-black/95 backdrop-blur-md border-b-4 border-[var(--genesis-yellow)] px-4 md:px-6 py-3 md:py-4 flex justify-between items-center text-white text-xs font-black uppercase">
-        <div class="flex items-center">
-            <a href="index.html" class="flex items-center gap-2 md:gap-3 text-lg md:text-2xl font-black tracking-wider text-[var(--genesis-yellow)]" style="font-family: 'Unbounded', cursive;"><img src="assets/images/logo-favicon-192.png" alt="Logo FA GENESIS" style="height:48px;width:48px;flex-shrink:0;border-radius:50%;object-fit:cover;display:inline-block;vertical-align:middle;"> FA GENESIS</a>
-        </div>
-        <div class="hidden md:flex gap-12 text-white font-black">
-            <a href="index.html#accueil" class="nav-link hover:text-[var(--genesis-yellow)] transition">Accueil</a>
-            <a href="a-propos.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">A Propos</a>
-            <a href="offres.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">Prestations</a>
-            <a href="faq.html" class="nav-link text-[var(--genesis-yellow)] transition">FAQ</a>
-            <a href="contact.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">Contact</a>
-        </div>
-        <div class="hidden md:flex gap-4 items-center">
-            <a href="panier.html" class="relative text-white hover:text-[var(--genesis-yellow)] transition px-2 py-2" title="Panier">
-                <i class="fas fa-shopping-cart text-lg"></i>
-                <span class="panier-badge" style="display:none;position:absolute;top:-4px;right:-4px;background:#f44336;color:#fff;font-size:10px;font-weight:900;min-width:16px;height:16px;line-height:16px;text-align:center;border-radius:50%;"></span>
-            </a>
-            <a href="contact.html" class="neo-btn-yellow px-6 py-3 text-[12px] tracking-widest text-black font-black">Lancer un projet</a>
-        </div>
-        <!-- Mobile : panier + menu -->
-        <div class="md:hidden flex items-center gap-2">
-            <a href="panier.html" class="relative text-white hover:text-[var(--genesis-yellow)] transition p-2" title="Panier">
-                <i class="fas fa-shopping-cart text-xl"></i>
-                <span class="panier-badge" style="display:none;position:absolute;top:-2px;right:-2px;background:#f44336;color:#fff;font-size:10px;font-weight:900;min-width:16px;height:16px;line-height:16px;text-align:center;border-radius:50%;"></span>
-            </a>
-            <button id="mobileMenuBtn" class="flex flex-col gap-1.5 p-2" aria-label="Menu">
-                <span class="block w-6 h-0.5 bg-[var(--genesis-yellow)] transition-all" id="menuLine1"></span>
-                <span class="block w-6 h-0.5 bg-[var(--genesis-yellow)] transition-all" id="menuLine2"></span>
-                <span class="block w-6 h-0.5 bg-[var(--genesis-yellow)] transition-all" id="menuLine3"></span>
-            </button>
-        </div>
-    </nav>
+<nav id="navbar">
+  <div class="wrap nav-inner">
+    <a href="/" class="nav-logo">
+      <img src="assets/images/logo-genesis.png" alt="FA GENESIS" class="nav-logo-img">
+      FA GENESIS
+    </a>
+    <div class="nav-links">
+      <a href="index.html#espaces">Espaces</a>
+      <a href="index.html#fonctionnalites">Fonctionnalités</a>
+      <a href="index.html#actualites">Actualités</a>
+      <a href="a-propos.html">À propos</a>
+      <a href="contact.html">Contact</a>
+    </div>
+    <div class="nav-ctas">
+      <a href="index.html?login=1" class="btn-ghost">Se connecter</a>
+      <a href="inscription.html" class="btn-primary" onclick="openInscriptionOverlay();return false;">Inscription</a>
+    </div>
+    <button class="nav-hamburger" onclick="document.getElementById('mobile-menu').classList.add('open')">
+      <i class="fa-solid fa-bars"></i>
+    </button>
+  </div>
+</nav>
 
-    <!-- Menu Mobile Overlay -->
-    <div id="mobileMenu" class="fixed inset-0 z-40 bg-black/98 backdrop-blur-lg hidden flex-col items-center justify-center gap-8 text-white font-black uppercase">
-        <a href="index.html#accueil" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition" onclick="closeMobileMenu()">Accueil</a>
-        <a href="a-propos.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition" onclick="closeMobileMenu()">A Propos</a>
-        <a href="offres.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition" onclick="closeMobileMenu()">Prestations</a>
-        <a href="faq.html" class="text-2xl nav-link text-[var(--genesis-yellow)] transition" onclick="closeMobileMenu()">FAQ</a>
-        <a href="contact.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition" onclick="closeMobileMenu()">Contact</a>
-        <a href="panier.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition" onclick="closeMobileMenu()"><i class="fas fa-shopping-cart mr-2"></i>Panier <span class="panier-badge" style="display:none;background:#f44336;color:#fff;font-size:12px;padding:2px 6px;border-radius:50%;margin-left:4px;"></span></a>
-        <div class="flex flex-col gap-4 mt-8">
-            <a href="contact.html" class="neo-btn-yellow px-8 py-4 text-sm tracking-widest text-black font-black text-center" onclick="closeMobileMenu()">Lancer un projet</a>
-        </div>
+<div class="nav-mobile" id="mobile-menu">
+  <button class="nav-mobile-close" onclick="document.getElementById('mobile-menu').classList.remove('open')"><i class="fa-solid fa-xmark"></i></button>
+  <a href="index.html#espaces" onclick="document.getElementById('mobile-menu').classList.remove('open')">Espaces</a>
+  <a href="index.html#fonctionnalites" onclick="document.getElementById('mobile-menu').classList.remove('open')">Fonctionnalités</a>
+  <a href="index.html#actualites" onclick="document.getElementById('mobile-menu').classList.remove('open')">Actualités</a>
+  <a href="a-propos.html" onclick="document.getElementById('mobile-menu').classList.remove('open')">À propos</a>
+  <a href="contact.html" onclick="document.getElementById('mobile-menu').classList.remove('open')">Contact</a>
+  <a href="index.html?login=1" onclick="document.getElementById('mobile-menu').classList.remove('open')">Se connecter</a>
+  <a href="inscription.html" onclick="openInscriptionOverlay();document.getElementById('mobile-menu').classList.remove('open');return false;" style="color:var(--gold);">Inscription</a>
+</div>
+
+<!-- HERO -->
+<section class="faq-hero">
+  <div class="content-wrap">
+    <span class="sec-label" style="display:block;margin-bottom:16px;">Centre d'aide</span>
+    <h1>FAQ<br><span class="grad-text">Questions fréquentes</span></h1>
+    <p class="faq-hero-sub">Trouvez rapidement les réponses à vos questions sur nos offres, le paiement et l'accompagnement.</p>
+    <div class="faq-search-wrap">
+      <input type="text" class="faq-search" id="faqSearch" placeholder="Rechercher une question..." oninput="filterFaq(this.value)">
+      <i class="fa-solid fa-magnifying-glass faq-search-icon"></i>
+    </div>
+  </div>
+</section>
+
+<!-- CONTENU FAQ -->
+<section style="padding:0 0 80px;">
+  <div class="content-wrap">
+
+    <!-- Tabs catégories -->
+    <div class="faq-cats">
+      <button class="faq-cat active" onclick="showCat('all',this)">Tout voir</button>
+      <button class="faq-cat" onclick="showCat('general',this)"><i class="fa-solid fa-circle-info" style="margin-right:5px;"></i>Général</button>
+      <button class="faq-cat" onclick="showCat('offres',this)"><i class="fa-solid fa-tags" style="margin-right:5px;"></i>Offres & Tarifs</button>
+      <button class="faq-cat" onclick="showCat('paiement',this)"><i class="fa-solid fa-credit-card" style="margin-right:5px;"></i>Paiement</button>
+      <button class="faq-cat" onclick="showCat('accompagnement',this)"><i class="fa-solid fa-rocket" style="margin-right:5px;"></i>Accompagnement</button>
+      <button class="faq-cat" onclick="showCat('client',this)"><i class="fa-solid fa-laptop" style="margin-right:5px;"></i>Espace client</button>
+      <button class="faq-cat" onclick="showCat('contact-cat',this)"><i class="fa-solid fa-envelope" style="margin-right:5px;"></i>Contact</button>
     </div>
 
-    <!-- FAQ SECTION -->
-    <section id="faq" class="min-h-screen p-6 bg-black pt-32 pb-20 relative overflow-hidden">
-        <div class="absolute top-20 right-[-10%] w-96 h-96 bg-[var(--genesis-yellow)] rounded-full blur-[120px] opacity-20 z-0"></div>
+    <!-- ── Informations Générales ── -->
+    <div class="faq-group visible" id="grp-general">
+      <div class="faq-group-header">
+        <div class="faq-group-icon"><i class="fa-solid fa-circle-info"></i></div>
+        <h2 class="faq-group-title">Informations Générales</h2>
+      </div>
 
-        <div class="w-full max-w-4xl mx-auto z-10 relative">
-            <h1 class="text-5xl md:text-7xl font-black italic uppercase text-center mb-4 text-[var(--genesis-yellow)]">FAQ</h1>
-            <p class="text-center text-lg font-bold mb-12 uppercase opacity-80">Questions fréquemment posées</p>
-
-            <!-- GENERAL -->
-            <div class="mb-10">
-                <h2 class="text-xl md:text-2xl font-black italic uppercase mb-4 text-[var(--genesis-yellow)]">
-                    <i class="fas fa-info-circle mr-2"></i>Informations Générales
-                </h2>
-                <div class="faq-item" onclick="toggleFaq(this)">
-                    <div class="flex justify-between items-center">
-                        <span class="font-black text-sm">Qu'est-ce que FA Genesis ?</span>
-                        <i class="fas fa-chevron-down text-xs faq-chevron"></i>
-                    </div>
-                    <div class="faq-answer">
-                        <p class="text-sm">Financial Advice Genesis accompagne les étudiants et les entrepreneurs débutants à transformer une idée en un projet structuré, crédible et visible. Nous aidons à clarifier la vision, structurer le projet et gagner en visibilité, le tout à un coût accessible.</p>
-                    </div>
-                </div>
-                <div class="faq-item" onclick="toggleFaq(this)">
-                    <div class="flex justify-between items-center">
-                        <span class="font-black text-sm">À qui s'adressent les accompagnements ?</span>
-                        <i class="fas fa-chevron-down text-xs faq-chevron"></i>
-                    </div>
-                    <div class="faq-answer">
-                        <p class="text-sm">Nos accompagnements s'adressent aux étudiants, aux porteurs de projets, aux jeunes entrepreneurs, aux particuliers et aux entreprises. Que vous ayez déjà un projet ou juste une idée, nous pouvons vous aider.</p>
-                    </div>
-                </div>
-                <div class="faq-item" onclick="toggleFaq(this)">
-                    <div class="flex justify-between items-center">
-                        <span class="font-black text-sm">Je n'ai pas encore de projet, puis-je quand même venir ?</span>
-                        <i class="fas fa-chevron-down text-xs faq-chevron"></i>
-                    </div>
-                    <div class="faq-answer">
-                        <p class="text-sm">Pas de souci ! Vous n'avez pas besoin d'avoir un projet tout prêt. Vous pouvez venir avec une idée, un début de réflexion ou même juste une envie. Nous vous aidons à clarifier et structurer tout ça.</p>
-                    </div>
-                </div>
-                <div class="faq-item" onclick="toggleFaq(this)">
-                    <div class="flex justify-between items-center">
-                        <span class="font-black text-sm">Les accompagnements se font en ligne ou en présentiel ?</span>
-                        <i class="fas fa-chevron-down text-xs faq-chevron"></i>
-                    </div>
-                    <div class="faq-answer">
-                        <p class="text-sm">FA Genesis propose ses accompagnements principalement en ligne (visioconférence), ce qui vous permet d'en bénéficier où que vous soyez en France. Pour certaines prestations (photo, vidéo), des sessions en présentiel peuvent être organisées.</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- OFFRES & TARIFS -->
-            <div class="mb-10">
-                <h2 class="text-xl md:text-2xl font-black italic uppercase mb-4 text-[var(--genesis-yellow)]">
-                    <i class="fas fa-tags mr-2"></i>Offres & Tarifs
-                </h2>
-                <div class="faq-item" onclick="toggleFaq(this)">
-                    <div class="flex justify-between items-center">
-                        <span class="font-black text-sm">Quelles sont les offres proposées ?</span>
-                        <i class="fas fa-chevron-down text-xs faq-chevron"></i>
-                    </div>
-                    <div class="faq-answer">
-                        <p class="text-sm">Nous proposons plusieurs catégories d'offres :<br><br>
-                        <strong>Étudiants :</strong> de 50 € (2 jours) à 290 € (1 mois)<br>
-                        <strong>Particuliers :</strong> de 149 € (2 jours) à 1 490 € (1 mois)<br>
-                        <strong>Entreprises :</strong> de 1 490 € (7 jours) à 4 900 € (30 jours)<br>
-                        <strong>Prestations individuelles :</strong> Photo, Vidéo, Marketing, Média<br><br>
-                        Chaque catégorie propose aussi des offres sur mesure (CUSTOM).</p>
-                    </div>
-                </div>
-                <div class="faq-item" onclick="toggleFaq(this)">
-                    <div class="flex justify-between items-center">
-                        <span class="font-black text-sm">Quelle offre choisir ?</span>
-                        <i class="fas fa-chevron-down text-xs faq-chevron"></i>
-                    </div>
-                    <div class="faq-answer">
-                        <p class="text-sm">Le choix dépend de votre profil et de vos besoins :<br><br>
-                        Vous avez une idée à clarifier ? <strong>IDEA</strong> (2 jours)<br>
-                        Vous voulez structurer un projet ? <strong>STARTER</strong> (7 jours)<br>
-                        Vous souhaitez aussi de la visibilité ? <strong>LAUNCH</strong> (14 jours)<br>
-                        Vous voulez un accompagnement complet ? <strong>IMPACT</strong> (1 mois)<br><br>
-                        Si vous hésitez, contactez notre équipe : elle vous orientera vers l'offre la plus adaptée.</p>
-                    </div>
-                </div>
-                <div class="faq-item" onclick="toggleFaq(this)">
-                    <div class="flex justify-between items-center">
-                        <span class="font-black text-sm">Qu'est-ce qui est inclus dans chaque offre ?</span>
-                        <i class="fas fa-chevron-down text-xs faq-chevron"></i>
-                    </div>
-                    <div class="faq-answer">
-                        <p class="text-sm">En général :<br><br>
-                        <strong>IDEA :</strong> 1 séance stratégique + structuration + plan d'action<br>
-                        <strong>STARTER :</strong> séance complète + structuration + conseils visibilité<br>
-                        <strong>LAUNCH :</strong> stratégie + tournage vidéo + accès média + plan de diffusion<br>
-                        <strong>IMPACT :</strong> tout ce qui précède + shooting photo + accompagnement complet<br><br>
-                        Pour le détail précis, consultez la <a href="offres.html" class="text-[var(--genesis-yellow)] underline font-black">page offres</a>.</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- PAIEMENT -->
-            <div class="mb-10">
-                <h2 class="text-xl md:text-2xl font-black italic uppercase mb-4 text-[var(--genesis-yellow)]">
-                    <i class="fas fa-credit-card mr-2"></i>Paiement
-                </h2>
-                <div class="faq-item" onclick="toggleFaq(this)">
-                    <div class="flex justify-between items-center">
-                        <span class="font-black text-sm">Comment fonctionne le paiement ?</span>
-                        <i class="fas fa-chevron-down text-xs faq-chevron"></i>
-                    </div>
-                    <div class="faq-answer">
-                        <p class="text-sm">Le paiement se fait en deux étapes :<br><br>
-                        1. <strong>30 % d'acompte</strong> au démarrage de l'accompagnement<br>
-                        2. <strong>70 % de solde</strong> à la fin<br><br>
-                        Le paiement s'effectue par carte bancaire de manière sécurisée via SumUp.</p>
-                    </div>
-                </div>
-                <div class="faq-item" onclick="toggleFaq(this)">
-                    <div class="flex justify-between items-center">
-                        <span class="font-black text-sm">Peut-on payer en plusieurs fois ?</span>
-                        <i class="fas fa-chevron-down text-xs faq-chevron"></i>
-                    </div>
-                    <div class="faq-answer">
-                        <p class="text-sm">Oui ! Le paiement en plusieurs fois est possible :<br><br>
-                        <strong>Étudiants :</strong> jusqu'à 2x (IDEA), 4x (STARTER), 6x (LAUNCH) ou 8x (IMPACT)<br>
-                        <strong>Particuliers :</strong> jusqu'à 2x (STARTER, LAUNCH, IMPACT)<br>
-                        <strong>Entreprises et Custom :</strong> facilités de paiement négociables</p>
-                    </div>
-                </div>
-                <div class="faq-item" onclick="toggleFaq(this)">
-                    <div class="flex justify-between items-center">
-                        <span class="font-black text-sm">Le paiement est-il sécurisé ?</span>
-                        <i class="fas fa-chevron-down text-xs faq-chevron"></i>
-                    </div>
-                    <div class="faq-answer">
-                        <p class="text-sm">Oui, les paiements sont traités via SumUp, une plateforme de paiement certifiée et sécurisée. Vos données bancaires ne sont jamais stockées sur nos serveurs. FA Genesis est une entreprise enregistrée et légitime.</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ACCOMPAGNEMENT -->
-            <div class="mb-10">
-                <h2 class="text-xl md:text-2xl font-black italic uppercase mb-4 text-[var(--genesis-yellow)]">
-                    <i class="fas fa-rocket mr-2"></i>Accompagnement
-                </h2>
-                <div class="faq-item" onclick="toggleFaq(this)">
-                    <div class="flex justify-between items-center">
-                        <span class="font-black text-sm">Comment fonctionne l'accompagnement ?</span>
-                        <i class="fas fa-chevron-down text-xs faq-chevron"></i>
-                    </div>
-                    <div class="faq-answer">
-                        <p class="text-sm">L'accompagnement se déroule en plusieurs étapes :<br><br>
-                        1. Clarification de votre idée<br>
-                        2. Structuration du projet<br>
-                        3. Visibilité (photo, vidéo, média selon l'offre)<br>
-                        4. Plan d'action concret<br><br>
-                        Chaque accompagnement est simple, progressif et sans pression.</p>
-                    </div>
-                </div>
-                <div class="faq-item" onclick="toggleFaq(this)">
-                    <div class="flex justify-between items-center">
-                        <span class="font-black text-sm">Combien de temps dure l'accompagnement ?</span>
-                        <i class="fas fa-chevron-down text-xs faq-chevron"></i>
-                    </div>
-                    <div class="faq-answer">
-                        <p class="text-sm"><strong>IDEA :</strong> 2 jours | <strong>STARTER :</strong> 7 jours | <strong>LAUNCH :</strong> 14 jours | <strong>IMPACT :</strong> 1 mois | <strong>CUSTOM :</strong> variable selon vos besoins.</p>
-                    </div>
-                </div>
-                <div class="faq-item" onclick="toggleFaq(this)">
-                    <div class="flex justify-between items-center">
-                        <span class="font-black text-sm">Que dois-je préparer avant la séance ?</span>
-                        <i class="fas fa-chevron-down text-xs faq-chevron"></i>
-                    </div>
-                    <div class="faq-answer">
-                        <p class="text-sm">Préparez une description de votre idée ou projet (même brève), vos objectifs principaux, votre cible / public visé (si vous le savez), et vos questions. Pas de panique si vous n'avez pas tout : la séance stratégique sert justement à clarifier tout cela ensemble.</p>
-                    </div>
-                </div>
-                <div class="faq-item" onclick="toggleFaq(this)">
-                    <div class="flex justify-between items-center">
-                        <span class="font-black text-sm">Que se passe-t-il après l'accompagnement ?</span>
-                        <i class="fas fa-chevron-down text-xs faq-chevron"></i>
-                    </div>
-                    <div class="faq-answer">
-                        <p class="text-sm">Vous conservez tous vos livrables (photos, vidéos, documents, plan d'action). Vous pouvez également souscrire à une nouvelle offre si vous souhaitez continuer à être accompagné. Notre équipe reste disponible pour répondre à vos questions.</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ESPACE CLIENT -->
-            <div class="mb-10">
-                <h2 class="text-xl md:text-2xl font-black italic uppercase mb-4 text-[var(--genesis-yellow)]">
-                    <i class="fas fa-laptop mr-2"></i>Espace Client
-                </h2>
-                <div class="faq-item" onclick="toggleFaq(this)">
-                    <div class="flex justify-between items-center">
-                        <span class="font-black text-sm">Comment accéder à mon espace client ?</span>
-                        <i class="fas fa-chevron-down text-xs faq-chevron"></i>
-                    </div>
-                    <div class="faq-answer">
-                        <p class="text-sm">Rendez-vous sur la <a href="login.html" class="text-[var(--genesis-yellow)] underline font-black">page de connexion</a> et connectez-vous avec vos identifiants. Vous y trouverez vos livrables, vos séances et vos informations de paiement.</p>
-                    </div>
-                </div>
-                <div class="faq-item" onclick="toggleFaq(this)">
-                    <div class="flex justify-between items-center">
-                        <span class="font-black text-sm">Comment accéder à mes livrables ?</span>
-                        <i class="fas fa-chevron-down text-xs faq-chevron"></i>
-                    </div>
-                    <div class="faq-answer">
-                        <p class="text-sm">Vos livrables sont accessibles depuis la section "Mes Livrables" de votre espace client. Les documents d'accueil sont disponibles dès le paiement de l'acompte. Les livrables finaux (photos, vidéos, etc.) sont disponibles au téléchargement une fois le solde réglé.</p>
-                    </div>
-                </div>
-                <div class="faq-item" onclick="toggleFaq(this)">
-                    <div class="flex justify-between items-center">
-                        <span class="font-black text-sm">J'ai un problème technique, que faire ?</span>
-                        <i class="fas fa-chevron-down text-xs faq-chevron"></i>
-                    </div>
-                    <div class="faq-answer">
-                        <p class="text-sm">Essayez de rafraîchir la page avec Ctrl+Maj+R (ou Cmd+Maj+R sur Mac). Le serveur peut mettre jusqu'à 60 secondes pour démarrer. Si le problème persiste, contactez notre équipe à <strong>financialadvicegenesis@gmail.com</strong>.</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- CONTACT -->
-            <div class="mb-10">
-                <h2 class="text-xl md:text-2xl font-black italic uppercase mb-4 text-[var(--genesis-yellow)]">
-                    <i class="fas fa-envelope mr-2"></i>Contact
-                </h2>
-                <div class="faq-item" onclick="toggleFaq(this)">
-                    <div class="flex justify-between items-center">
-                        <span class="font-black text-sm">Comment contacter l'équipe FA Genesis ?</span>
-                        <i class="fas fa-chevron-down text-xs faq-chevron"></i>
-                    </div>
-                    <div class="faq-answer">
-                        <p class="text-sm">Vous pouvez nous contacter de plusieurs façons :<br><br>
-                        Par e-mail : <strong>financialadvicegenesis@gmail.com</strong><br>
-                        Par téléphone : <strong>+33 7 64 16 36 09</strong><br>
-                        Via le <a href="contact.html" class="text-[var(--genesis-yellow)] underline font-black">formulaire de contact</a><br>
-                        Par message sur nos réseaux sociaux<br><br>
-                        Horaires : du lundi au vendredi, de 9h à 18h.</p>
-                    </div>
-                </div>
-                <div class="faq-item" onclick="toggleFaq(this)">
-                    <div class="flex justify-between items-center">
-                        <span class="font-black text-sm">Quel est le délai de réponse ?</span>
-                        <i class="fas fa-chevron-down text-xs faq-chevron"></i>
-                    </div>
-                    <div class="faq-answer">
-                        <p class="text-sm">Nous faisons de notre mieux pour répondre dans un délai de 24 à 48 heures ouvrées. Pour les urgences, appelez-nous directement au +33 7 64 16 36 09.</p>
-                    </div>
-                </div>
-            </div>
-
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleItem(this.parentElement)">
+          <span class="faq-q-text">Qu'est-ce que FA Genesis ?</span>
+          <i class="fa-solid fa-chevron-down faq-chevron"></i>
         </div>
-    </section>
+        <div class="faq-a"><div class="faq-a-inner">Financial Advice Genesis accompagne les étudiants et les entrepreneurs débutants à transformer une idée en un projet structuré, crédible et visible. Nous aidons à clarifier la vision, structurer le projet et gagner en visibilité, le tout à un coût accessible.</div></div>
+      </div>
 
-    <!-- FOOTER -->
-    <div id="site-footer"></div>
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleItem(this.parentElement)">
+          <span class="faq-q-text">À qui s'adressent les accompagnements ?</span>
+          <i class="fa-solid fa-chevron-down faq-chevron"></i>
+        </div>
+        <div class="faq-a"><div class="faq-a-inner">Nos accompagnements s'adressent aux étudiants, aux porteurs de projets, aux jeunes entrepreneurs, aux particuliers et aux entreprises. Que vous ayez déjà un projet ou juste une idée, nous pouvons vous aider.</div></div>
+      </div>
 
-    <script>
-        // Toggle FAQ
-        function toggleFaq(item) {
-            var answer = item.querySelector('.faq-answer');
-            var icon = item.querySelector('.faq-chevron');
-            if (!answer) return;
-            if (answer.style.display === 'none' || answer.style.display === '') {
-                answer.style.display = 'block';
-                if (icon) icon.style.transform = 'rotate(180deg)';
-            } else {
-                answer.style.display = 'none';
-                if (icon) icon.style.transform = 'rotate(0deg)';
-            }
-        }
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleItem(this.parentElement)">
+          <span class="faq-q-text">Je n'ai pas encore de projet, puis-je quand même venir ?</span>
+          <i class="fa-solid fa-chevron-down faq-chevron"></i>
+        </div>
+        <div class="faq-a"><div class="faq-a-inner">Pas de souci ! Vous n'avez pas besoin d'avoir un projet tout prêt. Vous pouvez venir avec une idée, un début de réflexion ou même juste une envie. Nous vous aidons à clarifier et structurer tout ça.</div></div>
+      </div>
 
-        // Menu Mobile Toggle
-        var mobileMenuBtn = document.getElementById('mobileMenuBtn');
-        var mobileMenu = document.getElementById('mobileMenu');
-        var menuLine1 = document.getElementById('menuLine1');
-        var menuLine2 = document.getElementById('menuLine2');
-        var menuLine3 = document.getElementById('menuLine3');
-        var isMenuOpen = false;
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleItem(this.parentElement)">
+          <span class="faq-q-text">Les accompagnements se font en ligne ou en présentiel ?</span>
+          <i class="fa-solid fa-chevron-down faq-chevron"></i>
+        </div>
+        <div class="faq-a"><div class="faq-a-inner">FA Genesis propose ses accompagnements principalement en ligne (visioconférence), ce qui vous permet d'en bénéficier où que vous soyez en France. Pour certaines prestations (photo, vidéo), des sessions en présentiel peuvent être organisées.</div></div>
+      </div>
+    </div>
 
-        function toggleMobileMenu() {
-            isMenuOpen = !isMenuOpen;
-            if (isMenuOpen) {
-                mobileMenu.classList.remove('hidden');
-                mobileMenu.classList.add('flex');
-                menuLine1.style.transform = 'rotate(45deg) translate(5px, 5px)';
-                menuLine2.style.opacity = '0';
-                menuLine3.style.transform = 'rotate(-45deg) translate(5px, -5px)';
-                document.body.style.overflow = 'hidden';
-            } else {
-                closeMobileMenu();
-            }
-        }
+    <!-- ── Offres & Tarifs ── -->
+    <div class="faq-group visible" id="grp-offres">
+      <div class="faq-group-header">
+        <div class="faq-group-icon"><i class="fa-solid fa-tags"></i></div>
+        <h2 class="faq-group-title">Offres & Tarifs</h2>
+      </div>
 
-        function closeMobileMenu() {
-            isMenuOpen = false;
-            mobileMenu.classList.add('hidden');
-            mobileMenu.classList.remove('flex');
-            menuLine1.style.transform = 'none';
-            menuLine2.style.opacity = '1';
-            menuLine3.style.transform = 'none';
-            document.body.style.overflow = 'auto';
-        }
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleItem(this.parentElement)">
+          <span class="faq-q-text">Quelles sont les offres proposées ?</span>
+          <i class="fa-solid fa-chevron-down faq-chevron"></i>
+        </div>
+        <div class="faq-a"><div class="faq-a-inner">
+          Nous proposons plusieurs catégories d'offres :<br><br>
+          <strong>Étudiants :</strong> de 50 € (2 jours) à 290 € (1 mois)<br>
+          <strong>Particuliers :</strong> de 149 € (2 jours) à 1 490 € (1 mois)<br>
+          <strong>Entreprises :</strong> de 1 490 € (7 jours) à 4 900 € (30 jours)<br>
+          <strong>Prestations individuelles :</strong> Photo, Vidéo, Marketing, Média<br><br>
+          Chaque catégorie propose aussi des offres sur mesure (CUSTOM).
+        </div></div>
+      </div>
 
-        if (mobileMenuBtn) mobileMenuBtn.addEventListener('click', toggleMobileMenu);
-    </script>
-    <script src="offers-config.js"></script>
-    <script src="panier.js"></script>
-    <script src="footer.js" defer></script>
-    <script src="chatbot.js" defer></script>
-    <script src="pwa-init.js"></script>
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleItem(this.parentElement)">
+          <span class="faq-q-text">Quelle offre choisir ?</span>
+          <i class="fa-solid fa-chevron-down faq-chevron"></i>
+        </div>
+        <div class="faq-a"><div class="faq-a-inner">
+          Le choix dépend de votre profil et de vos besoins :<br><br>
+          Vous avez une idée à clarifier ? <strong>IDEA</strong> (2 jours)<br>
+          Vous voulez structurer un projet ? <strong>STARTER</strong> (7 jours)<br>
+          Vous souhaitez aussi de la visibilité ? <strong>LAUNCH</strong> (14 jours)<br>
+          Vous voulez un accompagnement complet ? <strong>IMPACT</strong> (1 mois)<br><br>
+          Si vous hésitez, contactez notre équipe : elle vous orientera vers l'offre la plus adaptée.
+        </div></div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleItem(this.parentElement)">
+          <span class="faq-q-text">Qu'est-ce qui est inclus dans chaque offre ?</span>
+          <i class="fa-solid fa-chevron-down faq-chevron"></i>
+        </div>
+        <div class="faq-a"><div class="faq-a-inner">
+          En général :<br><br>
+          <strong>IDEA :</strong> 1 séance stratégique + structuration + plan d'action<br>
+          <strong>STARTER :</strong> séance complète + structuration + conseils visibilité<br>
+          <strong>LAUNCH :</strong> stratégie + tournage vidéo + accès média + plan de diffusion<br>
+          <strong>IMPACT :</strong> tout ce qui précède + shooting photo + accompagnement complet
+        </div></div>
+      </div>
+    </div>
+
+    <!-- ── Paiement ── -->
+    <div class="faq-group visible" id="grp-paiement">
+      <div class="faq-group-header">
+        <div class="faq-group-icon"><i class="fa-solid fa-credit-card"></i></div>
+        <h2 class="faq-group-title">Paiement</h2>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleItem(this.parentElement)">
+          <span class="faq-q-text">Comment fonctionne le paiement ?</span>
+          <i class="fa-solid fa-chevron-down faq-chevron"></i>
+        </div>
+        <div class="faq-a"><div class="faq-a-inner">
+          Le paiement se fait en deux étapes :<br><br>
+          1. <strong>30 % d'acompte</strong> au démarrage de l'accompagnement<br>
+          2. <strong>70 % de solde</strong> à la fin<br><br>
+          Le paiement s'effectue par carte bancaire de manière sécurisée via SumUp.
+        </div></div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleItem(this.parentElement)">
+          <span class="faq-q-text">Peut-on payer en plusieurs fois ?</span>
+          <i class="fa-solid fa-chevron-down faq-chevron"></i>
+        </div>
+        <div class="faq-a"><div class="faq-a-inner">
+          Oui ! Le paiement en plusieurs fois est possible :<br><br>
+          <strong>Étudiants :</strong> jusqu'à 2x (IDEA), 4x (STARTER), 6x (LAUNCH) ou 8x (IMPACT)<br>
+          <strong>Particuliers :</strong> jusqu'à 2x (STARTER, LAUNCH, IMPACT)<br>
+          <strong>Entreprises et Custom :</strong> facilités de paiement négociables
+        </div></div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleItem(this.parentElement)">
+          <span class="faq-q-text">Le paiement est-il sécurisé ?</span>
+          <i class="fa-solid fa-chevron-down faq-chevron"></i>
+        </div>
+        <div class="faq-a"><div class="faq-a-inner">Oui, les paiements sont traités via SumUp, une plateforme de paiement certifiée et sécurisée. Vos données bancaires ne sont jamais stockées sur nos serveurs. FA Genesis est une entreprise enregistrée et légitime.</div></div>
+      </div>
+    </div>
+
+    <!-- ── Accompagnement ── -->
+    <div class="faq-group visible" id="grp-accompagnement">
+      <div class="faq-group-header">
+        <div class="faq-group-icon"><i class="fa-solid fa-rocket"></i></div>
+        <h2 class="faq-group-title">Accompagnement</h2>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleItem(this.parentElement)">
+          <span class="faq-q-text">Comment fonctionne l'accompagnement ?</span>
+          <i class="fa-solid fa-chevron-down faq-chevron"></i>
+        </div>
+        <div class="faq-a"><div class="faq-a-inner">
+          L'accompagnement se déroule en plusieurs étapes :<br><br>
+          1. Clarification de votre idée<br>
+          2. Structuration du projet<br>
+          3. Visibilité (photo, vidéo, média selon l'offre)<br>
+          4. Plan d'action concret<br><br>
+          Chaque accompagnement est simple, progressif et sans pression.
+        </div></div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleItem(this.parentElement)">
+          <span class="faq-q-text">Combien de temps dure l'accompagnement ?</span>
+          <i class="fa-solid fa-chevron-down faq-chevron"></i>
+        </div>
+        <div class="faq-a"><div class="faq-a-inner"><strong>IDEA :</strong> 2 jours &nbsp;|&nbsp; <strong>STARTER :</strong> 7 jours &nbsp;|&nbsp; <strong>LAUNCH :</strong> 14 jours &nbsp;|&nbsp; <strong>IMPACT :</strong> 1 mois &nbsp;|&nbsp; <strong>CUSTOM :</strong> variable selon vos besoins.</div></div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleItem(this.parentElement)">
+          <span class="faq-q-text">Que dois-je préparer avant la séance ?</span>
+          <i class="fa-solid fa-chevron-down faq-chevron"></i>
+        </div>
+        <div class="faq-a"><div class="faq-a-inner">Préparez une description de votre idée ou projet (même brève), vos objectifs principaux, votre cible / public visé (si vous le savez), et vos questions. Pas de panique si vous n'avez pas tout : la séance stratégique sert justement à clarifier tout cela ensemble.</div></div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleItem(this.parentElement)">
+          <span class="faq-q-text">Que se passe-t-il après l'accompagnement ?</span>
+          <i class="fa-solid fa-chevron-down faq-chevron"></i>
+        </div>
+        <div class="faq-a"><div class="faq-a-inner">Vous conservez tous vos livrables (photos, vidéos, documents, plan d'action). Vous pouvez également souscrire à une nouvelle offre si vous souhaitez continuer à être accompagné. Notre équipe reste disponible pour répondre à vos questions.</div></div>
+      </div>
+    </div>
+
+    <!-- ── Espace Client ── -->
+    <div class="faq-group visible" id="grp-client">
+      <div class="faq-group-header">
+        <div class="faq-group-icon"><i class="fa-solid fa-laptop"></i></div>
+        <h2 class="faq-group-title">Espace Client</h2>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleItem(this.parentElement)">
+          <span class="faq-q-text">Comment accéder à mon espace client ?</span>
+          <i class="fa-solid fa-chevron-down faq-chevron"></i>
+        </div>
+        <div class="faq-a"><div class="faq-a-inner">Rendez-vous sur la <a href="login.html">page de connexion</a> et connectez-vous avec vos identifiants. Vous y trouverez vos livrables, vos séances et vos informations de paiement.</div></div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleItem(this.parentElement)">
+          <span class="faq-q-text">Comment accéder à mes livrables ?</span>
+          <i class="fa-solid fa-chevron-down faq-chevron"></i>
+        </div>
+        <div class="faq-a"><div class="faq-a-inner">Vos livrables sont accessibles depuis la section "Mes Livrables" de votre espace client. Les documents d'accueil sont disponibles dès le paiement de l'acompte. Les livrables finaux (photos, vidéos, etc.) sont disponibles au téléchargement une fois le solde réglé.</div></div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleItem(this.parentElement)">
+          <span class="faq-q-text">J'ai un problème technique, que faire ?</span>
+          <i class="fa-solid fa-chevron-down faq-chevron"></i>
+        </div>
+        <div class="faq-a"><div class="faq-a-inner">Essayez de rafraîchir la page avec Ctrl+Maj+R (ou Cmd+Maj+R sur Mac). Le serveur peut mettre jusqu'à 60 secondes pour démarrer. Si le problème persiste, contactez notre équipe à <strong>financialadvicegenesis@gmail.com</strong>.</div></div>
+      </div>
+    </div>
+
+    <!-- ── Contact ── -->
+    <div class="faq-group visible" id="grp-contact-cat">
+      <div class="faq-group-header">
+        <div class="faq-group-icon"><i class="fa-solid fa-envelope"></i></div>
+        <h2 class="faq-group-title">Contact</h2>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleItem(this.parentElement)">
+          <span class="faq-q-text">Comment contacter l'équipe FA Genesis ?</span>
+          <i class="fa-solid fa-chevron-down faq-chevron"></i>
+        </div>
+        <div class="faq-a"><div class="faq-a-inner">
+          Vous pouvez nous contacter de plusieurs façons :<br><br>
+          Par e-mail : <strong>financialadvicegenesis@gmail.com</strong><br>
+          Par téléphone : <strong>+33 7 64 16 36 09</strong><br>
+          Via le <a href="contact.html">formulaire de contact</a><br>
+          Par message sur nos réseaux sociaux<br><br>
+          Horaires : du lundi au vendredi, de 9h à 18h.
+        </div></div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleItem(this.parentElement)">
+          <span class="faq-q-text">Quel est le délai de réponse ?</span>
+          <i class="fa-solid fa-chevron-down faq-chevron"></i>
+        </div>
+        <div class="faq-a"><div class="faq-a-inner">Nous faisons de notre mieux pour répondre dans un délai de 24 à 48 heures ouvrées. Pour les urgences, appelez-nous directement au +33 7 64 16 36 09.</div></div>
+      </div>
+    </div>
+
+    <!-- CTA -->
+    <div class="faq-cta">
+      <h2>Vous n'avez pas trouvé votre réponse ?</h2>
+      <p>Notre équipe est disponible du lundi au vendredi, de 9h à 18h.</p>
+      <a href="contact.html" class="faq-cta-btn">Nous contacter <i class="fa-solid fa-arrow-right"></i></a>
+    </div>
+
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="wrap">
+    <div class="footer-grid">
+      <div>
+        <div class="footer-brand-name">
+          <img src="assets/images/logo-genesis.png" alt="FA GENESIS" class="footer-brand-img">
+          FA GENESIS
+        </div>
+        <p class="footer-brand-desc">La plateforme qui connecte clients et prestataires de services en France et à l'international.</p>
+        <div class="footer-social">
+          <a href="https://www.linkedin.com/in/financial-advice-genesis-772b653aa/" target="_blank" rel="noopener"><i class="fa-brands fa-linkedin-in"></i></a>
+          <a href="https://www.instagram.com/financial_advice_genesis/" target="_blank" rel="noopener"><i class="fa-brands fa-instagram"></i></a>
+          <a href="https://www.tiktok.com/@fa.genesis" target="_blank" rel="noopener"><i class="fa-brands fa-tiktok"></i></a>
+        </div>
+      </div>
+      <div class="footer-col">
+        <p class="footer-col-title">Plateforme</p>
+        <a href="index.html#espaces">Espaces</a>
+        <a href="index.html#fonctionnalites">Fonctionnalités</a>
+        <a href="index.html#actualites">Actualités</a>
+        <a href="index.html#telecharger">Télécharger</a>
+      </div>
+      <div class="footer-col">
+        <p class="footer-col-title">À propos</p>
+        <a href="a-propos.html">Notre histoire</a>
+        <a href="a-propos.html#notre-vision">Notre vision</a>
+        <a href="contact.html">Contact</a>
+        <a href="faq.html">FAQ</a>
+      </div>
+      <div class="footer-col">
+        <p class="footer-col-title">Légal</p>
+        <a href="mentions-legales.html">Mentions légales</a>
+        <a href="confidentialite.html">Confidentialité</a>
+        <a href="conditions-generales.html">CGV</a>
+        <a href="cookies.html">Cookies</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p class="footer-copy">© 2026 FA GENESIS. Tous droits réservés.</p>
+      <p class="footer-copy">Groupe FA Industries</p>
+    </div>
+  </div>
+</footer>
+
+<!-- INSCRIPTION OVERLAY -->
+<div id="insc-overlay">
+  <button id="insc-ov-close" onclick="closeInscriptionOverlay()" aria-label="Fermer"><i class="fa-solid fa-xmark"></i></button>
+  <iframe id="insc-frame" src="" title="Inscription FA GENESIS"></iframe>
+</div>
+
+<script>
+/* ── Nav scroll ── */
+window.addEventListener('scroll', function(){
+  document.getElementById('navbar').classList.toggle('scrolled', window.scrollY > 40);
+},{passive:true});
+
+/* ── Accordion ── */
+function toggleItem(item){
+  var answer = item.querySelector('.faq-a');
+  var isOpen = item.classList.contains('open');
+  if(isOpen){
+    item.classList.remove('open');
+    answer.style.maxHeight = '0';
+  } else {
+    item.classList.add('open');
+    answer.style.maxHeight = answer.scrollHeight + 'px';
+  }
+}
+
+/* ── Category filter ── */
+var catMap = {
+  'general':'grp-general','offres':'grp-offres','paiement':'grp-paiement',
+  'accompagnement':'grp-accompagnement','client':'grp-client','contact-cat':'grp-contact-cat'
+};
+function showCat(cat, btn){
+  document.querySelectorAll('.faq-cat').forEach(function(b){ b.classList.remove('active'); });
+  if(btn) btn.classList.add('active');
+  document.querySelectorAll('.faq-group').forEach(function(g){ g.classList.remove('visible'); });
+  if(cat === 'all'){
+    document.querySelectorAll('.faq-group').forEach(function(g){ g.classList.add('visible'); });
+  } else {
+    var grpId = catMap[cat];
+    if(grpId){ var grp = document.getElementById(grpId); if(grp) grp.classList.add('visible'); }
+  }
+  document.getElementById('faqSearch').value = '';
+}
+
+/* ── Search filter ── */
+function filterFaq(query){
+  var q = query.toLowerCase().trim();
+  if(!q){
+    document.querySelectorAll('.faq-group').forEach(function(g){ g.classList.add('visible'); });
+    document.querySelectorAll('.faq-item').forEach(function(i){ i.style.display = ''; });
+    return;
+  }
+  document.querySelectorAll('.faq-group').forEach(function(grp){
+    var hasMatch = false;
+    grp.querySelectorAll('.faq-item').forEach(function(item){
+      var text = (item.textContent || '').toLowerCase();
+      if(text.indexOf(q) >= 0){ item.style.display = ''; hasMatch = true; }
+      else { item.style.display = 'none'; }
+    });
+    grp.classList.toggle('visible', hasMatch);
+  });
+}
+
+/* ── Inscription Overlay ── */
+function openInscriptionOverlay(){
+  var ov = document.getElementById('insc-overlay');
+  if(!ov) return;
+  var fr = document.getElementById('insc-frame');
+  if(fr && !fr.src) fr.src = 'inscription.html';
+  document.body.style.overflow = 'hidden';
+  ov.classList.add('open');
+}
+function closeInscriptionOverlay(){
+  var ov = document.getElementById('insc-overlay');
+  if(!ov) return;
+  ov.classList.remove('open');
+  document.body.style.overflow = '';
+}
+document.addEventListener('keydown', function(e){ if(e.key==='Escape') closeInscriptionOverlay(); });
+</script>
 </body>
 </html>

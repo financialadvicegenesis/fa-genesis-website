@@ -129,6 +129,12 @@ footer{background:var(--s1);border-top:1px solid var(--gold-border);padding:64px
   .nav-hamburger{display:block;}
   .section{padding:64px 0;}
 }
+/* ── Inscription Overlay ── */
+#insc-overlay{position:fixed;inset:0;z-index:9998;background:#050505;visibility:hidden;opacity:0;transition:opacity .32s,visibility .32s;}
+#insc-overlay.open{visibility:visible;opacity:1;}
+#insc-ov-close{position:fixed;top:18px;right:24px;z-index:9999;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);color:var(--white);border-radius:50%;width:36px;height:36px;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;transition:background .2s,border-color .2s,color .2s;}
+#insc-ov-close:hover{background:rgba(255,215,0,.15);border-color:rgba(255,215,0,.35);color:var(--gold);}
+#insc-frame{width:100%;height:100%;border:none;display:block;}
 </style>
 </head>
 <body>
@@ -149,7 +155,7 @@ footer{background:var(--s1);border-top:1px solid var(--gold-border);padding:64px
     </div>
     <div class="nav-ctas">
       <a href="index.html?login=1" class="btn-ghost">Se connecter</a>
-      <a href="inscription.html" class="btn-primary">Inscription</a>
+      <a href="inscription.html" class="btn-primary" onclick="openInscriptionOverlay();return false;">Inscription</a>
     </div>
     <button class="nav-hamburger" onclick="document.getElementById('mobile-menu').classList.add('open')">
       <i class="fa-solid fa-bars"></i>
@@ -324,6 +330,27 @@ window.addEventListener('scroll', function(){
   if(window.scrollY > 40) navbar.classList.add('scrolled');
   else navbar.classList.remove('scrolled');
 }, {passive:true});
+
+function openInscriptionOverlay(){
+  var ov = document.getElementById('insc-overlay');
+  if(!ov) return;
+  var fr = document.getElementById('insc-frame');
+  if(fr && !fr.src) fr.src = 'inscription.html';
+  document.body.style.overflow = 'hidden';
+  ov.classList.add('open');
+}
+function closeInscriptionOverlay(){
+  var ov = document.getElementById('insc-overlay');
+  if(!ov) return;
+  ov.classList.remove('open');
+  document.body.style.overflow = '';
+}
+document.addEventListener('keydown', function(e){ if(e.key==='Escape') closeInscriptionOverlay(); });
 </script>
+
+<div id="insc-overlay">
+  <button id="insc-ov-close" onclick="closeInscriptionOverlay()" aria-label="Fermer"><i class="fa-solid fa-xmark"></i></button>
+  <iframe id="insc-frame" src="" title="Inscription FA GENESIS"></iframe>
+</div>
 </body>
 </html>

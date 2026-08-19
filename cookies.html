@@ -1,247 +1,191 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" type="image/png" sizes="32x32" href="assets/images/logo-favicon-32.png">
-    <link rel="icon" type="image/png" sizes="192x192" href="assets/images/logo-favicon-192.png">
-    <link rel="icon" type="image/png" sizes="512x512" href="assets/images/logo-favicon.png">
-    <link rel="apple-touch-icon" sizes="192x192" href="assets/images/logo-favicon-192.png">
-    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
-    <title>Politique de Cookies - FA GENESIS</title>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;900&family=Space+Grotesk:wght@300;700&display=swap">
-    <link rel="stylesheet" href="tailwind.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" media="print" onload="this.media='all'">
-    <style>
-        body { background: #ffffff; color: #0b0b0b; font-family: 'Space Grotesk', sans-serif; margin: 0; }
-        h1, h2, h3, h4, h5 { font-family: 'Unbounded', cursive; }
-        .legal-nav { background: #000; border-bottom: 4px solid #FFD700; }
-        .legal-nav a { color: #fff; font-weight: 900; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; text-decoration: none; transition: color 0.2s; }
-        .legal-nav a:hover { color: #FFD700; }
-        .legal-nav a.active { color: #FFD700; }
-        .legal-subnav { background: #fff; border-bottom: 4px solid #000; box-shadow: 0 6px 20px rgba(0,0,0,0.10); }
-        .legal-subnav a { color: #444; font-weight: 700; font-size: 13px; text-decoration: none; transition: color 0.2s, border-color 0.2s; border-bottom: 3px solid transparent; padding-bottom: 2px; }
-        .legal-subnav a:hover { color: #000; border-bottom-color: #FFD700; }
-        .legal-subnav a.active { color: #000; font-weight: 900; border-bottom-color: #FFD700; }
-        .legal-subnav span { color: #ccc; }
-        .legal-content { max-width: 900px; margin: 0 auto; padding: 40px 24px 60px; }
-        .legal-content h1 { font-size: 2.5rem; font-weight: 900; font-style: italic; text-transform: uppercase; margin-bottom: 8px; }
-        .legal-content .legal-date { font-size: 13px; font-weight: 700; color: #666; margin-bottom: 40px; }
-        .legal-content h2 { font-size: 1.4rem; font-weight: 900; text-transform: uppercase; margin-top: 40px; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 3px solid #FFD700; }
-        .legal-content h3 { font-size: 1.1rem; font-weight: 900; margin-top: 24px; margin-bottom: 12px; }
-        .legal-content p { font-size: 15px; line-height: 1.8; font-weight: 500; margin-bottom: 16px; }
-        .legal-content ul { list-style: none; padding: 0; margin-bottom: 16px; }
-        .legal-content ul li { font-size: 15px; line-height: 1.8; font-weight: 500; padding-left: 24px; position: relative; margin-bottom: 8px; }
-        .legal-content ul li::before { content: ""; position: absolute; left: 0; top: 10px; width: 10px; height: 10px; background: #FFD700; border: 2px solid #000; }
-        .legal-content .cookie-tag { display: inline-block; background: #FFD700; color: #000; font-family: 'Unbounded', cursive; font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; padding: 4px 10px; border: 2px solid #000; margin-bottom: 12px; }
-        .legal-contact { background: #000; color: #fff; padding: 32px; margin-top: 48px; border: 4px solid #000; }
-        .legal-contact h3 { color: #FFD700; margin-top: 0; }
-        .legal-contact a { color: #FFD700; font-weight: 900; text-decoration: underline; }
-
-        /* ── MOBILE (≤640px) ── */
-        @media (max-width: 640px) {
-            .legal-nav { padding: 10px 16px !important; }
-            .legal-nav a:first-child { font-size: 13px !important; gap: 6px !important; }
-            .legal-nav a:first-child img { height: 36px !important; width: 36px !important; }
-            .legal-nav a:last-child { font-size: 11px !important; }
-
-            .legal-subnav {
-                top: 56px !important;
-                overflow-x: auto !important;
-                -webkit-overflow-scrolling: touch;
-                flex-wrap: nowrap !important;
-                justify-content: flex-start !important;
-                padding: 8px 12px !important;
-                gap: 14px !important;
-                scrollbar-width: none;
-            }
-            .legal-subnav::-webkit-scrollbar { display: none; }
-            .legal-subnav span { display: none !important; }
-            .legal-subnav a { white-space: nowrap; font-size: 12px !important; }
-
-            .legal-content {
-                padding-top: 108px !important;
-                padding-left: 16px !important;
-                padding-right: 16px !important;
-            }
-
-            .legal-content h1 {
-                font-size: 1.5rem !important;
-                line-height: 1.25;
-                word-break: break-word;
-                overflow-wrap: break-word;
-            }
-            .legal-content h2 { font-size: 1rem !important; word-break: break-word; }
-            .legal-content h3 { font-size: 0.95rem !important; }
-
-            .legal-content p,
-            .legal-content ul li,
-            .legal-content strong {
-                font-size: 14px !important;
-                word-break: break-word;
-                overflow-wrap: break-word;
-            }
-
-            .legal-contact {
-                padding: 20px 16px !important;
-                word-break: break-word;
-                overflow-wrap: break-word;
-            }
-            .legal-contact a { word-break: break-all; }
-        }
-    </style>
-    <meta name="theme-color" content="#FFD700">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="FA GENESIS">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Politique de Cookies — FA GENESIS</title>
+<link rel="icon" type="image/png" sizes="32x32" href="assets/images/logo-favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="assets/images/logo-favicon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700;900&family=Space+Grotesk:wght@300;400;500;700&display=swap" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700;900&family=Space+Grotesk:wght@300;400;500;700&display=swap"></noscript>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"></noscript>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --black:#050505;--s1:#0a0a0a;
+  --gold:#FFD700;--gold-border:rgba(255,215,0,.18);
+  --orange:#FF4800;--white:#fff;
+  --t1:rgba(255,255,255,.92);--t2:rgba(255,255,255,.6);--t3:rgba(255,255,255,.35);
+  --font-d:'Unbounded',sans-serif;--font-b:'Space Grotesk',sans-serif;
+  --nav-h:64px;
+}
+html{scroll-behavior:smooth;}
+body{background:var(--black);color:var(--t1);font-family:var(--font-b);overflow-x:hidden;-webkit-font-smoothing:antialiased;}
+a{text-decoration:none;color:inherit;}
+.lg-nav{position:fixed;top:0;left:0;right:0;z-index:1000;height:var(--nav-h);background:rgba(5,5,5,.95);backdrop-filter:blur(20px);border-bottom:1px solid var(--gold-border);display:flex;align-items:center;justify-content:space-between;padding:0 32px;}
+.lg-nav-logo{font-family:var(--font-d);font-size:13px;font-weight:900;color:var(--gold);display:flex;align-items:center;gap:8px;}
+.lg-nav-logo img{height:30px;width:auto;object-fit:contain;mix-blend-mode:screen;}
+.lg-nav-back{font-size:12px;font-weight:600;color:var(--t2);display:flex;align-items:center;gap:6px;transition:color .2s;}
+.lg-nav-back:hover{color:var(--gold);}
+.lg-subnav{position:fixed;top:var(--nav-h);left:0;right:0;z-index:900;background:rgba(10,10,10,.95);backdrop-filter:blur(16px);border-bottom:1px solid var(--gold-border);overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+.lg-subnav::-webkit-scrollbar{display:none;}
+.lg-subnav-inner{display:flex;align-items:center;gap:0;padding:0 32px;white-space:nowrap;}
+.lg-subnav-link{display:inline-block;font-family:var(--font-d);font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--t3);padding:14px 16px;border-bottom:2px solid transparent;transition:color .2s,border-color .2s;}
+.lg-subnav-link:hover{color:var(--t1);}
+.lg-subnav-link.active{color:var(--gold);border-bottom-color:var(--gold);}
+.lg-content{max-width:860px;margin:0 auto;padding:calc(var(--nav-h) + 48px + 48px) 32px 80px;}
+.lg-eyebrow{font-family:var(--font-d);font-size:10px;font-weight:700;letter-spacing:4px;text-transform:uppercase;color:var(--gold);display:block;margin-bottom:16px;}
+.lg-content h1{font-family:var(--font-d);font-size:clamp(24px,4vw,48px);font-weight:900;letter-spacing:-2px;line-height:1.1;margin-bottom:10px;}
+.lg-date{font-size:12px;color:var(--t3);margin-bottom:48px;display:block;}
+.lg-content h2{font-family:var(--font-d);font-size:13px;font-weight:900;letter-spacing:1px;text-transform:uppercase;color:var(--gold);margin-top:48px;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid var(--gold-border);}
+.lg-content h3{font-family:var(--font-d);font-size:11px;font-weight:700;text-transform:uppercase;color:var(--t1);margin-top:28px;margin-bottom:12px;}
+.lg-content p{font-size:14.5px;line-height:1.8;color:var(--t2);margin-bottom:14px;}
+.lg-content p strong{color:var(--t1);}
+.lg-content p a{color:var(--gold);text-decoration:underline;text-underline-offset:2px;}
+.lg-content ul{list-style:none;padding:0;margin-bottom:16px;}
+.lg-content ul li{font-size:14.5px;line-height:1.8;color:var(--t2);padding-left:22px;position:relative;margin-bottom:8px;}
+.lg-content ul li::before{content:'';position:absolute;left:0;top:10px;width:6px;height:6px;background:var(--gold);border-radius:50%;}
+.cookie-tag{display:inline-block;background:rgba(255,215,0,.12);color:var(--gold);font-family:var(--font-d);font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:4px 10px;border:1px solid var(--gold-border);border-radius:4px;margin-bottom:12px;}
+.lg-contact{background:var(--s1);border:1.5px solid var(--gold-border);border-radius:16px;padding:28px;margin-top:48px;}
+.lg-contact h3{font-family:var(--font-d);font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--gold);margin-bottom:16px;margin-top:0;border:none;padding:0;}
+.lg-contact p{font-size:14px;color:var(--t2);margin-bottom:10px;}
+.lg-contact a{color:var(--gold);text-decoration:underline;text-underline-offset:2px;font-weight:600;}
+.lg-contact i{color:var(--gold);margin-right:8px;}
+@media(max-width:600px){
+  .lg-nav,.lg-subnav-inner{padding-left:16px;padding-right:16px;}
+  .lg-content{padding-left:16px;padding-right:16px;}
+}
+</style>
 </head>
 <body>
 
-    <!-- NAVIGATION PRINCIPALE -->
-    <nav class="legal-nav fixed top-0 w-full z-50 px-6 py-4 flex justify-between items-center">
-        <a href="index.html" class="flex items-center gap-2 text-2xl tracking-wider" style="font-family: 'Unbounded', cursive; color: #FFD700;"><img src="assets/images/logo-favicon-192.png" alt="Logo FA GENESIS" style="height:48px;width:48px;flex-shrink:0;border-radius:50%;object-fit:cover;display:inline-block;vertical-align:middle;"> FA GENESIS</a>
-        <a href="index.html" class="flex items-center gap-2">
-            <i class="fas fa-arrow-left"></i> Retour au site
-        </a>
-    </nav>
+<nav class="lg-nav">
+  <a href="index.html" class="lg-nav-logo">
+    <img src="assets/images/logo-genesis.png" alt="FA GENESIS">
+    FA GENESIS
+  </a>
+  <a href="index.html" class="lg-nav-back"><i class="fa-solid fa-arrow-left"></i> Retour au site</a>
+</nav>
 
-    <!-- NAVIGATION LÉGALE -->
-    <div class="legal-subnav fixed top-[84px] w-full z-40 px-6 py-4 flex justify-center gap-6 flex-wrap">
-        <a href="conditions-generales.html">Conditions générales</a>
-        <span class="text-gray-300">|</span>
-        <a href="confidentialite.html">Confidentialité</a>
-        <span class="text-gray-300">|</span>
-        <a href="protection-donnees.html">Données personnelles</a>
-        <span class="text-gray-300">|</span>
-        <a href="mentions-legales.html">Mentions légales</a>
-        <span class="text-gray-300">|</span>
-        <a href="reclamation.html">Réclamation</a>
-        <span class="text-gray-300">|</span>
-        <a href="cookies.html" class="active">Cookies</a>
-    </div>
+<div class="lg-subnav">
+  <div class="lg-subnav-inner">
+    <a href="conditions-generales.html" class="lg-subnav-link">CGU / CGV</a>
+    <a href="confidentialite.html" class="lg-subnav-link">Confidentialité</a>
+    <a href="mentions-legales.html" class="lg-subnav-link">Mentions légales</a>
+    <a href="cookies.html" class="lg-subnav-link active">Cookies</a>
+  </div>
+</div>
 
-    <!-- CONTENU -->
-    <div class="legal-content" style="padding-top: 140px;">
-        <h1>Politique de Cookies</h1>
-        <p class="legal-date">Version du 10 juin 2026</p>
+<div class="lg-content">
+  <span class="lg-eyebrow">Politique de cookies</span>
+  <h1>Politique de Cookies</h1>
+  <span class="lg-date">Version du 10 juin 2026</span>
 
-        <h2>1. Introduction</h2>
-        <p>FA GENESIS utilise des cookies et technologies similaires afin d'assurer le bon fonctionnement de son site internet et de son application mobile, d'améliorer l'expérience utilisateur et d'optimiser ses services.</p>
-        <p>La présente Politique de Cookies explique ce que sont les cookies, comment nous les utilisons et les choix dont vous disposez concernant leur utilisation.</p>
-        <p>Cette politique complète notre <a href="confidentialite.html" style="color:#000;font-weight:900;text-decoration:underline;">Politique de Confidentialité</a>.</p>
+  <h2>1. Introduction</h2>
+  <p>FA GENESIS utilise des cookies et technologies similaires afin d'assurer le bon fonctionnement de son site internet et de son application mobile, d'améliorer l'expérience utilisateur et d'optimiser ses services.</p>
+  <p>La présente Politique de Cookies explique ce que sont les cookies, comment nous les utilisons et les choix dont vous disposez concernant leur utilisation.</p>
+  <p>Cette politique complète notre <a href="confidentialite.html">Politique de Confidentialité</a>.</p>
 
-        <h2>2. Qu'est-ce qu'un cookie ?</h2>
-        <p>Un cookie est un petit fichier texte enregistré sur votre appareil (ordinateur, tablette ou smartphone) lorsque vous consultez un site internet ou utilisez une application.</p>
-        <p>Les cookies permettent notamment :</p>
-        <ul>
-            <li>d'assurer le bon fonctionnement du site et de l'application ;</li>
-            <li>de sécuriser votre compte utilisateur ;</li>
-            <li>de mémoriser vos préférences ;</li>
-            <li>d'améliorer votre expérience de navigation ;</li>
-            <li>d'analyser l'utilisation de nos services afin de les améliorer.</li>
-        </ul>
-        <p>Un cookie peut contenir :</p>
-        <ul>
-            <li>un identifiant unique ;</li>
-            <li>des informations techniques relatives à votre navigation ;</li>
-            <li>la durée de conservation du cookie.</li>
-        </ul>
+  <h2>2. Qu'est-ce qu'un cookie ?</h2>
+  <p>Un cookie est un petit fichier texte enregistré sur votre appareil (ordinateur, tablette ou smartphone) lorsque vous consultez un site internet ou utilisez une application.</p>
+  <p>Les cookies permettent notamment :</p>
+  <ul>
+    <li>d'assurer le bon fonctionnement du site et de l'application ;</li>
+    <li>de sécuriser votre compte utilisateur ;</li>
+    <li>de mémoriser vos préférences ;</li>
+    <li>d'améliorer votre expérience de navigation ;</li>
+    <li>d'analyser l'utilisation de nos services afin de les améliorer.</li>
+  </ul>
+  <p>Un cookie peut contenir :</p>
+  <ul>
+    <li>un identifiant unique ;</li>
+    <li>des informations techniques relatives à votre navigation ;</li>
+    <li>la durée de conservation du cookie.</li>
+  </ul>
 
-        <h2>3. Gestion de vos préférences</h2>
-        <p>Lors de votre première visite sur le site ou l'application FA GENESIS, une fenêtre vous permet :</p>
-        <ul>
-            <li>d'accepter tous les cookies ;</li>
-            <li>de refuser les cookies optionnels ;</li>
-            <li>de personnaliser vos choix.</li>
-        </ul>
-        <p>Vous pouvez modifier vos préférences à tout moment depuis la rubrique :</p>
-        <p><strong>Paramètres &gt; Gestion des cookies</strong></p>
-        <p>Le refus de certains cookies peut limiter certaines fonctionnalités du site ou de l'application.</p>
+  <h2>3. Gestion de vos préférences</h2>
+  <p>Lors de votre première visite sur le site ou l'application FA GENESIS, une fenêtre vous permet :</p>
+  <ul>
+    <li>d'accepter tous les cookies ;</li>
+    <li>de refuser les cookies optionnels ;</li>
+    <li>de personnaliser vos choix.</li>
+  </ul>
+  <p>Vous pouvez modifier vos préférences à tout moment depuis la rubrique :</p>
+  <p><strong>Paramètres › Gestion des cookies</strong></p>
+  <p>Le refus de certains cookies peut limiter certaines fonctionnalités du site ou de l'application.</p>
 
-        <h2>4. Les cookies utilisés par FA GENESIS</h2>
+  <h2>4. Les cookies utilisés par FA GENESIS</h2>
 
-        <h3>4.1 Cookies essentiels</h3>
-        <p><span class="cookie-tag">Toujours actifs</span></p>
-        <p>Ces cookies sont indispensables au fonctionnement du site et de l'application.</p>
-        <p>Ils permettent notamment :</p>
-        <ul>
-            <li>l'inscription et la connexion à votre compte ;</li>
-            <li>la gestion de votre session utilisateur ;</li>
-            <li>la sécurisation des paiements ;</li>
-            <li>la gestion des réservations ;</li>
-            <li>l'accès à votre espace client ;</li>
-            <li>la protection contre les tentatives de fraude ;</li>
-            <li>le bon fonctionnement général de la plateforme.</li>
-        </ul>
-        <p>Sans ces cookies, certains services ne peuvent pas être utilisés.</p>
+  <h3>4.1 Cookies essentiels</h3>
+  <p><span class="cookie-tag">Toujours actifs</span></p>
+  <p>Ces cookies sont indispensables au fonctionnement du site et de l'application.</p>
+  <p>Ils permettent notamment :</p>
+  <ul>
+    <li>l'inscription et la connexion à votre compte ;</li>
+    <li>la gestion de votre session utilisateur ;</li>
+    <li>la sécurisation des paiements ;</li>
+    <li>la gestion des réservations ;</li>
+    <li>l'accès à votre espace client ;</li>
+    <li>la protection contre les tentatives de fraude ;</li>
+    <li>le bon fonctionnement général de la plateforme.</li>
+  </ul>
+  <p>Sans ces cookies, certains services ne peuvent pas être utilisés.</p>
 
-        <h3>4.2 Cookies analytiques</h3>
-        <p>Ces cookies nous permettent de comprendre comment les visiteurs utilisent notre site et notre application afin d'améliorer nos services.</p>
-        <p>Ils nous aident notamment à connaître :</p>
-        <ul>
-            <li>les pages les plus consultées ;</li>
-            <li>les fonctionnalités les plus utilisées ;</li>
-            <li>les parcours utilisateurs ;</li>
-            <li>les éventuels problèmes techniques rencontrés.</li>
-        </ul>
-        <p>Les données collectées sont utilisées uniquement à des fins d'amélioration de nos services.</p>
-        <p>FA GENESIS ne revend pas ces données à des tiers.</p>
+  <h3>4.2 Cookies analytiques</h3>
+  <p>Ces cookies nous permettent de comprendre comment les visiteurs utilisent notre site et notre application afin d'améliorer nos services.</p>
+  <p>Ils nous aident notamment à connaître :</p>
+  <ul>
+    <li>les pages les plus consultées ;</li>
+    <li>les fonctionnalités les plus utilisées ;</li>
+    <li>les parcours utilisateurs ;</li>
+    <li>les éventuels problèmes techniques rencontrés.</li>
+  </ul>
+  <p>Les données collectées sont utilisées uniquement à des fins d'amélioration de nos services. FA GENESIS ne revend pas ces données à des tiers.</p>
 
-        <h3>4.3 Cookies de personnalisation</h3>
-        <p>Ces cookies permettent de mémoriser vos préférences afin de personnaliser votre expérience.</p>
-        <p>Ils peuvent notamment enregistrer :</p>
-        <ul>
-            <li>votre langue préférée ;</li>
-            <li>vos préférences de navigation ;</li>
-            <li>certains paramètres de votre compte ;</li>
-            <li>les prestations ou catégories que vous consultez fréquemment.</li>
-        </ul>
-        <p>Grâce à ces cookies, votre expérience devient plus rapide et plus adaptée à vos besoins.</p>
+  <h3>4.3 Cookies de personnalisation</h3>
+  <p>Ces cookies permettent de mémoriser vos préférences afin de personnaliser votre expérience.</p>
+  <p>Ils peuvent notamment enregistrer :</p>
+  <ul>
+    <li>votre langue préférée ;</li>
+    <li>vos préférences de navigation ;</li>
+    <li>certains paramètres de votre compte ;</li>
+    <li>les prestations ou catégories que vous consultez fréquemment.</li>
+  </ul>
+  <p>Grâce à ces cookies, votre expérience devient plus rapide et plus adaptée à vos besoins.</p>
 
-        <h2>5. Sécurité des données</h2>
-        <p>FA GENESIS met en œuvre des mesures techniques et organisationnelles destinées à protéger les données collectées contre tout accès non autorisé, toute perte ou toute utilisation abusive.</p>
-        <p>Les cookies ne sont utilisés que dans le cadre des finalités décrites dans la présente politique.</p>
+  <h2>5. Sécurité des données</h2>
+  <p>FA GENESIS met en œuvre des mesures techniques et organisationnelles destinées à protéger les données collectées contre tout accès non autorisé, toute perte ou toute utilisation abusive.</p>
+  <p>Les cookies ne sont utilisés que dans le cadre des finalités décrites dans la présente politique.</p>
 
-        <h2>6. Durée de conservation</h2>
-        <p>Les cookies sont conservés pour une durée maximale de 13 mois à compter de leur dépôt sur votre appareil, conformément à la réglementation applicable.</p>
-        <p>À l'issue de cette période, votre consentement pourra être sollicité à nouveau.</p>
+  <h2>6. Durée de conservation</h2>
+  <p>Les cookies sont conservés pour une durée maximale de 13 mois à compter de leur dépôt sur votre appareil, conformément à la réglementation applicable. À l'issue de cette période, votre consentement pourra être sollicité à nouveau.</p>
 
-        <h2>7. Vos droits</h2>
-        <p>Conformément à la réglementation applicable en matière de protection des données personnelles, vous disposez notamment des droits suivants :</p>
-        <ul>
-            <li>droit d'accès ;</li>
-            <li>droit de rectification ;</li>
-            <li>droit à l'effacement ;</li>
-            <li>droit à la limitation du traitement ;</li>
-            <li>droit d'opposition ;</li>
-            <li>droit à la portabilité de vos données.</li>
-        </ul>
+  <h2>7. Vos droits</h2>
+  <p>Conformément à la réglementation applicable en matière de protection des données personnelles, vous disposez notamment des droits suivants :</p>
+  <ul>
+    <li>droit d'accès ;</li>
+    <li>droit de rectification ;</li>
+    <li>droit à l'effacement ;</li>
+    <li>droit à la limitation du traitement ;</li>
+    <li>droit d'opposition ;</li>
+    <li>droit à la portabilité de vos données.</li>
+  </ul>
 
-        <h2>8. Contact</h2>
-        <p>Pour toute question relative à la présente Politique de Cookies ou à la protection de vos données personnelles, vous pouvez nous contacter :</p>
-        <div class="legal-contact">
-            <h3>FA GENESIS</h3>
-            <p><i class="fas fa-envelope" style="color: #FFD700; margin-right: 8px;"></i> <a href="mailto:Financialadvicegenesis@gmail.com">Financialadvicegenesis@gmail.com</a></p>
-            <p><i class="fas fa-globe" style="color: #FFD700; margin-right: 8px;"></i> <a href="https://fagenesis.com/" target="_blank" rel="noopener noreferrer">https://fagenesis.com/</a></p>
-            <p><i class="fas fa-map-marker-alt" style="color: #FFD700; margin-right: 8px;"></i> 210 Avenue de Lodève, 34080 Montpellier</p>
-        </div>
+  <h2>8. Contact</h2>
+  <p>Pour toute question relative à la présente Politique de Cookies ou à la protection de vos données personnelles :</p>
+  <div class="lg-contact">
+    <h3>FA GENESIS</h3>
+    <p><i class="fa-solid fa-envelope"></i><a href="mailto:Financialadvicegenesis@gmail.com">Financialadvicegenesis@gmail.com</a></p>
+    <p><i class="fa-solid fa-globe"></i><a href="https://fagenesis.com/" target="_blank" rel="noopener">https://fagenesis.com/</a></p>
+    <p><i class="fa-solid fa-location-dot"></i>210 Avenue de Lodève, 34080 Montpellier</p>
+  </div>
 
-        <h2>9. Modification de la présente politique</h2>
-        <p>FA GENESIS se réserve le droit de modifier la présente Politique de Cookies à tout moment afin de tenir compte :</p>
-        <ul>
-            <li>des évolutions réglementaires ;</li>
-            <li>des évolutions technologiques ;</li>
-            <li>de l'amélioration de ses services.</li>
-        </ul>
-        <p>Toute modification sera publiée sur le site internet et l'application mobile FA GENESIS.</p>
-    </div>
+  <h2>9. Modification de la présente politique</h2>
+  <p>FA GENESIS se réserve le droit de modifier la présente Politique de Cookies à tout moment afin de tenir compte des évolutions réglementaires, technologiques, ou de l'amélioration de ses services. Toute modification sera publiée sur le site internet et l'application mobile FA GENESIS.</p>
+</div>
 
-    <div id="site-footer"></div>
-    <script src="footer.js" defer></script>
-    <script src="chatbot.js" defer></script>
-    <script src="pwa-init.js"></script>
 </body>
 </html>

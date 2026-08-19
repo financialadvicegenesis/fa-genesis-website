@@ -1,528 +1,504 @@
-﻿<!DOCTYPE html>
-<html lang="fr" class="scroll-smooth">
+<!DOCTYPE html>
+<html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" type="image/png" sizes="32x32" href="assets/images/logo-favicon-32.png">
-    <link rel="icon" type="image/png" sizes="192x192" href="assets/images/logo-favicon-192.png">
-    <link rel="icon" type="image/png" sizes="512x512" href="assets/images/logo-favicon.png">
-    <link rel="apple-touch-icon" sizes="192x192" href="assets/images/logo-favicon-192.png">
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="https://fagenesis.com/contact.html">
-    <meta property="og:title" content="Contact – FA GENESIS | Lancer votre projet">
-    <meta property="og:description" content="Contactez FA Genesis pour démarrer votre projet et rejoindre l'écosystème FA Industries.">
-    <meta property="og:image" content="https://fagenesis.com/assets/images/logo-og.png">
-    <meta property="og:image:width" content="1200">
-    <meta property="og:image:height" content="630">
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:image" content="https://fagenesis.com/assets/images/logo-og.png">
-    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
-    <link rel="dns-prefetch" href="https://fonts.googleapis.com">
-    <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
-    <title>Contact - FA GENESIS | Lancez Votre Projet</title>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;900&family=Space+Grotesk:wght@300;700&display=swap" media="print" onload="this.media='all'">
-    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;900&family=Space+Grotesk:wght@300;700&display=swap"></noscript>
-    <link rel="stylesheet" href="tailwind.min.css">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.css" rel="stylesheet" media="print" onload="this.media='all'">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" media="print" onload="this.media='all'">
-    <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"></noscript>
-    <style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Contact — FA GENESIS</title>
+<link rel="icon" type="image/png" sizes="32x32" href="assets/images/logo-favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="assets/images/logo-favicon-192.png">
+<meta name="description" content="Contactez FA GENESIS — notre équipe vous répond sous 24h.">
+<link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700;900&family=Space+Grotesk:wght@300;400;500;700&display=swap" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700;900&family=Space+Grotesk:wght@300;400;500;700&display=swap"></noscript>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"></noscript>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --black:#050505;--s1:#0a0a0a;--s2:#111;--s3:#161616;
+  --gold:#FFD700;--gold-dim:rgba(255,215,0,.12);--gold-border:rgba(255,215,0,.18);
+  --orange:#FF4800;--white:#fff;
+  --t1:rgba(255,255,255,.92);--t2:rgba(255,255,255,.6);--t3:rgba(255,255,255,.35);
+  --font-d:'Unbounded',sans-serif;--font-b:'Space Grotesk',sans-serif;
+  --nav-h:72px;--max:1200px;
+}
+html{scroll-behavior:smooth;}
+body{background:var(--black);color:var(--t1);font-family:var(--font-b);overflow-x:hidden;-webkit-font-smoothing:antialiased;}
+a{text-decoration:none;color:inherit;}
+.wrap{max-width:var(--max);margin:0 auto;padding:0 24px;}
+.grad-text{background:linear-gradient(135deg,var(--gold),var(--orange));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.sec-label{font-family:var(--font-d);font-size:10px;font-weight:700;letter-spacing:4px;text-transform:uppercase;color:var(--gold);}
 
-        :root {
-            --genesis-yellow: #FFD700;
-            --genesis-black: #000000;
-            --genesis-white: #FFFFFF;
-        }
+/* ── NAV ── */
+nav{position:fixed;top:0;left:0;right:0;z-index:1000;height:var(--nav-h);transition:background .3s,border-color .3s,backdrop-filter .3s;border-bottom:1px solid transparent;}
+nav.scrolled{background:rgba(5,5,5,.92);backdrop-filter:blur(20px);border-color:var(--gold-border);}
+.nav-inner{display:flex;align-items:center;justify-content:space-between;height:var(--nav-h);}
+.nav-logo{font-family:var(--font-d);font-size:15px;font-weight:900;letter-spacing:1px;color:var(--gold);display:flex;align-items:center;gap:10px;}
+.nav-logo-img{height:36px;width:auto;object-fit:contain;flex-shrink:0;mix-blend-mode:screen;}
+.nav-links{display:flex;align-items:center;gap:36px;}
+.nav-links a{font-size:13px;font-weight:500;color:var(--t2);transition:color .2s;letter-spacing:.2px;}
+.nav-links a:hover,.nav-links a.active{color:var(--white);}
+.nav-ctas{display:flex;align-items:center;gap:12px;}
+.btn-ghost{background:none;border:1px solid rgba(255,255,255,.2);color:var(--white);padding:8px 18px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;transition:border-color .2s,color .2s;font-family:var(--font-b);}
+.btn-ghost:hover{border-color:var(--gold);color:var(--gold);}
+.btn-primary{background:linear-gradient(135deg,var(--orange),#ff6a00);color:var(--white);font-family:var(--font-b);font-size:13px;font-weight:700;padding:9px 20px;border-radius:8px;border:none;cursor:pointer;transition:opacity .2s;letter-spacing:.2px;display:inline-flex;align-items:center;gap:6px;}
+.btn-primary:hover{opacity:.88;}
+.nav-hamburger{display:none;background:none;border:none;color:var(--white);font-size:20px;cursor:pointer;}
+.nav-mobile{display:none;position:fixed;inset:0;background:rgba(5,5,5,.98);z-index:999;flex-direction:column;align-items:center;justify-content:center;gap:32px;}
+.nav-mobile.open{display:flex;}
+.nav-mobile a,.nav-mobile button{font-family:var(--font-d);font-size:18px;font-weight:700;color:var(--white);background:none;border:none;cursor:pointer;transition:color .2s;}
+.nav-mobile a:hover{color:var(--gold);}
+.nav-mobile-close{position:absolute;top:24px;right:24px;background:none;border:none;color:var(--white);font-size:24px;cursor:pointer;}
 
-        body {
-            background-color: var(--genesis-black);
-            color: var(--genesis-white);
-            font-family: 'Space Grotesk', sans-serif;
-            overflow-x: hidden;
-        }
+/* ── HERO ── */
+.co-hero{min-height:50vh;display:flex;align-items:center;padding-top:calc(var(--nav-h) + 40px);position:relative;overflow:hidden;padding-bottom:60px;}
+.co-hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 50% -10%,rgba(255,215,0,.06),transparent 65%);}
+.co-hero-content{position:relative;z-index:1;text-align:center;}
+.co-hero h1{font-family:var(--font-d);font-size:clamp(32px,5.5vw,72px);font-weight:900;line-height:1.1;letter-spacing:-2px;margin-bottom:20px;}
+.co-hero-sub{font-size:clamp(14px,1.6vw,17px);color:var(--t2);max-width:520px;line-height:1.7;font-weight:300;margin:0 auto;}
 
-        h1, h2, h3, h4, h5, .nav-link { font-family: 'Unbounded', cursive; }
+/* ── MAIN GRID ── */
+.section{padding:80px 0;}
+.co-grid{display:grid;grid-template-columns:1fr 380px;gap:64px;align-items:start;}
+@media(max-width:900px){.co-grid{grid-template-columns:1fr;gap:40px;}}
 
-        /* Styles Néo-Brutalistes */
-        .neo-border { border: 4px solid var(--genesis-black); }
-        .neo-shadow { box-shadow: 10px 10px 0px 0px var(--genesis-yellow); }
-        .neo-shadow-black { box-shadow: 8px 8px 0px 0px var(--genesis-black); }
-        .neo-shadow-white { box-shadow: 6px 6px 0px 0px var(--genesis-black); }
+/* ── FORM ── */
+.co-form-title{font-family:var(--font-d);font-size:18px;font-weight:900;color:var(--white);margin-bottom:32px;}
+.co-field{display:flex;flex-direction:column;gap:7px;margin-bottom:18px;}
+.co-field-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+@media(max-width:560px){.co-field-row{grid-template-columns:1fr;}}
+.co-label{font-size:11.5px;font-weight:600;color:var(--t2);letter-spacing:.5px;text-transform:uppercase;}
+.co-input,.co-select,.co-textarea{
+  background:var(--s1);border:1.5px solid var(--gold-border);
+  border-radius:10px;padding:13px 16px;
+  font-family:var(--font-b);font-size:14px;color:var(--white);
+  transition:border-color .2s,background .2s;
+  outline:none;width:100%;
+  appearance:none;-webkit-appearance:none;
+}
+.co-input::placeholder,.co-textarea::placeholder{color:var(--t3);}
+.co-input:focus,.co-select:focus,.co-textarea:focus{border-color:var(--gold);background:rgba(255,215,0,.03);}
+.co-select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23FFD700' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:36px;cursor:pointer;}
+.co-select option{background:#0a0a0a;color:var(--white);}
+.co-textarea{resize:vertical;min-height:130px;line-height:1.6;}
+.co-devis-box{background:var(--s2);border:1.5px solid var(--gold-border);border-radius:12px;padding:20px;margin-bottom:18px;display:none;}
+.co-budget-wrap{position:relative;}
+.co-budget-wrap .co-input{padding-right:48px;}
+.co-budget-unit{position:absolute;right:16px;top:50%;transform:translateY(-50%);font-weight:700;color:var(--t2);pointer-events:none;}
+.co-feedback{display:none;padding:14px 18px;border-radius:10px;font-size:13px;font-weight:600;margin-bottom:18px;border:1px solid;}
+.co-feedback.success{background:rgba(81,207,102,.08);border-color:rgba(81,207,102,.3);color:#51cf66;}
+.co-feedback.error{background:rgba(255,72,0,.08);border-color:rgba(255,72,0,.3);color:#ff6b6b;}
+.co-submit{width:100%;padding:15px;background:linear-gradient(135deg,var(--gold),#e6c200);color:#0a0800;border:none;border-radius:10px;font-family:var(--font-d);font-size:13px;font-weight:900;cursor:pointer;transition:opacity .2s,transform .2s;letter-spacing:.3px;}
+.co-submit:hover{opacity:.9;transform:translateY(-1px);}
+.co-submit:disabled{opacity:.55;cursor:not-allowed;transform:none;}
+.co-honeypot{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;opacity:0;}
 
-        .neo-btn-yellow {
-            background: var(--genesis-yellow);
-            color: black;
-            border: 4px solid black;
-            box-shadow: 6px 6px 0px black;
-            font-weight: 900;
-            transition: 0.1s;
-        }
-        .neo-btn-yellow:active {
-            transform: translate(4px, 4px);
-            box-shadow: 0px 0px 0px black;
-        }
+/* ── INFO CARDS ── */
+.co-info{display:flex;flex-direction:column;gap:16px;}
+.co-card{background:var(--s1);border:1.5px solid var(--gold-border);border-radius:16px;padding:22px;display:flex;align-items:flex-start;gap:16px;transition:border-color .25s;}
+.co-card:hover{border-color:rgba(255,215,0,.35);}
+.co-card-icon{width:40px;height:40px;border-radius:10px;background:rgba(255,215,0,.1);display:flex;align-items:center;justify-content:center;color:var(--gold);font-size:16px;flex-shrink:0;}
+.co-card-label{font-family:var(--font-d);font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--t3);margin-bottom:5px;}
+.co-card-val{font-size:13px;font-weight:600;color:var(--t1);}
+.co-card-val a{color:var(--t1);transition:color .2s;}
+.co-card-val a:hover{color:var(--gold);}
 
-        .section-header {
-            font-size: clamp(3rem, 10vw, 7rem);
-            line-height: 0.9;
-            text-transform: uppercase;
-            font-style: italic;
-            letter-spacing: -0.05em;
-        }
-    </style>
-    <meta name="theme-color" content="#FFD700">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="FA GENESIS">
+.co-social-title{font-family:var(--font-d);font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--t3);margin-bottom:12px;margin-top:8px;}
+.co-socials{display:flex;gap:10px;}
+.co-social-btn{width:38px;height:38px;border-radius:8px;border:1px solid var(--gold-border);display:flex;align-items:center;justify-content:center;color:var(--t2);font-size:14px;transition:border-color .2s,color .2s,background .2s;}
+.co-social-btn:hover{border-color:var(--gold);color:var(--gold);background:rgba(255,215,0,.06);}
+
+.co-note{background:var(--s1);border:1px solid var(--gold-border);border-radius:12px;padding:16px 18px;font-size:12px;color:var(--t2);line-height:1.65;margin-top:8px;}
+.co-note i{color:var(--gold);margin-right:6px;}
+
+/* ── FOOTER ── */
+footer{background:var(--s1);border-top:1px solid var(--gold-border);padding:64px 0 32px;}
+.footer-grid{display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr;gap:48px;margin-bottom:48px;}
+@media(max-width:900px){.footer-grid{grid-template-columns:1fr 1fr;}}
+@media(max-width:600px){.footer-grid{grid-template-columns:1fr;}}
+.footer-brand-name{font-family:var(--font-d);font-size:14px;font-weight:900;color:var(--gold);margin-bottom:12px;display:flex;align-items:center;gap:8px;}
+.footer-brand-img{height:30px;width:auto;object-fit:contain;mix-blend-mode:screen;}
+.footer-brand-desc{font-size:13px;color:var(--t3);line-height:1.6;margin-bottom:20px;}
+.footer-social{display:flex;gap:12px;}
+.footer-social a{width:34px;height:34px;border-radius:8px;border:1px solid var(--gold-border);display:flex;align-items:center;justify-content:center;color:var(--t2);font-size:13px;transition:border-color .2s,color .2s;}
+.footer-social a:hover{border-color:var(--gold);color:var(--gold);}
+.footer-col-title{font-family:var(--font-d);font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--t3);margin-bottom:20px;}
+.footer-col a{display:block;font-size:13px;color:var(--t2);margin-bottom:12px;transition:color .2s;}
+.footer-col a:hover{color:var(--white);}
+.footer-bottom{border-top:1px solid var(--gold-border);padding-top:28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;}
+.footer-copy{font-size:12px;color:var(--t3);}
+
+/* ── Inscription Overlay ── */
+#insc-overlay{position:fixed;inset:0;z-index:9998;background:#050505;visibility:hidden;opacity:0;transition:opacity .32s,visibility .32s;}
+#insc-overlay.open{visibility:visible;opacity:1;}
+#insc-ov-close{position:fixed;top:18px;right:24px;z-index:9999;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);color:var(--white);border-radius:50%;width:36px;height:36px;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;transition:background .2s,border-color .2s,color .2s;}
+#insc-ov-close:hover{background:rgba(255,215,0,.15);border-color:rgba(255,215,0,.35);color:var(--gold);}
+#insc-frame{width:100%;height:100%;border:none;display:block;}
+
+@media(max-width:768px){
+  .nav-links,.nav-ctas{display:none;}
+  .nav-hamburger{display:block;}
+}
+</style>
 </head>
 <body>
 
-    <!-- NAVIGATION -->
-    <nav class="fixed top-0 w-full z-50 bg-black/95 backdrop-blur-md border-b-4 border-[var(--genesis-yellow)] px-4 md:px-6 py-3 md:py-4 flex justify-between items-center text-white text-xs font-black uppercase">
-        <div class="flex items-center">
-            <a href="index.html" class="flex items-center gap-2 md:gap-3 text-lg md:text-2xl font-black tracking-wider text-[var(--genesis-yellow)]" style="font-family: 'Unbounded', cursive;"><img src="assets/images/logo-favicon-192.png" alt="Logo FA GENESIS" style="height:48px;width:48px;flex-shrink:0;border-radius:50%;object-fit:cover;display:inline-block;vertical-align:middle;"> FA GENESIS</a>
-        </div>
-        <div class="hidden md:flex gap-12 text-white font-black">
-            <a href="index.html#accueil" class="nav-link hover:text-[var(--genesis-yellow)] transition">Accueil</a>
-            <a href="a-propos.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">À Propos</a>
-            <a href="offres.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">Prestations</a>
-            <a href="index.html#faq" class="nav-link hover:text-[var(--genesis-yellow)] transition">FAQ</a>
-            <a href="contact.html" class="nav-link text-[var(--genesis-yellow)]">Contact</a>
-        </div>
-        <div class="hidden md:flex gap-4 items-center">
-            <a href="panier.html" class="relative text-white hover:text-[var(--genesis-yellow)] transition px-2 py-2" title="Panier">
-                <i class="fas fa-shopping-cart text-lg"></i>
-                <span class="panier-badge" style="display:none;position:absolute;top:-4px;right:-4px;background:#f44336;color:#fff;font-size:10px;font-weight:900;min-width:16px;height:16px;line-height:16px;text-align:center;border-radius:50%;"></span>
-            </a>
-            <a href="login.html" class="border-4 border-white text-white px-6 py-3 text-[12px] tracking-widest font-black hover:bg-white hover:text-black transition">Espace client</a>
-            <a href="contact.html" class="neo-btn-yellow px-6 py-3 text-[12px] tracking-widest text-black font-black">Lancer un projet</a>
-        </div>
-        <!-- Mobile : panier + menu -->
-        <div class="md:hidden flex items-center gap-2">
-            <a href="panier.html" class="relative text-white hover:text-[var(--genesis-yellow)] transition p-2" title="Panier">
-                <i class="fas fa-shopping-cart text-xl"></i>
-                <span class="panier-badge" style="display:none;position:absolute;top:-2px;right:-2px;background:#f44336;color:#fff;font-size:10px;font-weight:900;min-width:16px;height:16px;line-height:16px;text-align:center;border-radius:50%;"></span>
-            </a>
-            <button id="mobileMenuBtn" class="flex flex-col gap-1.5 p-2" aria-label="Menu">
-                <span class="block w-6 h-0.5 bg-[var(--genesis-yellow)] transition-all" id="menuLine1"></span>
-                <span class="block w-6 h-0.5 bg-[var(--genesis-yellow)] transition-all" id="menuLine2"></span>
-                <span class="block w-6 h-0.5 bg-[var(--genesis-yellow)] transition-all" id="menuLine3"></span>
-            </button>
-        </div>
-    </nav>
-
-    <!-- Menu Mobile Overlay -->
-    <div id="mobileMenu" class="fixed inset-0 z-40 bg-black/98 backdrop-blur-lg hidden flex-col items-center justify-center gap-8 text-white font-black uppercase">
-        <a href="index.html#accueil" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition" onclick="closeMobileMenu()">Accueil</a>
-        <a href="a-propos.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition" onclick="closeMobileMenu()">À Propos</a>
-        <a href="offres.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition" onclick="closeMobileMenu()">Prestations</a>
-        <a href="index.html#faq" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition" onclick="closeMobileMenu()">FAQ</a>
-        <a href="contact.html" class="text-2xl nav-link text-[var(--genesis-yellow)]" onclick="closeMobileMenu()">Contact</a>
-        <a href="panier.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition" onclick="closeMobileMenu()"><i class="fas fa-shopping-cart mr-2"></i>Panier <span class="panier-badge" style="display:none;background:#f44336;color:#fff;font-size:12px;padding:2px 6px;border-radius:50%;margin-left:4px;"></span></a>
-        <div class="flex flex-col gap-4 mt-8">
-            <a href="login.html" class="border-4 border-white text-white px-8 py-4 text-sm tracking-widest font-black hover:bg-white hover:text-black transition text-center" onclick="closeMobileMenu()">Espace client</a>
-            <a href="contact.html" class="neo-btn-yellow px-8 py-4 text-sm tracking-widest text-black font-black text-center" onclick="closeMobileMenu()">Lancer un projet</a>
-        </div>
+<nav id="navbar">
+  <div class="wrap nav-inner">
+    <a href="/" class="nav-logo">
+      <img src="assets/images/logo-genesis.png" alt="FA GENESIS" class="nav-logo-img">
+      FA GENESIS
+    </a>
+    <div class="nav-links">
+      <a href="index.html#espaces">Espaces</a>
+      <a href="index.html#fonctionnalites">Fonctionnalités</a>
+      <a href="index.html#actualites">Actualités</a>
+      <a href="a-propos.html">À propos</a>
+      <a href="contact.html" class="active">Contact</a>
     </div>
+    <div class="nav-ctas">
+      <a href="index.html?login=1" class="btn-ghost">Se connecter</a>
+      <a href="inscription.html" class="btn-primary" onclick="openInscriptionOverlay();return false;">Inscription</a>
+    </div>
+    <button class="nav-hamburger" onclick="document.getElementById('mobile-menu').classList.add('open')">
+      <i class="fa-solid fa-bars"></i>
+    </button>
+  </div>
+</nav>
 
-    <!-- CONTACT HERO -->
-    <section class="min-h-screen flex flex-col items-center justify-center p-6 bg-black pt-32 text-center relative overflow-hidden text-white font-black uppercase">
-        <div class="absolute top-20 left-[-10%] w-96 h-96 bg-[var(--genesis-yellow)] rounded-full blur-[120px] opacity-20 z-0"></div>
-        <div class="w-full max-w-7xl z-10" data-aos="zoom-in">
-            <h1 class="section-header text-[var(--genesis-yellow)] mb-12 italic">CONTACT</h1>
-            <p class="text-3xl font-black italic uppercase mb-20 max-w-4xl mx-auto">Commence ton aventure maintenant</p>
-        </div>
-    </section>
+<div class="nav-mobile" id="mobile-menu">
+  <button class="nav-mobile-close" onclick="document.getElementById('mobile-menu').classList.remove('open')"><i class="fa-solid fa-xmark"></i></button>
+  <a href="index.html#espaces" onclick="document.getElementById('mobile-menu').classList.remove('open')">Espaces</a>
+  <a href="index.html#fonctionnalites" onclick="document.getElementById('mobile-menu').classList.remove('open')">Fonctionnalités</a>
+  <a href="index.html#actualites" onclick="document.getElementById('mobile-menu').classList.remove('open')">Actualités</a>
+  <a href="a-propos.html" onclick="document.getElementById('mobile-menu').classList.remove('open')">À propos</a>
+  <a href="contact.html" onclick="document.getElementById('mobile-menu').classList.remove('open')">Contact</a>
+  <a href="index.html?login=1" onclick="document.getElementById('mobile-menu').classList.remove('open')">Se connecter</a>
+  <a href="inscription.html" onclick="openInscriptionOverlay();document.getElementById('mobile-menu').classList.remove('open');return false;" style="color:var(--gold);">Inscription</a>
+</div>
 
-    <!-- CONTACT FORM -->
-    <section class="py-40 bg-black text-white px-6 overflow-hidden text-center uppercase font-black">
-        <div class="container mx-auto max-w-5xl relative text-center font-black">
-            <div class="absolute bottom-[-10%] left-[-10%] w-96 h-96 bg-[var(--genesis-yellow)] rounded-full blur-[120px] opacity-10 z-0"></div>
-            <div data-aos="fade-up" class="z-10 relative font-black">
-                <form id="contactForm" class="space-y-10 text-left font-black">
-                    <div class="grid md:grid-cols-2 gap-10 font-black">
-                        <input id="contactName" type="text" placeholder="Nom complet" required class="bg-white text-black p-6 neo-border neo-shadow-white font-bold outline-none focus:translate-x-1 focus:translate-y-1 focus:shadow-none transition-all font-black">
-                        <input id="contactEmail" type="email" placeholder="Email professionnel" required class="bg-white text-black p-6 neo-border neo-shadow-white font-bold outline-none focus:translate-x-1 focus:translate-y-1 focus:shadow-none transition-all text-black font-black">
-                    </div>
-                    <div class="grid md:grid-cols-2 gap-10 font-black">
-                        <select id="contactProfil" required class="bg-white text-black p-6 neo-border neo-shadow-white font-bold outline-none focus:translate-x-1 focus:translate-y-1 focus:shadow-none transition-all font-black uppercase">
-                            <option value="" disabled selected>QUEL PROFIL</option>
-                            <option value="etudiant">ÉTUDIANT</option>
-                            <option value="particulier">PARTICULIER</option>
-                            <option value="entreprise">ENTREPRISE</option>
-                        </select>
-                        <select id="contactObjet" name="objet" required class="bg-white text-black p-6 neo-border neo-shadow-white font-bold outline-none focus:translate-x-1 focus:translate-y-1 focus:shadow-none transition-all font-black uppercase">
-                            <option value="" disabled selected>OBJET DE LA DEMANDE</option>
-                            <option value="information">DEMANDE D'INFORMATION</option>
-                            <option value="devis">DEVIS PERSONNALISÉ</option>
-                            <option value="offre">QUESTION SUR UNE OFFRE</option>
-                            <option value="technique">QUESTION TECHNIQUE</option>
-                            <option value="support">SUPPORT CLIENT</option>
-                            <option value="partenariat">PARTENARIAT</option>
-                            <option value="autre">AUTRE</option>
-                        </select>
-                    </div>
-                    <!-- Champ conditionnel : Type de prestation + Budget (visible uniquement si "Devis personnalisé" sélectionné) -->
-                    <div id="devisTypeContainer" style="display:none;" class="space-y-6">
-                        <select id="contactServiceType" class="w-full bg-white text-black p-6 neo-border neo-shadow-white font-bold outline-none focus:translate-x-1 focus:translate-y-1 focus:shadow-none transition-all font-black uppercase">
-                            <option value="" disabled selected>TYPE DE PRESTATION</option>
-                            <option value="photo">PHOTO</option>
-                            <option value="video">VIDÉO</option>
-                            <option value="media">MÉDIA</option>
-                            <option value="marketing">MARKETING</option>
-                            <option value="other">AUTRE</option>
-                        </select>
-                        <div style="position:relative;">
-                            <input
-                                type="number"
-                                id="contactBudget"
-                                min="0"
-                                step="50"
-                                placeholder="Votre budget estimé (€) — optionnel"
-                                class="w-full bg-white text-black p-6 neo-border neo-shadow-white font-bold outline-none focus:translate-x-1 focus:translate-y-1 focus:shadow-none transition-all font-black"
-                                style="padding-right:60px;"
-                            >
-                            <span style="position:absolute;right:20px;top:50%;transform:translateY(-50%);font-weight:900;font-size:1.2rem;color:#333;pointer-events:none;">€</span>
-                        </div>
-                        <p style="margin-top:-12px;font-size:0.75rem;font-weight:700;opacity:0.6;text-transform:none;">Indiquez votre budget pour ce projet. Le prestataire pourra l'accepter ou vous proposer un tarif adapté.</p>
-                    </div>
-                    <textarea id="contactMessage" placeholder="Écrivez votre demande" rows="5" required class="w-full bg-white text-black p-6 neo-border neo-shadow-white font-bold outline-none focus:translate-x-1 focus:translate-y-1 focus:shadow-none transition-all font-black"></textarea>
-                    <!-- Anti-spam : champ honeypot invisible pour les humains -->
-                    <div aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;opacity:0;" tabindex="-1">
-                        <input type="text" id="contact_hp" name="_hp" autocomplete="off" tabindex="-1">
-                    </div>
-                    <input type="hidden" id="contact_ft" name="_ft">
-                    <div id="contactFeedback" style="display: none;" class="p-6 neo-border font-bold text-lg text-center"></div>
-                    <button id="contactSubmitBtn" type="submit" class="w-full py-8 neo-btn-yellow text-4xl font-black italic uppercase tracking-tighter text-center flex items-center justify-center font-black">Envoyer</button>
-                </form>
+<!-- HERO -->
+<section class="co-hero">
+  <div class="wrap co-hero-content">
+    <span class="sec-label" style="display:block;margin-bottom:16px;">Nous contacter</span>
+    <h1>Une question ?<br><span class="grad-text">Parlons-en.</span></h1>
+    <p class="co-hero-sub">Notre équipe vous répond sous 24h. Remplissez le formulaire ou choisissez votre canal de contact préféré.</p>
+  </div>
+</section>
 
-                <!-- Informations supplémentaires -->
-                <div class="mt-32 grid md:grid-cols-3 gap-10">
-                    <div class="bg-white text-black p-8 neo-border neo-shadow" data-aos="fade-up">
-                        <h3 class="text-2xl font-black mb-4 italic uppercase">EMAIL</h3>
-                        <p class="font-bold text-sm">financialadvicegenesis@gmail.com</p>
-                    </div>
-                    <div class="bg-white text-black p-8 neo-border neo-shadow" data-aos="fade-up" data-aos-delay="100">
-                        <h3 class="text-2xl font-black mb-4 italic uppercase">TÉLÉPHONE</h3>
-                        <p class="font-bold">+33 7 64 16 36 09</p>
-                    </div>
-                    <div class="bg-white text-black p-8 neo-border neo-shadow" data-aos="fade-up" data-aos-delay="200">
-                        <h3 class="text-2xl font-black mb-4 italic uppercase">HORAIRES</h3>
-                        <p class="font-bold">Lun - Ven : 9h - 18h</p>
-                    </div>
-                </div>
+<!-- MAIN -->
+<section class="section" style="background:var(--black);padding-top:0;">
+  <div class="wrap">
+    <div class="co-grid">
+
+      <!-- ── FORM ── -->
+      <div>
+        <h2 class="co-form-title">Envoyez-nous un message</h2>
+        <form id="contactForm" autocomplete="off">
+
+          <div class="co-field-row">
+            <div class="co-field">
+              <label class="co-label" for="contactName">Nom complet <span style="color:var(--orange)">*</span></label>
+              <input id="contactName" type="text" class="co-input" placeholder="Votre nom" required autocomplete="name">
             </div>
+            <div class="co-field">
+              <label class="co-label" for="contactEmail">Email <span style="color:var(--orange)">*</span></label>
+              <input id="contactEmail" type="email" class="co-input" placeholder="votre@email.com" required autocomplete="email">
+            </div>
+          </div>
+
+          <div class="co-field-row">
+            <div class="co-field">
+              <label class="co-label" for="contactProfil">Votre profil <span style="color:var(--orange)">*</span></label>
+              <select id="contactProfil" class="co-select" required>
+                <option value="" disabled selected>Choisir...</option>
+                <option value="etudiant">Étudiant</option>
+                <option value="particulier">Particulier</option>
+                <option value="entreprise">Entreprise</option>
+              </select>
+            </div>
+            <div class="co-field">
+              <label class="co-label" for="contactObjet">Objet <span style="color:var(--orange)">*</span></label>
+              <select id="contactObjet" name="objet" class="co-select" required>
+                <option value="" disabled selected>Choisir...</option>
+                <option value="information">Demande d'information</option>
+                <option value="devis">Devis personnalisé</option>
+                <option value="offre">Question sur une offre</option>
+                <option value="technique">Question technique</option>
+                <option value="support">Support client</option>
+                <option value="partenariat">Partenariat</option>
+                <option value="autre">Autre</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Conditional: Devis -->
+          <div id="devisTypeContainer" class="co-devis-box">
+            <div class="co-field" style="margin-bottom:14px;">
+              <label class="co-label" for="contactServiceType">Type de prestation <span style="color:var(--orange)">*</span></label>
+              <select id="contactServiceType" class="co-select">
+                <option value="" disabled selected>Choisir...</option>
+                <option value="photo">Photo</option>
+                <option value="video">Vidéo</option>
+                <option value="media">Média</option>
+                <option value="marketing">Marketing</option>
+                <option value="other">Autre</option>
+              </select>
+            </div>
+            <div class="co-field" style="margin-bottom:0;">
+              <label class="co-label" for="contactBudget">Budget estimé (optionnel)</label>
+              <div class="co-budget-wrap">
+                <input type="number" id="contactBudget" min="0" step="50" placeholder="ex: 500" class="co-input">
+                <span class="co-budget-unit">€</span>
+              </div>
+              <span style="font-size:11px;color:var(--t3);margin-top:4px;display:block;">Le prestataire pourra accepter ou proposer un tarif adapté.</span>
+            </div>
+          </div>
+
+          <div class="co-field">
+            <label class="co-label" for="contactMessage">Votre message <span style="color:var(--orange)">*</span></label>
+            <textarea id="contactMessage" class="co-textarea" rows="5" placeholder="Décrivez votre demande..." required></textarea>
+          </div>
+
+          <!-- Anti-spam -->
+          <div class="co-honeypot" aria-hidden="true"><input type="text" id="contact_hp" name="_hp" autocomplete="off" tabindex="-1"></div>
+          <input type="hidden" id="contact_ft" name="_ft">
+
+          <div id="contactFeedback" class="co-feedback"></div>
+
+          <button type="submit" id="contactSubmitBtn" class="co-submit">
+            Envoyer le message <i class="fa-solid fa-arrow-right" style="margin-left:6px;font-size:11px;"></i>
+          </button>
+        </form>
+      </div>
+
+      <!-- ── INFO ── -->
+      <div class="co-info">
+        <div class="co-card">
+          <div class="co-card-icon"><i class="fa-solid fa-envelope"></i></div>
+          <div>
+            <div class="co-card-label">Email</div>
+            <div class="co-card-val"><a href="mailto:financialadvicegenesis@gmail.com">financialadvicegenesis@gmail.com</a></div>
+          </div>
         </div>
-    </section>
+        <div class="co-card">
+          <div class="co-card-icon"><i class="fa-solid fa-phone"></i></div>
+          <div>
+            <div class="co-card-label">Téléphone</div>
+            <div class="co-card-val"><a href="tel:+33764163609">+33 7 64 16 36 09</a></div>
+          </div>
+        </div>
+        <div class="co-card">
+          <div class="co-card-icon"><i class="fa-solid fa-clock"></i></div>
+          <div>
+            <div class="co-card-label">Horaires</div>
+            <div class="co-card-val">Lun – Ven : 9h – 18h</div>
+          </div>
+        </div>
 
-    <!-- FOOTER -->
-    <div id="site-footer"></div>
+        <div>
+          <p class="co-social-title">Réseaux sociaux</p>
+          <div class="co-socials">
+            <a href="https://www.linkedin.com/in/financial-advice-genesis-772b653aa/" target="_blank" rel="noopener" class="co-social-btn" title="LinkedIn"><i class="fa-brands fa-linkedin-in"></i></a>
+            <a href="https://www.instagram.com/financial_advice_genesis/" target="_blank" rel="noopener" class="co-social-btn" title="Instagram"><i class="fa-brands fa-instagram"></i></a>
+            <a href="https://www.tiktok.com/@fa.genesis" target="_blank" rel="noopener" class="co-social-btn" title="TikTok"><i class="fa-brands fa-tiktok"></i></a>
+          </div>
+        </div>
 
-    <script src="config.js"></script>
-    <script>
-        if (window.innerWidth > 768) {
-            var aosScript = document.createElement('script');
-            aosScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js';
-            aosScript.onload = function() { AOS.init({ duration: 800, once: true, offset: 100 }); };
-            document.body.appendChild(aosScript);
-        } else {
-            document.querySelectorAll('[data-aos]').forEach(function(el) {
-                el.removeAttribute('data-aos');
-                el.style.opacity = '1';
-                el.style.transform = 'none';
-            });
-        }
+        <div class="co-note">
+          <i class="fa-solid fa-shield-halved"></i>
+          Vos données sont traitées de façon confidentielle et ne sont jamais transmises à des tiers. Réponse garantie sous 24h ouvrées.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
 
-        // Menu Mobile Toggle
-        const mobileMenuBtn = document.getElementById('mobileMenuBtn');
-        const mobileMenu = document.getElementById('mobileMenu');
-        const menuLine1 = document.getElementById('menuLine1');
-        const menuLine2 = document.getElementById('menuLine2');
-        const menuLine3 = document.getElementById('menuLine3');
-        let isMenuOpen = false;
+<!-- FOOTER -->
+<footer>
+  <div class="wrap">
+    <div class="footer-grid">
+      <div>
+        <div class="footer-brand-name">
+          <img src="assets/images/logo-genesis.png" alt="FA GENESIS" class="footer-brand-img">
+          FA GENESIS
+        </div>
+        <p class="footer-brand-desc">La plateforme qui connecte clients et prestataires de services en France et à l'international.</p>
+        <div class="footer-social">
+          <a href="https://www.linkedin.com/in/financial-advice-genesis-772b653aa/" target="_blank" rel="noopener"><i class="fa-brands fa-linkedin-in"></i></a>
+          <a href="https://www.instagram.com/financial_advice_genesis/" target="_blank" rel="noopener"><i class="fa-brands fa-instagram"></i></a>
+          <a href="https://www.tiktok.com/@fa.genesis" target="_blank" rel="noopener"><i class="fa-brands fa-tiktok"></i></a>
+        </div>
+      </div>
+      <div class="footer-col">
+        <p class="footer-col-title">Plateforme</p>
+        <a href="index.html#espaces">Espaces</a>
+        <a href="index.html#fonctionnalites">Fonctionnalités</a>
+        <a href="index.html#actualites">Actualités</a>
+        <a href="index.html#telecharger">Télécharger</a>
+      </div>
+      <div class="footer-col">
+        <p class="footer-col-title">À propos</p>
+        <a href="a-propos.html">Notre histoire</a>
+        <a href="a-propos.html#notre-vision">Notre vision</a>
+        <a href="contact.html">Contact</a>
+        <a href="faq.html">FAQ</a>
+      </div>
+      <div class="footer-col">
+        <p class="footer-col-title">Légal</p>
+        <a href="mentions-legales.html">Mentions légales</a>
+        <a href="confidentialite.html">Confidentialité</a>
+        <a href="conditions-generales.html">CGV</a>
+        <a href="cookies.html">Cookies</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p class="footer-copy">© 2026 FA GENESIS. Tous droits réservés.</p>
+      <p class="footer-copy">Groupe FA Industries</p>
+    </div>
+  </div>
+</footer>
 
-        function toggleMobileMenu() {
-            isMenuOpen = !isMenuOpen;
-            if (isMenuOpen) {
-                mobileMenu.classList.remove('hidden');
-                mobileMenu.classList.add('flex');
-                menuLine1.style.transform = 'rotate(45deg) translate(5px, 5px)';
-                menuLine2.style.opacity = '0';
-                menuLine3.style.transform = 'rotate(-45deg) translate(5px, -5px)';
-                document.body.style.overflow = 'hidden';
-            } else {
-                closeMobileMenu();
-            }
-        }
+<!-- INSCRIPTION OVERLAY -->
+<div id="insc-overlay">
+  <button id="insc-ov-close" onclick="closeInscriptionOverlay()" aria-label="Fermer"><i class="fa-solid fa-xmark"></i></button>
+  <iframe id="insc-frame" src="" title="Inscription FA GENESIS"></iframe>
+</div>
 
-        function closeMobileMenu() {
-            isMenuOpen = false;
-            mobileMenu.classList.add('hidden');
-            mobileMenu.classList.remove('flex');
-            menuLine1.style.transform = 'none';
-            menuLine2.style.opacity = '1';
-            menuLine3.style.transform = 'none';
-            document.body.style.overflow = 'auto';
-        }
+<script src="config.js"></script>
+<script>
+var _CAPI = window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com';
 
-        mobileMenuBtn.addEventListener('click', toggleMobileMenu);
+/* ── Nav scroll ── */
+window.addEventListener('scroll', function(){
+  document.getElementById('navbar').classList.toggle('scrolled', window.scrollY > 40);
+},{passive:true});
 
-        // Pre-remplir le formulaire depuis les parametres URL
-        document.addEventListener('DOMContentLoaded', function() {
-            // Anti-spam : enregistrer l'heure de chargement du formulaire
-            var contactFtField = document.getElementById('contact_ft');
-            if (contactFtField) contactFtField.value = Date.now();
+/* ── Inscription Overlay ── */
+function openInscriptionOverlay(){
+  var ov = document.getElementById('insc-overlay');
+  if(!ov) return;
+  var fr = document.getElementById('insc-frame');
+  if(fr && !fr.src) fr.src = 'inscription.html';
+  document.body.style.overflow = 'hidden';
+  ov.classList.add('open');
+}
+function closeInscriptionOverlay(){
+  var ov = document.getElementById('insc-overlay');
+  if(!ov) return;
+  ov.classList.remove('open');
+  document.body.style.overflow = '';
+}
+document.addEventListener('keydown', function(e){ if(e.key==='Escape') closeInscriptionOverlay(); });
 
-            try {
-                var urlParams = new URLSearchParams(window.location.search);
+/* ── Conditional devis type ── */
+var objetSelect = document.getElementById('contactObjet');
+var devisTypeContainer = document.getElementById('devisTypeContainer');
+var serviceTypeSelect = document.getElementById('contactServiceType');
+if(objetSelect && devisTypeContainer && serviceTypeSelect){
+  objetSelect.addEventListener('change', function(){
+    if(this.value === 'devis'){
+      devisTypeContainer.style.display = 'block';
+      serviceTypeSelect.required = true;
+    } else {
+      devisTypeContainer.style.display = 'none';
+      serviceTypeSelect.required = false;
+      serviceTypeSelect.value = '';
+    }
+  });
+}
 
-                // Pre-remplir l'objet (ex: ?objet=devis)
-                var objetParam = urlParams.get('objet');
-                if (objetParam) {
-                    var objetSel = document.getElementById('contactObjet');
-                    if (objetSel) {
-                        objetSel.value = objetParam;
-                        // Declencher le change pour afficher le champ type de prestation si devis
-                        var evt = new Event('change', { bubbles: true });
-                        objetSel.dispatchEvent(evt);
-                    }
-                }
+/* ── Anti-spam & URL pre-fill ── */
+document.addEventListener('DOMContentLoaded', function(){
+  var ftField = document.getElementById('contact_ft');
+  if(ftField) ftField.value = Date.now();
+  try{
+    var qp = new URLSearchParams(window.location.search);
+    var objetParam = qp.get('objet');
+    if(objetParam && objetSelect){ objetSelect.value = objetParam; var ev = new Event('change',{bubbles:true}); objetSelect.dispatchEvent(ev); }
+    var serviceParam = qp.get('service');
+    if(serviceParam && serviceTypeSelect) serviceTypeSelect.value = serviceParam;
+    var msgParam = qp.get('message');
+    if(msgParam){ var mf = document.getElementById('contactMessage'); if(mf && !mf.value) mf.value = decodeURIComponent(msgParam); }
+  }catch(e){}
+  /* LocalStorage diagnostic pre-fill */
+  try{
+    var diagRaw = localStorage.getItem('fa_diagnostic');
+    if(diagRaw){
+      var diag = JSON.parse(diagRaw);
+      if(diag.timestamp && (Date.now() - diag.timestamp) > 600000){ localStorage.removeItem('fa_diagnostic'); return; }
+      var PMAP = {student:'etudiant',individual:'particulier',business:'entreprise'};
+      var profilSel = document.getElementById('contactProfil');
+      if(profilSel && PMAP[diag.profile]) profilSel.value = PMAP[diag.profile];
+      if(objetSelect){ objetSelect.value = 'devis'; var ev2 = new Event('change',{bubbles:true}); objetSelect.dispatchEvent(ev2); }
+    }
+  }catch(e){}
+});
 
-                // Pre-remplir le type de prestation (ex: ?service=photo)
-                var serviceParam = urlParams.get('service');
-                if (serviceParam) {
-                    var serviceSel = document.getElementById('contactServiceType');
-                    if (serviceSel) serviceSel.value = serviceParam;
-                }
+/* ── Form submit ── */
+document.getElementById('contactForm').addEventListener('submit', async function(e){
+  e.preventDefault();
+  var feedback = document.getElementById('contactFeedback');
+  var submitBtn = document.getElementById('contactSubmitBtn');
+  var name = document.getElementById('contactName').value.trim();
+  var email = document.getElementById('contactEmail').value.trim();
+  var profil = document.getElementById('contactProfil').value;
+  var subject = document.getElementById('contactObjet').value;
+  var message = document.getElementById('contactMessage').value.trim();
 
-                // Pre-remplir le message (ex: ?message=...)
-                var messageParam = urlParams.get('message');
-                if (messageParam) {
-                    var msgField = document.getElementById('contactMessage');
-                    if (msgField && !msgField.value) msgField.value = decodeURIComponent(messageParam);
-                }
+  feedback.className = 'co-feedback';
+  feedback.style.display = 'none';
 
-                // Legacy : formule
-                var formule = urlParams.get('formule');
-                if (formule) {
-                    var formuleSelect = document.querySelector('select[name="formule"]');
-                    if (formuleSelect) formuleSelect.value = formule;
-                }
-            } catch (e) {
-                console.error('[CONTACT] Erreur pre-remplissage URL:', e);
-            }
-        });
+  if(!name || !email || !profil || !subject || !message){
+    feedback.textContent = 'Veuillez remplir tous les champs obligatoires.';
+    feedback.className = 'co-feedback error';
+    feedback.style.display = 'block';
+    return;
+  }
 
-        // Affichage conditionnel du champ "Type de prestation" quand "Devis" est selectionne
-        var objetSelect = document.getElementById('contactObjet');
-        var devisTypeContainer = document.getElementById('devisTypeContainer');
-        var serviceTypeSelect = document.getElementById('contactServiceType');
+  var serviceType = null;
+  if(subject === 'devis'){
+    var stSel = document.getElementById('contactServiceType');
+    serviceType = stSel ? stSel.value : null;
+    if(!serviceType){
+      feedback.textContent = 'Veuillez sélectionner un type de prestation pour votre devis.';
+      feedback.className = 'co-feedback error';
+      feedback.style.display = 'block';
+      return;
+    }
+  }
 
-        if (objetSelect && devisTypeContainer && serviceTypeSelect) {
-            objetSelect.addEventListener('change', function() {
-                if (this.value === 'devis') {
-                    devisTypeContainer.style.display = 'block';
-                    serviceTypeSelect.required = true;
-                } else {
-                    devisTypeContainer.style.display = 'none';
-                    serviceTypeSelect.required = false;
-                    serviceTypeSelect.value = '';
-                }
-            });
-        }
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="margin-right:8px;"></i>Envoi en cours...';
 
-        // Soumission du formulaire de contact
-        var CONTACT_API = window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com';
+  try{
+    var hp = document.getElementById('contact_hp');
+    var ft = document.getElementById('contact_ft');
+    var body = {name:name,email:email,profil:profil,subject:subject,message:message,_hp:hp?hp.value:'',_ft:ft?ft.value:''};
+    if(serviceType) body.service_type = serviceType;
+    var bfield = document.getElementById('contactBudget');
+    if(bfield && bfield.value){ var bv = parseFloat(bfield.value); if(!isNaN(bv) && bv > 0) body.client_budget = bv; }
+    var resp = await fetch(_CAPI + '/api/contact',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    var data = await resp.json();
+    if(resp.ok && data.success){
+      feedback.innerHTML = '<i class="fa-solid fa-circle-check" style="margin-right:6px;"></i>' + (data.quoteId ? 'Demande de devis envoyée ! Nous revenons vers vous rapidement.' : 'Message envoyé ! Un email de confirmation vous a été adressé.');
+      feedback.className = 'co-feedback success';
+      feedback.style.display = 'block';
+      this.reset();
+      if(devisTypeContainer) devisTypeContainer.style.display = 'none';
+    } else {
+      throw new Error(data.error || 'Erreur lors de l\'envoi');
+    }
+  }catch(err){
+    feedback.innerHTML = '<i class="fa-solid fa-triangle-exclamation" style="margin-right:6px;"></i>' + err.message;
+    feedback.className = 'co-feedback error';
+    feedback.style.display = 'block';
+  }
 
-        document.getElementById('contactForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-
-            var feedback = document.getElementById('contactFeedback');
-            var submitBtn = document.getElementById('contactSubmitBtn');
-
-            var name = document.getElementById('contactName').value.trim();
-            var email = document.getElementById('contactEmail').value.trim();
-            var profil = document.getElementById('contactProfil').value;
-            var subject = document.getElementById('contactObjet').value;
-            var message = document.getElementById('contactMessage').value.trim();
-
-            // Validation
-            if (!name || !email || !profil || !subject || !message) {
-                feedback.style.display = 'block';
-                feedback.style.background = '#ff6b6b';
-                feedback.style.color = 'white';
-                feedback.textContent = 'Veuillez remplir tous les champs du formulaire.';
-                return;
-            }
-
-            // Validation devis : type de prestation requis
-            var serviceType = null;
-            if (subject === 'devis') {
-                var stSelect = document.getElementById('contactServiceType');
-                serviceType = stSelect ? stSelect.value : null;
-                if (!serviceType) {
-                    feedback.style.display = 'block';
-                    feedback.style.background = '#ff6b6b';
-                    feedback.style.color = 'white';
-                    feedback.textContent = 'Veuillez sélectionner un type de prestation pour votre demande de devis.';
-                    return;
-                }
-            }
-
-            // Desactiver le bouton
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-4"></i>ENVOI EN COURS...';
-
-            try {
-                var contactHpField = document.getElementById('contact_hp');
-                var contactFtField2 = document.getElementById('contact_ft');
-                var bodyData = {
-                    name: name,
-                    email: email,
-                    profil: profil,
-                    subject: subject,
-                    message: message,
-                    _hp: contactHpField ? contactHpField.value : '',
-                    _ft: contactFtField2 ? contactFtField2.value : ''
-                };
-
-                // Ajouter service_type et budget si devis
-                if (serviceType) {
-                    bodyData.service_type = serviceType;
-                }
-                var budgetField = document.getElementById('contactBudget');
-                if (budgetField && budgetField.value) {
-                    var budgetVal = parseFloat(budgetField.value);
-                    if (!isNaN(budgetVal) && budgetVal > 0) {
-                        bodyData.client_budget = budgetVal;
-                    }
-                }
-
-                var response = await fetch(CONTACT_API + '/api/contact', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(bodyData)
-                });
-
-                var data = await response.json();
-
-                if (response.ok && data.success) {
-                    feedback.style.display = 'block';
-                    feedback.style.background = '#51cf66';
-                    feedback.style.color = 'black';
-                    if (data.quoteId) {
-                        feedback.innerHTML = '<i class="fas fa-check-circle mr-2"></i>DEMANDE DE DEVIS ENVOYÉE AVEC SUCCÈS ! Nous reviendrons vers vous dans les plus brefs délais.';
-                    } else {
-                        feedback.innerHTML = '<i class="fas fa-check-circle mr-2"></i>MESSAGE ENVOYÉ AVEC SUCCÈS ! Un email de confirmation vous a été envoyé.';
-                    }
-                    this.reset();
-                    // Cacher le champ type de prestation apres reset
-                    if (devisTypeContainer) devisTypeContainer.style.display = 'none';
-                } else {
-                    throw new Error(data.error || 'Erreur lors de l\'envoi');
-                }
-
-            } catch (error) {
-                console.error('[CONTACT] Erreur:', error);
-                feedback.style.display = 'block';
-                feedback.style.background = '#ff6b6b';
-                feedback.style.color = 'white';
-                feedback.innerHTML = '<i class="fas fa-exclamation-triangle mr-2"></i>ERREUR : ' + error.message;
-            }
-
-            // Reactiver le bouton
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = 'Envoyer';
-        });
-
-        // Pre-remplir depuis le mini-diagnostic (localStorage)
-        (function() {
-            try {
-                var diagRaw = localStorage.getItem('fa_diagnostic');
-                if (!diagRaw) return;
-                var diag = JSON.parse(diagRaw);
-                // Ne pre-remplir que si recent (moins de 10 min)
-                if (diag.timestamp && (Date.now() - diag.timestamp) > 600000) {
-                    localStorage.removeItem('fa_diagnostic');
-                    return;
-                }
-
-                var PROFILE_MAP = { student: 'etudiant', individual: 'particulier', business: 'entreprise' };
-                var PROFILE_LABELS = { student: 'Étudiant', individual: 'Particulier', business: 'Entreprise' };
-                var NEED_LABELS = { package: 'Accompagnement packagé', quote: 'Devis personnalisé', individual: 'Prestation individuelle' };
-                var QUOTE_LABELS = { custom_package: 'Offre packagée sur mesure', individual_quote: 'Prestation individuelle sur devis', hybrid: 'Projet hybride (accompagnement + production + média)' };
-                var CHOICE_LABELS = { photo: 'Photo', video: 'Vidéo', marketing: 'Marketing', media: 'Média' };
-
-                // Remplir profil
-                var profilSelect = document.getElementById('contactProfil');
-                if (profilSelect && PROFILE_MAP[diag.profile]) {
-                    profilSelect.value = PROFILE_MAP[diag.profile];
-                }
-
-                // Remplir objet = devis
-                var objetSelect = document.getElementById('contactObjet');
-                if (objetSelect) {
-                    objetSelect.value = 'devis';
-                    // Trigger change pour afficher le champ service type
-                    var changeEvt = new Event('change', { bubbles: true });
-                    objetSelect.dispatchEvent(changeEvt);
-                }
-
-                // Remplir service type si applicable
-                if (diag.need === 'individual' && diag.choice) {
-                    var serviceSelect = document.getElementById('contactServiceType');
-                    if (serviceSelect && (diag.choice === 'photo' || diag.choice === 'video' || diag.choice === 'marketing' || diag.choice === 'media')) {
-                        serviceSelect.value = diag.choice;
-                    }
-                }
-
-                // Construire le message prerempli
-                var lines = [];
-                lines.push('Profil : ' + (PROFILE_LABELS[diag.profile] || diag.profile));
-                lines.push('Besoin : ' + (NEED_LABELS[diag.need] || diag.need));
-                if (diag.quoteType) {
-                    lines.push('Type : ' + (QUOTE_LABELS[diag.quoteType] || diag.quoteType));
-                }
-                if (diag.need === 'individual' && diag.choice) {
-                    lines.push('Prestation : ' + (CHOICE_LABELS[diag.choice] || diag.choice));
-                }
-                lines.push('');
-                lines.push('Objectif : ');
-
-                var messageField = document.getElementById('contactMessage');
-                if (messageField) {
-                    messageField.value = lines.join('\n');
-                }
-
-                // Supprimer apres utilisation
-                localStorage.removeItem('fa_diagnostic');
-
-                // Afficher un bandeau discret
-                var feedback = document.getElementById('contactFeedback');
-                if (feedback) {
-                    feedback.style.display = 'block';
-                    feedback.style.background = '#FFD700';
-                    feedback.style.color = '#000';
-                    feedback.innerHTML = '<i class="fas fa-magic mr-2"></i>Formulaire pré-rempli depuis votre diagnostic. Complétez et envoyez !';
-                    setTimeout(function() { feedback.style.display = 'none'; }, 5000);
-                }
-            } catch (e) {
-                console.error('[CONTACT] Erreur pre-remplissage diagnostic:', e);
-            }
-        })();
-    </script>
-    <script src="offers-config.js"></script>
-    <script src="panier.js"></script>
-    <script src="footer.js" defer></script>
-    <script>
-        var chatbotLoaded=false;function loadChatbot(){if(chatbotLoaded)return;chatbotLoaded=true;var s=document.createElement('script');s.src='chatbot.js';document.body.appendChild(s);}
-        if('requestIdleCallback' in window){requestIdleCallback(loadChatbot,{timeout:4000});}else{setTimeout(loadChatbot,3000);}
-        window.addEventListener('scroll',loadChatbot,{once:true,passive:true});window.addEventListener('touchstart',loadChatbot,{once:true,passive:true});
-    </script>
-    <script src="nav-global.js"></script>
-    <script src="pwa-init.js"></script>
+  submitBtn.disabled = false;
+  submitBtn.innerHTML = 'Envoyer le message <i class="fa-solid fa-arrow-right" style="margin-left:6px;font-size:11px;"></i>';
+});
+</script>
 </body>
 </html>

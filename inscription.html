@@ -608,6 +608,18 @@ goTo = function(next, back){
   if(next === 4) _buildResult();
   _origGoTo(next, back);
 };
+
+/* Quand chargé dans l'overlay iframe, les CTAs finaux naviguent dans la fenêtre parente */
+if(window.self !== window.top){
+  document.addEventListener('click', function(e){
+    var a = e.target.closest('a[href]');
+    if(!a) return;
+    var href = a.getAttribute('href') || '';
+    if(/register\.html|partner-register\.html|partner-login\.html/.test(href)){
+      try{ e.preventDefault(); window.top.location.href = a.href; }catch(ex){}
+    }
+  });
+}
 </script>
 </body>
 </html>

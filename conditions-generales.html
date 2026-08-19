@@ -1,244 +1,233 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" type="image/png" sizes="32x32" href="assets/images/logo-favicon-32.png">
-    <link rel="icon" type="image/png" sizes="192x192" href="assets/images/logo-favicon-192.png">
-    <link rel="icon" type="image/png" sizes="512x512" href="assets/images/logo-favicon.png">
-    <link rel="apple-touch-icon" sizes="192x192" href="assets/images/logo-favicon-192.png">
-    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
-    <title>Conditions Générales - FA GENESIS</title>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;900&family=Space+Grotesk:wght@300;700&display=swap">
-    <link rel="stylesheet" href="tailwind.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" media="print" onload="this.media='all'">
-    <style>
-        body { background: #ffffff; color: #0b0b0b; font-family: 'Space Grotesk', sans-serif; margin: 0; }
-        h1, h2, h3, h4, h5 { font-family: 'Unbounded', cursive; }
-        .legal-nav { background: #000; border-bottom: 4px solid #FFD700; }
-        .legal-nav a { color: #fff; font-weight: 900; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; text-decoration: none; transition: color 0.2s; }
-        .legal-nav a:hover { color: #FFD700; }
-        .legal-nav a.active { color: #FFD700; }
-        .legal-subnav { background: #fff; border-bottom: 4px solid #000; box-shadow: 0 6px 20px rgba(0,0,0,0.10); }
-        .legal-subnav a { color: #444; font-weight: 700; font-size: 13px; text-decoration: none; transition: color 0.2s, border-color 0.2s; border-bottom: 3px solid transparent; padding-bottom: 2px; }
-        .legal-subnav a:hover { color: #000; border-bottom-color: #FFD700; }
-        .legal-subnav a.active { color: #000; font-weight: 900; border-bottom-color: #FFD700; }
-        .legal-subnav span { color: #ccc; }
-        .legal-content { max-width: 900px; margin: 0 auto; padding: 40px 24px 60px; }
-        .legal-content h1 { font-size: 2.5rem; font-weight: 900; font-style: italic; text-transform: uppercase; margin-bottom: 8px; }
-        .legal-content .legal-date { font-size: 13px; font-weight: 700; color: #666; margin-bottom: 40px; }
-        .legal-content h2 { font-size: 1.4rem; font-weight: 900; text-transform: uppercase; margin-top: 40px; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 3px solid #FFD700; }
-        .legal-content h3 { font-size: 1.1rem; font-weight: 900; margin-top: 24px; margin-bottom: 12px; }
-        .legal-content p { font-size: 15px; line-height: 1.8; font-weight: 500; margin-bottom: 16px; }
-        .legal-content ul { list-style: none; padding: 0; margin-bottom: 16px; }
-        .legal-content ul li { font-size: 15px; line-height: 1.8; font-weight: 500; padding-left: 24px; position: relative; margin-bottom: 8px; }
-        .legal-content ul li::before { content: ""; position: absolute; left: 0; top: 10px; width: 10px; height: 10px; background: #FFD700; border: 2px solid #000; }
-        .legal-contact { background: #000; color: #fff; padding: 32px; margin-top: 48px; border: 4px solid #000; }
-        .legal-contact h3 { color: #FFD700; margin-top: 0; }
-        .legal-contact a { color: #FFD700; font-weight: 900; text-decoration: underline; }
-        /* Onglets CGU / CGV */
-        .cg-tabs { display: flex; gap: 0; margin-bottom: 40px; border: 3px solid #000; border-radius: 0; overflow: hidden; }
-        .cg-tab { flex: 1; padding: 14px; text-align: center; font-family: 'Unbounded', cursive; font-size: 13px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; cursor: pointer; background: #f5f5f5; color: #555; text-decoration: none; border-right: 3px solid #000; transition: background .15s, color .15s; }
-        .cg-tab:last-child { border-right: none; }
-        .cg-tab.active, .cg-tab:hover { background: #FFD700; color: #000; }
-        .cg-section { display: none; }
-        .cg-section.on { display: block; }
-        /* Mobile */
-        @media (max-width: 640px) {
-            .legal-nav { padding: 10px 16px !important; }
-            .legal-nav a:first-child { font-size: 13px !important; gap: 6px !important; }
-            .legal-nav a:first-child img { height: 36px !important; width: 36px !important; }
-            .legal-nav a:last-child { font-size: 11px !important; }
-            .legal-subnav { top: 56px !important; overflow-x: auto !important; -webkit-overflow-scrolling: touch; flex-wrap: nowrap !important; justify-content: flex-start !important; padding: 8px 12px !important; gap: 14px !important; scrollbar-width: none; }
-            .legal-subnav::-webkit-scrollbar { display: none; }
-            .legal-subnav span { display: none !important; }
-            .legal-subnav a { white-space: nowrap; font-size: 12px !important; }
-            .legal-content { padding-top: 108px !important; padding-left: 16px !important; padding-right: 16px !important; }
-            .legal-content h1 { font-size: 1.5rem !important; word-break: break-word; overflow-wrap: break-word; }
-            .legal-content h2 { font-size: 1rem !important; word-break: break-word; }
-            .legal-content h3 { font-size: 0.95rem !important; }
-            .legal-content p, .legal-content ul li { font-size: 14px !important; word-break: break-word; overflow-wrap: break-word; }
-            .legal-contact { padding: 20px 16px !important; word-break: break-word; overflow-wrap: break-word; }
-            .legal-contact a { word-break: break-all; }
-            .cg-tab { font-size: 11px !important; padding: 11px 8px !important; }
-        }
-    </style>
-    <meta name="theme-color" content="#FFD700">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="FA GENESIS">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Conditions Générales — FA GENESIS</title>
+<link rel="icon" type="image/png" sizes="32x32" href="assets/images/logo-favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="assets/images/logo-favicon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700;900&family=Space+Grotesk:wght@300;400;500;700&display=swap" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700;900&family=Space+Grotesk:wght@300;400;500;700&display=swap"></noscript>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"></noscript>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --black:#050505;--s1:#0a0a0a;
+  --gold:#FFD700;--gold-border:rgba(255,215,0,.18);
+  --orange:#FF4800;--white:#fff;
+  --t1:rgba(255,255,255,.92);--t2:rgba(255,255,255,.6);--t3:rgba(255,255,255,.35);
+  --font-d:'Unbounded',sans-serif;--font-b:'Space Grotesk',sans-serif;
+  --nav-h:64px;
+}
+html{scroll-behavior:smooth;}
+body{background:var(--black);color:var(--t1);font-family:var(--font-b);overflow-x:hidden;-webkit-font-smoothing:antialiased;}
+a{text-decoration:none;color:inherit;}
+.lg-nav{position:fixed;top:0;left:0;right:0;z-index:1000;height:var(--nav-h);background:rgba(5,5,5,.95);backdrop-filter:blur(20px);border-bottom:1px solid var(--gold-border);display:flex;align-items:center;justify-content:space-between;padding:0 32px;}
+.lg-nav-logo{font-family:var(--font-d);font-size:13px;font-weight:900;color:var(--gold);display:flex;align-items:center;gap:8px;}
+.lg-nav-logo img{height:30px;width:auto;object-fit:contain;mix-blend-mode:screen;}
+.lg-nav-back{font-size:12px;font-weight:600;color:var(--t2);display:flex;align-items:center;gap:6px;transition:color .2s;}
+.lg-nav-back:hover{color:var(--gold);}
+.lg-subnav{position:fixed;top:var(--nav-h);left:0;right:0;z-index:900;background:rgba(10,10,10,.95);backdrop-filter:blur(16px);border-bottom:1px solid var(--gold-border);overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+.lg-subnav::-webkit-scrollbar{display:none;}
+.lg-subnav-inner{display:flex;align-items:center;gap:0;padding:0 32px;white-space:nowrap;}
+.lg-subnav-link{display:inline-block;font-family:var(--font-d);font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--t3);padding:14px 16px;border-bottom:2px solid transparent;transition:color .2s,border-color .2s;}
+.lg-subnav-link:hover{color:var(--t1);}
+.lg-subnav-link.active{color:var(--gold);border-bottom-color:var(--gold);}
+.lg-content{max-width:860px;margin:0 auto;padding:calc(var(--nav-h) + 48px + 48px) 32px 80px;}
+.lg-eyebrow{font-family:var(--font-d);font-size:10px;font-weight:700;letter-spacing:4px;text-transform:uppercase;color:var(--gold);display:block;margin-bottom:16px;}
+.lg-content h1{font-family:var(--font-d);font-size:clamp(24px,4vw,48px);font-weight:900;letter-spacing:-2px;line-height:1.1;margin-bottom:10px;}
+.lg-date{font-size:12px;color:var(--t3);margin-bottom:32px;display:block;}
+.lg-content h2{font-family:var(--font-d);font-size:13px;font-weight:900;letter-spacing:1px;text-transform:uppercase;color:var(--gold);margin-top:48px;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid var(--gold-border);}
+.lg-content h3{font-family:var(--font-d);font-size:11px;font-weight:700;text-transform:uppercase;color:var(--t1);margin-top:28px;margin-bottom:12px;}
+.lg-content p{font-size:14.5px;line-height:1.8;color:var(--t2);margin-bottom:14px;}
+.lg-content p strong{color:var(--t1);}
+.lg-content p a{color:var(--gold);text-decoration:underline;text-underline-offset:2px;}
+.lg-content ul{list-style:none;padding:0;margin-bottom:16px;}
+.lg-content ul li{font-size:14.5px;line-height:1.8;color:var(--t2);padding-left:22px;position:relative;margin-bottom:8px;}
+.lg-content ul li::before{content:'';position:absolute;left:0;top:10px;width:6px;height:6px;background:var(--gold);border-radius:50%;}
+.lg-content ul li strong{color:var(--t1);}
+.lg-contact{background:var(--s1);border:1.5px solid var(--gold-border);border-radius:16px;padding:28px;margin-top:48px;}
+.lg-contact h3{font-family:var(--font-d);font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--gold);margin-bottom:16px;margin-top:0;border:none;padding:0;}
+.lg-contact p{font-size:14px;color:var(--t2);margin-bottom:10px;}
+.lg-contact a{color:var(--gold);text-decoration:underline;text-underline-offset:2px;font-weight:600;}
+.lg-contact i{color:var(--gold);margin-right:8px;}
+
+/* CGU/CGV tabs */
+.cg-tabs{display:flex;gap:0;margin-bottom:40px;border:1.5px solid var(--gold-border);border-radius:10px;overflow:hidden;}
+.cg-tab{flex:1;padding:13px;text-align:center;font-family:var(--font-d);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;cursor:pointer;background:transparent;color:var(--t3);border:none;transition:background .15s,color .15s;}
+.cg-tab + .cg-tab{border-left:1px solid var(--gold-border);}
+.cg-tab.active,.cg-tab:hover{background:rgba(255,215,0,.1);color:var(--gold);}
+.cg-section{display:none;}
+.cg-section.on{display:block;}
+
+@media(max-width:600px){
+  .lg-nav,.lg-subnav-inner{padding-left:16px;padding-right:16px;}
+  .lg-content{padding-left:16px;padding-right:16px;}
+}
+</style>
 </head>
 <body>
 
-    <!-- NAVIGATION PRINCIPALE -->
-    <nav class="legal-nav fixed top-0 w-full z-50 px-6 py-4 flex justify-between items-center">
-        <a href="index.html" class="flex items-center gap-2 text-2xl tracking-wider" style="font-family: 'Unbounded', cursive; color: #FFD700;"><img src="assets/images/logo-favicon-192.png" alt="Logo FA GENESIS" style="height:48px;width:48px;flex-shrink:0;border-radius:50%;object-fit:cover;display:inline-block;vertical-align:middle;"> FA GENESIS</a>
-        <a href="index.html" class="flex items-center gap-2">
-            <i class="fas fa-arrow-left"></i> Retour au site
-        </a>
-    </nav>
+<nav class="lg-nav">
+  <a href="index.html" class="lg-nav-logo">
+    <img src="assets/images/logo-genesis.png" alt="FA GENESIS">
+    FA GENESIS
+  </a>
+  <a href="index.html" class="lg-nav-back"><i class="fa-solid fa-arrow-left"></i> Retour au site</a>
+</nav>
 
-    <!-- NAVIGATION LÉGALE -->
-    <div class="legal-subnav fixed top-[84px] w-full z-40 px-6 py-4 flex justify-center gap-6 flex-wrap">
-        <a href="conditions-generales.html" class="active">Conditions générales</a>
-        <span class="text-gray-300">|</span>
-        <a href="confidentialite.html">Confidentialité</a>
-        <span class="text-gray-300">|</span>
-        <a href="protection-donnees.html">Données personnelles</a>
-        <span class="text-gray-300">|</span>
-        <a href="mentions-legales.html">Mentions légales</a>
-        <span class="text-gray-300">|</span>
-        <a href="reclamation.html">Réclamation</a>
-        <span class="text-gray-300">|</span>
-        <a href="cookies.html">Cookies</a>
+<div class="lg-subnav">
+  <div class="lg-subnav-inner">
+    <a href="conditions-generales.html" class="lg-subnav-link active">CGU / CGV</a>
+    <a href="confidentialite.html" class="lg-subnav-link">Confidentialité</a>
+    <a href="mentions-legales.html" class="lg-subnav-link">Mentions légales</a>
+    <a href="cookies.html" class="lg-subnav-link">Cookies</a>
+  </div>
+</div>
+
+<div class="lg-content">
+  <span class="lg-eyebrow">Conditions générales</span>
+  <h1>Conditions Générales</h1>
+  <span class="lg-date">Dernière mise à jour : 16 février 2026</span>
+
+  <!-- Tabs -->
+  <div class="cg-tabs">
+    <button class="cg-tab active" id="tab-cgu" onclick="showCGTab('cgu',this)">CGU</button>
+    <button class="cg-tab" id="tab-cgv" onclick="showCGTab('cgv',this)">CGV</button>
+  </div>
+
+  <!-- ══ CGU ══ -->
+  <div class="cg-section on" id="cgu">
+
+    <h2>Conditions Générales d'Utilisation</h2>
+
+    <h2>1. Objet</h2>
+    <p>Les présentes Conditions Générales d'Utilisation (CGU) régissent l'accès et l'utilisation de l'application et du site internet FA GENESIS (ci-après « l'Application ») édités par Financial Advice Genesis (ci-après « FA Genesis »). Toute utilisation de l'Application implique l'acceptation pleine et entière des présentes CGU.</p>
+
+    <h2>2. Accès à l'application</h2>
+    <p>L'accès à l'Application est ouvert à toute personne physique majeure ou mineure avec autorisation parentale. FA Genesis se réserve le droit de suspendre ou de restreindre l'accès à l'Application à tout moment, notamment pour des raisons de maintenance ou de sécurité.</p>
+    <p>L'utilisation de certaines fonctionnalités nécessite la création d'un compte utilisateur.</p>
+
+    <h2>3. Création et gestion de compte</h2>
+    <p>Pour accéder aux fonctionnalités complètes de l'Application, l'utilisateur doit créer un compte en fournissant des informations exactes et à jour. L'utilisateur est seul responsable :</p>
+    <ul>
+      <li>De la confidentialité de ses identifiants de connexion</li>
+      <li>De toute activité réalisée depuis son compte</li>
+      <li>De la mise à jour de ses informations personnelles</li>
+    </ul>
+    <p>Tout accès frauduleux ou utilisation non autorisée doit être signalé immédiatement à FA Genesis.</p>
+
+    <h2>4. Règles d'utilisation</h2>
+    <p>L'utilisateur s'engage à utiliser l'Application de manière conforme à la loi et aux présentes CGU. Il est notamment interdit de :</p>
+    <ul>
+      <li>Utiliser l'Application à des fins illicites ou frauduleuses</li>
+      <li>Porter atteinte aux droits de tiers ou à la réputation de FA Genesis</li>
+      <li>Tenter de contourner les mesures de sécurité de l'Application</li>
+      <li>Diffuser des contenus illicites, offensants ou non sollicités</li>
+      <li>Utiliser des robots ou outils automatisés pour accéder à l'Application</li>
+    </ul>
+
+    <h2>5. Propriété intellectuelle</h2>
+    <p>L'ensemble des contenus présents sur l'Application (textes, images, logos, graphismes, fonctionnalités, architecture) sont la propriété exclusive de FA Genesis et sont protégés par les lois françaises et internationales relatives à la propriété intellectuelle.</p>
+    <p>Toute reproduction, représentation, modification ou exploitation non autorisée est strictement interdite.</p>
+
+    <h2>6. Données personnelles et cookies</h2>
+    <p>FA Genesis traite vos données personnelles conformément à sa <a href="confidentialite.html">Politique de Confidentialité</a>. L'utilisation de l'Application implique l'utilisation de cookies techniques nécessaires à son bon fonctionnement.</p>
+
+    <h2>7. Responsabilité</h2>
+    <p>FA Genesis met tout en œuvre pour assurer la disponibilité et le bon fonctionnement de l'Application. Cependant, FA Genesis ne saurait être tenue responsable :</p>
+    <ul>
+      <li>D'une interruption temporaire de service due à des opérations de maintenance</li>
+      <li>De dommages résultant d'une utilisation non conforme aux présentes CGU</li>
+      <li>De pertes de données liées à des causes extérieures à FA Genesis</li>
+    </ul>
+
+    <h2>8. Modification des CGU</h2>
+    <p>FA Genesis se réserve le droit de modifier les présentes CGU à tout moment. Les utilisateurs seront informés de toute modification significative via l'Application. La poursuite de l'utilisation de l'Application vaut acceptation des CGU mises à jour.</p>
+
+    <h2>9. Droit applicable</h2>
+    <p>Les présentes CGU sont soumises au droit français. En cas de litige, une solution amiable sera recherchée en priorité avant tout recours judiciaire.</p>
+
+    <div class="lg-contact">
+      <h3>Contact</h3>
+      <p>Pour toute question relative aux présentes CGU :</p>
+      <p><i class="fa-solid fa-envelope"></i><a href="mailto:Financialadvicegenesis@gmail.com">Financialadvicegenesis@gmail.com</a></p>
+      <p><i class="fa-solid fa-phone"></i>+33 7 64 16 36 09</p>
     </div>
+  </div><!-- /CGU -->
 
-    <!-- CONTENU -->
-    <div class="legal-content" style="padding-top: 140px;">
-        <h1>Conditions Générales</h1>
-        <p class="legal-date">Dernière mise à jour : 16 février 2026</p>
+  <!-- ══ CGV ══ -->
+  <div class="cg-section" id="cgv">
 
-        <!-- Onglets -->
-        <div class="cg-tabs">
-            <a href="#cgu" class="cg-tab active" id="tab-cgu" onclick="showCGTab('cgu',this)">CGU</a>
-            <a href="#cgv" class="cg-tab" id="tab-cgv" onclick="showCGTab('cgv',this)">CGV</a>
-        </div>
+    <h2>Conditions Générales de Vente</h2>
 
-        <!-- ══ CGU ══ -->
-        <div class="cg-section on" id="cgu">
-        <h2>Conditions Générales d'Utilisation</h2>
+    <h2>1. Objet</h2>
+    <p>Les présentes Conditions Générales de Vente (CGV) définissent les modalités de vente des services proposés par Financial Advice Genesis (ci-après « FA Genesis ») à ses clients (ci-après « le Client »).</p>
+    <p>Toute commande de service implique l'acceptation sans réserve des présentes CGV.</p>
 
-        <h2>1. Objet</h2>
-        <p>Les présentes Conditions Générales d'Utilisation (CGU) régissent l'accès et l'utilisation de l'application et du site internet FA GENESIS (ci-après « l'Application ») édités par Financial Advice Genesis (ci-après « FA Genesis »). Toute utilisation de l'Application implique l'acceptation pleine et entière des présentes CGU.</p>
+    <h2>2. Nature des services</h2>
+    <p>FA Genesis propose un accompagnement stratégique et pédagogique destiné aux étudiants, particuliers et entreprises souhaitant structurer, lancer ou développer un projet entrepreneurial.</p>
+    <p>Les services incluent notamment :</p>
+    <ul>
+      <li>Accompagnements personnalisés (offres Étudiants, Particuliers, Entreprises)</li>
+      <li>Prestations individuelles (tarifs à la carte)</li>
+      <li>Devis sur mesure</li>
+      <li>Livrables stratégiques (business plan, étude de marché, identité visuelle, etc.)</li>
+    </ul>
 
-        <h2>2. Accès à l'application</h2>
-        <p>L'accès à l'Application est ouvert à toute personne physique majeure ou mineure avec autorisation parentale. FA Genesis se réserve le droit de suspendre ou de restreindre l'accès à l'Application à tout moment, notamment pour des raisons de maintenance ou de sécurité.</p>
-        <p>L'utilisation de certaines fonctionnalités nécessite la création d'un compte utilisateur.</p>
+    <h2>3. Modalités de paiement</h2>
+    <p>Le paiement des services s'effectue en deux temps :</p>
+    <ul>
+      <li><strong>Acompte de 30 % :</strong> exigible à la commande pour déclencher le démarrage de l'accompagnement.</li>
+      <li><strong>Solde de 70 % :</strong> exigible à la livraison des livrables ou selon les modalités convenues.</li>
+    </ul>
+    <p>Les paiements sont effectués par carte bancaire via notre prestataire de paiement sécurisé (SumUp). Aucune donnée bancaire n'est stockée par FA Genesis.</p>
 
-        <h2>3. Création et gestion de compte</h2>
-        <p>Pour accéder aux fonctionnalités complètes de l'Application, l'utilisateur doit créer un compte en fournissant des informations exactes et à jour. L'utilisateur est seul responsable :</p>
-        <ul>
-            <li>De la confidentialité de ses identifiants de connexion</li>
-            <li>De toute activité réalisée depuis son compte</li>
-            <li>De la mise à jour de ses informations personnelles</li>
-        </ul>
-        <p>Tout accès frauduleux ou utilisation non autorisée doit être signalé immédiatement à FA Genesis.</p>
+    <h2>4. Délais et exécution</h2>
+    <p>Les délais d'exécution dépendent de la nature de l'offre souscrite et sont communiqués au Client lors de la commande. FA Genesis s'engage à respecter les délais annoncés, sauf circonstances exceptionnelles.</p>
 
-        <h2>4. Règles d'utilisation</h2>
-        <p>L'utilisateur s'engage à utiliser l'Application de manière conforme à la loi et aux présentes CGU. Il est notamment interdit de :</p>
-        <ul>
-            <li>Utiliser l'Application à des fins illicites ou frauduleuses</li>
-            <li>Porter atteinte aux droits de tiers ou à la réputation de FA Genesis</li>
-            <li>Tenter de contourner les mesures de sécurité de l'Application</li>
-            <li>Diffuser des contenus illicites, offensants ou non sollicités</li>
-            <li>Utiliser des robots ou outils automatisés pour accéder à l'Application</li>
-        </ul>
+    <h2>5. Limitation de responsabilité</h2>
+    <p>FA Genesis propose un accompagnement stratégique et pédagogique. <strong>Aucun résultat commercial, financier ou entrepreneurial n'est garanti.</strong></p>
+    <p>La réussite du projet dépend de l'implication du Client, des conditions de marché et de facteurs extérieurs indépendants de FA Genesis.</p>
 
-        <h2>5. Propriété intellectuelle</h2>
-        <p>L'ensemble des contenus présents sur l'Application (textes, images, logos, graphismes, fonctionnalités, architecture) sont la propriété exclusive de FA Genesis et sont protégés par les lois françaises et internationales relatives à la propriété intellectuelle.</p>
-        <p>Toute reproduction, représentation, modification ou exploitation non autorisée est strictement interdite.</p>
+    <h2>6. Confidentialité</h2>
+    <p>FA Genesis s'engage à traiter de manière confidentielle toutes les informations transmises par le Client dans le cadre de l'accompagnement. Les données personnelles sont traitées conformément à notre <a href="confidentialite.html">Politique de Confidentialité</a>.</p>
 
-        <h2>6. Données personnelles et cookies</h2>
-        <p>FA Genesis traite vos données personnelles conformément à sa <a href="confidentialite.html" style="color:#000;font-weight:900;text-decoration:underline;">Politique de Confidentialité</a>. L'utilisation de l'Application implique l'utilisation de cookies techniques nécessaires à son bon fonctionnement.</p>
+    <h2>7. Rétractation et annulation</h2>
+    <p>Conformément à la réglementation en vigueur, le Client dispose d'un délai de 14 jours à compter de la commande pour exercer son droit de rétractation, sauf si l'exécution du service a déjà commencé avec son accord express.</p>
 
-        <h2>7. Responsabilité</h2>
-        <p>FA Genesis met tout en œuvre pour assurer la disponibilité et le bon fonctionnement de l'Application. Cependant, FA Genesis ne saurait être tenue responsable :</p>
-        <ul>
-            <li>D'une interruption temporaire de service due à des opérations de maintenance</li>
-            <li>De dommages résultant d'une utilisation non conforme aux présentes CGU</li>
-            <li>De pertes de données liées à des causes extérieures à FA Genesis</li>
-        </ul>
+    <h2>8. Réclamation</h2>
+    <p>En cas de litige ou d'insatisfaction, le Client peut adresser une réclamation par email. FA Genesis s'engage à répondre dans un délai de 7 jours ouvrés.</p>
 
-        <h2>8. Modification des CGU</h2>
-        <p>FA Genesis se réserve le droit de modifier les présentes CGU à tout moment. Les utilisateurs seront informés de toute modification significative via l'Application. La poursuite de l'utilisation de l'Application vaut acceptation des CGU mises à jour.</p>
+    <h2>9. Droit applicable</h2>
+    <p>Les présentes CGV sont soumises au droit français. En cas de litige, les tribunaux compétents seront ceux du ressort du siège social de FA Genesis.</p>
 
-        <h2>9. Droit applicable</h2>
-        <p>Les présentes CGU sont soumises au droit français. En cas de litige, une solution amiable sera recherchée en priorité avant tout recours judiciaire.</p>
-
-        <div class="legal-contact">
-            <h3>Contact</h3>
-            <p>Pour toute question relative aux présentes CGU :</p>
-            <p><i class="fas fa-envelope" style="color: #FFD700; margin-right: 8px;"></i> <a href="mailto:Financialadvicegenesis@gmail.com">Financialadvicegenesis@gmail.com</a></p>
-            <p><i class="fas fa-phone" style="color: #FFD700; margin-right: 8px;"></i> +33 7 64 16 36 09</p>
-        </div>
-        </div><!-- /CGU -->
-
-        <!-- ══ CGV ══ -->
-        <div class="cg-section" id="cgv">
-        <h2>Conditions Générales de Vente</h2>
-
-        <h2>1. Objet</h2>
-        <p>Les présentes Conditions Générales de Vente (CGV) définissent les modalités de vente des services proposés par Financial Advice Genesis (ci-après « FA Genesis ») à ses clients (ci-après « le Client »).</p>
-        <p>Toute commande de service implique l'acceptation sans réserve des présentes CGV.</p>
-
-        <h2>2. Nature des services</h2>
-        <p>FA Genesis propose un accompagnement stratégique et pédagogique destiné aux étudiants, particuliers et entreprises souhaitant structurer, lancer ou développer un projet entrepreneurial.</p>
-        <p>Les services incluent notamment :</p>
-        <ul>
-            <li>Accompagnements personnalisés (offres Étudiants, Particuliers, Entreprises)</li>
-            <li>Prestations individuelles (tarifs à la carte)</li>
-            <li>Devis sur mesure</li>
-            <li>Livrables stratégiques (business plan, étude de marché, identité visuelle, etc.)</li>
-        </ul>
-
-        <h2>3. Modalités de paiement</h2>
-        <p>Le paiement des services s'effectue en deux temps :</p>
-        <ul>
-            <li><strong>Acompte de 30 %</strong> : exigible à la commande pour déclencher le démarrage de l'accompagnement.</li>
-            <li><strong>Solde de 70 %</strong> : exigible à la livraison des livrables ou selon les modalités convenues.</li>
-        </ul>
-        <p>Les paiements sont effectués par carte bancaire via notre prestataire de paiement sécurisé (SumUp). Aucune donnée bancaire n'est stockée par FA Genesis.</p>
-
-        <h2>4. Délais et exécution</h2>
-        <p>Les délais d'exécution dépendent de la nature de l'offre souscrite et sont communiqués au Client lors de la commande. FA Genesis s'engage à respecter les délais annoncés, sauf circonstances exceptionnelles.</p>
-
-        <h2>5. Limitation de responsabilité</h2>
-        <p>FA Genesis propose un accompagnement stratégique et pédagogique. <strong>Aucun résultat commercial, financier ou entrepreneurial n'est garanti.</strong></p>
-        <p>La réussite du projet dépend de l'implication du Client, des conditions de marché et de facteurs extérieurs indépendants de FA Genesis.</p>
-
-        <h2>6. Confidentialité</h2>
-        <p>FA Genesis s'engage à traiter de manière confidentielle toutes les informations transmises par le Client dans le cadre de l'accompagnement. Les données personnelles sont traitées conformément à notre <a href="confidentialite.html" style="color: #000; font-weight: 900; text-decoration: underline;">Politique de Confidentialité</a>.</p>
-
-        <h2>7. Rétractation et annulation</h2>
-        <p>Conformément à la réglementation en vigueur, le Client dispose d'un délai de 14 jours à compter de la commande pour exercer son droit de rétractation, sauf si l'exécution du service a déjà commencé avec son accord express.</p>
-
-        <h2>8. Réclamation</h2>
-        <p>En cas de litige ou d'insatisfaction, le Client peut adresser une réclamation via notre <a href="reclamation.html" style="color: #000; font-weight: 900; text-decoration: underline;">formulaire de réclamation</a> ou par email. FA Genesis s'engage à répondre dans un délai de 7 jours ouvrés.</p>
-
-        <h2>9. Droit applicable</h2>
-        <p>Les présentes CGV sont soumises au droit français. En cas de litige, les tribunaux compétents seront ceux du ressort du siège social de FA Genesis.</p>
-
-        <div class="legal-contact">
-            <h3>Contact</h3>
-            <p>Pour toute question relative aux présentes conditions :</p>
-            <p><i class="fas fa-envelope" style="color: #FFD700; margin-right: 8px;"></i> <a href="mailto:Financialadvicegenesis@gmail.com">Financialadvicegenesis@gmail.com</a></p>
-            <p><i class="fas fa-phone" style="color: #FFD700; margin-right: 8px;"></i> +33 7 64 16 36 09</p>
-        </div>
-        </div><!-- /CGV -->
-
+    <div class="lg-contact">
+      <h3>Contact</h3>
+      <p>Pour toute question relative aux présentes conditions :</p>
+      <p><i class="fa-solid fa-envelope"></i><a href="mailto:Financialadvicegenesis@gmail.com">Financialadvicegenesis@gmail.com</a></p>
+      <p><i class="fa-solid fa-phone"></i>+33 7 64 16 36 09</p>
     </div>
+  </div><!-- /CGV -->
 
-    <div id="site-footer"></div>
-    <script src="footer.js" defer></script>
-    <script src="chatbot.js" defer></script>
-    <script src="pwa-init.js"></script>
-    <script>
-    function showCGTab(id, el) {
-        document.querySelectorAll('.cg-section').forEach(function(s){ s.classList.remove('on'); });
-        document.querySelectorAll('.cg-tab').forEach(function(t){ t.classList.remove('active'); });
-        var sec = document.getElementById(id);
-        if(sec) sec.classList.add('on');
-        if(el) el.classList.add('active');
-    }
-    // Ouvre l'onglet correspondant à l'ancre de l'URL (#cgu ou #cgv)
-    (function(){
-        var hash = window.location.hash;
-        if(hash === '#cgv') showCGTab('cgv', document.getElementById('tab-cgv'));
-        else showCGTab('cgu', document.getElementById('tab-cgu'));
-    })();
-    </script>
+</div>
+
+<script>
+function showCGTab(id, el){
+  document.querySelectorAll('.cg-section').forEach(function(s){ s.classList.remove('on'); });
+  document.querySelectorAll('.cg-tab').forEach(function(t){ t.classList.remove('active'); });
+  var sec = document.getElementById(id);
+  if(sec) sec.classList.add('on');
+  if(el) el.classList.add('active');
+}
+(function(){
+  var hash = window.location.hash;
+  if(hash === '#cgv') showCGTab('cgv', document.getElementById('tab-cgv'));
+  else showCGTab('cgu', document.getElementById('tab-cgu'));
+})();
+</script>
 </body>
 </html>
