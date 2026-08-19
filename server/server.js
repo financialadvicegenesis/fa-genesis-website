@@ -1483,10 +1483,8 @@ app.post('/api/admin/login', function(req, res) {
         var password = req.body.password || '';
         var match = ADMIN_ACCOUNTS.find(function(a) { return a.email === email && a.password === password; });
         if (!match) return res.status(401).json({ error: 'Email ou mot de passe incorrect.' });
-        var token = uuidv4() + uuidv4();
-        var sessions = loadAdminSessions();
-        sessions.push({ token: token, email: match.email, created_at: new Date().toISOString() });
-        saveAdminSessions(sessions);
+        // JWT signé — valide sans admin_sessions.json, survit aux redémarrages Render
+        var token = _jwt.sign({ email: match.email, role: 'admin' }, _JWT_SECRET, { expiresIn: '30d' });
         console.log('[ADMIN-AUTH] Connexion admin réussie:', match.email);
         res.json({ success: true, token: token, email: match.email });
     } catch(e) {
@@ -1497,9 +1495,13 @@ app.post('/api/admin/login', function(req, res) {
 
 app.post('/api/admin/logout', function(req, res) {
     try {
+        // Avec JWT on ne peut pas révoquer côté serveur — le client supprime son token localStorage
+        // On nettoie quand même le legacy sessions file si présent
         var token = (req.headers.authorization || '').replace('Bearer ', '');
-        var sessions = loadAdminSessions().filter(function(s) { return s.token !== token; });
-        saveAdminSessions(sessions);
+        try {
+            var sessions = loadAdminSessions().filter(function(s) { return s.token !== token; });
+            saveAdminSessions(sessions);
+        } catch(e) {}
         res.json({ success: true });
     } catch(e) {
         res.status(500).json({ error: 'Erreur serveur' });
@@ -1511,10 +1513,18 @@ function authenticateAdmin(req, res, next) {
         var authHeader = req.headers.authorization || '';
         var token = authHeader.indexOf('Bearer ') === 0 ? authHeader.slice(7) : null;
         if (!token) return res.status(401).json({ error: 'Authentification admin requise' });
-        var sessions = loadAdminSessions();
-        var session = sessions.find(function(s) { return s.token === token; });
-        if (!session) return res.status(401).json({ error: 'Session admin invalide ou expirée' });
-        req.admin = session;
+        // Valider le JWT directement (pas de fichier de sessions — survit aux redémarrages)
+        var decoded;
+        try { decoded = _jwt.verify(token, _JWT_SECRET); } catch(e) {
+            // Ancien format UUID (pré-migration) : tenter lookup sessions fichier
+            var sessions = loadAdminSessions();
+            var legacy = sessions.find(function(s) { return s.token === token; });
+            if (!legacy) return res.status(401).json({ error: 'Session expirée — veuillez vous reconnecter.' });
+            req.admin = legacy;
+            return next();
+        }
+        if (!decoded || decoded.role !== 'admin') return res.status(403).json({ error: 'Accès admin requis' });
+        req.admin = { email: decoded.email, token: token };
         next();
     } catch(e) {
         res.status(500).json({ error: 'Erreur authentification admin' });

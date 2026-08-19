@@ -6405,38 +6405,54 @@
             var listEl = document.getElementById('actu-admin-list');
             var emptyEl = document.getElementById('actu-admin-empty');
             var errZone = document.getElementById('actu-admin-err');
-            if (loader) loader.style.display = 'flex';
-            if (listEl) listEl.style.display = 'none';
-            if (emptyEl) emptyEl.style.display = 'none';
-            if (errZone) errZone.style.display = 'none';
 
-            var ctrl = new AbortController();
-            var timer = setTimeout(function(){ ctrl.abort(); }, 20000);
-
-            fetch(API_BASE_URL + '/api/admin/actualites', {
-                headers: { 'x-admin-key': adminKey || '' },
-                signal: ctrl.signal
-            })
-                .then(function(r){ clearTimeout(timer); return r.json(); })
-                .then(function(d){
+            function _showErr(msg) {
+                try {
                     if (loader) loader.style.display = 'none';
-                    if (!d.ok) {
-                        if (errZone) { errZone.textContent = d.error || 'Erreur serveur'; errZone.style.display = 'block'; }
-                        else if (emptyEl) emptyEl.style.display = 'block';
+                    if (errZone) {
+                        errZone.innerHTML = '<i class="fas fa-triangle-exclamation" style="margin-right:6px;"></i>' + msg +
+                            ' <button onclick="loadAdminActualites()" style="margin-left:10px;text-decoration:underline;background:none;border:none;color:inherit;cursor:pointer;font-size:inherit;font-weight:700;">Réessayer</button>';
+                        errZone.style.display = 'block';
+                    }
+                } catch(e) {}
+            }
+
+            try {
+                if (loader) loader.style.display = 'flex';
+                if (listEl) listEl.style.display = 'none';
+                if (emptyEl) emptyEl.style.display = 'none';
+                if (errZone) errZone.style.display = 'none';
+            } catch(e) {}
+
+            // XHR pour contourner tout problème d'intercepteur fetch + timeout garanti
+            var xhr = new XMLHttpRequest();
+            var done = false;
+            var tok = '';
+            try { tok = localStorage.getItem('adminToken') || ''; } catch(e) {}
+
+            xhr.open('GET', API_BASE_URL + '/api/admin/actualites', true);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            xhr.setRequestHeader('x-admin-key', '');
+            if (tok) xhr.setRequestHeader('Authorization', 'Bearer ' + tok);
+            xhr.timeout = 15000;
+
+            xhr.onload = function() {
+                if (done) return; done = true;
+                try {
+                    var d = JSON.parse(xhr.responseText);
+                    if (xhr.status === 401 || xhr.status === 403) {
+                        _showErr('Session expirée. <button onclick="adminLogout()" style="text-decoration:underline;background:none;border:none;color:inherit;cursor:pointer;font-size:inherit;font-weight:700;">Se reconnecter</button>');
                         return;
                     }
-                    _actuAll = d.actualites || [];
-                    _renderActualitesAdmin(_actuFilter);
-                })
-                .catch(function(err){
-                    clearTimeout(timer);
+                    if (!d.ok) { _showErr(d.error || 'Erreur serveur (code ' + xhr.status + ')'); return; }
                     if (loader) loader.style.display = 'none';
-                    var msg = (err && err.name === 'AbortError') ? 'Délai dépassé — serveur trop lent. ' : 'Erreur réseau. ';
-                    if (errZone) {
-                        errZone.innerHTML = msg + '<button onclick="loadAdminActualites()" style="text-decoration:underline;background:none;border:none;color:inherit;cursor:pointer;font-size:inherit;">Réessayer</button>';
-                        errZone.style.display = 'block';
-                    } else if (emptyEl) emptyEl.style.display = 'block';
-                });
+                    _actuAll = d.actualites || [];
+                    try { _renderActualitesAdmin(_actuFilter); } catch(e) { _showErr('Erreur d\'affichage : ' + e.message); }
+                } catch(e) { _showErr('Réponse invalide du serveur (non-JSON).'); }
+            };
+            xhr.onerror = function() { if (!done) { done = true; _showErr('Erreur réseau — vérifiez votre connexion.'); } };
+            xhr.ontimeout = function() { if (!done) { done = true; _showErr('Délai dépassé (15s) — serveur trop lent.'); } };
+            xhr.send();
         }
 
         function filterActualites(f) {
@@ -6629,31 +6645,31 @@
             errEl.style.display = 'none';
             var url = id ? (API_BASE_URL + '/api/admin/actualites/' + id) : (API_BASE_URL + '/api/admin/actualites');
             var method = id ? 'PUT' : 'POST';
-            fetch(url, {
-                method: method,
-                headers: { 'Content-Type': 'application/json', 'x-admin-key': adminKey || '' },
-                body: JSON.stringify(payload)
-            })
-            .then(function(r){ return r.json(); })
-            .then(function(d){
-                btn.disabled = false;
-                btn.textContent = id ? 'Enregistrer' : 'Publier';
-                if (d.ok) {
-                    closeActualiteForm();
-                    loadAdminActualites();
+            var xhr2 = new XMLHttpRequest();
+            var tok2 = '';
+            try { tok2 = localStorage.getItem('adminToken') || ''; } catch(e) {}
+            xhr2.open(method, url, true);
+            xhr2.setRequestHeader('Content-Type', 'application/json');
+            xhr2.setRequestHeader('x-admin-key', '');
+            if (tok2) xhr2.setRequestHeader('Authorization', 'Bearer ' + tok2);
+            xhr2.timeout = 30000;
+            function _submitDone(ok, msg) {
+                btn.disabled = false; btn.textContent = id ? 'Enregistrer' : 'Publier';
+                if (ok) {
+                    closeActualiteForm(); loadAdminActualites();
                     var toast = document.getElementById('actu-toast');
                     if (toast) { toast.style.opacity = '1'; setTimeout(function(){ toast.style.opacity = '0'; }, 2800); }
-                } else {
-                    errEl.textContent = d.error || 'Erreur serveur';
-                    errEl.style.display = 'block';
-                }
-            })
-            .catch(function(err){
-                btn.disabled = false;
-                btn.textContent = id ? 'Enregistrer' : 'Publier';
-                errEl.textContent = 'Erreur de connexion : ' + (err && err.message ? err.message : 'inconnue');
-                errEl.style.display = 'block';
-            });
+                } else { errEl.textContent = msg || 'Erreur'; errEl.style.display = 'block'; }
+            }
+            xhr2.onload = function() {
+                try {
+                    var d = JSON.parse(xhr2.responseText);
+                    _submitDone(d.ok, d.error || ('Erreur serveur (code ' + xhr2.status + ')'));
+                } catch(e) { _submitDone(false, 'Réponse invalide du serveur.'); }
+            };
+            xhr2.onerror = function() { _submitDone(false, 'Erreur réseau — vérifiez votre connexion.'); };
+            xhr2.ontimeout = function() { _submitDone(false, 'Délai dépassé (30s).'); };
+            xhr2.send(JSON.stringify(payload));
         }
 
         function deleteActualite(id) {
