@@ -323,7 +323,7 @@ footer{background:var(--s1);border-top:1px solid var(--gold-border);padding:64px
     </div>
     <div class="nav-ctas">
       <button class="btn-ghost" onclick="openLogin('client')">Se connecter</button>
-      <button class="btn-primary" onclick="openLogin('client')">Commencer gratuitement</button>
+      <a href="inscription.html" class="btn-primary" style="display:inline-flex;align-items:center;gap:6px;">Inscription</a>
     </div>
     <button class="nav-hamburger" onclick="document.getElementById('mobile-menu').classList.add('open')">
       <i class="fa-solid fa-bars"></i>
@@ -341,7 +341,7 @@ footer{background:var(--s1);border-top:1px solid var(--gold-border);padding:64px
   <a href="a-propos.html" onclick="document.getElementById('mobile-menu').classList.remove('open')">À propos</a>
   <a href="#telecharger" onclick="document.getElementById('mobile-menu').classList.remove('open')">Télécharger</a>
   <button onclick="openLogin('client');document.getElementById('mobile-menu').classList.remove('open')">Se connecter</button>
-  <button onclick="openLogin('partner');document.getElementById('mobile-menu').classList.remove('open')" style="color:var(--orange)">Devenir prestataire</button>
+  <a href="inscription.html" onclick="document.getElementById('mobile-menu').classList.remove('open')" style="font-family:var(--font-d);font-size:18px;font-weight:700;color:var(--gold);">Inscription</a>
 </div>
 
 <!-- ── HERO ───────────────────────────────────────────────── -->
@@ -1482,6 +1482,19 @@ function switchTab(mode){
     tp.className='how-tab active-p'; tc.className='how-tab';
   }
 }
+
+/* ── Auto-open login si redirigé depuis inscription.html ── */
+(function(){
+  try{
+    var qp = new URLSearchParams(window.location.search);
+    var role = qp.get('login');
+    if(role === '1' || role === 'client' || role === 'partner'){
+      window.addEventListener('DOMContentLoaded', function(){
+        openLogin(role === '1' ? 'client' : role);
+      });
+    }
+  }catch(e){}
+})();
 
 /* ── Login modal ── */
 function openLogin(role){
