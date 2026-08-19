@@ -57,7 +57,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:1000;height:var(--nav-h);transit
 nav.scrolled{background:rgba(5,5,5,.92);backdrop-filter:blur(20px);border-color:var(--gold-border);}
 .nav-inner{display:flex;align-items:center;justify-content:space-between;height:var(--nav-h);}
 .nav-logo{font-family:var(--font-d);font-size:15px;font-weight:900;letter-spacing:1px;color:var(--gold);display:flex;align-items:center;gap:10px;}
-.nav-logo-img{height:36px;width:auto;object-fit:contain;flex-shrink:0;mix-blend-mode:screen;}
+.nav-logo-img{height:36px;width:auto;object-fit:contain;flex-shrink:0;}
 
 .nav-links{display:flex;align-items:center;gap:36px;}
 .nav-links a{font-size:13px;font-weight:500;color:var(--t2);transition:color .2s;letter-spacing:.2px;}
@@ -238,7 +238,7 @@ nav.scrolled{background:rgba(5,5,5,.92);backdrop-filter:blur(20px);border-color:
 .modal-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.85);backdrop-filter:blur(12px);cursor:pointer;}
 .modal-card{position:relative;z-index:1;background:var(--s2);border:1.5px solid var(--gold-border);border-radius:20px;width:100%;max-width:440px;padding:40px;margin:16px;}
 .modal-logo{font-family:var(--font-d);font-size:14px;font-weight:900;color:var(--gold);text-align:center;margin-bottom:28px;display:flex;align-items:center;justify-content:center;gap:8px;}
-.modal-logo-img{height:32px;width:auto;object-fit:contain;mix-blend-mode:screen;}
+.modal-logo-img{height:32px;width:auto;object-fit:contain;}
 .modal-tabs{display:flex;gap:0;background:var(--s3);border-radius:10px;padding:3px;margin-bottom:28px;}
 .modal-tab{flex:1;font-family:var(--font-b);font-size:13px;font-weight:700;padding:10px;border-radius:8px;border:none;cursor:pointer;transition:background .2s,color .2s;color:var(--t2);background:transparent;}
 .modal-tab.active{background:linear-gradient(135deg,var(--gold),#e6c200);color:#0a0800;}
@@ -267,7 +267,7 @@ nav.scrolled{background:rgba(5,5,5,.92);backdrop-filter:blur(20px);border-color:
 footer{background:var(--s1);border-top:1px solid var(--gold-border);padding:64px 0 32px;}
 .footer-grid{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:48px;margin-bottom:48px;}
 .footer-brand-name{font-family:var(--font-d);font-size:14px;font-weight:900;color:var(--gold);margin-bottom:12px;display:flex;align-items:center;gap:8px;}
-.footer-brand-img{height:30px;width:auto;object-fit:contain;mix-blend-mode:screen;}
+.footer-brand-img{height:30px;width:auto;object-fit:contain;}
 .footer-brand-desc{font-size:13px;color:var(--t2);line-height:1.7;font-weight:300;margin-bottom:20px;max-width:260px;}
 .footer-social{display:flex;gap:12px;}
 .footer-social a{width:36px;height:36px;border-radius:8px;background:var(--s2);border:1px solid var(--gold-border);display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--t2);transition:color .2s,border-color .2s;}
@@ -392,7 +392,7 @@ footer{background:var(--s1);border-top:1px solid var(--gold-border);padding:64px
           <div class="phone-screen">
             <!-- Header -->
             <div class="ms-header">
-              <div style="display:flex;align-items:center;gap:4px;"><img src="assets/images/logo-genesis.png" alt="" style="height:10px;mix-blend-mode:screen;"><div class="ms-logo">GENESIS</div></div>
+              <div style="display:flex;align-items:center;gap:4px;"><img src="assets/images/logo-genesis.png" alt="" style="height:10px;"><div class="ms-logo">GENESIS</div></div>
               <div style="display:flex;align-items:center;gap:4px;"><i class="fa-solid fa-cart-shopping" style="font-size:7px;color:#555;"></i><i class="fa-solid fa-bell" style="font-size:7px;color:#555;"></i><div class="ms-avatar"></div></div>
             </div>
             <!-- Greeting -->
@@ -437,7 +437,7 @@ footer{background:var(--s1);border-top:1px solid var(--gold-border);padding:64px
           <div class="phone-screen">
             <!-- Header hamburger + logo + avatar orange -->
             <div class="ms-header">
-              <div style="display:flex;align-items:center;gap:6px;"><i class="fa-solid fa-bars" style="font-size:9px;color:#555;"></i><div style="display:flex;align-items:center;gap:4px;"><img src="assets/images/logo-genesis.png" alt="" style="height:11px;mix-blend-mode:screen;"><div class="ms-logo">GENESIS</div></div></div>
+              <div style="display:flex;align-items:center;gap:6px;"><i class="fa-solid fa-bars" style="font-size:9px;color:#555;"></i><div style="display:flex;align-items:center;gap:4px;"><img src="assets/images/logo-genesis.png" alt="" style="height:11px;"><div class="ms-logo">GENESIS</div></div></div>
               <div style="display:flex;align-items:center;gap:4px;"><div style="position:relative;"><i class="fa-solid fa-bell" style="font-size:8px;color:#555;"></i><span style="position:absolute;top:-1px;right:-1px;width:4px;height:4px;background:var(--orange);border-radius:50%;"></span></div><div class="ms-avatar" style="background:linear-gradient(135deg,var(--orange),#ff6a00);"></div></div>
             </div>
             <!-- Greeting + badge Bronze -->
@@ -485,7 +485,7 @@ footer{background:var(--s1);border-top:1px solid var(--gold-border);padding:64px
           <div class="phone-screen">
             <!-- Header -->
             <div class="ms-header">
-              <div style="display:flex;align-items:center;gap:4px;"><img src="assets/images/logo-genesis.png" alt="" style="height:10px;mix-blend-mode:screen;"><div class="ms-logo">GENESIS</div></div>
+              <div style="display:flex;align-items:center;gap:4px;"><img src="assets/images/logo-genesis.png" alt="" style="height:10px;"><div class="ms-logo">GENESIS</div></div>
               <div class="ms-avatar" style="background:linear-gradient(135deg,var(--orange),#ff6a00);"></div>
             </div>
             <!-- Wallet card -->
@@ -574,7 +574,7 @@ footer{background:var(--s1);border-top:1px solid var(--gold-border);padding:64px
               <!-- App header bar -->
               <div class="ms-header" style="margin-bottom:8px;">
                 <div style="display:flex;align-items:center;gap:5px;">
-                  <img src="assets/images/logo-genesis.png" alt="" style="height:13px;mix-blend-mode:screen;">
+                  <img src="assets/images/logo-genesis.png" alt="" style="height:13px;">
                   <div class="ms-logo">GENESIS</div>
                 </div>
                 <div style="display:flex;align-items:center;gap:5px;">
@@ -673,7 +673,7 @@ footer{background:var(--s1);border-top:1px solid var(--gold-border);padding:64px
                 <div style="display:flex;align-items:center;gap:7px;">
                   <i class="fa-solid fa-bars" style="font-size:10px;color:var(--t2);"></i>
                   <div style="display:flex;align-items:center;gap:4px;">
-                    <img src="assets/images/logo-genesis.png" alt="" style="height:13px;mix-blend-mode:screen;">
+                    <img src="assets/images/logo-genesis.png" alt="" style="height:13px;">
                     <div class="ms-logo">GENESIS</div>
                   </div>
                 </div>
@@ -817,7 +817,7 @@ footer{background:var(--s1);border-top:1px solid var(--gold-border);padding:64px
             <div class="fmk-screen">
               <!-- Header -->
               <div class="fmk-hdr">
-                <div class="fmk-hdr-l"><img src="assets/images/logo-genesis.png" alt="" style="height:15px;mix-blend-mode:screen;"><span class="fmk-logo">GENESIS</span></div>
+                <div class="fmk-hdr-l"><img src="assets/images/logo-genesis.png" alt="" style="height:15px;"><span class="fmk-logo">GENESIS</span></div>
                 <div class="fmk-hdr-r">
                   <div class="fmk-ico-btn"><i class="fa-solid fa-cart-shopping"></i></div>
                   <div class="fmk-ico-btn fmk-ico-notif"><i class="fa-solid fa-bell"></i><span class="fmk-dot"></span></div>
