@@ -55,13 +55,13 @@ nav.scrolled{background:rgba(5,5,5,.92);backdrop-filter:blur(20px);border-color:
 .nav-mobile-close{position:absolute;top:24px;right:24px;background:none;border:none;color:var(--white);font-size:24px;cursor:pointer;}
 
 /* ── HERO ── */
-.ap-hero{min-height:65vh;display:flex;align-items:center;padding-top:var(--nav-h);position:relative;overflow:hidden;}
+.ap-hero{min-height:65vh;display:flex;align-items:center;padding-top:calc(var(--nav-h) + 48px);position:relative;overflow:hidden;}
 .ap-hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(255,215,0,.06),transparent 70%);}
-.ap-hero-content{position:relative;z-index:1;}
-.ap-hero-eyebrow{font-family:var(--font-d);font-size:11px;font-weight:700;letter-spacing:4px;color:var(--gold);text-transform:uppercase;margin-bottom:24px;display:block;}
-.ap-hero h1{font-family:var(--font-d);font-size:clamp(40px,7vw,88px);font-weight:900;line-height:1.05;letter-spacing:-2px;margin-bottom:24px;}
-.ap-hero-line{width:60px;height:2px;background:linear-gradient(90deg,var(--gold),var(--orange));border-radius:2px;margin:28px 0;}
-.ap-hero-sub{font-size:clamp(15px,1.8vw,18px);color:var(--t2);max-width:580px;line-height:1.7;font-weight:300;}
+.ap-hero-content{position:relative;z-index:1;text-align:center;}
+.ap-hero-eyebrow{font-family:var(--font-d);font-size:11px;font-weight:700;letter-spacing:4px;color:var(--gold);text-transform:uppercase;margin-bottom:32px;display:block;}
+.ap-hero h1{font-family:var(--font-d);font-size:clamp(32px,5.5vw,70px);font-weight:900;line-height:1.05;letter-spacing:-2px;margin-bottom:24px;}
+.ap-hero-line{width:60px;height:2px;background:linear-gradient(90deg,var(--gold),var(--orange));border-radius:2px;margin:28px auto;}
+.ap-hero-sub{font-size:clamp(15px,1.8vw,18px);color:var(--t2);max-width:580px;line-height:1.7;font-weight:300;margin:0 auto;}
 
 /* ── SECTIONS ── */
 .section{padding:100px 0;}
@@ -223,7 +223,7 @@ footer{background:var(--s1);border-top:1px solid var(--gold-border);padding:64px
 </section>
 
 <!-- NOTRE VISION / VALEURS -->
-<section class="section" style="background:var(--s1);">
+<section id="notre-vision" class="section" style="background:var(--s1);">
   <div class="wrap">
     <div style="text-align:center;margin-bottom:16px;">
       <span class="sec-label">Ce qui nous définit</span>
@@ -285,7 +285,7 @@ footer{background:var(--s1);border-top:1px solid var(--gold-border);padding:64px
           <img src="assets/images/logo-genesis.png" alt="FA GENESIS" class="footer-brand-img">
           FA GENESIS
         </div>
-        <p class="footer-brand-desc">La plateforme qui connecte clients et prestataires de services en France et en Afrique. Sécurisé, transparent, global.</p>
+        <p class="footer-brand-desc">La plateforme qui connecte clients et prestataires de services en France et à l'international.</p>
         <div class="footer-social">
           <a href="https://www.linkedin.com/in/financial-advice-genesis-772b653aa/" target="_blank" rel="noopener"><i class="fa-brands fa-linkedin-in"></i></a>
           <a href="https://www.instagram.com/financial_advice_genesis/" target="_blank" rel="noopener"><i class="fa-brands fa-instagram"></i></a>
@@ -302,8 +302,7 @@ footer{background:var(--s1);border-top:1px solid var(--gold-border);padding:64px
       <div class="footer-col">
         <p class="footer-col-title">À propos</p>
         <a href="a-propos.html">Notre histoire</a>
-        <a href="a-propos.html#piliers">Nos piliers</a>
-        <a href="a-propos.html#valeurs">Nos valeurs</a>
+        <a href="a-propos.html#notre-vision">Notre vision</a>
       </div>
       <div class="footer-col">
         <p class="footer-col-title">Légal</p>
