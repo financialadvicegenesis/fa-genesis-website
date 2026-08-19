@@ -1610,7 +1610,7 @@ var VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || 'BMfYDfWWoNiitqwi1OYkGAuk
 var VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || 'MNbWG8XGiuU8wc6t4i7yaFDKtZxIeCbRRb7TF-GJGrQ';
 
 try {
-    webpush.setVapidDetails('mailto:Financialadvicegenesis@gmail.com', VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+    webpush.setVapidDetails('mailto:contact@fagenesis.com', VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
 } catch(e) { console.error('[PUSH] Erreur config VAPID:', e.message); }
 
 function loadPushSubscriptions() {
@@ -2021,7 +2021,7 @@ app.post('/api/admin/test-email', async function(req, res) {
         var decoded = jwt.verify(token, _JWT_SECRET);
         if (decoded.role !== 'admin') return res.status(403).json({ error: 'Acces admin requis' });
 
-        var targetEmail = req.body.email || decoded.email || 'financialadvicegenesis@gmail.com';
+        var targetEmail = req.body.email || decoded.email || 'contact@fagenesis.com';
         var mockOrder = {
             id: 'ORD-TEST-DIAG',
             product_name: 'Test prestation partenaire',

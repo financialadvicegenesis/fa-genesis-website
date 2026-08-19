@@ -289,7 +289,7 @@
             id: 'how_to_contact',
             category: 'contact',
             keywords: ['contacter', 'contact', 'joindre', 'ecrire', 'email', 'mail', 'telephone', 'appeler', 'message', 'numero'],
-            response: 'Vous pouvez nous contacter de plusieurs fa\u00e7ons :\n\n\u2022 Par e-mail : financialadvicegenesis@gmail.com\n\u2022 Par t\u00e9l\u00e9phone : +33 7 64 16 36 09\n\u2022 Via le formulaire de contact sur notre site\n\u2022 Par message sur nos r\u00e9seaux sociaux\n\nHoraires : du lundi au vendredi, de 9 h \u00e0 18 h.',
+            response: 'Vous pouvez nous contacter de plusieurs fa\u00e7ons :\n\n\u2022 Par e-mail : contact@fagenesis.com\n\u2022 Par t\u00e9l\u00e9phone : +33 7 64 16 36 09\n\u2022 Via le formulaire de contact sur notre site\n\u2022 Par message sur nos r\u00e9seaux sociaux\n\nHoraires : du lundi au vendredi, de 9 h \u00e0 18 h.',
             quickReplies: [],
             link: { url: 'contact.html', label: 'Formulaire de contact' }
         },
@@ -619,7 +619,7 @@
             id: 'invoice_receipt',
             category: 'paiement',
             keywords: ['facture', 'recu paiement', 'justificatif', 'tva', 'confirmation paiement', 'preuve paiement', 'ticket', 'avoir une facture'],
-            response: 'Un email de confirmation est envoy\u00e9 automatiquement apr\u00e8s chaque paiement. Pour une facture formelle, contactez-nous \u00e0 financialadvicegenesis@gmail.com en indiquant votre num\u00e9ro de commande.\n\n\u2139\ufe0f FA Genesis est une micro-entreprise (TVA non applicable, article 293 B du CGI).',
+            response: 'Un email de confirmation est envoy\u00e9 automatiquement apr\u00e8s chaque paiement. Pour une facture formelle, contactez-nous \u00e0 contact@fagenesis.com en indiquant votre num\u00e9ro de commande.\n\n\u2139\ufe0f FA Genesis est une micro-entreprise (TVA non applicable, article 293 B du CGI).',
             quickReplies: ['Contacter l\u2019\u00e9quipe'],
             link: null
         },
@@ -663,7 +663,7 @@
             id: 'registration_issue',
             category: 'espace_client',
             keywords: ['inscription bloquee', 'n arrive pas a m inscrire', 'erreur inscription', 'compte pas cree', 'pas recu email', 'email confirmation', 'pas recu identifiants', 'compte inexistant', 'email non recu', 'pas de mail'],
-            response: 'Si vous avez un probl\u00e8me d\u2019inscription ou n\u2019avez pas re\u00e7u votre email de confirmation :\n\n1\ufe0f\u20e3 V\u00e9rifiez vos spams / courriers ind\u00e9sirables\n2\ufe0f\u20e3 Attendez 5 \u00e0 10 minutes\n3\ufe0f\u20e3 Si rien apr\u00e8s 30 minutes, contactez-nous \u00e0 financialadvicegenesis@gmail.com avec l\u2019email utilis\u00e9\n\nNous cr\u00e9erons votre compte manuellement si n\u00e9cessaire.',
+            response: 'Si vous avez un probl\u00e8me d\u2019inscription ou n\u2019avez pas re\u00e7u votre email de confirmation :\n\n1\ufe0f\u20e3 V\u00e9rifiez vos spams / courriers ind\u00e9sirables\n2\ufe0f\u20e3 Attendez 5 \u00e0 10 minutes\n3\ufe0f\u20e3 Si rien apr\u00e8s 30 minutes, contactez-nous \u00e0 contact@fagenesis.com avec l\u2019email utilis\u00e9\n\nNous cr\u00e9erons votre compte manuellement si n\u00e9cessaire.',
             quickReplies: ['Contacter l\u2019\u00e9quipe'],
             link: null
         }
@@ -1214,7 +1214,7 @@
                 } catch (e) {
                     hideTyping();
                     addBotMessage(
-                        'D\u00e9sol\u00e9, une erreur est survenue. Vous pouvez nous contacter directement \u00e0 financialadvicegenesis@gmail.com',
+                        'D\u00e9sol\u00e9, une erreur est survenue. Vous pouvez nous contacter directement \u00e0 contact@fagenesis.com',
                         ['Contacter l\u2019\u00e9quipe'],
                         null
                     );
@@ -1340,13 +1340,13 @@
                         );
                     } else {
                         addBotMessage(
-                            'Une erreur est survenue lors de l\u2019envoi. Vous pouvez aussi nous contacter directement par e-mail : financialadvicegenesis@gmail.com',
+                            'Une erreur est survenue lors de l\u2019envoi. Vous pouvez aussi nous contacter directement par e-mail : contact@fagenesis.com',
                             ['Contacter l\u2019\u00e9quipe'],
                             null
                         );
                     }
                 } catch (e) {
-                    addBotMessage('Une erreur est survenue. Contactez-nous \u00e0 financialadvicegenesis@gmail.com', [], null);
+                    addBotMessage('Une erreur est survenue. Contactez-nous \u00e0 contact@fagenesis.com', [], null);
                 }
             };
 
@@ -1358,7 +1358,7 @@
                     }
                     hideEscalationForm();
                     addBotMessage(
-                        'Impossible de joindre le serveur pour le moment. Vous pouvez nous \u00e9crire directement \u00e0 financialadvicegenesis@gmail.com ou appeler le +33 7 64 16 36 09.',
+                        'Impossible de joindre le serveur pour le moment. Vous pouvez nous \u00e9crire directement \u00e0 contact@fagenesis.com ou appeler le +33 7 64 16 36 09.',
                         ['Contacter l\u2019\u00e9quipe'],
                         null
                     );

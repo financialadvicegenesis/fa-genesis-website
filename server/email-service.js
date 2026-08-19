@@ -156,7 +156,7 @@ function getEmailTemplate(content, title = 'FA GENESIS') {
                                 <strong>FA GENESIS</strong> - Structurez votre idée. Lancez avec clarté
                             </p>
                             <p style="margin: 0; font-size: 12px; color: #333333; text-align: center;">
-                                Email : <a href="mailto:Financialadvicegenesis@gmail.com" style="color: #FFD700; font-weight:700;">Financialadvicegenesis@gmail.com</a>
+                                Email : <a href="mailto:contact@fagenesis.com" style="color: #FFD700; font-weight:700;">contact@fagenesis.com</a>
                             </p>
                             <p style="margin: 15px 0 0 0; font-size: 11px; color: #555555; text-align: center;">
                                 Cet email a été envoyé automatiquement. Merci de ne pas y répondre directement.
@@ -265,7 +265,7 @@ async function sendContactConfirmation(clientEmail, clientName, subject) {
             Build. Launch. Impact.
         </p>
         <p style="margin: 0; font-size: 14px; color: #666666;">
-            Contact : <a href="mailto:financialadvicegenesis@gmail.com" style="color: #FFD700; font-weight:700;">financialadvicegenesis@gmail.com</a>
+            Contact : <a href="mailto:contact@fagenesis.com" style="color: #FFD700; font-weight:700;">contact@fagenesis.com</a>
         </p>
     `;
 
@@ -349,7 +349,7 @@ async function sendAdminNotification(messageData) {
     try {
         const result = await transport.sendMail({
             from: `"${process.env.EMAIL_FROM_NAME}" <${process.env.EMAIL_FROM_ADDRESS}>`,
-            to: process.env.EMAIL_ADMIN_ADDRESS || 'financialadvicegenesis@gmail.com',
+            to: process.env.EMAIL_ADMIN_ADDRESS || 'contact@fagenesis.com',
             subject: `[FA GENESIS] Nouveau message de ${messageData.name}`,
             html: getEmailTemplate(content, 'Nouveau message'),
             replyTo: messageData.email
@@ -418,7 +418,7 @@ async function sendAdminRegistrationNotification(registrationData) {
     try {
         const result = await transport.sendMail({
             from: `"${process.env.EMAIL_FROM_NAME}" <${process.env.EMAIL_FROM_ADDRESS}>`,
-            to: process.env.EMAIL_ADMIN_ADDRESS || 'financialadvicegenesis@gmail.com',
+            to: process.env.EMAIL_ADMIN_ADDRESS || 'contact@fagenesis.com',
             subject: `[FA GENESIS] Nouvelle inscription - ${registrationData.firstName} ${registrationData.lastName}`,
             html: getEmailTemplate(content, 'Nouvelle inscription'),
             replyTo: registrationData.email
@@ -570,7 +570,7 @@ async function sendAdminReply(clientEmail, clientName, originalSubject, replyMes
             Build. Launch. Impact.
         </p>
         <p style="margin: 0; font-size: 14px; color: #666666;">
-            Contact : <a href="mailto:financialadvicegenesis@gmail.com" style="color: #FFD700; font-weight:700;">financialadvicegenesis@gmail.com</a>
+            Contact : <a href="mailto:contact@fagenesis.com" style="color: #FFD700; font-weight:700;">contact@fagenesis.com</a>
         </p>
     `;
 
@@ -713,7 +713,7 @@ async function sendQuoteAdminNotification(quote) {
         `;
 
         var html = getEmailTemplate(content, 'Nouveau devis - FA GENESIS');
-        var adminEmail = process.env.EMAIL_ADMIN_ADDRESS || 'financialadvicegenesis@gmail.com';
+        var adminEmail = process.env.EMAIL_ADMIN_ADDRESS || 'contact@fagenesis.com';
 
         if (!adminEmail) {
             return { success: false, reason: 'no_admin_email' };
@@ -1267,7 +1267,7 @@ async function sendWelcomeEmail(clientEmail, prenom) {
         // Footer
         + '<tr><td style="background:#f5f5f5;padding:20px 32px;border-radius:0 0 12px 12px;text-align:center;">'
         + '<p style="margin:0 0 8px;font-size:13px;font-weight:700;color:#1a1a1a;">Des questions sur votre commande ?</p>'
-        + '<p style="margin:0 0 6px;font-size:12px;color:#999;"><a href="mailto:financialadvicegenesis@gmail.com" style="font-size:13px;color:#1a1a1a;font-weight:600;text-decoration:none;">Contactez-nous par email <span style="color:#FFD700;">financialadvicegenesis@gmail.com</span></a></p>'
+        + '<p style="margin:0 0 6px;font-size:12px;color:#999;"><a href="mailto:contact@fagenesis.com" style="font-size:13px;color:#1a1a1a;font-weight:600;text-decoration:none;">Contactez-nous par email <span style="color:#FFD700;">contact@fagenesis.com</span></a></p>'
         + '<p style="margin:0;font-size:11px;color:#bbb;">Cet email est envoyé automatiquement. Merci de ne pas y répondre directement.</p>'
         + '</td></tr>'
 
@@ -1640,7 +1640,7 @@ async function sendQuoteCancelledNotification(quote, cancelledBy) {
             '<p style="color: #555; font-size: 14px;">Rendez-vous dans l\'espace administration pour plus de détails.</p>';
 
         var html = getEmailTemplate(content, 'Devis annulé - FA GENESIS');
-        var adminEmail = process.env.EMAIL_ADMIN_ADDRESS || 'financialadvicegenesis@gmail.com';
+        var adminEmail = process.env.EMAIL_ADMIN_ADDRESS || 'contact@fagenesis.com';
 
         var results = [];
 
@@ -2219,8 +2219,8 @@ async function sendSupportTicketAdminEmail(ticket, messageContent) {
 
     try {
         var result = await transport.sendMail({
-            from: '"FA GENESIS Support" <' + (process.env.EMAIL_FROM_ADDRESS || 'financialadvicegenesis@gmail.com') + '>',
-            to: process.env.EMAIL_ADMIN_ADDRESS || 'financialadvicegenesis@gmail.com',
+            from: '"FA GENESIS Support" <' + (process.env.EMAIL_FROM_ADDRESS || 'contact@fagenesis.com') + '>',
+            to: process.env.EMAIL_ADMIN_ADDRESS || 'contact@fagenesis.com',
             subject: '[Support] ' + (isNewTicket ? 'Nouveau' : 'Réponse') + ' — ' + ticket.subject + ' (' + ticket.client_name + ')',
             html: html
         });
@@ -2344,7 +2344,7 @@ async function sendPartnerServiceOrderConfirmation(clientEmail, clientFirstName,
         // ── QUESTIONS ───────────────────────────────────────────
         + '<tr><td style="background:#fff;padding:24px 32px;border-bottom:1px solid #eee;text-align:center;">'
         + '<p style="margin:0 0 8px;font-size:13px;font-weight:700;color:#1a1a1a;">Des questions sur votre commande ?</p>'
-        + '<a href="mailto:financialadvicegenesis@gmail.com" style="font-size:13px;color:#1a1a1a;font-weight:600;text-decoration:none;">Contactez-nous par email <span style="color:#FFD700;">financialadvicegenesis@gmail.com</span></a>'
+        + '<a href="mailto:contact@fagenesis.com" style="font-size:13px;color:#1a1a1a;font-weight:600;text-decoration:none;">Contactez-nous par email <span style="color:#FFD700;">contact@fagenesis.com</span></a>'
         + '</td></tr>'
 
         // ── FOOTER ──────────────────────────────────────────────
@@ -2442,8 +2442,8 @@ async function sendUrgentFeedbackNotification(feedback) {
 
     try {
         await transport.sendMail({
-            from: '"FA GENESIS" <financialadvicegenesis@gmail.com>',
-            to: 'financialadvicegenesis@gmail.com',
+            from: '"FA GENESIS" <contact@fagenesis.com>',
+            to: 'contact@fagenesis.com',
             subject: urgentLabel + 'Feedback ' + (feedback.rating || '?') + '/5 - ' + (feedback.category || '') + ' - ' + (feedback.userName || ''),
             html: html
         });
@@ -2488,7 +2488,7 @@ async function sendInstallmentReminderEmail(clientEmail, clientFirstName, order,
             headline + ' — FA GENESIS'
         );
         await transport.sendMail({
-            from: '"FA GENESIS" <' + (process.env.EMAIL_FROM_ADDRESS || 'financialadvicegenesis@gmail.com') + '>',
+            from: '"FA GENESIS" <' + (process.env.EMAIL_FROM_ADDRESS || 'contact@fagenesis.com') + '>',
             to: clientEmail,
             subject: (isOD ? '⚠️ ' : '📅 ') + headline + ' — ' + (installment.amount || '') + ' € (' + (installment.label || '') + ')',
             html: html

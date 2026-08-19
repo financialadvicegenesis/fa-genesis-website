@@ -95,7 +95,7 @@
         'Est-ce que vous faites des offres sur mesure ?': 'Do you offer custom packages?',
         'Oui. Si votre besoin est spécifique (podcast, projet particulier, entreprise, etc.), nous pouvons créer une offre personnalisée.': 'Yes. If your need is specific (podcast, particular project, business, etc.), we can create a customized offer.',
         'Comment vous contacter ?': 'How can I contact you?',
-        'Vous pouvez nous écrire directement en message privé sur nos réseaux sociaux ou par e-mail : Financialadvicegenesis@gmail.com': 'You can write to us directly via private message on our social media or by email: Financialadvicegenesis@gmail.com',
+        'Vous pouvez nous écrire directement en message privé sur nos réseaux sociaux ou par e-mail : contact@fagenesis.com': 'You can write to us directly via private message on our social media or by email: contact@fagenesis.com',
         'Combien de temps dure un accompagnement ?': 'How long does the support last?',
         'Cela dépend de l\'offre choisie : 2 jours, 7 jours, 14 jours, 1 mois ou plus selon votre projet.': 'It depends on the chosen offer: 2 days, 7 days, 14 days, 1 month or more depending on your project.',
         'Est-ce que vous travaillez avec des partenaires ?': 'Do you work with partners?',
