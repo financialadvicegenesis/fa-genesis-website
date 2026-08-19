@@ -378,94 +378,139 @@ footer{background:var(--s1);border-top:1px solid var(--gold-border);padding:64px
       </div>
     </div>
     <div class="hero-phones">
-      <!-- Phone 1 — Client Explorer -->
+
+      <!-- Phone 1 — Client Accueil (onglets réels : Accueil·Explorer·Prestataires·Panier·Profil) -->
       <div class="phone-wrap">
         <div class="phone" style="width:175px;">
           <div class="phone-notch"><div class="phone-notch-pill"></div></div>
           <div class="phone-screen">
-            <div class="ms-header"><div class="ms-logo">GENESIS</div><div class="ms-avatar"></div></div>
-            <div class="ms-greeting">Bonjour Sophie 👋</div>
-            <div class="ms-title">Explorer</div>
-            <div class="ms-cats">
-              <div class="ms-cat active">Tous</div>
-              <div class="ms-cat">Finance</div>
-              <div class="ms-cat">Coaching</div>
+            <!-- Header -->
+            <div class="ms-header">
+              <div style="display:flex;align-items:center;gap:4px;"><img src="assets/images/logo-genesis.png" alt="" style="height:10px;mix-blend-mode:screen;"><div class="ms-logo">GENESIS</div></div>
+              <div style="display:flex;align-items:center;gap:4px;"><i class="fa-solid fa-cart-shopping" style="font-size:7px;color:#555;"></i><i class="fa-solid fa-bell" style="font-size:7px;color:#555;"></i><div class="ms-avatar"></div></div>
             </div>
-            <div class="ms-card">
-              <div class="ms-card-av"><i class="fa-solid fa-user-tie"></i></div>
-              <div class="ms-card-info">
-                <div class="ms-card-name">Antoine M.</div>
-                <div class="ms-card-type">Conseiller financier</div>
-                <div class="ms-card-stars">★★★★★</div>
-              </div>
-              <div class="ms-card-price">150€</div>
+            <!-- Greeting -->
+            <div class="ms-greeting">Bonjour <i class="fa-solid fa-hand" style="font-size:7px;color:var(--gold);"></i> Sophie</div>
+            <!-- QG widget -->
+            <div style="background:#141414;border:1px solid rgba(255,215,0,.15);border-radius:7px;padding:5px 6px;margin-bottom:6px;display:flex;align-items:center;gap:5px;">
+              <div style="width:17px;height:17px;background:linear-gradient(135deg,var(--gold),var(--orange));border-radius:5px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:7px;color:#0a0800;"><i class="fa-solid fa-building-columns"></i></div>
+              <div style="flex:1;min-width:0;"><div style="font-size:5.5px;color:var(--gold);font-weight:700;margin-bottom:2px;">Niv. 2 — Explorateur</div><div style="height:2px;background:#1a1a1a;border-radius:2px;"><div style="width:48%;height:100%;background:linear-gradient(90deg,var(--gold),var(--orange));border-radius:2px;"></div></div></div>
             </div>
-            <div class="ms-card">
-              <div class="ms-card-av"><i class="fa-solid fa-chart-line"></i></div>
-              <div class="ms-card-info">
-                <div class="ms-card-name">Léa R.</div>
-                <div class="ms-card-type">Coach business</div>
-                <div class="ms-card-stars">★★★★☆</div>
-              </div>
-              <div class="ms-card-price">90€</div>
+            <!-- Status card -->
+            <div style="background:#141414;border:1px solid rgba(34,197,94,.2);border-radius:7px;padding:6px 7px;margin-bottom:6px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;"><span style="font-size:5.5px;background:rgba(34,197,94,.18);color:#22c55e;padding:1px 5px;border-radius:10px;font-weight:700;">En cours</span></div>
+              <div style="font-size:7.5px;font-weight:800;color:#fff;margin-bottom:1px;">Audit patrimonial</div>
+              <div style="font-size:5.5px;color:#555;">Antoine M. · GENESIS SAFE™</div>
+              <div style="height:2px;background:#1a1a1a;border-radius:2px;margin-top:4px;"><div style="width:60%;height:100%;background:linear-gradient(90deg,var(--gold),var(--orange));border-radius:2px;"></div></div>
             </div>
+            <!-- Quick actions -->
+            <div style="display:flex;gap:3px;margin-bottom:6px;">
+              <div style="flex:1;background:#141414;border:1px solid #1e1e1e;border-radius:6px;padding:4px 2px;text-align:center;font-size:5px;color:#666;"><i class="fa-solid fa-building" style="font-size:8px;color:var(--gold);display:block;margin-bottom:2px;"></i>Réserver</div>
+              <div style="flex:1;background:#141414;border:1px solid #1e1e1e;border-radius:6px;padding:4px 2px;text-align:center;font-size:5px;color:#666;"><i class="fa-solid fa-comment-dots" style="font-size:8px;color:var(--gold);display:block;margin-bottom:2px;"></i>Messages</div>
+              <div style="flex:1;background:#141414;border:1px solid #1e1e1e;border-radius:6px;padding:4px 2px;text-align:center;font-size:5px;color:#666;"><i class="fa-solid fa-folder-open" style="font-size:8px;color:var(--gold);display:block;margin-bottom:2px;"></i>Livrables</div>
+              <div style="flex:1;background:#141414;border:1px solid #1e1e1e;border-radius:6px;padding:4px 2px;text-align:center;font-size:5px;color:#666;"><i class="fa-solid fa-calendar-days" style="font-size:8px;color:var(--gold);display:block;margin-bottom:2px;"></i>Séances</div>
+            </div>
+            <!-- Search -->
+            <div style="background:#141414;border:1px solid #1e1e1e;border-radius:6px;padding:4px 6px;display:flex;align-items:center;gap:4px;margin-bottom:6px;font-size:5.5px;color:#444;"><i class="fa-solid fa-magnifying-glass" style="font-size:6px;"></i>Que recherchez-vous ?</div>
+            <!-- Nav 5 onglets réels -->
             <div class="ms-bottom-nav">
               <div class="ms-bnav-item active"><i class="fa-solid fa-house"></i>Accueil</div>
-              <div class="ms-bnav-item"><i class="fa-solid fa-compass"></i>Explorer</div>
-              <div class="ms-bnav-item"><i class="fa-solid fa-comment"></i>Messages</div>
+              <div class="ms-bnav-item"><i class="fa-solid fa-magnifying-glass"></i>Explorer</div>
+              <div class="ms-bnav-item"><i class="fa-solid fa-handshake"></i>Prestataires</div>
+              <div class="ms-bnav-item"><i class="fa-solid fa-cart-shopping"></i>Panier</div>
               <div class="ms-bnav-item"><i class="fa-solid fa-user"></i>Profil</div>
             </div>
           </div>
         </div>
       </div>
-      <!-- Phone 2 — Partner Dashboard (center, prominent) -->
+
+      <!-- Phone 2 — Partner Accueil (onglets réels : Accueil·Missions·Messages·Portefeuille·Profil) -->
       <div class="phone-wrap">
         <div class="phone" style="width:210px;">
           <div class="phone-notch"><div class="phone-notch-pill"></div></div>
           <div class="phone-screen">
-            <div class="ms-header"><div class="ms-logo">GENESIS</div><div class="ms-avatar" style="background:linear-gradient(135deg,var(--orange),#ff6a00);"></div></div>
-            <div class="ms-greeting">Bienvenue Jérôme</div>
-            <div class="ms-title">Mon activité</div>
-            <div class="ms-stat-row">
-              <div class="ms-stat"><div class="ms-stat-val">24</div><div class="ms-stat-lbl">Missions</div></div>
-              <div class="ms-stat"><div class="ms-stat-val">4.8</div><div class="ms-stat-lbl">Note</div></div>
-              <div class="ms-stat"><div class="ms-stat-val">2.1k</div><div class="ms-stat-lbl">€ gagnés</div></div>
+            <!-- Header hamburger + logo + avatar orange -->
+            <div class="ms-header">
+              <div style="display:flex;align-items:center;gap:6px;"><i class="fa-solid fa-bars" style="font-size:9px;color:#555;"></i><div style="display:flex;align-items:center;gap:4px;"><img src="assets/images/logo-genesis.png" alt="" style="height:11px;mix-blend-mode:screen;"><div class="ms-logo">GENESIS</div></div></div>
+              <div style="display:flex;align-items:center;gap:4px;"><div style="position:relative;"><i class="fa-solid fa-bell" style="font-size:8px;color:#555;"></i><span style="position:absolute;top:-1px;right:-1px;width:4px;height:4px;background:var(--orange);border-radius:50%;"></span></div><div class="ms-avatar" style="background:linear-gradient(135deg,var(--orange),#ff6a00);"></div></div>
             </div>
-            <div class="ms-badge-row"><i class="ms-badge-icon fa-solid fa-fire"></i><div class="ms-badge-text">Badge Bronze — 5 missions ✓</div></div>
-            <div class="ms-mission-item"><div class="ms-mission-name">Audit financier — Claire B.</div><div class="ms-mission-status">En cours</div></div>
-            <div class="ms-mission-item"><div class="ms-mission-name">Bilan patrimonial — Marc T.</div><div class="ms-mission-status">Terminé</div></div>
-            <div class="ms-bottom-nav">
+            <!-- Greeting + badge Bronze -->
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1px;"><div style="font-size:7px;color:#666;">Bonjour <i class="fa-solid fa-hand" style="font-size:6px;color:var(--orange);"></i></div><div style="font-size:5.5px;background:rgba(205,127,50,.15);border:1px solid rgba(205,127,50,.4);color:#cd7f32;padding:1px 5px;border-radius:10px;font-weight:700;"><i class="fa-solid fa-fire" style="font-size:5px;"></i> Bronze</div></div>
+            <div style="font-family:var(--font-d);font-size:12px;font-weight:900;color:#fff;margin-bottom:7px;">Maxime</div>
+            <!-- QG widget orange -->
+            <div style="background:#141414;border:1px solid rgba(255,72,0,.15);border-radius:7px;padding:5px 7px;margin-bottom:7px;display:flex;align-items:center;gap:5px;">
+              <div style="width:18px;height:18px;background:linear-gradient(135deg,var(--orange),#ff6a00);border-radius:5px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:8px;color:#fff;"><i class="fa-solid fa-bolt"></i></div>
+              <div style="flex:1;min-width:0;"><div style="font-size:5.5px;color:var(--orange);font-weight:700;margin-bottom:2px;">Niv. 3 — Pro · 720 XP</div><div style="height:2px;background:#1a1a1a;border-radius:2px;"><div style="width:72%;height:100%;background:linear-gradient(90deg,var(--orange),#ff6a00);border-radius:2px;"></div></div></div>
+            </div>
+            <!-- Finance stats -->
+            <div class="ms-stat-row" style="margin-bottom:7px;">
+              <div class="ms-stat" style="border-color:rgba(255,215,0,.12);"><div style="font-size:5.5px;color:#555;margin-bottom:1px;">Revenus</div><div class="ms-stat-val" style="font-size:9px;">1 240€</div></div>
+              <div class="ms-stat" style="border-color:rgba(255,215,0,.12);"><div style="font-size:5.5px;color:#555;margin-bottom:1px;">Note</div><div class="ms-stat-val" style="font-size:9px;color:#fbbf24;">4.9★</div></div>
+              <div class="ms-stat" style="border-color:rgba(255,215,0,.12);"><div style="font-size:5.5px;color:#555;margin-bottom:1px;">Missions</div><div class="ms-stat-val" style="font-size:9px;color:#22c55e;">12</div></div>
+            </div>
+            <!-- Alert dispatch -->
+            <div style="background:linear-gradient(135deg,rgba(255,72,0,.08),rgba(255,72,0,.03));border:1px solid rgba(255,72,0,.3);border-radius:8px;padding:6px 8px;margin-bottom:7px;">
+              <div style="display:flex;align-items:center;gap:4px;margin-bottom:2px;"><span style="width:5px;height:5px;background:var(--orange);border-radius:50%;flex-shrink:0;display:inline-block;"></span><span style="font-size:5.5px;font-weight:800;color:var(--orange);">1 demande en attente</span></div>
+              <div style="font-size:7px;font-weight:800;color:#fff;margin-bottom:1px;">Un client souhaite vous engager !</div>
+              <div style="font-size:5.5px;color:#555;">Appuyez pour accepter ou refuser.</div>
+            </div>
+            <!-- Mes tarifs & prestations -->
+            <div style="background:#141414;border:1px solid #1e1e1e;border-radius:8px;padding:6px 8px;display:flex;align-items:center;gap:6px;">
+              <div style="width:20px;height:20px;background:rgba(255,215,0,.1);border-radius:6px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--gold);"><i class="fa-solid fa-bag-shopping"></i></div>
+              <div style="flex:1;min-width:0;"><div style="font-size:7px;font-weight:800;color:#fff;margin-bottom:1px;">Mes tarifs &amp; prestations</div><div style="font-size:5.5px;color:#555;">Ajoutez vos offres avec prix et photo</div></div>
+              <i class="fa-solid fa-plus" style="font-size:8px;color:var(--gold);flex-shrink:0;"></i>
+            </div>
+            <!-- Nav 5 onglets réels -->
+            <div class="ms-bottom-nav" style="margin-top:6px;">
               <div class="ms-bnav-item active"><i class="fa-solid fa-house"></i>Accueil</div>
               <div class="ms-bnav-item"><i class="fa-solid fa-bolt"></i>Missions</div>
-              <div class="ms-bnav-item"><i class="fa-solid fa-wallet"></i>Revenus</div>
+              <div class="ms-bnav-item"><i class="fa-solid fa-comment"></i>Messages</div>
+              <div class="ms-bnav-item"><i class="fa-solid fa-sack-dollar"></i>Portefeuille</div>
               <div class="ms-bnav-item"><i class="fa-solid fa-user"></i>Profil</div>
             </div>
           </div>
         </div>
       </div>
-      <!-- Phone 3 — Partner Wallet -->
+
+      <!-- Phone 3 — Partner Portefeuille (Portefeuille actif) -->
       <div class="phone-wrap">
         <div class="phone" style="width:175px;">
           <div class="phone-notch"><div class="phone-notch-pill"></div></div>
           <div class="phone-screen">
-            <div class="ms-header"><div class="ms-logo">GENESIS</div><div class="ms-avatar" style="background:linear-gradient(135deg,var(--orange),#ff6a00);"></div></div>
-            <div class="ms-greeting">Portefeuille</div>
-            <div class="ms-title">Mes revenus</div>
-            <div class="ms-wallet-bal">
-              <div class="ms-wallet-lbl">Disponible</div>
-              <div class="ms-wallet-val">840<span>€</span></div>
+            <!-- Header -->
+            <div class="ms-header">
+              <div style="display:flex;align-items:center;gap:4px;"><img src="assets/images/logo-genesis.png" alt="" style="height:10px;mix-blend-mode:screen;"><div class="ms-logo">GENESIS</div></div>
+              <div class="ms-avatar" style="background:linear-gradient(135deg,var(--orange),#ff6a00);"></div>
             </div>
+            <!-- Wallet card -->
+            <div style="background:linear-gradient(135deg,#1a1200,#1a0800);border:1px solid rgba(255,215,0,.2);border-radius:8px;padding:7px 8px;margin-bottom:6px;">
+              <div style="font-size:5.5px;color:#555;margin-bottom:2px;">Solde disponible</div>
+              <div style="font-size:15px;font-weight:900;color:var(--gold);font-family:'Unbounded',sans-serif;letter-spacing:-.3px;">1 240<span style="font-size:7px;color:#555;"> €</span></div>
+              <div style="display:flex;gap:4px;margin-top:5px;">
+                <div style="flex:1;background:rgba(255,215,0,.1);border:1px solid rgba(255,215,0,.2);border-radius:4px;padding:4px 0;text-align:center;font-size:5.5px;color:var(--gold);font-weight:700;"><i class="fa-solid fa-arrow-up" style="font-size:5px;"></i> Retirer</div>
+                <div style="flex:1;background:#141414;border:1px solid #222;border-radius:4px;padding:4px 0;text-align:center;font-size:5.5px;color:#555;font-weight:700;"><i class="fa-solid fa-chart-bar" style="font-size:5px;"></i> Historique</div>
+              </div>
+            </div>
+            <!-- Transactions -->
             <div class="ms-payout-row"><i class="ms-payout-icon fa-solid fa-arrow-down"></i><div class="ms-payout-info"><div class="ms-payout-name">Mission — Claire B.</div><div class="ms-payout-date">Aujourd'hui</div></div><div class="ms-payout-amount">+350€</div></div>
             <div class="ms-payout-row"><i class="ms-payout-icon fa-solid fa-arrow-down"></i><div class="ms-payout-info"><div class="ms-payout-name">Mission — Marc T.</div><div class="ms-payout-date">Hier</div></div><div class="ms-payout-amount">+490€</div></div>
-            <div class="ms-bottom-nav">
+            <!-- Badge progress -->
+            <div style="background:#141414;border:1px solid rgba(255,215,0,.1);border-radius:7px;padding:6px 7px;margin-top:5px;">
+              <div style="display:flex;justify-content:space-between;font-size:5.5px;color:#555;margin-bottom:3px;"><span>Progression <span style="color:var(--gold);">Argent</span></span><span>12/20 missions</span></div>
+              <div style="height:2px;background:#1a1a1a;border-radius:2px;"><div style="width:60%;height:100%;background:linear-gradient(90deg,var(--gold),var(--orange));border-radius:2px;"></div></div>
+            </div>
+            <!-- Nav 5 onglets réels — Portefeuille actif -->
+            <div class="ms-bottom-nav" style="margin-top:6px;">
               <div class="ms-bnav-item"><i class="fa-solid fa-house"></i>Accueil</div>
               <div class="ms-bnav-item"><i class="fa-solid fa-bolt"></i>Missions</div>
-              <div class="ms-bnav-item active"><i class="fa-solid fa-wallet"></i>Revenus</div>
+              <div class="ms-bnav-item"><i class="fa-solid fa-comment"></i>Messages</div>
+              <div class="ms-bnav-item active"><i class="fa-solid fa-sack-dollar"></i>Portefeuille</div>
               <div class="ms-bnav-item"><i class="fa-solid fa-user"></i>Profil</div>
             </div>
           </div>
         </div>
       </div>
+
     </div>
   </div>
 </section>
