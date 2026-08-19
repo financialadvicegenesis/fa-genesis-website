@@ -513,6 +513,15 @@
         @media (min-width: 768px) {
             .admin-sidebar { display: flex; }
             .admin-content-wrap { margin-left: var(--sidebar-w); }
+            .admin-outer-section { margin-left: var(--sidebar-w); }
+        }
+        .admin-outer-section {
+            padding: calc(var(--nav-h) + 28px) 24px 40px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        @media (max-width: 767px) {
+            .admin-outer-section { padding-left: 12px; padding-right: 12px; }
         }
 
         /* ══════════════════════════════════════════════════════════
@@ -1592,7 +1601,7 @@
     </div>
 
     <!-- ===== SECTION ACTUALITÉS ===== -->
-    <div id="actualitesSection" style="display:none;padding:0 0 40px;width:100%;">
+    <div id="actualitesSection" class="admin-outer-section" style="display:none;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:32px;flex-wrap:wrap;gap:12px;">
             <h2 style="font-family:'Unbounded',cursive;font-size:clamp(22px,4vw,36px);font-weight:900;text-transform:uppercase;color:var(--c-gold);display:flex;align-items:center;gap:12px;">
                 <i class="fas fa-newspaper"></i>ACTUALITÉS
