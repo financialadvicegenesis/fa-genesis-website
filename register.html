@@ -1,592 +1,496 @@
-﻿<!DOCTYPE html>
-<html lang="fr" class="scroll-smooth">
+<!DOCTYPE html>
+<html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" type="image/png" sizes="32x32" href="assets/images/logo-favicon-32.png">
-    <link rel="icon" type="image/png" sizes="192x192" href="assets/images/logo-favicon-192.png">
-    <link rel="icon" type="image/png" sizes="512x512" href="assets/images/logo-favicon.png">
-    <link rel="apple-touch-icon" sizes="192x192" href="assets/images/logo-favicon-192.png">
-    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
-    <title>Inscription - FA GENESIS | Espace Client</title>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;900&family=Space+Grotesk:wght@300;700&display=swap">
-    <link rel="stylesheet" href="tailwind.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" media="print" onload="this.media='all'">
-    <style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Créer un compte Client — FA GENESIS</title>
+<link rel="icon" type="image/png" sizes="32x32" href="assets/images/logo-favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="assets/images/logo-favicon-192.png">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#FFD700">
+<link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700;900&family=Space+Grotesk:wght@300;400;500;700&display=swap" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700;900&family=Space+Grotesk:wght@300;400;500;700&display=swap"></noscript>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"></noscript>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --black:#050505;--s1:#0a0a0a;--s2:#111;--s3:#161616;
+  --gold:#FFD700;--gold-dim:rgba(255,215,0,.1);--gold-border:rgba(255,215,0,.18);
+  --orange:#FF4800;--white:#fff;
+  --t1:rgba(255,255,255,.92);--t2:rgba(255,255,255,.6);--t3:rgba(255,255,255,.35);
+  --font-d:'Unbounded',sans-serif;--font-b:'Space Grotesk',sans-serif;
+}
+html,body{min-height:100%;}
+body{
+  background:var(--black);color:var(--t1);font-family:var(--font-b);
+  -webkit-font-smoothing:antialiased;overflow-x:hidden;
+}
+body::before{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:radial-gradient(ellipse 80% 50% at 50% -10%,rgba(255,215,0,.06),transparent 60%);
+}
+a{text-decoration:none;color:inherit;}
 
-        :root {
-            --genesis-yellow: #FFD700;
-            --genesis-black: #000000;
-            --genesis-white: #FFFFFF;
-        }
+/* ── HEADER ── */
+.reg-bar{
+  position:sticky;top:0;z-index:100;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:16px 32px;
+  background:rgba(5,5,5,.92);backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--gold-border);
+}
+@media(max-width:480px){.reg-bar{padding:14px 18px;}}
+.reg-back{
+  background:none;border:none;color:var(--t2);font-size:13px;
+  font-family:var(--font-b);font-weight:500;cursor:pointer;
+  display:flex;align-items:center;gap:6px;transition:color .2s;
+  text-decoration:none;min-width:90px;
+}
+.reg-back:hover{color:var(--white);}
+.reg-logo{
+  font-family:var(--font-d);font-size:13px;font-weight:900;
+  color:var(--gold);display:flex;align-items:center;gap:10px;
+}
+.reg-logo img{height:28px;width:auto;mix-blend-mode:screen;}
+.reg-login{
+  font-size:13px;font-weight:600;color:var(--t2);
+  border:1px solid rgba(255,255,255,.15);border-radius:6px;
+  padding:7px 16px;transition:border-color .2s,color .2s;
+  min-width:90px;text-align:right;display:inline-block;
+}
+.reg-login:hover{border-color:var(--gold);color:var(--gold);}
 
-        body {
-            background-color: var(--genesis-black);
-            color: var(--genesis-white);
-            font-family: 'Space Grotesk', sans-serif;
-            overflow-x: hidden;
-        }
+/* ── MAIN ── */
+.reg-main{
+  position:relative;z-index:1;
+  display:flex;flex-direction:column;align-items:center;
+  padding:48px 24px 80px;
+}
 
-        h1, h2, h3, h4, h5, .nav-link { font-family: 'Unbounded', cursive; }
+/* ── CARD ── */
+.reg-card{
+  width:100%;max-width:520px;
+  background:var(--s1);border:1.5px solid var(--gold-border);
+  border-radius:22px;padding:40px 36px;
+  position:relative;overflow:hidden;
+}
+.reg-card::before{
+  content:'';position:absolute;inset:0;pointer-events:none;border-radius:22px;
+  background:radial-gradient(ellipse at top,rgba(255,215,0,.04),transparent 55%);
+}
+@media(max-width:520px){.reg-card{padding:28px 18px;}}
 
-        /* Styles Néo-Brutalistes */
-        .neo-border { border: 4px solid var(--genesis-black); }
-        .neo-shadow { box-shadow: 10px 10px 0px 0px var(--genesis-yellow); }
-        .neo-shadow-white { box-shadow: 6px 6px 0px 0px var(--genesis-black); }
+.reg-icon{
+  width:58px;height:58px;border-radius:16px;
+  background:var(--gold-dim);border:1px solid var(--gold-border);
+  display:flex;align-items:center;justify-content:center;
+  font-size:22px;color:var(--gold);margin:0 auto 22px;
+}
+.reg-title{
+  font-family:var(--font-d);font-size:clamp(18px,3vw,26px);font-weight:900;
+  text-align:center;line-height:1.2;margin-bottom:8px;
+}
+.reg-sub{
+  font-size:13px;color:var(--t2);text-align:center;margin-bottom:32px;line-height:1.6;
+}
 
-        .neo-btn-yellow {
-            background: var(--genesis-yellow);
-            color: black;
-            border: 4px solid black;
-            box-shadow: 6px 6px 0px black;
-            font-weight: 900;
-            transition: 0.1s;
-        }
-        .neo-btn-yellow:active {
-            transform: translate(4px, 4px);
-            box-shadow: 0px 0px 0px black;
-        }
+/* ── BANNER ── */
+.reg-banner{
+  border-radius:12px;padding:14px 16px;margin-bottom:24px;
+  font-size:13px;font-weight:600;line-height:1.5;
+  display:none;
+}
+.reg-banner.show{display:block;}
+.reg-banner-info{background:rgba(255,215,0,.08);border:1px solid rgba(255,215,0,.22);color:var(--gold);}
+.reg-banner-err{background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);color:#f87171;}
+.reg-banner-ok{background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);color:#4ade80;}
 
-        .section-header {
-            font-size: clamp(3rem, 10vw, 7rem);
-            line-height: 0.9;
-            text-transform: uppercase;
-            font-style: italic;
-            letter-spacing: -0.05em;
-        }
+/* ── FORM ── */
+.frm-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;}
+@media(max-width:440px){.frm-row{grid-template-columns:1fr;}}
+.frm-group{margin-bottom:20px;}
+.frm-label{
+  display:block;font-size:11px;font-weight:700;letter-spacing:.6px;
+  text-transform:uppercase;color:var(--t2);margin-bottom:8px;
+}
+.frm-input{
+  width:100%;
+  background:rgba(255,255,255,.04);
+  border:1.5px solid rgba(255,255,255,.12);
+  border-radius:10px;padding:13px 16px;
+  color:var(--t1);font-family:var(--font-b);font-size:14px;font-weight:400;
+  outline:none;transition:border-color .2s,box-shadow .2s;
+  -webkit-appearance:none;
+}
+.frm-input::placeholder{color:var(--t3);}
+.frm-input:focus{
+  border-color:var(--gold);
+  box-shadow:0 0 0 3px rgba(255,215,0,.1);
+}
+.frm-input:autofill,.frm-input:-webkit-autofill{
+  -webkit-box-shadow:0 0 0 100px var(--s2) inset;
+  -webkit-text-fill-color:var(--t1);
+}
+.frm-hint{font-size:11px;color:var(--t3);margin-top:6px;}
 
-        .error-message, .success-message {
-            display: none;
-            padding: 1rem;
-            border: 4px solid black;
-            margin-bottom: 1.5rem;
-            font-weight: bold;
-        }
+/* ── CHECKBOX ── */
+.frm-check{display:flex;align-items:flex-start;gap:12px;margin-bottom:28px;}
+.frm-check input[type=checkbox]{
+  width:18px;height:18px;flex-shrink:0;margin-top:2px;
+  accent-color:var(--gold);cursor:pointer;
+}
+.frm-check label{font-size:13px;color:var(--t2);line-height:1.6;cursor:pointer;}
+.frm-check label a{color:var(--gold);font-weight:600;text-decoration:underline;text-underline-offset:2px;}
 
-        .error-message {
-            background: #ff0000;
-            color: white;
-        }
+/* ── SUBMIT ── */
+.frm-submit{
+  width:100%;padding:15px 24px;
+  background:linear-gradient(135deg,var(--gold),#e6c200);
+  color:#0a0800;font-family:var(--font-d);font-size:12px;font-weight:900;
+  border:none;border-radius:10px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  transition:opacity .2s,transform .2s;letter-spacing:.3px;
+}
+.frm-submit:hover:not(:disabled){opacity:.88;transform:translateY(-1px);}
+.frm-submit:disabled{opacity:.5;cursor:not-allowed;transform:none;}
 
-        .success-message {
-            background: var(--genesis-yellow);
-            color: black;
-        }
+.reg-divider{
+  display:flex;align-items:center;gap:12px;
+  margin:20px 0;font-size:12px;color:var(--t3);
+}
+.reg-divider::before,.reg-divider::after{content:'';flex:1;height:1px;background:rgba(255,255,255,.08);}
 
-        .error-message.show, .success-message.show {
-            display: block;
-        }
-    </style>
-    <meta name="theme-color" content="#FFD700">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="FA GENESIS">
+.reg-alt{text-align:center;font-size:13px;color:var(--t3);}
+.reg-alt a{color:var(--gold);font-weight:600;}
+
+/* ── TRUST ── */
+.reg-trust{
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  margin-top:24px;font-size:12px;color:var(--t3);
+}
+.reg-trust i{color:var(--gold);font-size:11px;}
+</style>
 </head>
 <body>
 
-    <!-- NAVIGATION -->
-    <nav class="fixed top-0 w-full z-50 bg-black/95 backdrop-blur-md border-b-4 border-[var(--genesis-yellow)] px-4 md:px-6 py-3 md:py-4 flex justify-between items-center text-white text-xs font-black uppercase">
-        <div class="flex items-center">
-            <a href="index.html" class="flex items-center gap-2 md:gap-3 text-lg md:text-2xl font-black tracking-wider text-[var(--genesis-yellow)]" style="font-family: 'Unbounded', cursive;"><img src="assets/images/logo-favicon-192.png" alt="Logo FA GENESIS" style="height:48px;width:48px;flex-shrink:0;border-radius:50%;object-fit:cover;display:inline-block;vertical-align:middle;"> FA GENESIS</a>
-        </div>
-        <div class="hidden md:flex gap-12 text-white font-black">
-            <a href="index.html#accueil" class="nav-link hover:text-[var(--genesis-yellow)] transition">Accueil</a>
-            <a href="a-propos.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">À Propos</a>
-            <a href="offres.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">Prestations</a>
-            <a href="faq.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">FAQ</a>
-            <a href="contact.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">Contact</a>
-        </div>
-        <div class="hidden md:flex gap-4 items-center">
-            <a href="panier.html" class="relative text-white hover:text-[var(--genesis-yellow)] transition px-2 py-2" title="Panier">
-                <i class="fas fa-shopping-cart text-lg"></i>
-                <span class="panier-badge" style="display:none;position:absolute;top:-4px;right:-4px;background:#f44336;color:#fff;font-size:10px;font-weight:900;min-width:16px;height:16px;line-height:16px;text-align:center;border-radius:50%;"></span>
-            </a>
-            <a href="login.html" class="border-4 border-[var(--genesis-yellow)] text-[var(--genesis-yellow)] px-6 py-3 text-[12px] tracking-widest font-black">Espace client</a>
-            <a href="contact.html" class="neo-btn-yellow px-6 py-3 text-[12px] tracking-widest text-black font-black">Lancer un projet</a>
-        </div>
-        <!-- Bouton Menu Mobile -->
-        <button id="mobileMenuBtn" class="md:hidden flex flex-col gap-1.5 p-2" aria-label="Menu">
-            <span class="block w-6 h-0.5 bg-[var(--genesis-yellow)] transition-all" id="menuLine1"></span>
-            <span class="block w-6 h-0.5 bg-[var(--genesis-yellow)] transition-all" id="menuLine2"></span>
-            <span class="block w-6 h-0.5 bg-[var(--genesis-yellow)] transition-all" id="menuLine3"></span>
-        </button>
-    </nav>
+<!-- ── HEADER ── -->
+<header class="reg-bar">
+  <a href="inscription.html" class="reg-back">
+    <i class="fa-solid fa-chevron-left" style="font-size:10px;"></i> Retour
+  </a>
+  <a href="index.html" class="reg-logo">
+    <img src="assets/images/logo-genesis.png" alt="FA GENESIS">
+    FA GENESIS
+  </a>
+  <a href="index.html?login=1" class="reg-login">Se connecter</a>
+</header>
 
-    <!-- Menu Mobile Overlay -->
-    <div id="mobileMenu" class="fixed inset-0 z-40 bg-black/98 backdrop-blur-lg hidden flex-col items-center justify-center gap-8 text-white font-black uppercase">
-        <a href="index.html#accueil" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition" onclick="closeMobileMenu()">Accueil</a>
-        <a href="a-propos.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition" onclick="closeMobileMenu()">À Propos</a>
-        <a href="offres.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition" onclick="closeMobileMenu()">Prestations</a>
-        <a href="faq.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition" onclick="closeMobileMenu()">FAQ</a>
-        <a href="contact.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition" onclick="closeMobileMenu()">Contact</a>
-        <a href="panier.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition" onclick="closeMobileMenu()"><i class="fas fa-shopping-cart mr-2"></i>Panier <span class="panier-badge" style="display:none;background:#f44336;color:#fff;font-size:12px;padding:2px 6px;border-radius:50%;margin-left:4px;"></span></a>
-        <div class="flex flex-col gap-4 mt-8">
-            <a href="contact.html" class="neo-btn-yellow px-8 py-4 text-sm tracking-widest text-black font-black text-center" onclick="closeMobileMenu()">Lancer un projet</a>
+<!-- ── MAIN ── -->
+<main class="reg-main">
+  <div class="reg-card">
+    <div class="reg-icon"><i class="fa-solid fa-user-plus"></i></div>
+    <h1 class="reg-title">Créer mon compte <span style="background:linear-gradient(135deg,var(--gold),var(--orange));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">Client</span></h1>
+    <p class="reg-sub">Inscription gratuite &amp; sans engagement — accédez à l'ensemble du réseau GENESIS</p>
+
+    <div id="errorMessage" class="reg-banner reg-banner-err"></div>
+    <div id="successMessage" class="reg-banner reg-banner-info"></div>
+
+    <form id="registerForm" autocomplete="off">
+
+      <div class="frm-row">
+        <div>
+          <label for="prenom" class="frm-label">Prénom</label>
+          <input type="text" id="prenom" name="prenom" required class="frm-input" placeholder="Jean" autocomplete="given-name">
         </div>
+        <div>
+          <label for="nom" class="frm-label">Nom</label>
+          <input type="text" id="nom" name="nom" required class="frm-input" placeholder="Dupont" autocomplete="family-name">
+        </div>
+      </div>
+
+      <div class="frm-group">
+        <label for="email" class="frm-label">Email</label>
+        <input type="email" id="email" name="email" required class="frm-input" placeholder="votre.email@exemple.com" autocomplete="email">
+      </div>
+
+      <div class="frm-group">
+        <label for="telephone" class="frm-label">Téléphone</label>
+        <input type="tel" id="telephone" name="telephone" required class="frm-input" placeholder="+33 6 XX XX XX XX" autocomplete="tel">
+      </div>
+
+      <input type="hidden" id="offre" name="offre" value="">
+
+      <div class="frm-row">
+        <div>
+          <label for="password" class="frm-label">Mot de passe</label>
+          <input type="password" id="password" name="password" required minlength="8" class="frm-input" placeholder="••••••••" autocomplete="new-password">
+          <p class="frm-hint">Minimum 8 caractères</p>
+        </div>
+        <div>
+          <label for="confirmPassword" class="frm-label">Confirmer</label>
+          <input type="password" id="confirmPassword" name="confirmPassword" required minlength="8" class="frm-input" placeholder="••••••••" autocomplete="new-password">
+        </div>
+      </div>
+
+      <!-- Honeypot anti-spam -->
+      <div aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;opacity:0;" tabindex="-1">
+        <input type="text" id="_hp" name="_hp" autocomplete="off" tabindex="-1">
+      </div>
+      <input type="hidden" id="_ft" name="_ft">
+
+      <div class="frm-check">
+        <input type="checkbox" id="terms" name="terms" required>
+        <label for="terms">J'accepte les <a href="conditions-generales.html" target="_blank">conditions générales</a> et la <a href="confidentialite.html" target="_blank">politique de confidentialité</a></label>
+      </div>
+
+      <button type="submit" class="frm-submit" id="submitBtn">
+        Créer mon compte <i class="fa-solid fa-arrow-right" style="font-size:11px;"></i>
+      </button>
+
+    </form>
+
+    <div class="reg-divider">ou</div>
+    <p class="reg-alt">Déjà inscrit ? <a href="index.html?login=1">Se connecter →</a></p>
+
+    <div class="reg-trust">
+      <i class="fa-solid fa-shield-halved"></i>
+      Vos données sont sécurisées et confidentielles
     </div>
+  </div>
+</main>
 
-    <!-- REGISTER SECTION -->
-    <section class="min-h-screen flex flex-col items-center justify-center p-6 bg-black pt-32 pb-20 relative overflow-hidden">
-        <div class="absolute top-20 left-[-10%] w-96 h-96 bg-[var(--genesis-yellow)] rounded-full blur-[120px] opacity-20 z-0"></div>
+<script src="config.js"></script>
+<script src="auth.js"></script>
+<script src="offers-config.js"></script>
+<script src="panier.js"></script>
+<script src="payment-system.js"></script>
+<script>
+    var quoteTokenParam = null;
+    var redirectParam = null;
+    var cwDevisId = null;
 
-        <div class="w-full max-w-2xl z-10">
-            <h1 class="text-5xl md:text-6xl font-black italic uppercase text-center mb-6 text-[var(--genesis-yellow)]">CRÉER UN COMPTE</h1>
-            <p class="text-center text-lg font-bold mb-10 uppercase">Inscription gratuite et sans engagement</p>
+    window.addEventListener('DOMContentLoaded', function() {
+        var ftField = document.getElementById('_ft');
+        if (ftField) ftField.value = Date.now();
 
-            <div class="bg-white text-black p-10 neo-border neo-shadow">
-                <div id="errorMessage" class="error-message"></div>
-                <div id="successMessage" class="success-message"></div>
+        try {
+            var urlParams = new URLSearchParams(window.location.search);
+            var offreParam = urlParams.get('offre');
+            quoteTokenParam = urlParams.get('quote_token');
+            redirectParam = urlParams.get('redirect');
 
-                <form id="registerForm" class="space-y-6">
-                    <div class="grid md:grid-cols-2 gap-6">
-                        <div>
-                            <label for="prenom" class="block text-sm font-black mb-2 uppercase">Prénom</label>
-                            <input
-                                type="text"
-                                id="prenom"
-                                name="prenom"
-                                required
-                                class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none focus:translate-x-1 focus:translate-y-1 transition-all"
-                                placeholder="Jean"
-                            >
-                        </div>
-
-                        <div>
-                            <label for="nom" class="block text-sm font-black mb-2 uppercase">Nom</label>
-                            <input
-                                type="text"
-                                id="nom"
-                                name="nom"
-                                required
-                                class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none focus:translate-x-1 focus:translate-y-1 transition-all"
-                                placeholder="Dupont"
-                            >
-                        </div>
-                    </div>
-
-                    <div>
-                        <label for="email" class="block text-sm font-black mb-2 uppercase">Email</label>
-                        <input
-                            type="email"
-                            id="email"
-                            name="email"
-                            required
-                            class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none focus:translate-x-1 focus:translate-y-1 transition-all"
-                            placeholder="votre.email@exemple.com"
-                        >
-                    </div>
-
-                    <div>
-                        <label for="telephone" class="block text-sm font-black mb-2 uppercase">Téléphone</label>
-                        <input
-                            type="tel"
-                            id="telephone"
-                            name="telephone"
-                            required
-                            class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none focus:translate-x-1 focus:translate-y-1 transition-all"
-                            placeholder="+33 6 XX XX XX XX"
-                        >
-                    </div>
-
-                    <!-- Champ offre masque - l'offre est choisie via le panier -->
-                    <input type="hidden" id="offre" name="offre" value="">
-
-                    <div class="grid md:grid-cols-2 gap-6">
-                        <div>
-                            <label for="password" class="block text-sm font-black mb-2 uppercase">Mot de passe</label>
-                            <input
-                                type="password"
-                                id="password"
-                                name="password"
-                                required
-                                minlength="8"
-                                class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none focus:translate-x-1 focus:translate-y-1 transition-all"
-                                placeholder="••••••••"
-                            >
-                            <p class="text-xs mt-2 font-bold opacity-70">Minimum 8 caractères</p>
-                        </div>
-
-                        <div>
-                            <label for="confirmPassword" class="block text-sm font-black mb-2 uppercase">Confirmer le mot de passe</label>
-                            <input
-                                type="password"
-                                id="confirmPassword"
-                                name="confirmPassword"
-                                required
-                                minlength="8"
-                                class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none focus:translate-x-1 focus:translate-y-1 transition-all"
-                                placeholder="••••••••"
-                            >
-                        </div>
-                    </div>
-
-                    <!-- Anti-spam : champ honeypot invisible pour les humains, les bots le remplissent -->
-                    <div aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;opacity:0;" tabindex="-1">
-                        <input type="text" id="_hp" name="_hp" autocomplete="off" tabindex="-1">
-                    </div>
-                    <!-- Anti-spam : horodatage du chargement du formulaire -->
-                    <input type="hidden" id="_ft" name="_ft">
-
-                    <div class="flex items-start gap-3">
-                        <input
-                            type="checkbox"
-                            id="terms"
-                            name="terms"
-                            required
-                            class="mt-1 w-5 h-5 border-4 border-black"
-                        >
-                        <label for="terms" class="text-sm font-bold">
-                            J'accepte les <a href="conditions-generales.html" target="_blank" class="underline font-black">conditions générales</a> et la <a href="confidentialite.html" target="_blank" class="underline font-black">politique de confidentialité</a>
-                        </label>
-                    </div>
-
-                    <button
-                        type="submit"
-                        class="w-full py-4 neo-btn-yellow text-2xl font-black italic uppercase tracking-tighter"
-                    >
-                        Créer mon compte
-                    </button>
-                </form>
-
-                <div class="mt-8 text-center">
-                    <p class="text-sm font-bold">Déjà un compte ? <a href="login.html" class="text-black underline font-black">Se connecter</a></p>
-                </div>
-            </div>
-
-            <div class="mt-8 text-center">
-                <p class="text-white font-bold text-sm">
-                    <i class="fas fa-shield-alt text-[var(--genesis-yellow)]"></i>
-                    Vos données sont sécurisées et confidentielles
-                </p>
-            </div>
-        </div>
-    </section>
-
-    <!-- FOOTER -->
-    <div id="site-footer"></div>
-
-    <script src="config.js"></script>
-    <script src="auth.js"></script>
-    <script src="offers-config.js"></script>
-    <script src="panier.js"></script>
-    <script src="payment-system.js"></script>
-    <script>
-        // Recuperer les parametres de l'URL
-        var quoteTokenParam = null;
-        var redirectParam = null;
-        var cwDevisId = null;
-
-        window.addEventListener('DOMContentLoaded', function() {
-            // Anti-spam : enregistrer l'heure de chargement du formulaire
-            var ftField = document.getElementById('_ft');
-            if (ftField) ftField.value = Date.now();
-
-            try {
-                var urlParams = new URLSearchParams(window.location.search);
-                var offreParam = urlParams.get('offre');
-                quoteTokenParam = urlParams.get('quote_token');
-                redirectParam = urlParams.get('redirect');
-
-                // --- Mode DEVIS : afficher bandeau ---
-                if (quoteTokenParam) {
-                    var successMessage = document.getElementById('successMessage');
-                    if (successMessage) {
-                        successMessage.innerHTML = '<i class="fas fa-file-invoice mr-2"></i><strong>Acceptation de devis</strong><br>Cr\u00e9ez votre compte pour accepter votre devis personnalis\u00e9 et payer l\'acompte de 30%.';
-                        successMessage.classList.add('show');
-                    }
-
-                    var loginLink = document.querySelector('a[href="login.html"]');
-                    if (loginLink) {
-                        loginLink.href = 'login.html?quote_token=' + encodeURIComponent(quoteTokenParam);
-                    }
-
-                    var apiUrl = window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com';
-                    fetch(apiUrl + '/api/quotes/view/' + encodeURIComponent(quoteTokenParam))
-                        .then(function(r) { return r.json(); })
-                        .then(function(data) {
-                            if (data.quote && data.quote.client_email) {
-                                var emailField = document.getElementById('email');
-                                if (emailField && !emailField.value) {
-                                    emailField.value = data.quote.client_email;
-                                }
-                                if (data.quote.client_name) {
-                                    var parts = data.quote.client_name.split(' ');
-                                    var prenomField = document.getElementById('prenom');
-                                    var nomField = document.getElementById('nom');
-                                    if (prenomField && !prenomField.value && parts[0]) prenomField.value = parts[0];
-                                    if (nomField && !nomField.value && parts.slice(1).join(' ')) nomField.value = parts.slice(1).join(' ');
-                                }
+            if (quoteTokenParam) {
+                var successMessage = document.getElementById('successMessage');
+                if (successMessage) {
+                    successMessage.innerHTML = '<i class="fas fa-file-invoice" style="margin-right:6px;"></i><strong>Acceptation de devis</strong><br>Créez votre compte pour accepter votre devis personnalisé et payer l\'acompte de 30%.';
+                    successMessage.classList.add('show');
+                }
+                var loginLink = document.querySelector('a[href="index.html?login=1"]');
+                var apiUrl = window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com';
+                fetch(apiUrl + '/api/quotes/view/' + encodeURIComponent(quoteTokenParam))
+                    .then(function(r) { return r.json(); })
+                    .then(function(data) {
+                        if (data.quote && data.quote.client_email) {
+                            var emailField = document.getElementById('email');
+                            if (emailField && !emailField.value) emailField.value = data.quote.client_email;
+                            if (data.quote.client_name) {
+                                var parts = data.quote.client_name.split(' ');
+                                var prenomField = document.getElementById('prenom');
+                                var nomField = document.getElementById('nom');
+                                if (prenomField && !prenomField.value && parts[0]) prenomField.value = parts[0];
+                                if (nomField && !nomField.value && parts.slice(1).join(' ')) nomField.value = parts.slice(1).join(' ');
                             }
-                        })
-                        .catch(function(err) { console.error('[REGISTER] Erreur pre-remplissage:', err); });
-
-                    console.log('[REGISTER] Mode devis detecte');
-                }
-
-                // --- Mode DEVIS CW : accepté depuis email ---
-                cwDevisId = urlParams.get('cw_devis_id');
-                if (cwDevisId) {
-                    var apiUrlCw = window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com';
-                    fetch(apiUrlCw + '/api/coworking/devis/' + cwDevisId + '/summary')
-                        .then(function(r) { return r.json(); })
-                        .then(function(summary) {
-                            var sMsg = document.getElementById('successMessage');
-                            if (sMsg && summary.amount) {
-                                sMsg.innerHTML = '<i class="fas fa-check-circle mr-2" style="color:#22c55e;"></i>Vous avez accepté le devis <strong>' + (summary.service_label || '') + '</strong> — <strong>' + Number(summary.amount).toFixed(2) + ' €</strong>.<br>Créez votre compte pour procéder au paiement.';
-                                sMsg.classList.add('show');
-                            }
-                            if (summary.client_name) {
-                                var nameParts = (summary.client_name || '').split(' ');
-                                var pField = document.getElementById('prenom');
-                                var nField = document.getElementById('nom');
-                                if (pField && !pField.value && nameParts[0]) pField.value = nameParts[0];
-                                if (nField && !nField.value && nameParts.length > 1) nField.value = nameParts.slice(1).join(' ');
-                            }
-                        })
-                        .catch(function() {});
-                    var loginLinkCw = document.querySelector('a[href="login.html"]');
-                    if (loginLinkCw) loginLinkCw.href = 'login.html?cw_devis_id=' + cwDevisId;
-                }
-
-                // --- Mode REDIRECT (depuis panier) : afficher bandeau panier ---
-                if (redirectParam === 'checkout') {
-                    var successMsg = document.getElementById('successMessage');
-                    if (successMsg) {
-                        successMsg.innerHTML = '<i class="fas fa-shopping-cart mr-2"></i><strong>Cr\u00e9ez votre compte</strong><br>Inscription gratuite et sans engagement. Vous serez redirig\u00e9 vers votre panier apr\u00e8s inscription.';
-                        successMsg.classList.add('show');
-                    }
-                }
-
-                // --- Mode OFFRE (legacy, si offre dans URL) ---
-                if (offreParam && !quoteTokenParam) {
-                    var offreField = document.getElementById('offre');
-                    if (offreField) offreField.value = offreParam;
-                }
-            } catch (err) {
-                console.error('[REGISTER] Erreur init params:', err);
+                        }
+                    }).catch(function() {});
             }
+
+            cwDevisId = urlParams.get('cw_devis_id');
+            if (cwDevisId) {
+                var apiUrlCw = window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com';
+                fetch(apiUrlCw + '/api/coworking/devis/' + cwDevisId + '/summary')
+                    .then(function(r) { return r.json(); })
+                    .then(function(summary) {
+                        var sMsg = document.getElementById('successMessage');
+                        if (sMsg && summary.amount) {
+                            sMsg.innerHTML = '<i class="fas fa-check-circle" style="margin-right:6px;color:#4ade80;"></i>Vous avez accepté le devis <strong>' + (summary.service_label || '') + '</strong> — <strong>' + Number(summary.amount).toFixed(2) + ' €</strong>.<br>Créez votre compte pour procéder au paiement.';
+                            sMsg.classList.add('show');
+                        }
+                        if (summary.client_name) {
+                            var nameParts = (summary.client_name || '').split(' ');
+                            var pField = document.getElementById('prenom');
+                            var nField = document.getElementById('nom');
+                            if (pField && !pField.value && nameParts[0]) pField.value = nameParts[0];
+                            if (nField && !nField.value && nameParts.length > 1) nField.value = nameParts.slice(1).join(' ');
+                        }
+                    }).catch(function() {});
+                var loginLinkCw = document.querySelector('a[href="index.html?login=1"]');
+                if (loginLinkCw) loginLinkCw.href = 'index.html?login=1&cw_devis_id=' + cwDevisId;
+            }
+
+            if (redirectParam === 'checkout') {
+                var successMsg = document.getElementById('successMessage');
+                if (successMsg) {
+                    successMsg.innerHTML = '<i class="fas fa-shopping-cart" style="margin-right:6px;"></i><strong>Créez votre compte</strong><br>Inscription gratuite et sans engagement. Vous serez redirigé vers votre panier après inscription.';
+                    successMsg.classList.add('show');
+                }
+            }
+
+            if (offreParam && !quoteTokenParam) {
+                var offreField = document.getElementById('offre');
+                if (offreField) offreField.value = offreParam;
+            }
+        } catch (err) {}
+    });
+
+    document.getElementById('registerForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        var prenom = document.getElementById('prenom').value.trim();
+        var nom = document.getElementById('nom').value.trim();
+        var email = document.getElementById('email').value.trim();
+        var telephone = document.getElementById('telephone').value.trim();
+        var offreField = document.getElementById('offre');
+        var offre = offreField ? offreField.value : '';
+        var password = document.getElementById('password').value;
+        var confirmPassword = document.getElementById('confirmPassword').value;
+        var terms = document.getElementById('terms').checked;
+
+        var errorMessage = document.getElementById('errorMessage');
+        var successMessage = document.getElementById('successMessage');
+        var submitBtn = document.getElementById('submitBtn');
+
+        errorMessage.classList.remove('show');
+        successMessage.classList.remove('show');
+
+        if (!prenom || !nom || !email || !telephone || !password || !confirmPassword) {
+            errorMessage.textContent = 'Veuillez remplir tous les champs obligatoires.';
+            errorMessage.classList.add('show');
+            return;
+        }
+        if (password !== confirmPassword) {
+            errorMessage.textContent = 'Les mots de passe ne correspondent pas.';
+            errorMessage.classList.add('show');
+            return;
+        }
+        if (password.length < 6) {
+            errorMessage.textContent = 'Le mot de passe doit contenir au moins 6 caractères.';
+            errorMessage.classList.add('show');
+            return;
+        }
+        if (!terms) {
+            errorMessage.textContent = 'Vous devez accepter les conditions générales.';
+            errorMessage.classList.add('show');
+            return;
+        }
+        var emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            errorMessage.textContent = 'Veuillez entrer une adresse email valide.';
+            errorMessage.classList.add('show');
+            return;
+        }
+
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin" style="font-size:13px;"></i> Inscription en cours…';
+
+        var hpField = document.getElementById('_hp');
+        var ftField2 = document.getElementById('_ft');
+        var result = await register({
+            prenom: prenom, nom: nom, email: email, telephone: telephone,
+            password: password, offre: offre || null,
+            _hp: hpField ? hpField.value : '',
+            _ft: ftField2 ? ftField2.value : ''
         });
 
-        // Gestion de la soumission du formulaire
-        document.getElementById('registerForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = 'Créer mon compte <i class="fa-solid fa-arrow-right" style="font-size:11px;"></i>';
 
-            var prenom = document.getElementById('prenom').value.trim();
-            var nom = document.getElementById('nom').value.trim();
-            var email = document.getElementById('email').value.trim();
-            var telephone = document.getElementById('telephone').value.trim();
-            var offreField = document.getElementById('offre');
-            var offre = offreField ? offreField.value : '';
-            var password = document.getElementById('password').value;
-            var confirmPassword = document.getElementById('confirmPassword').value;
-            var terms = document.getElementById('terms').checked;
+        if (!result.success) {
+            errorMessage.textContent = result.message;
+            errorMessage.classList.add('show');
+            return;
+        }
 
-            var errorMessage = document.getElementById('errorMessage');
-            var successMessage = document.getElementById('successMessage');
-            var submitBtn = this.querySelector('button[type="submit"]');
+        var sessionData = null;
+        try { sessionData = JSON.parse(localStorage.getItem('fa_genesis_session') || 'null'); } catch(e) {}
+        if (sessionData) {
+            if (offre && !sessionData.offre) sessionData.offre = offre;
+            if (offre && !sessionData.activeOfferId) sessionData.activeOfferId = offre;
+            if (!sessionData.paymentStatus) sessionData.paymentStatus = 'registered';
+            if (!sessionData.payments) sessionData.payments = [];
+            localStorage.setItem('fa_genesis_session', JSON.stringify(sessionData));
+        }
 
-            errorMessage.classList.remove('show');
-            successMessage.classList.remove('show');
-
-            // Validation - offre n'est PLUS obligatoire
-            if (!prenom || !nom || !email || !telephone || !password || !confirmPassword) {
-                errorMessage.textContent = 'Veuillez remplir tous les champs obligatoires.';
-                errorMessage.classList.add('show');
-                return;
-            }
-
-            if (password !== confirmPassword) {
-                errorMessage.textContent = 'Les mots de passe ne correspondent pas.';
-                errorMessage.classList.add('show');
-                return;
-            }
-
-            if (password.length < 6) {
-                errorMessage.textContent = 'Le mot de passe doit contenir au moins 6 caract\u00e8res.';
-                errorMessage.classList.add('show');
-                return;
-            }
-
-            if (!terms) {
-                errorMessage.textContent = 'Vous devez accepter les conditions g\u00e9n\u00e9rales.';
-                errorMessage.classList.add('show');
-                return;
-            }
-
-            var emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            if (!emailRegex.test(email)) {
-                errorMessage.textContent = 'Veuillez entrer une adresse email valide.';
-                errorMessage.classList.add('show');
-                return;
-            }
-
-            submitBtn.disabled = true;
-            submitBtn.textContent = 'Inscription en cours...';
-
-            var hpField = document.getElementById('_hp');
-            var ftField2 = document.getElementById('_ft');
-            var result = await register({
-                prenom: prenom,
-                nom: nom,
-                email: email,
-                telephone: telephone,
-                password: password,
-                offre: offre || null,
-                _hp: hpField ? hpField.value : '',
-                _ft: ftField2 ? ftField2.value : ''
-            });
-
-            submitBtn.disabled = false;
-            submitBtn.textContent = 'Cr\u00e9er mon compte';
-
-            if (!result.success) {
-                errorMessage.textContent = result.message;
-                errorMessage.classList.add('show');
-                return;
-            }
-
-            console.log('[REGISTER] Utilisateur cree:', result.user);
-
-            // Mettre a jour la session locale
-            var sessionData = null;
-            try { sessionData = JSON.parse(localStorage.getItem('fa_genesis_session') || 'null'); } catch(e) {}
-            if (sessionData) {
-                if (offre && !sessionData.offre) sessionData.offre = offre;
-                if (offre && !sessionData.activeOfferId) sessionData.activeOfferId = offre;
-                if (!sessionData.paymentStatus) sessionData.paymentStatus = 'registered';
-                if (!sessionData.payments) sessionData.payments = [];
-                localStorage.setItem('fa_genesis_session', JSON.stringify(sessionData));
-            }
-
-            // --- Mode DEVIS : accepter le devis apres inscription ---
-            if (quoteTokenParam) {
-                successMessage.innerHTML = '<strong>Compte cr\u00e9\u00e9 avec succ\u00e8s !</strong><br><br>Acceptation de votre devis en cours...';
-                successMessage.classList.add('show');
-                document.getElementById('registerForm').reset();
-
-                try {
-                    var authToken = typeof getAuthToken === 'function' ? getAuthToken() : localStorage.getItem('fa_genesis_token');
-                    var apiUrl = window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com';
-
-                    var acceptResponse = await fetch(apiUrl + '/api/quotes/accept', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': 'Bearer ' + authToken
-                        },
-                        body: JSON.stringify({ token: quoteTokenParam })
-                    });
-
-                    var acceptResult = await acceptResponse.json();
-
-                    if (acceptResult.success) {
-                        successMessage.innerHTML = '<strong>Compte cr\u00e9\u00e9 et devis accept\u00e9 !</strong><br><br>Redirection vers le paiement de l\'acompte...';
-                        setTimeout(function() {
-                            window.location.href = 'quote-accept.html?token=' + encodeURIComponent(quoteTokenParam);
-                        }, 2000);
-                    } else {
-                        errorMessage.textContent = acceptResult.error || 'Erreur lors de l\'acceptation du devis';
-                        errorMessage.classList.add('show');
-                    }
-                } catch (acceptErr) {
-                    console.error('[REGISTER] Erreur acceptation devis:', acceptErr);
-                    errorMessage.textContent = 'Compte cr\u00e9\u00e9 mais erreur lors de l\'acceptation du devis.';
-                    errorMessage.classList.add('show');
-                    setTimeout(function() { window.location.href = 'dashboard.html'; }, 3000);
-                }
-                return;
-            }
-
-            // --- Mode DEVIS CW ---
-            if (cwDevisId) {
-                successMessage.innerHTML = '<strong>Compte créé !</strong><br><br>Redirection vers le paiement de votre devis...';
-                successMessage.classList.add('show');
-                document.getElementById('registerForm').reset();
-                await handleCwDevisAfterAuth(cwDevisId);
-                return;
-            }
-
-            // --- Mode REDIRECT (depuis panier) ---
-            if (redirectParam === 'checkout') {
-                successMessage.innerHTML = '<strong>Compte cr\u00e9\u00e9 avec succ\u00e8s !</strong><br><br>' +
-                    '<i class="fas fa-shopping-cart mr-2"></i>Redirection vers votre panier...';
-                successMessage.classList.add('show');
-                document.getElementById('registerForm').reset();
-                setTimeout(function() { window.location.href = 'checkout.html?source=panier'; }, 2000);
-                return;
-            }
-
-            // --- Mode standard (inscription libre) ---
-            successMessage.innerHTML = '<strong>Compte cr\u00e9\u00e9 avec succ\u00e8s !</strong><br><br>' +
-                'Bienvenue chez FA GENESIS ! D\u00e9couvrez nos offres et tarifs.<br><br>' +
-                'Redirection...';
+        if (quoteTokenParam) {
+            successMessage.innerHTML = '<strong>Compte créé avec succès !</strong><br><br>Acceptation de votre devis en cours…';
             successMessage.classList.add('show');
             document.getElementById('registerForm').reset();
-            setTimeout(function() { window.location.href = 'offres.html'; }, 2500);
-        });
-
-        async function handleCwDevisAfterAuth(devisId) {
             try {
+                var authToken = typeof getAuthToken === 'function' ? getAuthToken() : localStorage.getItem('fa_genesis_token');
                 var apiUrl = window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com';
-                var r = await fetch(apiUrl + '/api/coworking/devis/' + devisId + '/summary');
-                var summary = await r.json();
-                if (!summary.amount) throw new Error('Devis non trouvé');
-                var panier = { items: [{ productId: 'cw-devis', coworkingData: {
-                    label: summary.service_label,
-                    prix: Number(summary.amount),
-                    is_devis: true,
-                    devis_id: devisId,
-                    total_amount: Number(summary.amount),
-                    installments: 1,
-                    installments_options: summary.installments_options || [1]
-                }}]};
-                localStorage.setItem('fa_genesis_panier', JSON.stringify(panier));
-                window.location.href = 'checkout.html?source=panier';
-            } catch(err) {
-                console.error('[REGISTER] CW devis after auth:', err);
-                setTimeout(function() { window.location.href = 'espace-client.html#devis'; }, 2500);
+                var acceptResponse = await fetch(apiUrl + '/api/quotes/accept', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
+                    body: JSON.stringify({ token: quoteTokenParam })
+                });
+                var acceptResult = await acceptResponse.json();
+                if (acceptResult.success) {
+                    successMessage.innerHTML = '<strong>Compte créé et devis accepté !</strong><br>Redirection vers le paiement…';
+                    setTimeout(function() { window.location.href = 'quote-accept.html?token=' + encodeURIComponent(quoteTokenParam); }, 2000);
+                } else {
+                    errorMessage.textContent = acceptResult.error || 'Erreur lors de l\'acceptation du devis';
+                    errorMessage.classList.add('show');
+                }
+            } catch (acceptErr) {
+                errorMessage.textContent = 'Compte créé mais erreur lors de l\'acceptation du devis.';
+                errorMessage.classList.add('show');
+                setTimeout(function() { window.location.href = 'dashboard.html'; }, 3000);
             }
+            return;
         }
 
-        // Menu Mobile Toggle
-        const mobileMenuBtn = document.getElementById('mobileMenuBtn');
-        const mobileMenu = document.getElementById('mobileMenu');
-        const menuLine1 = document.getElementById('menuLine1');
-        const menuLine2 = document.getElementById('menuLine2');
-        const menuLine3 = document.getElementById('menuLine3');
-        let isMenuOpen = false;
-
-        function toggleMobileMenu() {
-            isMenuOpen = !isMenuOpen;
-            if (isMenuOpen) {
-                mobileMenu.classList.remove('hidden');
-                mobileMenu.classList.add('flex');
-                menuLine1.style.transform = 'rotate(45deg) translate(5px, 5px)';
-                menuLine2.style.opacity = '0';
-                menuLine3.style.transform = 'rotate(-45deg) translate(5px, -5px)';
-                document.body.style.overflow = 'hidden';
-            } else {
-                closeMobileMenu();
-            }
+        if (cwDevisId) {
+            successMessage.innerHTML = '<strong>Compte créé !</strong><br>Redirection vers le paiement de votre devis…';
+            successMessage.classList.add('show');
+            document.getElementById('registerForm').reset();
+            await handleCwDevisAfterAuth(cwDevisId);
+            return;
         }
 
-        function closeMobileMenu() {
-            isMenuOpen = false;
-            mobileMenu.classList.add('hidden');
-            mobileMenu.classList.remove('flex');
-            menuLine1.style.transform = 'none';
-            menuLine2.style.opacity = '1';
-            menuLine3.style.transform = 'none';
-            document.body.style.overflow = 'auto';
+        if (redirectParam === 'checkout') {
+            successMessage.innerHTML = '<strong>Compte créé avec succès !</strong><br><i class="fas fa-shopping-cart" style="margin-right:6px;"></i>Redirection vers votre panier…';
+            successMessage.classList.add('show');
+            document.getElementById('registerForm').reset();
+            setTimeout(function() { window.location.href = 'checkout.html?source=panier'; }, 2000);
+            return;
         }
 
-        mobileMenuBtn.addEventListener('click', toggleMobileMenu);
-    </script>
-    <script src="footer.js" defer></script>
-    <script src="chatbot.js" defer></script>
-    <script src="pwa-init.js"></script>
+        successMessage.innerHTML = '<strong>Compte créé avec succès !</strong><br>Bienvenue chez FA GENESIS ! Découvrez nos offres et tarifs.<br><br>Redirection…';
+        successMessage.classList.add('show');
+        document.getElementById('registerForm').reset();
+        setTimeout(function() { window.location.href = 'offres.html'; }, 2500);
+    });
+
+    async function handleCwDevisAfterAuth(devisId) {
+        try {
+            var apiUrl = window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com';
+            var r = await fetch(apiUrl + '/api/coworking/devis/' + devisId + '/summary');
+            var summary = await r.json();
+            if (!summary.amount) throw new Error('Devis non trouvé');
+            var panier = { items: [{ productId: 'cw-devis', coworkingData: {
+                label: summary.service_label, prix: Number(summary.amount),
+                is_devis: true, devis_id: devisId,
+                total_amount: Number(summary.amount), installments: 1,
+                installments_options: summary.installments_options || [1]
+            }}]};
+            localStorage.setItem('fa_genesis_panier', JSON.stringify(panier));
+            window.location.href = 'checkout.html?source=panier';
+        } catch(err) {
+            setTimeout(function() { window.location.href = 'espace-client.html#devis'; }, 2500);
+        }
+    }
+</script>
 </body>
 </html>

@@ -1,925 +1,1004 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" type="image/png" sizes="32x32" href="assets/images/logo-favicon-32.png">
-    <link rel="icon" type="image/png" sizes="192x192" href="assets/images/logo-favicon-192.png">
-    <link rel="icon" type="image/png" sizes="512x512" href="assets/images/logo-favicon.png">
-    <link rel="apple-touch-icon" sizes="192x192" href="assets/images/logo-favicon-192.png">
-    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
-    <title>Devenir Partenaire - FA GENESIS</title>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;900&family=Space+Grotesk:wght@300;700&display=swap">
-    <link rel="stylesheet" href="tailwind.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" media="print" onload="this.media='all'">
-    <style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Devenir Prestataire — FA GENESIS</title>
+<link rel="icon" type="image/png" sizes="32x32" href="assets/images/logo-favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="assets/images/logo-favicon-192.png">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#FFD700">
+<link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700;900&family=Space+Grotesk:wght@300;400;500;700&display=swap" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700;900&family=Space+Grotesk:wght@300;400;500;700&display=swap"></noscript>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"></noscript>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --black:#050505;--s1:#0a0a0a;--s2:#111;--s3:#161616;
+  --gold:#FFD700;--gold-dim:rgba(255,215,0,.1);--gold-border:rgba(255,215,0,.18);
+  --orange:#FF4800;--orange-dim:rgba(255,72,0,.1);--orange-border:rgba(255,72,0,.25);
+  --white:#fff;
+  --t1:rgba(255,255,255,.92);--t2:rgba(255,255,255,.6);--t3:rgba(255,255,255,.35);
+  --font-d:'Unbounded',sans-serif;--font-b:'Space Grotesk',sans-serif;
+}
+html,body{min-height:100%;}
+body{
+  background:var(--black);color:var(--t1);font-family:var(--font-b);
+  -webkit-font-smoothing:antialiased;overflow-x:hidden;
+}
+body::before{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:radial-gradient(ellipse 80% 50% at 50% -10%,rgba(255,72,0,.05),transparent 60%);
+}
+a{text-decoration:none;color:inherit;}
 
-        :root {
-            --genesis-yellow: #FFD700;
-            --genesis-black: #000000;
-            --genesis-white: #FFFFFF;
-        }
+/* ── HEADER ── */
+.reg-bar{
+  position:sticky;top:0;z-index:100;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:16px 32px;
+  background:rgba(5,5,5,.92);backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--gold-border);
+}
+@media(max-width:480px){.reg-bar{padding:14px 18px;}}
+.reg-back{
+  background:none;border:none;color:var(--t2);font-size:13px;
+  font-family:var(--font-b);font-weight:500;cursor:pointer;
+  display:flex;align-items:center;gap:6px;transition:color .2s;
+  text-decoration:none;min-width:90px;
+}
+.reg-back:hover{color:var(--white);}
+.reg-logo{
+  font-family:var(--font-d);font-size:13px;font-weight:900;
+  color:var(--gold);display:flex;align-items:center;gap:10px;
+}
+.reg-logo img{height:28px;width:auto;mix-blend-mode:screen;}
+.reg-login{
+  font-size:13px;font-weight:600;color:var(--t2);
+  border:1px solid rgba(255,255,255,.15);border-radius:6px;
+  padding:7px 16px;transition:border-color .2s,color .2s;
+  min-width:90px;text-align:right;display:inline-block;
+}
+.reg-login:hover{border-color:var(--gold);color:var(--gold);}
 
-        body {
-            background-color: var(--genesis-black);
-            color: var(--genesis-white);
-            font-family: 'Space Grotesk', sans-serif;
-            overflow-x: hidden;
-        }
+/* ── PROGRESS ── */
+.wiz-prog{
+  display:flex;align-items:center;justify-content:center;
+  gap:0;padding:20px 24px 4px;position:relative;z-index:1;
+}
+.wiz-prog-step{display:flex;align-items:center;}
+.wiz-prog-dot{
+  width:8px;height:8px;border-radius:50%;flex-shrink:0;
+  background:var(--s3);border:1.5px solid rgba(255,255,255,.15);
+  transition:all .35s cubic-bezier(.4,0,.2,1);
+}
+.wiz-prog-dot.done{background:rgba(255,215,0,.45);border-color:rgba(255,215,0,.45);}
+.wiz-prog-dot.active{width:28px;border-radius:4px;background:var(--orange);border-color:var(--orange);}
+.wiz-prog-line{width:32px;height:1.5px;background:rgba(255,255,255,.1);transition:background .35s;}
+.wiz-prog-line.done{background:rgba(255,215,0,.4);}
+@media(max-width:480px){.wiz-prog-line{width:18px;}}
 
-        h1, h2, h3, h4, h5, .nav-link { font-family: 'Unbounded', cursive; }
+/* ── MAIN ── */
+.reg-main{
+  position:relative;z-index:1;
+  display:flex;flex-direction:column;align-items:center;
+  padding:32px 24px 80px;
+}
 
-        .neo-border { border: 4px solid var(--genesis-black); }
-        .neo-shadow { box-shadow: 10px 10px 0px 0px var(--genesis-yellow); }
+/* ── CARD ── */
+.reg-card{
+  width:100%;max-width:600px;
+  background:var(--s1);border:1.5px solid var(--gold-border);
+  border-radius:22px;overflow:hidden;
+  position:relative;
+}
+.reg-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,var(--orange),var(--gold));
+}
 
-        .neo-btn-yellow {
-            background: var(--genesis-yellow);
-            color: black;
-            border: 4px solid black;
-            box-shadow: 6px 6px 0px black;
-            font-weight: 900;
-            transition: 0.1s;
-        }
-        .neo-btn-yellow:active {
-            transform: translate(4px, 4px);
-            box-shadow: 0px 0px 0px black;
-        }
+/* ── STEPS ── */
+.wiz-step{display:none;padding:36px;}
+.wiz-step.active{display:block;}
+@media(max-width:520px){.wiz-step{padding:24px 18px;}}
 
-        .error-message {
-            display: none;
-            background: #ff0000;
-            color: white;
-            padding: 1rem;
-            border: 4px solid black;
-            margin-bottom: 1.5rem;
-            font-weight: bold;
-        }
-        .error-message.show { display: block; }
+.wiz-step-header{margin-bottom:28px;}
+.wiz-eyebrow{
+  font-family:var(--font-d);font-size:9px;font-weight:700;
+  letter-spacing:4px;text-transform:uppercase;color:var(--orange);
+  margin-bottom:10px;display:block;
+}
+.wiz-title{
+  font-family:var(--font-d);font-size:clamp(16px,2.5vw,22px);font-weight:900;
+  color:var(--white);line-height:1.2;
+}
 
-        .info-message {
-            display: none;
-            background: var(--genesis-yellow);
-            color: black;
-            padding: 1rem;
-            border: 4px solid black;
-            margin-bottom: 1.5rem;
-            font-weight: bold;
-        }
-        .info-message.show { display: block; }
+/* ── FORM ELEMENTS ── */
+.frm-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;}
+@media(max-width:440px){.frm-row{grid-template-columns:1fr;}}
+.frm-group{margin-bottom:20px;}
+.frm-group-opt{margin-bottom:20px;}
+.frm-label{
+  display:block;font-size:11px;font-weight:700;letter-spacing:.6px;
+  text-transform:uppercase;color:var(--t2);margin-bottom:8px;
+}
+.frm-input,.frm-select,.frm-textarea{
+  width:100%;
+  background:rgba(255,255,255,.04);
+  border:1.5px solid rgba(255,255,255,.12);
+  border-radius:10px;padding:13px 16px;
+  color:var(--t1);font-family:var(--font-b);font-size:14px;font-weight:400;
+  outline:none;transition:border-color .2s,box-shadow .2s;
+  -webkit-appearance:none;
+}
+.frm-input::placeholder,.frm-textarea::placeholder{color:var(--t3);}
+.frm-input:focus,.frm-select:focus,.frm-textarea:focus{
+  border-color:var(--orange);
+  box-shadow:0 0 0 3px rgba(255,72,0,.1);
+}
+.frm-input:autofill,.frm-input:-webkit-autofill{
+  -webkit-box-shadow:0 0 0 100px var(--s2) inset;
+  -webkit-text-fill-color:var(--t1);
+}
+.frm-select{cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='rgba(255,255,255,.4)' fill='none' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:36px;}
+.frm-select option{background:var(--s2);color:var(--t1);}
+.frm-select optgroup{color:var(--t3);font-weight:700;}
+.frm-textarea{resize:vertical;min-height:100px;line-height:1.6;}
+.frm-hint{font-size:11px;color:var(--t3);margin-top:5px;line-height:1.5;}
 
-        select.fa-select {
-            width: 100%;
-            background: white;
-            color: black;
-            padding: 1rem;
-            border: 4px solid black;
-            font-weight: bold;
-            outline: none;
-        }
-        select.fa-select:focus { border-color: var(--genesis-yellow); }
-    </style>
-    <meta name="theme-color" content="#FFD700">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="FA GENESIS">
+/* ── SECTION TITLE ── */
+.wiz-section-title{
+  font-family:var(--font-d);font-size:10px;font-weight:700;letter-spacing:2px;
+  text-transform:uppercase;color:var(--t3);margin:24px 0 16px;
+  display:flex;align-items:center;gap:10px;
+}
+.wiz-section-title::after{content:'';flex:1;height:1px;background:rgba(255,255,255,.07);}
+
+/* ── BANNER ── */
+.reg-banner{
+  border-radius:10px;padding:12px 16px;margin-bottom:24px;
+  font-size:13px;font-weight:600;line-height:1.5;display:none;
+}
+.reg-banner.show{display:block;}
+.reg-banner-info{background:rgba(255,215,0,.08);border:1px solid rgba(255,215,0,.22);color:var(--gold);}
+.reg-banner-err{background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);color:#f87171;}
+.reg-banner-ok{background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);color:#4ade80;}
+
+/* ── CONTRACT ── */
+.contract-scroll{
+  max-height:280px;overflow-y:auto;
+  background:rgba(255,255,255,.03);border:1.5px solid rgba(255,255,255,.1);
+  border-radius:12px;padding:20px;margin-bottom:20px;
+  font-size:13px;color:var(--t2);line-height:1.75;
+}
+.contract-scroll::-webkit-scrollbar{width:4px;}
+.contract-scroll::-webkit-scrollbar-track{background:transparent;}
+.contract-scroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,.15);border-radius:2px;}
+.contract-scroll p{margin-bottom:12px;}
+
+/* ── CHECKBOX ── */
+.frm-check{display:flex;align-items:flex-start;gap:12px;margin-bottom:20px;}
+.frm-check input[type=checkbox]{
+  width:18px;height:18px;flex-shrink:0;margin-top:2px;
+  accent-color:var(--orange);cursor:pointer;
+}
+.frm-check label{font-size:13px;color:var(--t2);line-height:1.6;cursor:pointer;}
+
+/* ── PHOTO/FILE UPLOAD ── */
+.file-upload-row{display:flex;align-items:center;gap:14px;}
+.file-preview-img{
+  width:54px;height:54px;border-radius:12px;object-fit:cover;
+  border:1.5px solid var(--gold-border);display:none;
+}
+.file-upload-btn{
+  background:none;border:1.5px solid rgba(255,255,255,.18);border-radius:8px;
+  color:var(--t1);font-family:var(--font-b);font-size:12px;font-weight:600;
+  padding:9px 16px;cursor:pointer;transition:border-color .2s,color .2s;
+}
+.file-upload-btn:hover{border-color:var(--orange);color:var(--orange);}
+
+/* ── PORTFOLIO / TARIF ROWS ── */
+.item-row{
+  background:rgba(255,255,255,.03);border:1.5px solid rgba(255,255,255,.08);
+  border-radius:12px;padding:16px;margin-bottom:12px;
+}
+.item-row-grid{display:grid;gap:12px;}
+.item-row-grid-4{grid-template-columns:1fr 1fr 1fr auto;}
+.item-row-grid-5{grid-template-columns:1fr 2fr 1fr auto;}
+@media(max-width:500px){
+  .item-row-grid-4,.item-row-grid-5{grid-template-columns:1fr;}
+}
+.item-del-btn{
+  background:none;border:none;color:rgba(239,68,68,.6);cursor:pointer;
+  font-size:14px;padding:8px;transition:color .2s;
+  display:flex;align-items:center;justify-content:center;
+  align-self:flex-end;
+}
+.item-del-btn:hover{color:#f87171;}
+
+.add-item-btn{
+  display:inline-flex;align-items:center;gap:6px;
+  background:none;border:1.5px dashed rgba(255,255,255,.15);border-radius:8px;
+  color:var(--t3);font-family:var(--font-b);font-size:12px;font-weight:600;
+  padding:10px 18px;cursor:pointer;transition:border-color .2s,color .2s;margin-top:4px;
+}
+.add-item-btn:hover{border-color:rgba(255,72,0,.4);color:var(--orange);}
+
+/* ── BUTTONS ── */
+.wiz-btn-row{
+  display:flex;justify-content:space-between;align-items:center;
+  gap:12px;margin-top:32px;flex-wrap:wrap;
+}
+.wiz-btn-row-end{justify-content:flex-end;}
+.btn-primary{
+  display:inline-flex;align-items:center;gap:8px;
+  background:linear-gradient(135deg,var(--orange),#ff6a00);
+  color:#fff;font-family:var(--font-d);font-size:11px;font-weight:900;
+  border:none;border-radius:10px;padding:13px 28px;
+  cursor:pointer;transition:opacity .2s,transform .2s;letter-spacing:.3px;
+}
+.btn-primary:hover:not(:disabled){opacity:.88;transform:translateY(-1px);}
+.btn-primary:disabled{opacity:.5;cursor:not-allowed;transform:none;}
+.btn-primary-gold{background:linear-gradient(135deg,var(--gold),#e6c200);color:#0a0800;}
+.btn-secondary{
+  display:inline-flex;align-items:center;gap:6px;
+  background:none;border:1.5px solid rgba(255,255,255,.18);border-radius:10px;
+  color:var(--t2);font-family:var(--font-b);font-size:13px;font-weight:600;
+  padding:11px 22px;cursor:pointer;transition:border-color .2s,color .2s;
+}
+.btn-secondary:hover{border-color:rgba(255,255,255,.35);color:var(--white);}
+.btn-skip{
+  background:none;border:none;font-size:12px;color:var(--t3);
+  cursor:pointer;padding:8px 12px;transition:color .2s;font-family:var(--font-b);
+  font-weight:600;
+}
+.btn-skip:hover{color:var(--t2);}
+
+/* ── SUCCESS STEP ── */
+.wiz-success{text-align:center;padding:20px 0;}
+.wiz-success-icon{
+  width:80px;height:80px;border-radius:24px;
+  background:rgba(34,197,94,.1);border:1.5px solid rgba(34,197,94,.3);
+  display:flex;align-items:center;justify-content:center;
+  font-size:32px;color:#4ade80;margin:0 auto 24px;
+}
+
+/* ── FOOTER LINK ── */
+.reg-footer{text-align:center;padding:20px;font-size:13px;color:var(--t3);position:relative;z-index:1;}
+.reg-footer a{color:var(--orange);font-weight:600;}
+</style>
 </head>
 <body>
 
-    <!-- NAVIGATION APP (sans liens marketing) -->
-    <nav class="fixed top-0 w-full z-50 bg-black/95 backdrop-blur-md border-b-4 border-[var(--genesis-yellow)] px-4 md:px-6 py-3 md:py-4 flex justify-between items-center text-white text-xs font-black uppercase">
-        <a href="app.html" class="flex items-center gap-2 md:gap-3 text-lg md:text-2xl font-black tracking-wider text-[var(--genesis-yellow)]" style="font-family: 'Unbounded', cursive;"><img src="assets/images/logo-favicon-192.png" alt="Logo FA GENESIS" style="height:48px;width:48px;flex-shrink:0;border-radius:50%;object-fit:cover;display:inline-block;vertical-align:middle;"> FA GENESIS</a>
-        <a href="app.html" class="text-white font-black text-xs md:text-sm hover:text-[var(--genesis-yellow)] transition"><i class="fas fa-arrow-left mr-1"></i>Retour à l'app</a>
-    </nav>
+<!-- ── HEADER ── -->
+<header class="reg-bar">
+  <a href="inscription.html" class="reg-back">
+    <i class="fa-solid fa-chevron-left" style="font-size:10px;"></i> Retour
+  </a>
+  <a href="index.html" class="reg-logo">
+    <img src="assets/images/logo-genesis.png" alt="FA GENESIS">
+    FA GENESIS
+  </a>
+  <a href="partner-login.html" class="reg-login">Se connecter</a>
+</header>
 
-    <!-- REGISTER SECTION - PAS DE AOS -->
-    <section class="min-h-screen flex flex-col items-center justify-center p-6 bg-black pt-32 pb-16 relative overflow-hidden">
-        <div class="absolute top-20 left-[-10%] w-96 h-96 bg-[var(--genesis-yellow)] rounded-full blur-[120px] opacity-20 z-0"></div>
+<!-- ── WIZARD PROGRESS ── -->
+<div class="wiz-prog" id="wizardProgress"></div>
 
-        <div class="w-full max-w-2xl z-10">
-            <h1 class="text-5xl md:text-7xl font-black italic uppercase text-center mb-4 text-[var(--genesis-yellow)]">DEVENIR PARTENAIRE</h1>
-            <p class="text-center text-lg font-bold mb-8 uppercase opacity-80">Inscrivez-vous et fixez vos propres prix</p>
+<!-- ── MAIN ── -->
+<main class="reg-main">
+  <div class="reg-card">
 
-            <div class="flex justify-center items-center gap-2 mb-8" id="wizardProgress"></div>
+    <div id="errorMessage" class="reg-banner reg-banner-err" style="margin:20px 24px 0;"></div>
+    <div id="infoMessage" class="reg-banner reg-banner-info" style="margin:20px 24px 0;">
+      <i class="fa-solid fa-circle-info" style="margin-right:6px;"></i>
+      Votre compte sera visible dans l'annuaire après validation par l'équipe FA GENESIS. Vous pouvez dès maintenant configurer votre profil et vos prestations.
+    </div>
 
-            <div class="bg-white text-black p-10 neo-border neo-shadow">
-                <div id="errorMessage" class="error-message"></div>
-                <div id="infoMessage" class="info-message">
-                    <i class="fas fa-circle-info mr-1"></i>
-                    Votre compte sera visible dans l'annuaire après validation par l'équipe FA GENESIS. Vous pouvez dès maintenant configurer votre profil et vos prestations.
-                </div>
-
-                <!-- ÉTAPE 1 : INFOS PERSO -->
-                <div class="wizard-step" data-step="1">
-                    <h2 class="text-2xl font-black uppercase mb-6">Étape 1 — Vos informations</h2>
-                    <div class="space-y-6">
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label for="prenom" class="block text-sm font-black mb-2 uppercase">Prénom</label>
-                                <input type="text" id="prenom" name="prenom"
-                                    class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none focus:border-[var(--genesis-yellow)] transition-all"
-                                    placeholder="Prénom">
-                            </div>
-                            <div>
-                                <label for="nom" class="block text-sm font-black mb-2 uppercase">Nom</label>
-                                <input type="text" id="nom" name="nom"
-                                    class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none focus:border-[var(--genesis-yellow)] transition-all"
-                                    placeholder="Nom">
-                            </div>
-                        </div>
-
-                        <div>
-                            <label for="email" class="block text-sm font-black mb-2 uppercase">Email</label>
-                            <input type="email" id="email" name="email"
-                                class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none focus:border-[var(--genesis-yellow)] transition-all"
-                                placeholder="votre.email@exemple.com">
-                        </div>
-
-                        <div>
-                            <label for="telephone" class="block text-sm font-black mb-2 uppercase">Téléphone</label>
-                            <input type="tel" id="telephone" name="telephone"
-                                class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none focus:border-[var(--genesis-yellow)] transition-all"
-                                placeholder="06 12 34 56 78">
-                        </div>
-
-                        <div>
-                            <label for="password" class="block text-sm font-black mb-2 uppercase">Mot de passe</label>
-                            <input type="password" id="password" name="password" minlength="6"
-                                class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none focus:border-[var(--genesis-yellow)] transition-all"
-                                placeholder="6 caractères minimum">
-                        </div>
-
-                        <div>
-                            <label for="country" class="block text-sm font-black mb-2 uppercase">Pays de résidence <span style="color:#c00">*</span></label>
-                            <select id="country" name="country" class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none focus:border-[var(--genesis-yellow)] transition-all">
-                                <option value="">Choisir votre pays...</option>
-                                <optgroup label="── Europe ──">
-                                    <option value="FR">🇫🇷 France</option>
-                                    <option value="BE">🇧🇪 Belgique</option>
-                                    <option value="CH">🇨🇭 Suisse</option>
-                                    <option value="LU">🇱🇺 Luxembourg</option>
-                                    <option value="DE">🇩🇪 Allemagne</option>
-                                    <option value="ES">🇪🇸 Espagne</option>
-                                    <option value="IT">🇮🇹 Italie</option>
-                                    <option value="PT">🇵🇹 Portugal</option>
-                                    <option value="NL">🇳🇱 Pays-Bas</option>
-                                    <option value="GB">🇬🇧 Royaume-Uni</option>
-                                    <option value="IE">🇮🇪 Irlande</option>
-                                    <option value="AT">🇦🇹 Autriche</option>
-                                    <option value="PL">🇵🇱 Pologne</option>
-                                    <option value="SE">🇸🇪 Suède</option>
-                                    <option value="NO">🇳🇴 Norvège</option>
-                                    <option value="DK">🇩🇰 Danemark</option>
-                                    <option value="FI">🇫🇮 Finlande</option>
-                                    <option value="CZ">🇨🇿 République tchèque</option>
-                                    <option value="RO">🇷🇴 Roumanie</option>
-                                    <option value="BG">🇧🇬 Bulgarie</option>
-                                    <option value="GR">🇬🇷 Grèce</option>
-                                    <option value="HR">🇭🇷 Croatie</option>
-                                    <option value="HU">🇭🇺 Hongrie</option>
-                                    <option value="SK">🇸🇰 Slovaquie</option>
-                                    <option value="SI">🇸🇮 Slovénie</option>
-                                    <option value="EE">🇪🇪 Estonie</option>
-                                    <option value="LV">🇱🇻 Lettonie</option>
-                                    <option value="LT">🇱🇹 Lituanie</option>
-                                    <option value="MT">🇲🇹 Malte</option>
-                                    <option value="CY">🇨🇾 Chypre</option>
-                                    <option value="LI">🇱🇮 Liechtenstein</option>
-                                </optgroup>
-                                <optgroup label="── Afrique ──">
-                                    <option value="MA">🇲🇦 Maroc</option>
-                                    <option value="SN">🇸🇳 Sénégal</option>
-                                    <option value="CI">🇨🇮 Côte d'Ivoire</option>
-                                    <option value="GH">🇬🇭 Ghana</option>
-                                    <option value="NG">🇳🇬 Nigeria</option>
-                                    <option value="KE">🇰🇪 Kenya</option>
-                                    <option value="ZA">🇿🇦 Afrique du Sud</option>
-                                    <option value="EG">🇪🇬 Égypte</option>
-                                    <option value="RW">🇷🇼 Rwanda</option>
-                                    <option value="TZ">🇹🇿 Tanzanie</option>
-                                    <option value="UG">🇺🇬 Ouganda</option>
-                                </optgroup>
-                                <optgroup label="── Amériques ──">
-                                    <option value="US">🇺🇸 États-Unis</option>
-                                    <option value="CA">🇨🇦 Canada</option>
-                                    <option value="MX">🇲🇽 Mexique</option>
-                                    <option value="BR">🇧🇷 Brésil</option>
-                                </optgroup>
-                                <optgroup label="── Moyen-Orient &amp; Asie-Pacifique ──">
-                                    <option value="AE">🇦🇪 Émirats arabes unis</option>
-                                    <option value="SG">🇸🇬 Singapour</option>
-                                    <option value="HK">🇭🇰 Hong Kong</option>
-                                    <option value="AU">🇦🇺 Australie</option>
-                                    <option value="NZ">🇳🇿 Nouvelle-Zélande</option>
-                                    <option value="JP">🇯🇵 Japon</option>
-                                    <option value="IN">🇮🇳 Inde</option>
-                                    <option value="MY">🇲🇾 Malaisie</option>
-                                    <option value="TH">🇹🇭 Thaïlande</option>
-                                    <option value="ID">🇮🇩 Indonésie</option>
-                                </optgroup>
-                            </select>
-                        </div>
-
-                        <div>
-                            <label for="company" class="block text-sm font-black mb-2 uppercase">Entreprise (optionnel)</label>
-                            <input type="text" id="company" name="company"
-                                class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none focus:border-[var(--genesis-yellow)] transition-all"
-                                placeholder="Nom de votre entreprise">
-                        </div>
-                    </div>
-
-                    <div class="flex justify-end mt-8">
-                        <button type="button" onclick="goFromStep1()" class="neo-btn-yellow px-8 py-4 text-xl font-black italic uppercase">Suivant</button>
-                    </div>
-                </div>
-
-                <!-- ÉTAPE 2 : ACTIVITÉ -->
-                <div class="wizard-step" data-step="2" style="display:none">
-                    <h2 class="text-2xl font-black uppercase mb-6">Étape 2 — Votre activité</h2>
-                    <div>
-                        <label for="partner_type" class="block text-sm font-black mb-2 uppercase">Catégorie</label>
-                        <select id="partner_type" name="partner_type" class="fa-select" onchange="document.getElementById('partner_type_other_wrap').style.display = (this.value==='other') ? 'block' : 'none';">
-                            <option value="">Choisir une catégorie...</option>
-                            <option value="photographer">Photographe</option>
-                            <option value="videographer">Vidéaste</option>
-                            <option value="marketer">Marketeur</option>
-                            <option value="media">Médias</option>
-                            <option value="community_manager">Community Manager</option>
-                            <option value="graphiste">Graphiste</option>
-                            <option value="developpeur_web">Développeur Web</option>
-                            <option value="pilote_drone">Pilote Drone</option>
-                            <option value="consultant">Consultant</option>
-                            <option value="coworking">Espace Coworking</option>
-                            <option value="animateur_evenementiel">Animateur / Événementiel</option>
-                            <option value="influencer">Influenceur / Influenceuse</option>
-                            <option value="other">Autre</option>
-                        </select>
-                    </div>
-                    <div id="partner_type_other_wrap" style="display:none;margin-top:16px;">
-                        <label for="partner_type_other" class="block text-sm font-black mb-2 uppercase">Précisez votre profil</label>
-                        <input type="text" id="partner_type_other" name="partner_type_other"
-                            class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none focus:border-[var(--genesis-yellow)] transition-all"
-                            placeholder="Ex : Wedding planner, Coach sportif...">
-                    </div>
-
-                    <div class="flex justify-between mt-8">
-                        <button type="button" onclick="showStep(1)" class="px-8 py-4 border-4 border-black font-black uppercase bg-white">Précédent</button>
-                        <button type="button" id="submitBtn" onclick="submitStep2()" class="neo-btn-yellow px-8 py-4 text-xl font-black italic uppercase">Créer mon compte</button>
-                    </div>
-                </div>
-
-                <!-- ÉTAPE 3 : CONTRAT DE PARTENARIAT (SIGNATURE ÉLECTRONIQUE) -->
-                <div class="wizard-step" data-step="3" style="display:none">
-                    <h2 class="text-2xl font-black uppercase mb-6">Étape 3 — Contrat de partenariat</h2>
-                    <div style="max-height:320px;overflow-y:auto;border:4px solid black;padding:1.25rem;background:#f9f9f9;margin-bottom:1.5rem;font-size:0.9rem;line-height:1.6;">
-                        <p class="font-black uppercase mb-2">Conditions de partenariat FA GENESIS</p>
-                        <p class="mb-3">FA GENESIS agit comme plateforme d'intermédiation entre les partenaires/influenceurs et les clients, sur le même principe que Deliveroo ou Uber Eats avec les restaurants : elle met en relation, sécurise le paiement et assure la visibilité du partenaire, en contrepartie d'une commission sur chaque prestation réalisée.</p>
-                        <p class="mb-3"><strong>1. Commission.</strong> FA GENESIS prélève une commission de <strong>15 %</strong> sur le montant TTC de chaque prestation réservée et payée via la plateforme. Le partenaire perçoit le solde, soit 85 % du montant de la prestation, sauf pour les offres associant plusieurs partenaires, où la répartition est calculée au prorata du nombre d'intervenants.</p>
-                        <p class="mb-3"><strong>2. Versement.</strong> Le montant dû au partenaire est calculé automatiquement après chaque paiement du client et versé via le moyen de paiement renseigné dans son espace partenaire (PayPal ou virement bancaire / IBAN).</p>
-                        <p class="mb-3"><strong>3. Statut indépendant.</strong> Le partenaire intervient en tant que professionnel indépendant (auto-entrepreneur, société ou équivalent) et reste seul responsable de ses obligations fiscales, sociales et légales liées à son activité.</p>
-                        <p class="mb-3"><strong>4. Durée et résiliation.</strong> Ce contrat prend effet à la signature et reste valable tant que le compte partenaire est actif. Le partenaire peut demander la clôture de son compte à tout moment depuis son tableau de bord ou en contactant FA GENESIS.</p>
-                        <p class="mb-0"><strong>5. Acceptation.</strong> La signature électronique ci-dessous (nom complet + case cochée) vaut acceptation pleine et entière des présentes conditions, au même titre qu'une signature manuscrite.</p>
-                    </div>
-
-                    <div class="mb-4">
-                        <label class="flex items-start gap-3 cursor-pointer">
-                            <input type="checkbox" id="contractAcceptCheckbox" style="margin-top:4px;width:20px;height:20px;flex-shrink:0;">
-                            <span class="font-bold text-sm">Je certifie avoir lu et j'accepte les conditions de partenariat ci-dessus, notamment la commission de <strong>15 %</strong> prélevée par FA GENESIS sur chaque prestation réalisée.</span>
-                        </label>
-                    </div>
-
-                    <div class="mb-2">
-                        <label for="contractSignatureName" class="block text-sm font-black mb-2 uppercase">Signature électronique (nom complet)</label>
-                        <input type="text" id="contractSignatureName" class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none focus:border-[var(--genesis-yellow)] transition-all" placeholder="Prénom Nom">
-                    </div>
-
-                    <div id="contractMessage" style="display:none;margin-top:1rem;"></div>
-
-                    <div class="flex justify-between items-center mt-8 flex-wrap gap-3">
-                        <button type="button" onclick="showStep(2)" class="px-8 py-4 border-4 border-black font-black uppercase bg-white">Précédent</button>
-                        <button type="button" id="contractSignBtn" onclick="submitContractStep()" class="neo-btn-yellow px-8 py-4 text-xl font-black italic uppercase">Signer et continuer</button>
-                    </div>
-                </div>
-
-                <!-- ÉTAPE 4 : PROFIL PROFESSIONNEL -->
-                <div class="wizard-step" data-step="4" style="display:none">
-                    <h2 class="text-2xl font-black uppercase mb-6">Étape 4 — Profil professionnel</h2>
-
-                    <div class="grid grid-cols-2 gap-4 mb-6">
-                        <div>
-                            <label class="block text-sm font-black mb-2 uppercase">Photo de profil</label>
-                            <div class="flex items-center gap-3">
-                                <img id="step3PhotoPreview" alt="" style="display:none;width:56px;height:56px;border-radius:50%;object-fit:cover;border:3px solid black;">
-                                <button type="button" onclick="document.getElementById('step3PhotoInput').click()" class="neo-btn-yellow px-4 py-2 text-xs">CHOISIR</button>
-                                <input type="file" id="step3PhotoInput" accept="image/*" style="display:none">
-                            </div>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-black mb-2 uppercase">Logo (optionnel)</label>
-                            <div class="flex items-center gap-3">
-                                <img id="step3LogoPreview" alt="" style="display:none;width:56px;height:56px;object-fit:contain;border:3px solid black;">
-                                <button type="button" onclick="document.getElementById('step3LogoInput').click()" class="neo-btn-yellow px-4 py-2 text-xs">CHOISIR</button>
-                                <input type="file" id="step3LogoInput" accept="image/*" style="display:none">
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="mb-4">
-                        <label for="step3Bio" class="block text-sm font-black mb-2 uppercase">Description</label>
-                        <textarea id="step3Bio" rows="4" class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none focus:border-[var(--genesis-yellow)] transition-all" placeholder="Présentez votre activité..."></textarea>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-4 mb-4">
-                        <div>
-                            <label for="step3City" class="block text-sm font-black mb-2 uppercase">Ville</label>
-                            <input type="text" id="step3City" class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none focus:border-[var(--genesis-yellow)] transition-all" placeholder="Paris">
-                        </div>
-                        <div>
-                            <label for="step3InterventionZone" class="block text-sm font-black mb-2 uppercase">Zone d'intervention</label>
-                            <input type="text" id="step3InterventionZone" class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none focus:border-[var(--genesis-yellow)] transition-all" placeholder="Île-de-France, national...">
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-4 mb-2">
-                        <div>
-                            <label for="step3Instagram" class="block text-sm font-black mb-2 uppercase">Instagram</label>
-                            <input type="text" id="step3Instagram" class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none focus:border-[var(--genesis-yellow)] transition-all" placeholder="@votrecompte">
-                        </div>
-                        <div>
-                            <label for="step3Tiktok" class="block text-sm font-black mb-2 uppercase">TikTok</label>
-                            <input type="text" id="step3Tiktok" class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none focus:border-[var(--genesis-yellow)] transition-all" placeholder="@votrecompte">
-                        </div>
-                        <div>
-                            <label for="step3Linkedin" class="block text-sm font-black mb-2 uppercase">LinkedIn</label>
-                            <input type="text" id="step3Linkedin" class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none focus:border-[var(--genesis-yellow)] transition-all" placeholder="linkedin.com/in/...">
-                        </div>
-                        <div>
-                            <label for="step3Website" class="block text-sm font-black mb-2 uppercase">Site web</label>
-                            <input type="text" id="step3Website" class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none focus:border-[var(--genesis-yellow)] transition-all" placeholder="https://...">
-                        </div>
-                    </div>
-
-                    <hr class="border-2 border-black my-6">
-                    <h3 class="text-lg font-black uppercase mb-2">RIB — pour recevoir vos paiements (optionnel)</h3>
-                    <p class="text-sm font-bold opacity-60 mb-4">Vous pouvez aussi le renseigner plus tard depuis votre tableau de bord.</p>
-                    <div class="mb-4">
-                        <label for="step3RibTitulaire" class="block text-sm font-black mb-2 uppercase">Titulaire du compte</label>
-                        <input type="text" id="step3RibTitulaire" class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none focus:border-[var(--genesis-yellow)] transition-all" placeholder="Nom du titulaire">
-                    </div>
-                    <div class="grid grid-cols-2 gap-4 mb-2">
-                        <div>
-                            <label for="step3RibIban" class="block text-sm font-black mb-2 uppercase">IBAN</label>
-                            <input type="text" id="step3RibIban" maxlength="34" style="text-transform:uppercase;" class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none focus:border-[var(--genesis-yellow)] transition-all" placeholder="FR76 XXXX XXXX XXXX XXXX XXXX XXX">
-                        </div>
-                        <div>
-                            <label for="step3RibBic" class="block text-sm font-black mb-2 uppercase">BIC / SWIFT</label>
-                            <input type="text" id="step3RibBic" maxlength="11" style="text-transform:uppercase;" class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none focus:border-[var(--genesis-yellow)] transition-all" placeholder="XXXXXXXX">
-                        </div>
-                    </div>
-
-                    <div id="step3Message" style="display:none;margin-top:1rem;"></div>
-
-                    <div class="flex justify-between items-center mt-8 flex-wrap gap-3">
-                        <button type="button" onclick="showStep(3)" class="px-8 py-4 border-4 border-black font-black uppercase bg-white">Précédent</button>
-                        <div class="flex gap-3">
-                            <button type="button" onclick="skipToStep(5)" class="px-6 py-4 border-4 border-black font-black uppercase bg-white opacity-70">Passer cette étape</button>
-                            <button type="button" id="step3NextBtn" onclick="submitStep3()" class="neo-btn-yellow px-8 py-4 text-xl font-black italic uppercase">Suivant</button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- ÉTAPE 5 : PORTFOLIO -->
-                <div class="wizard-step" data-step="5" style="display:none">
-                    <h2 class="text-2xl font-black uppercase mb-6">Étape 5 — Portfolio</h2>
-                    <p class="text-sm font-bold opacity-60 mb-4">Ajoutez vos plus belles réalisations (photos ou vidéos).</p>
-
-                    <div id="portfolioItemsContainer" class="mb-4"></div>
-                    <button type="button" onclick="addWizardPortfolioItem()" class="px-4 py-2 border-2 border-black font-black uppercase text-xs bg-gray-50 mb-4">
-                        <i class="fas fa-plus mr-1"></i>Ajouter une réalisation
-                    </button>
-
-                    <div id="step4Message" style="display:none;margin-top:1rem;"></div>
-
-                    <div class="flex justify-between items-center mt-8 flex-wrap gap-3">
-                        <button type="button" onclick="showStep(4)" class="px-8 py-4 border-4 border-black font-black uppercase bg-white">Précédent</button>
-                        <div class="flex gap-3">
-                            <button type="button" onclick="skipToStep(6)" class="px-6 py-4 border-4 border-black font-black uppercase bg-white opacity-70">Passer cette étape</button>
-                            <button type="button" id="step4NextBtn" onclick="submitStep4()" class="neo-btn-yellow px-8 py-4 text-xl font-black italic uppercase">Suivant</button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- ÉTAPE 6 : TARIFS -->
-                <div class="wizard-step" data-step="6" style="display:none">
-                    <h2 class="text-2xl font-black uppercase mb-6">Étape 6 — Vos tarifs</h2>
-                    <p class="text-sm font-bold opacity-60 mb-6">Définissez vos offres pour chaque type de client. Vous pouvez en ajouter plusieurs par catégorie.</p>
-
-                    <div class="mb-8">
-                        <h3 class="text-lg font-black uppercase mb-3" style="color:#444;">Offre Étudiant</h3>
-                        <div id="tarifsEtudiantContainer" class="mb-2"></div>
-                        <button type="button" onclick="addWizardTarifItem('tarifsEtudiantContainer')" class="px-4 py-2 border-2 border-black font-black uppercase text-xs bg-gray-50">
-                            <i class="fas fa-plus mr-1"></i>Ajouter une offre
-                        </button>
-                    </div>
-
-                    <div class="mb-8">
-                        <h3 class="text-lg font-black uppercase mb-3" style="color:#444;">Offre Particulier</h3>
-                        <div id="tarifsParticulierContainer" class="mb-2"></div>
-                        <button type="button" onclick="addWizardTarifItem('tarifsParticulierContainer')" class="px-4 py-2 border-2 border-black font-black uppercase text-xs bg-gray-50">
-                            <i class="fas fa-plus mr-1"></i>Ajouter une offre
-                        </button>
-                    </div>
-
-                    <div class="mb-4">
-                        <h3 class="text-lg font-black uppercase mb-3" style="color:#444;">Offre Entreprise</h3>
-                        <div id="tarifsEntrepriseContainer" class="mb-2"></div>
-                        <button type="button" onclick="addWizardTarifItem('tarifsEntrepriseContainer')" class="px-4 py-2 border-2 border-black font-black uppercase text-xs bg-gray-50">
-                            <i class="fas fa-plus mr-1"></i>Ajouter une offre
-                        </button>
-                    </div>
-
-                    <div id="step5Message" style="display:none;margin-top:1rem;"></div>
-
-                    <div class="flex justify-between items-center mt-8 flex-wrap gap-3">
-                        <button type="button" onclick="showStep(5)" class="px-8 py-4 border-4 border-black font-black uppercase bg-white">Précédent</button>
-                        <div class="flex gap-3">
-                            <button type="button" onclick="skipToStep(7)" class="px-6 py-4 border-4 border-black font-black uppercase bg-white opacity-70">Passer cette étape</button>
-                            <button type="button" id="step5NextBtn" onclick="submitStep5()" class="neo-btn-yellow px-8 py-4 text-xl font-black italic uppercase">Suivant</button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- ÉTAPE 7 : VALIDATION -->
-                <div class="wizard-step" data-step="7" style="display:none">
-                    <div class="text-center py-6">
-                        <i class="fas fa-circle-check text-6xl mb-6" style="color:#16a34a;"></i>
-                        <h2 class="text-2xl font-black uppercase mb-6">Candidature envoyée</h2>
-                        <p class="text-lg font-bold mb-8">Votre candidature a bien été reçue. Notre équipe va vérifier votre profil avant sa publication sur la plateforme FA GENESIS. Vous recevrez une notification dès validation.</p>
-                        <button type="button" onclick="window.location.href='partner-dashboard.html'" class="neo-btn-yellow px-10 py-4 text-xl font-black italic uppercase">Accéder à mon tableau de bord</button>
-                    </div>
-                </div>
-            </div>
-
-            <div class="mt-8 text-center">
-                <p class="text-white font-bold">
-                    Déjà partenaire ? <a href="partner-login.html" class="text-[var(--genesis-yellow)] underline font-black">Connectez-vous</a>
-                </p>
-            </div>
+    <!-- ── ÉTAPE 1 : INFOS PERSO ── -->
+    <div class="wiz-step active" data-step="1">
+      <div class="wiz-step-header">
+        <span class="wiz-eyebrow">Étape 1 sur 7</span>
+        <h2 class="wiz-title">Vos informations</h2>
+      </div>
+      <div class="frm-row">
+        <div>
+          <label for="prenom" class="frm-label">Prénom</label>
+          <input type="text" id="prenom" name="prenom" class="frm-input" placeholder="Prénom" autocomplete="given-name">
         </div>
-    </section>
+        <div>
+          <label for="nom" class="frm-label">Nom</label>
+          <input type="text" id="nom" name="nom" class="frm-input" placeholder="Nom" autocomplete="family-name">
+        </div>
+      </div>
+      <div class="frm-group">
+        <label for="email" class="frm-label">Email</label>
+        <input type="email" id="email" name="email" class="frm-input" placeholder="votre.email@exemple.com" autocomplete="email">
+      </div>
+      <div class="frm-group">
+        <label for="telephone" class="frm-label">Téléphone</label>
+        <input type="tel" id="telephone" name="telephone" class="frm-input" placeholder="06 12 34 56 78" autocomplete="tel">
+      </div>
+      <div class="frm-group">
+        <label for="password" class="frm-label">Mot de passe <span style="color:var(--t3);font-weight:400;">(6 caractères min.)</span></label>
+        <input type="password" id="password" name="password" minlength="6" class="frm-input" placeholder="••••••••" autocomplete="new-password">
+      </div>
+      <div class="frm-group">
+        <label for="country" class="frm-label">Pays de résidence <span style="color:#f87171;">*</span></label>
+        <select id="country" name="country" class="frm-select">
+          <option value="">Choisir votre pays…</option>
+          <optgroup label="── Europe ──">
+            <option value="FR">🇫🇷 France</option><option value="BE">🇧🇪 Belgique</option>
+            <option value="CH">🇨🇭 Suisse</option><option value="LU">🇱🇺 Luxembourg</option>
+            <option value="DE">🇩🇪 Allemagne</option><option value="ES">🇪🇸 Espagne</option>
+            <option value="IT">🇮🇹 Italie</option><option value="PT">🇵🇹 Portugal</option>
+            <option value="NL">🇳🇱 Pays-Bas</option><option value="GB">🇬🇧 Royaume-Uni</option>
+            <option value="IE">🇮🇪 Irlande</option><option value="AT">🇦🇹 Autriche</option>
+            <option value="PL">🇵🇱 Pologne</option><option value="SE">🇸🇪 Suède</option>
+            <option value="NO">🇳🇴 Norvège</option><option value="DK">🇩🇰 Danemark</option>
+            <option value="FI">🇫🇮 Finlande</option><option value="CZ">🇨🇿 République tchèque</option>
+            <option value="RO">🇷🇴 Roumanie</option><option value="BG">🇧🇬 Bulgarie</option>
+            <option value="GR">🇬🇷 Grèce</option><option value="HR">🇭🇷 Croatie</option>
+            <option value="HU">🇭🇺 Hongrie</option><option value="SK">🇸🇰 Slovaquie</option>
+            <option value="SI">🇸🇮 Slovénie</option><option value="EE">🇪🇪 Estonie</option>
+            <option value="LV">🇱🇻 Lettonie</option><option value="LT">🇱🇹 Lituanie</option>
+            <option value="MT">🇲🇹 Malte</option><option value="CY">🇨🇾 Chypre</option>
+            <option value="LI">🇱🇮 Liechtenstein</option>
+          </optgroup>
+          <optgroup label="── Afrique ──">
+            <option value="MA">🇲🇦 Maroc</option><option value="SN">🇸🇳 Sénégal</option>
+            <option value="CI">🇨🇮 Côte d'Ivoire</option><option value="GH">🇬🇭 Ghana</option>
+            <option value="NG">🇳🇬 Nigeria</option><option value="KE">🇰🇪 Kenya</option>
+            <option value="ZA">🇿🇦 Afrique du Sud</option><option value="EG">🇪🇬 Égypte</option>
+            <option value="RW">🇷🇼 Rwanda</option><option value="TZ">🇹🇿 Tanzanie</option>
+            <option value="UG">🇺🇬 Ouganda</option>
+          </optgroup>
+          <optgroup label="── Amériques ──">
+            <option value="US">🇺🇸 États-Unis</option><option value="CA">🇨🇦 Canada</option>
+            <option value="MX">🇲🇽 Mexique</option><option value="BR">🇧🇷 Brésil</option>
+          </optgroup>
+          <optgroup label="── Moyen-Orient &amp; Asie-Pacifique ──">
+            <option value="AE">🇦🇪 Émirats arabes unis</option><option value="SG">🇸🇬 Singapour</option>
+            <option value="HK">🇭🇰 Hong Kong</option><option value="AU">🇦🇺 Australie</option>
+            <option value="NZ">🇳🇿 Nouvelle-Zélande</option><option value="JP">🇯🇵 Japon</option>
+            <option value="IN">🇮🇳 Inde</option><option value="MY">🇲🇾 Malaisie</option>
+            <option value="TH">🇹🇭 Thaïlande</option><option value="ID">🇮🇩 Indonésie</option>
+          </optgroup>
+        </select>
+      </div>
+      <div class="frm-group">
+        <label for="company" class="frm-label">Entreprise <span style="color:var(--t3);font-weight:400;">(optionnel)</span></label>
+        <input type="text" id="company" name="company" class="frm-input" placeholder="Nom de votre entreprise ou marque">
+      </div>
+      <div class="wiz-btn-row wiz-btn-row-end">
+        <button type="button" onclick="goFromStep1()" class="btn-primary">Suivant <i class="fa-solid fa-arrow-right" style="font-size:10px;"></i></button>
+      </div>
+    </div>
 
-    <script src="config.js"></script>
-    <script src="partner-auth.js"></script>
-    <script>
-        // Verifier si deja connecte
-        if (isPartnerAuthenticated()) {
-            window.location.href = 'partner-dashboard.html';
+    <!-- ── ÉTAPE 2 : ACTIVITÉ ── -->
+    <div class="wiz-step" data-step="2">
+      <div class="wiz-step-header">
+        <span class="wiz-eyebrow">Étape 2 sur 7</span>
+        <h2 class="wiz-title">Votre activité</h2>
+      </div>
+      <div class="frm-group">
+        <label for="partner_type" class="frm-label">Catégorie</label>
+        <select id="partner_type" name="partner_type" class="frm-select" onchange="document.getElementById('partner_type_other_wrap').style.display=(this.value==='other')?'block':'none'">
+          <option value="">Choisir une catégorie…</option>
+          <option value="photographer">Photographe</option>
+          <option value="videographer">Vidéaste</option>
+          <option value="marketer">Marketeur</option>
+          <option value="media">Médias</option>
+          <option value="community_manager">Community Manager</option>
+          <option value="graphiste">Graphiste</option>
+          <option value="developpeur_web">Développeur Web</option>
+          <option value="pilote_drone">Pilote Drone</option>
+          <option value="consultant">Consultant</option>
+          <option value="coworking">Espace Coworking</option>
+          <option value="animateur_evenementiel">Animateur / Événementiel</option>
+          <option value="influencer">Influenceur / Influenceuse</option>
+          <option value="other">Autre</option>
+        </select>
+      </div>
+      <div id="partner_type_other_wrap" style="display:none;" class="frm-group">
+        <label for="partner_type_other" class="frm-label">Précisez votre profil</label>
+        <input type="text" id="partner_type_other" name="partner_type_other" class="frm-input" placeholder="Ex : Wedding planner, Coach sportif…">
+      </div>
+      <div class="wiz-btn-row">
+        <button type="button" onclick="showStep(1)" class="btn-secondary"><i class="fa-solid fa-chevron-left" style="font-size:10px;"></i> Précédent</button>
+        <button type="button" id="submitBtn" onclick="submitStep2()" class="btn-primary">Créer mon compte <i class="fa-solid fa-arrow-right" style="font-size:10px;"></i></button>
+      </div>
+    </div>
+
+    <!-- ── ÉTAPE 3 : CONTRAT ── -->
+    <div class="wiz-step" data-step="3">
+      <div class="wiz-step-header">
+        <span class="wiz-eyebrow">Étape 3 sur 7</span>
+        <h2 class="wiz-title">Contrat de partenariat</h2>
+      </div>
+      <div class="contract-scroll">
+        <p><strong style="color:var(--t1);">Conditions de partenariat FA GENESIS</strong></p>
+        <p>FA GENESIS agit comme plateforme d'intermédiation entre les partenaires/influenceurs et les clients, sur le même principe que Deliveroo ou Uber Eats avec les restaurants : elle met en relation, sécurise le paiement et assure la visibilité du partenaire, en contrepartie d'une commission sur chaque prestation réalisée.</p>
+        <p><strong style="color:var(--t1);">1. Commission.</strong> FA GENESIS prélève une commission de <strong style="color:var(--orange);">15 %</strong> sur le montant TTC de chaque prestation réservée et payée via la plateforme. Le partenaire perçoit le solde, soit 85 % du montant de la prestation.</p>
+        <p><strong style="color:var(--t1);">2. Versement.</strong> Le montant dû au partenaire est calculé automatiquement après chaque paiement du client et versé via le moyen de paiement renseigné dans son espace partenaire (PayPal ou virement bancaire / IBAN).</p>
+        <p><strong style="color:var(--t1);">3. Statut indépendant.</strong> Le partenaire intervient en tant que professionnel indépendant et reste seul responsable de ses obligations fiscales, sociales et légales.</p>
+        <p><strong style="color:var(--t1);">4. Durée et résiliation.</strong> Ce contrat prend effet à la signature et reste valable tant que le compte partenaire est actif. Le partenaire peut demander la clôture à tout moment.</p>
+        <p style="margin-bottom:0;"><strong style="color:var(--t1);">5. Acceptation.</strong> La signature électronique ci-dessous vaut acceptation pleine et entière des présentes conditions.</p>
+      </div>
+      <div class="frm-check">
+        <input type="checkbox" id="contractAcceptCheckbox">
+        <label for="contractAcceptCheckbox">Je certifie avoir lu et j'accepte les conditions de partenariat, notamment la commission de <strong style="color:var(--orange);">15 %</strong> prélevée par FA GENESIS sur chaque prestation réalisée.</label>
+      </div>
+      <div class="frm-group">
+        <label for="contractSignatureName" class="frm-label">Signature électronique (nom complet)</label>
+        <input type="text" id="contractSignatureName" class="frm-input" placeholder="Prénom Nom">
+      </div>
+      <div id="contractMessage" style="display:none;margin-bottom:12px;"></div>
+      <div class="wiz-btn-row">
+        <button type="button" onclick="showStep(2)" class="btn-secondary"><i class="fa-solid fa-chevron-left" style="font-size:10px;"></i> Précédent</button>
+        <button type="button" id="contractSignBtn" onclick="submitContractStep()" class="btn-primary">Signer et continuer <i class="fa-solid fa-signature" style="font-size:11px;"></i></button>
+      </div>
+    </div>
+
+    <!-- ── ÉTAPE 4 : PROFIL PRO ── -->
+    <div class="wiz-step" data-step="4">
+      <div class="wiz-step-header">
+        <span class="wiz-eyebrow">Étape 4 sur 7</span>
+        <h2 class="wiz-title">Profil professionnel</h2>
+      </div>
+      <div class="frm-row" style="margin-bottom:24px;">
+        <div>
+          <label class="frm-label">Photo de profil</label>
+          <div class="file-upload-row">
+            <img id="step3PhotoPreview" alt="" class="file-preview-img">
+            <button type="button" onclick="document.getElementById('step3PhotoInput').click()" class="file-upload-btn"><i class="fa-solid fa-camera" style="margin-right:6px;"></i>Choisir</button>
+            <input type="file" id="step3PhotoInput" accept="image/*" style="display:none">
+          </div>
+        </div>
+        <div>
+          <label class="frm-label">Logo <span style="color:var(--t3);font-weight:400;">(optionnel)</span></label>
+          <div class="file-upload-row">
+            <img id="step3LogoPreview" alt="" class="file-preview-img">
+            <button type="button" onclick="document.getElementById('step3LogoInput').click()" class="file-upload-btn"><i class="fa-solid fa-image" style="margin-right:6px;"></i>Choisir</button>
+            <input type="file" id="step3LogoInput" accept="image/*" style="display:none">
+          </div>
+        </div>
+      </div>
+      <div class="frm-group">
+        <label for="step3Bio" class="frm-label">Description / Bio</label>
+        <textarea id="step3Bio" class="frm-textarea" placeholder="Présentez votre activité, votre expertise, ce qui vous rend unique…"></textarea>
+      </div>
+      <div class="frm-row">
+        <div>
+          <label for="step3City" class="frm-label">Ville</label>
+          <input type="text" id="step3City" class="frm-input" placeholder="Paris">
+        </div>
+        <div>
+          <label for="step3InterventionZone" class="frm-label">Zone d'intervention</label>
+          <input type="text" id="step3InterventionZone" class="frm-input" placeholder="Île-de-France, national…">
+        </div>
+      </div>
+      <span class="wiz-section-title">Réseaux sociaux</span>
+      <div class="frm-row">
+        <div>
+          <label for="step3Instagram" class="frm-label">Instagram</label>
+          <input type="text" id="step3Instagram" class="frm-input" placeholder="@votrecompte">
+        </div>
+        <div>
+          <label for="step3Tiktok" class="frm-label">TikTok</label>
+          <input type="text" id="step3Tiktok" class="frm-input" placeholder="@votrecompte">
+        </div>
+        <div>
+          <label for="step3Linkedin" class="frm-label">LinkedIn</label>
+          <input type="text" id="step3Linkedin" class="frm-input" placeholder="linkedin.com/in/…">
+        </div>
+        <div>
+          <label for="step3Website" class="frm-label">Site web</label>
+          <input type="text" id="step3Website" class="frm-input" placeholder="https://…">
+        </div>
+      </div>
+      <span class="wiz-section-title">RIB — pour recevoir vos paiements <span style="font-family:var(--font-b);font-weight:400;text-transform:none;letter-spacing:0;color:var(--t3);font-size:10px;">(optionnel, modifiable plus tard)</span></span>
+      <div class="frm-group">
+        <label for="step3RibTitulaire" class="frm-label">Titulaire du compte</label>
+        <input type="text" id="step3RibTitulaire" class="frm-input" placeholder="Nom du titulaire">
+      </div>
+      <div class="frm-row">
+        <div>
+          <label for="step3RibIban" class="frm-label">IBAN</label>
+          <input type="text" id="step3RibIban" maxlength="34" style="text-transform:uppercase;" class="frm-input" placeholder="FR76 XXXX…">
+        </div>
+        <div>
+          <label for="step3RibBic" class="frm-label">BIC / SWIFT</label>
+          <input type="text" id="step3RibBic" maxlength="11" style="text-transform:uppercase;" class="frm-input" placeholder="XXXXXXXX">
+        </div>
+      </div>
+      <div id="step3Message" style="display:none;margin-bottom:12px;"></div>
+      <div class="wiz-btn-row">
+        <button type="button" onclick="showStep(3)" class="btn-secondary"><i class="fa-solid fa-chevron-left" style="font-size:10px;"></i> Précédent</button>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <button type="button" onclick="skipToStep(5)" class="btn-skip">Passer cette étape →</button>
+          <button type="button" id="step3NextBtn" onclick="submitStep3()" class="btn-primary">Suivant <i class="fa-solid fa-arrow-right" style="font-size:10px;"></i></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── ÉTAPE 5 : PORTFOLIO ── -->
+    <div class="wiz-step" data-step="5">
+      <div class="wiz-step-header">
+        <span class="wiz-eyebrow">Étape 5 sur 7</span>
+        <h2 class="wiz-title">Portfolio</h2>
+      </div>
+      <p class="frm-hint" style="margin-bottom:20px;font-size:13px;color:var(--t2);">Ajoutez vos plus belles réalisations (photos ou vidéos) pour valoriser votre profil.</p>
+      <div id="portfolioItemsContainer"></div>
+      <button type="button" onclick="addWizardPortfolioItem()" class="add-item-btn">
+        <i class="fa-solid fa-plus"></i> Ajouter une réalisation
+      </button>
+      <div id="step4Message" style="display:none;margin-top:12px;"></div>
+      <div class="wiz-btn-row">
+        <button type="button" onclick="showStep(4)" class="btn-secondary"><i class="fa-solid fa-chevron-left" style="font-size:10px;"></i> Précédent</button>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <button type="button" onclick="skipToStep(6)" class="btn-skip">Passer cette étape →</button>
+          <button type="button" id="step4NextBtn" onclick="submitStep4()" class="btn-primary">Suivant <i class="fa-solid fa-arrow-right" style="font-size:10px;"></i></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── ÉTAPE 6 : TARIFS ── -->
+    <div class="wiz-step" data-step="6">
+      <div class="wiz-step-header">
+        <span class="wiz-eyebrow">Étape 6 sur 7</span>
+        <h2 class="wiz-title">Vos tarifs</h2>
+      </div>
+      <p class="frm-hint" style="margin-bottom:24px;font-size:13px;color:var(--t2);">Définissez vos offres par cible client. Vous pourrez les modifier à tout moment depuis votre tableau de bord.</p>
+
+      <span class="wiz-section-title">Offre Étudiant</span>
+      <div id="tarifsEtudiantContainer"></div>
+      <button type="button" onclick="addWizardTarifItem('tarifsEtudiantContainer')" class="add-item-btn"><i class="fa-solid fa-plus"></i> Ajouter une offre</button>
+
+      <span class="wiz-section-title" style="margin-top:28px;">Offre Particulier</span>
+      <div id="tarifsParticulierContainer"></div>
+      <button type="button" onclick="addWizardTarifItem('tarifsParticulierContainer')" class="add-item-btn"><i class="fa-solid fa-plus"></i> Ajouter une offre</button>
+
+      <span class="wiz-section-title" style="margin-top:28px;">Offre Entreprise</span>
+      <div id="tarifsEntrepriseContainer"></div>
+      <button type="button" onclick="addWizardTarifItem('tarifsEntrepriseContainer')" class="add-item-btn"><i class="fa-solid fa-plus"></i> Ajouter une offre</button>
+
+      <div id="step5Message" style="display:none;margin-top:12px;"></div>
+      <div class="wiz-btn-row">
+        <button type="button" onclick="showStep(5)" class="btn-secondary"><i class="fa-solid fa-chevron-left" style="font-size:10px;"></i> Précédent</button>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <button type="button" onclick="skipToStep(7)" class="btn-skip">Passer cette étape →</button>
+          <button type="button" id="step5NextBtn" onclick="submitStep5()" class="btn-primary">Suivant <i class="fa-solid fa-arrow-right" style="font-size:10px;"></i></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── ÉTAPE 7 : VALIDATION ── -->
+    <div class="wiz-step" data-step="7">
+      <div class="wiz-success">
+        <div class="wiz-success-icon"><i class="fa-solid fa-circle-check"></i></div>
+        <h2 class="wiz-title" style="margin-bottom:14px;">Candidature envoyée !</h2>
+        <p style="font-size:14px;color:var(--t2);line-height:1.7;max-width:440px;margin:0 auto 28px;">Votre candidature a bien été reçue. Notre équipe va vérifier votre profil avant sa publication sur la plateforme FA GENESIS. Vous recevrez une notification dès validation.</p>
+        <button type="button" onclick="window.location.href='partner-dashboard.html'" class="btn-primary btn-primary-gold" style="margin:0 auto;">
+          Accéder à mon tableau de bord <i class="fa-solid fa-arrow-right" style="font-size:10px;"></i>
+        </button>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<p class="reg-footer">Déjà partenaire ? <a href="partner-login.html">Se connecter →</a></p>
+
+<script src="config.js"></script>
+<script src="partner-auth.js"></script>
+<script>
+    if (typeof isPartnerAuthenticated === 'function' && isPartnerAuthenticated()) {
+        window.location.href = 'partner-dashboard.html';
+    }
+
+    var WIZARD_STEP_COUNT = 7;
+    var step3PhotoData = '';
+    var step3LogoData = '';
+
+    function renderWizardProgress(step) {
+        var el = document.getElementById('wizardProgress');
+        if (!el) return;
+        var html = '';
+        for (var i = 1; i <= WIZARD_STEP_COUNT; i++) {
+            if (i > 1) {
+                html += '<div class="wiz-prog-step"><div class="wiz-prog-line' + (i <= step ? ' done' : '') + '"></div></div>';
+            }
+            html += '<div class="wiz-prog-step"><div class="wiz-prog-dot' + (i < step ? ' done' : (i === step ? ' active' : '')) + '"></div></div>';
+        }
+        el.innerHTML = html;
+    }
+
+    function showStep(n) {
+        var steps = document.querySelectorAll('.wiz-step');
+        for (var i = 0; i < steps.length; i++) {
+            var s = parseInt(steps[i].getAttribute('data-step'), 10);
+            steps[i].classList.toggle('active', s === n);
+        }
+        renderWizardProgress(n);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function skipToStep(n) { showStep(n); }
+
+    function showWizardError(message) {
+        var errorMessage = document.getElementById('errorMessage');
+        if (!errorMessage) return;
+        errorMessage.innerHTML = '<i class="fa-solid fa-triangle-exclamation" style="margin-right:6px;"></i>' + message;
+        errorMessage.classList.add('show');
+        setTimeout(function() { errorMessage.classList.remove('show'); }, 5000);
+    }
+
+    function goFromStep1() {
+        var prenom = document.getElementById('prenom').value.trim();
+        var nom = document.getElementById('nom').value.trim();
+        var email = document.getElementById('email').value.trim();
+        var password = document.getElementById('password').value;
+        var country = document.getElementById('country').value;
+
+        if (!prenom || !nom || !email || !password || password.length < 6) {
+            showWizardError('Merci de renseigner prénom, nom, email et un mot de passe de 6 caractères minimum.');
+            return;
+        }
+        if (!country) {
+            showWizardError('Merci de sélectionner votre pays de résidence.');
+            return;
+        }
+        showStep(2);
+    }
+
+    async function submitStep2() {
+        var errorMessage = document.getElementById('errorMessage');
+        var infoMessage = document.getElementById('infoMessage');
+        var submitBtn = document.getElementById('submitBtn');
+        errorMessage.classList.remove('show');
+
+        var partnerType = document.getElementById('partner_type').value;
+        if (!partnerType) { showWizardError('Merci de choisir une catégorie.'); return; }
+        var partnerTypeOther = document.getElementById('partner_type_other').value.trim();
+        if (partnerType === 'other' && partnerTypeOther.length < 2) {
+            showWizardError('Merci de préciser votre profil pour la catégorie "Autre".');
+            return;
         }
 
-        var WIZARD_STEP_COUNT = 7;
-        var step3PhotoData = '';
-        var step3LogoData = '';
+        var registerData = {
+            prenom: document.getElementById('prenom').value.trim(),
+            nom: document.getElementById('nom').value.trim(),
+            partner_type: partnerType,
+            partner_type_other: partnerTypeOther,
+            company: document.getElementById('company').value.trim(),
+            email: document.getElementById('email').value.trim(),
+            telephone: document.getElementById('telephone').value.trim(),
+            password: document.getElementById('password').value,
+            country: document.getElementById('country').value
+        };
 
-        function renderWizardProgress(step) {
-            var el = document.getElementById('wizardProgress');
-            if (!el) return;
-            var html = '';
-            for (var i = 1; i <= WIZARD_STEP_COUNT; i++) {
-                html += '<div style="width:32px;height:8px;border:2px solid black;background:' + (i <= step ? 'var(--genesis-yellow)' : 'white') + ';"></div>';
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin" style="font-size:12px;"></i> Création en cours…';
+
+        var result = await partnerRegister(registerData);
+
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = 'Créer mon compte <i class="fa-solid fa-arrow-right" style="font-size:10px;"></i>';
+
+        if (result.success) {
+            infoMessage.classList.add('show');
+            showStep(3);
+        } else {
+            showWizardError(result.message);
+        }
+    }
+
+    async function submitContractStep() {
+        var msgEl = document.getElementById('contractMessage');
+        var btnEl = document.getElementById('contractSignBtn');
+        var accepted = document.getElementById('contractAcceptCheckbox').checked;
+        var signatureName = document.getElementById('contractSignatureName').value.trim();
+
+        if (!accepted || signatureName.length < 2) {
+            if (msgEl) {
+                msgEl.style.display = 'block';
+                msgEl.innerHTML = '<div class="reg-banner reg-banner-err show"><i class="fa-solid fa-triangle-exclamation" style="margin-right:6px;"></i>Merci de cocher la case et de saisir votre nom complet pour signer.</div>';
             }
-            el.innerHTML = html;
+            return;
         }
 
-        function showStep(n) {
-            var steps = document.querySelectorAll('.wizard-step');
-            for (var i = 0; i < steps.length; i++) {
-                steps[i].style.display = (parseInt(steps[i].getAttribute('data-step'), 10) === n) ? 'block' : 'none';
+        if (btnEl) { btnEl.disabled = true; btnEl.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin" style="font-size:12px;"></i> Signature…'; }
+
+        try {
+            var response = await partnerAuthenticatedFetch(PARTNER_API_BASE_URL + '/api/partner/contract/sign', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ accepted: true, signatureName: signatureName })
+            });
+            var data = await response.json();
+            if (response.ok && data.success) {
+                showStep(4);
+            } else if (msgEl) {
+                msgEl.style.display = 'block';
+                msgEl.innerHTML = '<div class="reg-banner reg-banner-err show"><i class="fa-solid fa-triangle-exclamation" style="margin-right:6px;"></i>' + (data.error || 'Erreur lors de la signature') + '</div>';
             }
-            renderWizardProgress(n);
-            window.scrollTo(0, 0);
+        } catch (error) {
+            if (msgEl) {
+                msgEl.style.display = 'block';
+                msgEl.innerHTML = '<div class="reg-banner reg-banner-err show"><i class="fa-solid fa-triangle-exclamation" style="margin-right:6px;"></i>Erreur de connexion au serveur</div>';
+            }
+        } finally {
+            if (btnEl) { btnEl.disabled = false; btnEl.innerHTML = 'Signer et continuer <i class="fa-solid fa-signature" style="font-size:11px;"></i>'; }
+        }
+    }
+
+    document.getElementById('step3PhotoInput').addEventListener('change', async function(e) {
+        var file = e.target.files && e.target.files[0];
+        if (!file) return;
+        step3PhotoData = await fileToBase64(file);
+        var preview = document.getElementById('step3PhotoPreview');
+        if (preview) { preview.src = step3PhotoData; preview.style.display = 'inline-block'; }
+    });
+
+    document.getElementById('step3LogoInput').addEventListener('change', async function(e) {
+        var file = e.target.files && e.target.files[0];
+        if (!file) return;
+        step3LogoData = await fileToBase64(file);
+        var preview = document.getElementById('step3LogoPreview');
+        if (preview) { preview.src = step3LogoData; preview.style.display = 'inline-block'; }
+    });
+
+    function fileToBase64(file) {
+        return new Promise(function(resolve, reject) {
+            var reader = new FileReader();
+            reader.onload = function() { resolve(reader.result); };
+            reader.onerror = function(error) { reject(error); };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    async function submitStep3() {
+        var msgEl = document.getElementById('step3Message');
+        var btnEl = document.getElementById('step3NextBtn');
+
+        var ribTitulaire = document.getElementById('step3RibTitulaire').value.trim();
+        var ribIban = document.getElementById('step3RibIban').value.trim().toUpperCase().replace(/\s+/g, '');
+        var ribBic = document.getElementById('step3RibBic').value.trim().toUpperCase().replace(/\s+/g, '');
+        var ribFilledCount = (ribTitulaire ? 1 : 0) + (ribIban ? 1 : 0) + (ribBic ? 1 : 0);
+        if (ribFilledCount > 0 && ribFilledCount < 3) {
+            if (msgEl) {
+                msgEl.style.display = 'block';
+                msgEl.innerHTML = '<div class="reg-banner reg-banner-err show"><i class="fa-solid fa-triangle-exclamation" style="margin-right:6px;"></i>Merci de renseigner le titulaire, l\'IBAN et le BIC, ou de laisser les 3 champs vides.</div>';
+            }
+            return;
+        }
+        if (ribFilledCount === 3 && (ribIban.length < 14 || ribBic.length < 8)) {
+            if (msgEl) {
+                msgEl.style.display = 'block';
+                msgEl.innerHTML = '<div class="reg-banner reg-banner-err show"><i class="fa-solid fa-triangle-exclamation" style="margin-right:6px;"></i>IBAN ou BIC invalide.</div>';
+            }
+            return;
         }
 
-        function skipToStep(n) {
-            showStep(n);
-        }
-
-        function showWizardError(message) {
-            var errorMessage = document.getElementById('errorMessage');
-            if (!errorMessage) return;
-            errorMessage.textContent = message;
-            errorMessage.classList.add('show');
-            setTimeout(function() { errorMessage.classList.remove('show'); }, 5000);
-        }
-
-        function goFromStep1() {
-            var prenom = document.getElementById('prenom').value.trim();
-            var nom = document.getElementById('nom').value.trim();
-            var email = document.getElementById('email').value.trim();
-            var password = document.getElementById('password').value;
-            var country = document.getElementById('country').value;
-
-            if (!prenom || !nom || !email || !password || password.length < 6) {
-                showWizardError('Merci de renseigner prénom, nom, email et un mot de passe de 6 caractères minimum.');
-                return;
+        var payload = {
+            bio: document.getElementById('step3Bio').value.trim(),
+            city: document.getElementById('step3City').value.trim(),
+            interventionZone: document.getElementById('step3InterventionZone').value.trim(),
+            social: {
+                instagram: document.getElementById('step3Instagram').value.trim(),
+                tiktok: document.getElementById('step3Tiktok').value.trim(),
+                linkedin: document.getElementById('step3Linkedin').value.trim(),
+                website: document.getElementById('step3Website').value.trim()
             }
-            if (!country) {
-                showWizardError('Merci de sélectionner votre pays de résidence.');
-                return;
-            }
-            showStep(2);
-        }
+        };
+        if (step3PhotoData) payload.photo = step3PhotoData;
+        if (step3LogoData) payload.logo = step3LogoData;
 
-        async function submitStep2() {
-            var errorMessage = document.getElementById('errorMessage');
-            var infoMessage = document.getElementById('infoMessage');
-            var submitBtn = document.getElementById('submitBtn');
-            errorMessage.classList.remove('show');
+        if (btnEl) { btnEl.disabled = true; btnEl.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin" style="font-size:12px;"></i> Enregistrement…'; }
 
-            var partnerType = document.getElementById('partner_type').value;
-            if (!partnerType) {
-                showWizardError('Merci de choisir une catégorie.');
-                return;
-            }
-            var partnerTypeOther = document.getElementById('partner_type_other').value.trim();
-            if (partnerType === 'other' && partnerTypeOther.length < 2) {
-                showWizardError('Merci de préciser votre profil pour la catégorie "Autre".');
-                return;
-            }
+        var result = await updatePartnerProfile(payload);
 
-            var registerData = {
-                prenom: document.getElementById('prenom').value.trim(),
-                nom: document.getElementById('nom').value.trim(),
-                partner_type: partnerType,
-                partner_type_other: partnerTypeOther,
-                company: document.getElementById('company').value.trim(),
-                email: document.getElementById('email').value.trim(),
-                telephone: document.getElementById('telephone').value.trim(),
-                password: document.getElementById('password').value,
-                country: document.getElementById('country').value
-            };
-
-            submitBtn.disabled = true;
-            submitBtn.textContent = 'Création en cours...';
-
-            var result = await partnerRegister(registerData);
-
-            submitBtn.disabled = false;
-            submitBtn.textContent = 'Créer mon compte';
-
-            if (result.success) {
-                infoMessage.classList.add('show');
-                showStep(3);
-            } else {
-                showWizardError(result.message);
-            }
-        }
-
-        async function submitContractStep() {
-            var msgEl = document.getElementById('contractMessage');
-            var btnEl = document.getElementById('contractSignBtn');
-            var accepted = document.getElementById('contractAcceptCheckbox').checked;
-            var signatureName = document.getElementById('contractSignatureName').value.trim();
-
-            if (!accepted || signatureName.length < 2) {
-                if (msgEl) {
-                    msgEl.style.display = 'block';
-                    msgEl.innerHTML = '<p class="font-black" style="color:#dc2626;"><i class="fas fa-exclamation-circle mr-2"></i>Merci de cocher la case d\'acceptation et de saisir votre nom complet pour signer.</p>';
-                }
-                return;
-            }
-
-            if (btnEl) { btnEl.disabled = true; btnEl.textContent = 'Signature en cours...'; }
-
+        if (result.success && ribFilledCount === 3) {
             try {
-                var response = await partnerAuthenticatedFetch(PARTNER_API_BASE_URL + '/api/partner/contract/sign', {
+                var ribResponse = await partnerAuthenticatedFetch(PARTNER_API_BASE_URL + '/api/partner/profile/set-rib', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ accepted: true, signatureName: signatureName })
+                    body: JSON.stringify({ titulaire: ribTitulaire, iban: ribIban, bic: ribBic })
                 });
-                var data = await response.json();
-
-                if (response.ok && data.success) {
-                    showStep(4);
-                } else if (msgEl) {
-                    msgEl.style.display = 'block';
-                    msgEl.innerHTML = '<p class="font-black" style="color:#dc2626;"><i class="fas fa-exclamation-circle mr-2"></i>' + (data.error || 'Erreur lors de la signature') + '</p>';
-                }
-            } catch (error) {
-                console.error('[PARTNER-REGISTER] Erreur signature contrat:', error);
-                if (msgEl) {
-                    msgEl.style.display = 'block';
-                    msgEl.innerHTML = '<p class="font-black" style="color:#dc2626;"><i class="fas fa-exclamation-circle mr-2"></i>Erreur de connexion au serveur</p>';
-                }
-            } finally {
-                if (btnEl) { btnEl.disabled = false; btnEl.textContent = 'Signer et continuer'; }
-            }
-        }
-
-        var step3PhotoInputEl = document.getElementById('step3PhotoInput');
-        if (step3PhotoInputEl) {
-            step3PhotoInputEl.addEventListener('change', async function(e) {
-                var file = e.target.files && e.target.files[0];
-                if (!file) return;
-                step3PhotoData = await fileToBase64(file);
-                var preview = document.getElementById('step3PhotoPreview');
-                if (preview) { preview.src = step3PhotoData; preview.style.display = 'inline-block'; }
-            });
-        }
-
-        var step3LogoInputEl = document.getElementById('step3LogoInput');
-        if (step3LogoInputEl) {
-            step3LogoInputEl.addEventListener('change', async function(e) {
-                var file = e.target.files && e.target.files[0];
-                if (!file) return;
-                step3LogoData = await fileToBase64(file);
-                var preview = document.getElementById('step3LogoPreview');
-                if (preview) { preview.src = step3LogoData; preview.style.display = 'inline-block'; }
-            });
-        }
-
-        function fileToBase64(file) {
-            return new Promise(function(resolve, reject) {
-                var reader = new FileReader();
-                reader.onload = function() { resolve(reader.result); };
-                reader.onerror = function(error) { reject(error); };
-                reader.readAsDataURL(file);
-            });
-        }
-
-        async function submitStep3() {
-            var msgEl = document.getElementById('step3Message');
-            var btnEl = document.getElementById('step3NextBtn');
-
-            var ribTitulaire = document.getElementById('step3RibTitulaire').value.trim();
-            var ribIban = document.getElementById('step3RibIban').value.trim().toUpperCase().replace(/\s+/g, '');
-            var ribBic = document.getElementById('step3RibBic').value.trim().toUpperCase().replace(/\s+/g, '');
-            var ribFilledCount = (ribTitulaire ? 1 : 0) + (ribIban ? 1 : 0) + (ribBic ? 1 : 0);
-            if (ribFilledCount > 0 && ribFilledCount < 3) {
-                if (msgEl) {
-                    msgEl.style.display = 'block';
-                    msgEl.innerHTML = '<p class="font-black" style="color:#dc2626;"><i class="fas fa-exclamation-circle mr-2"></i>Merci de renseigner le titulaire, l\'IBAN et le BIC, ou de laisser les 3 champs vides.</p>';
-                }
-                return;
-            }
-            if (ribFilledCount === 3 && (ribIban.length < 14 || ribBic.length < 8)) {
-                if (msgEl) {
-                    msgEl.style.display = 'block';
-                    msgEl.innerHTML = '<p class="font-black" style="color:#dc2626;"><i class="fas fa-exclamation-circle mr-2"></i>IBAN ou BIC invalide.</p>';
-                }
-                return;
-            }
-
-            var payload = {
-                bio: document.getElementById('step3Bio').value.trim(),
-                city: document.getElementById('step3City').value.trim(),
-                interventionZone: document.getElementById('step3InterventionZone').value.trim(),
-                social: {
-                    instagram: document.getElementById('step3Instagram').value.trim(),
-                    tiktok: document.getElementById('step3Tiktok').value.trim(),
-                    linkedin: document.getElementById('step3Linkedin').value.trim(),
-                    website: document.getElementById('step3Website').value.trim()
-                }
-            };
-            if (step3PhotoData) payload.photo = step3PhotoData;
-            if (step3LogoData) payload.logo = step3LogoData;
-
-            if (btnEl) { btnEl.disabled = true; btnEl.textContent = 'Enregistrement...'; }
-
-            var result = await updatePartnerProfile(payload);
-
-            if (result.success && ribFilledCount === 3) {
-                try {
-                    var ribResponse = await partnerAuthenticatedFetch(PARTNER_API_BASE_URL + '/api/partner/profile/set-rib', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ titulaire: ribTitulaire, iban: ribIban, bic: ribBic })
-                    });
-                    var ribData = await ribResponse.json();
-                    if (!ribResponse.ok || !ribData.success) {
-                        if (btnEl) { btnEl.disabled = false; btnEl.textContent = 'Suivant'; }
-                        if (msgEl) {
-                            msgEl.style.display = 'block';
-                            msgEl.innerHTML = '<p class="font-black" style="color:#dc2626;"><i class="fas fa-exclamation-circle mr-2"></i>' + (ribData.error || 'Erreur lors de l\'enregistrement du RIB') + '</p>';
-                        }
-                        return;
-                    }
-                } catch (error) {
-                    console.error('[PARTNER-REGISTER] Erreur RIB:', error);
-                    if (btnEl) { btnEl.disabled = false; btnEl.textContent = 'Suivant'; }
+                var ribData = await ribResponse.json();
+                if (!ribResponse.ok || !ribData.success) {
+                    if (btnEl) { btnEl.disabled = false; btnEl.innerHTML = 'Suivant <i class="fa-solid fa-arrow-right" style="font-size:10px;"></i>'; }
                     if (msgEl) {
                         msgEl.style.display = 'block';
-                        msgEl.innerHTML = '<p class="font-black" style="color:#dc2626;"><i class="fas fa-exclamation-circle mr-2"></i>Erreur de connexion au serveur (RIB)</p>';
+                        msgEl.innerHTML = '<div class="reg-banner reg-banner-err show"><i class="fa-solid fa-triangle-exclamation" style="margin-right:6px;"></i>' + (ribData.error || 'Erreur lors de l\'enregistrement du RIB') + '</div>';
                     }
                     return;
                 }
+            } catch (error) {
+                if (btnEl) { btnEl.disabled = false; btnEl.innerHTML = 'Suivant <i class="fa-solid fa-arrow-right" style="font-size:10px;"></i>'; }
+                if (msgEl) {
+                    msgEl.style.display = 'block';
+                    msgEl.innerHTML = '<div class="reg-banner reg-banner-err show"><i class="fa-solid fa-triangle-exclamation" style="margin-right:6px;"></i>Erreur de connexion au serveur (RIB)</div>';
+                }
+                return;
             }
+        }
 
-            if (btnEl) { btnEl.disabled = false; btnEl.textContent = 'Suivant'; }
+        if (btnEl) { btnEl.disabled = false; btnEl.innerHTML = 'Suivant <i class="fa-solid fa-arrow-right" style="font-size:10px;"></i>'; }
+        if (result.success) {
+            showStep(5);
+        } else if (msgEl) {
+            msgEl.style.display = 'block';
+            msgEl.innerHTML = '<div class="reg-banner reg-banner-err show"><i class="fa-solid fa-triangle-exclamation" style="margin-right:6px;"></i>' + (result.message || 'Erreur lors de l\'enregistrement') + '</div>';
+        }
+    }
 
-            if (result.success) {
-                showStep(5);
+    function renderWizardPortfolioItemRow(index, item) {
+        var el = document.createElement('div');
+        el.className = 'item-row';
+        el.setAttribute('data-index', index);
+        el.innerHTML =
+            '<div class="item-row-grid item-row-grid-5">' +
+                '<div><label class="frm-label" style="font-size:10px;">Type</label>' +
+                '<select class="frm-select portfolio-item-type" style="padding:10px 14px;font-size:13px;">' +
+                    '<option value="photo"' + (item.type === 'video' ? '' : ' selected') + '>Photo</option>' +
+                    '<option value="video"' + (item.type === 'video' ? ' selected' : '') + '>Vidéo</option>' +
+                '</select></div>' +
+                '<div><label class="frm-label" style="font-size:10px;">URL</label>' +
+                '<input type="text" class="frm-input portfolio-item-url" placeholder="https://… ou YouTube/Vimeo" value="' + (item.url || '') + '" style="padding:10px 14px;font-size:13px;"></div>' +
+                '<div><label class="frm-label" style="font-size:10px;">Légende</label>' +
+                '<input type="text" class="frm-input portfolio-item-caption" placeholder="Légende (optionnel)" value="' + (item.caption || '') + '" style="padding:10px 14px;font-size:13px;"></div>' +
+                '<div style="display:flex;align-items:flex-end;">' +
+                '<button type="button" onclick="removeWizardPortfolioItem(' + index + ')" class="item-del-btn" title="Supprimer"><i class="fa-solid fa-trash-can"></i></button></div>' +
+            '</div>';
+        return el;
+    }
+
+    function addWizardPortfolioItem() {
+        var container = document.getElementById('portfolioItemsContainer');
+        if (!container) return;
+        var rows = container.querySelectorAll('.item-row');
+        container.appendChild(renderWizardPortfolioItemRow(rows.length, { type: 'photo', url: '', caption: '' }));
+    }
+
+    function removeWizardPortfolioItem(index) {
+        var container = document.getElementById('portfolioItemsContainer');
+        if (!container) return;
+        var rows = container.querySelectorAll('.item-row');
+        if (rows[index]) rows[index].remove();
+    }
+
+    async function submitStep4() {
+        var container = document.getElementById('portfolioItemsContainer');
+        var msgEl = document.getElementById('step4Message');
+        var btnEl = document.getElementById('step4NextBtn');
+        if (!container) { showStep(6); return; }
+
+        var rows = container.querySelectorAll('.item-row');
+        var portfolio = [];
+        for (var i = 0; i < rows.length; i++) {
+            var typeEl = rows[i].querySelector('.portfolio-item-type');
+            var urlEl = rows[i].querySelector('.portfolio-item-url');
+            var captionEl = rows[i].querySelector('.portfolio-item-caption');
+            var url = urlEl ? urlEl.value.trim() : '';
+            if (!url) continue;
+            portfolio.push({ type: typeEl ? typeEl.value : 'photo', url: url, caption: captionEl ? captionEl.value.trim() : '' });
+        }
+        if (portfolio.length === 0) { showStep(6); return; }
+
+        if (btnEl) { btnEl.disabled = true; btnEl.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin" style="font-size:12px;"></i> Enregistrement…'; }
+
+        try {
+            var response = await partnerAuthenticatedFetch(PARTNER_API_BASE_URL + '/api/partner/portfolio', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ portfolio: portfolio })
+            });
+            var data = await response.json();
+            if (response.ok && data.success) {
+                showStep(6);
             } else if (msgEl) {
                 msgEl.style.display = 'block';
-                msgEl.innerHTML = '<p class="font-black" style="color:#dc2626;"><i class="fas fa-exclamation-circle mr-2"></i>' + (result.message || 'Erreur lors de l\'enregistrement') + '</p>';
+                msgEl.innerHTML = '<div class="reg-banner reg-banner-err show"><i class="fa-solid fa-triangle-exclamation" style="margin-right:6px;"></i>' + (data.error || 'Erreur lors de l\'enregistrement') + '</div>';
             }
+        } catch (error) {
+            if (msgEl) {
+                msgEl.style.display = 'block';
+                msgEl.innerHTML = '<div class="reg-banner reg-banner-err show"><i class="fa-solid fa-triangle-exclamation" style="margin-right:6px;"></i>Erreur de connexion au serveur</div>';
+            }
+        } finally {
+            if (btnEl) { btnEl.disabled = false; btnEl.innerHTML = 'Suivant <i class="fa-solid fa-arrow-right" style="font-size:10px;"></i>'; }
         }
+    }
 
-        function renderWizardPortfolioItemRow(index, item) {
-            return '<div class="proposal-item-row mb-3 p-3 bg-gray-50 border-2 border-black" data-index="' + index + '">' +
-                '<div class="grid grid-cols-1 md:grid-cols-12 gap-2">' +
-                    '<div class="md:col-span-2">' +
-                        '<label class="block text-xs font-black uppercase mb-1">Type</label>' +
-                        '<select class="portfolio-item-type">' +
-                            '<option value="photo"' + (item.type === 'video' ? '' : ' selected') + '>Photo</option>' +
-                            '<option value="video"' + (item.type === 'video' ? ' selected' : '') + '>Vidéo</option>' +
-                        '</select>' +
-                    '</div>' +
-                    '<div class="md:col-span-5">' +
-                        '<label class="block text-xs font-black uppercase mb-1">URL (image ou lien YouTube/Vimeo)</label>' +
-                        '<input type="text" class="portfolio-item-url" placeholder="https://..." value="' + (item.url || '') + '">' +
-                    '</div>' +
-                    '<div class="md:col-span-3">' +
-                        '<label class="block text-xs font-black uppercase mb-1">Légende</label>' +
-                        '<input type="text" class="portfolio-item-caption" placeholder="Légende (optionnel)" value="' + (item.caption || '') + '">' +
-                    '</div>' +
-                    '<div class="md:col-span-2 flex items-end">' +
-                        '<button type="button" onclick="removeWizardPortfolioItem(' + index + ')" class="text-red-600 font-black hover:opacity-70" title="Supprimer">' +
-                            '<i class="fas fa-trash"></i>' +
-                        '</button>' +
-                    '</div>' +
-                '</div>' +
+    function renderWizardTarifItemRow(index, service) {
+        var el = document.createElement('div');
+        el.className = 'item-row';
+        el.setAttribute('data-index', index);
+        el.innerHTML =
+            '<div class="item-row-grid item-row-grid-4">' +
+                '<div><label class="frm-label" style="font-size:10px;">Prestation</label>' +
+                '<input type="text" class="frm-input service-item-label" placeholder="Ex: Shooting corporate" value="' + (service.label || '') + '" style="padding:10px 14px;font-size:13px;"></div>' +
+                '<div><label class="frm-label" style="font-size:10px;">Description</label>' +
+                '<input type="text" class="frm-input service-item-desc" placeholder="Détails…" value="' + (service.description || '') + '" style="padding:10px 14px;font-size:13px;"></div>' +
+                '<div><label class="frm-label" style="font-size:10px;">Prix (€)</label>' +
+                '<input type="number" class="frm-input service-item-price" value="' + (service.price || 0) + '" min="0" step="0.01" style="padding:10px 14px;font-size:13px;text-align:right;"></div>' +
+                '<div style="display:flex;align-items:flex-end;">' +
+                '<button type="button" onclick="removeWizardTarifItem(this)" class="item-del-btn" title="Supprimer"><i class="fa-solid fa-trash-can"></i></button></div>' +
             '</div>';
+        return el;
+    }
+
+    function addWizardTarifItem(containerId) {
+        var container = document.getElementById(containerId);
+        if (!container) return;
+        var rows = container.querySelectorAll('.item-row');
+        container.appendChild(renderWizardTarifItemRow(rows.length, { label: '', description: '', price: 0 }));
+    }
+
+    function removeWizardTarifItem(buttonEl) {
+        var row = buttonEl.closest('.item-row');
+        if (row) row.remove();
+    }
+
+    function collectWizardTarifs(containerId, audience) {
+        var container = document.getElementById(containerId);
+        if (!container) return [];
+        var rows = container.querySelectorAll('.item-row');
+        var services = [];
+        for (var i = 0; i < rows.length; i++) {
+            var labelEl = rows[i].querySelector('.service-item-label');
+            var descEl = rows[i].querySelector('.service-item-desc');
+            var priceEl = rows[i].querySelector('.service-item-price');
+            var label = labelEl ? labelEl.value.trim() : '';
+            var price = priceEl ? parseFloat(priceEl.value) : 0;
+            if (!label || !price || price <= 0) continue;
+            services.push({ label: label, description: descEl ? descEl.value.trim() : '', price: price, active: true, audience: audience });
         }
+        return services;
+    }
 
-        function addWizardPortfolioItem() {
-            var container = document.getElementById('portfolioItemsContainer');
-            if (!container) return;
-            var rows = container.querySelectorAll('.proposal-item-row');
-            var newIndex = rows.length;
-            var wrapper = document.createElement('div');
-            wrapper.innerHTML = renderWizardPortfolioItemRow(newIndex, { type: 'photo', url: '', caption: '' });
-            container.appendChild(wrapper.firstChild);
-        }
+    async function submitStep5() {
+        var msgEl = document.getElementById('step5Message');
+        var btnEl = document.getElementById('step5NextBtn');
 
-        function removeWizardPortfolioItem(index) {
-            var container = document.getElementById('portfolioItemsContainer');
-            if (!container) return;
-            var rows = container.querySelectorAll('.proposal-item-row');
-            if (rows[index]) rows[index].remove();
-        }
+        var services = collectWizardTarifs('tarifsEtudiantContainer', 'etudiant')
+            .concat(collectWizardTarifs('tarifsParticulierContainer', 'particulier'))
+            .concat(collectWizardTarifs('tarifsEntrepriseContainer', 'entreprise'));
 
-        async function submitStep4() {
-            var container = document.getElementById('portfolioItemsContainer');
-            var msgEl = document.getElementById('step4Message');
-            var btnEl = document.getElementById('step4NextBtn');
-            if (!container) { showStep(6); return; }
+        if (services.length === 0) { showStep(7); return; }
 
-            var rows = container.querySelectorAll('.proposal-item-row');
-            var portfolio = [];
-            for (var i = 0; i < rows.length; i++) {
-                var typeEl = rows[i].querySelector('.portfolio-item-type');
-                var urlEl = rows[i].querySelector('.portfolio-item-url');
-                var captionEl = rows[i].querySelector('.portfolio-item-caption');
-                var url = urlEl ? urlEl.value.trim() : '';
-                if (!url) continue;
-                portfolio.push({
-                    type: typeEl ? typeEl.value : 'photo',
-                    url: url,
-                    caption: captionEl ? captionEl.value.trim() : ''
-                });
+        if (btnEl) { btnEl.disabled = true; btnEl.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin" style="font-size:12px;"></i> Enregistrement…'; }
+
+        try {
+            var response = await partnerAuthenticatedFetch(PARTNER_API_BASE_URL + '/api/partner/services', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ services: services })
+            });
+            var data = await response.json();
+            if (response.ok && data.success) {
+                showStep(7);
+            } else if (msgEl) {
+                msgEl.style.display = 'block';
+                msgEl.innerHTML = '<div class="reg-banner reg-banner-err show"><i class="fa-solid fa-triangle-exclamation" style="margin-right:6px;"></i>' + (data.error || 'Erreur lors de l\'enregistrement') + '</div>';
             }
-
-            if (portfolio.length === 0) { showStep(6); return; }
-
-            if (btnEl) { btnEl.disabled = true; btnEl.textContent = 'Enregistrement...'; }
-
-            try {
-                var response = await partnerAuthenticatedFetch(PARTNER_API_BASE_URL + '/api/partner/portfolio', {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ portfolio: portfolio })
-                });
-                var data = await response.json();
-
-                if (response.ok && data.success) {
-                    showStep(6);
-                } else if (msgEl) {
-                    msgEl.style.display = 'block';
-                    msgEl.innerHTML = '<p class="font-black" style="color:#dc2626;"><i class="fas fa-exclamation-circle mr-2"></i>' + (data.error || 'Erreur lors de l\'enregistrement') + '</p>';
-                }
-            } catch (error) {
-                console.error('[PARTNER-REGISTER] Erreur portfolio:', error);
-                if (msgEl) {
-                    msgEl.style.display = 'block';
-                    msgEl.innerHTML = '<p class="font-black" style="color:#dc2626;"><i class="fas fa-exclamation-circle mr-2"></i>Erreur de connexion au serveur</p>';
-                }
-            } finally {
-                if (btnEl) { btnEl.disabled = false; btnEl.textContent = 'Suivant'; }
+        } catch (error) {
+            if (msgEl) {
+                msgEl.style.display = 'block';
+                msgEl.innerHTML = '<div class="reg-banner reg-banner-err show"><i class="fa-solid fa-triangle-exclamation" style="margin-right:6px;"></i>Erreur de connexion au serveur</div>';
             }
+        } finally {
+            if (btnEl) { btnEl.disabled = false; btnEl.innerHTML = 'Suivant <i class="fa-solid fa-arrow-right" style="font-size:10px;"></i>'; }
         }
+    }
 
-        function renderWizardTarifItemRow(index, service) {
-            return '<div class="proposal-item-row mb-3 p-3 bg-gray-50 border-2 border-black" data-index="' + index + '">' +
-                '<div class="grid grid-cols-1 md:grid-cols-12 gap-2">' +
-                    '<div class="md:col-span-4">' +
-                        '<label class="block text-xs font-black uppercase mb-1">Prestation</label>' +
-                        '<input type="text" class="service-item-label" placeholder="Ex: Shooting photo corporate" value="' + (service.label || '') + '">' +
-                    '</div>' +
-                    '<div class="md:col-span-4">' +
-                        '<label class="block text-xs font-black uppercase mb-1">Description</label>' +
-                        '<input type="text" class="service-item-desc" placeholder="Détails..." value="' + (service.description || '') + '">' +
-                    '</div>' +
-                    '<div class="md:col-span-2">' +
-                        '<label class="block text-xs font-black uppercase mb-1">Prix (€)</label>' +
-                        '<input type="number" class="service-item-price text-right" value="' + (service.price || 0) + '" min="0" step="0.01">' +
-                    '</div>' +
-                    '<div class="md:col-span-2 flex items-end">' +
-                        '<button type="button" onclick="removeWizardTarifItem(this)" class="text-red-600 font-black hover:opacity-70" title="Supprimer">' +
-                            '<i class="fas fa-trash"></i>' +
-                        '</button>' +
-                    '</div>' +
-                '</div>' +
-            '</div>';
-        }
-
-        function addWizardTarifItem(containerId) {
-            var container = document.getElementById(containerId);
-            if (!container) return;
-            var rows = container.querySelectorAll('.proposal-item-row');
-            var wrapper = document.createElement('div');
-            wrapper.innerHTML = renderWizardTarifItemRow(rows.length, { label: '', description: '', price: 0 });
-            container.appendChild(wrapper.firstChild);
-        }
-
-        function removeWizardTarifItem(buttonEl) {
-            var row = buttonEl.closest('.proposal-item-row');
-            if (row) row.remove();
-        }
-
-        function collectWizardTarifs(containerId, audience) {
-            var container = document.getElementById(containerId);
-            if (!container) return [];
-            var rows = container.querySelectorAll('.proposal-item-row');
-            var services = [];
-            for (var i = 0; i < rows.length; i++) {
-                var labelEl = rows[i].querySelector('.service-item-label');
-                var descEl = rows[i].querySelector('.service-item-desc');
-                var priceEl = rows[i].querySelector('.service-item-price');
-                var label = labelEl ? labelEl.value.trim() : '';
-                var price = priceEl ? parseFloat(priceEl.value) : 0;
-                if (!label || !price || price <= 0) continue;
-                services.push({
-                    label: label,
-                    description: descEl ? descEl.value.trim() : '',
-                    price: price,
-                    active: true,
-                    audience: audience
-                });
-            }
-            return services;
-        }
-
-        async function submitStep5() {
-            var msgEl = document.getElementById('step5Message');
-            var btnEl = document.getElementById('step5NextBtn');
-
-            var services = collectWizardTarifs('tarifsEtudiantContainer', 'etudiant')
-                .concat(collectWizardTarifs('tarifsParticulierContainer', 'particulier'))
-                .concat(collectWizardTarifs('tarifsEntrepriseContainer', 'entreprise'));
-
-            if (services.length === 0) { showStep(7); return; }
-
-            if (btnEl) { btnEl.disabled = true; btnEl.textContent = 'Enregistrement...'; }
-
-            try {
-                var response = await partnerAuthenticatedFetch(PARTNER_API_BASE_URL + '/api/partner/services', {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ services: services })
-                });
-                var data = await response.json();
-
-                if (response.ok && data.success) {
-                    showStep(7);
-                } else if (msgEl) {
-                    msgEl.style.display = 'block';
-                    msgEl.innerHTML = '<p class="font-black" style="color:#dc2626;"><i class="fas fa-exclamation-circle mr-2"></i>' + (data.error || 'Erreur lors de l\'enregistrement') + '</p>';
-                }
-            } catch (error) {
-                console.error('[PARTNER-REGISTER] Erreur tarifs:', error);
-                if (msgEl) {
-                    msgEl.style.display = 'block';
-                    msgEl.innerHTML = '<p class="font-black" style="color:#dc2626;"><i class="fas fa-exclamation-circle mr-2"></i>Erreur de connexion au serveur</p>';
-                }
-            } finally {
-                if (btnEl) { btnEl.disabled = false; btnEl.textContent = 'Suivant'; }
-            }
-        }
-
-        renderWizardProgress(1);
-    </script>
-    <script src="pwa-init.js"></script>
+    renderWizardProgress(1);
+</script>
+<script src="pwa-init.js"></script>
 </body>
 </html>

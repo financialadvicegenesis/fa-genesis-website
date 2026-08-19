@@ -1,222 +1,321 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" type="image/png" sizes="32x32" href="assets/images/logo-favicon-32.png">
-    <link rel="icon" type="image/png" sizes="192x192" href="assets/images/logo-favicon-192.png">
-    <link rel="icon" type="image/png" sizes="512x512" href="assets/images/logo-favicon.png">
-    <link rel="apple-touch-icon" sizes="192x192" href="assets/images/logo-favicon-192.png">
-    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
-    <title>Connexion Partenaire - FA GENESIS</title>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;900&family=Space+Grotesk:wght@300;700&display=swap">
-    <link rel="stylesheet" href="tailwind.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" media="print" onload="this.media='all'">
-    <style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Connexion Prestataire — FA GENESIS</title>
+<link rel="icon" type="image/png" sizes="32x32" href="assets/images/logo-favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="assets/images/logo-favicon-192.png">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#FFD700">
+<link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700;900&family=Space+Grotesk:wght@300;400;500;700&display=swap" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700;900&family=Space+Grotesk:wght@300;400;500;700&display=swap"></noscript>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"></noscript>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --black:#050505;--s1:#0a0a0a;--s2:#111;--s3:#161616;
+  --gold:#FFD700;--gold-dim:rgba(255,215,0,.1);--gold-border:rgba(255,215,0,.18);
+  --orange:#FF4800;--white:#fff;
+  --t1:rgba(255,255,255,.92);--t2:rgba(255,255,255,.6);--t3:rgba(255,255,255,.35);
+  --font-d:'Unbounded',sans-serif;--font-b:'Space Grotesk',sans-serif;
+}
+html,body{min-height:100%;}
+body{
+  background:var(--black);color:var(--t1);font-family:var(--font-b);
+  -webkit-font-smoothing:antialiased;overflow-x:hidden;
+}
+body::before{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:radial-gradient(ellipse 80% 50% at 50% -10%,rgba(255,72,0,.05),transparent 60%);
+}
+a{text-decoration:none;color:inherit;}
 
-        :root {
-            --genesis-yellow: #FFD700;
-            --genesis-black: #000000;
-            --genesis-white: #FFFFFF;
-        }
+/* ── HEADER ── */
+.reg-bar{
+  position:sticky;top:0;z-index:100;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:16px 32px;
+  background:rgba(5,5,5,.92);backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--gold-border);
+}
+@media(max-width:480px){.reg-bar{padding:14px 18px;}}
+.reg-back{
+  color:var(--t2);font-size:13px;font-weight:500;
+  display:flex;align-items:center;gap:6px;transition:color .2s;
+  text-decoration:none;min-width:90px;
+}
+.reg-back:hover{color:var(--white);}
+.reg-logo{
+  font-family:var(--font-d);font-size:13px;font-weight:900;
+  color:var(--gold);display:flex;align-items:center;gap:10px;
+}
+.reg-logo img{height:28px;width:auto;mix-blend-mode:screen;}
+.reg-link{
+  font-size:13px;font-weight:600;color:var(--t2);
+  border:1px solid rgba(255,255,255,.15);border-radius:6px;
+  padding:7px 16px;transition:border-color .2s,color .2s;
+  min-width:90px;text-align:right;display:inline-block;
+}
+.reg-link:hover{border-color:var(--gold);color:var(--gold);}
 
-        body {
-            background-color: var(--genesis-black);
-            color: var(--genesis-white);
-            font-family: 'Space Grotesk', sans-serif;
-            overflow-x: hidden;
-        }
+/* ── MAIN ── */
+.reg-main{
+  position:relative;z-index:1;
+  display:flex;flex-direction:column;align-items:center;
+  padding:48px 24px 80px;min-height:calc(100vh - 62px);justify-content:center;
+}
 
-        h1, h2, h3, h4, h5, .nav-link { font-family: 'Unbounded', cursive; }
+/* ── CARD ── */
+.reg-card{
+  width:100%;max-width:440px;
+  background:var(--s1);border:1.5px solid var(--orange-border, rgba(255,72,0,.25));
+  border-radius:22px;padding:40px 36px;
+  position:relative;overflow:hidden;
+}
+.reg-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,var(--orange),var(--gold));
+}
+.reg-card::after{
+  content:'';position:absolute;inset:0;pointer-events:none;border-radius:22px;
+  background:radial-gradient(ellipse at top,rgba(255,72,0,.04),transparent 55%);
+}
+@media(max-width:480px){.reg-card{padding:28px 18px;}}
 
-        .neo-border { border: 4px solid var(--genesis-black); }
-        .neo-shadow { box-shadow: 10px 10px 0px 0px var(--genesis-yellow); }
+.reg-icon{
+  width:58px;height:58px;border-radius:16px;
+  background:rgba(255,72,0,.1);border:1px solid rgba(255,72,0,.25);
+  display:flex;align-items:center;justify-content:center;
+  font-size:22px;color:var(--orange);margin:0 auto 22px;position:relative;z-index:1;
+}
+.reg-title{
+  font-family:var(--font-d);font-size:clamp(17px,2.8vw,24px);font-weight:900;
+  text-align:center;line-height:1.2;margin-bottom:8px;position:relative;z-index:1;
+}
+.reg-sub{
+  font-size:13px;color:var(--t2);text-align:center;margin-bottom:32px;
+  line-height:1.6;position:relative;z-index:1;
+}
 
-        .neo-btn-yellow {
-            background: var(--genesis-yellow);
-            color: black;
-            border: 4px solid black;
-            box-shadow: 6px 6px 0px black;
-            font-weight: 900;
-            transition: 0.1s;
-        }
-        .neo-btn-yellow:active {
-            transform: translate(4px, 4px);
-            box-shadow: 0px 0px 0px black;
-        }
+/* ── BANNER ── */
+.reg-banner{
+  border-radius:10px;padding:12px 16px;margin-bottom:20px;
+  font-size:13px;font-weight:600;line-height:1.5;display:none;
+  position:relative;z-index:1;
+}
+.reg-banner.show{display:block;}
+.reg-banner-err{background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);color:#f87171;}
+.reg-banner-ok{background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);color:#4ade80;}
 
-        .error-message {
-            display: none;
-            background: #ff0000;
-            color: white;
-            padding: 1rem;
-            border: 4px solid black;
-            margin-bottom: 1.5rem;
-            font-weight: bold;
-        }
-        .error-message.show { display: block; }
-    </style>
-    <meta name="theme-color" content="#FFD700">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="FA GENESIS">
+/* ── FORM ── */
+.frm-group{margin-bottom:20px;position:relative;z-index:1;}
+.frm-label{
+  display:block;font-size:11px;font-weight:700;letter-spacing:.6px;
+  text-transform:uppercase;color:var(--t2);margin-bottom:8px;
+}
+.frm-input{
+  width:100%;
+  background:rgba(255,255,255,.04);
+  border:1.5px solid rgba(255,255,255,.12);
+  border-radius:10px;padding:13px 16px;
+  color:var(--t1);font-family:var(--font-b);font-size:14px;font-weight:400;
+  outline:none;transition:border-color .2s,box-shadow .2s;
+  -webkit-appearance:none;
+}
+.frm-input::placeholder{color:var(--t3);}
+.frm-input:focus{
+  border-color:var(--orange);
+  box-shadow:0 0 0 3px rgba(255,72,0,.1);
+}
+.frm-input:autofill,.frm-input:-webkit-autofill{
+  -webkit-box-shadow:0 0 0 100px var(--s2) inset;
+  -webkit-text-fill-color:var(--t1);
+}
+
+/* ── FORGOT SECTION ── */
+.forgot-panel{
+  background:rgba(255,255,255,.03);border:1.5px solid rgba(255,255,255,.1);
+  border-radius:12px;padding:20px;margin-top:16px;
+  display:none;position:relative;z-index:1;
+}
+.forgot-panel.open{display:block;}
+.forgot-banner-err{font-size:12px;color:#f87171;margin-top:8px;display:none;}
+.forgot-banner-ok{font-size:12px;color:#4ade80;margin-top:8px;display:none;line-height:1.5;}
+
+/* ── SUBMIT ── */
+.frm-submit{
+  width:100%;padding:15px 24px;
+  background:linear-gradient(135deg,var(--orange),#ff6a00);
+  color:#fff;font-family:var(--font-d);font-size:12px;font-weight:900;
+  border:none;border-radius:10px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  transition:opacity .2s,transform .2s;letter-spacing:.3px;
+  margin-bottom:28px;position:relative;z-index:1;
+}
+.frm-submit:hover:not(:disabled){opacity:.88;transform:translateY(-1px);}
+.frm-submit:disabled{opacity:.5;cursor:not-allowed;transform:none;}
+
+.reg-divider{
+  display:flex;align-items:center;gap:12px;
+  margin:0 0 16px;font-size:12px;color:var(--t3);position:relative;z-index:1;
+}
+.reg-divider::before,.reg-divider::after{content:'';flex:1;height:1px;background:rgba(255,255,255,.08);}
+
+.reg-links{position:relative;z-index:1;display:flex;flex-direction:column;gap:10px;align-items:center;}
+.reg-links-row{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--t3);}
+.reg-links-row a,.reg-links-row button{color:var(--orange);font-weight:600;background:none;border:none;cursor:pointer;font-family:inherit;font-size:inherit;padding:0;}
+.reg-links-row a:hover,.reg-links-row button:hover{text-decoration:underline;}
+
+.forgot-send-btn{
+  width:100%;padding:12px;margin-top:12px;
+  background:linear-gradient(135deg,var(--orange),#ff6a00);
+  color:#fff;font-family:var(--font-d);font-size:11px;font-weight:900;
+  border:none;border-radius:8px;cursor:pointer;letter-spacing:.5px;
+  transition:opacity .2s;
+}
+.forgot-send-btn:hover:not(:disabled){opacity:.88;}
+.forgot-send-btn:disabled{opacity:.5;cursor:not-allowed;}
+</style>
 </head>
 <body>
 
-    <!-- NAVIGATION APP (sans liens marketing) -->
-    <nav class="fixed top-0 w-full z-50 bg-black/95 backdrop-blur-md border-b-4 border-[var(--genesis-yellow)] px-4 md:px-6 py-3 md:py-4 flex justify-between items-center text-white text-xs font-black uppercase">
-        <a href="app.html" class="flex items-center gap-2 md:gap-3 text-lg md:text-2xl font-black tracking-wider text-[var(--genesis-yellow)]" style="font-family: 'Unbounded', cursive;"><img src="assets/images/logo-favicon-192.png" alt="Logo FA GENESIS" style="height:48px;width:48px;flex-shrink:0;border-radius:50%;object-fit:cover;display:inline-block;vertical-align:middle;"> FA GENESIS</a>
-        <a href="app.html" class="text-white font-black text-xs md:text-sm hover:text-[var(--genesis-yellow)] transition"><i class="fas fa-arrow-left mr-1"></i>Retour à l'app</a>
-    </nav>
+<!-- ── HEADER ── -->
+<header class="reg-bar">
+  <a href="inscription.html" class="reg-back">
+    <i class="fa-solid fa-chevron-left" style="font-size:10px;"></i> Retour
+  </a>
+  <a href="index.html" class="reg-logo">
+    <img src="assets/images/logo-genesis.png" alt="FA GENESIS">
+    FA GENESIS
+  </a>
+  <a href="partner-register.html" class="reg-link">S'inscrire</a>
+</header>
 
-    <!-- LOGIN SECTION - PAS DE AOS -->
-    <section class="min-h-screen flex flex-col items-center justify-center p-6 bg-black pt-32 relative overflow-hidden">
-        <div class="absolute top-20 left-[-10%] w-96 h-96 bg-[var(--genesis-yellow)] rounded-full blur-[120px] opacity-20 z-0"></div>
+<!-- ── MAIN ── -->
+<main class="reg-main">
+  <div class="reg-card">
+    <div class="reg-icon"><i class="fa-solid fa-briefcase"></i></div>
+    <h1 class="reg-title">Espace <span style="color:var(--orange);">Prestataire</span></h1>
+    <p class="reg-sub">Connectez-vous pour accéder à vos missions et votre tableau de bord</p>
 
-        <div class="w-full max-w-xl z-10">
-            <h1 class="text-5xl md:text-7xl font-black italic uppercase text-center mb-4 text-[var(--genesis-yellow)]">ESPACE PARTENAIRE</h1>
-            <p class="text-center text-lg font-bold mb-12 uppercase opacity-80">Connectez-vous pour accéder à vos projets</p>
+    <div id="errorMessage" class="reg-banner reg-banner-err"></div>
 
-            <div class="bg-white text-black p-10 neo-border neo-shadow">
-                <div id="errorMessage" class="error-message"></div>
+    <form id="partnerLoginForm">
+      <div class="frm-group">
+        <label for="email" class="frm-label">Email</label>
+        <input type="email" id="email" name="email" required class="frm-input" placeholder="votre.email@exemple.com" autocomplete="email">
+      </div>
+      <div class="frm-group" style="margin-bottom:28px;">
+        <label for="password" class="frm-label">Mot de passe</label>
+        <input type="password" id="password" name="password" required class="frm-input" placeholder="••••••••" autocomplete="current-password">
+      </div>
 
-                <form id="partnerLoginForm" class="space-y-6">
-                    <div>
-                        <label for="email" class="block text-sm font-black mb-2 uppercase">Email</label>
-                        <input
-                            type="email"
-                            id="email"
-                            name="email"
-                            required
-                            class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none focus:border-[var(--genesis-yellow)] transition-all"
-                            placeholder="votre.email@exemple.com"
-                        >
-                    </div>
+      <button type="submit" id="submitBtn" class="frm-submit">
+        Se connecter <i class="fa-solid fa-arrow-right" style="font-size:11px;"></i>
+      </button>
+    </form>
 
-                    <div>
-                        <label for="password" class="block text-sm font-black mb-2 uppercase">Mot de passe</label>
-                        <input
-                            type="password"
-                            id="password"
-                            name="password"
-                            required
-                            class="w-full bg-white text-black p-4 border-4 border-black font-bold outline-none focus:border-[var(--genesis-yellow)] transition-all"
-                            placeholder="••••••••"
-                        >
-                    </div>
+    <div class="reg-divider">ou</div>
 
-                    <button
-                        type="submit"
-                        id="submitBtn"
-                        class="w-full py-4 neo-btn-yellow text-2xl font-black italic uppercase tracking-tighter"
-                    >
-                        Se connecter
-                    </button>
-                </form>
+    <div class="reg-links">
+      <div class="reg-links-row">
+        Pas encore partenaire ? <a href="partner-register.html">Devenir prestataire →</a>
+      </div>
+      <div class="reg-links-row">
+        <button type="button" onclick="toggleForgot()">Mot de passe oublié ?</button>
+      </div>
 
-                <div class="mt-8 text-center">
-                    <p class="text-sm font-bold opacity-60">
-                        <i class="fas fa-info-circle mr-1"></i>
-                        Pas encore de compte ? Inscrivez-vous en tant que partenaire ci-dessous.
-                    </p>
-                </div>
-            </div>
+      <!-- Forgot password panel -->
+      <div class="forgot-panel" id="forgotSection">
+        <p style="font-size:13px;font-weight:700;color:var(--t1);margin-bottom:12px;">Réinitialisation du mot de passe</p>
+        <input id="forgotEmail" type="email" placeholder="Votre adresse email" class="frm-input" style="margin-bottom:0;">
+        <div id="forgotErr" class="forgot-banner-err"></div>
+        <div id="forgotOk" class="forgot-banner-ok"></div>
+        <button type="button" id="forgotBtn" onclick="doForgot()" class="forgot-send-btn">
+          Envoyer le lien <i class="fa-solid fa-paper-plane" style="font-size:10px;margin-left:4px;"></i>
+        </button>
+      </div>
 
-            <div class="mt-8 text-center">
-                <p class="text-white font-bold">Pas encore partenaire ? <a href="partner-register.html" class="text-[var(--genesis-yellow)] underline font-black">Devenir partenaire</a></p>
-                <p class="text-white font-bold mt-4">Mot de passe oublié ? <button type="button" onclick="toggleForgot()" class="text-[var(--genesis-yellow)] underline font-black bg-transparent border-0 cursor-pointer p-0" style="font-size:inherit;font-family:inherit;">Réinitialiser</button></p>
-                <div id="forgotSection" style="display:none;margin-top:16px;background:#111;border:1.5px solid #FFD700;border-radius:12px;padding:20px;text-align:left;">
-                  <p style="color:#fff;font-weight:700;margin-bottom:12px;font-size:14px;">Réinitialisation du mot de passe</p>
-                  <input id="forgotEmail" type="email" placeholder="Votre adresse email" style="width:100%;background:#1a1a1a;border:1px solid #333;border-radius:8px;padding:12px 14px;color:#fff;font-size:15px;font-family:inherit;margin-bottom:10px;box-sizing:border-box;">
-                  <div id="forgotErr" style="display:none;color:#ff4444;font-size:13px;margin-bottom:8px;"></div>
-                  <div id="forgotOk" style="display:none;color:#4caf50;font-size:13px;margin-bottom:8px;line-height:1.5;"></div>
-                  <button type="button" id="forgotBtn" onclick="doForgot()" style="width:100%;background:#FFD700;color:#000;border:none;border-radius:8px;padding:13px;font-family:inherit;font-size:12px;font-weight:900;letter-spacing:1.5px;cursor:pointer;text-transform:uppercase;">Envoyer le lien</button>
-                </div>
-                <p class="text-white font-bold mt-4 opacity-60 text-sm">
-                    <a href="login.html" class="text-white underline hover:text-[var(--genesis-yellow)]">Espace Client</a>
-                </p>
-            </div>
-        </div>
-    </section>
+      <div class="reg-links-row" style="margin-top:4px;">
+        Espace Client ? <a href="index.html?login=1">Se connecter →</a>
+      </div>
+    </div>
+  </div>
+</main>
 
-    <script src="config.js"></script>
-    <script src="partner-auth.js"></script>
-    <script>
-        function toggleForgot() {
-            var s = document.getElementById('forgotSection');
-            if (s) s.style.display = s.style.display === 'none' ? 'block' : 'none';
+<script src="config.js"></script>
+<script src="partner-auth.js"></script>
+<script>
+    if (typeof isPartnerAuthenticated === 'function' && isPartnerAuthenticated()) {
+        window.location.href = 'partner-dashboard.html';
+    }
+
+    function toggleForgot() {
+        var s = document.getElementById('forgotSection');
+        if (s) s.classList.toggle('open');
+    }
+
+    function doForgot() {
+        var email = (document.getElementById('forgotEmail') || {}).value || '';
+        var errEl = document.getElementById('forgotErr');
+        var okEl = document.getElementById('forgotOk');
+        var btn = document.getElementById('forgotBtn');
+        errEl.style.display = 'none';
+        okEl.style.display = 'none';
+        if (!email) {
+            errEl.textContent = 'Veuillez saisir votre email.';
+            errEl.style.display = 'block';
+            return;
         }
+        if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin" style="font-size:11px;"></i> Envoi en cours…'; }
+        var API = (window.FA_GENESIS_API) || 'https://fa-genesis-website.onrender.com';
+        fetch(API + '/api/partner/auth/forgot-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: email })
+        }).then(function(r) { return r.json(); }).then(function() {
+            if (btn) { btn.disabled = false; btn.innerHTML = 'Envoyer le lien <i class="fa-solid fa-paper-plane" style="font-size:10px;margin-left:4px;"></i>'; }
+            okEl.textContent = 'Si cet email est enregistré, vous allez recevoir un lien de réinitialisation dans quelques minutes.';
+            okEl.style.display = 'block';
+        }).catch(function() {
+            if (btn) { btn.disabled = false; btn.innerHTML = 'Envoyer le lien <i class="fa-solid fa-paper-plane" style="font-size:10px;margin-left:4px;"></i>'; }
+            errEl.textContent = 'Erreur réseau. Vérifiez votre connexion et réessayez.';
+            errEl.style.display = 'block';
+        });
+    }
 
-        function doForgot() {
-            var email = (document.getElementById('forgotEmail') || {}).value || '';
-            var errEl = document.getElementById('forgotErr');
-            var okEl = document.getElementById('forgotOk');
-            var btn = document.getElementById('forgotBtn');
-            if (!email) {
-                if (errEl) { errEl.textContent = 'Veuillez saisir votre email.'; errEl.style.display = 'block'; }
-                return;
+    var partnerLoginFormEl = document.getElementById('partnerLoginForm');
+    if (partnerLoginFormEl) {
+        partnerLoginFormEl.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            var email = document.getElementById('email').value;
+            var password = document.getElementById('password').value;
+            var errorMessage = document.getElementById('errorMessage');
+            var submitBtn = document.getElementById('submitBtn');
+
+            errorMessage.classList.remove('show');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin" style="font-size:13px;"></i> Connexion en cours…';
+
+            var result = await partnerLogin(email, password);
+
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = 'Se connecter <i class="fa-solid fa-arrow-right" style="font-size:11px;"></i>';
+
+            if (result.success) {
+                window.location.href = 'partner-dashboard.html';
+            } else {
+                errorMessage.innerHTML = '<i class="fa-solid fa-triangle-exclamation" style="margin-right:6px;"></i>' + result.message;
+                errorMessage.classList.add('show');
+                setTimeout(function() { errorMessage.classList.remove('show'); }, 5000);
             }
-            if (errEl) errEl.style.display = 'none';
-            if (okEl) okEl.style.display = 'none';
-            if (btn) { btn.disabled = true; btn.textContent = 'Envoi en cours...'; }
-            var API = (window.FA_GENESIS_API) || 'https://fa-genesis-website.onrender.com';
-            fetch(API + '/api/partner/auth/forgot-password', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: email })
-            }).then(function(r) { return r.json(); }).then(function() {
-                if (btn) { btn.disabled = false; btn.textContent = 'Envoyer le lien'; }
-                if (okEl) { okEl.textContent = 'Si cet email est enregistré, vous allez recevoir un lien de réinitialisation dans quelques minutes.'; okEl.style.display = 'block'; }
-            }).catch(function() {
-                if (btn) { btn.disabled = false; btn.textContent = 'Envoyer le lien'; }
-                if (errEl) { errEl.textContent = 'Erreur réseau. Vérifiez votre connexion et réessayez.'; errEl.style.display = 'block'; }
-            });
-        }
-
-        // Verifier si deja connecte
-        if (isPartnerAuthenticated()) {
-            window.location.href = 'partner-dashboard.html';
-        }
-
-        // Gestion de la soumission du formulaire
-        var partnerLoginFormEl = document.getElementById('partnerLoginForm');
-        if (partnerLoginFormEl) {
-            partnerLoginFormEl.addEventListener('submit', async function(e) {
-                e.preventDefault();
-
-                var email = document.getElementById('email').value;
-                var password = document.getElementById('password').value;
-                var errorMessage = document.getElementById('errorMessage');
-                var submitBtn = document.getElementById('submitBtn');
-
-                // Desactiver le bouton
-                submitBtn.disabled = true;
-                submitBtn.textContent = 'Connexion en cours...';
-
-                // Tentative de connexion
-                var result = await partnerLogin(email, password);
-
-                // Reactiver le bouton
-                submitBtn.disabled = false;
-                submitBtn.textContent = 'Se connecter';
-
-                if (result.success) {
-                    window.location.href = 'partner-dashboard.html';
-                } else {
-                    errorMessage.textContent = result.message;
-                    errorMessage.classList.add('show');
-
-                    setTimeout(function() {
-                        errorMessage.classList.remove('show');
-                    }, 5000);
-                }
-            });
-        }
-
-    </script>
-    <script src="pwa-init.js"></script>
+        });
+    }
+</script>
+<script src="pwa-init.js"></script>
 </body>
 </html>
