@@ -19,29 +19,21 @@
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 :root{
-  --black:#050505;
-  --s1:#0a0a0a;
-  --s2:#111;
-  --gold:#FFD700;
-  --gold-dim:rgba(255,215,0,.12);
-  --gold-border:rgba(255,215,0,.18);
-  --orange:#FF4800;
-  --white:#fff;
-  --t1:rgba(255,255,255,.92);
-  --t2:rgba(255,255,255,.6);
-  --t3:rgba(255,255,255,.35);
-  --font-d:'Unbounded',sans-serif;
-  --font-b:'Space Grotesk',sans-serif;
-  --nav-h:72px;
-  --r:16px;
-  --max:1200px;
+  --black:#050505;--s1:#0a0a0a;--s2:#111;--s3:#161616;
+  --gold:#FFD700;--gold-dim:rgba(255,215,0,.12);--gold-border:rgba(255,215,0,.18);
+  --orange:#FF4800;--white:#fff;
+  --t1:rgba(255,255,255,.92);--t2:rgba(255,255,255,.6);--t3:rgba(255,255,255,.35);
+  --font-d:'Unbounded',sans-serif;--font-b:'Space Grotesk',sans-serif;
+  --nav-h:72px;--max:1200px;
 }
 html{scroll-behavior:smooth;}
 body{background:var(--black);color:var(--t1);font-family:var(--font-b);overflow-x:hidden;-webkit-font-smoothing:antialiased;}
 a{text-decoration:none;color:inherit;}
 .wrap{max-width:var(--max);margin:0 auto;padding:0 24px;}
+.grad-text{background:linear-gradient(135deg,var(--gold),var(--orange));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.sec-label{font-family:var(--font-d);font-size:10px;font-weight:700;letter-spacing:4px;text-transform:uppercase;color:var(--gold);}
 
-/* ── NAV ── */
+/* ── NAV — identique à index.html ── */
 nav{position:fixed;top:0;left:0;right:0;z-index:1000;height:var(--nav-h);transition:background .3s,border-color .3s,backdrop-filter .3s;border-bottom:1px solid transparent;}
 nav.scrolled{background:rgba(5,5,5,.92);backdrop-filter:blur(20px);border-color:var(--gold-border);}
 .nav-inner{display:flex;align-items:center;justify-content:space-between;height:var(--nav-h);}
@@ -51,70 +43,75 @@ nav.scrolled{background:rgba(5,5,5,.92);backdrop-filter:blur(20px);border-color:
 .nav-links a{font-size:13px;font-weight:500;color:var(--t2);transition:color .2s;letter-spacing:.2px;}
 .nav-links a:hover,.nav-links a.active{color:var(--white);}
 .nav-ctas{display:flex;align-items:center;gap:12px;}
-.btn-outline{border:1px solid rgba(255,255,255,.25);color:var(--white);padding:9px 20px;border-radius:6px;font-size:13px;font-weight:600;transition:border-color .2s,background .2s;}
-.btn-outline:hover{border-color:var(--gold);color:var(--gold);}
-.btn-gold{background:var(--gold);color:#000;padding:9px 20px;border-radius:6px;font-size:13px;font-weight:700;transition:opacity .2s;}
-.btn-gold:hover{opacity:.88;}
+.btn-ghost{background:none;border:1px solid rgba(255,255,255,.2);color:var(--white);padding:8px 18px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;transition:border-color .2s,color .2s;font-family:var(--font-b);}
+.btn-ghost:hover{border-color:var(--gold);color:var(--gold);}
+.btn-primary{background:linear-gradient(135deg,var(--gold),#e6c200);color:#0a0800;padding:9px 20px;border-radius:6px;font-size:13px;font-weight:700;border:none;cursor:pointer;transition:opacity .2s;font-family:var(--font-b);}
+.btn-primary:hover{opacity:.88;}
 .nav-hamburger{display:none;background:none;border:none;color:var(--white);font-size:20px;cursor:pointer;}
 .nav-mobile{display:none;position:fixed;inset:0;background:rgba(5,5,5,.98);z-index:999;flex-direction:column;align-items:center;justify-content:center;gap:32px;}
 .nav-mobile.open{display:flex;}
-.nav-mobile a,.nav-mobile button{font-family:var(--font-d);font-size:18px;font-weight:700;color:var(--white);background:none;border:none;cursor:pointer;}
+.nav-mobile a,.nav-mobile button{font-family:var(--font-d);font-size:18px;font-weight:700;color:var(--white);background:none;border:none;cursor:pointer;transition:color .2s;}
+.nav-mobile a:hover{color:var(--gold);}
 .nav-mobile-close{position:absolute;top:24px;right:24px;background:none;border:none;color:var(--white);font-size:24px;cursor:pointer;}
 
 /* ── HERO ── */
-.ap-hero{min-height:70vh;display:flex;align-items:center;padding-top:var(--nav-h);position:relative;overflow:hidden;}
-.ap-hero-bg{position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(255,215,0,.07) 0%,transparent 70%);}
-.ap-hero-eyebrow{font-family:var(--font-d);font-size:11px;font-weight:700;letter-spacing:4px;color:var(--gold);text-transform:uppercase;margin-bottom:24px;}
-.ap-hero h1{font-family:var(--font-d);font-size:clamp(40px,7vw,96px);font-weight:900;line-height:1;letter-spacing:-2px;margin-bottom:24px;}
-.ap-hero h1 span{background:linear-gradient(135deg,var(--gold),var(--orange));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
-.ap-hero-sub{font-size:clamp(15px,2vw,20px);color:var(--t2);max-width:600px;line-height:1.6;font-weight:300;}
-.ap-hero-line{width:60px;height:2px;background:linear-gradient(90deg,var(--gold),var(--orange));border-radius:2px;margin:32px 0;}
+.ap-hero{min-height:65vh;display:flex;align-items:center;padding-top:var(--nav-h);position:relative;overflow:hidden;}
+.ap-hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(255,215,0,.06),transparent 70%);}
+.ap-hero-content{position:relative;z-index:1;}
+.ap-hero-eyebrow{font-family:var(--font-d);font-size:11px;font-weight:700;letter-spacing:4px;color:var(--gold);text-transform:uppercase;margin-bottom:24px;display:block;}
+.ap-hero h1{font-family:var(--font-d);font-size:clamp(40px,7vw,88px);font-weight:900;line-height:1.05;letter-spacing:-2px;margin-bottom:24px;}
+.ap-hero-line{width:60px;height:2px;background:linear-gradient(90deg,var(--gold),var(--orange));border-radius:2px;margin:28px 0;}
+.ap-hero-sub{font-size:clamp(15px,1.8vw,18px);color:var(--t2);max-width:580px;line-height:1.7;font-weight:300;}
 
 /* ── SECTIONS ── */
-section{padding:100px 0;}
-.section-label{font-family:var(--font-d);font-size:10px;font-weight:700;letter-spacing:4px;text-transform:uppercase;color:var(--gold);margin-bottom:16px;}
-.section-title{font-family:var(--font-d);font-size:clamp(28px,4vw,52px);font-weight:900;line-height:1.1;margin-bottom:16px;}
-.grad-text{background:linear-gradient(135deg,var(--gold),var(--orange));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
-.section-sub{font-size:clamp(15px,1.8vw,18px);color:var(--t2);line-height:1.7;max-width:640px;}
+.section{padding:100px 0;}
 
 /* ── PRESIDENT ── */
-.pres-grid{display:grid;grid-template-columns:340px 1fr;gap:56px;align-items:center;}
-.pres-img{width:100%;aspect-ratio:3/4;object-fit:cover;object-position:top;border-radius:var(--r);border:1px solid var(--gold-border);}
-.pres-quote-block{position:relative;padding:48px;background:var(--s1);border:1px solid var(--gold-border);border-radius:var(--r);}
-.pres-quote-mark{font-family:var(--font-d);font-size:80px;line-height:1;color:var(--gold);opacity:.25;position:absolute;top:20px;left:32px;}
-.pres-quote{font-family:var(--font-d);font-size:clamp(16px,2vw,24px);font-weight:900;line-height:1.4;color:var(--white);margin-bottom:32px;position:relative;z-index:1;}
-.pres-name{font-family:var(--font-d);font-size:13px;font-weight:900;color:var(--gold);letter-spacing:1px;}
-.pres-title{font-size:12px;color:var(--t2);margin-top:4px;letter-spacing:.5px;}
-
-/* ── PILIERS ── */
-.piliers-bg{background:var(--s1);}
-.piliers-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;margin-top:56px;}
-.pilier-card{background:var(--s2);padding:48px 36px;position:relative;overflow:hidden;transition:background .3s;}
-.pilier-card:hover{background:#161616;}
-.pilier-letter{font-family:var(--font-d);font-size:80px;font-weight:900;line-height:1;color:var(--gold);opacity:.15;position:absolute;bottom:24px;right:24px;}
-.pilier-icon{width:48px;height:48px;border-radius:12px;background:var(--gold-dim);border:1px solid var(--gold-border);display:flex;align-items:center;justify-content:center;margin-bottom:24px;font-size:20px;color:var(--gold);}
-.pilier-name{font-family:var(--font-d);font-size:18px;font-weight:900;color:var(--gold);margin-bottom:12px;}
-.pilier-desc{font-size:14px;color:var(--t2);line-height:1.6;}
+.pres-grid{display:grid;grid-template-columns:300px 1fr;gap:48px;align-items:center;}
+@media(max-width:900px){.pres-grid{grid-template-columns:1fr;}}
+.pres-img-wrap{position:relative;}
+.pres-img-glow{position:absolute;inset:-8px;background:linear-gradient(135deg,rgba(255,215,0,.15),transparent);border-radius:24px;}
+.pres-img{width:100%;aspect-ratio:3/4;object-fit:cover;object-position:top;border-radius:20px;border:1.5px solid var(--gold-border);box-shadow:0 40px 80px rgba(0,0,0,.6);position:relative;z-index:1;}
+.pres-quote-mark{position:absolute;top:-8px;left:-4px;font-size:80px;line-height:1;color:rgba(255,215,0,.08);font-family:Georgia,serif;pointer-events:none;}
+.pres-quote{font-family:var(--font-d);font-size:clamp(18px,2vw,24px);font-weight:900;line-height:1.35;color:var(--white);padding-top:16px;position:relative;z-index:1;margin-bottom:32px;}
+.pres-sig{display:flex;align-items:center;gap:16px;margin-bottom:40px;}
+.pres-sig-line{width:40px;height:2px;background:linear-gradient(90deg,var(--gold),transparent);}
+.pres-sig-name{font-family:var(--font-d);font-size:13px;font-weight:900;color:var(--white);}
+.pres-sig-title{font-size:12px;color:var(--t2);margin-top:2px;}
+.pilier-row{display:flex;align-items:center;gap:16px;background:var(--s2);border:1.5px solid var(--gold-border);border-radius:12px;padding:16px 20px;}
+.pilier-badge{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-family:var(--font-d);font-size:13px;font-weight:900;flex-shrink:0;}
+.pilier-badge-b{background:linear-gradient(135deg,var(--gold),#e6c200);color:#0a0800;}
+.pilier-badge-l{background:linear-gradient(135deg,var(--orange),#ff6a00);color:#fff;}
+.pilier-badge-i{background:linear-gradient(135deg,#a0a0a0,#d0d0d0);color:#0a0800;}
+.pilier-label{font-family:var(--font-d);font-size:12px;font-weight:900;color:var(--white);margin-bottom:3px;}
+.pilier-desc{font-size:13px;color:var(--t2);font-weight:300;}
 
 /* ── VALEURS ── */
-.valeurs-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-top:56px;}
-.valeur-card{position:relative;border-radius:var(--r);overflow:hidden;aspect-ratio:3/4;border:1px solid var(--gold-border);}
-.valeur-card img{width:100%;height:100%;object-fit:cover;transition:transform .5s;}
-.valeur-card:hover img{transform:scale(1.05);}
-.valeur-overlay{position:absolute;inset:0;background:linear-gradient(to top,rgba(5,5,5,.95) 0%,rgba(5,5,5,.3) 60%,transparent 100%);}
-.valeur-content{position:absolute;bottom:0;left:0;right:0;padding:32px;}
-.valeur-name{font-family:var(--font-d);font-size:20px;font-weight:900;color:var(--gold);margin-bottom:10px;}
-.valeur-desc{font-size:13px;color:var(--t2);line-height:1.6;}
+.valeurs-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:48px;}
+@media(max-width:900px){.valeurs-grid{grid-template-columns:1fr;}}
+.val-card{background:var(--s2);border:1.5px solid var(--gold-border);border-radius:16px;overflow:hidden;transition:border-color .3s,transform .3s;}
+.val-card:hover{border-color:rgba(255,215,0,.3);transform:translateY(-4px);}
+.val-icon-top{height:180px;display:flex;align-items:center;justify-content:center;border-bottom:1px solid var(--gold-border);}
+.val-body{padding:24px;}
+.val-name{font-family:var(--font-d);font-size:14px;font-weight:900;color:var(--white);margin-bottom:10px;}
+.val-desc{font-size:13px;color:var(--t2);line-height:1.7;font-weight:300;}
 
 /* ── CTA ── */
-.cta-block{background:var(--s1);border:1px solid var(--gold-border);border-radius:var(--r);padding:80px;text-align:center;}
-.cta-block .section-title{margin-bottom:16px;}
-.cta-block .section-sub{margin:0 auto 40px;text-align:center;}
-.cta-actions{display:flex;gap:16px;justify-content:center;flex-wrap:wrap;}
+.cta-wrap{background:var(--s1);border:1.5px solid var(--gold-border);border-radius:20px;padding:72px;text-align:center;}
+@media(max-width:700px){.cta-wrap{padding:40px 24px;}}
+.cta-title{font-family:var(--font-d);font-size:clamp(24px,3.5vw,44px);font-weight:900;line-height:1.1;margin-bottom:16px;}
+.cta-sub{font-size:16px;color:var(--t2);font-weight:300;max-width:480px;margin:0 auto 36px;line-height:1.7;}
+.cta-btns{display:flex;gap:16px;justify-content:center;flex-wrap:wrap;}
+.btn-dl{display:inline-flex;align-items:center;gap:12px;background:linear-gradient(135deg,var(--gold),#e6c200);color:#0a0800;padding:14px 28px;border-radius:8px;font-size:14px;font-weight:700;transition:opacity .2s;}
+.btn-dl:hover{opacity:.88;}
+.btn-outline{display:inline-flex;align-items:center;gap:12px;border:1px solid rgba(255,255,255,.25);color:var(--white);padding:14px 28px;border-radius:8px;font-size:14px;font-weight:600;transition:border-color .2s,color .2s;}
+.btn-outline:hover{border-color:var(--gold);color:var(--gold);}
 
 /* ── FOOTER ── */
 footer{background:var(--s1);border-top:1px solid var(--gold-border);padding:64px 0 32px;}
 .footer-grid{display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr;gap:48px;margin-bottom:48px;}
+@media(max-width:900px){.footer-grid{grid-template-columns:1fr 1fr;}}
+@media(max-width:600px){.footer-grid{grid-template-columns:1fr;}}
 .footer-brand-name{font-family:var(--font-d);font-size:14px;font-weight:900;color:var(--gold);margin-bottom:12px;display:flex;align-items:center;gap:8px;}
 .footer-brand-img{height:30px;width:auto;object-fit:contain;mix-blend-mode:screen;}
 .footer-brand-desc{font-size:13px;color:var(--t3);line-height:1.6;margin-bottom:20px;}
@@ -127,27 +124,16 @@ footer{background:var(--s1);border-top:1px solid var(--gold-border);padding:64px
 .footer-bottom{border-top:1px solid var(--gold-border);padding-top:28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;}
 .footer-copy{font-size:12px;color:var(--t3);}
 
-/* ── RESPONSIVE ── */
-@media(max-width:900px){
-  .pres-grid{grid-template-columns:1fr;}
-  .pres-img{aspect-ratio:4/3;max-width:400px;}
-  .piliers-grid{grid-template-columns:1fr;}
-  .valeurs-grid{grid-template-columns:1fr;}
-  .valeur-card{aspect-ratio:16/9;}
-  .footer-grid{grid-template-columns:1fr 1fr;}
-  .cta-block{padding:48px 24px;}
+@media(max-width:768px){
   .nav-links,.nav-ctas{display:none;}
   .nav-hamburger{display:block;}
-}
-@media(max-width:600px){
-  .footer-grid{grid-template-columns:1fr;}
-  section{padding:64px 0;}
+  .section{padding:64px 0;}
 }
 </style>
 </head>
 <body>
 
-<!-- NAV -->
+<!-- NAV — identique à index.html -->
 <nav id="navbar">
   <div class="wrap nav-inner">
     <a href="/" class="nav-logo">
@@ -155,14 +141,15 @@ footer{background:var(--s1);border-top:1px solid var(--gold-border);padding:64px
       FA GENESIS
     </a>
     <div class="nav-links">
-      <a href="index.html">Accueil</a>
-      <a href="a-propos.html" class="active">À propos</a>
       <a href="index.html#espaces">Espaces</a>
+      <a href="index.html#fonctionnalites">Fonctionnalités</a>
       <a href="index.html#actualites">Actualités</a>
+      <a href="a-propos.html" class="active">À propos</a>
+      <a href="index.html#telecharger">Télécharger</a>
     </div>
     <div class="nav-ctas">
-      <a href="index.html#download" class="btn-outline">Télécharger</a>
-      <a href="index.html" onclick="setTimeout(()=>openLogin(),300)" class="btn-gold">Se connecter</a>
+      <a href="index.html" class="btn-ghost">Se connecter</a>
+      <a href="index.html" class="btn-primary">Commencer gratuitement</a>
     </div>
     <button class="nav-hamburger" onclick="document.getElementById('mobile-menu').classList.add('open')">
       <i class="fa-solid fa-bars"></i>
@@ -172,102 +159,102 @@ footer{background:var(--s1);border-top:1px solid var(--gold-border);padding:64px
 
 <div class="nav-mobile" id="mobile-menu">
   <button class="nav-mobile-close" onclick="document.getElementById('mobile-menu').classList.remove('open')"><i class="fa-solid fa-xmark"></i></button>
-  <a href="index.html" onclick="document.getElementById('mobile-menu').classList.remove('open')">Accueil</a>
-  <a href="a-propos.html" onclick="document.getElementById('mobile-menu').classList.remove('open')">À propos</a>
   <a href="index.html#espaces" onclick="document.getElementById('mobile-menu').classList.remove('open')">Espaces</a>
+  <a href="index.html#fonctionnalites" onclick="document.getElementById('mobile-menu').classList.remove('open')">Fonctionnalités</a>
   <a href="index.html#actualites" onclick="document.getElementById('mobile-menu').classList.remove('open')">Actualités</a>
-  <a href="index.html#download" onclick="document.getElementById('mobile-menu').classList.remove('open')">Télécharger</a>
+  <a href="a-propos.html" onclick="document.getElementById('mobile-menu').classList.remove('open')">À propos</a>
+  <a href="index.html#telecharger" onclick="document.getElementById('mobile-menu').classList.remove('open')">Télécharger</a>
 </div>
 
 <!-- HERO -->
 <section class="ap-hero">
-  <div class="ap-hero-bg"></div>
-  <div class="wrap" style="position:relative;z-index:1;">
-    <p class="ap-hero-eyebrow">FA GENESIS &mdash; Notre histoire</p>
-    <h1>À propos<br><span>de nous</span></h1>
+  <div class="wrap ap-hero-content">
+    <span class="ap-hero-eyebrow">Notre histoire</span>
+    <h1>L'écosystème<br><span class="grad-text">FA GENESIS</span></h1>
     <div class="ap-hero-line"></div>
-    <p class="ap-hero-sub">FA Genesis est le pôle d'incubation stratégique dédié à la transformation des idées en projets structurés, crédibles et visibles.</p>
+    <p class="ap-hero-sub">FA Genesis est le pôle d'incubation stratégique dédié à la transformation des idées en projets structurés, crédibles et visibles — au sein du groupe FA Industries.</p>
   </div>
 </section>
 
-<!-- MOT DU PRÉSIDENT -->
-<section style="background:var(--black);padding:100px 0;">
+<!-- MOT DU PRÉSIDENT + PILIERS -->
+<section class="section" style="background:var(--black);">
   <div class="wrap">
-    <p class="section-label">Leadership</p>
-    <h2 class="section-title">Mot du <span class="grad-text">Président</span></h2>
-    <div class="pres-grid" style="margin-top:56px;">
+    <div style="text-align:center;margin-bottom:64px;">
+      <span class="sec-label">Leadership</span>
+      <h2 style="font-family:var(--font-d);font-size:clamp(28px,3.5vw,48px);font-weight:900;line-height:1.1;margin-top:12px;">Mot du <span class="grad-text">Président</span></h2>
+    </div>
+    <div class="pres-grid">
+      <div class="pres-img-wrap">
+        <div class="pres-img-glow"></div>
+        <img src="assets/images/president-fa-genesis.jpg"
+             onerror="this.onerror=null;this.src='assets/images/president-fa-genesis.png'"
+             alt="Tiffen NDJAMBOU — Président FA Genesis"
+             class="pres-img">
+      </div>
       <div>
-        <img src="assets/images/president-fa-genesis.png" alt="Tiffen NDJAMBOU — Président FA GENESIS" class="pres-img">
-      </div>
-      <div class="pres-quote-block">
-        <div class="pres-quote-mark">"</div>
-        <p class="pres-quote">"Nous sommes le catalyseur qui donne un cadre, une méthode et un réseau à ceux qui osent bâtir leur avenir."</p>
-        <div style="width:40px;height:2px;background:linear-gradient(90deg,var(--gold),var(--orange));border-radius:2px;margin-bottom:20px;"></div>
-        <p class="pres-name">Tiffen NDJAMBOU</p>
-        <p class="pres-title">Président, FA GENESIS &mdash; Groupe FA Industries</p>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- NOS PILIERS -->
-<section class="piliers-bg">
-  <div class="wrap">
-    <p class="section-label">Méthode</p>
-    <h2 class="section-title">Nos <span class="grad-text">piliers</span></h2>
-    <p class="section-sub">Trois axes fondamentaux qui guident chaque accompagnement FA GENESIS, du concept à l'impact.</p>
-    <div class="piliers-grid">
-      <div class="pilier-card">
-        <div class="pilier-icon"><i class="fa-solid fa-cube"></i></div>
-        <p class="pilier-name">BUILD</p>
-        <p class="pilier-desc">Structurer l'idée, la vision et le positionnement. Transformer une ambition floue en un projet clair, différenciant et exécutable.</p>
-        <div class="pilier-letter">B</div>
-      </div>
-      <div class="pilier-card">
-        <div class="pilier-icon"><i class="fa-solid fa-rocket"></i></div>
-        <p class="pilier-name">LAUNCH</p>
-        <p class="pilier-desc">Créer une image professionnelle et une visibilité cohérente. Accéder au réseau et aux premiers clients grâce à l'écosystème GENESIS.</p>
-        <div class="pilier-letter">L</div>
-      </div>
-      <div class="pilier-card">
-        <div class="pilier-icon"><i class="fa-solid fa-chart-line"></i></div>
-        <p class="pilier-name">IMPACT</p>
-        <p class="pilier-desc">Générer des résultats concrets et durables. Mesurer, optimiser, et pérenniser la croissance du projet sur le long terme.</p>
-        <div class="pilier-letter">I</div>
+        <div style="position:relative;margin-bottom:32px;">
+          <div class="pres-quote-mark">"</div>
+          <blockquote class="pres-quote">Nous sommes le catalyseur qui donne un cadre, une méthode et un réseau à ceux qui osent bâtir leur avenir.</blockquote>
+        </div>
+        <div class="pres-sig">
+          <div class="pres-sig-line"></div>
+          <div>
+            <div class="pres-sig-name">Tiffen NDJAMBOU</div>
+            <div class="pres-sig-title">Président, FA Genesis · Groupe FA Industries</div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <div class="pilier-row">
+            <div class="pilier-badge pilier-badge-b">B</div>
+            <div><div class="pilier-label">BUILD</div><div class="pilier-desc">Structurer l'idée, la vision et le positionnement.</div></div>
+          </div>
+          <div class="pilier-row">
+            <div class="pilier-badge pilier-badge-l">L</div>
+            <div><div class="pilier-label">LAUNCH</div><div class="pilier-desc">Créer une image pro et une visibilité cohérente.</div></div>
+          </div>
+          <div class="pilier-row">
+            <div class="pilier-badge pilier-badge-i">I</div>
+            <div><div class="pilier-label">IMPACT</div><div class="pilier-desc">Générer des résultats concrets et durables.</div></div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- NOS VALEURS -->
-<section style="background:var(--black);">
+<!-- NOTRE VISION / VALEURS -->
+<section class="section" style="background:var(--s1);">
   <div class="wrap">
-    <p class="section-label">Ce qui nous définit</p>
-    <h2 class="section-title">Nos <span class="grad-text">valeurs</span></h2>
-    <p class="section-sub">Les principes qui guident chacune de nos décisions et chaque accompagnement que nous menons.</p>
+    <div style="text-align:center;margin-bottom:16px;">
+      <span class="sec-label">Ce qui nous définit</span>
+      <h2 style="font-family:var(--font-d);font-size:clamp(28px,3.5vw,48px);font-weight:900;line-height:1.1;margin-top:12px;"><span class="grad-text">Notre vision</span></h2>
+    </div>
     <div class="valeurs-grid">
-      <div class="valeur-card">
-        <img src="assets/images/innovation.png" alt="Innovation">
-        <div class="valeur-overlay"></div>
-        <div class="valeur-content">
-          <p class="valeur-name">Innovation</p>
-          <p class="valeur-desc">Nous croyons en l'innovation comme moteur de transformation. Chaque projet est une opportunité de repousser les limites et de créer quelque chose d'unique.</p>
+      <div class="val-card">
+        <div class="val-icon-top" style="background:linear-gradient(135deg,rgba(255,215,0,.1),rgba(255,72,0,.06));">
+          <i class="fa-solid fa-lightbulb" style="font-size:52px;color:var(--gold);"></i>
+        </div>
+        <div class="val-body">
+          <div class="val-name">Innovation</div>
+          <p class="val-desc">Nous croyons en l'innovation comme moteur de transformation. Chaque projet est une opportunité de repousser les limites et de créer quelque chose d'unique.</p>
         </div>
       </div>
-      <div class="valeur-card">
-        <img src="assets/images/authenticite.png" alt="Authenticité">
-        <div class="valeur-overlay"></div>
-        <div class="valeur-content">
-          <p class="valeur-name">Authenticité</p>
-          <p class="valeur-desc">Nous valorisons l'authenticité dans chaque projet. Votre identité unique est au cœur de notre approche, pour un positionnement sincère et différenciant.</p>
+      <div class="val-card">
+        <div class="val-icon-top" style="background:linear-gradient(135deg,rgba(255,72,0,.08),rgba(255,215,0,.06));">
+          <i class="fa-solid fa-fingerprint" style="font-size:52px;color:var(--orange);"></i>
+        </div>
+        <div class="val-body">
+          <div class="val-name">Authenticité</div>
+          <p class="val-desc">Votre identité unique est au cœur de notre approche, pour un positionnement sincère et différenciant sur votre marché.</p>
         </div>
       </div>
-      <div class="valeur-card">
-        <img src="assets/images/ambition.png" alt="Ambition">
-        <div class="valeur-overlay"></div>
-        <div class="valeur-content">
-          <p class="valeur-name">Ambition</p>
-          <p class="valeur-desc">Nous accompagnons les visionnaires qui osent voir grand. Ensemble, nous transformons les ambitions les plus audacieuses en réalisations concrètes.</p>
+      <div class="val-card">
+        <div class="val-icon-top" style="background:linear-gradient(135deg,rgba(160,160,255,.06),rgba(255,215,0,.06));">
+          <i class="fa-solid fa-rocket" style="font-size:52px;color:#a0a0ff;"></i>
+        </div>
+        <div class="val-body">
+          <div class="val-name">Ambition</div>
+          <p class="val-desc">Nous accompagnons les visionnaires qui osent voir grand. Ensemble, les ambitions les plus audacieuses deviennent réalité.</p>
         </div>
       </div>
     </div>
@@ -275,15 +262,15 @@ footer{background:var(--s1);border-top:1px solid var(--gold-border);padding:64px
 </section>
 
 <!-- CTA -->
-<section style="background:var(--s1);padding:100px 0;">
+<section class="section" style="background:var(--black);">
   <div class="wrap">
-    <div class="cta-block">
-      <p class="section-label" style="text-align:center;">Rejoindre l'aventure</p>
-      <h2 class="section-title" style="text-align:center;">Prêt à faire partie<br>de <span class="grad-text">l'écosystème</span> ?</h2>
-      <p class="section-sub" style="text-align:center;margin:16px auto 40px;">Transformez votre vision en réalité avec le réseau, les outils et l'accompagnement FA GENESIS.</p>
-      <div class="cta-actions">
-        <a href="index.html#download" class="btn-gold" style="padding:14px 32px;font-size:14px;border-radius:8px;">Télécharger l'app</a>
-        <a href="index.html" class="btn-outline" style="padding:14px 32px;font-size:14px;border-radius:8px;">Découvrir GENESIS</a>
+    <div class="cta-wrap">
+      <span class="sec-label" style="display:block;text-align:center;margin-bottom:20px;">Rejoindre l'aventure</span>
+      <h2 class="cta-title">Prêt à faire partie<br>de <span class="grad-text">l'écosystème</span> ?</h2>
+      <p class="cta-sub">Transformez votre vision en réalité avec le réseau, les outils et l'accompagnement FA GENESIS.</p>
+      <div class="cta-btns">
+        <a href="index.html#telecharger" class="btn-dl"><i class="fa-brands fa-google-play"></i>Télécharger l'app</a>
+        <a href="index.html" class="btn-outline"><i class="fa-solid fa-arrow-left"></i>Retour à l'accueil</a>
       </div>
     </div>
   </div>
@@ -310,7 +297,7 @@ footer{background:var(--s1);border-top:1px solid var(--gold-border);padding:64px
         <a href="index.html#espaces">Espaces</a>
         <a href="index.html#fonctionnalites">Fonctionnalités</a>
         <a href="index.html#actualites">Actualités</a>
-        <a href="index.html#download">Télécharger</a>
+        <a href="index.html#telecharger">Télécharger</a>
       </div>
       <div class="footer-col">
         <p class="footer-col-title">À propos</p>
