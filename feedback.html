@@ -269,7 +269,7 @@
             }
 
             // Token
-            var token = localStorage.getItem('fa_genesis_token') || localStorage.getItem('fa_genesis_session') || '';
+            var token = localStorage.getItem('fa_genesis_token') || '';
             if (!token) {
                 showError('Vous devez être connecté pour envoyer un retour.');
                 return;

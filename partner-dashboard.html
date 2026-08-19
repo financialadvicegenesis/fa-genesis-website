@@ -2057,7 +2057,7 @@
         if (btn) { btn.textContent = 'Chargement…'; btn.disabled = true; }
         try {
             var token = localStorage.getItem('fa_genesis_token') || '';
-            var resp  = await fetch((window.FA_GENESIS_API || '') + '/api/partner/payout/payoneer-link', {
+            var resp  = await fetch((window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com') + '/api/partner/payout/payoneer-link', {
                 method: 'POST',
                 headers: { 'Authorization': 'Bearer ' + token }
             });

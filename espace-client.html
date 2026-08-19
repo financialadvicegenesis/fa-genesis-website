@@ -1496,9 +1496,10 @@
 
             try {
                 // Appel API pour supprimer le compte
-                const response = await fetch(`${API_BASE_URL}/api/accounts/${orderId}`, {
+                const authToken = localStorage.getItem('fa_genesis_token') || '';
+                const response = await fetch(`${API_BASE_URL}/api/auth/delete-account`, {
                     method: 'DELETE',
-                    headers: { 'Content-Type': 'application/json' }
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken }
                 });
 
                 if (!response.ok) {

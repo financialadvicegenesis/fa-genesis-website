@@ -6276,6 +6276,8 @@
         }
 
         // ── MARKETPLACE / STRIPE CONNECT ──────────────────────────────────────
+        var API = API_BASE_URL || window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com';
+        var adminKey = localStorage.getItem('fa_genesis_admin_token') || '';
         var _mktConfig = null;
 
         async function loadMarketplaceDashboard() {
@@ -6437,7 +6439,7 @@
             var xhr = new XMLHttpRequest();
             var done = false;
             var tok = '';
-            try { tok = localStorage.getItem('adminToken') || ''; } catch(e) {}
+            try { tok = localStorage.getItem('fa_genesis_admin_token') || ''; } catch(e) {}
 
             xhr.open('GET', API_BASE_URL + '/api/admin/actualites', true);
             xhr.setRequestHeader('Content-Type', 'application/json');
@@ -6656,7 +6658,7 @@
             var method = id ? 'PUT' : 'POST';
             var xhr2 = new XMLHttpRequest();
             var tok2 = '';
-            try { tok2 = localStorage.getItem('adminToken') || ''; } catch(e) {}
+            try { tok2 = localStorage.getItem('fa_genesis_admin_token') || ''; } catch(e) {}
             xhr2.open(method, url, true);
             xhr2.setRequestHeader('Content-Type', 'application/json');
             xhr2.setRequestHeader('x-admin-key', '');
