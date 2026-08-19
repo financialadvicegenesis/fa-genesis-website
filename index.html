@@ -1538,7 +1538,7 @@ function openInscriptionOverlay(){
   var ov = document.getElementById('insc-overlay');
   if(!ov) return;
   var fr = document.getElementById('insc-frame');
-  if(fr && !fr.src) fr.src = 'inscription.html';
+  if(fr && fr.src.indexOf('inscription.html') === -1) fr.src = 'inscription.html';
   document.body.style.overflow = 'hidden';
   ov.classList.add('open');
 }
