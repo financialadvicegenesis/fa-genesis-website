@@ -19731,7 +19731,27 @@ app.get('/api/admin/actualites', function(req, res) {
         if (!_isAdminRequest(req)) return res.status(403).json({ error: 'Forbidden' });
         var list = loadActualites();
         list.sort(function(a, b) { return new Date(b.date) - new Date(a.date); });
-        res.json({ ok: true, actualites: list });
+        // Strip full base64 images from list view — replaced by a boolean flag.
+        // The edit form fetches the full image when needed via GET /api/admin/actualites/:id.
+        var slim = list.map(function(a) {
+            var out = Object.assign({}, a);
+            if (out.image && out.image.length > 200) { out.has_image = true; out.image = ''; }
+            return out;
+        });
+        res.json({ ok: true, actualites: slim });
+    } catch(e) {
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// GET admin — actualité individuelle (avec image complète pour édition)
+app.get('/api/admin/actualites/:id', function(req, res) {
+    try {
+        if (!_isAdminRequest(req)) return res.status(403).json({ error: 'Forbidden' });
+        var list = loadActualites();
+        var actu = list.find(function(a) { return a.id === req.params.id; });
+        if (!actu) return res.status(404).json({ error: 'Actualité introuvable' });
+        res.json({ ok: true, actualite: actu });
     } catch(e) {
         res.status(500).json({ error: 'Erreur serveur' });
     }

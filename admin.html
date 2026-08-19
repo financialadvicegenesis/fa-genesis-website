@@ -1616,7 +1616,10 @@
         </div>
 
         <!-- Liste -->
-        <div id="actu-admin-list" style="display:none;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;"></div>
+        <div id="actu-admin-list" style="display:none;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;"></div>
+
+        <!-- Erreur réseau -->
+        <div id="actu-admin-err" style="display:none;text-align:center;padding:32px 24px;background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.25);border-radius:14px;font-size:13px;color:#ef4444;font-weight:600;"></div>
 
         <!-- Vide -->
         <div id="actu-admin-empty" style="display:none;text-align:center;padding:64px 24px;background:var(--c-surface);border:1px solid var(--c-border);border-radius:14px;">
@@ -6401,20 +6404,38 @@
             var loader = document.getElementById('actu-admin-loader');
             var listEl = document.getElementById('actu-admin-list');
             var emptyEl = document.getElementById('actu-admin-empty');
+            var errZone = document.getElementById('actu-admin-err');
             if (loader) loader.style.display = 'flex';
             if (listEl) listEl.style.display = 'none';
             if (emptyEl) emptyEl.style.display = 'none';
-            fetch(API_BASE_URL + '/api/admin/actualites', { headers: { 'x-admin-key': adminKey || '' } })
-                .then(function(r){ return r.json(); })
+            if (errZone) errZone.style.display = 'none';
+
+            var ctrl = new AbortController();
+            var timer = setTimeout(function(){ ctrl.abort(); }, 20000);
+
+            fetch(API_BASE_URL + '/api/admin/actualites', {
+                headers: { 'x-admin-key': adminKey || '' },
+                signal: ctrl.signal
+            })
+                .then(function(r){ clearTimeout(timer); return r.json(); })
                 .then(function(d){
                     if (loader) loader.style.display = 'none';
-                    if (!d.ok) { if (emptyEl) emptyEl.style.display = 'block'; return; }
+                    if (!d.ok) {
+                        if (errZone) { errZone.textContent = d.error || 'Erreur serveur'; errZone.style.display = 'block'; }
+                        else if (emptyEl) emptyEl.style.display = 'block';
+                        return;
+                    }
                     _actuAll = d.actualites || [];
                     _renderActualitesAdmin(_actuFilter);
                 })
-                .catch(function(){
+                .catch(function(err){
+                    clearTimeout(timer);
                     if (loader) loader.style.display = 'none';
-                    if (emptyEl) emptyEl.style.display = 'block';
+                    var msg = (err && err.name === 'AbortError') ? 'Délai dépassé — serveur trop lent. ' : 'Erreur réseau. ';
+                    if (errZone) {
+                        errZone.innerHTML = msg + '<button onclick="loadAdminActualites()" style="text-decoration:underline;background:none;border:none;color:inherit;cursor:pointer;font-size:inherit;">Réessayer</button>';
+                        errZone.style.display = 'block';
+                    } else if (emptyEl) emptyEl.style.display = 'block';
                 });
         }
 
@@ -6452,9 +6473,10 @@
             listEl.style.display = 'grid';
             var html = '';
             items.forEach(function(a) {
-                var imgHtml = a.image
-                    ? '<img src="'+_escHtml(a.image)+'" alt="'+_escHtml(a.title)+'" style="width:100%;aspect-ratio:16/9;object-fit:cover;display:block;" onerror="this.style.display=\'none\'">'
-                    : '<div style="width:100%;aspect-ratio:16/9;background:var(--c-surface2);display:flex;align-items:center;justify-content:center;"><i class="fas fa-image" style="font-size:24px;color:var(--c-muted);"></i></div>';
+                var imgHtml = a.has_image
+                    ? '<div style="width:100%;aspect-ratio:16/9;background:var(--c-surface2);display:flex;align-items:center;justify-content:center;gap:8px;"><i class="fas fa-image" style="font-size:20px;color:var(--c-gold);"></i><span style="font-size:11px;color:var(--c-muted);">Image enregistrée</span></div>'
+                    : (a.image ? '<img src="'+_escHtml(a.image)+'" alt="'+_escHtml(a.title)+'" style="width:100%;aspect-ratio:16/9;object-fit:cover;display:block;" onerror="this.style.display=\'none\'">'
+                    : '<div style="width:100%;aspect-ratio:16/9;background:var(--c-surface2);display:flex;align-items:center;justify-content:center;"><i class="fas fa-image" style="font-size:24px;color:var(--c-muted);"></i></div>');
                 var pubBadge = a.published !== false
                     ? '<span style="font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#22c55e;background:rgba(34,197,94,.1);padding:3px 8px;border-radius:20px;border:1px solid rgba(34,197,94,.25);">Publié</span>'
                     : '<span style="font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#f59e0b;background:rgba(245,158,11,.1);padding:3px 8px;border-radius:20px;border:1px solid rgba(245,158,11,.25);">Brouillon</span>';
@@ -6506,16 +6528,28 @@
             document.getElementById('actu-form-date').value = a.date ? a.date.substring(0,10) : '';
             document.getElementById('actu-form-location').value = a.location || '';
             document.getElementById('actu-form-desc').value = a.description || '';
-            document.getElementById('actu-form-image').value = a.image || '';
+            document.getElementById('actu-form-image').value = '';
             document.getElementById('actu-form-published').checked = a.published !== false;
             document.getElementById('actu-form-err').style.display = 'none';
             document.getElementById('actu-modal-title').textContent = 'Modifier l\'actualité';
             document.getElementById('actu-form-submit').textContent = 'Enregistrer';
             var prev = document.getElementById('actu-img-preview');
             var prevImg = document.getElementById('actu-img-preview-img');
-            if (a.image) { prevImg.src = a.image; prev.style.display = 'block'; } else { prev.style.display = 'none'; }
+            prev.style.display = 'none'; prevImg.src = '';
             var modal = document.getElementById('actualite-modal');
             if (modal) { modal.style.display = 'flex'; document.body.style.overflow = 'hidden'; }
+            // Charger l'image complète depuis le serveur (non envoyée dans le listing)
+            if (a.has_image) {
+                fetch(API_BASE_URL + '/api/admin/actualites/' + id, { headers: { 'x-admin-key': adminKey || '' } })
+                    .then(function(r){ return r.json(); })
+                    .then(function(d){
+                        if (d.ok && d.actualite && d.actualite.image) {
+                            document.getElementById('actu-form-image').value = d.actualite.image;
+                            prevImg.src = d.actualite.image;
+                            prev.style.display = 'block';
+                        }
+                    }).catch(function(){});
+            }
         }
 
         function closeActualiteForm() {
