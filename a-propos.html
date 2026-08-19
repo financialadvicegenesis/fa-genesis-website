@@ -1,314 +1,343 @@
-﻿<!DOCTYPE html>
-<html lang="fr" class="scroll-smooth">
+<!DOCTYPE html>
+<html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" type="image/png" sizes="32x32" href="assets/images/logo-favicon-32.png">
-    <link rel="icon" type="image/png" sizes="192x192" href="assets/images/logo-favicon-192.png">
-    <link rel="icon" type="image/png" sizes="512x512" href="assets/images/logo-favicon.png">
-    <link rel="apple-touch-icon" sizes="192x192" href="assets/images/logo-favicon-192.png">
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="https://fagenesis.com/a-propos.html">
-    <meta property="og:title" content="À Propos – FA GENESIS | L'Écosystème FA GENESIS">
-    <meta property="og:description" content="Découvrez l'écosystème FA GENESIS, sa mission et la vision du Président Tiffen NDJAMBOU.">
-    <meta property="og:image" content="https://fagenesis.com/assets/images/logo-og.png">
-    <meta property="og:image:width" content="1200">
-    <meta property="og:image:height" content="630">
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:image" content="https://fagenesis.com/assets/images/logo-og.png">
-    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
-    <link rel="dns-prefetch" href="https://fonts.googleapis.com">
-    <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
-    <title>À Propos - FA GENESIS | L'Écosystème FA Industries</title>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;900&family=Space+Grotesk:wght@300;700&display=swap" media="print" onload="this.media='all'">
-    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;900&family=Space+Grotesk:wght@300;700&display=swap"></noscript>
-    <link rel="stylesheet" href="tailwind.min.css">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.css" rel="stylesheet" media="print" onload="this.media='all'">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" media="print" onload="this.media='all'">
-    <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"></noscript>
-    <style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>À Propos — FA GENESIS | L'Écosystème FA GENESIS</title>
+<link rel="icon" type="image/png" sizes="32x32" href="assets/images/logo-favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="assets/images/logo-favicon-192.png">
+<meta property="og:title" content="À Propos — FA GENESIS">
+<meta property="og:description" content="Découvrez l'écosystème FA GENESIS, sa mission et la vision du Président Tiffen NDJAMBOU.">
+<meta property="og:image" content="https://fagenesis.com/assets/images/logo-og.png">
+<meta name="theme-color" content="#FFD700">
+<link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700;900&family=Space+Grotesk:wght@300;400;500;700&display=swap" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700;900&family=Space+Grotesk:wght@300;400;500;700&display=swap"></noscript>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"></noscript>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --black:#050505;
+  --s1:#0a0a0a;
+  --s2:#111;
+  --gold:#FFD700;
+  --gold-dim:rgba(255,215,0,.12);
+  --gold-border:rgba(255,215,0,.18);
+  --orange:#FF4800;
+  --white:#fff;
+  --t1:rgba(255,255,255,.92);
+  --t2:rgba(255,255,255,.6);
+  --t3:rgba(255,255,255,.35);
+  --font-d:'Unbounded',sans-serif;
+  --font-b:'Space Grotesk',sans-serif;
+  --nav-h:72px;
+  --r:16px;
+  --max:1200px;
+}
+html{scroll-behavior:smooth;}
+body{background:var(--black);color:var(--t1);font-family:var(--font-b);overflow-x:hidden;-webkit-font-smoothing:antialiased;}
+a{text-decoration:none;color:inherit;}
+.wrap{max-width:var(--max);margin:0 auto;padding:0 24px;}
 
-        :root {
-            --genesis-yellow: #FFD700;
-            --genesis-black: #000000;
-            --genesis-white: #FFFFFF;
-        }
+/* ── NAV ── */
+nav{position:fixed;top:0;left:0;right:0;z-index:1000;height:var(--nav-h);transition:background .3s,border-color .3s,backdrop-filter .3s;border-bottom:1px solid transparent;}
+nav.scrolled{background:rgba(5,5,5,.92);backdrop-filter:blur(20px);border-color:var(--gold-border);}
+.nav-inner{display:flex;align-items:center;justify-content:space-between;height:var(--nav-h);}
+.nav-logo{font-family:var(--font-d);font-size:15px;font-weight:900;letter-spacing:1px;color:var(--gold);display:flex;align-items:center;gap:10px;}
+.nav-logo-img{height:36px;width:auto;object-fit:contain;flex-shrink:0;mix-blend-mode:screen;}
+.nav-links{display:flex;align-items:center;gap:36px;}
+.nav-links a{font-size:13px;font-weight:500;color:var(--t2);transition:color .2s;letter-spacing:.2px;}
+.nav-links a:hover,.nav-links a.active{color:var(--white);}
+.nav-ctas{display:flex;align-items:center;gap:12px;}
+.btn-outline{border:1px solid rgba(255,255,255,.25);color:var(--white);padding:9px 20px;border-radius:6px;font-size:13px;font-weight:600;transition:border-color .2s,background .2s;}
+.btn-outline:hover{border-color:var(--gold);color:var(--gold);}
+.btn-gold{background:var(--gold);color:#000;padding:9px 20px;border-radius:6px;font-size:13px;font-weight:700;transition:opacity .2s;}
+.btn-gold:hover{opacity:.88;}
+.nav-hamburger{display:none;background:none;border:none;color:var(--white);font-size:20px;cursor:pointer;}
+.nav-mobile{display:none;position:fixed;inset:0;background:rgba(5,5,5,.98);z-index:999;flex-direction:column;align-items:center;justify-content:center;gap:32px;}
+.nav-mobile.open{display:flex;}
+.nav-mobile a,.nav-mobile button{font-family:var(--font-d);font-size:18px;font-weight:700;color:var(--white);background:none;border:none;cursor:pointer;}
+.nav-mobile-close{position:absolute;top:24px;right:24px;background:none;border:none;color:var(--white);font-size:24px;cursor:pointer;}
 
-        body {
-            background-color: var(--genesis-black);
-            color: var(--genesis-white);
-            font-family: 'Space Grotesk', sans-serif;
-            overflow-x: hidden;
-        }
+/* ── HERO ── */
+.ap-hero{min-height:70vh;display:flex;align-items:center;padding-top:var(--nav-h);position:relative;overflow:hidden;}
+.ap-hero-bg{position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(255,215,0,.07) 0%,transparent 70%);}
+.ap-hero-eyebrow{font-family:var(--font-d);font-size:11px;font-weight:700;letter-spacing:4px;color:var(--gold);text-transform:uppercase;margin-bottom:24px;}
+.ap-hero h1{font-family:var(--font-d);font-size:clamp(40px,7vw,96px);font-weight:900;line-height:1;letter-spacing:-2px;margin-bottom:24px;}
+.ap-hero h1 span{background:linear-gradient(135deg,var(--gold),var(--orange));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.ap-hero-sub{font-size:clamp(15px,2vw,20px);color:var(--t2);max-width:600px;line-height:1.6;font-weight:300;}
+.ap-hero-line{width:60px;height:2px;background:linear-gradient(90deg,var(--gold),var(--orange));border-radius:2px;margin:32px 0;}
 
-        h1, h2, h3, h4, h5, .nav-link { font-family: 'Unbounded', cursive; }
+/* ── SECTIONS ── */
+section{padding:100px 0;}
+.section-label{font-family:var(--font-d);font-size:10px;font-weight:700;letter-spacing:4px;text-transform:uppercase;color:var(--gold);margin-bottom:16px;}
+.section-title{font-family:var(--font-d);font-size:clamp(28px,4vw,52px);font-weight:900;line-height:1.1;margin-bottom:16px;}
+.grad-text{background:linear-gradient(135deg,var(--gold),var(--orange));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.section-sub{font-size:clamp(15px,1.8vw,18px);color:var(--t2);line-height:1.7;max-width:640px;}
 
-        /* Styles Néo-Brutalistes */
-        .neo-border { border: 4px solid var(--genesis-black); }
-        .neo-shadow { box-shadow: 10px 10px 0px 0px var(--genesis-yellow); }
-        .neo-shadow-black { box-shadow: 8px 8px 0px 0px var(--genesis-black); }
+/* ── PRESIDENT ── */
+.pres-grid{display:grid;grid-template-columns:340px 1fr;gap:56px;align-items:center;}
+.pres-img{width:100%;aspect-ratio:3/4;object-fit:cover;object-position:top;border-radius:var(--r);border:1px solid var(--gold-border);}
+.pres-quote-block{position:relative;padding:48px;background:var(--s1);border:1px solid var(--gold-border);border-radius:var(--r);}
+.pres-quote-mark{font-family:var(--font-d);font-size:80px;line-height:1;color:var(--gold);opacity:.25;position:absolute;top:20px;left:32px;}
+.pres-quote{font-family:var(--font-d);font-size:clamp(16px,2vw,24px);font-weight:900;line-height:1.4;color:var(--white);margin-bottom:32px;position:relative;z-index:1;}
+.pres-name{font-family:var(--font-d);font-size:13px;font-weight:900;color:var(--gold);letter-spacing:1px;}
+.pres-title{font-size:12px;color:var(--t2);margin-top:4px;letter-spacing:.5px;}
 
-        .neo-card {
-            background: var(--genesis-white);
-            color: var(--genesis-black);
-            border: 4px solid var(--genesis-black);
-            transition: all 0.2s ease;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-        }
-        .neo-card:hover {
-            transform: translate(-4px, -4px);
-            box-shadow: 14px 14px 0px 0px var(--genesis-yellow);
-        }
+/* ── PILIERS ── */
+.piliers-bg{background:var(--s1);}
+.piliers-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;margin-top:56px;}
+.pilier-card{background:var(--s2);padding:48px 36px;position:relative;overflow:hidden;transition:background .3s;}
+.pilier-card:hover{background:#161616;}
+.pilier-letter{font-family:var(--font-d);font-size:80px;font-weight:900;line-height:1;color:var(--gold);opacity:.15;position:absolute;bottom:24px;right:24px;}
+.pilier-icon{width:48px;height:48px;border-radius:12px;background:var(--gold-dim);border:1px solid var(--gold-border);display:flex;align-items:center;justify-content:center;margin-bottom:24px;font-size:20px;color:var(--gold);}
+.pilier-name{font-family:var(--font-d);font-size:18px;font-weight:900;color:var(--gold);margin-bottom:12px;}
+.pilier-desc{font-size:14px;color:var(--t2);line-height:1.6;}
 
-        .neo-btn-yellow {
-            background: var(--genesis-yellow);
-            color: black;
-            border: 4px solid black;
-            box-shadow: 6px 6px 0px black;
-            font-weight: 900;
-            transition: 0.1s;
-        }
-        .neo-btn-yellow:active {
-            transform: translate(4px, 4px);
-            box-shadow: 0px 0px 0px black;
-        }
+/* ── VALEURS ── */
+.valeurs-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-top:56px;}
+.valeur-card{position:relative;border-radius:var(--r);overflow:hidden;aspect-ratio:3/4;border:1px solid var(--gold-border);}
+.valeur-card img{width:100%;height:100%;object-fit:cover;transition:transform .5s;}
+.valeur-card:hover img{transform:scale(1.05);}
+.valeur-overlay{position:absolute;inset:0;background:linear-gradient(to top,rgba(5,5,5,.95) 0%,rgba(5,5,5,.3) 60%,transparent 100%);}
+.valeur-content{position:absolute;bottom:0;left:0;right:0;padding:32px;}
+.valeur-name{font-family:var(--font-d);font-size:20px;font-weight:900;color:var(--gold);margin-bottom:10px;}
+.valeur-desc{font-size:13px;color:var(--t2);line-height:1.6;}
 
-        .section-header {
-            font-size: clamp(3rem, 10vw, 7rem);
-            line-height: 0.9;
-            text-transform: uppercase;
-            font-style: italic;
-            letter-spacing: -0.05em;
-        }
-    </style>
-    <meta name="theme-color" content="#FFD700">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="FA GENESIS">
+/* ── CTA ── */
+.cta-block{background:var(--s1);border:1px solid var(--gold-border);border-radius:var(--r);padding:80px;text-align:center;}
+.cta-block .section-title{margin-bottom:16px;}
+.cta-block .section-sub{margin:0 auto 40px;text-align:center;}
+.cta-actions{display:flex;gap:16px;justify-content:center;flex-wrap:wrap;}
+
+/* ── FOOTER ── */
+footer{background:var(--s1);border-top:1px solid var(--gold-border);padding:64px 0 32px;}
+.footer-grid{display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr;gap:48px;margin-bottom:48px;}
+.footer-brand-name{font-family:var(--font-d);font-size:14px;font-weight:900;color:var(--gold);margin-bottom:12px;display:flex;align-items:center;gap:8px;}
+.footer-brand-img{height:30px;width:auto;object-fit:contain;mix-blend-mode:screen;}
+.footer-brand-desc{font-size:13px;color:var(--t3);line-height:1.6;margin-bottom:20px;}
+.footer-social{display:flex;gap:12px;}
+.footer-social a{width:34px;height:34px;border-radius:8px;border:1px solid var(--gold-border);display:flex;align-items:center;justify-content:center;color:var(--t2);font-size:13px;transition:border-color .2s,color .2s;}
+.footer-social a:hover{border-color:var(--gold);color:var(--gold);}
+.footer-col-title{font-family:var(--font-d);font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--t3);margin-bottom:20px;}
+.footer-col a{display:block;font-size:13px;color:var(--t2);margin-bottom:12px;transition:color .2s;}
+.footer-col a:hover{color:var(--white);}
+.footer-bottom{border-top:1px solid var(--gold-border);padding-top:28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;}
+.footer-copy{font-size:12px;color:var(--t3);}
+
+/* ── RESPONSIVE ── */
+@media(max-width:900px){
+  .pres-grid{grid-template-columns:1fr;}
+  .pres-img{aspect-ratio:4/3;max-width:400px;}
+  .piliers-grid{grid-template-columns:1fr;}
+  .valeurs-grid{grid-template-columns:1fr;}
+  .valeur-card{aspect-ratio:16/9;}
+  .footer-grid{grid-template-columns:1fr 1fr;}
+  .cta-block{padding:48px 24px;}
+  .nav-links,.nav-ctas{display:none;}
+  .nav-hamburger{display:block;}
+}
+@media(max-width:600px){
+  .footer-grid{grid-template-columns:1fr;}
+  section{padding:64px 0;}
+}
+</style>
 </head>
 <body>
 
-    <!-- NAVIGATION -->
-    <nav class="fixed top-0 w-full z-50 bg-black/95 backdrop-blur-md border-b-4 border-[var(--genesis-yellow)] px-4 md:px-6 py-3 md:py-4 flex justify-between items-center text-white text-xs font-black uppercase">
-        <div class="flex items-center">
-            <a href="index.html" class="flex items-center gap-2 md:gap-3 text-lg md:text-2xl font-black tracking-wider text-[var(--genesis-yellow)]" style="font-family: 'Unbounded', cursive;"><img src="assets/images/logo-favicon-192.png" alt="Logo FA GENESIS" style="height:48px;width:48px;flex-shrink:0;border-radius:50%;object-fit:cover;display:inline-block;vertical-align:middle;"> FA GENESIS</a>
-        </div>
-        <div class="hidden md:flex gap-12 text-white font-black">
-            <a href="index.html#accueil" class="nav-link hover:text-[var(--genesis-yellow)] transition">Accueil</a>
-            <a href="a-propos.html" class="nav-link text-[var(--genesis-yellow)]">À Propos</a>
-            <a href="offres.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">Prestations</a>
-            <a href="index.html#faq" class="nav-link hover:text-[var(--genesis-yellow)] transition">FAQ</a>
-            <a href="contact.html" class="nav-link hover:text-[var(--genesis-yellow)] transition">Contact</a>
-        </div>
-        <div class="hidden md:flex gap-4 items-center">
-            <a href="panier.html" class="relative text-white hover:text-[var(--genesis-yellow)] transition px-2 py-2" title="Panier">
-                <i class="fas fa-shopping-cart text-lg"></i>
-                <span class="panier-badge" style="display:none;position:absolute;top:-4px;right:-4px;background:#f44336;color:#fff;font-size:10px;font-weight:900;min-width:16px;height:16px;line-height:16px;text-align:center;border-radius:50%;"></span>
-            </a>
-            <a href="login.html" class="border-4 border-white text-white px-6 py-3 text-[12px] tracking-widest font-black hover:bg-white hover:text-black transition">Espace client</a>
-            <a href="contact.html" class="neo-btn-yellow px-6 py-3 text-[12px] tracking-widest text-black font-black">Lancer un projet</a>
-        </div>
-        <!-- Mobile : panier + menu -->
-        <div class="md:hidden flex items-center gap-2">
-            <a href="panier.html" class="relative text-white hover:text-[var(--genesis-yellow)] transition p-2" title="Panier">
-                <i class="fas fa-shopping-cart text-xl"></i>
-                <span class="panier-badge" style="display:none;position:absolute;top:-2px;right:-2px;background:#f44336;color:#fff;font-size:10px;font-weight:900;min-width:16px;height:16px;line-height:16px;text-align:center;border-radius:50%;"></span>
-            </a>
-            <button id="mobileMenuBtn" class="flex flex-col gap-1.5 p-2" aria-label="Menu">
-                <span class="block w-6 h-0.5 bg-[var(--genesis-yellow)] transition-all" id="menuLine1"></span>
-                <span class="block w-6 h-0.5 bg-[var(--genesis-yellow)] transition-all" id="menuLine2"></span>
-                <span class="block w-6 h-0.5 bg-[var(--genesis-yellow)] transition-all" id="menuLine3"></span>
-            </button>
-        </div>
-    </nav>
-
-    <!-- Menu Mobile Overlay -->
-    <div id="mobileMenu" class="fixed inset-0 z-40 bg-black/98 backdrop-blur-lg hidden flex-col items-center justify-center gap-8 text-white font-black uppercase">
-        <a href="index.html#accueil" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition" onclick="closeMobileMenu()">Accueil</a>
-        <a href="a-propos.html" class="text-2xl nav-link text-[var(--genesis-yellow)]" onclick="closeMobileMenu()">À Propos</a>
-        <a href="offres.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition" onclick="closeMobileMenu()">Prestations</a>
-        <a href="index.html#faq" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition" onclick="closeMobileMenu()">FAQ</a>
-        <a href="contact.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition" onclick="closeMobileMenu()">Contact</a>
-        <a href="panier.html" class="text-2xl nav-link hover:text-[var(--genesis-yellow)] transition" onclick="closeMobileMenu()"><i class="fas fa-shopping-cart mr-2"></i>Panier <span class="panier-badge" style="display:none;background:#f44336;color:#fff;font-size:12px;padding:2px 6px;border-radius:50%;margin-left:4px;"></span></a>
-        <div class="flex flex-col gap-4 mt-8">
-            <a href="login.html" class="border-4 border-white text-white px-8 py-4 text-sm tracking-widest font-black hover:bg-white hover:text-black transition text-center" onclick="closeMobileMenu()">Espace client</a>
-            <a href="contact.html" class="neo-btn-yellow px-8 py-4 text-sm tracking-widest text-black font-black text-center" onclick="closeMobileMenu()">Lancer un projet</a>
-        </div>
+<!-- NAV -->
+<nav id="navbar">
+  <div class="wrap nav-inner">
+    <a href="/" class="nav-logo">
+      <img src="assets/images/logo-genesis.png" alt="FA GENESIS" class="nav-logo-img">
+      FA GENESIS
+    </a>
+    <div class="nav-links">
+      <a href="index.html">Accueil</a>
+      <a href="a-propos.html" class="active">À propos</a>
+      <a href="index.html#espaces">Espaces</a>
+      <a href="index.html#actualites">Actualités</a>
     </div>
+    <div class="nav-ctas">
+      <a href="index.html#download" class="btn-outline">Télécharger</a>
+      <a href="index.html" onclick="setTimeout(()=>openLogin(),300)" class="btn-gold">Se connecter</a>
+    </div>
+    <button class="nav-hamburger" onclick="document.getElementById('mobile-menu').classList.add('open')">
+      <i class="fa-solid fa-bars"></i>
+    </button>
+  </div>
+</nav>
 
-    <!-- À PROPOS HERO -->
-    <section class="min-h-[60vh] md:min-h-screen flex flex-col items-center justify-center p-4 md:p-6 bg-black pt-24 md:pt-32 text-center relative overflow-hidden text-white font-black uppercase">
-        <div class="absolute top-20 right-[-10%] w-96 h-96 bg-[var(--genesis-yellow)] rounded-full blur-[120px] opacity-20 z-0"></div>
-        <div class="w-full max-w-7xl z-10" data-aos="zoom-in">
-            <h1 class="section-header text-[var(--genesis-yellow)] mb-6 md:mb-12 italic">À PROPOS</h1>
-            <p class="text-lg md:text-2xl lg:text-3xl font-black italic uppercase mb-10 md:mb-20 max-w-4xl mx-auto px-4">Découvrez l'écosystème FA GENESIS au sein du groupe FA INDUSTRIES et sa mission</p>
+<div class="nav-mobile" id="mobile-menu">
+  <button class="nav-mobile-close" onclick="document.getElementById('mobile-menu').classList.remove('open')"><i class="fa-solid fa-xmark"></i></button>
+  <a href="index.html" onclick="document.getElementById('mobile-menu').classList.remove('open')">Accueil</a>
+  <a href="a-propos.html" onclick="document.getElementById('mobile-menu').classList.remove('open')">À propos</a>
+  <a href="index.html#espaces" onclick="document.getElementById('mobile-menu').classList.remove('open')">Espaces</a>
+  <a href="index.html#actualites" onclick="document.getElementById('mobile-menu').classList.remove('open')">Actualités</a>
+  <a href="index.html#download" onclick="document.getElementById('mobile-menu').classList.remove('open')">Télécharger</a>
+</div>
+
+<!-- HERO -->
+<section class="ap-hero">
+  <div class="ap-hero-bg"></div>
+  <div class="wrap" style="position:relative;z-index:1;">
+    <p class="ap-hero-eyebrow">FA GENESIS &mdash; Notre histoire</p>
+    <h1>À propos<br><span>de nous</span></h1>
+    <div class="ap-hero-line"></div>
+    <p class="ap-hero-sub">FA Genesis est le pôle d'incubation stratégique dédié à la transformation des idées en projets structurés, crédibles et visibles.</p>
+  </div>
+</section>
+
+<!-- MOT DU PRÉSIDENT -->
+<section style="background:var(--black);padding:100px 0;">
+  <div class="wrap">
+    <p class="section-label">Leadership</p>
+    <h2 class="section-title">Mot du <span class="grad-text">Président</span></h2>
+    <div class="pres-grid" style="margin-top:56px;">
+      <div>
+        <img src="assets/images/president-fa-genesis.png" alt="Tiffen NDJAMBOU — Président FA GENESIS" class="pres-img">
+      </div>
+      <div class="pres-quote-block">
+        <div class="pres-quote-mark">"</div>
+        <p class="pres-quote">"Nous sommes le catalyseur qui donne un cadre, une méthode et un réseau à ceux qui osent bâtir leur avenir."</p>
+        <div style="width:40px;height:2px;background:linear-gradient(90deg,var(--gold),var(--orange));border-radius:2px;margin-bottom:20px;"></div>
+        <p class="pres-name">Tiffen NDJAMBOU</p>
+        <p class="pres-title">Président, FA GENESIS &mdash; Groupe FA Industries</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- NOS PILIERS -->
+<section class="piliers-bg">
+  <div class="wrap">
+    <p class="section-label">Méthode</p>
+    <h2 class="section-title">Nos <span class="grad-text">piliers</span></h2>
+    <p class="section-sub">Trois axes fondamentaux qui guident chaque accompagnement FA GENESIS, du concept à l'impact.</p>
+    <div class="piliers-grid">
+      <div class="pilier-card">
+        <div class="pilier-icon"><i class="fa-solid fa-cube"></i></div>
+        <p class="pilier-name">BUILD</p>
+        <p class="pilier-desc">Structurer l'idée, la vision et le positionnement. Transformer une ambition floue en un projet clair, différenciant et exécutable.</p>
+        <div class="pilier-letter">B</div>
+      </div>
+      <div class="pilier-card">
+        <div class="pilier-icon"><i class="fa-solid fa-rocket"></i></div>
+        <p class="pilier-name">LAUNCH</p>
+        <p class="pilier-desc">Créer une image professionnelle et une visibilité cohérente. Accéder au réseau et aux premiers clients grâce à l'écosystème GENESIS.</p>
+        <div class="pilier-letter">L</div>
+      </div>
+      <div class="pilier-card">
+        <div class="pilier-icon"><i class="fa-solid fa-chart-line"></i></div>
+        <p class="pilier-name">IMPACT</p>
+        <p class="pilier-desc">Générer des résultats concrets et durables. Mesurer, optimiser, et pérenniser la croissance du projet sur le long terme.</p>
+        <div class="pilier-letter">I</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- NOS VALEURS -->
+<section style="background:var(--black);">
+  <div class="wrap">
+    <p class="section-label">Ce qui nous définit</p>
+    <h2 class="section-title">Nos <span class="grad-text">valeurs</span></h2>
+    <p class="section-sub">Les principes qui guident chacune de nos décisions et chaque accompagnement que nous menons.</p>
+    <div class="valeurs-grid">
+      <div class="valeur-card">
+        <img src="assets/images/innovation.png" alt="Innovation">
+        <div class="valeur-overlay"></div>
+        <div class="valeur-content">
+          <p class="valeur-name">Innovation</p>
+          <p class="valeur-desc">Nous croyons en l'innovation comme moteur de transformation. Chaque projet est une opportunité de repousser les limites et de créer quelque chose d'unique.</p>
         </div>
-    </section>
-
-    <!-- À PROPOS CONTENT -->
-    <section class="pt-16 md:pt-40 px-4 md:px-6 container mx-auto text-white font-black uppercase" style="padding-bottom:10rem;">
-
-        <!-- Introduction L'Écosystème FA Industries -->
-        <div class="mb-16 md:mb-24" data-aos="fade-up">
-            <!-- Titre -->
-            <h2 class="text-3xl md:text-5xl lg:text-7xl font-black mb-8 md:mb-12 italic leading-none uppercase tracking-tighter text-center">L'ÉCOSYSTÈME<br><span class="text-[var(--genesis-yellow)]">FA GENESIS</span></h2>
-
-            <!-- Phrase intro pleine largeur -->
-            <p class="font-bold italic text-white text-sm md:text-lg mb-10 md:mb-14 text-center" style="max-width:1100px;margin-left:auto;margin-right:auto;">FA Genesis est le pôle d'incubation stratégique dédiée à la transformation des idées en un projet structuré, crédible et visible.</p>
-
-            <!-- 2 colonnes : image gauche / Mot du Président droite -->
-            <div class="flex flex-col md:flex-row gap-8 md:gap-14 items-stretch" style="max-width:1100px;margin:0 auto;">
-                <!-- Image gauche -->
-                <div style="flex-shrink:0;width:100%;max-width:320px;margin:0 auto;">
-                    <img src="assets/images/president-fa-genesis.png"
-                         alt="Président de FA Genesis – Groupe Financial Advice Industries"
-                         style="width:100%;height:100%;border-radius:16px;object-fit:cover;object-position:top;box-shadow:8px 8px 0 var(--genesis-yellow);border:4px solid #000;">
-                </div>
-                <!-- Mot du Président droite -->
-                <div class="bg-white text-black neo-border neo-shadow flex flex-col p-6 md:p-10" style="flex:1;min-width:0;">
-                    <p style="font-size:15px;font-weight:900;text-transform:uppercase;letter-spacing:4px;color:#FFD700;text-align:center;margin-bottom:0;">Mot du Président</p>
-                    <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:24px 0;">
-                        <p class="font-black italic text-base md:text-xl lg:text-2xl uppercase leading-snug text-black text-center">"Nous sommes le catalyseur qui donne un cadre, une méthode et un réseau à ceux qui osent bâtir leur avenir."</p>
-                    </div>
-                    <div style="text-align:center;">
-                        <p style="font-size:14px;font-weight:900;color:#000;text-transform:uppercase;letter-spacing:2px;margin-bottom:4px;">— Tiffen NDJAMBOU</p>
-                        <p style="font-size:11px;font-weight:700;color:#000;text-transform:uppercase;letter-spacing:1px;">Président, FA Genesis</p>
-                        <p style="font-size:10px;font-weight:700;color:#000;text-transform:uppercase;letter-spacing:1px;margin-top:2px;">Groupe FA Industries</p>
-                    </div>
-                </div>
-            </div>
+      </div>
+      <div class="valeur-card">
+        <img src="assets/images/authenticite.png" alt="Authenticité">
+        <div class="valeur-overlay"></div>
+        <div class="valeur-content">
+          <p class="valeur-name">Authenticité</p>
+          <p class="valeur-desc">Nous valorisons l'authenticité dans chaque projet. Votre identité unique est au cœur de notre approche, pour un positionnement sincère et différenciant.</p>
         </div>
-
-        <!-- NOS PILIERS -->
-        <div class="mb-16 md:mb-24" data-aos="fade-up">
-            <div class="neo-card p-6 md:p-12 text-black max-w-4xl mx-auto">
-                <h3 class="text-2xl md:text-4xl font-black mb-6 md:mb-10 uppercase italic border-b-4 border-[var(--genesis-yellow)] pb-4 text-center">NOS PILIERS</h3>
-                <div class="space-y-6 md:space-y-8 uppercase">
-                    <div class="flex items-start gap-4 md:gap-6 text-left">
-                        <span class="bg-black text-white px-3 md:px-4 py-2 font-black italic text-lg md:text-2xl">B</span>
-                        <div class="text-left"><h4 class="text-base md:text-xl font-black uppercase">BUILD</h4><p class="font-bold text-sm md:text-base" style="color:#000;">Structurer l'idée, la vision et le positionnement.</p></div>
-                    </div>
-                    <div class="flex items-start gap-4 md:gap-6 text-left">
-                        <span class="bg-[var(--genesis-yellow)] text-black px-3 md:px-4 py-2 font-black italic text-lg md:text-2xl">L</span>
-                        <div class="text-left"><h4 class="text-base md:text-xl font-black uppercase">LAUNCH</h4><p class="font-bold text-sm md:text-base" style="color:#000;">Créer une image pro et une visibilité cohérente.</p></div>
-                    </div>
-                    <div class="flex items-start gap-4 md:gap-6 text-left">
-                        <span class="bg-black text-white px-3 md:px-4 py-2 font-black italic text-lg md:text-2xl">I</span>
-                        <div class="text-left"><h4 class="text-base md:text-xl font-black uppercase">IMPACT</h4><p class="font-bold text-sm md:text-base" style="color:#000;">Générer des résultats concrets et durables.</p></div>
-                    </div>
-                </div>
-            </div>
+      </div>
+      <div class="valeur-card">
+        <img src="assets/images/ambition.png" alt="Ambition">
+        <div class="valeur-overlay"></div>
+        <div class="valeur-content">
+          <p class="valeur-name">Ambition</p>
+          <p class="valeur-desc">Nous accompagnons les visionnaires qui osent voir grand. Ensemble, nous transformons les ambitions les plus audacieuses en réalisations concrètes.</p>
         </div>
+      </div>
+    </div>
+  </div>
+</section>
 
-        <!-- Section supplémentaire pour enrichir la page À Propos -->
-        <div class="mt-16 md:mt-40">
-            <h2 class="text-3xl md:text-5xl lg:text-6xl font-black mb-10 md:mb-20 text-center italic text-[var(--genesis-yellow)]" data-aos="fade-up">NOTRE VISION</h2>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-10">
-                <div class="neo-border neo-shadow relative overflow-hidden" style="min-height:260px;" data-aos="zoom-in" data-aos-delay="0">
-                    <img src="assets/images/innovation.png" alt="Innovation" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;object-position:center -20px;z-index:0;">
-                    <div style="position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.62);z-index:1;"></div>
-                    <div class="text-center text-white" style="position:absolute;top:0;left:0;width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:2;padding:1.5rem;">
-                        <h3 class="text-xl md:text-3xl font-black mb-4 md:mb-6 italic border-b-4 border-[var(--genesis-yellow)] pb-4 text-center" style="text-shadow:0 2px 8px rgba(0,0,0,0.9);">INNOVATION</h3>
-                        <p class="text-xs md:text-sm font-bold leading-relaxed text-center" style="text-shadow:0 1px 6px rgba(0,0,0,0.8);">Nous croyons en l'innovation comme moteur de transformation. Chaque projet est une opportunité de repousser les limites et de créer quelque chose d'unique.</p>
-                    </div>
-                </div>
-                <div class="neo-border neo-shadow relative overflow-hidden" style="min-height:260px;" data-aos="zoom-in" data-aos-delay="100">
-                    <img src="assets/images/authenticite.png" alt="Authenticité" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;object-position:center -40px;z-index:0;">
-                    <div style="position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.62);z-index:1;"></div>
-                    <div class="text-center text-white" style="position:absolute;top:0;left:0;width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:2;padding:1.5rem;">
-                        <h3 class="text-xl md:text-3xl font-black mb-4 md:mb-6 italic border-b-4 border-[var(--genesis-yellow)] pb-4 text-center" style="text-shadow:0 2px 8px rgba(0,0,0,0.9);">AUTHENTICITÉ</h3>
-                        <p class="text-xs md:text-sm font-bold leading-relaxed text-center" style="text-shadow:0 1px 6px rgba(0,0,0,0.8);">Nous valorisons l'authenticité dans chaque projet. Votre identité unique est au cœur de notre approche, pour un positionnement sincère et différenciant.</p>
-                    </div>
-                </div>
-                <div class="neo-border neo-shadow relative overflow-hidden" style="min-height:260px;" data-aos="zoom-in" data-aos-delay="200">
-                    <img src="assets/images/ambition.png" alt="Ambition" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;object-position:center -40px;z-index:0;">
-                    <div style="position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.62);z-index:1;"></div>
-                    <div class="text-center text-white" style="position:absolute;top:0;left:0;width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:2;padding:1.5rem;">
-                        <h3 class="text-xl md:text-3xl font-black mb-4 md:mb-6 italic border-b-4 border-[var(--genesis-yellow)] pb-4 text-center" style="text-shadow:0 2px 8px rgba(0,0,0,0.9);">AMBITION</h3>
-                        <p class="text-xs md:text-sm font-bold leading-relaxed text-center" style="text-shadow:0 1px 6px rgba(0,0,0,0.8);">Nous accompagnons les visionnaires qui osent voir grand. Ensemble, nous transformons les ambitions les plus audacieuses en réalisations concrètes.</p>
-                    </div>
-                </div>
-            </div>
+<!-- CTA -->
+<section style="background:var(--s1);padding:100px 0;">
+  <div class="wrap">
+    <div class="cta-block">
+      <p class="section-label" style="text-align:center;">Rejoindre l'aventure</p>
+      <h2 class="section-title" style="text-align:center;">Prêt à faire partie<br>de <span class="grad-text">l'écosystème</span> ?</h2>
+      <p class="section-sub" style="text-align:center;margin:16px auto 40px;">Transformez votre vision en réalité avec le réseau, les outils et l'accompagnement FA GENESIS.</p>
+      <div class="cta-actions">
+        <a href="index.html#download" class="btn-gold" style="padding:14px 32px;font-size:14px;border-radius:8px;">Télécharger l'app</a>
+        <a href="index.html" class="btn-outline" style="padding:14px 32px;font-size:14px;border-radius:8px;">Découvrir GENESIS</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="wrap">
+    <div class="footer-grid">
+      <div>
+        <div class="footer-brand-name">
+          <img src="assets/images/logo-genesis.png" alt="FA GENESIS" class="footer-brand-img">
+          FA GENESIS
         </div>
-
-        <!-- Call to Action -->
-        <div class="text-center" style="margin-top:6rem;" data-aos="zoom-in">
-            <div class="bg-white neo-border neo-shadow inline-block p-6 md:p-12 max-w-3xl mx-4 md:mx-auto">
-                <h3 class="text-xl md:text-3xl lg:text-4xl font-black mb-4 md:mb-8 italic text-black uppercase">Prêt à Rejoindre l'Aventure ?</h3>
-                <p class="text-sm md:text-lg font-bold text-black mb-6 md:mb-8 uppercase">Faites partie de l'écosystème FA Genesis et transformez votre vision en réalité</p>
-                <div class="flex flex-col gap-4 md:gap-6 justify-center">
-                    <a href="offres.html" class="neo-btn-yellow px-6 md:px-8 py-3 md:py-4 text-xs md:text-sm tracking-widest uppercase inline-block">Découvrir nos offres</a>
-                    <a href="contact.html" class="bg-black text-white px-6 md:px-8 py-3 md:py-4 text-xs md:text-sm tracking-widest uppercase inline-block border-4 border-black hover:bg-gray-900 transition font-black">Nous contacter</a>
-                </div>
-            </div>
+        <p class="footer-brand-desc">La plateforme qui connecte clients et prestataires de services en France et en Afrique. Sécurisé, transparent, global.</p>
+        <div class="footer-social">
+          <a href="https://www.linkedin.com/in/financial-advice-genesis-772b653aa/" target="_blank" rel="noopener"><i class="fa-brands fa-linkedin-in"></i></a>
+          <a href="https://www.instagram.com/financial_advice_genesis/" target="_blank" rel="noopener"><i class="fa-brands fa-instagram"></i></a>
+          <a href="https://www.tiktok.com/@fa.genesis" target="_blank" rel="noopener"><i class="fa-brands fa-tiktok"></i></a>
         </div>
-    </section>
+      </div>
+      <div class="footer-col">
+        <p class="footer-col-title">Plateforme</p>
+        <a href="index.html#espaces">Espaces</a>
+        <a href="index.html#fonctionnalites">Fonctionnalités</a>
+        <a href="index.html#actualites">Actualités</a>
+        <a href="index.html#download">Télécharger</a>
+      </div>
+      <div class="footer-col">
+        <p class="footer-col-title">À propos</p>
+        <a href="a-propos.html">Notre histoire</a>
+        <a href="a-propos.html#piliers">Nos piliers</a>
+        <a href="a-propos.html#valeurs">Nos valeurs</a>
+      </div>
+      <div class="footer-col">
+        <p class="footer-col-title">Légal</p>
+        <a href="mentions-legales.html">Mentions légales</a>
+        <a href="politique-confidentialite.html">Confidentialité</a>
+        <a href="cgv.html">CGV</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p class="footer-copy">© 2026 FA GENESIS. Tous droits réservés.</p>
+      <p class="footer-copy">Groupe FA Industries</p>
+    </div>
+  </div>
+</footer>
 
-    <!-- FOOTER -->
-    <div id="site-footer"></div>
-
-    <script>
-        if (window.innerWidth > 768) {
-            var aosScript = document.createElement('script');
-            aosScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js';
-            aosScript.onload = function() { AOS.init({ duration: 800, once: true, offset: 100 }); };
-            document.body.appendChild(aosScript);
-        } else {
-            document.querySelectorAll('[data-aos]').forEach(function(el) {
-                el.removeAttribute('data-aos');
-                el.style.opacity = '1';
-                el.style.transform = 'none';
-            });
-        }
-
-        // Menu Mobile Toggle
-        const mobileMenuBtn = document.getElementById('mobileMenuBtn');
-        const mobileMenu = document.getElementById('mobileMenu');
-        const menuLine1 = document.getElementById('menuLine1');
-        const menuLine2 = document.getElementById('menuLine2');
-        const menuLine3 = document.getElementById('menuLine3');
-        let isMenuOpen = false;
-
-        function toggleMobileMenu() {
-            isMenuOpen = !isMenuOpen;
-            if (isMenuOpen) {
-                mobileMenu.classList.remove('hidden');
-                mobileMenu.classList.add('flex');
-                menuLine1.style.transform = 'rotate(45deg) translate(5px, 5px)';
-                menuLine2.style.opacity = '0';
-                menuLine3.style.transform = 'rotate(-45deg) translate(5px, -5px)';
-                document.body.style.overflow = 'hidden';
-            } else {
-                closeMobileMenu();
-            }
-        }
-
-        function closeMobileMenu() {
-            isMenuOpen = false;
-            mobileMenu.classList.add('hidden');
-            mobileMenu.classList.remove('flex');
-            menuLine1.style.transform = 'none';
-            menuLine2.style.opacity = '1';
-            menuLine3.style.transform = 'none';
-            document.body.style.overflow = 'auto';
-        }
-
-        mobileMenuBtn.addEventListener('click', toggleMobileMenu);
-    </script>
-    <script src="offers-config.js"></script>
-    <script src="panier.js"></script>
-    <script src="footer.js" defer></script>
-    <script>
-        var chatbotLoaded=false;function loadChatbot(){if(chatbotLoaded)return;chatbotLoaded=true;var s=document.createElement('script');s.src='chatbot.js';document.body.appendChild(s);}
-        if('requestIdleCallback' in window){requestIdleCallback(loadChatbot,{timeout:4000});}else{setTimeout(loadChatbot,3000);}
-        window.addEventListener('scroll',loadChatbot,{once:true,passive:true});window.addEventListener('touchstart',loadChatbot,{once:true,passive:true});
-    </script>
-    <script src="nav-global.js"></script>
-    <script src="pwa-init.js"></script>
+<script>
+var navbar = document.getElementById('navbar');
+window.addEventListener('scroll', function(){
+  if(window.scrollY > 40) navbar.classList.add('scrolled');
+  else navbar.classList.remove('scrolled');
+}, {passive:true});
+</script>
 </body>
 </html>
