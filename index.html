@@ -183,6 +183,8 @@ nav.scrolled{background:rgba(5,5,5,.92);backdrop-filter:blur(20px);border-color:
 .espace-cta-btn:hover{opacity:.85;}
 .espace-phone-wrap{background:var(--s3);padding:32px 32px 0;display:flex;justify-content:center;}
 .espace-phone{width:220px;background:#0a0a0a;border:1.5px solid rgba(255,215,0,.2);border-radius:28px 28px 0 0;overflow:hidden;box-shadow:0 -20px 60px rgba(0,0,0,.5);}
+.espace-phone.gphone{width:240px;border-color:rgba(255,215,0,.3);}
+.gp-status{display:flex;align-items:center;justify-content:space-between;padding:5px 14px 0;font-size:6.5px;font-weight:700;color:var(--t2);background:#0a0a0a;font-family:var(--font-b);}
 
 /* ── HOW IT WORKS ────────────────────────────────────────── */
 #comment{padding:120px 0;background:var(--bg);}
@@ -514,21 +516,54 @@ footer{background:var(--s1);border-top:1px solid var(--gold-border);padding:64px
           <button class="espace-cta-btn espace-cta-client" onclick="openLogin('client')"><i class="fa-solid fa-arrow-right"></i>Accéder à l'espace client</button>
         </div>
         <div class="espace-phone-wrap">
-          <div class="espace-phone">
+          <div class="espace-phone gphone">
+            <!-- Status bar -->
+            <div class="gp-status"><span>9:41</span><span style="display:flex;gap:4px;align-items:center;"><i class="fa-solid fa-wifi" style="font-size:7px;"></i><i class="fa-solid fa-battery-full" style="font-size:7px;"></i></span></div>
             <div class="phone-notch"><div class="phone-notch-pill"></div></div>
-            <div class="phone-screen">
-              <div class="ms-header"><div class="ms-logo">GENESIS</div><div class="ms-avatar"></div></div>
-              <div class="ms-title">Mes réservations</div>
-              <div class="ms-mission-item" style="flex-direction:column;align-items:flex-start;gap:4px;">
-                <div style="display:flex;align-items:center;justify-content:space-between;width:100%;"><div class="ms-mission-name">Audit patrimonial</div><div class="ms-mission-status">En cours</div></div>
-                <div style="font-size:6.5px;color:var(--t2);">Antoine M. · Paiement sécurisé GENESIS SAFE™</div>
-                <div style="width:100%;height:3px;background:#1a1a1a;border-radius:2px;margin-top:3px;"><div style="width:60%;height:100%;background:linear-gradient(90deg,var(--gold),var(--orange));border-radius:2px;"></div></div>
+            <div class="phone-screen" style="padding:10px 12px;">
+              <!-- Header -->
+              <div class="ms-header">
+                <div style="display:flex;align-items:center;gap:6px;">
+                  <img src="assets/images/logo-genesis.png" alt="" style="height:14px;mix-blend-mode:screen;">
+                  <div class="ms-logo">GENESIS</div>
+                </div>
+                <div style="display:flex;align-items:center;gap:5px;">
+                  <div style="width:18px;height:18px;background:rgba(255,215,0,.12);border:1px solid var(--gold-border);border-radius:50%;display:flex;align-items:center;justify-content:center;"><i class="fa-solid fa-bell" style="font-size:7px;color:var(--gold);"></i></div>
+                  <div class="ms-avatar"></div>
+                </div>
               </div>
-              <div class="ms-mission-item" style="flex-direction:column;align-items:flex-start;gap:4px;">
-                <div style="display:flex;align-items:center;justify-content:space-between;width:100%;"><div class="ms-mission-name">Coaching business</div><div class="ms-mission-status" style="background:rgba(255,215,0,.1);color:var(--gold);">Terminé ✓</div></div>
-                <div style="font-size:6.5px;color:var(--t2);">Léa R. · Livrable disponible</div>
+              <!-- Greeting -->
+              <div style="font-size:7px;color:var(--t2);margin-bottom:2px;">Bonjour, Sophie 👋</div>
+              <div class="ms-title" style="margin-bottom:12px;">Mes missions</div>
+              <!-- Mission card 1 — En cours -->
+              <div style="background:#141414;border:1px solid rgba(255,215,0,.12);border-radius:10px;padding:9px 10px;margin-bottom:7px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">
+                  <div style="font-size:8px;font-weight:800;color:var(--white);">Audit patrimonial</div>
+                  <div style="font-size:6px;background:rgba(34,197,94,.12);color:#22c55e;padding:2px 7px;border-radius:20px;font-weight:700;">En cours</div>
+                </div>
+                <div style="font-size:6.5px;color:var(--t2);margin-bottom:7px;display:flex;align-items:center;gap:4px;"><i class="fa-solid fa-user" style="font-size:6px;color:var(--gold);"></i>Antoine M. · <i class="fa-solid fa-shield-halved" style="font-size:6px;color:var(--gold);"></i> GENESIS SAFE™</div>
+                <div style="display:flex;justify-content:space-between;font-size:6px;color:var(--t3);margin-bottom:3px;"><span>Progression</span><span style="color:var(--gold);">60%</span></div>
+                <div style="height:3px;background:#1a1a1a;border-radius:2px;"><div style="width:60%;height:100%;background:linear-gradient(90deg,var(--gold),var(--orange));border-radius:2px;"></div></div>
               </div>
-              <div class="ms-bottom-nav" style="margin-top:8px;">
+              <!-- Mission card 2 — Terminé -->
+              <div style="background:#141414;border:1px solid rgba(255,215,0,.08);border-radius:10px;padding:9px 10px;margin-bottom:7px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+                  <div style="font-size:8px;font-weight:800;color:var(--white);">Coaching business</div>
+                  <div style="font-size:6px;background:rgba(255,215,0,.1);color:var(--gold);padding:2px 7px;border-radius:20px;font-weight:700;">Terminé ✓</div>
+                </div>
+                <div style="font-size:6.5px;color:var(--t2);display:flex;align-items:center;gap:4px;margin-bottom:5px;"><i class="fa-solid fa-user" style="font-size:6px;color:var(--t3);"></i>Léa R. · <i class="fa-solid fa-file-arrow-down" style="font-size:6px;color:var(--gold);"></i> Livrable disponible</div>
+                <div style="height:3px;background:#1a1a1a;border-radius:2px;"><div style="width:100%;height:100%;background:linear-gradient(90deg,var(--gold),var(--orange));border-radius:2px;"></div></div>
+              </div>
+              <!-- Mission card 3 — À venir -->
+              <div style="background:#141414;border:1px solid #1a1a1a;border-radius:10px;padding:9px 10px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+                  <div style="font-size:8px;font-weight:800;color:var(--white);">Création de contenu</div>
+                  <div style="font-size:6px;background:rgba(99,102,241,.12);color:#818cf8;padding:2px 7px;border-radius:20px;font-weight:700;">Devis envoyé</div>
+                </div>
+                <div style="font-size:6.5px;color:var(--t2);">Marc T. · En attente de validation</div>
+              </div>
+              <!-- Bottom Nav -->
+              <div class="ms-bottom-nav" style="margin-top:10px;">
                 <div class="ms-bnav-item"><i class="fa-solid fa-house"></i>Accueil</div>
                 <div class="ms-bnav-item"><i class="fa-solid fa-compass"></i>Explorer</div>
                 <div class="ms-bnav-item active"><i class="fa-solid fa-calendar-check"></i>Missions</div>
@@ -554,26 +589,57 @@ footer{background:var(--s1);border-top:1px solid var(--gold-border);padding:64px
           <button class="espace-cta-btn espace-cta-partner" onclick="openLogin('partner')"><i class="fa-solid fa-arrow-right"></i>Accéder à l'espace prestataire</button>
         </div>
         <div class="espace-phone-wrap">
-          <div class="espace-phone">
+          <div class="espace-phone gphone">
+            <!-- Status bar -->
+            <div class="gp-status"><span>9:41</span><span style="display:flex;gap:4px;align-items:center;"><i class="fa-solid fa-wifi" style="font-size:7px;"></i><i class="fa-solid fa-battery-full" style="font-size:7px;"></i></span></div>
             <div class="phone-notch"><div class="phone-notch-pill"></div></div>
-            <div class="phone-screen">
-              <div class="ms-header"><div class="ms-logo">GENESIS</div><div class="ms-avatar" style="background:linear-gradient(135deg,var(--orange),#ff6a00);"></div></div>
-              <div class="ms-title">Profil &amp; Badges</div>
-              <div class="ms-badge-row" style="margin-bottom:6px;"><i class="ms-badge-icon fa-solid fa-fire"></i><div class="ms-badge-text"><strong style="color:var(--white);">Badge Bronze</strong> — 5 missions · ≥ 4.0★</div></div>
-              <div class="ms-badge-row" style="background:rgba(255,215,0,.06);border-color:rgba(255,215,0,.2);margin-bottom:6px;"><i class="ms-badge-icon fa-solid fa-bolt" style="color:var(--gold);"></i><div class="ms-badge-text" style="color:var(--t3);">Badge Argent — 20 missions (en cours)</div></div>
-              <div style="margin-bottom:8px;">
-                <div style="display:flex;justify-content:space-between;font-size:7px;color:var(--t2);margin-bottom:4px;"><span>Progression Argent</span><span>5/20 missions</span></div>
-                <div style="height:4px;background:#1a1a1a;border-radius:2px;"><div style="width:25%;height:100%;background:linear-gradient(90deg,var(--gold),var(--orange));border-radius:2px;"></div></div>
+            <div class="phone-screen" style="padding:10px 12px;">
+              <!-- Header -->
+              <div class="ms-header">
+                <div style="display:flex;align-items:center;gap:6px;">
+                  <img src="assets/images/logo-genesis.png" alt="" style="height:14px;mix-blend-mode:screen;">
+                  <div class="ms-logo">GENESIS</div>
+                </div>
+                <div style="display:flex;align-items:center;gap:5px;">
+                  <div style="width:18px;height:18px;background:rgba(255,72,0,.12);border:1px solid rgba(255,72,0,.3);border-radius:50%;display:flex;align-items:center;justify-content:center;"><i class="fa-solid fa-sliders" style="font-size:7px;color:var(--orange);"></i></div>
+                  <div class="ms-avatar" style="background:linear-gradient(135deg,var(--orange),#ff6a00);"></div>
+                </div>
               </div>
-              <div class="ms-stat-row">
-                <div class="ms-stat"><div class="ms-stat-val">5</div><div class="ms-stat-lbl">Missions</div></div>
-                <div class="ms-stat"><div class="ms-stat-val">4.8★</div><div class="ms-stat-lbl">Note</div></div>
+              <!-- Greeting + badge pill -->
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px;">
+                <div style="font-size:7px;color:var(--t2);">Bonjour, Maxime 👋</div>
+                <div style="font-size:6px;background:rgba(205,127,50,.15);border:1px solid rgba(205,127,50,.4);color:#cd7f32;padding:2px 6px;border-radius:20px;font-weight:700;display:flex;align-items:center;gap:3px;"><i class="fa-solid fa-fire" style="font-size:6px;"></i>Bronze</div>
               </div>
-              <div class="ms-bottom-nav" style="margin-top:4px;">
+              <!-- Wallet card -->
+              <div style="background:linear-gradient(135deg,#1a1200,#1a0800);border:1px solid rgba(255,215,0,.2);border-radius:10px;padding:9px 10px;margin-bottom:8px;margin-top:6px;">
+                <div style="font-size:6.5px;color:var(--t3);margin-bottom:3px;">Solde disponible</div>
+                <div style="font-size:17px;font-weight:900;color:var(--gold);font-family:'Unbounded',sans-serif;letter-spacing:-0.5px;">1 240<span style="font-size:9px;color:var(--t2);margin-left:2px;">€</span></div>
+                <div style="display:flex;gap:6px;margin-top:8px;">
+                  <div style="flex:1;background:rgba(255,215,0,.1);border:1px solid rgba(255,215,0,.2);border-radius:6px;padding:5px 0;text-align:center;font-size:6.5px;color:var(--gold);font-weight:700;"><i class="fa-solid fa-arrow-up" style="font-size:6px;margin-right:2px;"></i>Retirer</div>
+                  <div style="flex:1;background:rgba(255,255,255,.04);border:1px solid #222;border-radius:6px;padding:5px 0;text-align:center;font-size:6.5px;color:var(--t2);font-weight:700;"><i class="fa-solid fa-chart-bar" style="font-size:6px;margin-right:2px;"></i>Historique</div>
+                </div>
+              </div>
+              <!-- Stats -->
+              <div class="ms-stat-row" style="margin-bottom:8px;">
+                <div class="ms-stat"><div class="ms-stat-val">12</div><div class="ms-stat-lbl">Missions</div></div>
+                <div class="ms-stat"><div class="ms-stat-val" style="color:#fbbf24;">4.9★</div><div class="ms-stat-lbl">Note</div></div>
+                <div class="ms-stat"><div class="ms-stat-val" style="color:#22c55e;">+3</div><div class="ms-stat-lbl">Ce mois</div></div>
+              </div>
+              <!-- Badge progress -->
+              <div style="background:#141414;border:1px solid rgba(255,215,0,.1);border-radius:10px;padding:8px 10px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">
+                  <div style="font-size:7px;font-weight:700;color:var(--t2);">Progression <span style="color:var(--gold);">Argent</span></div>
+                  <span style="font-size:6px;color:var(--t3);">12/20 missions</span>
+                </div>
+                <div style="height:3px;background:#1a1a1a;border-radius:2px;margin-bottom:4px;"><div style="width:60%;height:100%;background:linear-gradient(90deg,var(--gold),var(--orange));border-radius:2px;"></div></div>
+                <div style="font-size:6px;color:var(--t3);">Encore <strong style="color:var(--white);">8 missions</strong> pour atteindre le Badge Argent</div>
+              </div>
+              <!-- Bottom Nav -->
+              <div class="ms-bottom-nav" style="margin-top:10px;">
                 <div class="ms-bnav-item"><i class="fa-solid fa-house"></i>Accueil</div>
                 <div class="ms-bnav-item"><i class="fa-solid fa-bolt"></i>Missions</div>
-                <div class="ms-bnav-item"><i class="fa-solid fa-wallet"></i>Revenus</div>
-                <div class="ms-bnav-item active"><i class="fa-solid fa-user"></i>Profil</div>
+                <div class="ms-bnav-item active"><i class="fa-solid fa-wallet"></i>Revenus</div>
+                <div class="ms-bnav-item"><i class="fa-solid fa-user"></i>Profil</div>
               </div>
             </div>
           </div>
