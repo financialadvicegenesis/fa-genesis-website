@@ -31,6 +31,20 @@ const payoneerProvider = require('./services/payoneer-provider');
 const persistentStore = require('./persistent-store');
 const webpush = require('web-push');
 
+// Firebase Admin SDK — optionnel ; utilisé pour les push FCM vers l'app Android native.
+// Activer en ajoutant FIREBASE_SERVICE_ACCOUNT (JSON stringifié) dans les variables d'env Render.
+var firebaseAdmin = null;
+(function() {
+    try {
+        var svcAccount = process.env.FIREBASE_SERVICE_ACCOUNT;
+        if (!svcAccount) { console.log('[FCM] FIREBASE_SERVICE_ACCOUNT absent — push FCM désactivé'); return; }
+        var admin = require('firebase-admin');
+        admin.initializeApp({ credential: admin.credential.cert(JSON.parse(svcAccount)) });
+        firebaseAdmin = admin;
+        console.log('[FCM] firebase-admin initialisé ✓');
+    } catch(e) { console.error('[FCM] Erreur init firebase-admin:', e.message); }
+})();
+
 const app = express();
 const PORT = process.env.PORT || 3001;
 
@@ -77,6 +91,7 @@ const SCHEDULED_NOTIFS_FILE = path.join(__dirname, 'data', 'scheduled_notifs.jso
 const GENESIS_PROJECTS_FILE = path.join(__dirname, 'data', 'genesis_projects.json');
 const CONTRACTS_FILE = path.join(__dirname, 'data', 'contracts.json');
 const ACTUALITES_FILE = path.join(__dirname, 'data', 'actualites.json');
+const FCM_TOKENS_FILE = path.join(__dirname, 'data', 'fcm_tokens.json');
 
 // Catégories de partenaires marketplace (source unique, partagée par inscription + admin)
 const PARTNER_TYPES = [
@@ -2151,6 +2166,77 @@ app.delete('/api/push/unsubscribe', function(req, res) {
         savePushSubscriptions(subs);
         res.json({ success: true });
     } catch(e) { res.status(500).json({ error: 'Erreur serveur' }); }
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
+// FCM TOKEN — Enregistrement des tokens Firebase Cloud Messaging (app native)
+// ──────────────────────────────────────────────────────────────────────────────
+
+function loadFcmTokens() {
+    try {
+        if (fs.existsSync(FCM_TOKENS_FILE)) return JSON.parse(fs.readFileSync(FCM_TOKENS_FILE, 'utf8'));
+    } catch(e) {}
+    return [];
+}
+
+function saveFcmTokens(tokens) {
+    try { fs.writeFileSync(FCM_TOKENS_FILE, JSON.stringify(tokens, null, 2), 'utf8'); } catch(e) {}
+}
+
+// Envoie une notification FCM à tous les tokens enregistrés pour un userId (best-effort)
+function sendFcmToUser(userId, payload) {
+    if (!firebaseAdmin || !userId) return;
+    var tokens = loadFcmTokens().filter(function(t) { return t.userId === userId; });
+    if (tokens.length === 0) return;
+    var expired = [];
+    tokens.forEach(function(t) {
+        firebaseAdmin.messaging().send({
+            token: t.token,
+            notification: { title: payload.title || 'FA GENESIS', body: payload.body || '' },
+            android: { channelId: payload.channelId || 'genesis_general', priority: 'high' },
+            data: payload.data || {}
+        }).then(function() {
+            console.log('[FCM] Notification envoyée à userId=' + userId);
+        }).catch(function(err) {
+            // Token expiré ou invalide → supprimer
+            if (err.code === 'messaging/registration-token-not-registered' ||
+                err.code === 'messaging/invalid-registration-token') {
+                expired.push(t.token);
+            }
+            console.warn('[FCM] Erreur envoi:', err.message);
+        });
+    });
+    if (expired.length > 0) {
+        var cleaned = loadFcmTokens().filter(function(t) { return expired.indexOf(t.token) === -1; });
+        saveFcmTokens(cleaned);
+    }
+}
+
+// POST /api/push/register — Enregistre un token FCM depuis l'app native Capacitor
+app.post('/api/push/register', function(req, res) {
+    try {
+        var token = req.body.token;
+        var userId = req.body.userId;
+        var platform = req.body.platform || 'android';
+        if (!token || !userId) return res.status(400).json({ error: 'token et userId requis' });
+
+        var tokens = loadFcmTokens();
+        // Supprimer les anciennes entrées pour ce même token
+        tokens = tokens.filter(function(t) { return t.token !== token; });
+        tokens.push({
+            id: uuidv4(),
+            userId: String(userId),
+            token: token,
+            platform: platform,
+            registered_at: new Date().toISOString()
+        });
+        saveFcmTokens(tokens);
+        console.log('[FCM] Token enregistré — userId:', userId, 'platform:', platform);
+        res.json({ success: true });
+    } catch(e) {
+        console.error('[FCM] Erreur register:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
 });
 
 function getOrderById(orderId) {

@@ -12870,6 +12870,19 @@ function _ptnrRefreshBadges(){
 
 // ── NOTIFICATIONS PUSH ──
 function _ptnrCheckPushStatus(){
+  // App native Capacitor : utiliser FCM via mobile-bridge.js
+  if(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()){
+    var bar0 = document.getElementById('ptnr-notif-bar'); if(bar0) bar0.style.display = 'none';
+    var uid = _ptnrSession ? (_ptnrSession.id || _ptnrSession._id) : null;
+    if(window.FAGMobile && window.FAGMobile.initPushNotifications){
+      window.FAGMobile.initPushNotifications(uid);
+    } else {
+      // Bridge pas encore prêt : attendre l'événement fagmobile:ready
+      document.addEventListener('fagmobile:ready', function(){ window.FAGMobile.initPushNotifications(uid); }, { once: true });
+    }
+    return;
+  }
+  // PWA / navigateur Web : utiliser Web Push (VAPID)
   if(!('Notification' in window) || !('serviceWorker' in navigator)){
     var bar = document.getElementById('ptnr-notif-bar'); if(bar) bar.style.display = 'none'; return;
   }
@@ -17951,5 +17964,7 @@ function _downloadClientContractPdf(contractId) {
     document.body.appendChild(link); link.click(); document.body.removeChild(link);
 }
 </script>
+<!-- Mobile bridge FCM — chargé uniquement dans l'app Capacitor native -->
+<script src="mobile-bridge.js" defer></script>
 </body>
 </html>

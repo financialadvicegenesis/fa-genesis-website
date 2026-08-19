@@ -1,12 +1,11 @@
 // ──────────────────────────────────────────────────────────────
 // FA GENESIS — Mobile Bridge
 // Activé uniquement dans l'app native (Android / iOS via Capacitor)
-// Fournit : push notifications, biométrie, caméra, haptics
+// Fournit : push notifications FCM, biométrie, caméra, haptics
 // ──────────────────────────────────────────────────────────────
 (function() {
     'use strict';
 
-    // Détecte l'environnement Capacitor
     var IS_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
     var IS_ANDROID = IS_NATIVE && window.Capacitor.getPlatform() === 'android';
     var IS_IOS = IS_NATIVE && window.Capacitor.getPlatform() === 'ios';
@@ -15,8 +14,8 @@
 
     console.log('[FAG Mobile] Plateforme native détectée:', window.Capacitor.getPlatform());
 
-    // ── Raccourcis plugins ──────────────────────────────────────────────────────
     var Plugins = window.Capacitor.Plugins;
+    var _pushListenersAdded = false;
 
     // ── Barre de statut ─────────────────────────────────────────────────────────
     try {
@@ -26,49 +25,108 @@
         }
     } catch(e) {}
 
-    // ── Push Notifications ─────────────────────────────────────────────────────
+    // ── Push Notifications (FCM) ───────────────────────────────────────────────
     window.FAGMobile = window.FAGMobile || {};
 
     window.FAGMobile.initPushNotifications = async function(userId) {
         try {
-            if (!Plugins.PushNotifications) return;
-            var perm = await Plugins.PushNotifications.requestPermissions();
-            if (perm.receive !== 'granted') return;
+            if (!Plugins.PushNotifications) {
+                console.warn('[FAG Mobile] PushNotifications plugin non disponible');
+                return;
+            }
+
+            // Demander la permission (Android 13+ affiche la dialog système)
+            var perm = await Plugins.PushNotifications.checkPermissions();
+            if (perm.receive === 'prompt' || perm.receive === 'prompt-with-rationale') {
+                perm = await Plugins.PushNotifications.requestPermissions();
+            }
+            if (perm.receive !== 'granted') {
+                console.warn('[FAG Mobile] Permission notifications refusée:', perm.receive);
+                return;
+            }
+
+            // Enregistrer auprès de FCM — ne pas ajouter les listeners 2x
+            if (!_pushListenersAdded) {
+                _pushListenersAdded = true;
+
+                Plugins.PushNotifications.addListener('registration', function(token) {
+                    var short = token.value ? token.value.substring(0, 20) + '...' : '?';
+                    console.log('[FAG Mobile] Token FCM reçu:', short);
+
+                    // Stocker le token en local pour l'utiliser si userId arrive plus tard
+                    localStorage.setItem('fag_fcm_token', token.value);
+
+                    window.FAGMobile._sendTokenToServer(token.value, userId);
+                });
+
+                Plugins.PushNotifications.addListener('registrationError', function(err) {
+                    console.warn('[FAG Mobile] Erreur enregistrement FCM:', err.error || err);
+                });
+
+                Plugins.PushNotifications.addListener('pushNotificationReceived', function(notif) {
+                    // App au premier plan : afficher un toast FA GENESIS
+                    var title = (notif.title) || 'FA Genesis';
+                    if (window._showFAGToast) {
+                        window._showFAGToast(title, 4000);
+                    } else {
+                        console.log('[FAG Mobile] Notification reçue:', title);
+                    }
+                });
+
+                Plugins.PushNotifications.addListener('pushNotificationActionPerformed', function(action) {
+                    // Utilisateur a tapé sur la notification dans le tiroir Android
+                    var data = (action.notification && action.notification.data) || {};
+                    if (data.url) {
+                        window.location.href = data.url;
+                    } else if (data.tab) {
+                        try { if (typeof nav === 'function') nav(data.tab); } catch(e) {}
+                    }
+                });
+            }
 
             await Plugins.PushNotifications.register();
 
-            Plugins.PushNotifications.addListener('registration', function(token) {
-                console.log('[FAG Mobile] Push token:', token.value.substring(0, 20) + '...');
-                // Enregistrer le token auprès du backend
-                if (window.FA_GENESIS_API && userId) {
-                    fetch(window.FA_GENESIS_API + '/api/push/register', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (localStorage.getItem('fa_genesis_token') || '') },
-                        body: JSON.stringify({ userId: userId, token: token.value, platform: window.Capacitor.getPlatform() })
-                    }).catch(function(e) { console.warn('[FAG Mobile] Push register failed:', e.message); });
-                }
-            });
-
-            Plugins.PushNotifications.addListener('registrationError', function(err) {
-                console.warn('[FAG Mobile] Push registration error:', err.error);
-            });
-
-            Plugins.PushNotifications.addListener('pushNotificationReceived', function(notif) {
-                // L'app est au premier plan : afficher une alerte ou un toast custom
-                if (window._showFAGToast) {
-                    window._showFAGToast((notif.notification && notif.notification.title) || 'FA Genesis', 4000);
-                }
-            });
-
-            Plugins.PushNotifications.addListener('pushNotificationActionPerformed', function(action) {
-                // Utilisateur a tapé sur la notification
-                var data = (action.notification && action.notification.data) || {};
-                if (data.url) window.location.href = data.url;
-                else if (data.tab) { try { if(typeof nav === 'function') nav(data.tab); } catch(e) {} }
-            });
-
         } catch(e) {
             console.warn('[FAG Mobile] Push init failed:', e.message);
+        }
+    };
+
+    // Envoie le token FCM au serveur GENESIS
+    window.FAGMobile._sendTokenToServer = function(token, userId) {
+        try {
+            var api = window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com';
+            // Essayer client token puis partner token
+            var authToken = localStorage.getItem('fa_genesis_token')
+                || localStorage.getItem('fa_genesis_partner_token')
+                || '';
+            var uid = userId
+                || (function() { try { return JSON.parse(localStorage.getItem('fa_genesis_session') || '{}').id; } catch(e) { return null; } })()
+                || (function() { try { return JSON.parse(localStorage.getItem('fa_genesis_partner_data') || '{}').id; } catch(e) { return null; } })();
+
+            if (!uid) {
+                console.warn('[FAG Mobile] Token FCM non envoyé : userId inconnu');
+                return;
+            }
+
+            fetch(api + '/api/push/register', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + authToken
+                },
+                body: JSON.stringify({
+                    userId: uid,
+                    token: token,
+                    platform: window.Capacitor.getPlatform()
+                })
+            }).then(function(r) {
+                if (r.ok) console.log('[FAG Mobile] Token FCM enregistré sur le serveur');
+                else r.text().then(function(t) { console.warn('[FAG Mobile] Serveur refus token:', t); });
+            }).catch(function(e) {
+                console.warn('[FAG Mobile] Push register réseau:', e.message);
+            });
+        } catch(e) {
+            console.warn('[FAG Mobile] _sendTokenToServer error:', e.message);
         }
     };
 
@@ -79,7 +137,7 @@
             var available = await Plugins.NativeBiometric.isAvailable();
             if (!available.isAvailable) return { success: false, error: 'Biométrie non disponible sur cet appareil' };
 
-            var result = await Plugins.NativeBiometric.verifyIdentity({
+            await Plugins.NativeBiometric.verifyIdentity({
                 reason: 'Accédez à votre compte FA Genesis',
                 title: 'FA Genesis',
                 subtitle: 'Connexion sécurisée',
@@ -105,8 +163,7 @@
     window.FAGMobile.getBiometricCredentials = async function() {
         try {
             if (!Plugins.NativeBiometric) return null;
-            var creds = await Plugins.NativeBiometric.getCredentials({ server: 'com.fagenesis.app' });
-            return creds;
+            return await Plugins.NativeBiometric.getCredentials({ server: 'com.fagenesis.app' });
         } catch(e) { return null; }
     };
 
@@ -151,24 +208,21 @@
     document.documentElement.style.setProperty('--safe-left',   'env(safe-area-inset-left, 0px)');
     document.documentElement.style.setProperty('--safe-right',  'env(safe-area-inset-right, 0px)');
 
-    // Ajouter une classe css sur le body pour le ciblage CSS natif
     document.body.classList.add('is-native-app');
     if (IS_ANDROID) document.body.classList.add('is-android');
     if (IS_IOS) document.body.classList.add('is-ios');
 
     // ── Bouton retour Android ───────────────────────────────────────────────────
     if (IS_ANDROID && Plugins.App) {
-        Plugins.App.addListener('backButton', function(data) {
+        Plugins.App.addListener('backButton', function() {
             if (window.history.length > 1) {
                 window.history.back();
             } else {
-                // Si on ne peut pas reculer, minimiser l'app (ne pas quitter)
                 Plugins.App.minimizeApp && Plugins.App.minimizeApp();
             }
         });
     }
 
-    // ── Signale au reste de l'app que le bridge est prêt ───────────────────────
     window.FAGMobile.ready = true;
     document.dispatchEvent(new CustomEvent('fagmobile:ready', { detail: { platform: window.Capacitor.getPlatform() } }));
 
