@@ -1628,6 +1628,9 @@
         </div>
     </div>
 
+    <!-- TOAST ACTUALITÉ -->
+    <div id="actu-toast" style="position:fixed;bottom:28px;right:28px;z-index:9999;background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;font-family:'Unbounded',cursive;font-size:12px;font-weight:900;letter-spacing:.5px;padding:14px 22px;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.5);display:flex;align-items:center;gap:10px;opacity:0;pointer-events:none;transition:opacity .4s;"><i class="fas fa-circle-check"></i> Actualité enregistrée !</div>
+
     <!-- MODAL ACTUALITÉ (créer / éditer) -->
     <div id="actualite-modal" style="display:none;position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,.88);backdrop-filter:blur(12px);align-items:center;justify-content:center;padding:16px;">
         <div style="background:var(--c-surface);border:1.5px solid rgba(255,215,0,.18);border-radius:20px;width:100%;max-width:560px;max-height:90vh;overflow-y:auto;box-shadow:0 40px 80px rgba(0,0,0,.8);">
@@ -6524,14 +6527,29 @@
         function _actuFileSelected(input) {
             var file = input.files[0];
             if (!file) return;
-            if (file.size > 5 * 1024 * 1024) { alert('Image trop volumineuse (max 5 Mo)'); return; }
+            if (file.size > 10 * 1024 * 1024) { alert('Image trop volumineuse (max 10 Mo)'); return; }
             var reader = new FileReader();
             reader.onload = function(e){
-                document.getElementById('actu-form-image').value = e.target.result;
-                var prev = document.getElementById('actu-img-preview');
-                var prevImg = document.getElementById('actu-img-preview-img');
-                prevImg.src = e.target.result;
-                prev.style.display = 'block';
+                var img = new Image();
+                img.onload = function() {
+                    var MAX_W = 1200, MAX_H = 900;
+                    var w = img.width, h = img.height;
+                    if (w > MAX_W || h > MAX_H) {
+                        var ratio = Math.min(MAX_W / w, MAX_H / h);
+                        w = Math.round(w * ratio);
+                        h = Math.round(h * ratio);
+                    }
+                    var canvas = document.createElement('canvas');
+                    canvas.width = w; canvas.height = h;
+                    canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                    var compressed = canvas.toDataURL('image/jpeg', 0.82);
+                    document.getElementById('actu-form-image').value = compressed;
+                    var prev = document.getElementById('actu-img-preview');
+                    var prevImg = document.getElementById('actu-img-preview-img');
+                    prevImg.src = compressed;
+                    prev.style.display = 'block';
+                };
+                img.src = e.target.result;
             };
             reader.readAsDataURL(file);
         }
@@ -6584,19 +6602,23 @@
             })
             .then(function(r){ return r.json(); })
             .then(function(d){
+                btn.disabled = false;
+                btn.textContent = id ? 'Enregistrer' : 'Publier';
                 if (d.ok) {
                     closeActualiteForm();
                     loadAdminActualites();
+                    var toast = document.getElementById('actu-toast');
+                    if (toast) { toast.style.opacity = '1'; setTimeout(function(){ toast.style.opacity = '0'; }, 2800); }
                 } else {
                     errEl.textContent = d.error || 'Erreur serveur';
                     errEl.style.display = 'block';
-                    btn.disabled = false; btn.textContent = 'Enregistrer';
                 }
             })
-            .catch(function(){
-                errEl.textContent = 'Erreur de connexion.';
+            .catch(function(err){
+                btn.disabled = false;
+                btn.textContent = id ? 'Enregistrer' : 'Publier';
+                errEl.textContent = 'Erreur de connexion : ' + (err && err.message ? err.message : 'inconnue');
                 errEl.style.display = 'block';
-                btn.disabled = false; btn.textContent = 'Enregistrer';
             });
         }
 
