@@ -1489,6 +1489,18 @@
                 <div id="pendingPayoutsList" class="space-y-4" style="color:#e0e0e0;">
                     <p style="color:#aaa;opacity:0.6;font-weight:bold;">Chargement...</p>
                 </div>
+
+                <!-- ── Wise IBAN Management ── -->
+                <div style="margin-top:32px;background:#0d0d0d;border:1.5px solid #00B9FF44;border-radius:14px;padding:20px;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
+                        <h3 style="font-size:16px;font-weight:900;color:#00B9FF;margin:0;"><i class="fas fa-building-columns" style="margin-right:8px;"></i>WISE — RÉCIPIENDAIRES IBAN</h3>
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                            <button onclick="_adminWiseIbanStatus()" style="background:#1a2a3a;color:#00B9FF;border:1.5px solid #00B9FF44;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:800;cursor:pointer;"><i class="fas fa-magnifying-glass" style="margin-right:6px;"></i>VOIR STATUT</button>
+                            <button onclick="_adminWiseRetryAll()" style="background:#0d1a10;color:#4ade80;border:1.5px solid #1a6e3a;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:800;cursor:pointer;"><i class="fas fa-rotate" style="margin-right:6px;"></i>RETRY TOUS</button>
+                        </div>
+                    </div>
+                    <div id="wiseIbanStatusResult" style="font-size:12px;color:#aaa;">Cliquez "VOIR STATUT" pour lister les partenaires avec IBAN.</div>
+                </div>
             </div>
 
             <!-- ===== SECTION LITIGES ===== -->
@@ -6845,6 +6857,92 @@
                 if (modal && modal.style.display !== 'none') closeActualiteForm();
             }
         });
+
+        // ── Wise IBAN admin ───────────────────────────────────────
+        function _adminWiseFetch(method, path) {
+            var token = localStorage.getItem('fa_genesis_admin_token') || '';
+            return fetch((window.FA_GENESIS_API || API_BASE_URL) + path, {
+                method: method,
+                headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' }
+            }).then(function(r) { return r.json(); });
+        }
+
+        function _adminWiseIbanStatus() {
+            var el = document.getElementById('wiseIbanStatusResult');
+            if (el) el.innerHTML = '<span style="color:#aaa;">Chargement...</span>';
+            _adminWiseFetch('GET', '/api/admin/wise/iban-status').then(function(data) {
+                if (!el) return;
+                if (!data.ok) { el.innerHTML = '<span style="color:#ef4444;">Erreur: ' + (data.error || 'inconnue') + '</span>'; return; }
+                if (!data.partners || !data.partners.length) { el.innerHTML = '<span style="color:#aaa;">Aucun partenaire avec IBAN enregistré.</span>'; return; }
+                var html = '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;">';
+                html += '<thead><tr style="color:#FFD700;border-bottom:1px solid #333;">';
+                html += '<th style="text-align:left;padding:6px 8px;">Email</th>';
+                html += '<th style="text-align:left;padding:6px 8px;">Nom titulaire</th>';
+                html += '<th style="text-align:left;padding:6px 8px;">IBAN (fin)</th>';
+                html += '<th style="text-align:left;padding:6px 8px;">Devise</th>';
+                html += '<th style="text-align:left;padding:6px 8px;">Wise lié ?</th>';
+                html += '<th style="text-align:left;padding:6px 8px;">Action</th>';
+                html += '</tr></thead><tbody>';
+                data.partners.forEach(function(p) {
+                    var linked = p.wiseLinked;
+                    var ibanEnd = (p.iban || '').slice(-6);
+                    html += '<tr style="border-bottom:1px solid #1a1a1a;">';
+                    html += '<td style="padding:6px 8px;color:#e0e0e0;">' + p.email + '</td>';
+                    html += '<td style="padding:6px 8px;color:#e0e0e0;">' + (p.name || '—') + '</td>';
+                    html += '<td style="padding:6px 8px;color:#888;">…' + ibanEnd + '</td>';
+                    html += '<td style="padding:6px 8px;color:#aaa;">' + (p.currency || 'EUR') + '</td>';
+                    html += '<td style="padding:6px 8px;"><span style="font-weight:800;color:' + (linked ? '#4ade80' : '#ef4444') + ';">' + (linked ? '✓ OUI' : '✗ NON') + '</span></td>';
+                    html += '<td style="padding:6px 8px;">';
+                    if (!linked) html += '<button onclick="_adminWiseRetryOne(\'' + p.id + '\', this)" style="background:#0d1a10;color:#4ade80;border:1px solid #1a6e3a;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;">Retry</button>';
+                    else html += '<span style="color:#4ade80;font-size:11px;">' + (p.wiseRecipientId ? 'ID: ' + p.wiseRecipientId : '') + '</span>';
+                    html += '</td></tr>';
+                });
+                html += '</tbody></table></div>';
+                html += '<div style="margin-top:8px;font-size:11px;color:#666;">' + data.count + ' partenaire(s) avec IBAN — ' + data.partners.filter(function(p){return p.wiseLinked;}).length + ' liés à Wise</div>';
+                el.innerHTML = html;
+            }).catch(function(e) {
+                if (el) el.innerHTML = '<span style="color:#ef4444;">Erreur réseau: ' + e.message + '</span>';
+            });
+        }
+
+        function _adminWiseRetryAll() {
+            var el = document.getElementById('wiseIbanStatusResult');
+            if (el) el.innerHTML = '<span style="color:#aaa;">Retry en cours pour tous les partenaires sans lien Wise...</span>';
+            _adminWiseFetch('POST', '/api/admin/wise/retry-all').then(function(data) {
+                if (!el) return;
+                if (!data.ok) { el.innerHTML = '<span style="color:#ef4444;">Erreur: ' + (data.error || 'inconnue') + '</span>'; return; }
+                var html = '<div style="font-weight:800;color:#4ade80;margin-bottom:8px;font-size:13px;">Retry terminé — ' + data.processed + ' partenaire(s) traité(s)</div>';
+                (data.results || []).forEach(function(r) {
+                    var ok = r.ok;
+                    html += '<div style="padding:6px 10px;margin-bottom:4px;border-radius:6px;background:' + (ok ? '#0a1a10' : '#1a0a0a') + ';border:1px solid ' + (ok ? '#1a6e3a' : '#6e1a1a') + ';">';
+                    html += '<span style="font-weight:700;color:' + (ok ? '#4ade80' : '#ef4444') + ';">' + (ok ? '✓' : '✗') + ' ' + r.email + '</span>';
+                    if (ok) html += ' <span style="color:#888;font-size:11px;">ID Wise: ' + r.wiseRecipientId + '</span>';
+                    else html += ' <span style="color:#f87171;font-size:11px;">' + r.error + '</span>';
+                    html += '</div>';
+                });
+                el.innerHTML = html;
+                // Rafraîchir la liste après
+                setTimeout(_adminWiseIbanStatus, 1500);
+            }).catch(function(e) {
+                if (el) el.innerHTML = '<span style="color:#ef4444;">Erreur réseau: ' + e.message + '</span>';
+            });
+        }
+
+        function _adminWiseRetryOne(partnerId, btn) {
+            if (btn) { btn.disabled = true; btn.textContent = '...'; }
+            var el = document.getElementById('wiseIbanStatusResult');
+            _adminWiseFetch('POST', '/api/admin/wise/retry-recipient/' + partnerId).then(function(data) {
+                if (data.ok) {
+                    if (btn) { btn.textContent = '✓ OK'; btn.style.color = '#4ade80'; }
+                    setTimeout(_adminWiseIbanStatus, 800);
+                } else {
+                    if (btn) { btn.disabled = false; btn.textContent = 'Retry'; }
+                    if (el) el.insertAdjacentHTML('afterbegin', '<div style="color:#ef4444;font-size:12px;margin-bottom:8px;">Erreur: ' + (data.error || 'inconnue') + '</div>');
+                }
+            }).catch(function() {
+                if (btn) { btn.disabled = false; btn.textContent = 'Retry'; }
+            });
+        }
 </script>
 
 <!-- ── MODAL RECADRAGE PHOTO ACTUALITÉ ── -->
