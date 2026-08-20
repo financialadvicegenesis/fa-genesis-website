@@ -20307,19 +20307,30 @@ async function _wiseGetProfileId() {
 }
 
 async function _wiseCreateRecipient(profileId, info) {
+    const currency = info.currency || 'EUR';
+    // Wise exige legalType pour distinguer particulier / entreprise
+    const legalType = info.legalType || 'PRIVATE';
+    const details = { legalType: legalType, iban: info.iban };
+    if (info.bic) details.bic = info.bic;
     const payload = {
         profile: profileId,
         accountHolderName: info.accountHolderName,
-        currency: info.currency || 'EUR',
+        currency: currency,
         type: 'iban',
-        details: { iban: info.iban, bic: info.bic }
+        details: details
     };
     const r = await fetch(WISE_BASE + '/v1/accounts', {
         method: 'POST',
         headers: { 'Authorization': 'Bearer ' + WISE_TOKEN, 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
     });
-    return r.json();
+    const body = await r.json();
+    if (!r.ok) {
+        // Loguer les détails de l'erreur Wise pour le débogage
+        console.error('[WISE RECIPIENT ERROR] HTTP', r.status, JSON.stringify(body));
+        throw new Error('Wise API ' + r.status + ': ' + JSON.stringify(body));
+    }
+    return body;
 }
 
 async function _wiseTransfer(profileId, recipientId, amount, currency, reference) {
@@ -20371,6 +20382,7 @@ app.post('/api/partner/bank-details', authenticatePartner, async function(req, r
 
         // Créer le récipiendaire Wise si token configuré
         var wiseRecipientId = partners[idx].wiseRecipientId || null;
+        var wiseError = null;
         if (WISE_TOKEN) {
             try {
                 var profileId = await _wiseGetProfileId();
@@ -20378,13 +20390,15 @@ app.post('/api/partner/bank-details', authenticatePartner, async function(req, r
                     accountHolderName: b.accountHolderName,
                     iban: iban,
                     bic: b.bic || '',
-                    currency: b.currency || 'EUR'
+                    currency: b.currency || 'EUR',
+                    legalType: b.legalType || 'PRIVATE'
                 });
                 if (recipient.id) {
                     wiseRecipientId = recipient.id;
                     console.log('[WISE] Récipiendaire créé:', wiseRecipientId, 'pour', partners[idx].email);
                 }
             } catch(wiseErr) {
+                wiseError = wiseErr.message;
                 console.error('[WISE RECIPIENT]', wiseErr.message);
             }
         }
@@ -20400,7 +20414,7 @@ app.post('/api/partner/bank-details', authenticatePartner, async function(req, r
         if (wiseRecipientId) partners[idx].wiseRecipientId = wiseRecipientId;
         savePartners(partners);
 
-        res.json({ ok: true, wiseLinked: !!wiseRecipientId });
+        res.json({ ok: true, wiseLinked: !!wiseRecipientId, wiseError: wiseError || undefined });
     } catch(e) {
         console.error('[BANK DETAILS]', e.message);
         res.status(500).json({ error: 'Erreur serveur' });
@@ -20511,6 +20525,34 @@ app.get('/api/admin/wise/partners-status', function(req, res) {
         res.json({ ok: true, partners: result });
     } catch(e) {
         res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// ── Admin : re-créer le destinataire Wise pour un partenaire ─
+app.post('/api/admin/wise/retry-recipient/:partnerId', async function(req, res) {
+    try {
+        if (!_isAdminRequest(req)) return res.status(403).json({ error: 'Forbidden' });
+        if (!WISE_TOKEN) return res.status(503).json({ error: 'WISE_API_TOKEN non configuré' });
+        var partners = loadPartners();
+        var idx = partners.findIndex(function(p) { return p.id === req.params.partnerId; });
+        if (idx === -1) return res.status(404).json({ error: 'Partenaire introuvable' });
+        var bd = partners[idx].bankDetails;
+        if (!bd || !bd.iban) return res.status(400).json({ error: 'Aucun IBAN enregistré pour ce partenaire' });
+        var profileId = await _wiseGetProfileId();
+        var recipient = await _wiseCreateRecipient(profileId, {
+            accountHolderName: bd.accountHolderName,
+            iban: bd.iban,
+            bic: bd.bic || '',
+            currency: bd.currency || 'EUR',
+            legalType: 'PRIVATE'
+        });
+        if (!recipient.id) return res.status(500).json({ error: 'Wise n\'a pas retourné d\'ID', details: recipient });
+        partners[idx].wiseRecipientId = recipient.id;
+        partners[idx].updatedAt = new Date().toISOString();
+        savePartners(partners);
+        res.json({ ok: true, wiseRecipientId: recipient.id, partnerEmail: partners[idx].email });
+    } catch(e) {
+        res.status(500).json({ error: e.message });
     }
 });
 
