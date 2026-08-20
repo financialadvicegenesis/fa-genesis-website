@@ -1771,7 +1771,7 @@
     <script src="auth.js"></script>
     <script src="offers-config.js"></script>
     <script src="payment-system.js"></script>
-    <script src="admin-system.js"></script>
+    <script src="admin-system.js?v=2"></script>
     <script>
         // API_BASE_URL est défini dans auth.js
     </script>
@@ -6439,11 +6439,10 @@
             var xhr = new XMLHttpRequest();
             var done = false;
             var tok = '';
-            try { tok = localStorage.getItem('fa_genesis_admin_token') || ''; } catch(e) {}
+            try { tok = localStorage.getItem('fa_genesis_admin_token') || localStorage.getItem('adminToken') || ''; } catch(e) {}
 
             xhr.open('GET', API_BASE_URL + '/api/admin/actualites', true);
             xhr.setRequestHeader('Content-Type', 'application/json');
-            xhr.setRequestHeader('x-admin-key', '');
             if (tok) xhr.setRequestHeader('Authorization', 'Bearer ' + tok);
             xhr.timeout = 15000;
 
@@ -6658,10 +6657,9 @@
             var method = id ? 'PUT' : 'POST';
             var xhr2 = new XMLHttpRequest();
             var tok2 = '';
-            try { tok2 = localStorage.getItem('fa_genesis_admin_token') || ''; } catch(e) {}
+            try { tok2 = localStorage.getItem('fa_genesis_admin_token') || localStorage.getItem('adminToken') || ''; } catch(e) {}
             xhr2.open(method, url, true);
             xhr2.setRequestHeader('Content-Type', 'application/json');
-            xhr2.setRequestHeader('x-admin-key', '');
             if (tok2) xhr2.setRequestHeader('Authorization', 'Bearer ' + tok2);
             xhr2.timeout = 30000;
             function _submitDone(ok, msg) {
