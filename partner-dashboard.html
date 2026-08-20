@@ -2062,7 +2062,7 @@
                 if (noPayoutBlock) noPayoutBlock.style.display = 'none';
                 await loadStripeStatus();
             } else if (provider === 'wise' || provider === 'payoneer') {
-                // 'payoneer' est traité comme 'wise' (rétrocompatibilité pendant le redéploiement serveur)
+                // 'payoneer' traité comme 'wise' pour les partenaires déjà enregistrés avec l'ancienne valeur
                 if (stripeBlock)   stripeBlock.style.display   = 'none';
                 if (wiseBlock)     wiseBlock.style.display     = '';
                 if (noPayoutBlock) noPayoutBlock.style.display = 'none';

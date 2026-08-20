@@ -19569,7 +19569,7 @@ app.get('/api/partner/payout/routing', authenticatePartner, function(req, res) {
         if (!partner) return res.status(404).json({ ok: false, error: 'Partenaire introuvable' });
         var code     = partner.country || '';
         var result   = payoutRouting.getBestPayoutProvider(code);
-        res.json({ ok: true, countryCode: code, countryName: result.countryName, routing: result, payoutProvider: partner.payoutProvider || null, payoutStatus: partner.payoutStatus || 'not_configured', payoneerEmail: partner.payoneerEmail || null });
+        res.json({ ok: true, countryCode: code, countryName: result.countryName, routing: result, payoutProvider: partner.payoutProvider || null, payoutStatus: partner.payoutStatus || 'not_configured' });
     } catch(e) {
         res.status(500).json({ ok: false, error: e.message });
     }
