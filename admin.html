@@ -6584,34 +6584,178 @@
             document.body.style.overflow = '';
         }
 
+        /* ── Recadrage photo actualité ── */
+        var _cropRatio = 16/9;
+        var _cropBox = {x:0,y:0,w:0,h:0};
+        var _cropDrag = null;
+        var _cropOriginalDataURL = '';
+
         function _actuFileSelected(input) {
-            var file = input.files[0];
+            var file = input.files && input.files[0];
             if (!file) return;
+            if (!file.type.match(/^image\//)) { alert('Veuillez sélectionner une image.'); return; }
             if (file.size > 10 * 1024 * 1024) { alert('Image trop volumineuse (max 10 Mo)'); return; }
             var reader = new FileReader();
-            reader.onload = function(e){
-                var img = new Image();
-                img.onload = function() {
-                    var MAX_W = 1200, MAX_H = 900;
-                    var w = img.width, h = img.height;
-                    if (w > MAX_W || h > MAX_H) {
-                        var ratio = Math.min(MAX_W / w, MAX_H / h);
-                        w = Math.round(w * ratio);
-                        h = Math.round(h * ratio);
-                    }
-                    var canvas = document.createElement('canvas');
-                    canvas.width = w; canvas.height = h;
-                    canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-                    var compressed = canvas.toDataURL('image/jpeg', 0.82);
-                    document.getElementById('actu-form-image').value = compressed;
-                    var prev = document.getElementById('actu-img-preview');
-                    var prevImg = document.getElementById('actu-img-preview-img');
-                    prevImg.src = compressed;
-                    prev.style.display = 'block';
-                };
-                img.src = e.target.result;
-            };
+            reader.onload = function(e) { _actuOpenCrop(e.target.result); };
             reader.readAsDataURL(file);
+        }
+
+        function _actuOpenCrop(dataURL) {
+            _cropOriginalDataURL = dataURL;
+            _cropRatio = 16/9;
+            var modal = document.getElementById('actu-crop-modal');
+            var img = document.getElementById('actu-crop-img-el');
+            if (!modal || !img) return;
+            modal.style.display = 'flex';
+            img.onload = function() {
+                var container = document.getElementById('actu-crop-container');
+                var maxW = Math.min(580, window.innerWidth - 80);
+                var maxH = Math.min(380, window.innerHeight - 280);
+                var scale = Math.min(maxW / img.naturalWidth, maxH / img.naturalHeight, 1);
+                var dW = Math.round(img.naturalWidth * scale);
+                var dH = Math.round(img.naturalHeight * scale);
+                container.style.width = dW + 'px';
+                container.style.height = dH + 'px';
+                img.style.width = dW + 'px';
+                img.style.height = dH + 'px';
+                _actuSetCropRatio(16/9);
+            };
+            img.src = dataURL;
+        }
+
+        function _actuSetCropRatio(ratio) {
+            _cropRatio = ratio || 0;
+            var container = document.getElementById('actu-crop-container');
+            if (!container) return;
+            _cropSetRatioBox(_cropRatio, container.offsetWidth, container.offsetHeight);
+            _actuRenderCropBox();
+            document.querySelectorAll('.actu-crop-ratio-btn').forEach(function(b) {
+                var br = parseFloat(b.dataset.ratio);
+                var active = _cropRatio ? Math.abs(br - _cropRatio) < 0.01 : br === 0;
+                b.style.background = active ? 'rgba(255,215,0,.2)' : 'transparent';
+                b.style.borderColor = active ? '#FFD700' : 'rgba(255,215,0,.25)';
+                b.style.color = active ? '#FFD700' : 'rgba(255,255,255,.55)';
+            });
+        }
+
+        function _cropSetRatioBox(ratio, cW, cH) {
+            var w, h;
+            if (!ratio) { w = cW; h = cH; }
+            else if (cW / ratio <= cH) { w = cW; h = Math.round(w / ratio); }
+            else { h = cH; w = Math.round(h * ratio); }
+            _cropBox = { x: Math.round((cW-w)/2), y: Math.round((cH-h)/2), w: w, h: h };
+        }
+
+        function _actuRenderCropBox() {
+            var box = document.getElementById('actu-crop-box');
+            if (!box) return;
+            box.style.left = _cropBox.x + 'px';
+            box.style.top = _cropBox.y + 'px';
+            box.style.width = _cropBox.w + 'px';
+            box.style.height = _cropBox.h + 'px';
+        }
+
+        function _cropStopProp(e, type) { e.stopPropagation(); _cropMouseDown(e, type); }
+
+        function _cropMouseDown(e, type) {
+            e.preventDefault();
+            var container = document.getElementById('actu-crop-container');
+            var rect = container.getBoundingClientRect();
+            var cx = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+            var cy = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+            _cropDrag = { type:type, startX:cx, startY:cy, origBox:Object.assign({},_cropBox), cW:container.offsetWidth, cH:container.offsetHeight };
+            document.onmousemove = _cropMouseMove;
+            document.onmouseup = _cropMouseUp;
+            document.ontouchmove = _cropMouseMove;
+            document.ontouchend = _cropMouseUp;
+        }
+
+        function _cropMouseMove(e) {
+            if (!_cropDrag) return;
+            e.preventDefault();
+            var container = document.getElementById('actu-crop-container');
+            var rect = container.getBoundingClientRect();
+            var cx = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+            var cy = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+            var dx = cx - _cropDrag.startX, dy = cy - _cropDrag.startY;
+            var d = _cropDrag, ob = d.origBox, MIN = 40;
+            var b = {x:ob.x, y:ob.y, w:ob.w, h:ob.h};
+
+            if (d.type === 'move') {
+                b.x = Math.max(0, Math.min(d.cW - b.w, ob.x + dx));
+                b.y = Math.max(0, Math.min(d.cH - b.h, ob.y + dy));
+            } else if (d.type === 'se') {
+                b.w = Math.max(MIN, Math.min(d.cW - ob.x, ob.w + dx));
+                b.h = _cropRatio ? Math.round(b.w/_cropRatio) : Math.max(MIN, Math.min(d.cH - ob.y, ob.h + dy));
+                if (b.y + b.h > d.cH) { b.h = d.cH - b.y; if (_cropRatio) b.w = Math.round(b.h*_cropRatio); }
+            } else if (d.type === 'sw') {
+                var nw = Math.max(MIN, ob.w - dx);
+                b.h = _cropRatio ? Math.round(nw/_cropRatio) : Math.max(MIN, Math.min(d.cH - ob.y, ob.h + dy));
+                if (b.y + b.h > d.cH) { b.h = d.cH - b.y; nw = _cropRatio ? Math.round(b.h*_cropRatio) : nw; }
+                b.w = nw; b.x = ob.x + ob.w - nw;
+                if (b.x < 0) { b.x = 0; b.w = ob.x + ob.w; if (_cropRatio) b.h = Math.round(b.w/_cropRatio); }
+            } else if (d.type === 'ne') {
+                var nw2 = Math.max(MIN, Math.min(d.cW - ob.x, ob.w + dx));
+                if (_cropRatio) {
+                    var nh2 = Math.round(nw2/_cropRatio); b.y = ob.y + ob.h - nh2;
+                    if (b.y < 0) { b.y = 0; nh2 = ob.y + ob.h; nw2 = Math.round(nh2*_cropRatio); }
+                    b.w = nw2; b.h = nh2;
+                } else {
+                    b.w = nw2; var nh3 = Math.max(MIN, ob.h - dy);
+                    b.y = ob.y + ob.h - nh3;
+                    if (b.y < 0) { b.y = 0; b.h = ob.y + ob.h; } else b.h = nh3;
+                }
+            } else if (d.type === 'nw') {
+                var nw3 = Math.max(MIN, ob.w - dx);
+                if (_cropRatio) {
+                    var nh4 = Math.round(nw3/_cropRatio);
+                    b.x = ob.x + ob.w - nw3; b.y = ob.y + ob.h - nh4;
+                    if (b.x < 0) { b.x = 0; nw3 = ob.x + ob.w; nh4 = Math.round(nw3/_cropRatio); }
+                    if (b.y < 0) { b.y = 0; nh4 = ob.y + ob.h; nw3 = Math.round(nh4*_cropRatio); b.x = ob.x + ob.w - nw3; }
+                    b.w = nw3; b.h = nh4;
+                } else {
+                    b.w = Math.max(MIN, ob.w - dx); b.x = ob.x + ob.w - b.w;
+                    var nh5 = Math.max(MIN, ob.h - dy); b.y = ob.y + ob.h - nh5;
+                    if (b.x < 0) { b.x = 0; b.w = ob.x + ob.w; }
+                    if (b.y < 0) { b.y = 0; b.h = ob.y + ob.h; } else b.h = nh5;
+                }
+            }
+            _cropBox = b;
+            _actuRenderCropBox();
+        }
+
+        function _cropMouseUp() {
+            _cropDrag = null;
+            document.onmousemove = null; document.onmouseup = null;
+            document.ontouchmove = null; document.ontouchend = null;
+        }
+
+        function _actuApplyCrop() {
+            var img = document.getElementById('actu-crop-img-el');
+            if (!img || !_cropOriginalDataURL) return;
+            var dW = img.offsetWidth, dH = img.offsetHeight;
+            var sx = Math.max(0, Math.round(_cropBox.x * img.naturalWidth / dW));
+            var sy = Math.max(0, Math.round(_cropBox.y * img.naturalHeight / dH));
+            var sw = Math.min(Math.round(_cropBox.w * img.naturalWidth / dW), img.naturalWidth - sx);
+            var sh = Math.min(Math.round(_cropBox.h * img.naturalHeight / dH), img.naturalHeight - sy);
+            var srcImg = new Image();
+            srcImg.onload = function() {
+                var outW = sw, outH = sh, MAX_W = 1200, MAX_H = 900;
+                if (outW > MAX_W || outH > MAX_H) { var r = Math.min(MAX_W/outW, MAX_H/outH); outW = Math.round(outW*r); outH = Math.round(outH*r); }
+                var canvas = document.createElement('canvas');
+                canvas.width = outW; canvas.height = outH;
+                canvas.getContext('2d').drawImage(srcImg, sx, sy, sw, sh, 0, 0, outW, outH);
+                var result = canvas.toDataURL('image/jpeg', 0.82);
+                document.getElementById('actu-form-image').value = result;
+                document.getElementById('actu-img-preview-img').src = result;
+                document.getElementById('actu-img-preview').style.display = 'block';
+                document.getElementById('actu-crop-modal').style.display = 'none';
+            };
+            srcImg.src = _cropOriginalDataURL;
+        }
+
+        function _actuCancelCrop() {
+            document.getElementById('actu-crop-modal').style.display = 'none';
         }
 
         function _actuDropImage(e) {
@@ -6702,5 +6846,50 @@
             }
         });
 </script>
+
+<!-- ── MODAL RECADRAGE PHOTO ACTUALITÉ ── -->
+<div id="actu-crop-modal" style="display:none;position:fixed;inset:0;z-index:20000;background:rgba(0,0,0,.93);align-items:center;justify-content:center;padding:16px;overflow-y:auto;">
+  <div style="background:#181818;border:1.5px solid rgba(255,215,0,.22);border-radius:18px;padding:24px;width:100%;max-width:660px;margin:auto;box-sizing:border-box;">
+    <!-- En-tête -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <h3 style="font-family:'Unbounded',cursive;font-size:15px;font-weight:900;color:#fff;margin:0;"><i class="fas fa-crop-alt" style="color:#FFD700;margin-right:8px;"></i>Recadrer la photo</h3>
+      <button onclick="_actuCancelCrop()" style="background:transparent;border:none;color:rgba(255,255,255,.45);font-size:24px;cursor:pointer;line-height:1;padding:0 4px;">&times;</button>
+    </div>
+    <!-- Ratio -->
+    <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
+      <button class="actu-crop-ratio-btn" data-ratio="1.7778" onclick="_actuSetCropRatio(16/9)" style="font-size:11px;font-weight:700;padding:5px 13px;border-radius:20px;cursor:pointer;border:1.5px solid rgba(255,215,0,.25);background:rgba(255,215,0,.15);color:#FFD700;font-family:'Space Grotesk',sans-serif;">16:9</button>
+      <button class="actu-crop-ratio-btn" data-ratio="1.3333" onclick="_actuSetCropRatio(4/3)"  style="font-size:11px;font-weight:700;padding:5px 13px;border-radius:20px;cursor:pointer;border:1.5px solid rgba(255,215,0,.25);background:transparent;color:rgba(255,255,255,.55);font-family:'Space Grotesk',sans-serif;">4:3</button>
+      <button class="actu-crop-ratio-btn" data-ratio="1"      onclick="_actuSetCropRatio(1)"    style="font-size:11px;font-weight:700;padding:5px 13px;border-radius:20px;cursor:pointer;border:1.5px solid rgba(255,215,0,.25);background:transparent;color:rgba(255,255,255,.55);font-family:'Space Grotesk',sans-serif;">1:1</button>
+      <button class="actu-crop-ratio-btn" data-ratio="0"      onclick="_actuSetCropRatio(0)"    style="font-size:11px;font-weight:700;padding:5px 13px;border-radius:20px;cursor:pointer;border:1.5px solid rgba(255,215,0,.25);background:transparent;color:rgba(255,255,255,.55);font-family:'Space Grotesk',sans-serif;">Libre</button>
+    </div>
+    <!-- Zone image + crop box -->
+    <div id="actu-crop-container" style="position:relative;overflow:hidden;margin:0 auto;background:#000;border-radius:10px;touch-action:none;user-select:none;">
+      <img id="actu-crop-img-el" src="" alt="" style="display:block;user-select:none;-webkit-user-drag:none;pointer-events:none;">
+      <!-- Crop overlay -->
+      <div id="actu-crop-box" style="position:absolute;border:2px solid #FFD700;box-shadow:0 0 0 9999px rgba(0,0,0,.58);cursor:move;box-sizing:border-box;"
+           onmousedown="_cropMouseDown(event,'move')" ontouchstart="_cropMouseDown(event,'move')">
+        <!-- Handles coins -->
+        <div style="position:absolute;top:-6px;left:-6px;width:13px;height:13px;background:#FFD700;border-radius:50%;cursor:nw-resize;z-index:2;" onmousedown="_cropStopProp(event,'nw')" ontouchstart="_cropStopProp(event,'nw')"></div>
+        <div style="position:absolute;top:-6px;right:-6px;width:13px;height:13px;background:#FFD700;border-radius:50%;cursor:ne-resize;z-index:2;" onmousedown="_cropStopProp(event,'ne')" ontouchstart="_cropStopProp(event,'ne')"></div>
+        <div style="position:absolute;bottom:-6px;left:-6px;width:13px;height:13px;background:#FFD700;border-radius:50%;cursor:sw-resize;z-index:2;" onmousedown="_cropStopProp(event,'sw')" ontouchstart="_cropStopProp(event,'sw')"></div>
+        <div style="position:absolute;bottom:-6px;right:-6px;width:13px;height:13px;background:#FFD700;border-radius:50%;cursor:se-resize;z-index:2;" onmousedown="_cropStopProp(event,'se')" ontouchstart="_cropStopProp(event,'se')"></div>
+        <!-- Grille tiers -->
+        <div style="position:absolute;inset:0;opacity:.18;pointer-events:none;">
+          <div style="position:absolute;top:33.3%;left:0;right:0;height:1px;background:#FFD700;"></div>
+          <div style="position:absolute;top:66.6%;left:0;right:0;height:1px;background:#FFD700;"></div>
+          <div style="position:absolute;left:33.3%;top:0;bottom:0;width:1px;background:#FFD700;"></div>
+          <div style="position:absolute;left:66.6%;top:0;bottom:0;width:1px;background:#FFD700;"></div>
+        </div>
+      </div>
+    </div>
+    <!-- Aide -->
+    <p style="font-size:11px;color:rgba(255,255,255,.35);margin:10px 0 16px;text-align:center;">Déplacez ou redimensionnez le cadre · Choisissez un format ci-dessus</p>
+    <!-- Actions -->
+    <div style="display:flex;gap:12px;justify-content:flex-end;">
+      <button onclick="_actuCancelCrop()" style="padding:10px 20px;border-radius:8px;border:1.5px solid rgba(255,255,255,.18);background:transparent;color:rgba(255,255,255,.65);font-size:13px;font-weight:700;cursor:pointer;font-family:'Space Grotesk',sans-serif;">Annuler</button>
+      <button onclick="_actuApplyCrop()" style="padding:10px 26px;border-radius:8px;border:none;background:#FFD700;color:#000;font-size:13px;font-weight:900;cursor:pointer;font-family:'Space Grotesk',sans-serif;"><i class="fas fa-check" style="margin-right:6px;"></i>Valider le recadrage</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
