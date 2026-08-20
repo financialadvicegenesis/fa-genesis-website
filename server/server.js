@@ -938,7 +938,26 @@ async function processDispatchPayout(dispatch, stage) {
 
         var faAmount = parseFloat((stageTotal - paidAmount).toFixed(2));
 
-        var method = (partner.payout_paypal ? 'paypal' : (partner.payout_iban ? 'bank_transfer' : 'pending'));
+        // Détection méthode : Stripe Connect > Wise/IBAN > PayPal (legacy) > IBAN legacy > pending
+        var method;
+        if (partner.stripeAccountId && partner.stripeChargesEnabled) {
+            method = 'stripe_connect';
+        } else if (partner.bankDetails && partner.bankDetails.iban) {
+            method = 'wise';
+        } else if (partner.payout_paypal) {
+            method = 'paypal';
+        } else if (partner.payout_iban) {
+            method = 'bank_transfer';
+        } else {
+            method = 'pending';
+        }
+
+        // Coordonnées bancaires : nouvelle structure bankDetails > anciens champs legacy
+        var _bd = partner.bankDetails || {};
+        var _partnerIban      = _bd.iban      || partner.payout_iban      || null;
+        var _partnerBic       = _bd.bic       || partner.payout_bic       || null;
+        var _partnerTitulaire = _bd.accountHolderName || partner.payout_titulaire || null;
+        var _partnerPaypal    = partner.payout_paypal || null;
 
         // Litige (Phase 6) : tant qu'un litige est ouvert sur ce dispatch, les versements
         // futurs sont mis en attente (on_hold) au lieu d'être envoyés immédiatement.
@@ -957,10 +976,11 @@ async function processDispatchPayout(dispatch, stage) {
             stage: stage,
             partner_id: partner.id,
             partner_email: partner.email,
-            partner_paypal: partner.payout_paypal || null,
-            partner_iban: partner.payout_iban || null,
-            partner_bic: partner.payout_bic || null,
-            partner_titulaire: partner.payout_titulaire || null,
+            partner_paypal: _partnerPaypal,
+            partner_iban: _partnerIban,
+            partner_bic: _partnerBic,
+            partner_titulaire: _partnerTitulaire,
+            partner_stripe_account: partner.stripeAccountId || null,
             payout_method: method,
             amount: paidAmount,
             fa_amount: faAmount,
@@ -998,9 +1018,19 @@ async function processDispatchPayout(dispatch, stage) {
             return;
         }
 
-        if (method === 'paypal') {
+        if (method === 'stripe_connect') {
+            // L'argent a déjà été transféré automatiquement via transfer_data dans le PaymentIntent.
+            // Le record de payout est créé pour le suivi admin uniquement.
+            var _scLatest = loadPayouts();
+            var _scPi = _scLatest.findIndex(function(p) { return p.id === newPayout.id; });
+            if (_scPi !== -1) { _scLatest[_scPi].status = 'sent'; _scLatest[_scPi].sent_at = new Date().toISOString(); savePayouts(_scLatest); }
+            console.log('[PAYOUT] ' + stage + ' Stripe Connect (transfert automatique) → ' + partner.email + ' : ' + paidAmount + ' €');
+        } else if (method === 'wise') {
+            // Virement manuel via wise.com — le record est créé en status 'pending', l'admin fait le virement.
+            console.log('[PAYOUT] ' + stage + ' Wise (virement manuel requis) → ' + partner.email + ' IBAN:' + (_partnerIban || '?') + ' : ' + paidAmount + ' €');
+        } else if (method === 'paypal') {
             var result = await triggerPayPalPayouts([{
-                recipient_email: partner.payout_paypal,
+                recipient_email: _partnerPaypal,
                 amount: paidAmount,
                 currency: 'EUR',
                 note: 'Versement FA GENESIS — ' + (dispatch.offer_name || dispatch.order_id) + ' (' + stage + ')'

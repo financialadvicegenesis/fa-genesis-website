@@ -15877,7 +15877,7 @@ function _ptnrSetStripeSchedule(interval){
     method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+(_ptnrToken||'')},
     body:JSON.stringify({interval:interval})
   }).then(function(r){ return r.json(); }).then(function(d){
-    if(d.ok){ var t = {daily:'Versements quotidiens activés',weekly:'Versements hebdomadaires activés',monthly:'Versements mensuels activés'}[interval]; _showToast(t||'Mis à jour'); }
+    if(d.ok){ var t = {daily:'Versements quotidiens activés',weekly:'Versements hebdomadaires activés',monthly:'Versements mensuels activés'}[interval]; showToast(t||'Mis à jour','','success'); }
   });
 }
 
