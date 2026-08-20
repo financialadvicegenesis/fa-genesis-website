@@ -353,6 +353,7 @@ function loadActualites() {
 }
 function saveActualites(list) {
     try { fs.writeFileSync(ACTUALITES_FILE, JSON.stringify(list, null, 2), 'utf8'); } catch(e) { console.error('[ACTUALITES] Sauvegarde:', e.message); }
+    persistentStore.persistToCloud('actualites', list).catch(function(e) {});
 }
 
 function saveEvents(events) {
@@ -499,6 +500,7 @@ function loadDispatches() {
 function saveDispatches(data) {
     try { fs.writeFileSync(DISPATCHES_FILE, JSON.stringify(data, null, 2), 'utf8'); }
     catch(e) { console.error('[DISPATCH] Erreur sauvegarde:', e); }
+    persistentStore.persistToCloud('dispatches', data).catch(function(e) {});
 }
 var _dispatchLocks = {}; // verrou en mémoire contre les race conditions
 
@@ -539,6 +541,7 @@ function loadPromotions() {
 function savePromotions(data) {
     try { fs.writeFileSync(PROMOTIONS_FILE, JSON.stringify(data, null, 2), 'utf8'); }
     catch(e) { console.error('[PROMO] Erreur sauvegarde:', e); }
+    persistentStore.persistToCloud('promotions', data).catch(function(e) {});
 }
 
 // Types de promotion prévus — seul 'merchant' est utilisable en V1
@@ -564,6 +567,7 @@ function loadNotifications() {
 function saveNotifications(data) {
     try { fs.writeFileSync(NOTIFICATIONS_FILE, JSON.stringify(data, null, 2), 'utf8'); }
     catch(e) { console.error('[NOTIF] Erreur sauvegarde:', e); }
+    persistentStore.persistToCloud('notifications', data).catch(function(e) {});
 }
 
 // ── Prospects B2B ──
@@ -588,6 +592,7 @@ function loadDisputes() {
 function saveDisputes(data) {
     try { fs.writeFileSync(DISPUTES_FILE, JSON.stringify(data, null, 2), 'utf8'); }
     catch(e) { console.error('[DISPUTE] Erreur sauvegarde:', e); }
+    persistentStore.persistToCloud('disputes', data).catch(function(e) {});
 }
 
 // IDs de tarifs partenaires (taux variable selon badge : standard 25% FA, réduit pour Argent/Or/Élite)
@@ -1598,6 +1603,7 @@ function loadContracts() {
 function saveContracts(contracts) {
     try { fs.writeFileSync(CONTRACTS_FILE, JSON.stringify(contracts, null, 2), 'utf8'); }
     catch(e) { console.error('Erreur sauvegarde contracts:', e); }
+    persistentStore.persistToCloud('contracts', contracts).catch(function(e) {});
 }
 
 function loadBlockedDates() {

@@ -36,7 +36,20 @@ var COLLECTIONS = [
     'settings',
     'push-subscriptions',
     'payouts',
-    'genesis_projects'
+    'genesis_projects',
+    // Données critiques métier
+    'actualites',
+    'dispatches',
+    'disputes',
+    'events',
+    'promotions',
+    'reservations',
+    'messages',
+    'support-tickets',
+    'notifications',
+    'partner-subprofiles',
+    'contracts',
+    'campagnes'
 ];
 
 /**
