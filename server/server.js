@@ -10885,7 +10885,7 @@ app.post('/api/partner/auth/logout', authenticatePartner, (req, res) => {
 // Modifier profil partenaire
 app.put('/api/partner/auth/update-profile', authenticatePartner, async (req, res) => {
     try {
-        const { prenom, nom, telephone, photo, logo, bio, city, interventionZone, social, responseTimeCommitmentMinutes, currentPassword, newPassword } = req.body;
+        const { prenom, nom, telephone, photo, logo, bio, city, country, interventionZone, social, responseTimeCommitmentMinutes, currentPassword, newPassword } = req.body;
         const partners = loadPartners();
         const index = partners.findIndex(p => p.id === req.partner.id);
         if (index === -1) {
@@ -10898,6 +10898,7 @@ app.put('/api/partner/auth/update-profile', authenticatePartner, async (req, res
         if (logo) partners[index].logo = logo;
         if (typeof bio === 'string') partners[index].bio = bio.trim();
         if (typeof city === 'string') partners[index].city = city.trim();
+        if (typeof country === 'string' && country.length === 2) partners[index].country = country.toUpperCase();
         if (typeof interventionZone === 'string') partners[index].interventionZone = interventionZone.trim();
         if (responseTimeCommitmentMinutes !== undefined) {
             const allowedResponseMinutes = [30, 60, 180, 720, 1440, 2880];
@@ -19300,6 +19301,7 @@ app.post('/api/partner/stripe/setup', authenticatePartner, async function(req, r
             partners[idx].stripeDetailsSubmitted = false;
             partners[idx].entityType           = entityType;
             partners[idx].stripeCountry        = accountData.country;
+            partners[idx].country              = accountData.country;
             partners[idx].updatedAt            = new Date().toISOString();
             savePartners(partners);
         }

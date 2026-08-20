@@ -563,7 +563,7 @@
                     </div>
                     <div style="margin-top:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
                         <label style="font-size:11px;font-weight:900;color:#ffd700;white-space:nowrap;">VOTRE PAYS :</label>
-                        <select id="stripeCountrySelect" style="background:#1a1a1a;color:#fff;border:1px solid #444;border-radius:6px;padding:7px 14px;font-size:13px;font-weight:700;cursor:pointer;max-width:260px;">
+                        <select id="stripeCountrySelect" onchange="_onPayoutCountryChange(this.value)" style="background:#1a1a1a;color:#fff;border:1px solid #444;border-radius:6px;padding:7px 14px;font-size:13px;font-weight:700;cursor:pointer;max-width:260px;">
                             <optgroup label="── Europe ──">
                                 <option value="FR" selected>🇫🇷 France</option>
                                 <option value="BE">🇧🇪 Belgique</option>
@@ -2030,6 +2030,19 @@
     // MÉTHODE DE VERSEMENT — ROUTING AUTOMATIQUE
     // ==============================================
 
+    async function _onPayoutCountryChange(countryCode) {
+        if (!countryCode) return;
+        try {
+            var token = localStorage.getItem('fa_genesis_partner_token') || localStorage.getItem('partner_token') || '';
+            await fetch(API_BASE_URL + '/api/partner/auth/update-profile', {
+                method: 'PUT',
+                headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ country: countryCode })
+            });
+        } catch(e) { /* ignore */ }
+        await loadPayoutRouting();
+    }
+
     async function loadPayoutRouting() {
         try {
             var routingResp = await fetch(API_BASE_URL + '/api/partner/payout/routing', {
@@ -2048,7 +2061,8 @@
                 if (wiseBlock)     wiseBlock.style.display     = 'none';
                 if (noPayoutBlock) noPayoutBlock.style.display = 'none';
                 await loadStripeStatus();
-            } else if (provider === 'wise') {
+            } else if (provider === 'wise' || provider === 'payoneer') {
+                // 'payoneer' est traité comme 'wise' (rétrocompatibilité pendant le redéploiement serveur)
                 if (stripeBlock)   stripeBlock.style.display   = 'none';
                 if (wiseBlock)     wiseBlock.style.display     = '';
                 if (noPayoutBlock) noPayoutBlock.style.display = 'none';
