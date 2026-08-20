@@ -1885,7 +1885,7 @@
             try {
                 var resp = await fetch(API_BASE_URL + '/api/admin/feature-announcement', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + adminToken },
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (localStorage.getItem('fa_genesis_admin_token') || '') },
                     body: JSON.stringify({ title: title.trim(), description: description.trim(), link: link.trim(), experimental: experimental })
                 });
                 var result = await resp.json();
@@ -2777,10 +2777,6 @@
                 console.error(error);
                 alert('\u274c Erreur lors de la suppression');
             }
-        }
-
-        function closeClientModal() {
-            document.getElementById('clientModal').style.display = 'none';
         }
 
         // ============================================
@@ -6289,11 +6285,12 @@
 
         // ── MARKETPLACE / STRIPE CONNECT ──────────────────────────────────────
         var API = API_BASE_URL || window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com';
-        var adminKey = localStorage.getItem('fa_genesis_admin_token') || '';
         var _mktConfig = null;
+        function _adminKey() { return localStorage.getItem('fa_genesis_admin_token') || ''; }
 
         async function loadMarketplaceDashboard() {
             try {
+                var adminKey = _adminKey();
                 var [statsRes, configRes, partnersRes] = await Promise.all([
                     fetch(API + '/api/admin/marketplace/stats', { headers: { 'x-admin-key': adminKey } }),
                     fetch(API + '/api/admin/marketplace/config', { headers: { 'x-admin-key': adminKey } }),
@@ -6363,7 +6360,7 @@
             if(fb){ fb.style.display='block'; fb.textContent='Enregistrement…'; fb.style.color='#aaa'; }
             try {
                 var r = await fetch(API + '/api/admin/marketplace/config', {
-                    method: 'PUT', headers: { 'Content-Type':'application/json', 'x-admin-key': adminKey },
+                    method: 'PUT', headers: { 'Content-Type':'application/json', 'x-admin-key': _adminKey() },
                     body: JSON.stringify({ globalCommissionRate: globalPct, categoryCommissions: catComms, paymentsEnabled: enabled, payoutSchedule: schedule })
                 });
                 var d = await r.json();
@@ -6383,7 +6380,7 @@
             if (amount) body.amountEuros = parseFloat(amount);
             try {
                 var r = await fetch(API + '/api/admin/marketplace/refund', {
-                    method: 'POST', headers: { 'Content-Type':'application/json', 'x-admin-key': adminKey },
+                    method: 'POST', headers: { 'Content-Type':'application/json', 'x-admin-key': _adminKey() },
                     body: JSON.stringify(body)
                 });
                 var d = await r.json();
@@ -6578,7 +6575,7 @@
             if (modal) { modal.style.display = 'flex'; document.body.style.overflow = 'hidden'; }
             // Charger l'image complète depuis le serveur (non envoyée dans le listing)
             if (a.has_image) {
-                fetch(API_BASE_URL + '/api/admin/actualites/' + id, { headers: { 'x-admin-key': adminKey || '' } })
+                fetch(API_BASE_URL + '/api/admin/actualites/' + id, { headers: { 'x-admin-key': _adminKey() } })
                     .then(function(r){ return r.json(); })
                     .then(function(d){
                         if (d.ok && d.actualite && d.actualite.image) {
@@ -6979,6 +6976,207 @@
             }).catch(function() {
                 if (btn) { btn.disabled = false; btn.textContent = 'Retry'; }
             });
+        }
+
+        // ── NOTIFICATION INBOX ─────────────────────────────────────────
+        function toggleAdminNotifInbox() {
+            var panel = document.getElementById('adminNotifPanel');
+            if (!panel) return;
+            var isHidden = panel.style.display === 'none' || !panel.style.display;
+            panel.style.display = isHidden ? 'block' : 'none';
+            if (isHidden) loadAdminNotifInbox();
+        }
+
+        function loadAdminNotifInbox() {
+            try {
+                var tok = localStorage.getItem('fa_genesis_admin_token') || '';
+                var listEl = document.getElementById('adminNotifList');
+                var badgeEl = document.getElementById('adminNotifBadge');
+                var promises = [
+                    fetch(API_BASE_URL + '/api/admin/stats', { headers: { 'Authorization': 'Bearer ' + tok } }).then(function(r) { return r.ok ? r.json() : {}; }).catch(function() { return {}; }),
+                    fetch(API_BASE_URL + '/api/admin/disputes', { headers: { 'Authorization': 'Bearer ' + tok } }).then(function(r) { return r.ok ? r.json() : {}; }).catch(function() { return {}; })
+                ];
+                Promise.all(promises).then(function(results) {
+                    var stats = results[0] || {};
+                    var disputesData = results[1] || {};
+                    var items = [];
+                    var pendingPartners = stats.pendingPartners || 0;
+                    if (pendingPartners > 0) {
+                        items.push({ icon: 'fa-handshake', color: '#f59e0b', text: pendingPartners + ' partenaire(s) en attente de validation', action: "showSection('partenaires')" });
+                    }
+                    var openDisputes = (disputesData.disputes || []).filter(function(d) { return d.status !== 'resolved'; });
+                    if (openDisputes.length > 0) {
+                        items.push({ icon: 'fa-scale-balanced', color: '#ef4444', text: openDisputes.length + ' litige(s) ouvert(s)', action: "showSection('litiges')" });
+                    }
+                    if (!listEl) return;
+                    if (items.length === 0) {
+                        listEl.innerHTML = '<div style="padding:20px;text-align:center;color:#555;font-size:13px;">Aucune action en attente</div>';
+                        if (badgeEl) badgeEl.style.display = 'none';
+                        return;
+                    }
+                    var html = '';
+                    items.forEach(function(item) {
+                        html += '<div onclick="' + item.action + ';toggleAdminNotifInbox()" style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.07);cursor:pointer;transition:background .15s;" onmouseover="this.style.background=\'rgba(255,255,255,.04)\'" onmouseout="this.style.background=\'\'">';
+                        html += '<i class="fas ' + item.icon + '" style="font-size:16px;color:' + item.color + ';width:20px;flex-shrink:0;"></i>';
+                        html += '<span style="font-size:12px;font-weight:600;color:#e0e0e0;">' + item.text + '</span>';
+                        html += '</div>';
+                    });
+                    listEl.innerHTML = html;
+                    if (badgeEl) { badgeEl.textContent = items.length; badgeEl.style.display = 'block'; }
+                });
+            } catch (err) {
+                console.error('[ADMIN] loadAdminNotifInbox:', err);
+            }
+        }
+
+        function markAllAdminNotifsRead() {
+            var listEl = document.getElementById('adminNotifList');
+            var badgeEl = document.getElementById('adminNotifBadge');
+            if (listEl) listEl.innerHTML = '<div style="padding:20px;text-align:center;color:#555;font-size:13px;">Aucune notification non lue</div>';
+            if (badgeEl) badgeEl.style.display = 'none';
+            var panel = document.getElementById('adminNotifPanel');
+            if (panel) panel.style.display = 'none';
+        }
+
+        // ── VERSEMENTS EN ATTENTE ─────────────────────────────────────
+        function loadPendingPayouts() {
+            var el = document.getElementById('pendingPayoutsList');
+            if (!el) return;
+            el.innerHTML = '<p style="color:#aaa;opacity:0.6;font-weight:bold;">Chargement...</p>';
+            var tok = localStorage.getItem('fa_genesis_admin_token') || '';
+            fetch(API_BASE_URL + '/api/admin/payouts/pending', { headers: { 'Authorization': 'Bearer ' + tok } })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (!data.success || !data.payouts || !data.payouts.length) {
+                        el.innerHTML = '<div style="padding:24px;text-align:center;color:#555;font-size:14px;border:1px solid rgba(255,215,0,.1);border-radius:10px;"><i class="fas fa-check-circle" style="color:#22c55e;font-size:24px;display:block;margin-bottom:8px;"></i>Aucun versement en attente</div>';
+                        return;
+                    }
+                    var html = '';
+                    data.payouts.forEach(function(p) {
+                        var method = p.method || 'pending';
+                        var methodLabel = { stripe_connect: 'Stripe Connect', wise: 'Wise/Virement', paypal: 'PayPal', bank_transfer: 'Virement', pending: 'À définir' }[method] || method;
+                        var amountStr = p.amount_partner != null ? parseFloat(p.amount_partner).toFixed(2) + '€' : '—';
+                        html += '<div style="background:#111;border:1px solid rgba(255,215,0,.12);border-radius:12px;padding:16px;margin-bottom:10px;">';
+                        html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:12px;">';
+                        html += '<div><div style="font-weight:900;font-size:14px;color:#e0e0e0;">' + (p.partner_name || 'Partenaire') + '</div>';
+                        html += '<div style="font-size:11px;color:#666;margin-top:2px;">' + (p.partner_email || '') + ' · ' + (p.created_at ? new Date(p.created_at).toLocaleDateString('fr-FR') : '') + '</div></div>';
+                        html += '<div style="text-align:right;"><div style="font-size:20px;font-weight:900;color:var(--c-gold);">' + amountStr + '</div>';
+                        html += '<div style="font-size:11px;color:#888;">' + methodLabel + '</div></div></div>';
+                        if (p.partner_iban_masked) {
+                            html += '<div style="font-size:12px;color:#aaa;background:#0d0d0d;border-radius:6px;padding:6px 10px;margin-bottom:8px;"><i class="fas fa-building-columns" style="margin-right:6px;color:#00B9FF;"></i>' + p.partner_iban_masked + '</div>';
+                        }
+                        html += '<div style="display:flex;gap:8px;flex-wrap:wrap;">';
+                        html += '<input id="ref-' + p.id + '" type="text" placeholder="Référence virement (optionnel)" style="flex:1;min-width:160px;padding:6px 10px;font-size:12px;border-radius:7px;background:#181818;border:1px solid rgba(255,255,255,.1);color:#e0e0e0;">';
+                        html += '<button onclick="_adminMarkPayoutSent(\'' + p.id + '\')" style="background:var(--c-gold);color:#000;border:none;border-radius:7px;padding:7px 14px;font-size:12px;font-weight:900;cursor:pointer;">MARQUER VERSÉ</button>';
+                        html += '</div></div>';
+                    });
+                    el.innerHTML = html;
+                })
+                .catch(function(err) { el.innerHTML = '<p style="color:#ef4444;">Erreur de chargement: ' + err.message + '</p>'; });
+        }
+
+        function _adminMarkPayoutSent(payoutId) {
+            var refEl = document.getElementById('ref-' + payoutId);
+            var reference = refEl ? refEl.value.trim() : '';
+            var tok = localStorage.getItem('fa_genesis_admin_token') || '';
+            fetch(API_BASE_URL + '/api/admin/payouts/' + payoutId + '/mark-sent', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + tok, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ reference: reference })
+            }).then(function(r) { return r.json(); }).then(function(data) {
+                if (data.success) { showToast('Versement marqué comme envoyé', '', 'success'); loadPendingPayouts(); }
+                else { showToast(data.error || 'Erreur', '', 'error'); }
+            }).catch(function() { showToast('Erreur réseau', '', 'error'); });
+        }
+
+        // ── LITIGES ───────────────────────────────────────────────────
+        function loadAdminDisputes() {
+            var listEl = document.getElementById('disputesList');
+            var detailEl = document.getElementById('disputeDetailView');
+            if (detailEl) detailEl.style.display = 'none';
+            if (listEl) { listEl.style.display = 'block'; listEl.innerHTML = '<p style="color:#aaa;opacity:0.6;font-weight:bold;">Chargement...</p>'; }
+            var tok = localStorage.getItem('fa_genesis_admin_token') || '';
+            fetch(API_BASE_URL + '/api/admin/disputes', { headers: { 'Authorization': 'Bearer ' + tok } })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (!listEl) return;
+                    if (!data.ok || !data.disputes || !data.disputes.length) {
+                        listEl.innerHTML = '<div style="padding:24px;text-align:center;color:#555;font-size:14px;border:1px solid rgba(255,215,0,.1);border-radius:10px;"><i class="fas fa-check-circle" style="color:#22c55e;font-size:24px;display:block;margin-bottom:8px;"></i>Aucun litige en cours</div>';
+                        return;
+                    }
+                    var statusMap = { escalated_admin: { label: 'ESCALADÉ', color: '#ef4444', bg: 'rgba(239,68,68,.12)' }, jeremie_triage: { label: 'JÉRÉMIE IA', color: '#a78bfa', bg: 'rgba(167,139,250,.12)' }, open: { label: 'OUVERT', color: '#f59e0b', bg: 'rgba(245,158,11,.12)' }, resolved: { label: 'RÉSOLU', color: '#22c55e', bg: 'rgba(34,197,94,.12)' } };
+                    var html = '';
+                    data.disputes.forEach(function(d) {
+                        var st = statusMap[d.status] || { label: d.status, color: '#888', bg: 'rgba(136,136,136,.1)' };
+                        html += '<div style="background:#111;border:1px solid rgba(255,215,0,.12);border-radius:12px;padding:16px;margin-bottom:10px;cursor:pointer;" onclick="_adminOpenDispute(\'' + d.id + '\')">';
+                        html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;">';
+                        html += '<div><div style="font-weight:900;font-size:13px;color:#e0e0e0;">' + d.id + '</div>';
+                        html += '<div style="font-size:12px;color:#aaa;margin-top:3px;">' + (d.partner_name || 'Partenaire inconnu') + ' · ' + (d.client_email || '') + '</div>';
+                        html += '<div style="font-size:11px;color:#666;margin-top:2px;">' + (d.category || '') + ' · ' + (d.created_at ? new Date(d.created_at).toLocaleDateString('fr-FR') : '') + '</div></div>';
+                        html += '<span style="background:' + st.bg + ';color:' + st.color + ';border:1px solid ' + st.color + '44;border-radius:20px;font-size:10px;font-weight:900;padding:3px 10px;letter-spacing:.5px;white-space:nowrap;">' + st.label + '</span>';
+                        html += '</div>';
+                        if (d.description) html += '<div style="font-size:12px;color:#888;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.05);">' + d.description.substring(0, 120) + (d.description.length > 120 ? '…' : '') + '</div>';
+                        html += '</div>';
+                    });
+                    listEl.innerHTML = html;
+                })
+                .catch(function(err) { if (listEl) listEl.innerHTML = '<p style="color:#ef4444;">Erreur: ' + err.message + '</p>'; });
+        }
+
+        function _adminOpenDispute(disputeId) {
+            var listEl = document.getElementById('disputesList');
+            var detailEl = document.getElementById('disputeDetailView');
+            var contentEl = document.getElementById('disputeDetailContent');
+            if (listEl) listEl.style.display = 'none';
+            if (detailEl) detailEl.style.display = 'block';
+            if (contentEl) contentEl.innerHTML = '<p style="color:#aaa;">Chargement du litige ' + disputeId + '...</p>';
+            var tok = localStorage.getItem('fa_genesis_admin_token') || '';
+            fetch(API_BASE_URL + '/api/admin/disputes', { headers: { 'Authorization': 'Bearer ' + tok } })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    var d = (data.disputes || []).find(function(x) { return x.id === disputeId; });
+                    if (!d || !contentEl) return;
+                    var msgs = (d.messages || []).map(function(m) {
+                        return '<div style="padding:8px 12px;border-radius:8px;background:#1a1a1a;border:1px solid rgba(255,255,255,.07);margin-bottom:6px;"><span style="font-size:11px;color:#888;">' + (m.from_name || m.from_role) + ' · ' + (m.created_at ? new Date(m.created_at).toLocaleDateString('fr-FR') : '') + '</span><p style="margin:4px 0 0;font-size:13px;color:#e0e0e0;">' + m.content + '</p></div>';
+                    }).join('');
+                    var html = '<h3 style="font-size:16px;font-weight:900;color:#e0e0e0;margin-bottom:4px;">' + d.id + ' — ' + (d.category || '') + '</h3>';
+                    html += '<p style="font-size:12px;color:#888;margin-bottom:16px;">' + (d.partner_name || '') + ' vs client ' + (d.client_email || '') + '</p>';
+                    html += '<h4 style="font-size:12px;font-weight:700;color:#aaa;margin-bottom:8px;">MESSAGES</h4>' + (msgs || '<p style="color:#555;font-size:12px;">Aucun message</p>');
+                    if (d.jeremie_analysis) html += '<div style="margin-top:16px;padding:12px;background:#0d0d1a;border:1px solid rgba(167,139,250,.3);border-radius:10px;"><h4 style="font-size:12px;font-weight:900;color:#a78bfa;margin-bottom:6px;"><i class="fas fa-robot" style="margin-right:6px;"></i>ANALYSE JÉRÉMIE</h4><p style="font-size:12px;color:#c4b5fd;">' + d.jeremie_analysis + '</p></div>';
+                    if (d.status !== 'resolved') {
+                        html += '<div style="margin-top:20px;border-top:1px solid rgba(255,255,255,.08);padding-top:16px;"><h4 style="font-size:12px;font-weight:900;color:#aaa;margin-bottom:10px;">VERDICT ADMIN</h4><div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;">';
+                        [['partner_favor','Faveur partenaire'],['client_favor','Faveur client'],['split','Partage'],['manual_action_required','Action manuelle']].forEach(function(v) {
+                            html += '<button onclick="_adminResolveDispute(\'' + d.id + '\',\'' + v[0] + '\')" style="background:#1a1a1a;color:#e0e0e0;border:1px solid rgba(255,255,255,.15);border-radius:7px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer;">' + v[1] + '</button>';
+                        });
+                        html += '</div><textarea id="dispute-note-' + d.id + '" placeholder="Note (optionnel)" style="width:100%;resize:vertical;min-height:60px;font-size:12px;"></textarea></div>';
+                    } else {
+                        html += '<div style="margin-top:16px;padding:10px;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);border-radius:8px;color:#4ade80;font-size:13px;font-weight:700;"><i class="fas fa-check-circle" style="margin-right:8px;"></i>Litige résolu · ' + (d.admin_resolution || '') + '</div>';
+                    }
+                    contentEl.innerHTML = html;
+                })
+                .catch(function(err) { if (contentEl) contentEl.innerHTML = '<p style="color:#ef4444;">Erreur: ' + err.message + '</p>'; });
+        }
+
+        function _adminResolveDispute(disputeId, verdict) {
+            var noteEl = document.getElementById('dispute-note-' + disputeId);
+            var note = noteEl ? noteEl.value.trim() : '';
+            var tok = localStorage.getItem('fa_genesis_admin_token') || '';
+            fetch(API_BASE_URL + '/api/admin/disputes/' + disputeId + '/resolve', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + tok, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ verdict: verdict, note: note })
+            }).then(function(r) { return r.json(); }).then(function(data) {
+                if (data.success || data.ok) { showToast('Litige résolu', '', 'success'); backToDisputesList(); }
+                else { showToast(data.error || 'Erreur', '', 'error'); }
+            }).catch(function() { showToast('Erreur réseau', '', 'error'); });
+        }
+
+        function backToDisputesList() {
+            var detailEl = document.getElementById('disputeDetailView');
+            var listEl = document.getElementById('disputesList');
+            if (detailEl) detailEl.style.display = 'none';
+            if (listEl) listEl.style.display = 'block';
+            loadAdminDisputes();
         }
 </script>
 

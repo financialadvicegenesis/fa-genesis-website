@@ -13229,51 +13229,6 @@ app.get('/api/events', (req, res) => {
     }
 });
 
-// Admin : lister tous les evenements (publies et non publies)
-app.get('/api/admin/events', (req, res) => {
-    try {
-        var events = loadEvents().sort(function(a, b) { return new Date(b.date) - new Date(a.date); });
-        res.json(events);
-    } catch (error) {
-        console.error('[ADMIN] Erreur liste evenements:', error);
-        res.status(500).json({ error: 'Erreur chargement des evenements' });
-    }
-});
-
-// Admin : creer un evenement
-app.post('/api/admin/events/create', (req, res) => {
-    try {
-        var body = req.body || {};
-        var title = (body.title || '').trim();
-        var date = (body.date || '').trim();
-        if (!title || !date) {
-            return res.status(400).json({ error: 'Champs obligatoires: title, date' });
-        }
-        var now = new Date().toISOString();
-        var event = {
-            id: 'EVT-' + uuidv4().split('-')[0],
-            title: title,
-            type: body.type || 'workshop',
-            date: date,
-            location: (body.location || '').trim(),
-            description: (body.description || '').trim(),
-            image: (body.image || '').trim(),
-            link: (body.link || '').trim(),
-            published: body.published !== false,
-            createdAt: now,
-            updatedAt: now
-        };
-        var events = loadEvents();
-        events.push(event);
-        saveEvents(events);
-        console.log('[ADMIN] Evenement cree:', event.title);
-        res.json({ success: true, event: event });
-    } catch (error) {
-        console.error('[ADMIN] Erreur creation evenement:', error);
-        res.status(500).json({ error: 'Erreur lors de la creation de l\'evenement' });
-    }
-});
-
 // Admin : modifier un evenement
 app.put('/api/admin/events/:eventId', (req, res) => {
     try {
