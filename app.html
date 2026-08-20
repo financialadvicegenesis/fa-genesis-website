@@ -15583,9 +15583,9 @@ function _loadStripeSetup(){
         _renderStripeSetup(d);
       })
       .catch(function(){ el.innerHTML=''; });
-    } else if(provider === 'payoneer'){
-      // Stripe Connect non disponible pour ce pays → Payoneer
-      _renderPayoneerSetup(routingData);
+    } else if(provider === 'wise' || provider === 'payoneer'){
+      // Stripe Connect non disponible pour ce pays → Wise
+      _renderWiseSetup(routingData);
     } else {
       // Aucun fournisseur disponible
       _renderNoPayoutAvailable(routingData);
@@ -15687,6 +15687,108 @@ function _renderNoPayoutAvailable(routingData){
     +'<div style="font-size:12px;font-weight:800;color:#888;margin-bottom:8px;"><i class="fa-solid fa-triangle-exclamation" style="margin-right:6px;color:#f59e0b;"></i>VERSEMENT NON CONFIGURÉ</div>'
     +'<div style="font-size:12px;color:#666;line-height:1.6;">Nous ne pouvons pas encore effectuer de versement automatique vers '+countryName+' avec les méthodes actuellement disponibles sur GENESIS. Votre compte peut recevoir des commandes. Nous vous informerons dès qu\'une solution est disponible.</div>'
     +'</div>';
+}
+
+function _renderWiseSetup(routingData){
+  var el = _stripeSetupEl || document.getElementById('ptnr-stripe-setup');
+  if(!el) return;
+  var countryName = (routingData && routingData.countryName) || '';
+  var wiseLogo = 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 40 40\'%3E%3Ccircle cx=\'20\' cy=\'20\' r=\'20\' fill=\'%2300B9FF\'/%3E%3Ctext x=\'20\' y=\'26\' text-anchor=\'middle\' font-size=\'18\' font-weight=\'bold\' fill=\'white\' font-family=\'Arial\'%3EW%3C/text%3E%3C/svg%3E';
+
+  el.innerHTML = _skeletonRows(1);
+
+  fetch((window.FA_GENESIS_API||API)+'/api/partner/bank-details',{headers:{'Authorization':'Bearer '+(_ptnrToken||'')}})
+  .then(function(r){ return r.json(); })
+  .then(function(d){
+    var hasIban = d.ok && d.bankDetails && d.bankDetails.iban;
+    var html = '<div style="background:linear-gradient(135deg,#051a0d,#081a10);border:1.5px solid '+(hasIban?'#4ade80':'#1a6e3a')+';border-radius:14px;padding:16px;margin-bottom:12px;">';
+    html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">';
+    html += '<div style="font-size:12px;font-weight:800;letter-spacing:.8px;color:#4ade80;"><img src="'+wiseLogo+'" style="width:16px;height:16px;vertical-align:middle;margin-right:6px;border-radius:50%;">VERSEMENT — WISE</div>';
+    if(countryName) html += '<div style="font-size:10px;color:#888;font-weight:700;">'+_esc(countryName)+'</div>';
+    html += '</div>';
+
+    if(hasIban){
+      html += '<div style="display:flex;align-items:center;gap:8px;background:#0a1a10;border-radius:8px;padding:8px 12px;margin-bottom:10px;">';
+      html += '<i class="fa-solid fa-check-circle" style="color:#4ade80;"></i>';
+      html += '<span style="font-size:12px;color:#4ade80;font-weight:700;">IBAN enregistré — paiements Wise activés<br><span style="color:#888;font-weight:500;">'+_esc(d.bankDetails.iban)+'</span></span></div>';
+      if(d.wiseLinked) html += '<div style="font-size:11px;color:#4ade80;margin-bottom:8px;"><i class="fa-solid fa-link" style="margin-right:4px;"></i>Compte Wise lié · Virements automatiques actifs</div>';
+      html += '<button onclick="_ptnrWiseShowForm()" style="width:100%;background:#0d1a10;color:#4ade80;border:1px solid #1a6e3a;border-radius:10px;padding:9px;font-size:12px;font-weight:700;cursor:pointer;">Modifier mes coordonnées bancaires</button>';
+    } else {
+      html += '<div style="font-size:12px;color:#aaa;line-height:1.6;margin-bottom:12px;">Stripe Connect n\'est pas disponible dans votre pays. GENESIS vous verse automatiquement via <strong style="color:#fff;">Wise</strong> — ajoutez votre IBAN pour recevoir vos paiements.</div>';
+      html += _ptnrWiseFormHtml();
+    }
+    html += '</div>';
+    el.innerHTML = html;
+  })
+  .catch(function(){
+    var html = '<div style="background:linear-gradient(135deg,#051a0d,#081a10);border:1.5px solid #1a6e3a;border-radius:14px;padding:16px;margin-bottom:12px;">';
+    html += '<div style="font-size:12px;font-weight:800;color:#4ade80;margin-bottom:10px;"><img src="'+wiseLogo+'" style="width:16px;height:16px;vertical-align:middle;margin-right:6px;border-radius:50%;">VERSEMENT — WISE</div>';
+    html += '<div style="font-size:12px;color:#aaa;line-height:1.6;margin-bottom:12px;">Ajoutez votre IBAN pour recevoir vos paiements automatiquement via Wise.</div>';
+    html += _ptnrWiseFormHtml();
+    html += '</div>';
+    el.innerHTML = html;
+  });
+}
+
+function _ptnrWiseFormHtml(){
+  return '<div id="ptnr-wise-form">'
+    +'<div style="margin-bottom:10px;"><label style="font-size:10px;color:#6b7280;font-weight:700;display:block;margin-bottom:4px;text-transform:uppercase;">Nom du titulaire du compte *</label>'
+    +'<input id="ptnr-wise-name" type="text" placeholder="Ex : Jean Dupont" style="width:100%;box-sizing:border-box;background:#111;border:1.5px solid #1a6e3a;border-radius:10px;color:#fff;padding:10px 12px;font-size:13px;"></div>'
+    +'<div style="margin-bottom:10px;"><label style="font-size:10px;color:#6b7280;font-weight:700;display:block;margin-bottom:4px;text-transform:uppercase;">IBAN *</label>'
+    +'<input id="ptnr-wise-iban" type="text" placeholder="MA64 0110 0000 0100 0103 8900 0900" style="width:100%;box-sizing:border-box;background:#111;border:1.5px solid #1a6e3a;border-radius:10px;color:#fff;padding:10px 12px;font-size:13px;letter-spacing:1px;" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,\'\').replace(/(.{4})/g,\'$1 \').trim()"></div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">'
+    +'<div><label style="font-size:10px;color:#6b7280;font-weight:700;display:block;margin-bottom:4px;text-transform:uppercase;">BIC / SWIFT (optionnel)</label>'
+    +'<input id="ptnr-wise-bic" type="text" placeholder="BMCEMAMC" style="width:100%;box-sizing:border-box;background:#111;border:1.5px solid #1a6e3a;border-radius:10px;color:#fff;padding:10px 12px;font-size:13px;"></div>'
+    +'<div><label style="font-size:10px;color:#6b7280;font-weight:700;display:block;margin-bottom:4px;text-transform:uppercase;">Devise</label>'
+    +'<select id="ptnr-wise-currency" style="width:100%;background:#111;border:1.5px solid #1a6e3a;border-radius:10px;color:#fff;padding:10px 12px;font-size:13px;">'
+    +'<option value="EUR">EUR — Euro</option><option value="MAD">MAD — Dirham marocain</option>'
+    +'<option value="XOF">XOF — Franc CFA (UEMOA)</option><option value="XAF">XAF — Franc CFA (CEMAC)</option>'
+    +'<option value="EGP">EGP — Livre égyptienne</option><option value="USD">USD — Dollar américain</option>'
+    +'<option value="GBP">GBP — Livre sterling</option><option value="CHF">CHF — Franc suisse</option>'
+    +'</select></div></div>'
+    +'<div id="ptnr-wise-err" style="font-size:12px;color:#ef4444;margin-bottom:8px;display:none;"></div>'
+    +'<button onclick="_ptnrSaveWise()" id="ptnr-wise-save-btn" style="width:100%;background:linear-gradient(135deg,#14532d,#166534);color:#4ade80;border:1.5px solid #4ade80;border-radius:10px;padding:13px;font-size:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">'
+    +'<i class="fa-solid fa-bank"></i>ENREGISTRER MON IBAN</button>'
+    +'<div style="font-size:10px;color:#444;margin-top:8px;text-align:center;">GENESIS ne stocke jamais vos données bancaires complètes. Wise gère la sécurité des virements.</div>'
+    +'</div>';
+}
+
+function _ptnrWiseShowForm(){
+  var el = _stripeSetupEl || document.getElementById('ptnr-stripe-setup');
+  if(!el) return;
+  var formDiv = el.querySelector('#ptnr-wise-form');
+  if(formDiv){ formDiv.style.display = 'block'; return; }
+  // Si le formulaire n'est pas encore dans le DOM, recharger
+  _loadStripeSetup();
+}
+
+function _ptnrSaveWise(){
+  var name = ((document.getElementById('ptnr-wise-name')||{}).value||'').trim();
+  var iban = ((document.getElementById('ptnr-wise-iban')||{}).value||'').replace(/\s/g,'').toUpperCase();
+  var bic  = ((document.getElementById('ptnr-wise-bic')||{}).value||'').trim().toUpperCase();
+  var currency = (document.getElementById('ptnr-wise-currency')||{}).value||'EUR';
+  var errEl = document.getElementById('ptnr-wise-err');
+  var btn = document.getElementById('ptnr-wise-save-btn');
+  if(errEl){ errEl.style.display='none'; errEl.textContent=''; }
+  if(!name){ if(errEl){ errEl.textContent='Le nom du titulaire est requis.'; errEl.style.display='block'; } return; }
+  if(iban.length < 14){ if(errEl){ errEl.textContent='IBAN invalide.'; errEl.style.display='block'; } return; }
+  if(btn){ btn.disabled=true; btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Enregistrement…'; }
+  fetch((window.FA_GENESIS_API||API)+'/api/partner/bank-details',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+(_ptnrToken||'')},
+    body:JSON.stringify({accountHolderName:name, iban:iban, bic:bic, currency:currency})
+  }).then(function(r){ return r.json(); }).then(function(d){
+    if(btn){ btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-bank"></i> ENREGISTRER MON IBAN'; }
+    if(d.ok){
+      if(typeof showToast==='function') showToast('Coordonnées bancaires enregistrées','Vous recevrez vos paiements via Wise.','success');
+      _loadStripeSetup();
+    } else {
+      if(errEl){ errEl.textContent=d.error||'Erreur lors de l\'enregistrement.'; errEl.style.display='block'; }
+    }
+  }).catch(function(){
+    if(btn){ btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-bank"></i> ENREGISTRER MON IBAN'; }
+    if(errEl){ errEl.textContent='Erreur de connexion. Réessayez.'; errEl.style.display='block'; }
+  });
 }
 
 function _ptnrSavePayoneerEmail(){
