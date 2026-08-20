@@ -28,7 +28,7 @@
         /* A) Branding */
         '.fg-footer__brand { padding: 48px 0 32px; text-align: center; }',
         '.fg-footer__brand-name { font-family: "Unbounded", cursive; font-size: 28px; font-weight: 900; font-style: italic; text-transform: uppercase; letter-spacing: 1px; margin: 0; }',
-        '.fg-footer__brand-slogan { font-size: 11px; text-transform: uppercase; letter-spacing: 6px; font-style: italic; font-weight: 900; margin-top: 8px; color: #000000; }',
+        '.fg-footer__brand-slogan { font-size: 14px; font-weight: 500; margin-top: 10px; color: #444444; max-width: 520px; margin-left: auto; margin-right: auto; line-height: 1.5; }',
         '.fg-footer__brand-group { font-size: 10px; text-transform: uppercase; letter-spacing: 3px; font-style: italic; font-weight: 900; margin-top: 4px; color: #000000; }',
 
         /* Socials */
@@ -44,9 +44,9 @@
         '.fg-footer__disclaimer p { font-size: 13px; line-height: 1.6; color: #000000; max-width: 800px; margin: 0 auto; font-weight: 900; }',
 
         /* C) Link grid */
-        '.fg-footer__grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 32px; padding: 40px 0; }',
-        '.fg-footer__col-title { font-family: "Unbounded", cursive; font-size: 13px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 16px 0; color: #000000; }',
-        '.fg-footer__col-list { list-style: none; margin: 0; padding: 0; }',
+        '.fg-footer__grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px; padding: 40px 0; }',
+        '.fg-footer__col-title { font-family: "Unbounded", cursive; font-size: 13px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 16px 0; color: #000000; text-align: center; }',
+        '.fg-footer__col-list { list-style: none; margin: 0; padding: 0; text-align: center; }',
         '.fg-footer__col-list li { margin-bottom: 10px; }',
         '.fg-footer__col-list a { font-size: 14px; font-weight: 900; color: #000000; }',
         '.fg-footer__col-list a:hover { color: #000000; }',
@@ -96,6 +96,7 @@
         '@media (max-width: 900px) {',
         '  .fg-footer__grid { grid-template-columns: repeat(2, 1fr); gap: 24px; }',
         '}',
+        /* 3-col stays fine; at tablet it becomes 2 then hides on mobile */
 
         /* Mobile */
         '@media (max-width: 640px) {',
@@ -114,31 +115,21 @@
     // Colonnes de liens
     var columns = [
         {
-            title: 'FA Genesis',
+            title: 'Plateforme',
             links: [
-                { label: 'Accueil', href: 'index.html' },
-                { label: '\u00c0 propos', href: 'a-propos.html' },
-                { label: 'Offres', href: 'offres.html' },
-                { label: 'FAQ', href: 'index.html#faq' },
-                { label: 'Contact', href: 'contact.html' }
-            ]
-        },
-        {
-            title: 'Offres',
-            links: [
-                { label: 'Offres \u00c9tudiants', href: 'offres.html#offres-etudiants' },
-                { label: 'Offres Particuliers', href: 'offres.html#offres-particuliers' },
-                { label: 'Offres Entreprises', href: 'offres.html#offres-entreprises' },
-                { label: 'Devis personnalis\u00e9', href: 'contact.html' }
-            ]
-        },
-        {
-            title: 'Espace',
-            links: [
-                { label: 'Se connecter', href: 'login.html' },
-                { label: 'Cr\u00e9er un compte', href: 'register.html' },
                 { label: 'Espace client', href: 'dashboard.html' },
-                { label: 'Support', href: 'contact.html' }
+                { label: 'Espace prestataire', href: 'partner-dashboard.html' },
+                { label: 'Fonctionnalit\u00e9s', href: 'index.html#fonctionnalites' },
+                { label: 'T\u00e9l\u00e9charger l\u2019app', href: 'index.html#app' }
+            ]
+        },
+        {
+            title: 'Entreprise',
+            links: [
+                { label: '\u00c0 propos', href: 'a-propos.html' },
+                { label: 'Actualit\u00e9s', href: 'index.html#actualites' },
+                { label: 'Contact', href: 'contact.html' },
+                { label: 'FAQ', href: 'faq.html' }
             ]
         },
         {
@@ -147,8 +138,6 @@
                 { label: 'Conditions g\u00e9n\u00e9rales', href: 'conditions-generales.html' },
                 { label: 'Confidentialit\u00e9', href: 'confidentialite.html' },
                 { label: 'Mentions l\u00e9gales', href: 'mentions-legales.html' },
-                { label: 'R\u00e9clamation', href: 'reclamation.html' },
-                { label: 'Donn\u00e9es personnelles', href: 'protection-donnees.html' },
                 { label: 'Cookies', href: 'cookies.html' }
             ]
         }
@@ -212,7 +201,7 @@
         // A) Branding
         html += '<div class="fg-footer__brand">';
         html += '<p class="fg-footer__brand-name">FA GENESIS</p>';
-        html += '<p class="fg-footer__brand-slogan">Build. Launch. Impact.</p>';
+        html += ‘<p class="fg-footer__brand-slogan">La plateforme qui connecte clients et prestataires de services en France et à l’international.</p>’;
         html += '<p class="fg-footer__brand-group">Groupe FA Industries</p>';
         html += '<div class="fg-footer__socials">';
         html += '<a href="https://www.linkedin.com/in/financial-advice-genesis-772b653aa/" target="_blank" rel="noopener" aria-label="LinkedIn"><i class="fab fa-linkedin"></i></a>';
