@@ -3,6 +3,17 @@
 
 console.log('🔵 Chargement de admin-system.js');
 
+// Migration clé localStorage : adminToken → fa_genesis_admin_token
+(function() {
+    try {
+        var old = localStorage.getItem('adminToken');
+        if (old && !localStorage.getItem('fa_genesis_admin_token')) {
+            localStorage.setItem('fa_genesis_admin_token', old);
+            localStorage.removeItem('adminToken');
+        }
+    } catch(e) {}
+})();
+
 /**
  * Connexion administrateur
  * @param {string} email
@@ -30,7 +41,7 @@ function adminLogin(email, password) {
             loginTime: new Date().toISOString()
         };
         localStorage.setItem('adminSession', JSON.stringify(adminSession));
-        localStorage.setItem('adminToken', res.data.token);
+        localStorage.setItem('fa_genesis_admin_token', res.data.token);
         console.log('Admin connecté');
         return { success: true, message: 'Connexion réussie' };
       })
@@ -44,8 +55,8 @@ function adminLogin(email, password) {
  * @returns {boolean}
  */
 function isAdminAuthenticated() {
-    const session = localStorage.getItem('adminSession');
-    const token = localStorage.getItem('adminToken');
+    var session = localStorage.getItem('adminSession');
+    var token = localStorage.getItem('fa_genesis_admin_token');
     return session !== null && !!token;
 }
 
@@ -54,12 +65,12 @@ function isAdminAuthenticated() {
  */
 function adminLogout() {
     var base = (typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : (window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com'));
-    var token = localStorage.getItem('adminToken');
+    var token = localStorage.getItem('fa_genesis_admin_token');
     if (token) {
         fetch(base + '/api/admin/logout', { method: 'POST', headers: { 'Authorization': 'Bearer ' + token } }).catch(function() {});
     }
     localStorage.removeItem('adminSession');
-    localStorage.removeItem('adminToken');
+    localStorage.removeItem('fa_genesis_admin_token');
     console.log('✅ Admin déconnecté');
 }
 
@@ -79,7 +90,7 @@ function adminLogout() {
         var isAdminApiCall = url.indexOf('/api/admin/') !== -1 && url.indexOf('/api/admin/login') === -1;
         try {
             if (isAdminApiCall) {
-                var token = localStorage.getItem('adminToken');
+                var token = localStorage.getItem('fa_genesis_admin_token');
                 if (token) {
                     init = init || {};
                     init.headers = Object.assign({}, init.headers, { 'Authorization': 'Bearer ' + token });
@@ -90,7 +101,7 @@ function adminLogout() {
             if (isAdminApiCall && response.status === 401 && !sessionExpiredHandled) {
                 sessionExpiredHandled = true;
                 localStorage.removeItem('adminSession');
-                localStorage.removeItem('adminToken');
+                localStorage.removeItem('fa_genesis_admin_token');
                 try {
                     var panel = document.getElementById('adminPanel');
                     var login = document.getElementById('loginPage');
