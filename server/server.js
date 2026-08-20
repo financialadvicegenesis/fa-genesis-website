@@ -19857,11 +19857,6 @@ app.delete('/api/admin/actualites/:id', function(req, res) {
     }
 });
 
-// Route inconnue (404) — doit rester APRÈS toutes les routes app.get/post/put/delete
-app.use((req, res) => {
-    res.status(404).json({ error: 'Route introuvable' });
-});
-
 // ============================================================
 // ─── DEMO SCREENSHOT ACCOUNT ─────────────────────────────────────────────────
 // Crée un compte démo réaliste pour les captures Play Store (admin only)
@@ -20517,6 +20512,11 @@ app.get('/api/admin/wise/partners-status', function(req, res) {
     } catch(e) {
         res.status(500).json({ error: 'Erreur serveur' });
     }
+});
+
+// Route inconnue (404) — doit rester APRÈS toutes les routes app.get/post/put/delete
+app.use((req, res) => {
+    res.status(404).json({ error: 'Route introuvable' });
 });
 
 });
