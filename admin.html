@@ -6867,6 +6867,12 @@
             }).then(function(r) { return r.json(); });
         }
 
+        function _adminWiseCopy(text, btn) {
+            navigator.clipboard.writeText(text).then(function() {
+                if (btn) { var prev = btn.textContent; btn.textContent = '✓ Copié'; setTimeout(function(){ btn.textContent = prev; }, 1500); }
+            });
+        }
+
         function _adminWiseIbanStatus() {
             var el = document.getElementById('wiseIbanStatusResult');
             if (el) el.innerHTML = '<span style="color:#aaa;">Chargement...</span>';
@@ -6874,31 +6880,62 @@
                 if (!el) return;
                 if (!data.ok) { el.innerHTML = '<span style="color:#ef4444;">Erreur: ' + (data.error || 'inconnue') + '</span>'; return; }
                 if (!data.partners || !data.partners.length) { el.innerHTML = '<span style="color:#aaa;">Aucun partenaire avec IBAN enregistré.</span>'; return; }
-                var html = '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;">';
+
+                var linked = data.partners.filter(function(p){ return p.wiseLinked; }).length;
+                var unlinked = data.partners.filter(function(p){ return !p.wiseLinked; });
+
+                var html = '';
+
+                // Partenaires non liés → virement manuel
+                if (unlinked.length) {
+                    html += '<div style="background:#1a0e00;border:1.5px solid #f59e0b44;border-radius:10px;padding:14px;margin-bottom:16px;">';
+                    html += '<div style="font-size:12px;font-weight:800;color:#f59e0b;margin-bottom:10px;"><i class="fas fa-triangle-exclamation" style="margin-right:6px;"></i>VIREMENT MANUEL WISE REQUIS (' + unlinked.length + ')</div>';
+                    html += '<div style="font-size:11px;color:#aaa;margin-bottom:12px;">L\'API Wise ne supporte pas les IBANs de ces pays (ex: MA = Maroc). Copiez l\'IBAN ci-dessous et faites le virement directement sur <strong style="color:#fff;">wise.com</strong> → Envoyer → Coordonnées bancaires manuelles.</div>';
+                    unlinked.forEach(function(p) {
+                        html += '<div style="background:#0d0d0d;border-radius:8px;padding:12px;margin-bottom:8px;">';
+                        html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap;">';
+                        html += '<div>';
+                        html += '<div style="font-size:13px;font-weight:700;color:#fff;">' + p.name + '</div>';
+                        html += '<div style="font-size:11px;color:#888;margin-top:2px;">' + p.email + '</div>';
+                        html += '</div>';
+                        html += '<div style="text-align:right;">';
+                        html += '<div style="font-size:10px;color:#666;font-weight:700;margin-bottom:2px;">DEVISE DÉCLARÉE</div>';
+                        html += '<div style="font-size:12px;font-weight:800;color:#aaa;">' + (p.currency || 'EUR') + '</div>';
+                        html += '</div></div>';
+                        html += '<div style="margin-top:10px;background:#1a1a1a;border-radius:6px;padding:8px 10px;display:flex;align-items:center;justify-content:space-between;gap:8px;">';
+                        html += '<div style="font-size:12px;color:#fff;font-family:monospace;word-break:break-all;">' + p.iban + '</div>';
+                        html += '<button onclick="_adminWiseCopy(\'' + p.iban + '\', this)" style="background:#1a2a3a;color:#00B9FF;border:1px solid #00B9FF44;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0;">Copier</button>';
+                        html += '</div>';
+                        html += '<div style="margin-top:6px;font-size:11px;color:#666;">Titulaire : <strong style="color:#aaa;">' + p.name + '</strong></div>';
+                        html += '</div>';
+                    });
+                    html += '</div>';
+                }
+
+                // Tableau complet
+                html += '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;">';
                 html += '<thead><tr style="color:#FFD700;border-bottom:1px solid #333;">';
                 html += '<th style="text-align:left;padding:6px 8px;">Email</th>';
-                html += '<th style="text-align:left;padding:6px 8px;">Nom titulaire</th>';
-                html += '<th style="text-align:left;padding:6px 8px;">IBAN (fin)</th>';
+                html += '<th style="text-align:left;padding:6px 8px;">Nom</th>';
+                html += '<th style="text-align:left;padding:6px 8px;">IBAN</th>';
                 html += '<th style="text-align:left;padding:6px 8px;">Devise</th>';
                 html += '<th style="text-align:left;padding:6px 8px;">Wise lié ?</th>';
-                html += '<th style="text-align:left;padding:6px 8px;">Action</th>';
                 html += '</tr></thead><tbody>';
                 data.partners.forEach(function(p) {
-                    var linked = p.wiseLinked;
-                    var ibanEnd = (p.iban || '').slice(-6);
+                    var isLinked = p.wiseLinked;
                     html += '<tr style="border-bottom:1px solid #1a1a1a;">';
                     html += '<td style="padding:6px 8px;color:#e0e0e0;">' + p.email + '</td>';
                     html += '<td style="padding:6px 8px;color:#e0e0e0;">' + (p.name || '—') + '</td>';
-                    html += '<td style="padding:6px 8px;color:#888;">…' + ibanEnd + '</td>';
-                    html += '<td style="padding:6px 8px;color:#aaa;">' + (p.currency || 'EUR') + '</td>';
-                    html += '<td style="padding:6px 8px;"><span style="font-weight:800;color:' + (linked ? '#4ade80' : '#ef4444') + ';">' + (linked ? '✓ OUI' : '✗ NON') + '</span></td>';
                     html += '<td style="padding:6px 8px;">';
-                    if (!linked) html += '<button onclick="_adminWiseRetryOne(\'' + p.id + '\', this)" style="background:#0d1a10;color:#4ade80;border:1px solid #1a6e3a;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;">Retry</button>';
-                    else html += '<span style="color:#4ade80;font-size:11px;">' + (p.wiseRecipientId ? 'ID: ' + p.wiseRecipientId : '') + '</span>';
-                    html += '</td></tr>';
+                    html += '<span style="font-family:monospace;color:#aaa;font-size:11px;">…' + (p.iban||'').slice(-8) + '</span> ';
+                    html += '<button onclick="_adminWiseCopy(\'' + p.iban + '\', this)" style="background:transparent;color:#00B9FF;border:none;font-size:10px;font-weight:700;cursor:pointer;padding:2px 6px;">Copier</button>';
+                    html += '</td>';
+                    html += '<td style="padding:6px 8px;color:#aaa;">' + (p.currency || 'EUR') + '</td>';
+                    html += '<td style="padding:6px 8px;"><span style="font-weight:800;color:' + (isLinked ? '#4ade80' : '#f59e0b') + ';">' + (isLinked ? '✓ API Wise' : '⚠ Manuel') + '</span></td>';
+                    html += '</tr>';
                 });
                 html += '</tbody></table></div>';
-                html += '<div style="margin-top:8px;font-size:11px;color:#666;">' + data.count + ' partenaire(s) avec IBAN — ' + data.partners.filter(function(p){return p.wiseLinked;}).length + ' liés à Wise</div>';
+                html += '<div style="margin-top:8px;font-size:11px;color:#666;">' + data.count + ' partenaire(s) avec IBAN — ' + linked + ' liés à Wise automatiquement, ' + (data.count - linked) + ' virement(s) manuel(s) requis</div>';
                 el.innerHTML = html;
             }).catch(function(e) {
                 if (el) el.innerHTML = '<span style="color:#ef4444;">Erreur réseau: ' + e.message + '</span>';
