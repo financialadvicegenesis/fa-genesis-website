@@ -3077,8 +3077,7 @@ a{text-decoration:none;color:inherit}
           <div id="ptnr-earnings-summary" style="padding:12px 12px 0;"></div>
           <!-- Méthode de versement (Stripe Connect ou Wise selon pays) -->
           <div id="ptnr-stripe-setup" style="padding:0 0 12px;"></div>
-          <!-- PayPal / IBAN (fallback legacy) -->
-          <div id="ptnr-paypal-setup" style="padding:0 0 16px;"></div>
+
           <div id="ptnr-versements-list"></div>
         </div>
 
@@ -15647,9 +15646,10 @@ function _renderWiseSetup(routingData){
       html += '<span style="font-size:12px;color:#4ade80;font-weight:700;">IBAN enregistré — paiements Wise activés<br><span style="color:#888;font-weight:500;">'+_esc(d.bankDetails.iban)+'</span></span></div>';
       if(d.wiseLinked) html += '<div style="font-size:11px;color:#4ade80;margin-bottom:8px;"><i class="fa-solid fa-link" style="margin-right:4px;"></i>Compte Wise lié · Virements automatiques actifs</div>';
       html += '<button onclick="_ptnrWiseShowForm()" style="width:100%;background:#0d1a10;color:#4ade80;border:1px solid #1a6e3a;border-radius:10px;padding:9px;font-size:12px;font-weight:700;cursor:pointer;">Modifier mes coordonnées bancaires</button>';
+      html += _ptnrWiseFormHtml(true);
     } else {
       html += '<div style="font-size:12px;color:#aaa;line-height:1.6;margin-bottom:12px;">Stripe Connect n\'est pas disponible dans votre pays. GENESIS vous verse automatiquement via <strong style="color:#fff;">Wise</strong> — ajoutez votre IBAN pour recevoir vos paiements.</div>';
-      html += _ptnrWiseFormHtml();
+      html += _ptnrWiseFormHtml(false);
     }
     html += '</div>';
     el.innerHTML = html;
@@ -15664,8 +15664,9 @@ function _renderWiseSetup(routingData){
   });
 }
 
-function _ptnrWiseFormHtml(){
-  return '<div id="ptnr-wise-form">'
+function _ptnrWiseFormHtml(hidden){
+  var hiddenStyle = hidden ? 'display:none;margin-top:12px;' : '';
+  return '<div id="ptnr-wise-form" style="'+hiddenStyle+'">'
     +'<div style="margin-bottom:10px;"><label style="font-size:10px;color:#6b7280;font-weight:700;display:block;margin-bottom:4px;text-transform:uppercase;">Nom du titulaire du compte *</label>'
     +'<input id="ptnr-wise-name" type="text" placeholder="Ex : Jean Dupont" style="width:100%;box-sizing:border-box;background:#111;border:1.5px solid #1a6e3a;border-radius:10px;color:#fff;padding:10px 12px;font-size:13px;"></div>'
     +'<div style="margin-bottom:10px;"><label style="font-size:10px;color:#6b7280;font-weight:700;display:block;margin-bottom:4px;text-transform:uppercase;">IBAN *</label>'
@@ -15692,8 +15693,6 @@ function _ptnrWiseShowForm(){
   if(!el) return;
   var formDiv = el.querySelector('#ptnr-wise-form');
   if(formDiv){ formDiv.style.display = 'block'; return; }
-  // Si le formulaire n'est pas encore dans le DOM, recharger
-  _loadStripeSetup();
 }
 
 function _ptnrSaveWise(){
@@ -15885,24 +15884,13 @@ function _ptnrSetStripeSchedule(interval){
 // ── Versements (répartition automatique des revenus) ──
 function _ptnrLoadVersements(){
   var stripeEl= document.getElementById('ptnr-stripe-setup');
-  var setupEl = document.getElementById('ptnr-paypal-setup');
   var listEl  = document.getElementById('ptnr-versements-list');
   if(stripeEl) stripeEl.innerHTML = _skeletonRows(1);
-  if(setupEl) setupEl.innerHTML = _skeletonRows(2);
   if(listEl)  listEl.innerHTML  = '';
   _loadStripeSetup();
 
   _ptnrFetch('/api/partner/payouts').then(function(data){
-    var paypalEmail = data.paypal_email || null;
-    var payouts     = data.payouts || [];
-
-    if(setupEl){
-      var html = '';
-
-
-
-      setupEl.innerHTML = html;
-    }
+    var payouts = data.payouts || [];
 
     // ── Fonds en attente GENESIS SAFE™ — via /api/partner/wallet (dispatches directs) ──
     if(listEl){
@@ -15989,24 +15977,8 @@ function _ptnrLoadVersements(){
     listEl.innerHTML = listHtml;
     _animateCount(document.getElementById('ptnr-total-sent'), totalSent, {decimals:2, suffix:' €', duration:900});
     _animateCount(document.getElementById('ptnr-total-pending'), totalPending, {decimals:2, suffix:' €', duration:900});
-  }).catch(function(){
-    if(setupEl) setupEl.innerHTML = '<div class="ptnr-empty"><div class="ptnr-empty-txt">Erreur de chargement</div></div>';
-  });
+  }).catch(function(){});
 }
-
-function _savePartnerPaypal(){
-  var input = document.getElementById('ptnr-paypal-input');
-  if(!input) return;
-  var email = (input.value||'').trim();
-  if(!email||!email.includes('@')){ showToast('Email invalide','Saisissez un email PayPal valide','error'); return; }
-  _ptnrFetch('/api/partner/profile/set-paypal','POST',{paypal_email:email}).then(function(res){
-    if(res.success){
-      showToast('Email PayPal enregistré !','Vos futurs versements seront envoyés automatiquement','success');
-      haptic([20,10,40]); _ptnrLoadVersements();
-    } else { showToast(res.error||'Erreur','Réessayez','error'); }
-  }).catch(function(){ showToast('Erreur réseau','Réessayez plus tard','error'); });
-}
-
 
 // ── MES BADGES ──
 function _ptnrLoadReputation(){
