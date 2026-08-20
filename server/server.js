@@ -19728,7 +19728,11 @@ app.get('/api/actualites', function(req, res) {
     try {
         var list = loadActualites();
         var published = list.filter(function(a) { return a.published !== false; });
-        published.sort(function(a, b) { return new Date(b.date) - new Date(a.date); });
+        published.sort(function(a, b) {
+            var da = new Date(a.date || a.created_at || 0).getTime() || 0;
+            var db = new Date(b.date || b.created_at || 0).getTime() || 0;
+            return db - da;
+        });
         res.json({ ok: true, actualites: published });
     } catch(e) {
         res.status(500).json({ error: 'Erreur serveur' });
@@ -19752,7 +19756,11 @@ app.get('/api/admin/actualites', function(req, res) {
     try {
         if (!_isAdminRequest(req)) return res.status(403).json({ error: 'Forbidden' });
         var list = loadActualites();
-        list.sort(function(a, b) { return new Date(b.date) - new Date(a.date); });
+        list.sort(function(a, b) {
+            var da = new Date(a.date || a.created_at || 0).getTime() || 0;
+            var db = new Date(b.date || b.created_at || 0).getTime() || 0;
+            return db - da;
+        });
         // Strip full base64 images from list view — replaced by a boolean flag.
         // The edit form fetches the full image when needed via GET /api/admin/actualites/:id.
         var slim = list.map(function(a) {

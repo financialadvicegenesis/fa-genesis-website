@@ -1662,6 +1662,11 @@ function _render_actualites(list){
   var empty=document.getElementById('actu-empty');
   if(!grid)return;
   if(!list||!list.length){if(empty)empty.style.display='block';return;}
+  list=list.slice().sort(function(a,b){
+    var da=new Date(a.date||a.created_at||0).getTime()||0;
+    var db=new Date(b.date||b.created_at||0).getTime()||0;
+    return db-da;
+  });
   var html='';
   list.forEach(function(a){
     if(a.id) _actuDataCache[a.id]=a;
