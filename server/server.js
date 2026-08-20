@@ -19731,7 +19731,7 @@ app.get('/api/actualites', function(req, res) {
         published.sort(function(a, b) {
             var da = new Date(a.date || a.created_at || 0).getTime() || 0;
             var db = new Date(b.date || b.created_at || 0).getTime() || 0;
-            return db - da;
+            return da - db; // ordre chronologique croissant : le plus ancien en premier
         });
         res.json({ ok: true, actualites: published });
     } catch(e) {
