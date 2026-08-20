@@ -7248,6 +7248,7 @@ function saveMessages(messages) {
     } catch (error) {
         console.error('Erreur sauvegarde messages:', error);
     }
+    persistentStore.persistToCloud('messages', messages).catch(function(e) {});
 }
 
 // Memoire de Jeremie (IA conversationnelle) : historique de messages par personne
@@ -7493,11 +7494,15 @@ app.post('/api/contact', async (req, res) => {
  * GET /api/admin/messages (Admin)
  * Recuperer tous les messages
  */
-app.get('/api/admin/messages', (req, res) => {
-    const messages = loadMessages();
-    // Trier par date decroissante (plus recents en premier)
-    messages.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-    res.json(messages);
+app.get('/api/admin/messages', function(req, res) {
+    try {
+        var messages = loadMessages();
+        messages.sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); });
+        res.json(messages);
+    } catch (e) {
+        console.error('[ADMIN] Erreur GET /api/admin/messages:', e);
+        res.status(500).json({ error: 'Erreur serveur', detail: e.message });
+    }
 });
 
 /**
@@ -13443,12 +13448,6 @@ function notifyCapacityLimitedEvent(event) {
 // Admin : utilisateurs par niveau QG en temps reel
 app.get('/api/admin/users-by-level', function(req, res) {
     try {
-        var adminToken = req.headers.authorization || '';
-        if (adminToken.startsWith('Bearer ')) adminToken = adminToken.slice(7).trim();
-        var adminSessions = [];
-        try { adminSessions = JSON.parse(fs.readFileSync(ADMIN_SESSIONS_FILE, 'utf8')); } catch(e) {}
-        var isAdmin = adminSessions.some(function(s) { return s.token === adminToken && (!s.expiresAt || Date.now() < new Date(s.expiresAt).getTime()); });
-        if (!isAdmin) return res.status(403).json({ error: 'Accès réservé aux administrateurs' });
 
         var tiers = [
             { id: 'elite',  label: 'Générateur',  pts: 1000 },

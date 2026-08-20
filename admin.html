@@ -2997,16 +2997,28 @@
             if (filter) currentFilter = filter;
 
             try {
-                var resp = await fetch(API_BASE_URL + '/api/admin/messages');
-                var msgs = resp.ok ? await resp.json() : [];
+                var tok = localStorage.getItem('fa_genesis_admin_token') || '';
+                var resp = await fetch(API_BASE_URL + '/api/admin/messages', {
+                    headers: { 'Authorization': 'Bearer ' + tok }
+                });
+                var msgs;
+                if (resp.ok) {
+                    msgs = await resp.json();
+                    if (!Array.isArray(msgs)) msgs = [];
+                } else {
+                    var errBody = {};
+                    try { errBody = await resp.json(); } catch(e) {}
+                    throw new Error((errBody.error || errBody.detail || 'HTTP ' + resp.status));
+                }
 
-                // Tri par date d\u00e9croissante (messages de contact uniquement)
+                // Tri par date d\u00e9croissante
                 allMessages = msgs.sort(function(a, b) {
                     return new Date(b.created_at) - new Date(a.created_at);
                 });
             } catch (error) {
                 console.error('[ADMIN] Erreur chargement messages:', error);
-                document.getElementById('messagesList').innerHTML = '<p class="text-center py-8 font-bold">Erreur de chargement. <button onclick="loadMessages()" style="border:2px solid black;padding:4px 12px;font-weight:900;cursor:pointer;">R\u00e9essayer</button></p>';
+                var listEl = document.getElementById('messagesList');
+                if (listEl) listEl.innerHTML = '<p class="text-center py-8 font-bold" style="color:#f87171;">Erreur de chargement : ' + error.message + '<br><button onclick="loadMessages()" style="margin-top:8px;border:2px solid #f87171;padding:4px 12px;font-weight:900;cursor:pointer;border-radius:6px;color:#f87171;background:transparent;">R\u00e9essayer</button></p>';
                 return;
             }
 
