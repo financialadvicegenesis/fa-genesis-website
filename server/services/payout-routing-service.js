@@ -32,14 +32,14 @@ function getBestPayoutProvider(countryCode) {
         return { provider: null, available: false, currency: null, allProviders: [], countryName: null };
     }
 
-    var priority  = table._provider_priority || ['stripe', 'payoneer'];
+    var priority  = table._provider_priority || ['stripe', 'wise'];
     var available = [];
 
     priority.forEach(function(p) {
-        if (p === 'stripe'   && country.stripe_connect) available.push('stripe');
-        if (p === 'payoneer' && country.payoneer)       available.push('payoneer');
-        if (p === 'airwallex' && country.airwallex)     available.push('airwallex');
-        if (p === 'adyen'    && country.adyen)          available.push('adyen');
+        if (p === 'stripe'    && country.stripe_connect) available.push('stripe');
+        if (p === 'wise'      && country.wise)           available.push('wise');
+        if (p === 'airwallex' && country.airwallex)      available.push('airwallex');
+        if (p === 'adyen'     && country.adyen)          available.push('adyen');
     });
 
     var best = available[0] || null;
@@ -69,7 +69,7 @@ function updateCountryProvider(countryCode, provider, enabled) {
     var table = loadCountryTable();
     var code  = countryCode.toUpperCase();
     if (!table.countries[code]) return false;
-    var fieldMap = { stripe: 'stripe_connect', payoneer: 'payoneer', airwallex: 'airwallex', adyen: 'adyen' };
+    var fieldMap = { stripe: 'stripe_connect', wise: 'wise', airwallex: 'airwallex', adyen: 'adyen' };
     var field = fieldMap[provider];
     if (!field) return false;
     table.countries[code][field] = !!enabled;
