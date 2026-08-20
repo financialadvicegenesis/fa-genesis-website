@@ -20288,4 +20288,233 @@ app.get('/api/promotions', (req, res) => {
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });
+
+// ══════════════════════════════════════════════════════════════
+// ── WISE PAYMENT INTEGRATION ──────────────────────────────────
+// ══════════════════════════════════════════════════════════════
+
+const WISE_TOKEN = process.env.WISE_API_TOKEN;
+const WISE_BASE  = 'https://api.wise.com';
+var   _wiseProfileId = null;
+
+async function _wiseGetProfileId() {
+    if (_wiseProfileId) return _wiseProfileId;
+    const r = await fetch(WISE_BASE + '/v1/profiles', {
+        headers: { 'Authorization': 'Bearer ' + WISE_TOKEN }
+    });
+    const profiles = await r.json();
+    if (!Array.isArray(profiles)) throw new Error('Wise: profils non disponibles');
+    const biz = profiles.find(function(p) { return p.type === 'BUSINESS'; });
+    _wiseProfileId = biz ? biz.id : profiles[0].id;
+    return _wiseProfileId;
+}
+
+async function _wiseCreateRecipient(profileId, info) {
+    const payload = {
+        profile: profileId,
+        accountHolderName: info.accountHolderName,
+        currency: info.currency || 'EUR',
+        type: 'iban',
+        details: { iban: info.iban, bic: info.bic }
+    };
+    const r = await fetch(WISE_BASE + '/v1/accounts', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + WISE_TOKEN, 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    });
+    return r.json();
+}
+
+async function _wiseTransfer(profileId, recipientId, amount, currency, reference) {
+    // 1) Quote
+    const qr = await fetch(WISE_BASE + '/v2/quotes', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + WISE_TOKEN, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sourceCurrency: 'EUR', targetCurrency: currency || 'EUR', sourceAmount: amount, profile: profileId })
+    });
+    const quote = await qr.json();
+    if (!quote.id) throw new Error('Wise quote error: ' + JSON.stringify(quote));
+
+    // 2) Transfer
+    const tr = await fetch(WISE_BASE + '/v1/transfers', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + WISE_TOKEN, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            targetAccount: recipientId,
+            quoteUuid: quote.id,
+            customerTransactionId: require('crypto').randomBytes(16).toString('hex'),
+            details: { reference: reference || 'Paiement FA GENESIS' }
+        })
+    });
+    const transfer = await tr.json();
+    if (!transfer.id) throw new Error('Wise transfer error: ' + JSON.stringify(transfer));
+
+    // 3) Fund (peut nécessiter confirmation manuelle SCA dans l'app Wise si 2FA actif)
+    const fr = await fetch(WISE_BASE + '/v3/profiles/' + profileId + '/transfers/' + transfer.id + '/payments', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + WISE_TOKEN, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'BALANCE' })
+    });
+    const fund = await fr.json();
+
+    return { quoteId: quote.id, transferId: transfer.id, status: fund.status || transfer.status, fund };
+}
+
+// ── Partenaire : enregistrer ses coordonnées bancaires ────────
+
+app.post('/api/partner/bank-details', authenticatePartner, async function(req, res) {
+    try {
+        var b = req.body;
+        if (!b.accountHolderName || !b.iban) return res.status(400).json({ error: 'Nom du titulaire et IBAN requis' });
+        var iban = (b.iban || '').replace(/\s/g, '').toUpperCase();
+
+        var partners = loadPartners();
+        var idx = partners.findIndex(function(p) { return p.id === req.partner.id; });
+        if (idx === -1) return res.status(404).json({ error: 'Partenaire introuvable' });
+
+        // Créer le récipiendaire Wise si token configuré
+        var wiseRecipientId = partners[idx].wiseRecipientId || null;
+        if (WISE_TOKEN) {
+            try {
+                var profileId = await _wiseGetProfileId();
+                var recipient = await _wiseCreateRecipient(profileId, {
+                    accountHolderName: b.accountHolderName,
+                    iban: iban,
+                    bic: b.bic || '',
+                    currency: b.currency || 'EUR'
+                });
+                if (recipient.id) {
+                    wiseRecipientId = recipient.id;
+                    console.log('[WISE] Récipiendaire créé:', wiseRecipientId, 'pour', partners[idx].email);
+                }
+            } catch(wiseErr) {
+                console.error('[WISE RECIPIENT]', wiseErr.message);
+            }
+        }
+
+        partners[idx].bankDetails = {
+            accountHolderName: b.accountHolderName,
+            iban: iban,
+            bic: b.bic || '',
+            currency: b.currency || 'EUR',
+            country: b.country || '',
+            updatedAt: new Date().toISOString()
+        };
+        if (wiseRecipientId) partners[idx].wiseRecipientId = wiseRecipientId;
+        savePartners(partners);
+
+        res.json({ ok: true, wiseLinked: !!wiseRecipientId });
+    } catch(e) {
+        console.error('[BANK DETAILS]', e.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// ── Partenaire : consulter ses coordonnées bancaires ──────────
+
+app.get('/api/partner/bank-details', authenticatePartner, function(req, res) {
+    var partners = loadPartners();
+    var p = partners.find(function(x) { return x.id === req.partner.id; });
+    if (!p) return res.status(404).json({ error: 'Introuvable' });
+    var bd = p.bankDetails || null;
+    // Masquer l'IBAN sauf les 4 derniers chiffres
+    var masked = null;
+    if (bd) {
+        masked = Object.assign({}, bd);
+        if (masked.iban && masked.iban.length > 4) {
+            masked.iban = '•••• •••• •••• ' + masked.iban.slice(-4);
+        }
+    }
+    res.json({ ok: true, bankDetails: masked, wiseLinked: !!p.wiseRecipientId });
+});
+
+// ── Admin : vérifier le solde Wise ───────────────────────────
+
+app.get('/api/admin/wise/balance', async function(req, res) {
+    try {
+        if (!_isAdminRequest(req)) return res.status(403).json({ error: 'Forbidden' });
+        if (!WISE_TOKEN) return res.status(503).json({ error: 'Wise non configuré' });
+        var profileId = await _wiseGetProfileId();
+        var r = await fetch(WISE_BASE + '/v4/profiles/' + profileId + '/balances?types=STANDARD', {
+            headers: { 'Authorization': 'Bearer ' + WISE_TOKEN }
+        });
+        var data = await r.json();
+        res.json({ ok: true, balances: data });
+    } catch(e) {
+        console.error('[WISE BALANCE]', e.message);
+        res.status(500).json({ error: 'Erreur Wise: ' + e.message });
+    }
+});
+
+// ── Admin : déclencher un virement Wise vers un prestataire ──
+
+app.post('/api/admin/wise/payout', async function(req, res) {
+    try {
+        if (!_isAdminRequest(req)) return res.status(403).json({ error: 'Forbidden' });
+        if (!WISE_TOKEN) return res.status(503).json({ error: 'Wise non configuré' });
+
+        var b = req.body;
+        if (!b.partnerEmail || !b.amount || b.amount <= 0) {
+            return res.status(400).json({ error: 'partnerEmail et amount requis' });
+        }
+
+        var partners = loadPartners();
+        var partner = partners.find(function(p) { return p.email === b.partnerEmail; });
+        if (!partner) return res.status(404).json({ error: 'Prestataire introuvable' });
+        if (!partner.wiseRecipientId) return res.status(400).json({ error: 'Ce prestataire n\'a pas encore enregistré ses coordonnées bancaires' });
+
+        var profileId = await _wiseGetProfileId();
+        var currency = (partner.bankDetails && partner.bankDetails.currency) || 'EUR';
+        var reference = b.reference || ('Paiement ' + (partner.prenom || '') + ' ' + (partner.nom || '') + ' – FA GENESIS').trim();
+
+        var result = await _wiseTransfer(profileId, partner.wiseRecipientId, parseFloat(b.amount), currency, reference);
+
+        // Enregistrer le payout dans payouts.json
+        var payouts = loadPayouts();
+        payouts.push({
+            id: 'wise_' + Date.now(),
+            partner_id: partner.id,
+            partnerEmail: partner.email,
+            amount: parseFloat(b.amount),
+            currency: currency,
+            reference: reference,
+            wiseTransferId: result.transferId,
+            wiseQuoteId: result.quoteId,
+            status: result.status || 'processing',
+            method: 'wise',
+            createdAt: new Date().toISOString(),
+            order_id: b.orderId || null,
+            stage: b.stage || null
+        });
+        savePayouts(payouts);
+
+        res.json({ ok: true, transferId: result.transferId, status: result.status, note: result.status === 'processing' ? 'Virement en cours – confirmez dans l\'app Wise si la 2FA est activée' : undefined });
+    } catch(e) {
+        console.error('[WISE PAYOUT]', e.message);
+        res.status(500).json({ error: 'Erreur virement Wise: ' + e.message });
+    }
+});
+
+// ── Admin : liste des prestataires avec statut Wise ──────────
+
+app.get('/api/admin/wise/partners-status', function(req, res) {
+    try {
+        if (!_isAdminRequest(req)) return res.status(403).json({ error: 'Forbidden' });
+        var partners = loadPartners();
+        var result = partners.map(function(p) {
+            return {
+                id: p.id,
+                email: p.email,
+                name: ((p.prenom || '') + ' ' + (p.nom || '')).trim(),
+                wiseLinked: !!p.wiseRecipientId,
+                currency: p.bankDetails ? p.bankDetails.currency : null,
+                bankUpdatedAt: p.bankDetails ? p.bankDetails.updatedAt : null
+            };
+        });
+        res.json({ ok: true, partners: result });
+    } catch(e) {
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
 });

@@ -667,6 +667,67 @@
                 </div>
             </div>
 
+            <!-- ── BLOC COORDONNÉES BANCAIRES WISE ── -->
+            <div id="wiseBankBlock" style="margin-bottom:1.5rem;border-radius:14px;border:2px solid #1a6e3a;overflow:hidden;">
+                <div style="background:#0d1f14;padding:1.25rem 1.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+                    <div>
+                        <div style="font-size:13px;font-weight:900;color:#4ade80;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">
+                            <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Ccircle cx='20' cy='20' r='20' fill='%2300B9FF'/%3E%3Ctext x='20' y='26' text-anchor='middle' font-size='18' font-weight='bold' fill='white' font-family='Arial'%3EW%3C/text%3E%3C/svg%3E" style="width:18px;height:18px;vertical-align:middle;margin-right:8px;border-radius:50%;">
+                            Compte de versement (Wise)
+                        </div>
+                        <div id="wiseBankStatusLabel" style="font-size:12px;color:#6b7280;font-weight:700;">Non configuré — ajoutez votre IBAN pour recevoir vos paiements</div>
+                    </div>
+                    <div id="wiseLinkedBadge" style="display:none;background:#14532d;border:1px solid #4ade80;color:#4ade80;font-size:11px;font-weight:900;padding:4px 12px;border-radius:20px;">
+                        <i class="fas fa-check-circle" style="margin-right:5px;"></i>IBAN enregistré
+                    </div>
+                </div>
+                <div style="background:#080f0b;padding:1.25rem 1.5rem;border-top:1px solid #0f2a1a;">
+                    <!-- IBAN actuel (masqué) -->
+                    <div id="wiseCurrentIban" style="display:none;margin-bottom:14px;background:#0d1f14;border:1px solid #1a6e3a;border-radius:8px;padding:10px 14px;font-size:13px;color:#4ade80;font-weight:700;display:none;align-items:center;gap:10px;">
+                        <i class="fas fa-university" style="color:#4ade80;"></i>
+                        <span id="wiseIbanMasked"></span>
+                        <button onclick="_wiseShowForm()" style="margin-left:auto;font-size:11px;background:transparent;border:1px solid #1a6e3a;color:#4ade80;padding:3px 10px;border-radius:6px;cursor:pointer;">Modifier</button>
+                    </div>
+                    <!-- Formulaire -->
+                    <div id="wiseBankForm">
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+                            <div style="grid-column:1/-1;">
+                                <label style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:5px;">Nom complet du titulaire du compte *</label>
+                                <input type="text" id="wiseName" placeholder="Ex : Jean Dupont" style="width:100%;background:#111;color:#fff;border:1.5px solid #1a6e3a;border-radius:8px;padding:10px 14px;font-size:13px;font-weight:700;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='#4ade80'" onblur="this.style.borderColor='#1a6e3a'">
+                            </div>
+                            <div style="grid-column:1/-1;">
+                                <label style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:5px;">IBAN *</label>
+                                <input type="text" id="wiseIban" placeholder="FR76 3000 6000 0112 3456 7890 189" style="width:100%;background:#111;color:#fff;border:1.5px solid #1a6e3a;border-radius:8px;padding:10px 14px;font-size:13px;font-weight:700;outline:none;box-sizing:border-box;letter-spacing:1px;" onfocus="this.style.borderColor='#4ade80'" onblur="this.style.borderColor='#1a6e3a'" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'').replace(/(.{4})/g,'$1 ').trim()">
+                            </div>
+                            <div>
+                                <label style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:5px;">BIC / SWIFT (optionnel)</label>
+                                <input type="text" id="wiseBic" placeholder="BNPAFRPPXXX" style="width:100%;background:#111;color:#fff;border:1.5px solid #1a6e3a;border-radius:8px;padding:10px 14px;font-size:13px;font-weight:700;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='#4ade80'" onblur="this.style.borderColor='#1a6e3a'">
+                            </div>
+                            <div>
+                                <label style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:5px;">Devise</label>
+                                <select id="wiseCurrency" style="width:100%;background:#111;color:#fff;border:1.5px solid #1a6e3a;border-radius:8px;padding:10px 14px;font-size:13px;font-weight:700;outline:none;">
+                                    <option value="EUR">EUR — Euro</option>
+                                    <option value="GBP">GBP — Livre sterling</option>
+                                    <option value="USD">USD — Dollar américain</option>
+                                    <option value="XOF">XOF — Franc CFA (UEMOA)</option>
+                                    <option value="XAF">XAF — Franc CFA (CEMAC)</option>
+                                    <option value="MAD">MAD — Dirham marocain</option>
+                                    <option value="CAD">CAD — Dollar canadien</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div id="wiseBankErr" style="display:none;font-size:12px;color:#ef4444;margin-bottom:10px;"></div>
+                        <div style="display:flex;gap:10px;align-items:center;">
+                            <button onclick="_wiseSaveBankDetails()" id="wiseSaveBtn" style="background:linear-gradient(135deg,#14532d,#166534);color:#4ade80;border:1.5px solid #4ade80;border-radius:8px;padding:10px 20px;font-size:13px;font-weight:900;cursor:pointer;display:flex;align-items:center;gap:8px;">
+                                <i class="fas fa-shield-halved"></i>Enregistrer mes coordonnées bancaires
+                            </button>
+                            <div id="wiseSaveLoader" style="display:none;color:#4ade80;font-size:13px;"><i class="fas fa-circle-notch fa-spin"></i></div>
+                        </div>
+                        <p style="font-size:11px;color:#374151;margin-top:10px;"><i class="fas fa-lock" style="margin-right:5px;color:#1a6e3a;"></i>Vos coordonnées sont chiffrées et utilisées uniquement pour les virements FA GENESIS via Wise.</p>
+                    </div>
+                </div>
+            </div>
+
             <div class="section-card neo-shadow">
                 <div class="flex items-center gap-6 mb-4 flex-wrap">
                     <div id="profilePhotoPreview" style="width:96px;height:96px;border-radius:50%;background:#1a1a1a;border:3px solid #000;overflow:hidden;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
@@ -5626,6 +5687,87 @@
         document.body.appendChild(t);
         setTimeout(function() { if (t.parentNode) t.parentNode.removeChild(t); }, 4000);
     }
+
+    /* ── WISE BANK DETAILS ── */
+    function _wiseLoadBankDetails() {
+        var token = localStorage.getItem('fa_genesis_partner_token') || '';
+        if (!token) return;
+        fetch((window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com') + '/api/partner/bank-details', {
+            headers: { 'Authorization': 'Bearer ' + token }
+        }).then(function(r) { return r.json(); }).then(function(d) {
+            if (d.ok && d.bankDetails) {
+                var iban = document.getElementById('wiseIbanMasked');
+                var cur = document.getElementById('wiseCurrentIban');
+                var form = document.getElementById('wiseBankForm');
+                var badge = document.getElementById('wiseLinkedBadge');
+                var label = document.getElementById('wiseBankStatusLabel');
+                if (iban) iban.textContent = d.bankDetails.iban;
+                if (cur) { cur.style.display = 'flex'; }
+                if (form) form.style.display = 'none';
+                if (badge) badge.style.display = 'inline-flex';
+                if (label) label.textContent = 'IBAN enregistré · Paiements Wise activés';
+                if (d.wiseLinked) label.textContent = 'Compte Wise lié · Virements automatiques activés';
+            }
+        }).catch(function() {});
+    }
+
+    function _wiseShowForm() {
+        var form = document.getElementById('wiseBankForm');
+        var cur = document.getElementById('wiseCurrentIban');
+        if (form) form.style.display = 'block';
+        if (cur) cur.style.display = 'none';
+    }
+
+    function _wiseSaveBankDetails() {
+        var name = (document.getElementById('wiseName').value || '').trim();
+        var iban = (document.getElementById('wiseIban').value || '').replace(/\s/g, '').toUpperCase();
+        var bic  = (document.getElementById('wiseBic').value || '').trim().toUpperCase();
+        var currency = document.getElementById('wiseCurrency').value || 'EUR';
+        var errEl = document.getElementById('wiseBankErr');
+        var btn = document.getElementById('wiseSaveBtn');
+        var loader = document.getElementById('wiseSaveLoader');
+
+        errEl.style.display = 'none';
+        if (!name) { errEl.textContent = 'Le nom du titulaire est requis.'; errEl.style.display = 'block'; return; }
+        if (iban.length < 14) { errEl.textContent = 'IBAN invalide.'; errEl.style.display = 'block'; return; }
+
+        btn.disabled = true;
+        if (loader) loader.style.display = 'inline-block';
+
+        var token = localStorage.getItem('fa_genesis_partner_token') || '';
+        fetch((window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com') + '/api/partner/bank-details', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ accountHolderName: name, iban: iban, bic: bic, currency: currency })
+        }).then(function(r) { return r.json(); }).then(function(d) {
+            btn.disabled = false;
+            if (loader) loader.style.display = 'none';
+            if (d.ok) {
+                _showToast('Coordonnées bancaires enregistrées ✓', 'success');
+                _wiseLoadBankDetails();
+            } else {
+                errEl.textContent = d.error || 'Erreur lors de l\'enregistrement.';
+                errEl.style.display = 'block';
+            }
+        }).catch(function() {
+            btn.disabled = false;
+            if (loader) loader.style.display = 'none';
+            errEl.textContent = 'Erreur de connexion. Réessayez.';
+            errEl.style.display = 'block';
+        });
+    }
+
+    // Charger les coordonnées bancaires quand on affiche la section profil
+    var _origShowSection = typeof showSection === 'function' ? showSection : null;
+    document.addEventListener('DOMContentLoaded', function() {
+        var origShow = window.showSection;
+        if (origShow) {
+            window.showSection = function(s) {
+                origShow(s);
+                if (s === 'profile') _wiseLoadBankDetails();
+            };
+        }
+    });
     </script>
 
 <!-- Pont natif (Android / iOS) -->
