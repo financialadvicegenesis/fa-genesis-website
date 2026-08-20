@@ -20306,9 +20306,7 @@ async function _wiseGetProfileId() {
     return _wiseProfileId;
 }
 
-async function _wiseCreateRecipient(profileId, info) {
-    const currency = info.currency || 'EUR';
-    // Wise exige legalType pour distinguer particulier / entreprise
+async function _wiseCreateRecipientWithCurrency(profileId, info, currency) {
     const legalType = info.legalType || 'PRIVATE';
     const details = { legalType: legalType, iban: info.iban };
     if (info.bic) details.bic = info.bic;
@@ -20325,12 +20323,31 @@ async function _wiseCreateRecipient(profileId, info) {
         body: JSON.stringify(payload)
     });
     const body = await r.json();
-    if (!r.ok) {
-        // Loguer les détails de l'erreur Wise pour le débogage
-        console.error('[WISE RECIPIENT ERROR] HTTP', r.status, JSON.stringify(body));
-        throw new Error('Wise API ' + r.status + ': ' + JSON.stringify(body));
+    return { ok: r.ok, status: r.status, body: body };
+}
+
+async function _wiseCreateRecipient(profileId, info) {
+    const requestedCurrency = info.currency || 'EUR';
+
+    // Essai 1 : devise demandée par le partenaire
+    const r1 = await _wiseCreateRecipientWithCurrency(profileId, info, requestedCurrency);
+    if (r1.ok) return r1.body;
+
+    // Essai 2 : fallback EUR (Wise SEPA IBAN universel)
+    // Cas fréquent : devise locale non-SEPA (MAD, XOF…) rejetée par l'API Wise pour type=iban
+    if (requestedCurrency !== 'EUR') {
+        console.warn('[WISE RECIPIENT] ' + requestedCurrency + ' failed (HTTP ' + r1.status + '), retrying with EUR. Error: ' + JSON.stringify(r1.body));
+        const r2 = await _wiseCreateRecipientWithCurrency(profileId, info, 'EUR');
+        if (r2.ok) {
+            console.log('[WISE RECIPIENT] EUR fallback succeeded for', info.iban);
+            return r2.body;
+        }
+        console.error('[WISE RECIPIENT ERROR] Both ' + requestedCurrency + ' and EUR failed. EUR error: HTTP ' + r2.status, JSON.stringify(r2.body));
+        throw new Error('Wise API ' + r1.status + ' (' + requestedCurrency + '): ' + JSON.stringify(r1.body));
     }
-    return body;
+
+    console.error('[WISE RECIPIENT ERROR] HTTP', r1.status, JSON.stringify(r1.body));
+    throw new Error('Wise API ' + r1.status + ': ' + JSON.stringify(r1.body));
 }
 
 async function _wiseTransfer(profileId, recipientId, amount, currency, reference) {
@@ -20551,6 +20568,64 @@ app.post('/api/admin/wise/retry-recipient/:partnerId', async function(req, res) 
         partners[idx].updatedAt = new Date().toISOString();
         savePartners(partners);
         res.json({ ok: true, wiseRecipientId: recipient.id, partnerEmail: partners[idx].email });
+    } catch(e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// ── Admin : diagnostiquer Wise pour tous les partenaires avec IBAN ─
+app.get('/api/admin/wise/iban-status', async function(req, res) {
+    try {
+        if (!_isAdminRequest(req)) return res.status(403).json({ error: 'Forbidden' });
+        var partners = loadPartners();
+        var result = partners
+            .filter(function(p) { return p.bankDetails && p.bankDetails.iban; })
+            .map(function(p) {
+                return {
+                    id: p.id,
+                    email: p.email,
+                    name: p.bankDetails.accountHolderName,
+                    iban: p.bankDetails.iban,
+                    currency: p.bankDetails.currency || 'EUR',
+                    wiseRecipientId: p.wiseRecipientId || null,
+                    wiseLinked: !!p.wiseRecipientId
+                };
+            });
+        res.json({ ok: true, count: result.length, partners: result });
+    } catch(e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// ── Admin : retry Wise pour tous les partenaires sans wiseRecipientId ─
+app.post('/api/admin/wise/retry-all', async function(req, res) {
+    try {
+        if (!_isAdminRequest(req)) return res.status(403).json({ error: 'Forbidden' });
+        if (!WISE_TOKEN) return res.status(503).json({ error: 'WISE_API_TOKEN non configuré' });
+        var partners = loadPartners();
+        var toRetry = partners.filter(function(p) { return p.bankDetails && p.bankDetails.iban && !p.wiseRecipientId; });
+        var profileId = await _wiseGetProfileId();
+        var results = [];
+        for (var i = 0; i < toRetry.length; i++) {
+            var p = toRetry[i];
+            var bd = p.bankDetails;
+            try {
+                var recipient = await _wiseCreateRecipient(profileId, {
+                    accountHolderName: bd.accountHolderName,
+                    iban: bd.iban,
+                    bic: bd.bic || '',
+                    currency: bd.currency || 'EUR',
+                    legalType: 'PRIVATE'
+                });
+                var pidx = partners.findIndex(function(x) { return x.id === p.id; });
+                if (pidx !== -1) { partners[pidx].wiseRecipientId = recipient.id; }
+                results.push({ email: p.email, ok: true, wiseRecipientId: recipient.id });
+            } catch(err) {
+                results.push({ email: p.email, ok: false, error: err.message });
+            }
+        }
+        savePartners(partners);
+        res.json({ ok: true, processed: results.length, results: results });
     } catch(e) {
         res.status(500).json({ error: e.message });
     }
