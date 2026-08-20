@@ -86,11 +86,11 @@
 
         /* Mobile accordion */
         '.fg-footer__accordion { display: none; }',
-        '.fg-footer__accordion summary { font-family: "Unbounded", cursive; font-size: 13px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; padding: 16px 0; cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eaeaea; }',
+        '.fg-footer__accordion summary { font-family: "Unbounded", cursive; font-size: 13px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; padding: 16px 0; cursor: pointer; list-style: none; display: flex; justify-content: center; align-items: center; gap: 8px; border-bottom: 1px solid #eaeaea; text-align: center; }',
         '.fg-footer__accordion summary::-webkit-details-marker { display: none; }',
         '.fg-footer__accordion summary::after { content: "+"; font-size: 20px; font-weight: 900; color: #FFD700; transition: transform 0.2s; }',
         '.fg-footer__accordion[open] summary::after { content: "\\2212"; }',
-        '.fg-footer__accordion .fg-footer__col-list { padding: 12px 0 8px; }',
+        '.fg-footer__accordion .fg-footer__col-list { padding: 12px 0 8px; text-align: center; }',
 
         /* Tablet: 2 columns */
         '@media (max-width: 900px) {',
@@ -103,9 +103,15 @@
         '  .fg-footer__grid { display: none; }',
         '  .fg-footer__accordion { display: block; }',
         '  .fg-footer__brand-name { font-size: 22px; }',
-        '  .fg-footer__brand { padding: 32px 0 24px; }',
+        '  .fg-footer__brand { padding: 32px 0 24px; text-align: center; }',
+        '  .fg-footer__brand-slogan { text-align: center; font-size: 13px; }',
+        '  .fg-footer__socials { justify-content: center; }',
+        '  .fg-footer__disclaimer { text-align: center; }',
+        '  .fg-footer__copyright { text-align: center; }',
         '  .fg-footer__bottom-row { flex-direction: column; align-items: center; gap: 12px; }',
-        '  .fg-footer__bottom-links { gap: 16px; }',
+        '  .fg-footer__bottom-links { gap: 16px; justify-content: center; flex-wrap: wrap; }',
+        '  .fg-footer__bottom-left { text-align: center; }',
+        '  .fg-footer__lang { display: flex; justify-content: center; }',
         '  .fg-footer__lang-dropdown { right: auto; left: 50%; transform: translateX(-50%); }',
         '  .fg-cookie-banner { padding: 24px 16px; }',
         '}'
