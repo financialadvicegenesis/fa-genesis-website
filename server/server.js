@@ -14498,6 +14498,12 @@ app.post('/api/partner/contract/sign', authenticatePartner, function(req, res) {
         partners[idx].updatedAt = now;
         savePartners(partners);
 
+        // Notifier le partenaire : contrat disponible dans Livrables
+        notifyUser(partner.email, 'partner', 'contract_partnership_signed',
+            'Contrat de partenariat signé ✅',
+            'Votre contrat de partenariat FA GENESIS est disponible dans la section Livrables de votre espace.',
+            '/app.html');
+
         console.log('[CONTRACT] Signature electronique partenariat:', partner.email, '(' + contractId + ')');
         res.json({ success: true, contract_signed: true, contract_signed_at: now, contract_version: PARTNER_CONTRACT_VERSION, contract_id: contractId });
     } catch(e) {
@@ -15699,7 +15705,7 @@ app.post('/api/contracts/:id/client-sign', function(req, res) {
         // Notifier le partenaire
         notifyUser(contract.partner_email, 'partner', 'contract_signed',
             'Contrat signé ✅',
-            contract.client_name + ' a signé le contrat pour la commande ' + contract.order_id + '. La prestation peut commencer.',
+            contract.client_name + ' a signé le contrat pour la mission ' + contract.order_id + '. Il est disponible dans vos Livrables. La prestation peut commencer.',
             '/partner-dashboard.html#documents');
 
         console.log('[CONTRACT] Client a signé le contrat:', contract.id, '→', user.email);

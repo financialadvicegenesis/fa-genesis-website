@@ -2887,44 +2887,63 @@ a{text-decoration:none;color:inherit}
       </div>
 
       <!-- Partnership contract signing overlay (mandatory for new partners) -->
-      <div id="ptnr-contract-overlay" style="display:none;position:fixed;inset:0;z-index:9800;background:rgba(0,0,0,.92);overflow-y:auto;-webkit-overflow-scrolling:touch;">
-        <div style="max-width:540px;margin:0 auto;min-height:100%;display:flex;flex-direction:column;padding:0 0 env(safe-area-inset-bottom,0);">
-          <div style="background:#111;border-bottom:2px solid #FFD700;padding:16px 18px;position:sticky;top:0;z-index:1;display:flex;align-items:center;gap:12px;">
-            <i class="fa-solid fa-file-contract" style="color:#FFD700;font-size:18px;flex-shrink:0;"></i>
-            <div>
-              <div style="font-family:'Unbounded',sans-serif;font-size:12px;font-weight:900;color:#FFD700;letter-spacing:.5px;">CONTRAT DE PARTENARIAT</div>
-              <div style="font-size:11px;color:#888;margin-top:2px;">Signature obligatoire avant d'accéder à votre espace</div>
+      <div id="ptnr-contract-overlay" style="display:none;position:fixed;inset:0;z-index:9800;background:#0d0d0d;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;">
+        <!-- Sticky header -->
+        <div style="position:sticky;top:0;z-index:2;background:#111;border-bottom:2px solid #FFD700;padding:14px 16px;display:flex;align-items:center;gap:10px;box-sizing:border-box;">
+          <div style="width:36px;height:36px;background:#1a1200;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <i class="fa-solid fa-file-contract" style="color:#FFD700;font-size:15px;"></i>
+          </div>
+          <div style="min-width:0;">
+            <div style="font-family:'Unbounded',sans-serif;font-size:11px;font-weight:900;color:#FFD700;letter-spacing:.5px;white-space:nowrap;">CONTRAT DE PARTENARIAT</div>
+            <div style="font-size:10px;color:#666;margin-top:1px;">Étape obligatoire — lisez et signez avant de continuer</div>
+          </div>
+        </div>
+
+        <!-- Banner info -->
+        <div style="margin:14px 16px 0;background:rgba(255,215,0,.07);border:1px solid rgba(255,215,0,.2);border-radius:10px;padding:12px 14px;box-sizing:border-box;">
+          <div style="font-size:12px;color:#FFD700;font-weight:700;margin-bottom:3px;"><i class="fa-solid fa-shield-halved" style="margin-right:6px;"></i>Votre signature est requise</div>
+          <div style="font-size:11px;color:#999;line-height:1.55;">Lisez le contrat ci-dessous, renseignez votre nom complet, dessinez votre signature, cochez la case d'acceptation puis appuyez sur <strong style="color:#ccc;">"Signer"</strong>.</div>
+        </div>
+
+        <!-- Contract body -->
+        <div id="ptnr-contract-body" style="margin:14px 16px;background:#161616;border:1px solid #252525;border-radius:12px;padding:16px;font-size:12px;line-height:1.75;color:#bbb;word-break:break-word;overflow-wrap:break-word;box-sizing:border-box;min-height:160px;">
+          <div style="text-align:center;padding:36px 0;color:#444;"><i class="fa-solid fa-spinner fa-spin" style="font-size:22px;margin-bottom:10px;display:block;color:#FFD700;opacity:.5;"></i><span style="font-size:11px;">Chargement du contrat…</span></div>
+        </div>
+
+        <!-- Signature block -->
+        <div style="margin:0 16px;padding:0;box-sizing:border-box;">
+          <!-- Name -->
+          <div style="margin-bottom:12px;">
+            <label style="font-size:10px;color:#666;display:block;margin-bottom:6px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;">Nom complet <span style="color:#FFD700;">*</span></label>
+            <input id="ptnr-contract-name" type="text" placeholder="Prénom et Nom" autocomplete="name"
+              style="width:100%;background:#161616;border:1.5px solid #2a2a2a;border-radius:10px;padding:13px 14px;color:#fff;font-size:14px;box-sizing:border-box;outline:none;-webkit-appearance:none;">
+          </div>
+          <!-- Canvas -->
+          <div style="margin-bottom:12px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+              <label style="font-size:10px;color:#666;font-weight:700;text-transform:uppercase;letter-spacing:.8px;">Signature <span style="color:#FFD700;">*</span></label>
+              <button onclick="_ptnrContractClearCanvas()" style="background:transparent;border:1px solid #2a2a2a;color:#666;font-size:10px;padding:3px 10px;border-radius:6px;cursor:pointer;font-weight:700;">Effacer</button>
             </div>
-          </div>
-          <div style="background:#1a1a1a;border-left:3px solid #FFD700;padding:12px 16px;margin:12px 16px 0;border-radius:0 8px 8px 0;">
-            <div style="font-size:12px;color:#FFD700;font-weight:700;margin-bottom:4px;"><i class="fa-solid fa-circle-info" style="margin-right:6px;"></i>Signature requise</div>
-            <div style="font-size:11px;color:#aaa;line-height:1.6;">Veuillez lire attentivement le contrat de partenariat FA GENESIS ci-dessous et le signer avant de continuer.</div>
-          </div>
-          <div id="ptnr-contract-body" style="flex:1;margin:12px 16px;background:#191919;border:1px solid #2a2a2a;border-radius:10px;padding:18px;font-size:12px;line-height:1.7;color:#ccc;min-height:200px;">
-            <div style="text-align:center;padding:40px 0;color:#555;font-size:12px;"><i class="fa-solid fa-spinner fa-spin" style="font-size:20px;margin-bottom:10px;display:block;"></i>Chargement du contrat…</div>
-          </div>
-          <div style="padding:0 16px 16px;">
-            <div style="margin-bottom:12px;">
-              <label style="font-size:11px;color:#888;display:block;margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;">Nom complet (signature)</label>
-              <input id="ptnr-contract-name" type="text" placeholder="Prénom Nom" autocomplete="name" style="width:100%;background:#1a1a1a;border:1.5px solid #333;border-radius:8px;padding:12px 14px;color:#fff;font-size:14px;box-sizing:border-box;outline:none;">
-            </div>
-            <div style="margin-bottom:12px;">
-              <label style="font-size:11px;color:#888;display:block;margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;">Signature</label>
-              <div style="background:#1a1a1a;border:1.5px solid #333;border-radius:8px;overflow:hidden;position:relative;">
-                <canvas id="ptnr-contract-canvas" style="display:block;width:100%;height:140px;cursor:crosshair;touch-action:none;"></canvas>
-                <button onclick="_ptnrContractClearCanvas()" style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,.6);border:1px solid #444;color:#888;font-size:10px;padding:4px 8px;border-radius:6px;cursor:pointer;">Effacer</button>
-                <div id="ptnr-contract-canvas-hint" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;color:#444;font-size:11px;"><i class="fa-solid fa-pen" style="margin-right:6px;"></i>Dessinez votre signature ici</div>
+            <div style="background:#161616;border:1.5px solid #2a2a2a;border-radius:10px;overflow:hidden;position:relative;height:130px;">
+              <canvas id="ptnr-contract-canvas" style="display:block;width:100%;height:100%;cursor:crosshair;touch-action:none;"></canvas>
+              <div id="ptnr-contract-canvas-hint" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;gap:6px;">
+                <i class="fa-solid fa-pen-nib" style="font-size:20px;color:#2a2a2a;"></i>
+                <span style="font-size:11px;color:#2a2a2a;">Dessinez votre signature ici</span>
               </div>
             </div>
-            <label style="display:flex;align-items:flex-start;gap:10px;margin-bottom:14px;cursor:pointer;">
-              <input type="checkbox" id="ptnr-contract-accept" style="margin-top:2px;flex-shrink:0;width:16px;height:16px;accent-color:#FFD700;">
-              <span style="font-size:12px;color:#aaa;line-height:1.6;">J'ai lu et j'accepte les conditions du contrat de partenariat FA GENESIS. Je reconnais que ma signature électronique a valeur d'engagement contractuel.</span>
-            </label>
-            <div id="ptnr-contract-err" style="display:none;color:#ff4444;font-size:12px;margin-bottom:10px;padding:10px;background:rgba(255,68,68,.1);border-radius:6px;"></div>
-            <button id="ptnr-contract-sign-btn" onclick="_ptnrSignPartnershipContract()" style="width:100%;background:#FFD700;color:#000;font-family:'Unbounded',sans-serif;font-size:12px;font-weight:900;padding:16px;border:none;border-radius:10px;cursor:pointer;letter-spacing:.5px;">
-              <i class="fa-solid fa-signature" style="margin-right:8px;"></i>SIGNER LE CONTRAT
-            </button>
           </div>
+          <!-- Checkbox -->
+          <label style="display:flex;align-items:flex-start;gap:12px;margin-bottom:14px;cursor:pointer;background:#161616;border:1.5px solid #2a2a2a;border-radius:10px;padding:13px 14px;box-sizing:border-box;">
+            <input type="checkbox" id="ptnr-contract-accept" style="margin-top:1px;flex-shrink:0;width:18px;height:18px;accent-color:#FFD700;cursor:pointer;">
+            <span style="font-size:12px;color:#999;line-height:1.6;">J'ai lu et j'accepte les conditions du contrat de partenariat FA GENESIS. Je reconnais que ma signature électronique a valeur d'engagement contractuel.</span>
+          </label>
+          <!-- Error -->
+          <div id="ptnr-contract-err" style="display:none;color:#ff6b6b;font-size:12px;margin-bottom:12px;padding:11px 14px;background:rgba(255,100,100,.08);border:1px solid rgba(255,100,100,.2);border-radius:8px;line-height:1.5;"></div>
+          <!-- Sign button -->
+          <button id="ptnr-contract-sign-btn" onclick="_ptnrSignPartnershipContract()"
+            style="width:100%;background:linear-gradient(135deg,#FFD700,#e6c200);color:#1a1200;font-family:'Unbounded',sans-serif;font-size:12px;font-weight:900;padding:16px;border:none;border-radius:12px;cursor:pointer;letter-spacing:.5px;margin-bottom:calc(20px + env(safe-area-inset-bottom, 0px));box-sizing:border-box;">
+            <i class="fa-solid fa-signature" style="margin-right:8px;"></i>SIGNER LE CONTRAT
+          </button>
         </div>
       </div>
 
@@ -3015,6 +3034,10 @@ a{text-decoration:none;color:inherit}
               </button>
               <button class="ptnr-snbtn" id="ptnr-sn-portfolio" onclick="_ptnrNav('portfolio')">
                 <i class="pni fa-solid fa-images"></i><span>Portfolio</span>
+                <i class="fa-solid fa-chevron-right ptnr-snbtn-arrow"></i>
+              </button>
+              <button class="ptnr-snbtn" id="ptnr-sn-livrables" onclick="_ptnrNav('livrables')">
+                <i class="pni fa-solid fa-folder-open"></i><span>Livrables</span>
                 <i class="fa-solid fa-chevron-right ptnr-snbtn-arrow"></i>
               </button>
               <button class="ptnr-snbtn" id="ptnr-sn-profil" onclick="_ptnrNav('profil')">
@@ -3192,6 +3215,12 @@ a{text-decoration:none;color:inherit}
         <!-- Sub-screen: Profil (hub dynamique) -->
         <div class="ptnr-screen" id="ptnr-screen-profil">
           <div id="ptnr-profil-content" style="padding-bottom:80px;"></div>
+        </div>
+
+        <!-- Sub-screen: Livrables (contrat partenariat + contrats de prestation) -->
+        <div class="ptnr-screen" id="ptnr-screen-livrables">
+          <div class="ptnr-back-bar"><button class="ptnr-back-btn" onclick="_ptnrNav('profil')">&#8249;</button><span class="ptnr-back-bar-title">Mes livrables</span></div>
+          <div id="ptnr-livrables-content" style="padding:0 0 80px;"></div>
         </div>
 
         <!-- Sub-screen: Collègues (messagerie P2P même catégorie) -->
@@ -12335,8 +12364,12 @@ function _ptnrInitContractCanvas() {
   var canvas = document.getElementById('ptnr-contract-canvas');
   if (!canvas) return;
   var rect = canvas.getBoundingClientRect();
-  canvas.width = Math.round(rect.width * (window.devicePixelRatio || 1));
-  canvas.height = Math.round(rect.height * (window.devicePixelRatio || 1));
+  // Fallback: if bounding rect is 0 (not yet laid out), use parent width
+  var w = rect.width || canvas.parentElement.offsetWidth || 300;
+  var h = rect.height || 130;
+  var dpr = window.devicePixelRatio || 1;
+  canvas.width = Math.round(w * dpr);
+  canvas.height = Math.round(h * dpr);
   _ptnrContractCanvas = canvas;
   _ptnrContractCtx = canvas.getContext('2d');
   _ptnrContractCtx.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1);
@@ -12505,7 +12538,7 @@ function _ptnrNav(screen){
   _ptnrCloseDrawer();
   // Gestion du scroll : sauvegarder depuis le hub profil, restaurer au retour
   var _cEl = document.getElementById('content');
-  var _ptnrSubScreens = ['collegues','reputation','palmares','devis','seances','promotions','portfolio'];
+  var _ptnrSubScreens = ['collegues','reputation','palmares','devis','seances','promotions','portfolio','livrables'];
   if(_ptnrSubScreens.indexOf(screen) !== -1 && _cEl){
     _ptnrProfilScrollPos = _cEl.scrollTop;
     _cEl.scrollTop = 0;
@@ -12532,6 +12565,7 @@ function _ptnrNav(screen){
   if(screen==='palmares')    _ptnrLoadPalmares();
   if(screen==='promotions')  _ptnrLoadPromotions();
   if(screen==='portfolio')   _ptnrLoadPortfolio();
+  if(screen==='livrables')   _ptnrLoadLivrables();
   if(screen==='profil'){
     _ptnrLoadProfil();
     var _savedScroll = _ptnrProfilScrollPos;
@@ -16846,6 +16880,7 @@ function _ptnrLoadProfil(){
     +pli('<i class="fa-solid fa-medal"></i>',             '#1a0a14','Mon palmarès',         null,"_ptnrNav('palmares')")
     +pli('<i class="fa-solid fa-tag"></i>',               '#1a0014','Mes promotions',       null,"_ptnrNav('promotions')")
     +pli('<i class="fa-solid fa-images"></i>',            '#001a14','Mon portfolio',        null,"_ptnrNav('portfolio')")
+    +pli('<i class="fa-solid fa-folder-open"></i>',       '#001418','Mes livrables',        null,"_ptnrNav('livrables')")
     +'</div></div>';
 
   var monProfil = '<div class="plus-section">'
@@ -16969,6 +17004,117 @@ function _ptnrProfilEditResponseTime(){
     +'</div></div></div>';
   var sel = document.getElementById('ptnr-response-time-select');
   if(sel && typeof current === 'number') sel.value = String(current);
+}
+
+// ── LIVRABLES (contrats disponibles en téléchargement) ──────────────────────
+
+function _ptnrLoadLivrables() {
+  var c = document.getElementById('ptnr-livrables-content');
+  if (!c) return;
+  c.innerHTML = '<div style="text-align:center;padding:40px 16px;color:#444;"><i class="fa-solid fa-spinner fa-spin" style="font-size:22px;margin-bottom:10px;display:block;color:#FFD700;opacity:.4;"></i><span style="font-size:12px;">Chargement…</span></div>';
+
+  _ptnrFetch('/api/partner/contracts').then(function(contracts) {
+    if (!Array.isArray(contracts)) contracts = [];
+    var partnership = contracts.filter(function(c) { return c.type === 'partnership'; });
+    var service = contracts.filter(function(c) { return c.type === 'service'; });
+
+    var html = '';
+
+    // ── Contrat de partenariat ──
+    html += '<div style="padding:16px 16px 8px;">'
+      + '<div style="font-size:10px;font-weight:900;color:#FFD700;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;"><i class="fa-solid fa-handshake" style="margin-right:6px;"></i>Contrat de partenariat</div>';
+
+    if (partnership.length > 0) {
+      var p = partnership[0];
+      html += _ptnrLivrableCard({
+        icon: 'fa-file-contract',
+        iconColor: '#FFD700',
+        iconBg: '#1a1200',
+        title: 'Contrat de partenariat FA GENESIS',
+        sub: 'Signé le ' + _ptnrFmt(p.signed_at || p.created_at),
+        badge: 'Signé',
+        badgeColor: '#22c55e',
+        id: p.id,
+        downloadable: true
+      });
+    } else if (_ptnrSession && _ptnrSession.contract_signed) {
+      html += '<div style="background:#161616;border:1px solid #252525;border-radius:12px;padding:16px;display:flex;align-items:center;gap:12px;">'
+        + '<i class="fa-solid fa-clock" style="color:#f59e0b;font-size:16px;flex-shrink:0;"></i>'
+        + '<div><div style="font-size:13px;font-weight:700;color:#ccc;margin-bottom:3px;">Contrat de partenariat</div>'
+        + '<div style="font-size:11px;color:#666;">Disponible sous peu</div></div></div>';
+    } else {
+      html += '<div style="background:#161616;border:1px solid #252525;border-radius:12px;padding:16px;display:flex;align-items:center;gap:12px;">'
+        + '<i class="fa-solid fa-pen-nib" style="color:#555;font-size:16px;flex-shrink:0;"></i>'
+        + '<div><div style="font-size:13px;font-weight:700;color:#888;margin-bottom:3px;">Contrat de partenariat</div>'
+        + '<div style="font-size:11px;color:#555;">Non signé</div></div></div>';
+    }
+    html += '</div>';
+
+    // ── Contrats de prestation ──
+    html += '<div style="padding:8px 16px 8px;">'
+      + '<div style="font-size:10px;font-weight:900;color:#FFD700;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;"><i class="fa-solid fa-file-signature" style="margin-right:6px;"></i>Contrats de prestation</div>';
+
+    if (service.length === 0) {
+      html += '<div style="background:#161616;border:1px solid #252525;border-radius:12px;padding:24px 16px;text-align:center;">'
+        + '<i class="fa-solid fa-folder-open" style="font-size:28px;color:#252525;margin-bottom:10px;display:block;"></i>'
+        + '<div style="font-size:12px;color:#555;">Aucun contrat de prestation pour le moment.</div>'
+        + '<div style="font-size:11px;color:#444;margin-top:4px;">Ils apparaissent ici une fois signés par le client.</div></div>';
+    } else {
+      service.forEach(function(ct) {
+        var signed = ct.status === 'signed';
+        var pending = ct.status === 'pending_client_signature';
+        var refused = ct.status === 'refused';
+        var badge = signed ? 'Signé' : (pending ? 'En attente client' : (refused ? 'Refusé' : ct.status));
+        var badgeColor = signed ? '#22c55e' : (pending ? '#f59e0b' : (refused ? '#ef4444' : '#888'));
+        var clientName = ct.client_name || ct.client_email || 'Client';
+        var serviceName = ct.service_name || 'Prestation';
+        html += _ptnrLivrableCard({
+          icon: 'fa-file-lines',
+          iconColor: signed ? '#22c55e' : (pending ? '#f59e0b' : '#ef4444'),
+          iconBg: signed ? '#001a00' : (pending ? '#1a1400' : '#1a0000'),
+          title: serviceName,
+          sub: 'Client : ' + clientName + ' — ' + _ptnrFmt(ct.signed_at || ct.created_at),
+          badge: badge,
+          badgeColor: badgeColor,
+          id: ct.id,
+          downloadable: signed
+        });
+      });
+    }
+    html += '</div>';
+
+    // ── Info push ──
+    html += '<div style="margin:0 16px 16px;background:rgba(59,130,246,.06);border:1px solid rgba(59,130,246,.15);border-radius:10px;padding:12px 14px;">'
+      + '<div style="font-size:11px;color:#60a5fa;font-weight:700;margin-bottom:3px;"><i class="fa-solid fa-bell" style="margin-right:6px;"></i>Notifications activées</div>'
+      + '<div style="font-size:11px;color:#666;line-height:1.55;">Vous recevrez une notification push dès qu\'un client signe un contrat de prestation.</div>'
+      + '</div>';
+
+    c.innerHTML = html;
+  }).catch(function() {
+    c.innerHTML = '<div style="padding:24px;text-align:center;color:#ef4444;font-size:12px;"><i class="fa-solid fa-circle-exclamation" style="margin-right:6px;"></i>Erreur de chargement. Vérifiez votre connexion.</div>';
+  });
+}
+
+function _ptnrLivrableCard(opts) {
+  var downloadBtn = opts.downloadable
+    ? '<button onclick="_ptnrDownloadContract(\''+opts.id+'\')" style="margin-top:10px;width:100%;background:linear-gradient(135deg,#1a1200,#111);border:1px solid rgba(255,215,0,.25);border-radius:8px;color:#FFD700;font-size:11px;font-weight:700;padding:10px 0;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;">'
+      + '<i class="fa-solid fa-download"></i>Télécharger le PDF</button>'
+    : '';
+  return '<div style="background:#161616;border:1px solid #252525;border-radius:12px;padding:14px;margin-bottom:10px;">'
+    + '<div style="display:flex;align-items:flex-start;gap:12px;">'
+    + '<div style="width:38px;height:38px;border-radius:10px;background:'+opts.iconBg+';border:1px solid rgba(255,255,255,.05);display:flex;align-items:center;justify-content:center;flex-shrink:0;">'
+    + '<i class="fa-solid '+opts.icon+'" style="color:'+opts.iconColor+';font-size:16px;"></i></div>'
+    + '<div style="flex:1;min-width:0;">'
+    + '<div style="font-size:13px;font-weight:700;color:#ddd;margin-bottom:3px;word-break:break-word;">'+opts.title+'</div>'
+    + '<div style="font-size:11px;color:#666;line-height:1.5;word-break:break-word;">'+opts.sub+'</div>'
+    + '<span style="display:inline-block;margin-top:6px;background:'+opts.badgeColor+'18;border:1px solid '+opts.badgeColor+'44;border-radius:20px;padding:2px 9px;font-size:10px;font-weight:800;color:'+opts.badgeColor+';">'+opts.badge+'</span>'
+    + downloadBtn
+    + '</div></div></div>';
+}
+
+function _ptnrDownloadContract(contractId) {
+  var url = _ptnrApiUrl() + '/api/contracts/' + contractId + '/pdf';
+  window.open(url, '_blank');
 }
 
 // ── MESSAGERIE COLLÈGUES (P2P même catégorie) ────────────────
