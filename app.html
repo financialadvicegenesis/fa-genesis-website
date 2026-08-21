@@ -2886,6 +2886,48 @@ a{text-decoration:none;color:inherit}
         </div>
       </div>
 
+      <!-- Partnership contract signing overlay (mandatory for new partners) -->
+      <div id="ptnr-contract-overlay" style="display:none;position:fixed;inset:0;z-index:9800;background:rgba(0,0,0,.92);overflow-y:auto;-webkit-overflow-scrolling:touch;">
+        <div style="max-width:540px;margin:0 auto;min-height:100%;display:flex;flex-direction:column;padding:0 0 env(safe-area-inset-bottom,0);">
+          <div style="background:#111;border-bottom:2px solid #FFD700;padding:16px 18px;position:sticky;top:0;z-index:1;display:flex;align-items:center;gap:12px;">
+            <i class="fa-solid fa-file-contract" style="color:#FFD700;font-size:18px;flex-shrink:0;"></i>
+            <div>
+              <div style="font-family:'Unbounded',sans-serif;font-size:12px;font-weight:900;color:#FFD700;letter-spacing:.5px;">CONTRAT DE PARTENARIAT</div>
+              <div style="font-size:11px;color:#888;margin-top:2px;">Signature obligatoire avant d'accéder à votre espace</div>
+            </div>
+          </div>
+          <div style="background:#1a1a1a;border-left:3px solid #FFD700;padding:12px 16px;margin:12px 16px 0;border-radius:0 8px 8px 0;">
+            <div style="font-size:12px;color:#FFD700;font-weight:700;margin-bottom:4px;"><i class="fa-solid fa-circle-info" style="margin-right:6px;"></i>Signature requise</div>
+            <div style="font-size:11px;color:#aaa;line-height:1.6;">Veuillez lire attentivement le contrat de partenariat FA GENESIS ci-dessous et le signer avant de continuer.</div>
+          </div>
+          <div id="ptnr-contract-body" style="flex:1;margin:12px 16px;background:#191919;border:1px solid #2a2a2a;border-radius:10px;padding:18px;font-size:12px;line-height:1.7;color:#ccc;min-height:200px;">
+            <div style="text-align:center;padding:40px 0;color:#555;font-size:12px;"><i class="fa-solid fa-spinner fa-spin" style="font-size:20px;margin-bottom:10px;display:block;"></i>Chargement du contrat…</div>
+          </div>
+          <div style="padding:0 16px 16px;">
+            <div style="margin-bottom:12px;">
+              <label style="font-size:11px;color:#888;display:block;margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;">Nom complet (signature)</label>
+              <input id="ptnr-contract-name" type="text" placeholder="Prénom Nom" autocomplete="name" style="width:100%;background:#1a1a1a;border:1.5px solid #333;border-radius:8px;padding:12px 14px;color:#fff;font-size:14px;box-sizing:border-box;outline:none;">
+            </div>
+            <div style="margin-bottom:12px;">
+              <label style="font-size:11px;color:#888;display:block;margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;">Signature</label>
+              <div style="background:#1a1a1a;border:1.5px solid #333;border-radius:8px;overflow:hidden;position:relative;">
+                <canvas id="ptnr-contract-canvas" style="display:block;width:100%;height:140px;cursor:crosshair;touch-action:none;"></canvas>
+                <button onclick="_ptnrContractClearCanvas()" style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,.6);border:1px solid #444;color:#888;font-size:10px;padding:4px 8px;border-radius:6px;cursor:pointer;">Effacer</button>
+                <div id="ptnr-contract-canvas-hint" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;color:#444;font-size:11px;"><i class="fa-solid fa-pen" style="margin-right:6px;"></i>Dessinez votre signature ici</div>
+              </div>
+            </div>
+            <label style="display:flex;align-items:flex-start;gap:10px;margin-bottom:14px;cursor:pointer;">
+              <input type="checkbox" id="ptnr-contract-accept" style="margin-top:2px;flex-shrink:0;width:16px;height:16px;accent-color:#FFD700;">
+              <span style="font-size:12px;color:#aaa;line-height:1.6;">J'ai lu et j'accepte les conditions du contrat de partenariat FA GENESIS. Je reconnais que ma signature électronique a valeur d'engagement contractuel.</span>
+            </label>
+            <div id="ptnr-contract-err" style="display:none;color:#ff4444;font-size:12px;margin-bottom:10px;padding:10px;background:rgba(255,68,68,.1);border-radius:6px;"></div>
+            <button id="ptnr-contract-sign-btn" onclick="_ptnrSignPartnershipContract()" style="width:100%;background:#FFD700;color:#000;font-family:'Unbounded',sans-serif;font-size:12px;font-weight:900;padding:16px;border:none;border-radius:10px;cursor:pointer;letter-spacing:.5px;">
+              <i class="fa-solid fa-signature" style="margin-right:8px;"></i>SIGNER LE CONTRAT
+            </button>
+          </div>
+        </div>
+      </div>
+
       <!-- Profile selector screen (shown after partner login, before dashboard) -->
       <div id="ptnr-profile-screen" style="display:none;">
         <div style="padding:20px 16px 8px;">
@@ -12243,6 +12285,11 @@ function _ptnrCreateProfile(){
 function _ptnrEnterDashboard(profileId){
   localStorage.setItem('fa_genesis_partner_profile', profileId);
   _ptnrSession._profileId = profileId;
+  // Gate: contrat de partenariat obligatoire avant l'accès au dashboard
+  if (!_ptnrSession.contract_signed) {
+    _ptnrShowPartnershipContract();
+    return;
+  }
   _ptnrShowDash();
   _ptnrNav('home');
   _ptnrRefreshBadges();
@@ -12257,6 +12304,114 @@ function _ptnrEnterDashboard(profileId){
   }, 1400);
 }
 
+
+// ── Contrat de partenariat (signature obligatoire) ────────────────────────────
+
+var _ptnrContractCanvas = null;
+var _ptnrContractCtx = null;
+var _ptnrContractHasSignature = false;
+
+function _ptnrShowPartnershipContract() {
+  var overlay = document.getElementById('ptnr-contract-overlay');
+  if (!overlay) { _ptnrShowDash(); _ptnrNav('home'); return; }
+  overlay.style.display = 'block';
+  // Pre-fill name from session
+  var nameEl = document.getElementById('ptnr-contract-name');
+  if (nameEl && _ptnrSession) {
+    nameEl.value = ((_ptnrSession.prenom || '') + ' ' + (_ptnrSession.nom || '')).trim();
+  }
+  // Init canvas
+  setTimeout(_ptnrInitContractCanvas, 150);
+  // Fetch contract HTML
+  var body = document.getElementById('ptnr-contract-body');
+  _ptnrFetch('/api/partner/contract/partnership').then(function(data) {
+    if (body) body.innerHTML = data.html || '<p style="padding:20px;color:#e44;">Impossible de charger le contrat.</p>';
+  }).catch(function() {
+    if (body) body.innerHTML = '<p style="padding:20px;color:#e44;">Erreur de chargement du contrat. Vérifiez votre connexion et rechargez.</p>';
+  });
+}
+
+function _ptnrInitContractCanvas() {
+  var canvas = document.getElementById('ptnr-contract-canvas');
+  if (!canvas) return;
+  var rect = canvas.getBoundingClientRect();
+  canvas.width = Math.round(rect.width * (window.devicePixelRatio || 1));
+  canvas.height = Math.round(rect.height * (window.devicePixelRatio || 1));
+  _ptnrContractCanvas = canvas;
+  _ptnrContractCtx = canvas.getContext('2d');
+  _ptnrContractCtx.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1);
+  _ptnrContractCtx.strokeStyle = '#FFD700';
+  _ptnrContractCtx.lineWidth = 2;
+  _ptnrContractCtx.lineCap = 'round';
+  _ptnrContractHasSignature = false;
+  var drawing = false;
+  function getPos(e) {
+    var r = canvas.getBoundingClientRect();
+    var src = e.touches ? e.touches[0] : e;
+    return { x: src.clientX - r.left, y: src.clientY - r.top };
+  }
+  canvas.addEventListener('mousedown', function(e){ drawing=true; var p=getPos(e); _ptnrContractCtx.beginPath(); _ptnrContractCtx.moveTo(p.x,p.y); });
+  canvas.addEventListener('mousemove', function(e){ if(!drawing) return; var p=getPos(e); _ptnrContractCtx.lineTo(p.x,p.y); _ptnrContractCtx.stroke(); _ptnrContractHasSignature=true; var h=document.getElementById('ptnr-contract-canvas-hint'); if(h) h.style.display='none'; });
+  canvas.addEventListener('mouseup', function(){ drawing=false; });
+  canvas.addEventListener('mouseleave', function(){ drawing=false; });
+  canvas.addEventListener('touchstart', function(e){ e.preventDefault(); drawing=true; var p=getPos(e); _ptnrContractCtx.beginPath(); _ptnrContractCtx.moveTo(p.x,p.y); }, {passive:false});
+  canvas.addEventListener('touchmove', function(e){ e.preventDefault(); if(!drawing) return; var p=getPos(e); _ptnrContractCtx.lineTo(p.x,p.y); _ptnrContractCtx.stroke(); _ptnrContractHasSignature=true; var h=document.getElementById('ptnr-contract-canvas-hint'); if(h) h.style.display='none'; }, {passive:false});
+  canvas.addEventListener('touchend', function(){ drawing=false; });
+}
+
+function _ptnrContractClearCanvas() {
+  if (_ptnrContractCtx && _ptnrContractCanvas) {
+    _ptnrContractCtx.clearRect(0, 0, _ptnrContractCanvas.width, _ptnrContractCanvas.height);
+    _ptnrContractHasSignature = false;
+    var h = document.getElementById('ptnr-contract-canvas-hint');
+    if (h) h.style.display = '';
+  }
+}
+
+function _ptnrSignPartnershipContract() {
+  var nameEl = document.getElementById('ptnr-contract-name');
+  var checkEl = document.getElementById('ptnr-contract-accept');
+  var errEl = document.getElementById('ptnr-contract-err');
+  var btn = document.getElementById('ptnr-contract-sign-btn');
+  var name = nameEl ? nameEl.value.trim() : '';
+  var accepted = checkEl ? checkEl.checked : false;
+  var signatureData = (_ptnrContractCanvas && _ptnrContractHasSignature) ? _ptnrContractCanvas.toDataURL('image/png') : null;
+  if (errEl) errEl.style.display = 'none';
+  if (!accepted) { if (errEl) { errEl.style.display='block'; errEl.textContent='Veuillez cocher la case d\'acceptation.'; } return; }
+  if (name.length < 2) { if (errEl) { errEl.style.display='block'; errEl.textContent='Merci de saisir votre nom complet.'; } return; }
+  if (!signatureData) { if (errEl) { errEl.style.display='block'; errEl.textContent='Veuillez apposer votre signature dans le cadre prévu.'; } return; }
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="margin-right:8px;"></i>Signature en cours…'; }
+  _ptnrFetch('/api/partner/contract/sign', 'POST', { signatureName: name, accepted: true, signatureData: signatureData }).then(function(data) {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-signature" style="margin-right:8px;"></i>SIGNER LE CONTRAT'; }
+    if (data && data.success) {
+      if (_ptnrSession) {
+        _ptnrSession.contract_signed = true;
+        _ptnrSession.contract_signed_at = data.contract_signed_at;
+        _ptnrSession.contract_signature_name = name;
+        _ptnrSaveToCache(_ptnrSession);
+      }
+      var overlay = document.getElementById('ptnr-contract-overlay');
+      if (overlay) overlay.style.display = 'none';
+      if (typeof showToast === 'function') showToast('Contrat signé ! Bienvenue sur FA GENESIS.');
+      _ptnrShowDash();
+      _ptnrNav('home');
+      _ptnrRefreshBadges();
+      _ptnrCheckPushStatus();
+      setTimeout(function(){
+        if(typeof _TUTO_P!=='undefined' && !localStorage.getItem(_ptnrTutoKey())){
+          _tutoIsPartner=true; _tutoSteps=_TUTO_P; _tutoIdx=0; _tutoRender();
+          var ov=document.getElementById('tuto-overlay');
+          if(ov){ov.classList.add('open');if(typeof haptic==='function')haptic(40);}
+        }
+      }, 1400);
+    } else {
+      if (errEl) { errEl.style.display='block'; errEl.textContent = (data && data.error) || 'Erreur lors de la signature. Réessayez.'; }
+    }
+  }).catch(function() {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-signature" style="margin-right:8px;"></i>SIGNER LE CONTRAT'; }
+    if (errEl) { errEl.style.display='block'; errEl.textContent = 'Erreur de connexion. Vérifiez votre connexion et réessayez.'; }
+  });
+}
 
 function _ptnrLogout(){
   try{sessionStorage.removeItem('fa_ptnr_screen');sessionStorage.removeItem('fa_nav_tab');}catch(e){}
