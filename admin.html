@@ -6850,7 +6850,7 @@
             if (!confirm('Supprimer cette actualité ? Cette action est irréversible.')) return;
             fetch(API_BASE_URL + '/api/admin/actualites/' + id, {
                 method: 'DELETE',
-                headers: { 'x-admin-key': adminKey || '' }
+                headers: { 'x-admin-key': _adminKey() }
             })
             .then(function(r){ return r.json(); })
             .then(function(d){

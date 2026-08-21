@@ -18947,7 +18947,7 @@ app.delete('/api/coworking/devis/:id', function(req, res) {
  * Protégé par x-admin-key
  */
 app.post('/api/admin/linkedin/generate-message', async function(req, res) {
-    if (!isValidAdminKey(req)) {
+    if (!_isAdminRequest(req)) {
         return res.status(401).json({ error: 'Non autorisé' });
     }
 
@@ -19406,7 +19406,7 @@ app.post('/api/payments/stripe/create-intent', async function(req, res) {
 
 // ── Admin : statistiques marketplace ─────────────────────────────────────────
 app.get('/api/admin/marketplace/stats', function(req, res) {
-    if (!isValidAdminKey(req)) return res.status(403).json({ error: 'Accès refusé' });
+    if (!_isAdminRequest(req)) return res.status(403).json({ error: 'Accès refusé' });
     try {
         var stats = mps.getMarketplaceStats();
         // Statuts des comptes prestataires
@@ -19424,12 +19424,12 @@ app.get('/api/admin/marketplace/stats', function(req, res) {
 
 // ── Admin : configuration des commissions ─────────────────────────────────────
 app.get('/api/admin/marketplace/config', function(req, res) {
-    if (!isValidAdminKey(req)) return res.status(403).json({ error: 'Accès refusé' });
+    if (!_isAdminRequest(req)) return res.status(403).json({ error: 'Accès refusé' });
     res.json({ ok: true, config: mps.getConfig() });
 });
 
 app.put('/api/admin/marketplace/config', function(req, res) {
-    if (!isValidAdminKey(req)) return res.status(403).json({ error: 'Accès refusé' });
+    if (!_isAdminRequest(req)) return res.status(403).json({ error: 'Accès refusé' });
     try {
         var b = req.body || {};
         var patch = {};
@@ -19459,7 +19459,7 @@ app.put('/api/admin/marketplace/config', function(req, res) {
 
 // ── Admin : liste des comptes partenaires Stripe ──────────────────────────────
 app.get('/api/admin/marketplace/partners', function(req, res) {
-    if (!isValidAdminKey(req)) return res.status(403).json({ error: 'Accès refusé' });
+    if (!_isAdminRequest(req)) return res.status(403).json({ error: 'Accès refusé' });
     try {
         var partners = loadPartners().filter(function(p){ return p.accountStatus === 'active'; });
         var list = partners.map(function(p) {
@@ -19484,7 +19484,7 @@ app.get('/api/admin/marketplace/partners', function(req, res) {
 
 // ── Admin : remboursement ─────────────────────────────────────────────────────
 app.post('/api/admin/marketplace/refund', async function(req, res) {
-    if (!isValidAdminKey(req)) return res.status(403).json({ error: 'Accès refusé' });
+    if (!_isAdminRequest(req)) return res.status(403).json({ error: 'Accès refusé' });
     try {
         var b = req.body || {};
         if (!b.paymentIntentId) return res.status(400).json({ error: 'paymentIntentId requis' });
@@ -19498,7 +19498,7 @@ app.post('/api/admin/marketplace/refund', async function(req, res) {
 
 // ── Admin : liste des paiements Stripe ───────────────────────────────────────
 app.get('/api/admin/marketplace/payments', function(req, res) {
-    if (!isValidAdminKey(req)) return res.status(403).json({ error: 'Accès refusé' });
+    if (!_isAdminRequest(req)) return res.status(403).json({ error: 'Accès refusé' });
     try {
         var payments = mps.loadStripePayments()
             .sort(function(a,b){ return new Date(b.createdAt) - new Date(a.createdAt); });
@@ -19661,7 +19661,7 @@ app.get('/api/partner/earnings/summary', authenticatePartner, function(req, res)
 
 // GET /api/admin/payout/providers — Liste des fournisseurs de payout (admin)
 app.get('/api/admin/payout/providers', function(req, res) {
-    if (!isValidAdminKey(req)) return res.status(403).json({ error: 'Accès refusé' });
+    if (!_isAdminRequest(req)) return res.status(403).json({ error: 'Accès refusé' });
     var table = payoutRouting.loadCountryTable();
     var providers = [
         { id: 'stripe',    name: 'Stripe Connect', active: true,  note: 'Credentials actifs via STRIPE_SECRET_KEY' },
@@ -19674,7 +19674,7 @@ app.get('/api/admin/payout/providers', function(req, res) {
 
 // PUT /api/admin/payout/country/:code — Modifier la disponibilité d'un fournisseur pour un pays (admin)
 app.put('/api/admin/payout/country/:code', function(req, res) {
-    if (!isValidAdminKey(req)) return res.status(403).json({ error: 'Accès refusé' });
+    if (!_isAdminRequest(req)) return res.status(403).json({ error: 'Accès refusé' });
     try {
         var code     = req.params.code.toUpperCase();
         var provider = req.body.provider;
