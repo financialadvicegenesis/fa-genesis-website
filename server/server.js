@@ -7116,28 +7116,37 @@ app.post('/api/orders/:orderId/accept-reschedule', function(req, res) {
  * GET /api/admin/users
  * Recuperer tous les utilisateurs inscrits (Admin)
  */
-app.get('/api/admin/users', (req, res) => {
-    const users = loadUsers();
-    const safeUsers = users.map(u => {
-        const { password, ...rest } = u;
-        return rest;
-    });
-    // Trier par date d'inscription decroissante
-    safeUsers.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
-    res.json(safeUsers);
+app.get('/api/admin/users', function(req, res) {
+    try {
+        var users = loadUsers();
+        var safeUsers = users.map(function(u) {
+            var rest = Object.assign({}, u);
+            delete rest.password;
+            return rest;
+        });
+        safeUsers.sort(function(a, b) { return new Date(b.createdAt || 0) - new Date(a.createdAt || 0); });
+        res.json(safeUsers);
+    } catch (e) {
+        console.error('[ADMIN] Erreur GET /api/admin/users:', e);
+        res.status(500).json({ error: 'Erreur serveur', detail: e.message });
+    }
 });
 
 /**
  * GET /api/admin/users/:email
  * Recuperer un utilisateur specifique (Admin)
  */
-app.get('/api/admin/users/:email', (req, res) => {
-    const user = getUserByEmail(decodeURIComponent(req.params.email));
-    if (!user) {
-        return res.status(404).json({ error: 'Utilisateur non trouve' });
+app.get('/api/admin/users/:email', function(req, res) {
+    try {
+        var user = getUserByEmail(decodeURIComponent(req.params.email));
+        if (!user) return res.status(404).json({ error: 'Utilisateur non trouve' });
+        var userWithoutPassword = Object.assign({}, user);
+        delete userWithoutPassword.password;
+        res.json(userWithoutPassword);
+    } catch (e) {
+        console.error('[ADMIN] Erreur GET /api/admin/users/:email:', e);
+        res.status(500).json({ error: 'Erreur serveur', detail: e.message });
     }
-    const { password, ...userWithoutPassword } = user;
-    res.json(userWithoutPassword);
 });
 
 /**
@@ -7172,56 +7181,66 @@ app.delete('/api/admin/users/:email', function(req, res) {
  * GET /api/admin/stats
  * Statistiques globales du dashboard admin
  */
-app.get('/api/admin/stats', (req, res) => {
-    const users = loadUsers();
-    const orders = loadOrders();
-    const messages = loadMessages();
-    const settings = loadSettings();
-    const partners = loadPartners();
+app.get('/api/admin/stats', function(req, res) {
+    try {
+        var users = loadUsers();
+        var orders = loadOrders();
+        var messages = loadMessages();
+        var settings = loadSettings();
+        var partners = loadPartners();
 
-    const grossRevenue = orders.reduce((sum, o) => {
-        let revenue = 0;
-        if (o.deposit_paid) revenue += (o.deposit_amount || 0);
-        if (o.balance_paid) revenue += (o.balance_amount || 0);
-        return sum + revenue;
-    }, 0);
+        var grossRevenue = orders.reduce(function(sum, o) {
+            var revenue = 0;
+            if (o.deposit_paid) revenue += (o.deposit_amount || 0);
+            if (o.balance_paid) revenue += (o.balance_amount || 0);
+            return sum + revenue;
+        }, 0);
 
-    const totalRevenue = Math.max(0, grossRevenue - (settings.revenue_offset || 0));
+        var totalRevenue = Math.max(0, grossRevenue - (settings.revenue_offset || 0));
 
-    res.json({
-        totalClients: users.length,
-        registered: users.filter(u => u.paymentStatus === 'registered').length,
-        depositPaid: users.filter(u => u.paymentStatus === 'deposit_paid').length,
-        fullyPaid: users.filter(u => u.paymentStatus === 'fully_paid').length,
-        totalOrders: orders.length,
-        totalRevenue: totalRevenue,
-        unreadMessages: messages.filter(m => m.status === 'unread').length,
-        totalMessages: messages.length,
-        totalPartners: partners.length
-    });
+        res.json({
+            totalClients: users.length,
+            registered: users.filter(function(u) { return u.paymentStatus === 'registered'; }).length,
+            depositPaid: users.filter(function(u) { return u.paymentStatus === 'deposit_paid'; }).length,
+            fullyPaid: users.filter(function(u) { return u.paymentStatus === 'fully_paid'; }).length,
+            totalOrders: orders.length,
+            totalRevenue: totalRevenue,
+            unreadMessages: messages.filter(function(m) { return m.status === 'unread'; }).length,
+            totalMessages: messages.length,
+            totalPartners: partners.length
+        });
+    } catch (e) {
+        console.error('[ADMIN] Erreur GET /api/admin/stats:', e);
+        res.status(500).json({ error: 'Erreur serveur', detail: e.message });
+    }
 });
 
 /**
  * POST /api/admin/reset-revenue
  * Réinitialise le compteur de revenu total (stocke un offset = total actuel)
  */
-app.post('/api/admin/reset-revenue', (req, res) => {
-    const orders = loadOrders();
-    const settings = loadSettings();
+app.post('/api/admin/reset-revenue', function(req, res) {
+    try {
+        var orders = loadOrders();
+        var settings = loadSettings();
 
-    const grossRevenue = orders.reduce((sum, o) => {
-        let revenue = 0;
-        if (o.deposit_paid) revenue += (o.deposit_amount || 0);
-        if (o.balance_paid) revenue += (o.balance_amount || 0);
-        return sum + revenue;
-    }, 0);
+        var grossRevenue = orders.reduce(function(sum, o) {
+            var revenue = 0;
+            if (o.deposit_paid) revenue += (o.deposit_amount || 0);
+            if (o.balance_paid) revenue += (o.balance_amount || 0);
+            return sum + revenue;
+        }, 0);
 
-    settings.revenue_offset = grossRevenue;
-    settings.revenue_reset_at = new Date().toISOString();
-    saveSettings(settings);
+        settings.revenue_offset = grossRevenue;
+        settings.revenue_reset_at = new Date().toISOString();
+        saveSettings(settings);
 
-    console.log('Revenu total réinitialisé. Offset:', grossRevenue);
-    res.json({ success: true, revenue_offset: grossRevenue, reset_at: settings.revenue_reset_at });
+        console.log('Revenu total réinitialisé. Offset:', grossRevenue);
+        res.json({ success: true, revenue_offset: grossRevenue, reset_at: settings.revenue_reset_at });
+    } catch (e) {
+        console.error('[ADMIN] Erreur POST /api/admin/reset-revenue:', e);
+        res.status(500).json({ error: 'Erreur serveur', detail: e.message });
+    }
 });
 
 // ============================================================
@@ -7510,70 +7529,67 @@ app.get('/api/admin/messages', function(req, res) {
  * Statistiques des messages
  * IMPORTANT: Cette route doit etre AVANT /:messageId pour eviter le conflit
  */
-app.get('/api/admin/messages/stats', (req, res) => {
-    const messages = loadMessages();
-
-    const stats = {
-        total: messages.length,
-        unread: messages.filter(m => m.status === 'unread').length,
-        read: messages.filter(m => m.status === 'read').length,
-        replied: messages.filter(m => m.status === 'replied').length,
-        archived: messages.filter(m => m.status === 'archived').length,
-        today: messages.filter(m => {
-            const today = new Date().toDateString();
-            return new Date(m.created_at).toDateString() === today;
-        }).length
-    };
-
-    res.json(stats);
+app.get('/api/admin/messages/stats', function(req, res) {
+    try {
+        var messages = loadMessages();
+        var todayStr = new Date().toDateString();
+        res.json({
+            total: messages.length,
+            unread: messages.filter(function(m) { return m.status === 'unread'; }).length,
+            read: messages.filter(function(m) { return m.status === 'read'; }).length,
+            replied: messages.filter(function(m) { return m.status === 'replied'; }).length,
+            archived: messages.filter(function(m) { return m.status === 'archived'; }).length,
+            today: messages.filter(function(m) { return new Date(m.created_at).toDateString() === todayStr; }).length
+        });
+    } catch (e) {
+        console.error('[ADMIN] Erreur GET /api/admin/messages/stats:', e);
+        res.status(500).json({ error: 'Erreur serveur', detail: e.message });
+    }
 });
 
 /**
  * GET /api/admin/messages/:messageId (Admin)
  * Recuperer un message specifique et le marquer comme lu
  */
-app.get('/api/admin/messages/:messageId', (req, res) => {
-    const messages = loadMessages();
-    const index = messages.findIndex(m => m.id === req.params.messageId);
-
-    if (index === -1) {
-        return res.status(404).json({ error: 'Message non trouve' });
+app.get('/api/admin/messages/:messageId', function(req, res) {
+    try {
+        var messages = loadMessages();
+        var index = messages.findIndex(function(m) { return m.id === req.params.messageId; });
+        if (index === -1) return res.status(404).json({ error: 'Message non trouve' });
+        if (messages[index].status === 'unread') {
+            messages[index].status = 'read';
+            messages[index].updated_at = new Date().toISOString();
+            saveMessages(messages);
+        }
+        res.json(messages[index]);
+    } catch (e) {
+        console.error('[ADMIN] Erreur GET /api/admin/messages/:messageId:', e);
+        res.status(500).json({ error: 'Erreur serveur', detail: e.message });
     }
-
-    // Marquer comme lu
-    if (messages[index].status === 'unread') {
-        messages[index].status = 'read';
-        messages[index].updated_at = new Date().toISOString();
-        saveMessages(messages);
-    }
-
-    res.json(messages[index]);
 });
 
 /**
  * PUT /api/admin/messages/:messageId/status (Admin)
  * Mettre a jour le statut d'un message
  */
-app.put('/api/admin/messages/:messageId/status', (req, res) => {
-    const { status } = req.body;
-    const validStatuses = ['unread', 'read', 'replied', 'archived'];
-
-    if (!validStatuses.includes(status)) {
-        return res.status(400).json({ error: 'Statut invalide', valid_statuses: validStatuses });
+app.put('/api/admin/messages/:messageId/status', function(req, res) {
+    try {
+        var status = (req.body || {}).status;
+        var validStatuses = ['unread', 'read', 'replied', 'archived'];
+        if (validStatuses.indexOf(status) === -1) {
+            return res.status(400).json({ error: 'Statut invalide', valid_statuses: validStatuses });
+        }
+        var messages = loadMessages();
+        var index = messages.findIndex(function(m) { return m.id === req.params.messageId; });
+        if (index === -1) return res.status(404).json({ error: 'Message non trouve' });
+        messages[index].status = status;
+        messages[index].updated_at = new Date().toISOString();
+        saveMessages(messages);
+        res.json({ success: true, message: messages[index] });
+    } catch (e) {
+        console.error('[ADMIN] Erreur PUT /api/admin/messages/:messageId/status:', e);
+        res.status(500).json({ error: 'Erreur serveur', detail: e.message });
     }
-
-    const messages = loadMessages();
-    const index = messages.findIndex(m => m.id === req.params.messageId);
-
-    if (index === -1) {
-        return res.status(404).json({ error: 'Message non trouve' });
-    }
-
-    messages[index].status = status;
-    messages[index].updated_at = new Date().toISOString();
-    saveMessages(messages);
-
-    res.json({ success: true, message: messages[index] });
 });
 
 /**
@@ -7644,20 +7660,19 @@ app.post('/api/admin/messages/:messageId/reply', async (req, res) => {
  * DELETE /api/admin/messages/:messageId (Admin)
  * Supprimer un message
  */
-app.delete('/api/admin/messages/:messageId', (req, res) => {
-    const messages = loadMessages();
-    const index = messages.findIndex(m => m.id === req.params.messageId);
-
-    if (index === -1) {
-        return res.status(404).json({ error: 'Message non trouve' });
+app.delete('/api/admin/messages/:messageId', function(req, res) {
+    try {
+        var messages = loadMessages();
+        var index = messages.findIndex(function(m) { return m.id === req.params.messageId; });
+        if (index === -1) return res.status(404).json({ error: 'Message non trouve' });
+        var deleted = messages.splice(index, 1)[0];
+        saveMessages(messages);
+        console.log('[CONTACT] Message supprime: ' + deleted.id);
+        res.json({ success: true, deleted: deleted });
+    } catch (e) {
+        console.error('[ADMIN] Erreur DELETE /api/admin/messages/:messageId:', e);
+        res.status(500).json({ error: 'Erreur serveur', detail: e.message });
     }
-
-    const deleted = messages.splice(index, 1)[0];
-    saveMessages(messages);
-
-    console.log(`[CONTACT] Message supprime: ${deleted.id}`);
-
-    res.json({ success: true, deleted: deleted });
 });
 
 /**
@@ -9839,20 +9854,29 @@ function saveSessions(sessions) {
  * GET /api/admin/sessions
  * Recuperer toutes les seances (Admin)
  */
-app.get('/api/admin/sessions', (req, res) => {
-    const sessions = loadSessions();
-    res.json(sessions);
+app.get('/api/admin/sessions', function(req, res) {
+    try {
+        res.json(loadSessions());
+    } catch (e) {
+        console.error('[ADMIN] Erreur GET /api/admin/sessions:', e);
+        res.status(500).json({ error: 'Erreur serveur', detail: e.message });
+    }
 });
 
 /**
  * GET /api/admin/sessions/user/:userEmail
  * Recuperer les seances d'un client specifique (Admin)
  */
-app.get('/api/admin/sessions/user/:userEmail', (req, res) => {
-    const { userEmail } = req.params;
-    const sessions = loadSessions();
-    const userSessions = sessions.filter(s => s.userEmail.toLowerCase() === userEmail.toLowerCase());
-    res.json(userSessions);
+app.get('/api/admin/sessions/user/:userEmail', function(req, res) {
+    try {
+        var userEmail = req.params.userEmail;
+        var sessions = loadSessions();
+        var userSessions = sessions.filter(function(s) { return s.userEmail.toLowerCase() === userEmail.toLowerCase(); });
+        res.json(userSessions);
+    } catch (e) {
+        console.error('[ADMIN] Erreur GET /api/admin/sessions/user:', e);
+        res.status(500).json({ error: 'Erreur serveur', detail: e.message });
+    }
 });
 
 // Helper : authentifier un client via Bearer token
@@ -13234,50 +13258,6 @@ app.get('/api/events', (req, res) => {
     }
 });
 
-// Admin : modifier un evenement
-app.put('/api/admin/events/:eventId', (req, res) => {
-    try {
-        var events = loadEvents();
-        var index = events.findIndex(function(e) { return e.id === req.params.eventId; });
-        if (index === -1) {
-            return res.status(404).json({ error: 'Evenement non trouve' });
-        }
-        var body = req.body || {};
-        if (body.title !== undefined) events[index].title = body.title.trim();
-        if (body.type !== undefined) events[index].type = body.type;
-        if (body.date !== undefined) events[index].date = body.date.trim();
-        if (body.location !== undefined) events[index].location = body.location.trim();
-        if (body.description !== undefined) events[index].description = body.description.trim();
-        if (body.image !== undefined) events[index].image = body.image.trim();
-        if (body.link !== undefined) events[index].link = body.link.trim();
-        if (body.published !== undefined) events[index].published = body.published === true;
-        events[index].updatedAt = new Date().toISOString();
-        saveEvents(events);
-        res.json({ success: true, event: events[index] });
-    } catch (error) {
-        console.error('[ADMIN] Erreur modif evenement:', error);
-        res.status(500).json({ error: 'Erreur modification evenement' });
-    }
-});
-
-// Admin : supprimer un evenement
-app.delete('/api/admin/events/:eventId', (req, res) => {
-    try {
-        var events = loadEvents();
-        var index = events.findIndex(function(e) { return e.id === req.params.eventId; });
-        if (index === -1) {
-            return res.status(404).json({ error: 'Evenement non trouve' });
-        }
-        var removed = events.splice(index, 1)[0];
-        saveEvents(events);
-        console.log('[ADMIN] Evenement supprime:', removed.title);
-        res.json({ success: true, message: 'Evenement supprime' });
-    } catch (error) {
-        console.error('[ADMIN] Erreur suppression evenement:', error);
-        res.status(500).json({ error: 'Erreur suppression evenement' });
-    }
-});
-
 // ── ADMIN CAMPAGNES & JEUX CONCOURS ──────────────────────────────────────────
 
 // Liste toutes les campagnes/jeux (admin)
@@ -13355,13 +13335,6 @@ app.delete('/api/admin/campagnes/:id', function(req, res) {
 // Créateur (bronze) et sans niveau : notification différée de 24h via processScheduledNotifs().
 app.post('/api/admin/feature-announcement', function(req, res) {
     try {
-        var adminToken = req.headers.authorization || '';
-        if (adminToken.startsWith('Bearer ')) adminToken = adminToken.slice(7).trim();
-        var adminSessions = [];
-        try { adminSessions = JSON.parse(fs.readFileSync(ADMIN_SESSIONS_FILE, 'utf8')); } catch(e) {}
-        var isAdmin = adminSessions.some(function(s) { return s.token === adminToken && (!s.expiresAt || Date.now() < new Date(s.expiresAt).getTime()); });
-        if (!isAdmin) return res.status(403).json({ error: 'Accès réservé aux administrateurs' });
-
         var body = req.body || {};
         if (!body.title) return res.status(400).json({ error: 'Titre requis' });
 
