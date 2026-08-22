@@ -270,16 +270,29 @@ function generatePdfBuffer(contract, callback) {
             ? new Date(contract.signed_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })
             : 'Non signé';
 
-        // En-tête
-        doc.fontSize(18).font('Helvetica-Bold').text('FA GENESIS', { align: 'center' });
-        doc.fontSize(11).font('Helvetica').fillColor('#666').text('Plateforme de services créatifs et professionnels', { align: 'center' });
+        // En-tête — logo ou texte de fallback
+        var _pdfLogoDrawn = false;
+        if (_LOGO_DATA_URI) {
+            try {
+                var _pdfLogoBuf = Buffer.from(_LOGO_DATA_URI.replace(/^data:image\/png;base64,/, ''), 'base64');
+                var _pdfLogoW = 160;
+                var _pdfLogoX = (doc.page.width - _pdfLogoW) / 2;
+                doc.image(_pdfLogoBuf, _pdfLogoX, doc.y, { width: _pdfLogoW });
+                doc.moveDown(0.3);
+                _pdfLogoDrawn = true;
+            } catch (_e) { /* fallback */ }
+        }
+        if (!_pdfLogoDrawn) {
+            doc.fontSize(18).font('Helvetica-Bold').fillColor('#000').text('FA GENESIS', { align: 'center' });
+        }
+        doc.fontSize(11).font('Helvetica').fillColor('#000').text('Plateforme de services créatifs et professionnels', { align: 'center' });
         doc.moveDown(0.5);
         doc.strokeColor('#FFD700').lineWidth(2).moveTo(50, doc.y).lineTo(545, doc.y).stroke();
         doc.moveDown(0.5);
 
         doc.fontSize(14).font('Helvetica-Bold').fillColor('#000').text(title, { align: 'center' });
         doc.moveDown(0.3);
-        doc.fontSize(9).font('Helvetica').fillColor('#888')
+        doc.fontSize(9).font('Helvetica').fillColor('#000')
             .text('Identifiant : ' + contractId + '  |  Version : ' + (contract.contract_version || CONTRACT_VERSION) + '  |  Date de signature : ' + signedAt, { align: 'center' });
         doc.moveDown(1);
 
@@ -342,7 +355,7 @@ function generatePdfBuffer(contract, callback) {
             if (doc.y > 700) doc.addPage();
             doc.fontSize(10).font('Helvetica-Bold').fillColor('#000').text(c.title);
             doc.moveDown(0.2);
-            doc.fontSize(9).font('Helvetica').fillColor('#333').text(c.body, { align: 'justify' });
+            doc.fontSize(9).font('Helvetica').fillColor('#000').text(c.body, { align: 'justify' });
             doc.moveDown(0.8);
         });
 
@@ -351,7 +364,7 @@ function generatePdfBuffer(contract, callback) {
             if (doc.y > 700) doc.addPage();
             doc.fontSize(10).font('Helvetica-Bold').fillColor('#000').text('CONDITIONS PARTICULIÈRES');
             doc.moveDown(0.2);
-            doc.fontSize(9).font('Helvetica').fillColor('#333').text(contract.custom_conditions, { align: 'justify' });
+            doc.fontSize(9).font('Helvetica').fillColor('#000').text(contract.custom_conditions, { align: 'justify' });
             doc.moveDown(0.8);
         }
 
@@ -362,13 +375,13 @@ function generatePdfBuffer(contract, callback) {
         doc.moveDown(0.5);
         doc.fontSize(10).font('Helvetica-Bold').text('SIGNATURE ÉLECTRONIQUE', { align: 'center' });
         doc.moveDown(0.4);
-        doc.fontSize(9).font('Helvetica').fillColor('#333');
+        doc.fontSize(9).font('Helvetica').fillColor('#000');
         doc.text('Signataire : ' + (contract.signature_name || '(non signé)'), { align: 'center' });
         doc.text('Date et heure : ' + signedAt, { align: 'center' });
         if (contract.signed_ip) doc.text('Adresse IP : ' + contract.signed_ip, { align: 'center' });
         doc.text('Identifiant contrat : ' + contractId, { align: 'center' });
         doc.moveDown(0.5);
-        doc.fillColor('#888').fontSize(8).text(
+        doc.fillColor('#000').fontSize(8).text(
             'Document généré par FA GENESIS — Ce document électronique tient lieu de contrat conformément aux dispositions applicables en matière de signature électronique.',
             { align: 'center' }
         );
