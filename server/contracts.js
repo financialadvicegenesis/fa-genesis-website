@@ -275,10 +275,10 @@ function generatePdfBuffer(contract, callback) {
         if (_LOGO_DATA_URI) {
             try {
                 var _pdfLogoBuf = Buffer.from(_LOGO_DATA_URI.replace(/^data:image\/png;base64,/, ''), 'base64');
-                var _pdfLogoW = 160;
+                var _pdfLogoW = 90;
                 var _pdfLogoX = (doc.page.width - _pdfLogoW) / 2;
                 doc.image(_pdfLogoBuf, _pdfLogoX, doc.y, { width: _pdfLogoW });
-                doc.moveDown(0.3);
+                doc.moveDown(0.4);
                 _pdfLogoDrawn = true;
             } catch (_e) { /* fallback */ }
         }
@@ -420,7 +420,7 @@ function _wrapContractHtml(contractId, dateStr, title, sectionsHtml) {
         'body{font-family:Georgia,serif;background:#f8f8f6;color:#1a1a1a;margin:0;padding:0;}' +
         '.contract-wrap{max-width:820px;margin:0 auto;padding:40px 32px;background:#fff;box-shadow:0 4px 32px rgba(0,0,0,.08);}' +
         '.contract-header{text-align:center;border-bottom:3px solid #FFD700;padding-bottom:24px;margin-bottom:28px;}' +
-        '.contract-header .logo-img{height:72px;max-width:220px;object-fit:contain;display:block;margin:0 auto 10px;}' +
+        '.contract-header .logo-img{height:50px;max-width:150px;object-fit:contain;display:block;margin:0 auto 8px;}' +
         '.contract-header .org{font-family:\'Arial Black\',Arial,sans-serif;font-size:22px;font-weight:900;letter-spacing:2px;color:#1a1a1a;}' +
         '.contract-header .sub{font-size:12px;color:#000;margin-top:2px;font-weight:600;}' +
         '.contract-header h1{font-size:18px;font-weight:900;text-transform:uppercase;letter-spacing:1px;margin:16px 0 6px;font-family:\'Arial Black\',Arial,sans-serif;color:#000;}' +
