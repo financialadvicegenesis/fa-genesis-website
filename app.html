@@ -3368,6 +3368,30 @@ function showRoleChoice(){
     r.className = 'entering';
   }, 30);
 }
+
+function _showRoleChoiceAfterDelete(){
+  // Nettoyer session client
+  try{ localStorage.removeItem('fa_genesis_session'); }catch(e){}
+  try{ localStorage.removeItem('fa_genesis_token'); }catch(e){}
+  // Nettoyer session partenaire
+  try{
+    if(typeof _ptnrClearSession==='function') _ptnrClearSession();
+    if(typeof _ptnrRefreshTimer!=='undefined' && _ptnrRefreshTimer){ clearInterval(_ptnrRefreshTimer); _ptnrRefreshTimer=null; }
+    localStorage.removeItem('fa_genesis_partner_profile');
+    localStorage.removeItem('fa_genesis_partner_profile_data');
+    localStorage.removeItem('fa_genesis_partner_data');
+    sessionStorage.removeItem('fa_ptnr_screen');
+    sessionStorage.removeItem('fa_nav_tab');
+  }catch(e){}
+  // Réinitialiser l'état global
+  try{ USER = null; GUEST = false; }catch(e){}
+  // Masquer l'app, masquer nav partenaire, afficher le choix de rôle
+  var appEl = document.getElementById('app');
+  if(appEl) appEl.style.display = 'none';
+  document.querySelectorAll('.ptnr-nav').forEach(function(b){ b.style.display='none'; });
+  document.querySelectorAll('.client-nav').forEach(function(b){ b.style.display=''; });
+  showRoleChoice();
+}
 function showWelcome(){
   var rc = document.getElementById('roleChoice');
   if(rc) rc.style.display = 'none';
@@ -8239,8 +8263,8 @@ function _pcDelete(){
   .then(function(r){return r.json().then(function(d){return{ok:r.ok,data:d};});})
   .then(function(res){
     if(res.ok){
-      showToast('Compte supprimé','Redirection en cours...','success');
-      setTimeout(function(){ if(typeof logout==='function') logout(); },1500);
+      showToast('Compte supprimé','À bientôt !','success');
+      setTimeout(function(){ _showRoleChoiceAfterDelete(); },1500);
     } else {
       if(btn){btn.disabled=false;btn.textContent='Supprimer';}
       if(er){er.textContent=(res.data&&res.data.error)||'Mot de passe incorrect.';er.classList.add('on');}
@@ -16812,8 +16836,8 @@ function _ptnrDeleteAccount(){
   .then(function(r){ return r.json().then(function(d){ return {ok:r.ok, data:d}; }); })
   .then(function(res){
     if(res.ok){
-      showToast('Compte supprimé','À bientôt.','success');
-      setTimeout(function(){ if(typeof _ptnrLogout==='function') _ptnrLogout(); }, 1500);
+      showToast('Compte supprimé','À bientôt !','success');
+      setTimeout(function(){ _showRoleChoiceAfterDelete(); }, 1500);
     } else {
       if(btn){ btn.disabled=false; btn.textContent='Supprimer'; }
       if(errEl){ errEl.textContent=(res.data&&res.data.error)||'Mot de passe incorrect.'; errEl.style.display='block'; }
