@@ -156,7 +156,7 @@ function generatePartnershipContractHtml(partner, badgeTable) {
 
     var badgeRows = badgeTable.map(function(b) {
         return '<tr>' +
-            '<td style="padding:8px 12px;font-weight:700;">' + b.badge + '</td>' +
+            '<td style="padding:8px 14px;font-weight:700;color:#000;">' + b.badge + '</td>' +
             '<td style="padding:8px 12px;text-align:center;color:#c0392b;font-weight:700;">' + b.commissionPct + ' %</td>' +
             '<td style="padding:8px 12px;text-align:center;color:#27ae60;font-weight:700;">' + (100 - b.commissionPct) + ' %</td>' +
             '</tr>';
@@ -177,7 +177,7 @@ function generatePartnershipContractHtml(partner, badgeTable) {
         '</div>',
         '<div class="commission-block">',
             '<h3 class="section-title"><i class="fas fa-percentage" style="color:#e74c3c;margin-right:8px;"></i>Barème des commissions</h3>',
-            '<p style="color:#666;font-size:13px;margin-bottom:12px;">Taux appliqués automatiquement selon le badge du Prestataire au moment de chaque mission.</p>',
+            '<p style="color:#000;font-size:13px;margin-bottom:12px;font-weight:600;">Taux appliqués automatiquement selon le badge du Prestataire au moment de chaque mission.</p>',
             '<div class="rate-table-wrap">',
             '<table class="rate-table">',
                 '<thead><tr><th style="padding:8px 14px;min-width:70px;">Badge</th><th style="padding:8px 14px;text-align:center;min-width:130px;">Commission GENESIS</th><th style="padding:8px 14px;text-align:center;min-width:120px;">Part Prestataire</th></tr></thead>',
@@ -409,16 +409,16 @@ function _wrapContractHtml(contractId, dateStr, title, sectionsHtml) {
         '.contract-header{text-align:center;border-bottom:3px solid #FFD700;padding-bottom:24px;margin-bottom:28px;}' +
         '.contract-header .logo-img{height:72px;max-width:220px;object-fit:contain;display:block;margin:0 auto 10px;}' +
         '.contract-header .org{font-family:\'Arial Black\',Arial,sans-serif;font-size:22px;font-weight:900;letter-spacing:2px;color:#1a1a1a;}' +
-        '.contract-header .sub{font-size:12px;color:#888;margin-top:2px;}' +
-        '.contract-header h1{font-size:18px;font-weight:900;text-transform:uppercase;letter-spacing:1px;margin:16px 0 6px;font-family:\'Arial Black\',Arial,sans-serif;}' +
-        '.contract-meta{display:flex;justify-content:center;gap:24px;flex-wrap:wrap;font-size:11px;color:#888;margin-top:8px;}' +
+        '.contract-header .sub{font-size:12px;color:#000;margin-top:2px;font-weight:600;}' +
+        '.contract-header h1{font-size:18px;font-weight:900;text-transform:uppercase;letter-spacing:1px;margin:16px 0 6px;font-family:\'Arial Black\',Arial,sans-serif;color:#000;}' +
+        '.contract-meta{display:flex;justify-content:center;gap:24px;flex-wrap:wrap;font-size:11px;color:#000;margin-top:8px;font-weight:600;}' +
         '.contract-meta span{display:flex;align-items:center;gap:5px;}' +
         '.parties-block{display:flex;align-items:center;gap:24px;background:#f9f9f9;border:2px solid #eee;padding:20px;margin:0 0 24px;flex-wrap:wrap;}' +
-        '.party{flex:1;min-width:180px;} .party-label{font-size:15px;font-weight:900;font-family:\'Arial Black\',Arial,sans-serif;}' +
-        '.party-sub{font-size:12px;color:#666;display:block;margin:2px 0;} .party-role{font-size:12px;color:#2980b9;}' +
-        '.party-and{font-size:20px;font-weight:900;color:#999;padding:0 8px;}' +
+        '.party{flex:1;min-width:180px;} .party-label{font-size:15px;font-weight:900;font-family:\'Arial Black\',Arial,sans-serif;color:#000;}' +
+        '.party-sub{font-size:12px;color:#000;display:block;margin:2px 0;font-weight:600;} .party-role{font-size:12px;color:#2980b9;}' +
+        '.party-and{font-size:20px;font-weight:900;color:#000;padding:0 8px;}' +
         '.commission-block{background:#fafafa;border-left:4px solid #FFD700;padding:18px 20px;margin:0 0 24px;}' +
-        '.section-title{font-size:13px;font-weight:900;text-transform:uppercase;letter-spacing:.5px;margin:0 0 10px;font-family:\'Arial Black\',Arial,sans-serif;}' +
+        '.section-title{font-size:13px;font-weight:900;text-transform:uppercase;letter-spacing:.5px;margin:0 0 10px;font-family:\'Arial Black\',Arial,sans-serif;color:#000;}' +
         '.rate-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:0;}' +
         '.rate-table{width:100%;border-collapse:collapse;font-size:13px;min-width:280px;}' +
         '.rate-table th{background:#1a1a1a;color:#FFD700;font-weight:900;text-align:left;font-family:\'Arial Black\',Arial,sans-serif;font-size:11px;text-transform:uppercase;white-space:nowrap;}' +
@@ -426,7 +426,7 @@ function _wrapContractHtml(contractId, dateStr, title, sectionsHtml) {
         '.clause{margin-bottom:20px;padding-bottom:20px;border-bottom:1px solid #f0f0f0;}' +
         '.clause:last-child{border-bottom:none;}' +
         '.clause-title{font-size:13px;font-weight:900;font-family:\'Arial Black\',Arial,sans-serif;margin:0 0 8px;color:#1a1a1a;}' +
-        '.clause-body{font-size:12.5px;color:#444;line-height:1.7;margin:0;}' +
+        '.clause-body{font-size:12.5px;color:#000;line-height:1.7;margin:0;}' +
         '.signature-block{background:#1a1a1a;color:#fff;padding:24px;margin-top:32px;border-radius:2px;}' +
         '.signature-block h3{color:#FFD700;font-family:\'Arial Black\',Arial,sans-serif;font-size:13px;margin:0 0 16px;}' +
         '.sig-field{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:12px;}' +
