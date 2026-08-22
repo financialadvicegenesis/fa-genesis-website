@@ -16,6 +16,65 @@ try {
     console.warn('[CONTRACT] Logo introuvable, fallback texte :', e.message);
 }
 
+// ── Fuseau horaire par pays ───────────────────────────────────────────────────
+var _COUNTRY_TIMEZONE = {
+    'France': 'Europe/Paris',
+    'Belgique': 'Europe/Brussels', 'Belgium': 'Europe/Brussels',
+    'Suisse': 'Europe/Zurich', 'Switzerland': 'Europe/Zurich',
+    'Luxembourg': 'Europe/Luxembourg',
+    'Canada': 'America/Toronto',
+    'Québec': 'America/Toronto',
+    'États-Unis': 'America/New_York', 'USA': 'America/New_York', 'United States': 'America/New_York',
+    'Maroc': 'Africa/Casablanca', 'Morocco': 'Africa/Casablanca',
+    'Algérie': 'Africa/Algiers', 'Algeria': 'Africa/Algiers',
+    'Tunisie': 'Africa/Tunis', 'Tunisia': 'Africa/Tunis',
+    'Sénégal': 'Africa/Dakar', 'Senegal': 'Africa/Dakar',
+    "Côte d'Ivoire": 'Africa/Abidjan', 'Ivory Coast': 'Africa/Abidjan',
+    'Cameroun': 'Africa/Douala', 'Cameroon': 'Africa/Douala',
+    'Gabon': 'Africa/Libreville',
+    'Congo': 'Africa/Brazzaville',
+    "République démocratique du Congo": 'Africa/Kinshasa', 'RDC': 'Africa/Kinshasa',
+    'Mali': 'Africa/Bamako',
+    'Burkina Faso': 'Africa/Ouagadougou',
+    'Togo': 'Africa/Lome',
+    'Bénin': 'Africa/Porto-Novo', 'Benin': 'Africa/Porto-Novo',
+    'Niger': 'Africa/Niamey',
+    'Guinée': 'Africa/Conakry', 'Guinea': 'Africa/Conakry',
+    'Madagascar': 'Indian/Antananarivo',
+    'Maurice': 'Indian/Mauritius', 'Mauritius': 'Indian/Mauritius',
+    'Réunion': 'Indian/Reunion',
+    'Martinique': 'America/Martinique',
+    'Guadeloupe': 'America/Guadeloupe',
+    'Guyane': 'America/Cayenne',
+    'Royaume-Uni': 'Europe/London', 'UK': 'Europe/London',
+    'Allemagne': 'Europe/Berlin', 'Germany': 'Europe/Berlin',
+    'Espagne': 'Europe/Madrid', 'Spain': 'Europe/Madrid',
+    'Italie': 'Europe/Rome', 'Italy': 'Europe/Rome',
+    'Portugal': 'Europe/Lisbon',
+    'Pays-Bas': 'Europe/Amsterdam', 'Netherlands': 'Europe/Amsterdam',
+};
+
+function _getTimezone(country) {
+    if (!country) return 'Europe/Paris';
+    return _COUNTRY_TIMEZONE[country] || _COUNTRY_TIMEZONE[(country || '').trim()] || 'Europe/Paris';
+}
+
+function _formatSignedAt(isoDate, country) {
+    if (!isoDate) return 'Non signé';
+    var resolvedCountry = country || 'France';
+    try {
+        var tz = _getTimezone(resolvedCountry);
+        var dateStr = new Date(isoDate).toLocaleString('fr-FR', {
+            timeZone: tz,
+            day: '2-digit', month: 'long', year: 'numeric',
+            hour: '2-digit', minute: '2-digit'
+        });
+        return dateStr + ' (heure de ' + resolvedCountry + ')';
+    } catch (e) {
+        return new Date(isoDate).toLocaleString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    }
+}
+
 // ── Stockage ─────────────────────────────────────────────────────────────────
 
 function loadContracts() {
@@ -266,9 +325,7 @@ function generatePdfBuffer(contract, callback) {
         var isPartnership = contract.type === 'partnership';
         var title = isPartnership ? 'CONTRAT DE PARTENARIAT FA GENESIS' : 'CONTRAT DE PRESTATION DE SERVICE';
         var contractId = contract.id || 'CTR-INCONNU';
-        var signedAt = contract.signed_at
-            ? new Date(contract.signed_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })
-            : 'Non signé';
+        var signedAt = _formatSignedAt(contract.signed_at, contract.partner_country);
 
         // En-tête — logo ou texte de fallback
         var _pdfLogoDrawn = false;

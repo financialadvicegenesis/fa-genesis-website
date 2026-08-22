@@ -15597,6 +15597,7 @@ app.post('/api/contracts/service/generate', function(req, res) {
             partner_email: partner.email,
             partner_name: ((partner.prenom || '') + ' ' + (partner.nom || '')).trim(),
             partner_type: partner.partner_type || null,
+            partner_country: partner.country || 'France',
             client_email: clientEmail || '',
             client_name: clientName,
             custom_conditions: customConditions,
