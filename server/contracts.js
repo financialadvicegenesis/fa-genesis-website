@@ -7,6 +7,15 @@ var PDFDocument = require('pdfkit');
 var CONTRACTS_FILE = path.join(__dirname, 'data', 'contracts.json');
 var CONTRACT_VERSION = 'v2-2026';
 
+// Logo FA GENESIS embarqué en base64 (lu une fois au démarrage)
+var _LOGO_DATA_URI = '';
+try {
+    var _logoFile = path.join(__dirname, '../assets/images/logo-genesis-transparent.png');
+    _LOGO_DATA_URI = 'data:image/png;base64,' + fs.readFileSync(_logoFile).toString('base64');
+} catch (e) {
+    console.warn('[CONTRACT] Logo introuvable, fallback texte :', e.message);
+}
+
 // ── Stockage ─────────────────────────────────────────────────────────────────
 
 function loadContracts() {
@@ -398,6 +407,7 @@ function _wrapContractHtml(contractId, dateStr, title, sectionsHtml) {
         'body{font-family:Georgia,serif;background:#f8f8f6;color:#1a1a1a;margin:0;padding:0;}' +
         '.contract-wrap{max-width:820px;margin:0 auto;padding:40px 32px;background:#fff;box-shadow:0 4px 32px rgba(0,0,0,.08);}' +
         '.contract-header{text-align:center;border-bottom:3px solid #FFD700;padding-bottom:24px;margin-bottom:28px;}' +
+        '.contract-header .logo-img{height:72px;max-width:220px;object-fit:contain;display:block;margin:0 auto 10px;}' +
         '.contract-header .org{font-family:\'Arial Black\',Arial,sans-serif;font-size:22px;font-weight:900;letter-spacing:2px;color:#1a1a1a;}' +
         '.contract-header .sub{font-size:12px;color:#888;margin-top:2px;}' +
         '.contract-header h1{font-size:18px;font-weight:900;text-transform:uppercase;letter-spacing:1px;margin:16px 0 6px;font-family:\'Arial Black\',Arial,sans-serif;}' +
@@ -429,7 +439,9 @@ function _wrapContractHtml(contractId, dateStr, title, sectionsHtml) {
         '</style></head><body>' +
         '<div class="contract-wrap">' +
         '<div class="contract-header">' +
-            '<div class="org">FA GENESIS</div>' +
+            (_LOGO_DATA_URI
+                ? '<img src="' + _LOGO_DATA_URI + '" alt="FA GENESIS" class="logo-img">'
+                : '<div class="org">FA GENESIS</div>') +
             '<div class="sub">Plateforme de services créatifs et professionnels</div>' +
             '<h1>' + title + '</h1>' +
             '<div class="contract-meta">' +
