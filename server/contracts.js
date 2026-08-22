@@ -169,10 +169,12 @@ function generatePartnershipContractHtml(partner, badgeTable) {
         '<div class="commission-block">',
             '<h3 class="section-title"><i class="fas fa-percentage" style="color:#e74c3c;margin-right:8px;"></i>Barème des commissions</h3>',
             '<p style="color:#666;font-size:13px;margin-bottom:12px;">Taux appliqués automatiquement selon le badge du Prestataire au moment de chaque mission.</p>',
+            '<div class="rate-table-wrap">',
             '<table class="rate-table">',
-                '<thead><tr><th style="padding:8px 12px;">Badge</th><th style="padding:8px 12px;text-align:center;">Commission GENESIS</th><th style="padding:8px 12px;text-align:center;">Part Prestataire</th></tr></thead>',
+                '<thead><tr><th style="padding:8px 14px;min-width:70px;">Badge</th><th style="padding:8px 14px;text-align:center;min-width:130px;">Commission GENESIS</th><th style="padding:8px 14px;text-align:center;min-width:120px;">Part Prestataire</th></tr></thead>',
                 '<tbody>' + badgeRows + '</tbody>',
             '</table>',
+            '</div>',
         '</div>',
         clausesHtml
     ].join('\n'));
@@ -407,9 +409,10 @@ function _wrapContractHtml(contractId, dateStr, title, sectionsHtml) {
         '.party-and{font-size:20px;font-weight:900;color:#999;padding:0 8px;}' +
         '.commission-block{background:#fafafa;border-left:4px solid #FFD700;padding:18px 20px;margin:0 0 24px;}' +
         '.section-title{font-size:13px;font-weight:900;text-transform:uppercase;letter-spacing:.5px;margin:0 0 10px;font-family:\'Arial Black\',Arial,sans-serif;}' +
-        '.rate-table{width:100%;border-collapse:collapse;font-size:13px;}' +
-        '.rate-table th{background:#1a1a1a;color:#FFD700;font-weight:900;text-align:left;font-family:\'Arial Black\',Arial,sans-serif;font-size:11px;text-transform:uppercase;}' +
-        '.rate-table tr:nth-child(even){background:#f5f5f5;} .rate-table td,.rate-table th{border:1px solid #e0e0e0;}' +
+        '.rate-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:0;}' +
+        '.rate-table{width:100%;border-collapse:collapse;font-size:13px;min-width:280px;}' +
+        '.rate-table th{background:#1a1a1a;color:#FFD700;font-weight:900;text-align:left;font-family:\'Arial Black\',Arial,sans-serif;font-size:11px;text-transform:uppercase;white-space:nowrap;}' +
+        '.rate-table tr:nth-child(even){background:#f5f5f5;} .rate-table td,.rate-table th{border:1px solid #e0e0e0;white-space:nowrap;word-break:normal;}' +
         '.clause{margin-bottom:20px;padding-bottom:20px;border-bottom:1px solid #f0f0f0;}' +
         '.clause:last-child{border-bottom:none;}' +
         '.clause-title{font-size:13px;font-weight:900;font-family:\'Arial Black\',Arial,sans-serif;margin:0 0 8px;color:#1a1a1a;}' +

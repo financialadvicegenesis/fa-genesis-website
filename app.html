@@ -2019,6 +2019,10 @@ a{text-decoration:none;color:inherit}
 #pb-sheet.up{transform:translateY(0);}
 /* ── Contract screen ── */
 #pb-contract-screen{display:none;}
+/* Contract body injected HTML — ensure table cells never break */
+#ptnr-contract-body td,#ptnr-contract-body th{white-space:nowrap!important;word-break:normal!important;}
+#ptnr-contract-body .rate-table-wrap,#ptnr-contract-body .commission-block{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+#ptnr-contract-body table{min-width:280px;}
 .pb-ctr-doc{background:#070707;border:1px solid #1e1e1e;border-radius:12px;padding:18px 16px;max-height:290px;overflow-y:auto;font-size:11px;line-height:1.75;color:#c0c0c0;margin-bottom:14px;scrollbar-width:thin;scrollbar-color:#2a2a2a transparent;}
 .pb-ctr-doc::-webkit-scrollbar{width:4px;}.pb-ctr-doc::-webkit-scrollbar-track{background:transparent;}.pb-ctr-doc::-webkit-scrollbar-thumb{background:#2a2a2a;border-radius:4px;}
 .pb-ctr-title{font-family:'Unbounded',cursive;font-size:9px;font-weight:900;color:#FFD700;letter-spacing:2px;text-align:center;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid #1e1e1e;}
@@ -16897,7 +16901,7 @@ function _ptnrLoadProfil(){
     +pli('<i class="fa-solid fa-compass"></i>','#001a1a','Explorer GENESIS',null,"_ptnrNav('collegues')")
     +'</div></div>';
 
-  var deleteBtn = '<div style="margin:0 16px 4px;">'
+  var deleteBtn = '<div style="margin:20px 16px 4px;">'
     +'<button style="width:100%;background:transparent;border:1px solid #3a0000;color:#ef4444;font-size:12px;font-weight:700;padding:13px;border-radius:12px;cursor:pointer;" onclick="_ptnrShowDeleteConfirm()">'
     +'<i class="fa-solid fa-trash-alt" style="margin-right:6px;"></i>Supprimer mon compte</button>'
     +'<div id="ptnr-del-confirm" style="display:none;background:#1a0000;border:1px solid #3a0000;border-radius:12px;padding:14px;margin-top:10px;">'
