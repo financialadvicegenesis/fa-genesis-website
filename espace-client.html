@@ -3,18 +3,393 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Espace Client - FA GENESIS</title>
+<link rel="icon" type="image/png" sizes="192x192" href="assets/images/logo-favicon-192.png">
+<title>Espace Client — FA GENESIS</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" media="print" onload="this.media='all'">
 <style>
-  body { margin:0; background:#000; display:flex; align-items:center; justify-content:center; height:100vh; flex-direction:column; gap:16px; }
-  .logo { width:64px; height:64px; border-radius:50%; }
-  .label { color:#FFD700; font-family:Arial,sans-serif; font-size:13px; font-weight:700; letter-spacing:1px; }
+:root{--bg:#0d0d0d;--bg2:#141414;--card:#161616;--border:#252525;--gold:#FFD700;--gold2:#e6c200;--text:#f0f0f0;--muted:#666;--muted2:#444;--nav:64px;--safe:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;overflow:hidden}
+/* ── Header ── */
+#hdr{position:fixed;top:0;left:0;right:0;height:56px;background:var(--bg);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;z-index:200;gap:10px}
+#hdr .logo{height:32px;width:32px;border-radius:50%;object-fit:cover}
+#hdr .brand{font-size:15px;font-weight:900;letter-spacing:.5px;color:var(--gold);flex:1}
+#hdr .badge-pill{background:rgba(255,215,0,.12);border:1px solid rgba(255,215,0,.3);color:var(--gold);font-size:9px;font-weight:900;letter-spacing:1px;padding:3px 8px;border-radius:20px}
+#hdr .avatar{width:32px;height:32px;border-radius:50%;background:#333;color:var(--gold);font-size:13px;font-weight:900;display:flex;align-items:center;justify-content:center;cursor:pointer}
+/* ── Content ── */
+#main{position:fixed;top:56px;left:0;right:0;bottom:calc(var(--nav) + var(--safe));overflow-y:auto;-webkit-overflow-scrolling:touch}
+/* ── Bottom nav ── */
+#bnav{position:fixed;bottom:0;left:0;right:0;height:var(--nav);padding-bottom:var(--safe);background:var(--bg);border-top:1px solid var(--border);display:flex;z-index:200}
+.bnav-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:none;border:none;color:var(--muted);font-size:10px;font-weight:700;cursor:pointer;transition:color .2s}
+.bnav-btn i{font-size:20px}
+.bnav-btn.on{color:var(--gold)}
+/* ── Sections ── */
+.section{display:none;padding:16px 16px 24px}
+.section.on{display:block}
+/* ── Cards ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:12px}
+.card-row{display:flex;align-items:center;gap:12px}
+.card-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.card-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:3px;line-height:1.3}
+.card-sub{font-size:12px;color:var(--muted);line-height:1.5}
+.card-meta{font-size:11px;color:var(--muted2)}
+/* ── Stat grid ── */
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 12px;text-align:center}
+.stat-num{font-size:26px;font-weight:900;color:var(--gold);line-height:1}
+.stat-label{font-size:10px;color:var(--muted);margin-top:4px;font-weight:700;letter-spacing:.3px;text-transform:uppercase}
+/* ── Welcome banner ── */
+.welcome-banner{background:linear-gradient(135deg,#1a1200 0%,#0d0d0d 100%);border:1px solid rgba(255,215,0,.2);border-radius:14px;padding:18px 16px;margin-bottom:14px}
+.welcome-banner h2{font-size:17px;font-weight:900;color:var(--gold);margin-bottom:4px}
+.welcome-banner p{font-size:12px;color:#999;line-height:1.5}
+/* ── Section header ── */
+.sec-hdr{font-size:10px;font-weight:900;color:var(--gold);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+/* ── Badge pill ── */
+.pill{display:inline-block;padding:2px 9px;border-radius:20px;font-size:10px;font-weight:800}
+.pill-green{background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);color:#22c55e}
+.pill-yellow{background:rgba(255,215,0,.1);border:1px solid rgba(255,215,0,.3);color:var(--gold)}
+.pill-red{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:#ef4444}
+.pill-blue{background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.3);color:#60a5fa}
+.pill-grey{background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--muted)}
+.pill-purple{background:rgba(168,85,247,.1);border:1px solid rgba(168,85,247,.3);color:#c084fc}
+/* ── Action button ── */
+.btn-gold{background:var(--gold);color:#000;font-weight:900;font-size:13px;border:none;border-radius:10px;padding:12px 20px;cursor:pointer;width:100%;margin-top:10px;display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none}
+.btn-outline{background:transparent;color:var(--gold);font-weight:700;font-size:13px;border:1.5px solid rgba(255,215,0,.3);border-radius:10px;padding:11px 20px;cursor:pointer;width:100%;margin-top:8px;display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none}
+.btn-red{background:transparent;color:#ef4444;font-weight:700;font-size:13px;border:1.5px solid rgba(239,68,68,.3);border-radius:10px;padding:11px 20px;cursor:pointer;width:100%;margin-top:8px;display:flex;align-items:center;justify-content:center;gap:8px}
+/* ── Empty state ── */
+.empty{text-align:center;padding:40px 16px;color:var(--muted)}
+.empty i{font-size:36px;margin-bottom:12px;display:block;opacity:.3}
+.empty p{font-size:13px;line-height:1.6}
+/* ── Profil ── */
+.pf-avatar{width:72px;height:72px;border-radius:50%;background:#222;color:var(--gold);font-size:28px;font-weight:900;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;flex-shrink:0;border:2px solid rgba(255,215,0,.3)}
+.pf-name{font-size:18px;font-weight:900;text-align:center;color:var(--text)}
+.pf-type{font-size:12px;color:var(--muted);text-align:center;margin-top:3px}
+.pf-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)}
+.pf-row:last-child{border-bottom:none}
+.pf-row i{color:var(--gold);width:20px;text-align:center}
+.pf-row .label{font-size:12px;color:var(--muted);display:block}
+.pf-row .val{font-size:14px;color:var(--text);font-weight:600}
+/* ── Loading spinner ── */
+.spinner{text-align:center;padding:40px;color:var(--gold);opacity:.4}
+.spinner i{font-size:24px;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* ── Splash / login check ── */
+#splash-check{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:9999}
+#splash-check img{width:72px;height:72px;border-radius:50%}
+#splash-check .lbl{color:var(--gold);font-size:13px;font-weight:700;letter-spacing:1px}
+/* ── Separator ── */
+.sep{height:1px;background:var(--border);margin:14px 0}
+/* ── Commande status progress ── */
+.status-bar{display:flex;gap:0;margin:10px 0 4px;position:relative}
+.status-step{flex:1;text-align:center;font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;padding-top:24px;position:relative}
+.status-step::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:16px;height:16px;border-radius:50%;background:var(--border);border:2px solid var(--muted2)}
+.status-step::after{content:'';position:absolute;top:7px;left:calc(50% + 8px);right:0;height:2px;background:var(--border)}
+.status-step:last-child::after{display:none}
+.status-step.done::before{background:var(--gold);border-color:var(--gold)}
+.status-step.done{color:var(--gold)}
+.status-step.done::after{background:var(--gold)}
+.status-step.current::before{background:transparent;border-color:var(--gold);box-shadow:0 0 0 3px rgba(255,215,0,.15)}
+.status-step.current{color:var(--text)}
+/* ── Toast ── */
+#toast{position:fixed;bottom:calc(var(--nav) + 16px);left:50%;transform:translateX(-50%) translateY(60px);background:var(--gold);color:#000;font-size:12px;font-weight:900;padding:10px 20px;border-radius:20px;z-index:9999;opacity:0;transition:opacity .25s,transform .25s;pointer-events:none;white-space:nowrap}
+#toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+/* ── Devis form ── */
+.devis-cta{background:linear-gradient(135deg,#1a1200,#0d0d0d);border:1px solid rgba(255,215,0,.2);border-radius:14px;padding:18px 16px;margin-bottom:14px;text-align:center}
+.devis-cta p{font-size:12px;color:#999;margin-bottom:12px;line-height:1.5}
 </style>
-<script>
-  window.location.replace('app.html' + window.location.search + window.location.hash);
-</script>
 </head>
 <body>
-  <img class="logo" src="assets/images/logo-favicon-192.png" alt="FA GENESIS" onerror="this.style.display='none'">
-  <span class="label">Chargement de l'espace GENESIS…</span>
+
+<!-- Splash d'authentification -->
+<div id="splash-check">
+  <img src="assets/images/logo-favicon-192.png" alt="GENESIS" onerror="this.style.display='none'">
+  <span class="lbl">Vérification en cours…</span>
+</div>
+
+<!-- Header -->
+<header id="hdr" style="display:none">
+  <img class="logo" src="assets/images/logo-favicon-192.png" alt="GENESIS" onerror="this.style.display='none'">
+  <span class="brand">FA GENESIS</span>
+  <span class="badge-pill" id="hdr-badge">CLIENT</span>
+  <div class="avatar" id="hdr-avatar" title="Profil" onclick="goSection('profil')">C</div>
+</header>
+
+<!-- Contenu principal -->
+<main id="main" style="display:none">
+
+  <!-- ── ACCUEIL ── -->
+  <div class="section on" id="sec-accueil">
+    <div class="welcome-banner">
+      <h2 id="welcome-name">Bonjour 👋</h2>
+      <p id="welcome-sub">Votre espace client GENESIS</p>
+    </div>
+    <div class="stat-grid" id="stat-grid">
+      <div class="stat-card"><div class="stat-num" id="stat-devis">—</div><div class="stat-label">Devis envoyés</div></div>
+      <div class="stat-card"><div class="stat-num" id="stat-commandes">—</div><div class="stat-label">Commandes</div></div>
+      <div class="stat-card"><div class="stat-num" id="stat-encours">—</div><div class="stat-label">En cours</div></div>
+      <div class="stat-card"><div class="stat-num" id="stat-livrables">—</div><div class="stat-label">Livrables reçus</div></div>
+    </div>
+    <div class="sec-hdr"><i class="fa-solid fa-bolt"></i>Activité récente</div>
+    <div id="home-activity"><div class="spinner"><i class="fa-solid fa-spinner"></i></div></div>
+  </div>
+
+  <!-- ── MES DEVIS ── -->
+  <div class="section" id="sec-devis">
+    <div class="devis-cta">
+      <p>Besoin d'un prestataire pour votre projet ?<br>Soumettez un devis et recevez une offre personnalisée.</p>
+      <a class="btn-gold" href="offres.html"><i class="fa-solid fa-paper-plane"></i>Soumettre un devis</a>
+    </div>
+    <div class="sec-hdr"><i class="fa-solid fa-file-invoice"></i>Mes demandes de devis</div>
+    <div id="devis-list"><div class="spinner"><i class="fa-solid fa-spinner"></i></div></div>
+  </div>
+
+  <!-- ── MES COMMANDES ── -->
+  <div class="section" id="sec-commandes">
+    <div class="sec-hdr"><i class="fa-solid fa-bag-shopping"></i>Mes commandes</div>
+    <div id="commandes-list"><div class="spinner"><i class="fa-solid fa-spinner"></i></div></div>
+  </div>
+
+  <!-- ── MES LIVRABLES ── -->
+  <div class="section" id="sec-livrables">
+    <div class="sec-hdr"><i class="fa-solid fa-box-open"></i>Mes livrables</div>
+    <div id="livrables-list"><div class="spinner"><i class="fa-solid fa-spinner"></i></div></div>
+  </div>
+
+  <!-- ── PROFIL ── -->
+  <div class="section" id="sec-profil">
+    <div class="card" style="text-align:center;padding:24px 16px">
+      <div class="pf-avatar" id="pf-avatar">C</div>
+      <div class="pf-name" id="pf-name">—</div>
+      <div class="pf-type" id="pf-type">Client FA GENESIS</div>
+    </div>
+    <div class="card" id="pf-info"></div>
+    <a class="btn-outline" href="offres.html"><i class="fa-solid fa-star"></i>Découvrir nos offres</a>
+    <button class="btn-red" onclick="doLogout()"><i class="fa-solid fa-arrow-right-from-bracket"></i>Se déconnecter</button>
+    <div style="height:8px"></div>
+    <p style="font-size:10px;color:var(--muted);text-align:center">FA GENESIS — Espace Client</p>
+  </div>
+
+</main>
+
+<!-- Navigation basse -->
+<nav id="bnav" style="display:none">
+  <button class="bnav-btn on" onclick="goSection('accueil')" id="btn-accueil"><i class="fa-solid fa-house"></i>Accueil</button>
+  <button class="bnav-btn" onclick="goSection('devis')" id="btn-devis"><i class="fa-solid fa-file-invoice"></i>Devis</button>
+  <button class="bnav-btn" onclick="goSection('commandes')" id="btn-commandes"><i class="fa-solid fa-bag-shopping"></i>Commandes</button>
+  <button class="bnav-btn" onclick="goSection('livrables')" id="btn-livrables"><i class="fa-solid fa-box-open"></i>Livrables</button>
+  <button class="bnav-btn" onclick="goSection('profil')" id="btn-profil"><i class="fa-solid fa-user"></i>Profil</button>
+</nav>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+var API = 'https://fa-genesis-website.onrender.com';
+var _token = localStorage.getItem('fa_genesis_token') || localStorage.getItem('fa_genesis_session');
+var _user = null;
+var _loaded = {};
+var _currentSection = 'accueil';
+
+// ── Auth check ──────────────────────────────────────
+(function init(){
+  if(!_token){ goLogin(); return; }
+  fetch(API+'/api/me',{headers:{'Authorization':'Bearer '+_token}})
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(data){
+      if(!data || !data.user){ goLogin(); return; }
+      _user = data.user;
+      bootDashboard();
+    })
+    .catch(function(){ goLogin(); });
+})();
+
+function goLogin(){ window.location.replace('login.html'); }
+
+function bootDashboard(){
+  document.getElementById('splash-check').style.display = 'none';
+  document.getElementById('hdr').style.display = '';
+  document.getElementById('main').style.display = '';
+  document.getElementById('bnav').style.display = '';
+
+  var fn = ((_user.prenom||'')+' '+(_user.nom||'')).trim() || _user.email;
+  var ini = (fn[0]||'C').toUpperCase();
+  document.getElementById('hdr-avatar').textContent = ini;
+  document.getElementById('welcome-name').textContent = 'Bonjour, '+fn+' 👋';
+  document.getElementById('welcome-sub').textContent = 'Bienvenue dans votre espace client GENESIS';
+  loadAccueil();
+  loadProfil();
+}
+
+// ── Navigation ──────────────────────────────────────
+function goSection(name){
+  document.querySelectorAll('.section').forEach(function(el){ el.classList.remove('on'); });
+  document.querySelectorAll('.bnav-btn').forEach(function(el){ el.classList.remove('on'); });
+  var sec = document.getElementById('sec-'+name);
+  var btn = document.getElementById('btn-'+name);
+  if(sec) sec.classList.add('on');
+  if(btn) btn.classList.add('on');
+  document.getElementById('main').scrollTop = 0;
+  _currentSection = name;
+  if(!_loaded[name]){
+    _loaded[name] = true;
+    if(name==='devis') loadDevis();
+    if(name==='commandes') loadCommandes();
+    if(name==='livrables') loadLivrables();
+  }
+}
+
+// ── API fetch ───────────────────────────────────────
+function apiFetch(path){ return fetch(API+path,{headers:{'Authorization':'Bearer '+_token}}).then(function(r){ return r.json(); }); }
+
+// ── Format date ─────────────────────────────────────
+function fmt(d){
+  if(!d) return '—';
+  try{ return new Date(d).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'}); }catch(e){ return d; }
+}
+
+// ── Toast ───────────────────────────────────────────
+function showToast(msg){
+  var t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('on');
+  setTimeout(function(){ t.classList.remove('on'); }, 2200);
+}
+
+// ── Accueil ─────────────────────────────────────────
+function loadAccueil(){
+  var el = document.getElementById('home-activity');
+  apiFetch('/api/orders').then(function(data){
+    var orders = Array.isArray(data) ? data : (data&&data.orders)||[];
+    document.getElementById('stat-commandes').textContent = orders.length;
+    var encours = orders.filter(function(o){ return o.status==='in_progress'||o.status==='active'||o.status==='pending'; });
+    document.getElementById('stat-encours').textContent = encours.length;
+    if(orders.length===0){ el.innerHTML = '<div class="empty"><i class="fa-solid fa-bolt"></i><p>Aucune activité récente</p></div>'; }
+    else{ el.innerHTML = orders.slice(0,3).map(commandeCard).join(''); }
+  }).catch(function(){ el.innerHTML = '<div class="empty"><i class="fa-solid fa-wifi-slash"></i><p>Impossible de charger l\'activité</p></div>'; });
+  apiFetch('/api/devis').then(function(data){
+    var devis = Array.isArray(data) ? data : (data&&data.devis)||[];
+    document.getElementById('stat-devis').textContent = devis.length;
+  }).catch(function(){ document.getElementById('stat-devis').textContent = '—'; });
+  apiFetch('/api/livrables').then(function(data){
+    var livs = Array.isArray(data) ? data : (data&&data.livrables)||[];
+    document.getElementById('stat-livrables').textContent = livs.length;
+  }).catch(function(){ document.getElementById('stat-livrables').textContent = '—'; });
+}
+
+// ── Devis ───────────────────────────────────────────
+function loadDevis(){
+  var el = document.getElementById('devis-list');
+  apiFetch('/api/devis').then(function(data){
+    var devis = Array.isArray(data) ? data : (data&&data.devis)||[];
+    if(devis.length===0){ el.innerHTML = '<div class="empty"><i class="fa-solid fa-file-invoice"></i><p>Aucun devis envoyé pour le moment</p></div>'; return; }
+    el.innerHTML = devis.map(function(d){
+      var statusMap = {pending:'En attente',sent:'Envoyé',accepted:'Accepté',refused:'Refusé',expired:'Expiré'};
+      var pillMap = {pending:'yellow',sent:'blue',accepted:'green',refused:'red',expired:'grey'};
+      var st = d.status||'pending';
+      return '<div class="card"><div class="card-row">'
+        +'<div class="card-icon" style="background:rgba(255,215,0,.08)"><i class="fa-solid fa-file-invoice" style="color:var(--gold)"></i></div>'
+        +'<div style="flex:1;min-width:0">'
+        +'<div class="card-title">'+esc(d.service||d.product_name||'Demande de devis')+'</div>'
+        +'<div class="card-sub">'+(d.partner_name?'Prestataire : '+esc(d.partner_name):esc(d.description||''))+'</div>'
+        +'<div style="margin-top:5px;display:flex;align-items:center;justify-content:space-between">'
+        +'<span class="pill pill-'+pillMap[st]+'">'+statusMap[st]+'</span>'
+        +'<span class="card-meta">'+fmt(d.created_at)+'</span>'
+        +'</div></div></div></div>';
+    }).join('');
+  }).catch(function(){ el.innerHTML = '<div class="empty"><i class="fa-solid fa-wifi-slash"></i><p>Erreur de chargement</p></div>'; });
+}
+
+// ── Commandes ───────────────────────────────────────
+function loadCommandes(){
+  var el = document.getElementById('commandes-list');
+  apiFetch('/api/orders').then(function(data){
+    var orders = Array.isArray(data) ? data : (data&&data.orders)||[];
+    if(orders.length===0){ el.innerHTML = '<div class="empty"><i class="fa-solid fa-bag-shopping"></i><p>Aucune commande pour le moment</p></div>'; return; }
+    el.innerHTML = orders.map(commandeCard).join('');
+  }).catch(function(){ el.innerHTML = '<div class="empty"><i class="fa-solid fa-wifi-slash"></i><p>Erreur de chargement</p></div>'; });
+}
+
+function commandeCard(o){
+  var steps = ['Confirmée','En cours','Livraison','Terminée'];
+  var stepIndex = {pending:0,confirmed:0,in_progress:1,active:1,delivery:2,delivered:2,completed:3,done:3};
+  var curStep = stepIndex[o.status] !== undefined ? stepIndex[o.status] : 0;
+  var statusPill = {pending:'yellow',confirmed:'blue',in_progress:'blue',active:'blue',delivery:'purple',delivered:'purple',completed:'green',done:'green'};
+  var statusLabel = {pending:'Confirmée',confirmed:'Confirmée',in_progress:'En cours',active:'En cours',delivery:'Livraison',delivered:'Livraison',completed:'Terminée',done:'Terminée'};
+  var st = o.status||'pending';
+  var progressHtml = '<div class="status-bar">'+steps.map(function(s,i){
+    var cls = i < curStep ? 'done' : (i === curStep ? 'current' : '');
+    return '<div class="status-step '+cls+'">'+s+'</div>';
+  }).join('')+'</div>';
+  return '<div class="card">'
+    +'<div class="card-row">'
+    +'<div class="card-icon" style="background:rgba(96,165,250,.08)"><i class="fa-solid fa-bag-shopping" style="color:#60a5fa"></i></div>'
+    +'<div style="flex:1;min-width:0">'
+    +'<div class="card-title">'+esc(o.product_name||o.service||'Commande')+'</div>'
+    +'<div class="card-sub">'+(o.partner_name?esc(o.partner_name)+' · ':'')+(o.amount?parseFloat(o.amount).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g,' ')+'€':'')+'</div>'
+    +'<div style="margin-top:5px;display:flex;align-items:center;justify-content:space-between">'
+    +'<span class="pill pill-'+(statusPill[st]||'grey')+'">'+(statusLabel[st]||'En cours')+'</span>'
+    +'<span class="card-meta">'+fmt(o.created_at)+'</span>'
+    +'</div></div></div>'
+    +progressHtml
+    +'</div>';
+}
+
+// ── Livrables ────────────────────────────────────────
+function loadLivrables(){
+  var el = document.getElementById('livrables-list');
+  apiFetch('/api/livrables').then(function(data){
+    var livs = Array.isArray(data) ? data : (data&&data.livrables)||[];
+    if(livs.length===0){ el.innerHTML = '<div class="empty"><i class="fa-solid fa-box-open"></i><p>Aucun livrable pour le moment</p></div>'; return; }
+    el.innerHTML = livs.map(function(l){
+      var signed = l.status==='signed';
+      var iconColor = signed ? '#22c55e' : 'var(--gold)';
+      var iconBg = signed ? 'rgba(34,197,94,.08)' : 'rgba(255,215,0,.08)';
+      return '<div class="card"><div class="card-row">'
+        +'<div class="card-icon" style="background:'+iconBg+'"><i class="fa-solid fa-box-open" style="color:'+iconColor+'"></i></div>'
+        +'<div style="flex:1;min-width:0">'
+        +'<div class="card-title">'+esc(l.product_name||l.service||'Livrable')+'</div>'
+        +'<div class="card-sub">'+(l.partner_name?esc(l.partner_name)+' · ':'')+'Livré le '+fmt(l.delivered_at||l.created_at)+'</div>'
+        +'<div style="margin-top:5px">'
+        +'<span class="pill '+(signed?'pill-green':'pill-yellow')+'">'+(signed?'Signé':'En attente de signature')+'</span>'
+        +'</div></div></div>'
+        +(l.contract_id?'<button class="btn-gold" style="margin-top:10px" onclick="downloadContract(\''+l.contract_id+'\')"><i class="fa-solid fa-download"></i>Télécharger le contrat</button>':'')
+        +'</div>';
+    }).join('');
+  }).catch(function(){ el.innerHTML = '<div class="empty"><i class="fa-solid fa-wifi-slash"></i><p>Erreur de chargement</p></div>'; });
+}
+
+function downloadContract(id){ window.open(API+'/api/contracts/'+id+'/pdf','_blank'); }
+
+// ── Profil ───────────────────────────────────────────
+function loadProfil(){
+  if(!_user) return;
+  var fn = ((_user.prenom||'')+' '+(_user.nom||'')).trim()||_user.email;
+  var ini = (fn[0]||'C').toUpperCase();
+  document.getElementById('pf-avatar').textContent = ini;
+  document.getElementById('pf-name').textContent = fn;
+  var rows = [
+    {icon:'fa-envelope',label:'Email',val:_user.email||'—'},
+    {icon:'fa-phone',label:'Téléphone',val:_user.phone||'—'},
+    {icon:'fa-location-dot',label:'Pays',val:_user.country||'—'},
+    {icon:'fa-calendar',label:'Membre depuis',val:fmt(_user.created_at)},
+  ];
+  if(_user.offre){ rows.splice(3,0,{icon:'fa-star',label:'Offre',val:_user.offre}); }
+  document.getElementById('pf-info').innerHTML = rows.map(function(r){
+    return '<div class="pf-row"><i class="fa-solid '+r.icon+'"></i><div><span class="label">'+r.label+'</span><span class="val">'+esc(String(r.val))+'</span></div></div>';
+  }).join('');
+}
+
+// ── Logout ───────────────────────────────────────────
+function doLogout(){
+  if(!confirm('Se déconnecter ?')) return;
+  try{ localStorage.removeItem('fa_genesis_token'); }catch(e){}
+  try{ localStorage.removeItem('fa_genesis_session'); }catch(e){}
+  try{ localStorage.removeItem('fa_genesis_user'); }catch(e){}
+  try{ fetch(API+'/api/auth/logout',{method:'POST',headers:{'Authorization':'Bearer '+_token}}).catch(function(){}); }catch(e){}
+  window.location.replace('login.html');
+}
+
+// ── Utils ─────────────────────────────────────────────
+function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+</script>
 </body>
 </html>

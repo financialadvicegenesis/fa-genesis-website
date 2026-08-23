@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="fr" class="scroll-smooth">
 <head>
     <meta charset="UTF-8">
@@ -367,7 +367,7 @@
                     return;
                 }
                 // Sinon redirection vers le dashboard
-                window.location.href = 'app.html';
+                window.location.href = 'dashboard.html';
             } else if (result.requiresOtp) {
                 // Nouvel appareil – passer à l'étape OTP
                 _otpPendingToken = result.pendingToken;
@@ -445,7 +445,7 @@
                     await handleQuoteAcceptAfterAuth(quoteTokenParam);
                     return;
                 }
-                window.location.href = 'app.html';
+                window.location.href = 'dashboard.html';
             } else {
                 errorMessage.textContent = result.message || 'Code incorrect. Veuillez réessayer.';
                 errorMessage.classList.add('show');
@@ -544,7 +544,7 @@
                     setTimeout(async function() {
                         var loginResult = await login(email, password);
                         if (loginResult.success) {
-                            window.location.href = 'app.html';
+                            window.location.href = 'dashboard.html';
                         } else {
                             msgDiv.textContent = 'Compte réactivé. Veuillez vous reconnecter.';
                             btn.disabled = false;
@@ -645,7 +645,7 @@
                 console.error('[LOGIN] CW devis after auth:', err);
                 var errorMsg = document.getElementById('errorMessage');
                 if (errorMsg) { errorMsg.textContent = 'Erreur chargement du devis. Redirection vers votre espace...'; errorMsg.classList.add('show'); }
-                setTimeout(function() { window.location.href = 'app.html#devis'; }, 2500);
+                setTimeout(function() { window.location.href = 'espace-client.html'; }, 2500);
             }
         }
 
@@ -654,10 +654,10 @@
             if (quoteTokenParam) {
                 handleQuoteAcceptAfterAuth(quoteTokenParam);
             } else if (cwDevisId) {
-                // Déjà connecté : aller directement aux paiements, le devis y apparaît
-                window.location.href = 'app.html#paiements';
+                // Déjà connecté : aller directement à l'espace client
+                window.location.href = 'espace-client.html';
             } else {
-                window.location.href = 'app.html';
+                window.location.href = 'dashboard.html';
             }
         }
 
@@ -709,3 +709,4 @@
     <script src="pwa-init.js"></script>
 </body>
 </html>
+
