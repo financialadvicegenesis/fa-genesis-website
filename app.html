@@ -8460,10 +8460,8 @@ function _showFloatingConfirm(msg, onOk){
 
 function deconnexion(){
   _showFloatingConfirm('Se déconnecter de votre compte ?', function(){
-    localStorage.removeItem('fa_genesis_session');
-    localStorage.removeItem('fa_genesis_token');
-    localStorage.removeItem('fa_push_subscribed');
-    window.location.reload();
+    try{ localStorage.removeItem('fa_push_subscribed'); }catch(e){}
+    _showRoleChoiceAfterDelete();
   });
 }
 
@@ -12475,15 +12473,8 @@ function _ptnrSignPartnershipContract() {
 }
 
 function _ptnrLogout(){
-  try{sessionStorage.removeItem('fa_ptnr_screen');sessionStorage.removeItem('fa_nav_tab');}catch(e){}
-  if(_ptnrRefreshTimer){ clearInterval(_ptnrRefreshTimer); _ptnrRefreshTimer = null; }
   if(_ptnrToken) _ptnrFetch('/api/partner/auth/logout','POST',{}).catch(function(){});
-  _ptnrClearSession();
-  localStorage.removeItem('fa_genesis_partner_profile');
-  localStorage.removeItem('fa_genesis_partner_profile_data');
-  localStorage.removeItem('fa_genesis_partner_data');
-  _ptnrShowScreen('login');
-  nav('home');
+  _showRoleChoiceAfterDelete();
 }
 
 // ── Polling statut prestataire (compte en attente de validation) ──────────────
