@@ -105,6 +105,17 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:-apple-
 .tx-amount{margin-left:auto;font-size:14px;font-weight:900;padding-left:8px}
 .tx-amount.credit{color:#22c55e}
 .tx-amount.debit{color:#ef4444}
+/* Profil menu */
+.pf-group-label{font-size:10px;font-weight:900;color:var(--gold);letter-spacing:1px;text-transform:uppercase;padding:14px 4px 6px;display:block}
+.pf-menu-group{background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:4px}
+.pf-menu-row{display:flex;align-items:center;gap:14px;padding:14px 16px;cursor:pointer;border-bottom:1px solid var(--border);transition:background .15s}
+.pf-menu-row:last-child{border-bottom:none}
+.pf-menu-row:hover{background:rgba(255,215,0,.04)}
+.pf-menu-row>i:first-child{color:var(--gold);width:18px;text-align:center;font-size:15px;flex-shrink:0}
+.pf-menu-row>span{flex:1;font-size:14px;color:var(--text);font-weight:500}
+.pf-chevron{color:var(--muted2);font-size:11px}
+.pf-danger>i:first-child{color:#ef4444}
+.pf-danger>span{color:#ef4444}
 /* Toast */
 #toast{position:fixed;bottom:calc(var(--nav) + 16px);left:50%;transform:translateX(-50%) translateY(60px);background:var(--gold);color:#000;font-size:12px;font-weight:900;padding:10px 20px;border-radius:20px;z-index:9999;opacity:0;transition:opacity .25s,transform .25s;pointer-events:none;white-space:nowrap}
 #toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
@@ -188,16 +199,60 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:-apple-
 
   <!-- PROFIL -->
   <div class="section" id="sec-profil">
-    <div class="card" style="text-align:center;padding:24px 16px">
+
+    <!-- Carte identité -->
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px 16px 16px;margin-bottom:12px;text-align:center">
       <div class="pf-avatar" id="pf-avatar">P</div>
+      <div id="pf-status-label" style="display:inline-block;font-size:9px;font-weight:900;letter-spacing:1px;color:#aaa;text-transform:uppercase;margin-bottom:6px">Nouveau prestataire</div>
       <div class="pf-name" id="pf-name">—</div>
-      <div class="pf-type" id="pf-type">—</div>
-      <div style="margin-top:8px" id="pf-badge-row"></div>
+      <div class="pf-type" id="pf-type" style="margin-top:3px;margin-bottom:6px">—</div>
+      <div style="font-size:12px;color:var(--muted)" id="pf-email">—</div>
     </div>
-    <div class="card" id="pf-info"></div>
-    <button class="btn-red" onclick="doLogout()"><i class="fa-solid fa-arrow-right-from-bracket"></i>Se déconnecter</button>
-    <div style="height:8px"></div>
-    <p style="font-size:10px;color:var(--muted);text-align:center">FA GENESIS — Espace Prestataire</p>
+
+    <!-- MON ACTIVITÉ -->
+    <div class="pf-group-label">MON ACTIVITÉ</div>
+    <div class="pf-menu-group">
+      <div class="pf-menu-row" onclick="goSection('missions')"><i class="fa-solid fa-briefcase"></i><span>Mes missions</span><i class="fa-solid fa-chevron-right pf-chevron"></i></div>
+      <div class="pf-menu-row" onclick="goSection('messages')"><i class="fa-solid fa-comment-dots"></i><span>Messages clients</span><i class="fa-solid fa-chevron-right pf-chevron"></i></div>
+      <div class="pf-menu-row" onclick="goSection('portefeuille')"><i class="fa-solid fa-shield-halved"></i><span>Portefeuille GENESIS SAFE™</span><i class="fa-solid fa-chevron-right pf-chevron"></i></div>
+      <div class="pf-menu-row" onclick="comingSoon('Mes devis')"><i class="fa-solid fa-file-invoice"></i><span>Mes devis</span><i class="fa-solid fa-chevron-right pf-chevron"></i></div>
+      <div class="pf-menu-row" onclick="comingSoon('Mes séances')"><i class="fa-solid fa-calendar-check"></i><span>Mes séances</span><i class="fa-solid fa-chevron-right pf-chevron"></i></div>
+      <div class="pf-menu-row" onclick="comingSoon('Mes badges')"><i class="fa-solid fa-medal"></i><span>Mes badges</span><i class="fa-solid fa-chevron-right pf-chevron"></i></div>
+      <div class="pf-menu-row" onclick="comingSoon('Mon palmarès')"><i class="fa-solid fa-trophy"></i><span>Mon palmarès</span><i class="fa-solid fa-chevron-right pf-chevron"></i></div>
+      <div class="pf-menu-row" onclick="comingSoon('Mes promotions')"><i class="fa-solid fa-tag"></i><span>Mes promotions</span><i class="fa-solid fa-chevron-right pf-chevron"></i></div>
+      <div class="pf-menu-row" onclick="comingSoon('Mon portfolio')"><i class="fa-solid fa-images"></i><span>Mon portfolio</span><i class="fa-solid fa-chevron-right pf-chevron"></i></div>
+      <div class="pf-menu-row" onclick="comingSoon('Mes livrables')"><i class="fa-solid fa-box-open"></i><span>Mes livrables</span><i class="fa-solid fa-chevron-right pf-chevron"></i></div>
+    </div>
+
+    <!-- MON PROFIL -->
+    <div class="pf-group-label">MON PROFIL</div>
+    <div class="pf-menu-group">
+      <div class="pf-menu-row" onclick="comingSoon('Paramètres du profil')"><i class="fa-solid fa-sliders"></i><span>Paramètres du profil</span><i class="fa-solid fa-chevron-right pf-chevron"></i></div>
+      <div class="pf-menu-row" onclick="comingSoon('Temps de réponse')"><i class="fa-regular fa-clock"></i><span>Temps de réponse</span><i class="fa-solid fa-chevron-right pf-chevron"></i></div>
+    </div>
+
+    <!-- MON RÉSEAU -->
+    <div class="pf-group-label">MON RÉSEAU</div>
+    <div class="pf-menu-group">
+      <div class="pf-menu-row" onclick="window.location.href='index.html'"><i class="fa-solid fa-compass"></i><span>Explorer GENESIS</span><i class="fa-solid fa-chevron-right pf-chevron"></i></div>
+      <div class="pf-menu-row pf-danger" onclick="confirmDelete()"><i class="fa-solid fa-trash"></i><span>Supprimer mon compte</span><i class="fa-solid fa-chevron-right pf-chevron"></i></div>
+    </div>
+
+    <!-- Déconnexion -->
+    <button class="btn-red" onclick="doLogout()" style="margin-top:4px"><i class="fa-solid fa-arrow-right-from-bracket"></i>Déconnexion</button>
+
+    <!-- Parrainage -->
+    <div style="background:linear-gradient(135deg,#1a1200,#0d0d0d);border:1px solid rgba(255,215,0,.2);border-radius:14px;padding:18px 16px;margin-top:12px">
+      <div style="font-size:10px;font-weight:900;color:var(--gold);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px"><i class="fa-solid fa-gift" style="margin-right:6px"></i>Mon code de parrainage</div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <div id="pf-referral-code" style="flex:1;background:#0a0a0a;border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-size:15px;font-weight:900;color:var(--gold);letter-spacing:2px;text-align:center">—</div>
+        <button onclick="copyReferral()" style="background:var(--gold);color:#000;font-weight:900;font-size:12px;border:none;border-radius:8px;padding:10px 14px;cursor:pointer;flex-shrink:0">Copier</button>
+      </div>
+      <p style="font-size:11px;color:#999;margin-bottom:10px;line-height:1.5">Invitez vos collègues prestataires à rejoindre GENESIS</p>
+      <button onclick="shareReferral()" style="background:transparent;color:var(--gold);font-weight:700;font-size:13px;border:1.5px solid rgba(255,215,0,.3);border-radius:10px;padding:11px 20px;cursor:pointer;width:100%;display:flex;align-items:center;justify-content:center;gap:8px"><i class="fa-solid fa-user-plus"></i>Inviter un ami</button>
+    </div>
+
+    <p style="font-size:10px;color:var(--muted2);text-align:center;margin-top:14px;padding-bottom:4px">Version 1.1</p>
   </div>
 
 </main>
@@ -390,21 +445,55 @@ function loadPortefeuille(){
 function loadProfil(){
   if(!_partner) return;
   var fn = ((_partner.prenom||'')+' '+(_partner.nom||'')).trim()||_partner.email;
-  document.getElementById('pf-avatar').textContent = (fn[0]||'P').toUpperCase();
+  var ini = (fn[0]||'P').toUpperCase();
+  document.getElementById('pf-avatar').textContent = ini;
   document.getElementById('pf-name').textContent = fn;
+  document.getElementById('pf-email').textContent = _partner.email||'';
   var typeMap = {photographer:'Photographe',videographer:'Vidéaste',graphic_designer:'Graphiste',developer:'Développeur',marketer:'Marketeur',coach:'Coach',consultant:'Consultant',event_planner:'Organisateur d\'événements',writer:'Rédacteur',translator:'Traducteur',other:'Prestataire'};
   document.getElementById('pf-type').textContent = typeMap[_partner.partner_type]||_partner.partner_type||'Prestataire';
   var badge = _partner.badge||'Bronze';
-  var badgeColors = {Bronze:'#cd7f32',Argent:'#aaa',Or:'#FFD700',Elite:'#c0e0ff'};
-  document.getElementById('pf-badge-row').innerHTML = '<span class="pill" style="background:rgba(255,215,0,.1);border:1px solid rgba(255,215,0,.3);color:'+(badgeColors[badge]||'#FFD700')+'"><i class="fa-solid fa-medal" style="margin-right:4px"></i>'+badge+'</span>';
-  document.getElementById('pf-info').innerHTML = [
-    {icon:'fa-envelope',lbl:'Email',val:_partner.email||'—'},
-    {icon:'fa-phone',lbl:'Téléphone',val:_partner.phone||'—'},
-    {icon:'fa-location-dot',lbl:'Pays',val:_partner.country||'—'},
-    {icon:'fa-calendar',lbl:'Membre depuis',val:fmt(_partner.created_at)},
-  ].map(function(r){
-    return '<div class="pf-row"><i class="fa-solid '+r.icon+'"></i><div><span class="lbl">'+r.lbl+'</span><span class="val">'+esc(String(r.val))+'</span></div></div>';
-  }).join('');
+  var statusLabels = {Bronze:'Nouveau prestataire',Argent:'Prestataire confirmé',Or:'Prestataire expert',Elite:'Prestataire élite'};
+  var el = document.getElementById('pf-status-label');
+  if(el) el.textContent = statusLabels[badge]||('Badge '+badge);
+  // Code de parrainage
+  var code = _partner.referral_code || _partner.parrainage_code || ('PTR-'+(_partner.id||'').toString().toUpperCase().substring(0,8));
+  var codeEl = document.getElementById('pf-referral-code');
+  if(codeEl) codeEl.textContent = code;
+}
+
+function comingSoon(label){
+  showToast(label+' — Disponible dans l\'app GENESIS');
+}
+
+function copyReferral(){
+  var code = document.getElementById('pf-referral-code');
+  if(!code) return;
+  try{
+    navigator.clipboard.writeText(code.textContent).then(function(){ showToast('Code copié ✓'); }).catch(function(){ _fallbackCopy(code.textContent); });
+  }catch(e){ _fallbackCopy(code.textContent); }
+}
+
+function _fallbackCopy(text){
+  var ta = document.createElement('textarea');
+  ta.value = text; ta.style.position='fixed'; ta.style.opacity='0';
+  document.body.appendChild(ta); ta.select();
+  try{ document.execCommand('copy'); showToast('Code copié ✓'); }catch(e){ showToast('Copiez : '+text); }
+  document.body.removeChild(ta);
+}
+
+function shareReferral(){
+  var code = (document.getElementById('pf-referral-code')||{}).textContent||'';
+  var msg = 'Rejoins FA GENESIS, la plateforme qui connecte prestataires et clients professionnels ! Utilise mon code '+code+' à l\'inscription → https://fagenesis.com';
+  if(navigator.share){ navigator.share({title:'FA GENESIS',text:msg}).catch(function(){}); }
+  else{ copyReferral(); showToast('Lien copié — partagez-le !'); }
+}
+
+function confirmDelete(){
+  if(!confirm('Supprimer votre compte ? Cette action est irréversible.')) return;
+  if(!confirm('Confirmer la suppression définitive ?')) return;
+  fetch(API+'/api/partner/account',{method:'DELETE',headers:{'Authorization':'Bearer '+_token}})
+    .then(function(){ doLogout(); })
+    .catch(function(){ showToast('Erreur — contactez le support'); });
 }
 
 // ── Logout ───────────────────────────────────────────
