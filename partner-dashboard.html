@@ -456,7 +456,7 @@ function loadProfil(){
   var el = document.getElementById('pf-status-label');
   if(el) el.textContent = statusLabels[badge]||('Badge '+badge);
   // Code de parrainage
-  var code = _partner.referral_code || _partner.parrainage_code || ('PTR-'+(_partner.id||'').toString().toUpperCase().substring(0,8));
+  var code = _partner.referral_code || _partner.parrainage_code || ('PTR-'+(_partner.id||'').toString().replace(/^PTR-/i,'').toUpperCase().substring(0,8));
   var codeEl = document.getElementById('pf-referral-code');
   if(codeEl) codeEl.textContent = code;
 }
