@@ -297,7 +297,7 @@
             id: 'social_media',
             category: 'contact',
             keywords: ['instagram', 'linkedin', 'tiktok', 'reseaux sociaux', 'reseau', 'social', 'insta'],
-            response: 'Retrouvez-nous sur nos r\u00e9seaux sociaux :\n\n\u2022 Instagram : @financial_advice_genesis\n\u2022 LinkedIn : Financial Advice Genesis\n\u2022 TikTok : @financial.advice.genesis\n\nN\u2019h\u00e9sitez pas \u00e0 nous envoyer un message directement !',
+            response: 'Retrouvez-nous sur nos r\u00e9seaux sociaux :\n\n\u2022 Instagram : @fagenesis_\n\u2022 LinkedIn : Financial Advice Genesis\n\u2022 TikTok : @financial.advice.genesis\n\nN\u2019h\u00e9sitez pas \u00e0 nous envoyer un message directement !',
             quickReplies: [],
             link: null
         },
