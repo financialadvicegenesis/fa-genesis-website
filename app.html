@@ -3377,6 +3377,7 @@ function _showRoleChoiceAfterDelete(){
   try{
     if(typeof _ptnrClearSession==='function') _ptnrClearSession();
     if(typeof _ptnrRefreshTimer!=='undefined' && _ptnrRefreshTimer){ clearInterval(_ptnrRefreshTimer); _ptnrRefreshTimer=null; }
+    if(typeof _ptnrStatusPollTimer!=='undefined' && _ptnrStatusPollTimer){ clearInterval(_ptnrStatusPollTimer); _ptnrStatusPollTimer=null; }
     localStorage.removeItem('fa_genesis_partner_profile');
     localStorage.removeItem('fa_genesis_partner_profile_data');
     localStorage.removeItem('fa_genesis_partner_data');
@@ -3385,11 +3386,31 @@ function _showRoleChoiceAfterDelete(){
   }catch(e){}
   // Réinitialiser l'état global
   try{ USER = null; GUEST = false; }catch(e){}
-  // Masquer l'app, masquer nav partenaire, afficher le choix de rôle
+  // Fermer tous les overlays fixes qui pourraient être ouverts
+  try{
+    var _ids = ['ptnr-contract-overlay','ptnr-drawer-overlay','notif-overlay','jeremie-overlay',
+                'tuto-overlay','reg-overlay','login-overlay','cart-overlay','pay-overlay',
+                'dispatch-claim-overlay','avail-overlay','msg-compose-overlay','dispute-overlay',
+                'doc-viewer-overlay','jeremie-overlay','cw-booking-overlay','pb-overlay'];
+    _ids.forEach(function(id){
+      var el = document.getElementById(id);
+      if(el){ el.style.display='none'; el.className=el.className.replace(/\b(on|open)\b/g,'').trim(); }
+    });
+    // Fermer aussi les overlays de détail de service (classe dynamique)
+    document.querySelectorAll('.svc-detail-overlay').forEach(function(el){ el.style.display='none'; });
+  }catch(e){}
+  // Masquer l'app, le welcome, masquer nav partenaire
   var appEl = document.getElementById('app');
   if(appEl) appEl.style.display = 'none';
+  var welEl = document.getElementById('welcome');
+  if(welEl) welEl.style.display = 'none';
   document.querySelectorAll('.ptnr-nav').forEach(function(b){ b.style.display='none'; });
   document.querySelectorAll('.client-nav').forEach(function(b){ b.style.display=''; });
+  // Restaurer le fond vidéo de la page d'accueil
+  var bvEl = document.getElementById('bgVideo');
+  var boEl = document.getElementById('bgOverlay');
+  if(bvEl){ bvEl.style.display=''; try{ bvEl.play(); }catch(e){} }
+  if(boEl) boEl.style.display='';
   showRoleChoice();
 }
 function showWelcome(){
@@ -12370,12 +12391,16 @@ function _ptnrShowPartnershipContract() {
   var overlay = document.getElementById('ptnr-contract-overlay');
   if (!overlay) { _ptnrShowDash(); _ptnrNav('home'); return; }
   overlay.style.display = 'block';
-  // Pre-fill name from session
+  // Reset du formulaire
   var nameEl = document.getElementById('ptnr-contract-name');
-  if (nameEl && _ptnrSession) {
-    nameEl.value = ((_ptnrSession.prenom || '') + ' ' + (_ptnrSession.nom || '')).trim();
-  }
-  // Init canvas
+  if (nameEl && _ptnrSession) nameEl.value = ((_ptnrSession.prenom || '') + ' ' + (_ptnrSession.nom || '')).trim();
+  var checkEl = document.getElementById('ptnr-contract-accept');
+  if (checkEl) checkEl.checked = false;
+  var errEl = document.getElementById('ptnr-contract-err');
+  if (errEl) errEl.style.display = 'none';
+  var btn = document.getElementById('ptnr-contract-sign-btn');
+  if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-signature" style="margin-right:8px;"></i>SIGNER LE CONTRAT'; }
+  // Init canvas (clone = supprime anciens listeners)
   setTimeout(_ptnrInitContractCanvas, 150);
   // Fetch contract HTML
   var body = document.getElementById('ptnr-contract-body');
@@ -12389,6 +12414,10 @@ function _ptnrShowPartnershipContract() {
 function _ptnrInitContractCanvas() {
   var canvas = document.getElementById('ptnr-contract-canvas');
   if (!canvas) return;
+  // Remplacer le canvas par un clone vierge pour supprimer les anciens listeners
+  var fresh = canvas.cloneNode(false);
+  canvas.parentNode.replaceChild(fresh, canvas);
+  canvas = fresh;
   var rect = canvas.getBoundingClientRect();
   // Fallback: if bounding rect is 0 (not yet laid out), use parent width
   var w = rect.width || canvas.parentElement.offsetWidth || 300;
