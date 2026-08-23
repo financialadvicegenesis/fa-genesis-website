@@ -595,7 +595,7 @@
             keywords: ['statut commande', 'ou est ma commande', 'quand commence', 'etat commande', 'suivi commande', 'ma commande', 'mon accompagnement statut', 'avancement', 'progression accompagnement'],
             response: 'Suivez votre accompagnement depuis votre espace client :\n\n\u2022 \ud83d\udcca Dashboard \u2014 vue d\u2019ensemble et statut de paiement\n\u2022 \ud83d\udcc5 S\u00e9ances \u2014 dates et planning de vos rendez-vous\n\u2022 \ud83d\udcc1 Livrables \u2014 vos fichiers disponibles au t\u00e9l\u00e9chargement\n\nConnectez-vous avec l\u2019email utilis\u00e9 lors de la commande.',
             quickReplies: ['Espace client', 'S\u00e9ances et planning'],
-            link: { url: 'dashboard.html', label: 'Mon espace client' }
+            link: { url: 'app.html', label: 'Mon espace client' }
         },
         {
             id: 'when_get_deliverables',

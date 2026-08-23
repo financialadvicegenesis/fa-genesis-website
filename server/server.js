@@ -2349,7 +2349,7 @@ function updateOrder(orderId, updates) {
                     if (_partner) {
                         notifyUser(_partner.email, 'partner', 'contract_sent', 'Contrat envoyé au client',
                             'Le contrat pour la commande ' + _order.id + ' a été envoyé à ' + (_clientName || _clientEmail) + '.',
-                            '/partner-dashboard.html#documents');
+                            '/app.html');
                     }
                     console.log('[CONTRACT] Contrat prestation auto-généré:', _cId);
                 } catch(_e) { console.error('[CONTRACT] Erreur auto-génération:', _e); }
@@ -4018,7 +4018,7 @@ app.post('/api/contracts/sign', function(req, res) {
                 notifyUser(_partner.email, 'partner', 'contract_signed',
                     'Contrat signé par un client',
                     _clientDisplayName + ' a signé le contrat pour : ' + b.serviceLabel + '. Téléchargez-le dans vos Documents.',
-                    '/partner-dashboard.html#documents'
+                    '/app.html'
                 );
                 emailService.sendContractSignedToPartnerEmail(
                     _partner.email,
@@ -4198,7 +4198,7 @@ async function _applyPaymentConfirmation(orderId, stage, transactionRef, paypalC
             : stage === 'installment_2' ? 'Le paiement de la tranche 2 a été reçu. Merci !'
             : 'Votre paiement complet a été confirmé. Merci !';
         const lbl = stage === 'deposit' ? 'acompte' : stage === 'installment_2' ? 'tranche 2' : stage === 'installment_3' ? 'tranche 3' : 'solde';
-        notifyUser(updatedOrder.client_info.email, 'client', 'paiement', 'Paiement confirmé ✅', msg, '/espace-client.html');
+        notifyUser(updatedOrder.client_info.email, 'client', 'paiement', 'Paiement confirmé ✅', msg, '/app.html');
         notifyUser(null, 'admin', 'paiement-admin', 'Paiement reçu', (updatedOrder.client_info.first_name || '') + ' — ' + (updatedOrder.product_name || '') + ' — ' + lbl, '/app.html#open-admin');
     }
 
@@ -5260,7 +5260,7 @@ app.post('/api/payments/sumup/webhook', async (req, res) => {
                     : stage === 'installment_2' ? 'Le paiement de la tranche 2 (livrable intermédiaire) a été reçu. Merci !'
                     : 'Votre paiement complet a été confirmé. Merci !';
                 var pushStageLabel = stage === 'deposit' ? 'acompte' : stage === 'installment_2' ? 'tranche 2' : stage === 'installment_3' ? 'tranche 3' : 'solde';
-                notifyUser(pushClientEmail, 'client', 'paiement', 'Paiement confirmé ✅', pushMsgClient, '/espace-client.html');
+                notifyUser(pushClientEmail, 'client', 'paiement', 'Paiement confirmé ✅', pushMsgClient, '/app.html');
                 notifyUser(null, 'admin', 'paiement-admin', 'Paiement reçu', (updatedOrder.client_info.first_name || '') + ' — ' + (updatedOrder.product_name || '') + ' — ' + pushStageLabel, '/app.html#open-admin');
             }
 
@@ -6617,7 +6617,7 @@ function finalizeSchedule(order) {
                 var confirmOrderName = updatedOrder.product_name || updatedOrder.product_id || 'votre commande';
                 emailService.sendScheduleConfirmedToClient(updatedOrder.client_info.email, confirmClientName, updatedOrder.start_date, confirmOrderName);
                 var dateStr = updatedOrder.start_date ? new Date(updatedOrder.start_date).toLocaleDateString('fr-FR') : '';
-                notifyUser(updatedOrder.client_info.email, 'client', 'rdv', 'Rendez-vous confirmé 📅', confirmOrderName + (dateStr ? ' — ' + dateStr : '') + ' est confirmé !', '/espace-client.html');
+                notifyUser(updatedOrder.client_info.email, 'client', 'rdv', 'Rendez-vous confirmé 📅', confirmOrderName + (dateStr ? ' — ' + dateStr : '') + ' est confirmé !', '/app.html');
             }
         } catch (emailErr) {
             console.error('[SCHEDULE] Erreur email confirmation date client:', emailErr.message);
@@ -7646,7 +7646,7 @@ app.post('/api/admin/messages/:messageId/reply', async (req, res) => {
 
         console.log(`[CONTACT] Reponse envoyee avec succes au message ${msg.id} (${msg.email})`);
         // Push au client : réponse admin reçue
-        notifyUser(msg.email, 'client', 'reponse-admin', 'FA GENESIS vous a répondu', replyMessage.trim().substring(0, 100), '/espace-client.html');
+        notifyUser(msg.email, 'client', 'reponse-admin', 'FA GENESIS vous a répondu', replyMessage.trim().substring(0, 100), '/app.html');
 
         res.json({ success: true, message: 'Reponse envoyee avec succes' });
 
@@ -15626,7 +15626,7 @@ app.post('/api/contracts/service/generate', function(req, res) {
         notifyUser(partner.email, 'partner', 'contract_sent',
             'Contrat envoyé au client',
             'Le contrat pour la commande ' + order.id + ' a été envoyé à ' + (clientName || clientEmail) + '.',
-            '/partner-dashboard.html#documents');
+            '/app.html');
 
         console.log('[CONTRACT] Contrat prestation généré:', contractId, '→', clientEmail);
         res.json({ success: true, contract: newContract });
@@ -15707,7 +15707,7 @@ app.post('/api/contracts/:id/client-sign', function(req, res) {
         notifyUser(contract.partner_email, 'partner', 'contract_signed',
             'Contrat signé ✅',
             contract.client_name + ' a signé le contrat pour la mission ' + contract.order_id + '. Il est disponible dans vos Livrables. La prestation peut commencer.',
-            '/partner-dashboard.html#documents');
+            '/app.html');
 
         console.log('[CONTRACT] Client a signé le contrat:', contract.id, '→', user.email);
         res.json({ success: true, contract: contracts[idx] });
@@ -15745,7 +15745,7 @@ app.post('/api/contracts/:id/client-refuse', function(req, res) {
         notifyUser(contract.partner_email, 'partner', 'contract_refused',
             'Contrat refusé ❌',
             contract.client_name + ' a refusé le contrat pour la commande ' + contract.order_id + (reason ? ' — Motif : ' + reason : '') + '.',
-            '/partner-dashboard.html#documents');
+            '/app.html');
 
         console.log('[CONTRACT] Client a refusé le contrat:', contract.id);
         res.json({ success: true, contract: contracts[idx] });
@@ -18510,7 +18510,7 @@ app.put('/api/reservations/:id/status', function(req, res) {
         var clientEmailRes = reservations[idx].client_email;
         if (clientEmailRes) {
             var labelRes = newStatus === 'confirmed' ? 'confirmée ✅' : 'refusée ❌';
-            sendPushToUser(clientEmailRes, { title: 'Réservation ' + labelRes, body: (reservations[idx].product_name || 'Coworking') + ' — ' + labelRes, icon: '/assets/images/logo-favicon-192.png', badge: '/assets/images/logo-favicon-32.png', url: '/espace-client.html', tag: 'reservation' });
+            sendPushToUser(clientEmailRes, { title: 'Réservation ' + labelRes, body: (reservations[idx].product_name || 'Coworking') + ' — ' + labelRes, icon: '/assets/images/logo-favicon-192.png', badge: '/assets/images/logo-favicon-32.png', url: '/app.html', tag: 'reservation' });
         }
         res.json({ ok: true, reservation: reservations[idx] });
     } catch (e) {
@@ -18673,7 +18673,7 @@ app.post('/api/coworking/messages', function(req, res) {
                 if (orderForPush && orderForPush.client_info) resForPush = { client_email: orderForPush.client_info.email };
             }
             if (resForPush && resForPush.client_email) {
-                sendPushToUser(resForPush.client_email, { title: 'Nouveau message', body: 'COM VISA : ' + content.substring(0, 80), icon: '/assets/images/logo-favicon-192.png', badge: '/assets/images/logo-favicon-32.png', url: '/espace-client.html#messagerie', tag: 'message-cw' });
+                sendPushToUser(resForPush.client_email, { title: 'Nouveau message', body: 'COM VISA : ' + content.substring(0, 80), icon: '/assets/images/logo-favicon-192.png', badge: '/assets/images/logo-favicon-32.png', url: '/app.html', tag: 'message-cw' });
             }
         }
         res.json({ ok: true, message: msg });
@@ -20607,3 +20607,4 @@ app.use((req, res) => {
 });
 
 });
+

@@ -9,7 +9,7 @@ var STATIC_ASSETS = [
   '/offres.html',
   '/login.html',
   '/register.html',
-  '/espace-client.html',
+  '/app.html',
   '/contact.html',
   '/manifest.json',
   '/assets/images/logo-favicon-192.png',

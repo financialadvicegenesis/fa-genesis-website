@@ -1587,7 +1587,7 @@ function doLogin(role){
           if(res.data.user) localStorage.setItem('fa_genesis_session', JSON.stringify(res.data.user));
         }catch(e){}
       }
-      window.location.href = role === 'partner' ? 'partner-dashboard.html' : 'espace-client.html';
+      window.location.href = 'app.html';
     } else {
       var msg = (res.data&&(res.data.error||res.data.message))||'Email ou mot de passe incorrect.';
       if(errEl){errEl.textContent=msg;errEl.style.display='block';}

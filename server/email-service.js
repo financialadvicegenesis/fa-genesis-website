@@ -770,7 +770,7 @@ async function sendQuotePartnerNotification(quote, partner) {
                 Connectez-vous à votre espace partenaire pour soumettre votre proposition.
             </p>
             <div style="text-align: center; margin: 30px 0;">
-                <a href="${frontUrl}/partner-dashboard.html?section=quotes" style="display: inline-block; background: #FFD700; color: #000; padding: 14px 30px; text-decoration: none; font-weight: 900; font-size: 14px; border: 3px solid #000;">
+                <a href="${frontUrl}/app.html" style="display: inline-block; background: #FFD700; color: #000; padding: 14px 30px; text-decoration: none; font-weight: 900; font-size: 14px; border: 3px solid #000;">
                     VOIR LE DEVIS
                 </a>
             </div>
@@ -1453,7 +1453,7 @@ async function sendScheduleConfirmedToClient(clientEmail, clientName, confirmedD
         + '<td style="padding:8px 0;color:#000;font-weight:900;text-align:right;">' + escapeHtml(dateStr) + '</td></tr>'
         + '</table></div>'
         + '<div style="text-align:center;margin:25px 0;">'
-        + '<a href="' + frontUrl + '/dashboard.html" target="_blank" '
+        + '<a href="' + frontUrl + '/app.html" target="_blank" '
         + 'style="display:inline-block;background:#FFD700;color:#000;padding:16px 32px;font-weight:700;'
         + 'text-transform:uppercase;text-decoration:none;font-size:14px;border:3px solid #000;">'
         + 'Voir mon espace client</a></div>'
@@ -1514,7 +1514,7 @@ async function sendScheduleReproposedToClient(clientEmail, clientName, repropose
         + messageSection
         + '<p style="margin:0 0 20px 0;font-size:15px;color:#333;">Connectez-vous a votre espace client pour accepter cette date ou en demander une autre.</p>'
         + '<div style="text-align:center;margin:25px 0;">'
-        + '<a href="' + frontUrl + '/dashboard.html" target="_blank" '
+        + '<a href="' + frontUrl + '/app.html" target="_blank" '
         + 'style="display:inline-block;background:#FFD700;color:#000;padding:16px 32px;font-weight:700;'
         + 'text-transform:uppercase;text-decoration:none;font-size:14px;border:3px solid #000;">'
         + 'Voir mon espace client</a></div>'
@@ -1573,7 +1573,7 @@ async function sendScheduleCancelledNotification(recipientEmail, recipientName, 
             + escapeHtml(orderName || '') + '" a été annulée par l\'équipe.'
             + ' Vous pouvez proposer une nouvelle date depuis votre espace client.';
         cta = 'Proposer une nouvelle date';
-        ctaUrl = frontUrl + '/dashboard.html';
+        ctaUrl = frontUrl + '/app.html';
     }
 
     var content = '<h2 style="margin:0 0 20px 0;font-size:24px;color:#000;font-weight:700;">'
@@ -2107,7 +2107,7 @@ async function sendContractSignedToPartnerEmail(partnerEmail, partnerPrenom, cli
         + '</td></tr>'
         + '<tr><td style="background:#fff;padding:24px 32px;text-align:center;border-bottom:1px solid #eee;">'
         + '<p style="margin:0 0 16px;font-size:14px;color:#555;">Retrouvez et téléchargez ce contrat dans votre espace Documents.</p>'
-        + '<a href="' + frontUrl + '/partner-dashboard.html" style="display:inline-block;background:#FFD700;color:#000;font-weight:900;font-size:14px;text-decoration:none;padding:13px 28px;border-radius:8px;">Voir mes documents →</a>'
+        + '<a href="' + frontUrl + '/app.html" style="display:inline-block;background:#FFD700;color:#000;font-weight:900;font-size:14px;text-decoration:none;padding:13px 28px;border-radius:8px;">Voir mes documents →</a>'
         + '</td></tr>'
         + '<tr><td style="background:#1a1a1a;padding:16px 32px;border-radius:0 0 12px 12px;text-align:center;">'
         + '<p style="margin:0;font-size:11px;color:#888;">FA GENESIS · Plateforme de services créatifs et professionnels</p>'
@@ -2498,3 +2498,4 @@ async function sendInstallmentReminderEmail(clientEmail, clientFirstName, order,
         console.error('[EMAIL] sendInstallmentReminderEmail:', err.message);
     }
 }
+

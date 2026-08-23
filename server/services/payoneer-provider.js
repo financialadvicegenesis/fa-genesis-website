@@ -17,7 +17,7 @@ var https = require('https');
 
 var SANDBOX_BASE    = 'https://api.sandbox.payoneer.com';
 var PRODUCTION_BASE = 'https://api.payoneer.com';
-var REDIRECT_URL    = 'https://fagenesis.com/partner-dashboard.html?payoneer_return=1';
+var REDIRECT_URL    = 'https://fagenesis.com/app.html?payoneer_return=1';
 
 function _baseUrl() {
     return process.env.PAYONEER_ENV === 'production' ? PRODUCTION_BASE : SANDBOX_BASE;

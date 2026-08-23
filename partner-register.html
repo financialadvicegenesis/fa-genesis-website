@@ -582,7 +582,7 @@ a{text-decoration:none;color:inherit;}
         <div class="wiz-success-icon"><i class="fa-solid fa-circle-check"></i></div>
         <h2 class="wiz-title" style="margin-bottom:14px;">Candidature envoyée !</h2>
         <p style="font-size:14px;color:var(--t2);line-height:1.7;max-width:440px;margin:0 auto 28px;">Votre candidature a bien été reçue. Notre équipe va vérifier votre profil avant sa publication sur la plateforme FA GENESIS. Vous recevrez une notification dès validation.</p>
-        <button type="button" onclick="window.location.href='partner-dashboard.html'" class="btn-primary btn-primary-gold" style="margin:0 auto;">
+        <button type="button" onclick="window.location.href='app.html'" class="btn-primary btn-primary-gold" style="margin:0 auto;">
           Accéder à mon tableau de bord <i class="fa-solid fa-arrow-right" style="font-size:10px;"></i>
         </button>
       </div>
@@ -597,7 +597,7 @@ a{text-decoration:none;color:inherit;}
 <script src="partner-auth.js"></script>
 <script>
     if (typeof isPartnerAuthenticated === 'function' && isPartnerAuthenticated()) {
-        window.location.href = 'partner-dashboard.html';
+        window.location.href = 'app.html';
     }
 
     var WIZARD_STEP_COUNT = 7;
