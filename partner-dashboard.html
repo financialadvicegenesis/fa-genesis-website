@@ -7,142 +7,186 @@
 <title>Espace Prestataire — FA GENESIS</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" media="print" onload="this.media='all'">
 <style>
-:root{--bg:#0d0d0d;--bg2:#141414;--card:#161616;--border:#252525;--gold:#FFD700;--gold2:#e6c200;--text:#f0f0f0;--muted:#666;--muted2:#444;--nav:64px;--safe:env(safe-area-inset-bottom,0px)}
+:root{--bg:#0d0d0d;--bg2:#141414;--card:#161616;--border:#252525;--gold:#FFD700;--text:#f0f0f0;--muted:#666;--muted2:#444;--nav:64px;--safe:env(safe-area-inset-bottom,0px)}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;overflow:hidden}
-/* ── Header ── */
+/* Header */
 #hdr{position:fixed;top:0;left:0;right:0;height:56px;background:var(--bg);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;z-index:200;gap:10px}
 #hdr .logo{height:32px;width:32px;border-radius:50%;object-fit:cover}
 #hdr .brand{font-size:15px;font-weight:900;letter-spacing:.5px;color:var(--gold);flex:1}
 #hdr .badge-pill{background:rgba(255,215,0,.12);border:1px solid rgba(255,215,0,.3);color:var(--gold);font-size:9px;font-weight:900;letter-spacing:1px;padding:3px 8px;border-radius:20px}
-#hdr .avatar{width:32px;height:32px;border-radius:50%;background:var(--gold);color:#000;font-size:13px;font-weight:900;display:flex;align-items:center;justify-content:center;cursor:pointer}
-/* ── Content ── */
+#hdr .avatar{width:32px;height:32px;border-radius:50%;background:var(--gold);color:#000;font-size:13px;font-weight:900;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
+/* Content */
 #main{position:fixed;top:56px;left:0;right:0;bottom:calc(var(--nav) + var(--safe));overflow-y:auto;-webkit-overflow-scrolling:touch}
-/* ── Bottom nav ── */
+/* Bottom nav */
 #bnav{position:fixed;bottom:0;left:0;right:0;height:var(--nav);padding-bottom:var(--safe);background:var(--bg);border-top:1px solid var(--border);display:flex;z-index:200}
-.bnav-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:none;border:none;color:var(--muted);font-size:10px;font-weight:700;cursor:pointer;transition:color .2s}
+.bnav-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:none;border:none;color:var(--muted);font-size:10px;font-weight:700;cursor:pointer;transition:color .2s;padding:0 2px}
 .bnav-btn i{font-size:20px}
 .bnav-btn.on{color:var(--gold)}
-/* ── Sections ── */
+/* Sections */
 .section{display:none;padding:16px 16px 24px}
 .section.on{display:block}
-/* ── Cards ── */
+/* Cards */
 .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:12px}
-.card-row{display:flex;align-items:center;gap:12px}
+.card-row{display:flex;align-items:flex-start;gap:12px}
 .card-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .card-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:3px;line-height:1.3}
 .card-sub{font-size:12px;color:var(--muted);line-height:1.5}
 .card-meta{font-size:11px;color:var(--muted2)}
-/* ── Stat grid ── */
+/* Stats */
 .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
-.stat-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 12px;text-align:center}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 12px;text-align:center;cursor:pointer;transition:border-color .2s}
+.stat-card:hover{border-color:rgba(255,215,0,.3)}
 .stat-num{font-size:26px;font-weight:900;color:var(--gold);line-height:1}
 .stat-label{font-size:10px;color:var(--muted);margin-top:4px;font-weight:700;letter-spacing:.3px;text-transform:uppercase}
-/* ── Welcome banner ── */
+/* Welcome */
 .welcome-banner{background:linear-gradient(135deg,#1a1200 0%,#0d0d0d 100%);border:1px solid rgba(255,215,0,.2);border-radius:14px;padding:18px 16px;margin-bottom:14px}
 .welcome-banner h2{font-size:17px;font-weight:900;color:var(--gold);margin-bottom:4px}
 .welcome-banner p{font-size:12px;color:#999;line-height:1.5}
-/* ── Section header ── */
+/* Section header */
 .sec-hdr{font-size:10px;font-weight:900;color:var(--gold);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:6px}
-/* ── Badge pill ── */
+/* Pills */
 .pill{display:inline-block;padding:2px 9px;border-radius:20px;font-size:10px;font-weight:800}
 .pill-green{background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);color:#22c55e}
 .pill-yellow{background:rgba(255,215,0,.1);border:1px solid rgba(255,215,0,.3);color:var(--gold)}
 .pill-red{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:#ef4444}
 .pill-blue{background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.3);color:#60a5fa}
 .pill-grey{background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--muted)}
-/* ── Action button ── */
+.pill-purple{background:rgba(168,85,247,.1);border:1px solid rgba(168,85,247,.3);color:#c084fc}
+/* Buttons */
 .btn-gold{background:var(--gold);color:#000;font-weight:900;font-size:13px;border:none;border-radius:10px;padding:12px 20px;cursor:pointer;width:100%;margin-top:10px;display:flex;align-items:center;justify-content:center;gap:8px}
 .btn-outline{background:transparent;color:var(--gold);font-weight:700;font-size:13px;border:1.5px solid rgba(255,215,0,.3);border-radius:10px;padding:11px 20px;cursor:pointer;width:100%;margin-top:8px;display:flex;align-items:center;justify-content:center;gap:8px}
 .btn-red{background:transparent;color:#ef4444;font-weight:700;font-size:13px;border:1.5px solid rgba(239,68,68,.3);border-radius:10px;padding:11px 20px;cursor:pointer;width:100%;margin-top:8px;display:flex;align-items:center;justify-content:center;gap:8px}
-/* ── Empty state ── */
+/* Empty */
 .empty{text-align:center;padding:40px 16px;color:var(--muted)}
 .empty i{font-size:36px;margin-bottom:12px;display:block;opacity:.3}
 .empty p{font-size:13px;line-height:1.6}
-/* ── Profil ── */
+/* Profil */
 .pf-avatar{width:72px;height:72px;border-radius:50%;background:var(--gold);color:#000;font-size:28px;font-weight:900;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;flex-shrink:0}
 .pf-name{font-size:18px;font-weight:900;text-align:center;color:var(--text)}
 .pf-type{font-size:12px;color:var(--muted);text-align:center;margin-top:3px}
 .pf-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)}
 .pf-row:last-child{border-bottom:none}
 .pf-row i{color:var(--gold);width:20px;text-align:center}
-.pf-row .label{font-size:12px;color:var(--muted);display:block}
+.pf-row .lbl{font-size:12px;color:var(--muted);display:block}
 .pf-row .val{font-size:14px;color:var(--text);font-weight:600}
-/* ── Loading spinner ── */
+/* Spinner */
 .spinner{text-align:center;padding:40px;color:var(--gold);opacity:.4}
 .spinner i{font-size:24px;animation:spin 1s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
-/* ── Splash / login check ── */
+/* Splash */
 #splash-check{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:9999}
 #splash-check img{width:72px;height:72px;border-radius:50%}
 #splash-check .lbl{color:var(--gold);font-size:13px;font-weight:700;letter-spacing:1px}
-/* ── Separator ── */
-.sep{height:1px;background:var(--border);margin:14px 0}
-/* ── Input (devis respond) ── */
-.dv-actions{display:flex;gap:8px;margin-top:10px}
-.dv-actions button{flex:1;padding:10px;border-radius:8px;font-size:12px;font-weight:700;border:none;cursor:pointer}
-.btn-accept{background:var(--gold);color:#000}
-.btn-refuse{background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3)!important;color:#ef4444}
-.dv-actions button:disabled{opacity:.5;cursor:default}
-/* ── Toast ── */
+/* Mission progress bar */
+.mission-status-bar{height:3px;border-radius:2px;margin-top:10px;background:var(--border);overflow:hidden}
+.mission-status-fill{height:100%;border-radius:2px;background:var(--gold);transition:width .4s}
+/* Messages */
+.msg-thread{display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s}
+.msg-thread:first-child{border-top:1px solid var(--border)}
+.msg-thread:hover{background:rgba(255,215,0,.03)}
+.msg-avatar{width:42px;height:42px;border-radius:50%;background:var(--gold);color:#000;font-size:16px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.msg-name{font-size:13px;font-weight:700;color:var(--text);margin-bottom:2px}
+.msg-preview{font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px}
+.msg-time{font-size:10px;color:var(--muted2);flex-shrink:0;margin-left:auto;padding-left:8px}
+/* Portefeuille */
+.wallet-banner{background:linear-gradient(135deg,#1a1200,#0a0a0a);border:1px solid rgba(255,215,0,.25);border-radius:16px;padding:22px 18px;margin-bottom:14px;text-align:center}
+.wallet-amount{font-size:36px;font-weight:900;color:var(--gold);line-height:1;margin-bottom:4px}
+.wallet-sub{font-size:11px;color:#999;letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px}
+.wallet-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.wallet-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;text-align:center}
+.wallet-card .num{font-size:20px;font-weight:900;color:var(--text);line-height:1;margin-bottom:3px}
+.wallet-card .sub{font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.3px}
+.tx-item{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)}
+.tx-item:last-child{border-bottom:none}
+.tx-icon{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px}
+.tx-label{font-size:13px;font-weight:600;color:var(--text);margin-bottom:2px}
+.tx-date{font-size:11px;color:var(--muted)}
+.tx-amount{margin-left:auto;font-size:14px;font-weight:900;padding-left:8px}
+.tx-amount.credit{color:#22c55e}
+.tx-amount.debit{color:#ef4444}
+/* Toast */
 #toast{position:fixed;bottom:calc(var(--nav) + 16px);left:50%;transform:translateX(-50%) translateY(60px);background:var(--gold);color:#000;font-size:12px;font-weight:900;padding:10px 20px;border-radius:20px;z-index:9999;opacity:0;transition:opacity .25s,transform .25s;pointer-events:none;white-space:nowrap}
 #toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
 </style>
 </head>
 <body>
 
-<!-- Splash d'authentification -->
 <div id="splash-check">
   <img src="assets/images/logo-favicon-192.png" alt="GENESIS" onerror="this.style.display='none'">
   <span class="lbl">Vérification en cours…</span>
 </div>
 
-<!-- Header -->
 <header id="hdr" style="display:none">
   <img class="logo" src="assets/images/logo-favicon-192.png" alt="GENESIS" onerror="this.style.display='none'">
   <span class="brand">FA GENESIS</span>
-  <span class="badge-pill" id="hdr-badge">PRESTATAIRE</span>
-  <div class="avatar" id="hdr-avatar" title="Profil" onclick="goSection('profil')">P</div>
+  <span class="badge-pill">PRESTATAIRE</span>
+  <div class="avatar" id="hdr-avatar" onclick="goSection('profil')">P</div>
 </header>
 
-<!-- Contenu principal -->
 <main id="main" style="display:none">
 
-  <!-- ── ACCUEIL ── -->
+  <!-- ACCUEIL -->
   <div class="section on" id="sec-accueil">
     <div class="welcome-banner">
       <h2 id="welcome-name">Bonjour 👋</h2>
       <p id="welcome-sub">Votre tableau de bord GENESIS</p>
     </div>
-    <div class="stat-grid" id="stat-grid">
-      <div class="stat-card"><div class="stat-num" id="stat-devis">—</div><div class="stat-label">Devis en attente</div></div>
-      <div class="stat-card"><div class="stat-num" id="stat-missions">—</div><div class="stat-label">Missions actives</div></div>
-      <div class="stat-card"><div class="stat-num" id="stat-seances">—</div><div class="stat-label">Séances à venir</div></div>
-      <div class="stat-card"><div class="stat-num" id="stat-docs">—</div><div class="stat-label">Documents</div></div>
+    <div class="stat-grid">
+      <div class="stat-card" onclick="goSection('missions')">
+        <div class="stat-num" id="stat-missions">—</div>
+        <div class="stat-label">Missions actives</div>
+      </div>
+      <div class="stat-card" onclick="goSection('messages')">
+        <div class="stat-num" id="stat-msgs">—</div>
+        <div class="stat-label">Messages</div>
+      </div>
+      <div class="stat-card" onclick="goSection('portefeuille')">
+        <div class="stat-num" id="stat-solde">—</div>
+        <div class="stat-label">Solde (€)</div>
+      </div>
+      <div class="stat-card" onclick="goSection('profil')">
+        <div class="stat-num" id="stat-badge">—</div>
+        <div class="stat-label">Badge</div>
+      </div>
     </div>
-    <div class="sec-hdr"><i class="fa-solid fa-inbox"></i>Derniers devis reçus</div>
-    <div id="home-devis-list"><div class="spinner"><i class="fa-solid fa-spinner"></i></div></div>
+    <div class="sec-hdr"><i class="fa-solid fa-bolt"></i>Missions récentes</div>
+    <div id="home-missions"><div class="spinner"><i class="fa-solid fa-spinner"></i></div></div>
   </div>
 
-  <!-- ── DEVIS ── -->
-  <div class="section" id="sec-devis">
-    <div class="sec-hdr"><i class="fa-solid fa-file-invoice"></i>Mes devis</div>
-    <div id="devis-list"><div class="spinner"><i class="fa-solid fa-spinner"></i></div></div>
+  <!-- MISSIONS -->
+  <div class="section" id="sec-missions">
+    <div class="sec-hdr"><i class="fa-solid fa-briefcase"></i>Mes missions</div>
+    <div id="missions-list"><div class="spinner"><i class="fa-solid fa-spinner"></i></div></div>
   </div>
 
-  <!-- ── SÉANCES ── -->
-  <div class="section" id="sec-seances">
-    <div class="sec-hdr"><i class="fa-solid fa-calendar-check"></i>Mes séances</div>
-    <div id="seances-list"><div class="spinner"><i class="fa-solid fa-spinner"></i></div></div>
+  <!-- MESSAGES -->
+  <div class="section" id="sec-messages">
+    <div class="sec-hdr"><i class="fa-solid fa-comment-dots"></i>Messagerie</div>
+    <div id="messages-list"><div class="spinner"><i class="fa-solid fa-spinner"></i></div></div>
   </div>
 
-  <!-- ── DOCUMENTS (LIVRABLES) ── -->
-  <div class="section" id="sec-documents">
-    <div class="sec-hdr"><i class="fa-solid fa-folder-open"></i>Mes documents</div>
-    <div id="docs-list"><div class="spinner"><i class="fa-solid fa-spinner"></i></div></div>
+  <!-- PORTEFEUILLE -->
+  <div class="section" id="sec-portefeuille">
+    <div class="wallet-banner">
+      <div class="wallet-sub">Solde disponible</div>
+      <div class="wallet-amount" id="wallet-amount">0 €</div>
+    </div>
+    <div class="wallet-grid">
+      <div class="wallet-card">
+        <div class="num" id="wallet-total">—</div>
+        <div class="sub">Total encaissé</div>
+      </div>
+      <div class="wallet-card">
+        <div class="num" id="wallet-pending">—</div>
+        <div class="sub">En attente</div>
+      </div>
+    </div>
+    <div class="sec-hdr"><i class="fa-solid fa-clock-rotate-left"></i>Historique des transactions</div>
+    <div class="card" id="wallet-history"><div class="spinner"><i class="fa-solid fa-spinner"></i></div></div>
   </div>
 
-  <!-- ── PROFIL ── -->
+  <!-- PROFIL -->
   <div class="section" id="sec-profil">
     <div class="card" style="text-align:center;padding:24px 16px">
       <div class="pf-avatar" id="pf-avatar">P</div>
@@ -151,7 +195,6 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:-apple-
       <div style="margin-top:8px" id="pf-badge-row"></div>
     </div>
     <div class="card" id="pf-info"></div>
-    <button class="btn-outline" onclick="goSection('documents')"><i class="fa-solid fa-file-contract"></i>Mes contrats &amp; livrables</button>
     <button class="btn-red" onclick="doLogout()"><i class="fa-solid fa-arrow-right-from-bracket"></i>Se déconnecter</button>
     <div style="height:8px"></div>
     <p style="font-size:10px;color:var(--muted);text-align:center">FA GENESIS — Espace Prestataire</p>
@@ -159,16 +202,14 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:-apple-
 
 </main>
 
-<!-- Navigation basse -->
 <nav id="bnav" style="display:none">
   <button class="bnav-btn on" onclick="goSection('accueil')" id="btn-accueil"><i class="fa-solid fa-house"></i>Accueil</button>
-  <button class="bnav-btn" onclick="goSection('devis')" id="btn-devis"><i class="fa-solid fa-file-invoice"></i>Devis</button>
-  <button class="bnav-btn" onclick="goSection('seances')" id="btn-seances"><i class="fa-solid fa-calendar-check"></i>Séances</button>
-  <button class="bnav-btn" onclick="goSection('documents')" id="btn-documents"><i class="fa-solid fa-folder-open"></i>Documents</button>
+  <button class="bnav-btn" onclick="goSection('missions')" id="btn-missions"><i class="fa-solid fa-briefcase"></i>Missions</button>
+  <button class="bnav-btn" onclick="goSection('messages')" id="btn-messages"><i class="fa-solid fa-comment-dots"></i>Messages</button>
+  <button class="bnav-btn" onclick="goSection('portefeuille')" id="btn-portefeuille"><i class="fa-solid fa-wallet"></i>Portefeuille</button>
   <button class="bnav-btn" onclick="goSection('profil')" id="btn-profil"><i class="fa-solid fa-user"></i>Profil</button>
 </nav>
 
-<!-- Toast -->
 <div id="toast"></div>
 
 <script>
@@ -176,39 +217,35 @@ var API = 'https://fa-genesis-website.onrender.com';
 var _token = localStorage.getItem('fa_genesis_partner_token');
 var _partner = null;
 var _loaded = {};
-var _currentSection = 'accueil';
 
-// ── Auth check ──────────────────────────────────────
 (function init(){
   if(!_token){ goLogin(); return; }
   fetch(API+'/api/partner/auth/me',{headers:{'Authorization':'Bearer '+_token}})
     .then(function(r){ return r.ok ? r.json() : null; })
-    .then(function(data){
-      if(!data || !data.partner){ goLogin(); return; }
-      _partner = data.partner;
-      bootDashboard();
+    .then(function(d){
+      if(!d || !d.partner){ goLogin(); return; }
+      _partner = d.partner;
+      boot();
     })
     .catch(function(){ goLogin(); });
 })();
 
 function goLogin(){ window.location.replace('partner-login.html'); }
 
-function bootDashboard(){
+function boot(){
   document.getElementById('splash-check').style.display = 'none';
   document.getElementById('hdr').style.display = '';
   document.getElementById('main').style.display = '';
   document.getElementById('bnav').style.display = '';
-
-  var fn = ((_partner.prenom||'')+' '+(_partner.nom||'')).trim() || _partner.email;
-  var ini = (fn[0]||'P').toUpperCase();
-  document.getElementById('hdr-avatar').textContent = ini;
+  var fn = ((_partner.prenom||'')+' '+(_partner.nom||'')).trim()||_partner.email;
+  document.getElementById('hdr-avatar').textContent = (fn[0]||'P').toUpperCase();
   document.getElementById('welcome-name').textContent = 'Bonjour, '+fn+' 👋';
   document.getElementById('welcome-sub').textContent = 'Bienvenue dans votre espace GENESIS';
+  document.getElementById('stat-badge').textContent = _partner.badge||'Bronze';
   loadAccueil();
   loadProfil();
 }
 
-// ── Navigation ──────────────────────────────────────
 function goSection(name){
   document.querySelectorAll('.section').forEach(function(el){ el.classList.remove('on'); });
   document.querySelectorAll('.bnav-btn').forEach(function(el){ el.classList.remove('on'); });
@@ -217,194 +254,156 @@ function goSection(name){
   if(sec) sec.classList.add('on');
   if(btn) btn.classList.add('on');
   document.getElementById('main').scrollTop = 0;
-  _currentSection = name;
   if(!_loaded[name]){
     _loaded[name] = true;
-    if(name==='devis') loadDevis();
-    if(name==='seances') loadSeances();
-    if(name==='documents') loadDocs();
+    if(name==='missions') loadMissions();
+    if(name==='messages') loadMessages();
+    if(name==='portefeuille') loadPortefeuille();
   }
 }
 
-// ── API fetch ───────────────────────────────────────
 function apiFetch(path){ return fetch(API+path,{headers:{'Authorization':'Bearer '+_token}}).then(function(r){ return r.json(); }); }
+function fmt(d){ if(!d) return '—'; try{ return new Date(d).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'}); }catch(e){ return d; } }
+function fmtAmt(n){ return n!=null ? parseFloat(n).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g,' ')+'€' : '—'; }
+function showToast(msg){ var t=document.getElementById('toast'); t.textContent=msg; t.classList.add('on'); setTimeout(function(){ t.classList.remove('on'); },2200); }
 
-// ── Format date ─────────────────────────────────────
-function fmt(d){
-  if(!d) return '—';
-  try{
-    return new Date(d).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'});
-  }catch(e){ return d; }
-}
-function fmtAmt(n){ return n ? parseFloat(n).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g,' ')+'€' : '—'; }
-
-// ── Toast ───────────────────────────────────────────
-function showToast(msg){
-  var t = document.getElementById('toast');
-  t.textContent = msg; t.classList.add('on');
-  setTimeout(function(){ t.classList.remove('on'); }, 2200);
-}
-
-// ── Accueil ─────────────────────────────────────────
+// ── Accueil ──────────────────────────────────────────
 function loadAccueil(){
-  apiFetch('/api/partner/devis').then(function(data){
-    var devis = Array.isArray(data) ? data : (data&&data.devis)||[];
-    var pending = devis.filter(function(d){ return d.status==='pending'||d.status==='sent'; });
-    document.getElementById('stat-devis').textContent = pending.length;
-    var el = document.getElementById('home-devis-list');
-    if(devis.length===0){ el.innerHTML = '<div class="empty"><i class="fa-solid fa-inbox"></i><p>Aucun devis reçu</p></div>'; return; }
-    el.innerHTML = devis.slice(0,4).map(devisCard).join('');
-  }).catch(function(){ document.getElementById('home-devis-list').innerHTML = '<div class="empty"><i class="fa-solid fa-wifi-slash"></i><p>Impossible de charger les devis</p></div>'; });
   apiFetch('/api/partner/orders').then(function(data){
     var orders = Array.isArray(data) ? data : (data&&data.orders)||[];
-    var active = orders.filter(function(o){ return o.status==='in_progress'||o.status==='active'; });
+    var active = orders.filter(function(o){ return o.status==='in_progress'||o.status==='active'||o.status==='pending_acceptance'||o.status==='confirmed'; });
     document.getElementById('stat-missions').textContent = active.length;
-  }).catch(function(){ document.getElementById('stat-missions').textContent = '—'; });
-  apiFetch('/api/partner/seances').then(function(data){
-    var seances = Array.isArray(data) ? data : (data&&data.seances)||[];
-    var future = seances.filter(function(s){ return s.start_date && new Date(s.start_date) >= new Date(); });
-    document.getElementById('stat-seances').textContent = future.length;
-  }).catch(function(){ document.getElementById('stat-seances').textContent = '—'; });
-  apiFetch('/api/partner/contracts').then(function(data){
-    var contracts = Array.isArray(data) ? data : [];
-    document.getElementById('stat-docs').textContent = contracts.length;
-  }).catch(function(){ document.getElementById('stat-docs').textContent = '—'; });
+    var el = document.getElementById('home-missions');
+    if(orders.length===0){ el.innerHTML = '<div class="empty"><i class="fa-solid fa-briefcase"></i><p>Aucune mission pour le moment</p></div>'; return; }
+    el.innerHTML = orders.slice(0,3).map(missionCard).join('');
+  }).catch(function(){ document.getElementById('home-missions').innerHTML = '<div class="empty"><i class="fa-solid fa-wifi-slash"></i><p>Impossible de charger</p></div>'; });
+
+  apiFetch('/api/partner/messages').then(function(data){
+    var threads = Array.isArray(data) ? data : (data&&data.threads)||[];
+    var unread = threads.filter(function(t){ return t.unread_count > 0; });
+    document.getElementById('stat-msgs').textContent = unread.length||0;
+  }).catch(function(){ document.getElementById('stat-msgs').textContent = '0'; });
+
+  apiFetch('/api/partner/wallet').then(function(data){
+    var balance = data&&data.balance!=null ? parseFloat(data.balance) : 0;
+    document.getElementById('stat-solde').textContent = balance.toFixed(0);
+  }).catch(function(){ document.getElementById('stat-solde').textContent = '0'; });
 }
 
-// ── Devis ───────────────────────────────────────────
-function loadDevis(){
-  var el = document.getElementById('devis-list');
-  apiFetch('/api/partner/devis').then(function(data){
-    var devis = Array.isArray(data) ? data : (data&&data.devis)||[];
-    if(devis.length===0){ el.innerHTML = '<div class="empty"><i class="fa-solid fa-file-invoice"></i><p>Aucun devis reçu</p></div>'; return; }
-    el.innerHTML = devis.map(devisCard).join('');
+// ── Missions ─────────────────────────────────────────
+function loadMissions(){
+  var el = document.getElementById('missions-list');
+  apiFetch('/api/partner/orders').then(function(data){
+    var orders = Array.isArray(data) ? data : (data&&data.orders)||[];
+    if(orders.length===0){
+      el.innerHTML = '<div class="empty"><i class="fa-solid fa-briefcase"></i><p>Aucune mission assignée pour le moment.<br>Les missions vous seront attribuées par l\'administrateur.</p></div>'; return;
+    }
+    el.innerHTML = orders.map(missionCard).join('');
   }).catch(function(){ el.innerHTML = '<div class="empty"><i class="fa-solid fa-wifi-slash"></i><p>Erreur de chargement</p></div>'; });
 }
 
-function devisCard(d){
-  var statusMap = {pending:'En attente',sent:'En attente',accepted:'Accepté',refused:'Refusé',expired:'Expiré'};
-  var pillMap = {pending:'yellow',sent:'yellow',accepted:'green',refused:'red',expired:'grey'};
-  var st = d.status||'pending';
-  return '<div class="card" id="dv-'+d.id+'">'
+function missionCard(o){
+  var statusLabel = {pending:'En attente',pending_acceptance:'À accepter',confirmed:'Confirmée',in_progress:'En cours',active:'En cours',delivery:'Livraison',completed:'Terminée',done:'Terminée',cancelled:'Annulée'};
+  var pillCls = {pending:'yellow',pending_acceptance:'yellow',confirmed:'blue',in_progress:'blue',active:'blue',delivery:'purple',completed:'green',done:'green',cancelled:'red'};
+  var progress = {pending:10,pending_acceptance:20,confirmed:35,in_progress:60,active:60,delivery:80,completed:100,done:100,cancelled:0};
+  var st = o.status||'pending';
+  var pct = progress[st]||0;
+  return '<div class="card">'
     +'<div class="card-row">'
-    +'<div class="card-icon" style="background:rgba(255,215,0,.08)"><i class="fa-solid fa-file-invoice" style="color:var(--gold)"></i></div>'
+    +'<div class="card-icon" style="background:rgba(255,215,0,.08)"><i class="fa-solid fa-briefcase" style="color:var(--gold)"></i></div>'
     +'<div style="flex:1;min-width:0">'
-    +'<div class="card-title">'+esc(d.service||d.product_name||'Demande de devis')+'</div>'
-    +'<div class="card-sub">'+esc(d.client_name||d.client_email||'Client')+(d.budget?' · Budget : '+esc(String(d.budget)):'')+'</div>'
-    +'<div style="margin-top:5px;display:flex;align-items:center;justify-content:space-between">'
-    +'<span class="pill pill-'+pillMap[st]+'">'+statusMap[st]+'</span>'
-    +'<span class="card-meta">'+fmt(d.created_at)+'</span>'
+    +'<div class="card-title">'+esc(o.product_name||o.service||'Mission')+'</div>'
+    +'<div class="card-sub">'+(o.client_name?esc(o.client_name)+' · ':'')+fmtAmt(o.amount)+'</div>'
+    +'<div style="margin-top:6px;display:flex;align-items:center;justify-content:space-between">'
+    +'<span class="pill pill-'+(pillCls[st]||'grey')+'">'+(statusLabel[st]||'En cours')+'</span>'
+    +'<span class="card-meta">'+fmt(o.created_at)+'</span>'
     +'</div>'
     +'</div></div>'
-    +(st==='pending'||st==='sent'?'<div class="dv-actions"><button class="btn-accept" onclick="respondDevis(\''+d.id+'\',\'accepted\',this)"><i class="fa-solid fa-check" style="margin-right:4px"></i>Accepter</button><button class="btn-refuse" onclick="respondDevis(\''+d.id+'\',\'refused\',this)"><i class="fa-solid fa-xmark" style="margin-right:4px"></i>Refuser</button></div>':'')
+    +(pct>0?'<div class="mission-status-bar"><div class="mission-status-fill" style="width:'+pct+'%"></div></div>':'')
+    +(st==='pending_acceptance'?'<button class="btn-gold" onclick="acceptMission(\''+o.id+'\',this)"><i class="fa-solid fa-check"></i>Accepter la mission</button>':'')
     +'</div>';
 }
 
-function respondDevis(id, action, btn){
-  var card = document.getElementById('dv-'+id);
-  var btns = card ? card.querySelectorAll('button') : [];
-  btns.forEach(function(b){ b.disabled=true; });
-  fetch(API+'/api/partner/devis/'+id+'/respond',{
-    method:'POST',
-    headers:{'Authorization':'Bearer '+_token,'Content-Type':'application/json'},
-    body:JSON.stringify({action:action})
-  }).then(function(r){ return r.json(); }).then(function(){
-    showToast(action==='accepted'?'Devis accepté ✓':'Devis refusé');
-    _loaded['devis']=false; _loaded['accueil']=false;
-    goSection(_currentSection);
-    loadAccueil();
-    if(_currentSection==='devis') loadDevis();
-  }).catch(function(){ btns.forEach(function(b){ b.disabled=false; }); showToast('Erreur, réessayez'); });
+function acceptMission(id, btn){
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>Acceptation…';
+  fetch(API+'/api/partner/orders/'+id+'/accept',{method:'POST',headers:{'Authorization':'Bearer '+_token,'Content-Type':'application/json'}})
+    .then(function(r){ return r.json(); })
+    .then(function(){ showToast('Mission acceptée ✓'); _loaded['missions']=false; _loaded['accueil']=false; loadMissions(); loadAccueil(); })
+    .catch(function(){ btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-check"></i>Accepter la mission'; showToast('Erreur, réessayez'); });
 }
 
-// ── Séances ─────────────────────────────────────────
-function loadSeances(){
-  var el = document.getElementById('seances-list');
-  apiFetch('/api/partner/seances').then(function(data){
-    var seances = Array.isArray(data) ? data : (data&&data.seances)||[];
-    if(seances.length===0){ el.innerHTML = '<div class="empty"><i class="fa-solid fa-calendar"></i><p>Aucune séance planifiée</p></div>'; return; }
-    el.innerHTML = seances.map(function(s){
-      var d = fmt(s.start_date||s.date);
-      var past = s.start_date && new Date(s.start_date) < new Date();
-      return '<div class="card"><div class="card-row">'
-        +'<div class="card-icon" style="background:rgba(96,165,250,.08)"><i class="fa-solid fa-calendar-check" style="color:#60a5fa"></i></div>'
+// ── Messages ─────────────────────────────────────────
+function loadMessages(){
+  var el = document.getElementById('messages-list');
+  apiFetch('/api/partner/messages').then(function(data){
+    var threads = Array.isArray(data) ? data : (data&&data.threads)||[];
+    if(threads.length===0){
+      el.innerHTML = '<div class="empty"><i class="fa-solid fa-comment-dots"></i><p>Aucun message pour le moment.<br>Les clients vous contacteront ici.</p></div>'; return;
+    }
+    el.innerHTML = threads.map(function(t){
+      var ini = ((t.client_name||t.client_email||'C')[0]).toUpperCase();
+      var hasUnread = t.unread_count > 0;
+      return '<div class="msg-thread">'
+        +'<div class="msg-avatar" style="'+(hasUnread?'box-shadow:0 0 0 2px var(--gold)':'')+'">'+esc(ini)+'</div>'
         +'<div style="flex:1;min-width:0">'
-        +'<div class="card-title">'+esc(s.product_name||s.service||'Séance')+'</div>'
-        +'<div class="card-sub">'+esc(s.client_name||s.client_email||'Client')+'</div>'
-        +'<div style="margin-top:5px;display:flex;align-items:center;justify-content:space-between">'
-        +'<span class="pill '+(past?'pill-grey':'pill-blue')+'"><i class="fa-regular fa-clock" style="margin-right:3px"></i>'+d+(s.time?' à '+s.time:'')+'</span>'
-        +'<span class="card-meta">'+(s.duration?s.duration+' min':'')+'</span>'
-        +'</div></div></div></div>';
+        +'<div class="msg-name">'+esc(t.client_name||t.client_email||'Client')+(hasUnread?' <span style="color:var(--gold);font-size:10px">● '+t.unread_count+'</span>':'')+'</div>'
+        +'<div class="msg-preview">'+esc(t.last_message||'Démarrez la conversation')+'</div>'
+        +'</div>'
+        +'<div class="msg-time">'+fmt(t.last_message_at||t.updated_at)+'</div>'
+        +'</div>';
     }).join('');
   }).catch(function(){ el.innerHTML = '<div class="empty"><i class="fa-solid fa-wifi-slash"></i><p>Erreur de chargement</p></div>'; });
 }
 
-// ── Documents ────────────────────────────────────────
-function loadDocs(){
-  var el = document.getElementById('docs-list');
-  apiFetch('/api/partner/contracts').then(function(contracts){
-    if(!Array.isArray(contracts)||contracts.length===0){
-      el.innerHTML = '<div class="empty"><i class="fa-solid fa-folder-open"></i><p>Aucun document disponible</p></div>'; return;
+// ── Portefeuille ─────────────────────────────────────
+function loadPortefeuille(){
+  apiFetch('/api/partner/wallet').then(function(data){
+    var balance = parseFloat(data&&data.balance!=null ? data.balance : 0);
+    var total = parseFloat(data&&data.total_earned!=null ? data.total_earned : 0);
+    var pending = parseFloat(data&&data.pending!=null ? data.pending : 0);
+    document.getElementById('wallet-amount').textContent = fmtAmt(balance);
+    document.getElementById('wallet-total').textContent = fmtAmt(total);
+    document.getElementById('wallet-pending').textContent = fmtAmt(pending);
+    var txList = (data&&data.transactions)||[];
+    var hist = document.getElementById('wallet-history');
+    if(txList.length===0){
+      hist.innerHTML = '<div class="empty" style="padding:20px 0"><i class="fa-solid fa-clock-rotate-left"></i><p>Aucune transaction</p></div>'; return;
     }
-    var partnership = contracts.filter(function(c){ return c.type==='partnership'; });
-    var service = contracts.filter(function(c){ return c.type==='service'; });
-    var html = '';
-    if(partnership.length>0){
-      html += '<div class="sec-hdr" style="margin-top:4px"><i class="fa-solid fa-handshake"></i>Contrat de partenariat</div>';
-      html += partnership.map(docCard).join('');
-    }
-    if(service.length>0){
-      html += '<div class="sec-hdr" style="margin-top:14px"><i class="fa-solid fa-file-signature"></i>Contrats de prestation</div>';
-      html += service.map(docCard).join('');
-    }
-    el.innerHTML = html;
-  }).catch(function(){ el.innerHTML = '<div class="empty"><i class="fa-solid fa-wifi-slash"></i><p>Erreur de chargement</p></div>'; });
+    hist.innerHTML = txList.slice(0,10).map(function(tx){
+      var credit = tx.type==='credit'||tx.type==='payment';
+      return '<div class="tx-item">'
+        +'<div class="tx-icon" style="background:'+(credit?'rgba(34,197,94,.1)':'rgba(239,68,68,.1)')+'"><i class="fa-solid '+(credit?'fa-arrow-down':'fa-arrow-up')+'" style="color:'+(credit?'#22c55e':'#ef4444')+'"></i></div>'
+        +'<div style="flex:1;min-width:0"><div class="tx-label">'+esc(tx.label||tx.description||(credit?'Paiement reçu':'Retrait'))+'</div><div class="tx-date">'+fmt(tx.created_at||tx.date)+'</div></div>'
+        +'<div class="tx-amount '+(credit?'credit':'debit')+'">'+(credit?'+':'')+fmtAmt(tx.amount)+'</div>'
+        +'</div>';
+    }).join('');
+  }).catch(function(){
+    document.getElementById('wallet-amount').textContent = '— €';
+    document.getElementById('wallet-total').textContent = '—';
+    document.getElementById('wallet-pending').textContent = '—';
+    document.getElementById('wallet-history').innerHTML = '<div class="empty" style="padding:20px 0"><i class="fa-solid fa-wifi-slash"></i><p>Erreur de chargement</p></div>';
+  });
 }
-
-function docCard(c){
-  var signed = c.status==='signed';
-  var pending = c.status==='pending_client_signature';
-  var badge = signed?'Signé':(pending?'En attente client':'Non signé');
-  var pillCls = signed?'pill-green':(pending?'pill-yellow':'pill-grey');
-  var iconColor = signed?'#22c55e':(pending?'var(--gold)':'var(--muted)');
-  var iconBg = signed?'rgba(34,197,94,.08)':(pending?'rgba(255,215,0,.08)':'rgba(255,255,255,.04)');
-  var label = c.type==='partnership'?'Contrat de partenariat FA GENESIS':(c.service_name||'Contrat de prestation');
-  return '<div class="card"><div class="card-row">'
-    +'<div class="card-icon" style="background:'+iconBg+'"><i class="fa-solid fa-file-contract" style="color:'+iconColor+'"></i></div>'
-    +'<div style="flex:1;min-width:0">'
-    +'<div class="card-title">'+esc(label)+'</div>'
-    +'<div class="card-sub">'+(c.client_name||'')+(c.signed_at?' · '+fmt(c.signed_at):'')+'</div>'
-    +'<div style="margin-top:5px;display:flex;align-items:center;justify-content:space-between">'
-    +'<span class="pill '+pillCls+'">'+badge+'</span>'
-    +'<span class="card-meta">'+fmt(c.created_at)+'</span>'
-    +'</div>'
-    +'</div></div>'
-    +(signed?'<button class="btn-gold" style="margin-top:10px" onclick="downloadPdf(\''+c.id+'\')"><i class="fa-solid fa-download"></i>Télécharger le PDF</button>':'')
-    +'</div>';
-}
-
-function downloadPdf(id){ window.open(API+'/api/contracts/'+id+'/pdf','_blank'); }
 
 // ── Profil ───────────────────────────────────────────
 function loadProfil(){
   if(!_partner) return;
   var fn = ((_partner.prenom||'')+' '+(_partner.nom||'')).trim()||_partner.email;
-  var ini = (fn[0]||'P').toUpperCase();
-  document.getElementById('pf-avatar').textContent = ini;
+  document.getElementById('pf-avatar').textContent = (fn[0]||'P').toUpperCase();
   document.getElementById('pf-name').textContent = fn;
   var typeMap = {photographer:'Photographe',videographer:'Vidéaste',graphic_designer:'Graphiste',developer:'Développeur',marketer:'Marketeur',coach:'Coach',consultant:'Consultant',event_planner:'Organisateur d\'événements',writer:'Rédacteur',translator:'Traducteur',other:'Prestataire'};
   document.getElementById('pf-type').textContent = typeMap[_partner.partner_type]||_partner.partner_type||'Prestataire';
   var badge = _partner.badge||'Bronze';
   var badgeColors = {Bronze:'#cd7f32',Argent:'#aaa',Or:'#FFD700',Elite:'#c0e0ff'};
   document.getElementById('pf-badge-row').innerHTML = '<span class="pill" style="background:rgba(255,215,0,.1);border:1px solid rgba(255,215,0,.3);color:'+(badgeColors[badge]||'#FFD700')+'"><i class="fa-solid fa-medal" style="margin-right:4px"></i>'+badge+'</span>';
-  var rows = [
-    {icon:'fa-envelope',label:'Email',val:_partner.email||'—'},
-    {icon:'fa-phone',label:'Téléphone',val:_partner.phone||'—'},
-    {icon:'fa-location-dot',label:'Pays',val:_partner.country||'—'},
-    {icon:'fa-calendar',label:'Membre depuis',val:fmt(_partner.created_at)},
-  ];
-  document.getElementById('pf-info').innerHTML = rows.map(function(r){
-    return '<div class="pf-row"><i class="fa-solid '+r.icon+'"></i><div><span class="label">'+r.label+'</span><span class="val">'+esc(String(r.val))+'</span></div></div>';
+  document.getElementById('pf-info').innerHTML = [
+    {icon:'fa-envelope',lbl:'Email',val:_partner.email||'—'},
+    {icon:'fa-phone',lbl:'Téléphone',val:_partner.phone||'—'},
+    {icon:'fa-location-dot',lbl:'Pays',val:_partner.country||'—'},
+    {icon:'fa-calendar',lbl:'Membre depuis',val:fmt(_partner.created_at)},
+  ].map(function(r){
+    return '<div class="pf-row"><i class="fa-solid '+r.icon+'"></i><div><span class="lbl">'+r.lbl+'</span><span class="val">'+esc(String(r.val))+'</span></div></div>';
   }).join('');
 }
 
@@ -418,7 +417,6 @@ function doLogout(){
   window.location.replace('partner-login.html');
 }
 
-// ── Utils ─────────────────────────────────────────────
 function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 </script>
 </body>
