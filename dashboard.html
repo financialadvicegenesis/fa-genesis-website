@@ -5,7 +5,12 @@
 <meta name="robots" content="noindex, nofollow">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>FA GENESIS — Espace Client</title>
-<script>window.location.replace('espace-client.html' + window.location.search + window.location.hash);</script>
+<script>
+var _ds = window.location.search, _dh = window.location.hash;
+// Cache-busting : force le navigateur à charger la version la plus récente
+var _sep = _ds ? '&' : '?';
+window.location.replace('espace-client.html' + _ds + _sep + 'v=3' + _dh);
+</script>
 <style>body{background:#0d0d0d;color:#FFD700;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;font-size:13px;font-weight:700;letter-spacing:1px}</style>
 </head>
 <body>Chargement…</body>
