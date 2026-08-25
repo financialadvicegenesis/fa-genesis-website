@@ -20,6 +20,7 @@
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;overflow:hidden}
 button{cursor:pointer;font-family:inherit;border:none;background:none}
+a{text-decoration:none;color:inherit}
 
 /* Splash */
 #splash{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:9999}
@@ -47,7 +48,7 @@ button{cursor:pointer;font-family:inherit;border:none;background:none}
 /* Bottom nav */
 #nav{position:absolute;bottom:0;left:0;right:0;height:var(--nav);padding-bottom:var(--safe);background:rgba(13,13,13,.95);backdrop-filter:blur(10px);border-top:1px solid var(--border);display:flex;align-items:stretch;z-index:100}
 .nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:9px;font-weight:700;letter-spacing:.3px;color:var(--muted);transition:color .15s;padding-bottom:env(safe-area-inset-bottom)}
-.nav-btn i{font-size:21px;line-height:1}
+.nav-btn i{font-size:20px;line-height:1}
 .nav-btn.on{color:var(--yellow)}
 
 /* HOME */
@@ -57,27 +58,30 @@ button{cursor:pointer;font-family:inherit;border:none;background:none}
 
 /* QG widget */
 .qg-widget{margin:16px 16px 0;background:linear-gradient(135deg,#1a1200,#0d0d00);border:1.5px solid rgba(255,215,0,.3);border-radius:16px;padding:14px 16px}
-.qg-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
-.qg-lvl{font-size:10px;font-weight:900;color:var(--gold);text-transform:uppercase;letter-spacing:1px}
-.qg-xp{font-size:11px;color:var(--muted);font-weight:600}
-.qg-bar-bg{height:6px;background:rgba(255,215,0,.12);border-radius:99px;overflow:hidden}
+.qg-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.qg-lvl-label{font-size:10px;font-weight:900;color:var(--gold);text-transform:uppercase;letter-spacing:1px}
+.qg-pts-row{display:flex;align-items:baseline;gap:6px;margin-bottom:8px}
+.qg-pts-num{font-size:26px;font-weight:900;color:var(--gold);font-family:'Unbounded',sans-serif;line-height:1}
+.qg-pts-unit{font-size:12px;font-weight:700;color:rgba(255,215,0,.6)}
+.qg-tier-name{font-size:11px;color:var(--muted);font-weight:600;margin-left:4px}
+.qg-bar-bg{height:5px;background:rgba(255,215,0,.12);border-radius:99px;overflow:hidden;margin-bottom:6px}
 .qg-bar-fill{height:100%;background:linear-gradient(90deg,#b8860b,#FFD700);border-radius:99px;transition:width .6s ease}
-.qg-status{margin-top:8px;font-size:11px;color:#888}
-.qg-status b{color:var(--gold)}
+.qg-next-lbl{font-size:10px;color:var(--muted);font-weight:600;text-align:right}
+.qg-next-lbl b{color:var(--gold)}
 
 /* Status card */
-.status-card{margin:16px;border-radius:16px;background:rgba(26,0,38,.92);border:1px solid #2a1040;padding:20px;box-shadow:0 0 0 1px rgba(255,215,0,.06),0 10px 30px rgba(0,0,0,.4)}
-.status-card-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.status-card{margin:12px 16px;border-radius:16px;background:rgba(26,0,38,.92);border:1px solid #2a1040;padding:18px;box-shadow:0 0 0 1px rgba(255,215,0,.06),0 10px 30px rgba(0,0,0,.4)}
+.status-card-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
 .status-badge-pill{background:rgba(255,215,0,.15);color:var(--yellow);font-size:10px;font-weight:900;padding:4px 12px;border-radius:99px;letter-spacing:.5px;text-transform:uppercase}
-.status-card-title{font-size:15px;font-weight:900;color:var(--text);margin-bottom:4px}
+.status-card-title{font-size:14px;font-weight:900;color:var(--text);margin-bottom:4px}
 .status-card-sub{font-size:12px;color:#888}
-.status-card-action{margin-top:14px;display:flex;gap:8px}
+.status-card-action{margin-top:12px;display:flex;gap:8px}
 .sc-btn{padding:8px 16px;border-radius:8px;font-size:12px;font-weight:900;cursor:pointer;border:none;font-family:inherit}
 .sc-btn-primary{background:var(--yellow);color:#000}
 .sc-btn-ghost{background:rgba(255,255,255,.08);color:#fff}
 
 /* Quick actions */
-.qa-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:16px;margin-top:4px}
+.qa-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:16px;margin-top:8px}
 .qa{display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer}
 .qa-icon{width:56px;height:56px;border-radius:16px;background:var(--card);display:flex;align-items:center;justify-content:center;font-size:22px;border:1px solid var(--border);transition:transform .15s}
 .qa:active .qa-icon{transform:scale(.93)}
@@ -85,22 +89,55 @@ button{cursor:pointer;font-family:inherit;border:none;background:none}
 .qa-label{font-size:10px;color:var(--muted);font-weight:700;letter-spacing:.3px;text-align:center}
 
 /* Search */
-.home-search-wrap{display:flex;align-items:center;gap:10px;margin:4px 16px 16px;background:var(--card);border:1.5px solid var(--border);border-radius:14px;padding:0 14px;transition:border-color .2s}
+.home-search-wrap{display:flex;align-items:center;gap:10px;margin:0 16px 16px;background:var(--card);border:1.5px solid var(--border);border-radius:14px;padding:0 14px;transition:border-color .2s}
 .home-search-wrap:focus-within{border-color:var(--yellow)}
 .home-search-wrap i{color:var(--muted);font-size:14px;flex-shrink:0}
 .home-search-input{flex:1;background:transparent;border:none;outline:none;color:var(--text);font-size:13px;font-weight:500;padding:14px 0;font-family:inherit}
 .home-search-input::placeholder{color:var(--muted)}
 
-/* Section label */
-.sec-lbl{padding:16px 16px 10px;display:flex;align-items:center;justify-content:space-between}
-.sec-lbl h2{font-size:15px;font-weight:900;font-family:'Unbounded',sans-serif}
-.sec-lbl a{font-size:12px;color:var(--yellow);font-weight:700;text-decoration:none;cursor:pointer}
+/* Partner section headers */
+.p-section{margin-bottom:4px}
+.p-section-hdr{margin:0 16px 14px;padding:12px 18px;display:flex;align-items:center;justify-content:center;width:calc(100% - 32px);font-family:'Unbounded',sans-serif;font-size:clamp(11px,3.5vw,14px);font-weight:900;letter-spacing:.3px;border:3px solid #000;position:relative;white-space:nowrap}
+.p-section-hdr.black{background:#000;color:var(--yellow)}
+.p-section-hdr.dark{background:#0a0a0a;color:#fff;border-color:var(--yellow)}
+.p-section-hdr::after{content:'';position:absolute;bottom:-5px;right:-5px;width:100%;height:100%;background:#000;z-index:-1}
 
-/* Stats grid */
-.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 16px 8px}
-.stat-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 12px;text-align:center;cursor:pointer}
-.stat-num{font-size:26px;font-weight:900;color:var(--gold);line-height:1}
-.stat-lbl{font-size:10px;color:var(--muted);margin-top:4px;font-weight:700;text-transform:uppercase;letter-spacing:.3px}
+/* Partner card row (horizontal scroll) */
+.p-reco-row{display:flex;gap:12px;padding:0 16px 12px;overflow-x:auto;scrollbar-width:none}
+.p-reco-row::-webkit-scrollbar{display:none}
+.p-reco-card{flex-shrink:0;width:190px;background:var(--card);border:3px solid #000;border-radius:14px;overflow:hidden;box-shadow:4px 4px 0 var(--yellow);cursor:pointer;position:relative}
+.p-reco-photo{width:100%;height:130px;background:#1a1a1a;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
+.p-reco-photo img{width:100%;height:100%;object-fit:cover}
+.p-reco-initials{font-size:20px;font-weight:900;color:var(--yellow);font-family:'Unbounded',sans-serif}
+.p-reco-body{padding:10px}
+.p-reco-name{font-size:11px;font-weight:900;color:#fff;line-height:1.2;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.p-reco-cat{font-size:9px;color:var(--yellow);font-weight:900;text-transform:uppercase;letter-spacing:.3px;margin-bottom:4px}
+.p-reco-tag{position:absolute;top:6px;left:6px;background:var(--yellow);color:#000;font-size:8px;font-weight:900;padding:2px 6px;border:2px solid #000;text-transform:uppercase;z-index:1}
+.p-reco-rating-badge{position:absolute;bottom:6px;right:6px;z-index:1;background:rgba(0,0,0,.8);color:#fff;font-size:9px;font-weight:900;padding:3px 8px;border-radius:20px;border:2px solid #000}
+.p-reco-city{font-size:9px;color:var(--muted);font-weight:700;margin-bottom:3px}
+.p-reco-meta{font-size:9px;color:var(--muted);font-weight:700}
+
+/* Category chips */
+.home-cat-row{display:flex;gap:8px;padding:0 16px 16px;overflow-x:auto;scrollbar-width:none}
+.home-cat-row::-webkit-scrollbar{display:none}
+.home-cat-chip{display:inline-flex;align-items:center;gap:6px;background:var(--card);border:1.5px solid var(--border);border-radius:20px;padding:8px 14px;cursor:pointer;font-size:12px;font-weight:700;color:var(--muted);white-space:nowrap;font-family:inherit;flex-shrink:0;transition:border-color .15s,color .15s}
+.home-cat-chip:hover,.home-cat-chip:active{border-color:var(--yellow);color:var(--yellow)}
+
+/* Composez votre projet */
+.home-compose-box{margin:8px 16px 16px;padding:20px;background:linear-gradient(135deg,#0f0f0f,#1a1a1a);border:1.5px solid #2a2a2a;border-radius:16px}
+.home-compose-eyebrow{font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:1.5px;color:var(--yellow);margin-bottom:6px}
+.home-compose-title{font-size:15px;font-weight:900;color:#fff;margin-bottom:6px;line-height:1.3}
+.home-compose-sub{font-size:12px;color:#888;margin-bottom:14px;line-height:1.5}
+.home-compose-roles{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:16px}
+.home-compose-role{display:inline-flex;align-items:center;gap:5px;background:#1a1a1a;border:1px solid #333;border-radius:20px;padding:6px 12px;font-size:11px;font-weight:700;color:#ddd}
+.home-compose-cta{width:100%;background:var(--yellow);color:#000;font-weight:900;font-size:13px;text-transform:uppercase;letter-spacing:.5px;border:none;border-radius:10px;padding:13px;cursor:pointer;font-family:inherit}
+
+/* Explorer categories */
+.cat-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px 14px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:8px;transition:border-color .2s;cursor:pointer}
+.cat-card:hover,.cat-card:active{border-color:rgba(255,215,0,.3)}
+.cat-card i{font-size:24px;color:var(--gold)}
+.cat-card .cat-lbl{font-size:13px;font-weight:700;color:var(--text)}
+.cat-card .cat-desc{font-size:11px;color:var(--muted);line-height:1.4}
 
 /* COMMANDES */
 .resa-list{display:flex;flex-direction:column;gap:10px;padding:16px}
@@ -114,8 +151,6 @@ button{cursor:pointer;font-family:inherit;border:none;background:none}
 .s-active{background:rgba(96,165,250,.15);color:#60a5fa}
 .resa-date{font-size:12px;color:var(--muted)}
 .resa-price{font-size:15px;font-weight:900;color:var(--yellow)}
-
-/* Progress bar */
 .prog-bar{display:flex;margin:12px 0 4px;position:relative}
 .prog-step{flex:1;text-align:center;font-size:8px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;padding-top:20px;position:relative}
 .prog-step::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:12px;height:12px;border-radius:50%;background:var(--border);border:2px solid var(--sub)}
@@ -138,16 +173,29 @@ button{cursor:pointer;font-family:inherit;border:none;background:none}
 .dl-primary{background:var(--yellow);color:#000}
 .dl-outline{background:transparent;color:var(--yellow);border:1.5px solid rgba(255,215,0,.3)}
 
-/* EXPLORER */
-.cat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 16px}
-.cat-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px 14px;text-align:center;text-decoration:none;display:flex;flex-direction:column;align-items:center;gap:8px;transition:border-color .2s}
-.cat-card:hover{border-color:rgba(255,215,0,.3)}
-.cat-card i{font-size:24px;color:var(--gold)}
-.cat-card .cat-lbl{font-size:13px;font-weight:700;color:var(--text)}
-.cat-card .cat-desc{font-size:11px;color:var(--muted);line-height:1.4}
-.cat-chips{display:flex;flex-wrap:wrap;gap:8px;padding:0 16px 16px}
-.cat-chip-btn{background:var(--card);border:1.5px solid var(--border);border-radius:20px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;color:var(--text);display:inline-flex;align-items:center;gap:6px}
-.cat-chip-btn i{color:var(--gold)}
+/* PRESTATAIRES tab */
+.prest-filter-row{display:flex;gap:8px;padding:12px 16px;overflow-x:auto;scrollbar-width:none}
+.prest-filter-row::-webkit-scrollbar{display:none}
+.prest-filter-chip{display:inline-flex;align-items:center;gap:6px;background:var(--card);border:1.5px solid var(--border);border-radius:20px;padding:7px 14px;cursor:pointer;font-size:11px;font-weight:700;color:var(--muted);white-space:nowrap;font-family:inherit;flex-shrink:0;transition:border-color .15s,color .15s,background .15s}
+.prest-filter-chip.on{border-color:var(--yellow);color:var(--yellow);background:#0d0d00}
+.prest-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;padding:0 16px 16px}
+.prest-card{background:var(--card);border:2px solid var(--border);border-radius:14px;overflow:hidden;cursor:pointer;transition:border-color .15s}
+.prest-card:active{border-color:var(--yellow)}
+.prest-card-photo{width:100%;height:120px;background:#1a1a1a;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
+.prest-card-photo img{width:100%;height:100%;object-fit:cover}
+.prest-card-initials{font-size:18px;font-weight:900;color:var(--yellow);font-family:'Unbounded',sans-serif}
+.prest-card-badge{position:absolute;top:6px;right:6px;background:rgba(0,0,0,.8);color:#fff;font-size:8px;font-weight:900;padding:3px 6px;border-radius:10px}
+.prest-card-body{padding:10px}
+.prest-card-name{font-size:12px;font-weight:900;color:var(--text);margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.prest-card-cat{font-size:9px;color:var(--yellow);font-weight:900;text-transform:uppercase;letter-spacing:.3px;margin-bottom:3px}
+.prest-card-city{font-size:9px;color:var(--muted);font-weight:700}
+
+/* PANIER */
+.panier-empty{text-align:center;padding:60px 24px}
+.panier-empty i{font-size:48px;color:var(--gold);opacity:.3;margin-bottom:16px;display:block}
+.panier-empty h3{font-size:16px;font-weight:900;font-family:'Unbounded',sans-serif;margin-bottom:8px;line-height:1.3}
+.panier-empty p{font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:24px}
+.panier-cta{display:inline-flex;align-items:center;gap:8px;padding:14px 24px;background:var(--yellow);color:#000;font-weight:900;font-size:13px;border-radius:12px;border:none;font-family:inherit;cursor:pointer}
 
 /* PROFIL */
 .profile-header{padding:24px 20px;display:flex;align-items:center;gap:16px;border-bottom:1px solid var(--border)}
@@ -155,7 +203,6 @@ button{cursor:pointer;font-family:inherit;border:none;background:none}
 .profile-name{font-size:17px;font-weight:900;font-family:'Unbounded',sans-serif;margin-bottom:2px;line-height:1.2}
 .profile-email{font-size:12px;color:var(--muted)}
 .profile-plan{display:inline-block;margin-top:6px;background:rgba(255,215,0,.1);border:1px solid rgba(255,215,0,.3);color:var(--yellow);font-size:9px;font-weight:900;padding:3px 10px;border-radius:99px;text-transform:uppercase;letter-spacing:.5px}
-
 .menu-section{padding:16px 16px 0}
 .menu-section-title{font-size:10px;color:var(--sub);font-weight:900;text-transform:uppercase;letter-spacing:1px;padding:0 4px;margin-bottom:8px}
 .menu-group{background:var(--card);border-radius:14px;overflow:hidden;border:1px solid var(--border)}
@@ -167,8 +214,6 @@ button{cursor:pointer;font-family:inherit;border:none;background:none}
 .menu-item-arrow{font-size:12px;color:var(--sub)}
 .menu-item.danger .menu-item-ico{color:#ef4444}
 .menu-item.danger .menu-item-label{color:#ef4444}
-
-/* Referral */
 .referral-block{margin:16px;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px}
 .referral-label{font-size:10px;font-weight:900;color:var(--sub);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px}
 .referral-code{font-family:'Unbounded',sans-serif;font-size:16px;font-weight:900;color:var(--gold);letter-spacing:2px;text-align:center;background:#0d0d00;border:1.5px solid rgba(255,215,0,.2);border-radius:10px;padding:12px 16px;margin-bottom:10px}
@@ -176,7 +221,6 @@ button{cursor:pointer;font-family:inherit;border:none;background:none}
 .ref-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:10px;border-radius:10px;font-size:12px;font-weight:900;cursor:pointer;font-family:inherit;border:none}
 .ref-copy{background:var(--yellow);color:#000}
 .ref-share{background:rgba(255,255,255,.06);color:var(--text);border:1px solid var(--border)}
-
 .logout-btn{margin:20px 16px;width:calc(100% - 32px);padding:15px;background:transparent;border:1px solid #2a0a0a;border-radius:14px;color:#ef4444;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:10px;font-family:inherit;cursor:pointer}
 .version-lbl{text-align:center;font-size:11px;color:var(--sub);padding-bottom:24px}
 
@@ -184,8 +228,8 @@ button{cursor:pointer;font-family:inherit;border:none;background:none}
 .empty{text-align:center;padding:48px 16px;color:var(--muted)}
 .empty i{font-size:36px;margin-bottom:12px;display:block;opacity:.3}
 .empty p{font-size:13px;line-height:1.6}
-.spinner{text-align:center;padding:48px;color:var(--gold);opacity:.4}
-.spinner i{font-size:24px;animation:spin 1s linear infinite}
+.spinner{text-align:center;padding:40px;color:var(--gold);opacity:.4}
+.spinner i{font-size:22px;animation:spin 1s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 .pill{display:inline-block;padding:2px 9px;border-radius:20px;font-size:10px;font-weight:800}
 .pill-green{background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);color:#22c55e}
@@ -193,7 +237,6 @@ button{cursor:pointer;font-family:inherit;border:none;background:none}
 .pill-red{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:#ef4444}
 .pill-blue{background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.3);color:#60a5fa}
 .pill-grey{background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--muted)}
-.pill-purple{background:rgba(168,85,247,.1);border:1px solid rgba(168,85,247,.3);color:#c084fc}
 
 #toast{position:fixed;bottom:calc(var(--nav) + 16px);left:50%;transform:translateX(-50%) translateY(60px);background:var(--gold);color:#000;font-size:12px;font-weight:900;padding:10px 20px;border-radius:20px;z-index:9999;opacity:0;transition:opacity .25s,transform .25s;pointer-events:none;white-space:nowrap}
 #toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
@@ -217,22 +260,30 @@ button{cursor:pointer;font-family:inherit;border:none;background:none}
 
   <div id="content">
 
-    <!-- ACCUEIL -->
+    <!-- ══ ACCUEIL ══════════════════════════════════════════════ -->
     <div class="tab on" id="tab-home">
+
       <div class="greet">
-        <div class="greet-hi">Bonjour <i class="fa-solid fa-hand"></i></div>
+        <div class="greet-hi" id="greet-hi">Bonjour</div>
         <div class="greet-name" id="greet-name">GENESIS</div>
       </div>
 
+      <!-- QG widget -->
       <div class="qg-widget">
         <div class="qg-top">
-          <span class="qg-lvl" id="qg-lvl">NIVEAU 1 — MEMBRE</span>
-          <span class="qg-xp" id="qg-xp">0 XP</span>
+          <span class="qg-lvl-label">Niveau Genesis</span>
+          <i class="fa-solid fa-seedling" id="qg-icon" style="color:var(--gold);font-size:15px"></i>
         </div>
-        <div class="qg-bar-bg"><div class="qg-bar-fill" id="qg-bar" style="width:5%"></div></div>
-        <div class="qg-status" id="qg-status">Bienvenue dans votre <b>QG GENESIS</b></div>
+        <div class="qg-pts-row">
+          <span class="qg-pts-num" id="qg-pts">0</span>
+          <span class="qg-pts-unit">QG</span>
+          <span class="qg-tier-name" id="qg-tier-name">— Pas encore de niveau</span>
+        </div>
+        <div class="qg-bar-bg"><div class="qg-bar-fill" id="qg-bar" style="width:2%"></div></div>
+        <div class="qg-next-lbl" id="qg-next">Prochain : <b>Créateur</b> (100 QG)</div>
       </div>
 
+      <!-- Active order status -->
       <div class="status-card" id="status-card" style="display:none">
         <div class="status-card-top">
           <span class="status-badge-pill" id="sc-status">En cours</span>
@@ -245,112 +296,130 @@ button{cursor:pointer;font-family:inherit;border:none;background:none}
         </div>
       </div>
 
+      <!-- Quick actions -->
       <div class="qa-row">
-        <div class="qa" onclick="nav('commandes')">
-          <div class="qa-icon"><i class="fa-solid fa-bag-shopping"></i></div>
-          <div class="qa-label">Commandes</div>
+        <div class="qa" onclick="nav('prestataires')">
+          <div class="qa-icon"><i class="fa-solid fa-calendar-check"></i></div>
+          <div class="qa-label">Réserver</div>
         </div>
-        <div class="qa" onclick="nav('explorer')">
-          <div class="qa-icon"><i class="fa-solid fa-magnifying-glass"></i></div>
-          <div class="qa-label">Explorer</div>
+        <div class="qa" onclick="goMessages()">
+          <div class="qa-icon"><i class="fa-solid fa-comment-dots"></i></div>
+          <div class="qa-label">Messages</div>
         </div>
         <div class="qa" onclick="nav('livrables')">
           <div class="qa-icon"><i class="fa-solid fa-box-open"></i></div>
           <div class="qa-label">Livrables</div>
         </div>
-        <div class="qa" onclick="nav('profil')">
-          <div class="qa-icon"><i class="fa-solid fa-user"></i></div>
-          <div class="qa-label">Profil</div>
+        <div class="qa" onclick="comingSoon('Séances')">
+          <div class="qa-icon"><i class="fa-solid fa-video"></i></div>
+          <div class="qa-label">Séances</div>
         </div>
       </div>
 
+      <!-- Search -->
       <div class="home-search-wrap">
         <i class="fa-solid fa-magnifying-glass"></i>
-        <input type="text" class="home-search-input" placeholder="Que recherchez-vous ?" onkeydown="if(event.key==='Enter')window.location='contact.html'">
+        <input type="text" class="home-search-input" placeholder="Que recherchez-vous ?"
+          onkeydown="if(event.key==='Enter')_homeSearch(this.value)">
       </div>
 
-      <div class="sec-lbl"><h2>Activité récente</h2><a onclick="nav('commandes')">Tout voir</a></div>
-      <div id="home-activity"><div class="spinner"><i class="fa-solid fa-spinner"></i></div></div>
+      <!-- Partner sections injected by JS -->
+      <div id="home-pros-une"></div>
+      <div id="home-populaires"></div>
+      <div id="home-nouveaux"></div>
+      <div id="home-recommandes"></div>
 
-      <div class="sec-lbl" style="margin-top:8px"><h2>Mes chiffres</h2></div>
-      <div class="stats-grid">
-        <div class="stat-card" onclick="nav('commandes')">
-          <div class="stat-num" id="stat-commandes">—</div>
-          <div class="stat-lbl">Commandes</div>
+      <!-- Composez votre projet -->
+      <div class="home-compose-box">
+        <div class="home-compose-eyebrow"><i class="fa-solid fa-layer-group" style="margin-right:5px"></i>Composez votre projet</div>
+        <div class="home-compose-title">Plusieurs experts, un seul projet.</div>
+        <div class="home-compose-sub">Besoin de plusieurs professionnels ? Construisez votre projet GENESIS en quelques clics.</div>
+        <div class="home-compose-roles">
+          <span class="home-compose-role"><i class="fa-solid fa-video" style="color:var(--yellow)"></i>Vidéaste</span>
+          <span class="home-compose-role"><i class="fa-solid fa-camera" style="color:var(--yellow)"></i>Photographe</span>
+          <span class="home-compose-role"><i class="fa-solid fa-chart-line" style="color:var(--yellow)"></i>Marketeur</span>
+          <span class="home-compose-role"><i class="fa-solid fa-newspaper" style="color:var(--yellow)"></i>Média</span>
         </div>
-        <div class="stat-card" onclick="nav('livrables')">
-          <div class="stat-num" id="stat-livrables">—</div>
-          <div class="stat-lbl">Livrables</div>
-        </div>
+        <button class="home-compose-cta" onclick="nav('prestataires')">
+          <i class="fa-solid fa-magnifying-glass" style="margin-right:6px"></i>Explorer les prestations
+        </button>
       </div>
+
+      <div style="height:8px"></div>
     </div>
 
-    <!-- EXPLORER -->
+    <!-- ══ EXPLORER ═════════════════════════════════════════════ -->
     <div class="tab" id="tab-explorer">
       <div class="greet">
         <div class="greet-hi">Découvrez</div>
         <div class="greet-name">FA GENESIS</div>
       </div>
       <div style="height:16px"></div>
-      <div class="cat-grid">
-        <a class="cat-card" href="index.html#prestataires">
-          <i class="fa-solid fa-users"></i>
-          <div class="cat-lbl">Annuaire</div>
-          <div class="cat-desc">Trouvez le prestataire idéal</div>
-        </a>
-        <a class="cat-card" href="offres.html">
-          <i class="fa-solid fa-star"></i>
-          <div class="cat-lbl">Nos offres</div>
-          <div class="cat-desc">Découvrez nos solutions</div>
-        </a>
-        <a class="cat-card" href="contact.html">
-          <i class="fa-solid fa-paper-plane"></i>
-          <div class="cat-lbl">Lancer un projet</div>
-          <div class="cat-desc">Soumettez votre demande</div>
-        </a>
-        <a class="cat-card" href="index.html#app">
-          <i class="fa-solid fa-mobile-screen"></i>
-          <div class="cat-lbl">Application</div>
-          <div class="cat-desc">Téléchargez l'app GENESIS</div>
-        </a>
-      </div>
-      <div class="sec-lbl"><h2>Catégories</h2></div>
-      <div class="cat-chips">
-        <button class="cat-chip-btn" onclick="window.location='offres.html'"><i class="fa-solid fa-camera"></i>Photo</button>
-        <button class="cat-chip-btn" onclick="window.location='offres.html'"><i class="fa-solid fa-video"></i>Vidéo</button>
-        <button class="cat-chip-btn" onclick="window.location='offres.html'"><i class="fa-solid fa-pen-nib"></i>Design</button>
-        <button class="cat-chip-btn" onclick="window.location='offres.html'"><i class="fa-solid fa-code"></i>Dev</button>
-        <button class="cat-chip-btn" onclick="window.location='offres.html'"><i class="fa-solid fa-bullhorn"></i>Marketing</button>
-        <button class="cat-chip-btn" onclick="window.location='offres.html'"><i class="fa-solid fa-dumbbell"></i>Coaching</button>
+      <div class="home-search-wrap">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" class="home-search-input" placeholder="Photographe, vidéaste, designer…"
+          onkeydown="if(event.key==='Enter')_goPrestatairesSearch(this.value)">
       </div>
       <div style="padding:0 16px 8px">
-        <a href="contact.html" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:14px 20px;background:var(--yellow);color:#000;font-weight:900;font-size:13px;border-radius:12px;text-decoration:none"><i class="fa-solid fa-paper-plane"></i>Soumettre un projet</a>
+        <div style="font-size:10px;font-weight:900;color:var(--sub);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">Catégories</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="cat-card" onclick="_goFilter('videographer')"><i class="fa-solid fa-video"></i><div class="cat-lbl">Vidéo</div><div class="cat-desc">Vidéastes &amp; réalisateurs</div></div>
+          <div class="cat-card" onclick="_goFilter('photographer')"><i class="fa-solid fa-camera"></i><div class="cat-lbl">Photo</div><div class="cat-desc">Photographes professionnels</div></div>
+          <div class="cat-card" onclick="_goFilter('marketer')"><i class="fa-solid fa-chart-line"></i><div class="cat-lbl">Marketing</div><div class="cat-desc">Stratégies &amp; campagnes</div></div>
+          <div class="cat-card" onclick="_goFilter('graphiste')"><i class="fa-solid fa-palette"></i><div class="cat-lbl">Design</div><div class="cat-desc">Graphistes &amp; créatifs</div></div>
+          <div class="cat-card" onclick="_goFilter('developpeur_web')"><i class="fa-solid fa-laptop-code"></i><div class="cat-lbl">Dev Web</div><div class="cat-desc">Développeurs &amp; intégrateurs</div></div>
+          <div class="cat-card" onclick="_goFilter('community_manager')"><i class="fa-solid fa-mobile-screen"></i><div class="cat-lbl">CM</div><div class="cat-desc">Community managers</div></div>
+          <div class="cat-card" onclick="_goFilter('animateur_evenementiel')"><i class="fa-solid fa-microphone"></i><div class="cat-lbl">Événementiel</div><div class="cat-desc">Animateurs &amp; MCs</div></div>
+          <div class="cat-card" onclick="_goFilter(null)"><i class="fa-solid fa-users"></i><div class="cat-lbl">Tous</div><div class="cat-desc">Voir tout l'annuaire</div></div>
+        </div>
+      </div>
+      <div style="padding:12px 16px 8px">
+        <a href="contact.html" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:14px 20px;background:var(--yellow);color:#000;font-weight:900;font-size:13px;border-radius:12px">
+          <i class="fa-solid fa-paper-plane"></i>Soumettre un projet
+        </a>
       </div>
     </div>
 
-    <!-- COMMANDES -->
-    <div class="tab" id="tab-commandes">
+    <!-- ══ PRESTATAIRES ══════════════════════════════════════════ -->
+    <div class="tab" id="tab-prestataires">
       <div class="greet">
-        <div class="greet-hi">Mes</div>
-        <div class="greet-name">Commandes</div>
+        <div class="greet-hi">Annuaire</div>
+        <div class="greet-name">Prestataires</div>
       </div>
-      <div class="resa-list" id="commandes-list">
-        <div class="spinner"><i class="fa-solid fa-spinner"></i></div>
+      <div class="prest-filter-row" id="prest-filters">
+        <button class="prest-filter-chip on" onclick="filterPrest(null,this)"><i class="fa-solid fa-grip"></i>Tous</button>
+        <button class="prest-filter-chip" onclick="filterPrest('videographer',this)"><i class="fa-solid fa-video"></i>Vidéo</button>
+        <button class="prest-filter-chip" onclick="filterPrest('photographer',this)"><i class="fa-solid fa-camera"></i>Photo</button>
+        <button class="prest-filter-chip" onclick="filterPrest('marketer',this)"><i class="fa-solid fa-chart-line"></i>Marketing</button>
+        <button class="prest-filter-chip" onclick="filterPrest('graphiste',this)"><i class="fa-solid fa-palette"></i>Design</button>
+        <button class="prest-filter-chip" onclick="filterPrest('developpeur_web',this)"><i class="fa-solid fa-laptop-code"></i>Dev Web</button>
+        <button class="prest-filter-chip" onclick="filterPrest('community_manager',this)"><i class="fa-solid fa-mobile-screen"></i>CM</button>
+        <button class="prest-filter-chip" onclick="filterPrest('animateur_evenementiel',this)"><i class="fa-solid fa-microphone"></i>Événementiel</button>
+        <button class="prest-filter-chip" onclick="filterPrest('pilote_drone',this)"><i class="fa-solid fa-helicopter"></i>Drone</button>
+        <button class="prest-filter-chip" onclick="filterPrest('media',this)"><i class="fa-solid fa-newspaper"></i>Médias</button>
+      </div>
+      <div class="prest-grid" id="prest-grid">
+        <div class="spinner" style="grid-column:span 2"><i class="fa-solid fa-spinner"></i></div>
       </div>
     </div>
 
-    <!-- LIVRABLES -->
-    <div class="tab" id="tab-livrables">
+    <!-- ══ PANIER ════════════════════════════════════════════════ -->
+    <div class="tab" id="tab-panier">
       <div class="greet">
-        <div class="greet-hi">Mes</div>
-        <div class="greet-name">Livrables</div>
+        <div class="greet-hi">Mon</div>
+        <div class="greet-name">Panier</div>
       </div>
-      <div class="liv-list" id="livrables-list">
-        <div class="spinner"><i class="fa-solid fa-spinner"></i></div>
+      <div class="panier-empty">
+        <i class="fa-solid fa-cart-shopping"></i>
+        <h3>Votre panier est vide</h3>
+        <p>Explorez l'annuaire GENESIS et réservez vos services préférés.</p>
+        <button class="panier-cta" onclick="nav('prestataires')">
+          <i class="fa-solid fa-users"></i>Explorer les prestataires
+        </button>
       </div>
     </div>
 
-    <!-- PROFIL -->
+    <!-- ══ PROFIL ════════════════════════════════════════════════ -->
     <div class="tab" id="tab-profil">
       <div class="profile-header">
         <div class="profile-ava" id="pf-ava">C</div>
@@ -374,14 +443,14 @@ button{cursor:pointer;font-family:inherit;border:none;background:none}
             <span class="menu-item-label">Livrables</span>
             <i class="fa-solid fa-chevron-right menu-item-arrow"></i>
           </div>
-          <div class="menu-item" onclick="comingSoon('Devis')">
-            <div class="menu-item-ico" style="background:rgba(168,85,247,.1)"><i class="fa-solid fa-file-invoice" style="color:#c084fc"></i></div>
-            <span class="menu-item-label">Devis</span>
-            <i class="fa-solid fa-chevron-right menu-item-arrow"></i>
-          </div>
           <div class="menu-item" onclick="comingSoon('Séances')">
             <div class="menu-item-ico" style="background:rgba(34,197,94,.1)"><i class="fa-solid fa-calendar-days" style="color:#22c55e"></i></div>
             <span class="menu-item-label">Séances</span>
+            <i class="fa-solid fa-chevron-right menu-item-arrow"></i>
+          </div>
+          <div class="menu-item" onclick="goMessages()">
+            <div class="menu-item-ico" style="background:rgba(96,165,250,.1)"><i class="fa-solid fa-comment-dots" style="color:#60a5fa"></i></div>
+            <span class="menu-item-label">Messages</span>
             <i class="fa-solid fa-chevron-right menu-item-arrow"></i>
           </div>
           <div class="menu-item" onclick="comingSoon('Paiements')">
@@ -415,17 +484,6 @@ button{cursor:pointer;font-family:inherit;border:none;background:none}
             <span class="menu-item-label">Mes avis</span>
             <i class="fa-solid fa-chevron-right menu-item-arrow"></i>
           </div>
-        </div>
-      </div>
-
-      <div class="menu-section">
-        <div class="menu-section-title">Mon réseau</div>
-        <div class="menu-group">
-          <div class="menu-item" onclick="nav('explorer')">
-            <div class="menu-item-ico" style="background:rgba(255,215,0,.1)"><i class="fa-solid fa-magnifying-glass" style="color:var(--gold)"></i></div>
-            <span class="menu-item-label">Explorer GENESIS</span>
-            <i class="fa-solid fa-chevron-right menu-item-arrow"></i>
-          </div>
           <div class="menu-item danger" onclick="confirmDelete()">
             <div class="menu-item-ico" style="background:rgba(239,68,68,.1)"><i class="fa-solid fa-trash"></i></div>
             <span class="menu-item-label">Supprimer mon compte</span>
@@ -439,21 +497,43 @@ button{cursor:pointer;font-family:inherit;border:none;background:none}
         <div class="referral-code" id="pf-referral-code">CL-XXXXXXXX</div>
         <div class="ref-btns">
           <button class="ref-btn ref-copy" onclick="copyReferral()"><i class="fa-solid fa-copy"></i>Copier</button>
-          <button class="ref-btn ref-share" onclick="shareReferral()"><i class="fa-solid fa-share-nodes"></i>Inviter un ami</button>
+          <button class="ref-btn ref-share" onclick="shareReferral()"><i class="fa-solid fa-share-nodes"></i>Inviter</button>
         </div>
       </div>
 
       <button class="logout-btn" onclick="doLogout()"><i class="fa-solid fa-right-from-bracket"></i>Se déconnecter</button>
-      <div class="version-lbl">FA GENESIS v1.1 — Espace Client</div>
+      <div class="version-lbl">FA GENESIS v1.2 — Espace Client</div>
+    </div>
+
+    <!-- ══ COMMANDES (hidden, accessible from profile menu) ═════ -->
+    <div class="tab" id="tab-commandes">
+      <div class="greet">
+        <div class="greet-hi">Mes</div>
+        <div class="greet-name">Commandes</div>
+      </div>
+      <div class="resa-list" id="commandes-list">
+        <div class="spinner"><i class="fa-solid fa-spinner"></i></div>
+      </div>
+    </div>
+
+    <!-- ══ LIVRABLES (hidden, accessible from profile + QA) ═════ -->
+    <div class="tab" id="tab-livrables">
+      <div class="greet">
+        <div class="greet-hi">Mes</div>
+        <div class="greet-name">Livrables</div>
+      </div>
+      <div class="liv-list" id="livrables-list">
+        <div class="spinner"><i class="fa-solid fa-spinner"></i></div>
+      </div>
     </div>
 
   </div>
 
   <nav id="nav">
     <button class="nav-btn on" id="nb-home" onclick="nav('home')"><i class="fa-solid fa-house"></i><span>Accueil</span></button>
-    <button class="nav-btn" id="nb-explorer" onclick="nav('explorer')"><i class="fa-solid fa-magnifying-glass"></i><span>Explorer</span></button>
-    <button class="nav-btn" id="nb-commandes" onclick="nav('commandes')"><i class="fa-solid fa-bag-shopping"></i><span>Commandes</span></button>
-    <button class="nav-btn" id="nb-livrables" onclick="nav('livrables')"><i class="fa-solid fa-box-open"></i><span>Livrables</span></button>
+    <button class="nav-btn" id="nb-explorer" onclick="nav('explorer')"><i class="fa-solid fa-compass"></i><span>Explorer</span></button>
+    <button class="nav-btn" id="nb-prestataires" onclick="nav('prestataires')"><i class="fa-solid fa-users"></i><span>Prestataires</span></button>
+    <button class="nav-btn" id="nb-panier" onclick="nav('panier')"><i class="fa-solid fa-cart-shopping"></i><span>Panier</span></button>
     <button class="nav-btn" id="nb-profil" onclick="nav('profil')"><i class="fa-solid fa-user"></i><span>Profil</span></button>
   </nav>
 
@@ -463,8 +543,18 @@ button{cursor:pointer;font-family:inherit;border:none;background:none}
 
 <script>
 var API = 'https://fa-genesis-website.onrender.com';
-var _token = localStorage.getItem('fa_genesis_token') || localStorage.getItem('fa_genesis_session');
+var _token = localStorage.getItem('fa_genesis_token');
+if(!_token){
+  try{
+    var _rawSess = localStorage.getItem('fa_genesis_session');
+    if(_rawSess){
+      var _parsedSess = JSON.parse(_rawSess);
+      _token = _parsedSess.token || null;
+    }
+  }catch(e){}
+}
 var _user = null;
+var _prestDataCache = null;
 
 (function init(){
   if(!_token){ return goLogin(); }
@@ -475,24 +565,90 @@ var _user = null;
       _user = d.user;
       boot();
     })
-    .catch(function(){ return goLogin(); });
+    .catch(function(){ goLogin(); });
 })();
 
 function goLogin(){ window.location.replace('login.html'); }
 
-function boot(){
-  document.getElementById('splash').style.display = 'none';
-  document.getElementById('app').style.display = '';
-  var fn = ((_user.prenom||_user.firstName||'')+' '+(_user.nom||_user.lastName||'')).trim()||_user.email||'Membre';
-  var initial = (fn[0]||'C').toUpperCase();
-  document.getElementById('hdr-ava').textContent = initial;
-  document.getElementById('greet-name').textContent = fn.split(' ')[0]||fn;
-  loadProfil();
-  loadAccueil();
-  loadCommandes();
-  loadLivrables();
+function timeGreeting(){
+  var h = new Date().getHours();
+  if(h < 5)  return 'Bonne nuit';
+  if(h < 12) return 'Bonjour';
+  if(h < 18) return 'Bon après-midi';
+  return 'Bonne soirée';
 }
 
+function boot(){
+  var splash = document.getElementById('splash');
+  if(splash) splash.style.display = 'none';
+  var app = document.getElementById('app');
+  if(app) app.style.display = '';
+
+  var prenom = _user.prenom || _user.firstName || '';
+  var nom    = _user.nom   || _user.lastName  || '';
+  var fn = (prenom+' '+nom).trim() || _user.email || 'Membre';
+  var initial = (fn[0]||'C').toUpperCase();
+
+  var hdrAva = document.getElementById('hdr-ava');
+  if(hdrAva) hdrAva.textContent = initial;
+
+  var greetHi = document.getElementById('greet-hi');
+  if(greetHi) greetHi.textContent = timeGreeting();
+
+  var greetName = document.getElementById('greet-name');
+  if(greetName) greetName.textContent = prenom || fn.split(' ')[0] || fn;
+
+  renderQGWidget();
+  loadProfil();
+  loadCommandes();
+  loadLivrables();
+  loadActiveOrder();
+  loadHomePartners();
+  loadPrestataires(null);
+}
+
+// ── QG / NIVEAUX ─────────────────────────────────────────────────
+var _QG_TIERS = [
+  {badge:null,    level:'Explorateur', nextPts:100,  nextLabel:'Créateur',    icon:'fa-seedling'},
+  {badge:'bronze',level:'Créateur',    nextPts:300,  nextLabel:'Bâtisseur',   icon:'fa-fire'},
+  {badge:'argent',level:'Bâtisseur',   nextPts:600,  nextLabel:'Visionnaire', icon:'fa-bolt'},
+  {badge:'or',    level:'Visionnaire', nextPts:1000, nextLabel:'Générateur',  icon:'fa-crown'},
+  {badge:'elite', level:'Générateur',  nextPts:0,    nextLabel:'',            icon:'fa-star'}
+];
+
+function renderQGWidget(){
+  if(!_user) return;
+  var pts   = parseInt(_user.genesisPoints) || parseInt(_user.xp) || 0;
+  var badge = _user.badge || null;
+  var tier  = _QG_TIERS[0];
+  for(var i=0;i<_QG_TIERS.length;i++){
+    if(_QG_TIERS[i].badge === badge){ tier = _QG_TIERS[i]; break; }
+  }
+  var pct = tier.nextPts > 0 ? Math.min(100, Math.round(pts / tier.nextPts * 100)) : 100;
+
+  var qgIcon = document.getElementById('qg-icon');
+  if(qgIcon) qgIcon.className = 'fa-solid '+tier.icon;
+
+  var qgPts = document.getElementById('qg-pts');
+  if(qgPts) qgPts.textContent = pts;
+
+  var qgTierName = document.getElementById('qg-tier-name');
+  if(qgTierName) qgTierName.textContent = badge ? ('— '+tier.level) : '— Pas encore de niveau';
+
+  var qgBar = document.getElementById('qg-bar');
+  if(qgBar) qgBar.style.width = Math.max(2, pct)+'%';
+
+  var qgNext = document.getElementById('qg-next');
+  if(qgNext){
+    if(tier.nextLabel && tier.nextPts > 0){
+      qgNext.innerHTML = 'Prochain : <b>'+esc(tier.nextLabel)+'</b> ('+tier.nextPts+' QG)';
+    } else {
+      qgNext.innerHTML = '<b>Niveau maximum atteint</b>';
+    }
+  }
+}
+
+// ── NAVIGATION ───────────────────────────────────────────────────
 function nav(name){
   document.querySelectorAll('.tab').forEach(function(el){ el.classList.remove('on'); });
   document.querySelectorAll('.nav-btn').forEach(function(el){ el.classList.remove('on'); });
@@ -500,60 +656,267 @@ function nav(name){
   var btn = document.getElementById('nb-'+name);
   if(tab) tab.classList.add('on');
   if(btn) btn.classList.add('on');
-  document.getElementById('content').scrollTop = 0;
+  var content = document.getElementById('content');
+  if(content) content.scrollTop = 0;
 }
 
-function apiFetch(path){ return fetch(API+path,{headers:{'Authorization':'Bearer '+_token}}).then(function(r){ return r.json(); }); }
-function fmt(d){ if(!d) return '—'; try{ return new Date(d).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'}); }catch(e){ return d; } }
+// ── UTILS ────────────────────────────────────────────────────────
+function apiFetch(path){
+  return fetch(API+path,{headers:{'Authorization':'Bearer '+_token}}).then(function(r){ return r.json(); });
+}
+function fmt(d){
+  if(!d) return '—';
+  try{ return new Date(d).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'}); }
+  catch(e){ return d; }
+}
 function fmtAmt(n){ return n!=null ? parseFloat(n).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g,' ')+'€' : '—'; }
-function showToast(msg){ var t=document.getElementById('toast'); t.textContent=msg; t.classList.add('on'); setTimeout(function(){ t.classList.remove('on'); },2200); }
+function showToast(msg){
+  var t = document.getElementById('toast');
+  if(!t) return;
+  t.textContent = msg;
+  t.classList.add('on');
+  setTimeout(function(){ t.classList.remove('on'); }, 2200);
+}
 function comingSoon(label){ showToast(label+' — Disponible dans l\'app GENESIS'); }
 function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function goMessages(){ window.location.href = 'messagerie.html'; }
+function _homeSearch(q){ if(q && q.trim()){ nav('prestataires'); } }
+function _goPrestatairesSearch(q){ if(q && q.trim()){ nav('prestataires'); } }
+function _goFilter(cat){ nav('prestataires'); _applyPrestFilter(cat); }
 
-function loadAccueil(){
-  apiFetch('/api/orders').then(function(data){
-    var orders = Array.isArray(data) ? data : (data&&data.orders)||[];
-    document.getElementById('stat-commandes').textContent = orders.length;
-    var active = orders.find(function(o){ return ['in_progress','active','confirmed','delivery'].indexOf(o.status) !== -1; });
-    if(active){
-      var lbl = {pending:'Confirmée',confirmed:'Confirmée',in_progress:'En cours',active:'En cours',delivery:'En livraison'}[active.status]||'En cours';
-      document.getElementById('sc-status').textContent = lbl;
-      document.getElementById('sc-title').textContent = active.product_name||active.service||'Votre commande';
-      document.getElementById('sc-sub').textContent = (active.partner_name?'Prestataire : '+active.partner_name+' · ':'')+fmtAmt(active.amount);
-      document.getElementById('status-card').style.display = '';
-    }
-    var el = document.getElementById('home-activity');
-    if(orders.length===0){
-      el.innerHTML = '<div class="empty"><i class="fa-solid fa-bolt"></i><p>Aucune activité récente.<br>Lancez votre premier projet !</p></div>';
-    } else {
-      var pillLabel = {pending:'Confirmée',confirmed:'Confirmée',in_progress:'En cours',active:'En cours',delivery:'Livraison',delivered:'Livraison',completed:'Terminée',done:'Terminée',cancelled:'Annulée'};
-      el.innerHTML = '<div style="display:flex;flex-direction:column;gap:8px;padding:0 16px">'+orders.slice(0,3).map(function(o){
-        var st = o.status||'pending';
-        var cls = (st==='in_progress'||st==='active')?'active':(st==='completed'||st==='done')?'done':st;
-        return '<div class="resa-card" onclick="nav(\'commandes\')" style="cursor:pointer">'
-          +'<div class="resa-top"><div><div class="resa-name">'+esc(o.product_name||o.service||'Commande')+'</div>'
-          +(o.partner_name?'<div class="resa-date" style="margin-top:3px">'+esc(o.partner_name)+'</div>':'')+
-          '</div><span class="resa-status s-'+cls+'">'+(pillLabel[st]||'En cours')+'</span></div>'
-          +'<div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px">'
-          +'<span class="resa-price">'+fmtAmt(o.amount)+'</span>'
-          +'<span class="resa-date">'+fmt(o.created_at)+'</span></div></div>';
-      }).join('')+'</div>';
-    }
-  }).catch(function(){ document.getElementById('home-activity').innerHTML = '<div class="empty"><i class="fa-solid fa-wifi-slash"></i><p>Impossible de charger</p></div>'; });
+// ── PARTNER HELPERS ──────────────────────────────────────────────
+var _PARTNER_LABELS = {
+  photographer:'Photographe', videographer:'Vidéaste', marketer:'Marketeur',
+  media:'Médias', community_manager:'Community Manager', graphiste:'Graphiste',
+  developpeur_web:'Développeur Web', pilote_drone:'Pilote Drone',
+  consultant:'Consultant', coworking:'Espace Coworking',
+  animateur_evenementiel:'Animateur / Événementiel', influencer:'Influenceur', other:'Autre'
+};
 
-  apiFetch('/api/livrables').then(function(data){
-    var livs = Array.isArray(data) ? data : (data&&data.livrables)||[];
-    document.getElementById('stat-livrables').textContent = livs.length;
-  }).catch(function(){ document.getElementById('stat-livrables').textContent = '0'; });
+function partnerTypeLabel(p){
+  if(p.partner_type === 'other') return p.partner_type_other || 'Autre';
+  return _PARTNER_LABELS[p.partner_type] || p.partner_type || 'Prestataire';
+}
+function partnerPriceLabel(p){
+  if(p.tarif_type === 'devis' || !p.tarif_from) return 'Sur devis';
+  return 'À partir de '+p.tarif_from+'€';
 }
 
+function recoPartnerCard(p, idx, tagOverride){
+  var label    = partnerTypeLabel(p);
+  var initials = (((p.prenom||'')[0]||'')+((p.nom||'')[0]||'')).toUpperCase();
+  var avatarHtml = p.photo
+    ? '<img src="'+esc(p.photo)+'" alt="" style="width:100%;height:100%;object-fit:cover">'
+    : '<div class="p-reco-initials">'+esc(initials||'?')+'</div>';
+  var ratingBadge = (p.rating && p.rating.count)
+    ? '<div class="p-reco-rating-badge"><i class="fa-solid fa-star"></i> '+p.rating.average+'</div>'
+    : '<div class="p-reco-rating-badge">Nouveau</div>';
+  var tag = tagOverride
+    ? '<div class="p-reco-tag">'+esc(tagOverride)+'</div>'
+    : (idx === 0 ? '<div class="p-reco-tag">Top</div>' : '');
+  return '<div class="p-reco-card" onclick="openPartner(\''+esc(String(p.id||''))+'\')">'
+    +'<div class="p-reco-photo">'+tag+avatarHtml+ratingBadge+'</div>'
+    +'<div class="p-reco-body">'
+    +'<div class="p-reco-name">'+esc((p.prenom||'')+' '+(p.nom||''))+'</div>'
+    +'<div class="p-reco-cat">'+esc(label)+'</div>'
+    +'<div class="p-reco-city"><i class="fa-solid fa-location-dot" style="margin-right:3px;font-size:7px"></i>'+esc(p.city||p.ville||'France')+'</div>'
+    +'<div class="p-reco-meta">'+esc(partnerPriceLabel(p))+'</div>'
+    +'</div></div>';
+}
+
+function openPartner(id){ nav('prestataires'); }
+
+// ── HOME PARTNER SECTIONS ─────────────────────────────────────────
+function loadHomePartners(){
+  var prosUne = document.getElementById('home-pros-une');
+  if(prosUne) prosUne.innerHTML =
+    '<div class="p-section-hdr black">Professionnels à la une</div>'
+    +'<div class="p-reco-row" id="row-pros-une"><div class="spinner"><i class="fa-solid fa-spinner"></i></div></div>';
+
+  var populaires = document.getElementById('home-populaires');
+  if(populaires){
+    var cats = [
+      {id:'videographer',label:'Vidéo',icon:'fa-video'},
+      {id:'photographer',label:'Photo',icon:'fa-camera'},
+      {id:'marketer',label:'Marketing',icon:'fa-chart-line'},
+      {id:'media',label:'Médias',icon:'fa-newspaper'},
+      {id:'graphiste',label:'Design',icon:'fa-palette'},
+      {id:'developpeur_web',label:'Dev Web',icon:'fa-laptop-code'},
+      {id:'community_manager',label:'CM',icon:'fa-mobile-screen'},
+      {id:'pilote_drone',label:'Drone',icon:'fa-helicopter'},
+      {id:'animateur_evenementiel',label:'Événementiel',icon:'fa-microphone'}
+    ];
+    populaires.innerHTML =
+      '<div class="p-section-hdr dark">Les plus recherchés</div>'
+      +'<div class="home-cat-row">'
+      +cats.map(function(c){
+        return '<button class="home-cat-chip" onclick="_goFilter(\''+c.id+'\')"><i class="fa-solid '+c.icon+'"></i>'+esc(c.label)+'</button>';
+      }).join('')
+      +'</div>';
+  }
+
+  var nouveaux = document.getElementById('home-nouveaux');
+  if(nouveaux) nouveaux.innerHTML =
+    '<div class="p-section-hdr black">Nouveaux talents</div>'
+    +'<div class="p-reco-row" id="row-nouveaux"><div class="spinner"><i class="fa-solid fa-spinner"></i></div></div>';
+
+  var recommandes = document.getElementById('home-recommandes');
+  if(recommandes) recommandes.innerHTML =
+    '<div class="p-section-hdr dark">Recommandés pour vous</div>'
+    +'<div class="p-reco-row" id="row-recommandes"><div class="spinner"><i class="fa-solid fa-spinner"></i></div></div>';
+
+  // Fetch featured
+  fetch(API+'/api/partners/featured?limit=6')
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(d){
+      var list = Array.isArray(d) ? d : (d && Array.isArray(d.partners) ? d.partners : []);
+      var el = document.getElementById('row-pros-une');
+      if(!el) return;
+      el.innerHTML = list.length
+        ? list.map(function(p,i){ return recoPartnerCard(p,i,'Top'); }).join('')
+        : '<div style="padding:0 16px 8px;font-size:12px;color:var(--muted)">Aucun prestataire à la une</div>';
+    })
+    .catch(function(){
+      var el = document.getElementById('row-pros-une');
+      if(el) el.innerHTML = '<div style="padding:0 16px 8px;font-size:12px;color:var(--muted)">Indisponible</div>';
+    });
+
+  // Fetch new
+  fetch(API+'/api/partners/new?limit=6')
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(d){
+      var list = Array.isArray(d) ? d : (d && Array.isArray(d.partners) ? d.partners : []);
+      var el = document.getElementById('row-nouveaux');
+      if(!el) return;
+      el.innerHTML = list.length
+        ? list.map(function(p,i){ return recoPartnerCard(p,i,'Nouveau'); }).join('')
+        : '<div style="padding:0 16px 8px;font-size:12px;color:var(--muted)">Aucun nouveau talent</div>';
+    })
+    .catch(function(){
+      var el = document.getElementById('row-nouveaux');
+      if(el) el.innerHTML = '<div style="padding:0 16px 8px;font-size:12px;color:var(--muted)">Indisponible</div>';
+    });
+
+  // Fetch recommended
+  fetch(API+'/api/partners/recommended?limit=6')
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(d){
+      var list = Array.isArray(d) ? d : (d && Array.isArray(d.partners) ? d.partners : []);
+      var el = document.getElementById('row-recommandes');
+      if(!el) return;
+      if(!list.length){
+        // Fallback: reuse featured
+        fetch(API+'/api/partners/featured?limit=6')
+          .then(function(r2){ return r2.ok ? r2.json() : null; })
+          .then(function(d2){
+            var l2 = Array.isArray(d2) ? d2 : (d2 && Array.isArray(d2.partners) ? d2.partners : []);
+            if(el) el.innerHTML = l2.map(function(p,i){ return recoPartnerCard(p,i,i===0?'Top':''); }).join('');
+          })
+          .catch(function(){ if(el) el.innerHTML = ''; });
+        return;
+      }
+      el.innerHTML = list.map(function(p,i){ return recoPartnerCard(p,i,i===0?'Top':''); }).join('');
+    })
+    .catch(function(){
+      var el = document.getElementById('row-recommandes');
+      if(el) el.innerHTML = '<div style="padding:0 16px 8px;font-size:12px;color:var(--muted)">Indisponible</div>';
+    });
+}
+
+// ── ACTIVE ORDER CARD ─────────────────────────────────────────────
+function loadActiveOrder(){
+  apiFetch('/api/orders').then(function(data){
+    var orders = Array.isArray(data) ? data : (data && data.orders) || [];
+    var active = null;
+    for(var i=0;i<orders.length;i++){
+      if(['in_progress','active','confirmed','delivery'].indexOf(orders[i].status) !== -1){
+        active = orders[i]; break;
+      }
+    }
+    if(!active) return;
+    var lbl = {pending:'Confirmée',confirmed:'Confirmée',in_progress:'En cours',active:'En cours',delivery:'En livraison'}[active.status]||'En cours';
+    var sc = document.getElementById('sc-status'); if(sc) sc.textContent = lbl;
+    var st = document.getElementById('sc-title'); if(st) st.textContent = active.product_name||active.service||'Votre commande';
+    var ss = document.getElementById('sc-sub'); if(ss) ss.textContent = (active.partner_name?'Prestataire : '+active.partner_name+' · ':'')+fmtAmt(active.amount);
+    var card = document.getElementById('status-card'); if(card) card.style.display = '';
+  }).catch(function(){});
+}
+
+// ── PRESTATAIRES DIRECTORY ────────────────────────────────────────
+function loadPrestataires(cat){
+  var grid = document.getElementById('prest-grid');
+  if(!grid) return;
+  if(cat === null && _prestDataCache){
+    renderPrestGrid(_prestDataCache); return;
+  }
+  grid.innerHTML = '<div class="spinner" style="grid-column:span 2"><i class="fa-solid fa-spinner"></i></div>';
+  var url = API+'/api/partners/directory?sort=score&limit=24';
+  if(cat) url += '&type='+encodeURIComponent(cat);
+  fetch(url)
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(d){
+      var list = Array.isArray(d) ? d : (d && Array.isArray(d.partners) ? d.partners : []);
+      if(cat === null) _prestDataCache = list;
+      renderPrestGrid(list);
+    })
+    .catch(function(){
+      var g = document.getElementById('prest-grid');
+      if(g) g.innerHTML = '<div class="empty" style="grid-column:span 2"><i class="fa-solid fa-wifi-slash"></i><p>Impossible de charger l\'annuaire</p></div>';
+    });
+}
+
+function filterPrest(cat, btn){
+  document.querySelectorAll('.prest-filter-chip').forEach(function(el){ el.classList.remove('on'); });
+  if(btn) btn.classList.add('on');
+  loadPrestataires(cat);
+}
+
+function _applyPrestFilter(cat){
+  document.querySelectorAll('.prest-filter-chip').forEach(function(el){ el.classList.remove('on'); });
+  var chips = document.querySelectorAll('.prest-filter-chip');
+  for(var i=0;i<chips.length;i++){
+    var oc = chips[i].getAttribute('onclick')||'';
+    if(cat === null && oc.indexOf('null') !== -1){ chips[i].classList.add('on'); break; }
+    if(cat && oc.indexOf(cat) !== -1){ chips[i].classList.add('on'); break; }
+  }
+  loadPrestataires(cat);
+}
+
+function renderPrestGrid(list){
+  var grid = document.getElementById('prest-grid');
+  if(!grid) return;
+  if(!list || !list.length){
+    grid.innerHTML = '<div class="empty" style="grid-column:span 2"><i class="fa-solid fa-users"></i><p>Aucun prestataire dans cette catégorie</p></div>';
+    return;
+  }
+  grid.innerHTML = list.map(function(p){
+    var label    = partnerTypeLabel(p);
+    var initials = (((p.prenom||'')[0]||'')+((p.nom||'')[0]||'')).toUpperCase();
+    var photoHtml = p.photo
+      ? '<img src="'+esc(p.photo)+'" alt="" style="width:100%;height:100%;object-fit:cover">'
+      : '<div class="prest-card-initials">'+esc(initials||'?')+'</div>';
+    var ratingHtml = (p.rating && p.rating.count)
+      ? '<div class="prest-card-badge"><i class="fa-solid fa-star" style="color:var(--gold);font-size:7px;margin-right:2px"></i>'+p.rating.average+'</div>'
+      : '';
+    return '<div class="prest-card" onclick="openPartner(\''+esc(String(p.id||''))+'\')">'
+      +'<div class="prest-card-photo">'+photoHtml+ratingHtml+'</div>'
+      +'<div class="prest-card-body">'
+      +'<div class="prest-card-name">'+esc((p.prenom||'')+' '+(p.nom||''))+'</div>'
+      +'<div class="prest-card-cat">'+esc(label)+'</div>'
+      +'<div class="prest-card-city"><i class="fa-solid fa-location-dot" style="margin-right:3px;font-size:7px"></i>'+esc(p.city||p.ville||'France')+'</div>'
+      +'</div></div>';
+  }).join('');
+}
+
+// ── COMMANDES ─────────────────────────────────────────────────────
 function loadCommandes(){
   var el = document.getElementById('commandes-list');
+  if(!el) return;
   apiFetch('/api/orders').then(function(data){
-    var orders = Array.isArray(data) ? data : (data&&data.orders)||[];
-    if(orders.length===0){
+    var orders = Array.isArray(data) ? data : (data && data.orders) || [];
+    if(!orders.length){
       el.innerHTML = '<div class="empty"><i class="fa-solid fa-bag-shopping"></i><p>Aucune commande pour le moment.<br>Lancez votre premier projet !</p></div>'
-        +'<div style="padding:0 0 8px"><a href="contact.html" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:13px 20px;background:var(--yellow);color:#000;font-weight:900;font-size:13px;border-radius:10px;text-decoration:none"><i class="fa-solid fa-paper-plane"></i>Lancer un projet</a></div>';
+        +'<div style="padding:0 16px 8px"><a href="contact.html" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:13px 20px;background:var(--yellow);color:#000;font-weight:900;font-size:13px;border-radius:10px"><i class="fa-solid fa-paper-plane"></i>Lancer un projet</a></div>';
       return;
     }
     el.innerHTML = orders.map(commandeCard).join('');
@@ -561,43 +924,46 @@ function loadCommandes(){
 }
 
 function commandeCard(o){
-  var steps = ['Confirmée','En cours','Livraison','Terminée'];
-  var stepIdx = {pending:0,confirmed:0,in_progress:1,active:1,delivery:2,delivered:2,completed:3,done:3};
-  var pillLabel = {pending:'Confirmée',confirmed:'Confirmée',in_progress:'En cours',active:'En cours',delivery:'Livraison',delivered:'Livraison',completed:'Terminée',done:'Terminée',cancelled:'Annulée'};
-  var st = o.status||'pending';
-  var cur = stepIdx[st]!==undefined ? stepIdx[st] : 0;
-  var cls = (st==='in_progress'||st==='active')?'active':(st==='completed'||st==='done')?'done':st;
+  var steps    = ['Confirmée','En cours','Livraison','Terminée'];
+  var stepIdx  = {pending:0,confirmed:0,in_progress:1,active:1,delivery:2,delivered:2,completed:3,done:3};
+  var pillLbl  = {pending:'Confirmée',confirmed:'Confirmée',in_progress:'En cours',active:'En cours',delivery:'Livraison',delivered:'Livraison',completed:'Terminée',done:'Terminée',cancelled:'Annulée'};
+  var st  = o.status || 'pending';
+  var cur = stepIdx[st] !== undefined ? stepIdx[st] : 0;
+  var cls = (st==='in_progress'||st==='active') ? 'active' : (st==='completed'||st==='done') ? 'done' : st;
   var prog = '<div class="prog-bar">'+steps.map(function(s,i){
-    var c = i<cur?'done':(i===cur?'current':''); return '<div class="prog-step '+c+'">'+s+'</div>';
+    var c = i < cur ? 'done' : (i === cur ? 'current' : '');
+    return '<div class="prog-step '+c+'">'+s+'</div>';
   }).join('')+'</div>';
   return '<div class="resa-card">'
     +'<div class="resa-top"><div><div class="resa-name">'+esc(o.product_name||o.service||'Commande')+'</div>'
-    +(o.partner_name?'<div class="resa-date" style="margin-top:3px">'+esc(o.partner_name)+'</div>':'')
-    +'</div><span class="resa-status s-'+cls+'">'+(pillLabel[st]||'En cours')+'</span></div>'
+    +(o.partner_name ? '<div class="resa-date" style="margin-top:3px">'+esc(o.partner_name)+'</div>' : '')
+    +'</div><span class="resa-status s-'+cls+'">'+(pillLbl[st]||'En cours')+'</span></div>'
     +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">'
     +'<span class="resa-price">'+fmtAmt(o.amount)+'</span>'
     +'<span class="resa-date">'+fmt(o.created_at)+'</span></div>'
     +prog+'</div>';
 }
 
+// ── LIVRABLES ─────────────────────────────────────────────────────
 function loadLivrables(){
   var el = document.getElementById('livrables-list');
+  if(!el) return;
   apiFetch('/api/livrables').then(function(data){
-    var livs = Array.isArray(data) ? data : (data&&data.livrables)||[];
-    if(livs.length===0){ el.innerHTML = '<div class="empty"><i class="fa-solid fa-box-open"></i><p>Aucun livrable pour le moment</p></div>'; return; }
+    var livs = Array.isArray(data) ? data : (data && data.livrables) || [];
+    if(!livs.length){ el.innerHTML = '<div class="empty"><i class="fa-solid fa-box-open"></i><p>Aucun livrable pour le moment</p></div>'; return; }
     el.innerHTML = livs.map(function(l){
-      var signed = l.status==='signed'||l.status==='validated';
+      var signed  = l.status==='signed'||l.status==='validated';
       var pending = l.status==='pending_signature'||l.status==='pending';
-      var ic = signed ? '#22c55e' : 'var(--gold)';
+      var ic  = signed ? '#22c55e' : 'var(--gold)';
       var ibg = signed ? 'rgba(34,197,94,.1)' : 'rgba(255,215,0,.1)';
       return '<div class="liv-card"><div class="liv-top">'
         +'<div class="liv-ico" style="background:'+ibg+'"><i class="fa-solid fa-box-open" style="color:'+ic+'"></i></div>'
         +'<div style="flex:1;min-width:0"><div class="liv-name">'+esc(l.product_name||l.title||l.service||'Livrable')+'</div>'
-        +'<div class="liv-sub">'+(l.partner_name?esc(l.partner_name)+' · ':'')+'Livré le '+fmt(l.delivered_at||l.created_at)+'</div>'
+        +'<div class="liv-sub">'+(l.partner_name ? esc(l.partner_name)+' · ' : '')+'Livré le '+fmt(l.delivered_at||l.created_at)+'</div>'
         +'<div style="margin-top:6px"><span class="pill '+(signed?'pill-green':pending?'pill-yellow':'pill-grey')+'">'+(signed?'Validé':pending?'En attente':'Livré')+'</span></div>'
         +'</div></div>'
-        +(l.contract_id?'<button class="dl-btn dl-primary" onclick="downloadContract(\''+esc(l.contract_id)+'\')"><i class="fa-solid fa-download"></i>Télécharger le contrat</button>':'')
-        +(signed&&l.id?'<button class="dl-btn dl-outline" onclick="downloadLivrable(\''+esc(l.id)+'\')"><i class="fa-solid fa-file-arrow-down"></i>Télécharger le livrable</button>':'')
+        +(l.contract_id ? '<button class="dl-btn dl-primary" onclick="downloadContract(\''+esc(String(l.contract_id))+'\')"><i class="fa-solid fa-download"></i>Télécharger le contrat</button>' : '')
+        +(signed&&l.id ? '<button class="dl-btn dl-outline" onclick="downloadLivrable(\''+esc(String(l.id))+'\')"><i class="fa-solid fa-file-arrow-down"></i>Télécharger le livrable</button>' : '')
         +'</div>';
     }).join('');
   }).catch(function(){ el.innerHTML = '<div class="empty"><i class="fa-solid fa-wifi-slash"></i><p>Erreur de chargement</p></div>'; });
@@ -606,34 +972,34 @@ function loadLivrables(){
 function downloadContract(id){ window.open(API+'/api/contracts/'+id+'/pdf','_blank'); }
 function downloadLivrable(id){ window.open(API+'/api/livrables/'+id+'/download','_blank'); }
 
+// ── PROFIL ────────────────────────────────────────────────────────
 function loadProfil(){
   if(!_user) return;
-  var fn = ((_user.prenom||_user.firstName||'')+' '+(_user.nom||_user.lastName||'')).trim()||_user.email;
-  document.getElementById('pf-ava').textContent = (fn[0]||'C').toUpperCase();
-  document.getElementById('pf-name').textContent = fn;
-  document.getElementById('pf-email').textContent = _user.email||'';
-  var offre = _user.offre||_user.activeOfferId;
-  var planMap = {'Starter':'Client Starter','Business':'Client Business','Enterprise':'Client Enterprise','Pro':'Client Pro'};
-  document.getElementById('pf-plan').textContent = offre ? (planMap[offre]||offre) : 'Client FA GENESIS';
-  var lvl = _user.level||1; var xp = _user.xp||0;
-  var nextXp = lvl*100; var pct = Math.min(100,Math.round((xp/nextXp)*100));
-  var lvlNames = {1:'Membre',2:'Régulier',3:'Habitué',4:'VIP',5:'Élite'};
-  document.getElementById('qg-lvl').textContent = 'NIVEAU '+lvl+' — '+(lvlNames[lvl]||'MEMBRE').toUpperCase();
-  document.getElementById('qg-xp').textContent = xp+' XP';
-  document.getElementById('qg-bar').style.width = Math.max(5,pct)+'%';
-  document.getElementById('qg-status').innerHTML = offre ? 'Offre <b>'+offre+'</b> — '+Math.max(0,nextXp-xp)+' XP pour le niveau suivant' : 'Bienvenue dans votre <b>QG GENESIS</b>';
-  var code = _user.referral_code||_user.parrainage_code||('CL-'+(_user.id||_user.email||'').toString().replace(/[^A-Z0-9]/gi,'').toUpperCase().substring(0,8));
-  document.getElementById('pf-referral-code').textContent = code;
+  var prenom = _user.prenom || _user.firstName || '';
+  var nom    = _user.nom   || _user.lastName  || '';
+  var fn = (prenom+' '+nom).trim() || _user.email || '';
+  var ava = document.getElementById('pf-ava'); if(ava) ava.textContent = (fn[0]||'C').toUpperCase();
+  var pfName = document.getElementById('pf-name'); if(pfName) pfName.textContent = fn;
+  var pfEmail = document.getElementById('pf-email'); if(pfEmail) pfEmail.textContent = _user.email||'';
+  var offre = _user.offre || _user.activeOfferId;
+  var planMap = {Starter:'Client Starter',Business:'Client Business',Enterprise:'Client Enterprise',Pro:'Client Pro'};
+  var pfPlan = document.getElementById('pf-plan'); if(pfPlan) pfPlan.textContent = offre ? (planMap[offre]||offre) : 'Client FA GENESIS';
+  var code = _user.referral_code || _user.parrainage_code || ('CL-'+(_user.id||_user.email||'').toString().replace(/[^A-Z0-9]/gi,'').toUpperCase().substring(0,8));
+  var pfRef = document.getElementById('pf-referral-code'); if(pfRef) pfRef.textContent = code;
 }
 
 function copyReferral(){
   var code = document.getElementById('pf-referral-code');
   if(!code) return;
-  try{ navigator.clipboard.writeText(code.textContent).then(function(){ showToast('Code copié ✓'); }).catch(function(){ _fallbackCopy(code.textContent); }); }
-  catch(e){ _fallbackCopy(code.textContent); }
+  try{
+    navigator.clipboard.writeText(code.textContent)
+      .then(function(){ showToast('Code copié ✓'); })
+      .catch(function(){ _fallbackCopy(code.textContent); });
+  }catch(e){ _fallbackCopy(code.textContent); }
 }
 function _fallbackCopy(text){
-  var ta = document.createElement('textarea'); ta.value=text; ta.style.position='fixed'; ta.style.opacity='0';
+  var ta = document.createElement('textarea');
+  ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
   document.body.appendChild(ta); ta.select();
   try{ document.execCommand('copy'); showToast('Code copié ✓'); }catch(e){ showToast('Copiez : '+text); }
   document.body.removeChild(ta);
@@ -658,7 +1024,9 @@ function doLogout(){
   window.location.replace('index.html');
 }
 function clearSession(){
-  ['fa_genesis_token','fa_genesis_session','fa_genesis_user'].forEach(function(k){ try{ localStorage.removeItem(k); }catch(e){} });
+  ['fa_genesis_token','fa_genesis_session','fa_genesis_user'].forEach(function(k){
+    try{ localStorage.removeItem(k); }catch(e){}
+  });
 }
 </script>
 </body>
