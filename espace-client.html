@@ -544,12 +544,10 @@ a{text-decoration:none;color:inherit}
 <script>
 var API = 'https://fa-genesis-website.onrender.com';
 
-// ── INITIALISATION AUTH ───────────────────────────────────────────
-// Lire token depuis fa_genesis_token en priorité
-var _token = localStorage.getItem('fa_genesis_token');
-
-// Lire le cache utilisateur depuis fa_genesis_session
+// ── AUTH ──────────────────────────────────────────────────────────
+var _token = null;
 var _userCached = null;
+try{ _token = localStorage.getItem('fa_genesis_token'); }catch(e){}
 try{
   var _rawSess = localStorage.getItem('fa_genesis_session');
   if(_rawSess) _userCached = JSON.parse(_rawSess);
@@ -559,55 +557,20 @@ var _user = null;
 var _prestDataCache = null;
 
 (function init(){
-  // Pas de token du tout → login (seul cas où on redirige sans API)
+  // Sans token = pas de session → login
   if(!_token){ return goLogin(); }
 
-  // Token présent + données en cache → démarrage immédiat sans attendre l'API
-  // (évite la boucle espace-client → login → dashboard → espace-client)
-  if(_userCached && (_userCached.id || _userCached.email)){
-    _user = _userCached;
-    boot();
-    _refreshUserInBackground();
-    return;
-  }
+  // TOKEN PRÉSENT → boot IMMÉDIATEMENT avec les données disponibles
+  // (cache vide ou pas : on affiche l'app shell tout de suite, jamais de blanc)
+  _user = (_userCached && (_userCached.id || _userCached.email))
+    ? _userCached
+    : {prenom:'', nom:'', email:''};
+  boot();
 
-  // Token présent mais pas de cache → attendre l'API
-  _loadUserFromApi();
-})();
-
-function _loadUserFromApi(){
+  // Vérification en arrière-plan : jamais de redirection depuis ici
   fetch(API+'/api/auth/me',{headers:{'Authorization':'Bearer '+_token}})
     .then(function(r){
-      // 401 = token invalide → login (seul cas de redirection réelle)
-      if(r.status === 401){ clearSession(); return goLogin(); }
-      return r.ok ? r.json() : null;
-    })
-    .then(function(d){
-      if(!d || !d.user){
-        // Erreur serveur non-401 : montrer l'erreur réseau, ne PAS rediriger
-        _showNetworkError(); return;
-      }
-      _user = d.user;
-      try{ localStorage.setItem('fa_genesis_session', JSON.stringify(d.user)); }catch(e){}
-      boot();
-    })
-    .catch(function(){
-      // Erreur réseau pure : ne PAS rediriger pour éviter la boucle
-      _showNetworkError();
-    });
-}
-
-function _refreshUserInBackground(){
-  // Validation silencieuse en arrière-plan — ne JAMAIS naviguer vers login ici
-  // (l'app est déjà affichée depuis le cache ; une redirection ici causerait la boucle)
-  fetch(API+'/api/auth/me',{headers:{'Authorization':'Bearer '+_token}})
-    .then(function(r){
-      if(r.status === 401){
-        // Session expirée silencieusement : nettoyer le cache local
-        // L'utilisateur verra le formulaire de login au prochain chargement de page
-        clearSession();
-        return null;
-      }
+      if(r.status === 401){ clearSession(); return null; }
       return r.ok ? r.json() : null;
     })
     .then(function(d){
@@ -616,9 +579,11 @@ function _refreshUserInBackground(){
       try{ localStorage.setItem('fa_genesis_session', JSON.stringify(d.user)); }catch(e){}
       renderQGWidget();
       loadProfil();
+      loadCommandes();
+      loadLivrables();
     })
     .catch(function(){}); // Erreur réseau silencieuse (app déjà affichée)
-}
+})();
 
 function _showNetworkError(){
   var splash = document.getElementById('splash');
