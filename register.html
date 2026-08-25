@@ -319,9 +319,15 @@ async function doRegister(){
       return;
     }
 
-    // Stocker token + session
-    if(data.token){
-      try{ localStorage.setItem('fa_genesis_token', data.token); }catch(e){}
+    // Effacer l'ancienne session avant d'en stocker une nouvelle
+    // (évite qu'un ancien token périmé provoque une boucle de redirection)
+    try{ localStorage.removeItem('fa_genesis_token'); }catch(e){}
+    try{ localStorage.removeItem('fa_genesis_session'); }catch(e){}
+
+    // Stocker le nouveau token + session
+    var _regToken = data.token || (data.user && data.user.sessionToken) || null;
+    if(_regToken){
+      try{ localStorage.setItem('fa_genesis_token', _regToken); }catch(e){}
     }
     if(data.user){
       try{ localStorage.setItem('fa_genesis_session', JSON.stringify(data.user)); }catch(e){}

@@ -576,7 +576,7 @@ var _prestDataCache = null;
 })();
 
 function _loadUserFromApi(){
-  fetch(API+'/api/me',{headers:{'Authorization':'Bearer '+_token}})
+  fetch(API+'/api/auth/me',{headers:{'Authorization':'Bearer '+_token}})
     .then(function(r){
       // 401 = token invalide → login (seul cas de redirection réelle)
       if(r.status === 401){ clearSession(); return goLogin(); }
@@ -598,10 +598,16 @@ function _loadUserFromApi(){
 }
 
 function _refreshUserInBackground(){
-  // Validation en arrière-plan après démarrage depuis cache
-  fetch(API+'/api/me',{headers:{'Authorization':'Bearer '+_token}})
+  // Validation silencieuse en arrière-plan — ne JAMAIS naviguer vers login ici
+  // (l'app est déjà affichée depuis le cache ; une redirection ici causerait la boucle)
+  fetch(API+'/api/auth/me',{headers:{'Authorization':'Bearer '+_token}})
     .then(function(r){
-      if(r.status === 401){ clearSession(); goLogin(); return null; }
+      if(r.status === 401){
+        // Session expirée silencieusement : nettoyer le cache local
+        // L'utilisateur verra le formulaire de login au prochain chargement de page
+        clearSession();
+        return null;
+      }
       return r.ok ? r.json() : null;
     })
     .then(function(d){
