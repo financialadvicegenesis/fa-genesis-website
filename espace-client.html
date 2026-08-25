@@ -543,30 +543,89 @@ a{text-decoration:none;color:inherit}
 
 <script>
 var API = 'https://fa-genesis-website.onrender.com';
+
+// ── INITIALISATION AUTH ───────────────────────────────────────────
+// Lire token depuis fa_genesis_token en priorité
 var _token = localStorage.getItem('fa_genesis_token');
-if(!_token){
-  try{
-    var _rawSess = localStorage.getItem('fa_genesis_session');
-    if(_rawSess){
-      var _parsedSess = JSON.parse(_rawSess);
-      _token = _parsedSess.token || null;
-    }
-  }catch(e){}
-}
+
+// Lire le cache utilisateur depuis fa_genesis_session
+var _userCached = null;
+try{
+  var _rawSess = localStorage.getItem('fa_genesis_session');
+  if(_rawSess) _userCached = JSON.parse(_rawSess);
+}catch(e){}
+
 var _user = null;
 var _prestDataCache = null;
 
 (function init(){
+  // Pas de token du tout → login (seul cas où on redirige sans API)
   if(!_token){ return goLogin(); }
+
+  // Token présent + données en cache → démarrage immédiat sans attendre l'API
+  // (évite la boucle espace-client → login → dashboard → espace-client)
+  if(_userCached && (_userCached.id || _userCached.email)){
+    _user = _userCached;
+    boot();
+    _refreshUserInBackground();
+    return;
+  }
+
+  // Token présent mais pas de cache → attendre l'API
+  _loadUserFromApi();
+})();
+
+function _loadUserFromApi(){
   fetch(API+'/api/me',{headers:{'Authorization':'Bearer '+_token}})
-    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(r){
+      // 401 = token invalide → login (seul cas de redirection réelle)
+      if(r.status === 401){ clearSession(); return goLogin(); }
+      return r.ok ? r.json() : null;
+    })
     .then(function(d){
-      if(!d||!d.user){ return goLogin(); }
+      if(!d || !d.user){
+        // Erreur serveur non-401 : montrer l'erreur réseau, ne PAS rediriger
+        _showNetworkError(); return;
+      }
       _user = d.user;
+      try{ localStorage.setItem('fa_genesis_session', JSON.stringify(d.user)); }catch(e){}
       boot();
     })
-    .catch(function(){ goLogin(); });
-})();
+    .catch(function(){
+      // Erreur réseau pure : ne PAS rediriger pour éviter la boucle
+      _showNetworkError();
+    });
+}
+
+function _refreshUserInBackground(){
+  // Validation en arrière-plan après démarrage depuis cache
+  fetch(API+'/api/me',{headers:{'Authorization':'Bearer '+_token}})
+    .then(function(r){
+      if(r.status === 401){ clearSession(); goLogin(); return null; }
+      return r.ok ? r.json() : null;
+    })
+    .then(function(d){
+      if(!d || !d.user) return;
+      _user = d.user;
+      try{ localStorage.setItem('fa_genesis_session', JSON.stringify(d.user)); }catch(e){}
+      renderQGWidget();
+      loadProfil();
+    })
+    .catch(function(){}); // Erreur réseau silencieuse (app déjà affichée)
+}
+
+function _showNetworkError(){
+  var splash = document.getElementById('splash');
+  if(splash){
+    splash.innerHTML = '<div style="text-align:center;padding:24px">'
+      +'<i class="fa-solid fa-wifi-slash" style="font-size:36px;color:#666;margin-bottom:16px;display:block"></i>'
+      +'<div style="font-size:13px;color:#666;margin-bottom:20px;line-height:1.6">Connexion impossible.<br>Vérifiez votre réseau.</div>'
+      +'<button onclick="window.location.reload()" style="background:var(--gold);color:#000;border:none;border-radius:10px;padding:12px 24px;font-size:13px;font-weight:900;cursor:pointer;font-family:inherit">'
+      +'<i class="fa-solid fa-rotate-right" style="margin-right:6px"></i>Réessayer</button>'
+      +'<div style="margin-top:16px"><a href="login.html" style="font-size:12px;color:#444;text-decoration:underline">Se connecter manuellement</a></div>'
+      +'</div>';
+  }
+}
 
 function goLogin(){ window.location.replace('login.html'); }
 
