@@ -467,10 +467,10 @@ a{text-decoration:none;color:inherit;}
             return;
         }
 
-        successMessage.innerHTML = '<strong>Compte créé avec succès !</strong><br>Bienvenue chez FA GENESIS ! Découvrez nos offres et tarifs.<br><br>Redirection…';
+        successMessage.innerHTML = '<strong>Compte créé avec succès !</strong><br>Bienvenue chez FA GENESIS ! Redirection vers votre espace client…';
         successMessage.classList.add('show');
         document.getElementById('registerForm').reset();
-        setTimeout(function() { window.location.href = 'offres.html'; }, 2500);
+        setTimeout(function() { window.location.href = 'espace-client.html'; }, 2500);
     });
 
     async function handleCwDevisAfterAuth(devisId) {
