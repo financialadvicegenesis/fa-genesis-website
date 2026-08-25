@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
@@ -6,47 +6,187 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <link rel="icon" type="image/png" sizes="192x192" href="assets/images/logo-favicon-192.png">
 <title>Espace Client — FA GENESIS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" media="print" onload="this.media='all'">
 <style>
-:root{--bg:#0d0d0d;--card:#161616;--border:#252525;--gold:#FFD700;--text:#f0f0f0;--muted:#666;--muted2:#444;--nav:64px;--safe:env(safe-area-inset-bottom,0px)}
+:root{
+  --bg:#0d0d0d;--card:#111;--border:#1e1e1e;
+  --gold:#FFD700;--yellow:#FFD700;
+  --text:#f0f0f0;--muted:#666;--sub:#444;
+  --green:#22c55e;
+  --nav:64px;--safe:env(safe-area-inset-bottom,0px);
+}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-html,body{height:100%;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;overflow:hidden}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;overflow:hidden}
+button{cursor:pointer;font-family:inherit;border:none;background:none}
+
+/* Splash */
+#splash{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:9999}
+#splash img{width:72px;height:72px;border-radius:50%}
+#splash .lbl{color:var(--gold);font-size:13px;font-weight:700;letter-spacing:1px}
+
+/* App shell */
+#app{display:none;position:fixed;inset:0}
+
 /* Header */
-#hdr{position:fixed;top:0;left:0;right:0;height:56px;background:var(--bg);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;z-index:200;gap:10px}
-#hdr .logo{height:32px;width:32px;border-radius:50%;object-fit:cover}
-#hdr .brand{font-size:15px;font-weight:900;letter-spacing:.5px;color:var(--gold);flex:1}
-#hdr .badge-pill{background:rgba(255,215,0,.12);border:1px solid rgba(255,215,0,.3);color:var(--gold);font-size:9px;font-weight:900;letter-spacing:1px;padding:3px 8px;border-radius:20px}
-#hdr .avatar{width:32px;height:32px;border-radius:50%;background:#222;border:2px solid rgba(255,215,0,.4);color:var(--gold);font-size:13px;font-weight:900;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
+#hdr{position:absolute;top:0;left:0;right:0;height:52px;background:rgba(13,13,13,.95);backdrop-filter:blur(10px);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;z-index:100;gap:10px}
+.hdr-logo{width:30px;height:30px;border-radius:50%;object-fit:cover}
+.hdr-brand{font-family:'Unbounded',sans-serif;font-size:12px;font-weight:900;color:var(--gold);flex:1;letter-spacing:.5px}
+.hdr-badge{background:rgba(255,215,0,.12);border:1px solid rgba(255,215,0,.3);color:var(--gold);font-size:9px;font-weight:900;letter-spacing:1px;padding:3px 8px;border-radius:20px;text-transform:uppercase}
+.hdr-ava{width:32px;height:32px;border-radius:10px;background:#1a0d18;border:1.5px solid rgba(255,215,0,.35);color:var(--gold);font-size:14px;font-weight:900;display:flex;align-items:center;justify-content:center;cursor:pointer}
+
 /* Content */
-#main{position:fixed;top:56px;left:0;right:0;bottom:calc(var(--nav) + var(--safe));overflow-y:auto;-webkit-overflow-scrolling:touch}
+#content{position:absolute;top:52px;left:0;right:0;bottom:calc(var(--nav) + var(--safe));overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+#content::-webkit-scrollbar{display:none}
+
+/* Tabs */
+.tab{display:none;padding-bottom:calc(var(--nav) + var(--safe) + 20px)}
+.tab.on{display:block}
+
 /* Bottom nav */
-#bnav{position:fixed;bottom:0;left:0;right:0;height:var(--nav);padding-bottom:var(--safe);background:var(--bg);border-top:1px solid var(--border);display:flex;z-index:200}
-.bnav-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:none;border:none;color:var(--muted);font-size:10px;font-weight:700;cursor:pointer;transition:color .2s;padding:0 2px}
-.bnav-btn i{font-size:20px}
-.bnav-btn.on{color:var(--gold)}
-/* Sections */
-.section{display:none;padding:16px 16px 24px}
-.section.on{display:block}
-/* Cards */
-.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:12px}
-.card-row{display:flex;align-items:flex-start;gap:12px}
-.card-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.card-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:3px;line-height:1.3}
-.card-sub{font-size:12px;color:var(--muted);line-height:1.5}
-.card-meta{font-size:11px;color:var(--muted2)}
-/* Stats */
-.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
-.stat-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 12px;text-align:center;cursor:pointer;transition:border-color .2s}
-.stat-card:hover{border-color:rgba(255,215,0,.3)}
+#nav{position:absolute;bottom:0;left:0;right:0;height:var(--nav);padding-bottom:var(--safe);background:rgba(13,13,13,.95);backdrop-filter:blur(10px);border-top:1px solid var(--border);display:flex;align-items:stretch;z-index:100}
+.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:9px;font-weight:700;letter-spacing:.3px;color:var(--muted);transition:color .15s;padding-bottom:env(safe-area-inset-bottom)}
+.nav-btn i{font-size:21px;line-height:1}
+.nav-btn.on{color:var(--yellow)}
+
+/* HOME */
+.greet{padding:20px 20px 0}
+.greet-hi{font-size:12px;color:var(--muted);font-weight:700;letter-spacing:.5px}
+.greet-name{font-size:22px;font-weight:900;color:var(--text);margin-top:2px;font-family:'Unbounded',sans-serif;line-height:1.2}
+
+/* QG widget */
+.qg-widget{margin:16px 16px 0;background:linear-gradient(135deg,#1a1200,#0d0d00);border:1.5px solid rgba(255,215,0,.3);border-radius:16px;padding:14px 16px}
+.qg-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.qg-lvl{font-size:10px;font-weight:900;color:var(--gold);text-transform:uppercase;letter-spacing:1px}
+.qg-xp{font-size:11px;color:var(--muted);font-weight:600}
+.qg-bar-bg{height:6px;background:rgba(255,215,0,.12);border-radius:99px;overflow:hidden}
+.qg-bar-fill{height:100%;background:linear-gradient(90deg,#b8860b,#FFD700);border-radius:99px;transition:width .6s ease}
+.qg-status{margin-top:8px;font-size:11px;color:#888}
+.qg-status b{color:var(--gold)}
+
+/* Status card */
+.status-card{margin:16px;border-radius:16px;background:rgba(26,0,38,.92);border:1px solid #2a1040;padding:20px;box-shadow:0 0 0 1px rgba(255,215,0,.06),0 10px 30px rgba(0,0,0,.4)}
+.status-card-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.status-badge-pill{background:rgba(255,215,0,.15);color:var(--yellow);font-size:10px;font-weight:900;padding:4px 12px;border-radius:99px;letter-spacing:.5px;text-transform:uppercase}
+.status-card-title{font-size:15px;font-weight:900;color:var(--text);margin-bottom:4px}
+.status-card-sub{font-size:12px;color:#888}
+.status-card-action{margin-top:14px;display:flex;gap:8px}
+.sc-btn{padding:8px 16px;border-radius:8px;font-size:12px;font-weight:900;cursor:pointer;border:none;font-family:inherit}
+.sc-btn-primary{background:var(--yellow);color:#000}
+.sc-btn-ghost{background:rgba(255,255,255,.08);color:#fff}
+
+/* Quick actions */
+.qa-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:16px;margin-top:4px}
+.qa{display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer}
+.qa-icon{width:56px;height:56px;border-radius:16px;background:var(--card);display:flex;align-items:center;justify-content:center;font-size:22px;border:1px solid var(--border);transition:transform .15s}
+.qa:active .qa-icon{transform:scale(.93)}
+.qa i{color:var(--gold)}
+.qa-label{font-size:10px;color:var(--muted);font-weight:700;letter-spacing:.3px;text-align:center}
+
+/* Search */
+.home-search-wrap{display:flex;align-items:center;gap:10px;margin:4px 16px 16px;background:var(--card);border:1.5px solid var(--border);border-radius:14px;padding:0 14px;transition:border-color .2s}
+.home-search-wrap:focus-within{border-color:var(--yellow)}
+.home-search-wrap i{color:var(--muted);font-size:14px;flex-shrink:0}
+.home-search-input{flex:1;background:transparent;border:none;outline:none;color:var(--text);font-size:13px;font-weight:500;padding:14px 0;font-family:inherit}
+.home-search-input::placeholder{color:var(--muted)}
+
+/* Section label */
+.sec-lbl{padding:16px 16px 10px;display:flex;align-items:center;justify-content:space-between}
+.sec-lbl h2{font-size:15px;font-weight:900;font-family:'Unbounded',sans-serif}
+.sec-lbl a{font-size:12px;color:var(--yellow);font-weight:700;text-decoration:none;cursor:pointer}
+
+/* Stats grid */
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 16px 8px}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 12px;text-align:center;cursor:pointer}
 .stat-num{font-size:26px;font-weight:900;color:var(--gold);line-height:1}
-.stat-label{font-size:10px;color:var(--muted);margin-top:4px;font-weight:700;letter-spacing:.3px;text-transform:uppercase}
-/* Welcome */
-.welcome-banner{background:linear-gradient(135deg,#1a1200 0%,#0d0d0d 100%);border:1px solid rgba(255,215,0,.2);border-radius:14px;padding:18px 16px;margin-bottom:14px}
-.welcome-banner h2{font-size:17px;font-weight:900;color:var(--gold);margin-bottom:4px}
-.welcome-banner p{font-size:12px;color:#999;line-height:1.5}
-/* Sec header */
-.sec-hdr{font-size:10px;font-weight:900;color:var(--gold);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:6px}
-/* Pills */
+.stat-lbl{font-size:10px;color:var(--muted);margin-top:4px;font-weight:700;text-transform:uppercase;letter-spacing:.3px}
+
+/* COMMANDES */
+.resa-list{display:flex;flex-direction:column;gap:10px;padding:16px}
+.resa-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px}
+.resa-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px}
+.resa-name{font-size:14px;font-weight:900;color:var(--text)}
+.resa-status{font-size:9px;font-weight:900;padding:3px 10px;border-radius:99px;text-transform:uppercase;letter-spacing:.3px}
+.s-pending{background:rgba(251,191,36,.15);color:#fbbf24}
+.s-confirmed,.s-done{background:rgba(34,197,94,.15);color:#22c55e}
+.s-refused{background:rgba(239,68,68,.15);color:#ef4444}
+.s-active{background:rgba(96,165,250,.15);color:#60a5fa}
+.resa-date{font-size:12px;color:var(--muted)}
+.resa-price{font-size:15px;font-weight:900;color:var(--yellow)}
+
+/* Progress bar */
+.prog-bar{display:flex;margin:12px 0 4px;position:relative}
+.prog-step{flex:1;text-align:center;font-size:8px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;padding-top:20px;position:relative}
+.prog-step::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:12px;height:12px;border-radius:50%;background:var(--border);border:2px solid var(--sub)}
+.prog-step::after{content:'';position:absolute;top:4px;left:calc(50% + 6px);right:0;height:2px;background:var(--border)}
+.prog-step:last-child::after{display:none}
+.prog-step.done::before{background:var(--gold);border-color:var(--gold)}
+.prog-step.done{color:var(--gold)}
+.prog-step.done::after{background:var(--gold)}
+.prog-step.current::before{background:transparent;border-color:var(--gold);box-shadow:0 0 0 3px rgba(255,215,0,.15)}
+.prog-step.current{color:var(--text)}
+
+/* LIVRABLES */
+.liv-list{display:flex;flex-direction:column;gap:10px;padding:16px}
+.liv-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px}
+.liv-top{display:flex;align-items:flex-start;gap:12px;margin-bottom:10px}
+.liv-ico{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.liv-name{font-size:14px;font-weight:900;color:var(--text);margin-bottom:3px;line-height:1.3}
+.liv-sub{font-size:12px;color:var(--muted)}
+.dl-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:11px 16px;border-radius:10px;font-size:12px;font-weight:900;cursor:pointer;font-family:inherit;border:none;margin-top:8px}
+.dl-primary{background:var(--yellow);color:#000}
+.dl-outline{background:transparent;color:var(--yellow);border:1.5px solid rgba(255,215,0,.3)}
+
+/* EXPLORER */
+.cat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 16px}
+.cat-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px 14px;text-align:center;text-decoration:none;display:flex;flex-direction:column;align-items:center;gap:8px;transition:border-color .2s}
+.cat-card:hover{border-color:rgba(255,215,0,.3)}
+.cat-card i{font-size:24px;color:var(--gold)}
+.cat-card .cat-lbl{font-size:13px;font-weight:700;color:var(--text)}
+.cat-card .cat-desc{font-size:11px;color:var(--muted);line-height:1.4}
+.cat-chips{display:flex;flex-wrap:wrap;gap:8px;padding:0 16px 16px}
+.cat-chip-btn{background:var(--card);border:1.5px solid var(--border);border-radius:20px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;color:var(--text);display:inline-flex;align-items:center;gap:6px}
+.cat-chip-btn i{color:var(--gold)}
+
+/* PROFIL */
+.profile-header{padding:24px 20px;display:flex;align-items:center;gap:16px;border-bottom:1px solid var(--border)}
+.profile-ava{width:60px;height:60px;border-radius:18px;background:#1a0d18;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;color:var(--yellow);flex-shrink:0}
+.profile-name{font-size:17px;font-weight:900;font-family:'Unbounded',sans-serif;margin-bottom:2px;line-height:1.2}
+.profile-email{font-size:12px;color:var(--muted)}
+.profile-plan{display:inline-block;margin-top:6px;background:rgba(255,215,0,.1);border:1px solid rgba(255,215,0,.3);color:var(--yellow);font-size:9px;font-weight:900;padding:3px 10px;border-radius:99px;text-transform:uppercase;letter-spacing:.5px}
+
+.menu-section{padding:16px 16px 0}
+.menu-section-title{font-size:10px;color:var(--sub);font-weight:900;text-transform:uppercase;letter-spacing:1px;padding:0 4px;margin-bottom:8px}
+.menu-group{background:var(--card);border-radius:14px;overflow:hidden;border:1px solid var(--border)}
+.menu-item{display:flex;align-items:center;gap:14px;padding:15px 16px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s}
+.menu-item:last-child{border:none}
+.menu-item:active{background:#1a1a1a}
+.menu-item-ico{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.menu-item-label{flex:1;font-size:14px;font-weight:700;color:var(--text)}
+.menu-item-arrow{font-size:12px;color:var(--sub)}
+.menu-item.danger .menu-item-ico{color:#ef4444}
+.menu-item.danger .menu-item-label{color:#ef4444}
+
+/* Referral */
+.referral-block{margin:16px;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px}
+.referral-label{font-size:10px;font-weight:900;color:var(--sub);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px}
+.referral-code{font-family:'Unbounded',sans-serif;font-size:16px;font-weight:900;color:var(--gold);letter-spacing:2px;text-align:center;background:#0d0d00;border:1.5px solid rgba(255,215,0,.2);border-radius:10px;padding:12px 16px;margin-bottom:10px}
+.ref-btns{display:flex;gap:8px}
+.ref-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:10px;border-radius:10px;font-size:12px;font-weight:900;cursor:pointer;font-family:inherit;border:none}
+.ref-copy{background:var(--yellow);color:#000}
+.ref-share{background:rgba(255,255,255,.06);color:var(--text);border:1px solid var(--border)}
+
+.logout-btn{margin:20px 16px;width:calc(100% - 32px);padding:15px;background:transparent;border:1px solid #2a0a0a;border-radius:14px;color:#ef4444;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:10px;font-family:inherit;cursor:pointer}
+.version-lbl{text-align:center;font-size:11px;color:var(--sub);padding-bottom:24px}
+
+/* Shared */
+.empty{text-align:center;padding:48px 16px;color:var(--muted)}
+.empty i{font-size:36px;margin-bottom:12px;display:block;opacity:.3}
+.empty p{font-size:13px;line-height:1.6}
+.spinner{text-align:center;padding:48px;color:var(--gold);opacity:.4}
+.spinner i{font-size:24px;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
 .pill{display:inline-block;padding:2px 9px;border-radius:20px;font-size:10px;font-weight:800}
 .pill-green{background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);color:#22c55e}
 .pill-yellow{background:rgba(255,215,0,.1);border:1px solid rgba(255,215,0,.3);color:var(--gold)}
@@ -54,212 +194,270 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:-apple-
 .pill-blue{background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.3);color:#60a5fa}
 .pill-grey{background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--muted)}
 .pill-purple{background:rgba(168,85,247,.1);border:1px solid rgba(168,85,247,.3);color:#c084fc}
-/* Buttons */
-.btn-gold{background:var(--gold);color:#000;font-weight:900;font-size:13px;border:none;border-radius:10px;padding:12px 20px;cursor:pointer;width:100%;margin-top:10px;display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none}
-.btn-outline{background:transparent;color:var(--gold);font-weight:700;font-size:13px;border:1.5px solid rgba(255,215,0,.3);border-radius:10px;padding:11px 20px;cursor:pointer;width:100%;margin-top:8px;display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none}
-.btn-red{background:transparent;color:#ef4444;font-weight:700;font-size:13px;border:1.5px solid rgba(239,68,68,.3);border-radius:10px;padding:11px 20px;cursor:pointer;width:100%;margin-top:8px;display:flex;align-items:center;justify-content:center;gap:8px}
-/* Empty */
-.empty{text-align:center;padding:40px 16px;color:var(--muted)}
-.empty i{font-size:36px;margin-bottom:12px;display:block;opacity:.3}
-.empty p{font-size:13px;line-height:1.6}
-/* Spinner */
-.spinner{text-align:center;padding:40px;color:var(--gold);opacity:.4}
-.spinner i{font-size:24px;animation:spin 1s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
-/* Splash */
-#splash-check{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:9999}
-#splash-check img{width:72px;height:72px;border-radius:50%}
-#splash-check .lbl{color:var(--gold);font-size:13px;font-weight:700;letter-spacing:1px}
-/* Commande progress */
-.status-bar{display:flex;gap:0;margin:10px 0 2px;position:relative}
-.status-step{flex:1;text-align:center;font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;padding-top:22px;position:relative}
-.status-step::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:14px;height:14px;border-radius:50%;background:var(--border);border:2px solid var(--muted2)}
-.status-step::after{content:'';position:absolute;top:6px;left:calc(50% + 7px);right:0;height:2px;background:var(--border)}
-.status-step:last-child::after{display:none}
-.status-step.done::before{background:var(--gold);border-color:var(--gold)}
-.status-step.done{color:var(--gold)}
-.status-step.done::after{background:var(--gold)}
-.status-step.current::before{background:transparent;border-color:var(--gold);box-shadow:0 0 0 3px rgba(255,215,0,.15)}
-.status-step.current{color:var(--text)}
-/* Profil menu */
-.pf-avatar{width:72px;height:72px;border-radius:50%;background:#222;border:2px solid rgba(255,215,0,.35);color:var(--gold);font-size:28px;font-weight:900;display:flex;align-items:center;justify-content:center;margin:0 auto 8px}
-.pf-name{font-size:18px;font-weight:900;text-align:center;color:var(--text)}
-.pf-type{font-size:12px;color:var(--muted);text-align:center;margin-top:2px}
-.pf-group-label{font-size:10px;font-weight:900;color:var(--gold);letter-spacing:1px;text-transform:uppercase;padding:14px 4px 6px;display:block}
-.pf-menu-group{background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:4px}
-.pf-menu-row{display:flex;align-items:center;gap:14px;padding:14px 16px;cursor:pointer;border-bottom:1px solid var(--border);transition:background .15s}
-.pf-menu-row:last-child{border-bottom:none}
-.pf-menu-row:hover{background:rgba(255,215,0,.04)}
-.pf-menu-row>i:first-child{color:var(--gold);width:18px;text-align:center;font-size:15px;flex-shrink:0}
-.pf-menu-row>span{flex:1;font-size:14px;color:var(--text);font-weight:500}
-.pf-chevron{color:var(--muted2);font-size:11px}
-.pf-danger>i:first-child{color:#ef4444}
-.pf-danger>span{color:#ef4444}
-/* Explorer cards */
-.exp-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
-.exp-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 12px;text-align:center;cursor:pointer;transition:border-color .2s;text-decoration:none}
-.exp-card:hover{border-color:rgba(255,215,0,.3)}
-.exp-card i{font-size:22px;color:var(--gold);display:block;margin-bottom:6px}
-.exp-card .label{font-size:11px;font-weight:700;color:var(--text)}
-/* Toast */
+
 #toast{position:fixed;bottom:calc(var(--nav) + 16px);left:50%;transform:translateX(-50%) translateY(60px);background:var(--gold);color:#000;font-size:12px;font-weight:900;padding:10px 20px;border-radius:20px;z-index:9999;opacity:0;transition:opacity .25s,transform .25s;pointer-events:none;white-space:nowrap}
 #toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
 </style>
 </head>
 <body>
 
-<div id="splash-check">
+<div id="splash">
   <img src="assets/images/logo-favicon-192.png" alt="GENESIS" onerror="this.style.display='none'">
-  <span class="lbl">Vérification en cours…</span>
+  <span class="lbl">Vérification…</span>
 </div>
 
-<header id="hdr" style="display:none">
-  <img class="logo" src="assets/images/logo-favicon-192.png" alt="GENESIS" onerror="this.style.display='none'">
-  <span class="brand">FA GENESIS</span>
-  <span class="badge-pill">CLIENT</span>
-  <div class="avatar" id="hdr-avatar" onclick="goSection('profil')">C</div>
-</header>
+<div id="app">
 
-<main id="main" style="display:none">
+  <header id="hdr">
+    <img class="hdr-logo" src="assets/images/logo-favicon-192.png" alt="FA GENESIS" onerror="this.style.display='none'">
+    <span class="hdr-brand">FA GENESIS</span>
+    <span class="hdr-badge">CLIENT</span>
+    <div class="hdr-ava" id="hdr-ava" onclick="nav('profil')">C</div>
+  </header>
 
-  <!-- ACCUEIL -->
-  <div class="section on" id="sec-accueil">
-    <div class="welcome-banner">
-      <h2 id="welcome-name">Bonjour 👋</h2>
-      <p id="welcome-sub">Votre espace client GENESIS</p>
-    </div>
-    <div class="stat-grid">
-      <div class="stat-card" onclick="goSection('commandes')">
-        <div class="stat-num" id="stat-commandes">—</div>
-        <div class="stat-label">Commandes</div>
+  <div id="content">
+
+    <!-- ACCUEIL -->
+    <div class="tab on" id="tab-home">
+      <div class="greet">
+        <div class="greet-hi">Bonjour <i class="fa-solid fa-hand"></i></div>
+        <div class="greet-name" id="greet-name">GENESIS</div>
       </div>
-      <div class="stat-card" onclick="goSection('devis')">
-        <div class="stat-num" id="stat-devis">—</div>
-        <div class="stat-label">Devis envoyés</div>
+
+      <div class="qg-widget">
+        <div class="qg-top">
+          <span class="qg-lvl" id="qg-lvl">NIVEAU 1 — MEMBRE</span>
+          <span class="qg-xp" id="qg-xp">0 XP</span>
+        </div>
+        <div class="qg-bar-bg"><div class="qg-bar-fill" id="qg-bar" style="width:5%"></div></div>
+        <div class="qg-status" id="qg-status">Bienvenue dans votre <b>QG GENESIS</b></div>
       </div>
-      <div class="stat-card" onclick="goSection('livrables')">
-        <div class="stat-num" id="stat-livrables">—</div>
-        <div class="stat-label">Livrables</div>
+
+      <div class="status-card" id="status-card" style="display:none">
+        <div class="status-card-top">
+          <span class="status-badge-pill" id="sc-status">En cours</span>
+        </div>
+        <div class="status-card-title" id="sc-title">Votre commande</div>
+        <div class="status-card-sub" id="sc-sub"></div>
+        <div class="status-card-action">
+          <button class="sc-btn sc-btn-primary" onclick="nav('commandes')">Voir les détails →</button>
+          <button class="sc-btn sc-btn-ghost" onclick="nav('livrables')">Livrables</button>
+        </div>
       </div>
-      <div class="stat-card" onclick="goSection('profil')">
-        <div class="stat-num" id="stat-offre">—</div>
-        <div class="stat-label">Mon offre</div>
+
+      <div class="qa-row">
+        <div class="qa" onclick="nav('commandes')">
+          <div class="qa-icon"><i class="fa-solid fa-bag-shopping"></i></div>
+          <div class="qa-label">Commandes</div>
+        </div>
+        <div class="qa" onclick="nav('explorer')">
+          <div class="qa-icon"><i class="fa-solid fa-magnifying-glass"></i></div>
+          <div class="qa-label">Explorer</div>
+        </div>
+        <div class="qa" onclick="nav('livrables')">
+          <div class="qa-icon"><i class="fa-solid fa-box-open"></i></div>
+          <div class="qa-label">Livrables</div>
+        </div>
+        <div class="qa" onclick="nav('profil')">
+          <div class="qa-icon"><i class="fa-solid fa-user"></i></div>
+          <div class="qa-label">Profil</div>
+        </div>
+      </div>
+
+      <div class="home-search-wrap">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" class="home-search-input" placeholder="Que recherchez-vous ?" onkeydown="if(event.key==='Enter')window.location='contact.html'">
+      </div>
+
+      <div class="sec-lbl"><h2>Activité récente</h2><a onclick="nav('commandes')">Tout voir</a></div>
+      <div id="home-activity"><div class="spinner"><i class="fa-solid fa-spinner"></i></div></div>
+
+      <div class="sec-lbl" style="margin-top:8px"><h2>Mes chiffres</h2></div>
+      <div class="stats-grid">
+        <div class="stat-card" onclick="nav('commandes')">
+          <div class="stat-num" id="stat-commandes">—</div>
+          <div class="stat-lbl">Commandes</div>
+        </div>
+        <div class="stat-card" onclick="nav('livrables')">
+          <div class="stat-num" id="stat-livrables">—</div>
+          <div class="stat-lbl">Livrables</div>
+        </div>
       </div>
     </div>
-    <div class="sec-hdr"><i class="fa-solid fa-bolt"></i>Activité récente</div>
-    <div id="home-activity"><div class="spinner"><i class="fa-solid fa-spinner"></i></div></div>
-  </div>
 
-  <!-- EXPLORER -->
-  <div class="section" id="sec-explorer">
-    <div class="welcome-banner" style="padding:14px 16px;margin-bottom:12px">
-      <h2 style="font-size:15px;margin-bottom:4px">Explorer GENESIS</h2>
-      <p>Trouvez le prestataire idéal pour votre projet</p>
-    </div>
-    <div class="exp-grid">
-      <a class="exp-card" href="index.html#prestataires"><i class="fa-solid fa-users"></i><div class="label">Annuaire</div></a>
-      <a class="exp-card" href="offres.html"><i class="fa-solid fa-star"></i><div class="label">Nos offres</div></a>
-      <a class="exp-card" href="contact.html"><i class="fa-solid fa-paper-plane"></i><div class="label">Lancer un projet</div></a>
-      <a class="exp-card" href="index.html#app"><i class="fa-solid fa-mobile-screen"></i><div class="label">Application</div></a>
-    </div>
-    <div class="sec-hdr"><i class="fa-solid fa-fire"></i>Catégories populaires</div>
-    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px" id="categories-list">
-      <span onclick="window.location='offres.html'" style="background:var(--card);border:1px solid var(--border);border-radius:20px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;color:var(--text)">📸 Photographie</span>
-      <span onclick="window.location='offres.html'" style="background:var(--card);border:1px solid var(--border);border-radius:20px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;color:var(--text)">🎬 Vidéo</span>
-      <span onclick="window.location='offres.html'" style="background:var(--card);border:1px solid var(--border);border-radius:20px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;color:var(--text)">🎨 Design</span>
-      <span onclick="window.location='offres.html'" style="background:var(--card);border:1px solid var(--border);border-radius:20px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;color:var(--text)">💻 Dev</span>
-      <span onclick="window.location='offres.html'" style="background:var(--card);border:1px solid var(--border);border-radius:20px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;color:var(--text)">📢 Marketing</span>
-      <span onclick="window.location='offres.html'" style="background:var(--card);border:1px solid var(--border);border-radius:20px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;color:var(--text)">🏋️ Coaching</span>
-    </div>
-    <a class="btn-gold" href="contact.html"><i class="fa-solid fa-paper-plane"></i>Soumettre un projet</a>
-  </div>
-
-  <!-- COMMANDES -->
-  <div class="section" id="sec-commandes">
-    <div class="sec-hdr"><i class="fa-solid fa-bag-shopping"></i>Mes commandes</div>
-    <div id="commandes-list"><div class="spinner"><i class="fa-solid fa-spinner"></i></div></div>
-  </div>
-
-  <!-- DEVIS -->
-  <div class="section" id="sec-devis">
-    <div style="background:linear-gradient(135deg,#1a1200,#0d0d0d);border:1px solid rgba(255,215,0,.2);border-radius:14px;padding:16px;margin-bottom:12px;text-align:center">
-      <p style="font-size:12px;color:#999;margin-bottom:10px;line-height:1.5">Besoin d'un prestataire ?<br>Soumettez votre projet et recevez une offre.</p>
-      <a class="btn-gold" style="margin-top:0" href="contact.html"><i class="fa-solid fa-paper-plane"></i>Soumettre un devis</a>
-    </div>
-    <div class="sec-hdr"><i class="fa-solid fa-file-invoice"></i>Mes demandes de devis</div>
-    <div id="devis-list"><div class="spinner"><i class="fa-solid fa-spinner"></i></div></div>
-  </div>
-
-  <!-- LIVRABLES -->
-  <div class="section" id="sec-livrables">
-    <div class="sec-hdr"><i class="fa-solid fa-box-open"></i>Mes livrables</div>
-    <div id="livrables-list"><div class="spinner"><i class="fa-solid fa-spinner"></i></div></div>
-  </div>
-
-  <!-- PROFIL -->
-  <div class="section" id="sec-profil">
-
-    <!-- Carte identité -->
-    <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px 16px 16px;margin-bottom:12px;text-align:center">
-      <div class="pf-avatar" id="pf-avatar">C</div>
-      <div id="pf-status-label" style="display:inline-block;font-size:9px;font-weight:900;letter-spacing:1px;color:#aaa;text-transform:uppercase;margin-bottom:6px">Client</div>
-      <div class="pf-name" id="pf-name">—</div>
-      <div class="pf-type" id="pf-type" style="margin-top:3px;margin-bottom:6px">Client FA GENESIS</div>
-      <div style="font-size:12px;color:var(--muted)" id="pf-email">—</div>
-    </div>
-
-    <!-- MON ACTIVITÉ -->
-    <div class="pf-group-label">MON ACTIVITÉ</div>
-    <div class="pf-menu-group">
-      <div class="pf-menu-row" onclick="goSection('commandes')"><i class="fa-solid fa-bag-shopping"></i><span>Mes commandes</span><i class="fa-solid fa-chevron-right pf-chevron"></i></div>
-      <div class="pf-menu-row" onclick="goSection('devis')"><i class="fa-solid fa-file-invoice"></i><span>Mes devis</span><i class="fa-solid fa-chevron-right pf-chevron"></i></div>
-      <div class="pf-menu-row" onclick="goSection('livrables')"><i class="fa-solid fa-box-open"></i><span>Mes livrables</span><i class="fa-solid fa-chevron-right pf-chevron"></i></div>
-      <div class="pf-menu-row" onclick="comingSoon('Mes séances')"><i class="fa-solid fa-calendar-check"></i><span>Mes séances</span><i class="fa-solid fa-chevron-right pf-chevron"></i></div>
-      <div class="pf-menu-row" onclick="comingSoon('Mes paiements')"><i class="fa-solid fa-credit-card"></i><span>Mes paiements</span><i class="fa-solid fa-chevron-right pf-chevron"></i></div>
-      <div class="pf-menu-row" onclick="comingSoon('Mes favoris')"><i class="fa-solid fa-heart"></i><span>Mes favoris</span><i class="fa-solid fa-chevron-right pf-chevron"></i></div>
-      <div class="pf-menu-row" onclick="comingSoon('Mes avis')"><i class="fa-solid fa-star"></i><span>Mes avis</span><i class="fa-solid fa-chevron-right pf-chevron"></i></div>
-    </div>
-
-    <!-- MON COMPTE -->
-    <div class="pf-group-label">MON COMPTE</div>
-    <div class="pf-menu-group">
-      <div class="pf-menu-row" onclick="comingSoon('Paramètres du profil')"><i class="fa-solid fa-sliders"></i><span>Paramètres du profil</span><i class="fa-solid fa-chevron-right pf-chevron"></i></div>
-      <div class="pf-menu-row" onclick="comingSoon('Mon abonnement')"><i class="fa-solid fa-crown"></i><span>Mon abonnement</span><i class="fa-solid fa-chevron-right pf-chevron"></i></div>
-    </div>
-
-    <!-- MON RÉSEAU -->
-    <div class="pf-group-label">MON RÉSEAU</div>
-    <div class="pf-menu-group">
-      <div class="pf-menu-row" onclick="goSection('explorer')"><i class="fa-solid fa-compass"></i><span>Explorer GENESIS</span><i class="fa-solid fa-chevron-right pf-chevron"></i></div>
-      <div class="pf-menu-row pf-danger" onclick="confirmDelete()"><i class="fa-solid fa-trash"></i><span>Supprimer mon compte</span><i class="fa-solid fa-chevron-right pf-chevron"></i></div>
-    </div>
-
-    <!-- Déconnexion -->
-    <button class="btn-red" onclick="doLogout()" style="margin-top:4px"><i class="fa-solid fa-arrow-right-from-bracket"></i>Déconnexion</button>
-
-    <!-- Parrainage -->
-    <div style="background:linear-gradient(135deg,#1a1200,#0d0d0d);border:1px solid rgba(255,215,0,.2);border-radius:14px;padding:18px 16px;margin-top:12px">
-      <div style="font-size:10px;font-weight:900;color:var(--gold);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px"><i class="fa-solid fa-gift" style="margin-right:6px"></i>Mon code de parrainage</div>
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
-        <div id="pf-referral-code" style="flex:1;background:#0a0a0a;border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-size:15px;font-weight:900;color:var(--gold);letter-spacing:2px;text-align:center">—</div>
-        <button onclick="copyReferral()" style="background:var(--gold);color:#000;font-weight:900;font-size:12px;border:none;border-radius:8px;padding:10px 14px;cursor:pointer;flex-shrink:0">Copier</button>
+    <!-- EXPLORER -->
+    <div class="tab" id="tab-explorer">
+      <div class="greet">
+        <div class="greet-hi">Découvrez</div>
+        <div class="greet-name">FA GENESIS</div>
       </div>
-      <p style="font-size:11px;color:#999;margin-bottom:10px;line-height:1.5">Invitez vos proches à rejoindre FA GENESIS</p>
-      <button onclick="shareReferral()" style="background:transparent;color:var(--gold);font-weight:700;font-size:13px;border:1.5px solid rgba(255,215,0,.3);border-radius:10px;padding:11px 20px;cursor:pointer;width:100%;display:flex;align-items:center;justify-content:center;gap:8px"><i class="fa-solid fa-user-plus"></i>Inviter un ami</button>
+      <div style="height:16px"></div>
+      <div class="cat-grid">
+        <a class="cat-card" href="index.html#prestataires">
+          <i class="fa-solid fa-users"></i>
+          <div class="cat-lbl">Annuaire</div>
+          <div class="cat-desc">Trouvez le prestataire idéal</div>
+        </a>
+        <a class="cat-card" href="offres.html">
+          <i class="fa-solid fa-star"></i>
+          <div class="cat-lbl">Nos offres</div>
+          <div class="cat-desc">Découvrez nos solutions</div>
+        </a>
+        <a class="cat-card" href="contact.html">
+          <i class="fa-solid fa-paper-plane"></i>
+          <div class="cat-lbl">Lancer un projet</div>
+          <div class="cat-desc">Soumettez votre demande</div>
+        </a>
+        <a class="cat-card" href="index.html#app">
+          <i class="fa-solid fa-mobile-screen"></i>
+          <div class="cat-lbl">Application</div>
+          <div class="cat-desc">Téléchargez l'app GENESIS</div>
+        </a>
+      </div>
+      <div class="sec-lbl"><h2>Catégories</h2></div>
+      <div class="cat-chips">
+        <button class="cat-chip-btn" onclick="window.location='offres.html'"><i class="fa-solid fa-camera"></i>Photo</button>
+        <button class="cat-chip-btn" onclick="window.location='offres.html'"><i class="fa-solid fa-video"></i>Vidéo</button>
+        <button class="cat-chip-btn" onclick="window.location='offres.html'"><i class="fa-solid fa-pen-nib"></i>Design</button>
+        <button class="cat-chip-btn" onclick="window.location='offres.html'"><i class="fa-solid fa-code"></i>Dev</button>
+        <button class="cat-chip-btn" onclick="window.location='offres.html'"><i class="fa-solid fa-bullhorn"></i>Marketing</button>
+        <button class="cat-chip-btn" onclick="window.location='offres.html'"><i class="fa-solid fa-dumbbell"></i>Coaching</button>
+      </div>
+      <div style="padding:0 16px 8px">
+        <a href="contact.html" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:14px 20px;background:var(--yellow);color:#000;font-weight:900;font-size:13px;border-radius:12px;text-decoration:none"><i class="fa-solid fa-paper-plane"></i>Soumettre un projet</a>
+      </div>
     </div>
 
-    <p style="font-size:10px;color:var(--muted2);text-align:center;margin-top:14px;padding-bottom:4px">Version 1.1</p>
+    <!-- COMMANDES -->
+    <div class="tab" id="tab-commandes">
+      <div class="greet">
+        <div class="greet-hi">Mes</div>
+        <div class="greet-name">Commandes</div>
+      </div>
+      <div class="resa-list" id="commandes-list">
+        <div class="spinner"><i class="fa-solid fa-spinner"></i></div>
+      </div>
+    </div>
+
+    <!-- LIVRABLES -->
+    <div class="tab" id="tab-livrables">
+      <div class="greet">
+        <div class="greet-hi">Mes</div>
+        <div class="greet-name">Livrables</div>
+      </div>
+      <div class="liv-list" id="livrables-list">
+        <div class="spinner"><i class="fa-solid fa-spinner"></i></div>
+      </div>
+    </div>
+
+    <!-- PROFIL -->
+    <div class="tab" id="tab-profil">
+      <div class="profile-header">
+        <div class="profile-ava" id="pf-ava">C</div>
+        <div>
+          <div class="profile-name" id="pf-name">—</div>
+          <div class="profile-email" id="pf-email">—</div>
+          <span class="profile-plan" id="pf-plan">CLIENT FA GENESIS</span>
+        </div>
+      </div>
+
+      <div class="menu-section">
+        <div class="menu-section-title">Mon activité</div>
+        <div class="menu-group">
+          <div class="menu-item" onclick="nav('commandes')">
+            <div class="menu-item-ico" style="background:rgba(96,165,250,.1)"><i class="fa-solid fa-bag-shopping" style="color:#60a5fa"></i></div>
+            <span class="menu-item-label">Commandes</span>
+            <i class="fa-solid fa-chevron-right menu-item-arrow"></i>
+          </div>
+          <div class="menu-item" onclick="nav('livrables')">
+            <div class="menu-item-ico" style="background:rgba(255,215,0,.1)"><i class="fa-solid fa-box-open" style="color:var(--gold)"></i></div>
+            <span class="menu-item-label">Livrables</span>
+            <i class="fa-solid fa-chevron-right menu-item-arrow"></i>
+          </div>
+          <div class="menu-item" onclick="comingSoon('Devis')">
+            <div class="menu-item-ico" style="background:rgba(168,85,247,.1)"><i class="fa-solid fa-file-invoice" style="color:#c084fc"></i></div>
+            <span class="menu-item-label">Devis</span>
+            <i class="fa-solid fa-chevron-right menu-item-arrow"></i>
+          </div>
+          <div class="menu-item" onclick="comingSoon('Séances')">
+            <div class="menu-item-ico" style="background:rgba(34,197,94,.1)"><i class="fa-solid fa-calendar-days" style="color:#22c55e"></i></div>
+            <span class="menu-item-label">Séances</span>
+            <i class="fa-solid fa-chevron-right menu-item-arrow"></i>
+          </div>
+          <div class="menu-item" onclick="comingSoon('Paiements')">
+            <div class="menu-item-ico" style="background:rgba(251,191,36,.1)"><i class="fa-solid fa-credit-card" style="color:#fbbf24"></i></div>
+            <span class="menu-item-label">Paiements</span>
+            <i class="fa-solid fa-chevron-right menu-item-arrow"></i>
+          </div>
+        </div>
+      </div>
+
+      <div class="menu-section">
+        <div class="menu-section-title">Mon compte</div>
+        <div class="menu-group">
+          <div class="menu-item" onclick="comingSoon('Paramètres du profil')">
+            <div class="menu-item-ico" style="background:rgba(255,255,255,.05)"><i class="fa-solid fa-user-pen" style="color:var(--muted)"></i></div>
+            <span class="menu-item-label">Paramètres du profil</span>
+            <i class="fa-solid fa-chevron-right menu-item-arrow"></i>
+          </div>
+          <div class="menu-item" onclick="comingSoon('Mon abonnement')">
+            <div class="menu-item-ico" style="background:rgba(255,215,0,.1)"><i class="fa-solid fa-crown" style="color:var(--gold)"></i></div>
+            <span class="menu-item-label">Mon abonnement</span>
+            <i class="fa-solid fa-chevron-right menu-item-arrow"></i>
+          </div>
+          <div class="menu-item" onclick="comingSoon('Favoris')">
+            <div class="menu-item-ico" style="background:rgba(239,68,68,.1)"><i class="fa-solid fa-heart" style="color:#ef4444"></i></div>
+            <span class="menu-item-label">Favoris</span>
+            <i class="fa-solid fa-chevron-right menu-item-arrow"></i>
+          </div>
+          <div class="menu-item" onclick="comingSoon('Mes avis')">
+            <div class="menu-item-ico" style="background:rgba(255,215,0,.1)"><i class="fa-solid fa-star" style="color:var(--gold)"></i></div>
+            <span class="menu-item-label">Mes avis</span>
+            <i class="fa-solid fa-chevron-right menu-item-arrow"></i>
+          </div>
+        </div>
+      </div>
+
+      <div class="menu-section">
+        <div class="menu-section-title">Mon réseau</div>
+        <div class="menu-group">
+          <div class="menu-item" onclick="nav('explorer')">
+            <div class="menu-item-ico" style="background:rgba(255,215,0,.1)"><i class="fa-solid fa-magnifying-glass" style="color:var(--gold)"></i></div>
+            <span class="menu-item-label">Explorer GENESIS</span>
+            <i class="fa-solid fa-chevron-right menu-item-arrow"></i>
+          </div>
+          <div class="menu-item danger" onclick="confirmDelete()">
+            <div class="menu-item-ico" style="background:rgba(239,68,68,.1)"><i class="fa-solid fa-trash"></i></div>
+            <span class="menu-item-label">Supprimer mon compte</span>
+            <i class="fa-solid fa-chevron-right menu-item-arrow"></i>
+          </div>
+        </div>
+      </div>
+
+      <div class="referral-block">
+        <div class="referral-label">Code de parrainage</div>
+        <div class="referral-code" id="pf-referral-code">CL-XXXXXXXX</div>
+        <div class="ref-btns">
+          <button class="ref-btn ref-copy" onclick="copyReferral()"><i class="fa-solid fa-copy"></i>Copier</button>
+          <button class="ref-btn ref-share" onclick="shareReferral()"><i class="fa-solid fa-share-nodes"></i>Inviter un ami</button>
+        </div>
+      </div>
+
+      <button class="logout-btn" onclick="doLogout()"><i class="fa-solid fa-right-from-bracket"></i>Se déconnecter</button>
+      <div class="version-lbl">FA GENESIS v1.1 — Espace Client</div>
+    </div>
+
   </div>
 
-</main>
+  <nav id="nav">
+    <button class="nav-btn on" id="nb-home" onclick="nav('home')"><i class="fa-solid fa-house"></i><span>Accueil</span></button>
+    <button class="nav-btn" id="nb-explorer" onclick="nav('explorer')"><i class="fa-solid fa-magnifying-glass"></i><span>Explorer</span></button>
+    <button class="nav-btn" id="nb-commandes" onclick="nav('commandes')"><i class="fa-solid fa-bag-shopping"></i><span>Commandes</span></button>
+    <button class="nav-btn" id="nb-livrables" onclick="nav('livrables')"><i class="fa-solid fa-box-open"></i><span>Livrables</span></button>
+    <button class="nav-btn" id="nb-profil" onclick="nav('profil')"><i class="fa-solid fa-user"></i><span>Profil</span></button>
+  </nav>
 
-<nav id="bnav" style="display:none">
-  <button class="bnav-btn on" onclick="goSection('accueil')" id="btn-accueil"><i class="fa-solid fa-house"></i>Accueil</button>
-  <button class="bnav-btn" onclick="goSection('explorer')" id="btn-explorer"><i class="fa-solid fa-compass"></i>Explorer</button>
-  <button class="bnav-btn" onclick="goSection('commandes')" id="btn-commandes"><i class="fa-solid fa-bag-shopping"></i>Commandes</button>
-  <button class="bnav-btn" onclick="goSection('livrables')" id="btn-livrables"><i class="fa-solid fa-box-open"></i>Livrables</button>
-  <button class="bnav-btn" onclick="goSection('profil')" id="btn-profil"><i class="fa-solid fa-user"></i>Profil</button>
-</nav>
+</div>
 
 <div id="toast"></div>
 
@@ -267,51 +465,42 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:-apple-
 var API = 'https://fa-genesis-website.onrender.com';
 var _token = localStorage.getItem('fa_genesis_token') || localStorage.getItem('fa_genesis_session');
 var _user = null;
-var _loaded = {};
 
 (function init(){
-  if(!_token){ goLogin(); return; }
+  if(!_token){ return goLogin(); }
   fetch(API+'/api/me',{headers:{'Authorization':'Bearer '+_token}})
     .then(function(r){ return r.ok ? r.json() : null; })
     .then(function(d){
-      if(!d || !d.user){ goLogin(); return; }
+      if(!d||!d.user){ return goLogin(); }
       _user = d.user;
       boot();
     })
-    .catch(function(){ goLogin(); });
+    .catch(function(){ return goLogin(); });
 })();
 
 function goLogin(){ window.location.replace('login.html'); }
 
 function boot(){
-  document.getElementById('splash-check').style.display = 'none';
-  document.getElementById('hdr').style.display = '';
-  document.getElementById('main').style.display = '';
-  document.getElementById('bnav').style.display = '';
-  var fn = ((_user.prenom||_user.firstName||'')+' '+(_user.nom||_user.lastName||'')).trim()||_user.email;
-  document.getElementById('hdr-avatar').textContent = (fn[0]||'C').toUpperCase();
-  document.getElementById('welcome-name').textContent = 'Bonjour, '+fn+' 👋';
-  document.getElementById('welcome-sub').textContent = 'Bienvenue dans votre espace client GENESIS';
-  var offre = _user.offre||_user.activeOfferId||'—';
-  document.getElementById('stat-offre').textContent = offre.length > 6 ? offre.substring(0,6)+'…' : offre;
-  loadAccueil();
+  document.getElementById('splash').style.display = 'none';
+  document.getElementById('app').style.display = '';
+  var fn = ((_user.prenom||_user.firstName||'')+' '+(_user.nom||_user.lastName||'')).trim()||_user.email||'Membre';
+  var initial = (fn[0]||'C').toUpperCase();
+  document.getElementById('hdr-ava').textContent = initial;
+  document.getElementById('greet-name').textContent = fn.split(' ')[0]||fn;
   loadProfil();
+  loadAccueil();
+  loadCommandes();
+  loadLivrables();
 }
 
-function goSection(name){
-  document.querySelectorAll('.section').forEach(function(el){ el.classList.remove('on'); });
-  document.querySelectorAll('.bnav-btn').forEach(function(el){ el.classList.remove('on'); });
-  var sec = document.getElementById('sec-'+name);
-  var btn = document.getElementById('btn-'+name);
-  if(sec) sec.classList.add('on');
+function nav(name){
+  document.querySelectorAll('.tab').forEach(function(el){ el.classList.remove('on'); });
+  document.querySelectorAll('.nav-btn').forEach(function(el){ el.classList.remove('on'); });
+  var tab = document.getElementById('tab-'+name);
+  var btn = document.getElementById('nb-'+name);
+  if(tab) tab.classList.add('on');
   if(btn) btn.classList.add('on');
-  document.getElementById('main').scrollTop = 0;
-  if(!_loaded[name]){
-    _loaded[name] = true;
-    if(name==='commandes') loadCommandes();
-    if(name==='devis') loadDevis();
-    if(name==='livrables') loadLivrables();
-  }
+  document.getElementById('content').scrollTop = 0;
 }
 
 function apiFetch(path){ return fetch(API+path,{headers:{'Authorization':'Bearer '+_token}}).then(function(r){ return r.json(); }); }
@@ -319,32 +508,54 @@ function fmt(d){ if(!d) return '—'; try{ return new Date(d).toLocaleDateString
 function fmtAmt(n){ return n!=null ? parseFloat(n).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g,' ')+'€' : '—'; }
 function showToast(msg){ var t=document.getElementById('toast'); t.textContent=msg; t.classList.add('on'); setTimeout(function(){ t.classList.remove('on'); },2200); }
 function comingSoon(label){ showToast(label+' — Disponible dans l\'app GENESIS'); }
+function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
-// ── Accueil ──────────────────────────────────────────
 function loadAccueil(){
-  var el = document.getElementById('home-activity');
   apiFetch('/api/orders').then(function(data){
     var orders = Array.isArray(data) ? data : (data&&data.orders)||[];
     document.getElementById('stat-commandes').textContent = orders.length;
-    if(orders.length===0){ el.innerHTML = '<div class="empty"><i class="fa-solid fa-bolt"></i><p>Aucune activité récente.<br>Lancez votre premier projet !</p></div>'; }
-    else{ el.innerHTML = orders.slice(0,3).map(commandeCard).join(''); }
-  }).catch(function(){ el.innerHTML = '<div class="empty"><i class="fa-solid fa-wifi-slash"></i><p>Impossible de charger</p></div>'; });
-  apiFetch('/api/devis').then(function(data){
-    var devis = Array.isArray(data) ? data : (data&&data.devis)||[];
-    document.getElementById('stat-devis').textContent = devis.length;
-  }).catch(function(){ document.getElementById('stat-devis').textContent = '0'; });
+    var active = orders.find(function(o){ return ['in_progress','active','confirmed','delivery'].indexOf(o.status) !== -1; });
+    if(active){
+      var lbl = {pending:'Confirmée',confirmed:'Confirmée',in_progress:'En cours',active:'En cours',delivery:'En livraison'}[active.status]||'En cours';
+      document.getElementById('sc-status').textContent = lbl;
+      document.getElementById('sc-title').textContent = active.product_name||active.service||'Votre commande';
+      document.getElementById('sc-sub').textContent = (active.partner_name?'Prestataire : '+active.partner_name+' · ':'')+fmtAmt(active.amount);
+      document.getElementById('status-card').style.display = '';
+    }
+    var el = document.getElementById('home-activity');
+    if(orders.length===0){
+      el.innerHTML = '<div class="empty"><i class="fa-solid fa-bolt"></i><p>Aucune activité récente.<br>Lancez votre premier projet !</p></div>';
+    } else {
+      var pillLabel = {pending:'Confirmée',confirmed:'Confirmée',in_progress:'En cours',active:'En cours',delivery:'Livraison',delivered:'Livraison',completed:'Terminée',done:'Terminée',cancelled:'Annulée'};
+      el.innerHTML = '<div style="display:flex;flex-direction:column;gap:8px;padding:0 16px">'+orders.slice(0,3).map(function(o){
+        var st = o.status||'pending';
+        var cls = (st==='in_progress'||st==='active')?'active':(st==='completed'||st==='done')?'done':st;
+        return '<div class="resa-card" onclick="nav(\'commandes\')" style="cursor:pointer">'
+          +'<div class="resa-top"><div><div class="resa-name">'+esc(o.product_name||o.service||'Commande')+'</div>'
+          +(o.partner_name?'<div class="resa-date" style="margin-top:3px">'+esc(o.partner_name)+'</div>':'')+
+          '</div><span class="resa-status s-'+cls+'">'+(pillLabel[st]||'En cours')+'</span></div>'
+          +'<div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px">'
+          +'<span class="resa-price">'+fmtAmt(o.amount)+'</span>'
+          +'<span class="resa-date">'+fmt(o.created_at)+'</span></div></div>';
+      }).join('')+'</div>';
+    }
+  }).catch(function(){ document.getElementById('home-activity').innerHTML = '<div class="empty"><i class="fa-solid fa-wifi-slash"></i><p>Impossible de charger</p></div>'; });
+
   apiFetch('/api/livrables').then(function(data){
     var livs = Array.isArray(data) ? data : (data&&data.livrables)||[];
     document.getElementById('stat-livrables').textContent = livs.length;
   }).catch(function(){ document.getElementById('stat-livrables').textContent = '0'; });
 }
 
-// ── Commandes ────────────────────────────────────────
 function loadCommandes(){
   var el = document.getElementById('commandes-list');
   apiFetch('/api/orders').then(function(data){
     var orders = Array.isArray(data) ? data : (data&&data.orders)||[];
-    if(orders.length===0){ el.innerHTML = '<div class="empty"><i class="fa-solid fa-bag-shopping"></i><p>Aucune commande pour le moment.<br>Lancez votre premier projet !</p></div><a class="btn-gold" href="contact.html"><i class="fa-solid fa-paper-plane"></i>Lancer un projet</a>'; return; }
+    if(orders.length===0){
+      el.innerHTML = '<div class="empty"><i class="fa-solid fa-bag-shopping"></i><p>Aucune commande pour le moment.<br>Lancez votre premier projet !</p></div>'
+        +'<div style="padding:0 0 8px"><a href="contact.html" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:13px 20px;background:var(--yellow);color:#000;font-weight:900;font-size:13px;border-radius:10px;text-decoration:none"><i class="fa-solid fa-paper-plane"></i>Lancer un projet</a></div>';
+      return;
+    }
     el.innerHTML = orders.map(commandeCard).join('');
   }).catch(function(){ el.innerHTML = '<div class="empty"><i class="fa-solid fa-wifi-slash"></i><p>Erreur de chargement</p></div>'; });
 }
@@ -352,51 +563,23 @@ function loadCommandes(){
 function commandeCard(o){
   var steps = ['Confirmée','En cours','Livraison','Terminée'];
   var stepIdx = {pending:0,confirmed:0,in_progress:1,active:1,delivery:2,delivered:2,completed:3,done:3};
-  var pillCls = {pending:'yellow',confirmed:'blue',in_progress:'blue',active:'blue',delivery:'purple',delivered:'purple',completed:'green',done:'green',cancelled:'red'};
   var pillLabel = {pending:'Confirmée',confirmed:'Confirmée',in_progress:'En cours',active:'En cours',delivery:'Livraison',delivered:'Livraison',completed:'Terminée',done:'Terminée',cancelled:'Annulée'};
   var st = o.status||'pending';
   var cur = stepIdx[st]!==undefined ? stepIdx[st] : 0;
-  var progressHtml = '<div class="status-bar">'+steps.map(function(s,i){
-    var cls = i<cur?'done':(i===cur?'current':'');
-    return '<div class="status-step '+cls+'">'+s+'</div>';
+  var cls = (st==='in_progress'||st==='active')?'active':(st==='completed'||st==='done')?'done':st;
+  var prog = '<div class="prog-bar">'+steps.map(function(s,i){
+    var c = i<cur?'done':(i===cur?'current':''); return '<div class="prog-step '+c+'">'+s+'</div>';
   }).join('')+'</div>';
-  return '<div class="card"><div class="card-row">'
-    +'<div class="card-icon" style="background:rgba(96,165,250,.08)"><i class="fa-solid fa-bag-shopping" style="color:#60a5fa"></i></div>'
-    +'<div style="flex:1;min-width:0">'
-    +'<div class="card-title">'+esc(o.product_name||o.service||'Commande')+'</div>'
-    +'<div class="card-sub">'+(o.partner_name?esc(o.partner_name)+' · ':'')+fmtAmt(o.amount)+'</div>'
-    +'<div style="margin-top:6px;display:flex;align-items:center;justify-content:space-between">'
-    +'<span class="pill pill-'+(pillCls[st]||'grey')+'">'+(pillLabel[st]||'En cours')+'</span>'
-    +'<span class="card-meta">'+fmt(o.created_at)+'</span>'
-    +'</div></div></div>'
-    +progressHtml
-    +'</div>';
+  return '<div class="resa-card">'
+    +'<div class="resa-top"><div><div class="resa-name">'+esc(o.product_name||o.service||'Commande')+'</div>'
+    +(o.partner_name?'<div class="resa-date" style="margin-top:3px">'+esc(o.partner_name)+'</div>':'')
+    +'</div><span class="resa-status s-'+cls+'">'+(pillLabel[st]||'En cours')+'</span></div>'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">'
+    +'<span class="resa-price">'+fmtAmt(o.amount)+'</span>'
+    +'<span class="resa-date">'+fmt(o.created_at)+'</span></div>'
+    +prog+'</div>';
 }
 
-// ── Devis ─────────────────────────────────────────────
-function loadDevis(){
-  var el = document.getElementById('devis-list');
-  apiFetch('/api/devis').then(function(data){
-    var devis = Array.isArray(data) ? data : (data&&data.devis)||[];
-    if(devis.length===0){ el.innerHTML = '<div class="empty"><i class="fa-solid fa-file-invoice"></i><p>Aucun devis envoyé pour le moment</p></div>'; return; }
-    el.innerHTML = devis.map(function(d){
-      var sMap = {pending:'En attente',sent:'En attente',accepted:'Accepté',refused:'Refusé',expired:'Expiré'};
-      var pMap = {pending:'yellow',sent:'yellow',accepted:'green',refused:'red',expired:'grey'};
-      var st = d.status||'pending';
-      return '<div class="card"><div class="card-row">'
-        +'<div class="card-icon" style="background:rgba(255,215,0,.08)"><i class="fa-solid fa-file-invoice" style="color:var(--gold)"></i></div>'
-        +'<div style="flex:1;min-width:0">'
-        +'<div class="card-title">'+esc(d.service||d.product_name||'Demande de devis')+'</div>'
-        +'<div class="card-sub">'+(d.partner_name?esc(d.partner_name)+' · ':d.description?esc(d.description.substring(0,60)):'')+'</div>'
-        +'<div style="margin-top:6px;display:flex;align-items:center;justify-content:space-between">'
-        +'<span class="pill pill-'+(pMap[st]||'grey')+'">'+(sMap[st]||st)+'</span>'
-        +'<span class="card-meta">'+fmt(d.created_at)+'</span>'
-        +'</div></div></div></div>';
-    }).join('');
-  }).catch(function(){ el.innerHTML = '<div class="empty"><i class="fa-solid fa-wifi-slash"></i><p>Erreur de chargement</p></div>'; });
-}
-
-// ── Livrables ────────────────────────────────────────
 function loadLivrables(){
   var el = document.getElementById('livrables-list');
   apiFetch('/api/livrables').then(function(data){
@@ -405,18 +588,16 @@ function loadLivrables(){
     el.innerHTML = livs.map(function(l){
       var signed = l.status==='signed'||l.status==='validated';
       var pending = l.status==='pending_signature'||l.status==='pending';
-      var iconColor = signed ? '#22c55e' : 'var(--gold)';
-      var iconBg = signed ? 'rgba(34,197,94,.08)' : 'rgba(255,215,0,.08)';
-      return '<div class="card"><div class="card-row">'
-        +'<div class="card-icon" style="background:'+iconBg+'"><i class="fa-solid fa-box-open" style="color:'+iconColor+'"></i></div>'
-        +'<div style="flex:1;min-width:0">'
-        +'<div class="card-title">'+esc(l.product_name||l.title||l.service||'Livrable')+'</div>'
-        +'<div class="card-sub">'+(l.partner_name?esc(l.partner_name)+' · ':'')+'Livré le '+fmt(l.delivered_at||l.created_at)+'</div>'
-        +'<div style="margin-top:6px">'
-        +'<span class="pill '+(signed?'pill-green':pending?'pill-yellow':'pill-grey')+'">'+(signed?'Validé':pending?'En attente de validation':'Livré')+'</span>'
-        +'</div></div></div>'
-        +(l.contract_id?'<button class="btn-gold" onclick="downloadContract(\''+l.contract_id+'\')"><i class="fa-solid fa-download"></i>Télécharger le contrat</button>':'')
-        +(signed&&l.id?'<button class="btn-outline" style="margin-top:8px" onclick="downloadLivrable(\''+l.id+'\')"><i class="fa-solid fa-file-arrow-down"></i>Télécharger le livrable</button>':'')
+      var ic = signed ? '#22c55e' : 'var(--gold)';
+      var ibg = signed ? 'rgba(34,197,94,.1)' : 'rgba(255,215,0,.1)';
+      return '<div class="liv-card"><div class="liv-top">'
+        +'<div class="liv-ico" style="background:'+ibg+'"><i class="fa-solid fa-box-open" style="color:'+ic+'"></i></div>'
+        +'<div style="flex:1;min-width:0"><div class="liv-name">'+esc(l.product_name||l.title||l.service||'Livrable')+'</div>'
+        +'<div class="liv-sub">'+(l.partner_name?esc(l.partner_name)+' · ':'')+'Livré le '+fmt(l.delivered_at||l.created_at)+'</div>'
+        +'<div style="margin-top:6px"><span class="pill '+(signed?'pill-green':pending?'pill-yellow':'pill-grey')+'">'+(signed?'Validé':pending?'En attente':'Livré')+'</span></div>'
+        +'</div></div>'
+        +(l.contract_id?'<button class="dl-btn dl-primary" onclick="downloadContract(\''+esc(l.contract_id)+'\')"><i class="fa-solid fa-download"></i>Télécharger le contrat</button>':'')
+        +(signed&&l.id?'<button class="dl-btn dl-outline" onclick="downloadLivrable(\''+esc(l.id)+'\')"><i class="fa-solid fa-file-arrow-down"></i>Télécharger le livrable</button>':'')
         +'</div>';
     }).join('');
   }).catch(function(){ el.innerHTML = '<div class="empty"><i class="fa-solid fa-wifi-slash"></i><p>Erreur de chargement</p></div>'; });
@@ -425,67 +606,60 @@ function loadLivrables(){
 function downloadContract(id){ window.open(API+'/api/contracts/'+id+'/pdf','_blank'); }
 function downloadLivrable(id){ window.open(API+'/api/livrables/'+id+'/download','_blank'); }
 
-// ── Profil ───────────────────────────────────────────
 function loadProfil(){
   if(!_user) return;
   var fn = ((_user.prenom||_user.firstName||'')+' '+(_user.nom||_user.lastName||'')).trim()||_user.email;
-  document.getElementById('pf-avatar').textContent = (fn[0]||'C').toUpperCase();
+  document.getElementById('pf-ava').textContent = (fn[0]||'C').toUpperCase();
   document.getElementById('pf-name').textContent = fn;
   document.getElementById('pf-email').textContent = _user.email||'';
   var offre = _user.offre||_user.activeOfferId;
-  var statusMap = {'Starter':'Client Starter','Business':'Client Business','Enterprise':'Client Enterprise','Pro':'Client Pro'};
-  document.getElementById('pf-status-label').textContent = (offre ? (statusMap[offre]||offre) : 'Client FA GENESIS');
-  document.getElementById('pf-type').textContent = offre ? 'Offre '+offre : 'Client FA GENESIS';
-  // Code de parrainage
-  var code = _user.referral_code || _user.parrainage_code || ('CL-'+(_user.id||_user.email||'').toString().replace(/[^A-Z0-9]/gi,'').toUpperCase().substring(0,8));
-  var codeEl = document.getElementById('pf-referral-code');
-  if(codeEl) codeEl.textContent = code;
+  var planMap = {'Starter':'Client Starter','Business':'Client Business','Enterprise':'Client Enterprise','Pro':'Client Pro'};
+  document.getElementById('pf-plan').textContent = offre ? (planMap[offre]||offre) : 'Client FA GENESIS';
+  var lvl = _user.level||1; var xp = _user.xp||0;
+  var nextXp = lvl*100; var pct = Math.min(100,Math.round((xp/nextXp)*100));
+  var lvlNames = {1:'Membre',2:'Régulier',3:'Habitué',4:'VIP',5:'Élite'};
+  document.getElementById('qg-lvl').textContent = 'NIVEAU '+lvl+' — '+(lvlNames[lvl]||'MEMBRE').toUpperCase();
+  document.getElementById('qg-xp').textContent = xp+' XP';
+  document.getElementById('qg-bar').style.width = Math.max(5,pct)+'%';
+  document.getElementById('qg-status').innerHTML = offre ? 'Offre <b>'+offre+'</b> — '+Math.max(0,nextXp-xp)+' XP pour le niveau suivant' : 'Bienvenue dans votre <b>QG GENESIS</b>';
+  var code = _user.referral_code||_user.parrainage_code||('CL-'+(_user.id||_user.email||'').toString().replace(/[^A-Z0-9]/gi,'').toUpperCase().substring(0,8));
+  document.getElementById('pf-referral-code').textContent = code;
 }
 
-// ── Parrainage ───────────────────────────────────────
 function copyReferral(){
   var code = document.getElementById('pf-referral-code');
   if(!code) return;
-  try{
-    navigator.clipboard.writeText(code.textContent).then(function(){ showToast('Code copié ✓'); }).catch(function(){ _fallbackCopy(code.textContent); });
-  }catch(e){ _fallbackCopy(code.textContent); }
+  try{ navigator.clipboard.writeText(code.textContent).then(function(){ showToast('Code copié ✓'); }).catch(function(){ _fallbackCopy(code.textContent); }); }
+  catch(e){ _fallbackCopy(code.textContent); }
 }
-
 function _fallbackCopy(text){
-  var ta = document.createElement('textarea');
-  ta.value = text; ta.style.position='fixed'; ta.style.opacity='0';
+  var ta = document.createElement('textarea'); ta.value=text; ta.style.position='fixed'; ta.style.opacity='0';
   document.body.appendChild(ta); ta.select();
   try{ document.execCommand('copy'); showToast('Code copié ✓'); }catch(e){ showToast('Copiez : '+text); }
   document.body.removeChild(ta);
 }
-
 function shareReferral(){
   var code = (document.getElementById('pf-referral-code')||{}).textContent||'';
-  var msg = 'Rejoins FA GENESIS, la plateforme qui connecte clients et prestataires créatifs ! Utilise mon code '+code+' → https://fagenesis.com';
+  var msg = 'Rejoins FA GENESIS ! Utilise mon code '+code+' → https://fagenesis.com';
   if(navigator.share){ navigator.share({title:'FA GENESIS',text:msg}).catch(function(){}); }
-  else{ copyReferral(); showToast('Lien copié — partagez-le !'); }
+  else{ copyReferral(); }
 }
-
-// ── Suppression compte ───────────────────────────────
 function confirmDelete(){
   if(!confirm('Supprimer votre compte ? Cette action est irréversible.')) return;
   if(!confirm('Confirmer la suppression définitive ?')) return;
   fetch(API+'/api/account',{method:'DELETE',headers:{'Authorization':'Bearer '+_token}})
-    .then(function(){ doLogout(); })
+    .then(function(){ clearSession(); window.location.replace('index.html'); })
     .catch(function(){ showToast('Erreur — contactez le support'); });
 }
-
-// ── Logout ───────────────────────────────────────────
 function doLogout(){
   if(!confirm('Se déconnecter ?')) return;
-  try{ localStorage.removeItem('fa_genesis_token'); }catch(e){}
-  try{ localStorage.removeItem('fa_genesis_session'); }catch(e){}
-  try{ localStorage.removeItem('fa_genesis_user'); }catch(e){}
+  clearSession();
   try{ fetch(API+'/api/auth/logout',{method:'POST',headers:{'Authorization':'Bearer '+_token}}).catch(function(){}); }catch(e){}
-  window.location.replace('login.html');
+  window.location.replace('index.html');
 }
-
-function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function clearSession(){
+  ['fa_genesis_token','fa_genesis_session','fa_genesis_user'].forEach(function(k){ try{ localStorage.removeItem(k); }catch(e){} });
+}
 </script>
 </body>
 </html>
