@@ -2,495 +2,367 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Créer un compte Client — FA GENESIS</title>
-<link rel="icon" type="image/png" sizes="32x32" href="assets/images/logo-favicon-32.png">
+<meta name="robots" content="noindex, nofollow">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <link rel="icon" type="image/png" sizes="192x192" href="assets/images/logo-favicon-192.png">
-<meta name="robots" content="noindex,nofollow">
-<meta name="theme-color" content="#FFD700">
-<link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700;900&family=Space+Grotesk:wght@300;400;500;700&display=swap" media="print" onload="this.media='all'">
-<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700;900&family=Space+Grotesk:wght@300;400;500;700&display=swap"></noscript>
+<title>Créer un compte Client — FA GENESIS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" media="print" onload="this.media='all'">
-<noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"></noscript>
 <style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 :root{
-  --black:#050505;--s1:#0a0a0a;--s2:#111;--s3:#161616;
-  --gold:#FFD700;--gold-dim:rgba(255,215,0,.1);--gold-border:rgba(255,215,0,.18);
-  --orange:#FF4800;--white:#fff;
-  --t1:rgba(255,255,255,.92);--t2:rgba(255,255,255,.6);--t3:rgba(255,255,255,.35);
-  --font-d:'Unbounded',sans-serif;--font-b:'Space Grotesk',sans-serif;
+  --bg:#050505;--card:#0f0f0f;--border:#1e1e1e;
+  --gold:#FFD700;--text:rgba(255,255,255,.92);--muted:rgba(255,255,255,.45);
+  --red:#ef4444;--green:#22c55e;
 }
-html,body{min-height:100%;}
-body{
-  background:var(--black);color:var(--t1);font-family:var(--font-b);
-  -webkit-font-smoothing:antialiased;overflow-x:hidden;
-}
-body::before{
-  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
-  background:radial-gradient(ellipse 80% 50% at 50% -10%,rgba(255,215,0,.06),transparent 60%);
-}
-a{text-decoration:none;color:inherit;}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{min-height:100%;background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;background:radial-gradient(ellipse 80% 50% at 50% -10%,rgba(255,215,0,.05),transparent 60%);z-index:0}
 
-/* ── HEADER ── */
-.reg-bar{
-  position:sticky;top:0;z-index:100;
-  display:flex;align-items:center;justify-content:space-between;
-  padding:16px 32px;
-  background:rgba(5,5,5,.92);backdrop-filter:blur(20px);
-  border-bottom:1px solid var(--gold-border);
-}
-@media(max-width:480px){.reg-bar{padding:14px 18px;}}
-.reg-back{
-  background:none;border:none;color:var(--t2);font-size:13px;
-  font-family:var(--font-b);font-weight:500;cursor:pointer;
-  display:flex;align-items:center;gap:6px;transition:color .2s;
-  text-decoration:none;min-width:90px;
-}
-.reg-back:hover{color:var(--white);}
-.reg-logo{
-  font-family:var(--font-d);font-size:13px;font-weight:900;
-  color:var(--gold);display:flex;align-items:center;gap:10px;
-}
-.reg-logo img{height:28px;width:auto;}
-.reg-login{
-  font-size:13px;font-weight:600;color:var(--t2);
-  border:1px solid rgba(255,255,255,.15);border-radius:6px;
-  padding:7px 16px;transition:border-color .2s,color .2s;
-  min-width:90px;text-align:right;display:inline-block;
-}
-.reg-login:hover{border-color:var(--gold);color:var(--gold);}
+/* Header */
+header{position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:16px 24px;background:rgba(5,5,5,.92);backdrop-filter:blur(20px);border-bottom:1px solid rgba(255,215,0,.12)}
+.hdr-brand{font-family:'Unbounded',sans-serif;font-size:13px;font-weight:900;color:var(--gold);letter-spacing:.5px;text-decoration:none;display:flex;align-items:center;gap:10px}
+.hdr-brand img{width:28px;height:28px;border-radius:50%;object-fit:cover}
+.hdr-login{font-size:13px;font-weight:600;color:var(--muted);text-decoration:none;transition:color .2s}
+.hdr-login:hover{color:var(--text)}
 
-/* ── MAIN ── */
-.reg-main{
-  position:relative;z-index:1;
-  display:flex;flex-direction:column;align-items:center;
-  padding:48px 24px 80px;
-}
+/* Wizard */
+.wizard{max-width:480px;margin:0 auto;padding:32px 24px 80px;position:relative;z-index:1}
 
-/* ── CARD ── */
-.reg-card{
-  width:100%;max-width:520px;
-  background:var(--s1);border:1.5px solid var(--gold-border);
-  border-radius:22px;padding:40px 36px;
-  position:relative;overflow:hidden;
-}
-.reg-card::before{
-  content:'';position:absolute;inset:0;pointer-events:none;border-radius:22px;
-  background:radial-gradient(ellipse at top,rgba(255,215,0,.04),transparent 55%);
-}
-@media(max-width:520px){.reg-card{padding:28px 18px;}}
+/* Progress */
+.prog-track{display:flex;align-items:center;gap:0;margin-bottom:40px}
+.prog-dot{width:28px;height:28px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;color:var(--muted);flex-shrink:0;transition:all .3s;background:var(--card)}
+.prog-dot.done{background:var(--green);border-color:var(--green);color:#000}
+.prog-dot.active{background:var(--gold);border-color:var(--gold);color:#000}
+.prog-line{flex:1;height:2px;background:var(--border);transition:background .3s}
+.prog-line.done{background:var(--green)}
 
-.reg-icon{
-  width:58px;height:58px;border-radius:16px;
-  background:var(--gold-dim);border:1px solid var(--gold-border);
-  display:flex;align-items:center;justify-content:center;
-  font-size:22px;color:var(--gold);margin:0 auto 22px;
-}
-.reg-title{
-  font-family:var(--font-d);font-size:clamp(18px,3vw,26px);font-weight:900;
-  text-align:center;line-height:1.2;margin-bottom:8px;
-}
-.reg-sub{
-  font-size:13px;color:var(--t2);text-align:center;margin-bottom:32px;line-height:1.6;
-}
+/* Steps */
+.step{display:none;animation:fadeIn .25s ease}
+.step.on{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 
-/* ── BANNER ── */
-.reg-banner{
-  border-radius:12px;padding:14px 16px;margin-bottom:24px;
-  font-size:13px;font-weight:600;line-height:1.5;
-  display:none;
-}
-.reg-banner.show{display:block;}
-.reg-banner-info{background:rgba(255,215,0,.08);border:1px solid rgba(255,215,0,.22);color:var(--gold);}
-.reg-banner-err{background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);color:#f87171;}
-.reg-banner-ok{background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);color:#4ade80;}
+/* Step title */
+.step-tag{font-size:10px;font-weight:900;color:var(--gold);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px}
+.step-title{font-family:'Unbounded',sans-serif;font-size:20px;font-weight:900;color:var(--text);margin-bottom:6px;line-height:1.2}
+.step-sub{font-size:13px;color:var(--muted);margin-bottom:28px;line-height:1.6}
 
-/* ── FORM ── */
-.frm-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;}
-@media(max-width:440px){.frm-row{grid-template-columns:1fr;}}
-.frm-group{margin-bottom:20px;}
-.frm-label{
-  display:block;font-size:11px;font-weight:700;letter-spacing:.6px;
-  text-transform:uppercase;color:var(--t2);margin-bottom:8px;
-}
-.frm-input{
-  width:100%;
-  background:rgba(255,255,255,.04);
-  border:1.5px solid rgba(255,255,255,.12);
-  border-radius:10px;padding:13px 16px;
-  color:var(--t1);font-family:var(--font-b);font-size:14px;font-weight:400;
-  outline:none;transition:border-color .2s,box-shadow .2s;
-  -webkit-appearance:none;
-}
-.frm-input::placeholder{color:var(--t3);}
-.frm-input:focus{
-  border-color:var(--gold);
-  box-shadow:0 0 0 3px rgba(255,215,0,.1);
-}
-.frm-input:autofill,.frm-input:-webkit-autofill{
-  -webkit-box-shadow:0 0 0 100px var(--s2) inset;
-  -webkit-text-fill-color:var(--t1);
-}
-.frm-hint{font-size:11px;color:var(--t3);margin-top:6px;}
+/* Form fields */
+.frm-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:480px){.frm-row{grid-template-columns:1fr}}
+.frm-group{margin-bottom:16px}
+.frm-label{display:block;font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+.frm-input{width:100%;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:13px 16px;color:var(--text);font-size:15px;font-family:'Inter',sans-serif;outline:none;transition:border-color .2s;appearance:none}
+.frm-input:focus{border-color:var(--gold)}
+.frm-input::placeholder{color:rgba(255,255,255,.2)}
+.pw-wrap{position:relative}
+.pw-eye{position:absolute;right:14px;top:50%;transform:translateY(-50%);background:none;border:none;color:rgba(255,255,255,.35);cursor:pointer;line-height:0;padding:4px;display:flex;align-items:center}
+.pw-eye:hover{color:var(--text)}
 
-/* ── CHECKBOX ── */
-.frm-check{display:flex;align-items:flex-start;gap:12px;margin-bottom:28px;}
-.frm-check input[type=checkbox]{
-  width:18px;height:18px;flex-shrink:0;margin-top:2px;
-  accent-color:var(--gold);cursor:pointer;
-}
-.frm-check label{font-size:13px;color:var(--t2);line-height:1.6;cursor:pointer;}
-.frm-check label a{color:var(--gold);font-weight:600;text-decoration:underline;text-underline-offset:2px;}
+/* Error / success banners */
+.err-banner{display:none;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);border-radius:10px;padding:12px 16px;font-size:13px;font-weight:600;color:var(--red);margin-bottom:16px}
+.err-banner.on{display:block}
 
-/* ── SUBMIT ── */
-.frm-submit{
-  width:100%;padding:15px 24px;
-  background:linear-gradient(135deg,var(--gold),#e6c200);
-  color:#0a0800;font-family:var(--font-d);font-size:12px;font-weight:900;
-  border:none;border-radius:10px;cursor:pointer;
-  display:flex;align-items:center;justify-content:center;gap:8px;
-  transition:opacity .2s,transform .2s;letter-spacing:.3px;
-}
-.frm-submit:hover:not(:disabled){opacity:.88;transform:translateY(-1px);}
-.frm-submit:disabled{opacity:.5;cursor:not-allowed;transform:none;}
+/* Buttons */
+.btn-primary{width:100%;padding:15px 24px;background:var(--gold);color:#000;font-family:'Unbounded',sans-serif;font-size:12px;font-weight:900;letter-spacing:.5px;border:none;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:opacity .2s;margin-top:8px}
+.btn-primary:hover{opacity:.9}
+.btn-primary:disabled{opacity:.45;cursor:not-allowed}
+.btn-secondary{background:none;border:1px solid var(--border);color:var(--muted);font-family:'Inter',sans-serif;font-size:13px;font-weight:600;border-radius:10px;padding:12px 20px;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all .2s}
+.btn-secondary:hover{border-color:var(--text);color:var(--text)}
 
-.reg-divider{
-  display:flex;align-items:center;gap:12px;
-  margin:20px 0;font-size:12px;color:var(--t3);
-}
-.reg-divider::before,.reg-divider::after{content:'';flex:1;height:1px;background:rgba(255,255,255,.08);}
+/* Password strength */
+.pw-strength{margin-top:8px;display:flex;gap:4px;align-items:center}
+.pw-bar{flex:1;height:3px;border-radius:99px;background:var(--border);transition:background .3s}
+.pw-bar.weak{background:#ef4444}
+.pw-bar.medium{background:#f59e0b}
+.pw-bar.strong{background:var(--green)}
+.pw-txt{font-size:11px;color:var(--muted);margin-left:8px;min-width:60px}
 
-.reg-alt{text-align:center;font-size:13px;color:var(--t3);}
-.reg-alt a{color:var(--gold);font-weight:600;}
+/* Terms */
+.terms-check{display:flex;align-items:flex-start;gap:12px;margin:16px 0}
+.terms-check input{width:18px;height:18px;margin-top:2px;flex-shrink:0;accent-color:var(--gold);cursor:pointer}
+.terms-check label{font-size:12px;color:var(--muted);line-height:1.6;cursor:pointer}
+.terms-check a{color:var(--gold);text-decoration:none}
 
-/* ── TRUST ── */
-.reg-trust{
-  display:flex;align-items:center;justify-content:center;gap:8px;
-  margin-top:24px;font-size:12px;color:var(--t3);
-}
-.reg-trust i{color:var(--gold);font-size:11px;}
+/* Success screen */
+.success-wrap{text-align:center;padding:12px 0}
+.success-icon{width:88px;height:88px;border-radius:24px;background:rgba(34,197,94,.1);border:1.5px solid rgba(34,197,94,.3);display:flex;align-items:center;justify-content:center;margin:0 auto 24px;font-size:36px;color:var(--green)}
+.success-title{font-family:'Unbounded',sans-serif;font-size:20px;font-weight:900;color:var(--text);margin-bottom:12px;line-height:1.2}
+.success-sub{font-size:14px;color:var(--muted);line-height:1.7;max-width:360px;margin:0 auto 32px}
+
+/* Login link */
+.login-link{text-align:center;margin-top:24px;font-size:13px;color:var(--muted)}
+.login-link a{color:var(--gold);font-weight:700;text-decoration:none}
 </style>
 </head>
 <body>
 
-<!-- ── HEADER ── -->
-<header class="reg-bar">
-  <a href="inscription.html" class="reg-back">
-    <i class="fa-solid fa-chevron-left" style="font-size:10px;"></i> Retour
-  </a>
-  <a href="index.html" class="reg-logo">
-    <img src="assets/images/logo-genesis.png?v=2" alt="FA GENESIS">
+<header>
+  <a class="hdr-brand" href="index.html">
+    <img src="assets/images/logo-favicon-192.png" alt="FA GENESIS" onerror="this.style.display='none'">
     FA GENESIS
   </a>
-  <a href="index.html?login=1" class="reg-login">Se connecter</a>
+  <a class="hdr-login" href="login.html">Se connecter</a>
 </header>
 
-<!-- ── MAIN ── -->
-<main class="reg-main">
-  <div class="reg-card">
-    <div class="reg-icon"><i class="fa-solid fa-user-plus"></i></div>
-    <h1 class="reg-title">Créer mon compte <span style="background:linear-gradient(135deg,var(--gold),var(--orange));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">Client</span></h1>
-    <p class="reg-sub">Inscription gratuite &amp; sans engagement — accédez à l'ensemble du réseau GENESIS</p>
+<div class="wizard">
 
-    <div id="errorMessage" class="reg-banner reg-banner-err"></div>
-    <div id="successMessage" class="reg-banner reg-banner-info"></div>
+  <!-- Progress bar -->
+  <div class="prog-track" id="prog-track">
+    <div class="prog-dot active" id="pd-1">1</div>
+    <div class="prog-line" id="pl-1"></div>
+    <div class="prog-dot" id="pd-2">2</div>
+    <div class="prog-line" id="pl-2"></div>
+    <div class="prog-dot" id="pd-3"><i class="fa-solid fa-check" style="font-size:10px"></i></div>
+  </div>
 
-    <form id="registerForm" autocomplete="off">
+  <!-- STEP 1 : Identité -->
+  <div class="step on" id="step-1">
+    <div class="step-tag">Étape 1 sur 2</div>
+    <div class="step-title">Vos informations</div>
+    <div class="step-sub">Créez votre compte client FA GENESIS gratuitement.</div>
 
-      <div class="frm-row">
-        <div>
-          <label for="prenom" class="frm-label">Prénom</label>
-          <input type="text" id="prenom" name="prenom" required class="frm-input" placeholder="Jean" autocomplete="given-name">
-        </div>
-        <div>
-          <label for="nom" class="frm-label">Nom</label>
-          <input type="text" id="nom" name="nom" required class="frm-input" placeholder="Dupont" autocomplete="family-name">
-        </div>
-      </div>
+    <div class="err-banner" id="err-1"></div>
 
+    <div class="frm-row">
       <div class="frm-group">
-        <label for="email" class="frm-label">Email</label>
-        <input type="email" id="email" name="email" required class="frm-input" placeholder="votre.email@exemple.com" autocomplete="email">
+        <label class="frm-label">Prénom</label>
+        <input class="frm-input" id="f-prenom" type="text" placeholder="Marie" autocomplete="given-name">
       </div>
-
       <div class="frm-group">
-        <label for="telephone" class="frm-label">Téléphone</label>
-        <input type="tel" id="telephone" name="telephone" required class="frm-input" placeholder="+33 6 XX XX XX XX" autocomplete="tel">
+        <label class="frm-label">Nom</label>
+        <input class="frm-input" id="f-nom" type="text" placeholder="Dupont" autocomplete="family-name">
       </div>
+    </div>
+    <div class="frm-group">
+      <label class="frm-label">Adresse e-mail</label>
+      <input class="frm-input" id="f-email" type="email" placeholder="marie@exemple.com" autocomplete="email">
+    </div>
+    <div class="frm-group">
+      <label class="frm-label">Téléphone (optionnel)</label>
+      <input class="frm-input" id="f-tel" type="tel" placeholder="+33 6 00 00 00 00" autocomplete="tel">
+    </div>
 
-      <input type="hidden" id="offre" name="offre" value="">
+    <button class="btn-primary" onclick="goStep2()">
+      Continuer <i class="fa-solid fa-arrow-right" style="font-size:11px"></i>
+    </button>
 
-      <div class="frm-row">
-        <div>
-          <label for="password" class="frm-label">Mot de passe</label>
-          <input type="password" id="password" name="password" required minlength="8" class="frm-input" placeholder="••••••••" autocomplete="new-password">
-          <p class="frm-hint">Minimum 8 caractères</p>
-        </div>
-        <div>
-          <label for="confirmPassword" class="frm-label">Confirmer</label>
-          <input type="password" id="confirmPassword" name="confirmPassword" required minlength="8" class="frm-input" placeholder="••••••••" autocomplete="new-password">
-        </div>
+    <div class="login-link">Déjà un compte ? <a href="login.html">Se connecter</a></div>
+  </div>
+
+  <!-- STEP 2 : Mot de passe -->
+  <div class="step" id="step-2">
+    <div class="step-tag">Étape 2 sur 2</div>
+    <div class="step-title">Sécurisez votre compte</div>
+    <div class="step-sub">Choisissez un mot de passe robuste d'au moins 8 caractères.</div>
+
+    <div class="err-banner" id="err-2"></div>
+
+    <div class="frm-group">
+      <label class="frm-label">Mot de passe</label>
+      <div class="pw-wrap">
+        <input class="frm-input" id="f-pwd" type="password" placeholder="Min. 8 caractères" autocomplete="new-password" oninput="checkStrength()">
+        <button class="pw-eye" type="button" onclick="togglePwd('f-pwd',this)"><i class="fa-solid fa-eye"></i></button>
       </div>
-
-      <!-- Honeypot anti-spam -->
-      <div aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;opacity:0;" tabindex="-1">
-        <input type="text" id="_hp" name="_hp" autocomplete="off" tabindex="-1">
+      <div class="pw-strength">
+        <div class="pw-bar" id="bar1"></div>
+        <div class="pw-bar" id="bar2"></div>
+        <div class="pw-bar" id="bar3"></div>
+        <span class="pw-txt" id="pw-txt"></span>
       </div>
-      <input type="hidden" id="_ft" name="_ft">
-
-      <div class="frm-check">
-        <input type="checkbox" id="terms" name="terms" required>
-        <label for="terms">J'accepte les <a href="conditions-generales.html" target="_blank">conditions générales</a> et la <a href="confidentialite.html" target="_blank">politique de confidentialité</a></label>
+    </div>
+    <div class="frm-group">
+      <label class="frm-label">Confirmer le mot de passe</label>
+      <div class="pw-wrap">
+        <input class="frm-input" id="f-pwd2" type="password" placeholder="Répétez le mot de passe" autocomplete="new-password">
+        <button class="pw-eye" type="button" onclick="togglePwd('f-pwd2',this)"><i class="fa-solid fa-eye"></i></button>
       </div>
+    </div>
 
-      <button type="submit" class="frm-submit" id="submitBtn">
-        Créer mon compte <i class="fa-solid fa-arrow-right" style="font-size:11px;"></i>
+    <div class="terms-check">
+      <input type="checkbox" id="f-terms">
+      <label for="f-terms">J'accepte les <a href="conditions-generales.html" target="_blank">Conditions Générales</a> et la <a href="confidentialite.html" target="_blank">Politique de Confidentialité</a> de FA GENESIS.</label>
+    </div>
+
+    <button class="btn-primary" id="btn-submit" onclick="doRegister()">
+      Créer mon compte <i class="fa-solid fa-arrow-right" style="font-size:11px"></i>
+    </button>
+    <button class="btn-secondary" style="margin-top:12px;width:100%;justify-content:center" onclick="showStep(1)">
+      <i class="fa-solid fa-arrow-left" style="font-size:10px"></i> Précédent
+    </button>
+  </div>
+
+  <!-- STEP 3 : Succès -->
+  <div class="step" id="step-3">
+    <div class="success-wrap">
+      <div class="success-icon"><i class="fa-solid fa-check"></i></div>
+      <div class="success-title">Compte créé !</div>
+      <div class="success-sub">Bienvenue chez FA GENESIS, <strong id="success-name">membre</strong> !<br>Votre espace client est prêt. Explorez vos commandes, livrables et bien plus.</div>
+      <button class="btn-primary" style="max-width:360px;margin:0 auto" onclick="goApp()">
+        Accéder à mon espace client <i class="fa-solid fa-arrow-right" style="font-size:11px"></i>
       </button>
-
-    </form>
-
-    <div class="reg-divider">ou</div>
-    <p class="reg-alt">Déjà inscrit ? <a href="index.html?login=1">Se connecter →</a></p>
-
-    <div class="reg-trust">
-      <i class="fa-solid fa-shield-halved"></i>
-      Vos données sont sécurisées et confidentielles
     </div>
   </div>
-</main>
 
-<script src="config.js"></script>
-<script src="auth.js"></script>
-<script src="offers-config.js"></script>
-<script src="panier.js"></script>
-<script src="payment-system.js"></script>
+</div>
+
 <script>
-    var quoteTokenParam = null;
-    var redirectParam = null;
-    var cwDevisId = null;
+var API = 'https://fa-genesis-website.onrender.com';
+var _params = new URLSearchParams(window.location.search);
+var _offre = _params.get('offre') || '';
+var _redirect = _params.get('redirect') || '';
+var _quoteToken = _params.get('quote_token') || '';
+var _cwDevisId = _params.get('cw_devis_id') || '';
 
-    window.addEventListener('DOMContentLoaded', function() {
-        var ftField = document.getElementById('_ft');
-        if (ftField) ftField.value = Date.now();
-
-        try {
-            var urlParams = new URLSearchParams(window.location.search);
-            var offreParam = urlParams.get('offre');
-            quoteTokenParam = urlParams.get('quote_token');
-            redirectParam = urlParams.get('redirect');
-
-            if (quoteTokenParam) {
-                var successMessage = document.getElementById('successMessage');
-                if (successMessage) {
-                    successMessage.innerHTML = '<i class="fas fa-file-invoice" style="margin-right:6px;"></i><strong>Acceptation de devis</strong><br>Créez votre compte pour accepter votre devis personnalisé et payer l\'acompte de 30%.';
-                    successMessage.classList.add('show');
-                }
-                var loginLink = document.querySelector('a[href="index.html?login=1"]');
-                var apiUrl = window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com';
-                fetch(apiUrl + '/api/quotes/view/' + encodeURIComponent(quoteTokenParam))
-                    .then(function(r) { return r.json(); })
-                    .then(function(data) {
-                        if (data.quote && data.quote.client_email) {
-                            var emailField = document.getElementById('email');
-                            if (emailField && !emailField.value) emailField.value = data.quote.client_email;
-                            if (data.quote.client_name) {
-                                var parts = data.quote.client_name.split(' ');
-                                var prenomField = document.getElementById('prenom');
-                                var nomField = document.getElementById('nom');
-                                if (prenomField && !prenomField.value && parts[0]) prenomField.value = parts[0];
-                                if (nomField && !nomField.value && parts.slice(1).join(' ')) nomField.value = parts.slice(1).join(' ');
-                            }
-                        }
-                    }).catch(function() {});
-            }
-
-            cwDevisId = urlParams.get('cw_devis_id');
-            if (cwDevisId) {
-                var apiUrlCw = window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com';
-                fetch(apiUrlCw + '/api/coworking/devis/' + cwDevisId + '/summary')
-                    .then(function(r) { return r.json(); })
-                    .then(function(summary) {
-                        var sMsg = document.getElementById('successMessage');
-                        if (sMsg && summary.amount) {
-                            sMsg.innerHTML = '<i class="fas fa-check-circle" style="margin-right:6px;color:#4ade80;"></i>Vous avez accepté le devis <strong>' + (summary.service_label || '') + '</strong> — <strong>' + Number(summary.amount).toFixed(2) + ' €</strong>.<br>Créez votre compte pour procéder au paiement.';
-                            sMsg.classList.add('show');
-                        }
-                        if (summary.client_name) {
-                            var nameParts = (summary.client_name || '').split(' ');
-                            var pField = document.getElementById('prenom');
-                            var nField = document.getElementById('nom');
-                            if (pField && !pField.value && nameParts[0]) pField.value = nameParts[0];
-                            if (nField && !nField.value && nameParts.length > 1) nField.value = nameParts.slice(1).join(' ');
-                        }
-                    }).catch(function() {});
-                var loginLinkCw = document.querySelector('a[href="index.html?login=1"]');
-                if (loginLinkCw) loginLinkCw.href = 'index.html?login=1&cw_devis_id=' + cwDevisId;
-            }
-
-            if (redirectParam === 'checkout') {
-                var successMsg = document.getElementById('successMessage');
-                if (successMsg) {
-                    successMsg.innerHTML = '<i class="fas fa-shopping-cart" style="margin-right:6px;"></i><strong>Créez votre compte</strong><br>Inscription gratuite et sans engagement. Vous serez redirigé vers votre panier après inscription.';
-                    successMsg.classList.add('show');
-                }
-            }
-
-            if (offreParam && !quoteTokenParam) {
-                var offreField = document.getElementById('offre');
-                if (offreField) offreField.value = offreParam;
-            }
-        } catch (err) {}
-    });
-
-    document.getElementById('registerForm').addEventListener('submit', async function(e) {
-        e.preventDefault();
-
-        var prenom = document.getElementById('prenom').value.trim();
-        var nom = document.getElementById('nom').value.trim();
-        var email = document.getElementById('email').value.trim();
-        var telephone = document.getElementById('telephone').value.trim();
-        var offreField = document.getElementById('offre');
-        var offre = offreField ? offreField.value : '';
-        var password = document.getElementById('password').value;
-        var confirmPassword = document.getElementById('confirmPassword').value;
-        var terms = document.getElementById('terms').checked;
-
-        var errorMessage = document.getElementById('errorMessage');
-        var successMessage = document.getElementById('successMessage');
-        var submitBtn = document.getElementById('submitBtn');
-
-        errorMessage.classList.remove('show');
-        successMessage.classList.remove('show');
-
-        if (!prenom || !nom || !email || !telephone || !password || !confirmPassword) {
-            errorMessage.textContent = 'Veuillez remplir tous les champs obligatoires.';
-            errorMessage.classList.add('show');
-            return;
-        }
-        if (password !== confirmPassword) {
-            errorMessage.textContent = 'Les mots de passe ne correspondent pas.';
-            errorMessage.classList.add('show');
-            return;
-        }
-        if (password.length < 6) {
-            errorMessage.textContent = 'Le mot de passe doit contenir au moins 6 caractères.';
-            errorMessage.classList.add('show');
-            return;
-        }
-        if (!terms) {
-            errorMessage.textContent = 'Vous devez accepter les conditions générales.';
-            errorMessage.classList.add('show');
-            return;
-        }
-        var emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
-            errorMessage.textContent = 'Veuillez entrer une adresse email valide.';
-            errorMessage.classList.add('show');
-            return;
-        }
-
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin" style="font-size:13px;"></i> Inscription en cours…';
-
-        var hpField = document.getElementById('_hp');
-        var ftField2 = document.getElementById('_ft');
-        var result = await register({
-            prenom: prenom, nom: nom, email: email, telephone: telephone,
-            password: password, offre: offre || null,
-            _hp: hpField ? hpField.value : '',
-            _ft: ftField2 ? ftField2.value : ''
-        });
-
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = 'Créer mon compte <i class="fa-solid fa-arrow-right" style="font-size:11px;"></i>';
-
-        if (!result.success) {
-            errorMessage.textContent = result.message;
-            errorMessage.classList.add('show');
-            return;
-        }
-
-        var sessionData = null;
-        try { sessionData = JSON.parse(localStorage.getItem('fa_genesis_session') || 'null'); } catch(e) {}
-        if (sessionData) {
-            if (offre && !sessionData.offre) sessionData.offre = offre;
-            if (offre && !sessionData.activeOfferId) sessionData.activeOfferId = offre;
-            if (!sessionData.paymentStatus) sessionData.paymentStatus = 'registered';
-            if (!sessionData.payments) sessionData.payments = [];
-            localStorage.setItem('fa_genesis_session', JSON.stringify(sessionData));
-        }
-
-        if (quoteTokenParam) {
-            successMessage.innerHTML = '<strong>Compte créé avec succès !</strong><br><br>Acceptation de votre devis en cours…';
-            successMessage.classList.add('show');
-            document.getElementById('registerForm').reset();
-            try {
-                var authToken = typeof getAuthToken === 'function' ? getAuthToken() : localStorage.getItem('fa_genesis_token');
-                var apiUrl = window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com';
-                var acceptResponse = await fetch(apiUrl + '/api/quotes/accept', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
-                    body: JSON.stringify({ token: quoteTokenParam })
-                });
-                var acceptResult = await acceptResponse.json();
-                if (acceptResult.success) {
-                    successMessage.innerHTML = '<strong>Compte créé et devis accepté !</strong><br>Redirection vers le paiement…';
-                    setTimeout(function() { window.location.href = 'quote-accept.html?token=' + encodeURIComponent(quoteTokenParam); }, 2000);
-                } else {
-                    errorMessage.textContent = acceptResult.error || 'Erreur lors de l\'acceptation du devis';
-                    errorMessage.classList.add('show');
-                }
-            } catch (acceptErr) {
-                errorMessage.textContent = 'Compte créé mais erreur lors de l\'acceptation du devis.';
-                errorMessage.classList.add('show');
-                setTimeout(function() { window.location.href = 'dashboard.html'; }, 3000);
-            }
-            return;
-        }
-
-        if (cwDevisId) {
-            successMessage.innerHTML = '<strong>Compte créé !</strong><br>Redirection vers le paiement de votre devis…';
-            successMessage.classList.add('show');
-            document.getElementById('registerForm').reset();
-            await handleCwDevisAfterAuth(cwDevisId);
-            return;
-        }
-
-        if (redirectParam === 'checkout') {
-            successMessage.innerHTML = '<strong>Compte créé avec succès !</strong><br><i class="fas fa-shopping-cart" style="margin-right:6px;"></i>Redirection vers votre panier…';
-            successMessage.classList.add('show');
-            document.getElementById('registerForm').reset();
-            setTimeout(function() { window.location.href = 'checkout.html?source=panier'; }, 2000);
-            return;
-        }
-
-        successMessage.innerHTML = '<strong>Compte créé avec succès !</strong><br>Bienvenue chez FA GENESIS ! Redirection vers votre espace client…';
-        successMessage.classList.add('show');
-        document.getElementById('registerForm').reset();
-        setTimeout(function() { window.location.href = 'espace-client.html'; }, 2500);
-    });
-
-    async function handleCwDevisAfterAuth(devisId) {
-        try {
-            var apiUrl = window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com';
-            var r = await fetch(apiUrl + '/api/coworking/devis/' + devisId + '/summary');
-            var summary = await r.json();
-            if (!summary.amount) throw new Error('Devis non trouvé');
-            var panier = { items: [{ productId: 'cw-devis', coworkingData: {
-                label: summary.service_label, prix: Number(summary.amount),
-                is_devis: true, devis_id: devisId,
-                total_amount: Number(summary.amount), installments: 1,
-                installments_options: summary.installments_options || [1]
-            }}]};
-            localStorage.setItem('fa_genesis_panier', JSON.stringify(panier));
-            window.location.href = 'checkout.html?source=panier';
-        } catch(err) {
-            setTimeout(function() { window.location.href = 'espace-client.html'; }, 2500);
-        }
+function showStep(n){
+  [1,2,3].forEach(function(i){
+    var el = document.getElementById('step-'+i);
+    if(el) el.classList.toggle('on', i===n);
+  });
+  // Progress dots
+  [1,2,3].forEach(function(i){
+    var dot = document.getElementById('pd-'+i);
+    if(dot){
+      dot.classList.remove('active','done');
+      if(i < n) dot.classList.add('done');
+      else if(i === n) dot.classList.add('active');
     }
+  });
+  [1,2].forEach(function(i){
+    var line = document.getElementById('pl-'+i);
+    if(line) line.classList.toggle('done', i < n);
+  });
+  if(n===3){
+    var track = document.getElementById('prog-track');
+    if(track) track.style.display = 'none';
+  }
+  window.scrollTo(0,0);
+}
+
+function goStep2(){
+  var prenom = (document.getElementById('f-prenom').value||'').trim();
+  var nom = (document.getElementById('f-nom').value||'').trim();
+  var email = (document.getElementById('f-email').value||'').trim();
+  var err = document.getElementById('err-1');
+  if(!prenom){ showErr(err,'Veuillez entrer votre prénom.'); return; }
+  if(!nom){ showErr(err,'Veuillez entrer votre nom.'); return; }
+  if(!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ showErr(err,'Veuillez entrer une adresse e-mail valide.'); return; }
+  err.className = 'err-banner';
+  showStep(2);
+}
+
+function showErr(el, msg){
+  el.textContent = msg;
+  el.className = 'err-banner on';
+}
+
+function togglePwd(id, btn){
+  var inp = document.getElementById(id);
+  if(!inp) return;
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+  btn.innerHTML = inp.type === 'password' ? '<i class="fa-solid fa-eye"></i>' : '<i class="fa-solid fa-eye-slash"></i>';
+}
+
+function checkStrength(){
+  var v = (document.getElementById('f-pwd').value||'');
+  var score = 0;
+  if(v.length >= 8) score++;
+  if(/[A-Z]/.test(v) && /[0-9]/.test(v)) score++;
+  if(/[^A-Za-z0-9]/.test(v) || v.length >= 12) score++;
+  var bars = ['bar1','bar2','bar3'];
+  var cls = ['','weak','medium','strong'];
+  var lbl = ['','Faible','Moyen','Fort'];
+  bars.forEach(function(id, i){
+    var b = document.getElementById(id);
+    if(b) b.className = 'pw-bar ' + (i < score ? cls[score] : '');
+  });
+  var t = document.getElementById('pw-txt');
+  if(t) t.textContent = v.length ? lbl[score]||'' : '';
+}
+
+async function doRegister(){
+  var prenom = (document.getElementById('f-prenom').value||'').trim();
+  var nom = (document.getElementById('f-nom').value||'').trim();
+  var email = (document.getElementById('f-email').value||'').trim();
+  var tel = (document.getElementById('f-tel').value||'').trim();
+  var pwd = (document.getElementById('f-pwd').value||'');
+  var pwd2 = (document.getElementById('f-pwd2').value||'');
+  var terms = document.getElementById('f-terms').checked;
+  var err = document.getElementById('err-2');
+  var btn = document.getElementById('btn-submit');
+
+  if(!pwd || pwd.length < 8){ showErr(err,'Le mot de passe doit contenir au moins 8 caractères.'); return; }
+  if(pwd !== pwd2){ showErr(err,'Les mots de passe ne correspondent pas.'); return; }
+  if(!terms){ showErr(err,'Vous devez accepter les conditions générales.'); return; }
+  err.className = 'err-banner';
+
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="font-size:13px"></i> Création en cours…';
+
+  try {
+    var body = {prenom:prenom, nom:nom, email:email, password:pwd};
+    if(tel) body.telephone = tel;
+    if(_offre) body.offre = _offre;
+
+    var res = await fetch(API+'/api/auth/register', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(body)
+    });
+    var data = await res.json();
+
+    btn.disabled = false;
+    btn.innerHTML = 'Créer mon compte <i class="fa-solid fa-arrow-right" style="font-size:11px"></i>';
+
+    if(!res.ok){
+      showErr(err, data.error || data.message || 'Une erreur est survenue. Réessayez.');
+      return;
+    }
+
+    // Stocker token + session
+    if(data.token){
+      try{ localStorage.setItem('fa_genesis_token', data.token); }catch(e){}
+    }
+    if(data.user){
+      try{ localStorage.setItem('fa_genesis_session', JSON.stringify(data.user)); }catch(e){}
+    }
+
+    // Nom pour l'écran de succès
+    var fn = prenom || (data.user && (data.user.prenom||data.user.firstName)) || 'nouveau membre';
+    var el = document.getElementById('success-name');
+    if(el) el.textContent = fn;
+
+    // Accepter devis si quote_token
+    if(_quoteToken && data.token){
+      try{
+        await fetch(API+'/api/quotes/accept',{
+          method:'POST',
+          headers:{'Content-Type':'application/json','Authorization':'Bearer '+data.token},
+          body:JSON.stringify({token:_quoteToken})
+        });
+      }catch(e){}
+    }
+
+    showStep(3);
+
+  } catch(e) {
+    btn.disabled = false;
+    btn.innerHTML = 'Créer mon compte <i class="fa-solid fa-arrow-right" style="font-size:11px"></i>';
+    showErr(err, 'Erreur réseau. Vérifiez votre connexion et réessayez.');
+  }
+}
+
+function goApp(){
+  if(_quoteToken){
+    window.location.href = 'quote-accept.html?token='+encodeURIComponent(_quoteToken);
+    return;
+  }
+  if(_redirect === 'checkout' || _cwDevisId){
+    window.location.href = 'checkout.html?source=panier';
+    return;
+  }
+  window.location.href = 'espace-client.html';
+}
 </script>
 </body>
 </html>
