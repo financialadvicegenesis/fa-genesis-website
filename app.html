@@ -6945,6 +6945,28 @@ function renderOrderTrackingCard(r){
       +'</div>';
   }
 
+  // Bloc validation livraison partenaire
+  if(r.pending_client_validation && !r.client_validated){
+    var _msLeft = r.auto_payment_release_at ? Math.max(0, Math.ceil((new Date(r.auto_payment_release_at).getTime() - Date.now()) / (1000*3600*24))) : null;
+    var _daysStr = _msLeft !== null ? _msLeft + ' jour(s)' : '7 jours';
+    html += '<div style="background:rgba(251,191,36,.08);border:1.5px solid rgba(251,191,36,.4);border-radius:12px;padding:14px 16px;margin:12px 0;">'
+      +'<div style="font-size:13px;font-weight:900;color:#fbbf24;margin-bottom:6px;"><i class="fa-solid fa-flag-checkered" style="margin-right:6px;"></i>Prestation déclarée terminée !</div>'
+      +'<div style="font-size:11px;color:#aaa;margin-bottom:12px;line-height:1.6;">'
+      +_escHtml(r.partner_completed_by||'Votre prestataire')+' a déclaré la prestation terminée. Validez pour confirmer ou signalez un problème. Sans réponse, le paiement sera libéré sous '+_daysStr+'.'
+      +'</div>'
+      +'<div style="display:flex;gap:8px;flex-wrap:wrap;">'
+      +'<button onclick="_clientValidateDelivery(\''+r.order_id+'\',\''+r.id+'\',this)" style="flex:1;padding:11px 14px;background:#22c55e;color:#000;border:none;border-radius:8px;font-size:13px;font-weight:900;cursor:pointer;"><i class="fa-solid fa-circle-check"></i> Valider la prestation</button>'
+      +'<button onclick="_clientDisputeDelivery(\''+r.order_id+'\',\''+r.id+'\',this)" style="flex:0 0 auto;padding:11px 14px;background:transparent;color:#ef4444;border:1.5px solid #ef4444;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;"><i class="fa-solid fa-triangle-exclamation"></i> Problème</button>'
+      +'</div></div>';
+  }
+  if(r.client_validated){
+    html += '<div style="background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.25);border-radius:10px;padding:12px 14px;margin:8px 0;display:flex;align-items:center;gap:10px;">'
+      +'<i class="fa-solid fa-check-circle" style="color:#22c55e;font-size:18px;"></i>'
+      +'<div><div style="font-size:12px;font-weight:800;color:#22c55e;">Prestation validée</div>'
+      +'<div style="font-size:11px;color:#888;">Votre validation a bien été enregistrée. Le paiement est en cours de traitement.</div>'
+      +'</div></div>';
+  }
+
   // Livrables (injectés après)
   html += '<div id="liv-block-'+r.id+'"></div>';
 
@@ -15634,6 +15656,16 @@ function _ptnrRenderEngagedMissionCard(r){
     +(canMarkDelivered
       ? '<button class="dispatch-claim-btn" style="margin-top:8px;width:100%;background:#1a3a1a;border-color:#6dbf6d;color:#6dbf6d;" onclick="_ptnrMarkDelivered(\''+r.dispatch_id+'\')"><i class="fas fa-check-circle"></i> Confirmer la livraison (libère les fonds)</button>'
       : '')
+    // Bouton "Prestation terminée" : missions accompagnement/multi-tranche non encore déclarées
+    +(r.order_id && !r.partner_completed && !r.delivery_confirmed && !canMarkDelivered && r.status==='signed' && (statusKey==='in_progress'||statusKey==='delivering'||statusKey==='delivered')
+      ? '<button class="dispatch-claim-btn" style="margin-top:8px;width:100%;background:#0a2a0a;border-color:#22c55e;color:#22c55e;" onclick="_ptnrDeclareComplete(\''+r.order_id+'\',\''+r.id+'\',this)"><i class="fa-solid fa-flag-checkered"></i> Prestation terminée</button>'
+      : '')
+    +(r.partner_completed && !r.client_validated
+      ? '<div style="margin-top:10px;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.25);border-radius:8px;padding:10px 12px;font-size:11px;color:#fbbf24;line-height:1.5;"><i class="fa-solid fa-hourglass-half" style="margin-right:4px;"></i>Déclarée terminée — validation client en attente. Paiement auto dans 7 j si pas de réponse.</div>'
+      : '')
+    +(r.client_validated
+      ? '<div style="margin-top:8px;font-size:11px;color:#22c55e;font-weight:800;"><i class="fa-solid fa-check-circle"></i> Prestation validée par le client — paiement en cours</div>'
+      : '')
     +(r.dispatch_id && (statusKey==='in_progress' || statusKey==='delivering')
       ? '<div style="margin-top:10px;border-top:1px solid #222;padding-top:10px;">'
         +'<label style="font-size:12px;color:#888;display:block;margin-bottom:6px;"><i class="fa-solid fa-image" style="color:#FFD700;margin-right:4px;"></i>Ajouter une photo au livrable</label>'
@@ -15684,6 +15716,66 @@ function _ptnrMarkDelivered(dispatchId){
     }).catch(function(){
       showToast('Erreur de connexion','Réessayez','error');
     });
+  });
+}
+
+function _ptnrDeclareComplete(orderId, requestId, btn){
+  _showFloatingConfirm('Déclarer la prestation terminée ? Le client sera notifié et aura 7 jours pour valider. Sans réponse, votre paiement sera libéré automatiquement.', function(){
+    if(btn){ btn.disabled=true; btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> En cours…'; }
+    haptic(15);
+    _ptnrFetch('/api/partner/projects/'+orderId+'/complete','POST',{}).then(function(res){
+      if(res && res.success){
+        showToast('Prestation déclarée terminée','Le client a été notifié. Auto-paiement dans 7 jours si pas de réponse.','success');
+        haptic([50,30,100]);
+        _ptnrLoadMissions();
+      } else {
+        if(btn){ btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-flag-checkered"></i> Prestation terminée'; }
+        showToast('Erreur',(res&&res.error)||'Impossible de déclarer','error');
+      }
+    }).catch(function(){
+      if(btn){ btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-flag-checkered"></i> Prestation terminée'; }
+      showToast('Erreur de connexion','Réessayez','error');
+    });
+  });
+}
+
+function _clientValidateDelivery(orderId, requestId, btn){
+  _showFloatingConfirm('Confirmer que la prestation a bien été réalisée ? Cette action libèrera le paiement au prestataire.', function(){
+    if(btn){ btn.disabled=true; btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Validation…'; }
+    haptic(15);
+    _cliFetch('/api/client/orders/'+orderId+'/validate-delivery','POST',{}).then(function(res){
+      if(res && res.success){
+        showToast('Prestation validée !','Merci ! Le prestataire sera payé.','success');
+        haptic([50,30,100]);
+        _cliLoadOrders && _cliLoadOrders();
+        _loadMyRequests && _loadMyRequests();
+      } else {
+        if(btn){ btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-circle-check"></i> Valider la prestation'; }
+        showToast('Erreur',(res&&res.error)||'Impossible de valider','error');
+      }
+    }).catch(function(){
+      if(btn){ btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-circle-check"></i> Valider la prestation'; }
+      showToast('Erreur de connexion','Réessayez','error');
+    });
+  });
+}
+
+function _clientDisputeDelivery(orderId, requestId, btn){
+  var reason = prompt('Décrivez brièvement le problème rencontré :');
+  if(!reason || !reason.trim()) return;
+  if(btn){ btn.disabled=true; btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i>…'; }
+  haptic(15);
+  _cliFetch('/api/disputes','POST',{ orderId: orderId, reason: reason.trim(), requestId: requestId }).then(function(res){
+    if(res && res.success){
+      showToast('Litige ouvert','Notre équipe va examiner votre demande.','success');
+      _cliLoadOrders && _cliLoadOrders();
+    } else {
+      if(btn){ btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-triangle-exclamation"></i> Problème'; }
+      showToast('Erreur',(res&&res.error)||'Impossible d\'ouvrir un litige','error');
+    }
+  }).catch(function(){
+    if(btn){ btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-triangle-exclamation"></i> Problème'; }
+    showToast('Erreur de connexion','Réessayez','error');
   });
 }
 

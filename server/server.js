@@ -14315,6 +14315,13 @@ app.get('/api/my-requests', function(req, res) {
                 // Champs GENESIS SAFE™ Phase 3 : bloc de paiement différencié côté client
                 out.payment_tier = orderForReq ? (orderForReq.payment_tier || null) : null;
                 out.delivery_confirmed = orderForReq ? (!!orderForReq.delivery_confirmed) : false;
+                // Champs validation livraison partenaire
+                out.partner_completed = orderForReq ? (orderForReq.partner_completed === true) : false;
+                out.partner_completed_at = orderForReq ? (orderForReq.partner_completed_at || null) : null;
+                out.partner_completed_by = orderForReq ? (orderForReq.partner_completed_by || null) : null;
+                out.pending_client_validation = orderForReq ? (orderForReq.pending_client_validation === true) : false;
+                out.client_validated = orderForReq ? (orderForReq.client_validated === true) : false;
+                out.auto_payment_release_at = orderForReq ? (orderForReq.auto_payment_release_at || null) : null;
                 out.total_amount = orderForReq
                     ? (orderForReq.total_amount || r.total_price || r.price || 0)
                     : (r.total_price || r.price || 0);
@@ -14385,6 +14392,11 @@ app.get('/api/partner/requests', authenticatePartner, function(req, res) {
                 out.dispatch_id = dispatchForReq ? dispatchForReq.id : null;
                 out.payment_tier = orderForReq ? (orderForReq.payment_tier || null) : null;
                 out.delivery_confirmed = orderForReq ? (!!orderForReq.delivery_confirmed) : false;
+                out.partner_completed = orderForReq ? (orderForReq.partner_completed === true) : false;
+                out.partner_completed_at = orderForReq ? (orderForReq.partner_completed_at || null) : null;
+                out.pending_client_validation = orderForReq ? (orderForReq.pending_client_validation === true) : false;
+                out.client_validated = orderForReq ? (orderForReq.client_validated === true) : false;
+                out.auto_payment_release_at = orderForReq ? (orderForReq.auto_payment_release_at || null) : null;
                 out.display_status = computeMissionDisplayStatus(r, dispatchForReq, orderForReq, livrablesForReq, hasReviewForReq);
                 return out;
             });
