@@ -273,6 +273,13 @@
                 var offreParam = urlParams.get('offre');
                 quoteTokenParam = urlParams.get('quote_token');
 
+                // Pré-remplir l'email si redirigé depuis le modal OTP
+                var emailParam = urlParams.get('email');
+                if(emailParam){
+                    var emailField = document.getElementById('email');
+                    if(emailField){ emailField.value = emailParam; }
+                }
+
                 // --- Mode DEVIS : afficher bandeau + adapter liens ---
                 if (quoteTokenParam) {
                     var offreMessage = document.getElementById('offreMessage');
