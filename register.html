@@ -142,6 +142,10 @@ header{position:sticky;top:0;z-index:100;display:flex;align-items:center;justify
       <label class="frm-label">Téléphone (optionnel)</label>
       <input class="frm-input" id="f-tel" type="tel" placeholder="+33 6 00 00 00 00" autocomplete="tel">
     </div>
+    <div class="frm-group">
+      <label class="frm-label">Code de parrainage (optionnel)</label>
+      <input class="frm-input" id="f-ref" type="text" placeholder="USR-XXXXXXXX" autocomplete="off">
+    </div>
 
     <button class="btn-primary" onclick="goStep2()">
       Continuer <i class="fa-solid fa-arrow-right" style="font-size:11px"></i>
@@ -213,6 +217,15 @@ var _offre = _params.get('offre') || '';
 var _redirect = _params.get('redirect') || '';
 var _quoteToken = _params.get('quote_token') || '';
 var _cwDevisId = _params.get('cw_devis_id') || '';
+var _refCode = _params.get('ref') || '';
+
+// Pré-remplir le code de parrainage depuis l'URL
+(function(){
+  if(_refCode){
+    var refInput = document.getElementById('f-ref');
+    if(refInput) refInput.value = _refCode;
+  }
+})();
 
 function showStep(n){
   [1,2,3].forEach(function(i){
@@ -303,6 +316,9 @@ async function doRegister(){
     var body = {prenom:prenom, nom:nom, email:email, password:pwd};
     if(tel) body.telephone = tel;
     if(_offre) body.offre = _offre;
+    var refField = (document.getElementById('f-ref')||{}).value || '';
+    var finalRef = (refField.trim() || _refCode || '').trim();
+    if(finalRef) body.referralCode = finalRef;
 
     var res = await fetch(API+'/api/auth/register', {
       method:'POST',

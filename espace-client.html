@@ -443,7 +443,7 @@ a{text-decoration:none;color:inherit}
             <span class="menu-item-label">Livrables</span>
             <i class="fa-solid fa-chevron-right menu-item-arrow"></i>
           </div>
-          <div class="menu-item" onclick="comingSoon('Séances')">
+          <div class="menu-item" onclick="nav('seances')">
             <div class="menu-item-ico" style="background:rgba(34,197,94,.1)"><i class="fa-solid fa-calendar-days" style="color:#22c55e"></i></div>
             <span class="menu-item-label">Séances</span>
             <i class="fa-solid fa-chevron-right menu-item-arrow"></i>
@@ -453,7 +453,7 @@ a{text-decoration:none;color:inherit}
             <span class="menu-item-label">Messages</span>
             <i class="fa-solid fa-chevron-right menu-item-arrow"></i>
           </div>
-          <div class="menu-item" onclick="comingSoon('Paiements')">
+          <div class="menu-item" onclick="nav('paiements')">
             <div class="menu-item-ico" style="background:rgba(251,191,36,.1)"><i class="fa-solid fa-credit-card" style="color:#fbbf24"></i></div>
             <span class="menu-item-label">Paiements</span>
             <i class="fa-solid fa-chevron-right menu-item-arrow"></i>
@@ -538,6 +538,28 @@ a{text-decoration:none;color:inherit}
       </div>
     </div>
 
+    <!-- ══ PAIEMENTS ══════════════════════════════════════════════ -->
+    <div class="tab" id="tab-paiements">
+      <div class="greet">
+        <div class="greet-hi">Mes</div>
+        <div class="greet-name">Paiements</div>
+      </div>
+      <div class="resa-list" id="paiements-list">
+        <div class="spinner"><i class="fa-solid fa-spinner"></i></div>
+      </div>
+    </div>
+
+    <!-- ══ SÉANCES ════════════════════════════════════════════════ -->
+    <div class="tab" id="tab-seances">
+      <div class="greet">
+        <div class="greet-hi">Mes</div>
+        <div class="greet-name">Séances</div>
+      </div>
+      <div class="resa-list" id="seances-list">
+        <div class="spinner"><i class="fa-solid fa-spinner"></i></div>
+      </div>
+    </div>
+
   </div>
 
   <nav id="nav">
@@ -587,8 +609,17 @@ var _prestDataCache = null;
     .then(function(d){
       if(!d || !d.user) return;
       _user = d.user;
-      try{ localStorage.setItem('fa_genesis_session', JSON.stringify(d.user)); }catch(e){}
-      // Mettre à jour l'en-tête avec les données réelles
+      // Fusionner les champs calculés (non stockés dans user en DB)
+      if(d.genesisPoints != null)  _user.genesisPoints  = d.genesisPoints;
+      if(d.badge != null)          _user.badge          = d.badge;
+      if(d.badgeProgress != null)  _user.badgeProgress  = d.badgeProgress;
+      if(d.genesisLevel != null)   _user.genesisLevel   = d.genesisLevel;
+      if(d.favoris)                _user.favoris        = d.favoris;
+      if(d.referralCount != null)  _user.referralCount  = d.referralCount;
+      if(d.referralBonusQG != null)_user.referralBonusQG= d.referralBonusQG;
+      if(d.referralCode)           _user.referralCode   = d.referralCode;
+      try{ localStorage.setItem('fa_genesis_session', JSON.stringify(_user)); }catch(e){}
+      // Mettre à jour l'en-tête
       var prBg = _user.prenom || _user.firstName || '';
       var nomBg = _user.nom   || _user.lastName  || '';
       var fnBg = (prBg+' '+nomBg).trim() || _user.email || 'Membre';
@@ -699,6 +730,8 @@ function renderQGWidget(){
 
 // ── NAVIGATION ───────────────────────────────────────────────────
 var _favLoaded = false;
+var _seancesLoaded = false;
+var _paiementsLoaded = false;
 function nav(name){
   document.querySelectorAll('.tab').forEach(function(el){ el.classList.remove('on'); });
   document.querySelectorAll('.nav-btn').forEach(function(el){ el.classList.remove('on'); });
@@ -709,6 +742,8 @@ function nav(name){
   var content = document.getElementById('content');
   if(content) content.scrollTop = 0;
   if(name==='favoris' && !_favLoaded){ _favLoaded=true; loadFavoris(); }
+  if(name==='seances' && !_seancesLoaded){ _seancesLoaded=true; loadSeances(); }
+  if(name==='paiements' && !_paiementsLoaded){ _paiementsLoaded=true; loadPaiements(); }
 }
 
 // ── UTILS ────────────────────────────────────────────────────────
@@ -1056,8 +1091,8 @@ function loadProfil(){
   var planMap = {Starter:'Client Starter',Business:'Client Business',Enterprise:'Client Enterprise',Pro:'Client Pro'};
   var pfPlan = document.getElementById('pf-plan'); if(pfPlan) pfPlan.textContent = offre ? (planMap[offre]||offre) : 'Client FA GENESIS';
   if(_user.id || _user.email){
-    var code = _user.referral_code || _user.parrainage_code || ('CL-'+(_user.id||_user.email||'').toString().replace(/[^A-Z0-9]/gi,'').toUpperCase().substring(0,8));
-    var pfRef = document.getElementById('pf-referral-code'); if(pfRef) pfRef.textContent = code;
+    var code = _user.referralCode || _user.id || '';
+    var pfRef = document.getElementById('pf-referral-code'); if(pfRef) pfRef.textContent = code || '—';
   }
 }
 
@@ -1079,9 +1114,13 @@ function _fallbackCopy(text){
 }
 function shareReferral(){
   var code = (document.getElementById('pf-referral-code')||{}).textContent||'';
-  var msg = 'Rejoins FA GENESIS ! Utilise mon code '+code+' → https://fagenesis.com';
-  if(navigator.share){ navigator.share({title:'FA GENESIS',text:msg}).catch(function(){}); }
-  else{ copyReferral(); }
+  var link = 'https://fagenesis.com/register.html?ref='+encodeURIComponent(code);
+  var msg = 'Rejoins FA GENESIS avec mon code parrainage et gagne des avantages exclusifs ! '+link;
+  if(navigator.share){ navigator.share({title:'FA GENESIS',url:link,text:msg}).catch(function(){}); }
+  else{
+    try{ navigator.clipboard.writeText(link).then(function(){ showToast('Lien copié ✓'); }); }
+    catch(e){ copyReferral(); }
+  }
 }
 function confirmDelete(){
   if(!confirm('Supprimer votre compte ? Cette action est irréversible.')) return;
@@ -1129,6 +1168,85 @@ function removeFavori(partnerId, btn){
   fetch(API+'/api/users/favorites/'+partnerId+'/toggle',{method:'POST',headers:{'Authorization':'Bearer '+_token,'Content-Type':'application/json'}})
     .then(function(){ showToast('Retiré des favoris'); _favLoaded=false; loadFavoris(); })
     .catch(function(){ btn.disabled=false; showToast('Erreur'); });
+}
+
+// ── PAIEMENTS ──────────────────────────────────────────────────────
+function loadPaiements(){
+  var list = document.getElementById('paiements-list');
+  if(!list) return;
+  list.innerHTML = '<div class="spinner"><i class="fa-solid fa-spinner"></i></div>';
+  apiFetch('/api/client/payments-list').then(function(data){
+    var payments = data && data.payments ? data.payments : (Array.isArray(data) ? data : []);
+    if(!payments.length){
+      list.innerHTML = '<div style="text-align:center;padding:40px 16px;color:var(--muted)"><i class="fa-solid fa-receipt" style="font-size:32px;margin-bottom:12px;display:block"></i>Aucun paiement en attente</div>';
+      return;
+    }
+    var STATUS_LABELS = {paid:'Payé', accepted_unpaid:'À payer', pending:'En attente'};
+    var STATUS_COLORS = {paid:'#22c55e', accepted_unpaid:'#fbbf24', pending:'#60a5fa'};
+    var html = '';
+    payments.forEach(function(p){
+      var statusLabel = STATUS_LABELS[p.status] || p.status;
+      var statusColor = STATUS_COLORS[p.status] || 'var(--muted)';
+      var amt = p.amount != null ? parseFloat(p.amount).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g,' ')+'€' : '—';
+      html += '<div class="resa-card">';
+      html += '<div class="resa-top"><span class="resa-title">'+esc(p.label||'Paiement')+'</span>';
+      html += '<span style="font-size:12px;font-weight:700;color:'+statusColor+'">'+esc(statusLabel)+'</span></div>';
+      html += '<div class="resa-meta"><i class="fa-solid fa-tag"></i> '+esc(p.type_label||p.category||'')+'</div>';
+      html += '<div class="resa-meta" style="font-size:16px;font-weight:900;color:var(--yellow)">'+amt+'</div>';
+      if(p.status === 'accepted_unpaid' && p.can_pay){
+        html += '<div style="margin-top:10px"><a href="espace-client.html#paiements" onclick="showToast(\'Rendez-vous dans votre espace pour finaliser le paiement\')" style="display:inline-flex;align-items:center;gap:6px;background:var(--yellow);color:#000;font-size:12px;font-weight:700;padding:8px 14px;border-radius:8px;text-decoration:none"><i class="fa-solid fa-credit-card"></i> Payer maintenant</a></div>';
+      }
+      html += '</div>';
+    });
+    list.innerHTML = html;
+  }).catch(function(){
+    list.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)">Impossible de charger les paiements.</div>';
+  });
+}
+
+// ── SÉANCES ────────────────────────────────────────────────────────
+function loadSeances(){
+  var list = document.getElementById('seances-list');
+  if(!list) return;
+  list.innerHTML = '<div class="spinner"><i class="fa-solid fa-spinner"></i></div>';
+  apiFetch('/api/client/sessions').then(function(data){
+    var sessions = (data && data.sessions) ? data.sessions : [];
+    if(!sessions.length){
+      list.innerHTML = '<div style="text-align:center;padding:40px 16px;color:var(--muted)"><i class="fa-solid fa-calendar-xmark" style="font-size:32px;margin-bottom:12px;display:block"></i>Aucune séance pour le moment</div>';
+      return;
+    }
+    var STATUS_LABELS = {
+      REQUESTED:'Demandée', PROPOSED:'Proposée', CONFIRMED:'Confirmée',
+      DONE:'Terminée', CANCELLED:'Annulée', RESCHEDULE_REQUESTED:'Report demandé'
+    };
+    var STATUS_COLORS = {
+      REQUESTED:'#fbbf24', PROPOSED:'#60a5fa', CONFIRMED:'#22c55e',
+      DONE:'#a855f7', CANCELLED:'#ef4444', RESCHEDULE_REQUESTED:'#f97316'
+    };
+    var html = '';
+    sessions.forEach(function(s){
+      var statusLabel = STATUS_LABELS[s.status] || s.status;
+      var statusColor = STATUS_COLORS[s.status] || 'var(--muted)';
+      var dateStr = s.datetime_start ? fmt(s.datetime_start) : '—';
+      var partnerName = s.partner_name || 'Prestataire';
+      var sessionType = s.session_type || 'Séance';
+      html += '<div class="resa-card">';
+      html += '<div class="resa-top"><span class="resa-title">'+esc(sessionType)+'</span>';
+      html += '<span style="font-size:11px;font-weight:700;color:'+statusColor+'">'+esc(statusLabel)+'</span></div>';
+      html += '<div class="resa-meta"><i class="fa-solid fa-user"></i> '+esc(partnerName)+'</div>';
+      html += '<div class="resa-meta"><i class="fa-solid fa-calendar"></i> '+esc(dateStr)+'</div>';
+      if(s.meet_url){
+        html += '<div style="margin-top:10px"><a href="'+esc(s.meet_url)+'" target="_blank" style="display:inline-flex;align-items:center;gap:6px;background:#22c55e;color:#000;font-size:12px;font-weight:700;padding:8px 14px;border-radius:8px;text-decoration:none"><i class="fa-solid fa-video"></i> Rejoindre</a></div>';
+      }
+      if(s.notes_partner && s.status !== 'DONE'){
+        html += '<div style="margin-top:8px;font-size:12px;color:var(--muted)"><i class="fa-solid fa-comment-dots"></i> '+esc(s.notes_partner)+'</div>';
+      }
+      html += '</div>';
+    });
+    list.innerHTML = html;
+  }).catch(function(){
+    list.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)">Impossible de charger les séances.</div>';
+  });
 }
 
 function doLogout(){

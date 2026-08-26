@@ -8226,6 +8226,27 @@ app.get('/api/client/level-progress', function(req, res) {
     }
 });
 
+// GET /api/client/sessions — séances du client connecté
+app.get('/api/client/sessions', function(req, res) {
+    var user = authenticateClient(req, res);
+    if (!user) return;
+    try {
+        var allSessions = loadSessions();
+        var clientSessions = allSessions.filter(function(s) {
+            var emailMatch = (s.client_email && s.client_email.toLowerCase() === user.email.toLowerCase())
+                          || (s.client_id && s.client_id.toLowerCase() === user.email.toLowerCase());
+            return emailMatch;
+        });
+        clientSessions.sort(function(a, b) {
+            return new Date(b.created_at) - new Date(a.created_at);
+        });
+        res.json({ ok: true, sessions: clientSessions });
+    } catch(e) {
+        console.error('[CLIENT_SESSIONS]', e.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
 // GET /api/partner/badge-progress-full — progression badge prestataire avec avantages
 app.get('/api/partner/badge-progress-full', function(req, res) {
     var partner = authenticatePartner(req, res);
