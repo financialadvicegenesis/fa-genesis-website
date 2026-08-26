@@ -149,6 +149,7 @@ a{text-decoration:none;color:inherit}
 .s-confirmed,.s-done{background:rgba(34,197,94,.15);color:#22c55e}
 .s-refused{background:rgba(239,68,68,.15);color:#ef4444}
 .s-active{background:rgba(96,165,250,.15);color:#60a5fa}
+.s-validation{background:rgba(251,191,36,.2);color:#f59e0b;border:1px solid rgba(251,191,36,.4)}
 .resa-date{font-size:12px;color:var(--muted)}
 .resa-price{font-size:15px;font-weight:900;color:var(--yellow)}
 .prog-bar{display:flex;margin:12px 0 4px;position:relative}
@@ -926,10 +927,40 @@ function loadHomePartners(){
 function loadActiveOrder(){
   apiFetch('/api/orders').then(function(data){
     var orders = Array.isArray(data) ? data : (data && data.orders) || [];
-    var active = null;
+
+    // Chercher d'abord une commande en attente de validation
+    var toValidate = null;
     for(var i=0;i<orders.length;i++){
-      if(['in_progress','active','confirmed','delivery'].indexOf(orders[i].status) !== -1){
-        active = orders[i]; break;
+      if(orders[i].pending_client_validation && !orders[i].client_validated){ toValidate = orders[i]; break; }
+    }
+
+    if(toValidate){
+      var msLeft = toValidate.auto_payment_release_at ? Math.max(0, Math.ceil((new Date(toValidate.auto_payment_release_at).getTime() - Date.now())/(1000*3600*24))) : null;
+      var validationBanner = document.getElementById('validation-banner');
+      if(!validationBanner){
+        validationBanner = document.createElement('div');
+        validationBanner.id = 'validation-banner';
+        var homeTab = document.getElementById('tab-home');
+        if(homeTab) homeTab.insertBefore(validationBanner, homeTab.firstChild);
+      }
+      var daysStr = msLeft !== null ? ' sous '+msLeft+' j' : '';
+      validationBanner.innerHTML = '<div style="margin:12px 16px 0;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.4);border-radius:12px;padding:14px 16px">'
+        +'<div style="font-size:13px;font-weight:900;color:#fbbf24;margin-bottom:6px"><i class="fa-solid fa-flag-checkered"></i> Prestation terminée — action requise !</div>'
+        +'<div style="font-size:12px;color:var(--muted);margin-bottom:10px">'+esc(toValidate.product_name||'Votre prestation')+(toValidate.partner_completed_by?' par '+esc(toValidate.partner_completed_by):'')
+        +' est déclarée terminée. Validez ou signalez un problème'+daysStr+'.</div>'
+        +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
+        +'<button onclick="validateDelivery(\''+esc(String(toValidate.id))+'\',this)" style="flex:1;padding:9px 12px;background:#22c55e;color:#000;border:none;border-radius:8px;font-size:12px;font-weight:900;cursor:pointer">'
+        +'<i class="fa-solid fa-circle-check"></i> Valider</button>'
+        +'<button onclick="nav(\'commandes\')" style="flex:1;padding:9px 12px;background:transparent;color:#fbbf24;border:1px solid rgba(251,191,36,.4);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">'
+        +'Voir les détails</button>'
+        +'</div></div>';
+    }
+
+    // Commande active standard
+    var active = null;
+    for(var j=0;j<orders.length;j++){
+      if(['in_progress','active','confirmed','delivery'].indexOf(orders[j].status) !== -1){
+        active = orders[j]; break;
       }
     }
     if(!active) return;
@@ -1027,15 +1058,42 @@ function loadCommandes(){
 
 function commandeCard(o){
   var steps    = ['Confirmée','En cours','Livraison','Terminée'];
-  var stepIdx  = {pending:0,confirmed:0,in_progress:1,active:1,delivery:2,delivered:2,completed:3,done:3};
-  var pillLbl  = {pending:'Confirmée',confirmed:'Confirmée',in_progress:'En cours',active:'En cours',delivery:'Livraison',delivered:'Livraison',completed:'Terminée',done:'Terminée',cancelled:'Annulée'};
+  var stepIdx  = {pending:0,confirmed:0,in_progress:1,active:1,delivery:2,delivered:2,pending_client_validation:2,completed:3,done:3};
+  var pillLbl  = {pending:'Confirmée',confirmed:'Confirmée',in_progress:'En cours',active:'En cours',delivery:'Livraison',delivered:'Livraison',pending_client_validation:'À valider',completed:'Terminée',done:'Terminée',cancelled:'Annulée'};
   var st  = o.status || 'pending';
   var cur = stepIdx[st] !== undefined ? stepIdx[st] : 0;
-  var cls = (st==='in_progress'||st==='active') ? 'active' : (st==='completed'||st==='done') ? 'done' : st;
+  var cls = (st==='in_progress'||st==='active') ? 'active'
+          : (st==='completed'||st==='done') ? 'done'
+          : (st==='pending_client_validation') ? 'validation'
+          : st;
   var prog = '<div class="prog-bar">'+steps.map(function(s,i){
     var c = i < cur ? 'done' : (i === cur ? 'current' : '');
     return '<div class="prog-step '+c+'">'+s+'</div>';
   }).join('')+'</div>';
+
+  // Calcul jours restants avant auto-paiement
+  var autoInfo = '';
+  if(o.pending_client_validation && o.auto_payment_release_at && !o.client_validated){
+    var msLeft = new Date(o.auto_payment_release_at).getTime() - Date.now();
+    var daysLeft = Math.max(0, Math.ceil(msLeft / (1000*3600*24)));
+    autoInfo = '<div style="margin-top:8px;font-size:11px;color:#fbbf24;font-weight:700">'
+      +'<i class="fa-solid fa-clock"></i> Paiement automatique dans '+daysLeft+' jour(s) si vous ne répondez pas</div>';
+  }
+
+  // Boutons d'action si prestation déclarée terminée
+  var actionBtns = '';
+  if(o.pending_client_validation && !o.client_validated && o.id){
+    actionBtns = '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">'
+      +'<button onclick="validateDelivery(\''+esc(String(o.id))+'\',this)" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:11px 14px;background:#22c55e;color:#000;border:none;border-radius:8px;font-size:12px;font-weight:900;cursor:pointer">'
+      +'<i class="fa-solid fa-circle-check"></i>Valider la prestation</button>'
+      +'<button onclick="disputeDelivery(\''+esc(String(o.id))+'\',this)" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:11px 14px;background:transparent;color:#ef4444;border:1px solid #ef4444;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">'
+      +'<i class="fa-solid fa-triangle-exclamation"></i>Signaler un problème</button>'
+      +'</div>';
+  } else if(o.client_validated){
+    actionBtns = '<div style="margin-top:10px;font-size:12px;color:#22c55e;font-weight:700">'
+      +'<i class="fa-solid fa-check-circle"></i> Prestation validée — paiement en cours de traitement</div>';
+  }
+
   return '<div class="resa-card">'
     +'<div class="resa-top"><div><div class="resa-name">'+esc(o.product_name||o.service||'Commande')+'</div>'
     +(o.partner_name ? '<div class="resa-date" style="margin-top:3px">'+esc(o.partner_name)+'</div>' : '')
@@ -1043,7 +1101,10 @@ function commandeCard(o){
     +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">'
     +'<span class="resa-price">'+fmtAmt(o.amount)+'</span>'
     +'<span class="resa-date">'+fmt(o.created_at)+'</span></div>'
-    +prog+'</div>';
+    +prog
+    +autoInfo
+    +actionBtns
+    +'</div>';
 }
 
 // ── LIVRABLES ─────────────────────────────────────────────────────
@@ -1129,6 +1190,51 @@ function confirmDelete(){
     .then(function(){ clearSession(); window.location.replace('index.html'); })
     .catch(function(){ showToast('Erreur — contactez le support'); });
 }
+// ── VALIDATION LIVRAISON ─────────────────────────────────────────
+function validateDelivery(orderId, btn){
+  if(!confirm('Confirmer la validation de la prestation ?\n\nEn validant, vous confirmez avoir reçu et accepté la livraison. Le paiement du solde sera déclenché.')) return;
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+  fetch(API+'/api/client/orders/'+orderId+'/validate-delivery',{
+    method:'POST',
+    headers:{'Authorization':'Bearer '+_token,'Content-Type':'application/json'}
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(d){
+    if(d && d.error){ throw new Error(d.error); }
+    showToast('Prestation validée ✓');
+    loadCommandes();
+  })
+  .catch(function(e){
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-circle-check"></i>Valider la prestation';
+    showToast('Erreur : '+(e.message||'Impossible de valider'));
+  });
+}
+
+function disputeDelivery(orderId, btn){
+  var reason = prompt('Décrivez brièvement le problème rencontré :');
+  if(!reason || !reason.trim()) return;
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+  fetch(API+'/api/disputes',{
+    method:'POST',
+    headers:{'Authorization':'Bearer '+_token,'Content-Type':'application/json'},
+    body:JSON.stringify({order_id:orderId, description:reason.trim(), category:'livraison'})
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(d){
+    if(d && d.error){ throw new Error(d.error); }
+    showToast('Signalement envoyé — notre équipe vous contactera sous 48h');
+    loadCommandes();
+  })
+  .catch(function(e){
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i>Signaler un problème';
+    showToast('Erreur : '+(e.message||'Impossible d\'envoyer le signalement'));
+  });
+}
+
 // ── FAVORIS ───────────────────────────────────────────────────────
 function loadFavoris(){
   var grid = document.getElementById('favoris-grid');

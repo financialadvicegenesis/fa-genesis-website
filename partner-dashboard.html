@@ -464,22 +464,92 @@ function dispatchCard(d){
 
 function projectCard(p){
   var order = p.order || {};
+  var orderId = order.id || '';
   var st = order.status||'in_progress';
-  var statusLabel = {confirmed:'Confirmé',in_progress:'En cours',active:'En cours',delivery:'Livraison',completed:'Terminé',done:'Terminé'};
-  var pillCls = {confirmed:'blue',in_progress:'blue',active:'blue',delivery:'purple',completed:'green',done:'green'};
-  var progress = {confirmed:35,in_progress:60,active:60,delivery:80,completed:100,done:100};
+  var isCompleted   = order.partner_completed === true;
+  var isValidated   = order.client_validated  === true;
+  var isBalancePaid = order.balance_paid       === true;
+  var autoRelease   = order.auto_payment_release_at || null;
+
+  var statusLabel = {
+    confirmed:'Confirmé', in_progress:'En cours', active:'En cours',
+    delivery:'Livraison', pending_client_validation:'Validation client',
+    completed:'Terminé', done:'Terminé'
+  };
+  var pillCls = {
+    confirmed:'blue', in_progress:'blue', active:'blue',
+    delivery:'purple', pending_client_validation:'yellow',
+    completed:'green', done:'green'
+  };
+  var progress = {
+    confirmed:35, in_progress:60, active:60, delivery:80,
+    pending_client_validation:90, completed:100, done:100
+  };
   var pct = progress[st]||40;
-  return '<div class="card">'
+
+  // Calcul jours restants avant auto-release
+  var daysLeft = null;
+  if(autoRelease && !isValidated && !isBalancePaid){
+    var msLeft = new Date(autoRelease).getTime() - Date.now();
+    daysLeft = Math.max(0, Math.ceil(msLeft / (1000*3600*24)));
+  }
+
+  var html = '<div class="card">'
     +'<div class="card-row">'
     +'<div class="card-icon" style="background:rgba(34,197,94,.08)"><i class="fa-solid fa-briefcase" style="color:#22c55e"></i></div>'
     +'<div style="flex:1;min-width:0">'
     +'<div class="card-title">'+esc(order.product_name||'Projet')+'</div>'
     +'<div class="card-sub">'+(order.client_name?esc(order.client_name)+' · ':'')+'Démarré le '+fmt(order.start_date||order.created_at)+'</div>'
-    +'<div style="margin-top:6px;display:flex;align-items:center;justify-content:space-between">'
-    +'<span class="pill pill-'+(pillCls[st]||'blue')+'">'+(statusLabel[st]||'En cours')+'</span>'
-    +'</div></div></div>'
-    +'<div class="mission-status-bar"><div class="mission-status-fill" style="width:'+pct+'%"></div></div>'
-    +'</div>';
+    +'<div style="margin-top:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
+    +'<span class="pill pill-'+(pillCls[st]||'blue')+'">'+(statusLabel[st]||'En cours')+'</span>';
+
+  if(isCompleted && !isValidated && daysLeft !== null){
+    html += '<span style="font-size:11px;color:#fbbf24;font-weight:700">'
+          + '<i class="fa-solid fa-clock"></i> Auto-paiement dans '+daysLeft+' j</span>';
+  }
+  if(isValidated || isBalancePaid){
+    html += '<span style="font-size:11px;color:#22c55e;font-weight:700"><i class="fa-solid fa-check-circle"></i> Validé</span>';
+  }
+
+  html += '</div></div></div>'
+    +'<div class="mission-status-bar"><div class="mission-status-fill" style="width:'+pct+'%"></div></div>';
+
+  // Bouton "Prestation terminée" — visible uniquement si pas encore déclaré terminé
+  if(!isCompleted && !isBalancePaid && orderId){
+    html += '<button class="btn-gold" style="margin-top:12px;width:100%" '
+          + 'onclick="declareComplete(\''+esc(String(orderId))+'\',this)">'
+          + '<i class="fa-solid fa-flag-checkered"></i>Prestation terminée</button>';
+  } else if(isCompleted && !isValidated && !isBalancePaid){
+    html += '<div style="margin-top:10px;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.3);border-radius:8px;padding:10px 12px;font-size:12px;color:#fbbf24;line-height:1.5">'
+          + '<i class="fa-solid fa-hourglass-half"></i> '
+          + 'Validation en attente. Le client a '+(daysLeft !== null ? daysLeft+' jour(s)' : 'quelques jours')+' pour confirmer la réception.'
+          + '</div>';
+  }
+
+  html += '</div>';
+  return html;
+}
+
+function declareComplete(orderId, btn){
+  if(!confirm('Confirmer la fin de prestation ?\n\nLe client recevra une notification pour valider la livraison. En cas de non-réponse, votre paiement sera déclenché automatiquement sous 7 jours.')) return;
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>Déclaration en cours…';
+  fetch(API+'/api/partner/projects/'+orderId+'/complete',{
+    method:'POST',
+    headers:{'Authorization':'Bearer '+_token,'Content-Type':'application/json'}
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(d){
+    if(d && d.error){ throw new Error(d.error); }
+    showToast('Prestation déclarée terminée ✓ — le client a été notifié');
+    _loaded['missions']=false; _loaded['accueil']=false;
+    loadMissions(); loadAccueil();
+  })
+  .catch(function(e){
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-flag-checkered"></i>Prestation terminée';
+    showToast('Erreur : '+(e.message||'Impossible de déclarer'));
+  });
 }
 
 function acceptDispatch(id, btn){

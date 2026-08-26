@@ -8467,10 +8467,19 @@ app.get('/api/orders', function(req, res) {
                 product_name: o.product_name || o.service,
                 service: o.service,
                 amount: o.amount,
+                total_amount: o.total_amount,
+                balance_amount: o.balance_amount,
                 partner_name: o.partner_name,
                 partner_id: o.partner_id,
                 deposit_paid: o.deposit_paid,
                 balance_paid: o.balance_paid,
+                balance_payment_ready: o.balance_payment_ready === true,
+                partner_completed: o.partner_completed === true,
+                partner_completed_at: o.partner_completed_at || null,
+                partner_completed_by: o.partner_completed_by || null,
+                pending_client_validation: o.pending_client_validation === true,
+                client_validated: o.client_validated === true,
+                auto_payment_release_at: o.auto_payment_release_at || null,
                 created_at: o.created_at,
                 updated_at: o.updated_at
             };
@@ -13785,6 +13794,11 @@ app.get('/api/partner/projects', authenticatePartner, (req, res) => {
                     deposit_paid: order.deposit_paid === true,
                     balance_paid: order.balance_paid === true,
                     balance_payment_ready: order.balance_payment_ready === true,
+                    partner_completed: order.partner_completed === true,
+                    partner_completed_at: order.partner_completed_at || null,
+                    pending_client_validation: order.pending_client_validation === true,
+                    client_validated: order.client_validated === true,
+                    auto_payment_release_at: order.auto_payment_release_at || null,
                     client_name: order.client_info
                         ? (order.client_info.first_name + ' ' + (order.client_info.last_name || '').charAt(0) + '.')
                         : 'Client'
@@ -15085,6 +15099,162 @@ app.post('/api/partner/orders/:orderId/unlock-balance', authenticatePartner, fun
         res.json({ success: true, order: updatedOrder });
     } catch (err) {
         console.error('[PARTNER] Erreur unlock-balance:', err.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * POST /api/partner/projects/:orderId/complete
+ * Le prestataire déclare la prestation terminée → demande de validation au client
+ * Déclenche le paiement du solde (balance_payment_ready) + délai auto 7j
+ */
+app.post('/api/partner/projects/:orderId/complete', authenticatePartner, function(req, res) {
+    try {
+        var orderId = req.params.orderId;
+        var partner = req.partner;
+
+        // Vérifier que le partenaire est bien assigné à ce projet
+        var assignments = loadPartnerAssignments();
+        var assignment = assignments.find(function(a) {
+            return a.order_id === orderId && a.partner_id === partner.id && a.status === 'active';
+        });
+        if (!assignment) {
+            return res.status(403).json({ error: 'Vous n\'êtes pas assigné à ce projet' });
+        }
+
+        var order = getOrderById(orderId);
+        if (!order) return res.status(404).json({ error: 'Commande introuvable' });
+        if (order.partner_completed) {
+            return res.status(400).json({ error: 'Prestation déjà déclarée terminée' });
+        }
+        if (order.balance_paid) {
+            return res.status(400).json({ error: 'Le solde a déjà été payé' });
+        }
+
+        var now = new Date();
+        var autoReleaseAt = new Date(now.getTime() + 7 * 24 * 3600 * 1000).toISOString();
+        var partnerName = ((partner.prenom || '') + ' ' + (partner.nom || partner.name || '')).trim() || partner.email;
+
+        var updates = {
+            partner_completed: true,
+            partner_completed_at: now.toISOString(),
+            partner_completed_by: partnerName,
+            auto_payment_release_at: autoReleaseAt,
+            pending_client_validation: true,
+            balance_payment_ready: true,
+            balance_unlocked_at: now.toISOString(),
+            balance_unlocked_by: 'partner:' + partnerName,
+            status: 'pending_client_validation'
+        };
+        var updatedOrder = updateOrder(orderId, updates);
+
+        var clientEmail = updatedOrder && updatedOrder.client_info && updatedOrder.client_info.email;
+        var clientName = updatedOrder && updatedOrder.client_info
+            ? ((updatedOrder.client_info.prenom || updatedOrder.client_info.first_name || '') + ' ' + (updatedOrder.client_info.nom || updatedOrder.client_info.last_name || '')).trim()
+            : 'Client';
+        var productName = updatedOrder.product_name || 'votre prestation';
+
+        // Sync paymentStatus dans users.json
+        try {
+            if (clientEmail) {
+                var allUsers = loadUsers();
+                var uIdx = allUsers.findIndex(function(u) {
+                    return u.email && u.email.toLowerCase() === clientEmail.toLowerCase();
+                });
+                if (uIdx !== -1) {
+                    allUsers[uIdx].paymentStatus = 'delivery_pending_payment';
+                    allUsers[uIdx].payment_status = 'delivery_pending_payment';
+                    saveUsers(allUsers);
+                }
+            }
+        } catch(e) { console.error('[COMPLETE] Sync users:', e.message); }
+
+        // Push au client
+        if (clientEmail) {
+            notifyUser(clientEmail, 'client', 'prestation_complete',
+                'Prestation terminée — action requise',
+                partnerName + ' a déclaré votre prestation « ' + productName + ' » terminée. Validez la livraison pour finaliser.',
+                '/espace-client.html#validations'
+            );
+        }
+
+        // Email au client
+        if (clientEmail && clientName) {
+            emailService.sendAccompanimentEndNotification(
+                clientEmail, clientName, partnerName, productName,
+                updatedOrder.balance_amount || 0
+            ).catch(function(e) { console.error('[COMPLETE] Email client:', e.message); });
+        }
+
+        // Notif admin
+        emailService.sendAdminNotification({
+            name: partnerName, email: partner.email,
+            subject: 'Prestation déclarée terminée',
+            message: partnerName + ' a déclaré la prestation « ' + productName + ' » terminée (commande ' + orderId + ', client : ' + (clientEmail || '?') + '). Validation client attendue sous 7 jours.'
+        }).catch(function(e) {});
+
+        console.log('[COMPLETE] ' + partnerName + ' → projet ' + orderId + ' terminé. Auto-release: ' + autoReleaseAt);
+        res.json({ success: true, auto_payment_release_at: autoReleaseAt });
+    } catch(err) {
+        console.error('[COMPLETE] Erreur:', err.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * POST /api/client/orders/:orderId/validate-delivery
+ * Client valide manuellement la livraison (prestation déjà déclarée terminée par le partenaire)
+ */
+app.post('/api/client/orders/:orderId/validate-delivery', function(req, res) {
+    var user = authenticateClient(req, res);
+    if (!user) return;
+    try {
+        var orderId = req.params.orderId;
+        var order = getOrderById(orderId);
+        if (!order) return res.status(404).json({ error: 'Commande introuvable' });
+
+        // Vérifier que la commande appartient au client
+        var clientEmail = order.client_info && order.client_info.email;
+        if (!clientEmail || clientEmail.toLowerCase() !== user.email.toLowerCase()) {
+            return res.status(403).json({ error: 'Accès non autorisé' });
+        }
+        if (!order.partner_completed) {
+            return res.status(400).json({ error: 'Le partenaire n\'a pas encore déclaré la prestation terminée' });
+        }
+        if (order.client_validated) {
+            return res.status(400).json({ error: 'Vous avez déjà validé cette prestation' });
+        }
+
+        var updates = {
+            client_validated: true,
+            client_validated_at: new Date().toISOString(),
+            pending_client_validation: false
+        };
+
+        // Si le solde est déjà payé → marquer entièrement terminé
+        if (order.balance_paid || !order.balance_amount || order.balance_amount <= 0) {
+            updates.status = 'completed';
+        }
+        var updatedOrder = updateOrder(orderId, updates);
+
+        // Notifier le partenaire
+        var assignments = loadPartnerAssignments();
+        var assignment = assignments.find(function(a) { return a.order_id === orderId && a.status === 'active'; });
+        if (assignment) {
+            var partners = loadPartners();
+            var ptnr = partners.find(function(p) { return p.id === assignment.partner_id; });
+            if (ptnr) {
+                notifyUser(ptnr.email, 'partner', 'delivery_validated',
+                    '✅ Prestation validée',
+                    'Le client a validé votre prestation « ' + (order.product_name || '') + ' ». Votre paiement sera traité sous 48h.',
+                    '/partner-dashboard.html'
+                );
+            }
+        }
+
+        res.json({ success: true });
+    } catch(err) {
+        console.error('[VALIDATE] Erreur:', err.message);
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });
