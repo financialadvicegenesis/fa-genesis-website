@@ -474,7 +474,7 @@ a{text-decoration:none;color:inherit}
             <span class="menu-item-label">Mon abonnement</span>
             <i class="fa-solid fa-chevron-right menu-item-arrow"></i>
           </div>
-          <div class="menu-item" onclick="comingSoon('Favoris')">
+          <div class="menu-item" onclick="nav('favoris')">
             <div class="menu-item-ico" style="background:rgba(239,68,68,.1)"><i class="fa-solid fa-heart" style="color:#ef4444"></i></div>
             <span class="menu-item-label">Favoris</span>
             <i class="fa-solid fa-chevron-right menu-item-arrow"></i>
@@ -524,6 +524,17 @@ a{text-decoration:none;color:inherit}
       </div>
       <div class="liv-list" id="livrables-list">
         <div class="spinner"><i class="fa-solid fa-spinner"></i></div>
+      </div>
+    </div>
+
+    <!-- ══ FAVORIS ═══════════════════════════════════════════════ -->
+    <div class="tab" id="tab-favoris">
+      <div class="greet">
+        <div class="greet-hi">Mes</div>
+        <div class="greet-name">Favoris</div>
+      </div>
+      <div class="prest-grid" id="favoris-grid" style="padding-top:12px">
+        <div class="spinner" style="grid-column:span 2"><i class="fa-solid fa-spinner"></i></div>
       </div>
     </div>
 
@@ -687,6 +698,7 @@ function renderQGWidget(){
 }
 
 // ── NAVIGATION ───────────────────────────────────────────────────
+var _favLoaded = false;
 function nav(name){
   document.querySelectorAll('.tab').forEach(function(el){ el.classList.remove('on'); });
   document.querySelectorAll('.nav-btn').forEach(function(el){ el.classList.remove('on'); });
@@ -696,6 +708,7 @@ function nav(name){
   if(btn) btn.classList.add('on');
   var content = document.getElementById('content');
   if(content) content.scrollTop = 0;
+  if(name==='favoris' && !_favLoaded){ _favLoaded=true; loadFavoris(); }
 }
 
 // ── UTILS ────────────────────────────────────────────────────────
@@ -763,6 +776,19 @@ function recoPartnerCard(p, idx, tagOverride){
 }
 
 function openPartner(id){ nav('prestataires'); }
+
+function toggleFavori(partnerId, btn){
+  fetch(API+'/api/users/favorites/'+partnerId+'/toggle',{method:'POST',headers:{'Authorization':'Bearer '+_token,'Content-Type':'application/json'}})
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      var isFav = d.favoris && d.favoris.indexOf(partnerId) !== -1;
+      btn.innerHTML = isFav ? '<i class="fa-solid fa-heart"></i>' : '<i class="fa-regular fa-heart"></i>';
+      btn.style.color = isFav ? '#ef4444' : 'var(--muted)';
+      showToast(isFav ? 'Ajouté aux favoris ✓' : 'Retiré des favoris');
+      _favLoaded = false;
+    })
+    .catch(function(){ showToast('Erreur'); });
+}
 
 // ── HOME PARTNER SECTIONS ─────────────────────────────────────────
 function loadHomePartners(){
@@ -936,8 +962,11 @@ function renderPrestGrid(list){
     var ratingHtml = (p.rating && p.rating.count)
       ? '<div class="prest-card-badge"><i class="fa-solid fa-star" style="color:var(--gold);font-size:7px;margin-right:2px"></i>'+p.rating.average+'</div>'
       : '';
-    return '<div class="prest-card" onclick="openPartner(\''+esc(String(p.id||''))+'\')">'
-      +'<div class="prest-card-photo">'+photoHtml+ratingHtml+'</div>'
+    var isFav = _user && Array.isArray(_user.favoris) && _user.favoris.indexOf(p.id) !== -1;
+    return '<div class="prest-card">'
+      +'<div class="prest-card-photo">'+photoHtml+ratingHtml
+      +'<button onclick="toggleFavori(\''+esc(String(p.id||''))+'\',this)" style="position:absolute;top:6px;left:6px;background:rgba(0,0,0,.6);border:none;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:13px;color:'+(isFav?'#ef4444':'rgba(255,255,255,.7)')+'"><i class="'+(isFav?'fa-solid':'fa-regular')+' fa-heart"></i></button>'
+      +'</div>'
       +'<div class="prest-card-body">'
       +'<div class="prest-card-name">'+esc((p.prenom||'')+' '+(p.nom||''))+'</div>'
       +'<div class="prest-card-cat">'+esc(label)+'</div>'
@@ -1061,6 +1090,47 @@ function confirmDelete(){
     .then(function(){ clearSession(); window.location.replace('index.html'); })
     .catch(function(){ showToast('Erreur — contactez le support'); });
 }
+// ── FAVORIS ───────────────────────────────────────────────────────
+function loadFavoris(){
+  var grid = document.getElementById('favoris-grid');
+  if(!grid) return;
+  apiFetch('/api/users/favorites').then(function(data){
+    var list = (data&&data.partners) ? data.partners : (Array.isArray(data)?data:[]);
+    if(!list.length){
+      grid.innerHTML = '<div class="empty" style="grid-column:span 2"><i class="fa-solid fa-heart" style="color:#ef4444;opacity:.3"></i><p>Aucun favori pour l\'instant.<br>Explorez les prestataires et ajoutez vos préférés.</p></div>'
+        +'<div style="grid-column:span 2;padding:0 0 8px"><button onclick="nav(\'prestataires\')" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:13px 20px;background:var(--yellow);color:#000;font-weight:900;font-size:13px;border-radius:10px;border:none;font-family:inherit;cursor:pointer"><i class="fa-solid fa-users"></i>Explorer les prestataires</button></div>';
+      return;
+    }
+    grid.innerHTML = list.map(function(p){
+      var label = partnerTypeLabel(p);
+      var initials = (((p.prenom||'')[0]||'')+((p.nom||'')[0]||'')).toUpperCase();
+      var photoHtml = p.photo
+        ? '<img src="'+esc(p.photo)+'" alt="" style="width:100%;height:100%;object-fit:cover">'
+        : '<div class="prest-card-initials">'+esc(initials||'?')+'</div>';
+      var ratingHtml = (p.rating && p.rating.count)
+        ? '<div class="prest-card-badge"><i class="fa-solid fa-star" style="color:var(--gold);font-size:7px;margin-right:2px"></i>'+p.rating.average+'</div>'
+        : '';
+      return '<div class="prest-card" style="position:relative">'
+        +'<div class="prest-card-photo">'+photoHtml+ratingHtml+'</div>'
+        +'<div class="prest-card-body">'
+        +'<div class="prest-card-name">'+esc((p.prenom||'')+' '+(p.nom||''))+'</div>'
+        +'<div class="prest-card-cat">'+esc(label)+'</div>'
+        +'<div class="prest-card-city"><i class="fa-solid fa-location-dot" style="margin-right:3px;font-size:7px"></i>'+esc(p.city||'France')+'</div>'
+        +'<button onclick="removeFavori(\''+esc(String(p.id||''))+'\',this)" style="margin-top:8px;width:100%;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:#ef4444;border-radius:8px;padding:6px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit"><i class="fa-solid fa-heart-crack"></i> Retirer</button>'
+        +'</div></div>';
+    }).join('');
+  }).catch(function(){
+    grid.innerHTML = '<div class="empty" style="grid-column:span 2"><i class="fa-solid fa-wifi-slash"></i><p>Erreur de chargement</p></div>';
+  });
+}
+
+function removeFavori(partnerId, btn){
+  btn.disabled = true;
+  fetch(API+'/api/users/favorites/'+partnerId+'/toggle',{method:'POST',headers:{'Authorization':'Bearer '+_token,'Content-Type':'application/json'}})
+    .then(function(){ showToast('Retiré des favoris'); _favLoaded=false; loadFavoris(); })
+    .catch(function(){ btn.disabled=false; showToast('Erreur'); });
+}
+
 function doLogout(){
   if(!confirm('Se déconnecter ?')) return;
   clearSession();
