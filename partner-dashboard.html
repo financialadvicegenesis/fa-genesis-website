@@ -6,7 +6,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <link rel="icon" type="image/png" sizes="192x192" href="assets/images/logo-favicon-192.png">
 <title>Espace Prestataire — FA GENESIS</title>
-<script>window.location.replace('app.html' + window.location.search + window.location.hash);</script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" media="print" onload="this.media='all'">
 <style>
 :root{--bg:#0d0d0d;--bg2:#141414;--card:#161616;--border:#252525;--gold:#FFD700;--text:#f0f0f0;--muted:#666;--muted2:#444;--nav:64px;--safe:env(safe-area-inset-bottom,0px)}
@@ -163,7 +162,26 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:-apple-
         <div class="stat-label">Badge</div>
       </div>
     </div>
-    <div class="sec-hdr"><i class="fa-solid fa-bolt"></i>Missions récentes</div>
+    <!-- Badge Progress Widget -->
+    <div id="badge-widget" style="background:linear-gradient(135deg,#1a1000,#0d0d00);border:1.5px solid rgba(255,215,0,.25);border-radius:14px;padding:14px 16px;margin-bottom:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <span style="font-size:10px;font-weight:900;color:var(--gold);text-transform:uppercase;letter-spacing:1px"><i class="fa-solid fa-medal" style="margin-right:5px"></i>Mon badge</span>
+        <span id="badge-pill" class="pill pill-yellow">Bronze</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+        <div style="flex:1">
+          <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:4px">
+            <span id="badge-missions-label">0 mission(s)</span>
+            <span id="badge-next-label">Prochain : Argent</span>
+          </div>
+          <div style="height:5px;background:rgba(255,215,0,.12);border-radius:99px;overflow:hidden">
+            <div id="badge-bar" style="height:100%;background:linear-gradient(90deg,#b8860b,#FFD700);border-radius:99px;width:5%;transition:width .6s ease"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec-hdr"><i class="fa-solid fa-bolt"></i>Missions disponibles</div>
     <div id="home-missions"><div class="spinner"><i class="fa-solid fa-spinner"></i></div></div>
   </div>
 
@@ -199,6 +217,18 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:-apple-
     <div class="card" id="wallet-history"><div class="spinner"><i class="fa-solid fa-spinner"></i></div></div>
   </div>
 
+  <!-- SÉANCES -->
+  <div class="section" id="sec-seances">
+    <div class="sec-hdr"><i class="fa-solid fa-calendar-check"></i>Mes séances</div>
+    <div id="seances-list"><div class="spinner"><i class="fa-solid fa-spinner"></i></div></div>
+  </div>
+
+  <!-- DEVIS -->
+  <div class="section" id="sec-devis">
+    <div class="sec-hdr"><i class="fa-solid fa-file-invoice"></i>Mes devis / demandes</div>
+    <div id="devis-list"><div class="spinner"><i class="fa-solid fa-spinner"></i></div></div>
+  </div>
+
   <!-- PROFIL -->
   <div class="section" id="sec-profil">
 
@@ -217,8 +247,8 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:-apple-
       <div class="pf-menu-row" onclick="goSection('missions')"><i class="fa-solid fa-briefcase"></i><span>Mes missions</span><i class="fa-solid fa-chevron-right pf-chevron"></i></div>
       <div class="pf-menu-row" onclick="goSection('messages')"><i class="fa-solid fa-comment-dots"></i><span>Messages clients</span><i class="fa-solid fa-chevron-right pf-chevron"></i></div>
       <div class="pf-menu-row" onclick="goSection('portefeuille')"><i class="fa-solid fa-shield-halved"></i><span>Portefeuille GENESIS SAFE™</span><i class="fa-solid fa-chevron-right pf-chevron"></i></div>
-      <div class="pf-menu-row" onclick="comingSoon('Mes devis')"><i class="fa-solid fa-file-invoice"></i><span>Mes devis</span><i class="fa-solid fa-chevron-right pf-chevron"></i></div>
-      <div class="pf-menu-row" onclick="comingSoon('Mes séances')"><i class="fa-solid fa-calendar-check"></i><span>Mes séances</span><i class="fa-solid fa-chevron-right pf-chevron"></i></div>
+      <div class="pf-menu-row" onclick="goSection('devis')"><i class="fa-solid fa-file-invoice"></i><span>Mes devis</span><i class="fa-solid fa-chevron-right pf-chevron"></i></div>
+      <div class="pf-menu-row" onclick="goSection('seances')"><i class="fa-solid fa-calendar-check"></i><span>Mes séances</span><i class="fa-solid fa-chevron-right pf-chevron"></i></div>
       <div class="pf-menu-row" onclick="comingSoon('Mes badges')"><i class="fa-solid fa-medal"></i><span>Mes badges</span><i class="fa-solid fa-chevron-right pf-chevron"></i></div>
       <div class="pf-menu-row" onclick="comingSoon('Mon palmarès')"><i class="fa-solid fa-trophy"></i><span>Mon palmarès</span><i class="fa-solid fa-chevron-right pf-chevron"></i></div>
       <div class="pf-menu-row" onclick="comingSoon('Mes promotions')"><i class="fa-solid fa-tag"></i><span>Mes promotions</span><i class="fa-solid fa-chevron-right pf-chevron"></i></div>
@@ -236,6 +266,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:-apple-
     <!-- MON RÉSEAU -->
     <div class="pf-group-label">MON RÉSEAU</div>
     <div class="pf-menu-group">
+      <div class="pf-menu-row" onclick="window.location.href='linkedin-prospecting.html'"><i class="fa-brands fa-linkedin"></i><span>LinkedIn B2B</span><i class="fa-solid fa-chevron-right pf-chevron"></i></div>
       <div class="pf-menu-row" onclick="window.location.href='index.html'"><i class="fa-solid fa-compass"></i><span>Explorer GENESIS</span><i class="fa-solid fa-chevron-right pf-chevron"></i></div>
       <div class="pf-menu-row pf-danger" onclick="confirmDelete()"><i class="fa-solid fa-trash"></i><span>Supprimer mon compte</span><i class="fa-solid fa-chevron-right pf-chevron"></i></div>
     </div>
@@ -298,9 +329,11 @@ function boot(){
   document.getElementById('hdr-avatar').textContent = (fn[0]||'P').toUpperCase();
   document.getElementById('welcome-name').textContent = 'Bonjour, '+fn+' 👋';
   document.getElementById('welcome-sub').textContent = 'Bienvenue dans votre espace GENESIS';
-  document.getElementById('stat-badge').textContent = _partner.badge||'Bronze';
+  var badge = _partner.badge||'bronze';
+  document.getElementById('stat-badge').textContent = badge.charAt(0).toUpperCase()+badge.slice(1);
   loadAccueil();
   loadProfil();
+  loadBadgeProgress();
 }
 
 function goSection(name){
@@ -313,9 +346,11 @@ function goSection(name){
   document.getElementById('main').scrollTop = 0;
   if(!_loaded[name]){
     _loaded[name] = true;
-    if(name==='missions') loadMissions();
-    if(name==='messages') loadMessages();
+    if(name==='missions')    loadMissions();
+    if(name==='messages')    loadMessages();
     if(name==='portefeuille') loadPortefeuille();
+    if(name==='seances')     loadSeances();
+    if(name==='devis')       loadDevis();
   }
 }
 
@@ -326,19 +361,30 @@ function showToast(msg){ var t=document.getElementById('toast'); t.textContent=m
 
 // ── Accueil ──────────────────────────────────────────
 function loadAccueil(){
-  apiFetch('/api/partner/orders').then(function(data){
-    var orders = Array.isArray(data) ? data : (data&&data.orders)||[];
-    var active = orders.filter(function(o){ return o.status==='in_progress'||o.status==='active'||o.status==='pending_acceptance'||o.status==='confirmed'; });
-    document.getElementById('stat-missions').textContent = active.length;
+  // Missions disponibles (dispatches) + projets actifs
+  Promise.all([
+    apiFetch('/api/partner/dispatches').catch(function(){ return {}; }),
+    apiFetch('/api/partner/projects').catch(function(){ return []; })
+  ]).then(function(results){
+    var dispatches = (results[0]&&results[0].dispatches) ? results[0].dispatches : [];
+    var projects   = Array.isArray(results[1]) ? results[1] : [];
+    var totalActive = dispatches.length + projects.length;
+    document.getElementById('stat-missions').textContent = totalActive;
     var el = document.getElementById('home-missions');
-    if(orders.length===0){ el.innerHTML = '<div class="empty"><i class="fa-solid fa-briefcase"></i><p>Aucune mission pour le moment</p></div>'; return; }
-    el.innerHTML = orders.slice(0,3).map(missionCard).join('');
+    if(dispatches.length===0 && projects.length===0){
+      el.innerHTML = '<div class="empty"><i class="fa-solid fa-briefcase"></i><p>Aucune mission pour le moment</p></div>'; return;
+    }
+    var cards = '';
+    dispatches.slice(0,3).forEach(function(d){ cards += dispatchCard(d); });
+    projects.slice(0,2).forEach(function(p){ cards += projectCard(p); });
+    el.innerHTML = cards;
   }).catch(function(){ document.getElementById('home-missions').innerHTML = '<div class="empty"><i class="fa-solid fa-wifi-slash"></i><p>Impossible de charger</p></div>'; });
 
-  apiFetch('/api/partner/messages').then(function(data){
-    var threads = Array.isArray(data) ? data : (data&&data.threads)||[];
-    var unread = threads.filter(function(t){ return t.unread_count > 0; });
-    document.getElementById('stat-msgs').textContent = unread.length||0;
+  // Messages non lus
+  apiFetch('/api/partner/inbox').then(function(data){
+    var msgs = (data&&data.messages) ? data.messages : (Array.isArray(data)?data:[]);
+    var unread = msgs.filter(function(m){ return !m.read_by_partner; });
+    document.getElementById('stat-msgs').textContent = unread.length||msgs.length||0;
   }).catch(function(){ document.getElementById('stat-msgs').textContent = '0'; });
 
   apiFetch('/api/partner/wallet').then(function(data){
@@ -347,67 +393,191 @@ function loadAccueil(){
   }).catch(function(){ document.getElementById('stat-solde').textContent = '0'; });
 }
 
+// ── Badge progress ────────────────────────────────────
+function loadBadgeProgress(){
+  apiFetch('/api/partner/badge-progress-full').then(function(data){
+    if(!data||!data.ok) return;
+    var badge = data.badge || 'bronze';
+    var missions = data.missionsCurrent || 0;
+    var progress = data.progress || {};
+
+    // Badge pill
+    var badgeColors = {bronze:'pill-yellow',argent:'pill-grey',or:'pill-yellow',elite:'pill-purple'};
+    var badgeEl = document.getElementById('badge-pill');
+    if(badgeEl){ badgeEl.className='pill '+(badgeColors[badge]||'pill-yellow'); badgeEl.textContent=badge.charAt(0).toUpperCase()+badge.slice(1); }
+
+    // Missions label
+    var mLabel = document.getElementById('badge-missions-label');
+    if(mLabel) mLabel.textContent = missions+' mission(s) complétée(s)';
+
+    // Progress bar
+    var nextBadge = {bronze:'Argent',argent:'Or',or:'Elite',elite:'Max'};
+    var nextReq = {bronze:{missions:5,label:'5 missions'},argent:{missions:15,label:'15 missions'},or:{missions:30,label:'30 missions'},elite:{missions:30,label:'Niveau max'}};
+    var req = nextReq[badge]||nextReq.bronze;
+    var pct = badge==='elite' ? 100 : Math.min(100, Math.round(missions/req.missions*100));
+    var bar = document.getElementById('badge-bar');
+    if(bar) bar.style.width = Math.max(5,pct)+'%';
+    var nLabel = document.getElementById('badge-next-label');
+    if(nLabel) nLabel.textContent = badge==='elite' ? 'Niveau maximum' : 'Prochain : '+(nextBadge[badge]||'—')+' ('+req.label+')';
+
+    // Stat badge accueil
+    document.getElementById('stat-badge').textContent = badge.charAt(0).toUpperCase()+badge.slice(1);
+  }).catch(function(){});
+}
+
 // ── Missions ─────────────────────────────────────────
 function loadMissions(){
   var el = document.getElementById('missions-list');
-  apiFetch('/api/partner/orders').then(function(data){
-    var orders = Array.isArray(data) ? data : (data&&data.orders)||[];
-    if(orders.length===0){
-      el.innerHTML = '<div class="empty"><i class="fa-solid fa-briefcase"></i><p>Aucune mission assignée pour le moment.<br>Les missions vous seront attribuées par l\'administrateur.</p></div>'; return;
+  Promise.all([
+    apiFetch('/api/partner/dispatches').catch(function(){ return {}; }),
+    apiFetch('/api/partner/projects').catch(function(){ return []; })
+  ]).then(function(results){
+    var dispatches = (results[0]&&results[0].dispatches) ? results[0].dispatches : [];
+    var projects   = Array.isArray(results[1]) ? results[1] : [];
+    if(dispatches.length===0 && projects.length===0){
+      el.innerHTML = '<div class="empty"><i class="fa-solid fa-briefcase"></i><p>Aucune mission pour le moment.<br>Les nouvelles missions apparaîtront ici.</p></div>'; return;
     }
-    el.innerHTML = orders.map(missionCard).join('');
+    var html = '';
+    if(dispatches.length){ html += '<div class="sec-hdr" style="padding-top:4px"><i class="fa-solid fa-bolt"></i>Disponibles ('+dispatches.length+')</div>'; dispatches.forEach(function(d){ html+=dispatchCard(d); }); }
+    if(projects.length)  { html += '<div class="sec-hdr" style="padding-top:8px"><i class="fa-solid fa-circle-check"></i>En cours ('+projects.length+')</div>';  projects.forEach(function(p){ html+=projectCard(p); }); }
+    el.innerHTML = html;
   }).catch(function(){ el.innerHTML = '<div class="empty"><i class="fa-solid fa-wifi-slash"></i><p>Erreur de chargement</p></div>'; });
 }
 
-function missionCard(o){
-  var statusLabel = {pending:'En attente',pending_acceptance:'À accepter',confirmed:'Confirmée',in_progress:'En cours',active:'En cours',delivery:'Livraison',completed:'Terminée',done:'Terminée',cancelled:'Annulée'};
-  var pillCls = {pending:'yellow',pending_acceptance:'yellow',confirmed:'blue',in_progress:'blue',active:'blue',delivery:'purple',completed:'green',done:'green',cancelled:'red'};
-  var progress = {pending:10,pending_acceptance:20,confirmed:35,in_progress:60,active:60,delivery:80,completed:100,done:100,cancelled:0};
-  var st = o.status||'pending';
-  var pct = progress[st]||0;
+function dispatchCard(d){
+  var statusLabel = {open:'Disponible',pending_acceptance:'À accepter'};
+  var st = d.status||'open';
   return '<div class="card">'
     +'<div class="card-row">'
-    +'<div class="card-icon" style="background:rgba(255,215,0,.08)"><i class="fa-solid fa-briefcase" style="color:var(--gold)"></i></div>'
+    +'<div class="card-icon" style="background:rgba(255,215,0,.08)"><i class="fa-solid fa-bolt" style="color:var(--gold)"></i></div>'
     +'<div style="flex:1;min-width:0">'
-    +'<div class="card-title">'+esc(o.product_name||o.service||'Mission')+'</div>'
-    +'<div class="card-sub">'+(o.client_name?esc(o.client_name)+' · ':'')+fmtAmt(o.amount)+'</div>'
+    +'<div class="card-title">'+esc(d.title||d.service||d.product_name||'Mission disponible')+'</div>'
+    +'<div class="card-sub">'+esc(d.description||d.details||'Nouvelle mission')+'</div>'
     +'<div style="margin-top:6px;display:flex;align-items:center;justify-content:space-between">'
-    +'<span class="pill pill-'+(pillCls[st]||'grey')+'">'+(statusLabel[st]||'En cours')+'</span>'
-    +'<span class="card-meta">'+fmt(o.created_at)+'</span>'
-    +'</div>'
-    +'</div></div>'
-    +(pct>0?'<div class="mission-status-bar"><div class="mission-status-fill" style="width:'+pct+'%"></div></div>':'')
-    +(st==='pending_acceptance'?'<button class="btn-gold" onclick="acceptMission(\''+o.id+'\',this)"><i class="fa-solid fa-check"></i>Accepter la mission</button>':'')
+    +'<span class="pill pill-yellow">'+(statusLabel[st]||'Disponible')+'</span>'
+    +'<span class="card-meta">'+fmt(d.created_at)+'</span>'
+    +'</div></div></div>'
+    +(d.amount ? '<div style="font-size:14px;font-weight:900;color:var(--gold);margin-top:8px">'+fmtAmt(d.amount)+'</div>' : '')
+    +'<button class="btn-gold" style="margin-top:10px" onclick="acceptDispatch(\''+esc(String(d.id||''))+'\',this)"><i class="fa-solid fa-check"></i>Accepter la mission</button>'
     +'</div>';
 }
 
-function acceptMission(id, btn){
+function projectCard(p){
+  var order = p.order || {};
+  var st = order.status||'in_progress';
+  var statusLabel = {confirmed:'Confirmé',in_progress:'En cours',active:'En cours',delivery:'Livraison',completed:'Terminé',done:'Terminé'};
+  var pillCls = {confirmed:'blue',in_progress:'blue',active:'blue',delivery:'purple',completed:'green',done:'green'};
+  var progress = {confirmed:35,in_progress:60,active:60,delivery:80,completed:100,done:100};
+  var pct = progress[st]||40;
+  return '<div class="card">'
+    +'<div class="card-row">'
+    +'<div class="card-icon" style="background:rgba(34,197,94,.08)"><i class="fa-solid fa-briefcase" style="color:#22c55e"></i></div>'
+    +'<div style="flex:1;min-width:0">'
+    +'<div class="card-title">'+esc(order.product_name||'Projet')+'</div>'
+    +'<div class="card-sub">'+(order.client_name?esc(order.client_name)+' · ':'')+'Démarré le '+fmt(order.start_date||order.created_at)+'</div>'
+    +'<div style="margin-top:6px;display:flex;align-items:center;justify-content:space-between">'
+    +'<span class="pill pill-'+(pillCls[st]||'blue')+'">'+(statusLabel[st]||'En cours')+'</span>'
+    +'</div></div></div>'
+    +'<div class="mission-status-bar"><div class="mission-status-fill" style="width:'+pct+'%"></div></div>'
+    +'</div>';
+}
+
+function acceptDispatch(id, btn){
   btn.disabled = true;
   btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>Acceptation…';
-  fetch(API+'/api/partner/orders/'+id+'/accept',{method:'POST',headers:{'Authorization':'Bearer '+_token,'Content-Type':'application/json'}})
+  fetch(API+'/api/partner/dispatches/'+id+'/accept',{method:'POST',headers:{'Authorization':'Bearer '+_token,'Content-Type':'application/json'}})
     .then(function(r){ return r.json(); })
-    .then(function(){ showToast('Mission acceptée ✓'); _loaded['missions']=false; _loaded['accueil']=false; loadMissions(); loadAccueil(); })
-    .catch(function(){ btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-check"></i>Accepter la mission'; showToast('Erreur, réessayez'); });
+    .then(function(d){
+      if(d&&d.error){ throw new Error(d.error); }
+      showToast('Mission acceptée ✓');
+      _loaded['missions']=false; _loaded['accueil']=false;
+      loadMissions(); loadAccueil();
+    })
+    .catch(function(e){ btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-check"></i>Accepter la mission'; showToast(e.message||'Erreur, réessayez'); });
 }
 
 // ── Messages ─────────────────────────────────────────
 function loadMessages(){
   var el = document.getElementById('messages-list');
-  apiFetch('/api/partner/messages').then(function(data){
-    var threads = Array.isArray(data) ? data : (data&&data.threads)||[];
-    if(threads.length===0){
+  apiFetch('/api/partner/inbox').then(function(data){
+    var msgs = (data&&data.messages) ? data.messages : (Array.isArray(data)?data:[]);
+    if(msgs.length===0){
       el.innerHTML = '<div class="empty"><i class="fa-solid fa-comment-dots"></i><p>Aucun message pour le moment.<br>Les clients vous contacteront ici.</p></div>'; return;
     }
-    el.innerHTML = threads.map(function(t){
-      var ini = ((t.client_name||t.client_email||'C')[0]).toUpperCase();
-      var hasUnread = t.unread_count > 0;
+    // Grouper par expéditeur
+    var byFrom = {};
+    msgs.forEach(function(m){
+      var key = m.from_email||m.client_email||'unknown';
+      if(!byFrom[key]){ byFrom[key] = {name:m.from_name||m.client_name||key, msgs:[], unread:0}; }
+      byFrom[key].msgs.push(m);
+      if(!m.read_by_partner) byFrom[key].unread++;
+    });
+    el.innerHTML = Object.keys(byFrom).map(function(k){
+      var t = byFrom[k];
+      var last = t.msgs[t.msgs.length-1];
+      var ini = (t.name[0]||'C').toUpperCase();
       return '<div class="msg-thread">'
-        +'<div class="msg-avatar" style="'+(hasUnread?'box-shadow:0 0 0 2px var(--gold)':'')+'">'+esc(ini)+'</div>'
+        +'<div class="msg-avatar" style="'+(t.unread?'box-shadow:0 0 0 2px var(--gold)':'')+'">'+esc(ini)+'</div>'
         +'<div style="flex:1;min-width:0">'
-        +'<div class="msg-name">'+esc(t.client_name||t.client_email||'Client')+(hasUnread?' <span style="color:var(--gold);font-size:10px">● '+t.unread_count+'</span>':'')+'</div>'
-        +'<div class="msg-preview">'+esc(t.last_message||'Démarrez la conversation')+'</div>'
+        +'<div class="msg-name">'+esc(t.name)+(t.unread?' <span style="color:var(--gold);font-size:10px">● '+t.unread+'</span>':'')+'</div>'
+        +'<div class="msg-preview">'+esc(last.content||last.message||'Message reçu')+'</div>'
         +'</div>'
-        +'<div class="msg-time">'+fmt(t.last_message_at||t.updated_at)+'</div>'
+        +'<div class="msg-time">'+fmt(last.created_at)+'</div>'
+        +'</div>';
+    }).join('');
+  }).catch(function(){ el.innerHTML = '<div class="empty"><i class="fa-solid fa-wifi-slash"></i><p>Erreur de chargement</p></div>'; });
+}
+
+// ── Séances ──────────────────────────────────────────
+function loadSeances(){
+  var el = document.getElementById('seances-list');
+  if(!el) return;
+  apiFetch('/api/partner/sessions').then(function(data){
+    var sessions = Array.isArray(data) ? data : [];
+    if(sessions.length===0){
+      el.innerHTML = '<div class="empty"><i class="fa-solid fa-calendar-check"></i><p>Aucune séance planifiée.<br>Elles apparaîtront ici après confirmation.</p></div>'; return;
+    }
+    var statusLabel = {pending:'En attente',confirmed:'Confirmée',proposed:'Proposée',completed:'Terminée',cancelled:'Annulée'};
+    var pillCls = {pending:'yellow',confirmed:'green',proposed:'yellow',completed:'grey',cancelled:'red'};
+    el.innerHTML = sessions.map(function(s){
+      var st = s.status||'pending';
+      return '<div class="card">'
+        +'<div class="card-row">'
+        +'<div class="card-icon" style="background:rgba(96,165,250,.08)"><i class="fa-solid fa-calendar-check" style="color:#60a5fa"></i></div>'
+        +'<div style="flex:1;min-width:0">'
+        +'<div class="card-title">'+esc(s.title||s.service||'Séance')+'</div>'
+        +'<div class="card-sub">'+(s.client_name?esc(s.client_name)+' · ':'')+fmt(s.datetime_start||s.created_at)+'</div>'
+        +'<div style="margin-top:6px"><span class="pill pill-'+(pillCls[st]||'grey')+'">'+(statusLabel[st]||st)+'</span></div>'
+        +'</div></div>'
+        +(s.meet_url ? '<a href="'+esc(s.meet_url)+'" target="_blank" class="btn-gold" style="margin-top:10px;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:8px;color:#000"><i class="fa-solid fa-video"></i>Rejoindre la séance</a>' : '')
+        +'</div>';
+    }).join('');
+  }).catch(function(){ el.innerHTML = '<div class="empty"><i class="fa-solid fa-wifi-slash"></i><p>Erreur de chargement</p></div>'; });
+}
+
+// ── Devis / Demandes ──────────────────────────────────
+function loadDevis(){
+  var el = document.getElementById('devis-list');
+  if(!el) return;
+  apiFetch('/api/partner/requests').then(function(data){
+    var requests = (data&&data.requests) ? data.requests : (Array.isArray(data)?data:[]);
+    if(requests.length===0){
+      el.innerHTML = '<div class="empty"><i class="fa-solid fa-file-invoice"></i><p>Aucune demande de devis pour le moment.</p></div>'; return;
+    }
+    var statusLabel = {pending:'En attente',accepted:'Accepté',proposed:'Devis envoyé',signed:'Signé'};
+    var pillCls = {pending:'yellow',accepted:'blue',proposed:'blue',signed:'green'};
+    el.innerHTML = requests.map(function(r){
+      var st = r.display_status||r.status||'pending';
+      return '<div class="card">'
+        +'<div class="card-row">'
+        +'<div class="card-icon" style="background:rgba(251,191,36,.08)"><i class="fa-solid fa-file-invoice" style="color:#fbbf24"></i></div>'
+        +'<div style="flex:1;min-width:0">'
+        +'<div class="card-title">'+esc(r.service||r.product_name||r.title||'Demande de devis')+'</div>'
+        +'<div class="card-sub">'+(r.client_name?esc(r.client_name)+' · ':'')+fmt(r.created_at)+'</div>'
+        +'<div style="margin-top:6px;display:flex;align-items:center;justify-content:space-between">'
+        +'<span class="pill pill-'+(pillCls[st]||'grey')+'">'+(statusLabel[st]||st)+'</span>'
+        +(r.client_budget?'<span class="card-meta">Budget : '+esc(r.client_budget)+'</span>':'')
+        +'</div></div></div>'
         +'</div>';
     }).join('');
   }).catch(function(){ el.innerHTML = '<div class="empty"><i class="fa-solid fa-wifi-slash"></i><p>Erreur de chargement</p></div>'; });
