@@ -71,9 +71,9 @@
         // Contenu du dropdown
         var items = [
             { label: 'Bonjour ' + prenom + ' !', href: null, icon: 'fa-hand-wave', isGreeting: true },
-            { label: 'Mon espace client', href: 'app.html', icon: 'fa-tachometer-alt' },
-            { label: 'Mes projets / commandes', href: 'app.html', icon: 'fa-folder-open' },
-            { label: 'Mes paiements', href: 'app.html', icon: 'fa-credit-card' },
+            { label: 'Mon espace client', href: 'espace-client.html', icon: 'fa-tachometer-alt' },
+            { label: 'Mes projets / commandes', href: 'espace-client.html', icon: 'fa-folder-open' },
+            { label: 'Mes paiements', href: 'espace-client.html', icon: 'fa-credit-card' },
             { label: 'Mon compte', href: 'mon-compte.html', icon: 'fa-user-cog' },
             { label: 'Se d\u00e9connecter', href: 'logout', icon: 'fa-sign-out-alt', isLogout: true }
         ];
@@ -167,11 +167,11 @@
                 + '<div style="text-align:center;color:var(--genesis-yellow);font-weight:900;'
                 + 'font-size:14px;text-transform:uppercase;margin-bottom:8px;">'
                 + '<i class="fas fa-hand-wave" style="margin-right:6px;"></i>Bonjour ' + prenom + ' !</div>'
-                + '<a href="app.html" class="border-4 border-[var(--genesis-yellow)] text-[var(--genesis-yellow)] '
+                + '<a href="espace-client.html" class="border-4 border-[var(--genesis-yellow)] text-[var(--genesis-yellow)] '
                 + 'px-8 py-4 text-sm tracking-widest font-black hover:bg-[var(--genesis-yellow)] hover:text-black '
                 + 'transition text-center block" style="margin-bottom:8px;">'
                 + '<i class="fas fa-tachometer-alt" style="margin-right:6px;"></i>Mon espace client</a>'
-                + '<a href="app.html" class="border-4 border-white text-white '
+                + '<a href="espace-client.html" class="border-4 border-white text-white '
                 + 'px-8 py-4 text-sm tracking-widest font-black hover:bg-white hover:text-black '
                 + 'transition text-center block" style="margin-bottom:8px;">'
                 + '<i class="fas fa-credit-card" style="margin-right:6px;"></i>Mes paiements</a>'
