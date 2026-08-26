@@ -8436,6 +8436,228 @@ app.patch('/api/me', (req, res) => {
     }
 });
 
+// ============================================================
+// ENDPOINTS CLIENT — commandes, livrables, compte
+// ============================================================
+
+/**
+ * GET /api/orders
+ * Retourne les commandes du client authentifie
+ */
+app.get('/api/orders', function(req, res) {
+    try {
+        var authHeader = req.headers.authorization || '';
+        if (!authHeader.startsWith('Bearer ')) return res.status(401).json({ error: 'Token requis' });
+        var token = authHeader.slice(7).trim();
+        var users = loadUsers();
+        var user = users.find(function(u) { return u.sessionToken === token; });
+        if (!user) return res.status(401).json({ error: 'Session invalide' });
+
+        var orders = loadOrders().filter(function(o) {
+            return o.client_info && o.client_info.email &&
+                o.client_info.email.toLowerCase() === user.email.toLowerCase();
+        });
+
+        var sanitized = orders.map(function(o) {
+            return {
+                id: o.id,
+                status: o.status,
+                product_name: o.product_name || o.service,
+                service: o.service,
+                amount: o.amount,
+                partner_name: o.partner_name,
+                partner_id: o.partner_id,
+                deposit_paid: o.deposit_paid,
+                balance_paid: o.balance_paid,
+                created_at: o.created_at,
+                updated_at: o.updated_at
+            };
+        });
+
+        res.json(sanitized);
+    } catch(err) {
+        console.error('[GET /api/orders] Erreur:', err.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * GET /api/livrables
+ * Retourne les livrables du client authentifie
+ */
+app.get('/api/livrables', function(req, res) {
+    try {
+        var authHeader = req.headers.authorization || '';
+        if (!authHeader.startsWith('Bearer ')) return res.status(401).json({ error: 'Token requis' });
+        var token = authHeader.slice(7).trim();
+        var users = loadUsers();
+        var user = users.find(function(u) { return u.sessionToken === token; });
+        if (!user) return res.status(401).json({ error: 'Session invalide' });
+
+        var orders = loadOrders().filter(function(o) {
+            return o.client_info && o.client_info.email &&
+                o.client_info.email.toLowerCase() === user.email.toLowerCase();
+        });
+        var orderIds = orders.map(function(o) { return o.id; });
+
+        var allLivrables = loadLivrables();
+        var myLivrables = allLivrables.filter(function(l) {
+            return orderIds.indexOf(l.orderId || l.order_id) !== -1;
+        }).map(function(l) {
+            return {
+                id: l.id,
+                product_name: l.product_name || l.name || l.title,
+                title: l.title || l.name,
+                partner_name: l.partner_name,
+                status: l.status,
+                delivered_at: l.delivered_at || l.created_at,
+                created_at: l.created_at,
+                contract_id: l.contract_id
+            };
+        });
+
+        res.json(myLivrables);
+    } catch(err) {
+        console.error('[GET /api/livrables] Erreur:', err.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * DELETE /api/account
+ * Supprimer le compte du client authentifie
+ */
+app.delete('/api/account', function(req, res) {
+    try {
+        var authHeader = req.headers.authorization || '';
+        if (!authHeader.startsWith('Bearer ')) return res.status(401).json({ error: 'Token requis' });
+        var token = authHeader.slice(7).trim();
+        var users = loadUsers();
+        var userIdx = users.findIndex(function(u) { return u.sessionToken === token; });
+        if (userIdx === -1) return res.status(401).json({ error: 'Session invalide' });
+
+        var email = users[userIdx].email;
+        users.splice(userIdx, 1);
+        saveUsers(users);
+
+        console.log('[ACCOUNT] Suppression compte client:', email);
+        res.json({ success: true, message: 'Compte supprimé' });
+    } catch(err) {
+        console.error('[DELETE /api/account] Erreur:', err.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// ============================================================
+// ANNUAIRE PUBLIC PARTENAIRES
+// ============================================================
+
+function _sanitizePartnerPublic(p) {
+    return {
+        id: p.id,
+        prenom: p.prenom || '',
+        nom: p.nom || '',
+        partner_type: p.partner_type || '',
+        partner_type_other: p.partner_type_other || '',
+        city: p.city || p.ville || '',
+        ville: p.ville || p.city || '',
+        photo: p.photo || null,
+        tarif_type: p.tarif_type || 'devis',
+        tarif_from: p.tarif_from || null,
+        rating: p.rating || null,
+        score: p.score || 0,
+        registeredAt: p.registeredAt || p.createdAt || p.created_at || null
+    };
+}
+
+/**
+ * GET /api/partners/directory
+ * Annuaire public des partenaires (filtre: type, sort, limit)
+ */
+app.get('/api/partners/directory', function(req, res) {
+    try {
+        var partners = loadPartners().filter(function(p) {
+            return p.accountStatus !== 'deactivated' && p.accountStatus !== 'pending';
+        });
+        var type = req.query.type;
+        if (type) partners = partners.filter(function(p) { return p.partner_type === type; });
+        var sort = req.query.sort || 'score';
+        if (sort === 'new') {
+            partners.sort(function(a, b) {
+                return new Date(b.registeredAt || b.createdAt || 0) - new Date(a.registeredAt || a.createdAt || 0);
+            });
+        } else {
+            partners.sort(function(a, b) { return (b.score || 0) - (a.score || 0); });
+        }
+        var limit = Math.min(parseInt(req.query.limit) || 24, 100);
+        res.json(partners.slice(0, limit).map(_sanitizePartnerPublic));
+    } catch(e) {
+        console.error('[GET /api/partners/directory] Erreur:', e.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * GET /api/partners/featured
+ * Top partenaires par score
+ */
+app.get('/api/partners/featured', function(req, res) {
+    try {
+        var partners = loadPartners().filter(function(p) {
+            return p.accountStatus !== 'deactivated' && p.accountStatus !== 'pending';
+        });
+        partners.sort(function(a, b) { return (b.score || 0) - (a.score || 0); });
+        var limit = Math.min(parseInt(req.query.limit) || 6, 50);
+        res.json(partners.slice(0, limit).map(_sanitizePartnerPublic));
+    } catch(e) {
+        console.error('[GET /api/partners/featured] Erreur:', e.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * GET /api/partners/new
+ * Nouveaux partenaires (triés par date d'inscription)
+ */
+app.get('/api/partners/new', function(req, res) {
+    try {
+        var partners = loadPartners().filter(function(p) {
+            return p.accountStatus !== 'deactivated' && p.accountStatus !== 'pending';
+        });
+        partners.sort(function(a, b) {
+            return new Date(b.registeredAt || b.createdAt || 0) - new Date(a.registeredAt || a.createdAt || 0);
+        });
+        var limit = Math.min(parseInt(req.query.limit) || 6, 50);
+        res.json(partners.slice(0, limit).map(_sanitizePartnerPublic));
+    } catch(e) {
+        console.error('[GET /api/partners/new] Erreur:', e.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * GET /api/partners/recommended
+ * Partenaires recommandés (par nombre d'avis puis score)
+ */
+app.get('/api/partners/recommended', function(req, res) {
+    try {
+        var partners = loadPartners().filter(function(p) {
+            return p.accountStatus !== 'deactivated' && p.accountStatus !== 'pending';
+        });
+        partners.sort(function(a, b) {
+            var ra = (a.rating && a.rating.count) ? a.rating.count : 0;
+            var rb = (b.rating && b.rating.count) ? b.rating.count : 0;
+            if (rb !== ra) return rb - ra;
+            return (b.score || 0) - (a.score || 0);
+        });
+        var limit = Math.min(parseInt(req.query.limit) || 6, 50);
+        res.json(partners.slice(0, limit).map(_sanitizePartnerPublic));
+    } catch(e) {
+        console.error('[GET /api/partners/recommended] Erreur:', e.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
 /**
  * GET /api/deliverables/mine
  * Recuperer les livrables du client connecte

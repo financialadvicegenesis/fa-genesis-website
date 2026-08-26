@@ -577,6 +577,14 @@ var _prestDataCache = null;
       if(!d || !d.user) return;
       _user = d.user;
       try{ localStorage.setItem('fa_genesis_session', JSON.stringify(d.user)); }catch(e){}
+      // Mettre à jour l'en-tête avec les données réelles
+      var prBg = _user.prenom || _user.firstName || '';
+      var nomBg = _user.nom   || _user.lastName  || '';
+      var fnBg = (prBg+' '+nomBg).trim() || _user.email || 'Membre';
+      var hdrAvaBg = document.getElementById('hdr-ava');
+      if(hdrAvaBg) hdrAvaBg.textContent = (fnBg[0]||'M').toUpperCase();
+      var greetNameBg = document.getElementById('greet-name');
+      if(greetNameBg) greetNameBg.textContent = prBg || fnBg.split(' ')[0] || fnBg;
       renderQGWidget();
       loadProfil();
       loadCommandes();
@@ -1008,14 +1016,20 @@ function loadProfil(){
   var prenom = _user.prenom || _user.firstName || '';
   var nom    = _user.nom   || _user.lastName  || '';
   var fn = (prenom+' '+nom).trim() || _user.email || '';
-  var ava = document.getElementById('pf-ava'); if(ava) ava.textContent = (fn[0]||'C').toUpperCase();
-  var pfName = document.getElementById('pf-name'); if(pfName) pfName.textContent = fn;
-  var pfEmail = document.getElementById('pf-email'); if(pfEmail) pfEmail.textContent = _user.email||'';
+  if(fn){
+    var ava = document.getElementById('pf-ava'); if(ava) ava.textContent = fn[0].toUpperCase();
+    var pfName = document.getElementById('pf-name'); if(pfName) pfName.textContent = fn;
+  }
+  if(_user.email){
+    var pfEmail = document.getElementById('pf-email'); if(pfEmail) pfEmail.textContent = _user.email;
+  }
   var offre = _user.offre || _user.activeOfferId;
   var planMap = {Starter:'Client Starter',Business:'Client Business',Enterprise:'Client Enterprise',Pro:'Client Pro'};
   var pfPlan = document.getElementById('pf-plan'); if(pfPlan) pfPlan.textContent = offre ? (planMap[offre]||offre) : 'Client FA GENESIS';
-  var code = _user.referral_code || _user.parrainage_code || ('CL-'+(_user.id||_user.email||'').toString().replace(/[^A-Z0-9]/gi,'').toUpperCase().substring(0,8));
-  var pfRef = document.getElementById('pf-referral-code'); if(pfRef) pfRef.textContent = code;
+  if(_user.id || _user.email){
+    var code = _user.referral_code || _user.parrainage_code || ('CL-'+(_user.id||_user.email||'').toString().replace(/[^A-Z0-9]/gi,'').toUpperCase().substring(0,8));
+    var pfRef = document.getElementById('pf-referral-code'); if(pfRef) pfRef.textContent = code;
+  }
 }
 
 function copyReferral(){
