@@ -124,7 +124,7 @@
             title: 'Plateforme',
             links: [
                 { label: 'Espace client', href: 'app.html' },
-                { label: 'Espace prestataire', href: 'partner-dashboard.html' },
+                { label: 'Espace prestataire', href: 'app.html' },
                 { label: 'Fonctionnalit\u00e9s', href: 'index.html#fonctionnalites' },
                 { label: 'T\u00e9l\u00e9charger l\u2019app', href: 'index.html#app' }
             ]
