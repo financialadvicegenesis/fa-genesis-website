@@ -7932,7 +7932,12 @@ app.post('/api/auth/login', async (req, res) => {
             Array.isArray(user.trustedDevices) &&
             user.trustedDevices.some(function(d) { return d.token === deviceToken; });
 
-        if (!isTrustedDevice) {
+        // OTP seulement si : appareil non reconnu ET SMTP configuré ET pas désactivé manuellement
+        const smtpReady = process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASSWORD &&
+            process.env.SMTP_PASSWORD !== 'votre_mot_de_passe_smtp';
+        const otpDisabled = process.env.DISABLE_OTP === 'true';
+
+        if (!isTrustedDevice && smtpReady && !otpDisabled) {
             // Premier accès sur cet appareil → demander OTP
             const pendingToken = crypto.randomBytes(32).toString('hex');
             users[userIndex].pending_token = pendingToken;
@@ -7942,6 +7947,10 @@ app.post('/api/auth/login', async (req, res) => {
             const maskedEmail = emailParts[0].slice(0,2) + '***@' + emailParts[1];
             console.log(`[AUTH] OTP requis: ${email}`);
             return res.json({ requiresOtp: true, pendingToken, maskedEmail });
+        }
+        // Appareil non reconnu mais SMTP indisponible → connexion directe (OTP impossible à envoyer)
+        if (!isTrustedDevice && !smtpReady) {
+            console.log(`[AUTH] OTP skippé (SMTP non configuré): ${email}`);
         }
 
         // Appareil de confiance → connexion directe
