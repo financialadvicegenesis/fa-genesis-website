@@ -7926,41 +7926,14 @@ app.post('/api/auth/login', async (req, res) => {
             });
         }
 
-        // Vérifier si l'appareil est déjà de confiance
-        const { deviceToken } = req.body;
-        const isTrustedDevice = deviceToken &&
-            Array.isArray(user.trustedDevices) &&
-            user.trustedDevices.some(function(d) { return d.token === deviceToken; });
-
-        // OTP seulement si : appareil non reconnu ET SMTP configuré ET pas désactivé manuellement
-        const smtpReady = process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASSWORD &&
-            process.env.SMTP_PASSWORD !== 'votre_mot_de_passe_smtp';
-        const otpDisabled = process.env.DISABLE_OTP === 'true';
-
-        if (!isTrustedDevice && smtpReady && !otpDisabled) {
-            // Premier accès sur cet appareil → demander OTP
-            const pendingToken = crypto.randomBytes(32).toString('hex');
-            users[userIndex].pending_token = pendingToken;
-            users[userIndex].pending_token_expires = Date.now() + 600000; // 10min
-            saveUsers(users);
-            const emailParts = user.email.split('@');
-            const maskedEmail = emailParts[0].slice(0,2) + '***@' + emailParts[1];
-            console.log(`[AUTH] OTP requis: ${email}`);
-            return res.json({ requiresOtp: true, pendingToken, maskedEmail });
-        }
-        // Appareil non reconnu mais SMTP indisponible → connexion directe (OTP impossible à envoyer)
-        if (!isTrustedDevice && !smtpReady) {
-            console.log(`[AUTH] OTP skippé (SMTP non configuré): ${email}`);
-        }
-
-        // Appareil de confiance → connexion directe
+        // Connexion directe — même comportement que le login prestataire
         const sessionToken = signClientToken(user);
         users[userIndex].sessionToken = sessionToken;
         users[userIndex].lastLogin = new Date().toISOString();
         users[userIndex].updatedAt = new Date().toISOString();
         saveUsers(users);
 
-        console.log(`[AUTH] Connexion (appareil connu): ${user.id} - ${email}`);
+        console.log(`[AUTH] Connexion client: ${user.id} - ${email}`);
 
         const userResponse = { ...users[userIndex] };
         delete userResponse.password;
@@ -7970,7 +7943,6 @@ app.post('/api/auth/login', async (req, res) => {
 
         res.json({
             success: true,
-            message: 'Connexion reussie',
             user: userResponse,
             token: sessionToken
         });
