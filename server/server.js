@@ -84,7 +84,8 @@ const JEREMIE_MEMORY_FILE = path.join(__dirname, 'data', 'jeremie_memory.json');
 const PROMOTIONS_FILE     = path.join(__dirname, 'data', 'promotions.json');
 const ADMIN_SESSIONS_FILE = path.join(__dirname, 'data', 'admin_sessions.json');
 const NOTIFICATIONS_FILE = path.join(__dirname, 'data', 'notifications.json');
-const DISPUTES_FILE = path.join(__dirname, 'data', 'disputes.json');
+const DISPUTES_FILE        = path.join(__dirname, 'data', 'disputes.json');
+const CERTIFICATES_FILE    = path.join(__dirname, 'data', 'student_certificates.json');
 const PROSPECTS_FILE = path.join(__dirname, 'data', 'prospects.json');
 const CAMPAGNES_FILE = path.join(__dirname, 'data', 'campagnes.json');
 const SCHEDULED_NOTIFS_FILE = path.join(__dirname, 'data', 'scheduled_notifs.json');
@@ -593,6 +594,18 @@ function saveDisputes(data) {
     try { fs.writeFileSync(DISPUTES_FILE, JSON.stringify(data, null, 2), 'utf8'); }
     catch(e) { console.error('[DISPUTE] Erreur sauvegarde:', e); }
     persistentStore.persistToCloud('disputes', data).catch(function(e) {});
+}
+
+// ── Certificats étudiants ──
+function loadCertificates() {
+    try {
+        if (!fs.existsSync(CERTIFICATES_FILE)) return {};
+        return JSON.parse(fs.readFileSync(CERTIFICATES_FILE, 'utf8')) || {};
+    } catch(e) { return {}; }
+}
+function saveCertificates(data) {
+    try { fs.writeFileSync(CERTIFICATES_FILE, JSON.stringify(data, null, 2), 'utf8'); }
+    catch(e) { console.error('[CERT] Erreur sauvegarde:', e); }
 }
 
 // IDs de tarifs partenaires (taux variable selon badge : standard 25% FA, réduit pour Argent/Or/Élite)
@@ -1946,6 +1959,118 @@ app.get('/api/disputes/mine', function(req, res) {
         res.json({ ok: true, disputes: disputes, sla_label: GENESIS_DISPUTE_SLA_LABEL });
     } catch (err) {
         console.error('[DISPUTE] Erreur mine:', err);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// ══════════════════════════════════════════════
+// ADMIN — Vérification justificatifs étudiants
+// ══════════════════════════════════════════════
+
+// GET /api/admin/students — liste tous les comptes étudiants
+app.get('/api/admin/students', function(req, res) {
+    if (!_isAdminRequest(req)) return res.status(403).json({ error: 'Accès refusé' });
+    try {
+        var users = loadUsers();
+        var students = users.filter(function(u) { return u.accountType === 'etudiant'; }).map(function(u) {
+            return {
+                id: u.id,
+                prenom: u.prenom,
+                nom: u.nom || '',
+                email: u.email,
+                student_status: u.student_status || 'unverified',
+                has_certificate: false,
+                createdAt: u.createdAt
+            };
+        });
+        var certs = loadCertificates();
+        students.forEach(function(s) { s.has_certificate = !!certs[s.id]; });
+        res.json({ success: true, students: students });
+    } catch(e) {
+        console.error('[ADMIN/STUDENTS] Erreur:', e.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// GET /api/admin/students/:id/certificate — récupère le justificatif (base64)
+app.get('/api/admin/students/:id/certificate', function(req, res) {
+    if (!_isAdminRequest(req)) return res.status(403).json({ error: 'Accès refusé' });
+    try {
+        var certs = loadCertificates();
+        var cert = certs[req.params.id];
+        if (!cert) return res.status(404).json({ error: 'Aucun justificatif trouvé' });
+        res.json({ success: true, data: cert.data, submitted_at: cert.submitted_at });
+    } catch(e) {
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// POST /api/admin/students/:id/verify — approuver le compte étudiant
+app.post('/api/admin/students/:id/verify', function(req, res) {
+    if (!_isAdminRequest(req)) return res.status(403).json({ error: 'Accès refusé' });
+    try {
+        var users = loadUsers();
+        var idx = users.findIndex(function(u) { return u.id === req.params.id; });
+        if (idx === -1) return res.status(404).json({ error: 'Utilisateur non trouvé' });
+        if (users[idx].accountType !== 'etudiant') return res.status(400).json({ error: 'Cet utilisateur n\'est pas étudiant' });
+        users[idx].student_status = 'verified';
+        users[idx].updatedAt = new Date().toISOString();
+        saveUsers(users);
+        notifyUser(users[idx].email, 'client', 'student_verified', 'Compte étudiant vérifié ✓', 'Votre justificatif étudiant a été validé par FA GENESIS. Vous bénéficiez maintenant des offres étudiants.', '/app.html');
+        emailService.sendEmail && emailService.sendEmail({
+            to: users[idx].email,
+            subject: 'Votre compte étudiant FA GENESIS est vérifié ✓',
+            html: '<p>Bonjour ' + users[idx].prenom + ',</p><p>Votre justificatif étudiant a été validé. Vous avez maintenant accès à toutes les offres et tarifs étudiants FA GENESIS.</p><p>À bientôt sur <strong>FA GENESIS</strong> !</p>'
+        }).catch(function(){});
+        res.json({ success: true, message: 'Étudiant vérifié' });
+    } catch(e) {
+        console.error('[ADMIN/STUDENTS/VERIFY] Erreur:', e.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// POST /api/admin/students/:id/reject — rejeter le justificatif
+app.post('/api/admin/students/:id/reject', function(req, res) {
+    if (!_isAdminRequest(req)) return res.status(403).json({ error: 'Accès refusé' });
+    try {
+        var reason = (req.body && req.body.reason) ? req.body.reason.trim() : 'Justificatif non valide.';
+        var users = loadUsers();
+        var idx = users.findIndex(function(u) { return u.id === req.params.id; });
+        if (idx === -1) return res.status(404).json({ error: 'Utilisateur non trouvé' });
+        users[idx].student_status = 'rejected';
+        users[idx].student_reject_reason = reason;
+        users[idx].updatedAt = new Date().toISOString();
+        saveUsers(users);
+        notifyUser(users[idx].email, 'client', 'student_rejected', 'Justificatif étudiant non accepté', 'Votre justificatif étudiant n\'a pas pu être validé : ' + reason, '/app.html');
+        emailService.sendEmail && emailService.sendEmail({
+            to: users[idx].email,
+            subject: 'Justificatif étudiant FA GENESIS — Action requise',
+            html: '<p>Bonjour ' + users[idx].prenom + ',</p><p>Votre justificatif étudiant n\'a pas pu être accepté pour la raison suivante : <strong>' + reason + '</strong></p><p>Vous pouvez en soumettre un nouveau depuis votre espace personnel.</p>'
+        }).catch(function(){});
+        res.json({ success: true, message: 'Justificatif rejeté' });
+    } catch(e) {
+        console.error('[ADMIN/STUDENTS/REJECT] Erreur:', e.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// POST /api/client/students/certificate — re-soumettre un justificatif (après rejet)
+app.post('/api/client/students/certificate', function(req, res) {
+    var user = authenticateClient(req, res);
+    if (!user) return;
+    if (user.accountType !== 'etudiant') return res.status(400).json({ error: 'Réservé aux comptes étudiants' });
+    try {
+        var cert = req.body && req.body.studentCertificate;
+        if (!cert || typeof cert !== 'string' || cert.length < 100) return res.status(400).json({ error: 'Justificatif invalide' });
+        var certs = loadCertificates();
+        certs[user.id] = { data: cert, submitted_at: new Date().toISOString() };
+        saveCertificates(certs);
+        var users = loadUsers();
+        var idx = users.findIndex(function(u) { return u.id === user.id; });
+        if (idx !== -1) { users[idx].student_status = 'pending'; users[idx].updatedAt = new Date().toISOString(); saveUsers(users); }
+        notifyUser(null, 'admin', 'student_cert', 'Justificatif étudiant soumis', user.prenom + ' ' + (user.nom || '') + ' a soumis un nouveau justificatif.', '/app.html#open-admin');
+        res.json({ success: true, message: 'Justificatif soumis. Validation sous 24h.' });
+    } catch(e) {
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });
@@ -7712,7 +7837,7 @@ app.post('/api/admin/messages/bulk-delete', (req, res) => {
  */
 app.post('/api/auth/register', async (req, res) => {
     try {
-        const { prenom, nom, email, telephone, password, offre, accountType, referralCode } = req.body;
+        const { prenom, nom, email, telephone, password, offre, accountType, referralCode, studentCertificate } = req.body;
         const validAccountTypes = ['etudiant', 'particulier', 'entreprise'];
         const userAccountType = validAccountTypes.includes(accountType) ? accountType : null;
 
@@ -7827,10 +7952,20 @@ app.post('/api/auth/register', async (req, res) => {
             referralBonusQG: referredBy ? 0 : 40,
             referral_discount: { pct: referredBy ? WELCOME_DISCOUNT_PCT_WITH_REFERRAL : WELCOME_DISCOUNT_PCT_NO_REFERRAL, applied: false },
             sessionToken: sessionToken,
+            student_status: userAccountType === 'etudiant' ? (studentCertificate ? 'pending' : 'unverified') : null,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
             lastLogin: new Date().toISOString()
         };
+
+        // Sauvegarder certificat étudiant séparément (garde users.json léger)
+        if (userAccountType === 'etudiant' && studentCertificate && typeof studentCertificate === 'string' && studentCertificate.length > 100) {
+            try {
+                var certs = loadCertificates();
+                certs[newUser.id] = { data: studentCertificate, submitted_at: new Date().toISOString() };
+                saveCertificates(certs);
+            } catch(_) {}
+        }
 
         // Sauvegarder
         users.push(newUser);
@@ -7838,7 +7973,8 @@ app.post('/api/auth/register', async (req, res) => {
 
         console.log(`[AUTH] Nouvel utilisateur inscrit: ${newUser.id} - ${email}`);
         // Push admin : nouvelle inscription
-        notifyUser(null, 'admin', 'inscription', 'FA GENESIS — Nouvelle inscription', prenom + (nom ? ' ' + nom : '') + ' vient de s\'inscrire.', '/app.html#open-admin');
+        var _regNotifMsg = prenom + (nom ? ' ' + nom : '') + ' vient de s\'inscrire.' + (userAccountType === 'etudiant' && studentCertificate ? ' [Justificatif étudiant à valider]' : '');
+        notifyUser(null, 'admin', 'inscription', 'FA GENESIS — Nouvelle inscription', _regNotifMsg, '/app.html#open-admin');
 
         // Email de bienvenue au client (invitation a decouvrir les offres)
         emailService.sendWelcomeEmail(email, prenom)
@@ -8095,6 +8231,8 @@ app.get('/api/auth/me', (req, res) => {
             welcomeDiscountEligible: isClientFirstPaidOrder(user.email),
             referralBonusQG: user.referralBonusQG || 0,
             missionBonuses: user.missionBonuses || {},
+            accountType: user.accountType || null,
+            student_status: user.student_status || null,
             preferred_partner_types: user.preferred_partner_types || [],
             profile_bio: user.profile_bio || '',
             profile_theme: user.profile_theme || 'genesis',
@@ -13177,6 +13315,12 @@ app.get('/api/partners/directory', (req, res) => {
             });
         } else if (sortMode === 'alpha') {
             partners = partners.slice().sort((a, b) => ((a.nom || '') + (a.prenom || '')).localeCompare((b.nom || '') + (b.prenom || '')));
+        } else if (sortMode === 'price_asc') {
+            partners = partners.slice().sort((a, b) => {
+                const pa = getPartnerFromPrice(a) || Infinity;
+                const pb = getPartnerFromPrice(b) || Infinity;
+                return pa - pb;
+            });
         } else {
             partners = partners.slice().sort((a, b) => getPartnerCategoryScore(b) - getPartnerCategoryScore(a));
         }

@@ -619,6 +619,8 @@ var _prestDataCache = null;
       if(d.referralCount != null)  _user.referralCount  = d.referralCount;
       if(d.referralBonusQG != null)_user.referralBonusQG= d.referralBonusQG;
       if(d.referralCode)           _user.referralCode   = d.referralCode;
+      if(d.accountType)            _user.accountType    = d.accountType;
+      if(d.student_status != null) _user.student_status = d.student_status;
       try{ localStorage.setItem('fa_genesis_session', JSON.stringify(_user)); }catch(e){}
       // Mettre à jour l'en-tête
       var prBg = _user.prenom || _user.firstName || '';
@@ -1155,6 +1157,55 @@ function loadProfil(){
     var code = _user.referralCode || _user.id || '';
     var pfRef = document.getElementById('pf-referral-code'); if(pfRef) pfRef.textContent = code || '—';
   }
+
+  // Badge statut étudiant
+  var existing = document.getElementById('pf-student-badge');
+  if(existing) existing.remove();
+  if(_user.accountType === 'etudiant') {
+    var statusMap = {
+      verified: { label: 'Étudiant vérifié ✓', color: '#22c55e', bg: 'rgba(34,197,94,.08)', border: 'rgba(34,197,94,.3)' },
+      pending:  { label: 'Justificatif en attente de validation…', color: '#eab308', bg: 'rgba(234,179,8,.08)', border: 'rgba(234,179,8,.3)' },
+      rejected: { label: 'Justificatif rejeté — soumettre à nouveau', color: '#ef4444', bg: 'rgba(239,68,68,.08)', border: 'rgba(239,68,68,.3)' },
+      unverified:{ label: 'Statut étudiant non vérifié', color: '#888', bg: 'rgba(255,255,255,.04)', border: 'rgba(255,255,255,.1)' }
+    };
+    var ss = _user.student_status || 'unverified';
+    var sInfo = statusMap[ss] || statusMap['unverified'];
+    var badge = document.createElement('div');
+    badge.id = 'pf-student-badge';
+    badge.style.cssText = 'margin:10px 0;padding:10px 14px;border-radius:10px;font-size:12px;font-weight:700;display:flex;align-items:center;gap:8px;'
+      +'background:'+sInfo.bg+';border:1px solid '+sInfo.border+';color:'+sInfo.color+';';
+    badge.innerHTML = '<i class="fa-solid fa-graduation-cap"></i> '+sInfo.label
+      + (ss==='rejected'||ss==='unverified' ? ' <button onclick="uploadNewCertificate()" style="margin-left:auto;padding:5px 10px;border-radius:6px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:#ccc;font-size:11px;cursor:pointer;">Envoyer</button>' : '');
+    var pfEmail = document.getElementById('pf-email');
+    if(pfEmail && pfEmail.parentNode) pfEmail.parentNode.insertBefore(badge, pfEmail.nextSibling);
+  }
+}
+
+function uploadNewCertificate(){
+  var inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = 'image/*,.pdf';
+  inp.onchange = function(){
+    if(!inp.files||!inp.files[0]) return;
+    var file = inp.files[0];
+    if(file.size > 5*1024*1024){ showToast('Fichier trop grand (max 5 Mo)'); return; }
+    showToast('Chargement…');
+    var fr = new FileReader();
+    fr.onload = function(e){
+      fetch(API+'/api/client/students/certificate',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+_token},
+        body:JSON.stringify({studentCertificate:e.target.result})
+      }).then(function(r){return r.json();}).then(function(d){
+        if(d&&d.success){
+          showToast('Justificatif envoyé — validation sous 24h ✓');
+          _user.student_status = 'pending';
+          loadProfil();
+        } else { showToast('Erreur : '+(d&&d.error)||'Réessayez'); }
+      }).catch(function(){ showToast('Erreur de connexion'); });
+    };
+    fr.readAsDataURL(file);
+  };
+  inp.click();
 }
 
 function copyReferral(){

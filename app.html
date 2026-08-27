@@ -5588,7 +5588,10 @@ function _prstActivateGeoloc(){
 }
 
 function renderPrestataires(){
-  _rankCategory = null; _rankQuery = ''; _rankCity = ''; _rankSort = 'score';
+  _rankCategory = null; _rankQuery = ''; _rankCity = '';
+  // Étudiants → prix croissant par défaut
+  var _isStudent = USER && USER.accountType === 'etudiant';
+  _rankSort = _isStudent ? 'price_asc' : 'score';
   _rankPromoFilter = false; _dirCollabFilter = false;
 
   var html = '';
@@ -5604,7 +5607,7 @@ function renderPrestataires(){
   html += '<div class="prst-sort-row">'
     +'<div id="p-rank-signal-chips" style="display:flex;gap:8px;flex-wrap:wrap;flex:1;"></div>'
     +'<select id="p-rank-sort" class="prst-sort-select" onchange="onRankSortChange()">'
-    +'<option value="score">Meilleurs du moment</option>'
+    +(_isStudent ? '<option value="price_asc" selected>Budget étudiant</option><option value="score">Meilleurs du moment</option>' : '<option value="score">Meilleurs du moment</option><option value="price_asc">Prix croissant</option>')
     +'<option value="rating">Mieux notés</option>'
     +'<option value="recent">Plus récents</option>'
     +'<option value="alpha">A-Z</option>'
@@ -5612,6 +5615,7 @@ function renderPrestataires(){
     +'</div>';
   // Mode découverte (par défaut)
   html += '<div id="prst-discovery">'
+    +(_isStudent ? '<div id="prst-student-budget-wrap"></div>' : '')
     +'<div id="prst-featured-wrap"></div>'
     +'<div id="prst-best-rated-wrap"></div>'
     +'<div id="prst-new-wrap"></div>'
@@ -5642,6 +5646,9 @@ function renderPrestataires(){
 
   // Chargement des sections découverte
   var base = window.FA_GENESIS_API || API;
+  if(_isStudent) {
+    _loadPrstSection(base+'/api/partners/directory?sort=price_asc&limit=10', 'prst-student-budget-wrap', '🎓 Spécial Étudiants — Prix les plus bas');
+  }
   _loadPrstSection(base+'/api/partners/featured?limit=8',              'prst-featured-wrap',   'Professionnels à la une');
   _loadPrstSection(base+'/api/partners/directory?sort=rating&limit=8', 'prst-best-rated-wrap', 'Les mieux notés', null, function(p){ return p.rating && p.rating.count > 0; });
   _loadPrstSection(base+'/api/partners/new?limit=8',                   'prst-new-wrap',        'Nouveaux talents', 'Nouveau');
@@ -7979,7 +7986,47 @@ function _genesisCardHtml() {
     +'<div style="font-size:11px;color:'+col+';font-weight:700;margin-bottom:4px;"><i class="fa-solid fa-bolt" style="font-size:9px;"></i> '+qg+' QG</div>'
     +'<div style="font-size:11px;color:#888;margin-bottom:'+(bioSafe?'10':'0')+'px;">'+em+'</div>'
     +(bioSafe ? '<div style="font-size:12px;color:#aaa;line-height:1.55;border-top:1px solid '+col+'14;padding-top:10px;">'+bioSafe+'</div>' : '')
+    +_studentBadgeHtml()
     +'</div></div>';
+}
+
+function _studentBadgeHtml(){
+  if(!USER || USER.accountType !== 'etudiant') return '';
+  var ss = USER.student_status || 'unverified';
+  var map = {
+    verified:  {label:'Étudiant vérifié ✓', color:'#22c55e', bg:'rgba(34,197,94,.08)', border:'rgba(34,197,94,.25)'},
+    pending:   {label:'Justificatif en attente…', color:'#eab308', bg:'rgba(234,179,8,.08)', border:'rgba(234,179,8,.25)'},
+    rejected:  {label:'Justificatif rejeté — soumettre à nouveau', color:'#ef4444', bg:'rgba(239,68,68,.08)', border:'rgba(239,68,68,.25)'},
+    unverified:{label:'Statut étudiant non vérifié', color:'#888', bg:'rgba(255,255,255,.04)', border:'rgba(255,255,255,.08)'}
+  };
+  var m = map[ss] || map['unverified'];
+  return '<div style="margin-top:10px;padding:8px 12px;border-radius:8px;font-size:11px;font-weight:700;color:'+m.color+';background:'+m.bg+';border:1px solid '+m.border+';display:flex;align-items:center;gap:8px;">'
+    +'<i class="fa-solid fa-graduation-cap"></i> '+m.label
+    +(ss==='rejected'||ss==='unverified' ? ' <button onclick="_appUploadNewCert()" style="margin-left:auto;padding:4px 9px;border-radius:6px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);color:#ccc;font-size:10px;cursor:pointer;">Envoyer</button>' : '')
+    +'</div>';
+}
+
+function _appUploadNewCert(){
+  var inp = document.createElement('input');
+  inp.type='file'; inp.accept='image/*,.pdf';
+  inp.onchange = function(){
+    if(!inp.files||!inp.files[0]) return;
+    var file=inp.files[0];
+    if(file.size>5*1024*1024){ showToast('Fichier trop grand','Maximum 5 Mo','error'); return; }
+    showToast('Envoi…','','info');
+    var fr=new FileReader();
+    fr.onload=function(e){
+      _cliFetch('/api/client/students/certificate','POST',{studentCertificate:e.target.result}).then(function(res){
+        if(res&&res.success){
+          showToast('Justificatif envoyé','Validation sous 24h','success');
+          USER.student_status='pending';
+          if(typeof renderProfil==='function') renderProfil();
+        } else { showToast('Erreur',(res&&res.error)||'Réessayez','error'); }
+      }).catch(function(){ showToast('Erreur réseau','Réessayez','error'); });
+    };
+    fr.readAsDataURL(file);
+  };
+  inp.click();
 }
 
 function renderProfil(){
@@ -8917,6 +8964,8 @@ function _syncUserBadge(){
       USER.profile_bio    = d.profile_bio    || '';
       USER.profile_theme  = d.profile_theme  || 'genesis';
       USER.profile_banner = d.profile_banner || null;
+      if(d.accountType)    USER.accountType    = d.accountType;
+      if(d.student_status != null) USER.student_status = d.student_status;
       try{ _applyUserTheme(USER.profile_theme); }catch(e){}
       // Level-up detection: show confetti if badge improved
       try {
@@ -14339,9 +14388,29 @@ function regBack(){
   regGoToStep(regCurrentStep-1);
 }
 
+var _regCertBase64 = '';
+
 function regSelectProfile(type){
   regData.accountType = type;
+  _regCertBase64 = '';
   regGoToStep(2);
+}
+
+function _regCertFileChange(inp){
+  if(!inp||!inp.files||!inp.files[0]) return;
+  var file = inp.files[0];
+  if(file.size > 5*1024*1024){ showToast('Fichier trop grand','Maximum 5 Mo','error'); inp.value=''; return; }
+  var lbl = document.getElementById('reg-cert-text');
+  if(lbl) lbl.textContent = 'Lecture…';
+  var fr = new FileReader();
+  fr.onload = function(e){ _regCertBase64 = e.target.result; if(lbl){ lbl.textContent = file.name + ' ✓'; lbl.style.color='#22c55e'; } };
+  fr.onerror = function(){ _regCertBase64=''; if(lbl) lbl.textContent='Erreur — réessayez'; };
+  fr.readAsDataURL(file);
+}
+
+function _regShowCertSection(){
+  var sec = document.getElementById('reg-cert-section');
+  if(sec) sec.style.display = (regData.accountType === 'etudiant') ? 'block' : 'none';
 }
 
 function regStepEmail(){
@@ -14359,6 +14428,7 @@ function regStepPassword(){
   var pwd=((document.getElementById('reg-pwd')||{}).value||'');
   var pwd2=((document.getElementById('reg-pwd2')||{}).value||'');
   var e1=document.getElementById('reg-err-pwd'); var e2=document.getElementById('reg-err-pwd2');
+  _regShowCertSection && _regShowCertSection();
   if(pwd.length<8){ if(e1){e1.textContent='Minimum 8 caractères requis.';e1.classList.add('on');} return; }
   if(e1) e1.classList.remove('on');
   if(pwd!==pwd2){ if(e2){e2.textContent='Les mots de passe ne correspondent pas.';e2.classList.add('on');} return; }
@@ -14377,13 +14447,17 @@ function regStepIdentity(){
   if(ep) ep.classList.remove('on');
   if(ge) ge.classList.remove('on');
   regData.prenom=prenom; if(nom) regData.nom=nom; if(tel) regData.telephone=tel; if(referral) regData.referralCode=referral;
+  if(regData.accountType==='etudiant' && _regCertBase64) regData.studentCertificate = _regCertBase64;
   var btn=document.getElementById('reg-btn3');
   if(btn){btn.disabled=true;btn.textContent='Création...';}
   try{
     if(typeof register==='function'){
       register(regData).then(function(res){
         if(btn){btn.disabled=false;btn.textContent='CRÉER MON COMPTE';}
-        if(res&&res.success){ regShowSuccess(prenom); }
+        if(res&&res.success){
+          var isStudentWithCert = regData.accountType==='etudiant' && !!_regCertBase64;
+          regShowSuccess(prenom, isStudentWithCert);
+        }
         else{ var msg=(res&&(res.message||res.error))?(res.message||res.error):'Erreur lors de la création du compte.'; if(ge){ge.textContent=msg;ge.classList.add('on');} }
       }).catch(function(e){
         if(btn){btn.disabled=false;btn.textContent='CRÉER MON COMPTE';}
@@ -14399,7 +14473,10 @@ function regStepIdentity(){
   }
 }
 
-function regShowSuccess(prenom){
+function regShowSuccess(prenom, isStudentPending){
+  var subDef = document.getElementById('reg-win-sub-default');
+  var subStu = document.getElementById('reg-win-sub-student');
+  if(isStudentPending && subDef && subStu){ subDef.style.display='none'; subStu.style.display=''; }
   var s3=document.getElementById('reg-s4'); var s4=document.getElementById('reg-s5');
   if(!s3||!s4) return;
   if(_regStepTimer){ clearTimeout(_regStepTimer); _regStepTimer=null; }
@@ -15199,6 +15276,18 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
           <label class="reg-label" for="reg-referral">Code de parrainage</label>
           <input id="reg-referral" class="reg-input" type="text" placeholder="USR-XXXXXXXX (optionnel)" onkeydown="regHandleEnter(event,regStepIdentity)">
         </div>
+        <!-- Justificatif étudiant (visible uniquement si profil = étudiant) -->
+        <div id="reg-cert-section" style="display:none;margin-bottom:8px;">
+          <div style="background:rgba(234,179,8,.06);border:1.5px solid rgba(234,179,8,.25);border-radius:12px;padding:14px;">
+            <div style="font-size:12px;font-weight:800;color:#eab308;margin-bottom:5px;"><i class="fa-solid fa-graduation-cap" style="margin-right:5px;"></i>Justificatif étudiant</div>
+            <div style="font-size:11px;color:#888;margin-bottom:10px;line-height:1.5;">Certificat de scolarité (photo ou PDF). Validé sous 24h — accès immédiat à l'app en attendant.</div>
+            <label id="reg-cert-label" style="display:flex;align-items:center;gap:10px;padding:11px;border:2px dashed rgba(234,179,8,.4);border-radius:10px;cursor:pointer;color:#eab308;font-size:12px;font-weight:700;">
+              <i class="fa-solid fa-cloud-arrow-up" style="font-size:16px;flex-shrink:0;"></i>
+              <span id="reg-cert-text">Sélectionner un fichier</span>
+              <input type="file" id="reg-cert-file" accept="image/*,.pdf" style="display:none" onchange="_regCertFileChange(this)">
+            </label>
+          </div>
+        </div>
         <div class="reg-global-err" id="reg-global-err">Erreur</div>
         <div class="reg-cta">
           <button class="reg-btn" id="reg-btn3" onclick="regStepIdentity()">CRÉER MON COMPTE</button>
@@ -15208,7 +15297,8 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
       <div class="reg-step" id="reg-s5">
         <div class="reg-check-circle">&#10003;</div>
         <div class="reg-win-title">Bienvenue sur<br>GENESIS !</div>
-        <div class="reg-win-sub">Votre compte a été créé avec succès.<br>Vous allez être redirigé vers votre profil.</div>
+        <div class="reg-win-sub" id="reg-win-sub-default">Votre compte a été créé avec succès.<br>Vous allez être redirigé vers votre profil.</div>
+        <div class="reg-win-sub" id="reg-win-sub-student" style="display:none;">Compte étudiant créé !<br><span style="color:#eab308;font-weight:800;">Justificatif en cours de validation (24h).</span><br>Accès complet immédiat pendant la vérification.</div>
       </div>
     </div>
   </div>

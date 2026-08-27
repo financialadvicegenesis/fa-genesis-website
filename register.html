@@ -124,6 +124,25 @@ header{position:sticky;top:0;z-index:100;display:flex;align-items:center;justify
 
     <div class="err-banner" id="err-1"></div>
 
+    <!-- Sélecteur de profil -->
+    <div class="frm-group">
+      <label class="frm-label">Vous êtes…</label>
+      <div id="account-type-btns" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:4px;">
+        <button type="button" id="atype-etudiant" onclick="selectAccountType('etudiant')"
+          style="flex:1;min-width:100px;padding:10px 8px;border-radius:10px;border:2px solid #2a2a2a;background:#111;color:#aaa;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;display:flex;flex-direction:column;align-items:center;gap:4px;">
+          <i class="fa-solid fa-graduation-cap" style="font-size:18px;"></i>Étudiant
+        </button>
+        <button type="button" id="atype-particulier" onclick="selectAccountType('particulier')"
+          style="flex:1;min-width:100px;padding:10px 8px;border-radius:10px;border:2px solid #2a2a2a;background:#111;color:#aaa;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;display:flex;flex-direction:column;align-items:center;gap:4px;">
+          <i class="fa-solid fa-user" style="font-size:18px;"></i>Particulier
+        </button>
+        <button type="button" id="atype-entreprise" onclick="selectAccountType('entreprise')"
+          style="flex:1;min-width:100px;padding:10px 8px;border-radius:10px;border:2px solid #2a2a2a;background:#111;color:#aaa;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;display:flex;flex-direction:column;align-items:center;gap:4px;">
+          <i class="fa-solid fa-building" style="font-size:18px;"></i>Entreprise
+        </button>
+      </div>
+    </div>
+
     <div class="frm-row">
       <div class="frm-group">
         <label class="frm-label">Prénom</label>
@@ -183,6 +202,20 @@ header{position:sticky;top:0;z-index:100;display:flex;align-items:center;justify
       </div>
     </div>
 
+    <!-- Justificatif étudiant (affiché uniquement si profil = étudiant) -->
+    <div id="student-cert-section" style="display:none;margin-bottom:16px;">
+      <div style="background:rgba(234,179,8,.06);border:1.5px solid rgba(234,179,8,.25);border-radius:12px;padding:16px;">
+        <div style="font-size:13px;font-weight:800;color:#eab308;margin-bottom:6px;"><i class="fa-solid fa-graduation-cap" style="margin-right:6px;"></i>Justificatif étudiant</div>
+        <div style="font-size:12px;color:#888;margin-bottom:12px;line-height:1.6;">Uploadez votre certificat de scolarité (photo ou PDF). Votre statut étudiant sera validé sous 24h et vous donnera accès aux tarifs préférentiels.</div>
+        <label id="cert-upload-label" style="display:flex;align-items:center;gap:10px;padding:12px;border:2px dashed rgba(234,179,8,.4);border-radius:10px;cursor:pointer;color:#eab308;font-size:13px;font-weight:700;transition:border-color .2s;">
+          <i class="fa-solid fa-cloud-arrow-up" style="font-size:18px;"></i>
+          <span id="cert-upload-text">Cliquer pour sélectionner un fichier</span>
+          <input type="file" id="f-cert" accept="image/*,.pdf" style="display:none" onchange="onCertFileChange(this)">
+        </label>
+        <div style="font-size:11px;color:#666;margin-top:8px;">Formats acceptés : JPG, PNG, PDF — 5 Mo max. Vous pouvez aussi le soumettre plus tard depuis votre espace personnel.</div>
+      </div>
+    </div>
+
     <div class="terms-check">
       <input type="checkbox" id="f-terms">
       <label for="f-terms">J'accepte les <a href="conditions-generales.html" target="_blank">Conditions Générales</a> et la <a href="confidentialite.html" target="_blank">Politique de Confidentialité</a> de FA GENESIS.</label>
@@ -201,7 +234,8 @@ header{position:sticky;top:0;z-index:100;display:flex;align-items:center;justify
     <div class="success-wrap">
       <div class="success-icon"><i class="fa-solid fa-check"></i></div>
       <div class="success-title">Compte créé !</div>
-      <div class="success-sub">Bienvenue chez FA GENESIS, <strong id="success-name">membre</strong> !<br>Votre espace client est prêt. Explorez vos commandes, livrables et bien plus.</div>
+      <div class="success-sub" id="success-sub-default">Bienvenue chez FA GENESIS, <strong id="success-name">membre</strong> !<br>Votre espace client est prêt. Explorez vos commandes, livrables et bien plus.</div>
+      <div class="success-sub" id="success-sub-student" style="display:none;">Bienvenue <strong id="success-name-2">membre</strong> !<br>Votre compte étudiant est créé. <strong>Votre justificatif est en cours de validation</strong> (sous 24h). En attendant, vous pouvez déjà explorer toutes les fonctionnalités.</div>
       <button class="btn-primary" style="max-width:360px;margin:0 auto" onclick="goApp()">
         Accéder à mon espace client <i class="fa-solid fa-arrow-right" style="font-size:11px"></i>
       </button>
@@ -218,6 +252,51 @@ var _redirect = _params.get('redirect') || '';
 var _quoteToken = _params.get('quote_token') || '';
 var _cwDevisId = _params.get('cw_devis_id') || '';
 var _refCode = _params.get('ref') || '';
+var _accountType = '';
+var _certBase64 = '';
+
+function selectAccountType(type) {
+  _accountType = type;
+  ['etudiant','particulier','entreprise'].forEach(function(t) {
+    var btn = document.getElementById('atype-'+t);
+    if (!btn) return;
+    if (t === type) {
+      btn.style.borderColor = '#FFD700';
+      btn.style.color = '#FFD700';
+      btn.style.background = 'rgba(255,215,0,0.06)';
+    } else {
+      btn.style.borderColor = '#2a2a2a';
+      btn.style.color = '#aaa';
+      btn.style.background = '#111';
+    }
+  });
+  var certSection = document.getElementById('student-cert-section');
+  if (certSection) certSection.style.display = type === 'etudiant' ? 'block' : 'none';
+}
+
+function onCertFileChange(inp) {
+  if (!inp || !inp.files || !inp.files[0]) return;
+  var file = inp.files[0];
+  if (file.size > 5 * 1024 * 1024) {
+    alert('Fichier trop volumineux (max 5 Mo). Veuillez compresser votre image.');
+    inp.value = '';
+    return;
+  }
+  var label = document.getElementById('cert-upload-text');
+  if (label) label.textContent = 'Chargement…';
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    _certBase64 = e.target.result;
+    if (label) label.textContent = file.name + ' ✓';
+    var uploadLabel = document.getElementById('cert-upload-label');
+    if (uploadLabel) { uploadLabel.style.borderColor = 'rgba(34,197,94,.5)'; uploadLabel.style.color = '#22c55e'; }
+  };
+  reader.onerror = function() {
+    if (label) label.textContent = 'Erreur — réessayez';
+    _certBase64 = '';
+  };
+  reader.readAsDataURL(file);
+}
 
 // Pré-remplir le code de parrainage depuis l'URL
 (function(){
@@ -316,6 +395,8 @@ async function doRegister(){
     var body = {prenom:prenom, nom:nom, email:email, password:pwd};
     if(tel) body.telephone = tel;
     if(_offre) body.offre = _offre;
+    if(_accountType) body.accountType = _accountType;
+    if(_accountType === 'etudiant' && _certBase64) body.studentCertificate = _certBase64;
     var refField = (document.getElementById('f-ref')||{}).value || '';
     var finalRef = (refField.trim() || _refCode || '').trim();
     if(finalRef) body.referralCode = finalRef;
@@ -353,6 +434,15 @@ async function doRegister(){
     var fn = prenom || (data.user && (data.user.prenom||data.user.firstName)) || 'nouveau membre';
     var el = document.getElementById('success-name');
     if(el) el.textContent = fn;
+    var el2 = document.getElementById('success-name-2');
+    if(el2) el2.textContent = fn;
+    // Message étudiant vs standard
+    var subDefault = document.getElementById('success-sub-default');
+    var subStudent = document.getElementById('success-sub-student');
+    if(_accountType === 'etudiant' && _certBase64 && subDefault && subStudent) {
+      subDefault.style.display = 'none';
+      subStudent.style.display = '';
+    }
 
     // Accepter devis si quote_token
     if(_quoteToken && data.token){
