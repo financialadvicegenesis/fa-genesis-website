@@ -3569,7 +3569,7 @@
             orders.forEach(function(order) {
                 var date = order.created_at ? new Date(order.created_at).toLocaleDateString('fr-FR') : '';
                 var bgColor = statusColors[order.status] || '#777';
-                var label = statusLabels[order.status] || (order.status ? order.status.toUpperCase() : '\u2014');
+                var label = (order.status === 'pending_deposit' && !isSplit) ? 'PAIEMENT EN ATTENTE' : (statusLabels[order.status] || (order.status ? order.status.toUpperCase() : '\u2014'));
                 var clientName = order.client_info ? ((order.client_info.first_name || order.client_info.firstName || '') + ' ' + (order.client_info.last_name || order.client_info.lastName || '')) : 'N/A';
                 var clientEmail = order.client_info ? order.client_info.email : '';
                 var isSplit = (parseFloat(order.balance_amount) || 0) > 0;
