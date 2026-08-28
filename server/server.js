@@ -4903,12 +4903,13 @@ app.get('/api/client/wallet', function(req, res) {
         var dispatches = loadDispatches();
 
         var clientOrders = orders.filter(function(o) {
-            return o.product_type === 'partner_service' &&
-                   o.client_info && o.client_info.email &&
-                   o.client_info.email.toLowerCase() === user.email.toLowerCase() &&
-                   o.status !== 'cancelled' &&
-                   o.status !== 'refunded' &&
-                   Array.isArray(o.installments) && o.installments.length > 0;
+            if (!o.client_info || !o.client_info.email) return false;
+            if (o.client_info.email.toLowerCase() !== user.email.toLowerCase()) return false;
+            if (o.status === 'cancelled' || o.status === 'refunded') return false;
+            // Inclure : commandes avec installments (modèle événementiel) OU avec deposit_paid (modèle standard)
+            var hasInstallments = Array.isArray(o.installments) && o.installments.length > 0;
+            var hasDeposit = o.deposit_paid === true;
+            return hasInstallments || hasDeposit;
         });
 
         var totalHeld = 0;
@@ -4918,26 +4919,51 @@ app.get('/api/client/wallet', function(req, res) {
         clientOrders.forEach(function(order) {
             var held = 0;
             var released = 0;
-            order.installments.forEach(function(inst) {
-                if (!inst.paid) return;
-                var payout = payouts.find(function(p) {
-                    return p.order_id === order.id && p.stage === inst.stage;
+            var partner = partners.find(function(p) { return p.id === order.partner_id; });
+            var partnerName = partner ? ((partner.prenom || partner.firstName || '') + ' ' + (partner.nom || partner.lastName || '')).trim() || partner.email : 'Prestataire';
+
+            if (Array.isArray(order.installments) && order.installments.length > 0) {
+                // Modèle événementiel : installments 30/40/30
+                order.installments.forEach(function(inst) {
+                    if (!inst.paid) return;
+                    var payout = payouts.find(function(p) {
+                        return p.order_id === order.id && p.stage === inst.stage;
+                    });
+                    if (payout && payout.status === 'sent') {
+                        released += parseFloat(inst.amount) || 0;
+                    } else {
+                        held += parseFloat(inst.amount) || 0;
+                    }
                 });
-                if (payout && payout.status === 'sent') {
-                    released += parseFloat(inst.amount) || 0;
+            } else {
+                // Modèle standard : deposit_paid / balance_paid
+                var isComplete = order.status === 'completed' || order.status === 'delivered' || order.client_validated === true;
+                var isSplit = (parseFloat(order.balance_amount) || 0) > 0;
+                if (isSplit) {
+                    var depositAmt = parseFloat(order.deposit_amount) || 0;
+                    var balAmt = parseFloat(order.balance_amount) || 0;
+                    if (order.balance_paid) {
+                        released += depositAmt + balAmt;
+                    } else if (order.deposit_paid) {
+                        held += depositAmt;
+                        if (order.balance_payment_ready) held += balAmt;
+                    }
                 } else {
-                    held += parseFloat(inst.amount) || 0;
+                    var totalAmt = parseFloat(order.deposit_amount) || parseFloat(order.total_amount) || 0;
+                    if (isComplete) {
+                        released += totalAmt;
+                    } else if (order.deposit_paid) {
+                        held += totalAmt;
+                    }
                 }
-            });
+            }
+
             if (held === 0 && released === 0) return;
             totalHeld += held;
             totalReleased += released;
-            var partner = partners.find(function(p) { return p.id === order.partner_id; });
-            var partnerName = partner ? ((partner.prenom || partner.firstName || '') + ' ' + (partner.nom || partner.lastName || '')).trim() || partner.email : 'Prestataire';
             var statusLabel = held > 0 && order.delivery_confirmed ? 'En cours de versement'
                             : held > 0 ? 'Sécurisé jusqu\'à la livraison'
                             : 'Versé au prestataire ✓';
-            // Éligibilité retrait GENESIS SAFE
             var dispatch = dispatches.find(function(d) { return d.order_id === order.id; });
             var partnerInactive = partner && partner.accountStatus && partner.accountStatus !== 'active';
             var dispatchNotAccepted = !dispatch || dispatch.status === 'pending_acceptance';
