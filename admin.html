@@ -2470,38 +2470,12 @@
 
             var offer = typeof getOfferById === 'function' ? getOfferById(client.offre) : null;
 
-            // Charger les documents depuis le backend API
-            var documents = {};
-            var clientOrderId = null;
-            var currentDay = 0;
-            var totalDays = 0;
-
+            // Charger les commandes du client
+            var clientOrders = [];
             try {
-                // Récupérer la commande du client
                 var ordersResp = await fetch(API_BASE_URL + '/api/client/orders?email=' + encodeURIComponent(clientEmail));
-                if (ordersResp.ok) {
-                    var clientOrders = await ordersResp.json();
-                    var activeOrder = clientOrders.find(function(o) { return o.deposit_paid; }) || clientOrders[0];
-                    if (activeOrder) {
-                        clientOrderId = activeOrder.id;
-                        // Récupérer le jour courant
-                        var dashResp = await fetch(API_BASE_URL + '/api/client/dashboard/' + activeOrder.id);
-                        if (dashResp.ok) {
-                            var dashData = await dashResp.json();
-                            currentDay = dashData.currentDay || 0;
-                            totalDays = dashData.totalDays || 0;
-                        }
-                    }
-                }
-                // Récupérer les livrables depuis le backend
-                var livResp = await fetch(API_BASE_URL + '/api/livrables/by-email/' + encodeURIComponent(clientEmail));
-                if (livResp.ok) {
-                    var livData = await livResp.json();
-                    documents = livData.byDay || {};
-                }
-            } catch (e) {
-                console.error('[ADMIN] Erreur chargement données client:', e);
-            }
+                if (ordersResp.ok) clientOrders = await ordersResp.json();
+            } catch(e) { console.error('[ADMIN] Erreur commandes:', e); }
 
             // Computed fields
             var acctTypeLabel = {etudiant:'Étudiant',particulier:'Particulier',entreprise:'Entreprise'}[client.accountType] || (client.accountType || 'Particulier');
@@ -2510,9 +2484,9 @@
             var studStatusHtml = '';
             if (studStatus === 'pending') {
                 studStatusHtml = '<span style="background:#f59e0b;color:black;padding:2px 10px;font-size:11px;font-weight:900;border:2px solid black;margin-left:8px;">JUSTIFICATIF EN ATTENTE</span>'
-+ ' <button onclick="adminVerifyStudent(\'' + (client.id||client.email) + '\',\'' + client.email + '\',\'verify\')" style="background:#22c55e;border:2px solid black;color:black;padding:3px 10px;font-size:11px;font-weight:900;cursor:pointer;margin-left:4px;"><i class="fas fa-check mr-1"></i>Valider</button>'
-+ ' <button onclick="adminVerifyStudent(\'' + (client.id||client.email) + '\',\'' + client.email + '\',\'reject\')" style="background:#ef4444;border:2px solid black;color:white;padding:3px 10px;font-size:11px;font-weight:900;cursor:pointer;margin-left:4px;"><i class="fas fa-times mr-1"></i>Rejeter</button>'
-+ ' <button onclick="adminViewStudentCert(\'' + (client.id||client.email) + '\')" style="background:#222;border:2px solid var(--genesis-yellow);color:var(--genesis-yellow);padding:3px 10px;font-size:11px;font-weight:900;cursor:pointer;margin-left:4px;"><i class="fas fa-file mr-1"></i>Voir justificatif</button>';
+                    + ' <button onclick="adminVerifyStudent(\'' + (client.id||client.email) + '\',\'' + client.email + '\',\'verify\')" style="background:#22c55e;border:2px solid black;color:black;padding:3px 10px;font-size:11px;font-weight:900;cursor:pointer;margin-left:4px;"><i class="fas fa-check mr-1"></i>Valider</button>'
+                    + ' <button onclick="adminVerifyStudent(\'' + (client.id||client.email) + '\',\'' + client.email + '\',\'reject\')" style="background:#ef4444;border:2px solid black;color:white;padding:3px 10px;font-size:11px;font-weight:900;cursor:pointer;margin-left:4px;"><i class="fas fa-times mr-1"></i>Rejeter</button>'
+                    + ' <button onclick="adminViewStudentCert(\'' + (client.id||client.email) + '\')" style="background:#222;border:2px solid var(--genesis-yellow);color:var(--genesis-yellow);padding:3px 10px;font-size:11px;font-weight:900;cursor:pointer;margin-left:4px;"><i class="fas fa-file mr-1"></i>Voir justificatif</button>';
             } else if (studStatus === 'verified') {
                 studStatusHtml = '<span style="background:#22c55e;color:black;padding:2px 10px;font-size:11px;font-weight:900;border:2px solid black;margin-left:8px;"><i class="fas fa-check mr-1"></i>ÉTUDIANT VÉRIFIÉ</span>';
             } else if (studStatus === 'rejected') {
@@ -2522,6 +2496,53 @@
             var badgeColors = {bronze:'#cd7f32',argent:'#9ca3af',or:'#f59e0b',elite:'#a78bfa'};
             var clientBadge = client.badge || null;
             var badgeHtml = clientBadge ? '<span style="background:' + (badgeColors[clientBadge]||'#555') + ';color:black;padding:2px 10px;font-size:11px;font-weight:900;border:2px solid black;">' + (badgeLabels[clientBadge]||clientBadge) + '</span>' : '<span style="opacity:.45;font-size:12px;">—</span>';
+
+            // Render orders inline
+            var ordersHtml = '';
+            if (!clientOrders.length) {
+                ordersHtml = '<p class="text-center py-6 opacity-50 font-bold">Aucune commande</p>';
+            } else {
+                var mStatusColors = { pending_acceptance: '#f59e0b', in_progress: '#60a5fa', delivering: '#a78bfa', completed: '#22c55e', declined: '#ef4444' };
+                var mStatusLabels = { pending_acceptance: 'En attente acceptation', in_progress: 'En cours', delivering: 'En livraison', completed: 'Terminé', declined: 'Refusé' };
+                var pStatusColors = { registered: '#9ca3af', deposit_paid: '#f59e0b', delivery_pending_payment: '#60a5fa', fully_paid: '#22c55e' };
+                var pStatusLabels = { registered: 'Inscrit', deposit_paid: 'Acompte payé', delivery_pending_payment: 'Solde en attente', fully_paid: 'Payé' };
+                clientOrders.forEach(function(order) {
+                    var oDate = order.created_at ? new Date(order.created_at).toLocaleDateString('fr-FR') : '';
+                    var pStat = pStatusColors[order.paymentStatus] || '#9ca3af';
+                    var pLab = pStatusLabels[order.paymentStatus] || (order.paymentStatus || '—');
+                    var missionTag = '';
+                    if (order.partner_completed) {
+                        if (order.client_validated) {
+                            missionTag = '<span style="background:#22c55e;color:black;padding:1px 8px;font-size:10px;font-weight:900;border:1px solid black;margin-left:6px;"><i class="fas fa-check mr-1"></i>Validée client</span>';
+                        } else {
+                            missionTag = '<span style="background:#f59e0b;color:black;padding:1px 8px;font-size:10px;font-weight:900;border:1px solid black;margin-left:6px;"><i class="fas fa-flag mr-1"></i>Déclarée terminée — Attente validation</span>';
+                        }
+                    }
+                    var depositBtn = !order.deposit_paid ? '<button onclick="confirmDeposit(\'' + order.id + '\')" style="background:#22c55e;border:2px solid black;color:black;padding:3px 10px;font-size:11px;font-weight:900;cursor:pointer;"><i class="fas fa-check mr-1"></i>Confirmer acompte</button> ' : '';
+                    var balanceBtn = (order.deposit_paid && !order.balance_paid && !order.balance_payment_ready) ? '<button onclick="unlockBalance(\'' + order.id + '\')" style="background:#ff922b;border:2px solid black;color:black;padding:3px 10px;font-size:11px;font-weight:900;cursor:pointer;"><i class="fas fa-flag-checkered mr-1"></i>Débloquer solde</button> ' : '';
+                    var waitingBalance = (order.balance_payment_ready && !order.balance_paid) ? '<span style="background:#fff3cd;border:2px solid #ff922b;color:#b35900;padding:3px 10px;font-size:11px;font-weight:900;display:inline-block;">Attente paiement solde</span> ' : '';
+                    ordersHtml += '<div style="background:#181818;border:1px solid rgba(255,215,0,.15);border-radius:10px;padding:14px;margin-bottom:10px;">'
+                        + '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:8px;">'
+                            + '<div>'
+                                + '<div style="font-size:10px;color:#666;font-weight:700;margin-bottom:2px;">' + order.id + ' · ' + oDate + '</div>'
+                                + '<div style="font-size:14px;font-weight:900;color:#e0e0e0;">' + (order.product_name || 'Commande') + missionTag + '</div>'
+                            + '</div>'
+                            + '<div style="text-align:right;">'
+                                + '<div style="font-size:18px;font-weight:900;color:var(--genesis-yellow);">' + (order.total_amount || 0) + '€</div>'
+                                + '<div style="font-size:11px;color:#aaa;">Acompte ' + (order.deposit_amount || 0) + '€ · Solde ' + (order.balance_amount || 0) + '€</div>'
+                            + '</div>'
+                        + '</div>'
+                        + '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">'
+                            + '<span style="background:' + pStat + ';color:black;padding:1px 10px;font-size:10px;font-weight:900;border:1px solid black;">' + pLab + '</span>'
+                            + (order.deposit_paid ? '<span style="color:#22c55e;font-size:11px;font-weight:900;"><i class="fas fa-check mr-1"></i>Acompte</span>' : '<span style="color:#ef4444;font-size:11px;font-weight:900;"><i class="fas fa-times mr-1"></i>Acompte</span>')
+                            + ' · '
+                            + (order.balance_paid ? '<span style="color:#22c55e;font-size:11px;font-weight:900;"><i class="fas fa-check mr-1"></i>Solde</span>' : '<span style="color:#ef4444;font-size:11px;font-weight:900;"><i class="fas fa-times mr-1"></i>Solde</span>')
+                        + '</div>'
+                        + ((depositBtn || balanceBtn || waitingBalance) ? '<div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.06);display:flex;gap:6px;flex-wrap:wrap;">' + depositBtn + balanceBtn + waitingBalance + '</div>' : '')
+                    + '</div>';
+                });
+            }
+
             let modalHTML = `
                 <div class="flex justify-between items-start mb-6">
                     <div>
@@ -2533,7 +2554,7 @@
                             ${studStatusHtml}
                         </div>
                     </div>
-                    <button onclick="deleteClient('${client.email}')" class="border-4 border-red-600 bg-red-600 text-white px-4 py-2 text-xs font-black hover:bg-red-700" title="Supprimer ce client">
+                    <button onclick="deleteClient('${client.email}')" class="border-4 border-red-600 bg-red-600 text-white px-4 py-2 text-xs font-black hover:bg-red-700">
                         <i class="fas fa-trash mr-1"></i>SUPPRIMER
                     </button>
                 </div>
@@ -2552,18 +2573,6 @@
                         <p class="font-black">${new Date(client.createdAt || client.created_at || Date.now()).toLocaleDateString('fr-FR')}</p>
                     </div>
                     <div>
-                        <p class="text-sm font-bold uppercase opacity-70 mb-1">Offre</p>
-                        <p class="font-black">${offer ? offer.nom : (client.offre || 'N/A')}</p>
-                    </div>
-                    <div>
-                        <p class="text-sm font-bold uppercase opacity-70 mb-1">Statut paiement</p>
-                        <p class="font-black">${getStatusLabel(client.paymentStatus)}</p>
-                    </div>
-                    <div>
-                        <p class="text-sm font-bold uppercase opacity-70 mb-1">Jour actuel</p>
-                        <p class="font-black">Jour ${currentDay}${totalDays ? ' / ' + totalDays : ''}</p>
-                    </div>
-                    <div>
                         <p class="text-sm font-bold uppercase opacity-70 mb-1">Points QG</p>
                         <p class="font-black" style="color:var(--genesis-yellow);">${client.genesisPoints || 0} QG</p>
                     </div>
@@ -2572,177 +2581,64 @@
                         <p class="font-black">${badgeHtml}</p>
                     </div>
                     <div>
-                        <p class="text-sm font-bold uppercase opacity-70 mb-1">Documents ajoutés</p>
-                        <p class="font-black" id="docsCount">0 documents</p>
+                        <p class="text-sm font-bold uppercase opacity-70 mb-1">Parrainage</p>
+                        <p class="font-black" style="font-size:12px;">${client.referralCode ? client.referralCode + (client.referralCount ? ' · ' + client.referralCount + ' filleul(s)' : '') : '—'}</p>
                     </div>
                 </div>
 
-                <hr class="border-2 border-black my-8">
-
-                <h3 class="text-2xl font-black italic uppercase mb-6">
-                    <i class="fas fa-file-upload mr-3"></i>AJOUTER UN DOCUMENT
-                </h3>
-
-                <form id="uploadDocumentForm" class="mb-8">
-                    <input type="hidden" id="currentClientEmail" value="${clientEmail}">
-                    <input type="hidden" id="currentClientOrderId" value="${clientOrderId || ''}">
-
-                    <div class="grid md:grid-cols-2 gap-4 mb-4">
-                        <div>
-                            <label class="block font-black mb-2 uppercase text-sm">Jour</label>
-                            <input type="number" id="docDay" min="1" value="${currentDay > 0 ? currentDay : 1}" required>
-                        </div>
-                        <div>
-                            <label class="block font-black mb-2 uppercase text-sm">Titre du document</label>
-                            <input type="text" id="docTitle" placeholder="Ex: Plan d'action Jour 5" required>
-                        </div>
-                    </div>
-
-                    <div class="mb-4">
-                        <label class="block font-black mb-2 uppercase text-sm">Description (optionnelle)</label>
-                        <textarea id="docDescription" rows="2" placeholder="Description du document..."></textarea>
-                    </div>
-
-                    <div class="mb-4">
-                        <label class="block font-black mb-2 uppercase text-sm">Fichier</label>
-                        <input type="file" id="docFile" required class="text-sm">
-                        <p class="text-xs font-bold opacity-50 mt-2">Formats acceptés: PDF, DOCX, XLSX, PNG, JPG, ZIP</p>
-                    </div>
-
-                    <button type="submit" class="neo-btn-yellow px-8 py-3 text-lg">
-                        <i class="fas fa-upload mr-2"></i>Ajouter le document
-                    </button>
-                </form>
-
-                <hr class="border-2 border-black my-8">
-
-                <h3 class="text-2xl font-black italic uppercase mb-6">
-                    <i class="fas fa-folder-open mr-3"></i>DOCUMENTS DU CLIENT
-                </h3>
-
-                <div id="clientDocumentsList">
-                    ${renderClientDocuments(documents, clientEmail)}
+                <div style="background:rgba(255,215,0,.05);border:1.5px solid rgba(255,215,0,.2);border-radius:12px;padding:20px;margin-bottom:24px;">
+                    <h3 style="font-family:'Unbounded',cursive;font-size:16px;font-weight:900;text-transform:uppercase;color:var(--genesis-yellow);margin-bottom:16px;">
+                        <i class="fas fa-receipt mr-2"></i>Commandes & Missions
+                    </h3>
+                    ${ordersHtml}
                 </div>
 
-                <hr class="border-2 border-black my-8">
-
-                <h3 class="text-2xl font-black italic uppercase mb-6">
-                    <i class="fas fa-video mr-3"></i>GESTION DES SÉANCES
-                </h3>
-
-                <form id="addSessionForm" class="mb-8">
-                    <input type="hidden" id="sessionClientEmail" value="${clientEmail}">
-
-                    <div class="grid md:grid-cols-3 gap-4 mb-4">
-                        <div>
-                            <label class="block font-black mb-2 uppercase text-sm">Date</label>
-                            <input type="date" id="sessionDate" required>
-                        </div>
-                        <div>
-                            <label class="block font-black mb-2 uppercase text-sm">Heure</label>
-                            <input type="time" id="sessionHeure" required>
-                        </div>
-                        <div>
-                            <label class="block font-black mb-2 uppercase text-sm">Durée</label>
-                            <input type="text" id="sessionDuree" placeholder="Ex: 1h00" required>
-                        </div>
-                    </div>
-
-                    <div class="grid md:grid-cols-2 gap-4 mb-4">
-                        <div>
-                            <label class="block font-black mb-2 uppercase text-sm">Type de séance</label>
-                            <select id="sessionType" required>
-                                <option value="">Sélectionner...</option>
-                                <option value="Séance stratégique">Séance stratégique</option>
-                                <option value="Point de suivi">Point de suivi</option>
-                                <option value="Briefing tournage">Briefing tournage</option>
-                                <option value="Shooting photo">Shooting photo</option>
-                                <option value="Tournage vidéo">Tournage vidéo</option>
-                                <option value="Bilan final">Bilan final</option>
-                                <option value="Consultation">Consultation</option>
-                                <option value="Formation">Formation</option>
-                                <option value="Autre">Autre</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block font-black mb-2 uppercase text-sm">Icône</label>
-                            <select id="sessionIcon">
-                                <option value="fa-video">📹 Visio</option>
-                                <option value="fa-comments">💬 Discussion</option>
-                                <option value="fa-lightbulb">💡 Stratégie</option>
-                                <option value="fa-camera">📷 Photo</option>
-                                <option value="fa-film">🎬 Vidéo</option>
-                                <option value="fa-rocket">🚀 Lancement</option>
-                                <option value="fa-check-circle">✅ Bilan</option>
-                                <option value="fa-calendar">📅 Rendez-vous</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="mb-4">
-                        <label class="block font-black mb-2 uppercase text-sm">Description</label>
-                        <textarea id="sessionDescription" rows="2" placeholder="Description de la séance..."></textarea>
-                    </div>
-
-                    <div class="grid md:grid-cols-2 gap-4 mb-4">
-                        <div>
-                            <label class="block font-black mb-2 uppercase text-sm">
-                                <i class="fas fa-link mr-1"></i>Lien visio (Google Meet, Zoom...)
-                            </label>
-                            <input type="url" id="sessionVisioLink" placeholder="https://meet.google.com/xxx-xxxx-xxx">
-                        </div>
-                        <div>
-                            <label class="block font-black mb-2 uppercase text-sm">
-                                <i class="fas fa-map-marker-alt mr-1"></i>Ou lieu physique (optionnel)
-                            </label>
-                            <input type="text" id="sessionLieu" placeholder="Ex: Studio FA Genesis, Paris">
-                        </div>
-                    </div>
-
-                    <button type="submit" class="neo-btn-yellow px-8 py-3 text-lg">
-                        <i class="fas fa-plus mr-2"></i>Ajouter la séance
-                    </button>
-                </form>
-
-                <h4 class="text-xl font-black italic uppercase mb-4">
-                    <i class="fas fa-calendar-alt mr-2"></i>Séances planifiées
-                </h4>
-                <div id="clientSessionsList">
-                    <p class="text-center py-4 opacity-50 font-bold">Chargement...</p>
-                </div>
-
-                <hr class="border-2 border-black my-8">
-
-                <div id="partnerAssignmentSection">
-                    <p class="text-center py-4 opacity-50 font-bold">Chargement partenaires...</p>
+                <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:20px;">
+                    <h3 style="font-family:'Unbounded',cursive;font-size:16px;font-weight:900;text-transform:uppercase;color:#e0e0e0;margin-bottom:16px;">
+                        <i class="fas fa-box-open mr-2"></i>Livrables
+                    </h3>
+                    <div id="clientLivrablesList"><p style="text-align:center;padding:12px 0;opacity:.45;font-weight:700;font-size:13px;"><i class="fas fa-spinner fa-spin mr-2"></i>Chargement...</p></div>
                 </div>
             `;
 
             document.getElementById('clientModalContent').innerHTML = modalHTML;
             document.getElementById('clientModal').style.display = 'block';
 
-            // Mettre à jour le compteur de documents
-            var totalDocs = Object.values(documents).reduce(function(sum, arr) { return sum + arr.length; }, 0);
-            var docsCountEl = document.getElementById('docsCount');
-            if (docsCountEl) docsCountEl.textContent = totalDocs + ' document' + (totalDocs > 1 ? 's' : '');
+            // Charger les livrables
+            loadClientLivrables(clientEmail);
+        }
 
-            // Gestionnaire du formulaire d'upload de documents
-            document.getElementById('uploadDocumentForm').addEventListener('submit', handleDocumentUpload);
-
-            // Gestionnaire du formulaire d'ajout de séance
-            document.getElementById('addSessionForm').addEventListener('submit', handleAddSession);
-
-            // Charger les séances du client
-            loadClientSessions(clientEmail);
-
-            // Charger les partenaires assignes si commande existante
-            if (clientOrderId) {
-                loadPartnerAssignment(clientOrderId, 'partnerAssignmentSection');
-            } else {
-                var pas = document.getElementById('partnerAssignmentSection');
-                if (pas) pas.innerHTML = '<p class="text-sm opacity-50 font-bold">Pas de commande active - impossible d\'assigner des partenaires</p>';
+        async function loadClientLivrables(clientEmail) {
+            var el = document.getElementById('clientLivrablesList');
+            if (!el) return;
+            try {
+                var resp = await fetch(API_BASE_URL + '/api/livrables/by-email/' + encodeURIComponent(clientEmail));
+                if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                var data = await resp.json();
+                var livrables = data.livrables || [];
+                if (!livrables.length) {
+                    el.innerHTML = '<p style="text-align:center;padding:12px 0;opacity:.45;font-weight:700;font-size:13px;">Aucun livrable pour l\'instant</p>';
+                    return;
+                }
+                var html = '';
+                livrables.forEach(function(l) {
+                    var date = l.created_at || l.uploadedAt ? new Date(l.created_at || l.uploadedAt).toLocaleDateString('fr-FR') : '';
+                    var validated = l.client_validated_at ? '<span style="background:#22c55e;color:black;padding:1px 8px;font-size:10px;font-weight:900;border:1px solid black;margin-left:6px;"><i class="fas fa-check mr-1"></i>Validé</span>' : '<span style="background:#f59e0b;color:black;padding:1px 8px;font-size:10px;font-weight:900;border:1px solid black;margin-left:6px;">En attente</span>';
+                    html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:rgba(255,255,255,.04);border-radius:8px;margin-bottom:6px;flex-wrap:wrap;gap:8px;">'
+                        + '<div>'
+                            + '<div style="font-weight:900;font-size:13px;color:#e0e0e0;">' + (l.name || l.title || 'Livrable') + validated + '</div>'
+                            + (l.description ? '<div style="font-size:11px;color:#888;margin-top:2px;">' + l.description + '</div>' : '')
+                            + '<div style="font-size:10px;color:#555;margin-top:2px;">' + (l.type || 'fichier') + (date ? ' · ' + date : '') + '</div>'
+                        + '</div>'
+                        + (l.url ? '<a href="' + l.url + '" target="_blank" style="background:#222;border:1px solid rgba(255,215,0,.3);color:var(--genesis-yellow);padding:4px 12px;font-size:11px;font-weight:900;border-radius:6px;text-decoration:none;"><i class="fas fa-download mr-1"></i>Voir</a>' : '')
+                    + '</div>';
+                });
+                el.innerHTML = html;
+            } catch(e) {
+                el.innerHTML = '<p style="text-align:center;padding:12px 0;color:#ef4444;font-weight:700;font-size:13px;">Erreur chargement livrables</p>';
             }
         }
+
 
         function renderClientDocuments(documentsByDay, clientEmail) {
             if (Object.keys(documentsByDay).length === 0) {
