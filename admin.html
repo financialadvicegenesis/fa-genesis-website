@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="fr" class="scroll-smooth">
 <head>
     <meta charset="UTF-8">
@@ -814,6 +814,10 @@
                 <button class="sidebar-btn" data-section="clients" onclick="showSection('clients')">
                     <i class="fas fa-users"></i><span>Clients</span>
                 </button>
+                <button class="sidebar-btn" data-section="etudiants" onclick="showSection('etudiants')">
+                    <i class="fas fa-graduation-cap"></i><span>Étudiants</span>
+                    <span id="pendingStudentsBadge" class="sidebar-badge" style="display:none;"></span>
+                </button>
                 <button class="sidebar-btn" data-section="messages" onclick="showSection('messages')">
                     <i class="fas fa-envelope"></i><span>Messages</span>
                     <span id="unreadBadge" class="sidebar-badge" style="display:none;"></span>
@@ -931,6 +935,31 @@
 
                     <!-- Liste des conversations par client -->
                     <div id="adminInboxList" style="display:none;"></div>
+                </div>
+            </div>
+
+            <!-- SECTION ÉTUDIANTS -->
+            <div id="etudiantsSection" class="container mx-auto max-w-7xl" style="display: none;">
+                <div class="flex justify-between items-center mb-8 flex-wrap gap-4">
+                    <h2 class="text-5xl font-black italic uppercase text-[var(--genesis-yellow)]">
+                        <i class="fas fa-graduation-cap mr-4"></i>ÉTUDIANTS
+                    </h2>
+                    <button onclick="loadStudentsList(_studFilter)" style="background:var(--genesis-yellow);border:3px solid black;padding:8px 18px;font-weight:900;font-size:12px;cursor:pointer;text-transform:uppercase;">
+                        <i class="fas fa-sync-alt mr-1"></i>Actualiser
+                    </button>
+                </div>
+                <!-- Filtres statut -->
+                <div class="admin-card neo-shadow mb-6">
+                    <div class="flex gap-3 flex-wrap">
+                        <button onclick="loadStudentsList('all')" id="studFiltAll" class="neo-btn-yellow px-4 py-2 text-xs">TOUS</button>
+                        <button onclick="loadStudentsList('pending')" id="studFiltPending" class="border-4 border-[#f59e0b] bg-[#f59e0b] text-black px-4 py-2 text-xs font-black">EN ATTENTE <span id="pendingStudCnt"></span></button>
+                        <button onclick="loadStudentsList('verified')" id="studFiltVerified" class="border-4 border-[#22c55e] bg-[#22c55e] text-black px-4 py-2 text-xs font-black">VÉRIFIÉS</button>
+                        <button onclick="loadStudentsList('rejected')" id="studFiltRejected" class="border-4 border-[#ef4444] bg-[#ef4444] text-black px-4 py-2 text-xs font-black">REJETÉS</button>
+                    </div>
+                </div>
+                <!-- Liste étudiants -->
+                <div id="studentsList">
+                    <p class="text-center py-8 opacity-50 font-bold">Chargement...</p>
                 </div>
             </div>
 
@@ -1989,12 +2018,14 @@
             var campagnesEl = document.getElementById('campagnesSection');
             var nouvfonctEl = document.getElementById('nouvfonctSection');
             var niveauxEl = document.getElementById('niveauxSection');
+            var etudiantsEl = document.getElementById('etudiantsSection');
             if (litigesEl) litigesEl.style.display = 'none';
             if (supportEl) supportEl.style.display = 'none';
             if (prospectsEl) prospectsEl.style.display = 'none';
             if (campagnesEl) campagnesEl.style.display = 'none';
             if (nouvfonctEl) nouvfonctEl.style.display = 'none';
             if (niveauxEl) niveauxEl.style.display = 'none';
+            if (etudiantsEl) etudiantsEl.style.display = 'none';
 
             if (section === 'dashboard') {
                 document.getElementById('dashboardSection').style.display = 'block';
@@ -2044,6 +2075,9 @@
             } else if (section === 'actualites') {
                 if (actualitesEl) actualitesEl.style.display = 'block';
                 loadAdminActualites();
+            } else if (section === 'etudiants') {
+                if (etudiantsEl) etudiantsEl.style.display = 'block';
+                loadStudentsList(_studFilter || 'pending');
             }
             // Mettre à jour l'élément actif dans la sidebar
             document.querySelectorAll('.sidebar-btn').forEach(function(b) {
@@ -2350,18 +2384,27 @@
                 var offer = typeof getOfferById === 'function' ? getOfferById(client.offre) : null;
                 if (offer) offerName = offer.nom;
 
+                var acctPill = '';
+                if (client.accountType === 'etudiant') {
+                    var studColor = client.student_status === 'verified' ? '#22c55e' : (client.student_status === 'pending' ? '#f59e0b' : (client.student_status === 'rejected' ? '#ef4444' : '#9ca3af'));
+                    acctPill = '<span style="background:#eab308;color:black;padding:1px 8px;font-size:10px;font-weight:900;border:1px solid black;margin-right:4px;">ÉTUDIANT</span>';
+                    if (client.student_status === 'pending') acctPill += '<span style="background:' + studColor + ';color:black;padding:1px 8px;font-size:10px;font-weight:900;border:1px solid black;">CERT. EN ATTENTE</span>';
+                } else if (client.accountType === 'entreprise') {
+                    acctPill = '<span style="background:#60a5fa;color:black;padding:1px 8px;font-size:10px;font-weight:900;border:1px solid black;">ENTREPRISE</span>';
+                }
                 html += '<div class="client-row" onclick="openClientModal(\'' + client.email + '\')">' +
                     '<div class="flex justify-between items-center flex-wrap gap-4">' +
                         '<div class="flex-1 min-w-[250px]">' +
-                            '<div class="font-black text-lg">' + (client.prenom || '') + ' ' + (client.nom || '') + '</div>' +
+                            '<div class="font-black text-lg">' + (client.prenom || '') + ' ' + (client.nom || '') + (acctPill ? ' ' + acctPill : '') + '</div>' +
                             '<div class="text-sm font-bold opacity-70">' + client.email + '</div>' +
-                            '<div class="text-xs font-bold opacity-50 mt-1">Inscrit le ' + new Date(client.createdAt || Date.now()).toLocaleDateString('fr-FR') + '</div>' +
+                            '<div class="text-xs font-bold opacity-50 mt-1">Inscrit le ' + new Date(client.createdAt || client.created_at || Date.now()).toLocaleDateString('fr-FR') + '</div>' +
                         '</div>' +
                         '<div>' +
                             '<div class="status-badge ' + statusClass + '">' + getStatusLabel(client.paymentStatus) + '</div>' +
                         '</div>' +
                         '<div class="text-right min-w-[200px]">' +
                             '<div class="font-black">' + offerName + '</div>' +
+                            (client.genesisPoints ? '<div class="text-xs font-bold" style="color:var(--genesis-yellow);">' + client.genesisPoints + ' QG</div>' : '') +
                         '</div>' +
                         '<div class="text-right">' +
                             '<button class="neo-btn-yellow px-4 py-2 text-sm">' +
@@ -2460,17 +2503,42 @@
                 console.error('[ADMIN] Erreur chargement données client:', e);
             }
 
+            // Computed fields
+            var acctTypeLabel = {etudiant:'Étudiant',particulier:'Particulier',entreprise:'Entreprise'}[client.accountType] || (client.accountType || 'Particulier');
+            var acctTypeColor = client.accountType === 'etudiant' ? '#eab308' : (client.accountType === 'entreprise' ? '#60a5fa' : '#22c55e');
+            var studStatus = client.student_status || null;
+            var studStatusHtml = '';
+            if (studStatus === 'pending') {
+                studStatusHtml = '<span style="background:#f59e0b;color:black;padding:2px 10px;font-size:11px;font-weight:900;border:2px solid black;margin-left:8px;">JUSTIFICATIF EN ATTENTE</span>'
++ ' <button onclick="adminVerifyStudent(\'' + (client.id||client.email) + '\',\'' + client.email + '\',\'verify\')" style="background:#22c55e;border:2px solid black;color:black;padding:3px 10px;font-size:11px;font-weight:900;cursor:pointer;margin-left:4px;"><i class="fas fa-check mr-1"></i>Valider</button>'
++ ' <button onclick="adminVerifyStudent(\'' + (client.id||client.email) + '\',\'' + client.email + '\',\'reject\')" style="background:#ef4444;border:2px solid black;color:white;padding:3px 10px;font-size:11px;font-weight:900;cursor:pointer;margin-left:4px;"><i class="fas fa-times mr-1"></i>Rejeter</button>'
++ ' <button onclick="adminViewStudentCert(\'' + (client.id||client.email) + '\')" style="background:#222;border:2px solid var(--genesis-yellow);color:var(--genesis-yellow);padding:3px 10px;font-size:11px;font-weight:900;cursor:pointer;margin-left:4px;"><i class="fas fa-file mr-1"></i>Voir justificatif</button>';
+            } else if (studStatus === 'verified') {
+                studStatusHtml = '<span style="background:#22c55e;color:black;padding:2px 10px;font-size:11px;font-weight:900;border:2px solid black;margin-left:8px;"><i class="fas fa-check mr-1"></i>ÉTUDIANT VÉRIFIÉ</span>';
+            } else if (studStatus === 'rejected') {
+                studStatusHtml = '<span style="background:#ef4444;color:white;padding:2px 10px;font-size:11px;font-weight:900;border:2px solid black;margin-left:8px;">JUSTIFICATIF REJETÉ</span>';
+            }
+            var badgeLabels = {bronze:'Créateur',argent:'Bâtisseur',or:'Visionnaire',elite:'Générateur'};
+            var badgeColors = {bronze:'#cd7f32',argent:'#9ca3af',or:'#f59e0b',elite:'#a78bfa'};
+            var clientBadge = client.badge || null;
+            var badgeHtml = clientBadge ? '<span style="background:' + (badgeColors[clientBadge]||'#555') + ';color:black;padding:2px 10px;font-size:11px;font-weight:900;border:2px solid black;">' + (badgeLabels[clientBadge]||clientBadge) + '</span>' : '<span style="opacity:.45;font-size:12px;">—</span>';
             let modalHTML = `
                 <div class="flex justify-between items-start mb-6">
-                    <h2 class="text-3xl font-black italic uppercase text-[var(--genesis-yellow)]">
-                        <i class="fas fa-user-circle mr-3"></i>${client.prenom} ${client.nom}
-                    </h2>
+                    <div>
+                        <h2 class="text-3xl font-black italic uppercase text-[var(--genesis-yellow)]">
+                            <i class="fas fa-user-circle mr-3"></i>${client.prenom} ${client.nom}
+                        </h2>
+                        <div style="margin-top:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                            <span style="background:${acctTypeColor};color:black;padding:2px 12px;font-size:12px;font-weight:900;border:2px solid black;">${acctTypeLabel}</span>
+                            ${studStatusHtml}
+                        </div>
+                    </div>
                     <button onclick="deleteClient('${client.email}')" class="border-4 border-red-600 bg-red-600 text-white px-4 py-2 text-xs font-black hover:bg-red-700" title="Supprimer ce client">
                         <i class="fas fa-trash mr-1"></i>SUPPRIMER
                     </button>
                 </div>
 
-                <div class="grid md:grid-cols-2 gap-6 mb-8">
+                <div class="grid md:grid-cols-3 gap-6 mb-8">
                     <div>
                         <p class="text-sm font-bold uppercase opacity-70 mb-1">Email</p>
                         <p class="font-black">${client.email}</p>
@@ -2480,8 +2548,12 @@
                         <p class="font-black">${client.telephone || 'N/A'}</p>
                     </div>
                     <div>
+                        <p class="text-sm font-bold uppercase opacity-70 mb-1">Inscrit le</p>
+                        <p class="font-black">${new Date(client.createdAt || client.created_at || Date.now()).toLocaleDateString('fr-FR')}</p>
+                    </div>
+                    <div>
                         <p class="text-sm font-bold uppercase opacity-70 mb-1">Offre</p>
-                        <p class="font-black">${offer ? offer.nom : 'N/A'}</p>
+                        <p class="font-black">${offer ? offer.nom : (client.offre || 'N/A')}</p>
                     </div>
                     <div>
                         <p class="text-sm font-bold uppercase opacity-70 mb-1">Statut paiement</p>
@@ -2490,6 +2562,14 @@
                     <div>
                         <p class="text-sm font-bold uppercase opacity-70 mb-1">Jour actuel</p>
                         <p class="font-black">Jour ${currentDay}${totalDays ? ' / ' + totalDays : ''}</p>
+                    </div>
+                    <div>
+                        <p class="text-sm font-bold uppercase opacity-70 mb-1">Points QG</p>
+                        <p class="font-black" style="color:var(--genesis-yellow);">${client.genesisPoints || 0} QG</p>
+                    </div>
+                    <div>
+                        <p class="text-sm font-bold uppercase opacity-70 mb-1">Niveau / Badge</p>
+                        <p class="font-black">${badgeHtml}</p>
                     </div>
                     <div>
                         <p class="text-sm font-bold uppercase opacity-70 mb-1">Documents ajoutés</p>
@@ -3599,6 +3679,7 @@
                                 (order.deposit_paid ? '<span style="color:#51cf66;">Acompte \u2713</span>' : '<span style="color:#ff6b6b;">Acompte \u2717</span>') + ' | ' +
                                 (order.balance_paid ? '<span style="color:#51cf66;">Solde \u2713</span>' : '<span style="color:#ff6b6b;">Solde \u2717</span>') +
                             '</div>' +
+                            (order.partner_completed ? '<div class="text-xs mt-1"><span style="background:#f59e0b;color:black;padding:1px 7px;font-weight:900;font-size:10px;border:1px solid black;">Prestation d\u00e9clar\u00e9e termin\u00e9e</span>' + (order.client_validated ? ' <span style="background:#22c55e;color:black;padding:1px 7px;font-weight:900;font-size:10px;border:1px solid black;"><i class="fas fa-check"></i> Valid\u00e9e client</span>' : ' <span style="background:#9ca3af;color:black;padding:1px 7px;font-weight:900;font-size:10px;border:1px solid black;">En attente validation</span>') + '</div>' : '') +
                         '</div>' +
                         '<div class="text-right">' +
                             '<div style="background:' + bgColor + ';color:black;padding:4px 10px;border:2px solid black;font-size:11px;font-weight:900;display:inline-block;">' + label + '</div>' +
@@ -7191,6 +7272,118 @@
             if (listEl) listEl.style.display = 'block';
             loadAdminDisputes();
         }
+
+        // ─────────────── SECTION ÉTUDIANTS ───────────────
+        var _studFilter = 'pending';
+
+        async function loadStudentsList(filter) {
+            _studFilter = filter || 'pending';
+            var listEl = document.getElementById('studentsList');
+            if (!listEl) return;
+            listEl.innerHTML = '<p class="text-center py-8 opacity-50 font-bold"><i class="fas fa-spinner fa-spin mr-2"></i>Chargement...</p>';
+            try {
+                var resp = await fetch(API_BASE_URL + '/api/admin/students');
+                if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                var json = await resp.json();
+                var students = (json && json.students) ? json.students : (Array.isArray(json) ? json : []);
+                // update pending badge
+                var pendingCount = students.filter(function(s) { return s.student_status === 'pending'; }).length;
+                var b = document.getElementById('pendingStudentsBadge');
+                if (b) { b.textContent = pendingCount; b.style.display = pendingCount ? 'block' : 'none'; }
+                var cnt = document.getElementById('pendingStudCnt');
+                if (cnt) cnt.textContent = pendingCount ? ' (' + pendingCount + ')' : '';
+                // filter
+                var filtered = filter === 'all' ? students : students.filter(function(s) { return s.student_status === filter; });
+                if (!filtered.length) {
+                    listEl.innerHTML = '<p class="text-center py-8 opacity-50 font-bold">Aucun \u00e9tudiant dans cette cat\u00e9gorie</p>';
+                    return;
+                }
+                var statusColors = { pending: '#f59e0b', verified: '#22c55e', rejected: '#ef4444', unverified: '#9ca3af' };
+                var statusLabels = { pending: 'En attente', verified: 'V\u00e9rifi\u00e9', rejected: 'Rejet\u00e9', unverified: 'Sans justificatif' };
+                var html = '';
+                filtered.forEach(function(s) {
+                    var sc = statusColors[s.student_status] || '#9ca3af';
+                    var sl = statusLabels[s.student_status] || s.student_status;
+                    var inscrit = s.createdAt ? new Date(s.createdAt).toLocaleDateString('fr-FR') : '';
+                    var sid = s.id || s.email;
+                    html += '<div class="admin-card neo-shadow mb-4">'
+                        + '<div class="flex justify-between items-center flex-wrap gap-4">'
+                            + '<div class="flex-1 min-w-[220px]">'
+                                + '<div class="font-black text-lg">' + (s.prenom || '') + ' ' + (s.nom || '') + '</div>'
+                                + '<div class="text-sm font-bold opacity-70">' + s.email + '</div>'
+                                + (inscrit ? '<div class="text-xs opacity-50 font-bold mt-1">Inscrit le ' + inscrit + '</div>' : '')
+                                + (s.has_certificate ? '<div class="text-xs mt-1" style="color:#eab308;font-weight:900;"><i class="fas fa-file mr-1"></i>Justificatif soumis</div>' : '<div class="text-xs mt-1 opacity-40 font-bold">Aucun justificatif</div>')
+                            + '</div>'
+                            + '<div><span style="background:' + sc + ';color:black;padding:3px 12px;font-size:11px;font-weight:900;border:2px solid black;">' + sl + '</span></div>'
+                            + '<div class="flex gap-2 flex-wrap">'
++ (s.has_certificate ? '<button onclick="adminViewStudentCert(\'' + sid + '\')" style="background:#222;border:2px solid var(--genesis-yellow);color:var(--genesis-yellow);padding:5px 12px;font-size:11px;font-weight:900;cursor:pointer;"><i class="fas fa-file mr-1"></i>Justificatif</button>' : '')
++ (s.student_status === 'pending' ? '<button onclick="adminVerifyStudent(\'' + sid + '\',\'' + s.email + '\',\'verify\')" style="background:#22c55e;border:2px solid black;color:black;padding:5px 12px;font-size:11px;font-weight:900;cursor:pointer;"><i class="fas fa-check mr-1"></i>Valider</button>' : '')
++ (s.student_status === 'pending' ? '<button onclick="adminVerifyStudent(\'' + sid + '\',\'' + s.email + '\',\'reject\')" style="background:#ef4444;border:2px solid black;color:white;padding:5px 12px;font-size:11px;font-weight:900;cursor:pointer;"><i class="fas fa-times mr-1"></i>Rejeter</button>' : '')
+                            + '</div>'
+                        + '</div>'
+                    + '</div>';
+                });
+                listEl.innerHTML = html;
+            } catch (e) {
+                listEl.innerHTML = '<p class="text-center py-8 text-red-500 font-bold">Erreur de chargement. <button onclick="loadStudentsList(\'' + filter + '\')" style="border:2px solid black;padding:4px 12px;font-weight:900;cursor:pointer;">R\u00e9essayer</button></p>';
+            }
+        }
+
+        async function adminViewStudentCert(userId) {
+            try {
+                var resp = await fetch(API_BASE_URL + '/api/admin/students/' + encodeURIComponent(userId) + '/certificate');
+                if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                var data = await resp.json();
+                var certData = data.data || data.certificate;
+                if (!certData) { alert('Aucun justificatif disponible'); return; }
+                var win = window.open('', '_blank');
+                if (!win) { alert('Impossible d\'ouvrir l\'onglet. Autorisez les popups.'); return; }
+                var src = certData.startsWith('data:') ? certData
+                    : (certData.startsWith('/9j/') ? 'data:image/jpeg;base64,' + certData
+                    : (certData.startsWith('JVB') ? 'data:application/pdf;base64,' + certData
+                    : 'data:image/png;base64,' + certData));
+                win.document.write('<html><body style="margin:0;background:#000;display:flex;align-items:center;justify-content:center;min-height:100vh;">'
+                    + (src.startsWith('data:image') ? '<img src="' + src + '" style="max-width:100%;max-height:100vh;">'
+                    : '<iframe src="' + src + '" style="width:100%;height:100vh;border:none;"></iframe>')
+                    + '</body></html>');
+            } catch (e) {
+                alert('Erreur chargement justificatif: ' + e.message);
+            }
+        }
+
+        async function adminVerifyStudent(userId, email, action) {
+            var label = action === 'verify' ? 'valider' : 'rejeter';
+            if (!confirm('Voulez-vous ' + label + ' le statut \u00e9tudiant de ' + email + ' ?')) return;
+            try {
+                var endpoint = action === 'verify' ? 'verify' : 'reject';
+                var resp = await fetch(API_BASE_URL + '/api/admin/students/' + encodeURIComponent(userId) + '/' + endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
+                var data = await resp.json();
+                if (data.success) {
+                    if (typeof showToast === 'function') showToast(action === 'verify' ? 'Compte \u00e9tudiant valid\u00e9 !' : 'Justificatif rejet\u00e9.', '', action === 'verify' ? 'success' : 'error');
+                    else alert(action === 'verify' ? 'Statut \u00e9tudiant valid\u00e9 !' : 'Justificatif rejet\u00e9.');
+                    loadStudentsList(_studFilter);
+                    closeClientModal();
+                } else {
+                    alert('Erreur : ' + (data.error || 'Inconnue'));
+                }
+            } catch (e) {
+                alert('Erreur r\u00e9seau: ' + e.message);
+            }
+        }
+
+        // Badge \u00e9tudiants en attente au d\u00e9marrage
+        (async function() {
+            try {
+                var resp = await fetch(API_BASE_URL + '/api/admin/students');
+                if (resp.ok) {
+                    var json = await resp.json();
+                    var students = (json && json.students) ? json.students : (Array.isArray(json) ? json : []);
+                    var pending = students.filter(function(s) { return s.student_status === 'pending'; }).length;
+                    var b = document.getElementById('pendingStudentsBadge');
+                    if (b && pending > 0) { b.textContent = pending; b.style.display = 'block'; }
+                }
+            } catch(e) {}
+        })();
 </script>
 
 <!-- ── MODAL RECADRAGE PHOTO ACTUALITÉ ── -->
