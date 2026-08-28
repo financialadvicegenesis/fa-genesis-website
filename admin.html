@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="fr" class="scroll-smooth">
 <head>
     <meta charset="UTF-8">
@@ -3546,72 +3546,92 @@
             if (!orders || orders.length === 0) {
                 return '<p class="text-center py-8 font-bold" style="color:white;">Aucune commande</p>';
             }
+            // D\u00e9dupliquer par ID (s\u00e9curit\u00e9 frontend)
+            var _seen = {};
+            orders = orders.filter(function(o) {
+                if (!o.id || _seen[o.id]) return false;
+                _seen[o.id] = true;
+                return true;
+            });
             var html = '';
             var statusColors = {
                 pending_deposit: '#ff6b6b', active: '#51cf66', in_progress: '#ffd43b',
                 delivered: '#4dabf7', completed: '#51cf66', pending_balance: '#ffd43b',
-                paid_in_full: '#4dabf7', cancelled: '#999'
+                paid_in_full: '#4dabf7', cancelled: '#999', refunded: '#9ca3af',
+                devis_requested: '#a78bfa', pending_acceptance: '#f59e0b'
             };
             var statusLabels = {
                 pending_deposit: 'ACOMPTE EN ATTENTE', active: 'ACTIF', in_progress: 'EN COURS',
                 delivered: 'LIVR\u00c9', completed: 'TERMIN\u00c9', pending_balance: 'SOLDE EN ATTENTE',
-                paid_in_full: 'PAY\u00c9 COMPLET', cancelled: 'ANNUL\u00c9'
+                paid_in_full: 'PAY\u00c9 COMPLET', cancelled: 'ANNUL\u00c9', refunded: 'REMBOURS\u00c9',
+                devis_requested: 'DEVIS EN COURS', pending_acceptance: 'EN ATTENTE ACCEPTATION'
             };
             orders.forEach(function(order) {
                 var date = order.created_at ? new Date(order.created_at).toLocaleDateString('fr-FR') : '';
-                var bgColor = statusColors[order.status] || '#999';
-                var label = statusLabels[order.status] || order.status;
+                var bgColor = statusColors[order.status] || '#777';
+                var label = statusLabels[order.status] || (order.status ? order.status.toUpperCase() : '\u2014');
                 var clientName = order.client_info ? ((order.client_info.first_name || order.client_info.firstName || '') + ' ' + (order.client_info.last_name || order.client_info.lastName || '')) : 'N/A';
                 var clientEmail = order.client_info ? order.client_info.email : '';
+                var isSplit = (parseFloat(order.balance_amount) || 0) > 0;
                 var scheduleBtn = '';
                 if ((order.schedule_status || '') === 'confirmed' && order.start_date) {
                     var confirmedDateStr = new Date(order.start_date).toLocaleDateString('fr-FR');
                     scheduleBtn = '<button onclick="adminCancelStartDate(\'' + order.id + '\')" class="text-xs font-bold uppercase border-2 border-black px-3 py-1 hover:bg-red-100 mt-1">' +
                         '<i class="fas fa-calendar-times mr-1"></i>R\u00e9initialiser date (' + confirmedDateStr + ')</button>';
                 }
+                var payInfo = '';
+                if (isSplit) {
+                    payInfo = (order.deposit_paid ? '<span style="color:#51cf66;">Acompte \u2713</span>' : '<span style="color:#ff6b6b;">Acompte \u2717</span>')
+                        + ' | '
+                        + (order.balance_paid ? '<span style="color:#51cf66;">Solde \u2713</span>' : (order.balance_payment_ready ? '<span style="color:#ff922b;">Solde disponible</span>' : '<span style="color:#9ca3af;">Solde verrouill\u00e9</span>'));
+                } else {
+                    payInfo = (order.deposit_paid || order.paymentStatus === 'fully_paid') ? '<span style="color:#51cf66;">Paiement encaiss\u00e9 \u2713</span>' : '<span style="color:#9ca3af;">Paiement en attente</span>';
+                }
+                var missionTag = '';
+                if (order.partner_completed && order.client_validated) {
+                    missionTag = '<div class="text-xs mt-1"><span style="background:#22c55e;color:black;padding:1px 7px;font-weight:900;font-size:10px;border:1px solid black;"><i class="fas fa-check"></i> Valid\u00e9e client</span></div>';
+                } else if (order.partner_completed) {
+                    missionTag = '<div class="text-xs mt-1"><span style="background:#f59e0b;color:black;padding:1px 7px;font-weight:900;font-size:10px;border:1px solid black;">D\u00e9clar\u00e9e termin\u00e9e \u2014 attente validation</span></div>';
+                }
+                // Boutons admin : uniquement "Lib\u00e9rer le solde" pour les commandes 2x (pas de confirmation d'acompte)
+                var adminBtns = '';
+                if (isSplit && order.deposit_paid && !order.balance_paid && !order.balance_payment_ready) {
+                    adminBtns += '<button onclick="unlockBalance(\'' + order.id + '\')" style="background:#ff922b;border:2px solid black;color:black;padding:4px 12px;font-weight:900;font-size:12px;cursor:pointer;text-transform:uppercase;" title="D\u00e9clarer la fin de la mission et d\u00e9bloquer le paiement du solde"><i class="fas fa-flag-checkered mr-1"></i>Lib\u00e9rer le solde</button> ';
+                }
+                if (isSplit && order.balance_payment_ready && !order.balance_paid) {
+                    adminBtns += '<span style="background:#fff3cd;border:2px solid #ff922b;color:#b35900;padding:4px 10px;font-weight:900;font-size:11px;display:inline-block;"><i class="fas fa-clock mr-1"></i>Attente paiement solde</span> ';
+                }
                 html += '<div class="admin-card neo-shadow mb-4">' +
                     '<div class="flex justify-between items-start flex-wrap gap-4">' +
                         '<div class="flex-1 min-w-[200px]">' +
-                            '<div class="text-xs font-bold">' + order.id + '</div>' +
+                            '<div class="text-xs font-bold" style="color:#aaa;">' + order.id + '</div>' +
                             '<div class="font-black text-lg">' + clientName + '</div>' +
-                            '<div class="text-sm font-bold">' + clientEmail + '</div>' +
+                            '<div class="text-sm font-bold" style="color:#aaa;">' + clientEmail + '</div>' +
                         '</div>' +
                         '<div class="flex-1 min-w-[200px]">' +
                             '<div class="font-black">' + (order.product_name || 'N/A') + '</div>' +
-                            '<div class="text-sm font-bold">' + date + '</div>' +
+                            '<div class="text-sm font-bold" style="color:#aaa;">' + date + '</div>' +
+                            '<div class="text-xs font-bold" style="color:#888;margin-top:2px;">' + (isSplit ? 'Paiement 2x' : 'Paiement 1x') + '</div>' +
                             scheduleBtn +
                         '</div>' +
                         '<div class="text-center">' +
                             '<div class="text-2xl font-black text-[var(--genesis-yellow)]">' + (order.total_amount || 0) + '\u20ac</div>' +
-                            '<div class="text-xs font-bold">Acompte: ' + (order.deposit_amount || 0) + '\u20ac | Solde: ' + (order.balance_amount || 0) + '\u20ac</div>' +
-                            '<div class="text-xs mt-1">' +
-                                (order.deposit_paid ? '<span style="color:#51cf66;">Acompte \u2713</span>' : '<span style="color:#ff6b6b;">Acompte \u2717</span>') + ' | ' +
-                                (order.balance_paid ? '<span style="color:#51cf66;">Solde \u2713</span>' : '<span style="color:#ff6b6b;">Solde \u2717</span>') +
-                            '</div>' +
-                            (order.partner_completed ? '<div class="text-xs mt-1"><span style="background:#f59e0b;color:black;padding:1px 7px;font-weight:900;font-size:10px;border:1px solid black;">Prestation d\u00e9clar\u00e9e termin\u00e9e</span>' + (order.client_validated ? ' <span style="background:#22c55e;color:black;padding:1px 7px;font-weight:900;font-size:10px;border:1px solid black;"><i class="fas fa-check"></i> Valid\u00e9e client</span>' : ' <span style="background:#9ca3af;color:black;padding:1px 7px;font-weight:900;font-size:10px;border:1px solid black;">En attente validation</span>') + '</div>' : '') +
+                            '<div class="text-xs font-bold" style="color:#aaa;">Acompte: ' + (order.deposit_amount || 0) + '\u20ac | Solde: ' + (order.balance_amount || 0) + '\u20ac</div>' +
+                            '<div class="text-xs mt-1">' + payInfo + '</div>' +
+                            missionTag +
                         '</div>' +
                         '<div class="text-right">' +
                             '<div style="background:' + bgColor + ';color:black;padding:4px 10px;border:2px solid black;font-size:11px;font-weight:900;display:inline-block;">' + label + '</div>' +
                         '</div>' +
                     '</div>' +
                     '<div class="flex gap-2 mt-3 pt-3 flex-wrap" style="border-top:2px solid rgba(0,0,0,0.15);">' +
-                        (!order.deposit_paid ?
-                            '<button onclick="confirmDeposit(\'' + order.id + '\')" style="background:#51cf66;border:2px solid black;color:black;padding:4px 12px;font-weight:900;font-size:12px;cursor:pointer;text-transform:uppercase;" title="Confirmer paiement acompte">' +
-                                '<i class="fas fa-check mr-1"></i>Confirmer acompte</button>' : '') +
-                        (order.deposit_paid && !order.balance_paid && !order.balance_payment_ready ?
-                            '<button onclick="unlockBalance(\'' + order.id + '\')" style="background:#ff922b;border:2px solid black;color:black;padding:4px 12px;font-weight:900;font-size:12px;cursor:pointer;text-transform:uppercase;" title="Déclarer la fin de l\'accompagnement et débloquer le paiement du solde">' +
-                                '<i class="fas fa-flag-checkered mr-1"></i>Fin d\'accompagnement</button>' : '') +
-                        (order.balance_payment_ready && !order.balance_paid ?
-                            '<span style="background:#fff3cd;border:2px solid #ff922b;color:#b35900;padding:4px 10px;font-weight:900;font-size:11px;display:inline-block;">' +
-                                '<i class="fas fa-clock mr-1"></i>Attente paiement solde</span>' : '') +
-                        '<button onclick="deleteOrder(\'' + order.id + '\')" style="background:#ff6b6b;border:2px solid black;color:black;padding:4px 12px;font-weight:900;font-size:12px;cursor:pointer;text-transform:uppercase;" title="Supprimer cette commande">' +
-                            '<i class="fas fa-trash mr-1"></i>Supprimer</button>' +
+                        adminBtns +
+                        '<button onclick="deleteOrder(\'' + order.id + '\')" style="background:#ff6b6b;border:2px solid black;color:black;padding:4px 12px;font-weight:900;font-size:12px;cursor:pointer;text-transform:uppercase;" title="Supprimer cette commande"><i class="fas fa-trash mr-1"></i>Supprimer</button>' +
                     '</div>' +
                 '</div>';
             });
             return html;
         }
-
         // Supprimer une commande
         async function deleteOrder(orderId) {
             if (!confirm('Supprimer définitivement la commande ' + orderId + ' ?\n\nCette action est irréversible.')) return;

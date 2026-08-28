@@ -3623,8 +3623,17 @@ app.post('/api/orders/create', (req, res) => {
  */
 app.get('/api/orders/all', function(req, res) {
     if (!_isAdminRequest(req)) return res.status(403).json({ error: 'Admin requis' });
-    const orders = loadOrders();
-    res.json(orders);
+    var orders = loadOrders();
+    // Dédupliquer par ID : garder le dernier enregistrement (le plus récent état)
+    var seen = {};
+    var unique = [];
+    for (var i = orders.length - 1; i >= 0; i--) {
+        if (orders[i].id && !seen[orders[i].id]) {
+            seen[orders[i].id] = true;
+            unique.unshift(orders[i]);
+        }
+    }
+    res.json(unique);
 });
 
 /**
