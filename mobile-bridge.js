@@ -66,6 +66,13 @@
                 Plugins.PushNotifications.addListener('pushNotificationReceived', function(notif) {
                     // App au premier plan : afficher un toast FA GENESIS
                     var title = (notif.title) || 'FA Genesis';
+                    var nData = notif.data || (notif.notification && notif.notification.data) || {};
+                    // Mise à jour immédiate du statut étudiant sans rechargement
+                    if (nData.type === 'student_verified') {
+                        setTimeout(function() {
+                            if (typeof _syncUserBadge === 'function') _syncUserBadge();
+                        }, 600);
+                    }
                     if (window._showFAGToast) {
                         window._showFAGToast(title, 4000);
                     } else {

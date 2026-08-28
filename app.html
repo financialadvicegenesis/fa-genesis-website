@@ -8602,6 +8602,12 @@ function loadNotifInbox(){
       var unread = (data&&data.unread_count)||0;
       var badge = document.getElementById('hdrBadge');
       if(badge) badge.style.display = unread>0?'block':'none';
+      // Vérification étudiant en temps réel : si une notif student_verified non lue
+      // est détectée alors que le client est encore affiché comme "pending", forcer la sync
+      if(USER && USER.student_status==='pending'){
+        var hasStudVerif = list.some(function(n){return n.type==='student_verified'&&!n.read;});
+        if(hasStudVerif) _syncUserBadge();
+      }
       var listEl = document.getElementById('notif-inbox-list');
       if(!listEl) return;
       if(list.length===0){ listEl.innerHTML='<div class="notif-inbox-empty">Aucune notification</div>'; return; }
@@ -8986,6 +8992,7 @@ function _syncUserBadge(){
       USER.profile_theme  = d.profile_theme  || 'genesis';
       USER.profile_banner = d.profile_banner || null;
       if(d.accountType)    USER.accountType    = d.accountType;
+      var _prevStudentStatus = USER.student_status;
       if(d.student_status != null) USER.student_status = d.student_status;
       try{ _applyUserTheme(USER.profile_theme); }catch(e){}
       // Level-up detection: show confetti if badge improved
@@ -9002,7 +9009,13 @@ function _syncUserBadge(){
       } catch(e) {}
       try{ localStorage.setItem('fa_genesis_session', JSON.stringify(USER)); }catch(e){}
       _renderHomeQGWidget();
-      if(document.getElementById('tab-profil') && document.getElementById('tab-profil').classList.contains('on') && !sessionStorage.getItem('fa_nav_section')) renderProfil();
+      // Vérification étudiant → mise à jour immédiate du badge dans le profil, quel que soit l'onglet actif
+      if(_prevStudentStatus === 'pending' && d.student_status === 'verified'){
+        showToast('Compte étudiant vérifié !','Vous bénéficiez maintenant des tarifs étudiants GENESIS.','success');
+        if(typeof renderProfil==='function') renderProfil();
+      } else if(document.getElementById('tab-profil') && document.getElementById('tab-profil').classList.contains('on') && !sessionStorage.getItem('fa_nav_section')){
+        renderProfil();
+      }
     }).catch(function(){});
 }
 

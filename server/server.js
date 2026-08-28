@@ -2017,6 +2017,12 @@ app.post('/api/admin/students/:id/verify', function(req, res) {
         users[idx].updatedAt = new Date().toISOString();
         saveUsers(users);
         notifyUser(users[idx].email, 'client', 'student_verified', 'Compte étudiant vérifié ✓', 'Votre justificatif étudiant a été validé par FA GENESIS. Vous bénéficiez maintenant des offres étudiants.', '/app.html');
+        // FCM natif Android : inclure type dans data pour que l'app mette à jour l'UI sans rechargement
+        sendFcmToUser(users[idx].id, {
+            title: 'Compte étudiant vérifié ✓',
+            body: 'Votre justificatif a été validé. Vous bénéficiez maintenant des tarifs étudiants.',
+            data: { type: 'student_verified', url: '/app.html' }
+        });
         emailService.sendEmail && emailService.sendEmail({
             to: users[idx].email,
             subject: 'Votre compte étudiant FA GENESIS est vérifié ✓',
