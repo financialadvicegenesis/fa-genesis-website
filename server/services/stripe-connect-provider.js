@@ -108,12 +108,34 @@ class StripeConnectProvider extends PaymentProvider {
     }
 
     async updatePayoutSchedule(accountId, schedule) {
-        var sched = { interval: schedule.interval }; // 'daily'|'weekly'|'monthly'
+        var sched = { interval: schedule.interval }; // 'daily'|'weekly'|'monthly'|'manual'
         if (schedule.interval === 'weekly'  && schedule.weeklyAnchor)  sched.weekly_anchor  = schedule.weeklyAnchor;
         if (schedule.interval === 'monthly' && schedule.monthlyAnchor) sched.monthly_anchor = schedule.monthlyAnchor;
         return await getStripe().accounts.update(accountId, {
             settings: { payouts: { schedule: sched } }
         });
+    }
+
+    // Force le schedule à 'manual' sur un compte Connect — les fonds restent dans le
+    // solde Stripe du prestataire jusqu'à ce que FA GENESIS déclenche explicitement triggerConnectPayout.
+    async setManualPayouts(accountId) {
+        return await getStripe().accounts.update(accountId, {
+            settings: { payouts: { schedule: { interval: 'manual' } } }
+        });
+    }
+
+    // Déclenche le virement Stripe balance → compte bancaire du prestataire.
+    // À appeler uniquement après confirmation de livraison par le client (escrow réel).
+    async triggerConnectPayout(accountId, amountCents, currency, description) {
+        return await getStripe().payouts.create(
+            {
+                amount:      amountCents,
+                currency:    currency || 'eur',
+                description: description || 'Versement FA GENESIS SAFE™',
+                metadata:    { platform: 'fa-genesis' }
+            },
+            { stripeAccount: accountId }
+        );
     }
 
     async getBalance() {

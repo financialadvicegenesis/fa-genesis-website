@@ -26,6 +26,7 @@ const { fillTemplate, getAvailableTemplates, getTemplate } = require('./config/d
 const aiService = require('./services/aiService');
 const bootstrapService = require('./services/bootstrapService');
 const mps = require('./services/marketplace-payment-service');
+const scp = require('./services/stripe-connect-provider');
 const payoutRouting = require('./services/payout-routing-service');
 const payoneerProvider = require('./services/payoneer-provider');
 const persistentStore = require('./persistent-store');
@@ -1037,12 +1038,29 @@ async function processDispatchPayout(dispatch, stage) {
         }
 
         if (method === 'stripe_connect') {
-            // L'argent a déjà été transféré automatiquement via transfer_data dans le PaymentIntent.
-            // Le record de payout est créé pour le suivi admin uniquement.
-            var _scLatest = loadPayouts();
-            var _scPi = _scLatest.findIndex(function(p) { return p.id === newPayout.id; });
-            if (_scPi !== -1) { _scLatest[_scPi].status = 'sent'; _scLatest[_scPi].sent_at = new Date().toISOString(); savePayouts(_scLatest); }
-            console.log('[PAYOUT] ' + stage + ' Stripe Connect (transfert automatique) → ' + partner.email + ' : ' + paidAmount + ' €');
+            // GENESIS SAFE™ escrow réel : le paiement initial a transféré les fonds sur le
+            // compte Connect du prestataire (balance Stripe), mais le schedule est 'manual' →
+            // l'argent reste bloqué jusqu'à ce qu'on déclenche ici le virement vers sa banque.
+            try {
+                var _scAmountCents = Math.round(paidAmount * 100);
+                var _scDesc = 'Versement FA GENESIS SAFE™ — ' + (dispatch.offer_name || dispatch.order_id || '') + ' (' + stage + ')';
+                var _scPayout = await scp.triggerConnectPayout(partner.stripeAccountId, _scAmountCents, 'eur', _scDesc);
+                var _scLatest = loadPayouts();
+                var _scPi = _scLatest.findIndex(function(p) { return p.id === newPayout.id; });
+                if (_scPi !== -1) {
+                    _scLatest[_scPi].status = 'sent';
+                    _scLatest[_scPi].sent_at = new Date().toISOString();
+                    _scLatest[_scPi].stripe_payout_id = _scPayout.id;
+                    savePayouts(_scLatest);
+                }
+                console.log('[PAYOUT] ' + stage + ' Stripe Connect escrow → virement déclenché vers banque de ' + partner.email + ' : ' + paidAmount + ' € (payout ' + _scPayout.id + ')');
+            } catch (_scErr) {
+                // Fallback : marquer sent même si le virement échoue (fonds dans le solde Connect)
+                var _scFallback = loadPayouts();
+                var _scFi = _scFallback.findIndex(function(p) { return p.id === newPayout.id; });
+                if (_scFi !== -1) { _scFallback[_scFi].status = 'failed'; _scFallback[_scFi].error = _scErr.message; savePayouts(_scFallback); }
+                console.error('[PAYOUT] ' + stage + ' Stripe Connect payout ÉCHOUÉ → ' + partner.email + ' : ' + _scErr.message);
+            }
         } else if (method === 'wise') {
             // Virement manuel via wise.com — le record est créé en status 'pending', l'admin fait le virement.
             console.log('[PAYOUT] ' + stage + ' Wise (virement manuel requis) → ' + partner.email + ' IBAN:' + (_partnerIban || '?') + ' : ' + paidAmount + ' €');
@@ -1468,6 +1486,12 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
                 partners[pIdx].stripeDetailsSubmitted = acct.details_submitted;
                 partners[pIdx].updatedAt = new Date().toISOString();
                 savePartners(partners);
+                // GENESIS SAFE™ : forcer payout schedule à 'manual' dès que le compte est actif
+                if (newStatus === 'active') {
+                    scp.setManualPayouts(acct.id).catch(function(e) {
+                        console.warn('[STRIPE-WH] setManualPayouts failed for', acct.id, ':', e.message);
+                    });
+                }
                 var pEmail = partners[pIdx].email;
                 var notifMap = {
                     active:       { t: 'Compte de paiement vérifié ✓',                    b: 'Vous pouvez désormais recevoir vos rémunérations automatiquement.' },
@@ -4026,7 +4050,6 @@ app.post('/api/payments/cart/stripe-intent', async function(req, res) {
 
         var description = ('FA GENESIS — ' + items.map(function(i){ return i.name; }).join(', ')).substring(0, 250);
 
-        var scp = require('./services/stripe-connect-provider');
         var pi = await scp.createDirectPaymentIntent({
             amountEuros: amount,
             currency: 'eur',
@@ -4090,7 +4113,6 @@ app.post('/api/payments/order/stripe-direct', async function(req, res) {
         }
 
         var description = (b.description || ('FA GENESIS — ' + (order.product_name || 'Prestation') + ' (' + stageLabel + ')')).substring(0, 250);
-        var scp = require('./services/stripe-connect-provider');
         var pi = await scp.createDirectPaymentIntent({
             amountEuros: amount,
             currency: 'eur',
@@ -15908,6 +15930,10 @@ app.post('/api/admin/partners/:partnerId/stripe-onboarding-link', async (req, re
                 partners[idx].updatedAt            = new Date().toISOString();
                 savePartners(partners);
             }
+            // GENESIS SAFE™ escrow : forcer payout_schedule=manual dès la création
+            scp.setManualPayouts(account.id).catch(function(e) {
+                console.warn('[ONBOARDING] setManualPayouts failed for', account.id, ':', e.message);
+            });
             onboardingUrl = await mps.getPartnerOnboardingLink(account.id, baseUrl);
         } else {
             onboardingUrl = await mps.getPartnerOnboardingLink(partner.stripeAccountId, baseUrl);
