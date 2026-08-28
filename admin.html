@@ -2497,48 +2497,61 @@
             var clientBadge = client.badge || null;
             var badgeHtml = clientBadge ? '<span style="background:' + (badgeColors[clientBadge]||'#555') + ';color:black;padding:2px 10px;font-size:11px;font-weight:900;border:2px solid black;">' + (badgeLabels[clientBadge]||clientBadge) + '</span>' : '<span style="opacity:.45;font-size:12px;">—</span>';
 
-            // Render orders inline
+            // Dédupliquer par ID (le backend peut retourner le même ordre plusieurs fois)
+            var seenOrderIds = {};
+            var uniqueOrders = clientOrders.filter(function(o) {
+                if (!o.id || seenOrderIds[o.id]) return false;
+                seenOrderIds[o.id] = true;
+                return true;
+            });
+
+            // Render orders inline (lecture seule — le paiement est géré par le client et le prestataire)
             var ordersHtml = '';
-            if (!clientOrders.length) {
+            if (!uniqueOrders.length) {
                 ordersHtml = '<p class="text-center py-6 opacity-50 font-bold">Aucune commande</p>';
             } else {
-                var mStatusColors = { pending_acceptance: '#f59e0b', in_progress: '#60a5fa', delivering: '#a78bfa', completed: '#22c55e', declined: '#ef4444' };
-                var mStatusLabels = { pending_acceptance: 'En attente acceptation', in_progress: 'En cours', delivering: 'En livraison', completed: 'Terminé', declined: 'Refusé' };
                 var pStatusColors = { registered: '#9ca3af', deposit_paid: '#f59e0b', delivery_pending_payment: '#60a5fa', fully_paid: '#22c55e' };
-                var pStatusLabels = { registered: 'Inscrit', deposit_paid: 'Acompte payé', delivery_pending_payment: 'Solde en attente', fully_paid: 'Payé' };
-                clientOrders.forEach(function(order) {
+                var pStatusLabels = { registered: 'En attente de paiement', deposit_paid: 'Acompte payé', delivery_pending_payment: 'Solde en attente', fully_paid: 'Entièrement payée' };
+                uniqueOrders.forEach(function(order) {
                     var oDate = order.created_at ? new Date(order.created_at).toLocaleDateString('fr-FR') : '';
                     var pStat = pStatusColors[order.paymentStatus] || '#9ca3af';
                     var pLab = pStatusLabels[order.paymentStatus] || (order.paymentStatus || '—');
+                    // Mode de paiement : 1x si balance_amount = 0, sinon 2x
+                    var isSplit = (parseFloat(order.balance_amount) || 0) > 0;
+                    var payModeHtml = isSplit
+                        ? '<span style="font-size:10px;color:#aaa;font-weight:700;">Paiement 2x · Acompte ' + (order.deposit_amount||0) + '€ + Solde ' + (order.balance_amount||0) + '€</span>'
+                        : '<span style="font-size:10px;color:#aaa;font-weight:700;">Paiement en 1x</span>';
+                    // Statut de la mission
                     var missionTag = '';
-                    if (order.partner_completed) {
-                        if (order.client_validated) {
-                            missionTag = '<span style="background:#22c55e;color:black;padding:1px 8px;font-size:10px;font-weight:900;border:1px solid black;margin-left:6px;"><i class="fas fa-check mr-1"></i>Validée client</span>';
-                        } else {
-                            missionTag = '<span style="background:#f59e0b;color:black;padding:1px 8px;font-size:10px;font-weight:900;border:1px solid black;margin-left:6px;"><i class="fas fa-flag mr-1"></i>Déclarée terminée — Attente validation</span>';
-                        }
+                    if (order.partner_completed && order.client_validated) {
+                        missionTag = '<span style="background:#22c55e;color:black;padding:1px 8px;font-size:10px;font-weight:900;border:1px solid black;margin-left:6px;"><i class="fas fa-check mr-1"></i>Validée</span>';
+                    } else if (order.partner_completed) {
+                        missionTag = '<span style="background:#f59e0b;color:black;padding:1px 8px;font-size:10px;font-weight:900;border:1px solid black;margin-left:6px;"><i class="fas fa-flag mr-1"></i>Attente validation client</span>';
                     }
-                    var depositBtn = !order.deposit_paid ? '<button onclick="confirmDeposit(\'' + order.id + '\')" style="background:#22c55e;border:2px solid black;color:black;padding:3px 10px;font-size:11px;font-weight:900;cursor:pointer;"><i class="fas fa-check mr-1"></i>Confirmer acompte</button> ' : '';
-                    var balanceBtn = (order.deposit_paid && !order.balance_paid && !order.balance_payment_ready) ? '<button onclick="unlockBalance(\'' + order.id + '\')" style="background:#ff922b;border:2px solid black;color:black;padding:3px 10px;font-size:11px;font-weight:900;cursor:pointer;"><i class="fas fa-flag-checkered mr-1"></i>Débloquer solde</button> ' : '';
-                    var waitingBalance = (order.balance_payment_ready && !order.balance_paid) ? '<span style="background:#fff3cd;border:2px solid #ff922b;color:#b35900;padding:3px 10px;font-size:11px;font-weight:900;display:inline-block;">Attente paiement solde</span> ' : '';
+                    // Indicateurs de paiement (lecture seule)
+                    var payDetails = '';
+                    if (isSplit) {
+                        payDetails = (order.deposit_paid ? '<span style="color:#22c55e;font-size:11px;font-weight:900;"><i class="fas fa-check mr-1"></i>Acompte encaissé</span>' : '<span style="color:#9ca3af;font-size:11px;font-weight:900;"><i class="fas fa-clock mr-1"></i>Acompte en attente</span>')
+                            + ' · '
+                            + (order.balance_paid ? '<span style="color:#22c55e;font-size:11px;font-weight:900;"><i class="fas fa-check mr-1"></i>Solde encaissé</span>' : (order.balance_payment_ready ? '<span style="color:#ff922b;font-size:11px;font-weight:900;"><i class="fas fa-clock mr-1"></i>Solde disponible</span>' : '<span style="color:#9ca3af;font-size:11px;font-weight:900;"><i class="fas fa-lock mr-1"></i>Solde verrouillé</span>'));
+                    } else {
+                        payDetails = (order.deposit_paid || order.paymentStatus === 'fully_paid') ? '<span style="color:#22c55e;font-size:11px;font-weight:900;"><i class="fas fa-check mr-1"></i>Paiement encaissé</span>' : '<span style="color:#9ca3af;font-size:11px;font-weight:900;"><i class="fas fa-clock mr-1"></i>Paiement en attente</span>';
+                    }
                     ordersHtml += '<div style="background:#181818;border:1px solid rgba(255,215,0,.15);border-radius:10px;padding:14px;margin-bottom:10px;">'
                         + '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:8px;">'
                             + '<div>'
                                 + '<div style="font-size:10px;color:#666;font-weight:700;margin-bottom:2px;">' + order.id + ' · ' + oDate + '</div>'
                                 + '<div style="font-size:14px;font-weight:900;color:#e0e0e0;">' + (order.product_name || 'Commande') + missionTag + '</div>'
+                                + '<div style="margin-top:4px;">' + payModeHtml + '</div>'
                             + '</div>'
                             + '<div style="text-align:right;">'
                                 + '<div style="font-size:18px;font-weight:900;color:var(--genesis-yellow);">' + (order.total_amount || 0) + '€</div>'
-                                + '<div style="font-size:11px;color:#aaa;">Acompte ' + (order.deposit_amount || 0) + '€ · Solde ' + (order.balance_amount || 0) + '€</div>'
+                                + '<span style="background:' + pStat + ';color:black;padding:1px 10px;font-size:10px;font-weight:900;border:1px solid black;display:inline-block;margin-top:4px;">' + pLab + '</span>'
                             + '</div>'
                         + '</div>'
-                        + '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">'
-                            + '<span style="background:' + pStat + ';color:black;padding:1px 10px;font-size:10px;font-weight:900;border:1px solid black;">' + pLab + '</span>'
-                            + (order.deposit_paid ? '<span style="color:#22c55e;font-size:11px;font-weight:900;"><i class="fas fa-check mr-1"></i>Acompte</span>' : '<span style="color:#ef4444;font-size:11px;font-weight:900;"><i class="fas fa-times mr-1"></i>Acompte</span>')
-                            + ' · '
-                            + (order.balance_paid ? '<span style="color:#22c55e;font-size:11px;font-weight:900;"><i class="fas fa-check mr-1"></i>Solde</span>' : '<span style="color:#ef4444;font-size:11px;font-weight:900;"><i class="fas fa-times mr-1"></i>Solde</span>')
+                        + '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;border-top:1px solid rgba(255,255,255,.06);padding-top:8px;">'
+                            + payDetails
                         + '</div>'
-                        + ((depositBtn || balanceBtn || waitingBalance) ? '<div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.06);display:flex;gap:6px;flex-wrap:wrap;">' + depositBtn + balanceBtn + waitingBalance + '</div>' : '')
                     + '</div>';
                 });
             }
