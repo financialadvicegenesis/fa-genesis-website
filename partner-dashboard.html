@@ -268,11 +268,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:-apple-
     <div class="pf-menu-group">
       <div class="pf-menu-row" onclick="window.location.href='linkedin-prospecting.html'"><i class="fa-brands fa-linkedin"></i><span>LinkedIn B2B</span><i class="fa-solid fa-chevron-right pf-chevron"></i></div>
       <div class="pf-menu-row" onclick="window.location.href='index.html'"><i class="fa-solid fa-compass"></i><span>Explorer GENESIS</span><i class="fa-solid fa-chevron-right pf-chevron"></i></div>
-      <div class="pf-menu-row pf-danger" onclick="confirmDelete()"><i class="fa-solid fa-trash"></i><span>Supprimer mon compte</span><i class="fa-solid fa-chevron-right pf-chevron"></i></div>
     </div>
-
-    <!-- Déconnexion -->
-    <button class="btn-red" onclick="doLogout()" style="margin-top:4px"><i class="fa-solid fa-arrow-right-from-bracket"></i>Déconnexion</button>
 
     <!-- Parrainage -->
     <div style="background:linear-gradient(135deg,#1a1200,#0d0d0d);border:1px solid rgba(255,215,0,.2);border-radius:14px;padding:18px 16px;margin-top:12px">
@@ -283,6 +279,12 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:-apple-
       </div>
       <p style="font-size:11px;color:#999;margin-bottom:10px;line-height:1.5">Invitez vos collègues prestataires à rejoindre GENESIS</p>
       <button onclick="shareReferral()" style="background:transparent;color:var(--gold);font-weight:700;font-size:13px;border:1.5px solid rgba(255,215,0,.3);border-radius:10px;padding:11px 20px;cursor:pointer;width:100%;display:flex;align-items:center;justify-content:center;gap:8px"><i class="fa-solid fa-user-plus"></i>Inviter un ami</button>
+    </div>
+
+    <!-- Déconnexion & suppression -->
+    <button class="btn-red" onclick="doLogout()" style="margin-top:16px"><i class="fa-solid fa-arrow-right-from-bracket"></i>Déconnexion</button>
+    <div class="pf-menu-group" style="margin-top:8px">
+      <div class="pf-menu-row pf-danger" onclick="confirmDelete()"><i class="fa-solid fa-trash"></i><span>Supprimer mon compte</span><i class="fa-solid fa-chevron-right pf-chevron"></i></div>
     </div>
 
     <p style="font-size:10px;color:var(--muted2);text-align:center;margin-top:14px;padding-bottom:4px">Version 1.1</p>
