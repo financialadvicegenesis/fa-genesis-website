@@ -7342,11 +7342,21 @@ app.get('/api/admin/stats', function(req, res) {
 
         var totalRevenue = Math.max(0, grossRevenue - (settings.revenue_offset || 0));
 
+        // Commandes payées = au moins un paiement encaissé (1x ou acompte 2x), hors annulées
+        var paidOrders = orders.filter(function(o) {
+            return o.deposit_paid === true && o.status !== 'cancelled' && o.status !== 'refunded';
+        });
+        // Missions terminées = paiement complet (1x entier ou solde 2x payé)
+        var fullyPaidOrders = orders.filter(function(o) {
+            if (o.status === 'cancelled' || o.status === 'refunded') return false;
+            var isSplit = (parseFloat(o.balance_amount) || 0) > 0;
+            return isSplit ? o.balance_paid === true : o.deposit_paid === true;
+        });
         res.json({
             totalClients: users.length,
             registered: users.filter(function(u) { return u.paymentStatus === 'registered'; }).length,
-            depositPaid: users.filter(function(u) { return u.paymentStatus === 'deposit_paid'; }).length,
-            fullyPaid: users.filter(function(u) { return u.paymentStatus === 'fully_paid'; }).length,
+            depositPaid: paidOrders.length,
+            fullyPaid: fullyPaidOrders.length,
             totalOrders: orders.length,
             totalRevenue: totalRevenue,
             unreadMessages: messages.filter(function(m) { return m.status === 'unread'; }).length,
