@@ -7972,6 +7972,17 @@ app.post('/api/auth/register', async (req, res) => {
         saveUsers(users);
 
         console.log(`[AUTH] Nouvel utilisateur inscrit: ${newUser.id} - ${email}`);
+
+        // Notification bienvenue + bonus QG au nouveau client
+        var _bonusQG = referredBy ? 0 : 40;
+        if (_bonusQG > 0) {
+            notifyUser(email, 'client', 'welcome_bonus',
+                'Bonus de bienvenue — +' + _bonusQG + ' QG !',
+                'Félicitations ' + prenom + ' ! Vous recevez ' + _bonusQG + ' QG en bonus de bienvenue. Cumulez des points en réalisant des prestations et montez en niveau !',
+                '/app.html'
+            );
+        }
+
         // Push admin : nouvelle inscription
         var _regNotifMsg = prenom + (nom ? ' ' + nom : '') + ' vient de s\'inscrire.' + (userAccountType === 'etudiant' && studentCertificate ? ' [Justificatif étudiant à valider]' : '');
         notifyUser(null, 'admin', 'inscription', 'FA GENESIS — Nouvelle inscription', _regNotifMsg, '/app.html#open-admin');

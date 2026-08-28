@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
@@ -5536,6 +5536,27 @@ function _loadPrstSection(url, wrapId, title, tagOverride, filterFn){
   }).catch(function(){ wrap.innerHTML = ''; });
 }
 
+function _loadPrstSectionStudent(url, wrapId){
+  var wrap = document.getElementById(wrapId);
+  if(!wrap) return;
+  fetch(url).then(function(r){ return r.json(); }).then(function(data){
+    var partners = (data && (data.partners || data)) || [];
+    if(!partners.length){ wrap.innerHTML = ''; return; }
+    wrap.innerHTML =
+      '<div style="margin:16px 16px 12px;padding:14px 16px;background:linear-gradient(135deg,#0d1a0d,#1a1200);border:1.5px solid rgba(234,179,8,.35);border-radius:14px;">'
+      +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">'
+      +'<div style="width:32px;height:32px;border-radius:8px;background:rgba(234,179,8,.12);border:1px solid rgba(234,179,8,.3);display:flex;align-items:center;justify-content:center;flex-shrink:0;">'
+      +'<i class="fa-solid fa-graduation-cap" style="color:#eab308;font-size:14px;"></i></div>'
+      +'<div>'
+      +'<div style="font-size:13px;font-weight:900;color:#eab308;line-height:1.2;">Spécial Étudiants</div>'
+      +'<div style="font-size:11px;color:#888;margin-top:1px;">Prix les plus bas du moment</div>'
+      +'</div></div></div>'
+      +'<div class="p-reco-row" style="padding:0 0 0 16px;">'
+      +partners.slice(0,10).map(function(p,i){ return recoPartnerCard(p, i, null); }).join('')
+      +'<div style="min-width:16px;"></div></div>';
+  }).catch(function(){ wrap.innerHTML = ''; });
+}
+
 function _loadPrstAudience(audience, wrapId, title){
   var wrap = document.getElementById(wrapId);
   if(!wrap) return;
@@ -5647,7 +5668,7 @@ function renderPrestataires(){
   // Chargement des sections découverte
   var base = window.FA_GENESIS_API || API;
   if(_isStudent) {
-    _loadPrstSection(base+'/api/partners/directory?sort=price_asc&limit=10', 'prst-student-budget-wrap', '🎓 Spécial Étudiants — Prix les plus bas');
+    _loadPrstSectionStudent(base+'/api/partners/directory?sort=price_asc&limit=10', 'prst-student-budget-wrap');
   }
   _loadPrstSection(base+'/api/partners/featured?limit=8',              'prst-featured-wrap',   'Professionnels à la une');
   _loadPrstSection(base+'/api/partners/directory?sort=rating&limit=8', 'prst-best-rated-wrap', 'Les mieux notés', null, function(p){ return p.rating && p.rating.count > 0; });
@@ -18165,13 +18186,14 @@ function _showTutoChoiceOverlay(){
     // Toute connexion ultérieure détectera ce flag et supprimera le tutoriel.
     try{ localStorage.setItem(_tutoKey('first_login'),'1'); }catch(e){}
     var fn = USER && (USER.prenom||USER.firstName||(USER.email||'').split('@')[0]||'');
-    var greeting = fn ? ('Bienvenue ' + fn + ' !') : 'Bienvenue !';
+    var greeting = fn ? ('Bienvenue, ' + fn + ' !') : 'Bienvenue !';
     var el = document.createElement('div');
     el.id = 'tuto-choice-overlay';
     el.style.cssText = 'position:fixed;inset:0;z-index:99997;background:rgba(0,0,0,.82);display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .3s;';
     el.innerHTML = '<div style="width:100%;max-width:480px;background:#0a0a0a;border:1.5px solid var(--yellow);border-radius:24px 24px 0 0;padding:30px 24px 44px;text-align:center;">'
-      + '<div style="font-size:40px;margin-bottom:12px;"><i class="fa-solid fa-hand-sparkles" style="color:var(--yellow);"></i></div>'
-      + '<div style="font-size:21px;font-weight:900;color:#fff;margin-bottom:8px;">' + greeting + '</div>'
+      + '<div style="display:flex;align-items:center;justify-content:center;gap:10px;font-size:21px;font-weight:900;color:#fff;margin-bottom:8px;">'
+      + '<i class="fa-solid fa-hand-sparkles" style="color:var(--yellow);font-size:22px;flex-shrink:0;"></i>'
+      + '<span>' + greeting + '</span></div>'
       + '<div style="font-size:13px;color:#888;line-height:1.65;margin-bottom:26px;">Souhaitez-vous être guidé par notre tutoriel interactif ? Il vous présentera les fonctionnalités essentielles de la plateforme en quelques étapes.</div>'
       + '<div style="display:flex;gap:10px;">'
       + '<button onclick="_tutoChoiceNo()" style="flex:1;background:rgba(255,255,255,.06);border:1px solid #333;border-radius:12px;padding:14px;font-size:13px;font-weight:700;color:#888;cursor:pointer;">Explorer seul(e)</button>'
