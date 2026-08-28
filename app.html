@@ -13673,7 +13673,9 @@ function _pbBuildAndShowContract(){
   var rawPrice=service.price||(service.priceNum?service.priceNum:'');
   var priceStr=rawPrice?(String(rawPrice).replace(/\s*€\s*$/,'').trim()+' €'):'Selon devis';
   var depositEur=(_pbDepositAmount||0).toFixed(2)+' €';
-  var balEur=((parseFloat(service.price||service.priceNum||0)-(_pbDepositAmount||0))||0).toFixed(2)+' €';
+  var _balRaw=(parseFloat(service.price||service.priceNum||0)-(_pbDepositAmount||0))||0;
+  var balEur=_balRaw.toFixed(2)+' €';
+  var _isSplitPayment = _balRaw > 0.001;
 
   var commits=_PB_TYPE_COMMITS[(partner.partner_type||'').toLowerCase()]||_PB_DEFAULT_COMMITS;
   var cHtml=commits.map(function(c){return '<div class="pb-ctr-c">'+c+'</div>';}).join('');
@@ -13702,14 +13704,18 @@ function _pbBuildAndShowContract(){
     '<div class="pb-ctr-section">'+
     '<div class="pb-ctr-sh">Engagements du client</div>'+
     '<div class="pb-ctr-c">Fournir toutes les informations et éléments nécessaires à la réalisation de la prestation</div>'+
-    '<div class="pb-ctr-c">Verser l\'acompte de <strong style="color:#FFD700;">'+depositEur+'</strong> à la commande, puis le solde de <strong style="color:#FFD700;">'+balEur+'</strong> après livraison</div>'+
+    (_isSplitPayment
+      ? '<div class="pb-ctr-c">Verser l\'acompte de <strong style="color:#FFD700;">'+depositEur+'</strong> à la commande, puis le solde de <strong style="color:#FFD700;">'+balEur+'</strong> après livraison</div>'
+      : '<div class="pb-ctr-c">Verser le paiement intégral de <strong style="color:#FFD700;">'+depositEur+'</strong> à la commande</div>')+
     '<div class="pb-ctr-c">Valider la livraison ou formuler des retours précis dans un délai de 7 jours calendaires</div>'+
-    '<div class="pb-ctr-c">Respecter la propriété intellectuelle du prestataire avant règlement intégral du solde</div>'+
+    (_isSplitPayment ? '<div class="pb-ctr-c">Respecter la propriété intellectuelle du prestataire avant règlement intégral du solde</div>' : '')+
     '</div>'+
 
     '<div class="pb-ctr-section">'+
     '<div class="pb-ctr-sh">Paiement sécurisé — GENESIS SAFE™</div>'+
-    '<div style="font-size:11px;color:#aaa;line-height:1.7;">L\'acompte de <strong style="color:#FFD700;">'+depositEur+'</strong> est versé à la signature. Le solde est retenu par FA GENESIS et débloqué au prestataire uniquement après confirmation de livraison par le client. En cas de litige, FA GENESIS intervient comme médiateur neutre.</div>'+
+    (_isSplitPayment
+      ? '<div style="font-size:11px;color:#aaa;line-height:1.7;">L\'acompte de <strong style="color:#FFD700;">'+depositEur+'</strong> est versé à la signature. Le solde de <strong style="color:#FFD700;">'+balEur+'</strong> est retenu par FA GENESIS et débloqué au prestataire uniquement après confirmation de livraison par le client. En cas de litige, FA GENESIS intervient comme médiateur neutre.</div>'
+      : '<div style="font-size:11px;color:#aaa;line-height:1.7;">Le paiement de <strong style="color:#FFD700;">'+depositEur+'</strong> est sécurisé sur le portefeuille GENESIS SAFE™ et retenu jusqu\'à confirmation de livraison par le client. En cas de litige, FA GENESIS intervient comme médiateur neutre.</div>')+
     '</div>'+
 
     '<div style="border-top:1px solid #181818;padding-top:10px;font-size:10px;color:#444;line-height:1.6;">'+
