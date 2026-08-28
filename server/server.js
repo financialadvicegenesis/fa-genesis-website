@@ -7247,6 +7247,8 @@ app.get('/api/admin/users', function(req, res) {
         var safeUsers = users.map(function(u) {
             var rest = Object.assign({}, u);
             delete rest.password;
+            var completedOrders = getClientCompletedOrders(u.email);
+            rest.genesisPoints = getClientGenesisPoints(u, completedOrders);
             return rest;
         });
         safeUsers.sort(function(a, b) { return new Date(b.createdAt || 0) - new Date(a.createdAt || 0); });
@@ -7267,6 +7269,8 @@ app.get('/api/admin/users/:email', function(req, res) {
         if (!user) return res.status(404).json({ error: 'Utilisateur non trouve' });
         var userWithoutPassword = Object.assign({}, user);
         delete userWithoutPassword.password;
+        var completedOrders = getClientCompletedOrders(user.email);
+        userWithoutPassword.genesisPoints = getClientGenesisPoints(user, completedOrders);
         res.json(userWithoutPassword);
     } catch (e) {
         console.error('[ADMIN] Erreur GET /api/admin/users/:email:', e);

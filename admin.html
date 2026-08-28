@@ -2397,14 +2397,14 @@
                         '<div class="flex-1 min-w-[250px]">' +
                             '<div class="font-black text-lg">' + (client.prenom || '') + ' ' + (client.nom || '') + (acctPill ? ' ' + acctPill : '') + '</div>' +
                             '<div class="text-sm font-bold opacity-70">' + client.email + '</div>' +
-                            '<div class="text-xs font-bold opacity-50 mt-1">Inscrit le ' + new Date(client.createdAt || client.created_at || Date.now()).toLocaleDateString('fr-FR') + '</div>' +
+                            '<div class="text-xs font-bold opacity-50 mt-1">Inscrit le ' + ((client.createdAt || client.created_at) ? new Date(client.createdAt || client.created_at).toLocaleDateString('fr-FR') : 'N/A') + '</div>' +
                         '</div>' +
                         '<div>' +
                             '<div class="status-badge ' + statusClass + '">' + getStatusLabel(client.paymentStatus) + '</div>' +
                         '</div>' +
                         '<div class="text-right min-w-[200px]">' +
                             '<div class="font-black">' + offerName + '</div>' +
-                            (client.genesisPoints ? '<div class="text-xs font-bold" style="color:var(--genesis-yellow);">' + client.genesisPoints + ' QG</div>' : '') +
+                            '<div class="text-xs font-bold" style="color:var(--genesis-yellow);">' + (client.genesisPoints || 0) + ' QG</div>' +
                         '</div>' +
                         '<div class="text-right">' +
                             '<button class="neo-btn-yellow px-4 py-2 text-sm">' +
@@ -2583,7 +2583,7 @@
                     </div>
                     <div>
                         <p class="text-sm font-bold uppercase opacity-70 mb-1">Inscrit le</p>
-                        <p class="font-black">${new Date(client.createdAt || client.created_at || Date.now()).toLocaleDateString('fr-FR')}</p>
+                        <p class="font-black">${(client.createdAt || client.created_at) ? new Date(client.createdAt || client.created_at).toLocaleDateString('fr-FR') : 'N/A'}</p>
                     </div>
                     <div>
                         <p class="text-sm font-bold uppercase opacity-70 mb-1">Points QG</p>
