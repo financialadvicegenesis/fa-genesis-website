@@ -8259,7 +8259,7 @@ app.get('/api/auth/me', (req, res) => {
             referralCount: referralCount,
             referralDiscount: user.referral_discount || null,
             welcomeDiscountEligible: isClientFirstPaidOrder(user.email),
-            referralBonusQG: user.referralBonusQG || 0,
+            referralBonusQG: (user.referralBonusQG !== undefined && user.referralBonusQG !== null) ? user.referralBonusQG : (user.referredBy ? 0 : 40),
             missionBonuses: user.missionBonuses || {},
             accountType: user.accountType || null,
             student_status: user.student_status || null,
@@ -12488,11 +12488,16 @@ function getClientGenesisPoints(user, completedOrders) {
     var referrals = getClientReferralCount(user.id);
     var reviewsLeft = loadPartnerReviews().filter(function(r) { return (r.userEmail || '').toLowerCase() === user.email.toLowerCase(); }).length;
     var mb = user.missionBonuses || {};
+    // Bonus d'inscription 40 QG : attribué si referralBonusQG n'a jamais été défini
+    // (anciens comptes) ET que l'utilisateur n'a pas été parrainé
+    var welcomeBonus = (user.referralBonusQG !== undefined && user.referralBonusQG !== null)
+        ? user.referralBonusQG
+        : (user.referredBy ? 0 : 40);
     return (orders * GENESIS_POINT_VALUES.reservationEffectuee)
         + (reviewsLeft * GENESIS_POINT_VALUES.avisLaisse)
         + (referrals * GENESIS_POINT_VALUES.parrainage)
         + getEventAttendancePoints(user.id)
-        + (user.referralBonusQG || 0)
+        + welcomeBonus
         + (mb.multi_collab ? GENESIS_POINT_VALUES.missionMultiCollab : 0)
         + (mb.ref1  ? GENESIS_POINT_VALUES.missionRef1  : 0)
         + (mb.ref5  ? GENESIS_POINT_VALUES.missionRef5  : 0)
