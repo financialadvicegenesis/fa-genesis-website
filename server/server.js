@@ -1480,6 +1480,29 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
                     }
                     orders[oIdx].updatedAt = new Date().toISOString();
                     saveOrders(orders);
+                    // Partner service (paiement Stripe direct) : créer le dispatch si pas encore existant
+                    if ((stage === 'deposit' || stage === 'installment_1') && orders[oIdx].product_type === 'partner_service') {
+                        var _psOrderWh = orders[oIdx];
+                        var _psNewDispWh = createPartnerServiceDispatch(_psOrderWh);
+                        if (_psNewDispWh) {
+                            var _psPartnerWh = getPartnerById(_psOrderWh.partner_id);
+                            var _psPartnerEmailWh = _psPartnerWh ? (_psPartnerWh.email || _psPartnerWh.contact_email || null) : null;
+                            var _psPartnerNameWh = _psPartnerWh ? (_psPartnerWh.prenom ? (_psPartnerWh.prenom + ' ' + (_psPartnerWh.nom || '')) : _psPartnerWh.company || 'votre prestataire') : 'votre prestataire';
+                            var _psClientFnWh = (_psOrderWh.client_info && _psOrderWh.client_info.first_name) || 'Un client';
+                            var _psClientEmailWh = _psOrderWh.client_info && _psOrderWh.client_info.email;
+                            if (_psPartnerEmailWh) {
+                                notifyUser(_psPartnerEmailWh, 'partner', 'mission_pending', '🆕 Nouvelle commande !',
+                                    _psClientFnWh + ' a payé pour "' + (_psOrderWh.product_name || 'votre prestation') + '". Acceptez ou refusez dans les 24h.',
+                                    '#partner:missions');
+                            }
+                            if (_psClientEmailWh) {
+                                notifyUser(_psClientEmailWh, 'client', 'payment_success', '✅ Paiement réussi !',
+                                    'Votre paiement a bien été reçu. ' + _psPartnerNameWh + ' va prendre en charge votre demande sous 24h.',
+                                    '#tab:resa');
+                            }
+                            console.log('[STRIPE-WH] Mission partenaire créée — en attente acceptation :', orderId, '→', _psOrderWh.partner_id);
+                        }
+                    }
                     // Trouver le dispatch associé pour déclencher le payout partenaire
                     var _whDisps = loadDispatches();
                     var _whDisp  = _whDisps.find(function(d) {
@@ -5113,13 +5136,11 @@ app.get('/api/client/wallet', function(req, res) {
             var partnerInactive = partner && partner.accountStatus && partner.accountStatus !== 'active';
             var dispatchNotAccepted = !dispatch || dispatch.status === 'pending_acceptance';
 
-            // Tant que le prestataire n'a pas accepté, l'argent est sur Stripe FA GENESIS
-            // mais n'est pas encore en GENESIS SAFE™ actif. On ne l'ajoute pas au total escrow.
-            // La ligne reste visible uniquement pour permettre le remboursement.
-            if (!dispatchNotAccepted) {
-                totalHeld += held;
-                totalReleased += released;
-            }
+            // L'argent est sur le compte Stripe FA GENESIS dans tous les cas.
+            // On l'inclut dans le total retenu même si le prestataire n'a pas encore accepté
+            // (le client peut le récupérer via le bouton de retrait si l'acceptation tarde).
+            totalHeld += held;
+            totalReleased += released;
 
             var partnerDone = !!(order.delivery_confirmed || order.partner_completed);
             var _isPI = order.payment_tier === 'partner_installments';
