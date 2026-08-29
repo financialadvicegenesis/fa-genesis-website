@@ -1041,8 +1041,10 @@ async function processDispatchPayout(dispatch, stage) {
             return;
         }
 
-        // GENESIS SAFE™ : tranche intermédiaire (40%) retenue jusqu'à validation du livrable intermédiaire par le client
-        if (stage === 'installment_2') {
+        // GENESIS SAFE™ : tranche intermédiaire (40%) retenue uniquement pour le mode 30/40/30 (payment_tier 'large')
+        // En mode "plusieurs fois" (payment_tier 'partner_installments'), chaque mensualité est versée directement.
+        var _isPartnerInstallments = order && order.payment_tier === 'partner_installments';
+        if (stage === 'installment_2' && !_isPartnerInstallments) {
             console.log('[PAYOUT] installment_2 retenu — auto-libération dans ' + GENESIS_SAFE_INTERMEDIATE_RELEASE_DAYS + ' j (le ' + (_autoReleaseAt || '').substring(0, 10) + ') → ' + partner.email + ' : ' + paidAmount + ' €');
             return;
         }
@@ -5092,6 +5094,12 @@ app.get('/api/client/wallet', function(req, res) {
                         held += parseFloat(inst.amount) || 0;
                     }
                 });
+            } else if (order.payment_tier === 'partner_installments') {
+                // Mode "plusieurs fois" : chaque mensualité est versée directement au prestataire.
+                // Rien n'est retenu en GENESIS SAFE™ — montant payé = versé au prestataire.
+                (order.installments || []).forEach(function(inst) {
+                    if (inst.paid) released += parseFloat(inst.amount) || 0;
+                });
             } else {
                 // Modèle standard (deposit_paid / balance_paid) — inclut les orders partner_service
                 var isComplete = order.status === 'completed' || order.status === 'delivered' || order.client_validated === true;
@@ -5119,9 +5127,12 @@ app.get('/api/client/wallet', function(req, res) {
             totalHeld += held;
             totalReleased += released;
             var partnerDone = !!(order.delivery_confirmed || order.partner_completed);
-            var statusLabel = held > 0 && partnerDone ? 'Prestation livrée — validation en cours'
-                            : held > 0 ? 'Sécurisé GENESIS SAFE™ — en attente de livraison'
-                            : 'Versé au prestataire ✓';
+            var _isPI = order.payment_tier === 'partner_installments';
+            var statusLabel = _isPI
+                ? 'Mensualités versées directement au prestataire'
+                : held > 0 && partnerDone ? 'Prestation livrée — validation en cours'
+                : held > 0 ? 'Sécurisé GENESIS SAFE™ — en attente de livraison'
+                : 'Versé au prestataire ✓';
             var dispatch = dispatches.find(function(d) { return d.order_id === order.id; });
             var partnerInactive = partner && partner.accountStatus && partner.accountStatus !== 'active';
             var dispatchNotAccepted = !dispatch || dispatch.status === 'pending_acceptance';
@@ -5336,7 +5347,9 @@ app.get('/api/partner/wallet', authenticatePartner, function(req, res) {
                 : (order.client_info.name || order.client_info.email))) || 'Client';
             var isCompleted = !!order.partner_completed || !!order.delivery_confirmed;
             var isPaid = amounts.released > 0 && amounts.held === 0;
-            var statusLabel = isPaid ? 'Versé sur votre compte ✓'
+            var _orderIsPI = order.payment_tier === 'partner_installments';
+            var statusLabel = _orderIsPI ? 'Mensualités reçues directement'
+                : isPaid ? 'Versé sur votre compte ✓'
                 : isCompleted ? 'En cours de versement'
                 : 'Sécurisé GENESIS SAFE™';
             return {
@@ -15536,6 +15549,12 @@ app.post('/api/partner/projects/:orderId/complete', authenticatePartner, async f
                 + 'Vous avez ' + AUTO_RELEASE_DAYS + ' jours pour valider ou signaler un problème. '
                 + 'Sans réponse, le paiement sera automatiquement libéré.',
                 '#tab:wallet');
+        }
+
+        // En mode "plusieurs fois" (partner_installments), chaque mensualité est versée directement
+        // au prestataire au moment où le client paie. Il n'y a pas de solde à libérer à la livraison.
+        if (order.payment_tier === 'partner_installments') {
+            return res.json({ ok: true, payout_triggered: false, message: 'Prestation déclarée terminée. Les mensualités ont été versées directement au prestataire.' });
         }
 
         // ── GENESIS SAFE™ : Virement FA GENESIS Stripe → Connect partenaire → banque ──
