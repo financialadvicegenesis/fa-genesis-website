@@ -161,6 +161,18 @@ class StripeConnectProvider extends PaymentProvider {
         return await s.paymentIntents.create(params);
     }
 
+    // Transfère des fonds depuis le compte Stripe de la plateforme vers un compte Connect.
+    // À utiliser pour les paiements directs (createDirectPaymentIntent) : les fonds sont dans
+    // le compte FA GENESIS et doivent être poussés vers le compte Connect du partenaire.
+    async createTransfer(amountCents, currency, destinationAccountId, metadata) {
+        return await getStripe().transfers.create({
+            amount:      amountCents,
+            currency:    currency || 'eur',
+            destination: destinationAccountId,
+            metadata:    metadata || {}
+        });
+    }
+
     // Vérifie la signature webhook Stripe et retourne l'événement.
     constructWebhookEvent(rawBody, signature, secret) {
         return getStripe().webhooks.constructEvent(rawBody, signature, secret);

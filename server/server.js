@@ -15329,6 +15329,237 @@ app.post('/api/partner/projects/:orderId/leave', authenticatePartner, function(r
 });
 
 /**
+ * POST /api/partner/projects/:orderId/complete
+ * Le prestataire déclare la prestation terminée.
+ * GENESIS SAFE™ : déclenche le virement FA GENESIS Stripe → Connect partenaire → banque.
+ * Pour les paiements directs (payment_method:'stripe'), les fonds sont dans le compte
+ * FA GENESIS Stripe (financialadvicegenesis@gmail.com) ; on crée un Transfer vers le
+ * compte Connect du partenaire, puis on déclenche un payout vers sa banque.
+ */
+app.post('/api/partner/projects/:orderId/complete', authenticatePartner, async function(req, res) {
+    try {
+        var orderId = req.params.orderId;
+        var partner = req.partner;
+        var partnerId = partner.id || partner.partnerId;
+
+        // Trouver la commande
+        var order = getOrderById(orderId);
+        if (!order) {
+            // Essayer aussi via les dispatches (order_id sur le dispatch)
+            var allDisps = loadDispatches();
+            var disp0 = allDisps.find(function(d) {
+                return d.order_id === orderId && (d.partner_id === partnerId || d.claimed_by_partner_id === partnerId);
+            });
+            if (disp0) order = getOrderById(disp0.order_id);
+        }
+        if (!order) return res.status(404).json({ error: 'Commande introuvable' });
+
+        // Vérifier que ce partenaire est bien assigné (dispatch ou assignment)
+        var allDispatches = loadDispatches();
+        var dispatch = allDispatches.find(function(d) {
+            return d.order_id === order.id && (d.partner_id === partnerId || d.claimed_by_partner_id === partnerId);
+        });
+        var assignments = loadPartnerAssignments();
+        var assignment = assignments.find(function(a) {
+            return a.order_id === order.id && a.partner_id === partnerId && a.status === 'active';
+        });
+        if (!dispatch && !assignment) {
+            return res.status(403).json({ error: 'Vous n\'êtes pas assigné à cette commande' });
+        }
+
+        if (order.partner_completed) {
+            return res.status(400).json({ error: 'Prestation déjà déclarée terminée' });
+        }
+        if (!order.deposit_paid && !order.balance_paid) {
+            return res.status(400).json({ error: 'Aucun paiement reçu pour cette commande' });
+        }
+
+        var AUTO_RELEASE_DAYS = 7;
+        var autoReleaseAt = new Date(Date.now() + AUTO_RELEASE_DAYS * 24 * 3600 * 1000).toISOString();
+
+        // Mettre à jour la commande
+        var updates = {
+            partner_completed: true,
+            partner_completed_at: new Date().toISOString(),
+            status: 'pending_client_validation',
+            auto_payment_release_at: autoReleaseAt
+        };
+        var updatedOrder = updateOrder(order.id, updates);
+
+        // Mettre à jour le dispatch si présent
+        if (dispatch) {
+            var dispIdx = allDispatches.findIndex(function(d) { return d.id === dispatch.id; });
+            if (dispIdx !== -1) {
+                allDispatches[dispIdx].mission_status = 'delivered';
+                allDispatches[dispIdx].delivered_at   = new Date().toISOString();
+                saveDispatches(allDispatches);
+            }
+        }
+
+        // Notifier le client
+        var clientEmail = order.client_info && order.client_info.email;
+        if (clientEmail) {
+            notifyUser(clientEmail, 'client', 'prestation_delivered',
+                '📦 Prestation livrée — validation requise',
+                'Votre prestataire a déclaré "' + (order.product_name || 'votre prestation') + '" terminée. '
+                + 'Vous avez ' + AUTO_RELEASE_DAYS + ' jours pour valider ou signaler un problème. '
+                + 'Sans réponse, le paiement sera automatiquement libéré.',
+                '#tab:wallet');
+        }
+
+        // ── GENESIS SAFE™ : Virement FA GENESIS Stripe → Connect partenaire → banque ──
+        var partnerRecord = loadPartners().find(function(p) { return p.id === partnerId; });
+        var payoutTriggered = false;
+        var payoutError = null;
+        var payoutRecord = null;
+
+        // Calculer le montant partenaire
+        var partnerPct = (dispatch && dispatch.partner_pct) ? dispatch.partner_pct : 75;
+        var totalPaid   = parseFloat(order.deposit_paid ? (order.deposit_amount || order.total_amount || 0) : 0)
+                        + parseFloat(order.balance_paid ? (order.balance_amount  || 0) : 0);
+        if (totalPaid <= 0) totalPaid = parseFloat(order.total_price || order.total_amount || 0);
+        var partnerAmount = parseFloat((totalPaid * partnerPct / 100).toFixed(2));
+
+        if (partnerAmount > 0 && partnerRecord && partnerRecord.stripeAccountId && partnerRecord.stripeChargesEnabled) {
+            var partnerAmountCents = Math.round(partnerAmount * 100);
+            var payoutDesc = 'Versement GENESIS SAFE™ — ' + (order.product_name || order.id);
+
+            // Créer l'enregistrement payout
+            payoutRecord = {
+                id: 'PAY-' + Math.random().toString(36).substring(2, 10).toUpperCase(),
+                order_id: order.id,
+                dispatch_id: dispatch ? dispatch.id : null,
+                stage: 'balance',
+                partner_id: partnerId,
+                partner_email: partnerRecord.email,
+                partner_stripe_account: partnerRecord.stripeAccountId,
+                payout_method: 'stripe_connect',
+                amount: partnerAmount,
+                fa_amount: parseFloat((totalPaid - partnerAmount).toFixed(2)),
+                fa_pct: 100 - partnerPct,
+                partner_pct: partnerPct,
+                currency: 'EUR',
+                status: 'pending',
+                created_at: new Date().toISOString(),
+                sent_at: null,
+                stripe_transfer_id: null,
+                stripe_payout_id: null,
+                error: null
+            };
+            var allPayouts = loadPayouts();
+            allPayouts.push(payoutRecord);
+            savePayouts(allPayouts);
+
+            try {
+                var paymentMethod = order.payment_method || 'stripe';
+
+                if (paymentMethod === 'stripe' || paymentMethod === 'stripe_direct') {
+                    // Paiement direct : fonds dans compte FA GENESIS → Transfer vers Connect
+                    var transfer = await scp.createTransfer(
+                        partnerAmountCents,
+                        'eur',
+                        partnerRecord.stripeAccountId,
+                        { order_id: order.id, partner_id: partnerId, platform: 'fa-genesis' }
+                    );
+                    var latestPayouts = loadPayouts();
+                    var pIdx = latestPayouts.findIndex(function(p) { return p.id === payoutRecord.id; });
+                    if (pIdx !== -1) {
+                        latestPayouts[pIdx].stripe_transfer_id = transfer.id;
+                        savePayouts(latestPayouts);
+                    }
+                    console.log('[COMPLETE] Transfer Stripe plateforme→Connect : ' + transfer.id + ' (' + partnerAmount + '€ → ' + partnerRecord.stripeAccountId + ')');
+
+                    // Déclencher le payout Connect → banque partenaire
+                    var payout = await scp.triggerConnectPayout(partnerRecord.stripeAccountId, partnerAmountCents, 'eur', payoutDesc);
+                    var latestPayouts2 = loadPayouts();
+                    var pIdx2 = latestPayouts2.findIndex(function(p) { return p.id === payoutRecord.id; });
+                    if (pIdx2 !== -1) {
+                        latestPayouts2[pIdx2].status = 'sent';
+                        latestPayouts2[pIdx2].sent_at = new Date().toISOString();
+                        latestPayouts2[pIdx2].stripe_payout_id = payout.id;
+                        savePayouts(latestPayouts2);
+                    }
+                    console.log('[COMPLETE] Payout Connect→banque déclenché : ' + payout.id + ' (' + partnerAmount + '€)');
+                    payoutTriggered = true;
+
+                } else if (paymentMethod === 'stripe_connect') {
+                    // Paiement Connect : fonds déjà dans le solde Connect → payout direct
+                    var payoutConnect = await scp.triggerConnectPayout(partnerRecord.stripeAccountId, partnerAmountCents, 'eur', payoutDesc);
+                    var latestPayouts3 = loadPayouts();
+                    var pIdx3 = latestPayouts3.findIndex(function(p) { return p.id === payoutRecord.id; });
+                    if (pIdx3 !== -1) {
+                        latestPayouts3[pIdx3].status = 'sent';
+                        latestPayouts3[pIdx3].sent_at = new Date().toISOString();
+                        latestPayouts3[pIdx3].stripe_payout_id = payoutConnect.id;
+                        savePayouts(latestPayouts3);
+                    }
+                    console.log('[COMPLETE] Payout Stripe Connect : ' + payoutConnect.id + ' (' + partnerAmount + '€)');
+                    payoutTriggered = true;
+                }
+            } catch (stripeErr) {
+                payoutError = stripeErr.message;
+                var latestPayoutsErr = loadPayouts();
+                var pIdxErr = latestPayoutsErr.findIndex(function(p) { return p.id === payoutRecord.id; });
+                if (pIdxErr !== -1) {
+                    latestPayoutsErr[pIdxErr].status = 'failed';
+                    latestPayoutsErr[pIdxErr].error  = stripeErr.message;
+                    savePayouts(latestPayoutsErr);
+                }
+                console.error('[COMPLETE] Erreur Stripe payout:', stripeErr.message);
+                // Notifier l'admin d'une erreur de virement
+                try {
+                    notifyUser(null, 'admin', 'refund_manual',
+                        'Erreur virement partenaire : ' + (partnerRecord ? partnerRecord.email : partnerId),
+                        'Commande ' + order.id + ' — montant ' + partnerAmount + '€ — erreur : ' + stripeErr.message
+                            + '. Vérifier le compte Stripe Connect '
+                            + (partnerRecord ? partnerRecord.stripeAccountId : '') + '.',
+                        '/admin.html#payouts');
+                } catch(ne) {}
+            }
+        } else if (partnerAmount > 0) {
+            // Pas de Stripe Connect : créer un record payout manuel (Wise/IBAN)
+            var manualMethod = (partnerRecord && partnerRecord.bankDetails && partnerRecord.bankDetails.iban) ? 'wise' : 'pending';
+            var manualPayout = {
+                id: 'PAY-' + Math.random().toString(36).substring(2, 10).toUpperCase(),
+                order_id: order.id,
+                dispatch_id: dispatch ? dispatch.id : null,
+                stage: 'balance',
+                partner_id: partnerId,
+                partner_email: partnerRecord ? partnerRecord.email : null,
+                partner_iban: partnerRecord && partnerRecord.bankDetails ? (partnerRecord.bankDetails.iban || null) : null,
+                partner_bic:  partnerRecord && partnerRecord.bankDetails ? (partnerRecord.bankDetails.bic  || null) : null,
+                payout_method: manualMethod,
+                amount: partnerAmount,
+                fa_amount: parseFloat((totalPaid - partnerAmount).toFixed(2)),
+                currency: 'EUR',
+                status: 'pending',
+                created_at: new Date().toISOString(),
+                sent_at: null,
+                error: null
+            };
+            var allPayoutsM = loadPayouts();
+            allPayoutsM.push(manualPayout);
+            savePayouts(allPayoutsM);
+            console.log('[COMPLETE] Virement manuel requis → ' + (partnerRecord ? partnerRecord.email : partnerId) + ' : ' + partnerAmount + '€');
+        }
+
+        console.log('[COMPLETE] Prestation terminée : commande ' + order.id + ', partenaire ' + partnerId
+            + ', payout_triggered=' + payoutTriggered
+            + (payoutError ? ', erreur=' + payoutError : ''));
+
+        res.json({
+            ok: true,
+            payout_triggered: payoutTriggered,
+            payout_error: payoutError || null,
+            auto_release_at: autoReleaseAt
+        });
+    } catch (err) {
+        console.error('[COMPLETE] Erreur:', err);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
  * POST /api/partner/orders/:orderId/unlock-balance
  * Le partenaire déclare la fin de l'accompagnement → débloque le paiement du solde
  */
