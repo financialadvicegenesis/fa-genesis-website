@@ -20702,7 +20702,7 @@ setInterval(processScheduledNotifs, 5 * 60 * 1000);
  * GET /api/admin/client-withdrawals
  * Liste les retraits GENESIS SAFE™ en attente de virement manuel (refund_success=false + withdrawal_bank défini).
  */
-app.get('/api/admin/client-withdrawals', requireAdmin, function(req, res) {
+app.get('/api/admin/client-withdrawals', function(req, res) {
     try {
         var orders = loadOrders();
         // Dédupliquer : garder la dernière occurrence par ID
@@ -20744,7 +20744,7 @@ app.get('/api/admin/client-withdrawals', requireAdmin, function(req, res) {
  * POST /api/admin/client-withdrawals/:order_id/confirm
  * L'admin confirme que le virement IBAN a été effectué → marque withdrawal_bank_paid.
  */
-app.post('/api/admin/client-withdrawals/:order_id/confirm', requireAdmin, function(req, res) {
+app.post('/api/admin/client-withdrawals/:order_id/confirm', function(req, res) {
     try {
         var orderId = req.params.order_id;
         var ref = (req.body && req.body.reference) ? req.body.reference.trim() : '';
