@@ -16690,6 +16690,8 @@ app.post('/api/contracts/service/generate', function(req, res) {
             order_id: order.id,
             service_name: order.product_name || '',
             service_price: parseFloat(order.total_amount || 0),
+            payment_tier: order.payment_tier || 'small',
+            installments: Array.isArray(order.installments) ? order.installments : [],
             client_type: (order.client_info && order.client_info.client_type) || 'particulier',
             partner_id: partner.id,
             partner_email: partner.email,
@@ -16750,7 +16752,8 @@ app.get('/api/contracts/service/preview/:orderId', function(req, res) {
         var partner = getPartnerById(contract.partner_id);
         var users = loadUsers();
         var clientUser = users.find(function(u) { return u.email === user.email; });
-        var html = contractService.generateServiceContractHtml(order || { id: contract.order_id, product_name: contract.service_name, total_amount: contract.service_price, client_info: { client_type: contract.client_type } }, partner || {}, clientUser, contract.custom_conditions);
+        var _ctOrder = order || { id: contract.order_id, product_name: contract.service_name, total_amount: contract.service_price, payment_tier: contract.payment_tier || 'small', installments: contract.installments || [], created_at: contract.created_at, client_info: { client_type: contract.client_type } };
+        var html = contractService.generateServiceContractHtml(_ctOrder, partner || {}, clientUser, contract.custom_conditions);
         res.json({ html: html, contract: contract });
     } catch(e) {
         console.error('[CONTRACT] Erreur preview:', e);
