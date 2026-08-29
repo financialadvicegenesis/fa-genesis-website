@@ -5124,18 +5124,27 @@ app.get('/api/client/wallet', function(req, res) {
             }
 
             if (held === 0 && released === 0) return;
-            totalHeld += held;
-            totalReleased += released;
+            var dispatch = dispatches.find(function(d) { return d.order_id === order.id; });
+            var partnerInactive = partner && partner.accountStatus && partner.accountStatus !== 'active';
+            var dispatchNotAccepted = !dispatch || dispatch.status === 'pending_acceptance';
+
+            // Tant que le prestataire n'a pas accepté, l'argent est sur Stripe FA GENESIS
+            // mais n'est pas encore en GENESIS SAFE™ actif. On ne l'ajoute pas au total escrow.
+            // La ligne reste visible uniquement pour permettre le remboursement.
+            if (!dispatchNotAccepted) {
+                totalHeld += held;
+                totalReleased += released;
+            }
+
             var partnerDone = !!(order.delivery_confirmed || order.partner_completed);
             var _isPI = order.payment_tier === 'partner_installments';
-            var statusLabel = _isPI
+            var statusLabel = dispatchNotAccepted && held > 0
+                ? 'Paiement reçu — en attente d\'acceptation du prestataire'
+                : _isPI
                 ? 'Mensualités versées directement au prestataire'
                 : held > 0 && partnerDone ? 'Prestation livrée — validation en cours'
                 : held > 0 ? 'Sécurisé GENESIS SAFE™ — en attente de livraison'
                 : 'Versé au prestataire ✓';
-            var dispatch = dispatches.find(function(d) { return d.order_id === order.id; });
-            var partnerInactive = partner && partner.accountStatus && partner.accountStatus !== 'active';
-            var dispatchNotAccepted = !dispatch || dispatch.status === 'pending_acceptance';
             var canWithdraw = held > 0 && (dispatchNotAccepted || partnerInactive);
             var withdrawReason = canWithdraw
                 ? (partnerInactive ? 'Le prestataire n\'est pas disponible' : 'Le prestataire n\'a pas encore accepté la mission')
