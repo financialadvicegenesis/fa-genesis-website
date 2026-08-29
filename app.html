@@ -6348,10 +6348,11 @@ function openPartnerDetail(partnerId){
       var usedAudiences = ['particulier','entreprise','etudiant','promo'].filter(function(a){
         return services.some(function(s){ return (s.audience||'particulier')===a; });
       });
-      _partnerDetailAudience = usedAudiences[0] || 'particulier';
+      var _clientAudType = (USER && !GUEST && USER.accountType) ? USER.accountType : 'particulier';
+      _partnerDetailAudience = (usedAudiences.indexOf(_clientAudType) !== -1) ? _clientAudType : (usedAudiences[0] || 'particulier');
       var svcTabsHtml = usedAudiences.length > 1
-        ? '<div class="p-sub-filter" id="p-svc-tabs" style="margin:0 0 14px;">'+usedAudiences.map(function(a, i){
-            return '<button class="p-sub-btn'+(i===0?' on':'')+'" onclick="_ptnrDetailSwitchAudience(\''+a+'\',this)">'+SVC_AUDIENCE_LABELS[a]+'</button>';
+        ? '<div class="p-sub-filter" id="p-svc-tabs" style="margin:0 0 14px;">'+usedAudiences.map(function(a){
+            return '<button class="p-sub-btn'+(a===_partnerDetailAudience?' on':'')+'" onclick="_ptnrDetailSwitchAudience(\''+a+'\',this)">'+SVC_AUDIENCE_LABELS[a]+'</button>';
           }).join('')+'</div>'
         : '';
       var servicesHtml = services.length
@@ -6408,9 +6409,18 @@ function openServiceDetail(partnerId, serviceId){
     +(isSvcFav?'<i class="fa-solid fa-heart"></i>':'<i class="fa-regular fa-heart"></i>')
     +'</button>'
     +'</div>';
+  var _sdPayMode = service.payment_mode || 'single';
+  var _sdDepPct = service.deposit_pct || 30;
+  var _sdInstCnt = service.installment_count || 2;
+  var _sdPayBadge = '';
+  if(!isQuote && _sdPayMode === 'deposit_balance'){
+    _sdPayBadge = '<div style="font-size:11px;color:var(--muted);margin-top:6px;display:flex;align-items:center;gap:5px;"><i class="fa-solid fa-layer-group" style="color:#FFD700;font-size:10px;"></i>Acompte '+_sdDepPct+'% à la commande, solde '+(100-_sdDepPct)+'% à la livraison</div>';
+  } else if(!isQuote && _sdPayMode === 'installments'){
+    _sdPayBadge = '<div style="font-size:11px;color:var(--muted);margin-top:6px;display:flex;align-items:center;gap:5px;"><i class="fa-solid fa-credit-card" style="color:#FFD700;font-size:10px;"></i>Paiement en '+_sdInstCnt+' fois</div>';
+  }
   var priceHtml = isQuote
     ? '<div class="svc-detail-price quote"><i class="fa-solid fa-file-lines"></i> Tarif sur devis — personnalisé selon votre besoin</div>'
-    : '<div class="svc-detail-price">'+service.price+' €</div>';
+    : '<div class="svc-detail-price">'+Number(service.price).toFixed(2)+' €</div>'+_sdPayBadge;
   var ctaHtml = isQuote
     ? '<button class="svc-detail-cta secondary" onclick="closeServiceDetail();openPartnerRequest(\''+partnerId+'\',\''+serviceId+'\')"><i class="fa-solid fa-paper-plane"></i> Demander un devis</button>'
     : '<button class="svc-detail-cta" onclick="addServiceToMainCart(\''+partnerId+'\',\''+serviceId+'\')"><i class="fa-solid fa-cart-shopping"></i> Ajouter au panier</button>';

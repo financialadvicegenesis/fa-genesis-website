@@ -13657,7 +13657,7 @@ app.get('/api/partners/:id/reviews', (req, res) => {
                 var isValidPrice = !isNaN(sPrice) && isFinite(sPrice) && sPrice > 0;
                 // pricing_type 'quote' uniquement si explicitement défini ET pas de prix valide
                 var pricingType = (s.pricing_type === 'quote' && !isValidPrice) ? 'quote' : (isValidPrice ? 'fixed' : 'quote');
-                return { id: s.id, label: s.label, description: s.description || '', price: isValidPrice ? sPrice : null, pricing_type: pricingType, features: Array.isArray(s.features) ? s.features : [], audience: s.audience || 'particulier', image: s.image || '', payment_mode: s.payment_mode || null, deposit_pct: s.deposit_pct || null, installment_count: s.installment_count || null };
+                return { id: s.id, label: s.label, description: s.description || '', price: isValidPrice ? sPrice : null, pricing_type: pricingType, features: Array.isArray(s.features) ? s.features : [], audience: s.audience || 'particulier', image: s.image || '', payment_mode: s.payment_mode || null, deposit_pct: s.deposit_pct || null, installment_count: s.installment_count || null, max_installments: (s.payment_mode === 'installments' && s.installment_count) ? s.installment_count : 1 };
             });
         const activePortfolio = (partner.portfolio || [])
             .map(item => ({ id: item.id, type: item.type, url: item.url, thumb: item.thumb || '', caption: item.caption || '' }));
