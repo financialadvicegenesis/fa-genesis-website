@@ -7017,35 +7017,72 @@
                 var badgeEl = document.getElementById('adminNotifBadge');
                 var promises = [
                     fetch(API_BASE_URL + '/api/admin/stats', { headers: { 'Authorization': 'Bearer ' + tok } }).then(function(r) { return r.ok ? r.json() : {}; }).catch(function() { return {}; }),
-                    fetch(API_BASE_URL + '/api/admin/disputes', { headers: { 'Authorization': 'Bearer ' + tok } }).then(function(r) { return r.ok ? r.json() : {}; }).catch(function() { return {}; })
+                    fetch(API_BASE_URL + '/api/admin/disputes', { headers: { 'Authorization': 'Bearer ' + tok } }).then(function(r) { return r.ok ? r.json() : {}; }).catch(function() { return {}; }),
+                    fetch(API_BASE_URL + '/api/notifications', { headers: { 'Authorization': 'Bearer ' + tok } }).then(function(r) { return r.ok ? r.json() : {}; }).catch(function() { return {}; })
                 ];
                 Promise.all(promises).then(function(results) {
                     var stats = results[0] || {};
                     var disputesData = results[1] || {};
+                    var notifsData = results[2] || {};
                     var items = [];
+                    // Partenaires en attente
                     var pendingPartners = stats.pendingPartners || 0;
                     if (pendingPartners > 0) {
-                        items.push({ icon: 'fa-handshake', color: '#f59e0b', text: pendingPartners + ' partenaire(s) en attente de validation', action: "showSection('partenaires')" });
+                        items.push({ icon: 'fa-handshake', color: '#f59e0b', text: pendingPartners + ' partenaire(s) en attente de validation', action: "showSection('partenaires')", unread: true });
                     }
+                    // Litiges ouverts
                     var openDisputes = (disputesData.disputes || []).filter(function(d) { return d.status !== 'resolved'; });
                     if (openDisputes.length > 0) {
-                        items.push({ icon: 'fa-scale-balanced', color: '#ef4444', text: openDisputes.length + ' litige(s) ouvert(s)', action: "showSection('litiges')" });
+                        items.push({ icon: 'fa-scale-balanced', color: '#ef4444', text: openDisputes.length + ' litige(s) ouvert(s)', action: "showSection('litiges')", unread: true });
                     }
+                    // Notifications persistantes (retraits IBAN, justificatifs, etc.)
+                    var NOTIF_ICONS = {
+                        withdrawal_manual: { icon: 'fa-building-columns', color: '#FFD700' },
+                        refund_manual: { icon: 'fa-triangle-exclamation', color: '#f59e0b' },
+                        student_cert: { icon: 'fa-graduation-cap', color: '#00B9FF' },
+                        litige: { icon: 'fa-scale-balanced', color: '#ef4444' },
+                        info: { icon: 'fa-bell', color: '#aaa' }
+                    };
+                    (notifsData.notifications || []).forEach(function(n) {
+                        var meta = NOTIF_ICONS[n.type] || NOTIF_ICONS.info;
+                        items.push({
+                            icon: meta.icon,
+                            color: meta.color,
+                            title: n.title || '',
+                            text: n.body || '',
+                            time: n.created_at ? new Date(n.created_at).toLocaleString('fr-FR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }) : '',
+                            unread: !n.read,
+                            notifId: n.id,
+                            action: n.link ? ('window.location.hash=\'' + n.link.replace(/'/g,'') + '\'') : ''
+                        });
+                    });
                     if (!listEl) return;
+                    var unreadCount = items.filter(function(i) { return i.unread; }).length;
                     if (items.length === 0) {
-                        listEl.innerHTML = '<div style="padding:20px;text-align:center;color:#555;font-size:13px;">Aucune action en attente</div>';
+                        listEl.innerHTML = '<div style="padding:20px;text-align:center;color:#555;font-size:13px;">Aucune notification</div>';
                         if (badgeEl) badgeEl.style.display = 'none';
                         return;
                     }
                     var html = '';
                     items.forEach(function(item) {
-                        html += '<div onclick="' + item.action + ';toggleAdminNotifInbox()" style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.07);cursor:pointer;transition:background .15s;" onmouseover="this.style.background=\'rgba(255,255,255,.04)\'" onmouseout="this.style.background=\'\'">';
-                        html += '<i class="fas ' + item.icon + '" style="font-size:16px;color:' + item.color + ';width:20px;flex-shrink:0;"></i>';
-                        html += '<span style="font-size:12px;font-weight:600;color:#e0e0e0;">' + item.text + '</span>';
+                        var bg = item.unread ? 'rgba(255,215,0,0.04)' : '';
+                        var dot = item.unread ? '<span style="width:7px;height:7px;background:#FFD700;border-radius:50%;flex-shrink:0;margin-top:4px;"></span>' : '<span style="width:7px;height:7px;flex-shrink:0;"></span>';
+                        html += '<div style="display:flex;align-items:flex-start;gap:10px;padding:11px 14px;border-bottom:1px solid rgba(255,255,255,.07);cursor:pointer;background:' + bg + ';transition:background .15s;"'
+                            + (item.action ? ' onclick="' + item.action + '"' : '') + '>';
+                        html += '<i class="fas ' + item.icon + '" style="font-size:14px;color:' + item.color + ';width:18px;flex-shrink:0;margin-top:2px;"></i>';
+                        html += '<div style="flex:1;min-width:0;">';
+                        if (item.title) html += '<div style="font-size:12px;font-weight:700;color:#e0e0e0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + item.title + '</div>';
+                        html += '<div style="font-size:11px;color:#999;line-height:1.4;margin-top:2px;">' + item.text + '</div>';
+                        if (item.time) html += '<div style="font-size:10px;color:#555;margin-top:3px;">' + item.time + '</div>';
+                        html += '</div>';
+                        html += dot;
                         html += '</div>';
                     });
                     listEl.innerHTML = html;
-                    if (badgeEl) { badgeEl.textContent = items.length; badgeEl.style.display = 'block'; }
+                    if (badgeEl) {
+                        if (unreadCount > 0) { badgeEl.textContent = unreadCount; badgeEl.style.display = 'block'; }
+                        else { badgeEl.style.display = 'none'; }
+                    }
                 });
             } catch (err) {
                 console.error('[ADMIN] loadAdminNotifInbox:', err);
@@ -7053,12 +7090,12 @@
         }
 
         function markAllAdminNotifsRead() {
+            var tok = localStorage.getItem('fa_genesis_admin_token') || '';
+            fetch(API_BASE_URL + '/api/notifications/read-all', { method: 'POST', headers: { 'Authorization': 'Bearer ' + tok } }).catch(function(){});
             var listEl = document.getElementById('adminNotifList');
             var badgeEl = document.getElementById('adminNotifBadge');
-            if (listEl) listEl.innerHTML = '<div style="padding:20px;text-align:center;color:#555;font-size:13px;">Aucune notification non lue</div>';
+            if (listEl) listEl.innerHTML = '<div style="padding:20px;text-align:center;color:#555;font-size:13px;">Toutes les notifications sont lues</div>';
             if (badgeEl) badgeEl.style.display = 'none';
-            var panel = document.getElementById('adminNotifPanel');
-            if (panel) panel.style.display = 'none';
         }
 
         // ── VERSEMENTS EN ATTENTE ─────────────────────────────────────
