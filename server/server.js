@@ -1457,11 +1457,22 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
                         orders[oIdx].paymentStatus   = 'deposit_paid';
                         orders[oIdx].payment_method  = 'stripe';
                         orders[oIdx].stripe_deposit_pi_id = pi.id;
+                        // Synchroniser l'installment correspondant au deposit
+                        if (Array.isArray(orders[oIdx].installments)) {
+                            var _depInst = orders[oIdx].installments.find(function(i) { return i.stage === 'deposit'; });
+                            if (_depInst) { _depInst.paid = true; _depInst.paid_at = new Date().toISOString(); }
+                        }
                     } else {
                         orders[oIdx].balance_paid    = true;
                         orders[oIdx].balance_paid_at = new Date().toISOString();
                         orders[oIdx].paymentStatus   = 'fully_paid';
                         orders[oIdx].stripe_balance_pi_id = pi.id;
+                        // Synchroniser les installments non-deposit
+                        if (Array.isArray(orders[oIdx].installments)) {
+                            orders[oIdx].installments.forEach(function(i) {
+                                if (i.stage !== 'deposit') { i.paid = true; i.paid_at = new Date().toISOString(); }
+                            });
+                        }
                     }
                     orders[oIdx].updatedAt = new Date().toISOString();
                     saveOrders(orders);
@@ -3448,6 +3459,19 @@ app.post('/api/orders/create', (req, res) => {
             if (!service) {
                 return res.status(404).json({ error: 'Prestation non trouvee' });
             }
+            // Idempotence : si un ordre identique (même client + partenaire + service) est déjà en pending_deposit,
+            // retourner cet ordre plutôt que d'en créer un doublon.
+            var _existingPso = loadOrders().find(function(o) {
+                return o.status === 'pending_deposit'
+                    && o.partner_id === partnerServiceOrder.partnerId
+                    && o.partner_service_id === partnerServiceOrder.serviceId
+                    && o.client_info && o.client_info.email && clientInfo.email
+                    && o.client_info.email.toLowerCase() === clientInfo.email.toLowerCase();
+            });
+            if (_existingPso) {
+                console.log('[ORDER] Ordre existant réutilisé (idempotence):', _existingPso.id);
+                return res.json({ orderId: _existingPso.id, deposit_amount: _existingPso.deposit_amount, balance_amount: _existingPso.balance_amount, total_amount: _existingPso.total_amount });
+            }
 
             // Le paiement n'est autorisé qu'après acceptation explicite du partenaire ET signature
             // du contrat (proposition structurée + signature électronique, GENESIS CONTRACT™) :
@@ -4939,7 +4963,7 @@ app.get('/api/client/wallet', function(req, res) {
         var partners = loadPartners();
         var dispatches = loadDispatches();
 
-        // Dédupliquer les ordres (garder le plus récent par ID)
+        // Dédupliquer par ID (garder la dernière version de chaque ordre)
         var _seenWallet = {};
         var dedupOrders = [];
         for (var _wi = orders.length - 1; _wi >= 0; _wi--) {
@@ -4949,14 +4973,33 @@ app.get('/api/client/wallet', function(req, res) {
             dedupOrders.push(_wo);
         }
 
-        var clientOrders = dedupOrders.filter(function(o) {
+        // Dédupliquer par contenu : si même client + produit + montant acompte → garder le plus récent
+        var _seenContent = {};
+        var dedupFinal = [];
+        dedupOrders.forEach(function(o) {
+            var cKey = (o.product_name || '').trim().toLowerCase()
+                + '|' + Math.round(parseFloat(o.deposit_amount || o.total_amount || 0) * 100)
+                + '|' + (o.partner_id || o.partner_service_id || '');
+            if (_seenContent[cKey]) {
+                var prev = _seenContent[cKey];
+                if ((o.created_at || '') > (prev.created_at || '')) {
+                    var prevIdx = dedupFinal.indexOf(prev);
+                    if (prevIdx !== -1) dedupFinal[prevIdx] = o;
+                    _seenContent[cKey] = o;
+                }
+            } else {
+                _seenContent[cKey] = o;
+                dedupFinal.push(o);
+            }
+        });
+
+        var clientOrders = dedupFinal.filter(function(o) {
             if (!o.client_info || !o.client_info.email) return false;
             if (o.client_info.email.toLowerCase() !== user.email.toLowerCase()) return false;
             if (o.status === 'cancelled' || o.status === 'refunded') return false;
-            // Inclure : commandes avec installments (modèle événementiel) OU avec deposit_paid (modèle standard)
-            var hasInstallments = Array.isArray(o.installments) && o.installments.length > 0;
-            var hasDeposit = o.deposit_paid === true;
-            return hasInstallments || hasDeposit;
+            // Inclure si deposit_paid OU si au moins une installment payée
+            var hasPaidInst = Array.isArray(o.installments) && o.installments.some(function(i) { return i.paid; });
+            return o.deposit_paid === true || o.balance_paid === true || hasPaidInst;
         });
 
         var totalHeld = 0;
@@ -4969,8 +5012,9 @@ app.get('/api/client/wallet', function(req, res) {
             var partner = partners.find(function(p) { return p.id === order.partner_id; });
             var partnerName = partner ? ((partner.prenom || partner.firstName || '') + ' ' + (partner.nom || partner.lastName || '')).trim() || partner.email : 'Prestataire';
 
-            if (Array.isArray(order.installments) && order.installments.length > 0) {
-                // Modèle événementiel : installments 30/40/30
+            // Priorité au modèle installments si au moins une est payée (événementiel 30/40/30)
+            var hasPaidInst = Array.isArray(order.installments) && order.installments.some(function(i) { return i.paid; });
+            if (hasPaidInst) {
                 order.installments.forEach(function(inst) {
                     if (!inst.paid) return;
                     var payout = payouts.find(function(p) {
@@ -4983,7 +5027,7 @@ app.get('/api/client/wallet', function(req, res) {
                     }
                 });
             } else {
-                // Modèle standard : deposit_paid / balance_paid
+                // Modèle standard (deposit_paid / balance_paid) — inclut les orders partner_service
                 var isComplete = order.status === 'completed' || order.status === 'delivered' || order.client_validated === true;
                 var isSplit = (parseFloat(order.balance_amount) || 0) > 0;
                 if (isSplit) {
