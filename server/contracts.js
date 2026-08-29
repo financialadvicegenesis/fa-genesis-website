@@ -278,8 +278,8 @@ function _buildPaymentSection(order) {
             var due = _addMonths(baseDate, idx);
             var dueStr = _fmtDate(due);
             var label = idx === 0
-                ? 'Mensualité 1/' + n + ' — due le ' + dueStr + ' (à la commande)'
-                : 'Mensualité ' + (idx + 1) + '/' + n + ' — due le ' + dueStr;
+                ? 'Mensualité 1/' + n + ' — payée à la commande (' + dueStr + ')'
+                : 'Mensualité ' + (idx + 1) + '/' + n + ' — le Client a jusqu\'au ' + dueStr + ' pour régler cette mensualité';
             return '<tr' + (idx % 2 === 1 ? ' style="background:#f5f5f5;"' : '') + '>' +
                 '<td style="padding:8px 12px;">' + label + '</td>' +
                 '<td style="text-align:right;font-weight:700;padding:8px 12px;">' + parseFloat(inst.amount).toFixed(2) + ' €</td></tr>';
@@ -289,9 +289,9 @@ function _buildPaymentSection(order) {
 
         article2 = 'Le paiement est échelonné en ' + n + ' mensualités égales de ' +
             parseFloat(installments[0].amount).toFixed(2) + ' € chacune. ' +
-            'Les mensualités sont encaissées par FA GENESIS et versées directement au Prestataire à chaque échéance, sans période d\'escrow. ' +
-            'La première mensualité est due à la date de la commande. Chaque mensualité suivante est due le même jour du mois calendaire suivant. ' +
-            'Le non-paiement d\'une mensualité à son échéance entraîne la suspension de la prestation jusqu\'à régularisation.';
+            'La première mensualité est réglée à la commande. Pour chaque mensualité suivante, le Client dispose jusqu\'à la date d\'échéance indiquée dans le tableau ci-dessus pour en effectuer le règlement. ' +
+            'Les mensualités sont encaissées par FA GENESIS et versées directement au Prestataire dès réception, sans période d\'escrow. ' +
+            'Le non-paiement d\'une mensualité avant sa date d\'échéance entraîne la suspension de la prestation jusqu\'à régularisation.';
         article4extra = 'régler chaque mensualité à la date d\'échéance figurant au présent contrat ;';
         article5 = 'En cas d\'annulation par le Client après paiement de la première mensualité, ' +
             'les mensualités déjà versées au Prestataire sont acquises à titre d\'indemnité. ' +
