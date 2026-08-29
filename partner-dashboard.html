@@ -200,21 +200,22 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:-apple-
   <!-- PORTEFEUILLE -->
   <div class="section" id="sec-portefeuille">
     <div class="wallet-banner">
-      <div class="wallet-sub">Solde disponible</div>
+      <div class="wallet-sub"><i class="fa-solid fa-lock" style="margin-right:4px;color:#FFD700;"></i>GENESIS SAFE™ — Fonds sécurisés</div>
       <div class="wallet-amount" id="wallet-amount">0 €</div>
+      <div style="font-size:11px;color:#999;margin-top:2px;">Montant retenu jusqu'à livraison confirmée</div>
     </div>
     <div class="wallet-grid">
       <div class="wallet-card">
         <div class="num" id="wallet-total">—</div>
-        <div class="sub">Total encaissé</div>
+        <div class="sub">Total versé</div>
       </div>
       <div class="wallet-card">
         <div class="num" id="wallet-pending">—</div>
-        <div class="sub">En attente</div>
+        <div class="sub">En escrow</div>
       </div>
     </div>
-    <div class="sec-hdr"><i class="fa-solid fa-clock-rotate-left"></i>Historique des transactions</div>
-    <div class="card" id="wallet-history"><div class="spinner"><i class="fa-solid fa-spinner"></i></div></div>
+    <div class="sec-hdr"><i class="fa-solid fa-shield-halved"></i>Mes prestations GENESIS SAFE™</div>
+    <div id="wallet-history"><div class="spinner"><i class="fa-solid fa-spinner"></i></div></div>
   </div>
 
   <!-- SÉANCES -->
@@ -658,30 +659,59 @@ function loadDevis(){
 // ── Portefeuille ─────────────────────────────────────
 function loadPortefeuille(){
   apiFetch('/api/partner/wallet').then(function(data){
-    var balance = parseFloat(data&&data.balance!=null ? data.balance : 0);
-    var total = parseFloat(data&&data.total_earned!=null ? data.total_earned : 0);
-    var pending = parseFloat(data&&data.pending!=null ? data.pending : 0);
-    document.getElementById('wallet-amount').textContent = fmtAmt(balance);
-    document.getElementById('wallet-total').textContent = fmtAmt(total);
-    document.getElementById('wallet-pending').textContent = fmtAmt(pending);
-    var txList = (data&&data.transactions)||[];
+    var held    = parseFloat(data&&data.total_held!=null    ? data.total_held    : (data&&data.balance!=null ? data.balance : 0));
+    var released= parseFloat(data&&data.total_released_alltime!=null ? data.total_released_alltime : (data&&data.total_earned!=null ? data.total_earned : 0));
+    document.getElementById('wallet-amount').textContent  = fmtAmt(held);
+    document.getElementById('wallet-total').textContent   = fmtAmt(released);
+    document.getElementById('wallet-pending').textContent = fmtAmt(held);
+
+    var orders = (data&&data.orders)||[];
     var hist = document.getElementById('wallet-history');
-    if(txList.length===0){
-      hist.innerHTML = '<div class="empty" style="padding:20px 0"><i class="fa-solid fa-clock-rotate-left"></i><p>Aucune transaction</p></div>'; return;
+
+    if(orders.length===0){
+      hist.innerHTML = '<div class="card"><div class="empty" style="padding:24px 0;text-align:center">'
+        +'<i class="fa-solid fa-shield-halved" style="font-size:28px;color:#FFD700;margin-bottom:10px;display:block;"></i>'
+        +'<div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:6px;">Aucune prestation en escrow</div>'
+        +'<div style="font-size:12px;color:var(--muted);line-height:1.5;">Vos paiements GENESIS SAFE™ apparaîtront ici<br>dès qu\'une mission est acceptée.</div>'
+        +'</div></div>';
+      return;
     }
-    hist.innerHTML = txList.slice(0,10).map(function(tx){
-      var credit = tx.type==='credit'||tx.type==='payment';
-      return '<div class="tx-item">'
-        +'<div class="tx-icon" style="background:'+(credit?'rgba(34,197,94,.1)':'rgba(239,68,68,.1)')+'"><i class="fa-solid '+(credit?'fa-arrow-down':'fa-arrow-up')+'" style="color:'+(credit?'#22c55e':'#ef4444')+'"></i></div>'
-        +'<div style="flex:1;min-width:0"><div class="tx-label">'+esc(tx.label||tx.description||(credit?'Paiement reçu':'Retrait'))+'</div><div class="tx-date">'+fmt(tx.created_at||tx.date)+'</div></div>'
-        +'<div class="tx-amount '+(credit?'credit':'debit')+'">'+(credit?'+':'')+fmtAmt(tx.amount)+'</div>'
+
+    hist.innerHTML = orders.map(function(o){
+      var isEscrow  = o.held_amount > 0;
+      var isReleased= o.released_amount > 0 && o.held_amount === 0;
+      var tierLabel = o.payment_tier === 'small' ? '≤ 300 € · Paiement intégral sécurisé' : 'Split 30/40/30';
+      var iconColor = isReleased ? '#22c55e' : '#FFD700';
+      var icon      = isReleased ? 'fa-circle-check' : 'fa-lock';
+      var pillClass = isReleased ? 'pill-green' : 'pill-yellow';
+      var amount    = isEscrow ? o.held_amount : o.released_amount;
+      return '<div class="card" style="margin-bottom:10px">'
+        +'<div class="card-row">'
+        +'<div class="card-icon" style="background:rgba(255,215,0,.08)">'
+        +'<i class="fa-solid '+icon+'" style="color:'+iconColor+'"></i>'
+        +'</div>'
+        +'<div style="flex:1;min-width:0">'
+        +'<div class="card-title">'+esc(o.service_label)+'</div>'
+        +'<div class="card-sub">'+esc(o.client_name)+'</div>'
+        +'<div style="margin-top:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
+        +'<span class="pill '+pillClass+'">'+esc(o.status_label)+'</span>'
+        +'<span class="card-meta" style="font-size:10px;color:var(--muted)">'+esc(tierLabel)+'</span>'
+        +'</div>'
+        +'</div>'
+        +'<div style="font-size:18px;font-weight:900;color:'+iconColor+';white-space:nowrap;margin-left:8px;">'
+        +fmtAmt(amount)+'</div>'
+        +'</div>'
+        +(isEscrow ? '<div style="margin-top:10px;font-size:11px;color:#FFD700;background:rgba(255,215,0,.07);border-radius:8px;padding:8px 10px;line-height:1.5;">'
+        +'<i class="fa-solid fa-shield-halved" style="margin-right:5px;"></i>'
+        +'Fonds sécurisés sur FA GENESIS — versement automatique à la confirmation de livraison.'
+        +'</div>' : '')
         +'</div>';
     }).join('');
   }).catch(function(){
     document.getElementById('wallet-amount').textContent = '— €';
     document.getElementById('wallet-total').textContent = '—';
     document.getElementById('wallet-pending').textContent = '—';
-    document.getElementById('wallet-history').innerHTML = '<div class="empty" style="padding:20px 0"><i class="fa-solid fa-wifi-slash"></i><p>Erreur de chargement</p></div>';
+    document.getElementById('wallet-history').innerHTML = '<div class="card"><div class="empty" style="padding:20px 0;text-align:center"><i class="fa-solid fa-wifi-slash"></i><p>Erreur de chargement</p></div></div>';
   });
 }
 

@@ -5052,8 +5052,9 @@ app.get('/api/client/wallet', function(req, res) {
             if (held === 0 && released === 0) return;
             totalHeld += held;
             totalReleased += released;
-            var statusLabel = held > 0 && order.delivery_confirmed ? 'En cours de versement'
-                            : held > 0 ? 'Sécurisé jusqu\'à la livraison'
+            var partnerDone = !!(order.delivery_confirmed || order.partner_completed);
+            var statusLabel = held > 0 && partnerDone ? 'Prestation livrée — validation en cours'
+                            : held > 0 ? 'Sécurisé GENESIS SAFE™ — en attente de livraison'
                             : 'Versé au prestataire ✓';
             var dispatch = dispatches.find(function(d) { return d.order_id === order.id; });
             var partnerInactive = partner && partner.accountStatus && partner.accountStatus !== 'active';
@@ -5193,88 +5194,137 @@ app.post('/api/client/wallet/withdraw/:order_id', async function(req, res) {
 app.get('/api/partner/wallet', authenticatePartner, function(req, res) {
     try {
         var partnerId = req.partner.id;
-        var dispatches = loadDispatches();
-        var orders = loadOrders();
+        var allDispatches = loadDispatches();
+        var allOrders = loadOrders();
         var payouts = loadPayouts();
 
-        var partnerDispatches = dispatches.filter(function(d) {
-            return d.claimed_by_partner_id === partnerId && d.status !== 'cancelled';
+        // Dispatches où ce partenaire est assigné
+        var partnerDispatches = allDispatches.filter(function(d) {
+            return (d.claimed_by_partner_id === partnerId || d.partner_id === partnerId) && d.status !== 'cancelled';
+        });
+        var dispatchOrderIds = partnerDispatches.map(function(d) { return d.order_id; });
+
+        // Commandes directes partner_service (pas couvertes par un dispatch)
+        var directOrders = allOrders.filter(function(o) {
+            return o.partner_id === partnerId
+                && o.product_type === 'partner_service'
+                && dispatchOrderIds.indexOf(o.id) === -1
+                && (o.deposit_paid || o.balance_paid);
         });
 
         var totalHeld = 0;
         var totalReleased = 0;
         var orderRows = [];
 
-        partnerDispatches.forEach(function(dispatch) {
-            var order = orders.find(function(o) { return o.id === dispatch.order_id; });
-            if (!order) return;
-
+        // Fonction commune pour calculer held/released d'une commande
+        function calcOrderAmounts(order) {
             var held = 0;
             var released = 0;
+            var partnerPct = 75; // défaut 75% partenaire, 25% FA GENESIS
 
-            if (Array.isArray(order.installments) && order.installments.length > 0) {
+            var hasPaidInst = Array.isArray(order.installments) && order.installments.some(function(i) { return i.paid; });
+            if (hasPaidInst) {
                 order.installments.forEach(function(inst) {
                     if (!inst.paid) return;
                     var payout = payouts.find(function(p) {
                         return p.order_id === order.id && p.stage === inst.stage && p.status === 'sent';
                     });
-                    if (payout) {
-                        released += parseFloat(inst.amount) || 0;
-                    } else {
-                        held += parseFloat(inst.amount) || 0;
-                    }
+                    var instPartnerAmt = Math.round((parseFloat(inst.amount) || 0) * partnerPct) / 100;
+                    if (payout) released += instPartnerAmt;
+                    else held += instPartnerAmt;
                 });
             } else {
-                // Fallback for orders without installments array (old model)
                 var depositPaid = !!(order.deposit_paid || order.depositPaid);
                 var balancePaid = !!(order.balance_paid || order.balancePaid || order.fully_paid);
+                var totalAmt = parseFloat(order.total_price || order.total_amount || 0);
+                var depositAmt = parseFloat(order.deposit_amount || order.depositAmount || (order.payment_tier === 'small' ? totalAmt : totalAmt * 0.30));
+                var balanceAmt = parseFloat(order.balance_amount || (totalAmt - depositAmt));
+                var partnerDeposit = Math.round(depositAmt * partnerPct) / 100;
+                var partnerBalance = Math.round(balanceAmt * partnerPct) / 100;
+
                 if (depositPaid) {
                     var depPayout = payouts.find(function(p) {
                         return p.order_id === order.id && (p.stage === 'deposit' || p.stage === 'balance') && p.status === 'sent';
                     });
-                    var depositAmt = parseFloat(order.deposit_amount || order.depositAmount || order.price || order.total_amount || 0);
-                    var balanceAmt = parseFloat(order.balance_amount || 0);
-                    if (depPayout) {
-                        released += depositAmt + (balancePaid ? balanceAmt : 0);
-                    } else {
-                        held += depositAmt;
-                        if (balancePaid) {
-                            var balPayout = payouts.find(function(p) {
-                                return p.order_id === order.id && p.stage === 'balance' && p.status === 'sent';
-                            });
-                            if (balPayout) released += balanceAmt;
-                            else held += balanceAmt;
-                        }
-                    }
+                    if (depPayout) released += partnerDeposit;
+                    else held += partnerDeposit;
+                }
+                if (balancePaid) {
+                    var balPayout = payouts.find(function(p) {
+                        return p.order_id === order.id && p.stage === 'balance' && p.status === 'sent';
+                    });
+                    if (balPayout) released += partnerBalance;
+                    else held += partnerBalance;
                 }
             }
+            return { held: held, released: released };
+        }
 
-            if (held === 0 && released === 0) return;
-            totalHeld += held;
-            totalReleased += released;
-
-            var clientName = (order.client_info && (order.client_info.name || order.client_info.email)) || 'Client';
-            var statusLabel = held > 0 && order.delivery_confirmed ? 'En cours de versement'
-                            : held > 0 ? 'Sécurisé jusqu\'à la livraison'
-                            : 'Versé sur votre compte ✓';
-            orderRows.push({
-                dispatch_id: dispatch.id,
+        function buildRow(order, dispatch) {
+            var amounts = calcOrderAmounts(order);
+            if (amounts.held === 0 && amounts.released === 0) return null;
+            totalHeld += amounts.held;
+            totalReleased += amounts.released;
+            var clientName = (order.client_info && (order.client_info.prenom
+                ? (order.client_info.prenom + ' ' + (order.client_info.nom || '')).trim()
+                : (order.client_info.name || order.client_info.email))) || 'Client';
+            var isCompleted = !!order.partner_completed || !!order.delivery_confirmed;
+            var isPaid = amounts.released > 0 && amounts.held === 0;
+            var statusLabel = isPaid ? 'Versé sur votre compte ✓'
+                : isCompleted ? 'En cours de versement'
+                : 'Sécurisé GENESIS SAFE™';
+            return {
+                dispatch_id: dispatch ? dispatch.id : null,
                 order_id: order.id,
                 service_label: order.product_name || order.service_label || 'Prestation',
                 client_name: clientName,
                 payment_tier: order.payment_tier || 'small',
-                held_amount: Math.round(held * 100) / 100,
-                released_amount: Math.round(released * 100) / 100,
-                delivery_confirmed: !!order.delivery_confirmed,
+                held_amount: Math.round(amounts.held * 100) / 100,
+                released_amount: Math.round(amounts.released * 100) / 100,
+                delivery_confirmed: isCompleted,
                 status_label: statusLabel,
                 created_at: order.created_at
-            });
+            };
+        }
+
+        partnerDispatches.forEach(function(dispatch) {
+            var order = allOrders.find(function(o) { return o.id === dispatch.order_id; });
+            if (!order) return;
+            var row = buildRow(order, dispatch);
+            if (row) orderRows.push(row);
+        });
+
+        directOrders.forEach(function(order) {
+            var row = buildRow(order, null);
+            if (row) orderRows.push(row);
         });
 
         orderRows.sort(function(a, b) { return new Date(b.created_at || 0) - new Date(a.created_at || 0); });
 
+        // Construire la liste de transactions pour le frontend
+        var transactions = orderRows.map(function(row) {
+            return {
+                type: row.released_amount > 0 && row.held_amount === 0 ? 'credit' : 'escrow',
+                label: row.service_label + (row.client_name ? ' · ' + row.client_name : ''),
+                description: row.status_label,
+                amount: row.held_amount > 0 ? row.held_amount : row.released_amount,
+                created_at: row.created_at,
+                order_id: row.order_id,
+                payment_tier: row.payment_tier,
+                held_amount: row.held_amount,
+                released_amount: row.released_amount,
+                status_label: row.status_label
+            };
+        });
+
         res.json({
             ok: true,
+            // Champs compatibles frontend (partner-dashboard.html)
+            balance: Math.round(totalHeld * 100) / 100,
+            pending: Math.round(totalHeld * 100) / 100,
+            total_earned: Math.round(totalReleased * 100) / 100,
+            transactions: transactions,
+            // Champs GENESIS SAFE™ détaillés
             total_held: Math.round(totalHeld * 100) / 100,
             total_released_alltime: Math.round(totalReleased * 100) / 100,
             orders: orderRows
