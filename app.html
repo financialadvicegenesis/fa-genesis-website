@@ -13968,9 +13968,21 @@ function _pbRenderBreakdown(n, total){
   }
 }
 
+function _pbPayBtnLabel(){
+  if(_pbSelectedInstallments > 1) return 'PAYER LA 1ÈRE MENSUALITÉ';
+  var total = parseFloat(_pbService && _pbService.price) || 0;
+  return total <= 300 ? 'PAYER EN SÉCURISÉ (GENESIS SAFE™)' : 'PAYER L\'ACOMPTE';
+}
+
 function pbPayDeposit(){
   if(!_pbPartner||!_pbService||!USER||GUEST) return;
   var er=document.getElementById('pb-err'); if(er) er.classList.remove('on');
+
+  // Stripe minimum = 0,50 €
+  if(_pbDepositAmount < 0.50){
+    if(er){er.textContent='Le montant minimum pour un paiement en ligne est de 0,50 €. Ce prestataire doit ajuster son tarif (actuellement '+_pbDepositAmount+' €) pour activer le paiement en ligne.';er.classList.add('on');}
+    return;
+  }
 
   // Stripe Connect disponible → paiement Connect (commission FA GENESIS)
   if(_pbPartner.stripeAccountId && _pbPartner.stripeChargesEnabled){
@@ -14016,9 +14028,9 @@ function _pbPayDepositStripeDirect(){
     if(!res2.ok||!res2.data||!res2.data.clientSecret) throw new Error((res2.data&&res2.data.error)||'Erreur initialisation paiement');
     _pbStripeIntentId = res2.data.paymentIntentId;
     _pbMountStripeElements(res2.data.clientSecret);
-    if(sb){sb.disabled=false;sb.textContent='PAYER L\'ACOMPTE';}
+    if(sb){sb.disabled=false;sb.textContent=_pbPayBtnLabel();}
   }).catch(function(err){
-    if(sb){sb.disabled=false;sb.textContent='PAYER L\'ACOMPTE';}
+    if(sb){sb.disabled=false;sb.textContent=_pbPayBtnLabel();}
     if(er){er.textContent=err.message||'Erreur. Réessayez.';er.classList.add('on');}
   });
 }
@@ -14064,9 +14076,9 @@ function _pbPayDepositStripe(){
     if(!res2.ok||!res2.data||!res2.data.clientSecret) throw new Error((res2.data&&res2.data.error)||'Erreur initialisation paiement Stripe');
     _pbStripeIntentId = res2.data.paymentIntentId;
     _pbMountStripeElements(res2.data.clientSecret);
-    if(sb){sb.disabled=false;sb.textContent='PAYER L\'ACOMPTE';}
+    if(sb){sb.disabled=false;sb.textContent=_pbPayBtnLabel();}
   }).catch(function(err){
-    if(sb){sb.disabled=false;sb.textContent='PAYER L\'ACOMPTE';}
+    if(sb){sb.disabled=false;sb.textContent=_pbPayBtnLabel();}
     if(er){er.textContent=err.message||'Erreur. Réessayez.';er.classList.add('on');}
   });
 }
@@ -14137,7 +14149,7 @@ async function _pbConfirmStripePayment(){
 function _pbCancelStripe(){
   var ss=document.getElementById('pb-stripe-screen'); if(ss) ss.style.display='none';
   var fm=document.getElementById('pb-form'); if(fm) fm.style.display='block';
-  var sb=document.getElementById('pb-pay-btn'); if(sb){sb.disabled=false;sb.textContent='PAYER L\'ACOMPTE';}
+  var sb=document.getElementById('pb-pay-btn'); if(sb){sb.disabled=false;sb.textContent=_pbPayBtnLabel();}
   _stripeElements=null; _stripePaymentEl=null; _stripeInstance=null;
 }
 // ── MESSAGE COMPOSE ───────────────────────────────────────────
