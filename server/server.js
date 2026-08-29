@@ -11848,10 +11848,11 @@ app.put('/api/partner/portfolio', authenticatePartner, (req, res) => {
 // ============================================================
 
 function getPartnerFromPrice(partner) {
+    // parseFloat gère aussi les prix stockés en string (legacy data)
     const activePrices = (partner.services || [])
         .filter(s => s.active !== false && s.pricing_type !== 'quote')
-        .map(s => s.price)
-        .filter(p => typeof p === 'number' && isFinite(p) && p > 0);
+        .map(s => parseFloat(s.price))
+        .filter(p => !isNaN(p) && isFinite(p) && p > 0);
     return activePrices.length ? Math.min(...activePrices) : null;
 }
 
@@ -13671,7 +13672,13 @@ app.get('/api/partners/:id/reviews', (req, res) => {
         }
         const fromPrice = getPartnerFromPrice(partner);
         const activeServices = (partner.services || []).filter(s => s.active !== false)
-            .map(s => ({ id: s.id, label: s.label, description: s.description || '', price: s.price, pricing_type: s.pricing_type || 'fixed', features: Array.isArray(s.features) ? s.features : [], audience: s.audience || 'particulier', image: s.image || '' }));
+            .map(s => {
+                var sPrice = parseFloat(s.price);
+                var isValidPrice = !isNaN(sPrice) && isFinite(sPrice) && sPrice > 0;
+                // pricing_type 'quote' uniquement si explicitement défini ET pas de prix valide
+                var pricingType = (s.pricing_type === 'quote' && !isValidPrice) ? 'quote' : (isValidPrice ? 'fixed' : 'quote');
+                return { id: s.id, label: s.label, description: s.description || '', price: isValidPrice ? sPrice : null, pricing_type: pricingType, features: Array.isArray(s.features) ? s.features : [], audience: s.audience || 'particulier', image: s.image || '', payment_mode: s.payment_mode || null, deposit_pct: s.deposit_pct || null, installment_count: s.installment_count || null };
+            });
         const activePortfolio = (partner.portfolio || [])
             .map(item => ({ id: item.id, type: item.type, url: item.url, thumb: item.thumb || '', caption: item.caption || '' }));
         const reviews = loadPartnerReviews()
