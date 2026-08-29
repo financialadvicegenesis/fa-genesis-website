@@ -951,8 +951,18 @@ async function processDispatchPayout(dispatch, stage) {
         }
         if (paidAmount <= 0) return;
 
+        // Idempotence : ne pas créer un 2ème payout si un existe déjà pour ce dispatch+stage (non failed)
+        var _existingPayouts = loadPayouts();
+        var _duplicate = _existingPayouts.find(function(p) {
+            return p.dispatch_id === dispatch.id && p.stage === stage && p.status !== 'failed';
+        });
+        if (_duplicate) {
+            console.log('[PAYOUT] Doublon ignoré — dispatch ' + dispatch.id + ' stage ' + stage + ' déjà enregistré (' + _duplicate.id + ')');
+            return;
+        }
+
         var partners = loadPartners();
-        var partner = partners.find(function(p) { return p.id === dispatch.claimed_by_partner_id; });
+        var partner = partners.find(function(p) { return p.id === (dispatch.claimed_by_partner_id || dispatch.partner_id); });
         if (!partner) return;
 
         var faAmount = parseFloat((stageTotal - paidAmount).toFixed(2));
@@ -1038,12 +1048,25 @@ async function processDispatchPayout(dispatch, stage) {
         }
 
         if (method === 'stripe_connect') {
-            // GENESIS SAFE™ escrow réel : le paiement initial a transféré les fonds sur le
-            // compte Connect du prestataire (balance Stripe), mais le schedule est 'manual' →
-            // l'argent reste bloqué jusqu'à ce qu'on déclenche ici le virement vers sa banque.
+            // GENESIS SAFE™ escrow :
+            // - Paiement direct (order.payment_method='stripe') : fonds dans compte FA GENESIS →
+            //   Transfer plateforme→Connect d'abord, puis Payout Connect→banque
+            // - Paiement Connect initial (order.payment_method='stripe_connect') : fonds déjà
+            //   dans le solde Connect du prestataire → Payout Connect→banque directement
             try {
                 var _scAmountCents = Math.round(paidAmount * 100);
                 var _scDesc = 'Versement FA GENESIS SAFE™ — ' + (dispatch.offer_name || dispatch.order_id || '') + ' (' + stage + ')';
+                var _orderPayMethod = order ? (order.payment_method || 'stripe') : 'stripe';
+                if (_orderPayMethod === 'stripe' || _orderPayMethod === 'stripe_direct') {
+                    // Paiement direct : transférer d'abord depuis le compte plateforme FA GENESIS
+                    var _transfer = await scp.createTransfer(_scAmountCents, 'eur', partner.stripeAccountId, {
+                        order_id: dispatch.order_id, dispatch_id: dispatch.id, stage: stage, platform: 'fa-genesis'
+                    });
+                    var _trLatest = loadPayouts();
+                    var _trPi = _trLatest.findIndex(function(p) { return p.id === newPayout.id; });
+                    if (_trPi !== -1) { _trLatest[_trPi].stripe_transfer_id = _transfer.id; savePayouts(_trLatest); }
+                    console.log('[PAYOUT] ' + stage + ' Transfer plateforme→Connect : ' + _transfer.id + ' (' + paidAmount + '€ → ' + partner.stripeAccountId + ')');
+                }
                 var _scPayout = await scp.triggerConnectPayout(partner.stripeAccountId, _scAmountCents, 'eur', _scDesc);
                 var _scLatest = loadPayouts();
                 var _scPi = _scLatest.findIndex(function(p) { return p.id === newPayout.id; });
@@ -1053,9 +1076,8 @@ async function processDispatchPayout(dispatch, stage) {
                     _scLatest[_scPi].stripe_payout_id = _scPayout.id;
                     savePayouts(_scLatest);
                 }
-                console.log('[PAYOUT] ' + stage + ' Stripe Connect escrow → virement déclenché vers banque de ' + partner.email + ' : ' + paidAmount + ' € (payout ' + _scPayout.id + ')');
+                console.log('[PAYOUT] ' + stage + ' Stripe Connect → virement déclenché vers banque de ' + partner.email + ' : ' + paidAmount + ' € (payout ' + _scPayout.id + ')');
             } catch (_scErr) {
-                // Fallback : marquer sent même si le virement échoue (fonds dans le solde Connect)
                 var _scFallback = loadPayouts();
                 var _scFi = _scFallback.findIndex(function(p) { return p.id === newPayout.id; });
                 if (_scFi !== -1) { _scFallback[_scFi].status = 'failed'; _scFallback[_scFi].error = _scErr.message; savePayouts(_scFallback); }
@@ -1451,11 +1473,13 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
                 var orders = loadOrders();
                 var oIdx = orders.findIndex(function(o){ return o.id === orderId; });
                 if (oIdx !== -1) {
+                    // Détecter si c'est un paiement direct (sans Connect) ou via Connect
+                    var _piMethod = (pi.transfer_data && pi.transfer_data.destination) ? 'stripe_connect' : 'stripe';
                     if (stage === 'deposit' || stage === 'installment_1') {
                         orders[oIdx].deposit_paid    = true;
                         orders[oIdx].deposit_paid_at = new Date().toISOString();
                         orders[oIdx].paymentStatus   = 'deposit_paid';
-                        orders[oIdx].payment_method  = 'stripe';
+                        orders[oIdx].payment_method  = _piMethod;
                         orders[oIdx].stripe_deposit_pi_id = pi.id;
                         // Synchroniser l'installment correspondant au deposit
                         if (Array.isArray(orders[oIdx].installments)) {
@@ -1466,17 +1490,36 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
                         orders[oIdx].balance_paid    = true;
                         orders[oIdx].balance_paid_at = new Date().toISOString();
                         orders[oIdx].paymentStatus   = 'fully_paid';
+                        orders[oIdx].payment_method  = orders[oIdx].payment_method || _piMethod;
                         orders[oIdx].stripe_balance_pi_id = pi.id;
-                        // Synchroniser les installments non-deposit
+                        // Synchroniser l'installment payé (installment_2 ou installment_3 ou toutes)
                         if (Array.isArray(orders[oIdx].installments)) {
-                            orders[oIdx].installments.forEach(function(i) {
-                                if (i.stage !== 'deposit') { i.paid = true; i.paid_at = new Date().toISOString(); }
-                            });
+                            if (stage === 'installment_2' || stage === 'installment_3') {
+                                var _instTarget = orders[oIdx].installments.find(function(i) { return i.stage === stage; });
+                                if (_instTarget) { _instTarget.paid = true; _instTarget.paid_at = new Date().toISOString(); }
+                            } else {
+                                // Paiement du solde global → toutes les tranches non-deposit
+                                orders[oIdx].installments.forEach(function(i) {
+                                    if (i.stage !== 'deposit') { i.paid = true; i.paid_at = new Date().toISOString(); }
+                                });
+                            }
                         }
                     }
                     orders[oIdx].updatedAt = new Date().toISOString();
                     saveOrders(orders);
-                    try { await processDispatchPayout(orders[oIdx], stage); } catch(pe){ console.error('[STRIPE-WH] Payout error:', pe.message); }
+                    // Trouver le dispatch associé pour déclencher le payout partenaire
+                    // Le deposit est géré par accept-mission ; ici on traite installment_2/3/balance
+                    if (stage !== 'deposit' && stage !== 'installment_1') {
+                        var _whDisps = loadDispatches();
+                        var _whDisp  = _whDisps.find(function(d) {
+                            return d.order_id === orderId && d.status !== 'cancelled'
+                                && (d.claimed_by_partner_id || d.partner_id);
+                        });
+                        if (_whDisp) {
+                            try { await processDispatchPayout(_whDisp, stage); }
+                            catch(pe) { console.error('[STRIPE-WH] Payout error (' + stage + '):', pe.message); }
+                        }
+                    }
                 }
             }
         } else if (event.type === 'payment_intent.payment_failed') {
