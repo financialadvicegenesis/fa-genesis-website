@@ -5041,8 +5041,10 @@ app.post('/api/client/wallet/withdraw/:order_id', async function(req, res) {
         if (!order.client_info || (order.client_info.email || '').toLowerCase() !== user.email.toLowerCase()) {
             return res.status(403).json({ error: 'Accès refusé' });
         }
-        // Vérifier que la commande est une prestation partenaire non remboursée
-        if (order.product_type !== 'partner_service') {
+        // Vérifier que la commande est liée à une prestation (partenaire ou non)
+        // Accepter tout type avec un paiement encaissé : partner_service, prestation, ou product_type non défini
+        var _isPartnerOrder = order.product_type === 'partner_service' || order.partner_id || order.deposit_paid === true;
+        if (!_isPartnerOrder) {
             return res.status(400).json({ error: 'Ce type de commande ne supporte pas le retrait GENESIS SAFE' });
         }
         if (order.status === 'refunded' || order.status === 'cancelled') {
