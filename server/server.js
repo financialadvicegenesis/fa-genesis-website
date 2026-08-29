@@ -3483,14 +3483,18 @@ app.post('/api/orders/create', (req, res) => {
             if (!service) {
                 return res.status(404).json({ error: 'Prestation non trouvee' });
             }
-            // Idempotence : si un ordre identique (même client + partenaire + service) est déjà en pending_deposit,
+            // Idempotence : si un ordre identique (même client + partenaire + service + prix) est déjà en pending_deposit,
             // retourner cet ordre plutôt que d'en créer un doublon.
+            // On compare aussi le total_amount : si le prix a changé depuis la création de l'ordre,
+            // on ne réutilise pas l'ordre obsolète (nouveau calcul avec le prix actuel).
+            var _currentServicePrice = parseFloat(service.price) || 0;
             var _existingPso = loadOrders().find(function(o) {
                 return o.status === 'pending_deposit'
                     && o.partner_id === partnerServiceOrder.partnerId
                     && o.partner_service_id === partnerServiceOrder.serviceId
                     && o.client_info && o.client_info.email && clientInfo.email
-                    && o.client_info.email.toLowerCase() === clientInfo.email.toLowerCase();
+                    && o.client_info.email.toLowerCase() === clientInfo.email.toLowerCase()
+                    && Math.abs((o.total_amount || 0) - _currentServicePrice) < 0.01;
             });
             if (_existingPso) {
                 console.log('[ORDER] Ordre existant réutilisé (idempotence):', _existingPso.id);
