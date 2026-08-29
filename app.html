@@ -5545,7 +5545,7 @@ function _loadPrstSectionStudent(url, wrapId){
   var wrap = document.getElementById(wrapId);
   if(!wrap) return;
   fetch(url).then(function(r){ return r.json(); }).then(function(data){
-    var partners = (data && (data.partners || data)) || [];
+    var partners = ((data && (data.partners || data)) || []).filter(function(p){ return p.fromPrice !== null && p.fromPrice !== undefined; });
     if(!partners.length){ wrap.innerHTML = ''; return; }
     wrap.innerHTML =
       '<div style="margin:16px 16px 12px;padding:14px 16px;background:linear-gradient(135deg,#0d1a0d,#1a1200);border:1.5px solid rgba(234,179,8,.35);border-radius:14px;">'
