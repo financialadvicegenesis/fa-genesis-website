@@ -3469,11 +3469,16 @@ function exitGuestMode(){ window.location.reload(); }
 // Chaque onglet n'est chargé que lors de sa première ouverture.
 // Évite de lancer 15+ requêtes API simultanées au démarrage.
 var _tabLoaded = {};
+var _tabLoadedAt = {}; // timestamp (ms) du dernier chargement par onglet
+var _TAB_TTL = { prestataires: 5 * 60 * 1000, explorer: 5 * 60 * 1000 }; // 5 min TTL
 function _loadTab(tab){
   // Onglets sans données dynamiques ou déjà gérés par nav()
   var always = { reservations:1, messages:1, 'mes-contrats':1 }; // toujours rafraîchis
-  if(_tabLoaded[tab] && !always[tab]) return;
+  var ttl = _TAB_TTL[tab];
+  var stale = ttl && _tabLoadedAt[tab] && (Date.now() - _tabLoadedAt[tab] > ttl);
+  if(_tabLoaded[tab] && !always[tab] && !stale) return;
   _tabLoaded[tab] = true;
+  _tabLoadedAt[tab] = Date.now();
   if(tab === 'prestations') renderPrestations('all');
   else if(tab === 'prestataires') renderPrestataires();
   else if(tab === 'explorer') renderExplorer();
@@ -5560,17 +5565,10 @@ function _loadPrstSectionStudent(url, wrapId){
 function _loadPrstAudience(audience, wrapId, title){
   var wrap = document.getElementById(wrapId);
   if(!wrap) return;
-  fetch((window.FA_GENESIS_API||API)+'/api/partners/directory?sort=score&limit=60')
+  fetch((window.FA_GENESIS_API||API)+'/api/partners/directory?sort=score&limit=8&audience='+encodeURIComponent(audience))
     .then(function(r){ return r.json(); })
     .then(function(data){
-      var all = (data && data.partners) || [];
-      var filtered = all.filter(function(p){
-        return p.services && p.services.some(function(s){
-          if(!s.audience) return false;
-          if(Array.isArray(s.audience)) return s.audience.indexOf(audience) >= 0;
-          return s.audience === audience;
-        });
-      }).slice(0, 8);
+      var filtered = (data && data.partners) || [];
       if(!filtered.length){ wrap.innerHTML = ''; return; }
       wrap.innerHTML = '<div class="p-section-hdr black p-section-hdr-fit" style="margin:16px 16px 10px;">'+title+'</div>'
         +'<div class="p-reco-row" style="padding:0 0 0 16px;">'

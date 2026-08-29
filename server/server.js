@@ -13592,12 +13592,20 @@ app.post('/api/events/:id/rsvp', function(req, res) {
 // Annuaire public des partenaires (recherche, filtre categorie, filtre prix)
 app.get('/api/partners/directory', (req, res) => {
     try {
-        const { category, q, maxPrice, city, sort, promo } = req.query;
+        const { category, q, maxPrice, city, sort, promo, audience } = req.query;
         const allPromos = loadPromotions();
         let partners = loadPartners().filter(p => p.accountStatus === 'active');
 
         if (category) {
             partners = partners.filter(p => p.partner_type === category);
+        }
+        // Filtre audience : ne garder que les partenaires ayant au moins 1 service actif pour cet audience
+        if (audience) {
+            partners = partners.filter(p => (p.services || []).some(function(s) {
+                if (s.active === false) return false;
+                if (Array.isArray(s.audience)) return s.audience.indexOf(audience) !== -1;
+                return s.audience === audience;
+            }));
         }
         if (q) {
             const needle = q.trim().toLowerCase();
