@@ -11589,7 +11589,36 @@ app.post('/api/partner/subprofiles/:id/verify-pin', authenticatePartner, async (
 // Infos partenaire connecte
 app.get('/api/partner/auth/me', authenticatePartner, (req, res) => {
     try {
-        const { password, ...partnerSafe } = req.partner;
+        // Auto-migration : si le partenaire n'a aucun service mais qu'un catalogue legacy existe,
+        // on le pré-remplit une seule fois pour qu'il n'apparaisse pas en "Sur devis".
+        let partner = req.partner;
+        const hasNoServices = !Array.isArray(partner.services) || partner.services.length === 0;
+        const legacySvcs = LEGACY_SERVICE_CATALOG[partner.partner_type];
+        if (hasNoServices && Array.isArray(legacySvcs) && legacySvcs.length > 0 && !partner.services_migrated) {
+            try {
+                const partners = loadPartners();
+                const idx = partners.findIndex(p => p.id === partner.id);
+                if (idx !== -1) {
+                    partners[idx].services = legacySvcs.map(function(s) {
+                        return Object.assign({ id: 'SVC-' + uuidv4().split('-')[0] }, s, {
+                            active: true,
+                            pricing_type: 'fixed',
+                            payment_mode: 'single',
+                            deposit_pct: null,
+                            installment_count: null
+                        });
+                    });
+                    partners[idx].services_migrated = true;
+                    partners[idx].updatedAt = new Date().toISOString();
+                    savePartners(partners);
+                    partner = partners[idx];
+                    console.log('[PARTNER] Auto-migration services:', partner.email, legacySvcs.length, 'prestations');
+                }
+            } catch(migrErr) {
+                console.error('[PARTNER] Erreur auto-migration services:', migrErr.message);
+            }
+        }
+        const { password, ...partnerSafe } = partner;
         res.json({ success: true, partner: partnerSafe });
     } catch (error) {
         console.error('[PARTNER] Erreur me:', error);
