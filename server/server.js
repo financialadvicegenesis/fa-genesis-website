@@ -3513,7 +3513,13 @@ app.post('/api/orders/create', (req, res) => {
                 var psoDiePct = (psoActUser && psoActUser.referral_discount && psoActUser.referral_discount.pct)
                     ? psoActUser.referral_discount.pct
                     : (psoActUser && psoActUser.referredBy ? WELCOME_DISCOUNT_PCT_WITH_REFERRAL : WELCOME_DISCOUNT_PCT_NO_REFERRAL);
-                psoTotal = Math.round(psoFullPrice * (1 - psoDiePct / 100) * 100) / 100;
+                var psoTotalAfterDiscount = Math.round(psoFullPrice * (1 - psoDiePct / 100) * 100) / 100;
+                // Ne pas appliquer la réduction si elle fait tomber le montant sous le minimum Stripe (0,50 €)
+                if (psoTotalAfterDiscount < 0.50) {
+                    psoTotalAfterDiscount = psoFullPrice;
+                    psoDiePct = 0;
+                }
+                psoTotal = psoTotalAfterDiscount;
                 psoWelcomeDiscountAmount = Math.round((psoFullPrice - psoTotal) * 100) / 100;
                 // Marquer le champ legacy comme appliqué (rétrocompatibilité frontend)
                 if (psoActUser) {
@@ -4173,6 +4179,10 @@ app.post('/api/payments/order/stripe-direct', async function(req, res) {
             if (order.deposit_paid) return res.status(400).json({ error: 'Acompte déjà payé' });
             amount = order.deposit_amount;
             stageLabel = 'Acompte';
+        }
+
+        if (!amount || amount < 0.50) {
+            return res.status(400).json({ error: 'Le montant à payer (' + (amount || 0) + ' €) est inférieur au minimum Stripe de 0,50 €. Veuillez contacter le prestataire pour ajuster le tarif.' });
         }
 
         var description = (b.description || ('FA GENESIS — ' + (order.product_name || 'Prestation') + ' (' + stageLabel + ')')).substring(0, 250);
@@ -20364,6 +20374,11 @@ app.post('/api/payments/stripe/create-intent', async function(req, res) {
         var b = req.body || {};
         if (!b.partnerId || !b.amountEuros) {
             return res.status(400).json({ error: 'partnerId et amountEuros requis' });
+        }
+
+        var _intentAmount = parseFloat(b.amountEuros);
+        if (isNaN(_intentAmount) || _intentAmount < 0.50) {
+            return res.status(400).json({ error: 'Le montant à payer (' + (_intentAmount || 0) + ' €) est inférieur au minimum Stripe de 0,50 €. Veuillez contacter le prestataire pour ajuster le tarif.' });
         }
 
         var partners = loadPartners();
