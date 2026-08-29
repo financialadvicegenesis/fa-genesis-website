@@ -1515,9 +1515,10 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
                     });
                     if (_whDisp) {
                         if (stage === 'deposit' || stage === 'installment_1') {
-                            // Acompte : verser immédiatement si le partenaire a déjà accepté la mission
-                            // Sinon accept-mission s'en chargera quand le partenaire acceptera
-                            if (_whDisp.status === 'accepted' || _whDisp.mission_status === 'in_progress') {
+                            // Mode "1 fois" (payment_tier 'small') : GENESIS SAFE™ bloque jusqu'à la livraison.
+                            // Tous les autres modes (acompte+reste, plusieurs fois, 30/40/30) : versement immédiat si mission acceptée.
+                            var _whOrderTier = orders[oIdx] ? (orders[oIdx].payment_tier || 'small') : 'small';
+                            if (_whOrderTier !== 'small' && (_whDisp.status === 'accepted' || _whDisp.mission_status === 'in_progress')) {
                                 try { await processDispatchPayout(_whDisp, 'deposit'); }
                                 catch(pe) { console.error('[STRIPE-WH] Payout acompte error:', pe.message); }
                             }
@@ -4661,9 +4662,10 @@ app.post('/api/partner/dispatches/:id/accept-mission', authenticatePartner, asyn
         saveDispatches(dispatches);
 
         var order = getOrderById(disp.order_id);
-        // Verser l'acompte immédiatement si le client a déjà payé
-        // (idempotence dans processDispatchPayout protège contre les doubles versements)
-        if (order && order.deposit_paid) {
+        // Verser l'acompte immédiatement si le client a déjà payé,
+        // SAUF en mode "1 fois" (payment_tier 'small') : l'argent reste en GENESIS SAFE™ jusqu'à la livraison.
+        var _acceptPayTier = order ? (order.payment_tier || 'small') : 'small';
+        if (order && order.deposit_paid && _acceptPayTier !== 'small') {
             await processDispatchPayout(dispatches[idx], 'deposit').catch(function(e) {
                 console.error('[ACCEPT_MISSION] Payout erreur:', e.message);
             });
