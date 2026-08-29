@@ -1456,10 +1456,12 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
                         orders[oIdx].deposit_paid_at = new Date().toISOString();
                         orders[oIdx].paymentStatus   = 'deposit_paid';
                         orders[oIdx].payment_method  = 'stripe';
+                        orders[oIdx].stripe_deposit_pi_id = pi.id;
                     } else {
                         orders[oIdx].balance_paid    = true;
                         orders[oIdx].balance_paid_at = new Date().toISOString();
                         orders[oIdx].paymentStatus   = 'fully_paid';
+                        orders[oIdx].stripe_balance_pi_id = pi.id;
                     }
                     orders[oIdx].updatedAt = new Date().toISOString();
                     saveOrders(orders);
@@ -4487,6 +4489,19 @@ async function refundClientOrder(order) {
             await callSumUpAPI('/v0.1/me/refunds/' + order.transaction_id, 'PUT', depositAmount > 0 ? { amount: depositAmount } : null);
             refunded = true;
         } catch(e) { console.error('[REFUND] SumUp erreur:', e.message); }
+    }
+    // Tentative remboursement Stripe (Connect ou direct) via l'ID du PaymentIntent enregistré
+    if (!refunded && order.stripe_deposit_pi_id) {
+        try {
+            var stripeRefundAmt = depositAmount > 0 ? Math.round(depositAmount * 100) : null;
+            var stripeRef = await scp.createRefund({ paymentIntentId: order.stripe_deposit_pi_id, amount: stripeRefundAmt });
+            if (stripeRef && (stripeRef.status === 'succeeded' || stripeRef.status === 'pending')) {
+                refunded = true;
+                console.log('[REFUND] Stripe deposit remboursé:', stripeRef.id, stripeRefundAmt, 'cents');
+            } else {
+                console.error('[REFUND] Stripe deposit réponse inattendue:', JSON.stringify(stripeRef));
+            }
+        } catch(e) { console.error('[REFUND] Stripe deposit erreur:', e.message); }
     }
     updateOrder(order.id, {
         status: 'refunded',
