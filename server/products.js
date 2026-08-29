@@ -643,6 +643,38 @@ function validateInstallments(requested, serviceMaxInstallments, clientType) {
     return Math.min(n, clientMax, svcMax);
 }
 
+// Split personnalisé défini par le prestataire : acompte (depositPct%) + solde (reste%).
+// L'acompte est versé immédiatement à l'acceptation de la mission (GENESIS SAFE™ immédiat).
+// Le solde est retenu en escrow jusqu'à confirmation de livraison par le client.
+function generatePartnerSplit(totalAmount, depositPct) {
+    var pct = Math.max(0, Math.min(100, Number(depositPct) || 30));
+    var deposit = Math.round(totalAmount * pct / 100 * 100) / 100;
+    var balance = Math.round((totalAmount - deposit) * 100) / 100;
+
+    if (balance <= 0) {
+        return [{
+            number: 1, key: 'acompte',
+            label: 'Paiement intégral (100%) — GENESIS SAFE™',
+            amount: totalAmount, stage: 'deposit',
+            paid: false, paid_at: null, due_date: null, milestone_required: null
+        }];
+    }
+    return [
+        {
+            number: 1, key: 'acompte',
+            label: 'Acompte (' + pct + '%) — versé dès acceptation',
+            amount: deposit, stage: 'deposit',
+            paid: false, paid_at: null, due_date: null, milestone_required: null
+        },
+        {
+            number: 2, key: 'solde',
+            label: 'Solde (' + (100 - pct) + '%) — à la livraison',
+            amount: balance, stage: 'balance',
+            paid: false, paid_at: null, due_date: null, milestone_required: 'delivery'
+        }
+    ];
+}
+
 module.exports = {
     PRODUCTS,
     CLIENT_TYPE_MAX_INSTALLMENTS,
@@ -652,6 +684,7 @@ module.exports = {
     getAmountForStage,
     generateInstallments,
     generateGenesisSplit,
+    generatePartnerSplit,
     generateUserInstallmentPlan,
     validateInstallments
 };

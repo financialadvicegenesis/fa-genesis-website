@@ -18,7 +18,7 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const PDFDocument = require('pdfkit');
 
-const { getProductById, calculatePaymentAmounts, getAmountForStage, generateInstallments, generateGenesisSplit, generateUserInstallmentPlan, validateInstallments, CLIENT_TYPE_MAX_INSTALLMENTS } = require('./products');
+const { getProductById, calculatePaymentAmounts, getAmountForStage, generateInstallments, generateGenesisSplit, generatePartnerSplit, generateUserInstallmentPlan, validateInstallments, CLIENT_TYPE_MAX_INSTALLMENTS } = require('./products');
 const contractService = require('./contracts');
 const emailService = require('./email-service');
 const { OFFER_BLUEPRINTS, getOfferBlueprint, getAllOfferKeys } = require('./config/offerBlueprints');
@@ -1508,14 +1508,21 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
                     orders[oIdx].updatedAt = new Date().toISOString();
                     saveOrders(orders);
                     // Trouver le dispatch associé pour déclencher le payout partenaire
-                    // Le deposit est géré par accept-mission ; ici on traite installment_2/3/balance
-                    if (stage !== 'deposit' && stage !== 'installment_1') {
-                        var _whDisps = loadDispatches();
-                        var _whDisp  = _whDisps.find(function(d) {
-                            return d.order_id === orderId && d.status !== 'cancelled'
-                                && (d.claimed_by_partner_id || d.partner_id);
-                        });
-                        if (_whDisp) {
+                    var _whDisps = loadDispatches();
+                    var _whDisp  = _whDisps.find(function(d) {
+                        return d.order_id === orderId && d.status !== 'cancelled'
+                            && (d.claimed_by_partner_id || d.partner_id);
+                    });
+                    if (_whDisp) {
+                        if (stage === 'deposit' || stage === 'installment_1') {
+                            // Acompte : verser immédiatement si le partenaire a déjà accepté la mission
+                            // Sinon accept-mission s'en chargera quand le partenaire acceptera
+                            if (_whDisp.status === 'accepted' || _whDisp.mission_status === 'in_progress') {
+                                try { await processDispatchPayout(_whDisp, 'deposit'); }
+                                catch(pe) { console.error('[STRIPE-WH] Payout acompte error:', pe.message); }
+                            }
+                        } else {
+                            // installment_2, installment_3, balance : verser immédiatement
                             try { await processDispatchPayout(_whDisp, stage); }
                             catch(pe) { console.error('[STRIPE-WH] Payout error (' + stage + '):', pe.message); }
                         }
@@ -3546,17 +3553,20 @@ app.post('/api/orders/create', (req, res) => {
                 console.log('[WELCOME] Avantage bienvenue -' + psoDiePct + '% appliqué pour ' + psoClientEmail + ' : ' + psoFullPrice + ' → ' + psoTotal + ' €');
             }
             // Réduction Cercle Alliance supprimée dans la refonte fidélisation v2
-            // GENESIS SAFE™ two-tier :
-            // ≤ 300 € → paiement intégral immédiat, fonds retenus jusqu'à la livraison (payment_tier='small')
-            // > 300 € → acompte 30 % versé au prestataire + solde 70 % à la livraison (payment_tier='large')
-            const psoPaymentTier = psoTotal <= 300 ? 'small' : 'large';
-            // Paiement en plusieurs fois : si le client demande N mensualités et que le service le permet
+            // GENESIS SAFE™ split :
+            // Si le prestataire a défini son propre % d'acompte → split en 2 tranches (acompte + solde)
+            // Sinon → logique GENESIS par défaut (≤300€ = intégral, >300€ = 30/40/30)
+            var psoDepositPct = (service.deposit_pct != null) ? service.deposit_pct : null;
+            const psoPaymentTier = psoDepositPct != null ? 'custom'
+                : (psoTotal <= 300 ? 'small' : 'large');
             var psoRequestedInstallments = parseInt(partnerServiceOrder.requestedInstallments) || 1;
             var psoClientType = (clientInfo && clientInfo.clientType) || 'particulier';
             var psoValidatedInstallments = validateInstallments(psoRequestedInstallments, service.max_installments || 1, psoClientType);
             const psoInstallments = psoValidatedInstallments > 1
                 ? generateUserInstallmentPlan(psoTotal, psoValidatedInstallments)
-                : generateGenesisSplit(psoTotal);
+                : (psoDepositPct != null
+                    ? generatePartnerSplit(psoTotal, psoDepositPct)
+                    : generateGenesisSplit(psoTotal));
             const psoDeposit = psoInstallments[0].amount;
             const psoBalance = psoInstallments.length > 1
                 ? psoInstallments.slice(1).reduce(function(s, i) { return s + i.amount; }, 0)
@@ -4641,8 +4651,9 @@ app.post('/api/partner/dispatches/:id/accept-mission', authenticatePartner, asyn
         saveDispatches(dispatches);
 
         var order = getOrderById(disp.order_id);
-        // Déclencher le versement de l'acompte (partenaires > 300€ paiement >30%)
-        if (order && order.payment_tier !== 'small') {
+        // Verser l'acompte immédiatement si le client a déjà payé
+        // (idempotence dans processDispatchPayout protège contre les doubles versements)
+        if (order && order.deposit_paid) {
             await processDispatchPayout(dispatches[idx], 'deposit').catch(function(e) {
                 console.error('[ACCEPT_MISSION] Payout erreur:', e.message);
             });
@@ -11646,6 +11657,11 @@ app.put('/api/partner/services', authenticatePartner, (req, res) => {
             if (!isQuote && (!Number.isFinite(price) || price <= 0)) {
                 return res.status(400).json({ error: 'Chaque prestation doit avoir un prix numerique superieur a 0' });
             }
+            // deposit_pct : % d'acompte défini par le prestataire (0-100), null = logique GENESIS par défaut
+            var rawDepPct = s.deposit_pct != null ? Number(s.deposit_pct) : null;
+            var depositPct = (rawDepPct != null && Number.isFinite(rawDepPct))
+                ? Math.max(0, Math.min(100, Math.round(rawDepPct)))
+                : null;
             cleaned.push({
                 id: s.id || ('SVC-' + uuidv4().split('-')[0]),
                 label: s.label.trim(),
@@ -11657,7 +11673,8 @@ app.put('/api/partner/services', authenticatePartner, (req, res) => {
                 image: typeof s.image === 'string' ? s.image : '',
                 features: Array.isArray(s.features)
                     ? s.features.filter(f => typeof f === 'string' && f.trim()).map(f => f.trim()).slice(0, 12)
-                    : []
+                    : [],
+                deposit_pct: depositPct
             });
         }
         const partners = loadPartners();

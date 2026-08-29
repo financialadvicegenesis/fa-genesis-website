@@ -17712,7 +17712,12 @@ function _ptnrRenderServiceItemRow(service){
       + '</div>'
       + (isQuote ? '' :
         '<div style="margin-top:8px;">'
-        +'<div style="font-size:8px;font-weight:900;text-transform:uppercase;color:#444;letter-spacing:.4px;margin-bottom:4px;"><i class="fa-solid fa-credit-card" style="color:#666;margin-right:3px;"></i>Paiement en plusieurs fois</div>'
+        +'<div style="font-size:8px;font-weight:900;text-transform:uppercase;color:#FFD700;letter-spacing:.4px;margin-bottom:4px;"><i class="fa-solid fa-lock" style="margin-right:3px;"></i>GENESIS SAFE™ — Mon acompte</div>'
+        +'<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">'
+        +'<input type="number" class="ptnr-svc-deposit-pct" min="0" max="100" step="5" placeholder="%" value="'+(service.deposit_pct!=null?service.deposit_pct:30)+'" style="width:56px;background:#1a1a1a;border:1px solid rgba(255,215,0,.3);border-radius:7px;color:#FFD700;font-size:12px;font-weight:900;padding:5px 8px;outline:none;font-family:inherit;text-align:center;">'
+        +'<span style="font-size:10px;color:#888;">% versé immédiatement · le reste à la livraison</span>'
+        +'</div>'
+        +'<div style="font-size:8px;font-weight:900;text-transform:uppercase;color:#444;letter-spacing:.4px;margin:8px 0 4px;"><i class="fa-solid fa-credit-card" style="color:#666;margin-right:3px;"></i>Paiement en plusieurs fois</div>'
         +'<select class="ptnr-svc-installments" style="width:100%;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:7px;color:#888;font-size:10px;font-weight:700;padding:5px 8px;outline:none;font-family:inherit;">'
         +'<option value="1"'+((!service.max_installments||service.max_installments<=1)?' selected':'')+'>Comptant uniquement (1×)</option>'
         +'<option value="2"'+(service.max_installments>=2?' selected':'')+'>Jusqu\'à 2× (Particulier)</option>'
@@ -17846,6 +17851,10 @@ function _ptnrCollectServiceItems(audience){
     featureEls.forEach(function(el){ var v=el.value.trim(); if(v) features.push(v); });
     var installEl = cards[i].querySelector('.ptnr-svc-installments');
     var maxInstallments = installEl ? (parseInt(installEl.value)||1) : 1;
+    var depPctEl = cards[i].querySelector('.ptnr-svc-deposit-pct');
+    var depositPct = depPctEl ? parseInt(depPctEl.value) : null;
+    if(isNaN(depositPct) || depositPct == null) depositPct = null;
+    else depositPct = Math.max(0, Math.min(100, depositPct));
     services.push({
       id: serviceId,
       label: label,
@@ -17853,6 +17862,7 @@ function _ptnrCollectServiceItems(audience){
       price: isQuote ? 0 : price,
       pricing_type: isQuote ? 'quote' : 'fixed',
       max_installments: maxInstallments,
+      deposit_pct: isQuote ? null : depositPct,
       features: features,
       active: true,
       audience: audience,
