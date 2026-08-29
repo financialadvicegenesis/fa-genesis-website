@@ -20698,6 +20698,76 @@ app.post('/api/admin/setup-screenshot-demo', async function(req, res) {
 processScheduledNotifs();
 setInterval(processScheduledNotifs, 5 * 60 * 1000);
 
+/**
+ * GET /api/admin/client-withdrawals
+ * Liste les retraits GENESIS SAFE™ en attente de virement manuel (refund_success=false + withdrawal_bank défini).
+ */
+app.get('/api/admin/client-withdrawals', requireAdmin, function(req, res) {
+    try {
+        var orders = loadOrders();
+        // Dédupliquer : garder la dernière occurrence par ID
+        var seen = {};
+        var dedup = [];
+        for (var i = orders.length - 1; i >= 0; i--) {
+            var o = orders[i];
+            if (!o.id || seen[o.id]) continue;
+            seen[o.id] = true;
+            dedup.push(o);
+        }
+        var pending = dedup.filter(function(o) {
+            return o.withdrawal_bank && o.withdrawal_bank.iban && !o.withdrawal_bank_paid;
+        }).map(function(o) {
+            var wb = o.withdrawal_bank;
+            var clientName = o.client_info ? ((o.client_info.first_name || o.client_info.prenom || '') + ' ' + (o.client_info.last_name || o.client_info.nom || '')).trim() : '';
+            var amt = parseFloat(o.deposit_amount || o.total_amount || 0);
+            return {
+                order_id: o.id,
+                client_name: clientName || (o.client_info && o.client_info.email) || 'Client',
+                client_email: o.client_info && o.client_info.email || '',
+                product_name: o.product_name || 'Prestation',
+                amount: amt,
+                account_holder: wb.account_holder || '',
+                iban: wb.iban || '',
+                bic: wb.bic || '',
+                requested_at: wb.requested_at || o.refunded_at || o.updated_at || '',
+                status: o.status
+            };
+        }).sort(function(a, b) { return new Date(b.requested_at) - new Date(a.requested_at); });
+        res.json({ ok: true, withdrawals: pending });
+    } catch(e) {
+        console.error('[ADMIN_WITHDRAWALS]', e.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * POST /api/admin/client-withdrawals/:order_id/confirm
+ * L'admin confirme que le virement IBAN a été effectué → marque withdrawal_bank_paid.
+ */
+app.post('/api/admin/client-withdrawals/:order_id/confirm', requireAdmin, function(req, res) {
+    try {
+        var orderId = req.params.order_id;
+        var ref = (req.body && req.body.reference) ? req.body.reference.trim() : '';
+        var orders = loadOrders();
+        var updated = false;
+        for (var i = 0; i < orders.length; i++) {
+            if (orders[i].id === orderId) {
+                orders[i].withdrawal_bank_paid = true;
+                orders[i].withdrawal_bank_paid_at = new Date().toISOString();
+                if (ref) orders[i].withdrawal_bank_ref = ref;
+                orders[i].updated_at = new Date().toISOString();
+                updated = true;
+            }
+        }
+        if (!updated) return res.status(404).json({ error: 'Commande introuvable' });
+        saveOrders(orders);
+        res.json({ ok: true, message: 'Virement confirmé' });
+    } catch(e) {
+        console.error('[ADMIN_WITHDRAWALS_CONFIRM]', e.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
 app.listen(PORT, async () => {
     // Restaurer les données depuis MongoDB Atlas (si configuré)
     try {
