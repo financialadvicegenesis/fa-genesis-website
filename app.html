@@ -17683,6 +17683,13 @@ function _ptnrSaveResponseTime(){
 
 function _ptnrRenderServiceItemRow(service){
   var isQuote = service.pricing_type === 'quote';
+  var _svcPayMode = service.payment_mode || (service.deposit_pct != null ? 'deposit_balance' : 'single');
+  var _svcDepPct = service.deposit_pct != null ? service.deposit_pct : 30;
+  var _svcInstCnt = service.installment_count || 2;
+  function _modeBtn(m, label) {
+    var act = _svcPayMode === m;
+    return '<button type="button" class="ptnr-svc-mode-btn" data-mode="'+m+'" onclick="_ptnrSetPayMode(this)" style="flex:1;padding:5px 3px;border-radius:7px;font-size:9px;font-weight:'+(act?'900':'500')+';cursor:pointer;border:'+(act?'none':'1px solid #333')+';background:'+(act?'#FFD700':'transparent')+';color:'+(act?'#000':'#888')+';font-family:inherit;transition:all .15s;">'+label+'</button>';
+  }
   var imgInner = service.image
     ? '<img src="'+service.image+'" alt="" style="width:100%;height:100%;object-fit:cover;display:block;">'
     : '<div class="ptnr-svc-card-photo-ph"><i class="fa-solid fa-image"></i></div>';
@@ -17711,21 +17718,27 @@ function _ptnrRenderServiceItemRow(service){
         + '<input type="hidden" class="ptnr-svc-pricing-type" value="'+(isQuote?'quote':'fixed')+'">'
       + '</div>'
       + (isQuote ? '' :
-        '<div style="margin-top:8px;">'
-        +'<div style="font-size:8px;font-weight:900;text-transform:uppercase;color:#FFD700;letter-spacing:.4px;margin-bottom:4px;"><i class="fa-solid fa-lock" style="margin-right:3px;"></i>GENESIS SAFE™ — Mon acompte</div>'
-        +'<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">'
-        +'<input type="number" class="ptnr-svc-deposit-pct" min="0" max="100" step="5" placeholder="%" value="'+(service.deposit_pct!=null?service.deposit_pct:30)+'" style="width:56px;background:#1a1a1a;border:1px solid rgba(255,215,0,.3);border-radius:7px;color:#FFD700;font-size:12px;font-weight:900;padding:5px 8px;outline:none;font-family:inherit;text-align:center;">'
+        '<div style="margin-top:10px;">'
+        +'<div style="font-size:8px;font-weight:900;text-transform:uppercase;color:#FFD700;letter-spacing:.4px;margin-bottom:6px;"><i class="fa-solid fa-lock" style="margin-right:3px;"></i>GENESIS SAFE™ — Mode de paiement</div>'
+        +'<div style="display:flex;gap:4px;margin-bottom:8px;">'
+        +_modeBtn('single','1 fois')
+        +_modeBtn('deposit_balance','Acompte + reste')
+        +_modeBtn('installments','Plusieurs fois')
+        +'</div>'
+        +'<input type="hidden" class="ptnr-svc-payment-mode" value="'+_svcPayMode+'">'
+        +'<div class="ptnr-svc-deposit-section" style="display:'+(_svcPayMode==='deposit_balance'?'flex':'none')+';align-items:center;gap:6px;margin-bottom:4px;">'
+        +'<input type="number" class="ptnr-svc-deposit-pct" min="0" max="100" step="5" placeholder="30" value="'+_svcDepPct+'" style="width:56px;background:#1a1a1a;border:1px solid rgba(255,215,0,.3);border-radius:7px;color:#FFD700;font-size:12px;font-weight:900;padding:5px 8px;outline:none;font-family:inherit;text-align:center;">'
         +'<span style="font-size:10px;color:#888;">% versé immédiatement · le reste à la livraison</span>'
         +'</div>'
-        +'<div style="font-size:8px;font-weight:900;text-transform:uppercase;color:#444;letter-spacing:.4px;margin:8px 0 4px;"><i class="fa-solid fa-credit-card" style="color:#666;margin-right:3px;"></i>Paiement en plusieurs fois</div>'
-        +'<select class="ptnr-svc-installments" style="width:100%;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:7px;color:#888;font-size:10px;font-weight:700;padding:5px 8px;outline:none;font-family:inherit;">'
-        +'<option value="1"'+((!service.max_installments||service.max_installments<=1)?' selected':'')+'>Comptant uniquement (1×)</option>'
-        +'<option value="2"'+(service.max_installments>=2?' selected':'')+'>Jusqu\'à 2× (Particulier)</option>'
-        +'<option value="3"'+(service.max_installments>=3?' selected':'')+'>Jusqu\'à 3× (Étudiant)</option>'
-        +'<option value="4"'+(service.max_installments>=4?' selected':'')+'>Jusqu\'à 4× (Étudiant)</option>'
-        +'<option value="6"'+(service.max_installments>=6?' selected':'')+'>Jusqu\'à 6× (Étudiant)</option>'
-        +'<option value="8"'+(service.max_installments>=8?' selected':'')+'>Jusqu\'à 8× (Étudiant)</option>'
+        +'<div class="ptnr-svc-installments-section" style="display:'+(_svcPayMode==='installments'?'block':'none')+';margin-bottom:4px;">'
+        +'<select class="ptnr-svc-installments" style="width:100%;background:#1a1a1a;border:1px solid rgba(255,215,0,.3);border-radius:7px;color:#FFD700;font-size:10px;font-weight:700;padding:5px 8px;outline:none;font-family:inherit;">'
+        +'<option value="2"'+(_svcInstCnt===2?' selected':'')+'>2 fois — mensualités égales</option>'
+        +'<option value="3"'+(_svcInstCnt===3?' selected':'')+'>3 fois — mensualités égales</option>'
+        +'<option value="4"'+(_svcInstCnt===4?' selected':'')+'>4 fois — mensualités égales</option>'
+        +'<option value="6"'+(_svcInstCnt===6?' selected':'')+'>6 fois — mensualités égales</option>'
+        +'<option value="8"'+(_svcInstCnt===8?' selected':'')+'>8 fois — mensualités égales</option>'
         +'</select>'
+        +'</div>'
         +'</div>')
     + '</div>'
   + '</div>';
@@ -17781,6 +17794,25 @@ function _ptnrSelectPricingMode(btn, mode){
       pricingRow.insertBefore(inp, pricingRow.firstChild);
     }
   }
+}
+
+function _ptnrSetPayMode(btn){
+  var card = btn.closest('.ptnr-svc-card');
+  if(!card) return;
+  var mode = btn.getAttribute('data-mode');
+  var modeInput = card.querySelector('.ptnr-svc-payment-mode');
+  if(modeInput) modeInput.value = mode;
+  card.querySelectorAll('.ptnr-svc-mode-btn').forEach(function(b){
+    var act = b.getAttribute('data-mode') === mode;
+    b.style.background = act ? '#FFD700' : 'transparent';
+    b.style.color = act ? '#000' : '#888';
+    b.style.border = act ? 'none' : '1px solid #333';
+    b.style.fontWeight = act ? '900' : '500';
+  });
+  var depSec = card.querySelector('.ptnr-svc-deposit-section');
+  var instSec = card.querySelector('.ptnr-svc-installments-section');
+  if(depSec) depSec.style.display = mode === 'deposit_balance' ? 'flex' : 'none';
+  if(instSec) instSec.style.display = mode === 'installments' ? 'block' : 'none';
 }
 
 function _ptnrRenderServicesSection(){
@@ -17849,20 +17881,29 @@ function _ptnrCollectServiceItems(audience){
     var featureEls = cards[i].querySelectorAll('.ptnr-svc-feature-input');
     var features = [];
     featureEls.forEach(function(el){ var v=el.value.trim(); if(v) features.push(v); });
-    var installEl = cards[i].querySelector('.ptnr-svc-installments');
-    var maxInstallments = installEl ? (parseInt(installEl.value)||1) : 1;
+    var payModeEl = cards[i].querySelector('.ptnr-svc-payment-mode');
+    var payMode = payModeEl ? (payModeEl.value || 'single') : 'single';
     var depPctEl = cards[i].querySelector('.ptnr-svc-deposit-pct');
-    var depositPct = depPctEl ? parseInt(depPctEl.value) : null;
-    if(isNaN(depositPct) || depositPct == null) depositPct = null;
-    else depositPct = Math.max(0, Math.min(100, depositPct));
+    var depositPct = null;
+    if(payMode === 'deposit_balance' && depPctEl){
+      var _dp = parseInt(depPctEl.value);
+      depositPct = isNaN(_dp) ? 30 : Math.max(0, Math.min(100, _dp));
+    }
+    var installEl = cards[i].querySelector('.ptnr-svc-installments');
+    var installCount = null;
+    if(payMode === 'installments' && installEl){
+      var _ic = parseInt(installEl.value);
+      installCount = isNaN(_ic) ? 2 : Math.max(2, Math.min(8, _ic));
+    }
     services.push({
       id: serviceId,
       label: label,
       description: '',
       price: isQuote ? 0 : price,
       pricing_type: isQuote ? 'quote' : 'fixed',
-      max_installments: maxInstallments,
+      payment_mode: isQuote ? 'single' : payMode,
       deposit_pct: isQuote ? null : depositPct,
+      installment_count: isQuote ? null : installCount,
       features: features,
       active: true,
       audience: audience,

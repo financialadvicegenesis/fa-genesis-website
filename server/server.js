@@ -3553,20 +3553,30 @@ app.post('/api/orders/create', (req, res) => {
                 console.log('[WELCOME] Avantage bienvenue -' + psoDiePct + '% appliqué pour ' + psoClientEmail + ' : ' + psoFullPrice + ' → ' + psoTotal + ' €');
             }
             // Réduction Cercle Alliance supprimée dans la refonte fidélisation v2
-            // GENESIS SAFE™ split :
-            // Si le prestataire a défini son propre % d'acompte → split en 2 tranches (acompte + solde)
-            // Sinon → logique GENESIS par défaut (≤300€ = intégral, >300€ = 30/40/30)
-            var psoDepositPct = (service.deposit_pct != null) ? service.deposit_pct : null;
-            const psoPaymentTier = psoDepositPct != null ? 'custom'
-                : (psoTotal <= 300 ? 'small' : 'large');
-            var psoRequestedInstallments = parseInt(partnerServiceOrder.requestedInstallments) || 1;
-            var psoClientType = (clientInfo && clientInfo.clientType) || 'particulier';
-            var psoValidatedInstallments = validateInstallments(psoRequestedInstallments, service.max_installments || 1, psoClientType);
-            const psoInstallments = psoValidatedInstallments > 1
-                ? generateUserInstallmentPlan(psoTotal, psoValidatedInstallments)
-                : (psoDepositPct != null
-                    ? generatePartnerSplit(psoTotal, psoDepositPct)
-                    : generateGenesisSplit(psoTotal));
+            // GENESIS SAFE™ — plan de paiement selon le mode choisi par le prestataire
+            var svcPayMode = service.payment_mode || null;
+            var psoPaymentTier, psoInstallments;
+            if (svcPayMode === 'single') {
+                psoPaymentTier = 'small';
+                psoInstallments = [{ number:1, key:'paiement', label:'Paiement intégral — GENESIS SAFE™', amount:psoTotal, stage:'deposit', paid:false, paid_at:null, due_date:null, milestone_required:null }];
+            } else if (svcPayMode === 'deposit_balance') {
+                psoPaymentTier = 'custom';
+                psoInstallments = generatePartnerSplit(psoTotal, service.deposit_pct != null ? service.deposit_pct : 30);
+            } else if (svcPayMode === 'installments') {
+                psoPaymentTier = 'partner_installments';
+                var _psoN = Math.max(2, Math.min(8, parseInt(service.installment_count) || 2));
+                psoInstallments = generateUserInstallmentPlan(psoTotal, _psoN);
+            } else {
+                // Rétrocompatibilité : anciens services sans payment_mode
+                var psoDepositPct = service.deposit_pct != null ? service.deposit_pct : null;
+                psoPaymentTier = psoDepositPct != null ? 'custom' : (psoTotal <= 300 ? 'small' : 'large');
+                var psoRequestedInstallments = parseInt(partnerServiceOrder.requestedInstallments) || 1;
+                var psoClientType = (clientInfo && clientInfo.clientType) || 'particulier';
+                var psoValidatedInstallments = validateInstallments(psoRequestedInstallments, service.max_installments || 1, psoClientType);
+                psoInstallments = psoValidatedInstallments > 1
+                    ? generateUserInstallmentPlan(psoTotal, psoValidatedInstallments)
+                    : (psoDepositPct != null ? generatePartnerSplit(psoTotal, psoDepositPct) : generateGenesisSplit(psoTotal));
+            }
             const psoDeposit = psoInstallments[0].amount;
             const psoBalance = psoInstallments.length > 1
                 ? psoInstallments.slice(1).reduce(function(s, i) { return s + i.amount; }, 0)
@@ -11657,10 +11667,17 @@ app.put('/api/partner/services', authenticatePartner, (req, res) => {
             if (!isQuote && (!Number.isFinite(price) || price <= 0)) {
                 return res.status(400).json({ error: 'Chaque prestation doit avoir un prix numerique superieur a 0' });
             }
-            // deposit_pct : % d'acompte défini par le prestataire (0-100), null = logique GENESIS par défaut
+            // Modes de paiement définis par le prestataire par prestation
+            var VALID_PAY_MODES = ['single', 'deposit_balance', 'installments'];
+            var rawPayMode = typeof s.payment_mode === 'string' ? s.payment_mode : null;
+            var paymentMode = VALID_PAY_MODES.indexOf(rawPayMode) !== -1 ? rawPayMode : (isQuote ? 'single' : null);
             var rawDepPct = s.deposit_pct != null ? Number(s.deposit_pct) : null;
-            var depositPct = (rawDepPct != null && Number.isFinite(rawDepPct))
+            var depositPct = (paymentMode === 'deposit_balance' && rawDepPct != null && Number.isFinite(rawDepPct))
                 ? Math.max(0, Math.min(100, Math.round(rawDepPct)))
+                : null;
+            var rawInstCnt = s.installment_count != null ? Number(s.installment_count) : null;
+            var installmentCount = (paymentMode === 'installments' && rawInstCnt != null && Number.isFinite(rawInstCnt))
+                ? Math.max(2, Math.min(8, Math.round(rawInstCnt)))
                 : null;
             cleaned.push({
                 id: s.id || ('SVC-' + uuidv4().split('-')[0]),
@@ -11674,7 +11691,9 @@ app.put('/api/partner/services', authenticatePartner, (req, res) => {
                 features: Array.isArray(s.features)
                     ? s.features.filter(f => typeof f === 'string' && f.trim()).map(f => f.trim()).slice(0, 12)
                     : [],
-                deposit_pct: depositPct
+                payment_mode: paymentMode,
+                deposit_pct: depositPct,
+                installment_count: installmentCount
             });
         }
         const partners = loadPartners();
