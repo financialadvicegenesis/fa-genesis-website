@@ -11848,9 +11848,10 @@ app.put('/api/partner/portfolio', authenticatePartner, (req, res) => {
 // ============================================================
 
 function getPartnerFromPrice(partner) {
-    // parseFloat gère aussi les prix stockés en string (legacy data)
+    // Ne pas filtrer sur pricing_type : un service avec un prix valide > 0 est toujours affiché,
+    // qu'il soit tagué 'fixed' ou 'quote' en base (données legacy). Les vrais "devis" ont price:0.
     const activePrices = (partner.services || [])
-        .filter(s => s.active !== false && s.pricing_type !== 'quote')
+        .filter(s => s.active !== false)
         .map(s => parseFloat(s.price))
         .filter(p => !isNaN(p) && isFinite(p) && p > 0);
     return activePrices.length ? Math.min(...activePrices) : null;

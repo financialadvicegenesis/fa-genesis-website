@@ -17926,6 +17926,8 @@ function _ptnrSaveServices(){
       _ptnrSession.services = data.services;
       _ptnrSaveToCache(_ptnrSession);
       _ptnrRenderServicesSection();
+      // Forcer le rechargement de l'annuaire côté client au prochain accès à l'onglet
+      if(typeof _tabLoaded !== 'undefined'){ _tabLoaded['prestataires'] = false; _tabLoaded['explorer'] = false; }
       if(msgEl){ msgEl.style.color='#4caf50'; msgEl.textContent='Prestations enregistrées avec succès.'; msgEl.className='ptnr-login-err on'; }
     } else if(msgEl){
       msgEl.style.color='#ef4444'; msgEl.textContent=(data&&data.error)||'Erreur lors de l\'enregistrement'; msgEl.className='ptnr-login-err on';
