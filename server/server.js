@@ -4924,7 +4924,17 @@ app.get('/api/client/wallet', function(req, res) {
         var partners = loadPartners();
         var dispatches = loadDispatches();
 
-        var clientOrders = orders.filter(function(o) {
+        // Dédupliquer les ordres (garder le plus récent par ID)
+        var _seenWallet = {};
+        var dedupOrders = [];
+        for (var _wi = orders.length - 1; _wi >= 0; _wi--) {
+            var _wo = orders[_wi];
+            if (!_wo.id || _seenWallet[_wo.id]) continue;
+            _seenWallet[_wo.id] = true;
+            dedupOrders.push(_wo);
+        }
+
+        var clientOrders = dedupOrders.filter(function(o) {
             if (!o.client_info || !o.client_info.email) return false;
             if (o.client_info.email.toLowerCase() !== user.email.toLowerCase()) return false;
             if (o.status === 'cancelled' || o.status === 'refunded') return false;
@@ -5033,7 +5043,11 @@ app.post('/api/client/wallet/withdraw/:order_id', async function(req, res) {
 
         var orderId = req.params.order_id;
         var orders = loadOrders();
-        var orderIdx = orders.findIndex(function(o) { return o.id === orderId; });
+        // Chercher la dernière occurrence (version la plus récente en cas de doublons)
+        var orderIdx = -1;
+        for (var _wdi = orders.length - 1; _wdi >= 0; _wdi--) {
+            if (orders[_wdi].id === orderId) { orderIdx = _wdi; break; }
+        }
         if (orderIdx === -1) return res.status(404).json({ error: 'Commande introuvable' });
         var order = orders[orderIdx];
 
