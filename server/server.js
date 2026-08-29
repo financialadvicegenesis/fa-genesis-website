@@ -5086,7 +5086,16 @@ app.get('/api/client/wallet', function(req, res) {
             var held = 0;
             var released = 0;
             var partner = partners.find(function(p) { return p.id === order.partner_id; });
-            var partnerName = partner ? ((partner.prenom || partner.firstName || '') + ' ' + (partner.nom || partner.lastName || '')).trim() || partner.email : 'Prestataire';
+            // Chercher le dispatch tôt pour servir de fallback si le partenaire n'est pas trouvé par ID
+            var _walletDisp = dispatches.find(function(d) { return d.order_id === order.id; });
+            var _walletDispPartner = (!partner && _walletDisp && _walletDisp.claimed_by_partner_id)
+                ? partners.find(function(p) { return p.id === _walletDisp.claimed_by_partner_id; })
+                : null;
+            var _walletNameRaw = partner ? ((partner.prenom || partner.firstName || '') + ' ' + (partner.nom || partner.lastName || '')).trim() || partner.email : null;
+            var _walletDispNameRaw = _walletDispPartner ? ((_walletDispPartner.prenom || _walletDispPartner.firstName || '') + ' ' + (_walletDispPartner.nom || _walletDispPartner.lastName || '')).trim() || _walletDispPartner.email : null;
+            var partnerName = _walletNameRaw || _walletDispNameRaw
+                || (_walletDisp && _walletDisp.claimed_by_name ? String(_walletDisp.claimed_by_name).trim() : null)
+                || 'Prestataire';
 
             // Priorité au modèle installments si au moins une est payée (événementiel 30/40/30)
             var hasPaidInst = Array.isArray(order.installments) && order.installments.some(function(i) { return i.paid; });
@@ -5132,7 +5141,7 @@ app.get('/api/client/wallet', function(req, res) {
             }
 
             if (held === 0 && released === 0) return;
-            var dispatch = dispatches.find(function(d) { return d.order_id === order.id; });
+            var dispatch = _walletDisp; // déjà calculé plus haut (fallback nom)
             var partnerInactive = partner && partner.accountStatus && partner.accountStatus !== 'active';
             var dispatchNotAccepted = !dispatch || dispatch.status === 'pending_acceptance';
 
