@@ -1236,9 +1236,18 @@ function shareReferral(){
 }
 function confirmDelete(){
   if(!confirm('Supprimer votre compte ? Cette action est irréversible.')) return;
-  if(!confirm('Confirmer la suppression définitive ?')) return;
-  fetch(API+'/api/account',{method:'DELETE',headers:{'Authorization':'Bearer '+_token}})
-    .then(function(){ clearSession(); window.location.replace('index.html'); })
+  var pwd = prompt('Confirmez avec votre mot de passe :');
+  if(!pwd) return;
+  fetch(API+'/api/auth/delete-account',{
+    method:'DELETE',
+    headers:{'Authorization':'Bearer '+_token,'Content-Type':'application/json'},
+    body:JSON.stringify({password:pwd})
+  })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if(d.success){ clearSession(); window.location.replace('index.html'); }
+      else{ alert('Erreur : '+(d.error||'Mot de passe incorrect.')); }
+    })
     .catch(function(){ showToast('Erreur — contactez le support'); });
 }
 // ── VALIDATION LIVRAISON ─────────────────────────────────────────
@@ -1413,9 +1422,12 @@ function doLogout(){
   window.location.replace('index.html');
 }
 function clearSession(){
-  ['fa_genesis_token','fa_genesis_session','fa_genesis_user'].forEach(function(k){
+  ['fa_genesis_token','fa_genesis_session','fa_genesis_user','fa_genesis_device_token',
+   'fa_app_cart','fa_genesis_partner_token','fa_genesis_partner_data',
+   'fa_genesis_partner_profile','fa_genesis_partner_profile_data'].forEach(function(k){
     try{ localStorage.removeItem(k); }catch(e){}
   });
+  try{ sessionStorage.clear(); }catch(e){}
 }
 </script>
 </body>

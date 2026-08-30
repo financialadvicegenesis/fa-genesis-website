@@ -3371,10 +3371,13 @@ function showRoleChoice(){
 }
 
 function _showRoleChoiceAfterDelete(){
-  // Nettoyer session client
+  // ── Nettoyer session client ──────────────────────────────────
   try{ localStorage.removeItem('fa_genesis_session'); }catch(e){}
   try{ localStorage.removeItem('fa_genesis_token'); }catch(e){}
-  // Nettoyer session partenaire
+  try{ localStorage.removeItem('fa_genesis_device_token'); }catch(e){}
+  try{ localStorage.removeItem('fa_app_cart'); }catch(e){}
+
+  // ── Nettoyer session partenaire ──────────────────────────────
   try{
     if(typeof _ptnrClearSession==='function') _ptnrClearSession();
     if(typeof _ptnrRefreshTimer!=='undefined' && _ptnrRefreshTimer){ clearInterval(_ptnrRefreshTimer); _ptnrRefreshTimer=null; }
@@ -3382,10 +3385,30 @@ function _showRoleChoiceAfterDelete(){
     localStorage.removeItem('fa_genesis_partner_profile');
     localStorage.removeItem('fa_genesis_partner_profile_data');
     localStorage.removeItem('fa_genesis_partner_data');
+  }catch(e){}
+
+  // ── Nettoyer sessionStorage ──────────────────────────────────
+  try{
     sessionStorage.removeItem('fa_ptnr_screen');
     sessionStorage.removeItem('fa_nav_tab');
+    sessionStorage.removeItem('fa_nav_section');
+    sessionStorage.removeItem('fa_support_thread');
+    sessionStorage.removeItem('fa_genesis_jeremie_greeted');
+    sessionStorage.removeItem('na');
   }catch(e){}
-  // Réinitialiser l'état global
+
+  // ── Désabonnement push Web (PWA / navigateur) ────────────────
+  try{
+    if('serviceWorker' in navigator && !window.Capacitor){
+      navigator.serviceWorker.ready.then(function(reg){
+        reg.pushManager.getSubscription().then(function(sub){
+          if(sub) sub.unsubscribe();
+        });
+      }).catch(function(){});
+    }
+  }catch(e){}
+
+  // ── Réinitialiser l'état global ──────────────────────────────
   try{ USER = null; GUEST = false; }catch(e){}
   // Fermer tous les overlays fixes qui pourraient être ouverts
   try{
