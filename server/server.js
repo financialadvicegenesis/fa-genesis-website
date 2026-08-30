@@ -2107,7 +2107,7 @@ app.post('/api/admin/students/:id/verify', function(req, res) {
         users[idx].student_status = 'verified';
         users[idx].updatedAt = new Date().toISOString();
         saveUsers(users);
-        notifyUser(users[idx].email, 'client', 'student_verified', 'Compte étudiant vérifié ✓', 'Votre justificatif étudiant a été validé par FA GENESIS. Vous bénéficiez maintenant des offres étudiants.', '/app.html');
+        notifyUser(users[idx].email, 'client', 'student_verified', 'Compte étudiant vérifié ✓', 'Votre justificatif étudiant a été validé par FA GENESIS. Vous bénéficiez maintenant des offres étudiants.', '#profil');
         // FCM natif Android : inclure type dans data pour que l'app mette à jour l'UI sans rechargement
         sendFcmToUser(users[idx].id, {
             title: 'Compte étudiant vérifié ✓',
@@ -2138,7 +2138,7 @@ app.post('/api/admin/students/:id/reject', function(req, res) {
         users[idx].student_reject_reason = reason;
         users[idx].updatedAt = new Date().toISOString();
         saveUsers(users);
-        notifyUser(users[idx].email, 'client', 'student_rejected', 'Justificatif étudiant non accepté', 'Votre justificatif étudiant n\'a pas pu être validé : ' + reason, '/app.html');
+        notifyUser(users[idx].email, 'client', 'student_rejected', 'Justificatif étudiant non accepté', 'Votre justificatif étudiant n\'a pas pu être validé : ' + reason, '#profil');
         emailService.sendEmail && emailService.sendEmail({
             to: users[idx].email,
             subject: 'Justificatif étudiant FA GENESIS — Action requise',
@@ -2571,7 +2571,7 @@ function updateOrder(orderId, updates) {
                     if (_partner) {
                         notifyUser(_partner.email, 'partner', 'contract_sent', 'Contrat envoyé au client',
                             'Le contrat pour la commande ' + _order.id + ' a été envoyé à ' + (_clientName || _clientEmail) + '.',
-                            '/app.html');
+                            '#partner:missions');
                     }
                     console.log('[CONTRACT] Contrat prestation auto-généré:', _cId);
                 } catch(_e) { console.error('[CONTRACT] Erreur auto-génération:', _e); }
@@ -4469,7 +4469,7 @@ async function _applyPaymentConfirmation(orderId, stage, transactionRef, paypalC
             : stage === 'installment_2' ? 'Le paiement de la tranche 2 a été reçu. Merci !'
             : 'Votre paiement complet a été confirmé. Merci !';
         const lbl = stage === 'deposit' ? 'acompte' : stage === 'installment_2' ? 'tranche 2' : stage === 'installment_3' ? 'tranche 3' : 'solde';
-        notifyUser(updatedOrder.client_info.email, 'client', 'paiement', 'Paiement confirmé ✅', msg, '/app.html');
+        notifyUser(updatedOrder.client_info.email, 'client', 'paiement', 'Paiement confirmé ✅', msg, '#reservations');
         notifyUser(null, 'admin', 'paiement-admin', 'Paiement reçu', (updatedOrder.client_info.first_name || '') + ' — ' + (updatedOrder.product_name || '') + ' — ' + lbl, '/app.html#open-admin');
     }
 
@@ -5683,7 +5683,7 @@ app.post('/api/payments/sumup/webhook', async (req, res) => {
                     : stage === 'installment_2' ? 'Le paiement de la tranche 2 (livrable intermédiaire) a été reçu. Merci !'
                     : 'Votre paiement complet a été confirmé. Merci !';
                 var pushStageLabel = stage === 'deposit' ? 'acompte' : stage === 'installment_2' ? 'tranche 2' : stage === 'installment_3' ? 'tranche 3' : 'solde';
-                notifyUser(pushClientEmail, 'client', 'paiement', 'Paiement confirmé ✅', pushMsgClient, '/app.html');
+                notifyUser(pushClientEmail, 'client', 'paiement', 'Paiement confirmé ✅', pushMsgClient, '#reservations');
                 notifyUser(null, 'admin', 'paiement-admin', 'Paiement reçu', (updatedOrder.client_info.first_name || '') + ' — ' + (updatedOrder.product_name || '') + ' — ' + pushStageLabel, '/app.html#open-admin');
             }
 
@@ -6645,7 +6645,7 @@ app.post('/api/livrables/:id/validate', (req, res) => {
         if (livrable.owner_partner_id) {
             var partnerForValidation = getPartnerById(livrable.owner_partner_id);
             if (partnerForValidation && partnerForValidation.email) {
-                notifyUser(partnerForValidation.email, 'partner', 'livrable-valide', 'Livrable validé ✅', (order.client_info.first_name || 'Le client') + ' a validé : ' + (livrable.title || 'votre livrable'), '/app.html#open-partner');
+                notifyUser(partnerForValidation.email, 'partner', 'livrable-valide', 'Livrable validé ✅', (order.client_info.first_name || 'Le client') + ' a validé : ' + (livrable.title || 'votre livrable'), '#partner:missions');
             }
         }
 
@@ -6709,7 +6709,7 @@ app.post('/api/livrables/:id/request-revision', (req, res) => {
         if (livrable.owner_partner_id) {
             var partnerForRevision = getPartnerById(livrable.owner_partner_id);
             if (partnerForRevision && partnerForRevision.email) {
-                notifyUser(partnerForRevision.email, 'partner', 'livrable-revision', 'Révision demandée ✏️', (order.client_info.first_name || 'Le client') + ' demande une revision sur : ' + (livrable.title || 'votre livrable'), '/app.html#open-partner');
+                notifyUser(partnerForRevision.email, 'partner', 'livrable-revision', 'Révision demandée ✏️', (order.client_info.first_name || 'Le client') + ' demande une revision sur : ' + (livrable.title || 'votre livrable'), '#partner:missions');
             }
         }
 
@@ -7040,7 +7040,7 @@ function finalizeSchedule(order) {
                 var confirmOrderName = updatedOrder.product_name || updatedOrder.product_id || 'votre commande';
                 emailService.sendScheduleConfirmedToClient(updatedOrder.client_info.email, confirmClientName, updatedOrder.start_date, confirmOrderName);
                 var dateStr = updatedOrder.start_date ? new Date(updatedOrder.start_date).toLocaleDateString('fr-FR') : '';
-                notifyUser(updatedOrder.client_info.email, 'client', 'rdv', 'Rendez-vous confirmé 📅', confirmOrderName + (dateStr ? ' — ' + dateStr : '') + ' est confirmé !', '/app.html');
+                notifyUser(updatedOrder.client_info.email, 'client', 'rdv', 'Rendez-vous confirmé 📅', confirmOrderName + (dateStr ? ' — ' + dateStr : '') + ' est confirmé !', '#reservations');
             }
         } catch (emailErr) {
             console.error('[SCHEDULE] Erreur email confirmation date client:', emailErr.message);
@@ -8083,7 +8083,7 @@ app.post('/api/admin/messages/:messageId/reply', async (req, res) => {
 
         console.log(`[CONTACT] Reponse envoyee avec succes au message ${msg.id} (${msg.email})`);
         // Push au client : réponse admin reçue
-        notifyUser(msg.email, 'client', 'reponse-admin', 'FA GENESIS vous a répondu', replyMessage.trim().substring(0, 100), '/app.html');
+        notifyUser(msg.email, 'client', 'reponse-admin', 'FA GENESIS vous a répondu', replyMessage.trim().substring(0, 100), '#messages');
 
         res.json({ success: true, message: 'Reponse envoyee avec succes' });
 
@@ -12618,9 +12618,9 @@ function checkReferralAndMissionRewards(clientEmail) {
                             var _newRank = _sorted.indexOf(users[parrainIdx].id) + 1;
                             var _rankMsgs = { 1: ['🥇 1ère place !', 'Vous venez de prendre la tête du Top Ambassadeurs GENESIS !'], 2: ['🥈 2ᵉ place !', 'Vous êtes maintenant 2ᵉ du Top Ambassadeurs GENESIS.'], 3: ['🥉 3ᵉ place !', 'Vous êtes maintenant 3ᵉ du Top Ambassadeurs GENESIS.'] };
                             if (_rankMsgs[_newRank]) {
-                                notifyUser(users[parrainIdx].email, 'client', 'ambassadeur_rank', _rankMsgs[_newRank][0], _rankMsgs[_newRank][1] + ' (' + parrainRefCount + ' parrainage' + (parrainRefCount > 1 ? 's' : '') + ' validé' + (parrainRefCount > 1 ? 's' : '') + ')', '/app.html');
+                                notifyUser(users[parrainIdx].email, 'client', 'ambassadeur_rank', _rankMsgs[_newRank][0], _rankMsgs[_newRank][1] + ' (' + parrainRefCount + ' parrainage' + (parrainRefCount > 1 ? 's' : '') + ' validé' + (parrainRefCount > 1 ? 's' : '') + ')', '#profil');
                             } else if (_newRank > 0 && _newRank <= 10) {
-                                notifyUser(users[parrainIdx].email, 'client', 'ambassadeur_rank', '🏆 Top 10 Ambassadeurs !', 'Vous occupez la ' + _newRank + 'ᵉ place du Top Ambassadeurs GENESIS.', '/app.html');
+                                notifyUser(users[parrainIdx].email, 'client', 'ambassadeur_rank', '🏆 Top 10 Ambassadeurs !', 'Vous occupez la ' + _newRank + 'ᵉ place du Top Ambassadeurs GENESIS.', '#profil');
                             }
                         } catch(_rankErr) { console.warn('[HOF_RANK]', _rankErr.message); }
                     }
@@ -14438,7 +14438,7 @@ app.post('/api/partner/dispatches/:id/mark-delivering', authenticatePartner, fun
         var order = loadOrders().find(function(o) { return o.id === dispatches[idx].order_id; });
         var clientEmail = order && order.client_info && order.client_info.email;
         if (clientEmail) {
-            notifyUser(clientEmail, 'client', 'mission-status', 'Livraison en cours', 'Votre prestataire finalise vos livrables.', '/app.html#open-resa');
+            notifyUser(clientEmail, 'client', 'mission-status', 'Livraison en cours', 'Votre prestataire finalise vos livrables.', '#reservations');
         }
         res.json({ success: true, mission_status: 'delivering' });
     } catch(e) {
@@ -14623,7 +14623,7 @@ app.post('/api/partner-requests', function(req, res) {
         requests.push(newRequest);
         savePartnerRequests(requests);
 
-        notifyUser(partner.email, 'partner', 'partner-request', 'Nouvelle demande de mission', newRequest.client_name + ' souhaite vous engager pour : ' + service.label, '/app.html#open-partner');
+        notifyUser(partner.email, 'partner', 'partner-request', 'Nouvelle demande de mission', newRequest.client_name + ' souhaite vous engager pour : ' + service.label, '#partner:missions');
 
         res.json({ success: true, request: newRequest });
     } catch(e) {
@@ -16669,7 +16669,7 @@ app.post('/api/contracts/service/generate', function(req, res) {
         notifyUser(partner.email, 'partner', 'contract_sent',
             'Contrat envoyé au client',
             'Le contrat pour la commande ' + order.id + ' a été envoyé à ' + (clientName || clientEmail) + '.',
-            '/app.html');
+            '#partner:missions');
 
         console.log('[CONTRACT] Contrat prestation généré:', contractId, '→', clientEmail);
         res.json({ success: true, contract: newContract });

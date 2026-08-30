@@ -13350,6 +13350,12 @@ function _handleNotifHash(hash){
     nav('messages');
   } else if(hash === 'explorer'){
     nav('explorer');
+  } else if(hash === 'profil'){
+    nav('profil');
+  } else if(hash === 'open-resa'){
+    nav('reservations');
+  } else if(/^client-review-/.test(hash)){
+    nav('reservations');
   }
 }
 
