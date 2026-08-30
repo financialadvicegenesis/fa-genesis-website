@@ -1237,9 +1237,14 @@ function createPartnerServiceDispatch(order) {
             || (user && (user.prenom || user.firstName || user.first_name))
             || 'Client';
 
+        // Nom partenaire : depuis l'objet partner si trouvé, sinon depuis order.partner_name (stocké à la commande)
+        var _dispPartnerName = partner
+            ? ((partner.prenom || '') + ' ' + (partner.nom || '')).trim() || partner.email
+            : ((order.partner_name || '').trim() || null);
         var dispatch = {
             id: 'DSP-' + uuidv4().split('-')[0],
             order_id: order.id,
+            partner_id: order.partner_id,            // champ standard pour les endpoints de filtrage
             client_prenom: clientPrenom,
             offer_name: order.product_name,
             offer_total_price: totalAmount,
@@ -1250,9 +1255,9 @@ function createPartnerServiceDispatch(order) {
             client_availability: null,
             status: 'pending_acceptance',
             mission_status: null,
-            claimed_by_name: partner ? (partner.prenom + ' ' + partner.nom) : null,
+            claimed_by_name: _dispPartnerName,
             claimed_by_profile: null,
-            claimed_by_partner_id: order.partner_id,
+            claimed_by_partner_id: order.partner_id, // alias maintenu pour compatibilité
             claimed_at: new Date().toISOString(),
             claim_message: null,
             proposed_start: null,
@@ -1486,8 +1491,10 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
                         var _psNewDispWh = createPartnerServiceDispatch(_psOrderWh);
                         if (_psNewDispWh) {
                             var _psPartnerWh = getPartnerById(_psOrderWh.partner_id);
-                            var _psPartnerEmailWh = _psPartnerWh ? (_psPartnerWh.email || _psPartnerWh.contact_email || null) : null;
-                            var _psPartnerNameWh = _psPartnerWh ? (_psPartnerWh.prenom ? (_psPartnerWh.prenom + ' ' + (_psPartnerWh.nom || '')) : _psPartnerWh.company || 'votre prestataire') : 'votre prestataire';
+                            var _psPartnerEmailWh = (_psPartnerWh && (_psPartnerWh.email || _psPartnerWh.contact_email))
+                                || _psOrderWh.partner_email || null;
+                            var _psPartnerNameWh = (_psPartnerWh && (_psPartnerWh.prenom ? (_psPartnerWh.prenom + ' ' + (_psPartnerWh.nom || '')) : _psPartnerWh.company))
+                                || _psOrderWh.partner_name || 'votre prestataire';
                             var _psClientFnWh = (_psOrderWh.client_info && _psOrderWh.client_info.first_name) || 'Un client';
                             var _psClientEmailWh = _psOrderWh.client_info && _psOrderWh.client_info.email;
                             if (_psPartnerEmailWh) {
@@ -3621,6 +3628,8 @@ app.post('/api/orders/create', (req, res) => {
                 product_type: 'partner_service',
                 payment_tier: psoPaymentTier,
                 partner_id: partner.id,
+                partner_name: ((partner.prenom || '') + ' ' + (partner.nom || '')).trim() || partner.email || '',
+                partner_email: partner.email || '',
                 partner_service_id: service.id,
                 request_id: psoRequest ? psoRequest.id : null,
                 client_info: {
@@ -4279,8 +4288,8 @@ app.post('/api/contracts/sign', function(req, res) {
                 var _clientDisplayName = b.signatureName || payload.email;
                 notifyUser(_partner.email, 'partner', 'contract_signed',
                     'Contrat signé par un client',
-                    _clientDisplayName + ' a signé le contrat pour : ' + b.serviceLabel + '. Téléchargez-le dans vos Documents.',
-                    '/app.html'
+                    _clientDisplayName + ' a signé le contrat pour : ' + b.serviceLabel + '. Retrouvez la mission dans vos Missions.',
+                    '#partner:missions'
                 );
                 emailService.sendContractSignedToPartnerEmail(
                     _partner.email,
@@ -4629,7 +4638,7 @@ app.get('/api/partner/dispatches/pending', authenticatePartner, async (req, res)
     try {
         var partnerId = req.partner.id || req.partner.partnerId;
         var dispatches = loadDispatches().filter(function(d) {
-            return d.partner_id === partnerId && d.status === 'pending_acceptance';
+            return (d.partner_id === partnerId || d.claimed_by_partner_id === partnerId) && d.status === 'pending_acceptance';
         });
         // Enrichir avec les infos de la commande
         var enriched = dispatches.map(function(d) {
@@ -4661,7 +4670,8 @@ app.post('/api/partner/dispatches/:id/accept-mission', authenticatePartner, asyn
         var idx = dispatches.findIndex(function(d) { return d.id === req.params.id; });
         if (idx === -1) return res.status(404).json({ error: 'Dispatch introuvable' });
         var disp = dispatches[idx];
-        if (disp.partner_id !== partnerId) return res.status(403).json({ error: 'Non autorisé' });
+        var _acceptDispPartnerId = disp.partner_id || disp.claimed_by_partner_id;
+        if (_acceptDispPartnerId !== partnerId) return res.status(403).json({ error: 'Non autorisé' });
         if (disp.status !== 'pending_acceptance') return res.status(400).json({ error: 'Ce dispatch ne nécessite pas d\'acceptation' });
 
         dispatches[idx] = Object.assign({}, disp, {
@@ -4706,7 +4716,8 @@ app.post('/api/partner/dispatches/:id/decline-mission', authenticatePartner, asy
         var idx = dispatches.findIndex(function(d) { return d.id === req.params.id; });
         if (idx === -1) return res.status(404).json({ error: 'Dispatch introuvable' });
         var disp = dispatches[idx];
-        if (disp.partner_id !== partnerId) return res.status(403).json({ error: 'Non autorisé' });
+        var _declineDispPartnerId = disp.partner_id || disp.claimed_by_partner_id;
+        if (_declineDispPartnerId !== partnerId) return res.status(403).json({ error: 'Non autorisé' });
         if (disp.status !== 'pending_acceptance') return res.status(400).json({ error: 'Ce dispatch ne peut plus être refusé' });
 
         dispatches[idx] = Object.assign({}, disp, {
@@ -5095,6 +5106,7 @@ app.get('/api/client/wallet', function(req, res) {
             var _walletDispNameRaw = _walletDispPartner ? ((_walletDispPartner.prenom || _walletDispPartner.firstName || '') + ' ' + (_walletDispPartner.nom || _walletDispPartner.lastName || '')).trim() || _walletDispPartner.email : null;
             var partnerName = _walletNameRaw || _walletDispNameRaw
                 || (_walletDisp && _walletDisp.claimed_by_name ? String(_walletDisp.claimed_by_name).trim() : null)
+                || (order.partner_name ? String(order.partner_name).trim() : null)
                 || 'Prestataire';
 
             // Priorité au modèle installments si au moins une est payée (événementiel 30/40/30)
@@ -16738,8 +16750,8 @@ app.post('/api/contracts/:id/client-sign', function(req, res) {
         // Notifier le partenaire
         notifyUser(contract.partner_email, 'partner', 'contract_signed',
             'Contrat signé ✅',
-            contract.client_name + ' a signé le contrat pour la mission ' + contract.order_id + '. Il est disponible dans vos Livrables. La prestation peut commencer.',
-            '/app.html');
+            contract.client_name + ' a signé le contrat pour la mission ' + contract.order_id + '. Retrouvez-la dans vos Missions.',
+            '#partner:missions');
 
         console.log('[CONTRACT] Client a signé le contrat:', contract.id, '→', user.email);
         res.json({ success: true, contract: contracts[idx] });

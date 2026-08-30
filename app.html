@@ -13334,10 +13334,14 @@ function _handleNotifHash(hash){
   }
   if(hash === 'open-admin'){
     nav('partner'); setTimeout(function(){ if(typeof _openAdminPanel==='function') _openAdminPanel(); }, 400);
+  } else if(hash === 'partner:missions'){
+    nav('partner'); setTimeout(function(){ if(typeof _ptnrNav==='function') _ptnrNav('missions'); }, 500);
   } else if(hash === 'open-partner'){
     nav('partner');
-  } else if(hash === 'open-reservations' || hash === 'reservations' || hash === 'open-suivi'){
+  } else if(hash === 'tab:resa' || hash === 'open-reservations' || hash === 'reservations' || hash === 'open-suivi'){
     nav('reservations');
+  } else if(hash === 'mes-contrats'){
+    nav('mes-contrats');
   } else if(hash === 'open-prestataires' || hash === 'prestataires'){
     nav('prestataires');
   } else if(hash === 'open-litiges' || hash === 'litiges'){
