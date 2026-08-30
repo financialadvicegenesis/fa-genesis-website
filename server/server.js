@@ -7576,6 +7576,306 @@ app.get('/api/admin/users/:email', function(req, res) {
     }
 });
 
+// ── Purge complète des données d'un compte supprimé ──────────────────────────
+// opts : { userId, email, partnerId, role: 'client'|'partner' }
+// Les données financières (orders, payouts) sont anonymisées, pas supprimées.
+function _purgeAccountData(opts) {
+    var email     = ((opts.email || '')).toLowerCase();
+    var userId    = opts.userId    || null;
+    var partnerId = opts.partnerId || null;
+    var role      = opts.role      || 'client';
+    var ANON_CLIENT  = { first_name: 'Compte', last_name: 'supprimé', email: null, phone: null };
+    var errs = [];
+
+    // ── Commun aux deux rôles ──────────────────────────────────────────────
+    try {
+        // Sessions (séances planifiées / coworking)
+        var sessions = loadSessions();
+        var sc = sessions.filter(function(s) {
+            if (role === 'client')  return !(s.client_id && s.client_id.toLowerCase() === email);
+            if (role === 'partner') return !(s.partner_id && s.partner_id === partnerId);
+            return true;
+        });
+        if (sc.length !== sessions.length) saveSessions(sc);
+    } catch(e) { errs.push('sessions:' + e.message); }
+
+    try {
+        // Notifications persistantes
+        var notifs = loadNotifications();
+        var nc = notifs.filter(function(n) { return !(n.email && n.email.toLowerCase() === email); });
+        if (nc.length !== notifs.length) saveNotifications(nc);
+    } catch(e) { errs.push('notifications:' + e.message); }
+
+    try {
+        // Tokens FCM
+        var fcm = loadFcmTokens();
+        var fc = fcm.filter(function(t) {
+            if (role === 'client')  return t.userId !== userId;
+            if (role === 'partner') return t.userId !== partnerId;
+            return true;
+        });
+        if (fc.length !== fcm.length) saveFcmTokens(fc);
+    } catch(e) { errs.push('fcm_tokens:' + e.message); }
+
+    try {
+        // Push subscriptions Web
+        var subs = loadPushSubscriptions();
+        var sbc = subs.filter(function(s) {
+            return !(s.userId === userId || s.userId === partnerId || (s.email && s.email.toLowerCase() === email));
+        });
+        if (sbc.length !== subs.length) savePushSubscriptions(sbc);
+    } catch(e) { errs.push('push_subs:' + e.message); }
+
+    try {
+        // Notifs planifiées
+        var snotifs = loadScheduledNotifs();
+        var snc = snotifs.filter(function(n) { return !(n.email && n.email.toLowerCase() === email); });
+        if (snc.length !== snotifs.length) saveScheduledNotifs(snc);
+    } catch(e) { errs.push('scheduled_notifs:' + e.message); }
+
+    try {
+        // Mémoire Jérémie IA
+        var jm = loadJeremieMemory();
+        var changed = false;
+        if (userId  && jm[userId])    { delete jm[userId];    changed = true; }
+        if (partnerId && jm[partnerId]) { delete jm[partnerId]; changed = true; }
+        if (email   && jm[email])     { delete jm[email];     changed = true; }
+        if (changed) saveJeremieMemory(jm);
+    } catch(e) { errs.push('jeremie_memory:' + e.message); }
+
+    try {
+        // Tickets support (anonymiser)
+        var tickets = loadSupportTickets();
+        var tchanged = false;
+        tickets.forEach(function(t) {
+            if (t.email && t.email.toLowerCase() === email) {
+                t.email = null; t.name = 'Compte supprimé'; t._account_deleted = true; tchanged = true;
+            }
+        });
+        if (tchanged) saveSupportTickets(tickets);
+    } catch(e) { errs.push('support_tickets:' + e.message); }
+
+    try {
+        // Hall of Fame
+        var hof = loadHallOfFame();
+        if (Array.isArray(hof)) {
+            var hc = hof.filter(function(h) {
+                return !(h.email && h.email.toLowerCase() === email) &&
+                       !(h.partner_id && h.partner_id === partnerId);
+            });
+            if (hc.length !== hof.length) saveHallOfFame(hc);
+        }
+    } catch(e) { errs.push('hall_of_fame:' + e.message); }
+
+    // ── Client uniquement ──────────────────────────────────────────────────
+    if (role === 'client') {
+        try {
+            // Commandes : anonymiser les infos client (garder la trace financière)
+            var orders = loadOrders();
+            var oc = false;
+            orders.forEach(function(o) {
+                if (o.client_info && o.client_info.email && o.client_info.email.toLowerCase() === email) {
+                    o.client_info = Object.assign({}, ANON_CLIENT);
+                    o._client_deleted = true; oc = true;
+                }
+                if (o.clientEmail && o.clientEmail.toLowerCase() === email) {
+                    o.clientEmail = null; oc = true;
+                }
+            });
+            if (oc) saveOrders(orders);
+        } catch(e) { errs.push('orders:' + e.message); }
+
+        try {
+            // Contrats : anonymiser infos client
+            var contracts = loadContracts();
+            var ctc = false;
+            contracts.forEach(function(c) {
+                if (c.client_email && c.client_email.toLowerCase() === email) {
+                    c.client_email = null; c.client_name = 'Compte supprimé'; c._client_deleted = true; ctc = true;
+                }
+            });
+            if (ctc) saveContracts(contracts);
+        } catch(e) { errs.push('contracts:' + e.message); }
+
+        try {
+            // Litiges : anonymiser infos client
+            var disputes = loadDisputes();
+            var dc = false;
+            disputes.forEach(function(d) {
+                if (d.client_email && d.client_email.toLowerCase() === email) {
+                    d.client_email = null; d.client_name = 'Compte supprimé'; d._client_deleted = true; dc = true;
+                }
+            });
+            if (dc) saveDisputes(disputes);
+        } catch(e) { errs.push('disputes:' + e.message); }
+
+        try {
+            // Avis rédigés par ce client sur des prestataires
+            var reviews = loadPartnerReviews();
+            var rc = reviews.filter(function(r) {
+                return !((r.client_email && r.client_email.toLowerCase() === email) ||
+                         (r.reviewer_email && r.reviewer_email.toLowerCase() === email));
+            });
+            if (rc.length !== reviews.length) savePartnerReviews(rc);
+        } catch(e) { errs.push('partner_reviews:' + e.message); }
+
+        try {
+            // Certificats étudiants
+            var certs = loadCertificates();
+            var cc = certs.filter(function(c) {
+                return !((c.email && c.email.toLowerCase() === email) || c.userId === userId);
+            });
+            if (cc.length !== certs.length) saveCertificates(cc);
+        } catch(e) { errs.push('certificates:' + e.message); }
+
+        try {
+            // Messages contact (formulaire)
+            var msgs = loadMessages();
+            var mc = msgs.filter(function(m) { return !(m.email && m.email.toLowerCase() === email); });
+            if (mc.length !== msgs.length) saveMessages(mc);
+        } catch(e) { errs.push('messages:' + e.message); }
+
+        try {
+            // Devis personnalisés : anonymiser infos client
+            var quotes = loadQuotes();
+            var qc = false;
+            quotes.forEach(function(q) {
+                if (q.client_email && q.client_email.toLowerCase() === email) {
+                    q.client_email = null; q.client_name = 'Compte supprimé'; q._client_deleted = true; qc = true;
+                }
+            });
+            if (qc) saveQuotes(quotes);
+        } catch(e) { errs.push('quotes:' + e.message); }
+
+        try {
+            // Demandes directes client → partenaire
+            var pRequests = loadPartnerRequests();
+            var prc = pRequests.filter(function(r) {
+                return !(r.client_email && r.client_email.toLowerCase() === email);
+            });
+            if (prc.length !== pRequests.length) savePartnerRequests(prc);
+        } catch(e) { errs.push('partner_requests:' + e.message); }
+    }
+
+    // ── Partenaire uniquement ──────────────────────────────────────────────
+    if (role === 'partner') {
+        try {
+            // Dispatches : anonymiser le partenaire (garder l'historique client)
+            var dispatches = loadDispatches();
+            var dispc = false;
+            dispatches.forEach(function(d) {
+                if (d.partner_id === partnerId || d.claimed_by_partner_id === partnerId) {
+                    d.claimed_by_name = 'Prestataire supprimé';
+                    d.partner_id = null; d.claimed_by_partner_id = null;
+                    d._partner_deleted = true; dispc = true;
+                }
+            });
+            if (dispc) saveDispatches(dispatches);
+        } catch(e) { errs.push('dispatches:' + e.message); }
+
+        try {
+            // Payouts : anonymiser infos partenaire (garder la trace financière)
+            var payouts = loadPayouts();
+            var pc = false;
+            payouts.forEach(function(p) {
+                if (p.partner_id === partnerId || (p.partner_email && p.partner_email.toLowerCase() === email)) {
+                    p.partner_email = null; p.partner_name = 'Prestataire supprimé';
+                    p._partner_deleted = true; pc = true;
+                }
+            });
+            if (pc) savePayouts(payouts);
+        } catch(e) { errs.push('payouts:' + e.message); }
+
+        try {
+            // Avis sur ce prestataire
+            var reviews = loadPartnerReviews();
+            var rcc = reviews.filter(function(r) {
+                return !(r.partner_id === partnerId || (r.partner_email && r.partner_email.toLowerCase() === email));
+            });
+            if (rcc.length !== reviews.length) savePartnerReviews(rcc);
+        } catch(e) { errs.push('partner_reviews:' + e.message); }
+
+        try {
+            // Assignations
+            var assignments = loadPartnerAssignments();
+            var ac = assignments.filter(function(a) {
+                return !(a.partner_id === partnerId || (a.partner_email && a.partner_email.toLowerCase() === email));
+            });
+            if (ac.length !== assignments.length) savePartnerAssignments(ac);
+        } catch(e) { errs.push('partner_assignments:' + e.message); }
+
+        try {
+            // Uploads portfolio
+            var uploads = loadPartnerUploads();
+            var uc = uploads.filter(function(u) { return u.partner_id !== partnerId; });
+            if (uc.length !== uploads.length) savePartnerUploads(uc);
+        } catch(e) { errs.push('partner_uploads:' + e.message); }
+
+        try {
+            // Commentaires partenaire
+            var comments = loadPartnerComments();
+            var comc = comments.filter(function(c) { return c.partner_id !== partnerId; });
+            if (comc.length !== comments.length) savePartnerComments(comc);
+        } catch(e) { errs.push('partner_comments:' + e.message); }
+
+        try {
+            // Sous-profils
+            var subProfiles = loadSubProfiles();
+            var spc = subProfiles.filter(function(s) { return s.partner_id !== partnerId; });
+            if (spc.length !== subProfiles.length) saveSubProfiles(spc);
+        } catch(e) { errs.push('partner_subprofiles:' + e.message); }
+
+        try {
+            // Livrables : anonymiser infos partenaire
+            var livrables = loadLivrables();
+            var lc = false;
+            livrables.forEach(function(l) {
+                if (l.owner_partner_id === partnerId) {
+                    l.owner_partner_name = 'Prestataire supprimé';
+                    l.owner_partner_id = null; l._partner_deleted = true; lc = true;
+                }
+            });
+            if (lc) saveLivrables(livrables);
+        } catch(e) { errs.push('livrables:' + e.message); }
+
+        try {
+            // Contrats : anonymiser infos partenaire
+            var contracts = loadContracts();
+            var ctpc = false;
+            contracts.forEach(function(c) {
+                if (c.partner_id === partnerId || (c.partner_email && c.partner_email.toLowerCase() === email)) {
+                    c.partner_email = null; c.partner_name = 'Prestataire supprimé';
+                    c._partner_deleted = true; ctpc = true;
+                }
+            });
+            if (ctpc) saveContracts(contracts);
+        } catch(e) { errs.push('contracts:' + e.message); }
+
+        try {
+            // Commandes : anonymiser infos partenaire
+            var orders = loadOrders();
+            var opc = false;
+            orders.forEach(function(o) {
+                if (o.partner_id === partnerId || (o.partner_email && o.partner_email.toLowerCase() === email)) {
+                    o.partner_email = null; o.partner_name = 'Prestataire supprimé';
+                    o._partner_deleted = true; opc = true;
+                }
+            });
+            if (opc) saveOrders(orders);
+        } catch(e) { errs.push('orders(partner):' + e.message); }
+
+        try {
+            // Demandes directes client → partenaire
+            var pReqs = loadPartnerRequests();
+            var prc2 = pReqs.filter(function(r) { return r.partner_id !== partnerId; });
+            if (prc2.length !== pReqs.length) savePartnerRequests(prc2);
+        } catch(e) { errs.push('partner_requests:' + e.message); }
+    }
+
+    if (errs.length) console.warn('[PURGE] Erreurs non critiques:', errs.join(' | '));
+    console.log('[PURGE] Données effacées pour ' + email + ' (role=' + role + ')');
+}
+
 /**
  * DELETE /api/admin/users/:email
  * Supprimer un utilisateur (Admin)
@@ -7596,6 +7896,7 @@ app.delete('/api/admin/users/:email', function(req, res) {
         }
         var deleted = users.splice(index, 1)[0];
         saveUsers(users);
+        _purgeAccountData({ userId: deleted.id, email: emailToDelete, role: deleted.accountType === 'partner' ? 'partner' : 'client', partnerId: null });
         console.log('[ADMIN] Utilisateur supprime: ' + emailToDelete);
         res.json({ success: true, deleted_email: emailToDelete });
     } catch (err) {
@@ -9008,9 +9309,11 @@ app.delete('/api/account', function(req, res) {
         var userIdx = users.findIndex(function(u) { return u.sessionToken === token; });
         if (userIdx === -1) return res.status(401).json({ error: 'Session invalide' });
 
-        var email = users[userIdx].email;
+        var deletedUser = users[userIdx];
+        var email = deletedUser.email;
         users.splice(userIdx, 1);
         saveUsers(users);
+        _purgeAccountData({ userId: deletedUser.id, email: email, role: 'client', partnerId: null });
 
         console.log('[ACCOUNT] Suppression compte client:', email);
         res.json({ success: true, message: 'Compte supprimé' });
@@ -9614,8 +9917,10 @@ app.delete('/api/auth/delete-account', async (req, res) => {
         }
 
         const deletedEmail = user.email;
+        const deletedId = user.id;
         users.splice(userIndex, 1);
         saveUsers(users);
+        _purgeAccountData({ userId: deletedId, email: deletedEmail, role: 'client', partnerId: null });
 
         console.log(`[AUTH] Compte supprime definitivement: ${deletedEmail}`);
 
@@ -9646,8 +9951,10 @@ app.delete('/api/partner/account', authenticatePartner, async (req, res) => {
         if (!isValid) return res.status(401).json({ error: 'Mot de passe incorrect' });
 
         const deletedEmail = partner.email;
+        const deletedPartnerId = partner.id;
         partners.splice(idx, 1);
         savePartners(partners);
+        _purgeAccountData({ userId: null, email: deletedEmail, partnerId: deletedPartnerId, role: 'partner' });
         console.log(`[PARTNER] Compte supprimé définitivement: ${deletedEmail}`);
         res.json({ ok: true, message: 'Compte supprimé définitivement' });
     } catch(e) {
