@@ -3480,6 +3480,21 @@ function showApp(){
         nav('partner');
         setTimeout(function(){ _ptnrNav('versements'); }, 500);
       }, 800);
+    } else if(_urlParams.get('stripe_payment') === '1'){
+      // Retour après redirection Stripe (3DS, virement bancaire, etc.)
+      window.history.replaceState(null, '', window.location.pathname);
+      localStorage.setItem('_fa_recent_payment', String(Date.now()));
+      setTimeout(function(){
+        if(typeof launchConfetti==='function') launchConfetti();
+        if(typeof showToast==='function'){
+          showToast('Paiement confirmé !','GENESIS SAFE™ sécurise votre acompte.','success');
+          setTimeout(function(){ showToast('+20 QG','Mission lancée !','success'); }, 1600);
+        }
+        setTimeout(function(){
+          if(typeof nav==='function') nav('profil');
+          setTimeout(function(){ if(typeof showClientWallet==='function') showClientWallet(); }, 600);
+        }, 3000);
+      }, 800);
     }
   } catch(e){}
 }
@@ -10839,6 +10854,7 @@ function showClientWallet(){
       if(!data.ok){el.innerHTML='<div class="espace-empty">Impossible de charger le portefeuille.</div>';return;}
       var held=data.orders.filter(function(o){return o.held_amount>0;});
       var released=data.orders.filter(function(o){return o.held_amount===0&&o.released_amount>0;});
+      if(held.length>0||released.length>0) try{localStorage.removeItem('_fa_recent_payment');}catch(e){}
       var html='';
       // ── Solde en escrow
       html+='<div style="background:linear-gradient(135deg,#1a1200,#0d1a00);border:1.5px solid #FFD700;border-radius:14px;padding:16px 18px;margin-bottom:20px;">'
@@ -10847,6 +10863,19 @@ function showClientWallet(){
         +'<div style="font-size:11px;color:#a89000;text-align:center;">actuellement retenus en escrow</div>'
         +'</div>';
       if(held.length===0&&released.length===0){
+        var _recentTs = parseInt(localStorage.getItem('_fa_recent_payment')||'0');
+        var _isPending = _recentTs && (Date.now()-_recentTs)<90000;
+        if(_isPending){
+          html+='<div class="espace-empty" style="text-align:center;padding:32px 0;">'
+            +'<div style="font-size:32px;margin-bottom:10px;">⏳</div>'
+            +'<div style="font-weight:700;color:#fff;margin-bottom:6px;">Traitement en cours…</div>'
+            +'<div style="color:var(--muted);font-size:13px;">Votre acompte GENESIS SAFE™ va apparaître<br>dans quelques secondes.</div>'
+            +'</div>';
+          el.innerHTML=html;
+          setTimeout(function(){ if(typeof showClientWallet==='function') showClientWallet(); }, 4000);
+          return;
+        }
+        localStorage.removeItem('_fa_recent_payment');
         html+='<div class="espace-empty" style="text-align:center;padding:32px 0;"><div style="font-size:32px;margin-bottom:10px;">🔒</div><div>Aucun paiement GENESIS SAFE actif.<br><span style="color:var(--muted);font-size:13px;">Vos fonds apparaîtront ici dès votre prochaine commande.</span></div></div>';
         el.innerHTML=html;return;
       }
@@ -14172,6 +14201,12 @@ async function _pbConfirmStripePayment(){
       launchConfetti(); showToast('Paiement réussi !','Commande confirmée','success');
       setTimeout(function(){ showToast('+20 QG','Mission lancée !','success'); }, 1600);
       setTimeout(function(){ showToast('Contrat disponible','Téléchargez votre contrat dans "Mes contrats"','info'); }, 3200);
+      localStorage.setItem('_fa_recent_payment', String(Date.now()));
+      // Auto-navigate to wallet after 5s (webhook needs ~1-3s to set deposit_paid=true)
+      setTimeout(function(){
+        if(typeof nav==='function') nav('profil');
+        setTimeout(function(){ if(typeof showClientWallet==='function') showClientWallet(); }, 600);
+      }, 5000);
     }
   } catch(e){
     if(errEl){errEl.textContent=e.message||'Erreur paiement.';errEl.style.display='block';}
