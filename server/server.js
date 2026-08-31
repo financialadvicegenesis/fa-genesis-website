@@ -5348,6 +5348,20 @@ app.get('/api/partner/wallet', authenticatePartner, function(req, res) {
                 && dispatchOrderIds.indexOf(o.id) === -1
                 && (o.deposit_authorized || o.balance_authorized || o.deposit_paid || o.balance_paid);
         });
+        // Commandes issues de partner_requests (signature contrat → pas forcément de dispatch)
+        var pReqOrderIds = [];
+        try {
+            loadPartnerRequests().forEach(function(r) {
+                if (r.partner_id !== partnerId || !r.order_id) return;
+                if (dispatchOrderIds.indexOf(r.order_id) !== -1) return; // déjà couvert par dispatch
+                var o = allOrders.find(function(x) { return x.id === r.order_id; });
+                if (!o) return;
+                if (!(o.deposit_authorized || o.balance_authorized || o.deposit_paid || o.balance_paid)) return;
+                if (directOrders.some(function(d) { return d.id === o.id; })) return; // déjà dans directOrders
+                pReqOrderIds.push(r.order_id);
+                directOrders.push(o);
+            });
+        } catch(_e) {}
 
         var totalHeld = 0;
         var totalReleased = 0;
@@ -20796,10 +20810,11 @@ app.post('/api/webhooks/payoneer', function(req, res) {
     }
 });
 
-// GET /api/partner/earnings/summary — Résumé des revenus du prestataire
+// GET /api/partner/earnings/summary — Résumé des revenus du partenaire
 app.get('/api/partner/earnings/summary', authenticatePartner, function(req, res) {
     try {
-        var payouts   = loadPayouts().filter(function(p) { return p.partner_id === req.partner.id; });
+        var partnerId = req.partner.id;
+        var payouts   = loadPayouts().filter(function(p) { return p.partner_id === partnerId; });
         var available = 0;
         var pending   = 0;
         var totalEarned  = 0;
@@ -20820,11 +20835,49 @@ app.get('/api/partner/earnings/summary', authenticatePartner, function(req, res)
         });
 
         var stripePayments = [];
-        try { stripePayments = mps.loadStripePayments().filter(function(p) { return p.partnerId === req.partner.id && p.status === 'succeeded'; }); } catch(e) {}
+        try { stripePayments = mps.loadStripePayments().filter(function(p) { return p.partnerId === partnerId && p.status === 'succeeded'; }); } catch(e) {}
         stripePayments.forEach(function(p) {
             var partnerCents = p.partnerCents || 0;
             totalEarned  += partnerCents / 100;
         });
+
+        // Fonds GENESIS SAFE™ retenus : commandes payées mais pas encore livrées/versées
+        try {
+            var _allOrds  = loadOrders();
+            var _allDisps = loadDispatches();
+            var _allPays  = loadPayouts();
+            var _seenOrderIds = {};
+            // Via dispatches
+            _allDisps.forEach(function(d) {
+                if (d.claimed_by_partner_id !== partnerId && d.partner_id !== partnerId) return;
+                if (d.status === 'cancelled') return;
+                var o = _allOrds.find(function(x) { return x.id === d.order_id; });
+                if (!o || !(o.deposit_paid || o.deposit_authorized)) return;
+                if (_seenOrderIds[o.id]) return;
+                _seenOrderIds[o.id] = true;
+                var hasPayout = _allPays.some(function(p) { return p.order_id === o.id && (p.status === 'sent' || p.status === 'pending_admin'); });
+                if (hasPayout) return;
+                var totalAmt = parseFloat(o.total_amount || o.total_price || 0);
+                var partnerAmt = Math.round(totalAmt * 0.75 * 100) / 100;
+                pending     += partnerAmt;
+                totalEarned += partnerAmt;
+            });
+            // Via partner_requests (missions sans dispatch)
+            loadPartnerRequests().forEach(function(r) {
+                if (r.partner_id !== partnerId) return;
+                if (!r.order_id) return;
+                var o = _allOrds.find(function(x) { return x.id === r.order_id; });
+                if (!o || !(o.deposit_paid || o.deposit_authorized)) return;
+                if (_seenOrderIds[o.id]) return;
+                _seenOrderIds[o.id] = true;
+                var hasPayout = _allPays.some(function(p) { return p.order_id === o.id && (p.status === 'sent' || p.status === 'pending_admin'); });
+                if (hasPayout) return;
+                var totalAmt = parseFloat(o.total_amount || o.total_price || 0);
+                var partnerAmt = Math.round(totalAmt * 0.75 * 100) / 100;
+                pending     += partnerAmt;
+                totalEarned += partnerAmt;
+            });
+        } catch(_we) { console.warn('[EARNINGS] wallet held calc error:', _we.message); }
 
         res.json({ ok: true, available: parseFloat(available.toFixed(2)), pending: parseFloat(pending.toFixed(2)), totalEarned: parseFloat(totalEarned.toFixed(2)), totalPaidOut: parseFloat(totalPaidOut.toFixed(2)), currency: 'EUR' });
     } catch(e) {
