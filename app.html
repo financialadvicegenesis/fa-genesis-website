@@ -14213,21 +14213,15 @@ async function _pbConfirmStripePayment(){
       if(errEl){errEl.textContent=result.error.message||'Paiement refusé.';errEl.style.display='block';}
       if(btn){btn.disabled=false;btn.textContent='RÉESSAYER LE PAIEMENT';}
     } else if(result.paymentIntent && (result.paymentIntent.status==='succeeded' || result.paymentIntent.status==='requires_capture')){
-      // 'succeeded'        = paiement immédiat (capture normal)
-      // 'requires_capture' = GENESIS SAFE™ capture différée — carte réservée, argent retenu
-      var _isManualCapture = result.paymentIntent.status === 'requires_capture';
       var ss=document.getElementById('pb-stripe-screen'); if(ss) ss.style.display='none';
       var sc=document.getElementById('pb-success'); if(sc) sc.style.display='';
       var sm=document.getElementById('pb-success-msg');
-      if(sm) sm.textContent = _isManualCapture
-        ? 'Paiement sécurisé ! Votre paiement est retenu sur le Portefeuille GENESIS SAFE™. Il sera prélevé uniquement lorsque le prestataire aura effectué la prestation.'
-        : 'Paiement confirmé ! Votre paiement est sécurisé par GENESIS SAFE™. Retrouvez et téléchargez votre contrat dans l\'onglet "Mes contrats".';
-      launchConfetti(); showToast('Paiement sécurisé !','Réservé sur GENESIS SAFE™','success');
+      if(sm) sm.textContent = 'Paiement confirmé ! Votre paiement est sécurisé par GENESIS SAFE™. Les fonds seront versés au prestataire à la livraison. Retrouvez votre contrat dans "Mes contrats".';
+      launchConfetti(); showToast('Paiement sécurisé !','Protégé par GENESIS SAFE™','success');
       setTimeout(function(){ showToast('+20 QG','Mission lancée !','success'); }, 1600);
       setTimeout(function(){ showToast('Contrat disponible','Téléchargez votre contrat dans "Mes contrats"','info'); }, 3200);
       localStorage.setItem('_fa_recent_payment', String(Date.now()));
-      // Fallback webhook : synchroniser deposit_authorized côté serveur immédiatement
-      // (en cas de webhook Stripe non configuré sur le serveur Render)
+      // Fallback webhook : synchroniser deposit_paid côté serveur
       if(_pbStripeIntentId && _pbCurrentOrderId && USER && USER._token){
         fetch((window.FA_GENESIS_API||API)+'/api/payments/stripe/sync-intent',{
           method:'POST',
@@ -14235,7 +14229,6 @@ async function _pbConfirmStripePayment(){
           body:JSON.stringify({piId:_pbStripeIntentId, orderId:_pbCurrentOrderId, stage:'deposit'})
         }).catch(function(){});
       }
-      // Auto-navigate vers le portefeuille (deposit_authorized mis à jour ci-dessus ou via webhook)
       setTimeout(function(){
         if(typeof nav==='function') nav('profil');
         setTimeout(function(){ if(typeof showClientWallet==='function') showClientWallet(); }, 600);
@@ -15906,7 +15899,7 @@ function _ptnrRenderEngagedMissionCard(r){
   return '<div class="dispatch-card" id="request-'+r.id+'">'
     +'<div class="dispatch-title">'+r.client_name+' — '+r.service_label+'</div>'
     +contractDlBtn
-    +(r.payment_tier === 'small' ? '<div style="font-size:11px;color:#6dbf6d;font-weight:700;margin-bottom:6px;"><i class="fas fa-lock" style="margin-right:4px;"></i>GENESIS SAFE™ — fonds retenus jusqu\'à livraison</div>' : '')
+    +(r.payment_tier === 'small' ? '<div style="font-size:11px;color:#6dbf6d;font-weight:700;margin-bottom:6px;"><i class="fas fa-lock" style="margin-right:4px;"></i>GENESIS SAFE™ — fonds versés à la livraison confirmée</div>' : '')
     +missionTimelineHtml(r.display_status)
     +(canMarkDelivering
       ? '<button class="dispatch-claim-btn" style="margin-top:10px;width:100%;" onclick="_ptnrMarkDelivering(\''+r.dispatch_id+'\',\''+r.id+'\')"><i class="fa-solid fa-truck-fast"></i> Marquer : livraison en cours</button>'
@@ -18858,7 +18851,7 @@ async function _confirmBalancePayment(){
       if(cont) cont.style.display='none';
       if(succ) succ.style.display='block';
       if(typeof launchConfetti==='function') launchConfetti();
-      if(typeof showToast==='function') showToast('Solde sécurisé !','Retenu sur GENESIS SAFE™','success');
+      if(typeof showToast==='function') showToast('Solde payé !','Protégé par GENESIS SAFE™','success');
       localStorage.setItem('_fa_recent_payment',String(Date.now()));
       // Fallback webhook : synchroniser balance_authorized / balance_paid côté serveur immédiatement
       if(_balCurrentOrderId && USER && USER._token){

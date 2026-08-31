@@ -5182,13 +5182,12 @@ app.get('/api/client/wallet', function(req, res) {
             });
             var _isAuthOnly = (order.deposit_authorized === true && !order.deposit_paid) || (order.balance_authorized === true && !order.balance_paid);
             var statusLabel = dispatchNotAccepted && held > 0
-                ? (_isAuthOnly ? 'Carte réservée GENESIS SAFE™ — en attente d\'acceptation du prestataire' : 'Paiement reçu — en attente d\'acceptation du prestataire')
+                ? 'Paiement reçu — en attente d\'acceptation du prestataire'
                 : _isPI
                 ? 'Mensualités versées directement au prestataire'
                 : released > 0 && _hasPendingAdminPayout ? 'Virement en cours de traitement par GENESIS'
-                : held > 0 && partnerDone ? 'Prestation livrée — paiement prélevé, virement en cours'
-                : held > 0 && _isAuthOnly ? 'Carte réservée GENESIS SAFE™ — sera prélevée à la livraison'
-                : held > 0 ? 'Sécurisé GENESIS SAFE™ — en attente de livraison'
+                : held > 0 && partnerDone ? 'Prestation livrée — virement au prestataire en cours'
+                : held > 0 ? 'Sécurisé GENESIS SAFE™ — versé au prestataire à la livraison'
                 : 'Versé au prestataire ✓';
             var canWithdraw = held > 0 && (dispatchNotAccepted || partnerInactive);
             var withdrawReason = canWithdraw
@@ -20486,8 +20485,12 @@ app.post('/api/payments/stripe/sync-intent', async function(req, res) {
                     orders[oIdx].deposit_paid    = true;
                     orders[oIdx].deposit_paid_at = now;
                     orders[oIdx].paymentStatus   = 'deposit_paid';
+                    orders[oIdx].stripe_deposit_pi_id = piId;
                     orders[oIdx].updatedAt       = now;
                     saveOrders(orders);
+                    if (orders[oIdx].product_type === 'partner_service') {
+                        createPartnerServiceDispatch(orders[oIdx]);
+                    }
                 }
             }
             return res.json({ ok: true, status: 'succeeded' });
@@ -20522,28 +20525,25 @@ app.post('/api/payments/stripe/create-intent', async function(req, res) {
             return res.status(400).json({ error: 'Prestataire introuvable.' });
         }
 
-        // Guard : éviter double autorisation sur le même stage
+        // Guard : éviter double paiement sur le même stage
         if (b.orderId) {
             var _gOrder = getOrderById(b.orderId);
             if (_gOrder) {
-                if (b.stage === 'balance' && _gOrder.balance_authorized && !_gOrder.balance_paid) {
-                    return res.status(400).json({ error: 'Le solde est déjà en cours d\'autorisation.' });
+                if (b.stage === 'balance' && _gOrder.balance_paid) {
+                    return res.status(400).json({ error: 'Le solde a déjà été payé.' });
                 }
-                if (b.stage !== 'balance' && _gOrder.deposit_authorized && !_gOrder.deposit_paid) {
-                    return res.status(400).json({ error: 'L\'acompte est déjà en cours d\'autorisation.' });
+                if (b.stage !== 'balance' && _gOrder.deposit_paid) {
+                    return res.status(400).json({ error: 'L\'acompte a déjà été payé.' });
                 }
             }
         }
 
-        // GENESIS SAFE™ — capture différée (capture_method: 'manual') :
-        // La carte du client est autorisée mais l'argent NE quitte PAS le client encore.
-        // Il reste "réservé" → affiché dans le Portefeuille GENESIS SAFE™.
-        // L'argent n'atterrit sur Stripe GENESIS (Financialadvicegenesis@gmail.com) QUE
-        // lorsque le partenaire déclare la prestation terminée (capturePaymentIntent).
+        // GENESIS SAFE™ — débit immédiat sécurisé :
+        // La carte du client est débitée immédiatement. Les fonds sont retenus sur le compte
+        // Stripe GENESIS et versés au partenaire uniquement à la livraison confirmée.
         var pi = await scp.createDirectPaymentIntent({
             amountEuros:   _intentAmount,
             currency:      'eur',
-            captureManual: true,
             description:   (b.description || ('FA GENESIS — ' + (b.label || 'Prestation'))).substring(0, 250),
             receiptEmail:  user.email,
             metadata: {
