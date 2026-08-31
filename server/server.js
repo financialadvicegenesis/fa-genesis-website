@@ -5122,6 +5122,10 @@ app.get('/api/client/wallet', function(req, res) {
             var withdrawReason = canWithdraw
                 ? (partnerInactive ? 'Le prestataire n\'est pas disponible' : 'Le prestataire n\'a pas encore accepté la mission')
                 : null;
+            var _balDue = (parseFloat(order.balance_amount) || 0) > 0
+                && order.deposit_paid === true
+                && !order.balance_paid
+                && !order.balance_authorized;
             orderRows.push({
                 order_id: order.id,
                 service_label: order.product_name || 'Prestation',
@@ -5132,7 +5136,10 @@ app.get('/api/client/wallet', function(req, res) {
                 status_label: statusLabel,
                 can_withdraw: canWithdraw,
                 withdraw_reason: withdrawReason,
-                created_at: order.created_at
+                created_at: order.created_at,
+                balance_due: _balDue,
+                balance_amount: _balDue ? (parseFloat(order.balance_amount) || 0) : 0,
+                partner_id: order.partner_id || null
             });
         });
 

@@ -10888,6 +10888,13 @@ function showClientWallet(){
             withdrawBtn='<button onclick="_requestWalletWithdrawal(\''+o.order_id+'\',\''+o.partner_name.replace(/'/g,'&#39;')+'\','+o.held_amount+')" style="margin-top:10px;width:100%;background:linear-gradient(135deg,#7b1010,#b71c1c);border:none;border-radius:10px;padding:10px 14px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">'
               +'<i class="fa-solid fa-rotate-left"></i> Retirer mon argent</button>';
           }
+          var jsOid=o.order_id.replace(/'/g,'\\\'');
+          var jsSlabel=(o.service_label||'Prestation').replace(/'/g,'\\\'');
+          var jsPid=(o.partner_id||'').replace(/'/g,'\\\'');
+          var balBtn=o.balance_due
+            ?'<button onclick="openPayBalanceSheet(\''+jsOid+'\','+o.balance_amount+',\''+jsSlabel+'\',\''+jsPid+'\')" style="margin-top:10px;width:100%;background:linear-gradient(135deg,#1a1200,#3d2e00);border:1.5px solid #FFD700;border-radius:10px;padding:10px 14px;color:#FFD700;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;font-family:\'Unbounded\',cursive;letter-spacing:.3px;">'
+              +'<i class="fa-solid fa-lock"></i> Payer le solde — '+o.balance_amount.toFixed(2)+' €</button>'
+            :'';
           return '<div class="resa-card" style="margin-bottom:10px;border-color:#333;">'
             +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:4px;">'
             +'<div style="font-size:14px;font-weight:700;color:#fff;">'+o.service_label+'</div>'
@@ -10899,6 +10906,7 @@ function showClientWallet(){
             +'</div>'
             +(o.can_withdraw?'<div style="font-size:11px;color:#f03e3e;margin-top:6px;"><i class="fa-solid fa-triangle-exclamation" style="font-size:10px;"></i> '+o.withdraw_reason+'</div>':'')
             +withdrawBtn
+            +balBtn
             +'</div>';
         }).join('');
       }
@@ -18690,6 +18698,154 @@ function _downloadClientContractPdf(contractId) {
     document.body.appendChild(link); link.click(); document.body.removeChild(link);
 }
 </script>
+<!-- ── PAIEMENT SOLDE GENESIS SAFE™ ────────────────────────────── -->
+<div id="pay-balance-overlay" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.75);z-index:9200;align-items:flex-end;justify-content:center;">
+  <div id="pay-balance-sheet" style="background:var(--card,#111);border-radius:22px 22px 0 0;width:100%;max-width:500px;padding:24px 20px 48px;box-sizing:border-box;transform:translateY(100%);transition:transform .4s cubic-bezier(.22,1,.36,1);">
+    <div style="width:40px;height:4px;background:#333;border-radius:2px;margin:0 auto 20px;"></div>
+    <div style="font-size:16px;font-weight:800;color:#fff;margin-bottom:4px;"><i class="fa-solid fa-lock" style="color:#FFD700;margin-right:8px;"></i>Payer le solde</div>
+    <div style="font-size:13px;color:#888;margin-bottom:18px;">Retenu sur votre Portefeuille GENESIS SAFE™</div>
+    <div id="bal-service-label" style="font-size:13px;color:var(--muted,#888);margin-bottom:4px;"></div>
+    <div id="bal-amount-display" style="font-size:30px;font-weight:900;color:#FFD700;margin-bottom:20px;"></div>
+    <div id="bal-stripe-container">
+      <div id="bal-stripe-elements-container"><div id="bal-stripe-payment-element"></div></div>
+      <div id="bal-stripe-err" style="display:none;color:#ef4444;font-size:13px;margin-top:10px;padding:10px;background:#1a0000;border-radius:8px;"></div>
+      <button id="bal-pay-btn" onclick="_confirmBalancePayment()" style="margin-top:16px;width:100%;background:#FFD700;color:#000;border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:900;cursor:pointer;font-family:'Unbounded',cursive;letter-spacing:.5px;">PAYER EN SÉCURISÉ</button>
+      <button onclick="closePayBalanceSheet()" style="margin-top:10px;width:100%;background:none;border:1px solid #333;color:#888;border-radius:12px;padding:12px;font-size:13px;cursor:pointer;">Annuler</button>
+    </div>
+    <div id="bal-success" style="display:none;text-align:center;padding:20px 0;">
+      <div style="font-size:40px;margin-bottom:12px;">🔒</div>
+      <div style="font-weight:800;color:#FFD700;font-size:16px;margin-bottom:8px;">Solde sécurisé !</div>
+      <div style="color:#888;font-size:13px;">Retenu sur votre Portefeuille GENESIS SAFE™.<br>Prélevé à la livraison par le prestataire.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+var _balStripeInstance=null, _balStripeElements=null, _balStripePaymentEl=null;
+var _balCurrentOrderId=null, _balCurrentPartnerId=null, _balCurrentAmount=0;
+
+function openPayBalanceSheet(orderId,balanceAmount,serviceLabel,partnerId){
+  if(!USER||!USER._token)return;
+  _balCurrentOrderId=orderId; _balCurrentPartnerId=partnerId; _balCurrentAmount=balanceAmount;
+  var overlay=document.getElementById('pay-balance-overlay');
+  var sheet=document.getElementById('pay-balance-sheet');
+  var sl=document.getElementById('bal-service-label');
+  var ad=document.getElementById('bal-amount-display');
+  var succ=document.getElementById('bal-success');
+  var cont=document.getElementById('bal-stripe-container');
+  var errEl=document.getElementById('bal-stripe-err');
+  var btn=document.getElementById('bal-pay-btn');
+  if(sl) sl.textContent=serviceLabel||'Prestation';
+  if(ad) ad.textContent=parseFloat(balanceAmount).toFixed(2)+' €';
+  if(succ) succ.style.display='none';
+  if(cont) cont.style.display='block';
+  if(errEl){errEl.style.display='none';errEl.textContent='';}
+  if(btn){btn.disabled=true;btn.textContent='Initialisation…';}
+  if(overlay) overlay.style.display='flex';
+  setTimeout(function(){ if(sheet) sheet.style.transform='translateY(0)'; },20);
+
+  fetch((window.FA_GENESIS_API||API)+'/api/payments/stripe/create-intent',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+USER._token},
+    body:JSON.stringify({
+      partnerId: partnerId,
+      amountEuros: balanceAmount,
+      orderId: orderId,
+      stage: 'balance',
+      label: serviceLabel||'Prestation',
+      description: 'FA GENESIS — Solde de prestation (GENESIS SAFE™)'
+    })
+  }).then(function(r){return r.json();})
+  .then(function(d){
+    if(!d.clientSecret) throw new Error(d.error||'Erreur initialisation paiement');
+    _mountBalanceStripeElements(d.clientSecret);
+    if(btn){btn.disabled=false;btn.textContent='PAYER EN SÉCURISÉ';}
+  }).catch(function(err){
+    if(errEl){errEl.textContent=err.message||'Erreur. Réessayez.';errEl.style.display='block';}
+    if(btn){btn.disabled=false;btn.textContent='RÉESSAYER';}
+  });
+}
+
+function closePayBalanceSheet(){
+  var overlay=document.getElementById('pay-balance-overlay');
+  var sheet=document.getElementById('pay-balance-sheet');
+  if(sheet) sheet.style.transform='translateY(100%)';
+  setTimeout(function(){ if(overlay) overlay.style.display='none'; },420);
+  _balStripeElements=null; _balStripePaymentEl=null; _balStripeInstance=null;
+}
+
+function _mountBalanceStripeElements(clientSecret){
+  var container=document.getElementById('bal-stripe-elements-container');
+  if(!container)return;
+  container.innerHTML='<div id="bal-stripe-payment-element"></div>';
+  function mountEl(pubKey){
+    try{
+      _balStripeInstance=Stripe(pubKey);
+      _balStripeElements=_balStripeInstance.elements({
+        clientSecret:clientSecret,
+        appearance:{theme:'night',variables:{colorPrimary:'#FFD700',colorBackground:'#0d0d0d',colorText:'#ffffff',colorDanger:'#ef4444',borderRadius:'10px'}}
+      });
+      _balStripePaymentEl=_balStripeElements.create('payment');
+      _balStripePaymentEl.mount('#bal-stripe-payment-element');
+    }catch(e){
+      var errEl=document.getElementById('bal-stripe-err');
+      if(errEl){errEl.textContent='Erreur Stripe : '+e.message;errEl.style.display='block';}
+    }
+  }
+  if(window._stripePublishableKey){
+    mountEl(window._stripePublishableKey);
+  } else {
+    fetch((window.FA_GENESIS_API||API)+'/api/payments/stripe/config')
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(!d.publishableKey) throw new Error('Clé Stripe non configurée');
+      window._stripePublishableKey=d.publishableKey;
+      mountEl(d.publishableKey);
+    }).catch(function(e){
+      var errEl=document.getElementById('bal-stripe-err');
+      if(errEl){errEl.textContent='Impossible de charger Stripe. '+e.message;errEl.style.display='block';}
+    });
+  }
+}
+
+async function _confirmBalancePayment(){
+  var btn=document.getElementById('bal-pay-btn');
+  var errEl=document.getElementById('bal-stripe-err');
+  if(errEl){errEl.style.display='none';errEl.textContent='';}
+  if(btn){btn.disabled=true;btn.textContent='Traitement en cours…';}
+  if(!_balStripeInstance||!_balStripeElements){
+    if(btn){btn.disabled=false;btn.textContent='PAYER EN SÉCURISÉ';}
+    return;
+  }
+  try{
+    var result=await _balStripeInstance.confirmPayment({
+      elements:_balStripeElements,
+      confirmParams:{return_url:window.location.origin+'/app.html?stripe_balance_paid=1',receipt_email:USER&&USER.email||undefined},
+      redirect:'if_required'
+    });
+    if(result.error){
+      if(errEl){errEl.textContent=result.error.message||'Paiement refusé.';errEl.style.display='block';}
+      if(btn){btn.disabled=false;btn.textContent='RÉESSAYER LE PAIEMENT';}
+    } else if(result.paymentIntent&&(result.paymentIntent.status==='succeeded'||result.paymentIntent.status==='requires_capture')){
+      var succ=document.getElementById('bal-success');
+      var cont=document.getElementById('bal-stripe-container');
+      if(cont) cont.style.display='none';
+      if(succ) succ.style.display='block';
+      if(typeof launchConfetti==='function') launchConfetti();
+      if(typeof showToast==='function') showToast('Solde sécurisé !','Retenu sur GENESIS SAFE™','success');
+      localStorage.setItem('_fa_recent_payment',String(Date.now()));
+      setTimeout(function(){
+        closePayBalanceSheet();
+        if(typeof showClientWallet==='function') showClientWallet();
+      },2500);
+    }
+  }catch(e){
+    if(errEl){errEl.textContent=e.message||'Erreur paiement.';errEl.style.display='block';}
+    if(btn){btn.disabled=false;btn.textContent='RÉESSAYER LE PAIEMENT';}
+  }
+}
+</script>
+
 <!-- Mobile bridge FCM — chargé uniquement dans l'app Capacitor native -->
 <script src="mobile-bridge.js" defer></script>
 </body>
