@@ -3487,7 +3487,7 @@ function showApp(){
       setTimeout(function(){
         if(typeof launchConfetti==='function') launchConfetti();
         if(typeof showToast==='function'){
-          showToast('Paiement confirmé !','GENESIS SAFE™ sécurise votre acompte.','success');
+          showToast('Paiement confirmé !','GENESIS SAFE™ sécurise votre paiement.','success');
           setTimeout(function(){ showToast('+20 QG','Mission lancée !','success'); }, 1600);
         }
         setTimeout(function(){
@@ -10869,7 +10869,7 @@ function showClientWallet(){
           html+='<div class="espace-empty" style="text-align:center;padding:32px 0;">'
             +'<div style="font-size:32px;margin-bottom:10px;">⏳</div>'
             +'<div style="font-weight:700;color:#fff;margin-bottom:6px;">Traitement en cours…</div>'
-            +'<div style="color:var(--muted);font-size:13px;">Votre acompte GENESIS SAFE™ va apparaître<br>dans quelques secondes.</div>'
+            +'<div style="color:var(--muted);font-size:13px;">Votre paiement GENESIS SAFE™ va apparaître<br>dans quelques secondes.</div>'
             +'</div>';
           el.innerHTML=html;
           setTimeout(function(){ if(typeof showClientWallet==='function') showClientWallet(); }, 4000);
@@ -14046,13 +14046,10 @@ function pbPayDeposit(){
     return;
   }
 
-  // Stripe Connect disponible → paiement Connect (commission FA GENESIS)
-  if(_pbPartner.stripeAccountId && _pbPartner.stripeChargesEnabled){
-    _pbPayDepositStripe(); return;
-  }
-
-  // Stripe direct (prestataire sans Connect) — FA GENESIS collecte, redistribue manuellement
-  _pbPayDepositStripeDirect();
+  // GENESIS SAFE™ : charge directe sur le compte Stripe GENESIS dans tous les cas.
+  // Le Connect du partenaire n'est utilisé QUE pour le virement GENESIS→partenaire
+  // déclenché lors de la déclaration de livraison — jamais pour encaisser le client.
+  _pbPayDepositStripe();
 }
 
 function _pbPayDepositStripeDirect(){
@@ -14197,7 +14194,7 @@ async function _pbConfirmStripePayment(){
     } else if(result.paymentIntent && result.paymentIntent.status==='succeeded'){
       var ss=document.getElementById('pb-stripe-screen'); if(ss) ss.style.display='none';
       var sc=document.getElementById('pb-success'); if(sc) sc.style.display='';
-      var sm=document.getElementById('pb-success-msg'); if(sm) sm.textContent='🎉 Paiement confirmé ! Votre acompte est sécurisé par GENESIS SAFE™. Retrouvez et téléchargez votre contrat dans l\'onglet "Mes contrats".';
+      var sm=document.getElementById('pb-success-msg'); if(sm) sm.textContent='🎉 Paiement confirmé ! Votre paiement est sécurisé par GENESIS SAFE™. Retrouvez et téléchargez votre contrat dans l\'onglet "Mes contrats".';
       launchConfetti(); showToast('Paiement réussi !','Commande confirmée','success');
       setTimeout(function(){ showToast('+20 QG','Mission lancée !','success'); }, 1600);
       setTimeout(function(){ showToast('Contrat disponible','Téléchargez votre contrat dans "Mes contrats"','info'); }, 3200);

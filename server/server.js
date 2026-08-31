@@ -20696,10 +20696,12 @@ app.get('/api/partner/stripe/payments', authenticatePartner, function(req, res) 
     }
 });
 
-// ── Créer un PaymentIntent (appelé par le front client avant affichage du form) ─
+// ── Créer un PaymentIntent GENESIS SAFE™ (charge directe sur compte GENESIS) ──
+// L'argent atterrit sur le Stripe GENESIS (Financialadvicegenesis@gmail.com).
+// Le compte Stripe Connect du partenaire n'est utilisé QUE pour recevoir le
+// virement GENESIS → Connect quand le partenaire déclare la prestation terminée.
 app.post('/api/payments/stripe/create-intent', async function(req, res) {
     try {
-        // Auth client (même pattern que /api/my-orders)
         var token = (req.headers.authorization || '').replace('Bearer ', '').trim();
         if (!token) return res.status(401).json({ error: 'Token requis' });
         var jwt = require('jsonwebtoken');
@@ -20722,31 +20724,27 @@ app.post('/api/payments/stripe/create-intent', async function(req, res) {
 
         var partners = loadPartners();
         var partner  = partners.find(function(p){ return p.id === b.partnerId; });
-        if (!partner || !partner.stripeAccountId || !partner.stripeChargesEnabled) {
-            return res.status(400).json({ error: 'Ce prestataire n\'a pas encore configuré ses paiements Stripe.' });
+        if (!partner) {
+            return res.status(400).json({ error: 'Prestataire introuvable.' });
         }
 
-        // S'assurer que le client a un Stripe Customer ID
-        var stripeCustomerId = user.stripeCustomerId || null;
-        if (!stripeCustomerId) {
-            stripeCustomerId = await mps.ensureStripeCustomer({ email: user.email, prenom: user.prenom, nom: user.nom, id: user.id });
-            var uIdx = users.findIndex(function(u){ return u.id === user.id; });
-            if (uIdx !== -1) { users[uIdx].stripeCustomerId = stripeCustomerId; saveUsers(users); }
-        }
-
-        var result = await mps.createClientPaymentIntent({
-            amountEuros:            parseFloat(b.amountEuros),
-            partnerType:            partner.partner_type || 'other',
-            partnerId:              partner.id,
-            stripeConnectedAccountId: partner.stripeAccountId,
-            clientStripeCustomerId: stripeCustomerId,
-            clientEmail:            user.email,
-            orderId:                b.orderId  || null,
-            stage:                  b.stage    || 'deposit',
-            description:            b.description || ('FA GENESIS — ' + (b.label || 'Prestation'))
+        // Charge directe sur le compte Stripe GENESIS : pas de transfer_data ni de destination.
+        // L'argent reste chez GENESIS (escrow GENESIS SAFE™) jusqu'à la déclaration de livraison.
+        var pi = await scp.createDirectPaymentIntent({
+            amountEuros:  _intentAmount,
+            currency:     'eur',
+            description:  (b.description || ('FA GENESIS — ' + (b.label || 'Prestation'))).substring(0, 250),
+            receiptEmail: user.email,
+            metadata: {
+                order_id:     b.orderId      || '',
+                stage:        b.stage        || 'deposit',
+                partner_id:   b.partnerId    || '',
+                partner_type: partner.partner_type || ''
+            }
         });
 
-        res.json({ ok: true, clientSecret: result.clientSecret, paymentIntentId: result.paymentIntentId, split: result.split });
+        console.log('[STRIPE INTENT] GENESIS SAFE™ — charge directe GENESIS:', pi.id, _intentAmount + ' EUR', 'order:', b.orderId || 'N/A');
+        res.json({ ok: true, clientSecret: pi.client_secret, paymentIntentId: pi.id });
     } catch(e) {
         console.error('[STRIPE INTENT]', e.message);
         res.status(500).json({ error: e.message || 'Erreur lors de la création du paiement' });
