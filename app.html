@@ -11431,6 +11431,7 @@ function showLoginSheet(){
   var overlay=document.getElementById('login-overlay');
   var sheet=document.getElementById('login-sheet');
   if(!overlay||!sheet) return;
+  overlay.style.display = '';
   var rgOverlay=document.getElementById('reg-overlay'); var rgSheet=document.getElementById('reg-sheet');
   if(rgOverlay&&rgOverlay.classList.contains('open')){ if(rgSheet) rgSheet.classList.remove('up'); rgOverlay.classList.remove('open'); }
   var e=document.getElementById('lo-email'); if(e) e.value='';
