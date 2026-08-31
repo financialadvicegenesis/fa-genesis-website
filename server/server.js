@@ -18,7 +18,7 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const PDFDocument = require('pdfkit');
 
-const { getProductById, calculatePaymentAmounts, getAmountForStage, generateInstallments, generateGenesisSplit, generatePartnerSplit, generateUserInstallmentPlan, validateInstallments, CLIENT_TYPE_MAX_INSTALLMENTS } = require('./products');
+const { getProductById, calculatePaymentAmounts, getAmountForStage, generateInstallments, generatePartnerSplit, generateUserInstallmentPlan, validateInstallments, CLIENT_TYPE_MAX_INSTALLMENTS } = require('./products');
 const contractService = require('./contracts');
 const emailService = require('./email-service');
 const { OFFER_BLUEPRINTS, getOfferBlueprint, getAllOfferKeys } = require('./config/offerBlueprints');
@@ -792,8 +792,6 @@ function assignIntervenantsFromOrder(orderId) {
     }
 }
 
-// Délai avant auto-libération de la tranche intermédiaire GENESIS SAFE™ si le client ne valide pas
-const GENESIS_SAFE_INTERMEDIATE_RELEASE_DAYS = 3;
 // SLA traitement des litiges — affiché aux deux parties et dans les API de litiges
 const GENESIS_DISPUTE_SLA_HOURS = 48;
 const GENESIS_DISPUTE_SLA_LABEL = '48h ouvrées';
@@ -879,46 +877,25 @@ async function processDispatchPayout(dispatch, stage) {
 
         var paidAmount, stageTotal;
 
-        if (stage === 'deposit') {
+        if (stage === 'deposit' || stage === 'installment_1') {
+            // Paiement unique GENESIS SAFE™ (small ≤ 300€) ou premier versement partenaire
             paidAmount = parseFloat((dispatch.partner_deposit_amount || 0).toFixed(2));
-            stageTotal = order ? parseFloat(order.deposit_amount || ((order.total_amount || 0) * 0.30)) : 0;
-        } else if (stage === 'installment_2' || stage === 'installment_3') {
-            // GENESIS SAFE™ : tranches 2 (40%, livrable intermédiaire) et 3 (30%, livraison finale),
-            // calculées sur le montant réel de la tranche (order.installments), pas sur le solde global.
-            var tranche = order && order.installments
-                ? order.installments.find(function(i) { return i.stage === stage; })
-                : null;
-            stageTotal = tranche ? parseFloat(tranche.amount || 0) : 0;
-            // Si avantage bienvenue : le partenaire est payé sur le prix plein (gross-up).
-            var _wdaInst = order ? parseFloat(order.welcome_discount_amount || 0) : 0;
-            var _grossUpInst = (_wdaInst > 0 && order && parseFloat(order.total_amount) > 0)
-                ? (parseFloat(order.total_amount) + _wdaInst) / parseFloat(order.total_amount)
-                : 1;
-            paidAmount = parseFloat((stageTotal * partnerPct / 100 * _grossUpInst).toFixed(2));
-        } else if (order && order.installments && order.installments.length === 3) {
-            // 'balance' sur une commande GENESIS SAFE™ : le client a payé tout le solde
-            // restant en un clic (tranches 2+3) au lieu de les régler séparément. On ne verse
-            // au partenaire que les tranches pas encore reversées, pour éviter un double
-            // versement si une tranche avait déjà été payée/versée individuellement.
-            var existingPayoutsForDispatch = loadPayouts().filter(function(p) { return p.dispatch_id === dispatch.id; });
-            var paidOutStages = existingPayoutsForDispatch.map(function(p) { return p.stage; });
-            var remainingTranches = order.installments.filter(function(i) {
-                return i.stage !== 'deposit' && paidOutStages.indexOf(i.stage) === -1;
-            });
-            stageTotal = remainingTranches.reduce(function(sum, i) { return sum + parseFloat(i.amount || 0); }, 0);
-            var _wdaBal = order ? parseFloat(order.welcome_discount_amount || 0) : 0;
-            var _grossUpBal = (_wdaBal > 0 && order && parseFloat(order.total_amount) > 0)
-                ? (parseFloat(order.total_amount) + _wdaBal) / parseFloat(order.total_amount)
-                : 1;
-            paidAmount = parseFloat((stageTotal * partnerPct / 100 * _grossUpBal).toFixed(2));
+            stageTotal = order ? parseFloat(order.deposit_amount || order.total_amount || 0) : 0;
+            // Si le montant n'est pas sur le dispatch, calculer via le % partenaire
+            if (paidAmount <= 0 && stageTotal > 0) {
+                paidAmount = parseFloat((stageTotal * partnerPct / 100).toFixed(2));
+            }
         } else {
-            // 'balance' : commandes historiques sans split 30/40/30 (solde 70% en un seul versement)
-            var pTotal = parseFloat(dispatch.partner_total_amount || 0);
+            // 'balance' : solde restant (total – deposit)
+            var pTotal   = parseFloat(dispatch.partner_total_amount  || 0);
             var pDeposit = parseFloat(dispatch.partner_deposit_amount || 0);
             paidAmount = parseFloat((pTotal - pDeposit).toFixed(2));
-            var orderTotal = order ? parseFloat(order.total_amount || 0) : 0;
-            var depositAmt = order ? parseFloat(order.deposit_amount || (orderTotal * 0.30)) : 0;
-            stageTotal = order ? parseFloat(order.balance_amount || (orderTotal - depositAmt)) : 0;
+            var _orderTotal  = order ? parseFloat(order.total_amount  || 0) : 0;
+            var _depositAmt  = order ? parseFloat(order.deposit_amount || 0) : 0;
+            stageTotal = order ? parseFloat(order.balance_amount || (_orderTotal - _depositAmt)) : 0;
+            if (paidAmount <= 0 && stageTotal > 0) {
+                paidAmount = parseFloat((stageTotal * partnerPct / 100).toFixed(2));
+            }
         }
         if (paidAmount <= 0) return;
 
@@ -965,10 +942,6 @@ async function processDispatchPayout(dispatch, stage) {
             return d.dispatch_id === dispatch.id && (d.status === 'open' || d.status === 'jeremie_triage' || d.status === 'escalated_admin');
         });
 
-        var _autoReleaseAt = (!hasOpenDispute && stage === 'installment_2')
-            ? new Date(Date.now() + GENESIS_SAFE_INTERMEDIATE_RELEASE_DAYS * 24 * 3600 * 1000).toISOString()
-            : null;
-
         var newPayout = {
             id: 'PAY-' + Math.random().toString(36).substring(2, 10).toUpperCase(),
             order_id: dispatch.order_id,
@@ -987,8 +960,7 @@ async function processDispatchPayout(dispatch, stage) {
             fa_pct: faPct,
             partner_pct: partnerPct,
             currency: 'EUR',
-            status: hasOpenDispute ? 'on_hold' : (stage === 'installment_2' ? 'awaiting_validation' : 'pending'),
-            auto_release_at: _autoReleaseAt,
+            status: hasOpenDispute ? 'on_hold' : 'pending',
             created_at: new Date().toISOString(),
             sent_at: null,
             payout_batch_id: null,
@@ -1000,7 +972,7 @@ async function processDispatchPayout(dispatch, stage) {
         savePayouts(payouts);
 
         // ── Première mission complète → récompenses parrainage/distinctions ──
-        var _isFinalStage = (stage === 'balance' || stage === 'installment_3') ||
+        var _isFinalStage = stage === 'balance' ||
             (stage === 'deposit' && dispatch.partner_deposit_amount != null && dispatch.partner_total_amount != null &&
              Math.abs((dispatch.partner_deposit_amount || 0) - (dispatch.partner_total_amount || 0)) < 0.01);
         if (_isFinalStage && !partner.first_mission_completed_at) {
@@ -1009,14 +981,6 @@ async function processDispatchPayout(dispatch, stage) {
 
         if (hasOpenDispute) {
             console.log('[PAYOUT] ' + stage + ' mis en attente (on_hold, litige ouvert sur dispatch ' + dispatch.id + ') → ' + partner.email + ' : ' + paidAmount + ' €');
-            return;
-        }
-
-        // GENESIS SAFE™ : tranche intermédiaire (40%) retenue uniquement pour le mode 30/40/30 (payment_tier 'large')
-        // En mode "plusieurs fois" (payment_tier 'partner_installments'), chaque mensualité est versée directement.
-        var _isPartnerInstallments = order && order.payment_tier === 'partner_installments';
-        if (stage === 'installment_2' && !_isPartnerInstallments) {
-            console.log('[PAYOUT] installment_2 retenu — auto-libération dans ' + GENESIS_SAFE_INTERMEDIATE_RELEASE_DAYS + ' j (le ' + (_autoReleaseAt || '').substring(0, 10) + ') → ' + partner.email + ' : ' + paidAmount + ' €');
             return;
         }
 
@@ -1120,69 +1084,6 @@ async function releaseOnHoldPayouts(dispatchId) {
     }
 }
 
-// GENESIS SAFE™ Phase 2 : libère la tranche intermédiaire (40%) retenue pour l'order donné
-async function releaseIntermediatePayoutsForOrder(orderId) {
-    try {
-        var _riPayouts = loadPayouts();
-        var _riToRelease = _riPayouts.filter(function(p) {
-            return p.order_id === orderId && p.stage === 'installment_2' && p.status === 'awaiting_validation';
-        });
-        if (_riToRelease.length === 0) return;
-
-        for (var _riIdx = 0; _riIdx < _riToRelease.length; _riIdx++) {
-            var _riP = _riToRelease[_riIdx];
-            var _riPartner = loadPartners().find(function(pt) { return pt.id === _riP.partner_id; });
-
-            var _riPouts = loadPayouts();
-            var _riPi = _riPouts.findIndex(function(p) { return p.id === _riP.id; });
-            if (_riPi === -1) continue;
-            _riPouts[_riPi].status = 'pending';
-            _riPouts[_riPi].validation_released_at = new Date().toISOString();
-            savePayouts(_riPouts);
-
-            if (_riPartner && _riPartner.payout_paypal) {
-                var _riResult = await triggerPayPalPayouts([{
-                    recipient_email: _riPartner.payout_paypal,
-                    amount: _riP.amount,
-                    currency: 'EUR',
-                    note: 'GENESIS SAFE™ — livrable intermédiaire validé (' + _riP.order_id + ')'
-                }]);
-                var _riPouts2 = loadPayouts();
-                var _riPi2 = _riPouts2.findIndex(function(p) { return p.id === _riP.id; });
-                if (_riPi2 !== -1) {
-                    _riPouts2[_riPi2].status = _riResult.success ? 'sent' : 'failed';
-                    if (_riResult.success) { _riPouts2[_riPi2].sent_at = new Date().toISOString(); _riPouts2[_riPi2].payout_batch_id = _riResult.payout_batch_id || null; }
-                    else { _riPouts2[_riPi2].error = _riResult.error || 'Erreur PayPal'; }
-                    savePayouts(_riPouts2);
-                }
-                console.log('[PAYOUT] installment_2 libéré PayPal ' + (_riResult.success ? 'envoyé' : 'ÉCHOUÉ') + ' → ' + (_riPartner.email || '') + ' : ' + _riP.amount + ' €');
-            } else {
-                console.log('[PAYOUT] installment_2 libéré en attente virement → ' + _riP.partner_email + ' : ' + _riP.amount + ' €');
-            }
-        }
-    } catch(e) {
-        console.error('[PAYOUT] Erreur releaseIntermediatePayoutsForOrder:', e);
-    }
-}
-
-// GENESIS SAFE™ Phase 2 : auto-libère les tranches intermédiaires dont le délai de validation est dépassé
-function checkAutoReleaseIntermediatePayouts() {
-    try {
-        var _carNow = Date.now();
-        var _carPayouts = loadPayouts();
-        var _carOrderIds = {};
-        _carPayouts.forEach(function(p) {
-            if (p.status === 'awaiting_validation' && p.auto_release_at && new Date(p.auto_release_at).getTime() <= _carNow) {
-                _carOrderIds[p.order_id] = true;
-            }
-        });
-        Object.keys(_carOrderIds).forEach(function(orderId) {
-            releaseIntermediatePayoutsForOrder(orderId).catch(function(e) {
-                console.error('[PAYOUT] Erreur auto-libération tranche intermédiaire order ' + orderId + ':', e);
-            });
-        });
-    } catch(_e) {}
-}
 
 // Demande d'avis client après versement du solde à chaque partenaire ayant accepté sa mission
 function requestPartnerReviews(clientEmail, acceptedDispatches) {
@@ -1524,17 +1425,11 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
                         orders[oIdx].paymentStatus   = 'fully_paid';
                         orders[oIdx].payment_method  = orders[oIdx].payment_method || _piMethod;
                         orders[oIdx].stripe_balance_pi_id = pi.id;
-                        // Synchroniser l'installment payé (installment_2 ou installment_3 ou toutes)
+                        // Synchroniser les installments partenaire non encore payés
                         if (Array.isArray(orders[oIdx].installments)) {
-                            if (stage === 'installment_2' || stage === 'installment_3') {
-                                var _instTarget = orders[oIdx].installments.find(function(i) { return i.stage === stage; });
-                                if (_instTarget) { _instTarget.paid = true; _instTarget.paid_at = new Date().toISOString(); }
-                            } else {
-                                // Paiement du solde global → toutes les tranches non-deposit
-                                orders[oIdx].installments.forEach(function(i) {
-                                    if (i.stage !== 'deposit') { i.paid = true; i.paid_at = new Date().toISOString(); }
-                                });
-                            }
+                            orders[oIdx].installments.forEach(function(i) {
+                                if (i.stage !== 'deposit' && !i.paid) { i.paid = true; i.paid_at = new Date().toISOString(); }
+                            });
                         }
                     }
                     orders[oIdx].updatedAt = new Date().toISOString();
@@ -1577,15 +1472,15 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
                         });
                         if (_whDisp) {
                             if (stage === 'deposit' || stage === 'installment_1') {
-                                // Mode "1 fois" (payment_tier 'small') : GENESIS SAFE™ bloque jusqu'à la livraison.
-                                // Tous les autres modes (acompte+reste, plusieurs fois, 30/40/30) : versement immédiat si mission acceptée.
-                                var _whOrderTier = orders[oIdx] ? (orders[oIdx].payment_tier || 'small') : 'small';
-                                if (_whOrderTier !== 'small' && (_whDisp.status === 'accepted' || _whDisp.mission_status === 'in_progress')) {
-                                    try { await processDispatchPayout(_whDisp, 'deposit'); }
+                                // GENESIS SAFE™ (small ≤ 300€) : bloqué jusqu'à la livraison.
+                                // partner_installments : mensualité versée directement.
+                                var _whPayTier = orders[oIdx] ? (orders[oIdx].payment_tier || 'small') : 'small';
+                                if (_whPayTier !== 'small' && (_whDisp.status === 'accepted' || _whDisp.mission_status === 'in_progress')) {
+                                    try { await processDispatchPayout(_whDisp, stage); }
                                     catch(pe) { console.error('[STRIPE-WH] Payout acompte error:', pe.message); }
                                 }
                             } else {
-                                // installment_2, installment_3, balance : verser immédiatement
+                                // balance : verser le solde immédiatement
                                 try { await processDispatchPayout(_whDisp, stage); }
                                 catch(pe) { console.error('[STRIPE-WH] Payout error (' + stage + '):', pe.message); }
                             }
@@ -3489,17 +3384,17 @@ app.post('/api/orders/create', (req, res) => {
                 installCountFinal = 1;
                 installPlanFinal = null;
             } else if (hasCwEvent) {
-                // GENESIS SAFE™ : 1 tranche si ≤ 300 €, split 30/40/30 si > 300 €
-                installPlanFinal = generateGenesisSplit(totalAmountFinal);
-                depositAmountFinal = installPlanFinal[0].amount;
-                balanceAmountFinal = installPlanFinal.length > 1 ? installPlanFinal.slice(1).reduce(function(s, i) { return s + i.amount; }, 0) : 0;
-                installCountFinal = installPlanFinal.length;
+                // GENESIS SAFE™ : paiement intégral sécurisé en escrow (versé à la livraison)
+                installPlanFinal = [{ stage: 'deposit', amount: totalAmountFinal }];
+                depositAmountFinal = totalAmountFinal;
+                balanceAmountFinal = 0;
+                installCountFinal = 1;
             } else {
-                // GENESIS SAFE™ : 1 tranche si ≤ 300 €, split 30/40/30 si > 300 €
-                installPlanFinal = generateGenesisSplit(totalAmountFinal);
-                depositAmountFinal = installPlanFinal[0].amount;
-                balanceAmountFinal = installPlanFinal.length > 1 ? installPlanFinal.slice(1).reduce(function(s, i) { return s + i.amount; }, 0) : 0;
-                installCountFinal = installPlanFinal.length;
+                // GENESIS SAFE™ : paiement intégral sécurisé en escrow (versé à la livraison)
+                installPlanFinal = [{ stage: 'deposit', amount: totalAmountFinal }];
+                depositAmountFinal = totalAmountFinal;
+                balanceAmountFinal = 0;
+                installCountFinal = 1;
             }
 
             var orderIdFinal = 'ORD-' + uuidv4().split('-')[0].toUpperCase();
@@ -3582,7 +3477,7 @@ app.post('/api/orders/create', (req, res) => {
                 var psiValidatedN = validateInstallments(psiRequestedInstallments, psiService.max_installments || 1, psiClientType);
                 var psiInstalls = psiValidatedN > 1
                     ? generateUserInstallmentPlan(psiTotal, psiValidatedN)
-                    : generateGenesisSplit(psiTotal);
+                    : [{ stage: 'deposit', amount: psiTotal }];
                 var psiDeposit = psiInstalls[0].amount;
                 var psiBalance = psiInstalls.length > 1 ? psiInstalls.slice(1).reduce(function(s, i) { return s + i.amount; }, 0) : 0;
 
@@ -3795,7 +3690,7 @@ app.post('/api/orders/create', (req, res) => {
                 var psoValidatedInstallments = validateInstallments(psoRequestedInstallments, service.max_installments || 1, psoClientType);
                 psoInstallments = psoValidatedInstallments > 1
                     ? generateUserInstallmentPlan(psoTotal, psoValidatedInstallments)
-                    : (psoDepositPct != null ? generatePartnerSplit(psoTotal, psoDepositPct) : generateGenesisSplit(psoTotal));
+                    : (psoDepositPct != null ? generatePartnerSplit(psoTotal, psoDepositPct) : [{ stage: 'deposit', amount: psoTotal }]);
             }
             const psoDeposit = psoInstallments[0].amount;
             const psoBalance = psoInstallments.length > 1
@@ -3880,8 +3775,8 @@ app.post('/api/orders/create', (req, res) => {
                 return res.status(404).json({ error: 'Produit non trouve' });
             }
 
-            // GENESIS SAFE™ : split fixe 30/40/30 (acompte / livrable intermédiaire / livraison finale)
-            var legacyInstallPlan = generateGenesisSplit(product.total_price);
+            // GENESIS SAFE™ : paiement intégral sécurisé en escrow
+            var legacyInstallPlan = [{ stage: 'deposit', amount: product.total_price }];
 
             order = {
                 id: `ORD-${uuidv4().split('-')[0].toUpperCase()}`,
@@ -5316,7 +5211,7 @@ app.get('/api/client/wallet', function(req, res) {
                 || (order.partner_name ? String(order.partner_name).trim() : null)
                 || 'Prestataire';
 
-            // Priorité au modèle installments si au moins une est payée (événementiel 30/40/30)
+            // Priorité au modèle installments si au moins une est payée (partner_installments)
             var hasPaidInst = Array.isArray(order.installments) && order.installments.some(function(i) { return i.paid; });
             if (hasPaidInst) {
                 order.installments.forEach(function(inst) {
@@ -5987,9 +5882,7 @@ app.post('/api/payments/sumup/webhook', async (req, res) => {
                         }).catch(err => console.error('[WEBHOOK] Erreur envoi email paiement:', err));
                     }
 
-                    // Vérifier si des tranches intermédiaires en attente doivent être auto-libérées
-                    checkAutoReleaseIntermediatePayouts();
-                    // Verser la part de cette tranche (installment_2 retenu jusqu'à validation livrable ou auto-libération)
+                    // Verser la part de cette tranche
                     var _acceptedD = loadDispatches().filter(function(d) { return d.order_id === orderId && d.status === 'accepted'; });
                     _acceptedD.forEach(function(d) { processDispatchPayout(d, stage).catch(function(e) { console.error('[PAYOUT] Erreur ' + stage + ' webhook:', e); }); });
                     if (_acceptedD.length === 0) console.log('[WEBHOOK] Aucun dispatch accepté pour versement ' + stage + ' — commande ' + orderId);
@@ -6558,8 +6451,8 @@ function getAccessRights(order) {
     // Acompte paye = acces au dashboard
     rights.can_access_dashboard = true;
 
-    // GENESIS SAFE™ : split fixe 30/40/30 sur les commandes créées après cette phase
-    // (order.installments contient alors exactement 3 tranches). Les commandes plus
+    // GENESIS SAFE™ : traitement des installments partenaire (partner_installments).
+    // Les commandes plus
     // anciennes n'ont pas ces 3 tranches : on garde le comportement acompte/solde 30/70.
     var hasGenesisSplit = order.installments && order.installments.length === 3;
     var tranche2Paid = hasGenesisSplit ? !!order.installments[1].paid : false;
@@ -6873,13 +6766,6 @@ app.post('/api/livrables/:id/validate', (req, res) => {
             }
         }
 
-        // GENESIS SAFE™ Phase 2 : si le livrable est de type intermédiaire, libérer la tranche 40%
-        if ((livrable.genesis_stage || '') === 'intermediaire' && order.status === 'mid_delivery_paid') {
-            checkAutoReleaseIntermediatePayouts();
-            releaseIntermediatePayoutsForOrder(order.id).catch(function(e) {
-                console.error('[PAYOUT] Erreur libération tranche intermédiaire sur validation:', e);
-            });
-        }
 
         res.json({ success: true, livrable: livrable });
     } catch (err) {
