@@ -3381,6 +3381,7 @@ function _showRoleChoiceAfterDelete(){
   try{
     if(typeof _ptnrClearSession==='function') _ptnrClearSession();
     if(typeof _ptnrRefreshTimer!=='undefined' && _ptnrRefreshTimer){ clearInterval(_ptnrRefreshTimer); _ptnrRefreshTimer=null; }
+    if(typeof _ptnrRepTimer!=='undefined' && _ptnrRepTimer){ clearInterval(_ptnrRepTimer); _ptnrRepTimer=null; }
     if(typeof _ptnrStatusPollTimer!=='undefined' && _ptnrStatusPollTimer){ clearInterval(_ptnrStatusPollTimer); _ptnrStatusPollTimer=null; }
     localStorage.removeItem('fa_genesis_partner_profile');
     localStorage.removeItem('fa_genesis_partner_profile_data');
@@ -3541,6 +3542,7 @@ function initApp(){
     _loadClientCollabPartnerIds();
     loadNotifInbox();
     if(!window._notifPollStarted){ window._notifPollStarted = true; setInterval(loadNotifInbox, 120000); }
+    if(!window._qgPollStarted){ window._qgPollStarted = true; setInterval(function(){ if(typeof _syncUserBadge==='function' && USER && !GUEST) _syncUserBadge(); }, 30000); }
     setTimeout(function(){
       if(typeof Notification!=='undefined' && Notification.permission==='default' && !sessionStorage.getItem('na')){
         openNotifModal(); sessionStorage.setItem('na','1');
@@ -12188,6 +12190,7 @@ var _ptnrToken = null;
 var _ptnrSession = null;
 var _ptnrProfilScrollPos = 0;
 var _ptnrRefreshTimer = null;
+var _ptnrRepTimer = null;
 
 function _ptnrApiUrl(){ return window.FA_GENESIS_API || API; }
 
@@ -12740,6 +12743,13 @@ function _ptnrShowDash(){
     }).catch(function(){});
   }
   if(!_ptnrRefreshTimer) _ptnrRefreshTimer = setInterval(_ptnrRefreshBadges, 90000);
+  if(!_ptnrRepTimer) _ptnrRepTimer = setInterval(function(){
+    if(!_ptnrToken) return;
+    _ptnrFetch('/api/partner/reputation').then(function(data){
+      _ptnrLastRepData = data;
+      _renderPartnerHomeQGWidget(data);
+    }).catch(function(){});
+  }, 60000);
 }
 
 function _ptnrOpenDrawer(){
@@ -13974,6 +13984,7 @@ var _stripeInstance = null;  // Stripe.js instance
 var _stripeElements = null;  // Stripe Elements instance
 var _stripePaymentEl = null; // Payment Element
 var _pbStripeIntentId = null;
+var _pbCurrentOrderId = null;    // ID de la commande active (pour sync-intent fallback webhook)
 var _pbSelectedInstallments = 1; // Nombre de mensualités sélectionné dans pb-sheet
 var _pbExistingOrderId = null;   // Si set, l'ordre existe déjà (Projet GENESIS) — on saute la création
 var _pbContractId = null;        // ID du contrat signé (rempli après signature)
@@ -14143,6 +14154,7 @@ function _pbPayDepositStripe(){
   _stripeFlow.then(function(res2){
     if(!res2.ok||!res2.data||!res2.data.clientSecret) throw new Error((res2.data&&res2.data.error)||'Erreur initialisation paiement Stripe');
     _pbStripeIntentId = res2.data.paymentIntentId;
+    _pbCurrentOrderId = res2.orderId || null;
     _pbMountStripeElements(res2.data.clientSecret);
     if(sb){sb.disabled=false;sb.textContent=_pbPayBtnLabel();}
   }).catch(function(err){
@@ -14214,11 +14226,20 @@ async function _pbConfirmStripePayment(){
       setTimeout(function(){ showToast('+20 QG','Mission lancée !','success'); }, 1600);
       setTimeout(function(){ showToast('Contrat disponible','Téléchargez votre contrat dans "Mes contrats"','info'); }, 3200);
       localStorage.setItem('_fa_recent_payment', String(Date.now()));
-      // Auto-navigate vers le portefeuille (le webhook deposit_authorized arrive en ~1-3s)
+      // Fallback webhook : synchroniser deposit_authorized côté serveur immédiatement
+      // (en cas de webhook Stripe non configuré sur le serveur Render)
+      if(_pbStripeIntentId && _pbCurrentOrderId && USER && USER._token){
+        fetch((window.FA_GENESIS_API||API)+'/api/payments/stripe/sync-intent',{
+          method:'POST',
+          headers:{'Content-Type':'application/json','Authorization':'Bearer '+USER._token},
+          body:JSON.stringify({piId:_pbStripeIntentId, orderId:_pbCurrentOrderId, stage:'deposit'})
+        }).catch(function(){});
+      }
+      // Auto-navigate vers le portefeuille (deposit_authorized mis à jour ci-dessus ou via webhook)
       setTimeout(function(){
         if(typeof nav==='function') nav('profil');
         setTimeout(function(){ if(typeof showClientWallet==='function') showClientWallet(); }, 600);
-      }, 4000);
+      }, 2000);
     }
   } catch(e){
     if(errEl){errEl.textContent=e.message||'Erreur paiement.';errEl.style.display='block';}
@@ -15879,8 +15900,12 @@ function _ptnrRenderEngagedMissionCard(r){
   // sans l'étape intermédiaire "marquer livraison en cours"
   var canMarkDelivered = r.dispatch_id && r.payment_tier === 'small' && !r.delivery_confirmed && !r.partner_completed;
   var canMarkDelivering = r.dispatch_id && statusKey === 'in_progress' && !canMarkDelivered;
+  var contractDlBtn = r.contract_id
+    ? '<a href="'+(window.FA_GENESIS_API||API)+'/api/contracts/'+r.contract_id+'/pdf" target="_blank" style="display:flex;align-items:center;gap:8px;margin-bottom:8px;background:#1a1200;border:1px solid #3d2e00;border-radius:8px;padding:8px 12px;color:#FFD700;font-size:12px;font-weight:700;text-decoration:none;"><i class="fa-solid fa-file-contract"></i> Télécharger le contrat signé</a>'
+    : '';
   return '<div class="dispatch-card" id="request-'+r.id+'">'
     +'<div class="dispatch-title">'+r.client_name+' — '+r.service_label+'</div>'
+    +contractDlBtn
     +(r.payment_tier === 'small' ? '<div style="font-size:11px;color:#6dbf6d;font-weight:700;margin-bottom:6px;"><i class="fas fa-lock" style="margin-right:4px;"></i>GENESIS SAFE™ — fonds retenus jusqu\'à livraison</div>' : '')
     +missionTimelineHtml(r.display_status)
     +(canMarkDelivering

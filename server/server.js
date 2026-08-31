@@ -4239,6 +4239,55 @@ app.post('/api/contracts/sign', function(req, res) {
             }
         } catch(_ne) { console.warn('[CONTRACT] Erreur notification prestataire:', _ne.message); }
 
+        // ── Créer une entrée partner_request 'signed' pour que la mission apparaisse
+        // dans "Mes missions" du prestataire (même sans flux devis préalable)
+        try {
+            var _prs = loadPartnerRequests();
+            var _existingReq = _prs.find(function(r) {
+                return r.partner_id === b.partnerId
+                    && r.client_email === payload.email
+                    && r.status === 'signed'
+                    && (Date.now() - new Date(r.created_at || 0).getTime()) < 300000;
+            });
+            if (!_existingReq) {
+                _prs.push({
+                    id: 'REQ-' + Date.now() + '-' + Math.random().toString(36).substr(2,5).toUpperCase(),
+                    partner_id: b.partnerId,
+                    client_email: payload.email,
+                    client_name: b.signatureName || payload.email,
+                    service_label: b.serviceLabel,
+                    price: parseFloat(b.servicePrice) || 0,
+                    status: 'signed',
+                    contract_id: contractId,
+                    contract_signed: true,
+                    contract_signed_at: now,
+                    order_id: null,
+                    created_at: now,
+                    updated_at: now
+                });
+                savePartnerRequests(_prs);
+            }
+        } catch(_re) { console.warn('[CONTRACT] Erreur création partner_request:', _re.message); }
+
+        // ── Livrable contrat côté partenaire (visible dans ses documents de mission)
+        try {
+            var _pLivs = loadLivrables();
+            _pLivs.push({
+                id: 'LIV-CTR-' + Date.now().toString(36).toUpperCase(),
+                contract_id: contractId,
+                partner_id: b.partnerId,
+                client_email: payload.email,
+                order_id: null,
+                name: 'Contrat — ' + b.serviceLabel,
+                type: 'contract',
+                status: 'ready',
+                audience: 'partner',
+                download_url: '/api/contracts/' + contractId + '/pdf',
+                created_at: now
+            });
+            saveLivrables(_pLivs);
+        } catch(_le) { console.warn('[CONTRACT] Erreur création livrable partenaire:', _le.message); }
+
         console.log('[CONTRACT] Signé:', contractId, payload.email, b.serviceLabel);
         res.json({ ok: true, contractId: contractId });
     } catch(e) {
@@ -4261,9 +4310,32 @@ app.patch('/api/contracts/:id/set-order', function(req, res) {
         var contracts = loadContracts();
         var idx = contracts.findIndex(function(c) { return c.id === req.params.id && c.client_email === payload.email; });
         if (idx === -1) return res.status(404).json({ error: 'Contrat introuvable' });
-        contracts[idx].order_id = req.body.orderId || null;
+        var _soOrderId = req.body.orderId || null;
+        contracts[idx].order_id = _soOrderId;
         contracts[idx].updated_at = new Date().toISOString();
         saveContracts(contracts);
+        // Propager order_id au partner_request et au livrable contrat créés lors de la signature
+        if (_soOrderId) {
+            try {
+                var _soPrs = loadPartnerRequests();
+                var _soPrIdx = _soPrs.findIndex(function(r) { return r.contract_id === req.params.id; });
+                if (_soPrIdx !== -1 && !_soPrs[_soPrIdx].order_id) {
+                    _soPrs[_soPrIdx].order_id = _soOrderId;
+                    _soPrs[_soPrIdx].updated_at = new Date().toISOString();
+                    savePartnerRequests(_soPrs);
+                }
+            } catch(_e) {}
+            try {
+                var _soLivs = loadLivrables();
+                var _soLivChanged = false;
+                _soLivs.forEach(function(l) {
+                    if (l.contract_id === req.params.id && !l.order_id) {
+                        l.order_id = _soOrderId; _soLivChanged = true;
+                    }
+                });
+                if (_soLivChanged) saveLivrables(_soLivs);
+            } catch(_e2) {}
+        }
         res.json({ ok: true });
     } catch(e) {
         res.status(500).json({ error: e.message });
@@ -20355,6 +20427,68 @@ app.get('/api/partner/stripe/payments', authenticatePartner, function(req, res) 
 // L'argent atterrit sur le Stripe GENESIS (Financialadvicegenesis@gmail.com).
 // Le compte Stripe Connect du partenaire n'est utilisé QUE pour recevoir le
 // virement GENESIS → Connect quand le partenaire déclare la prestation terminée.
+/**
+ * POST /api/payments/stripe/sync-intent
+ * Fallback webhook : le client appelle cette route après confirmPayment() pour synchroniser
+ * deposit_authorized sur la commande si le webhook Stripe n'est pas encore configuré.
+ */
+app.post('/api/payments/stripe/sync-intent', async function(req, res) {
+    try {
+        var user = findUserByToken((req.headers.authorization || '').replace('Bearer ', '').trim());
+        if (!user) return res.status(401).json({ error: 'Non autorisé' });
+        var b = req.body || {};
+        var piId = b.piId; var orderId = b.orderId; var stage = b.stage || 'deposit';
+        if (!piId || !orderId) return res.status(400).json({ error: 'piId et orderId requis' });
+        var pi = await scp.retrievePaymentIntent(piId);
+        if (!pi) return res.status(404).json({ error: 'PI introuvable' });
+        var orders = loadOrders();
+        var oIdx = orders.findIndex(function(o) { return o.id === orderId; });
+        if (oIdx === -1) return res.status(404).json({ error: 'Commande introuvable' });
+        var now = new Date().toISOString();
+        if (pi.status === 'requires_capture') {
+            if (stage === 'balance') {
+                if (!orders[oIdx].balance_authorized) {
+                    orders[oIdx].balance_authorized    = true;
+                    orders[oIdx].balance_authorized_at = now;
+                    orders[oIdx].stripe_balance_pi_id  = piId;
+                    orders[oIdx].payment_method        = 'stripe';
+                    orders[oIdx].updatedAt             = now;
+                    saveOrders(orders);
+                }
+            } else {
+                if (!orders[oIdx].deposit_authorized) {
+                    orders[oIdx].deposit_authorized    = true;
+                    orders[oIdx].deposit_authorized_at = now;
+                    orders[oIdx].stripe_deposit_pi_id  = piId;
+                    orders[oIdx].paymentStatus         = 'deposit_authorized';
+                    orders[oIdx].payment_method        = 'stripe';
+                    orders[oIdx].updatedAt             = now;
+                    saveOrders(orders);
+                    // Créer le dispatch si pas encore existant
+                    if (orders[oIdx].product_type === 'partner_service') {
+                        createPartnerServiceDispatch(orders[oIdx]);
+                    }
+                }
+            }
+            return res.json({ ok: true, status: 'authorized' });
+        }
+        if (pi.status === 'succeeded') {
+            if (!orders[oIdx].deposit_paid) {
+                orders[oIdx].deposit_paid    = true;
+                orders[oIdx].deposit_paid_at = now;
+                orders[oIdx].paymentStatus   = 'deposit_paid';
+                orders[oIdx].updatedAt       = now;
+                saveOrders(orders);
+            }
+            return res.json({ ok: true, status: 'succeeded' });
+        }
+        return res.json({ ok: true, status: pi.status });
+    } catch(e) {
+        console.error('[SYNC-INTENT]', e.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
 app.post('/api/payments/stripe/create-intent', async function(req, res) {
     try {
         var token = (req.headers.authorization || '').replace('Bearer ', '').trim();
