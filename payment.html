@@ -70,55 +70,6 @@
         .status-pending { background: #ffd43b; }
         .status-fully { background: #4dabf7; }
 
-        /* SumUp Payment Modal */
-        .sumup-modal-overlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.9);
-            z-index: 9999;
-            align-items: center;
-            justify-content: center;
-        }
-        .sumup-modal-overlay.active {
-            display: flex;
-        }
-        .sumup-modal-content {
-            background: white;
-            color: black;
-            border: 4px solid black;
-            box-shadow: 10px 10px 0px var(--genesis-yellow);
-            max-width: 500px;
-            width: 90%;
-            padding: 2rem;
-            position: relative;
-            max-height: 90vh;
-            overflow-y: auto;
-        }
-        .sumup-modal-close {
-            position: absolute;
-            top: 10px;
-            right: 15px;
-            font-size: 28px;
-            background: none;
-            border: none;
-            cursor: pointer;
-            font-weight: 900;
-            color: black;
-        }
-        .sumup-modal-close:hover {
-            color: #ff6b6b;
-        }
-        .sumup-modal-amount {
-            background: var(--genesis-yellow);
-            border: 3px solid black;
-            padding: 1rem;
-            text-align: center;
-            margin-bottom: 1.5rem;
-        }
     </style>
     <meta name="theme-color" content="#FFD700">
     <meta name="mobile-web-app-capable" content="yes">
@@ -199,26 +150,7 @@
         </div>
     </section>
 
-    <!-- SumUp Payment Modal -->
-    <div id="sumupModal" class="sumup-modal-overlay">
-        <div class="sumup-modal-content">
-            <button onclick="closeSumUpModal()" class="sumup-modal-close">&times;</button>
-            <h3 style="font-family: 'Unbounded', cursive; font-size: 1.25rem; font-weight: 900; text-transform: uppercase; margin-bottom: 1rem;">
-                <i class="fas fa-lock" style="color: var(--genesis-yellow); margin-right: 8px;"></i>Paiement Sécurisé
-            </h3>
-            <div class="sumup-modal-amount">
-                <p style="font-size: 0.875rem; font-weight: 700; text-transform: uppercase; color: #000;">Montant à payer</p>
-                <p id="sumupModalAmount" style="font-size: 2rem; font-weight: 900; color: #000;"></p>
-            </div>
-            <div id="sumup-card"></div>
-            <p style="text-align: center; font-size: 0.75rem; margin-top: 1rem; color: #333; font-weight: 700;">
-                <i class="fas fa-shield-alt"></i> Paiement sécurisé par SumUp
-            </p>
-        </div>
-    </div>
-
     <!-- AOS script removed - functional page -->
-    <script src="https://gateway.sumup.com/gateway/ecom/card/v2/sdk.js"></script>
     <script src="config.js"></script>
     <script src="auth.js"></script>
     <script src="offers-config.js"></script>
@@ -227,46 +159,9 @@
         try {
             var PAY_API = window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com';
 
-            // === SumUp Card Widget ===
-            window.showSumUpWidget = function(checkoutId, amount, orderId, stage) {
-                var modal = document.getElementById('sumupModal');
-                if (modal) modal.classList.add('active');
-                var amountEl = document.getElementById('sumupModalAmount');
-                if (amountEl) amountEl.textContent = amount + '\u20AC';
-
-                var container = document.getElementById('sumup-card');
-                if (container) container.innerHTML = '';
-
-                SumUpCard.mount({
-                    id: 'sumup-card',
-                    checkoutId: checkoutId,
-                    locale: 'fr-FR',
-                    onResponse: function(type, body) {
-                        console.log('[SUMUP WIDGET] Response:', type, body);
-                        if (type === 'success') {
-                            closeSumUpModal();
-                            try {
-                                fetch(PAY_API + '/api/payments/verify', {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ orderId: orderId, stage: stage })
-                                }).catch(function() {});
-                            } catch (e) {}
-                            window.location.href = 'payment-success.html?order=' + orderId + '&stage=' + stage;
-                        } else if (type === 'error') {
-                            console.error('[SUMUP WIDGET] Erreur:', body);
-                            closeSumUpModal();
-                            alert('Le paiement a \u00E9chou\u00E9.\n\nRaison : ' + (body.message || body.error_message || 'Erreur inconnue') + '\n\nVeuillez r\u00E9essayer.');
-                        }
-                    }
-                });
-            };
-
-            window.closeSumUpModal = function() {
-                var modal = document.getElementById('sumupModal');
-                if (modal) modal.classList.remove('active');
-                var container = document.getElementById('sumup-card');
-                if (container) container.innerHTML = '';
+            // Les paiements sont g\u00E9r\u00E9s dans l'application principale (app.html)
+            window.goToAppPayment = function() {
+                window.location.href = 'app.html';
             };
 
             // Protection de la page
@@ -802,114 +697,20 @@
             };
 
             function createCheckoutForDeposit(orderId) {
-                var depositBtn = document.querySelector('#depositAction button');
-                return fetch(PAY_API + '/api/payments/sumup/create-checkout', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ orderId: orderId, stage: 'deposit' })
-                })
-                .then(function(resp) {
-                    if (!resp.ok) return resp.json().then(function(d) {
-                        var msg = d.error || 'Erreur création checkout';
-                        if (d.details) msg += ' : ' + d.details;
-                        throw new Error(msg);
-                    });
-                    return resp.json();
-                })
-                .then(function(checkoutData) {
-                    console.log('[PAYMENT] Checkout SumUp cree:', checkoutData);
-                    if (depositBtn) {
-                        depositBtn.disabled = false;
-                        depositBtn.innerHTML = '<i class="fas fa-credit-card mr-2"></i>Payer l\'acompte';
-                    }
-                    if (checkoutData.checkout_id) {
-                        showSumUpWidget(checkoutData.checkout_id, checkoutData.amount, orderId, 'deposit');
-                    } else {
-                        throw new Error('ID de checkout non reçu');
-                    }
-                });
+                window.location.href = 'app.html';
             }
 
-            // ==================
-            // PAY BALANCE
-            // ==================
-            // ==================
-            // PAY INSTALLMENT
-            // ==================
             window.payInstallment = function(stage, orderId, amount) {
-                if (!orderId || !stage) {
-                    alert('Erreur : commande introuvable. Veuillez rafra\u00EEchir la page.');
-                    return;
-                }
-                fetch(PAY_API + '/api/payments/sumup/create-checkout', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ orderId: orderId, stage: stage })
-                })
-                .then(function(resp) {
-                    if (!resp.ok) return resp.json().then(function(d) { throw new Error(d.error || d.details || 'Erreur checkout'); });
-                    return resp.json();
-                })
-                .then(function(checkoutData) {
-                    if (checkoutData.checkout_id) {
-                        showSumUpWidget(checkoutData.checkout_id, checkoutData.amount, orderId, stage);
-                    } else {
-                        throw new Error('ID de checkout non re\u00E7u');
-                    }
-                })
-                .catch(function(err) {
-                    console.error('[PAYMENT] Erreur payInstallment:', err);
-                    alert('Erreur lors du paiement du versement :\n\n' + err.message);
-                });
+                window.location.href = 'app.html';
             };
 
-            // Store backend data for payBalance to use
             var _backendOrderId = null;
 
             window.payBalance = function() {
-                var token = getToken();
-
-                // Fetch the order_id from backend
-                fetch(PAY_API + '/api/payments/history', {
-                    method: 'GET',
-                    headers: { 'Authorization': 'Bearer ' + token }
-                })
-                .then(function(resp) { return resp.json(); })
-                .then(function(data) {
-                    var orderId = data.order_id || _backendOrderId;
-                    if (!orderId) {
-                        throw new Error('Aucune commande trouvee pour le paiement du solde.');
-                    }
-                    if (!data.can_pay_balance) {
-                        throw new Error('Le paiement du solde n\'est pas encore disponible.');
-                    }
-                    console.log('[PAYMENT] Paiement du solde pour commande:', orderId);
-
-                    return fetch(PAY_API + '/api/payments/sumup/create-checkout', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ orderId: orderId, stage: 'balance' })
-                    })
-                    .then(function(resp) {
-                        if (!resp.ok) return resp.json().then(function(d) { throw new Error(d.error || d.details || 'Erreur creation checkout'); });
-                        return resp.json();
-                    })
-                    .then(function(checkoutData) {
-                        console.log('[PAYMENT] Checkout SumUp cree pour solde:', checkoutData);
-                        if (checkoutData.checkout_id) {
-                            showSumUpWidget(checkoutData.checkout_id, checkoutData.amount, orderId, 'balance');
-                        } else {
-                            throw new Error('ID de checkout non recu');
-                        }
-                    });
-                })
-                .catch(function(err) {
-                    console.error('[PAYMENT] Erreur payBalance:', err);
-                    alert('Erreur lors de la pr\u00E9paration du paiement du solde :\n\n' + err.message);
-                });
+                window.location.href = 'app.html';
             };
 
-            // =============================================
+                        // =============================================
             // CHARGEMENT PAR COMMANDE SPECIFIQUE
             // Utilise quand on vient de checkout.html (pendingOrderId en sessionStorage)
             // pour eviter d'afficher une ancienne commande deja payee comme active

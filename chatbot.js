@@ -187,7 +187,7 @@
             id: 'payment_security',
             category: 'paiement',
             keywords: ['securise', 'securite', 'fiable', 'confiance', 'arnaque', 'serieux', 'sur'],
-            response: 'Votre s\u00e9curit\u00e9 est notre priorit\u00e9. Les paiements sont trait\u00e9s via SumUp, une plateforme de paiement s\u00e9curis\u00e9e et certifi\u00e9e. Vos donn\u00e9es bancaires ne sont jamais stock\u00e9es sur nos serveurs. FA Genesis est une entreprise enregistr\u00e9e et l\u00e9gitime.',
+            response: 'Votre s\u00e9curit\u00e9 est notre priorit\u00e9. Les paiements sont trait\u00e9s via Stripe, une plateforme de paiement s\u00e9curis\u00e9e et certifi\u00e9e. Vos donn\u00e9es bancaires ne sont jamais stock\u00e9es sur nos serveurs. FA Genesis est une entreprise enregistr\u00e9e et l\u00e9gitime.',
             quickReplies: ['Voir les offres'],
             link: null
         },
@@ -539,7 +539,7 @@
             id: 'data_privacy',
             category: 'general',
             keywords: ['donnees', 'rgpd', 'confidentialite', 'vie privee', 'protection', 'donnees personnelles', 'securite donnees'],
-            response: 'La protection de vos donn\u00e9es personnelles est une priorit\u00e9. Vos informations sont utilis\u00e9es uniquement dans le cadre de votre accompagnement et ne sont jamais partag\u00e9es avec des tiers sans votre consentement. Les paiements sont s\u00e9curis\u00e9s via SumUp.',
+            response: 'La protection de vos donn\u00e9es personnelles est une priorit\u00e9. Vos informations sont utilis\u00e9es uniquement dans le cadre de votre accompagnement et ne sont jamais partag\u00e9es avec des tiers sans votre consentement. Les paiements sont s\u00e9curis\u00e9s via Stripe GENESIS SAFE\u2122.',
             quickReplies: [],
             link: null
         },

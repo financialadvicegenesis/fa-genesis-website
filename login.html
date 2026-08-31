@@ -364,7 +364,7 @@
             submitBtn.textContent = 'Se connecter';
 
             if (result.success) {
-                // Si mode devis : accepter le devis puis rediriger vers SumUp
+                // Si mode devis : accepter le devis puis rediriger vers app.html pour payer
                 if (quoteTokenParam) {
                     await handleQuoteAcceptAfterAuth(quoteTokenParam);
                     return;
@@ -601,7 +601,7 @@
                 var result = await response.json();
 
                 if (result.success) {
-                    // Rediriger vers la page devis pour payer via le widget SumUp
+                    // Rediriger vers la page devis pour payer via Stripe
                     window.location.href = 'quote-accept.html?token=' + encodeURIComponent(token);
                 } else {
                     var errorMessage = document.getElementById('errorMessage');

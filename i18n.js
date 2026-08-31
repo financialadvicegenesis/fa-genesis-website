@@ -357,7 +357,7 @@
         'Vous aurez accès à votre tableau de bord, vos livrables et votre suivi personnalisé.': 'You will have access to your dashboard, deliverables and personalized follow-up.',
         'Un conseiller FA Genesis vous contactera sous 24 à 48h après le paiement.': 'An FA Genesis advisor will contact you within 24 to 48 hours after payment.',
         'Payer l\'acompte (30%)': 'Pay the deposit (30%)',
-        'Paiement sécurisé par SumUp': 'Secure payment via SumUp',
+        'Paiement sécurisé par Stripe': 'Secure payment via Stripe',
         'Le solde (70%) sera dû après livraison.': 'The balance (70%) will be due after delivery.',
         'Votre offre': 'Your offer',
         'Chargement...': 'Loading...',

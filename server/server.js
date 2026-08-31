@@ -1,10 +1,10 @@
 /**
- * FA GENESIS - Backend Node.js pour Integration SumUp
+ * FA GENESIS - Backend Node.js / Stripe GENESIS SAFE™
  *
  * SECURITE:
- * - La cle API SumUp est stockee dans .env (jamais dans le code)
- * - Les prix sont calcules cote serveur (jamais envoyes par le front)
- * - Les webhooks SumUp sont verifies avant mise a jour
+ * - Les clés API Stripe sont dans .env (jamais dans le code)
+ * - Les prix sont calculés côté serveur (jamais envoyés par le front)
+ * - Les webhooks Stripe sont vérifiés par signature avant mise à jour
  */
 
 require('dotenv').config();
@@ -59,7 +59,6 @@ app.set('trust proxy', 1);
 // CONFIGURATION
 // ============================================================
 
-const SUMUP_API_BASE = 'https://api.sumup.com/v0.1';
 const ORDERS_FILE = path.join(__dirname, 'data', 'orders.json');
 const USERS_FILE = path.join(__dirname, 'data', 'users.json');
 const PARTNERS_FILE = path.join(__dirname, 'data', 'partners.json');
@@ -1357,20 +1356,31 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
             var authOrderId = piAuth.metadata && piAuth.metadata.order_id;
             var authStage   = piAuth.metadata && piAuth.metadata.stage;
             console.log('[STRIPE-WH] GENESIS SAFE™ carte autorisée (réservée, non capturée):', piAuth.id, authOrderId, authStage);
-            if (authOrderId && (authStage === 'deposit' || authStage === 'installment_1')) {
+            if (authOrderId && (authStage === 'deposit' || authStage === 'installment_1' || authStage === 'balance')) {
                 var authOrders = loadOrders();
                 var authIdx = authOrders.findIndex(function(o) { return o.id === authOrderId; });
                 if (authIdx !== -1) {
-                    authOrders[authIdx].deposit_authorized     = true;
-                    authOrders[authIdx].deposit_authorized_at  = new Date().toISOString();
-                    authOrders[authIdx].stripe_deposit_pi_id   = piAuth.id;
-                    authOrders[authIdx].paymentStatus          = 'deposit_authorized';
-                    authOrders[authIdx].payment_method         = 'stripe';
-                    authOrders[authIdx].updatedAt              = new Date().toISOString();
+                    if (authStage === 'balance') {
+                        // Solde réservé GENESIS SAFE™
+                        authOrders[authIdx].balance_authorized    = true;
+                        authOrders[authIdx].balance_authorized_at = new Date().toISOString();
+                        authOrders[authIdx].stripe_balance_pi_id  = piAuth.id;
+                        authOrders[authIdx].payment_method        = 'stripe';
+                        authOrders[authIdx].updatedAt             = new Date().toISOString();
+                        console.log('[STRIPE-WH] GENESIS SAFE™ — solde réservé (balance_authorized):', authOrderId, piAuth.id);
+                    } else {
+                        authOrders[authIdx].deposit_authorized     = true;
+                        authOrders[authIdx].deposit_authorized_at  = new Date().toISOString();
+                        authOrders[authIdx].stripe_deposit_pi_id   = piAuth.id;
+                        authOrders[authIdx].paymentStatus          = 'deposit_authorized';
+                        authOrders[authIdx].payment_method         = 'stripe';
+                        authOrders[authIdx].updatedAt              = new Date().toISOString();
+                    }
                     saveOrders(authOrders);
 
                     // Partner service : créer le dispatch maintenant (la carte est réservée)
-                    if (authOrders[authIdx].product_type === 'partner_service') {
+                    // Uniquement pour le dépôt — le solde n'initie pas de nouveau dispatch
+                    if (authStage !== 'balance' && authOrders[authIdx].product_type === 'partner_service') {
                         var _psOrderAuth = authOrders[authIdx];
                         var _psNewDispAuth = createPartnerServiceDispatch(_psOrderAuth);
                         if (_psNewDispAuth) {
@@ -1405,7 +1415,8 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
                 var orders = loadOrders();
                 var oIdx = orders.findIndex(function(o){ return o.id === orderId; });
                 if (oIdx !== -1) {
-                    var _wasAuthorized = orders[oIdx].deposit_authorized === true;
+                    // GENESIS SAFE™ : carte autorisée puis capturée — payout déjà géré dans mark-delivered/complete
+                    var _wasAuthorized = orders[oIdx].deposit_authorized === true || orders[oIdx].balance_authorized === true;
                     // Détecter si c'est un paiement direct (sans Connect) ou via Connect
                     var _piMethod = (pi.transfer_data && pi.transfer_data.destination) ? 'stripe_connect' : 'stripe';
                     if (stage === 'deposit' || stage === 'installment_1') {
@@ -2673,7 +2684,7 @@ async function checkAutoPaymentRelease() {
             console.log('[AUTO-RELEASE] Délai 7j dépassé — libération automatique GENESIS SAFE™ pour commande', _o.id);
 
             try {
-                // Étape 1 : capturer le PI si la carte est encore en mode "autorisé" (pas encore débitée)
+                // Étape 1 : capturer les PI si la carte est encore en mode "autorisé" (pas encore débité)
                 var _arPiId = _o.stripe_deposit_pi_id;
                 if (_arPiId && _o.deposit_authorized === true && _o.deposit_paid !== true) {
                     await scp.capturePaymentIntent(_arPiId);
@@ -2681,7 +2692,15 @@ async function checkAutoPaymentRelease() {
                     orders[_ari].deposit_paid_at = new Date().toISOString();
                     orders[_ari].paymentStatus   = 'deposit_paid';
                     modified = true;
-                    console.log('[AUTO-RELEASE] PI capturé automatiquement :', _arPiId);
+                    console.log('[AUTO-RELEASE] PI dépôt capturé automatiquement :', _arPiId);
+                }
+                var _arBalPiId = _o.stripe_balance_pi_id;
+                if (_arBalPiId && _o.balance_authorized === true && _o.balance_paid !== true) {
+                    await scp.capturePaymentIntent(_arBalPiId);
+                    orders[_ari].balance_paid    = true;
+                    orders[_ari].balance_paid_at = new Date().toISOString();
+                    modified = true;
+                    console.log('[AUTO-RELEASE] PI solde capturé automatiquement :', _arBalPiId);
                 }
 
                 // Étape 2 : trouver le dispatch ou l'assignation pour déclencher le Transfer
@@ -2961,54 +2980,6 @@ function calculateCurrentDay(order) {
 }
 
 // ============================================================
-// HELPER - SUMUP API
-// ============================================================
-
-async function callSumUpAPI(endpoint, method, body = null) {
-    const apiKey = process.env.SUMUP_API_KEY;
-
-    if (!apiKey || apiKey === 'COLLER_LA_CLE_ICI') {
-        throw new Error('SUMUP_API_KEY non configuree. Verifiez votre fichier .env');
-    }
-
-    const options = {
-        method,
-        headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json'
-        }
-    };
-
-    if (body) {
-        options.body = JSON.stringify(body);
-    }
-
-    const response = await fetch(`${SUMUP_API_BASE}${endpoint}`, options);
-    const data = await response.json();
-
-    if (!response.ok) {
-        console.error('Erreur SumUp API:', data);
-        throw new Error(data.message || data.error_message || 'Erreur SumUp API');
-    }
-
-    console.log('[SUMUP] API response keys:', Object.keys(data), 'id:', data.id, 'hosted_checkout_url:', data.hosted_checkout_url || 'N/A');
-    return data;
-}
-
-/**
- * Extraire l'URL de paiement depuis la reponse SumUp checkout.
- * Pour les hosted checkouts, la reponse contient hosted_checkout_url.
- * Pour les checkouts widget, on utilise le checkout_id avec SumUpCard.mount().
- */
-function getSumUpCheckoutUrl(checkoutResponse) {
-    if (checkoutResponse.hosted_checkout_url) {
-        return checkoutResponse.hosted_checkout_url;
-    }
-    // Fallback si hosted_checkout n'a pas ete demande
-    return null;
-}
-
-// ============================================================
 // ROUTES - HEALTH CHECK
 // ============================================================
 
@@ -3030,13 +3001,8 @@ app.get('/api/ping', (req, res) => {
 });
 
 app.get('/api/health', (req, res) => {
-    const hasApiKey = process.env.SUMUP_API_KEY && process.env.SUMUP_API_KEY !== 'COLLER_LA_CLE_ICI';
-    const hasMerchantCode = process.env.SUMUP_MERCHANT_CODE && process.env.SUMUP_MERCHANT_CODE !== 'COLLER_LE_MERCHANT_CODE_ICI';
-
     res.json({
         status: 'ok',
-        sumup_configured: hasApiKey && hasMerchantCode,
-        mode: process.env.SUMUP_MODE || 'sandbox',
         mongodb: persistentStore.getStatus ? persistentStore.getStatus() : (persistentStore.isConnected() ? 'connected' : 'not configured'),
         data: {
             users: loadUsers().length,
@@ -4106,135 +4072,6 @@ app.delete('/api/orders/:orderId', function(req, res) {
     }
 });
 
-// ============================================================
-// ROUTES - PAIEMENTS SUMUP
-// ============================================================
-
-/**
- * POST /api/payments/sumup/create-checkout
- * Creer un checkout SumUp pour une commande
- *
- * Body: { orderId, stage } ou stage = 'deposit' ou 'balance'
- * Response: { checkout_url, checkout_id }
- */
-app.post('/api/payments/sumup/create-checkout', async (req, res) => {
-    try {
-        const { orderId, stage } = req.body;
-
-        // Validation
-        if (!orderId) {
-            return res.status(400).json({ error: 'orderId requis' });
-        }
-
-        var isInstallmentStage = stage && stage.startsWith('installment_');
-        if (!stage || (!['deposit', 'balance'].includes(stage) && !isInstallmentStage)) {
-            return res.status(400).json({ error: 'stage invalide (deposit, balance ou installment_N)' });
-        }
-
-        // Recuperer la commande
-        const order = getOrderById(orderId);
-        if (!order) {
-            return res.status(404).json({ error: 'Commande non trouvee' });
-        }
-
-        // Verifier que le stage est valide pour cette commande
-        if (stage === 'deposit' && order.deposit_paid) {
-            return res.status(400).json({ error: 'Acompte deja paye' });
-        }
-
-        if ((stage === 'balance' || isInstallmentStage) && !order.deposit_paid) {
-            return res.status(400).json({ error: 'L\'acompte doit etre paye en premier' });
-        }
-
-        if (stage === 'balance' && order.balance_paid) {
-            return res.status(400).json({ error: 'Solde deja paye' });
-        }
-
-        // Determiner le montant selon le stage
-        var amount;
-        var stageLabel;
-
-        if (isInstallmentStage) {
-            // Versement spécifique : stage = 'installment_N'
-            var installList = order.installments || [];
-            var instItem = installList.find(function(it) { return it.stage === stage; });
-            if (!instItem) {
-                return res.status(400).json({ error: 'Versement introuvable : ' + stage });
-            }
-            if (instItem.paid) {
-                return res.status(400).json({ error: 'Ce versement a déjà été réglé' });
-            }
-            amount = instItem.amount;
-            stageLabel = instItem.label;
-        } else if (stage === 'balance') {
-            // Paiement du solde restant (tout payer maintenant)
-            if (order.installments && order.installments.length > 0) {
-                // Avec installments : solde = total - montant déjà payé
-                var alreadyPaid = order.amount_paid || order.deposit_amount || 0;
-                amount = order.total_amount - alreadyPaid;
-                if (amount <= 0) {
-                    return res.status(400).json({ error: 'Aucun solde restant à payer' });
-                }
-            } else {
-                amount = order.balance_amount;
-            }
-            stageLabel = 'Solde restant';
-        } else {
-            amount = order.deposit_amount;
-            stageLabel = 'Acompte 30%';
-        }
-
-        // Construire les URLs de retour
-        const successUrl = process.env.SUMUP_SUCCESS_URL || 'https://fagenesis.com/payment-success.html';
-        const failureUrl = process.env.SUMUP_FAILURE_URL || 'https://fagenesis.com/payment-failure.html';
-        const returnUrl = `${successUrl}?order=${orderId}&stage=${stage}`;
-
-        // Creer le checkout SumUp (widget mode - SumUpCard.mount utilise checkout_id)
-        // On ajoute un timestamp pour garantir l'unicite de la reference (evite le doublon si retry)
-        const checkoutData = {
-            checkout_reference: `${orderId}-${stage}-${Date.now()}`,
-            amount: amount,
-            currency: 'EUR',
-            pay_to_email: process.env.SUMUP_PAY_TO_EMAIL,
-            description: `FA GENESIS - ${order.product_name} (${stageLabel})`,
-            return_url: returnUrl
-        };
-
-        console.log(`[SUMUP] Creation checkout pour ${orderId} - ${stage} - ${amount}EUR`);
-
-        const checkoutResponse = await callSumUpAPI('/checkouts', 'POST', checkoutData);
-
-        // Mettre a jour la commande avec l'ID du checkout
-        updateOrder(orderId, {
-            checkout_id: checkoutResponse.id,
-            current_stage: stage
-        });
-
-        console.log(`[SUMUP] Checkout cree: ${checkoutResponse.id}`);
-
-        res.json({
-            success: true,
-            checkout_id: checkoutResponse.id,
-            checkout_url: getSumUpCheckoutUrl(checkoutResponse),
-            amount: amount,
-            stage: stage
-        });
-
-    } catch (error) {
-        console.error('Erreur creation checkout SumUp:', error);
-
-        // Message d'erreur specifique si la cle API n'est pas configuree
-        if (error.message.includes('non configuree')) {
-            return res.status(500).json({
-                error: 'Configuration SumUp incomplete',
-                details: 'Verifiez que SUMUP_API_KEY est configure dans le fichier .env'
-            });
-        }
-
-        res.status(500).json({ error: 'Erreur lors de la creation du checkout', details: error.message });
-    }
-});
-
 /**
  * POST /api/payments/cart/stripe-intent
  * Crée un PaymentIntent Stripe direct pour le panier FA GENESIS (sans Connect)
@@ -4295,7 +4132,7 @@ app.post('/api/payments/order/stripe-direct', async function(req, res) {
         var order = getOrderById(orderId);
         if (!order) return res.status(404).json({ error: 'Commande introuvable' });
 
-        // Résoudre le montant selon le stage (identique à la logique SumUp)
+        // Résoudre le montant selon le stage
         var amount, stageLabel;
         var isInstallment = stage && stage.startsWith('installment_');
         if (isInstallment) {
@@ -4514,7 +4351,7 @@ app.post('/api/payments/paypal/create-order', async (req, res) => {
 });
 
 /**
- * Logique de confirmation de paiement partagée entre le webhook SumUp et la capture PayPal.
+ * Logique de confirmation de paiement partagée entre les webhooks Stripe/PayPal.
  * Met à jour le statut de la commande, synchronise users.json, envoie les notifications,
  * crée le dispatch partenaire et déclenche les versements.
  */
@@ -4691,13 +4528,6 @@ async function refundClientOrder(order) {
             else { console.error('[REFUND] PayPal réponse inattendue:', JSON.stringify(ppResult)); }
         } catch(e) { console.error('[REFUND] PayPal erreur:', e.message); }
     }
-    // Tentative remboursement SumUp (seulement si pas PayPal)
-    if (!refunded && order.transaction_id && !order.paypal_capture_id) {
-        try {
-            await callSumUpAPI('/v0.1/me/refunds/' + order.transaction_id, 'PUT', depositAmount > 0 ? { amount: depositAmount } : null);
-            refunded = true;
-        } catch(e) { console.error('[REFUND] SumUp erreur:', e.message); }
-    }
     // Tentative remboursement Stripe (Connect ou direct) via l'ID du PaymentIntent enregistré
     if (!refunded && order.stripe_deposit_pi_id) {
         try {
@@ -4715,7 +4545,7 @@ async function refundClientOrder(order) {
         status: 'refunded',
         deposit_paid: false,
         refunded_at: new Date().toISOString(),
-        refund_method: order.paypal_capture_id ? 'paypal' : (order.transaction_id ? 'sumup' : 'manual'),
+        refund_method: order.paypal_capture_id ? 'paypal' : (order.stripe_deposit_pi_id ? 'stripe' : 'manual'),
         refund_reason: 'Refus prestataire',
         refund_success: refunded
     });
@@ -5185,10 +5015,10 @@ app.get('/api/client/wallet', function(req, res) {
             if (!o.client_info || !o.client_info.email) return false;
             if (o.client_info.email.toLowerCase() !== user.email.toLowerCase()) return false;
             if (o.status === 'cancelled' || o.status === 'refunded') return false;
-            // Inclure si deposit_authorized (carte réservée GENESIS SAFE™), deposit_paid, balance_paid
+            // Inclure si deposit_authorized / balance_authorized (carte réservée GENESIS SAFE™), deposit_paid, balance_paid
             // ou si au moins une installment payée
             var hasPaidInst = Array.isArray(o.installments) && o.installments.some(function(i) { return i.paid; });
-            return o.deposit_authorized === true || o.deposit_paid === true || o.balance_paid === true || hasPaidInst;
+            return o.deposit_authorized === true || o.balance_authorized === true || o.deposit_paid === true || o.balance_paid === true || hasPaidInst;
         });
 
         var totalHeld = 0;
@@ -5245,9 +5075,11 @@ app.get('/api/client/wallet', function(req, res) {
                     var balAmt = parseFloat(order.balance_amount) || 0;
                     if (order.balance_paid) {
                         released += depositAmt + balAmt;
-                    } else if (_hasFunds) {
-                        held += depositAmt;
-                        if (order.balance_payment_ready) held += balAmt;
+                    } else {
+                        if (_hasFunds) held += depositAmt;
+                        // Solde réservé GENESIS SAFE™ (balance_authorized) ou en attente de paiement
+                        if (order.balance_authorized === true && !order.balance_paid) held += balAmt;
+                        else if (order.balance_payment_ready) held += balAmt;
                     }
                 } else {
                     var totalAmt = parseFloat(order.deposit_amount) || parseFloat(order.total_amount) || 0;
@@ -5276,7 +5108,7 @@ app.get('/api/client/wallet', function(req, res) {
             var _hasPendingAdminPayout = payouts.some(function(p) {
                 return p.order_id === order.id && p.status === 'pending_admin';
             });
-            var _isAuthOnly = order.deposit_authorized === true && !order.deposit_paid;
+            var _isAuthOnly = (order.deposit_authorized === true && !order.deposit_paid) || (order.balance_authorized === true && !order.balance_paid);
             var statusLabel = dispatchNotAccepted && held > 0
                 ? (_isAuthOnly ? 'Carte réservée GENESIS SAFE™ — en attente d\'acceptation du prestataire' : 'Paiement reçu — en attente d\'acceptation du prestataire')
                 : _isPI
@@ -5405,7 +5237,7 @@ app.post('/api/client/wallet/withdraw/:order_id', async function(req, res) {
             message: refunded
                 ? 'Remboursement initié. L\'argent sera crédité sur votre mode de paiement d\'origine sous 3-5 jours ouvrés.'
                 : 'Vos coordonnées bancaires ont été transmises à notre équipe. Vous recevrez un virement SEPA sous 24-48h.',
-            refund_method: order.paypal_capture_id ? 'paypal' : (order.transaction_id ? 'sumup' : 'virement_iban')
+            refund_method: order.paypal_capture_id ? 'paypal' : (order.stripe_deposit_pi_id ? 'stripe' : 'virement_iban')
         });
     } catch(e) {
         console.error('[WALLET_WITHDRAW]', e.message);
@@ -5436,7 +5268,7 @@ app.get('/api/partner/wallet', authenticatePartner, function(req, res) {
             return o.partner_id === partnerId
                 && o.product_type === 'partner_service'
                 && dispatchOrderIds.indexOf(o.id) === -1
-                && (o.deposit_authorized || o.deposit_paid || o.balance_paid);
+                && (o.deposit_authorized || o.balance_authorized || o.deposit_paid || o.balance_paid);
         });
 
         var totalHeld = 0;
@@ -5636,286 +5468,8 @@ app.post('/api/payments/apple-pay/validate', async (req, res) => {
 });
 
 /**
- * POST /api/payments/apple-pay/complete
- * Complete a SumUp checkout using an Apple Pay payment token
- */
-app.post('/api/payments/apple-pay/complete', async (req, res) => {
-    try {
-        const { checkoutId, paymentToken } = req.body;
-        if (!checkoutId || !paymentToken) {
-            return res.status(400).json({ error: 'checkoutId et paymentToken requis', success: false });
-        }
-
-        console.log('[APPLE PAY] Completion checkout:', checkoutId);
-
-        const result = await callSumUpAPI('/checkouts/' + checkoutId, 'PUT', {
-            payment_type: 'applepay',
-            token: typeof paymentToken === 'string' ? paymentToken : JSON.stringify(paymentToken)
-        });
-
-        const success = result.status === 'PAID' || result.status === 'SUCCESSFUL';
-        console.log('[APPLE PAY] Checkout status:', result.status, '— success:', success);
-        res.json({ success: success, status: result.status });
-    } catch (error) {
-        console.error('[APPLE PAY] Complete error:', error.message);
-        res.status(500).json({ error: error.message, success: false });
-    }
-});
-
-/**
- * GET /api/payments/sumup/status/:checkoutId
- * Verifier le statut d'un checkout SumUp
- */
-app.get('/api/payments/sumup/status/:checkoutId', async (req, res) => {
-    try {
-        const { checkoutId } = req.params;
-
-        const status = await callSumUpAPI(`/checkouts/${checkoutId}`, 'GET');
-
-        res.json(status);
-
-    } catch (error) {
-        console.error('Erreur verification statut:', error);
-        res.status(500).json({ error: 'Erreur lors de la verification du statut' });
-    }
-});
-
-/**
- * POST /api/payments/sumup/webhook
- * Recevoir les notifications de paiement SumUp
- *
- * SECURITE: En production, verifier la signature du webhook
- */
-app.post('/api/payments/sumup/webhook', async (req, res) => {
-    try {
-        console.log('[WEBHOOK] Notification recue:', JSON.stringify(req.body, null, 2));
-
-        const { event_type, checkout_reference, id, status, transaction_code, transaction_id } = req.body;
-
-        // Extraire l'orderId et le stage du checkout_reference
-        // Format: ORD-XXXXX-deposit-TIMESTAMP ou ORD-XXXXX-balance-TIMESTAMP (ou sans timestamp)
-        const parts = checkout_reference ? checkout_reference.split('-') : [];
-        // Retirer le timestamp final s'il est numerique (format avec timestamp)
-        if (parts.length > 0 && /^\d+$/.test(parts[parts.length - 1])) {
-            parts.pop();
-        }
-        const stage = parts.pop(); // 'deposit', 'balance', ou 'installment_N'
-        const orderId = parts.join('-'); // 'ORD-XXXXX'
-
-        if (!orderId) {
-            console.log('[WEBHOOK] checkout_reference invalide:', checkout_reference);
-            return res.status(200).send('OK');
-        }
-
-        const order = getOrderById(orderId);
-        if (!order) {
-            console.log('[WEBHOOK] Commande non trouvee:', orderId);
-            return res.status(200).send('OK');
-        }
-
-        // Traiter selon le type d'evenement
-        if (event_type === 'CHECKOUT.PAID' || status === 'PAID') {
-            console.log(`[WEBHOOK] Paiement confirme pour ${orderId} - ${stage}`);
-
-            const updates = {
-                transaction_id: transaction_id || transaction_code
-            };
-
-            if (stage === 'deposit') {
-                updates.deposit_paid = true;
-                updates.status = 'active';
-                updates.start_date = null;
-                updates.schedule_status = 'awaiting_client_choice';
-                updates.proposed_start_date = null;
-                updates.schedule_confirmed_by_admin = false;
-                updates.schedule_confirmed_by_partner = false;
-                console.log('[WEBHOOK] Acompte paye - Commande active - En attente choix date client');
-            } else if (stage === 'balance') {
-                updates.balance_paid = true;
-                updates.status = 'paid_in_full';
-                // GENESIS SAFE™ : si la commande a un split 3 tranches et que le client a payé
-                // tout le solde restant en un clic, marquer aussi les tranches 2/3 comme payées
-                // (sinon getAccessRights, qui se base sur installments[2].paid, resterait bloqué).
-                if (order.installments && order.installments.length === 3) {
-                    var balUpdatedInstallments = order.installments.map(function(i) {
-                        if (i.paid) return i;
-                        return Object.assign({}, i, { paid: true, paid_at: new Date().toISOString() });
-                    });
-                    updates.installments = balUpdatedInstallments;
-                    updates.amount_paid = balUpdatedInstallments.reduce(function(sum, i) { return sum + (i.paid ? i.amount : 0); }, 0);
-                }
-                console.log(`[WEBHOOK] Solde payé - Commande complète`);
-            } else if (stage === 'installment_2' || stage === 'installment_3') {
-                // GENESIS SAFE™ : tranche 2 (livrable intermédiaire, 40%) ou tranche 3 (livraison finale, 30%)
-                var instIdx = (order.installments || []).findIndex(function(i) { return i.stage === stage; });
-                if (instIdx !== -1) {
-                    var updatedInstallments = order.installments.map(function(i, idx) {
-                        if (idx !== instIdx) return i;
-                        return Object.assign({}, i, { paid: true, paid_at: new Date().toISOString() });
-                    });
-                    updates.installments = updatedInstallments;
-                    updates.amount_paid = updatedInstallments.reduce(function(sum, i) { return sum + (i.paid ? i.amount : 0); }, 0);
-                    if (stage === 'installment_2') {
-                        updates.status = 'mid_delivery_paid';
-                        console.log('[WEBHOOK] Tranche 2 (livrable intermédiaire) payée');
-                    } else {
-                        updates.balance_paid = true;
-                        updates.status = 'paid_in_full';
-                        console.log('[WEBHOOK] Tranche 3 (livraison finale) payée - Commande complète');
-                    }
-                }
-            }
-
-            const updatedOrder = updateOrder(orderId, updates);
-
-            // === SYNCHRONISER users.json avec le paymentStatus ===
-            if (updatedOrder && updatedOrder.client_info && updatedOrder.client_info.email) {
-                try {
-                    var users = loadUsers();
-                    var userIdx = users.findIndex(function(u) {
-                        return u.email && u.email.toLowerCase() === updatedOrder.client_info.email.toLowerCase();
-                    });
-                    if (userIdx !== -1) {
-                        var newPaymentStatus = stage === 'deposit' ? 'deposit_paid'
-                            : stage === 'installment_2' ? 'mid_delivery_paid'
-                            : (stage === 'balance' || stage === 'installment_3') ? 'fully_paid'
-                            : null;
-                        if (newPaymentStatus) {
-                            users[userIdx].paymentStatus = newPaymentStatus;
-                            users[userIdx].payment_status = newPaymentStatus;
-                        }
-                        users[userIdx].activeOrderId = orderId;
-                        saveUsers(users);
-                        console.log('[WEBHOOK] users.json mis à jour: ' + updatedOrder.client_info.email + ' → paymentStatus=' + newPaymentStatus);
-                    } else {
-                        console.log('[WEBHOOK] Utilisateur non trouvé dans users.json: ' + updatedOrder.client_info.email);
-                    }
-                } catch (syncErr) {
-                    console.error('[WEBHOOK] Erreur sync users.json (non-bloquant):', syncErr.message);
-                }
-            }
-
-            // Push notifications paiement
-            if (updatedOrder && updatedOrder.client_info && updatedOrder.client_info.email) {
-                var pushClientEmail = updatedOrder.client_info.email;
-                var pushMsgClient = stage === 'deposit' ? 'Votre acompte a été reçu. Votre accompagnement démarre !'
-                    : stage === 'installment_2' ? 'Le paiement de la tranche 2 (livrable intermédiaire) a été reçu. Merci !'
-                    : 'Votre paiement complet a été confirmé. Merci !';
-                var pushStageLabel = stage === 'deposit' ? 'acompte' : stage === 'installment_2' ? 'tranche 2' : stage === 'installment_3' ? 'tranche 3' : 'solde';
-                notifyUser(pushClientEmail, 'client', 'paiement', 'Paiement confirmé ✅', pushMsgClient, '#reservations');
-                notifyUser(null, 'admin', 'paiement-admin', 'Paiement reçu', (updatedOrder.client_info.first_name || '') + ' — ' + (updatedOrder.product_name || '') + ' — ' + pushStageLabel, '/app.html#open-admin');
-            }
-
-            // Envoyer les emails appropriés
-            if (updatedOrder && updatedOrder.client_info) {
-                const clientEmail = updatedOrder.client_info.email;
-                const clientName = `${updatedOrder.client_info.first_name} ${updatedOrder.client_info.last_name}`;
-
-                if (stage === 'deposit') {
-                    // Après paiement de l'acompte : envoyer l'email de bienvenue/confirmation d'inscription
-                    const { getProductById, calculatePaymentAmounts } = require('./products');
-                    const product = getProductById(updatedOrder.product_id);
-                    let offerData = null;
-                    if (product) {
-                        const amounts = calculatePaymentAmounts(product.total_price);
-                        offerData = {
-                            name: product.name,
-                            category: product.category,
-                            product_type: product.product_type,
-                            total_price: product.total_price,
-                            duration: product.duration,
-                            deposit_amount: amounts.deposit_amount,
-                            balance_amount: amounts.balance_amount
-                        };
-                    }
-
-                    if (updatedOrder.product_type === 'partner_service') {
-                        const psPartner = getPartnerById(updatedOrder.partner_id);
-                        const psPartnerEmail = psPartner ? (psPartner.email || psPartner.contact_email || null) : null;
-                        const psPartnerName = psPartner ? (psPartner.prenom ? (psPartner.prenom + ' ' + (psPartner.nom || '')) : psPartner.company || 'votre prestataire') : 'votre prestataire';
-                        // Email récapitulatif envoyé immédiatement — indépendamment de la création du dispatch
-                        emailService.sendPartnerServiceOrderConfirmation(
-                            updatedOrder.client_info.email,
-                            updatedOrder.client_info ? updatedOrder.client_info.first_name : '',
-                            updatedOrder,
-                            psPartnerName
-                        ).catch(function(e){ console.error('[WEBHOOK] Email commande partenaire:', e.message); });
-                        const psDispatch = createPartnerServiceDispatch(updatedOrder);
-                        if (psDispatch) {
-                            // Notifier le PRESTATAIRE : nouvelle commande payée, acceptation requise
-                            if (psPartnerEmail) {
-                                notifyUser(psPartnerEmail, 'partner', 'mission_pending',
-                                    '🆕 Nouvelle commande !',
-                                    ((updatedOrder.client_info && updatedOrder.client_info.first_name) || 'Un client') + ' a payé pour "' + (updatedOrder.product_name || 'votre prestation') + '". Acceptez ou refusez dans les 24h.',
-                                    '#partner:missions');
-                            }
-                            // Notifier le CLIENT : paiement réussi
-                            notifyUser(updatedOrder.client_info.email, 'client', 'payment_success',
-                                '✅ Paiement réussi !',
-                                'Votre paiement a bien été reçu. ' + psPartnerName + ' va prendre en charge votre demande sous 24h.',
-                                '#tab:resa');
-                            console.log('[WEBHOOK] Mission partenaire créée — en attente d\'acceptation du prestataire');
-                        }
-                    } else {
-                        assignIntervenantsFromOrder(orderId);
-                        console.log('[WEBHOOK] Acompte retenu — en attente acceptation partenaire');
-                        emailService.sendPaymentConfirmation(clientEmail, clientName, updatedOrder).catch(err => console.error('[WEBHOOK] Email acompte:', err));
-                    }
-
-                    // NOTE: Le bootstrap projet est maintenant declenche par finalizeSchedule()
-                    // apres que le client ait choisi une date ET que admin+partenaire aient confirme
-                    console.log('[WEBHOOK] Bootstrap reporte - en attente choix date client');
-
-                } else if (stage === 'balance' || stage === 'installment_2' || stage === 'installment_3') {
-                    var isFinalPayment = (stage === 'balance' || stage === 'installment_3');
-
-                    if (isFinalPayment) {
-                        // Après paiement du solde / de la tranche finale : confirmation de paiement complet
-                        emailService.sendPaymentConfirmation(
-                            clientEmail,
-                            clientName,
-                            updatedOrder
-                        ).then(result => {
-                            if (result.success) {
-                                console.log(`[WEBHOOK] Email de paiement envoyé à ${clientEmail}`);
-                            }
-                        }).catch(err => console.error('[WEBHOOK] Erreur envoi email paiement:', err));
-                    }
-
-                    // Verser la part de cette tranche
-                    var _acceptedD = loadDispatches().filter(function(d) { return d.order_id === orderId && d.status === 'accepted'; });
-                    _acceptedD.forEach(function(d) { processDispatchPayout(d, stage).catch(function(e) { console.error('[PAYOUT] Erreur ' + stage + ' webhook:', e); }); });
-                    if (_acceptedD.length === 0) console.log('[WEBHOOK] Aucun dispatch accepté pour versement ' + stage + ' — commande ' + orderId);
-                    if (isFinalPayment) {
-                        requestPartnerReviews(clientEmail, _acceptedD);
-                        checkReferralAndMissionRewards(clientEmail);
-                        // Tâche 7 : Jérémie proactif après paiement final
-                        try {
-                            var _wUser = loadUsers().find(function(u){ return (u.email||'')===(clientEmail||''); });
-                            if (_wUser) checkAndSendProactiveQGNotif(_wUser.email, 'client', getClientGenesisPoints(_wUser));
-                            _acceptedD.forEach(function(d){
-                                if (d.claimed_by_partner_id) {
-                                    var _wPtnr = loadPartners().find(function(p){ return p.id === d.claimed_by_partner_id; });
-                                    if (_wPtnr) checkAndSendProactiveQGNotif(_wPtnr.email, 'partner', getPartnerGenesisPoints(_wPtnr));
-                                }
-                            });
-                        } catch(_e) {}
-                    }
-                }
-            }
-        }
-
-        res.status(200).send('OK');
-
-    } catch (error) {
-        console.error('[WEBHOOK] Erreur:', error);
-        res.status(200).send('OK'); // Toujours retourner 200 pour eviter les retries
-    }
-});
-
-/**
  * POST /api/payments/verify
- * Verification manuelle du paiement (apres retour de SumUp)
+ * Verification manuelle du paiement (idempotent — evite les doublons)
  * Utilise par le frontend pour confirmer le paiement
  */
 app.post('/api/payments/verify', async (req, res) => {
@@ -5975,18 +5529,6 @@ app.post('/api/payments/verify', async (req, res) => {
         if (!isNewPayment) {
             // Déjà traité (appel dupliqué) — retourner l'état actuel sans rien faire
             return res.json({ success: true, paid: order.deposit_paid || order.balance_paid, already_processed: true, order });
-        }
-
-        // ── Récupérer le transaction_id depuis SumUp (optionnel — ne bloque pas) ───
-        if (order.checkout_id) {
-            try {
-                var checkoutStatus = await callSumUpAPI('/checkouts/' + order.checkout_id, 'GET');
-                if (checkoutStatus.transaction_id || checkoutStatus.transaction_code) {
-                    updates.transaction_id = checkoutStatus.transaction_id || checkoutStatus.transaction_code;
-                }
-            } catch (sumupErr) {
-                console.log('[VERIFY] SumUp API indisponible pour transaction_id (paiement traité quand même):', sumupErr.message);
-            }
         }
 
         var updatedOrder = updateOrder(orderId, updates);
@@ -10178,7 +9720,7 @@ app.put('/api/orders/:orderId/mark-completed', (req, res) => {
 
 /**
  * POST /api/admin/orders/:orderId/confirm-deposit
- * Confirmer manuellement le paiement de l'acompte (sans SumUp)
+ * Confirmer manuellement le paiement de l'acompte
  */
 app.post('/api/admin/orders/:orderId/confirm-deposit', function(req, res) {
     try {
@@ -15921,8 +15463,8 @@ app.post('/api/partner/projects/:orderId/complete', authenticatePartner, async f
         if (order.partner_completed) {
             return res.status(400).json({ error: 'Prestation déjà déclarée terminée' });
         }
-        // Accepter deposit_authorized (carte réservée) ET deposit_paid/balance_paid (déjà capturé)
-        if (!order.deposit_paid && !order.balance_paid && !order.deposit_authorized) {
+        // Accepter deposit_authorized/balance_authorized (carte réservée) ET deposit_paid/balance_paid (déjà capturé)
+        if (!order.deposit_paid && !order.balance_paid && !order.deposit_authorized && !order.balance_authorized) {
             return res.status(400).json({ error: 'Aucun paiement GENESIS SAFE™ trouvé pour cette commande' });
         }
 
@@ -15946,11 +15488,21 @@ app.post('/api/partner/projects/:orderId/complete', authenticatePartner, async f
             try {
                 await scp.capturePaymentIntent(_piIdComplete);
                 updateOrder(order.id, { deposit_paid: true, deposit_paid_at: new Date().toISOString(), paymentStatus: 'deposit_paid' });
-                console.log('[COMPLETE] GENESIS SAFE™ — PI capturé, argent sur Stripe GENESIS:', _piIdComplete);
+                console.log('[COMPLETE] GENESIS SAFE™ — PI dépôt capturé, argent sur Stripe GENESIS:', _piIdComplete);
             } catch(capErr) {
-                console.error('[COMPLETE] Erreur capture PI:', capErr.message);
-                // Continuer quand même : marquer la commande en attente manuelle
+                console.error('[COMPLETE] Erreur capture PI dépôt:', capErr.message);
                 updateOrder(order.id, { capture_error: capErr.message, paymentStatus: 'capture_failed' });
+            }
+        }
+        // GENESIS SAFE™ : capturer le solde si autorisé mais pas encore capturé
+        var _balPiIdComplete = order.stripe_balance_pi_id;
+        if (_balPiIdComplete && order.balance_authorized && !order.balance_paid) {
+            try {
+                await scp.capturePaymentIntent(_balPiIdComplete);
+                updateOrder(order.id, { balance_paid: true, balance_paid_at: new Date().toISOString(), status: 'paid_in_full' });
+                console.log('[COMPLETE] GENESIS SAFE™ — PI solde capturé, argent sur Stripe GENESIS:', _balPiIdComplete);
+            } catch(capErr) {
+                console.error('[COMPLETE] Erreur capture PI solde:', capErr.message);
             }
         }
 
@@ -15980,8 +15532,8 @@ app.post('/api/partner/projects/:orderId/complete', authenticatePartner, async f
         if (order.payment_tier !== 'partner_installments') {
             var partnerRecord = loadPartners().find(function(p) { return p.id === partnerId; });
             var partnerPct = (dispatch && dispatch.partner_pct) ? dispatch.partner_pct : 75;
-            var totalPaid = parseFloat(order.deposit_paid ? (order.deposit_amount || order.total_amount || 0) : 0)
-                          + parseFloat(order.balance_paid ? (order.balance_amount || 0) : 0);
+            var totalPaid = parseFloat((order.deposit_paid || order.deposit_authorized) ? (order.deposit_amount || order.total_amount || 0) : 0)
+                          + parseFloat((order.balance_paid || order.balance_authorized) ? (order.balance_amount || 0) : 0);
             if (totalPaid <= 0) totalPaid = parseFloat(order.total_price || order.total_amount || 0);
             var partnerAmount = parseFloat((totalPaid * partnerPct / 100).toFixed(2));
 
@@ -17851,7 +17403,7 @@ app.get('/api/quotes/view/:token', function(req, res) {
  * POST /api/quotes/accept
  * Accepter un devis (authentification requise)
  * Le client doit etre connecte. Le devis est lie a son compte.
- * Cree une order + checkout SumUp + livrable PDF du devis.
+ * Cree une order + livrable PDF du devis.
  */
 app.post('/api/quotes/accept', async function(req, res) {
     try {
@@ -17883,32 +17435,10 @@ app.post('/api/quotes/accept', async function(req, res) {
         // Si deja accepte, retourner les infos existantes (idempotent)
         if (quote.status === 'ACCEPTED' || quote.status === 'DEPOSIT_PAID') {
             var existingOrder = quote.order_id ? getOrderById(quote.order_id) : null;
-            var existingCheckoutId = null;
-
-            // Si l'acompte n'est pas encore paye, recreer un checkout (widget mode)
-            if (existingOrder && !existingOrder.deposit_paid) {
-                try {
-                    var checkoutData = {
-                        checkout_reference: existingOrder.id + '-deposit-' + Date.now(),
-                        amount: existingOrder.deposit_amount,
-                        currency: 'EUR',
-                        pay_to_email: process.env.SUMUP_PAY_TO_EMAIL,
-                        description: 'FA GENESIS - Acompte devis ' + quote.quote_number,
-                        merchant_code: process.env.SUMUP_MERCHANT_CODE
-                    };
-                    var ckResp = await callSumUpAPI('/checkouts', 'POST', checkoutData);
-                    existingCheckoutId = ckResp.id;
-                    updateOrder(existingOrder.id, { checkout_id: ckResp.id, current_stage: 'deposit' });
-                } catch (e) {
-                    console.error('[QUOTE] Erreur recreation checkout:', e);
-                }
-            }
-
             return res.json({
                 success: true,
                 already_accepted: true,
                 order_id: quote.order_id,
-                checkout_id: existingCheckoutId,
                 deposit_paid: existingOrder ? existingOrder.deposit_paid : false,
                 deposit_amount: quote.pricing.deposit_amount,
                 total_amount: quote.pricing.total
@@ -18043,32 +17573,7 @@ app.post('/api/quotes/accept', async function(req, res) {
             console.error('[QUOTE] Erreur creation livrable PDF:', livrableError);
         }
 
-        // 5. Creer le checkout SumUp pour l'acompte (widget mode, pas hosted)
-        var checkoutId = null;
-        try {
-            var checkoutData = {
-                checkout_reference: newOrder.id + '-deposit',
-                amount: quote.pricing.deposit_amount,
-                currency: 'EUR',
-                pay_to_email: process.env.SUMUP_PAY_TO_EMAIL,
-                description: 'FA GENESIS - ' + productName + ' (Acompte 30%)',
-                merchant_code: process.env.SUMUP_MERCHANT_CODE
-            };
-
-            var checkoutResponse = await callSumUpAPI('/checkouts', 'POST', checkoutData);
-            checkoutId = checkoutResponse.id;
-
-            updateOrder(newOrder.id, {
-                checkout_id: checkoutId,
-                current_stage: 'deposit'
-            });
-
-            console.log('[QUOTE] Checkout SumUp cree: ' + checkoutId);
-        } catch (sumupError) {
-            console.error('[QUOTE] Erreur SumUp checkout:', sumupError);
-        }
-
-        // 6. Notification admin
+        // 5. Notification admin
         if (typeof emailService.sendAdminNotification === 'function') {
             emailService.sendAdminNotification({
                 name: authUser.prenom + ' ' + authUser.nom,
@@ -18081,7 +17586,6 @@ app.post('/api/quotes/accept', async function(req, res) {
         res.json({
             success: true,
             order_id: newOrder.id,
-            checkout_id: checkoutId,
             deposit_amount: quote.pricing.deposit_amount,
             total_amount: quote.pricing.total
         });
@@ -20898,7 +20402,8 @@ app.post('/api/payments/stripe/create-intent', async function(req, res) {
                 var _oList = loadOrders();
                 var _oI = _oList.findIndex(function(o) { return o.id === b.orderId; });
                 if (_oI !== -1) {
-                    _oList[_oI].stripe_deposit_pi_id = pi.id;
+                    var _piField = (b.stage === 'balance') ? 'stripe_balance_pi_id' : 'stripe_deposit_pi_id';
+                    _oList[_oI][_piField] = pi.id;
                     _oList[_oI].updated_at = new Date().toISOString();
                     saveOrders(_oList);
                 }
@@ -21614,37 +21119,17 @@ app.listen(PORT, async () => {
 
     console.log('');
     console.log('=================================================');
-    console.log('   FA GENESIS - Backend SumUp');
+    console.log('   FA GENESIS - Backend Stripe GENESIS SAFE™');
     console.log('=================================================');
     console.log(`   Serveur demarre sur http://localhost:${PORT}`);
-    console.log(`   Mode: ${process.env.SUMUP_MODE || 'sandbox'}`);
     console.log('');
-    console.log('   Endpoints disponibles:');
+    console.log('   Endpoints principaux:');
     console.log('   - GET  /api/health');
-    console.log('   - GET  /api/products');
-    console.log('   - POST /api/orders/create');
-    console.log('   - POST /api/payments/sumup/create-checkout');
-    console.log('   - POST /api/payments/sumup/webhook');
+    console.log('   - POST /api/payments/stripe/create-intent');
+    console.log('   - POST /api/payments/stripe/webhook');
     console.log('   - POST /api/payments/verify');
-    console.log('   - POST /api/contact (emails automatiques)');
-    console.log('   - GET  /api/admin/users');
-    console.log('   - GET  /api/admin/stats');
-    console.log('   - GET  /api/admin/messages');
-    console.log('   - POST /api/auth/register');
-    console.log('   - POST /api/auth/login');
-    console.log('   - GET  /api/auth/me');
-    console.log('   - POST /api/auth/logout');
-    console.log('   - GET  /api/sessions/me (seances client)');
-    console.log('   - GET/POST/PUT/DELETE /api/admin/sessions');
+    console.log('   - POST /api/auth/register / login / logout');
     console.log('');
-
-    // Verifier la configuration SumUp
-    const hasApiKey = process.env.SUMUP_API_KEY && process.env.SUMUP_API_KEY !== 'COLLER_LA_CLE_ICI';
-    if (!hasApiKey) {
-        console.log('   [ATTENTION] SUMUP_API_KEY non configuree!');
-        console.log('   Editez le fichier server/.env');
-        console.log('');
-    }
 
     // Verifier la configuration Email
     const hasSmtpConfig = process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASSWORD;

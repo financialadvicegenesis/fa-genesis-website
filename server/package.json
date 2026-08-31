@@ -1,7 +1,7 @@
 {
   "name": "fa-genesis-server",
   "version": "1.0.0",
-  "description": "Backend Node.js pour FA GENESIS - Integration SumUp",
+  "description": "Backend Node.js pour FA GENESIS - Stripe GENESIS SAFE",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -9,7 +9,7 @@
   },
   "keywords": [
     "fa-genesis",
-    "sumup",
+    "stripe",
     "payment"
   ],
   "author": "FA GENESIS",

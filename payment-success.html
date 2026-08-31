@@ -223,7 +223,7 @@
         }
 
         // Notifier le backend pour confirmer le paiement
-        // (au cas ou le webhook SumUp n'a pas fonctionné - Render free tier peut etre endormi)
+        // (au cas ou le webhook Stripe n'a pas encore été traité)
         if (orderId) {
             try {
                 var apiBase = window.FA_GENESIS_API || 'https://fa-genesis-website.onrender.com';
