@@ -17918,9 +17918,7 @@ function _ptnrRenderServicesSection(){
     if(!container) return;
     var inAudience = services.filter(function(s){ return (s.audience||'particulier')===audience; });
     if(inAudience.length === 0){
-      container.innerHTML = '<div style="padding:12px 4px;font-size:12px;color:#666;text-align:center;">'
-        +'<i class="fa-solid fa-circle-plus" style="color:rgba(255,215,0,.5);margin-right:6px;"></i>'
-        +'Aucune prestation pour ce public — cliquez <b>Ajouter une prestation</b> ci-dessous.</div>';
+      container.innerHTML = '';
     } else {
       container.innerHTML = inAudience.map(function(s){ return _ptnrRenderServiceItemRow(s); }).join('');
     }
