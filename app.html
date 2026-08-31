@@ -12818,6 +12818,7 @@ function _ptnrFmt(dateStr){
 // ── ACCUEIL PARTENAIRE ──
 function _ptnrLoadHome(){
   _renderPartnerHomeQGWidget(_ptnrLastRepData);
+  _loadEarningsSummary();
   var list = document.getElementById('ptnr-home-list');
   if(list) list.innerHTML = _skeletonRows(2);
   _ptnrRenderServicesSection();
@@ -13479,8 +13480,14 @@ if('serviceWorker' in navigator){
       if(!_ptnrToken){ _ptnrShowScreen('login'); return; }
       if(_ptnrSession && (_ptnrSession.partner_type==='admin'||_ptnrSession.role==='admin')){ _ptnrShowScreen('admin'); return; }
       var profileId = localStorage.getItem('fa_genesis_partner_profile');
-      if(_ptnrToken && profileId){ if(_ptnrSession) _ptnrSession._profileId = profileId; _ptnrShowDash(); }
-      else if(_ptnrToken){ _ptnrShowScreen('profiles'); _ptnrLoadProfileSelector(); }
+      if(_ptnrToken && profileId){
+        if(_ptnrSession) _ptnrSession._profileId = profileId;
+        _ptnrShowDash();
+        // Si aucun screen sauvegardé (onglet fermé/rouvert), charger l'accueil
+        var _savedPtnrScreen = null;
+        try{ _savedPtnrScreen = sessionStorage.getItem('fa_ptnr_screen'); }catch(e){}
+        if(!_savedPtnrScreen) _ptnrNav('home');
+      } else if(_ptnrToken){ _ptnrShowScreen('profiles'); _ptnrLoadProfileSelector(); }
     }
   };
 })();
