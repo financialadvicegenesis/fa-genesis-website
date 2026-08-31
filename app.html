@@ -15942,8 +15942,8 @@ function _ptnrDeclareComplete(orderId, requestId, btn){
     if(btn){ btn.disabled=true; btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> En cours…'; }
     haptic(15);
     _ptnrFetch('/api/partner/projects/'+orderId+'/complete','POST',{}).then(function(res){
-      if(res && res.success){
-        showToast('Prestation déclarée terminée','Le client a été notifié. Auto-paiement dans 7 jours si pas de réponse.','success');
+      if(res && (res.ok || res.success)){
+        showToast('Prestation déclarée terminée','Le client a été notifié. Il dispose de 7 jours pour valider. Les fonds restent sécurisés dans GENESIS SAFE™.','success');
         haptic([50,30,100]);
         _ptnrLoadMissions();
       } else {
@@ -15963,10 +15963,16 @@ function _clientValidateDelivery(orderId, requestId, btn){
     haptic(15);
     _cliFetch('/api/client/orders/'+orderId+'/validate-delivery','POST',{}).then(function(res){
       if(res && res.success){
-        showToast('Prestation validée !','Merci ! Le prestataire sera payé.','success');
+        showToast('Prestation validée !','Vos fonds GENESIS SAFE™ sont libérés et le virement vers le prestataire est en cours.','success');
         haptic([50,30,100]);
         _cliLoadOrders && _cliLoadOrders();
         _loadMyRequests && _loadMyRequests();
+        // Rafraîchir le portefeuille GENESIS SAFE™ si la section est actuellement affichée
+        try {
+          if(document.getElementById('wallet-content') && typeof showClientWallet==='function'){
+            setTimeout(function(){ showClientWallet(); }, 1500);
+          }
+        } catch(e){}
       } else {
         if(btn){ btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-circle-check"></i> Valider la prestation'; }
         showToast('Erreur',(res&&res.error)||'Impossible de valider','error');
