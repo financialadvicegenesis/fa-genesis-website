@@ -170,6 +170,7 @@ async function logout() {
     // Nettoyer le stockage local
     localStorage.removeItem(SESSION_KEY);
     localStorage.removeItem(TOKEN_KEY);
+    try { localStorage.removeItem('fa_app_cart'); } catch(e) {}
 
     // Rediriger vers la page de connexion
     window.location.href = 'login.html';

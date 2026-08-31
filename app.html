@@ -14602,6 +14602,9 @@ function regStepIdentity(){
 }
 
 function regShowSuccess(prenom, isStudentPending){
+  // Toujours vider le panier à l'inscription : un ancien compte supprimé ne doit
+  // pas laisser ses articles dans le navigateur pour un nouvel inscrit.
+  try{ APP_CART=[]; localStorage.removeItem('fa_app_cart'); updateCartBadge(); }catch(e){}
   var subDef = document.getElementById('reg-win-sub-default');
   var subStu = document.getElementById('reg-win-sub-student');
   if(isStudentPending && subDef && subStu){ subDef.style.display='none'; subStu.style.display=''; }
