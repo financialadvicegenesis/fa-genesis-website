@@ -20359,12 +20359,8 @@ app.post('/api/payments/stripe/create-intent', async function(req, res) {
     try {
         var token = (req.headers.authorization || '').replace('Bearer ', '').trim();
         if (!token) return res.status(401).json({ error: 'Token requis' });
-        var jwt = require('jsonwebtoken');
-        var payload;
-        try { payload = jwt.verify(token, process.env.JWT_SECRET); }
-        catch(e) { return res.status(401).json({ error: 'Token invalide' }); }
-        var users = loadUsers();
-        var user = users.find(function(u){ return u.email === payload.email; });
+        var user = findUserByToken(token);
+        if (!user) return res.status(401).json({ error: 'Token invalide' });
         if (!user) return res.status(401).json({ error: 'Utilisateur introuvable' });
 
         var b = req.body || {};
