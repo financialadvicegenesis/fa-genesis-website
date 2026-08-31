@@ -2742,6 +2742,152 @@ setTimeout(checkInstallmentReminders, 60000); // premier passage 1 min après le
 setInterval(checkInstallmentReminders, 24 * 60 * 60 * 1000);
 
 // ============================================================
+// AUTO-LIBÉRATION GENESIS SAFE™ — 7 jours sans réponse client
+// Si le partenaire a déclaré "terminé" et que le client ne valide pas
+// dans les 7 jours, les fonds sont automatiquement capturés puis
+// transférés au partenaire sans intervention manuelle.
+// ============================================================
+async function checkAutoPaymentRelease() {
+    try {
+        var now = Date.now();
+        var orders = loadOrders();
+        var modified = false;
+
+        for (var _ari = 0; _ari < orders.length; _ari++) {
+            var _o = orders[_ari];
+
+            // Conditions : partenaire a déclaré terminé + délai dépassé + pas encore libéré
+            if (!_o.partner_completed) continue;
+            if (!_o.auto_payment_release_at) continue;
+            if (new Date(_o.auto_payment_release_at).getTime() > now) continue;
+            if (_o.auto_released === true) continue;           // déjà traité
+            if (_o.balance_paid === true) continue;            // déjà payé intégralement
+            if (_o.status === 'cancelled' || _o.status === 'refunded') continue;
+            // Ne doit pas encore avoir de payout envoyé
+            var _arPayouts = loadPayouts();
+            var _arHasSent = _arPayouts.some(function(p) {
+                return p.order_id === _o.id && (p.status === 'sent' || p.status === 'pending_admin');
+            });
+            if (_arHasSent) {
+                // Payout déjà déclenché — juste marquer auto_released pour ne plus retraiter
+                orders[_ari].auto_released = true;
+                modified = true;
+                continue;
+            }
+
+            console.log('[AUTO-RELEASE] Délai 7j dépassé — libération automatique GENESIS SAFE™ pour commande', _o.id);
+
+            try {
+                // Étape 1 : capturer le PI si la carte est encore en mode "autorisé" (pas encore débitée)
+                var _arPiId = _o.stripe_deposit_pi_id;
+                if (_arPiId && _o.deposit_authorized === true && _o.deposit_paid !== true) {
+                    await scp.capturePaymentIntent(_arPiId);
+                    orders[_ari].deposit_paid    = true;
+                    orders[_ari].deposit_paid_at = new Date().toISOString();
+                    orders[_ari].paymentStatus   = 'deposit_paid';
+                    modified = true;
+                    console.log('[AUTO-RELEASE] PI capturé automatiquement :', _arPiId);
+                }
+
+                // Étape 2 : trouver le dispatch ou l'assignation pour déclencher le Transfer
+                var _arDisps = loadDispatches();
+                var _arDisp  = _arDisps.find(function(d) {
+                    return d.order_id === _o.id && d.status !== 'cancelled'
+                        && (d.claimed_by_partner_id || d.partner_id);
+                });
+
+                if (_arDisp) {
+                    await processDispatchPayout(_arDisp, 'deposit');
+                } else if (_o.partner_id) {
+                    // Commande directe sans dispatch — Transfer manuel via record payout
+                    var _arPartner = getPartnerById(_o.partner_id);
+                    var _arTotal   = parseFloat(_o.deposit_amount || _o.total_amount || 0);
+                    var _arPct     = 75;
+                    var _arAmt     = parseFloat((_arTotal * _arPct / 100).toFixed(2));
+                    if (_arAmt > 0 && _arPartner && _arPartner.stripeAccountId && _arPartner.stripeChargesEnabled) {
+                        var _arTransfer = await scp.createTransfer(
+                            Math.round(_arAmt * 100), 'eur', _arPartner.stripeAccountId,
+                            { order_id: _o.id, triggered_by: 'auto_release_7j' }
+                        );
+                        await scp.triggerConnectPayout(_arPartner.stripeAccountId, Math.round(_arAmt * 100), 'eur',
+                            'GENESIS SAFE™ auto-libération — ' + (_o.product_name || _o.id));
+                        console.log('[AUTO-RELEASE] Transfer auto GENESIS→Connect :', _arTransfer.id, _arAmt + '€');
+                        var _arAllPay = loadPayouts();
+                        _arAllPay.push({
+                            id: 'PAY-AR-' + Math.random().toString(36).substring(2, 10).toUpperCase(),
+                            order_id: _o.id,
+                            stage: 'deposit',
+                            partner_id: _o.partner_id,
+                            amount: _arAmt,
+                            status: 'sent',
+                            triggered_by: 'auto_release_7j',
+                            stripe_transfer_id: _arTransfer.id,
+                            created_at: new Date().toISOString(),
+                            sent_at: new Date().toISOString()
+                        });
+                        savePayouts(_arAllPay);
+                    } else if (_arAmt > 0) {
+                        // Pas de Connect → notifier l'admin
+                        var _arAllPay2 = loadPayouts();
+                        _arAllPay2.push({
+                            id: 'PAY-AR-' + Math.random().toString(36).substring(2, 10).toUpperCase(),
+                            order_id: _o.id,
+                            stage: 'deposit',
+                            partner_id: _o.partner_id,
+                            amount: _arAmt,
+                            status: 'pending_admin',
+                            triggered_by: 'auto_release_7j',
+                            created_at: new Date().toISOString()
+                        });
+                        savePayouts(_arAllPay2);
+                        notifyUser(null, 'admin', 'refund_manual',
+                            'Auto-libération GENESIS SAFE™ — virement requis',
+                            'Commande ' + _o.id + ' — ' + _arAmt + '€ à virer manuellement au partenaire ' + (_arPartner ? _arPartner.email : _o.partner_id),
+                            '/admin.html#payouts');
+                    }
+                }
+
+                // Marquer la commande comme auto-libérée
+                orders[_ari].auto_released         = true;
+                orders[_ari].auto_released_at      = new Date().toISOString();
+                orders[_ari].status                = 'completed';
+                orders[_ari].client_validated      = true; // considéré validé par délai
+                orders[_ari].pending_client_validation = false;
+                modified = true;
+
+                // Notifier le client et le partenaire
+                var _arClientEmail  = _o.client_info && _o.client_info.email;
+                var _arPartnerObj   = getPartnerById(_o.partner_id);
+                var _arPartnerEmail = _arPartnerObj ? (_arPartnerObj.email || _arPartnerObj.contact_email) : null;
+                if (_arClientEmail) {
+                    notifyUser(_arClientEmail, 'client', 'auto_release',
+                        'Paiement libéré automatiquement',
+                        'Faute de réponse sous 7 jours, le paiement de « ' + (_o.product_name || 'votre prestation') + ' » a été automatiquement versé au prestataire.',
+                        '/app.html#tab:wallet');
+                }
+                if (_arPartnerEmail) {
+                    notifyUser(_arPartnerEmail, 'partner', 'auto_release',
+                        'Virement automatique déclenché',
+                        'Le délai de 7 jours s\'est écoulé — votre paiement pour « ' + (_o.product_name || 'la prestation') + ' » a été automatiquement libéré.',
+                        '#partner:versements');
+                }
+
+            } catch(arErr) {
+                console.error('[AUTO-RELEASE] Erreur pour commande', _o.id, ':', arErr.message);
+            }
+        }
+
+        if (modified) saveOrders(orders);
+        console.log('[AUTO-RELEASE] Vérification terminée —', new Date().toLocaleString('fr-FR'));
+    } catch(e) {
+        console.error('[AUTO-RELEASE] Erreur globale:', e.message);
+    }
+}
+// Premier passage 2 min après démarrage, puis toutes les heures
+setTimeout(checkAutoPaymentRelease, 120000);
+setInterval(checkAutoPaymentRelease, 60 * 60 * 1000);
+
+// ============================================================
 // HELPERS - CALCUL JOUR COURANT (ACCOMPAGNEMENT)
 // ============================================================
 
