@@ -15860,10 +15860,10 @@ function _ptnrRenderProposalSentCard(r){
 // Mission signée et payée : frise de suivi (Phase 8) + actions de livraison
 function _ptnrRenderEngagedMissionCard(r){
   var statusKey = r.display_status && r.display_status.key;
-  var canMarkDelivering = r.dispatch_id && statusKey === 'in_progress';
-  // GENESIS SAFE™ : pour les missions small (≤ 300 €) en cours de livraison, le partenaire
-  // peut confirmer la livraison → déclenche le payout retenu
-  var canMarkDelivered = r.dispatch_id && r.payment_tier === 'small' && statusKey === 'delivering' && !r.delivery_confirmed;
+  // Pour les missions small (≤ 300 €) : passer directement à la confirmation de livraison
+  // sans l'étape intermédiaire "marquer livraison en cours"
+  var canMarkDelivered = r.dispatch_id && r.payment_tier === 'small' && !r.delivery_confirmed && !r.partner_completed;
+  var canMarkDelivering = r.dispatch_id && statusKey === 'in_progress' && !canMarkDelivered;
   return '<div class="dispatch-card" id="request-'+r.id+'">'
     +'<div class="dispatch-title">'+r.client_name+' — '+r.service_label+'</div>'
     +(r.payment_tier === 'small' ? '<div style="font-size:11px;color:#6dbf6d;font-weight:700;margin-bottom:6px;"><i class="fas fa-lock" style="margin-right:4px;"></i>GENESIS SAFE™ — fonds retenus jusqu\'à livraison</div>' : '')
@@ -15923,10 +15923,11 @@ function _ptnrMarkDelivering(dispatchId, requestId){
   });
 }
 function _ptnrMarkDelivered(dispatchId){
-  _showFloatingConfirm('Confirmer la livraison ? Les fonds GENESIS SAFE™ seront versés sur votre compte.', function(){
+  _showFloatingConfirm('Confirmer la livraison ? Les fonds GENESIS SAFE™ vont quitter l\'escrow et être versés sur votre compte via GENESIS.', function(){
     _ptnrFetch('/api/partner/dispatches/'+dispatchId+'/mark-delivered','POST',{}).then(function(res){
-      if(res.success){
-        showToast('Livraison confirmée','Les fonds ont été libérés. Merci !','success');
+      if(res.success || res.ok){
+        showToast('Livraison confirmée','Les fonds quittent GENESIS SAFE™ — le virement GENESIS est en cours.','success');
+        haptic([50,30,100]);
         _ptnrLoadMissions();
       } else {
         showToast(res.error||'Erreur','Réessayez','error');
@@ -15938,12 +15939,12 @@ function _ptnrMarkDelivered(dispatchId){
 }
 
 function _ptnrDeclareComplete(orderId, requestId, btn){
-  _showFloatingConfirm('Déclarer la prestation terminée ? Le client sera notifié et aura 7 jours pour valider. Sans réponse, votre paiement sera libéré automatiquement.', function(){
+  _showFloatingConfirm('Déclarer la prestation terminée ? Les fonds GENESIS SAFE™ vont quitter l\'escrow immédiatement et être versés sur votre compte via GENESIS. Le client recevra une notification de confirmation qualité.', function(){
     if(btn){ btn.disabled=true; btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> En cours…'; }
     haptic(15);
     _ptnrFetch('/api/partner/projects/'+orderId+'/complete','POST',{}).then(function(res){
       if(res && (res.ok || res.success)){
-        showToast('Prestation déclarée terminée','Le client a été notifié. Il dispose de 7 jours pour valider. Les fonds restent sécurisés dans GENESIS SAFE™.','success');
+        showToast('Prestation terminée — virement en cours','Les fonds quittent GENESIS SAFE™. GENESIS effectue le virement sur votre compte.','success');
         haptic([50,30,100]);
         _ptnrLoadMissions();
       } else {
@@ -15958,12 +15959,12 @@ function _ptnrDeclareComplete(orderId, requestId, btn){
 }
 
 function _clientValidateDelivery(orderId, requestId, btn){
-  _showFloatingConfirm('Confirmer que la prestation a bien été réalisée ? Cette action libèrera le paiement au prestataire.', function(){
+  _showFloatingConfirm('Confirmer que la prestation a bien été réalisée ? Il s\'agit d\'un avis qualité — le paiement au prestataire a déjà été déclenché par GENESIS lors de la déclaration de fin de prestation.', function(){
     if(btn){ btn.disabled=true; btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Validation…'; }
     haptic(15);
     _cliFetch('/api/client/orders/'+orderId+'/validate-delivery','POST',{}).then(function(res){
       if(res && res.success){
-        showToast('Prestation validée !','Vos fonds GENESIS SAFE™ sont libérés et le virement vers le prestataire est en cours.','success');
+        showToast('Merci pour votre avis !','Votre confirmation de satisfaction a bien été enregistrée.','success');
         haptic([50,30,100]);
         _cliLoadOrders && _cliLoadOrders();
         _loadMyRequests && _loadMyRequests();

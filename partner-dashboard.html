@@ -534,7 +534,7 @@ function projectCard(p){
 }
 
 function declareComplete(orderId, btn){
-  if(!confirm('Confirmer la fin de prestation ?\n\nLe client recevra une notification pour valider la livraison. En cas de non-réponse, votre paiement sera déclenché automatiquement sous 7 jours.')) return;
+  if(!confirm('Confirmer la fin de prestation ?\n\nLes fonds GENESIS SAFE™ vont quitter l\'escrow immédiatement. GENESIS effectuera le virement sur votre compte. Le client recevra une notification de confirmation qualité.')) return;
   btn.disabled = true;
   btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>Déclaration en cours…';
   fetch(API+'/api/partner/projects/'+orderId+'/complete',{

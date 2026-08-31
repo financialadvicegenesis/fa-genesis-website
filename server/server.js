@@ -5117,7 +5117,9 @@ app.get('/api/client/wallet', function(req, res) {
                     var payout = payouts.find(function(p) {
                         return p.order_id === order.id && p.stage === inst.stage;
                     });
-                    if (payout && payout.status === 'sent') {
+                    // 'sent' = transféré automatiquement via Stripe Connect
+                    // 'pending_admin' = transfert manuel en cours par l'équipe GENESIS
+                    if (payout && (payout.status === 'sent' || payout.status === 'pending_admin')) {
                         released += parseFloat(inst.amount) || 0;
                     } else {
                         held += parseFloat(inst.amount) || 0;
@@ -5165,10 +5167,15 @@ app.get('/api/client/wallet', function(req, res) {
 
             var partnerDone = !!(order.delivery_confirmed || order.partner_completed);
             var _isPI = order.payment_tier === 'partner_installments';
+            // Détecter si un virement admin est en attente (paiement libéré de l'escrow mais pas encore arrivé sur le compte Connect)
+            var _hasPendingAdminPayout = payouts.some(function(p) {
+                return p.order_id === order.id && p.status === 'pending_admin';
+            });
             var statusLabel = dispatchNotAccepted && held > 0
                 ? 'Paiement reçu — en attente d\'acceptation du prestataire'
                 : _isPI
                 ? 'Mensualités versées directement au prestataire'
+                : released > 0 && _hasPendingAdminPayout ? 'Virement en cours de traitement par GENESIS'
                 : held > 0 && partnerDone ? 'Prestation livrée — validation en cours'
                 : held > 0 ? 'Sécurisé GENESIS SAFE™ — en attente de livraison'
                 : 'Versé au prestataire ✓';
@@ -5336,11 +5343,14 @@ app.get('/api/partner/wallet', authenticatePartner, function(req, res) {
             var partnerPct = 75; // défaut 75% partenaire, 25% FA GENESIS
 
             var hasPaidInst = Array.isArray(order.installments) && order.installments.some(function(i) { return i.paid; });
+            // 'sent' = transféré via Stripe Connect ; 'pending_admin' = en cours traitement GENESIS
+            function _isReleased(p) { return p.status === 'sent' || p.status === 'pending_admin'; }
+
             if (hasPaidInst) {
                 order.installments.forEach(function(inst) {
                     if (!inst.paid) return;
                     var payout = payouts.find(function(p) {
-                        return p.order_id === order.id && p.stage === inst.stage && p.status === 'sent';
+                        return p.order_id === order.id && p.stage === inst.stage && _isReleased(p);
                     });
                     var instPartnerAmt = Math.round((parseFloat(inst.amount) || 0) * partnerPct) / 100;
                     if (payout) released += instPartnerAmt;
@@ -5357,14 +5367,14 @@ app.get('/api/partner/wallet', authenticatePartner, function(req, res) {
 
                 if (depositPaid) {
                     var depPayout = payouts.find(function(p) {
-                        return p.order_id === order.id && (p.stage === 'deposit' || p.stage === 'balance') && p.status === 'sent';
+                        return p.order_id === order.id && (p.stage === 'deposit' || p.stage === 'balance') && _isReleased(p);
                     });
                     if (depPayout) released += partnerDeposit;
                     else held += partnerDeposit;
                 }
                 if (balancePaid) {
                     var balPayout = payouts.find(function(p) {
-                        return p.order_id === order.id && p.stage === 'balance' && p.status === 'sent';
+                        return p.order_id === order.id && p.stage === 'balance' && _isReleased(p);
                     });
                     if (balPayout) released += partnerBalance;
                     else held += partnerBalance;
@@ -14839,9 +14849,14 @@ app.post('/api/partner/dispatches/:id/mark-delivered', authenticatePartner, asyn
         if (idx === -1) return res.status(404).json({ error: 'Mission introuvable' });
         var dispatch = dispatches[idx];
 
-        var partners = loadPartners();
-        var partner = partners.find(function(p) { return p.id === dispatch.partner_id; });
-        if (!partner || partner.email !== req.partnerEmail) {
+        // Autorisation : vérifier via partner_id OU claimed_by_partner_id
+        var partnerId = req.partner.id;
+        var partnerEmail = req.partner.email || req.partnerEmail;
+        var isAuthorized = dispatch.partner_id === partnerId
+            || dispatch.claimed_by_partner_id === partnerId
+            || dispatch.partner_email === partnerEmail
+            || dispatch.claimed_by_email === partnerEmail;
+        if (!isAuthorized) {
             return res.status(403).json({ error: 'Accès refusé' });
         }
 
@@ -14854,30 +14869,34 @@ app.post('/api/partner/dispatches/:id/mark-delivered', authenticatePartner, asyn
         if (order.payment_tier !== 'small') {
             return res.status(400).json({ error: 'Cette route s\'applique uniquement aux missions GENESIS SAFE™ ≤ 300 €.' });
         }
-        if (order.delivery_confirmed) {
+        if (order.delivery_confirmed || order.partner_completed) {
             return res.status(400).json({ error: 'Livraison déjà confirmée.' });
         }
 
         // Marquer la livraison sur la commande
+        var now = new Date().toISOString();
         orders[oIdx] = Object.assign({}, order, {
             delivery_confirmed: true,
-            delivery_confirmed_at: new Date().toISOString(),
-            status: 'delivered',
-            updated_at: new Date().toISOString()
+            delivery_confirmed_at: now,
+            partner_completed: true,
+            partner_completed_at: now,
+            pending_client_validation: true,
+            status: 'pending_client_validation',
+            updated_at: now
         });
         saveOrders(orders);
 
-        // Libérer les fonds retenus → payout au prestataire
+        // GENESIS SAFE™ : libérer les fonds → Transfer GENESIS Stripe → Connect partenaire → banque
         await processDispatchPayout(dispatch, 'deposit');
-        console.log('[DISPATCH] GENESIS SAFE™ — livraison confirmée, fonds libérés, acompte versé au prestataire', dispatch.id);
+        console.log('[DISPATCH] GENESIS SAFE™ — prestation terminée, fonds libérés de l\'escrow, virement déclenché', dispatch.id);
 
-        // Notifier le client que les livrables sont disponibles
+        // Notifier le client
         var clientEmail = order.client_info && order.client_info.email;
         if (clientEmail) {
-            notifyUser(clientEmail, 'client', 'delivery_ready',
-                'Livrables disponibles',
-                'Votre prestataire a confirmé la livraison. Vous pouvez maintenant télécharger vos fichiers.',
-                '/app.html#reservations');
+            notifyUser(clientEmail, 'client', 'prestation_delivered',
+                '📦 Prestation livrée — confirmation requise',
+                'Votre prestataire a confirmé la livraison de « ' + (order.product_name || 'votre prestation') + ' ». Merci de valider si tout est conforme.',
+                '/app.html#open-resa');
         }
 
         res.json({ success: true, delivery_confirmed: true });
@@ -15812,9 +15831,98 @@ app.post('/api/partner/projects/:orderId/complete', authenticatePartner, async f
                 '#tab:wallet');
         }
 
-        // GENESIS SAFE™ : les fonds restent en escrow jusqu'à la validation du client.
-        // Le virement vers le prestataire sera déclenché par POST /api/client/orders/:id/validate-delivery.
-        console.log('[COMPLETE] Prestation déclarée terminée : commande ' + order.id + ', partenaire ' + partnerId + '. Fonds gelés dans GENESIS SAFE™ en attente de validation client.');
+        // ── GENESIS SAFE™ : fonds libérés de l'escrow client → Transfer FA GENESIS Stripe → Connect partenaire ──
+        // Le client continue de voir sa validation qualité, mais l'argent quitte immédiatement Genesis Safe.
+        if (order.payment_tier !== 'partner_installments') {
+            var partnerRecord = loadPartners().find(function(p) { return p.id === partnerId; });
+            var partnerPct = (dispatch && dispatch.partner_pct) ? dispatch.partner_pct : 75;
+            var totalPaid = parseFloat(order.deposit_paid ? (order.deposit_amount || order.total_amount || 0) : 0)
+                          + parseFloat(order.balance_paid ? (order.balance_amount || 0) : 0);
+            if (totalPaid <= 0) totalPaid = parseFloat(order.total_price || order.total_amount || 0);
+            var partnerAmount = parseFloat((totalPaid * partnerPct / 100).toFixed(2));
+
+            if (partnerAmount > 0) {
+                var stageForPayout = (order.installments && order.installments.length >= 1)
+                    ? (order.installments[0].stage || 'deposit')
+                    : (order.balance_paid ? 'balance' : 'deposit');
+                var payoutRec = {
+                    id: 'PAY-' + Math.random().toString(36).substring(2, 10).toUpperCase(),
+                    order_id: order.id,
+                    dispatch_id: dispatch ? dispatch.id : null,
+                    stage: stageForPayout,
+                    partner_id: partnerId,
+                    partner_email: partnerRecord ? partnerRecord.email : null,
+                    payout_method: (partnerRecord && partnerRecord.stripeAccountId && partnerRecord.stripeChargesEnabled) ? 'stripe_connect'
+                        : ((partnerRecord && partnerRecord.bankDetails && partnerRecord.bankDetails.iban) ? 'wise' : 'pending'),
+                    amount: partnerAmount,
+                    fa_amount: parseFloat((totalPaid - partnerAmount).toFixed(2)),
+                    fa_pct: 100 - partnerPct,
+                    partner_pct: partnerPct,
+                    currency: 'EUR',
+                    status: 'pending',
+                    triggered_by: 'partner_complete',
+                    created_at: new Date().toISOString(),
+                    sent_at: null,
+                    stripe_transfer_id: null,
+                    stripe_payout_id: null,
+                    error: null
+                };
+                var allPaysC = loadPayouts();
+                allPaysC.push(payoutRec);
+                savePayouts(allPaysC);
+
+                if (partnerRecord && partnerRecord.stripeAccountId && partnerRecord.stripeChargesEnabled) {
+                    // Stripe Connect disponible → Transfer automatique GENESIS → Connect → banque
+                    try {
+                        var partnerCents = Math.round(partnerAmount * 100);
+                        var payDesc = 'GENESIS SAFE™ — ' + (order.product_name || order.id);
+                        var transfer = await scp.createTransfer(partnerCents, 'eur', partnerRecord.stripeAccountId,
+                            { order_id: order.id, partner_id: partnerId, triggered_by: 'partner_complete' });
+                        var lp1 = loadPayouts();
+                        var pi1 = lp1.findIndex(function(p) { return p.id === payoutRec.id; });
+                        if (pi1 !== -1) { lp1[pi1].stripe_transfer_id = transfer.id; savePayouts(lp1); }
+
+                        var payout = await scp.triggerConnectPayout(partnerRecord.stripeAccountId, partnerCents, 'eur', payDesc);
+                        var lp2 = loadPayouts();
+                        var pi2 = lp2.findIndex(function(p) { return p.id === payoutRec.id; });
+                        if (pi2 !== -1) {
+                            lp2[pi2].status = 'sent';
+                            lp2[pi2].sent_at = new Date().toISOString();
+                            lp2[pi2].stripe_payout_id = payout.id;
+                            savePayouts(lp2);
+                        }
+                        console.log('[COMPLETE] Transfer GENESIS→Connect : ' + transfer.id + ' (' + partnerAmount + '€ → ' + partnerRecord.stripeAccountId + ')');
+                    } catch(stripeErr) {
+                        // Transfer échoué → marquer pending_admin pour que GENESIS le traite manuellement
+                        var lpErr = loadPayouts();
+                        var piErr = lpErr.findIndex(function(p) { return p.id === payoutRec.id; });
+                        if (piErr !== -1) { lpErr[piErr].status = 'pending_admin'; lpErr[piErr].error = stripeErr.message; savePayouts(lpErr); }
+                        console.error('[COMPLETE] Erreur Stripe payout (→ pending_admin):', stripeErr.message);
+                        try {
+                            notifyUser(null, 'admin', 'refund_manual',
+                                'Virement partenaire requis — ' + (partnerRecord ? partnerRecord.email : partnerId),
+                                'Commande ' + order.id + ' — ' + partnerAmount + '€. Erreur Stripe : ' + stripeErr.message,
+                                '/admin.html#payouts');
+                        } catch(ne) {}
+                    }
+                } else {
+                    // Pas de Stripe Connect → virement manuel GENESIS (admin panel)
+                    var lpM = loadPayouts();
+                    var piM = lpM.findIndex(function(p) { return p.id === payoutRec.id; });
+                    if (piM !== -1) { lpM[piM].status = 'pending_admin'; savePayouts(lpM); }
+                    console.log('[COMPLETE] Virement admin requis → ' + (partnerRecord ? partnerRecord.email : partnerId) + ' : ' + partnerAmount + '€');
+                    try {
+                        notifyUser(null, 'admin', 'refund_manual',
+                            'Virement GENESIS SAFE™ à effectuer — ' + (partnerRecord ? partnerRecord.email : partnerId),
+                            'Prestation terminée, commande ' + order.id + ' — ' + partnerAmount + '€ → '
+                            + (partnerRecord ? partnerRecord.email : partnerId),
+                            '/admin.html#payouts');
+                    } catch(ne) {}
+                }
+            }
+        }
+
+        console.log('[COMPLETE] Prestation déclarée terminée : commande ' + order.id + ', partenaire ' + partnerId + '. Fonds libérés de Genesis Safe™.');
 
         res.json({
             ok: true,
@@ -16023,7 +16131,7 @@ app.post('/api/partner/projects/:orderId/complete', authenticatePartner, functio
  * POST /api/client/orders/:orderId/validate-delivery
  * Client valide manuellement la livraison (prestation déjà déclarée terminée par le partenaire)
  */
-app.post('/api/client/orders/:orderId/validate-delivery', async function(req, res) {
+app.post('/api/client/orders/:orderId/validate-delivery', function(req, res) {
     var user = authenticateClient(req, res);
     if (!user) return;
     try {
@@ -16031,7 +16139,6 @@ app.post('/api/client/orders/:orderId/validate-delivery', async function(req, re
         var order = getOrderById(orderId);
         if (!order) return res.status(404).json({ error: 'Commande introuvable' });
 
-        // Vérifier que la commande appartient au client
         var clientEmail = order.client_info && order.client_info.email;
         if (!clientEmail || clientEmail.toLowerCase() !== user.email.toLowerCase()) {
             return res.status(403).json({ error: 'Accès non autorisé' });
@@ -16043,129 +16150,43 @@ app.post('/api/client/orders/:orderId/validate-delivery', async function(req, re
             return res.status(400).json({ error: 'Vous avez déjà validé cette prestation' });
         }
 
+        // Validation qualité uniquement — le paiement a déjà quitté Genesis Safe lors du /complete
         var updates = {
             client_validated: true,
             client_validated_at: new Date().toISOString(),
-            pending_client_validation: false
+            pending_client_validation: false,
+            status: 'completed'
         };
+        updateOrder(orderId, updates);
 
-        // Si le solde est déjà payé → marquer entièrement terminé
-        if (order.balance_paid || !order.balance_amount || order.balance_amount <= 0) {
-            updates.status = 'completed';
-        }
-        var updatedOrder = updateOrder(orderId, updates);
-
-        // ── GENESIS SAFE™ : trouver le partenaire et déclencher le virement ─────────────────
-        var partnerEmailForNotif = null;
+        // Notifier le partenaire (feedback qualité, pas de paiement)
         try {
-            var allDispsV = loadDispatches();
-            var dispV = allDispsV.find(function(d) { return d.order_id === orderId; });
-            var ptnrIdV = null;
-            if (dispV) {
-                ptnrIdV = dispV.claimed_by_partner_id || dispV.partner_id;
-            } else {
-                var asgnsV = loadPartnerAssignments();
-                var asgnV = asgnsV.find(function(a) { return a.order_id === orderId && a.status === 'active'; });
-                if (asgnV) ptnrIdV = asgnV.partner_id;
-            }
-            if (ptnrIdV) {
-                var allPartnersV = loadPartners();
-                var ptnrV = allPartnersV.find(function(p) { return p.id === ptnrIdV; });
-                if (ptnrV) partnerEmailForNotif = ptnrV.email;
-
-                var pctV = (dispV && dispV.partner_pct) ? dispV.partner_pct : 75;
-                var totalV = parseFloat(order.deposit_paid ? (order.deposit_amount || order.total_amount || 0) : 0)
-                           + parseFloat(order.balance_paid ? (order.balance_amount || 0) : 0);
-                if (totalV <= 0) totalV = parseFloat(order.total_price || order.total_amount || 0);
-                var amtV = parseFloat((totalV * pctV / 100).toFixed(2));
-
-                if (amtV > 0) {
-                    var stageV = (order.installments && order.installments.length === 1) ? (order.installments[0].stage || 'deposit') : 'balance';
-                    var payRecV = {
-                        id: 'PAY-' + Math.random().toString(36).substring(2, 10).toUpperCase(),
-                        order_id: orderId,
-                        dispatch_id: dispV ? dispV.id : null,
-                        stage: stageV,
-                        partner_id: ptnrIdV,
-                        partner_email: ptnrV ? ptnrV.email : null,
-                        payout_method: (ptnrV && ptnrV.stripeAccountId && ptnrV.stripeChargesEnabled) ? 'stripe_connect'
-                            : ((ptnrV && ptnrV.bankDetails && ptnrV.bankDetails.iban) ? 'wise' : 'pending'),
-                        amount: amtV,
-                        fa_amount: parseFloat((totalV - amtV).toFixed(2)),
-                        fa_pct: 100 - pctV,
-                        partner_pct: pctV,
-                        currency: 'EUR',
-                        status: 'pending',
-                        triggered_by: 'client_validation',
-                        created_at: new Date().toISOString(),
-                        sent_at: null,
-                        stripe_transfer_id: null,
-                        stripe_payout_id: null,
-                        error: null
-                    };
-                    var allPaysV = loadPayouts();
-                    allPaysV.push(payRecV);
-                    savePayouts(allPaysV);
-
-                    if (ptnrV && ptnrV.stripeAccountId && ptnrV.stripeChargesEnabled) {
-                        // Stripe Connect disponible → Transfer FA GENESIS → Connect, puis payout → banque
-                        try {
-                            var centsV = Math.round(amtV * 100);
-                            var descV = 'GENESIS SAFE™ — ' + (order.product_name || orderId);
-                            var tfV = await scp.createTransfer(centsV, 'eur', ptnrV.stripeAccountId,
-                                { order_id: orderId, partner_id: ptnrIdV, triggered_by: 'client_validation' });
-                            var lp1V = loadPayouts();
-                            var pi1V = lp1V.findIndex(function(p) { return p.id === payRecV.id; });
-                            if (pi1V !== -1) { lp1V[pi1V].stripe_transfer_id = tfV.id; savePayouts(lp1V); }
-
-                            var pyV = await scp.triggerConnectPayout(ptnrV.stripeAccountId, centsV, 'eur', descV);
-                            var lp2V = loadPayouts();
-                            var pi2V = lp2V.findIndex(function(p) { return p.id === payRecV.id; });
-                            if (pi2V !== -1) {
-                                lp2V[pi2V].status = 'sent';
-                                lp2V[pi2V].sent_at = new Date().toISOString();
-                                lp2V[pi2V].stripe_payout_id = pyV.id;
-                                savePayouts(lp2V);
-                            }
-                            console.log('[VALIDATE] Virement GENESIS SAFE→Connect : ' + tfV.id + ' (' + amtV + '€ → ' + ptnrV.stripeAccountId + ')');
-                        } catch(sErrV) {
-                            var lpEV = loadPayouts();
-                            var piEV = lpEV.findIndex(function(p) { return p.id === payRecV.id; });
-                            if (piEV !== -1) { lpEV[piEV].status = 'failed'; lpEV[piEV].error = sErrV.message; savePayouts(lpEV); }
-                            console.error('[VALIDATE] Erreur Stripe payout:', sErrV.message);
-                            try {
-                                notifyUser(null, 'admin', 'refund_manual',
-                                    'Virement partenaire requis (validation client)',
-                                    'Commande ' + orderId + ' — ' + amtV + '€ → '
-                                    + (ptnrV ? ptnrV.email : ptnrIdV) + '. Erreur Stripe : ' + sErrV.message,
-                                    '/admin.html#payouts');
-                            } catch(ne) {}
-                        }
-                    } else {
-                        // Pas de Stripe Connect → virement manuel requis
-                        console.log('[VALIDATE] Virement manuel requis → ' + (ptnrV ? ptnrV.email : ptnrIdV) + ' : ' + amtV + '€');
-                        try {
-                            notifyUser(null, 'admin', 'refund_manual',
-                                'Virement partenaire à effectuer (validation client)',
-                                'Prestation validée, commande ' + orderId + ' — ' + amtV + '€ → '
-                                + (ptnrV ? ptnrV.email : ptnrIdV),
-                                '/admin.html#payouts');
-                        } catch(ne) {}
-                    }
+            var allDispsN = loadDispatches();
+            var dispN = allDispsN.find(function(d) { return d.order_id === orderId; });
+            var ptnrEmailN = null;
+            if (dispN) {
+                var ptnrIdN = dispN.claimed_by_partner_id || dispN.partner_id;
+                if (ptnrIdN) {
+                    var ptnrN = loadPartners().find(function(p) { return p.id === ptnrIdN; });
+                    if (ptnrN) ptnrEmailN = ptnrN.email;
                 }
             }
-        } catch(payErrV) {
-            console.error('[VALIDATE] Erreur calcul payout:', payErrV.message);
-        }
-
-        // Notifier le partenaire
-        if (partnerEmailForNotif) {
-            notifyUser(partnerEmailForNotif, 'partner', 'delivery_validated',
-                '✅ Prestation validée — virement GENESIS SAFE™ en cours',
-                'Le client a validé « ' + (order.product_name || '') + ' ». Votre virement est en cours de traitement.',
-                '/partner-dashboard.html#tab:wallet'
-            );
-        }
+            if (!ptnrEmailN) {
+                var asgnsN = loadPartnerAssignments();
+                var asgnN = asgnsN.find(function(a) { return a.order_id === orderId && a.status === 'active'; });
+                if (asgnN) {
+                    var ptnrN2 = loadPartners().find(function(p) { return p.id === asgnN.partner_id; });
+                    if (ptnrN2) ptnrEmailN = ptnrN2.email;
+                }
+            }
+            if (ptnrEmailN) {
+                notifyUser(ptnrEmailN, 'partner', 'delivery_validated',
+                    '⭐ Prestation validée par le client',
+                    'Le client a confirmé la bonne livraison de « ' + (order.product_name || '') + ' ». Merci pour votre travail !',
+                    '/partner-dashboard.html'
+                );
+            }
+        } catch(ne) {}
 
         res.json({ success: true });
     } catch(err) {
