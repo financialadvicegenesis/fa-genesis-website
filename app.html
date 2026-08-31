@@ -15875,14 +15875,14 @@ function _ptnrRenderEngagedMissionCard(r){
       ? '<button class="dispatch-claim-btn" style="margin-top:8px;width:100%;background:#1a3a1a;border-color:#6dbf6d;color:#6dbf6d;" onclick="_ptnrMarkDelivered(\''+r.dispatch_id+'\')"><i class="fas fa-check-circle"></i> Confirmer la livraison (libère les fonds)</button>'
       : '')
     // Bouton "Prestation terminée" : missions accompagnement/multi-tranche non encore déclarées
-    +(r.order_id && !r.partner_completed && !r.delivery_confirmed && !canMarkDelivered && r.status==='signed' && (statusKey==='in_progress'||statusKey==='delivering'||statusKey==='delivered')
+    +(r.order_id && !r.partner_completed && !r.delivery_confirmed && !canMarkDelivered && r.status==='signed' && statusKey !== 'completed' && statusKey !== 'reviewed'
       ? '<button class="dispatch-claim-btn" style="margin-top:8px;width:100%;background:#0a2a0a;border-color:#22c55e;color:#22c55e;" onclick="_ptnrDeclareComplete(\''+r.order_id+'\',\''+r.id+'\',this)"><i class="fa-solid fa-flag-checkered"></i> Prestation terminée</button>'
       : '')
     +(r.partner_completed && !r.client_validated
-      ? '<div style="margin-top:10px;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.25);border-radius:8px;padding:10px 12px;font-size:11px;color:#fbbf24;line-height:1.5;"><i class="fa-solid fa-hourglass-half" style="margin-right:4px;"></i>Déclarée terminée — validation client en attente. Paiement auto dans 7 j si pas de réponse.</div>'
+      ? '<div style="margin-top:10px;background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.25);border-radius:8px;padding:10px 12px;font-size:11px;color:#22c55e;line-height:1.5;"><i class="fa-solid fa-circle-check" style="margin-right:4px;"></i>Virement GENESIS déclenché — le client a été notifié pour confirmer la qualité.</div>'
       : '')
     +(r.client_validated
-      ? '<div style="margin-top:8px;font-size:11px;color:#22c55e;font-weight:800;"><i class="fa-solid fa-check-circle"></i> Prestation validée par le client — paiement en cours</div>'
+      ? '<div style="margin-top:8px;font-size:11px;color:#22c55e;font-weight:800;"><i class="fa-solid fa-check-circle"></i> Prestation validée par le client</div>'
       : '')
     +(r.dispatch_id && (statusKey==='in_progress' || statusKey==='delivering')
       ? '<div style="margin-top:10px;border-top:1px solid #222;padding-top:10px;">'
