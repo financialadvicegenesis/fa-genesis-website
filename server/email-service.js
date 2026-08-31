@@ -443,9 +443,19 @@ async function sendPaymentConfirmation(clientEmail, clientName, orderData) {
         return { success: false, reason: 'SMTP non configuré' };
     }
 
-    const isDeposit = !orderData.balance_paid;
-    const paymentType = isDeposit ? 'Acompte (30%)' : 'Solde (70%)';
-    const amountPaid = isDeposit ? orderData.deposit_amount : orderData.balance_amount;
+    const isSplitPayment = (parseFloat(orderData.balance_amount) || 0) > 0;
+    const isDeposit = isSplitPayment && !orderData.balance_paid;
+    let paymentType, amountPaid;
+    if (!isSplitPayment) {
+        paymentType = 'Paiement intégral';
+        amountPaid = parseFloat(orderData.deposit_amount || orderData.total_amount || 0);
+    } else if (orderData.balance_paid) {
+        paymentType = 'Solde (70%)';
+        amountPaid = parseFloat(orderData.balance_amount || 0);
+    } else {
+        paymentType = 'Acompte (30%)';
+        amountPaid = parseFloat(orderData.deposit_amount || 0);
+    }
 
     const content = `
         <h2 style="margin: 0 0 20px 0; font-size: 24px; color: #000000; font-weight: 700;">
