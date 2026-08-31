@@ -15578,7 +15578,7 @@ app.post('/api/partner/projects/:orderId/complete', authenticatePartner, async f
         if (_balPiIdComplete && order.balance_authorized && !order.balance_paid) {
             try {
                 await scp.capturePaymentIntent(_balPiIdComplete);
-                updateOrder(order.id, { balance_paid: true, balance_paid_at: new Date().toISOString(), status: 'paid_in_full' });
+                updateOrder(order.id, { balance_paid: true, balance_paid_at: new Date().toISOString(), status: 'paid_in_full', paymentStatus: 'fully_paid' });
                 console.log('[COMPLETE] GENESIS SAFE™ — PI solde capturé, argent sur Stripe GENESIS:', _balPiIdComplete);
             } catch(capErr) {
                 console.error('[COMPLETE] Erreur capture PI solde:', capErr.message);
@@ -20473,12 +20473,22 @@ app.post('/api/payments/stripe/sync-intent', async function(req, res) {
             return res.json({ ok: true, status: 'authorized' });
         }
         if (pi.status === 'succeeded') {
-            if (!orders[oIdx].deposit_paid) {
-                orders[oIdx].deposit_paid    = true;
-                orders[oIdx].deposit_paid_at = now;
-                orders[oIdx].paymentStatus   = 'deposit_paid';
-                orders[oIdx].updatedAt       = now;
-                saveOrders(orders);
+            if (stage === 'balance') {
+                if (!orders[oIdx].balance_paid) {
+                    orders[oIdx].balance_paid    = true;
+                    orders[oIdx].balance_paid_at = now;
+                    orders[oIdx].paymentStatus   = 'fully_paid';
+                    orders[oIdx].updatedAt       = now;
+                    saveOrders(orders);
+                }
+            } else {
+                if (!orders[oIdx].deposit_paid) {
+                    orders[oIdx].deposit_paid    = true;
+                    orders[oIdx].deposit_paid_at = now;
+                    orders[oIdx].paymentStatus   = 'deposit_paid';
+                    orders[oIdx].updatedAt       = now;
+                    saveOrders(orders);
+                }
             }
             return res.json({ ok: true, status: 'succeeded' });
         }
@@ -20495,7 +20505,6 @@ app.post('/api/payments/stripe/create-intent', async function(req, res) {
         if (!token) return res.status(401).json({ error: 'Token requis' });
         var user = findUserByToken(token);
         if (!user) return res.status(401).json({ error: 'Token invalide' });
-        if (!user) return res.status(401).json({ error: 'Utilisateur introuvable' });
 
         var b = req.body || {};
         if (!b.partnerId || !b.amountEuros) {
@@ -20511,6 +20520,19 @@ app.post('/api/payments/stripe/create-intent', async function(req, res) {
         var partner  = partners.find(function(p){ return p.id === b.partnerId; });
         if (!partner) {
             return res.status(400).json({ error: 'Prestataire introuvable.' });
+        }
+
+        // Guard : éviter double autorisation sur le même stage
+        if (b.orderId) {
+            var _gOrder = getOrderById(b.orderId);
+            if (_gOrder) {
+                if (b.stage === 'balance' && _gOrder.balance_authorized && !_gOrder.balance_paid) {
+                    return res.status(400).json({ error: 'Le solde est déjà en cours d\'autorisation.' });
+                }
+                if (b.stage !== 'balance' && _gOrder.deposit_authorized && !_gOrder.deposit_paid) {
+                    return res.status(400).json({ error: 'L\'acompte est déjà en cours d\'autorisation.' });
+                }
+            }
         }
 
         // GENESIS SAFE™ — capture différée (capture_method: 'manual') :

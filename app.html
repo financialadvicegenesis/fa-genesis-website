@@ -18860,9 +18860,18 @@ async function _confirmBalancePayment(){
       if(typeof launchConfetti==='function') launchConfetti();
       if(typeof showToast==='function') showToast('Solde sécurisé !','Retenu sur GENESIS SAFE™','success');
       localStorage.setItem('_fa_recent_payment',String(Date.now()));
+      // Fallback webhook : synchroniser balance_authorized / balance_paid côté serveur immédiatement
+      if(_balCurrentOrderId && USER && USER._token){
+        fetch((window.FA_GENESIS_API||API)+'/api/payments/stripe/sync-intent',{
+          method:'POST',
+          headers:{'Content-Type':'application/json','Authorization':'Bearer '+USER._token},
+          body:JSON.stringify({piId:result.paymentIntent.id, orderId:_balCurrentOrderId, stage:'balance'})
+        }).catch(function(){});
+      }
       setTimeout(function(){
         closePayBalanceSheet();
-        if(typeof showClientWallet==='function') showClientWallet();
+        if(typeof nav==='function') nav('profil');
+        setTimeout(function(){ if(typeof showClientWallet==='function') showClientWallet(); }, 500);
       },2500);
     }
   }catch(e){
