@@ -156,9 +156,18 @@ class StripeConnectProvider extends PaymentProvider {
             metadata: data.metadata || {},
             automatic_payment_methods: { enabled: true }
         };
+        // GENESIS SAFE™ : capture différée — la carte est autorisée mais l'argent ne
+        // quitte pas le client tant que le partenaire n'a pas déclaré la prestation terminée.
+        if (data.captureManual) params.capture_method = 'manual';
         if (data.description)  params.description   = data.description;
         if (data.receiptEmail) params.receipt_email  = data.receiptEmail;
         return await s.paymentIntents.create(params);
+    }
+
+    // Capture un PaymentIntent en mode manuel : l'argent quitte la carte du client
+    // et atterrit sur le compte Stripe GENESIS (Financialadvicegenesis@gmail.com).
+    async capturePaymentIntent(piId) {
+        return await getStripe().paymentIntents.capture(piId);
     }
 
     // Transfère des fonds depuis le compte Stripe de la plateforme vers un compte Connect.

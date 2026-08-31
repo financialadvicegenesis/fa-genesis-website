@@ -1441,16 +1441,70 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
     if (!event) { console.error('[STRIPE-WH] Signature invalide:', lastErr && lastErr.message); return res.status(400).send('Webhook Error: ' + (lastErr && lastErr.message)); }
 
     try {
-        if (event.type === 'payment_intent.succeeded') {
+        // ── GENESIS SAFE™ : capture différée ──────────────────────────────────────────────────────
+        // Étape 1 : le client autorise sa carte (amount_capturable_updated, status=requires_capture)
+        //   → argent RÉSERVÉ sur la carte du client, pas encore débité
+        //   → on affiche la somme dans le Portefeuille GENESIS SAFE™
+        // Étape 2 : le partenaire déclare "terminé" → notre code appelle capturePaymentIntent()
+        //   → Stripe débite la carte → argent atterrit sur Stripe GENESIS
+        //   → Stripe émet payment_intent.succeeded
+        // Étape 3 : Stripe Transfer GENESIS → Connect partenaire → banque (fait dans mark-delivered/complete)
+        // ─────────────────────────────────────────────────────────────────────────────────────────
+        if (event.type === 'payment_intent.amount_capturable_updated') {
+            // Carte autorisée, argent réservé — pas encore capturé.
+            var piAuth = event.data.object;
+            var authOrderId = piAuth.metadata && piAuth.metadata.order_id;
+            var authStage   = piAuth.metadata && piAuth.metadata.stage;
+            console.log('[STRIPE-WH] GENESIS SAFE™ carte autorisée (réservée, non capturée):', piAuth.id, authOrderId, authStage);
+            if (authOrderId && (authStage === 'deposit' || authStage === 'installment_1')) {
+                var authOrders = loadOrders();
+                var authIdx = authOrders.findIndex(function(o) { return o.id === authOrderId; });
+                if (authIdx !== -1) {
+                    authOrders[authIdx].deposit_authorized     = true;
+                    authOrders[authIdx].deposit_authorized_at  = new Date().toISOString();
+                    authOrders[authIdx].stripe_deposit_pi_id   = piAuth.id;
+                    authOrders[authIdx].paymentStatus          = 'deposit_authorized';
+                    authOrders[authIdx].payment_method         = 'stripe';
+                    authOrders[authIdx].updatedAt              = new Date().toISOString();
+                    saveOrders(authOrders);
+
+                    // Partner service : créer le dispatch maintenant (la carte est réservée)
+                    if (authOrders[authIdx].product_type === 'partner_service') {
+                        var _psOrderAuth = authOrders[authIdx];
+                        var _psNewDispAuth = createPartnerServiceDispatch(_psOrderAuth);
+                        if (_psNewDispAuth) {
+                            var _psPartnerAuth = getPartnerById(_psOrderAuth.partner_id);
+                            var _psPartnerEmailAuth = (_psPartnerAuth && (_psPartnerAuth.email || _psPartnerAuth.contact_email)) || _psOrderAuth.partner_email || null;
+                            var _psPartnerNameAuth  = (_psPartnerAuth && (_psPartnerAuth.prenom ? (_psPartnerAuth.prenom + ' ' + (_psPartnerAuth.nom || '')) : _psPartnerAuth.company)) || _psOrderAuth.partner_name || 'votre prestataire';
+                            var _psClientFnAuth  = (_psOrderAuth.client_info && _psOrderAuth.client_info.first_name) || 'Un client';
+                            var _psClientEmailAuth = _psOrderAuth.client_info && _psOrderAuth.client_info.email;
+                            if (_psPartnerEmailAuth) {
+                                notifyUser(_psPartnerEmailAuth, 'partner', 'mission_pending', '🆕 Nouvelle commande !',
+                                    _psClientFnAuth + ' a réservé « ' + (_psOrderAuth.product_name || 'votre prestation') + ' ». Le paiement est sécurisé par GENESIS SAFE™. Acceptez ou refusez dans les 24h.',
+                                    '#partner:missions');
+                            }
+                            if (_psClientEmailAuth) {
+                                notifyUser(_psClientEmailAuth, 'client', 'payment_success', '✅ Paiement GENESIS SAFE™ sécurisé !',
+                                    'Votre paiement est sécurisé. ' + _psPartnerNameAuth + ' va prendre en charge votre demande sous 24h.',
+                                    '#tab:resa');
+                            }
+                            console.log('[STRIPE-WH] Mission partenaire créée (carte réservée GENESIS SAFE™):', authOrderId, '→', _psOrderAuth.partner_id);
+                        }
+                    }
+                }
+            }
+
+        } else if (event.type === 'payment_intent.succeeded') {
             var pi = event.data.object;
             mps.markPaymentSucceeded(pi.id);
             var orderId = pi.metadata && pi.metadata.order_id;
             var stage   = pi.metadata && pi.metadata.stage;
-            console.log('[STRIPE-WH] Paiement réussi:', pi.id, orderId, stage);
+            console.log('[STRIPE-WH] Paiement capturé/réussi:', pi.id, orderId, stage);
             if (orderId && stage) {
                 var orders = loadOrders();
                 var oIdx = orders.findIndex(function(o){ return o.id === orderId; });
                 if (oIdx !== -1) {
+                    var _wasAuthorized = orders[oIdx].deposit_authorized === true;
                     // Détecter si c'est un paiement direct (sans Connect) ou via Connect
                     var _piMethod = (pi.transfer_data && pi.transfer_data.destination) ? 'stripe_connect' : 'stripe';
                     if (stage === 'deposit' || stage === 'installment_1') {
@@ -1485,50 +1539,56 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
                     }
                     orders[oIdx].updatedAt = new Date().toISOString();
                     saveOrders(orders);
-                    // Partner service (paiement Stripe direct) : créer le dispatch si pas encore existant
-                    if ((stage === 'deposit' || stage === 'installment_1') && orders[oIdx].product_type === 'partner_service') {
-                        var _psOrderWh = orders[oIdx];
-                        var _psNewDispWh = createPartnerServiceDispatch(_psOrderWh);
-                        if (_psNewDispWh) {
-                            var _psPartnerWh = getPartnerById(_psOrderWh.partner_id);
-                            var _psPartnerEmailWh = (_psPartnerWh && (_psPartnerWh.email || _psPartnerWh.contact_email))
-                                || _psOrderWh.partner_email || null;
-                            var _psPartnerNameWh = (_psPartnerWh && (_psPartnerWh.prenom ? (_psPartnerWh.prenom + ' ' + (_psPartnerWh.nom || '')) : _psPartnerWh.company))
-                                || _psOrderWh.partner_name || 'votre prestataire';
-                            var _psClientFnWh = (_psOrderWh.client_info && _psOrderWh.client_info.first_name) || 'Un client';
-                            var _psClientEmailWh = _psOrderWh.client_info && _psOrderWh.client_info.email;
-                            if (_psPartnerEmailWh) {
-                                notifyUser(_psPartnerEmailWh, 'partner', 'mission_pending', '🆕 Nouvelle commande !',
-                                    _psClientFnWh + ' a payé pour "' + (_psOrderWh.product_name || 'votre prestation') + '". Acceptez ou refusez dans les 24h.',
-                                    '#partner:missions');
+
+                    // Si ce succeeded vient de la capture manuelle GENESIS SAFE™ (le partenaire
+                    // a déclaré terminé → capturePaymentIntent → succeeded ici), le dispatch et
+                    // le payout ont déjà été gérés dans mark-delivered/complete. On ne les refait pas.
+                    if (_wasAuthorized) {
+                        console.log('[STRIPE-WH] GENESIS SAFE™ — capture confirmée (payout déjà déclenché via la route de livraison):', pi.id);
+                    } else {
+                        // Paiement immédiat (non GENESIS SAFE™) : créer dispatch + déclencher payout
+                        if ((stage === 'deposit' || stage === 'installment_1') && orders[oIdx].product_type === 'partner_service') {
+                            var _psOrderWh = orders[oIdx];
+                            var _psNewDispWh = createPartnerServiceDispatch(_psOrderWh);
+                            if (_psNewDispWh) {
+                                var _psPartnerWh = getPartnerById(_psOrderWh.partner_id);
+                                var _psPartnerEmailWh = (_psPartnerWh && (_psPartnerWh.email || _psPartnerWh.contact_email)) || _psOrderWh.partner_email || null;
+                                var _psPartnerNameWh  = (_psPartnerWh && (_psPartnerWh.prenom ? (_psPartnerWh.prenom + ' ' + (_psPartnerWh.nom || '')) : _psPartnerWh.company)) || _psOrderWh.partner_name || 'votre prestataire';
+                                var _psClientFnWh  = (_psOrderWh.client_info && _psOrderWh.client_info.first_name) || 'Un client';
+                                var _psClientEmailWh = _psOrderWh.client_info && _psOrderWh.client_info.email;
+                                if (_psPartnerEmailWh) {
+                                    notifyUser(_psPartnerEmailWh, 'partner', 'mission_pending', '🆕 Nouvelle commande !',
+                                        _psClientFnWh + ' a payé pour "' + (_psOrderWh.product_name || 'votre prestation') + '". Acceptez ou refusez dans les 24h.',
+                                        '#partner:missions');
+                                }
+                                if (_psClientEmailWh) {
+                                    notifyUser(_psClientEmailWh, 'client', 'payment_success', '✅ Paiement réussi !',
+                                        'Votre paiement a bien été reçu. ' + _psPartnerNameWh + ' va prendre en charge votre demande sous 24h.',
+                                        '#tab:resa');
+                                }
+                                console.log('[STRIPE-WH] Mission partenaire créée — en attente acceptation :', orderId, '→', _psOrderWh.partner_id);
                             }
-                            if (_psClientEmailWh) {
-                                notifyUser(_psClientEmailWh, 'client', 'payment_success', '✅ Paiement réussi !',
-                                    'Votre paiement a bien été reçu. ' + _psPartnerNameWh + ' va prendre en charge votre demande sous 24h.',
-                                    '#tab:resa');
-                            }
-                            console.log('[STRIPE-WH] Mission partenaire créée — en attente acceptation :', orderId, '→', _psOrderWh.partner_id);
                         }
-                    }
-                    // Trouver le dispatch associé pour déclencher le payout partenaire
-                    var _whDisps = loadDispatches();
-                    var _whDisp  = _whDisps.find(function(d) {
-                        return d.order_id === orderId && d.status !== 'cancelled'
-                            && (d.claimed_by_partner_id || d.partner_id);
-                    });
-                    if (_whDisp) {
-                        if (stage === 'deposit' || stage === 'installment_1') {
-                            // Mode "1 fois" (payment_tier 'small') : GENESIS SAFE™ bloque jusqu'à la livraison.
-                            // Tous les autres modes (acompte+reste, plusieurs fois, 30/40/30) : versement immédiat si mission acceptée.
-                            var _whOrderTier = orders[oIdx] ? (orders[oIdx].payment_tier || 'small') : 'small';
-                            if (_whOrderTier !== 'small' && (_whDisp.status === 'accepted' || _whDisp.mission_status === 'in_progress')) {
-                                try { await processDispatchPayout(_whDisp, 'deposit'); }
-                                catch(pe) { console.error('[STRIPE-WH] Payout acompte error:', pe.message); }
+                        // Trouver le dispatch associé pour déclencher le payout partenaire
+                        var _whDisps = loadDispatches();
+                        var _whDisp  = _whDisps.find(function(d) {
+                            return d.order_id === orderId && d.status !== 'cancelled'
+                                && (d.claimed_by_partner_id || d.partner_id);
+                        });
+                        if (_whDisp) {
+                            if (stage === 'deposit' || stage === 'installment_1') {
+                                // Mode "1 fois" (payment_tier 'small') : GENESIS SAFE™ bloque jusqu'à la livraison.
+                                // Tous les autres modes (acompte+reste, plusieurs fois, 30/40/30) : versement immédiat si mission acceptée.
+                                var _whOrderTier = orders[oIdx] ? (orders[oIdx].payment_tier || 'small') : 'small';
+                                if (_whOrderTier !== 'small' && (_whDisp.status === 'accepted' || _whDisp.mission_status === 'in_progress')) {
+                                    try { await processDispatchPayout(_whDisp, 'deposit'); }
+                                    catch(pe) { console.error('[STRIPE-WH] Payout acompte error:', pe.message); }
+                                }
+                            } else {
+                                // installment_2, installment_3, balance : verser immédiatement
+                                try { await processDispatchPayout(_whDisp, stage); }
+                                catch(pe) { console.error('[STRIPE-WH] Payout error (' + stage + '):', pe.message); }
                             }
-                        } else {
-                            // installment_2, installment_3, balance : verser immédiatement
-                            try { await processDispatchPayout(_whDisp, stage); }
-                            catch(pe) { console.error('[STRIPE-WH] Payout error (' + stage + '):', pe.message); }
                         }
                     }
                 }
@@ -5084,9 +5144,10 @@ app.get('/api/client/wallet', function(req, res) {
             if (!o.client_info || !o.client_info.email) return false;
             if (o.client_info.email.toLowerCase() !== user.email.toLowerCase()) return false;
             if (o.status === 'cancelled' || o.status === 'refunded') return false;
-            // Inclure si deposit_paid OU si au moins une installment payée
+            // Inclure si deposit_authorized (carte réservée GENESIS SAFE™), deposit_paid, balance_paid
+            // ou si au moins une installment payée
             var hasPaidInst = Array.isArray(o.installments) && o.installments.some(function(i) { return i.paid; });
-            return o.deposit_paid === true || o.balance_paid === true || hasPaidInst;
+            return o.deposit_authorized === true || o.deposit_paid === true || o.balance_paid === true || hasPaidInst;
         });
 
         var totalHeld = 0;
@@ -5132,15 +5193,18 @@ app.get('/api/client/wallet', function(req, res) {
                     if (inst.paid) released += parseFloat(inst.amount) || 0;
                 });
             } else {
-                // Modèle standard (deposit_paid / balance_paid) — inclut les orders partner_service
+                // Modèle standard (deposit_authorized / deposit_paid / balance_paid) — inclut les orders partner_service
+                // deposit_authorized = carte réservée GENESIS SAFE™, argent pas encore capturé
+                // deposit_paid       = PI capturé, argent chez Stripe GENESIS
                 var isComplete = order.status === 'completed' || order.status === 'delivered' || order.client_validated === true;
+                var _hasFunds = order.deposit_authorized === true || order.deposit_paid === true;
                 var isSplit = (parseFloat(order.balance_amount) || 0) > 0;
                 if (isSplit) {
                     var depositAmt = parseFloat(order.deposit_amount) || 0;
                     var balAmt = parseFloat(order.balance_amount) || 0;
                     if (order.balance_paid) {
                         released += depositAmt + balAmt;
-                    } else if (order.deposit_paid) {
+                    } else if (_hasFunds) {
                         held += depositAmt;
                         if (order.balance_payment_ready) held += balAmt;
                     }
@@ -5148,7 +5212,7 @@ app.get('/api/client/wallet', function(req, res) {
                     var totalAmt = parseFloat(order.deposit_amount) || parseFloat(order.total_amount) || 0;
                     if (isComplete) {
                         released += totalAmt;
-                    } else if (order.deposit_paid) {
+                    } else if (_hasFunds) {
                         held += totalAmt;
                     }
                 }
@@ -5171,12 +5235,14 @@ app.get('/api/client/wallet', function(req, res) {
             var _hasPendingAdminPayout = payouts.some(function(p) {
                 return p.order_id === order.id && p.status === 'pending_admin';
             });
+            var _isAuthOnly = order.deposit_authorized === true && !order.deposit_paid;
             var statusLabel = dispatchNotAccepted && held > 0
-                ? 'Paiement reçu — en attente d\'acceptation du prestataire'
+                ? (_isAuthOnly ? 'Carte réservée GENESIS SAFE™ — en attente d\'acceptation du prestataire' : 'Paiement reçu — en attente d\'acceptation du prestataire')
                 : _isPI
                 ? 'Mensualités versées directement au prestataire'
                 : released > 0 && _hasPendingAdminPayout ? 'Virement en cours de traitement par GENESIS'
-                : held > 0 && partnerDone ? 'Prestation livrée — validation en cours'
+                : held > 0 && partnerDone ? 'Prestation livrée — paiement prélevé, virement en cours'
+                : held > 0 && _isAuthOnly ? 'Carte réservée GENESIS SAFE™ — sera prélevée à la livraison'
                 : held > 0 ? 'Sécurisé GENESIS SAFE™ — en attente de livraison'
                 : 'Versé au prestataire ✓';
             var canWithdraw = held > 0 && (dispatchNotAccepted || partnerInactive);
@@ -5329,7 +5395,7 @@ app.get('/api/partner/wallet', authenticatePartner, function(req, res) {
             return o.partner_id === partnerId
                 && o.product_type === 'partner_service'
                 && dispatchOrderIds.indexOf(o.id) === -1
-                && (o.deposit_paid || o.balance_paid);
+                && (o.deposit_authorized || o.deposit_paid || o.balance_paid);
         });
 
         var totalHeld = 0;
@@ -5357,7 +5423,9 @@ app.get('/api/partner/wallet', authenticatePartner, function(req, res) {
                     else held += instPartnerAmt;
                 });
             } else {
-                var depositPaid = !!(order.deposit_paid || order.depositPaid);
+                // deposit_authorized = carte réservée (GENESIS SAFE™) — à traiter comme deposit_paid
+                // pour le wallet partenaire (l'argent sera versé dès la livraison)
+                var depositPaid = !!(order.deposit_paid || order.depositPaid || order.deposit_authorized);
                 var balancePaid = !!(order.balance_paid || order.balancePaid || order.fully_paid);
                 var totalAmt = parseFloat(order.total_price || order.total_amount || 0);
                 var depositAmt = parseFloat(order.deposit_amount || order.depositAmount || (order.payment_tier === 'small' ? totalAmt : totalAmt * 0.30));
@@ -14872,6 +14940,10 @@ app.post('/api/partner/dispatches/:id/mark-delivered', authenticatePartner, asyn
         if (order.delivery_confirmed || order.partner_completed) {
             return res.status(400).json({ error: 'Livraison déjà confirmée.' });
         }
+        // Accepter deposit_authorized (carte réservée, pas encore capturée) ET deposit_paid (déjà capturé)
+        if (!order.deposit_paid && !order.deposit_authorized) {
+            return res.status(400).json({ error: 'Aucun paiement GENESIS SAFE™ trouvé pour cette commande.' });
+        }
 
         // Marquer la livraison sur la commande
         var now = new Date().toISOString();
@@ -14886,7 +14958,31 @@ app.post('/api/partner/dispatches/:id/mark-delivered', authenticatePartner, asyn
         });
         saveOrders(orders);
 
-        // GENESIS SAFE™ : libérer les fonds → Transfer GENESIS Stripe → Connect partenaire → banque
+        // GENESIS SAFE™ : capturer le PaymentIntent → l'argent quitte la carte du client
+        // et atterrit sur le compte Stripe GENESIS (Financialadvicegenesis@gmail.com).
+        // Puis Transfer GENESIS → Connect partenaire → banque.
+        var _piIdDeliver = order.stripe_deposit_pi_id;
+        if (_piIdDeliver && order.deposit_authorized && !order.deposit_paid) {
+            try {
+                await scp.capturePaymentIntent(_piIdDeliver);
+                // Mettre à jour la commande : fonds maintenant dans Stripe GENESIS
+                var _ordersAfterCap = loadOrders();
+                var _capIdx = _ordersAfterCap.findIndex(function(o) { return o.id === order.id; });
+                if (_capIdx !== -1) {
+                    _ordersAfterCap[_capIdx].deposit_paid    = true;
+                    _ordersAfterCap[_capIdx].deposit_paid_at = now;
+                    _ordersAfterCap[_capIdx].paymentStatus   = 'deposit_paid';
+                    saveOrders(_ordersAfterCap);
+                }
+                console.log('[DISPATCH] GENESIS SAFE™ — PI capturé, argent atterri sur Stripe GENESIS:', _piIdDeliver);
+            } catch(capErr) {
+                console.error('[DISPATCH] Erreur capture PI:', capErr.message);
+                // La carte n'a pas été débitée — on annule pour ne pas laisser une incohérence
+                return res.status(500).json({ error: 'Erreur lors du prélèvement GENESIS SAFE™ : ' + capErr.message });
+            }
+        }
+
+        // Transfer GENESIS Stripe → Connect partenaire → banque
         await processDispatchPayout(dispatch, 'deposit');
         console.log('[DISPATCH] GENESIS SAFE™ — prestation terminée, fonds libérés de l\'escrow, virement déclenché', dispatch.id);
 
@@ -15793,8 +15889,9 @@ app.post('/api/partner/projects/:orderId/complete', authenticatePartner, async f
         if (order.partner_completed) {
             return res.status(400).json({ error: 'Prestation déjà déclarée terminée' });
         }
-        if (!order.deposit_paid && !order.balance_paid) {
-            return res.status(400).json({ error: 'Aucun paiement reçu pour cette commande' });
+        // Accepter deposit_authorized (carte réservée) ET deposit_paid/balance_paid (déjà capturé)
+        if (!order.deposit_paid && !order.balance_paid && !order.deposit_authorized) {
+            return res.status(400).json({ error: 'Aucun paiement GENESIS SAFE™ trouvé pour cette commande' });
         }
 
         var AUTO_RELEASE_DAYS = 7;
@@ -15809,6 +15906,21 @@ app.post('/api/partner/projects/:orderId/complete', authenticatePartner, async f
             auto_payment_release_at: autoReleaseAt
         };
         var updatedOrder = updateOrder(order.id, updates);
+
+        // GENESIS SAFE™ : si la carte a été autorisée mais pas encore capturée, capturer maintenant.
+        // L'argent passe de "réservé sur la carte du client" à "acquis sur Stripe GENESIS".
+        var _piIdComplete = order.stripe_deposit_pi_id;
+        if (_piIdComplete && order.deposit_authorized && !order.deposit_paid) {
+            try {
+                await scp.capturePaymentIntent(_piIdComplete);
+                updateOrder(order.id, { deposit_paid: true, deposit_paid_at: new Date().toISOString(), paymentStatus: 'deposit_paid' });
+                console.log('[COMPLETE] GENESIS SAFE™ — PI capturé, argent sur Stripe GENESIS:', _piIdComplete);
+            } catch(capErr) {
+                console.error('[COMPLETE] Erreur capture PI:', capErr.message);
+                // Continuer quand même : marquer la commande en attente manuelle
+                updateOrder(order.id, { capture_error: capErr.message, paymentStatus: 'capture_failed' });
+            }
+        }
 
         // Mettre à jour le dispatch si présent
         if (dispatch) {
@@ -20728,13 +20840,17 @@ app.post('/api/payments/stripe/create-intent', async function(req, res) {
             return res.status(400).json({ error: 'Prestataire introuvable.' });
         }
 
-        // Charge directe sur le compte Stripe GENESIS : pas de transfer_data ni de destination.
-        // L'argent reste chez GENESIS (escrow GENESIS SAFE™) jusqu'à la déclaration de livraison.
+        // GENESIS SAFE™ — capture différée (capture_method: 'manual') :
+        // La carte du client est autorisée mais l'argent NE quitte PAS le client encore.
+        // Il reste "réservé" → affiché dans le Portefeuille GENESIS SAFE™.
+        // L'argent n'atterrit sur Stripe GENESIS (Financialadvicegenesis@gmail.com) QUE
+        // lorsque le partenaire déclare la prestation terminée (capturePaymentIntent).
         var pi = await scp.createDirectPaymentIntent({
-            amountEuros:  _intentAmount,
-            currency:     'eur',
-            description:  (b.description || ('FA GENESIS — ' + (b.label || 'Prestation'))).substring(0, 250),
-            receiptEmail: user.email,
+            amountEuros:   _intentAmount,
+            currency:      'eur',
+            captureManual: true,
+            description:   (b.description || ('FA GENESIS — ' + (b.label || 'Prestation'))).substring(0, 250),
+            receiptEmail:  user.email,
             metadata: {
                 order_id:     b.orderId      || '',
                 stage:        b.stage        || 'deposit',
@@ -20743,7 +20859,21 @@ app.post('/api/payments/stripe/create-intent', async function(req, res) {
             }
         });
 
-        console.log('[STRIPE INTENT] GENESIS SAFE™ — charge directe GENESIS:', pi.id, _intentAmount + ' EUR', 'order:', b.orderId || 'N/A');
+        // Stocker le PI ID sur la commande dès la création (avant confirmation)
+        // pour que les routes de livraison puissent le capturer.
+        if (b.orderId) {
+            try {
+                var _oList = loadOrders();
+                var _oI = _oList.findIndex(function(o) { return o.id === b.orderId; });
+                if (_oI !== -1) {
+                    _oList[_oI].stripe_deposit_pi_id = pi.id;
+                    _oList[_oI].updated_at = new Date().toISOString();
+                    saveOrders(_oList);
+                }
+            } catch(e) { console.error('[STRIPE INTENT] Erreur stockage PI ID sur commande:', e.message); }
+        }
+
+        console.log('[STRIPE INTENT] GENESIS SAFE™ — autorisation (capture différée):', pi.id, _intentAmount + ' EUR', 'order:', b.orderId || 'N/A');
         res.json({ ok: true, clientSecret: pi.client_secret, paymentIntentId: pi.id });
     } catch(e) {
         console.error('[STRIPE INTENT]', e.message);
