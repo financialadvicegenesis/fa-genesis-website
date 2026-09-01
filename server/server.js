@@ -10327,7 +10327,7 @@ app.post('/api/messages', function(req, res) {
         if (toType === 'admin') {
             notifyUser(null, 'admin', 'message-client', 'Message de ' + senderDisplayName, content.substring(0, 100), '/app.html#open-admin');
         } else if (toType === 'partner' && toEmail) {
-            notifyUser(toEmail, 'partner', 'message-client', 'Message de ' + senderDisplayName, content.substring(0, 100), '/app.html#open-partner');
+            notifyUser(toEmail, 'partner', 'message-client', 'Message de ' + senderDisplayName, content.substring(0, 100), '/app.html#partner:messages');
         }
         res.json({ ok: true, message: newMsg });
     } catch (err) {
@@ -10491,6 +10491,9 @@ app.post('/api/partner/inbox/reply', authenticatePartner, function(req, res) {
         msgs.push(newMsg);
         saveChat(msgs);
         console.log('[CHAT] Partenaire ' + partner.email + ' -> ' + toEmail + ' : ' + content.substring(0, 50));
+        // Push au client destinataire
+        var _ptnrDisplayName = ((partner.prenom || '') + ' ' + (partner.nom || '')).trim() || partner.email;
+        notifyUser(toEmail, 'client', 'message-partner', 'Message de ' + _ptnrDisplayName, content.substring(0, 100), '/app.html#open-messages');
         res.json({ ok: true, message: newMsg });
     } catch (err) {
         res.status(500).json({ error: 'Erreur serveur' });

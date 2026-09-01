@@ -3632,6 +3632,7 @@ var _profilScrollPos = 0;
 var _profilBackTarget = null;
 
 function nav(tab){
+  if(tab !== 'messages') _clearChatPoll();
   _prevNav={tab:_navCurrentTab,scrollTop:(document.getElementById('content')||{}).scrollTop||0};
   _navCurrentTab=tab;
   try{sessionStorage.setItem('fa_nav_tab',tab);if(tab!=='profil'){sessionStorage.removeItem('fa_nav_section');sessionStorage.removeItem('fa_support_thread');}}catch(e){}
@@ -7168,6 +7169,7 @@ function submitRevisionRequest(livrableId){
 
 // ── MESSAGES ─────────────────────────────────────────────────
 function renderMsgTab(){
+  _clearChatPoll();
   var el=document.getElementById('msgContent');
   if(!USER||GUEST){
     el.innerHTML='<div class="espace-back-bar"><button class="espace-back-btn" onclick="navBack()">&#8249;</button><div class="espace-title">Messages</div></div>'
@@ -9144,10 +9146,13 @@ function _addDetailToCart(){
 
 // ── CHAT IN-APP ───────────────────────────────────────────────
 var _chatKey=null, _chatName=null, _chatPartnerEmail=null;
+var _chatPollInterval=null;
+function _clearChatPoll(){ if(_chatPollInterval){clearInterval(_chatPollInterval);_chatPollInterval=null;} }
 
 // partnerEmail : email du prestataire (pour les conversations client↔partenaire)
 // Si null/absent, la conversation est avec l'admin FA GENESIS (rétrocompatibilité)
 function openConversation(key, name, icon, partnerEmail){
+  _clearChatPoll();
   _chatKey=key; _chatName=name;
   _chatPartnerEmail = partnerEmail || null;
   var c=document.getElementById('msgContent');
@@ -9164,6 +9169,10 @@ function openConversation(key, name, icon, partnerEmail){
     +'</div>'
     +'</div>';
   loadChatMessages(partnerEmail);
+  _chatPollInterval = setInterval(function(){
+    if(document.getElementById('chat-msgs')) loadChatMessages(_chatPartnerEmail);
+    else _clearChatPoll();
+  }, 4000);
 }
 
 function _startMsgWithPartner(partnerId, partnerName, partnerEmail){
@@ -12814,7 +12823,11 @@ function _ptnrCloseDrawer(){
   var ov = document.getElementById('ptnr-drawer-overlay');
   if(ov) ov.className = '';
 }
+var _ptnrMsgPollInterval=null;
+function _clearPtnrMsgPoll(){ if(_ptnrMsgPollInterval){clearInterval(_ptnrMsgPollInterval);_ptnrMsgPollInterval=null;} }
+
 function _ptnrNav(screen){
+  if(screen !== 'messages') _clearPtnrMsgPoll();
   try{sessionStorage.setItem('fa_ptnr_screen',screen);}catch(e){}
   _ptnrCloseDrawer();
   // Gestion du scroll : sauvegarder depuis le hub profil, restaurer au retour
@@ -12839,7 +12852,14 @@ function _ptnrNav(screen){
   if(screen==='home') _ptnrLoadHome();
   if(screen==='devis') _ptnrLoadDevis();
   if(screen==='seances') _ptnrLoadSeances();
-  if(screen==='messages') _ptnrLoadMessages();
+  if(screen==='messages'){
+    _ptnrLoadMessages();
+    _clearPtnrMsgPoll();
+    _ptnrMsgPollInterval = setInterval(function(){
+      if(document.getElementById('ptnr-messages-list')) _ptnrLoadMessages();
+      else _clearPtnrMsgPoll();
+    }, 4000);
+  }
   if(screen==='missions') _ptnrLoadMissions();
   if(screen==='versements') _ptnrLoadVersements();
   if(screen==='reputation')  _ptnrLoadReputation();
@@ -13456,6 +13476,8 @@ function _handleNotifHash(hash){
     nav('partner'); setTimeout(function(){ if(typeof _openAdminPanel==='function') _openAdminPanel(); }, 400);
   } else if(hash === 'partner:missions'){
     nav('partner'); setTimeout(function(){ if(typeof _ptnrNav==='function') _ptnrNav('missions'); }, 500);
+  } else if(hash === 'partner:messages'){
+    nav('partner'); setTimeout(function(){ if(typeof _ptnrNav==='function') _ptnrNav('messages'); }, 500);
   } else if(hash === 'open-partner'){
     nav('partner');
   } else if(hash === 'tab:resa' || hash === 'open-reservations' || hash === 'reservations' || hash === 'open-suivi'){
