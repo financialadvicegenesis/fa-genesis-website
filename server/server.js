@@ -3909,6 +3909,86 @@ app.post('/api/orders/:orderId/cancel-pending', function(req, res) {
 });
 
 /**
+ * POST /api/orders/:orderId/cancel-refund
+ * Client annule sa commande et obtient un remboursement automatique (Stripe/PayPal)
+ * Conditions : acompte payé + prestataire pas encore accepté + pas de livraison + pas de litige ouvert
+ */
+app.post('/api/orders/:orderId/cancel-refund', async function(req, res) {
+    try {
+        var token = (req.headers.authorization || '').replace('Bearer ', '');
+        var user = findUserByToken(token);
+        if (!user) return res.status(401).json({ error: 'Non autorisé' });
+
+        var orderId = req.params.orderId;
+        var orders = loadOrders();
+        var order = orders.find(function(o) { return o.id === orderId; });
+        if (!order) return res.status(404).json({ error: 'Commande introuvable.' });
+
+        var orderEmail = order.client_info && order.client_info.email ? order.client_info.email.toLowerCase() : '';
+        if (orderEmail !== (user.email || '').toLowerCase()) {
+            return res.status(403).json({ error: 'Commande non autorisée.' });
+        }
+        if (!order.deposit_paid) return res.status(400).json({ error: 'Aucun paiement à rembourser.' });
+        if (order.status === 'cancelled' || order.status === 'refunded') {
+            return res.status(400).json({ error: 'Commande déjà annulée.' });
+        }
+
+        // Bloquer si le prestataire a déjà accepté (travail commencé)
+        var dispatches = loadDispatches();
+        var dispatch = dispatches.find(function(d) { return d.order_id === orderId && d.status !== 'cancelled'; });
+        if (dispatch && dispatch.status !== 'pending_acceptance') {
+            return res.status(400).json({ error: 'Le prestataire a déjà accepté la mission. Ouvrez un litige si nécessaire.' });
+        }
+
+        // Bloquer si litige ouvert
+        var openDispute = loadDisputes().find(function(d) {
+            return d.order_id === orderId && (d.status === 'open' || d.status === 'jeremie_triage' || d.status === 'escalated_admin');
+        });
+        if (openDispute) return res.status(400).json({ error: 'Un litige est en cours sur cette commande.' });
+
+        // Bloquer si livraison déjà soumise (hors contrat)
+        var hasDelivery = loadLivrables().some(function(l) { return l.order_id === orderId && l.type !== 'contract'; });
+        if (hasDelivery) return res.status(400).json({ error: 'Une livraison a déjà été soumise. Ouvrez un litige si nécessaire.' });
+
+        // Annuler le dispatch en attente
+        if (dispatch) {
+            var dIdx = dispatches.findIndex(function(d) { return d.id === dispatch.id; });
+            if (dIdx !== -1) {
+                dispatches[dIdx].status = 'cancelled';
+                dispatches[dIdx].cancelled_at = new Date().toISOString();
+                dispatches[dIdx].cancelled_reason = 'client_cancelled_refund';
+                saveDispatches(dispatches);
+            }
+        }
+
+        // Rembourser
+        var refundOk = await refundClientOrder(order);
+
+        // Notifier le prestataire si un dispatch existait
+        if (dispatch) {
+            var ptnr = getPartnerById(dispatch.partner_id || dispatch.claimed_by_partner_id);
+            var ptnrEmail = ptnr && (ptnr.email || ptnr.contact_email);
+            if (ptnrEmail) {
+                notifyUser(ptnrEmail, 'partner', 'mission_cancelled', 'Mission annulée',
+                    'Le client a annulé la mission "' + (order.product_name || 'Prestation') + '" avant le début des travaux.', '#missions');
+            }
+        }
+
+        console.log('[CANCEL-REFUND] Commande ' + orderId + ' annulée par ' + user.email + ' — remboursement: ' + (refundOk ? 'OK' : 'MANUEL'));
+        res.json({
+            ok: true,
+            refunded: refundOk,
+            message: refundOk
+                ? 'Remboursement en cours sur votre moyen de paiement d\'origine (3–5 jours ouvrés).'
+                : 'Commande annulée. Le remboursement sera traité manuellement par notre équipe sous 24h.'
+        });
+    } catch(e) {
+        console.error('[CANCEL-REFUND]', e.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
  * POST /api/orders/:orderId/cancel-start-date
  * Annuler la date de demarrage confirmee
  * Accessible par : client (son propre ordre), partenaire, ou admin (sans token)
@@ -5193,6 +5273,8 @@ app.get('/api/client/wallet', function(req, res) {
             var withdrawReason = canWithdraw
                 ? (partnerInactive ? 'Le prestataire n\'est pas disponible' : 'Le prestataire n\'a pas encore accepté la mission')
                 : null;
+            // Remboursement automatique disponible si l'acompte est payé et prestataire pas encore accepté
+            var canCancelRefund = held > 0 && order.deposit_paid === true && dispatchNotAccepted && !order.balance_paid;
             var _balDue = (parseFloat(order.balance_amount) || 0) > 0
                 && order.deposit_paid === true
                 && !order.balance_paid
@@ -5207,6 +5289,7 @@ app.get('/api/client/wallet', function(req, res) {
                 status_label: statusLabel,
                 can_withdraw: canWithdraw,
                 withdraw_reason: withdrawReason,
+                can_cancel_refund: canCancelRefund,
                 created_at: order.created_at,
                 balance_due: _balDue,
                 balance_amount: _balDue ? (parseFloat(order.balance_amount) || 0) : 0,
