@@ -6742,7 +6742,7 @@ app.get('/api/livrables/by-email/:email', (req, res) => {
         const email = decodeURIComponent(req.params.email).toLowerCase();
         const orders = loadOrders();
         const clientOrders = orders.filter(o =>
-            o.client_info && o.client_info.email.toLowerCase() === email
+            o.client_info && o.client_info.email && o.client_info.email.toLowerCase() === email
         );
 
         if (clientOrders.length === 0) {
