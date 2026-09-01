@@ -15503,9 +15503,10 @@ app.get('/api/partner/palmares', authenticatePartner, function(req, res) {
         var summary = getPartnerRatingSummary(partner.id);
         var missionsCompleted = getPartnerMissionsCompleted(partner.id);
 
-        var myPayouts = loadPayouts().filter(function(p) { return p.partner_id === partner.id && p.status === 'sent'; });
-        var revenusGeneres = myPayouts.reduce(function(sum, p) { return sum + (parseFloat(p.amount) || 0); }, 0);
-        var commissionsVersees = myPayouts.reduce(function(sum, p) { return sum + (parseFloat(p.fa_amount) || 0); }, 0);
+        var allMyPayouts = loadPayouts().filter(function(p) { return p.partner_id === partner.id && p.status !== 'failed' && p.status !== 'cancelled'; });
+        var revenusGeneres = allMyPayouts.reduce(function(sum, p) { return sum + (parseFloat(p.amount) || 0); }, 0);
+        var commissionsVersees = allMyPayouts.reduce(function(sum, p) { return sum + (parseFloat(p.fa_amount) || 0); }, 0);
+        var myPayouts = allMyPayouts;
 
         var orders = loadOrders();
         var orderIds = myPayouts.map(function(p) { return p.order_id; }).filter(Boolean);
