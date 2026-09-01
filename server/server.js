@@ -6548,6 +6548,62 @@ app.post('/api/livrables/:id/request-revision', (req, res) => {
 });
 
 /**
+ * POST /api/partner/livrables/:id/republish
+ * Partenaire re-soumet un livrable après révision client
+ */
+app.post('/api/partner/livrables/:id/republish', authenticatePartner, function(req, res) {
+    try {
+        var livrables = loadLivrables();
+        var idx = livrables.findIndex(function(l) { return l.id === req.params.id; });
+        if (idx === -1) return res.status(404).json({ error: 'Livrable non trouvé.' });
+
+        var livrable = livrables[idx];
+        var order = getOrderById(livrable.order_id);
+        if (!order) return res.status(404).json({ error: 'Commande introuvable.' });
+
+        // Vérifier que le livrable appartient bien à ce partenaire
+        if (livrable.owner_partner_id && livrable.owner_partner_id !== req.partner.id) {
+            return res.status(403).json({ error: 'Accès non autorisé.' });
+        }
+        if (livrable.workflow_status !== 'REVISION_REQUESTED') {
+            return res.status(409).json({ error: 'Ce livrable n\'est pas en attente de révision.' });
+        }
+
+        var note = ((req.body && req.body.note) || '').trim();
+        livrable.workflow_status = 'PUBLISHED';
+        livrable.client_validation = 'pending';
+        livrable.client_revision_note = null;
+        livrable.updated_at = new Date().toISOString();
+        if (!livrable.versions) livrable.versions = [];
+        livrable.versions.push({
+            version_number: livrable.versions.length + 1,
+            updated_by_role: 'partner',
+            updated_by_id: req.partner.id,
+            content_text: note || null,
+            file_url: null,
+            change_note: note ? ('Révision soumise : ' + note) : 'Révision soumise par le prestataire',
+            created_at: new Date().toISOString()
+        });
+        livrables[idx] = livrable;
+        saveLivrables(livrables);
+
+        // Notifier le client
+        if (order.client_info && order.client_info.email) {
+            var partnerName = (req.partner.prenom || '') + ' ' + (req.partner.nom || '');
+            notifyUser(order.client_info.email, 'client', 'livrable-revision-done', 'Révision disponible ✅',
+                partnerName.trim() + ' a soumis la révision de "' + (livrable.title || 'votre livrable') + '". Vérifiez et validez.',
+                '/app.html#open-livrables');
+        }
+
+        console.log('[LIVRABLE] Révision re-soumise par ' + req.partner.id + ' — livrable ' + livrable.id);
+        res.json({ success: true, livrable: livrable });
+    } catch(e) {
+        console.error('[LIVRABLE] Erreur republish:', e.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
  * POST /api/livrables/add (Admin)
  * Ajouter un livrable a une commande
  */
@@ -14972,6 +15028,11 @@ app.get('/api/partner/requests', authenticatePartner, function(req, res) {
                 out.pending_client_validation = orderForReq ? (orderForReq.pending_client_validation === true) : false;
                 out.client_validated = orderForReq ? (orderForReq.client_validated === true) : false;
                 out.auto_payment_release_at = orderForReq ? (orderForReq.auto_payment_release_at || null) : null;
+                // Révision demandée par le client
+                var revisionLiv = livrablesForReq.find(function(l) { return l.workflow_status === 'REVISION_REQUESTED'; });
+                out.has_revision_requested = !!revisionLiv;
+                out.revision_livrable_id = revisionLiv ? revisionLiv.id : null;
+                out.revision_note = revisionLiv ? (revisionLiv.client_revision_note || '') : '';
                 out.display_status = computeMissionDisplayStatus(r, dispatchForReq, orderForReq, livrablesForReq, hasReviewForReq);
                 return out;
             });

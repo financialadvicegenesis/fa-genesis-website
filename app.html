@@ -15966,6 +15966,15 @@ function _ptnrRenderEngagedMissionCard(r){
     +(r.order_id && !r.partner_completed && !r.delivery_confirmed && !canMarkDelivered && r.status==='signed' && statusKey !== 'completed' && statusKey !== 'reviewed'
       ? '<button class="dispatch-claim-btn" style="margin-top:8px;width:100%;background:#0a2a0a;border-color:#22c55e;color:#22c55e;" onclick="_ptnrDeclareComplete(\''+r.order_id+'\',\''+r.id+'\',this)"><i class="fa-solid fa-flag-checkered"></i> Prestation terminée</button>'
       : '')
+    +(r.has_revision_requested
+      ? '<div style="margin-top:10px;background:rgba(245,158,11,.06);border:1.5px solid #f59e0b;border-radius:10px;padding:12px;">'
+        +'<div style="font-size:12px;font-weight:800;color:#f59e0b;margin-bottom:6px;"><i class="fa-solid fa-rotate-left" style="margin-right:6px;"></i>Révision demandée par le client</div>'
+        +(r.revision_note?'<div style="font-size:12px;color:#ccc;line-height:1.6;margin-bottom:10px;font-style:italic;">"'+_escHtml(r.revision_note)+'"</div>':'')
+        +'<textarea id="rev-reply-'+r.id+'" placeholder="Message au client (optionnel)…" style="width:100%;min-height:55px;padding:8px;border-radius:8px;border:1px solid #3a3a3a;background:#111;color:#fff;font-size:13px;box-sizing:border-box;resize:vertical;"></textarea>'
+        +'<button onclick="_ptnrSubmitRevision(\''+r.revision_livrable_id+'\',\''+r.id+'\')" style="margin-top:8px;width:100%;background:linear-gradient(135deg,#1a3a1a,#16532b);border:1.5px solid #22c55e;border-radius:10px;padding:10px;color:#22c55e;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">'
+        +'<i class="fa-solid fa-paper-plane"></i> Soumettre la révision</button>'
+        +'</div>'
+      : '')
     +(r.partner_completed && !r.client_validated
       ? '<div style="margin-top:10px;background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.25);border-radius:8px;padding:10px 12px;font-size:11px;color:#22c55e;line-height:1.5;"><i class="fa-solid fa-circle-check" style="margin-right:4px;"></i>Virement GENESIS déclenché — le client a été notifié pour confirmer la qualité.</div>'
       : '')
@@ -15997,6 +16006,27 @@ function _ptnrUploadLivrablePhoto(dispatchId, inp){
         }
       }).catch(function(){ inp.disabled = false; showToast('Erreur de connexion','Réessayez','error'); });
   }).catch(function(){ inp.disabled = false; showToast('Erreur','Impossible de lire la photo','error'); });
+}
+function _ptnrSubmitRevision(livrableId, requestId){
+  if(!livrableId){ showToast('Erreur','Livrable introuvable','error'); return; }
+  var noteEl = document.getElementById('rev-reply-'+requestId);
+  var note = noteEl ? noteEl.value.trim() : '';
+  var btn = noteEl && noteEl.parentElement && noteEl.parentElement.querySelector('button[onclick*="ptnrSubmitRevision"]');
+  if(btn){ btn.disabled=true; btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Envoi…'; }
+  _ptnrFetch('/api/partner/livrables/'+livrableId+'/republish','POST', note ? {note: note} : {})
+    .then(function(res){
+      if(res && res.success){
+        showToast('Révision soumise','Le client a été notifié pour valider votre livrable.','success');
+        haptic([30,20,60]);
+        _ptnrLoadMissions();
+      } else {
+        if(btn){ btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-paper-plane"></i> Soumettre la révision'; }
+        showToast('Erreur',(res&&res.error)||'Impossible de soumettre','error');
+      }
+    }).catch(function(){
+      if(btn){ btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-paper-plane"></i> Soumettre la révision'; }
+      showToast('Erreur de connexion','Réessayez','error');
+    });
 }
 function _ptnrMarkDelivering(dispatchId, requestId){
   _ptnrFetch('/api/partner/dispatches/'+dispatchId+'/mark-delivering','POST',{}).then(function(res){
