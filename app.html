@@ -15946,8 +15946,8 @@ function _ptnrRenderEngagedMissionCard(r){
   var statusKey = r.display_status && r.display_status.key;
   // Pour les missions small (≤ 300 €) : passer directement à la confirmation de livraison
   // sans l'étape intermédiaire "marquer livraison en cours"
-  var canMarkDelivered = r.dispatch_id && r.payment_tier === 'small' && !r.delivery_confirmed && !r.partner_completed;
-  var canMarkDelivering = r.dispatch_id && statusKey === 'in_progress' && !canMarkDelivered;
+  var canMarkDelivered = r.dispatch_id && r.payment_tier === 'small' && !r.delivery_confirmed && !r.partner_completed && !r.has_revision_requested;
+  var canMarkDelivering = r.dispatch_id && statusKey === 'in_progress' && !canMarkDelivered && !r.has_revision_requested;
   var contractDlBtn = r.contract_id
     ? '<a href="'+(window.FA_GENESIS_API||API)+'/api/contracts/'+r.contract_id+'/pdf" target="_blank" style="display:flex;align-items:center;gap:8px;margin-bottom:8px;background:#1a1200;border:1px solid #3d2e00;border-radius:8px;padding:8px 12px;color:#FFD700;font-size:12px;font-weight:700;text-decoration:none;"><i class="fa-solid fa-file-contract"></i> Télécharger le contrat signé</a>'
     : '';

@@ -20586,8 +20586,8 @@ app.get('/api/partner/stripe/payments', authenticatePartner, function(req, res) 
 // virement GENESIS → Connect quand le partenaire déclare la prestation terminée.
 /**
  * POST /api/payments/stripe/sync-intent
- * Fallback webhook : le client appelle cette route après confirmPayment() pour synchroniser
- * deposit_authorized sur la commande si le webhook Stripe n'est pas encore configuré.
+ * Fallback de synchronisation : le client appelle cette route après confirmPayment() pour
+ * s'assurer que deposit_authorized est bien positionné côté serveur (filet de sécurité).
  */
 app.post('/api/payments/stripe/sync-intent', async function(req, res) {
     try {
@@ -20727,7 +20727,7 @@ app.post('/api/payments/stripe/create-intent', async function(req, res) {
             } catch(e) { console.error('[STRIPE INTENT] Erreur stockage PI ID sur commande:', e.message); }
         }
 
-        console.log('[STRIPE INTENT] GENESIS SAFE™ — autorisation (capture différée):', pi.id, _intentAmount + ' EUR', 'order:', b.orderId || 'N/A');
+        console.log('[STRIPE INTENT] GENESIS SAFE™ — débit immédiat:', pi.id, _intentAmount + ' EUR', 'order:', b.orderId || 'N/A');
         res.json({ ok: true, clientSecret: pi.client_secret, paymentIntentId: pi.id });
     } catch(e) {
         console.error('[STRIPE INTENT]', e.message);
