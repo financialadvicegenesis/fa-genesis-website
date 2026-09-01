@@ -3742,6 +3742,14 @@ function _restoreNavSession(){
       showSupportThreadDirect(_ptid);
       return;
     }
+    // Deep-link depuis clic notification (app était fermée) — consommé ici car
+    // _restoreNavSession() est appelé APRÈS showApp() → auth garantie, nav prête.
+    if(window._pendingDeepLinkHash){
+      var _dlh = window._pendingDeepLinkHash;
+      window._pendingDeepLinkHash = null;
+      setTimeout(function(){ _handleNotifHash(_dlh); }, 300);
+      return;
+    }
     // Nouvel utilisateur : ne jamais écraser l'accueil avant le prompt tutoriel
     if(USER && !localStorage.getItem(_tutoKey('c_done'))) return;
     var tab=sessionStorage.getItem('fa_nav_tab');
@@ -8052,7 +8060,7 @@ function _genesisCardHtml() {
     +badgeHtml
     +'</div>'
     +'<div style="font-size:15px;font-weight:900;color:#fff;margin-bottom:2px;">'+(fn+(ln?' '+ln:''))+'</div>'
-    +'<div style="font-size:11px;color:'+col+';font-weight:700;margin-bottom:4px;"><i class="fa-solid fa-bolt" style="font-size:9px;"></i> '+qg+' QG</div>'
+    +'<div style="font-size:11px;color:'+col+';font-weight:700;margin-bottom:4px;"><i class="fa-solid fa-bolt" style="font-size:9px;"></i> <span id="genesis-card-qg-val">'+qg+'</span> QG</div>'
     +'<div style="font-size:11px;color:#888;margin-bottom:'+(bioSafe?'10':'0')+'px;">'+em+'</div>'
     +(bioSafe ? '<div style="font-size:12px;color:#aaa;line-height:1.55;border-top:1px solid '+col+'14;padding-top:10px;">'+bioSafe+'</div>' : '')
     +_studentBadgeHtml()
@@ -8098,8 +8106,26 @@ function _appUploadNewCert(){
   inp.click();
 }
 
+function _refreshClientQG(){
+  if(!USER||GUEST||!USER._token) return;
+  fetch(API+'/api/client/level-progress',{headers:{'Authorization':'Bearer '+USER._token}})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(!d||!d.ok) return;
+      USER.genesisPoints = d.qgPoints;
+      USER.badge = d.currentBadge;
+      USER.badgeProgress = d.progress;
+      if(d.currentLevel) USER.genesisLevel = d.currentLevel.label;
+      var qgEl = document.getElementById('genesis-card-qg-val');
+      if(qgEl) qgEl.textContent = d.qgPoints;
+      _renderHomeQGWidget();
+    })
+    .catch(function(){});
+}
+
 function renderProfil(){
   try{sessionStorage.removeItem('fa_support_thread');}catch(e){}
+  setTimeout(_refreshClientQG, 600);
   var c = document.getElementById('profilContent');
   var logo = '<img class="plus-logo" src="assets/images/icon-app-192.png" alt="GENESIS" onerror="this.style.display=\'none\'">';
 
@@ -13481,7 +13507,7 @@ function _handleNotifHash(hash){
     nav('partner'); setTimeout(function(){ if(typeof _ptnrNav==='function') _ptnrNav('missions'); }, 500);
   } else if(hash === 'partner:messages'){
     nav('partner'); setTimeout(function(){ if(typeof _ptnrNav==='function') _ptnrNav('messages'); }, 500);
-  } else if(hash === 'open-partner'){
+  } else if(hash === 'open-partner' || hash === 'partner:home'){
     nav('partner');
   } else if(hash === 'tab:resa' || hash === 'open-reservations' || hash === 'reservations' || hash === 'open-suivi'){
     nav('reservations');
@@ -13532,16 +13558,14 @@ if('serviceWorker' in navigator){
   });
 }
 
-// Hash routing : quand l'appli était fermée au moment du clic sur la notification
+// Hash routing : quand l'appli était fermée au moment du clic sur la notification.
+// Stocké ici, consommé par _restoreNavSession() APRÈS showApp() pour éviter la
+// race-condition (auth pas encore terminée à DOMContentLoaded+900ms).
 (function(){
   var _initHash = window.location.hash ? window.location.hash.slice(1) : '';
   if(!_initHash) return;
-  document.addEventListener('DOMContentLoaded', function(){
-    setTimeout(function(){
-      history.replaceState(null, '', window.location.pathname);
-      _handleNotifHash(_initHash);
-    }, 900);
-  });
+  window._pendingDeepLinkHash = _initHash;
+  if(history.replaceState) history.replaceState(null, '', window.location.pathname);
 })();
 
 // Extend nav() to handle partner tab logic

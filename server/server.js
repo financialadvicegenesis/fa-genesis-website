@@ -841,7 +841,7 @@ async function _handleFirstMissionCompleted(partner, allPartners) {
         notifyUser(partner.email, 'partner', 'first_mission_completed',
             '🎉 Félicitations !',
             'Votre première prestation est terminée. Votre profil bénéficie d\'une mise en avant pendant ' + PROFILE_BOOST_DAYS_FILLEUL + ' jours. Vous obtenez la distinction Nouveau Talent.',
-            '/app.html');
+            '/app.html#partner:home');
         if (partner.referredBy) {
             var parrain = allPartners.find(function(p) { return p.id === partner.referredBy; });
             if (parrain) {
@@ -853,7 +853,7 @@ async function _handleFirstMissionCompleted(partner, allPartners) {
                 notifyUser(parrain.email, 'partner', 'ambassador_earned',
                     '🎉 Félicitations !',
                     'Votre filleul a réalisé sa première prestation. Vous obtenez la distinction Ambassadeur GENESIS. Votre profil bénéficie d\'une mise en avant pendant ' + PROFILE_BOOST_DAYS_PARRAIN + ' jours.',
-                    '/app.html');
+                    '/app.html#partner:home');
             }
         }
         savePartners(allPartners);
@@ -1533,7 +1533,7 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
                     rejected:     { t: 'Compte de paiement refusé',                       b: 'Contactez le support FA GENESIS pour régulariser votre situation.' }
                 };
                 var nm = notifMap[newStatus];
-                if (nm) notifyUser(pEmail, 'partner', 'stripe_account_' + newStatus, nm.t, nm.b, null);
+                if (nm) notifyUser(pEmail, 'partner', 'stripe_account_' + newStatus, nm.t, nm.b, '/app.html#partner:home');
                 console.log('[STRIPE-WH] account.updated', acct.id, '→', newStatus);
             }
         } else if (event.type === 'payout.paid') {
@@ -1792,7 +1792,7 @@ function alertBatisseurPlusOnNewPartner(partner) {
                 'nouveau-prestataire',
                 'Nouveau prestataire disponible',
                 partnerName + ' vient de rejoindre GENESIS et correspond à vos préférences.',
-                '/app.html'
+                '/app.html#explorer'
             );
         });
     } catch(e) {
@@ -2328,7 +2328,7 @@ app.post('/api/admin/disputes/:id/resolve', function(req, res) {
         var partner = getPartnerById(dispute.partner_id);
         notifyUser(dispute.client_email, 'client', 'litige-resolu', 'Litige resolu', 'Votre litige a ete resolu par notre equipe.', '/app.html#open-litiges');
         if (partner && partner.email) {
-            notifyUser(partner.email, 'partner', 'litige-resolu', 'Litige resolu', 'Le litige avec votre client a ete resolu par notre equipe.', '/app.html#open-litiges');
+            notifyUser(partner.email, 'partner', 'litige-resolu', 'Litige resolu', 'Le litige avec votre client a ete resolu par notre equipe.', '/app.html#partner:home');
         }
 
         releaseOnHoldPayouts(dispute.dispatch_id).catch(function(e) { console.error('[DISPUTE] Erreur releaseOnHoldPayouts:', e); });
@@ -12760,7 +12760,7 @@ function checkAndSendProactiveQGNotif(email, role, pts) {
             notifyUser(email, role, 'jeremie_proactif',
                 'Palier ' + _next.nextLabel + ' en vue !' ,
                 _msg + ' (' + pts + '/' + _next.nextPts + ' QG)',
-                '/app.html');
+                role === 'partner' ? '/app.html#partner:home' : '/app.html#profil');
         }
     } catch(_e) {}
 }
@@ -12788,7 +12788,7 @@ function checkReferralAndMissionRewards(clientEmail) {
                 notifyUser(clientEmail, 'client', 'referral_bonus',
                     '🎁 +50 Points QG débloqués !',
                     'Félicitations pour votre première prestation ! Vous gagnez 50 Points QG et débloquez la Mission GENESIS « Collaborer avec 3 professionnels différents ».',
-                    '/app.html');
+                    '/app.html#profil');
                 // Notification parrain (+100 QG via formule, pas de stockage supplémentaire)
                 var parrain = users.find(function(u) { return u.id === user.referredBy; });
                 if (parrain) {
@@ -12796,7 +12796,7 @@ function checkReferralAndMissionRewards(clientEmail) {
                     notifyUser(parrain.email, 'client', 'referral_reward',
                         '🎉 Récompense parrainage !',
                         'Votre filleul ' + (users[uIdx].prenom || 'votre filleul') + ' vient de réaliser sa première prestation. Vous gagnez +100 Points QG !',
-                        '/app.html');
+                        '/app.html#profil');
                     // Missions de parrainage progressives (parrain) — 5 paliers
                     if (parrainIdx !== -1) {
                         var parrainRefCount = getClientReferralCount(users[parrainIdx].id);
@@ -16140,7 +16140,7 @@ app.post('/api/client/orders/:orderId/validate-delivery', function(req, res) {
                 notifyUser(ptnrEmailN, 'partner', 'delivery_validated',
                     '⭐ Prestation validée par le client',
                     'Le client a confirmé la bonne livraison de « ' + (order.product_name || '') + ' ». Merci pour votre travail !',
-                    '/partner-dashboard.html'
+                    '/app.html#partner:home'
                 );
             }
         } catch(ne) {}
