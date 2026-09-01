@@ -20965,28 +20965,25 @@ app.get('/api/partner/earnings/summary', authenticatePartner, function(req, res)
         var totalEarned  = 0;
         var totalPaidOut = 0;
 
+        // available = payouts approuvés en attente de virement vers la banque du partenaire
+        // pending   = fonds GENESIS SAFE™ encore en escrow (pas de payout créé) + on_hold
+        // totalPaidOut = déjà virés sur le compte bancaire du partenaire
         payouts.forEach(function(p) {
             var amt = parseFloat(p.amount || 0);
             if (p.status === 'sent') {
                 totalPaidOut += amt;
                 totalEarned  += amt;
             } else if (p.status === 'pending' || p.status === 'awaiting_validation') {
-                pending     += amt;
-                totalEarned += amt;
+                available    += amt;
+                totalEarned  += amt;
             } else if (p.status === 'on_hold') {
-                pending     += amt;
-                totalEarned += amt;
+                pending      += amt;
+                totalEarned  += amt;
             }
         });
 
-        var stripePayments = [];
-        try { stripePayments = mps.loadStripePayments().filter(function(p) { return p.partnerId === partnerId && p.status === 'succeeded'; }); } catch(e) {}
-        stripePayments.forEach(function(p) {
-            var partnerCents = p.partnerCents || 0;
-            totalEarned  += partnerCents / 100;
-        });
-
-        // Fonds GENESIS SAFE™ retenus : commandes payées mais pas encore livrées/versées
+        // Fonds GENESIS SAFE™ retenus : commandes payées mais sans payout créé (escrow actif)
+        // On exclut les commandes qui ont déjà un payout (quel que soit son statut) pour éviter le double comptage
         try {
             var _allOrds  = loadOrders();
             var _allDisps = loadDispatches();
@@ -21000,7 +20997,7 @@ app.get('/api/partner/earnings/summary', authenticatePartner, function(req, res)
                 if (!o || !(o.deposit_paid || o.deposit_authorized)) return;
                 if (_seenOrderIds[o.id]) return;
                 _seenOrderIds[o.id] = true;
-                var hasPayout = _allPays.some(function(p) { return p.order_id === o.id && (p.status === 'sent' || p.status === 'pending_admin'); });
+                var hasPayout = _allPays.some(function(p) { return p.order_id === o.id && p.status !== 'failed' && p.status !== 'cancelled'; });
                 if (hasPayout) return;
                 var totalAmt = parseFloat(o.total_amount || o.total_price || 0);
                 var partnerAmt = Math.round(totalAmt * 0.75 * 100) / 100;
@@ -21015,7 +21012,7 @@ app.get('/api/partner/earnings/summary', authenticatePartner, function(req, res)
                 if (!o || !(o.deposit_paid || o.deposit_authorized)) return;
                 if (_seenOrderIds[o.id]) return;
                 _seenOrderIds[o.id] = true;
-                var hasPayout = _allPays.some(function(p) { return p.order_id === o.id && (p.status === 'sent' || p.status === 'pending_admin'); });
+                var hasPayout = _allPays.some(function(p) { return p.order_id === o.id && p.status !== 'failed' && p.status !== 'cancelled'; });
                 if (hasPayout) return;
                 var totalAmt = parseFloat(o.total_amount || o.total_price || 0);
                 var partnerAmt = Math.round(totalAmt * 0.75 * 100) / 100;
