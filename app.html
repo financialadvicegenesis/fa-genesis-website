@@ -637,8 +637,8 @@ a{text-decoration:none;color:inherit}
 .p-section-hdr{
   margin:0 16px 16px;padding:14px 20px;
   display:inline-block;width:calc(100% - 32px);
-  font-size:22px;font-weight:900;font-style:italic;text-transform:uppercase;
-  letter-spacing:-0.5px;color:#fff;font-family:'Unbounded',sans-serif;
+  font-size:22px;font-weight:900;font-style:normal;text-transform:uppercase;
+  letter-spacing:0.5px;color:#fff;font-family:'Unbounded',sans-serif;
   border:4px solid #000;position:relative;
 }
 .p-section-hdr.gold{background:linear-gradient(135deg,#c89116,#e8a820);color:#000}
@@ -8176,6 +8176,31 @@ function renderProfil(){
     +pli('<i class="fa-solid fa-cookie-bite"></i>','#1a1000','Cookies','https://fagenesis.com/cookies.html')
     +'</div></div>';
 
+  var accountMgmtClient = '';
+  if(USER && !GUEST){
+    accountMgmtClient = '<div style="margin:4px 16px 0;">'
+      +'<div style="height:1px;background:#1c1c1c;margin-bottom:16px;"></div>'
+      +'<button style="width:100%;background:transparent;border:1.5px solid #4a3800;color:#ffd43b;font-size:13px;font-weight:700;font-family:inherit;padding:13px 16px;border-radius:12px;cursor:pointer;display:flex;align-items:center;gap:8px;margin-bottom:10px;" onclick="_pcShowDeactivate()">'
+      +'<i class="fa-solid fa-pause-circle"></i>Désactiver temporairement mon compte</button>'
+      +'<div id="pc-deact-confirm" style="display:none;background:#1a1200;border-radius:12px;padding:14px;margin-bottom:12px;">'
+      +'<div style="font-size:12px;color:#ccc;line-height:1.5;margin-bottom:12px;">Votre compte sera temporairement suspendu. Vos données sont conservées.</div>'
+      +'<div class="cwb-err" id="pc-deact-err"></div>'
+      +'<div style="display:flex;gap:8px;">'
+      +'<button style="flex:1;background:#ffd43b;color:#000;border:none;border-radius:10px;padding:12px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;" id="pc-deact-btn" onclick="_pcDeactivate()">Confirmer</button>'
+      +'<button style="flex:1;background:#1a1a1a;color:#aaa;border:1px solid #333;border-radius:10px;padding:12px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;" onclick="document.getElementById(\'pc-deact-confirm\').style.display=\'none\'">Annuler</button>'
+      +'</div></div>'
+      +'<button style="width:100%;background:transparent;border:1.5px solid #3a0000;color:#ef4444;font-size:13px;font-weight:700;font-family:inherit;padding:13px 16px;border-radius:12px;cursor:pointer;display:flex;align-items:center;gap:8px;" onclick="_pcShowDelete()">'
+      +'<i class="fa-solid fa-trash-alt"></i>Supprimer mon compte</button>'
+      +'<div id="pc-del-confirm" style="display:none;background:#1a0000;border-radius:12px;padding:14px;margin-top:10px;">'
+      +'<div style="font-size:12px;color:#ff9999;line-height:1.5;margin-bottom:12px;">Action irréversible. Toutes vos données seront définitivement supprimées.</div>'
+      +'<div class="mc-field"><label class="mc-label">Confirmez votre mot de passe</label><input id="pc-del-pwd" class="mc-input" type="password" placeholder="Votre mot de passe"></div>'
+      +'<div class="cwb-err" id="pc-del-err"></div>'
+      +'<div style="display:flex;gap:8px;margin-top:8px;">'
+      +'<button style="flex:1;background:#ef4444;color:#fff;border:none;border-radius:10px;padding:12px;font-size:13px;font-weight:900;font-family:inherit;cursor:pointer;" id="pc-del-btn" onclick="_pcDelete()">Supprimer</button>'
+      +'<button style="flex:1;background:#1a1a1a;color:#aaa;border:1px solid #333;border-radius:10px;padding:12px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;" onclick="document.getElementById(\'pc-del-confirm\').style.display=\'none\'">Annuler</button>'
+      +'</div></div>'
+      +'</div>';
+  }
   var logout = (USER && !GUEST)
     ? '<button class="plus-logout" onclick="deconnexion()">Déconnexion</button>' : '';
 
@@ -8191,7 +8216,7 @@ function renderProfil(){
         + '</div>';
     }
   }
-  c.innerHTML = header + monEspace + espacePartenaire + params + infos + _referralSection + logout
+  c.innerHTML = header + monEspace + espacePartenaire + params + infos + _referralSection + accountMgmtClient + logout
     +'<div class="plus-version">Version 1.1</div>';
 }
 
@@ -8301,26 +8326,6 @@ function showParametresCompte(){
     +'<div class="cwb-err" id="pc-pwd-err"></div>'
     +'<div id="pc-pwd-ok" style="display:none;color:#4caf50;font-size:13px;font-weight:700;margin-bottom:8px;padding:8px 0;"></div>'
     +'<button class="cwb-btn cwb-btn-yellow" style="width:100%;margin-top:4px;" id="pc-pwd-btn" onclick="_pcChangePassword()">METTRE À JOUR</button>'
-    +'<div style="height:1px;background:#1f1f1f;margin:24px 0;"></div>'
-    +'<div style="font-size:11px;font-weight:900;color:#ff6b6b;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;">Gestion du compte</div>'
-    +'<div style="font-size:12px;color:#888;margin-bottom:14px;line-height:1.5;"><i class="fa-solid fa-triangle-exclamation" style="color:#ff6b6b;margin-right:4px;"></i>Ces actions affectent votre compte définitivement.</div>'
-    +'<button class="cwb-btn" style="width:100%;background:#ffd43b;color:#000;margin-bottom:10px;font-weight:900;" onclick="_pcShowDeactivate()"><i class="fa-solid fa-pause-circle" style="margin-right:6px;"></i>Désactiver temporairement</button>'
-    +'<div id="pc-deact-confirm" style="display:none;background:#1a1200;border-radius:12px;padding:14px;margin-bottom:12px;">'
-    +'<div style="font-size:12px;color:#ccc;line-height:1.5;margin-bottom:12px;">Votre compte sera temporairement suspendu. Vos données sont conservées.</div>'
-    +'<div class="cwb-err" id="pc-deact-err"></div>'
-    +'<div style="display:flex;gap:8px;">'
-    +'<button class="cwb-btn cwb-btn-yellow" style="flex:1;" id="pc-deact-btn" onclick="_pcDeactivate()">Confirmer</button>'
-    +'<button class="cwb-btn" style="flex:1;background:#333;color:#fff;" onclick="document.getElementById(\'pc-deact-confirm\').style.display=\'none\'">Annuler</button>'
-    +'</div></div>'
-    +'<button class="cwb-btn" style="width:100%;background:#ff6b6b;color:#000;font-weight:900;" onclick="_pcShowDelete()"><i class="fa-solid fa-trash-alt" style="margin-right:6px;"></i>Supprimer mon compte</button>'
-    +'<div id="pc-del-confirm" style="display:none;background:#1a0000;border-radius:12px;padding:14px;margin-top:10px;">'
-    +'<div style="font-size:12px;color:#ff9999;line-height:1.5;margin-bottom:12px;">Action irréversible. Toutes vos données seront définitivement supprimées.</div>'
-    +'<div class="mc-field"><label class="mc-label">Confirmez votre mot de passe</label><input id="pc-del-pwd" class="mc-input" type="password" placeholder="Votre mot de passe"></div>'
-    +'<div class="cwb-err" id="pc-del-err"></div>'
-    +'<div style="display:flex;gap:8px;margin-top:8px;">'
-    +'<button class="cwb-btn" style="flex:1;background:#ff6b6b;color:#000;font-weight:900;" id="pc-del-btn" onclick="_pcDelete()">Supprimer</button>'
-    +'<button class="cwb-btn" style="flex:1;background:#333;color:#fff;" onclick="document.getElementById(\'pc-del-confirm\').style.display=\'none\'">Annuler</button>'
-    +'</div></div>'
     +'</div></div>';
 }
 function _pcOnPhotoSelected(input){
@@ -8405,7 +8410,7 @@ function _pcDeactivate(){
   .then(function(res){
     if(res.ok){
       showToast('Compte désactivé','Vous allez être déconnecté.','success');
-      setTimeout(function(){ if(typeof logout==='function') logout(); },1500);
+      setTimeout(function(){ try{localStorage.removeItem('fa_push_subscribed');}catch(e){} _showRoleChoiceAfterDelete(); },1500);
     } else {
       if(btn){btn.disabled=false;btn.textContent='Confirmer';}
       if(er){er.textContent=(res.data&&res.data.error)||'Erreur.';er.classList.add('on');}
@@ -12914,7 +12919,7 @@ function _ptnrLoadHome(){
     _ptnrFetch('/api/partner/requests').then(function(r){
       var cnt = (r && r.requests && r.requests.length) || 0;
       if(cnt > 0 && list){
-        var alertCard = '<div class="dispatch-card" style="cursor:pointer;margin-bottom:12px;" onclick="_ptnrNav(\'missions\')"><div class="dispatch-badge"><span class="dispatch-badge-dot"></span>'+cnt+' demande(s) en attente</div><div class="ptnr-card-title">Un client souhaite vous engager !</div><div class="ptnr-card-sub">Appuyez pour accepter ou refuser sa demande.</div></div>';
+        var alertCard = '<div class="dispatch-card" style="cursor:pointer;margin-bottom:12px;text-align:center;" onclick="_ptnrNav(\'missions\')"><div class="dispatch-badge" style="display:inline-flex;"><span class="dispatch-badge-dot"></span>'+cnt+' demande(s) en attente</div><div class="ptnr-card-title" style="text-align:center;">Un client souhaite vous engager !</div><div class="ptnr-card-sub" style="text-align:center;">Appuyez pour accepter ou refuser sa demande.</div></div>';
         list.insertAdjacentHTML('afterbegin', alertCard);
       }
     }).catch(function(){});
@@ -17288,6 +17293,32 @@ function _ptnrPfSave(){
   });
 }
 
+function _ptnrShowDeactivate(){
+  var box = document.getElementById('ptnr-deact-confirm');
+  if(box) box.style.display = box.style.display === 'none' ? 'block' : 'none';
+}
+function _ptnrDeactivate(){
+  var btn = document.getElementById('ptnr-deact-btn');
+  var err = document.getElementById('ptnr-deact-err');
+  if(btn){ btn.disabled=true; btn.textContent='Désactivation...'; }
+  if(err) err.style.display='none';
+  fetch((window.FA_GENESIS_API||API)+'/api/partner/deactivate',{
+    method:'PUT',
+    headers:{'Authorization':'Bearer '+(_ptnrToken||'')}
+  }).then(function(r){return r.json();}).then(function(d){
+    if(d.success||d.ok){
+      showToast('Compte désactivé','Vous allez être déconnecté.','success');
+      setTimeout(function(){ _ptnrLogout(); }, 1500);
+    } else {
+      if(btn){ btn.disabled=false; btn.textContent='Confirmer'; }
+      if(err){ err.textContent=(d.error||'Erreur.'); err.style.display='block'; }
+    }
+  }).catch(function(){
+    if(btn){ btn.disabled=false; btn.textContent='Confirmer'; }
+    if(err){ err.textContent='Erreur de connexion.'; err.style.display='block'; }
+  });
+}
+
 function _ptnrShowDeleteConfirm(){
   var box = document.getElementById('ptnr-del-confirm');
   if(box) box.style.display = box.style.display === 'none' ? 'block' : 'none';
@@ -17404,15 +17435,24 @@ function _ptnrLoadProfil(){
     +'</div></div>';
 
   var deleteBtn = '<div style="margin:20px 16px 4px;">'
-    +'<button style="width:100%;background:transparent;border:1px solid #3a0000;color:#ef4444;font-size:12px;font-weight:700;padding:13px;border-radius:12px;cursor:pointer;" onclick="_ptnrShowDeleteConfirm()">'
-    +'<i class="fa-solid fa-trash-alt" style="margin-right:6px;"></i>Supprimer mon compte</button>'
+    +'<button style="width:100%;background:transparent;border:1.5px solid #4a3800;color:#ffd43b;font-size:13px;font-weight:700;font-family:inherit;padding:13px 16px;border-radius:12px;cursor:pointer;display:flex;align-items:center;gap:8px;margin-bottom:10px;" onclick="_ptnrShowDeactivate()">'
+    +'<i class="fa-solid fa-pause-circle"></i>Désactiver temporairement mon compte</button>'
+    +'<div id="ptnr-deact-confirm" style="display:none;background:#1a1200;border:1px solid #4a3800;border-radius:12px;padding:14px;margin-bottom:12px;">'
+    +'<div style="font-size:12px;color:#ccc;line-height:1.5;margin-bottom:12px;">Votre compte sera temporairement suspendu. Vos données sont conservées.</div>'
+    +'<div id="ptnr-deact-err" style="font-size:12px;color:#ef4444;margin-bottom:8px;display:none;"></div>'
+    +'<div style="display:flex;gap:8px;">'
+    +'<button style="flex:1;background:#ffd43b;color:#000;border:none;border-radius:10px;padding:12px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;" id="ptnr-deact-btn" onclick="_ptnrDeactivate()">Confirmer</button>'
+    +'<button style="flex:1;background:#1a1a1a;color:#aaa;border:1px solid #333;border-radius:10px;padding:12px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;" onclick="document.getElementById(\'ptnr-deact-confirm\').style.display=\'none\'">Annuler</button>'
+    +'</div></div>'
+    +'<button style="width:100%;background:transparent;border:1.5px solid #3a0000;color:#ef4444;font-size:13px;font-weight:700;font-family:inherit;padding:13px 16px;border-radius:12px;cursor:pointer;display:flex;align-items:center;gap:8px;" onclick="_ptnrShowDeleteConfirm()">'
+    +'<i class="fa-solid fa-trash-alt"></i>Supprimer mon compte</button>'
     +'<div id="ptnr-del-confirm" style="display:none;background:#1a0000;border:1px solid #3a0000;border-radius:12px;padding:14px;margin-top:10px;">'
     +'<div style="font-size:12px;color:#ff9999;line-height:1.5;margin-bottom:12px;"><i class="fa-solid fa-triangle-exclamation" style="margin-right:6px;"></i>Action irréversible. Toutes vos données seront définitivement supprimées.</div>'
     +'<input id="ptnr-del-pwd" class="ptnr-input" type="password" placeholder="Confirmez votre mot de passe" style="margin-bottom:8px;">'
     +'<div id="ptnr-del-err" style="font-size:12px;color:#ef4444;margin-bottom:8px;display:none;"></div>'
     +'<div style="display:flex;gap:8px;">'
-    +'<button style="flex:1;background:#ef4444;color:#fff;border:none;border-radius:10px;padding:12px;font-size:13px;font-weight:800;cursor:pointer;" id="ptnr-del-btn" onclick="_ptnrDeleteAccount()">Supprimer</button>'
-    +'<button style="flex:1;background:#1a1a1a;color:#aaa;border:1px solid #333;border-radius:10px;padding:12px;font-size:13px;font-weight:700;cursor:pointer;" onclick="document.getElementById(\'ptnr-del-confirm\').style.display=\'none\'">Annuler</button>'
+    +'<button style="flex:1;background:#ef4444;color:#fff;border:none;border-radius:10px;padding:12px;font-size:13px;font-weight:800;font-family:inherit;cursor:pointer;" id="ptnr-del-btn" onclick="_ptnrDeleteAccount()">Supprimer</button>'
+    +'<button style="flex:1;background:#1a1a1a;color:#aaa;border:1px solid #333;border-radius:10px;padding:12px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;" onclick="document.getElementById(\'ptnr-del-confirm\').style.display=\'none\'">Annuler</button>'
     +'</div></div></div>';
   var logoutBtn = '<button class="plus-logout" onclick="_ptnrLogout()"><i class="fa-solid fa-arrow-right-from-bracket"></i> Déconnexion</button>';
   var _pr = _ptnrSession || {};

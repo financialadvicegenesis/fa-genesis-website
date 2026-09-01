@@ -9690,6 +9690,27 @@ app.post('/api/auth/change-password', async (req, res) => {
 // ============================================================
 
 /**
+ * PUT /api/partner/deactivate
+ * Désactiver temporairement le compte partenaire
+ */
+app.put('/api/partner/deactivate', authenticatePartner, function(req, res) {
+    try {
+        var partners = loadPartners();
+        var idx = partners.findIndex(function(p) { return p.id === req.partner.id; });
+        if (idx === -1) return res.status(404).json({ error: 'Partenaire introuvable' });
+        partners[idx].accountStatus = 'deactivated';
+        partners[idx].deactivatedAt = new Date().toISOString();
+        partners[idx].sessionToken = null;
+        partners[idx].updatedAt = new Date().toISOString();
+        savePartners(partners);
+        console.log('[PARTNER] Compte désactivé: ' + req.partner.email);
+        res.json({ success: true, message: 'Compte désactivé avec succès' });
+    } catch(e) {
+        res.status(500).json({ error: 'Erreur lors de la désactivation' });
+    }
+});
+
+/**
  * PUT /api/auth/deactivate-account
  * Desactiver temporairement son compte (auth requise)
  */
