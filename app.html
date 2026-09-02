@@ -8206,7 +8206,7 @@ function renderProfil(){
   if(USER && !GUEST){
     accountMgmtClient = '<div style="margin:4px 16px 0;">'
       +'<div style="height:1px;background:#1c1c1c;margin-bottom:16px;"></div>'
-      +'<button style="width:100%;background:transparent;border:1.5px solid #4a3800;color:#ffd43b;font-size:13px;font-weight:700;font-family:inherit;padding:13px 16px;border-radius:12px;cursor:pointer;display:flex;align-items:center;gap:8px;margin-bottom:10px;" onclick="_pcShowDeactivate()">'
+      +'<button style="width:100%;background:transparent;border:1.5px solid #4a3800;color:#ffd43b;font-size:13px;font-weight:700;font-family:inherit;padding:13px 16px;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:10px;" onclick="_pcShowDeactivate()">'
       +'<i class="fa-solid fa-pause-circle"></i>Désactiver temporairement mon compte</button>'
       +'<div id="pc-deact-confirm" style="display:none;background:#1a1200;border-radius:12px;padding:14px;margin-bottom:12px;">'
       +'<div style="font-size:12px;color:#ccc;line-height:1.5;margin-bottom:12px;">Votre compte sera temporairement suspendu. Vos données sont conservées.</div>'
@@ -8215,7 +8215,7 @@ function renderProfil(){
       +'<button style="flex:1;background:#ffd43b;color:#000;border:none;border-radius:10px;padding:12px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;" id="pc-deact-btn" onclick="_pcDeactivate()">Confirmer</button>'
       +'<button style="flex:1;background:#1a1a1a;color:#aaa;border:1px solid #333;border-radius:10px;padding:12px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;" onclick="document.getElementById(\'pc-deact-confirm\').style.display=\'none\'">Annuler</button>'
       +'</div></div>'
-      +'<button style="width:100%;background:transparent;border:1.5px solid #3a0000;color:#ef4444;font-size:13px;font-weight:700;font-family:inherit;padding:13px 16px;border-radius:12px;cursor:pointer;display:flex;align-items:center;gap:8px;" onclick="_pcShowDelete()">'
+      +'<button style="width:100%;background:transparent;border:1.5px solid #3a0000;color:#ef4444;font-size:13px;font-weight:700;font-family:inherit;padding:13px 16px;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;" onclick="_pcShowDelete()">'
       +'<i class="fa-solid fa-trash-alt"></i>Supprimer mon compte</button>'
       +'<div id="pc-del-confirm" style="display:none;background:#1a0000;border-radius:12px;padding:14px;margin-top:10px;">'
       +'<div style="font-size:12px;color:#ff9999;line-height:1.5;margin-bottom:12px;">Action irréversible. Toutes vos données seront définitivement supprimées.</div>'
@@ -17459,7 +17459,7 @@ function _ptnrLoadProfil(){
     +'</div></div>';
 
   var deleteBtn = '<div style="margin:20px 16px 4px;">'
-    +'<button style="width:100%;background:transparent;border:1.5px solid #4a3800;color:#ffd43b;font-size:13px;font-weight:700;font-family:inherit;padding:13px 16px;border-radius:12px;cursor:pointer;display:flex;align-items:center;gap:8px;margin-bottom:10px;" onclick="_ptnrShowDeactivate()">'
+    +'<button style="width:100%;background:transparent;border:1.5px solid #4a3800;color:#ffd43b;font-size:13px;font-weight:700;font-family:inherit;padding:13px 16px;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:10px;" onclick="_ptnrShowDeactivate()">'
     +'<i class="fa-solid fa-pause-circle"></i>Désactiver temporairement mon compte</button>'
     +'<div id="ptnr-deact-confirm" style="display:none;background:#1a1200;border:1px solid #4a3800;border-radius:12px;padding:14px;margin-bottom:12px;">'
     +'<div style="font-size:12px;color:#ccc;line-height:1.5;margin-bottom:12px;">Votre compte sera temporairement suspendu. Vos données sont conservées.</div>'
@@ -17468,7 +17468,7 @@ function _ptnrLoadProfil(){
     +'<button style="flex:1;background:#ffd43b;color:#000;border:none;border-radius:10px;padding:12px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;" id="ptnr-deact-btn" onclick="_ptnrDeactivate()">Confirmer</button>'
     +'<button style="flex:1;background:#1a1a1a;color:#aaa;border:1px solid #333;border-radius:10px;padding:12px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;" onclick="document.getElementById(\'ptnr-deact-confirm\').style.display=\'none\'">Annuler</button>'
     +'</div></div>'
-    +'<button style="width:100%;background:transparent;border:1.5px solid #3a0000;color:#ef4444;font-size:13px;font-weight:700;font-family:inherit;padding:13px 16px;border-radius:12px;cursor:pointer;display:flex;align-items:center;gap:8px;" onclick="_ptnrShowDeleteConfirm()">'
+    +'<button style="width:100%;background:transparent;border:1.5px solid #3a0000;color:#ef4444;font-size:13px;font-weight:700;font-family:inherit;padding:13px 16px;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;" onclick="_ptnrShowDeleteConfirm()">'
     +'<i class="fa-solid fa-trash-alt"></i>Supprimer mon compte</button>'
     +'<div id="ptnr-del-confirm" style="display:none;background:#1a0000;border:1px solid #3a0000;border-radius:12px;padding:14px;margin-top:10px;">'
     +'<div style="font-size:12px;color:#ff9999;line-height:1.5;margin-bottom:12px;"><i class="fa-solid fa-triangle-exclamation" style="margin-right:6px;"></i>Action irréversible. Toutes vos données seront définitivement supprimées.</div>'
