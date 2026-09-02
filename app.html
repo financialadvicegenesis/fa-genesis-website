@@ -3591,7 +3591,9 @@ function loadStatusCard(){
       var active = reqs.find(function(r){
         if(!r.order_id) return false;
         var dsKey = (r.display_status&&r.display_status.key)||'';
-        return dsKey!=='completed' && dsKey!=='reviewed';
+        // N'afficher que les missions avec paiement validé (dispatch créé).
+        // 'received' et 'accepted' = pas encore payé → pas de carte accueil.
+        return dsKey==='in_progress' || dsKey==='delivering' || dsKey==='delivered';
       });
       var scCard = document.getElementById('statusCard');
       if(active && scCard){
