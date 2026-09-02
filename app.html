@@ -3633,6 +3633,7 @@ var _profilScrollPos = 0;
 var _profilBackTarget = null;
 
 function nav(tab){
+  _stopCmdRefresh();
   if(tab !== 'messages') _clearChatPoll();
   _prevNav={tab:_navCurrentTab,scrollTop:(document.getElementById('content')||{}).scrollTop||0};
   _navCurrentTab=tab;
@@ -3720,6 +3721,7 @@ function _saveProfilScroll(sectionName){
 }
 
 function profilBack(){
+  _stopCmdRefresh();
   try{sessionStorage.removeItem('fa_nav_section');}catch(e){}
   var saved = _profilScrollPos;
   var customFn = _profilBackTarget;
@@ -6698,13 +6700,13 @@ function renderResaTab(){
       var reqList = (data&&Array.isArray(data.requests))?data.requests:[];
       var el = document.getElementById('myRequestsList');
       if(!el) return;
-      // Exclure les missions terminées de l'onglet Réservations — elles vont dans "Mes commandes"
+      // Réservations = demandes sans order_id (pending/accepted/signed/proposed).
+      // Les commandes (order_id présent) sont dans "Mes commandes", pas ici.
       var _activeReqs = reqList.filter(function(r){
-        if(!r.order_id) return true;
-        var _dk = (r.display_status&&r.display_status.key)||'';
-        return _dk!=='completed' && _dk!=='reviewed';
+        if(r.order_id) return false;
+        return r.status !== 'declined';
       });
-      // Dédupliquer : pour le même partenaire + même service, garder uniquement la demande la plus récente
+      // Dédupliquer : même partenaire + même service → garder la plus récente
       var _seen = {};
       _activeReqs = _activeReqs.filter(function(r){
         var key = (r.partner_id||'')+'|'+(r.service_id||'');
@@ -6714,7 +6716,6 @@ function renderResaTab(){
       });
       if(_activeReqs.length===0){ el.innerHTML=''; return; }
       el.innerHTML = _activeReqs.map(function(r){
-        if(r.order_id) return renderOrderTrackingCard(r);
         if(r.status==='proposed') return renderProposalCard(r);
         var sc = (r.status==='accepted'||r.status==='signed')?'s-confirmed':r.status==='declined'?'s-refused':'s-pending';
         var sl = r.status==='signed'?'🟢 Contrat signé':r.status==='accepted'?'🟢 Acceptée':r.status==='declined'?'Refusée':'🟡 Demande envoyée';
@@ -6729,7 +6730,6 @@ function renderResaTab(){
           +(actionHtml?'<div class="resa-actions">'+actionHtml+'</div>':'')
           +'</div>';
       }).join('');
-      _activeReqs.forEach(function(r){ if(r.order_id) loadOrderLivrables(r.id, r.order_id); });
       reqList.forEach(function(r){
         if(r.order_id && r.display_status && r.display_status.key){
           _resaStatusCache[r.id] = r.display_status.key;
@@ -9602,23 +9602,27 @@ function sendJeremieMessage(){
 
 // ── ESPACE CLIENT IN-APP ──────────────────────────────────────
 var _mesCommandesReqs = []; // cache pour la vue détail
+var _cmdRefreshTimer = null;
 
-function showMesCommandes(){
-  var c=document.getElementById("profilContent");
-  if(!USER||GUEST){renderProfil();return;}
-  _saveProfilScroll('showMesCommandes');
-  c.innerHTML="<div class='espace-view'>"
-    +"<div class='espace-back-bar'><button class='espace-back-btn' onclick='profilBack()'>&#8249;</button><div class='espace-title'>Mes commandes</div></div>"
-    +"<div id='cmd-list' style='padding:14px;padding-bottom:80px;overflow-y:auto;flex:1;'><div class='espace-loading'>Chargement...</div></div>"
-    +"</div>";
+function _stopCmdRefresh(){ if(_cmdRefreshTimer){clearInterval(_cmdRefreshTimer);_cmdRefreshTimer=null;} }
+
+function _fetchAndRenderCommandes(){
+  if(!USER||!USER._token) return;
   fetch((window.FA_GENESIS_API||API)+"/api/my-requests",{headers:{"Authorization":"Bearer "+USER._token}})
     .then(function(r){return r.json();})
     .then(function(data){
-      // Toutes les commandes partenaire (en cours + livrées), triées par date desc
+      // Commandes partenaire (order_id présent), actives d'abord puis terminées
+      var _statusOrder = {in_progress:0,delivering:1,delivered:2,completed:3,reviewed:4};
       var allReqs=((data&&Array.isArray(data.requests))?data.requests:[])
-        .filter(function(r){ return !!r.order_id; });
+        .filter(function(r){ return !!r.order_id; })
+        .sort(function(a,b){
+          var ka = _statusOrder[(a.display_status&&a.display_status.key)||'']||99;
+          var kb = _statusOrder[(b.display_status&&b.display_status.key)||'']||99;
+          if(ka!==kb) return ka-kb;
+          return new Date(b.created_at)-new Date(a.created_at);
+        });
       _mesCommandesReqs = allReqs;
-      var el=document.getElementById("cmd-list"); if(!el) return;
+      var el=document.getElementById("cmd-list"); if(!el){ _stopCmdRefresh(); return; }
       if(!allReqs.length){
         el.innerHTML="<div class='espace-empty'><i class='fa-solid fa-box-open' style='font-size:32px;color:var(--muted);display:block;margin-bottom:10px;'></i>Aucune commande pour le moment.</div>";
         return;
@@ -9656,6 +9660,19 @@ function showMesCommandes(){
       var el=document.getElementById("cmd-list");
       if(el) el.innerHTML="<div class='espace-empty'>Impossible de charger vos commandes.</div>";
     });
+}
+
+function showMesCommandes(){
+  var c=document.getElementById("profilContent");
+  if(!USER||GUEST){renderProfil();return;}
+  _saveProfilScroll('showMesCommandes');
+  _stopCmdRefresh();
+  c.innerHTML="<div class='espace-view'>"
+    +"<div class='espace-back-bar'><button class='espace-back-btn' onclick='profilBack()'>&#8249;</button><div class='espace-title'>Mes commandes</div></div>"
+    +"<div id='cmd-list' style='padding:14px;padding-bottom:80px;overflow-y:auto;flex:1;'><div class='espace-loading'>Chargement...</div></div>"
+    +"</div>";
+  _fetchAndRenderCommandes();
+  _cmdRefreshTimer = setInterval(_fetchAndRenderCommandes, 30000);
 }
 
 function showOrderDetail(requestId){
