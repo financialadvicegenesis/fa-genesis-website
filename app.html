@@ -6613,152 +6613,77 @@ function closeDetail(){
   document.getElementById('detail-sheet').className='';
 }
 
-// ── RÉSERVATIONS ──────────────────────────────────────────────
+// ── RÉSERVATIONS (créneaux coworking + places événements) ──────
 function renderResaTab(){
   var c = document.getElementById('resaContent');
-  if(!USER||GUEST){ c.innerHTML = locked('Mes réservations','Connectez-vous pour voir vos réservations et leur statut.'); return; }
+  if(!USER||GUEST){ c.innerHTML = locked('Mes réservations','Connectez-vous pour voir vos réservations.'); return; }
   c.innerHTML = '<div class="espace-back-bar"><button class="espace-back-btn" onclick="navBack()">&#8249;</button><div class="espace-title">Mes réservations</div></div>'
-    + '<div class="resa-list" id="myProjectsList"></div>'
-    + '<div class="resa-list" id="myOrdersPendingList"></div><div class="resa-list" id="myRequestsList"></div><div class="resa-list" id="resaList"><div class="empty"><div class="e-ico"><i class="fa-solid fa-calendar-days"></i></div><p>Chargement...</p></div></div>';
-  // Projets GENESIS (multi-prestataires)
-  fetch((window.FA_GENESIS_API||API)+'/api/my-projects',{headers:{'Authorization':'Bearer '+USER._token}})
-    .then(function(r){return r.json();})
-    .then(function(data){
-      var projects = (data&&Array.isArray(data.projects))?data.projects:[];
-      var el = document.getElementById('myProjectsList');
-      if(!el||!projects.length){ if(el) el.innerHTML=''; return; }
-      var _pStatusLabel = {pending_deposit:'En attente de paiement',in_progress:'En cours',completed:'Terminé'};
-      var _pStatusColor = {pending_deposit:'var(--yellow)',in_progress:'#60a5fa',completed:'#4ade80'};
-      var _prestStatusLabel = {pending_deposit:'⏳ En attente',in_progress:'🔵 En cours',completed:'✅ Terminé'};
-      var _prestStatusColor = {pending_deposit:'var(--muted)',in_progress:'#60a5fa',completed:'#4ade80'};
-      el.innerHTML = '<div class="detail-feats-title" style="margin:4px 0 10px;color:var(--yellow);"><i class="fa-solid fa-layer-group"></i> Projets GENESIS</div>'
-        + projects.map(function(proj){
-          var statusColor = _pStatusColor[proj.status]||'var(--muted)';
-          var statusLabel = _pStatusLabel[proj.status]||proj.status;
-          var barPct = proj.progress_pct||0;
-          var prestHtml = (proj.prestations||[]).map(function(p){
-            var sl = _prestStatusLabel[p.status]||p.status;
-            var canPay = p.status==='pending_deposit' && !p.deposit_paid;
-            var payBtn = canPay
-              ? '<button onclick="_openPbPayForExistingOrder(\''+p.order_id+'\',\''+p.partner_id+'\',\''+p.service_label.replace(/'/g,"\\'")+'\',' + (p.deposit_amount||p.total_amount) + ',\''+p.partner_name.replace(/'/g,"\\'")+'\');" style="font-size:10px;font-weight:800;color:#000;background:var(--yellow);border:none;border-radius:7px;padding:4px 10px;cursor:pointer;margin-top:4px;display:block;">Payer l\'acompte →</button>'
-              : '';
-            return '<div style="padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.06);">'
-              +'<div style="display:flex;align-items:center;justify-content:space-between;">'
-              +'<div><div style="font-size:12px;font-weight:600;color:#e5e5e5;">'+p.partner_name+'</div>'
-              +'<div style="font-size:11px;color:var(--muted);margin-top:1px;">'+p.service_label+'</div></div>'
-              +'<div style="text-align:right;">'
-              +'<div style="font-size:11px;color:'+(_prestStatusColor[p.status]||'var(--muted)')+';font-weight:700;">'+sl+'</div>'
-              +'<div style="font-size:11px;color:var(--muted);">'+p.total_amount+' €</div></div>'
-              +'</div>'
-              +payBtn
-              +'</div>';
-          }).join('');
-          return '<div class="resa-card" style="border-color:var(--yellow);background:rgba(250,204,21,0.04);padding:14px 14px 10px;">'
-            +'<div class="resa-top" style="margin-bottom:8px;">'
-            +'<div class="resa-name" style="font-size:13px;"><i class="fa-solid fa-layer-group" style="color:var(--yellow);margin-right:6px;"></i>'+proj.title.replace('Projet GENESIS — ','')+'</div>'
-            +'<span class="resa-status" style="background:rgba(250,204,21,0.12);color:'+statusColor+';border:1px solid '+statusColor+'22;font-size:10px;">'+statusLabel+'</span>'
-            +'</div>'
-            // Barre de progression globale
-            +'<div style="margin-bottom:10px;">'
-            +'<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:4px;">'
-            +'<span>Avancement global</span><span>'+proj.completed_count+'/'+proj.total_count+' prestations</span></div>'
-            +'<div style="height:6px;background:rgba(255,255,255,0.08);border-radius:4px;overflow:hidden;">'
-            +'<div style="height:100%;width:'+barPct+'%;background:linear-gradient(90deg,var(--yellow),#fbbf24);border-radius:4px;transition:width .4s;"></div>'
-            +'</div></div>'
-            // Liste des prestations
-            +'<div style="margin:0 -2px;">'+prestHtml+'</div>'
-            +'<div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;">'
-            +'<div style="font-size:11px;color:var(--muted);">Total projet</div>'
-            +'<div style="font-size:14px;font-weight:800;color:var(--yellow);">'+proj.total_amount+' €</div>'
-            +'</div>'
-            +'<button onclick="_openGenesisDetail(\''+proj.id+'\')" style="margin-top:10px;width:100%;background:rgba(250,204,21,0.1);border:1px solid rgba(250,204,21,0.3);border-radius:8px;padding:8px;font-size:12px;font-weight:800;color:var(--yellow);cursor:pointer;text-align:center;"><i class="fa-solid fa-calendar-days mr-1"></i>Voir le calendrier des mensualités →</button>'
-            +'</div>';
-        }).join('');
-    }).catch(function(){ var el=document.getElementById('myProjectsList'); if(el) el.innerHTML=''; });
-  // Commandes prestataires payées en attente d'acceptation
-  fetch((window.FA_GENESIS_API||API)+'/api/my-orders',{headers:{'Authorization':'Bearer '+USER._token}})
-    .then(function(r){return r.json();})
-    .then(function(data){
-      var orders = (data&&Array.isArray(data.orders))?data.orders:[];
-      var pending = orders.filter(function(o){ return o.dispatch && o.dispatch.status==='pending_acceptance'; });
-      var el = document.getElementById('myOrdersPendingList');
-      if(!el||!pending.length){ if(el) el.innerHTML=''; return; }
-      el.innerHTML = '<div class="detail-feats-title" style="margin:4px 0 10px;color:var(--yellow);"><i class="fa-solid fa-circle-exclamation"></i> En attente du prestataire</div>'
-        + pending.map(function(o){
-          return '<div class="resa-card" style="border-color:var(--yellow);">'
-            +'<div class="resa-top"><div class="resa-name">'+(o.product_name||'Commande')+'</div>'
-            +'<span class="resa-status s-pending">🟡 En attente d\'acceptation</span></div>'
-            +'<div class="resa-date"><i class="fa-solid fa-shield-halved"></i> Paiement sécurisé — acompte retenu</div>'
-            +'<div class="resa-price">'+(o.deposit_amount||0)+' €</div>'
-            +'<div style="font-size:12px;color:var(--muted);margin-top:6px;">Le prestataire a 24h pour accepter. Vous serez remboursé automatiquement en cas de refus.</div>'
-            +'</div>';
-        }).join('');
-    }).catch(function(){ var el=document.getElementById('myOrdersPendingList'); if(el) el.innerHTML=''; });
-  fetch((window.FA_GENESIS_API||API)+'/api/my-requests',{headers:{'Authorization':'Bearer '+USER._token}})
-    .then(function(r){return r.json();})
-    .then(function(data){
-      var reqList = (data&&Array.isArray(data.requests))?data.requests:[];
-      var el = document.getElementById('myRequestsList');
-      if(!el) return;
-      // Réservations = demandes sans order_id (pending/accepted/signed/proposed).
-      // Les commandes (order_id présent) sont dans "Mes commandes", pas ici.
-      var _activeReqs = reqList.filter(function(r){
-        if(r.order_id) return false;
-        return r.status !== 'declined';
-      });
-      // Dédupliquer : même partenaire + même service → garder la plus récente
-      var _seen = {};
-      _activeReqs = _activeReqs.filter(function(r){
-        var key = (r.partner_id||'')+'|'+(r.service_id||'');
-        if(_seen[key]) return false;
-        _seen[key] = true;
-        return true;
-      });
-      if(_activeReqs.length===0){ el.innerHTML=''; return; }
-      el.innerHTML = _activeReqs.map(function(r){
-        if(r.status==='proposed') return renderProposalCard(r);
-        var sc = (r.status==='accepted'||r.status==='signed')?'s-confirmed':r.status==='declined'?'s-refused':'s-pending';
-        var sl = r.status==='signed'?'🟢 Contrat signé':r.status==='accepted'?'🟢 Acceptée':r.status==='declined'?'Refusée':'🟡 Demande envoyée';
-        var actionHtml = r.status==='signed'
-          ? '<button class="resa-action-btn rab-primary" onclick="payAcceptedRequest(\''+r.partner_id+'\',\''+r.service_id+'\',\''+(r.service_label||'').replace(/'/g,"\\'")+'\','+(parseFloat(r.price)||0)+',\''+(r.partner_name||'').replace(/'/g,"\\'")+'\')">Payer l\'acompte</button>'
-          : (r.status==='accepted' ? '<div style="color:var(--muted);font-size:13px;">En attente de la proposition du partenaire…</div>' : '');
-        return '<div class="resa-card">'
-          +'<div class="resa-top"><div class="resa-name">'+(r.service_label||'Demande')+'</div>'
-          +'<span class="resa-status '+sc+'">'+sl+'</span></div>'
-          +'<div class="resa-date"><i class="fa-solid fa-user"></i> '+(r.partner_name||'')+'</div>'
-          +(r.price?'<div class="resa-price">'+r.price+' €</div>':'')
-          +(actionHtml?'<div class="resa-actions">'+actionHtml+'</div>':'')
-          +'</div>';
-      }).join('');
-      reqList.forEach(function(r){
-        if(r.order_id && r.display_status && r.display_status.key){
-          _resaStatusCache[r.id] = r.display_status.key;
-        }
-      });
-    }).catch(function(){ var el=document.getElementById('myRequestsList'); if(el) el.innerHTML=''; });
+    + '<div id="resaList" style="padding:14px;padding-bottom:80px;"><div class="empty"><div class="e-ico"><i class="fa-solid fa-calendar-days"></i></div><p>Chargement...</p></div></div>';
   fetch(API+'/api/reservations/me',{headers:{'Authorization':'Bearer '+USER._token}})
     .then(function(r){return r.json();})
     .then(function(data){
       var list = Array.isArray(data)?data:[];
-      if(list.length===0){
-        document.getElementById('resaList').innerHTML='<div class="empty"><div class="e-ico"><i class="fa-solid fa-calendar-days"></i></div><p>Aucune réservation pour le moment</p></div>';
-        return;
-      }
-      document.getElementById('resaList').innerHTML = list.map(function(r){
+      var coworking = list.filter(function(r){ return r.type==='coworking'||(r.product_type==='coworking'); });
+      var events    = list.filter(function(r){ return r.type==='event'||(r.product_type==='event'); });
+      var other     = list.filter(function(r){ return r.type!=='coworking'&&r.type!=='event'&&r.product_type!=='coworking'&&r.product_type!=='event'; });
+      var all = coworking.concat(events).concat(other);
+      var el = document.getElementById('resaList');
+      if(!el) return;
+
+      function resaCard(r){
         var sc = r.status==='confirmed'?'s-confirmed':r.status==='refused'?'s-refused':r.status==='pending'?'s-pending':'s-active';
-        var sl = r.status==='confirmed'?'Confirmée':r.status==='refused'?'Refusée':r.status==='pending'?'En attente':'Actif';
-        var dates = (r.dates&&r.dates.length>0) ? new Date(r.dates[0]).toLocaleDateString('fr-FR') : '';
+        var sl = r.status==='confirmed'?'✅ Confirmée':r.status==='refused'?'Refusée':r.status==='pending'?'🟡 En attente':'🟢 Active';
+        var typeIcon = (r.type==='event'||r.product_type==='event')
+          ? '<i class="fa-solid fa-ticket" style="color:var(--yellow);margin-right:6px;"></i>'
+          : '<i class="fa-solid fa-building" style="color:#60a5fa;margin-right:6px;"></i>';
+        var dateStr = '';
+        if(r.dates&&r.dates.length){ dateStr = new Date(r.dates[0]).toLocaleDateString('fr-FR',{weekday:'long',day:'2-digit',month:'long'}); }
+        else if(r.date){ dateStr = new Date(r.date).toLocaleDateString('fr-FR',{weekday:'long',day:'2-digit',month:'long'}); }
+        var timeStr = r.time_slot ? (' · '+r.time_slot) : '';
         return '<div class="resa-card">'
-          +'<div class="resa-top"><div class="resa-name">'+(r.product_name||r.product_id||'Réservation')+'</div>'
+          +'<div class="resa-top"><div class="resa-name">'+typeIcon+(r.product_name||r.space_name||'Réservation')+'</div>'
           +'<span class="resa-status '+sc+'">'+sl+'</span></div>'
-          +(dates?'<div class="resa-date"><i class="fa-solid fa-calendar-days"></i> '+dates+'</div>':'')
-          +'<div class="resa-price">'+(r.prix?r.prix+' €':'')+'</div>'
+          +(dateStr?'<div class="resa-date"><i class="fa-solid fa-calendar-days"></i> '+dateStr+timeStr+'</div>':'')
+          +(r.partner_name?'<div class="resa-date"><i class="fa-solid fa-location-dot"></i> '+(r.partner_name)+'</div>':'')
+          +(r.price||r.prix?'<div class="resa-price">'+parseFloat(r.price||r.prix||0).toFixed(2)+' €</div>':'')
           +'<div class="resa-actions">'
           +'<button class="resa-action-btn rab-ghost" onclick="nav(\'messages\')"><i class="fa-solid fa-comment-dots"></i> Message</button>'
           +'</div></div>';
-      }).join('');
-    }).catch(function(){
-      document.getElementById('resaList').innerHTML='<div class="empty"><div class="e-ico"><i class="fa-solid fa-triangle-exclamation"></i></div><p>Impossible de charger les réservations</p></div>';
+      }
+
+      if(!all.length){
+        el.innerHTML = ''
+          // Section Coworking
+          +'<div style="margin-bottom:24px;">'
+          +'<div class="detail-feats-title" style="margin:0 0 10px;color:#60a5fa;"><i class="fa-solid fa-building"></i> Espaces Coworking</div>'
+          +'<div class="resa-card" style="border-style:dashed;opacity:.6;text-align:center;padding:20px;">'
+          +'<i class="fa-solid fa-building" style="font-size:24px;color:#60a5fa;display:block;margin-bottom:8px;"></i>'
+          +'<div style="font-size:13px;font-weight:700;color:#e5e5e5;margin-bottom:4px;">Aucun créneau réservé</div>'
+          +'<div style="font-size:11px;color:var(--muted);line-height:1.5;">Réservez un espace de coworking depuis la fiche d\'un partenaire dans l\'Explorer.</div>'
+          +'</div></div>'
+          // Section Événements
+          +'<div>'
+          +'<div class="detail-feats-title" style="margin:0 0 10px;color:var(--yellow);"><i class="fa-solid fa-ticket"></i> Événements GENESIS</div>'
+          +'<div class="resa-card" style="border-style:dashed;opacity:.6;text-align:center;padding:20px;">'
+          +'<i class="fa-solid fa-calendar-star" style="font-size:24px;color:var(--yellow);display:block;margin-bottom:8px;"></i>'
+          +'<div style="font-size:13px;font-weight:700;color:#e5e5e5;margin-bottom:4px;">Aucune place réservée</div>'
+          +'<div style="font-size:11px;color:var(--muted);line-height:1.5;">Inscrivez-vous aux prochains événements GENESIS depuis la section Explorer.</div>'
+          +'</div></div>';
+        return;
+      }
+
+      var cwHtml = coworking.length
+        ? '<div class="detail-feats-title" style="margin:0 0 10px;color:#60a5fa;"><i class="fa-solid fa-building"></i> Espaces Coworking ('+coworking.length+')</div>'+coworking.map(resaCard).join('')
+        : '';
+      var evHtml = events.length
+        ? '<div class="detail-feats-title" style="margin:'+(cwHtml?'20px':'0')+' 0 10px;color:var(--yellow);"><i class="fa-solid fa-ticket"></i> Événements GENESIS ('+events.length+')</div>'+events.map(resaCard).join('')
+        : '';
+      var otherHtml = other.length ? other.map(resaCard).join('') : '';
+      el.innerHTML = cwHtml + evHtml + otherHtml;
+    })
+    .catch(function(){
+      var el=document.getElementById('resaList');
+      if(el) el.innerHTML='<div class="empty"><div class="e-ico"><i class="fa-solid fa-triangle-exclamation"></i></div><p>Impossible de charger les réservations.</p></div>';
     });
 }
 
@@ -9612,7 +9537,7 @@ function _fetchAndRenderCommandes(){
     .then(function(r){return r.json();})
     .then(function(data){
       // Commandes partenaire (order_id présent), actives d'abord puis terminées
-      var _statusOrder = {in_progress:0,delivering:1,delivered:2,completed:3,reviewed:4};
+      var _statusOrder = {pending_acceptance:0,in_progress:1,delivering:2,delivered:3,completed:4,reviewed:5};
       var allReqs=((data&&Array.isArray(data.requests))?data.requests:[])
         .filter(function(r){ return !!r.order_id; })
         .sort(function(a,b){
@@ -9632,6 +9557,7 @@ function _fetchAndRenderCommandes(){
         var _statusColor = ds.key==='completed'||ds.key==='reviewed' ? '#22c55e'
           : ds.key==='delivered' ? '#60a5fa'
           : ds.key==='delivering' ? '#f97316'
+          : ds.key==='pending_acceptance' ? '#a78bfa'
           : '#FFD700';
         var _photo = r.partner_photo;
         var _pInit = (r.partner_name||'P')[0].toUpperCase();

@@ -6135,6 +6135,7 @@ function computeMissionDisplayStatus(request, dispatch, order, livrables, hasRev
         return MISSION_STATUS_META.delivered;
     }
     if (dispatch) {
+        if (dispatch.status === 'pending_acceptance') return { key: 'pending_acceptance', label: 'En attente d\'acceptation', emoji: '⏳' };
         return dispatch.mission_status === 'delivering' ? MISSION_STATUS_META.delivering : MISSION_STATUS_META.in_progress;
     }
     if (request && (request.status === 'accepted' || request.status === 'proposed' || request.status === 'signed')) {
