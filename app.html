@@ -18729,7 +18729,7 @@ function _renderClientContractsList(c) {
             actions += '<button onclick="_clientRefuseContract(\'' + ct.id + '\')" style="background:#fff;border:2px solid #dc2626;color:#dc2626;font-weight:900;font-size:11px;padding:7px 14px;cursor:pointer;text-transform:uppercase;font-family:sans-serif;">' +
                 '<i class="fas fa-times mr-1"></i>Refuser</button>';
         } else if (ct.status === 'signed') {
-            actions += '<button onclick="_downloadClientContractPdf(\'' + ct.id + '\')" style="background:#fff;border:2px solid #000;font-weight:900;font-size:11px;padding:7px 14px;cursor:pointer;text-transform:uppercase;font-family:sans-serif;">' +
+            actions += '<button onclick="_downloadClientContractPdf(\'' + ct.id + '\')" style="background:#fff;border:2px solid #000;color:#000;font-weight:900;font-size:11px;padding:7px 14px;cursor:pointer;text-transform:uppercase;font-family:sans-serif;">' +
                 '<i class="fas fa-download mr-1"></i>PDF</button>';
         }
         return '<div style="background:#fff;border:2px solid #e0e0e0;margin-bottom:12px;padding:16px;">' +
