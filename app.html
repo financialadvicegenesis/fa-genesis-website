@@ -6704,8 +6704,16 @@ function renderResaTab(){
         var _dk = (r.display_status&&r.display_status.key)||'';
         return _dk!=='completed' && _dk!=='reviewed';
       });
+      // Dédupliquer : pour le même partenaire + même service, garder uniquement la demande la plus récente
+      var _seen = {};
+      _activeReqs = _activeReqs.filter(function(r){
+        var key = (r.partner_id||'')+'|'+(r.service_id||'');
+        if(_seen[key]) return false;
+        _seen[key] = true;
+        return true;
+      });
       if(_activeReqs.length===0){ el.innerHTML=''; return; }
-      el.innerHTML = '<div class="detail-feats-title" style="margin:4px 0 10px;">Mes demandes</div>' + _activeReqs.map(function(r){
+      el.innerHTML = _activeReqs.map(function(r){
         if(r.order_id) return renderOrderTrackingCard(r);
         if(r.status==='proposed') return renderProposalCard(r);
         var sc = (r.status==='accepted'||r.status==='signed')?'s-confirmed':r.status==='declined'?'s-refused':'s-pending';

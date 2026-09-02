@@ -14857,11 +14857,12 @@ app.post('/api/partner-requests', function(req, res) {
         if (!service) return res.status(404).json({ error: 'Prestation non trouvée' });
 
         var requests = loadPartnerRequests();
-        var alreadyPending = requests.some(function(r) {
-            return r.client_email === user.email && r.partner_id === partnerId && r.service_id === serviceId && r.status === 'pending';
+        var alreadyActive = requests.some(function(r) {
+            return r.client_email === user.email && r.partner_id === partnerId && r.service_id === serviceId
+                && r.status !== 'declined' && r.status !== 'completed' && r.status !== 'reviewed';
         });
-        if (alreadyPending) {
-            return res.status(409).json({ error: 'Vous avez déjà une demande en attente pour cette prestation auprès de ce partenaire.' });
+        if (alreadyActive) {
+            return res.status(409).json({ error: 'Vous avez déjà une demande ou commande active pour cette prestation auprès de ce partenaire.' });
         }
 
         var newRequest = {
