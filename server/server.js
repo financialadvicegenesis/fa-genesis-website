@@ -1397,7 +1397,7 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
                             if (_psClientEmailAuth) {
                                 notifyUser(_psClientEmailAuth, 'client', 'payment_success', '✅ Paiement GENESIS SAFE™ sécurisé !',
                                     'Votre paiement est sécurisé. ' + _psPartnerNameAuth + ' va prendre en charge votre demande sous 24h.',
-                                    '#tab:resa');
+                                    '/app.html#tab:resa');
                             }
                             console.log('[STRIPE-WH] Mission partenaire créée (carte réservée GENESIS SAFE™):', authOrderId, '→', _psOrderAuth.partner_id);
                         }
@@ -1470,7 +1470,7 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
                                 if (_psClientEmailWh) {
                                     notifyUser(_psClientEmailWh, 'client', 'payment_success', '✅ Paiement réussi !',
                                         'Votre paiement a bien été reçu. ' + _psPartnerNameWh + ' va prendre en charge votre demande sous 24h.',
-                                        '#tab:resa');
+                                        '/app.html#tab:resa');
                                 }
                                 console.log('[STRIPE-WH] Mission partenaire créée — en attente acceptation :', orderId, '→', _psOrderWh.partner_id);
                             }
@@ -4598,7 +4598,7 @@ async function _applyPaymentConfirmation(orderId, stage, transactionRef, paypalC
                     notifyUser(ce, 'client', 'payment_success',
                         '✅ Paiement réussi !',
                         'Votre paiement a bien été reçu. ' + psPartnerName + ' va prendre en charge votre demande sous 24h.',
-                        '#tab:resa');
+                        '/app.html#tab:resa');
                     console.log('[PAY_CONFIRM] Mission partenaire créée — en attente d\'acceptation du prestataire');
                 }
             } else {
@@ -4778,7 +4778,7 @@ app.post('/api/partner/dispatches/:id/accept-mission', authenticatePartner, asyn
             notifyUser(order.client_info.email, 'client', 'mission_accepted',
                 '✅ Mission acceptée !',
                 'Votre prestataire a accepté "' + (order.product_name || 'votre demande') + '". La mission démarre.',
-                '#tab:resa');
+                '/app.html#tab:resa');
         }
         console.log('[ACCEPT_MISSION] Dispatch accepté:', disp.id);
         res.json({ ok: true });
@@ -4822,7 +4822,7 @@ app.post('/api/partner/dispatches/:id/decline-mission', authenticatePartner, asy
                 notifyUser(order.client_info.email, 'client', 'mission_declined',
                     '❌ Mission refusée',
                     refundMsg,
-                    '#tab:resa');
+                    '/app.html#tab:resa');
             }
         }
         console.log('[DECLINE_MISSION] Dispatch refusé:', disp.id, '— remboursé:', refunded);
@@ -15786,7 +15786,7 @@ app.post('/api/partner/projects/:orderId/complete', authenticatePartner, async f
                 'Votre prestataire a déclaré "' + (order.product_name || 'votre prestation') + '" terminée. '
                 + 'Vous avez ' + AUTO_RELEASE_DAYS + ' jours pour valider ou signaler un problème. '
                 + 'Sans réponse, le paiement sera automatiquement libéré.',
-                '#tab:wallet');
+                '/app.html#tab:wallet');
         }
 
         // ── GENESIS SAFE™ : fonds libérés de l'escrow client → Transfer FA GENESIS Stripe → Connect partenaire ──
@@ -22043,4 +22043,5 @@ app.use((req, res) => {
 });
 
 });
+
 

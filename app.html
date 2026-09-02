@@ -13521,6 +13521,8 @@ function _handleNotifHash(hash){
     nav('partner');
   } else if(hash === 'tab:resa' || hash === 'open-reservations' || hash === 'reservations' || hash === 'open-suivi'){
     nav('reservations');
+  } else if(hash === 'tab:wallet'){
+    nav('profil'); setTimeout(function(){ if(typeof showClientWallet==='function') showClientWallet(); }, 600);
   } else if(hash === 'mes-contrats'){
     nav('mes-contrats');
   } else if(hash === 'open-prestataires' || hash === 'prestataires'){
