@@ -12892,9 +12892,10 @@ function _ptnrLoadHome(){
     if(projets.length>0) html += '<div class="ptnr-card" style="border-left:3px solid #22c55e;cursor:pointer;" onclick="_ptnrNav(\'missions\')"><div class="ptnr-card-title">'+projets.length+' projet(s) assigné(s)</div><div class="ptnr-card-sub">Appuyez pour voir vos missions</div></div>';
     if(!pendingDevis && !inbox.length && !projets.length) html += '<div class="ptnr-empty"><div class="ptnr-empty-ico"><i class="fa-solid fa-circle-check"></i></div><div class="ptnr-empty-txt">Tout est à jour !</div></div>';
     if(list) list.innerHTML = html;
-    // Charger le compteur de demandes en attente et afficher l'alerte
-    _ptnrFetch('/api/partner/requests').then(function(r){
-      var cnt = (r && r.requests && r.requests.length) || 0;
+    // Afficher l'alerte uniquement quand le client a payé+signé (dispatch pending_acceptance)
+    _ptnrFetch('/api/partner/dispatches/pending').then(function(r){
+      var pending = (r && Array.isArray(r)) ? r : ((r && Array.isArray(r.dispatches)) ? r.dispatches : []);
+      var cnt = pending.length;
       if(cnt > 0 && list){
         var alertCard = '<div class="dispatch-card" style="cursor:pointer;margin-bottom:12px;text-align:center;" onclick="_ptnrNav(\'missions\')"><div class="dispatch-badge" style="display:inline-flex;"><span class="dispatch-badge-dot"></span>'+cnt+' demande(s) en attente</div><div class="ptnr-card-title" style="text-align:center;">Un client souhaite vous engager !</div><div class="ptnr-card-sub" style="text-align:center;">Appuyez pour accepter ou refuser sa demande.</div></div>';
         list.insertAdjacentHTML('afterbegin', alertCard);
