@@ -6564,21 +6564,6 @@ function addServiceToMainCart(partnerId, serviceId){
 function _cartPayPartnerService(idx){
   var item = APP_CART[idx];
   if(!item||item.type!=='partner_service') return;
-  // Guard: block if an active order already exists for this partner+service
-  if(_mesCommandesReqs && _mesCommandesReqs.length > 0){
-    var _dup = _mesCommandesReqs.some(function(r){
-      return r.partner_id===item.partnerId && r.service_id===item.serviceId;
-    });
-    if(_dup){
-      APP_CART.splice(idx, 1);
-      try{localStorage.setItem('fa_genesis_cart',JSON.stringify(APP_CART));}catch(e){}
-      closeCart();
-      setTimeout(function(){
-        showToast('Déjà commandé','Vous avez déjà une commande en cours pour "'+item.serviceLabel+'". Consultez "Mes commandes".','info');
-      }, 400);
-      return;
-    }
-  }
   closeCart();
   setTimeout(function(){
     payAcceptedRequest(item.partnerId, item.serviceId, item.serviceLabel, item.priceNum, item.partnerName);
