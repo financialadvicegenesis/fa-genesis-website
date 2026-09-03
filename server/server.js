@@ -3883,20 +3883,23 @@ app.post('/api/orders/:orderId/cancel-pending', function(req, res) {
         // Annuler la commande
         var updatedOrder = updateOrder(orderId, { status: 'cancelled', cancelled_at: new Date().toISOString(), cancelled_by: 'client' });
 
-        // Reinitialiser le statut de paiement de l'utilisateur
-        try {
-            var allUsers = loadUsers();
-            var uIdx = allUsers.findIndex(function(u) { return u.email && u.email.toLowerCase() === (userEmail || '').toLowerCase(); });
-            if (uIdx !== -1) {
-                allUsers[uIdx].paymentStatus = 'registered';
-                allUsers[uIdx].payment_status = 'registered';
-                allUsers[uIdx].activeOrderId = null;
-                allUsers[uIdx].activeOfferId = null;
-                saveUsers(allUsers);
-                console.log('[CANCEL-ORDER] Statut utilisateur reinitialise pour ' + userEmail);
+        // Reinitialiser le statut de paiement de l'utilisateur — seulement pour les commandes
+        // d'abonnement/offre, pas pour les commandes de prestation partenaire
+        if (order.product_type !== 'partner_service') {
+            try {
+                var allUsers = loadUsers();
+                var uIdx = allUsers.findIndex(function(u) { return u.email && u.email.toLowerCase() === (userEmail || '').toLowerCase(); });
+                if (uIdx !== -1) {
+                    allUsers[uIdx].paymentStatus = 'registered';
+                    allUsers[uIdx].payment_status = 'registered';
+                    allUsers[uIdx].activeOrderId = null;
+                    allUsers[uIdx].activeOfferId = null;
+                    saveUsers(allUsers);
+                    console.log('[CANCEL-ORDER] Statut utilisateur reinitialise pour ' + userEmail);
+                }
+            } catch (syncErr) {
+                console.error('[CANCEL-ORDER] Erreur sync users:', syncErr.message);
             }
-        } catch (syncErr) {
-            console.error('[CANCEL-ORDER] Erreur sync users:', syncErr.message);
         }
 
         console.log('[CANCEL-ORDER] Commande ' + orderId + ' annulee par ' + userEmail);
@@ -15016,6 +15019,8 @@ app.get('/api/my-requests', function(req, res) {
                 out.total_amount = orderForReq
                     ? (orderForReq.total_amount || r.total_price || r.price || 0)
                     : (r.total_price || r.price || 0);
+                out.deposit_paid = orderForReq ? (!!orderForReq.deposit_paid) : false;
+                out.order_product_type = orderForReq ? (orderForReq.product_type || null) : null;
                 out.installments = (orderForReq && Array.isArray(orderForReq.installments))
                     ? orderForReq.installments.map(function(inst) {
                         return {

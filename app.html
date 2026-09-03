@@ -9583,7 +9583,11 @@ function _fetchAndRenderCommandes(){
         var _amtHtml = r.total_amount
           ? "<span style='font-size:12px;font-weight:700;color:var(--yellow);'>"+Number(r.total_amount).toLocaleString("fr-FR")+" €</span>"
           : "";
-        return "<div class='espace-card' style='padding:12px 14px;cursor:pointer;display:flex;align-items:center;gap:12px;' onclick='showOrderDetail(\""+r.id+"\")'>"
+        var _canDelete = !r.deposit_paid;
+        var _deleteBtn = _canDelete
+          ? "<button onclick='event.stopPropagation();_cancelUnpaidOrder(\""+r.order_id+"\",\""+r.id+"\")' style='background:none;border:none;padding:6px;cursor:pointer;color:#555;flex-shrink:0;' title='Supprimer'><i class='fa-solid fa-trash-can' style='font-size:14px;'></i></button>"
+          : "<i class='fa-solid fa-chevron-right' style='color:#444;font-size:12px;flex-shrink:0;'></i>";
+        return "<div class='espace-card' style='padding:12px 14px;cursor:pointer;display:flex;align-items:center;gap:12px;' onclick='"+(_canDelete?'':'showOrderDetail(\"'+r.id+'\")')+"'>"
           +_avatarHtml
           +"<div style='flex:1;min-width:0;'>"
           +"<div style='display:flex;align-items:center;justify-content:space-between;gap:6px;'>"
@@ -9593,7 +9597,7 @@ function _fetchAndRenderCommandes(){
           +"<div style='font-size:11px;color:var(--muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'>"+(r.partner_name||'')+(dateStr?" · "+dateStr:"")+"</div>"
           +(_amtHtml?"<div style='margin-top:4px;'>"+_amtHtml+"</div>":"")
           +"</div>"
-          +"<i class='fa-solid fa-chevron-right' style='color:#444;font-size:12px;flex-shrink:0;'></i>"
+          +_deleteBtn
           +"</div>";
       }).join("");
     })
@@ -9614,6 +9618,24 @@ function showMesCommandes(){
     +"</div>";
   _fetchAndRenderCommandes();
   _cmdRefreshTimer = setInterval(_fetchAndRenderCommandes, 30000);
+}
+
+function _cancelUnpaidOrder(orderId, requestId){
+  if(!orderId||!USER||!USER._token) return;
+  if(!confirm('Supprimer cette commande non payée ?')) return;
+  fetch((window.FA_GENESIS_API||API)+'/api/orders/'+orderId+'/cancel-pending',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+USER._token}
+  }).then(function(r){return r.json();}).then(function(res){
+    if(res.success||res.ok){
+      showToast('Commande supprimée','La commande a été annulée.','success');
+      _fetchAndRenderCommandes();
+    } else {
+      showToast('Erreur',res.error||'Impossible d\'annuler.','error');
+    }
+  }).catch(function(){
+    showToast('Erreur réseau','Réessayez.','error');
+  });
 }
 
 function showOrderDetail(requestId){
