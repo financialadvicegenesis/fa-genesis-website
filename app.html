@@ -9679,26 +9679,17 @@ function showPaiements(){
       }
       var _sLabel={paid:'Payé',due:'À payer',accepted_unpaid:'À payer',pending:'En attente'};
       var _sColor={paid:'#22c55e',due:'#f97316',accepted_unpaid:'#FFD700',pending:'#555'};
-      var summaryHtml='';
-      if(summary){
-        summaryHtml='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">'
-          +'<div style="background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);border-radius:12px;padding:12px 14px;">'
-          +'<div style="font-size:10px;color:#22c55e;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;"><i class="fa-solid fa-check-circle" style="margin-right:4px;"></i>Payé</div>'
-          +'<div style="font-size:18px;font-weight:900;color:#22c55e;">'+Number(summary.total_paid).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+' €</div>'
-          +'</div>'
-          +'<div style="background:rgba(255,215,0,.06);border:1px solid rgba(255,215,0,.15);border-radius:12px;padding:12px 14px;">'
-          +'<div style="font-size:10px;color:var(--yellow);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;"><i class="fa-solid fa-clock" style="margin-right:4px;"></i>En attente</div>'
-          +'<div style="font-size:18px;font-weight:900;color:var(--yellow);">'+Number(summary.total_pending).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+' €</div>'
-          +'</div></div>';
-      }
-      el.innerHTML=summaryHtml+list.map(function(p){
+      _pmtListCache = list;
+      el.innerHTML=list.map(function(p){
         var sl=_sLabel[p.status]||p.status||'—';
         var sc=_sColor[p.status]||'#555';
         var isPaid=p.status==='paid';
         var dateStr=p.paid_at?new Date(p.paid_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'}):'';
         var amtStr=Number(p.amount||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
-        return '<div class="espace-card" style="padding:14px;margin-bottom:10px;">'
-          +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px;">'
+        var safeId=JSON.stringify(p).replace(/'/g,"\\'");
+        return '<div class="espace-card" style="padding:14px;margin-bottom:10px;cursor:pointer;display:flex;align-items:center;gap:12px;" onclick="_showPmtDetail(\''+p.id+'\')">'
+          +'<div style="flex:1;min-width:0;">'
+          +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px;">'
           +'<div style="flex:1;min-width:0;">'
           +'<div style="font-size:13px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+(p.label||'Prestation')+'</div>'
           +(p.partner_name?'<div style="font-size:11px;color:var(--muted);margin-top:2px;">par '+p.partner_name+'</div>':'')
@@ -9715,10 +9706,63 @@ function showPaiements(){
           +(dateStr?'<div style="font-size:10px;color:var(--muted);">'+dateStr+'</div>':'')
           +'</div>'
           +'</div>'
+          +'</div>'
+          +'<i class="fa-solid fa-chevron-right" style="color:#444;font-size:12px;flex-shrink:0;"></i>'
           +'</div>';
       }).join('');
     })
     .catch(function(){var el=document.getElementById('pmt-list');if(el)el.innerHTML='<div class="espace-empty">Impossible de charger vos paiements.</div>';});
+}
+var _pmtListCache = [];
+function _showPmtDetail(pmtId){
+  var p = null;
+  for(var _pi=0;_pi<_pmtListCache.length;_pi++){ if(_pmtListCache[_pi].id===pmtId){ p=_pmtListCache[_pi]; break; } }
+  if(!p) return;
+  var _sLabel={paid:'Payé',due:'À payer',accepted_unpaid:'À payer',pending:'En attente'};
+  var _sColor={paid:'#22c55e',due:'#f97316',accepted_unpaid:'#FFD700',pending:'#555'};
+  var sl=_sLabel[p.status]||p.status||'—';
+  var sc=_sColor[p.status]||'#555';
+  var amtStr=Number(p.amount||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
+  var dateStr=p.paid_at?new Date(p.paid_at).toLocaleDateString('fr-FR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'}):'—';
+  var overlay=document.createElement('div');
+  overlay.id='pmt-detail-overlay';
+  overlay.style.cssText='position:fixed;inset:0;background:#000;z-index:9999;overflow-y:auto;padding-bottom:80px;';
+  overlay.innerHTML='<div class="espace-back-bar" style="position:sticky;top:0;z-index:10;background:#000;">'
+    +'<button class="espace-back-btn" onclick="document.getElementById(\'pmt-detail-overlay\').remove()">&#8249;</button>'
+    +'<div class="espace-title">Détail du paiement</div>'
+    +'</div>'
+    +'<div style="padding:16px;">'
+    +'<div style="background:#111;border:1.5px solid #1e1e1e;border-radius:16px;padding:20px;margin-bottom:14px;">'
+    +'<div style="font-size:28px;font-weight:900;color:var(--yellow);text-align:center;margin-bottom:4px;">'+amtStr+'</div>'
+    +'<div style="text-align:center;margin-bottom:16px;"><span style="font-size:12px;font-weight:900;color:'+sc+';">'+(p.status==='paid'?'<i class="fa-solid fa-check-circle" style="margin-right:4px;"></i>':'')+sl+'</span></div>'
+    +'<div style="border-top:1px solid #1e1e1e;padding-top:14px;display:flex;flex-direction:column;gap:12px;">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;">'
+    +'<span style="font-size:11px;color:#555;font-weight:700;">Prestation</span>'
+    +'<span style="font-size:12px;color:#e5e5e5;font-weight:700;text-align:right;max-width:200px;">'+(p.label||'—')+'</span>'
+    +'</div>'
+    +(p.partner_name?'<div style="display:flex;justify-content:space-between;align-items:center;">'
+    +'<span style="font-size:11px;color:#555;font-weight:700;">Prestataire</span>'
+    +'<span style="font-size:12px;color:#e5e5e5;font-weight:700;">'+p.partner_name+'</span>'
+    +'</div>':'')
+    +'<div style="display:flex;justify-content:space-between;align-items:center;">'
+    +'<span style="font-size:11px;color:#555;font-weight:700;">Type</span>'
+    +'<span style="font-size:12px;color:#e5e5e5;font-weight:700;">'+(p.type_label||'—')+'</span>'
+    +'</div>'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;">'
+    +'<span style="font-size:11px;color:#555;font-weight:700;">Catégorie</span>'
+    +'<span style="font-size:12px;color:#e5e5e5;font-weight:700;">'+(p.category||'—')+'</span>'
+    +'</div>'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;">'
+    +'<span style="font-size:11px;color:#555;font-weight:700;">Date de paiement</span>'
+    +'<span style="font-size:12px;color:#e5e5e5;font-weight:700;">'+dateStr+'</span>'
+    +'</div>'
+    +'</div>'
+    +'</div>'
+    +'<div style="background:#0a1a0a;border:1px solid #1a3a1a;border-radius:12px;padding:12px 14px;font-size:11px;color:#6dbf6d;line-height:1.5;">'
+    +'<i class="fas fa-lock" style="margin-right:6px;"></i>Paiement sécurisé par <strong>GENESIS SAFE™</strong> · Protégé et traçable'
+    +'</div>'
+    +'</div>';
+  document.body.appendChild(overlay);
 }
 
 // ── CONFETTI LEVEL-UP ────────────────────────────────────────────
