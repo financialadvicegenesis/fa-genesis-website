@@ -1425,6 +1425,8 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
                         orders[oIdx].paymentStatus   = 'deposit_paid';
                         orders[oIdx].payment_method  = _piMethod;
                         orders[oIdx].stripe_deposit_pi_id = pi.id;
+                        // Sortir de pending_deposit pour que l'idempotence ne réutilise pas cet ordre
+                        if (orders[oIdx].status === 'pending_deposit') orders[oIdx].status = 'in_progress';
                         // Synchroniser l'installment correspondant au deposit
                         if (Array.isArray(orders[oIdx].installments)) {
                             var _depInst = orders[oIdx].installments.find(function(i) { return i.stage === 'deposit'; });
@@ -3587,6 +3589,7 @@ app.post('/api/orders/create', (req, res) => {
             var _currentServicePrice = parseFloat(service.price) || 0;
             var _existingPso = loadOrders().find(function(o) {
                 return o.status === 'pending_deposit'
+                    && !o.deposit_paid
                     && o.partner_id === partnerServiceOrder.partnerId
                     && o.partner_service_id === partnerServiceOrder.serviceId
                     && o.client_info && o.client_info.email && clientInfo.email
@@ -20716,6 +20719,7 @@ app.post('/api/payments/stripe/sync-intent', async function(req, res) {
                     orders[oIdx].paymentStatus   = 'deposit_paid';
                     orders[oIdx].stripe_deposit_pi_id = piId;
                     orders[oIdx].updatedAt       = now;
+                    if (orders[oIdx].status === 'pending_deposit') orders[oIdx].status = 'in_progress';
                     saveOrders(orders);
                     if (orders[oIdx].product_type === 'partner_service') {
                         createPartnerServiceDispatch(orders[oIdx]);
