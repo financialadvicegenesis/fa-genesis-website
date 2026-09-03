@@ -3618,7 +3618,7 @@ function loadStatusCard(){
           }
         }
         if(scSeeBtn){
-          scSeeBtn.onclick=function(){ nav('reservations'); };
+          scSeeBtn.onclick=function(){ nav('profil'); setTimeout(function(){ showMesCommandes(); }, 300); };
         }
       } else if(scCard){
         scCard.style.display = 'none';
