@@ -1392,7 +1392,7 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
                             if (_psPartnerEmailAuth) {
                                 notifyUser(_psPartnerEmailAuth, 'partner', 'mission_pending', '🆕 Nouvelle commande !',
                                     _psClientFnAuth + ' a réservé « ' + (_psOrderAuth.product_name || 'votre prestation') + ' ». Le paiement est sécurisé par GENESIS SAFE™. Acceptez ou refusez dans les 24h.',
-                                    '#partner:missions');
+                                    '#partner:livrables');
                             }
                             if (_psClientEmailAuth) {
                                 notifyUser(_psClientEmailAuth, 'client', 'payment_success', '✅ Paiement GENESIS SAFE™ sécurisé !',
@@ -1467,7 +1467,7 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
                                 if (_psPartnerEmailWh) {
                                     notifyUser(_psPartnerEmailWh, 'partner', 'mission_pending', '🆕 Nouvelle commande !',
                                         _psClientFnWh + ' a payé pour "' + (_psOrderWh.product_name || 'votre prestation') + '". Acceptez ou refusez dans les 24h.',
-                                        '#partner:missions');
+                                        '#partner:livrables');
                                 }
                                 if (_psClientEmailWh) {
                                     notifyUser(_psClientEmailWh, 'client', 'payment_success', '✅ Paiement réussi !',
@@ -2539,7 +2539,7 @@ function updateOrder(orderId, updates) {
                     if (_partner) {
                         notifyUser(_partner.email, 'partner', 'contract_sent', 'Contrat envoyé au client',
                             'Le contrat pour la commande ' + _order.id + ' a été envoyé à ' + (_clientName || _clientEmail) + '.',
-                            '#partner:missions');
+                            '#partner:livrables');
                     }
                     console.log('[CONTRACT] Contrat prestation auto-généré:', _cId);
                 } catch(_e) { console.error('[CONTRACT] Erreur auto-génération:', _e); }
@@ -4317,8 +4317,8 @@ app.post('/api/contracts/sign', function(req, res) {
                 var _clientDisplayName = b.signatureName || payload.email;
                 notifyUser(_partner.email, 'partner', 'contract_signed',
                     'Contrat signé par un client',
-                    _clientDisplayName + ' a signé le contrat pour : ' + b.serviceLabel + '. Retrouvez la mission dans vos Missions.',
-                    '#partner:missions'
+                    _clientDisplayName + ' a signé le contrat pour : ' + b.serviceLabel + '. Retrouvez la mission dans Mes livrables.',
+                    '#partner:livrables'
                 );
                 emailService.sendContractSignedToPartnerEmail(
                     _partner.email,
@@ -4603,7 +4603,7 @@ async function _applyPaymentConfirmation(orderId, stage, transactionRef, paypalC
                         notifyUser(psPartnerEmail, 'partner', 'mission_pending',
                             '🆕 Nouvelle commande !',
                             ((updatedOrder.client_info && updatedOrder.client_info.first_name) || 'Un client') + ' a payé pour "' + (updatedOrder.product_name || 'votre prestation') + '". Acceptez ou refusez dans les 24h.',
-                            '#partner:missions');
+                            '#partner:livrables');
                     }
                     // Notifier le CLIENT : paiement réussi
                     notifyUser(ce, 'client', 'payment_success',
@@ -6525,7 +6525,7 @@ app.post('/api/livrables/:id/validate', (req, res) => {
         if (livrable.owner_partner_id) {
             var partnerForValidation = getPartnerById(livrable.owner_partner_id);
             if (partnerForValidation && partnerForValidation.email) {
-                notifyUser(partnerForValidation.email, 'partner', 'livrable-valide', 'Livrable validé ✅', (order.client_info.first_name || 'Le client') + ' a validé : ' + (livrable.title || 'votre livrable'), '#partner:missions');
+                notifyUser(partnerForValidation.email, 'partner', 'livrable-valide', 'Livrable validé ✅', (order.client_info.first_name || 'Le client') + ' a validé : ' + (livrable.title || 'votre livrable'), '#partner:livrables');
             }
         }
 
@@ -6582,7 +6582,7 @@ app.post('/api/livrables/:id/request-revision', (req, res) => {
         if (livrable.owner_partner_id) {
             var partnerForRevision = getPartnerById(livrable.owner_partner_id);
             if (partnerForRevision && partnerForRevision.email) {
-                notifyUser(partnerForRevision.email, 'partner', 'livrable-revision', 'Révision demandée ✏️', (order.client_info.first_name || 'Le client') + ' demande une revision sur : ' + (livrable.title || 'votre livrable'), '#partner:missions');
+                notifyUser(partnerForRevision.email, 'partner', 'livrable-revision', 'Révision demandée ✏️', (order.client_info.first_name || 'Le client') + ' demande une revision sur : ' + (livrable.title || 'votre livrable'), '#partner:livrables');
             }
         }
 
@@ -14931,7 +14931,7 @@ app.post('/api/partner-requests', function(req, res) {
         requests.push(newRequest);
         savePartnerRequests(requests);
 
-        notifyUser(partner.email, 'partner', 'partner-request', 'Nouvelle demande de mission', newRequest.client_name + ' souhaite vous engager pour : ' + service.label, '#partner:missions');
+        notifyUser(partner.email, 'partner', 'partner-request', 'Nouvelle demande de mission', newRequest.client_name + ' souhaite vous engager pour : ' + service.label, '#partner:livrables');
 
         res.json({ success: true, request: newRequest });
     } catch(e) {
@@ -16968,7 +16968,7 @@ app.post('/api/contracts/service/generate', function(req, res) {
         notifyUser(partner.email, 'partner', 'contract_sent',
             'Contrat envoyé au client',
             'Le contrat pour la commande ' + order.id + ' a été envoyé à ' + (clientName || clientEmail) + '.',
-            '#partner:missions');
+            '#partner:livrables');
 
         console.log('[CONTRACT] Contrat prestation généré:', contractId, '→', clientEmail);
         res.json({ success: true, contract: newContract });
@@ -17049,8 +17049,8 @@ app.post('/api/contracts/:id/client-sign', function(req, res) {
         // Notifier le partenaire
         notifyUser(contract.partner_email, 'partner', 'contract_signed',
             'Contrat signé ✅',
-            contract.client_name + ' a signé le contrat pour la mission ' + contract.order_id + '. Retrouvez-la dans vos Missions.',
-            '#partner:missions');
+            contract.client_name + ' a signé le contrat pour la mission ' + contract.order_id + '. Retrouvez-la dans Mes livrables.',
+            '#partner:livrables');
 
         console.log('[CONTRACT] Client a signé le contrat:', contract.id, '→', user.email);
         res.json({ success: true, contract: contracts[idx] });

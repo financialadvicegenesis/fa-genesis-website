@@ -191,6 +191,12 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:-apple-
     <div id="missions-list"><div class="spinner"><i class="fa-solid fa-spinner"></i></div></div>
   </div>
 
+  <!-- LIVRABLES -->
+  <div class="section" id="sec-livrables">
+    <div class="sec-hdr"><i class="fa-solid fa-box-open"></i>Mes livrables</div>
+    <div id="livrables-list"><div class="spinner"><i class="fa-solid fa-spinner"></i></div></div>
+  </div>
+
   <!-- MESSAGES -->
   <div class="section" id="sec-messages">
     <div class="sec-hdr"><i class="fa-solid fa-comment-dots"></i>Messagerie</div>
@@ -254,7 +260,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:-apple-
       <div class="pf-menu-row" onclick="comingSoon('Mon palmarès')"><i class="fa-solid fa-trophy"></i><span>Mon palmarès</span><i class="fa-solid fa-chevron-right pf-chevron"></i></div>
       <div class="pf-menu-row" onclick="comingSoon('Mes promotions')"><i class="fa-solid fa-tag"></i><span>Mes promotions</span><i class="fa-solid fa-chevron-right pf-chevron"></i></div>
       <div class="pf-menu-row" onclick="comingSoon('Mon portfolio')"><i class="fa-solid fa-images"></i><span>Mon portfolio</span><i class="fa-solid fa-chevron-right pf-chevron"></i></div>
-      <div class="pf-menu-row" onclick="comingSoon('Mes livrables')"><i class="fa-solid fa-box-open"></i><span>Mes livrables</span><i class="fa-solid fa-chevron-right pf-chevron"></i></div>
+      <div class="pf-menu-row" onclick="goSection('livrables')"><i class="fa-solid fa-box-open"></i><span>Mes livrables</span><i class="fa-solid fa-chevron-right pf-chevron"></i></div>
     </div>
 
     <!-- MON PROFIL -->
@@ -337,6 +343,9 @@ function boot(){
   loadAccueil();
   loadProfil();
   loadBadgeProgress();
+  var _initHash = window.location.hash;
+  if(_initHash === '#partner:livrables') setTimeout(function(){ goSection('livrables'); }, 400);
+  else if(_initHash === '#partner:missions') setTimeout(function(){ goSection('missions'); }, 400);
 }
 
 function goSection(name){
@@ -350,6 +359,7 @@ function goSection(name){
   if(!_loaded[name]){
     _loaded[name] = true;
     if(name==='missions')    loadMissions();
+    if(name==='livrables')   loadLivrables();
     if(name==='messages')    loadMessages();
     if(name==='portefeuille') loadPortefeuille();
     if(name==='seances')     loadSeances();
@@ -553,6 +563,89 @@ function declareComplete(orderId, btn){
     btn.innerHTML = '<i class="fa-solid fa-flag-checkered"></i>Prestation terminée';
     showToast('Erreur : '+(e.message||'Impossible de déclarer'));
   });
+}
+
+// ── Livrables ─────────────────────────────────────────
+function loadLivrables(){
+  var el = document.getElementById('livrables-list');
+  Promise.all([
+    apiFetch('/api/partner/dispatches').catch(function(){ return {}; }),
+    apiFetch('/api/partner/projects').catch(function(){ return []; })
+  ]).then(function(results){
+    var dispatches = (results[0]&&results[0].dispatches) ? results[0].dispatches : [];
+    var projects   = Array.isArray(results[1]) ? results[1] : [];
+    if(dispatches.length===0 && projects.length===0){
+      el.innerHTML = '<div class="empty"><i class="fa-solid fa-box-open"></i><p>Aucun livrable pour le moment.<br>Vos missions commandées par les clients apparaîtront ici.</p></div>'; return;
+    }
+    var html = '';
+    if(dispatches.length){
+      html += '<div class="sec-hdr" style="padding-top:4px"><i class="fa-solid fa-hourglass-half"></i>En attente d\'acceptation ('+dispatches.length+')</div>';
+      dispatches.forEach(function(d){ html += livrableDispatchCard(d); });
+    }
+    if(projects.length){
+      html += '<div class="sec-hdr" style="padding-top:8px"><i class="fa-solid fa-circle-check"></i>En cours ('+projects.length+')</div>';
+      projects.forEach(function(p){ html += projectCard(p); });
+    }
+    el.innerHTML = html;
+  }).catch(function(){ el.innerHTML = '<div class="empty"><i class="fa-solid fa-wifi-slash"></i><p>Erreur de chargement</p></div>'; });
+}
+
+function livrableDispatchCard(d){
+  var isLarge = d.offer_total_price && parseFloat(d.offer_total_price) > 300;
+  return '<div class="card">'
+    +'<div class="card-row">'
+    +'<div class="card-icon" style="background:rgba(255,215,0,.08)"><i class="fa-solid fa-file-signature" style="color:var(--gold)"></i></div>'
+    +'<div style="flex:1;min-width:0">'
+    +'<div class="card-title">'+esc(d.offer_name||d.title||d.service||d.product_name||'Prestation')+'</div>'
+    +'<div class="card-sub">Client : '+esc(d.client_prenom||'—')+' · Contrat signé &amp; paiement sécurisé</div>'
+    +'<div style="margin-top:6px;display:flex;align-items:center;justify-content:space-between">'
+    +'<span class="pill pill-yellow"><i class="fa-solid fa-hourglass-half"></i> À accepter</span>'
+    +'<span class="card-meta">'+fmt(d.created_at)+'</span>'
+    +'</div></div></div>'
+    +(d.partner_total_amount ? '<div style="font-size:14px;font-weight:900;color:var(--gold);margin-top:10px">Votre gain : '+fmtAmt(d.partner_total_amount)+'</div>' : '')
+    +'<div style="font-size:11px;color:var(--muted);margin-top:2px">'+(isLarge ? '30% versé à l\'acceptation · 70% à la livraison' : '100% GENESIS SAFE™ — versé après confirmation client')+'</div>'
+    +'<div style="display:flex;gap:8px;margin-top:12px">'
+    +'<button class="btn-gold" style="flex:1" onclick="acceptLivrable(\''+esc(String(d.id||''))+'\',this)"><i class="fa-solid fa-check"></i>Accepter la mission</button>'
+    +'<button style="flex:0 0 auto;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:transparent;color:var(--muted);cursor:pointer;font-size:13px" onclick="declineLivrable(\''+esc(String(d.id||''))+'\',this)"><i class="fa-solid fa-xmark"></i></button>'
+    +'</div>'
+    +'</div>';
+}
+
+function acceptLivrable(id, btn){
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>Acceptation…';
+  fetch(API+'/api/partner/dispatches/'+id+'/accept',{method:'POST',headers:{'Authorization':'Bearer '+_token,'Content-Type':'application/json'}})
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if(d && d.error){ throw new Error(d.error); }
+      showToast('Mission acceptée ✓ — votre gain est en cours de versement');
+      _loaded['livrables']=false; _loaded['accueil']=false;
+      loadLivrables(); loadAccueil();
+    })
+    .catch(function(e){
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fa-solid fa-check"></i>Accepter la mission';
+      showToast('Erreur : '+(e.message||'Impossible d\'accepter'));
+    });
+}
+
+function declineLivrable(id, btn){
+  if(!confirm('Refuser cette mission ?\n\nLe client sera remboursé automatiquement par GENESIS SAFE™.')) return;
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+  fetch(API+'/api/partner/dispatches/'+id+'/decline-mission',{method:'POST',headers:{'Authorization':'Bearer '+_token,'Content-Type':'application/json'}})
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if(d && d.error){ throw new Error(d.error); }
+      showToast('Mission refusée — le client sera remboursé');
+      _loaded['livrables']=false; _loaded['accueil']=false;
+      loadLivrables(); loadAccueil();
+    })
+    .catch(function(e){
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+      showToast('Erreur : '+(e.message||'Impossible de refuser'));
+    });
 }
 
 function acceptDispatch(id, btn){
