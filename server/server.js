@@ -93,6 +93,8 @@ const GENESIS_PROJECTS_FILE = path.join(__dirname, 'data', 'genesis_projects.jso
 const CONTRACTS_FILE = path.join(__dirname, 'data', 'contracts.json');
 const ACTUALITES_FILE = path.join(__dirname, 'data', 'actualites.json');
 const FCM_TOKENS_FILE = path.join(__dirname, 'data', 'fcm_tokens.json');
+const WALLETS_FILE     = path.join(__dirname, 'data', 'wallets.json');
+const WITHDRAWALS_FILE = path.join(__dirname, 'data', 'withdrawals.json');
 
 // Catégories de partenaires marketplace (source unique, partagée par inscription + admin)
 const PARTNER_TYPES = [
@@ -502,6 +504,83 @@ function savePayouts(data) {
         fs.writeFileSync(PAYOUTS_FILE, JSON.stringify(data, null, 2), 'utf8');
         persistentStore.persistToCloud('payouts', data).catch(function(e) {});
     } catch(e) { console.error('[PAYOUT] Erreur sauvegarde:', e); }
+}
+
+// ── Wallets partenaires (solde interne GENESIS) ───────
+function loadWallets() {
+    try {
+        if (!fs.existsSync(WALLETS_FILE)) return [];
+        return JSON.parse(fs.readFileSync(WALLETS_FILE, 'utf8')) || [];
+    } catch(e) { return []; }
+}
+function saveWallets(data) {
+    try { fs.writeFileSync(WALLETS_FILE, JSON.stringify(data, null, 2), 'utf8'); }
+    catch(e) { console.error('[WALLET] Erreur sauvegarde:', e); }
+    persistentStore.persistToCloud('wallets', data).catch(function(e) {});
+}
+function loadWithdrawals() {
+    try {
+        if (!fs.existsSync(WITHDRAWALS_FILE)) return [];
+        return JSON.parse(fs.readFileSync(WITHDRAWALS_FILE, 'utf8')) || [];
+    } catch(e) { return []; }
+}
+function saveWithdrawals(data) {
+    try { fs.writeFileSync(WITHDRAWALS_FILE, JSON.stringify(data, null, 2), 'utf8'); }
+    catch(e) { console.error('[WALLET] Erreur sauvegarde withdrawals:', e); }
+    persistentStore.persistToCloud('withdrawals', data).catch(function(e) {});
+}
+
+// Pays SEPA (virement bancaire IBAN disponible)
+var _SEPA_COUNTRIES = ['FR','BE','DE','ES','IT','PT','NL','LU','AT','FI','SE','NO','DK','IE','GR','PL','CZ','HU','RO','BG','HR','SK','SI','EE','LV','LT','MT','CY','CH','LI','IS','MC','SM','AD','VA'];
+// Afrique de l'Ouest (Wave, Orange Money disponibles)
+var _WEST_AFRICA = ['SN','CI','BF','ML','GN','TG','BJ','NE','GW','LR','SL','GM','GH','NG','MR'];
+// Afrique Centrale (Orange Money, MTN Money)
+var _CENTRAL_AFRICA = ['CM','CG','GA','CD','CF','TD','GQ','BI','RW','KE','TZ','UG'];
+// Afrique du Nord
+var _NORTH_AFRICA = ['MA','DZ','TN','EG','LY'];
+
+function getWithdrawalMethodsForCountry(country) {
+    if (!country) return ['paypal','wise','payoneer'];
+    var c = (country || '').toUpperCase();
+    if (_SEPA_COUNTRIES.indexOf(c) !== -1) return ['sepa','paypal'];
+    if (c === 'GB') return ['paypal','wise'];
+    if (c === 'US' || c === 'CA') return ['paypal','wise','payoneer'];
+    if (_WEST_AFRICA.indexOf(c) !== -1) return ['wave','orange_money','paypal'];
+    if (_CENTRAL_AFRICA.indexOf(c) !== -1) return ['orange_money','mtn_money','paypal'];
+    if (_NORTH_AFRICA.indexOf(c) !== -1) return ['paypal','wise'];
+    return ['paypal','wise','payoneer'];
+}
+
+function creditPartnerWallet(partnerId, amount, description, orderId, dispatchId, stage) {
+    try {
+        if (!partnerId || !amount || amount <= 0) return false;
+        var wallets = loadWallets();
+        var idx = wallets.findIndex(function(w) { return w.partner_id === partnerId; });
+        if (idx === -1) {
+            wallets.push({ partner_id: partnerId, balance_available: 0, balance_pending: 0, currency: 'EUR', transactions: [] });
+            idx = wallets.length - 1;
+        }
+        var txn = {
+            id: 'WTX-' + Math.random().toString(36).substring(2, 10).toUpperCase(),
+            type: 'credit',
+            amount: parseFloat(amount.toFixed(2)),
+            description: description || 'Mission complétée',
+            order_id: orderId || null,
+            dispatch_id: dispatchId || null,
+            stage: stage || 'deposit',
+            status: 'available',
+            created_at: new Date().toISOString()
+        };
+        if (!Array.isArray(wallets[idx].transactions)) wallets[idx].transactions = [];
+        wallets[idx].transactions.push(txn);
+        wallets[idx].balance_available = parseFloat(((wallets[idx].balance_available || 0) + amount).toFixed(2));
+        saveWallets(wallets);
+        console.log('[WALLET] Crédit +' + amount + '€ → ' + partnerId + ' (' + description + ')');
+        return true;
+    } catch(e) {
+        console.error('[WALLET] Erreur creditPartnerWallet:', e);
+        return false;
+    }
 }
 
 function loadPromotions() {
@@ -983,63 +1062,26 @@ async function processDispatchPayout(dispatch, stage) {
             return;
         }
 
-        if (method === 'stripe_connect') {
-            // GENESIS SAFE™ escrow :
-            // - Paiement direct (order.payment_method='stripe') : fonds dans compte FA GENESIS →
-            //   Transfer plateforme→Connect d'abord, puis Payout Connect→banque
-            // - Paiement Connect initial (order.payment_method='stripe_connect') : fonds déjà
-            //   dans le solde Connect du prestataire → Payout Connect→banque directement
-            try {
-                var _scAmountCents = Math.round(paidAmount * 100);
-                var _scDesc = 'Versement FA GENESIS SAFE™ — ' + (dispatch.offer_name || dispatch.order_id || '') + ' (' + stage + ')';
-                var _orderPayMethod = order ? (order.payment_method || 'stripe') : 'stripe';
-                if (_orderPayMethod === 'stripe' || _orderPayMethod === 'stripe_direct') {
-                    // Paiement direct : transférer d'abord depuis le compte plateforme FA GENESIS
-                    var _transfer = await scp.createTransfer(_scAmountCents, 'eur', partner.stripeAccountId, {
-                        order_id: dispatch.order_id, dispatch_id: dispatch.id, stage: stage, platform: 'fa-genesis'
-                    });
-                    var _trLatest = loadPayouts();
-                    var _trPi = _trLatest.findIndex(function(p) { return p.id === newPayout.id; });
-                    if (_trPi !== -1) { _trLatest[_trPi].stripe_transfer_id = _transfer.id; savePayouts(_trLatest); }
-                    console.log('[PAYOUT] ' + stage + ' Transfer plateforme→Connect : ' + _transfer.id + ' (' + paidAmount + '€ → ' + partner.stripeAccountId + ')');
-                }
-                var _scPayout = await scp.triggerConnectPayout(partner.stripeAccountId, _scAmountCents, 'eur', _scDesc);
-                var _scLatest = loadPayouts();
-                var _scPi = _scLatest.findIndex(function(p) { return p.id === newPayout.id; });
-                if (_scPi !== -1) {
-                    _scLatest[_scPi].status = 'sent';
-                    _scLatest[_scPi].sent_at = new Date().toISOString();
-                    _scLatest[_scPi].stripe_payout_id = _scPayout.id;
-                    savePayouts(_scLatest);
-                }
-                console.log('[PAYOUT] ' + stage + ' Stripe Connect → virement déclenché vers banque de ' + partner.email + ' : ' + paidAmount + ' € (payout ' + _scPayout.id + ')');
-            } catch (_scErr) {
-                var _scFallback = loadPayouts();
-                var _scFi = _scFallback.findIndex(function(p) { return p.id === newPayout.id; });
-                if (_scFi !== -1) { _scFallback[_scFi].status = 'failed'; _scFallback[_scFi].error = _scErr.message; savePayouts(_scFallback); }
-                console.error('[PAYOUT] ' + stage + ' Stripe Connect payout ÉCHOUÉ → ' + partner.email + ' : ' + _scErr.message);
-            }
-        } else if (method === 'wise') {
-            // Virement manuel via wise.com — le record est créé en status 'pending', l'admin fait le virement.
-            console.log('[PAYOUT] ' + stage + ' Wise (virement manuel requis) → ' + partner.email + ' IBAN:' + (_partnerIban || '?') + ' : ' + paidAmount + ' €');
-        } else if (method === 'paypal') {
-            var result = await triggerPayPalPayouts([{
-                recipient_email: _partnerPaypal,
-                amount: paidAmount,
-                currency: 'EUR',
-                note: 'Versement FA GENESIS — ' + (dispatch.offer_name || dispatch.order_id) + ' (' + stage + ')'
-            }]);
-            var latest = loadPayouts();
-            var pi = latest.findIndex(function(p) { return p.id === newPayout.id; });
-            if (pi !== -1) {
-                latest[pi].status = result.success ? 'sent' : 'failed';
-                if (result.success) { latest[pi].sent_at = new Date().toISOString(); latest[pi].payout_batch_id = result.payout_batch_id || null; }
-                else { latest[pi].error = result.error || 'Erreur PayPal'; }
-                savePayouts(latest);
-            }
-            console.log('[PAYOUT] ' + stage + ' PayPal ' + (result.success ? 'envoyé' : 'ÉCHOUÉ') + ' → ' + partner.email + ' : ' + paidAmount + ' €');
+        // Créditer le wallet interne GENESIS (modèle Fiverr-like)
+        // Les fonds s'accumulent dans le solde wallet du partenaire.
+        // Le partenaire effectue ensuite un retrait manuel vers sa banque / PayPal / Mobile Money.
+        var _wDesc = 'Mission : ' + (dispatch.offer_name || (order && order.product_name) || 'Prestation')
+            + (stage === 'balance' ? ' — Solde final' : stage.startsWith('installment') ? ' — Mensualité' : ' — Acompte');
+        var _walletOk = creditPartnerWallet(partner.id, paidAmount, _wDesc, dispatch.order_id, dispatch.id, stage);
+        var _wLatest = loadPayouts();
+        var _wPi = _wLatest.findIndex(function(p) { return p.id === newPayout.id; });
+        if (_wPi !== -1) {
+            _wLatest[_wPi].status = _walletOk ? 'wallet_credited' : 'pending';
+            _wLatest[_wPi].sent_at = _walletOk ? new Date().toISOString() : null;
+            savePayouts(_wLatest);
+        }
+        if (_walletOk) {
+            console.log('[PAYOUT] ' + stage + ' → Wallet GENESIS crédité : +' + paidAmount + '€ pour ' + partner.email);
+            notifyUser(partner.email, 'partner', 'wallet_credited', '💰 Gains disponibles !',
+                '+' + paidAmount.toFixed(2) + '€ viennent d\'être ajoutés à votre Wallet GENESIS. Retirez-les quand vous voulez.',
+                '#partner:livrables');
         } else {
-            console.log('[PAYOUT] ' + stage + ' en attente (' + method + ') → ' + partner.email + ' : ' + paidAmount + ' €');
+            console.error('[PAYOUT] ' + stage + ' → Échec crédit wallet pour ' + partner.email);
         }
     } catch(e) {
         console.error('[PAYOUT] Erreur processDispatchPayout:', e);
@@ -5569,20 +5611,137 @@ app.get('/api/partner/wallet', authenticatePartner, function(req, res) {
             };
         });
 
+        // Wallet réel (solde interne GENESIS)
+        var _wallets = loadWallets();
+        var _wallet = _wallets.find(function(w) { return w.partner_id === partnerId; });
+        var _balAvail   = _wallet ? parseFloat((_wallet.balance_available || 0).toFixed(2)) : 0;
+        var _balPending = _wallet ? parseFloat((_wallet.balance_pending || 0).toFixed(2)) : 0;
+        var _walletTxns = _wallet ? (_wallet.transactions || []).slice().reverse().slice(0, 100) : [];
+        // total_earned = tout ce qui a transité par le wallet (crédits)
+        var _totalEarned = _wallet
+            ? (_wallet.transactions || []).filter(function(t){ return t.type === 'credit'; }).reduce(function(s,t){ return s + (t.amount||0); }, 0)
+            : Math.round(totalReleased * 100) / 100;
+
         res.json({
             ok: true,
-            // Champs compatibles frontend (partner-dashboard.html)
-            balance: Math.round(totalHeld * 100) / 100,
-            pending: Math.round(totalHeld * 100) / 100,
-            total_earned: Math.round(totalReleased * 100) / 100,
-            transactions: transactions,
-            // Champs GENESIS SAFE™ détaillés
+            balance_available: _balAvail,
+            balance_pending:   _balPending,
+            total_earned:      parseFloat(_totalEarned.toFixed(2)),
+            currency: 'EUR',
+            transactions: _walletTxns,
+            // Champs legacy pour rétrocompatibilité
+            balance:  _balAvail,
+            pending:  _balPending,
             total_held: Math.round(totalHeld * 100) / 100,
-            total_released_alltime: Math.round(totalReleased * 100) / 100,
+            total_released_alltime: parseFloat(_totalEarned.toFixed(2)),
             orders: orderRows
         });
     } catch(e) {
         console.error('[PARTNER_WALLET]', e.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * GET /api/partner/wallet/methods?country=FR
+ * Retourne les méthodes de retrait disponibles pour un pays donné.
+ */
+app.get('/api/partner/wallet/methods', authenticatePartner, function(req, res) {
+    var country = (req.query.country || '').toUpperCase();
+    var methods = getWithdrawalMethodsForCountry(country);
+    var labels = {
+        sepa:         { label: 'Virement SEPA (IBAN)', icon: 'fa-building-columns', fields: ['holder','iban','bic'] },
+        paypal:       { label: 'PayPal',               icon: 'fa-paypal',           fields: ['email'] },
+        wise:         { label: 'Wise',                 icon: 'fa-globe',            fields: ['email'] },
+        payoneer:     { label: 'Payoneer',             icon: 'fa-credit-card',      fields: ['email'] },
+        wave:         { label: 'Wave',                 icon: 'fa-mobile-screen',    fields: ['phone'] },
+        orange_money: { label: 'Orange Money',         icon: 'fa-mobile-screen',    fields: ['phone'] },
+        mtn_money:    { label: 'MTN Mobile Money',     icon: 'fa-mobile-screen',    fields: ['phone'] }
+    };
+    res.json({ methods: methods.map(function(m){ return Object.assign({ id: m }, labels[m] || { label: m, icon: 'fa-credit-card', fields: ['detail'] }); }) });
+});
+
+/**
+ * POST /api/partner/wallet/withdraw
+ * Le partenaire demande un retrait depuis son wallet.
+ * Body : { amount, method, country, details: { iban?, bic?, holder?, email?, phone? } }
+ */
+app.post('/api/partner/wallet/withdraw', authenticatePartner, function(req, res) {
+    try {
+        var partnerId = req.partner.id;
+        var amount    = parseFloat(req.body.amount);
+        var method    = (req.body.method || '').trim();
+        var country   = (req.body.country || '').toUpperCase();
+        var details   = req.body.details || {};
+
+        if (!amount || isNaN(amount) || amount < 20)
+            return res.status(400).json({ error: 'Montant minimum de retrait : 20 €.' });
+
+        var wallets = loadWallets();
+        var idx = wallets.findIndex(function(w) { return w.partner_id === partnerId; });
+        var available = idx !== -1 ? (wallets[idx].balance_available || 0) : 0;
+        if (available < amount)
+            return res.status(400).json({ error: 'Solde insuffisant. Disponible : ' + available.toFixed(2) + ' €.' });
+
+        var validMethods = getWithdrawalMethodsForCountry(country);
+        if (validMethods.indexOf(method) === -1)
+            return res.status(400).json({ error: 'Méthode non disponible pour votre pays.' });
+
+        // Déduire du solde disponible
+        wallets[idx].balance_available = parseFloat((available - amount).toFixed(2));
+        if (!Array.isArray(wallets[idx].transactions)) wallets[idx].transactions = [];
+        wallets[idx].transactions.push({
+            id: 'WTX-' + Math.random().toString(36).substring(2, 10).toUpperCase(),
+            type: 'debit',
+            amount: amount,
+            description: 'Retrait — ' + method.toUpperCase().replace('_',' '),
+            status: 'processing',
+            created_at: new Date().toISOString()
+        });
+        saveWallets(wallets);
+
+        var withdrawal = {
+            id: 'WDR-' + Math.random().toString(36).substring(2, 10).toUpperCase(),
+            partner_id: partnerId,
+            partner_email: req.partner.email,
+            amount: amount,
+            currency: 'EUR',
+            method: method,
+            country: country || null,
+            details: details,
+            status: 'pending',
+            created_at: new Date().toISOString(),
+            processed_at: null,
+            note: null
+        };
+        var withdrawals = loadWithdrawals();
+        withdrawals.push(withdrawal);
+        saveWithdrawals(withdrawals);
+
+        // Notifier le partenaire + admin
+        notifyUser(req.partner.email, 'partner', 'withdrawal_pending', '📤 Retrait en cours',
+            'Votre demande de retrait de ' + amount.toFixed(2) + '€ via ' + method.replace('_',' ') + ' est en cours de traitement.',
+            '#partner:livrables');
+
+        res.json({ ok: true, withdrawal_id: withdrawal.id, message: 'Demande de retrait enregistrée. Traitement sous 2–5 jours ouvrés.' });
+    } catch(e) {
+        console.error('[WALLET] Erreur withdraw:', e);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * GET /api/partner/wallet/withdrawals
+ * Historique des retraits du partenaire connecté.
+ */
+app.get('/api/partner/wallet/withdrawals', authenticatePartner, function(req, res) {
+    try {
+        var partnerId = req.partner.id;
+        var list = loadWithdrawals().filter(function(w){ return w.partner_id === partnerId; })
+            .sort(function(a,b){ return new Date(b.created_at) - new Date(a.created_at); })
+            .slice(0, 50);
+        res.json({ withdrawals: list });
+    } catch(e) {
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });

@@ -205,22 +205,91 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:-apple-
 
   <!-- PORTEFEUILLE -->
   <div class="section" id="sec-portefeuille">
+    <!-- Solde principal -->
     <div class="wallet-banner">
-      <div class="wallet-sub"><i class="fa-solid fa-lock" style="margin-right:4px;color:#FFD700;"></i>GENESIS SAFE™ — Fonds sécurisés</div>
-      <div class="wallet-amount" id="wallet-amount">0 €</div>
-      <div style="font-size:11px;color:#999;margin-top:2px;">Montant retenu jusqu'à livraison confirmée</div>
+      <div class="wallet-sub"><i class="fa-solid fa-wallet" style="margin-right:4px;color:#FFD700;"></i>Wallet GENESIS — Solde disponible</div>
+      <div class="wallet-amount" id="wallet-amount">—</div>
+      <div style="font-size:11px;color:#999;margin-top:4px;">Retirez vos gains quand vous voulez</div>
     </div>
     <div class="wallet-grid">
       <div class="wallet-card">
         <div class="num" id="wallet-total">—</div>
-        <div class="sub">Total versé</div>
+        <div class="sub">Total gagné</div>
       </div>
       <div class="wallet-card">
         <div class="num" id="wallet-pending">—</div>
-        <div class="sub">En escrow</div>
+        <div class="sub">En attente GENESIS SAFE™</div>
       </div>
     </div>
-    <div class="sec-hdr"><i class="fa-solid fa-shield-halved"></i>Mes prestations GENESIS SAFE™</div>
+
+    <!-- Bouton retrait -->
+    <button class="btn-gold" style="width:100%;margin-bottom:16px" onclick="showWithdrawForm()">
+      <i class="fa-solid fa-paper-plane"></i>Retirer mes gains
+    </button>
+
+    <!-- Formulaire de retrait (masqué par défaut) -->
+    <div id="withdraw-form" style="display:none;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px;margin-bottom:16px">
+      <div style="font-weight:700;font-size:15px;margin-bottom:14px"><i class="fa-solid fa-paper-plane" style="color:var(--gold)"></i> Demande de retrait</div>
+
+      <div style="margin-bottom:12px">
+        <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Montant (min. 20 €)</label>
+        <input id="wd-amount" type="number" min="20" step="0.01" placeholder="Ex : 50.00"
+          style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--bg);color:var(--text);font-size:14px;box-sizing:border-box">
+      </div>
+
+      <div style="margin-bottom:12px">
+        <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Votre pays</label>
+        <select id="wd-country" onchange="loadWithdrawMethods()"
+          style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--bg);color:var(--text);font-size:14px;box-sizing:border-box">
+          <option value="">— Sélectionner —</option>
+          <optgroup label="Europe">
+            <option value="FR">France</option><option value="BE">Belgique</option><option value="CH">Suisse</option>
+            <option value="DE">Allemagne</option><option value="ES">Espagne</option><option value="IT">Italie</option>
+            <option value="PT">Portugal</option><option value="NL">Pays-Bas</option><option value="LU">Luxembourg</option>
+            <option value="GB">Royaume-Uni</option>
+          </optgroup>
+          <optgroup label="Amérique du Nord">
+            <option value="US">États-Unis</option><option value="CA">Canada</option>
+          </optgroup>
+          <optgroup label="Afrique de l'Ouest">
+            <option value="SN">Sénégal</option><option value="CI">Côte d'Ivoire</option><option value="CM">Cameroun</option>
+            <option value="BF">Burkina Faso</option><option value="ML">Mali</option><option value="GN">Guinée</option>
+            <option value="TG">Togo</option><option value="BJ">Bénin</option><option value="GH">Ghana</option><option value="NG">Nigeria</option>
+          </optgroup>
+          <optgroup label="Afrique Centrale">
+            <option value="CG">Congo</option><option value="GA">Gabon</option><option value="CD">RD Congo</option>
+            <option value="TD">Tchad</option><option value="CF">Centrafrique</option>
+          </optgroup>
+          <optgroup label="Afrique du Nord">
+            <option value="MA">Maroc</option><option value="DZ">Algérie</option><option value="TN">Tunisie</option><option value="EG">Égypte</option>
+          </optgroup>
+          <optgroup label="Autre">
+            <option value="OTHER">Autre pays</option>
+          </optgroup>
+        </select>
+      </div>
+
+      <div id="wd-methods-block" style="display:none;margin-bottom:12px">
+        <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:6px">Méthode de retrait</label>
+        <div id="wd-methods-list"></div>
+      </div>
+
+      <div id="wd-details-block" style="display:none"></div>
+
+      <div id="wd-err" style="display:none;color:#f87171;font-size:12px;margin-bottom:10px"></div>
+
+      <div style="display:flex;gap:8px;margin-top:4px">
+        <button id="wd-submit-btn" class="btn-gold" style="flex:1" onclick="submitWithdrawal()" disabled>
+          <i class="fa-solid fa-check"></i>Confirmer le retrait
+        </button>
+        <button onclick="hideWithdrawForm()" style="padding:10px 16px;border:1px solid var(--border);border-radius:10px;background:transparent;color:var(--muted);cursor:pointer;font-size:13px">
+          Annuler
+        </button>
+      </div>
+    </div>
+
+    <!-- Historique des transactions + retraits -->
+    <div class="sec-hdr"><i class="fa-solid fa-clock-rotate-left"></i>Historique</div>
     <div id="wallet-history"><div class="spinner"><i class="fa-solid fa-spinner"></i></div></div>
   </div>
 
@@ -749,62 +818,197 @@ function loadDevis(){
   }).catch(function(){ el.innerHTML = '<div class="empty"><i class="fa-solid fa-wifi-slash"></i><p>Erreur de chargement</p></div>'; });
 }
 
-// ── Portefeuille ─────────────────────────────────────
+// ── Portefeuille / Wallet ─────────────────────────────
+var _walletData = null;
+var _withdrawMethod = null;
+
 function loadPortefeuille(){
-  apiFetch('/api/partner/wallet').then(function(data){
-    var held    = parseFloat(data&&data.total_held!=null    ? data.total_held    : (data&&data.balance!=null ? data.balance : 0));
-    var released= parseFloat(data&&data.total_released_alltime!=null ? data.total_released_alltime : (data&&data.total_earned!=null ? data.total_earned : 0));
-    document.getElementById('wallet-amount').textContent  = fmtAmt(held);
-    document.getElementById('wallet-total').textContent   = fmtAmt(released);
-    document.getElementById('wallet-pending').textContent = fmtAmt(held);
+  Promise.all([
+    apiFetch('/api/partner/wallet').catch(function(){ return {}; }),
+    apiFetch('/api/partner/wallet/withdrawals').catch(function(){ return {withdrawals:[]}; })
+  ]).then(function(res){
+    var data = res[0] || {};
+    var wdrs = (res[1] && res[1].withdrawals) ? res[1].withdrawals : [];
+    _walletData = data;
 
-    var orders = (data&&data.orders)||[];
+    var avail   = parseFloat(data.balance_available != null ? data.balance_available : (data.balance || 0));
+    var pending = parseFloat(data.balance_pending != null ? data.balance_pending : (data.total_held || 0));
+    var earned  = parseFloat(data.total_earned != null ? data.total_earned : (data.total_released_alltime || 0));
+
+    document.getElementById('wallet-amount').textContent  = fmtAmt(avail);
+    document.getElementById('wallet-total').textContent   = fmtAmt(earned);
+    document.getElementById('wallet-pending').textContent = fmtAmt(pending);
+
+    // Mettre à jour le bouton retrait
+    var btn = document.querySelector('#sec-portefeuille .btn-gold');
+    if(btn){ btn.disabled = avail < 20; btn.title = avail < 20 ? 'Minimum 20 € requis' : ''; }
+
     var hist = document.getElementById('wallet-history');
+    var txns = Array.isArray(data.transactions) ? data.transactions : [];
+    var rows = '';
 
-    if(orders.length===0){
-      hist.innerHTML = '<div class="card"><div class="empty" style="padding:24px 0;text-align:center">'
-        +'<i class="fa-solid fa-shield-halved" style="font-size:28px;color:#FFD700;margin-bottom:10px;display:block;"></i>'
-        +'<div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:6px;">Aucune prestation en escrow</div>'
-        +'<div style="font-size:12px;color:var(--muted);line-height:1.5;">Vos paiements GENESIS SAFE™ apparaîtront ici<br>dès qu\'une mission est acceptée.</div>'
-        +'</div></div>';
-      return;
+    // Retraits en cours / historique
+    if(wdrs.length){
+      rows += '<div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Retraits</div>';
+      rows += wdrs.slice(0,10).map(function(w){
+        var stCls = {pending:'pill-yellow',processing:'pill-blue',completed:'pill-green',failed:'pill-red'}[w.status]||'pill-grey';
+        var stLbl = {pending:'En attente',processing:'En cours',completed:'Versé ✓',failed:'Échec'}[w.status]||w.status;
+        var methodLbl = (w.method||'').replace('_',' ').toUpperCase();
+        return '<div class="card" style="margin-bottom:8px">'
+          +'<div style="display:flex;align-items:center;gap:10px">'
+          +'<div class="card-icon" style="background:rgba(99,102,241,.08)"><i class="fa-solid fa-paper-plane" style="color:#818cf8"></i></div>'
+          +'<div style="flex:1;min-width:0">'
+          +'<div class="card-title">Retrait '+methodLbl+'</div>'
+          +'<div class="card-sub">'+fmt(w.created_at)+'</div>'
+          +'</div>'
+          +'<div style="text-align:right">'
+          +'<div style="font-weight:900;color:#818cf8">-'+fmtAmt(w.amount)+'</div>'
+          +'<span class="pill '+stCls+'" style="margin-top:4px;display:inline-block">'+stLbl+'</span>'
+          +'</div></div></div>';
+      }).join('');
     }
 
-    hist.innerHTML = orders.map(function(o){
-      var isEscrow  = o.held_amount > 0;
-      var isReleased= o.released_amount > 0 && o.held_amount === 0;
-      var tierLabel = o.payment_tier === 'small' ? '≤ 300 € · Paiement intégral sécurisé' : 'Split 30/40/30';
-      var iconColor = isReleased ? '#22c55e' : '#FFD700';
-      var icon      = isReleased ? 'fa-circle-check' : 'fa-lock';
-      var pillClass = isReleased ? 'pill-green' : 'pill-yellow';
-      var amount    = isEscrow ? o.held_amount : o.released_amount;
-      return '<div class="card" style="margin-bottom:10px">'
-        +'<div class="card-row">'
-        +'<div class="card-icon" style="background:rgba(255,215,0,.08)">'
-        +'<i class="fa-solid '+icon+'" style="color:'+iconColor+'"></i>'
-        +'</div>'
-        +'<div style="flex:1;min-width:0">'
-        +'<div class="card-title">'+esc(o.service_label)+'</div>'
-        +'<div class="card-sub">'+esc(o.client_name)+'</div>'
-        +'<div style="margin-top:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
-        +'<span class="pill '+pillClass+'">'+esc(o.status_label)+'</span>'
-        +'<span class="card-meta" style="font-size:10px;color:var(--muted)">'+esc(tierLabel)+'</span>'
-        +'</div>'
-        +'</div>'
-        +'<div style="font-size:18px;font-weight:900;color:'+iconColor+';white-space:nowrap;margin-left:8px;">'
-        +fmtAmt(amount)+'</div>'
-        +'</div>'
-        +(isEscrow ? '<div style="margin-top:10px;font-size:11px;color:#FFD700;background:rgba(255,215,0,.07);border-radius:8px;padding:8px 10px;line-height:1.5;">'
-        +'<i class="fa-solid fa-shield-halved" style="margin-right:5px;"></i>'
-        +'Fonds sécurisés sur FA GENESIS — versement automatique à la confirmation de livraison.'
-        +'</div>' : '')
-        +'</div>';
-    }).join('');
+    // Transactions wallet (crédits de missions)
+    if(txns.length){
+      rows += '<div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:12px 0 8px">Missions encaissées</div>';
+      rows += txns.slice(0,30).map(function(t){
+        var isCredit = t.type === 'credit';
+        var iconColor = isCredit ? '#22c55e' : '#f87171';
+        var icon = isCredit ? 'fa-circle-arrow-down' : 'fa-circle-arrow-up';
+        var sign = isCredit ? '+' : '-';
+        return '<div class="card" style="margin-bottom:8px">'
+          +'<div style="display:flex;align-items:center;gap:10px">'
+          +'<div class="card-icon" style="background:rgba(34,197,94,.06)"><i class="fa-solid '+icon+'" style="color:'+iconColor+'"></i></div>'
+          +'<div style="flex:1;min-width:0">'
+          +'<div class="card-title" style="font-size:13px">'+esc(t.description||'Crédit')+'</div>'
+          +'<div class="card-sub">'+fmt(t.created_at)+'</div>'
+          +'</div>'
+          +'<div style="font-size:15px;font-weight:900;color:'+iconColor+';white-space:nowrap">'+sign+fmtAmt(t.amount)+'</div>'
+          +'</div></div>';
+      }).join('');
+    }
+
+    // Fallback : commandes GENESIS SAFE™ (ancien mode)
+    if(!txns.length){
+      var orders = (data.orders || []);
+      if(!orders.length){
+        rows += '<div class="card"><div class="empty" style="padding:24px 0;text-align:center">'
+          +'<i class="fa-solid fa-wallet" style="font-size:28px;color:#FFD700;margin-bottom:10px;display:block"></i>'
+          +'<div style="font-size:14px;font-weight:700;margin-bottom:6px">Wallet vide</div>'
+          +'<div style="font-size:12px;color:var(--muted);line-height:1.5">Vos gains apparaîtront ici après chaque mission livrée.</div>'
+          +'</div></div>';
+      } else {
+        rows += orders.map(function(o){
+          var iconColor = o.released_amount > 0 ? '#22c55e' : '#FFD700';
+          return '<div class="card" style="margin-bottom:8px">'
+            +'<div style="display:flex;align-items:center;gap:10px">'
+            +'<div class="card-icon" style="background:rgba(255,215,0,.08)"><i class="fa-solid fa-lock" style="color:'+iconColor+'"></i></div>'
+            +'<div style="flex:1;min-width:0"><div class="card-title">'+esc(o.service_label)+'</div><div class="card-sub">'+esc(o.client_name)+'</div></div>'
+            +'<div style="font-size:15px;font-weight:900;color:'+iconColor+'">'+fmtAmt(o.held_amount||o.released_amount)+'</div>'
+            +'</div></div>';
+        }).join('');
+      }
+    }
+
+    hist.innerHTML = rows || '<div class="empty"><i class="fa-solid fa-clock-rotate-left"></i><p>Aucune transaction</p></div>';
   }).catch(function(){
     document.getElementById('wallet-amount').textContent = '— €';
     document.getElementById('wallet-total').textContent = '—';
     document.getElementById('wallet-pending').textContent = '—';
-    document.getElementById('wallet-history').innerHTML = '<div class="card"><div class="empty" style="padding:20px 0;text-align:center"><i class="fa-solid fa-wifi-slash"></i><p>Erreur de chargement</p></div></div>';
+    document.getElementById('wallet-history').innerHTML = '<div class="empty"><i class="fa-solid fa-wifi-slash"></i><p>Erreur de chargement</p></div>';
+  });
+}
+
+function showWithdrawForm(){
+  document.getElementById('withdraw-form').style.display='block';
+  document.getElementById('wd-err').style.display='none';
+}
+function hideWithdrawForm(){
+  document.getElementById('withdraw-form').style.display='none';
+  document.getElementById('wd-methods-block').style.display='none';
+  document.getElementById('wd-details-block').style.display='none';
+  document.getElementById('wd-submit-btn').disabled=true;
+  _withdrawMethod=null;
+}
+
+function loadWithdrawMethods(){
+  var country = document.getElementById('wd-country').value;
+  if(!country){ document.getElementById('wd-methods-block').style.display='none'; return; }
+  apiFetch('/api/partner/wallet/methods?country='+encodeURIComponent(country)).then(function(data){
+    var methods = data.methods||[];
+    var el = document.getElementById('wd-methods-list');
+    if(!methods.length){ el.innerHTML='<p style="font-size:12px;color:var(--muted)">Aucune méthode disponible.</p>'; return; }
+    el.innerHTML = methods.map(function(m){
+      return '<label style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;cursor:pointer;margin-bottom:6px;background:var(--bg)">'
+        +'<input type="radio" name="wd-method" value="'+esc(m.id)+'" onchange="selectWithdrawMethod(\''+esc(m.id)+'\','+JSON.stringify(m.fields)+')" style="accent-color:var(--gold)">'
+        +'<i class="fa-brands '+('fa-paypal'===m.icon?m.icon:'')+' fa-solid '+('fa-paypal'!==m.icon?m.icon:'')+'" style="color:var(--gold);width:16px"></i>'
+        +'<span style="font-size:13px;font-weight:600">'+esc(m.label)+'</span>'
+        +'</label>';
+    }).join('');
+    document.getElementById('wd-methods-block').style.display='block';
+    document.getElementById('wd-details-block').style.display='none';
+    document.getElementById('wd-submit-btn').disabled=true;
+    _withdrawMethod=null;
+  }).catch(function(){});
+}
+
+function selectWithdrawMethod(methodId, fields){
+  _withdrawMethod = methodId;
+  var fieldLabels = {
+    iban:   { label:'IBAN', placeholder:'FR76 3000 6000 0112 3456 7890 189' },
+    bic:    { label:'BIC / SWIFT', placeholder:'BNPAFRPP' },
+    holder: { label:'Titulaire du compte', placeholder:'Jean Dupont' },
+    email:  { label:'Adresse e-mail', placeholder:'vous@exemple.com' },
+    phone:  { label:'Numéro de téléphone', placeholder:'+221 77 000 00 00' },
+    detail: { label:'Détail', placeholder:'' }
+  };
+  var block = document.getElementById('wd-details-block');
+  block.innerHTML = '<div style="margin-top:10px">'
+    + fields.map(function(f){
+      var fl = fieldLabels[f]||{label:f,placeholder:''};
+      return '<div style="margin-bottom:10px">'
+        +'<label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">'+fl.label+'</label>'
+        +'<input id="wd-field-'+f+'" type="text" placeholder="'+fl.placeholder+'"'
+        +' style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--bg);color:var(--text);font-size:14px;box-sizing:border-box">'
+        +'</div>';
+    }).join('')
+    +'</div>';
+  block.style.display='block';
+  document.getElementById('wd-submit-btn').disabled=false;
+}
+
+function submitWithdrawal(){
+  var amount = parseFloat(document.getElementById('wd-amount').value);
+  var country = document.getElementById('wd-country').value;
+  var errEl = document.getElementById('wd-err');
+  errEl.style.display='none';
+
+  if(!amount || isNaN(amount) || amount < 20){ errEl.textContent='Montant minimum : 20 €'; errEl.style.display='block'; return; }
+  if(!country){ errEl.textContent='Sélectionnez votre pays.'; errEl.style.display='block'; return; }
+  if(!_withdrawMethod){ errEl.textContent='Sélectionnez une méthode de retrait.'; errEl.style.display='block'; return; }
+
+  // Collecter les détails selon les champs affichés
+  var details = {};
+  ['iban','bic','holder','email','phone','detail'].forEach(function(f){
+    var el = document.getElementById('wd-field-'+f); if(el && el.value.trim()) details[f] = el.value.trim();
+  });
+
+  var btn = document.getElementById('wd-submit-btn');
+  btn.disabled=true; btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i>Envoi…';
+
+  fetch(API+'/api/partner/wallet/withdraw',{
+    method:'POST',
+    headers:{'Authorization':'Bearer '+_token,'Content-Type':'application/json'},
+    body: JSON.stringify({ amount:amount, method:_withdrawMethod, country:country, details:details })
+  }).then(function(r){ return r.json(); })
+  .then(function(d){
+    if(d && d.error){ throw new Error(d.error); }
+    hideWithdrawForm();
+    showToast('Retrait demandé ✓ — traitement sous 2–5 jours ouvrés');
+    _loaded['portefeuille']=false; loadPortefeuille();
+  }).catch(function(e){
+    btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-check"></i>Confirmer le retrait';
+    errEl.textContent = e.message||'Erreur lors de la demande.'; errEl.style.display='block';
   });
 }
 
