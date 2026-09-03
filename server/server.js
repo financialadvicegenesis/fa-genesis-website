@@ -3875,9 +3875,14 @@ app.post('/api/orders/:orderId/cancel-pending', function(req, res) {
             return res.status(403).json({ success: false, error: 'Commande non autorisee.' });
         }
 
-        // Verifier que l'acompte n'est pas deja paye
+        // Verifier que l'acompte n'est pas deja paye — sauf si le dispatch est en pending_acceptance
+        // (partenaire n'a pas encore accepté la mission = suppression autorisée)
         if (order.deposit_paid) {
-            return res.status(400).json({ success: false, error: 'Impossible d\'annuler : l\'acompte a deja ete regle.' });
+            var _dispatches = loadDispatches();
+            var _disp = _dispatches.find(function(d){ return d.order_id === orderId && d.status !== 'cancelled'; });
+            if (!_disp || _disp.status !== 'pending_acceptance') {
+                return res.status(400).json({ success: false, error: 'Impossible d\'annuler : le paiement a déjà été traité et la mission est en cours.' });
+            }
         }
 
         // Annuler la commande

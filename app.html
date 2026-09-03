@@ -9568,7 +9568,8 @@ function _fetchAndRenderCommandes(){
         var _amtHtml = r.total_amount
           ? "<span style='font-size:12px;font-weight:700;color:var(--yellow);'>"+Number(r.total_amount).toLocaleString("fr-FR")+" €</span>"
           : "";
-        var _canDelete = !r.deposit_paid;
+        var _dsKey=(ds&&ds.key)||'';
+        var _canDelete = !r.deposit_paid || _dsKey==='pending_acceptance';
         var _deleteBtn = _canDelete
           ? "<button onclick='event.stopPropagation();_cancelUnpaidOrder(\""+r.order_id+"\",\""+r.id+"\")' style='background:none;border:none;padding:6px;cursor:pointer;color:#555;flex-shrink:0;' title='Supprimer'><i class='fa-solid fa-trash-can' style='font-size:14px;'></i></button>"
           : "<i class='fa-solid fa-chevron-right' style='color:#444;font-size:12px;flex-shrink:0;'></i>";
