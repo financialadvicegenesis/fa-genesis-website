@@ -5963,9 +5963,7 @@ app.get('/api/client/payments-list', function(req, res) {
         var clientOrders = orders.filter(function(o) {
             return o.client_info && o.client_info.email &&
                    o.client_info.email.toLowerCase() === user.email.toLowerCase() &&
-                   o.status !== 'cancelled' &&
-                   o.status !== 'completed' &&
-                   o.status !== 'fully_paid';
+                   o.status !== 'cancelled';
         });
         clientOrders.sort(function(a, b) { return new Date(b.created_at || 0) - new Date(a.created_at || 0); });
 
@@ -6021,29 +6019,65 @@ app.get('/api/client/payments-list', function(req, res) {
                     can_pay: !order.deposit_paid
                 });
             } else {
-                paymentList.push({
-                    id: order.id + '-deposit',
-                    order_id: order.id,
-                    label: orderName,
-                    category: cat,
-                    type_label: 'Acompte (30%)',
-                    amount: Number(order.deposit_amount) || 0,
-                    status: order.deposit_paid ? 'paid' : 'pending',
-                    paid_at: order.deposit_paid ? (order.deposit_paid_at || null) : null,
-                    can_pay: false
-                });
-                if (Number(order.balance_amount) > 0) {
+                var _isSmallPmt = order.payment_tier === 'small' || Number(order.total_amount) <= 300;
+                var _catLabel = order.product_type === 'partner_service' ? 'Prestation partenaire' : cat;
+                var _partnerName = order.partner_name || '';
+                var _installs = Array.isArray(order.installments) && order.installments.length > 2 ? order.installments : null;
+                if (_isSmallPmt) {
                     paymentList.push({
-                        id: order.id + '-balance',
+                        id: order.id + '-deposit',
                         order_id: order.id,
                         label: orderName,
-                        category: cat,
-                        type_label: 'Solde (70%)',
-                        amount: Number(order.balance_amount) || 0,
-                        status: order.balance_paid ? 'paid' : (order.deposit_paid ? 'due' : 'pending'),
-                        paid_at: order.balance_paid ? (order.balance_paid_at || null) : null,
-                        can_pay: order.deposit_paid === true && !order.balance_paid
+                        partner_name: _partnerName,
+                        category: _catLabel,
+                        type_label: 'Paiement intégral',
+                        amount: Number(order.total_amount) || 0,
+                        status: order.deposit_paid ? 'paid' : 'pending',
+                        paid_at: order.deposit_paid ? (order.deposit_paid_at || order.updated_at || null) : null,
+                        can_pay: false
                     });
+                } else if (_installs) {
+                    _installs.forEach(function(inst, idx) {
+                        paymentList.push({
+                            id: order.id + '-inst-' + (idx + 1),
+                            order_id: order.id,
+                            label: orderName,
+                            partner_name: _partnerName,
+                            category: _catLabel,
+                            type_label: 'Mensualité ' + (idx + 1) + '/' + _installs.length,
+                            amount: Number(inst.amount) || 0,
+                            status: inst.paid ? 'paid' : (idx === 0 ? 'pending' : 'pending'),
+                            paid_at: inst.paid ? (inst.paid_at || null) : null,
+                            can_pay: false
+                        });
+                    });
+                } else {
+                    paymentList.push({
+                        id: order.id + '-deposit',
+                        order_id: order.id,
+                        label: orderName,
+                        partner_name: _partnerName,
+                        category: _catLabel,
+                        type_label: 'Acompte (30%)',
+                        amount: Number(order.deposit_amount) || 0,
+                        status: order.deposit_paid ? 'paid' : 'pending',
+                        paid_at: order.deposit_paid ? (order.deposit_paid_at || null) : null,
+                        can_pay: false
+                    });
+                    if (Number(order.balance_amount) > 0) {
+                        paymentList.push({
+                            id: order.id + '-balance',
+                            order_id: order.id,
+                            label: orderName,
+                            partner_name: _partnerName,
+                            category: _catLabel,
+                            type_label: 'Solde (70%)',
+                            amount: Number(order.balance_amount) || 0,
+                            status: order.balance_paid ? 'paid' : (order.deposit_paid ? 'due' : 'pending'),
+                            paid_at: order.balance_paid ? (order.balance_paid_at || null) : null,
+                            can_pay: order.deposit_paid === true && !order.balance_paid
+                        });
+                    }
                 }
             }
         });

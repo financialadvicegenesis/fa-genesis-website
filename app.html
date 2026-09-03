@@ -9644,25 +9644,59 @@ function showPaiements(){
   _saveProfilScroll('showPaiements');
   c.innerHTML='<div class="espace-view">'
     +'<div class="espace-back-bar"><button class="espace-back-btn" onclick="profilBack()">&#8249;</button><div class="espace-title">Mes paiements</div></div>'
-    +'<div id="pmt-list"><div class="espace-loading">Chargement...</div></div></div>';
+    +'<div id="pmt-list" style="padding:14px;overflow-y:auto;flex:1;padding-bottom:80px;"><div class="espace-loading">Chargement...</div></div></div>';
   fetch((window.FA_GENESIS_API||API)+'/api/client/payments-list',{headers:{'Authorization':'Bearer '+USER._token}})
-    .then(function(r){return r.json();}).then(function(data){
-      var list=Array.isArray(data)?data:[];
+    .then(function(r){return r.json();})
+    .then(function(data){
+      var list=(data&&Array.isArray(data.payments))?data.payments:(Array.isArray(data)?data:[]);
+      var summary=(data&&data.summary)||null;
       var el=document.getElementById('pmt-list'); if(!el) return;
-      if(list.length===0){el.innerHTML='<div class="espace-empty">Aucun paiement.</div>';return;}
-      el.innerHTML=list.map(function(p){
-        var sl=p.paymentStatus==='fully_paid'?'Payé':p.paymentStatus==='deposit_paid'?'Acompte':p.paymentStatus==='pending'?'En attente':'—';
-        var sc=p.paymentStatus==='fully_paid'?'#22c55e':p.paymentStatus==='deposit_paid'?'#FFD700':'#555';
-        return '<div class="espace-card">'
-          +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">'
-          +'<div class="espace-card-name">'+(p.offre||p.activeOfferId||'Commande')+'</div>'
-          +'<span style="font-size:11px;font-weight:900;color:'+sc+';white-space:nowrap;">'+sl+'</span>'
+      if(list.length===0){
+        el.innerHTML='<div class="espace-empty"><i class="fa-solid fa-receipt" style="font-size:32px;color:var(--muted);display:block;margin-bottom:10px;"></i>Aucun paiement pour le moment.</div>';
+        return;
+      }
+      var _sLabel={paid:'Payé',due:'À payer',accepted_unpaid:'À payer',pending:'En attente'};
+      var _sColor={paid:'#22c55e',due:'#f97316',accepted_unpaid:'#FFD700',pending:'#555'};
+      var summaryHtml='';
+      if(summary){
+        summaryHtml='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">'
+          +'<div style="background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);border-radius:12px;padding:12px 14px;">'
+          +'<div style="font-size:10px;color:#22c55e;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;"><i class="fa-solid fa-check-circle" style="margin-right:4px;"></i>Payé</div>'
+          +'<div style="font-size:18px;font-weight:900;color:#22c55e;">'+Number(summary.total_paid).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+' €</div>'
           +'</div>'
-          +(p.email?'<div class="espace-card-sub">'+p.email+'</div>':'')
-          +(p.totalPaid?'<div class="espace-card-detail">Versé : '+Number(p.totalPaid).toLocaleString('fr-FR')+' €</div>':'')
+          +'<div style="background:rgba(255,215,0,.06);border:1px solid rgba(255,215,0,.15);border-radius:12px;padding:12px 14px;">'
+          +'<div style="font-size:10px;color:var(--yellow);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;"><i class="fa-solid fa-clock" style="margin-right:4px;"></i>En attente</div>'
+          +'<div style="font-size:18px;font-weight:900;color:var(--yellow);">'+Number(summary.total_pending).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+' €</div>'
+          +'</div></div>';
+      }
+      el.innerHTML=summaryHtml+list.map(function(p){
+        var sl=_sLabel[p.status]||p.status||'—';
+        var sc=_sColor[p.status]||'#555';
+        var isPaid=p.status==='paid';
+        var dateStr=p.paid_at?new Date(p.paid_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'}):'';
+        var amtStr=Number(p.amount||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
+        return '<div class="espace-card" style="padding:14px;margin-bottom:10px;">'
+          +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px;">'
+          +'<div style="flex:1;min-width:0;">'
+          +'<div style="font-size:13px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+(p.label||'Prestation')+'</div>'
+          +(p.partner_name?'<div style="font-size:11px;color:var(--muted);margin-top:2px;">par '+p.partner_name+'</div>':'')
+          +'</div>'
+          +'<span style="font-size:11px;font-weight:900;color:'+sc+';white-space:nowrap;">'+(isPaid?'<i class="fa-solid fa-check" style="margin-right:3px;font-size:9px;"></i>':'')+sl+'</span>'
+          +'</div>'
+          +'<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">'
+          +'<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">'
+          +'<span style="font-size:10px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:4px;padding:2px 7px;color:#888;font-weight:700;">'+p.type_label+'</span>'
+          +(p.category?'<span style="font-size:10px;color:#555;">'+p.category+'</span>':'')
+          +'</div>'
+          +'<div style="text-align:right;flex-shrink:0;">'
+          +'<div style="font-size:15px;font-weight:900;color:var(--yellow);">'+amtStr+'</div>'
+          +(dateStr?'<div style="font-size:10px;color:var(--muted);">'+dateStr+'</div>':'')
+          +'</div>'
+          +'</div>'
           +'</div>';
       }).join('');
-    }).catch(function(){var el=document.getElementById('pmt-list');if(el)el.innerHTML='<div class="espace-empty">Impossible de charger.</div>';});
+    })
+    .catch(function(){var el=document.getElementById('pmt-list');if(el)el.innerHTML='<div class="espace-empty">Impossible de charger vos paiements.</div>';});
 }
 
 // ── CONFETTI LEVEL-UP ────────────────────────────────────────────
