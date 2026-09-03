@@ -9661,6 +9661,61 @@ function showOrderDetail(requestId){
   } catch(_e){}
 }
 function showDashboard(){showMesCommandes();}
+var _pmtListCache = [];
+function _pmtHiddenKey(){ return 'fa_pmt_hidden_'+(USER&&USER.email||''); }
+function _pmtGetHidden(){
+  try{ return JSON.parse(localStorage.getItem(_pmtHiddenKey())||'[]'); }catch(e){ return []; }
+}
+function _pmtSetHidden(arr){
+  try{ localStorage.setItem(_pmtHiddenKey(),JSON.stringify(arr)); }catch(e){}
+}
+function _pmtRenderList(list){
+  var hidden=_pmtGetHidden();
+  var visible=list.filter(function(p){ return hidden.indexOf(p.id)===-1; });
+  var el=document.getElementById('pmt-list'); if(!el) return;
+  if(visible.length===0){
+    el.innerHTML='<div class="espace-empty"><i class="fa-solid fa-receipt" style="font-size:32px;color:var(--muted);display:block;margin-bottom:10px;"></i>Aucun paiement pour le moment.</div>';
+    return;
+  }
+  var _sLabel={paid:'Payé',due:'À payer',accepted_unpaid:'À payer',pending:'En attente'};
+  var _sColor={paid:'#22c55e',due:'#f97316',accepted_unpaid:'#FFD700',pending:'#555'};
+  el.innerHTML=visible.map(function(p){
+    var sl=_sLabel[p.status]||p.status||'—';
+    var sc=_sColor[p.status]||'#555';
+    var isPaid=p.status==='paid';
+    var dateStr=p.paid_at?new Date(p.paid_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'}):'';
+    var amtStr=Number(p.amount||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
+    return '<div class="espace-card" style="padding:14px;margin-bottom:10px;display:flex;align-items:center;gap:10px;">'
+      +'<div style="flex:1;min-width:0;cursor:pointer;" onclick="_showPmtDetail(\''+p.id+'\')">'
+      +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px;">'
+      +'<div style="flex:1;min-width:0;">'
+      +'<div style="font-size:13px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+(p.label||'Prestation')+'</div>'
+      +(p.partner_name?'<div style="font-size:11px;color:var(--muted);margin-top:2px;">par '+p.partner_name+'</div>':'')
+      +'</div>'
+      +'<span style="font-size:11px;font-weight:900;color:'+sc+';white-space:nowrap;">'+(isPaid?'<i class="fa-solid fa-check" style="margin-right:3px;font-size:9px;"></i>':'')+sl+'</span>'
+      +'</div>'
+      +'<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">'
+      +'<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">'
+      +'<span style="font-size:10px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:4px;padding:2px 7px;color:#888;font-weight:700;">'+p.type_label+'</span>'
+      +(p.category?'<span style="font-size:10px;color:#555;">'+p.category+'</span>':'')
+      +'</div>'
+      +'<div style="text-align:right;flex-shrink:0;">'
+      +'<div style="font-size:15px;font-weight:900;color:var(--yellow);">'+amtStr+'</div>'
+      +(dateStr?'<div style="font-size:10px;color:var(--muted);">'+dateStr+'</div>':'')
+      +'</div>'
+      +'</div>'
+      +'</div>'
+      +'<button onclick="_pmtHide(\''+p.id+'\')" style="background:none;border:none;padding:6px 4px;cursor:pointer;color:#444;flex-shrink:0;" title="Masquer">'
+      +'<i class="fa-solid fa-trash-can" style="font-size:14px;"></i></button>'
+      +'</div>';
+  }).join('');
+}
+function _pmtHide(pmtId){
+  var hidden=_pmtGetHidden();
+  if(hidden.indexOf(pmtId)===-1) hidden.push(pmtId);
+  _pmtSetHidden(hidden);
+  _pmtRenderList(_pmtListCache);
+}
 function showPaiements(){
   var c=document.getElementById('profilContent');
   _saveProfilScroll('showPaiements');
@@ -9671,51 +9726,13 @@ function showPaiements(){
     .then(function(r){return r.json();})
     .then(function(data){
       var list=(data&&Array.isArray(data.payments))?data.payments:(Array.isArray(data)?data:[]);
-      var summary=(data&&data.summary)||null;
-      var el=document.getElementById('pmt-list'); if(!el) return;
-      if(list.length===0){
-        el.innerHTML='<div class="espace-empty"><i class="fa-solid fa-receipt" style="font-size:32px;color:var(--muted);display:block;margin-bottom:10px;"></i>Aucun paiement pour le moment.</div>';
-        return;
-      }
-      var _sLabel={paid:'Payé',due:'À payer',accepted_unpaid:'À payer',pending:'En attente'};
-      var _sColor={paid:'#22c55e',due:'#f97316',accepted_unpaid:'#FFD700',pending:'#555'};
-      _pmtListCache = list;
-      el.innerHTML=list.map(function(p){
-        var sl=_sLabel[p.status]||p.status||'—';
-        var sc=_sColor[p.status]||'#555';
-        var isPaid=p.status==='paid';
-        var dateStr=p.paid_at?new Date(p.paid_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'}):'';
-        var amtStr=Number(p.amount||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
-        var safeId=JSON.stringify(p).replace(/'/g,"\\'");
-        return '<div class="espace-card" style="padding:14px;margin-bottom:10px;cursor:pointer;display:flex;align-items:center;gap:12px;" onclick="_showPmtDetail(\''+p.id+'\')">'
-          +'<div style="flex:1;min-width:0;">'
-          +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px;">'
-          +'<div style="flex:1;min-width:0;">'
-          +'<div style="font-size:13px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+(p.label||'Prestation')+'</div>'
-          +(p.partner_name?'<div style="font-size:11px;color:var(--muted);margin-top:2px;">par '+p.partner_name+'</div>':'')
-          +'</div>'
-          +'<span style="font-size:11px;font-weight:900;color:'+sc+';white-space:nowrap;">'+(isPaid?'<i class="fa-solid fa-check" style="margin-right:3px;font-size:9px;"></i>':'')+sl+'</span>'
-          +'</div>'
-          +'<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">'
-          +'<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">'
-          +'<span style="font-size:10px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:4px;padding:2px 7px;color:#888;font-weight:700;">'+p.type_label+'</span>'
-          +(p.category?'<span style="font-size:10px;color:#555;">'+p.category+'</span>':'')
-          +'</div>'
-          +'<div style="text-align:right;flex-shrink:0;">'
-          +'<div style="font-size:15px;font-weight:900;color:var(--yellow);">'+amtStr+'</div>'
-          +(dateStr?'<div style="font-size:10px;color:var(--muted);">'+dateStr+'</div>':'')
-          +'</div>'
-          +'</div>'
-          +'</div>'
-          +'<i class="fa-solid fa-chevron-right" style="color:#444;font-size:12px;flex-shrink:0;"></i>'
-          +'</div>';
-      }).join('');
+      _pmtListCache=list;
+      _pmtRenderList(list);
     })
     .catch(function(){var el=document.getElementById('pmt-list');if(el)el.innerHTML='<div class="espace-empty">Impossible de charger vos paiements.</div>';});
 }
-var _pmtListCache = [];
 function _showPmtDetail(pmtId){
-  var p = null;
+  var p=null;
   for(var _pi=0;_pi<_pmtListCache.length;_pi++){ if(_pmtListCache[_pi].id===pmtId){ p=_pmtListCache[_pi]; break; } }
   if(!p) return;
   var _sLabel={paid:'Payé',due:'À payer',accepted_unpaid:'À payer',pending:'En attente'};
@@ -9758,9 +9775,12 @@ function _showPmtDetail(pmtId){
     +'</div>'
     +'</div>'
     +'</div>'
-    +'<div style="background:#0a1a0a;border:1px solid #1a3a1a;border-radius:12px;padding:12px 14px;font-size:11px;color:#6dbf6d;line-height:1.5;">'
+    +'<div style="background:#0a1a0a;border:1px solid #1a3a1a;border-radius:12px;padding:12px 14px;font-size:11px;color:#6dbf6d;line-height:1.5;margin-bottom:14px;">'
     +'<i class="fas fa-lock" style="margin-right:6px;"></i>Paiement sécurisé par <strong>GENESIS SAFE™</strong> · Protégé et traçable'
     +'</div>'
+    +'<button onclick="_pmtHide(\''+p.id+'\');document.getElementById(\'pmt-detail-overlay\').remove();" style="width:100%;background:none;border:1.5px solid #2a2a2a;border-radius:12px;color:#666;font-size:12px;font-weight:700;padding:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">'
+    +'<i class="fa-solid fa-trash-can"></i>Masquer ce paiement'
+    +'</button>'
     +'</div>';
   document.body.appendChild(overlay);
 }
