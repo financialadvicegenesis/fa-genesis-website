@@ -6564,6 +6564,21 @@ function addServiceToMainCart(partnerId, serviceId){
 function _cartPayPartnerService(idx){
   var item = APP_CART[idx];
   if(!item||item.type!=='partner_service') return;
+  // Guard: block if an active order already exists for this partner+service
+  if(_mesCommandesReqs && _mesCommandesReqs.length > 0){
+    var _dup = _mesCommandesReqs.some(function(r){
+      return r.partner_id===item.partnerId && r.service_id===item.serviceId;
+    });
+    if(_dup){
+      APP_CART.splice(idx, 1);
+      try{localStorage.setItem('fa_genesis_cart',JSON.stringify(APP_CART));}catch(e){}
+      closeCart();
+      setTimeout(function(){
+        showToast('Déjà commandé','Vous avez déjà une commande en cours pour "'+item.serviceLabel+'". Consultez "Mes commandes".','info');
+      }, 400);
+      return;
+    }
+  }
   closeCart();
   setTimeout(function(){
     payAcceptedRequest(item.partnerId, item.serviceId, item.serviceLabel, item.priceNum, item.partnerName);
@@ -14005,9 +14020,10 @@ function _openGenesisDetail(projId){
           instHtml+='</div>';
         } else {
           var canPaySingle=!p.deposit_paid;
+          var _isSinglePmt = parseFloat(p.total_amount||0) <= 300;
           instHtml=canPaySingle
-            ?'<button onclick="_openPbPayForExistingOrder(\''+p.order_id+'\',\''+p.partner_id+'\',\''+p.service_label.replace(/'/g,"\\'")+'\','+(p.deposit_amount||p.total_amount)+',\''+p.partner_name.replace(/'/g,"\\'")+'\');closeGenesisDetail();" style="margin-top:8px;background:var(--yellow);border:none;border-radius:8px;padding:6px 14px;font-size:11px;font-weight:900;color:#000;cursor:pointer;display:block;">Payer l\'acompte →</button>'
-            :'<div style="font-size:11px;color:#4ade80;margin-top:6px;"><i class="fa-solid fa-check mr-1"></i>Acompte payé</div>';
+            ?'<button onclick="_openPbPayForExistingOrder(\''+p.order_id+'\',\''+p.partner_id+'\',\''+p.service_label.replace(/'/g,"\\'")+'\','+(p.deposit_amount||p.total_amount)+',\''+p.partner_name.replace(/'/g,"\\'")+'\');closeGenesisDetail();" style="margin-top:8px;background:var(--yellow);border:none;border-radius:8px;padding:6px 14px;font-size:11px;font-weight:900;color:#000;cursor:pointer;display:block;">'+(_isSinglePmt?'Payer →':'Payer l\'acompte →')+'</button>'
+            :'<div style="font-size:11px;color:#4ade80;margin-top:6px;"><i class="fa-solid fa-check mr-1"></i>'+(_isSinglePmt?'Paiement effectué':'Acompte payé')+'</div>';
         }
         var sc=_pSC[p.status]||'var(--muted)';
         html+='<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:12px;margin-bottom:10px;">'
@@ -14139,9 +14155,10 @@ function _pbPayDepositStripeDirect(){
   var useReferral=(USER&&(USER.welcomeDiscountEligible===true||(USER.referralDiscount&&!USER.referralDiscount.applied)))?true:false;
 
   function _createDirectIntent(orderId){
+    var _dLabel = _pbSelectedInstallments > 1 ? 'mensualité' : (parseFloat(_pbService&&_pbService.price||0) <= 300 ? 'paiement' : 'acompte');
     return fetch((window.FA_GENESIS_API||API)+'/api/payments/order/stripe-direct',{
       method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+USER._token},
-      body:JSON.stringify({ orderId:orderId, stage:'deposit', description:'FA GENESIS — '+(_pbService&&_pbService.label||'Prestation')+' (acompte)' })
+      body:JSON.stringify({ orderId:orderId, stage:'deposit', description:'FA GENESIS — '+(_pbService&&_pbService.label||'Prestation')+' ('+_dLabel+')' })
     }).then(function(r2){ return r2.json().then(function(d2){ return {ok:r2.ok,data:d2,orderId:orderId}; }); });
   }
 
@@ -14170,7 +14187,14 @@ function _pbPayDepositStripeDirect(){
     if(sb){sb.disabled=false;sb.textContent=_pbPayBtnLabel();}
   }).catch(function(err){
     if(sb){sb.disabled=false;sb.textContent=_pbPayBtnLabel();}
-    if(er){er.textContent=err.message||'Erreur. Réessayez.';er.classList.add('on');}
+    var msg=err.message||'Erreur. Réessayez.';
+    if(msg.indexOf('déjà été effectué')!==-1||msg.indexOf('déjà payé')!==-1){
+      closePartnerBooking();
+      setTimeout(function(){ nav('profil'); setTimeout(function(){ showMesCommandes(); },400); },300);
+      showToast('Déjà payé','Cette prestation a déjà été commandée. Retrouvez-la dans "Mes commandes".','info');
+      return;
+    }
+    if(er){er.textContent=msg;er.classList.add('on');}
   });
 }
 
@@ -14180,6 +14204,7 @@ function _pbPayDepositStripe(){
   var clientInfo={firstName:USER.prenom||'',lastName:USER.nom||'',email:USER.email||'',phone:USER.telephone||'',clientType:'particulier'};
 
   function _mountStripeIntent(orderId){
+    var _dLabel2 = _pbSelectedInstallments > 1 ? 'mensualité' : (parseFloat(_pbService&&_pbService.price||0) <= 300 ? 'paiement' : 'acompte');
     return fetch((window.FA_GENESIS_API||API)+'/api/payments/stripe/create-intent',{
       method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+USER._token},
       body:JSON.stringify({
@@ -14187,7 +14212,7 @@ function _pbPayDepositStripe(){
         amountEuros: _pbDepositAmount,
         orderId: orderId, stage:'deposit',
         label: _pbService.label||'Prestation',
-        description: 'FA GENESIS — '+(_pbService.label||'Prestation')+' (acompte)'
+        description: 'FA GENESIS — '+(_pbService.label||'Prestation')+' ('+_dLabel2+')'
       })
     }).then(function(r2){ return r2.json().then(function(d2){ return {ok:r2.ok,data:d2,orderId:orderId}; }); });
   }
@@ -14219,7 +14244,14 @@ function _pbPayDepositStripe(){
     if(sb){sb.disabled=false;sb.textContent=_pbPayBtnLabel();}
   }).catch(function(err){
     if(sb){sb.disabled=false;sb.textContent=_pbPayBtnLabel();}
-    if(er){er.textContent=err.message||'Erreur. Réessayez.';er.classList.add('on');}
+    var msg=err.message||'Erreur. Réessayez.';
+    if(msg.indexOf('déjà été effectué')!==-1||msg.indexOf('déjà payé')!==-1){
+      closePartnerBooking();
+      setTimeout(function(){ nav('profil'); setTimeout(function(){ showMesCommandes(); },400); },300);
+      showToast('Déjà payé','Cette prestation a déjà été commandée. Retrouvez-la dans "Mes commandes".','info');
+      return;
+    }
+    if(er){er.textContent=msg;er.classList.add('on');}
   });
 }
 

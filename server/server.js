@@ -4230,7 +4230,7 @@ app.post('/api/payments/order/stripe-direct', async function(req, res) {
             }
             stageLabel = 'Solde restant';
         } else {
-            if (order.deposit_paid) return res.status(400).json({ error: 'Acompte déjà payé' });
+            if (order.deposit_paid) return res.status(400).json({ error: 'Ce paiement a déjà été effectué.' });
             amount = order.deposit_amount;
             stageLabel = 'Acompte';
         }
@@ -20718,7 +20718,7 @@ app.post('/api/payments/stripe/create-intent', async function(req, res) {
                     return res.status(400).json({ error: 'Le solde a déjà été payé.' });
                 }
                 if (b.stage !== 'balance' && _gOrder.deposit_paid) {
-                    return res.status(400).json({ error: 'L\'acompte a déjà été payé.' });
+                    return res.status(400).json({ error: 'Ce paiement a déjà été effectué.' });
                 }
             }
         }
