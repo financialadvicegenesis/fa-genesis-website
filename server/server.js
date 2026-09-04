@@ -547,7 +547,7 @@ function getWithdrawalMethodsForCountry(country) {
     if (c === 'US' || c === 'CA') return ['paypal','wise','payoneer'];
     if (_WEST_AFRICA.indexOf(c) !== -1) return ['wave','orange_money','paypal'];
     if (_CENTRAL_AFRICA.indexOf(c) !== -1) return ['orange_money','mtn_money','paypal'];
-    if (_NORTH_AFRICA.indexOf(c) !== -1) return ['paypal','wise'];
+    if (_NORTH_AFRICA.indexOf(c) !== -1) return ['wise'];  // PayPal Maroc/Algérie/Tunisie ne supporte pas le retrait bancaire local
     return ['paypal','wise','payoneer'];
 }
 
