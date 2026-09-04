@@ -839,10 +839,40 @@ async function processPaymentSplit(orderId, paidAmount, stage) {
             savePayouts(latestPayouts);
             console.log('[SPLIT] Versements PayPal ' + (result.success ? 'envoyés' : 'ÉCHOUÉS') + ' pour commande ' + orderId);
         }
-        // Les partenaires avec IBAN sont marqués status='pending' + payout_method='bank_transfer'
-        // Un virement SEPA doit être déclenché manuellement ou via une API bancaire (ex: Stripe Treasury)
-        var bankCount = newPayouts.filter(function(p) { return p.payout_method === 'bank_transfer'; }).length;
-        if (bankCount > 0) console.log('[SPLIT] ' + bankCount + ' virement(s) bancaire(s) à effectuer pour commande ' + orderId);
+        // Partenaires avec IBAN → virement SEPA automatique via Wise si wiseRecipientId configuré
+        var bankPayouts = newPayouts.filter(function(p) { return p.payout_method === 'bank_transfer'; });
+        if (bankPayouts.length > 0 && WISE_TOKEN) {
+            var _splitPartners = loadPartners();
+            var _splitPayoutsLatest = loadPayouts();
+            for (var _bi = 0; _bi < bankPayouts.length; _bi++) {
+                var _bp = bankPayouts[_bi];
+                var _bPartner = _splitPartners.find(function(p) { return p.id === _bp.partner_id; });
+                var _bRecipientId = _bPartner && _bPartner.wiseRecipientId;
+                var _bIdx = _splitPayoutsLatest.findIndex(function(p) { return p.id === _bp.id; });
+                if (_bRecipientId) {
+                    try {
+                        var _bProfileId = await _wiseGetProfileId();
+                        var _bCurrency = (_bPartner.bankDetails && _bPartner.bankDetails.currency) || 'EUR';
+                        var _bRef = 'FA GENESIS — Commande ' + orderId.substring(0, 8).toUpperCase();
+                        var _bResult = await _wiseTransfer(_bProfileId, _bRecipientId, _bp.amount, _bCurrency, _bRef);
+                        if (_bIdx !== -1) {
+                            _splitPayoutsLatest[_bIdx].status = _bResult.status === 'outgoing_payment_sent' ? 'sent' : 'processing';
+                            _splitPayoutsLatest[_bIdx].wise_transfer_id = _bResult.transferId;
+                            _splitPayoutsLatest[_bIdx].sent_at = new Date().toISOString();
+                        }
+                        console.log('[SPLIT] Virement Wise déclenché pour', _bp.partner_email, ':', _bResult.transferId);
+                    } catch(_bErr) {
+                        if (_bIdx !== -1) { _splitPayoutsLatest[_bIdx].status = 'failed'; _splitPayoutsLatest[_bIdx].error = _bErr.message; }
+                        console.error('[SPLIT] Erreur Wise pour', _bp.partner_email, ':', _bErr.message);
+                    }
+                } else {
+                    console.warn('[SPLIT] Partenaire sans wiseRecipientId —', _bp.partner_email, '— virement manuel requis');
+                }
+            }
+            savePayouts(_splitPayoutsLatest);
+        } else if (bankPayouts.length > 0) {
+            console.log('[SPLIT] ' + bankPayouts.length + ' virement(s) SEPA en attente (WISE_TOKEN non configuré) pour commande ' + orderId);
+        }
         var noneCount = newPayouts.filter(function(p) { return p.payout_method === 'pending'; }).length;
         if (noneCount > 0) console.log('[SPLIT] ' + noneCount + ' partenaire(s) sans coordonnées bancaires — versements en attente pour commande ' + orderId);
     } catch(e) { console.error('[SPLIT] Erreur processPaymentSplit:', e); }
@@ -5749,7 +5779,7 @@ app.get('/api/partner/wallet/methods', authenticatePartner, function(req, res) {
  * Le partenaire demande un retrait depuis son wallet.
  * Body : { amount, method, country, details: { iban?, bic?, holder?, email?, phone? } }
  */
-app.post('/api/partner/wallet/withdraw', authenticatePartner, function(req, res) {
+app.post('/api/partner/wallet/withdraw', authenticatePartner, async function(req, res) {
     try {
         var partnerId = req.partner.id;
         var amount    = parseFloat(req.body.amount);
@@ -5800,6 +5830,37 @@ app.post('/api/partner/wallet/withdraw', authenticatePartner, function(req, res)
         var withdrawals = loadWithdrawals();
         withdrawals.push(withdrawal);
         saveWithdrawals(withdrawals);
+
+        // Auto-virement Wise pour retraits SEPA si le partenaire a un wiseRecipientId
+        if ((method === 'sepa' || method === 'wise') && WISE_TOKEN) {
+            try {
+                var _wdPartners = loadPartners();
+                var _wdPartner  = _wdPartners.find(function(p) { return p.id === partnerId; });
+                var _wdRecipId  = _wdPartner && _wdPartner.wiseRecipientId;
+                if (_wdRecipId) {
+                    var _wdProfileId = await _wiseGetProfileId();
+                    var _wdCurrency  = (_wdPartner.bankDetails && _wdPartner.bankDetails.currency) || 'EUR';
+                    var _wdResult    = await _wiseTransfer(_wdProfileId, _wdRecipId, amount, _wdCurrency, 'Retrait GENESIS ' + withdrawal.id);
+                    var _wdList = loadWithdrawals();
+                    var _wdIdx  = _wdList.findIndex(function(w) { return w.id === withdrawal.id; });
+                    if (_wdIdx !== -1) {
+                        _wdList[_wdIdx].status            = _wdResult.status === 'outgoing_payment_sent' ? 'sent' : 'processing';
+                        _wdList[_wdIdx].wise_transfer_id  = _wdResult.transferId;
+                        _wdList[_wdIdx].wise_status        = _wdResult.status;
+                        _wdList[_wdIdx].processed_at      = new Date().toISOString();
+                        saveWithdrawals(_wdList);
+                    }
+                    console.log('[WALLET] Virement SEPA Wise déclenché :', _wdResult.transferId, 'pour', req.partner.email, amount + '€');
+                } else {
+                    console.warn('[WALLET] Retrait SEPA', withdrawal.id, 'sans wiseRecipientId — traitement manuel requis pour', req.partner.email);
+                }
+            } catch(_wdErr) {
+                var _wdErrList = loadWithdrawals();
+                var _wdErrIdx  = _wdErrList.findIndex(function(w) { return w.id === withdrawal.id; });
+                if (_wdErrIdx !== -1) { _wdErrList[_wdErrIdx].wise_error = _wdErr.message; saveWithdrawals(_wdErrList); }
+                console.error('[WALLET] Erreur virement Wise pour', withdrawal.id, ':', _wdErr.message);
+            }
+        }
 
         // Notifier le partenaire + admin
         notifyUser(req.partner.email, 'partner', 'withdrawal_pending', '📤 Retrait en cours',
@@ -22189,6 +22250,60 @@ app.post('/api/admin/wise/retry-all', async function(req, res) {
         savePartners(partners);
         res.json({ ok: true, processed: results.length, results: results });
     } catch(e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// ── Admin : liste des retraits partenaires ───────────────────
+
+app.get('/api/admin/withdrawals', function(req, res) {
+    try {
+        if (!_isAdminRequest(req)) return res.status(403).json({ error: 'Forbidden' });
+        var wdrs = loadWithdrawals();
+        var status = req.query.status || null;
+        if (status) wdrs = wdrs.filter(function(w) { return w.status === status; });
+        wdrs.sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); });
+        res.json({ ok: true, count: wdrs.length, withdrawals: wdrs });
+    } catch(e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// ── Admin : retry Wise pour un retrait échoué/pending ────────
+
+app.post('/api/admin/withdrawals/:id/retry', async function(req, res) {
+    try {
+        if (!_isAdminRequest(req)) return res.status(403).json({ error: 'Forbidden' });
+        if (!WISE_TOKEN) return res.status(503).json({ error: 'WISE_API_TOKEN non configuré' });
+
+        var wdrs = loadWithdrawals();
+        var wIdx = wdrs.findIndex(function(w) { return w.id === req.params.id; });
+        if (wIdx === -1) return res.status(404).json({ error: 'Retrait introuvable' });
+
+        var wd = wdrs[wIdx];
+        if (wd.method !== 'sepa' && wd.method !== 'wise')
+            return res.status(400).json({ error: 'Ce retrait n\'est pas SEPA/Wise (' + wd.method + ')' });
+
+        var partners = loadPartners();
+        var rPartner = partners.find(function(p) { return p.id === wd.partner_id; });
+        if (!rPartner || !rPartner.wiseRecipientId)
+            return res.status(400).json({ error: 'Partenaire sans wiseRecipientId — enregistrer ses coordonnées via /api/admin/wise/retry-recipient/' + (rPartner ? rPartner.id : '') });
+
+        var currency   = (rPartner.bankDetails && rPartner.bankDetails.currency) || 'EUR';
+        var profileId  = await _wiseGetProfileId();
+        var wiseResult = await _wiseTransfer(profileId, rPartner.wiseRecipientId, wd.amount, currency, 'Retrait GENESIS ' + wd.id);
+
+        wdrs[wIdx].status           = wiseResult.status === 'outgoing_payment_sent' ? 'sent' : 'processing';
+        wdrs[wIdx].wise_transfer_id = wiseResult.transferId;
+        wdrs[wIdx].wise_status       = wiseResult.status;
+        wdrs[wIdx].processed_at     = new Date().toISOString();
+        wdrs[wIdx].note             = 'Déclenché manuellement par admin';
+        delete wdrs[wIdx].wise_error;
+        saveWithdrawals(wdrs);
+
+        res.json({ ok: true, transferId: wiseResult.transferId, status: wiseResult.status });
+    } catch(e) {
+        console.error('[ADMIN WITHDRAW RETRY]', e.message);
         res.status(500).json({ error: e.message });
     }
 });
