@@ -16364,57 +16364,27 @@ function _submitAvailability(){
 // ── Versements (répartition automatique des revenus) ──
 function _ptnrLoadVersements(){
   var listEl = document.getElementById('ptnr-versements-list');
-  if(listEl) listEl.innerHTML = '';
+  if(!listEl) return;
+
+  // Carte de redirection vers le Wallet GENESIS dédié
+  var walletCard = '<a href="partner-dashboard.html#partner:portefeuille" style="display:block;text-decoration:none;margin-bottom:16px;">'
+    +'<div style="background:linear-gradient(135deg,#0d1a08,#0a1200);border:1.5px solid #FFD700;border-radius:14px;padding:16px;display:flex;align-items:center;gap:14px;">'
+    +'<div style="width:44px;height:44px;border-radius:50%;background:rgba(255,215,0,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;">'
+    +'<i class="fa-solid fa-wallet" style="color:#FFD700;font-size:20px;"></i></div>'
+    +'<div style="flex:1;min-width:0;">'
+    +'<div style="font-size:13px;font-weight:800;color:#FFD700;margin-bottom:3px;">Mon Wallet GENESIS</div>'
+    +'<div style="font-size:12px;color:#888;line-height:1.4;">Solde disponible, gains en attente, retraits — gérez tout depuis votre tableau de bord prestataire.</div>'
+    +'</div>'
+    +'<i class="fa-solid fa-chevron-right" style="color:#FFD700;font-size:14px;flex-shrink:0;"></i>'
+    +'</div></a>';
+  listEl.innerHTML = walletCard;
 
   _ptnrFetch('/api/partner/payouts').then(function(data){
     var payouts = data.payouts || [];
 
-    // ── Fonds en attente GENESIS SAFE™ — via /api/partner/wallet (dispatches directs) ──
-    if(listEl){
-      _ptnrFetch('/api/partner/wallet').then(function(wData){
-        var walletOrders = (wData && Array.isArray(wData.orders)) ? wData.orders : [];
-        var heldOrders = walletOrders.filter(function(o){ return o.held_amount > 0; });
-        var heldTotal = (wData && wData.total_held) || 0;
-        var safeHtml = '<div style="background:linear-gradient(135deg,#1a1200,#0d1a00);border:1.5px solid #FFD700;border-radius:14px;padding:16px;margin-bottom:16px;">';
-        safeHtml += '<div style="font-size:11px;color:#FFD700;font-weight:800;letter-spacing:1px;margin-bottom:6px;"><i class="fa-solid fa-lock"></i> GENESIS SAFE™ — SOLDE EN ATTENTE</div>';
-        safeHtml += '<div style="font-size:32px;font-weight:900;color:#FFD700;text-align:center;margin:8px 0 14px;">'+heldTotal.toFixed(2)+' €</div>';
-        if(heldOrders.length){
-          heldOrders.forEach(function(o){
-            var amt = o.held_amount.toFixed(2);
-            var clientName = o.client_name || 'Client';
-            safeHtml += '<div style="background:#0d0d00;border-radius:10px;padding:12px 14px;margin-bottom:8px;">';
-            safeHtml += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">';
-            safeHtml += '<div>';
-            safeHtml += '<div style="font-size:13px;font-weight:700;color:#fff;">'+(o.service_label||'Mission')+'</div>';
-            safeHtml += '<div style="font-size:11px;color:#888;margin-top:2px;">Client : '+_esc(clientName)+'</div>';
-            safeHtml += '</div>';
-            safeHtml += '<div style="font-size:18px;font-weight:900;color:#FFD700;">'+amt+' €</div>';
-            safeHtml += '</div>';
-            safeHtml += '<div style="font-size:11px;color:#aaa;margin-bottom:10px;">Ces fonds vous seront versés dès que vous confirmerez la livraison.</div>';
-            if(o.dispatch_id && !o.delivery_confirmed){
-              safeHtml += '<button onclick="_ptnrConfirmDelivery(\''+o.dispatch_id+'\',this)" style="width:100%;background:#FFD700;color:#000;border:none;border-radius:10px;padding:10px;font-size:13px;font-weight:800;cursor:pointer;"><i class="fa-solid fa-box-open"></i> Confirmer la livraison → recevoir '+amt+' €</button>';
-            }
-            safeHtml += '</div>';
-          });
-        } else {
-          safeHtml += '<div style="text-align:center;font-size:12px;color:#666;padding:4px 0 8px;">Aucune mission active en ce moment.<br><span style="font-size:11px;color:#555;">Les fonds de vos prochaines missions apparaîtront ici.</span></div>';
-        }
-        safeHtml += '</div>';
-        if(listEl) listEl.insertAdjacentHTML('afterbegin', safeHtml);
-      }).catch(function(){
-        var safeHtml = '<div style="background:linear-gradient(135deg,#1a1200,#0d1a00);border:1.5px solid #FFD700;border-radius:14px;padding:16px;margin-bottom:16px;">';
-        safeHtml += '<div style="font-size:11px;color:#FFD700;font-weight:800;letter-spacing:1px;margin-bottom:6px;"><i class="fa-solid fa-lock"></i> GENESIS SAFE™ — SOLDE EN ATTENTE</div>';
-        safeHtml += '<div style="font-size:32px;font-weight:900;color:#FFD700;text-align:center;margin:8px 0 14px;">— €</div>';
-        safeHtml += '<div style="text-align:center;font-size:12px;color:#666;">Impossible de charger le solde.</div>';
-        safeHtml += '</div>';
-        if(listEl) listEl.insertAdjacentHTML('afterbegin', safeHtml);
-      });
-    }
-
     // ── Liste des versements ──
-    if(!listEl) return;
     if(!payouts.length){
-      listEl.innerHTML = '<div class="ptnr-empty"><div class="ptnr-empty-ico"><i class="fa-solid fa-money-bill-wave"></i></div><div class="ptnr-empty-txt">Aucun versement pour l\'instant</div><div style="font-size:12px;color:#555;margin-top:6px;">Vos versements apparaîtront ici après chaque paiement client.</div></div>';
+      listEl.insertAdjacentHTML('beforeend', '<div class="ptnr-empty"><div class="ptnr-empty-ico"><i class="fa-solid fa-money-bill-wave"></i></div><div class="ptnr-empty-txt">Aucun versement pour l\'instant</div><div style="font-size:12px;color:#555;margin-top:6px;">Vos versements apparaîtront ici après chaque paiement client.</div></div>');
       return;
     }
     var totalSent = 0; var totalPending = 0;
@@ -16451,7 +16421,7 @@ function _ptnrLoadVersements(){
       if(p.dispatch_id) listHtml += '<div style="margin-top:8px;border-top:1px solid #1e1e1e;padding-top:8px;"><button onclick="_openDisputeForm(\''+p.dispatch_id+'\')" style="background:none;border:1px solid #333;color:#999;border-radius:8px;padding:6px 10px;font-size:11px;cursor:pointer;"><i class="fa-solid fa-triangle-exclamation"></i> Signaler un problème</button></div>';
       listHtml += '</div>';
     });
-    listEl.innerHTML = listHtml;
+    listEl.insertAdjacentHTML('beforeend', listHtml);
     _animateCount(document.getElementById('ptnr-total-sent'), totalSent, {decimals:2, suffix:' €', duration:900});
     _animateCount(document.getElementById('ptnr-total-pending'), totalPending, {decimals:2, suffix:' €', duration:900});
   }).catch(function(){});
