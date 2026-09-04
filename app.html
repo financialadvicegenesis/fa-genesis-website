@@ -16364,6 +16364,18 @@ function _submitAvailability(){
 // ── Wallet GENESIS (solde + retraits + historique) ──
 var _ptnrWdMethod = null;
 
+// Calcule le libellé de date de libération estimée pour une entrée pending (style Fiverr)
+function _ptnrPendingRelease(estimatedReleaseAt){
+  if(!estimatedReleaseAt) return { label:'Libéré à la livraison', badge:'EN ATTENTE', color:'#f59e0b' };
+  var now  = Date.now();
+  var then = new Date(estimatedReleaseAt).getTime();
+  var diffDays = Math.ceil((then - now) / 86400000);
+  if(diffDays <= 0) return { label:'Libéré à la livraison de la mission', badge:'BIENTÔT DISPONIBLE', color:'#22c55e' };
+  var dateStr = new Date(estimatedReleaseAt).toLocaleDateString('fr-FR',{day:'numeric',month:'long'});
+  var badge   = diffDays === 1 ? 'DEMAIN' : 'DANS '+diffDays+' J';
+  return { label:'Disponible estimé : '+dateStr, badge:badge, color:'#f59e0b' };
+}
+
 function _ptnrLoadVersements(){
   var listEl = document.getElementById('ptnr-versements-list');
   if(!listEl) return;
@@ -16455,12 +16467,13 @@ function _ptnrLoadVersements(){
     if(pendingTxns.length){
       html += '<div style="font-size:11px;font-weight:800;color:#f59e0b;letter-spacing:.8px;text-transform:uppercase;margin:14px 0 8px;"><i class="fa-solid fa-hourglass-half" style="margin-right:5px"></i>En attente de libération ('+pendingTxns.length+')</div>';
       pendingTxns.forEach(function(t){
+        var relInfo = _ptnrPendingRelease(t.estimated_release_at);
         html += '<div style="background:#111;border:1px solid #1e1e1e;border-left:3px solid #f59e0b;border-radius:12px;padding:12px 14px;margin-bottom:8px;">';
-        html += '<div style="display:flex;justify-content:space-between;align-items:center;">';
+        html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;">';
         html += '<div style="flex:1;min-width:0;"><div style="font-size:12px;font-weight:700;color:#fff;">'+_esc(t.description||'Mission')+'</div>';
-        html += '<div style="font-size:11px;color:#888;margin-top:2px;">Libéré à la livraison</div></div>';
+        html += '<div style="font-size:11px;color:#888;margin-top:3px;">'+relInfo.label+'</div></div>';
         html += '<div style="text-align:right;flex-shrink:0;padding-left:10px;"><div style="font-size:16px;font-weight:900;color:#f59e0b;">+'+fmt(t.amount||0)+' €</div>';
-        html += '<div style="font-size:10px;color:#f59e0b;font-weight:700;">EN ATTENTE</div></div>';
+        html += '<div style="font-size:10px;font-weight:700;margin-top:3px;color:'+relInfo.color+';">'+relInfo.badge+'</div></div>';
         html += '</div></div>';
       });
     }

@@ -822,6 +822,17 @@ function loadDevis(){
 var _walletData = null;
 var _withdrawMethod = null;
 
+function pendingRelease(estimatedReleaseAt){
+  if(!estimatedReleaseAt) return { label:'Libéré à la livraison', badge:'EN ATTENTE', color:'#f59e0b' };
+  var now = Date.now();
+  var then = new Date(estimatedReleaseAt).getTime();
+  var diffDays = Math.ceil((then - now) / 86400000);
+  if(diffDays <= 0) return { label:'Libéré à la livraison de la mission', badge:'BIENTÔT', color:'#22c55e' };
+  var dateStr = new Date(estimatedReleaseAt).toLocaleDateString('fr-FR',{day:'numeric',month:'long'});
+  var badge = diffDays === 1 ? 'DEMAIN' : 'DANS '+diffDays+' J';
+  return { label:'Disponible estimé : '+dateStr, badge:badge, color:'#f59e0b' };
+}
+
 function loadPortefeuille(){
   Promise.all([
     apiFetch('/api/partner/wallet').catch(function(){ return {}; }),
@@ -878,16 +889,17 @@ function loadPortefeuille(){
         rows += '<div style="font-size:12px;font-weight:700;color:#f59e0b;text-transform:uppercase;letter-spacing:.5px;margin:12px 0 8px">'
           +'<i class="fa-solid fa-hourglass-half" style="margin-right:5px"></i>En attente de libération ('+pendingTxns.length+')</div>';
         rows += pendingTxns.map(function(t){
+          var rel = pendingRelease(t.estimated_release_at);
           return '<div class="card" style="margin-bottom:8px;border-left:3px solid #f59e0b">'
             +'<div style="display:flex;align-items:center;gap:10px">'
             +'<div class="card-icon" style="background:rgba(245,158,11,.10)"><i class="fa-solid fa-lock" style="color:#f59e0b"></i></div>'
             +'<div style="flex:1;min-width:0">'
             +'<div class="card-title" style="font-size:13px">'+esc(t.description||'Mission en cours')+'</div>'
-            +'<div class="card-sub">'+fmt(t.created_at)+' · <span style="color:#f59e0b">Libéré à la livraison</span></div>'
+            +'<div class="card-sub">'+rel.label+'</div>'
             +'</div>'
             +'<div style="text-align:right">'
             +'<div style="font-size:15px;font-weight:900;color:#f59e0b;white-space:nowrap">+'+fmtAmt(t.amount)+'</div>'
-            +'<span class="pill pill-yellow" style="margin-top:3px;display:inline-block">En attente</span>'
+            +'<span style="font-size:10px;font-weight:800;color:'+rel.color+';margin-top:3px;display:inline-block">'+rel.badge+'</span>'
             +'</div>'
             +'</div></div>';
         }).join('');

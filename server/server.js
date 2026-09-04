@@ -584,7 +584,7 @@ function creditPartnerWallet(partnerId, amount, description, orderId, dispatchId
 }
 
 // Ajouter une entrée "en attente" dans le wallet (visible par le prestataire avant libération).
-function addPendingWalletEntry(partnerId, amount, description, orderId, dispatchId, stage) {
+function addPendingWalletEntry(partnerId, amount, description, orderId, dispatchId, stage, estimatedReleaseAt) {
     try {
         if (!partnerId || !amount || amount <= 0) return false;
         var wallets = loadWallets();
@@ -608,6 +608,7 @@ function addPendingWalletEntry(partnerId, amount, description, orderId, dispatch
             dispatch_id: dispatchId || null,
             stage: stage || 'deposit',
             status: 'pending',
+            estimated_release_at: estimatedReleaseAt || null,
             created_at: new Date().toISOString()
         });
         wallets[idx].balance_pending = parseFloat(((wallets[idx].balance_pending || 0) + amount).toFixed(2));
@@ -1285,7 +1286,9 @@ function createPartnerServiceDispatch(order) {
         // Afficher immédiatement l'acompte comme "En attente" dans le wallet du prestataire (modèle Fiverr)
         if (partnerDeposit > 0) {
             var _pendingDesc = 'Mission : ' + (order.product_name || 'Prestation') + ' — Acompte (en attente)';
-            addPendingWalletEntry(order.partner_id, partnerDeposit, _pendingDesc, order.id, dispatch.id, 'deposit');
+            var _durationDays = parseInt(order.duration_days) || 7;
+            var _releaseDate = new Date(Date.now() + _durationDays * 24 * 60 * 60 * 1000).toISOString();
+            addPendingWalletEntry(order.partner_id, partnerDeposit, _pendingDesc, order.id, dispatch.id, 'deposit', _releaseDate);
         }
 
         return dispatch;
