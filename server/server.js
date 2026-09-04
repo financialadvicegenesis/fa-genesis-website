@@ -839,40 +839,10 @@ async function processPaymentSplit(orderId, paidAmount, stage) {
             savePayouts(latestPayouts);
             console.log('[SPLIT] Versements PayPal ' + (result.success ? 'envoyés' : 'ÉCHOUÉS') + ' pour commande ' + orderId);
         }
-        // Partenaires avec IBAN → virement SEPA automatique via Wise si wiseRecipientId configuré
-        var bankPayouts = newPayouts.filter(function(p) { return p.payout_method === 'bank_transfer'; });
-        if (bankPayouts.length > 0 && WISE_TOKEN) {
-            var _splitPartners = loadPartners();
-            var _splitPayoutsLatest = loadPayouts();
-            for (var _bi = 0; _bi < bankPayouts.length; _bi++) {
-                var _bp = bankPayouts[_bi];
-                var _bPartner = _splitPartners.find(function(p) { return p.id === _bp.partner_id; });
-                var _bRecipientId = _bPartner && _bPartner.wiseRecipientId;
-                var _bIdx = _splitPayoutsLatest.findIndex(function(p) { return p.id === _bp.id; });
-                if (_bRecipientId) {
-                    try {
-                        var _bProfileId = await _wiseGetProfileId();
-                        var _bCurrency = (_bPartner.bankDetails && _bPartner.bankDetails.currency) || 'EUR';
-                        var _bRef = 'FA GENESIS — Commande ' + orderId.substring(0, 8).toUpperCase();
-                        var _bResult = await _wiseTransfer(_bProfileId, _bRecipientId, _bp.amount, _bCurrency, _bRef);
-                        if (_bIdx !== -1) {
-                            _splitPayoutsLatest[_bIdx].status = _bResult.status === 'outgoing_payment_sent' ? 'sent' : 'processing';
-                            _splitPayoutsLatest[_bIdx].wise_transfer_id = _bResult.transferId;
-                            _splitPayoutsLatest[_bIdx].sent_at = new Date().toISOString();
-                        }
-                        console.log('[SPLIT] Virement Wise déclenché pour', _bp.partner_email, ':', _bResult.transferId);
-                    } catch(_bErr) {
-                        if (_bIdx !== -1) { _splitPayoutsLatest[_bIdx].status = 'failed'; _splitPayoutsLatest[_bIdx].error = _bErr.message; }
-                        console.error('[SPLIT] Erreur Wise pour', _bp.partner_email, ':', _bErr.message);
-                    }
-                } else {
-                    console.warn('[SPLIT] Partenaire sans wiseRecipientId —', _bp.partner_email, '— virement manuel requis');
-                }
-            }
-            savePayouts(_splitPayoutsLatest);
-        } else if (bankPayouts.length > 0) {
-            console.log('[SPLIT] ' + bankPayouts.length + ' virement(s) SEPA en attente (WISE_TOKEN non configuré) pour commande ' + orderId);
-        }
+        // Partenaires avec IBAN : wallet crédité via processDispatchPayout → retrait SEPA déclenché
+        // automatiquement par POST /api/partner/wallet/withdraw (modèle Fiverr : wallet en tampon).
+        var bankCount = newPayouts.filter(function(p) { return p.payout_method === 'bank_transfer'; }).length;
+        if (bankCount > 0) console.log('[SPLIT] ' + bankCount + ' partenaire(s) IBAN — versements via wallet GENESIS pour commande ' + orderId);
         var noneCount = newPayouts.filter(function(p) { return p.payout_method === 'pending'; }).length;
         if (noneCount > 0) console.log('[SPLIT] ' + noneCount + ' partenaire(s) sans coordonnées bancaires — versements en attente pour commande ' + orderId);
     } catch(e) { console.error('[SPLIT] Erreur processPaymentSplit:', e); }
