@@ -5832,10 +5832,41 @@ app.post('/api/partner/wallet/withdraw', authenticatePartner, async function(req
             }
         }
 
-        // Notifier le partenaire + admin
+        // Notifier le partenaire
         notifyUser(req.partner.email, 'partner', 'withdrawal_pending', '📤 Retrait en cours',
             'Votre demande de retrait de ' + amount.toFixed(2) + '€ via ' + method.replace('_',' ') + ' est en cours de traitement.',
             '#partner:livrables');
+
+        // Notifier l'admin par email : montant à virer sur Wise avant l'envoi automatique
+        var _wdPartnerName = ((req.partner.prenom || '') + ' ' + (req.partner.nom || '')).trim() || req.partner.email;
+        var _wdMethodLabel = method === 'sepa' ? 'Virement SEPA (Wise)' : method === 'wise' ? 'Wise' : method === 'paypal' ? 'PayPal' : method.replace('_', ' ').toUpperCase();
+        var _wdDetails = '';
+        if (details.iban) _wdDetails += '<br>IBAN : <strong>' + details.iban + '</strong>';
+        if (details.bic)  _wdDetails += ' / BIC : ' + details.bic;
+        if (details.holder) _wdDetails += '<br>Titulaire : ' + details.holder;
+        if (details.email)  _wdDetails += '<br>Email : ' + details.email;
+        var _wdNeedsTopup = (method === 'sepa' || method === 'wise') && !req.partner.wiseRecipientId;
+        var _wdAlertHtml = _wdNeedsTopup
+            ? '<p style="background:#fef3c7;padding:12px;border-radius:6px;"><strong>⚠️ Action requise</strong> : ce prestataire n\'a pas encore de wiseRecipientId — le virement ne partira pas automatiquement.<br>1. Enregistrez son IBAN via <code>/api/admin/wise/retry-recipient/' + req.partner.id + '</code><br>2. Puis relancez via <code>/api/admin/withdrawals/' + withdrawal.id + '/retry</code></p>'
+            : (method === 'sepa' || method === 'wise')
+                ? '<p style="background:#d1fae5;padding:12px;border-radius:6px;">✅ Virement Wise déclenché automatiquement. Vérifiez que le solde Wise est suffisant.<br><strong>Si le solde Wise est insuffisant</strong> : virez <strong>' + amount.toFixed(2) + '€</strong> depuis Boursorama → Wise, puis relancez via <code>/api/admin/withdrawals/' + withdrawal.id + '/retry</code></p>'
+                : '<p>Vérifiez le traitement du retrait dans le dashboard admin.</p>';
+
+        ADMIN_EMAILS.forEach(function(adminEmail) {
+            emailService.sendEmail && emailService.sendEmail({
+                to: adminEmail.trim(),
+                subject: '💸 Demande de retrait — ' + _wdPartnerName + ' — ' + amount.toFixed(2) + '€',
+                html: '<h2>Nouvelle demande de retrait prestataire</h2>'
+                    + '<table style="border-collapse:collapse;font-family:sans-serif;">'
+                    + '<tr><td style="padding:6px 12px;color:#6b7280;">Prestataire</td><td style="padding:6px 12px;"><strong>' + _wdPartnerName + '</strong> (' + req.partner.email + ')</td></tr>'
+                    + '<tr><td style="padding:6px 12px;color:#6b7280;">Montant</td><td style="padding:6px 12px;font-size:20px;font-weight:bold;color:#059669;">' + amount.toFixed(2) + ' €</td></tr>'
+                    + '<tr><td style="padding:6px 12px;color:#6b7280;">Méthode</td><td style="padding:6px 12px;">' + _wdMethodLabel + '</td></tr>'
+                    + '<tr><td style="padding:6px 12px;color:#6b7280;">Coordonnées</td><td style="padding:6px 12px;">' + (_wdDetails || '—') + '</td></tr>'
+                    + '<tr><td style="padding:6px 12px;color:#6b7280;">Référence</td><td style="padding:6px 12px;font-size:12px;color:#9ca3af;">' + withdrawal.id + '</td></tr>'
+                    + '</table>'
+                    + _wdAlertHtml
+            }).catch(function(e) { console.error('[WALLET] Email admin withdraw:', e.message); });
+        });
 
         res.json({ ok: true, withdrawal_id: withdrawal.id, message: 'Demande de retrait enregistrée. Traitement sous 2–5 jours ouvrés.' });
     } catch(e) {
