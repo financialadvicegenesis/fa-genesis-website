@@ -583,6 +583,70 @@ function creditPartnerWallet(partnerId, amount, description, orderId, dispatchId
     }
 }
 
+// Ajouter une entrée "en attente" dans le wallet (visible par le prestataire avant libération).
+function addPendingWalletEntry(partnerId, amount, description, orderId, dispatchId, stage) {
+    try {
+        if (!partnerId || !amount || amount <= 0) return false;
+        var wallets = loadWallets();
+        var idx = wallets.findIndex(function(w) { return w.partner_id === partnerId; });
+        if (idx === -1) {
+            wallets.push({ partner_id: partnerId, balance_available: 0, balance_pending: 0, currency: 'EUR', transactions: [] });
+            idx = wallets.length - 1;
+        }
+        if (!Array.isArray(wallets[idx].transactions)) wallets[idx].transactions = [];
+        // Idempotence : ne pas ajouter deux entrées pending pour le même dispatch+stage
+        var already = wallets[idx].transactions.find(function(t) {
+            return t.dispatch_id === dispatchId && t.stage === stage && (t.status === 'pending' || t.status === 'available');
+        });
+        if (already) return true;
+        wallets[idx].transactions.push({
+            id: 'WTX-' + Math.random().toString(36).substring(2, 10).toUpperCase(),
+            type: 'credit',
+            amount: parseFloat(amount.toFixed(2)),
+            description: description || 'Mission en cours',
+            order_id: orderId || null,
+            dispatch_id: dispatchId || null,
+            stage: stage || 'deposit',
+            status: 'pending',
+            created_at: new Date().toISOString()
+        });
+        wallets[idx].balance_pending = parseFloat(((wallets[idx].balance_pending || 0) + amount).toFixed(2));
+        saveWallets(wallets);
+        console.log('[WALLET] Pending +' + amount + '€ → ' + partnerId + ' (' + description + ')');
+        return true;
+    } catch(e) {
+        console.error('[WALLET] Erreur addPendingWalletEntry:', e);
+        return false;
+    }
+}
+
+// Libérer une entrée pending → available (passage "En attente" → "Disponible").
+// Retourne true si une entrée pending a été trouvée et libérée, false sinon (fallback → creditPartnerWallet).
+function releasePendingWalletEntry(partnerId, dispatchId, stage, fallbackAmount) {
+    try {
+        var wallets = loadWallets();
+        var idx = wallets.findIndex(function(w) { return w.partner_id === partnerId; });
+        if (idx === -1) return false;
+        var txns = wallets[idx].transactions || [];
+        var txnIdx = txns.findIndex(function(t) {
+            return t.dispatch_id === dispatchId && t.stage === stage && t.status === 'pending';
+        });
+        if (txnIdx === -1) return false;
+        var amount = txns[txnIdx].amount || fallbackAmount || 0;
+        txns[txnIdx].status = 'available';
+        txns[txnIdx].released_at = new Date().toISOString();
+        wallets[idx].transactions = txns;
+        wallets[idx].balance_pending   = parseFloat(Math.max(0, (wallets[idx].balance_pending   || 0) - amount).toFixed(2));
+        wallets[idx].balance_available = parseFloat(((wallets[idx].balance_available || 0) + amount).toFixed(2));
+        saveWallets(wallets);
+        console.log('[WALLET] Released pending +' + amount + '€ → ' + partnerId + ' (dispatch ' + dispatchId + ' ' + stage + ')');
+        return true;
+    } catch(e) {
+        console.error('[WALLET] Erreur releasePendingWalletEntry:', e);
+        return false;
+    }
+}
+
 function loadPromotions() {
     try {
         if (!fs.existsSync(PROMOTIONS_FILE)) return [];
@@ -1062,12 +1126,21 @@ async function processDispatchPayout(dispatch, stage) {
             return;
         }
 
-        // Créditer le wallet interne GENESIS (modèle Fiverr-like)
-        // Les fonds s'accumulent dans le solde wallet du partenaire.
-        // Le partenaire effectue ensuite un retrait manuel vers sa banque / PayPal / Mobile Money.
+        // Créditer le wallet interne GENESIS (modèle Fiverr-like).
+        // Pour l'acompte : libérer l'entrée pending créée à la commande.
+        // Pour le solde / mensualités : créditer directement (pas de période pending).
         var _wDesc = 'Mission : ' + (dispatch.offer_name || (order && order.product_name) || 'Prestation')
             + (stage === 'balance' ? ' — Solde final' : stage.startsWith('installment') ? ' — Mensualité' : ' — Acompte');
-        var _walletOk = creditPartnerWallet(partner.id, paidAmount, _wDesc, dispatch.order_id, dispatch.id, stage);
+        var _partnerId = partner.id;
+        var _dispId = dispatch.id;
+        var _walletOk;
+        if (stage === 'deposit' || stage === 'installment_1') {
+            // Libérer l'entrée pending existante (si présente) ou créditer directement (rétrocompat)
+            var _released = releasePendingWalletEntry(_partnerId, _dispId, stage, paidAmount);
+            _walletOk = _released || creditPartnerWallet(_partnerId, paidAmount, _wDesc, dispatch.order_id, _dispId, stage);
+        } else {
+            _walletOk = creditPartnerWallet(_partnerId, paidAmount, _wDesc, dispatch.order_id, _dispId, stage);
+        }
         var _wLatest = loadPayouts();
         var _wPi = _wLatest.findIndex(function(p) { return p.id === newPayout.id; });
         if (_wPi !== -1) {
@@ -1208,6 +1281,13 @@ function createPartnerServiceDispatch(order) {
         dispatches.push(dispatch);
         saveDispatches(dispatches);
         console.log('[DISPATCH] Mission partenaire créée — en attente acceptation : ' + order.id + ' → ' + order.partner_id);
+
+        // Afficher immédiatement l'acompte comme "En attente" dans le wallet du prestataire (modèle Fiverr)
+        if (partnerDeposit > 0) {
+            var _pendingDesc = 'Mission : ' + (order.product_name || 'Prestation') + ' — Acompte (en attente)';
+            addPendingWalletEntry(order.partner_id, partnerDeposit, _pendingDesc, order.id, dispatch.id, 'deposit');
+        }
+
         return dispatch;
     } catch (e) {
         console.error('[DISPATCH] Erreur createPartnerServiceDispatch:', e);

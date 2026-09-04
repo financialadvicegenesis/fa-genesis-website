@@ -870,22 +870,48 @@ function loadPortefeuille(){
 
     // Transactions wallet (crédits de missions)
     if(txns.length){
-      rows += '<div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:12px 0 8px">Missions encaissées</div>';
-      rows += txns.slice(0,30).map(function(t){
-        var isCredit = t.type === 'credit';
-        var iconColor = isCredit ? '#22c55e' : '#f87171';
-        var icon = isCredit ? 'fa-circle-arrow-down' : 'fa-circle-arrow-up';
-        var sign = isCredit ? '+' : '-';
-        return '<div class="card" style="margin-bottom:8px">'
-          +'<div style="display:flex;align-items:center;gap:10px">'
-          +'<div class="card-icon" style="background:rgba(34,197,94,.06)"><i class="fa-solid '+icon+'" style="color:'+iconColor+'"></i></div>'
-          +'<div style="flex:1;min-width:0">'
-          +'<div class="card-title" style="font-size:13px">'+esc(t.description||'Crédit')+'</div>'
-          +'<div class="card-sub">'+fmt(t.created_at)+'</div>'
-          +'</div>'
-          +'<div style="font-size:15px;font-weight:900;color:'+iconColor+';white-space:nowrap">'+sign+fmtAmt(t.amount)+'</div>'
-          +'</div></div>';
-      }).join('');
+      var pendingTxns   = txns.filter(function(t){ return t.type==='credit' && t.status==='pending'; });
+      var availableTxns = txns.filter(function(t){ return t.type!=='credit' || t.status!=='pending'; });
+
+      // — En attente (Fiverr-style clearance) —
+      if(pendingTxns.length){
+        rows += '<div style="font-size:12px;font-weight:700;color:#f59e0b;text-transform:uppercase;letter-spacing:.5px;margin:12px 0 8px">'
+          +'<i class="fa-solid fa-hourglass-half" style="margin-right:5px"></i>En attente de libération ('+pendingTxns.length+')</div>';
+        rows += pendingTxns.map(function(t){
+          return '<div class="card" style="margin-bottom:8px;border-left:3px solid #f59e0b">'
+            +'<div style="display:flex;align-items:center;gap:10px">'
+            +'<div class="card-icon" style="background:rgba(245,158,11,.10)"><i class="fa-solid fa-lock" style="color:#f59e0b"></i></div>'
+            +'<div style="flex:1;min-width:0">'
+            +'<div class="card-title" style="font-size:13px">'+esc(t.description||'Mission en cours')+'</div>'
+            +'<div class="card-sub">'+fmt(t.created_at)+' · <span style="color:#f59e0b">Libéré à la livraison</span></div>'
+            +'</div>'
+            +'<div style="text-align:right">'
+            +'<div style="font-size:15px;font-weight:900;color:#f59e0b;white-space:nowrap">+'+fmtAmt(t.amount)+'</div>'
+            +'<span class="pill pill-yellow" style="margin-top:3px;display:inline-block">En attente</span>'
+            +'</div>'
+            +'</div></div>';
+        }).join('');
+      }
+
+      // — Disponibles / débits —
+      if(availableTxns.length){
+        rows += '<div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:12px 0 8px">Historique</div>';
+        rows += availableTxns.slice(0,30).map(function(t){
+          var isCredit = t.type === 'credit';
+          var iconColor = isCredit ? '#22c55e' : '#f87171';
+          var icon = isCredit ? 'fa-circle-arrow-down' : 'fa-circle-arrow-up';
+          var sign = isCredit ? '+' : '-';
+          return '<div class="card" style="margin-bottom:8px">'
+            +'<div style="display:flex;align-items:center;gap:10px">'
+            +'<div class="card-icon" style="background:rgba(34,197,94,.06)"><i class="fa-solid '+icon+'" style="color:'+iconColor+'"></i></div>'
+            +'<div style="flex:1;min-width:0">'
+            +'<div class="card-title" style="font-size:13px">'+esc(t.description||'Crédit')+'</div>'
+            +'<div class="card-sub">'+fmt(t.created_at)+'</div>'
+            +'</div>'
+            +'<div style="font-size:15px;font-weight:900;color:'+iconColor+';white-space:nowrap">'+sign+fmtAmt(t.amount)+'</div>'
+            +'</div></div>';
+        }).join('');
+      }
     }
 
     // Fallback : commandes GENESIS SAFE™ (ancien mode)
