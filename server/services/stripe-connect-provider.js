@@ -158,10 +158,23 @@ class StripeConnectProvider extends PaymentProvider {
         };
         // GENESIS SAFE™ : capture différée — la carte est autorisée mais l'argent ne
         // quitte pas le client tant que le partenaire n'a pas déclaré la prestation terminée.
-        if (data.captureManual) params.capture_method = 'manual';
-        if (data.description)  params.description   = data.description;
-        if (data.receiptEmail) params.receipt_email  = data.receiptEmail;
+        if (data.captureManual)      params.capture_method      = 'manual';
+        if (data.description)        params.description          = data.description;
+        if (data.receiptEmail)       params.receipt_email        = data.receiptEmail;
+        if (data.customerId)         params.customer             = data.customerId;
+        if (data.paymentMethodId)    params.payment_method       = data.paymentMethodId;
+        if (data.setupFutureUsage)   params.setup_future_usage   = data.setupFutureUsage; // 'on_session' pour sauvegarder la carte
         return await s.paymentIntents.create(params);
+    }
+
+    // Liste les cartes enregistrées d'un client Stripe.
+    async listPaymentMethods(customerId) {
+        return await getStripe().paymentMethods.list({ customer: customerId, type: 'card' });
+    }
+
+    // Détache (supprime) une carte enregistrée.
+    async detachPaymentMethod(pmId) {
+        return await getStripe().paymentMethods.detach(pmId);
     }
 
     // Capture un PaymentIntent en mode manuel : l'argent quitte la carte du client

@@ -4288,6 +4288,65 @@ app.delete('/api/orders/:orderId', function(req, res) {
     }
 });
 
+// ── Helper : créer ou retrouver le Customer Stripe d'un client ──────────────
+async function getOrCreateStripeCustomer(email, prenom, nom) {
+    try {
+        var users = loadUsers();
+        var idx = users.findIndex(function(u) { return u.email === email; });
+        if (idx === -1) return null;
+        if (users[idx].stripe_customer_id) return users[idx].stripe_customer_id;
+        var customer = await scp.createCustomer({ email: email, prenom: prenom || '', nom: nom || '', userId: users[idx].id || '' });
+        users[idx].stripe_customer_id = customer.id;
+        saveUsers(users);
+        console.log('[STRIPE CUSTOMER] Créé:', customer.id, 'pour', email);
+        return customer.id;
+    } catch(e) {
+        console.error('[STRIPE CUSTOMER] Erreur:', e.message);
+        return null;
+    }
+}
+
+/**
+ * GET /api/user/payment-methods
+ * Liste les cartes enregistrées du client connecté.
+ */
+app.get('/api/user/payment-methods', async function(req, res) {
+    try {
+        var token = (req.headers.authorization || '').replace('Bearer ', '').trim();
+        if (!token) return res.status(401).json({ error: 'Token requis' });
+        var payload;
+        try { payload = _jwt.verify(token, _JWT_SECRET); } catch(e) { return res.status(401).json({ error: 'Token invalide' }); }
+        var users = loadUsers();
+        var user = users.find(function(u) { return u.email === payload.email; });
+        if (!user || !user.stripe_customer_id) return res.json({ ok: true, paymentMethods: [] });
+        var result = await scp.listPaymentMethods(user.stripe_customer_id);
+        var cards = (result.data || []).map(function(pm) {
+            return { id: pm.id, brand: pm.card.brand, last4: pm.card.last4, exp_month: pm.card.exp_month, exp_year: pm.card.exp_year };
+        });
+        res.json({ ok: true, paymentMethods: cards });
+    } catch(e) {
+        console.error('[PAYMENT-METHODS]', e.message);
+        res.status(500).json({ error: e.message });
+    }
+});
+
+/**
+ * DELETE /api/user/payment-methods/:pmId
+ * Supprime une carte enregistrée.
+ */
+app.delete('/api/user/payment-methods/:pmId', async function(req, res) {
+    try {
+        var token = (req.headers.authorization || '').replace('Bearer ', '').trim();
+        if (!token) return res.status(401).json({ error: 'Token requis' });
+        try { _jwt.verify(token, _JWT_SECRET); } catch(e) { return res.status(401).json({ error: 'Token invalide' }); }
+        await scp.detachPaymentMethod(req.params.pmId);
+        res.json({ ok: true });
+    } catch(e) {
+        console.error('[DELETE-PM]', e.message);
+        res.status(500).json({ error: e.message });
+    }
+});
+
 /**
  * POST /api/payments/cart/stripe-intent
  * Crée un PaymentIntent Stripe direct pour le panier FA GENESIS (sans Connect)
@@ -4308,12 +4367,17 @@ app.post('/api/payments/cart/stripe-intent', async function(req, res) {
         }
 
         var description = ('FA GENESIS — ' + items.map(function(i){ return i.name; }).join(', ')).substring(0, 250);
+        var _cartUsers = loadUsers();
+        var _cartUser  = _cartUsers.find(function(u) { return u.email === payload.email; });
+        var _cartCustId = await getOrCreateStripeCustomer(payload.email, _cartUser && _cartUser.prenom, _cartUser && _cartUser.nom);
 
         var pi = await scp.createDirectPaymentIntent({
             amountEuros: amount,
             currency: 'eur',
             description: description,
             receiptEmail: payload.email || undefined,
+            customerId: _cartCustId || undefined,
+            setupFutureUsage: _cartCustId ? 'on_session' : undefined,
             metadata: {
                 user_email: payload.email || '',
                 items_count: String(items.length)
@@ -4376,11 +4440,17 @@ app.post('/api/payments/order/stripe-direct', async function(req, res) {
         }
 
         var description = (b.description || ('FA GENESIS — ' + (order.product_name || 'Prestation') + ' (' + stageLabel + ')')).substring(0, 250);
+        var _ordUsers  = loadUsers();
+        var _ordUser   = _ordUsers.find(function(u) { return u.email === payload.email; });
+        var _ordCustId = await getOrCreateStripeCustomer(payload.email, _ordUser && _ordUser.prenom, _ordUser && _ordUser.nom);
+
         var pi = await scp.createDirectPaymentIntent({
             amountEuros: amount,
             currency: 'eur',
             description: description,
             receiptEmail: payload.email || undefined,
+            customerId: _ordCustId || undefined,
+            setupFutureUsage: _ordCustId ? 'on_session' : undefined,
             metadata: { order_id: orderId, stage: stage, user_email: payload.email || '' }
         });
 
@@ -22308,6 +22378,118 @@ app.post('/api/admin/withdrawals/:id/retry', async function(req, res) {
         res.status(500).json({ error: e.message });
     }
 });
+
+// ── Partenaire : activer/désactiver le virement automatique hebdomadaire ─────
+
+app.put('/api/partner/auto-payout', authenticatePartner, function(req, res) {
+    try {
+        var partners = loadPartners();
+        var idx = partners.findIndex(function(p) { return p.id === req.partner.id; });
+        if (idx === -1) return res.status(404).json({ error: 'Introuvable' });
+        var enabled = req.body.enabled !== false;
+        partners[idx].auto_payout = enabled;
+        savePartners(partners);
+        res.json({ ok: true, auto_payout: enabled, message: enabled ? 'Virements automatiques activés (chaque lundi)' : 'Virements automatiques désactivés' });
+    } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── Virement automatique hebdomadaire (modèle Uber/Deliveroo) ────────────────
+// Chaque lundi matin : vire automatiquement le solde disponible de chaque
+// prestataire ayant auto_payout !== false et balance_available >= 20€.
+
+async function runWeeklyAutoPayouts() {
+    try {
+        var now = new Date();
+        if (now.getDay() !== 1) return; // Lundi uniquement
+        console.log('[AUTO-PAYOUT] Démarrage virements automatiques hebdomadaires —', now.toLocaleString('fr-FR'));
+
+        var wallets  = loadWallets();
+        var partners = loadPartners();
+        var processed = 0;
+
+        for (var _api = 0; _api < wallets.length; _api++) {
+            var _aw = wallets[_api];
+            if (!_aw.partner_id || (_aw.balance_available || 0) < 20) continue;
+
+            var _ap = partners.find(function(p) { return p.id === _aw.partner_id; });
+            if (!_ap) continue;
+            if (_ap.auto_payout === false) continue; // désactivé par le prestataire
+
+            var _apAmount = parseFloat(_aw.balance_available.toFixed(2));
+            var _apMethod = _ap.wiseRecipientId ? 'wise' : (_ap.payout_paypal ? 'paypal' : null);
+            if (!_apMethod) { console.log('[AUTO-PAYOUT] Pas de méthode configurée pour', _ap.email); continue; }
+
+            try {
+                // Débiter le wallet
+                var _apWallets = loadWallets();
+                var _apWIdx = _apWallets.findIndex(function(w) { return w.partner_id === _ap.id; });
+                if (_apWIdx === -1) continue;
+                _apWallets[_apWIdx].balance_available = 0;
+                if (!Array.isArray(_apWallets[_apWIdx].transactions)) _apWallets[_apWIdx].transactions = [];
+                _apWallets[_apWIdx].transactions.push({
+                    id: 'WTX-' + Math.random().toString(36).substring(2, 10).toUpperCase(),
+                    type: 'debit', amount: _apAmount,
+                    description: 'Virement automatique hebdomadaire',
+                    status: 'processing', created_at: now.toISOString()
+                });
+                saveWallets(_apWallets);
+
+                // Enregistrer la demande de retrait
+                var _apWd = {
+                    id: 'WDR-' + Math.random().toString(36).substring(2, 10).toUpperCase(),
+                    partner_id: _ap.id, partner_email: _ap.email,
+                    amount: _apAmount, currency: 'EUR',
+                    method: _apMethod, status: 'pending',
+                    auto: true, created_at: now.toISOString(), processed_at: null
+                };
+                var _apWdrs = loadWithdrawals();
+                _apWdrs.push(_apWd);
+                saveWithdrawals(_apWdrs);
+
+                // Déclencher le virement
+                if (_apMethod === 'wise' && WISE_TOKEN) {
+                    var _apProfile = await _wiseGetProfileId();
+                    var _apCurrency = (_ap.bankDetails && _ap.bankDetails.currency) || 'EUR';
+                    var _apResult = await _wiseTransfer(_apProfile, _ap.wiseRecipientId, _apAmount, _apCurrency, 'Virement auto GENESIS ' + _apWd.id);
+                    var _upWdrs = loadWithdrawals();
+                    var _upIdx = _upWdrs.findIndex(function(w) { return w.id === _apWd.id; });
+                    if (_upIdx !== -1) { _upWdrs[_upIdx].status = 'processing'; _upWdrs[_upIdx].wise_transfer_id = _apResult.transferId; _upWdrs[_upIdx].processed_at = now.toISOString(); saveWithdrawals(_upWdrs); }
+                    console.log('[AUTO-PAYOUT] Wise déclenché pour', _ap.email, ':', _apAmount + '€', _apResult.transferId);
+                } else if (_apMethod === 'paypal' && _ap.payout_paypal) {
+                    var _apPpResult = await triggerPayPalPayouts([{ recipient_email: _ap.payout_paypal, amount: _apAmount, currency: 'EUR', note: 'Virement automatique FA GENESIS' }]);
+                    console.log('[AUTO-PAYOUT] PayPal', _apPpResult.success ? 'OK' : 'ÉCHOUÉ', 'pour', _ap.email, ':', _apAmount + '€');
+                }
+
+                // Notifier le prestataire
+                notifyUser(_ap.email, 'partner', 'auto_payout', '💸 Virement automatique envoyé',
+                    _apAmount.toFixed(2) + '€ ont été virés automatiquement sur votre compte ce lundi.',
+                    '#partner:livrables');
+
+                processed++;
+            } catch(_apErr) {
+                console.error('[AUTO-PAYOUT] Erreur pour', _ap.email, ':', _apErr.message);
+            }
+        }
+
+        if (processed > 0) {
+            // Notifier l'admin
+            ADMIN_EMAILS.forEach(function(adminEmail) {
+                emailService.sendEmail && emailService.sendEmail({
+                    to: adminEmail.trim(),
+                    subject: '📅 Virements automatiques du lundi — ' + processed + ' prestataire(s)',
+                    html: '<p>' + processed + ' virement(s) automatique(s) ont été déclenchés ce lundi ' + now.toLocaleDateString('fr-FR') + '.</p><p>Vérifiez que le solde Wise est suffisant pour couvrir les virements en attente.</p>'
+                }).catch(function(){});
+            });
+            console.log('[AUTO-PAYOUT] ' + processed + ' virement(s) déclenchés');
+        } else {
+            console.log('[AUTO-PAYOUT] Aucun virement à effectuer ce lundi');
+        }
+    } catch(e) { console.error('[AUTO-PAYOUT] Erreur générale:', e.message); }
+}
+
+// Lancer au démarrage puis toutes les heures (ne s'exécute vraiment que le lundi)
+setTimeout(runWeeklyAutoPayouts, 5 * 60 * 1000); // 5 min après démarrage
+setInterval(runWeeklyAutoPayouts, 60 * 60 * 1000); // vérification toutes les heures
 
 // Route inconnue (404) — doit rester APRÈS toutes les routes app.get/post/put/delete
 app.use((req, res) => {
