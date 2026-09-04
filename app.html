@@ -3141,7 +3141,7 @@ a{text-decoration:none;color:inherit}
 
         <!-- Sub-screen: Versements / Paiements -->
         <div class="ptnr-screen" id="ptnr-screen-versements">
-          <div class="ptnr-back-bar"><button class="ptnr-back-btn" onclick="_ptnrNav('profil')">&#8249;</button><span class="ptnr-back-bar-title">Mes revenus</span></div>
+          <div class="ptnr-back-bar"><button class="ptnr-back-btn" onclick="_ptnrNav('profil')">&#8249;</button><span class="ptnr-back-bar-title">Mon Wallet GENESIS</span></div>
           <div id="ptnr-versements-list"></div>
         </div>
 
@@ -16361,70 +16361,216 @@ function _submitAvailability(){
 }
 
 
-// ── Versements (répartition automatique des revenus) ──
+// ── Wallet GENESIS (solde + retraits + historique) ──
+var _ptnrWdMethod = null;
+
 function _ptnrLoadVersements(){
   var listEl = document.getElementById('ptnr-versements-list');
   if(!listEl) return;
+  listEl.innerHTML = _skeletonRows(2);
 
-  // Carte de redirection vers le Wallet GENESIS dédié
-  var walletCard = '<a href="partner-dashboard.html#partner:portefeuille" style="display:block;text-decoration:none;margin-bottom:16px;">'
-    +'<div style="background:linear-gradient(135deg,#0d1a08,#0a1200);border:1.5px solid #FFD700;border-radius:14px;padding:16px;display:flex;align-items:center;gap:14px;">'
-    +'<div style="width:44px;height:44px;border-radius:50%;background:rgba(255,215,0,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;">'
-    +'<i class="fa-solid fa-wallet" style="color:#FFD700;font-size:20px;"></i></div>'
-    +'<div style="flex:1;min-width:0;">'
-    +'<div style="font-size:13px;font-weight:800;color:#FFD700;margin-bottom:3px;">Mon Wallet GENESIS</div>'
-    +'<div style="font-size:12px;color:#888;line-height:1.4;">Solde disponible, gains en attente, retraits — gérez tout depuis votre tableau de bord prestataire.</div>'
-    +'</div>'
-    +'<i class="fa-solid fa-chevron-right" style="color:#FFD700;font-size:14px;flex-shrink:0;"></i>'
-    +'</div></a>';
-  listEl.innerHTML = walletCard;
+  Promise.all([
+    _ptnrFetch('/api/partner/wallet').catch(function(){ return {}; }),
+    _ptnrFetch('/api/partner/wallet/withdrawals').catch(function(){ return {withdrawals:[]}; })
+  ]).then(function(res){
+    var wData = res[0] || {};
+    var wdrs  = (res[1] && res[1].withdrawals) || [];
+    var avail   = parseFloat(wData.balance_available != null ? wData.balance_available : 0);
+    var pending = parseFloat(wData.balance_pending   != null ? wData.balance_pending   : 0);
+    var earned  = parseFloat(wData.total_earned      != null ? wData.total_earned      : 0);
+    var txns    = Array.isArray(wData.transactions) ? wData.transactions : [];
 
-  _ptnrFetch('/api/partner/payouts').then(function(data){
-    var payouts = data.payouts || [];
+    var fmt = function(n){ return Number(n).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2}); };
+    var canWithdraw = avail >= 20;
 
-    // ── Liste des versements ──
-    if(!payouts.length){
-      listEl.insertAdjacentHTML('beforeend', '<div class="ptnr-empty"><div class="ptnr-empty-ico"><i class="fa-solid fa-money-bill-wave"></i></div><div class="ptnr-empty-txt">Aucun versement pour l\'instant</div><div style="font-size:12px;color:#555;margin-top:6px;">Vos versements apparaîtront ici après chaque paiement client.</div></div>');
-      return;
+    var html = '';
+
+    // ── Solde disponible ──
+    html += '<div style="background:linear-gradient(135deg,#0a1a08,#0d1200);border:1.5px solid #FFD700;border-radius:16px;padding:20px 16px;margin-bottom:14px;text-align:center;">';
+    html += '<div style="font-size:11px;color:#FFD700;font-weight:800;letter-spacing:1px;margin-bottom:8px;"><i class="fa-solid fa-wallet" style="margin-right:5px"></i>MON WALLET GENESIS</div>';
+    html += '<div style="font-size:40px;font-weight:900;color:#fff;line-height:1;">'+fmt(avail)+' €</div>';
+    html += '<div style="font-size:11px;color:#888;margin-top:6px;">Solde disponible</div>';
+    html += '</div>';
+
+    // ── Mini stats ──
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;">';
+    html += '<div style="background:#111;border:1px solid #1e1e1e;border-radius:12px;padding:12px;text-align:center;">';
+    html += '<div style="font-size:17px;font-weight:900;color:#f59e0b;">'+fmt(pending)+' €</div>';
+    html += '<div style="font-size:10px;color:#555;margin-top:3px;font-weight:700;">EN ATTENTE</div></div>';
+    html += '<div style="background:#111;border:1px solid #1e1e1e;border-radius:12px;padding:12px;text-align:center;">';
+    html += '<div style="font-size:17px;font-weight:900;color:#aaa;">'+fmt(earned)+' €</div>';
+    html += '<div style="font-size:10px;color:#555;margin-top:3px;font-weight:700;">TOTAL GAGNÉ</div></div>';
+    html += '</div>';
+
+    // ── Bouton retrait ──
+    html += '<button id="ptnr-wd-toggle-btn" onclick="_ptnrToggleWithdraw()" '
+      +(canWithdraw?'':'disabled title="Minimum 20 € requis"')+' style="width:100%;background:'
+      +(canWithdraw?'linear-gradient(135deg,#FFD700,#f59e0b)':'#1a1a1a')+';color:'
+      +(canWithdraw?'#000':'#444')+';border:none;border-radius:12px;padding:13px;font-size:14px;font-weight:800;cursor:'
+      +(canWithdraw?'pointer':'not-allowed')+';margin-bottom:14px;">'
+      +'<i class="fa-solid fa-paper-plane" style="margin-right:6px"></i>Retirer mes gains</button>';
+
+    // ── Formulaire de retrait (masqué) ──
+    html += '<div id="ptnr-wd-form-wrap" style="display:none;background:#111;border:1px solid #1e1e1e;border-radius:14px;padding:16px;margin-bottom:14px;">';
+    html += '<div style="font-size:13px;font-weight:800;color:#FFD700;margin-bottom:12px;"><i class="fa-solid fa-paper-plane" style="margin-right:6px"></i>Demande de retrait</div>';
+    // Montant
+    html += '<div style="margin-bottom:10px;"><label style="font-size:11px;color:#888;display:block;margin-bottom:4px;font-weight:700;text-transform:uppercase;">Montant (min. 20 €) *</label>';
+    html += '<input id="ptnr-wd-amount" type="number" min="20" max="'+avail+'" step="0.01" placeholder="Ex : 50.00" style="width:100%;box-sizing:border-box;background:#1a1a1a;border:1px solid #333;border-radius:10px;color:#fff;padding:10px 12px;font-size:14px;"></div>';
+    // Pays
+    html += '<div style="margin-bottom:10px;"><label style="font-size:11px;color:#888;display:block;margin-bottom:4px;font-weight:700;text-transform:uppercase;">Pays *</label>';
+    html += '<select id="ptnr-wd-country" onchange="_ptnrLoadWdMethods()" style="width:100%;background:#1a1a1a;border:1px solid #333;border-radius:10px;color:#fff;padding:10px 12px;font-size:14px;">';
+    html += '<option value="">— Sélectionner —</option>';
+    html += '<optgroup label="Europe"><option value="FR">🇫🇷 France</option><option value="BE">🇧🇪 Belgique</option><option value="CH">🇨🇭 Suisse</option><option value="LU">🇱🇺 Luxembourg</option><option value="DE">🇩🇪 Allemagne</option><option value="ES">🇪🇸 Espagne</option><option value="IT">🇮🇹 Italie</option><option value="PT">🇵🇹 Portugal</option><option value="NL">🇳🇱 Pays-Bas</option><option value="GB">🇬🇧 Royaume-Uni</option></optgroup>';
+    html += '<optgroup label="Afrique de l\'Ouest"><option value="SN">🇸🇳 Sénégal</option><option value="CI">🇨🇮 Côte d\'Ivoire</option><option value="BF">🇧🇫 Burkina Faso</option><option value="ML">🇲🇱 Mali</option><option value="GN">🇬🇳 Guinée</option><option value="TG">🇹🇬 Togo</option><option value="BJ">🇧🇯 Bénin</option><option value="NE">🇳🇪 Niger</option><option value="GH">🇬🇭 Ghana</option></optgroup>';
+    html += '<optgroup label="Afrique Centrale"><option value="CM">🇨🇲 Cameroun</option><option value="CG">🇨🇬 Congo</option><option value="GA">🇬🇦 Gabon</option><option value="CD">🇨🇩 RD Congo</option></optgroup>';
+    html += '<optgroup label="Afrique du Nord"><option value="MA">🇲🇦 Maroc</option><option value="DZ">🇩🇿 Algérie</option><option value="TN">🇹🇳 Tunisie</option><option value="EG">🇪🇬 Égypte</option></optgroup>';
+    html += '<optgroup label="Amériques &amp; Autres"><option value="US">🇺🇸 États-Unis</option><option value="CA">🇨🇦 Canada</option><option value="AE">🇦🇪 Émirats arabes unis</option></optgroup>';
+    html += '</select></div>';
+    html += '<div id="ptnr-wd-methods-wrap" style="display:none;margin-bottom:10px;"></div>';
+    html += '<div id="ptnr-wd-details-wrap" style="display:none;margin-bottom:10px;"></div>';
+    html += '<div id="ptnr-wd-err" style="font-size:12px;color:#ef4444;margin-bottom:8px;display:none;"></div>';
+    html += '<div style="display:flex;gap:8px;">';
+    html += '<button onclick="_ptnrToggleWithdraw()" style="flex:1;background:#1a1a1a;color:#888;border:1px solid #333;border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;">Annuler</button>';
+    html += '<button id="ptnr-wd-submit-btn" onclick="_ptnrSubmitWithdraw()" disabled style="flex:2;background:#FFD700;color:#000;border:none;border-radius:10px;padding:10px;font-size:13px;font-weight:800;cursor:not-allowed;opacity:.5;">Confirmer</button>';
+    html += '</div></div>';
+
+    // ── Retraits en cours ──
+    if(wdrs.length){
+      html += '<div style="font-size:11px;font-weight:700;color:#888;letter-spacing:.8px;text-transform:uppercase;margin-bottom:8px;">Retraits</div>';
+      wdrs.slice(0,5).forEach(function(w){
+        var sc = {pending:'#f59e0b',processing:'#818cf8',completed:'#22c55e',failed:'#f87171'}[w.status]||'#888';
+        var sl = {pending:'En attente',processing:'En cours',completed:'Versé ✓',failed:'Échec'}[w.status]||w.status;
+        html += '<div style="background:#111;border:1px solid #1e1e1e;border-radius:12px;padding:12px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">';
+        html += '<div><div style="font-size:12px;font-weight:700;color:#ccc;">Retrait '+(w.method||'').toUpperCase().replace('_',' ')+'</div>';
+        html += '<div style="font-size:11px;color:'+sc+';font-weight:700;margin-top:2px;">'+sl+'</div></div>';
+        html += '<div style="font-size:15px;font-weight:900;color:#818cf8;">-'+fmt(w.amount)+' €</div>';
+        html += '</div>';
+      });
     }
-    var totalSent = 0; var totalPending = 0;
-    payouts.forEach(function(p){ if(p.status==='sent') totalSent+=p.amount; else totalPending+=p.amount; });
-    var listHtml = '<div style="display:flex;gap:8px;margin-bottom:16px;">';
-    listHtml += '<div style="flex:1;background:#111;border:1px solid #1e1e1e;border-radius:12px;padding:12px 14px;text-align:center;">';
-    listHtml += '<div id="ptnr-total-sent" style="font-size:18px;color:#4caf50;font-weight:800;">0.00 €</div>';
-    listHtml += '<div style="font-size:10px;color:#555;margin-top:3px;font-weight:600;">REÇUS</div></div>';
-    listHtml += '<div style="flex:1;background:#111;border:1px solid #1e1e1e;border-radius:12px;padding:12px 14px;text-align:center;">';
-    listHtml += '<div id="ptnr-total-pending" style="font-size:18px;color:#FFD700;font-weight:800;">0.00 €</div>';
-    listHtml += '<div style="font-size:10px;color:#555;margin-top:3px;font-weight:600;">EN ATTENTE</div></div>';
-    listHtml += '</div>';
-    listHtml += '<button onclick="openMesLitiges()" style="width:100%;background:none;border:1px solid #333;color:#999;border-radius:10px;padding:10px 14px;font-size:12px;cursor:pointer;margin-bottom:16px;"><i class="fa-solid fa-scale-balanced"></i> Mes litiges</button>';
-    payouts.forEach(function(p){
-      var stageLabel  = p.stage==='deposit'?'Acompte 30 %':(p.stage==='installment_2'?'Tranche 2 (40 %)':(p.stage==='installment_3'?'Tranche 3 (30 %)':(p.stage==='balance'?'Solde 70 %':'Versement')));
-      var statusColor = p.status==='sent'?'#4caf50':(p.status==='failed'?'#f44336':(p.status==='on_hold'?'#ff9800':'#FFD700'));
-      var statusLabel = p.status==='sent'?'Envoyé':(p.status==='failed'?'Échoué':(p.status==='on_hold'?'En litige':'En attente'));
-      var methodIco   = p.payout_method==='bank_transfer'?'<i class="fa-solid fa-building-columns"></i>':(p.payout_method==='paypal'?'<i class="fa-solid fa-credit-card"></i>':'<i class="fa-solid fa-hourglass-half"></i>');
-      listHtml += '<div style="background:#111;border:1px solid #1e1e1e;border-radius:14px;padding:14px 16px;margin-bottom:10px;">';
-      listHtml += '<div style="display:flex;justify-content:space-between;align-items:flex-start;">';
-      listHtml += '<div>';
-      listHtml += '<div style="font-size:11px;color:'+statusColor+';font-weight:700;letter-spacing:.5px;margin-bottom:4px;">'+statusLabel.toUpperCase()+' · '+stageLabel.toUpperCase()+'</div>';
-      listHtml += '<div style="font-size:12px;color:#666;">'+methodIco+' '+(p.payout_method==='bank_transfer'?'Virement bancaire':(p.payout_method==='paypal'?'PayPal':'Coordonnées manquantes'))+'</div>';
-      listHtml += '<div style="font-size:12px;color:#555;margin-top:2px;">Commande '+p.order_id.substring(0,12).toUpperCase()+'</div>';
-      var dateStr = p.sent_at ? _ptnrFmt(p.sent_at) : _ptnrFmt(p.created_at);
-      listHtml += '<div style="font-size:11px;color:#444;margin-top:3px;">'+dateStr+'</div>';
-      if(p.error) listHtml += '<div style="font-size:11px;color:#f44336;margin-top:4px;">'+p.error+'</div>';
-      listHtml += '</div>';
-      listHtml += '<div style="font-size:20px;color:'+statusColor+';font-weight:800;">'+p.amount.toFixed(2)+' €</div>';
-      listHtml += '</div>';
-      if(p.payout_method==='pending') listHtml += '<div style="font-size:11px;color:#f44336;margin-top:8px;border-top:1px solid #1e1e1e;padding-top:8px;">Ce versement sera crédité sur votre Wallet GENESIS dès validation de la mission.</div>';
-      if(p.payout_method==='bank_transfer' && p.status==='pending') listHtml += '<div style="font-size:11px;color:#999;margin-top:8px;border-top:1px solid #1e1e1e;padding-top:8px;"><i class="fa-solid fa-circle-info"></i> Virement en cours de traitement par notre équipe.</div>';
-      if(p.status==='on_hold') listHtml += '<div style="font-size:11px;color:#ff9800;margin-top:8px;border-top:1px solid #1e1e1e;padding-top:8px;"><i class="fa-solid fa-circle-pause"></i> Versement en attente — litige en cours sur cette mission.</div>';
-      if(p.dispatch_id) listHtml += '<div style="margin-top:8px;border-top:1px solid #1e1e1e;padding-top:8px;"><button onclick="_openDisputeForm(\''+p.dispatch_id+'\')" style="background:none;border:1px solid #333;color:#999;border-radius:8px;padding:6px 10px;font-size:11px;cursor:pointer;"><i class="fa-solid fa-triangle-exclamation"></i> Signaler un problème</button></div>';
-      listHtml += '</div>';
+
+    // ── Transactions : pending d'abord ──
+    var pendingTxns = txns.filter(function(t){ return t.type==='credit' && t.status==='pending'; });
+    var histTxns    = txns.filter(function(t){ return !(t.type==='credit' && t.status==='pending'); });
+
+    if(pendingTxns.length){
+      html += '<div style="font-size:11px;font-weight:800;color:#f59e0b;letter-spacing:.8px;text-transform:uppercase;margin:14px 0 8px;"><i class="fa-solid fa-hourglass-half" style="margin-right:5px"></i>En attente de libération ('+pendingTxns.length+')</div>';
+      pendingTxns.forEach(function(t){
+        html += '<div style="background:#111;border:1px solid #1e1e1e;border-left:3px solid #f59e0b;border-radius:12px;padding:12px 14px;margin-bottom:8px;">';
+        html += '<div style="display:flex;justify-content:space-between;align-items:center;">';
+        html += '<div style="flex:1;min-width:0;"><div style="font-size:12px;font-weight:700;color:#fff;">'+_esc(t.description||'Mission')+'</div>';
+        html += '<div style="font-size:11px;color:#888;margin-top:2px;">Libéré à la livraison</div></div>';
+        html += '<div style="text-align:right;flex-shrink:0;padding-left:10px;"><div style="font-size:16px;font-weight:900;color:#f59e0b;">+'+fmt(t.amount||0)+' €</div>';
+        html += '<div style="font-size:10px;color:#f59e0b;font-weight:700;">EN ATTENTE</div></div>';
+        html += '</div></div>';
+      });
+    }
+
+    if(histTxns.length){
+      html += '<div style="font-size:11px;font-weight:700;color:#555;letter-spacing:.8px;text-transform:uppercase;margin:12px 0 8px;">Historique</div>';
+      histTxns.slice(0,20).forEach(function(t){
+        var isC = t.type==='credit';
+        var col = isC ? '#22c55e' : '#f87171';
+        var ico = isC ? 'fa-circle-arrow-down' : 'fa-circle-arrow-up';
+        html += '<div style="background:#111;border:1px solid #1e1e1e;border-radius:12px;padding:12px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">';
+        html += '<div style="display:flex;align-items:center;gap:10px;">';
+        html += '<div style="width:32px;height:32px;border-radius:50%;background:rgba(34,197,94,.08);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="fa-solid '+ico+'" style="color:'+col+';font-size:13px;"></i></div>';
+        html += '<div><div style="font-size:12px;font-weight:700;color:#ccc;">'+_esc(t.description||'Transaction')+'</div>';
+        html += '<div style="font-size:10px;color:#555;margin-top:2px;">'+_ptnrFmt(t.created_at)+'</div></div></div>';
+        html += '<div style="font-size:15px;font-weight:900;color:'+col+';white-space:nowrap;">'+(isC?'+':'-')+fmt(t.amount||0)+' €</div>';
+        html += '</div>';
+      });
+    }
+
+    if(!pendingTxns.length && !histTxns.length && !wdrs.length){
+      html += '<div class="ptnr-empty"><div class="ptnr-empty-ico"><i class="fa-solid fa-wallet"></i></div><div class="ptnr-empty-txt">Wallet vide</div><div style="font-size:12px;color:#555;margin-top:6px;">Vos gains apparaîtront ici après chaque mission livrée.</div></div>';
+    }
+
+    listEl.innerHTML = html;
+  }).catch(function(){
+    listEl.innerHTML = '<div class="ptnr-empty"><div class="ptnr-empty-ico"><i class="fa-solid fa-wifi-slash"></i></div><div class="ptnr-empty-txt">Erreur de chargement</div><div style="font-size:12px;color:#555;margin-top:6px;">Vérifiez votre connexion et réessayez.</div></div>';
+  });
+}
+
+function _ptnrToggleWithdraw(){
+  var form = document.getElementById('ptnr-wd-form-wrap');
+  var btn  = document.getElementById('ptnr-wd-toggle-btn');
+  if(!form) return;
+  var open = form.style.display !== 'none';
+  form.style.display = open ? 'none' : 'block';
+  if(btn){ btn.textContent = open ? '' : 'Annuler le retrait'; }
+  if(open && btn){ btn.innerHTML = '<i class="fa-solid fa-paper-plane" style="margin-right:6px"></i>Retirer mes gains'; }
+  _ptnrWdMethod = null;
+}
+
+function _ptnrLoadWdMethods(){
+  var country = (document.getElementById('ptnr-wd-country')||{}).value||'';
+  var wrap = document.getElementById('ptnr-wd-methods-wrap');
+  var dWrap = document.getElementById('ptnr-wd-details-wrap');
+  var submitBtn = document.getElementById('ptnr-wd-submit-btn');
+  if(!country){ if(wrap) wrap.style.display='none'; return; }
+  _ptnrFetch('/api/partner/wallet/methods?country='+encodeURIComponent(country)).then(function(data){
+    var methods = (data && data.methods) || [];
+    if(!wrap) return;
+    if(!methods.length){ wrap.innerHTML='<p style="font-size:12px;color:#666;margin:0;">Aucune méthode disponible.</p>'; wrap.style.display='block'; return; }
+    var h = '<div style="font-size:11px;color:#888;font-weight:700;text-transform:uppercase;margin-bottom:6px;">Méthode de retrait</div>';
+    methods.forEach(function(m){
+      h += '<label style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid #333;border-radius:10px;cursor:pointer;margin-bottom:6px;background:#1a1a1a;">';
+      h += '<input type="radio" name="ptnr-wd-method-r" value="'+_esc(m.id)+'" onchange="_ptnrSelectWdMethod(\''+_esc(m.id)+'\','+JSON.stringify(m.fields)+')" style="accent-color:#FFD700;">';
+      h += '<i class="fa-solid '+_esc(m.icon)+'" style="color:#FFD700;width:16px;"></i>';
+      h += '<span style="font-size:13px;font-weight:700;color:#fff;">'+_esc(m.label)+'</span></label>';
     });
-    listEl.insertAdjacentHTML('beforeend', listHtml);
-    _animateCount(document.getElementById('ptnr-total-sent'), totalSent, {decimals:2, suffix:' €', duration:900});
-    _animateCount(document.getElementById('ptnr-total-pending'), totalPending, {decimals:2, suffix:' €', duration:900});
+    wrap.innerHTML = h;
+    wrap.style.display = 'block';
+    if(dWrap){ dWrap.style.display='none'; dWrap.innerHTML=''; }
+    if(submitBtn){ submitBtn.disabled=true; submitBtn.style.opacity='.5'; submitBtn.style.cursor='not-allowed'; }
+    _ptnrWdMethod = null;
   }).catch(function(){});
+}
+
+function _ptnrSelectWdMethod(methodId, fields){
+  _ptnrWdMethod = methodId;
+  var dWrap = document.getElementById('ptnr-wd-details-wrap');
+  var submitBtn = document.getElementById('ptnr-wd-submit-btn');
+  if(!dWrap) return;
+  var labels = {holder:'Nom du titulaire',iban:'IBAN',bic:'BIC / SWIFT (optionnel)',email:'Adresse email',phone:'Numéro de téléphone'};
+  var h = '';
+  (fields||[]).forEach(function(f){
+    var isOpt = f==='bic';
+    h += '<div style="margin-bottom:8px;"><label style="font-size:11px;color:#888;display:block;margin-bottom:3px;font-weight:700;text-transform:uppercase;">'+(labels[f]||f)+(isOpt?'':' *')+'</label>';
+    h += '<input id="ptnr-wd-f-'+f+'" type="'+(f==='email'?'email':f==='phone'?'tel':'text')+'" placeholder="'+(isOpt?'Optionnel':'')+'" style="width:100%;box-sizing:border-box;background:#1a1a1a;border:1px solid #333;border-radius:10px;color:#fff;padding:9px 12px;font-size:13px;"></div>';
+  });
+  dWrap.innerHTML = h;
+  dWrap.style.display = 'block';
+  if(submitBtn){ submitBtn.disabled=false; submitBtn.style.opacity='1'; submitBtn.style.cursor='pointer'; }
+}
+
+function _ptnrSubmitWithdraw(){
+  var amount   = parseFloat(((document.getElementById('ptnr-wd-amount')||{}).value)||0);
+  var country  = (document.getElementById('ptnr-wd-country')||{}).value||'';
+  var errEl    = document.getElementById('ptnr-wd-err');
+  var submitBtn = document.getElementById('ptnr-wd-submit-btn');
+  if(!amount || amount < 20){ if(errEl){ errEl.textContent='Montant minimum : 20 €.'; errEl.style.display='block'; } return; }
+  if(!_ptnrWdMethod){ if(errEl){ errEl.textContent='Choisissez une méthode de retrait.'; errEl.style.display='block'; } return; }
+  var details = {};
+  ['holder','iban','bic','email','phone'].forEach(function(f){
+    var el = document.getElementById('ptnr-wd-f-'+f);
+    if(el && el.value.trim()) details[f] = el.value.trim();
+  });
+  if(errEl){ errEl.style.display='none'; }
+  if(submitBtn){ submitBtn.disabled=true; submitBtn.textContent='Envoi…'; }
+  _ptnrFetch('/api/partner/wallet/withdraw','POST',{amount:amount,method:_ptnrWdMethod,country:country,details:details})
+  .then(function(d){
+    if(d.ok){
+      showToast('Retrait demandé',amount.toFixed(2)+' € en cours de traitement.','success');
+      _ptnrLoadVersements();
+    } else {
+      if(errEl){ errEl.textContent=d.error||'Erreur lors du retrait.'; errEl.style.display='block'; }
+      if(submitBtn){ submitBtn.disabled=false; submitBtn.textContent='Confirmer'; }
+    }
+  }).catch(function(){
+    if(errEl){ errEl.textContent='Erreur de connexion. Réessayez.'; errEl.style.display='block'; }
+    if(submitBtn){ submitBtn.disabled=false; submitBtn.textContent='Confirmer'; }
+  });
 }
 
 // ── MES BADGES ──
