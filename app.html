@@ -3025,7 +3025,7 @@ a{text-decoration:none;color:inherit}
                 <i class="fa-solid fa-chevron-right ptnr-snbtn-arrow"></i>
               </button>
               <button class="ptnr-snbtn" id="ptnr-sn-versements" onclick="_ptnrNav('versements')">
-                <i class="pni fa-solid fa-sack-dollar"></i><span>Portefeuille</span>
+                <i class="pni fa-solid fa-wallet"></i><span>Wallet GENESIS</span>
                 <i class="fa-solid fa-chevron-right ptnr-snbtn-arrow"></i>
               </button>
               <button class="ptnr-snbtn" id="ptnr-sn-reputation" onclick="_ptnrNav('reputation')">
@@ -3142,11 +3142,6 @@ a{text-decoration:none;color:inherit}
         <!-- Sub-screen: Versements / Paiements -->
         <div class="ptnr-screen" id="ptnr-screen-versements">
           <div class="ptnr-back-bar"><button class="ptnr-back-btn" onclick="_ptnrNav('profil')">&#8249;</button><span class="ptnr-back-bar-title">Mes revenus</span></div>
-          <!-- Résumé des revenus -->
-          <div id="ptnr-earnings-summary" style="padding:12px 12px 0;"></div>
-          <!-- Méthode de versement (Stripe Connect ou Wise selon pays) -->
-          <div id="ptnr-stripe-setup" style="padding:0 0 12px;"></div>
-
           <div id="ptnr-versements-list"></div>
         </div>
 
@@ -3266,7 +3261,7 @@ a{text-decoration:none;color:inherit}
       <i class="ni fa-solid fa-comment"></i><span>Messages</span>
     </button>
     <button class="nav-btn ptnr-nav" id="pnb-versements" onclick="_ptnrNav('versements')" style="display:none">
-      <i class="ni fa-solid fa-sack-dollar"></i><span>Portefeuille</span>
+      <i class="ni fa-solid fa-wallet"></i><span>Wallet</span>
     </button>
     <button class="nav-btn ptnr-nav" id="pnb-profil" onclick="_ptnrNav('profil')" style="display:none">
       <i class="ni fa-solid fa-user"></i><span>Profil</span>
@@ -16365,345 +16360,11 @@ function _submitAvailability(){
   });
 }
 
-// ── Méthode de versement — GENESIS Payment Orchestration ─────────────────────
-var _stripeSetupEl = null;
-var _stripeStatusCache = null;
-
-function _loadStripeSetup(){
-  var el = document.getElementById('ptnr-stripe-setup');
-  if(!el) return;
-  _stripeSetupEl = el;
-  el.innerHTML = _skeletonRows(1);
-  // Charger résumé des revenus en parallèle
-  _loadEarningsSummary();
-  // Charger d'abord le routage payout (détermine Stripe ou Wise)
-  fetch((window.FA_GENESIS_API||API)+'/api/partner/payout/routing',{headers:{'Authorization':'Bearer '+(_ptnrToken||'')}})
-  .then(function(r){ return r.json(); })
-  .then(function(routingData){
-    if(!routingData.ok) throw new Error('routing error');
-    var provider = routingData.routing && routingData.routing.provider;
-    if(provider === 'stripe'){
-      // Stripe Connect disponible pour ce pays
-      fetch((window.FA_GENESIS_API||API)+'/api/partner/stripe/status',{headers:{'Authorization':'Bearer '+(_ptnrToken||'')}})
-      .then(function(r2){ return r2.json(); })
-      .then(function(d){
-        _stripeStatusCache = d;
-        _renderStripeSetup(d);
-      })
-      .catch(function(){ el.innerHTML=''; });
-    } else if(provider === 'wise' || provider === 'payoneer'){
-      // Stripe Connect non disponible pour ce pays → Wise
-      _renderWiseSetup(routingData);
-    } else {
-      // Aucun fournisseur disponible
-      _renderNoPayoutAvailable(routingData);
-    }
-  })
-  .catch(function(){
-    // Fallback : tenter Stripe (ancien comportement si le backend est < v.actuelle)
-    fetch((window.FA_GENESIS_API||API)+'/api/partner/stripe/status',{headers:{'Authorization':'Bearer '+(_ptnrToken||'')}})
-    .then(function(r){ return r.json(); })
-    .then(function(d){ _stripeStatusCache=d; _renderStripeSetup(d); })
-    .catch(function(){ el.innerHTML=''; });
-  });
-}
-
-function _loadEarningsSummary(){
-  var el = document.getElementById('ptnr-earnings-summary');
-  if(!el) return;
-  fetch((window.FA_GENESIS_API||API)+'/api/partner/earnings/summary',{headers:{'Authorization':'Bearer '+(_ptnrToken||'')}})
-  .then(function(r){ return r.json(); })
-  .then(function(d){
-    if(!d.ok) return;
-    var fmt = function(n){ return Number(n).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2}); };
-    el.innerHTML = '<div style="background:linear-gradient(135deg,#0d0d1a,#10081a);border:1.5px solid #2a2a3a;border-radius:14px;padding:16px;margin-bottom:12px;">'
-      +'<div style="font-size:11px;font-weight:800;letter-spacing:.8px;color:#FFD700;margin-bottom:12px;"><i class="fa-solid fa-chart-line" style="margin-right:6px;"></i>MES REVENUS</div>'
-      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">'
-      +'<div style="background:#0a0a0a;border-radius:10px;padding:10px;"><div style="font-size:10px;color:#666;font-weight:700;margin-bottom:4px;">DISPONIBLE</div><div style="font-size:18px;font-weight:900;color:#22c55e;">'+fmt(d.available)+' €</div><div style="font-size:9px;color:#555;margin-top:2px;">Prêts à être virés</div></div>'
-      +'<div style="background:#0a0a0a;border-radius:10px;padding:10px;"><div style="font-size:10px;color:#666;font-weight:700;margin-bottom:4px;">EN ESCROW</div><div style="font-size:18px;font-weight:900;color:#f59e0b;">'+fmt(d.pending)+' €</div><div style="font-size:9px;color:#555;margin-top:2px;">Libérés à la livraison</div></div>'
-      +'<div style="background:#0a0a0a;border-radius:10px;padding:10px;"><div style="font-size:10px;color:#666;font-weight:700;margin-bottom:4px;">TOTAL GAGNÉ</div><div style="font-size:16px;font-weight:800;color:#fff;">'+fmt(d.totalEarned)+' €</div></div>'
-      +'<div style="background:#0a0a0a;border-radius:10px;padding:10px;"><div style="font-size:10px;color:#666;font-weight:700;margin-bottom:4px;">TOTAL VERSÉ</div><div style="font-size:16px;font-weight:800;color:#fff;">'+fmt(d.totalPaidOut)+' €</div></div>'
-      +'</div></div>';
-  })
-  .catch(function(){});
-}
-
-function _renderNoPayoutAvailable(routingData){
-  var el = _stripeSetupEl || document.getElementById('ptnr-stripe-setup');
-  if(!el) return;
-  var countryName = (routingData && routingData.countryName) || 'votre pays';
-  el.innerHTML = '<div style="background:#0d0d0d;border:1.5px solid #333;border-radius:14px;padding:16px;margin-bottom:12px;">'
-    +'<div style="font-size:12px;font-weight:800;color:#888;margin-bottom:8px;"><i class="fa-solid fa-triangle-exclamation" style="margin-right:6px;color:#f59e0b;"></i>VERSEMENT NON CONFIGURÉ</div>'
-    +'<div style="font-size:12px;color:#666;line-height:1.6;">Nous ne pouvons pas encore effectuer de versement automatique vers '+countryName+' avec les méthodes actuellement disponibles sur GENESIS. Votre compte peut recevoir des commandes. Nous vous informerons dès qu\'une solution est disponible.</div>'
-    +'</div>';
-}
-
-function _renderWiseSetup(routingData){
-  var el = _stripeSetupEl || document.getElementById('ptnr-stripe-setup');
-  if(!el) return;
-  var countryName = (routingData && routingData.countryName) || '';
-  var wiseLogo = 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 40 40\'%3E%3Ccircle cx=\'20\' cy=\'20\' r=\'20\' fill=\'%2300B9FF\'/%3E%3Ctext x=\'20\' y=\'26\' text-anchor=\'middle\' font-size=\'18\' font-weight=\'bold\' fill=\'white\' font-family=\'Arial\'%3EW%3C/text%3E%3C/svg%3E';
-
-  el.innerHTML = _skeletonRows(1);
-
-  fetch((window.FA_GENESIS_API||API)+'/api/partner/bank-details',{headers:{'Authorization':'Bearer '+(_ptnrToken||'')}})
-  .then(function(r){ return r.json(); })
-  .then(function(d){
-    var hasIban = d.ok && d.bankDetails && d.bankDetails.iban;
-    var html = '<div style="background:linear-gradient(135deg,#051a0d,#081a10);border:1.5px solid '+(hasIban?'#4ade80':'#1a6e3a')+';border-radius:14px;padding:16px;margin-bottom:12px;">';
-    html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">';
-    html += '<div style="font-size:12px;font-weight:800;letter-spacing:.8px;color:#4ade80;"><img src="'+wiseLogo+'" style="width:16px;height:16px;vertical-align:middle;margin-right:6px;border-radius:50%;">VERSEMENT — WISE</div>';
-    if(countryName) html += '<div style="font-size:10px;color:#888;font-weight:700;">'+_esc(countryName)+'</div>';
-    html += '</div>';
-
-    if(hasIban){
-      html += '<div style="display:flex;align-items:center;gap:8px;background:#0a1a10;border-radius:8px;padding:8px 12px;margin-bottom:10px;">';
-      html += '<i class="fa-solid fa-check-circle" style="color:#4ade80;"></i>';
-      html += '<span style="font-size:12px;color:#4ade80;font-weight:700;">IBAN enregistré — paiements Wise activés<br><span style="color:#888;font-weight:500;">'+_esc(d.bankDetails.iban)+'</span></span></div>';
-      if(d.wiseLinked) html += '<div style="font-size:11px;color:#4ade80;margin-bottom:8px;"><i class="fa-solid fa-link" style="margin-right:4px;"></i>Compte Wise lié · Virements automatiques actifs</div>';
-      html += '<button onclick="_ptnrWiseShowForm()" style="width:100%;background:#0d1a10;color:#4ade80;border:1px solid #1a6e3a;border-radius:10px;padding:9px;font-size:12px;font-weight:700;cursor:pointer;">Modifier mes coordonnées bancaires</button>';
-      html += _ptnrWiseFormHtml(true);
-    } else {
-      html += '<div style="font-size:12px;color:#aaa;line-height:1.6;margin-bottom:12px;">Stripe Connect n\'est pas disponible dans votre pays. GENESIS vous verse automatiquement via <strong style="color:#fff;">Wise</strong> — ajoutez votre IBAN pour recevoir vos paiements.</div>';
-      html += _ptnrWiseFormHtml(false);
-    }
-    html += '</div>';
-    el.innerHTML = html;
-  })
-  .catch(function(){
-    var html = '<div style="background:linear-gradient(135deg,#051a0d,#081a10);border:1.5px solid #1a6e3a;border-radius:14px;padding:16px;margin-bottom:12px;">';
-    html += '<div style="font-size:12px;font-weight:800;color:#4ade80;margin-bottom:10px;"><img src="'+wiseLogo+'" style="width:16px;height:16px;vertical-align:middle;margin-right:6px;border-radius:50%;">VERSEMENT — WISE</div>';
-    html += '<div style="font-size:12px;color:#aaa;line-height:1.6;margin-bottom:12px;">Ajoutez votre IBAN pour recevoir vos paiements automatiquement via Wise.</div>';
-    html += _ptnrWiseFormHtml();
-    html += '</div>';
-    el.innerHTML = html;
-  });
-}
-
-function _ptnrWiseFormHtml(hidden){
-  var hiddenStyle = hidden ? 'display:none;margin-top:12px;' : '';
-  return '<div id="ptnr-wise-form" style="'+hiddenStyle+'">'
-    +'<div style="margin-bottom:10px;"><label style="font-size:10px;color:#6b7280;font-weight:700;display:block;margin-bottom:4px;text-transform:uppercase;">Nom du titulaire du compte *</label>'
-    +'<input id="ptnr-wise-name" type="text" placeholder="Ex : Jean Dupont" style="width:100%;box-sizing:border-box;background:#111;border:1.5px solid #1a6e3a;border-radius:10px;color:#fff;padding:10px 12px;font-size:13px;"></div>'
-    +'<div style="margin-bottom:10px;"><label style="font-size:10px;color:#6b7280;font-weight:700;display:block;margin-bottom:4px;text-transform:uppercase;">IBAN *</label>'
-    +'<input id="ptnr-wise-iban" type="text" placeholder="MA64 0110 0000 0100 0103 8900 0900" style="width:100%;box-sizing:border-box;background:#111;border:1.5px solid #1a6e3a;border-radius:10px;color:#fff;padding:10px 12px;font-size:13px;letter-spacing:1px;" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,\'\').replace(/(.{4})/g,\'$1 \').trim()"></div>'
-    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">'
-    +'<div><label style="font-size:10px;color:#6b7280;font-weight:700;display:block;margin-bottom:4px;text-transform:uppercase;">BIC / SWIFT (optionnel)</label>'
-    +'<input id="ptnr-wise-bic" type="text" placeholder="BMCEMAMC" style="width:100%;box-sizing:border-box;background:#111;border:1.5px solid #1a6e3a;border-radius:10px;color:#fff;padding:10px 12px;font-size:13px;"></div>'
-    +'<div><label style="font-size:10px;color:#6b7280;font-weight:700;display:block;margin-bottom:4px;text-transform:uppercase;">Devise</label>'
-    +'<select id="ptnr-wise-currency" style="width:100%;background:#111;border:1.5px solid #1a6e3a;border-radius:10px;color:#fff;padding:10px 12px;font-size:13px;">'
-    +'<option value="EUR">EUR — Euro</option><option value="MAD">MAD — Dirham marocain</option>'
-    +'<option value="XOF">XOF — Franc CFA (UEMOA)</option><option value="XAF">XAF — Franc CFA (CEMAC)</option>'
-    +'<option value="EGP">EGP — Livre égyptienne</option><option value="USD">USD — Dollar américain</option>'
-    +'<option value="GBP">GBP — Livre sterling</option><option value="CHF">CHF — Franc suisse</option>'
-    +'</select></div></div>'
-    +'<div id="ptnr-wise-err" style="font-size:12px;color:#ef4444;margin-bottom:8px;display:none;"></div>'
-    +'<button onclick="_ptnrSaveWise()" id="ptnr-wise-save-btn" style="width:100%;background:linear-gradient(135deg,#14532d,#166534);color:#4ade80;border:1.5px solid #4ade80;border-radius:10px;padding:13px;font-size:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">'
-    +'<i class="fa-solid fa-bank"></i>ENREGISTRER MON IBAN</button>'
-    +'<div style="font-size:10px;color:#444;margin-top:8px;text-align:center;">GENESIS ne stocke jamais vos données bancaires complètes. Wise gère la sécurité des virements.</div>'
-    +'</div>';
-}
-
-function _ptnrWiseShowForm(){
-  var el = _stripeSetupEl || document.getElementById('ptnr-stripe-setup');
-  if(!el) return;
-  var formDiv = el.querySelector('#ptnr-wise-form');
-  if(formDiv){ formDiv.style.display = 'block'; return; }
-}
-
-function _ptnrSaveWise(){
-  var name = ((document.getElementById('ptnr-wise-name')||{}).value||'').trim();
-  var iban = ((document.getElementById('ptnr-wise-iban')||{}).value||'').replace(/\s/g,'').toUpperCase();
-  var bic  = ((document.getElementById('ptnr-wise-bic')||{}).value||'').trim().toUpperCase();
-  var currency = (document.getElementById('ptnr-wise-currency')||{}).value||'EUR';
-  var errEl = document.getElementById('ptnr-wise-err');
-  var btn = document.getElementById('ptnr-wise-save-btn');
-  if(errEl){ errEl.style.display='none'; errEl.textContent=''; }
-  if(!name){ if(errEl){ errEl.textContent='Le nom du titulaire est requis.'; errEl.style.display='block'; } return; }
-  if(iban.length < 14){ if(errEl){ errEl.textContent='IBAN invalide.'; errEl.style.display='block'; } return; }
-  if(btn){ btn.disabled=true; btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Enregistrement…'; }
-  fetch((window.FA_GENESIS_API||API)+'/api/partner/bank-details',{
-    method:'POST',
-    headers:{'Content-Type':'application/json','Authorization':'Bearer '+(_ptnrToken||'')},
-    body:JSON.stringify({accountHolderName:name, iban:iban, bic:bic, currency:currency})
-  }).then(function(r){ return r.json(); }).then(function(d){
-    if(btn){ btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-bank"></i> ENREGISTRER MON IBAN'; }
-    if(d.ok){
-      if(typeof showToast==='function') showToast('Coordonnées bancaires enregistrées','Vous recevrez vos paiements via Wise.','success');
-      _loadStripeSetup();
-    } else {
-      if(errEl){ errEl.textContent=d.error||'Erreur lors de l\'enregistrement.'; errEl.style.display='block'; }
-    }
-  }).catch(function(){
-    if(btn){ btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-bank"></i> ENREGISTRER MON IBAN'; }
-    if(errEl){ errEl.textContent='Erreur de connexion. Réessayez.'; errEl.style.display='block'; }
-  });
-}
-
-function _renderStripeSetup(d){
-  var el = _stripeSetupEl || document.getElementById('ptnr-stripe-setup');
-  if(!el) return;
-  var statusLabel = (d && d.statusLabel) || 'not_configured';
-  var configured  = !!(d && d.configured);
-  var labelMap = {
-    not_configured: { txt:'Non configuré',                          cls:'#888',    ico:'fa-circle-xmark' },
-    pending:        { txt:'Vérification en cours',                  cls:'#f59e0b', ico:'fa-clock' },
-    active:         { txt:'Vérifié — paiements actifs',             cls:'#22c55e', ico:'fa-circle-check' },
-    requires_info:  { txt:'Documents complémentaires requis',       cls:'#ef4444', ico:'fa-triangle-exclamation' },
-    rejected:       { txt:'Compte refusé — contactez le support',  cls:'#ef4444', ico:'fa-ban' }
-  };
-  var lbl = labelMap[statusLabel] || labelMap.not_configured;
-
-  var html = '<div style="background:linear-gradient(135deg,#0d1020,#10081a);border:1.5px solid '+(statusLabel==='active'?'#22c55e':'#FFD700')+';border-radius:14px;padding:16px;margin-bottom:12px;">';
-  html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">';
-  html += '<div style="font-size:12px;font-weight:800;letter-spacing:.8px;color:#FFD700;"><i class="fa-brands fa-stripe" style="margin-right:6px;font-size:15px;"></i>STRIPE CONNECT</div>';
-  html += '<div style="font-size:11px;font-weight:700;color:'+lbl.cls+'"><i class="fa-solid '+lbl.ico+'" style="margin-right:4px;"></i>'+lbl.txt+'</div>';
-  html += '</div>';
-
-  if(statusLabel === 'active'){
-    html += '<div style="font-size:12px;color:#aaa;line-height:1.5;margin-bottom:12px;">Vos rémunérations sont versées automatiquement par Stripe après chaque paiement client. FA GENESIS ne stocke aucune donnée bancaire.</div>';
-    // Calendrier de versements
-    html += '<div style="background:#0a0a0a;border-radius:10px;padding:10px 12px;margin-bottom:10px;">';
-    html += '<div style="font-size:11px;color:#888;margin-bottom:6px;font-weight:700;">FRÉQUENCE DES VERSEMENTS</div>';
-    html += '<div style="display:flex;gap:6px;">';
-    ['daily','weekly','monthly'].forEach(function(iv){
-      var lbIv = {daily:'Quotidien',weekly:'Hebdo',monthly:'Mensuel'}[iv];
-      html += '<button onclick="_ptnrSetStripeSchedule(\''+iv+'\')" style="flex:1;padding:8px 4px;border-radius:8px;border:1.5px solid #333;background:#111;color:#ccc;font-size:11px;font-weight:700;cursor:pointer;">'+lbIv+'</button>';
-    });
-    html += '</div></div>';
-    html += '<div style="font-size:11px;color:#555;">Compte ID : '+_esc(d.accountId||'')+'</div>';
-  } else if(!configured){
-    // Wizard de configuration
-    html += '<div style="font-size:13px;color:#ccc;line-height:1.5;margin-bottom:14px;">Configurez vos paiements pour recevoir vos rémunérations automatiquement via Stripe. Stripe collecte et sécurise toutes vos données bancaires — FA GENESIS n\'y accède jamais.</div>';
-    // Sélecteur type de prestataire
-    html += '<div style="margin-bottom:10px;">';
-    html += '<div style="font-size:11px;color:#888;font-weight:700;margin-bottom:6px;">VOUS ÊTES</div>';
-    html += '<div style="display:flex;gap:8px;">';
-    html += '<button id="ptnr-et-particulier" onclick="_ptnrSelectEntityType(\'particulier\')" style="flex:1;padding:10px;border-radius:10px;border:1.5px solid #FFD700;background:#1a1200;color:#FFD700;font-size:12px;font-weight:800;cursor:pointer;"><i class="fa-solid fa-user" style="margin-right:6px;"></i>Particulier</button>';
-    html += '<button id="ptnr-et-entreprise" onclick="_ptnrSelectEntityType(\'entreprise\')" style="flex:1;padding:10px;border-radius:10px;border:1.5px solid #333;background:#111;color:#888;font-size:12px;font-weight:800;cursor:pointer;"><i class="fa-solid fa-building" style="margin-right:6px;"></i>Entreprise</button>';
-    html += '</div></div>';
-    // Formulaire particulier
-    html += '<div id="ptnr-et-form-particulier" style="display:block;">';
-    html += '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;">';
-    html += '<input id="ptnr-stripe-prenom" type="text" placeholder="Prénom" style="background:#1a1a1a;border:1px solid #333;border-radius:10px;color:#fff;padding:10px 12px;font-size:14px;">';
-    html += '<input id="ptnr-stripe-nom" type="text" placeholder="Nom" style="background:#1a1a1a;border:1px solid #333;border-radius:10px;color:#fff;padding:10px 12px;font-size:14px;">';
-    html += '<select id="ptnr-stripe-country" style="background:#1a1a1a;border:1px solid #333;border-radius:10px;color:#fff;padding:10px 12px;font-size:14px;">';
-    html += '<optgroup label="── Europe ──"><option value="FR" selected>🇫🇷 France</option><option value="BE">🇧🇪 Belgique</option><option value="CH">🇨🇭 Suisse</option><option value="LU">🇱🇺 Luxembourg</option><option value="DE">🇩🇪 Allemagne</option><option value="ES">🇪🇸 Espagne</option><option value="IT">🇮🇹 Italie</option><option value="PT">🇵🇹 Portugal</option><option value="NL">🇳🇱 Pays-Bas</option><option value="GB">🇬🇧 Royaume-Uni</option><option value="IE">🇮🇪 Irlande</option><option value="AT">🇦🇹 Autriche</option><option value="PL">🇵🇱 Pologne</option><option value="SE">🇸🇪 Suède</option><option value="NO">🇳🇴 Norvège</option><option value="DK">🇩🇰 Danemark</option><option value="FI">🇫🇮 Finlande</option><option value="CZ">🇨🇿 République tchèque</option><option value="RO">🇷🇴 Roumanie</option><option value="BG">🇧🇬 Bulgarie</option><option value="GR">🇬🇷 Grèce</option><option value="HR">🇭🇷 Croatie</option><option value="HU">🇭🇺 Hongrie</option><option value="SK">🇸🇰 Slovaquie</option><option value="SI">🇸🇮 Slovénie</option><option value="EE">🇪🇪 Estonie</option><option value="LV">🇱🇻 Lettonie</option><option value="LT">🇱🇹 Lituanie</option><option value="MT">🇲🇹 Malte</option><option value="CY">🇨🇾 Chypre</option><option value="LI">🇱🇮 Liechtenstein</option></optgroup>';
-    html += '<optgroup label="── Afrique ──"><option value="GH">🇬🇭 Ghana</option><option value="NG">🇳🇬 Nigeria</option><option value="KE">🇰🇪 Kenya</option><option value="ZA">🇿🇦 Afrique du Sud</option><option value="RW">🇷🇼 Rwanda</option><option value="TZ">🇹🇿 Tanzanie</option><option value="UG">🇺🇬 Ouganda</option></optgroup>';
-    html += '<optgroup label="── Amériques ──"><option value="US">🇺🇸 États-Unis</option><option value="CA">🇨🇦 Canada</option><option value="MX">🇲🇽 Mexique</option><option value="BR">🇧🇷 Brésil</option></optgroup>';
-    html += '<optgroup label="── Moyen-Orient &amp; Asie-Pacifique ──"><option value="AE">🇦🇪 Émirats arabes unis</option><option value="SG">🇸🇬 Singapour</option><option value="HK">🇭🇰 Hong Kong</option><option value="AU">🇦🇺 Australie</option><option value="NZ">🇳🇿 Nouvelle-Zélande</option><option value="JP">🇯🇵 Japon</option><option value="IN">🇮🇳 Inde</option><option value="MY">🇲🇾 Malaisie</option><option value="TH">🇹🇭 Thaïlande</option><option value="ID">🇮🇩 Indonésie</option></optgroup>';
-    html += '</select>';
-    html += '</div></div>';
-    // Formulaire entreprise
-    html += '<div id="ptnr-et-form-entreprise" style="display:none;">';
-    html += '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;">';
-    html += '<input id="ptnr-stripe-raison" type="text" placeholder="Raison sociale *" style="background:#1a1a1a;border:1px solid #333;border-radius:10px;color:#fff;padding:10px 12px;font-size:14px;">';
-    html += '<input id="ptnr-stripe-reg" type="text" placeholder="Numéro SIRET / immatriculation" style="background:#1a1a1a;border:1px solid #333;border-radius:10px;color:#fff;padding:10px 12px;font-size:14px;">';
-    html += '<input id="ptnr-stripe-rep-prenom" type="text" placeholder="Prénom du représentant légal" style="background:#1a1a1a;border:1px solid #333;border-radius:10px;color:#fff;padding:10px 12px;font-size:14px;">';
-    html += '<input id="ptnr-stripe-rep-nom" type="text" placeholder="Nom du représentant légal" style="background:#1a1a1a;border:1px solid #333;border-radius:10px;color:#fff;padding:10px 12px;font-size:14px;">';
-    html += '<select id="ptnr-stripe-country-ent" style="background:#1a1a1a;border:1px solid #333;border-radius:10px;color:#fff;padding:10px 12px;font-size:14px;">';
-    html += '<optgroup label="── Europe ──"><option value="FR" selected>🇫🇷 France</option><option value="BE">🇧🇪 Belgique</option><option value="CH">🇨🇭 Suisse</option><option value="LU">🇱🇺 Luxembourg</option><option value="DE">🇩🇪 Allemagne</option><option value="ES">🇪🇸 Espagne</option><option value="IT">🇮🇹 Italie</option><option value="PT">🇵🇹 Portugal</option><option value="NL">🇳🇱 Pays-Bas</option><option value="GB">🇬🇧 Royaume-Uni</option><option value="IE">🇮🇪 Irlande</option><option value="AT">🇦🇹 Autriche</option><option value="PL">🇵🇱 Pologne</option><option value="SE">🇸🇪 Suède</option><option value="NO">🇳🇴 Norvège</option><option value="DK">🇩🇰 Danemark</option><option value="FI">🇫🇮 Finlande</option><option value="CZ">🇨🇿 République tchèque</option><option value="RO">🇷🇴 Roumanie</option><option value="BG">🇧🇬 Bulgarie</option><option value="GR">🇬🇷 Grèce</option><option value="HR">🇭🇷 Croatie</option><option value="HU">🇭🇺 Hongrie</option><option value="SK">🇸🇰 Slovaquie</option><option value="SI">🇸🇮 Slovénie</option><option value="EE">🇪🇪 Estonie</option><option value="LV">🇱🇻 Lettonie</option><option value="LT">🇱🇹 Lituanie</option><option value="MT">🇲🇹 Malte</option><option value="CY">🇨🇾 Chypre</option><option value="LI">🇱🇮 Liechtenstein</option></optgroup>';
-    html += '<optgroup label="── Afrique ──"><option value="GH">🇬🇭 Ghana</option><option value="NG">🇳🇬 Nigeria</option><option value="KE">🇰🇪 Kenya</option><option value="ZA">🇿🇦 Afrique du Sud</option><option value="RW">🇷🇼 Rwanda</option><option value="TZ">🇹🇿 Tanzanie</option><option value="UG">🇺🇬 Ouganda</option></optgroup>';
-    html += '<optgroup label="── Amériques ──"><option value="US">🇺🇸 États-Unis</option><option value="CA">🇨🇦 Canada</option><option value="MX">🇲🇽 Mexique</option><option value="BR">🇧🇷 Brésil</option></optgroup>';
-    html += '<optgroup label="── Moyen-Orient &amp; Asie-Pacifique ──"><option value="AE">🇦🇪 Émirats arabes unis</option><option value="SG">🇸🇬 Singapour</option><option value="HK">🇭🇰 Hong Kong</option><option value="AU">🇦🇺 Australie</option><option value="NZ">🇳🇿 Nouvelle-Zélande</option><option value="JP">🇯🇵 Japon</option><option value="IN">🇮🇳 Inde</option><option value="MY">🇲🇾 Malaisie</option><option value="TH">🇹🇭 Thaïlande</option><option value="ID">🇮🇩 Indonésie</option></optgroup>';
-    html += '</select>';
-    html += '</div></div>';
-    html += '<div id="ptnr-stripe-err" style="font-size:12px;color:#ef4444;margin-bottom:8px;display:none;"></div>';
-    html += '<button onclick="_ptnrLaunchStripeOnboarding()" style="width:100%;background:linear-gradient(135deg,#635BFF,#8B5CF6);color:#fff;border:none;border-radius:12px;padding:13px;font-size:14px;font-weight:800;cursor:pointer;letter-spacing:.5px;"><i class="fa-brands fa-stripe" style="margin-right:8px;"></i>CONTINUER AVEC STRIPE</button>';
-    html += '<div style="font-size:10px;color:#444;margin-top:8px;text-align:center;">Connexion sécurisée — FA GENESIS ne stocke aucune donnée bancaire</div>';
-  } else {
-    // Pending ou requires_info → proposer un nouveau lien
-    html += '<div style="font-size:12px;color:#aaa;line-height:1.5;margin-bottom:12px;">';
-    if(statusLabel==='requires_info') html += 'Des informations complémentaires sont nécessaires pour activer vos paiements.';
-    else html += 'Votre compte est en cours de vérification par Stripe. Complétez votre profil si ce n\'est pas encore fait.';
-    html += '</div>';
-    html += '<button onclick="_ptnrRefreshStripeLink()" style="width:100%;background:linear-gradient(135deg,#635BFF,#8B5CF6);color:#fff;border:none;border-radius:12px;padding:12px;font-size:13px;font-weight:800;cursor:pointer;"><i class="fa-solid fa-arrow-up-right-from-square" style="margin-right:6px;"></i>REPRENDRE LA CONFIGURATION</button>';
-  }
-
-  html += '</div>';
-  el.innerHTML = html;
-  // Pré-sélectionner le pays et les noms depuis le profil du prestataire
-  var _ps = _ptnrSession || {};
-  var _pc = (_ps.country || 'FR').toUpperCase();
-  var _selP = document.getElementById('ptnr-stripe-country');
-  var _selE = document.getElementById('ptnr-stripe-country-ent');
-  if(_selP && _selP.querySelector('option[value="'+_pc+'"]')){ _selP.value = _pc; }
-  if(_selE && _selE.querySelector('option[value="'+_pc+'"]')){ _selE.value = _pc; }
-  var _inPrenom = document.getElementById('ptnr-stripe-prenom');
-  var _inNom    = document.getElementById('ptnr-stripe-nom');
-  if(_inPrenom && _ps.prenom) _inPrenom.value = _ps.prenom;
-  if(_inNom    && _ps.nom)    _inNom.value    = _ps.nom;
-}
-
-var _ptnrStripeEntityType = 'particulier';
-function _ptnrSelectEntityType(type){
-  _ptnrStripeEntityType = type;
-  var fP = document.getElementById('ptnr-et-form-particulier');
-  var fE = document.getElementById('ptnr-et-form-entreprise');
-  var bP = document.getElementById('ptnr-et-particulier');
-  var bE = document.getElementById('ptnr-et-entreprise');
-  if(fP) fP.style.display = type==='particulier' ? 'block' : 'none';
-  if(fE) fE.style.display = type==='entreprise'  ? 'block' : 'none';
-  var activeStyle = 'border:1.5px solid #FFD700;background:#1a1200;color:#FFD700;';
-  var inactStyle  = 'border:1.5px solid #333;background:#111;color:#888;';
-  if(bP) bP.style.cssText += type==='particulier' ? activeStyle : inactStyle;
-  if(bE) bE.style.cssText += type==='entreprise'  ? activeStyle : inactStyle;
-}
-
-function _ptnrLaunchStripeOnboarding(){
-  var errEl = document.getElementById('ptnr-stripe-err');
-  if(errEl){ errEl.style.display='none'; errEl.textContent=''; }
-  var body = { entityType: _ptnrStripeEntityType };
-  if(_ptnrStripeEntityType === 'particulier'){
-    body.prenom  = ((document.getElementById('ptnr-stripe-prenom')||{}).value||'').trim();
-    body.nom     = ((document.getElementById('ptnr-stripe-nom')||{}).value||'').trim();
-    body.country = ((document.getElementById('ptnr-stripe-country')||{}).value)||'FR';
-    if(!body.prenom||!body.nom){ if(errEl){errEl.textContent='Prénom et nom requis.';errEl.style.display='block';} return; }
-  } else {
-    body.raisonSociale      = ((document.getElementById('ptnr-stripe-raison')||{}).value||'').trim();
-    body.registrationNumber = ((document.getElementById('ptnr-stripe-reg')||{}).value||'').trim();
-    body.representantPrenom = ((document.getElementById('ptnr-stripe-rep-prenom')||{}).value||'').trim();
-    body.representantNom    = ((document.getElementById('ptnr-stripe-rep-nom')||{}).value||'').trim();
-    body.country            = ((document.getElementById('ptnr-stripe-country-ent')||{}).value)||'FR';
-    if(!body.raisonSociale){ if(errEl){errEl.textContent='Raison sociale requise.';errEl.style.display='block';} return; }
-  }
-  var btn = document.querySelector('#ptnr-stripe-setup button[onclick="_ptnrLaunchStripeOnboarding()"]');
-  if(btn){ btn.disabled=true; btn.textContent='Connexion à Stripe…'; }
-  fetch((window.FA_GENESIS_API||API)+'/api/partner/stripe/setup',{
-    method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+(_ptnrToken||'')},
-    body:JSON.stringify(body)
-  }).then(function(r){ return r.json(); }).then(function(d){
-    if(d.ok && d.url){ window.location.href = d.url; }
-    else { if(errEl){errEl.textContent=d.error||'Erreur. Réessayez.';errEl.style.display='block';} if(btn){btn.disabled=false;btn.textContent='CONTINUER AVEC STRIPE';} }
-  }).catch(function(){ if(errEl){errEl.textContent='Erreur réseau.';errEl.style.display='block';} if(btn){btn.disabled=false;btn.textContent='CONTINUER AVEC STRIPE';} });
-}
-
-function _ptnrRefreshStripeLink(){
-  var btn = event && event.target;
-  if(btn){ btn.disabled=true; btn.textContent='Chargement…'; }
-  fetch((window.FA_GENESIS_API||API)+'/api/partner/stripe/onboarding-link',{headers:{'Authorization':'Bearer '+(_ptnrToken||'')}})
-  .then(function(r){ return r.json(); }).then(function(d){
-    if(d.ok && d.url) window.location.href = d.url;
-    else if(btn){ btn.disabled=false; btn.textContent='REPRENDRE LA CONFIGURATION'; }
-  }).catch(function(){ if(btn){ btn.disabled=false; btn.textContent='REPRENDRE LA CONFIGURATION'; } });
-}
-
-function _ptnrSetStripeSchedule(interval){
-  fetch((window.FA_GENESIS_API||API)+'/api/partner/stripe/payout-schedule',{
-    method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+(_ptnrToken||'')},
-    body:JSON.stringify({interval:interval})
-  }).then(function(r){ return r.json(); }).then(function(d){
-    if(d.ok){ var t = {daily:'Versements quotidiens activés',weekly:'Versements hebdomadaires activés',monthly:'Versements mensuels activés'}[interval]; showToast(t||'Mis à jour','','success'); }
-  });
-}
 
 // ── Versements (répartition automatique des revenus) ──
 function _ptnrLoadVersements(){
-  var stripeEl= document.getElementById('ptnr-stripe-setup');
-  var listEl  = document.getElementById('ptnr-versements-list');
-  if(stripeEl) stripeEl.innerHTML = _skeletonRows(1);
-  if(listEl)  listEl.innerHTML  = '';
-  _loadStripeSetup();
+  var listEl = document.getElementById('ptnr-versements-list');
+  if(listEl) listEl.innerHTML = '';
 
   _ptnrFetch('/api/partner/payouts').then(function(data){
     var payouts = data.payouts || [];
@@ -16784,7 +16445,7 @@ function _ptnrLoadVersements(){
       listHtml += '</div>';
       listHtml += '<div style="font-size:20px;color:'+statusColor+';font-weight:800;">'+p.amount.toFixed(2)+' €</div>';
       listHtml += '</div>';
-      if(p.payout_method==='pending') listHtml += '<div style="font-size:11px;color:#f44336;margin-top:8px;border-top:1px solid #1e1e1e;padding-top:8px;">Configurez votre compte Stripe ci-dessus pour recevoir ce versement automatiquement.</div>';
+      if(p.payout_method==='pending') listHtml += '<div style="font-size:11px;color:#f44336;margin-top:8px;border-top:1px solid #1e1e1e;padding-top:8px;">Ce versement sera crédité sur votre Wallet GENESIS dès validation de la mission.</div>';
       if(p.payout_method==='bank_transfer' && p.status==='pending') listHtml += '<div style="font-size:11px;color:#999;margin-top:8px;border-top:1px solid #1e1e1e;padding-top:8px;"><i class="fa-solid fa-circle-info"></i> Virement en cours de traitement par notre équipe.</div>';
       if(p.status==='on_hold') listHtml += '<div style="font-size:11px;color:#ff9800;margin-top:8px;border-top:1px solid #1e1e1e;padding-top:8px;"><i class="fa-solid fa-circle-pause"></i> Versement en attente — litige en cours sur cette mission.</div>';
       if(p.dispatch_id) listHtml += '<div style="margin-top:8px;border-top:1px solid #1e1e1e;padding-top:8px;"><button onclick="_openDisputeForm(\''+p.dispatch_id+'\')" style="background:none;border:1px solid #333;color:#999;border-radius:8px;padding:6px 10px;font-size:11px;cursor:pointer;"><i class="fa-solid fa-triangle-exclamation"></i> Signaler un problème</button></div>';
@@ -17528,7 +17189,7 @@ function _ptnrLoadProfil(){
     +pli('<i class="fa-solid fa-calendar-days"></i>',     '#0a1a0a','Mes séances',          null,"_ptnrNav('seances')")
     +pli('<i class="fa-solid fa-comment-dots"></i>',      '#0d1a1a','Messages clients',     null,"_ptnrNav('messages')")
     +pli('<i class="fa-solid fa-bolt"></i>',              '#1a0a00','Mes missions',         null,"_ptnrNav('missions')")
-    +pli('<i class="fa-solid fa-wallet"></i>',            '#001a0a','Portefeuille GENESIS SAFE™',null,"_ptnrNav('versements')")
+    +pli('<i class="fa-solid fa-wallet"></i>',            '#001a0a','Mon Wallet GENESIS',null,"_ptnrNav('versements')")
     +pli('<i class="fa-solid fa-trophy"></i>',            '#1a1400','Mes badges',           null,"_ptnrNav('reputation')")
     +pli('<i class="fa-solid fa-medal"></i>',             '#1a0a14','Mon palmarès',         null,"_ptnrNav('palmares')")
     +pli('<i class="fa-solid fa-tag"></i>',               '#1a0014','Mes promotions',       null,"_ptnrNav('promotions')")
