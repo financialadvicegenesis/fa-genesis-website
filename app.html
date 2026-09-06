@@ -3490,6 +3490,7 @@ function showApp(){
           if(typeof nav==='function') nav('profil');
           setTimeout(function(){ if(typeof showClientWallet==='function') showClientWallet(); }, 600);
         }, 3000);
+      setTimeout(function(){ if(typeof loadStatusCard==='function') loadStatusCard(); }, 1000);
       }, 800);
     }
   } catch(e){}
@@ -3507,7 +3508,7 @@ var _tabLoadedAt = {}; // timestamp (ms) du dernier chargement par onglet
 var _TAB_TTL = { prestataires: 5 * 60 * 1000, explorer: 5 * 60 * 1000 }; // 5 min TTL
 function _loadTab(tab){
   // Onglets sans données dynamiques ou déjà gérés par nav()
-  var always = { reservations:1, messages:1, 'mes-contrats':1 }; // toujours rafraîchis
+  var always = { reservations:1, messages:1, 'mes-contrats':1, home:1 }; // toujours rafraîchis
   var ttl = _TAB_TTL[tab];
   var stale = ttl && _tabLoadedAt[tab] && (Date.now() - _tabLoadedAt[tab] > ttl);
   if(_tabLoaded[tab] && !always[tab] && !stale) return;
@@ -3518,6 +3519,7 @@ function _loadTab(tab){
   else if(tab === 'explorer') renderExplorer();
   else if(tab === 'reservations') renderResaTab();
   else if(tab === 'messages') renderMsgTab();
+  else if(tab === 'home') { if(typeof loadStatusCard==='function') loadStatusCard(); }
   else if(tab === 'profil') renderProfil();
   else if(tab === 'mes-contrats') renderMesContrats();
 }
@@ -3538,6 +3540,7 @@ function initApp(){
     loadNotifInbox();
     if(!window._notifPollStarted){ window._notifPollStarted = true; setInterval(loadNotifInbox, 120000); }
     if(!window._qgPollStarted){ window._qgPollStarted = true; setInterval(function(){ if(typeof _syncUserBadge==='function' && USER && !GUEST) _syncUserBadge(); }, 30000); }
+    if(!window._statusCardPollStarted){ window._statusCardPollStarted = true; setInterval(function(){ if(typeof loadStatusCard==='function' && USER && !GUEST) loadStatusCard(); }, 30000); }
     setTimeout(function(){
       if(typeof Notification!=='undefined' && Notification.permission==='default' && !sessionStorage.getItem('na')){
         openNotifModal(); sessionStorage.setItem('na','1');
