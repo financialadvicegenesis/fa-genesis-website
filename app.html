@@ -15959,6 +15959,8 @@ function _ptnrRenderMissionsList(){
   }
 
   if(el) el.innerHTML = html;
+  // Charger les livrables pour chaque mission signée affichée
+  filteredEngaged.forEach(function(r){ if(r.order_id) _ptnrLoadOrderLivrables(r.order_id); });
   var needsActionCount = items.filter(function(r){ return r.status === 'pending' || r.status === 'accepted'; }).length
     + (_ptnrPendingDispatchesCache || []).length;
   _setBadgeMissions(needsActionCount);
@@ -16131,11 +16133,25 @@ function _ptnrRenderEngagedMissionCard(r){
     +(r.client_validated
       ? '<div style="margin-top:8px;font-size:11px;color:#22c55e;font-weight:800;"><i class="fa-solid fa-check-circle"></i> Prestation validée par le client</div>'
       : '')
-    +(r.dispatch_id && (statusKey==='in_progress' || statusKey==='delivering')
+    +(r.order_id && r.status==='signed' && !r.client_validated
       ? '<div style="margin-top:10px;border-top:1px solid #222;padding-top:10px;">'
-        +'<label style="font-size:12px;color:#888;display:block;margin-bottom:6px;"><i class="fa-solid fa-image" style="color:#FFD700;margin-right:4px;"></i>Ajouter une photo au livrable</label>'
-        +'<input type="file" accept="image/*" id="photo-inp-'+r.dispatch_id+'" style="display:none" onchange="_ptnrUploadLivrablePhoto(\''+r.dispatch_id+'\',this)">'
-        +'<button class="ptnr-btn-outline" onclick="document.getElementById(\'photo-inp-'+r.dispatch_id+'\').click()" style="font-size:12px;padding:7px 14px;"><i class="fa-solid fa-camera"></i> Choisir une photo</button>'
+        +'<div style="font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px"><i class="fa-solid fa-box-open"></i> Livrables</div>'
+        +'<div id="ptnr-livs-'+r.order_id+'"><div style="font-size:12px;color:#555;font-style:italic">Chargement…</div></div>'
+        +'<div id="ptnr-livform-'+r.order_id+'" style="display:none;margin-top:8px">'
+          +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px">'
+            +'<button id="ptnrlivt-'+r.order_id+'-link" onclick="_ptnrSetLivType(\''+r.order_id+'\',\'link\')" style="padding:8px;border:1px solid #333;border-radius:8px;background:transparent;color:#ccc;cursor:pointer;font-size:12px"><i class="fa-solid fa-link"></i> Lien</button>'
+            +'<button id="ptnrlivt-'+r.order_id+'-file" onclick="_ptnrSetLivType(\''+r.order_id+'\',\'file\')" style="padding:8px;border:1px solid #333;border-radius:8px;background:transparent;color:#ccc;cursor:pointer;font-size:12px"><i class="fa-solid fa-file-arrow-up"></i> Fichier</button>'
+            +'<button id="ptnrlivt-'+r.order_id+'-text" onclick="_ptnrSetLivType(\''+r.order_id+'\',\'text\')" style="padding:8px;border:1px solid #333;border-radius:8px;background:transparent;color:#ccc;cursor:pointer;font-size:12px"><i class="fa-solid fa-align-left"></i> Texte</button>'
+            +'<button id="ptnrlivt-'+r.order_id+'-video" onclick="_ptnrSetLivType(\''+r.order_id+'\',\'video\')" style="padding:8px;border:1px solid #333;border-radius:8px;background:transparent;color:#ccc;cursor:pointer;font-size:12px"><i class="fa-solid fa-video"></i> Vidéo</button>'
+          +'</div>'
+          +'<input id="ptnrlivtitle-'+r.order_id+'" placeholder="Titre du livrable…" style="width:100%;padding:9px 12px;border:1px solid #333;border-radius:8px;background:#111;color:#fff;font-size:13px;box-sizing:border-box;margin-bottom:6px">'
+          +'<div id="ptnrlivfields-'+r.order_id+'"><input id="ptnrlivurl-'+r.order_id+'" placeholder="URL (https://…)" style="width:100%;padding:9px 12px;border:1px solid #333;border-radius:8px;background:#111;color:#fff;font-size:13px;box-sizing:border-box"></div>'
+          +'<div style="display:flex;gap:8px;margin-top:8px">'
+            +'<button onclick="_ptnrSubmitPtnrLiv(\''+r.order_id+'\')" style="flex:1;padding:10px;background:#FFD700;color:#000;border:none;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer"><i class="fa-solid fa-plus"></i> Ajouter</button>'
+            +'<button onclick="document.getElementById(\'ptnr-livform-'+r.order_id+'\').style.display=\'none\'" style="padding:10px 14px;border:1px solid #333;border-radius:10px;background:transparent;color:#888;cursor:pointer;font-size:13px"><i class="fa-solid fa-xmark"></i></button>'
+          +'</div>'
+        +'</div>'
+        +'<button onclick="_ptnrTogglePtnrLivForm(\''+r.order_id+'\')" style="margin-top:8px;width:100%;padding:9px;border:1px dashed #FFD700;border-radius:10px;background:transparent;color:#FFD700;cursor:pointer;font-size:12px;font-weight:600"><i class="fa-solid fa-plus"></i> Déposer un livrable</button>'
         +'</div>'
       : '')
     +'</div>';
@@ -16157,6 +16173,117 @@ function _ptnrUploadLivrablePhoto(dispatchId, inp){
       }).catch(function(){ inp.disabled = false; showToast('Erreur de connexion','Réessayez','error'); });
   }).catch(function(){ inp.disabled = false; showToast('Erreur','Impossible de lire la photo','error'); });
 }
+// ── Livrables multi-types pour le partenaire ─────────────────────────────────
+var _ptnrLivTypeState = {};
+
+function _ptnrLoadOrderLivrables(oid){
+  var container = document.getElementById('ptnr-livs-'+oid);
+  if(!container) return;
+  _ptnrFetch('/api/partner/projects/'+oid+'/livrables').then(function(data){
+    var livs = (data && data.livrables) || [];
+    if(!livs.length){ container.innerHTML = '<div style="font-size:12px;color:#555;font-style:italic">Aucun livrable déposé.</div>'; return; }
+    var icons = {link:'fa-link',file:'fa-file-arrow-up',text:'fa-align-left',video:'fa-video'};
+    container.innerHTML = livs.map(function(l){
+      var isPublished = l.workflow_status==='PUBLISHED';
+      var ico = icons[l.livrable_type]||'fa-file';
+      var urlVal = l.content_url||l.file_url||'';
+      return '<div style="display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid #1c1c1c">'
+        +'<i class="fa-solid '+ico+'" style="color:#FFD700;margin-top:2px;flex-shrink:0;font-size:13px"></i>'
+        +'<div style="flex:1;min-width:0">'
+          +'<div style="font-size:13px;font-weight:600;color:#fff">'+_escHtml(l.title||'Sans titre')+'</div>'
+          +(l.livrable_type==='text'&&l.content_text ? '<div style="font-size:11px;color:#888;white-space:pre-wrap;margin-top:2px;max-height:50px;overflow:hidden">'+_escHtml(l.content_text)+'</div>' : '')
+          +(urlVal&&l.livrable_type!=='text' ? '<a href="'+_escHtml(urlVal)+'" target="_blank" style="font-size:11px;color:#60a5fa;word-break:break-all">'+_escHtml(urlVal.length>45?urlVal.slice(0,45)+'…':urlVal)+'</a>' : '')
+          +(l.livrable_type==='file'&&l.file_url ? '<a href="'+_escHtml(l.file_url)+'" download="'+(l.file_name||'fichier')+'" style="font-size:11px;color:#60a5fa"><i class="fa-solid fa-download"></i> '+_escHtml(l.file_name||'Télécharger')+'</a>' : '')
+          +'<div style="margin-top:3px"><span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:6px;'+(isPublished?'background:rgba(34,197,94,.15);color:#22c55e':'background:rgba(255,215,0,.1);color:#FFD700')+';">'+(isPublished?'Publié':'Brouillon')+'</span></div>'
+        +'</div>'
+        +(!isPublished ? '<button onclick="_ptnrPublishPtnrLiv(\''+l.id+'\',\''+oid+'\')" style="flex-shrink:0;border:none;background:rgba(34,197,94,.12);color:#22c55e;border-radius:7px;padding:5px 9px;font-size:11px;cursor:pointer;font-weight:700"><i class="fa-solid fa-paper-plane"></i></button>' : '')
+        +(!isPublished ? '<button onclick="_ptnrDeletePtnrLiv(\''+l.id+'\',\''+oid+'\')" style="flex-shrink:0;border:none;background:transparent;color:#555;padding:5px 7px;font-size:12px;cursor:pointer;margin-left:2px"><i class="fa-solid fa-trash"></i></button>' : '')
+        +'</div>';
+    }).join('');
+  }).catch(function(){ container.innerHTML = '<div style="font-size:12px;color:#555">Erreur de chargement</div>'; });
+}
+function _ptnrTogglePtnrLivForm(oid){
+  var f = document.getElementById('ptnr-livform-'+oid);
+  if(f){ f.style.display = f.style.display==='none'?'block':'none'; }
+}
+function _ptnrSetLivType(oid, type){
+  _ptnrLivTypeState[oid] = type;
+  ['link','file','text','video'].forEach(function(t){
+    var btn = document.getElementById('ptnrlivt-'+oid+'-'+t);
+    if(btn){ btn.style.background=t===type?'rgba(255,215,0,.12)':'transparent'; btn.style.borderColor=t===type?'#FFD700':'#333'; btn.style.color=t===type?'#FFD700':'#ccc'; }
+  });
+  var fields = document.getElementById('ptnrlivfields-'+oid);
+  if(!fields) return;
+  if(type==='link'||type==='video'){
+    fields.innerHTML='<input id="ptnrlivurl-'+oid+'" placeholder="URL (https://…)" style="width:100%;padding:9px 12px;border:1px solid #333;border-radius:8px;background:#111;color:#fff;font-size:13px;box-sizing:border-box">';
+  } else if(type==='text'){
+    fields.innerHTML='<textarea id="ptnrlivtext-'+oid+'" placeholder="Contenu texte, article, copywriting…" rows="4" style="width:100%;padding:9px 12px;border:1px solid #333;border-radius:8px;background:#111;color:#fff;font-size:13px;box-sizing:border-box;resize:vertical"></textarea>';
+  } else if(type==='file'){
+    fields.innerHTML='<input type="file" id="ptnrlivfile-'+oid+'" style="width:100%;padding:8px;border:1px solid #333;border-radius:8px;background:#111;color:#ccc;font-size:12px;box-sizing:border-box">';
+  }
+}
+function _ptnrSubmitPtnrLiv(oid){
+  var type = _ptnrLivTypeState[oid];
+  if(!type){ showToast('Type requis','Choisissez un type de livrable','error'); return; }
+  var titleEl = document.getElementById('ptnrlivtitle-'+oid);
+  var title = titleEl ? titleEl.value.trim() : '';
+  if(!title){ showToast('Titre requis','Donnez un nom à ce livrable','error'); return; }
+  var body = {type:type, title:title};
+  if(type==='link'||type==='video'){
+    var urlEl = document.getElementById('ptnrlivurl-'+oid);
+    var url = urlEl ? urlEl.value.trim() : '';
+    if(!url){ showToast('URL requise','','error'); return; }
+    body.content_url = url;
+    _ptnrDoSubmitLiv(oid, body);
+  } else if(type==='text'){
+    var txtEl = document.getElementById('ptnrlivtext-'+oid);
+    body.content_text = txtEl ? txtEl.value : '';
+    _ptnrDoSubmitLiv(oid, body);
+  } else if(type==='file'){
+    var fileEl = document.getElementById('ptnrlivfile-'+oid);
+    if(!fileEl||!fileEl.files||!fileEl.files[0]){ showToast('Fichier requis','','error'); return; }
+    var file = fileEl.files[0];
+    if(file.size > 5*1024*1024){ showToast('Fichier trop lourd','Maximum 5 Mo','error'); return; }
+    var isImg = file.type.indexOf('image/')===0;
+    if(isImg){
+      showToast('Compression…','Image en cours de traitement','info');
+      _ptnrImageFileToCompressedBase64(file, 1600, 0.85).then(function(dataUrl){
+        body.file_data=dataUrl; body.file_mime=file.type; body.file_name=file.name;
+        _ptnrDoSubmitLiv(oid, body);
+      }).catch(function(){ showToast('Erreur','Impossible de lire l\'image','error'); });
+    } else {
+      var reader = new FileReader();
+      reader.onload = function(ev){ body.file_data=ev.target.result; body.file_mime=file.type; body.file_name=file.name; _ptnrDoSubmitLiv(oid, body); };
+      reader.readAsDataURL(file);
+    }
+  }
+}
+function _ptnrDoSubmitLiv(oid, body){
+  _ptnrFetch('/api/partner/projects/'+oid+'/livrables','POST',body).then(function(res){
+    if(res&&res.error){ showToast('Erreur',res.error,'error'); return; }
+    showToast('Livrable ajouté ✓','','success');
+    var f = document.getElementById('ptnr-livform-'+oid);
+    if(f) f.style.display='none';
+    _ptnrLoadOrderLivrables(oid);
+  }).catch(function(){ showToast('Erreur de connexion','Réessayez','error'); });
+}
+function _ptnrPublishPtnrLiv(livId, oid){
+  if(!confirm('Publier ce livrable ? Le client sera notifié.')) return;
+  _ptnrFetch('/api/partner/livrables/'+livId+'/publish','POST',{}).then(function(res){
+    if(res&&res.error){ showToast('Erreur',res.error,'error'); return; }
+    showToast('Livrable publié','Client notifié ✓','success');
+    _ptnrLoadOrderLivrables(oid);
+  }).catch(function(){ showToast('Erreur de connexion','Réessayez','error'); });
+}
+function _ptnrDeletePtnrLiv(livId, oid){
+  if(!confirm('Supprimer ce brouillon ?')) return;
+  _ptnrFetch('/api/partner/livrables/'+livId,'DELETE',null).then(function(res){
+    if(res&&res.error){ showToast('Erreur',res.error,'error'); return; }
+    showToast('Supprimé','','success');
+    _ptnrLoadOrderLivrables(oid);
+  }).catch(function(){ showToast('Erreur de connexion','Réessayez','error'); });
+}
+
 function _ptnrSubmitRevision(livrableId, requestId){
   if(!livrableId){ showToast('Erreur','Livrable introuvable','error'); return; }
   var noteEl = document.getElementById('rev-reply-'+requestId);
