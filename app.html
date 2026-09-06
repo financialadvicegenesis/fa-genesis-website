@@ -10997,12 +10997,12 @@ function showClientWallet(){
             withdrawBtn='<button onclick="_requestWalletWithdrawal(\''+o.order_id+'\',\''+o.partner_name.replace(/'/g,'&#39;')+'\','+o.held_amount+')" style="margin-top:10px;width:100%;background:linear-gradient(135deg,#7b1010,#b71c1c);border:none;border-radius:10px;padding:10px 14px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">'
               +'<i class="fa-solid fa-rotate-left"></i> Retirer mon argent</button>';
           }
+          var jsOid=o.order_id.replace(/'/g,'\\\'');
           var cancelRefundBtn='';
           if(o.can_cancel_refund){
             cancelRefundBtn='<button onclick="_cancelAndRefund(\''+jsOid+'\')" style="margin-top:8px;width:100%;background:transparent;border:1.5px solid #7f1d1d;border-radius:10px;padding:10px 14px;color:#f87171;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">'
               +'<i class="fa-solid fa-xmark"></i> Annuler — remboursé sur votre carte</button>';
           }
-          var jsOid=o.order_id.replace(/'/g,'\\\'');
           var jsSlabel=(o.service_label||'Prestation').replace(/'/g,'\\\'');
           var jsPid=(o.partner_id||'').replace(/'/g,'\\\'');
           var balBtn=o.balance_due
