@@ -3479,6 +3479,7 @@ function showApp(){
       // Retour après redirection Stripe (3DS, virement bancaire, etc.)
       window.history.replaceState(null, '', window.location.pathname);
       localStorage.setItem('_fa_recent_payment', String(Date.now()));
+      try{ if(localStorage.getItem('_fa_cart_payment_pending')){ localStorage.removeItem('_fa_cart_payment_pending'); APP_CART=[]; _saveCart(); } }catch(e){}
       setTimeout(function(){
         if(typeof launchConfetti==='function') launchConfetti();
         if(typeof showToast==='function'){
@@ -12305,8 +12306,10 @@ function _cartConfirmStripePayment(){
   if(!_stripeCartElements||!_stripeCartInstance) return;
   var btn = document.getElementById('stripe-cart-pay-btn');
   if(btn){ btn.disabled=true; btn.textContent='Traitement…'; }
-  _stripeCartInstance.confirmPayment({ elements: _stripeCartElements, redirect: 'if_required', confirmParams: { return_url: window.location.href } })
+  try{ localStorage.setItem('_fa_cart_payment_pending','1'); }catch(e){}
+  _stripeCartInstance.confirmPayment({ elements: _stripeCartElements, redirect: 'if_required', confirmParams: { return_url: window.location.origin+'/app.html?stripe_payment=1' } })
   .then(function(result){
+    try{ localStorage.removeItem('_fa_cart_payment_pending'); }catch(e){}
     if(result.error){
       if(btn){ btn.disabled=false; var al=(_payInstallmentAmount>0?_payInstallmentAmount:_payTotal).toFixed(2); btn.textContent='PAYER L\'ACOMPTE '+al+' € →'; }
       _showPayError(result.error.message);
