@@ -9079,7 +9079,10 @@ function _rvSubmit(){
   }).then(function(r){ return r.json(); }).then(function(d){
     btn.disabled = false;
     document.getElementById('review-overlay').className = '';
-    if(d && d.client_qg_gain) showToast('+'+d.client_qg_gain+' QG', 'Merci pour votre avis', 'success');
+    if(d && d.client_qg_gain){
+      showToast('+'+d.client_qg_gain+' QG', 'Merci pour votre avis', 'success');
+      setTimeout(function(){ if(typeof _refreshClientQG==='function') _refreshClientQG(); }, 1500);
+    }
     _rvShowNext();
   }).catch(function(){
     btn.disabled = false;
@@ -12313,7 +12316,7 @@ function _cartConfirmStripePayment(){
       var ws=document.getElementById('pay-screen-widget'); if(ws) ws.style.display='none';
       var succ=document.getElementById('pay-success'); if(succ) succ.style.display='';
       launchConfetti(); showToast('Paiement réussi !','Votre commande est confirmée','success');
-      setTimeout(function(){ showToast('+20 QG','Mission lancée !','success'); },1600);
+      setTimeout(function(){ showToast('Mission lancée !','Votre prestataire va être notifié.','success'); },1600);
       if(_payReferralDiscountUsed){ _payReferralDiscountUsed=false; fetch((window.FA_GENESIS_API||API)+'/api/auth/referral-discount/mark-used',{method:'POST',headers:{'Authorization':'Bearer '+(USER&&USER._token?USER._token:'')}}).catch(function(){}); }
     }
   }).catch(function(e){
@@ -14411,7 +14414,7 @@ async function _pbConfirmStripePayment(){
       var sm=document.getElementById('pb-success-msg');
       if(sm) sm.textContent = 'Paiement confirmé ! Votre paiement est sécurisé par GENESIS SAFE™. Les fonds seront versés au prestataire à la livraison. Retrouvez votre contrat dans "Mes contrats".';
       launchConfetti(); showToast('Paiement sécurisé !','Protégé par GENESIS SAFE™','success');
-      setTimeout(function(){ showToast('+20 QG','Mission lancée !','success'); }, 1600);
+      setTimeout(function(){ showToast('Mission lancée !','Votre prestataire va être notifié.','success'); }, 1600);
       setTimeout(function(){ showToast('Contrat disponible','Téléchargez votre contrat dans "Mes contrats"','info'); }, 3200);
       localStorage.setItem('_fa_recent_payment', String(Date.now()));
       // Fallback webhook : synchroniser deposit_paid côté serveur
@@ -16222,6 +16225,7 @@ function _clientValidateDelivery(orderId, requestId, btn){
       if(res && res.success){
         showToast('Merci pour votre avis !','Votre confirmation de satisfaction a bien été enregistrée.','success');
         setTimeout(function(){ showToast('+20 QG','Mission accomplie !','success'); }, 1400);
+        setTimeout(function(){ if(typeof _refreshClientQG==='function') _refreshClientQG(); }, 2000);
         haptic([50,30,100]);
         _cliLoadOrders && _cliLoadOrders();
         _loadMyRequests && _loadMyRequests();
