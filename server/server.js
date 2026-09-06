@@ -6568,7 +6568,9 @@ function computeMissionDisplayStatus(request, dispatch, order, livrables, hasRev
     }
     if (dispatch) {
         if (dispatch.status === 'pending_acceptance') return { key: 'pending_acceptance', label: 'En attente d\'acceptation', emoji: '⏳' };
-        return dispatch.mission_status === 'delivering' ? MISSION_STATUS_META.delivering : MISSION_STATUS_META.in_progress;
+        // 'delivered' = partenaire a cliqué "Prestation terminée" → client voit "Livraison en cours"
+        if (dispatch.mission_status === 'delivering' || dispatch.mission_status === 'delivered') return MISSION_STATUS_META.delivering;
+        return MISSION_STATUS_META.in_progress;
     }
     if (request && (request.status === 'accepted' || request.status === 'proposed' || request.status === 'signed')) {
         return MISSION_STATUS_META.accepted;

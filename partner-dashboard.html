@@ -547,27 +547,20 @@ function dispatchCard(d){
 function projectCard(p){
   var order = p.order || {};
   var orderId = order.id || '';
-  var st = order.status||'in_progress';
   var isCompleted   = order.partner_completed === true;
   var isValidated   = order.client_validated  === true;
   var isBalancePaid = order.balance_paid       === true;
   var autoRelease   = order.auto_payment_release_at || null;
 
-  var statusLabel = {
-    confirmed:'Confirmé', in_progress:'En cours', active:'En cours',
-    delivery:'Livraison', pending_client_validation:'Validation client',
-    completed:'Terminé', done:'Terminé'
-  };
-  var pillCls = {
-    confirmed:'blue', in_progress:'blue', active:'blue',
-    delivery:'purple', pending_client_validation:'yellow',
-    completed:'green', done:'green'
-  };
-  var progress = {
-    confirmed:35, in_progress:60, active:60, delivery:80,
-    pending_client_validation:90, completed:100, done:100
-  };
-  var pct = progress[st]||40;
+  // Étapes basées sur les signaux réels (order.status manque de granularité)
+  var pct, stLabel, stPill;
+  if(isValidated || isBalancePaid){
+    pct=100; stLabel='Terminé'; stPill='green';
+  } else if(isCompleted){
+    pct=90; stLabel='Validation client'; stPill='yellow';
+  } else {
+    pct=60; stLabel='En préparation'; stPill='blue';
+  }
 
   // Calcul jours restants avant auto-release
   var daysLeft = null;
@@ -583,7 +576,7 @@ function projectCard(p){
     +'<div class="card-title">'+esc(order.product_name||'Projet')+'</div>'
     +'<div class="card-sub">'+(order.client_name?esc(order.client_name)+' · ':'')+'Démarré le '+fmt(order.start_date||order.created_at)+'</div>'
     +'<div style="margin-top:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
-    +'<span class="pill pill-'+(pillCls[st]||'blue')+'">'+(statusLabel[st]||'En cours')+'</span>';
+    +'<span class="pill pill-'+stPill+'">'+stLabel+'</span>';
 
   if(isCompleted && !isValidated && daysLeft !== null){
     html += '<span style="font-size:11px;color:#fbbf24;font-weight:700">'
@@ -594,7 +587,12 @@ function projectCard(p){
   }
 
   html += '</div></div></div>'
-    +'<div class="mission-status-bar"><div class="mission-status-fill" style="width:'+pct+'%"></div></div>';
+    +'<div class="mission-status-bar"><div class="mission-status-fill" style="width:'+pct+'%"></div></div>'
+    +'<div style="display:flex;justify-content:space-between;margin-top:4px;font-size:10px;color:var(--muted)">'
+    +'<span style="'+(pct>=60?'color:var(--gold);font-weight:700':'')+'">En préparation</span>'
+    +'<span style="'+(pct>=90?'color:var(--gold);font-weight:700':'')+'">Validation</span>'
+    +'<span style="'+(pct>=100?'color:#22c55e;font-weight:700':'')+'">Terminé</span>'
+    +'</div>';
 
   // Bouton "Prestation terminée" — visible uniquement si pas encore déclaré terminé
   if(!isCompleted && !isBalancePaid && orderId){
