@@ -4089,8 +4089,10 @@ app.post('/api/orders/:orderId/cancel-refund', async function(req, res) {
         // le client peut refuser → remboursement autorisé même si des livrables existent.
         var partnerDone = !!(order.partner_completed || order.delivery_confirmed || (dispatch && (dispatch.mission_status === 'delivered' || dispatch.mission_status === 'delivering')));
         var pendingClientValidation = !!(partnerDone && !order.client_validated && !order.balance_paid);
+        var validatedPendingPayout = !!(order.client_validated && !order.partner_paid_out && !order.balance_paid);
         var hasDelivery = loadLivrables().some(function(l) { return l.order_id === orderId && l.type !== 'contract'; });
-        if (hasDelivery && !pendingClientValidation) {
+        // Autoriser si livraison reçue (pendingClientValidation) OU validée mais virement pas encore déclenché
+        if (hasDelivery && !pendingClientValidation && !validatedPendingPayout) {
             return res.status(400).json({ error: 'Une livraison a déjà été soumise. Ouvrez un litige si nécessaire.' });
         }
 
