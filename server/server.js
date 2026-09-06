@@ -14863,6 +14863,117 @@ app.get('/api/partner/projects', authenticatePartner, (req, res) => {
 });
 
 // ============================================================
+//  LIVRABLES PARTENAIRE — dépôt de livrables sur une commande
+// ============================================================
+
+// GET /api/partner/projects/:orderId/livrables
+app.get('/api/partner/projects/:orderId/livrables', authenticatePartner, function(req, res) {
+    try {
+        var orderId = req.params.orderId;
+        var partnerId = req.partner.id;
+        var assignments = loadPartnerAssignments();
+        var asgn = assignments.find(function(a) { return a.order_id === orderId && a.partner_id === partnerId && a.status === 'active'; });
+        var allDisps = loadDispatches();
+        var disp = allDisps.find(function(d) { return d.order_id === orderId && (d.partner_id === partnerId || d.claimed_by_partner_id === partnerId) && d.status !== 'cancelled'; });
+        if (!asgn && !disp) return res.status(403).json({ error: 'Non autorisé' });
+        var livs = loadLivrables().filter(function(l) { return l.order_id === orderId && l.type !== 'contract'; });
+        res.json({ livrables: livs });
+    } catch(e) { res.status(500).json({ error: 'Erreur serveur' }); }
+});
+
+// POST /api/partner/projects/:orderId/livrables — créer un livrable (lien/fichier/texte/vidéo)
+app.post('/api/partner/projects/:orderId/livrables', authenticatePartner, function(req, res) {
+    try {
+        var orderId = req.params.orderId;
+        var partnerId = req.partner.id;
+        var type = (req.body.type || '').toLowerCase(); // link | file | text | video
+        var title = (req.body.title || '').trim();
+        if (!type || !title) return res.status(400).json({ error: 'type et title requis' });
+        if (['link','file','text','video'].indexOf(type) === -1) return res.status(400).json({ error: 'Type invalide' });
+
+        var assignments = loadPartnerAssignments();
+        var asgn = assignments.find(function(a) { return a.order_id === orderId && a.partner_id === partnerId && a.status === 'active'; });
+        var allDisps = loadDispatches();
+        var disp = allDisps.find(function(d) { return d.order_id === orderId && (d.partner_id === partnerId || d.claimed_by_partner_id === partnerId) && d.status !== 'cancelled'; });
+        if (!asgn && !disp) return res.status(403).json({ error: 'Vous n\'êtes pas assigné à cette commande' });
+
+        var order = getOrderById(orderId);
+        if (!order) return res.status(404).json({ error: 'Commande introuvable' });
+        if (order.partner_completed || order.delivery_confirmed) return res.status(400).json({ error: 'La prestation est déjà livrée' });
+
+        var now = new Date().toISOString();
+        var newLiv = ensureLivrableFields({
+            id: 'LIV-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6).toUpperCase(),
+            order_id: orderId,
+            livrable_type: type,
+            title: title,
+            workflow_status: 'PENDING_PARTNER',
+            owner_role: 'partner',
+            owner_partner_id: partnerId,
+            created_at: now,
+            updated_at: now
+        });
+
+        if (type === 'link' || type === 'video') {
+            var url = (req.body.content_url || '').trim();
+            if (!url) return res.status(400).json({ error: 'content_url requis pour ce type' });
+            newLiv.file_url = url; newLiv.download_url = url; newLiv.content_url = url;
+        } else if (type === 'text') {
+            newLiv.content_text = (req.body.content_text || '').trim();
+        } else if (type === 'file') {
+            var fileData = req.body.file_data || '';
+            if (!fileData) return res.status(400).json({ error: 'file_data requis' });
+            newLiv.file_url = fileData; newLiv.download_url = fileData;
+            newLiv.file_mime = req.body.file_mime || 'application/octet-stream';
+            newLiv.file_name = req.body.file_name || 'fichier';
+        }
+
+        var livrables = loadLivrables();
+        livrables.push(newLiv);
+        saveLivrables(livrables);
+        res.json({ ok: true, livrable: newLiv });
+    } catch(e) { console.error('[LIVRABLE-ADD]', e.message); res.status(500).json({ error: 'Erreur serveur' }); }
+});
+
+// POST /api/partner/livrables/:id/publish — publier un livrable et notifier le client
+app.post('/api/partner/livrables/:id/publish', authenticatePartner, function(req, res) {
+    try {
+        var livrables = loadLivrables();
+        var idx = livrables.findIndex(function(l) { return l.id === req.params.id; });
+        if (idx === -1) return res.status(404).json({ error: 'Livrable introuvable' });
+        if (livrables[idx].owner_partner_id !== req.partner.id) return res.status(403).json({ error: 'Non autorisé' });
+        livrables[idx].workflow_status = 'PUBLISHED';
+        livrables[idx].published_at = new Date().toISOString();
+        livrables[idx].updated_at = new Date().toISOString();
+        saveLivrables(livrables);
+        var order = getOrderById(livrables[idx].order_id);
+        if (order) {
+            var clientEmail = order.client_info && order.client_info.email;
+            if (clientEmail) {
+                notifyUser(clientEmail, 'client', 'livrable_published', '📦 Livrable disponible',
+                    'Votre prestataire a mis à disposition "' + livrables[idx].title + '" pour "' + (order.product_name || 'votre prestation') + '".',
+                    '/app.html#tab:reservations');
+            }
+        }
+        res.json({ ok: true });
+    } catch(e) { res.status(500).json({ error: 'Erreur serveur' }); }
+});
+
+// DELETE /api/partner/livrables/:id — supprimer un brouillon
+app.delete('/api/partner/livrables/:id', authenticatePartner, function(req, res) {
+    try {
+        var livrables = loadLivrables();
+        var idx = livrables.findIndex(function(l) { return l.id === req.params.id; });
+        if (idx === -1) return res.status(404).json({ error: 'Livrable introuvable' });
+        if (livrables[idx].owner_partner_id !== req.partner.id) return res.status(403).json({ error: 'Non autorisé' });
+        if (livrables[idx].workflow_status === 'PUBLISHED') return res.status(400).json({ error: 'Un livrable publié ne peut pas être supprimé' });
+        livrables.splice(idx, 1);
+        saveLivrables(livrables);
+        res.json({ ok: true });
+    } catch(e) { res.status(500).json({ error: 'Erreur serveur' }); }
+});
+
+// ============================================================
 //  DISPATCH — Système de missions (course entre partenaires)
 // ============================================================
 

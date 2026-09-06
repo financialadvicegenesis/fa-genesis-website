@@ -544,29 +544,23 @@ function dispatchCard(d){
     +'</div>';
 }
 
-function projectCard(p){
+function projectCard(p, livrables, showLivSection){
   var order = p.order || {};
   var orderId = order.id || '';
   var isCompleted   = order.partner_completed === true;
   var isValidated   = order.client_validated  === true;
   var isBalancePaid = order.balance_paid       === true;
   var autoRelease   = order.auto_payment_release_at || null;
+  var livs = livrables || [];
 
-  // Étapes basées sur les signaux réels (order.status manque de granularité)
   var pct, stLabel, stPill;
-  if(isValidated || isBalancePaid){
-    pct=100; stLabel='Terminé'; stPill='green';
-  } else if(isCompleted){
-    pct=90; stLabel='Validation client'; stPill='yellow';
-  } else {
-    pct=60; stLabel='En préparation'; stPill='blue';
-  }
+  if(isValidated || isBalancePaid){ pct=100; stLabel='Terminé'; stPill='green'; }
+  else if(isCompleted){ pct=90; stLabel='Validation client'; stPill='yellow'; }
+  else { pct=60; stLabel='En préparation'; stPill='blue'; }
 
-  // Calcul jours restants avant auto-release
   var daysLeft = null;
   if(autoRelease && !isValidated && !isBalancePaid){
-    var msLeft = new Date(autoRelease).getTime() - Date.now();
-    daysLeft = Math.max(0, Math.ceil(msLeft / (1000*3600*24)));
+    daysLeft = Math.max(0, Math.ceil((new Date(autoRelease).getTime()-Date.now())/(1000*3600*24)));
   }
 
   var html = '<div class="card">'
@@ -579,8 +573,7 @@ function projectCard(p){
     +'<span class="pill pill-'+stPill+'">'+stLabel+'</span>';
 
   if(isCompleted && !isValidated && daysLeft !== null){
-    html += '<span style="font-size:11px;color:#fbbf24;font-weight:700">'
-          + '<i class="fa-solid fa-clock"></i> Auto-paiement dans '+daysLeft+' j</span>';
+    html += '<span style="font-size:11px;color:#fbbf24;font-weight:700"><i class="fa-solid fa-clock"></i> Auto-paiement dans '+daysLeft+' j</span>';
   }
   if(isValidated || isBalancePaid){
     html += '<span style="font-size:11px;color:#22c55e;font-weight:700"><i class="fa-solid fa-check-circle"></i> Validé</span>';
@@ -594,20 +587,151 @@ function projectCard(p){
     +'<span style="'+(pct>=100?'color:#22c55e;font-weight:700':'')+'">Terminé</span>'
     +'</div>';
 
-  // Bouton "Prestation terminée" — visible uniquement si pas encore déclaré terminé
+  // ── Section livrables (uniquement sur l'onglet Livrables) ──
+  if(showLivSection && !isValidated && !isBalancePaid && orderId){
+    var _livIcons = {link:'fa-link',file:'fa-file-arrow-up',text:'fa-align-left',video:'fa-video'};
+    var _livTypeLabel = {link:'Lien',file:'Fichier',text:'Texte',video:'Vidéo'};
+    html += '<div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px">'
+      +'<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px"><i class="fa-solid fa-box-open"></i> Livrables</div>';
+
+    if(livs.length){
+      livs.forEach(function(l){
+        var isPublished = l.workflow_status === 'PUBLISHED';
+        var typeIcon = _livIcons[l.livrable_type]||'fa-file';
+        var urlVal = l.content_url||l.file_url||'';
+        html += '<div style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">'
+          +'<i class="fa-solid '+typeIcon+'" style="color:var(--gold);margin-top:2px;flex-shrink:0"></i>'
+          +'<div style="flex:1;min-width:0">'
+          +'<div style="font-size:13px;font-weight:600">'+esc(l.title||'Sans titre')+'</div>'
+          +(l.livrable_type==='text' && l.content_text ? '<div style="font-size:11px;color:var(--muted);white-space:pre-wrap;margin-top:2px;max-height:60px;overflow:hidden">'+esc(l.content_text)+'</div>' : '')
+          +(urlVal && l.livrable_type!=='text' ? '<a href="'+esc(urlVal)+'" target="_blank" style="font-size:11px;color:#60a5fa;word-break:break-all">'+esc(urlVal.length>50?urlVal.slice(0,50)+'…':urlVal)+'</a>' : '')
+          +'<div style="margin-top:4px">'
+          +'<span class="pill '+(isPublished?'pill-green':'pill-yellow')+'" style="font-size:10px">'+(isPublished?'Publié':'Brouillon')+'</span>'
+          +'</div></div>'
+          +(!isPublished ? '<button onclick="_publishLivrable(\''+esc(l.id)+'\',\''+esc(orderId)+'\')" style="flex-shrink:0;border:none;background:rgba(34,197,94,.12);color:#22c55e;border-radius:8px;padding:6px 10px;font-size:11px;cursor:pointer;font-weight:700"><i class="fa-solid fa-paper-plane"></i> Publier</button>' : '')
+          +(!isPublished ? '<button onclick="_deleteLivrable(\''+esc(l.id)+'\',\''+esc(orderId)+'\')" style="flex-shrink:0;border:none;background:transparent;color:var(--muted);padding:6px 8px;font-size:13px;cursor:pointer;margin-left:2px"><i class="fa-solid fa-trash"></i></button>' : '')
+          +'</div>';
+      });
+    } else {
+      html += '<div style="font-size:12px;color:var(--muted);font-style:italic">Aucun livrable déposé.</div>';
+    }
+
+    // Formulaire d'ajout (masqué par défaut)
+    if(!isCompleted){
+      html += '<div id="livform-'+orderId+'" style="display:none;margin-top:10px">'
+        +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px">'
+        +'<button onclick="_livSetType(\''+orderId+'\',\'link\')" id="livt-'+orderId+'-link" class="livtype-btn" style="padding:8px;border:1px solid var(--border);border-radius:8px;background:transparent;color:var(--text);cursor:pointer;font-size:12px"><i class="fa-solid fa-link"></i> Lien</button>'
+        +'<button onclick="_livSetType(\''+orderId+'\',\'file\')" id="livt-'+orderId+'-file" class="livtype-btn" style="padding:8px;border:1px solid var(--border);border-radius:8px;background:transparent;color:var(--text);cursor:pointer;font-size:12px"><i class="fa-solid fa-file-arrow-up"></i> Fichier</button>'
+        +'<button onclick="_livSetType(\''+orderId+'\',\'text\')" id="livt-'+orderId+'-text" class="livtype-btn" style="padding:8px;border:1px solid var(--border);border-radius:8px;background:transparent;color:var(--text);cursor:pointer;font-size:12px"><i class="fa-solid fa-align-left"></i> Texte</button>'
+        +'<button onclick="_livSetType(\''+orderId+'\',\'video\')" id="livt-'+orderId+'-video" class="livtype-btn" style="padding:8px;border:1px solid var(--border);border-radius:8px;background:transparent;color:var(--text);cursor:pointer;font-size:12px"><i class="fa-solid fa-video"></i> Vidéo</button>'
+        +'</div>'
+        +'<input id="livtitle-'+orderId+'" placeholder="Titre du livrable…" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);font-size:13px;box-sizing:border-box;margin-bottom:6px">'
+        +'<div id="livfields-'+orderId+'">'
+          +'<input id="livurl-'+orderId+'" placeholder="URL (https://…)" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);font-size:13px;box-sizing:border-box">'
+        +'</div>'
+        +'<div style="display:flex;gap:8px;margin-top:8px">'
+        +'<button onclick="_submitLivrable(\''+orderId+'\')" style="flex:1;padding:10px;background:var(--gold);color:#000;border:none;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer"><i class="fa-solid fa-plus"></i> Ajouter</button>'
+        +'<button onclick="document.getElementById(\'livform-'+orderId+'\').style.display=\'none\'" style="padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:transparent;color:var(--muted);cursor:pointer;font-size:13px"><i class="fa-solid fa-xmark"></i></button>'
+        +'</div>'
+        +'</div>'
+        +'<button onclick="_toggleLivForm(\''+orderId+'\')" style="margin-top:10px;width:100%;padding:9px;border:1px dashed var(--gold);border-radius:10px;background:transparent;color:var(--gold);cursor:pointer;font-size:13px;font-weight:600"><i class="fa-solid fa-plus"></i> Déposer un livrable</button>';
+    }
+    html += '</div>';
+  }
+
+  // Bouton "Prestation terminée"
   if(!isCompleted && !isBalancePaid && orderId){
-    html += '<button class="btn-gold" style="margin-top:12px;width:100%" '
-          + 'onclick="declareComplete(\''+esc(String(orderId))+'\',this)">'
-          + '<i class="fa-solid fa-flag-checkered"></i>Prestation terminée</button>';
+    html += '<button class="btn-gold" style="margin-top:10px;width:100%" onclick="declareComplete(\''+esc(String(orderId))+'\',this)"><i class="fa-solid fa-flag-checkered"></i>Prestation terminée</button>';
   } else if(isCompleted && !isValidated && !isBalancePaid){
-    html += '<div style="margin-top:10px;background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.25);border-radius:8px;padding:10px 12px;font-size:12px;color:#22c55e;line-height:1.5">'
-          + '<i class="fa-solid fa-circle-check"></i> '
-          + 'Virement GENESIS déclenché — le client recevra une notification de confirmation qualité.'
-          + '</div>';
+    html += '<div style="margin-top:10px;background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.25);border-radius:8px;padding:10px 12px;font-size:12px;color:#22c55e;line-height:1.5"><i class="fa-solid fa-circle-check"></i> Virement GENESIS déclenché — le client recevra une notification de confirmation qualité.</div>';
   }
 
   html += '</div>';
   return html;
+}
+
+var _livTypeState = {};
+function _toggleLivForm(oid){
+  var f = document.getElementById('livform-'+oid);
+  if(f){ f.style.display = f.style.display==='none'?'block':'none'; }
+}
+function _livSetType(oid, type){
+  _livTypeState[oid] = type;
+  ['link','file','text','video'].forEach(function(t){
+    var btn = document.getElementById('livt-'+oid+'-'+t);
+    if(btn){ btn.style.background = t===type?'rgba(255,215,0,.15)':'transparent'; btn.style.borderColor = t===type?'var(--gold)':'var(--border)'; btn.style.color = t===type?'var(--gold)':'var(--text)'; }
+  });
+  var fields = document.getElementById('livfields-'+oid);
+  if(!fields) return;
+  if(type==='link'||type==='video'){
+    fields.innerHTML = '<input id="livurl-'+oid+'" placeholder="URL (https://…)" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);font-size:13px;box-sizing:border-box">';
+  } else if(type==='text'){
+    fields.innerHTML = '<textarea id="livtext-'+oid+'" placeholder="Contenu texte, article, copywriting…" rows="4" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);font-size:13px;box-sizing:border-box;resize:vertical"></textarea>';
+  } else if(type==='file'){
+    fields.innerHTML = '<input type="file" id="livfile-'+oid+'" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);font-size:12px;box-sizing:border-box">';
+  }
+}
+function _submitLivrable(oid){
+  var type = _livTypeState[oid];
+  if(!type){ showToast('Choisissez un type de livrable'); return; }
+  var titleEl = document.getElementById('livtitle-'+oid);
+  var title = titleEl ? titleEl.value.trim() : '';
+  if(!title){ showToast('Titre requis'); return; }
+  var body = { type: type, title: title };
+  if(type==='link'||type==='video'){
+    var urlEl = document.getElementById('livurl-'+oid);
+    var url = urlEl ? urlEl.value.trim() : '';
+    if(!url){ showToast('URL requise'); return; }
+    body.content_url = url;
+    _doSubmitLivrable(oid, body);
+  } else if(type==='text'){
+    var txtEl = document.getElementById('livtext-'+oid);
+    body.content_text = txtEl ? txtEl.value : '';
+    _doSubmitLivrable(oid, body);
+  } else if(type==='file'){
+    var fileEl = document.getElementById('livfile-'+oid);
+    if(!fileEl||!fileEl.files||!fileEl.files[0]){ showToast('Sélectionnez un fichier'); return; }
+    var file = fileEl.files[0];
+    if(file.size > 5*1024*1024){ showToast('Fichier trop lourd (max 5 Mo)'); return; }
+    var reader = new FileReader();
+    reader.onload = function(ev){
+      body.file_data = ev.target.result;
+      body.file_mime = file.type;
+      body.file_name = file.name;
+      _doSubmitLivrable(oid, body);
+    };
+    reader.readAsDataURL(file);
+  }
+}
+function _doSubmitLivrable(oid, body){
+  fetch(API+'/api/partner/projects/'+oid+'/livrables', {
+    method:'POST', headers:{'Authorization':'Bearer '+_token,'Content-Type':'application/json'},
+    body: JSON.stringify(body)
+  }).then(function(r){ return r.json(); }).then(function(d){
+    if(d&&d.error){ showToast('Erreur : '+d.error); return; }
+    showToast('Livrable ajouté ✓');
+    _loaded['livrables']=false; loadLivrables();
+  }).catch(function(){ showToast('Erreur réseau'); });
+}
+function _publishLivrable(livId, oid){
+  if(!confirm('Publier ce livrable ? Le client recevra une notification.')) return;
+  fetch(API+'/api/partner/livrables/'+livId+'/publish', {
+    method:'POST', headers:{'Authorization':'Bearer '+_token,'Content-Type':'application/json'}
+  }).then(function(r){ return r.json(); }).then(function(d){
+    if(d&&d.error){ showToast('Erreur : '+d.error); return; }
+    showToast('Livrable publié — client notifié ✓');
+    _loaded['livrables']=false; loadLivrables();
+  }).catch(function(){ showToast('Erreur réseau'); });
+}
+function _deleteLivrable(livId, oid){
+  if(!confirm('Supprimer ce brouillon ?')) return;
+  fetch(API+'/api/partner/livrables/'+livId, {
+    method:'DELETE', headers:{'Authorization':'Bearer '+_token}
+  }).then(function(r){ return r.json(); }).then(function(d){
+    if(d&&d.error){ showToast('Erreur : '+d.error); return; }
+    showToast('Livrable supprimé');
+    _loaded['livrables']=false; loadLivrables();
+  }).catch(function(){ showToast('Erreur réseau'); });
 }
 
 function declareComplete(orderId, btn){
@@ -644,16 +768,24 @@ function loadLivrables(){
     if(dispatches.length===0 && projects.length===0){
       el.innerHTML = '<div class="empty"><i class="fa-solid fa-box-open"></i><p>Aucun livrable pour le moment.<br>Vos missions commandées par les clients apparaîtront ici.</p></div>'; return;
     }
-    var html = '';
-    if(dispatches.length){
-      html += '<div class="sec-hdr" style="padding-top:4px"><i class="fa-solid fa-hourglass-half"></i>En attente d\'acceptation ('+dispatches.length+')</div>';
-      dispatches.forEach(function(d){ html += livrableDispatchCard(d); });
-    }
-    if(projects.length){
-      html += '<div class="sec-hdr" style="padding-top:8px"><i class="fa-solid fa-circle-check"></i>En cours ('+projects.length+')</div>';
-      projects.forEach(function(p){ html += projectCard(p); });
-    }
-    el.innerHTML = html;
+    // Charger les livrables de chaque projet en parallèle
+    var livPromises = projects.map(function(p){
+      var oid = p.order && p.order.id;
+      if(!oid) return Promise.resolve([]);
+      return apiFetch('/api/partner/projects/'+oid+'/livrables').then(function(d){ return d.livrables||[]; }).catch(function(){ return []; });
+    });
+    Promise.all(livPromises).then(function(livsByProject){
+      var html = '';
+      if(dispatches.length){
+        html += '<div class="sec-hdr" style="padding-top:4px"><i class="fa-solid fa-hourglass-half"></i>En attente d\'acceptation ('+dispatches.length+')</div>';
+        dispatches.forEach(function(d){ html += livrableDispatchCard(d); });
+      }
+      if(projects.length){
+        html += '<div class="sec-hdr" style="padding-top:8px"><i class="fa-solid fa-circle-check"></i>En cours ('+projects.length+')</div>';
+        projects.forEach(function(p, i){ html += projectCard(p, livsByProject[i]||[], true); });
+      }
+      el.innerHTML = html;
+    });
   }).catch(function(){ el.innerHTML = '<div class="empty"><i class="fa-solid fa-wifi-slash"></i><p>Erreur de chargement</p></div>'; });
 }
 
