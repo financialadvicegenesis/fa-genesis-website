@@ -4072,10 +4072,10 @@ app.post('/api/orders/:orderId/cancel-refund', async function(req, res) {
         // Bloquer seulement si le prestataire a effectivement livré (partner_completed / delivery_confirmed)
         var dispatches = loadDispatches();
         var dispatch = dispatches.find(function(d) { return d.order_id === orderId && d.status !== 'cancelled'; });
-        // Bloquer uniquement si le CLIENT a déjà validé (fonds libérés définitivement)
-        var clientValidated = !!(order.client_validated || order.balance_paid);
-        if (clientValidated) {
-            return res.status(400).json({ error: 'Vous avez déjà validé cette prestation. Le paiement a été libéré au prestataire.' });
+        // Bloquer uniquement si les fonds ont été EFFECTIVEMENT virés au partenaire
+        var partnerPaidOut = !!(order.partner_paid_out || order.balance_paid);
+        if (partnerPaidOut) {
+            return res.status(400).json({ error: 'Le paiement a déjà été versé au prestataire. Contactez le support GENESIS si nécessaire.' });
         }
 
         // Bloquer si litige ouvert
@@ -5473,21 +5473,21 @@ app.get('/api/client/wallet', function(req, res) {
 
             var partnerDone = !!(order.delivery_confirmed || order.partner_completed);
             var _isPI = order.payment_tier === 'partner_installments';
-            // Détecter si un virement admin est en attente (paiement libéré de l'escrow mais pas encore arrivé sur le compte Connect)
             var _hasPendingAdminPayout = payouts.some(function(p) {
                 return p.order_id === order.id && p.status === 'pending_admin';
             });
             var _isAuthOnly = (order.deposit_authorized === true && !order.deposit_paid) || (order.balance_authorized === true && !order.balance_paid);
-            // Vrai si le partenaire a accepté mais n'a pas encore livré (argent toujours en escrow)
             var partnerAcceptedNotDone = !!(dispatch && dispatch.status === 'accepted' && !partnerDone);
-            // Vrai si le partenaire a déclaré terminé mais le client n'a pas encore validé
             var pendingClientValidation = !!(partnerDone && !order.client_validated && !order.balance_paid);
+            // Validé par le client mais partenaire pas encore payé (aucun Transfer Stripe déclenché)
+            var validatedPendingPayout = !!(order.client_validated && !order.partner_paid_out && !order.balance_paid && held > 0);
             var statusLabel = dispatchNotAccepted && held > 0
                 ? 'Paiement reçu — en attente d\'acceptation du prestataire'
                 : _isPI
                 ? 'Mensualités versées directement au prestataire'
                 : released > 0 && _hasPendingAdminPayout ? 'Virement en cours de traitement par GENESIS'
                 : held > 0 && pendingClientValidation ? 'Livraison reçue — en attente de votre validation'
+                : held > 0 && validatedPendingPayout ? 'Prestation validée — virement en préparation'
                 : held > 0 && partnerDone ? 'Prestation validée — virement au prestataire en cours'
                 : held > 0 && partnerAcceptedNotDone ? 'En attente de livraison — fonds sécurisés en escrow'
                 : held > 0 ? 'Sécurisé GENESIS SAFE™ — versé au prestataire à la livraison'
@@ -5496,9 +5496,10 @@ app.get('/api/client/wallet', function(req, res) {
             var withdrawReason = canWithdraw
                 ? (partnerInactive ? 'Le prestataire n\'est pas disponible' : 'Le prestataire n\'a pas encore accepté la mission')
                 : null;
-            // Remboursement disponible si : pas encore accepté OU accepté sans livraison OU livré mais pas encore validé par le client
+            // Remboursement possible si : pas encore accepté OU accepté sans livraison
+            // OU livré mais pas validé OU validé mais partenaire pas encore payé
             var canCancelRefund = held > 0 && order.deposit_paid === true
-                && (dispatchNotAccepted || partnerAcceptedNotDone || pendingClientValidation)
+                && (dispatchNotAccepted || partnerAcceptedNotDone || pendingClientValidation || validatedPendingPayout)
                 && !order.balance_paid;
             var _balDue = (parseFloat(order.balance_amount) || 0) > 0
                 && order.deposit_paid === true
@@ -5516,6 +5517,7 @@ app.get('/api/client/wallet', function(req, res) {
                 withdraw_reason: withdrawReason,
                 can_cancel_refund: canCancelRefund,
                 pending_client_validation: pendingClientValidation,
+                validated_pending_payout: validatedPendingPayout,
                 created_at: order.created_at,
                 balance_due: _balDue,
                 balance_amount: _balDue ? (parseFloat(order.balance_amount) || 0) : 0,
