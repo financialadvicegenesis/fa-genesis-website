@@ -7094,20 +7094,12 @@ function renderLivrableValidationCard(l){
     }
   }
 
-  var statusHtml;
+  // Statut livrable (indicateur visuel uniquement — la validation se fait au niveau commande)
+  var statusHtml = '';
   if(l.client_validation==='validated'){
     statusHtml = '<div style="color:#22c55e;font-size:12px;margin-top:8px;"><i class="fa-solid fa-circle-check"></i> Validé</div>';
   } else if(l.client_validation==='revision_requested'){
     statusHtml = '<div style="color:#f59e0b;font-size:12px;margin-top:8px;"><i class="fa-solid fa-rotate-left"></i> Révision demandée'+(l.client_revision_note?(' : '+_escHtml(l.client_revision_note)):'')+'</div>';
-  } else {
-    statusHtml = '<div class="resa-actions" style="margin-top:10px;">'
-      +'<button class="resa-action-btn rab-primary" onclick="validateLivrable(\''+l.id+'\')"><i class="fa-solid fa-check"></i> Valider</button>'
-      +'<button class="resa-action-btn rab-ghost" onclick="openRevisionPrompt(\''+l.id+'\')"><i class="fa-solid fa-pen"></i> Demander une révision</button>'
-      +'</div>'
-      +'<div id="rev-note-'+l.id+'" style="display:none;margin-top:8px;">'
-      +'<textarea id="rev-input-'+l.id+'" placeholder="Précisez ce qui doit être revu…" style="width:100%;min-height:60px;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:#fff;font-size:16px;"></textarea>'
-      +'<button class="resa-action-btn rab-primary" style="width:100%;margin-top:6px;" onclick="submitRevisionRequest(\''+l.id+'\')">Envoyer la demande</button>'
-      +'</div>';
   }
 
   return '<div style="background:#111;border:1px solid #1e1e1e;border-radius:10px;padding:12px;margin-bottom:8px;">'
@@ -16393,7 +16385,7 @@ function _ptnrDeclareComplete(orderId, requestId, btn){
 }
 
 function _clientValidateDelivery(orderId, requestId, btn){
-  _showFloatingConfirm('Confirmer que la prestation a bien été réalisée ? Il s\'agit d\'un avis qualité — le paiement au prestataire a déjà été déclenché par GENESIS lors de la déclaration de fin de prestation.', function(){
+  _showFloatingConfirm('Confirmer la bonne réception de la prestation ? En validant, le paiement GENESIS SAFE™ sera libéré au prestataire. Cette action est irréversible.', function(){
     if(btn){ btn.disabled=true; btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Validation…'; }
     haptic(15);
     _cliFetch('/api/client/orders/'+orderId+'/validate-delivery','POST',{}).then(function(res){
