@@ -16674,11 +16674,16 @@ app.post('/api/client/orders/:orderId/validate-delivery', function(req, res) {
         if (!clientEmail || clientEmail.toLowerCase() !== user.email.toLowerCase()) {
             return res.status(403).json({ error: 'Accès non autorisé' });
         }
-        if (!order.partner_completed) {
-            return res.status(400).json({ error: 'Le partenaire n\'a pas encore déclaré la prestation terminée' });
+        // Accepter partner_completed OU delivery_confirmed OU dispatch.mission_status=delivered
+        var _allDisps = loadDispatches();
+        var _disp = _allDisps.find(function(d){ return d.order_id === orderId; });
+        var _partnerDone = !!(order.partner_completed || order.delivery_confirmed
+            || (_disp && (_disp.mission_status === 'delivered' || _disp.mission_status === 'delivering')));
+        if (!_partnerDone) {
+            return res.status(400).json({ error: 'Le partenaire n\'a pas encore déclaré la prestation terminée.' });
         }
         if (order.client_validated) {
-            return res.status(400).json({ error: 'Vous avez déjà validé cette prestation' });
+            return res.status(400).json({ error: 'Vous avez déjà validé cette prestation.' });
         }
 
         // Validation qualité uniquement — le paiement a déjà quitté Genesis Safe lors du /complete

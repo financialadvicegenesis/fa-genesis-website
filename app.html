@@ -16396,30 +16396,42 @@ function _clientValidateDelivery(orderId, requestId, btn){
     if(btn){ btn.disabled=true; btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Validation…'; }
     haptic(15);
     var _token = USER && USER._token ? USER._token : '';
-    fetch((window.FA_GENESIS_API||API)+'/api/client/orders/'+orderId+'/validate-delivery',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':'Bearer '+_token},
-      body: JSON.stringify({})
-    }).then(function(r){ return r.json(); }).then(function(res){
-      if(res && res.success){
-        showToast('Prestation validée !','Le paiement GENESIS SAFE™ est libéré au prestataire.','success');
-        setTimeout(function(){ showToast('+20 QG','Mission accomplie !','success'); }, 1400);
-        setTimeout(function(){ if(typeof _refreshClientQG==='function') _refreshClientQG(); }, 2000);
-        haptic([50,30,100]);
-        typeof renderResaTab==='function' && renderResaTab();
-        try {
-          if(document.getElementById('wallet-content') && typeof showClientWallet==='function'){
-            setTimeout(function(){ showClientWallet(); }, 1500);
-          }
-        } catch(e){}
-      } else {
+    var _ctrl = new AbortController();
+    var _tid = setTimeout(function(){ _ctrl.abort(); }, 20000);
+    try {
+      fetch((window.FA_GENESIS_API||API)+'/api/client/orders/'+orderId+'/validate-delivery',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+_token},
+        body: JSON.stringify({}),
+        signal: _ctrl.signal
+      }).then(function(r){ clearTimeout(_tid); return r.json(); }).then(function(res){
+        if(res && res.success){
+          showToast('Prestation validée !','Le paiement GENESIS SAFE™ est libéré au prestataire.','success');
+          setTimeout(function(){ showToast('+20 QG','Mission accomplie !','success'); }, 1400);
+          setTimeout(function(){ if(typeof _refreshClientQG==='function') _refreshClientQG(); }, 2000);
+          haptic([50,30,100]);
+          try{ typeof renderResaTab==='function' && renderResaTab(); }catch(re){}
+          try {
+            if(document.getElementById('wallet-content') && typeof showClientWallet==='function'){
+              setTimeout(function(){ showClientWallet(); }, 1500);
+            }
+          } catch(e){}
+        } else {
+          clearTimeout(_tid);
+          if(btn){ btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-circle-check"></i> Valider la prestation'; }
+          showToast('Erreur',(res&&res.error)||'Impossible de valider','error');
+        }
+      }).catch(function(err){
+        clearTimeout(_tid);
         if(btn){ btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-circle-check"></i> Valider la prestation'; }
-        showToast('Erreur',(res&&res.error)||'Impossible de valider','error');
-      }
-    }).catch(function(){
+        var _msg = (err && err.name === 'AbortError') ? 'Délai dépassé — réessayez.' : 'Erreur de connexion. Réessayez.';
+        showToast('Erreur',_msg,'error');
+      });
+    } catch(_fe){
+      clearTimeout(_tid);
       if(btn){ btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-circle-check"></i> Valider la prestation'; }
-      showToast('Erreur de connexion','Réessayez dans un instant.','error');
-    });
+      showToast('Erreur','Impossible d\'envoyer la validation.','error');
+    }
   });
 }
 
