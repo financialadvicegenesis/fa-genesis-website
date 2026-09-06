@@ -6681,7 +6681,8 @@ function getAccessRights(order) {
 
         if (order.payment_tier === 'small') {
             // ≤ 300 € : paiement intégral retenu — accès au téléchargement dès que la livraison est confirmée
-            var deliveryConfirmed = !!order.delivery_confirmed;
+            // partner_completed (nouveau flux) OU delivery_confirmed (ancien flux) débloquent l'accès
+            var deliveryConfirmed = !!(order.delivery_confirmed || order.partner_completed);
             rights.can_download_livrables = deliveryConfirmed;
             rights.payment_secured = !deliveryConfirmed;
             if (!deliveryConfirmed) {

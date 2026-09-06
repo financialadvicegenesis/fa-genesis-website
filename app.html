@@ -7061,13 +7061,46 @@ function loadOrderLivrables(requestId, orderId){
     });
 }
 function renderLivrableValidationCard(l){
+  var _typeIcons = {link:'fa-link',file:'fa-file-arrow-down',text:'fa-align-left',video:'fa-video'};
+  var _typeLabels = {link:'Lien',file:'Fichier',text:'Texte',video:'Vidéo'};
+  var ltype = l.livrable_type || (l.file_url && l.file_url.indexOf('data:image')===0 ? 'image' : 'file');
+  var ico = _typeIcons[ltype] || 'fa-file';
+  var typeLabel = _typeLabels[ltype] || 'Fichier';
+
+  // Contenu du livrable selon le type
+  var contentHtml = '';
+  var urlVal = l.content_url || l.download_url || l.file_url || '';
+  if(ltype === 'link' || ltype === 'video'){
+    if(urlVal){
+      contentHtml = '<a href="'+_escHtml(urlVal)+'" target="_blank" style="display:inline-flex;align-items:center;gap:6px;margin-top:8px;padding:8px 12px;background:rgba(96,165,250,.1);border:1px solid rgba(96,165,250,.3);border-radius:8px;color:#60a5fa;font-size:12px;font-weight:600;text-decoration:none;word-break:break-all;">'
+        +'<i class="fa-solid '+ico+'"></i> '+_escHtml(urlVal.length>60?urlVal.slice(0,60)+'…':urlVal)+'</a>';
+    }
+  } else if(ltype === 'text'){
+    if(l.content_text){
+      contentHtml = '<div style="margin-top:8px;padding:10px;background:#0d0d0d;border:1px solid #222;border-radius:8px;font-size:12px;color:#ccc;line-height:1.7;white-space:pre-wrap;max-height:150px;overflow-y:auto;">'+_escHtml(l.content_text)+'</div>';
+    }
+  } else if(ltype === 'image' || (ltype === 'file' && urlVal && urlVal.indexOf('data:image')===0)){
+    // Aperçu image (base64)
+    contentHtml = '<img src="'+urlVal+'" alt="Aperçu" style="max-width:100%;border-radius:8px;margin-top:8px;max-height:200px;object-fit:contain;">';
+    if(l.can_download && urlVal){
+      contentHtml += '<a href="'+urlVal+'" download="'+(l.file_name||'livrable')+'" style="display:flex;align-items:center;gap:6px;margin-top:6px;color:#60a5fa;font-size:12px;"><i class="fa-solid fa-download"></i> Télécharger</a>';
+    }
+  } else if(ltype === 'file'){
+    if(l.can_download && urlVal){
+      contentHtml = '<a href="'+urlVal+'" download="'+(l.file_name||'livrable')+'" style="display:inline-flex;align-items:center;gap:6px;margin-top:8px;padding:8px 12px;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);border-radius:8px;color:#22c55e;font-size:12px;font-weight:600;text-decoration:none;">'
+        +'<i class="fa-solid fa-download"></i> '+_escHtml(l.file_name||'Télécharger le fichier')+'</a>';
+    } else {
+      contentHtml = '<div style="margin-top:8px;font-size:11px;color:#888;font-style:italic"><i class="fa-solid fa-lock"></i> Fichier disponible après validation</div>';
+    }
+  }
+
   var statusHtml;
   if(l.client_validation==='validated'){
-    statusHtml = '<div style="color:#22c55e;font-size:12px;margin-top:6px;"><i class="fa-solid fa-circle-check"></i> Validé</div>';
+    statusHtml = '<div style="color:#22c55e;font-size:12px;margin-top:8px;"><i class="fa-solid fa-circle-check"></i> Validé</div>';
   } else if(l.client_validation==='revision_requested'){
-    statusHtml = '<div style="color:#f59e0b;font-size:12px;margin-top:6px;"><i class="fa-solid fa-rotate-left"></i> Révision demandée'+(l.client_revision_note?(' : '+_escHtml(l.client_revision_note)):'')+'</div>';
+    statusHtml = '<div style="color:#f59e0b;font-size:12px;margin-top:8px;"><i class="fa-solid fa-rotate-left"></i> Révision demandée'+(l.client_revision_note?(' : '+_escHtml(l.client_revision_note)):'')+'</div>';
   } else {
-    statusHtml = '<div class="resa-actions" style="margin-top:8px;">'
+    statusHtml = '<div class="resa-actions" style="margin-top:10px;">'
       +'<button class="resa-action-btn rab-primary" onclick="validateLivrable(\''+l.id+'\')"><i class="fa-solid fa-check"></i> Valider</button>'
       +'<button class="resa-action-btn rab-ghost" onclick="openRevisionPrompt(\''+l.id+'\')"><i class="fa-solid fa-pen"></i> Demander une révision</button>'
       +'</div>'
@@ -7076,9 +7109,15 @@ function renderLivrableValidationCard(l){
       +'<button class="resa-action-btn rab-primary" style="width:100%;margin-top:6px;" onclick="submitRevisionRequest(\''+l.id+'\')">Envoyer la demande</button>'
       +'</div>';
   }
-  return '<div style="background:#111;border:1px solid #1e1e1e;border-radius:10px;padding:10px;margin-bottom:8px;">'
-    +'<div style="font-size:13px;font-weight:700;">'+_escHtml(l.title||'Livrable')+'</div>'
+
+  return '<div style="background:#111;border:1px solid #1e1e1e;border-radius:10px;padding:12px;margin-bottom:8px;">'
+    +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:2px;">'
+    +'<i class="fa-solid '+ico+'" style="color:#FFD700;font-size:14px;"></i>'
+    +'<div style="font-size:13px;font-weight:700;color:#fff;">'+_escHtml(l.title||'Livrable')+'</div>'
+    +'<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:6px;background:rgba(255,215,0,.1);color:#FFD700;margin-left:auto;">'+typeLabel+'</span>'
+    +'</div>'
     +(l.description?'<div style="font-size:11px;color:var(--muted);margin-top:2px;">'+_escHtml(l.description)+'</div>':'')
+    +contentHtml
     +statusHtml
     +'</div>';
 }
