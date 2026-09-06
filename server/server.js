@@ -6548,6 +6548,17 @@ var MISSION_STATUS_META = {
     reviewed:    { key: 'reviewed',     label: 'Évaluation',              emoji: '⭐' }
 };
 function computeMissionDisplayStatus(request, dispatch, order, livrables, hasReview) {
+    // Commande annulée ou remboursée — ne pas afficher dans la liste
+    if (order && (order.status === 'cancelled' || order.status === 'refunded')) {
+        return { key: 'cancelled', label: 'Annulée', emoji: '❌' };
+    }
+    // Paiement pas encore effectué — ne pas afficher "En préparation"
+    if (order && !order.deposit_paid && !order.deposit_authorized) {
+        var _hasPaidInst = Array.isArray(order.installments) && order.installments.some(function(i) { return i.paid; });
+        if (!_hasPaidInst) {
+            return { key: 'pending_payment', label: 'En attente de paiement', emoji: '⏳' };
+        }
+    }
     if (hasReview) return MISSION_STATUS_META.reviewed;
     if (order && order.balance_paid === true) return MISSION_STATUS_META.completed;
     if ((livrables || []).some(function(l) { return l.workflow_status === 'PUBLISHED'; })) {
@@ -15414,6 +15425,10 @@ app.get('/api/my-requests', function(req, res) {
                     })
                     : null;
                 return out;
+            })
+            // Exclure les commandes annulées/remboursées de la liste client
+            .filter(function(out) {
+                return !out.display_status || out.display_status.key !== 'cancelled';
             });
         res.json({ requests: requests });
     } catch(e) {

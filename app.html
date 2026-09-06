@@ -9552,7 +9552,7 @@ function _fetchAndRenderCommandes(){
         var _statusColor = ds.key==='completed'||ds.key==='reviewed' ? '#22c55e'
           : ds.key==='delivered' ? '#60a5fa'
           : ds.key==='delivering' ? '#f97316'
-          : ds.key==='pending_acceptance' ? '#a78bfa'
+          : ds.key==='pending_acceptance'||ds.key==='pending_payment' ? '#a78bfa'
           : '#FFD700';
         var _photo = r.partner_photo;
         var _pInit = (r.partner_name||'P')[0].toUpperCase();
