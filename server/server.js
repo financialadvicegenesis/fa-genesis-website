@@ -4069,11 +4069,12 @@ app.post('/api/orders/:orderId/cancel-refund', async function(req, res) {
             return res.status(400).json({ error: 'Commande déjà annulée.' });
         }
 
-        // Bloquer si le prestataire a déjà accepté (travail commencé)
+        // Bloquer seulement si le prestataire a effectivement livré (partner_completed / delivery_confirmed)
         var dispatches = loadDispatches();
         var dispatch = dispatches.find(function(d) { return d.order_id === orderId && d.status !== 'cancelled'; });
-        if (dispatch && dispatch.status !== 'pending_acceptance') {
-            return res.status(400).json({ error: 'Le prestataire a déjà accepté la mission. Ouvrez un litige si nécessaire.' });
+        var partnerDelivered = !!(order.partner_completed || order.delivery_confirmed);
+        if (partnerDelivered) {
+            return res.status(400).json({ error: 'La prestation a déjà été livrée par le prestataire. Ouvrez un litige si nécessaire.' });
         }
 
         // Bloquer si litige ouvert
@@ -4093,6 +4094,7 @@ app.post('/api/orders/:orderId/cancel-refund', async function(req, res) {
                 dispatches[dIdx].status = 'cancelled';
                 dispatches[dIdx].cancelled_at = new Date().toISOString();
                 dispatches[dIdx].cancelled_reason = 'client_cancelled_refund';
+                dispatches[dIdx].mission_status = 'cancelled';
                 saveDispatches(dispatches);
             }
         }
@@ -4104,9 +4106,11 @@ app.post('/api/orders/:orderId/cancel-refund', async function(req, res) {
         if (dispatch) {
             var ptnr = getPartnerById(dispatch.partner_id || dispatch.claimed_by_partner_id);
             var ptnrEmail = ptnr && (ptnr.email || ptnr.contact_email);
+            var _notifMsg = dispatch.status === 'accepted'
+                ? 'Le client a annulé la mission "' + (order.product_name || 'Prestation') + '" — la prestation n\'avait pas encore été livrée. Aucune pénalité.'
+                : 'Le client a annulé la mission "' + (order.product_name || 'Prestation') + '" avant acceptation.';
             if (ptnrEmail) {
-                notifyUser(ptnrEmail, 'partner', 'mission_cancelled', 'Mission annulée',
-                    'Le client a annulé la mission "' + (order.product_name || 'Prestation') + '" avant le début des travaux.', '#missions');
+                notifyUser(ptnrEmail, 'partner', 'mission_cancelled', 'Mission annulée', _notifMsg, '#missions');
             }
         }
 
@@ -5467,20 +5471,23 @@ app.get('/api/client/wallet', function(req, res) {
                 return p.order_id === order.id && p.status === 'pending_admin';
             });
             var _isAuthOnly = (order.deposit_authorized === true && !order.deposit_paid) || (order.balance_authorized === true && !order.balance_paid);
+            // Vrai si le partenaire a accepté mais n'a pas encore livré (argent toujours en escrow)
+            var partnerAcceptedNotDone = !!(dispatch && dispatch.status === 'accepted' && !partnerDone);
             var statusLabel = dispatchNotAccepted && held > 0
                 ? 'Paiement reçu — en attente d\'acceptation du prestataire'
                 : _isPI
                 ? 'Mensualités versées directement au prestataire'
                 : released > 0 && _hasPendingAdminPayout ? 'Virement en cours de traitement par GENESIS'
                 : held > 0 && partnerDone ? 'Prestation livrée — virement au prestataire en cours'
+                : held > 0 && partnerAcceptedNotDone ? 'En attente de livraison — fonds sécurisés en escrow'
                 : held > 0 ? 'Sécurisé GENESIS SAFE™ — versé au prestataire à la livraison'
                 : 'Versé au prestataire ✓';
             var canWithdraw = held > 0 && (dispatchNotAccepted || partnerInactive);
             var withdrawReason = canWithdraw
                 ? (partnerInactive ? 'Le prestataire n\'est pas disponible' : 'Le prestataire n\'a pas encore accepté la mission')
                 : null;
-            // Remboursement automatique disponible si l'acompte est payé et prestataire pas encore accepté
-            var canCancelRefund = held > 0 && order.deposit_paid === true && dispatchNotAccepted && !order.balance_paid;
+            // Remboursement disponible si : partenaire pas encore accepté OU accepté mais pas encore livré
+            var canCancelRefund = held > 0 && order.deposit_paid === true && (dispatchNotAccepted || partnerAcceptedNotDone) && !order.balance_paid;
             var _balDue = (parseFloat(order.balance_amount) || 0) > 0
                 && order.deposit_paid === true
                 && !order.balance_paid
