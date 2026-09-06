@@ -6837,6 +6837,7 @@ function renderOrderTrackingCard(r){
   else if(ds.key==='accepted')heroSub='Votre prestataire a confirmé, la mission démarre !';
   else if(ds.key==='in_progress')heroSub='Votre prestataire travaille activement sur votre commande.';
   else if(ds.key==='delivering')heroSub='Les livrables arrivent très bientôt !';
+  else if(ds.key==='delivered' && r.pending_client_validation && !r.client_validated)heroSub='Prestation déclarée terminée. Validez pour libérer le paiement ou signalez un problème.';
   else if(ds.key==='delivered')heroSub='Vos livrables sont prêts. Validez-les depuis cette page.';
   else if(ds.key==='completed'||ds.key==='reviewed')heroSub='Mission accomplie avec succès. Merci !';
 
@@ -6883,15 +6884,25 @@ function renderOrderTrackingCard(r){
     var _safeTotal = parseFloat(r.total_amount || r.price || 0).toFixed(2);
     if(r.payment_tier === 'small'){
       if(ds.key !== 'completed' && ds.key !== 'reviewed'){
+        var _safeCaption, _safeSubtext, _safeEscrowLabel;
+        if(r.pending_client_validation && !r.client_validated){
+          _safeCaption = '<i class="fa-solid fa-shield-halved" style="margin-right:4px;"></i>GENESIS SAFE™ — EN ATTENTE';
+          _safeSubtext = 'Paiement capturé & sécurisé.<br>Libéré au prestataire après votre validation.';
+          _safeEscrowLabel = 'EN ATTENTE';
+        } else {
+          _safeCaption = '<i class="fa-solid fa-lock" style="margin-right:4px;"></i>GENESIS SAFE™ — 100% retenu';
+          _safeSubtext = 'Paiement intégral sécurisé en escrow.<br>Le prestataire sera payé à la livraison.';
+          _safeEscrowLabel = 'EN ESCROW';
+        }
         html += '<div style="background:linear-gradient(135deg,#0d1a00,#1a1200);border:1.5px solid #FFD700;border-radius:12px;padding:14px 16px;margin:12px 0;">'
           +'<div style="display:flex;justify-content:space-between;align-items:center;">'
           +'<div>'
-          +'<div style="font-size:10px;color:#FFD700;font-weight:800;letter-spacing:1px;margin-bottom:4px;"><i class="fa-solid fa-lock" style="margin-right:4px;"></i>GENESIS SAFE™ — 100% retenu</div>'
-          +'<div style="font-size:12px;color:#aaa;line-height:1.5;">Paiement intégral sécurisé en escrow.<br>Le prestataire sera payé à la livraison.</div>'
+          +'<div style="font-size:10px;color:#FFD700;font-weight:800;letter-spacing:1px;margin-bottom:4px;">'+_safeCaption+'</div>'
+          +'<div style="font-size:12px;color:#aaa;line-height:1.5;">'+_safeSubtext+'</div>'
           +'</div>'
           +'<div style="text-align:right;">'
           +'<div style="font-size:20px;font-weight:900;color:#FFD700;">'+_safeTotal+' €</div>'
-          +'<div style="font-size:9px;color:#666;margin-top:2px;">EN ESCROW</div>'
+          +'<div style="font-size:9px;color:#666;margin-top:2px;">'+_safeEscrowLabel+'</div>'
           +'</div>'
           +'</div>'
           +'</div>';
@@ -6987,14 +6998,15 @@ function renderOrderTrackingCard(r){
   // Livrables (injectés après)
   html += '<div id="liv-block-'+r.id+'"></div>';
 
-  // Footer actions
+  // Footer actions — "Problème" masqué si déjà présent dans le bloc pendingClientValidation
+  var _hasPendingBlock = !!(r.pending_client_validation && !r.client_validated);
   html += '<div class="track-footer">';
   if(r.partner_email){
     var safeEmail=(r.partner_email||'').replace(/'/g,"\\'");
     var safeName=(r.partner_name||'Prestataire').replace(/'/g,"\\'");
     html+='<button class="resa-action-btn rab-ghost" style="flex:1;font-size:12px;" onclick="var _ov=document.getElementById(\'order-detail-overlay\');if(_ov)_ov.remove();_startMsgWithPartner(\''+r.partner_id+'\',\''+safeName+'\',\''+safeEmail+'\')"><i class="fa-solid fa-comment-dots"></i> Écrire</button>';
   }
-  if(r.dispatch_id){
+  if(r.dispatch_id && !_hasPendingBlock){
     html+='<button class="resa-action-btn rab-ghost" style="font-size:12px;color:#c00;border-color:#c00;" onclick="_openDisputeForm(\''+r.dispatch_id+'\')"><i class="fa-solid fa-triangle-exclamation"></i> Problème</button>';
   }
   html+='</div>';
@@ -7094,13 +7106,8 @@ function renderLivrableValidationCard(l){
     }
   }
 
-  // Statut livrable (indicateur visuel uniquement — la validation se fait au niveau commande)
+  // Pas d'indicateur de statut per-livrable : la validation s'effectue au niveau commande
   var statusHtml = '';
-  if(l.client_validation==='validated'){
-    statusHtml = '<div style="color:#22c55e;font-size:12px;margin-top:8px;"><i class="fa-solid fa-circle-check"></i> Validé</div>';
-  } else if(l.client_validation==='revision_requested'){
-    statusHtml = '<div style="color:#f59e0b;font-size:12px;margin-top:8px;"><i class="fa-solid fa-rotate-left"></i> Révision demandée'+(l.client_revision_note?(' : '+_escHtml(l.client_revision_note)):'')+'</div>';
-  }
 
   return '<div style="background:#111;border:1px solid #1e1e1e;border-radius:10px;padding:12px;margin-bottom:8px;">'
     +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:2px;">'
@@ -16388,15 +16395,18 @@ function _clientValidateDelivery(orderId, requestId, btn){
   _showFloatingConfirm('Confirmer la bonne réception de la prestation ? En validant, le paiement GENESIS SAFE™ sera libéré au prestataire. Cette action est irréversible.', function(){
     if(btn){ btn.disabled=true; btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Validation…'; }
     haptic(15);
-    _cliFetch('/api/client/orders/'+orderId+'/validate-delivery','POST',{}).then(function(res){
+    var _token = USER && USER._token ? USER._token : '';
+    fetch((window.FA_GENESIS_API||API)+'/api/client/orders/'+orderId+'/validate-delivery',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+_token},
+      body: JSON.stringify({})
+    }).then(function(r){ return r.json(); }).then(function(res){
       if(res && res.success){
-        showToast('Merci pour votre avis !','Votre confirmation de satisfaction a bien été enregistrée.','success');
+        showToast('Prestation validée !','Le paiement GENESIS SAFE™ est libéré au prestataire.','success');
         setTimeout(function(){ showToast('+20 QG','Mission accomplie !','success'); }, 1400);
         setTimeout(function(){ if(typeof _refreshClientQG==='function') _refreshClientQG(); }, 2000);
         haptic([50,30,100]);
-        _cliLoadOrders && _cliLoadOrders();
-        _loadMyRequests && _loadMyRequests();
-        // Rafraîchir le portefeuille GENESIS SAFE™ si la section est actuellement affichée
+        typeof renderResaTab==='function' && renderResaTab();
         try {
           if(document.getElementById('wallet-content') && typeof showClientWallet==='function'){
             setTimeout(function(){ showClientWallet(); }, 1500);
@@ -16408,7 +16418,7 @@ function _clientValidateDelivery(orderId, requestId, btn){
       }
     }).catch(function(){
       if(btn){ btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-circle-check"></i> Valider la prestation'; }
-      showToast('Erreur de connexion','Réessayez','error');
+      showToast('Erreur de connexion','Réessayez dans un instant.','error');
     });
   });
 }
