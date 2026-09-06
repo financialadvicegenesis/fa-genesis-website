@@ -3483,7 +3483,7 @@ function showApp(){
         if(typeof launchConfetti==='function') launchConfetti();
         if(typeof showToast==='function'){
           showToast('Paiement confirmé !','GENESIS SAFE™ sécurise votre paiement.','success');
-          setTimeout(function(){ showToast('+20 QG','Mission lancée !','success'); }, 1600);
+          setTimeout(function(){ showToast('Mission lancée !','Votre prestataire va être notifié.','success'); }, 1600);
         }
         setTimeout(function(){
           if(typeof nav==='function') nav('profil');
@@ -16221,6 +16221,7 @@ function _clientValidateDelivery(orderId, requestId, btn){
     _cliFetch('/api/client/orders/'+orderId+'/validate-delivery','POST',{}).then(function(res){
       if(res && res.success){
         showToast('Merci pour votre avis !','Votre confirmation de satisfaction a bien été enregistrée.','success');
+        setTimeout(function(){ showToast('+20 QG','Mission accomplie !','success'); }, 1400);
         haptic([50,30,100]);
         _cliLoadOrders && _cliLoadOrders();
         _loadMyRequests && _loadMyRequests();
