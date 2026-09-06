@@ -9661,8 +9661,8 @@ function _pmtRenderList(list){
     el.innerHTML='<div class="espace-empty"><i class="fa-solid fa-receipt" style="font-size:32px;color:var(--muted);display:block;margin-bottom:10px;"></i>Aucun paiement pour le moment.</div>';
     return;
   }
-  var _sLabel={paid:'Payé',due:'À payer',accepted_unpaid:'À payer',pending:'En attente'};
-  var _sColor={paid:'#22c55e',due:'#f97316',accepted_unpaid:'#FFD700',pending:'#555'};
+  var _sLabel={paid:'Payé',due:'À payer',accepted_unpaid:'À payer',pending:'En attente',refunded:'Remboursé'};
+  var _sColor={paid:'#22c55e',due:'#f97316',accepted_unpaid:'#FFD700',pending:'#555',refunded:'#60a5fa'};
   el.innerHTML=visible.map(function(p){
     var sl=_sLabel[p.status]||p.status||'—';
     var sc=_sColor[p.status]||'#555';
@@ -9719,8 +9719,8 @@ function _showPmtDetail(pmtId){
   var p=null;
   for(var _pi=0;_pi<_pmtListCache.length;_pi++){ if(_pmtListCache[_pi].id===pmtId){ p=_pmtListCache[_pi]; break; } }
   if(!p) return;
-  var _sLabel={paid:'Payé',due:'À payer',accepted_unpaid:'À payer',pending:'En attente'};
-  var _sColor={paid:'#22c55e',due:'#f97316',accepted_unpaid:'#FFD700',pending:'#555'};
+  var _sLabel={paid:'Payé',due:'À payer',accepted_unpaid:'À payer',pending:'En attente',refunded:'Remboursé'};
+  var _sColor={paid:'#22c55e',due:'#f97316',accepted_unpaid:'#FFD700',pending:'#555',refunded:'#60a5fa'};
   var sl=_sLabel[p.status]||p.status||'—';
   var sc=_sColor[p.status]||'#555';
   var amtStr=Number(p.amount||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';

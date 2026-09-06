@@ -6409,6 +6409,7 @@ app.get('/api/client/payments-list', function(req, res) {
                 var _partnerName = order.partner_name || '';
                 var _installs = Array.isArray(order.installments) && order.installments.length > 2 ? order.installments : null;
                 if (_isSmallPmt) {
+                    var _isRefunded = order.status === 'refunded';
                     paymentList.push({
                         id: order.id + '-deposit',
                         order_id: order.id,
@@ -6417,8 +6418,8 @@ app.get('/api/client/payments-list', function(req, res) {
                         category: _catLabel,
                         type_label: 'Paiement intégral',
                         amount: Number(order.total_amount) || 0,
-                        status: order.deposit_paid ? 'paid' : 'pending',
-                        paid_at: order.deposit_paid ? (order.deposit_paid_at || order.updated_at || null) : null,
+                        status: _isRefunded ? 'refunded' : (order.deposit_paid ? 'paid' : 'pending'),
+                        paid_at: _isRefunded ? (order.refunded_at || null) : (order.deposit_paid ? (order.deposit_paid_at || order.updated_at || null) : null),
                         can_pay: false
                     });
                 } else if (_installs) {
@@ -6437,6 +6438,7 @@ app.get('/api/client/payments-list', function(req, res) {
                         });
                     });
                 } else {
+                    var _isRefundedSplit = order.status === 'refunded';
                     paymentList.push({
                         id: order.id + '-deposit',
                         order_id: order.id,
@@ -6445,8 +6447,8 @@ app.get('/api/client/payments-list', function(req, res) {
                         category: _catLabel,
                         type_label: 'Acompte (30%)',
                         amount: Number(order.deposit_amount) || 0,
-                        status: order.deposit_paid ? 'paid' : 'pending',
-                        paid_at: order.deposit_paid ? (order.deposit_paid_at || null) : null,
+                        status: _isRefundedSplit ? 'refunded' : (order.deposit_paid ? 'paid' : 'pending'),
+                        paid_at: _isRefundedSplit ? (order.refunded_at || null) : (order.deposit_paid ? (order.deposit_paid_at || null) : null),
                         can_pay: false
                     });
                     if (Number(order.balance_amount) > 0) {
@@ -6458,9 +6460,9 @@ app.get('/api/client/payments-list', function(req, res) {
                             category: _catLabel,
                             type_label: 'Solde (70%)',
                             amount: Number(order.balance_amount) || 0,
-                            status: order.balance_paid ? 'paid' : (order.deposit_paid ? 'due' : 'pending'),
+                            status: _isRefundedSplit ? 'refunded' : (order.balance_paid ? 'paid' : (order.deposit_paid ? 'due' : 'pending')),
                             paid_at: order.balance_paid ? (order.balance_paid_at || null) : null,
-                            can_pay: order.deposit_paid === true && !order.balance_paid
+                            can_pay: !_isRefundedSplit && order.deposit_paid === true && !order.balance_paid
                         });
                     }
                 }
