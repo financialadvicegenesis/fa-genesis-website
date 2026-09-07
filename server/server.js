@@ -59,42 +59,67 @@ app.set('trust proxy', 1);
 // CONFIGURATION
 // ============================================================
 
-const ORDERS_FILE = path.join(__dirname, 'data', 'orders.json');
-const USERS_FILE = path.join(__dirname, 'data', 'users.json');
-const PARTNERS_FILE = path.join(__dirname, 'data', 'partners.json');
-const PARTNER_ASSIGNMENTS_FILE = path.join(__dirname, 'data', 'partner-assignments.json');
-const PARTNER_UPLOADS_FILE = path.join(__dirname, 'data', 'partner-uploads.json');
-const PARTNER_COMMENTS_FILE = path.join(__dirname, 'data', 'partner-comments.json');
-const QUOTES_FILE = path.join(__dirname, 'data', 'quotes.json');
-const PROJECTS_FILE = path.join(__dirname, 'data', 'projects.json');
-const FEEDBACKS_FILE = path.join(__dirname, 'data', 'feedbacks.json');
-const SETTINGS_FILE = path.join(__dirname, 'data', 'settings.json');
-const RESERVATIONS_FILE = path.join(__dirname, 'data', 'reservations.json');
-const BLOCKED_DATES_FILE = path.join(__dirname, 'data', 'blocked-dates.json');
-const CW_MESSAGES_FILE = path.join(__dirname, 'data', 'cw-messages.json');
-const CW_DEVIS_FILE = path.join(__dirname, 'data', 'cw-devis.json');
-const PUSH_SUBSCRIPTIONS_FILE = path.join(__dirname, 'data', 'push-subscriptions.json');
-const DISPATCHES_FILE = path.join(__dirname, 'data', 'dispatches.json');
-const PARTNER_REQUESTS_FILE = path.join(__dirname, 'data', 'partner_requests.json');
-const PAYOUTS_FILE    = path.join(__dirname, 'data', 'payouts.json');
-const PARTNER_REVIEWS_FILE = path.join(__dirname, 'data', 'partner_reviews.json');
-const HALL_OF_FAME_FILE = path.join(__dirname, 'data', 'hall_of_fame.json');
-const EVENTS_FILE = path.join(__dirname, 'data', 'events.json');
-const JEREMIE_MEMORY_FILE = path.join(__dirname, 'data', 'jeremie_memory.json');
-const PROMOTIONS_FILE     = path.join(__dirname, 'data', 'promotions.json');
-const ADMIN_SESSIONS_FILE = path.join(__dirname, 'data', 'admin_sessions.json');
-const NOTIFICATIONS_FILE = path.join(__dirname, 'data', 'notifications.json');
-const DISPUTES_FILE        = path.join(__dirname, 'data', 'disputes.json');
-const CERTIFICATES_FILE    = path.join(__dirname, 'data', 'student_certificates.json');
-const PROSPECTS_FILE = path.join(__dirname, 'data', 'prospects.json');
-const CAMPAGNES_FILE = path.join(__dirname, 'data', 'campagnes.json');
-const SCHEDULED_NOTIFS_FILE = path.join(__dirname, 'data', 'scheduled_notifs.json');
-const GENESIS_PROJECTS_FILE = path.join(__dirname, 'data', 'genesis_projects.json');
-const CONTRACTS_FILE = path.join(__dirname, 'data', 'contracts.json');
-const ACTUALITES_FILE = path.join(__dirname, 'data', 'actualites.json');
-const FCM_TOKENS_FILE = path.join(__dirname, 'data', 'fcm_tokens.json');
-const WALLETS_FILE     = path.join(__dirname, 'data', 'wallets.json');
-const WITHDRAWALS_FILE = path.join(__dirname, 'data', 'withdrawals.json');
+// DATA_DIR : répertoire de stockage des données JSON.
+// En production sur Render, pointer vers le disque persistant (ex: /var/data)
+// via la variable d'env DATA_DIR pour survivre aux redéploiements.
+// En développement local, utilise ./data (comportement inchangé).
+const SEED_DATA_DIR = path.join(__dirname, 'data'); // fichiers initiaux trackés par git
+const DATA_DIR = process.env.DATA_DIR ? process.env.DATA_DIR : SEED_DATA_DIR;
+
+// ── Migration au démarrage : copier les seeds git → disque persistant (1re fois seulement) ──
+if (DATA_DIR !== SEED_DATA_DIR) {
+    try {
+        fs.mkdirSync(DATA_DIR, { recursive: true });
+        var _seedFiles = fs.readdirSync(SEED_DATA_DIR).filter(function(f){ return f.endsWith('.json'); });
+        _seedFiles.forEach(function(file) {
+            var dest = path.join(DATA_DIR, file);
+            if (!fs.existsSync(dest)) {
+                fs.copyFileSync(path.join(SEED_DATA_DIR, file), dest);
+                console.log('[DATA] Seed initialisé:', file);
+            }
+        });
+        console.log('[DATA] Disque persistant prêt :', DATA_DIR);
+    } catch(_initErr) {
+        console.error('[DATA] Erreur init disque persistant:', _initErr.message);
+    }
+}
+
+const ORDERS_FILE = path.join(DATA_DIR, 'orders.json');
+const USERS_FILE = path.join(DATA_DIR,'users.json');
+const PARTNERS_FILE = path.join(DATA_DIR,'partners.json');
+const PARTNER_ASSIGNMENTS_FILE = path.join(DATA_DIR,'partner-assignments.json');
+const PARTNER_UPLOADS_FILE = path.join(DATA_DIR,'partner-uploads.json');
+const PARTNER_COMMENTS_FILE = path.join(DATA_DIR,'partner-comments.json');
+const QUOTES_FILE = path.join(DATA_DIR,'quotes.json');
+const PROJECTS_FILE = path.join(DATA_DIR,'projects.json');
+const FEEDBACKS_FILE = path.join(DATA_DIR,'feedbacks.json');
+const SETTINGS_FILE = path.join(DATA_DIR,'settings.json');
+const RESERVATIONS_FILE = path.join(DATA_DIR,'reservations.json');
+const BLOCKED_DATES_FILE = path.join(DATA_DIR,'blocked-dates.json');
+const CW_MESSAGES_FILE = path.join(DATA_DIR,'cw-messages.json');
+const CW_DEVIS_FILE = path.join(DATA_DIR,'cw-devis.json');
+const PUSH_SUBSCRIPTIONS_FILE = path.join(DATA_DIR,'push-subscriptions.json');
+const DISPATCHES_FILE = path.join(DATA_DIR,'dispatches.json');
+const PARTNER_REQUESTS_FILE = path.join(DATA_DIR,'partner_requests.json');
+const PAYOUTS_FILE    = path.join(DATA_DIR,'payouts.json');
+const PARTNER_REVIEWS_FILE = path.join(DATA_DIR,'partner_reviews.json');
+const HALL_OF_FAME_FILE = path.join(DATA_DIR,'hall_of_fame.json');
+const EVENTS_FILE = path.join(DATA_DIR,'events.json');
+const JEREMIE_MEMORY_FILE = path.join(DATA_DIR,'jeremie_memory.json');
+const PROMOTIONS_FILE     = path.join(DATA_DIR,'promotions.json');
+const ADMIN_SESSIONS_FILE = path.join(DATA_DIR,'admin_sessions.json');
+const NOTIFICATIONS_FILE = path.join(DATA_DIR,'notifications.json');
+const DISPUTES_FILE        = path.join(DATA_DIR,'disputes.json');
+const CERTIFICATES_FILE    = path.join(DATA_DIR,'student_certificates.json');
+const PROSPECTS_FILE = path.join(DATA_DIR,'prospects.json');
+const CAMPAGNES_FILE = path.join(DATA_DIR,'campagnes.json');
+const SCHEDULED_NOTIFS_FILE = path.join(DATA_DIR,'scheduled_notifs.json');
+const GENESIS_PROJECTS_FILE = path.join(DATA_DIR,'genesis_projects.json');
+const CONTRACTS_FILE = path.join(DATA_DIR,'contracts.json');
+const ACTUALITES_FILE = path.join(DATA_DIR,'actualites.json');
+const FCM_TOKENS_FILE = path.join(DATA_DIR,'fcm_tokens.json');
+const WALLETS_FILE     = path.join(DATA_DIR,'wallets.json');
+const WITHDRAWALS_FILE = path.join(DATA_DIR,'withdrawals.json');
 
 // Catégories de partenaires marketplace (source unique, partagée par inscription + admin)
 const PARTNER_TYPES = [
@@ -6719,7 +6744,7 @@ function getAccessRights(order) {
 // ROUTES - LIVRABLES
 // ============================================================
 
-const LIVRABLES_FILE = path.join(__dirname, 'data', 'livrables.json');
+const LIVRABLES_FILE = path.join(DATA_DIR,'livrables.json');
 
 function loadLivrables() {
     try {
@@ -8328,7 +8353,7 @@ app.post('/api/admin/reset-revenue', function(req, res) {
 // ROUTES - MESSAGES DE CONTACT
 // ============================================================
 
-const MESSAGES_FILE = path.join(__dirname, 'data', 'messages.json');
+const MESSAGES_FILE = path.join(DATA_DIR,'messages.json');
 
 function loadMessages() {
     try {
@@ -10559,8 +10584,8 @@ app.post('/api/admin/orders/:orderId/unlock-balance', function(req, res) {
 // Utilise chat.json separe des messages de contact (messages.json)
 // ============================================================
 
-var CHAT_FILE = path.join(__dirname, 'data', 'chat.json');
-var SUPPORT_TICKETS_FILE = path.join(__dirname, 'data', 'support-tickets.json');
+var CHAT_FILE = path.join(DATA_DIR,'chat.json');
+var SUPPORT_TICKETS_FILE = path.join(DATA_DIR,'support-tickets.json');
 
 function loadChat() {
     try {
@@ -11086,7 +11111,7 @@ app.post('/api/partner/peer-message', authenticatePartner, function(req, res) {
 // ROUTES - GESTION DES SEANCES (Admin)
 // ============================================================
 
-const SESSIONS_FILE = path.join(__dirname, 'data', 'sessions.json');
+const SESSIONS_FILE = path.join(DATA_DIR,'sessions.json');
 
 function loadSessions() {
     try {
@@ -11873,7 +11898,7 @@ app.delete('/api/admin/sessions/:sessionId', (req, res) => {
 // ============================================================
 
 // ── Sous-profils partenaires (plusieurs personnes sur un compte partagé) ──
-const SUBPROFILES_FILE = path.join(__dirname, 'data', 'partner-subprofiles.json');
+const SUBPROFILES_FILE = path.join(DATA_DIR,'partner-subprofiles.json');
 
 function loadSubProfiles() {
     try {
@@ -16202,7 +16227,7 @@ app.get('/api/partner/projects/:orderId', authenticatePartner, (req, res) => {
             c => c.order_id === orderId && (c.author_id === req.partner.id || c.author_type === 'admin')
         );
         let livrables = [];
-        const LIVRABLES_FILE = path.join(__dirname, 'data', 'livrables.json');
+        const LIVRABLES_FILE = path.join(DATA_DIR,'livrables.json');
         try {
             if (fs.existsSync(LIVRABLES_FILE)) {
                 const allLivrables = JSON.parse(fs.readFileSync(LIVRABLES_FILE, 'utf8'));
@@ -17746,7 +17771,7 @@ app.put('/api/admin/partner-uploads/:uploadId/validate', (req, res) => {
             uploads[index].validated_by = 'admin@fagenesis.com';
             const livrableId = 'LIV-' + uuidv4().split('-')[0];
             uploads[index].livrable_id = livrableId;
-            const LIVRABLES_FILE = path.join(__dirname, 'data', 'livrables.json');
+            const LIVRABLES_FILE = path.join(DATA_DIR,'livrables.json');
             let livrables = [];
             try {
                 if (fs.existsSync(LIVRABLES_FILE)) {
