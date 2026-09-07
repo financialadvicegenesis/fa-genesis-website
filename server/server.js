@@ -6713,10 +6713,17 @@ function computeMissionDisplayStatus(request, dispatch, order, livrables, hasRev
     if ((livrables || []).some(function(l) { return l.workflow_status === 'PUBLISHED'; })) {
         return MISSION_STATUS_META.delivered;
     }
+    // GENESIS SAFE™ : partenaire a confirmé la livraison → le client doit valider
+    if (order && order.pending_client_validation === true) {
+        return MISSION_STATUS_META.delivered;
+    }
     if (dispatch) {
         if (dispatch.status === 'pending_acceptance') return { key: 'pending_acceptance', label: 'En attente d\'acceptation', emoji: '⏳' };
-        // 'delivered' = partenaire a cliqué "Prestation terminée" → client voit "Livraison en cours"
-        if (dispatch.mission_status === 'delivering' || dispatch.mission_status === 'delivered') return MISSION_STATUS_META.delivering;
+        // 'delivering' = partenaire prépare la livraison (pas encore terminé)
+        if (dispatch.mission_status === 'delivering') return MISSION_STATUS_META.delivering;
+        // 'delivered' = partenaire a confirmé → géré par pending_client_validation ci-dessus,
+        // mais en fallback on affiche aussi delivered
+        if (dispatch.mission_status === 'delivered') return MISSION_STATUS_META.delivered;
         return MISSION_STATUS_META.in_progress;
     }
     if (request && (request.status === 'accepted' || request.status === 'proposed' || request.status === 'signed')) {
@@ -15132,22 +15139,21 @@ app.delete('/api/partner/livrables/:id', authenticatePartner, function(req, res)
 //  DISPATCH — Système de missions (course entre partenaires)
 // ============================================================
 
-// GET /api/partner/dispatches — missions à accepter / ouvertes pour ce type
+// GET /api/partner/dispatches — missions à accepter / ouvertes + missions actives de ce partenaire
 app.get('/api/partner/dispatches', authenticatePartner, function(req, res) {
     try {
         var dispatches = loadDispatches();
         var pType = req.partner.partner_type;
         var partnerId = req.partner.id;
+
+        // Missions disponibles (open / pending_acceptance)
         var available = dispatches
             .filter(function(d) {
                 if (d.status !== 'open' && d.status !== 'pending_acceptance') return false;
                 var declined = d.declined_partners || [];
                 if (declined.indexOf(partnerId) !== -1) return false;
-                // Mission assignée spécifiquement à ce partenaire → toujours visible
                 if (d.claimed_by_partner_id === partnerId || d.partner_id === partnerId) return true;
-                // Mission assignée à un autre partenaire spécifique → invisible
                 if (d.claimed_by_partner_id || d.partner_id) return false;
-                // Mission ouverte → filtrer par type de partenaire
                 return d.partner_type === pType;
             })
             .sort(function(a, b) {
@@ -15155,7 +15161,17 @@ app.get('/api/partner/dispatches', authenticatePartner, function(req, res) {
                 if (prioDiff !== 0) return prioDiff;
                 return new Date(a.created_at) - new Date(b.created_at);
             });
-        res.json({ dispatches: available });
+
+        // Missions actives de ce partenaire (acceptées, en cours, livrées — pas encore complétées/annulées)
+        var myActive = dispatches.filter(function(d) {
+            var isMyDispatch = (d.claimed_by_partner_id === partnerId || d.partner_id === partnerId);
+            if (!isMyDispatch) return false;
+            var activeStatuses = ['accepted', 'in_progress'];
+            var activeMissionStatuses = ['in_progress', 'delivered'];
+            return activeStatuses.indexOf(d.status) !== -1 || activeMissionStatuses.indexOf(d.mission_status) !== -1;
+        }).sort(function(a, b) { return new Date(b.accepted_at || b.created_at) - new Date(a.accepted_at || a.created_at); });
+
+        res.json({ dispatches: available, my_active: myActive });
     } catch(e) {
         console.error('[DISPATCH] Erreur liste:', e);
         res.status(500).json({ error: 'Erreur serveur' });
@@ -15495,33 +15511,20 @@ app.post('/api/partner/dispatches/:id/mark-delivered', authenticatePartner, asyn
         });
         saveOrders(orders);
 
-        // GENESIS SAFE™ : capturer le PaymentIntent → l'argent quitte la carte du client
-        // et atterrit sur le compte Stripe GENESIS (Financialadvicegenesis@gmail.com).
-        // Puis Transfer GENESIS → Connect partenaire → banque.
-        var _piIdDeliver = order.stripe_deposit_pi_id;
-        if (_piIdDeliver && order.deposit_authorized && !order.deposit_paid) {
-            try {
-                await scp.capturePaymentIntent(_piIdDeliver);
-                // Mettre à jour la commande : fonds maintenant dans Stripe GENESIS
-                var _ordersAfterCap = loadOrders();
-                var _capIdx = _ordersAfterCap.findIndex(function(o) { return o.id === order.id; });
-                if (_capIdx !== -1) {
-                    _ordersAfterCap[_capIdx].deposit_paid    = true;
-                    _ordersAfterCap[_capIdx].deposit_paid_at = now;
-                    _ordersAfterCap[_capIdx].paymentStatus   = 'deposit_paid';
-                    saveOrders(_ordersAfterCap);
-                }
-                console.log('[DISPATCH] GENESIS SAFE™ — PI capturé, argent atterri sur Stripe GENESIS:', _piIdDeliver);
-            } catch(capErr) {
-                console.error('[DISPATCH] Erreur capture PI:', capErr.message);
-                // La carte n'a pas été débitée — on annule pour ne pas laisser une incohérence
-                return res.status(500).json({ error: 'Erreur lors du prélèvement GENESIS SAFE™ : ' + capErr.message });
-            }
+        // Mettre à jour le statut du dispatch → 'delivered' (mission visible côté client et partenaire)
+        var allDisps = loadDispatches();
+        var dDispIdx = allDisps.findIndex(function(d) { return d.id === dispatch.id; });
+        if (dDispIdx !== -1) {
+            allDisps[dDispIdx].mission_status = 'delivered';
+            allDisps[dDispIdx].delivered_at   = now;
+            saveDispatches(allDisps);
         }
 
-        // Transfer GENESIS Stripe → Connect partenaire → banque
-        await processDispatchPayout(dispatch, 'deposit');
-        console.log('[DISPATCH] GENESIS SAFE™ — prestation terminée, fonds libérés de l\'escrow, virement déclenché', dispatch.id);
+        // GENESIS SAFE™ : NE PAS capturer le PI ici.
+        // La capture + le payout partenaire se font dans validate-delivery (validation client)
+        // ou dans checkAutoPaymentRelease (7 jours). Tant que le client n'a pas validé,
+        // le PI reste en requires_capture → annulable instantanément si besoin.
+        console.log('[DISPATCH] GENESIS SAFE™ — livraison confirmée, PI maintenu en requires_capture jusqu\'à validation client:', order.stripe_deposit_pi_id || 'N/A');
 
         // Notifier le client
         var clientEmail = order.client_info && order.client_info.email;

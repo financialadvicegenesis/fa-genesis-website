@@ -448,16 +448,19 @@ function loadAccueil(){
     apiFetch('/api/partner/dispatches').catch(function(){ return {}; }),
     apiFetch('/api/partner/projects').catch(function(){ return []; })
   ]).then(function(results){
-    var dispatches = (results[0]&&results[0].dispatches) ? results[0].dispatches : [];
+    var dispData   = results[0] || {};
+    var dispatches = dispData.dispatches ? dispData.dispatches : [];
+    var myActive   = dispData.my_active  ? dispData.my_active  : [];
     var projects   = Array.isArray(results[1]) ? results[1] : [];
-    var totalActive = dispatches.length + projects.length;
+    var totalActive = myActive.length + projects.length;
     document.getElementById('stat-missions').textContent = totalActive;
     var el = document.getElementById('home-missions');
-    if(dispatches.length===0 && projects.length===0){
+    if(dispatches.length===0 && myActive.length===0 && projects.length===0){
       el.innerHTML = '<div class="empty"><i class="fa-solid fa-briefcase"></i><p>Aucune mission pour le moment</p></div>'; return;
     }
     var cards = '';
-    dispatches.slice(0,3).forEach(function(d){ cards += dispatchCard(d); });
+    myActive.slice(0,2).forEach(function(d){ cards += activeDispatchCard(d); });
+    dispatches.slice(0,2).forEach(function(d){ cards += dispatchCard(d); });
     projects.slice(0,2).forEach(function(p){ cards += projectCard(p); });
     el.innerHTML = cards;
   }).catch(function(){ document.getElementById('home-missions').innerHTML = '<div class="empty"><i class="fa-solid fa-wifi-slash"></i><p>Impossible de charger</p></div>'; });
@@ -514,14 +517,18 @@ function loadMissions(){
     apiFetch('/api/partner/dispatches').catch(function(){ return {}; }),
     apiFetch('/api/partner/projects').catch(function(){ return []; })
   ]).then(function(results){
-    var dispatches = (results[0]&&results[0].dispatches) ? results[0].dispatches : [];
+    var dispData   = results[0] || {};
+    var dispatches = dispData.dispatches   ? dispData.dispatches   : [];
+    var myActive   = dispData.my_active    ? dispData.my_active    : [];
     var projects   = Array.isArray(results[1]) ? results[1] : [];
-    if(dispatches.length===0 && projects.length===0){
+    var totalActive = myActive.length + projects.length;
+    if(dispatches.length===0 && myActive.length===0 && projects.length===0){
       el.innerHTML = '<div class="empty"><i class="fa-solid fa-briefcase"></i><p>Aucune mission pour le moment.<br>Les nouvelles missions apparaîtront ici.</p></div>'; return;
     }
     var html = '';
     if(dispatches.length){ html += '<div class="sec-hdr" style="padding-top:4px"><i class="fa-solid fa-bolt"></i>Disponibles ('+dispatches.length+')</div>'; dispatches.forEach(function(d){ html+=dispatchCard(d); }); }
-    if(projects.length)  { html += '<div class="sec-hdr" style="padding-top:8px"><i class="fa-solid fa-circle-check"></i>En cours ('+projects.length+')</div>';  projects.forEach(function(p){ html+=projectCard(p); }); }
+    if(myActive.length)  { html += '<div class="sec-hdr" style="padding-top:8px"><i class="fa-solid fa-spinner"></i>En cours ('+myActive.length+')</div>'; myActive.forEach(function(d){ html+=activeDispatchCard(d); }); }
+    if(projects.length)  { html += '<div class="sec-hdr" style="padding-top:8px"><i class="fa-solid fa-circle-check"></i>Projets en cours ('+projects.length+')</div>'; projects.forEach(function(p){ html+=projectCard(p); }); }
     el.innerHTML = html;
   }).catch(function(){ el.innerHTML = '<div class="empty"><i class="fa-solid fa-wifi-slash"></i><p>Erreur de chargement</p></div>'; });
 }
@@ -541,6 +548,34 @@ function dispatchCard(d){
     +'</div></div></div>'
     +(d.amount ? '<div style="font-size:14px;font-weight:900;color:var(--gold);margin-top:8px">'+fmtAmt(d.amount)+'</div>' : '')
     +'<button class="btn-gold" style="margin-top:10px" onclick="acceptDispatch(\''+esc(String(d.id||''))+'\',this)"><i class="fa-solid fa-check"></i>Accepter la mission</button>'
+    +'</div>';
+}
+
+function activeDispatchCard(d){
+  var isDelivered = d.mission_status === 'delivered';
+  var orderId = d.order_id || '';
+  var statusPill = isDelivered
+    ? '<span class="pill pill-green"><i class="fa-solid fa-check"></i>Livraison confirmée</span>'
+    : '<span class="pill pill-blue"><i class="fa-solid fa-spinner"></i>En cours</span>';
+  var safeBlock = isDelivered
+    ? '<div style="margin-top:10px;padding:10px 14px;border-radius:10px;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.25);font-size:11px;color:#fbbf24"><i class="fa-solid fa-shield-halved"></i> <strong>En attente de validation client</strong><br>Les fonds GENESIS SAFE™ seront libérés dès que le client valide.</div>'
+    : '';
+  var actionBtn = isDelivered
+    ? ''
+    : '<button class="btn-gold" style="margin-top:10px" onclick="markDelivered(\''+esc(String(d.order_id||''))+'\',\''+esc(String(d.id||''))+'\',this)"><i class="fa-solid fa-box-open"></i>Confirmer la livraison</button>';
+  return '<div class="card">'
+    +'<div class="card-row">'
+    +'<div class="card-icon" style="background:rgba(59,130,246,.08)"><i class="fa-solid fa-briefcase" style="color:#3b82f6"></i></div>'
+    +'<div style="flex:1;min-width:0">'
+    +'<div class="card-title">'+esc(d.title||d.service||d.product_name||'Mission en cours')+'</div>'
+    +'<div class="card-sub">'+esc(d.description||d.details||'Mission acceptée')+'</div>'
+    +'<div style="margin-top:6px;display:flex;align-items:center;justify-content:space-between">'
+    +statusPill
+    +'<span class="card-meta">'+fmt(d.accepted_at||d.created_at)+'</span>'
+    +'</div></div></div>'
+    +(d.amount ? '<div style="font-size:14px;font-weight:900;color:var(--gold);margin-top:8px">'+fmtAmt(d.amount)+'</div>' : '')
+    +safeBlock
+    +actionBtn
     +'</div>';
 }
 
@@ -880,6 +915,21 @@ function acceptDispatch(id, btn){
       loadMissions(); loadAccueil();
     })
     .catch(function(e){ btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-check"></i>Accepter la mission'; showToast(e.message||'Erreur, réessayez'); });
+}
+
+function markDelivered(orderId, dispatchId, btn){
+  if(!confirm('Confirmer la livraison ?\n\nLe client sera notifié et pourra valider la prestation. Les fonds GENESIS SAFE™ seront libérés après sa validation (ou automatiquement dans 7 jours).')) return;
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>Confirmation…';
+  fetch(API+'/api/partner/dispatches/'+dispatchId+'/mark-delivered',{method:'POST',headers:{'Authorization':'Bearer '+_token,'Content-Type':'application/json'},body:JSON.stringify({orderId:orderId})})
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if(d&&d.error){ throw new Error(d.error); }
+      showToast('Livraison confirmée — en attente de validation client');
+      _loaded['missions']=false; _loaded['accueil']=false;
+      loadMissions(); loadAccueil();
+    })
+    .catch(function(e){ btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-box-open"></i>Confirmer la livraison'; showToast(e.message||'Erreur, réessayez'); });
 }
 
 // ── Messages ─────────────────────────────────────────
