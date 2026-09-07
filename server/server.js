@@ -516,6 +516,29 @@ function savePartnerRequests(data) {
         persistentStore.persistToCloud('partner-requests', data).catch(function(e) {});
     } catch(e) { console.error('[PARTNER-REQUEST] Erreur sauvegarde:', e); }
 }
+// Une fois une commande réellement terminée (validée client ou auto-libération), on clôture
+// la demande partner_request liée. Sans ça, une demande 'signed' reste active indéfiniment et
+// se retrouve "recyclée" (order_id réécrit) au prochain achat de la même prestation auprès du
+// même partenaire — le partenaire peut alors voir des infos mélangées entre l'ancienne mission
+// (déjà livrée/validée) et la nouvelle qu'il vient de prendre en charge.
+function closePartnerRequestForOrder(order) {
+    try {
+        if (!order) return;
+        var requests = loadPartnerRequests();
+        var idx = -1;
+        if (order.request_id) {
+            idx = requests.findIndex(function(r) { return r.id === order.request_id; });
+        }
+        if (idx === -1) {
+            idx = requests.findIndex(function(r) { return r.order_id === order.id; });
+        }
+        if (idx === -1) return;
+        if (requests[idx].status === 'completed' || requests[idx].status === 'declined') return;
+        requests[idx].status = 'completed';
+        requests[idx].completed_at = new Date().toISOString();
+        savePartnerRequests(requests);
+    } catch(e) { console.error('[PARTNER-REQUEST] Erreur clôture:', e.message); }
+}
 
 // ── Payouts (répartition automatique des revenus) ──
 function loadPayouts() {
@@ -2956,6 +2979,7 @@ async function checkAutoPaymentRelease() {
                 orders[_ari].client_validated      = true; // considéré validé par délai
                 orders[_ari].pending_client_validation = false;
                 modified = true;
+                closePartnerRequestForOrder(orders[_ari]);
 
                 // Notifier le client et le partenaire
                 var _arClientEmail  = _o.client_info && _o.client_info.email;
@@ -16869,6 +16893,7 @@ app.post('/api/client/orders/:orderId/validate-delivery', async function(req, re
             status: 'completed'
         };
         updateOrder(orderId, updates);
+        closePartnerRequestForOrder(order);
 
         // ── Créditer le wallet partenaire ───────────────────────────────────────────────
         // L'argent était capturé depuis la carte client (dans /complete ou /publish).
