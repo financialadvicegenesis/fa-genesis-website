@@ -4205,18 +4205,15 @@ app.post('/api/orders/:orderId/cancel-refund', async function(req, res) {
             }
         }
 
-        // GENESIS SAFE™ : PI autorisé mais non capturé → cancelPaymentIntent = libération instantanée
-        // PI déjà capturé (deposit_paid=true) → createRefund = 5 à 10 jours selon la banque
-        var _isInstantRelease = (order.deposit_authorized === true && !order.deposit_paid);
-        console.log('[CANCEL-REFUND] Commande ' + orderId + ' annulée par ' + user.email + ' — remboursement: ' + (refundOk ? 'OK' : 'MANUEL') + (_isInstantRelease ? ' (instantané)' : ''));
+        // GENESIS SAFE™ : le PI est toujours en requires_capture au moment du remboursement
+        // (la capture n'a lieu qu'à validate-delivery). L'annulation est donc instantanée.
+        console.log('[CANCEL-REFUND] Commande ' + orderId + ' annulée par ' + user.email + ' — remboursement: ' + (refundOk ? 'INSTANTANÉ' : 'MANUEL'));
         res.json({
             ok: true,
             refunded: refundOk,
-            instant: _isInstantRelease && refundOk,
+            instant: refundOk,
             message: refundOk
-                ? (_isInstantRelease
-                    ? 'Annulation confirmée. L\'autorisation sur votre carte a été libérée instantanément — aucun montant ne sera débité.'
-                    : 'Remboursement initié. Le montant sera crédité sur votre moyen de paiement d\'origine sous 5 à 10 jours ouvrés selon votre banque.')
+                ? 'Annulation confirmée. L\'autorisation sur votre carte a été libérée instantanément — aucun montant ne sera débité.'
                 : 'Commande annulée. Le remboursement sera traité manuellement par notre équipe sous 24h.'
         });
     } catch(e) {
@@ -4987,25 +4984,27 @@ async function refundClientOrder(order) {
             else { console.error('[REFUND] PayPal réponse inattendue:', JSON.stringify(ppResult)); }
         } catch(e) { console.error('[REFUND] PayPal erreur:', e.message); }
     }
-    // Tentative remboursement/annulation Stripe via l'ID du PaymentIntent enregistré
+    // GENESIS SAFE™ : le PI reste en requires_capture jusqu'à validate-delivery.
+    // Un remboursement = annulation de l'autorisation → instantané, aucun débit sur la carte.
+    // Si le PI a déjà été capturé (cas exceptionnel), fallback sur createRefund.
     if (!refunded && order.stripe_deposit_pi_id) {
         try {
-            var stripeRefundAmt = depositAmount > 0 ? Math.round(depositAmount * 100) : null;
-            // PI autorisé mais non capturé (GENESIS SAFE™ : capture_method=manual) → annuler l'autorisation
-            // PI déjà capturé → créer un remboursement classique
-            if (order.deposit_authorized === true && !order.deposit_paid) {
+            if (!order.deposit_paid) {
+                // PI en requires_capture → cancelPaymentIntent = libération instantanée
                 var stripeCancel = await scp.cancelPaymentIntent(order.stripe_deposit_pi_id);
                 if (stripeCancel && stripeCancel.status === 'canceled') {
                     refunded = true;
-                    console.log('[REFUND] Stripe PI annulé (autorisation libérée):', order.stripe_deposit_pi_id);
+                    console.log('[REFUND] Stripe PI annulé (libération instantanée):', order.stripe_deposit_pi_id);
                 } else {
                     console.error('[REFUND] Stripe cancel réponse inattendue:', JSON.stringify(stripeCancel));
                 }
             } else {
+                // PI déjà capturé (cas rare) → remboursement classique
+                var stripeRefundAmt = depositAmount > 0 ? Math.round(depositAmount * 100) : null;
                 var stripeRef = await scp.createRefund({ paymentIntentId: order.stripe_deposit_pi_id, amount: stripeRefundAmt });
                 if (stripeRef && (stripeRef.status === 'succeeded' || stripeRef.status === 'pending')) {
                     refunded = true;
-                    console.log('[REFUND] Stripe deposit remboursé:', stripeRef.id, stripeRefundAmt, 'cents');
+                    console.log('[REFUND] Stripe deposit remboursé (capturé):', stripeRef.id);
                 } else {
                     console.error('[REFUND] Stripe deposit réponse inattendue:', JSON.stringify(stripeRef));
                 }
@@ -16458,30 +16457,10 @@ app.post('/api/partner/projects/:orderId/complete', authenticatePartner, async f
         };
         var updatedOrder = updateOrder(order.id, updates);
 
-        // GENESIS SAFE™ : si la carte a été autorisée mais pas encore capturée, capturer maintenant.
-        // L'argent passe de "réservé sur la carte du client" à "acquis sur Stripe GENESIS".
-        var _piIdComplete = order.stripe_deposit_pi_id;
-        if (_piIdComplete && order.deposit_authorized && !order.deposit_paid) {
-            try {
-                await scp.capturePaymentIntent(_piIdComplete);
-                updateOrder(order.id, { deposit_paid: true, deposit_paid_at: new Date().toISOString(), paymentStatus: 'deposit_paid' });
-                console.log('[COMPLETE] GENESIS SAFE™ — PI dépôt capturé, argent sur Stripe GENESIS:', _piIdComplete);
-            } catch(capErr) {
-                console.error('[COMPLETE] Erreur capture PI dépôt:', capErr.message);
-                updateOrder(order.id, { capture_error: capErr.message, paymentStatus: 'capture_failed' });
-            }
-        }
-        // GENESIS SAFE™ : capturer le solde si autorisé mais pas encore capturé
-        var _balPiIdComplete = order.stripe_balance_pi_id;
-        if (_balPiIdComplete && order.balance_authorized && !order.balance_paid) {
-            try {
-                await scp.capturePaymentIntent(_balPiIdComplete);
-                updateOrder(order.id, { balance_paid: true, balance_paid_at: new Date().toISOString(), status: 'paid_in_full', paymentStatus: 'fully_paid' });
-                console.log('[COMPLETE] GENESIS SAFE™ — PI solde capturé, argent sur Stripe GENESIS:', _balPiIdComplete);
-            } catch(capErr) {
-                console.error('[COMPLETE] Erreur capture PI solde:', capErr.message);
-            }
-        }
+        // GENESIS SAFE™ : NE PAS capturer le PI ici.
+        // La capture se fait dans validate-delivery (validation client) ou checkAutoPaymentRelease (7j).
+        // Tant que le client n'a pas validé, le PI reste en requires_capture → annulable instantanément.
+        console.log('[COMPLETE] GENESIS SAFE™ — PI conservé en requires_capture jusqu\'à validation client:', order.stripe_deposit_pi_id || 'N/A');
 
         // Mettre à jour le dispatch si présent
         if (dispatch) {
@@ -16832,7 +16811,33 @@ app.post('/api/client/orders/:orderId/validate-delivery', async function(req, re
             return res.status(400).json({ error: 'Vous avez déjà validé cette prestation.' });
         }
 
-        // GENESIS SAFE™ : valider la prestation et déclencher le Transfer vers le partenaire
+        // GENESIS SAFE™ : capturer le PI maintenant que le client valide.
+        // Le PI est resté en requires_capture depuis le checkout → le client pouvait annuler instantanément.
+        // La capture débite maintenant la carte et place l'argent sur Stripe GENESIS.
+        var _vdPiId = order.stripe_deposit_pi_id;
+        if (_vdPiId && order.deposit_authorized === true && !order.deposit_paid) {
+            try {
+                await scp.capturePaymentIntent(_vdPiId);
+                updateOrder(orderId, { deposit_paid: true, deposit_paid_at: new Date().toISOString(), paymentStatus: 'deposit_paid' });
+                order = getOrderById(orderId); // recharger après update
+                console.log('[VALIDATE] GENESIS SAFE™ — PI capturé sur validation client:', _vdPiId);
+            } catch(_capErr) {
+                console.error('[VALIDATE] Erreur capture PI:', _capErr.message);
+            }
+        }
+        var _vdBalPiId = order.stripe_balance_pi_id;
+        if (_vdBalPiId && order.balance_authorized === true && !order.balance_paid) {
+            try {
+                await scp.capturePaymentIntent(_vdBalPiId);
+                updateOrder(orderId, { balance_paid: true, balance_paid_at: new Date().toISOString() });
+                order = getOrderById(orderId);
+                console.log('[VALIDATE] GENESIS SAFE™ — PI solde capturé sur validation client:', _vdBalPiId);
+            } catch(_capBalErr) {
+                console.error('[VALIDATE] Erreur capture PI solde:', _capBalErr.message);
+            }
+        }
+
+        // Marquer la prestation comme validée
         var updates = {
             client_validated: true,
             client_validated_at: new Date().toISOString(),
@@ -16841,7 +16846,7 @@ app.post('/api/client/orders/:orderId/validate-delivery', async function(req, re
         };
         updateOrder(orderId, updates);
 
-        // ── Transfer GENESIS → compte Connect partenaire ────────────────────────────────
+        // ── Créditer le wallet partenaire ───────────────────────────────────────────────
         // L'argent était capturé depuis la carte client (dans /complete ou /publish).
         // Il sort maintenant de Stripe GENESIS vers le partenaire.
         try {
