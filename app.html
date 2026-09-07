@@ -16052,14 +16052,14 @@ function _ptnrDeclineDispatch(dispatchId, btn){
 }
 
 function _ptnrConfirmDelivery(dispatchId, btn){
-  _showFloatingConfirm('Confirmer la livraison ? Les fonds GENESIS SAFE™ vous seront versés immédiatement.', function(){
-    if(btn){ btn.disabled=true; btn.textContent='Livraison en cours...'; }
+  _showFloatingConfirm('Confirmer la livraison ? Le client sera notifié et devra valider votre travail. Le paiement GENESIS SAFE™ sera libéré après sa validation (ou automatiquement sous 7 jours).', function(){
+    if(btn){ btn.disabled=true; btn.textContent='En cours...'; }
     haptic([20,10,40]);
     _ptnrFetch('/api/partner/dispatches/'+dispatchId+'/mark-delivered','POST',{}).then(function(res){
       if(res && res.ok){
         launchConfetti();
-        showToast('Livraison confirmée !','Les fonds ont été libérés et votre versement est en cours.','success');
-        _ptnrLoadVersements();
+        showToast('Livraison déclarée !','Le client va valider votre prestation. Le paiement sera libéré après sa confirmation.','success');
+        _ptnrLoadMissions();
       } else {
         if(btn){ btn.disabled=false; btn.textContent='Confirmer la livraison'; }
         showToast('Erreur',(res && res.error)||'Impossible de confirmer la livraison.','error');
@@ -16365,10 +16365,10 @@ function _ptnrMarkDelivering(dispatchId, requestId){
   });
 }
 function _ptnrMarkDelivered(dispatchId){
-  _showFloatingConfirm('Confirmer la livraison ? Les fonds GENESIS SAFE™ vont quitter l\'escrow et être versés sur votre compte via GENESIS.', function(){
+  _showFloatingConfirm('Confirmer la livraison ? Le client sera notifié pour valider votre travail. Le paiement GENESIS SAFE™ sera libéré après sa validation (ou sous 7 jours automatiquement).', function(){
     _ptnrFetch('/api/partner/dispatches/'+dispatchId+'/mark-delivered','POST',{}).then(function(res){
       if(res.success || res.ok){
-        showToast('Livraison confirmée','Les fonds quittent GENESIS SAFE™ — le virement GENESIS est en cours.','success');
+        showToast('Livraison déclarée','Le client va valider votre prestation. Le paiement sera libéré après confirmation.','success');
         haptic([50,30,100]);
         _ptnrLoadMissions();
       } else {
@@ -16381,12 +16381,12 @@ function _ptnrMarkDelivered(dispatchId){
 }
 
 function _ptnrDeclareComplete(orderId, requestId, btn){
-  _showFloatingConfirm('Déclarer la prestation terminée ? Les fonds GENESIS SAFE™ vont quitter l\'escrow immédiatement et être versés sur votre compte via GENESIS. Le client recevra une notification de confirmation qualité.', function(){
+  _showFloatingConfirm('Déclarer la prestation terminée ? Le client sera notifié et devra valider votre travail. Le paiement GENESIS SAFE™ sera libéré après sa validation (ou automatiquement sous 7 jours).', function(){
     if(btn){ btn.disabled=true; btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> En cours…'; }
     haptic(15);
     _ptnrFetch('/api/partner/projects/'+orderId+'/complete','POST',{}).then(function(res){
       if(res && (res.ok || res.success)){
-        showToast('Prestation terminée — virement en cours','Les fonds quittent GENESIS SAFE™. GENESIS effectue le virement sur votre compte.','success');
+        showToast('Prestation déclarée terminée','Le client va valider votre travail. Votre paiement sera libéré après sa confirmation.','success');
         haptic([50,30,100]);
         _ptnrLoadMissions();
       } else {
@@ -16407,6 +16407,28 @@ function _clientValidateDelivery(orderId, requestId, btn){
     var _token = USER && USER._token ? USER._token : '';
     var _ctrl = new AbortController();
     var _tid = setTimeout(function(){ _ctrl.abort(); }, 20000);
+
+    function _resetBtn(){
+      if(btn){ btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-circle-check"></i> Valider la prestation'; }
+    }
+    function _onSuccess(){
+      // 1. Fermer l'overlay de détail de commande s'il est ouvert
+      try{ var _ov=document.getElementById('order-detail-overlay'); if(_ov) _ov.remove(); }catch(e){}
+      // 2. Rafraîchir la liste des commandes (pas renderResaTab qui est la tab réservations)
+      try{ if(typeof _fetchAndRenderCommandes==='function') _fetchAndRenderCommandes(); }catch(e){}
+      // 3. Toasts et feedback
+      showToast('Prestation validée !','Le paiement GENESIS SAFE™ est libéré au prestataire.','success');
+      setTimeout(function(){ showToast('+20 QG','Mission accomplie !','success'); }, 1400);
+      setTimeout(function(){ try{ if(typeof _refreshClientQG==='function') _refreshClientQG(); }catch(e){} }, 2000);
+      haptic([50,30,100]);
+      // 4. Rafraîchir le portefeuille s'il est visible
+      try{
+        if(document.getElementById('wallet-content') && typeof showClientWallet==='function'){
+          setTimeout(function(){ showClientWallet(); }, 1500);
+        }
+      }catch(e){}
+    }
+
     try {
       fetch((window.FA_GENESIS_API||API)+'/api/client/orders/'+orderId+'/validate-delivery',{
         method:'POST',
@@ -16415,30 +16437,20 @@ function _clientValidateDelivery(orderId, requestId, btn){
         signal: _ctrl.signal
       }).then(function(r){ clearTimeout(_tid); return r.json(); }).then(function(res){
         if(res && res.success){
-          showToast('Prestation validée !','Le paiement GENESIS SAFE™ est libéré au prestataire.','success');
-          setTimeout(function(){ showToast('+20 QG','Mission accomplie !','success'); }, 1400);
-          setTimeout(function(){ if(typeof _refreshClientQG==='function') _refreshClientQG(); }, 2000);
-          haptic([50,30,100]);
-          try{ typeof renderResaTab==='function' && renderResaTab(); }catch(re){}
-          try {
-            if(document.getElementById('wallet-content') && typeof showClientWallet==='function'){
-              setTimeout(function(){ showClientWallet(); }, 1500);
-            }
-          } catch(e){}
+          _onSuccess();
         } else {
-          clearTimeout(_tid);
-          if(btn){ btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-circle-check"></i> Valider la prestation'; }
+          _resetBtn();
           showToast('Erreur',(res&&res.error)||'Impossible de valider','error');
         }
       }).catch(function(err){
         clearTimeout(_tid);
-        if(btn){ btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-circle-check"></i> Valider la prestation'; }
+        _resetBtn();
         var _msg = (err && err.name === 'AbortError') ? 'Délai dépassé — réessayez.' : 'Erreur de connexion. Réessayez.';
         showToast('Erreur',_msg,'error');
       });
     } catch(_fe){
       clearTimeout(_tid);
-      if(btn){ btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-circle-check"></i> Valider la prestation'; }
+      _resetBtn();
       showToast('Erreur','Impossible d\'envoyer la validation.','error');
     }
   });
