@@ -4205,12 +4205,18 @@ app.post('/api/orders/:orderId/cancel-refund', async function(req, res) {
             }
         }
 
-        console.log('[CANCEL-REFUND] Commande ' + orderId + ' annulée par ' + user.email + ' — remboursement: ' + (refundOk ? 'OK' : 'MANUEL'));
+        // GENESIS SAFE™ : PI autorisé mais non capturé → cancelPaymentIntent = libération instantanée
+        // PI déjà capturé (deposit_paid=true) → createRefund = 5 à 10 jours selon la banque
+        var _isInstantRelease = (order.deposit_authorized === true && !order.deposit_paid);
+        console.log('[CANCEL-REFUND] Commande ' + orderId + ' annulée par ' + user.email + ' — remboursement: ' + (refundOk ? 'OK' : 'MANUEL') + (_isInstantRelease ? ' (instantané)' : ''));
         res.json({
             ok: true,
             refunded: refundOk,
+            instant: _isInstantRelease && refundOk,
             message: refundOk
-                ? 'Remboursement en cours sur votre moyen de paiement d\'origine (3–5 jours ouvrés).'
+                ? (_isInstantRelease
+                    ? 'Annulation confirmée. L\'autorisation sur votre carte a été libérée instantanément — aucun montant ne sera débité.'
+                    : 'Remboursement initié. Le montant sera crédité sur votre moyen de paiement d\'origine sous 5 à 10 jours ouvrés selon votre banque.')
                 : 'Commande annulée. Le remboursement sera traité manuellement par notre équipe sous 24h.'
         });
     } catch(e) {

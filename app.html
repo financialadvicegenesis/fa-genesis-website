@@ -11162,7 +11162,7 @@ function _cancelAndRefund(orderId){
   overlay.innerHTML='<div style="background:var(--card);border-radius:22px 22px 0 0;width:100%;max-width:500px;padding:24px 20px 44px;box-sizing:border-box;">'
     +'<div style="width:40px;height:4px;background:#444;border-radius:2px;margin:0 auto 20px;"></div>'
     +'<div style="font-size:16px;font-weight:800;color:#f87171;margin-bottom:8px;"><i class="fa-solid fa-rotate-left" style="margin-right:8px;"></i>Annuler et être remboursé</div>'
-    +'<div style="font-size:13px;color:var(--muted);margin-bottom:20px;line-height:1.6;">Le paiement sera remboursé sur votre moyen de paiement d\'origine sous <strong style="color:#fff;">3 à 5 jours ouvrés</strong>. Cette action est irréversible.</div>'
+    +'<div style="font-size:13px;color:var(--muted);margin-bottom:20px;line-height:1.6;">Votre autorisation de paiement sera libérée <strong style="color:#fff;">instantanément</strong> sur votre carte — aucun montant ne vous sera débité. Cette action est irréversible.</div>'
     +'<div id="cr-err" style="display:none;color:#f03e3e;font-size:12px;margin-bottom:12px;padding:9px 12px;background:rgba(240,62,62,0.1);border-radius:8px;"><i class="fa-solid fa-circle-exclamation" style="margin-right:6px;"></i><span id="cr-err-msg"></span></div>'
     +'<button id="cr-confirm-btn" onclick="_executeCancelRefund(\''+orderId+'\')" style="width:100%;background:linear-gradient(135deg,#7f1d1d,#b91c1c);border:none;border-radius:12px;padding:14px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:10px;">'
     +'<i class="fa-solid fa-rotate-left"></i> Confirmer l\'annulation</button>'
@@ -11183,7 +11183,8 @@ function _executeCancelRefund(orderId){
   }).then(function(r){return r.json();}).then(function(d){
     if(d.ok){
       _closeCrModal();
-      showToast('Remboursement initié',''+d.message,'success');
+      var _toastTitle = d.instant ? 'Annulation confirmée !' : 'Remboursement initié';
+      showToast(_toastTitle,''+d.message,'success');
       setTimeout(function(){if(typeof showClientWallet==='function')showClientWallet();},1500);
     } else {
       if(btn){btn.disabled=false;btn.innerHTML='<i class="fa-solid fa-rotate-left"></i> Confirmer l\'annulation';}
