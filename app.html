@@ -7279,6 +7279,42 @@ function missionTimelineHtml(displayStatus){
     +'<div class="mission-ladder-dots">'+dots+'</div></div>'
     +'</div>';
 }
+// ── Suivi de mission en temps réel côté prestataire — même architecture que
+// TRACK_STEPS/renderOrderTrackingCard (frise .track-*), adaptée au point de vue
+// du prestataire. Remplace l'ancienne barre jaune (missionTimelineHtml) pour les
+// vues partenaire (_ptnrRenderEngagedMissionCard, liste Projets).
+var PARTNER_TRACK_STEPS = [
+  { key:'received',    label:'Mission reçue',        icon:'fa-circle-check',        desc:'Le client a payé, la mission est sécurisée' },
+  { key:'accepted',    label:'Acceptée',             icon:'fa-handshake',           desc:'Vous avez pris en charge la mission' },
+  { key:'in_progress', label:'En préparation',       icon:'fa-screwdriver-wrench',  desc:'Réalisez la prestation puis confirmez la livraison' },
+  { key:'delivered',   label:'Livraison confirmée',  icon:'fa-box-open',            desc:'En attente de validation du client' },
+  { key:'completed',   label:'Mission terminée',     icon:'fa-flag-checkered',      desc:'Paiement versé — merci pour votre travail !' }
+];
+function partnerMissionTrackingHtml(displayStatus){
+  if(!displayStatus || !displayStatus.key) return '';
+  var idx = (_trackStepIdx[displayStatus.key] !== undefined) ? _trackStepIdx[displayStatus.key] : 0;
+  var stepsHtml = PARTNER_TRACK_STEPS.map(function(step, i){
+    var cls = i < idx ? 'ts-done' : (i===idx ? 'ts-active' : (i===idx+1?'ts-next':'ts-pending'));
+    var iconEl = i < idx
+      ? '<i class="fa-solid fa-check"></i>'
+      : (i===idx ? '<i class="fa-solid '+step.icon+'"></i>' : '<i class="fa-solid fa-lock"></i>');
+    var descHtml = (i===idx) ? '<div class="track-step-desc">'+step.desc+'</div>' : '';
+    return '<li class="track-step '+cls+'">'
+      +'<div class="track-step-icon">'+iconEl+'</div>'
+      +'<div class="track-step-body">'
+      +'<div class="track-step-label">'+step.label+(i===idx?'&nbsp;<span style="font-size:9px;background:#FFD700;color:#000;padding:1px 5px;border-radius:4px;font-weight:900;vertical-align:middle;">MAINTENANT</span>':'')+'</div>'
+      +descHtml
+      +'</div></li>';
+  }).join('');
+  var pulseKey = 'col-'+(displayStatus.key||'in_progress');
+  return '<div style="background:#0c0c0c;border:1px solid #1e1e1e;border-radius:14px;margin-top:10px;overflow:hidden;">'
+    +'<div style="padding:12px 14px 6px;display:flex;align-items:center;gap:8px;">'
+    +'<div class="track-pulse '+pulseKey+'"></div>'
+    +'<span style="font-size:12px;font-weight:800;color:#fff;">'+(displayStatus.emoji||'')+' '+(displayStatus.label||'')+'</span>'
+    +'</div>'
+    +'<ul class="track-steps" style="padding-bottom:2px;">'+stepsHtml+'</ul>'
+    +'</div>';
+}
 function tierLadderHtml(order, currentBadge, pct){
   var n = order.length;
   var curIdx = order.indexOf(currentBadge);
@@ -13233,7 +13269,7 @@ function _ptnrRenderProjetsList(items){
     html += '<div><div class="ptnr-card-title">'+(p.client_name||p.clientName||p.order_id||'Projet')+'</div>';
     html += '<div class="ptnr-card-sub">'+(p.product_name||p.productName||'')+(p.start_date?' · '+ _ptnrFmt(p.start_date):'')+'</div></div>';
     html += '<span class="ptnr-status '+statusClass+'">'+statusLabel+'</span></div>';
-    if(p.display_status && p.display_status.key) html += missionTimelineHtml(p.display_status);
+    if(p.display_status && p.display_status.key) html += partnerMissionTrackingHtml(p.display_status);
     if(p.notes||p.description) html += '<div style="font-size:12px;color:#aaa;margin-top:8px;line-height:1.5;">'+(p.notes||p.description)+'</div>';
     html += '</div>';
   });
@@ -16176,7 +16212,7 @@ function _ptnrRenderEngagedMissionCard(r){
     +'<div class="dispatch-title">'+r.client_name+' — '+r.service_label+'</div>'
     +contractDlBtn
     +(r.payment_tier === 'small' ? '<div style="font-size:11px;color:#6dbf6d;font-weight:700;margin-bottom:6px;"><i class="fas fa-lock" style="margin-right:4px;"></i>GENESIS SAFE™ — fonds versés à la livraison confirmée</div>' : '')
-    +missionTimelineHtml(r.display_status)
+    +partnerMissionTrackingHtml(r.display_status)
     +(canMarkDelivering
       ? '<button class="dispatch-claim-btn" style="margin-top:10px;width:100%;" onclick="_ptnrMarkDelivering(\''+r.dispatch_id+'\',\''+r.id+'\')"><i class="fa-solid fa-truck-fast"></i> Marquer : livraison en cours</button>'
       : '')
