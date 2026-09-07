@@ -11054,9 +11054,9 @@ function showClientWallet(){
         html+='<div class="espace-empty" style="text-align:center;padding:32px 0;"><div style="font-size:32px;margin-bottom:10px;">🔒</div><div>Aucun paiement GENESIS SAFE actif.<br><span style="color:var(--muted);font-size:13px;">Vos fonds apparaîtront ici dès votre prochaine commande.</span></div></div>';
         el.innerHTML=html;return;
       }
-      // ── Fonds en attente de livraison
+      // ── Fonds en escrow (retenus)
       if(held.length>0){
-        html+='<div style="font-size:10px;color:#FFD700;font-weight:800;letter-spacing:1px;margin:0 0 10px;">EN ATTENTE DE LIVRAISON</div>';
+        html+='<div style="font-size:10px;color:#FFD700;font-weight:800;letter-spacing:1px;margin:0 0 10px;"><i class="fa-solid fa-lock" style="margin-right:4px;"></i>FONDS EN ESCROW</div>';
         html+=held.map(function(o){
           var withdrawBtn='';
           if(o.can_withdraw){
@@ -11066,14 +11066,21 @@ function showClientWallet(){
           var jsOid=o.order_id.replace(/'/g,'\\\'');
           var cancelRefundBtn='';
           if(o.can_cancel_refund){
-            var _cancelLabel = o.pending_client_validation
-              ? '<i class="fa-solid fa-hand"></i> Refuser la livraison — remboursement'
-              : o.validated_pending_payout
-              ? '<i class="fa-solid fa-rotate-left"></i> Annuler le virement — remboursement'
-              : '<i class="fa-solid fa-xmark"></i> Annuler — remboursé sur votre carte';
+            var _cancelLabel = o.validated_pending_payout
+              ? '<i class="fa-solid fa-rotate-left"></i> Annuler — être remboursé'
+              : o.pending_client_validation
+              ? '<i class="fa-solid fa-hand"></i> Refuser la livraison — être remboursé'
+              : '<i class="fa-solid fa-xmark"></i> Annuler la commande — être remboursé';
             cancelRefundBtn='<button onclick="_cancelAndRefund(\''+jsOid+'\')" style="margin-top:8px;width:100%;background:transparent;border:1.5px solid #7f1d1d;border-radius:10px;padding:10px 14px;color:#f87171;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">'
               +_cancelLabel+'</button>';
           }
+          // Couleur et icône selon l'état réel
+          var _statusColor = o.validated_pending_payout ? '#22c55e'
+            : o.pending_client_validation ? '#60a5fa'
+            : '#a89000';
+          var _statusIcon = o.validated_pending_payout ? 'fa-circle-check'
+            : o.pending_client_validation ? 'fa-hourglass-half'
+            : 'fa-lock';
           var jsSlabel=(o.service_label||'Prestation').replace(/'/g,'\\\'');
           var jsPid=(o.partner_id||'').replace(/'/g,'\\\'');
           var balBtn=o.balance_due
@@ -11086,19 +11093,19 @@ function showClientWallet(){
             +'<div style="font-size:16px;font-weight:900;color:#FFD700;white-space:nowrap;">'+o.held_amount.toFixed(2)+' €</div>'
             +'</div>'
             +'<div style="font-size:12px;color:var(--muted);margin-bottom:6px;">Prestataire : '+o.partner_name+'</div>'
-            +'<div style="display:flex;align-items:center;gap:6px;font-size:11px;color:#a89000;">'
-            +'<i class="fa-solid fa-lock" style="font-size:10px;"></i> '+o.status_label
+            +'<div style="display:flex;align-items:center;gap:6px;font-size:11px;color:'+_statusColor+';margin-bottom:2px;">'
+            +'<i class="fa-solid '+_statusIcon+'" style="font-size:10px;"></i> '+o.status_label
             +'</div>'
-            +(o.can_withdraw?'<div style="font-size:11px;color:#f03e3e;margin-top:6px;"><i class="fa-solid fa-triangle-exclamation" style="font-size:10px;"></i> '+o.withdraw_reason+'</div>':'')
+            +(o.can_withdraw?'<div style="font-size:11px;color:#f03e3e;margin-top:4px;"><i class="fa-solid fa-triangle-exclamation" style="font-size:10px;"></i> '+o.withdraw_reason+'</div>':'')
             +withdrawBtn
             +cancelRefundBtn
             +balBtn
             +'</div>';
         }).join('');
       }
-      // ── Historique libéré
+      // ── Historique libéré (argent réellement versé au prestataire)
       if(released.length>0){
-        html+='<div style="font-size:10px;color:#4caf50;font-weight:800;letter-spacing:1px;margin:18px 0 10px;">DÉJÀ VERSÉ AU PRESTATAIRE</div>';
+        html+='<div style="font-size:10px;color:#4caf50;font-weight:800;letter-spacing:1px;margin:18px 0 10px;"><i class="fa-solid fa-circle-check" style="margin-right:4px;"></i>VERSÉ AU PRESTATAIRE</div>';
         html+=released.map(function(o){
           return '<div class="resa-card" style="margin-bottom:10px;border-color:#1a2e1a;">'
             +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:4px;">'
@@ -11106,7 +11113,7 @@ function showClientWallet(){
             +'<div style="font-size:16px;font-weight:900;color:#4caf50;white-space:nowrap;">'+o.released_amount.toFixed(2)+' €</div>'
             +'</div>'
             +'<div style="font-size:12px;color:var(--muted);margin-bottom:6px;">Prestataire : '+o.partner_name+'</div>'
-            +'<div style="font-size:11px;color:#4caf50;"><i class="fa-solid fa-circle-check" style="font-size:10px;"></i> Versé au prestataire</div>'
+            +'<div style="font-size:11px;color:#4caf50;"><i class="fa-solid fa-circle-check" style="font-size:10px;"></i> Paiement versé au prestataire</div>'
             +'</div>';
         }).join('');
       }

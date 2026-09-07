@@ -5463,7 +5463,12 @@ app.get('/api/client/wallet', function(req, res) {
                 // Modèle standard (deposit_authorized / deposit_paid / balance_paid) — inclut les orders partner_service
                 // deposit_authorized = carte réservée GENESIS SAFE™, argent pas encore capturé
                 // deposit_paid       = PI capturé, argent chez Stripe GENESIS
-                var isComplete = order.status === 'completed' || order.status === 'delivered' || order.client_validated === true;
+                // isComplete = argent réellement sorti de Stripe GENESIS vers le partenaire
+                // (partner_paid_out=true après Transfer Stripe, ou balance_paid pour les paiements en 2x)
+                // NE PAS inclure client_validated seul : la validation autorise le virement
+                // mais jusqu'à partner_paid_out=true, l'argent est encore chez Stripe GENESIS
+                // et le client peut encore être remboursé.
+                var isComplete = order.partner_paid_out === true || order.balance_paid === true;
                 var _hasFunds = order.deposit_authorized === true || order.deposit_paid === true;
                 var isSplit = (parseFloat(order.balance_amount) || 0) > 0;
                 if (isSplit) {
@@ -5498,7 +5503,8 @@ app.get('/api/client/wallet', function(req, res) {
             totalHeld += held;
             totalReleased += released;
 
-            var partnerDone = !!(order.delivery_confirmed || order.partner_completed);
+            var partnerDone = !!(order.delivery_confirmed || order.partner_completed
+                || (dispatch && (dispatch.mission_status === 'delivered' || dispatch.mission_status === 'delivering')));
             var _isPI = order.payment_tier === 'partner_installments';
             var _hasPendingAdminPayout = payouts.some(function(p) {
                 return p.order_id === order.id && p.status === 'pending_admin';
@@ -5513,11 +5519,11 @@ app.get('/api/client/wallet', function(req, res) {
                 : _isPI
                 ? 'Mensualités versées directement au prestataire'
                 : released > 0 && _hasPendingAdminPayout ? 'Virement en cours de traitement par GENESIS'
+                : held > 0 && validatedPendingPayout ? 'Prestation validée — virement au prestataire en cours'
                 : held > 0 && pendingClientValidation ? 'Livraison reçue — en attente de votre validation'
-                : held > 0 && validatedPendingPayout ? 'Prestation validée — virement en préparation'
-                : held > 0 && partnerDone ? 'Prestation validée — virement au prestataire en cours'
                 : held > 0 && partnerAcceptedNotDone ? 'En attente de livraison — fonds sécurisés en escrow'
-                : held > 0 ? 'Sécurisé GENESIS SAFE™ — versé au prestataire à la livraison'
+                : held > 0 && partnerDone ? 'Prestation en cours — fonds sécurisés en escrow'
+                : held > 0 ? 'Fonds sécurisés en escrow — libérés après validation'
                 : 'Versé au prestataire ✓';
             var canWithdraw = held > 0 && (dispatchNotAccepted || partnerInactive);
             var withdrawReason = canWithdraw
