@@ -4212,6 +4212,17 @@ app.post('/api/orders/:orderId/cancel-refund', async function(req, res) {
             }
         }
 
+        // Désactiver l'assignation partenaire liée (missions "accompagnement" assignées
+        // directement, sans dispatch) — sinon la mission reste visible comme "active" côté
+        // prestataire (/api/partner/projects) et le bouton "Confirmer la livraison" y persiste.
+        var cancelAssignments = loadPartnerAssignments();
+        var cancelAsgnIdx = cancelAssignments.findIndex(function(a) { return a.order_id === orderId && a.status === 'active'; });
+        if (cancelAsgnIdx !== -1) {
+            cancelAssignments[cancelAsgnIdx].status = 'cancelled';
+            cancelAssignments[cancelAsgnIdx].cancelled_at = new Date().toISOString();
+            savePartnerAssignments(cancelAssignments);
+        }
+
         // Rembourser (Stripe cancel/refund ou PayPal ou route admin)
         var refundOk = await refundClientOrder(order);
 
@@ -15532,6 +15543,9 @@ app.post('/api/partner/dispatches/:id/mark-delivered', authenticatePartner, asyn
         if (oIdx === -1) return res.status(404).json({ error: 'Commande introuvable' });
         var order = orders[oIdx];
 
+        if (order.status === 'cancelled' || order.status === 'refunded' || dispatch.status === 'cancelled') {
+            return res.status(400).json({ error: 'Cette mission a été annulée par le client — la livraison ne peut plus être confirmée.' });
+        }
         if (order.payment_tier !== 'small') {
             return res.status(400).json({ error: 'Cette route s\'applique uniquement aux missions GENESIS SAFE™ ≤ 300 €.' });
         }
@@ -16484,6 +16498,9 @@ app.post('/api/partner/projects/:orderId/complete', authenticatePartner, async f
             return res.status(403).json({ error: 'Vous n\'êtes pas assigné à cette commande' });
         }
 
+        if (order.status === 'cancelled' || order.status === 'refunded' || (dispatch && dispatch.status === 'cancelled')) {
+            return res.status(400).json({ error: 'Cette mission a été annulée par le client — la livraison ne peut plus être confirmée.' });
+        }
         if (order.partner_completed) {
             return res.status(400).json({ error: 'Prestation déjà déclarée terminée' });
         }
@@ -16751,6 +16768,9 @@ app.post('/api/partner/projects/:orderId/complete', authenticatePartner, functio
 
         var order = getOrderById(orderId);
         if (!order) return res.status(404).json({ error: 'Commande introuvable' });
+        if (order.status === 'cancelled' || order.status === 'refunded') {
+            return res.status(400).json({ error: 'Cette mission a été annulée par le client — la livraison ne peut plus être confirmée.' });
+        }
         if (order.partner_completed) {
             return res.status(400).json({ error: 'Prestation déjà déclarée terminée' });
         }

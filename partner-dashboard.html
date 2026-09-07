@@ -691,6 +691,7 @@ function projectCard(p, livrables, showLivSection){
   var livs = livrables || [];
 
   var isPartnerPaidOut = order.partner_paid_out === true;
+  var isCancelled = order.status === 'cancelled' || order.status === 'refunded';
 
   // Même architecture de suivi que côté client (frise .track-*), adaptée au prestataire :
   // 1=en préparation, 2=livraison confirmée (attente validation), 3=terminé.
@@ -736,7 +737,7 @@ function projectCard(p, livrables, showLivSection){
   html += '<div style="padding:0 16px 16px">';
 
   // ── Section livrables (uniquement sur l'onglet Livrables) ──
-  if(showLivSection && !isValidated && !isBalancePaid && orderId){
+  if(showLivSection && !isCancelled && !isValidated && !isBalancePaid && orderId){
     var _livIcons = {link:'fa-link',file:'fa-file-arrow-up',text:'fa-align-left',video:'fa-video'};
     var _livTypeLabel = {link:'Lien',file:'Fichier',text:'Texte',video:'Vidéo'};
     html += '<div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px">'
@@ -788,7 +789,9 @@ function projectCard(p, livrables, showLivSection){
   }
 
   // Bouton "Prestation terminée"
-  if(!isCompleted && !isBalancePaid && orderId){
+  if(isCancelled){
+    html += '<div style="margin-top:10px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.3);border-radius:8px;padding:10px 12px;font-size:12px;color:#f87171;font-weight:700;line-height:1.5"><i class="fa-solid fa-ban"></i> Mission annulée par le client — la livraison ne peut plus être confirmée.</div>';
+  } else if(!isCompleted && !isBalancePaid && orderId){
     html += '<button class="btn-gold" style="margin-top:10px;width:100%" onclick="declareComplete(\''+esc(String(orderId))+'\',this)"><i class="fa-solid fa-flag-checkered"></i>Prestation terminée</button>';
   } else if(isCompleted && !isValidated && !isBalancePaid){
     html += '<div style="margin-top:10px;background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.25);border-radius:8px;padding:10px 12px;font-size:12px;color:#22c55e;line-height:1.5"><i class="fa-solid fa-circle-check"></i> Virement GENESIS déclenché — le client recevra une notification de confirmation qualité.</div>';
