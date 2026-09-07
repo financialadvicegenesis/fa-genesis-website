@@ -2888,13 +2888,18 @@ async function checkAutoPaymentRelease() {
 
                 // Étape 2 : trouver le dispatch ou l'assignation pour déclencher le Transfer
                 var _arDisps = loadDispatches();
-                var _arDisp  = _arDisps.find(function(d) {
+                var _arDispIdx = _arDisps.findIndex(function(d) {
                     return d.order_id === _o.id && d.status !== 'cancelled'
                         && (d.claimed_by_partner_id || d.partner_id);
                 });
+                var _arDisp = _arDispIdx !== -1 ? _arDisps[_arDispIdx] : null;
 
                 if (_arDisp) {
                     await processDispatchPayout(_arDisp, 'deposit');
+                    // Sortir la mission de la liste "en cours" côté partenaire — validée et payée.
+                    _arDisps[_arDispIdx].mission_status = 'completed';
+                    _arDisps[_arDispIdx].completed_at   = new Date().toISOString();
+                    saveDispatches(_arDisps);
                 } else if (_o.partner_id) {
                     // Commande directe sans dispatch — Transfer manuel via record payout
                     var _arPartner = getPartnerById(_o.partner_id);
@@ -12725,7 +12730,11 @@ function getClientCompletedOrders(email) {
     const needle = email.toLowerCase();
     return loadOrders().filter(o => {
         const oe = (o.client_info && o.client_info.email) || o.email || '';
-        return oe.toLowerCase() === needle && o.balance_paid === true;
+        if (oe.toLowerCase() !== needle) return false;
+        // Flow acompte/solde classique : commande realisee = solde paye.
+        // Flow GENESIS SAFE™ paiement unique (payment_tier 'small') : pas de solde separe,
+        // la commande est realisee des que le client valide (ou auto-liberation 7j).
+        return o.balance_paid === true || o.client_validated === true;
     }).length;
 }
 
@@ -15163,12 +15172,24 @@ app.get('/api/partner/dispatches', authenticatePartner, function(req, res) {
             });
 
         // Missions actives de ce partenaire (acceptées, en cours, livrées — pas encore complétées/annulées)
+        var allOrdersForActive = loadOrders();
         var myActive = dispatches.filter(function(d) {
             var isMyDispatch = (d.claimed_by_partner_id === partnerId || d.partner_id === partnerId);
             if (!isMyDispatch) return false;
             var activeStatuses = ['accepted', 'in_progress'];
             var activeMissionStatuses = ['in_progress', 'delivered'];
             return activeStatuses.indexOf(d.status) !== -1 || activeMissionStatuses.indexOf(d.mission_status) !== -1;
+        }).map(function(d) {
+            var ord = allOrdersForActive.find(function(o) { return o.id === d.order_id; });
+            return Object.assign({}, d, {
+                client_validated: !!(ord && ord.client_validated === true),
+                partner_paid_out: !!(ord && ord.partner_paid_out === true),
+                pending_client_validation: !!(ord && ord.pending_client_validation === true),
+                auto_payment_release_at: ord ? (ord.auto_payment_release_at || null) : null,
+                total_amount: ord ? (ord.total_amount || ord.deposit_amount || d.amount) : d.amount,
+                payment_tier: ord ? (ord.payment_tier || null) : null,
+                client_name: (ord && ord.client_info) ? ((ord.client_info.prenom || '') + ' ' + (ord.client_info.nom || '')).trim() : null
+            });
         }).sort(function(a, b) { return new Date(b.accepted_at || b.created_at) - new Date(a.accepted_at || a.created_at); });
 
         res.json({ dispatches: available, my_active: myActive });
@@ -16854,10 +16875,15 @@ app.post('/api/client/orders/:orderId/validate-delivery', async function(req, re
         // Il sort maintenant de Stripe GENESIS vers le partenaire.
         try {
             var _vdAllDisps = loadDispatches();
-            var _vdDisp = _vdAllDisps.find(function(d) { return d.order_id === orderId && d.status !== 'cancelled'; });
+            var _vdDispIdx = _vdAllDisps.findIndex(function(d) { return d.order_id === orderId && d.status !== 'cancelled'; });
+            var _vdDisp = _vdDispIdx !== -1 ? _vdAllDisps[_vdDispIdx] : null;
             if (_vdDisp && (_vdDisp.claimed_by_partner_id || _vdDisp.partner_id)) {
                 await processDispatchPayout(_vdDisp, 'deposit');
                 updateOrder(orderId, { partner_paid_out: true, partner_paid_out_at: new Date().toISOString() });
+                // Sortir la mission de la liste "en cours" côté partenaire — validée et payée.
+                _vdAllDisps[_vdDispIdx].mission_status = 'completed';
+                _vdAllDisps[_vdDispIdx].completed_at   = new Date().toISOString();
+                saveDispatches(_vdAllDisps);
                 console.log('[VALIDATE] GENESIS SAFE™ — payout déclenché via validate-delivery pour commande', orderId);
             } else {
                 // Pas de dispatch (assignment direct) → payout manuel admin

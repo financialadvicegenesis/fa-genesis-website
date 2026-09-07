@@ -82,6 +82,41 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:-apple-
 /* Mission progress bar */
 .mission-status-bar{height:3px;border-radius:2px;margin-top:10px;background:var(--border);overflow:hidden}
 .mission-status-fill{height:100%;border-radius:2px;background:var(--gold);transition:width .4s}
+/* Suivi de mission en temps réel (même système visuel que côté client, adapté prestataire) */
+.track-card{background:var(--card);border:1.5px solid var(--border);border-radius:18px;overflow:hidden;margin-bottom:14px}
+.track-card-header{padding:14px 16px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.track-card-info{flex:1;min-width:0}
+.track-card-service{font-size:14px;font-weight:800;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.track-card-partner{font-size:11px;color:var(--muted);margin-top:2px}
+.track-hero{padding:20px 16px 16px;text-align:center;border-bottom:1px solid var(--border)}
+.track-hero-emoji{font-size:36px;line-height:1;margin-bottom:8px}
+.track-hero-label{font-size:20px;font-weight:900;color:var(--text);display:flex;align-items:center;justify-content:center;gap:8px}
+.track-pulse{width:10px;height:10px;border-radius:50%;display:inline-block;flex-shrink:0}
+@keyframes trackPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(1.3)}}
+.track-pulse.col-accepted{background:#3b82f6;animation:trackPulse 1.4s ease-in-out infinite}
+.track-pulse.col-in_progress{background:#a855f7;animation:trackPulse 1.4s ease-in-out infinite}
+.track-pulse.col-delivered{background:#fbbf24;animation:trackPulse 1.4s ease-in-out infinite}
+.track-pulse.col-completed{background:#22c55e}
+.track-hero-sub{font-size:12px;color:var(--muted);margin-top:6px}
+.track-steps{padding:0;margin:0;list-style:none}
+.track-step{display:flex;align-items:flex-start;gap:14px;padding:12px 16px;position:relative}
+.track-step:not(:last-child)::after{content:'';position:absolute;left:27px;top:42px;width:2px;height:calc(100% - 20px);background:var(--border);z-index:0}
+.track-step.ts-done::after{background:rgba(34,197,94,.25)}
+.track-step-icon{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0;position:relative;z-index:1;border:2px solid var(--border);margin-top:1px}
+.ts-done .track-step-icon{background:#022c10;border-color:#22c55e;color:#22c55e}
+.ts-active .track-step-icon{background:#1a1600;border-color:var(--gold);color:var(--gold);box-shadow:0 0 0 3px rgba(255,215,0,.15)}
+.ts-next .track-step-icon{background:#151515;border-color:#2a2a2a;color:#333}
+.ts-pending .track-step-icon{background:#111;border-color:var(--border);color:#222}
+.track-step-body{flex:1;padding-top:3px}
+.ts-done .track-step-label{font-size:13px;font-weight:700;color:#22c55e}
+.ts-active .track-step-label{font-size:13px;font-weight:800;color:var(--text)}
+.ts-next .track-step-label{font-size:13px;font-weight:600;color:var(--muted)}
+.ts-pending .track-step-label{font-size:13px;font-weight:600;color:#2a2a2a}
+.track-step-desc{font-size:11px;color:var(--muted);margin-top:2px;line-height:1.4}
+.ts-active .track-step-desc{color:#999}
+.track-step-time{font-size:10px;color:#444;margin-top:2px}
+.ts-done .track-step-time{color:#3a6a4a}
+.ts-active .track-step-time{color:#887700}
 /* Messages */
 .msg-thread{display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s}
 .msg-thread:first-child{border-top:1px solid var(--border)}
@@ -459,7 +494,7 @@ function loadAccueil(){
       el.innerHTML = '<div class="empty"><i class="fa-solid fa-briefcase"></i><p>Aucune mission pour le moment</p></div>'; return;
     }
     var cards = '';
-    myActive.slice(0,2).forEach(function(d){ cards += activeDispatchCard(d); });
+    myActive.slice(0,2).forEach(function(d){ cards += partnerTrackingCard(d); });
     dispatches.slice(0,2).forEach(function(d){ cards += dispatchCard(d); });
     projects.slice(0,2).forEach(function(p){ cards += projectCard(p); });
     el.innerHTML = cards;
@@ -527,7 +562,7 @@ function loadMissions(){
     }
     var html = '';
     if(dispatches.length){ html += '<div class="sec-hdr" style="padding-top:4px"><i class="fa-solid fa-bolt"></i>Disponibles ('+dispatches.length+')</div>'; dispatches.forEach(function(d){ html+=dispatchCard(d); }); }
-    if(myActive.length)  { html += '<div class="sec-hdr" style="padding-top:8px"><i class="fa-solid fa-spinner"></i>En cours ('+myActive.length+')</div>'; myActive.forEach(function(d){ html+=activeDispatchCard(d); }); }
+    if(myActive.length)  { html += '<div class="sec-hdr" style="padding-top:8px"><i class="fa-solid fa-spinner"></i>En cours ('+myActive.length+')</div>'; myActive.forEach(function(d){ html+=partnerTrackingCard(d); }); }
     if(projects.length)  { html += '<div class="sec-hdr" style="padding-top:8px"><i class="fa-solid fa-circle-check"></i>Projets en cours ('+projects.length+')</div>'; projects.forEach(function(p){ html+=projectCard(p); }); }
     el.innerHTML = html;
   }).catch(function(){ el.innerHTML = '<div class="empty"><i class="fa-solid fa-wifi-slash"></i><p>Erreur de chargement</p></div>'; });
@@ -551,29 +586,88 @@ function dispatchCard(d){
     +'</div>';
 }
 
-function activeDispatchCard(d){
-  var isDelivered = d.mission_status === 'delivered';
-  var orderId = d.order_id || '';
-  var statusPill = isDelivered
-    ? '<span class="pill pill-green"><i class="fa-solid fa-check"></i>Livraison confirmée</span>'
-    : '<span class="pill pill-blue"><i class="fa-solid fa-spinner"></i>En cours</span>';
-  var safeBlock = isDelivered
-    ? '<div style="margin-top:10px;padding:10px 14px;border-radius:10px;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.25);font-size:11px;color:#fbbf24"><i class="fa-solid fa-shield-halved"></i> <strong>En attente de validation client</strong><br>Les fonds GENESIS SAFE™ seront libérés dès que le client valide.</div>'
+// ── Suivi de mission en temps réel (adapté du parcours client) ─────────────
+var PARTNER_TRACK_STEPS = [
+  { key:'accepted',    label:'Mission acceptée',     icon:'fa-handshake',           desc:'Vous avez pris en charge la mission' },
+  { key:'in_progress', label:'En préparation',       icon:'fa-screwdriver-wrench',  desc:'Réalisez la prestation puis confirmez la livraison' },
+  { key:'delivered',   label:'Livraison confirmée',  icon:'fa-box-open',            desc:'En attente de validation du client' },
+  { key:'completed',   label:'Mission terminée',     icon:'fa-flag-checkered',      desc:'Paiement versé sur votre Wallet GENESIS' }
+];
+
+function _partnerTrackIdx(d){
+  if(d.client_validated || d.partner_paid_out || d.mission_status==='completed') return 3;
+  if(d.mission_status === 'delivered') return 2;
+  if(d.mission_status === 'in_progress' || d.status === 'accepted') return 1;
+  return 0;
+}
+
+function partnerTrackingCard(d){
+  var currentIdx = _partnerTrackIdx(d);
+  var isCompleted = currentIdx === 3;
+  var isDelivered = currentIdx === 2;
+  var pulseKey = isCompleted ? 'completed' : (isDelivered ? 'delivered' : (currentIdx===1 ? 'in_progress' : 'accepted'));
+  var emoji = isCompleted ? '✅' : (isDelivered ? '🟡' : (currentIdx===1 ? '🟣' : '🔵'));
+  var heroLabel = isCompleted ? 'Mission terminée' : (isDelivered ? 'Livraison confirmée' : (currentIdx===1 ? 'En préparation' : 'Mission acceptée'));
+  var heroSub = isCompleted ? 'Le client a validé — paiement versé sur votre Wallet GENESIS.'
+    : isDelivered ? 'En attente de validation du client. Libération automatique sous 7 jours si sans réponse.'
+    : currentIdx===1 ? 'Réalisez la prestation puis confirmez la livraison.'
+    : 'La mission démarre.';
+
+  var stepsHtml = PARTNER_TRACK_STEPS.map(function(step, i){
+    var cls = i < currentIdx ? 'ts-done' : (i===currentIdx ? 'ts-active' : (i===currentIdx+1?'ts-next':'ts-pending'));
+    var iconEl = i < currentIdx
+      ? '<i class="fa-solid fa-check"></i>'
+      : (i===currentIdx ? '<i class="fa-solid '+step.icon+'"></i>' : '<i class="fa-solid fa-lock"></i>');
+    var descHtml = (i===currentIdx) ? '<div class="track-step-desc">'+step.desc+'</div>' : '';
+    return '<li class="track-step '+cls+'">'
+      +'<div class="track-step-icon">'+iconEl+'</div>'
+      +'<div class="track-step-body">'
+      +'<div class="track-step-label">'+step.label+(i===currentIdx?'&nbsp;<span style="font-size:9px;background:var(--gold);color:#000;padding:1px 5px;border-radius:4px;font-weight:900;vertical-align:middle;">MAINTENANT</span>':'')+'</div>'
+      +descHtml
+      +'</div></li>';
+  }).join('');
+
+  var amount = parseFloat(d.total_amount || d.amount || 0).toFixed(2);
+  var safeBlock = '';
+  if(!isCompleted){
+    var _caption, _subtext;
+    if(isDelivered){
+      _caption = 'GENESIS SAFE™ — EN ATTENTE VALIDATION';
+      _subtext = 'Paiement sécurisé en escrow. Versé sur votre wallet dès validation du client.';
+    } else {
+      _caption = 'GENESIS SAFE™ — 100% EN ESCROW';
+      _subtext = 'Paiement sécurisé côté client. Sera versé sur votre wallet après livraison + validation.';
+    }
+    safeBlock = '<div style="background:linear-gradient(135deg,#0d1a00,#1a1200);border:1.5px solid var(--gold);border-radius:12px;padding:14px 16px;margin:12px 16px;">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;">'
+      +'<div><div style="font-size:10px;color:var(--gold);font-weight:800;letter-spacing:1px;margin-bottom:4px;"><i class="fa-solid fa-shield-halved"></i> '+_caption+'</div>'
+      +'<div style="font-size:12px;color:#aaa;line-height:1.5;max-width:180px;">'+_subtext+'</div></div>'
+      +'<div style="text-align:right;"><div style="font-size:20px;font-weight:900;color:var(--gold);">'+amount+' €</div></div>'
+      +'</div></div>';
+  } else {
+    safeBlock = '<div style="background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.3);border-radius:12px;padding:14px 16px;margin:12px 16px;display:flex;align-items:center;gap:12px;">'
+      +'<i class="fa-solid fa-trophy" style="color:#22c55e;font-size:22px;flex-shrink:0;"></i>'
+      +'<div><div style="font-size:13px;font-weight:900;color:#22c55e;">'+amount+' € versés</div>'
+      +'<div style="font-size:11px;color:var(--muted);margin-top:2px;">Merci pour votre travail !</div></div></div>';
+  }
+
+  var actionBtn = (currentIdx === 1)
+    ? '<div style="padding:0 16px 16px"><button class="btn-gold" onclick="markDelivered(\''+esc(String(d.order_id||''))+'\',\''+esc(String(d.id||''))+'\',this)"><i class="fa-solid fa-box-open"></i>Confirmer la livraison</button></div>'
     : '';
-  var actionBtn = isDelivered
-    ? ''
-    : '<button class="btn-gold" style="margin-top:10px" onclick="markDelivered(\''+esc(String(d.order_id||''))+'\',\''+esc(String(d.id||''))+'\',this)"><i class="fa-solid fa-box-open"></i>Confirmer la livraison</button>';
-  return '<div class="card">'
-    +'<div class="card-row">'
-    +'<div class="card-icon" style="background:rgba(59,130,246,.08)"><i class="fa-solid fa-briefcase" style="color:#3b82f6"></i></div>'
-    +'<div style="flex:1;min-width:0">'
-    +'<div class="card-title">'+esc(d.title||d.service||d.product_name||'Mission en cours')+'</div>'
-    +'<div class="card-sub">'+esc(d.description||d.details||'Mission acceptée')+'</div>'
-    +'<div style="margin-top:6px;display:flex;align-items:center;justify-content:space-between">'
-    +statusPill
-    +'<span class="card-meta">'+fmt(d.accepted_at||d.created_at)+'</span>'
-    +'</div></div></div>'
-    +(d.amount ? '<div style="font-size:14px;font-weight:900;color:var(--gold);margin-top:8px">'+fmtAmt(d.amount)+'</div>' : '')
+
+  return '<div class="track-card">'
+    +'<div class="track-card-header">'
+    +'<div class="card-icon" style="background:rgba(255,215,0,.08)"><i class="fa-solid fa-briefcase" style="color:var(--gold)"></i></div>'
+    +'<div class="track-card-info">'
+    +'<div class="track-card-service">'+esc(d.title||d.service||d.product_name||'Mission')+'</div>'
+    +'<div class="track-card-partner">'+(d.client_name?esc(d.client_name):'Client GENESIS')+'</div>'
+    +'</div></div>'
+    +'<div class="track-hero">'
+    +'<div class="track-hero-emoji">'+emoji+'</div>'
+    +'<div class="track-hero-label"><div class="track-pulse col-'+pulseKey+'"></div>'+heroLabel+'</div>'
+    +'<div class="track-hero-sub">'+heroSub+'</div>'
+    +'</div>'
+    +'<ul class="track-steps">'+stepsHtml+'</ul>'
     +safeBlock
     +actionBtn
     +'</div>';
