@@ -4089,7 +4089,10 @@ app.post('/api/orders/:orderId/cancel-refund', async function(req, res) {
         if (orderEmail !== (user.email || '').toLowerCase()) {
             return res.status(403).json({ error: 'Commande non autorisée.' });
         }
-        if (!order.deposit_paid) return res.status(400).json({ error: 'Aucun paiement à rembourser.' });
+        // Accepter deposit_authorized (PI non encore capturé) en plus de deposit_paid
+        if (!order.deposit_paid && !order.deposit_authorized) {
+            return res.status(400).json({ error: 'Aucun paiement à rembourser.' });
+        }
         if (order.status === 'cancelled' || order.status === 'refunded') {
             return res.status(400).json({ error: 'Commande déjà annulée.' });
         }
@@ -4116,9 +4119,11 @@ app.post('/api/orders/:orderId/cancel-refund', async function(req, res) {
         var pendingClientValidation = !!(partnerDone && !order.client_validated && !order.balance_paid);
         var validatedPendingPayout = !!(order.client_validated && !order.partner_paid_out && !order.balance_paid);
         var hasDelivery = loadLivrables().some(function(l) { return l.order_id === orderId && l.type !== 'contract'; });
-        // Autoriser si livraison reçue (pendingClientValidation) OU validée mais virement pas encore déclenché
-        if (hasDelivery && !pendingClientValidation && !validatedPendingPayout) {
-            return res.status(400).json({ error: 'Une livraison a déjà été soumise. Ouvrez un litige si nécessaire.' });
+        // Bloquer uniquement si le partenaire a DÉJÀ reçu son paiement (partner_paid_out=true).
+        // Si des livrables existent mais le partenaire n'est pas encore payé, le remboursement reste possible.
+        // (Le client peut refuser une livraison non satisfaisante, ou annuler avant que le virement parte.)
+        if (hasDelivery && partnerPaidOut) {
+            return res.status(400).json({ error: 'Le paiement a déjà été versé au prestataire. Contactez le support si nécessaire.' });
         }
 
         // Annuler le dispatch en attente
@@ -4924,16 +4929,28 @@ async function refundClientOrder(order) {
             else { console.error('[REFUND] PayPal réponse inattendue:', JSON.stringify(ppResult)); }
         } catch(e) { console.error('[REFUND] PayPal erreur:', e.message); }
     }
-    // Tentative remboursement Stripe (Connect ou direct) via l'ID du PaymentIntent enregistré
+    // Tentative remboursement/annulation Stripe via l'ID du PaymentIntent enregistré
     if (!refunded && order.stripe_deposit_pi_id) {
         try {
             var stripeRefundAmt = depositAmount > 0 ? Math.round(depositAmount * 100) : null;
-            var stripeRef = await scp.createRefund({ paymentIntentId: order.stripe_deposit_pi_id, amount: stripeRefundAmt });
-            if (stripeRef && (stripeRef.status === 'succeeded' || stripeRef.status === 'pending')) {
-                refunded = true;
-                console.log('[REFUND] Stripe deposit remboursé:', stripeRef.id, stripeRefundAmt, 'cents');
+            // PI autorisé mais non capturé (GENESIS SAFE™ : capture_method=manual) → annuler l'autorisation
+            // PI déjà capturé → créer un remboursement classique
+            if (order.deposit_authorized === true && !order.deposit_paid) {
+                var stripeCancel = await scp.cancelPaymentIntent(order.stripe_deposit_pi_id);
+                if (stripeCancel && stripeCancel.status === 'canceled') {
+                    refunded = true;
+                    console.log('[REFUND] Stripe PI annulé (autorisation libérée):', order.stripe_deposit_pi_id);
+                } else {
+                    console.error('[REFUND] Stripe cancel réponse inattendue:', JSON.stringify(stripeCancel));
+                }
             } else {
-                console.error('[REFUND] Stripe deposit réponse inattendue:', JSON.stringify(stripeRef));
+                var stripeRef = await scp.createRefund({ paymentIntentId: order.stripe_deposit_pi_id, amount: stripeRefundAmt });
+                if (stripeRef && (stripeRef.status === 'succeeded' || stripeRef.status === 'pending')) {
+                    refunded = true;
+                    console.log('[REFUND] Stripe deposit remboursé:', stripeRef.id, stripeRefundAmt, 'cents');
+                } else {
+                    console.error('[REFUND] Stripe deposit réponse inattendue:', JSON.stringify(stripeRef));
+                }
             }
         } catch(e) { console.error('[REFUND] Stripe deposit erreur:', e.message); }
     }
@@ -5532,12 +5549,13 @@ app.get('/api/client/wallet', function(req, res) {
             var withdrawReason = canWithdraw
                 ? (partnerInactive ? 'Le prestataire n\'est pas disponible' : 'Le prestataire n\'a pas encore accepté la mission')
                 : null;
-            // Remboursement possible tant que les fonds sont en escrow ET que le partenaire
-            // n'a pas encore été payé. On accepte deposit_authorized (PI non capturé) en plus
-            // de deposit_paid (PI capturé) car les deux représentent de l'argent récupérable.
+            // Remboursement possible dès que des fonds sont en escrow ET que le partenaire
+            // n'a pas encore été payé — quelle que soit la méthode de paiement (PI capturé,
+            // autorisé, ou tout autre mécanisme). S'il y a des fonds retenus et que le
+            // partenaire n'a pas reçu son virement, le client peut toujours récupérer son argent.
             var _hasCapturable = order.deposit_paid === true || order.deposit_authorized === true;
             var _partnerNotYetPaid = !order.partner_paid_out && !order.balance_paid;
-            var canCancelRefund = held > 0 && _hasCapturable && _partnerNotYetPaid;
+            var canCancelRefund = held > 0 && _partnerNotYetPaid;
             var _balDue = (parseFloat(order.balance_amount) || 0) > 0
                 && order.deposit_paid === true
                 && !order.balance_paid

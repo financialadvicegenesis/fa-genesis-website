@@ -195,6 +195,12 @@ class StripeConnectProvider extends PaymentProvider {
         });
     }
 
+    // Annule un PaymentIntent en mode "requires_capture" (autorisation non capturée).
+    // Libère immédiatement le hold sur la carte du client.
+    async cancelPaymentIntent(piId) {
+        return await getStripe().paymentIntents.cancel(piId);
+    }
+
     // Vérifie la signature webhook Stripe et retourne l'événement.
     constructWebhookEvent(rawBody, signature, secret) {
         return getStripe().webhooks.constructEvent(rawBody, signature, secret);
