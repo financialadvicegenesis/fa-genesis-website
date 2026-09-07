@@ -5514,26 +5514,30 @@ app.get('/api/client/wallet', function(req, res) {
             var pendingClientValidation = !!(partnerDone && !order.client_validated && !order.balance_paid);
             // Validé par le client mais partenaire pas encore payé (aucun Transfer Stripe déclenché)
             var validatedPendingPayout = !!(order.client_validated && !order.partner_paid_out && !order.balance_paid && held > 0);
-            var statusLabel = dispatchNotAccepted && held > 0
+            // Statut affiché dans le portefeuille client — priorité du plus précis au moins précis
+            var _clientValidated = order.client_validated === true;
+            var statusLabel = _clientValidated && !order.partner_paid_out && !order.balance_paid
+                ? 'Prestation validée — virement au prestataire en cours'
+                : dispatchNotAccepted && held > 0
                 ? 'Paiement reçu — en attente d\'acceptation du prestataire'
                 : _isPI
                 ? 'Mensualités versées directement au prestataire'
                 : released > 0 && _hasPendingAdminPayout ? 'Virement en cours de traitement par GENESIS'
-                : held > 0 && validatedPendingPayout ? 'Prestation validée — virement au prestataire en cours'
                 : held > 0 && pendingClientValidation ? 'Livraison reçue — en attente de votre validation'
                 : held > 0 && partnerAcceptedNotDone ? 'En attente de livraison — fonds sécurisés en escrow'
-                : held > 0 && partnerDone ? 'Prestation en cours — fonds sécurisés en escrow'
+                : held > 0 && partnerDone ? 'Prestation livrée — en attente de votre validation'
                 : held > 0 ? 'Fonds sécurisés en escrow — libérés après validation'
                 : 'Versé au prestataire ✓';
             var canWithdraw = held > 0 && (dispatchNotAccepted || partnerInactive);
             var withdrawReason = canWithdraw
                 ? (partnerInactive ? 'Le prestataire n\'est pas disponible' : 'Le prestataire n\'a pas encore accepté la mission')
                 : null;
-            // Remboursement possible si : pas encore accepté OU accepté sans livraison
-            // OU livré mais pas validé OU validé mais partenaire pas encore payé
-            var canCancelRefund = held > 0 && order.deposit_paid === true
-                && (dispatchNotAccepted || partnerAcceptedNotDone || pendingClientValidation || validatedPendingPayout)
-                && !order.balance_paid;
+            // Remboursement possible tant que les fonds sont en escrow ET que le partenaire
+            // n'a pas encore été payé. On accepte deposit_authorized (PI non capturé) en plus
+            // de deposit_paid (PI capturé) car les deux représentent de l'argent récupérable.
+            var _hasCapturable = order.deposit_paid === true || order.deposit_authorized === true;
+            var _partnerNotYetPaid = !order.partner_paid_out && !order.balance_paid;
+            var canCancelRefund = held > 0 && _hasCapturable && _partnerNotYetPaid;
             var _balDue = (parseFloat(order.balance_amount) || 0) > 0
                 && order.deposit_paid === true
                 && !order.balance_paid
@@ -5543,14 +5547,19 @@ app.get('/api/client/wallet', function(req, res) {
                 service_label: order.product_name || 'Prestation',
                 partner_name: partnerName,
                 payment_tier: order.payment_tier || 'small',
-                held_amount: Math.round(held * 100) / 100,
+                // Si client_validated=true mais held=0 (race condition dans le calcul),
+                // forcer held_amount depuis deposit_amount pour que le bouton remboursement reste visible
+                held_amount: held > 0 ? Math.round(held * 100) / 100
+                    : (_clientValidated && !order.partner_paid_out && !order.balance_paid && _hasCapturable
+                        ? Math.round((parseFloat(order.deposit_amount) || parseFloat(order.total_amount) || 0) * 100) / 100
+                        : 0),
                 released_amount: Math.round(released * 100) / 100,
                 status_label: statusLabel,
                 can_withdraw: canWithdraw,
                 withdraw_reason: withdrawReason,
                 can_cancel_refund: canCancelRefund,
                 pending_client_validation: pendingClientValidation,
-                validated_pending_payout: validatedPendingPayout,
+                validated_pending_payout: _clientValidated && !order.partner_paid_out && !order.balance_paid,
                 created_at: order.created_at,
                 balance_due: _balDue,
                 balance_amount: _balDue ? (parseFloat(order.balance_amount) || 0) : 0,
