@@ -6611,7 +6611,10 @@ function computeMissionDisplayStatus(request, dispatch, order, livrables, hasRev
         }
     }
     if (hasReview) return MISSION_STATUS_META.reviewed;
-    if (order && order.balance_paid === true) return MISSION_STATUS_META.completed;
+    // Commande terminée : client a validé OU paiement solde effectué OU status explicitement 'completed'
+    if (order && (order.client_validated === true || order.balance_paid === true || order.status === 'completed')) {
+        return MISSION_STATUS_META.completed;
+    }
     if ((livrables || []).some(function(l) { return l.workflow_status === 'PUBLISHED'; })) {
         return MISSION_STATUS_META.delivered;
     }

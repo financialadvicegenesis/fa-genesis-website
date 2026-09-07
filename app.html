@@ -6885,13 +6885,18 @@ function renderOrderTrackingCard(r){
     if(r.payment_tier === 'small'){
       if(ds.key !== 'completed' && ds.key !== 'reviewed'){
         var _safeCaption, _safeSubtext, _safeEscrowLabel;
-        if((r.pending_client_validation || ds.key === 'delivered') && !r.client_validated){
+        if(r.client_validated){
+          // Validé par le client — paiement libéré (état transitoire avant refresh ds.key=completed)
+          _safeCaption = '<i class="fa-solid fa-circle-check" style="margin-right:4px;color:#22c55e;"></i>GENESIS SAFE™ — LIBÉRÉ';
+          _safeSubtext = 'Validation confirmée. Le virement au prestataire est en cours.';
+          _safeEscrowLabel = 'LIBÉRÉ';
+        } else if((r.pending_client_validation || ds.key === 'delivered')){
           _safeCaption = '<i class="fa-solid fa-shield-halved" style="margin-right:4px;"></i>GENESIS SAFE™ — EN ATTENTE';
           _safeSubtext = 'Paiement sécurisé en escrow.<br>Libéré au prestataire après votre validation.';
           _safeEscrowLabel = 'EN ATTENTE';
         } else {
           _safeCaption = '<i class="fa-solid fa-lock" style="margin-right:4px;"></i>GENESIS SAFE™ — 100% retenu';
-          _safeSubtext = 'Paiement intégral sécurisé en escrow.<br>Le prestataire sera payé à la livraison.';
+          _safeSubtext = 'Paiement intégral sécurisé en escrow.<br>Libéré après validation de votre livraison.';
           _safeEscrowLabel = 'EN ESCROW';
         }
         html += '<div style="background:linear-gradient(135deg,#0d1a00,#1a1200);border:1.5px solid #FFD700;border-radius:12px;padding:14px 16px;margin:12px 0;">'
@@ -6994,19 +6999,28 @@ function renderOrderTrackingCard(r){
       +'</div>'
       +'</div>';
   }
-  if(r.client_validated){
+  if(r.client_validated && ds.key !== 'completed' && ds.key !== 'reviewed'){
+    // Bloc transitoire : client_validated=true mais ds.key pas encore 'completed' (cache serveur)
     html += '<div style="background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.25);border-radius:10px;padding:12px 14px;margin:8px 0;display:flex;align-items:center;gap:10px;">'
       +'<i class="fa-solid fa-check-circle" style="color:#22c55e;font-size:18px;"></i>'
-      +'<div><div style="font-size:12px;font-weight:800;color:#22c55e;">Prestation validée</div>'
-      +'<div style="font-size:11px;color:#888;">Votre validation a bien été enregistrée. Le paiement est en cours de traitement.</div>'
+      +'<div><div style="font-size:12px;font-weight:800;color:#22c55e;">Prestation validée !</div>'
+      +'<div style="font-size:11px;color:#888;">Votre validation est enregistrée. Le paiement GENESIS SAFE™ est libéré au prestataire.</div>'
+      +'</div></div>';
+  }
+  if(ds.key === 'completed' || ds.key === 'reviewed'){
+    html += '<div style="background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.3);border-radius:12px;padding:14px 16px;margin:8px 0;display:flex;align-items:center;gap:12px;">'
+      +'<i class="fa-solid fa-trophy" style="color:#22c55e;font-size:22px;flex-shrink:0;"></i>'
+      +'<div>'
+      +'<div style="font-size:13px;font-weight:900;color:#22c55e;">Projet terminé !</div>'
+      +'<div style="font-size:11px;color:#888;margin-top:3px;">Merci d\'avoir utilisé FA GENESIS. Le paiement a été libéré au prestataire.</div>'
       +'</div></div>';
   }
 
   // Livrables (injectés après)
   html += '<div id="liv-block-'+r.id+'"></div>';
 
-  // Footer actions — "Problème" masqué quand le bloc validation est visible
-  var _hasPendingBlock = !!(ds.key === 'delivered' && !r.client_validated);
+  // Footer actions — "Problème" masqué quand validation en cours ou projet terminé
+  var _hasPendingBlock = !!(ds.key === 'delivered' && !r.client_validated) || r.client_validated || ds.key === 'completed' || ds.key === 'reviewed';
   html += '<div class="track-footer">';
   if(r.partner_email){
     var safeEmail=(r.partner_email||'').replace(/'/g,"\\'");
