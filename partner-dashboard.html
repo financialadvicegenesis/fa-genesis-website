@@ -553,8 +553,10 @@ function projectCard(p, livrables, showLivSection){
   var autoRelease   = order.auto_payment_release_at || null;
   var livs = livrables || [];
 
+  var isPartnerPaidOut = order.partner_paid_out === true;
+
   var pct, stLabel, stPill;
-  if(isValidated || isBalancePaid){ pct=100; stLabel='Terminé'; stPill='green'; }
+  if(isValidated || isBalancePaid || isPartnerPaidOut){ pct=100; stLabel='Terminé'; stPill='green'; }
   else if(isCompleted){ pct=90; stLabel='Validation client'; stPill='yellow'; }
   else { pct=60; stLabel='En préparation'; stPill='blue'; }
 
@@ -572,11 +574,11 @@ function projectCard(p, livrables, showLivSection){
     +'<div style="margin-top:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
     +'<span class="pill pill-'+stPill+'">'+stLabel+'</span>';
 
-  if(isCompleted && !isValidated && daysLeft !== null){
+  if(isCompleted && !isValidated && !isPartnerPaidOut && daysLeft !== null){
     html += '<span style="font-size:11px;color:#fbbf24;font-weight:700"><i class="fa-solid fa-clock"></i> Auto-paiement dans '+daysLeft+' j</span>';
   }
-  if(isValidated || isBalancePaid){
-    html += '<span style="font-size:11px;color:#22c55e;font-weight:700"><i class="fa-solid fa-check-circle"></i> Validé</span>';
+  if(isValidated || isBalancePaid || isPartnerPaidOut){
+    html += '<span style="font-size:11px;color:#22c55e;font-weight:700"><i class="fa-solid fa-check-circle"></i> Validé &amp; Payé</span>';
   }
 
   html += '</div></div></div>'
@@ -586,6 +588,25 @@ function projectCard(p, livrables, showLivSection){
     +'<span style="'+(pct>=90?'color:var(--gold);font-weight:700':'')+'">Validation</span>'
     +'<span style="'+(pct>=100?'color:#22c55e;font-weight:700':'')+'">Terminé</span>'
     +'</div>';
+
+  // ── Bandeau GENESIS SAFE™ en attente de validation client ──
+  if(isCompleted && !isPartnerPaidOut && !isValidated && !isBalancePaid){
+    var _safeMsg = daysLeft !== null
+      ? 'Paiement en escrow GENESIS SAFE™. Auto-libération dans ' + daysLeft + ' j si le client ne répond pas.'
+      : 'Paiement en escrow GENESIS SAFE™. En attente de validation du client.';
+    html += '<div style="margin-top:12px;padding:10px 14px;border-radius:10px;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.25);display:flex;align-items:flex-start;gap:10px">'
+      +'<i class="fa-solid fa-shield-halved" style="color:#fbbf24;margin-top:2px;flex-shrink:0"></i>'
+      +'<div>'
+      +'<div style="font-size:12px;font-weight:700;color:#fbbf24">En attente de validation client</div>'
+      +'<div style="font-size:11px;color:var(--muted);margin-top:3px">'+_safeMsg+'</div>'
+      +'</div></div>';
+  }
+  if(isPartnerPaidOut){
+    html += '<div style="margin-top:12px;padding:10px 14px;border-radius:10px;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.25);display:flex;align-items:center;gap:10px">'
+      +'<i class="fa-solid fa-circle-check" style="color:#22c55e;flex-shrink:0"></i>'
+      +'<div style="font-size:12px;font-weight:700;color:#22c55e">Paiement versé — Prestation terminée</div>'
+      +'</div>';
+  }
 
   // ── Section livrables (uniquement sur l'onglet Livrables) ──
   if(showLivSection && !isValidated && !isBalancePaid && orderId){

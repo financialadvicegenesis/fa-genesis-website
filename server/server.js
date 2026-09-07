@@ -14866,6 +14866,7 @@ app.get('/api/partner/projects', authenticatePartner, (req, res) => {
                     partner_completed_at: order.partner_completed_at || null,
                     pending_client_validation: order.pending_client_validation === true,
                     client_validated: order.client_validated === true,
+                    partner_paid_out: order.partner_paid_out === true,
                     auto_payment_release_at: order.auto_payment_release_at || null,
                     client_name: order.client_info
                         ? (order.client_info.first_name + ' ' + (order.client_info.last_name || '').charAt(0) + '.')
@@ -16379,9 +16380,10 @@ app.post('/api/partner/projects/:orderId/complete', authenticatePartner, async f
                 '/app.html#tab:wallet');
         }
 
-        // ── GENESIS SAFE™ : fonds libérés de l'escrow client → Transfer FA GENESIS Stripe → Connect partenaire ──
-        // Le client continue de voir sa validation qualité, mais l'argent quitte immédiatement Genesis Safe.
-        if (order.payment_tier !== 'partner_installments') {
+        // ── GENESIS SAFE™ : le Transfer GENESIS → partenaire se déclenche APRÈS validation client ──
+        // (via /validate-delivery ou auto-libération 7j dans checkAutoPaymentRelease)
+        // Ne pas payer le partenaire ici — l'argent reste en escrow sur Stripe GENESIS.
+        if (false && order.payment_tier !== 'partner_installments') {
             var partnerRecord = loadPartners().find(function(p) { return p.id === partnerId; });
             var partnerPct = (dispatch && dispatch.partner_pct) ? dispatch.partner_pct : 75;
             var totalPaid = parseFloat((order.deposit_paid || order.deposit_authorized) ? (order.deposit_amount || order.total_amount || 0) : 0)
@@ -16679,7 +16681,7 @@ app.post('/api/partner/projects/:orderId/complete', authenticatePartner, functio
  * POST /api/client/orders/:orderId/validate-delivery
  * Client valide manuellement la livraison (prestation déjà déclarée terminée par le partenaire)
  */
-app.post('/api/client/orders/:orderId/validate-delivery', function(req, res) {
+app.post('/api/client/orders/:orderId/validate-delivery', async function(req, res) {
     var user = authenticateClient(req, res);
     if (!user) return;
     try {
@@ -16706,7 +16708,7 @@ app.post('/api/client/orders/:orderId/validate-delivery', function(req, res) {
             return res.status(400).json({ error: 'Vous avez déjà validé cette prestation.' });
         }
 
-        // Validation qualité uniquement — le paiement a déjà quitté Genesis Safe lors du /complete
+        // GENESIS SAFE™ : valider la prestation et déclencher le Transfer vers le partenaire
         var updates = {
             client_validated: true,
             client_validated_at: new Date().toISOString(),
@@ -16715,7 +16717,28 @@ app.post('/api/client/orders/:orderId/validate-delivery', function(req, res) {
         };
         updateOrder(orderId, updates);
 
-        // Notifier le partenaire (feedback qualité, pas de paiement)
+        // ── Transfer GENESIS → compte Connect partenaire ────────────────────────────────
+        // L'argent était capturé depuis la carte client (dans /complete ou /publish).
+        // Il sort maintenant de Stripe GENESIS vers le partenaire.
+        try {
+            var _vdAllDisps = loadDispatches();
+            var _vdDisp = _vdAllDisps.find(function(d) { return d.order_id === orderId && d.status !== 'cancelled'; });
+            if (_vdDisp && (_vdDisp.claimed_by_partner_id || _vdDisp.partner_id)) {
+                await processDispatchPayout(_vdDisp, 'deposit');
+                updateOrder(orderId, { partner_paid_out: true, partner_paid_out_at: new Date().toISOString() });
+                console.log('[VALIDATE] GENESIS SAFE™ — payout déclenché via validate-delivery pour commande', orderId);
+            } else {
+                // Pas de dispatch (assignment direct) → payout manuel admin
+                notifyUser(null, 'admin', 'refund_manual',
+                    'Virement GENESIS SAFE™ à effectuer',
+                    'Commande ' + orderId + ' validée par client — pas de dispatch associé. Déclencher le virement manuellement.',
+                    '/admin.html#payouts');
+            }
+        } catch(_vdPayErr) {
+            console.error('[VALIDATE] Erreur payout:', _vdPayErr.message);
+        }
+
+        // Notifier le partenaire
         try {
             var allDispsN = loadDispatches();
             var dispN = allDispsN.find(function(d) { return d.order_id === orderId; });
