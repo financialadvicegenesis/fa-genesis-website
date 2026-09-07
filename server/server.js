@@ -14972,6 +14972,19 @@ app.post('/api/partner/livrables/:id/publish', authenticatePartner, function(req
                     'Votre prestataire a mis à disposition "' + livrables[idx].title + '" pour "' + (order.product_name || 'votre prestation') + '".',
                     '/app.html#tab:reservations');
             }
+            // Auto-déclencher pending_client_validation dès le premier livrable publié
+            if (!order.client_validated && !order.pending_client_validation) {
+                var partnerName = ((req.partner.prenom || '') + ' ' + (req.partner.nom || req.partner.name || '')).trim() || req.partner.email;
+                var autoReleaseAt = new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString();
+                updateOrder(order.id, {
+                    partner_completed: true,
+                    partner_completed_at: new Date().toISOString(),
+                    partner_completed_by: partnerName,
+                    pending_client_validation: true,
+                    auto_payment_release_at: autoReleaseAt,
+                    status: 'pending_client_validation'
+                });
+            }
         }
         res.json({ ok: true });
     } catch(e) { res.status(500).json({ error: 'Erreur serveur' }); }
@@ -16678,13 +16691,16 @@ app.post('/api/client/orders/:orderId/validate-delivery', function(req, res) {
         if (!clientEmail || clientEmail.toLowerCase() !== user.email.toLowerCase()) {
             return res.status(403).json({ error: 'Accès non autorisé' });
         }
-        // Accepter partner_completed OU delivery_confirmed OU dispatch.mission_status=delivered
+        // Accepter partner_completed, delivery_confirmed, dispatch=delivered, ou livrables publiés
         var _allDisps = loadDispatches();
         var _disp = _allDisps.find(function(d){ return d.order_id === orderId; });
-        var _partnerDone = !!(order.partner_completed || order.delivery_confirmed
+        var _hasPublishedLiv = loadLivrables().some(function(l){
+            return l.order_id === orderId && l.workflow_status === 'PUBLISHED';
+        });
+        var _partnerDone = !!(order.partner_completed || order.delivery_confirmed || _hasPublishedLiv
             || (_disp && (_disp.mission_status === 'delivered' || _disp.mission_status === 'delivering')));
         if (!_partnerDone) {
-            return res.status(400).json({ error: 'Le partenaire n\'a pas encore déclaré la prestation terminée.' });
+            return res.status(400).json({ error: 'Aucun livrable disponible. Le partenaire doit d\'abord déposer ses livrables.' });
         }
         if (order.client_validated) {
             return res.status(400).json({ error: 'Vous avez déjà validé cette prestation.' });
@@ -16731,6 +16747,59 @@ app.post('/api/client/orders/:orderId/validate-delivery', function(req, res) {
         res.json({ success: true });
     } catch(err) {
         console.error('[VALIDATE] Erreur:', err.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * POST /api/client/orders/:orderId/request-revision
+ * Le client demande une révision sur la prestation (niveau commande).
+ */
+app.post('/api/client/orders/:orderId/request-revision', function(req, res) {
+    var user = authenticateClient(req, res);
+    if (!user) return;
+    try {
+        var orderId = req.params.orderId;
+        var order = getOrderById(orderId);
+        if (!order) return res.status(404).json({ error: 'Commande introuvable' });
+        var clientEmail = order.client_info && order.client_info.email;
+        if (!clientEmail || clientEmail.toLowerCase() !== user.email.toLowerCase()) {
+            return res.status(403).json({ error: 'Accès non autorisé' });
+        }
+        if (order.client_validated) {
+            return res.status(400).json({ error: 'Vous avez déjà validé cette prestation.' });
+        }
+        var note = (req.body.note || '').trim();
+        if (note.length < 5) return res.status(400).json({ error: 'Merci de préciser votre demande (5 caractères minimum).' });
+
+        // Maintenir pending_client_validation actif pour que le client garde les boutons
+        updateOrder(orderId, {
+            pending_client_validation: true,
+            revision_requested: true,
+            revision_note: note,
+            revision_requested_at: new Date().toISOString()
+        });
+
+        // Trouver et notifier le partenaire
+        var _dRev = loadDispatches().find(function(d) { return d.order_id === orderId; });
+        var _ptnrEmailRev = null;
+        if (_dRev) {
+            var _pRev = getPartnerById(_dRev.partner_id || _dRev.claimed_by_partner_id);
+            if (_pRev) _ptnrEmailRev = _pRev.email;
+        }
+        if (!_ptnrEmailRev) {
+            var _asgnRev = loadPartnerAssignments().find(function(a) { return a.order_id === orderId && a.status === 'active'; });
+            if (_asgnRev) { var _p2Rev = getPartnerById(_asgnRev.partner_id); if (_p2Rev) _ptnrEmailRev = _p2Rev.email; }
+        }
+        if (_ptnrEmailRev) {
+            notifyUser(_ptnrEmailRev, 'partner', 'revision_requested', '✏️ Révision demandée',
+                ((user.prenom || 'Le client') + ' demande une révision sur « ' + (order.product_name || 'votre prestation') + ' » : ' + note),
+                '/app.html#partner:projects');
+        }
+
+        res.json({ success: true });
+    } catch(err) {
+        console.error('[REVISION]', err.message);
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });

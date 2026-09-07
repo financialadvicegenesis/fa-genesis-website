@@ -6885,9 +6885,9 @@ function renderOrderTrackingCard(r){
     if(r.payment_tier === 'small'){
       if(ds.key !== 'completed' && ds.key !== 'reviewed'){
         var _safeCaption, _safeSubtext, _safeEscrowLabel;
-        if(r.pending_client_validation && !r.client_validated){
+        if((r.pending_client_validation || ds.key === 'delivered') && !r.client_validated){
           _safeCaption = '<i class="fa-solid fa-shield-halved" style="margin-right:4px;"></i>GENESIS SAFE™ — EN ATTENTE';
-          _safeSubtext = 'Paiement capturé & sécurisé.<br>Libéré au prestataire après votre validation.';
+          _safeSubtext = 'Paiement sécurisé en escrow.<br>Libéré au prestataire après votre validation.';
           _safeEscrowLabel = 'EN ATTENTE';
         } else {
           _safeCaption = '<i class="fa-solid fa-lock" style="margin-right:4px;"></i>GENESIS SAFE™ — 100% retenu';
@@ -6973,19 +6973,26 @@ function renderOrderTrackingCard(r){
       +'</div>';
   }
 
-  // Bloc validation livraison partenaire
-  if(r.pending_client_validation && !r.client_validated){
+  // Bloc validation livraison — affiché dès que des livrables sont disponibles
+  if(ds.key === 'delivered' && !r.client_validated){
     var _msLeft = r.auto_payment_release_at ? Math.max(0, Math.ceil((new Date(r.auto_payment_release_at).getTime() - Date.now()) / (1000*3600*24))) : null;
     var _daysStr = _msLeft !== null ? _msLeft + ' jour(s)' : '7 jours';
+    var _valTitle = r.pending_client_validation ? 'Prestation déclarée terminée !' : 'Livrables disponibles';
+    var _valMsg = r.pending_client_validation
+      ? _escHtml(r.partner_completed_by||'Votre prestataire')+' a déclaré la prestation terminée. Validez pour confirmer ou demandez une révision. Sans réponse, le paiement sera libéré sous '+_daysStr+'.'
+      : 'Vos livrables sont prêts. Validez la prestation pour libérer le paiement, ou demandez une révision si des modifications sont nécessaires.';
     html += '<div style="background:rgba(251,191,36,.08);border:1.5px solid rgba(251,191,36,.4);border-radius:12px;padding:14px 16px;margin:12px 0;">'
-      +'<div style="font-size:13px;font-weight:900;color:#fbbf24;margin-bottom:6px;"><i class="fa-solid fa-flag-checkered" style="margin-right:6px;"></i>Prestation déclarée terminée !</div>'
-      +'<div style="font-size:11px;color:#aaa;margin-bottom:12px;line-height:1.6;">'
-      +_escHtml(r.partner_completed_by||'Votre prestataire')+' a déclaré la prestation terminée. Validez pour confirmer ou signalez un problème. Sans réponse, le paiement sera libéré sous '+_daysStr+'.'
-      +'</div>'
+      +'<div style="font-size:13px;font-weight:900;color:#fbbf24;margin-bottom:6px;"><i class="fa-solid fa-flag-checkered" style="margin-right:6px;"></i>'+_valTitle+'</div>'
+      +'<div style="font-size:11px;color:#aaa;margin-bottom:12px;line-height:1.6;">'+_valMsg+'</div>'
       +'<div style="display:flex;gap:8px;flex-wrap:wrap;">'
-      +'<button onclick="_clientValidateDelivery(\''+r.order_id+'\',\''+r.id+'\',this)" style="flex:1;padding:11px 14px;background:#22c55e;color:#000;border:none;border-radius:8px;font-size:13px;font-weight:900;cursor:pointer;"><i class="fa-solid fa-circle-check"></i> Valider la prestation</button>'
-      +'<button onclick="_clientDisputeDelivery(\''+r.order_id+'\',\''+r.id+'\',this)" style="flex:0 0 auto;padding:11px 14px;background:transparent;color:#ef4444;border:1.5px solid #ef4444;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;"><i class="fa-solid fa-triangle-exclamation"></i> Problème</button>'
-      +'</div></div>';
+      +'<button onclick="_clientValidateDelivery(\''+r.order_id+'\',\''+r.id+'\',this)" style="flex:1;min-width:140px;padding:11px 14px;background:#22c55e;color:#000;border:none;border-radius:8px;font-size:13px;font-weight:900;cursor:pointer;"><i class="fa-solid fa-circle-check"></i> Valider</button>'
+      +'<button onclick="_showRevisionForm(\''+r.order_id+'\')" style="flex:1;min-width:140px;padding:11px 14px;background:transparent;color:#60a5fa;border:1.5px solid #60a5fa;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;"><i class="fa-solid fa-pen"></i> Demander une révision</button>'
+      +'</div>'
+      +'<div id="rev-form-'+r.order_id+'" style="display:none;margin-top:12px;">'
+      +'<textarea id="rev-note-'+r.order_id+'" placeholder="Expliquez ce qui doit être corrigé ou amélioré…" style="width:100%;box-sizing:border-box;min-height:70px;padding:10px;border-radius:8px;border:1px solid #333;background:#0d0d0d;color:#fff;font-size:14px;resize:vertical;"></textarea>'
+      +'<button onclick="_submitRevisionRequest(\''+r.order_id+'\',this)" style="width:100%;margin-top:8px;padding:10px 14px;background:#60a5fa;color:#000;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;"><i class="fa-solid fa-paper-plane"></i> Envoyer la demande</button>'
+      +'</div>'
+      +'</div>';
   }
   if(r.client_validated){
     html += '<div style="background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.25);border-radius:10px;padding:12px 14px;margin:8px 0;display:flex;align-items:center;gap:10px;">'
@@ -6998,8 +7005,8 @@ function renderOrderTrackingCard(r){
   // Livrables (injectés après)
   html += '<div id="liv-block-'+r.id+'"></div>';
 
-  // Footer actions — "Problème" masqué si déjà présent dans le bloc pendingClientValidation
-  var _hasPendingBlock = !!(r.pending_client_validation && !r.client_validated);
+  // Footer actions — "Problème" masqué quand le bloc validation est visible
+  var _hasPendingBlock = !!(ds.key === 'delivered' && !r.client_validated);
   html += '<div class="track-footer">';
   if(r.partner_email){
     var safeEmail=(r.partner_email||'').replace(/'/g,"\\'");
@@ -16437,6 +16444,34 @@ function _clientValidateDelivery(orderId, requestId, btn){
   });
 }
 
+function _showRevisionForm(orderId){
+  var f = document.getElementById('rev-form-'+orderId);
+  if(f) f.style.display = (f.style.display === 'none' ? 'block' : 'none');
+}
+function _submitRevisionRequest(orderId, btn){
+  var inp = document.getElementById('rev-note-'+orderId);
+  var note = inp ? inp.value.trim() : '';
+  if(note.length < 5){ showToast('Champ requis','Précisez votre demande (5 caractères min.).','warning'); return; }
+  if(btn){ btn.disabled=true; btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Envoi…'; }
+  var _token = USER && USER._token ? USER._token : '';
+  fetch((window.FA_GENESIS_API||API)+'/api/client/orders/'+orderId+'/request-revision',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+_token},
+    body: JSON.stringify({ note: note })
+  }).then(function(r){ return r.json(); }).then(function(res){
+    if(res && res.success){
+      showToast('Révision envoyée','Votre prestataire a été notifié de vos retours.','success');
+      haptic([20,20,50]);
+      try{ typeof renderResaTab==='function' && renderResaTab(); }catch(e){}
+    } else {
+      if(btn){ btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-paper-plane"></i> Envoyer la demande'; }
+      showToast('Erreur',(res&&res.error)||'Impossible d\'envoyer','error');
+    }
+  }).catch(function(){
+    if(btn){ btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-paper-plane"></i> Envoyer la demande'; }
+    showToast('Erreur de connexion','Réessayez dans un instant.','error');
+  });
+}
 function _clientDisputeDelivery(orderId, requestId, btn){
   var reason = prompt('Décrivez brièvement le problème rencontré :');
   if(!reason || !reason.trim()) return;
