@@ -576,6 +576,37 @@ function getWithdrawalMethodsForCountry(country) {
     return ['paypal','wise','payoneer'];
 }
 
+// Débite le wallet GENESIS d'un prestataire (clawback lors d'un remboursement client).
+// Retourne {ok:true} si le solde était suffisant, {ok:false, balance:X} sinon.
+function debitPartnerWallet(partnerId, amount, description, orderId) {
+    try {
+        if (!partnerId || !amount || amount <= 0) return { ok: false, balance: 0 };
+        var wallets = loadWallets();
+        var idx = wallets.findIndex(function(w) { return w.partner_id === partnerId; });
+        var balance = idx !== -1 ? (wallets[idx].balance_available || 0) : 0;
+        if (balance < amount) {
+            return { ok: false, balance: balance };
+        }
+        wallets[idx].balance_available = parseFloat((balance - amount).toFixed(2));
+        if (!Array.isArray(wallets[idx].transactions)) wallets[idx].transactions = [];
+        wallets[idx].transactions.push({
+            id: 'WTX-' + Math.random().toString(36).substring(2, 10).toUpperCase(),
+            type: 'debit',
+            amount: parseFloat(amount.toFixed(2)),
+            description: description || 'Clawback — remboursement client',
+            order_id: orderId || null,
+            status: 'completed',
+            created_at: new Date().toISOString()
+        });
+        saveWallets(wallets);
+        console.log('[WALLET] Débit -' + amount + '€ ← ' + partnerId + ' (' + description + ')');
+        return { ok: true, balance: parseFloat((balance - amount).toFixed(2)) };
+    } catch(e) {
+        console.error('[WALLET] Erreur debitPartnerWallet:', e);
+        return { ok: false, balance: 0 };
+    }
+}
+
 function creditPartnerWallet(partnerId, amount, description, orderId, dispatchId, stage) {
     try {
         if (!partnerId || !amount || amount <= 0) return false;
@@ -4097,13 +4128,16 @@ app.post('/api/orders/:orderId/cancel-refund', async function(req, res) {
             return res.status(400).json({ error: 'Commande déjà annulée.' });
         }
 
-        // Bloquer seulement si le prestataire a effectivement livré (partner_completed / delivery_confirmed)
         var dispatches = loadDispatches();
         var dispatch = dispatches.find(function(d) { return d.order_id === orderId && d.status !== 'cancelled'; });
-        // Bloquer uniquement si les fonds ont été EFFECTIVEMENT virés au partenaire
-        var partnerPaidOut = !!(order.partner_paid_out || order.balance_paid);
-        if (partnerPaidOut) {
-            return res.status(400).json({ error: 'Le paiement a déjà été versé au prestataire. Contactez le support GENESIS si nécessaire.' });
+        // partner_paid_out = wallet GENESIS crédité après validate-delivery
+        // balance_paid     = solde effectivement versé (paiement en 2 fois)
+        var partnerWalletCredited = !!(order.partner_paid_out);
+        var balancePaid = !!(order.balance_paid);
+
+        // Bloquer si le solde final (2ème tranche) a été versé — mission réellement terminée
+        if (balancePaid) {
+            return res.status(400).json({ error: 'La mission est terminée et le solde a déjà été versé au prestataire. Contactez le support GENESIS si nécessaire.' });
         }
 
         // Bloquer si litige ouvert
@@ -4112,19 +4146,30 @@ app.post('/api/orders/:orderId/cancel-refund', async function(req, res) {
         });
         if (openDispute) return res.status(400).json({ error: 'Un litige est en cours sur cette commande.' });
 
-        // Bloquer si livraison soumise MAIS partenaire n'a pas encore déclaré terminé
-        // Si pendingClientValidation (partenaire a déclaré terminé, client pas encore validé),
-        // le client peut refuser → remboursement autorisé même si des livrables existent.
-        var partnerDone = !!(order.partner_completed || order.delivery_confirmed || (dispatch && (dispatch.mission_status === 'delivered' || dispatch.mission_status === 'delivering')));
-        var pendingClientValidation = !!(partnerDone && !order.client_validated && !order.balance_paid);
-        var validatedPendingPayout = !!(order.client_validated && !order.partner_paid_out && !order.balance_paid);
-        var hasDelivery = loadLivrables().some(function(l) { return l.order_id === orderId && l.type !== 'contract'; });
-        // Bloquer uniquement si le partenaire a DÉJÀ reçu son paiement (partner_paid_out=true).
-        // Si des livrables existent mais le partenaire n'est pas encore payé, le remboursement reste possible.
-        // (Le client peut refuser une livraison non satisfaisante, ou annuler avant que le virement parte.)
-        if (hasDelivery && partnerPaidOut) {
-            return res.status(400).json({ error: 'Le paiement a déjà été versé au prestataire. Contactez le support si nécessaire.' });
+        // Si le wallet du prestataire a été crédité (validate-delivery), tenter un clawback.
+        // L'argent est encore dans le wallet GENESIS du prestataire (pas encore retiré vers sa banque).
+        var _clawbackNeeded = partnerWalletCredited;
+        var _clawbackOk = false;
+        var _clawbackPartnerId = null;
+        if (_clawbackNeeded && dispatch) {
+            _clawbackPartnerId = dispatch.claimed_by_partner_id || dispatch.partner_id;
+            if (_clawbackPartnerId) {
+                var _clawAmt = parseFloat(order.deposit_amount || order.total_amount || 0);
+                var _clawResult = debitPartnerWallet(_clawbackPartnerId, _clawAmt,
+                    'Clawback — annulation par client (' + orderId + ')', orderId);
+                _clawbackOk = _clawResult.ok;
+                if (!_clawbackOk) {
+                    // Solde insuffisant (prestataire a déjà retiré) → admin doit gérer
+                    console.warn('[CANCEL-REFUND] Clawback impossible — solde wallet insuffisant pour', _clawbackPartnerId, '(solde:', _clawResult.balance, ')');
+                    notifyUser(null, 'admin', 'clawback_needed',
+                        'Clawback manuel requis',
+                        'Commande ' + orderId + ' — client a annulé mais le partenaire (' + _clawbackPartnerId + ') a déjà retiré son paiement. Remboursement client à effectuer manuellement.',
+                        '/admin.html#payouts');
+                }
+            }
         }
+
+        var hasDelivery = loadLivrables().some(function(l) { return l.order_id === orderId && l.type !== 'contract'; });
 
         // Annuler le dispatch en attente
         if (dispatch) {
@@ -4138,14 +4183,21 @@ app.post('/api/orders/:orderId/cancel-refund', async function(req, res) {
             }
         }
 
-        // Rembourser
+        // Rembourser (Stripe cancel/refund ou PayPal ou route admin)
         var refundOk = await refundClientOrder(order);
 
-        // Notifier le prestataire si un dispatch existait
+        // Si clawback effectué, réinitialiser les flags de paiement partenaire
+        if (_clawbackNeeded && _clawbackOk) {
+            updateOrder(orderId, { partner_paid_out: false, client_validated: false });
+        }
+
+        // Notifier le prestataire
         if (dispatch) {
             var ptnr = getPartnerById(dispatch.partner_id || dispatch.claimed_by_partner_id);
             var ptnrEmail = ptnr && (ptnr.email || ptnr.contact_email);
-            var _notifMsg = dispatch.status === 'accepted'
+            var _notifMsg = _clawbackNeeded
+                ? 'Le client a annulé la mission "' + (order.product_name || 'Prestation') + '" après validation. Le montant correspondant a été débité de votre Wallet GENESIS.'
+                : dispatch.status === 'accepted'
                 ? 'Le client a annulé la mission "' + (order.product_name || 'Prestation') + '" — la prestation n\'avait pas encore été livrée. Aucune pénalité.'
                 : 'Le client a annulé la mission "' + (order.product_name || 'Prestation') + '" avant acceptation.';
             if (ptnrEmail) {
