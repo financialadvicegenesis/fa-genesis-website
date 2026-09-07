@@ -5492,10 +5492,16 @@ app.get('/api/client/wallet', function(req, res) {
                     var depositAmt = parseFloat(order.deposit_amount) || 0;
                     var balAmt = parseFloat(order.balance_amount) || 0;
                     if (order.balance_paid) {
+                        // Tout est payé et le partenaire a reçu les deux tranches
                         released += depositAmt + balAmt;
+                    } else if (order.partner_paid_out) {
+                        // Acompte déjà versé au partenaire ; solde restant dû mais pas encore en escrow
+                        released += depositAmt;
+                        if (order.balance_authorized === true) held += balAmt;
+                        else if (order.balance_payment_ready) held += balAmt;
                     } else {
+                        // En cours : acompte en escrow, solde pas encore payé
                         if (_hasFunds) held += depositAmt;
-                        // Solde réservé GENESIS SAFE™ (balance_authorized) ou en attente de paiement
                         if (order.balance_authorized === true && !order.balance_paid) held += balAmt;
                         else if (order.balance_payment_ready) held += balAmt;
                     }
@@ -5549,13 +5555,12 @@ app.get('/api/client/wallet', function(req, res) {
             var withdrawReason = canWithdraw
                 ? (partnerInactive ? 'Le prestataire n\'est pas disponible' : 'Le prestataire n\'a pas encore accepté la mission')
                 : null;
-            // Remboursement possible dès que des fonds sont en escrow ET que le partenaire
-            // n'a pas encore été payé — quelle que soit la méthode de paiement (PI capturé,
-            // autorisé, ou tout autre mécanisme). S'il y a des fonds retenus et que le
-            // partenaire n'a pas reçu son virement, le client peut toujours récupérer son argent.
+            // Remboursement possible dès que des fonds sont retenus en escrow (held > 0).
+            // On ne filtre plus sur partner_paid_out ici : la branche isSplit corrigée garantit
+            // que held=0 quand le partenaire a déjà été payé (acompte → released).
+            // L'endpoint /cancel-refund gère lui-même toute logique métier de blocage.
             var _hasCapturable = order.deposit_paid === true || order.deposit_authorized === true;
-            var _partnerNotYetPaid = !order.partner_paid_out && !order.balance_paid;
-            var canCancelRefund = held > 0 && _partnerNotYetPaid;
+            var canCancelRefund = held > 0;
             var _balDue = (parseFloat(order.balance_amount) || 0) > 0
                 && order.deposit_paid === true
                 && !order.balance_paid
