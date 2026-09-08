@@ -5518,33 +5518,19 @@ app.get('/api/client/wallet', function(req, res) {
 
         // Dédupliquer par ID (garder la dernière version de chaque ordre)
         var _seenWallet = {};
-        var dedupOrders = [];
+        var dedupFinal = [];
         for (var _wi = orders.length - 1; _wi >= 0; _wi--) {
             var _wo = orders[_wi];
             if (!_wo.id || _seenWallet[_wo.id]) continue;
             _seenWallet[_wo.id] = true;
-            dedupOrders.push(_wo);
+            dedupFinal.push(_wo);
         }
-
-        // Dédupliquer par contenu : si même client + produit + montant acompte → garder le plus récent
-        var _seenContent = {};
-        var dedupFinal = [];
-        dedupOrders.forEach(function(o) {
-            var cKey = (o.product_name || '').trim().toLowerCase()
-                + '|' + Math.round(parseFloat(o.deposit_amount || o.total_amount || 0) * 100)
-                + '|' + (o.partner_id || o.partner_service_id || '');
-            if (_seenContent[cKey]) {
-                var prev = _seenContent[cKey];
-                if ((o.created_at || '') > (prev.created_at || '')) {
-                    var prevIdx = dedupFinal.indexOf(prev);
-                    if (prevIdx !== -1) dedupFinal[prevIdx] = o;
-                    _seenContent[cKey] = o;
-                }
-            } else {
-                _seenContent[cKey] = o;
-                dedupFinal.push(o);
-            }
-        });
+        // NOTE : on ne déduplique PAS par "contenu" (même produit + montant + partenaire) —
+        // deux commandes distinctes peuvent légitimement partager cette signature (le client
+        // rachète la même prestation auprès du même partenaire, un cas explicitement supporté).
+        // Fusionner par contenu masquait l'une des deux commandes (souvent celle qui vient
+        // d'être validée) derrière l'autre, donnant l'impression que rien ne se passait dans
+        // le portefeuille après validation.
 
         var clientOrders = dedupFinal.filter(function(o) {
             if (!o.client_info || !o.client_info.email) return false;
