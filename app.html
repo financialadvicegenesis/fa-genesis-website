@@ -7093,37 +7093,101 @@ function loadOrderLivrables(requestId, orderId){
       if(el) el.innerHTML='';
     });
 }
+// ── Aperçu sécurisé des livrables : le fichier réel n'est jamais accessible en
+// téléchargement tant que le client n'a pas validé — seul un aperçu (avec filigrane
+// pour image/vidéo) est visible, pour éviter qu'un client télécharge puis ne valide
+// jamais (ce qui bloquerait indéfiniment le paiement du prestataire).
+function _livYouTubeEmbed(url){
+  var m = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{6,})/);
+  return m ? 'https://www.youtube.com/embed/'+m[1] : null;
+}
+function _livVimeoEmbed(url){
+  var m = url.match(/vimeo\.com\/(?:video\/)?(\d+)/);
+  return m ? 'https://player.vimeo.com/video/'+m[1] : null;
+}
+function _livIsDirectVideo(url){
+  return /\.(mp4|webm|ogg|mov|m4v)(\?|#|$)/i.test(url) || url.indexOf('data:video')===0;
+}
+function _livHostname(url){
+  try{ return new URL(url).hostname.replace(/^www\./,''); }catch(e){ return (url||'').slice(0,40); }
+}
+function _livWatermarkOverlay(locked){
+  if(!locked) return '';
+  return '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;overflow:hidden;background:rgba(0,0,0,.06);">'
+    +'<div style="transform:rotate(-24deg);display:flex;flex-direction:column;gap:22px;opacity:.85;">'
+    +Array(3).fill('<span style="font-size:13px;font-weight:900;color:rgba(255,215,0,.55);letter-spacing:2px;text-transform:uppercase;white-space:nowrap;text-shadow:0 1px 3px rgba(0,0,0,.7);">APERÇU — À VALIDER · APERÇU — À VALIDER</span>').join('')
+    +'</div></div>';
+}
 function renderLivrableValidationCard(l){
   var _typeIcons = {link:'fa-link',file:'fa-file-arrow-down',text:'fa-align-left',video:'fa-video'};
   var _typeLabels = {link:'Lien',file:'Fichier',text:'Texte',video:'Vidéo'};
   var ltype = l.livrable_type || (l.file_url && l.file_url.indexOf('data:image')===0 ? 'image' : 'file');
   var ico = _typeIcons[ltype] || 'fa-file';
   var typeLabel = _typeLabels[ltype] || 'Fichier';
+  var canDownload = !!l.can_download;
+  var noRightClick = ' oncontextmenu="return false" ondragstart="return false" style="-webkit-user-select:none;user-select:none;"';
 
   // Contenu du livrable selon le type
   var contentHtml = '';
   var urlVal = l.content_url || l.download_url || l.file_url || '';
-  if(ltype === 'link' || ltype === 'video'){
-    if(urlVal){
-      contentHtml = '<a href="'+_escHtml(urlVal)+'" target="_blank" style="display:inline-flex;align-items:center;gap:6px;margin-top:8px;padding:8px 12px;background:rgba(96,165,250,.1);border:1px solid rgba(96,165,250,.3);border-radius:8px;color:#60a5fa;font-size:12px;font-weight:600;text-decoration:none;word-break:break-all;">'
-        +'<i class="fa-solid '+ico+'"></i> '+_escHtml(urlVal.length>60?urlVal.slice(0,60)+'…':urlVal)+'</a>';
+  var mime = l.file_mime || '';
+
+  if((ltype === 'video' || ltype === 'link') && urlVal){
+    var ytEmbed = _livYouTubeEmbed(urlVal);
+    var vimeoEmbed = _livVimeoEmbed(urlVal);
+    if(ytEmbed || vimeoEmbed){
+      contentHtml = '<div style="position:relative;margin-top:8px;border-radius:8px;overflow:hidden;padding-top:56.25%;background:#000;">'
+        +'<iframe src="'+_escHtml(ytEmbed||vimeoEmbed)+'" style="position:absolute;inset:0;width:100%;height:100%;border:0;" allowfullscreen loading="lazy"></iframe>'
+        +'</div>'
+        +(canDownload ? '<a href="'+_escHtml(urlVal)+'" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:5px;margin-top:6px;color:#60a5fa;font-size:11px;"><i class="fa-solid fa-arrow-up-right-from-square"></i> Ouvrir sur '+(ytEmbed?'YouTube':'Vimeo')+'</a>' : '');
+    } else if(ltype === 'video' && _livIsDirectVideo(urlVal)){
+      contentHtml = '<div style="position:relative;margin-top:8px;border-radius:8px;overflow:hidden;">'
+        +'<video src="'+_escHtml(urlVal)+'" controls controlsList="nodownload noremoteplayback" disablePictureInPicture style="width:100%;max-height:260px;background:#000;display:block;"'+noRightClick+'></video>'
+        +_livWatermarkOverlay(!canDownload)
+        +'</div>';
+    } else {
+      // Lien externe (non reconnu comme vidéo intégrable) — carte de prévisualisation, pas une URL brute
+      var hostname = _livHostname(urlVal);
+      contentHtml = '<a href="'+_escHtml(urlVal)+'" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:10px;margin-top:8px;padding:10px 12px;background:rgba(96,165,250,.08);border:1px solid rgba(96,165,250,.3);border-radius:10px;text-decoration:none;">'
+        +'<div style="width:34px;height:34px;border-radius:8px;background:rgba(96,165,250,.15);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="fa-solid '+(ltype==='video'?'fa-play':'fa-link')+'" style="color:#60a5fa;font-size:13px;"></i></div>'
+        +'<div style="min-width:0;"><div style="font-size:12px;font-weight:700;color:#60a5fa;">'+(ltype==='video'?'Voir la vidéo':'Ouvrir le lien')+'</div>'
+        +'<div style="font-size:10px;color:#777;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+_escHtml(hostname)+'</div></div>'
+        +'</a>';
     }
   } else if(ltype === 'text'){
     if(l.content_text){
       contentHtml = '<div style="margin-top:8px;padding:10px;background:#0d0d0d;border:1px solid #222;border-radius:8px;font-size:12px;color:#ccc;line-height:1.7;white-space:pre-wrap;max-height:150px;overflow-y:auto;">'+_escHtml(l.content_text)+'</div>';
     }
-  } else if(ltype === 'image' || (ltype === 'file' && urlVal && urlVal.indexOf('data:image')===0)){
-    // Aperçu image (base64)
-    contentHtml = '<img src="'+urlVal+'" alt="Aperçu" style="max-width:100%;border-radius:8px;margin-top:8px;max-height:200px;object-fit:contain;">';
-    if(l.can_download && urlVal){
-      contentHtml += '<a href="'+urlVal+'" download="'+(l.file_name||'livrable')+'" style="display:flex;align-items:center;gap:6px;margin-top:6px;color:#60a5fa;font-size:12px;"><i class="fa-solid fa-download"></i> Télécharger</a>';
+  } else if(ltype === 'image' || (ltype === 'file' && (mime.indexOf('image/')===0 || (urlVal && urlVal.indexOf('data:image')===0)))){
+    // Aperçu image toujours visible — filigrane tant que non validé, téléchargement débloqué après
+    contentHtml = '<div style="position:relative;margin-top:8px;">'
+      +'<img src="'+urlVal+'" alt="Aperçu"'+noRightClick+' style="max-width:100%;width:100%;border-radius:8px;max-height:240px;object-fit:contain;background:#000;display:block;"></img>'
+      +_livWatermarkOverlay(!canDownload)
+      +'</div>';
+    if(canDownload && urlVal){
+      contentHtml += '<a href="'+urlVal+'" download="'+_escHtml(l.file_name||'livrable')+'" style="display:flex;align-items:center;gap:6px;margin-top:6px;color:#22c55e;font-size:12px;font-weight:600;"><i class="fa-solid fa-download"></i> Télécharger l\'original</a>';
+    }
+  } else if(ltype === 'file' && mime === 'application/pdf'){
+    // Aperçu PDF intégré (visionneuse native du navigateur) — téléchargement bloqué tant que non validé
+    contentHtml = '<div style="position:relative;margin-top:8px;border-radius:8px;overflow:hidden;border:1px solid #222;">'
+      +'<iframe src="'+urlVal+'#toolbar=0" style="width:100%;height:280px;border:0;background:#fff;" loading="lazy"></iframe>'
+      +(canDownload ? '' : '<div style="position:absolute;top:6px;right:6px;background:rgba(255,215,0,.15);border:1px solid rgba(255,215,0,.4);color:#FFD700;font-size:9px;font-weight:900;letter-spacing:1px;padding:3px 8px;border-radius:6px;pointer-events:none;">APERÇU</div>')
+      +'</div>';
+    if(canDownload && urlVal){
+      contentHtml += '<a href="'+urlVal+'" download="'+_escHtml(l.file_name||'livrable.pdf')+'" style="display:flex;align-items:center;gap:6px;margin-top:6px;color:#22c55e;font-size:12px;font-weight:600;"><i class="fa-solid fa-download"></i> Télécharger l\'original</a>';
     }
   } else if(ltype === 'file'){
-    if(l.can_download && urlVal){
-      contentHtml = '<a href="'+urlVal+'" download="'+(l.file_name||'livrable')+'" style="display:inline-flex;align-items:center;gap:6px;margin-top:8px;padding:8px 12px;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);border-radius:8px;color:#22c55e;font-size:12px;font-weight:600;text-decoration:none;">'
-        +'<i class="fa-solid fa-download"></i> '+_escHtml(l.file_name||'Télécharger le fichier')+'</a>';
+    // Format non prévisualisable (zip, docx, etc.) — métadonnées visibles, fichier verrouillé
+    contentHtml = '<div style="display:flex;align-items:center;gap:10px;margin-top:8px;padding:10px 12px;background:#0d0d0d;border:1px solid #222;border-radius:10px;">'
+      +'<div style="width:34px;height:34px;border-radius:8px;background:rgba(255,215,0,.1);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="fa-solid fa-file" style="color:#FFD700;font-size:14px;"></i></div>'
+      +'<div style="min-width:0;flex:1;"><div style="font-size:12px;font-weight:700;color:#eee;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+_escHtml(l.file_name||'Fichier')+'</div>'
+      +'<div style="font-size:10px;color:#777;">Aperçu non disponible pour ce format</div></div>'
+      +'</div>';
+    if(canDownload && urlVal){
+      contentHtml += '<a href="'+urlVal+'" download="'+_escHtml(l.file_name||'livrable')+'" style="display:inline-flex;align-items:center;gap:6px;margin-top:6px;padding:8px 12px;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);border-radius:8px;color:#22c55e;font-size:12px;font-weight:600;text-decoration:none;">'
+        +'<i class="fa-solid fa-download"></i> Télécharger le fichier</a>';
     } else {
-      contentHtml = '<div style="margin-top:8px;font-size:11px;color:#888;font-style:italic"><i class="fa-solid fa-lock"></i> Fichier disponible après validation</div>';
+      contentHtml += '<div style="margin-top:6px;font-size:11px;color:#888;font-style:italic"><i class="fa-solid fa-lock"></i> Téléchargement débloqué après validation</div>';
     }
   }
 

@@ -6788,8 +6788,11 @@ function getAccessRights(order) {
         mid_delivery_paid: false
     };
 
-    // Pas d'acompte paye = pas d'acces
-    if (!order.deposit_paid) {
+    // Pas d'acompte paye/autorise = pas d'acces
+    // (GENESIS SAFE™ : la carte est autorisee des le checkout — deposit_paid ne devient
+    // true qu'a la capture, qui a lieu a validate-delivery. deposit_authorized doit donc
+    // suffire pour l'acces, sinon le client ne peut jamais voir ses livrables avant de valider.)
+    if (!order.deposit_paid && !order.deposit_authorized) {
         rights.balance_message = 'Veuillez payer l\'acompte de 30% pour acceder a votre espace client.';
         return rights;
     }
@@ -6859,25 +6862,35 @@ function getAccessRights(order) {
         rights.can_book_sessions = false;
         rights.can_view_livrables_preview = true;
 
+        // Sécurité anti-fraude : le téléchargement des fichiers originaux ne se débloque
+        // QUE lorsque le client a explicitement validé (ou après auto-libération 7j, qui
+        // pose aussi client_validated=true). Avant ça, seul un aperçu est visible — jamais
+        // le fichier téléchargeable — sinon un client malhonnête pourrait télécharger puis
+        // ne jamais valider, bloquant indéfiniment le paiement du prestataire.
+        var clientHasValidated = order.client_validated === true;
+        rights.can_download_livrables = clientHasValidated;
+
         if (order.payment_tier === 'small') {
-            // ≤ 300 € : paiement intégral retenu — accès au téléchargement dès que la livraison est confirmée
-            // partner_completed (nouveau flux) OU delivery_confirmed (ancien flux) débloquent l'accès
+            // ≤ 300 € : paiement intégral retenu jusqu'à validation
             var deliveryConfirmed = !!(order.delivery_confirmed || order.partner_completed);
-            rights.can_download_livrables = deliveryConfirmed;
             rights.payment_secured = !deliveryConfirmed;
             if (!deliveryConfirmed) {
-                rights.balance_message = 'Paiement sécurisé par GENESIS SAFE™. Les livrables seront disponibles dès que le prestataire confirmera la livraison.';
+                rights.balance_message = 'Paiement sécurisé par GENESIS SAFE™. Les livrables seront disponibles en aperçu dès que le prestataire confirmera la livraison.';
+            } else if (!clientHasValidated) {
+                rights.balance_message = 'Livraison confirmée — prévisualisez vos livrables puis validez pour débloquer le téléchargement.';
             } else {
-                rights.balance_message = 'Livraison confirmée — téléchargement disponible.';
+                rights.balance_message = 'Livraison validée — téléchargement disponible.';
             }
         } else {
-            // > 300 € : acompte 30 % déjà versé, solde 70 % débloque le téléchargement
-            rights.can_download_livrables = tranche3Paid || (order.balance_paid === true);
-            if (tranche2Paid && !tranche3Paid) {
-                rights.balance_message = 'Paiement partiel reçu. Payez le solde pour débloquer le téléchargement.';
+            // > 300 € : acompte 30 % déjà versé, solde 70 % capturé à la validation
+            if (tranche2Paid && !tranche3Paid && !order.balance_paid) {
+                rights.balance_message = 'Paiement partiel reçu. Payez le solde pour finaliser.';
             }
-            if (tranche3Paid || order.balance_paid) {
-                rights.balance_message = 'Paiement complet — téléchargement des fichiers disponible.';
+            if ((tranche3Paid || order.balance_paid) && !clientHasValidated) {
+                rights.balance_message = 'Prévisualisez vos livrables puis validez la prestation pour débloquer le téléchargement.';
+            }
+            if (clientHasValidated) {
+                rights.balance_message = 'Livraison validée — téléchargement des fichiers disponible.';
             }
         }
     }
@@ -7051,8 +7064,8 @@ app.get('/api/livrables/:orderId', (req, res) => {
         return res.status(404).json({ error: 'Commande non trouvee' });
     }
 
-    // Verifier l'acces
-    if (!order.deposit_paid) {
+    // Verifier l'acces (deposit_authorized = carte GENESIS SAFE™ reservee, pas encore capturee)
+    if (!order.deposit_paid && !order.deposit_authorized) {
         return res.status(403).json({ error: 'Acompte requis pour acceder aux livrables' });
     }
 
@@ -7061,12 +7074,28 @@ app.get('/api/livrables/:orderId', (req, res) => {
 
     // Ajouter l'info si le telechargement est autorise
     const accessRights = getAccessRights(order);
-    const livrablesWithAccess = orderLivrables.map(l => ({
-        ...l,
-        can_download: accessRights.can_download_livrables,
-        // Masquer l'URL de telechargement si pas autorise
-        download_url: accessRights.can_download_livrables ? l.download_url : null
-    }));
+    // Sécurité anti-fraude : tant que le téléchargement n'est pas débloqué, on ne renvoie
+    // les octets du fichier (file_url/content_url/download_url) QUE pour les formats
+    // qu'on sait prévisualiser sans exposer un téléchargement complet équivalent (image,
+    // PDF, lien/vidéo externe qui pointe hors de la plateforme, texte). Pour un fichier
+    // générique (zip, docx, etc.) sans preview possible, l'URL est totalement masquée —
+    // sinon un client pourrait la récupérer via les outils développeur sans jamais valider.
+    const livrablesWithAccess = orderLivrables.map(l => {
+        const canDl = accessRights.can_download_livrables;
+        const mime = l.file_mime || '';
+        const looksLikeImageData = (l.file_url || '').indexOf('data:image') === 0;
+        const isPreviewSafe = l.livrable_type === 'link' || l.livrable_type === 'video'
+            || l.livrable_type === 'text' || l.livrable_type === 'image'
+            || mime.indexOf('image/') === 0 || mime === 'application/pdf' || looksLikeImageData;
+        const exposeBytes = canDl || isPreviewSafe;
+        return {
+            ...l,
+            can_download: canDl,
+            download_url: canDl ? l.download_url : null,
+            file_url: exposeBytes ? l.file_url : null,
+            content_url: exposeBytes ? l.content_url : null
+        };
+    });
 
     res.json({
         livrables: livrablesWithAccess,
