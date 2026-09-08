@@ -14571,6 +14571,17 @@ function _pbShowSuccessScreen(){
   var ss=document.getElementById('pb-stripe-screen'); if(ss) ss.style.display='none';
   var fm=document.getElementById('pb-form'); if(fm) fm.style.display='none';
   var sc=document.getElementById('pb-success'); if(sc) sc.style.display='';
+  // La prestation vient d'être payée : la retirer du panier si elle y était encore.
+  // closeCart() (appelé par cartCheckout() avant d'ouvrir cet écran de paiement) ne fait que
+  // masquer le tiroir panier — il ne vidait jamais APP_CART, donc l'article y restait affiché
+  // indéfiniment après un paiement réussi.
+  try{
+    if(_pbPartner && _pbService && typeof APP_CART!=='undefined'){
+      var _pbCartBefore = APP_CART.length;
+      APP_CART = APP_CART.filter(function(it){ return !(it.partnerId===_pbPartner.id && it.serviceId===_pbService.id); });
+      if(APP_CART.length !== _pbCartBefore){ _saveCart(); if(typeof renderCartBody==='function') renderCartBody(); }
+    }
+  }catch(e){}
   var sm=document.getElementById('pb-success-msg');
   if(sm) sm.textContent = 'Paiement confirmé ! Votre paiement est sécurisé par GENESIS SAFE™. Les fonds seront versés au prestataire à la livraison. Retrouvez votre contrat dans "Mes contrats".';
   launchConfetti(); showToast('Paiement sécurisé !','Protégé par GENESIS SAFE™','success');
