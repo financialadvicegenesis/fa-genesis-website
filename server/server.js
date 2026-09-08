@@ -4199,6 +4199,50 @@ app.post('/api/orders/:orderId/cancel-pending', function(req, res) {
 });
 
 /**
+ * GET /api/admin/orders/:orderId/debug
+ * Diagnostic complet d'une commande : état brut (types réels des champs, pas seulement leur
+ * valeur), dispatch associé, payouts enregistrés, et wallet du prestataire concerné. Construit
+ * pour trancher rapidement "l'argent a-t-il réellement bougé ?" sans deviner à partir de vues
+ * déjà recalculées (portefeuille client, etc.) qui peuvent masquer une incohérence de type.
+ */
+app.get('/api/admin/orders/:orderId/debug', function(req, res) {
+    if (!_isAdminRequest(req)) return res.status(403).json({ error: 'Accès refusé' });
+    try {
+        var orderId = req.params.orderId;
+        var order = getOrderById(orderId);
+        if (!order) return res.status(404).json({ error: 'Commande introuvable.' });
+
+        var dispatch = loadDispatches().find(function(d) { return d.order_id === orderId; }) || null;
+        var relatedPayouts = loadPayouts().filter(function(p) { return p.order_id === orderId; });
+        var partner = order.partner_id ? getPartnerById(order.partner_id) : null;
+        var wallet = partner ? (loadWallets().find(function(w) { return w.partner_id === partner.id; }) || null) : null;
+        var walletTxForOrder = wallet ? (wallet.transactions || []).filter(function(t) { return t.order_id === orderId; }) : [];
+
+        // typeof de chaque indicateur booléen critique — révèle immédiatement une valeur
+        // "truthy" non strictement booléenne (string au lieu de bool, etc.) sans avoir à deviner.
+        var fieldTypes = {};
+        ['client_validated', 'deposit_paid', 'deposit_authorized', 'balance_paid', 'balance_authorized', 'partner_paid_out'].forEach(function(f) {
+            fieldTypes[f] = { value: order[f], type: typeof order[f] };
+        });
+
+        res.json({
+            ok: true,
+            order: order,
+            field_types: fieldTypes,
+            dispatch: dispatch,
+            payouts: relatedPayouts,
+            partner: partner ? { id: partner.id, email: partner.email, accountStatus: partner.accountStatus } : null,
+            wallet_balance_available: wallet ? wallet.balance_available : null,
+            wallet_balance_pending: wallet ? wallet.balance_pending : null,
+            wallet_transactions_for_this_order: walletTxForOrder
+        });
+    } catch (err) {
+        console.error('[ADMIN-ORDER-DEBUG] Erreur:', err.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
  * POST /api/admin/orders/:orderId/force-refund
  * Override admin de /cancel-refund : mêmes mécaniques (clawback wallet + remboursement
  * Stripe/PayPal + annulation dispatch), mais sans les garde-fous de libre-service client
