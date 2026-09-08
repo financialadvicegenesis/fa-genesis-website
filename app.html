@@ -7095,7 +7095,11 @@ function loadOrderLivrables(requestId, orderId, reqObj){
       var el = document.getElementById('liv-block-'+requestId);
       if(!el) return;
       var list = (data&&Array.isArray(data.livrables))?data.livrables:[];
-      var published = list.filter(function(l){ return l.workflow_status==='PUBLISHED'; });
+      // Ne montrer dans le suivi que les livrables réellement consultables (image, PDF, vidéo,
+      // lien, texte) — un fichier générique sans aperçu (zip, docx...) n'a ici ni contenu ni
+      // bouton de téléchargement (voir renderLivrableValidationCard) : l'afficher quand même ne
+      // ferait qu'ajouter une carte vide "Livrable / Fichier" sans aucune utilité pour le client.
+      var published = list.filter(function(l){ return l.workflow_status==='PUBLISHED' && _livIsPreviewable(l); });
       if(published.length===0){ el.innerHTML='<div style="color:var(--muted);font-size:12px;">Aucun livrable publié pour le moment.</div>'; return; }
       el.innerHTML = published.map(renderLivrableValidationCard).join('');
       // Filet de sécurité : un livrable publié existe réellement (donnée fraîche) — si le
@@ -7129,6 +7133,20 @@ function _livIsDirectVideo(url){
 }
 function _livHostname(url){
   try{ return new URL(url).hostname.replace(/^www\./,''); }catch(e){ return (url||'').slice(0,40); }
+}
+// Un livrable n'est affiché dans le suivi que s'il a un contenu réellement consultable —
+// mêmes conditions que les branches de renderLivrableValidationCard qui produisent un aperçu.
+// Un fichier générique (zip, docx...) sans aperçu ni téléchargement en libre-service n'a ici
+// aucune information utile à montrer, donc on ne l'affiche pas du tout.
+function _livIsPreviewable(l){
+  var ltype = l.livrable_type || (l.file_url && l.file_url.indexOf('data:image')===0 ? 'image' : 'file');
+  var urlVal = l.content_url || l.download_url || l.file_url || '';
+  var mime = l.file_mime || '';
+  if((ltype === 'video' || ltype === 'link') && urlVal) return true;
+  if(ltype === 'text') return !!l.content_text;
+  if(ltype === 'image' || (ltype === 'file' && (mime.indexOf('image/')===0 || (urlVal && urlVal.indexOf('data:image')===0)))) return true;
+  if(ltype === 'file' && mime === 'application/pdf') return true;
+  return false;
 }
 // Téléchargement unifié pour tous les types de livrables (image/PDF/fichier générique) — un
 // seul bouton, un seul mécanisme. On passe par un blob (fetch + URL.createObjectURL) plutôt
