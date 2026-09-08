@@ -4276,7 +4276,9 @@ app.post('/api/admin/orders/:orderId/force-refund', async function(req, res) {
 /**
  * POST /api/orders/:orderId/cancel-refund
  * Client annule sa commande et obtient un remboursement automatique (Stripe/PayPal)
- * Conditions : acompte payé + prestataire pas encore accepté + pas de livraison + pas de litige ouvert
+ * Règle produit : annulable en libre-service tant que le client n'a pas validé la prestation,
+ * qu'un livrable (aperçu filigrané) ait été publié ou non — le contenu réel n'est jamais
+ * accessible avant validation. Bloqué une fois validé/terminé, ou si un litige est ouvert.
  */
 app.post('/api/orders/:orderId/cancel-refund', async function(req, res) {
     try {
@@ -4308,10 +4310,12 @@ app.post('/api/orders/:orderId/cancel-refund', async function(req, res) {
         if (order.client_validated === true || order.status === 'completed') {
             return res.status(400).json({ error: 'Cette prestation a déjà été validée et finalisée — l\'annulation en libre-service n\'est plus possible. Contactez le support GENESIS si vous rencontrez un problème.' });
         }
-        var hasDelivery = loadLivrables().some(function(l) { return l.order_id === orderId && l.type !== 'contract' && l.workflow_status === 'PUBLISHED'; });
-        if (hasDelivery) {
-            return res.status(400).json({ error: 'Le prestataire a déjà publié un livrable pour cette prestation — l\'annulation en libre-service n\'est plus possible. Demandez une révision ou contactez le support GENESIS.' });
-        }
+        // Un livrable publié avant validation n'est jamais téléchargeable en clair — seul un
+        // aperçu filigrané est visible (voir renderLivrableValidationCard / can_download côté
+        // livrable, verrouillé jusqu'à client_validated). Le vol de contenu est donc déjà
+        // empêché par le filigrane, pas par un blocage de l'annulation : bloquer ici pénaliserait
+        // un client ayant reçu un travail hors sujet/bâclé sans lui laisser d'issue simple.
+        // Règle produit : annulable tant que non validé, point.
 
         var dispatches = loadDispatches();
         var dispatch = dispatches.find(function(d) { return d.order_id === orderId && d.status !== 'cancelled'; });
