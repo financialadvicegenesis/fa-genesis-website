@@ -7215,15 +7215,10 @@ function renderLivrableValidationCard(l){
       contentHtml += _livDownloadBtnHtml(l.id, l.file_name||'livrable.pdf', urlVal);
     }
   } else if(ltype === 'file'){
-    // Format non prévisualisable (zip, docx, etc.) — métadonnées visibles, fichier verrouillé
-    contentHtml = '<div style="display:flex;align-items:center;gap:10px;margin-top:8px;padding:10px 12px;background:#0d0d0d;border:1px solid #222;border-radius:10px;">'
-      +'<div style="width:34px;height:34px;border-radius:8px;background:rgba(255,215,0,.1);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="fa-solid fa-file" style="color:#FFD700;font-size:14px;"></i></div>'
-      +'<div style="min-width:0;flex:1;"><div style="font-size:12px;font-weight:700;color:#eee;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+_escHtml(l.file_name||'Fichier')+'</div>'
-      +'<div style="font-size:10px;color:#777;">Aperçu non disponible pour ce format</div></div>'
-      +'</div>';
-    // Aucun bouton de téléchargement ici, même après validation : sans aperçu, ce format
-    // n'est pas exposé en libre-service — "Télécharger l'original" est réservé aux
-    // livrables réellement prévisualisables (image/PDF ci-dessus).
+    // Format non prévisualisable (zip, docx, etc.) — ni aperçu ni téléchargement en libre-service
+    // (réservé aux livrables réellement prévisualisables, image/PDF ci-dessus) : on n'affiche
+    // donc aucun bloc de contenu ici, seul le titre/badge du livrable (rendu plus bas) reste
+    // visible — pas de mention "aperçu non disponible" qui n'apporte rien au client.
   }
 
   // Pas d'indicateur de statut per-livrable : la validation s'effectue au niveau commande
