@@ -12570,13 +12570,29 @@ var _ptnrRepTimer = null;
 function _ptnrApiUrl(){ return window.FA_GENESIS_API || API; }
 
 // Sauvegarde le cache partenaire en LOCAL STORAGE en excluant le portfolio
-// (photos/vidéos base64 = potentiellement plusieurs Mo → dépasse la limite 5Mo)
+// (photos/vidéos base64 = potentiellement plusieurs Mo → dépasse la limite 5Mo).
+// CRITIQUE : si l'écriture échoue quand même (quota dépassé à cause des images de
+// prestations en base64), on NE DOIT PAS laisser un ancien cache obsolète en place —
+// ça ferait croire au prestataire que ses prestations ont disparu à la prochaine
+// ouverture de l'appli, alors qu'elles existent bien côté serveur (visibles du client).
+// On retente sans les images de prestations, puis on supprime le cache plutôt que de le
+// laisser périmé si même ça échoue encore.
 function _ptnrSaveToCache(session){
+  var slim = {};
+  for(var k in session){ if(k !== 'portfolio' && session.hasOwnProperty(k)) slim[k] = session[k]; }
   try {
-    var slim = {};
-    for(var k in session){ if(k !== 'portfolio' && session.hasOwnProperty(k)) slim[k] = session[k]; }
     localStorage.setItem('fa_genesis_partner_data', JSON.stringify(slim));
+    return;
   } catch(e){}
+  try {
+    var slimmer = Object.assign({}, slim);
+    if(Array.isArray(slimmer.services)){
+      slimmer.services = slimmer.services.map(function(s){ return Object.assign({}, s, { image: '' }); });
+    }
+    localStorage.setItem('fa_genesis_partner_data', JSON.stringify(slimmer));
+  } catch(e2){
+    try{ localStorage.removeItem('fa_genesis_partner_data'); }catch(e3){}
+  }
 }
 
 function _ptnrFetch(path, method, body){
@@ -12603,6 +12619,12 @@ function _ptnrInit(){
     if(data && data.partner){
       _ptnrSession = data.partner;
       _ptnrSaveToCache(data.partner);
+      // CRITIQUE : si l'écran "Accueil" a déjà été peint avec le cache local (potentiellement
+      // périmé, ex: prestations ajoutées depuis une autre session) avant que cette réponse
+      // n'arrive, rien ne le rafraîchissait — le prestataire voyait alors "aucune prestation"
+      // indéfiniment jusqu'à changer d'onglet et revenir. On corrige l'affichage dès que les
+      // données fraîches du serveur sont là, peu importe l'écran actuellement visible.
+      if(typeof _ptnrRenderServicesSection==='function') _ptnrRenderServicesSection();
       var savedProfileId = localStorage.getItem('fa_genesis_partner_profile');
       if(savedProfileId){
         _ptnrSession._profileId = savedProfileId;
