@@ -1087,9 +1087,15 @@ async function _handleFirstMissionCompleted(partner, allPartners) {
 
 // Crée les missions (dispatches) pour les partenaires externes d'une commande
 // Versement unitaire pour un dispatch accepté (acompte ou solde)
+// Retourne true UNIQUEMENT si le wallet du prestataire a été réellement crédité (ou l'était
+// déjà via un payout précédent pour ce dispatch+stage). false dans tous les autres cas —
+// l'appelant NE DOIT PAS considérer le paiement comme effectué si false est retourné, sous
+// peine de marquer une commande partner_paid_out=true alors qu'aucun argent n'a bougé.
 async function processDispatchPayout(dispatch, stage) {
     try {
-        if (!dispatch || !dispatch.claimed_by_partner_id) return;
+        // claimed_by_partner_id OU partner_id : les deux champs coexistent selon le flux de
+        // création du dispatch (broadcast réclamé vs. commande "prestation partenaire" directe).
+        if (!dispatch || !(dispatch.claimed_by_partner_id || dispatch.partner_id)) return false;
 
         var partnerPct = dispatch.partner_pct || 75;
         var faPct = 100 - partnerPct;
@@ -1119,21 +1125,22 @@ async function processDispatchPayout(dispatch, stage) {
                 paidAmount = parseFloat((stageTotal * partnerPct / 100).toFixed(2));
             }
         }
-        if (paidAmount <= 0) return;
+        if (paidAmount <= 0) return false;
 
-        // Idempotence : ne pas créer un 2ème payout si un existe déjà pour ce dispatch+stage (non failed)
+        // Idempotence : ne pas créer un 2ème payout si un existe déjà pour ce dispatch+stage (non failed).
+        // Un doublon signifie que le versement a déjà été traité avec succès auparavant → true.
         var _existingPayouts = loadPayouts();
         var _duplicate = _existingPayouts.find(function(p) {
             return p.dispatch_id === dispatch.id && p.stage === stage && p.status !== 'failed';
         });
         if (_duplicate) {
             console.log('[PAYOUT] Doublon ignoré — dispatch ' + dispatch.id + ' stage ' + stage + ' déjà enregistré (' + _duplicate.id + ')');
-            return;
+            return _duplicate.status === 'wallet_credited' || _duplicate.status === 'sent';
         }
 
         var partners = loadPartners();
         var partner = partners.find(function(p) { return p.id === (dispatch.claimed_by_partner_id || dispatch.partner_id); });
-        if (!partner) return;
+        if (!partner) return false;
 
         var faAmount = parseFloat((stageTotal - paidAmount).toFixed(2));
 
@@ -1203,7 +1210,7 @@ async function processDispatchPayout(dispatch, stage) {
 
         if (hasOpenDispute) {
             console.log('[PAYOUT] ' + stage + ' mis en attente (on_hold, litige ouvert sur dispatch ' + dispatch.id + ') → ' + partner.email + ' : ' + paidAmount + ' €');
-            return;
+            return false; // pas encore crédité — débloqué par releaseOnHoldPayouts() à la résolution du litige
         }
 
         // Créditer le wallet interne GENESIS (modèle Fiverr-like).
@@ -1236,8 +1243,10 @@ async function processDispatchPayout(dispatch, stage) {
         } else {
             console.error('[PAYOUT] ' + stage + ' → Échec crédit wallet pour ' + partner.email);
         }
+        return !!_walletOk;
     } catch(e) {
         console.error('[PAYOUT] Erreur processDispatchPayout:', e);
+        return false;
     }
 }
 
@@ -2919,12 +2928,21 @@ async function checkAutoPaymentRelease() {
                 });
                 var _arDisp = _arDispIdx !== -1 ? _arDisps[_arDispIdx] : null;
 
+                var _arPayoutOk = false; // true seulement si l'argent a réellement été versé/crédité
                 if (_arDisp) {
-                    await processDispatchPayout(_arDisp, 'deposit');
-                    // Sortir la mission de la liste "en cours" côté partenaire — validée et payée.
-                    _arDisps[_arDispIdx].mission_status = 'completed';
-                    _arDisps[_arDispIdx].completed_at   = new Date().toISOString();
-                    saveDispatches(_arDisps);
+                    _arPayoutOk = await processDispatchPayout(_arDisp, 'deposit');
+                    if (_arPayoutOk) {
+                        // Sortir la mission de la liste "en cours" côté partenaire — validée et payée.
+                        _arDisps[_arDispIdx].mission_status = 'completed';
+                        _arDisps[_arDispIdx].completed_at   = new Date().toISOString();
+                        saveDispatches(_arDisps);
+                    } else {
+                        console.error('[AUTO-RELEASE] Échec payout automatique pour commande', _o.id, '— notification admin envoyée');
+                        notifyUser(null, 'admin', 'refund_manual',
+                            '⚠️ Échec du versement auto-libération GENESIS SAFE™',
+                            'Commande ' + _o.id + ' auto-libérée après 7 jours, mais le versement automatique au prestataire a échoué. Déclencher le virement manuellement.',
+                            '/admin.html#payouts');
+                    }
                 } else if (_o.partner_id) {
                     // Commande directe sans dispatch — Transfer manuel via record payout
                     var _arPartner = getPartnerById(_o.partner_id);
@@ -2953,6 +2971,7 @@ async function checkAutoPaymentRelease() {
                             sent_at: new Date().toISOString()
                         });
                         savePayouts(_arAllPay);
+                        _arPayoutOk = true;
                     } else if (_arAmt > 0) {
                         // Pas de Connect → notifier l'admin
                         var _arAllPay2 = loadPayouts();
@@ -2979,6 +2998,10 @@ async function checkAutoPaymentRelease() {
                 orders[_ari].auto_released_at      = new Date().toISOString();
                 orders[_ari].status                = 'completed';
                 orders[_ari].client_validated      = true; // considéré validé par délai
+                if (_arPayoutOk) {
+                    orders[_ari].partner_paid_out    = true;
+                    orders[_ari].partner_paid_out_at = new Date().toISOString();
+                }
                 orders[_ari].pending_client_validation = false;
                 modified = true;
                 closePartnerRequestForOrder(orders[_ari]);
@@ -16998,13 +17021,29 @@ app.post('/api/client/orders/:orderId/validate-delivery', async function(req, re
             var _vdDispIdx = _vdAllDisps.findIndex(function(d) { return d.order_id === orderId && d.status !== 'cancelled'; });
             var _vdDisp = _vdDispIdx !== -1 ? _vdAllDisps[_vdDispIdx] : null;
             if (_vdDisp && (_vdDisp.claimed_by_partner_id || _vdDisp.partner_id)) {
-                await processDispatchPayout(_vdDisp, 'deposit');
-                updateOrder(orderId, { partner_paid_out: true, partner_paid_out_at: new Date().toISOString() });
-                // Sortir la mission de la liste "en cours" côté partenaire — validée et payée.
-                _vdAllDisps[_vdDispIdx].mission_status = 'completed';
-                _vdAllDisps[_vdDispIdx].completed_at   = new Date().toISOString();
-                saveDispatches(_vdAllDisps);
-                console.log('[VALIDATE] GENESIS SAFE™ — payout déclenché via validate-delivery pour commande', orderId);
+                // IMPORTANT : processDispatchPayout() ne renvoie true QUE si le wallet du
+                // prestataire a été réellement crédité. On ne doit JAMAIS marquer
+                // partner_paid_out=true (ni sortir la mission de "en cours") sans cette
+                // confirmation, sinon le système affiche "payé" alors qu'aucun argent n'a bougé.
+                var _payoutOk = await processDispatchPayout(_vdDisp, 'deposit');
+                if (_payoutOk) {
+                    updateOrder(orderId, { partner_paid_out: true, partner_paid_out_at: new Date().toISOString() });
+                    // Sortir la mission de la liste "en cours" côté partenaire — validée et payée.
+                    _vdAllDisps[_vdDispIdx].mission_status = 'completed';
+                    _vdAllDisps[_vdDispIdx].completed_at   = new Date().toISOString();
+                    saveDispatches(_vdAllDisps);
+                    console.log('[VALIDATE] GENESIS SAFE™ — payout confirmé via validate-delivery pour commande', orderId);
+                } else {
+                    // Échec du versement automatique (compte prestataire introuvable, montant
+                    // invalide, etc.) — la commande reste validée côté client, mais le paiement
+                    // doit être traité manuellement. On ne ment pas au prestataire : la mission
+                    // reste visible en "En cours" (mission_status inchangé) jusqu'au virement réel.
+                    console.error('[VALIDATE] Échec payout automatique pour commande', orderId, '— notification admin envoyée');
+                    notifyUser(null, 'admin', 'refund_manual',
+                        '⚠️ Échec du versement automatique GENESIS SAFE™',
+                        'Commande ' + orderId + ' validée par le client, mais le versement automatique au prestataire a échoué (compte introuvable, montant invalide, ou erreur wallet). Déclencher le virement manuellement.',
+                        '/admin.html#payouts');
+                }
             } else {
                 // Pas de dispatch (assignment direct) → payout manuel admin
                 notifyUser(null, 'admin', 'refund_manual',
@@ -17014,6 +17053,10 @@ app.post('/api/client/orders/:orderId/validate-delivery', async function(req, re
             }
         } catch(_vdPayErr) {
             console.error('[VALIDATE] Erreur payout:', _vdPayErr.message);
+            notifyUser(null, 'admin', 'refund_manual',
+                '⚠️ Erreur versement GENESIS SAFE™',
+                'Commande ' + orderId + ' validée par le client — erreur technique lors du versement automatique (' + _vdPayErr.message + '). Déclencher le virement manuellement.',
+                '/admin.html#payouts');
         }
 
         // Notifier le partenaire
