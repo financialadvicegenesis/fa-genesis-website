@@ -2936,6 +2936,29 @@ async function checkAutoPaymentRelease() {
                     modified = true;
                     console.log('[AUTO-RELEASE] PI solde capturé automatiquement :', _arBalPiId);
                 }
+                // GENESIS SAFE™ pour PayPal : mêmes conditions, via une autorisation PayPal.
+                // Volontairement PAS de try/catch local — un échec doit interrompre ce cycle pour
+                // cette commande (comme pour Stripe ci-dessus), pour ne jamais déclencher le
+                // versement partenaire avec un paiement PayPal jamais réellement capturé.
+                var _arPpAuthId = _o.paypal_authorization_id;
+                if (_arPpAuthId && _o.deposit_authorized === true && _o.deposit_paid !== true) {
+                    var _arPpCaptureId = await _paypalCaptureAuthorization(_arPpAuthId);
+                    orders[_ari].deposit_paid       = true;
+                    orders[_ari].deposit_paid_at    = new Date().toISOString();
+                    orders[_ari].paymentStatus      = 'deposit_paid';
+                    orders[_ari].paypal_capture_id  = _arPpCaptureId;
+                    modified = true;
+                    console.log('[AUTO-RELEASE] Autorisation PayPal dépôt capturée automatiquement :', _arPpAuthId);
+                }
+                var _arPpBalAuthId = _o.paypal_balance_authorization_id;
+                if (_arPpBalAuthId && _o.balance_authorized === true && _o.balance_paid !== true) {
+                    var _arPpBalCaptureId = await _paypalCaptureAuthorization(_arPpBalAuthId);
+                    orders[_ari].balance_paid            = true;
+                    orders[_ari].balance_paid_at         = new Date().toISOString();
+                    orders[_ari].paypal_balance_capture_id = _arPpBalCaptureId;
+                    modified = true;
+                    console.log('[AUTO-RELEASE] Autorisation PayPal solde capturée automatiquement :', _arPpBalAuthId);
+                }
 
                 // Étape 2 : trouver le dispatch ou l'assignation pour déclencher le Transfer
                 var _arDisps = loadDispatches();
@@ -4403,15 +4426,17 @@ app.post('/api/orders/:orderId/cancel-refund', async function(req, res) {
             }
         }
 
-        // GENESIS SAFE™ : le PI est toujours en requires_capture au moment du remboursement
-        // (la capture n'a lieu qu'à validate-delivery). L'annulation est donc instantanée.
+        // GENESIS SAFE™ : le paiement (Stripe ou PayPal) est toujours en simple autorisation au
+        // moment du remboursement (la capture n'a lieu qu'à validate-delivery). L'annulation est
+        // donc instantanée, quel que soit le moyen de paiement.
+        var _crIsPaypal = !!(order.paypal_authorization_id && !order.deposit_paid);
         console.log('[CANCEL-REFUND] Commande ' + orderId + ' annulée par ' + user.email + ' — remboursement: ' + (refundOk ? 'INSTANTANÉ' : 'MANUEL'));
         res.json({
             ok: true,
             refunded: refundOk,
             instant: refundOk,
             message: refundOk
-                ? 'Annulation confirmée. L\'autorisation sur votre carte a été libérée instantanément — aucun montant ne sera débité.'
+                ? ('Annulation confirmée. ' + (_crIsPaypal ? 'L\'autorisation PayPal a été libérée' : 'L\'autorisation sur votre carte a été libérée') + ' instantanément — aucun montant ne sera débité.')
                 : 'Commande annulée. Le remboursement sera traité manuellement par notre équipe sous 24h.'
         });
     } catch(e) {
@@ -4956,6 +4981,35 @@ async function getPayPalAccessToken() {
     return data.access_token;
 }
 
+// ── GENESIS SAFE™ pour PayPal : autorisation différée (miroir de capture_method:'manual' côté
+// Stripe). Une commande PayPal "AUTHORIZE" crée une autorisation qui ne devient de l'argent
+// réel sur le compte FA GENESIS qu'après ces deux fonctions ci-dessous.
+async function _paypalCaptureAuthorization(authorizationId) {
+    var token = await getPayPalAccessToken();
+    var resp = await fetch(PAYPAL_BASE + '/v2/payments/authorizations/' + authorizationId + '/capture', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+    });
+    var result = await resp.json();
+    if (result.status !== 'COMPLETED') throw new Error('Statut de capture PayPal inattendu : ' + result.status + ' — ' + JSON.stringify(result));
+    return result.id;
+}
+// Libère une autorisation non capturée — équivalent PayPal de cancelPaymentIntent Stripe :
+// instantané, aucun argent n'a jamais quitté le compte du client.
+async function _paypalVoidAuthorization(authorizationId) {
+    var token = await getPayPalAccessToken();
+    var resp = await fetch(PAYPAL_BASE + '/v2/payments/authorizations/' + authorizationId + '/void', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token }
+    });
+    if (!resp.ok) {
+        var errBody = await resp.json().catch(function(){ return {}; });
+        throw new Error('Échec annulation autorisation PayPal : ' + JSON.stringify(errBody));
+    }
+    return true;
+}
+
 // ── Config publique PayPal (Client ID) — équivalent PayPal de /api/payments/stripe/config.
 // Le Client ID est un identifiant public (pas un secret) destiné à être embarqué côté client
 // dans le tag <script src="https://www.paypal.com/sdk/js?client-id=...">.
@@ -4974,18 +5028,36 @@ app.get('/api/payments/paypal/config', function(req, res) {
  */
 app.post('/api/payments/paypal/create-order', async (req, res) => {
     try {
-        const { amount, currency, description, installments, totalAmount } = req.body;
+        const { amount, currency, description, installments, totalAmount, orderId, stage } = req.body;
         const amt = parseFloat(amount);
         if (!amt || isNaN(amt) || amt <= 0) {
             return res.status(400).json({ error: 'Montant invalide' });
         }
+
+        // GENESIS SAFE™ : autorisation différée par défaut (capturée seulement à validate-delivery
+        // ou après 7j), en miroir exact de /api/payments/stripe/create-intent. Exception : l'acompte
+        // des commandes "large" reste capturé immédiatement (règle métier distincte, capital de
+        // démarrage) — comportement inchangé si aucun orderId n'est fourni (usage générique).
+        var _pcoOrder = orderId ? getOrderById(orderId) : null;
+        if (_pcoOrder) {
+            if (stage === 'balance' && (_pcoOrder.balance_paid || _pcoOrder.balance_authorized)) {
+                return res.status(400).json({ error: 'Le solde a déjà été payé.' });
+            }
+            if (stage !== 'balance' && (_pcoOrder.deposit_paid || _pcoOrder.deposit_authorized)) {
+                return res.status(400).json({ error: 'Ce paiement a déjà été effectué.' });
+            }
+        }
+        var _pcoTier = _pcoOrder ? (_pcoOrder.payment_tier || 'small') : 'small';
+        var _pcoIsLargeDeposit = !!(_pcoOrder && _pcoTier === 'large' && stage !== 'balance');
+        var _pcoIntent = (!orderId || _pcoIsLargeDeposit) ? 'CAPTURE' : 'AUTHORIZE';
+
         const token = await getPayPalAccessToken();
         const ref = 'FAG-' + Date.now();
         const n = parseInt(installments) || 1;
         const descFull = ((description || 'FA GENESIS') + (n > 1 ? ' — Versement 1/' + n : '')).substring(0, 127);
 
         const orderBody = {
-            intent: 'CAPTURE',
+            intent: _pcoIntent,
             purchase_units: [{
                 reference_id: ref,
                 description: descFull,
@@ -5013,7 +5085,10 @@ app.post('/api/payments/paypal/create-order', async (req, res) => {
         const order = await resp.json();
         if (!order.id) throw new Error('Erreur PayPal create-order : ' + JSON.stringify(order));
 
-        console.log('[PAYPAL] Commande créée:', order.id, amt + ' EUR', n > 1 ? '(' + n + 'x)' : '');
+        if (orderId) {
+            try { updateOrder(orderId, { paypal_order_id: order.id }); } catch(e) {}
+        }
+        console.log('[PAYPAL] Commande créée:', order.id, amt + ' EUR', n > 1 ? '(' + n + 'x)' : '', '— intent:', _pcoIntent);
         res.json({ success: true, orderId: order.id });
     } catch (err) {
         console.error('[PAYPAL] create-order:', err.message);
@@ -5151,27 +5226,67 @@ app.post('/api/payments/paypal/capture-order', async (req, res) => {
         const { paypalOrderId, orderId, stage } = req.body;
         if (!paypalOrderId) return res.status(400).json({ error: 'paypalOrderId requis' });
 
+        // Même décision qu'à create-order (déterministe à partir de orderId/stage/payment_tier) :
+        // acompte "large" → capture immédiate (règle métier distincte) ; sinon → autorisation
+        // seulement, capturée réellement à validate-delivery (GENESIS SAFE™ pour PayPal).
+        var _pcOrder = orderId ? getOrderById(orderId) : null;
+        var _pcTier = _pcOrder ? (_pcOrder.payment_tier || 'small') : 'small';
+        var _pcIsLargeDeposit = !!(_pcOrder && _pcTier === 'large' && stage !== 'balance');
+        var _pcImmediate = !orderId || _pcIsLargeDeposit;
+
         const token = await getPayPalAccessToken();
-        const resp = await fetch(PAYPAL_BASE + '/v2/checkout/orders/' + paypalOrderId + '/capture', {
+        const resp = await fetch(PAYPAL_BASE + '/v2/checkout/orders/' + paypalOrderId + '/' + (_pcImmediate ? 'capture' : 'authorize'), {
             method: 'POST',
             headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' }
         });
         const result = await resp.json();
 
-        if (result.status === 'COMPLETED') {
-            console.log('[PAYPAL] Capturé:', paypalOrderId);
-            const ppCaptures = result.purchase_units && result.purchase_units[0] &&
-                result.purchase_units[0].payments && result.purchase_units[0].payments.captures;
-            const ppCaptureId = ppCaptures && ppCaptures[0] ? ppCaptures[0].id : null;
-            // Si un orderId Genesis est fourni, confirmer la commande (flux dépôt partenaire via pb-sheet)
-            if (orderId && stage) {
-                await _applyPaymentConfirmation(orderId, stage, paypalOrderId, ppCaptureId);
+        if (_pcImmediate) {
+            if (result.status === 'COMPLETED') {
+                console.log('[PAYPAL] Capturé:', paypalOrderId);
+                const ppCaptures = result.purchase_units && result.purchase_units[0] &&
+                    result.purchase_units[0].payments && result.purchase_units[0].payments.captures;
+                const ppCaptureId = ppCaptures && ppCaptures[0] ? ppCaptures[0].id : null;
+                // Si un orderId Genesis est fourni, confirmer la commande (flux dépôt partenaire via pb-sheet)
+                if (orderId && stage) {
+                    await _applyPaymentConfirmation(orderId, stage, paypalOrderId, ppCaptureId);
+                }
+                return res.json({ success: true, details: result });
             }
-            res.json({ success: true, details: result });
-        } else {
             console.warn('[PAYPAL] Statut inattendu:', result.status);
-            res.status(400).json({ error: 'Paiement non complété', status: result.status });
+            return res.status(400).json({ error: 'Paiement non complété', status: result.status });
         }
+
+        // GENESIS SAFE™ : autorisation seulement — l'argent n'a pas encore quitté le compte
+        // PayPal du client. La capture réelle a lieu à validate-delivery ou après 7j.
+        if (result.status === 'APPROVED' || result.status === 'CREATED' || result.status === 'COMPLETED') {
+            const ppAuths = result.purchase_units && result.purchase_units[0] &&
+                result.purchase_units[0].payments && result.purchase_units[0].payments.authorizations;
+            const ppAuthId = ppAuths && ppAuths[0] ? ppAuths[0].id : null;
+            if (!ppAuthId) {
+                console.error('[PAYPAL] Autorisation introuvable dans la réponse:', JSON.stringify(result));
+                return res.status(500).json({ error: 'Autorisation PayPal introuvable dans la réponse' });
+            }
+            if (orderId && stage) {
+                var _pcAuthField   = (stage === 'balance') ? 'balance_authorized'    : 'deposit_authorized';
+                var _pcAuthAtField = (stage === 'balance') ? 'balance_authorized_at' : 'deposit_authorized_at';
+                var _pcAuthIdField = (stage === 'balance') ? 'paypal_balance_authorization_id' : 'paypal_authorization_id';
+                var _pcUpdates = {};
+                _pcUpdates[_pcAuthIdField] = ppAuthId;
+                _pcUpdates[_pcAuthField]   = true;
+                _pcUpdates[_pcAuthAtField] = new Date().toISOString();
+                var _pcUpdatedOrder = updateOrder(orderId, _pcUpdates);
+                // Créer le dispatch (mission visible côté prestataire) sans jamais déclencher de
+                // versement — l'argent n'est pas encore capturé, en miroir de sync-intent (Stripe).
+                if (_pcUpdatedOrder && _pcUpdatedOrder.product_type === 'partner_service' && stage !== 'balance') {
+                    createPartnerServiceDispatch(_pcUpdatedOrder);
+                }
+            }
+            console.log('[PAYPAL] Autorisé (capture différée GENESIS SAFE™):', paypalOrderId, '→ auth:', ppAuthId);
+            return res.json({ success: true, authorized: true, details: result });
+        }
+        console.warn('[PAYPAL] Statut d\'autorisation inattendu:', result.status);
+        res.status(400).json({ error: 'Autorisation non confirmée', status: result.status });
     } catch (err) {
         console.error('[PAYPAL] capture-order:', err.message);
         res.status(500).json({ error: 'Erreur capture PayPal', details: err.message });
@@ -5184,8 +5299,18 @@ app.post('/api/payments/paypal/capture-order', async (req, res) => {
 async function refundClientOrder(order) {
     var depositAmount = parseFloat(order.deposit_amount || 0);
     var refunded = false;
-    // Tentative remboursement PayPal
-    if (order.paypal_capture_id) {
+    // GENESIS SAFE™ pour PayPal : autorisation pas encore capturée → annulation instantanée
+    // (aucun argent n'a jamais quitté le compte PayPal du client), en miroir du cancelPaymentIntent
+    // Stripe ci-dessous.
+    if (order.paypal_authorization_id && !order.deposit_paid) {
+        try {
+            await _paypalVoidAuthorization(order.paypal_authorization_id);
+            refunded = true;
+            console.log('[REFUND] Autorisation PayPal annulée (libération instantanée):', order.paypal_authorization_id);
+        } catch(e) { console.error('[REFUND] PayPal void erreur:', e.message); }
+    }
+    // Tentative remboursement PayPal (paiement déjà capturé)
+    if (!refunded && order.paypal_capture_id) {
         try {
             var ppToken = await getPayPalAccessToken();
             var ppBody = depositAmount > 0 ? { amount: { value: depositAmount.toFixed(2), currency_code: 'EUR' } } : {};
@@ -5230,7 +5355,7 @@ async function refundClientOrder(order) {
         status: 'refunded',
         deposit_paid: false,
         refunded_at: new Date().toISOString(),
-        refund_method: order.paypal_capture_id ? 'paypal' : (order.stripe_deposit_pi_id ? 'stripe' : 'manual'),
+        refund_method: (order.paypal_capture_id || order.paypal_authorization_id) ? 'paypal' : (order.stripe_deposit_pi_id ? 'stripe' : 'manual'),
         refund_reason: 'Refus prestataire',
         refund_success: refunded
     });
@@ -17259,6 +17384,32 @@ app.post('/api/client/orders/:orderId/validate-delivery', async function(req, re
                 console.log('[VALIDATE] GENESIS SAFE™ — PI solde capturé sur validation client:', _vdBalPiId);
             } catch(_capBalErr) {
                 console.error('[VALIDATE] Erreur capture PI solde:', _capBalErr.message);
+                _vdCaptureFailed = true;
+            }
+        }
+        // GENESIS SAFE™ pour PayPal : même logique que Stripe ci-dessus, mais via une
+        // autorisation PayPal (paypal_authorization_id) au lieu d'un PaymentIntent.
+        var _vdPpAuthId = order.paypal_authorization_id;
+        if (_vdPpAuthId && order.deposit_authorized === true && !order.deposit_paid) {
+            try {
+                var _vdPpCaptureId = await _paypalCaptureAuthorization(_vdPpAuthId);
+                updateOrder(orderId, { deposit_paid: true, deposit_paid_at: new Date().toISOString(), paymentStatus: 'deposit_paid', paypal_capture_id: _vdPpCaptureId });
+                order = getOrderById(orderId);
+                console.log('[VALIDATE] GENESIS SAFE™ — autorisation PayPal capturée sur validation client:', _vdPpAuthId);
+            } catch(_vdPpErr) {
+                console.error('[VALIDATE] Erreur capture autorisation PayPal:', _vdPpErr.message);
+                _vdCaptureFailed = true;
+            }
+        }
+        var _vdPpBalAuthId = order.paypal_balance_authorization_id;
+        if (_vdPpBalAuthId && order.balance_authorized === true && !order.balance_paid) {
+            try {
+                var _vdPpBalCaptureId = await _paypalCaptureAuthorization(_vdPpBalAuthId);
+                updateOrder(orderId, { balance_paid: true, balance_paid_at: new Date().toISOString(), paypal_balance_capture_id: _vdPpBalCaptureId });
+                order = getOrderById(orderId);
+                console.log('[VALIDATE] GENESIS SAFE™ — autorisation PayPal solde capturée sur validation client:', _vdPpBalAuthId);
+            } catch(_vdPpBalErr) {
+                console.error('[VALIDATE] Erreur capture autorisation PayPal solde:', _vdPpBalErr.message);
                 _vdCaptureFailed = true;
             }
         }

@@ -14537,6 +14537,8 @@ function _pbEnsureOrderId(){
   .then(function(res){
     if(!res.ok||!res.data||!res.data.orderId) throw new Error((res.data&&res.data.error)||'Erreur création commande');
     var newOrderId = res.data.orderId;
+    // Mémoriser pour éviter de recréer une 2e commande si rappelé (ex: retry après erreur PayPal).
+    _pbExistingOrderId = newOrderId;
     if(_pbContractId && _pbContractId !== 'existing-order'){
       fetch((window.FA_GENESIS_API||API)+'/api/contracts/'+_pbContractId+'/set-order',{
         method:'PATCH',headers:{'Content-Type':'application/json','Authorization':'Bearer '+USER._token},
@@ -14615,13 +14617,23 @@ function _pbRenderPayPalButton(){
         style: { layout:'horizontal', color:'gold', shape:'rect', label:'paypal', height:45 },
         createOrder: function(){
           var errEl=document.getElementById('pb-paypal-err'); if(errEl) errEl.style.display='none';
-          return fetch((window.FA_GENESIS_API||API)+'/api/payments/paypal/create-order',{
-            method:'POST',
-            headers:{'Content-Type':'application/json','Authorization':'Bearer '+(USER&&USER._token||'')},
-            body: JSON.stringify({ amount:_pbDepositAmount, currency:'EUR', description:'FA GENESIS — '+(_pbService&&_pbService.label||'Prestation') })
+          // Commande GENESIS créée AVANT la commande PayPal : le backend a besoin de connaître
+          // payment_tier pour décider capture immédiate (acompte "large") vs autorisation
+          // différée GENESIS SAFE™ (voir /api/payments/paypal/create-order).
+          return _pbEnsureOrderId().then(function(orderId){
+            _pbCurrentOrderId = orderId;
+            return fetch((window.FA_GENESIS_API||API)+'/api/payments/paypal/create-order',{
+              method:'POST',
+              headers:{'Content-Type':'application/json','Authorization':'Bearer '+(USER&&USER._token||'')},
+              body: JSON.stringify({ amount:_pbDepositAmount, currency:'EUR', orderId:orderId, stage:'deposit', description:'FA GENESIS — '+(_pbService&&_pbService.label||'Prestation') })
+            });
           }).then(function(r){return r.json();}).then(function(d){
             if(!d.success||!d.orderId) throw new Error(d.error||'Erreur PayPal');
             return d.orderId;
+          }).catch(function(err){
+            var e=document.getElementById('pb-paypal-err');
+            if(e){ e.textContent=err.message||'Erreur PayPal.'; e.style.display='block'; }
+            throw err;
           });
         },
         onApprove: function(data){ return _pbPaypalCapture(data.orderID); },
@@ -14641,7 +14653,10 @@ function _pbRenderPayPalButton(){
     if(!clientId){ container.style.display='none'; return; }
     if(window.paypal){ mount(); return; }
     var s=document.createElement('script');
-    s.src='https://www.paypal.com/sdk/js?client-id='+encodeURIComponent(clientId)+'&currency=EUR&intent=capture';
+    // intent=authorize : la grande majorité des paiements pb-sheet passent par une autorisation
+    // différée GENESIS SAFE™ (capturée à validate-delivery) — seul l'acompte des commandes
+    // "large" fait exception (capture immédiate, gérée entièrement côté serveur malgré ce réglage).
+    s.src='https://www.paypal.com/sdk/js?client-id='+encodeURIComponent(clientId)+'&currency=EUR&intent=authorize';
     s.onload=mount;
     s.onerror=function(){ container.style.display='none'; };
     document.head.appendChild(s);
@@ -14655,13 +14670,11 @@ function _pbRenderPayPalButton(){
 }
 
 function _pbPaypalCapture(paypalOrderId){
-  return _pbEnsureOrderId().then(function(orderId){
-    _pbCurrentOrderId = orderId;
-    return fetch((window.FA_GENESIS_API||API)+'/api/payments/paypal/capture-order',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':'Bearer '+(USER&&USER._token||'')},
-      body: JSON.stringify({ paypalOrderId: paypalOrderId, orderId: orderId, stage:'deposit' })
-    });
+  // _pbCurrentOrderId a déjà été posé dans createOrder() ci-dessus, sur la même commande.
+  return fetch((window.FA_GENESIS_API||API)+'/api/payments/paypal/capture-order',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+(USER&&USER._token||'')},
+    body: JSON.stringify({ paypalOrderId: paypalOrderId, orderId: _pbCurrentOrderId, stage:'deposit' })
   }).then(function(r){ return r.json(); }).then(function(d){
     if(!d.success) throw new Error(d.error||'Erreur de confirmation PayPal');
     _pbShowSuccessScreen();
