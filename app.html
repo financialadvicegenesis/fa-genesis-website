@@ -7134,19 +7134,18 @@ function _livIsDirectVideo(url){
 function _livHostname(url){
   try{ return new URL(url).hostname.replace(/^www\./,''); }catch(e){ return (url||'').slice(0,40); }
 }
-// Un livrable n'est affiché dans le suivi que s'il a un contenu réellement consultable —
-// mêmes conditions que les branches de renderLivrableValidationCard qui produisent un aperçu.
-// Un fichier générique (zip, docx...) sans aperçu ni téléchargement en libre-service n'a ici
-// aucune information utile à montrer, donc on ne l'affiche pas du tout.
+// Un livrable n'est affiché dans le suivi que s'il a un contenu réellement consultable OU
+// téléchargeable — mêmes conditions que les branches de renderLivrableValidationCard. Un
+// fichier générique (zip, docx...) reste accessible via son bouton de téléchargement (voir
+// ci-dessous), donc il s'affiche toujours ; seul un livrable réellement vide (texte sans
+// contenu, lien/vidéo sans URL) n'a rien à montrer et reste masqué.
 function _livIsPreviewable(l){
   var ltype = l.livrable_type || (l.file_url && l.file_url.indexOf('data:image')===0 ? 'image' : 'file');
   var urlVal = l.content_url || l.download_url || l.file_url || '';
-  var mime = l.file_mime || '';
-  if((ltype === 'video' || ltype === 'link') && urlVal) return true;
+  if((ltype === 'video' || ltype === 'link')) return !!urlVal;
   if(ltype === 'text') return !!l.content_text;
-  if(ltype === 'image' || (ltype === 'file' && (mime.indexOf('image/')===0 || (urlVal && urlVal.indexOf('data:image')===0)))) return true;
-  if(ltype === 'file' && mime === 'application/pdf') return true;
-  return false;
+  if(ltype === 'file' || ltype === 'image') return !!urlVal;
+  return true;
 }
 // Téléchargement unifié pour tous les types de livrables (image/PDF/fichier générique) — un
 // seul bouton, un seul mécanisme. On passe par un blob (fetch + URL.createObjectURL) plutôt
@@ -7233,10 +7232,14 @@ function renderLivrableValidationCard(l){
       contentHtml += _livDownloadBtnHtml(l.id, l.file_name||'livrable.pdf', urlVal);
     }
   } else if(ltype === 'file'){
-    // Format non prévisualisable (zip, docx, etc.) — ni aperçu ni téléchargement en libre-service
-    // (réservé aux livrables réellement prévisualisables, image/PDF ci-dessus) : on n'affiche
-    // donc aucun bloc de contenu ici, seul le titre/badge du livrable (rendu plus bas) reste
-    // visible — pas de mention "aperçu non disponible" qui n'apporte rien au client.
+    // Format non prévisualisable (zip, docx, etc.) — pas d'aperçu affiché (pas de mention
+    // "aperçu non disponible"), mais le fichier doit rester accessible : même bouton de
+    // téléchargement, verrouillé jusqu'à validation, que les livrables prévisualisables.
+    if(canDownload && urlVal){
+      contentHtml += _livDownloadBtnHtml(l.id, l.file_name, urlVal);
+    } else {
+      contentHtml += '<div style="margin-top:6px;font-size:11px;color:#888;font-style:italic"><i class="fa-solid fa-lock"></i> Téléchargement débloqué après validation</div>';
+    }
   }
 
   // Pas d'indicateur de statut per-livrable : la validation s'effectue au niveau commande
