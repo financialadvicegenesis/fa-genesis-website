@@ -4172,6 +4172,104 @@ app.post('/api/orders/:orderId/cancel-pending', function(req, res) {
 });
 
 /**
+ * POST /api/admin/orders/:orderId/force-refund
+ * Override admin de /cancel-refund : mêmes mécaniques (clawback wallet + remboursement
+ * Stripe/PayPal + annulation dispatch), mais sans les garde-fous de libre-service client
+ * (client_validated / livrable publié) — un admin peut décider de rembourser même après
+ * validation (ex. commande de test, litige tranché hors du flux standard, geste commercial).
+ * Garde quand même les protections "déjà remboursé" et "litige en cours".
+ */
+app.post('/api/admin/orders/:orderId/force-refund', async function(req, res) {
+    if (!_isAdminRequest(req)) return res.status(403).json({ error: 'Accès refusé' });
+    try {
+        var orderId = req.params.orderId;
+        var orders = loadOrders();
+        var order = orders.find(function(o) { return o.id === orderId; });
+        if (!order) return res.status(404).json({ error: 'Commande introuvable.' });
+
+        if (!order.deposit_paid && !order.deposit_authorized) {
+            return res.status(400).json({ error: 'Aucun paiement à rembourser.' });
+        }
+        if (order.status === 'cancelled' || order.status === 'refunded') {
+            return res.status(400).json({ error: 'Commande déjà annulée.' });
+        }
+        if (order.balance_paid) {
+            return res.status(400).json({ error: 'Solde déjà versé intégralement — utiliser un remboursement Stripe manuel + ajustement wallet direct pour ce cas.' });
+        }
+        var openDispute = loadDisputes().find(function(d) {
+            return d.order_id === orderId && (d.status === 'open' || d.status === 'jeremie_triage' || d.status === 'escalated_admin');
+        });
+        if (openDispute) return res.status(400).json({ error: 'Un litige est en cours sur cette commande — le résoudre via /api/admin/disputes/:id/resolve.' });
+
+        var dispatches = loadDispatches();
+        var dispatch = dispatches.find(function(d) { return d.order_id === orderId && d.status !== 'cancelled'; });
+        var partnerWalletCredited = !!(order.partner_paid_out);
+
+        var _clawbackNeeded = partnerWalletCredited;
+        var _clawbackOk = false;
+        if (_clawbackNeeded && dispatch) {
+            var _clawbackPartnerId = dispatch.claimed_by_partner_id || dispatch.partner_id;
+            if (_clawbackPartnerId) {
+                var _clawAmt = parseFloat(order.deposit_amount || order.total_amount || 0);
+                var _clawResult = debitPartnerWallet(_clawbackPartnerId, _clawAmt,
+                    'Clawback — remboursement admin (' + orderId + ')', orderId);
+                _clawbackOk = _clawResult.ok;
+                if (!_clawbackOk) {
+                    console.warn('[ADMIN-FORCE-REFUND] Clawback impossible — solde wallet insuffisant pour', _clawbackPartnerId, '(solde:', _clawResult.balance, ')');
+                }
+            }
+        }
+
+        if (dispatch) {
+            var dIdx = dispatches.findIndex(function(d) { return d.id === dispatch.id; });
+            if (dIdx !== -1) {
+                dispatches[dIdx].status = 'cancelled';
+                dispatches[dIdx].cancelled_at = new Date().toISOString();
+                dispatches[dIdx].cancelled_reason = 'admin_force_refund';
+                dispatches[dIdx].mission_status = 'cancelled';
+                saveDispatches(dispatches);
+            }
+        }
+
+        var cancelAssignments = loadPartnerAssignments();
+        var cancelAsgnIdx = cancelAssignments.findIndex(function(a) { return a.order_id === orderId && a.status === 'active'; });
+        if (cancelAsgnIdx !== -1) {
+            cancelAssignments[cancelAsgnIdx].status = 'cancelled';
+            cancelAssignments[cancelAsgnIdx].cancelled_at = new Date().toISOString();
+            savePartnerAssignments(cancelAssignments);
+        }
+
+        var refundOk = await refundClientOrder(order);
+
+        if (_clawbackNeeded && _clawbackOk) {
+            updateOrder(orderId, { partner_paid_out: false, client_validated: false });
+        }
+
+        if (dispatch) {
+            var ptnr = getPartnerById(dispatch.partner_id || dispatch.claimed_by_partner_id);
+            var ptnrEmail = ptnr && (ptnr.email || ptnr.contact_email);
+            if (ptnrEmail) {
+                notifyUser(ptnrEmail, 'partner', 'mission_cancelled', 'Mission annulée',
+                    'La mission "' + (order.product_name || 'Prestation') + '" a été annulée et remboursée par l\'équipe GENESIS.' + (_clawbackNeeded ? ' Le montant correspondant a été débité de votre Wallet GENESIS.' : ''),
+                    '#missions');
+            }
+        }
+
+        console.log('[ADMIN-FORCE-REFUND] Commande ' + orderId + ' remboursée par admin — remboursement: ' + (refundOk ? 'INSTANTANÉ' : 'MANUEL') + (_clawbackNeeded ? (', clawback: ' + (_clawbackOk ? 'OK' : 'ÉCHOUÉ')) : ''));
+        res.json({
+            ok: true,
+            refunded: refundOk,
+            clawback_needed: _clawbackNeeded,
+            clawback_ok: _clawbackOk,
+            message: refundOk ? 'Commande remboursée.' : 'Annulée — remboursement à traiter manuellement (voir logs/notifications admin).'
+        });
+    } catch(err) {
+        console.error('[ADMIN-FORCE-REFUND] Erreur:', err.message);
+        res.status(500).json({ error: 'Erreur serveur lors du remboursement.' });
+    }
+});
+
+/**
  * POST /api/orders/:orderId/cancel-refund
  * Client annule sa commande et obtient un remboursement automatique (Stripe/PayPal)
  * Conditions : acompte payé + prestataire pas encore accepté + pas de livraison + pas de litige ouvert
