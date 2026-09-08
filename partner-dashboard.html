@@ -549,18 +549,20 @@ function loadMissions(){
     apiFetch('/api/partner/dispatches').catch(function(){ return {}; }),
     apiFetch('/api/partner/projects').catch(function(){ return []; })
   ]).then(function(results){
-    var dispData   = results[0] || {};
-    var dispatches = dispData.dispatches   ? dispData.dispatches   : [];
-    var myActive   = dispData.my_active    ? dispData.my_active    : [];
-    var projects   = Array.isArray(results[1]) ? results[1] : [];
-    var totalActive = myActive.length + projects.length;
-    if(dispatches.length===0 && myActive.length===0 && projects.length===0){
+    var dispData    = results[0] || {};
+    var dispatches  = dispData.dispatches    ? dispData.dispatches    : [];
+    var myActive    = dispData.my_active     ? dispData.my_active     : [];
+    var myCompleted = dispData.my_completed  ? dispData.my_completed  : [];
+    var projects    = Array.isArray(results[1]) ? results[1] : [];
+    if(dispatches.length===0 && myActive.length===0 && myCompleted.length===0 && projects.length===0){
       el.innerHTML = '<div class="empty"><i class="fa-solid fa-briefcase"></i><p>Aucune mission pour le moment.<br>Les nouvelles missions apparaîtront ici.</p></div>'; return;
     }
     var html = '';
     if(dispatches.length){ html += '<div class="sec-hdr" style="padding-top:4px"><i class="fa-solid fa-bolt"></i>Disponibles ('+dispatches.length+')</div>'; dispatches.forEach(function(d){ html+=dispatchCard(d); }); }
     if(myActive.length)  { html += '<div class="sec-hdr" style="padding-top:8px"><i class="fa-solid fa-spinner"></i>En cours ('+myActive.length+')</div>'; myActive.forEach(function(d){ html+=partnerTrackingCard(d); }); }
     if(projects.length)  { html += '<div class="sec-hdr" style="padding-top:8px"><i class="fa-solid fa-circle-check"></i>Projets en cours ('+projects.length+')</div>'; projects.forEach(function(p){ html+=projectCard(p); }); }
+    // Missions terminées — restent visibles (historique), ne disparaissent jamais du dashboard.
+    if(myCompleted.length){ html += '<div class="sec-hdr" style="padding-top:8px"><i class="fa-solid fa-trophy"></i>Terminées ('+myCompleted.length+')</div>'; myCompleted.forEach(function(d){ html+=partnerTrackingCard(d); }); }
     el.innerHTML = html;
   }).catch(function(){ el.innerHTML = '<div class="empty"><i class="fa-solid fa-wifi-slash"></i><p>Erreur de chargement</p></div>'; });
 }

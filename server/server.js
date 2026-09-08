@@ -15259,15 +15259,10 @@ app.get('/api/partner/dispatches', authenticatePartner, function(req, res) {
                 return new Date(a.created_at) - new Date(b.created_at);
             });
 
-        // Missions actives de ce partenaire (acceptées, en cours, livrées — pas encore complétées/annulées)
+        // Missions de ce partenaire (acceptées, en cours, livrées, ou terminées) — une mission
+        // complétée/payée ne doit pas disparaître du dashboard, seulement changer de section.
         var allOrdersForActive = loadOrders();
-        var myActive = dispatches.filter(function(d) {
-            var isMyDispatch = (d.claimed_by_partner_id === partnerId || d.partner_id === partnerId);
-            if (!isMyDispatch) return false;
-            var activeStatuses = ['accepted', 'in_progress'];
-            var activeMissionStatuses = ['in_progress', 'delivered'];
-            return activeStatuses.indexOf(d.status) !== -1 || activeMissionStatuses.indexOf(d.mission_status) !== -1;
-        }).map(function(d) {
+        var _enrichDispatch = function(d) {
             var ord = allOrdersForActive.find(function(o) { return o.id === d.order_id; });
             return Object.assign({}, d, {
                 client_validated: !!(ord && ord.client_validated === true),
@@ -15280,9 +15275,23 @@ app.get('/api/partner/dispatches', authenticatePartner, function(req, res) {
                 revision_requested: !!(ord && ord.revision_requested === true),
                 revision_note: ord ? (ord.revision_note || null) : null
             });
-        }).sort(function(a, b) { return new Date(b.accepted_at || b.created_at) - new Date(a.accepted_at || a.created_at); });
+        };
+        var myDispatches = dispatches.filter(function(d) {
+            return d.claimed_by_partner_id === partnerId || d.partner_id === partnerId;
+        });
+        var myActive = myDispatches.filter(function(d) {
+            var activeStatuses = ['accepted', 'in_progress'];
+            var activeMissionStatuses = ['in_progress', 'delivered'];
+            return activeStatuses.indexOf(d.status) !== -1 || activeMissionStatuses.indexOf(d.mission_status) !== -1;
+        }).map(_enrichDispatch)
+          .sort(function(a, b) { return new Date(b.accepted_at || b.created_at) - new Date(a.accepted_at || a.created_at); });
+        var myCompleted = myDispatches.filter(function(d) {
+            return d.mission_status === 'completed';
+        }).map(_enrichDispatch)
+          .sort(function(a, b) { return new Date(b.completed_at || b.accepted_at || b.created_at) - new Date(a.completed_at || a.accepted_at || a.created_at); })
+          .slice(0, 50);
 
-        res.json({ dispatches: available, my_active: myActive });
+        res.json({ dispatches: available, my_active: myActive, my_completed: myCompleted });
     } catch(e) {
         console.error('[DISPATCH] Erreur liste:', e);
         res.status(500).json({ error: 'Erreur serveur' });
@@ -15869,8 +15878,12 @@ app.get('/api/partner/requests', authenticatePartner, function(req, res) {
         var allReviewsForPtnr = loadPartnerReviews();
         var requests = loadPartnerRequests()
             .filter(function(r) {
+                // 'completed' inclus : une mission validée/payée ne doit pas disparaître de la
+                // liste du prestataire — 'completed' ne sert qu'à débloquer une future commande
+                // pour la même prestation (cf alreadyActive dans POST /api/partner-requests),
+                // pas à masquer l'historique des missions déjà réalisées.
                 return r.partner_id === req.partner.id
-                    && ['pending', 'accepted', 'proposed', 'signed'].indexOf(r.status) !== -1;
+                    && ['pending', 'accepted', 'proposed', 'signed', 'completed'].indexOf(r.status) !== -1;
             })
             .sort(function(a, b) { return new Date(a.created_at) - new Date(b.created_at); })
             .map(function(r) {
