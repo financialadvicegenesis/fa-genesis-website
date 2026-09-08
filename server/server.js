@@ -4183,6 +4183,18 @@ app.post('/api/orders/:orderId/cancel-refund', async function(req, res) {
         if (order.status === 'cancelled' || order.status === 'refunded') {
             return res.status(400).json({ error: 'Commande déjà annulée.' });
         }
+        // GARDE-FOU CRITIQUE : une fois la prestation validée par le client (ou marquée
+        // terminée), l'auto-annulation/remboursement instantané doit être bloquée — sinon un
+        // client peut valider (déclenchant le versement réel au prestataire) PUIS s'auto-
+        // rembourser dans la foulée, remboursé ET le prestataire déjà payé. Passé ce stade,
+        // seul le support GENESIS (litige) doit pouvoir traiter une demande de remboursement.
+        if (order.client_validated === true || order.status === 'completed') {
+            return res.status(400).json({ error: 'Cette prestation a déjà été validée et finalisée — l\'annulation en libre-service n\'est plus possible. Contactez le support GENESIS si vous rencontrez un problème.' });
+        }
+        var hasDelivery = loadLivrables().some(function(l) { return l.order_id === orderId && l.type !== 'contract' && l.workflow_status === 'PUBLISHED'; });
+        if (hasDelivery) {
+            return res.status(400).json({ error: 'Le prestataire a déjà publié un livrable pour cette prestation — l\'annulation en libre-service n\'est plus possible. Demandez une révision ou contactez le support GENESIS.' });
+        }
 
         var dispatches = loadDispatches();
         var dispatch = dispatches.find(function(d) { return d.order_id === orderId && d.status !== 'cancelled'; });
@@ -4224,8 +4236,6 @@ app.post('/api/orders/:orderId/cancel-refund', async function(req, res) {
                 }
             }
         }
-
-        var hasDelivery = loadLivrables().some(function(l) { return l.order_id === orderId && l.type !== 'contract'; });
 
         // Annuler le dispatch en attente
         if (dispatch) {
