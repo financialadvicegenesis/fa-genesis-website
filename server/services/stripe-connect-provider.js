@@ -150,11 +150,15 @@ class StripeConnectProvider extends PaymentProvider {
     async createDirectPaymentIntent(data) {
         var s = getStripe();
         var amountCents = Math.round(parseFloat(data.amountEuros) * 100);
+        // Carte bancaire uniquement : app Android déjà en production (Google Play), pas encore
+        // de version iOS — Apple Pay n'a pas d'utilité tant qu'il n'y a pas d'app store Apple,
+        // et Klarna/Amazon Pay ne correspondent pas au profil d'achat des clients. PayPal est
+        // géré séparément via son propre bouton (voir /api/payments/paypal/*).
         var params = {
             amount: amountCents,
             currency: data.currency || 'eur',
             metadata: data.metadata || {},
-            automatic_payment_methods: { enabled: true }
+            payment_method_types: ['card']
         };
         // GENESIS SAFE™ : capture différée — la carte est autorisée mais l'argent ne
         // quitte pas le client tant que le partenaire n'a pas déclaré la prestation terminée.
