@@ -2868,8 +2868,10 @@ async function checkAutoPaymentRelease() {
         for (var _ari = 0; _ari < orders.length; _ari++) {
             var _o = orders[_ari];
 
-            // Conditions : partenaire a déclaré terminé + délai dépassé + pas encore libéré
-            if (!_o.partner_completed) continue;
+            // Conditions : commande en attente de validation client + délai dépassé + pas encore libéré.
+            // pending_client_validation (pas partner_completed) car le délai de sécurité démarre
+            // dès qu'un livrable est publié, même sans déclaration explicite "prestation terminée".
+            if (!_o.pending_client_validation) continue;
             if (!_o.auto_payment_release_at) continue;
             if (new Date(_o.auto_payment_release_at).getTime() > now) continue;
             if (_o.auto_released === true) continue;           // déjà traité
@@ -15183,14 +15185,15 @@ app.post('/api/partner/livrables/:id/publish', authenticatePartner, function(req
                     'Votre prestataire a mis à disposition "' + livrables[idx].title + '" pour "' + (order.product_name || 'votre prestation') + '".',
                     '/app.html#tab:reservations');
             }
-            // Auto-déclencher pending_client_validation dès le premier livrable publié
+            // Publier un livrable rend le paiement validable et démarre le délai de sécurité
+            // 7j (pour protéger le prestataire même sans réponse du client) — MAIS ne déclare
+            // PAS la prestation "terminée" : ça reste une action explicite et distincte
+            // (bouton Confirmer la livraison / Prestation terminée). Sinon, publier un simple
+            // brouillon ou un premier fichier parmi plusieurs annoncerait à tort au client que
+            // le prestataire a fini tout le travail.
             if (!order.client_validated && !order.pending_client_validation) {
-                var partnerName = ((req.partner.prenom || '') + ' ' + (req.partner.nom || req.partner.name || '')).trim() || req.partner.email;
                 var autoReleaseAt = new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString();
                 updateOrder(order.id, {
-                    partner_completed: true,
-                    partner_completed_at: new Date().toISOString(),
-                    partner_completed_by: partnerName,
                     pending_client_validation: true,
                     auto_payment_release_at: autoReleaseAt,
                     status: 'pending_client_validation'

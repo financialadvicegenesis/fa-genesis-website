@@ -6817,12 +6817,17 @@ function _fmtTrackTime(iso){
 }
 
 function _validationActionsHtml(r){
+  // r.partner_completed = déclaration EXPLICITE du prestataire (bouton "Confirmer la
+  // livraison" / "Prestation terminée"). r.pending_client_validation seul ne veut dire
+  // que "des livrables sont visibles et un délai de sécurité tourne" — pas forcément
+  // que le prestataire a formellement déclaré la mission terminée.
   var _msLeft = r.auto_payment_release_at ? Math.max(0, Math.ceil((new Date(r.auto_payment_release_at).getTime() - Date.now()) / (1000*3600*24))) : null;
   var _daysStr = _msLeft !== null ? _msLeft + ' jour(s)' : '7 jours';
-  var _valTitle = r.pending_client_validation ? 'Prestation déclarée terminée !' : 'Livrables disponibles';
-  var _valMsg = r.pending_client_validation
-    ? _escHtml(r.partner_completed_by||'Votre prestataire')+' a déclaré la prestation terminée. Validez pour confirmer ou demandez une révision. Sans réponse, le paiement sera libéré sous '+_daysStr+'.'
-    : 'Vos livrables sont prêts. Validez la prestation pour libérer le paiement, ou demandez une révision si des modifications sont nécessaires.';
+  var _autoNote = _msLeft !== null ? ' Sans réponse de votre part, le paiement sera libéré automatiquement sous '+_daysStr+'.' : '';
+  var _valTitle = r.partner_completed ? 'Prestation déclarée terminée !' : 'Livrables disponibles';
+  var _valMsg = r.partner_completed
+    ? _escHtml(r.partner_completed_by||'Votre prestataire')+' a déclaré la prestation terminée. Validez pour confirmer ou demandez une révision.'+_autoNote
+    : 'Vos livrables sont prêts à être consultés. Validez la prestation pour libérer le paiement, ou demandez une révision si des modifications sont nécessaires.'+_autoNote;
   return '<div style="background:rgba(251,191,36,.08);border:1.5px solid rgba(251,191,36,.4);border-radius:12px;padding:14px 16px;margin:12px 0;">'
     +'<div style="font-size:13px;font-weight:900;color:#fbbf24;margin-bottom:6px;"><i class="fa-solid fa-flag-checkered" style="margin-right:6px;"></i>'+_valTitle+'</div>'
     +'<div style="font-size:11px;color:#aaa;margin-bottom:12px;line-height:1.6;">'+_valMsg+'</div>'
@@ -6857,7 +6862,7 @@ function renderOrderTrackingCard(r){
   else if(ds.key==='accepted')heroSub='Votre prestataire a confirmé, la mission démarre !';
   else if(ds.key==='in_progress')heroSub='Votre prestataire travaille activement sur votre commande.';
   else if(ds.key==='delivering')heroSub='Les livrables arrivent très bientôt !';
-  else if(ds.key==='delivered' && r.pending_client_validation && !r.client_validated)heroSub='Prestation déclarée terminée. Validez pour libérer le paiement ou signalez un problème.';
+  else if(ds.key==='delivered' && r.partner_completed && !r.client_validated)heroSub='Prestation déclarée terminée. Validez pour libérer le paiement ou signalez un problème.';
   else if(ds.key==='delivered')heroSub='Vos livrables sont prêts. Validez-les depuis cette page.';
   else if(ds.key==='completed'||ds.key==='reviewed')heroSub='Mission accomplie avec succès. Merci !';
 
