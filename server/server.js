@@ -5838,6 +5838,17 @@ app.get('/api/client/wallet', function(req, res) {
                 || (order.partner_name ? String(order.partner_name).trim() : null)
                 || 'Prestataire';
 
+            // Normalisation stricte des indicateurs booléens de la commande — trouvé à plusieurs
+            // reprises cette session : ces champs peuvent finir par valoir une valeur "truthy" non
+            // strictement booléenne (incohérence de stockage), ce qui fait diverger un test strict
+            // (=== true, utilisé pour held/released) d'une simple négation (!champ, utilisée dans
+            // les libellés) — le portefeuille reste alors bloqué sur un statut périmé après une
+            // validation pourtant bien enregistrée. On calcule ces indicateurs UNE SEULE FOIS ici,
+            // en strict, et on les réutilise partout ci-dessous — jamais order.X directement.
+            var _oClientValidated = order.client_validated === true || order.status === 'completed';
+            var _oPartnerPaidOut  = order.partner_paid_out === true;
+            var _oBalancePaid     = order.balance_paid === true;
+
             // Priorité au modèle installments si au moins une est payée (partner_installments)
             var hasPaidInst = Array.isArray(order.installments) && order.installments.some(function(i) { return i.paid; });
             if (hasPaidInst) {
@@ -5869,16 +5880,16 @@ app.get('/api/client/wallet', function(req, res) {
                 // NE PAS inclure client_validated seul : la validation autorise le virement
                 // mais jusqu'à partner_paid_out=true, l'argent est encore chez Stripe GENESIS
                 // et le client peut encore être remboursé.
-                var isComplete = order.partner_paid_out === true || order.balance_paid === true;
+                var isComplete = _oPartnerPaidOut || _oBalancePaid;
                 var _hasFunds = order.deposit_authorized === true || order.deposit_paid === true;
                 var isSplit = (parseFloat(order.balance_amount) || 0) > 0;
                 if (isSplit) {
                     var depositAmt = parseFloat(order.deposit_amount) || 0;
                     var balAmt = parseFloat(order.balance_amount) || 0;
-                    if (order.balance_paid) {
+                    if (_oBalancePaid) {
                         // Tout est payé et le partenaire a reçu les deux tranches
                         released += depositAmt + balAmt;
-                    } else if (order.partner_paid_out) {
+                    } else if (_oPartnerPaidOut) {
                         // Acompte déjà versé au partenaire ; solde restant dû mais pas encore en escrow
                         released += depositAmt;
                         if (order.balance_authorized === true) held += balAmt;
@@ -5886,7 +5897,7 @@ app.get('/api/client/wallet', function(req, res) {
                     } else {
                         // En cours : acompte en escrow, solde pas encore payé
                         if (_hasFunds) held += depositAmt;
-                        if (order.balance_authorized === true && !order.balance_paid) held += balAmt;
+                        if (order.balance_authorized === true && !_oBalancePaid) held += balAmt;
                         else if (order.balance_payment_ready) held += balAmt;
                     }
                 } else {
@@ -5916,19 +5927,16 @@ app.get('/api/client/wallet', function(req, res) {
             var _hasPendingAdminPayout = payouts.some(function(p) {
                 return p.order_id === order.id && p.status === 'pending_admin';
             });
-            var _isAuthOnly = (order.deposit_authorized === true && !order.deposit_paid) || (order.balance_authorized === true && !order.balance_paid);
+            var _isAuthOnly = (order.deposit_authorized === true && !order.deposit_paid) || (order.balance_authorized === true && !_oBalancePaid);
             var partnerAcceptedNotDone = !!(dispatch && dispatch.status === 'accepted' && !partnerDone);
-            var pendingClientValidation = !!(partnerDone && !order.client_validated && !order.balance_paid);
+            var pendingClientValidation = !!(partnerDone && !_oClientValidated && !_oBalancePaid);
             // Validé par le client mais partenaire pas encore payé (aucun Transfer Stripe déclenché)
-            var validatedPendingPayout = !!(order.client_validated && !order.partner_paid_out && !order.balance_paid && held > 0);
-            // Statut affiché dans le portefeuille client — priorité du plus précis au moins précis
-            // order.status === 'completed' en filet de sécurité : validate-delivery et
-            // checkAutoPaymentRelease posent toujours les deux ensemble, mais si client_validated
-            // finit par valoir une valeur "truthy" non strictement === true (incohérence de
-            // stockage), ce filet évite que le portefeuille reste bloqué sur "en attente de
-            // validation" alors que /api/my-requests (qui a le même filet) affiche déjà "terminé".
-            var _clientValidated = order.client_validated === true || order.status === 'completed';
-            var statusLabel = _clientValidated && !order.partner_paid_out && !order.balance_paid
+            var validatedPendingPayout = !!(_oClientValidated && !_oPartnerPaidOut && !_oBalancePaid && held > 0);
+            // Statut affiché dans le portefeuille client — priorité du plus précis au moins précis.
+            // _oClientValidated/_oPartnerPaidOut/_oBalancePaid sont les versions normalisées en
+            // strict (voir plus haut) — ne jamais réintroduire order.X en négation directe ici.
+            var _clientValidated = _oClientValidated;
+            var statusLabel = _clientValidated && !_oPartnerPaidOut && !_oBalancePaid
                 ? 'Prestation validée — virement au prestataire en cours'
                 : dispatchNotAccepted && held > 0
                 ? 'Paiement reçu — en attente d\'acceptation du prestataire'
@@ -5951,7 +5959,7 @@ app.get('/api/client/wallet', function(req, res) {
             var canCancelRefund = held > 0 && !_clientValidated;
             var _balDue = (parseFloat(order.balance_amount) || 0) > 0
                 && order.deposit_paid === true
-                && !order.balance_paid
+                && !_oBalancePaid
                 && !order.balance_authorized;
             orderRows.push({
                 order_id: order.id,
@@ -5961,7 +5969,7 @@ app.get('/api/client/wallet', function(req, res) {
                 // Si client_validated=true mais held=0 (race condition dans le calcul),
                 // forcer held_amount depuis deposit_amount pour que le bouton remboursement reste visible
                 held_amount: held > 0 ? Math.round(held * 100) / 100
-                    : (_clientValidated && !order.partner_paid_out && !order.balance_paid && _hasCapturable
+                    : (_clientValidated && !_oPartnerPaidOut && !_oBalancePaid && _hasCapturable
                         ? Math.round((parseFloat(order.deposit_amount) || parseFloat(order.total_amount) || 0) * 100) / 100
                         : 0),
                 released_amount: Math.round(released * 100) / 100,
@@ -5970,7 +5978,7 @@ app.get('/api/client/wallet', function(req, res) {
                 withdraw_reason: withdrawReason,
                 can_cancel_refund: canCancelRefund,
                 pending_client_validation: pendingClientValidation,
-                validated_pending_payout: _clientValidated && !order.partner_paid_out && !order.balance_paid,
+                validated_pending_payout: _clientValidated && !_oPartnerPaidOut && !_oBalancePaid,
                 created_at: order.created_at,
                 balance_due: _balDue,
                 balance_amount: _balDue ? (parseFloat(order.balance_amount) || 0) : 0,
