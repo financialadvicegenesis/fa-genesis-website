@@ -6312,6 +6312,31 @@ app.post('/api/payments/verify', async (req, res) => {
         const order = getOrderById(orderId);
         if (!order) return res.status(404).json({ error: 'Commande non trouvee' });
 
+        // SÉCURITÉ CRITIQUE : cet endpoint est public (appelé sans authentification, en filet
+        // de sécurité après un retour de paiement) et reçoit orderId/stage depuis l'URL/le
+        // client — jamais fiable. Sans re-vérification ici, n'importe qui pouvait POST avec
+        // l'ID d'une commande existante et la faire marquer payée, ce qui créait le dispatch
+        // partenaire et pouvait déclencher un versement réel, sans qu'aucun argent n'ait
+        // transité. On revérifie donc l'état RÉEL auprès de Stripe (PaymentIntent stocké sur
+        // la commande) ou on s'appuie sur order.paypal_capture_id, qui n'est écrit que par
+        // /api/payments/paypal/capture-order après confirmation réelle auprès de PayPal.
+        var _verifyPiId = (stage === 'balance') ? order.stripe_balance_pi_id : order.stripe_deposit_pi_id;
+        var _verifyOk = false;
+        if (_verifyPiId) {
+            try {
+                var _verifyPi = await scp.retrievePaymentIntent(_verifyPiId);
+                _verifyOk = !!(_verifyPi && _verifyPi.status === 'succeeded');
+            } catch(_vpErr) {
+                console.error('[VERIFY] Erreur vérification Stripe:', _vpErr.message);
+            }
+        } else if (order.paypal_capture_id) {
+            _verifyOk = true;
+        }
+        if (!_verifyOk) {
+            console.warn('[VERIFY] Confirmation refusée — aucune preuve de paiement réel pour', orderId, stage);
+            return res.status(400).json({ error: 'Paiement non confirmé auprès du fournisseur de paiement.' });
+        }
+
         // ── Déterminer si ce stage est un nouveau paiement (idempotent) ──────────────
         var isNewPayment = false;
         var paymentStage = null;
