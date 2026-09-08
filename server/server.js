@@ -1252,7 +1252,12 @@ async function processDispatchPayout(dispatch, stage) {
     }
 }
 
-// Litige résolu (Phase 6) : déclenche les versements on_hold mis en attente pour ce dispatch
+// Litige résolu en faveur du prestataire (Phase 6) : débloque les versements on_hold pour ce
+// dispatch — EN CRÉDITANT LE WALLET INTERNE, exactement comme processDispatchPayout() pour tout
+// versement normal. Avant ce correctif, la méthode PayPal envoyait un vrai virement PayPal
+// directement (en contournant le wallet — incohérent avec le reste du système où l'argent
+// réel ne part qu'au clic "Retirer" du prestataire), et les autres méthodes repassaient juste
+// en 'pending' sans jamais réellement créditer le prestataire nulle part.
 async function releaseOnHoldPayouts(dispatchId) {
     try {
         var payouts = loadPayouts();
@@ -1261,28 +1266,25 @@ async function releaseOnHoldPayouts(dispatchId) {
 
         for (var i = 0; i < toRelease.length; i++) {
             var p = toRelease[i];
-            if (p.payout_method === 'paypal' && p.partner_paypal) {
-                var result = await triggerPayPalPayouts([{
-                    recipient_email: p.partner_paypal,
-                    amount: p.amount,
-                    currency: 'EUR',
-                    note: 'Versement FA GENESIS — ' + (p.order_id || '') + ' (' + p.stage + ', débloqué après résolution de litige)'
-                }]);
-                var latest = loadPayouts();
-                var pi = latest.findIndex(function(x) { return x.id === p.id; });
-                if (pi !== -1) {
-                    latest[pi].status = result.success ? 'sent' : 'failed';
-                    if (result.success) { latest[pi].sent_at = new Date().toISOString(); latest[pi].payout_batch_id = result.payout_batch_id || null; }
-                    else { latest[pi].error = result.error || 'Erreur PayPal'; }
-                    savePayouts(latest);
-                }
-                console.log('[PAYOUT] Versement débloqué (litige résolu) ' + p.stage + ' PayPal ' + (result.success ? 'envoyé' : 'ÉCHOUÉ') + ' → ' + p.partner_email);
-            } else {
-                var latest2 = loadPayouts();
-                var pi2 = latest2.findIndex(function(x) { return x.id === p.id; });
-                if (pi2 !== -1) { latest2[pi2].status = 'pending'; savePayouts(latest2); }
-                console.log('[PAYOUT] Versement débloqué (litige résolu) ' + p.stage + ' repasse en attente (' + p.payout_method + ') → ' + p.partner_email);
+            var _relWalletOk = releasePendingWalletEntry(p.partner_id, p.dispatch_id, p.stage, p.amount)
+                || creditPartnerWallet(p.partner_id, p.amount, 'Litige résolu en votre faveur — ' + (p.order_id || ''), p.order_id, p.dispatch_id, p.stage);
+            var latest = loadPayouts();
+            var pi = latest.findIndex(function(x) { return x.id === p.id; });
+            if (pi !== -1) {
+                latest[pi].status = _relWalletOk ? 'wallet_credited' : 'pending';
+                if (_relWalletOk) latest[pi].sent_at = new Date().toISOString();
+                savePayouts(latest);
             }
+            if (_relWalletOk) {
+                notifyUser(p.partner_email, 'partner', 'wallet_credited', '💰 Litige résolu — versement débloqué',
+                    '+' + p.amount.toFixed(2) + '€ viennent d\'être ajoutés à votre Wallet GENESIS suite à la résolution du litige.',
+                    '#partner:livrables');
+            } else {
+                notifyUser(null, 'admin', 'refund_manual', '⚠️ Échec du crédit wallet après résolution de litige',
+                    'Dispatch ' + p.dispatch_id + ' — le litige a été résolu en faveur du prestataire mais le crédit wallet a échoué. Traiter manuellement.',
+                    '/admin.html#payouts');
+            }
+            console.log('[PAYOUT] Versement débloqué (litige résolu) ' + p.stage + ' — wallet ' + (_relWalletOk ? 'crédité' : 'ÉCHEC') + ' → ' + p.partner_email);
         }
     } catch (e) {
         console.error('[PAYOUT] Erreur releaseOnHoldPayouts:', e);
@@ -2548,7 +2550,20 @@ app.post('/api/admin/disputes/:id/resolve', function(req, res) {
             notifyUser(partner.email, 'partner', 'litige-resolu', 'Litige resolu', 'Le litige avec votre client a ete resolu par notre equipe.', '/app.html#partner:home');
         }
 
-        releaseOnHoldPayouts(dispute.dispatch_id).catch(function(e) { console.error('[DISPUTE] Erreur releaseOnHoldPayouts:', e); });
+        // CRITIQUE : ne libérer le versement en attente (on_hold) QUE si le verdict est en
+        // faveur du prestataire. Avant ce correctif, releaseOnHoldPayouts() était appelé sans
+        // condition — un litige tranché en faveur du CLIENT payait quand même le prestataire.
+        // Pour 'client_favor'/'split'/'manual_action_required', le versement reste on_hold :
+        // le remboursement client et le traitement du solde partenaire restent manuels.
+        if (verdict === 'partner_favor') {
+            releaseOnHoldPayouts(dispute.dispatch_id).catch(function(e) { console.error('[DISPUTE] Erreur releaseOnHoldPayouts:', e); });
+        } else {
+            console.log('[DISPUTE] Verdict "' + verdict + '" — versement on_hold NON libéré, traitement manuel requis pour dispatch', dispute.dispatch_id);
+            notifyUser(null, 'admin', 'refund_manual',
+                'Litige résolu (' + verdict + ') — action manuelle requise',
+                'Litige ' + dispute.id + ' résolu en faveur ' + (verdict === 'client_favor' ? 'du client' : 'nécessitant une action manuelle') + '. Le versement au prestataire reste bloqué (on_hold) — traiter le remboursement client et/ou le solde prestataire manuellement.',
+                '/admin.html#payouts');
+        }
 
         res.json({ ok: true, dispute: dispute, sla_label: GENESIS_DISPUTE_SLA_LABEL });
     } catch (err) {
