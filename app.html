@@ -6816,6 +6816,26 @@ function _fmtTrackTime(iso){
   }catch(e){return '';}
 }
 
+function _validationActionsHtml(r){
+  var _msLeft = r.auto_payment_release_at ? Math.max(0, Math.ceil((new Date(r.auto_payment_release_at).getTime() - Date.now()) / (1000*3600*24))) : null;
+  var _daysStr = _msLeft !== null ? _msLeft + ' jour(s)' : '7 jours';
+  var _valTitle = r.pending_client_validation ? 'Prestation déclarée terminée !' : 'Livrables disponibles';
+  var _valMsg = r.pending_client_validation
+    ? _escHtml(r.partner_completed_by||'Votre prestataire')+' a déclaré la prestation terminée. Validez pour confirmer ou demandez une révision. Sans réponse, le paiement sera libéré sous '+_daysStr+'.'
+    : 'Vos livrables sont prêts. Validez la prestation pour libérer le paiement, ou demandez une révision si des modifications sont nécessaires.';
+  return '<div style="background:rgba(251,191,36,.08);border:1.5px solid rgba(251,191,36,.4);border-radius:12px;padding:14px 16px;margin:12px 0;">'
+    +'<div style="font-size:13px;font-weight:900;color:#fbbf24;margin-bottom:6px;"><i class="fa-solid fa-flag-checkered" style="margin-right:6px;"></i>'+_valTitle+'</div>'
+    +'<div style="font-size:11px;color:#aaa;margin-bottom:12px;line-height:1.6;">'+_valMsg+'</div>'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap;">'
+    +'<button onclick="_clientValidateDelivery(\''+r.order_id+'\',\''+r.id+'\',this)" style="flex:1;min-width:140px;padding:11px 14px;background:#22c55e;color:#000;border:none;border-radius:8px;font-size:13px;font-weight:900;cursor:pointer;"><i class="fa-solid fa-circle-check"></i> Valider</button>'
+    +'<button onclick="_showRevisionForm(\''+r.order_id+'\')" style="flex:1;min-width:140px;padding:11px 14px;background:transparent;color:#60a5fa;border:1.5px solid #60a5fa;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;"><i class="fa-solid fa-pen"></i> Demander une révision</button>'
+    +'</div>'
+    +'<div id="rev-form-'+r.order_id+'" style="display:none;margin-top:12px;">'
+    +'<textarea id="rev-note-'+r.order_id+'" placeholder="Expliquez ce qui doit être corrigé ou amélioré…" style="width:100%;box-sizing:border-box;min-height:70px;padding:10px;border-radius:8px;border:1px solid #333;background:#0d0d0d;color:#fff;font-size:14px;resize:vertical;"></textarea>'
+    +'<button onclick="_submitRevisionRequest(\''+r.order_id+'\',this)" style="width:100%;margin-top:8px;padding:10px 14px;background:#60a5fa;color:#000;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;"><i class="fa-solid fa-paper-plane"></i> Envoyer la demande</button>'
+    +'</div>'
+    +'</div>';
+}
 function renderOrderTrackingCard(r){
   var ds = r.display_status || {key:'in_progress', emoji:'🟣', label:'En préparation'};
   var currentIdx = (_trackStepIdx[ds.key] !== undefined) ? _trackStepIdx[ds.key] : 2;
@@ -6978,27 +6998,12 @@ function renderOrderTrackingCard(r){
       +'</div>';
   }
 
-  // Bloc validation livraison — affiché dès que des livrables sont disponibles
-  if(ds.key === 'delivered' && !r.client_validated){
-    var _msLeft = r.auto_payment_release_at ? Math.max(0, Math.ceil((new Date(r.auto_payment_release_at).getTime() - Date.now()) / (1000*3600*24))) : null;
-    var _daysStr = _msLeft !== null ? _msLeft + ' jour(s)' : '7 jours';
-    var _valTitle = r.pending_client_validation ? 'Prestation déclarée terminée !' : 'Livrables disponibles';
-    var _valMsg = r.pending_client_validation
-      ? _escHtml(r.partner_completed_by||'Votre prestataire')+' a déclaré la prestation terminée. Validez pour confirmer ou demandez une révision. Sans réponse, le paiement sera libéré sous '+_daysStr+'.'
-      : 'Vos livrables sont prêts. Validez la prestation pour libérer le paiement, ou demandez une révision si des modifications sont nécessaires.';
-    html += '<div style="background:rgba(251,191,36,.08);border:1.5px solid rgba(251,191,36,.4);border-radius:12px;padding:14px 16px;margin:12px 0;">'
-      +'<div style="font-size:13px;font-weight:900;color:#fbbf24;margin-bottom:6px;"><i class="fa-solid fa-flag-checkered" style="margin-right:6px;"></i>'+_valTitle+'</div>'
-      +'<div style="font-size:11px;color:#aaa;margin-bottom:12px;line-height:1.6;">'+_valMsg+'</div>'
-      +'<div style="display:flex;gap:8px;flex-wrap:wrap;">'
-      +'<button onclick="_clientValidateDelivery(\''+r.order_id+'\',\''+r.id+'\',this)" style="flex:1;min-width:140px;padding:11px 14px;background:#22c55e;color:#000;border:none;border-radius:8px;font-size:13px;font-weight:900;cursor:pointer;"><i class="fa-solid fa-circle-check"></i> Valider</button>'
-      +'<button onclick="_showRevisionForm(\''+r.order_id+'\')" style="flex:1;min-width:140px;padding:11px 14px;background:transparent;color:#60a5fa;border:1.5px solid #60a5fa;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;"><i class="fa-solid fa-pen"></i> Demander une révision</button>'
-      +'</div>'
-      +'<div id="rev-form-'+r.order_id+'" style="display:none;margin-top:12px;">'
-      +'<textarea id="rev-note-'+r.order_id+'" placeholder="Expliquez ce qui doit être corrigé ou amélioré…" style="width:100%;box-sizing:border-box;min-height:70px;padding:10px;border-radius:8px;border:1px solid #333;background:#0d0d0d;color:#fff;font-size:14px;resize:vertical;"></textarea>'
-      +'<button onclick="_submitRevisionRequest(\''+r.order_id+'\',this)" style="width:100%;margin-top:8px;padding:10px 14px;background:#60a5fa;color:#000;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;"><i class="fa-solid fa-paper-plane"></i> Envoyer la demande</button>'
-      +'</div>'
-      +'</div>';
-  }
+  // Bloc validation livraison — affiché dès que des livrables sont disponibles.
+  // Rendu dans un conteneur toujours présent (val-actions-{id}) : si le statut affiché
+  // n'est pas encore "delivered" ici (cache), loadOrderLivrables() le remplira quand
+  // même en filet de sécurité dès qu'un livrable publié est réellement détecté — la
+  // présence effective d'un livrable prime sur le statut affiché.
+  html += '<div id="val-actions-'+r.id+'">'+((ds.key === 'delivered' && !r.client_validated) ? _validationActionsHtml(r) : '')+'</div>';
   if(r.client_validated && ds.key !== 'completed' && ds.key !== 'reviewed'){
     // Bloc transitoire : client_validated=true mais ds.key pas encore 'completed' (cache serveur)
     html += '<div style="background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.25);border-radius:10px;padding:12px 14px;margin:8px 0;display:flex;align-items:center;gap:10px;">'
@@ -7067,7 +7072,7 @@ function _silentRefreshResa(){
           var tmp = document.createElement('div');
           tmp.innerHTML = renderOrderTrackingCard(r);
           card.replaceWith(tmp.firstChild);
-          loadOrderLivrables(r.id, r.order_id);
+          loadOrderLivrables(r.id, r.order_id, r);
           changed = true;
         }
         if(newKey) _resaStatusCache[r.id] = newKey;
@@ -7078,9 +7083,9 @@ function _silentRefreshResa(){
       if(changed && typeof showToast==='function') showToast('Statut mis à jour','Votre commande a changé de statut.','info');
     }).catch(function(){});
 }
-function loadOrderLivrables(requestId, orderId){
+function loadOrderLivrables(requestId, orderId, reqObj){
   fetch((window.FA_GENESIS_API||API)+'/api/livrables/'+orderId,{headers:{'Authorization':'Bearer '+USER._token}})
-    .then(function(r){return r.json();})
+    .then(function(resp){return resp.json();})
     .then(function(data){
       var el = document.getElementById('liv-block-'+requestId);
       if(!el) return;
@@ -7088,6 +7093,15 @@ function loadOrderLivrables(requestId, orderId){
       var published = list.filter(function(l){ return l.workflow_status==='PUBLISHED'; });
       if(published.length===0){ el.innerHTML='<div style="color:var(--muted);font-size:12px;">Aucun livrable publié pour le moment.</div>'; return; }
       el.innerHTML = published.map(renderLivrableValidationCard).join('');
+      // Filet de sécurité : un livrable publié existe réellement (donnée fraîche) — si le
+      // bloc Valider/Demander une révision n'a pas été affiché (display_status en cache
+      // pas encore repassé à "delivered"), on l'affiche quand même ici.
+      if(reqObj && !reqObj.client_validated){
+        var actionsEl = document.getElementById('val-actions-'+requestId);
+        if(actionsEl && !actionsEl.innerHTML.trim()){
+          actionsEl.innerHTML = _validationActionsHtml(reqObj);
+        }
+      }
     }).catch(function(){
       var el = document.getElementById('liv-block-'+requestId);
       if(el) el.innerHTML='';
@@ -9804,7 +9818,7 @@ function showOrderDetail(requestId){
       +'</div>';
     document.body.appendChild(overlay);
     // Charger les livrables dans le contexte de cet overlay
-    if(r.order_id) loadOrderLivrables(r.id, r.order_id);
+    if(r.order_id) loadOrderLivrables(r.id, r.order_id, r);
   } catch(_e){}
 }
 function showDashboard(){showMesCommandes();}
