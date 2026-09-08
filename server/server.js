@@ -5673,7 +5673,12 @@ app.get('/api/client/wallet', function(req, res) {
             // Validé par le client mais partenaire pas encore payé (aucun Transfer Stripe déclenché)
             var validatedPendingPayout = !!(order.client_validated && !order.partner_paid_out && !order.balance_paid && held > 0);
             // Statut affiché dans le portefeuille client — priorité du plus précis au moins précis
-            var _clientValidated = order.client_validated === true;
+            // order.status === 'completed' en filet de sécurité : validate-delivery et
+            // checkAutoPaymentRelease posent toujours les deux ensemble, mais si client_validated
+            // finit par valoir une valeur "truthy" non strictement === true (incohérence de
+            // stockage), ce filet évite que le portefeuille reste bloqué sur "en attente de
+            // validation" alors que /api/my-requests (qui a le même filet) affiche déjà "terminé".
+            var _clientValidated = order.client_validated === true || order.status === 'completed';
             var statusLabel = _clientValidated && !order.partner_paid_out && !order.balance_paid
                 ? 'Prestation validée — virement au prestataire en cours'
                 : dispatchNotAccepted && held > 0
