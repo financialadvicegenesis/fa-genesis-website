@@ -7222,7 +7222,9 @@ function renderLivrableValidationCard(l){
       +'<div style="font-size:10px;color:#777;">Aperçu non disponible pour ce format</div></div>'
       +'</div>';
     if(canDownload && urlVal){
-      contentHtml += _livDownloadBtnHtml(l.id, l.file_name, urlVal);
+      // Pas de mot "original" ici : aucun aperçu n'a été montré pour ce format, il n'y a
+      // donc rien à contraster avec un "original" — juste "Télécharger".
+      contentHtml += _livDownloadBtnHtml(l.id, l.file_name, urlVal, 'Télécharger');
     } else {
       contentHtml += '<div style="margin-top:6px;font-size:11px;color:#888;font-style:italic"><i class="fa-solid fa-lock"></i> Téléchargement débloqué après validation</div>';
     }
