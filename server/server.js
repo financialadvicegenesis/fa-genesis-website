@@ -4634,6 +4634,11 @@ app.post('/api/payments/order/stripe-direct', async function(req, res) {
         var _ordUser   = _ordUsers.find(function(u) { return u.email === payload.email; });
         var _ordCustId = await getOrCreateStripeCustomer(payload.email, _ordUser && _ordUser.prenom, _ordUser && _ordUser.nom);
 
+        // GENESIS SAFE™ : capture différée, sauf acompte des commandes "large" (versé
+        // immédiatement au prestataire par règle métier distincte) — voir le même commentaire
+        // détaillé sur /api/payments/stripe/create-intent.
+        var _sdTier = order.payment_tier || 'small';
+        var _sdIsLargeDeposit = _sdTier === 'large' && stage !== 'balance' && !isInstallment;
         var pi = await scp.createDirectPaymentIntent({
             amountEuros: amount,
             currency: 'eur',
@@ -4641,6 +4646,7 @@ app.post('/api/payments/order/stripe-direct', async function(req, res) {
             receiptEmail: payload.email || undefined,
             customerId: _ordCustId || undefined,
             setupFutureUsage: _ordCustId ? 'on_session' : undefined,
+            captureManual: !_sdIsLargeDeposit,
             metadata: { order_id: orderId, stage: stage, user_email: payload.email || '' }
         });
 
@@ -6341,10 +6347,12 @@ app.post('/api/payments/verify', async (req, res) => {
         // /api/payments/paypal/capture-order après confirmation réelle auprès de PayPal.
         var _verifyPiId = (stage === 'balance') ? order.stripe_balance_pi_id : order.stripe_deposit_pi_id;
         var _verifyOk = false;
+        var _verifyAuthorizedOnly = false; // GENESIS SAFE™ : PI authorisé (requires_capture), pas encore capturé
         if (_verifyPiId) {
             try {
                 var _verifyPi = await scp.retrievePaymentIntent(_verifyPiId);
-                _verifyOk = !!(_verifyPi && _verifyPi.status === 'succeeded');
+                _verifyOk = !!(_verifyPi && (_verifyPi.status === 'succeeded' || _verifyPi.status === 'requires_capture'));
+                _verifyAuthorizedOnly = !!(_verifyPi && _verifyPi.status === 'requires_capture');
             } catch(_vpErr) {
                 console.error('[VERIFY] Erreur vérification Stripe:', _vpErr.message);
             }
@@ -6354,6 +6362,24 @@ app.post('/api/payments/verify', async (req, res) => {
         if (!_verifyOk) {
             console.warn('[VERIFY] Confirmation refusée — aucune preuve de paiement réel pour', orderId, stage);
             return res.status(400).json({ error: 'Paiement non confirmé auprès du fournisseur de paiement.' });
+        }
+        // PI seulement autorisé (capture différée GENESIS SAFE™) : ne PAS marquer deposit_paid/
+        // balance_paid (l'argent n'est pas encore chez Stripe GENESIS) — même traitement que
+        // /api/payments/stripe/sync-intent. La capture réelle n'a lieu qu'à validate-delivery.
+        if (_verifyAuthorizedOnly) {
+            var _vAuthField    = (stage === 'balance') ? 'balance_authorized' : 'deposit_authorized';
+            var _vAuthAtField  = (stage === 'balance') ? 'balance_authorized_at' : 'deposit_authorized_at';
+            if (!order[_vAuthField]) {
+                var _vAuthUpdates = {};
+                _vAuthUpdates[_vAuthField] = true;
+                _vAuthUpdates[_vAuthAtField] = new Date().toISOString();
+                if (stage !== 'balance') _vAuthUpdates.paymentStatus = 'deposit_authorized';
+                var _vAuthOrder = updateOrder(orderId, _vAuthUpdates);
+                if (_vAuthOrder && _vAuthOrder.product_type === 'partner_service' && stage !== 'balance') {
+                    createPartnerServiceDispatch(_vAuthOrder);
+                }
+            }
+            return res.json({ success: true, paid: false, authorized: true });
         }
 
         // ── Déterminer si ce stage est un nouveau paiement (idempotent) ──────────────
@@ -21705,14 +21731,22 @@ app.post('/api/payments/stripe/create-intent', async function(req, res) {
             }
         }
 
-        // GENESIS SAFE™ — débit immédiat sécurisé :
-        // La carte du client est débitée immédiatement. Les fonds sont retenus sur le compte
-        // Stripe GENESIS et versés au partenaire uniquement à la livraison confirmée.
+        // GENESIS SAFE™ — capture différée : la carte du client est AUTORISÉE à la confirmation
+        // (le PI reste en requires_capture, l'argent n'a pas encore quitté sa carte pour de bon),
+        // et n'est réellement CAPTURÉE — l'argent atterrit alors sur le compte Stripe GENESIS —
+        // que lorsque le client valide la livraison (validate-delivery) ou après le délai de
+        // sécurité de 7 jours (checkAutoPaymentRelease). C'est ce qui rend l'annulation avant
+        // livraison réellement instantanée et gratuite (cancel-refund annule l'autorisation).
+        // Exception : l'acompte des commandes "large" est, par règle métier distincte, versé
+        // immédiatement au prestataire comme capital de démarrage — capture immédiate conservée.
+        var _citTier = _gOrder ? (_gOrder.payment_tier || 'small') : 'small';
+        var _citIsLargeDeposit = _citTier === 'large' && b.stage !== 'balance';
         var pi = await scp.createDirectPaymentIntent({
             amountEuros:   _intentAmount,
             currency:      'eur',
             description:   (b.description || ('FA GENESIS — ' + (b.label || 'Prestation'))).substring(0, 250),
             receiptEmail:  user.email,
+            captureManual: !_citIsLargeDeposit,
             metadata: {
                 order_id:     b.orderId      || '',
                 stage:        b.stage        || 'deposit',
@@ -21736,7 +21770,7 @@ app.post('/api/payments/stripe/create-intent', async function(req, res) {
             } catch(e) { console.error('[STRIPE INTENT] Erreur stockage PI ID sur commande:', e.message); }
         }
 
-        console.log('[STRIPE INTENT] GENESIS SAFE™ — débit immédiat:', pi.id, _intentAmount + ' EUR', 'order:', b.orderId || 'N/A');
+        console.log('[STRIPE INTENT] GENESIS SAFE™ —', (_citIsLargeDeposit ? 'débit immédiat (acompte large)' : 'capture différée'), ':', pi.id, _intentAmount + ' EUR', 'order:', b.orderId || 'N/A');
         res.json({ ok: true, clientSecret: pi.client_secret, paymentIntentId: pi.id });
     } catch(e) {
         console.error('[STRIPE INTENT]', e.message);
