@@ -1542,6 +1542,17 @@
                     </div>
                     <div id="wiseIbanStatusResult" style="font-size:12px;color:#aaa;">Cliquez "VOIR STATUT" pour lister les partenaires avec IBAN.</div>
                 </div>
+
+                <!-- ── Remboursement admin (commande validée/livrée) ── -->
+                <div style="margin-top:32px;background:#0d0d0d;border:1.5px solid #ef444444;border-radius:14px;padding:20px;">
+                    <h3 style="font-size:16px;font-weight:900;color:#ef4444;margin:0 0 12px;"><i class="fas fa-rotate-left" style="margin-right:8px;"></i>REMBOURSEMENT ADMIN — COMMANDE VALIDÉE/LIVRÉE</h3>
+                    <div style="font-size:11px;color:#aaa;margin-bottom:14px;">Le bouton d'annulation client est bloqué une fois la prestation validée ou livrée (protection anti-fraude). Utilisez ceci pour rembourser quand même une commande dans cet état — rembourse réellement le client (Stripe/PayPal) et récupère l'argent du wallet prestataire si besoin.</div>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                        <input id="forceRefundOrderId" type="text" placeholder="ID de la commande (ex: ORD-A2996D14)" style="flex:1;min-width:220px;background:#1a1a1a;border:1.5px solid #333;border-radius:8px;padding:10px 12px;color:#fff;font-size:13px;">
+                        <button onclick="_adminForceRefund()" style="background:#3a0d0d;color:#ef4444;border:1.5px solid #ef444444;border-radius:8px;padding:10px 16px;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap;"><i class="fas fa-rotate-left" style="margin-right:6px;"></i>REMBOURSER</button>
+                    </div>
+                    <div id="forceRefundResult" style="margin-top:12px;font-size:12px;color:#aaa;"></div>
+                </div>
             </div>
 
             <!-- ===== SECTION LITIGES ===== -->
@@ -6902,6 +6913,23 @@
         function _adminWiseCopy(text, btn) {
             navigator.clipboard.writeText(text).then(function() {
                 if (btn) { var prev = btn.textContent; btn.textContent = '✓ Copié'; setTimeout(function(){ btn.textContent = prev; }, 1500); }
+            });
+        }
+
+        function _adminForceRefund() {
+            var input = document.getElementById('forceRefundOrderId');
+            var el = document.getElementById('forceRefundResult');
+            var orderId = input ? input.value.trim() : '';
+            if (!orderId) { if (el) el.innerHTML = '<span style="color:#ef4444;">Entrez un ID de commande.</span>'; return; }
+            if (!confirm('Confirmer le remboursement forcé de la commande ' + orderId + ' ?\n\nCette action rembourse réellement le client et ne peut pas être annulée.')) return;
+            if (el) el.innerHTML = '<span style="color:#aaa;">Remboursement en cours...</span>';
+            _adminWiseFetch('POST', '/api/admin/orders/' + encodeURIComponent(orderId) + '/force-refund').then(function(data) {
+                if (!el) return;
+                if (!data.ok) { el.innerHTML = '<span style="color:#ef4444;">Erreur : ' + (data.error || 'inconnue') + '</span>'; return; }
+                el.innerHTML = '<span style="color:' + (data.refunded ? '#4ade80' : '#f59e0b') + ';">' + (data.message || (data.refunded ? 'Remboursé.' : 'Traitement manuel requis.')) + '</span>';
+                if (input) input.value = '';
+            }).catch(function(e) {
+                if (el) el.innerHTML = '<span style="color:#ef4444;">Erreur réseau : ' + e.message + '</span>';
             });
         }
 
