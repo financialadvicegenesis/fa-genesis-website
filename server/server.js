@@ -1144,13 +1144,13 @@ async function processDispatchPayout(dispatch, stage) {
 
         var faAmount = parseFloat((stageTotal - paidAmount).toFixed(2));
 
-        // Détection méthode : Stripe Connect > Wise/IBAN > PayPal (legacy) > IBAN legacy > pending
+        // Détection méthode : Stripe Connect > Wise/IBAN > PayPal > IBAN legacy > pending
         var method;
         if (partner.stripeAccountId && partner.stripeChargesEnabled) {
             method = 'stripe_connect';
         } else if (partner.bankDetails && partner.bankDetails.iban) {
             method = 'wise';
-        } else if (partner.payout_paypal) {
+        } else if (partner.payout_paypal_email) {
             method = 'paypal';
         } else if (partner.payout_iban) {
             method = 'bank_transfer';
@@ -1163,7 +1163,9 @@ async function processDispatchPayout(dispatch, stage) {
         var _partnerIban      = _bd.iban      || partner.payout_iban      || null;
         var _partnerBic       = _bd.bic       || partner.payout_bic       || null;
         var _partnerTitulaire = _bd.accountHolderName || partner.payout_titulaire || null;
-        var _partnerPaypal    = partner.payout_paypal || null;
+        // payout_paypal_email = champ réellement enregistré par POST /api/partner/profile/set-paypal —
+        // payout_paypal (sans suffixe) n'est jamais renseigné par aucun endpoint, ne pas s'y fier.
+        var _partnerPaypal    = partner.payout_paypal_email || null;
 
         // Litige (Phase 6) : tant qu'un litige est ouvert sur ce dispatch, les versements
         // futurs sont mis en attente (on_hold) au lieu d'être envoyés immédiatement.
@@ -6097,6 +6099,40 @@ app.post('/api/partner/wallet/withdraw', authenticatePartner, async function(req
             }
         }
 
+        // Auto-virement PayPal si le partenaire a enregistré son email PayPal (même principe que Wise)
+        var _wdPaypalSent = false;
+        if (method === 'paypal') {
+            try {
+                var _wdPpPartners = loadPartners();
+                var _wdPpPartner  = _wdPpPartners.find(function(p) { return p.id === partnerId; });
+                var _wdPpEmail    = _wdPpPartner && _wdPpPartner.payout_paypal_email;
+                if (_wdPpEmail) {
+                    var _wdPpResult = await triggerPayPalPayouts([{
+                        recipient_email: _wdPpEmail, amount: amount, currency: 'EUR',
+                        note: 'Retrait GENESIS ' + withdrawal.id
+                    }]);
+                    var _wdPpList = loadWithdrawals();
+                    var _wdPpIdx  = _wdPpList.findIndex(function(w) { return w.id === withdrawal.id; });
+                    if (_wdPpIdx !== -1) {
+                        _wdPpList[_wdPpIdx].status          = _wdPpResult.success ? 'sent' : 'failed';
+                        _wdPpList[_wdPpIdx].payout_batch_id = _wdPpResult.payout_batch_id || null;
+                        if (!_wdPpResult.success) _wdPpList[_wdPpIdx].error = _wdPpResult.error || 'Erreur PayPal Payouts';
+                        _wdPpList[_wdPpIdx].processed_at    = new Date().toISOString();
+                        saveWithdrawals(_wdPpList);
+                    }
+                    _wdPaypalSent = _wdPpResult.success;
+                    console.log('[WALLET] Virement PayPal', _wdPpResult.success ? 'déclenché' : 'ÉCHOUÉ', ':', withdrawal.id, 'pour', req.partner.email, amount + '€');
+                } else {
+                    console.warn('[WALLET] Retrait PayPal', withdrawal.id, 'sans email PayPal enregistré — traitement manuel requis pour', req.partner.email);
+                }
+            } catch(_wdPpErr) {
+                var _wdPpErrList = loadWithdrawals();
+                var _wdPpErrIdx  = _wdPpErrList.findIndex(function(w) { return w.id === withdrawal.id; });
+                if (_wdPpErrIdx !== -1) { _wdPpErrList[_wdPpErrIdx].error = _wdPpErr.message; saveWithdrawals(_wdPpErrList); }
+                console.error('[WALLET] Erreur virement PayPal pour', withdrawal.id, ':', _wdPpErr.message);
+            }
+        }
+
         // Notifier le partenaire
         notifyUser(req.partner.email, 'partner', 'withdrawal_pending', '📤 Retrait en cours',
             'Votre demande de retrait de ' + amount.toFixed(2) + '€ via ' + method.replace('_',' ') + ' est en cours de traitement.',
@@ -6111,10 +6147,17 @@ app.post('/api/partner/wallet/withdraw', authenticatePartner, async function(req
         if (details.holder) _wdDetails += '<br>Titulaire : ' + details.holder;
         if (details.email)  _wdDetails += '<br>Email : ' + details.email;
         var _wdNeedsTopup = (method === 'sepa' || method === 'wise') && !req.partner.wiseRecipientId;
+        var _wdPaypalNoEmail = method === 'paypal' && !req.partner.payout_paypal_email;
         var _wdAlertHtml = _wdNeedsTopup
             ? '<p style="background:#fef3c7;padding:12px;border-radius:6px;"><strong>⚠️ Action requise</strong> : ce prestataire n\'a pas encore de wiseRecipientId — le virement ne partira pas automatiquement.<br>1. Enregistrez son IBAN via <code>/api/admin/wise/retry-recipient/' + req.partner.id + '</code><br>2. Puis relancez via <code>/api/admin/withdrawals/' + withdrawal.id + '/retry</code></p>'
             : (method === 'sepa' || method === 'wise')
                 ? '<p style="background:#d1fae5;padding:12px;border-radius:6px;">✅ Virement Wise déclenché automatiquement. Vérifiez que le solde Wise est suffisant.<br><strong>Si le solde Wise est insuffisant</strong> : virez <strong>' + amount.toFixed(2) + '€</strong> depuis Boursorama → Wise, puis relancez via <code>/api/admin/withdrawals/' + withdrawal.id + '/retry</code></p>'
+                : _wdPaypalNoEmail
+                    ? '<p style="background:#fef3c7;padding:12px;border-radius:6px;"><strong>⚠️ Action requise</strong> : ce prestataire n\'a pas encore enregistré d\'email PayPal — le virement ne partira pas automatiquement. Demandez-lui de le renseigner dans son profil, puis relancez via <code>/api/admin/withdrawals/' + withdrawal.id + '/retry</code></p>'
+                : method === 'paypal'
+                    ? (_wdPaypalSent
+                        ? '<p style="background:#d1fae5;padding:12px;border-radius:6px;">✅ Virement PayPal déclenché automatiquement vers ' + req.partner.payout_paypal_email + '.</p>'
+                        : '<p style="background:#fee2e2;padding:12px;border-radius:6px;"><strong>⚠️ Échec du virement PayPal automatique</strong> — vérifiez le solde PayPal Business et relancez via <code>/api/admin/withdrawals/' + withdrawal.id + '/retry</code></p>')
                 : '<p>Vérifiez le traitement du retrait dans le dashboard admin.</p>';
 
         ADMIN_EMAILS.forEach(function(adminEmail) {
@@ -22975,7 +23018,7 @@ async function runWeeklyAutoPayouts() {
             if (_ap.auto_payout === false) continue; // désactivé par le prestataire
 
             var _apAmount = parseFloat(_aw.balance_available.toFixed(2));
-            var _apMethod = _ap.wiseRecipientId ? 'wise' : (_ap.payout_paypal ? 'paypal' : null);
+            var _apMethod = _ap.wiseRecipientId ? 'wise' : (_ap.payout_paypal_email ? 'paypal' : null);
             if (!_apMethod) { console.log('[AUTO-PAYOUT] Pas de méthode configurée pour', _ap.email); continue; }
 
             try {
@@ -23014,8 +23057,17 @@ async function runWeeklyAutoPayouts() {
                     var _upIdx = _upWdrs.findIndex(function(w) { return w.id === _apWd.id; });
                     if (_upIdx !== -1) { _upWdrs[_upIdx].status = 'processing'; _upWdrs[_upIdx].wise_transfer_id = _apResult.transferId; _upWdrs[_upIdx].processed_at = now.toISOString(); saveWithdrawals(_upWdrs); }
                     console.log('[AUTO-PAYOUT] Wise déclenché pour', _ap.email, ':', _apAmount + '€', _apResult.transferId);
-                } else if (_apMethod === 'paypal' && _ap.payout_paypal) {
-                    var _apPpResult = await triggerPayPalPayouts([{ recipient_email: _ap.payout_paypal, amount: _apAmount, currency: 'EUR', note: 'Virement automatique FA GENESIS' }]);
+                } else if (_apMethod === 'paypal' && _ap.payout_paypal_email) {
+                    var _apPpResult = await triggerPayPalPayouts([{ recipient_email: _ap.payout_paypal_email, amount: _apAmount, currency: 'EUR', note: 'Virement automatique FA GENESIS' }]);
+                    var _upWdrs2 = loadWithdrawals();
+                    var _upIdx2 = _upWdrs2.findIndex(function(w) { return w.id === _apWd.id; });
+                    if (_upIdx2 !== -1) {
+                        _upWdrs2[_upIdx2].status = _apPpResult.success ? 'sent' : 'failed';
+                        _upWdrs2[_upIdx2].payout_batch_id = _apPpResult.payout_batch_id || null;
+                        if (!_apPpResult.success) _upWdrs2[_upIdx2].error = _apPpResult.error || 'Erreur PayPal Payouts';
+                        _upWdrs2[_upIdx2].processed_at = now.toISOString();
+                        saveWithdrawals(_upWdrs2);
+                    }
                     console.log('[AUTO-PAYOUT] PayPal', _apPpResult.success ? 'OK' : 'ÉCHOUÉ', 'pour', _ap.email, ':', _apAmount + '€');
                 }
 
