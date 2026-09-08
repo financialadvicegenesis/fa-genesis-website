@@ -9765,7 +9765,11 @@ function _fetchAndRenderCommandes(){
           ? "<span style='font-size:12px;font-weight:700;color:var(--yellow);'>"+Number(r.total_amount).toLocaleString("fr-FR")+" €</span>"
           : "";
         var _dsKey=(ds&&ds.key)||'';
-        var _canDelete = !r.deposit_paid || _dsKey==='pending_acceptance';
+        // GENESIS SAFE™ capture différée : deposit_authorized (carte réservée, pas encore
+        // capturée) doit compter comme un paiement engagé au même titre que deposit_paid,
+        // sinon la ligne reste "supprimable" (et non cliquable pour voir le détail) pendant
+        // toute la durée de l'escrow, jusqu'à la validation.
+        var _canDelete = !(r.deposit_paid || r.deposit_authorized) || _dsKey==='pending_acceptance';
         var _deleteBtn = _canDelete
           ? "<button onclick='event.stopPropagation();_cancelUnpaidOrder(\""+r.order_id+"\",\""+r.id+"\")' style='background:none;border:none;padding:6px;cursor:pointer;color:#555;flex-shrink:0;' title='Supprimer'><i class='fa-solid fa-trash-can' style='font-size:14px;'></i></button>"
           : "<i class='fa-solid fa-chevron-right' style='color:#444;font-size:12px;flex-shrink:0;'></i>";
@@ -14318,12 +14322,12 @@ function _openGenesisDetail(projId){
           instHtml='<div style="margin-top:10px;padding:10px;background:rgba(255,255,255,0.03);border-radius:8px;">'
             +'<div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;"><i class="fa-solid fa-calendar-days mr-1"></i>Calendrier des mensualités</div>';
           installs.forEach(function(inst){
-            var isDepPaid=inst.stage==='deposit'&&p.deposit_paid;
+            var isDepPaid=inst.stage==='deposit'&&(p.deposit_paid||p.deposit_authorized);
             var isPaid=inst.paid||isDepPaid;
             var dueFr=inst.due_date?new Date(inst.due_date).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'}):(inst.stage==='deposit'?'À payer':'Date à fixer');
             var isOD=inst.due_date&&!isPaid&&new Date(inst.due_date)<new Date();
             var dot=isPaid?'#4ade80':(isOD?'#f87171':'rgba(255,255,255,0.2)');
-            var canPay=inst.stage==='deposit'&&!p.deposit_paid;
+            var canPay=inst.stage==='deposit'&&!(p.deposit_paid||p.deposit_authorized);
             instHtml+='<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.05);">'
               +'<div style="width:9px;height:9px;border-radius:50%;background:'+dot+';flex-shrink:0;"></div>'
               +'<div style="flex:1;"><div style="font-size:12px;font-weight:600;color:#e5e5e5;">'+inst.label+'</div>'
@@ -14336,7 +14340,7 @@ function _openGenesisDetail(projId){
           });
           instHtml+='</div>';
         } else {
-          var canPaySingle=!p.deposit_paid;
+          var canPaySingle=!(p.deposit_paid||p.deposit_authorized);
           var _isSinglePmt = parseFloat(p.total_amount||0) <= 300;
           instHtml=canPaySingle
             ?'<button onclick="_openPbPayForExistingOrder(\''+p.order_id+'\',\''+p.partner_id+'\',\''+p.service_label.replace(/'/g,"\\'")+'\','+(p.deposit_amount||p.total_amount)+',\''+p.partner_name.replace(/'/g,"\\'")+'\');closeGenesisDetail();" style="margin-top:8px;background:var(--yellow);border:none;border-radius:8px;padding:6px 14px;font-size:11px;font-weight:900;color:#000;cursor:pointer;display:block;">'+(_isSinglePmt?'Payer →':'Payer l\'acompte →')+'</button>'

@@ -4130,9 +4130,13 @@ app.post('/api/orders/:orderId/cancel-pending', function(req, res) {
             return res.status(403).json({ success: false, error: 'Commande non autorisee.' });
         }
 
-        // Verifier que l'acompte n'est pas deja paye — sauf si le dispatch est en pending_acceptance
-        // (partenaire n'a pas encore accepté la mission = suppression autorisée)
-        if (order.deposit_paid) {
+        // Verifier que l'acompte n'est pas deja paye/autorise — sauf si le dispatch est en
+        // pending_acceptance (partenaire n'a pas encore accepté la mission = suppression
+        // autorisée). deposit_authorized (carte réservée, GENESIS SAFE™ capture différée) doit
+        // être traité comme deposit_paid ici : sinon, tant que le client n'a pas validé, la
+        // carte est "seulement" autorisée (jamais deposit_paid) et cette suppression silencieuse
+        // resterait ouverte même après acceptation/livraison par le partenaire.
+        if (order.deposit_paid || order.deposit_authorized) {
             var _dispatches = loadDispatches();
             var _disp = _dispatches.find(function(d){ return d.order_id === orderId && d.status !== 'cancelled'; });
             if (!_disp || _disp.status !== 'pending_acceptance') {
@@ -4718,7 +4722,7 @@ app.post('/api/payments/order/stripe-direct', async function(req, res) {
             }
             stageLabel = 'Solde restant';
         } else {
-            if (order.deposit_paid) return res.status(400).json({ error: 'Ce paiement a déjà été effectué.' });
+            if (order.deposit_paid || order.deposit_authorized) return res.status(400).json({ error: 'Ce paiement a déjà été effectué.' });
             amount = order.deposit_amount;
             stageLabel = 'Acompte';
         }
@@ -5494,6 +5498,7 @@ app.get('/api/projects/:projectId', function(req, res) {
                 var ord = allOrd.find(function(o) { return o.id === prest.order_id; });
                 return Object.assign({}, prest, {
                     deposit_paid: ord ? (ord.deposit_paid || false) : false,
+                    deposit_authorized: ord ? (ord.deposit_authorized || false) : false,
                     balance_paid: ord ? (ord.balance_paid || false) : false,
                     status: ord ? ord.status : prest.status,
                     installments: ord ? (ord.installments || []) : [],
@@ -16073,6 +16078,9 @@ app.get('/api/my-requests', function(req, res) {
                     ? (orderForReq.total_amount || r.total_price || r.price || 0)
                     : (r.total_price || r.price || 0);
                 out.deposit_paid = orderForReq ? (!!orderForReq.deposit_paid) : false;
+                // GENESIS SAFE™ capture différée : carte autorisée mais pas encore capturée —
+                // à traiter côté frontend comme un paiement engagé (ex: _canDelete dans "Mes commandes").
+                out.deposit_authorized = orderForReq ? (!!orderForReq.deposit_authorized) : false;
                 out.order_product_type = orderForReq ? (orderForReq.product_type || null) : null;
                 out.installments = (orderForReq && Array.isArray(orderForReq.installments))
                     ? orderForReq.installments.map(function(inst) {
@@ -21816,14 +21824,17 @@ app.post('/api/payments/stripe/create-intent', async function(req, res) {
             return res.status(400).json({ error: 'Prestataire introuvable.' });
         }
 
-        // Guard : éviter double paiement sur le même stage
+        // Guard : éviter double paiement/double autorisation sur le même stage. Avec la capture
+        // différée GENESIS SAFE™, deposit_authorized (carte réservée) précède deposit_paid — sans
+        // ce champ ici, un rafraîchissement/nouveau clic avant validation créerait un second PI
+        // autorisé pour le même acompte, laissant potentiellement deux holds sur la carte client.
         if (b.orderId) {
             var _gOrder = getOrderById(b.orderId);
             if (_gOrder) {
-                if (b.stage === 'balance' && _gOrder.balance_paid) {
+                if (b.stage === 'balance' && (_gOrder.balance_paid || _gOrder.balance_authorized)) {
                     return res.status(400).json({ error: 'Le solde a déjà été payé.' });
                 }
-                if (b.stage !== 'balance' && _gOrder.deposit_paid) {
+                if (b.stage !== 'balance' && (_gOrder.deposit_paid || _gOrder.deposit_authorized)) {
                     return res.status(400).json({ error: 'Ce paiement a déjà été effectué.' });
                 }
             }
