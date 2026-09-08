@@ -4956,6 +4956,17 @@ async function getPayPalAccessToken() {
     return data.access_token;
 }
 
+// ── Config publique PayPal (Client ID) — équivalent PayPal de /api/payments/stripe/config.
+// Le Client ID est un identifiant public (pas un secret) destiné à être embarqué côté client
+// dans le tag <script src="https://www.paypal.com/sdk/js?client-id=...">.
+app.get('/api/payments/paypal/config', function(req, res) {
+    res.json({
+        clientId: process.env.PAYPAL_CLIENT_ID || null,
+        currency: 'EUR',
+        enabled: !!(process.env.PAYPAL_CLIENT_ID && process.env.PAYPAL_SECRET)
+    });
+});
+
 /**
  * POST /api/payments/paypal/create-order
  * Body: { amount, currency, description, installments, totalAmount }

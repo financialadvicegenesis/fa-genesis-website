@@ -14073,6 +14073,10 @@ function _showPbPayUI(partner, service, existingOrderId){
   _pbPartner = partner; _pbService = service; _pbMode = 'pay';
   _pbSelectedInstallments = 1;
   _pbExistingOrderId = existingOrderId || null;
+  // Nouvelle session de paiement : autoriser un nouveau rendu du bouton PayPal.
+  _pbPaypalRendered = false;
+  var _pbPpContainer = document.getElementById('pb-paypal-container'); if(_pbPpContainer){ _pbPpContainer.innerHTML=''; _pbPpContainer.style.display='block'; }
+  var _pbPpErr = document.getElementById('pb-paypal-err'); if(_pbPpErr) _pbPpErr.style.display='none';
 
   var overlay=document.getElementById('pb-overlay'); var sheet=document.getElementById('pb-sheet');
   if(!overlay||!sheet) return;
@@ -14122,6 +14126,7 @@ function _showPbPayUI(partner, service, existingOrderId){
   if(existingOrderId){
     _pbContractId = 'existing-order';
     if(fm) fm.style.display='block';
+    _pbRenderPayPalButton();
   } else {
     // Nouvelle réservation → afficher le contrat avant paiement
     _pbBuildAndShowContract();
@@ -14251,6 +14256,7 @@ function _pbSignAndProceed(){
     // Masquer contrat, afficher paiement
     var cs=document.getElementById('pb-contract-screen'); if(cs) cs.style.display='none';
     var fm=document.getElementById('pb-form'); if(fm) fm.style.display='block';
+    _pbRenderPayPalButton();
   }).catch(function(err){
     if(sb){sb.disabled=false;sb.innerHTML='<i class="fa-solid fa-pen-nib" style="margin-right:6px;"></i>SIGNER ET PAYER →';}
     if(se){se.textContent=err.message||'Erreur. Réessayez.';se.style.display='block';}
@@ -14519,10 +14525,48 @@ function _pbPayDepositStripeDirect(){
   });
 }
 
+// Assure qu'une commande GENESIS existe pour ce pb-sheet (la crée si besoin, lie le contrat
+// signé) — factorisé pour être partagé entre les moyens de paiement (Stripe et PayPal).
+function _pbEnsureOrderId(){
+  if(_pbExistingOrderId) return Promise.resolve(_pbExistingOrderId);
+  var clientInfo={firstName:USER.prenom||'',lastName:USER.nom||'',email:USER.email||'',phone:USER.telephone||'',clientType:'particulier'};
+  return fetch((window.FA_GENESIS_API||API)+'/api/orders/create',{
+    method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+USER._token},
+    body:JSON.stringify({ clientInfo:clientInfo, partnerServiceOrder:{partnerId:_pbPartner.id,serviceId:_pbService.id, requestedInstallments:_pbSelectedInstallments||1} })
+  }).then(function(r){ return r.json().then(function(d){ return {ok:r.ok,data:d}; }); })
+  .then(function(res){
+    if(!res.ok||!res.data||!res.data.orderId) throw new Error((res.data&&res.data.error)||'Erreur création commande');
+    var newOrderId = res.data.orderId;
+    if(_pbContractId && _pbContractId !== 'existing-order'){
+      fetch((window.FA_GENESIS_API||API)+'/api/contracts/'+_pbContractId+'/set-order',{
+        method:'PATCH',headers:{'Content-Type':'application/json','Authorization':'Bearer '+USER._token},
+        body:JSON.stringify({orderId:newOrderId})
+      }).catch(function(){});
+    }
+    return newOrderId;
+  });
+}
+
+// Écran de succès partagé Stripe/PayPal — mêmes retours visuels quel que soit le moyen de paiement.
+function _pbShowSuccessScreen(){
+  var ss=document.getElementById('pb-stripe-screen'); if(ss) ss.style.display='none';
+  var fm=document.getElementById('pb-form'); if(fm) fm.style.display='none';
+  var sc=document.getElementById('pb-success'); if(sc) sc.style.display='';
+  var sm=document.getElementById('pb-success-msg');
+  if(sm) sm.textContent = 'Paiement confirmé ! Votre paiement est sécurisé par GENESIS SAFE™. Les fonds seront versés au prestataire à la livraison. Retrouvez votre contrat dans "Mes contrats".';
+  launchConfetti(); showToast('Paiement sécurisé !','Protégé par GENESIS SAFE™','success');
+  setTimeout(function(){ showToast('Mission lancée !','Votre prestataire va être notifié.','success'); }, 1600);
+  setTimeout(function(){ showToast('Contrat disponible','Téléchargez votre contrat dans "Mes contrats"','info'); }, 3200);
+  localStorage.setItem('_fa_recent_payment', String(Date.now()));
+  setTimeout(function(){
+    if(typeof nav==='function') nav('profil');
+    setTimeout(function(){ if(typeof showClientWallet==='function') showClientWallet(); }, 600);
+  }, 2000);
+}
+
 function _pbPayDepositStripe(){
   var er=document.getElementById('pb-err'); if(er) er.classList.remove('on');
   var sb=document.getElementById('pb-pay-btn'); if(sb){sb.disabled=true;sb.textContent='Initialisation du paiement…';}
-  var clientInfo={firstName:USER.prenom||'',lastName:USER.nom||'',email:USER.email||'',phone:USER.telephone||'',clientType:'particulier'};
 
   function _mountStripeIntent(orderId){
     var _dLabel2 = _pbSelectedInstallments > 1 ? 'mensualité' : (parseFloat(_pbService&&_pbService.price||0) <= 300 ? 'paiement' : 'acompte');
@@ -14538,26 +14582,7 @@ function _pbPayDepositStripe(){
     }).then(function(r2){ return r2.json().then(function(d2){ return {ok:r2.ok,data:d2,orderId:orderId}; }); });
   }
 
-  // Commande Projet GENESIS existante → sauter la création de commande
-  var _stripeFlow = _pbExistingOrderId
-    ? _mountStripeIntent(_pbExistingOrderId)
-    : fetch((window.FA_GENESIS_API||API)+'/api/orders/create',{
-        method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+USER._token},
-        body:JSON.stringify({ clientInfo:clientInfo, partnerServiceOrder:{partnerId:_pbPartner.id,serviceId:_pbService.id, requestedInstallments:_pbSelectedInstallments||1} })
-      }).then(function(r){ return r.json().then(function(d){ return {ok:r.ok,data:d}; }); })
-      .then(function(res){
-        if(!res.ok||!res.data||!res.data.orderId) throw new Error((res.data&&res.data.error)||'Erreur création commande');
-        var newOrderId = res.data.orderId;
-        if(_pbContractId && _pbContractId !== 'existing-order'){
-          fetch((window.FA_GENESIS_API||API)+'/api/contracts/'+_pbContractId+'/set-order',{
-            method:'PATCH',headers:{'Content-Type':'application/json','Authorization':'Bearer '+USER._token},
-            body:JSON.stringify({orderId:newOrderId})
-          }).catch(function(){});
-        }
-        return _mountStripeIntent(newOrderId);
-      });
-
-  _stripeFlow.then(function(res2){
+  _pbEnsureOrderId().then(_mountStripeIntent).then(function(res2){
     if(!res2.ok||!res2.data||!res2.data.clientSecret) throw new Error((res2.data&&res2.data.error)||'Erreur initialisation paiement Stripe');
     _pbStripeIntentId = res2.data.paymentIntentId;
     _pbCurrentOrderId = res2.orderId || null;
@@ -14573,6 +14598,83 @@ function _pbPayDepositStripe(){
       return;
     }
     if(er){er.textContent=msg;er.classList.add('on');}
+  });
+}
+
+// ── PAYPAL (pb-sheet) ─────────────────────────────────────────────────────────
+var _pbPaypalRendered = false;
+function _pbRenderPayPalButton(){
+  var container = document.getElementById('pb-paypal-container');
+  if(!container || _pbPaypalRendered) return;
+
+  function mount(){
+    if(_pbPaypalRendered || !window.paypal) return;
+    _pbPaypalRendered = true;
+    try{
+      window.paypal.Buttons({
+        style: { layout:'horizontal', color:'gold', shape:'rect', label:'paypal', height:45 },
+        createOrder: function(){
+          var errEl=document.getElementById('pb-paypal-err'); if(errEl) errEl.style.display='none';
+          return fetch((window.FA_GENESIS_API||API)+'/api/payments/paypal/create-order',{
+            method:'POST',
+            headers:{'Content-Type':'application/json','Authorization':'Bearer '+(USER&&USER._token||'')},
+            body: JSON.stringify({ amount:_pbDepositAmount, currency:'EUR', description:'FA GENESIS — '+(_pbService&&_pbService.label||'Prestation') })
+          }).then(function(r){return r.json();}).then(function(d){
+            if(!d.success||!d.orderId) throw new Error(d.error||'Erreur PayPal');
+            return d.orderId;
+          });
+        },
+        onApprove: function(data){ return _pbPaypalCapture(data.orderID); },
+        onError: function(err){
+          var e=document.getElementById('pb-paypal-err');
+          if(e){ e.textContent='Erreur PayPal : '+((err&&err.message)||'réessayez.'); e.style.display='block'; }
+        },
+        onCancel: function(){}
+      }).render('#pb-paypal-container');
+    }catch(e){
+      var e2=document.getElementById('pb-paypal-err');
+      if(e2){ e2.textContent='Impossible d\'afficher PayPal.'; e2.style.display='block'; }
+    }
+  }
+
+  function withClientId(clientId){
+    if(!clientId){ container.style.display='none'; return; }
+    if(window.paypal){ mount(); return; }
+    var s=document.createElement('script');
+    s.src='https://www.paypal.com/sdk/js?client-id='+encodeURIComponent(clientId)+'&currency=EUR&intent=capture';
+    s.onload=mount;
+    s.onerror=function(){ container.style.display='none'; };
+    document.head.appendChild(s);
+  }
+
+  if(window._paypalClientId!==undefined){ withClientId(window._paypalClientId); return; }
+  fetch((window.FA_GENESIS_API||API)+'/api/payments/paypal/config').then(function(r){return r.json();}).then(function(d){
+    window._paypalClientId = d.enabled ? d.clientId : null;
+    withClientId(window._paypalClientId);
+  }).catch(function(){ window._paypalClientId=null; container.style.display='none'; });
+}
+
+function _pbPaypalCapture(paypalOrderId){
+  return _pbEnsureOrderId().then(function(orderId){
+    _pbCurrentOrderId = orderId;
+    return fetch((window.FA_GENESIS_API||API)+'/api/payments/paypal/capture-order',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+(USER&&USER._token||'')},
+      body: JSON.stringify({ paypalOrderId: paypalOrderId, orderId: orderId, stage:'deposit' })
+    });
+  }).then(function(r){ return r.json(); }).then(function(d){
+    if(!d.success) throw new Error(d.error||'Erreur de confirmation PayPal');
+    _pbShowSuccessScreen();
+  }).catch(function(err){
+    var e=document.getElementById('pb-paypal-err');
+    var msg = err.message||'Erreur PayPal. Réessayez.';
+    if(msg.indexOf('déjà été effectué')!==-1||msg.indexOf('déjà payé')!==-1){
+      closePartnerBooking();
+      setTimeout(function(){ nav('profil'); setTimeout(function(){ showMesCommandes(); },400); },300);
+      showToast('Déjà payé','Cette prestation a déjà été commandée. Retrouvez-la dans "Mes commandes".','info');
+      return;
+    }
+    if(e){ e.textContent=msg; e.style.display='block'; }
   });
 }
 
@@ -14626,15 +14728,7 @@ async function _pbConfirmStripePayment(){
       if(errEl){errEl.textContent=result.error.message||'Paiement refusé.';errEl.style.display='block';}
       if(btn){btn.disabled=false;btn.textContent='RÉESSAYER LE PAIEMENT';}
     } else if(result.paymentIntent && (result.paymentIntent.status==='succeeded' || result.paymentIntent.status==='requires_capture')){
-      var ss=document.getElementById('pb-stripe-screen'); if(ss) ss.style.display='none';
-      var sc=document.getElementById('pb-success'); if(sc) sc.style.display='';
-      var sm=document.getElementById('pb-success-msg');
-      if(sm) sm.textContent = 'Paiement confirmé ! Votre paiement est sécurisé par GENESIS SAFE™. Les fonds seront versés au prestataire à la livraison. Retrouvez votre contrat dans "Mes contrats".';
-      launchConfetti(); showToast('Paiement sécurisé !','Protégé par GENESIS SAFE™','success');
-      setTimeout(function(){ showToast('Mission lancée !','Votre prestataire va être notifié.','success'); }, 1600);
-      setTimeout(function(){ showToast('Contrat disponible','Téléchargez votre contrat dans "Mes contrats"','info'); }, 3200);
-      localStorage.setItem('_fa_recent_payment', String(Date.now()));
-      // Fallback webhook : synchroniser deposit_paid côté serveur
+      // Fallback webhook : synchroniser deposit_paid/deposit_authorized côté serveur
       if(_pbStripeIntentId && _pbCurrentOrderId && USER && USER._token){
         fetch((window.FA_GENESIS_API||API)+'/api/payments/stripe/sync-intent',{
           method:'POST',
@@ -14642,10 +14736,7 @@ async function _pbConfirmStripePayment(){
           body:JSON.stringify({piId:_pbStripeIntentId, orderId:_pbCurrentOrderId, stage:'deposit'})
         }).catch(function(){});
       }
-      setTimeout(function(){
-        if(typeof nav==='function') nav('profil');
-        setTimeout(function(){ if(typeof showClientWallet==='function') showClientWallet(); }, 600);
-      }, 2000);
+      _pbShowSuccessScreen();
     }
   } catch(e){
     if(errEl){errEl.textContent=e.message||'Erreur paiement.';errEl.style.display='block';}
@@ -15650,6 +15741,13 @@ function regHandleEnter(e, fn){ if(e.key==='Enter'||e.keyCode===13) fn(); }
         <div class="cwb-actions" style="grid-template-columns:1fr;">
           <button class="cwb-btn cwb-btn-yellow" id="pb-pay-btn" onclick="pbPayDeposit()">PAYER L'ACOMPTE</button>
         </div>
+        <div style="display:flex;align-items:center;gap:10px;margin:14px 0;">
+          <div style="flex:1;height:1px;background:#222;"></div>
+          <span style="font-size:10px;color:#555;font-weight:700;">OU</span>
+          <div style="flex:1;height:1px;background:#222;"></div>
+        </div>
+        <div id="pb-paypal-container"></div>
+        <div id="pb-paypal-err" style="display:none;background:#1a0000;border:1px solid #3a0000;border-radius:8px;padding:10px 14px;color:#ff6b6b;font-size:12px;margin-top:10px;"></div>
       </div>
       <div id="pb-stripe-screen" style="display:none;padding:4px 0 8px;">
         <div id="pb-stripe-elements-container"></div>
