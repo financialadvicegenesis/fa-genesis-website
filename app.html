@@ -7221,13 +7221,9 @@ function renderLivrableValidationCard(l){
       +'<div style="min-width:0;flex:1;"><div style="font-size:12px;font-weight:700;color:#eee;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+_escHtml(l.file_name||'Fichier')+'</div>'
       +'<div style="font-size:10px;color:#777;">Aperçu non disponible pour ce format</div></div>'
       +'</div>';
-    if(canDownload && urlVal){
-      // Toujours "Télécharger l'original" (jamais "Télécharger" seul), même sans aperçu,
-      // pour un libellé unique et cohérent sur tous les livrables quel qu'en soit le nombre.
-      contentHtml += _livDownloadBtnHtml(l.id, l.file_name, urlVal);
-    } else {
-      contentHtml += '<div style="margin-top:6px;font-size:11px;color:#888;font-style:italic"><i class="fa-solid fa-lock"></i> Téléchargement débloqué après validation</div>';
-    }
+    // Aucun bouton de téléchargement ici, même après validation : sans aperçu, ce format
+    // n'est pas exposé en libre-service — "Télécharger l'original" est réservé aux
+    // livrables réellement prévisualisables (image/PDF ci-dessus).
   }
 
   // Pas d'indicateur de statut per-livrable : la validation s'effectue au niveau commande
@@ -9838,7 +9834,7 @@ function showOrderDetail(requestId){
       +'<button class="espace-back-btn" onclick="document.getElementById(\'order-detail-overlay\').remove()">&#8249;</button>'
       +'<div class="espace-title">Détail de la commande</div>'
       +'</div>'
-      +'<div style="padding:14px;">'
+      +'<div id="order-detail-body" style="padding:14px;">'
       +renderOrderTrackingCard(r)
       +'</div>';
     document.body.appendChild(overlay);
@@ -16580,8 +16576,28 @@ function _clientValidateDelivery(orderId, requestId, btn){
       if(btn){ btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-circle-check"></i> Valider la prestation'; }
     }
     function _onSuccess(){
-      // 1. Fermer l'overlay de détail de commande s'il est ouvert
-      try{ var _ov=document.getElementById('order-detail-overlay'); if(_ov) _ov.remove(); }catch(e){}
+      // 1. Le suivi en temps réel ne doit PAS se fermer à la validation — le client doit
+      //    voir "Projet terminé" et ressortir seulement s'il le souhaite (bouton retour).
+      //    On rafraîchit son contenu en place avec l'état à jour plutôt que de le fermer.
+      try{
+        var _ovBody=document.getElementById('order-detail-body');
+        if(_ovBody && USER && USER._token){
+          fetch((window.FA_GENESIS_API||API)+'/api/my-requests',{headers:{'Authorization':'Bearer '+USER._token}})
+            .then(function(rr){return rr.json();}).then(function(dd){
+              var reqs=(dd&&Array.isArray(dd.requests))?dd.requests:[];
+              var updated=null;
+              for(var _j=0;_j<reqs.length;_j++){ if(reqs[_j].id===requestId){ updated=reqs[_j]; break; } }
+              if(!updated) return;
+              var _idx=_mesCommandesReqs.findIndex(function(x){return x.id===requestId;});
+              if(_idx!==-1) _mesCommandesReqs[_idx]=updated; else _mesCommandesReqs.push(updated);
+              var _bodyEl=document.getElementById('order-detail-body');
+              if(_bodyEl){
+                _bodyEl.innerHTML = renderOrderTrackingCard(updated);
+                if(updated.order_id) loadOrderLivrables(updated.id, updated.order_id, updated);
+              }
+            }).catch(function(){});
+        }
+      }catch(e){}
       // 2. Rafraîchir la liste des commandes (pas renderResaTab qui est la tab réservations)
       try{ if(typeof _fetchAndRenderCommandes==='function') _fetchAndRenderCommandes(); }catch(e){}
       // 3. Toasts et feedback
